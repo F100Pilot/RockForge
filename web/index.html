@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RockForge</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; background:#14151a; color:#e8e8e8; }
+  h1 { color:#ff7a45; } fieldset { border:1px solid #333; border-radius:8px; margin-bottom:1rem; }
+  input, button { padding:.5rem; margin:.25rem 0; border-radius:6px; border:1px solid #444; background:#1f2128; color:#eee; }
+  button { background:#ff7a45; color:#14151a; font-weight:600; cursor:pointer; }
+  .warn { background:#3a2d12; border:1px solid #8a6d1a; padding:.75rem; border-radius:8px; font-size:.9rem; }
+  pre { background:#1f2128; padding:1rem; border-radius:8px; overflow:auto; }
+  a { color:#ff7a45; }
+</style>
+</head>
+<body>
+<h1>RockForge</h1>
+<p class="warn">
+  Honestidade técnica: a divisão <strong>Lead/Rhythm é experimental</strong> (não existe método
+  publicado); o resultado garantido é um <strong>bundle para o DLC Builder</strong> — o PSARC final
+  exige Wwise. A transcrição degrada-se com distorção. Reveja sempre os arranjos no EOF/DLC Builder.
+  Não submeta conteúdo de terceiros sem autorização.
+</p>
+
+<fieldset>
+  <legend>Enviar ficheiro de áudio</legend>
+  <form id="uploadForm">
+    <input type="file" name="file" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" required><br>
+    <input type="text" name="title" placeholder="Título" required>
+    <input type="text" name="artist" placeholder="Artista" required>
+    <input type="text" name="album" placeholder="Álbum (opcional)"><br>
+    <button type="submit">Processar</button>
+  </form>
+</fieldset>
+
+<fieldset>
+  <legend>Estado do job</legend>
+  <input type="text" id="jobId" placeholder="ID do job">
+  <button id="checkBtn">Verificar</button>
+  <pre id="status">—</pre>
+  <p id="downloads"></p>
+</fieldset>
+
+<script>
+const statusEl = document.getElementById('status');
+const downloadsEl = document.getElementById('downloads');
+
+document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const res = await fetch('/jobs/upload', { method: 'POST', body: new FormData(e.target) });
+  const body = await res.json();
+  statusEl.textContent = JSON.stringify(body, null, 2);
+  if (body.id) document.getElementById('jobId').value = body.id;
+});
+
+document.getElementById('checkBtn').addEventListener('click', async () => {
+  const id = document.getElementById('jobId').value.trim();
+  if (!id) return;
+  const res = await fetch(`/jobs/${id}`);
+  const body = await res.json();
+  statusEl.textContent = JSON.stringify(body, null, 2);
+  downloadsEl.innerHTML = '';
+  if (body.bundle_available) downloadsEl.innerHTML += `<a href="/jobs/${id}/bundle">Descarregar bundle (DLC Builder)</a> `;
+  if (body.psarc_available) downloadsEl.innerHTML += `<a href="/jobs/${id}/psarc">Descarregar PSARC</a>`;
+});
+</script>
+</body>
+</html>

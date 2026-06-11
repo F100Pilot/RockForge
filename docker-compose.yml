@@ -1,0 +1,33 @@
+services:
+  api:
+    build: { context: ., dockerfile: docker/Dockerfile, target: api }
+    ports: ["8000:8000"]
+    environment: &env
+      ROCKFORGE_DATABASE_URL: postgresql+psycopg://rockforge:rockforge@db:5432/rockforge
+      ROCKFORGE_BROKER_URL: redis://redis:6379/0
+      ROCKFORGE_RESULT_BACKEND: redis://redis:6379/1
+      ROCKFORGE_WORK_DIR: /data
+      ROCKFORGE_ENABLE_YOUTUBE: "false"  # ToS do YouTube — decisão explícita do operador
+    volumes: ["workdata:/data"]
+    depends_on: [db, redis]
+
+  worker:
+    build: { context: ., dockerfile: docker/Dockerfile, target: worker }
+    environment: *env
+    volumes: ["workdata:/data"]
+    depends_on: [db, redis]
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: rockforge
+      POSTGRES_PASSWORD: rockforge
+      POSTGRES_DB: rockforge
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+
+  redis:
+    image: redis:7-alpine
+
+volumes:
+  workdata:
+  pgdata:
