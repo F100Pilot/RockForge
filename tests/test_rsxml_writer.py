@@ -64,6 +64,46 @@ def test_standard_tuning_attributes(tmp_path: Path) -> None:
     assert all(tuning.get(f"string{i}") == "0" for i in range(6))
 
 
+def make_chord_arrangement() -> Arrangement:
+    arr = make_arrangement()
+    arr.notes = [
+        # E5 power chord (simultaneous) + one single note after
+        TabNote(string=0, fret=0, time=1.0, sustain=0.5),
+        TabNote(string=1, fret=2, time=1.0, sustain=0.5),
+        TabNote(string=2, fret=2, time=1.01, sustain=0.5),
+        TabNote(string=0, fret=0, time=2.0, sustain=0.5),
+        TabNote(string=1, fret=2, time=2.0, sustain=0.5),
+        TabNote(string=2, fret=2, time=2.0, sustain=0.5),
+        TabNote(string=5, fret=12, time=3.0, sustain=0.3),
+    ]
+    return arr
+
+
+def test_simultaneous_notes_become_chords_with_templates(tmp_path: Path) -> None:
+    out = write_arrangement_xml(make_chord_arrangement(), tmp_path / "c.xml")
+    root = ET.parse(out).getroot()
+    templates = root.findall("chordTemplates/chordTemplate")
+    assert len(templates) == 1  # same shape twice -> one deduplicated template
+    t = templates[0]
+    assert [t.get(f"fret{i}") for i in range(6)] == ["0", "2", "2", "-1", "-1", "-1"]
+    chords = root.findall("levels/level/chords/chord")
+    assert len(chords) == 2
+    assert all(c.get("chordId") == "0" for c in chords)
+    assert len(chords[0].findall("chordNote")) == 3
+    # the lone melody note stays a plain note
+    notes = root.findall("levels/level/notes/note")
+    assert len(notes) == 1 and notes[0].get("fret") == "12"
+
+
+def test_chord_counts_are_consistent(tmp_path: Path) -> None:
+    out = write_arrangement_xml(make_chord_arrangement(), tmp_path / "c.xml")
+    root = ET.parse(out).getroot()
+    notes_el = root.find("levels/level/notes")
+    chords_el = root.find("levels/level/chords")
+    assert notes_el is not None and notes_el.get("count") == "1"
+    assert chords_el is not None and chords_el.get("count") == "2"
+
+
 def test_rejects_invalid_arrangement(tmp_path: Path) -> None:
     arr = make_arrangement()
     arr.notes = []

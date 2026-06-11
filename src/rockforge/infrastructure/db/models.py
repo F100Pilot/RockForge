@@ -34,6 +34,8 @@ class Job(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
+    stage: Mapped[str | None] = mapped_column(String(32), nullable=True)  # current pipeline stage
+    params: Mapped[dict] = mapped_column(JSON, default=dict)  # rebuild overrides (tuning, split)
     warnings: Mapped[list[str]] = mapped_column(JSON, default=list)
     note_counts: Mapped[dict[str, int]] = mapped_column(JSON, default=dict)
     bundle_dir: Mapped[str | None] = mapped_column(Text, nullable=True)

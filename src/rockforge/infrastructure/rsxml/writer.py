@@ -15,9 +15,31 @@ from pathlib import Path
 from rockforge.domain.arrangement import Arrangement, ArrangementKind
 from rockforge.domain.music import TabNote, Technique
 
+CHORD_EPSILON_S = 0.03  # notes starting within 30 ms form a chord (matches fret mapper)
+
 
 def _fmt(x: float) -> str:
     return f"{x:.3f}"
+
+
+def _group_chords(notes: list[TabNote]) -> list[list[TabNote]]:
+    """Group simultaneous notes; singletons stay single notes, groups become chords."""
+    ordered = sorted(notes, key=lambda n: (n.time, n.string))
+    groups: list[list[TabNote]] = []
+    for n in ordered:
+        if groups and n.time - groups[-1][0].time <= CHORD_EPSILON_S:
+            groups[-1].append(n)
+        else:
+            groups.append([n])
+    return groups
+
+
+def _chord_template_key(group: list[TabNote]) -> tuple[int, ...]:
+    """Fret per string (-1 = unused) — identifies a chordTemplate."""
+    frets = [-1] * 6
+    for n in group:
+        frets[n.string] = n.fret
+    return tuple(frets)
 
 
 def _note_attrs(n: TabNote) -> dict[str, str]:
@@ -76,7 +98,26 @@ def render_arrangement(arr: Arrangement) -> ET.Element:
     start = arr.tempo_map.beats[0].time if arr.tempo_map.beats else 0.0
     ET.SubElement(iters, "phraseIteration", time=_fmt(start), phraseId="0", variation="")
 
-    ET.SubElement(song, "chordTemplates", count="0")
+    # Chord handling: simultaneous notes become <chord> entries referencing a
+    # chordTemplate (documented in Song2014.cs / Rocksmith2014.XML). Finger
+    # assignments are unknown from audio — emitted as -1, to be refined in EOF.
+    groups = _group_chords(arr.notes)
+    single_notes = [g[0] for g in groups if len(g) == 1]
+    chord_groups = [g for g in groups if len(g) > 1]
+
+    template_ids: dict[tuple[int, ...], int] = {}
+    for g in chord_groups:
+        key = _chord_template_key(g)
+        if key not in template_ids:
+            template_ids[key] = len(template_ids)
+
+    templates_el = ET.SubElement(song, "chordTemplates", count=str(len(template_ids)))
+    for key, _tid in sorted(template_ids.items(), key=lambda kv: kv[1]):
+        attrs = {"chordName": "", "displayName": ""}
+        for i in range(6):
+            attrs[f"fret{i}"] = str(key[i])
+            attrs[f"finger{i}"] = "-1"
+        ET.SubElement(templates_el, "chordTemplate", attrs)
 
     ebeats = ET.SubElement(song, "ebeats", count=str(len(arr.tempo_map.beats)))
     for b in arr.tempo_map.beats:
@@ -90,10 +131,18 @@ def render_arrangement(arr: Arrangement) -> ET.Element:
 
     levels = ET.SubElement(song, "levels", count="1")
     level = ET.SubElement(levels, "level", difficulty="0")
-    notes_el = ET.SubElement(level, "notes", count=str(len(arr.notes)))
-    for n in arr.notes:
+    notes_el = ET.SubElement(level, "notes", count=str(len(single_notes)))
+    for n in single_notes:
         ET.SubElement(notes_el, "note", _note_attrs(n))
-    ET.SubElement(level, "chords", count="0")
+    chords_el = ET.SubElement(level, "chords", count=str(len(chord_groups)))
+    for g in chord_groups:
+        chord_id = template_ids[_chord_template_key(g)]
+        chord_el = ET.SubElement(
+            chords_el, "chord",
+            time=_fmt(g[0].time), chordId=str(chord_id), linkNext="0", accent="0",
+        )
+        for n in g:  # chordNote children preserve per-string technique data
+            ET.SubElement(chord_el, "chordNote", _note_attrs(n))
     anchors = ET.SubElement(level, "anchors", count=str(len(arr.notes) and 1))
     if arr.notes:
         first_fretted = next((n for n in arr.notes if n.fret > 0), arr.notes[0])
