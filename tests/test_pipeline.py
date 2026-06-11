@@ -95,6 +95,36 @@ def test_pipeline_flags_experimental_split_and_missing_psarc(tmp_path: Path) -> 
     assert "PSARC" in joined
 
 
+def test_stage_callback_reports_all_stages(tmp_path: Path) -> None:
+    seen: list[str] = []
+    make_use_case().run(
+        source="x.wav",
+        metadata=SongMetadata(title="T", artist="A"),
+        workdir=tmp_path,
+        on_stage=seen.append,
+    )
+    assert seen == [
+        "ingest", "normalize", "separate", "transcribe",
+        "beat_track", "tuning", "fret_mapping", "package",
+    ]
+
+
+def test_tuning_override_skips_estimator(tmp_path: Path) -> None:
+    drop_d = Tuning(midi=(38, 45, 50, 55, 59, 64))
+    result = make_use_case().run(
+        source="x.wav",
+        metadata=SongMetadata(title="T", artist="A"),
+        workdir=tmp_path,
+        tuning_override=drop_d,
+    )
+    assert any("override" in w for w in result.warnings)
+    import xml.etree.ElementTree as ET
+
+    xml = next(p for p in result.packaging.xml_paths if "combined" in p.name)
+    tuning_el = ET.parse(xml).getroot().find("tuning")
+    assert tuning_el is not None and tuning_el.get("string0") == "-2"
+
+
 def test_ebeat_grid_covers_song_end(tmp_path: Path) -> None:
     result = make_use_case().run(
         source="x.wav", metadata=SongMetadata(title="T", artist="A"), workdir=tmp_path

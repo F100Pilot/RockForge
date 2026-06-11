@@ -5,65 +5,237 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>RockForge</title>
 <style>
-  body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; background:#14151a; color:#e8e8e8; }
-  h1 { color:#ff7a45; } fieldset { border:1px solid #333; border-radius:8px; margin-bottom:1rem; }
-  input, button { padding:.5rem; margin:.25rem 0; border-radius:6px; border:1px solid #444; background:#1f2128; color:#eee; }
-  button { background:#ff7a45; color:#14151a; font-weight:600; cursor:pointer; }
-  .warn { background:#3a2d12; border:1px solid #8a6d1a; padding:.75rem; border-radius:8px; font-size:.9rem; }
-  pre { background:#1f2128; padding:1rem; border-radius:8px; overflow:auto; }
-  a { color:#ff7a45; }
+  :root { --bg:#14151a; --panel:#1f2128; --line:#34363f; --accent:#ff7a45; --ok:#5fbf6e; --warn:#e0b341; --err:#e06363; }
+  body { font-family: system-ui, sans-serif; max-width: 980px; margin: 1.5rem auto; padding: 0 1rem; background:var(--bg); color:#e8e8e8; }
+  h1 { color:var(--accent); margin-bottom:.25rem; }
+  fieldset { border:1px solid var(--line); border-radius:8px; margin-bottom:1rem; background:var(--panel); }
+  input, button, select { padding:.5rem; margin:.2rem 0; border-radius:6px; border:1px solid var(--line); background:#15161b; color:#eee; }
+  button { background:var(--accent); color:#14151a; font-weight:600; cursor:pointer; border:none; }
+  button.secondary { background:#2a2c35; color:#ddd; }
+  .notice { background:#3a2d12; border:1px solid #8a6d1a; padding:.6rem .8rem; border-radius:8px; font-size:.85rem; margin-bottom:1rem; }
+  table { width:100%; border-collapse:collapse; font-size:.9rem; }
+  th, td { text-align:left; padding:.4rem .5rem; border-bottom:1px solid var(--line); }
+  tr.sel { background:#26282f; }
+  .badge { padding:.1rem .5rem; border-radius:999px; font-size:.75rem; font-weight:600; }
+  .b-pending { background:#444; } .b-running { background:var(--warn); color:#222; }
+  .b-completed { background:var(--ok); color:#10210f; } .b-failed { background:var(--err); color:#2a0d0d; }
+  .stages { display:flex; gap:.25rem; flex-wrap:wrap; margin:.5rem 0; }
+  .stage { padding:.15rem .5rem; border-radius:6px; background:#2a2c35; font-size:.75rem; color:#999; }
+  .stage.done { background:#274029; color:#a9e0ae; } .stage.now { background:var(--warn); color:#222; }
+  .warnbox { background:#332a14; border-left:3px solid var(--warn); padding:.4rem .6rem; margin:.3rem 0; font-size:.85rem; }
+  .errbox { background:#3a1a1a; border-left:3px solid var(--err); padding:.4rem .6rem; margin:.3rem 0; font-size:.85rem; }
+  #tabwrap { overflow-x:auto; background:#0f1013; border:1px solid var(--line); border-radius:8px; }
+  .tabs button { margin-right:.3rem; }
+  .meta { font-size:.85rem; color:#aaa; }
+  label { font-size:.85rem; margin-right:.6rem; }
+  .tuninggrid input { width:3.2rem; text-align:center; }
 </style>
 </head>
 <body>
 <h1>RockForge</h1>
-<p class="warn">
-  Honestidade técnica: a divisão <strong>Lead/Rhythm é experimental</strong> (não existe método
-  publicado); o resultado garantido é um <strong>bundle para o DLC Builder</strong> — o PSARC final
-  exige Wwise. A transcrição degrada-se com distorção. Reveja sempre os arranjos no EOF/DLC Builder.
-  Não submeta conteúdo de terceiros sem autorização.
+<p class="meta">áudio → arranjos Rocksmith 2014 · <a href="/docs" style="color:var(--accent)">API</a></p>
+<p class="notice">
+  A divisão <strong>Lead/Rhythm é experimental</strong> (sem método publicado). O resultado garantido
+  é um <strong>bundle para o DLC Builder</strong>; o PSARC final exige Wwise. Reveja sempre a
+  transcrição abaixo e confirme a afinação antes de exportar. Não submeta conteúdo de terceiros sem autorização.
 </p>
 
 <fieldset>
-  <legend>Enviar ficheiro de áudio</legend>
+  <legend>Novo job — ficheiro de áudio</legend>
   <form id="uploadForm">
-    <input type="file" name="file" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" required><br>
+    <input type="file" name="file" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" required>
     <input type="text" name="title" placeholder="Título" required>
     <input type="text" name="artist" placeholder="Artista" required>
-    <input type="text" name="album" placeholder="Álbum (opcional)"><br>
+    <input type="text" name="album" placeholder="Álbum (opcional)">
     <button type="submit">Processar</button>
   </form>
 </fieldset>
 
 <fieldset>
-  <legend>Estado do job</legend>
-  <input type="text" id="jobId" placeholder="ID do job">
-  <button id="checkBtn">Verificar</button>
-  <pre id="status">—</pre>
+  <legend>Novo job — URL YouTube</legend>
+  <form id="ytForm">
+    <input type="url" name="url" placeholder="https://www.youtube.com/watch?v=…" required size="34">
+    <input type="text" name="title" placeholder="Título" required>
+    <input type="text" name="artist" placeholder="Artista" required>
+    <button type="submit">Processar</button>
+  </form>
+  <p class="meta">Desativado por defeito no servidor (viola o ToS do YouTube); o pedido devolve 403
+  salvo se o operador tiver ativado <code>ROCKFORGE_ENABLE_YOUTUBE</code>.</p>
+</fieldset>
+
+<fieldset>
+  <legend>Jobs</legend>
+  <table id="jobsTable"><thead>
+    <tr><th>Título</th><th>Artista</th><th>Estado</th><th>Etapa</th><th>Criado</th></tr>
+  </thead><tbody></tbody></table>
+</fieldset>
+
+<fieldset id="detail" style="display:none">
+  <legend>Detalhe do job</legend>
+  <div id="detailHead"></div>
+  <div class="stages" id="stagesBar"></div>
+  <div id="warnings"></div>
   <p id="downloads"></p>
+
+  <div id="review" style="display:none">
+    <h3>Revisão humana</h3>
+    <p class="meta">Afinação detetada (desvios de E standard por corda, grave→agudo) e BPM médio.
+    Corrija a afinação se necessário e reconstrua — a estimativa automática de afinações drop/open
+    é apenas heurística.</p>
+    <div id="tuningInfo"></div>
+    <form id="rebuildForm" class="tuninggrid">
+      <label>Afinação (MIDI por corda):</label>
+      <span id="tuningInputs"></span>
+      <label><input type="checkbox" id="splitChk" checked> tentar split Lead/Rhythm (experimental)</label>
+      <button type="submit" class="secondary">Reconstruir com estes valores</button>
+    </form>
+
+    <h3>Transcrição (notas e acordes)</h3>
+    <div class="tabs" id="arrTabs"></div>
+    <div id="tabwrap"><svg id="tabsvg" height="190"></svg></div>
+    <p class="meta">● nota · ▮ nota de acorde · cor laranja = técnica (bend/HO/PO/harmónico).
+    Eixo X em segundos; linhas = cordas (grave em baixo).</p>
+  </div>
 </fieldset>
 
 <script>
-const statusEl = document.getElementById('status');
-const downloadsEl = document.getElementById('downloads');
+const STD = [40, 45, 50, 55, 59, 64];
+let selectedJob = null, arrangements = [], currentArr = 0, pollTimer = null;
 
-document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+const badge = s => `<span class="badge b-${s}">${s}</span>`;
+const esc = t => { const d = document.createElement('span'); d.textContent = t ?? ''; return d.innerHTML; };
+
+async function refreshJobs() {
+  const jobs = await (await fetch('/jobs')).json();
+  const tb = document.querySelector('#jobsTable tbody');
+  tb.innerHTML = '';
+  for (const j of jobs) {
+    const tr = document.createElement('tr');
+    if (selectedJob && j.id === selectedJob.id) tr.className = 'sel';
+    tr.innerHTML = `<td>${esc(j.title)}</td><td>${esc(j.artist)}</td><td>${badge(j.status)}</td>
+      <td>${esc(j.stage || '—')}</td><td>${esc((j.created_at||'').slice(0,19).replace('T',' '))}</td>`;
+    tr.style.cursor = 'pointer';
+    tr.onclick = () => selectJob(j.id);
+    tb.appendChild(tr);
+  }
+}
+
+async function selectJob(id) {
+  const j = await (await fetch(`/jobs/${id}`)).json();
+  selectedJob = j;
+  document.getElementById('detail').style.display = '';
+  document.getElementById('detailHead').innerHTML =
+    `<strong>${esc(j.title)}</strong> — ${esc(j.artist)} ${badge(j.status)}
+     <span class="meta">notas: ${esc(JSON.stringify(j.note_counts))}</span>`;
+
+  const bar = document.getElementById('stagesBar');
+  const idx = j.stages.indexOf(j.stage);
+  bar.innerHTML = j.stages.map((s, i) => {
+    let cls = 'stage';
+    if (j.status === 'completed' || (idx >= 0 && i < idx)) cls += ' done';
+    else if (i === idx && j.status === 'running') cls += ' now';
+    return `<span class="${cls}">${s}</span>`;
+  }).join('');
+
+  document.getElementById('warnings').innerHTML =
+    (j.warnings || []).map(w => `<div class="warnbox">⚠ ${esc(w)}</div>`).join('') +
+    (j.error ? `<div class="errbox">✖ ${esc(j.error)}</div>` : '');
+
+  const dl = document.getElementById('downloads');
+  dl.innerHTML = '';
+  if (j.bundle_available) dl.innerHTML += `<a href="/jobs/${j.id}/bundle" style="color:var(--accent)">Bundle (DLC Builder)</a> `;
+  if (j.psarc_available) dl.innerHTML += `<a href="/jobs/${j.id}/psarc" style="color:var(--accent)">PSARC</a>`;
+  if (j.bundle_available && !j.psarc_available) dl.innerHTML += ` <span class="meta">(PSARC requer Wwise — ver README)</span>`;
+
+  if (j.status === 'completed' && j.bundle_available) await loadArrangements(j.id);
+  else document.getElementById('review').style.display = 'none';
+
+  clearInterval(pollTimer);
+  if (j.status === 'pending' || j.status === 'running')
+    pollTimer = setInterval(() => selectJob(id), 2500);
+  refreshJobs();
+}
+
+async function loadArrangements(id) {
+  arrangements = await (await fetch(`/jobs/${id}/arrangements`)).json();
+  if (!arrangements.length) return;
+  document.getElementById('review').style.display = '';
+  const a0 = arrangements[0];
+  document.getElementById('tuningInfo').innerHTML =
+    `<p class="meta">offsets: [${a0.tuning_offsets.join(', ')}] · desvio: ${a0.cent_offset.toFixed(1)} cents · BPM médio: ${a0.average_bpm.toFixed(1)}</p>`;
+  document.getElementById('tuningInputs').innerHTML = STD.map((std, i) =>
+    `<input type="number" min="20" max="80" value="${std + a0.tuning_offsets[i]}" data-string="${i}">`).join('');
+  document.getElementById('arrTabs').innerHTML = arrangements.map((a, i) =>
+    `<button type="button" class="${i ? 'secondary' : ''}" onclick="showArr(${i})">${a.kind} (${a.note_count}n/${a.chord_count}c)</button>`).join('');
+  showArr(0);
+}
+
+function showArr(i) {
+  currentArr = i;
+  const a = arrangements[i];
+  const svg = document.getElementById('tabsvg');
+  const dur = Math.max(...a.notes.map(n => n.time + n.sustain), 10);
+  const px = 60, W = Math.max(900, dur * px + 60), H = 190;
+  svg.setAttribute('width', W);
+  let s = '';
+  for (let str = 0; str < 6; str++) {
+    const y = H - 25 - str * 27;
+    s += `<line x1="30" y1="${y}" x2="${W-10}" y2="${y}" stroke="#3a3c45"/>`;
+    s += `<text x="6" y="${y+4}" fill="#888" font-size="11">${['E','A','D','G','B','e'][str]}</text>`;
+  }
+  for (let t = 0; t <= dur; t += 5)
+    s += `<text x="${30 + t*px}" y="12" fill="#666" font-size="10">${t}s</text>`;
+  for (const n of a.notes) {
+    const x = 30 + n.time * px, y = H - 25 - n.string * 27;
+    const tech = n.techniques.length > 0;
+    const fill = tech ? '#ff7a45' : (n.chord ? '#7da7e0' : '#cfd2da');
+    if (n.sustain > 0.05)
+      s += `<rect x="${x}" y="${y-2}" width="${n.sustain*px}" height="4" fill="${fill}" opacity=".35"/>`;
+    s += n.chord
+      ? `<rect x="${x-4}" y="${y-7}" width="9" height="14" rx="2" fill="${fill}"/>`
+      : `<circle cx="${x}" cy="${y}" r="7" fill="${fill}"/>`;
+    s += `<text x="${x}" y="${y+3.5}" fill="#14151a" font-size="9" font-weight="700" text-anchor="middle">${n.fret}</text>`;
+    if (tech) s += `<title>${n.techniques.join(', ')}</title>`;
+  }
+  svg.innerHTML = s;
+}
+window.showArr = showArr;
+
+document.getElementById('uploadForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const res = await fetch('/jobs/upload', { method: 'POST', body: new FormData(e.target) });
-  const body = await res.json();
-  statusEl.textContent = JSON.stringify(body, null, 2);
-  if (body.id) document.getElementById('jobId').value = body.id;
+  const r = await fetch('/jobs/upload', { method: 'POST', body: new FormData(e.target) });
+  const b = await r.json();
+  if (r.ok) { e.target.reset(); selectJob(b.id); } else alert(b.detail || 'erro');
 });
 
-document.getElementById('checkBtn').addEventListener('click', async () => {
-  const id = document.getElementById('jobId').value.trim();
-  if (!id) return;
-  const res = await fetch(`/jobs/${id}`);
-  const body = await res.json();
-  statusEl.textContent = JSON.stringify(body, null, 2);
-  downloadsEl.innerHTML = '';
-  if (body.bundle_available) downloadsEl.innerHTML += `<a href="/jobs/${id}/bundle">Descarregar bundle (DLC Builder)</a> `;
-  if (body.psarc_available) downloadsEl.innerHTML += `<a href="/jobs/${id}/psarc">Descarregar PSARC</a>`;
+document.getElementById('ytForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  const r = await fetch('/jobs/youtube', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(Object.fromEntries(f)),
+  });
+  const b = await r.json();
+  if (r.ok) { e.target.reset(); selectJob(b.id); } else alert(b.detail || 'erro');
 });
+
+document.getElementById('rebuildForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  if (!selectedJob) return;
+  const midi = [...document.querySelectorAll('#tuningInputs input')].map(i => parseInt(i.value, 10));
+  const r = await fetch(`/jobs/${selectedJob.id}/rebuild`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      tuning_midi: midi,
+      split_lead_rhythm: document.getElementById('splitChk').checked,
+    }),
+  });
+  const b = await r.json();
+  if (r.ok) selectJob(b.id); else alert(b.detail || 'erro');
+});
+
+refreshJobs();
+setInterval(refreshJobs, 5000);
 </script>
 </body>
 </html>

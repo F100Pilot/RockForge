@@ -56,6 +56,46 @@ def test_youtube_disabled_by_default_returns_403(client: TestClient) -> None:
     assert "ToS" in r.json()["detail"]
 
 
+def _create_job(client: TestClient) -> dict:
+    r = client.post(
+        "/jobs/upload",
+        files={"file": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
+        data={"title": "Song", "artist": "Artist"},
+    )
+    assert r.status_code == 202
+    return r.json()
+
+
+def test_list_jobs_newest_first(client: TestClient) -> None:
+    a = _create_job(client)
+    b = _create_job(client)
+    jobs = client.get("/jobs").json()
+    ids = [j["id"] for j in jobs]
+    assert ids.index(b["id"]) <= ids.index(a["id"])
+    assert all("stage" in j and "stages" in j for j in jobs)
+
+
+def test_rebuild_creates_new_job_with_overrides(client: TestClient) -> None:
+    original = _create_job(client)
+    r = client.post(
+        f"/jobs/{original['id']}/rebuild",
+        json={"tuning_midi": [38, 45, 50, 55, 59, 64], "split_lead_rhythm": False},
+    )
+    assert r.status_code == 202
+    assert r.json()["id"] != original["id"]
+
+
+def test_rebuild_validates_tuning_length(client: TestClient) -> None:
+    original = _create_job(client)
+    r = client.post(f"/jobs/{original['id']}/rebuild", json={"tuning_midi": [40, 45]})
+    assert r.status_code == 422
+
+
+def test_arrangements_404_until_completed(client: TestClient) -> None:
+    job = _create_job(client)
+    assert client.get(f"/jobs/{job['id']}/arrangements").status_code == 404
+
+
 def test_unknown_job_404(client: TestClient) -> None:
     assert client.get("/jobs/nope").status_code == 404
     assert client.get("/jobs/nope/psarc").status_code == 404

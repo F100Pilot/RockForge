@@ -7,6 +7,7 @@ always produced as the trustworthy fallback.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -25,7 +26,7 @@ from rockforge.domain.arrangement import (
     ConfidenceLabel,
     SongMetadata,
 )
-from rockforge.domain.music import Beat, NoteEvent, TempoMap
+from rockforge.domain.music import Beat, NoteEvent, TempoMap, Tuning
 from rockforge.infrastructure.fretboard.mapper import infer_legato, map_to_fretboard
 from rockforge.infrastructure.packaging.dlcbuilder import DlcBuilderPackager, PackagingResult
 
@@ -65,14 +66,30 @@ class GenerateCdlcUseCase:
         metadata: SongMetadata,
         workdir: Path,
         split_lead_rhythm: bool = True,
+        tuning_override: Tuning | None = None,
+        on_stage: Callable[[str], None] | None = None,
     ) -> PipelineResult:
+        def stage(name: str) -> None:
+            if on_stage is not None:
+                on_stage(name)
+
         warnings: list[str] = []
+        stage("ingest")
         raw = self.ingestor.fetch(source, workdir)                     # 1. ingest
+        stage("normalize")
         normalized = self.normalizer.normalize(raw, workdir)           # 2. normalize
+        stage("separate")
         guitar_stem = self.separator.separate_guitar(normalized, workdir)  # 3. separate
+        stage("transcribe")
         notes = self.transcriber.transcribe(guitar_stem)               # 6. notes (4/5 below)
+        stage("beat_track")
         tempo_map = self.beat_tracker.track(normalized)
-        tuning = self.tuning_estimator.estimate(guitar_stem, notes)
+        stage("tuning")
+        if tuning_override is not None:
+            tuning = tuning_override  # human-confirmed tuning takes precedence
+            warnings.append("tuning supplied by user override (automatic estimate skipped)")
+        else:
+            tuning = self.tuning_estimator.estimate(guitar_stem, notes)
 
         song_length = self._song_length(notes, tempo_map)
         metadata = SongMetadata(
@@ -95,6 +112,7 @@ class GenerateCdlcUseCase:
                 stage_confidence=dict(_BASE_CONFIDENCE),
             )
 
+        stage("fret_mapping")
         arrangements = [build(ArrangementKind.COMBINED, notes)]
         if split_lead_rhythm:                                          # 5. EXPERIMENTAL split
             lead, rhythm = self.role_splitter.split(notes)
@@ -110,6 +128,7 @@ class GenerateCdlcUseCase:
                     "lead/rhythm split produced an empty partition; only COMBINED emitted"
                 )
 
+        stage("package")
         packaging = self.packager.package(arrangements, normalized, workdir / "bundle")  # 9/10
         if packaging.psarc_path is None:
             warnings.append(

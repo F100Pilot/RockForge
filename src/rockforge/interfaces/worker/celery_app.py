@@ -57,13 +57,31 @@ def generate_cdlc(job_id: str) -> None:
         session.commit()
 
         try:
+            from rockforge.domain.music import Tuning
+
             use_case = _build_use_case()(job.source_type)
             workdir = settings.work_dir / job.id
             workdir.mkdir(parents=True, exist_ok=True)
+
+            params = job.params or {}
+            tuning_override = None
+            if "tuning_midi" in params:
+                tuning_override = Tuning(
+                    midi=tuple(params["tuning_midi"]),
+                    cent_offset=float(params.get("cent_offset", 0.0)),
+                )
+
+            def on_stage(name: str) -> None:
+                job.stage = name
+                session.commit()
+
             result = use_case.run(
                 source=job.source,
                 metadata=SongMetadata(title=job.title, artist=job.artist, album=job.album),
                 workdir=Path(workdir),
+                split_lead_rhythm=bool(params.get("split_lead_rhythm", True)),
+                tuning_override=tuning_override,
+                on_stage=on_stage,
             )
             job.status = JobStatus.COMPLETED
             job.warnings = list(result.warnings)
