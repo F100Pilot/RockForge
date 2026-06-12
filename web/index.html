@@ -106,7 +106,7 @@
 <fieldset>
   <legend>Jobs</legend>
   <table id="jobsTable"><thead>
-    <tr><th>Título</th><th>Artista</th><th>Estado</th><th>Etapa</th><th>Criado</th></tr>
+    <tr><th>Título</th><th>Artista</th><th>Estado</th><th>Etapa</th><th>Criado</th><th></th></tr>
   </thead><tbody></tbody></table>
 </fieldset>
 
@@ -153,9 +153,23 @@ async function refreshJobs() {
     const tr = document.createElement('tr');
     if (selectedJob && j.id === selectedJob.id) tr.className = 'sel';
     tr.innerHTML = `<td>${esc(j.title)}</td><td>${esc(j.artist)}</td><td>${badge(j.status)}</td>
-      <td>${esc(j.stage || '—')}</td><td>${esc((j.created_at||'').slice(0,19).replace('T',' '))}</td>`;
+      <td>${esc(j.stage || '—')}</td><td>${esc((j.created_at||'').slice(0,19).replace('T',' '))}</td>
+      <td><button type="button" class="secondary del" title="Remover job"
+        ${j.status === 'running' ? 'disabled' : ''}>🗑</button></td>`;
     tr.style.cursor = 'pointer';
     tr.onclick = () => selectJob(j.id);
+    tr.querySelector('.del').onclick = async ev => {
+      ev.stopPropagation();
+      if (!confirm(`Remover o job "${j.title}"? Isto apaga também o bundle gerado.`)) return;
+      const r = await fetch(`/jobs/${j.id}`, { method: 'DELETE' });
+      if (!r.ok && r.status !== 204) { alert((await r.json()).detail || 'erro'); return; }
+      if (selectedJob && selectedJob.id === j.id) {
+        selectedJob = null;
+        clearInterval(pollTimer);
+        document.getElementById('detail').style.display = 'none';
+      }
+      refreshJobs();
+    };
     tb.appendChild(tr);
   }
 }

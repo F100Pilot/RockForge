@@ -7,7 +7,7 @@ import uuid
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from pydantic import BaseModel, HttpUrl
 
 from rockforge.config import settings
@@ -364,6 +364,34 @@ def list_jobs(limit: int = 50) -> list[JobOut]:
             select(Job).order_by(Job.created_at.desc()).limit(min(limit, 200))
         ).all()
         return [_to_out(j) for j in jobs]
+
+
+@app.delete("/jobs/{job_id}", status_code=204)
+def delete_job(job_id: str) -> Response:
+    """Delete a job and its work artifacts. Running jobs must finish first.
+
+    The uploaded source file is removed only when no other job (e.g. a rebuild)
+    still references it."""
+    from sqlalchemy import func, select
+
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+        if job.status is JobStatus.RUNNING:
+            raise HTTPException(409, "job is running — wait for it to finish before deleting")
+
+        shutil.rmtree(settings.work_dir / job.id, ignore_errors=True)
+
+        others = session.scalar(
+            select(func.count()).select_from(Job).where(Job.source == job.source, Job.id != job.id)
+        )
+        if not others and job.source_type in {"upload", "gp"}:
+            Path(job.source).unlink(missing_ok=True)
+
+        session.delete(job)
+        session.commit()
+    return Response(status_code=204)
 
 
 @app.post("/jobs/{job_id}/rebuild", response_model=JobOut, status_code=202)

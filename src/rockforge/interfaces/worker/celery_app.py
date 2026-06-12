@@ -89,7 +89,9 @@ def _build_gp_use_case():  # noqa: ANN202
 def generate_cdlc(job_id: str) -> None:
     session_factory = make_session_factory(settings.database_url)
     with session_factory() as session:
-        job = session.get_one(Job, job_id)
+        job = session.get(Job, job_id)
+        if job is None:  # deleted while queued — nothing to do
+            return
         job.status = JobStatus.RUNNING
         session.commit()
 

@@ -108,6 +108,51 @@ def test_list_jobs_newest_first(client: TestClient) -> None:
     assert all("stage" in j and "stages" in j for j in jobs)
 
 
+def test_delete_job_removes_job_workdir_and_upload(client: TestClient) -> None:
+    import rockforge.config as config
+
+    job = _create_job(client)
+    source = next((config.settings.work_dir / "uploads").glob("*.wav"))
+    workdir = config.settings.work_dir / job["id"]
+    workdir.mkdir(parents=True)
+    (workdir / "bundle").mkdir()
+
+    r = client.delete(f"/jobs/{job['id']}")
+    assert r.status_code == 204
+    assert client.get(f"/jobs/{job['id']}").status_code == 404
+    assert not workdir.exists()
+    assert not source.exists()
+
+
+def test_delete_job_keeps_upload_shared_with_rebuild(client: TestClient) -> None:
+    import rockforge.config as config
+
+    original = _create_job(client)
+    rebuilt = client.post(f"/jobs/{original['id']}/rebuild", json={}).json()
+    source = next((config.settings.work_dir / "uploads").glob("*.wav"))
+
+    assert client.delete(f"/jobs/{original['id']}").status_code == 204
+    assert source.exists()  # the rebuild job still references it
+    assert client.delete(f"/jobs/{rebuilt['id']}").status_code == 204
+    assert not source.exists()
+
+
+def test_delete_running_job_409(client: TestClient) -> None:
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.infrastructure.db.models import JobStatus
+
+    job = _create_job(client)
+    with app_module._session_factory() as session:
+        db_job = session.get(app_module.Job, job["id"])
+        db_job.status = JobStatus.RUNNING
+        session.commit()
+    assert client.delete(f"/jobs/{job['id']}").status_code == 409
+
+
+def test_delete_unknown_job_404(client: TestClient) -> None:
+    assert client.delete("/jobs/nope").status_code == 404
+
+
 def test_rebuild_creates_new_job_with_overrides(client: TestClient) -> None:
     original = _create_job(client)
     r = client.post(
