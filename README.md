@@ -17,6 +17,7 @@ Pipeline áudio → arranjos Rocksmith 2014 (CDLC), construído sobre investiga�
 | Afinação | librosa cents + heurística drop-D | requer confirmação humana |
 | Cordas/trastes | otimização de playability (DP própria) | determinística, testada |
 | Técnicas | bend (medido), hammer-on/pull-off (regras) | parcial — ver relatório |
+| Letra automática (opcional) | WhisperX sobre o stem vocal (`pip install -e ".[lyrics]"`) | **EXPERIMENTAL** — gates anti-alucinação (RMS + confiança/palavra); LRC continua a via preferida |
 | XML Song2014 | gerador próprio (formato doc. na comunidade) | testado estruturalmente |
 | PSARC | bundle para DLC Builder; PSARC só com Wwise | **Wwise é obrigatório para .wem** |
 

@@ -16,6 +16,7 @@ from rockforge.application.ports import (
     AudioNormalizer,
     BeatTracker,
     GuitarRoleSplitter,
+    LyricTranscriber,
     NoteTranscriber,
     StemSeparator,
     TuningEstimator,
@@ -59,6 +60,7 @@ class GenerateCdlcUseCase:
     tuning_estimator: TuningEstimator
     role_splitter: GuitarRoleSplitter
     packager: DlcBuilderPackager
+    lyric_transcriber: LyricTranscriber | None = None
 
     def run(
         self,
@@ -68,6 +70,7 @@ class GenerateCdlcUseCase:
         split_lead_rhythm: bool = True,
         tuning_override: Tuning | None = None,
         offset_s: float = 0.0,
+        transcribe_lyrics: bool = False,
         on_stage: Callable[[str], None] | None = None,
     ) -> PipelineResult:
         def stage(name: str) -> None:
@@ -129,8 +132,39 @@ class GenerateCdlcUseCase:
                     "lead/rhythm split produced an empty partition; only COMBINED emitted"
                 )
 
+        # Optional automatic lyrics (EXPERIMENTAL): WhisperX over the vocals
+        # stem Demucs htdemucs_6s produces next to the guitar stem. LRC input
+        # (GP flow) remains the preferred, measured-timing source.
+        vocals_events = None
+        if transcribe_lyrics:
+            stage("lyrics")
+            vocals_stem = guitar_stem.parent / "vocals.wav"
+            if self.lyric_transcriber is None:
+                warnings.append(
+                    "lyric transcription requested but whisperx is not installed "
+                    "(pip install 'rockforge[lyrics]') — no vocals XML emitted"
+                )
+            elif not vocals_stem.exists():
+                warnings.append(
+                    "lyric transcription skipped: separation produced no vocals stem"
+                )
+            else:
+                vocals_events = self.lyric_transcriber.transcribe(vocals_stem) or None
+                if vocals_events is None:
+                    warnings.append(
+                        "lyric transcription found no words (instrumental or "
+                        "low-confidence vocals) — no vocals XML emitted"
+                    )
+                else:
+                    warnings.append(
+                        "lyrics transcribed automatically (WhisperX) — EXPERIMENTAL: "
+                        "review text and timing; provide an LRC file for measured timing"
+                    )
+
         stage("package")
-        packaging = self.packager.package(arrangements, normalized, workdir / "bundle")  # 9/10
+        packaging = self.packager.package(
+            arrangements, normalized, workdir / "bundle", vocals=vocals_events
+        )  # 9/10
         if packaging.wem_path is None:
             warnings.append(
                 "no .wem produced: no local Wwise installation found "

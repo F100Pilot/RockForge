@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Protocol
 
 from rockforge.domain.music import NoteEvent, TempoMap, Tuning
+from rockforge.infrastructure.rsxml.vocals import VocalEvent
 
 
 class AudioIngestor(Protocol):
@@ -57,5 +58,17 @@ class GuitarRoleSplitter(Protocol):
 
         No published method or labelled dataset exists for this task
         (docs/research/01-source-separation.md §Q2). Output must be reviewed.
+        """
+        ...
+
+
+class LyricTranscriber(Protocol):
+    def transcribe(self, vocals_stem: Path) -> list[VocalEvent]:
+        """Word-level lyric events transcribed from an isolated vocals stem.
+
+        Timestamps come from forced alignment against the audio itself, so
+        they share the recording's clock (same timeline as the notes XML).
+        Returns [] when the stem is (near-)silent or no word passes the
+        confidence filter — callers must treat that as "no vocals", not error.
         """
         ...

@@ -125,6 +125,45 @@ def test_tuning_override_skips_estimator(tmp_path: Path) -> None:
     assert tuning_el is not None and tuning_el.get("string0") == "-2"
 
 
+def test_transcribe_lyrics_without_transcriber_warns(tmp_path: Path) -> None:
+    result = make_use_case().run(
+        source="x.wav",
+        metadata=SongMetadata(title="T", artist="A"),
+        workdir=tmp_path,
+        transcribe_lyrics=True,
+    )
+    assert any("whisperx is not installed" in w for w in result.warnings)
+
+
+def test_transcribe_lyrics_emits_vocals_xml(tmp_path: Path) -> None:
+    from rockforge.infrastructure.rsxml.vocals import VocalEvent
+
+    class FakeLyrics:
+        def transcribe(self, vocals_stem: Path) -> list[VocalEvent]:
+            return [VocalEvent(time=1.0, length=0.4, lyric="hello+")]
+
+    class VocalsAwarePassthrough(FakePassthrough):
+        def separate_guitar(self, audio: Path, workdir: Path) -> Path:
+            stems = workdir / "stems"
+            stems.mkdir(parents=True, exist_ok=True)
+            (stems / "vocals.wav").write_bytes(b"RIFF")
+            guitar = stems / "guitar.wav"
+            guitar.write_bytes(b"RIFF")
+            return guitar
+
+    use_case = make_use_case()
+    use_case.separator = VocalsAwarePassthrough()
+    use_case.lyric_transcriber = FakeLyrics()
+    result = use_case.run(
+        source="x.wav",
+        metadata=SongMetadata(title="T", artist="A"),
+        workdir=tmp_path,
+        transcribe_lyrics=True,
+    )
+    assert (result.packaging.bundle_dir / "arrangement_vocals.xml").exists()
+    assert any("EXPERIMENTAL" in w and "WhisperX" in w for w in result.warnings)
+
+
 def test_ebeat_grid_covers_song_end(tmp_path: Path) -> None:
     result = make_use_case().run(
         source="x.wav", metadata=SongMetadata(title="T", artist="A"), workdir=tmp_path

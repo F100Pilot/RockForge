@@ -28,7 +28,7 @@ _session_factory = make_session_factory(settings.database_url)
 
 PIPELINE_STAGES = [
     "ingest", "normalize", "separate", "transcribe",
-    "beat_track", "tuning", "fret_mapping", "package",
+    "beat_track", "tuning", "fret_mapping", "lyrics", "package",
 ]
 
 
@@ -82,6 +82,7 @@ class YouTubeJobIn(BaseModel):
     artist: str
     album: str = ""
     year: int | None = None
+    transcribe_lyrics: bool = False
 
 
 def _to_out(job: Job) -> JobOut:
@@ -116,6 +117,7 @@ async def create_upload_job(
     album: str = Form(""),
     year: str = Form(""),
     offset_s: float = Form(0.0),
+    transcribe_lyrics: bool = Form(False),
 ) -> JobOut:
     """Form fields are optional: missing values are read from the file's tags
     (ID3/Vorbis/MP4). If title or artist is in neither place, returns 422 so the
@@ -154,7 +156,17 @@ async def create_upload_job(
             artist=final_artist,
             album=final_album,
             year=final_year,
-            params={"offset_s": offset_s} if offset_s > 0 else None,
+            params=(
+                {
+                    k: v
+                    for k, v in (
+                        ("offset_s", offset_s if offset_s > 0 else None),
+                        ("transcribe_lyrics", transcribe_lyrics or None),
+                    )
+                    if v is not None
+                }
+                or None
+            ),
         )
         session.add(job)
         session.commit()
@@ -178,6 +190,7 @@ def create_youtube_job(payload: YouTubeJobIn) -> JobOut:
             artist=payload.artist,
             album=payload.album,
             year=payload.year,
+            params={"transcribe_lyrics": True} if payload.transcribe_lyrics else None,
         )
         session.add(job)
         session.commit()
