@@ -43,6 +43,10 @@ class WwiseWemConverter:
     def console_path(self) -> Path | None:
         if self._root is None:
             return None
+        # Allow tests to inject a fake console path.
+        override = getattr(self, "_console_override", None)
+        if override is not None:
+            return Path(override) if override.exists() else None
         for rel in _CONSOLE_RELATIVE_CANDIDATES:
             p = self._root / rel
             if p.exists():
@@ -71,7 +75,9 @@ class WwiseWemConverter:
             )
 
     def _ensure_project(self, workdir: Path) -> Path:
-        project = workdir / "wwise_project" / "rockforge.wproj"
+        # Wwise requires the .wproj to be inside a folder with the same name:
+        #   <root>/ProjectName/ProjectName.wproj
+        project = workdir / "wwise_project" / "rockforge" / "rockforge.wproj"
         if not project.exists():
             self._run(["create-new-project", str(project), "--platform", "Windows"])
         if not project.exists():

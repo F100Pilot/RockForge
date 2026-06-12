@@ -20,7 +20,7 @@ class FakeIngestor:
 
 
 class FakePassthrough:
-    def normalize(self, audio: Path, workdir: Path) -> Path:
+    def normalize(self, audio: Path, workdir: Path, offset_s: float = 0.0) -> Path:
         return audio
 
     def separate_guitar(self, audio: Path, workdir: Path) -> Path:

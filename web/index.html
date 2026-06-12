@@ -48,10 +48,13 @@
     <input type="text" name="artist" placeholder="Banda (auto das tags)">
     <input type="text" name="album" placeholder="Álbum (auto das tags)">
     <input type="number" name="year" placeholder="Ano" min="1900" max="2100" style="width:5.5rem">
+    <label>Início (s): <input type="number" name="offset_s" value="0" step="0.01" min="0" style="width:5rem"></label>
     <button type="submit">Processar</button>
   </form>
   <p class="meta">Se o ficheiro tiver tags (ID3/Vorbis), os campos vazios são preenchidos
-  automaticamente; se faltar título ou banda nas tags, é pedido que os preenchas.</p>
+  automaticamente; se faltar título ou banda nas tags, é pedido que os preenchas.
+  <strong>Início (s)</strong>: corta o áudio a partir deste segundo (ex: 5.3 → ignora os primeiros 5.3s).
+  As notas são transcritas do áudio aparado — ficam naturalmente sincronizadas. Usa 0 para o ficheiro inteiro.</p>
 </fieldset>
 
 <fieldset>

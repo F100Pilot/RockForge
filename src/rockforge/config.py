@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./rockforge.db"  # PostgreSQL in production (docker-compose)
     broker_url: str = "redis://localhost:6379/0"
     result_backend: str = "redis://localhost:6379/1"
-    work_dir: Path = Path("/tmp/rockforge")
+    work_dir: Path = Path.home() / "Downloads" / "RockForge"
     enable_youtube: bool = False  # ToS violation if enabled — operator's explicit decision
     demucs_device: str = "cpu"
     psarc_packer_cmd: str | None = None  # e.g. external DLC Builder CLI invocation

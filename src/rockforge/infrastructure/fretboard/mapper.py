@@ -11,7 +11,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from rockforge.domain.errors import FretMappingError
 from rockforge.domain.music import NoteEvent, TabNote, Technique, Tuning
 
 CHORD_EPSILON_S = 0.03  # onsets within 30 ms are treated as one chord
@@ -87,8 +86,58 @@ def _group_cost(assigned: list[_Assigned]) -> float:
     return sum(HEIGHT_WEIGHT * a.fret for a in assigned if a.fret > 0)
 
 
-def map_to_fretboard(notes: list[NoteEvent], tuning: Tuning) -> list[TabNote]:
-    """Map note events to TabNotes, minimizing total movement + height cost."""
+def _note_constraint(note: NoteEvent, tuning: Tuning) -> int:
+    """Count candidate (string, fret) positions for a note across all anchors."""
+    return sum(
+        1
+        for s, f in tuning.candidate_positions(note.pitch)
+        for a in range(MAX_ANCHOR + 1)
+        if f == 0 or a <= f <= a + HAND_SPAN_FRETS
+    )
+
+
+def _build_dp_row(
+    group: list[NoteEvent],
+    tuning: Tuning,
+    anchors: range,
+    prev_cost: list[float],
+    gi: int,
+    INF: float,
+) -> tuple[list[tuple[list[_Assigned] | None, int]], list[float]]:
+    """Build one DP row for a group. Returns (row, cur_cost)."""
+    row: list[tuple[list[_Assigned] | None, int]] = []
+    cur_cost: list[float] = []
+    for a in anchors:
+        assigned = _assign_group(group, a, tuning)
+        if assigned is None:
+            cur_cost.append(INF)
+            row.append((None, -1))
+            continue
+        base = _group_cost(assigned)
+        best, best_prev = INF, -1
+        for p in anchors:
+            if prev_cost[p] == INF:
+                continue
+            c = prev_cost[p] + base + (MOVE_WEIGHT * abs(a - p) if gi > 0 else 0.0)
+            if c < best:
+                best, best_prev = c, p
+        cur_cost.append(best)
+        row.append((assigned, best_prev))
+    return row, cur_cost
+
+
+def map_to_fretboard(
+    notes: list[NoteEvent],
+    tuning: Tuning,
+    warnings: list[str] | None = None,
+) -> list[TabNote]:
+    """Map note events to TabNotes, minimizing total movement + height cost.
+
+    When a note group cannot be placed, the mapper attempts recovery:
+    1. Remove the most constrained note and retry (Option A).
+    2. If that still fails, skip the group entirely (Option B).
+    Warnings are appended when notes are dropped or skipped.
+    """
     if not notes:
         return []
     groups = _group_by_onset(notes)
@@ -100,37 +149,50 @@ def map_to_fretboard(notes: list[NoteEvent], tuning: Tuning) -> list[TabNote]:
     history: list[list[tuple[list[_Assigned] | None, int]]] = []
 
     for gi, group in enumerate(groups):
-        row: list[tuple[list[_Assigned] | None, int]] = []
-        cur_cost: list[float] = []
-        for a in anchors:
-            assigned = _assign_group(group, a, tuning)
-            if assigned is None:
-                cur_cost.append(INF)
-                row.append((None, -1))
-                continue
-            base = _group_cost(assigned)
-            best, best_prev = INF, -1
-            for p in anchors:
-                if prev_cost[p] == INF:
-                    continue
-                c = prev_cost[p] + base + (MOVE_WEIGHT * abs(a - p) if gi > 0 else 0.0)
-                if c < best:
-                    best, best_prev = c, p
-            cur_cost.append(best)
-            row.append((assigned, best_prev))
+        row, cur_cost = _build_dp_row(group, tuning, anchors, prev_cost, gi, INF)
+
         if all(c == INF for c in cur_cost):
-            pitches = sorted({n.pitch for n in group})
-            raise FretMappingError(
-                f"unplayable note group at t={group[0].start:.3f}s "
-                f"(MIDI pitches {pitches}) for tuning {tuning.midi}"
-            )
+            # --- Recovery: try removing the most constrained note ---
+            if len(group) > 1:
+                dropped = min(group, key=lambda n: _note_constraint(n, tuning))
+                reduced = [n for n in group if n is not dropped]
+                row2, cur_cost2 = _build_dp_row(
+                    reduced, tuning, anchors, prev_cost, gi, INF
+                )
+                if any(c != INF for c in cur_cost2):
+                    if warnings is not None:
+                        warnings.append(
+                            f"dropped unplayable note MIDI {dropped.pitch} "
+                            f"at t={dropped.start:.3f}s "
+                            f"(could not fit chord "
+                            f"{sorted(n.pitch for n in group)} "
+                            f"with tuning {tuning.midi})"
+                        )
+                    row, cur_cost = row2, cur_cost2
+                else:
+                    # Still unplayable — skip entire group
+                    if warnings is not None:
+                        warnings.append(
+                            f"skipped unplayable chord at t={group[0].start:.3f}s "
+                            f"(MIDI pitches {sorted({n.pitch for n in group})})"
+                        )
+                    continue
+            else:
+                # Single unplayable note — skip it
+                if warnings is not None:
+                    warnings.append(
+                        f"skipped unplayable note MIDI {group[0].pitch} "
+                        f"at t={group[0].start:.3f}s"
+                    )
+                continue
+
         prev_cost = cur_cost
         history.append(row)
 
     # Backtrack the optimal anchor path.
     a = min(range(len(anchors)), key=lambda i: prev_cost[i])
     path: list[int] = []
-    for gi in range(len(groups) - 1, -1, -1):
+    for gi in range(len(history) - 1, -1, -1):
         path.append(a)
         a = history[gi][a][1]
     path.reverse()

@@ -1,6 +1,5 @@
 import pytest
 
-from rockforge.domain.errors import FretMappingError
 from rockforge.domain.music import NoteEvent, Technique, Tuning
 from rockforge.infrastructure.fretboard.mapper import infer_legato, map_to_fretboard
 
@@ -34,9 +33,12 @@ def test_sequence_prefers_minimal_hand_movement() -> None:
     assert max(fretted) - min(fretted) <= 5
 
 
-def test_unplayable_pitch_raises_explicit_error() -> None:
-    with pytest.raises(FretMappingError):
-        map_to_fretboard([ev(20, 0.0)], STANDARD)  # below low E
+def test_unplayable_pitch_is_skipped_with_warning() -> None:
+    w: list[str] = []
+    tab = map_to_fretboard([ev(20, 0.0)], STANDARD, warnings=w)
+    assert tab == []
+    assert len(w) == 1
+    assert "skipped unplayable note" in w[0]
 
 
 def test_bend_technique_propagates() -> None:
@@ -59,3 +61,29 @@ def test_empty_input() -> None:
 def test_deterministic() -> None:
     notes = [ev(p, i * 0.3) for i, p in enumerate([50, 55, 59, 64, 59, 55, 50])]
     assert map_to_fretboard(notes, STANDARD) == map_to_fretboard(notes, STANDARD)
+
+
+def test_unplayable_chord_drops_most_constrained_note() -> None:
+    """A 4-note chord that can't fit should drop one note and produce 3."""
+    # Same chord that failed in production: F2(41), C3(48), C4(60), A4(69)
+    chord = [ev(41, 5.9), ev(48, 5.9), ev(60, 5.9), ev(69, 5.9)]
+    w: list[str] = []
+    tab = map_to_fretboard(chord, STANDARD, warnings=w)
+    # Should produce 3 notes (dropped the most constrained one)
+    assert len(tab) == 3
+    assert len(w) == 1
+    assert "dropped" in w[0]
+    # All mapped notes should have valid pitch
+    for t in tab:
+        assert STANDARD.midi[t.string] + t.fret in {41, 48, 60, 69}
+
+
+def test_unplayable_chord_skipped_if_drop_fails() -> None:
+    """A 2-note group where both notes are unplayable should be skipped."""
+    # Two notes below low E — no recovery possible
+    chord = [ev(20, 0.0), ev(21, 0.0)]
+    w: list[str] = []
+    tab = map_to_fretboard(chord, STANDARD, warnings=w)
+    assert tab == []
+    assert len(w) == 1
+    assert "skipped" in w[0]

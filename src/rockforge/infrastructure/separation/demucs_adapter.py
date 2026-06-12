@@ -11,6 +11,7 @@ replace this adapter without touching the rest of the system.
 from __future__ import annotations
 
 import subprocess
+import sys
 from pathlib import Path
 
 from rockforge.domain.errors import SeparationError
@@ -27,8 +28,9 @@ class DemucsSeparator:
 
     def separate_guitar(self, audio: Path, workdir: Path) -> Path:
         out_dir = workdir / "stems"
+        patcher = Path(__file__).resolve().parent / "_demucs_patcher.py"
         cmd = [
-            "python3", "-m", "demucs",
+            sys.executable, str(patcher),
             "-n", self._model,
             "-d", self._device,
             "-o", str(out_dir),

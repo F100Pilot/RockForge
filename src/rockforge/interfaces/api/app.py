@@ -115,6 +115,7 @@ async def create_upload_job(
     artist: str = Form(""),
     album: str = Form(""),
     year: str = Form(""),
+    offset_s: float = Form(0.0),
 ) -> JobOut:
     """Form fields are optional: missing values are read from the file's tags
     (ID3/Vorbis/MP4). If title or artist is in neither place, returns 422 so the
@@ -153,6 +154,7 @@ async def create_upload_job(
             artist=final_artist,
             album=final_album,
             year=final_year,
+            params={"offset_s": offset_s} if offset_s > 0 else None,
         )
         session.add(job)
         session.commit()
@@ -362,7 +364,8 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
             raise HTTPException(404, "job not found")
         if original.source_type == "upload" and not Path(original.source).exists():
             raise HTTPException(409, "original upload no longer exists on the work volume")
-        params: dict[str, object] = {"split_lead_rhythm": payload.split_lead_rhythm}
+        params: dict[str, object] = dict(original.params or {})
+        params["split_lead_rhythm"] = payload.split_lead_rhythm
         if payload.tuning_midi is not None:
             params["tuning_midi"] = payload.tuning_midi
             params["cent_offset"] = payload.cent_offset
