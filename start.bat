@@ -10,6 +10,9 @@ setlocal
 cd /d "%~dp0"
 if not exist logs mkdir logs
 
+REM Use the project's virtualenv when present (children inherit the PATH).
+if exist .venv\Scripts\activate.bat call .venv\Scripts\activate.bat
+
 echo A iniciar Redis em segundo plano (logs\redis.log)...
 start "RockForge-Redis" /min cmd /c "redis-server > logs\redis.log 2>&1"
 
