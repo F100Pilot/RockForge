@@ -138,11 +138,11 @@ def generate_cdlc(job_id: str) -> None:
             use_case = _build_use_case()(job.source_type)
             tuning_override = None
             if "tuning_midi" in params:
-                midi = tuple(int(x) for x in params["tuning_midi"])
-                if len(midi) != 6:
-                    raise ValueError(f"tuning_midi must have 6 values, got {len(midi)}")
+                m = [int(x) for x in params["tuning_midi"]]
+                if len(m) != 6:
+                    raise ValueError(f"tuning_midi must have 6 values, got {len(m)}")
                 tuning_override = Tuning(
-                    midi=cast("tuple[int, int, int, int, int, int]", midi),
+                    midi=(m[0], m[1], m[2], m[3], m[4], m[5]),
                     cent_offset=float(params.get("cent_offset", 0.0)),
                 )
 
