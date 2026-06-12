@@ -50,6 +50,11 @@ dev = [
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+# Wwise template projects (from DLC Builder, MIT) — required for Rocksmith-
+# compatible .wem conversion (Vorbis with seek table).
+"rockforge.infrastructure.packaging" = ["wwise_templates/*.zip", "wwise_templates/README.md"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
