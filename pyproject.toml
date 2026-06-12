@@ -35,6 +35,9 @@ youtube = [
     "yt-dlp>=2024.4",       # Ingestão YouTube: viola o ToS do YouTube — desativada por defeito (ver config)
 ]
 postgres = ["psycopg[binary]>=3.1"]
+# Automatic lyric transcription (EXPERIMENTAL) — WhisperX over the Demucs
+# vocals stem. Heavy (torch + model weights); the LRC path needs none of this.
+lyrics = ["whisperx>=3.1"]
 dev = [
     "pytest>=8.0",
     "pytest-cov>=5.0",

@@ -30,6 +30,14 @@ def _build_use_case():  # noqa: ANN202 - heavy imports deferred to worker runtim
 
     rhythm = LibrosaRhythmAdapter()
 
+    from rockforge.infrastructure.lyrics.whisperx_adapter import WhisperXLyricTranscriber
+
+    lyric_transcriber = (
+        WhisperXLyricTranscriber(device=settings.demucs_device)
+        if WhisperXLyricTranscriber.available()
+        else None
+    )
+
     def make(source_type: str) -> GenerateCdlcUseCase:
         ingestor = (
             YouTubeIngestor(enabled=settings.enable_youtube)
@@ -37,6 +45,7 @@ def _build_use_case():  # noqa: ANN202 - heavy imports deferred to worker runtim
             else LocalFileIngestor()
         )
         return GenerateCdlcUseCase(
+            lyric_transcriber=lyric_transcriber,
             ingestor=ingestor,
             normalizer=FfmpegNormalizer(),
             separator=DemucsSeparator(device=settings.demucs_device),
@@ -155,6 +164,7 @@ def generate_cdlc(job_id: str) -> None:
                 split_lead_rhythm=bool(params.get("split_lead_rhythm", True)),
                 tuning_override=tuning_override,
                 offset_s=float(params.get("offset_s", 0.0)),
+                transcribe_lyrics=bool(params.get("transcribe_lyrics", False)),
                 on_stage=on_stage,
             )
             job.status = JobStatus.COMPLETED
