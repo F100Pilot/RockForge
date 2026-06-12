@@ -1,12 +1,12 @@
 """GenerateFromGpUseCase — the high-fidelity alternative to the audio-ML path.
 
-Notes/frets/techniques/tempo/sections come exactly from a GP3/GP4/GP5 file and
-are used at their original score times. Synchronization between score and
-recording is a user-supplied offset: the audio's lead-in is trimmed by
-offset_s seconds so that audio time 0 lines up with score time 0 (the score
-knows nothing about the audio). LRC timestamps, which are against the
-untrimmed recording, are shifted back by the same amount; lyrics taken from
-the GP file's measure-anchored lyrics need no shift (heuristic line timing).
+Notes/frets/techniques/tempo/sections come exactly from a GP3/GP4/GP5 file;
+the recording is only normalized and packaged. Synchronization between score
+and recording is a user-supplied offset: offset_s seconds of silence are
+prepended to the recording, and the score (note/beat times) and LRC lyrics are
+shifted forward by the same amount, so everything still lines up after the new
+lead-in. Lyrics taken from the GP file's measure-anchored lyrics are already in
+score time and shift along with the notes.
 """
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ class GpJobSpec:
     audio_source: str
     lead_track: int | None = None
     rhythm_track: int | None = None
-    offset_s: float = 0.0  # seconds trimmed from the audio's lead-in to sync with the score
+    offset_s: float = 0.0  # silence (s) added to the recording's start; score/lyrics shift too
     lrc_text: str | None = None
     tone_base: str | None = None
     tone_names: list[str] = field(default_factory=list)
@@ -78,14 +78,16 @@ class GenerateFromGpUseCase:
             if on_stage is not None:
                 on_stage(name)
 
+        if spec.offset_s < 0.0:
+            raise IngestionError("sync offset must be >= 0 — it adds a lead-in, never removes one")
+
         warnings: list[str] = []
         stage("ingest")
         raw = self.ingestor.fetch(spec.audio_source, workdir)
         stage("normalize")
-        # offset_s synchronizes by trimming the recording's lead-in so that
-        # audio time 0 == score time 0 — the GP times are used as written,
-        # never shifted (see parse_gp_track calls below).
-        normalized = self.normalizer.normalize(raw, workdir, spec.offset_s)
+        # offset_s adds a silent lead-in to the recording; the score and
+        # lyrics are shifted forward by the same amount below.
+        normalized = self.normalizer.normalize(raw, workdir, pad_start_s=spec.offset_s)
 
         stage("parse_gp")
         lead_idx, rhythm_idx = spec.lead_track, spec.rhythm_track
@@ -102,9 +104,11 @@ class GenerateFromGpUseCase:
             raise IngestionError("lead and rhythm cannot use the same GP track")
         if lead_idx is not None:
             kind = ArrangementKind.LEAD if rhythm_idx is not None else ArrangementKind.COMBINED
-            parsed[kind] = parse_gp_track(spec.gp_path, lead_idx)
+            parsed[kind] = parse_gp_track(spec.gp_path, lead_idx, spec.offset_s)
         if rhythm_idx is not None:
-            parsed[ArrangementKind.RHYTHM] = parse_gp_track(spec.gp_path, rhythm_idx)
+            parsed[ArrangementKind.RHYTHM] = parse_gp_track(
+                spec.gp_path, rhythm_idx, spec.offset_s
+            )
 
         stage("build_arrangements")
         first = next(iter(parsed.values()))
@@ -149,9 +153,9 @@ class GenerateFromGpUseCase:
         stage("lyrics")
         vocals: list[VocalEvent] = []
         if spec.lrc_text:
-            # LRC timestamps are against the original (untrimmed) recording;
-            # shift them back by the same amount trimmed from the audio.
-            vocals = parse_lrc(spec.lrc_text, -spec.offset_s)
+            # LRC timestamps are against the original recording, before the
+            # offset_s lead-in was added; shift them forward to match.
+            vocals = parse_lrc(spec.lrc_text, spec.offset_s)
             if not vocals:
                 warnings.append("LRC file contained no timestamped lines")
         elif first.lyrics:
@@ -167,13 +171,8 @@ class GenerateFromGpUseCase:
         if spec.offset_s == 0.0:
             warnings.append(
                 "sync offset is 0.0s — verify the score's first note lines up with the "
-                "recording and rebuild with an offset (seconds to trim from the audio's "
-                "lead-in) if needed"
-            )
-        elif spec.offset_s < 0.0:
-            warnings.append(
-                "sync offset is negative — the audio's lead-in cannot be extended; "
-                "add silence to the recording instead, or use a positive offset"
+                "recording and rebuild with an offset (seconds of silence to add to the "
+                "recording's start) if needed"
             )
 
         stage("package")

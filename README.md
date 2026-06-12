@@ -32,10 +32,10 @@ sincronização com a gravação, letra (LRC sincronizado ou letra embutida no G
 escolher pistas/opções → criar CDLC.
 
 Limitações honestas: **GPX/GP6/GP7 não é suportado** (o PyGuitarPro lê GP3/GP4/GP5 —
-exporta como GP5 no Guitar Pro/TuxGuitar); a sincronização é manual — "Cortar início do
-áudio" remove N segundos do início da gravação para o tempo 0 desta coincidir com o tempo
-0 da partitura (a partitura não conhece a gravação); pistas de baixo (4/5 cordas) ainda
-não são suportadas.
+exporta como GP5 no Guitar Pro/TuxGuitar); a sincronização é manual — o offset acrescenta
+N segundos de silêncio ao início da gravação e desloca a partitura e a letra pelo mesmo
+tempo (a partitura não conhece a gravação); pistas de baixo (4/5 cordas) ainda não são
+suportadas.
 
 Leitura obrigatória: [`docs/RELATORIO-TECNICO.md`](docs/RELATORIO-TECNICO.md) (viabilidade,
 arquitetura, riscos) e os relatórios de investigação com fontes em [`docs/research/`](docs/research/).

@@ -20,12 +20,18 @@ class AudioIngestor(Protocol):
 
 
 class AudioNormalizer(Protocol):
-    def normalize(self, audio: Path, workdir: Path, offset_s: float = 0.0) -> Path:
+    def normalize(
+        self, audio: Path, workdir: Path, offset_s: float = 0.0, pad_start_s: float = 0.0
+    ) -> Path:
         """Produce a 44.1 kHz stereo WAV with normalized loudness.
 
         When *offset_s* > 0 the audio is trimmed from that second before
         normalization — the remainder of the pipeline operates on the trimmed
         audio, so transcribed notes stay naturally synchronised.
+
+        When *pad_start_s* > 0, that many seconds of silence are prepended —
+        used by the GP path to insert a lead-in while shifting the score and
+        lyrics by the same amount (see gp_pipeline.GpJobSpec.offset_s).
         """
         ...
 
