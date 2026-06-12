@@ -8,10 +8,8 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-
 from typing import Any
 
-import numpy as np
 import soundfile as sf
 
 
@@ -27,7 +25,7 @@ def _patched_save(wav: Any, path: str | Path, samplerate: int, **kwargs: object)
 # -- patch before demucs imports anything else --------------------------------
 import demucs.audio  # noqa: E402
 
-demucs.audio.save_audio = _patched_save  # type: ignore[assignment]
+demucs.audio.save_audio = _patched_save
 
 
 if __name__ == "__main__":
@@ -36,4 +34,4 @@ if __name__ == "__main__":
     sys.argv[0] = "demucs"
     from demucs.separate import main
 
-    main()  # type: ignore[no-untyped-call]
+    main()

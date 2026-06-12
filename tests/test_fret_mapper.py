@@ -1,4 +1,3 @@
-import pytest
 
 from rockforge.domain.music import NoteEvent, Technique, Tuning
 from rockforge.infrastructure.fretboard.mapper import infer_legato, map_to_fretboard
