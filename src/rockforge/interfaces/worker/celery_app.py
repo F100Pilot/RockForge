@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, cast
 
 from celery import Celery
 
@@ -88,7 +89,9 @@ def generate_cdlc(job_id: str) -> None:
 
             workdir = settings.work_dir / job.id
             workdir.mkdir(parents=True, exist_ok=True)
-            params = job.params or {}
+            # params is an untyped JSON boundary (values arrive as `object`);
+            # cast once and coerce explicitly below.
+            params = cast(dict[str, Any], job.params or {})
 
             def on_stage(name: str) -> None:
                 job.stage = name
@@ -135,8 +138,11 @@ def generate_cdlc(job_id: str) -> None:
             use_case = _build_use_case()(job.source_type)
             tuning_override = None
             if "tuning_midi" in params:
+                midi = tuple(int(x) for x in params["tuning_midi"])
+                if len(midi) != 6:
+                    raise ValueError(f"tuning_midi must have 6 values, got {len(midi)}")
                 tuning_override = Tuning(
-                    midi=tuple(params["tuning_midi"]),
+                    midi=cast("tuple[int, int, int, int, int, int]", midi),
                     cent_offset=float(params.get("cent_offset", 0.0)),
                 )
 
