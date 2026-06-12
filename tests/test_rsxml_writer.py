@@ -64,6 +64,19 @@ def test_standard_tuning_attributes(tmp_path: Path) -> None:
     assert all(tuning.get(f"string{i}") == "0" for i in range(6))
 
 
+def test_anchors_follow_fret_position(tmp_path: Path) -> None:
+    """The fretboard highlight must move with the played frets, not stay fixed
+    at the first note's position (see make_arrangement: notes at frets 3,7,5)."""
+    out = write_arrangement_xml(make_arrangement(), tmp_path / "lead.xml")
+    anchors = ET.parse(out).getroot().findall("levels/level/anchors/anchor")
+    assert len(anchors) > 1
+    for a in anchors:
+        fret, width = int(a.get("fret", "0")), int(float(a.get("width", "0")))
+        assert 1 <= fret and fret + width - 1 <= 24
+    times = [float(a.get("time", "0")) for a in anchors]
+    assert times == sorted(times)
+
+
 def make_chord_arrangement() -> Arrangement:
     arr = make_arrangement()
     arr.notes = [

@@ -34,6 +34,46 @@ def _group_chords(notes: list[TabNote]) -> list[list[TabNote]]:
     return groups
 
 
+def _anchor_for_frets(frets: list[int]) -> tuple[int, int]:
+    """Fretboard position (fret, width) covering the given fret positions.
+
+    Open strings (fret 0) don't constrain the anchor position. width is
+    clamped to the 1-24 fret range Rocksmith's fretboard highlight covers.
+    """
+    used = [f for f in frets if f > 0]
+    if not used:
+        return 1, 4
+    lo, hi = min(used), max(used)
+    width = min(max(4, hi - lo + 1), 24)
+    fret = max(1, min(lo, 25 - width))
+    return fret, width
+
+
+def _build_anchors(groups: list[list[TabNote]]) -> list[tuple[float, int, int]]:
+    """One anchor per note group whose frets fall outside the current anchor.
+
+    Without per-position anchors, Rocksmith keeps the fretboard highlight
+    fixed at the song's first position regardless of where notes actually
+    are — this is what makes the highlight "follow" the played frets.
+    """
+    anchors: list[tuple[float, int, int]] = []
+    current: tuple[int, int] | None = None
+    for g in groups:
+        used = [n.fret for n in g if n.fret > 0]
+        if not used:
+            continue
+        if current is not None and all(
+            current[0] <= f <= current[0] + current[1] - 1 for f in used
+        ):
+            continue
+        fret, width = _anchor_for_frets(used)
+        anchors.append((g[0].time, fret, width))
+        current = (fret, width)
+    if not anchors and groups:
+        anchors.append((groups[0][0].time, 1, 4))
+    return anchors
+
+
 def _chord_template_key(group: list[TabNote]) -> tuple[int, ...]:
     """Fret per string (-1 = unused) — identifies a chordTemplate."""
     frets = [-1] * 6
@@ -242,16 +282,10 @@ def render_arrangement(arr: Arrangement) -> ET.Element:
         )
         for n in g:  # chordNote children preserve per-string technique data
             ET.SubElement(chord_el, "chordNote", _note_attrs(n))
-    anchors = ET.SubElement(level, "anchors", count=str(len(arr.notes) and 1))
-    if arr.notes:
-        first_fretted = next((n for n in arr.notes if n.fret > 0), arr.notes[0])
-        ET.SubElement(
-            anchors,
-            "anchor",
-            time=_fmt(arr.notes[0].time),
-            fret=str(max(1, first_fretted.fret)),
-            width="4.000",
-        )
+    anchor_list = _build_anchors(groups)
+    anchors = ET.SubElement(level, "anchors", count=str(len(anchor_list)))
+    for time, fret, width in anchor_list:
+        ET.SubElement(anchors, "anchor", time=_fmt(time), fret=str(fret), width=_fmt(float(width)))
     ET.SubElement(level, "handShapes", count="0")
     return song
 
