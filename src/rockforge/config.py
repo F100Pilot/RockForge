@@ -22,7 +22,6 @@ class Settings(BaseSettings):
     # Local Wwise installation (NEVER bundled — Audiokinetic EULA). Falls back to
     # the standard WWISEROOT env var set by the Audiokinetic Launcher.
     wwise_root: Path | None = None
-    wwise_conversion: str = "Vorbis Quality High"
 
     def resolved_wwise_root(self) -> Path | None:
         if self.wwise_root is not None:

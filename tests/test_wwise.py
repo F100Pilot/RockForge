@@ -1,7 +1,8 @@
 """WwiseWemConverter orchestration tests using a fake WwiseConsole executable.
 
 A real Wwise cannot run in CI (EULA forbids bundling); these tests validate
-detection, command construction, .wsources generation and error reporting.
+detection, template extraction, command construction, the Rocksmith header fix
+and error reporting.
 """
 
 from __future__ import annotations
@@ -9,6 +10,7 @@ from __future__ import annotations
 import os
 import platform
 import stat
+import struct
 import sys
 from pathlib import Path
 
@@ -20,7 +22,7 @@ from rockforge.infrastructure.packaging.wwise import WwiseWemConverter
 _IS_WINDOWS = platform.system() == "Windows"
 
 # Python-based fake WwiseConsole (runs on all platforms via sys.executable).
-# Records arguments to calls.log; simulates project creation and .wem output.
+# Records arguments to calls.log; simulates the generate-soundbank wem output.
 _FAKE_CONSOLE_PY = '''
 import sys
 from pathlib import Path
@@ -29,17 +31,12 @@ args = [a for a in sys.argv[1:] if a != "-X" and a != "frozen_modules=off"]
 log = Path(__file__).resolve().parent / "calls.log"
 with open(log, "a") as f:
     f.write(" ".join(args) + "\\n")
-if args and args[0] == "create-new-project":
-    Path(args[1]).parent.mkdir(parents=True, exist_ok=True)
-    Path(args[1]).touch()
-elif args and args[0] == "convert-external-source":
-    out = None
-    for i, a in enumerate(args):
-        if a == "--output" and i + 1 < len(args):
-            out = Path(args[i + 1])
-    if out:
-        out.mkdir(parents=True, exist_ok=True)
-        (out / "audio.wem").write_text("WEM")
+if args and args[0] == "generate-soundbank":
+    template_dir = Path(args[1]).parent
+    assert (template_dir / "Originals" / "SFX" / "Audio.wav").exists()
+    cache = template_dir / ".cache" / "Windows" / "SFX"
+    cache.mkdir(parents=True, exist_ok=True)
+    (cache / "Audio.wem").write_bytes(b"\\x00" * 64)
 '''
 
 
@@ -61,7 +58,8 @@ def _write_fake_console(console_path: Path, py_script: Path) -> None:
 
 @pytest.fixture()
 def wwise_root(tmp_path: Path) -> Path:
-    root = tmp_path / "wwise"
+    # Realistic install folder name — the converter detects the version from it.
+    root = tmp_path / "Wwise 2023.1.3.8471"
     console_exe = root / "Authoring/x64/Release/bin/WwiseConsole.exe"
     console_exe.parent.mkdir(parents=True)
     py_script = console_exe.parent / "_fake_console.py"
@@ -74,6 +72,15 @@ def wwise_root(tmp_path: Path) -> Path:
     return root
 
 
+def _converter(wwise_root: Path) -> WwiseWemConverter:
+    conv = WwiseWemConverter(wwise_root=wwise_root, use_wine=False)
+    if _IS_WINDOWS:
+        conv._console_override = (  # type: ignore[attr-defined]
+            wwise_root / "Authoring/x64/Release/bin/WwiseConsole.cmd"
+        )
+    return conv
+
+
 def test_unavailable_without_root() -> None:
     conv = WwiseWemConverter(wwise_root=None)
     assert not conv.available()
@@ -82,54 +89,49 @@ def test_unavailable_without_root() -> None:
 
 
 def test_detects_console(wwise_root: Path) -> None:
-    conv = WwiseWemConverter(wwise_root=wwise_root)
-    if _IS_WINDOWS:
-        # On Windows the fake uses .cmd wrapper; override console_path()
-        cmd = wwise_root / "Authoring/x64/Release/bin/WwiseConsole.cmd"
-        conv._console_override = cmd  # type: ignore[attr-defined]
+    conv = _converter(wwise_root)
     assert conv.available()
     assert not WwiseWemConverter(wwise_root=wwise_root / "nope").available()
 
 
-def test_convert_creates_project_wsources_and_wem(wwise_root: Path, tmp_path: Path) -> None:
+def test_convert_extracts_template_and_patches_header(wwise_root: Path, tmp_path: Path) -> None:
     wav = tmp_path / "song.wav"
     wav.write_bytes(b"RIFF")
     work = tmp_path / "work"
-    conv = WwiseWemConverter(
-        wwise_root=wwise_root, conversion="Vorbis Quality High", use_wine=False
-    )
-    if _IS_WINDOWS:
-        conv._console_override = (
-            wwise_root / "Authoring/x64/Release/bin/WwiseConsole.cmd"
-        )
+    conv = _converter(wwise_root)
 
     wem = conv.convert(wav, work)
-    assert wem.read_text() == "WEM"
 
-    wsources = (work / "rockforge.wsources").read_text()
-    assert 'Path="song.wav"' in wsources
-    assert 'Conversion="Vorbis Quality High"' in wsources
+    # Template project (Rocksmith conversion settings) was extracted.
+    template_dir = work / "wwise_template"
+    assert (template_dir / "Template.wproj").exists()
+    assert (template_dir / "Originals" / "SFX" / "Audio.wav").read_bytes() == b"RIFF"
+    # Rocksmith header fix: uint32 LE 3 at offset 40 (as DLC Builder applies).
+    data = wem.read_bytes()
+    assert struct.unpack_from("<I", data, 40)[0] == 3
 
-    # Verify args were recorded.
     calls = (wwise_root / "Authoring/x64/Release/bin/calls.log").read_text().splitlines()
-    assert any("create-new-project" in c for c in calls)
-    assert any("convert-external-source" in c for c in calls)
-    # project is cached: a second conversion must not re-create it
-    conv.convert(wav, work)
-    calls = (wwise_root / "Authoring/x64/Release/bin/calls.log").read_text().splitlines()
-    assert sum(1 for c in calls if "create-new-project" in c) == 1
+    assert any("generate-soundbank" in c and "--no-decode" in c for c in calls)
+
+
+def test_unsupported_wwise_version_rejected(tmp_path: Path) -> None:
+    root = tmp_path / "Wwise 2016.2.0"
+    console = root / "Authoring/x64/Release/bin/WwiseConsole.exe"
+    console.parent.mkdir(parents=True)
+    console.touch()
+    conv = WwiseWemConverter(wwise_root=root, use_wine=False)
+    wav = tmp_path / "a.wav"
+    wav.write_bytes(b"RIFF")
+    with pytest.raises(PackagingError, match="supported versions"):
+        conv.convert(wav, tmp_path / "w")
 
 
 def test_failure_surfaces_stderr(wwise_root: Path, tmp_path: Path) -> None:
     py_script = wwise_root / "Authoring/x64/Release/bin/_fake_console.py"
     py_script.write_text(
-        "import sys; sys.stderr.write('bad preset\\n'); sys.exit(3)\n"
+        "import sys; sys.stderr.write('conversion error\\n'); sys.exit(3)\n"
     )
-    conv = WwiseWemConverter(wwise_root=wwise_root, use_wine=False)
-    if _IS_WINDOWS:
-        conv._console_override = (
-            wwise_root / "Authoring/x64/Release/bin/WwiseConsole.cmd"
-        )
+    conv = _converter(wwise_root)
     wav = tmp_path / "a.wav"
     wav.write_bytes(b"RIFF")
     with pytest.raises(PackagingError, match="exit 3"):

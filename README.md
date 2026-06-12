@@ -123,9 +123,12 @@ pytest && ruff check src tests && mypy
    (`uvicorn rockforge.interfaces.api.app:app` e
    `celery -A rockforge.interfaces.worker.celery_app:celery_app worker --pool=solo`),
    com `WWISEROOT` definido (o Audiokinetic Launcher define-o). O worker invoca o
-   `WwiseConsole` automaticamente e o bundle inclui `audio.wem`. O preset de conversão
-   é configurável via `ROCKFORGE_WWISE_CONVERSION` (predefinição "Vorbis Quality High" —
-   valida na tua versão do Wwise; ver aviso no código).
+   `WwiseConsole` automaticamente e o bundle inclui `audio.wem`. A conversão usa um
+   projeto template com as definições compatíveis com o Rocksmith (Vorbis **com seek
+   table** + correção de header, como o DLC Builder) — requer Wwise 2019/2021/2022/2023.
+   Sem seek table o jogo carrega a música mas o áudio fica em silêncio e o jogo sai
+   segundos depois — se isso acontecer, no DLC Builder escolhe o `audio.wav` do bundle
+   (não o `audio.wem`) e deixa o DLC Builder fazer a conversão.
 6. **PSARC final**: importa o bundle no DLC Builder (recomendado), ou configura
    `ROCKFORGE_PSARC_PACKER_CMD` com um comando externo que receba `{project}`.
 

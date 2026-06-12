@@ -57,7 +57,6 @@ def _build_use_case():  # noqa: ANN202 - heavy imports deferred to worker runtim
                 psarc_packer_cmd=settings.psarc_packer_cmd,
                 wem_converter=WwiseWemConverter(
                     wwise_root=settings.resolved_wwise_root(),
-                    conversion=settings.wwise_conversion,
                 ),
             ),
         )
@@ -79,7 +78,6 @@ def _build_gp_use_case():  # noqa: ANN202
             psarc_packer_cmd=settings.psarc_packer_cmd,
             wem_converter=WwiseWemConverter(
                 wwise_root=settings.resolved_wwise_root(),
-                conversion=settings.wwise_conversion,
             ),
         ),
     )
