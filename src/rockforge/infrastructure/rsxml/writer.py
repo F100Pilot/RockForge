@@ -138,14 +138,30 @@ def render_arrangement(arr: Arrangement) -> ET.Element:
 
     ET.SubElement(song, "lastConversionDateTime").text = "1-1-2000 00:00:00"
 
-    phrases = ET.SubElement(song, "phrases", count="1")
-    ET.SubElement(
-        phrases, "phrase",
-        name="default", maxDifficulty="0", disparity="0", ignore="0", solo="0",
-    )
-    iters = ET.SubElement(song, "phraseIterations", count="1")
+    # Phrase structure drives the in-game timeline: Rocksmith ends the song at
+    # the LAST phraseIteration (the conventional "END" phrase). With a single
+    # iteration at the start beat the game finishes seconds in, with the note
+    # highway frozen. Minimum viable structure (EOF/toolkit convention):
+    # COUNT @ first beat -> default @ first note -> END @ song end.
     start = arr.tempo_map.beats[0].time if arr.tempo_map.beats else 0.0
-    ET.SubElement(iters, "phraseIteration", time=_fmt(start), phraseId="0", variation="")
+    first_note_t = min((n.time for n in arr.notes), default=start)
+    last_note_end = max((n.time + max(n.sustain, 0.0) for n in arr.notes), default=start)
+    last_beat = arr.tempo_map.beats[-1].time if arr.tempo_map.beats else 0.0
+    # Anchor END to the beat grid when it already covers the notes (the SNG
+    # build maps phrase times onto beats); otherwise place it just past the
+    # last note's tail.
+    end_time = last_beat if last_beat > last_note_end else last_note_end + 0.1
+
+    phrases = ET.SubElement(song, "phrases", count="3")
+    for phrase_name in ("COUNT", "default", "END"):
+        ET.SubElement(
+            phrases, "phrase",
+            name=phrase_name, maxDifficulty="0", disparity="0", ignore="0", solo="0",
+        )
+    iters = ET.SubElement(song, "phraseIterations", count="3")
+    default_t = max(first_note_t, start)
+    for time, phrase_id in ((start, "0"), (default_t, "1"), (end_time, "2")):
+        ET.SubElement(iters, "phraseIteration", time=_fmt(time), phraseId=phrase_id, variation="")
 
     ET.SubElement(song, "newLinkedDiffs", count="0")
     ET.SubElement(song, "linkedDiffs", count="0")
@@ -188,10 +204,18 @@ def render_arrangement(arr: Arrangement) -> ET.Element:
     for tc in sorted(arr.tone_changes, key=lambda c: c.time):
         ET.SubElement(tones_el, "tone", time=_fmt(tc.time), name=tc.name)
 
-    sections = ET.SubElement(song, "sections", count=str(len(arr.sections)))
-    for s in arr.sections:
+    # Sections must cover the song and end with the conventional "noguitar"
+    # closer at the END phrase time (Riff Repeater navigation + song-end cue).
+    section_rows: list[tuple[str, int, float]] = [
+        (s.name, s.number, s.start_time) for s in arr.sections if s.start_time < end_time
+    ]
+    if not section_rows:
+        section_rows.append(("riff", 1, default_t))
+    section_rows.append(("noguitar", 1, end_time))
+    sections = ET.SubElement(song, "sections", count=str(len(section_rows)))
+    for name, number, start_time in section_rows:
         ET.SubElement(
-            sections, "section", name=s.name, number=str(s.number), startTime=_fmt(s.start_time)
+            sections, "section", name=name, number=str(number), startTime=_fmt(start_time)
         )
 
     ET.SubElement(song, "events", count="0")
