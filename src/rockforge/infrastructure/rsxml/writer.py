@@ -84,6 +84,16 @@ def render_arrangement(arr: Arrangement) -> ET.Element:
         song, "tuning", {f"string{i}": str(off) for i, off in enumerate(offsets)}
     )
 
+    # Tones: <tonebase> + tonea-toned slots + timed <tones> switches. Element
+    # names per Song2014.cs (research §5 — inference from toolkit releases).
+    if arr.tone_base:
+        ET.SubElement(song, "tonebase").text = arr.tone_base
+    for slot, name in zip(("tonea", "toneb", "tonec", "toned"), arr.tone_names, strict=False):
+        ET.SubElement(song, slot).text = name
+    tones_el = ET.SubElement(song, "tones", count=str(len(arr.tone_changes)))
+    for tc in sorted(arr.tone_changes, key=lambda c: c.time):
+        ET.SubElement(tones_el, "tone", time=_fmt(tc.time), name=tc.name)
+
     props = ET.SubElement(song, "arrangementProperties")
     props.set("pathLead", "1" if arr.kind is ArrangementKind.LEAD else "0")
     props.set("pathRhythm", "1" if arr.kind is ArrangementKind.RHYTHM else "0")

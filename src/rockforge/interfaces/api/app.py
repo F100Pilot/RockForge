@@ -183,6 +183,163 @@ def create_youtube_job(payload: YouTubeJobIn) -> JobOut:
         return _to_out(job)
 
 
+class GpTrackOut(BaseModel):
+    index: int
+    name: str
+    is_percussion: bool
+    string_count: int
+    tuning_midi: list[int]
+
+
+class GpInspectOut(BaseModel):
+    gp_token: str
+    title: str
+    artist: str
+    album: str
+    tempo: int
+    has_lyrics: bool
+    tracks: list[GpTrackOut]
+
+
+GP_SUFFIXES = {".gp3", ".gp4", ".gp5"}
+GP_REJECTED_SUFFIXES = {".gpx", ".gp"}
+
+
+@app.post("/gp/inspect", response_model=GpInspectOut)
+async def inspect_gp_file(file: UploadFile = File(...)) -> GpInspectOut:
+    """Upload a Guitar Pro file, get its tracks for selection. The file is kept
+    server-side and referenced by gp_token when creating the job."""
+    suffix = Path(file.filename or "").suffix.lower()
+    if suffix in GP_REJECTED_SUFFIXES:
+        raise HTTPException(
+            415,
+            "GPX/GP7 is not supported (the parser reads GP3/GP4/GP5 only). "
+            "Export as GP5 from Guitar Pro or TuxGuitar and upload again.",
+        )
+    if suffix not in GP_SUFFIXES:
+        raise HTTPException(415, f"unsupported Guitar Pro format: {suffix or '(none)'}")
+    gp_dir = settings.work_dir / "gp"
+    gp_dir.mkdir(parents=True, exist_ok=True)
+    dest = gp_dir / f"{uuid.uuid4()}{suffix}"
+    with dest.open("wb") as fh:
+        shutil.copyfileobj(file.file, fh)
+
+    from rockforge.domain.errors import IngestionError
+    from rockforge.infrastructure.gpimport.parser import inspect_gp
+
+    try:
+        info = inspect_gp(dest)
+    except IngestionError as exc:
+        dest.unlink(missing_ok=True)
+        raise HTTPException(422, str(exc)) from exc
+    return GpInspectOut(
+        gp_token=dest.name,
+        title=info.title,
+        artist=info.artist,
+        album=info.album,
+        tempo=info.tempo,
+        has_lyrics=info.has_lyrics,
+        tracks=[
+            GpTrackOut(
+                index=t.index,
+                name=t.name,
+                is_percussion=t.is_percussion,
+                string_count=t.string_count,
+                tuning_midi=list(t.tuning_midi),
+            )
+            for t in info.tracks
+        ],
+    )
+
+
+@app.post("/jobs/gp", response_model=JobOut, status_code=202)
+async def create_gp_job(
+    gp_token: str = Form(...),
+    audio: UploadFile = File(...),
+    lead_track: str = Form(""),
+    rhythm_track: str = Form(""),
+    offset_s: float = Form(0.0),
+    tone_base: str = Form(""),
+    tone_names: str = Form(""),  # comma-separated, max 4
+    lrc: UploadFile | None = File(None),
+    title: str = Form(""),
+    artist: str = Form(""),
+    album: str = Form(""),
+    year: str = Form(""),
+) -> JobOut:
+    """Create a CDLC job from a previously inspected GP file + the recording."""
+    gp_path = settings.work_dir / "gp" / Path(gp_token).name
+    if not gp_path.exists():
+        raise HTTPException(404, "gp_token not found — upload the GP file via /gp/inspect first")
+
+    suffix = Path(audio.filename or "upload").suffix.lower()
+    if suffix not in {".mp3", ".flac", ".wav", ".ogg", ".m4a", ".aiff"}:
+        raise HTTPException(415, f"unsupported audio format: {suffix or '(none)'}")
+    upload_dir = settings.work_dir / "uploads"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    audio_dest = upload_dir / f"{uuid.uuid4()}{suffix}"
+    with audio_dest.open("wb") as fh:
+        shutil.copyfileobj(audio.file, fh)
+
+    from rockforge.domain.errors import IngestionError
+    from rockforge.infrastructure.gpimport.parser import inspect_gp
+    from rockforge.infrastructure.ingestion.tags import read_tags
+
+    try:
+        info = inspect_gp(gp_path)
+    except IngestionError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    tags = read_tags(audio_dest)
+
+    final_title = title.strip() or info.title or tags.title
+    final_artist = artist.strip() or info.artist or tags.artist
+    final_album = album.strip() or info.album or tags.album or ""
+    final_year: int | None = int(year) if year.strip().isdigit() else tags.year
+    missing = [n for n, v in (("title", final_title), ("artist", final_artist)) if not v]
+    if missing:
+        audio_dest.unlink(missing_ok=True)
+        raise HTTPException(
+            422,
+            f"neither the GP file, the audio tags nor the form provide: {missing}",
+        )
+    assert final_title is not None and final_artist is not None
+
+    tones = [t.strip() for t in tone_names.split(",") if t.strip()]
+    if len(tones) > 4:
+        raise HTTPException(422, "Rocksmith supports at most 4 switchable tones")
+
+    lrc_text: str | None = None
+    if lrc is not None and lrc.filename:
+        lrc_text = (await lrc.read()).decode("utf-8", errors="replace")
+
+    params: dict[str, object] = {
+        "gp_path": str(gp_path),
+        "offset_s": offset_s,
+        "tone_base": tone_base.strip() or None,
+        "tone_names": tones,
+        "lrc_text": lrc_text,
+    }
+    if lead_track.strip().isdigit():
+        params["lead_track"] = int(lead_track)
+    if rhythm_track.strip().isdigit():
+        params["rhythm_track"] = int(rhythm_track)
+
+    with _session_factory() as session:
+        job = Job(
+            source=str(audio_dest),
+            source_type="gp",
+            title=final_title,
+            artist=final_artist,
+            album=final_album,
+            year=final_year,
+            params=params,
+        )
+        session.add(job)
+        session.commit()
+        _enqueue(job)
+        return _to_out(job)
+
+
 @app.get("/jobs", response_model=list[JobOut])
 def list_jobs(limit: int = 50) -> list[JobOut]:
     from sqlalchemy import select

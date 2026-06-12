@@ -21,6 +21,7 @@ from pathlib import Path
 from rockforge.domain.arrangement import Arrangement
 from rockforge.domain.errors import PackagingError
 from rockforge.infrastructure.packaging.wwise import WwiseWemConverter
+from rockforge.infrastructure.rsxml.vocals import VocalEvent, write_vocals_xml
 from rockforge.infrastructure.rsxml.writer import write_arrangement_xml
 
 
@@ -43,7 +44,11 @@ class DlcBuilderPackager:
         self._wem_converter = wem_converter
 
     def package(
-        self, arrangements: list[Arrangement], audio: Path, out_dir: Path
+        self,
+        arrangements: list[Arrangement],
+        audio: Path,
+        out_dir: Path,
+        vocals: list[VocalEvent] | None = None,
     ) -> PackagingResult:
         if not arrangements:
             raise PackagingError("no arrangements to package")
@@ -54,6 +59,11 @@ class DlcBuilderPackager:
             xml_paths.append(
                 write_arrangement_xml(arr, out_dir / f"arrangement_{arr.kind.value.lower()}.xml")
             )
+
+        vocals_path: Path | None = None
+        if vocals:
+            vocals_path = write_vocals_xml(vocals, out_dir / "arrangement_vocals.xml")
+            xml_paths.append(vocals_path)
 
         audio_dest = out_dir / f"audio{audio.suffix}"
         shutil.copy2(audio, audio_dest)
@@ -73,6 +83,12 @@ class DlcBuilderPackager:
             "audio": audio_dest.name,
             "audio_wem": wem_path.name if wem_path else None,
             "arrangements": [p.name for p in xml_paths],
+            "vocals": vocals_path.name if vocals_path else None,
+            "tones": {
+                arr.kind.value: {"base": arr.tone_base, "slots": arr.tone_names}
+                for arr in arrangements
+                if arr.tone_base or arr.tone_names
+            },
             "stage_confidence": {
                 arr.kind.value: {k: v.value for k, v in arr.stage_confidence.items()}
                 for arr in arrangements

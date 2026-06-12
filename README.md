@@ -20,6 +20,19 @@ Pipeline áudio → arranjos Rocksmith 2014 (CDLC), construído sobre investiga�
 | XML Song2014 | gerador próprio (formato doc. na comunidade) | testado estruturalmente |
 | PSARC | bundle para DLC Builder; PSARC só com Wwise | **Wwise é obrigatório para .wem** |
 
+## Via Guitar Pro (alta fidelidade — recomendada)
+
+Em alternativa à separação/transcrição por ML, carrega um **GP3/GP4/GP5** + a gravação:
+notas, trastes, técnicas (bend/HO/PO/palm mute/harmónicos/vibrato/slide), tempo, compassos e
+secções vêm **exatos** do ficheiro. Inclui: seleção de pistas Lead/Rhythm, offset de
+sincronização com a gravação, letra (LRC sincronizado ou letra embutida no GP), e tones
+(tonebase + até 4 slots, com mudanças temporizadas). Fluxo na UI: "Inspecionar pistas" →
+escolher pistas/opções → criar CDLC.
+
+Limitações honestas: **GPX/GP6/GP7 não é suportado** (o PyGuitarPro lê GP3/GP4/GP5 —
+exporta como GP5 no Guitar Pro/TuxGuitar); a sincronização é por offset manual (a partitura
+não conhece a gravação); pistas de baixo (4/5 cordas) ainda não são suportadas.
+
 Leitura obrigatória: [`docs/RELATORIO-TECNICO.md`](docs/RELATORIO-TECNICO.md) (viabilidade,
 arquitetura, riscos) e os relatórios de investigação com fontes em [`docs/research/`](docs/research/).
 
