@@ -52,7 +52,7 @@ DB) → `interfaces/` (API FastAPI, worker Celery). Cada estágio ML é um Proto
 | Software | Como instalar | Para quê |
 |---|---|---|
 | Git | https://git-scm.com/download/win | clonar o repositório |
-| Python 3.11 | https://www.python.org/downloads/ — ⚠️ marca **"Add Python to PATH"** | correr a app |
+| Python **3.11** (exatamente — 3.12+ não funciona: o TensorFlow exigido pelo Basic Pitch só tem wheels até 3.11) | https://www.python.org/downloads/ — ⚠️ marca **"Add Python to PATH"** | correr a app |
 | ffmpeg | `winget install ffmpeg` | normalização de áudio |
 | Redis | [Memurai](https://www.memurai.com/) (Developer, grátis; corre como serviço) | fila de jobs |
 | Wwise (opcional) | Audiokinetic Launcher | gerar `.wem` automaticamente |
@@ -64,8 +64,13 @@ DB) → `interfaces/` (API FastAPI, worker Celery). Cada estágio ML é um Proto
 cd C:\onde\quiseres
 git clone https://github.com/F100Pilot/RockForge.git
 cd RockForge
+py -3.11 -m venv .venv
+.venv\Scripts\activate
 pip install -e ".[dev,ml]"
 ```
+
+O venv garante que é o Python 3.11 a ser usado mesmo que tenhas outras versões
+instaladas (o `start.bat` ativa-o automaticamente quando existe).
 
 O install demora (PyTorch/Demucs/Basic Pitch, vários GB). Para a transcrição
 automática de letra (opcional): `pip install -e ".[lyrics]"`.
