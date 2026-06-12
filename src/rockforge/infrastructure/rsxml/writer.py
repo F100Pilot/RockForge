@@ -90,17 +90,51 @@ def render_arrangement(arr: Arrangement) -> ET.Element:
     ET.SubElement(song, "albumArt").text = ""
     ET.SubElement(song, "crowdSpeed").text = "1"
 
-    # arrangementProperties: per Song2014.cs (SongArrangementProperties2014),
-    # only bonusArr/Metronome/pathLead/pathRhythm/pathBass/routeMask exist.
-    # routeMask: 1=lead, 2=rhythm, 4=bass.
-    route_mask = "2" if arr.kind is ArrangementKind.RHYTHM else "1"
+    # arrangementProperties: the DLC Builder parser (Rocksmith2014.XML
+    # ArrangementProperties.ReadXml) dereferences every attribute below without
+    # a null check — ALL of them must be present or import fails with an NRE.
+    techniques = {t for n in arr.notes for t in n.techniques}
+    groups_preview = _group_chords(arr.notes)
+    has_chords = any(len(g) > 1 for g in groups_preview)
+    has_double_stops = any(len(g) == 2 for g in groups_preview)
+    is_rhythm = arr.kind is ArrangementKind.RHYTHM
     props = ET.SubElement(song, "arrangementProperties")
-    props.set("bonusArr", "0")
-    props.set("Metronome", "0")
-    props.set("pathLead", "1" if arr.kind is not ArrangementKind.RHYTHM else "0")
-    props.set("pathRhythm", "1" if arr.kind is ArrangementKind.RHYTHM else "0")
-    props.set("pathBass", "0")
-    props.set("routeMask", route_mask)
+    for attr, value in (
+        ("represent", "1"),
+        ("bonusArr", "0"),
+        ("standardTuning", "1" if all(o == 0 for o in offsets) else "0"),
+        ("nonStandardChords", "0"),
+        ("barreChords", "0"),
+        ("powerChords", "1" if has_chords else "0"),
+        ("dropDPower", "0"),
+        ("openChords", "1" if has_chords else "0"),
+        ("fingerPicking", "0"),
+        ("pickDirection", "0"),
+        ("doubleStops", "1" if has_double_stops else "0"),
+        ("palmMutes", "1" if Technique.PALM_MUTE in techniques else "0"),
+        ("harmonics", "1" if Technique.HARMONIC in techniques else "0"),
+        ("pinchHarmonics", "0"),
+        ("hopo", "1" if {Technique.HAMMER_ON, Technique.PULL_OFF} & techniques else "0"),
+        ("tremolo", "0"),
+        ("slides", "1" if Technique.SLIDE in techniques else "0"),
+        ("unpitchedSlides", "0"),
+        ("bends", "1" if Technique.BEND in techniques else "0"),
+        ("tapping", "0"),
+        ("vibrato", "1" if Technique.VIBRATO in techniques else "0"),
+        ("fretHandMutes", "0"),
+        ("slapPop", "0"),
+        ("twoFingerPicking", "0"),
+        ("fifthsAndOctaves", "0"),
+        ("syncopation", "0"),
+        ("bassPick", "0"),
+        ("sustain", "1" if any(n.sustain > 0 for n in arr.notes) else "0"),
+        ("pathLead", "0" if is_rhythm else "1"),
+        ("pathRhythm", "1" if is_rhythm else "0"),
+        ("pathBass", "0"),
+        ("routeMask", "2" if is_rhythm else "1"),
+        ("Metronome", "0"),
+    ):
+        props.set(attr, value)
 
     ET.SubElement(song, "lastConversionDateTime").text = "1-1-2000 00:00:00"
 

@@ -104,6 +104,32 @@ def test_chord_counts_are_consistent(tmp_path: Path) -> None:
     assert chords_el is not None and chords_el.get("count") == "2"
 
 
+# Every attribute ArrangementProperties.ReadXml (Rocksmith2014.XML, used by
+# DLC Builder) dereferences without a null check — all must be present or
+# import fails with "Object reference not set to an instance of an object".
+DLC_BUILDER_REQUIRED_ARRPROP_ATTRS = [
+    "represent", "bonusArr", "standardTuning", "nonStandardChords",
+    "barreChords", "powerChords", "dropDPower", "openChords", "fingerPicking",
+    "pickDirection", "doubleStops", "palmMutes", "harmonics", "pinchHarmonics",
+    "hopo", "tremolo", "slides", "unpitchedSlides", "bends", "tapping",
+    "vibrato", "fretHandMutes", "slapPop", "twoFingerPicking",
+    "fifthsAndOctaves", "syncopation", "bassPick", "sustain",
+    "pathLead", "pathRhythm", "pathBass",
+]
+
+
+def test_arrangement_properties_has_all_dlc_builder_attributes(tmp_path: Path) -> None:
+    out = write_arrangement_xml(make_arrangement(), tmp_path / "lead.xml")
+    props = ET.parse(out).getroot().find("arrangementProperties")
+    assert props is not None
+    for attr in DLC_BUILDER_REQUIRED_ARRPROP_ATTRS:
+        assert props.get(attr) in {"0", "1"}, f"missing/invalid attribute {attr}"
+    assert props.get("pathLead") == "1" and props.get("pathRhythm") == "0"
+    # technique flags derived from the actual notes
+    assert props.get("bends") == "1" and props.get("hopo") == "1"
+    assert props.get("tapping") == "0"
+
+
 def test_rejects_invalid_arrangement(tmp_path: Path) -> None:
     arr = make_arrangement()
     arr.notes = []
