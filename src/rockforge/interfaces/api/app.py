@@ -474,7 +474,13 @@ def download_psarc(job_id: str) -> FileResponse:
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 def index() -> str:
-    ui = Path(__file__).resolve().parents[3].parent / "web" / "index.html"
-    if ui.exists():
-        return ui.read_text(encoding="utf-8")
+    candidates = (
+        # repo checkout: src/rockforge/interfaces/api/app.py -> repo root
+        Path(__file__).resolve().parents[3].parent / "web" / "index.html",
+        # pip-installed (e.g. Docker WORKDIR /app with COPY web ./web)
+        Path.cwd() / "web" / "index.html",
+    )
+    for ui in candidates:
+        if ui.exists():
+            return ui.read_text(encoding="utf-8")
     return "<h1>RockForge</h1><p>UI not bundled; see /docs for the API.</p>"
