@@ -38,6 +38,14 @@ class SongMetadata:
     song_length: float = 0.0
 
 
+@dataclass(frozen=True)
+class ToneChange:
+    """Switch to a named tone at a point in time (names map to DLC Builder tones)."""
+
+    time: float
+    name: str
+
+
 @dataclass
 class Arrangement:
     kind: ArrangementKind
@@ -48,10 +56,22 @@ class Arrangement:
     sections: list[Section] = field(default_factory=list)
     capo: int = 0
     stage_confidence: dict[str, ConfidenceLabel] = field(default_factory=dict)
+    # Rocksmith supports a base tone + up to 4 switchable tone slots (tonea-toned).
+    tone_base: str | None = None
+    tone_names: list[str] = field(default_factory=list)
+    tone_changes: list[ToneChange] = field(default_factory=list)
 
     def validate(self) -> list[str]:
         """Domain-level validation; returns human-readable problems (empty = valid)."""
         problems: list[str] = []
+        if len(self.tone_names) > 4:
+            problems.append("Rocksmith supports at most 4 switchable tones (tonea-toned)")
+        known = set(self.tone_names) | ({self.tone_base} if self.tone_base else set())
+        for tc in self.tone_changes:
+            if tc.name not in known:
+                problems.append(
+                    f"tone change at {tc.time:.3f}s references unknown tone '{tc.name}'"
+                )
         if not self.notes:
             problems.append("arrangement has no notes")
         if self.metadata.song_length <= 0:

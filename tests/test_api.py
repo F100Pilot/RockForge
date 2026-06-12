@@ -129,6 +129,78 @@ def test_arrangements_404_until_completed(client: TestClient) -> None:
     assert client.get(f"/jobs/{job['id']}/arrangements").status_code == 404
 
 
+def _make_gp5_bytes(tmp_path) -> bytes:
+    import guitarpro as gp
+
+    song = gp.Song()
+    song.title, song.artist, song.tempo = "GpT", "GpA", 100
+    song.tracks[0].name = "Lead"
+    v = song.tracks[0].measures[0].voices[0]
+    b = gp.Beat(v)
+    b.status = gp.BeatStatus.normal
+    b.duration = gp.Duration(value=4)
+    n = gp.Note(b)
+    n.string, n.value, n.type = 6, 3, gp.NoteType.normal
+    b.notes.append(n)
+    v.beats.append(b)
+    p = tmp_path / "api.gp5"
+    gp.write(song, str(p))
+    return p.read_bytes()
+
+
+def test_gp_inspect_rejects_gpx(client: TestClient) -> None:
+    r = client.post(
+        "/gp/inspect", files={"file": ("song.gpx", b"BCFS", "application/octet-stream")}
+    )
+    assert r.status_code == 415
+    assert "GP5" in r.json()["detail"]
+
+
+def test_gp_inspect_and_job_flow(client: TestClient, tmp_path) -> None:
+    data = _make_gp5_bytes(tmp_path)
+    r = client.post("/gp/inspect", files={"file": ("song.gp5", data, "application/octet-stream")})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["title"] == "GpT"
+    assert body["tracks"][0]["name"] == "Lead"
+    assert body["tracks"][0]["tuning_midi"] == [40, 45, 50, 55, 59, 64]
+
+    r2 = client.post(
+        "/jobs/gp",
+        data={
+            "gp_token": body["gp_token"],
+            "lead_track": "0",
+            "offset_s": "1.5",
+            "tone_base": "clean",
+            "tone_names": "dist,solo",
+        },
+        files={"audio": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
+    )
+    assert r2.status_code == 202
+    job = r2.json()
+    assert job["title"] == "GpT" and job["artist"] == "GpA"  # metadata from the GP file
+
+
+def test_gp_job_unknown_token_404(client: TestClient) -> None:
+    r = client.post(
+        "/jobs/gp",
+        data={"gp_token": "nope.gp5"},
+        files={"audio": ("song.wav", b"RIFF", "audio/wav")},
+    )
+    assert r.status_code == 404
+
+
+def test_gp_job_too_many_tones(client: TestClient, tmp_path) -> None:
+    data = _make_gp5_bytes(tmp_path)
+    r = client.post("/gp/inspect", files={"file": ("song.gp5", data, "application/octet-stream")})
+    r2 = client.post(
+        "/jobs/gp",
+        data={"gp_token": r.json()["gp_token"], "tone_names": "a,b,c,d,e"},
+        files={"audio": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
+    )
+    assert r2.status_code == 422
+
+
 def test_unknown_job_404(client: TestClient) -> None:
     assert client.get("/jobs/nope").status_code == 404
     assert client.get("/jobs/nope/psarc").status_code == 404
