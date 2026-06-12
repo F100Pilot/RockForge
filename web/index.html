@@ -44,11 +44,14 @@
   <legend>Novo job — ficheiro de áudio</legend>
   <form id="uploadForm">
     <input type="file" name="file" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" required>
-    <input type="text" name="title" placeholder="Título" required>
-    <input type="text" name="artist" placeholder="Artista" required>
-    <input type="text" name="album" placeholder="Álbum (opcional)">
+    <input type="text" name="title" placeholder="Título (auto das tags)">
+    <input type="text" name="artist" placeholder="Banda (auto das tags)">
+    <input type="text" name="album" placeholder="Álbum (auto das tags)">
+    <input type="number" name="year" placeholder="Ano" min="1900" max="2100" style="width:5.5rem">
     <button type="submit">Processar</button>
   </form>
+  <p class="meta">Se o ficheiro tiver tags (ID3/Vorbis), os campos vazios são preenchidos
+  automaticamente; se faltar título ou banda nas tags, é pedido que os preenchas.</p>
 </fieldset>
 
 <fieldset>
@@ -56,7 +59,9 @@
   <form id="ytForm">
     <input type="url" name="url" placeholder="https://www.youtube.com/watch?v=…" required size="34">
     <input type="text" name="title" placeholder="Título" required>
-    <input type="text" name="artist" placeholder="Artista" required>
+    <input type="text" name="artist" placeholder="Banda" required>
+    <input type="text" name="album" placeholder="Álbum (opcional)">
+    <input type="number" name="year" placeholder="Ano" min="1900" max="2100" style="width:5.5rem">
     <button type="submit">Processar</button>
   </form>
   <p class="meta">Desativado por defeito no servidor (viola o ToS do YouTube); o pedido devolve 403
@@ -125,7 +130,8 @@ async function selectJob(id) {
   selectedJob = j;
   document.getElementById('detail').style.display = '';
   document.getElementById('detailHead').innerHTML =
-    `<strong>${esc(j.title)}</strong> — ${esc(j.artist)} ${badge(j.status)}
+    `<strong>${esc(j.title)}</strong> — ${esc(j.artist)}
+     ${j.album ? `· ${esc(j.album)}` : ''} ${j.year ? `(${j.year})` : ''} ${badge(j.status)}
      <span class="meta">notas: ${esc(JSON.stringify(j.note_counts))}</span>`;
 
   const bar = document.getElementById('stagesBar');
@@ -210,10 +216,11 @@ document.getElementById('uploadForm').addEventListener('submit', async e => {
 
 document.getElementById('ytForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const f = new FormData(e.target);
+  const payload = Object.fromEntries([...new FormData(e.target)].filter(([, v]) => v !== ''));
+  if (payload.year) payload.year = parseInt(payload.year, 10);
   const r = await fetch('/jobs/youtube', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(Object.fromEntries(f)),
+    body: JSON.stringify(payload),
   });
   const b = await r.json();
   if (r.ok) { e.target.reset(); selectJob(b.id); } else alert(b.detail || 'erro');

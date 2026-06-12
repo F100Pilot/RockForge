@@ -21,6 +21,7 @@ def _build_use_case():  # noqa: ANN202 - heavy imports deferred to worker runtim
     from rockforge.infrastructure.ingestion.sources import LocalFileIngestor, YouTubeIngestor
     from rockforge.infrastructure.normalize.ffmpeg import FfmpegNormalizer
     from rockforge.infrastructure.packaging.dlcbuilder import DlcBuilderPackager
+    from rockforge.infrastructure.packaging.wwise import WwiseWemConverter
     from rockforge.infrastructure.rhythm.librosa_adapter import LibrosaRhythmAdapter
     from rockforge.infrastructure.rolesplit.heuristic import HeuristicRoleSplitter
     from rockforge.infrastructure.separation.demucs_adapter import DemucsSeparator
@@ -42,7 +43,13 @@ def _build_use_case():  # noqa: ANN202 - heavy imports deferred to worker runtim
             beat_tracker=rhythm,
             tuning_estimator=rhythm,
             role_splitter=HeuristicRoleSplitter(),
-            packager=DlcBuilderPackager(psarc_packer_cmd=settings.psarc_packer_cmd),
+            packager=DlcBuilderPackager(
+                psarc_packer_cmd=settings.psarc_packer_cmd,
+                wem_converter=WwiseWemConverter(
+                    wwise_root=settings.resolved_wwise_root(),
+                    conversion=settings.wwise_conversion,
+                ),
+            ),
         )
 
     return make
@@ -77,7 +84,9 @@ def generate_cdlc(job_id: str) -> None:
 
             result = use_case.run(
                 source=job.source,
-                metadata=SongMetadata(title=job.title, artist=job.artist, album=job.album),
+                metadata=SongMetadata(
+                    title=job.title, artist=job.artist, album=job.album, year=job.year
+                ),
                 workdir=Path(workdir),
                 split_lead_rhythm=bool(params.get("split_lead_rhythm", True)),
                 tuning_override=tuning_override,

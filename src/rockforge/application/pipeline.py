@@ -130,10 +130,15 @@ class GenerateCdlcUseCase:
 
         stage("package")
         packaging = self.packager.package(arrangements, normalized, workdir / "bundle")  # 9/10
+        if packaging.wem_path is None:
+            warnings.append(
+                "no .wem produced: no local Wwise installation found "
+                "(set ROCKFORGE_WWISE_ROOT or WWISEROOT)"
+            )
         if packaging.psarc_path is None:
             warnings.append(
-                "no PSARC produced: Wwise-dependent packing is delegated to DLC Builder "
-                "(bundle is import-ready); see docs/RELATORIO-TECNICO.md §7 step 10"
+                "no PSARC produced: final packing is delegated to DLC Builder "
+                "(bundle is import-ready); configure ROCKFORGE_PSARC_PACKER_CMD to automate it"
             )
         return PipelineResult(
             packaging=packaging,

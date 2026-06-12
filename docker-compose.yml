@@ -7,7 +7,13 @@ services:
       ROCKFORGE_BROKER_URL: redis://redis:6379/0
       ROCKFORGE_RESULT_BACKEND: redis://redis:6379/1
       ROCKFORGE_WORK_DIR: /data
-      ROCKFORGE_ENABLE_YOUTUBE: "false"  # ToS do YouTube — decisão explícita do operador
+      # Projeto pessoal: ativado por decisão explícita do utilizador.
+      # Nota: descarregar áudio continua a violar o ToS do YouTube.
+      ROCKFORGE_ENABLE_YOUTUBE: "true"
+      # Wwise local (nunca incluído na imagem — EULA Audiokinetic). Em Docker/Linux
+      # exigiria Wine + instalação manual; para usar o teu Wwise, corre o worker
+      # nativamente no Windows (ver README "Como testar").
+      # ROCKFORGE_WWISE_ROOT: "C:/Program Files (x86)/Audiokinetic/Wwise2023..."
     volumes: ["workdata:/data"]
     depends_on: [db, redis]
 

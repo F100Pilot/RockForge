@@ -36,15 +36,48 @@ def test_upload_creates_pending_job(client: TestClient) -> None:
     r = client.post(
         "/jobs/upload",
         files={"file": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
-        data={"title": "Song", "artist": "Artist"},
+        data={"title": "Song", "artist": "Artist", "year": "1986"},
     )
     assert r.status_code == 202
     body = r.json()
     assert body["status"] == "pending"
+    assert body["year"] == 1986
 
     r2 = client.get(f"/jobs/{body['id']}")
     assert r2.status_code == 200
     assert r2.json()["title"] == "Song"
+
+
+def test_upload_without_metadata_and_untagged_file_returns_422(client: TestClient) -> None:
+    r = client.post(
+        "/jobs/upload",
+        files={"file": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
+        data={},
+    )
+    assert r.status_code == 422
+    assert "title" in r.json()["detail"] and "artist" in r.json()["detail"]
+
+
+def test_upload_falls_back_to_file_tags(client: TestClient, monkeypatch) -> None:
+    from rockforge.infrastructure.ingestion import tags as tags_mod
+
+    monkeypatch.setattr(
+        tags_mod, "read_tags",
+        lambda path: tags_mod.AudioTags(
+            title="Tagged", artist="TagBand", album="TagAlbum", year=1999
+        ),
+    )
+    r = client.post(
+        "/jobs/upload",
+        files={"file": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
+        data={"artist": "FormBand"},  # form value must win over the tag
+    )
+    assert r.status_code == 202
+    body = r.json()
+    assert body["title"] == "Tagged"
+    assert body["artist"] == "FormBand"
+    assert body["album"] == "TagAlbum"
+    assert body["year"] == 1999
 
 
 def test_youtube_disabled_by_default_returns_403(client: TestClient) -> None:
