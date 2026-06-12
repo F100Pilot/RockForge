@@ -87,7 +87,7 @@
     <label>Pista Lead: <select name="lead_track"><option value="">—</option></select></label>
     <label>Pista Rhythm: <select name="rhythm_track"><option value="">—</option></select></label><br>
     <input type="file" name="audio" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" required>
-    <label>Cortar início do áudio (s): <input type="number" name="offset_s" value="0" step="0.01" min="0" style="width:6rem"></label><br>
+    <label>Silêncio inicial a acrescentar (s): <input type="number" name="offset_s" value="0" step="0.01" min="0" style="width:6rem"></label><br>
     <input type="text" name="tone_base" placeholder="Tone base (ex.: dist_rhythm)">
     <input type="text" name="tone_names" placeholder="Tones extra, vírgulas (máx. 4)">
     <label>Letra (LRC): <input type="file" name="lrc" accept=".lrc,.txt"></label><br>
@@ -97,13 +97,13 @@
     <input type="number" name="year" placeholder="Ano" min="1900" max="2100" style="width:5.5rem">
     <button type="submit">2. Criar CDLC</button>
   </form>
-  <p class="meta">Sincronização: a partitura não conhece o áudio, por isso "Cortar início do áudio"
-  remove N segundos do início da gravação para que o tempo 0 da partitura coincida com o tempo 0
-  do áudio (usa este valor se a gravação tiver uma introdução/silêncio antes da música começar).
-  Se for a partitura que tem um count-in que não existe na gravação, edita o GP para remover esse
-  compasso antes de carregar. Para letra sincronizada usa um ficheiro LRC (os tempos são ajustados
-  automaticamente ao corte); a letra embutida no GP só tem tempo ao nível da linha. Os nomes de
-  tones são gravados no XML (tonebase/tonea–toned) e mapeiam-se a tones reais no DLC Builder.</p>
+  <p class="meta">Sincronização: a partitura não conhece o áudio. "Silêncio inicial a acrescentar"
+  insere N segundos de silêncio no início da gravação e desloca a partitura e a letra pelo mesmo
+  tempo — usa isto se quiseres que a música demore N segundos a começar a tocar (ex.: para um
+  écran de título). Para letra sincronizada usa um ficheiro LRC (os tempos são ajustados
+  automaticamente ao deslocamento); a letra embutida no GP só tem tempo ao nível da linha. Os
+  nomes de tones são gravados no XML (tonebase/tonea–toned) e mapeiam-se a tones reais no DLC
+  Builder.</p>
 </fieldset>
 
 <fieldset>
