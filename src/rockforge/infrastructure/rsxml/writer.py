@@ -66,38 +66,43 @@ def render_arrangement(arr: Arrangement) -> ET.Element:
     song = ET.Element("song", version="8")
     ET.SubElement(song, "title").text = arr.metadata.title
     ET.SubElement(song, "arrangement").text = arr.kind.value
+    ET.SubElement(song, "part").text = "1"
     ET.SubElement(song, "offset").text = "0.000"
     ET.SubElement(song, "centOffset").text = _fmt(arr.tuning.cent_offset)
     ET.SubElement(song, "songLength").text = _fmt(arr.metadata.song_length)
+    ET.SubElement(song, "songNameSort").text = arr.metadata.title
     ET.SubElement(song, "startBeat").text = (
         _fmt(arr.tempo_map.beats[0].time) if arr.tempo_map.beats else "0.000"
     )
     ET.SubElement(song, "averageTempo").text = _fmt(arr.tempo_map.average_bpm)
-    ET.SubElement(song, "capo").text = str(arr.capo)
-    ET.SubElement(song, "artistName").text = arr.metadata.artist
-    ET.SubElement(song, "albumName").text = arr.metadata.album
-    if arr.metadata.year is not None:
-        ET.SubElement(song, "albumYear").text = str(arr.metadata.year)
 
     offsets = arr.tuning.offsets_from_standard()
     ET.SubElement(
         song, "tuning", {f"string{i}": str(off) for i, off in enumerate(offsets)}
     )
+    ET.SubElement(song, "capo").text = str(arr.capo)
+    ET.SubElement(song, "artistName").text = arr.metadata.artist
+    ET.SubElement(song, "artistNameSort").text = arr.metadata.artist
+    ET.SubElement(song, "albumName").text = arr.metadata.album
+    ET.SubElement(song, "albumNameSort").text = arr.metadata.album
+    if arr.metadata.year is not None:
+        ET.SubElement(song, "albumYear").text = str(arr.metadata.year)
+    ET.SubElement(song, "albumArt").text = ""
+    ET.SubElement(song, "crowdSpeed").text = "1"
 
-    # Tones: <tonebase> + tonea-toned slots + timed <tones> switches. Element
-    # names per Song2014.cs (research §5 — inference from toolkit releases).
-    if arr.tone_base:
-        ET.SubElement(song, "tonebase").text = arr.tone_base
-    for slot, name in zip(("tonea", "toneb", "tonec", "toned"), arr.tone_names, strict=False):
-        ET.SubElement(song, slot).text = name
-    tones_el = ET.SubElement(song, "tones", count=str(len(arr.tone_changes)))
-    for tc in sorted(arr.tone_changes, key=lambda c: c.time):
-        ET.SubElement(tones_el, "tone", time=_fmt(tc.time), name=tc.name)
-
+    # arrangementProperties: per Song2014.cs (SongArrangementProperties2014),
+    # only bonusArr/Metronome/pathLead/pathRhythm/pathBass/routeMask exist.
+    # routeMask: 1=lead, 2=rhythm, 4=bass.
+    route_mask = "2" if arr.kind is ArrangementKind.RHYTHM else "1"
     props = ET.SubElement(song, "arrangementProperties")
-    props.set("pathLead", "1" if arr.kind is ArrangementKind.LEAD else "0")
+    props.set("bonusArr", "0")
+    props.set("Metronome", "0")
+    props.set("pathLead", "1" if arr.kind is not ArrangementKind.RHYTHM else "0")
     props.set("pathRhythm", "1" if arr.kind is ArrangementKind.RHYTHM else "0")
-    props.set("standardTuning", "1" if all(o == 0 for o in offsets) else "0")
+    props.set("pathBass", "0")
+    props.set("routeMask", route_mask)
+
+    ET.SubElement(song, "lastConversionDateTime").text = "1-1-2000 00:00:00"
 
     phrases = ET.SubElement(song, "phrases", count="1")
     ET.SubElement(
@@ -107,6 +112,10 @@ def render_arrangement(arr: Arrangement) -> ET.Element:
     iters = ET.SubElement(song, "phraseIterations", count="1")
     start = arr.tempo_map.beats[0].time if arr.tempo_map.beats else 0.0
     ET.SubElement(iters, "phraseIteration", time=_fmt(start), phraseId="0", variation="")
+
+    ET.SubElement(song, "newLinkedDiffs", count="0")
+    ET.SubElement(song, "linkedDiffs", count="0")
+    ET.SubElement(song, "phraseProperties", count="0")
 
     # Chord handling: simultaneous notes become <chord> entries referencing a
     # chordTemplate (documented in Song2014.cs / Rocksmith2014.XML). Finger
@@ -129,15 +138,35 @@ def render_arrangement(arr: Arrangement) -> ET.Element:
             attrs[f"finger{i}"] = "-1"
         ET.SubElement(templates_el, "chordTemplate", attrs)
 
+    ET.SubElement(song, "fretHandMuteTemplates", count="0")
+
     ebeats = ET.SubElement(song, "ebeats", count=str(len(arr.tempo_map.beats)))
     for b in arr.tempo_map.beats:
         ET.SubElement(ebeats, "ebeat", time=_fmt(b.time), measure=str(b.measure))
+
+    # Tones: <tonebase> + tonea-toned slots + timed <tones> switches. Element
+    # names per Song2014.cs (research §5 — inference from toolkit releases).
+    if arr.tone_base:
+        ET.SubElement(song, "tonebase").text = arr.tone_base
+    for slot, name in zip(("tonea", "toneb", "tonec", "toned"), arr.tone_names, strict=False):
+        ET.SubElement(song, slot).text = name
+    tones_el = ET.SubElement(song, "tones", count=str(len(arr.tone_changes)))
+    for tc in sorted(arr.tone_changes, key=lambda c: c.time):
+        ET.SubElement(tones_el, "tone", time=_fmt(tc.time), name=tc.name)
 
     sections = ET.SubElement(song, "sections", count=str(len(arr.sections)))
     for s in arr.sections:
         ET.SubElement(
             sections, "section", name=s.name, number=str(s.number), startTime=_fmt(s.start_time)
         )
+
+    ET.SubElement(song, "events", count="0")
+
+    transcription = ET.SubElement(song, "transcriptionTrack", difficulty="-1")
+    ET.SubElement(transcription, "notes", count="0")
+    ET.SubElement(transcription, "chords", count="0")
+    ET.SubElement(transcription, "anchors", count="0")
+    ET.SubElement(transcription, "handShapes", count="0")
 
     levels = ET.SubElement(song, "levels", count="1")
     level = ET.SubElement(levels, "level", difficulty="0")
@@ -150,6 +179,8 @@ def render_arrangement(arr: Arrangement) -> ET.Element:
         chord_el = ET.SubElement(
             chords_el, "chord",
             time=_fmt(g[0].time), chordId=str(chord_id), linkNext="0", accent="0",
+            fretHandMute="0", highDensity="0", ignore="0", palmMute="0",
+            hopo="0", strum="down",
         )
         for n in g:  # chordNote children preserve per-string technique data
             ET.SubElement(chord_el, "chordNote", _note_attrs(n))
