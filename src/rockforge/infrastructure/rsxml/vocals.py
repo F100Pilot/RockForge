@@ -38,6 +38,8 @@ def parse_lrc(text: str, offset_s: float = 0.0) -> list[VocalEvent]:
 
     Event length = gap to the next event, capped at MAX_LENGTH_S; the last
     event gets DEFAULT_LAST_LENGTH_S. These are display durations, not pitch.
+    Lines that land before time 0 after applying offset_s (e.g. lyrics for a
+    lead-in trimmed from the audio) are dropped.
     """
     stamps: list[tuple[float, str]] = []
     for line in text.splitlines():
@@ -46,7 +48,7 @@ def parse_lrc(text: str, offset_s: float = 0.0) -> list[VocalEvent]:
             continue
         t = int(m.group(1)) * 60 + float(m.group(2)) + offset_s
         lyric = m.group(3).strip()
-        if lyric:
+        if lyric and t >= 0:
             stamps.append((t, lyric))
     stamps.sort(key=lambda s: s[0])
 

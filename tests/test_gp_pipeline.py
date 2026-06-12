@@ -22,7 +22,7 @@ class FakeIngestor:
 
 
 class FakeNormalizer:
-    def normalize(self, audio: Path, workdir: Path) -> Path:
+    def normalize(self, audio: Path, workdir: Path, offset_s: float = 0.0) -> Path:
         return audio
 
 
@@ -97,9 +97,9 @@ def test_gp_pipeline_full_bundle(two_track_gp5: Path, tmp_path: Path) -> None:
     assert root.findtext("tonea") == "dist"
     tone = root.find("tones/tone")
     assert tone is not None and tone.get("name") == "dist"
-    # offset applied: first note at 0.5s
+    # GP note times are used as-is (offset_s trims the audio, not the score)
     first = root.find("levels/level/notes/note")
-    assert first is not None and float(first.get("time", "0")) == pytest.approx(0.5)
+    assert first is not None and float(first.get("time", "0")) == pytest.approx(0.0)
 
     rhythm_xml = next(p for p in result.packaging.xml_paths if p.name == "arrangement_rhythm.xml")
     r = ET.parse(rhythm_xml).getroot()
@@ -107,8 +107,8 @@ def test_gp_pipeline_full_bundle(two_track_gp5: Path, tmp_path: Path) -> None:
 
     vocals_xml = next(p for p in result.packaging.xml_paths if p.name == "arrangement_vocals.xml")
     v = ET.parse(vocals_xml).getroot()
-    # LRC offset applied (offset_s=0.5): 1.0 + 0.5
-    assert float(v.findall("vocal")[0].get("time", "0")) == pytest.approx(1.5)
+    # LRC times shift back by offset_s (the trimmed lead-in): 1.0 - 0.5
+    assert float(v.findall("vocal")[0].get("time", "0")) == pytest.approx(0.5)
 
 
 def test_gp_pipeline_auto_track_selection(two_track_gp5: Path, tmp_path: Path) -> None:

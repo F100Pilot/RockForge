@@ -72,7 +72,7 @@ def test_anchors_follow_fret_position(tmp_path: Path) -> None:
     assert len(anchors) > 1
     for a in anchors:
         fret, width = int(a.get("fret", "0")), int(float(a.get("width", "0")))
-        assert 1 <= fret and fret + width - 1 <= 24
+        assert fret >= 1 and fret + width - 1 <= 24
     times = [float(a.get("time", "0")) for a in anchors]
     assert times == sorted(times)
 
