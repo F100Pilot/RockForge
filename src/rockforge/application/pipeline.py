@@ -67,6 +67,7 @@ class GenerateCdlcUseCase:
         workdir: Path,
         split_lead_rhythm: bool = True,
         tuning_override: Tuning | None = None,
+        offset_s: float = 0.0,
         on_stage: Callable[[str], None] | None = None,
     ) -> PipelineResult:
         def stage(name: str) -> None:
@@ -77,7 +78,7 @@ class GenerateCdlcUseCase:
         stage("ingest")
         raw = self.ingestor.fetch(source, workdir)                     # 1. ingest
         stage("normalize")
-        normalized = self.normalizer.normalize(raw, workdir)           # 2. normalize
+        normalized = self.normalizer.normalize(raw, workdir, offset_s)  # 2. normalize + trim
         stage("separate")
         guitar_stem = self.separator.separate_guitar(normalized, workdir)  # 3. separate
         stage("transcribe")
@@ -102,7 +103,7 @@ class GenerateCdlcUseCase:
         tempo_map = self._extend_beats_to(tempo_map, song_length)
 
         def build(kind: ArrangementKind, events: list[NoteEvent]) -> Arrangement:
-            tab = infer_legato(map_to_fretboard(events, tuning))       # 7. strings/frets
+            tab = infer_legato(map_to_fretboard(events, tuning, warnings))  # 7. strings/frets
             return Arrangement(                                        # 8. arrangement
                 kind=kind,
                 metadata=metadata,

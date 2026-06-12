@@ -26,11 +26,12 @@ class LibrosaRhythmAdapter:
 
     def track(self, audio: Path) -> TempoMap:
         import librosa
+        import numpy as np
 
         y, sr = librosa.load(str(audio), sr=None, mono=True)
         tempo, beat_frames = librosa.beat.beat_track(y=y, sr=sr)
         times = librosa.frames_to_time(beat_frames, sr=sr)
-        bpm = float(tempo if not hasattr(tempo, "__len__") else tempo[0])
+        bpm = float(np.atleast_1d(tempo)[0])
         beats_per_measure = 4  # not detected — see module docstring
         beats = tuple(
             Beat(

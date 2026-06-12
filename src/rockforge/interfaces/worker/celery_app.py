@@ -154,6 +154,7 @@ def generate_cdlc(job_id: str) -> None:
                 workdir=Path(workdir),
                 split_lead_rhythm=bool(params.get("split_lead_rhythm", True)),
                 tuning_override=tuning_override,
+                offset_s=float(params.get("offset_s", 0.0)),
                 on_stage=on_stage,
             )
             job.status = JobStatus.COMPLETED
