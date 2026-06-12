@@ -45,9 +45,54 @@ DB) → `interfaces/` (API FastAPI, worker Celery). Cada estágio ML é um Proto
 
 ## Execução
 
+### Instalação num PC novo (Windows, sem Docker — recomendado)
+
+**1. Pré-requisitos**
+
+| Software | Como instalar | Para quê |
+|---|---|---|
+| Git | https://git-scm.com/download/win | clonar o repositório |
+| Python 3.11 | https://www.python.org/downloads/ — ⚠️ marca **"Add Python to PATH"** | correr a app |
+| ffmpeg | `winget install ffmpeg` | normalização de áudio |
+| Redis | [Memurai](https://www.memurai.com/) (Developer, grátis; corre como serviço) | fila de jobs |
+| Wwise (opcional) | Audiokinetic Launcher | gerar `.wem` automaticamente |
+| DLC Builder (opcional) | [releases](https://github.com/iminashi/Rocksmith2014.NET/releases) | empacotar o PSARC final |
+
+**2. Clonar e instalar** (o repo é privado — o Git pede login GitHub na primeira vez)
+
+```cmd
+cd C:\onde\quiseres
+git clone https://github.com/F100Pilot/RockForge.git
+cd RockForge
+pip install -e ".[dev,ml]"
+```
+
+O install demora (PyTorch/Demucs/Basic Pitch, vários GB). Para a transcrição
+automática de letra (opcional): `pip install -e ".[lyrics]"`.
+
+**3. Arrancar**
+
+```cmd
+.\start.bat
+```
+
+Abre **http://localhost:8000**. O `start.bat` lança Redis + worker em segundo
+plano (logs em `logs\`) e a API na janela atual; Ctrl+C para tudo.
+
+Notas:
+- O primeiro job descarrega os modelos ML (~2 GB extra, só uma vez)
+- Os bundles gerados vão para `C:\Users\<utilizador>\Downloads\RockForge`
+- Para updates: `git pull` dentro da pasta (e `pip install -e ".[dev,ml]"` se
+  o `pyproject.toml` tiver mudado)
+
+### Via Docker (alternativa)
+
 ```bash
 docker compose up --build   # API em http://localhost:8000 (UI em /, OpenAPI em /docs)
 ```
+
+Nota: dentro do Docker o Wwise não está disponível — o `.wem` só é gerado na
+execução nativa Windows com o Wwise instalado.
 
 Desenvolvimento:
 
