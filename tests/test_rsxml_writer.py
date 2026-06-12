@@ -130,6 +130,29 @@ def test_arrangement_properties_has_all_dlc_builder_attributes(tmp_path: Path) -
     assert props.get("tapping") == "0"
 
 
+def test_phrase_structure_marks_song_end(tmp_path: Path) -> None:
+    """Rocksmith ends the song at the last phraseIteration: COUNT/default/END
+    must exist with END placed after the last note, else the game finishes
+    seconds in with the note highway frozen."""
+    out = write_arrangement_xml(make_arrangement(), tmp_path / "lead.xml")
+    root = ET.parse(out).getroot()
+    names = [p.get("name") for p in root.findall("phrases/phrase")]
+    assert names == ["COUNT", "default", "END"]
+    iters = root.findall("phraseIterations/phraseIteration")
+    assert [i.get("phraseId") for i in iters] == ["0", "1", "2"]
+    times = [float(i.get("time", "0")) for i in iters]
+    assert times == sorted(times)
+    last_note_end = max(
+        float(n.get("time", "0")) + float(n.get("sustain", "0"))
+        for n in root.findall("levels/level/notes/note")
+    )
+    assert times[-1] > last_note_end
+    # sections close with the conventional "noguitar" at the END time
+    sections = root.findall("sections/section")
+    assert sections and sections[-1].get("name") == "noguitar"
+    assert float(sections[-1].get("startTime", "0")) == times[-1]
+
+
 def test_rejects_invalid_arrangement(tmp_path: Path) -> None:
     arr = make_arrangement()
     arr.notes = []
