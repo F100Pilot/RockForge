@@ -18,7 +18,8 @@ Pipeline áudio → arranjos Rocksmith 2014 (CDLC), construído sobre investiga�
 | Cordas/trastes | otimização de playability (DP própria) | determinística, testada |
 | Técnicas | bend (medido), hammer-on/pull-off (regras) | parcial — ver relatório |
 | Letra automática (opcional) | WhisperX sobre o stem vocal (`pip install -e ".[lyrics]"`) | **EXPERIMENTAL** — gates anti-alucinação (RMS + confiança/palavra); LRC continua a via preferida |
-| XML Song2014 | gerador próprio (formato doc. na comunidade) | testado estruturalmente |
+| XML Song2014 | gerador próprio (formato doc. na comunidade) | testado estruturalmente; emite os 32 `arrangementProperties` e a estrutura COUNT/default/END que o DLC Builder e o jogo exigem |
+| Áudio `.wem` | Wwise local + projeto template do DLC Builder | Vorbis **com seek table** + correção de header (sem isto o jogo carrega mas fica mudo e sai) — Wwise 2019/2021/2022/2023 |
 | PSARC | bundle para DLC Builder; PSARC só com Wwise | **Wwise é obrigatório para .wem** |
 
 ## Via Guitar Pro (alta fidelidade — recomendada)
@@ -42,6 +43,7 @@ arquitetura, riscos) e os relatórios de investigação com fontes em [`docs/res
 Clean Architecture: `domain/` (modelo musical puro) → `application/` (ports + use case do
 pipeline) → `infrastructure/` (adapters: Demucs, Basic Pitch, librosa, ffmpeg, XML, packaging,
 DB) → `interfaces/` (API FastAPI, worker Celery). Cada estágio ML é um Protocol substituível.
+Para contribuir, ver [`CLAUDE.md`](CLAUDE.md) (camadas, comandos e restrições que já custaram caro).
 
 ## Execução
 
@@ -86,6 +88,9 @@ plano (logs em `logs\`) e a API na janela atual; Ctrl+C para tudo.
 Notas:
 - O primeiro job descarrega os modelos ML (~2 GB extra, só uma vez)
 - Os bundles gerados vão para `C:\Users\<utilizador>\Downloads\RockForge`
+- Na lista de **Jobs** cada linha tem um botão 🗑 para remover o job (apaga
+  também o bundle gerado e o ficheiro carregado, se nenhum outro job o usar);
+  jobs em execução têm de terminar primeiro
 - Para updates: `git pull` dentro da pasta (e `pip install -e ".[dev,ml]"` se
   o `pyproject.toml` tiver mudado)
 
@@ -108,8 +113,9 @@ pytest && ruff check src tests && mypy
 
 ## Como testar a app (fim-a-fim)
 
-1. **Testes automáticos** (sem ML, rápidos): `pip install -e ".[dev]" && pytest` — 47 testes
-   cobrem domínio, mapeamento corda/traste, XML/acordes, pipeline, API, tags e Wwise (simulado).
+1. **Testes automáticos** (sem ML, rápidos): `pip install -e ".[dev]" && pytest` — 81 testes
+   cobrem domínio, mapeamento corda/traste, XML/acordes, pipeline, API (incl. remoção de jobs),
+   import GP, letra, tags e Wwise (consola simulada).
 2. **Arrancar a stack**: `docker compose up --build`. Abre `http://localhost:8000`.
    O primeiro job descarrega os modelos (Demucs ~2 GB); em CPU, uma música de 4 min
    demora vários minutos na etapa `separate`.
