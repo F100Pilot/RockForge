@@ -20,6 +20,7 @@ from pathlib import Path
 
 from rockforge.domain.arrangement import Arrangement
 from rockforge.domain.errors import PackagingError
+from rockforge.infrastructure.packaging.wwise import WwiseWemConverter
 from rockforge.infrastructure.rsxml.writer import write_arrangement_xml
 
 
@@ -27,13 +28,19 @@ from rockforge.infrastructure.rsxml.writer import write_arrangement_xml
 class PackagingResult:
     bundle_dir: Path
     xml_paths: tuple[Path, ...]
-    psarc_path: Path | None  # None => Wwise/packer unavailable; bundle is the deliverable
+    wem_path: Path | None  # produced only when a local Wwise installation is available
+    psarc_path: Path | None  # None => packer unavailable; bundle is the deliverable
 
 
 class DlcBuilderPackager:
-    def __init__(self, psarc_packer_cmd: str | None = None) -> None:
+    def __init__(
+        self,
+        psarc_packer_cmd: str | None = None,
+        wem_converter: WwiseWemConverter | None = None,
+    ) -> None:
         """psarc_packer_cmd: template like 'dlc-builder-cli pack {project}' (operator-provided)."""
         self._packer_cmd = psarc_packer_cmd
+        self._wem_converter = wem_converter
 
     def package(
         self, arrangements: list[Arrangement], audio: Path, out_dir: Path
@@ -51,6 +58,12 @@ class DlcBuilderPackager:
         audio_dest = out_dir / f"audio{audio.suffix}"
         shutil.copy2(audio, audio_dest)
 
+        wem_path: Path | None = None
+        if self._wem_converter is not None and self._wem_converter.available():
+            wem = self._wem_converter.convert(audio, out_dir / "wwise_work")
+            wem_path = out_dir / "audio.wem"
+            shutil.copy2(wem, wem_path)
+
         meta = arrangements[0].metadata
         project = {
             "title": meta.title,
@@ -58,6 +71,7 @@ class DlcBuilderPackager:
             "album": meta.album,
             "year": meta.year,
             "audio": audio_dest.name,
+            "audio_wem": wem_path.name if wem_path else None,
             "arrangements": [p.name for p in xml_paths],
             "stage_confidence": {
                 arr.kind.value: {k: v.value for k, v in arr.stage_confidence.items()}
@@ -85,5 +99,5 @@ class DlcBuilderPackager:
             psarc = candidates[0]
 
         return PackagingResult(
-            bundle_dir=out_dir, xml_paths=tuple(xml_paths), psarc_path=psarc
+            bundle_dir=out_dir, xml_paths=tuple(xml_paths), wem_path=wem_path, psarc_path=psarc
         )

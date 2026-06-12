@@ -31,6 +31,7 @@ class Job(Base):
     title: Mapped[str] = mapped_column(String(255))
     artist: Mapped[str] = mapped_column(String(255))
     album: Mapped[str] = mapped_column(String(255), default="")
+    year: Mapped[int | None] = mapped_column(nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )

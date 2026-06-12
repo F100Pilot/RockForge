@@ -18,6 +18,7 @@ dependencies = [
     "celery>=5.3",
     "redis>=5.0",
     "python-multipart>=0.0.9",
+    "tinytag>=1.10",
 ]
 
 [project.optional-dependencies]

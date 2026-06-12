@@ -39,6 +39,8 @@ class JobOut(BaseModel):
     stages: list[str] = PIPELINE_STAGES
     title: str
     artist: str
+    album: str
+    year: int | None
     created_at: str
     warnings: list[str]
     note_counts: dict[str, int]
@@ -79,6 +81,7 @@ class YouTubeJobIn(BaseModel):
     title: str
     artist: str
     album: str = ""
+    year: int | None = None
 
 
 def _to_out(job: Job) -> JobOut:
@@ -88,6 +91,8 @@ def _to_out(job: Job) -> JobOut:
         stage=job.stage,
         title=job.title,
         artist=job.artist,
+        album=job.album or "",
+        year=job.year,
         created_at=job.created_at.isoformat() if job.created_at else "",
         warnings=job.warnings or [],
         note_counts=job.note_counts or {},
@@ -106,10 +111,14 @@ def _enqueue(job: Job) -> None:
 @app.post("/jobs/upload", response_model=JobOut, status_code=202)
 async def create_upload_job(
     file: UploadFile = File(...),
-    title: str = Form(...),
-    artist: str = Form(...),
+    title: str = Form(""),
+    artist: str = Form(""),
     album: str = Form(""),
+    year: str = Form(""),
 ) -> JobOut:
+    """Form fields are optional: missing values are read from the file's tags
+    (ID3/Vorbis/MP4). If title or artist is in neither place, returns 422 so the
+    user fills the labels in — values are never invented."""
     suffix = Path(file.filename or "upload").suffix.lower()
     if suffix not in {".mp3", ".flac", ".wav", ".ogg", ".m4a", ".aiff"}:
         raise HTTPException(415, f"unsupported audio format: {suffix or '(none)'}")
@@ -119,8 +128,32 @@ async def create_upload_job(
     with dest.open("wb") as fh:
         shutil.copyfileobj(file.file, fh)
 
+    from rockforge.infrastructure.ingestion.tags import read_tags
+
+    tags = read_tags(dest)
+    final_title = title.strip() or tags.title
+    final_artist = artist.strip() or tags.artist
+    final_album = album.strip() or tags.album or ""
+    final_year: int | None = int(year) if year.strip().isdigit() else tags.year
+
+    missing = [n for n, v in (("title", final_title), ("artist", final_artist)) if not v]
+    if missing:
+        dest.unlink(missing_ok=True)
+        raise HTTPException(
+            422,
+            f"the file has no {'/'.join(missing)} tag — fill in the form field(s): {missing}",
+        )
+    assert final_title is not None and final_artist is not None
+
     with _session_factory() as session:
-        job = Job(source=str(dest), source_type="upload", title=title, artist=artist, album=album)
+        job = Job(
+            source=str(dest),
+            source_type="upload",
+            title=final_title,
+            artist=final_artist,
+            album=final_album,
+            year=final_year,
+        )
         session.add(job)
         session.commit()
         _enqueue(job)
@@ -142,6 +175,7 @@ def create_youtube_job(payload: YouTubeJobIn) -> JobOut:
             title=payload.title,
             artist=payload.artist,
             album=payload.album,
+            year=payload.year,
         )
         session.add(job)
         session.commit()
@@ -181,6 +215,7 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
             title=original.title,
             artist=original.artist,
             album=original.album,
+            year=original.year,
             params=params,
         )
         session.add(job)
