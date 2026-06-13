@@ -323,7 +323,9 @@
       notas entre pontos de correção consecutivos são esticadas/comprimidas proporcionalmente. Para
       corrigir um excerto inteiro de uma vez, ativa <strong>"Selecionar excerto"</strong>, arrasta uma
       caixa sobre as notas desse excerto e depois arrasta uma delas — o excerto todo move-se junto,
-      criando dois pontos de correção (início e fim do excerto).</p>
+      criando dois pontos de correção (início e fim do excerto). A <strong>forma de onda</strong> azul
+      ao fundo é a gravação (referência fixa): alinha as notas pelos seus picos — ataques de bateria,
+      transientes — e usa o cursor de reprodução para confirmar.</p>
       <div class="anchor-row">
         <label class="check"><input type="checkbox" id="selectModeChk"> Selecionar excerto</label>
         <span id="selectionInfo"></span>
@@ -354,6 +356,10 @@ let selectedJob = null, arrangements = [], currentArr = 0, pollTimer = null;
 const MIN_LEAD = 2.0;
 let tabPx = 80, tabH = 280, scoreShift = 0, offsetLive = 0;
 let audioCtx = null, syncRaf = null, tickIdx = 0;
+// Decoded recording peaks for the tab-viewer waveform: max |amplitude| per
+// 1/WAVE_HZ second bin, plus the audio duration. Reset per job.
+let wavePeaks = null, waveDuration = 0;
+const WAVE_HZ = 100;
 
 const badge = s => `<span class="badge b-${s}">${s}</span>`;
 const esc = t => { const d = document.createElement('span'); d.textContent = t ?? ''; return d.innerHTML; };
@@ -470,6 +476,7 @@ async function loadArrangements(id) {
   arrangements = await (await fetch(`/jobs/${id}/arrangements`)).json();
   syncAnchors = [];
   selectedTimes = new Set();
+  wavePeaks = null; waveDuration = 0;
   if (!arrangements.length) return;
   document.getElementById('review').style.display = '';
   const a0 = arrangements[0];
@@ -503,6 +510,7 @@ function showArr(i) {
   tabPx = px; tabH = H;
   svg.setAttribute('width', W);
   let s = '';
+  s += waveformSvg(W, H, px);  // audio reference, drawn behind staff + notes
   for (let str = 0; str < 6; str++) {
     const y = H - 35 - str * ROW;
     s += `<line x1="30" y1="${y}" x2="${W-10}" y2="${y}" stroke="#3a3c45"/>`;
@@ -810,7 +818,8 @@ function syncResetPointer() {
   const au = document.getElementById('syncAudio');
   const vt = viewerTimeAt(au ? au.currentTime : 0);
   const notes = arrangements[currentArr] ? arrangements[currentArr].notes : [];
-  tickIdx = notes.findIndex(n => n.time >= vt);
+  const warp = buildTimeWarp(syncAnchors);
+  tickIdx = notes.findIndex(n => warp(n.time) >= vt);
   if (tickIdx < 0) tickIdx = notes.length;
 }
 
@@ -818,15 +827,18 @@ function syncFrame() {
   const au = document.getElementById('syncAudio');
   const ph = document.getElementById('playhead');
   if (!au || !ph) { syncRaf = null; return; }
+  // Playhead tracks the audio (and thus the waveform), unwarped — corrected
+  // notes are warped onto these same positions, so it still passes over them.
   const vt = viewerTimeAt(au.currentTime);
-  const x = 30 + buildTimeWarp(syncAnchors)(vt) * tabPx;
+  const x = 30 + vt * tabPx;
   ph.setAttribute('x1', x); ph.setAttribute('x2', x);
   const wrap = document.getElementById('tabwrap');
   if (x < wrap.scrollLeft + 60 || x > wrap.scrollLeft + wrap.clientWidth - 60)
     wrap.scrollLeft = x - wrap.clientWidth / 2;
   const notes = arrangements[currentArr] ? arrangements[currentArr].notes : [];
   const tickOn = document.getElementById('syncTick').checked;
-  while (tickIdx < notes.length && notes[tickIdx].time <= vt) {
+  const warp = buildTimeWarp(syncAnchors);
+  while (tickIdx < notes.length && warp(notes[tickIdx].time) <= vt) {
     if (tickOn) {
       const note = notes[tickIdx];
       playNote(note.string, note.fret);
@@ -842,6 +854,7 @@ function setOffsetLive(v) {
   document.getElementById('syncOffset').value = offsetLive.toFixed(2);
   document.getElementById('syncOffsetRange').value = offsetLive;
   syncResetPointer();
+  updateWaveformOffset();
 }
 
 function initSync(j) {
@@ -858,6 +871,69 @@ function initSync(j) {
     if (!syncRaf) syncRaf = requestAnimationFrame(syncFrame);
   };
   au.onseeked = syncResetPointer;
+  decodeWaveform(j.id);
+}
+
+// Fetch + decode the recording into peak bins (max |amplitude| per 1/WAVE_HZ s)
+// so the tab viewer can draw a waveform under the notes for visual alignment.
+async function decodeWaveform(id) {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const buf = await (await fetch(`/jobs/${id}/source-audio`)).arrayBuffer();
+    const audio = await audioCtx.decodeAudioData(buf);
+    const ch = audio.getChannelData(0);
+    const bins = Math.ceil(audio.duration * WAVE_HZ);
+    const peaks = new Float32Array(bins);
+    const per = audio.sampleRate / WAVE_HZ;
+    for (let b = 0; b < bins; b++) {
+      const start = Math.floor(b * per), end = Math.min(ch.length, Math.floor((b + 1) * per));
+      let max = 0;
+      for (let i = start; i < end; i++) { const v = Math.abs(ch[i]); if (v > max) max = v; }
+      peaks[b] = max;
+    }
+    // normalize to the loudest peak so quiet recordings are still visible
+    let gmax = 0;
+    for (const p of peaks) if (p > gmax) gmax = p;
+    if (gmax > 0) for (let b = 0; b < bins; b++) peaks[b] /= gmax;
+    wavePeaks = peaks; waveDuration = audio.duration;
+    if (arrangements.length) showArr(currentArr);
+  } catch {
+    wavePeaks = null;  // unsupported codec etc. — silently skip the waveform
+  }
+}
+
+// Build the waveform path data for the current viewer timeline. The waveform is
+// the fixed audio reference (unwarped): audio time s appears at viewer time
+// viewerTimeAt(s), so notes (drawn warped) line up onto it as they are dragged.
+// Moving the offset slider shifts the waveform live (visual offset alignment).
+function waveformPathData(W, px, H) {
+  if (!wavePeaks) return '';
+  const top = 14, bot = H - 35, mid = (top + bot) / 2, amp = (bot - top) / 2 * 0.92;
+  let up = '', down = '';
+  for (let x = 30; x <= W; x += 2) {
+    const vt = (x - 30) / px;
+    const s = vt - scoreShift + offsetLive;  // inverse of viewerTimeAt
+    let p = 0;
+    if (s >= 0 && s < waveDuration) p = wavePeaks[Math.floor(s * WAVE_HZ)] || 0;
+    up += `${x === 30 ? 'M' : 'L'}${x},${(mid - p * amp).toFixed(1)} `;
+    down = `L${x},${(mid + p * amp).toFixed(1)} ` + down;
+  }
+  return up + down + 'Z';
+}
+
+function waveformSvg(W, H, px) {
+  if (!wavePeaks) return '';
+  return `<path id="wavepath" d="${waveformPathData(W, px, H)}" fill="#2a6f97" opacity=".28"/>`;
+}
+
+// Recompute only the waveform path (cheap relative to a full showArr) when the
+// offset slider moves, so the audio lines up under the notes in real time.
+function updateWaveformOffset() {
+  const path = document.getElementById('wavepath');
+  if (!path) return;
+  const svg = document.getElementById('tabsvg');
+  const W = parseFloat(svg.getAttribute('width')) || 900;
+  path.setAttribute('d', waveformPathData(W, tabPx, tabH));
 }
 
 document.getElementById('syncOffset').addEventListener('input', e => setOffsetLive(parseFloat(e.target.value)));
