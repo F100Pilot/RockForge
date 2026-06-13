@@ -50,6 +50,7 @@ class JobOut(BaseModel):
     bundle_available: bool
     source_type: str
     offset_s: float
+    import_mutes: bool
     error: str | None
 
 
@@ -63,6 +64,8 @@ class RebuildIn(BaseModel):
     # Manual drift-correction points: (chart_time_s, corrected_time_s) pairs, in the
     # chart's already-shifted timeline (as shown in the tab viewer).
     sync_anchors: list[tuple[float, float]] | None = None
+    # GP: when False, palm mute / slap / pop / tap are stripped (plain notes).
+    import_mutes: bool | None = None
 
 
 class ArrangementNoteOut(BaseModel):
@@ -111,6 +114,7 @@ def _to_out(job: Job) -> JobOut:
         bundle_available=job.bundle_dir is not None,
         source_type=job.source_type,
         offset_s=offset_s,
+        import_mutes=bool((job.params or {}).get("import_mute_techniques", True)),
         error=job.error,
     )
 
@@ -288,6 +292,7 @@ async def create_gp_job(
     offset_s: float = Form(0.0),
     tone_base: str = Form(""),
     tone_names: str = Form(""),  # comma-separated, max 4
+    import_mutes: bool = Form(True),
     lrc: UploadFile | None = File(None),
     title: str = Form(""),
     artist: str = Form(""),
@@ -345,6 +350,7 @@ async def create_gp_job(
         "tone_base": tone_base.strip() or None,
         "tone_names": tones,
         "lrc_text": lrc_text,
+        "import_mute_techniques": import_mutes,
     }
     if lead_track.strip().isdigit():
         params["lead_track"] = int(lead_track)
@@ -439,6 +445,8 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
                 ]
                 stages.append([list(a) for a in payload.sync_anchors])
                 params["sync_anchor_stages"] = stages
+        if payload.import_mutes is not None:
+            params["import_mute_techniques"] = payload.import_mutes
         job = Job(
             source=original.source,
             source_type=original.source_type,

@@ -234,6 +234,9 @@
         <input type="text" name="tone_names" placeholder="vírgulas, máx. 4"></div>
       <div class="field"><label>Letra (LRC ou UltraStar TXT)</label>
         <input type="file" name="lrc" accept=".lrc,.txt"></div>
+      <div class="field" style="flex-basis:100%">
+        <label class="check"><input type="checkbox" name="import_mutes" value="true" checked>
+        Importar palm mute / slap / pop / tap do GP (desliga para notas limpas)</label></div>
       <div class="field"><label>Título</label>
         <input type="text" name="title" placeholder="auto do GP/tags"></div>
       <div class="field"><label>Banda</label>
@@ -286,6 +289,7 @@
         <label>Afinação (MIDI por corda):</label>
         <span id="tuningInputs"></span>
         <label class="check"><input type="checkbox" id="splitChk" checked> tentar split Lead/Rhythm (experimental)</label>
+        <label class="check"><input type="checkbox" id="muteChk" checked> importar palm mute / slap / pop / tap (desliga p/ notas limpas)</label>
         <button type="submit" class="secondary">Reconstruir com estes valores</button>
       </form>
 
@@ -463,6 +467,7 @@ async function selectJob(id) {
   if (j.psarc_available) dl.innerHTML += `<a href="/jobs/${j.id}/psarc">PSARC</a>`;
   if (j.bundle_available && !j.psarc_available) dl.innerHTML += `<span class="meta">PSARC requer Wwise — ver README</span>`;
 
+  document.getElementById('muteChk').checked = j.import_mutes !== false;
   if (j.status === 'completed' && j.bundle_available) await loadArrangements(j.id);
   else document.getElementById('review').style.display = 'none';
 
@@ -619,6 +624,7 @@ async function applySyncAnchors() {
       split_lead_rhythm: document.getElementById('splitChk').checked,
       offset_s: offsetLive,
       sync_anchors: syncAnchors,
+      import_mutes: document.getElementById('muteChk').checked,
     }),
   });
   const b = await r.json();
@@ -947,6 +953,7 @@ document.getElementById('syncApply').addEventListener('click', async () => {
       tuning_midi: midi.some(isNaN) ? null : midi,
       split_lead_rhythm: document.getElementById('splitChk').checked,
       offset_s: offsetLive,
+      import_mutes: document.getElementById('muteChk').checked,
     }),
   });
   const b = await r.json();
@@ -982,6 +989,7 @@ document.getElementById('rebuildForm').addEventListener('submit', async e => {
     body: JSON.stringify({
       tuning_midi: midi,
       split_lead_rhythm: document.getElementById('splitChk').checked,
+      import_mutes: document.getElementById('muteChk').checked,
     }),
   });
   const b = await r.json();
@@ -1015,6 +1023,8 @@ document.getElementById('gpJobForm').addEventListener('submit', async e => {
   e.preventDefault();
   const f = new FormData(e.target);
   f.append('gp_token', gpToken);
+  // Unchecked checkboxes are not sent; set the value explicitly so "off" sticks.
+  f.set('import_mutes', e.target.querySelector('input[name=import_mutes]').checked);
   const r = await fetch('/jobs/gp', { method: 'POST', body: f });
   const b = await r.json();
   if (r.ok) { toast('Job criado.', 'ok'); selectJob(b.id); } else toast(b.detail || 'erro');
