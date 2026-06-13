@@ -96,6 +96,9 @@
   .syncctrls { display:flex; gap:.8rem; align-items:center; flex-wrap:wrap; font-size:.85rem; color:var(--muted); }
   #playhead { pointer-events:none; }
   #tabwrap { overflow-x:auto; background:#0f1013; border:1px solid var(--line); border-radius:8px; margin-top:.5rem; }
+  .note-grp { cursor: ew-resize; }
+  .anchor-row { display:flex; align-items:center; gap:.5rem; font-size:.85rem; color:var(--muted); margin:.2rem 0; }
+  .anchor-row button { padding:.1rem .5rem; }
   .meta { font-size:.85rem; color:var(--muted); }
   .tuninggrid { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; }
   .tuninggrid input { width:3.4rem; text-align:center; }
@@ -311,7 +314,11 @@
       <span style="color:#e6483c">E</span>
       <span style="color:#f5dc3c">A</span> <span style="color:#3f9bdc">D</span>
       <span style="color:#f0973c">G</span> <span style="color:#5cc24a">B</span>
-      <span style="color:#b56cdc">e</span> (grave→agudo). Eixo X em segundos.</p>
+      <span style="color:#b56cdc">e</span> (grave→agudo). Eixo X em segundos.
+      Para corrigir a deriva de sincronização ao longo da música, <strong>arrasta uma nota</strong>
+      horizontalmente para o instante onde ela deveria estar — isto cria um ponto de correção; as
+      notas entre pontos de correção consecutivos são esticadas/comprimidas proporcionalmente.</p>
+      <div id="syncAnchorsList"></div>
     </div>
   </div>
 </div>
@@ -450,6 +457,7 @@ async function selectJob(id) {
 
 async function loadArrangements(id) {
   arrangements = await (await fetch(`/jobs/${id}/arrangements`)).json();
+  syncAnchors = [];
   if (!arrangements.length) return;
   document.getElementById('review').style.display = '';
   const a0 = arrangements[0];
@@ -500,6 +508,7 @@ function showArr(i) {
     else groups.push({ time: n.time, notes: [n] });
   }
   for (const g of groups) {
+    s += `<g class="note-grp" data-t="${g.time}">`;
     if (g.notes.length > 1) {
       const x = 30 + g.time * px;
       const ys = g.notes.map(n => H - 35 - n.string * ROW);
@@ -522,12 +531,92 @@ function showArr(i) {
         s += `<title>${n.techniques.join(', ')}</title>`;
       }
     }
+    s += `</g>`;
   }
+  for (const [origT, newT] of syncAnchors) {
+    const x1 = 30 + origT * px, x2 = 30 + newT * px;
+    s += `<line x1="${x1}" y1="0" x2="${x1}" y2="${H-35}" stroke="#ff7a45" stroke-width="1.5" stroke-dasharray="4,3"/>`;
+    if (Math.abs(x2 - x1) > 0.5)
+      s += `<line x1="${x1}" y1="6" x2="${x2}" y2="6" stroke="#ff7a45" stroke-width="2" marker-end="url(#arrow)"/>`;
+  }
+  s += `<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 z" fill="#ff7a45"/></marker></defs>`;
   s += `<line id="playhead" x1="30" y1="0" x2="30" y2="${H}" stroke="#ff7a45" stroke-width="2" opacity=".9"/>`;
   svg.innerHTML = s;
   syncResetPointer();
+  renderAnchorsList();
 }
 window.showArr = showArr;
+
+// ---- Manual drift correction (drag a note to where it should play) ----
+// syncAnchors: [(chartTime, correctedTime), ...] in the chart's currently
+// displayed (already-shifted) timeline; sent verbatim to /rebuild as
+// sync_anchors, which piecewise-linearly stretches notes/beats/sections.
+let syncAnchors = [];
+
+function renderAnchorsList() {
+  const el = document.getElementById('syncAnchorsList');
+  if (!syncAnchors.length) { el.innerHTML = ''; return; }
+  el.innerHTML = syncAnchors.map(([o, n], i) =>
+    `<div class="anchor-row">Correção ${i+1}: ${o.toFixed(2)}s → ${n.toFixed(2)}s
+     <button type="button" data-i="${i}" class="anchor-remove">remover</button></div>`
+  ).join('') + `<div class="anchor-row">
+     <button type="button" id="applyAnchors">Aplicar correções e reconstruir (${syncAnchors.length})</button>
+     <button type="button" id="clearAnchors" class="secondary">Limpar</button></div>`;
+  el.querySelectorAll('.anchor-remove').forEach(b => b.addEventListener('click', () => {
+    syncAnchors.splice(parseInt(b.dataset.i, 10), 1);
+    renderAnchorsList();
+  }));
+  document.getElementById('clearAnchors').addEventListener('click', () => { syncAnchors = []; renderAnchorsList(); });
+  document.getElementById('applyAnchors').addEventListener('click', applySyncAnchors);
+}
+
+async function applySyncAnchors() {
+  if (!selectedJob) return;
+  const midi = [...document.querySelectorAll('#tuningInputs input')].map(i => parseInt(i.value, 10));
+  const r = await fetch(`/jobs/${selectedJob.id}/rebuild`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      tuning_midi: midi.some(isNaN) ? null : midi,
+      split_lead_rhythm: document.getElementById('splitChk').checked,
+      offset_s: offsetLive,
+      sync_anchors: syncAnchors,
+    }),
+  });
+  const b = await r.json();
+  if (r.ok) { toast('A reconstruir com as correções de sincronização…', 'ok'); syncAnchors = []; selectJob(b.id); }
+  else toast(b.detail || 'erro');
+}
+
+(() => {
+  let dragging = null; // { grp, startX, origT }
+  const svg = document.getElementById('tabsvg');
+  svg.addEventListener('pointerdown', e => {
+    const grp = e.target.closest('.note-grp');
+    if (!grp) return;
+    dragging = { grp, startX: e.clientX, origT: parseFloat(grp.dataset.t) };
+    grp.setPointerCapture(e.pointerId);
+  });
+  svg.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    const dx = e.clientX - dragging.startX;
+    dragging.grp.setAttribute('transform', `translate(${dx},0)`);
+  });
+  svg.addEventListener('pointerup', e => {
+    if (!dragging) return;
+    const dx = e.clientX - dragging.startX;
+    dragging.grp.removeAttribute('transform');
+    const deltaS = dx / tabPx;
+    if (Math.abs(deltaS) > 0.01) {
+      const newT = dragging.origT + deltaS;
+      const i = syncAnchors.findIndex(([o]) => Math.abs(o - dragging.origT) < 0.05);
+      if (i >= 0) syncAnchors[i] = [dragging.origT, newT];
+      else syncAnchors.push([dragging.origT, newT]);
+      showArr(currentArr);
+    }
+    dragging = null;
+  });
+})();
 
 // ---- Visual sync tool (GP jobs) ----
 function clickSound() {
