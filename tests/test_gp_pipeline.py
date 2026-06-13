@@ -134,14 +134,30 @@ def test_gp_pipeline_sync_anchors_shift_notes(two_track_gp5: Path, tmp_path: Pat
     # A single anchor (2.5 -> 3.0) is a uniform +0.5s shift applied everywhere.
     spec = GpJobSpec(
         gp_path=two_track_gp5, audio_source="x.wav", lead_track=0,
-        sync_anchors=[(2.5, 3.0)],
+        sync_anchor_stages=[[(2.5, 3.0)]],
     )
     result = make_use_case().run(spec, SongMetadata(title="T", artist="A"), tmp_path / "w")
-    assert any("1 manual drift-correction" in w for w in result.warnings)
+    assert any("1 manual drift-correction point(s) across 1 round(s)" in w for w in result.warnings)
 
     lead_xml = next(p for p in result.packaging.xml_paths if p.name == "arrangement_combined.xml")
     times = [float(n.get("time", "0")) for n in ET.parse(lead_xml).getroot().findall(".//note")]
     assert times == pytest.approx([2.5, 3.0, 3.5])
+
+
+def test_gp_pipeline_sync_anchor_stages_compose(two_track_gp5: Path, tmp_path: Path) -> None:
+    # Two successive correction rounds (as would happen across separate
+    # sessions) must compose: round 1 shifts everything by +0.5s, round 2
+    # (applied to that already-shifted timeline) shifts by another +0.5s.
+    spec = GpJobSpec(
+        gp_path=two_track_gp5, audio_source="x.wav", lead_track=0,
+        sync_anchor_stages=[[(2.5, 3.0)], [(3.0, 3.5)]],
+    )
+    result = make_use_case().run(spec, SongMetadata(title="T", artist="A"), tmp_path / "w")
+    assert any("2 manual drift-correction point(s) across 2 round(s)" in w for w in result.warnings)
+
+    lead_xml = next(p for p in result.packaging.xml_paths if p.name == "arrangement_combined.xml")
+    times = [float(n.get("time", "0")) for n in ET.parse(lead_xml).getroot().findall(".//note")]
+    assert times == pytest.approx([3.0, 3.5, 4.0])
 
 
 def test_gp_pipeline_zero_offset_warns(two_track_gp5: Path, tmp_path: Path) -> None:
