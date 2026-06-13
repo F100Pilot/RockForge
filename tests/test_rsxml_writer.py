@@ -128,6 +128,27 @@ def test_simultaneous_notes_become_chords_with_templates(tmp_path: Path) -> None
     assert len(notes) == 1 and notes[0].get("fret") == "12"
 
 
+def test_chord_element_mirrors_palm_mute_of_its_notes(tmp_path: Path) -> None:
+    # The game reads palm mute from the <chord> element; if its chordNotes say
+    # palmMute=1 but the chord says 0, the highway sprite renders corrupt.
+    arr = make_arrangement()
+    pm = frozenset({Technique.PALM_MUTE})
+    arr.notes = [
+        TabNote(string=0, fret=0, time=1.0, sustain=0.5, techniques=pm),
+        TabNote(string=1, fret=2, time=1.0, sustain=0.5, techniques=pm),
+        TabNote(string=0, fret=3, time=2.0, sustain=0.5),  # plain chord
+        TabNote(string=1, fret=5, time=2.0, sustain=0.5),
+    ]
+    out = write_arrangement_xml(arr, tmp_path / "pm.xml")
+    chords = ET.parse(out).getroot().findall("levels/level/chords/chord")
+    assert len(chords) == 2
+    pm_chord, plain_chord = chords
+    assert pm_chord.get("palmMute") == "1"
+    assert all(cn.get("palmMute") == "1" for cn in pm_chord.findall("chordNote"))
+    assert plain_chord.get("palmMute") == "0"
+    assert all(cn.get("palmMute") == "0" for cn in plain_chord.findall("chordNote"))
+
+
 def test_chord_counts_are_consistent(tmp_path: Path) -> None:
     out = write_arrangement_xml(make_chord_arrangement(), tmp_path / "c.xml")
     root = ET.parse(out).getroot()
