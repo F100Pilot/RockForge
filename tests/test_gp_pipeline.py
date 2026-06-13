@@ -63,6 +63,27 @@ def two_track_gp5(tmp_path: Path) -> Path:
     return path
 
 
+@pytest.fixture()
+def palm_muted_gp5(tmp_path: Path) -> Path:
+    song = gp.Song()
+    song.title, song.artist, song.tempo = "PM", "Band", 120
+    lead = song.tracks[0]
+    lead.name = "Lead Gtr"
+    v = lead.measures[0].voices[0]
+    for fret in [5, 7, 8]:
+        b = gp.Beat(v)
+        b.status = gp.BeatStatus.normal
+        b.duration = gp.Duration(value=4)
+        n = gp.Note(b)
+        n.string, n.value, n.type = 1, fret, gp.NoteType.normal
+        n.effect.palmMute = True
+        b.notes.append(n)
+        v.beats.append(b)
+    path = tmp_path / "pm.gp5"
+    gp.write(song, str(path))
+    return path
+
+
 def make_use_case() -> GenerateFromGpUseCase:
     return GenerateFromGpUseCase(
         ingestor=FakeIngestor(),
@@ -158,6 +179,30 @@ def test_gp_pipeline_sync_anchor_stages_compose(two_track_gp5: Path, tmp_path: P
     lead_xml = next(p for p in result.packaging.xml_paths if p.name == "arrangement_combined.xml")
     times = [float(n.get("time", "0")) for n in ET.parse(lead_xml).getroot().findall(".//note")]
     assert times == pytest.approx([3.0, 3.5, 4.0])
+
+
+def test_gp_pipeline_strips_mute_techniques_when_disabled(
+    palm_muted_gp5: Path, tmp_path: Path
+) -> None:
+    spec = GpJobSpec(
+        gp_path=palm_muted_gp5, audio_source="x.wav", lead_track=0,
+        import_mute_techniques=False,
+    )
+    result = make_use_case().run(spec, SongMetadata(title="T", artist="A"), tmp_path / "w")
+    assert any("palm mute" in w and "removed" in w for w in result.warnings)
+    lead_xml = next(p for p in result.packaging.xml_paths if p.name == "arrangement_combined.xml")
+    notes = ET.parse(lead_xml).getroot().findall(".//note")
+    assert notes and all(n.get("palmMute") == "0" for n in notes)
+
+
+def test_gp_pipeline_keeps_mute_techniques_by_default(
+    palm_muted_gp5: Path, tmp_path: Path
+) -> None:
+    spec = GpJobSpec(gp_path=palm_muted_gp5, audio_source="x.wav", lead_track=0)
+    result = make_use_case().run(spec, SongMetadata(title="T", artist="A"), tmp_path / "w")
+    lead_xml = next(p for p in result.packaging.xml_paths if p.name == "arrangement_combined.xml")
+    notes = ET.parse(lead_xml).getroot().findall(".//note")
+    assert any(n.get("palmMute") == "1" for n in notes)
 
 
 def test_gp_pipeline_zero_offset_warns(two_track_gp5: Path, tmp_path: Path) -> None:

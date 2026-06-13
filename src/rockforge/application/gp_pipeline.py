@@ -34,7 +34,7 @@ from rockforge.domain.arrangement import (
     ToneChange,
 )
 from rockforge.domain.errors import IngestionError
-from rockforge.domain.music import TabNote
+from rockforge.domain.music import TabNote, Technique
 from rockforge.infrastructure.gpimport.parser import (
     GpSection,
     ParsedGpTrack,
@@ -71,6 +71,19 @@ class GpJobSpec:
     # made in separate sessions (after reloading a completed job) compose
     # correctly instead of overwriting each other.
     sync_anchor_stages: list[list[tuple[float, float]]] = field(default_factory=list)
+    # When False, the mute/attack techniques (palm mute, slap, pop, tap) are
+    # stripped from every note so they import as plain notes. These are the
+    # techniques that change the Rocksmith note sprite (the palm-mute chevron
+    # looks like pop/slap "wings"); some GP files mark them where the user wants
+    # clean notes, so this is an opt-out.
+    import_mute_techniques: bool = True
+
+
+# Techniques that alter the in-game note sprite (chevron/"wings"); dropped when
+# import_mute_techniques is False.
+_MUTE_TECHNIQUES = frozenset(
+    {Technique.PALM_MUTE, Technique.SLAP, Technique.POP, Technique.TAP}
+)
 
 
 def _build_time_warp(anchors: list[tuple[float, float]]) -> Callable[[float], float]:
@@ -100,6 +113,23 @@ def _build_time_warp(anchors: list[tuple[float, float]]) -> Callable[[float], fl
         return y0 + (y1 - y0) * (t - x0) / (x1 - x0)
 
     return warp
+
+
+def _strip_mute_techniques(p: ParsedGpTrack) -> ParsedGpTrack:
+    """Return a copy of the track with palm mute / slap / pop / tap removed."""
+    notes = [
+        TabNote(
+            string=n.string, fret=n.fret, time=n.time, sustain=n.sustain,
+            techniques=frozenset(n.techniques - _MUTE_TECHNIQUES),
+            bend_semitones=n.bend_semitones, slide_to_fret=n.slide_to_fret,
+        )
+        if n.techniques & _MUTE_TECHNIQUES else n
+        for n in p.notes
+    ]
+    return ParsedGpTrack(
+        notes=notes, tuning=p.tuning, tempo_map=p.tempo_map,
+        sections=p.sections, lyrics=p.lyrics,
+    )
 
 
 def _warp_parsed_track(p: ParsedGpTrack, warp: Callable[[float], float]) -> ParsedGpTrack:
@@ -210,6 +240,17 @@ class GenerateFromGpUseCase:
                 continue
             warp = _build_time_warp(stage_anchors)
             parsed = {kind: _warp_parsed_track(p, warp) for kind, p in parsed.items()}
+
+        if not spec.import_mute_techniques:
+            stripped = sum(
+                1 for p in parsed.values() for n in p.notes if n.techniques & _MUTE_TECHNIQUES
+            )
+            parsed = {kind: _strip_mute_techniques(p) for kind, p in parsed.items()}
+            if stripped:
+                warnings.append(
+                    f"palm mute / slap / pop / tap removed from {stripped} note(s) on request "
+                    "(imported as plain notes)"
+                )
 
         stage("build_arrangements")
         first = next(iter(parsed.values()))

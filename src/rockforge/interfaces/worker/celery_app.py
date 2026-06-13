@@ -129,6 +129,7 @@ def generate_cdlc(job_id: str) -> None:
                         [(float(a[0]), float(a[1])) for a in stage]
                         for stage in params.get("sync_anchor_stages", [])
                     ],
+                    import_mute_techniques=bool(params.get("import_mute_techniques", True)),
                 )
                 result = gp_use_case.run(
                     spec=spec,
