@@ -308,10 +308,10 @@
       sobreposta = técnica (B bend · H hammer-on · P pull-off · S slide · HA harmónico ·
       PM palm mute · V vibrato · T tapping · SL slap · PO pop · A acento) — passa o cursor
       para ver a lista completa. Cor = corda, igual ao Rocksmith:
-      <span style="color:#b56cdc">E</span>
-      <span style="color:#5cc24a">A</span> <span style="color:#f0973c">D</span>
-      <span style="color:#3f9bdc">G</span> <span style="color:#f5dc3c">B</span>
-      <span style="color:#e6483c">e</span> (grave→agudo). Eixo X em segundos.</p>
+      <span style="color:#e6483c">E</span>
+      <span style="color:#f5dc3c">A</span> <span style="color:#3f9bdc">D</span>
+      <span style="color:#f0973c">G</span> <span style="color:#5cc24a">B</span>
+      <span style="color:#b56cdc">e</span> (grave→agudo). Eixo X em segundos.</p>
     </div>
   </div>
 </div>
@@ -463,9 +463,8 @@ async function loadArrangements(id) {
   showArr(0);
 }
 
-// String colors low E -> high e: purple, green, orange, blue, yellow, red
-// (i.e. high e = red, B = yellow, G = blue, D = orange, A = green, E = purple).
-const STRING_COLORS = ['#b56cdc', '#5cc24a', '#f0973c', '#3f9bdc', '#f5dc3c', '#e6483c'];
+// String colors low E -> high e: red, yellow, blue, orange, green, purple.
+const STRING_COLORS = ['#e6483c', '#f5dc3c', '#3f9bdc', '#f0973c', '#5cc24a', '#b56cdc'];
 
 // Short on-tab labels for each technique, drawn above notes that have them.
 const TECH_ABBR = {
