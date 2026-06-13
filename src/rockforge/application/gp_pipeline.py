@@ -192,16 +192,12 @@ class GenerateFromGpUseCase:
                 "measures) — supply an LRC file for proper sync"
             )
 
-        warnings.append(
-            f"sync: first note placed at {score_shift:.2f}s — the song's first note must "
-            f"be heard at that instant in the recording. If the chart and audio drift, set "
-            f"the sync offset to the second where the music actually starts and rebuild."
-        )
         if pad_start_s > 0.0:
             warnings.append(
-                f"added {pad_start_s:.2f}s of silence to reach the {MIN_LEAD_S:.0f}s minimum "
-                f"lead-in DLC Builder needs for the count-in (your offset was "
-                f"{spec.offset_s:.2f}s)"
+                f"sync offset was {spec.offset_s:.2f}s; added {pad_start_s:.2f}s of silence to "
+                f"reach the {MIN_LEAD_S:.0f}s minimum lead-in DLC Builder needs for the "
+                f"count-in. The song's first note now plays at {score_shift:.2f}s — use the "
+                f"visual sync tool if the chart and audio still drift."
             )
 
         stage("package")
