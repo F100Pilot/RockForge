@@ -90,6 +90,8 @@ class YouTubeJobIn(BaseModel):
 
 
 def _to_out(job: Job) -> JobOut:
+    raw_offset = (job.params or {}).get("offset_s")
+    offset_s = float(raw_offset) if isinstance(raw_offset, (int, float, str)) else 0.0
     return JobOut(
         id=job.id,
         status=job.status.value,
@@ -104,7 +106,7 @@ def _to_out(job: Job) -> JobOut:
         psarc_available=job.psarc_path is not None,
         bundle_available=job.bundle_dir is not None,
         source_type=job.source_type,
-        offset_s=float((job.params or {}).get("offset_s") or 0.0),
+        offset_s=offset_s,
         error=job.error,
     )
 
