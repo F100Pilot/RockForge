@@ -95,9 +95,14 @@ def _note_attrs(n: TabNote) -> dict[str, str]:
         "harmonic": "1" if has(Technique.HARMONIC) else "0",
         "palmMute": "1" if has(Technique.PALM_MUTE) else "0",
         "vibrato": "1" if has(Technique.VIBRATO) else "0",
+        "tap": "1" if has(Technique.TAP) else "0",
+        "slap": "1" if has(Technique.SLAP) else "0",
+        "pluck": "1" if has(Technique.POP) else "0",
         "linkNext": "0",
-        "accent": "0",
+        "accent": "1" if has(Technique.ACCENT) else "0",
+        "hopo": "1" if has(Technique.HAMMER_ON) or has(Technique.PULL_OFF) else "0",
         "slideTo": str(n.slide_to_fret) if n.slide_to_fret is not None else "-1",
+        "slideUnpitchTo": "-1",
     }
     return attrs
 

@@ -304,12 +304,14 @@
       <h2>Transcrição (notas e acordes)</h2>
       <div class="tabnav" id="arrTabs"></div>
       <div id="tabwrap"><svg id="tabsvg" height="190"></svg></div>
-      <p class="hint">● nota · ▮ nota de acorde (ligadas por uma barra vertical) · contorno
-      tracejado branco = técnica (bend/HO/PO/harmónico/palm mute/vibrato) — passa o cursor
-      para ver qual. Cor = corda, igual ao Rocksmith: <span style="color:#e6483c">E</span>
-      <span style="color:#f0973c">A</span> <span style="color:#f5dc3c">D</span>
-      <span style="color:#5cc24a">G</span> <span style="color:#3f9bdc">B</span>
-      <span style="color:#b56cdc">e</span> (grave→agudo). Eixo X em segundos.</p>
+      <p class="hint">● nota · ▮ nota de acorde (ligadas por uma barra vertical) · sigla
+      sobreposta = técnica (B bend · H hammer-on · P pull-off · S slide · HA harmónico ·
+      PM palm mute · V vibrato · T tapping · SL slap · PO pop · A acento) — passa o cursor
+      para ver a lista completa. Cor = corda, igual ao Rocksmith:
+      <span style="color:#b56cdc">E</span>
+      <span style="color:#5cc24a">A</span> <span style="color:#f0973c">D</span>
+      <span style="color:#3f9bdc">G</span> <span style="color:#f5dc3c">B</span>
+      <span style="color:#e6483c">e</span> (grave→agudo). Eixo X em segundos.</p>
     </div>
   </div>
 </div>
@@ -461,9 +463,15 @@ async function loadArrangements(id) {
   showArr(0);
 }
 
-// Rocksmith note-highway string colors (low E -> high e), per the
-// EOF/CDLC-tooling convention community charts use for the six strings.
-const STRING_COLORS = ['#e6483c', '#f0973c', '#f5dc3c', '#5cc24a', '#3f9bdc', '#b56cdc'];
+// String colors low E -> high e: purple, green, orange, blue, yellow, red
+// (i.e. high e = red, B = yellow, G = blue, D = orange, A = green, E = purple).
+const STRING_COLORS = ['#b56cdc', '#5cc24a', '#f0973c', '#3f9bdc', '#f5dc3c', '#e6483c'];
+
+// Short on-tab labels for each technique, drawn above notes that have them.
+const TECH_ABBR = {
+  bend: 'B', hammerOn: 'H', pullOff: 'P', slide: 'S', harmonic: 'HA',
+  palmMute: 'PM', vibrato: 'V', tap: 'T', slap: 'SL', pluck: 'PO', accent: 'A',
+};
 
 function showArr(i) {
   currentArr = i;
@@ -509,7 +517,11 @@ function showArr(i) {
         : `<circle cx="${x}" cy="${y}" r="9" fill="${color}"${tech ? ' stroke="#fff" stroke-width="2" stroke-dasharray="2,2"' : ''}/>`;
       s += shape;
       s += `<text x="${x}" y="${y+3.5}" fill="#14151a" font-size="10" font-weight="700" text-anchor="middle">${n.fret}</text>`;
-      if (tech) s += `<title>${n.techniques.join(', ')}</title>`;
+      if (tech) {
+        const abbr = n.techniques.map(t => TECH_ABBR[t] || t).join('');
+        s += `<text x="${x}" y="${y-12}" fill="#fff" font-size="9" font-weight="700" text-anchor="middle">${abbr}</text>`;
+        s += `<title>${n.techniques.join(', ')}</title>`;
+      }
     }
   }
   s += `<line id="playhead" x1="30" y1="0" x2="30" y2="${H}" stroke="#ff7a45" stroke-width="2" opacity=".9"/>`;
