@@ -216,6 +216,15 @@ def parse_gp_track(path: Path, track_index: int, offset_s: float = 0.0) -> Parse
                     if any(int(s.value) in _SLIDE_OUT_TYPES | _SLIDE_SHIFT_TYPES
                            for s in eff.slides):
                         techs.add(Technique.SLIDE)
+                    if eff.accentuatedNote or eff.heavyAccentuatedNote:
+                        techs.add(Technique.ACCENT)
+                    slap = int(beat.effect.slapEffect.value)
+                    if slap == 1:
+                        techs.add(Technique.TAP)
+                    elif slap == 2:
+                        techs.add(Technique.SLAP)
+                    elif slap == 3:
+                        techs.add(Technique.POP)
                     raw.append(
                         (
                             TabNote(
@@ -244,6 +253,21 @@ def parse_gp_track(path: Path, track_index: int, offset_s: float = 0.0) -> Parse
             string=n.string, fret=n.fret, time=n.time, sustain=n.sustain,
             techniques=n.techniques | {tech},
             bend_semitones=n.bend_semitones, slide_to_fret=n.slide_to_fret,
+        )
+
+    # GP marks a pitched slide on the ORIGIN note; Rocksmith's slideTo also
+    # belongs on the origin note but needs the DESTINATION fret. Fill it in
+    # from the next note on the same string.
+    for a, b in zip(order, order[1:], strict=False):
+        if notes[a].string != notes[b].string:
+            continue
+        if Technique.SLIDE not in notes[a].techniques:
+            continue
+        n = notes[a]
+        notes[a] = TabNote(
+            string=n.string, fret=n.fret, time=n.time, sustain=n.sustain,
+            techniques=n.techniques, bend_semitones=n.bend_semitones,
+            slide_to_fret=notes[b].fret,
         )
 
     notes.sort(key=lambda n: (n.time, n.string))

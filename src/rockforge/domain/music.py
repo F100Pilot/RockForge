@@ -16,6 +16,8 @@ class Technique(Enum):
     Only BEND and SLIDE have published evidence of detectability from audio
     (and only on isolated notes — see docs/research/02-transcription.md).
     HAMMER_ON / PULL_OFF here are rule-based inferences, not model output.
+    TAP/SLAP/POP/ACCENT come from the GP path (PyGuitarPro beat/note effects);
+    they have no audio-based detector.
     """
 
     BEND = "bend"
@@ -25,6 +27,10 @@ class Technique(Enum):
     HARMONIC = "harmonic"
     PALM_MUTE = "palmMute"
     VIBRATO = "vibrato"
+    TAP = "tap"
+    SLAP = "slap"
+    POP = "pluck"
+    ACCENT = "accent"
 
 
 @dataclass(frozen=True)

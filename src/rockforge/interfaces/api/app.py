@@ -457,11 +457,16 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
 
         def parse_note(el: ET.Element, chord: bool) -> ArrangementNoteOut:
             techs = [
-                t for t in ("hammerOn", "pullOff", "harmonic", "palmMute", "vibrato")
+                t for t in (
+                    "hammerOn", "pullOff", "harmonic", "palmMute", "vibrato",
+                    "tap", "slap", "pluck", "accent",
+                )
                 if el.get(t) == "1"
             ]
             if el.get("bend", "0") != "0":
                 techs.append("bend")
+            if el.get("slideTo", "-1") != "-1":
+                techs.append("slide")
             return ArrangementNoteOut(
                 time=float(el.get("time", "0")),
                 string=int(el.get("string", "0")),
