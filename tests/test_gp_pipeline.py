@@ -134,6 +134,5 @@ def test_gp_pipeline_zero_offset_warns(two_track_gp5: Path, tmp_path: Path) -> N
     result = make_use_case().run(spec, SongMetadata(title="T", artist="A"), tmp_path / "w")
     # offset 0 => silence prepended up to the minimum lead-in (avoids the
     # DLC Builder "no room for an empty phrase" crash at content time 0)
-    assert any("minimum" in w and "lead-in" in w for w in result.warnings)
-    assert any("first note placed at 2.00s" in w for w in result.warnings)
+    assert any("minimum" in w and "lead-in" in w and "2.00s" in w for w in result.warnings)
     assert result.note_counts == {"Combined": 3}  # single track => combined arrangement
