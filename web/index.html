@@ -97,6 +97,8 @@
   #playhead { pointer-events:none; }
   #tabwrap { overflow-x:auto; background:#0f1013; border:1px solid var(--line); border-radius:8px; margin-top:.5rem; }
   .note-grp { cursor: ew-resize; }
+  .note-grp.selected .note-shape { stroke: #ffd23f; stroke-width: 3px; }
+  #selectionBox { fill: rgba(255,210,63,.15); stroke: #ffd23f; stroke-dasharray: 4,3; pointer-events: none; }
   .anchor-row { display:flex; align-items:center; gap:.5rem; font-size:.85rem; color:var(--muted); margin:.2rem 0; }
   .anchor-row button { padding:.1rem .5rem; }
   .meta { font-size:.85rem; color:var(--muted); }
@@ -230,7 +232,7 @@
         <input type="text" name="tone_base" placeholder="ex.: dist_rhythm"></div>
       <div class="field"><label>Tones extra</label>
         <input type="text" name="tone_names" placeholder="vírgulas, máx. 4"></div>
-      <div class="field"><label>Letra (LRC)</label>
+      <div class="field"><label>Letra (LRC ou UltraStar TXT)</label>
         <input type="file" name="lrc" accept=".lrc,.txt"></div>
       <div class="field"><label>Título</label>
         <input type="text" name="title" placeholder="auto do GP/tags"></div>
@@ -248,8 +250,9 @@
     lead-in). Ouve a gravação, vê a que segundo entra a música e escreve esse valor; se a partitura
     e o áudio ainda estiverem dessincronizados, ajusta este número e reconstrói. Mínimo de 2s de
     lead-in (o DLC Builder exige espaço para o count-in); se puseres menos, acrescentamos o silêncio
-    em falta. Para letra sincronizada usa um ficheiro LRC; a letra embutida no GP só tem tempo ao
-    nível da linha. Os
+    em falta. Para letra sincronizada usa um ficheiro LRC ou um .txt exportado do UltraStar Creator
+    (timing por sílaba, convertido automaticamente a partir do BPM/GAP do ficheiro); a letra embutida
+    no GP só tem tempo ao nível da linha. Os
     nomes de tones são gravados no XML (tonebase/tonea–toned) e mapeiam-se a tones reais no DLC
     Builder.</p>
   </div>
@@ -317,7 +320,15 @@
       <span style="color:#b56cdc">e</span> (grave→agudo). Eixo X em segundos.
       Para corrigir a deriva de sincronização ao longo da música, <strong>arrasta uma nota</strong>
       horizontalmente para o instante onde ela deveria estar — isto cria um ponto de correção; as
-      notas entre pontos de correção consecutivos são esticadas/comprimidas proporcionalmente.</p>
+      notas entre pontos de correção consecutivos são esticadas/comprimidas proporcionalmente. Para
+      corrigir um excerto inteiro de uma vez, ativa <strong>"Selecionar excerto"</strong>, arrasta uma
+      caixa sobre as notas desse excerto e depois arrasta uma delas — o excerto todo move-se junto,
+      criando dois pontos de correção (início e fim do excerto).</p>
+      <div class="anchor-row">
+        <label class="check"><input type="checkbox" id="selectModeChk"> Selecionar excerto</label>
+        <span id="selectionInfo"></span>
+        <button type="button" id="clearSelection" class="secondary" hidden>Limpar seleção</button>
+      </div>
       <div id="syncAnchorsList"></div>
     </div>
   </div>
@@ -458,6 +469,7 @@ async function selectJob(id) {
 async function loadArrangements(id) {
   arrangements = await (await fetch(`/jobs/${id}/arrangements`)).json();
   syncAnchors = [];
+  selectedTimes = new Set();
   if (!arrangements.length) return;
   document.getElementById('review').style.display = '';
   const a0 = arrangements[0];
@@ -508,7 +520,8 @@ function showArr(i) {
     else groups.push({ time: n.time, notes: [n] });
   }
   for (const g of groups) {
-    s += `<g class="note-grp" data-t="${g.time}">`;
+    const sel = selectedTimes.has(g.time) ? ' selected' : '';
+    s += `<g class="note-grp${sel}" data-t="${g.time}">`;
     if (g.notes.length > 1) {
       const x = 30 + g.time * px;
       const ys = g.notes.map(n => H - 35 - n.string * ROW);
@@ -521,8 +534,8 @@ function showArr(i) {
       if (n.sustain > 0.05)
         s += `<rect x="${x}" y="${y-3}" width="${n.sustain*px}" height="6" fill="${color}" opacity=".4" rx="3"/>`;
       const shape = n.chord
-        ? `<rect x="${x-R}" y="${y-R}" width="${R*2}" height="${R*2}" rx="4" fill="${color}"${tech ? ' stroke="#fff" stroke-width="2.5" stroke-dasharray="3,3"' : ''}/>`
-        : `<circle cx="${x}" cy="${y}" r="${R}" fill="${color}"${tech ? ' stroke="#fff" stroke-width="2.5" stroke-dasharray="3,3"' : ''}/>`;
+        ? `<rect class="note-shape" x="${x-R}" y="${y-R}" width="${R*2}" height="${R*2}" rx="4" fill="${color}"${tech ? ' stroke="#fff" stroke-width="2.5" stroke-dasharray="3,3"' : ''}/>`
+        : `<circle class="note-shape" cx="${x}" cy="${y}" r="${R}" fill="${color}"${tech ? ' stroke="#fff" stroke-width="2.5" stroke-dasharray="3,3"' : ''}/>`;
       s += shape;
       s += `<text x="${x}" y="${y+5}" fill="#14151a" font-size="14" font-weight="700" text-anchor="middle">${n.fret}</text>`;
       if (tech) {
@@ -548,11 +561,15 @@ function showArr(i) {
 }
 window.showArr = showArr;
 
-// ---- Manual drift correction (drag a note to where it should play) ----
+// ---- Manual drift correction (drag a note, or a selected excerpt, to where
+// it should play) ----
 // syncAnchors: [(chartTime, correctedTime), ...] in the chart's currently
 // displayed (already-shifted) timeline; sent verbatim to /rebuild as
 // sync_anchors, which piecewise-linearly stretches notes/beats/sections.
 let syncAnchors = [];
+// selectedTimes: chart times (g.time) of note-groups currently selected for
+// a multi-note excerpt drag.
+let selectedTimes = new Set();
 
 function renderAnchorsList() {
   const el = document.getElementById('syncAnchorsList');
@@ -588,30 +605,123 @@ async function applySyncAnchors() {
   else toast(b.detail || 'erro');
 }
 
+function setAnchor(origT, newT) {
+  const i = syncAnchors.findIndex(([o]) => Math.abs(o - origT) < 0.05);
+  if (i >= 0) syncAnchors[i] = [origT, newT];
+  else syncAnchors.push([origT, newT]);
+}
+
+function updateSelectionInfo() {
+  const info = document.getElementById('selectionInfo');
+  const clearBtn = document.getElementById('clearSelection');
+  const n = selectedTimes.size;
+  info.textContent = n ? `${n} nota(s) selecionada(s) — arrasta uma para mover o excerto inteiro` : '';
+  clearBtn.hidden = n === 0;
+}
+
 (() => {
-  let dragging = null; // { grp, startX, origT }
+  let dragging = null; // single note: { grps, startX, origT }
+  let groupDrag = null; // selection drag: { startX, times }
+  let rubberBand = null; // { startX }
   const svg = document.getElementById('tabsvg');
+  const selectModeChk = document.getElementById('selectModeChk');
+
+  document.getElementById('clearSelection').addEventListener('click', () => {
+    selectedTimes.clear();
+    updateSelectionInfo();
+    showArr(currentArr);
+  });
+
   svg.addEventListener('pointerdown', e => {
     const grp = e.target.closest('.note-grp');
+    if (selectModeChk.checked && !(grp && selectedTimes.has(parseFloat(grp.dataset.t)))) {
+      // start a rubber-band selection (also when starting on an unselected note)
+      const rect = svg.getBoundingClientRect();
+      rubberBand = { startX: e.clientX - rect.left };
+      const box = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      box.id = 'selectionBox';
+      box.setAttribute('x', rubberBand.startX);
+      box.setAttribute('y', '0');
+      box.setAttribute('width', '0');
+      box.setAttribute('height', String(tabH));
+      svg.appendChild(box);
+      svg.setPointerCapture(e.pointerId);
+      return;
+    }
     if (!grp) return;
-    dragging = { grp, startX: e.clientX, origT: parseFloat(grp.dataset.t) };
+    const t = parseFloat(grp.dataset.t);
+    if (selectedTimes.size > 1 && selectedTimes.has(t)) {
+      // drag the whole selection together
+      const grps = [...svg.querySelectorAll('.note-grp.selected')];
+      groupDrag = { grps, startX: e.clientX, times: [...selectedTimes] };
+      grps.forEach(g => g.setPointerCapture(e.pointerId));
+      return;
+    }
+    dragging = { grp, startX: e.clientX, origT: t };
     grp.setPointerCapture(e.pointerId);
   });
   svg.addEventListener('pointermove', e => {
+    if (rubberBand) {
+      const rect = svg.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const box = document.getElementById('selectionBox');
+      box.setAttribute('x', String(Math.min(rubberBand.startX, x)));
+      box.setAttribute('width', String(Math.abs(x - rubberBand.startX)));
+      return;
+    }
+    if (groupDrag) {
+      const dx = e.clientX - groupDrag.startX;
+      groupDrag.grps.forEach(g => g.setAttribute('transform', `translate(${dx},0)`));
+      return;
+    }
     if (!dragging) return;
     const dx = e.clientX - dragging.startX;
     dragging.grp.setAttribute('transform', `translate(${dx},0)`);
   });
   svg.addEventListener('pointerup', e => {
+    if (rubberBand) {
+      const rect = svg.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const x1 = Math.min(rubberBand.startX, x), x2 = Math.max(rubberBand.startX, x);
+      const t1 = (x1 - 30) / tabPx, t2 = (x2 - 30) / tabPx;
+      document.getElementById('selectionBox')?.remove();
+      rubberBand = null;
+      if (x2 - x1 > 3) {
+        for (const g of svg.querySelectorAll('.note-grp')) {
+          const t = parseFloat(g.dataset.t);
+          if (t >= t1 && t <= t2) selectedTimes.add(t);
+        }
+        updateSelectionInfo();
+        showArr(currentArr);
+      }
+      return;
+    }
+    if (groupDrag) {
+      const dx = e.clientX - groupDrag.startX;
+      groupDrag.grps.forEach(g => g.removeAttribute('transform'));
+      const deltaS = dx / tabPx;
+      if (Math.abs(deltaS) > 0.01) {
+        const selStart = Math.min(...groupDrag.times), selEnd = Math.max(...groupDrag.times);
+        if (selStart === selEnd) {
+          setAnchor(selStart, selStart + deltaS);
+        } else {
+          setAnchor(selStart, selStart + deltaS);
+          setAnchor(selEnd, selEnd + deltaS);
+        }
+        selectedTimes.clear();
+        updateSelectionInfo();
+        showArr(currentArr);
+      }
+      groupDrag = null;
+      return;
+    }
     if (!dragging) return;
     const dx = e.clientX - dragging.startX;
     dragging.grp.removeAttribute('transform');
     const deltaS = dx / tabPx;
     if (Math.abs(deltaS) > 0.01) {
       const newT = dragging.origT + deltaS;
-      const i = syncAnchors.findIndex(([o]) => Math.abs(o - dragging.origT) < 0.05);
-      if (i >= 0) syncAnchors[i] = [dragging.origT, newT];
-      else syncAnchors.push([dragging.origT, newT]);
+      setAnchor(dragging.origT, newT);
       showArr(currentArr);
     }
     dragging = null;

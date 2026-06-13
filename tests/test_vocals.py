@@ -1,7 +1,16 @@
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-from rockforge.infrastructure.rsxml.vocals import VocalEvent, parse_lrc, write_vocals_xml
+import pytest
+
+from rockforge.infrastructure.rsxml.vocals import (
+    VocalEvent,
+    expand_to_words,
+    parse_lrc,
+    parse_lyrics,
+    parse_ultrastar_txt,
+    write_vocals_xml,
+)
 
 LRC = """
 [ar:Band]
@@ -25,6 +34,58 @@ def test_parse_lrc_times_and_lengths() -> None:
 def test_parse_lrc_offset() -> None:
     events = parse_lrc(LRC, offset_s=0.5)
     assert events[0].time == 13.0
+
+
+def test_expand_to_words_splits_lines_and_marks_end() -> None:
+    events = expand_to_words([VocalEvent(time=10.0, length=2.0, lyric="hello world")])
+    assert [e.lyric for e in events] == ["hello", "world+"]
+    assert events[0].time == pytest.approx(10.0)
+    assert events[1].time == pytest.approx(11.0)
+    assert events[0].length == pytest.approx(1.0)
+
+
+def test_expand_to_words_single_word_gets_line_break() -> None:
+    events = expand_to_words([VocalEvent(time=1.0, length=2.0, lyric="hello")])
+    assert events == [VocalEvent(time=1.0, length=2.0, lyric="hello+")]
+
+
+def test_parse_lyrics_lrc_expands_to_words() -> None:
+    events = parse_lyrics(LRC)
+    assert [e.lyric for e in events] == ["First", "line+", "Second", "line+", "Last", "line+"]
+
+
+ULTRASTAR_TXT = """\
+#TITLE:Song
+#ARTIST:Band
+#BPM:120
+#GAP:1000
+: 0 4 60 Hel
+: 4 4 62 lo
+- 8
+: 8 8 60 world
+E
+"""
+
+
+def test_parse_ultrastar_txt_converts_beats_to_seconds() -> None:
+    events = parse_ultrastar_txt(ULTRASTAR_TXT)
+    # sec_per_beat = 15 / 120 = 0.125; gap = 1.0s
+    assert [e.lyric for e in events] == ["Hel", "lo+", "world"]
+    assert events[0].time == pytest.approx(1.0)
+    assert events[0].length == pytest.approx(0.5)
+    assert events[1].time == pytest.approx(1.5)
+    assert events[2].time == pytest.approx(2.0)
+    assert events[2].length == pytest.approx(1.0)
+
+
+def test_parse_ultrastar_txt_offset() -> None:
+    events = parse_ultrastar_txt(ULTRASTAR_TXT, offset_s=0.5)
+    assert events[0].time == pytest.approx(1.5)
+
+
+def test_parse_lyrics_detects_ultrastar() -> None:
+    events = parse_lyrics(ULTRASTAR_TXT)
+    assert [e.lyric for e in events] == ["Hel", "lo+", "world"]
 
 
 def test_write_vocals_xml(tmp_path: Path) -> None:
