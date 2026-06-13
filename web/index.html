@@ -219,7 +219,7 @@
         <select name="rhythm_track"><option value="">—</option></select></div>
       <div class="field"><label>Gravação</label>
         <input type="file" name="audio" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" required></div>
-      <div class="field"><label>Silêncio inicial a acrescentar (s)</label>
+      <div class="field"><label>Início da música na gravação (s)</label>
         <input type="number" name="offset_s" value="0" step="0.01" min="0" style="width:6rem"></div>
       <div class="field"><label>Tone base</label>
         <input type="text" name="tone_base" placeholder="ex.: dist_rhythm"></div>
@@ -237,11 +237,14 @@
         <input type="number" name="year" min="1900" max="2100" style="width:5.5rem"></div>
       <button type="submit">2. Criar CDLC</button>
     </form>
-    <p class="hint">Sincronização: a partitura não conhece o áudio. "Silêncio inicial a acrescentar"
-    insere N segundos de silêncio no início da gravação e desloca a partitura e a letra pelo mesmo
-    tempo — usa isto se quiseres que a música demore N segundos a começar a tocar (ex.: para um
-    écran de título). Para letra sincronizada usa um ficheiro LRC (os tempos são ajustados
-    automaticamente ao deslocamento); a letra embutida no GP só tem tempo ao nível da linha. Os
+    <p class="hint">Sincronização: a partitura não conhece o áudio. <strong>"Início da música na
+    gravação"</strong> = o segundo em que a primeira nota é ouvida na tua gravação. A partitura e a
+    letra são deslocadas para esse instante (a gravação fica intacta — o teu intro já serve de
+    lead-in). Ouve a gravação, vê a que segundo entra a música e escreve esse valor; se a partitura
+    e o áudio ainda estiverem dessincronizados, ajusta este número e reconstrói. Mínimo de 2s de
+    lead-in (o DLC Builder exige espaço para o count-in); se puseres menos, acrescentamos o silêncio
+    em falta. Para letra sincronizada usa um ficheiro LRC; a letra embutida no GP só tem tempo ao
+    nível da linha. Os
     nomes de tones são gravados no XML (tonebase/tonea–toned) e mapeiam-se a tones reais no DLC
     Builder.</p>
   </div>
