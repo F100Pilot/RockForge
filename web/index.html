@@ -304,8 +304,12 @@
       <h2>Transcrição (notas e acordes)</h2>
       <div class="tabnav" id="arrTabs"></div>
       <div id="tabwrap"><svg id="tabsvg" height="190"></svg></div>
-      <p class="hint">● nota · ▮ nota de acorde · cor laranja = técnica (bend/HO/PO/harmónico).
-      Eixo X em segundos; linhas = cordas (grave em baixo).</p>
+      <p class="hint">● nota · ▮ nota de acorde (ligadas por uma barra vertical) · contorno
+      tracejado branco = técnica (bend/HO/PO/harmónico/palm mute/vibrato) — passa o cursor
+      para ver qual. Cor = corda, igual ao Rocksmith: <span style="color:#e6483c">E</span>
+      <span style="color:#f0973c">A</span> <span style="color:#f5dc3c">D</span>
+      <span style="color:#5cc24a">G</span> <span style="color:#3f9bdc">B</span>
+      <span style="color:#b56cdc">e</span> (grave→agudo). Eixo X em segundos.</p>
     </div>
   </div>
 </div>
@@ -457,6 +461,10 @@ async function loadArrangements(id) {
   showArr(0);
 }
 
+// Rocksmith note-highway string colors (low E -> high e), per the
+// EOF/CDLC-tooling convention community charts use for the six strings.
+const STRING_COLORS = ['#e6483c', '#f0973c', '#f5dc3c', '#5cc24a', '#3f9bdc', '#b56cdc'];
+
 function showArr(i) {
   currentArr = i;
   for (const [idx, btn] of document.querySelectorAll('#arrTabs button').entries())
@@ -471,21 +479,38 @@ function showArr(i) {
   for (let str = 0; str < 6; str++) {
     const y = H - 25 - str * 27;
     s += `<line x1="30" y1="${y}" x2="${W-10}" y2="${y}" stroke="#3a3c45"/>`;
-    s += `<text x="6" y="${y+4}" fill="#888" font-size="11">${['E','A','D','G','B','e'][str]}</text>`;
+    s += `<text x="6" y="${y+4}" fill="${STRING_COLORS[str]}" font-size="11" font-weight="700">${['E','A','D','G','B','e'][str]}</text>`;
   }
-  for (let t = 0; t <= dur; t += 5)
+  for (let t = 0; t <= dur; t += 5) {
+    s += `<line x1="${30 + t*px}" y1="14" x2="${30 + t*px}" y2="${H-25}" stroke="#22232b"/>`;
     s += `<text x="${30 + t*px}" y="12" fill="#666" font-size="10">${t}s</text>`;
+  }
+  // group simultaneous notes (chords) so they get a connecting bracket
+  const groups = [];
   for (const n of a.notes) {
-    const x = 30 + n.time * px, y = H - 25 - n.string * 27;
-    const tech = n.techniques.length > 0;
-    const fill = tech ? '#ff7a45' : (n.chord ? '#7da7e0' : '#cfd2da');
-    if (n.sustain > 0.05)
-      s += `<rect x="${x}" y="${y-2}" width="${n.sustain*px}" height="4" fill="${fill}" opacity=".35"/>`;
-    s += n.chord
-      ? `<rect x="${x-4}" y="${y-7}" width="9" height="14" rx="2" fill="${fill}"/>`
-      : `<circle cx="${x}" cy="${y}" r="7" fill="${fill}"/>`;
-    s += `<text x="${x}" y="${y+3.5}" fill="#14151a" font-size="9" font-weight="700" text-anchor="middle">${n.fret}</text>`;
-    if (tech) s += `<title>${n.techniques.join(', ')}</title>`;
+    const last = groups[groups.length - 1];
+    if (last && n.chord && Math.abs(n.time - last.time) < 0.03) last.notes.push(n);
+    else groups.push({ time: n.time, notes: [n] });
+  }
+  for (const g of groups) {
+    if (g.notes.length > 1) {
+      const x = 30 + g.time * px;
+      const ys = g.notes.map(n => H - 25 - n.string * 27);
+      s += `<line x1="${x}" y1="${Math.min(...ys)}" x2="${x}" y2="${Math.max(...ys)}" stroke="#9aa0ad" stroke-width="2"/>`;
+    }
+    for (const n of g.notes) {
+      const x = 30 + n.time * px, y = H - 25 - n.string * 27;
+      const color = STRING_COLORS[n.string];
+      const tech = n.techniques.length > 0;
+      if (n.sustain > 0.05)
+        s += `<rect x="${x}" y="${y-2}" width="${n.sustain*px}" height="4" fill="${color}" opacity=".4" rx="2"/>`;
+      const shape = n.chord
+        ? `<rect x="${x-8}" y="${y-8}" width="16" height="16" rx="3" fill="${color}"${tech ? ' stroke="#fff" stroke-width="2" stroke-dasharray="2,2"' : ''}/>`
+        : `<circle cx="${x}" cy="${y}" r="9" fill="${color}"${tech ? ' stroke="#fff" stroke-width="2" stroke-dasharray="2,2"' : ''}/>`;
+      s += shape;
+      s += `<text x="${x}" y="${y+3.5}" fill="#14151a" font-size="10" font-weight="700" text-anchor="middle">${n.fret}</text>`;
+      if (tech) s += `<title>${n.techniques.join(', ')}</title>`;
+    }
   }
   s += `<line id="playhead" x1="30" y1="0" x2="30" y2="${H}" stroke="#ff7a45" stroke-width="2" opacity=".9"/>`;
   svg.innerHTML = s;
