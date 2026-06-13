@@ -34,7 +34,13 @@ from rockforge.domain.arrangement import (
     ToneChange,
 )
 from rockforge.domain.errors import IngestionError
-from rockforge.infrastructure.gpimport.parser import ParsedGpTrack, inspect_gp, parse_gp_track
+from rockforge.domain.music import TabNote
+from rockforge.infrastructure.gpimport.parser import (
+    GpSection,
+    ParsedGpTrack,
+    inspect_gp,
+    parse_gp_track,
+)
 from rockforge.infrastructure.packaging.dlcbuilder import DlcBuilderPackager
 from rockforge.infrastructure.rsxml.vocals import VocalEvent, parse_lrc
 
@@ -57,6 +63,69 @@ class GpJobSpec:
     tone_base: str | None = None
     tone_names: list[str] = field(default_factory=list)
     tone_changes: list[ToneChange] = field(default_factory=list)
+    # Manual drift-correction points: (chart_time_s, corrected_time_s) pairs,
+    # in the already-shifted (post offset_s) timeline shown in the tab viewer.
+    # Notes/beats/sections/lyrics between consecutive points are stretched or
+    # compressed (piecewise-linear) to line up with the recording.
+    sync_anchors: list[tuple[float, float]] = field(default_factory=list)
+
+
+def _build_time_warp(anchors: list[tuple[float, float]]) -> Callable[[float], float]:
+    """Piecewise-linear remap built from (chart_time, corrected_time) points.
+
+    Outside the given range, the slope of the nearest segment is extended so
+    times before the first / after the last anchor still shift smoothly.
+    """
+    if not anchors:
+        return lambda t: t
+    pts = sorted(anchors, key=lambda p: p[0])
+
+    def warp(t: float) -> float:
+        if len(pts) == 1:
+            x0, y0 = pts[0]
+            return t + (y0 - x0)
+        if t <= pts[0][0]:
+            (x0, y0), (x1, y1) = pts[0], pts[1]
+        elif t >= pts[-1][0]:
+            (x0, y0), (x1, y1) = pts[-2], pts[-1]
+        else:
+            (x0, y0), (x1, y1) = next(
+                (a, b) for a, b in zip(pts, pts[1:], strict=False) if a[0] <= t <= b[0]
+            )
+        if x1 == x0:
+            return t + (y0 - x0)
+        return y0 + (y1 - y0) * (t - x0) / (x1 - x0)
+
+    return warp
+
+
+def _warp_parsed_track(p: ParsedGpTrack, warp: Callable[[float], float]) -> ParsedGpTrack:
+    """Apply a time remap to every timestamp of a parsed track (notes, beats, sections, lyrics)."""
+    from rockforge.domain.music import Beat, TempoMap
+
+    notes = [
+        TabNote(
+            string=n.string, fret=n.fret, time=warp(n.time),
+            sustain=max(0.0, warp(n.time + n.sustain) - warp(n.time)),
+            techniques=n.techniques, bend_semitones=n.bend_semitones,
+            slide_to_fret=n.slide_to_fret,
+        )
+        for n in p.notes
+    ]
+    beats = tuple(Beat(time=warp(b.time), measure=b.measure) for b in p.tempo_map.beats)
+    sections = [GpSection(name=s.name, start_time=warp(s.start_time)) for s in p.sections]
+    lyrics = [type(line)(time=warp(line.time), text=line.text) for line in p.lyrics]
+    return ParsedGpTrack(
+        notes=notes,
+        tuning=p.tuning,
+        tempo_map=TempoMap(
+            beats=beats,
+            average_bpm=p.tempo_map.average_bpm,
+            beats_per_measure=p.tempo_map.beats_per_measure,
+        ),
+        sections=sections,
+        lyrics=lyrics,
+    )
 
 
 def auto_pick_tracks(gp_path: Path) -> tuple[int | None, int | None]:
@@ -133,6 +202,10 @@ class GenerateFromGpUseCase:
                 spec.gp_path, rhythm_idx, score_shift
             )
 
+        if spec.sync_anchors:
+            warp = _build_time_warp(spec.sync_anchors)
+            parsed = {kind: _warp_parsed_track(p, warp) for kind, p in parsed.items()}
+
         stage("build_arrangements")
         first = next(iter(parsed.values()))
         song_length = (
@@ -190,6 +263,12 @@ class GenerateFromGpUseCase:
             warnings.append(
                 "lyrics taken from the GP file: line-level timing only (anchored to "
                 "measures) — supply an LRC file for proper sync"
+            )
+
+        if spec.sync_anchors:
+            warnings.append(
+                f"{len(spec.sync_anchors)} manual drift-correction point(s) applied to the "
+                "chart (notes/beats/sections were stretched between them)"
             )
 
         if pad_start_s > 0.0:

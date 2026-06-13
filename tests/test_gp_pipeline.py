@@ -129,6 +129,21 @@ def test_gp_pipeline_same_track_rejected(two_track_gp5: Path, tmp_path: Path) ->
         make_use_case().run(spec, SongMetadata(title="T", artist="A"), tmp_path / "w")
 
 
+def test_gp_pipeline_sync_anchors_shift_notes(two_track_gp5: Path, tmp_path: Path) -> None:
+    # offset_s=0 -> score_shift=2.0 (MIN_LEAD_S); notes land at 2.0, 2.5, 3.0.
+    # A single anchor (2.5 -> 3.0) is a uniform +0.5s shift applied everywhere.
+    spec = GpJobSpec(
+        gp_path=two_track_gp5, audio_source="x.wav", lead_track=0,
+        sync_anchors=[(2.5, 3.0)],
+    )
+    result = make_use_case().run(spec, SongMetadata(title="T", artist="A"), tmp_path / "w")
+    assert any("1 manual drift-correction" in w for w in result.warnings)
+
+    lead_xml = next(p for p in result.packaging.xml_paths if p.name == "arrangement_combined.xml")
+    times = [float(n.get("time", "0")) for n in ET.parse(lead_xml).getroot().findall(".//note")]
+    assert times == pytest.approx([2.5, 3.0, 3.5])
+
+
 def test_gp_pipeline_zero_offset_warns(two_track_gp5: Path, tmp_path: Path) -> None:
     spec = GpJobSpec(gp_path=two_track_gp5, audio_source="x.wav", lead_track=0)
     result = make_use_case().run(spec, SongMetadata(title="T", artist="A"), tmp_path / "w")

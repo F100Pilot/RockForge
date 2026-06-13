@@ -59,6 +59,9 @@ class RebuildIn(BaseModel):
     cent_offset: float = 0.0
     offset_s: float | None = None  # GP sync: second in the recording where the song starts
     split_lead_rhythm: bool = True
+    # Manual drift-correction points: (chart_time_s, corrected_time_s) pairs, in the
+    # chart's already-shifted timeline (as shown in the tab viewer).
+    sync_anchors: list[tuple[float, float]] | None = None
 
 
 class ArrangementNoteOut(BaseModel):
@@ -422,6 +425,10 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
             if payload.offset_s < 0.0:
                 raise HTTPException(422, "offset_s must be >= 0")
             params["offset_s"] = payload.offset_s
+        if payload.sync_anchors is not None:
+            if original.source_type != "gp":
+                raise HTTPException(422, "sync_anchors only apply to Guitar Pro jobs")
+            params["sync_anchors"] = [list(a) for a in payload.sync_anchors]
         job = Job(
             source=original.source,
             source_type=original.source_type,
