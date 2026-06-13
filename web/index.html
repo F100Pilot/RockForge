@@ -93,6 +93,8 @@
   .warnbox { background:#332a14; border-left:3px solid var(--warn); padding:.5rem .75rem; margin:.4rem 0; font-size:.85rem; border-radius:0 6px 6px 0; }
   .errbox { background:#3a1a1a; border-left:3px solid var(--err); padding:.5rem .75rem; margin:.4rem 0; font-size:.85rem; border-radius:0 6px 6px 0; }
 
+  .syncctrls { display:flex; gap:.8rem; align-items:center; flex-wrap:wrap; font-size:.85rem; color:var(--muted); }
+  #playhead { pointer-events:none; }
   #tabwrap { overflow-x:auto; background:#0f1013; border:1px solid var(--line); border-radius:8px; margin-top:.5rem; }
   .meta { font-size:.85rem; color:var(--muted); }
   .tuninggrid { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; }
@@ -281,6 +283,23 @@
         <button type="submit" class="secondary">Reconstruir com estes valores</button>
       </form>
 
+      <div id="syncPanel" style="display:none">
+        <hr class="sep">
+        <h2>Sincronização visual</h2>
+        <p class="hint" style="margin-top:0">Dá play à gravação: o cursor percorre as notas e ouves um
+        <strong>tique</strong> em cada uma. Arrasta o <strong>início da música</strong> até os tiques
+        baterem certo com a gravação; depois "Aplicar e reconstruir". O número é o segundo em que a
+        primeira nota é ouvida na tua gravação.</p>
+        <audio id="syncAudio" controls preload="metadata" style="width:100%;margin:.4rem 0"></audio>
+        <div class="syncctrls">
+          <label>Início da música na gravação (s):
+            <input type="number" id="syncOffset" value="0" step="0.01" min="0" style="width:6rem"></label>
+          <input type="range" id="syncOffsetRange" min="0" max="20" step="0.01" value="0" style="flex:1;min-width:180px">
+          <label class="check"><input type="checkbox" id="syncTick" checked> Tique nas notas</label>
+          <button type="button" id="syncApply" class="secondary">Aplicar e reconstruir</button>
+        </div>
+      </div>
+
       <hr class="sep">
       <h2>Transcrição (notas e acordes)</h2>
       <div class="tabnav" id="arrTabs"></div>
@@ -307,6 +326,10 @@
 <script>
 const STD = [40, 45, 50, 55, 59, 64];
 let selectedJob = null, arrangements = [], currentArr = 0, pollTimer = null;
+// Visual sync (GP): MIN_LEAD must match gp_pipeline.MIN_LEAD_S.
+const MIN_LEAD = 2.0;
+let tabPx = 60, tabH = 190, scoreShift = 0, offsetLive = 0;
+let audioCtx = null, syncRaf = null, tickIdx = 0;
 
 const badge = s => `<span class="badge b-${s}">${s}</span>`;
 const esc = t => { const d = document.createElement('span'); d.textContent = t ?? ''; return d.innerHTML; };
@@ -342,6 +365,9 @@ document.getElementById('newJobTabs').addEventListener('click', e => {
 function closeDetail() {
   selectedJob = null;
   clearInterval(pollTimer);
+  const au = document.getElementById('syncAudio');
+  if (au) { au.pause(); au.removeAttribute('src'); au.load(); }
+  if (syncRaf) { cancelAnimationFrame(syncRaf); syncRaf = null; }
   document.getElementById('detailOverlay').hidden = true;
   refreshJobs();
 }
@@ -427,6 +453,7 @@ async function loadArrangements(id) {
     `<input type="number" min="20" max="80" value="${std + a0.tuning_offsets[i]}" data-string="${i}">`).join('');
   document.getElementById('arrTabs').innerHTML = arrangements.map((a, i) =>
     `<button type="button" class="${i ? '' : 'active'}" onclick="showArr(${i})">${a.kind} (${a.note_count}n/${a.chord_count}c)</button>`).join('');
+  initSync(selectedJob);
   showArr(0);
 }
 
@@ -438,6 +465,7 @@ function showArr(i) {
   const svg = document.getElementById('tabsvg');
   const dur = Math.max(...a.notes.map(n => n.time + n.sustain), 10);
   const px = 60, W = Math.max(900, dur * px + 60), H = 190;
+  tabPx = px; tabH = H;
   svg.setAttribute('width', W);
   let s = '';
   for (let str = 0; str < 6; str++) {
@@ -459,9 +487,96 @@ function showArr(i) {
     s += `<text x="${x}" y="${y+3.5}" fill="#14151a" font-size="9" font-weight="700" text-anchor="middle">${n.fret}</text>`;
     if (tech) s += `<title>${n.techniques.join(', ')}</title>`;
   }
+  s += `<line id="playhead" x1="30" y1="0" x2="30" y2="${H}" stroke="#ff7a45" stroke-width="2" opacity=".9"/>`;
   svg.innerHTML = s;
+  syncResetPointer();
 }
 window.showArr = showArr;
+
+// ---- Visual sync tool (GP jobs) ----
+function clickSound() {
+  if (!audioCtx) return;
+  const t = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator(), g = audioCtx.createGain();
+  osc.frequency.value = 1100;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.5, t + 0.001);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.04);
+  osc.connect(g); g.connect(audioCtx.destination);
+  osc.start(t); osc.stop(t + 0.05);
+}
+
+// score-time currently under the playhead, given source playback time S
+function viewerTimeAt(s) { return (s - offsetLive) + scoreShift; }
+
+function syncResetPointer() {
+  const au = document.getElementById('syncAudio');
+  const vt = viewerTimeAt(au ? au.currentTime : 0);
+  const notes = arrangements[currentArr] ? arrangements[currentArr].notes : [];
+  tickIdx = notes.findIndex(n => n.time >= vt);
+  if (tickIdx < 0) tickIdx = notes.length;
+}
+
+function syncFrame() {
+  const au = document.getElementById('syncAudio');
+  const ph = document.getElementById('playhead');
+  if (!au || !ph) { syncRaf = null; return; }
+  const vt = viewerTimeAt(au.currentTime);
+  const x = 30 + vt * tabPx;
+  ph.setAttribute('x1', x); ph.setAttribute('x2', x);
+  const wrap = document.getElementById('tabwrap');
+  if (x < wrap.scrollLeft + 60 || x > wrap.scrollLeft + wrap.clientWidth - 60)
+    wrap.scrollLeft = x - wrap.clientWidth / 2;
+  const notes = arrangements[currentArr] ? arrangements[currentArr].notes : [];
+  const tickOn = document.getElementById('syncTick').checked;
+  while (tickIdx < notes.length && notes[tickIdx].time <= vt) {
+    if (tickOn) clickSound();
+    tickIdx++;
+  }
+  if (!au.paused && !au.ended) syncRaf = requestAnimationFrame(syncFrame);
+  else syncRaf = null;
+}
+
+function setOffsetLive(v) {
+  offsetLive = Math.max(0, v || 0);
+  document.getElementById('syncOffset').value = offsetLive.toFixed(2);
+  document.getElementById('syncOffsetRange').value = offsetLive;
+  syncResetPointer();
+}
+
+function initSync(j) {
+  const panel = document.getElementById('syncPanel');
+  if (j.source_type !== 'gp') { panel.style.display = 'none'; return; }
+  panel.style.display = '';
+  scoreShift = Math.max(j.offset_s || 0, MIN_LEAD);
+  const au = document.getElementById('syncAudio');
+  au.src = `/jobs/${j.id}/source-audio`;
+  setOffsetLive(j.offset_s || 0);
+  au.onplay = () => {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    audioCtx.resume();
+    if (!syncRaf) syncRaf = requestAnimationFrame(syncFrame);
+  };
+  au.onseeked = syncResetPointer;
+}
+
+document.getElementById('syncOffset').addEventListener('input', e => setOffsetLive(parseFloat(e.target.value)));
+document.getElementById('syncOffsetRange').addEventListener('input', e => setOffsetLive(parseFloat(e.target.value)));
+document.getElementById('syncApply').addEventListener('click', async () => {
+  if (!selectedJob) return;
+  const midi = [...document.querySelectorAll('#tuningInputs input')].map(i => parseInt(i.value, 10));
+  const r = await fetch(`/jobs/${selectedJob.id}/rebuild`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      tuning_midi: midi.some(isNaN) ? null : midi,
+      split_lead_rhythm: document.getElementById('splitChk').checked,
+      offset_s: offsetLive,
+    }),
+  });
+  const b = await r.json();
+  if (r.ok) { toast(`A reconstruir com início a ${offsetLive.toFixed(2)}s…`, 'ok'); selectJob(b.id); }
+  else toast(b.detail || 'erro');
+});
 
 document.getElementById('uploadForm').addEventListener('submit', async e => {
   e.preventDefault();
