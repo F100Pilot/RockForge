@@ -107,13 +107,17 @@ def render_arrangement(arr: Arrangement) -> ET.Element:
     ET.SubElement(song, "title").text = arr.metadata.title
     ET.SubElement(song, "arrangement").text = arr.kind.value
     ET.SubElement(song, "part").text = "1"
-    ET.SubElement(song, "offset").text = "0.000"
+    # offset = -startBeat (negative of the first beat's time): DLC Builder/EOF
+    # treat this as "song time 0 is `offset` seconds before audio time 0" and
+    # use it to re-derive the lead-in on import. Leaving it at 0 while the
+    # first beat/notes are shifted (sync lead-in) makes those tools re-zero
+    # everything, discarding the lead-in.
+    start_beat = arr.tempo_map.beats[0].time if arr.tempo_map.beats else 0.0
+    ET.SubElement(song, "offset").text = _fmt(-start_beat)
     ET.SubElement(song, "centOffset").text = _fmt(arr.tuning.cent_offset)
     ET.SubElement(song, "songLength").text = _fmt(arr.metadata.song_length)
     ET.SubElement(song, "songNameSort").text = arr.metadata.title
-    ET.SubElement(song, "startBeat").text = (
-        _fmt(arr.tempo_map.beats[0].time) if arr.tempo_map.beats else "0.000"
-    )
+    ET.SubElement(song, "startBeat").text = _fmt(start_beat)
     ET.SubElement(song, "averageTempo").text = _fmt(arr.tempo_map.average_bpm)
 
     offsets = arr.tuning.offsets_from_standard()
@@ -183,7 +187,7 @@ def render_arrangement(arr: Arrangement) -> ET.Element:
     # iteration at the start beat the game finishes seconds in, with the note
     # highway frozen. Minimum viable structure (EOF/toolkit convention):
     # COUNT @ first beat -> default @ first note -> END @ song end.
-    start = arr.tempo_map.beats[0].time if arr.tempo_map.beats else 0.0
+    start = start_beat
     first_note_t = min((n.time for n in arr.notes), default=start)
     last_note_end = max((n.time + max(n.sustain, 0.0) for n in arr.notes), default=start)
     last_beat = arr.tempo_map.beats[-1].time if arr.tempo_map.beats else 0.0

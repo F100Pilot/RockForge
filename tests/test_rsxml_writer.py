@@ -5,7 +5,7 @@ import pytest
 
 from rockforge.domain.arrangement import Arrangement, ArrangementKind, SongMetadata
 from rockforge.domain.music import Beat, TabNote, Technique, TempoMap, Tuning
-from rockforge.infrastructure.rsxml.writer import write_arrangement_xml
+from rockforge.infrastructure.rsxml.writer import _fmt, write_arrangement_xml
 
 
 def make_arrangement() -> Arrangement:
@@ -33,6 +33,26 @@ def test_writes_valid_xml(tmp_path: Path) -> None:
     assert root.tag == "song" and root.get("version") == "8"
     assert root.findtext("title") == "Test Song"
     assert root.findtext("arrangement") == "Lead"
+
+
+def test_offset_matches_negated_start_beat(tmp_path: Path) -> None:
+    """offset = -startBeat, so DLC Builder/EOF preserve a sync lead-in instead
+    of re-zeroing all times on import (which discarded the lead-in silence)."""
+    arr = make_arrangement()
+    lead_in = 3.0
+    arr.tempo_map = TempoMap(
+        beats=tuple(Beat(time=b.time + lead_in, measure=b.measure) for b in arr.tempo_map.beats),
+        average_bpm=arr.tempo_map.average_bpm,
+    )
+    arr.notes = [
+        TabNote(string=n.string, fret=n.fret, time=n.time + lead_in, sustain=n.sustain,
+                techniques=n.techniques, bend_semitones=n.bend_semitones)
+        for n in arr.notes
+    ]
+    out = write_arrangement_xml(arr, tmp_path / "lead.xml")
+    root = ET.parse(out).getroot()
+    assert root.findtext("startBeat") == _fmt(lead_in)
+    assert root.findtext("offset") == _fmt(-lead_in)
 
 
 def test_structure_matches_song2014_documented_elements(tmp_path: Path) -> None:
