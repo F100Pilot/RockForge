@@ -42,7 +42,7 @@ from rockforge.infrastructure.gpimport.parser import (
     parse_gp_track,
 )
 from rockforge.infrastructure.packaging.dlcbuilder import DlcBuilderPackager
-from rockforge.infrastructure.rsxml.vocals import VocalEvent, parse_lrc
+from rockforge.infrastructure.rsxml.vocals import VocalEvent, expand_to_words, parse_lyrics
 
 # Minimum lead-in before the first note. DLC Builder's PhraseGenerator inserts a
 # count-in phrase before the arrangement content and fails ("no room for an empty
@@ -249,17 +249,18 @@ class GenerateFromGpUseCase:
         stage("lyrics")
         vocals: list[VocalEvent] = []
         if spec.lrc_text:
-            # LRC timestamps are synced to the recording as supplied, so they only
-            # move by the silence we actually prepended (pad_start_s) — not by the
-            # full score shift, which also absorbs the score's own zero offset.
-            vocals = parse_lrc(spec.lrc_text, pad_start_s)
+            # Lyric timestamps (LRC or UltraStar TXT) are synced to the recording as
+            # supplied, so they only move by the silence we actually prepended
+            # (pad_start_s) — not by the full score shift, which also absorbs the
+            # score's own zero offset.
+            vocals = parse_lyrics(spec.lrc_text, pad_start_s)
             if not vocals:
-                warnings.append("LRC file contained no timestamped lines")
+                warnings.append("lyrics file contained no recognizable timestamped lines")
         elif first.lyrics:
-            vocals = [
+            vocals = expand_to_words([
                 VocalEvent(time=line.time, length=2.0, lyric=line.text)
                 for line in first.lyrics
-            ]
+            ])
             warnings.append(
                 "lyrics taken from the GP file: line-level timing only (anchored to "
                 "measures) — supply an LRC file for proper sync"

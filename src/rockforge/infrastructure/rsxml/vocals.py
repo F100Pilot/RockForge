@@ -8,8 +8,15 @@ There is no official spec — validate in DLC Builder.
 Lyric timing sources, by reliability:
 - LRC file ([mm:ss.xx] lines): timestamps authored against the actual
   recording — preferred.
+- UltraStar TXT (UltraStar Creator/USDX): per-syllable timing in beats,
+  converted via BPM/GAP — preferred when per-word sync is needed.
 - Guitar Pro lyrics: anchored only to a starting measure; line-level timing
   derived from the score (HEURISTIC, no per-word sync).
+
+Rocksmith's vocals XML is per-syllable: each <vocal> is one word/syllable, and
+a trailing "+" on the lyric text marks the end of a displayed line (the
+in-game lyric display starts a new line after such an event). `expand_to_words`
+turns line-level events (from LRC or GP lyrics) into this per-word form.
 """
 
 from __future__ import annotations
@@ -24,6 +31,8 @@ DEFAULT_LAST_LENGTH_S = 2.0
 MAX_LENGTH_S = 4.0
 
 _LRC_LINE = re.compile(r"\[(\d+):(\d+(?:\.\d+)?)\](.*)")
+_USTAR_NOTE = re.compile(r"^([:*FRG])\s+(-?\d+)\s+(-?\d+)\s+(-?\d+)\s?(.*)$")
+_USTAR_HEADER = re.compile(r"^#(TITLE|ARTIST|BPM|GAP)\s*:", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -58,6 +67,82 @@ def parse_lrc(text: str, offset_s: float = 0.0) -> list[VocalEvent]:
             length = DEFAULT_LAST_LENGTH_S
         events.append(VocalEvent(time=t, length=length, lyric=lyric))
     return events
+
+
+def expand_to_words(events: list[VocalEvent]) -> list[VocalEvent]:
+    """Split line-level events into one VocalEvent per word.
+
+    Rocksmith vocals are per-syllable/word; a trailing "+" on the lyric marks
+    the end of a displayed line. Word timings are spread evenly across the
+    line's length.
+    """
+    out: list[VocalEvent] = []
+    for e in events:
+        words = e.lyric.split()
+        if not words:
+            continue
+        word_len = e.length / len(words)
+        for i, w in enumerate(words):
+            lyric = f"{w}+" if i == len(words) - 1 else w
+            out.append(VocalEvent(time=e.time + i * word_len, length=word_len, lyric=lyric))
+    return out
+
+
+def parse_ultrastar_txt(text: str, offset_s: float = 0.0) -> list[VocalEvent]:
+    """Parse an UltraStar/USDX .txt lyric file (per-syllable timing).
+
+    Timings are stored as "beats" relative to #GAP (ms of silence before beat
+    0); seconds-per-beat = 15 / BPM (UltraStar's BPM is 4x the musical BPM by
+    convention). A "-" line marks the end of a display line — the preceding
+    syllable's lyric is suffixed with "+" to match Rocksmith's convention.
+    """
+    bpm = 0.0
+    gap_s = 0.0
+    for line in text.splitlines():
+        line = line.strip()
+        if line[:5].upper() == "#BPM:":
+            bpm = float(line.split(":", 1)[1].strip().replace(",", "."))
+        elif line[:5].upper() == "#GAP:":
+            gap_s = float(line.split(":", 1)[1].strip().replace(",", ".")) / 1000.0
+    if bpm <= 0.0:
+        return []
+    sec_per_beat = 15.0 / bpm
+
+    # [time, length, lyric] rows; lyric is mutated in place to append "+" on line breaks.
+    syllables: list[list[float | str]] = []
+    for raw in text.splitlines():
+        line = raw.rstrip("\r\n")
+        if not line or _USTAR_HEADER.match(line):
+            continue
+        m = _USTAR_NOTE.match(line)
+        if m:
+            _kind, start, length, _pitch, lyric = m.groups()
+            lyric = lyric.strip()
+            if not lyric:
+                continue
+            time = gap_s + int(start) * sec_per_beat + offset_s
+            syllables.append([time, max(0.1, float(length) * sec_per_beat), lyric])
+        elif line.startswith("-"):
+            if syllables:
+                syllables[-1][2] = f"{syllables[-1][2]}+"
+        elif line.startswith("E"):
+            break
+
+    return [
+        VocalEvent(time=float(t), length=float(ln), lyric=str(lyric))
+        for t, ln, lyric in syllables
+    ]
+
+
+def parse_lyrics(text: str, offset_s: float = 0.0) -> list[VocalEvent]:
+    """Parse a lyrics file, auto-detecting UltraStar TXT vs LRC.
+
+    UltraStar files are already per-syllable; LRC files are line-level and get
+    expanded to one event per word via `expand_to_words`.
+    """
+    if any(_USTAR_HEADER.match(line.strip()) for line in text.splitlines()):
+        return parse_ultrastar_txt(text, offset_s)
+    return expand_to_words(parse_lrc(text, offset_s))
 
 
 def write_vocals_xml(events: list[VocalEvent], path: Path) -> Path:
