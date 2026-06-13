@@ -114,7 +114,7 @@
   .modal-overlay[hidden] { display:none; }
   .modal {
     background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
-    box-shadow:var(--shadow); max-width:920px; width:100%; max-height:90vh; overflow:auto;
+    box-shadow:var(--shadow); max-width:1400px; width:100%; max-height:94vh; overflow:auto;
     padding:1.25rem 1.5rem; position:relative; animation:pop .15s ease-out;
   }
   .modal-sm { max-width:420px; }
@@ -303,7 +303,7 @@
       <hr class="sep">
       <h2>Transcrição (notas e acordes)</h2>
       <div class="tabnav" id="arrTabs"></div>
-      <div id="tabwrap"><svg id="tabsvg" height="190"></svg></div>
+      <div id="tabwrap"><svg id="tabsvg" height="280"></svg></div>
       <p class="hint">● nota · ▮ nota de acorde (ligadas por uma barra vertical) · sigla
       sobreposta = técnica (B bend · H hammer-on · P pull-off · S slide · HA harmónico ·
       PM palm mute · V vibrato · T tapping · SL slap · PO pop · A acento) — passa o cursor
@@ -334,7 +334,7 @@ const STD = [40, 45, 50, 55, 59, 64];
 let selectedJob = null, arrangements = [], currentArr = 0, pollTimer = null;
 // Visual sync (GP): MIN_LEAD must match gp_pipeline.MIN_LEAD_S.
 const MIN_LEAD = 2.0;
-let tabPx = 60, tabH = 190, scoreShift = 0, offsetLive = 0;
+let tabPx = 80, tabH = 280, scoreShift = 0, offsetLive = 0;
 let audioCtx = null, syncRaf = null, tickIdx = 0;
 
 const badge = s => `<span class="badge b-${s}">${s}</span>`;
@@ -479,18 +479,18 @@ function showArr(i) {
   const a = arrangements[i];
   const svg = document.getElementById('tabsvg');
   const dur = Math.max(...a.notes.map(n => n.time + n.sustain), 10);
-  const px = 60, W = Math.max(900, dur * px + 60), H = 190;
+  const px = 80, ROW = 40, R = 13, W = Math.max(900, dur * px + 60), H = 280;
   tabPx = px; tabH = H;
   svg.setAttribute('width', W);
   let s = '';
   for (let str = 0; str < 6; str++) {
-    const y = H - 25 - str * 27;
+    const y = H - 35 - str * ROW;
     s += `<line x1="30" y1="${y}" x2="${W-10}" y2="${y}" stroke="#3a3c45"/>`;
-    s += `<text x="6" y="${y+4}" fill="${STRING_COLORS[str]}" font-size="11" font-weight="700">${['E','A','D','G','B','e'][str]}</text>`;
+    s += `<text x="6" y="${y+5}" fill="${STRING_COLORS[str]}" font-size="15" font-weight="700">${['E','A','D','G','B','e'][str]}</text>`;
   }
   for (let t = 0; t <= dur; t += 5) {
-    s += `<line x1="${30 + t*px}" y1="14" x2="${30 + t*px}" y2="${H-25}" stroke="#22232b"/>`;
-    s += `<text x="${30 + t*px}" y="12" fill="#666" font-size="10">${t}s</text>`;
+    s += `<line x1="${30 + t*px}" y1="14" x2="${30 + t*px}" y2="${H-35}" stroke="#22232b"/>`;
+    s += `<text x="${30 + t*px}" y="12" fill="#666" font-size="12">${t}s</text>`;
   }
   // group simultaneous notes (chords) so they get a connecting bracket
   const groups = [];
@@ -502,23 +502,23 @@ function showArr(i) {
   for (const g of groups) {
     if (g.notes.length > 1) {
       const x = 30 + g.time * px;
-      const ys = g.notes.map(n => H - 25 - n.string * 27);
+      const ys = g.notes.map(n => H - 35 - n.string * ROW);
       s += `<line x1="${x}" y1="${Math.min(...ys)}" x2="${x}" y2="${Math.max(...ys)}" stroke="#9aa0ad" stroke-width="2"/>`;
     }
     for (const n of g.notes) {
-      const x = 30 + n.time * px, y = H - 25 - n.string * 27;
+      const x = 30 + n.time * px, y = H - 35 - n.string * ROW;
       const color = STRING_COLORS[n.string];
       const tech = n.techniques.length > 0;
       if (n.sustain > 0.05)
-        s += `<rect x="${x}" y="${y-2}" width="${n.sustain*px}" height="4" fill="${color}" opacity=".4" rx="2"/>`;
+        s += `<rect x="${x}" y="${y-3}" width="${n.sustain*px}" height="6" fill="${color}" opacity=".4" rx="3"/>`;
       const shape = n.chord
-        ? `<rect x="${x-8}" y="${y-8}" width="16" height="16" rx="3" fill="${color}"${tech ? ' stroke="#fff" stroke-width="2" stroke-dasharray="2,2"' : ''}/>`
-        : `<circle cx="${x}" cy="${y}" r="9" fill="${color}"${tech ? ' stroke="#fff" stroke-width="2" stroke-dasharray="2,2"' : ''}/>`;
+        ? `<rect x="${x-R}" y="${y-R}" width="${R*2}" height="${R*2}" rx="4" fill="${color}"${tech ? ' stroke="#fff" stroke-width="2.5" stroke-dasharray="3,3"' : ''}/>`
+        : `<circle cx="${x}" cy="${y}" r="${R}" fill="${color}"${tech ? ' stroke="#fff" stroke-width="2.5" stroke-dasharray="3,3"' : ''}/>`;
       s += shape;
-      s += `<text x="${x}" y="${y+3.5}" fill="#14151a" font-size="10" font-weight="700" text-anchor="middle">${n.fret}</text>`;
+      s += `<text x="${x}" y="${y+5}" fill="#14151a" font-size="14" font-weight="700" text-anchor="middle">${n.fret}</text>`;
       if (tech) {
         const abbr = n.techniques.map(t => TECH_ABBR[t] || t).join('');
-        s += `<text x="${x}" y="${y-12}" fill="#fff" font-size="9" font-weight="700" text-anchor="middle">${abbr}</text>`;
+        s += `<text x="${x}" y="${y-R-5}" fill="#fff" font-size="12" font-weight="700" text-anchor="middle">${abbr}</text>`;
         s += `<title>${n.techniques.join(', ')}</title>`;
       }
     }
