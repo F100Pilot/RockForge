@@ -519,16 +519,21 @@ function showArr(i) {
     if (last && n.chord && Math.abs(n.time - last.time) < 0.03) last.notes.push(n);
     else groups.push({ time: n.time, notes: [n] });
   }
+  // Preview the cumulative effect of the sync anchors set so far: notes are
+  // drawn at their warped (corrected) time, while data-t keeps the original
+  // chart time so new anchors stay in the backend's coordinate system.
+  const warp = buildTimeWarp(syncAnchors);
   for (const g of groups) {
     const sel = selectedTimes.has(g.time) ? ' selected' : '';
+    const dispT = warp(g.time);
     s += `<g class="note-grp${sel}" data-t="${g.time}">`;
     if (g.notes.length > 1) {
-      const x = 30 + g.time * px;
+      const x = 30 + dispT * px;
       const ys = g.notes.map(n => H - 35 - n.string * ROW);
       s += `<line x1="${x}" y1="${Math.min(...ys)}" x2="${x}" y2="${Math.max(...ys)}" stroke="#9aa0ad" stroke-width="2"/>`;
     }
     for (const n of g.notes) {
-      const x = 30 + n.time * px, y = H - 35 - n.string * ROW;
+      const x = 30 + dispT * px, y = H - 35 - n.string * ROW;
       const color = STRING_COLORS[n.string];
       const tech = n.techniques.length > 0;
       if (n.sustain > 0.05)
@@ -603,6 +608,30 @@ async function applySyncAnchors() {
   const b = await r.json();
   if (r.ok) { toast('A reconstruir com as correções de sincronização…', 'ok'); syncAnchors = []; selectJob(b.id); }
   else toast(b.detail || 'erro');
+}
+
+// Piecewise-linear remap from (chartTime, correctedTime) anchors — JS port of
+// gp_pipeline._build_time_warp, used to preview the cumulative effect of all
+// anchors set so far directly in the tab viewer.
+function buildTimeWarp(anchors) {
+  if (!anchors.length) return t => t;
+  const pts = [...anchors].sort((a, b) => a[0] - b[0]);
+  return function (t) {
+    if (pts.length === 1) {
+      const [x0, y0] = pts[0];
+      return t + (y0 - x0);
+    }
+    let x0, y0, x1, y1;
+    if (t <= pts[0][0]) { [x0, y0] = pts[0]; [x1, y1] = pts[1]; }
+    else if (t >= pts[pts.length - 1][0]) { [x0, y0] = pts[pts.length - 2]; [x1, y1] = pts[pts.length - 1]; }
+    else {
+      for (let i = 0; i < pts.length - 1; i++) {
+        if (pts[i][0] <= t && t <= pts[i + 1][0]) { [x0, y0] = pts[i]; [x1, y1] = pts[i + 1]; break; }
+      }
+    }
+    if (x1 === x0) return t + (y0 - x0);
+    return y0 + (y1 - y0) * (t - x0) / (x1 - x0);
+  };
 }
 
 function setAnchor(origT, newT) {
@@ -687,9 +716,11 @@ function updateSelectionInfo() {
       document.getElementById('selectionBox')?.remove();
       rubberBand = null;
       if (x2 - x1 > 3) {
+        const warp = buildTimeWarp(syncAnchors);
         for (const g of svg.querySelectorAll('.note-grp')) {
           const t = parseFloat(g.dataset.t);
-          if (t >= t1 && t <= t2) selectedTimes.add(t);
+          const dispT = warp(t);
+          if (dispT >= t1 && dispT <= t2) selectedTimes.add(t);
         }
         updateSelectionInfo();
         showArr(currentArr);
@@ -701,12 +732,13 @@ function updateSelectionInfo() {
       groupDrag.grps.forEach(g => g.removeAttribute('transform'));
       const deltaS = dx / tabPx;
       if (Math.abs(deltaS) > 0.01) {
+        const warp = buildTimeWarp(syncAnchors);
         const selStart = Math.min(...groupDrag.times), selEnd = Math.max(...groupDrag.times);
         if (selStart === selEnd) {
-          setAnchor(selStart, selStart + deltaS);
+          setAnchor(selStart, warp(selStart) + deltaS);
         } else {
-          setAnchor(selStart, selStart + deltaS);
-          setAnchor(selEnd, selEnd + deltaS);
+          setAnchor(selStart, warp(selStart) + deltaS);
+          setAnchor(selEnd, warp(selEnd) + deltaS);
         }
         selectedTimes.clear();
         updateSelectionInfo();
@@ -720,7 +752,8 @@ function updateSelectionInfo() {
     dragging.grp.removeAttribute('transform');
     const deltaS = dx / tabPx;
     if (Math.abs(deltaS) > 0.01) {
-      const newT = dragging.origT + deltaS;
+      const warp = buildTimeWarp(syncAnchors);
+      const newT = warp(dragging.origT) + deltaS;
       setAnchor(dragging.origT, newT);
       showArr(currentArr);
     }
@@ -757,7 +790,7 @@ function syncFrame() {
   const ph = document.getElementById('playhead');
   if (!au || !ph) { syncRaf = null; return; }
   const vt = viewerTimeAt(au.currentTime);
-  const x = 30 + vt * tabPx;
+  const x = 30 + buildTimeWarp(syncAnchors)(vt) * tabPx;
   ph.setAttribute('x1', x); ph.setAttribute('x2', x);
   const wrap = document.getElementById('tabwrap');
   if (x < wrap.scrollLeft + 60 || x > wrap.scrollLeft + wrap.clientWidth - 60)
