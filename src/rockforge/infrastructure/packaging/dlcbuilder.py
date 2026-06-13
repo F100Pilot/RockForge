@@ -53,17 +53,6 @@ class DlcBuilderPackager:
         if not arrangements:
             raise PackagingError("no arrangements to package")
         out_dir.mkdir(parents=True, exist_ok=True)
-        # DLC Builder's PhraseLevelComparer.savePhraseLevels writes a per-arrangement
-        # cache file under "<project>/.phrase-levels" via File.Create, which throws
-        # DirectoryNotFoundException if that folder doesn't exist yet (first build of
-        # a fresh project). Pre-create it. A placeholder file is required because an
-        # EMPTY directory is dropped when the bundle is zipped for download and
-        # re-extracted on Windows — the .keep guarantees the folder survives.
-        phrase_levels = out_dir / ".phrase-levels"
-        phrase_levels.mkdir(exist_ok=True)
-        (phrase_levels / ".keep").write_text(
-            "Placeholder so DLC Builder's phrase-level cache folder exists.\n", encoding="utf-8"
-        )
 
         xml_paths: list[Path] = []
         for arr in arrangements:
