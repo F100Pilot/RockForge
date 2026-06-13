@@ -5,141 +5,301 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>RockForge</title>
 <style>
-  :root { --bg:#14151a; --panel:#1f2128; --line:#34363f; --accent:#ff7a45; --ok:#5fbf6e; --warn:#e0b341; --err:#e06363; }
-  body { font-family: system-ui, sans-serif; max-width: 980px; margin: 1.5rem auto; padding: 0 1rem; background:var(--bg); color:#e8e8e8; }
-  h1 { color:var(--accent); margin-bottom:.25rem; }
-  fieldset { border:1px solid var(--line); border-radius:8px; margin-bottom:1rem; background:var(--panel); }
-  input, button, select { padding:.5rem; margin:.2rem 0; border-radius:6px; border:1px solid var(--line); background:#15161b; color:#eee; }
-  button { background:var(--accent); color:#14151a; font-weight:600; cursor:pointer; border:none; }
+  :root {
+    --bg:#0f1014; --panel:#1a1c23; --panel-2:#20222b; --line:#2e313c;
+    --accent:#ff7a45; --accent-soft:#ff7a4522;
+    --ok:#5fbf6e; --warn:#e0b341; --err:#e06363;
+    --text:#e8e8ec; --muted:#9a9da8;
+    --radius:12px; --shadow:0 8px 24px rgba(0,0,0,.35);
+  }
+  * { box-sizing:border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    max-width: 1040px; margin: 0 auto; padding: 1.5rem 1rem 4rem;
+    background:var(--bg); color:var(--text); line-height:1.5;
+  }
+  a { color:var(--accent); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+
+  .topbar { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:.25rem; }
+  .topbar h1 { margin:0; font-size:1.6rem; letter-spacing:.02em;
+    background:linear-gradient(90deg, var(--accent), #ffb088); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .tagline { color:var(--muted); font-size:.85rem; margin:.1rem 0 1rem; }
+
+  .notice {
+    background:linear-gradient(135deg, #2a2110, #241c14); border:1px solid #5a4520;
+    padding:.75rem 1rem; border-radius:var(--radius); font-size:.85rem; margin-bottom:1.25rem; color:#e8d9b8;
+  }
+
+  .card {
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:1.1rem 1.25rem; margin-bottom:1.25rem; box-shadow:var(--shadow);
+  }
+  .card h2 { margin:0 0 .75rem; font-size:1.05rem; font-weight:600; color:#f2f2f5; }
+  .card-header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.5rem; margin-bottom:.75rem; }
+  .card-header h2 { margin:0; }
+
+  /* form layout */
+  form.grid { display:flex; flex-wrap:wrap; gap:.6rem; align-items:flex-end; }
+  .field { display:flex; flex-direction:column; gap:.25rem; font-size:.8rem; color:var(--muted); }
+  .field input, .field select { font-size:.9rem; }
+  input, button, select, textarea {
+    padding:.55rem .7rem; border-radius:8px; border:1px solid var(--line);
+    background:#15161b; color:var(--text); font-size:.9rem; font-family:inherit;
+  }
+  input:focus, select:focus, textarea:focus { outline:2px solid var(--accent-soft); border-color:var(--accent); }
+  button { background:var(--accent); color:#1a1208; font-weight:600; cursor:pointer; border:none; transition:filter .15s; }
+  button:hover { filter:brightness(1.08); }
+  button:disabled { opacity:.5; cursor:not-allowed; }
   button.secondary { background:#2a2c35; color:#ddd; }
-  .notice { background:#3a2d12; border:1px solid #8a6d1a; padding:.6rem .8rem; border-radius:8px; font-size:.85rem; margin-bottom:1rem; }
+  button.secondary:hover { background:#33363f; }
+  button.danger { background:var(--err); color:#2a0d0d; }
+  button.icon { background:transparent; border:1px solid var(--line); color:var(--muted); padding:.35rem .6rem; }
+  button.icon:hover { color:var(--err); border-color:var(--err); background:#3a1a1a; }
+  label.check { display:flex; align-items:center; gap:.4rem; font-size:.85rem; color:var(--muted); cursor:pointer; }
+  label.check input { width:auto; }
+
+  .hint { font-size:.8rem; color:var(--muted); margin:.6rem 0 0; }
+  .hint code { background:#0f1013; padding:.05rem .3rem; border-radius:4px; }
+
+  /* tab nav for "novo job" */
+  .tabnav { display:flex; gap:.4rem; background:#15161b; padding:.25rem; border-radius:10px; }
+  .tabnav button {
+    background:transparent; color:var(--muted); font-weight:600; font-size:.85rem;
+    padding:.4rem .9rem; border-radius:8px;
+  }
+  .tabnav button.active { background:var(--accent); color:#1a1208; }
+  .tabpanel { padding-top:.25rem; }
+
+  /* jobs table */
   table { width:100%; border-collapse:collapse; font-size:.9rem; }
-  th, td { text-align:left; padding:.4rem .5rem; border-bottom:1px solid var(--line); }
-  tr.sel { background:#26282f; }
-  .badge { padding:.1rem .5rem; border-radius:999px; font-size:.75rem; font-weight:600; }
-  .b-pending { background:#444; } .b-running { background:var(--warn); color:#222; }
-  .b-completed { background:var(--ok); color:#10210f; } .b-failed { background:var(--err); color:#2a0d0d; }
-  .stages { display:flex; gap:.25rem; flex-wrap:wrap; margin:.5rem 0; }
-  .stage { padding:.15rem .5rem; border-radius:6px; background:#2a2c35; font-size:.75rem; color:#999; }
-  .stage.done { background:#274029; color:#a9e0ae; } .stage.now { background:var(--warn); color:#222; }
-  .warnbox { background:#332a14; border-left:3px solid var(--warn); padding:.4rem .6rem; margin:.3rem 0; font-size:.85rem; }
-  .errbox { background:#3a1a1a; border-left:3px solid var(--err); padding:.4rem .6rem; margin:.3rem 0; font-size:.85rem; }
-  #tabwrap { overflow-x:auto; background:#0f1013; border:1px solid var(--line); border-radius:8px; }
-  .tabs button { margin-right:.3rem; }
-  .meta { font-size:.85rem; color:#aaa; }
-  label { font-size:.85rem; margin-right:.6rem; }
-  .tuninggrid input { width:3.2rem; text-align:center; }
+  th, td { text-align:left; padding:.55rem .6rem; border-bottom:1px solid var(--line); }
+  th { color:var(--muted); font-weight:600; font-size:.78rem; text-transform:uppercase; letter-spacing:.04em; }
+  tbody tr { cursor:pointer; transition:background .12s; }
+  tbody tr:hover { background:#23252e; }
+  tbody tr.sel { background:var(--accent-soft); }
+  .empty-row td { color:var(--muted); text-align:center; padding:1.5rem; cursor:default; }
+  .empty-row td:hover { background:none; }
+
+  .badge { padding:.15rem .55rem; border-radius:999px; font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.03em; }
+  .b-pending { background:#444; color:#ddd; } .b-running { background:var(--warn); color:#221a04; }
+  .b-completed { background:var(--ok); color:#0c1f0d; } .b-failed { background:var(--err); color:#2a0d0d; }
+
+  .stages { display:flex; gap:.3rem; flex-wrap:wrap; margin:.75rem 0; }
+  .stage { padding:.2rem .65rem; border-radius:999px; background:#2a2c35; font-size:.74rem; color:#999; border:1px solid var(--line); }
+  .stage.done { background:#1f3a22; color:#a9e0ae; border-color:#2e5532; }
+  .stage.now { background:var(--warn); color:#221a04; border-color:var(--warn); font-weight:700; }
+
+  .warnbox { background:#332a14; border-left:3px solid var(--warn); padding:.5rem .75rem; margin:.4rem 0; font-size:.85rem; border-radius:0 6px 6px 0; }
+  .errbox { background:#3a1a1a; border-left:3px solid var(--err); padding:.5rem .75rem; margin:.4rem 0; font-size:.85rem; border-radius:0 6px 6px 0; }
+
+  #tabwrap { overflow-x:auto; background:#0f1013; border:1px solid var(--line); border-radius:8px; margin-top:.5rem; }
+  .meta { font-size:.85rem; color:var(--muted); }
+  .tuninggrid { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; }
+  .tuninggrid input { width:3.4rem; text-align:center; }
+
+  .downloads { display:flex; gap:.6rem; flex-wrap:wrap; margin:.6rem 0; align-items:center; }
+  .downloads a { background:var(--accent-soft); border:1px solid var(--accent); color:var(--accent); padding:.4rem .8rem; border-radius:8px; font-weight:600; font-size:.85rem; }
+  .downloads a:hover { background:var(--accent); color:#1a1208; text-decoration:none; }
+
+  hr.sep { border:none; border-top:1px solid var(--line); margin:1.1rem 0; }
+
+  /* modal */
+  .modal-overlay {
+    position:fixed; inset:0; background:rgba(8,9,12,.65); backdrop-filter:blur(2px);
+    display:flex; align-items:center; justify-content:center; z-index:50; padding:1rem;
+  }
+  .modal-overlay[hidden] { display:none; }
+  .modal {
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    box-shadow:var(--shadow); max-width:920px; width:100%; max-height:90vh; overflow:auto;
+    padding:1.25rem 1.5rem; position:relative; animation:pop .15s ease-out;
+  }
+  .modal-sm { max-width:420px; }
+  @keyframes pop { from { transform:scale(.97); opacity:0; } to { transform:scale(1); opacity:1; } }
+  .modal-close {
+    position:absolute; top:.75rem; right:.85rem; background:transparent; border:none;
+    color:var(--muted); font-size:1.4rem; line-height:1; cursor:pointer; padding:.2rem .5rem; border-radius:6px;
+  }
+  .modal-close:hover { color:var(--text); background:#2a2c35; }
+  .modal h2 { margin-top:0; }
+  .modal-actions { display:flex; justify-content:flex-end; gap:.5rem; margin-top:1rem; }
+
+  /* toasts */
+  .toast-container { position:fixed; bottom:1rem; right:1rem; display:flex; flex-direction:column; gap:.5rem; z-index:100; }
+  .toast {
+    background:var(--panel-2); border:1px solid var(--line); border-left:4px solid var(--err);
+    border-radius:8px; padding:.6rem .9rem; font-size:.85rem; box-shadow:var(--shadow);
+    max-width:320px; animation:slidein .2s ease-out;
+  }
+  .toast.ok { border-left-color:var(--ok); }
+  @keyframes slidein { from { transform:translateX(20px); opacity:0; } to { transform:translateX(0); opacity:1; } }
 </style>
 </head>
 <body>
-<h1>RockForge</h1>
-<p class="meta">áudio → arranjos Rocksmith 2014 · <a href="/docs" style="color:var(--accent)">API</a></p>
+
+<div class="topbar">
+  <h1>RockForge</h1>
+  <a href="/docs">API / OpenAPI</a>
+</div>
+<p class="tagline">áudio (ou Guitar Pro) → arranjos Rocksmith 2014, prontos para o DLC Builder</p>
+
 <p class="notice">
   A divisão <strong>Lead/Rhythm é experimental</strong> (sem método publicado). O resultado garantido
   é um <strong>bundle para o DLC Builder</strong>; o PSARC final exige Wwise. Reveja sempre a
   transcrição abaixo e confirme a afinação antes de exportar. Não submeta conteúdo de terceiros sem autorização.
 </p>
 
-<fieldset>
-  <legend>Novo job — ficheiro de áudio</legend>
-  <form id="uploadForm">
-    <input type="file" name="file" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" required>
-    <input type="text" name="title" placeholder="Título (auto das tags)">
-    <input type="text" name="artist" placeholder="Banda (auto das tags)">
-    <input type="text" name="album" placeholder="Álbum (auto das tags)">
-    <input type="number" name="year" placeholder="Ano" min="1900" max="2100" style="width:5.5rem">
-    <label>Início (s): <input type="number" name="offset_s" value="0" step="0.01" min="0" style="width:5rem"></label>
-    <label><input type="checkbox" name="transcribe_lyrics" value="true"> Transcrever letra (EXPERIMENTAL)</label>
-    <button type="submit">Processar</button>
-  </form>
-  <p class="meta">Se o ficheiro tiver tags (ID3/Vorbis), os campos vazios são preenchidos
-  automaticamente; se faltar título ou banda nas tags, é pedido que os preenchas.
-  <strong>Início (s)</strong>: corta o áudio a partir deste segundo (ex: 5.3 → ignora os primeiros 5.3s).
-  As notas são transcritas do áudio aparado — ficam naturalmente sincronizadas. Usa 0 para o ficheiro inteiro.
-  <strong>Transcrever letra</strong>: WhisperX sobre o stem vocal (requer
-  <code>pip install -e ".[lyrics]"</code>); revê o texto/timing — para timing exato usa um LRC na via Guitar Pro.</p>
-</fieldset>
+<section class="card">
+  <div class="card-header">
+    <h2>Novo job</h2>
+    <div class="tabnav" id="newJobTabs">
+      <button type="button" class="active" data-tab="audio">Áudio</button>
+      <button type="button" data-tab="youtube">YouTube</button>
+      <button type="button" data-tab="gp">Guitar Pro</button>
+    </div>
+  </div>
 
-<fieldset>
-  <legend>Novo job — URL YouTube</legend>
-  <form id="ytForm">
-    <input type="url" name="url" placeholder="https://www.youtube.com/watch?v=…" required size="34">
-    <input type="text" name="title" placeholder="Título" required>
-    <input type="text" name="artist" placeholder="Banda" required>
-    <input type="text" name="album" placeholder="Álbum (opcional)">
-    <input type="number" name="year" placeholder="Ano" min="1900" max="2100" style="width:5.5rem">
-    <button type="submit">Processar</button>
-  </form>
-  <p class="meta">Desativado por defeito no servidor (viola o ToS do YouTube); o pedido devolve 403
-  salvo se o operador tiver ativado <code>ROCKFORGE_ENABLE_YOUTUBE</code>.</p>
-</fieldset>
+  <div class="tabpanel" data-panel="audio">
+    <form id="uploadForm" class="grid">
+      <div class="field"><label>Ficheiro</label>
+        <input type="file" name="file" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" required></div>
+      <div class="field"><label>Título</label>
+        <input type="text" name="title" placeholder="auto das tags"></div>
+      <div class="field"><label>Banda</label>
+        <input type="text" name="artist" placeholder="auto das tags"></div>
+      <div class="field"><label>Álbum</label>
+        <input type="text" name="album" placeholder="auto das tags"></div>
+      <div class="field"><label>Ano</label>
+        <input type="number" name="year" min="1900" max="2100" style="width:5.5rem"></div>
+      <div class="field"><label>Início (s)</label>
+        <input type="number" name="offset_s" value="0" step="0.01" min="0" style="width:5rem"></div>
+      <label class="check"><input type="checkbox" name="transcribe_lyrics" value="true"> Transcrever letra (EXPERIMENTAL)</label>
+      <button type="submit">Processar</button>
+    </form>
+    <p class="hint">Se o ficheiro tiver tags (ID3/Vorbis), os campos vazios são preenchidos
+    automaticamente; se faltar título ou banda nas tags, é pedido que os preenchas.
+    <strong>Início (s)</strong>: corta o áudio a partir deste segundo (ex: 5.3 → ignora os primeiros 5.3s).
+    As notas são transcritas do áudio aparado — ficam naturalmente sincronizadas. Usa 0 para o ficheiro inteiro.
+    <strong>Transcrever letra</strong>: WhisperX sobre o stem vocal (requer
+    <code>pip install -e ".[lyrics]"</code>); revê o texto/timing — para timing exato usa um LRC na via Guitar Pro.</p>
+  </div>
 
-<fieldset>
-  <legend>Novo job — Guitar Pro (GP3/GP4/GP5) + gravação</legend>
-  <p class="meta">Via de alta fidelidade: notas, trastes, técnicas, tempo e secções vêm exatas do
-  ficheiro. <strong>GPX/GP7 não é suportado</strong> — exporta como GP5 no Guitar Pro/TuxGuitar.</p>
-  <form id="gpInspectForm">
-    <input type="file" name="file" accept=".gp3,.gp4,.gp5" required>
-    <button type="submit" class="secondary">1. Inspecionar pistas</button>
-  </form>
-  <form id="gpJobForm" style="display:none; margin-top:.5rem">
-    <div id="gpMeta" class="meta"></div>
-    <label>Pista Lead: <select name="lead_track"><option value="">—</option></select></label>
-    <label>Pista Rhythm: <select name="rhythm_track"><option value="">—</option></select></label><br>
-    <input type="file" name="audio" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" required>
-    <label>Silêncio inicial a acrescentar (s): <input type="number" name="offset_s" value="0" step="0.01" min="0" style="width:6rem"></label><br>
-    <input type="text" name="tone_base" placeholder="Tone base (ex.: dist_rhythm)">
-    <input type="text" name="tone_names" placeholder="Tones extra, vírgulas (máx. 4)">
-    <label>Letra (LRC): <input type="file" name="lrc" accept=".lrc,.txt"></label><br>
-    <input type="text" name="title" placeholder="Título (auto do GP/tags)">
-    <input type="text" name="artist" placeholder="Banda (auto do GP/tags)">
-    <input type="text" name="album" placeholder="Álbum (auto)">
-    <input type="number" name="year" placeholder="Ano" min="1900" max="2100" style="width:5.5rem">
-    <button type="submit">2. Criar CDLC</button>
-  </form>
-  <p class="meta">Sincronização: a partitura não conhece o áudio. "Silêncio inicial a acrescentar"
-  insere N segundos de silêncio no início da gravação e desloca a partitura e a letra pelo mesmo
-  tempo — usa isto se quiseres que a música demore N segundos a começar a tocar (ex.: para um
-  écran de título). Para letra sincronizada usa um ficheiro LRC (os tempos são ajustados
-  automaticamente ao deslocamento); a letra embutida no GP só tem tempo ao nível da linha. Os
-  nomes de tones são gravados no XML (tonebase/tonea–toned) e mapeiam-se a tones reais no DLC
-  Builder.</p>
-</fieldset>
+  <div class="tabpanel" data-panel="youtube" hidden>
+    <form id="ytForm" class="grid">
+      <div class="field" style="flex:2 1 280px"><label>URL</label>
+        <input type="url" name="url" placeholder="https://www.youtube.com/watch?v=…" required></div>
+      <div class="field"><label>Título</label>
+        <input type="text" name="title" placeholder="Título" required></div>
+      <div class="field"><label>Banda</label>
+        <input type="text" name="artist" placeholder="Banda" required></div>
+      <div class="field"><label>Álbum</label>
+        <input type="text" name="album" placeholder="opcional"></div>
+      <div class="field"><label>Ano</label>
+        <input type="number" name="year" min="1900" max="2100" style="width:5.5rem"></div>
+      <button type="submit">Processar</button>
+    </form>
+    <p class="hint">Desativado por defeito no servidor (viola o ToS do YouTube); o pedido devolve 403
+    salvo se o operador tiver ativado <code>ROCKFORGE_ENABLE_YOUTUBE</code>.</p>
+  </div>
 
-<fieldset>
-  <legend>Jobs</legend>
+  <div class="tabpanel" data-panel="gp" hidden>
+    <p class="hint" style="margin-top:0">Via de alta fidelidade: notas, trastes, técnicas, tempo e secções vêm exatas do
+    ficheiro. <strong>GPX/GP7 não é suportado</strong> — exporta como GP5 no Guitar Pro/TuxGuitar.</p>
+    <form id="gpInspectForm" class="grid">
+      <div class="field"><label>Ficheiro GP3/GP4/GP5</label>
+        <input type="file" name="file" accept=".gp3,.gp4,.gp5" required></div>
+      <button type="submit" class="secondary">1. Inspecionar pistas</button>
+    </form>
+    <form id="gpJobForm" class="grid" style="display:none; margin-top:.75rem">
+      <div id="gpMeta" class="meta" style="flex-basis:100%"></div>
+      <div class="field"><label>Pista Lead</label>
+        <select name="lead_track"><option value="">—</option></select></div>
+      <div class="field"><label>Pista Rhythm</label>
+        <select name="rhythm_track"><option value="">—</option></select></div>
+      <div class="field"><label>Gravação</label>
+        <input type="file" name="audio" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" required></div>
+      <div class="field"><label>Silêncio inicial a acrescentar (s)</label>
+        <input type="number" name="offset_s" value="0" step="0.01" min="0" style="width:6rem"></div>
+      <div class="field"><label>Tone base</label>
+        <input type="text" name="tone_base" placeholder="ex.: dist_rhythm"></div>
+      <div class="field"><label>Tones extra</label>
+        <input type="text" name="tone_names" placeholder="vírgulas, máx. 4"></div>
+      <div class="field"><label>Letra (LRC)</label>
+        <input type="file" name="lrc" accept=".lrc,.txt"></div>
+      <div class="field"><label>Título</label>
+        <input type="text" name="title" placeholder="auto do GP/tags"></div>
+      <div class="field"><label>Banda</label>
+        <input type="text" name="artist" placeholder="auto do GP/tags"></div>
+      <div class="field"><label>Álbum</label>
+        <input type="text" name="album" placeholder="auto"></div>
+      <div class="field"><label>Ano</label>
+        <input type="number" name="year" min="1900" max="2100" style="width:5.5rem"></div>
+      <button type="submit">2. Criar CDLC</button>
+    </form>
+    <p class="hint">Sincronização: a partitura não conhece o áudio. "Silêncio inicial a acrescentar"
+    insere N segundos de silêncio no início da gravação e desloca a partitura e a letra pelo mesmo
+    tempo — usa isto se quiseres que a música demore N segundos a começar a tocar (ex.: para um
+    écran de título). Para letra sincronizada usa um ficheiro LRC (os tempos são ajustados
+    automaticamente ao deslocamento); a letra embutida no GP só tem tempo ao nível da linha. Os
+    nomes de tones são gravados no XML (tonebase/tonea–toned) e mapeiam-se a tones reais no DLC
+    Builder.</p>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Jobs</h2>
   <table id="jobsTable"><thead>
     <tr><th>Título</th><th>Artista</th><th>Estado</th><th>Etapa</th><th>Criado</th><th></th></tr>
   </thead><tbody></tbody></table>
-</fieldset>
+</section>
 
-<fieldset id="detail" style="display:none">
-  <legend>Detalhe do job</legend>
-  <div id="detailHead"></div>
-  <div class="stages" id="stagesBar"></div>
-  <div id="warnings"></div>
-  <p id="downloads"></p>
+<!-- Job detail modal -->
+<div class="modal-overlay" id="detailOverlay" hidden>
+  <div class="modal" id="detail">
+    <button type="button" class="modal-close" id="detailClose" title="Fechar">×</button>
+    <h2>Detalhe do job</h2>
+    <div id="detailHead"></div>
+    <div class="stages" id="stagesBar"></div>
+    <div id="warnings"></div>
+    <div class="downloads" id="downloads"></div>
 
-  <div id="review" style="display:none">
-    <h3>Revisão humana</h3>
-    <p class="meta">Afinação detetada (desvios de E standard por corda, grave→agudo) e BPM médio.
-    Corrija a afinação se necessário e reconstrua — a estimativa automática de afinações drop/open
-    é apenas heurística.</p>
-    <div id="tuningInfo"></div>
-    <form id="rebuildForm" class="tuninggrid">
-      <label>Afinação (MIDI por corda):</label>
-      <span id="tuningInputs"></span>
-      <label><input type="checkbox" id="splitChk" checked> tentar split Lead/Rhythm (experimental)</label>
-      <button type="submit" class="secondary">Reconstruir com estes valores</button>
-    </form>
+    <div id="review" style="display:none">
+      <hr class="sep">
+      <h2>Revisão humana</h2>
+      <p class="hint" style="margin-top:0">Afinação detetada (desvios de E standard por corda, grave→agudo) e BPM médio.
+      Corrija a afinação se necessário e reconstrua — a estimativa automática de afinações drop/open
+      é apenas heurística.</p>
+      <div id="tuningInfo"></div>
+      <form id="rebuildForm" class="tuninggrid">
+        <label>Afinação (MIDI por corda):</label>
+        <span id="tuningInputs"></span>
+        <label class="check"><input type="checkbox" id="splitChk" checked> tentar split Lead/Rhythm (experimental)</label>
+        <button type="submit" class="secondary">Reconstruir com estes valores</button>
+      </form>
 
-    <h3>Transcrição (notas e acordes)</h3>
-    <div class="tabs" id="arrTabs"></div>
-    <div id="tabwrap"><svg id="tabsvg" height="190"></svg></div>
-    <p class="meta">● nota · ▮ nota de acorde · cor laranja = técnica (bend/HO/PO/harmónico).
-    Eixo X em segundos; linhas = cordas (grave em baixo).</p>
+      <hr class="sep">
+      <h2>Transcrição (notas e acordes)</h2>
+      <div class="tabnav" id="arrTabs"></div>
+      <div id="tabwrap"><svg id="tabsvg" height="190"></svg></div>
+      <p class="hint">● nota · ▮ nota de acorde · cor laranja = técnica (bend/HO/PO/harmónico).
+      Eixo X em segundos; linhas = cordas (grave em baixo).</p>
+    </div>
   </div>
-</fieldset>
+</div>
+
+<!-- Confirm modal -->
+<div class="modal-overlay" id="confirmOverlay" hidden>
+  <div class="modal modal-sm">
+    <p id="confirmText"></p>
+    <div class="modal-actions">
+      <button type="button" class="secondary" id="confirmCancel">Cancelar</button>
+      <button type="button" class="danger" id="confirmOk">Remover</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toasts"></div>
 
 <script>
 const STD = [40, 45, 50, 55, 59, 64];
@@ -148,29 +308,68 @@ let selectedJob = null, arrangements = [], currentArr = 0, pollTimer = null;
 const badge = s => `<span class="badge b-${s}">${s}</span>`;
 const esc = t => { const d = document.createElement('span'); d.textContent = t ?? ''; return d.innerHTML; };
 
+function toast(message, kind = 'err') {
+  const el = document.createElement('div');
+  el.className = `toast ${kind === 'ok' ? 'ok' : ''}`;
+  el.textContent = message;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 5000);
+}
+
+function confirmModal(text) {
+  const overlay = document.getElementById('confirmOverlay');
+  document.getElementById('confirmText').textContent = text;
+  overlay.hidden = false;
+  return new Promise(resolve => {
+    const cleanup = result => { overlay.hidden = true; resolve(result); };
+    document.getElementById('confirmOk').onclick = () => cleanup(true);
+    document.getElementById('confirmCancel').onclick = () => cleanup(false);
+    overlay.onclick = e => { if (e.target === overlay) cleanup(false); };
+  });
+}
+
+// "Novo job" tabs
+document.getElementById('newJobTabs').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-tab]');
+  if (!btn) return;
+  for (const b of document.querySelectorAll('#newJobTabs button')) b.classList.toggle('active', b === btn);
+  for (const p of document.querySelectorAll('.tabpanel')) p.hidden = (p.dataset.panel !== btn.dataset.tab);
+});
+
+function closeDetail() {
+  selectedJob = null;
+  clearInterval(pollTimer);
+  document.getElementById('detailOverlay').hidden = true;
+  refreshJobs();
+}
+document.getElementById('detailClose').onclick = closeDetail;
+document.getElementById('detailOverlay').addEventListener('click', e => {
+  if (e.target.id === 'detailOverlay') closeDetail();
+});
+
 async function refreshJobs() {
   const jobs = await (await fetch('/jobs')).json();
   const tb = document.querySelector('#jobsTable tbody');
   tb.innerHTML = '';
+  if (!jobs.length) {
+    tb.innerHTML = '<tr class="empty-row"><td colspan="6">Ainda sem jobs — cria um acima.</td></tr>';
+    return;
+  }
   for (const j of jobs) {
     const tr = document.createElement('tr');
     if (selectedJob && j.id === selectedJob.id) tr.className = 'sel';
     tr.innerHTML = `<td>${esc(j.title)}</td><td>${esc(j.artist)}</td><td>${badge(j.status)}</td>
       <td>${esc(j.stage || '—')}</td><td>${esc((j.created_at||'').slice(0,19).replace('T',' '))}</td>
-      <td><button type="button" class="secondary del" title="Remover job"
+      <td><button type="button" class="icon del" title="Remover job"
         ${j.status === 'running' ? 'disabled' : ''}>🗑</button></td>`;
-    tr.style.cursor = 'pointer';
     tr.onclick = () => selectJob(j.id);
     tr.querySelector('.del').onclick = async ev => {
       ev.stopPropagation();
-      if (!confirm(`Remover o job "${j.title}"? Isto apaga também o bundle gerado.`)) return;
+      const ok = await confirmModal(`Remover o job "${j.title}"? Isto apaga também o bundle gerado.`);
+      if (!ok) return;
       const r = await fetch(`/jobs/${j.id}`, { method: 'DELETE' });
-      if (!r.ok && r.status !== 204) { alert((await r.json()).detail || 'erro'); return; }
-      if (selectedJob && selectedJob.id === j.id) {
-        selectedJob = null;
-        clearInterval(pollTimer);
-        document.getElementById('detail').style.display = 'none';
-      }
+      if (!r.ok && r.status !== 204) { toast((await r.json()).detail || 'erro'); return; }
+      if (selectedJob && selectedJob.id === j.id) closeDetail();
       refreshJobs();
     };
     tb.appendChild(tr);
@@ -180,7 +379,7 @@ async function refreshJobs() {
 async function selectJob(id) {
   const j = await (await fetch(`/jobs/${id}`)).json();
   selectedJob = j;
-  document.getElementById('detail').style.display = '';
+  document.getElementById('detailOverlay').hidden = false;
   document.getElementById('detailHead').innerHTML =
     `<strong>${esc(j.title)}</strong> — ${esc(j.artist)}
      ${j.album ? `· ${esc(j.album)}` : ''} ${j.year ? `(${j.year})` : ''} ${badge(j.status)}
@@ -201,9 +400,9 @@ async function selectJob(id) {
 
   const dl = document.getElementById('downloads');
   dl.innerHTML = '';
-  if (j.bundle_available) dl.innerHTML += `<a href="/jobs/${j.id}/bundle" style="color:var(--accent)">Bundle (DLC Builder)</a> `;
-  if (j.psarc_available) dl.innerHTML += `<a href="/jobs/${j.id}/psarc" style="color:var(--accent)">PSARC</a>`;
-  if (j.bundle_available && !j.psarc_available) dl.innerHTML += ` <span class="meta">(PSARC requer Wwise — ver README)</span>`;
+  if (j.bundle_available) dl.innerHTML += `<a href="/jobs/${j.id}/bundle">Bundle (DLC Builder)</a>`;
+  if (j.psarc_available) dl.innerHTML += `<a href="/jobs/${j.id}/psarc">PSARC</a>`;
+  if (j.bundle_available && !j.psarc_available) dl.innerHTML += `<span class="meta">PSARC requer Wwise — ver README</span>`;
 
   if (j.status === 'completed' && j.bundle_available) await loadArrangements(j.id);
   else document.getElementById('review').style.display = 'none';
@@ -224,12 +423,14 @@ async function loadArrangements(id) {
   document.getElementById('tuningInputs').innerHTML = STD.map((std, i) =>
     `<input type="number" min="20" max="80" value="${std + a0.tuning_offsets[i]}" data-string="${i}">`).join('');
   document.getElementById('arrTabs').innerHTML = arrangements.map((a, i) =>
-    `<button type="button" class="${i ? 'secondary' : ''}" onclick="showArr(${i})">${a.kind} (${a.note_count}n/${a.chord_count}c)</button>`).join('');
+    `<button type="button" class="${i ? '' : 'active'}" onclick="showArr(${i})">${a.kind} (${a.note_count}n/${a.chord_count}c)</button>`).join('');
   showArr(0);
 }
 
 function showArr(i) {
   currentArr = i;
+  for (const [idx, btn] of document.querySelectorAll('#arrTabs button').entries())
+    btn.classList.toggle('active', idx === i);
   const a = arrangements[i];
   const svg = document.getElementById('tabsvg');
   const dur = Math.max(...a.notes.map(n => n.time + n.sustain), 10);
@@ -263,7 +464,7 @@ document.getElementById('uploadForm').addEventListener('submit', async e => {
   e.preventDefault();
   const r = await fetch('/jobs/upload', { method: 'POST', body: new FormData(e.target) });
   const b = await r.json();
-  if (r.ok) { e.target.reset(); selectJob(b.id); } else alert(b.detail || 'erro');
+  if (r.ok) { e.target.reset(); toast('Job criado.', 'ok'); selectJob(b.id); } else toast(b.detail || 'erro');
 });
 
 document.getElementById('ytForm').addEventListener('submit', async e => {
@@ -275,7 +476,7 @@ document.getElementById('ytForm').addEventListener('submit', async e => {
     body: JSON.stringify(payload),
   });
   const b = await r.json();
-  if (r.ok) { e.target.reset(); selectJob(b.id); } else alert(b.detail || 'erro');
+  if (r.ok) { e.target.reset(); toast('Job criado.', 'ok'); selectJob(b.id); } else toast(b.detail || 'erro');
 });
 
 document.getElementById('rebuildForm').addEventListener('submit', async e => {
@@ -290,7 +491,7 @@ document.getElementById('rebuildForm').addEventListener('submit', async e => {
     }),
   });
   const b = await r.json();
-  if (r.ok) selectJob(b.id); else alert(b.detail || 'erro');
+  if (r.ok) { toast('A reconstruir…', 'ok'); selectJob(b.id); } else toast(b.detail || 'erro');
 });
 
 let gpToken = null;
@@ -299,7 +500,7 @@ document.getElementById('gpInspectForm').addEventListener('submit', async e => {
   e.preventDefault();
   const r = await fetch('/gp/inspect', { method: 'POST', body: new FormData(e.target) });
   const b = await r.json();
-  if (!r.ok) return alert(b.detail || 'erro');
+  if (!r.ok) return toast(b.detail || 'erro');
   gpToken = b.gp_token;
   const form = document.getElementById('gpJobForm');
   form.style.display = '';
@@ -322,7 +523,7 @@ document.getElementById('gpJobForm').addEventListener('submit', async e => {
   f.append('gp_token', gpToken);
   const r = await fetch('/jobs/gp', { method: 'POST', body: f });
   const b = await r.json();
-  if (r.ok) { selectJob(b.id); } else alert(b.detail || 'erro');
+  if (r.ok) { toast('Job criado.', 'ok'); selectJob(b.id); } else toast(b.detail || 'erro');
 });
 
 refreshJobs();
