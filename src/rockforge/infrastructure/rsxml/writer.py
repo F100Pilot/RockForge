@@ -283,11 +283,22 @@ def render_arrangement(arr: Arrangement) -> ET.Element:
     chords_el = ET.SubElement(level, "chords", count=str(len(chord_groups)))
     for g in chord_groups:
         chord_id = template_ids[_chord_template_key(g)]
+        # The game reads palm mute / accent / HOPO from the <chord> element, not
+        # from its chordNote children; an inconsistency between the two renders
+        # the chord with a corrupt highway sprite. Mirror the per-note technique
+        # onto the chord when every note in it carries that technique.
+        chord_pm = all(Technique.PALM_MUTE in n.techniques for n in g)
+        chord_accent = all(Technique.ACCENT in n.techniques for n in g)
+        chord_hopo = all(
+            {Technique.HAMMER_ON, Technique.PULL_OFF} & n.techniques for n in g
+        )
         chord_el = ET.SubElement(
             chords_el, "chord",
-            time=_fmt(g[0].time), chordId=str(chord_id), linkNext="0", accent="0",
-            fretHandMute="0", highDensity="0", ignore="0", palmMute="0",
-            hopo="0", strum="down",
+            time=_fmt(g[0].time), chordId=str(chord_id), linkNext="0",
+            accent="1" if chord_accent else "0",
+            fretHandMute="0", highDensity="0", ignore="0",
+            palmMute="1" if chord_pm else "0",
+            hopo="1" if chord_hopo else "0", strum="down",
         )
         for n in g:  # chordNote children preserve per-string technique data
             ET.SubElement(chord_el, "chordNote", _note_attrs(n))
