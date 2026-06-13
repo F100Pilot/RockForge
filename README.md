@@ -146,6 +146,9 @@ pytest && ruff check src tests && mypy
   protegidas e distribuí-las é distribuição não autorizada. Use apenas com material próprio
   ou autorizado.
 - A ingestão YouTube está desativada por defeito (`ROCKFORGE_ENABLE_YOUTUBE=false`) porque
-  descarregar áudio viola o ToS do YouTube.
+  descarregar áudio viola o ToS do YouTube. Para ativar (uso pessoal, só com músicas
+  próprias), cria um ficheiro `.env` na raiz do projeto (ver `.env.example`) com
+  `ROCKFORGE_ENABLE_YOUTUBE=true` e reinicia a API/worker — é uma decisão explícita do
+  operador, e descarregar conteúdo de terceiros continua a violar o ToS.
 - O empacotamento final exige o Wwise (EULA Audiokinetic, não redistribuível): o RockForge
   entrega um bundle pronto a importar no [DLC Builder](https://github.com/iminashi/Rocksmith2014.NET).
