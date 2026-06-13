@@ -37,6 +37,11 @@ que a música começa na gravação e a partitura/letra são deslocadas para ess
 gravação fica intacta, pois já tem o seu intro); há um lead-in mínimo de 2s para o count-in
 do DLC Builder; pistas de baixo (4/5 cordas) ainda não são suportadas.
 
+Para afinar a sincronização há uma **ferramenta de sincronização visual** no detalhe do job
+(jobs GP): dá play à gravação, o cursor percorre as notas e ouves um *tique* em cada uma —
+arrasta o "Início da música" até os tiques baterem certo com a música e carrega em "Aplicar e
+reconstruir".
+
 Leitura obrigatória: [`docs/RELATORIO-TECNICO.md`](docs/RELATORIO-TECNICO.md) (viabilidade,
 arquitetura, riscos) e os relatórios de investigação com fontes em [`docs/research/`](docs/research/).
 

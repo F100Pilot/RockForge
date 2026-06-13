@@ -169,6 +169,33 @@ def test_rebuild_validates_tuning_length(client: TestClient) -> None:
     assert r.status_code == 422
 
 
+def test_rebuild_applies_offset_for_visual_sync(client: TestClient) -> None:
+    # The visual sync tool rebuilds with the chosen offset_s; it must land in the
+    # new job's params and be reflected in offset_s on the job output.
+    original = _create_job(client)
+    rebuilt = client.post(
+        f"/jobs/{original['id']}/rebuild", json={"offset_s": 3.25}
+    ).json()
+    assert client.get(f"/jobs/{rebuilt['id']}").json()["offset_s"] == pytest.approx(3.25)
+
+
+def test_rebuild_rejects_negative_offset(client: TestClient) -> None:
+    original = _create_job(client)
+    r = client.post(f"/jobs/{original['id']}/rebuild", json={"offset_s": -1.0})
+    assert r.status_code == 422
+
+
+def test_source_audio_served_for_upload(client: TestClient) -> None:
+    job = _create_job(client)
+    r = client.get(f"/jobs/{job['id']}/source-audio")
+    assert r.status_code == 200
+    assert r.content == b"RIFF0000WAVE"
+
+
+def test_source_audio_404_for_unknown_job(client: TestClient) -> None:
+    assert client.get("/jobs/nope/source-audio").status_code == 404
+
+
 def test_arrangements_404_until_completed(client: TestClient) -> None:
     job = _create_job(client)
     assert client.get(f"/jobs/{job['id']}/arrangements").status_code == 404

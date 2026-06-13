@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import mimetypes
 import shutil
 import uuid
 from pathlib import Path
@@ -46,6 +47,8 @@ class JobOut(BaseModel):
     note_counts: dict[str, int]
     psarc_available: bool
     bundle_available: bool
+    source_type: str
+    offset_s: float
     error: str | None
 
 
@@ -54,6 +57,7 @@ class RebuildIn(BaseModel):
 
     tuning_midi: list[int] | None = None  # 6 MIDI pitches, low to high
     cent_offset: float = 0.0
+    offset_s: float | None = None  # GP sync: second in the recording where the song starts
     split_lead_rhythm: bool = True
 
 
@@ -99,6 +103,8 @@ def _to_out(job: Job) -> JobOut:
         note_counts=job.note_counts or {},
         psarc_available=job.psarc_path is not None,
         bundle_available=job.bundle_dir is not None,
+        source_type=job.source_type,
+        offset_s=float((job.params or {}).get("offset_s") or 0.0),
         error=job.error,
     )
 
@@ -403,13 +409,17 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
         original = session.get(Job, job_id)
         if original is None:
             raise HTTPException(404, "job not found")
-        if original.source_type == "upload" and not Path(original.source).exists():
+        if original.source_type in {"upload", "gp"} and not Path(original.source).exists():
             raise HTTPException(409, "original upload no longer exists on the work volume")
         params: dict[str, object] = dict(original.params or {})
         params["split_lead_rhythm"] = payload.split_lead_rhythm
         if payload.tuning_midi is not None:
             params["tuning_midi"] = payload.tuning_midi
             params["cent_offset"] = payload.cent_offset
+        if payload.offset_s is not None:
+            if payload.offset_s < 0.0:
+                raise HTTPException(422, "offset_s must be >= 0")
+            params["offset_s"] = payload.offset_s
         job = Job(
             source=original.source,
             source_type=original.source_type,
@@ -488,6 +498,26 @@ def get_job(job_id: str) -> JobOut:
         if job is None:
             raise HTTPException(404, "job not found")
         return _to_out(job)
+
+
+@app.get("/jobs/{job_id}/source-audio")
+def get_source_audio(job_id: str) -> FileResponse:
+    """The original recording, served for the in-app visual sync tool.
+
+    This is the un-padded upload (source_type upload/gp); the GP sync UI plays it
+    and overlays note ticks so the user can find the second where the song starts.
+    """
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+        if job.source_type not in {"upload", "gp"}:
+            raise HTTPException(404, "no local source audio for this job")
+        src = Path(job.source)
+        if not src.exists():
+            raise HTTPException(404, "source audio no longer exists on the work volume")
+        media_type = mimetypes.guess_type(src.name)[0] or "application/octet-stream"
+        return FileResponse(src, media_type=media_type)
 
 
 @app.get("/jobs/{job_id}/bundle")
