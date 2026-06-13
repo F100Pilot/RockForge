@@ -63,11 +63,14 @@ class GpJobSpec:
     tone_base: str | None = None
     tone_names: list[str] = field(default_factory=list)
     tone_changes: list[ToneChange] = field(default_factory=list)
-    # Manual drift-correction points: (chart_time_s, corrected_time_s) pairs,
-    # in the already-shifted (post offset_s) timeline shown in the tab viewer.
-    # Notes/beats/sections/lyrics between consecutive points are stretched or
-    # compressed (piecewise-linear) to line up with the recording.
-    sync_anchors: list[tuple[float, float]] = field(default_factory=list)
+    # Manual drift-correction rounds. Each round is a list of (chart_time_s,
+    # corrected_time_s) anchor pairs, expressed in the timeline produced by the
+    # *previous* round (i.e. as shown in the tab viewer at the time the user
+    # drew them) — round 0 is in the raw post-offset_s timeline. Rounds are
+    # applied in order via piecewise-linear stretch/compress, so corrections
+    # made in separate sessions (after reloading a completed job) compose
+    # correctly instead of overwriting each other.
+    sync_anchor_stages: list[list[tuple[float, float]]] = field(default_factory=list)
 
 
 def _build_time_warp(anchors: list[tuple[float, float]]) -> Callable[[float], float]:
@@ -202,8 +205,10 @@ class GenerateFromGpUseCase:
                 spec.gp_path, rhythm_idx, score_shift
             )
 
-        if spec.sync_anchors:
-            warp = _build_time_warp(spec.sync_anchors)
+        for stage_anchors in spec.sync_anchor_stages:
+            if not stage_anchors:
+                continue
+            warp = _build_time_warp(stage_anchors)
             parsed = {kind: _warp_parsed_track(p, warp) for kind, p in parsed.items()}
 
         stage("build_arrangements")
@@ -266,10 +271,12 @@ class GenerateFromGpUseCase:
                 "measures) — supply an LRC file for proper sync"
             )
 
-        if spec.sync_anchors:
+        total_anchor_points = sum(len(s) for s in spec.sync_anchor_stages)
+        if total_anchor_points:
+            rounds = sum(1 for s in spec.sync_anchor_stages if s)
             warnings.append(
-                f"{len(spec.sync_anchors)} manual drift-correction point(s) applied to the "
-                "chart (notes/beats/sections were stretched between them)"
+                f"{total_anchor_points} manual drift-correction point(s) across {rounds} "
+                "round(s) applied to the chart (notes/beats/sections were stretched between them)"
             )
 
         if pad_start_s > 0.0:

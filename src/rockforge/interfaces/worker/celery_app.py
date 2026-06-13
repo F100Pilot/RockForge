@@ -125,8 +125,9 @@ def generate_cdlc(job_id: str) -> None:
                         ToneChange(time=float(c["time"]), name=str(c["name"]))
                         for c in params.get("tone_changes", [])
                     ],
-                    sync_anchors=[
-                        (float(a[0]), float(a[1])) for a in params.get("sync_anchors", [])
+                    sync_anchor_stages=[
+                        [(float(a[0]), float(a[1])) for a in stage]
+                        for stage in params.get("sync_anchor_stages", [])
                     ],
                 )
                 result = gp_use_case.run(

@@ -6,6 +6,7 @@ import mimetypes
 import shutil
 import uuid
 from pathlib import Path
+from typing import cast
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, Response
@@ -428,7 +429,16 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
         if payload.sync_anchors is not None:
             if original.source_type != "gp":
                 raise HTTPException(422, "sync_anchors only apply to Guitar Pro jobs")
-            params["sync_anchors"] = [list(a) for a in payload.sync_anchors]
+            if payload.sync_anchors:
+                # Append as a new correction round on top of any carried-over rounds, so
+                # corrections made in earlier sessions (after reloading a completed job)
+                # are preserved rather than overwritten.
+                stages = [
+                    list(s)
+                    for s in cast("list[list[object]]", params.get("sync_anchor_stages", []))
+                ]
+                stages.append([list(a) for a in payload.sync_anchors])
+                params["sync_anchor_stages"] = stages
         job = Job(
             source=original.source,
             source_type=original.source_type,

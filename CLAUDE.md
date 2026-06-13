@@ -38,6 +38,36 @@ Rules:
    from the GP3/GP4/GP5 file; audio sync is a manual offset. High fidelity,
    preferred when a GP file exists. GPX/GP6/GP7 are NOT supported (PyGuitarPro).
 
+### Manual drift correction (`sync_anchor_stages`)
+
+A single `offset_s` only fixes a constant lead-in; if the GP file's tempo map
+doesn't exactly match the recording, drift grows over the song. The tab viewer
+lets the user drag a note (or a rubber-band-selected excerpt) to where it
+should play; each drag/excerpt becomes a `(chart_time, corrected_time)` anchor,
+and `_build_time_warp` piecewise-linearly stretches/compresses notes, beats,
+sections and lyrics between anchors (`_warp_parsed_track`).
+
+`GpJobSpec.sync_anchor_stages: list[list[tuple[float, float]]]` is a list of
+correction *rounds*, applied in order. Each round's anchors are expressed in
+the timeline produced by the *previous* round (i.e. exactly what the tab
+viewer shows when the user draws them). `/jobs/{id}/rebuild` appends a new
+round to `params["sync_anchor_stages"]` rather than overwriting it, so
+reopening a completed job, loading its arrangement (already reflecting prior
+rounds), and adding more corrections composes correctly instead of discarding
+earlier work. Do not collapse this back to a single `sync_anchors` list —
+anchors from different rounds live in different (already-warped) coordinate
+systems and cannot simply be concatenated.
+
+### Lyrics formats (`infrastructure/rsxml/vocals.py`)
+
+`parse_lyrics` auto-detects **LRC** (`[mm:ss.xx]` lines) vs **UltraStar/USDX
+TXT** (`#BPM:`/`#GAP:` header + `: start length pitch text` / `-` line-break
+note lines; beat→seconds via `15 / BPM`). Rocksmith's vocals XML is
+per-syllable: `expand_to_words` splits line-level events (LRC, GP-embedded
+lyrics) into one `<vocal>` per word and appends `+` to the last word of each
+line — that trailing `+` is what makes the in-game lyric display break to a
+new line. UltraStar input is already per-syllable and is NOT re-expanded.
+
 ## Commands
 
 ```bash

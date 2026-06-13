@@ -27,9 +27,10 @@ Pipeline áudio → arranjos Rocksmith 2014 (CDLC), construído sobre investiga�
 Em alternativa à separação/transcrição por ML, carrega um **GP3/GP4/GP5** + a gravação:
 notas, trastes, técnicas (bend/HO/PO/palm mute/harmónicos/vibrato/slide), tempo, compassos e
 secções vêm **exatos** do ficheiro. Inclui: seleção de pistas Lead/Rhythm, offset de
-sincronização com a gravação, letra (LRC sincronizado ou letra embutida no GP), e tones
-(tonebase + até 4 slots, com mudanças temporizadas). Fluxo na UI: "Inspecionar pistas" →
-escolher pistas/opções → criar CDLC.
+sincronização com a gravação, letra (ficheiro **LRC** ou **UltraStar TXT** — timing por
+sílaba/linha sincronizado com a gravação — ou letra embutida no GP), e tones (tonebase + até 4
+slots, com mudanças temporizadas). Fluxo na UI: "Inspecionar pistas" → escolher pistas/opções →
+criar CDLC.
 
 Limitações honestas: **GPX/GP6/GP7 não é suportado** (o PyGuitarPro lê GP3/GP4/GP5 —
 exporta como GP5 no Guitar Pro/TuxGuitar); a sincronização é manual — indicas o segundo em
@@ -41,6 +42,18 @@ Para afinar a sincronização há uma **ferramenta de sincronização visual** n
 (jobs GP): dá play à gravação, o cursor percorre as notas e ouves um *tique* em cada uma —
 arrasta o "Início da música" até os tiques baterem certo com a música e carrega em "Aplicar e
 reconstruir".
+
+Se a deriva (drift) entre a partitura e o áudio aumentar ao longo da música (em vez de um
+offset constante), corrige nota a nota na tablatura: **arrasta uma nota** horizontalmente para
+o instante onde ela deveria tocar — fica um ponto de correção, e as notas entre pontos
+consecutivos são esticadas/comprimidas proporcionalmente. Para corrigir um trecho inteiro de
+uma vez, ativa "Selecionar excerto", arrasta uma caixa sobre as notas desse trecho e depois
+arrasta uma delas — o excerto move-se em bloco. As notas ficam na posição corrigida no
+visualizador (com grelha temporal a cada 0.25s para ajuste fino) para testares com o áudio
+antes de gravares. Cada "Aplicar correções e reconstruir" soma uma nova ronda de correções às
+anteriores — **abre o job mais tarde (mesmo depois de saíres e voltares) e continua a
+ajustar**: as correções já aplicadas ficam no arranjo carregado e as novas somam-se a elas, em
+vez de partir sempre do GP em bruto.
 
 Leitura obrigatória: [`docs/RELATORIO-TECNICO.md`](docs/RELATORIO-TECNICO.md) (viabilidade,
 arquitetura, riscos) e os relatórios de investigação com fontes em [`docs/research/`](docs/research/).
