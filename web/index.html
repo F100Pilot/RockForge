@@ -301,7 +301,7 @@
           <label>Início da música na gravação (s):
             <input type="number" id="syncOffset" value="0" step="0.01" min="0" style="width:6rem"></label>
           <input type="range" id="syncOffsetRange" min="0" max="20" step="0.01" value="0" style="flex:1;min-width:180px">
-          <label class="check"><input type="checkbox" id="syncTick" checked> Tique nas notas</label>
+          <label class="check"><input type="checkbox" id="syncTick" checked> Tocar nota à passagem</label>
           <button type="button" id="syncApply" class="secondary">Aplicar e reconstruir</button>
         </div>
       </div>
@@ -770,6 +770,27 @@ function updateSelectionInfo() {
 })();
 
 // ---- Visual sync tool (GP jobs) ----
+// Standard tuning (low E to high e): MIDI 40, 45, 50, 55, 59, 64
+const STRING_MIDI = [40, 45, 50, 55, 59, 64];
+
+function midiToHz(midi) {
+  return 440 * Math.pow(2, (midi - 69) / 12);
+}
+
+function playNote(string, fret) {
+  if (!audioCtx || string < 0 || string > 5 || fret < 0) return;
+  const t = audioCtx.currentTime;
+  const midi = STRING_MIDI[string] + fret;
+  const hz = midiToHz(midi);
+  const osc = audioCtx.createOscillator(), g = audioCtx.createGain();
+  osc.frequency.value = hz;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.15, t + 0.001);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+  osc.connect(g); g.connect(audioCtx.destination);
+  osc.start(t); osc.stop(t + 0.1);
+}
+
 function clickSound() {
   if (!audioCtx) return;
   const t = audioCtx.currentTime;
@@ -806,7 +827,10 @@ function syncFrame() {
   const notes = arrangements[currentArr] ? arrangements[currentArr].notes : [];
   const tickOn = document.getElementById('syncTick').checked;
   while (tickIdx < notes.length && notes[tickIdx].time <= vt) {
-    if (tickOn) clickSound();
+    if (tickOn) {
+      const note = notes[tickIdx];
+      playNote(note.string, note.fret);
+    }
     tickIdx++;
   }
   if (!au.paused && !au.ended) syncRaf = requestAnimationFrame(syncFrame);
