@@ -99,9 +99,10 @@ def test_gp_pipeline_full_bundle(two_track_gp5: Path, tmp_path: Path) -> None:
     assert root.findtext("tonea") == "dist"
     tone = root.find("tones/tone")
     assert tone is not None and tone.get("name") == "dist"
-    # offset applied: first note shifted forward by offset_s
+    # sync: first note placed at max(offset_s, MIN_LEAD_S) = 2.0 (offset_s=0.5
+    # is below the 2.0s minimum lead-in, so content is pushed to 2.0)
     first = root.find("levels/level/notes/note")
-    assert first is not None and float(first.get("time", "0")) == pytest.approx(0.5)
+    assert first is not None and float(first.get("time", "0")) == pytest.approx(2.0)
 
     rhythm_xml = next(p for p in result.packaging.xml_paths if p.name == "arrangement_rhythm.xml")
     r = ET.parse(rhythm_xml).getroot()
@@ -109,8 +110,8 @@ def test_gp_pipeline_full_bundle(two_track_gp5: Path, tmp_path: Path) -> None:
 
     vocals_xml = next(p for p in result.packaging.xml_paths if p.name == "arrangement_vocals.xml")
     v = ET.parse(vocals_xml).getroot()
-    # LRC offset applied (offset_s=0.5): 1.0 + 0.5
-    assert float(v.findall("vocal")[0].get("time", "0")) == pytest.approx(1.5)
+    # LRC shifts only by the prepended silence (pad = 2.0 - 0.5 = 1.5): 1.0 + 1.5
+    assert float(v.findall("vocal")[0].get("time", "0")) == pytest.approx(2.5)
 
 
 def test_gp_pipeline_auto_track_selection(two_track_gp5: Path, tmp_path: Path) -> None:
@@ -131,5 +132,8 @@ def test_gp_pipeline_same_track_rejected(two_track_gp5: Path, tmp_path: Path) ->
 def test_gp_pipeline_zero_offset_warns(two_track_gp5: Path, tmp_path: Path) -> None:
     spec = GpJobSpec(gp_path=two_track_gp5, audio_source="x.wav", lead_track=0)
     result = make_use_case().run(spec, SongMetadata(title="T", artist="A"), tmp_path / "w")
-    assert any("offset is 0.0" in w for w in result.warnings)
+    # offset 0 => silence prepended up to the minimum lead-in (avoids the
+    # DLC Builder "no room for an empty phrase" crash at content time 0)
+    assert any("minimum" in w and "lead-in" in w for w in result.warnings)
+    assert any("first note placed at 2.00s" in w for w in result.warnings)
     assert result.note_counts == {"Combined": 3}  # single track => combined arrangement

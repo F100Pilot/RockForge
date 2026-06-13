@@ -1,12 +1,20 @@
 """GenerateFromGpUseCase — the high-fidelity alternative to the audio-ML path.
 
 Notes/frets/techniques/tempo/sections come exactly from a GP3/GP4/GP5 file;
-the recording is only normalized and packaged. Synchronization between score
-and recording is a user-supplied offset: offset_s seconds of silence are
-prepended to the recording, and the score (note/beat times) and LRC lyrics are
-shifted forward by the same amount, so everything still lines up after the new
-lead-in. Lyrics taken from the GP file's measure-anchored lyrics are already in
-score time and shift along with the notes.
+the recording is only normalized and packaged. Synchronization is the one thing
+the GP file cannot know, so it is a single user-supplied number: offset_s = the
+moment (seconds) at which the song's first note is actually heard in the
+recording. The score (note/beat/section times) and the GP's measure-anchored
+lyrics are shifted forward to land there, so note 0 lines up with where the
+music starts; the recording itself is left untouched (its own intro provides the
+lead-in). Crucially we do NOT pad the audio by offset_s as well — doing so would
+move the music forward by the same amount and re-open the gap, which is the bug
+that made the chart and audio drift apart.
+
+The one exception is the minimum lead-in: DLC Builder's phrase generator needs
+room before the first note for the count-in (it errors outright when content
+starts at time 0). When offset_s is below MIN_LEAD_S we prepend just the
+shortfall as silence so there is always room — see MIN_LEAD_S.
 """
 
 from __future__ import annotations
@@ -30,6 +38,13 @@ from rockforge.infrastructure.gpimport.parser import ParsedGpTrack, inspect_gp, 
 from rockforge.infrastructure.packaging.dlcbuilder import DlcBuilderPackager
 from rockforge.infrastructure.rsxml.vocals import VocalEvent, parse_lrc
 
+# Minimum lead-in before the first note. DLC Builder's PhraseGenerator inserts a
+# count-in phrase before the arrangement content and fails ("no room for an empty
+# phrase before the arrangement content starts") when content begins at time 0;
+# EOF likewise advises a few seconds of silence at the start. When the user's
+# sync point is below this, the shortfall is added as silence.
+MIN_LEAD_S = 2.0
+
 
 @dataclass(frozen=True)
 class GpJobSpec:
@@ -37,7 +52,7 @@ class GpJobSpec:
     audio_source: str
     lead_track: int | None = None
     rhythm_track: int | None = None
-    offset_s: float = 0.0  # silence (s) added to the recording's start; score/lyrics shift too
+    offset_s: float = 0.0  # second in the recording where the song's first note is heard
     lrc_text: str | None = None
     tone_base: str | None = None
     tone_names: list[str] = field(default_factory=list)
@@ -79,15 +94,23 @@ class GenerateFromGpUseCase:
                 on_stage(name)
 
         if spec.offset_s < 0.0:
-            raise IngestionError("sync offset must be >= 0 — it adds a lead-in, never removes one")
+            raise IngestionError(
+                "sync offset must be >= 0 — it is the second in the recording where the "
+                "song starts, never a negative time"
+            )
 
         warnings: list[str] = []
+        # Place the first note at the recording's music start (offset_s); pad only
+        # the shortfall up to MIN_LEAD_S so the count-in phrase always has room.
+        # The score shifts by the full content time; the audio (and thus an LRC
+        # synced to it) shifts only by what silence we actually prepend.
+        pad_start_s = max(0.0, MIN_LEAD_S - spec.offset_s)
+        score_shift = spec.offset_s + pad_start_s  # == max(offset_s, MIN_LEAD_S)
+
         stage("ingest")
         raw = self.ingestor.fetch(spec.audio_source, workdir)
         stage("normalize")
-        # offset_s adds a silent lead-in to the recording; the score and
-        # lyrics are shifted forward by the same amount below.
-        normalized = self.normalizer.normalize(raw, workdir, pad_start_s=spec.offset_s)
+        normalized = self.normalizer.normalize(raw, workdir, pad_start_s=pad_start_s)
 
         stage("parse_gp")
         lead_idx, rhythm_idx = spec.lead_track, spec.rhythm_track
@@ -104,10 +127,10 @@ class GenerateFromGpUseCase:
             raise IngestionError("lead and rhythm cannot use the same GP track")
         if lead_idx is not None:
             kind = ArrangementKind.LEAD if rhythm_idx is not None else ArrangementKind.COMBINED
-            parsed[kind] = parse_gp_track(spec.gp_path, lead_idx, spec.offset_s)
+            parsed[kind] = parse_gp_track(spec.gp_path, lead_idx, score_shift)
         if rhythm_idx is not None:
             parsed[ArrangementKind.RHYTHM] = parse_gp_track(
-                spec.gp_path, rhythm_idx, spec.offset_s
+                spec.gp_path, rhythm_idx, score_shift
             )
 
         stage("build_arrangements")
@@ -153,9 +176,10 @@ class GenerateFromGpUseCase:
         stage("lyrics")
         vocals: list[VocalEvent] = []
         if spec.lrc_text:
-            # LRC timestamps are against the original recording, before the
-            # offset_s lead-in was added; shift them forward to match.
-            vocals = parse_lrc(spec.lrc_text, spec.offset_s)
+            # LRC timestamps are synced to the recording as supplied, so they only
+            # move by the silence we actually prepended (pad_start_s) — not by the
+            # full score shift, which also absorbs the score's own zero offset.
+            vocals = parse_lrc(spec.lrc_text, pad_start_s)
             if not vocals:
                 warnings.append("LRC file contained no timestamped lines")
         elif first.lyrics:
@@ -168,11 +192,16 @@ class GenerateFromGpUseCase:
                 "measures) — supply an LRC file for proper sync"
             )
 
-        if spec.offset_s == 0.0:
+        warnings.append(
+            f"sync: first note placed at {score_shift:.2f}s — the song's first note must "
+            f"be heard at that instant in the recording. If the chart and audio drift, set "
+            f"the sync offset to the second where the music actually starts and rebuild."
+        )
+        if pad_start_s > 0.0:
             warnings.append(
-                "sync offset is 0.0s — verify the score's first note lines up with the "
-                "recording and rebuild with an offset (seconds of silence to add to the "
-                "recording's start) if needed"
+                f"added {pad_start_s:.2f}s of silence to reach the {MIN_LEAD_S:.0f}s minimum "
+                f"lead-in DLC Builder needs for the count-in (your offset was "
+                f"{spec.offset_s:.2f}s)"
             )
 
         stage("package")
