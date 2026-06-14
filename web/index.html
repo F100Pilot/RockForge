@@ -355,13 +355,17 @@
       <strong>Marcar no cursor</strong>: clica numa nota para a ancorar na posição atual do cursor de
       reprodução — útil para alinhar enquanto o áudio toca (pausa no momento certo e clica a nota).
       <strong>Selecionar excerto</strong>: arrasta uma caixa sobre as notas e depois arrasta uma delas
-      — o excerto move-se em bloco. A <strong>forma de onda</strong> azul é a gravação (referência
-      fixa): alinha as notas pelos seus picos transientes e usa o cursor para confirmar.</p>
+      — o excerto move-se em bloco. <strong>Mover seguintes</strong>: pausa o áudio no instante certo e
+      clica na nota que está fora de sítio — essa nota e <em>todas as seguintes</em> deslocam-se em bloco
+      para começar no cursor, sem mexer nas anteriores (corrige um desfasamento que aparece a meio).
+      A <strong>forma de onda</strong> azul é a gravação (referência fixa): alinha as notas pelos seus
+      picos transientes e usa o cursor para confirmar.</p>
       <div class="anchor-row">
         <span class="meta" style="margin-right:.3rem">Modo:</span>
         <button type="button" id="modeArrastar" class="secondary active-mode">Arrastar nota</button>
         <button type="button" id="modeMarcar" class="secondary">Marcar no cursor</button>
         <button type="button" id="modeExcerto" class="secondary">Selecionar excerto</button>
+        <button type="button" id="modeMover" class="secondary">Mover seguintes</button>
         <span id="selectionInfo" style="margin-left:.5rem"></span>
         <button type="button" id="clearSelection" class="secondary" hidden>Limpar seleção</button>
       </div>
@@ -782,6 +786,29 @@ function updateSelectionInfo() {
       showArr(currentArr);
       return;
     }
+    // Move-from-here: shift the clicked note and ALL following notes (in a block)
+    // to the current playhead, leaving everything before untouched. Built from two
+    // equal-delta anchors (clicked note + last note) so _build_time_warp rigidly
+    // shifts only that excerpt; nothing before the click moves.
+    if (syncMode === 'movefrom' && grp) {
+      const warp = buildTimeWarp(syncAnchors);
+      const chartT = parseFloat(grp.dataset.t);
+      const dispT = warp(previewScale(chartT));
+      const notes = arrangements[currentArr] ? arrangements[currentArr].notes : [];
+      const lastChartT = notes.length ? Math.max(...notes.map(n => n.time)) : chartT;
+      const dispLast = warp(previewScale(lastChartT));
+      if (dispLast <= dispT + 0.01) {
+        toast('é a última nota — usa "Arrastar nota"', 'err');
+        return;
+      }
+      const delta = (currentPlayheadT + viewOrigin) - dispT;
+      setAnchor(dispT, dispT + delta);
+      setAnchor(dispLast, dispLast + delta);
+      renderAnchorsList();
+      updatePendingChangesInfo();
+      showArr(currentArr);
+      return;
+    }
     if (syncMode === 'excerpt' && !(grp && selectedTimes.has(parseFloat(grp.dataset.t)))) {
       // start a rubber-band selection (also when starting on an unselected note)
       const rect = svg.getBoundingClientRect();
@@ -879,12 +906,17 @@ function updateSelectionInfo() {
 })();
 
 // ---- Sync mode buttons ----
-['modeArrastar', 'modeMarcar', 'modeExcerto'].forEach((id, idx) => {
-  const modes = ['drag', 'tap', 'excerpt'];
+const SYNC_MODE_BUTTONS = [
+  ['modeArrastar', 'drag'],
+  ['modeMarcar', 'tap'],
+  ['modeExcerto', 'excerpt'],
+  ['modeMover', 'movefrom'],
+];
+SYNC_MODE_BUTTONS.forEach(([id, mode]) => {
   document.getElementById(id)?.addEventListener('click', () => {
-    syncMode = modes[idx];
-    ['modeArrastar', 'modeMarcar', 'modeExcerto'].forEach((bid, bidx) =>
-      document.getElementById(bid)?.classList.toggle('active-mode', bidx === idx));
+    syncMode = mode;
+    SYNC_MODE_BUTTONS.forEach(([bid, bmode]) =>
+      document.getElementById(bid)?.classList.toggle('active-mode', bmode === mode));
     if (syncMode !== 'excerpt') { selectedTimes.clear(); updateSelectionInfo(); }
   });
 });
