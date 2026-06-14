@@ -74,6 +74,28 @@ earlier work. Do not collapse this back to a single `sync_anchors` list —
 anchors from different rounds live in different (already-warped) coordinate
 systems and cannot simply be concatenated.
 
+### Per-arrangement sync (`arrangement_sync`)
+
+`tempo_scale` and `sync_anchor_stages` are **per-arrangement**: each chart
+(Lead/Rhythm/Combined) is parsed and drift-corrected independently, so dragging
+a Lead note never moves the Rhythm chart. `GpJobSpec.arrangement_sync: dict[str,
+ArrangementSync]` is keyed by `ArrangementKind.value`; an arrangement absent
+from it falls back to the job-level `tempo_scale`/`sync_anchor_stages` defaults
+(`GpJobSpec.sync_for`). `offset_s` is deliberately NOT per-arrangement — all
+arrangements share one `.wem`, so the recording's start is common to all; a
+per-arrangement uniform shift is just a single-anchor round. `/jobs/{id}/rebuild`
+takes an optional `arrangement` to scope `tempo_scale`/`sync_anchors` to one
+chart (seeding its entry from the job-level defaults on first edit). The tab
+viewer keeps a separate pending-anchor set per tab and exposes one
+"Aplicar e reconstruir" that commits the current tab's tempo+anchors plus the
+shared offset/tuning in a single rebuild.
+
+The tab viewer's x-axis is **recording time** (0s at the left edge): notes are
+drawn via `timeToX` (which subtracts the lead-in `viewOrigin` from the
+bundle-time positions), so the playhead starts at 0 instead of at the first
+note. Anchor math stays in bundle time so corrections round-trip through a
+rebuild unchanged.
+
 ### Lyrics formats (`infrastructure/rsxml/vocals.py`)
 
 `parse_lyrics` auto-detects **LRC** (`[mm:ss.xx]` lines) vs **UltraStar/USDX

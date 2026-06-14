@@ -165,6 +165,36 @@ def test_gp_pipeline_sync_anchors_shift_notes(two_track_gp5: Path, tmp_path: Pat
     assert times == pytest.approx([2.5, 3.0, 3.5])
 
 
+def test_per_arrangement_sync_is_independent(two_track_gp5: Path, tmp_path: Path) -> None:
+    # A drift correction (and tempo scale) targeted at the Lead arrangement must
+    # not touch the Rhythm arrangement, and vice versa.
+    from rockforge.application.gp_pipeline import ArrangementSync
+
+    spec = GpJobSpec(
+        gp_path=two_track_gp5, audio_source="x.wav", lead_track=0, rhythm_track=1,
+        arrangement_sync={
+            "Lead": ArrangementSync(sync_anchor_stages=[[(2.0, 2.5)]]),  # +0.5 uniform shift
+            # Rhythm left at defaults (no shift, tempo 1.0)
+        },
+    )
+    result = make_use_case().run(spec, SongMetadata(title="T", artist="A"), tmp_path / "w")
+    by_name = {p.name: p for p in result.packaging.xml_paths}
+
+    def all_times(xml_path: Path) -> list[float]:
+        root = ET.parse(xml_path).getroot()
+        els = root.findall(".//note") + root.findall(".//chordNote")
+        return [float(n.get("time", "0")) for n in els]
+
+    lead_times = all_times(by_name["arrangement_lead.xml"])
+    rhythm_times = all_times(by_name["arrangement_rhythm.xml"])
+    # Lead's first note started at 2.0 (MIN_LEAD); the single anchor shifts it +0.5.
+    assert min(lead_times) == pytest.approx(2.5)
+    # Rhythm is untouched: its (whole-note) chord still starts at 2.0.
+    assert min(rhythm_times) == pytest.approx(2.0)
+    assert any("Lead:" in w and "drift-correction" in w for w in result.warnings)
+    assert not any("Rhythm:" in w and "drift-correction" in w for w in result.warnings)
+
+
 def test_build_time_warp_leaves_notes_outside_excerpt_untouched() -> None:
     # Two-anchor (excerpt) correction: notes between the anchors are rigidly
     # shifted/stretched, but notes before/after the excerpt must NOT move at

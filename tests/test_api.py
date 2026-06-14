@@ -279,6 +279,35 @@ def test_gp_rebuild_applies_tempo_scale(client: TestClient, tmp_path) -> None:
     assert r.status_code == 422
 
 
+def test_rebuild_scopes_sync_to_one_arrangement(client: TestClient, tmp_path) -> None:
+    # A rebuild targeting a single arrangement is accepted (the deep
+    # independence is covered in test_gp_pipeline). Scoping tempo + anchors to
+    # "Lead" must not error and produces a new job.
+    data = _make_gp5_bytes(tmp_path)
+    body = client.post(
+        "/gp/inspect", files={"file": ("song.gp5", data, "application/octet-stream")}
+    ).json()
+    job = client.post(
+        "/jobs/gp",
+        data={"gp_token": body["gp_token"], "lead_track": "0"},
+        files={"audio": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
+    ).json()
+    rebuilt = client.post(
+        f"/jobs/{job['id']}/rebuild",
+        json={"arrangement": "Lead", "tempo_scale": 1.25, "sync_anchors": [[2.0, 2.5]]},
+    )
+    assert rebuilt.status_code == 202
+    assert rebuilt.json()["id"] != job["id"]
+
+
+def test_rebuild_arrangement_scoping_rejected_for_non_gp(client: TestClient) -> None:
+    original = _create_job(client)
+    r = client.post(
+        f"/jobs/{original['id']}/rebuild", json={"arrangement": "Lead", "tempo_scale": 1.1}
+    )
+    assert r.status_code == 422
+
+
 def test_gp_job_unknown_token_404(client: TestClient) -> None:
     r = client.post(
         "/jobs/gp",
