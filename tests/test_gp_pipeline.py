@@ -209,6 +209,34 @@ def test_build_time_warp_leaves_notes_outside_excerpt_untouched() -> None:
     assert warp(20.0) == pytest.approx(20.0)  # after: untouched
 
 
+def test_suggest_sync_octave_corrects_detected_tempo() -> None:
+    # The beat tracker reported half the real tempo (60 vs ~120); the suggestion
+    # must pick the octave nearest the GP tempo so tempo_scale stays near 1.
+    from rockforge.application.gp_pipeline import suggest_sync
+
+    scale, offset = suggest_sync(gp_bpm=120.0, detected_bpm=60.0, first_onset_s=1.4)
+    assert scale == pytest.approx(1.0)  # 120 / (60 * 2)
+    assert offset == pytest.approx(1.4)
+
+
+def test_suggest_sync_scales_to_recording_tempo() -> None:
+    # Recording is genuinely slower than the GP file (100 vs 90): stretch the
+    # chart (tempo_scale > 1) so its effective BPM matches the recording.
+    from rockforge.application.gp_pipeline import suggest_sync
+
+    scale, offset = suggest_sync(gp_bpm=100.0, detected_bpm=90.0, first_onset_s=-0.5)
+    assert scale == pytest.approx(100.0 / 90.0)
+    assert offset == 0.0  # negative onset clamped
+
+
+def test_suggest_sync_rejects_nonpositive_bpm() -> None:
+    from rockforge.application.gp_pipeline import suggest_sync
+    from rockforge.domain.errors import IngestionError
+
+    with pytest.raises(IngestionError):
+        suggest_sync(gp_bpm=0.0, detected_bpm=120.0, first_onset_s=0.0)
+
+
 def test_build_time_warp_single_anchor_shifts_everything() -> None:
     # A single anchor remains a uniform shift applied everywhere (e.g. "the
     # whole song's lead-in is off by X"), unlike the two-anchor excerpt case.

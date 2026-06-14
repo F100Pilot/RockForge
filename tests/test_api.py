@@ -80,7 +80,7 @@ def test_upload_falls_back_to_file_tags(client: TestClient, monkeypatch) -> None
     assert body["year"] == 1999
 
 
-def test_youtube_disabled_by_default_returns_403(client: TestClient) -> None:
+def test_youtube_returns_403_when_disabled(client: TestClient) -> None:
     r = client.post(
         "/jobs/youtube",
         json={"url": "https://www.youtube.com/watch?v=x", "title": "T", "artist": "A"},
@@ -305,6 +305,37 @@ def test_rebuild_arrangement_scoping_rejected_for_non_gp(client: TestClient) -> 
     r = client.post(
         f"/jobs/{original['id']}/rebuild", json={"arrangement": "Lead", "tempo_scale": 1.1}
     )
+    assert r.status_code == 422
+
+
+def test_auto_sync_proposes_alignment(client: TestClient, tmp_path, monkeypatch) -> None:
+    # Beat detection is faked (librosa not in CI): the endpoint must combine the
+    # GP tempo (100) with the detected recording tempo/onset into a proposal,
+    # octave-correcting the detected tempo and returning the first onset as offset.
+    import rockforge.infrastructure.rhythm.librosa_adapter as rhythm
+
+    monkeypatch.setattr(rhythm, "detect_tempo_and_onset", lambda src: (50.0, 2.3))
+    data = _make_gp5_bytes(tmp_path)
+    body = client.post(
+        "/gp/inspect", files={"file": ("song.gp5", data, "application/octet-stream")}
+    ).json()
+    job = client.post(
+        "/jobs/gp",
+        data={"gp_token": body["gp_token"], "lead_track": "0"},
+        files={"audio": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
+    ).json()
+    r = client.post(f"/jobs/{job['id']}/auto-sync")
+    assert r.status_code == 200
+    out = r.json()
+    assert out["gp_bpm"] == pytest.approx(100.0)
+    assert out["detected_bpm"] == pytest.approx(50.0)
+    assert out["suggested_tempo_scale"] == pytest.approx(1.0)  # 100 / (50 * 2)
+    assert out["suggested_offset_s"] == pytest.approx(2.3)
+
+
+def test_auto_sync_rejected_for_non_gp(client: TestClient) -> None:
+    job = _create_job(client)
+    r = client.post(f"/jobs/{job['id']}/auto-sync")
     assert r.status_code == 422
 
 

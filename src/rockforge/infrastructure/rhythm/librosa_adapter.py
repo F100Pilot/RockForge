@@ -21,6 +21,25 @@ from rockforge.domain.music import Beat, NoteEvent, TempoMap, Tuning
 _DROP_D_MIDI = (38, 45, 50, 55, 59, 64)
 
 
+def detect_tempo_and_onset(audio: Path) -> tuple[float, float]:
+    """Estimate (bpm, first_onset_seconds) for automatic GP→recording sync.
+
+    Standalone (not a port method) so the API can call it directly for the
+    auto-sync proposal, and tests can monkeypatch it without librosa installed.
+    The onset is the first audible attack — used as the proposed offset_s (the
+    second the song's first note is heard). librosa imported lazily (ml extra).
+    """
+    import librosa
+    import numpy as np
+
+    y, sr = librosa.load(str(audio), sr=None, mono=True)
+    tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
+    bpm = float(np.atleast_1d(tempo)[0])
+    onsets = librosa.onset.onset_detect(y=y, sr=sr, units="time")
+    first_onset = float(onsets[0]) if len(onsets) else 0.0
+    return bpm, first_onset
+
+
 class LibrosaRhythmAdapter:
     """Implements BeatTracker and TuningEstimator ports."""
 
