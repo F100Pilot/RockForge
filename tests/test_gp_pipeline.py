@@ -192,7 +192,9 @@ def test_gp_pipeline_strips_mute_techniques_when_disabled(
     assert any("palm mute" in w and "removed" in w for w in result.warnings)
     lead_xml = next(p for p in result.packaging.xml_paths if p.name == "arrangement_combined.xml")
     notes = ET.parse(lead_xml).getroot().findall(".//note")
-    assert notes and all(n.get("palmMute") == "0" for n in notes)
+    # stripped notes carry no palmMute flag at all (default-valued attributes
+    # are omitted, matching Editor on Fire's minimal note output)
+    assert notes and all(n.get("palmMute") is None for n in notes)
 
 
 def test_gp_pipeline_keeps_mute_techniques_by_default(
