@@ -43,6 +43,12 @@ Para afinar a sincronização há uma **ferramenta de sincronização visual** n
 arrasta o "Início da música" até os tiques baterem certo com a música e carrega em "Aplicar e
 reconstruir".
 
+Se a tablatura e a gravação se vão **afastando ao longo da música** (o GP foi escrito num
+andamento ligeiramente diferente do gravado), ajusta o **andamento (BPM)** no painel de
+sincronização: estica/comprime a música toda de uma vez. As notas movem-se sobre a forma de
+onda em tempo real para confirmares o alinhamento; depois "Aplicar e reconstruir". Isto corrige
+a parte linear da deriva num só passo — faz isto **antes** das correções nota-a-nota abaixo.
+
 Se a deriva (drift) entre a partitura e o áudio aumentar ao longo da música (em vez de um
 offset constante), corrige nota a nota na tablatura: **arrasta uma nota** horizontalmente para
 o instante onde ela deveria tocar — fica um ponto de correção, e as notas entre pontos

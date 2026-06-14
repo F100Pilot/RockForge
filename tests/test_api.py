@@ -179,6 +179,13 @@ def test_rebuild_applies_offset_for_visual_sync(client: TestClient) -> None:
     assert client.get(f"/jobs/{rebuilt['id']}").json()["offset_s"] == pytest.approx(3.25)
 
 
+def test_rebuild_tempo_scale_rejected_for_non_gp(client: TestClient) -> None:
+    # tempo_scale only makes sense for GP jobs (it rescales the authored chart).
+    original = _create_job(client)
+    r = client.post(f"/jobs/{original['id']}/rebuild", json={"tempo_scale": 1.2})
+    assert r.status_code == 422
+
+
 def test_rebuild_rejects_negative_offset(client: TestClient) -> None:
     original = _create_job(client)
     r = client.post(f"/jobs/{original['id']}/rebuild", json={"offset_s": -1.0})
@@ -251,6 +258,25 @@ def test_gp_inspect_and_job_flow(client: TestClient, tmp_path) -> None:
     assert r2.status_code == 202
     job = r2.json()
     assert job["title"] == "GpT" and job["artist"] == "GpA"  # metadata from the GP file
+
+
+def test_gp_rebuild_applies_tempo_scale(client: TestClient, tmp_path) -> None:
+    # The tempo control rebuilds with tempo_scale; it must land in params and
+    # be reflected on the job output (defaulting to 1.0 on the first build).
+    data = _make_gp5_bytes(tmp_path)
+    body = client.post(
+        "/gp/inspect", files={"file": ("song.gp5", data, "application/octet-stream")}
+    ).json()
+    job = client.post(
+        "/jobs/gp",
+        data={"gp_token": body["gp_token"], "lead_track": "0"},
+        files={"audio": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
+    ).json()
+    assert job["tempo_scale"] == pytest.approx(1.0)
+    rebuilt = client.post(f"/jobs/{job['id']}/rebuild", json={"tempo_scale": 1.5}).json()
+    assert client.get(f"/jobs/{rebuilt['id']}").json()["tempo_scale"] == pytest.approx(1.5)
+    r = client.post(f"/jobs/{job['id']}/rebuild", json={"tempo_scale": 0.0})
+    assert r.status_code == 422
 
 
 def test_gp_job_unknown_token_404(client: TestClient) -> None:

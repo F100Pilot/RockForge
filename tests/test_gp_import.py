@@ -114,6 +114,27 @@ def test_parse_sections_lyrics_and_offset(gp5_file: Path) -> None:
     assert parsed.lyrics[0].time == pytest.approx(2.0 + 1.25)  # measure 2 start + offset
 
 
+def test_tempo_scale_stretches_timeline_and_scales_bpm(gp5_file: Path) -> None:
+    # tempo_scale=2.0 stretches the musical timeline to twice its length
+    # (around the start), so measure 2 lands at 4.0s instead of 2.0s, and the
+    # effective average tempo halves. offset_s is applied after the scale.
+    base = parse_gp_track(gp5_file, 0)
+    stretched = parse_gp_track(gp5_file, 0, offset_s=1.0, tempo_scale=2.0)
+    assert base.notes[0].time == pytest.approx(0.0)
+    assert stretched.notes[0].time == pytest.approx(1.0)  # only the lead-in
+    base_m2 = next(b.time for b in base.tempo_map.beats if b.measure == 2)
+    scaled_m2 = next(b.time for b in stretched.tempo_map.beats if b.measure == 2)
+    assert scaled_m2 - 1.0 == pytest.approx((base_m2) * 2.0)
+    assert stretched.tempo_map.average_bpm == pytest.approx(60.0)
+
+
+def test_tempo_scale_must_be_positive(gp5_file: Path) -> None:
+    from rockforge.domain.errors import IngestionError
+
+    with pytest.raises(IngestionError, match="tempo_scale must be positive"):
+        parse_gp_track(gp5_file, 0, tempo_scale=0.0)
+
+
 def test_tempo_map_has_measure_numbers(gp5_file: Path) -> None:
     parsed = parse_gp_track(gp5_file, 0)
     downbeats = [b for b in parsed.tempo_map.beats if b.measure != -1]

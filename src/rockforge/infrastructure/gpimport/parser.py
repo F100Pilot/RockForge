@@ -146,12 +146,22 @@ _SLIDE_OUT_TYPES = {3, 4}  # outDownwards / outUpwards
 _SLIDE_SHIFT_TYPES = {1, 2}  # shiftSlideTo / legatoSlideTo
 
 
-def parse_gp_track(path: Path, track_index: int, offset_s: float = 0.0) -> ParsedGpTrack:
+def parse_gp_track(
+    path: Path, track_index: int, offset_s: float = 0.0, tempo_scale: float = 1.0
+) -> ParsedGpTrack:
     """Convert one Guitar Pro track to RockForge domain objects.
 
     offset_s shifts everything to align the score with the actual recording
     (manual synchronization; the score has no knowledge of the audio).
+
+    tempo_scale stretches (>1) or compresses (<1) the musical timeline around
+    its start, before offset_s — it corrects a constant mismatch between the
+    GP file's authored tempo and the recording's real tempo (the dominant,
+    linearly-growing component of sync drift). The effective average tempo is
+    scaled inversely (stretching the timeline means a slower song).
     """
+    if tempo_scale <= 0:
+        raise IngestionError(f"tempo_scale must be positive, got {tempo_scale}")
     song = _load(path)
     if not 0 <= track_index < len(song.tracks):
         raise IngestionError(f"track index {track_index} out of range")
@@ -171,7 +181,7 @@ def parse_gp_track(path: Path, track_index: int, offset_s: float = 0.0) -> Parse
     origin = QUARTER_TICKS  # measure 1 starts at tick 960; song time 0
 
     def t(tick: int) -> float:
-        return max(0.0, float(to_seconds(tick - origin))) + offset_s
+        return max(0.0, tempo_scale * float(to_seconds(tick - origin))) + offset_s
 
     # First pass: collect raw notes with GP flags for legato post-processing.
     raw: list[tuple[TabNote, bool]] = []  # (note, hammer_flag_on_origin)
@@ -272,7 +282,7 @@ def parse_gp_track(path: Path, track_index: int, offset_s: float = 0.0) -> Parse
 
     notes.sort(key=lambda n: (n.time, n.string))
     beats_grid.sort(key=lambda b: b.time)
-    avg_bpm = float(song.tempo)
+    avg_bpm = float(song.tempo) / tempo_scale
     numerator = track.measures[0].header.timeSignature.numerator if track.measures else 4
     tempo_map = TempoMap(
         beats=tuple(beats_grid), average_bpm=avg_bpm, beats_per_measure=numerator

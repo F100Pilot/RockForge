@@ -308,6 +308,18 @@
           <label class="check"><input type="checkbox" id="syncTick" checked> Tocar nota à passagem</label>
           <button type="button" id="syncApply" class="secondary">Aplicar e reconstruir</button>
         </div>
+        <p class="hint" style="margin-bottom:.2rem">Se a tabulatura e a gravação se vão afastando ao
+        longo da música (o GP foi escrito num andamento ligeiramente diferente do que foi gravado),
+        ajusta o <strong>andamento</strong>: estica/comprime a música toda de uma vez. As notas movem-se
+        sobre a forma de onda para confirmares o alinhamento; depois "Aplicar e reconstruir".</p>
+        <div class="syncctrls">
+          <label>Andamento (BPM):
+            <input type="number" id="tempoBpm" step="0.1" min="1" style="width:6.5rem"></label>
+          <input type="range" id="tempoRange" min="50" max="200" step="0.5" value="100" style="flex:1;min-width:180px">
+          <span id="tempoPct" class="meta"></span>
+          <button type="button" id="tempoReset" class="secondary">Repor GP</button>
+          <button type="button" id="tempoApply" class="secondary">Aplicar e reconstruir</button>
+        </div>
       </div>
 
       <hr class="sep">
@@ -365,6 +377,10 @@ let selectedJob = null, arrangements = [], currentArr = 0, pollTimer = null;
 // Visual sync (GP): MIN_LEAD must match gp_pipeline.MIN_LEAD_S.
 const MIN_LEAD = 2.0;
 let tabPx = 80, tabH = 280, scoreShift = 0, offsetLive = 0;
+// Tempo (BPM) live-preview: builtScale is the tempo_scale baked into the
+// arrangement currently loaded; tempoScaleLive is the value being previewed;
+// gpBpm is the GP file's original tempo (before any scaling).
+let builtScale = 1, tempoScaleLive = 1, gpBpm = 0;
 const BASE_PX = 80;
 let zoomLevel = 1;
 
@@ -499,6 +515,7 @@ async function loadArrangements(id) {
   arrangements = await (await fetch(`/jobs/${id}/arrangements`)).json();
   syncAnchors = [];
   selectedTimes = new Set();
+  currentArr = 0;  // reset before initSync redraws, so a stale index can't go out of range
   wavePeaks = null; waveDuration = 0;
   if (!arrangements.length) return;
   document.getElementById('review').style.display = '';
@@ -562,10 +579,9 @@ function showArr(i) {
   // drawn at their warped (corrected) time, while data-t keeps the original
   // chart time so new anchors stay in the backend's coordinate system.
   const warp = buildTimeWarp(syncAnchors);
-  const offShift = offsetPreviewShift();
   for (const g of groups) {
     const sel = selectedTimes.has(g.time) ? ' selected' : '';
-    const dispT = warp(g.time) + offShift;
+    const dispT = previewScale(warp(g.time));
     s += `<g class="note-grp${sel}" data-t="${g.time}">`;
     if (g.notes.length > 1) {
       const x = 30 + dispT * px;
@@ -577,7 +593,7 @@ function showArr(i) {
       const color = STRING_COLORS[n.string];
       const tech = n.techniques.length > 0;
       if (n.sustain > 0.05)
-        s += `<rect x="${x}" y="${y-3}" width="${n.sustain*px}" height="6" fill="${color}" opacity=".4" rx="3"/>`;
+        s += `<rect x="${x}" y="${y-3}" width="${n.sustain*px*(tempoScaleLive/builtScale)}" height="6" fill="${color}" opacity=".4" rx="3"/>`;
       const shape = n.chord
         ? `<rect class="note-shape" x="${x-R}" y="${y-R}" width="${R*2}" height="${R*2}" rx="4" fill="${color}"${tech ? ' stroke="#fff" stroke-width="2.5" stroke-dasharray="3,3"' : ''}/>`
         : `<circle class="note-shape" cx="${x}" cy="${y}" r="${R}" fill="${color}"${tech ? ' stroke="#fff" stroke-width="2.5" stroke-dasharray="3,3"' : ''}/>`;
@@ -592,7 +608,7 @@ function showArr(i) {
     s += `</g>`;
   }
   for (const [origT, newT] of syncAnchors) {
-    const x1 = 30 + (origT + offShift) * px, x2 = 30 + (newT + offShift) * px;
+    const x1 = 30 + previewScale(origT) * px, x2 = 30 + previewScale(newT) * px;
     s += `<line x1="${x1}" y1="0" x2="${x1}" y2="${H-35}" stroke="#ff7a45" stroke-width="1.5" stroke-dasharray="4,3"/>`;
     if (Math.abs(x2 - x1) > 0.5)
       s += `<line x1="${x1}" y1="6" x2="${x2}" y2="6" stroke="#ff7a45" stroke-width="2" marker-end="url(#arrow)"/>`;
@@ -642,6 +658,7 @@ async function applySyncAnchors() {
       tuning_midi: midi.some(isNaN) ? null : midi,
       split_lead_rhythm: document.getElementById('splitChk').checked,
       offset_s: offsetLive,
+      tempo_scale: tempoScaleLive,
       sync_anchors: syncAnchors,
       import_mutes: document.getElementById('muteChk').checked,
     }),
@@ -758,10 +775,9 @@ function updateSelectionInfo() {
       rubberBand = null;
       if (x2 - x1 > 3) {
         const warp = buildTimeWarp(syncAnchors);
-        const offShift = offsetPreviewShift();
         for (const g of svg.querySelectorAll('.note-grp')) {
           const t = parseFloat(g.dataset.t);
-          const dispT = warp(t) + offShift;
+          const dispT = previewScale(warp(t));
           if (dispT >= t1 && dispT <= t2) selectedTimes.add(t);
         }
         updateSelectionInfo();
@@ -840,13 +856,22 @@ function clickSound() {
 // score-time currently under the playhead, given source playback time S
 function viewerTimeAt(s) { return (s - offsetLive) + scoreShift; }
 
-// How much the chart shifts when the sync offset slider moves, previewing
-// the score_shift the backend would use on rebuild
-// (score_shift = max(offset_s, MIN_LEAD_S) — see gp_pipeline.MIN_LEAD_S).
-// Applied to the drawn note/playhead position only; their relative order
-// (used for tick comparisons) is unaffected since it's a uniform constant.
-function offsetPreviewShift() {
-  return Math.max(offsetLive, MIN_LEAD) - scoreShift;
+// Preview where a chart time (already shifted to the built timeline, optionally
+// sync-warped) would land on rebuild with the current live offset and tempo:
+// the musical part (time past the built lead-in) is rescaled by
+// tempoScaleLive/builtScale, then re-anchored to the new lead-in
+// (max(offset_s, MIN_LEAD_S) — see gp_pipeline). The waveform stays fixed
+// (it's the audio reference), so notes slide over it as these change.
+function previewScale(t) {
+  const ratio = tempoScaleLive / builtScale;
+  return (t - scoreShift) * ratio + Math.max(offsetLive, MIN_LEAD);
+}
+
+// Audio→display mapping for the playhead: audio time s appears after the
+// prepended silence (pad = max(0, MIN_LEAD - offset)); independent of tempo
+// since the recording itself is the fixed reference.
+function playheadDisplay(s) {
+  return s + Math.max(0, MIN_LEAD - offsetLive);
 }
 
 function syncResetPointer() {
@@ -862,10 +887,9 @@ function syncFrame() {
   const au = document.getElementById('syncAudio');
   const ph = document.getElementById('playhead');
   if (!au || !ph) { syncRaf = null; return; }
-  // Playhead tracks the audio (and thus the waveform), unwarped — corrected
-  // notes are warped onto these same positions, so it still passes over them.
-  const vt = viewerTimeAt(au.currentTime);
-  const x = 30 + (vt + offsetPreviewShift()) * tabPx;
+  // Playhead tracks the audio (and thus the waveform). It stays in audio
+  // coordinates; tempo preview moves the notes over it, not the other way.
+  const x = 30 + playheadDisplay(au.currentTime) * tabPx;
   ph.setAttribute('x1', x); ph.setAttribute('x2', x);
   const wrap = document.getElementById('tabwrap');
   if (x < wrap.scrollLeft + 60 || x > wrap.scrollLeft + wrap.clientWidth - 60)
@@ -897,6 +921,12 @@ function initSync(j) {
   if (j.source_type !== 'gp') { panel.style.display = 'none'; return; }
   panel.style.display = '';
   scoreShift = Math.max(j.offset_s || 0, MIN_LEAD);
+  builtScale = j.tempo_scale || 1;
+  // a0.average_bpm already reflects builtScale (gp_bpm / builtScale), so the
+  // GP file's original tempo is average_bpm * builtScale.
+  const a0 = arrangements[0];
+  gpBpm = a0 && a0.average_bpm ? a0.average_bpm * builtScale : 0;
+  setTempoLive(builtScale);
   const au = document.getElementById('syncAudio');
   au.src = `/jobs/${j.id}/source-audio`;
   setOffsetLive(j.offset_s || 0);
@@ -907,6 +937,51 @@ function initSync(j) {
   };
   au.onseeked = syncResetPointer;
   decodeWaveform(j.id);
+}
+
+// Set the previewed tempo scale and reflect it in the BPM/%/range controls.
+function setTempoLive(scale) {
+  tempoScaleLive = Math.min(4, Math.max(0.25, scale || 1));
+  const bpmEl = document.getElementById('tempoBpm');
+  const rangeEl = document.getElementById('tempoRange');
+  const pctEl = document.getElementById('tempoPct');
+  if (gpBpm > 0) {
+    const bpm = gpBpm / tempoScaleLive;
+    bpmEl.value = bpm.toFixed(1);
+    rangeEl.value = bpm;
+  }
+  // % of the GP's authored tempo (100% = unchanged; <100% = slower/stretched)
+  pctEl.textContent = `${Math.round(100 / tempoScaleLive)}% do andamento do GP`;
+  if (arrangements.length) showArr(currentArr);
+}
+
+(function wireTempoControls() {
+  const bpmEl = document.getElementById('tempoBpm');
+  const rangeEl = document.getElementById('tempoRange');
+  if (!bpmEl) return;
+  const fromBpm = b => { if (gpBpm > 0 && b > 0) setTempoLive(gpBpm / b); };
+  bpmEl.addEventListener('input', e => fromBpm(parseFloat(e.target.value)));
+  rangeEl.addEventListener('input', e => fromBpm(parseFloat(e.target.value)));
+  document.getElementById('tempoReset').addEventListener('click', () => setTempoLive(1));
+  document.getElementById('tempoApply').addEventListener('click', applyTempo);
+})();
+
+async function applyTempo() {
+  if (!selectedJob) return;
+  const midi = [...document.querySelectorAll('#tuningInputs input')].map(i => parseInt(i.value, 10));
+  const r = await fetch(`/jobs/${selectedJob.id}/rebuild`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      tuning_midi: midi.some(isNaN) ? null : midi,
+      split_lead_rhythm: document.getElementById('splitChk').checked,
+      offset_s: offsetLive,
+      tempo_scale: tempoScaleLive,
+      import_mutes: document.getElementById('muteChk').checked,
+    }),
+  });
+  const b = await r.json();
+  if (r.ok) { toast('A reconstruir com o novo andamento…', 'ok'); selectJob(b.id); }
+  else toast(b.detail || 'erro');
 }
 
 // Fetch + decode the recording into peak bins (max |amplitude| per 1/WAVE_HZ s)
@@ -940,8 +1015,8 @@ async function decodeWaveform(id) {
 // Build the waveform path data for the current viewer timeline. The waveform
 // shows the recording as it would be laid out on rebuild: content starts
 // after max(0, MIN_LEAD - offsetLive) seconds of prepended silence (see
-// gp_pipeline.MIN_LEAD_S / pad_start_s) — notes (shifted by
-// offsetPreviewShift) line up onto it as the offset slider changes.
+// gp_pipeline.MIN_LEAD_S / pad_start_s) — notes (placed by previewScale) line
+// up onto it as the offset/tempo controls change.
 function waveformPathData(W, px, H) {
   if (!wavePeaks) return '';
   const top = 14, bot = H - 35, mid = (top + bot) / 2, amp = (bot - top) / 2 * 0.92;
@@ -975,6 +1050,7 @@ document.getElementById('syncApply').addEventListener('click', async () => {
       tuning_midi: midi.some(isNaN) ? null : midi,
       split_lead_rhythm: document.getElementById('splitChk').checked,
       offset_s: offsetLive,
+      tempo_scale: tempoScaleLive,
       import_mutes: document.getElementById('muteChk').checked,
     }),
   });
