@@ -53,6 +53,7 @@ class JobOut(BaseModel):
     tempo_scale: float
     import_mutes: bool
     error: str | None
+    lyrics_status: str = "none"
 
 
 class RebuildIn(BaseModel):
@@ -71,6 +72,10 @@ class RebuildIn(BaseModel):
     arrangement: str | None = None
     # GP: when False, palm mute / slap / pop / tap are stripped (plain notes).
     import_mutes: bool | None = None
+    # Edited per-word lyrics from the in-app lyrics editor. When set (even to an
+    # empty list), replaces params["lyrics_events"] and clears lyrics_status so
+    # the next build uses the edited lyrics. None leaves existing lyrics alone.
+    lyrics_events: list[LyricEventOut] | None = None
 
 
 class ArrangementNoteOut(BaseModel):
@@ -114,6 +119,17 @@ class DetectTempoOut(BaseModel):
     suggested_factor: float  # multiply note spacing after the point by this
 
 
+class LyricEventOut(BaseModel):
+    time: float
+    length: float
+    lyric: str
+
+
+class LyricsOut(BaseModel):
+    status: str  # "none"|"detecting"|"ready"|"empty"|"unavailable"
+    events: list[LyricEventOut]
+
+
 class YouTubeJobIn(BaseModel):
     url: HttpUrl
     title: str
@@ -146,6 +162,7 @@ def _to_out(job: Job) -> JobOut:
         tempo_scale=tempo_scale,
         import_mutes=bool((job.params or {}).get("import_mute_techniques", True)),
         error=job.error,
+        lyrics_status=str((job.params or {}).get("lyrics_status", "none")),
     )
 
 
@@ -153,6 +170,12 @@ def _enqueue(job: Job) -> None:
     from rockforge.interfaces.worker.celery_app import generate_cdlc
 
     generate_cdlc.delay(job.id)
+
+
+def _enqueue_detect(job: Job) -> None:
+    from rockforge.interfaces.worker.celery_app import detect_lyrics
+
+    detect_lyrics.delay(job.id)
 
 
 @app.post("/jobs/upload", response_model=JobOut, status_code=202)
@@ -522,6 +545,9 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
                 target["sync_anchor_stages"] = stages
         if payload.import_mutes is not None:
             params["import_mute_techniques"] = payload.import_mutes
+        if payload.lyrics_events is not None:
+            params["lyrics_events"] = [e.model_dump() for e in payload.lyrics_events]
+            params.pop("lyrics_status", None)
         job = Job(
             source=original.source,
             source_type=original.source_type,
@@ -620,6 +646,54 @@ def detect_tempo(job_id: str, payload: DetectTempoIn) -> DetectTempoOut:
     )
 
 
+@app.post("/jobs/{job_id}/detect-lyrics", response_model=JobOut, status_code=202)
+def detect_lyrics_endpoint(job_id: str) -> JobOut:
+    """Kick off asynchronous lyric detection (Demucs vocal isolation + WhisperX
+    forced alignment) on the job's source recording. Slow — poll
+    GET /jobs/{job_id}/lyrics for the result. Never overwrites a completed
+    build's status; progress is tracked via params["lyrics_status"]."""
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+        if job.source_type not in {"gp", "upload", "youtube"}:
+            raise HTTPException(422, "lyric detection is not supported for this job's source")
+        if not Path(job.source).exists():
+            raise HTTPException(409, "source recording no longer exists on the work volume")
+        params = dict(job.params or {})
+        params["lyrics_status"] = "detecting"
+        job.params = params
+        session.commit()
+        _enqueue_detect(job)
+        return _to_out(job)
+
+
+@app.get("/jobs/{job_id}/lyrics", response_model=LyricsOut)
+def get_lyrics(job_id: str) -> LyricsOut:
+    """Current lyric-detection status and events (raw, before pad_start_s shift
+    for GP jobs). Used by the in-app lyrics editor."""
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+        params = job.params or {}
+        status = str(params.get("lyrics_status", "none"))
+        rows = cast("list[dict[str, object]]", params.get("lyrics_events") or [])
+
+        def _num(v: object) -> float:
+            return float(v) if isinstance(v, (int, float, str)) else 0.0
+
+        events = [
+            LyricEventOut(
+                time=_num(r.get("time", 0.0)),
+                length=_num(r.get("length", 0.0)),
+                lyric=str(r.get("lyric", "")),
+            )
+            for r in rows
+        ]
+        return LyricsOut(status=status, events=events)
+
+
 @app.get("/jobs/{job_id}/arrangements", response_model=list[ArrangementOut])
 def get_arrangements(job_id: str) -> list[ArrangementOut]:
     """Parsed arrangement data for human review (tab viewer, tuning confirmation)."""
@@ -632,7 +706,7 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
         job_params = dict(job.params or {})
 
     # Per-arrangement tempo scale, falling back to the job-level default.
-    default_scale = float(job_params.get("tempo_scale", 1.0) or 1.0)  # type: ignore[arg-type]
+    default_scale = float(job_params.get("tempo_scale", 1.0) or 1.0)
     arr_sync = job_params.get("arrangement_sync") or {}
 
     def scale_for(kind: str) -> float:

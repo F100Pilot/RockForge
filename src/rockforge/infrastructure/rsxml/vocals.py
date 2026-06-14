@@ -145,6 +145,28 @@ def parse_lyrics(text: str, offset_s: float = 0.0) -> list[VocalEvent]:
     return expand_to_words(parse_lrc(text, offset_s))
 
 
+def events_from_dicts(rows: list[dict[str, object]], offset_s: float = 0.0) -> list[VocalEvent]:
+    """Build vocal events from JSON rows (e.g. the in-app lyrics editor).
+
+    Rows are ``{"time": ..., "length": ..., "lyric": ...}``; rows with an empty
+    (after stripping) lyric are dropped, ``offset_s`` is added to ``time``, and
+    the result is sorted by time. Lengths are clamped to a 0.1s minimum.
+    """
+    def _num(v: object) -> float:
+        return float(v) if isinstance(v, (int, float, str)) else 0.0
+
+    events: list[VocalEvent] = []
+    for row in rows:
+        lyric = str(row.get("lyric", "")).strip()
+        if not lyric:
+            continue
+        time = _num(row.get("time", 0.0)) + offset_s
+        length = max(0.1, _num(row.get("length", 0.0)))
+        events.append(VocalEvent(time=time, length=length, lyric=lyric))
+    events.sort(key=lambda e: e.time)
+    return events
+
+
 def write_vocals_xml(events: list[VocalEvent], path: Path) -> Path:
     root = ET.Element("vocals", count=str(len(events)))
     for e in sorted(events, key=lambda v: v.time):

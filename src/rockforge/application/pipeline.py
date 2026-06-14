@@ -30,6 +30,7 @@ from rockforge.domain.arrangement import (
 from rockforge.domain.music import Beat, NoteEvent, TempoMap, Tuning
 from rockforge.infrastructure.fretboard.mapper import infer_legato, map_to_fretboard
 from rockforge.infrastructure.packaging.dlcbuilder import DlcBuilderPackager, PackagingResult
+from rockforge.infrastructure.rsxml.vocals import VocalEvent
 
 _BASE_CONFIDENCE: dict[str, ConfidenceLabel] = {
     "separation": ConfidenceLabel.MEASURED,  # htdemucs_6s: published model, quality "okay"
@@ -71,6 +72,7 @@ class GenerateCdlcUseCase:
         tuning_override: Tuning | None = None,
         offset_s: float = 0.0,
         transcribe_lyrics: bool = False,
+        lyrics_events: list[VocalEvent] | None = None,
         on_stage: Callable[[str], None] | None = None,
     ) -> PipelineResult:
         def stage(name: str) -> None:
@@ -136,7 +138,11 @@ class GenerateCdlcUseCase:
         # stem Demucs htdemucs_6s produces next to the guitar stem. LRC input
         # (GP flow) remains the preferred, measured-timing source.
         vocals_events = None
-        if transcribe_lyrics:
+        if lyrics_events:
+            stage("lyrics")
+            vocals_events = lyrics_events
+            warnings.append("lyrics from the in-app editor (per-word timing) used")
+        elif transcribe_lyrics:
             stage("lyrics")
             vocals_stem = guitar_stem.parent / "vocals.wav"
             if self.lyric_transcriber is None:

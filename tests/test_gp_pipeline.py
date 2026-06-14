@@ -299,6 +299,25 @@ def test_gp_pipeline_keeps_mute_techniques_by_default(
     assert any(n.get("palmMute") == "1" for n in notes)
 
 
+def test_gp_lyrics_events_precedence(two_track_gp5: Path, tmp_path: Path) -> None:
+    from rockforge.infrastructure.rsxml.vocals import VocalEvent
+
+    spec = GpJobSpec(
+        gp_path=two_track_gp5, audio_source="x.wav", lead_track=0,
+        lrc_text="[00:01.00]old\n",
+        lyrics_events=[VocalEvent(time=1.0, length=0.5, lyric="new+")],
+    )
+    result = make_use_case().run(spec, SongMetadata(title="T", artist="A"), tmp_path / "w")
+    vocals_xml = next(p for p in result.packaging.xml_paths if p.name == "arrangement_vocals.xml")
+    root = ET.parse(vocals_xml).getroot()
+    vocal = root.find("vocal")
+    assert vocal is not None
+    assert vocal.get("lyric") == "new+"
+    # offset_s=0 -> pad_start_s=2.0; edited time (1.0) shifts to 3.0.
+    assert float(vocal.get("time", "0")) == pytest.approx(3.0)
+    assert any("in-app editor" in w for w in result.warnings)
+
+
 def test_gp_pipeline_zero_offset_warns(two_track_gp5: Path, tmp_path: Path) -> None:
     spec = GpJobSpec(gp_path=two_track_gp5, audio_source="x.wav", lead_track=0)
     result = make_use_case().run(spec, SongMetadata(title="T", artist="A"), tmp_path / "w")

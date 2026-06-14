@@ -134,6 +134,10 @@ class GpJobSpec:
     # looks like pop/slap "wings"); some GP files mark them where the user wants
     # clean notes, so this is an opt-out.
     import_mute_techniques: bool = True
+    # Edited per-word lyrics from the in-app lyrics editor (recording-clock
+    # times, before pad_start_s). Takes precedence over lrc_text and GP-embedded
+    # lyrics when present.
+    lyrics_events: list[VocalEvent] | None = None
 
     def sync_for(self, kind: ArrangementKind) -> ArrangementSync:
         """Resolve the tempo/drift overrides for one arrangement, falling back
@@ -385,7 +389,13 @@ class GenerateFromGpUseCase:
 
         stage("lyrics")
         vocals: list[VocalEvent] = []
-        if spec.lrc_text:
+        if spec.lyrics_events:
+            vocals = [
+                VocalEvent(time=e.time + pad_start_s, length=e.length, lyric=e.lyric)
+                for e in spec.lyrics_events
+            ]
+            warnings.append("lyrics from the in-app editor (per-word timing) used")
+        elif spec.lrc_text:
             # Lyric timestamps (LRC or UltraStar TXT) are synced to the recording as
             # supplied, so they only move by the silence we actually prepended
             # (pad_start_s) — not by the full score shift, which also absorbs the

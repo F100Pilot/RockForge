@@ -129,6 +129,35 @@ lyrics) into one `<vocal>` per word and appends `+` to the last word of each
 line — that trailing `+` is what makes the in-game lyric display break to a
 new line. UltraStar input is already per-syllable and is NOT re-expanded.
 
+### Automatic lyric detection + in-app editor
+
+`POST /jobs/{id}/detect-lyrics` runs `rockforge.detect_lyrics` (an async Celery
+task, GP and audio-ML jobs both) — Demucs isolates the vocals stem
+(`guitar_stem.parent / "vocals.wav"`, same convention as the audio-ML lyrics
+path) and WhisperX force-aligns it. Progress is tracked via
+`params["lyrics_status"]` (`detecting`/`ready`/`empty`/`unavailable`), never
+`JobStatus`, so detection never hides a completed bundle or disables
+`/arrangements`. Results land in `params["lyrics_events"]` (JSON rows
+`{"time","length","lyric"}`), readable via `GET /jobs/{id}/lyrics`.
+
+The web UI's "Letras" panel lets the user edit words and per-word timings (and
+add/remove rows) regardless of whether detection ran. `applyAll()` sends the
+edited rows as `RebuildIn.lyrics_events`; `rebuild_job` stores them in
+`params["lyrics_events"]` and clears `lyrics_status` so the next build picks
+them up via `events_from_dicts`. These edited events take **top precedence**
+over `lrc_text`/GP-embedded lyrics (GP pipeline) and over automatic WhisperX
+transcription (audio pipeline) — see `GpJobSpec.lyrics_events` and
+`GenerateCdlcUseCase.run(lyrics_events=...)`.
+
+Coordinate space: events from `/lyrics` and the editor are in the **un-padded
+recording clock**. For GP jobs, `gp_pipeline` shifts edited times by
+`pad_start_s` at build time, same as `lrc_text`. For the audio-ML path, note
+that (like the existing automatic-WhisperX path) `offset_s` trimming is not
+subtracted from word times — a known limitation.
+
+Detection needs both `[lyrics]` (WhisperX) and `[ml]` (Demucs) extras in the
+worker, even for GP jobs whose own build stays ML-free.
+
 ## Commands
 
 ```bash
