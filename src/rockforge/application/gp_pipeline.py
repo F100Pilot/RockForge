@@ -59,6 +59,11 @@ class GpJobSpec:
     lead_track: int | None = None
     rhythm_track: int | None = None
     offset_s: float = 0.0  # second in the recording where the song's first note is heard
+    # Multiplicative stretch (>1) / compression (<1) of the whole musical
+    # timeline, applied at parse time around the song's start — corrects a
+    # constant GP-vs-recording tempo mismatch (the linear part of sync drift)
+    # in one move, before any sync_anchor_stages fine-tuning.
+    tempo_scale: float = 1.0
     lrc_text: str | None = None
     tone_base: str | None = None
     tone_names: list[str] = field(default_factory=list)
@@ -231,10 +236,19 @@ class GenerateFromGpUseCase:
             raise IngestionError("lead and rhythm cannot use the same GP track")
         if lead_idx is not None:
             kind = ArrangementKind.LEAD if rhythm_idx is not None else ArrangementKind.COMBINED
-            parsed[kind] = parse_gp_track(spec.gp_path, lead_idx, score_shift)
+            parsed[kind] = parse_gp_track(
+                spec.gp_path, lead_idx, score_shift, spec.tempo_scale
+            )
         if rhythm_idx is not None:
             parsed[ArrangementKind.RHYTHM] = parse_gp_track(
-                spec.gp_path, rhythm_idx, score_shift
+                spec.gp_path, rhythm_idx, score_shift, spec.tempo_scale
+            )
+
+        if spec.tempo_scale != 1.0:
+            warnings.append(
+                f"tempo scaled by {spec.tempo_scale:.3f}× ({1.0 / spec.tempo_scale:.1%} of the "
+                "GP tempo) to match the recording — the chart timing no longer reflects the "
+                "GP file's authored tempo"
             )
 
         for stage_anchors in spec.sync_anchor_stages:

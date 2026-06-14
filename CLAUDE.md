@@ -38,6 +38,17 @@ Rules:
    from the GP3/GP4/GP5 file; audio sync is a manual offset. High fidelity,
    preferred when a GP file exists. GPX/GP6/GP7 are NOT supported (PyGuitarPro).
 
+### Tempo scaling (`tempo_scale`)
+
+`GpJobSpec.tempo_scale` (default 1.0) multiplies the whole musical timeline at
+parse time, around the song's start and before `offset_s` — it corrects a
+constant GP-vs-recording tempo mismatch (the linearly-growing part of sync
+drift) in one move. `>1` stretches (slower); `<1` compresses (faster). The
+effective `average_bpm` is scaled inversely. The tab viewer exposes it as an
+editable BPM/% control with live preview (notes slide over the fixed waveform).
+Use it *before* the per-note `sync_anchor_stages` below, which then only need to
+clean up residual non-linear drift.
+
 ### Manual drift correction (`sync_anchor_stages`)
 
 A single `offset_s` only fixes a constant lead-in; if the GP file's tempo map
