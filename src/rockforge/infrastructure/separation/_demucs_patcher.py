@@ -25,7 +25,7 @@ def _patched_save(wav: Any, path: str | Path, samplerate: int, **kwargs: object)
 # -- patch before demucs imports anything else --------------------------------
 import demucs.audio  # noqa: E402
 
-demucs.audio.save_audio = _patched_save
+demucs.audio.save_audio = _patched_save  # type: ignore[assignment]
 
 
 if __name__ == "__main__":
@@ -34,4 +34,4 @@ if __name__ == "__main__":
     sys.argv[0] = "demucs"
     from demucs.separate import main
 
-    main()
+    main()  # type: ignore[no-untyped-call]
