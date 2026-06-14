@@ -93,6 +93,15 @@ class ArrangementOut(BaseModel):
     notes: list[ArrangementNoteOut]
 
 
+class AutoSyncOut(BaseModel):
+    """Proposed GP→recording alignment (not applied; the user reviews then rebuilds)."""
+
+    gp_bpm: float
+    detected_bpm: float
+    suggested_tempo_scale: float
+    suggested_offset_s: float
+
+
 class YouTubeJobIn(BaseModel):
     url: HttpUrl
     title: str
@@ -514,6 +523,49 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
         session.commit()
         _enqueue(job)
         return _to_out(job)
+
+
+@app.post("/jobs/{job_id}/auto-sync", response_model=AutoSyncOut)
+def auto_sync(job_id: str) -> AutoSyncOut:
+    """Detect the recording's tempo/first onset (librosa) and propose how to
+    align the GP chart to it: a global tempo_scale plus an offset_s. The result
+    is returned for the user to preview in the tab viewer and apply via rebuild —
+    it is never silently committed (honesty principle)."""
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+        if job.source_type != "gp":
+            raise HTTPException(422, "automatic sync only applies to Guitar Pro jobs")
+        gp_path = Path(str((job.params or {}).get("gp_path", "")))
+        src = Path(job.source)
+    if not gp_path.exists():
+        raise HTTPException(409, "the Guitar Pro file no longer exists on the work volume")
+    if not src.exists():
+        raise HTTPException(409, "source audio no longer exists on the work volume")
+
+    from rockforge.application.gp_pipeline import suggest_sync
+    from rockforge.infrastructure.gpimport.parser import inspect_gp
+
+    try:
+        from rockforge.infrastructure.rhythm.librosa_adapter import detect_tempo_and_onset
+    except ImportError as exc:  # ml extra absent
+        raise HTTPException(
+            503, "beat detection needs the 'ml' extra (librosa) — install rockforge[ml]"
+        ) from exc
+
+    gp_bpm = float(inspect_gp(gp_path).tempo)
+    try:
+        detected_bpm, first_onset = detect_tempo_and_onset(src)
+    except Exception as exc:  # decode/analysis failure — surface honestly
+        raise HTTPException(422, f"could not analyse the recording: {exc}") from exc
+    tempo_scale, offset_s = suggest_sync(gp_bpm, detected_bpm, first_onset)
+    return AutoSyncOut(
+        gp_bpm=gp_bpm,
+        detected_bpm=detected_bpm,
+        suggested_tempo_scale=tempo_scale,
+        suggested_offset_s=offset_s,
+    )
 
 
 @app.get("/jobs/{job_id}/arrangements", response_model=list[ArrangementOut])

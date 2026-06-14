@@ -49,6 +49,20 @@ editable BPM/% control with live preview (notes slide over the fixed waveform).
 Use it *before* the per-note `sync_anchor_stages` below, which then only need to
 clean up residual non-linear drift.
 
+### Automatic sync proposal (`/jobs/{id}/auto-sync`)
+
+`POST /jobs/{id}/auto-sync` (GP jobs only) detects the recording's tempo and
+first onset with librosa (`detect_tempo_and_onset`, ml extra) and combines them
+with the GP file's authored tempo via the pure `suggest_sync(gp_bpm,
+detected_bpm, first_onset_s)` (in `gp_pipeline.py`) into a proposed
+`(tempo_scale, offset_s)`. Beat trackers report octave-off tempos, so
+`suggest_sync` picks the octave of `detected_bpm` whose `tempo_scale` lands
+closest to 1.0 (same song → ratio near unity). The endpoint **returns the
+proposal only** — the tab viewer loads it into the live preview so the user
+confirms over the waveform and commits via the normal rebuild; nothing is
+silently applied (honesty principle). Detection is a module-level function so
+tests monkeypatch it without librosa (`test_auto_sync_proposes_alignment`).
+
 ### Manual drift correction (`sync_anchor_stages`)
 
 A single `offset_s` only fixes a constant lead-in; if the GP file's tempo map
@@ -139,9 +153,11 @@ pinned (`mypy~=1.19.0`) so local matches CI — do not bump it casually.
   `phraseIteration`. The writer emits COUNT/default/END phrases with END placed
   after the last note, plus a closing `noguitar` section. Guarded by
   `test_phrase_structure_marks_song_end`. Don't remove the END phrase.
-- **YouTube ingestion is off by default** (`ROCKFORGE_ENABLE_YOUTUBE`) — it
-  violates the YouTube ToS. PSARC/.wem packing needs a local Wwise (Audiokinetic
-  EULA forbids redistribution); RockForge only *invokes* an installed copy.
+- **YouTube ingestion is gated by `ROCKFORGE_ENABLE_YOUTUBE`** (currently
+  defaulting on at the operator's request) — downloading audio violates the
+  YouTube ToS, so the gate stays so it can be turned off. PSARC/.wem packing
+  needs a local Wwise (Audiokinetic EULA forbids redistribution); RockForge only
+  *invokes* an installed copy.
 
 ## Testing approach
 

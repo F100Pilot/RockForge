@@ -322,6 +322,14 @@
           <span id="tempoPct" class="meta"></span>
           <button type="button" id="tempoReset" class="secondary">Repor GP</button>
         </div>
+        <p class="hint" style="margin-bottom:.2rem"><strong>Sincronização automática:</strong> deteta o
+        andamento e o início da gravação (como o CDLC.AI) e propõe um ajuste. Os valores ficam em
+        pré-visualização — confirma na partitura e carrega em <strong>"Aplicar e reconstruir"</strong>.
+        Refina depois com os modos manuais (arrastar/marcar). Precisa do extra <code>ml</code> (librosa).</p>
+        <div class="syncctrls">
+          <button type="button" id="autoSync" class="secondary">Sincronização automática</button>
+          <span id="autoSyncInfo" class="meta"></span>
+        </div>
       </div>
 
       <hr class="sep">
@@ -1068,6 +1076,36 @@ function setTempoLive(scale) {
   bpmEl.addEventListener('input', e => fromBpm(parseFloat(e.target.value)));
   rangeEl.addEventListener('input', e => fromBpm(parseFloat(e.target.value)));
   document.getElementById('tempoReset').addEventListener('click', () => setTempoLive(1));
+})();
+
+(function wireAutoSync() {
+  const btn = document.getElementById('autoSync');
+  const info = document.getElementById('autoSyncInfo');
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    if (!selectedJob) return;
+    btn.disabled = true;
+    info.textContent = 'A analisar a gravação…';
+    try {
+      const r = await fetch(`/jobs/${selectedJob.id}/auto-sync`, { method: 'POST' });
+      const b = await r.json();
+      if (!r.ok) { info.textContent = ''; toast(b.detail || 'erro', 'err'); return; }
+      // Proposal only — apply to the live preview so the user can confirm over
+      // the waveform before committing with "Aplicar e reconstruir".
+      setOffsetLive(b.suggested_offset_s);
+      setTempoLive(b.suggested_tempo_scale);
+      info.textContent =
+        `Detetado: ${b.detected_bpm.toFixed(1)} BPM (GP ${b.gp_bpm.toFixed(0)}). ` +
+        `Proposto: início ${b.suggested_offset_s.toFixed(2)}s, andamento ×${b.suggested_tempo_scale.toFixed(3)}. ` +
+        `Confirma e carrega em "Aplicar e reconstruir".`;
+      toast('Sincronização proposta — revê e aplica', 'ok');
+    } catch (e) {
+      info.textContent = '';
+      toast('falha na análise', 'err');
+    } finally {
+      btn.disabled = false;
+    }
+  });
 })();
 
 // Fetch + decode the recording into peak bins (max |amplitude| per 1/WAVE_HZ s)
