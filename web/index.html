@@ -652,12 +652,10 @@ async function applySyncAnchors() {
 }
 
 // Piecewise-linear remap from (chartTime, correctedTime) anchors — JS port of
-// gp_pipeline._build_time_warp, used to preview the cumulative effect of all
-// anchors set so far directly in the tab viewer.
-// JS port of gp_pipeline._build_time_warp: outside the anchor range, the
-// shift of the nearest anchor is held constant (not its slope), so dragging
-// a correction in one part of the song doesn't progressively shift notes far
-// before/after it.
+// gp_pipeline._build_time_warp. A single anchor is a uniform shift applied
+// everywhere; with two or more anchors (an excerpt drag), notes outside the
+// anchor range are left untouched (identity) — only the excerpt between the
+// first and last anchor is rigidly shifted/stretched.
 function buildTimeWarp(anchors) {
   if (!anchors.length) return t => t;
   const pts = [...anchors].sort((a, b) => a[0] - b[0]);
@@ -666,14 +664,8 @@ function buildTimeWarp(anchors) {
       const [x0, y0] = pts[0];
       return t + (y0 - x0);
     }
-    if (t <= pts[0][0]) {
-      const [x0, y0] = pts[0];
-      return t + (y0 - x0);
-    }
-    if (t >= pts[pts.length - 1][0]) {
-      const [x0, y0] = pts[pts.length - 1];
-      return t + (y0 - x0);
-    }
+    if (t < pts[0][0]) return t;
+    if (t > pts[pts.length - 1][0]) return t;
     let x0, y0, x1, y1;
     for (let i = 0; i < pts.length - 1; i++) {
       if (pts[i][0] <= t && t <= pts[i + 1][0]) { [x0, y0] = pts[i]; [x1, y1] = pts[i + 1]; break; }

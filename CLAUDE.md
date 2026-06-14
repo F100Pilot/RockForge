@@ -44,8 +44,13 @@ A single `offset_s` only fixes a constant lead-in; if the GP file's tempo map
 doesn't exactly match the recording, drift grows over the song. The tab viewer
 lets the user drag a note (or a rubber-band-selected excerpt) to where it
 should play; each drag/excerpt becomes a `(chart_time, corrected_time)` anchor,
-and `_build_time_warp` piecewise-linearly stretches/compresses notes, beats,
-sections and lyrics between anchors (`_warp_parsed_track`).
+and `_build_time_warp` remaps notes, beats, sections and lyrics
+(`_warp_parsed_track`):
+- **One anchor** (single-note drag) is a uniform shift applied to the whole
+  timeline — for "the whole song's lead-in is off by X".
+- **Two-or-more anchors** (excerpt drag) rigidly shift/stretch only the
+  excerpt between the first and last anchor; everything before/after is left
+  untouched (identity) so unrelated parts of the song don't move.
 
 `GpJobSpec.sync_anchor_stages: list[list[tuple[float, float]]]` is a list of
 correction *rounds*, applied in order. Each round's anchors are expressed in

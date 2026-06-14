@@ -89,10 +89,11 @@ _MUTE_TECHNIQUES = frozenset(
 def _build_time_warp(anchors: list[tuple[float, float]]) -> Callable[[float], float]:
     """Piecewise-linear remap built from (chart_time, corrected_time) points.
 
-    Outside the given range, the shift of the nearest anchor is held constant
-    (not its slope) — so dragging a correction in one part of the song does
-    not progressively shift notes far before/after it; only the interpolated
-    region between the anchors is stretched/compressed.
+    A single anchor is a uniform shift applied everywhere (e.g. "the whole
+    song's lead-in is off by X"). With two or more anchors (an excerpt drag),
+    notes outside the anchor range are left untouched (identity) — only the
+    excerpt between the first and last anchor is rigidly shifted/stretched;
+    notes before/after it keep their original position.
     """
     if not anchors:
         return lambda t: t
@@ -102,12 +103,10 @@ def _build_time_warp(anchors: list[tuple[float, float]]) -> Callable[[float], fl
         if len(pts) == 1:
             x0, y0 = pts[0]
             return t + (y0 - x0)
-        if t <= pts[0][0]:
-            x0, y0 = pts[0]
-            return t + (y0 - x0)
-        if t >= pts[-1][0]:
-            x0, y0 = pts[-1]
-            return t + (y0 - x0)
+        if t < pts[0][0]:
+            return t
+        if t > pts[-1][0]:
+            return t
         (x0, y0), (x1, y1) = next(
             (a, b) for a, b in zip(pts, pts[1:], strict=False) if a[0] <= t <= b[0]
         )
