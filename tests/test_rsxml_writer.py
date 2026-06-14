@@ -74,7 +74,19 @@ def test_note_attributes(tmp_path: Path) -> None:
     assert bend_note.get("bend") == "2"
     assert bend_note.get("string") == "2" and bend_note.get("fret") == "7"
     assert notes[2].get("hammerOn") == "1"
-    assert notes[0].get("hammerOn") == "0"
+    # default-valued attributes are omitted (Editor on Fire convention) so a
+    # plain note never carries a spurious technique flag on the highway
+    assert notes[0].get("hammerOn") is None
+
+
+def test_plain_note_emits_only_minimal_attributes(tmp_path: Path) -> None:
+    # Regression: a clean sustained note must serialize exactly like Editor on
+    # Fire's (time/string/fret/sustain only). Emitting palmMute="0", tap="0",
+    # slap="0", pluck="0" etc. made Rocksmith draw a spurious technique glyph
+    # inside the note box instead of a plain filled rectangle.
+    out = write_arrangement_xml(make_arrangement(), tmp_path / "lead.xml")
+    plain = ET.parse(out).getroot().findall("levels/level/notes/note")[0]
+    assert set(plain.attrib) == {"time", "string", "fret", "sustain"}
 
 
 def test_standard_tuning_attributes(tmp_path: Path) -> None:
@@ -145,8 +157,10 @@ def test_chord_element_mirrors_palm_mute_of_its_notes(tmp_path: Path) -> None:
     pm_chord, plain_chord = chords
     assert pm_chord.get("palmMute") == "1"
     assert all(cn.get("palmMute") == "1" for cn in pm_chord.findall("chordNote"))
-    assert plain_chord.get("palmMute") == "0"
-    assert all(cn.get("palmMute") == "0" for cn in plain_chord.findall("chordNote"))
+    # the plain chord omits palmMute entirely (default 0) rather than emitting
+    # ="0", which would otherwise trigger the wrong highway sprite
+    assert plain_chord.get("palmMute") is None
+    assert all(cn.get("palmMute") is None for cn in plain_chord.findall("chordNote"))
 
 
 def test_chord_counts_are_consistent(tmp_path: Path) -> None:

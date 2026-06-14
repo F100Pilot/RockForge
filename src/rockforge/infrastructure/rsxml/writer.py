@@ -82,6 +82,15 @@ def _chord_template_key(group: list[TabNote]) -> tuple[int, ...]:
     return tuple(frets)
 
 
+def _drop_defaults(attrs: dict[str, str], required: set[str]) -> dict[str, str]:
+    """Editor on Fire (the reference DLC Builder source) omits note/chord
+    attributes that equal the Song2014 XML schema default ("0"/"-1"); the mere
+    *presence* of some of them (even ="0") makes the in-game highway pick a
+    non-default sprite — a plain sustained note then renders with a spurious
+    technique glyph inside its box. Keep `required` keys regardless of value."""
+    return {k: v for k, v in attrs.items() if k in required or v not in ("0", "-1")}
+
+
 def _note_attrs(n: TabNote) -> dict[str, str]:
     has = n.techniques.__contains__
     attrs = {
@@ -104,7 +113,7 @@ def _note_attrs(n: TabNote) -> dict[str, str]:
         "slideTo": str(n.slide_to_fret) if n.slide_to_fret is not None else "-1",
         "slideUnpitchTo": "-1",
     }
-    return attrs
+    return _drop_defaults(attrs, {"time", "string", "fret", "sustain"})
 
 
 def render_arrangement(arr: Arrangement) -> ET.Element:
@@ -292,13 +301,20 @@ def render_arrangement(arr: Arrangement) -> ET.Element:
         chord_hopo = all(
             {Technique.HAMMER_ON, Technique.PULL_OFF} & n.techniques for n in g
         )
+        chord_attrs = {
+            "time": _fmt(g[0].time),
+            "chordId": str(chord_id),
+            "linkNext": "0",
+            "accent": "1" if chord_accent else "0",
+            "fretHandMute": "0",
+            "highDensity": "0",
+            "ignore": "0",
+            "palmMute": "1" if chord_pm else "0",
+            "hopo": "1" if chord_hopo else "0",
+            "strum": "down",
+        }
         chord_el = ET.SubElement(
-            chords_el, "chord",
-            time=_fmt(g[0].time), chordId=str(chord_id), linkNext="0",
-            accent="1" if chord_accent else "0",
-            fretHandMute="0", highDensity="0", ignore="0",
-            palmMute="1" if chord_pm else "0",
-            hopo="1" if chord_hopo else "0", strum="down",
+            chords_el, "chord", _drop_defaults(chord_attrs, {"time", "chordId", "strum"})
         )
         for n in g:  # chordNote children preserve per-string technique data
             ET.SubElement(chord_el, "chordNote", _note_attrs(n))
