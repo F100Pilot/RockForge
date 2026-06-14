@@ -52,25 +52,33 @@ from rockforge.infrastructure.rsxml.vocals import VocalEvent, expand_to_words, p
 MIN_LEAD_S = 2.0
 
 
+def suggest_tempo_scale(gp_bpm: float, detected_bpm: float) -> float:
+    """Octave-corrected tempo_scale aligning the GP tempo to a detected one.
+
+    Beat trackers routinely report a tempo an octave off (half/double); since the
+    GP file and the recording are the same song, the true ratio is near 1, so we
+    pick the octave of ``detected_bpm`` whose resulting scale sits closest to 1.0.
+    ``tempo_scale = gp_bpm / effective_recording_bpm`` because the GP timeline is
+    stretched/compressed to the recording's tempo (parser scales the effective BPM
+    inversely). Used both for whole-song sync and for a local re-tempo from a point.
+    """
+    if gp_bpm <= 0 or detected_bpm <= 0:
+        raise IngestionError("gp_bpm and detected_bpm must be positive to suggest a tempo")
+    candidates = [detected_bpm * f for f in (0.5, 1.0, 2.0)]
+    best = min(candidates, key=lambda b: abs((gp_bpm / b) - 1.0))
+    return gp_bpm / best
+
+
 def suggest_sync(
     gp_bpm: float, detected_bpm: float, first_onset_s: float
 ) -> tuple[float, float]:
     """Propose (tempo_scale, offset_s) aligning the GP chart to a recording.
 
-    Beat trackers routinely report a tempo an octave off (half/double); since the
-    GP file and the recording are the same song, the true ratio is near 1, so we
-    pick the octave of ``detected_bpm`` whose resulting tempo_scale sits closest
-    to 1.0. ``tempo_scale = gp_bpm / effective_recording_bpm`` because the GP
-    timeline is stretched/compressed to the recording's tempo (parser scales the
-    effective BPM inversely). ``offset_s`` is where audible content begins in the
-    recording — the second the first note should be heard. This is a *suggestion*:
-    the user reviews it in the tab viewer before rebuilding, never silently applied.
+    ``offset_s`` is where audible content begins in the recording — the second the
+    first note should be heard. This is a *suggestion*: the user reviews it in the
+    tab viewer before rebuilding, never silently applied.
     """
-    if gp_bpm <= 0 or detected_bpm <= 0:
-        raise IngestionError("gp_bpm and detected_bpm must be positive to suggest sync")
-    candidates = [detected_bpm * f for f in (0.5, 1.0, 2.0)]
-    best = min(candidates, key=lambda b: abs((gp_bpm / b) - 1.0))
-    return gp_bpm / best, max(0.0, first_onset_s)
+    return suggest_tempo_scale(gp_bpm, detected_bpm), max(0.0, first_onset_s)
 
 
 @dataclass(frozen=True)

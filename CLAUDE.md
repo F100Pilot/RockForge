@@ -63,6 +63,15 @@ confirms over the waveform and commits via the normal rebuild; nothing is
 silently applied (honesty principle). Detection is a module-level function so
 tests monkeypatch it without librosa (`test_auto_sync_proposes_alignment`).
 
+`POST /jobs/{id}/detect-tempo` (`{from_s}`) backs the tab viewer's per-point
+"Novo beat (detetar)" mode: it measures the recording's tempo from a clicked
+instant (`detect_tempo_from`) and returns `suggested_factor =
+suggest_tempo_scale(gp_bpm, detected_bpm)`. The UI turns that into two anchors —
+a fixed pivot at the click and the last note stretched by `factor` — so the
+existing `_build_time_warp` linearly re-tempos only `[click, last]` and nothing
+before the click moves. No new warp semantics; the per-point tools (drag, tap,
+move-from-here, re-tempo) all compile down to ordinary `sync_anchors`.
+
 ### Manual drift correction (`sync_anchor_stages`)
 
 A single `offset_s` only fixes a constant lead-in; if the GP file's tempo map
