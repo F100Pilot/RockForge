@@ -89,8 +89,10 @@ _MUTE_TECHNIQUES = frozenset(
 def _build_time_warp(anchors: list[tuple[float, float]]) -> Callable[[float], float]:
     """Piecewise-linear remap built from (chart_time, corrected_time) points.
 
-    Outside the given range, the slope of the nearest segment is extended so
-    times before the first / after the last anchor still shift smoothly.
+    Outside the given range, the shift of the nearest anchor is held constant
+    (not its slope) — so dragging a correction in one part of the song does
+    not progressively shift notes far before/after it; only the interpolated
+    region between the anchors is stretched/compressed.
     """
     if not anchors:
         return lambda t: t
@@ -101,13 +103,14 @@ def _build_time_warp(anchors: list[tuple[float, float]]) -> Callable[[float], fl
             x0, y0 = pts[0]
             return t + (y0 - x0)
         if t <= pts[0][0]:
-            (x0, y0), (x1, y1) = pts[0], pts[1]
-        elif t >= pts[-1][0]:
-            (x0, y0), (x1, y1) = pts[-2], pts[-1]
-        else:
-            (x0, y0), (x1, y1) = next(
-                (a, b) for a, b in zip(pts, pts[1:], strict=False) if a[0] <= t <= b[0]
-            )
+            x0, y0 = pts[0]
+            return t + (y0 - x0)
+        if t >= pts[-1][0]:
+            x0, y0 = pts[-1]
+            return t + (y0 - x0)
+        (x0, y0), (x1, y1) = next(
+            (a, b) for a, b in zip(pts, pts[1:], strict=False) if a[0] <= t <= b[0]
+        )
         if x1 == x0:
             return t + (y0 - x0)
         return y0 + (y1 - y0) * (t - x0) / (x1 - x0)

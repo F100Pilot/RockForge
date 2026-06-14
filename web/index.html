@@ -313,6 +313,12 @@
       <hr class="sep">
       <h2>Transcrição (notas e acordes)</h2>
       <div class="tabnav" id="arrTabs"></div>
+      <div class="anchor-row">
+        <button type="button" id="zoomOut" class="secondary">Zoom −</button>
+        <button type="button" id="zoomIn" class="secondary">Zoom +</button>
+        <button type="button" id="zoomReset" class="secondary">Reset zoom</button>
+        <span id="zoomLevel" class="meta"></span>
+      </div>
       <div id="tabwrap"><svg id="tabsvg" height="280"></svg></div>
       <p class="hint">● nota · ▮ nota de acorde (ligadas por uma barra vertical) · sigla
       sobreposta = técnica (B bend · H hammer-on · P pull-off · S slide · HA harmónico ·
@@ -359,6 +365,18 @@ let selectedJob = null, arrangements = [], currentArr = 0, pollTimer = null;
 // Visual sync (GP): MIN_LEAD must match gp_pipeline.MIN_LEAD_S.
 const MIN_LEAD = 2.0;
 let tabPx = 80, tabH = 280, scoreShift = 0, offsetLive = 0;
+const BASE_PX = 80;
+let zoomLevel = 1;
+
+function setZoom(z) {
+  zoomLevel = Math.min(8, Math.max(0.25, z));
+  document.getElementById('zoomLevel').textContent = `${Math.round(zoomLevel * 100)}%`;
+  if (arrangements.length) showArr(currentArr);
+}
+document.getElementById('zoomIn').addEventListener('click', () => setZoom(zoomLevel * 1.5));
+document.getElementById('zoomOut').addEventListener('click', () => setZoom(zoomLevel / 1.5));
+document.getElementById('zoomReset').addEventListener('click', () => setZoom(1));
+document.getElementById('zoomLevel').textContent = `${Math.round(zoomLevel * 100)}%`;
 let audioCtx = null, syncRaf = null, tickIdx = 0;
 // Decoded recording peaks for the tab-viewer waveform: max |amplitude| per
 // 1/WAVE_HZ second bin, plus the audio duration. Reset per job.
@@ -511,7 +529,7 @@ function showArr(i) {
   const a = arrangements[i];
   const svg = document.getElementById('tabsvg');
   const dur = Math.max(...a.notes.map(n => n.time + n.sustain), 10);
-  const px = 80, ROW = 40, R = 13, W = Math.max(900, dur * px + 60), H = 280;
+  const px = BASE_PX * zoomLevel, ROW = 40, R = 13, W = Math.max(900, dur * px + 60), H = 280;
   tabPx = px; tabH = H;
   svg.setAttribute('width', W);
   let s = '';
@@ -544,9 +562,10 @@ function showArr(i) {
   // drawn at their warped (corrected) time, while data-t keeps the original
   // chart time so new anchors stay in the backend's coordinate system.
   const warp = buildTimeWarp(syncAnchors);
+  const offShift = offsetPreviewShift();
   for (const g of groups) {
     const sel = selectedTimes.has(g.time) ? ' selected' : '';
-    const dispT = warp(g.time);
+    const dispT = warp(g.time) + offShift;
     s += `<g class="note-grp${sel}" data-t="${g.time}">`;
     if (g.notes.length > 1) {
       const x = 30 + dispT * px;
@@ -573,7 +592,7 @@ function showArr(i) {
     s += `</g>`;
   }
   for (const [origT, newT] of syncAnchors) {
-    const x1 = 30 + origT * px, x2 = 30 + newT * px;
+    const x1 = 30 + (origT + offShift) * px, x2 = 30 + (newT + offShift) * px;
     s += `<line x1="${x1}" y1="0" x2="${x1}" y2="${H-35}" stroke="#ff7a45" stroke-width="1.5" stroke-dasharray="4,3"/>`;
     if (Math.abs(x2 - x1) > 0.5)
       s += `<line x1="${x1}" y1="6" x2="${x2}" y2="6" stroke="#ff7a45" stroke-width="2" marker-end="url(#arrow)"/>`;
@@ -635,6 +654,10 @@ async function applySyncAnchors() {
 // Piecewise-linear remap from (chartTime, correctedTime) anchors — JS port of
 // gp_pipeline._build_time_warp, used to preview the cumulative effect of all
 // anchors set so far directly in the tab viewer.
+// JS port of gp_pipeline._build_time_warp: outside the anchor range, the
+// shift of the nearest anchor is held constant (not its slope), so dragging
+// a correction in one part of the song doesn't progressively shift notes far
+// before/after it.
 function buildTimeWarp(anchors) {
   if (!anchors.length) return t => t;
   const pts = [...anchors].sort((a, b) => a[0] - b[0]);
@@ -643,13 +666,17 @@ function buildTimeWarp(anchors) {
       const [x0, y0] = pts[0];
       return t + (y0 - x0);
     }
+    if (t <= pts[0][0]) {
+      const [x0, y0] = pts[0];
+      return t + (y0 - x0);
+    }
+    if (t >= pts[pts.length - 1][0]) {
+      const [x0, y0] = pts[pts.length - 1];
+      return t + (y0 - x0);
+    }
     let x0, y0, x1, y1;
-    if (t <= pts[0][0]) { [x0, y0] = pts[0]; [x1, y1] = pts[1]; }
-    else if (t >= pts[pts.length - 1][0]) { [x0, y0] = pts[pts.length - 2]; [x1, y1] = pts[pts.length - 1]; }
-    else {
-      for (let i = 0; i < pts.length - 1; i++) {
-        if (pts[i][0] <= t && t <= pts[i + 1][0]) { [x0, y0] = pts[i]; [x1, y1] = pts[i + 1]; break; }
-      }
+    for (let i = 0; i < pts.length - 1; i++) {
+      if (pts[i][0] <= t && t <= pts[i + 1][0]) { [x0, y0] = pts[i]; [x1, y1] = pts[i + 1]; break; }
     }
     if (x1 === x0) return t + (y0 - x0);
     return y0 + (y1 - y0) * (t - x0) / (x1 - x0);
@@ -739,9 +766,10 @@ function updateSelectionInfo() {
       rubberBand = null;
       if (x2 - x1 > 3) {
         const warp = buildTimeWarp(syncAnchors);
+        const offShift = offsetPreviewShift();
         for (const g of svg.querySelectorAll('.note-grp')) {
           const t = parseFloat(g.dataset.t);
-          const dispT = warp(t);
+          const dispT = warp(t) + offShift;
           if (dispT >= t1 && dispT <= t2) selectedTimes.add(t);
         }
         updateSelectionInfo();
@@ -820,6 +848,15 @@ function clickSound() {
 // score-time currently under the playhead, given source playback time S
 function viewerTimeAt(s) { return (s - offsetLive) + scoreShift; }
 
+// How much the chart shifts when the sync offset slider moves, previewing
+// the score_shift the backend would use on rebuild
+// (score_shift = max(offset_s, MIN_LEAD_S) — see gp_pipeline.MIN_LEAD_S).
+// Applied to the drawn note/playhead position only; their relative order
+// (used for tick comparisons) is unaffected since it's a uniform constant.
+function offsetPreviewShift() {
+  return Math.max(offsetLive, MIN_LEAD) - scoreShift;
+}
+
 function syncResetPointer() {
   const au = document.getElementById('syncAudio');
   const vt = viewerTimeAt(au ? au.currentTime : 0);
@@ -836,7 +873,7 @@ function syncFrame() {
   // Playhead tracks the audio (and thus the waveform), unwarped — corrected
   // notes are warped onto these same positions, so it still passes over them.
   const vt = viewerTimeAt(au.currentTime);
-  const x = 30 + vt * tabPx;
+  const x = 30 + (vt + offsetPreviewShift()) * tabPx;
   ph.setAttribute('x1', x); ph.setAttribute('x2', x);
   const wrap = document.getElementById('tabwrap');
   if (x < wrap.scrollLeft + 60 || x > wrap.scrollLeft + wrap.clientWidth - 60)
@@ -860,7 +897,7 @@ function setOffsetLive(v) {
   document.getElementById('syncOffset').value = offsetLive.toFixed(2);
   document.getElementById('syncOffsetRange').value = offsetLive;
   syncResetPointer();
-  updateWaveformOffset();
+  if (arrangements.length) showArr(currentArr);
 }
 
 function initSync(j) {
@@ -908,17 +945,19 @@ async function decodeWaveform(id) {
   }
 }
 
-// Build the waveform path data for the current viewer timeline. The waveform is
-// the fixed audio reference (unwarped): audio time s appears at viewer time
-// viewerTimeAt(s), so notes (drawn warped) line up onto it as they are dragged.
-// Moving the offset slider shifts the waveform live (visual offset alignment).
+// Build the waveform path data for the current viewer timeline. The waveform
+// shows the recording as it would be laid out on rebuild: content starts
+// after max(0, MIN_LEAD - offsetLive) seconds of prepended silence (see
+// gp_pipeline.MIN_LEAD_S / pad_start_s) — notes (shifted by
+// offsetPreviewShift) line up onto it as the offset slider changes.
 function waveformPathData(W, px, H) {
   if (!wavePeaks) return '';
   const top = 14, bot = H - 35, mid = (top + bot) / 2, amp = (bot - top) / 2 * 0.92;
+  const padStart = Math.max(0, MIN_LEAD - offsetLive);
   let up = '', down = '';
   for (let x = 30; x <= W; x += 2) {
     const vt = (x - 30) / px;
-    const s = vt - scoreShift + offsetLive;  // inverse of viewerTimeAt
+    const s = vt - padStart;
     let p = 0;
     if (s >= 0 && s < waveDuration) p = wavePeaks[Math.floor(s * WAVE_HZ)] || 0;
     up += `${x === 30 ? 'M' : 'L'}${x},${(mid - p * amp).toFixed(1)} `;
@@ -932,15 +971,6 @@ function waveformSvg(W, H, px) {
   return `<path id="wavepath" d="${waveformPathData(W, px, H)}" fill="#2a6f97" opacity=".28"/>`;
 }
 
-// Recompute only the waveform path (cheap relative to a full showArr) when the
-// offset slider moves, so the audio lines up under the notes in real time.
-function updateWaveformOffset() {
-  const path = document.getElementById('wavepath');
-  if (!path) return;
-  const svg = document.getElementById('tabsvg');
-  const W = parseFloat(svg.getAttribute('width')) || 900;
-  path.setAttribute('d', waveformPathData(W, tabPx, tabH));
-}
 
 document.getElementById('syncOffset').addEventListener('input', e => setOffsetLive(parseFloat(e.target.value)));
 document.getElementById('syncOffsetRange').addEventListener('input', e => setOffsetLive(parseFloat(e.target.value)));
