@@ -578,10 +578,14 @@ function showArr(i) {
   // Preview the cumulative effect of the sync anchors set so far: notes are
   // drawn at their warped (corrected) time, while data-t keeps the original
   // chart time so new anchors stay in the backend's coordinate system.
+  // Notes are placed at parse+offset+tempo position (previewScale), then the
+  // pending sync anchors warp that *display* position — the same space the
+  // backend uses, so anchors round-trip exactly through a rebuild even with a
+  // tempo/offset change still pending.
   const warp = buildTimeWarp(syncAnchors);
   for (const g of groups) {
     const sel = selectedTimes.has(g.time) ? ' selected' : '';
-    const dispT = previewScale(warp(g.time));
+    const dispT = warp(previewScale(g.time));
     s += `<g class="note-grp${sel}" data-t="${g.time}">`;
     if (g.notes.length > 1) {
       const x = 30 + dispT * px;
@@ -607,8 +611,8 @@ function showArr(i) {
     }
     s += `</g>`;
   }
-  for (const [origT, newT] of syncAnchors) {
-    const x1 = 30 + previewScale(origT) * px, x2 = 30 + previewScale(newT) * px;
+  for (const [origT, newT] of syncAnchors) {  // already in display coordinates
+    const x1 = 30 + origT * px, x2 = 30 + newT * px;
     s += `<line x1="${x1}" y1="0" x2="${x1}" y2="${H-35}" stroke="#ff7a45" stroke-width="1.5" stroke-dasharray="4,3"/>`;
     if (Math.abs(x2 - x1) > 0.5)
       s += `<line x1="${x1}" y1="6" x2="${x2}" y2="6" stroke="#ff7a45" stroke-width="2" marker-end="url(#arrow)"/>`;
@@ -777,7 +781,7 @@ function updateSelectionInfo() {
         const warp = buildTimeWarp(syncAnchors);
         for (const g of svg.querySelectorAll('.note-grp')) {
           const t = parseFloat(g.dataset.t);
-          const dispT = previewScale(warp(t));
+          const dispT = warp(previewScale(t));
           if (dispT >= t1 && dispT <= t2) selectedTimes.add(t);
         }
         updateSelectionInfo();
@@ -791,13 +795,11 @@ function updateSelectionInfo() {
       const deltaS = dx / tabPx;
       if (Math.abs(deltaS) > 0.01) {
         const warp = buildTimeWarp(syncAnchors);
-        const selStart = Math.min(...groupDrag.times), selEnd = Math.max(...groupDrag.times);
-        if (selStart === selEnd) {
-          setAnchor(selStart, warp(selStart) + deltaS);
-        } else {
-          setAnchor(selStart, warp(selStart) + deltaS);
-          setAnchor(selEnd, warp(selEnd) + deltaS);
-        }
+        // anchors live in display coordinates (previewScale of the chart time)
+        const dStart = previewScale(Math.min(...groupDrag.times));
+        const dEnd = previewScale(Math.max(...groupDrag.times));
+        setAnchor(dStart, warp(dStart) + deltaS);
+        if (dEnd !== dStart) setAnchor(dEnd, warp(dEnd) + deltaS);
         selectedTimes.clear();
         updateSelectionInfo();
         showArr(currentArr);
@@ -811,8 +813,8 @@ function updateSelectionInfo() {
     const deltaS = dx / tabPx;
     if (Math.abs(deltaS) > 0.01) {
       const warp = buildTimeWarp(syncAnchors);
-      const newT = warp(dragging.origT) + deltaS;
-      setAnchor(dragging.origT, newT);
+      const chart = previewScale(dragging.origT);  // display coordinates
+      setAnchor(chart, warp(chart) + deltaS);
       showArr(currentArr);
     }
     dragging = null;
@@ -853,9 +855,6 @@ function clickSound() {
   osc.start(t); osc.stop(t + 0.05);
 }
 
-// score-time currently under the playhead, given source playback time S
-function viewerTimeAt(s) { return (s - offsetLive) + scoreShift; }
-
 // Preview where a chart time (already shifted to the built timeline, optionally
 // sync-warped) would land on rebuild with the current live offset and tempo:
 // the musical part (time past the built lead-in) is rescaled by
@@ -876,10 +875,12 @@ function playheadDisplay(s) {
 
 function syncResetPointer() {
   const au = document.getElementById('syncAudio');
-  const vt = viewerTimeAt(au ? au.currentTime : 0);
+  // Compare in display coordinates so the ticks follow the live preview
+  // (tempo/offset/anchors), making alignment audible without a rebuild.
+  const vt = playheadDisplay(au ? au.currentTime : 0);
   const notes = arrangements[currentArr] ? arrangements[currentArr].notes : [];
   const warp = buildTimeWarp(syncAnchors);
-  tickIdx = notes.findIndex(n => warp(n.time) >= vt);
+  tickIdx = notes.findIndex(n => warp(previewScale(n.time)) >= vt);
   if (tickIdx < 0) tickIdx = notes.length;
 }
 
@@ -889,7 +890,8 @@ function syncFrame() {
   if (!au || !ph) { syncRaf = null; return; }
   // Playhead tracks the audio (and thus the waveform). It stays in audio
   // coordinates; tempo preview moves the notes over it, not the other way.
-  const x = 30 + playheadDisplay(au.currentTime) * tabPx;
+  const vtDisp = playheadDisplay(au.currentTime);
+  const x = 30 + vtDisp * tabPx;
   ph.setAttribute('x1', x); ph.setAttribute('x2', x);
   const wrap = document.getElementById('tabwrap');
   if (x < wrap.scrollLeft + 60 || x > wrap.scrollLeft + wrap.clientWidth - 60)
@@ -897,7 +899,9 @@ function syncFrame() {
   const notes = arrangements[currentArr] ? arrangements[currentArr].notes : [];
   const tickOn = document.getElementById('syncTick').checked;
   const warp = buildTimeWarp(syncAnchors);
-  while (tickIdx < notes.length && warp(notes[tickIdx].time) <= vt) {
+  // Fire each note's tick when the playhead reaches its *previewed* display
+  // position, so live tempo/offset/anchor edits are immediately audible.
+  while (tickIdx < notes.length && warp(previewScale(notes[tickIdx].time)) <= vtDisp) {
     if (tickOn) {
       const note = notes[tickIdx];
       playNote(note.string, note.fret);
@@ -952,7 +956,7 @@ function setTempoLive(scale) {
   }
   // % of the GP's authored tempo (100% = unchanged; <100% = slower/stretched)
   pctEl.textContent = `${Math.round(100 / tempoScaleLive)}% do andamento do GP`;
-  if (arrangements.length) showArr(currentArr);
+  if (arrangements.length) { syncResetPointer(); showArr(currentArr); }
 }
 
 (function wireTempoControls() {
