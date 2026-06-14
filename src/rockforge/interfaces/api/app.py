@@ -102,6 +102,18 @@ class AutoSyncOut(BaseModel):
     suggested_offset_s: float
 
 
+class DetectTempoIn(BaseModel):
+    from_s: float = 0.0  # recording time to start measuring the local tempo from
+
+
+class DetectTempoOut(BaseModel):
+    """Local tempo measured from a point — for the per-point 're-tempo from here' tool."""
+
+    gp_bpm: float
+    detected_bpm: float
+    suggested_factor: float  # multiply note spacing after the point by this
+
+
 class YouTubeJobIn(BaseModel):
     url: HttpUrl
     title: str
@@ -565,6 +577,46 @@ def auto_sync(job_id: str) -> AutoSyncOut:
         detected_bpm=detected_bpm,
         suggested_tempo_scale=tempo_scale,
         suggested_offset_s=offset_s,
+    )
+
+
+@app.post("/jobs/{job_id}/detect-tempo", response_model=DetectTempoOut)
+def detect_tempo(job_id: str, payload: DetectTempoIn) -> DetectTempoOut:
+    """Measure the recording's tempo from ``from_s`` onward (librosa) and return a
+    factor to re-tempo the chart's following notes to it. Like /auto-sync this is a
+    proposal the user previews in the tab viewer before rebuilding."""
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+        if job.source_type != "gp":
+            raise HTTPException(422, "tempo detection only applies to Guitar Pro jobs")
+        gp_path = Path(str((job.params or {}).get("gp_path", "")))
+        src = Path(job.source)
+    if not gp_path.exists():
+        raise HTTPException(409, "the Guitar Pro file no longer exists on the work volume")
+    if not src.exists():
+        raise HTTPException(409, "source audio no longer exists on the work volume")
+
+    from rockforge.application.gp_pipeline import suggest_tempo_scale
+    from rockforge.infrastructure.gpimport.parser import inspect_gp
+
+    try:
+        from rockforge.infrastructure.rhythm.librosa_adapter import detect_tempo_from
+    except ImportError as exc:  # ml extra absent
+        raise HTTPException(
+            503, "beat detection needs the 'ml' extra (librosa) — install rockforge[ml]"
+        ) from exc
+
+    gp_bpm = float(inspect_gp(gp_path).tempo)
+    try:
+        detected_bpm = detect_tempo_from(src, payload.from_s)
+    except Exception as exc:
+        raise HTTPException(422, f"could not analyse the recording: {exc}") from exc
+    return DetectTempoOut(
+        gp_bpm=gp_bpm,
+        detected_bpm=detected_bpm,
+        suggested_factor=suggest_tempo_scale(gp_bpm, detected_bpm),
     )
 
 

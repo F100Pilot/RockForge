@@ -339,6 +339,35 @@ def test_auto_sync_rejected_for_non_gp(client: TestClient) -> None:
     assert r.status_code == 422
 
 
+def test_detect_tempo_returns_local_factor(client: TestClient, tmp_path, monkeypatch) -> None:
+    # Per-point re-tempo: detection is faked. GP tempo 100, detected 200 from the
+    # clicked point → octave-corrected factor 1.0 (100 / (200 * 0.5)).
+    import rockforge.infrastructure.rhythm.librosa_adapter as rhythm
+
+    monkeypatch.setattr(rhythm, "detect_tempo_from", lambda src, start: 200.0)
+    data = _make_gp5_bytes(tmp_path)
+    body = client.post(
+        "/gp/inspect", files={"file": ("song.gp5", data, "application/octet-stream")}
+    ).json()
+    job = client.post(
+        "/jobs/gp",
+        data={"gp_token": body["gp_token"], "lead_track": "0"},
+        files={"audio": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
+    ).json()
+    r = client.post(f"/jobs/{job['id']}/detect-tempo", json={"from_s": 12.0})
+    assert r.status_code == 200
+    out = r.json()
+    assert out["gp_bpm"] == pytest.approx(100.0)
+    assert out["detected_bpm"] == pytest.approx(200.0)
+    assert out["suggested_factor"] == pytest.approx(1.0)
+
+
+def test_detect_tempo_rejected_for_non_gp(client: TestClient) -> None:
+    job = _create_job(client)
+    r = client.post(f"/jobs/{job['id']}/detect-tempo", json={"from_s": 0.0})
+    assert r.status_code == 422
+
+
 def test_gp_job_unknown_token_404(client: TestClient) -> None:
     r = client.post(
         "/jobs/gp",

@@ -219,6 +219,15 @@ def test_suggest_sync_octave_corrects_detected_tempo() -> None:
     assert offset == pytest.approx(1.4)
 
 
+def test_suggest_tempo_scale_octave_corrects() -> None:
+    # The shared octave-correction helper (used by the per-point re-tempo tool):
+    # 120 vs a detected 240 → pick the half-tempo octave so the scale stays ~1.
+    from rockforge.application.gp_pipeline import suggest_tempo_scale
+
+    assert suggest_tempo_scale(120.0, 240.0) == pytest.approx(1.0)  # 120 / (240 * 0.5)
+    assert suggest_tempo_scale(120.0, 100.0) == pytest.approx(1.2)
+
+
 def test_suggest_sync_scales_to_recording_tempo() -> None:
     # Recording is genuinely slower than the GP file (100 vs 90): stretch the
     # chart (tempo_scale > 1) so its effective BPM matches the recording.

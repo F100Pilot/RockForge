@@ -358,14 +358,17 @@
       — o excerto move-se em bloco. <strong>Mover seguintes</strong>: pausa o áudio no instante certo e
       clica na nota que está fora de sítio — essa nota e <em>todas as seguintes</em> deslocam-se em bloco
       para começar no cursor, sem mexer nas anteriores (corrige um desfasamento que aparece a meio).
-      A <strong>forma de onda</strong> azul é a gravação (referência fixa): alinha as notas pelos seus
-      picos transientes e usa o cursor para confirmar.</p>
+      <strong>Novo beat (detetar)</strong>: clica numa nota onde o andamento muda — o RockForge mede o
+      andamento da gravação a partir desse instante e re-espaça as notas seguintes para esse BPM (o ponto
+      clicado fica fixo, nada antes mexe). A <strong>forma de onda</strong> azul é a gravação (referência
+      fixa): alinha as notas pelos seus picos transientes e usa o cursor para confirmar.</p>
       <div class="anchor-row">
         <span class="meta" style="margin-right:.3rem">Modo:</span>
         <button type="button" id="modeArrastar" class="secondary active-mode">Arrastar nota</button>
         <button type="button" id="modeMarcar" class="secondary">Marcar no cursor</button>
         <button type="button" id="modeExcerto" class="secondary">Selecionar excerto</button>
         <button type="button" id="modeMover" class="secondary">Mover seguintes</button>
+        <button type="button" id="modeBeat" class="secondary">Novo beat (detetar)</button>
         <span id="selectionInfo" style="margin-left:.5rem"></span>
         <button type="button" id="clearSelection" class="secondary" hidden>Limpar seleção</button>
       </div>
@@ -755,6 +758,38 @@ function setAnchor(origT, newT) {
   else syncAnchors.push([origT, newT]);
 }
 
+// "Novo beat (detetar)": ask the backend for the recording's tempo from the
+// clicked point and re-tempo the following notes to it. Two anchors — a fixed
+// pivot at the click and the last note stretched by the detected factor — make
+// _build_time_warp linearly re-space only [click, last]; nothing before moves.
+async function reTempoFromHere(grp) {
+  if (!selectedJob) return;
+  const warp = buildTimeWarp(syncAnchors);
+  const chartT = parseFloat(grp.dataset.t);
+  const dispT = warp(previewScale(chartT));
+  const notes = arrangements[currentArr] ? arrangements[currentArr].notes : [];
+  const lastChartT = notes.length ? Math.max(...notes.map(n => n.time)) : chartT;
+  const dispLast = warp(previewScale(lastChartT));
+  if (dispLast <= dispT + 0.01) { toast('é a última nota — nada para re-espaçar', 'err'); return; }
+  const fromS = Math.max(0, dispT - viewOrigin);  // click's time in the recording
+  toast('A detetar andamento…', 'ok');
+  try {
+    const r = await fetch(`/jobs/${selectedJob.id}/detect-tempo`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from_s: fromS }),
+    });
+    const b = await r.json();
+    if (!r.ok) { toast(b.detail || 'erro', 'err'); return; }
+    const factor = b.suggested_factor;
+    setAnchor(dispT, dispT);                                   // fixed pivot at the click
+    setAnchor(dispLast, dispT + (dispLast - dispT) * factor);  // stretch the tail to the local BPM
+    renderAnchorsList();
+    updatePendingChangesInfo();
+    showArr(currentArr);
+    toast(`Andamento: ${b.detected_bpm.toFixed(1)} BPM (×${factor.toFixed(3)})`, 'ok');
+  } catch (e) { toast('falha na deteção', 'err'); }
+}
+
 function updateSelectionInfo() {
   const info = document.getElementById('selectionInfo');
   const clearBtn = document.getElementById('clearSelection');
@@ -807,6 +842,14 @@ function updateSelectionInfo() {
       renderAnchorsList();
       updatePendingChangesInfo();
       showArr(currentArr);
+      return;
+    }
+    // New beat (detect): measure the recording's tempo from the clicked point and
+    // re-space the following notes to it. The click point is a fixed pivot
+    // (identity) and the last note is stretched by the detected factor, so
+    // _build_time_warp linearly re-tempos only [click, last]; nothing before moves.
+    if (syncMode === 'newbeat' && grp) {
+      reTempoFromHere(grp);
       return;
     }
     if (syncMode === 'excerpt' && !(grp && selectedTimes.has(parseFloat(grp.dataset.t)))) {
@@ -911,6 +954,7 @@ const SYNC_MODE_BUTTONS = [
   ['modeMarcar', 'tap'],
   ['modeExcerto', 'excerpt'],
   ['modeMover', 'movefrom'],
+  ['modeBeat', 'newbeat'],
 ];
 SYNC_MODE_BUTTONS.forEach(([id, mode]) => {
   document.getElementById(id)?.addEventListener('click', () => {

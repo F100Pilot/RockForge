@@ -40,6 +40,23 @@ def detect_tempo_and_onset(audio: Path) -> tuple[float, float]:
     return bpm, first_onset
 
 
+def detect_tempo_from(audio: Path, start_s: float) -> float:
+    """Estimate the recording's tempo (BPM) from ``start_s`` to the end.
+
+    Used by the per-point "new beat" tool: the user clicks where the chart drifts
+    out of the recording and we re-tempo the following notes to the local BPM
+    measured from that instant. librosa imported lazily (ml extra).
+    """
+    import librosa
+    import numpy as np
+
+    y, sr = librosa.load(str(audio), sr=None, mono=True, offset=max(0.0, start_s))
+    if len(y) == 0:
+        raise ValueError("no audio after the requested start point")
+    tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
+    return float(np.atleast_1d(tempo)[0])
+
+
 class LibrosaRhythmAdapter:
     """Implements BeatTracker and TuningEstimator ports."""
 
