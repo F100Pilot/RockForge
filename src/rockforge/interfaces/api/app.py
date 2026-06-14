@@ -66,6 +66,9 @@ class RebuildIn(BaseModel):
     # Manual drift-correction points: (chart_time_s, corrected_time_s) pairs, in the
     # chart's already-shifted timeline (as shown in the tab viewer).
     sync_anchors: list[tuple[float, float]] | None = None
+    # When set (ArrangementKind value, e.g. "Lead"/"Rhythm"/"Combined"), tempo_scale
+    # and sync_anchors are scoped to that arrangement alone instead of all of them.
+    arrangement: str | None = None
     # GP: when False, palm mute / slap / pop / tap are stripped (plain notes).
     import_mutes: bool | None = None
 
@@ -84,6 +87,7 @@ class ArrangementOut(BaseModel):
     tuning_offsets: list[int]
     cent_offset: float
     average_bpm: float
+    tempo_scale: float  # this arrangement's own tempo scale (GP sync), 1.0 if none
     note_count: int
     chord_count: int
     notes: list[ArrangementNoteOut]
@@ -442,25 +446,59 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
             if payload.offset_s < 0.0:
                 raise HTTPException(422, "offset_s must be >= 0")
             params["offset_s"] = payload.offset_s
+        if payload.arrangement is not None and original.source_type != "gp":
+            raise HTTPException(422, "arrangement scoping only applies to Guitar Pro jobs")
+
+        def _arr_entry(kind: str) -> dict[str, object]:
+            # Per-arrangement tempo/drift overrides live under params["arrangement_sync"].
+            # Seed a new entry from the job-level defaults so corrections already
+            # applied to every arrangement are inherited (not dropped) the first
+            # time this arrangement is edited on its own.
+            store = cast(
+                "dict[str, dict[str, object]]", params.setdefault("arrangement_sync", {})
+            )
+            if kind not in store:
+                store[kind] = {
+                    "tempo_scale": params.get("tempo_scale", 1.0),
+                    "sync_anchor_stages": [
+                        list(s)
+                        for s in cast(
+                            "list[list[object]]", params.get("sync_anchor_stages", [])
+                        )
+                    ],
+                }
+            return store[kind]
+
         if payload.tempo_scale is not None:
             if original.source_type != "gp":
                 raise HTTPException(422, "tempo_scale only applies to Guitar Pro jobs")
             if payload.tempo_scale <= 0.0:
                 raise HTTPException(422, "tempo_scale must be > 0")
-            params["tempo_scale"] = payload.tempo_scale
+            if payload.arrangement is not None:
+                _arr_entry(payload.arrangement)["tempo_scale"] = payload.tempo_scale
+            else:
+                params["tempo_scale"] = payload.tempo_scale
         if payload.sync_anchors is not None:
             if original.source_type != "gp":
                 raise HTTPException(422, "sync_anchors only apply to Guitar Pro jobs")
             if payload.sync_anchors:
                 # Append as a new correction round on top of any carried-over rounds, so
                 # corrections made in earlier sessions (after reloading a completed job)
-                # are preserved rather than overwritten.
+                # are preserved rather than overwritten. Scope to one arrangement when
+                # requested, else the job-level (shared-default) list.
+                target = (
+                    _arr_entry(payload.arrangement)
+                    if payload.arrangement is not None
+                    else params
+                )
                 stages = [
                     list(s)
-                    for s in cast("list[list[object]]", params.get("sync_anchor_stages", []))
+                    for s in cast(
+                        "list[list[object]]", target.get("sync_anchor_stages", [])
+                    )
                 ]
                 stages.append([list(a) for a in payload.sync_anchors])
-                params["sync_anchor_stages"] = stages
+                target["sync_anchor_stages"] = stages
         if payload.import_mutes is not None:
             params["import_mute_techniques"] = payload.import_mutes
         job = Job(
@@ -487,6 +525,17 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
         job = session.get(Job, job_id)
         if job is None or job.status is not JobStatus.COMPLETED or not job.bundle_dir:
             raise HTTPException(404, "arrangements not available")
+        job_params = dict(job.params or {})
+
+    # Per-arrangement tempo scale, falling back to the job-level default.
+    default_scale = float(job_params.get("tempo_scale", 1.0) or 1.0)
+    arr_sync = job_params.get("arrangement_sync") or {}
+
+    def scale_for(kind: str) -> float:
+        entry = arr_sync.get(kind) if isinstance(arr_sync, dict) else None
+        if isinstance(entry, dict):
+            return float(entry.get("tempo_scale", default_scale) or default_scale)
+        return default_scale
 
     out: list[ArrangementOut] = []
     for xml_path in sorted(Path(job.bundle_dir).glob("arrangement_*.xml")):
@@ -525,12 +574,14 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
             for el in root.findall("levels/level/chords/chord/chordNote")
         ]
         all_notes = sorted(notes + chord_notes, key=lambda n: (n.time, n.string))
+        kind = root.findtext("arrangement", "?")
         out.append(
             ArrangementOut(
-                kind=root.findtext("arrangement", "?"),
+                kind=kind,
                 tuning_offsets=offsets,
                 cent_offset=float(root.findtext("centOffset", "0")),
                 average_bpm=float(root.findtext("averageTempo", "0")),
+                tempo_scale=scale_for(kind),
                 note_count=len(notes),
                 chord_count=len(root.findall("levels/level/chords/chord")),
                 notes=all_notes,

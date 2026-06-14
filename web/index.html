@@ -290,7 +290,6 @@
         <span id="tuningInputs"></span>
         <label class="check"><input type="checkbox" id="splitChk" checked> tentar split Lead/Rhythm (experimental)</label>
         <label class="check"><input type="checkbox" id="muteChk" checked> importar palm mute / slap / pop / tap (desliga p/ notas limpas)</label>
-        <button type="submit" class="secondary">Reconstruir com estes valores</button>
       </form>
 
       <div id="syncPanel" style="display:none">
@@ -298,15 +297,16 @@
         <h2>Sincronização visual</h2>
         <p class="hint" style="margin-top:0">Dá play à gravação: o cursor percorre as notas e ouves um
         <strong>tique</strong> em cada uma. Arrasta o <strong>início da música</strong> até os tiques
-        baterem certo com a gravação; depois "Aplicar e reconstruir". O número é o segundo em que a
-        primeira nota é ouvida na tua gravação.</p>
+        baterem certo com a gravação. O número é o segundo em que a primeira nota é ouvida na tua
+        gravação. <strong>Cada arranjo (Lead/Rhythm) é sincronizado separadamente</strong> — muda de
+        separador para corrigir cada um; o botão único <strong>"Aplicar e reconstruir"</strong> (em
+        baixo) grava o arranjo atual. O início e a afinação são partilhados por todos.</p>
         <audio id="syncAudio" controls preload="metadata" style="width:100%;margin:.4rem 0"></audio>
         <div class="syncctrls">
           <label>Início da música na gravação (s):
             <input type="number" id="syncOffset" value="0" step="0.01" min="0" style="width:6rem"></label>
           <input type="range" id="syncOffsetRange" min="0" max="20" step="0.01" value="0" style="flex:1;min-width:180px">
           <label class="check"><input type="checkbox" id="syncTick" checked> Tocar nota à passagem</label>
-          <button type="button" id="syncApply" class="secondary">Aplicar e reconstruir</button>
         </div>
         <p class="hint" style="margin-bottom:.2rem">Se a tabulatura e a gravação se vão afastando ao
         longo da música (o GP foi escrito num andamento ligeiramente diferente do que foi gravado),
@@ -318,7 +318,6 @@
           <input type="range" id="tempoRange" min="50" max="200" step="0.5" value="100" style="flex:1;min-width:180px">
           <span id="tempoPct" class="meta"></span>
           <button type="button" id="tempoReset" class="secondary">Repor GP</button>
-          <button type="button" id="tempoApply" class="secondary">Aplicar e reconstruir</button>
         </div>
       </div>
 
@@ -354,6 +353,12 @@
         <button type="button" id="clearSelection" class="secondary" hidden>Limpar seleção</button>
       </div>
       <div id="syncAnchorsList"></div>
+      <hr class="sep">
+      <div class="anchor-row">
+        <button type="button" id="applyAll">Aplicar e reconstruir</button>
+        <span class="meta">aplica afinação, início, andamento e correções de <b id="applyKind"></b>
+          (cada arranjo é reconstruído com a sua própria sincronização)</span>
+      </div>
     </div>
   </div>
 </div>
@@ -513,6 +518,7 @@ async function selectJob(id) {
 
 async function loadArrangements(id) {
   arrangements = await (await fetch(`/jobs/${id}/arrangements`)).json();
+  syncAnchorsByKind = {};  // fresh pending corrections per arrangement
   syncAnchors = [];
   selectedTimes = new Set();
   currentArr = 0;  // reset before initSync redraws, so a stale index can't go out of range
@@ -540,14 +546,18 @@ const TECH_ABBR = {
 };
 
 function showArr(i) {
+  if (i !== currentArr) loadArrSync(i);  // tab change: swap in that chart's own sync state
   currentArr = i;
   for (const [idx, btn] of document.querySelectorAll('#arrTabs button').entries())
     btn.classList.toggle('active', idx === i);
   const a = arrangements[i];
+  const applyKindEl = document.getElementById('applyKind');
+  if (applyKindEl) applyKindEl.textContent = a.kind;
   const svg = document.getElementById('tabsvg');
   const dur = Math.max(...a.notes.map(n => n.time + n.sustain), 10);
   const px = BASE_PX * zoomLevel, ROW = 40, R = 13, W = Math.max(900, dur * px + 60), H = 280;
   tabPx = px; tabH = H;
+  viewOrigin = Math.max(0, MIN_LEAD - offsetLive);  // bundle time at the left edge (0s)
   svg.setAttribute('width', W);
   let s = '';
   s += waveformSvg(W, H, px);  // audio reference, drawn behind staff + notes
@@ -588,12 +598,12 @@ function showArr(i) {
     const dispT = warp(previewScale(g.time));
     s += `<g class="note-grp${sel}" data-t="${g.time}">`;
     if (g.notes.length > 1) {
-      const x = 30 + dispT * px;
+      const x = timeToX(dispT);
       const ys = g.notes.map(n => H - 35 - n.string * ROW);
       s += `<line x1="${x}" y1="${Math.min(...ys)}" x2="${x}" y2="${Math.max(...ys)}" stroke="#9aa0ad" stroke-width="2"/>`;
     }
     for (const n of g.notes) {
-      const x = 30 + dispT * px, y = H - 35 - n.string * ROW;
+      const x = timeToX(dispT), y = H - 35 - n.string * ROW;
       const color = STRING_COLORS[n.string];
       const tech = n.techniques.length > 0;
       if (n.sustain > 0.05)
@@ -612,7 +622,7 @@ function showArr(i) {
     s += `</g>`;
   }
   for (const [origT, newT] of syncAnchors) {  // already in display coordinates
-    const x1 = 30 + origT * px, x2 = 30 + newT * px;
+    const x1 = timeToX(origT), x2 = timeToX(newT);
     s += `<line x1="${x1}" y1="0" x2="${x1}" y2="${H-35}" stroke="#ff7a45" stroke-width="1.5" stroke-dasharray="4,3"/>`;
     if (Math.abs(x2 - x1) > 0.5)
       s += `<line x1="${x1}" y1="6" x2="${x2}" y2="6" stroke="#ff7a45" stroke-width="2" marker-end="url(#arrow)"/>`;
@@ -629,12 +639,18 @@ window.showArr = showArr;
 // ---- Manual drift correction (drag a note, or a selected excerpt, to where
 // it should play) ----
 // syncAnchors: [(chartTime, correctedTime), ...] in the chart's currently
-// displayed (already-shifted) timeline; sent verbatim to /rebuild as
-// sync_anchors, which piecewise-linearly stretches notes/beats/sections.
+// displayed timeline; sent to /rebuild as sync_anchors. Each arrangement
+// (tab) has its OWN pending set — corrections to Lead never touch Rhythm — so
+// syncAnchors is a reference into syncAnchorsByKind for the current tab.
 let syncAnchors = [];
+let syncAnchorsByKind = {};  // kind -> pending [(chartTime, correctedTime), ...]
 // selectedTimes: chart times (g.time) of note-groups currently selected for
 // a multi-note excerpt drag.
 let selectedTimes = new Set();
+
+function currentKind() {
+  return arrangements[currentArr] ? arrangements[currentArr].kind : null;
+}
 
 function renderAnchorsList() {
   const el = document.getElementById('syncAnchorsList');
@@ -643,17 +659,20 @@ function renderAnchorsList() {
     `<div class="anchor-row">Correção ${i+1}: ${o.toFixed(2)}s → ${n.toFixed(2)}s
      <button type="button" data-i="${i}" class="anchor-remove">remover</button></div>`
   ).join('') + `<div class="anchor-row">
-     <button type="button" id="applyAnchors">Aplicar correções e reconstruir (${syncAnchors.length})</button>
-     <button type="button" id="clearAnchors" class="secondary">Limpar</button></div>`;
+     <button type="button" id="clearAnchors" class="secondary">Limpar correções pendentes</button></div>`;
   el.querySelectorAll('.anchor-remove').forEach(b => b.addEventListener('click', () => {
     syncAnchors.splice(parseInt(b.dataset.i, 10), 1);
     renderAnchorsList();
   }));
-  document.getElementById('clearAnchors').addEventListener('click', () => { syncAnchors = []; renderAnchorsList(); });
-  document.getElementById('applyAnchors').addEventListener('click', applySyncAnchors);
+  document.getElementById('clearAnchors').addEventListener('click', () => {
+    syncAnchors.length = 0; renderAnchorsList(); showArr(currentArr);
+  });
 }
 
-async function applySyncAnchors() {
+// The single "Aplicar e reconstruir": commits afinação + início (shared) +
+// the CURRENT arrangement's tempo and pending drift anchors in one rebuild.
+// Other arrangements keep their own already-committed sync untouched.
+async function applyAll() {
   if (!selectedJob) return;
   const midi = [...document.querySelectorAll('#tuningInputs input')].map(i => parseInt(i.value, 10));
   const r = await fetch(`/jobs/${selectedJob.id}/rebuild`, {
@@ -662,15 +681,17 @@ async function applySyncAnchors() {
       tuning_midi: midi.some(isNaN) ? null : midi,
       split_lead_rhythm: document.getElementById('splitChk').checked,
       offset_s: offsetLive,
+      arrangement: currentKind(),
       tempo_scale: tempoScaleLive,
-      sync_anchors: syncAnchors,
+      sync_anchors: syncAnchors.length ? syncAnchors : null,
       import_mutes: document.getElementById('muteChk').checked,
     }),
   });
   const b = await r.json();
-  if (r.ok) { toast('A reconstruir com as correções de sincronização…', 'ok'); syncAnchors = []; selectJob(b.id); }
+  if (r.ok) { toast('A reconstruir…', 'ok'); syncAnchors.length = 0; selectJob(b.id); }
   else toast(b.detail || 'erro');
 }
+document.getElementById('applyAll').addEventListener('click', applyAll);
 
 // Piecewise-linear remap from (chartTime, correctedTime) anchors — JS port of
 // gp_pipeline._build_time_warp. A single anchor is a uniform shift applied
@@ -774,7 +795,7 @@ function updateSelectionInfo() {
       const rect = svg.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const x1 = Math.min(rubberBand.startX, x), x2 = Math.max(rubberBand.startX, x);
-      const t1 = (x1 - 30) / tabPx, t2 = (x2 - 30) / tabPx;
+      const t1 = xToTime(x1), t2 = xToTime(x2);  // bundle time, same space as previewScale
       document.getElementById('selectionBox')?.remove();
       rubberBand = null;
       if (x2 - x1 > 3) {
@@ -873,6 +894,14 @@ function playheadDisplay(s) {
   return s + Math.max(0, MIN_LEAD - offsetLive);
 }
 
+// The x-axis is drawn in *recording* time (0s at the far left), while all the
+// time math (previewScale, anchors, backend) stays in bundle time. viewOrigin
+// is the bundle time that sits at the left edge — the lead-in silence — so the
+// playhead starts at 0 instead of jumping in at the first note.
+let viewOrigin = 0;
+function timeToX(t) { return 30 + (t - viewOrigin) * tabPx; }
+function xToTime(x) { return (x - 30) / tabPx + viewOrigin; }
+
 function syncResetPointer() {
   const au = document.getElementById('syncAudio');
   // Compare in display coordinates so the ticks follow the live preview
@@ -890,8 +919,8 @@ function syncFrame() {
   if (!au || !ph) { syncRaf = null; return; }
   // Playhead tracks the audio (and thus the waveform). It stays in audio
   // coordinates; tempo preview moves the notes over it, not the other way.
-  const vtDisp = playheadDisplay(au.currentTime);
-  const x = 30 + vtDisp * tabPx;
+  const vtDisp = playheadDisplay(au.currentTime);  // bundle time (for tick compare)
+  const x = timeToX(vtDisp);  // recording-time x — cursor sits at 0 when audio is at 0
   ph.setAttribute('x1', x); ph.setAttribute('x2', x);
   const wrap = document.getElementById('tabwrap');
   if (x < wrap.scrollLeft + 60 || x > wrap.scrollLeft + wrap.clientWidth - 60)
@@ -924,13 +953,9 @@ function initSync(j) {
   const panel = document.getElementById('syncPanel');
   if (j.source_type !== 'gp') { panel.style.display = 'none'; return; }
   panel.style.display = '';
+  // The offset (and thus the audio lead-in) is shared by all arrangements.
   scoreShift = Math.max(j.offset_s || 0, MIN_LEAD);
-  builtScale = j.tempo_scale || 1;
-  // a0.average_bpm already reflects builtScale (gp_bpm / builtScale), so the
-  // GP file's original tempo is average_bpm * builtScale.
-  const a0 = arrangements[0];
-  gpBpm = a0 && a0.average_bpm ? a0.average_bpm * builtScale : 0;
-  setTempoLive(builtScale);
+  loadArrSync(0);  // tempo/anchors are per-arrangement; load the first tab's
   const au = document.getElementById('syncAudio');
   au.src = `/jobs/${j.id}/source-audio`;
   setOffsetLive(j.offset_s || 0);
@@ -943,9 +968,23 @@ function initSync(j) {
   decodeWaveform(j.id);
 }
 
-// Set the previewed tempo scale and reflect it in the BPM/%/range controls.
-function setTempoLive(scale) {
-  tempoScaleLive = Math.min(4, Math.max(0.25, scale || 1));
+// Swap the per-arrangement sync state (tempo scale + pending drift anchors)
+// into the live globals when the active tab changes. Does NOT redraw — the
+// caller (showArr) renders right after.
+function loadArrSync(i) {
+  const a = arrangements[i];
+  if (!a) return;
+  builtScale = a.tempo_scale || 1;
+  // average_bpm already reflects builtScale (gp_bpm / builtScale), so the GP
+  // file's original tempo is average_bpm * builtScale.
+  gpBpm = a.average_bpm ? a.average_bpm * builtScale : 0;
+  tempoScaleLive = builtScale;
+  syncAnchors = syncAnchorsByKind[a.kind] || (syncAnchorsByKind[a.kind] = []);
+  updateTempoControls();
+}
+
+// Reflect tempoScaleLive in the BPM / % / range controls (no redraw).
+function updateTempoControls() {
   const bpmEl = document.getElementById('tempoBpm');
   const rangeEl = document.getElementById('tempoRange');
   const pctEl = document.getElementById('tempoPct');
@@ -956,6 +995,12 @@ function setTempoLive(scale) {
   }
   // % of the GP's authored tempo (100% = unchanged; <100% = slower/stretched)
   pctEl.textContent = `${Math.round(100 / tempoScaleLive)}% do andamento do GP`;
+}
+
+// Set the previewed tempo scale for the CURRENT arrangement and redraw.
+function setTempoLive(scale) {
+  tempoScaleLive = Math.min(4, Math.max(0.25, scale || 1));
+  updateTempoControls();
   if (arrangements.length) { syncResetPointer(); showArr(currentArr); }
 }
 
@@ -967,26 +1012,7 @@ function setTempoLive(scale) {
   bpmEl.addEventListener('input', e => fromBpm(parseFloat(e.target.value)));
   rangeEl.addEventListener('input', e => fromBpm(parseFloat(e.target.value)));
   document.getElementById('tempoReset').addEventListener('click', () => setTempoLive(1));
-  document.getElementById('tempoApply').addEventListener('click', applyTempo);
 })();
-
-async function applyTempo() {
-  if (!selectedJob) return;
-  const midi = [...document.querySelectorAll('#tuningInputs input')].map(i => parseInt(i.value, 10));
-  const r = await fetch(`/jobs/${selectedJob.id}/rebuild`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      tuning_midi: midi.some(isNaN) ? null : midi,
-      split_lead_rhythm: document.getElementById('splitChk').checked,
-      offset_s: offsetLive,
-      tempo_scale: tempoScaleLive,
-      import_mutes: document.getElementById('muteChk').checked,
-    }),
-  });
-  const b = await r.json();
-  if (r.ok) { toast('A reconstruir com o novo andamento…', 'ok'); selectJob(b.id); }
-  else toast(b.detail || 'erro');
-}
 
 // Fetch + decode the recording into peak bins (max |amplitude| per 1/WAVE_HZ s)
 // so the tab viewer can draw a waveform under the notes for visual alignment.
@@ -1016,19 +1042,15 @@ async function decodeWaveform(id) {
   }
 }
 
-// Build the waveform path data for the current viewer timeline. The waveform
-// shows the recording as it would be laid out on rebuild: content starts
-// after max(0, MIN_LEAD - offsetLive) seconds of prepended silence (see
-// gp_pipeline.MIN_LEAD_S / pad_start_s) — notes (placed by previewScale) line
-// up onto it as the offset/tempo controls change.
+// Build the waveform path data. The x-axis is recording time (0s at the left),
+// so audio sample at display time s is just wavePeaks[s] — notes (placed by
+// previewScale, mapped through timeToX) line up onto it as offset/tempo change.
 function waveformPathData(W, px, H) {
   if (!wavePeaks) return '';
   const top = 14, bot = H - 35, mid = (top + bot) / 2, amp = (bot - top) / 2 * 0.92;
-  const padStart = Math.max(0, MIN_LEAD - offsetLive);
   let up = '', down = '';
   for (let x = 30; x <= W; x += 2) {
-    const vt = (x - 30) / px;
-    const s = vt - padStart;
+    const s = (x - 30) / px;  // recording time at this x
     let p = 0;
     if (s >= 0 && s < waveDuration) p = wavePeaks[Math.floor(s * WAVE_HZ)] || 0;
     up += `${x === 30 ? 'M' : 'L'}${x},${(mid - p * amp).toFixed(1)} `;
@@ -1045,23 +1067,6 @@ function waveformSvg(W, H, px) {
 
 document.getElementById('syncOffset').addEventListener('input', e => setOffsetLive(parseFloat(e.target.value)));
 document.getElementById('syncOffsetRange').addEventListener('input', e => setOffsetLive(parseFloat(e.target.value)));
-document.getElementById('syncApply').addEventListener('click', async () => {
-  if (!selectedJob) return;
-  const midi = [...document.querySelectorAll('#tuningInputs input')].map(i => parseInt(i.value, 10));
-  const r = await fetch(`/jobs/${selectedJob.id}/rebuild`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      tuning_midi: midi.some(isNaN) ? null : midi,
-      split_lead_rhythm: document.getElementById('splitChk').checked,
-      offset_s: offsetLive,
-      tempo_scale: tempoScaleLive,
-      import_mutes: document.getElementById('muteChk').checked,
-    }),
-  });
-  const b = await r.json();
-  if (r.ok) { toast(`A reconstruir com início a ${offsetLive.toFixed(2)}s…`, 'ok'); selectJob(b.id); }
-  else toast(b.detail || 'erro');
-});
 
 document.getElementById('uploadForm').addEventListener('submit', async e => {
   e.preventDefault();
@@ -1082,21 +1087,9 @@ document.getElementById('ytForm').addEventListener('submit', async e => {
   if (r.ok) { e.target.reset(); toast('Job criado.', 'ok'); selectJob(b.id); } else toast(b.detail || 'erro');
 });
 
-document.getElementById('rebuildForm').addEventListener('submit', async e => {
-  e.preventDefault();
-  if (!selectedJob) return;
-  const midi = [...document.querySelectorAll('#tuningInputs input')].map(i => parseInt(i.value, 10));
-  const r = await fetch(`/jobs/${selectedJob.id}/rebuild`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      tuning_midi: midi,
-      split_lead_rhythm: document.getElementById('splitChk').checked,
-      import_mutes: document.getElementById('muteChk').checked,
-    }),
-  });
-  const b = await r.json();
-  if (r.ok) { toast('A reconstruir…', 'ok'); selectJob(b.id); } else toast(b.detail || 'erro');
-});
+// The tuning form no longer submits on its own — the single "Aplicar e
+// reconstruir" button (applyAll) commits everything together.
+document.getElementById('rebuildForm').addEventListener('submit', e => e.preventDefault());
 
 let gpToken = null;
 

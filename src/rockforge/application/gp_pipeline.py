@@ -53,6 +53,23 @@ MIN_LEAD_S = 2.0
 
 
 @dataclass(frozen=True)
+class ArrangementSync:
+    """Per-arrangement chart-timing overrides (tempo + drift anchors).
+
+    These only touch one arrangement's own note/beat/section/lyric times, so
+    dragging a note in the Lead chart never moves the Rhythm chart. The sync
+    *offset* is deliberately NOT here: all arrangements share one audio track,
+    so where the recording starts is a property of the recording, shared by
+    every arrangement (a per-arrangement offset would desync the charts from
+    each other against the same .wem). Per-arrangement uniform shifts are still
+    available as a single-anchor round.
+    """
+
+    tempo_scale: float = 1.0
+    sync_anchor_stages: list[list[tuple[float, float]]] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
 class GpJobSpec:
     gp_path: Path
     audio_source: str
@@ -62,7 +79,8 @@ class GpJobSpec:
     # Multiplicative stretch (>1) / compression (<1) of the whole musical
     # timeline, applied at parse time around the song's start — corrects a
     # constant GP-vs-recording tempo mismatch (the linear part of sync drift)
-    # in one move, before any sync_anchor_stages fine-tuning.
+    # in one move, before any sync_anchor_stages fine-tuning. Used as the
+    # default for arrangements without an explicit arrangement_sync override.
     tempo_scale: float = 1.0
     lrc_text: str | None = None
     tone_base: str | None = None
@@ -74,14 +92,30 @@ class GpJobSpec:
     # drew them) — round 0 is in the raw post-offset_s timeline. Rounds are
     # applied in order via piecewise-linear stretch/compress, so corrections
     # made in separate sessions (after reloading a completed job) compose
-    # correctly instead of overwriting each other.
+    # correctly instead of overwriting each other. Default for arrangements
+    # without an explicit arrangement_sync override.
     sync_anchor_stages: list[list[tuple[float, float]]] = field(default_factory=list)
+    # Per-arrangement tempo + drift overrides, keyed by ArrangementKind.value
+    # ("Lead"/"Rhythm"/"Combined"). An arrangement absent here falls back to the
+    # job-level tempo_scale / sync_anchor_stages above.
+    arrangement_sync: dict[str, ArrangementSync] = field(default_factory=dict)
     # When False, the mute/attack techniques (palm mute, slap, pop, tap) are
     # stripped from every note so they import as plain notes. These are the
     # techniques that change the Rocksmith note sprite (the palm-mute chevron
     # looks like pop/slap "wings"); some GP files mark them where the user wants
     # clean notes, so this is an opt-out.
     import_mute_techniques: bool = True
+
+    def sync_for(self, kind: ArrangementKind) -> ArrangementSync:
+        """Resolve the tempo/drift overrides for one arrangement, falling back
+        to the job-level defaults when no per-arrangement entry exists."""
+        override = self.arrangement_sync.get(kind.value)
+        if override is not None:
+            return override
+        return ArrangementSync(
+            tempo_scale=self.tempo_scale, sync_anchor_stages=self.sync_anchor_stages
+        )
+
 
 
 # Techniques that alter the in-game note sprite (chevron/"wings"); dropped when
@@ -231,31 +265,43 @@ class GenerateFromGpUseCase:
                 "tracks auto-selected by name heuristic — confirm they are the right ones"
             )
 
-        parsed: dict[ArrangementKind, ParsedGpTrack] = {}
         if lead_idx is not None and lead_idx == rhythm_idx:
             raise IngestionError("lead and rhythm cannot use the same GP track")
+        tracks: list[tuple[ArrangementKind, int]] = []
         if lead_idx is not None:
-            kind = ArrangementKind.LEAD if rhythm_idx is not None else ArrangementKind.COMBINED
-            parsed[kind] = parse_gp_track(
-                spec.gp_path, lead_idx, score_shift, spec.tempo_scale
+            tracks.append(
+                (ArrangementKind.LEAD if rhythm_idx is not None else ArrangementKind.COMBINED,
+                 lead_idx)
             )
         if rhythm_idx is not None:
-            parsed[ArrangementKind.RHYTHM] = parse_gp_track(
-                spec.gp_path, rhythm_idx, score_shift, spec.tempo_scale
-            )
+            tracks.append((ArrangementKind.RHYTHM, rhythm_idx))
 
-        if spec.tempo_scale != 1.0:
-            warnings.append(
-                f"tempo scaled by {spec.tempo_scale:.3f}× ({1.0 / spec.tempo_scale:.1%} of the "
-                "GP tempo) to match the recording — the chart timing no longer reflects the "
-                "GP file's authored tempo"
-            )
+        # Each arrangement is parsed and drift-corrected independently with its
+        # own tempo_scale / sync_anchor_stages, so corrections never leak
+        # between charts. The offset (and thus the shared audio lead-in) is
+        # common to all of them.
+        parsed: dict[ArrangementKind, ParsedGpTrack] = {}
+        for kind, idx in tracks:
+            sync = spec.sync_for(kind)
+            p = parse_gp_track(spec.gp_path, idx, score_shift, sync.tempo_scale)
+            for stage_anchors in sync.sync_anchor_stages:
+                if not stage_anchors:
+                    continue
+                p = _warp_parsed_track(p, _build_time_warp(stage_anchors))
+            parsed[kind] = p
 
-        for stage_anchors in spec.sync_anchor_stages:
-            if not stage_anchors:
-                continue
-            warp = _build_time_warp(stage_anchors)
-            parsed = {kind: _warp_parsed_track(p, warp) for kind, p in parsed.items()}
+            if sync.tempo_scale != 1.0:
+                warnings.append(
+                    f"{kind.value}: tempo scaled by {sync.tempo_scale:.3f}× "
+                    f"({1.0 / sync.tempo_scale:.1%} of the GP tempo) to match the recording"
+                )
+            points = sum(len(s) for s in sync.sync_anchor_stages)
+            if points:
+                rounds = sum(1 for s in sync.sync_anchor_stages if s)
+                warnings.append(
+                    f"{kind.value}: {points} manual drift-correction point(s) across "
+                    f"{rounds} round(s) applied to the chart"
+                )
 
         if not spec.import_mute_techniques:
             stripped = sum(
@@ -326,14 +372,6 @@ class GenerateFromGpUseCase:
             warnings.append(
                 "lyrics taken from the GP file: line-level timing only (anchored to "
                 "measures) — supply an LRC file for proper sync"
-            )
-
-        total_anchor_points = sum(len(s) for s in spec.sync_anchor_stages)
-        if total_anchor_points:
-            rounds = sum(1 for s in spec.sync_anchor_stages if s)
-            warnings.append(
-                f"{total_anchor_points} manual drift-correction point(s) across {rounds} "
-                "round(s) applied to the chart (notes/beats/sections were stretched between them)"
             )
 
         if pad_start_s > 0.0:

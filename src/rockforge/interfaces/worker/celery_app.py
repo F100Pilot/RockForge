@@ -107,9 +107,18 @@ def generate_cdlc(job_id: str) -> None:
                 session.commit()
 
             if job.source_type == "gp":
-                from rockforge.application.gp_pipeline import GenerateFromGpUseCase, GpJobSpec
+                from rockforge.application.gp_pipeline import (
+                    ArrangementSync,
+                    GenerateFromGpUseCase,
+                    GpJobSpec,
+                )
                 from rockforge.domain.arrangement import SongMetadata as Meta
                 from rockforge.domain.arrangement import ToneChange
+
+                def _stages(raw: Any) -> list[list[tuple[float, float]]]:
+                    return [
+                        [(float(a[0]), float(a[1])) for a in stage] for stage in (raw or [])
+                    ]
 
                 gp_use_case: GenerateFromGpUseCase = _build_gp_use_case()
                 spec = GpJobSpec(
@@ -126,10 +135,14 @@ def generate_cdlc(job_id: str) -> None:
                         ToneChange(time=float(c["time"]), name=str(c["name"]))
                         for c in params.get("tone_changes", [])
                     ],
-                    sync_anchor_stages=[
-                        [(float(a[0]), float(a[1])) for a in stage]
-                        for stage in params.get("sync_anchor_stages", [])
-                    ],
+                    sync_anchor_stages=_stages(params.get("sync_anchor_stages")),
+                    arrangement_sync={
+                        str(kind): ArrangementSync(
+                            tempo_scale=float(ov.get("tempo_scale", 1.0)),
+                            sync_anchor_stages=_stages(ov.get("sync_anchor_stages")),
+                        )
+                        for kind, ov in (params.get("arrangement_sync") or {}).items()
+                    },
                     import_mute_techniques=bool(params.get("import_mute_techniques", True)),
                 )
                 result = gp_use_case.run(
