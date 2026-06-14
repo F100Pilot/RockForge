@@ -90,3 +90,10 @@ disallow_subclassing_any = false
 disallow_untyped_decorators = false
 disallow_untyped_defs = false
 disallow_untyped_calls = false
+
+# The demucs monkeypatch needs type: ignore comments when demucs is installed
+# (the ml extra), but CI runs without it, so demucs resolves to Any and the
+# ignores look unused. Don't flag them either way.
+[[tool.mypy.overrides]]
+module = ["rockforge.infrastructure.separation._demucs_patcher"]
+warn_unused_ignores = false
