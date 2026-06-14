@@ -165,6 +165,21 @@ def test_gp_pipeline_sync_anchors_shift_notes(two_track_gp5: Path, tmp_path: Pat
     assert times == pytest.approx([2.5, 3.0, 3.5])
 
 
+def test_build_time_warp_holds_outside_shift_constant() -> None:
+    # Two-anchor (excerpt) correction: notes between the anchors are
+    # interpolated, but notes before/after must shift by the *constant*
+    # amount of the nearest anchor, not by an ever-growing extrapolated slope
+    # (the latter made distant notes drift further the bigger the correction).
+    from rockforge.application.gp_pipeline import _build_time_warp
+
+    warp = _build_time_warp([(10.0, 11.0), (12.0, 12.5)])
+    assert warp(10.0) == pytest.approx(11.0)
+    assert warp(12.0) == pytest.approx(12.5)
+    assert warp(11.0) == pytest.approx(11.75)  # midpoint, interpolated
+    assert warp(5.0) == pytest.approx(6.0)  # before: same +1.0 shift as anchor 1
+    assert warp(20.0) == pytest.approx(20.5)  # after: same +0.5 shift as anchor 2
+
+
 def test_gp_pipeline_sync_anchor_stages_compose(two_track_gp5: Path, tmp_path: Path) -> None:
     # Two successive correction rounds (as would happen across separate
     # sessions) must compose: round 1 shifts everything by +0.5s, round 2
