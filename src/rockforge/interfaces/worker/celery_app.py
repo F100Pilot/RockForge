@@ -64,6 +64,18 @@ def _build_use_case():  # noqa: ANN202 - heavy imports deferred to worker runtim
     return make
 
 
+def _build_detection():  # noqa: ANN202 - heavy imports deferred to worker runtime
+    from rockforge.infrastructure.lyrics.whisperx_adapter import WhisperXLyricTranscriber
+    from rockforge.infrastructure.normalize.ffmpeg import FfmpegNormalizer
+    from rockforge.infrastructure.separation.demucs_adapter import DemucsSeparator
+
+    return (
+        FfmpegNormalizer(),
+        DemucsSeparator(device=settings.demucs_device),
+        WhisperXLyricTranscriber,
+    )
+
+
 def _build_gp_use_case():  # noqa: ANN202
     from rockforge.application.gp_pipeline import GenerateFromGpUseCase
     from rockforge.infrastructure.ingestion.sources import LocalFileIngestor
@@ -114,6 +126,7 @@ def generate_cdlc(job_id: str) -> None:
                 )
                 from rockforge.domain.arrangement import SongMetadata as Meta
                 from rockforge.domain.arrangement import ToneChange
+                from rockforge.infrastructure.rsxml.vocals import events_from_dicts
 
                 def _stages(raw: Any) -> list[list[tuple[float, float]]]:
                     return [
@@ -144,6 +157,11 @@ def generate_cdlc(job_id: str) -> None:
                         for kind, ov in (params.get("arrangement_sync") or {}).items()
                     },
                     import_mute_techniques=bool(params.get("import_mute_techniques", True)),
+                    lyrics_events=(
+                        events_from_dicts(params["lyrics_events"])
+                        if params.get("lyrics_events")
+                        else None
+                    ),
                 )
                 result = gp_use_case.run(
                     spec=spec,
@@ -162,6 +180,8 @@ def generate_cdlc(job_id: str) -> None:
                 )
                 session.commit()
                 return
+
+            from rockforge.infrastructure.rsxml.vocals import events_from_dicts
 
             use_case = _build_use_case()(job.source_type)
             tuning_override = None
@@ -184,6 +204,11 @@ def generate_cdlc(job_id: str) -> None:
                 tuning_override=tuning_override,
                 offset_s=float(params.get("offset_s", 0.0)),
                 transcribe_lyrics=bool(params.get("transcribe_lyrics", False)),
+                lyrics_events=(
+                    events_from_dicts(params["lyrics_events"])
+                    if params.get("lyrics_events")
+                    else None
+                ),
                 on_stage=on_stage,
             )
             job.status = JobStatus.COMPLETED
@@ -196,4 +221,46 @@ def generate_cdlc(job_id: str) -> None:
         except Exception as exc:  # report faithfully; never mask failures
             job.status = JobStatus.FAILED
             job.error = f"{type(exc).__name__}: {exc}"
+        session.commit()
+
+
+@celery_app.task(name="rockforge.detect_lyrics")
+def detect_lyrics(job_id: str) -> None:
+    """Detect lyrics from a job's source recording (Demucs vocals + WhisperX).
+
+    Slow (minutes); progress is reported via params["lyrics_status"] rather
+    than JobStatus, so it never hides a completed build or disables /arrangements.
+    """
+    session_factory = make_session_factory(settings.database_url)
+    with session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:  # deleted while queued — nothing to do
+            return
+        job.stage = "lyrics"
+        params = cast(dict[str, Any], job.params or {})
+        warnings = list(job.warnings or [])
+        try:
+            normalizer, separator, transcriber_cls = _build_detection()
+            if not transcriber_cls.available():
+                warnings.append(
+                    "lyric detection requested but whisperx is not installed "
+                    "(pip install 'rockforge[lyrics]')"
+                )
+                params["lyrics_status"] = "unavailable"
+            else:
+                workdir = settings.work_dir / job.id / "lyrics"
+                workdir.mkdir(parents=True, exist_ok=True)
+                normalized = normalizer.normalize(Path(job.source), workdir)
+                guitar = separator.separate_guitar(normalized, workdir)
+                vocals_stem = guitar.parent / "vocals.wav"
+                events = transcriber_cls(device=settings.demucs_device).transcribe(vocals_stem)
+                params["lyrics_events"] = [
+                    {"time": e.time, "length": e.length, "lyric": e.lyric} for e in events
+                ]
+                params["lyrics_status"] = "ready" if events else "empty"
+        except Exception as exc:  # never crash the job over lyric detection
+            params["lyrics_status"] = "unavailable"
+            warnings.append(f"lyric detection failed: {type(exc).__name__}: {exc}")
+        job.params = params
+        job.warnings = warnings
         session.commit()

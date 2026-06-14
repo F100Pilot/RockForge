@@ -19,6 +19,7 @@ def client(tmp_path, monkeypatch) -> Iterator[TestClient]:
     import rockforge.interfaces.api.app as app_module
     importlib.reload(app_module)
     monkeypatch.setattr(app_module, "_enqueue", lambda job: None)
+    monkeypatch.setattr(app_module, "_enqueue_detect", lambda job: None)
     with TestClient(app_module.app) as c:
         yield c
 
@@ -391,3 +392,36 @@ def test_gp_job_too_many_tones(client: TestClient, tmp_path) -> None:
 def test_unknown_job_404(client: TestClient) -> None:
     assert client.get("/jobs/nope").status_code == 404
     assert client.get("/jobs/nope/psarc").status_code == 404
+
+
+def test_lyrics_default_status_none(client: TestClient) -> None:
+    job = _create_job(client)
+    r = client.get(f"/jobs/{job['id']}/lyrics")
+    assert r.status_code == 200
+    assert r.json() == {"status": "none", "events": []}
+
+
+def test_detect_lyrics_enqueues_and_marks_detecting(client: TestClient) -> None:
+    job = _create_job(client)
+    r = client.post(f"/jobs/{job['id']}/detect-lyrics")
+    assert r.status_code == 202
+    assert r.json()["lyrics_status"] == "detecting"
+    assert client.get(f"/jobs/{job['id']}").json()["lyrics_status"] == "detecting"
+
+
+def test_detect_lyrics_unknown_job_404(client: TestClient) -> None:
+    assert client.post("/jobs/nope/detect-lyrics").status_code == 404
+
+
+def test_rebuild_stores_lyrics_events_and_resets_status(client: TestClient) -> None:
+    job = _create_job(client)
+    client.post(f"/jobs/{job['id']}/detect-lyrics")
+    rebuilt = client.post(
+        f"/jobs/{job['id']}/rebuild",
+        json={"lyrics_events": [{"time": 1.0, "length": 0.5, "lyric": "hi+"}]},
+    ).json()
+    r = client.get(f"/jobs/{rebuilt['id']}/lyrics")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "none"
+    assert body["events"] == [{"time": 1.0, "length": 0.5, "lyric": "hi+"}]

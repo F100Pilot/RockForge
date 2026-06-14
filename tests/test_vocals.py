@@ -5,6 +5,7 @@ import pytest
 
 from rockforge.infrastructure.rsxml.vocals import (
     VocalEvent,
+    events_from_dicts,
     expand_to_words,
     parse_lrc,
     parse_lyrics,
@@ -86,6 +87,40 @@ def test_parse_ultrastar_txt_offset() -> None:
 def test_parse_lyrics_detects_ultrastar() -> None:
     events = parse_lyrics(ULTRASTAR_TXT)
     assert [e.lyric for e in events] == ["Hel", "lo+", "world"]
+
+
+def test_events_from_dicts_basic_mapping() -> None:
+    rows: list[dict[str, object]] = [{"time": 1.0, "length": 0.5, "lyric": "hello+"}]
+    assert events_from_dicts(rows) == [VocalEvent(time=1.0, length=0.5, lyric="hello+")]
+
+
+def test_events_from_dicts_applies_offset() -> None:
+    rows: list[dict[str, object]] = [{"time": 1.0, "length": 0.5, "lyric": "hi"}]
+    events = events_from_dicts(rows, offset_s=1.5)
+    assert events[0].time == pytest.approx(2.5)
+
+
+def test_events_from_dicts_sorts_by_time() -> None:
+    rows: list[dict[str, object]] = [
+        {"time": 2.0, "length": 0.5, "lyric": "second"},
+        {"time": 1.0, "length": 0.5, "lyric": "first"},
+    ]
+    events = events_from_dicts(rows)
+    assert [e.lyric for e in events] == ["first", "second"]
+
+
+def test_events_from_dicts_drops_empty_lyric_rows() -> None:
+    rows: list[dict[str, object]] = [
+        {"time": 1.0, "length": 0.5, "lyric": "  "},
+        {"time": 2.0, "length": 0.5, "lyric": "kept"},
+    ]
+    events = events_from_dicts(rows)
+    assert [e.lyric for e in events] == ["kept"]
+
+
+def test_events_from_dicts_clamps_length_minimum() -> None:
+    rows: list[dict[str, object]] = [{"time": 1.0, "length": 0.0, "lyric": "x"}]
+    assert events_from_dicts(rows)[0].length == pytest.approx(0.1)
 
 
 def test_write_vocals_xml(tmp_path: Path) -> None:

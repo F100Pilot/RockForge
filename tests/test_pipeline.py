@@ -164,6 +164,25 @@ def test_transcribe_lyrics_emits_vocals_xml(tmp_path: Path) -> None:
     assert any("EXPERIMENTAL" in w and "WhisperX" in w for w in result.warnings)
 
 
+def test_supplied_lyrics_events_emits_vocals_xml(tmp_path: Path) -> None:
+    from rockforge.infrastructure.rsxml.vocals import VocalEvent
+
+    use_case = make_use_case()
+    result = use_case.run(
+        source="x.wav",
+        metadata=SongMetadata(title="T", artist="A"),
+        workdir=tmp_path,
+        lyrics_events=[VocalEvent(time=1.0, length=0.4, lyric="hi+")],
+    )
+    vocals_xml = result.packaging.bundle_dir / "arrangement_vocals.xml"
+    assert vocals_xml.exists()
+    import xml.etree.ElementTree as ET
+
+    root = ET.parse(vocals_xml).getroot()
+    assert root.find("vocal").get("lyric") == "hi+"  # type: ignore[union-attr]
+    assert any("in-app editor" in w for w in result.warnings)
+
+
 def test_ebeat_grid_covers_song_end(tmp_path: Path) -> None:
     result = make_use_case().run(
         source="x.wav", metadata=SongMetadata(title="T", artist="A"), workdir=tmp_path

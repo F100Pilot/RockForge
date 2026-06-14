@@ -373,6 +373,27 @@
         <button type="button" id="clearSelection" class="secondary" hidden>Limpar seleção</button>
       </div>
       <div id="syncAnchorsList"></div>
+
+      <hr class="sep">
+      <div id="lyricsPanel">
+        <h2>Letras</h2>
+        <p class="hint" style="margin-top:0">Deteção automática da letra a partir da gravação
+        (isola a voz com o Demucs e transcreve com o WhisperX — pode demorar alguns minutos).
+        Depois podes editar palavras e tempos à mão, ou criar/editar tudo manualmente.</p>
+        <div class="anchor-row">
+          <button type="button" id="detectLyrics" class="secondary">Detetar letra</button>
+          <span id="lyricsInfo" class="meta"></span>
+        </div>
+        <table id="lyricsTable" style="width:100%">
+          <thead><tr><th>Tempo (s)</th><th>Palavra</th><th>Fim de linha</th><th>Duração (s)</th><th></th></tr></thead>
+          <tbody id="lyricsRows"></tbody>
+        </table>
+        <div class="anchor-row">
+          <button type="button" id="addLyricRow" class="secondary">+ palavra</button>
+          <button type="button" id="sortLyrics" class="secondary">ordenar por tempo</button>
+        </div>
+      </div>
+
       <hr class="sep">
       <div class="anchor-row">
         <button type="button" id="applyAll">Aplicar e reconstruir</button>
@@ -425,6 +446,10 @@ let wavePeaks = null, waveDuration = 0;
 const WAVE_HZ = 100;
 let syncMode = 'drag'; // 'drag' | 'tap' | 'excerpt'
 let currentPlayheadT = 0; // display time of playhead; updated by syncFrame and seeks
+// In-app lyrics editor rows: {time, length, lyric, lineBreak}. lyric excludes
+// the trailing "+" — lineBreak controls whether it's re-appended on save.
+let lyricsEvents = [];
+let lyricsPollTimer = null;
 
 const badge = s => `<span class="badge b-${s}">${s}</span>`;
 const esc = t => { const d = document.createElement('span'); d.textContent = t ?? ''; return d.innerHTML; };
@@ -460,6 +485,7 @@ document.getElementById('newJobTabs').addEventListener('click', e => {
 function closeDetail() {
   selectedJob = null;
   clearInterval(pollTimer);
+  clearInterval(lyricsPollTimer);
   const au = document.getElementById('syncAudio');
   if (au) { au.pause(); au.removeAttribute('src'); au.load(); }
   if (syncRaf) { cancelAnimationFrame(syncRaf); syncRaf = null; }
@@ -530,7 +556,11 @@ async function selectJob(id) {
 
   document.getElementById('muteChk').checked = j.import_mutes !== false;
   if (j.status === 'completed' && j.bundle_available) await loadArrangements(j.id);
-  else document.getElementById('review').style.display = 'none';
+  else {
+    document.getElementById('review').style.display = 'none';
+    clearInterval(lyricsPollTimer);
+    lyricsEvents = [];
+  }
 
   clearInterval(pollTimer);
   if (j.status === 'pending' || j.status === 'running')
@@ -557,6 +587,7 @@ async function loadArrangements(id) {
   initSync(selectedJob);
   showArr(0);
   document.getElementById('tabwrap').scrollLeft = 0;
+  await loadLyrics(id);
 }
 
 // String colors low E -> high e: red, yellow, blue, orange, green, purple.
@@ -709,6 +740,7 @@ async function applyAll() {
       tempo_scale: tempoScaleLive,
       sync_anchors: syncAnchors.length ? syncAnchors : null,
       import_mutes: document.getElementById('muteChk').checked,
+      lyrics_events: lyricsEvents.length ? serializeLyrics() : null,
     }),
   });
   const b = await r.json();
@@ -716,6 +748,89 @@ async function applyAll() {
   else toast(b.detail || 'erro');
 }
 document.getElementById('applyAll').addEventListener('click', applyAll);
+
+// ---- Lyrics editor ----
+function renderLyricsRows() {
+  const tb = document.getElementById('lyricsRows');
+  tb.innerHTML = lyricsEvents.map((e, i) => `
+    <tr data-i="${i}">
+      <td><input type="number" step="0.01" min="0" value="${e.time.toFixed(2)}" class="ly-time" style="width:5.5rem"></td>
+      <td><input type="text" value="${esc(e.lyric)}" class="ly-text" style="width:100%"></td>
+      <td style="text-align:center"><input type="checkbox" class="ly-break" ${e.lineBreak ? 'checked' : ''}></td>
+      <td><input type="number" step="0.01" min="0.1" value="${e.length.toFixed(2)}" class="ly-length" style="width:5rem"></td>
+      <td><button type="button" class="icon ly-remove" title="Remover">✖</button></td>
+    </tr>`).join('');
+  tb.querySelectorAll('tr').forEach(tr => {
+    const i = parseInt(tr.dataset.i, 10);
+    tr.querySelector('.ly-time').addEventListener('change', e => { lyricsEvents[i].time = parseFloat(e.target.value) || 0; });
+    tr.querySelector('.ly-text').addEventListener('change', e => { lyricsEvents[i].lyric = e.target.value; });
+    tr.querySelector('.ly-break').addEventListener('change', e => { lyricsEvents[i].lineBreak = e.target.checked; });
+    tr.querySelector('.ly-length').addEventListener('change', e => { lyricsEvents[i].length = Math.max(0.1, parseFloat(e.target.value) || 0.1); });
+    tr.querySelector('.ly-remove').addEventListener('click', () => { lyricsEvents.splice(i, 1); renderLyricsRows(); });
+  });
+}
+
+function eventsToRows(events) {
+  return events.map(e => {
+    const lineBreak = e.lyric.endsWith('+');
+    return { time: e.time, length: e.length, lyric: lineBreak ? e.lyric.slice(0, -1) : e.lyric, lineBreak };
+  });
+}
+
+function serializeLyrics() {
+  return lyricsEvents
+    .filter(e => e.lyric.trim())
+    .map(e => ({ time: e.time, length: e.length, lyric: e.lineBreak ? `${e.lyric}+` : e.lyric }));
+}
+
+const LYRICS_STATUS_LABEL = {
+  none: '', detecting: 'a detetar…', ready: 'deteção concluída',
+  empty: 'nenhuma letra detetada', unavailable: 'deteção indisponível (extra "lyrics" não instalado)',
+};
+
+async function loadLyrics(id) {
+  const r = await fetch(`/jobs/${id}/lyrics`);
+  if (!r.ok) return;
+  const body = await r.json();
+  lyricsEvents = eventsToRows(body.events);
+  renderLyricsRows();
+  document.getElementById('lyricsInfo').textContent = LYRICS_STATUS_LABEL[body.status] || '';
+  clearInterval(lyricsPollTimer);
+  if (body.status === 'detecting') {
+    lyricsPollTimer = setInterval(async () => {
+      if (!selectedJob) { clearInterval(lyricsPollTimer); return; }
+      const rr = await fetch(`/jobs/${selectedJob.id}/lyrics`);
+      if (!rr.ok) return;
+      const b = await rr.json();
+      document.getElementById('lyricsInfo').textContent = LYRICS_STATUS_LABEL[b.status] || '';
+      if (b.status !== 'detecting') {
+        clearInterval(lyricsPollTimer);
+        lyricsEvents = eventsToRows(b.events);
+        renderLyricsRows();
+      }
+    }, 3000);
+  }
+}
+
+async function detectLyrics() {
+  if (!selectedJob) return;
+  const r = await fetch(`/jobs/${selectedJob.id}/detect-lyrics`, { method: 'POST' });
+  const b = await r.json();
+  if (!r.ok) { toast(b.detail || 'erro'); return; }
+  toast('A detetar letra… (pode demorar)', 'ok');
+  await loadLyrics(selectedJob.id);
+}
+document.getElementById('detectLyrics').addEventListener('click', detectLyrics);
+
+document.getElementById('addLyricRow').addEventListener('click', () => {
+  lyricsEvents.push({ time: currentPlayheadT + viewOrigin, length: 0.5, lyric: '', lineBreak: false });
+  renderLyricsRows();
+});
+
+document.getElementById('sortLyrics').addEventListener('click', () => {
+  lyricsEvents.sort((a, b) => a.time - b.time);
+  renderLyricsRows();
+});
 
 function updatePendingChangesInfo() {
   const el = document.getElementById('pendingChangesInfo');
