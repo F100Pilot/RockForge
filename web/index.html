@@ -308,6 +308,8 @@
             <input type="number" id="syncOffset" value="0" step="0.01" min="0" style="width:6rem"></label>
           <input type="range" id="syncOffsetRange" min="0" max="20" step="0.01" value="0" style="flex:1;min-width:180px">
           <label class="check"><input type="checkbox" id="syncTick" checked> Tocar nota à passagem</label>
+          <label>Volume das notas:
+            <input type="range" id="tickVolume" min="0" max="1" step="0.05" value="0.6" style="width:8rem;vertical-align:middle"></label>
         </div>
         <p class="hint" style="margin-bottom:.2rem">Se a tabulatura e a gravação se vão afastando ao
         longo da música (o GP foi escrito num andamento ligeiramente diferente do que foi gravado),
@@ -887,6 +889,11 @@ function midiToHz(midi) {
   return 440 * Math.pow(2, (midi - 69) / 12);
 }
 
+let tickGain = 0.6;
+document.getElementById('tickVolume')?.addEventListener('input', e => {
+  tickGain = parseFloat(e.target.value);
+});
+
 function playNote(string, fret) {
   if (!audioCtx || string < 0 || string > 5 || fret < 0) return;
   const t = audioCtx.currentTime;
@@ -895,7 +902,7 @@ function playNote(string, fret) {
   const osc = audioCtx.createOscillator(), g = audioCtx.createGain();
   osc.frequency.value = hz;
   g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(0.3, t + 0.001);
+  g.gain.exponentialRampToValueAtTime(Math.max(0.0001, tickGain), t + 0.001);
   g.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
   osc.connect(g); g.connect(audioCtx.destination);
   osc.start(t); osc.stop(t + 0.1);
@@ -1004,13 +1011,15 @@ function initSync(j) {
     audioCtx.resume();
     if (!syncRaf) syncRaf = requestAnimationFrame(syncFrame);
   };
-  au.onseeked = () => {
+  const onSeek = () => {
     const vt = playheadDisplay(au.currentTime);
     currentPlayheadT = vt - viewOrigin;
     const ph = document.getElementById('playhead');
     if (ph) { const x = timeToX(vt); ph.setAttribute('x1', x); ph.setAttribute('x2', x); }
     syncResetPointer();
   };
+  au.onseeking = onSeek;
+  au.onseeked = onSeek;
   decodeWaveform(j.id);
 }
 
