@@ -99,6 +99,7 @@
   .note-grp { cursor: ew-resize; }
   .note-grp.selected .note-shape { stroke: #ffd23f; stroke-width: 3px; }
   #selectionBox { fill: rgba(255,210,63,.15); stroke: #ffd23f; stroke-dasharray: 4,3; pointer-events: none; }
+  button.secondary.active-mode { background: #2a2c35; border-color: var(--accent); color: var(--accent); }
   .anchor-row { display:flex; align-items:center; gap:.5rem; font-size:.85rem; color:var(--muted); margin:.2rem 0; }
   .anchor-row button { padding:.1rem .5rem; }
   .meta { font-size:.85rem; color:var(--muted); }
@@ -311,7 +312,7 @@
         <p class="hint" style="margin-bottom:.2rem">Se a tabulatura e a gravação se vão afastando ao
         longo da música (o GP foi escrito num andamento ligeiramente diferente do que foi gravado),
         ajusta o <strong>andamento</strong>: estica/comprime a música toda de uma vez. As notas movem-se
-        sobre a forma de onda para confirmares o alinhamento; depois "Aplicar e reconstruir".</p>
+        sobre a forma de onda para confirmares o alinhamento.</p>
         <div class="syncctrls">
           <label>Andamento (BPM):
             <input type="number" id="tempoBpm" step="0.1" min="1" style="width:6.5rem"></label>
@@ -339,17 +340,19 @@
       <span style="color:#f5dc3c">A</span> <span style="color:#3f9bdc">D</span>
       <span style="color:#f0973c">G</span> <span style="color:#5cc24a">B</span>
       <span style="color:#b56cdc">e</span> (grave→agudo). Eixo X em segundos.
-      Para corrigir a deriva de sincronização ao longo da música, <strong>arrasta uma nota</strong>
-      horizontalmente para o instante onde ela deveria estar — isto cria um ponto de correção; as
-      notas entre pontos de correção consecutivos são esticadas/comprimidas proporcionalmente. Para
-      corrigir um excerto inteiro de uma vez, ativa <strong>"Selecionar excerto"</strong>, arrasta uma
-      caixa sobre as notas desse excerto e depois arrasta uma delas — o excerto todo move-se junto,
-      criando dois pontos de correção (início e fim do excerto). A <strong>forma de onda</strong> azul
-      ao fundo é a gravação (referência fixa): alinha as notas pelos seus picos — ataques de bateria,
-      transientes — e usa o cursor de reprodução para confirmar.</p>
+      <strong>Arrastar nota</strong>: arrasta uma nota horizontalmente para o instante onde ela deveria
+      estar — cria um ponto de correção; as notas entre pontos consecutivos são esticadas/comprimidas.
+      <strong>Marcar no cursor</strong>: clica numa nota para a ancorar na posição atual do cursor de
+      reprodução — útil para alinhar enquanto o áudio toca (pausa no momento certo e clica a nota).
+      <strong>Selecionar excerto</strong>: arrasta uma caixa sobre as notas e depois arrasta uma delas
+      — o excerto move-se em bloco. A <strong>forma de onda</strong> azul é a gravação (referência
+      fixa): alinha as notas pelos seus picos transientes e usa o cursor para confirmar.</p>
       <div class="anchor-row">
-        <label class="check"><input type="checkbox" id="selectModeChk"> Selecionar excerto</label>
-        <span id="selectionInfo"></span>
+        <span class="meta" style="margin-right:.3rem">Modo:</span>
+        <button type="button" id="modeArrastar" class="secondary active-mode">Arrastar nota</button>
+        <button type="button" id="modeMarcar" class="secondary">Marcar no cursor</button>
+        <button type="button" id="modeExcerto" class="secondary">Selecionar excerto</button>
+        <span id="selectionInfo" style="margin-left:.5rem"></span>
         <button type="button" id="clearSelection" class="secondary" hidden>Limpar seleção</button>
       </div>
       <div id="syncAnchorsList"></div>
@@ -403,6 +406,8 @@ let audioCtx = null, syncRaf = null, tickIdx = 0;
 // 1/WAVE_HZ second bin, plus the audio duration. Reset per job.
 let wavePeaks = null, waveDuration = 0;
 const WAVE_HZ = 100;
+let syncMode = 'drag'; // 'drag' | 'tap' | 'excerpt'
+let currentPlayheadT = 0; // display time of playhead; updated by syncFrame and seeks
 
 const badge = s => `<span class="badge b-${s}">${s}</span>`;
 const esc = t => { const d = document.createElement('span'); d.textContent = t ?? ''; return d.innerHTML; };
@@ -534,6 +539,7 @@ async function loadArrangements(id) {
     `<button type="button" class="${i ? '' : 'active'}" onclick="showArr(${i})">${a.kind} (${a.note_count}n/${a.chord_count}c)</button>`).join('');
   initSync(selectedJob);
   showArr(0);
+  document.getElementById('tabwrap').scrollLeft = 0;
 }
 
 // String colors low E -> high e: red, yellow, blue, orange, green, purple.
@@ -629,7 +635,8 @@ function showArr(i) {
   }
   s += `<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
           <path d="M0,0 L6,3 L0,6 z" fill="#ff7a45"/></marker></defs>`;
-  s += `<line id="playhead" x1="30" y1="0" x2="30" y2="${H}" stroke="#ff7a45" stroke-width="2" opacity=".9"/>`;
+  const phX = 30 + currentPlayheadT * tabPx;
+  s += `<line id="playhead" x1="${phX}" y1="0" x2="${phX}" y2="${H}" stroke="#ff7a45" stroke-width="2" opacity=".9"/>`;
   svg.innerHTML = s;
   syncResetPointer();
   renderAnchorsList();
@@ -654,7 +661,7 @@ function currentKind() {
 
 function renderAnchorsList() {
   const el = document.getElementById('syncAnchorsList');
-  if (!syncAnchors.length) { el.innerHTML = ''; return; }
+  if (!syncAnchors.length) { el.innerHTML = ''; updatePendingChangesInfo(); return; }
   el.innerHTML = syncAnchors.map(([o, n], i) =>
     `<div class="anchor-row">Correção ${i+1}: ${o.toFixed(2)}s → ${n.toFixed(2)}s
      <button type="button" data-i="${i}" class="anchor-remove">remover</button></div>`
@@ -692,6 +699,17 @@ async function applyAll() {
   else toast(b.detail || 'erro');
 }
 document.getElementById('applyAll').addEventListener('click', applyAll);
+
+function updatePendingChangesInfo() {
+  const el = document.getElementById('pendingChangesInfo');
+  if (!el) return;
+  const parts = [];
+  const builtOffset = selectedJob ? (selectedJob.offset_s || 0) : 0;
+  if (Math.abs(offsetLive - builtOffset) > 0.01) parts.push('offset');
+  if (Math.abs(tempoScaleLive - builtScale) > 0.001) parts.push('andamento');
+  if (syncAnchors.length) parts.push(`${syncAnchors.length} ponto(s) de correção`);
+  el.textContent = parts.length ? `Pendente: ${parts.join(', ')}` : '';
+}
 
 // Piecewise-linear remap from (chartTime, correctedTime) anchors — JS port of
 // gp_pipeline._build_time_warp. A single anchor is a uniform shift applied
@@ -736,7 +754,6 @@ function updateSelectionInfo() {
   let groupDrag = null; // selection drag: { startX, times }
   let rubberBand = null; // { startX }
   const svg = document.getElementById('tabsvg');
-  const selectModeChk = document.getElementById('selectModeChk');
 
   document.getElementById('clearSelection').addEventListener('click', () => {
     selectedTimes.clear();
@@ -746,7 +763,16 @@ function updateSelectionInfo() {
 
   svg.addEventListener('pointerdown', e => {
     const grp = e.target.closest('.note-grp');
-    if (selectModeChk.checked && !(grp && selectedTimes.has(parseFloat(grp.dataset.t)))) {
+    // Tap-sync mode: click a note to anchor it at the current playhead position
+    if (syncMode === 'tap' && grp) {
+      const dispT = buildTimeWarp(syncAnchors)(previewScale(parseFloat(grp.dataset.t)));
+      setAnchor(dispT, currentPlayheadT + viewOrigin);  // anchor target in bundle time
+      renderAnchorsList();
+      updatePendingChangesInfo();
+      showArr(currentArr);
+      return;
+    }
+    if (syncMode === 'excerpt' && !(grp && selectedTimes.has(parseFloat(grp.dataset.t)))) {
       // start a rubber-band selection (also when starting on an unselected note)
       const rect = svg.getBoundingClientRect();
       rubberBand = { startX: e.clientX - rect.left };
@@ -842,6 +868,17 @@ function updateSelectionInfo() {
   });
 })();
 
+// ---- Sync mode buttons ----
+['modeArrastar', 'modeMarcar', 'modeExcerto'].forEach((id, idx) => {
+  const modes = ['drag', 'tap', 'excerpt'];
+  document.getElementById(id)?.addEventListener('click', () => {
+    syncMode = modes[idx];
+    ['modeArrastar', 'modeMarcar', 'modeExcerto'].forEach((bid, bidx) =>
+      document.getElementById(bid)?.classList.toggle('active-mode', bidx === idx));
+    if (syncMode !== 'excerpt') { selectedTimes.clear(); updateSelectionInfo(); }
+  });
+});
+
 // ---- Visual sync tool (GP jobs) ----
 // Standard tuning (low E to high e): MIDI 40, 45, 50, 55, 59, 64
 const STRING_MIDI = [40, 45, 50, 55, 59, 64];
@@ -920,6 +957,7 @@ function syncFrame() {
   // Playhead tracks the audio (and thus the waveform). It stays in audio
   // coordinates; tempo preview moves the notes over it, not the other way.
   const vtDisp = playheadDisplay(au.currentTime);  // bundle time (for tick compare)
+  currentPlayheadT = vtDisp - viewOrigin;  // recording-time offset; used by showArr + tap-sync
   const x = timeToX(vtDisp);  // recording-time x — cursor sits at 0 when audio is at 0
   ph.setAttribute('x1', x); ph.setAttribute('x2', x);
   const wrap = document.getElementById('tabwrap');
@@ -947,6 +985,7 @@ function setOffsetLive(v) {
   document.getElementById('syncOffsetRange').value = offsetLive;
   syncResetPointer();
   if (arrangements.length) showArr(currentArr);
+  updatePendingChangesInfo();
 }
 
 function initSync(j) {
@@ -958,13 +997,20 @@ function initSync(j) {
   loadArrSync(0);  // tempo/anchors are per-arrangement; load the first tab's
   const au = document.getElementById('syncAudio');
   au.src = `/jobs/${j.id}/source-audio`;
+  currentPlayheadT = 0;
   setOffsetLive(j.offset_s || 0);
   au.onplay = () => {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     audioCtx.resume();
     if (!syncRaf) syncRaf = requestAnimationFrame(syncFrame);
   };
-  au.onseeked = syncResetPointer;
+  au.onseeked = () => {
+    const vt = playheadDisplay(au.currentTime);
+    currentPlayheadT = vt - viewOrigin;
+    const ph = document.getElementById('playhead');
+    if (ph) { const x = timeToX(vt); ph.setAttribute('x1', x); ph.setAttribute('x2', x); }
+    syncResetPointer();
+  };
   decodeWaveform(j.id);
 }
 
@@ -1002,6 +1048,7 @@ function setTempoLive(scale) {
   tempoScaleLive = Math.min(4, Math.max(0.25, scale || 1));
   updateTempoControls();
   if (arrangements.length) { syncResetPointer(); showArr(currentArr); }
+  updatePendingChangesInfo();
 }
 
 (function wireTempoControls() {

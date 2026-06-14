@@ -1,0 +1,23 @@
+ 
+ -------------- celery@LAPTOP-MORAIS v5.6.3 (recovery)
+--- ***** ----- 
+-- ******* ---- Windows-10-10.0.26200-SP0 2026-06-14 19:17:58
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         rockforge:0x1a4782bbd50
+- ** ---------- .> transport:   redis://localhost:6379/0
+- ** ---------- .> results:     redis://localhost:6379/1
+- *** --- * --- .> concurrency: 8 (solo)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . rockforge.generate_cdlc
+
+[2026-06-14 19:18:00,362: INFO/MainProcess] Connected to redis://localhost:6379/0
+[2026-06-14 19:18:02,384: INFO/MainProcess] mingle: searching for neighbors
+[2026-06-14 19:18:09,476: INFO/MainProcess] mingle: all alone
+[2026-06-14 19:18:19,619: INFO/MainProcess] celery@LAPTOP-MORAIS ready.
