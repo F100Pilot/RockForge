@@ -123,6 +123,12 @@ def generate_cdlc(job_id: str) -> None:
                 job.stage = name
                 session.commit()
 
+            cover_art: Path | None = None
+            if params.get("cover_art"):
+                candidate = Path(workdir) / cast(str, params["cover_art"])
+                if candidate.exists():
+                    cover_art = candidate
+
             if job.source_type == "gp":
                 from rockforge.application.gp_pipeline import (
                     ArrangementSync,
@@ -167,6 +173,7 @@ def generate_cdlc(job_id: str) -> None:
                         if params.get("lyrics_events")
                         else None
                     ),
+                    cover_art=cover_art,
                 )
                 result = gp_use_case.run(
                     spec=spec,
@@ -214,6 +221,7 @@ def generate_cdlc(job_id: str) -> None:
                     if params.get("lyrics_events")
                     else None
                 ),
+                cover_art=cover_art,
                 on_stage=on_stage,
             )
             job.status = JobStatus.COMPLETED

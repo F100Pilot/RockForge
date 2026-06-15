@@ -410,6 +410,20 @@
       </div>
 
       <hr class="sep">
+      <div id="coverArtPanel">
+        <h2>Capa do álbum</h2>
+        <p class="hint" style="margin-top:0">Imagem (JPG/PNG) incluída no bundle como
+        <code>cover.*</code> e referenciada em <code>rockforge_project.json</code> — usa-a como
+        capa ao criar o projeto no DLC Builder (que gera as texturas DDS do jogo). O empacotamento
+        nativo ainda não embute esta imagem como textura DDS no <code>.psarc</code>.</p>
+        <div class="anchor-row">
+          <img id="coverArtPreview" hidden style="max-width:96px;max-height:96px;border-radius:4px;border:1px solid #262830">
+          <input type="file" id="coverArtFile" accept="image/png,image/jpeg">
+          <span id="coverArtInfo" class="meta"></span>
+        </div>
+      </div>
+
+      <hr class="sep">
       <div class="anchor-row">
         <button type="button" id="applyAll">Aplicar e reconstruir</button>
         <span class="meta">aplica afinação, início, andamento e correções de <b id="applyKind"></b>
@@ -572,6 +586,8 @@ async function selectJob(id) {
   if (j.bundle_available) dl.innerHTML += `<a href="/jobs/${j.id}/bundle">Bundle (DLC Builder)</a>`;
   if (j.psarc_available) dl.innerHTML += `<a href="/jobs/${j.id}/psarc">PSARC</a>`;
   if (j.bundle_available && !j.psarc_available) dl.innerHTML += `<span class="meta">PSARC requer Wwise — ver README</span>`;
+
+  loadCoverArt(j);
 
   document.getElementById('muteChk').checked = j.import_mutes !== false;
   if (j.status === 'completed' && j.bundle_available) await loadArrangements(j.id);
@@ -887,6 +903,35 @@ async function detectLyrics() {
   await loadLyrics(selectedJob.id);
 }
 document.getElementById('detectLyrics').addEventListener('click', detectLyrics);
+
+function loadCoverArt(j) {
+  const img = document.getElementById('coverArtPreview');
+  const info = document.getElementById('coverArtInfo');
+  if (j.cover_art) {
+    img.src = `/jobs/${j.id}/cover?t=${Date.now()}`;
+    img.hidden = false;
+    info.textContent = 'capa carregada — substitui o ficheiro para alterar.';
+  } else {
+    img.hidden = true;
+    img.src = '';
+    info.textContent = 'sem capa.';
+  }
+}
+
+document.getElementById('coverArtFile').addEventListener('change', async ev => {
+  if (!selectedJob) return;
+  const file = ev.target.files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('file', file);
+  const r = await fetch(`/jobs/${selectedJob.id}/cover`, { method: 'POST', body: fd });
+  const b = await r.json();
+  if (!r.ok) { toast(b.detail || 'erro'); return; }
+  selectedJob.cover_art = b.cover_art;
+  loadCoverArt(selectedJob);
+  toast('Capa carregada — "Aplicar e reconstruir" para a incluir no bundle.', 'ok');
+  ev.target.value = '';
+});
 
 document.getElementById('addLyricRow').addEventListener('click', () => {
   lyricsEvents.push({ time: currentPlayheadT + viewOrigin, length: 0.5, lyric: '', lineBreak: false });

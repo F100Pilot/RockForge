@@ -54,6 +54,7 @@ class JobOut(BaseModel):
     import_mutes: bool
     error: str | None
     lyrics_status: str = "none"
+    cover_art: bool = False
 
 
 class RebuildIn(BaseModel):
@@ -172,6 +173,7 @@ def _to_out(job: Job) -> JobOut:
         import_mutes=bool((job.params or {}).get("import_mute_techniques", True)),
         error=job.error,
         lyrics_status=str((job.params or {}).get("lyrics_status", "none")),
+        cover_art=bool((job.params or {}).get("cover_art")),
     )
 
 
@@ -874,6 +876,56 @@ def download_psarc(job_id: str) -> FileResponse:
                 "download the bundle instead",
             )
         return FileResponse(job.psarc_path, filename=Path(job.psarc_path).name)
+
+
+_COVER_ART_SUFFIXES = {".jpg", ".jpeg", ".png"}
+
+
+@app.post("/jobs/{job_id}/cover", response_model=JobOut, status_code=202)
+async def upload_cover_art(job_id: str, file: UploadFile = File(...)) -> JobOut:
+    """Upload/replace the album-art image used by the next rebuild (jpg/png).
+
+    Stored as ``<work_dir>/<job_id>/cover<ext>``; referenced via
+    ``params["cover_art"]`` and passed through as ``Packager.package(...,
+    cover_art=...)``. Does not trigger a rebuild — call ``/rebuild`` after.
+    """
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+
+        suffix = Path(file.filename or "cover").suffix.lower()
+        if suffix not in _COVER_ART_SUFFIXES:
+            raise HTTPException(415, f"unsupported image format: {suffix or '(none)'}")
+
+        job_dir = settings.work_dir / job.id
+        job_dir.mkdir(parents=True, exist_ok=True)
+        # Remove any previous cover with a different extension.
+        for old in _COVER_ART_SUFFIXES:
+            (job_dir / f"cover{old}").unlink(missing_ok=True)
+        dest = job_dir / f"cover{suffix}"
+        with dest.open("wb") as fh:
+            shutil.copyfileobj(file.file, fh)
+
+        params = dict(job.params or {})
+        params["cover_art"] = dest.name
+        job.params = params
+        session.commit()
+        return _to_out(job)
+
+
+@app.get("/jobs/{job_id}/cover")
+def download_cover_art(job_id: str) -> FileResponse:
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        cover_art = (job.params or {}).get("cover_art") if job else None
+        if job is None or not cover_art:
+            raise HTTPException(404, "no cover art uploaded for this job")
+        cover_path = settings.work_dir / job.id / cast(str, cover_art)
+        if not cover_path.exists():
+            raise HTTPException(404, "cover art file is missing on the work volume")
+        media_type = mimetypes.guess_type(cover_path.name)[0] or "application/octet-stream"
+        return FileResponse(cover_path, media_type=media_type)
 
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)

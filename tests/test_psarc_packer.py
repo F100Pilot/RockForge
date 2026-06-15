@@ -69,6 +69,28 @@ def test_package_keeps_dlc_builder_importable_project(tmp_path: Path) -> None:
     assert project["song_key"]
 
 
+def test_package_copies_cover_art(tmp_path: Path) -> None:
+    import json
+
+    audio = tmp_path / "audio.wav"
+    audio.write_bytes(b"RIFF....WAVEfmt ")
+    cover = tmp_path / "cover.png"
+    cover.write_bytes(b"\x89PNG\r\n\x1a\n")
+
+    packer = NativePsarcPacker(wem_converter=None)
+    result = packer.package(
+        [_arrangement(ArrangementKind.COMBINED)],
+        audio,
+        tmp_path / "bundle",
+        cover_art=cover,
+    )
+
+    assert (result.bundle_dir / "cover.png").read_bytes() == cover.read_bytes()
+    project = json.loads((result.bundle_dir / "rockforge_project.json").read_text())
+    assert project["cover_art"] == "cover.png"
+    assert "cover_art_note" in project
+
+
 def test_package_requires_psarc_extra(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import builtins
 

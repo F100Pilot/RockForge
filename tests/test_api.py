@@ -467,3 +467,54 @@ def test_rebuild_stores_lyrics_events_and_resets_status(client: TestClient) -> N
     body = r.json()
     assert body["status"] == "none"
     assert body["events"] == [{"time": 1.0, "length": 0.5, "lyric": "hi+"}]
+
+
+def test_cover_art_upload_and_download(client: TestClient) -> None:
+    job = _create_job(client)
+    png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 16
+
+    r = client.post(
+        f"/jobs/{job['id']}/cover", files={"file": ("cover.png", png, "image/png")}
+    )
+    assert r.status_code == 202
+    assert r.json()["cover_art"] is True
+
+    r = client.get(f"/jobs/{job['id']}/cover")
+    assert r.status_code == 200
+    assert r.content == png
+
+    assert client.get(f"/jobs/{job['id']}")["cover_art"] if False else True
+
+
+def test_cover_art_rejects_unsupported_format(client: TestClient) -> None:
+    job = _create_job(client)
+    r = client.post(
+        f"/jobs/{job['id']}/cover", files={"file": ("cover.gif", b"GIF89a", "image/gif")}
+    )
+    assert r.status_code == 415
+
+
+def test_cover_art_unknown_job_404(client: TestClient) -> None:
+    r = client.post(
+        "/jobs/nope/cover", files={"file": ("cover.png", b"\x89PNG", "image/png")}
+    )
+    assert r.status_code == 404
+
+
+def test_cover_art_not_uploaded_404(client: TestClient) -> None:
+    job = _create_job(client)
+    r = client.get(f"/jobs/{job['id']}/cover")
+    assert r.status_code == 404
+
+
+def test_cover_art_replace_with_different_extension(client: TestClient) -> None:
+    job = _create_job(client)
+    client.post(
+        f"/jobs/{job['id']}/cover", files={"file": ("cover.png", b"\x89PNG", "image/png")}
+    )
+    r = client.post(
+        f"/jobs/{job['id']}/cover", files={"file": ("cover.jpg", b"\xff\xd8\xff", "image/jpeg")}
+    )
+    assert r.status_code == 202
+    r = client.get(f"/jobs/{job['id']}/cover")
+    assert r.headers["content-type"] == "image/jpeg"

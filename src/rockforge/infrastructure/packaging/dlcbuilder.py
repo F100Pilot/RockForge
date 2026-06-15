@@ -39,6 +39,7 @@ def build_project_metadata(
     wem_path: Path | None,
     xml_paths: list[Path],
     vocals_path: Path | None,
+    cover_art_path: Path | None = None,
 ) -> dict[str, object]:
     """The DLC Builder-importable project descriptor (``rockforge_project.json``).
 
@@ -56,6 +57,7 @@ def build_project_metadata(
         "audio_wem": wem_path.name if wem_path else None,
         "arrangements": [p.name for p in xml_paths],
         "vocals": vocals_path.name if vocals_path else None,
+        "cover_art": cover_art_path.name if cover_art_path else None,
         "tones": {
             arr.kind.value: {"base": arr.tone_base, "slots": arr.tone_names}
             for arr in arrangements
@@ -67,7 +69,9 @@ def build_project_metadata(
         },
         "note": (
             "Import into DLC Builder (https://github.com/iminashi/Rocksmith2014.NET) "
-            "to convert audio via Wwise and pack the final PSARC."
+            "to convert audio via Wwise and pack the final PSARC. If cover_art is "
+            "set, use that image as the DLC Builder project's album art (DLC "
+            "Builder generates the in-game DDS textures itself)."
         ),
     }
 
@@ -88,6 +92,7 @@ class DlcBuilderPackager:
         audio: Path,
         out_dir: Path,
         vocals: list[VocalEvent] | None = None,
+        cover_art: Path | None = None,
     ) -> PackagingResult:
         if not arrangements:
             raise PackagingError("no arrangements to package")
@@ -104,6 +109,11 @@ class DlcBuilderPackager:
             vocals_path = write_vocals_xml(vocals, out_dir / "arrangement_vocals.xml")
             xml_paths.append(vocals_path)
 
+        cover_art_dest: Path | None = None
+        if cover_art is not None and cover_art.exists():
+            cover_art_dest = out_dir / f"cover{cover_art.suffix.lower()}"
+            shutil.copy2(cover_art, cover_art_dest)
+
         audio_dest = out_dir / f"audio{audio.suffix}"
         shutil.copy2(audio, audio_dest)
 
@@ -114,7 +124,7 @@ class DlcBuilderPackager:
             shutil.copy2(wem, wem_path)
 
         project = build_project_metadata(
-            arrangements, audio_dest, wem_path, xml_paths, vocals_path
+            arrangements, audio_dest, wem_path, xml_paths, vocals_path, cover_art_dest
         )
         (out_dir / "rockforge_project.json").write_text(
             json.dumps(project, indent=2, ensure_ascii=False), encoding="utf-8"
