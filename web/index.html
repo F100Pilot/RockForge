@@ -388,7 +388,7 @@
           <div style="background:#262830;border-radius:4px;height:8px;overflow:hidden">
             <div id="lyricsProgressBar" style="background:#ff7a45;height:100%;width:0%;transition:width .3s"></div>
           </div>
-          <pre id="lyricsLog" style="margin:.4rem 0 0;max-height:8rem;overflow-y:auto;background:#14151a;border:1px solid #262830;border-radius:4px;padding:.4rem .6rem;font-size:.75rem;color:#9aa0ad;white-space:pre-wrap"></pre>
+          <pre id="lyricsLog" style="margin:.4rem 0 0;min-height:1.6rem;max-height:8rem;overflow-y:auto;background:#14151a;border:1px solid #262830;border-radius:4px;padding:.4rem .6rem;font-size:.75rem;color:#9aa0ad;white-space:pre-wrap"></pre>
         </div>
         <table id="lyricsTable" style="width:100%">
           <thead><tr><th>Tempo (s)</th><th>Palavra</th><th>Fim de linha</th><th>Duração (s)</th><th></th></tr></thead>
@@ -825,6 +825,8 @@ function updateLyricsProgress(status, log) {
   if (log && log.length) {
     logEl.textContent = log.join('\n');
     logEl.scrollTop = logEl.scrollHeight;
+  } else if (status === 'detecting') {
+    logEl.textContent = 'a aguardar o worker…';
   } else {
     logEl.textContent = '';
   }
