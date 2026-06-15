@@ -401,6 +401,24 @@ def test_lyrics_default_status_none(client: TestClient) -> None:
     assert r.json() == {"status": "none", "events": [], "log": []}
 
 
+def test_lyrics_falls_back_to_supplied_lrc_text(client: TestClient) -> None:
+    import rockforge.interfaces.api.app as app_module
+
+    job = _create_job(client)
+    with app_module._session_factory() as session:
+        db_job = session.get(app_module.Job, job["id"])
+        params = dict(db_job.params or {})
+        params["lrc_text"] = "[00:01.00]hello world\n"
+        db_job.params = params
+        session.commit()
+
+    r = client.get(f"/jobs/{job['id']}/lyrics")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "none"
+    assert [e["lyric"] for e in body["events"]] == ["hello", "world+"]
+
+
 def test_detect_lyrics_enqueues_and_marks_detecting(client: TestClient) -> None:
     job = _create_job(client)
     r = client.post(f"/jobs/{job['id']}/detect-lyrics")
