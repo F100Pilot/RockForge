@@ -20,6 +20,14 @@ class Settings(BaseSettings):
     psarc_packer_cmd: str | None = None  # e.g. external DLC Builder CLI invocation
     psarc_mode: str = "dlcbuilder"  # "dlcbuilder" (default) | "native" (packer/packer.py)
 
+    # Local single-user setups (start.bat): if > 0, the API process exits when
+    # the web UI stops sending /heartbeat pings for this many seconds (i.e. the
+    # browser tab was closed), so start.bat's cleanup also stops the worker and
+    # any Redis it launched. 0 (default) disables this — required for shared
+    # deployments (docker-compose) where closing one user's tab must not affect
+    # others.
+    idle_shutdown_s: float = 0.0
+
     # Local Wwise installation (NEVER bundled — Audiokinetic EULA). Falls back to
     # the standard WWISEROOT env var set by the Audiokinetic Launcher.
     wwise_root: Path | None = None

@@ -67,7 +67,14 @@ start "RockForge-Worker" /min cmd /c "%PY% -m celery -A rockforge.interfaces.wor
 echo.
 echo Redis e Worker a correr minimizados. A iniciar a API (Ctrl+C para parar tudo)...
 echo Abre http://localhost:8000 quando a API estiver pronta.
+echo (Fechar o separador do browser tambem para tudo, apos alguns segundos.)
 echo.
+
+REM The web UI pings /heartbeat while its tab is open; once those pings stop
+REM (tab closed) for this many seconds the API exits, and the cleanup below
+REM (worker/Redis) then runs too. Set only here — disabled by default
+REM (e.g. docker-compose), where closing one user's tab must not affect others.
+set "ROCKFORGE_IDLE_SHUTDOWN_S=15"
 
 %PY% -m uvicorn rockforge.interfaces.api.app:app --reload
 

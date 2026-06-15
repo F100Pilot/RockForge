@@ -2,9 +2,15 @@
 
 from __future__ import annotations
 
+import asyncio
 import mimetypes
+import os
 import shutil
+import signal
+import time
 import uuid
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import cast
 
@@ -15,6 +21,36 @@ from pydantic import BaseModel, HttpUrl
 from rockforge.config import settings
 from rockforge.infrastructure.db.models import Job, JobStatus, make_session_factory
 
+_last_heartbeat = time.monotonic()
+
+
+async def _idle_shutdown_watchdog() -> None:
+    """Exit the process once the web UI stops sending /heartbeat pings.
+
+    Lets start.bat's cleanup (which runs after the foreground uvicorn process
+    exits) also stop the Celery worker and any Redis it launched — see
+    Settings.idle_shutdown_s.
+    """
+    poll_s = min(2.0, settings.idle_shutdown_s / 2)
+    while True:
+        await asyncio.sleep(poll_s)
+        if time.monotonic() - _last_heartbeat > settings.idle_shutdown_s:
+            os.kill(os.getpid(), signal.SIGTERM)
+            return
+
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
+    global _last_heartbeat
+    _last_heartbeat = time.monotonic()
+    task: asyncio.Task[None] | None = None
+    if settings.idle_shutdown_s > 0:
+        task = asyncio.create_task(_idle_shutdown_watchdog())
+    yield
+    if task is not None:
+        task.cancel()
+
+
 app = FastAPI(
     title="RockForge",
     description=(
@@ -23,6 +59,7 @@ app = FastAPI(
         "See docs/RELATORIO-TECNICO.md."
     ),
     version="0.1.0",
+    lifespan=_lifespan,
 )
 
 _session_factory = make_session_factory(settings.database_url)
@@ -926,6 +963,14 @@ def download_cover_art(job_id: str) -> FileResponse:
             raise HTTPException(404, "cover art file is missing on the work volume")
         media_type = mimetypes.guess_type(cover_path.name)[0] or "application/octet-stream"
         return FileResponse(cover_path, media_type=media_type)
+
+
+@app.post("/heartbeat", include_in_schema=False)
+def heartbeat() -> dict[str, bool]:
+    """Pinged periodically by the web UI; see Settings.idle_shutdown_s."""
+    global _last_heartbeat
+    _last_heartbeat = time.monotonic()
+    return {"ok": True}
 
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)

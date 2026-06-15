@@ -518,3 +518,37 @@ def test_cover_art_replace_with_different_extension(client: TestClient) -> None:
     assert r.status_code == 202
     r = client.get(f"/jobs/{job['id']}/cover")
     assert r.headers["content-type"] == "image/jpeg"
+
+
+def test_heartbeat_ok(client: TestClient) -> None:
+    assert client.post("/heartbeat").json() == {"ok": True}
+
+
+def test_idle_shutdown_exits_process_when_heartbeats_stop(monkeypatch, tmp_path) -> None:
+    """Settings.idle_shutdown_s (start.bat): no /heartbeat pings => process exits."""
+    monkeypatch.setenv("ROCKFORGE_DATABASE_URL", f"sqlite:///{tmp_path}/test.db")
+    monkeypatch.setenv("ROCKFORGE_WORK_DIR", str(tmp_path / "work"))
+    monkeypatch.setenv("ROCKFORGE_ENABLE_YOUTUBE", "false")
+    monkeypatch.setenv("ROCKFORGE_IDLE_SHUTDOWN_S", "0.05")
+    import rockforge.config as config
+    importlib.reload(config)
+    import rockforge.interfaces.api.app as app_module
+    importlib.reload(app_module)
+    monkeypatch.setattr(app_module, "_enqueue", lambda job: None)
+    monkeypatch.setattr(app_module, "_enqueue_detect", lambda job: None)
+
+    killed: list[tuple[int, int]] = []
+    monkeypatch.setattr(app_module.os, "kill", lambda pid, sig: killed.append((pid, sig)))
+
+    import time as time_module
+
+    with TestClient(app_module.app):
+        time_module.sleep(0.2)
+
+    assert killed and killed[0][1] == app_module.signal.SIGTERM
+
+
+def test_idle_shutdown_disabled_by_default(client: TestClient) -> None:
+    import rockforge.interfaces.api.app as app_module
+
+    assert app_module.settings.idle_shutdown_s == 0.0

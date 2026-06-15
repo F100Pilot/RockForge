@@ -1600,6 +1600,12 @@ document.getElementById('gpJobForm').addEventListener('submit', async e => {
 
 refreshJobs();
 setInterval(refreshJobs, 5000);
+
+// Local single-user setups (start.bat): tell the API this tab is still open
+// so it can shut itself (and the worker/Redis it launched) down once these
+// pings stop, i.e. when the tab is closed. No-op if idle_shutdown_s is unset.
+setInterval(() => fetch('/heartbeat', { method: 'POST' }).catch(() => {}), 4000);
+fetch('/heartbeat', { method: 'POST' }).catch(() => {});
 </script>
 </body>
 </html>
