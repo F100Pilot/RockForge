@@ -810,11 +810,13 @@ function renderLyricsRows() {
     </tr>`).join('');
   tb.querySelectorAll('tr').forEach(tr => {
     const i = parseInt(tr.dataset.i, 10);
-    tr.querySelector('.ly-time').addEventListener('change', e => { lyricsEvents[i].time = parseFloat(e.target.value) || 0; });
-    tr.querySelector('.ly-text').addEventListener('change', e => { lyricsEvents[i].lyric = e.target.value; });
-    tr.querySelector('.ly-break').addEventListener('change', e => { lyricsEvents[i].lineBreak = e.target.checked; });
-    tr.querySelector('.ly-length').addEventListener('change', e => { lyricsEvents[i].length = Math.max(0.1, parseFloat(e.target.value) || 0.1); });
-    tr.querySelector('.ly-remove').addEventListener('click', () => { lyricsEvents.splice(i, 1); renderLyricsRows(); });
+    const redraw = () => { if (arrangements.length) showArr(currentArr); };
+    tr.querySelector('.ly-time').addEventListener('change', e => { lyricsEvents[i].time = parseFloat(e.target.value) || 0; redraw(); });
+    tr.querySelector('.ly-text').addEventListener('change', e => { lyricsEvents[i].lyric = e.target.value; redraw(); });
+    tr.querySelector('.ly-text').addEventListener('input',  e => { lyricsEvents[i].lyric = e.target.value; redraw(); });
+    tr.querySelector('.ly-break').addEventListener('change', e => { lyricsEvents[i].lineBreak = e.target.checked; redraw(); });
+    tr.querySelector('.ly-length').addEventListener('change', e => { lyricsEvents[i].length = Math.max(0.1, parseFloat(e.target.value) || 0.1); redraw(); });
+    tr.querySelector('.ly-remove').addEventListener('click', () => { lyricsEvents.splice(i, 1); renderLyricsRows(); redraw(); });
   });
 }
 
