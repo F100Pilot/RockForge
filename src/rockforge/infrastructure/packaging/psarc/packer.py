@@ -18,6 +18,10 @@ Still honest about limits (CLAUDE.md):
   Rocksmith's separate vocal-arrangement convention is not modelled yet.
 - Requires the ``[psarc]`` extra (``cryptography``) for TOC/SNG encryption;
   raises :class:`PackagingError` with a clear message if missing.
+- ``cover_art`` (if provided) is copied into the bundle and recorded in
+  ``rockforge_project.json``, but is NOT yet embedded as an in-game DDS
+  texture/``albumArt`` URN — that conversion (DDS encoding + manifest/SNG
+  references) is not implemented.
 
 The bundle still carries the DLC Builder-importable ``rockforge_project.json``
 (via :func:`build_project_metadata`), so the ``GET /jobs/{id}/bundle`` zip
@@ -53,6 +57,7 @@ class NativePsarcPacker:
         audio: Path,
         out_dir: Path,
         vocals: list[VocalEvent] | None = None,
+        cover_art: Path | None = None,
     ) -> PackagingResult:
         if not arrangements:
             raise PackagingError("no arrangements to package")
@@ -68,6 +73,11 @@ class NativePsarcPacker:
         if vocals:
             vocals_path = write_vocals_xml(vocals, out_dir / "arrangement_vocals.xml")
             xml_paths.append(vocals_path)
+
+        cover_art_dest: Path | None = None
+        if cover_art is not None and cover_art.exists():
+            cover_art_dest = out_dir / f"cover{cover_art.suffix.lower()}"
+            shutil.copy2(cover_art, cover_art_dest)
 
         audio_dest = out_dir / f"audio{audio.suffix}"
         shutil.copy2(audio, audio_dest)
@@ -113,7 +123,7 @@ class NativePsarcPacker:
         # Keep the bundle DLC Builder-importable (the GET /jobs/{id}/bundle zip)
         # and additionally record the natively-produced .psarc.
         project = build_project_metadata(
-            arrangements, audio_dest, wem_path, xml_paths, vocals_path
+            arrangements, audio_dest, wem_path, xml_paths, vocals_path, cover_art_dest
         )
         project["song_key"] = song_key
         project["psarc"] = psarc_path.name
@@ -122,6 +132,12 @@ class NativePsarcPacker:
             "(infrastructure/packaging/psarc); the DLC Builder fields above "
             "remain valid for re-importing the bundle."
         )
+        if cover_art_dest is not None:
+            project["cover_art_note"] = (
+                "cover_art was packed into the bundle but is NOT yet embedded as "
+                "an in-game DDS texture in this native .psarc — the song's "
+                "albumArt remains empty, same as DLC Builder without a cover set."
+            )
         (out_dir / "rockforge_project.json").write_text(
             json.dumps(project, indent=2, ensure_ascii=False), encoding="utf-8"
         )

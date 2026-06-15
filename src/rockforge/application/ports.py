@@ -89,6 +89,13 @@ class Packager(Protocol):
         audio: Path,
         out_dir: Path,
         vocals: list[VocalEvent] | None = None,
+        cover_art: Path | None = None,
     ) -> PackagingResult:
-        """Write the arrangement bundle (and PSARC, if the backend can produce one)."""
+        """Write the arrangement bundle (and PSARC, if the backend can produce one).
+
+        *cover_art*, if given, is an image file (jpg/png) copied into the
+        bundle as the album art — see ``rockforge_project.json``'s
+        ``cover_art`` field. The retail in-game DDS texture/``albumArt`` URN is
+        not produced yet (honesty note in ``packaging/psarc/packer.py``).
+        """
         ...

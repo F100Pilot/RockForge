@@ -160,6 +160,24 @@ subtracted from word times — a known limitation.
 Detection needs both `[lyrics]` (WhisperX) and `[ml]` (Demucs) extras in the
 worker, even for GP jobs whose own build stays ML-free.
 
+### Album cover art
+
+`POST /jobs/{id}/cover` (multipart `file`, jpg/png) stores the image as
+`<work_dir>/<job_id>/cover<ext>` and records the filename in
+`params["cover_art"]`; `GET /jobs/{id}/cover` serves it back for the web UI's
+preview. Uploading does not trigger a rebuild — the next build/rebuild picks it
+up via the worker's `params.get("cover_art")` lookup and passes it as
+`Packager.package(..., cover_art=Path)`.
+
+Both `DlcBuilderPackager` and `NativePsarcPacker` copy the image into the bundle
+as `cover.<ext>` and record it in `rockforge_project.json["cover_art"]` (via the
+shared `build_project_metadata()`), so it's available as the album art when
+creating/updating the DLC Builder project (DLC Builder generates the in-game DDS
+textures itself). Honesty note: this is NOT yet converted to an in-game DDS
+texture/`albumArt` URN — the Song2014 XML `albumArt` field
+(`infrastructure/rsxml/writer.py`) stays empty in both DLC Builder and native
+PSARC output, same as building without a cover set.
+
 ## Commands
 
 ```bash

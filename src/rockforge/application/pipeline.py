@@ -74,6 +74,7 @@ class GenerateCdlcUseCase:
         offset_s: float = 0.0,
         transcribe_lyrics: bool = False,
         lyrics_events: list[VocalEvent] | None = None,
+        cover_art: Path | None = None,
         on_stage: Callable[[str], None] | None = None,
     ) -> PipelineResult:
         def stage(name: str) -> None:
@@ -170,7 +171,7 @@ class GenerateCdlcUseCase:
 
         stage("package")
         packaging = self.packager.package(
-            arrangements, normalized, workdir / "bundle", vocals=vocals_events
+            arrangements, normalized, workdir / "bundle", vocals=vocals_events, cover_art=cover_art
         )  # 9/10
         if packaging.wem_path is None:
             warnings.append(

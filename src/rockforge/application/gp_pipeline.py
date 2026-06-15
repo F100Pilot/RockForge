@@ -137,6 +137,9 @@ class GpJobSpec:
     # times, before pad_start_s). Takes precedence over lrc_text and GP-embedded
     # lyrics when present.
     lyrics_events: list[VocalEvent] | None = None
+    # Optional cover-art image (jpg/png), copied into the bundle and recorded
+    # in rockforge_project.json; see Packager.package's cover_art parameter.
+    cover_art: Path | None = None
 
     def sync_for(self, kind: ArrangementKind) -> ArrangementSync:
         """Resolve the tempo/drift overrides for one arrangement, falling back
@@ -422,7 +425,11 @@ class GenerateFromGpUseCase:
 
         stage("package")
         packaging = self.packager.package(
-            arrangements, normalized, workdir / "bundle", vocals=vocals or None
+            arrangements,
+            normalized,
+            workdir / "bundle",
+            vocals=vocals or None,
+            cover_art=spec.cover_art,
         )
         if packaging.wem_path is None:
             warnings.append(

@@ -85,6 +85,23 @@ def test_pipeline_produces_bundle_with_all_arrangements(tmp_path: Path) -> None:
     assert (result.packaging.bundle_dir / "rockforge_project.json").exists()
 
 
+def test_pipeline_copies_cover_art_into_bundle(tmp_path: Path) -> None:
+    import json
+
+    cover = tmp_path / "cover.jpg"
+    cover.write_bytes(b"\xff\xd8\xff\xe0fake")
+
+    result = make_use_case().run(
+        source="whatever.wav",
+        metadata=SongMetadata(title="T", artist="A"),
+        workdir=tmp_path,
+        cover_art=cover,
+    )
+    assert (result.packaging.bundle_dir / "cover.jpg").read_bytes() == cover.read_bytes()
+    project = json.loads((result.packaging.bundle_dir / "rockforge_project.json").read_text())
+    assert project["cover_art"] == "cover.jpg"
+
+
 def test_pipeline_flags_experimental_split_and_missing_psarc(tmp_path: Path) -> None:
     result = make_use_case().run(
         source="x.wav", metadata=SongMetadata(title="T", artist="A"), workdir=tmp_path
