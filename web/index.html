@@ -627,7 +627,7 @@ function showArr(i) {
     const x = 30 + t * px;
     const isMajor = q % 20 === 0; // every 5s
     const isSecond = q % 4 === 0; // every 1s
-    const stroke = isMajor ? '#3a3c45' : isSecond ? '#262830' : '#1c1d24';
+    const stroke = isMajor ? '#6a6f7d' : isSecond ? '#4a4e59' : '#33363f';
     s += `<line x1="${x}" y1="14" x2="${x}" y2="${H-35}" stroke="${stroke}" stroke-width="${isMajor ? 1 : 0.5}"/>`;
     if (isMajor) s += `<text x="${x}" y="12" fill="#666" font-size="12">${t}s</text>`;
     else if (isSecond) s += `<text x="${x}" y="12" fill="#454852" font-size="9">${t}</text>`;
