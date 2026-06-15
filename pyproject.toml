@@ -36,6 +36,11 @@ ml = [
     # build that needs a working MSVC ("Compiler cl can not compile programs").
     # scipy>=1.11 has cp311 wheels for win_amd64 and is still numpy<2 compatible.
     "scipy>=1.11",
+    # tensorflow<2.15.1 needs numpy<2; basic-pitch's unconstrained
+    # "scikit-learn" otherwise makes pip backtrack through many scikit-learn
+    # versions (each pulling its own numpy/scipy range) to (re)discover this.
+    # Spelling it out directly collapses most of that search.
+    "numpy>=1.24,<2",
 ]
 youtube = [
     "yt-dlp>=2024.4",       # Ingestão YouTube: viola o ToS do YouTube — desativada por defeito (ver config)
