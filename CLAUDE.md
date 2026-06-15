@@ -163,9 +163,9 @@ worker, even for GP jobs whose own build stays ML-free.
 ## Commands
 
 ```bash
-pip install -e ".[dev]"          # core + tests, no ML
-pip install -e ".[dev,ml]"       # adds Demucs/Basic Pitch/librosa
-pip install -e ".[lyrics]"       # adds WhisperX (optional automatic lyrics)
+pip install -e ".[dev]"             # core + tests, no ML
+pip install -e ".[dev,ml]"          # adds Demucs/Basic Pitch/librosa
+pip install -e ".[dev,ml,lyrics]"   # + WhisperX (automatic lyric detection)
 pytest                           # full suite (ML stages are faked in tests)
 ruff check src tests             # lint — must pass
 mypy                             # strict on domain/application/infra; relaxed at boundaries
