@@ -262,6 +262,18 @@ fake-driven test at the same boundary rather than mocking deep internals.
 (foreground) from a single window; it auto-selects `py -3.11`. Requires ffmpeg
 (`winget install ffmpeg`) and a running Redis. See README for the full guide.
 
+### Shutdown on tab close (`ROCKFORGE_IDLE_SHUTDOWN_S`)
+
+`start.bat` sets `ROCKFORGE_IDLE_SHUTDOWN_S=15`: the web UI calls `POST
+/heartbeat` every 4s while its tab is open; a background watchdog
+(`_idle_shutdown_watchdog` in `interfaces/api/app.py`) sends `SIGTERM` to the
+API process if no heartbeat arrives within that window (i.e. the tab was
+closed, not just refreshed). The foreground uvicorn then exits, and
+`start.bat`'s existing cleanup (after the `uvicorn` line) stops the Celery
+worker and any Redis it launched too. Default is `0` (disabled) — required for
+shared deployments (docker-compose) where one user's closed tab must not stop
+the service for everyone.
+
 ## Conventions
 
 - Keep the honesty: surface warnings via the pipeline's `warnings` list, never
