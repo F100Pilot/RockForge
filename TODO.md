@@ -2,14 +2,18 @@
 
 Lista de funcionalidades propostas, ainda não implementadas.
 
-- [ ] **Deteção automática de afinação para jobs GP**: hoje `tuning_estimator`
-  (librosa) só corre no caminho áudio-ML; para GP a afinação vem do ficheiro,
-  mas se a gravação estiver numa afinação diferente não há deteção a partir
-  do áudio.
+- [x] **Deteção automática de afinação para jobs GP**: `POST
+  /jobs/{id}/detect-tuning` estima o desvio em cents (A440) com
+  `librosa.estimate_tuning` sobre a gravação; é apenas uma proposta — o
+  utilizador revê e aplica via "Aplicar e reconstruir" (botão "Detetar
+  afinação (cents)" no painel de afinação). A afinação das cordas (drop/open)
+  continua a vir do ficheiro GP — não é detetável de forma fiável a partir de
+  áudio polifónico.
 
-- [ ] **Pré-visualização de áudio por arranjo (Lead/Rhythm)**: sintetizar e
-  tocar cada arranjo isoladamente a partir das notas, para validar a
-  separação experimental Lead/Rhythm antes do rebuild.
+- [x] **Pré-visualização de áudio por arranjo (Lead/Rhythm)**: botão "▶
+  Pré-visualizar este arranjo" sintetiza (Web Audio, osciladores) e toca as
+  notas do arranjo selecionado, isoladamente da gravação — útil para validar
+  o split experimental Lead/Rhythm.
 
 - [ ] **Exportar/importar estado de sincronização como JSON**: permitir
   guardar/restaurar `sync_anchor_stages`, `tempo_scale`, `arrangement_sync` e

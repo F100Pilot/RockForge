@@ -57,6 +57,21 @@ def detect_tempo_from(audio: Path, start_s: float) -> float:
     return float(np.atleast_1d(tempo)[0])
 
 
+def estimate_tuning_cents(audio: Path) -> float:
+    """Estimate the recording's reference-pitch deviation from A440, in cents.
+
+    Standalone (not a port method) so the GP-sync API can call it directly for
+    the auto-tuning proposal, and tests can monkeypatch it without librosa
+    installed. This is the only part of tuning detection that is reliable from
+    polyphonic audio (see module docstring) — string/drop tuning is NOT
+    detected and must come from the GP file or human confirmation.
+    """
+    import librosa
+
+    y, sr = librosa.load(str(audio), sr=None, mono=True)
+    return float(librosa.estimate_tuning(y=y, sr=sr)) * 100.0
+
+
 class LibrosaRhythmAdapter:
     """Implements BeatTracker and TuningEstimator ports."""
 
