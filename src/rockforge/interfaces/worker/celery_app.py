@@ -18,12 +18,28 @@ celery_app = Celery(
 celery_app.conf.task_track_started = True
 
 
+def _build_packager():  # noqa: ANN202 - heavy imports deferred to worker runtime
+    from rockforge.infrastructure.packaging.wwise import WwiseWemConverter
+
+    wem_converter = WwiseWemConverter(wwise_root=settings.resolved_wwise_root())
+
+    if settings.psarc_mode == "native":
+        from rockforge.infrastructure.packaging.psarc.packer import NativePsarcPacker
+
+        return NativePsarcPacker(wem_converter=wem_converter)
+
+    from rockforge.infrastructure.packaging.dlcbuilder import DlcBuilderPackager
+
+    return DlcBuilderPackager(
+        psarc_packer_cmd=settings.psarc_packer_cmd,
+        wem_converter=wem_converter,
+    )
+
+
 def _build_use_case():  # noqa: ANN202 - heavy imports deferred to worker runtime
     from rockforge.application.pipeline import GenerateCdlcUseCase
     from rockforge.infrastructure.ingestion.sources import LocalFileIngestor, YouTubeIngestor
     from rockforge.infrastructure.normalize.ffmpeg import FfmpegNormalizer
-    from rockforge.infrastructure.packaging.dlcbuilder import DlcBuilderPackager
-    from rockforge.infrastructure.packaging.wwise import WwiseWemConverter
     from rockforge.infrastructure.rhythm.librosa_adapter import LibrosaRhythmAdapter
     from rockforge.infrastructure.rolesplit.heuristic import HeuristicRoleSplitter
     from rockforge.infrastructure.separation.demucs_adapter import DemucsSeparator
@@ -54,12 +70,7 @@ def _build_use_case():  # noqa: ANN202 - heavy imports deferred to worker runtim
             beat_tracker=rhythm,
             tuning_estimator=rhythm,
             role_splitter=HeuristicRoleSplitter(),
-            packager=DlcBuilderPackager(
-                psarc_packer_cmd=settings.psarc_packer_cmd,
-                wem_converter=WwiseWemConverter(
-                    wwise_root=settings.resolved_wwise_root(),
-                ),
-            ),
+            packager=_build_packager(),
         )
 
     return make
@@ -81,18 +92,11 @@ def _build_gp_use_case():  # noqa: ANN202
     from rockforge.application.gp_pipeline import GenerateFromGpUseCase
     from rockforge.infrastructure.ingestion.sources import LocalFileIngestor
     from rockforge.infrastructure.normalize.ffmpeg import FfmpegNormalizer
-    from rockforge.infrastructure.packaging.dlcbuilder import DlcBuilderPackager
-    from rockforge.infrastructure.packaging.wwise import WwiseWemConverter
 
     return GenerateFromGpUseCase(
         ingestor=LocalFileIngestor(),
         normalizer=FfmpegNormalizer(),
-        packager=DlcBuilderPackager(
-            psarc_packer_cmd=settings.psarc_packer_cmd,
-            wem_converter=WwiseWemConverter(
-                wwise_root=settings.resolved_wwise_root(),
-            ),
-        ),
+        packager=_build_packager(),
     )
 
 

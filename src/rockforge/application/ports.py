@@ -9,7 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Protocol
 
+from rockforge.domain.arrangement import Arrangement
 from rockforge.domain.music import NoteEvent, TempoMap, Tuning
+from rockforge.infrastructure.packaging.dlcbuilder import PackagingResult
 from rockforge.infrastructure.rsxml.vocals import VocalEvent
 
 
@@ -77,4 +79,16 @@ class LyricTranscriber(Protocol):
         Returns [] when the stem is (near-)silent or no word passes the
         confidence filter — callers must treat that as "no vocals", not error.
         """
+        ...
+
+
+class Packager(Protocol):
+    def package(
+        self,
+        arrangements: list[Arrangement],
+        audio: Path,
+        out_dir: Path,
+        vocals: list[VocalEvent] | None = None,
+    ) -> PackagingResult:
+        """Write the arrangement bundle (and PSARC, if the backend can produce one)."""
         ...

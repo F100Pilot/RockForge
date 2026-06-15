@@ -84,13 +84,19 @@ Lista de funcionalidades propostas, ainda não implementadas.
     a primitiva AES-CTR — o envelope real do `.sng` (cabeçalho + zlib) fica
     para a fase 5.
 
-  - [ ] **Fase 5 — Adaptador e wiring** (`infrastructure/packaging/psarc/packer.py`):
-    `NativePsarcPacker` que junta as fases 1-4; extrair um `Packager` Protocol
-    para `application/ports.py` (hoje `DlcBuilderPackager` é um tipo
-    concreto); nova opção `settings.psarc_mode` (`"dlcbuilder"` default |
-    `"native"`) usada em `celery_app._build_use_case()`; atualizar
-    `GET /jobs/{id}/psarc` para servir o `.psarc` gerado nativamente quando
-    `psarc_mode == "native"`.
+  - [x] **Fase 5 — Adaptador e wiring** (`infrastructure/packaging/psarc/packer.py`):
+    `NativePsarcPacker` junta as fases 1-4 atrás do `Packager` Protocol
+    (extraído para `application/ports.py`; `application/pipeline.py` e
+    `gp_pipeline.py` deixam de depender do tipo concreto
+    `DlcBuilderPackager`). Nova opção `settings.psarc_mode` (`"dlcbuilder"`
+    default | `"native"`), lida por um novo `celery_app._build_packager()`
+    partilhado entre `_build_use_case()` e `_build_gp_use_case()`.
+    `GET /jobs/{id}/psarc` não precisa de alterações — já serve qualquer
+    `PackagingResult.psarc_path`, seja do DLC Builder ou nativo. Honestidade:
+    `NativePsarcPacker` empacota o `.wem` se o Wwise estiver disponível, senão
+    cai para o WAV normalizado (mesmo aviso "no .wem" da pipeline); vocais só
+    são anexados ao SNG do primeiro arranjo (mesma limitação da fase 3);
+    requer a extra `[psarc]`, com `PackagingError` claro se ausente.
 
   Plano totalmente aditivo: `DlcBuilderPackager` continua a ser o caminho por
   omissão até à fase 5; o novo código vive isolado em

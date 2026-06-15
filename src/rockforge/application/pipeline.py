@@ -18,6 +18,7 @@ from rockforge.application.ports import (
     GuitarRoleSplitter,
     LyricTranscriber,
     NoteTranscriber,
+    Packager,
     StemSeparator,
     TuningEstimator,
 )
@@ -29,7 +30,7 @@ from rockforge.domain.arrangement import (
 )
 from rockforge.domain.music import Beat, NoteEvent, TempoMap, Tuning
 from rockforge.infrastructure.fretboard.mapper import infer_legato, map_to_fretboard
-from rockforge.infrastructure.packaging.dlcbuilder import DlcBuilderPackager, PackagingResult
+from rockforge.infrastructure.packaging.dlcbuilder import PackagingResult
 from rockforge.infrastructure.rsxml.vocals import VocalEvent
 
 _BASE_CONFIDENCE: dict[str, ConfidenceLabel] = {
@@ -60,7 +61,7 @@ class GenerateCdlcUseCase:
     beat_tracker: BeatTracker
     tuning_estimator: TuningEstimator
     role_splitter: GuitarRoleSplitter
-    packager: DlcBuilderPackager
+    packager: Packager
     lyric_transcriber: LyricTranscriber | None = None
 
     def run(
