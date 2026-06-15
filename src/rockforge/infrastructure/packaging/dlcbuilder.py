@@ -20,6 +20,8 @@ from pathlib import Path
 
 from rockforge.domain.arrangement import Arrangement
 from rockforge.domain.errors import PackagingError
+from rockforge.infrastructure.packaging.psarc.manifest import song_key_from_title
+from rockforge.infrastructure.packaging.rs2dlc import write_rs2dlc
 from rockforge.infrastructure.packaging.wwise import WwiseWemConverter
 from rockforge.infrastructure.rsxml.vocals import VocalEvent, write_vocals_xml
 from rockforge.infrastructure.rsxml.writer import write_arrangement_xml
@@ -68,10 +70,12 @@ def build_project_metadata(
             for arr in arrangements
         },
         "note": (
-            "Import into DLC Builder (https://github.com/iminashi/Rocksmith2014.NET) "
-            "to convert audio via Wwise and pack the final PSARC. If cover_art is "
-            "set, use that image as the DLC Builder project's album art (DLC "
-            "Builder generates the in-game DDS textures itself)."
+            "Open rockforge.rs2dlc in DLC Builder "
+            "(https://github.com/iminashi/Rocksmith2014.NET) to load every "
+            "arrangement, vocals, audio and cover at once, then convert audio "
+            "via Wwise and pack the final PSARC. Assign tones in DLC Builder "
+            "(RockForge does not author tone gear); its 'Calculate Volumes' and "
+            "'Create Preview Audio' fill the neutral audio defaults."
         ),
     }
 
@@ -98,11 +102,12 @@ class DlcBuilderPackager:
             raise PackagingError("no arrangements to package")
         out_dir.mkdir(parents=True, exist_ok=True)
 
-        xml_paths: list[Path] = []
+        instrumental_xml: list[Path] = []
         for arr in arrangements:
-            xml_paths.append(
+            instrumental_xml.append(
                 write_arrangement_xml(arr, out_dir / f"arrangement_{arr.kind.value.lower()}.xml")
             )
+        xml_paths: list[Path] = list(instrumental_xml)
 
         vocals_path: Path | None = None
         if vocals:
@@ -116,6 +121,17 @@ class DlcBuilderPackager:
 
         audio_dest = out_dir / f"audio{audio.suffix}"
         shutil.copy2(audio, audio_dest)
+
+        meta = arrangements[0].metadata
+        write_rs2dlc(
+            arrangements,
+            [p.name for p in instrumental_xml],
+            audio_dest.name,
+            song_key_from_title(meta.artist, meta.title),
+            out_dir / "rockforge.rs2dlc",
+            vocals_xml_name=vocals_path.name if vocals_path else None,
+            cover_art_name=cover_art_dest.name if cover_art_dest else None,
+        )
 
         wem_path: Path | None = None
         if self._wem_converter is not None and self._wem_converter.available():

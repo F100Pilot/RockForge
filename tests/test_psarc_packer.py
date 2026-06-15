@@ -69,6 +69,29 @@ def test_package_keeps_dlc_builder_importable_project(tmp_path: Path) -> None:
     assert project["song_key"]
 
 
+def test_package_writes_rs2dlc_project(tmp_path: Path) -> None:
+    import json
+
+    audio = tmp_path / "audio.wav"
+    audio.write_bytes(b"RIFF....WAVEfmt ")
+
+    packer = NativePsarcPacker(wem_converter=None)
+    result = packer.package(
+        [_arrangement(ArrangementKind.COMBINED)],
+        audio,
+        tmp_path / "bundle",
+        vocals=[VocalEvent(time=1.0, length=0.5, lyric="hi+")],
+    )
+
+    rs2dlc = result.bundle_dir / "rockforge.rs2dlc"
+    assert rs2dlc.exists()
+    project = json.loads(rs2dlc.read_text())
+    assert project["DLCKey"]
+    cases = [a["Case"] for a in project["Arrangements"]]
+    assert cases == ["Instrumental", "Vocals"]
+    assert project["Arrangements"][0]["Fields"][0]["XML"] == "arrangement_combined.xml"
+
+
 def test_package_copies_cover_art(tmp_path: Path) -> None:
     import json
 

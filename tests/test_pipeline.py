@@ -85,6 +85,23 @@ def test_pipeline_produces_bundle_with_all_arrangements(tmp_path: Path) -> None:
     assert (result.packaging.bundle_dir / "rockforge_project.json").exists()
 
 
+def test_pipeline_writes_rs2dlc_with_all_arrangements(tmp_path: Path) -> None:
+    import json
+
+    result = make_use_case().run(
+        source="whatever.wav",
+        metadata=SongMetadata(title="T", artist="A"),
+        workdir=tmp_path,
+    )
+    rs2dlc = result.packaging.bundle_dir / "rockforge.rs2dlc"
+    assert rs2dlc.exists()
+    project = json.loads(rs2dlc.read_text())
+    xmls = {a["Fields"][0]["XML"] for a in project["Arrangements"]}
+    assert xmls == {
+        "arrangement_combined.xml", "arrangement_lead.xml", "arrangement_rhythm.xml"
+    }
+
+
 def test_pipeline_copies_cover_art_into_bundle(tmp_path: Path) -> None:
     import json
 

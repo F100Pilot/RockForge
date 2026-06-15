@@ -42,6 +42,7 @@ from rockforge.infrastructure.packaging.dlcbuilder import (
     build_project_metadata,
 )
 from rockforge.infrastructure.packaging.psarc import container, manifest, sng
+from rockforge.infrastructure.packaging.rs2dlc import write_rs2dlc
 from rockforge.infrastructure.packaging.wwise import WwiseWemConverter
 from rockforge.infrastructure.rsxml.vocals import VocalEvent, write_vocals_xml
 from rockforge.infrastructure.rsxml.writer import write_arrangement_xml
@@ -63,11 +64,12 @@ class NativePsarcPacker:
             raise PackagingError("no arrangements to package")
         out_dir.mkdir(parents=True, exist_ok=True)
 
-        xml_paths: list[Path] = []
+        instrumental_xml: list[Path] = []
         for arr in arrangements:
-            xml_paths.append(
+            instrumental_xml.append(
                 write_arrangement_xml(arr, out_dir / f"arrangement_{arr.kind.value.lower()}.xml")
             )
+        xml_paths: list[Path] = list(instrumental_xml)
 
         vocals_path: Path | None = None
         if vocals:
@@ -119,6 +121,16 @@ class NativePsarcPacker:
 
         psarc_path = out_dir / f"{song_key}.psarc"
         psarc_path.write_bytes(psarc_bytes)
+
+        write_rs2dlc(
+            arrangements,
+            [p.name for p in instrumental_xml],
+            audio_dest.name,
+            song_key,
+            out_dir / "rockforge.rs2dlc",
+            vocals_xml_name=vocals_path.name if vocals_path else None,
+            cover_art_name=cover_art_dest.name if cover_art_dest else None,
+        )
 
         # Keep the bundle DLC Builder-importable (the GET /jobs/{id}/bundle zip)
         # and additionally record the natively-produced .psarc.
