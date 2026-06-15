@@ -178,6 +178,32 @@ texture/`albumArt` URN — the Song2014 XML `albumArt` field
 (`infrastructure/rsxml/writer.py`) stays empty in both DLC Builder and native
 PSARC output, same as building without a cover set.
 
+### DLC Builder project file (`rockforge.rs2dlc`)
+
+`rockforge_project.json` is RockForge's *own* descriptor — DLC Builder can't
+open it, so without help the user must recreate a project and "Add Arrangement"
+each XML by hand. `infrastructure/packaging/rs2dlc.py` additionally emits the
+**real** DLC Builder project format (`rockforge.rs2dlc`) so the whole song
+(every instrumental, the vocals, audio and cover) loads in one "Open project".
+Both `DlcBuilderPackager` and `NativePsarcPacker` write it.
+
+The format is the `DLCProject.Dto` from Rocksmith2014.NET, serialized the way
+DLC Builder does (System.Text.Json + FSharp.SystemTextJson defaults): arrangements
+are an adjacent-tag discriminated union
+(`{"Case":"Instrumental"|"Vocals"|"Showlights","Fields":[{…}]}`), `null` members
+are omitted, `SortableString` is `{"Value","SortValue"}`, `AudioFile` is
+`{"Path","Volume"}`. `ArrangementName`/`RouteMask` per kind: Lead→0/1, Combo
+(our COMBINED)→1/1, Rhythm→2/2 (from `Arrangement.fs`). `Tuning` is the six
+semitone offsets (`Tuning.offsets_from_standard`), `TuningPitch` from
+`cent_offset`. `ID`==`PersistentID` (one GUID), `MasterID` random positive int —
+matching a real captured `.rs2dlc`.
+
+Honesty note: RockForge has no tone-gear model, so `Tones` is empty and
+instrumentals carry an empty `BaseTone` (DLC Builder flags a "tone missing"
+issue the user resolves with its tone library); `Volume` uses a neutral default
+(DLC Builder's "Calculate Volumes" recomputes it) and the audio preview is left
+empty (its "Create Preview Audio" generates it).
+
 ## Commands
 
 ```bash
