@@ -31,6 +31,11 @@ ml = [
     "basic-pitch>=0.3",     # Apache-2.0 — polyphonic note transcription
     "librosa>=0.10",        # ISC — beat tracking, tuning estimation
     "soundfile>=0.12",
+    # Floor only: basic-pitch's "scipy>=1.4.1" lets the resolver settle on an
+    # old scipy (e.g. 1.9.1) that has no Windows/cp311 wheel, forcing a source
+    # build that needs a working MSVC ("Compiler cl can not compile programs").
+    # scipy>=1.11 has cp311 wheels for win_amd64 and is still numpy<2 compatible.
+    "scipy>=1.11",
 ]
 youtube = [
     "yt-dlp>=2024.4",       # Ingestão YouTube: viola o ToS do YouTube — desativada por defeito (ver config)
