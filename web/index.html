@@ -632,6 +632,16 @@ function showArr(i) {
     if (isMajor) s += `<text x="${x}" y="12" fill="#666" font-size="12">${t}s</text>`;
     else if (isSecond) s += `<text x="${x}" y="12" fill="#454852" font-size="9">${t}</text>`;
   }
+  // Lyrics editor times are in recording-time (un-padded); shift to bundle
+  // time the same way the playhead does so words line up with their notes.
+  for (const e of lyricsEvents) {
+    const word = e.lyric.trim();
+    if (!word) continue;
+    const x = timeToX(e.time + viewOrigin);
+    const active = currentPlayheadT >= e.time && currentPlayheadT <= e.time + e.length;
+    s += `<text x="${x}" y="26" fill="${active ? '#ff7a45' : '#9aa0ad'}" font-size="13" font-weight="${active ? '700' : '400'}" text-anchor="middle">${esc(word)}${e.lineBreak ? ' /' : ''}</text>`;
+    s += `<line x1="${x}" y1="30" x2="${x}" y2="${H-35}" stroke="${active ? '#ff7a45' : '#454852'}" stroke-width="1" stroke-dasharray="2,4" opacity=".35"/>`;
+  }
   // group simultaneous notes (chords) so they get a connecting bracket
   const groups = [];
   for (const n of a.notes) {
