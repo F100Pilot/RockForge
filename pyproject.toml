@@ -38,7 +38,10 @@ youtube = [
 postgres = ["psycopg[binary]>=3.1"]
 # Automatic lyric transcription (EXPERIMENTAL) — WhisperX over the Demucs
 # vocals stem. Heavy (torch + model weights); the LRC path needs none of this.
-lyrics = ["whisperx>=3.1"]
+# <3.4: whisperx>=3.4 pulls pyannote-audio>=4.0/numpy>=2.1, which conflicts with
+# basic-pitch's tensorflow<2.15.1 (numpy<2) and makes pip's resolver explode
+# (ResolutionTooDeep) when [ml] and [lyrics] are installed together.
+lyrics = ["whisperx>=3.1,<3.4"]
 # Native PSARC/SNG encryption (AES-256-CFB/CTR) — see infrastructure/packaging/psarc.
 psarc = ["cryptography>=42"]
 dev = [
