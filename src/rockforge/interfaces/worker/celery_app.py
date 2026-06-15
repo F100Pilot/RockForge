@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 
@@ -224,12 +225,21 @@ def generate_cdlc(job_id: str) -> None:
         session.commit()
 
 
+def _log_lyrics_stage(params: dict[str, Any], message: str) -> None:
+    """Append a timestamped line to params["lyrics_log"], capped to the most
+    recent 50 entries so the job row doesn't grow unbounded."""
+    log = cast("list[str]", params.get("lyrics_log") or [])
+    stamp = datetime.now(UTC).strftime("%H:%M:%S")
+    params["lyrics_log"] = [*log, f"[{stamp}] {message}"][-50:]
+
+
 @celery_app.task(name="rockforge.detect_lyrics")
 def detect_lyrics(job_id: str) -> None:
     """Detect lyrics from a job's source recording (Demucs vocals + WhisperX).
 
     Slow (minutes); progress is reported via params["lyrics_status"] rather
     than JobStatus, so it never hides a completed build or disables /arrangements.
+    Human-readable progress is appended to params["lyrics_log"].
     """
     session_factory = make_session_factory(settings.database_url)
     with session_factory() as session:
@@ -239,6 +249,8 @@ def detect_lyrics(job_id: str) -> None:
         job.stage = "lyrics"
         params = cast(dict[str, Any], job.params or {})
         warnings = list(job.warnings or [])
+        params["lyrics_log"] = []
+        _log_lyrics_stage(params, "lyric detection started")
         try:
             normalizer, separator, transcriber_cls = _build_detection()
             if not transcriber_cls.available():
@@ -247,22 +259,26 @@ def detect_lyrics(job_id: str) -> None:
                     "(pip install 'rockforge[lyrics]')"
                 )
                 params["lyrics_status"] = "unavailable"
+                _log_lyrics_stage(params, "whisperx is not installed — aborting")
             else:
                 workdir = settings.work_dir / job.id / "lyrics"
                 workdir.mkdir(parents=True, exist_ok=True)
 
                 params["lyrics_status"] = "normalizing"
+                _log_lyrics_stage(params, "normalizing source audio (ffmpeg)")
                 job.params = params
                 session.commit()
                 normalized = normalizer.normalize(Path(job.source), workdir)
 
                 params["lyrics_status"] = "separating"
+                _log_lyrics_stage(params, "isolating vocals (Demucs) — this can take a while")
                 job.params = params
                 session.commit()
                 guitar = separator.separate_guitar(normalized, workdir)
                 vocals_stem = guitar.parent / "vocals.wav"
 
                 params["lyrics_status"] = "transcribing"
+                _log_lyrics_stage(params, "transcribing vocals (WhisperX)")
                 job.params = params
                 session.commit()
                 events = transcriber_cls(device=settings.demucs_device).transcribe(vocals_stem)
@@ -271,9 +287,11 @@ def detect_lyrics(job_id: str) -> None:
                     {"time": e.time, "length": e.length, "lyric": e.lyric} for e in events
                 ]
                 params["lyrics_status"] = "ready" if events else "empty"
+                _log_lyrics_stage(params, f"done — {len(events)} word(s) detected")
         except Exception as exc:  # never crash the job over lyric detection
             params["lyrics_status"] = "unavailable"
             warnings.append(f"lyric detection failed: {type(exc).__name__}: {exc}")
+            _log_lyrics_stage(params, f"failed: {type(exc).__name__}: {exc}")
         job.params = params
         job.warnings = warnings
         session.commit()

@@ -388,6 +388,7 @@
           <div style="background:#262830;border-radius:4px;height:8px;overflow:hidden">
             <div id="lyricsProgressBar" style="background:#ff7a45;height:100%;width:0%;transition:width .3s"></div>
           </div>
+          <pre id="lyricsLog" style="margin:.4rem 0 0;max-height:8rem;overflow-y:auto;background:#14151a;border:1px solid #262830;border-radius:4px;padding:.4rem .6rem;font-size:.75rem;color:#9aa0ad;white-space:pre-wrap"></pre>
         </div>
         <table id="lyricsTable" style="width:100%">
           <thead><tr><th>Tempo (s)</th><th>Palavra</th><th>Fim de linha</th><th>Duração (s)</th><th></th></tr></thead>
@@ -810,15 +811,22 @@ const LYRICS_PROGRESS = {
 };
 const LYRICS_DETECTING_STATUSES = new Set(['detecting', 'normalizing', 'separating', 'transcribing']);
 
-function updateLyricsProgress(status) {
+function updateLyricsProgress(status, log) {
   const wrap = document.getElementById('lyricsProgressWrap');
   const bar = document.getElementById('lyricsProgressBar');
+  const logEl = document.getElementById('lyricsLog');
   if (status in LYRICS_PROGRESS) {
     wrap.style.display = '';
     bar.style.width = `${LYRICS_PROGRESS[status] * 100}%`;
   } else {
     wrap.style.display = 'none';
     bar.style.width = '0%';
+  }
+  if (log && log.length) {
+    logEl.textContent = log.join('\n');
+    logEl.scrollTop = logEl.scrollHeight;
+  } else {
+    logEl.textContent = '';
   }
 }
 
@@ -829,7 +837,7 @@ async function loadLyrics(id) {
   lyricsEvents = eventsToRows(body.events);
   renderLyricsRows();
   document.getElementById('lyricsInfo').textContent = LYRICS_STATUS_LABEL[body.status] || '';
-  updateLyricsProgress(body.status);
+  updateLyricsProgress(body.status, body.log);
   clearInterval(lyricsPollTimer);
   if (LYRICS_DETECTING_STATUSES.has(body.status)) {
     lyricsPollTimer = setInterval(async () => {
@@ -838,7 +846,7 @@ async function loadLyrics(id) {
       if (!rr.ok) return;
       const b = await rr.json();
       document.getElementById('lyricsInfo').textContent = LYRICS_STATUS_LABEL[b.status] || '';
-      updateLyricsProgress(b.status);
+      updateLyricsProgress(b.status, b.log);
       if (!LYRICS_DETECTING_STATUSES.has(b.status)) {
         clearInterval(lyricsPollTimer);
         lyricsEvents = eventsToRows(b.events);
