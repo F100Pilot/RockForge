@@ -18,6 +18,11 @@ Still honest about limits (CLAUDE.md):
   Rocksmith's separate vocal-arrangement convention is not modelled yet.
 - Requires the ``[psarc]`` extra (``cryptography``) for TOC/SNG encryption;
   raises :class:`PackagingError` with a clear message if missing.
+
+The bundle still carries the DLC Builder-importable ``rockforge_project.json``
+(via :func:`build_project_metadata`), so the ``GET /jobs/{id}/bundle`` zip
+remains a valid fallback even in native mode — the native ``.psarc`` is
+additive, never a replacement for the DLC Builder import path.
 """
 
 from __future__ import annotations
@@ -28,7 +33,10 @@ from pathlib import Path
 
 from rockforge.domain.arrangement import Arrangement
 from rockforge.domain.errors import PackagingError
-from rockforge.infrastructure.packaging.dlcbuilder import PackagingResult
+from rockforge.infrastructure.packaging.dlcbuilder import (
+    PackagingResult,
+    build_project_metadata,
+)
 from rockforge.infrastructure.packaging.psarc import container, manifest, sng
 from rockforge.infrastructure.packaging.wwise import WwiseWemConverter
 from rockforge.infrastructure.rsxml.vocals import VocalEvent, write_vocals_xml
@@ -102,15 +110,18 @@ class NativePsarcPacker:
         psarc_path = out_dir / f"{song_key}.psarc"
         psarc_path.write_bytes(psarc_bytes)
 
-        project = {
-            "title": meta.title,
-            "artist": meta.artist,
-            "album": meta.album,
-            "year": meta.year,
-            "song_key": song_key,
-            "psarc": psarc_path.name,
-            "note": "Generated natively by RockForge (infrastructure/packaging/psarc).",
-        }
+        # Keep the bundle DLC Builder-importable (the GET /jobs/{id}/bundle zip)
+        # and additionally record the natively-produced .psarc.
+        project = build_project_metadata(
+            arrangements, audio_dest, wem_path, xml_paths, vocals_path
+        )
+        project["song_key"] = song_key
+        project["psarc"] = psarc_path.name
+        project["native_psarc_note"] = (
+            "RockForge also packed this .psarc natively "
+            "(infrastructure/packaging/psarc); the DLC Builder fields above "
+            "remain valid for re-importing the bundle."
+        )
         (out_dir / "rockforge_project.json").write_text(
             json.dumps(project, indent=2, ensure_ascii=False), encoding="utf-8"
         )

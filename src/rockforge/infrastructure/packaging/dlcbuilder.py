@@ -33,6 +33,45 @@ class PackagingResult:
     psarc_path: Path | None  # None => packer unavailable; bundle is the deliverable
 
 
+def build_project_metadata(
+    arrangements: list[Arrangement],
+    audio_dest: Path,
+    wem_path: Path | None,
+    xml_paths: list[Path],
+    vocals_path: Path | None,
+) -> dict[str, object]:
+    """The DLC Builder-importable project descriptor (``rockforge_project.json``).
+
+    Shared by :class:`DlcBuilderPackager` and the native PSARC packer so the
+    bundle stays importable into DLC Builder regardless of ``psarc_mode`` — the
+    native path produces a ``.psarc`` *and* keeps this fallback file.
+    """
+    meta = arrangements[0].metadata
+    return {
+        "title": meta.title,
+        "artist": meta.artist,
+        "album": meta.album,
+        "year": meta.year,
+        "audio": audio_dest.name,
+        "audio_wem": wem_path.name if wem_path else None,
+        "arrangements": [p.name for p in xml_paths],
+        "vocals": vocals_path.name if vocals_path else None,
+        "tones": {
+            arr.kind.value: {"base": arr.tone_base, "slots": arr.tone_names}
+            for arr in arrangements
+            if arr.tone_base or arr.tone_names
+        },
+        "stage_confidence": {
+            arr.kind.value: {k: v.value for k, v in arr.stage_confidence.items()}
+            for arr in arrangements
+        },
+        "note": (
+            "Import into DLC Builder (https://github.com/iminashi/Rocksmith2014.NET) "
+            "to convert audio via Wwise and pack the final PSARC."
+        ),
+    }
+
+
 class DlcBuilderPackager:
     def __init__(
         self,
@@ -74,30 +113,9 @@ class DlcBuilderPackager:
             wem_path = out_dir / "audio.wem"
             shutil.copy2(wem, wem_path)
 
-        meta = arrangements[0].metadata
-        project = {
-            "title": meta.title,
-            "artist": meta.artist,
-            "album": meta.album,
-            "year": meta.year,
-            "audio": audio_dest.name,
-            "audio_wem": wem_path.name if wem_path else None,
-            "arrangements": [p.name for p in xml_paths],
-            "vocals": vocals_path.name if vocals_path else None,
-            "tones": {
-                arr.kind.value: {"base": arr.tone_base, "slots": arr.tone_names}
-                for arr in arrangements
-                if arr.tone_base or arr.tone_names
-            },
-            "stage_confidence": {
-                arr.kind.value: {k: v.value for k, v in arr.stage_confidence.items()}
-                for arr in arrangements
-            },
-            "note": (
-                "Import into DLC Builder (https://github.com/iminashi/Rocksmith2014.NET) "
-                "to convert audio via Wwise and pack the final PSARC."
-            ),
-        }
+        project = build_project_metadata(
+            arrangements, audio_dest, wem_path, xml_paths, vocals_path
+        )
         (out_dir / "rockforge_project.json").write_text(
             json.dumps(project, indent=2, ensure_ascii=False), encoding="utf-8"
         )

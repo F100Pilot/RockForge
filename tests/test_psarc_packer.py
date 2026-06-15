@@ -46,6 +46,29 @@ def test_package_produces_valid_psarc(tmp_path: Path) -> None:
     assert any(name.endswith(".hsan") for name in entries)
 
 
+def test_package_keeps_dlc_builder_importable_project(tmp_path: Path) -> None:
+    """Native mode must still emit the DLC Builder-importable bundle (the zip)."""
+    import json
+
+    audio = tmp_path / "audio.wav"
+    audio.write_bytes(b"RIFF....WAVEfmt ")
+
+    packer = NativePsarcPacker(wem_converter=None)
+    result = packer.package(
+        [_arrangement(ArrangementKind.COMBINED)], audio, tmp_path / "bundle"
+    )
+
+    project = json.loads((result.bundle_dir / "rockforge_project.json").read_text())
+    # DLC Builder import fields preserved...
+    assert project["audio"] == "audio.wav"
+    assert project["arrangements"] == ["arrangement_combined.xml"]
+    assert "stage_confidence" in project
+    assert "DLC Builder" in project["note"]
+    # ...plus the native PSARC reference.
+    assert project["psarc"] == result.psarc_path.name
+    assert project["song_key"]
+
+
 def test_package_requires_psarc_extra(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import builtins
 
