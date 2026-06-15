@@ -52,11 +52,15 @@ Lista de funcionalidades propostas, ainda não implementadas.
     bloco + tamanho descomprimido + offset, e tabela de tamanhos de bloco. TOC
     ainda NÃO cifrado (cifra vem na fase 4) — testável sem `cryptography`.
 
-  - [ ] **Fase 2 — Manifestos** (`infrastructure/packaging/psarc/manifest.py`):
-    gerar `manifest/songs_dlc_<key>/<key>_<arr>.json` por arranjo,
+  - [x] **Fase 2 — Manifestos** (`infrastructure/packaging/psarc/manifest.py`):
+    gera `manifests/songs_dlc_<key>/<key>_<arr>.json` por arranjo,
     `songs_dlc_<key>.hsan` agregado, `<key>_aggregategraph.nt` e
     `toolkit.version` — os manifestos de runtime do Rocksmith, distintos do
     `rockforge_project.json` interno (que serve para importar no DLC Builder).
+    Cobre apenas identidade/metadados (nomes, artista/álbum/ano, afinação,
+    duração, capo, IDs persistentes determinísticos); estatísticas por nota,
+    iterações de frase/secção e dynamic difficulty dependem do SNG compilado
+    (fase 3) e ainda não são emitidas — documentado no módulo.
 
   - [ ] **Fase 3 — Compilação SNG** (`infrastructure/packaging/psarc/sng.py`):
     converter o `Arrangement`/Song2014 XML já produzido por
