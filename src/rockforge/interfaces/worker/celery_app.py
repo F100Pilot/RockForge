@@ -250,10 +250,23 @@ def detect_lyrics(job_id: str) -> None:
             else:
                 workdir = settings.work_dir / job.id / "lyrics"
                 workdir.mkdir(parents=True, exist_ok=True)
+
+                params["lyrics_status"] = "normalizing"
+                job.params = params
+                session.commit()
                 normalized = normalizer.normalize(Path(job.source), workdir)
+
+                params["lyrics_status"] = "separating"
+                job.params = params
+                session.commit()
                 guitar = separator.separate_guitar(normalized, workdir)
                 vocals_stem = guitar.parent / "vocals.wav"
+
+                params["lyrics_status"] = "transcribing"
+                job.params = params
+                session.commit()
                 events = transcriber_cls(device=settings.demucs_device).transcribe(vocals_stem)
+
                 params["lyrics_events"] = [
                     {"time": e.time, "length": e.length, "lyric": e.lyric} for e in events
                 ]
