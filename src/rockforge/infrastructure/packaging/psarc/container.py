@@ -1,11 +1,11 @@
 """PSARC container format: header, zlib-compressed blocks and TOC.
 
 Ported (format layout) from the open Rocksmith2014.NET implementation (DLC
-Builder, MIT licence). This is Phase 1 of the native-PSARC plan in TODO.md:
-the TOC produced here is **unencrypted** — real Rocksmith PSARCs encrypt the
-TOC with AES-256-CFB, which is added in a later phase. An unencrypted PSARC
-is therefore not yet a valid game archive; this module only establishes the
-container's binary layout, with a round-trip pack/unpack.
+Builder, MIT licence). Phase 1 of the native-PSARC plan (TODO.md) established
+the container layout with an unencrypted TOC; phase 4 added optional
+AES-256-CFB TOC encryption (``crypto.py``, ``pack_entries(..., encrypt=True)``),
+matching real Rocksmith PSARCs (``archive_flags=4``). The 32-byte header is
+always plaintext.
 
 Layout:
 - 32-byte header: magic "PSAR", version 1.4, compression "zlib", TOC length,
@@ -57,8 +57,14 @@ def _compress_block(block: bytes) -> tuple[bytes, int]:
     return block, 0
 
 
-def pack_entries(files: dict[str, bytes]) -> bytes:
-    """Pack ``{archive_path: content}`` into a PSARC container (unencrypted TOC)."""
+def pack_entries(files: dict[str, bytes], encrypt: bool = False) -> bytes:
+    """Pack ``{archive_path: content}`` into a PSARC container.
+
+    If ``encrypt`` is true, the TOC (entries + block-length table) is
+    AES-256-CFB encrypted with the key ported from DLC Builder (see
+    ``crypto.py``, phase 4) and ``archive_flags`` is set to 4, matching real
+    Rocksmith PSARCs. The 32-byte header itself is always plaintext.
+    """
     paths = list(files.keys())
     name_block = ("\n".join(paths) + "\n").encode("utf-8")
     contents = [name_block, *(files[p] for p in paths)]
@@ -77,24 +83,33 @@ def pack_entries(files: dict[str, bytes]) -> bytes:
         toc_rows.append((b"\x00" * 16, zindex_begin, len(content), offset))
 
     num_entries = len(toc_rows)
-    toc_length = HEADER_SIZE + num_entries * TOC_ENTRY_SIZE + len(zlengths) * 2
+
+    toc_body = bytearray()
+    for md5, zindex_begin, length, offset in toc_rows:
+        toc_body += md5
+        toc_body += struct.pack(">I", zindex_begin)
+        toc_body += _uint40(length)
+        toc_body += _uint40(offset)
+    for zlength in zlengths:
+        toc_body += struct.pack(">H", zlength)
+
+    archive_flags = 0
+    toc_bytes: bytes = bytes(toc_body)
+    if encrypt:
+        from rockforge.infrastructure.packaging.psarc.crypto import encrypt_psarc_toc
+
+        toc_bytes = encrypt_psarc_toc(toc_bytes)
+        archive_flags = 4
+
+    toc_length = HEADER_SIZE + len(toc_bytes)
 
     out = bytearray()
     out += MAGIC
     out += struct.pack(">HH", VERSION[0], VERSION[1])
     out += COMPRESSION
     out += struct.pack(">IIII", toc_length, TOC_ENTRY_SIZE, num_entries, BLOCK_SIZE)
-    out += struct.pack(">I", 0)  # archive_flags: unencrypted
-
-    for md5, zindex_begin, length, offset in toc_rows:
-        out += md5
-        out += struct.pack(">I", zindex_begin)
-        out += _uint40(length)
-        out += _uint40(offset)
-
-    for zlength in zlengths:
-        out += struct.pack(">H", zlength)
-
+    out += struct.pack(">I", archive_flags)
+    out += toc_bytes
     out += block_section
     return bytes(out)
 
@@ -110,20 +125,26 @@ def unpack(data: bytes) -> dict[str, bytes]:
     toc_length, toc_entry_size, num_entries, block_size = struct.unpack_from(">IIII", data, 12)
     if toc_entry_size != TOC_ENTRY_SIZE:
         raise ValueError(f"unsupported TOC entry size {toc_entry_size}")
+    (archive_flags,) = struct.unpack_from(">I", data, 28)
+
+    toc_bytes = data[HEADER_SIZE:toc_length]
+    if archive_flags & 4:
+        from rockforge.infrastructure.packaging.psarc.crypto import decrypt_psarc_toc
+
+        toc_bytes = decrypt_psarc_toc(toc_bytes)
 
     toc_rows: list[tuple[int, int, int]] = []  # zindex_begin, length, offset
-    pos = HEADER_SIZE
+    pos = 0
     for _ in range(num_entries):
-        _md5 = data[pos : pos + 16]
-        zindex_begin = struct.unpack_from(">I", data, pos + 16)[0]
-        length = _from_uint40(data[pos + 20 : pos + 25])
-        offset = _from_uint40(data[pos + 25 : pos + 30])
+        _md5 = toc_bytes[pos : pos + 16]
+        zindex_begin = struct.unpack_from(">I", toc_bytes, pos + 16)[0]
+        length = _from_uint40(toc_bytes[pos + 20 : pos + 25])
+        offset = _from_uint40(toc_bytes[pos + 25 : pos + 30])
         toc_rows.append((zindex_begin, length, offset))
         pos += TOC_ENTRY_SIZE
 
-    zlengths_end = toc_length
-    num_blocks = (zlengths_end - pos) // 2
-    zlengths = list(struct.unpack_from(f">{num_blocks}H", data, pos))
+    num_blocks = sum(-(-length // block_size) or 1 for _, length, _ in toc_rows)
+    zlengths = list(struct.unpack_from(f">{num_blocks}H", toc_bytes, pos))
 
     block_section = data[toc_length:]
 
