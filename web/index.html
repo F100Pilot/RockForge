@@ -842,12 +842,16 @@ async function loadLyrics(id) {
   updateLyricsProgress(body.status, body.log);
   clearInterval(lyricsPollTimer);
   if (LYRICS_DETECTING_STATUSES.has(body.status)) {
+    const startedAt = Date.now();
     lyricsPollTimer = setInterval(async () => {
       if (!selectedJob) { clearInterval(lyricsPollTimer); return; }
       const rr = await fetch(`/jobs/${selectedJob.id}/lyrics`);
       if (!rr.ok) return;
       const b = await rr.json();
-      document.getElementById('lyricsInfo').textContent = LYRICS_STATUS_LABEL[b.status] || '';
+      let label = LYRICS_STATUS_LABEL[b.status] || '';
+      if (b.status === 'detecting' && !b.log.length && Date.now() - startedAt > 30000)
+        label += ' — sem resposta do worker há mais de 30s; verifica logs/worker.log';
+      document.getElementById('lyricsInfo').textContent = label;
       updateLyricsProgress(b.status, b.log);
       if (!LYRICS_DETECTING_STATUSES.has(b.status)) {
         clearInterval(lyricsPollTimer);
