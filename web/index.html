@@ -384,6 +384,11 @@
           <button type="button" id="detectLyrics" class="secondary">Detetar letra</button>
           <span id="lyricsInfo" class="meta"></span>
         </div>
+        <div id="lyricsProgressWrap" style="display:none;margin:.4rem 0">
+          <div style="background:#262830;border-radius:4px;height:8px;overflow:hidden">
+            <div id="lyricsProgressBar" style="background:#ff7a45;height:100%;width:0%;transition:width .3s"></div>
+          </div>
+        </div>
         <table id="lyricsTable" style="width:100%">
           <thead><tr><th>Tempo (s)</th><th>Palavra</th><th>Fim de linha</th><th>Duração (s)</th><th></th></tr></thead>
           <tbody id="lyricsRows"></tbody>
@@ -794,9 +799,28 @@ function serializeLyrics() {
 }
 
 const LYRICS_STATUS_LABEL = {
-  none: '', detecting: 'a detetar…', ready: 'deteção concluída',
-  empty: 'nenhuma letra detetada', unavailable: 'deteção indisponível (extra "lyrics" não instalado)',
+  none: '', detecting: 'a detetar…', normalizing: 'a normalizar áudio…',
+  separating: 'a isolar a voz (Demucs)…', transcribing: 'a transcrever (WhisperX)…',
+  ready: 'deteção concluída', empty: 'nenhuma letra detetada',
+  unavailable: 'deteção indisponível (extra "lyrics" não instalado)',
 };
+// Rough share of total detection time for each stage, for the progress bar.
+const LYRICS_PROGRESS = {
+  detecting: 0.05, normalizing: 0.1, separating: 0.45, transcribing: 0.85,
+};
+const LYRICS_DETECTING_STATUSES = new Set(['detecting', 'normalizing', 'separating', 'transcribing']);
+
+function updateLyricsProgress(status) {
+  const wrap = document.getElementById('lyricsProgressWrap');
+  const bar = document.getElementById('lyricsProgressBar');
+  if (status in LYRICS_PROGRESS) {
+    wrap.style.display = '';
+    bar.style.width = `${LYRICS_PROGRESS[status] * 100}%`;
+  } else {
+    wrap.style.display = 'none';
+    bar.style.width = '0%';
+  }
+}
 
 async function loadLyrics(id) {
   const r = await fetch(`/jobs/${id}/lyrics`);
@@ -805,15 +829,17 @@ async function loadLyrics(id) {
   lyricsEvents = eventsToRows(body.events);
   renderLyricsRows();
   document.getElementById('lyricsInfo').textContent = LYRICS_STATUS_LABEL[body.status] || '';
+  updateLyricsProgress(body.status);
   clearInterval(lyricsPollTimer);
-  if (body.status === 'detecting') {
+  if (LYRICS_DETECTING_STATUSES.has(body.status)) {
     lyricsPollTimer = setInterval(async () => {
       if (!selectedJob) { clearInterval(lyricsPollTimer); return; }
       const rr = await fetch(`/jobs/${selectedJob.id}/lyrics`);
       if (!rr.ok) return;
       const b = await rr.json();
       document.getElementById('lyricsInfo').textContent = LYRICS_STATUS_LABEL[b.status] || '';
-      if (b.status !== 'detecting') {
+      updateLyricsProgress(b.status);
+      if (!LYRICS_DETECTING_STATUSES.has(b.status)) {
         clearInterval(lyricsPollTimer);
         lyricsEvents = eventsToRows(b.events);
         renderLyricsRows();
