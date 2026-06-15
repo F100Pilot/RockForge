@@ -197,6 +197,12 @@ pinned (`mypy~=1.19.0`) so local matches CI — do not bump it casually.
 - **Python 3.11 only** (`requires-python = ">=3.11,<3.12"`). `basic-pitch` needs
   `tensorflow<2.15.1`, whose newest wheels target 3.11. On Windows use
   `py -3.11 -m pip ...`; the user does NOT want virtualenvs.
+- **`whisperx` is pinned `<3.4`** (the `lyrics` extra). `whisperx>=3.4` pulls
+  `pyannote-audio>=4.0`/`numpy>=2.1`, which directly conflicts with
+  `basic-pitch`'s `tensorflow<2.15.1` (needs `numpy<2`) — installing `[ml,lyrics]`
+  together then sends pip's resolver into `ResolutionTooDeep` (it backtracks
+  over the whole `transformers`/`numpy` version range and never finishes). Don't
+  bump this without re-checking the `numpy` ranges of both stacks.
 - **The .wem must have a seek table.** Converting through a blank Wwise project
   produces a seek-table-less Vorbis .wem; Rocksmith loads the song but plays
   silence, freezes the note highway and exits seconds in. `wwise.py` extracts the
