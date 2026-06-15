@@ -607,6 +607,20 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
         )
         session.add(job)
         session.commit()
+
+        # Rebuild creates a fresh work directory (job.id != original.id); the
+        # cover image referenced by params["cover_art"] lives under the
+        # original job's directory, so copy it across or the worker's
+        # candidate.exists() check (celery_app.generate_cdlc) silently finds
+        # nothing and the bundle ends up without album art.
+        cover_art_name = params.get("cover_art")
+        if cover_art_name:
+            src = settings.work_dir / original.id / cast(str, cover_art_name)
+            if src.exists():
+                dest_dir = settings.work_dir / job.id
+                dest_dir.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, dest_dir / cast(str, cover_art_name))
+
         _enqueue(job)
         return _to_out(job)
 

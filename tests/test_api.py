@@ -520,6 +520,24 @@ def test_cover_art_replace_with_different_extension(client: TestClient) -> None:
     assert r.headers["content-type"] == "image/jpeg"
 
 
+def test_rebuild_copies_cover_art_to_new_workdir(client: TestClient) -> None:
+    original = _create_job(client)
+    png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 16
+    r = client.post(
+        f"/jobs/{original['id']}/cover", files={"file": ("cover.png", png, "image/png")}
+    )
+    assert r.status_code == 202
+
+    r = client.post(f"/jobs/{original['id']}/rebuild", json={})
+    assert r.status_code == 202
+    rebuilt = r.json()
+    assert rebuilt["id"] != original["id"]
+
+    r = client.get(f"/jobs/{rebuilt['id']}/cover")
+    assert r.status_code == 200
+    assert r.content == png
+
+
 def test_heartbeat_ok(client: TestClient) -> None:
     assert client.post("/heartbeat").json() == {"ok": True}
 
