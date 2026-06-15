@@ -24,7 +24,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from rockforge.application.pipeline import PipelineResult
-from rockforge.application.ports import AudioIngestor, AudioNormalizer
+from rockforge.application.ports import AudioIngestor, AudioNormalizer, Packager
 from rockforge.domain.arrangement import (
     Arrangement,
     ArrangementKind,
@@ -41,7 +41,6 @@ from rockforge.infrastructure.gpimport.parser import (
     inspect_gp,
     parse_gp_track,
 )
-from rockforge.infrastructure.packaging.dlcbuilder import DlcBuilderPackager
 from rockforge.infrastructure.rsxml.vocals import VocalEvent, expand_to_words, parse_lyrics
 
 # Minimum lead-in before the first note. DLC Builder's PhraseGenerator inserts a
@@ -256,7 +255,7 @@ def auto_pick_tracks(gp_path: Path) -> tuple[int | None, int | None]:
 class GenerateFromGpUseCase:
     ingestor: AudioIngestor
     normalizer: AudioNormalizer
-    packager: DlcBuilderPackager
+    packager: Packager
 
     def run(
         self,

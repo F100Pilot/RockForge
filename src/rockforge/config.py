@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     enable_youtube: bool = True  # operator-enabled; downloading audio violates the YouTube ToS
     demucs_device: str = "cpu"
     psarc_packer_cmd: str | None = None  # e.g. external DLC Builder CLI invocation
+    psarc_mode: str = "dlcbuilder"  # "dlcbuilder" (default) | "native" (packer/packer.py)
 
     # Local Wwise installation (NEVER bundled — Audiokinetic EULA). Falls back to
     # the standard WWISEROOT env var set by the Audiokinetic Launcher.

@@ -133,8 +133,9 @@ def _note_mask(note_techniques: frozenset[Technique]) -> int:
 
 
 def _section_end_times(sections: list[Section], song_length: float) -> list[float]:
-    ends = [s.start_time for s in sections[1:]] + [song_length]
-    return ends
+    if not sections:
+        return []
+    return [s.start_time for s in sections[1:]] + [song_length]
 
 
 def from_arrangement(
