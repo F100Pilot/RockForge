@@ -398,7 +398,7 @@ def test_lyrics_default_status_none(client: TestClient) -> None:
     job = _create_job(client)
     r = client.get(f"/jobs/{job['id']}/lyrics")
     assert r.status_code == 200
-    assert r.json() == {"status": "none", "events": []}
+    assert r.json() == {"status": "none", "events": [], "log": []}
 
 
 def test_detect_lyrics_enqueues_and_marks_detecting(client: TestClient) -> None:

@@ -126,8 +126,10 @@ class LyricEventOut(BaseModel):
 
 
 class LyricsOut(BaseModel):
-    status: str  # "none"|"detecting"|"ready"|"empty"|"unavailable"
+    # "none"|"detecting"|"normalizing"|"separating"|"transcribing"|"ready"|"empty"|"unavailable"
+    status: str
     events: list[LyricEventOut]
+    log: list[str] = []
 
 
 class YouTubeJobIn(BaseModel):
@@ -691,7 +693,8 @@ def get_lyrics(job_id: str) -> LyricsOut:
             )
             for r in rows
         ]
-        return LyricsOut(status=status, events=events)
+        log = cast("list[str]", params.get("lyrics_log") or [])
+        return LyricsOut(status=status, events=events, log=[str(line) for line in log])
 
 
 @app.get("/jobs/{job_id}/arrangements", response_model=list[ArrangementOut])
