@@ -67,7 +67,7 @@ def encrypt_psarc_toc(data: bytes) -> bytes:
 
     cipher = Cipher(algorithms.AES(ARC_KEY), _cfb_mode(b"\x00" * 16))
     encryptor = cipher.encryptor()
-    return encryptor.update(_zero_pad(data)) + encryptor.finalize()
+    return bytes(encryptor.update(_zero_pad(data)) + encryptor.finalize())
 
 
 def decrypt_psarc_toc(data: bytes) -> bytes:
@@ -76,7 +76,7 @@ def decrypt_psarc_toc(data: bytes) -> bytes:
 
     cipher = Cipher(algorithms.AES(ARC_KEY), _cfb_mode(b"\x00" * 16))
     decryptor = cipher.decryptor()
-    return decryptor.update(data) + decryptor.finalize()
+    return bytes(decryptor.update(data) + decryptor.finalize())
 
 
 def encrypt_sng(payload: bytes) -> bytes:
@@ -86,7 +86,7 @@ def encrypt_sng(payload: bytes) -> bytes:
     iv = os.urandom(16)
     cipher = Cipher(algorithms.AES(SNG_PC_KEY), modes.CTR(iv))
     encryptor = cipher.encryptor()
-    return iv + encryptor.update(payload) + encryptor.finalize()
+    return iv + bytes(encryptor.update(payload) + encryptor.finalize())
 
 
 def decrypt_sng(data: bytes) -> bytes:
@@ -96,4 +96,4 @@ def decrypt_sng(data: bytes) -> bytes:
     iv, ciphertext = data[:16], data[16:]
     cipher = Cipher(algorithms.AES(SNG_PC_KEY), modes.CTR(iv))
     decryptor = cipher.decryptor()
-    return decryptor.update(ciphertext) + decryptor.finalize()
+    return bytes(decryptor.update(ciphertext) + decryptor.finalize())
