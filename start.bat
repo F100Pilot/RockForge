@@ -3,7 +3,7 @@ REM Launches RockForge locally (no Docker) in a single window.
 REM Redis and the Celery worker run in the background (logs in .\logs\);
 REM the API runs in the foreground here. Ctrl+C stops the API; the
 REM background processes are then stopped too.
-REM Requires: pip install -e ".[dev,ml]" and a Redis server. On Windows the
+REM Requires: pip install -e ".[dev,ml,lyrics]" and a Redis server. On Windows the
 REM simplest is Memurai (https://www.memurai.com/) — installed as a service it
 REM is auto-detected here; otherwise any 'redis-server' on PATH works.
 

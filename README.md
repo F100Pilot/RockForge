@@ -92,15 +92,17 @@ Para contribuir, ver [`CLAUDE.md`](CLAUDE.md) (camadas, comandos e restrições 
 cd C:\onde\quiseres
 git clone https://github.com/F100Pilot/RockForge.git
 cd RockForge
-py -3.11 -m pip install -e ".[dev,ml]"
+py -3.11 -m pip install -e ".[dev,ml,lyrics]"
 ```
 
 `py -3.11` escolhe explicitamente o Python 3.11 mesmo que outra versão seja a
 predefinida; o `start.bat` deteta o 3.11 automaticamente. (Se só tens o 3.11,
-`pip install -e ".[dev,ml]"` também serve.)
+`pip install -e ".[dev,ml,lyrics]"` também serve.)
 
-O install demora (PyTorch/Demucs/Basic Pitch, vários GB). Para a transcrição
-automática de letra (opcional): `pip install -e ".[lyrics]"`.
+O install demora (PyTorch/Demucs/Basic Pitch/WhisperX, vários GB). O extra
+`lyrics` (WhisperX) é necessário para a **deteção automática de letra** —
+sem ele, "Detetar letra" reporta "indisponível". Se quiseres instalar sem
+essa funcionalidade, usa `pip install -e ".[dev,ml]"`.
 
 **3. Arrancar**
 
@@ -117,8 +119,8 @@ Notas:
 - Na lista de **Jobs** cada linha tem um botão 🗑 para remover o job (apaga
   também o bundle gerado e o ficheiro carregado, se nenhum outro job o usar);
   jobs em execução têm de terminar primeiro
-- Para updates: `git pull` dentro da pasta (e `pip install -e ".[dev,ml]"` se
-  o `pyproject.toml` tiver mudado)
+- Para updates: `git pull` dentro da pasta (e `pip install -e ".[dev,ml,lyrics]"`
+  se o `pyproject.toml` tiver mudado)
 
 ### Via Docker (alternativa)
 
@@ -132,8 +134,9 @@ execução nativa Windows com o Wwise instalado.
 Desenvolvimento:
 
 ```bash
-pip install -e ".[dev]"        # núcleo + testes (sem ML)
-pip install -e ".[dev,ml]"     # com Demucs/Basic Pitch/librosa
+pip install -e ".[dev]"            # núcleo + testes (sem ML)
+pip install -e ".[dev,ml]"         # com Demucs/Basic Pitch/librosa
+pip install -e ".[dev,ml,lyrics]"  # + deteção automática de letra (WhisperX)
 pytest && ruff check src tests && mypy
 ```
 
