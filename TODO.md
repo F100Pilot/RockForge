@@ -34,3 +34,15 @@ Lista de funcionalidades propostas, ainda não implementadas.
 - [ ] **Validação de tuning vs. alcance das notas**: avisar se, após uma
   correção de afinação, alguma nota do GP ficar fora do alcance do braço
   (fret > 24 ou negativo).
+
+- [ ] **Criar o PSARC diretamente na aplicação (sem DLC Builder)**: hoje o
+  empacotamento final depende do DLC Builder (ou de um packer externo via
+  `ROCKFORGE_PSARC_PACKER_CMD`) para compilar SNG, gerar DD e produzir o
+  `.psarc`. Objetivo: gerar o PSARC nativamente — implica (a) compilar o
+  Song2014 XML para SNG (formato binário do Rocksmith), (b) opcionalmente
+  gerar Dynamic Difficulty, e (c) empacotar tudo no contentor PSARC
+  (estrutura + compressão zlib). O `.wem` continua a precisar do Wwise (a EULA
+  Audiokinetic proíbe redistribuição), por isso esta etapa só remove a
+  dependência do DLC Builder para a parte de empacotamento, não para a
+  conversão de áudio. Referência: a implementação aberta do
+  Rocksmith2014.NET (formato SNG/PSARC).
