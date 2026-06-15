@@ -119,6 +119,13 @@ class DetectTempoOut(BaseModel):
     suggested_factor: float  # multiply note spacing after the point by this
 
 
+class DetectTuningOut(BaseModel):
+    """Proposed fine-tuning correction (not applied; the user reviews then
+    rebuilds). String/drop tuning is NOT detected — see librosa_adapter."""
+
+    suggested_cent_offset: float
+
+
 class LyricEventOut(BaseModel):
     time: float
     length: float
@@ -646,6 +653,37 @@ def detect_tempo(job_id: str, payload: DetectTempoIn) -> DetectTempoOut:
         detected_bpm=detected_bpm,
         suggested_factor=suggest_tempo_scale(gp_bpm, detected_bpm),
     )
+
+
+@app.post("/jobs/{job_id}/detect-tuning", response_model=DetectTuningOut)
+def detect_tuning(job_id: str) -> DetectTuningOut:
+    """Estimate the recording's fine-tuning deviation from A440 (librosa) for
+    GP jobs. String/drop tuning is taken from the GP file and is NOT detected
+    here (no production-grade solution from polyphonic audio — see
+    librosa_adapter). Like /auto-sync this is a proposal: the suggested
+    cent_offset is previewed and applied via the normal rebuild."""
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+        if job.source_type != "gp":
+            raise HTTPException(422, "tuning detection only applies to Guitar Pro jobs")
+        src = Path(job.source)
+    if not src.exists():
+        raise HTTPException(409, "source audio no longer exists on the work volume")
+
+    try:
+        from rockforge.infrastructure.rhythm.librosa_adapter import estimate_tuning_cents
+    except ImportError as exc:  # ml extra absent
+        raise HTTPException(
+            503, "tuning detection needs the 'ml' extra (librosa) — install rockforge[ml]"
+        ) from exc
+
+    try:
+        cents = estimate_tuning_cents(src)
+    except Exception as exc:
+        raise HTTPException(422, f"could not analyse the recording: {exc}") from exc
+    return DetectTuningOut(suggested_cent_offset=cents)
 
 
 @app.post("/jobs/{job_id}/detect-lyrics", response_model=JobOut, status_code=202)

@@ -286,6 +286,10 @@
       Corrija a afinação se necessário e reconstrua — a estimativa automática de afinações drop/open
       é apenas heurística.</p>
       <div id="tuningInfo"></div>
+      <div class="anchor-row" id="detectTuningRow">
+        <button type="button" id="detectTuning" class="secondary">Detetar afinação (cents)</button>
+        <span id="detectTuningInfo" class="meta"></span>
+      </div>
       <form id="rebuildForm" class="tuninggrid">
         <label>Afinação (MIDI por corda):</label>
         <span id="tuningInputs"></span>
@@ -340,6 +344,11 @@
         <button type="button" id="zoomIn" class="secondary">Zoom +</button>
         <button type="button" id="zoomReset" class="secondary">Reset zoom</button>
         <span id="zoomLevel" class="meta"></span>
+      </div>
+      <div class="anchor-row">
+        <button type="button" id="previewArr" class="secondary">▶ Pré-visualizar este arranjo</button>
+        <span class="hint" style="margin:0">som sintetizado a partir das notas, sem a gravação — útil
+        para ouvir o resultado do split Lead/Rhythm isoladamente</span>
       </div>
       <div id="tabwrap"><svg id="tabsvg" height="280"></svg></div>
       <p class="hint">● nota · ▮ nota de acorde (ligadas por uma barra vertical) · sigla
@@ -456,6 +465,9 @@ let currentPlayheadT = 0; // display time of playhead; updated by syncFrame and 
 // the trailing "+" — lineBreak controls whether it's re-appended on save.
 let lyricsEvents = [];
 let lyricsPollTimer = null;
+// Current cent_offset (fine-tuning deviation from A440), pre-filled from the
+// built arrangement and updated by "Detetar afinação" / sent on rebuild.
+let centOffsetLive = 0;
 
 const badge = s => `<span class="badge b-${s}">${s}</span>`;
 const esc = t => { const d = document.createElement('span'); d.textContent = t ?? ''; return d.innerHTML; };
@@ -492,6 +504,7 @@ function closeDetail() {
   selectedJob = null;
   clearInterval(pollTimer);
   clearInterval(lyricsPollTimer);
+  stopArrangementPreview();
   const au = document.getElementById('syncAudio');
   if (au) { au.pause(); au.removeAttribute('src'); au.load(); }
   if (syncRaf) { cancelAnimationFrame(syncRaf); syncRaf = null; }
@@ -584,10 +597,12 @@ async function loadArrangements(id) {
   if (!arrangements.length) return;
   document.getElementById('review').style.display = '';
   const a0 = arrangements[0];
+  centOffsetLive = a0.cent_offset;
   document.getElementById('tuningInfo').innerHTML =
-    `<p class="meta">offsets: [${a0.tuning_offsets.join(', ')}] · desvio: ${a0.cent_offset.toFixed(1)} cents · BPM médio: ${a0.average_bpm.toFixed(1)}</p>`;
+    `<p class="meta">offsets: [${a0.tuning_offsets.join(', ')}] · desvio: <span id="centOffsetVal">${a0.cent_offset.toFixed(1)}</span> cents · BPM médio: ${a0.average_bpm.toFixed(1)}</p>`;
   document.getElementById('tuningInputs').innerHTML = STD.map((std, i) =>
     `<input type="number" min="20" max="80" value="${std + a0.tuning_offsets[i]}" data-string="${i}">`).join('');
+  document.getElementById('detectTuningInfo').textContent = '';
   document.getElementById('arrTabs').innerHTML = arrangements.map((a, i) =>
     `<button type="button" class="${i ? '' : 'active'}" onclick="showArr(${i})">${a.kind} (${a.note_count}n/${a.chord_count}c)</button>`).join('');
   initSync(selectedJob);
@@ -606,7 +621,7 @@ const TECH_ABBR = {
 };
 
 function showArr(i) {
-  if (i !== currentArr) loadArrSync(i);  // tab change: swap in that chart's own sync state
+  if (i !== currentArr) { loadArrSync(i); stopArrangementPreview(); }  // tab change: swap in that chart's own sync state
   currentArr = i;
   for (const [idx, btn] of document.querySelectorAll('#arrTabs button').entries())
     btn.classList.toggle('active', idx === i);
@@ -750,6 +765,7 @@ async function applyAll() {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       tuning_midi: midi.some(isNaN) ? null : midi,
+      cent_offset: centOffsetLive,
       split_lead_rhythm: document.getElementById('splitChk').checked,
       offset_s: offsetLive,
       arrangement: currentKind(),
@@ -1157,6 +1173,53 @@ function playNote(string, fret) {
   osc.start(t); osc.stop(t + 0.1);
 }
 
+// ---- Stand-alone arrangement preview (synthesized from the chart, no
+// recording) — lets the user audition the experimental Lead/Rhythm split in
+// isolation. ----
+let previewOscillators = [];
+let previewStopTimer = null;
+
+function stopArrangementPreview() {
+  if (audioCtx) {
+    const t = audioCtx.currentTime;
+    for (const osc of previewOscillators) {
+      try { osc.stop(t); } catch { /* already stopped */ }
+    }
+  }
+  previewOscillators = [];
+  if (previewStopTimer) { clearTimeout(previewStopTimer); previewStopTimer = null; }
+  const btn = document.getElementById('previewArr');
+  if (btn) btn.textContent = '▶ Pré-visualizar este arranjo';
+}
+
+function playArrangementPreview() {
+  if (previewOscillators.length) { stopArrangementPreview(); return; }
+  const a = arrangements[currentArr];
+  if (!a || !a.notes.length) return;
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  audioCtx.resume();
+  const t0 = audioCtx.currentTime + 0.1;
+  for (const n of a.notes) {
+    if (n.string < 0 || n.string > 5 || n.fret < 0) continue;
+    const midi = STRING_MIDI[n.string] + (a.tuning_offsets[n.string] || 0) + n.fret;
+    const hz = midiToHz(midi);
+    const start = t0 + n.time;
+    const dur = Math.min(Math.max(n.sustain || 0.12, 0.12), 2);
+    const osc = audioCtx.createOscillator(), g = audioCtx.createGain();
+    osc.frequency.value = hz;
+    g.gain.setValueAtTime(0.0001, start);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0001, tickGain), start + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+    osc.connect(g); g.connect(audioCtx.destination);
+    osc.start(start); osc.stop(start + dur + 0.02);
+    previewOscillators.push(osc);
+  }
+  const totalMs = (Math.max(...a.notes.map(n => n.time + (n.sustain || 0))) + 0.6) * 1000;
+  document.getElementById('previewArr').textContent = '■ Parar pré-visualização';
+  previewStopTimer = setTimeout(stopArrangementPreview, totalMs);
+}
+document.getElementById('previewArr').addEventListener('click', playArrangementPreview);
+
 function clickSound() {
   if (!audioCtx) return;
   const t = audioCtx.currentTime;
@@ -1246,6 +1309,7 @@ function setOffsetLive(v) {
 
 function initSync(j) {
   const panel = document.getElementById('syncPanel');
+  document.getElementById('detectTuningRow').style.display = j.source_type === 'gp' ? '' : 'none';
   if (j.source_type !== 'gp') { panel.style.display = 'none'; return; }
   panel.style.display = '';
   // The offset (and thus the audio lead-in) is shared by all arrangements.
@@ -1340,6 +1404,35 @@ function setTempoLive(scale) {
         `Proposto: início ${b.suggested_offset_s.toFixed(2)}s, andamento ×${b.suggested_tempo_scale.toFixed(3)}. ` +
         `Confirma e carrega em "Aplicar e reconstruir".`;
       toast('Sincronização proposta — revê e aplica', 'ok');
+    } catch (e) {
+      info.textContent = '';
+      toast('falha na análise', 'err');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+})();
+
+(function wireDetectTuning() {
+  const btn = document.getElementById('detectTuning');
+  const info = document.getElementById('detectTuningInfo');
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    if (!selectedJob) return;
+    btn.disabled = true;
+    info.textContent = 'A analisar a gravação…';
+    try {
+      const r = await fetch(`/jobs/${selectedJob.id}/detect-tuning`, { method: 'POST' });
+      const b = await r.json();
+      if (!r.ok) { info.textContent = ''; toast(b.detail || 'erro', 'err'); return; }
+      centOffsetLive = b.suggested_cent_offset;
+      const el = document.getElementById('centOffsetVal');
+      if (el) el.textContent = centOffsetLive.toFixed(1);
+      info.textContent =
+        `Desvio detetado: ${b.suggested_cent_offset.toFixed(1)} cents. ` +
+        `Aplica-se em "Aplicar e reconstruir". A afinação das cordas (drop/open) ` +
+        `não é detetada — vem do ficheiro GP.`;
+      toast('Afinação proposta — revê e aplica', 'ok');
     } catch (e) {
       info.textContent = '';
       toast('falha na análise', 'err');

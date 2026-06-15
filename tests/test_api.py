@@ -363,6 +363,30 @@ def test_detect_tempo_returns_local_factor(client: TestClient, tmp_path, monkeyp
     assert out["suggested_factor"] == pytest.approx(1.0)
 
 
+def test_detect_tuning_returns_cent_offset(client: TestClient, tmp_path, monkeypatch) -> None:
+    import rockforge.infrastructure.rhythm.librosa_adapter as rhythm
+
+    monkeypatch.setattr(rhythm, "estimate_tuning_cents", lambda src: -12.5)
+    data = _make_gp5_bytes(tmp_path)
+    body = client.post(
+        "/gp/inspect", files={"file": ("song.gp5", data, "application/octet-stream")}
+    ).json()
+    job = client.post(
+        "/jobs/gp",
+        data={"gp_token": body["gp_token"], "lead_track": "0"},
+        files={"audio": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
+    ).json()
+    r = client.post(f"/jobs/{job['id']}/detect-tuning")
+    assert r.status_code == 200
+    assert r.json()["suggested_cent_offset"] == pytest.approx(-12.5)
+
+
+def test_detect_tuning_rejected_for_non_gp(client: TestClient) -> None:
+    job = _create_job(client)
+    r = client.post(f"/jobs/{job['id']}/detect-tuning")
+    assert r.status_code == 422
+
+
 def test_detect_tempo_rejected_for_non_gp(client: TestClient) -> None:
     job = _create_job(client)
     r = client.post(f"/jobs/{job['id']}/detect-tempo", json={"from_s": 0.0})
