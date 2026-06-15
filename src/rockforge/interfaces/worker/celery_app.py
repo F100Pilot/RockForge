@@ -247,7 +247,10 @@ def detect_lyrics(job_id: str) -> None:
         if job is None:  # deleted while queued — nothing to do
             return
         job.stage = "lyrics"
-        params = cast(dict[str, Any], job.params or {})
+        # Copy: job.params is the same dict object SQLAlchemy holds, and
+        # reassigning that same object back doesn't register as a change
+        # (old == new by identity), so the JSON column never gets written.
+        params = dict(job.params or {})
         warnings = list(job.warnings or [])
         params["lyrics_log"] = []
         _log_lyrics_stage(params, "lyric detection started")
