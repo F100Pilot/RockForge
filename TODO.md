@@ -62,12 +62,16 @@ Lista de funcionalidades propostas, ainda não implementadas.
     iterações de frase/secção e dynamic difficulty dependem do SNG compilado
     (fase 3) e ainda não são emitidas — documentado no módulo.
 
-  - [ ] **Fase 3 — Compilação SNG** (`infrastructure/packaging/psarc/sng.py`):
-    converter o `Arrangement`/Song2014 XML já produzido por
-    `rsxml/writer.py` no formato binário SNG (ebeats, phrases,
-    phraseIterations, sections, chordTemplates, levels/notes/chords, anchors,
-    handShapes, vocals), portado de `Sng2014FileWriter`. Idealmente partilha o
-    modelo intermédio com `render_arrangement` em vez de duplicar lógica.
+  - [x] **Fase 3 — Compilação SNG** (`infrastructure/packaging/psarc/sng.py`):
+    converte o `Arrangement` num `SngModel` estrutural (beats, phrases/secções,
+    notas com tempo/corda/traste/sustain/bend/técnicas, vocais, metadados) e
+    serializa-o/lê-o em binário (`write_sng`/`read_sng`, round-trip testado).
+    Porte ainda parcial e não validado contra o jogo: chord templates/chord
+    notes (o modelo de domínio não tem agregado de acordes), anchors/
+    fingerprints (hand shapes), NewLinkedDifficulty e ligações entre notas
+    (next/prev/parent) não são emitidos; o bitmask de técnicas em
+    `TECHNIQUE_BITS` é uma codificação própria do RockForge pendente de
+    validação contra o `NoteMask` real do Sng2014 — a confirmar nas fases 4/5.
 
   - [ ] **Fase 4 — Cifragem** (`infrastructure/packaging/psarc/crypto.py`): AES-256-CFB
     para o TOC do PSARC e AES-256-CTR para o SNG, com as chaves tratadas da
