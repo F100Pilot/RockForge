@@ -39,6 +39,8 @@ postgres = ["psycopg[binary]>=3.1"]
 # Automatic lyric transcription (EXPERIMENTAL) — WhisperX over the Demucs
 # vocals stem. Heavy (torch + model weights); the LRC path needs none of this.
 lyrics = ["whisperx>=3.1"]
+# Native PSARC/SNG encryption (AES-256-CFB/CTR) — see infrastructure/packaging/psarc.
+psarc = ["cryptography>=42"]
 dev = [
     "pytest>=8.0",
     "pytest-cov>=5.0",

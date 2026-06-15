@@ -73,12 +73,16 @@ Lista de funcionalidades propostas, ainda não implementadas.
     `TECHNIQUE_BITS` é uma codificação própria do RockForge pendente de
     validação contra o `NoteMask` real do Sng2014 — a confirmar nas fases 4/5.
 
-  - [ ] **Fase 4 — Cifragem** (`infrastructure/packaging/psarc/crypto.py`): AES-256-CFB
-    para o TOC do PSARC e AES-256-CTR para o SNG, com as chaves tratadas da
-    mesma forma que o DLC Builder (constantes no código, portadas da fonte MIT,
-    com nota de proveniência). Nova extra `[psarc]` que adiciona
-    `cryptography`. Mantém a postura de honestidade/legal já documentada
-    (distribuição de áudio protegido não é autorizada por esta ferramenta).
+  - [x] **Fase 4 — Cifragem** (`infrastructure/packaging/psarc/crypto.py`): AES-256-CFB
+    para o TOC do PSARC (`encrypt_psarc_toc`/`decrypt_psarc_toc`, IV zero,
+    padding zero) e AES-256-CTR para o SNG (`encrypt_sng`/`decrypt_sng`, IV
+    aleatório de 16 bytes prefixado), com `ARC_KEY`/`SNG_PC_KEY` portadas do
+    Rocksmith2014.NET (MIT) com nota de proveniência. `pack_entries(...,
+    encrypt=True)` cifra o TOC e marca `archive_flags=4`, tal como os PSARC
+    reais; `unpack` deteta a flag e decifra. Nova extra `[psarc]`
+    (`cryptography`), importada lazily. `encrypt_sng`/`decrypt_sng` cobrem só
+    a primitiva AES-CTR — o envelope real do `.sng` (cabeçalho + zlib) fica
+    para a fase 5.
 
   - [ ] **Fase 5 — Adaptador e wiring** (`infrastructure/packaging/psarc/packer.py`):
     `NativePsarcPacker` que junta as fases 1-4; extrair um `Packager` Protocol
