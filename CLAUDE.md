@@ -10,6 +10,8 @@ A pipeline that turns an audio recording (or a Guitar Pro file) into a Rocksmith
 nothing is silently defaulted. Read `docs/RELATORIO-TECNICO.md` and
 `docs/research/` for the grounding (with sources) behind every technical claim.
 
+See `TODO.md` for proposed (not yet implemented) future features.
+
 ## Architecture (Clean Architecture — respect the layering)
 
 ```

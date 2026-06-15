@@ -176,3 +176,7 @@ pytest && ruff check src tests && mypy
   operador, e descarregar conteúdo de terceiros continua a violar o ToS.
 - O empacotamento final exige o Wwise (EULA Audiokinetic, não redistribuível): o RockForge
   entrega um bundle pronto a importar no [DLC Builder](https://github.com/iminashi/Rocksmith2014.NET).
+
+## Próximos passos
+
+Funcionalidades propostas (ainda não implementadas) estão listadas em `TODO.md`.
