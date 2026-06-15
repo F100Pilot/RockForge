@@ -693,6 +693,18 @@ def get_lyrics(job_id: str) -> LyricsOut:
             )
             for r in rows
         ]
+        # No edited/detected events yet: fall back to lyrics supplied with the
+        # job (LRC/UltraStar TXT upload), so the editor and tab view show
+        # what will actually be used at build time.
+        if not events:
+            lrc_text = params.get("lrc_text")
+            if isinstance(lrc_text, str) and lrc_text.strip():
+                from rockforge.infrastructure.rsxml.vocals import parse_lyrics
+
+                events = [
+                    LyricEventOut(time=e.time, length=e.length, lyric=e.lyric)
+                    for e in parse_lyrics(lrc_text)
+                ]
         log = cast("list[str]", params.get("lyrics_log") or [])
         return LyricsOut(status=status, events=events, log=[str(line) for line in log])
 
