@@ -134,13 +134,24 @@ new line. UltraStar input is already per-syllable and is NOT re-expanded.
 ### Automatic lyric detection + in-app editor
 
 `POST /jobs/{id}/detect-lyrics` runs `rockforge.detect_lyrics` (an async Celery
-task, GP and audio-ML jobs both) — Demucs isolates the vocals stem
-(`guitar_stem.parent / "vocals.wav"`, same convention as the audio-ML lyrics
-path) and WhisperX force-aligns it. Progress is tracked via
-`params["lyrics_status"]` (`detecting`/`ready`/`empty`/`unavailable`), never
-`JobStatus`, so detection never hides a completed bundle or disables
-`/arrangements`. Results land in `params["lyrics_events"]` (JSON rows
-`{"time","length","lyric"}`), readable via `GET /jobs/{id}/lyrics`.
+task, GP and audio-ML jobs both) — Demucs isolates the vocals stem and WhisperX
+force-aligns it. Progress is tracked via `params["lyrics_status"]`
+(`detecting`/`ready`/`empty`/`unavailable`), never `JobStatus`, so detection
+never hides a completed bundle or disables `/arrangements`. Results land in
+`params["lyrics_events"]` (JSON rows `{"time","length","lyric"}`), readable via
+`GET /jobs/{id}/lyrics`.
+
+**Speed.** This is the slow path on CPU; the heaviest stage is the Demucs
+separation. Detection uses `DemucsSeparator.separate_vocals` — the lighter
+4-source `htdemucs` with `--two-stems=vocals` — NOT `separate_guitar`'s 6-source
+`htdemucs_6s` (which would compute drums/bass/other/guitar/piano just to throw
+them away). htdemucs' vocal quality is also better than the 6s model's, so it is
+faster *and* more accurate for transcription. The WhisperX model size
+(`ROCKFORGE_WHISPER_MODEL`, default `small`) and the detection device
+(`ROCKFORGE_WHISPERX_DEVICE`, falling back to `demucs_device` via
+`settings.lyrics_device()`) are configurable — set both to a CUDA GPU for the
+~3-minute experience that online tools get; on CPU drop the model to
+`base`/`tiny` to trade accuracy for speed.
 
 The web UI's "Letras" panel lets the user edit words and per-word timings (and
 add/remove rows) regardless of whether detection ran. `applyAll()` sends the

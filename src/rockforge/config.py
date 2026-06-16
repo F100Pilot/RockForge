@@ -17,6 +17,17 @@ class Settings(BaseSettings):
     work_dir: Path = Path.home() / "Downloads" / "RockForge"
     enable_youtube: bool = True  # operator-enabled; downloading audio violates the YouTube ToS
     demucs_device: str = "cpu"
+    # Lyric detection (Demucs vocals + WhisperX). On CPU this is the slow path;
+    # set both devices to "cuda" with a GPU for the ~3-minute experience online
+    # tools get. whisperx_device defaults to demucs_device when unset.
+    whisperx_device: str | None = None
+    # WhisperX model: "tiny"/"base"/"small"/"medium"/"large-v3". Bigger = more
+    # accurate but slower; "small" is a good CPU default. Drop to "base"/"tiny"
+    # to trade accuracy for speed.
+    whisper_model: str = "small"
+
+    def lyrics_device(self) -> str:
+        return self.whisperx_device or self.demucs_device
     psarc_packer_cmd: str | None = None  # e.g. external DLC Builder CLI invocation
     psarc_mode: str = "dlcbuilder"  # "dlcbuilder" (default) | "native" (packer/packer.py)
 
