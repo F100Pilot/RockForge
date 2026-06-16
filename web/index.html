@@ -210,293 +210,257 @@
 </head>
 <body>
 
-<div class="topbar">
-  <h1>RockForge</h1>
-  <a href="/docs">API / OpenAPI</a>
-</div>
-<p class="tagline">áudio (ou Guitar Pro) → arranjos Rocksmith 2014, prontos para o DLC Builder</p>
+<div class="app-layout">
 
-<p class="notice">
-  A divisão <strong>Lead/Rhythm é experimental</strong> (sem método publicado). O resultado garantido
-  é um <strong>bundle para o DLC Builder</strong>; o PSARC final exige Wwise. Reveja sempre a
-  transcrição abaixo e confirme a afinação antes de exportar. Não submeta conteúdo de terceiros sem autorização.
-</p>
+  <!-- ══════════════ LEFT COLUMN ══════════════ -->
+  <div class="left-col">
+    <div class="left-header">
+      <h1>RockForge</h1>
+      <button type="button" id="openNewJob">+ Novo job</button>
+    </div>
 
-<section class="card">
-  <div class="card-header">
-    <h2>Novo job</h2>
+    <section class="card" style="padding:.75rem .9rem">
+      <table id="jobsTable"><thead>
+        <tr><th>Título / Artista</th><th>Estado</th><th></th></tr>
+      </thead><tbody></tbody></table>
+    </section>
+  </div>
+
+  <!-- ══════════════ RIGHT COLUMN ══════════════ -->
+
+  <!-- Placeholder when no job is selected -->
+  <div class="right-col detail-empty" id="detailEmpty">
+    Seleciona um job para ver os detalhes
+  </div>
+
+  <!-- Job detail panel (was full-screen modal, now right column) -->
+  <div class="right-col" id="detailOverlay" hidden>
+    <div id="detail" class="card" style="margin-bottom:0">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem">
+        <div>
+          <div id="detailHead"></div>
+          <div class="stages" id="stagesBar"></div>
+          <div id="warnings"></div>
+        </div>
+        <button type="button" class="modal-close" id="detailClose" title="Fechar" style="position:static;font-size:1.2rem">×</button>
+      </div>
+      <div class="downloads" id="downloads"></div>
+
+      <div id="review" style="display:none">
+
+        <!-- compact meta bar: tuning + BPM -->
+        <div id="tuningInfo"></div>
+        <div class="anchor-row" id="detectTuningRow" style="margin-bottom:.5rem">
+          <button type="button" id="detectTuning" class="secondary">Detetar afinação</button>
+          <span id="detectTuningInfo" class="meta"></span>
+          <button class="info-btn" data-info="tuning">ⓘ</button>
+        </div>
+        <form id="rebuildForm" class="tuninggrid" style="margin-bottom:.5rem">
+          <label>Afinação (MIDI):</label>
+          <span id="tuningInputs"></span>
+          <label class="check"><input type="checkbox" id="splitChk" checked> Lead/Rhythm (exp.)</label>
+          <label class="check"><input type="checkbox" id="muteChk" checked> Palm mute / slap / tap</label>
+        </form>
+
+        <!-- Section tabs -->
+        <div class="section-tabnav">
+          <button type="button" class="active" onclick="showSection('partitura')">Partitura</button>
+          <button type="button" onclick="showSection('letras')">Letras</button>
+          <button type="button" onclick="showSection('capa')">Capa</button>
+        </div>
+
+        <!-- TAB: Partitura -->
+        <div id="sectionPartitura">
+          <div id="syncPanel" style="display:none">
+            <audio id="syncAudio" controls preload="metadata" style="width:100%;margin:.4rem 0"></audio>
+            <div class="syncctrls">
+              <label>Início da música (s):
+                <input type="number" id="syncOffset" value="0" step="0.01" min="0" style="width:6rem"></label>
+              <input type="range" id="syncOffsetRange" min="0" max="20" step="0.01" value="0" style="flex:1;min-width:120px">
+              <label class="check"><input type="checkbox" id="syncTick" checked> Tique por nota</label>
+              <label>Volume: <input type="range" id="tickVolume" min="0" max="1" step="0.05" value="0.6" style="width:7rem;vertical-align:middle"></label>
+              <button class="info-btn" data-info="sync-offset">ⓘ</button>
+            </div>
+            <div class="syncctrls" style="margin-top:.35rem">
+              <label>Andamento (BPM):
+                <input type="number" id="tempoBpm" step="0.1" min="1" style="width:6.5rem"></label>
+              <input type="range" id="tempoRange" min="50" max="200" step="0.5" value="100" style="flex:1;min-width:120px">
+              <span id="tempoPct" class="meta"></span>
+              <button type="button" id="tempoReset" class="secondary">Repor GP</button>
+              <button class="info-btn" data-info="sync-tempo">ⓘ</button>
+            </div>
+            <div class="syncctrls" style="margin-top:.35rem">
+              <button type="button" id="autoSync" class="secondary">Sincronização automática</button>
+              <span id="autoSyncInfo" class="meta"></span>
+              <button class="info-btn" data-info="auto-sync">ⓘ</button>
+            </div>
+          </div>
+
+          <div class="tabnav" id="arrTabs" style="margin-top:.5rem"></div>
+          <div class="anchor-row" style="margin-top:.35rem">
+            <button type="button" id="zoomOut" class="secondary">−</button>
+            <button type="button" id="zoomIn" class="secondary">+</button>
+            <button type="button" id="zoomReset" class="secondary">reset</button>
+            <span id="zoomLevel" class="meta"></span>
+            <button type="button" id="previewArr" class="secondary">▶ pré-visualizar</button>
+            <button class="info-btn" data-info="tab-viewer">ⓘ</button>
+          </div>
+          <div id="tabwrap"><svg id="tabsvg" height="280"></svg></div>
+          <div class="anchor-row" style="margin-top:.4rem">
+            <span class="meta">Modo:</span>
+            <button type="button" id="modeArrastar" class="secondary active-mode">Arrastar</button>
+            <button type="button" id="modeMarcar" class="secondary">Marcar</button>
+            <button type="button" id="modeExcerto" class="secondary">Excerto</button>
+            <button type="button" id="modeMover" class="secondary">Mover seguintes</button>
+            <button type="button" id="modeBeat" class="secondary">Novo beat</button>
+            <button class="info-btn" data-info="sync-modes">ⓘ</button>
+            <span id="selectionInfo" style="margin-left:.5rem"></span>
+            <button type="button" id="clearSelection" class="secondary" hidden>Limpar seleção</button>
+          </div>
+          <div id="syncAnchorsList"></div>
+
+          <div class="anchor-row" style="margin-top:.75rem">
+            <button type="button" id="applyAll">Aplicar e reconstruir</button>
+            <span class="meta"><b id="applyKind"></b></span>
+          </div>
+        </div>
+
+        <!-- TAB: Letras -->
+        <div id="sectionLetras" hidden>
+          <div class="anchor-row">
+            <button type="button" id="detectLyrics" class="secondary">Detetar letra</button>
+            <span id="lyricsInfo" class="meta"></span>
+            <button class="info-btn" data-info="lyrics">ⓘ</button>
+          </div>
+          <div id="lyricsProgressWrap" style="display:none;margin:.4rem 0">
+            <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.25rem">
+              <div style="flex:1;background:#262830;border-radius:4px;height:8px;overflow:hidden">
+                <div id="lyricsProgressBar"></div>
+              </div>
+              <span id="lyricsProgressPct" style="font-size:.78rem;color:var(--muted);min-width:2.5rem;text-align:right"></span>
+            </div>
+            <pre id="lyricsLog" style="margin:.4rem 0 0;min-height:1.6rem;max-height:8rem;overflow-y:auto;background:#14151a;border:1px solid #262830;border-radius:4px;padding:.4rem .6rem;font-size:.75rem;color:#9aa0ad;white-space:pre-wrap"></pre>
+          </div>
+          <table id="lyricsTable" style="width:100%">
+            <thead><tr><th>Tempo (s)</th><th>Palavra</th><th>Fim de linha</th><th>Duração (s)</th><th></th></tr></thead>
+            <tbody id="lyricsRows"></tbody>
+          </table>
+          <div class="anchor-row" style="margin-top:.4rem">
+            <button type="button" id="addLyricRow" class="secondary">+ palavra</button>
+            <button type="button" id="sortLyrics" class="secondary">ordenar por tempo</button>
+          </div>
+        </div>
+
+        <!-- TAB: Capa -->
+        <div id="sectionCapa" hidden>
+          <div id="coverArtPanel">
+            <div class="anchor-row">
+              <img id="coverArtPreview" hidden style="max-width:96px;max-height:96px;border-radius:4px;border:1px solid #262830">
+              <input type="file" id="coverArtFile" accept="image/png,image/jpeg">
+              <span id="coverArtInfo" class="meta"></span>
+              <button class="info-btn" data-info="cover-art">ⓘ</button>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /#review -->
+    </div><!-- /#detail -->
+  </div><!-- /#detailOverlay -->
+
+</div><!-- /.app-layout -->
+
+<!-- ══════════ "Novo job" modal ══════════ -->
+<div class="modal-overlay" id="newJobOverlay" hidden>
+  <div class="modal" style="max-width:700px">
+    <button type="button" class="modal-close" id="newJobClose">×</button>
+    <h2>Novo job <button class="info-btn" data-info="new-job">ⓘ</button></h2>
     <div class="tabnav" id="newJobTabs">
       <button type="button" class="active" data-tab="audio">Áudio</button>
       <button type="button" data-tab="youtube">YouTube</button>
       <button type="button" data-tab="gp">Guitar Pro</button>
     </div>
-  </div>
 
-  <div class="tabpanel" data-panel="audio">
-    <form id="uploadForm" class="grid">
-      <div class="field"><label>Ficheiro</label>
-        <input type="file" name="file" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" required></div>
-      <div class="field"><label>Título</label>
-        <input type="text" name="title" placeholder="auto das tags"></div>
-      <div class="field"><label>Banda</label>
-        <input type="text" name="artist" placeholder="auto das tags"></div>
-      <div class="field"><label>Álbum</label>
-        <input type="text" name="album" placeholder="auto das tags"></div>
-      <div class="field"><label>Ano</label>
-        <input type="number" name="year" min="1900" max="2100" style="width:5.5rem"></div>
-      <div class="field"><label>Início (s)</label>
-        <input type="number" name="offset_s" value="0" step="0.01" min="0" style="width:5rem"></div>
-      <label class="check"><input type="checkbox" name="transcribe_lyrics" value="true"> Transcrever letra (EXPERIMENTAL)</label>
-      <button type="submit">Processar</button>
-    </form>
-    <p class="hint">Se o ficheiro tiver tags (ID3/Vorbis), os campos vazios são preenchidos
-    automaticamente; se faltar título ou banda nas tags, é pedido que os preenchas.
-    <strong>Início (s)</strong>: corta o áudio a partir deste segundo (ex: 5.3 → ignora os primeiros 5.3s).
-    As notas são transcritas do áudio aparado — ficam naturalmente sincronizadas. Usa 0 para o ficheiro inteiro.
-    <strong>Transcrever letra</strong>: WhisperX sobre o stem vocal (requer
-    <code>pip install -e ".[lyrics]"</code>); revê o texto/timing — para timing exato usa um LRC na via Guitar Pro.</p>
-  </div>
-
-  <div class="tabpanel" data-panel="youtube" hidden>
-    <form id="ytForm" class="grid">
-      <div class="field" style="flex:2 1 280px"><label>URL</label>
-        <input type="url" name="url" placeholder="https://www.youtube.com/watch?v=…" required></div>
-      <div class="field"><label>Título</label>
-        <input type="text" name="title" placeholder="Título" required></div>
-      <div class="field"><label>Banda</label>
-        <input type="text" name="artist" placeholder="Banda" required></div>
-      <div class="field"><label>Álbum</label>
-        <input type="text" name="album" placeholder="opcional"></div>
-      <div class="field"><label>Ano</label>
-        <input type="number" name="year" min="1900" max="2100" style="width:5.5rem"></div>
-      <button type="submit">Processar</button>
-    </form>
-    <p class="hint">Desativado por defeito no servidor (viola o ToS do YouTube); o pedido devolve 403
-    salvo se o operador tiver ativado <code>ROCKFORGE_ENABLE_YOUTUBE</code>.</p>
-  </div>
-
-  <div class="tabpanel" data-panel="gp" hidden>
-    <p class="hint" style="margin-top:0">Via de alta fidelidade: notas, trastes, técnicas, tempo e secções vêm exatas do
-    ficheiro. <strong>GPX/GP7 não é suportado</strong> — exporta como GP5 no Guitar Pro/TuxGuitar.</p>
-    <form id="gpInspectForm" class="grid">
-      <div class="field"><label>Ficheiro GP3/GP4/GP5</label>
-        <input type="file" name="file" accept=".gp3,.gp4,.gp5" required></div>
-      <button type="submit" class="secondary">1. Inspecionar pistas</button>
-    </form>
-    <form id="gpJobForm" class="grid" style="display:none; margin-top:.75rem">
-      <div id="gpMeta" class="meta" style="flex-basis:100%"></div>
-      <div class="field"><label>Pista Lead</label>
-        <select name="lead_track"><option value="">—</option></select></div>
-      <div class="field"><label>Pista Rhythm</label>
-        <select name="rhythm_track"><option value="">—</option></select></div>
-      <div class="field"><label>Gravação</label>
-        <input type="file" name="audio" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" required></div>
-      <div class="field"><label>Início da música na gravação (s)</label>
-        <input type="number" name="offset_s" value="0" step="0.01" min="0" style="width:6rem"></div>
-      <div class="field"><label>Tone base</label>
-        <input type="text" name="tone_base" placeholder="ex.: dist_rhythm"></div>
-      <div class="field"><label>Tones extra</label>
-        <input type="text" name="tone_names" placeholder="vírgulas, máx. 4"></div>
-      <div class="field"><label>Letra (LRC ou UltraStar TXT)</label>
-        <input type="file" name="lrc" accept=".lrc,.txt"></div>
-      <div class="field" style="flex-basis:100%">
-        <label class="check"><input type="checkbox" name="import_mutes" value="true" checked>
-        Importar palm mute / slap / pop / tap do GP (desliga para notas limpas)</label></div>
-      <div class="field"><label>Título</label>
-        <input type="text" name="title" placeholder="auto do GP/tags"></div>
-      <div class="field"><label>Banda</label>
-        <input type="text" name="artist" placeholder="auto do GP/tags"></div>
-      <div class="field"><label>Álbum</label>
-        <input type="text" name="album" placeholder="auto"></div>
-      <div class="field"><label>Ano</label>
-        <input type="number" name="year" min="1900" max="2100" style="width:5.5rem"></div>
-      <button type="submit">2. Criar CDLC</button>
-    </form>
-    <p class="hint">Sincronização: a partitura não conhece o áudio. <strong>"Início da música na
-    gravação"</strong> = o segundo em que a primeira nota é ouvida na tua gravação. A partitura e a
-    letra são deslocadas para esse instante (a gravação fica intacta — o teu intro já serve de
-    lead-in). Ouve a gravação, vê a que segundo entra a música e escreve esse valor; se a partitura
-    e o áudio ainda estiverem dessincronizados, ajusta este número e reconstrói. Mínimo de 2s de
-    lead-in (o DLC Builder exige espaço para o count-in); se puseres menos, acrescentamos o silêncio
-    em falta. Para letra sincronizada usa um ficheiro LRC ou um .txt exportado do UltraStar Creator
-    (timing por sílaba, convertido automaticamente a partir do BPM/GAP do ficheiro); a letra embutida
-    no GP só tem tempo ao nível da linha. Os
-    nomes de tones são gravados no XML (tonebase/tonea–toned) e mapeiam-se a tones reais no DLC
-    Builder.</p>
-  </div>
-</section>
-
-<section class="card">
-  <h2>Jobs</h2>
-  <table id="jobsTable"><thead>
-    <tr><th>Título</th><th>Artista</th><th>Estado</th><th>Etapa</th><th>Criado</th><th></th></tr>
-  </thead><tbody></tbody></table>
-</section>
-
-<!-- Job detail modal -->
-<div class="modal-overlay" id="detailOverlay" hidden>
-  <div class="modal" id="detail">
-    <button type="button" class="modal-close" id="detailClose" title="Fechar">×</button>
-    <h2>Detalhe do job</h2>
-    <div id="detailHead"></div>
-    <div class="stages" id="stagesBar"></div>
-    <div id="warnings"></div>
-    <div class="downloads" id="downloads"></div>
-
-    <div id="review" style="display:none">
-      <hr class="sep">
-      <h2>Revisão humana</h2>
-      <p class="hint" style="margin-top:0">Afinação detetada (desvios de E standard por corda, grave→agudo) e BPM médio.
-      Corrija a afinação se necessário e reconstrua — a estimativa automática de afinações drop/open
-      é apenas heurística.</p>
-      <div id="tuningInfo"></div>
-      <div class="anchor-row" id="detectTuningRow">
-        <button type="button" id="detectTuning" class="secondary">Detetar afinação (cents)</button>
-        <span id="detectTuningInfo" class="meta"></span>
-      </div>
-      <form id="rebuildForm" class="tuninggrid">
-        <label>Afinação (MIDI por corda):</label>
-        <span id="tuningInputs"></span>
-        <label class="check"><input type="checkbox" id="splitChk" checked> tentar split Lead/Rhythm (experimental)</label>
-        <label class="check"><input type="checkbox" id="muteChk" checked> importar palm mute / slap / pop / tap (desliga p/ notas limpas)</label>
+    <div class="tabpanel" data-panel="audio">
+      <form id="uploadForm" class="grid" style="margin-top:.5rem">
+        <div class="field"><label>Ficheiro</label>
+          <input type="file" name="file" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" required></div>
+        <div class="field"><label>Título</label>
+          <input type="text" name="title" placeholder="auto das tags"></div>
+        <div class="field"><label>Banda</label>
+          <input type="text" name="artist" placeholder="auto das tags"></div>
+        <div class="field"><label>Álbum</label>
+          <input type="text" name="album" placeholder="auto das tags"></div>
+        <div class="field"><label>Ano</label>
+          <input type="number" name="year" min="1900" max="2100" style="width:5.5rem"></div>
+        <div class="field"><label>Início (s) <button class="info-btn" data-info="audio-offset">ⓘ</button></label>
+          <input type="number" name="offset_s" value="0" step="0.01" min="0" style="width:5rem"></div>
+        <label class="check"><input type="checkbox" name="transcribe_lyrics" value="true"> Transcrever letra (EXPERIMENTAL)</label>
+        <button type="submit">Processar</button>
       </form>
-
-      <div id="syncPanel" style="display:none">
-        <hr class="sep">
-        <h2>Sincronização visual</h2>
-        <p class="hint" style="margin-top:0">Dá play à gravação: o cursor percorre as notas e ouves um
-        <strong>tique</strong> em cada uma. Arrasta o <strong>início da música</strong> até os tiques
-        baterem certo com a gravação. O número é o segundo em que a primeira nota é ouvida na tua
-        gravação. <strong>Cada arranjo (Lead/Rhythm) é sincronizado separadamente</strong> — muda de
-        separador para corrigir cada um; o botão único <strong>"Aplicar e reconstruir"</strong> (em
-        baixo) grava o arranjo atual. O início e a afinação são partilhados por todos.</p>
-        <audio id="syncAudio" controls preload="metadata" style="width:100%;margin:.4rem 0"></audio>
-        <div class="syncctrls">
-          <label>Início da música na gravação (s):
-            <input type="number" id="syncOffset" value="0" step="0.01" min="0" style="width:6rem"></label>
-          <input type="range" id="syncOffsetRange" min="0" max="20" step="0.01" value="0" style="flex:1;min-width:180px">
-          <label class="check"><input type="checkbox" id="syncTick" checked> Tocar nota à passagem</label>
-          <label>Volume das notas:
-            <input type="range" id="tickVolume" min="0" max="1" step="0.05" value="0.6" style="width:8rem;vertical-align:middle"></label>
-        </div>
-        <p class="hint" style="margin-bottom:.2rem">Se a tabulatura e a gravação se vão afastando ao
-        longo da música (o GP foi escrito num andamento ligeiramente diferente do que foi gravado),
-        ajusta o <strong>andamento</strong>: estica/comprime a música toda de uma vez. As notas movem-se
-        sobre a forma de onda para confirmares o alinhamento.</p>
-        <div class="syncctrls">
-          <label>Andamento (BPM):
-            <input type="number" id="tempoBpm" step="0.1" min="1" style="width:6.5rem"></label>
-          <input type="range" id="tempoRange" min="50" max="200" step="0.5" value="100" style="flex:1;min-width:180px">
-          <span id="tempoPct" class="meta"></span>
-          <button type="button" id="tempoReset" class="secondary">Repor GP</button>
-        </div>
-        <p class="hint" style="margin-bottom:.2rem"><strong>Sincronização automática:</strong> deteta o
-        andamento e o início da gravação (como o CDLC.AI) e propõe um ajuste. Os valores ficam em
-        pré-visualização — confirma na partitura e carrega em <strong>"Aplicar e reconstruir"</strong>.
-        Refina depois com os modos manuais (arrastar/marcar). Precisa do extra <code>ml</code> (librosa).</p>
-        <div class="syncctrls">
-          <button type="button" id="autoSync" class="secondary">Sincronização automática</button>
-          <span id="autoSyncInfo" class="meta"></span>
-        </div>
-      </div>
-
-      <hr class="sep">
-      <h2>Transcrição (notas e acordes)</h2>
-      <div class="tabnav" id="arrTabs"></div>
-      <div class="anchor-row">
-        <button type="button" id="zoomOut" class="secondary">Zoom −</button>
-        <button type="button" id="zoomIn" class="secondary">Zoom +</button>
-        <button type="button" id="zoomReset" class="secondary">Reset zoom</button>
-        <span id="zoomLevel" class="meta"></span>
-      </div>
-      <div class="anchor-row">
-        <button type="button" id="previewArr" class="secondary">▶ Pré-visualizar este arranjo</button>
-        <span class="hint" style="margin:0">som sintetizado a partir das notas, sem a gravação — útil
-        para ouvir o resultado do split Lead/Rhythm isoladamente</span>
-      </div>
-      <div id="tabwrap"><svg id="tabsvg" height="280"></svg></div>
-      <p class="hint">● nota · ▮ nota de acorde (ligadas por uma barra vertical) · sigla
-      sobreposta = técnica (B bend · H hammer-on · P pull-off · S slide · HA harmónico ·
-      PM palm mute · V vibrato · T tapping · SL slap · PO pop · A acento) — passa o cursor
-      para ver a lista completa. Cor = corda, igual ao Rocksmith:
-      <span style="color:#e6483c">E</span>
-      <span style="color:#f5dc3c">A</span> <span style="color:#3f9bdc">D</span>
-      <span style="color:#f0973c">G</span> <span style="color:#5cc24a">B</span>
-      <span style="color:#b56cdc">e</span> (grave→agudo). Eixo X em segundos.
-      <strong>Arrastar nota</strong>: arrasta uma nota horizontalmente para o instante onde ela deveria
-      estar — cria um ponto de correção; as notas entre pontos consecutivos são esticadas/comprimidas.
-      <strong>Marcar no cursor</strong>: clica numa nota para a ancorar na posição atual do cursor de
-      reprodução — útil para alinhar enquanto o áudio toca (pausa no momento certo e clica a nota).
-      <strong>Selecionar excerto</strong>: arrasta uma caixa sobre as notas e depois arrasta uma delas
-      — o excerto move-se em bloco. <strong>Mover seguintes</strong>: pausa o áudio no instante certo e
-      clica na nota que está fora de sítio — essa nota e <em>todas as seguintes</em> deslocam-se em bloco
-      para começar no cursor, sem mexer nas anteriores (corrige um desfasamento que aparece a meio).
-      <strong>Novo beat (detetar)</strong>: clica numa nota onde o andamento muda — o RockForge mede o
-      andamento da gravação a partir desse instante e re-espaça as notas seguintes para esse BPM (o ponto
-      clicado fica fixo, nada antes mexe). A <strong>forma de onda</strong> azul é a gravação (referência
-      fixa): alinha as notas pelos seus picos transientes e usa o cursor para confirmar.</p>
-      <div class="anchor-row">
-        <span class="meta" style="margin-right:.3rem">Modo:</span>
-        <button type="button" id="modeArrastar" class="secondary active-mode">Arrastar nota</button>
-        <button type="button" id="modeMarcar" class="secondary">Marcar no cursor</button>
-        <button type="button" id="modeExcerto" class="secondary">Selecionar excerto</button>
-        <button type="button" id="modeMover" class="secondary">Mover seguintes</button>
-        <button type="button" id="modeBeat" class="secondary">Novo beat (detetar)</button>
-        <span id="selectionInfo" style="margin-left:.5rem"></span>
-        <button type="button" id="clearSelection" class="secondary" hidden>Limpar seleção</button>
-      </div>
-      <div id="syncAnchorsList"></div>
-
-      <hr class="sep">
-      <details id="lyricsPanel">
-        <summary><h2 style="display:inline">Letras</h2></summary>
-        <p class="hint" style="margin-top:0">Deteção automática da letra a partir da gravação
-        (isola a voz com o Demucs e transcreve com o WhisperX — pode demorar alguns minutos).
-        Depois podes editar palavras e tempos à mão, ou criar/editar tudo manualmente.</p>
-        <div class="anchor-row">
-          <button type="button" id="detectLyrics" class="secondary">Detetar letra</button>
-          <span id="lyricsInfo" class="meta"></span>
-        </div>
-        <div id="lyricsProgressWrap" style="display:none;margin:.4rem 0">
-          <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.25rem">
-            <div style="flex:1;background:#262830;border-radius:4px;height:8px;overflow:hidden">
-              <div id="lyricsProgressBar"></div>
-            </div>
-            <span id="lyricsProgressPct" style="font-size:.78rem;color:var(--muted);min-width:2.5rem;text-align:right"></span>
-          </div>
-          <pre id="lyricsLog" style="margin:.4rem 0 0;min-height:1.6rem;max-height:8rem;overflow-y:auto;background:#14151a;border:1px solid #262830;border-radius:4px;padding:.4rem .6rem;font-size:.75rem;color:#9aa0ad;white-space:pre-wrap"></pre>
-        </div>
-        <table id="lyricsTable" style="width:100%">
-          <thead><tr><th>Tempo (s)</th><th>Palavra</th><th>Fim de linha</th><th>Duração (s)</th><th></th></tr></thead>
-          <tbody id="lyricsRows"></tbody>
-        </table>
-        <div class="anchor-row">
-          <button type="button" id="addLyricRow" class="secondary">+ palavra</button>
-          <button type="button" id="sortLyrics" class="secondary">ordenar por tempo</button>
-        </div>
-      </details>
-
-      <hr class="sep">
-      <div id="coverArtPanel">
-        <h2>Capa do álbum</h2>
-        <p class="hint" style="margin-top:0">Imagem (JPG/PNG) incluída no bundle como
-        <code>cover.*</code> e referenciada em <code>rockforge_project.json</code> — usa-a como
-        capa ao criar o projeto no DLC Builder (que gera as texturas DDS do jogo). O empacotamento
-        nativo ainda não embute esta imagem como textura DDS no <code>.psarc</code>.</p>
-        <div class="anchor-row">
-          <img id="coverArtPreview" hidden style="max-width:96px;max-height:96px;border-radius:4px;border:1px solid #262830">
-          <input type="file" id="coverArtFile" accept="image/png,image/jpeg">
-          <span id="coverArtInfo" class="meta"></span>
-        </div>
-      </div>
-
-      <hr class="sep">
-      <div class="anchor-row">
-        <button type="button" id="applyAll">Aplicar e reconstruir</button>
-        <span class="meta">aplica afinação, início, andamento e correções de <b id="applyKind"></b>
-          (cada arranjo é reconstruído com a sua própria sincronização)</span>
-      </div>
     </div>
+
+    <div class="tabpanel" data-panel="youtube" hidden>
+      <form id="ytForm" class="grid" style="margin-top:.5rem">
+        <div class="field" style="flex:2 1 280px"><label>URL</label>
+          <input type="url" name="url" placeholder="https://www.youtube.com/watch?v=…" required></div>
+        <div class="field"><label>Título</label>
+          <input type="text" name="title" placeholder="Título" required></div>
+        <div class="field"><label>Banda</label>
+          <input type="text" name="artist" placeholder="Banda" required></div>
+        <div class="field"><label>Álbum</label>
+          <input type="text" name="album" placeholder="opcional"></div>
+        <div class="field"><label>Ano</label>
+          <input type="number" name="year" min="1900" max="2100" style="width:5.5rem"></div>
+        <button type="submit">Processar</button>
+      </form>
+      <p style="font-size:.8rem;color:var(--muted);margin:.5rem 0 0">YouTube pode estar desativado no servidor. <button class="info-btn" data-info="youtube">ⓘ</button></p>
+    </div>
+
+    <div class="tabpanel" data-panel="gp" hidden>
+      <form id="gpInspectForm" class="grid" style="margin-top:.5rem">
+        <div class="field"><label>Ficheiro GP3/GP4/GP5 <button class="info-btn" data-info="gp-format">ⓘ</button></label>
+          <input type="file" name="file" accept=".gp3,.gp4,.gp5" required></div>
+        <button type="submit" class="secondary">1. Inspecionar pistas</button>
+      </form>
+      <form id="gpJobForm" class="grid" style="display:none; margin-top:.75rem">
+        <div id="gpMeta" class="meta" style="flex-basis:100%"></div>
+        <div class="field"><label>Pista Lead</label>
+          <select name="lead_track"><option value="">—</option></select></div>
+        <div class="field"><label>Pista Rhythm</label>
+          <select name="rhythm_track"><option value="">—</option></select></div>
+        <div class="field"><label>Gravação</label>
+          <input type="file" name="audio" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" required></div>
+        <div class="field"><label>Início da música na gravação (s) <button class="info-btn" data-info="gp-offset">ⓘ</button></label>
+          <input type="number" name="offset_s" value="0" step="0.01" min="0" style="width:6rem"></div>
+        <div class="field"><label>Tone base</label>
+          <input type="text" name="tone_base" placeholder="ex.: dist_rhythm"></div>
+        <div class="field"><label>Tones extra</label>
+          <input type="text" name="tone_names" placeholder="vírgulas, máx. 4"></div>
+        <div class="field"><label>Letra (LRC ou UltraStar TXT) <button class="info-btn" data-info="lrc">ⓘ</button></label>
+          <input type="file" name="lrc" accept=".lrc,.txt"></div>
+        <div class="field" style="flex-basis:100%">
+          <label class="check"><input type="checkbox" name="import_mutes" value="true" checked>
+          Importar palm mute / slap / pop / tap</label></div>
+        <div class="field"><label>Título</label>
+          <input type="text" name="title" placeholder="auto do GP/tags"></div>
+        <div class="field"><label>Banda</label>
+          <input type="text" name="artist" placeholder="auto do GP/tags"></div>
+        <div class="field"><label>Álbum</label>
+          <input type="text" name="album" placeholder="auto"></div>
+        <div class="field"><label>Ano</label>
+          <input type="number" name="year" min="1900" max="2100" style="width:5.5rem"></div>
+        <button type="submit">2. Criar CDLC</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ Info modal ══════════ -->
+<div class="modal-overlay" id="infoOverlay" hidden>
+  <div class="modal modal-info">
+    <button type="button" class="modal-close" id="infoClose">×</button>
+    <h3 id="infoTitle" style="margin-top:0"></h3>
+    <div id="infoBody"></div>
   </div>
 </div>
 
@@ -514,6 +478,109 @@
 <div class="toast-container" id="toasts"></div>
 
 <script>
+// ── "Novo job" modal ──────────────────────────────────────────────────────────
+function openNewJobModal() { document.getElementById('newJobOverlay').hidden = false; }
+function closeNewJobModal() { document.getElementById('newJobOverlay').hidden = true; }
+document.getElementById('openNewJob').addEventListener('click', openNewJobModal);
+document.getElementById('newJobClose').addEventListener('click', closeNewJobModal);
+document.getElementById('newJobOverlay').addEventListener('click', e => {
+  if (e.target.id === 'newJobOverlay') closeNewJobModal();
+});
+
+// ── Section tabs (Partitura / Letras / Capa) ─────────────────────────────────
+function showSection(name) {
+  const sections = ['partitura', 'letras', 'capa'];
+  for (const s of sections) {
+    const el = document.getElementById('section' + s.charAt(0).toUpperCase() + s.slice(1));
+    if (el) el.hidden = (s !== name);
+  }
+  for (const btn of document.querySelectorAll('.section-tabnav button'))
+    btn.classList.toggle('active', btn.textContent.trim().toLowerCase() === name ||
+      (name === 'partitura' && btn.textContent.trim() === 'Partitura') ||
+      (name === 'letras' && btn.textContent.trim() === 'Letras') ||
+      (name === 'capa' && btn.textContent.trim() === 'Capa'));
+}
+
+// ── ⓘ info modal ─────────────────────────────────────────────────────────────
+const INFO = {
+  'new-job': {
+    title: 'Criar um novo job',
+    body: '<p>Escolhe a via de ingestão:<br><strong>Áudio</strong>: qualquer ficheiro de áudio — as notas são transcritas automaticamente pelo Basic Pitch.<br><strong>YouTube</strong>: descarrega o áudio do YouTube (pode estar desativado pelo operador).<br><strong>Guitar Pro</strong>: via de alta fidelidade — notas, trastes, técnicas e secções vêm exatas do ficheiro GP3/GP4/GP5. Requer também o ficheiro de áudio para sincronização.</p>'
+  },
+  'audio-offset': {
+    title: 'Início (s) — áudio',
+    body: '<p>Corta o áudio a partir deste segundo (ex.: 5.3 → ignora os primeiros 5.3s). As notas são transcritas do áudio aparado, ficando naturalmente sincronizadas. Usa 0 para usar o ficheiro inteiro.</p>'
+  },
+  'youtube': {
+    title: 'YouTube',
+    body: '<p>Descarregar áudio do YouTube pode violar os Termos de Serviço do YouTube. Esta funcionalidade está desativada por defeito; o servidor devolve 403 a menos que o operador tenha definido <code>ROCKFORGE_ENABLE_YOUTUBE=true</code>.</p>'
+  },
+  'gp-format': {
+    title: 'Formatos Guitar Pro suportados',
+    body: '<p>Suportados: <strong>GP3, GP4, GP5</strong> (via PyGuitarPro).<br><strong>GPX / GP7 não são suportados</strong> — exporta como GP5 no Guitar Pro ou TuxGuitar antes de importar.</p>'
+  },
+  'gp-offset': {
+    title: 'Início da música na gravação (s)',
+    body: '<p>O segundo em que a primeira nota é ouvida na tua gravação. A partitura e a letra são deslocadas para esse instante (a gravação fica intacta — o teu intro serve de lead-in).<br>Ouve a gravação, anota a que segundo entra a música e escreve esse valor. Se a partitura e o áudio ainda estiverem dessincronizados, ajusta o valor e reconstrói.<br>Mínimo de 2s de lead-in (exigido pelo DLC Builder); se puseres menos, o silêncio em falta é acrescentado automaticamente.</p>'
+  },
+  'lrc': {
+    title: 'Letra sincronizada (LRC / UltraStar)',
+    body: '<p>Para timing exato de letra usa um ficheiro <strong>LRC</strong> (<code>[mm:ss.xx]texto</code>) ou um <strong>.txt do UltraStar Creator</strong> (timing por sílaba, convertido automaticamente a partir do BPM/GAP do ficheiro).<br>A letra embutida no GP só tem tempo ao nível da linha; usa o painel "Letras" após a criação para afinar o timing por palavra.</p>'
+  },
+  'tuning': {
+    title: 'Afinação e BPM',
+    body: '<p>Offsets em relação ao E standard por corda (grave→agudo). A estimativa automática de afinações drop/open é apenas heurística — verifica e corrige se necessário antes de reconstruir.<br>"Detetar afinação" usa librosa para medir o desvio em cents; os valores MIDI são calculados a partir desse desvio.</p>'
+  },
+  'sync-offset': {
+    title: 'Sincronização — início e tique',
+    body: '<p>Dá play à gravação: o cursor percorre as notas e ouves um <strong>tique</strong> em cada nota. Ajusta o slider "Início da música" até os tiques baterem certo com a gravação.<br><strong>Cada arranjo (Lead/Rhythm) é sincronizado separadamente</strong> — muda de separador para corrigir cada um. O início e a afinação são partilhados por todos.</p>'
+  },
+  'sync-tempo': {
+    title: 'Sincronização — andamento',
+    body: '<p>Se a tabulatura e a gravação se vão afastando ao longo da música (o GP foi escrito num andamento ligeiramente diferente do que foi gravado), ajusta o <strong>andamento</strong>: estica/comprime a música toda de uma vez. As notas movem-se sobre a forma de onda para confirmares o alinhamento.</p>'
+  },
+  'auto-sync': {
+    title: 'Sincronização automática',
+    body: '<p>Deteta o andamento e o início da gravação (como o CDLC.AI) e propõe um ajuste. Os valores ficam em pré-visualização — confirma na partitura e clica em "Aplicar e reconstruir".<br>Requer o extra <code>ml</code> (librosa). Refina depois com os modos manuais.</p>'
+  },
+  'tab-viewer': {
+    title: 'Partitura — legenda',
+    body: '<p>● nota · ▮ nota de acorde (ligadas por barra vertical) · sigla sobreposta = técnica:<br>B bend · H hammer-on · P pull-off · S slide · HA harmónico · PM palm mute · V vibrato · T tapping · SL slap · PO pop · A acento<br>Passa o cursor sobre a nota para ver a lista completa.<br>Cor = corda (igual ao Rocksmith): <span style="color:#e6483c">E</span> <span style="color:#f5dc3c">A</span> <span style="color:#3f9bdc">D</span> <span style="color:#f0973c">G</span> <span style="color:#5cc24a">B</span> <span style="color:#b56cdc">e</span> (grave→agudo). Eixo X em segundos.</p>'
+  },
+  'sync-modes': {
+    title: 'Modos de correção da partitura',
+    body: `<p><strong>Arrastar nota:</strong> arrasta uma nota horizontalmente para o instante correto — cria um ponto de correção; as notas entre pontos são esticadas/comprimidas.</p>
+<p><strong>Marcar no cursor:</strong> clica numa nota para a ancorar na posição atual do cursor de reprodução — útil para alinhar enquanto o áudio toca.</p>
+<p><strong>Selecionar excerto:</strong> arrasta uma caixa sobre as notas e depois arrasta uma delas — o excerto move-se em bloco.</p>
+<p><strong>Mover seguintes:</strong> pausa o áudio no instante certo e clica na nota deslocada — essa nota e todas as seguintes deslocam-se em bloco para o cursor.</p>
+<p><strong>Novo beat (detetar):</strong> clica numa nota onde o andamento muda — o RockForge mede o andamento da gravação a partir desse instante e re-espaça as notas seguintes.</p>`
+  },
+  'lyrics': {
+    title: 'Deteção automática de letra',
+    body: '<p>Isola a voz com o Demucs e transcreve com o WhisperX — pode demorar alguns minutos (Demucs na CPU é lento).<br>Requer <code>pip install -e ".[lyrics]"</code>.<br>Depois podes editar palavras e tempos à mão, ou criar tudo manualmente sem detetar.</p>'
+  },
+  'cover-art': {
+    title: 'Capa do álbum',
+    body: '<p>Imagem JPG ou PNG incluída no bundle como <code>cover.*</code> e referenciada no <code>rockforge.rs2dlc</code> — usa-a como capa ao abrir o projeto no DLC Builder (que gera as texturas DDS do jogo).<br>O upload não reconstrói o bundle — clica em "Aplicar e reconstruir" na tab Partitura para incluir a capa.</p>'
+  },
+};
+
+document.getElementById('infoClose').addEventListener('click', () => {
+  document.getElementById('infoOverlay').hidden = true;
+});
+document.getElementById('infoOverlay').addEventListener('click', e => {
+  if (e.target.id === 'infoOverlay') document.getElementById('infoOverlay').hidden = true;
+});
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.info-btn');
+  if (!btn || !btn.dataset.info) return;
+  const info = INFO[btn.dataset.info];
+  if (!info) return;
+  document.getElementById('infoTitle').textContent = info.title;
+  document.getElementById('infoBody').innerHTML = info.body;
+  document.getElementById('infoOverlay').hidden = false;
+});
+
 const STD = [40, 45, 50, 55, 59, 64];
 let selectedJob = null, arrangements = [], currentArr = 0, pollTimer = null;
 // Visual sync (GP): MIN_LEAD must match gp_pipeline.MIN_LEAD_S.
@@ -590,26 +657,24 @@ function closeDetail() {
   if (au) { au.pause(); au.removeAttribute('src'); au.load(); }
   if (syncRaf) { cancelAnimationFrame(syncRaf); syncRaf = null; }
   document.getElementById('detailOverlay').hidden = true;
+  document.getElementById('detailEmpty').hidden = false;
   refreshJobs();
 }
 document.getElementById('detailClose').onclick = closeDetail;
-document.getElementById('detailOverlay').addEventListener('click', e => {
-  if (e.target.id === 'detailOverlay') closeDetail();
-});
 
 async function refreshJobs() {
   const jobs = await (await fetch('/jobs')).json();
   const tb = document.querySelector('#jobsTable tbody');
   tb.innerHTML = '';
   if (!jobs.length) {
-    tb.innerHTML = '<tr class="empty-row"><td colspan="6">Ainda sem jobs — cria um acima.</td></tr>';
+    tb.innerHTML = '<tr class="empty-row"><td colspan="3">Nenhum job ainda.</td></tr>';
     return;
   }
   for (const j of jobs) {
     const tr = document.createElement('tr');
     if (selectedJob && j.id === selectedJob.id) tr.className = 'sel';
-    tr.innerHTML = `<td>${esc(j.title)}</td><td>${esc(j.artist)}</td><td>${badge(j.status)}</td>
-      <td>${esc(j.stage || '—')}</td><td>${esc((j.created_at||'').slice(0,19).replace('T',' '))}</td>
+    tr.innerHTML = `<td><strong>${esc(j.title)}</strong><br><span style="color:var(--muted);font-size:.8rem">${esc(j.artist)}</span></td>
+      <td>${badge(j.status)}</td>
       <td><button type="button" class="icon del" title="Remover job"
         ${j.status === 'running' ? 'disabled' : ''}>🗑</button></td>`;
     tr.onclick = () => selectJob(j.id);
@@ -630,6 +695,7 @@ async function selectJob(id) {
   const j = await (await fetch(`/jobs/${id}`)).json();
   selectedJob = j;
   document.getElementById('detailOverlay').hidden = false;
+  document.getElementById('detailEmpty').hidden = true;
   document.getElementById('detailHead').innerHTML =
     `<strong>${esc(j.title)}</strong> — ${esc(j.artist)}
      ${j.album ? `· ${esc(j.album)}` : ''} ${j.year ? `(${j.year})` : ''} ${badge(j.status)}
@@ -1636,7 +1702,7 @@ document.getElementById('uploadForm').addEventListener('submit', async e => {
   e.preventDefault();
   const r = await fetch('/jobs/upload', { method: 'POST', body: new FormData(e.target) });
   const b = await r.json();
-  if (r.ok) { e.target.reset(); toast('Job criado.', 'ok'); selectJob(b.id); } else toast(b.detail || 'erro');
+  if (r.ok) { e.target.reset(); toast('Job criado.', 'ok'); closeNewJobModal(); selectJob(b.id); } else toast(b.detail || 'erro');
 });
 
 document.getElementById('ytForm').addEventListener('submit', async e => {
@@ -1648,7 +1714,7 @@ document.getElementById('ytForm').addEventListener('submit', async e => {
     body: JSON.stringify(payload),
   });
   const b = await r.json();
-  if (r.ok) { e.target.reset(); toast('Job criado.', 'ok'); selectJob(b.id); } else toast(b.detail || 'erro');
+  if (r.ok) { e.target.reset(); toast('Job criado.', 'ok'); closeNewJobModal(); selectJob(b.id); } else toast(b.detail || 'erro');
 });
 
 // The tuning form no longer submits on its own — the single "Aplicar e
@@ -1686,7 +1752,7 @@ document.getElementById('gpJobForm').addEventListener('submit', async e => {
   f.set('import_mutes', e.target.querySelector('input[name=import_mutes]').checked);
   const r = await fetch('/jobs/gp', { method: 'POST', body: f });
   const b = await r.json();
-  if (r.ok) { toast('Job criado.', 'ok'); selectJob(b.id); } else toast(b.detail || 'erro');
+  if (r.ok) { toast('Job criado.', 'ok'); closeNewJobModal(); selectJob(b.id); } else toast(b.detail || 'erro');
 });
 
 refreshJobs();
