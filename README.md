@@ -114,19 +114,32 @@ ferramentas online).
 
 ⚠️ **O `pip install` acima instala o PyTorch só-CPU no Windows.** Para usar a
 GPU tens de instalar o build **CUDA** do PyTorch (respeitando o pin `<2.5` do
-extra `lyrics`). Com CUDA 12.1:
+extra `lyrics`).
+
+⚠️ **Desinstala primeiro.** O build CPU e o build CUDA têm o **mesmo número de
+versão** (`2.4.1`), por isso um simples `pip install torch==2.4.1 --index-url …`
+é ignorado pelo pip ("já satisfeito") e ficas na mesma com o CPU. Tens de
+desinstalar antes. Com CUDA 12.1:
 
 ```cmd
+py -3.11 -m pip uninstall -y torch torchaudio
 py -3.11 -m pip install torch==2.4.1 torchaudio==2.4.1 --index-url https://download.pytorch.org/whl/cu121
 ```
 
-Confirma que ficou com CUDA:
+Confirma que ficou o build **CUDA** (repara no sufixo `+cu121` da versão):
 
 ```cmd
-py -3.11 -c "import torch; print(torch.cuda.is_available())"
+py -3.11 -c "import torch; print(torch.__version__, torch.cuda.is_available())"
 ```
 
-Se imprimir `True`, está pronto. O RockForge usa `ROCKFORGE_DEMUCS_DEVICE=auto`
+Deve imprimir `2.4.1+cu121 True`. Se aparecer `+cpu` ou `False`:
+- `…+cpu` → o pip não substituiu o build; repete o `uninstall` acima (às vezes
+  há duas cópias) e reinstala.
+- `…+cu121 False` → o driver NVIDIA está em falta/desatualizado; corre
+  `nvidia-smi` (deve listar a GPU e a versão de CUDA suportada) e atualiza o
+  driver em https://www.nvidia.com/Download/index.aspx.
+
+Com `True`, está pronto. O RockForge usa `ROCKFORGE_DEMUCS_DEVICE=auto`
 por defeito: deteta a GPU e usa-a automaticamente, caindo para CPU quando não há
 nenhuma. Podes forçar com `ROCKFORGE_DEMUCS_DEVICE=cuda` (ou `cpu`). Na deteção
 de letra, o device escolhido aparece no log do painel "Letras"
