@@ -979,6 +979,11 @@ def download_cover_art(job_id: str) -> FileResponse:
         return FileResponse(cover_path, media_type=media_type)
 
 
+@app.get("/version", include_in_schema=False)
+def version() -> dict[str, str]:
+    return {"version": app.version}
+
+
 @app.post("/heartbeat", include_in_schema=False)
 def heartbeat() -> dict[str, bool]:
     """Pinged periodically by the web UI; see Settings.idle_shutdown_s."""
