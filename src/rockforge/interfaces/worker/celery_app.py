@@ -36,6 +36,26 @@ def _build_packager():  # noqa: ANN202 - heavy imports deferred to worker runtim
     )
 
 
+def _resolve_device(requested: str) -> str:
+    """Resolve a configured device to a concrete one for the ML adapters.
+
+    "cpu"/"cuda" pass through unchanged; "auto" picks "cuda" when a usable
+    CUDA GPU (NVIDIA) is present and "cpu" otherwise. The torch import is
+    deferred (worker-only, heavy) and any failure degrades to CPU — so "auto"
+    is always safe even without the ml/lyrics extras installed.
+    """
+    if requested != "auto":
+        return requested
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            return "cuda"
+    except Exception:
+        pass
+    return "cpu"
+
+
 def _build_use_case():  # noqa: ANN202 - heavy imports deferred to worker runtime
     from rockforge.application.pipeline import GenerateCdlcUseCase
     from rockforge.infrastructure.ingestion.sources import LocalFileIngestor, YouTubeIngestor
@@ -46,11 +66,12 @@ def _build_use_case():  # noqa: ANN202 - heavy imports deferred to worker runtim
     from rockforge.infrastructure.transcription.basic_pitch_adapter import BasicPitchTranscriber
 
     rhythm = LibrosaRhythmAdapter()
+    device = _resolve_device(settings.demucs_device)
 
     from rockforge.infrastructure.lyrics.whisperx_adapter import WhisperXLyricTranscriber
 
     lyric_transcriber = (
-        WhisperXLyricTranscriber(device=settings.demucs_device)
+        WhisperXLyricTranscriber(device=device)
         if WhisperXLyricTranscriber.available()
         else None
     )
@@ -65,7 +86,7 @@ def _build_use_case():  # noqa: ANN202 - heavy imports deferred to worker runtim
             lyric_transcriber=lyric_transcriber,
             ingestor=ingestor,
             normalizer=FfmpegNormalizer(),
-            separator=DemucsSeparator(device=settings.demucs_device),
+            separator=DemucsSeparator(device=device),
             transcriber=BasicPitchTranscriber(),
             beat_tracker=rhythm,
             tuning_estimator=rhythm,
@@ -76,14 +97,14 @@ def _build_use_case():  # noqa: ANN202 - heavy imports deferred to worker runtim
     return make
 
 
-def _build_detection():  # noqa: ANN202 - heavy imports deferred to worker runtime
+def _build_detection(device: str) -> tuple[Any, Any, Any]:  # heavy imports deferred to worker
     from rockforge.infrastructure.lyrics.whisperx_adapter import WhisperXLyricTranscriber
     from rockforge.infrastructure.normalize.ffmpeg import FfmpegNormalizer
     from rockforge.infrastructure.separation.demucs_adapter import DemucsSeparator
 
     return (
         FfmpegNormalizer(),
-        DemucsSeparator(device=settings.lyrics_device()),
+        DemucsSeparator(device=device),
         WhisperXLyricTranscriber,
     )
 
@@ -267,7 +288,8 @@ def detect_lyrics(job_id: str) -> None:
         params["lyrics_log"] = []
         _log_lyrics_stage(params, "lyric detection started")
         try:
-            normalizer, separator, transcriber_cls = _build_detection()
+            device = _resolve_device(settings.lyrics_device())
+            normalizer, separator, transcriber_cls = _build_detection(device)
             if not transcriber_cls.available():
                 warnings.append(
                     "lyric detection requested but whisperx is not installed "
@@ -279,6 +301,9 @@ def detect_lyrics(job_id: str) -> None:
                 workdir = settings.work_dir / job.id / "lyrics"
                 workdir.mkdir(parents=True, exist_ok=True)
 
+                _log_lyrics_stage(
+                    params, f"device: {device} ({'GPU' if device == 'cuda' else 'CPU'})"
+                )
                 params["lyrics_status"] = "normalizing"
                 _log_lyrics_stage(params, "normalizing source audio (ffmpeg)")
                 job.params = params
@@ -296,7 +321,7 @@ def detect_lyrics(job_id: str) -> None:
                 job.params = params
                 session.commit()
                 events = transcriber_cls(
-                    model_size=settings.whisper_model, device=settings.lyrics_device()
+                    model_size=settings.whisper_model, device=device
                 ).transcribe(vocals_stem)
 
                 params["lyrics_events"] = [
