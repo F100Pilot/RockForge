@@ -46,7 +46,11 @@ class DemucsSeparator:
             str(audio),
         ]
         try:
-            subprocess.run(cmd, check=True, capture_output=True, text=True)
+            # stdin=DEVNULL: never inherit the worker console's stdin (an
+            # inherited stdin can block a CLI subprocess indefinitely).
+            subprocess.run(
+                cmd, check=True, capture_output=True, text=True, stdin=subprocess.DEVNULL
+            )
         except FileNotFoundError as exc:
             raise SeparationError("demucs is not installed (pip install 'rockforge[ml]')") from exc
         except subprocess.CalledProcessError as exc:
@@ -78,7 +82,11 @@ class DemucsSeparator:
             str(audio),
         ]
         try:
-            subprocess.run(cmd, check=True, capture_output=True, text=True)
+            # stdin=DEVNULL: never inherit the worker console's stdin (an
+            # inherited stdin can block a CLI subprocess indefinitely).
+            subprocess.run(
+                cmd, check=True, capture_output=True, text=True, stdin=subprocess.DEVNULL
+            )
         except FileNotFoundError as exc:
             raise SeparationError("demucs is not installed (pip install 'rockforge[ml]')") from exc
         except subprocess.CalledProcessError as exc:

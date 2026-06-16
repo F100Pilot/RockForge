@@ -267,6 +267,14 @@ pinned (`mypy~=1.19.0`) so local matches CI — do not bump it casually.
   `phraseIteration`. The writer emits COUNT/default/END phrases with END placed
   after the last note, plus a closing `noguitar` section. Guarded by
   `test_phrase_structure_marks_song_end`. Don't remove the END phrase.
+- **External CLIs must not inherit stdin.** ffmpeg (and any console tool) run as
+  a subprocess from the Windows `start.bat` worker inherits the console's stdin,
+  goes interactive and blocks forever — the symptom is a job stuck at the
+  `normalize`/lyrics-`normalizing` stage. `FfmpegNormalizer` passes `-nostdin` +
+  `stdin=subprocess.DEVNULL` (plus a `FFMPEG_TIMEOUT_S` ceiling so a genuine
+  stall fails loudly); `DemucsSeparator` uses `stdin=subprocess.DEVNULL` too.
+  Guarded by `test_ffmpeg_normalizer.py`. Don't drop these when touching the
+  subprocess calls.
 - **YouTube ingestion is gated by `ROCKFORGE_ENABLE_YOUTUBE`** (currently
   defaulting on at the operator's request) — downloading audio violates the
   YouTube ToS, so the gate stays so it can be turned off. PSARC/.wem packing

@@ -7,6 +7,10 @@ from pathlib import Path
 
 from rockforge.domain.errors import NormalizationError
 
+# Generous ceiling so a genuinely long file still normalizes, but a stuck ffmpeg
+# fails loudly instead of hanging the stage forever (matches wwise.py's 600s).
+FFMPEG_TIMEOUT_S = 600
+
 
 class FfmpegNormalizer:
     """Implements rockforge.application.ports.AudioNormalizer."""
@@ -20,7 +24,10 @@ class FfmpegNormalizer:
             filters.append(f"adelay={int(pad_start_s * 1000)}:all=1")
         filters.append("loudnorm=I=-16:TP=-1.5:LRA=11")
         cmd = [
-            "ffmpeg", "-y",
+            # -nostdin: never read stdin. Run from a console (the Windows
+            # start.bat worker), ffmpeg inherits the console's stdin and goes
+            # interactive, blocking forever — the "stuck at normalizing" hang.
+            "ffmpeg", "-nostdin", "-y",
             *(["-ss", str(offset_s)] if offset_s > 0 else []),
             "-i", str(audio),
             "-af", ",".join(filters),
@@ -28,9 +35,20 @@ class FfmpegNormalizer:
             str(out),
         ]
         try:
-            subprocess.run(cmd, check=True, capture_output=True, text=True)
+            subprocess.run(
+                cmd,
+                check=True,
+                capture_output=True,
+                text=True,
+                stdin=subprocess.DEVNULL,
+                timeout=FFMPEG_TIMEOUT_S,
+            )
         except FileNotFoundError as exc:
             raise NormalizationError("ffmpeg is not installed") from exc
+        except subprocess.TimeoutExpired as exc:
+            raise NormalizationError(
+                f"ffmpeg timed out after {FFMPEG_TIMEOUT_S}s normalizing {audio.name}"
+            ) from exc
         except subprocess.CalledProcessError as exc:
             raise NormalizationError(f"ffmpeg failed: {exc.stderr[-2000:]}") from exc
         return out
