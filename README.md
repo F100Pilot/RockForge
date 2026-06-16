@@ -17,7 +17,7 @@ Pipeline áudio → arranjos Rocksmith 2014 (CDLC), construído sobre investiga�
 | Afinação | librosa cents + heurística drop-D | requer confirmação humana |
 | Cordas/trastes | otimização de playability (DP própria) | determinística, testada |
 | Técnicas | bend (medido), hammer-on/pull-off (regras) | parcial — ver relatório |
-| Letra automática (opcional) | WhisperX sobre o stem vocal (`pip install -e ".[lyrics]"`) | **EXPERIMENTAL** — gates anti-alucinação (RMS + confiança/palavra); LRC continua a via preferida |
+| Letra automática (opcional) | WhisperX sobre o stem vocal isolado (Demucs `htdemucs` 2-stem; `pip install -e ".[lyrics]"`) | **EXPERIMENTAL** — gates anti-alucinação (RMS + confiança/palavra); LRC continua a via preferida; CPU é lento, GPU NVIDIA ≈ ferramentas online |
 | XML Song2014 | gerador próprio (formato doc. na comunidade) | testado estruturalmente; emite os 32 `arrangementProperties` e a estrutura COUNT/default/END que o DLC Builder e o jogo exigem |
 | Áudio `.wem` | Wwise local + projeto template do DLC Builder | Vorbis **com seek table** + correção de header (sem isto o jogo carrega mas fica mudo e sai) — Wwise 2019/2021/2022/2023 |
 | PSARC | bundle para DLC Builder; PSARC só com Wwise | **Wwise é obrigatório para .wem** |
@@ -83,6 +83,7 @@ Para contribuir, ver [`CLAUDE.md`](CLAUDE.md) (camadas, comandos e restrições 
 | Python **3.11** (exatamente — 3.12+ não funciona: o TensorFlow exigido pelo Basic Pitch só tem wheels até 3.11) | https://www.python.org/downloads/ — ⚠️ marca **"Add Python to PATH"** | correr a app |
 | ffmpeg | `winget install ffmpeg` | normalização de áudio |
 | Redis | [Memurai](https://www.memurai.com/) (Developer, grátis; corre como serviço) | fila de jobs |
+| GPU NVIDIA (opcional, muito recomendado) | driver NVIDIA atualizado + build CUDA do PyTorch (ver **2b**) | acelera ML (separação/transcrição/letra) ~10–20× |
 | Wwise (opcional) | Audiokinetic Launcher | gerar `.wem` automaticamente |
 | DLC Builder (opcional) | [releases](https://github.com/iminashi/Rocksmith2014.NET/releases) | empacotar o PSARC final |
 
@@ -104,6 +105,33 @@ O install demora (PyTorch/Demucs/Basic Pitch/WhisperX, vários GB). O extra
 sem ele, "Detetar letra" reporta "indisponível". Se quiseres instalar sem
 essa funcionalidade, usa `pip install -e ".[dev,ml]"`.
 
+**2b. Aceleração por GPU (NVIDIA — opcional mas muito recomendada)**
+
+O ML (separação Demucs, transcrição Basic Pitch/WhisperX) corre por defeito em
+**CPU**, onde uma música de 4 min demora vários minutos por etapa. Com uma GPU
+NVIDIA o tempo cai drasticamente (a deteção de letra aproxima-se dos ~3 min das
+ferramentas online).
+
+⚠️ **O `pip install` acima instala o PyTorch só-CPU no Windows.** Para usar a
+GPU tens de instalar o build **CUDA** do PyTorch (respeitando o pin `<2.5` do
+extra `lyrics`). Com CUDA 12.1:
+
+```cmd
+py -3.11 -m pip install torch==2.4.1 torchaudio==2.4.1 --index-url https://download.pytorch.org/whl/cu121
+```
+
+Confirma que ficou com CUDA:
+
+```cmd
+py -3.11 -c "import torch; print(torch.cuda.is_available())"
+```
+
+Se imprimir `True`, está pronto. O RockForge usa `ROCKFORGE_DEMUCS_DEVICE=auto`
+por defeito: deteta a GPU e usa-a automaticamente, caindo para CPU quando não há
+nenhuma. Podes forçar com `ROCKFORGE_DEMUCS_DEVICE=cuda` (ou `cpu`). Na deteção
+de letra, o device escolhido aparece no log do painel "Letras"
+(`device: cuda (GPU)`), para confirmares que a GPU está a ser usada.
+
 **3. Arrancar**
 
 ```cmd
@@ -121,6 +149,20 @@ Notas:
   jobs em execução têm de terminar primeiro
 - Para updates: `git pull` dentro da pasta (e `pip install -e ".[dev,ml,lyrics]"`
   se o `pyproject.toml` tiver mudado)
+
+### Configuração (variáveis de ambiente)
+
+Toda a configuração é por ambiente (cria um `.env` na raiz — ver `.env.example`).
+As principais:
+
+| Variável | Por defeito | Para quê |
+|---|---|---|
+| `ROCKFORGE_DEMUCS_DEVICE` | `auto` | `auto` (GPU NVIDIA se disponível, senão CPU), `cuda` ou `cpu` — device para todo o ML |
+| `ROCKFORGE_WHISPERX_DEVICE` | (segue `demucs_device`) | sobrepõe o device só da deteção de letra |
+| `ROCKFORGE_WHISPER_MODEL` | `small` | modelo WhisperX da letra: `tiny`/`base`/`small`/`medium`/`large-v3` (maior = mais preciso e mais lento; em CPU baixa para `base`/`tiny`) |
+| `ROCKFORGE_ENABLE_YOUTUBE` | `true` | ativa/desativa a ingestão via YouTube (viola o ToS — ver Avisos legais) |
+| `ROCKFORGE_WORK_DIR` | `~/Downloads/RockForge` | onde os bundles gerados são escritos |
+| `WWISEROOT` | (do Audiokinetic Launcher) | localização do Wwise para gerar o `.wem` |
 
 ### Via Docker (alternativa)
 
@@ -142,9 +184,10 @@ pytest && ruff check src tests && mypy
 
 ## Como testar a app (fim-a-fim)
 
-1. **Testes automáticos** (sem ML, rápidos): `pip install -e ".[dev]" && pytest` — 81 testes
+1. **Testes automáticos** (sem ML, rápidos): `pip install -e ".[dev]" && pytest` — 170+ testes
    cobrem domínio, mapeamento corda/traste, XML/acordes, pipeline, API (incl. remoção de jobs),
-   import GP, letra, tags e Wwise (consola simulada).
+   import GP, letra, deteção de device CPU/GPU, separação Demucs (comandos), tags e Wwise
+   (consola simulada).
 2. **Arrancar a stack**: `docker compose up --build`. Abre `http://localhost:8000`.
    O primeiro job descarrega os modelos (Demucs ~2 GB); em CPU, uma música de 4 min
    demora vários minutos na etapa `separate`.
