@@ -228,6 +228,32 @@ issue the user resolves with its tone library); `Volume` uses a neutral default
 (DLC Builder's "Calculate Volumes" recomputes it) and the audio preview is left
 empty (its "Create Preview Audio" generates it).
 
+### SNG binary compilation (`infrastructure/packaging/psarc/sng.py`)
+
+`NativePsarcPacker` compiles each `Arrangement` into a Rocksmith Sng2014 binary
+payload via `sng.from_arrangement` + `sng.write_sng`. The binary layout
+(section ordering, field sizes, struct formats) matches the real Sng2014 format
+as ported from the Rocksmith2014.NET / DLC Builder source (MIT). `read_sng`
+round-trips the payload for test verification.
+
+Sections emitted (in order): BPMs, Phrases, ChordTemplates, ChordNotes, Vocals
+(+ symbol stubs if present), PhraseIterations, 6 × empty
+(PhraseExtraInfo/NLD/Actions/Events/Tones/DNAs), Sections, ArrangementLevels
+(difficulty 0 only — anchors, fingerprints/handshapes, notes with linkage),
+Metadata. `NoteMask` values are the real Rocksmith constants (ported from
+Constants.cs), not RockForge's earlier custom encoding.
+
+Current limits (honest):
+- Single difficulty level (no dynamic difficulty model).
+- ChordNotes only for chords with per-string bend/slide; simple chords use
+  `ChordNotesId = -1`.
+- AnchorExtensions, arpeggio fingerprints (Fingerprints2): always empty.
+- Note linkage: NextIterNote/PrevIterNote chains within phrase iterations;
+  ParentPrevNote (linkNext) not modelled.
+- Note Hash always 0 (game does not validate critically).
+- Vocals are included in instrument SNGs; a separate vocals `.sng` (real
+  Rocksmith convention) is not yet emitted.
+
 ## Commands
 
 ```bash
