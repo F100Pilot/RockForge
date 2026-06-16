@@ -149,9 +149,22 @@ them away). htdemucs' vocal quality is also better than the 6s model's, so it is
 faster *and* more accurate for transcription. The WhisperX model size
 (`ROCKFORGE_WHISPER_MODEL`, default `small`) and the detection device
 (`ROCKFORGE_WHISPERX_DEVICE`, falling back to `demucs_device` via
-`settings.lyrics_device()`) are configurable — set both to a CUDA GPU for the
-~3-minute experience that online tools get; on CPU drop the model to
+`settings.lyrics_device()`) are configurable — on CPU drop the model to
 `base`/`tiny` to trade accuracy for speed.
+
+**Device selection (`_resolve_device`).** `demucs_device` defaults to `"auto"`:
+`celery_app._resolve_device` (deferred torch import, worker-only) returns
+`"cuda"` when `torch.cuda.is_available()` and `"cpu"` otherwise; explicit
+`"cpu"`/`"cuda"` pass through. Any import/CUDA failure degrades to CPU, so
+`"auto"` is safe even without the ml/lyrics extras. Resolution happens *before*
+the adapters are built (the WhisperX adapter keys `compute_type` off the
+concrete device — `float16` on cuda, `int8` on cpu — so it must never see the
+literal `"auto"`). The resolved device is written to the lyrics log
+(`device: cuda (GPU)`), so the user can confirm the GPU is in use. With an
+NVIDIA GPU this is the ~3-minute path online tools get — but note the default
+`pip install torch` on Windows is CPU-only; the CUDA build is needed (e.g.
+`pip install torch==2.4.1 torchaudio==2.4.1 --index-url
+https://download.pytorch.org/whl/cu121`, respecting the `<2.5` pin).
 
 The web UI's "Letras" panel lets the user edit words and per-word timings (and
 add/remove rows) regardless of whether detection ran. `applyAll()` sends the

@@ -16,10 +16,14 @@ class Settings(BaseSettings):
     result_backend: str = "redis://localhost:6379/1"
     work_dir: Path = Path.home() / "Downloads" / "RockForge"
     enable_youtube: bool = True  # operator-enabled; downloading audio violates the YouTube ToS
-    demucs_device: str = "cpu"
+    # ML device: "auto" (default) picks a CUDA GPU when one is usable and falls
+    # back to CPU; force with "cpu" or "cuda". Resolution happens in the worker
+    # (deferred torch import) — see celery_app._resolve_device.
+    demucs_device: str = "auto"
     # Lyric detection (Demucs vocals + WhisperX). On CPU this is the slow path;
-    # set both devices to "cuda" with a GPU for the ~3-minute experience online
-    # tools get. whisperx_device defaults to demucs_device when unset.
+    # set both devices to "cuda" (or leave "auto" with a GPU present) for the
+    # ~3-minute experience online tools get. whisperx_device defaults to
+    # demucs_device when unset.
     whisperx_device: str | None = None
     # WhisperX model: "tiny"/"base"/"small"/"medium"/"large-v3". Bigger = more
     # accurate but slower; "small" is a good CPU default. Drop to "base"/"tiny"
