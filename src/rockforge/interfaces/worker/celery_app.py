@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from functools import cache
 from pathlib import Path
 from typing import Any, cast
 
@@ -16,6 +17,18 @@ celery_app = Celery(
     "rockforge", broker=settings.broker_url, backend=settings.result_backend
 )
 celery_app.conf.task_track_started = True
+
+
+@celery_app.on_after_finalize.connect
+def _warm_up_device(**_kwargs: object) -> None:
+    """Probe CUDA once at worker startup so the first job doesn't pay for it.
+
+    torch.cuda.is_available() initialises the CUDA runtime on first call
+    (30–60s on Windows). Running it in the background while the worker waits
+    for jobs means it's already cached by the time the first task arrives.
+    """
+    _resolve_device(settings.demucs_device)
+    _resolve_device(settings.lyrics_device())
 
 
 def _build_packager():  # noqa: ANN202 - heavy imports deferred to worker runtime
@@ -36,6 +49,7 @@ def _build_packager():  # noqa: ANN202 - heavy imports deferred to worker runtim
     )
 
 
+@cache
 def _resolve_device(requested: str) -> str:
     """Resolve a configured device to a concrete one for the ML adapters.
 
@@ -43,6 +57,9 @@ def _resolve_device(requested: str) -> str:
     CUDA GPU (NVIDIA) is present and "cpu" otherwise. The torch import is
     deferred (worker-only, heavy) and any failure degrades to CPU — so "auto"
     is always safe even without the ml/lyrics extras installed.
+
+    Cached per-process: torch import + CUDA init happen only once, not on
+    every job (CUDA init on Windows can take 30–60s the first time).
     """
     if requested != "auto":
         return requested
