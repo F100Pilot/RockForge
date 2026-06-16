@@ -229,148 +229,137 @@
     </section>
   </div>
 
-  <!-- ══════════════ RIGHT COLUMN ══════════════ -->
-
-  <!-- Placeholder when no job is selected -->
-  <div class="right-col detail-empty" id="detailEmpty">
-    Seleciona um job para ver os detalhes
-  </div>
-
-  <!-- Job detail panel (was full-screen modal, now right column) -->
-  <div class="right-col" id="detailOverlay" hidden>
-    <div id="detail" class="card" style="margin-bottom:0">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem">
-        <div>
-          <div id="detailHead"></div>
-          <div class="stages" id="stagesBar"></div>
-          <div id="warnings"></div>
-        </div>
-        <button type="button" class="modal-close" id="detailClose" title="Fechar" style="position:static;font-size:1.2rem">×</button>
-      </div>
-      <div class="downloads" id="downloads"></div>
-
-      <div id="review" style="display:none">
-
-        <!-- compact meta bar: tuning + BPM -->
-        <div id="tuningInfo"></div>
-        <div class="anchor-row" id="detectTuningRow" style="margin-bottom:.5rem">
-          <button type="button" id="detectTuning" class="secondary">Detetar afinação</button>
-          <span id="detectTuningInfo" class="meta"></span>
-          <button class="info-btn" data-info="tuning">ⓘ</button>
-        </div>
-        <form id="rebuildForm" class="tuninggrid" style="margin-bottom:.5rem">
-          <label>Afinação (MIDI):</label>
-          <span id="tuningInputs"></span>
-          <label class="check"><input type="checkbox" id="splitChk" checked> Lead/Rhythm (exp.)</label>
-          <label class="check"><input type="checkbox" id="muteChk" checked> Palm mute / slap / tap</label>
-        </form>
-
-        <!-- Section tabs -->
-        <div class="section-tabnav">
-          <button type="button" class="active" onclick="showSection('partitura')">Partitura</button>
-          <button type="button" onclick="showSection('letras')">Letras</button>
-          <button type="button" onclick="showSection('capa')">Capa</button>
-        </div>
-
-        <!-- TAB: Partitura -->
-        <div id="sectionPartitura">
-          <div id="syncPanel" style="display:none">
-            <audio id="syncAudio" controls preload="metadata" style="width:100%;margin:.4rem 0"></audio>
-            <div class="syncctrls">
-              <label>Início da música (s):
-                <input type="number" id="syncOffset" value="0" step="0.01" min="0" style="width:6rem"></label>
-              <input type="range" id="syncOffsetRange" min="0" max="20" step="0.01" value="0" style="flex:1;min-width:120px">
-              <label class="check"><input type="checkbox" id="syncTick" checked> Tique por nota</label>
-              <label>Volume: <input type="range" id="tickVolume" min="0" max="1" step="0.05" value="0.6" style="width:7rem;vertical-align:middle"></label>
-              <button class="info-btn" data-info="sync-offset">ⓘ</button>
-            </div>
-            <div class="syncctrls" style="margin-top:.35rem">
-              <label>Andamento (BPM):
-                <input type="number" id="tempoBpm" step="0.1" min="1" style="width:6.5rem"></label>
-              <input type="range" id="tempoRange" min="50" max="200" step="0.5" value="100" style="flex:1;min-width:120px">
-              <span id="tempoPct" class="meta"></span>
-              <button type="button" id="tempoReset" class="secondary">Repor GP</button>
-              <button class="info-btn" data-info="sync-tempo">ⓘ</button>
-            </div>
-            <div class="syncctrls" style="margin-top:.35rem">
-              <button type="button" id="autoSync" class="secondary">Sincronização automática</button>
-              <span id="autoSyncInfo" class="meta"></span>
-              <button class="info-btn" data-info="auto-sync">ⓘ</button>
-            </div>
-          </div>
-
-          <div class="tabnav" id="arrTabs" style="margin-top:.5rem"></div>
-          <div class="anchor-row" style="margin-top:.35rem">
-            <button type="button" id="zoomOut" class="secondary">−</button>
-            <button type="button" id="zoomIn" class="secondary">+</button>
-            <button type="button" id="zoomReset" class="secondary">reset</button>
-            <span id="zoomLevel" class="meta"></span>
-            <button type="button" id="previewArr" class="secondary">▶ pré-visualizar</button>
-            <button class="info-btn" data-info="tab-viewer">ⓘ</button>
-          </div>
-          <div id="tabwrap"><svg id="tabsvg" height="280"></svg></div>
-          <div class="anchor-row" style="margin-top:.4rem">
-            <span class="meta">Modo:</span>
-            <button type="button" id="modeArrastar" class="secondary active-mode">Arrastar</button>
-            <button type="button" id="modeMarcar" class="secondary">Marcar</button>
-            <button type="button" id="modeExcerto" class="secondary">Excerto</button>
-            <button type="button" id="modeMover" class="secondary">Mover seguintes</button>
-            <button type="button" id="modeBeat" class="secondary">Novo beat</button>
-            <button class="info-btn" data-info="sync-modes">ⓘ</button>
-            <span id="selectionInfo" style="margin-left:.5rem"></span>
-            <button type="button" id="clearSelection" class="secondary" hidden>Limpar seleção</button>
-          </div>
-          <div id="syncAnchorsList"></div>
-
-          <div class="anchor-row" style="margin-top:.75rem">
-            <button type="button" id="applyAll">Aplicar e reconstruir</button>
-            <span class="meta"><b id="applyKind"></b></span>
-          </div>
-        </div>
-
-        <!-- TAB: Letras -->
-        <div id="sectionLetras" hidden>
-          <div class="anchor-row">
-            <button type="button" id="detectLyrics" class="secondary">Detetar letra</button>
-            <span id="lyricsInfo" class="meta"></span>
-            <button class="info-btn" data-info="lyrics">ⓘ</button>
-          </div>
-          <div id="lyricsProgressWrap" style="display:none;margin:.4rem 0">
-            <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.25rem">
-              <div style="flex:1;background:#262830;border-radius:4px;height:8px;overflow:hidden">
-                <div id="lyricsProgressBar"></div>
-              </div>
-              <span id="lyricsProgressPct" style="font-size:.78rem;color:var(--muted);min-width:2.5rem;text-align:right"></span>
-            </div>
-            <pre id="lyricsLog" style="margin:.4rem 0 0;min-height:1.6rem;max-height:8rem;overflow-y:auto;background:#14151a;border:1px solid #262830;border-radius:4px;padding:.4rem .6rem;font-size:.75rem;color:#9aa0ad;white-space:pre-wrap"></pre>
-          </div>
-          <table id="lyricsTable" style="width:100%">
-            <thead><tr><th>Tempo (s)</th><th>Palavra</th><th>Fim de linha</th><th>Duração (s)</th><th></th></tr></thead>
-            <tbody id="lyricsRows"></tbody>
-          </table>
-          <div class="anchor-row" style="margin-top:.4rem">
-            <button type="button" id="addLyricRow" class="secondary">+ palavra</button>
-            <button type="button" id="sortLyrics" class="secondary">ordenar por tempo</button>
-          </div>
-        </div>
-
-        <!-- TAB: Capa -->
-        <div id="sectionCapa" hidden>
-          <div id="coverArtPanel">
-            <div class="anchor-row">
-              <img id="coverArtPreview" hidden style="max-width:96px;max-height:96px;border-radius:4px;border:1px solid #262830">
-              <input type="file" id="coverArtFile" accept="image/png,image/jpeg">
-              <span id="coverArtInfo" class="meta"></span>
-              <button class="info-btn" data-info="cover-art">ⓘ</button>
-            </div>
-          </div>
-        </div>
-
-      </div><!-- /#review -->
-    </div><!-- /#detail -->
-  </div><!-- /#detailOverlay -->
-
 </div><!-- /.app-layout -->
+
+<!-- ══════════ Job detail modal (75% ecrã) ══════════ -->
+<div class="modal-overlay" id="detailOverlay" hidden>
+  <div id="detail" class="modal" style="max-width:75vw;width:75vw;max-height:90vh">
+    <button type="button" class="modal-close" id="detailClose" title="Fechar">×</button>
+    <div id="detailHead"></div>
+    <div class="stages" id="stagesBar"></div>
+    <div id="warnings"></div>
+    <div class="downloads" id="downloads"></div>
+
+    <div id="review" style="display:none">
+
+      <!-- compact meta bar: tuning + BPM -->
+      <div id="tuningInfo"></div>
+      <div class="anchor-row" id="detectTuningRow" style="margin-bottom:.5rem">
+        <button type="button" id="detectTuning" class="secondary">Detetar afinação</button>
+        <span id="detectTuningInfo" class="meta"></span>
+        <button class="info-btn" data-info="tuning">ⓘ</button>
+      </div>
+      <form id="rebuildForm" class="tuninggrid" style="margin-bottom:.5rem">
+        <label>Afinação (MIDI):</label>
+        <span id="tuningInputs"></span>
+        <label class="check"><input type="checkbox" id="splitChk" checked> Lead/Rhythm (exp.)</label>
+        <label class="check"><input type="checkbox" id="muteChk" checked> Palm mute / slap / tap</label>
+      </form>
+
+      <!-- Section tabs -->
+      <div class="section-tabnav">
+        <button type="button" class="active" onclick="showSection('partitura')">Partitura</button>
+        <button type="button" onclick="showSection('letras')">Letras</button>
+        <button type="button" onclick="showSection('capa')">Capa</button>
+      </div>
+
+      <!-- TAB: Partitura -->
+      <div id="sectionPartitura">
+        <div id="syncPanel" style="display:none">
+          <audio id="syncAudio" controls preload="metadata" style="width:100%;margin:.4rem 0"></audio>
+          <div class="syncctrls">
+            <label>Início da música (s):
+              <input type="number" id="syncOffset" value="0" step="0.01" min="0" style="width:6rem"></label>
+            <input type="range" id="syncOffsetRange" min="0" max="20" step="0.01" value="0" style="flex:1;min-width:120px">
+            <label class="check"><input type="checkbox" id="syncTick" checked> Tique por nota</label>
+            <label>Volume: <input type="range" id="tickVolume" min="0" max="1" step="0.05" value="0.6" style="width:7rem;vertical-align:middle"></label>
+            <button class="info-btn" data-info="sync-offset">ⓘ</button>
+          </div>
+          <div class="syncctrls" style="margin-top:.35rem">
+            <label>Andamento (BPM):
+              <input type="number" id="tempoBpm" step="0.1" min="1" style="width:6.5rem"></label>
+            <input type="range" id="tempoRange" min="50" max="200" step="0.5" value="100" style="flex:1;min-width:120px">
+            <span id="tempoPct" class="meta"></span>
+            <button type="button" id="tempoReset" class="secondary">Repor GP</button>
+            <button class="info-btn" data-info="sync-tempo">ⓘ</button>
+          </div>
+          <div class="syncctrls" style="margin-top:.35rem">
+            <button type="button" id="autoSync" class="secondary">Sincronização automática</button>
+            <span id="autoSyncInfo" class="meta"></span>
+            <button class="info-btn" data-info="auto-sync">ⓘ</button>
+          </div>
+        </div>
+
+        <div class="tabnav" id="arrTabs" style="margin-top:.5rem"></div>
+        <div class="anchor-row" style="margin-top:.35rem">
+          <button type="button" id="zoomOut" class="secondary">−</button>
+          <button type="button" id="zoomIn" class="secondary">+</button>
+          <button type="button" id="zoomReset" class="secondary">reset</button>
+          <span id="zoomLevel" class="meta"></span>
+          <button type="button" id="previewArr" class="secondary">▶ pré-visualizar</button>
+          <button class="info-btn" data-info="tab-viewer">ⓘ</button>
+        </div>
+        <div id="tabwrap"><svg id="tabsvg" height="280"></svg></div>
+        <div class="anchor-row" style="margin-top:.4rem">
+          <span class="meta">Modo:</span>
+          <button type="button" id="modeArrastar" class="secondary active-mode">Arrastar</button>
+          <button type="button" id="modeMarcar" class="secondary">Marcar</button>
+          <button type="button" id="modeExcerto" class="secondary">Excerto</button>
+          <button type="button" id="modeMover" class="secondary">Mover seguintes</button>
+          <button type="button" id="modeBeat" class="secondary">Novo beat</button>
+          <button class="info-btn" data-info="sync-modes">ⓘ</button>
+          <span id="selectionInfo" style="margin-left:.5rem"></span>
+          <button type="button" id="clearSelection" class="secondary" hidden>Limpar seleção</button>
+        </div>
+        <div id="syncAnchorsList"></div>
+
+        <div class="anchor-row" style="margin-top:.75rem">
+          <button type="button" id="applyAll">Aplicar e reconstruir</button>
+          <span class="meta"><b id="applyKind"></b></span>
+        </div>
+      </div>
+
+      <!-- TAB: Letras -->
+      <div id="sectionLetras" hidden>
+        <div class="anchor-row">
+          <button type="button" id="detectLyrics" class="secondary">Detetar letra</button>
+          <span id="lyricsInfo" class="meta"></span>
+          <button class="info-btn" data-info="lyrics">ⓘ</button>
+        </div>
+        <div id="lyricsProgressWrap" style="display:none;margin:.4rem 0">
+          <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.25rem">
+            <div style="flex:1;background:#262830;border-radius:4px;height:8px;overflow:hidden">
+              <div id="lyricsProgressBar"></div>
+            </div>
+            <span id="lyricsProgressPct" style="font-size:.78rem;color:var(--muted);min-width:2.5rem;text-align:right"></span>
+          </div>
+          <pre id="lyricsLog" style="margin:.4rem 0 0;min-height:1.6rem;max-height:8rem;overflow-y:auto;background:#14151a;border:1px solid #262830;border-radius:4px;padding:.4rem .6rem;font-size:.75rem;color:#9aa0ad;white-space:pre-wrap"></pre>
+        </div>
+        <table id="lyricsTable" style="width:100%">
+          <thead><tr><th>Tempo (s)</th><th>Palavra</th><th>Fim de linha</th><th>Duração (s)</th><th></th></tr></thead>
+          <tbody id="lyricsRows"></tbody>
+        </table>
+        <div class="anchor-row" style="margin-top:.4rem">
+          <button type="button" id="addLyricRow" class="secondary">+ palavra</button>
+          <button type="button" id="sortLyrics" class="secondary">ordenar por tempo</button>
+        </div>
+      </div>
+
+      <!-- TAB: Capa -->
+      <div id="sectionCapa" hidden>
+        <div id="coverArtPanel">
+          <div class="anchor-row">
+            <img id="coverArtPreview" hidden style="max-width:96px;max-height:96px;border-radius:4px;border:1px solid #262830">
+            <input type="file" id="coverArtFile" accept="image/png,image/jpeg">
+            <span id="coverArtInfo" class="meta"></span>
+            <button class="info-btn" data-info="cover-art">ⓘ</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /#review -->
+  </div><!-- /#detail -->
+</div><!-- /#detailOverlay -->
 
 <!-- ══════════ "Novo job" modal ══════════ -->
 <div class="modal-overlay" id="newJobOverlay" hidden>
@@ -663,10 +652,12 @@ function closeDetail() {
   if (au) { au.pause(); au.removeAttribute('src'); au.load(); }
   if (syncRaf) { cancelAnimationFrame(syncRaf); syncRaf = null; }
   document.getElementById('detailOverlay').hidden = true;
-  document.getElementById('detailEmpty').hidden = false;
   refreshJobs();
 }
 document.getElementById('detailClose').onclick = closeDetail;
+document.getElementById('detailOverlay').addEventListener('click', e => {
+  if (e.target.id === 'detailOverlay') closeDetail();
+});
 
 async function refreshJobs() {
   const jobs = await (await fetch('/jobs')).json();
@@ -701,7 +692,6 @@ async function selectJob(id) {
   const j = await (await fetch(`/jobs/${id}`)).json();
   selectedJob = j;
   document.getElementById('detailOverlay').hidden = false;
-  document.getElementById('detailEmpty').hidden = true;
   document.getElementById('detailHead').innerHTML =
     `<strong>${esc(j.title)}</strong> — ${esc(j.artist)}
      ${j.album ? `· ${esc(j.album)}` : ''} ${j.year ? `(${j.year})` : ''} ${badge(j.status)}
