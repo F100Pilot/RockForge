@@ -15,8 +15,8 @@
   * { box-sizing:border-box; }
   body {
     font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-    max-width: 1040px; margin: 0 auto; padding: 1.5rem 1rem 4rem;
-    background:var(--bg); color:var(--text); line-height:1.5;
+    max-width: 1200px; margin: 0 auto; padding: 1.25rem 1rem 2rem;
+    background: var(--bg); color: var(--text); line-height: 1.5;
   }
   a { color:var(--accent); text-decoration:none; }
   a:hover { text-decoration:underline; }
@@ -157,6 +157,55 @@
   }
   .toast.ok { border-left-color:var(--ok); }
   @keyframes slidein { from { transform:translateX(20px); opacity:0; } to { transform:translateX(0); opacity:1; } }
+
+/* Two-column app layout */
+.app-layout {
+  display: flex; gap: 1rem; align-items: flex-start; min-height: 100vh;
+}
+.left-col {
+  width: 300px; flex-shrink: 0; position: sticky; top: 1rem;
+}
+.right-col {
+  flex: 1; min-width: 0;
+}
+.left-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: .75rem;
+}
+.left-header h1 {
+  margin: 0; font-size: 1.3rem; letter-spacing: .02em;
+  background: linear-gradient(90deg, var(--accent), #ffb088);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.detail-empty {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 300px; color: var(--muted); font-size: .95rem;
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); margin-top: 0;
+}
+/* Section tabs inside job detail */
+.section-tabnav {
+  display: flex; gap: 0; border-bottom: 1px solid var(--line); margin: .75rem 0 1rem;
+}
+.section-tabnav button {
+  background: transparent; color: var(--muted); border: none; border-bottom: 2px solid transparent;
+  font-size: .9rem; font-weight: 600; padding: .5rem 1.1rem; cursor: pointer;
+  border-radius: 0; transition: color .15s, border-color .15s;
+}
+.section-tabnav button.active { color: var(--accent); border-bottom-color: var(--accent); }
+.section-tabnav button:hover { color: var(--text); filter: none; }
+/* ⓘ info button */
+.info-btn {
+  background: transparent; border: 1px solid var(--line); color: var(--muted);
+  font-size: .75rem; padding: .1rem .35rem; border-radius: 50%; cursor: pointer;
+  line-height: 1.4; vertical-align: middle; margin-left: .25rem;
+}
+.info-btn:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+/* modal-sm override for info */
+.modal-info { max-width: 480px; }
+.modal-info p, .modal-info li { font-size: .9rem; color: var(--muted); line-height: 1.6; }
+.modal-info strong { color: var(--text); }
+.modal-info code { background: #0f1013; padding: .05rem .3rem; border-radius: 4px; }
 </style>
 </head>
 <body>
