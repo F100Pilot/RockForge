@@ -83,7 +83,7 @@ def _build_detection():  # noqa: ANN202 - heavy imports deferred to worker runti
 
     return (
         FfmpegNormalizer(),
-        DemucsSeparator(device=settings.demucs_device),
+        DemucsSeparator(device=settings.lyrics_device()),
         WhisperXLyricTranscriber,
     )
 
@@ -286,17 +286,18 @@ def detect_lyrics(job_id: str) -> None:
                 normalized = normalizer.normalize(Path(job.source), workdir)
 
                 params["lyrics_status"] = "separating"
-                _log_lyrics_stage(params, "isolating vocals (Demucs) — this can take a while")
+                _log_lyrics_stage(params, "isolating vocals (Demucs, 2-stem) — can take a while")
                 job.params = params
                 session.commit()
-                guitar = separator.separate_guitar(normalized, workdir)
-                vocals_stem = guitar.parent / "vocals.wav"
+                vocals_stem = separator.separate_vocals(normalized, workdir)
 
                 params["lyrics_status"] = "transcribing"
-                _log_lyrics_stage(params, "transcribing vocals (WhisperX)")
+                _log_lyrics_stage(params, f"transcribing (WhisperX/{settings.whisper_model})")
                 job.params = params
                 session.commit()
-                events = transcriber_cls(device=settings.demucs_device).transcribe(vocals_stem)
+                events = transcriber_cls(
+                    model_size=settings.whisper_model, device=settings.lyrics_device()
+                ).transcribe(vocals_stem)
 
                 params["lyrics_events"] = [
                     {"time": e.time, "length": e.length, "lyric": e.lyric} for e in events
