@@ -102,6 +102,21 @@
   button.secondary.active-mode { background: #2a2c35; border-color: var(--accent); color: var(--accent); }
   .anchor-row { display:flex; align-items:center; gap:.5rem; font-size:.85rem; color:var(--muted); margin:.2rem 0; }
   .anchor-row button { padding:.1rem .5rem; }
+  /* Lyrics detection progress bar */
+  @keyframes shimmer {
+    0%   { background-position: -200% center; }
+    100% { background-position:  200% center; }
+  }
+  #lyricsProgressBar {
+    height:100%; width:0%; transition:width .4s, background-color .4s;
+    background:#ff7a45; border-radius:4px;
+  }
+  #lyricsProgressBar.active {
+    background: linear-gradient(90deg, #ff7a45 25%, #ffb088 50%, #ff7a45 75%);
+    background-size: 200% auto;
+    animation: shimmer 1.6s linear infinite;
+  }
+  #lyricsProgressBar.stuck { background:#e06363 !important; animation:none; }
   .meta { font-size:.85rem; color:var(--muted); }
   .tuninggrid { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; }
   .tuninggrid input { width:3.4rem; text-align:center; }
@@ -394,8 +409,11 @@
           <span id="lyricsInfo" class="meta"></span>
         </div>
         <div id="lyricsProgressWrap" style="display:none;margin:.4rem 0">
-          <div style="background:#262830;border-radius:4px;height:8px;overflow:hidden">
-            <div id="lyricsProgressBar" style="background:#ff7a45;height:100%;width:0%;transition:width .3s"></div>
+          <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.25rem">
+            <div style="flex:1;background:#262830;border-radius:4px;height:8px;overflow:hidden">
+              <div id="lyricsProgressBar"></div>
+            </div>
+            <span id="lyricsProgressPct" style="font-size:.78rem;color:var(--muted);min-width:2.5rem;text-align:right"></span>
           </div>
           <pre id="lyricsLog" style="margin:.4rem 0 0;min-height:1.6rem;max-height:8rem;overflow-y:auto;background:#14151a;border:1px solid #262830;border-radius:4px;padding:.4rem .6rem;font-size:.75rem;color:#9aa0ad;white-space:pre-wrap"></pre>
         </div>
@@ -845,16 +863,33 @@ const LYRICS_PROGRESS = {
 };
 const LYRICS_DETECTING_STATUSES = new Set(['detecting', 'normalizing', 'separating', 'transcribing']);
 
-function updateLyricsProgress(status, log) {
+// How long (ms) each stage is allowed before we flag it as stuck.
+const LYRICS_STUCK_MS = { detecting: 2*60*1000, normalizing: 10*60*1000, separating: 25*60*1000, transcribing: 15*60*1000 };
+let _lyricsLastStatus = null, _lyricsStatusSince = 0;
+
+function updateLyricsProgress(status, log, forceStuck) {
   const wrap = document.getElementById('lyricsProgressWrap');
-  const bar = document.getElementById('lyricsProgressBar');
+  const bar  = document.getElementById('lyricsProgressBar');
+  const pct  = document.getElementById('lyricsProgressPct');
   const logEl = document.getElementById('lyricsLog');
+
+  if (status !== _lyricsLastStatus) { _lyricsLastStatus = status; _lyricsStatusSince = Date.now(); }
+
+  const isActive = LYRICS_DETECTING_STATUSES.has(status);
+  const elapsed  = Date.now() - _lyricsStatusSince;
+  const stuck    = forceStuck || (isActive && elapsed > (LYRICS_STUCK_MS[status] || 8*60*1000));
+
   if (status in LYRICS_PROGRESS) {
     wrap.style.display = '';
-    bar.style.width = `${LYRICS_PROGRESS[status] * 100}%`;
+    const pctVal = Math.round(LYRICS_PROGRESS[status] * 100);
+    bar.style.width = `${pctVal}%`;
+    pct.textContent  = `${pctVal}%`;
+    bar.className    = stuck ? 'stuck' : (isActive ? 'active' : '');
   } else {
     wrap.style.display = 'none';
     bar.style.width = '0%';
+    pct.textContent = '';
+    bar.className = '';
   }
   if (log && log.length) {
     logEl.textContent = log.join('\n');
@@ -883,10 +918,15 @@ async function loadLyrics(id) {
       if (!rr.ok) return;
       const b = await rr.json();
       let label = LYRICS_STATUS_LABEL[b.status] || '';
+      const elapsed = Date.now() - _lyricsStatusSince;
+      const stuckMs = LYRICS_STUCK_MS[b.status] || 8*60*1000;
+      const isStuck = LYRICS_DETECTING_STATUSES.has(b.status) && elapsed > stuckMs;
       if (b.status === 'detecting' && !b.log.length && Date.now() - startedAt > 30000)
         label += ' — sem resposta do worker há mais de 30s; verifica logs/worker.log';
+      if (isStuck)
+        label += ` — sem progresso há ${Math.round(elapsed/60000)} min; verifica logs/worker.log`;
       document.getElementById('lyricsInfo').textContent = label;
-      updateLyricsProgress(b.status, b.log);
+      updateLyricsProgress(b.status, b.log, isStuck);
       if (!LYRICS_DETECTING_STATUSES.has(b.status)) {
         clearInterval(lyricsPollTimer);
         lyricsEvents = eventsToRows(b.events);
