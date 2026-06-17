@@ -175,6 +175,9 @@ def generate_cdlc(job_id: str) -> None:
                 )
                 from rockforge.domain.arrangement import SongMetadata as Meta
                 from rockforge.domain.arrangement import ToneChange
+                from rockforge.infrastructure.packaging.gear.gear_catalogue import (
+                    tones_from_dicts,
+                )
                 from rockforge.infrastructure.rsxml.vocals import events_from_dicts
 
                 def _stages(raw: Any) -> list[list[tuple[float, float]]]:
@@ -197,6 +200,7 @@ def generate_cdlc(job_id: str) -> None:
                         ToneChange(time=float(c["time"]), name=str(c["name"]))
                         for c in params.get("tone_changes", [])
                     ],
+                    tones=tones_from_dicts(list(params.get("tones") or [])),
                     sync_anchor_stages=_stages(params.get("sync_anchor_stages")),
                     arrangement_sync={
                         str(kind): ArrangementSync(

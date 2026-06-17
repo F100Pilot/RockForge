@@ -108,6 +108,7 @@ class NativePsarcPacker:
             include_vocals=bool(vocals),
         )
 
+        psarc_path: Path | None = None
         try:
             from rockforge.infrastructure.packaging.psarc.crypto import encrypt_sng
 
@@ -127,14 +128,10 @@ class NativePsarcPacker:
             files[f"audio/{key_lower}{audio_for_psarc.suffix}"] = audio_for_psarc.read_bytes()
 
             psarc_bytes = container.pack_entries(files, encrypt=True)
-        except ImportError as exc:
-            raise PackagingError(
-                "native PSARC packing requires the 'psarc' extra "
-                "(pip install -e \".[psarc]\")"
-            ) from exc
-
-        psarc_path = out_dir / f"{song_key}.psarc"
-        psarc_path.write_bytes(psarc_bytes)
+            psarc_path = out_dir / f"{song_key}.psarc"
+            psarc_path.write_bytes(psarc_bytes)
+        except ImportError:
+            pass
 
         write_rs2dlc(
             arrangements,
@@ -152,12 +149,13 @@ class NativePsarcPacker:
             arrangements, audio_dest, wem_path, xml_paths, vocals_path, cover_art_dest
         )
         project["song_key"] = song_key
-        project["psarc"] = psarc_path.name
-        project["native_psarc_note"] = (
-            "RockForge also packed this .psarc natively "
-            "(infrastructure/packaging/psarc); the DLC Builder fields above "
-            "remain valid for re-importing the bundle."
-        )
+        if psarc_path is not None:
+            project["psarc"] = psarc_path.name
+            project["native_psarc_note"] = (
+                "RockForge also packed this .psarc natively "
+                "(infrastructure/packaging/psarc); the DLC Builder fields above "
+                "remain valid for re-importing the bundle."
+            )
         if cover_art_dest is not None:
             project["cover_art_note"] = (
                 "cover_art was packed into the bundle but is NOT yet embedded as "

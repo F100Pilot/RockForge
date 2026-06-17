@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     def lyrics_device(self) -> str:
         return self.whisperx_device or self.demucs_device
     psarc_packer_cmd: str | None = None  # e.g. external DLC Builder CLI invocation
-    psarc_mode: str = "dlcbuilder"  # "dlcbuilder" (default) | "native" (packer/packer.py)
+    psarc_mode: str = "native"  # "native" (default, always produces .psarc) | "dlcbuilder"
 
     # Local single-user setups (start.bat): if > 0, the API process exits when
     # the web UI stops sending /heartbeat pings for this many seconds (i.e. the

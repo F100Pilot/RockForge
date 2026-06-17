@@ -261,6 +261,78 @@ def test_gp_inspect_and_job_flow(client: TestClient, tmp_path) -> None:
     assert job["title"] == "GpT" and job["artist"] == "GpA"  # metadata from the GP file
 
 
+def test_gear_catalogue_endpoint_returns_grouped_gear(client: TestClient) -> None:
+    r = client.get("/gear-catalogue")
+    assert r.status_code == 200
+    cat = r.json()
+    assert len(cat["amps"]) > 0
+    assert len(cat["cabinets"]) > 0
+    assert cat["descriptors"]["Clean"] == "$[35720]CLEAN"
+
+
+def _gp_job(client: TestClient, tmp_path) -> dict:
+    data = _make_gp5_bytes(tmp_path)
+    body = client.post(
+        "/gp/inspect", files={"file": ("song.gp5", data, "application/octet-stream")}
+    ).json()
+    return client.post(
+        "/jobs/gp",
+        data={"gp_token": body["gp_token"], "lead_track": "0"},
+        files={"audio": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
+    ).json()
+
+
+def test_rebuild_stores_tones_and_changes(client: TestClient, tmp_path) -> None:
+    job = _gp_job(client, tmp_path)
+    tone = {
+        "key": "lead",
+        "name": "Lead",
+        "amp": {"key": "Amp_MarshallJCM800", "knobs": {"Amp_MarshallJCM800_Gain": 90}},
+        "cabinet": {"key": "Cab_Marshall1960TV_Ribbon_Cone"},
+    }
+    rebuilt = client.post(
+        f"/jobs/{job['id']}/rebuild",
+        json={
+            "tone_base": "lead",
+            "tone_names": ["lead"],
+            "tones": [tone],
+            "tone_changes": [{"time": 5.0, "name": "lead"}],
+        },
+    ).json()
+    tones = client.get(f"/jobs/{rebuilt['id']}/tones").json()
+    assert tones["tone_base"] == "lead"
+    assert tones["tone_names"] == ["lead"]
+    assert tones["tones"][0]["key"] == "lead"
+    assert tones["tone_changes"][0]["time"] == 5.0
+
+
+def test_rebuild_rejects_too_many_tones(client: TestClient, tmp_path) -> None:
+    job = _gp_job(client, tmp_path)
+    r = client.post(
+        f"/jobs/{job['id']}/rebuild",
+        json={"tone_names": ["a", "b", "c", "d", "e"]},
+    )
+    assert r.status_code == 422
+
+
+def test_rebuild_tones_rejected_for_non_gp(client: TestClient) -> None:
+    original = client.post(
+        "/jobs/upload", files={"file": ("a.wav", b"RIFF0000WAVE", "audio/wav")},
+        data={"title": "T", "artist": "A"},
+    ).json()
+    r = client.post(
+        f"/jobs/{original['id']}/rebuild", json={"tone_base": "clean"}
+    )
+    assert r.status_code == 422
+
+
+def test_get_tones_defaults_empty(client: TestClient, tmp_path) -> None:
+    job = _gp_job(client, tmp_path)
+    tones = client.get(f"/jobs/{job['id']}/tones").json()
+    assert tones["tones"] == []
+    assert tones["tone_changes"] == []
+
+
 def test_gp_rebuild_applies_tempo_scale(client: TestClient, tmp_path) -> None:
     # The tempo control rebuilds with tempo_scale; it must land in params and
     # be reflected on the job output (defaulting to 1.0 on the first build).
