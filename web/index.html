@@ -736,6 +736,14 @@ const INFO = {
     title: 'Capa do álbum',
     body: '<p>Imagem JPG ou PNG incluída no bundle como <code>cover.*</code> e referenciada no <code>rockforge.rs2dlc</code> — usa-a como capa ao abrir o projeto no DLC Builder (que gera as texturas DDS do jogo).<br>O upload não reconstrói o bundle — clica em "Aplicar e reconstruir" na tab Partitura para incluir a capa.</p>'
   },
+  'tones': {
+    title: 'Tons (amp, cabine, efeitos)',
+    body: `<p>Define os tons da CDLC com <strong>gear real</strong> (amplificador, cabine e pedais/racks da biblioteca do Rocksmith). São gravados no <code>rockforge.rs2dlc</code> e no <code>.psarc</code>, por isso funcionam no jogo sem teres de os recriar no DLC Builder.</p>
+<p><strong>Criar:</strong> clica em "+ Criar / editar tons", depois "+ Novo tom". Escolhe o amplificador e a cabine (obrigatórios) e adiciona efeitos opcionais. Cada botão de knob vem com o valor por defeito do catálogo.</p>
+<p><strong>Atribuir:</strong> escolhe o <strong>Tom base</strong> (o que toca no início) e marca até <strong>4</strong> tons "extra" que poderás trocar ao longo da música.</p>
+<p><strong>Trocar a meio:</strong> com o modo "Mudança de tom" ativo, clica numa nota na partitura para colocar lá uma troca para um dos tons extra.</p>
+<p>Os tons são <strong>por arranjo</strong> (Lead/Rhythm/Combined) e só se aplicam a jobs de Guitar Pro. Sem tons definidos, o DLC Builder marca "tone missing" e resolves com a biblioteca dele.</p>`
+  },
 };
 
 document.getElementById('infoClose').addEventListener('click', () => {
@@ -1128,6 +1136,12 @@ async function applyAll() {
       sync_anchors: syncAnchors.length ? syncAnchors : null,
       import_mutes: document.getElementById('muteChk').checked,
       lyrics_events: lyricsEvents.length ? serializeLyrics() : null,
+      // Tones are job-level (shared by every arrangement). Sent only for GP
+      // jobs; for others they stay null so the backend's GP-only guard passes.
+      tones: jobTones.length ? jobTones : null,
+      tone_base: toneBase || null,
+      tone_names: toneNames.length ? toneNames : null,
+      tone_changes: toneChanges.length ? toneChanges : null,
     }),
   });
   const b = await r.json();
@@ -1135,6 +1149,305 @@ async function applyAll() {
   else toast(b.detail || 'erro');
 }
 document.getElementById('applyAll').addEventListener('click', applyAll);
+
+// ============ Tones: gear builder + base/extra/changes ============
+async function loadGearCatalogue() {
+  if (gearCatalogue) return gearCatalogue;
+  try {
+    gearCatalogue = await (await fetch('/gear-catalogue')).json();
+  } catch {
+    gearCatalogue = { amps: [], cabinets: [], pedals: [], racks: [], descriptors: {} };
+  }
+  return gearCatalogue;
+}
+
+function descriptorNameToCode(name) {
+  const d = (gearCatalogue && gearCatalogue.descriptors) || {};
+  return d[name] || null;
+}
+function descriptorCodeToName(code) {
+  const d = (gearCatalogue && gearCatalogue.descriptors) || {};
+  for (const [name, c] of Object.entries(d)) if (c === code) return name;
+  return code;
+}
+function gearByKey(list, key) { return (list || []).find(g => g.key === key) || null; }
+
+async function loadTones(id) {
+  await loadGearCatalogue();
+  try {
+    const t = await (await fetch(`/jobs/${id}/tones`)).json();
+    jobTones = t.tones || [];
+    toneBase = t.tone_base || null;
+    toneNames = t.tone_names || [];
+    toneChanges = t.tone_changes || [];
+  } catch {
+    jobTones = []; toneBase = null; toneNames = []; toneChanges = [];
+  }
+  renderTonePanel();
+}
+
+function renderTonePanel() {
+  const isGp = selectedJob && selectedJob.source_type === 'gp';
+  document.getElementById('tonePanel').style.display = isGp ? '' : 'none';
+  if (!isGp) return;
+
+  const chips = document.getElementById('toneChips');
+  chips.innerHTML = jobTones.length
+    ? jobTones.map(t => `<span style="background:#23252e;border:1px solid var(--line);border-radius:999px;padding:.1rem .55rem">${esc(t.name || t.key)}</span>`).join('')
+    : '<span class="meta">Nenhum tom definido — clica em "+ Criar / editar tons".</span>';
+
+  const baseSel = document.getElementById('toneBaseSel');
+  baseSel.innerHTML = '<option value="">—</option>' +
+    jobTones.map(t => `<option value="${esc(t.key)}">${esc(t.name || t.key)}</option>`).join('');
+  baseSel.value = toneBase || '';
+
+  const extra = document.getElementById('toneExtraChecks');
+  extra.innerHTML = jobTones.length
+    ? jobTones.map(t => `<label class="check"><input type="checkbox" class="tone-extra" value="${esc(t.key)}" ${toneNames.includes(t.key) ? 'checked' : ''}> ${esc(t.name || t.key)}</label>`).join('')
+    : '<span class="meta">—</span>';
+
+  renderToneChangesList();
+}
+
+document.getElementById('toneBaseSel').addEventListener('change', e => {
+  toneBase = e.target.value || null;
+});
+document.getElementById('toneExtraChecks').addEventListener('change', e => {
+  if (!e.target.classList.contains('tone-extra')) return;
+  const checked = [...document.querySelectorAll('.tone-extra:checked')].map(c => c.value);
+  if (checked.length > 4) { e.target.checked = false; toast('Máximo de 4 tons extra.'); return; }
+  toneNames = checked;
+});
+
+function renderToneChangesList() {
+  const el = document.getElementById('toneChangesList');
+  if (!toneChanges.length) {
+    el.innerHTML = '<span class="meta">Sem mudanças de tom. Ativa o modo "Mudança de tom" e clica numa nota.</span>';
+    return;
+  }
+  const sorted = toneChanges.slice().sort((a, b) => a.time - b.time);
+  el.innerHTML = sorted.map((c, i) => {
+    const name = (jobTones.find(t => t.key === c.name) || {}).name || c.name;
+    return `<div class="anchor-row">↪ ${c.time.toFixed(2)}s → <b>${esc(name)}</b>
+      <button type="button" class="tone-change-rm" data-i="${i}">remover</button></div>`;
+  }).join('');
+  el.querySelectorAll('.tone-change-rm').forEach(b => b.addEventListener('click', () => {
+    const target = sorted[parseInt(b.dataset.i, 10)];
+    toneChanges = toneChanges.filter(c => c !== target);
+    renderToneChangesList();
+  }));
+}
+
+function placeToneChange(chartTime) {
+  if (!toneNames.length) { toast('Marca primeiro tons "extra" para poder trocar.'); return; }
+  const opts = toneNames.map((k, i) => {
+    const n = (jobTones.find(t => t.key === k) || {}).name || k;
+    return `${i + 1}) ${n}`;
+  }).join('\n');
+  const pick = prompt(`Trocar para qual tom?\n${opts}`, '1');
+  if (pick === null) return;
+  const idx = parseInt(pick, 10) - 1;
+  if (isNaN(idx) || idx < 0 || idx >= toneNames.length) { toast('Escolha inválida.'); return; }
+  toneChanges.push({ time: chartTime, name: toneNames[idx] });
+  renderToneChangesList();
+  toast('Mudança de tom adicionada.', 'ok');
+}
+
+// ---- Tone builder modal ----
+function openToneBuilder() {
+  if (!selectedJob || selectedJob.source_type !== 'gp') { toast('Tons só se aplicam a jobs Guitar Pro.'); return; }
+  loadGearCatalogue().then(() => {
+    renderToneListEditor();
+    document.getElementById('toneEditForm').style.display = 'none';
+    document.getElementById('toneEditEmpty').style.display = '';
+    editingToneKey = null;
+    document.getElementById('toneOverlay').hidden = false;
+  });
+}
+function closeToneBuilder() {
+  document.getElementById('toneOverlay').hidden = true;
+  renderTonePanel();  // reflect any new/removed tones in the panel
+}
+document.getElementById('openToneBuilder').addEventListener('click', openToneBuilder);
+document.getElementById('toneClose').addEventListener('click', closeToneBuilder);
+document.getElementById('toneOverlay').addEventListener('click', e => {
+  if (e.target.id === 'toneOverlay') closeToneBuilder();
+});
+
+function renderToneListEditor() {
+  const el = document.getElementById('toneListEditor');
+  el.innerHTML = jobTones.length
+    ? jobTones.map(t => `<button type="button" class="secondary tone-pick ${t.key === editingToneKey ? 'active-mode' : ''}" data-key="${esc(t.key)}" style="text-align:left">${esc(t.name || t.key)}</button>`).join('')
+    : '<span class="meta">Ainda sem tons.</span>';
+  el.querySelectorAll('.tone-pick').forEach(b =>
+    b.addEventListener('click', () => editToneInForm(b.dataset.key)));
+}
+
+function populateGearSelect(sel, items, selectedKey, placeholder) {
+  sel.innerHTML = (placeholder ? `<option value="">${placeholder}</option>` : '') +
+    (items || []).map(g => `<option value="${esc(g.key)}">${esc(g.name)}</option>`).join('');
+  if (selectedKey) sel.value = selectedKey;
+}
+
+function renderKnobs(container, gearItem, values) {
+  if (!gearItem || !gearItem.knobs || !gearItem.knobs.length) { container.innerHTML = ''; return; }
+  container.innerHTML = gearItem.knobs.map(k => {
+    const v = (values && k.key in values) ? values[k.key] : k.default;
+    return `<label style="font-size:.72rem;color:var(--muted);display:flex;flex-direction:column;gap:.1rem">${esc(k.name)}
+      <input type="number" data-knob="${esc(k.key)}" min="${k.min}" max="${k.max}" step="${k.step}" value="${v}" style="width:4.6rem"></label>`;
+  }).join('');
+}
+function readKnobs(container) {
+  const out = {};
+  container.querySelectorAll('input[data-knob]').forEach(i => { out[i.dataset.knob] = parseFloat(i.value); });
+  return out;
+}
+
+function gearListFor(category) {
+  return category === 'rack' ? gearCatalogue.racks : gearCatalogue.pedals;
+}
+
+function addEffectRow(category, gearKey, values) {
+  const wrap = document.getElementById('teEffects');
+  const row = document.createElement('div');
+  row.className = 'te-effect';
+  row.style = 'border:1px solid var(--line);border-radius:8px;padding:.4rem .5rem';
+  row.innerHTML = `
+    <div class="anchor-row" style="flex-wrap:wrap">
+      <select class="te-eff-cat">
+        <option value="pre">Pré-pedal</option>
+        <option value="post">Pós-pedal</option>
+        <option value="rack">Rack</option>
+      </select>
+      <select class="te-eff-gear" style="min-width:11rem"></select>
+      <button type="button" class="icon te-eff-rm">remover</button>
+    </div>
+    <div class="te-eff-knobs tuninggrid" style="margin-top:.3rem"></div>`;
+  wrap.appendChild(row);
+  const catSel = row.querySelector('.te-eff-cat');
+  const gearSel = row.querySelector('.te-eff-gear');
+  const knobsEl = row.querySelector('.te-eff-knobs');
+  catSel.value = category || 'pre';
+  const fillGear = (selKey, vals) => {
+    populateGearSelect(gearSel, gearListFor(catSel.value), selKey, null);
+    renderKnobs(knobsEl, gearByKey(gearListFor(catSel.value), gearSel.value), vals);
+  };
+  fillGear(gearKey, values);
+  catSel.addEventListener('change', () => fillGear(null, null));
+  gearSel.addEventListener('change', () =>
+    renderKnobs(knobsEl, gearByKey(gearListFor(catSel.value), gearSel.value), null));
+  row.querySelector('.te-eff-rm').addEventListener('click', () => row.remove());
+}
+
+function blankFormDefaults() {
+  document.getElementById('teName').value = '';
+  document.getElementById('teVolume').value = '-15';
+  document.getElementById('teDescriptors').value = '';
+  const amps = gearCatalogue.amps, cabs = gearCatalogue.cabinets;
+  populateGearSelect(document.getElementById('teAmp'), amps, amps[0] && amps[0].key, null);
+  renderKnobs(document.getElementById('teAmpKnobs'), amps[0], null);
+  populateGearSelect(document.getElementById('teCab'), cabs, cabs[0] && cabs[0].key, null);
+  document.getElementById('teEffects').innerHTML = '';
+}
+
+function showEditForm() {
+  document.getElementById('toneEditForm').style.display = '';
+  document.getElementById('toneEditEmpty').style.display = 'none';
+}
+
+function newToneInForm() {
+  editingToneKey = null;
+  blankFormDefaults();
+  showEditForm();
+  renderToneListEditor();
+}
+
+function editToneInForm(key) {
+  const t = jobTones.find(x => x.key === key);
+  if (!t) return;
+  editingToneKey = key;
+  document.getElementById('teName').value = t.name || '';
+  document.getElementById('teVolume').value = t.volume != null ? t.volume : -15;
+  document.getElementById('teDescriptors').value = (t.descriptors || []).map(descriptorCodeToName).join(', ');
+  populateGearSelect(document.getElementById('teAmp'), gearCatalogue.amps, t.amp && t.amp.key, null);
+  renderKnobs(document.getElementById('teAmpKnobs'), gearByKey(gearCatalogue.amps, t.amp && t.amp.key), t.amp && t.amp.knobs);
+  populateGearSelect(document.getElementById('teCab'), gearCatalogue.cabinets, t.cabinet && t.cabinet.key, null);
+  const eff = document.getElementById('teEffects');
+  eff.innerHTML = '';
+  for (const p of (t.pre || [])) if (p) addEffectRow('pre', p.key, p.knobs);
+  for (const p of (t.post || [])) if (p) addEffectRow('post', p.key, p.knobs);
+  for (const p of (t.racks || [])) if (p) addEffectRow('rack', p.key, p.knobs);
+  showEditForm();
+  renderToneListEditor();
+}
+
+document.getElementById('newTone').addEventListener('click', newToneInForm);
+
+document.getElementById('teAmp').addEventListener('change', e => {
+  renderKnobs(document.getElementById('teAmpKnobs'), gearByKey(gearCatalogue.amps, e.target.value), null);
+});
+document.getElementById('teAddEffect').addEventListener('click', () => addEffectRow('pre', null, null));
+
+function slugify(s) {
+  return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'tom';
+}
+
+document.getElementById('teSave').addEventListener('click', () => {
+  const name = document.getElementById('teName').value.trim();
+  if (!name) { toast('Dá um nome ao tom.'); return; }
+  const ampKey = document.getElementById('teAmp').value;
+  const cabKey = document.getElementById('teCab').value;
+  if (!ampKey || !cabKey) { toast('Escolhe amplificador e cabine.'); return; }
+
+  const descriptors = document.getElementById('teDescriptors').value
+    .split(',').map(s => s.trim()).filter(Boolean)
+    .map(descriptorNameToCode).filter(Boolean);
+
+  const pre = [], post = [], racks = [];
+  document.querySelectorAll('#teEffects .te-effect').forEach(row => {
+    const cat = row.querySelector('.te-eff-cat').value;
+    const gearSel = row.querySelector('.te-eff-gear');
+    if (!gearSel.value) return;
+    const pedal = { key: gearSel.value, knobs: readKnobs(row.querySelector('.te-eff-knobs')) };
+    (cat === 'rack' ? racks : cat === 'post' ? post : pre).push(pedal);
+  });
+
+  let key = editingToneKey;
+  if (!key) {
+    key = slugify(name);
+    let n = 1, base = key;
+    while (jobTones.some(t => t.key === key)) key = `${base}_${++n}`;
+  }
+  const tone = {
+    key, name,
+    volume: parseFloat(document.getElementById('teVolume').value) || -15,
+    descriptors,
+    amp: { key: ampKey, knobs: readKnobs(document.getElementById('teAmpKnobs')) },
+    cabinet: { key: cabKey, knobs: {} },
+    pre, post, racks,
+  };
+  const i = jobTones.findIndex(t => t.key === key);
+  if (i >= 0) jobTones[i] = tone; else jobTones.push(tone);
+  editingToneKey = key;
+  renderToneListEditor();
+  renderTonePanel();
+  toast('Tom guardado.', 'ok');
+});
+
+document.getElementById('teDelete').addEventListener('click', () => {
+  if (!editingToneKey) { document.getElementById('toneEditForm').style.display = 'none'; document.getElementById('toneEditEmpty').style.display = ''; return; }
+  jobTones = jobTones.filter(t => t.key !== editingToneKey);
+  if (toneBase === editingToneKey) toneBase = null;
+  toneNames = toneNames.filter(k => k !== editingToneKey);
+  toneChanges = toneChanges.filter(c => c.name !== editingToneKey);
+  editingToneKey = null;
+  document.getElementById('toneEditForm').style.display = 'none';
+  document.getElementById('toneEditEmpty').style.display = '';
+  renderToneListEditor();
+  renderTonePanel();
+  toast('Tom removido.', 'ok');
+});
 
 // ---- Lyrics editor ----
 function renderLyricsRows() {
@@ -1448,6 +1761,11 @@ function updateSelectionInfo() {
       reTempoFromHere(grp);
       return;
     }
+    // Tone change: click a note to switch to one of the extra tones from there.
+    if (syncMode === 'tonechange' && grp) {
+      placeToneChange(parseFloat(grp.dataset.t));
+      return;
+    }
     if (syncMode === 'excerpt' && !(grp && selectedTimes.has(parseFloat(grp.dataset.t)))) {
       // start a rubber-band selection (also when starting on an unselected note)
       const rect = svg.getBoundingClientRect();
@@ -1551,6 +1869,7 @@ const SYNC_MODE_BUTTONS = [
   ['modeExcerto', 'excerpt'],
   ['modeMover', 'movefrom'],
   ['modeBeat', 'newbeat'],
+  ['modeTone', 'tonechange'],
 ];
 SYNC_MODE_BUTTONS.forEach(([id, mode]) => {
   document.getElementById(id)?.addEventListener('click', () => {
