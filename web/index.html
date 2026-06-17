@@ -241,6 +241,24 @@
 .landing-hero {
   display: flex; flex-direction: column; gap: .6rem; margin-bottom: 1rem;
 }
+/* Landing state: break the hero out of the 300px sidebar — full-width row of
+   large banners, centered at ~75% of the screen. */
+body.landing .left-col { width: 100%; position: static; }
+body.landing .landing-hero {
+  flex-direction: row; gap: 1.5rem;
+  width: 75%; max-width: 1100px; margin: 3.5rem auto 1rem;
+}
+body.landing .job-banner {
+  flex: 1; flex-direction: column; align-items: center; text-align: center;
+  gap: 1rem; padding: 2.4rem 1.4rem;
+}
+body.landing .job-banner-icon { width: 76px; height: 76px; font-size: 2.6rem; border-radius: 18px; }
+body.landing .job-banner-title { font-size: 1.5rem; margin-bottom: .4rem; }
+body.landing .job-banner-desc { font-size: 1rem; }
+body.landing .job-banner-arrow { font-size: 1.7rem; }
+@media (max-width: 900px) {
+  body.landing .landing-hero { flex-direction: column; width: 92%; }
+}
 .job-banner {
   display: flex; align-items: center; gap: 1rem; padding: 1rem 1.2rem;
   background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
@@ -887,8 +905,10 @@ async function refreshJobs() {
   const btn  = document.getElementById('openNewJob');
   if (!jobs.length) {
     hero.style.display = '';  list.style.display = 'none'; btn.style.display = 'none';
+    document.body.classList.add('landing');
     return;
   }
+  document.body.classList.remove('landing');
   hero.style.display = 'none'; list.style.display = ''; btn.style.display = '';
   for (const j of jobs) {
     const tr = document.createElement('tr');
