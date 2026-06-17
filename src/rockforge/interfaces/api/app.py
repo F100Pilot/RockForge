@@ -839,11 +839,14 @@ def get_tones(job_id: str) -> dict[str, Any]:
         if job is None:
             raise HTTPException(404, "job not found")
         params = job.params or {}
+        names = params.get("tone_names")
+        tones = params.get("tones")
+        changes = params.get("tone_changes")
         return {
             "tone_base": params.get("tone_base"),
-            "tone_names": list(params.get("tone_names") or []),
-            "tones": list(params.get("tones") or []),
-            "tone_changes": list(params.get("tone_changes") or []),
+            "tone_names": list(names) if isinstance(names, list) else [],
+            "tones": list(tones) if isinstance(tones, list) else [],
+            "tone_changes": list(changes) if isinstance(changes, list) else [],
         }
 
 
