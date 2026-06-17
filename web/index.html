@@ -351,7 +351,14 @@
       <!-- TAB: Partitura -->
       <div id="sectionPartitura">
         <div id="syncPanel" style="display:none">
-          <audio id="syncAudio" controls preload="metadata" style="width:100%;margin:.4rem 0"></audio>
+          <!-- Hidden <audio>: decode-failure fallback only. Primary playback is
+               Web Audio (sample-accurate seeking — see audioPlay/audioSeek). -->
+          <audio id="syncAudio" preload="none" style="display:none"></audio>
+          <div style="display:flex;align-items:center;gap:.6rem;margin:.4rem 0">
+            <button type="button" id="playBtn" onclick="audioToggle()" style="min-width:2.6rem;font-size:1.1rem" aria-label="Reproduzir">▶</button>
+            <input type="range" id="seekBar" min="0" max="0" step="0.01" value="0" style="flex:1;min-width:140px">
+            <span id="timeLabel" class="meta" style="white-space:nowrap">0:00 / 0:00</span>
+          </div>
           <div class="syncctrls">
             <label>Início da música (s):
               <input type="number" id="syncOffset" value="0" step="0.01" min="0" style="width:6rem"></label>
@@ -788,6 +795,20 @@ let audioCtx = null, syncRaf = null, tickIdx = 0;
 // Decoded recording peaks for the tab-viewer waveform: max |amplitude| per
 // 1/WAVE_HZ second bin, plus the audio duration. Reset per job.
 let wavePeaks = null, waveDuration = 0;
+// Web Audio playback engine. We play the recording through an
+// AudioBufferSourceNode (decoded once for the waveform), NOT the <audio>
+// element: the element seeks by estimating a byte offset from time, which is
+// accurate near the start but drifts further in for VBR/seek-table-less
+// sources — exactly the "aligned from the start, off in the middle" symptom.
+// A buffer source seeks sample-accurately and its clock is audioCtx.currentTime,
+// so playback, the waveform and the notes share one exact timeline.
+let playBuffer = null;       // decoded recording (null => use <audio> fallback)
+let playSource = null;       // active AudioBufferSourceNode while playing
+let playStartCtx = 0;        // audioCtx.currentTime when the current source started
+let playStartOffset = 0;     // buffer offset (s) the current source started at
+let playing = false;         // buffer-backend transport state
+let pausedAt = 0;            // buffer-backend position (s) while paused/stopped
+let seekDragging = false, seekWasPlaying = false;
 const WAVE_HZ = 100;
 let syncMode = 'drag'; // 'drag' | 'tap' | 'excerpt'
 let currentPlayheadT = 0; // display time of playhead; updated by syncFrame and seeks
@@ -845,9 +866,10 @@ function closeDetail() {
   clearTimeout(pollTimer);
   clearInterval(lyricsPollTimer);
   stopArrangementPreview();
+  stopPlayback();
+  playBuffer = null; pausedAt = 0; playing = false;
   const au = document.getElementById('syncAudio');
-  if (au) { au.pause(); au.removeAttribute('src'); au.load(); }
-  if (syncRaf) { cancelAnimationFrame(syncRaf); syncRaf = null; }
+  if (au) { au.removeAttribute('src'); au.load(); }
   document.getElementById('detailOverlay').hidden = true;
   refreshJobs();
 }
@@ -956,6 +978,7 @@ async function loadArrangements(id) {
   selectedTimes = new Set();
   currentArr = 0;  // reset before initSync redraws, so a stale index can't go out of range
   wavePeaks = null; waveDuration = 0;
+  stopPlayback(); playBuffer = null; pausedAt = 0;
   if (!arrangements.length) return;
   document.getElementById('review').style.display = '';
   const a0 = arrangements[0];
@@ -1992,11 +2015,141 @@ let viewOrigin = 0;
 function timeToX(t) { return 30 + (t - viewOrigin) * tabPx; }
 function xToTime(x) { return (x - 30) / tabPx + viewOrigin; }
 
-function syncResetPointer() {
+// --- Web Audio transport (sample-accurate; <audio> element is the fallback) ---
+function audioDuration() {
+  if (playBuffer) return playBuffer.duration;
   const au = document.getElementById('syncAudio');
+  return au && isFinite(au.duration) ? au.duration : (waveDuration || 0);
+}
+
+// Current recording time in seconds (0-based, un-padded) — the exact analogue
+// of the old <audio>.currentTime, consumed by syncFrame/syncResetPointer.
+function audioTime() {
+  if (playBuffer)
+    return playing ? playStartOffset + (audioCtx.currentTime - playStartCtx) : pausedAt;
+  const au = document.getElementById('syncAudio');
+  return au ? au.currentTime : 0;
+}
+
+function audioIsPlaying() {
+  if (playBuffer) return playing;
+  const au = document.getElementById('syncAudio');
+  return !!au && !au.paused && !au.ended;
+}
+
+function startSyncLoop() {
+  if (!syncRaf) syncRaf = requestAnimationFrame(syncFrame);
+}
+
+function onSourceEnded() {
+  // Natural end only — manual stop()s clear onended first, so this never fires
+  // for pause/seek. Park the transport at the end.
+  playing = false;
+  playSource = null;
+  pausedAt = audioDuration();
+  updatePlayBtn();
+  updateTransportUI();
+}
+
+function audioPlay() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  audioCtx.resume();
+  if (playBuffer) {
+    if (playing) return;
+    playSource = audioCtx.createBufferSource();
+    playSource.buffer = playBuffer;
+    playSource.connect(audioCtx.destination);
+    playStartOffset = Math.min(Math.max(0, pausedAt), playBuffer.duration);
+    playStartCtx = audioCtx.currentTime;
+    playSource.onended = onSourceEnded;
+    playSource.start(0, playStartOffset);
+    playing = true;
+  } else {
+    const au = document.getElementById('syncAudio');
+    if (au && au.src) au.play();
+  }
+  startSyncLoop();
+  updatePlayBtn();
+}
+
+function audioPause() {
+  if (playBuffer) {
+    if (!playing) return;
+    pausedAt = audioTime();
+    if (playSource) { playSource.onended = null; try { playSource.stop(); } catch {} }
+    playSource = null;
+    playing = false;
+  } else {
+    const au = document.getElementById('syncAudio');
+    if (au) au.pause();
+  }
+  updatePlayBtn();
+}
+
+function audioToggle() {
+  if (audioIsPlaying()) audioPause(); else audioPlay();
+}
+
+// Hard stop used on job switch / detail close — no UI resume implied.
+function stopPlayback() {
+  if (playSource) { playSource.onended = null; try { playSource.stop(); } catch {} playSource = null; }
+  playing = false;
+  const au = document.getElementById('syncAudio');
+  if (au) { try { au.pause(); } catch {} }
+  if (syncRaf) { cancelAnimationFrame(syncRaf); syncRaf = null; }
+}
+
+function audioSeek(t) {
+  t = Math.max(0, Math.min(t, audioDuration() || t));
+  if (playBuffer) {
+    const was = playing;
+    if (playing && playSource) { playSource.onended = null; try { playSource.stop(); } catch {} }
+    playSource = null; playing = false;
+    pausedAt = t;
+    if (was) audioPlay();
+  } else {
+    const au = document.getElementById('syncAudio');
+    if (au) au.currentTime = t;
+  }
+  seekPreview(t);
+  syncResetPointer();
+  updateTransportUI();
+}
+
+// Move the playhead + tick pointer to recording time t without touching audio
+// transport — used both by audioSeek and live while dragging the seek bar.
+function seekPreview(t) {
+  const vt = playheadDisplay(t);
+  currentPlayheadT = vt - viewOrigin;
+  const ph = document.getElementById('playhead');
+  if (ph) { const x = timeToX(vt); ph.setAttribute('x1', x); ph.setAttribute('x2', x); }
+}
+
+function fmtClock(s) {
+  if (!isFinite(s) || s < 0) s = 0;
+  const m = Math.floor(s / 60), sec = Math.floor(s % 60);
+  return `${m}:${sec < 10 ? '0' : ''}${sec}`;
+}
+
+function updatePlayBtn() {
+  const b = document.getElementById('playBtn');
+  if (b) b.textContent = audioIsPlaying() ? '⏸' : '▶';
+}
+
+function updateTransportUI() {
+  const bar = document.getElementById('seekBar'), lbl = document.getElementById('timeLabel');
+  const dur = audioDuration(), t = audioTime();
+  if (bar) {
+    bar.max = dur || 0;
+    if (!seekDragging) bar.value = Math.min(t, dur || t);
+  }
+  if (lbl) lbl.textContent = `${fmtClock(t)} / ${fmtClock(dur)}`;
+}
+
+function syncResetPointer() {
   // Compare in display coordinates so the ticks follow the live preview
   // (tempo/offset/anchors), making alignment audible without a rebuild.
-  const vt = playheadDisplay(au ? au.currentTime : 0);
+  const vt = playheadDisplay(audioTime());
   const notes = arrangements[currentArr] ? arrangements[currentArr].notes : [];
   const warp = buildTimeWarp(syncAnchors);
   tickIdx = notes.findIndex(n => warp(previewScale(n.time)) >= vt);
@@ -2004,18 +2157,18 @@ function syncResetPointer() {
 }
 
 function syncFrame() {
-  const au = document.getElementById('syncAudio');
   const ph = document.getElementById('playhead');
-  if (!au || !ph) { syncRaf = null; return; }
+  if (!ph) { syncRaf = null; return; }
   // Playhead tracks the audio (and thus the waveform). It stays in audio
   // coordinates; tempo preview moves the notes over it, not the other way.
-  const vtDisp = playheadDisplay(au.currentTime);  // bundle time (for tick compare)
+  const vtDisp = playheadDisplay(audioTime());  // bundle time (for tick compare)
   currentPlayheadT = vtDisp - viewOrigin;  // recording-time offset; used by showArr + tap-sync
   const x = timeToX(vtDisp);  // recording-time x — cursor sits at 0 when audio is at 0
   ph.setAttribute('x1', x); ph.setAttribute('x2', x);
   const wrap = document.getElementById('tabwrap');
   if (x < wrap.scrollLeft + 60 || x > wrap.scrollLeft + wrap.clientWidth - 60)
     wrap.scrollLeft = x - wrap.clientWidth / 2;
+  updateTransportUI();
   const notes = arrangements[currentArr] ? arrangements[currentArr].notes : [];
   const tickOn = document.getElementById('syncTick').checked;
   const warp = buildTimeWarp(syncAnchors);
@@ -2028,8 +2181,8 @@ function syncFrame() {
     }
     tickIdx++;
   }
-  if (!au.paused && !au.ended) syncRaf = requestAnimationFrame(syncFrame);
-  else syncRaf = null;
+  if (audioIsPlaying()) syncRaf = requestAnimationFrame(syncFrame);
+  else { syncRaf = null; updatePlayBtn(); }
 }
 
 function setOffsetLive(v) {
@@ -2049,24 +2202,15 @@ function initSync(j) {
   // The offset (and thus the audio lead-in) is shared by all arrangements.
   scoreShift = Math.max(j.offset_s || 0, MIN_LEAD);
   loadArrSync(0);  // tempo/anchors are per-arrangement; load the first tab's
-  const au = document.getElementById('syncAudio');
-  au.src = `/jobs/${j.id}/source-audio`;
+  // Reset the transport; decodeWaveform fills playBuffer for sample-accurate
+  // playback (and falls back to the <audio> element if decode fails).
+  stopPlayback();
+  playBuffer = null; pausedAt = 0;
+  document.getElementById('syncAudio').removeAttribute('src');
   currentPlayheadT = 0;
   setOffsetLive(j.offset_s || 0);
-  au.onplay = () => {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    audioCtx.resume();
-    if (!syncRaf) syncRaf = requestAnimationFrame(syncFrame);
-  };
-  const onSeek = () => {
-    const vt = playheadDisplay(au.currentTime);
-    currentPlayheadT = vt - viewOrigin;
-    const ph = document.getElementById('playhead');
-    if (ph) { const x = timeToX(vt); ph.setAttribute('x1', x); ph.setAttribute('x2', x); }
-    syncResetPointer();
-  };
-  au.onseeking = onSeek;
-  au.onseeked = onSeek;
+  updatePlayBtn();
+  updateTransportUI();
   decodeWaveform(j.id);
 }
 
@@ -2198,9 +2342,19 @@ async function decodeWaveform(id) {
     for (const p of peaks) if (p > gmax) gmax = p;
     if (gmax > 0) for (let b = 0; b < bins; b++) peaks[b] /= gmax;
     wavePeaks = peaks; waveDuration = audio.duration;
+    playBuffer = audio;  // reuse the decoded buffer for sample-accurate playback
+    updateTransportUI();
     if (arrangements.length) showArr(currentArr);
   } catch {
-    wavePeaks = null;  // unsupported codec etc. — silently skip the waveform
+    // Unsupported codec etc.: skip the waveform and fall back to the <audio>
+    // element for playback (seeking is then codec-imprecise, but it still plays).
+    wavePeaks = null; playBuffer = null;
+    const au = document.getElementById('syncAudio');
+    if (au) {
+      au.preload = 'metadata';
+      au.src = `/jobs/${id}/source-audio`;
+      au.onloadedmetadata = updateTransportUI;
+    }
   }
 }
 
@@ -2229,6 +2383,23 @@ function waveformSvg(W, H, px) {
 
 document.getElementById('syncOffset').addEventListener('input', e => setOffsetLive(parseFloat(e.target.value)));
 document.getElementById('syncOffsetRange').addEventListener('input', e => setOffsetLive(parseFloat(e.target.value)));
+
+// Seek bar: pause while scrubbing (so syncFrame doesn't fight the drag), preview
+// the playhead live, and commit the seek + resume on release.
+document.getElementById('seekBar').addEventListener('input', e => {
+  if (!seekDragging) { seekDragging = true; seekWasPlaying = audioIsPlaying(); if (seekWasPlaying) audioPause(); }
+  const t = parseFloat(e.target.value) || 0;
+  pausedAt = t;
+  seekPreview(t);
+  const lbl = document.getElementById('timeLabel');
+  if (lbl) lbl.textContent = `${fmtClock(t)} / ${fmtClock(audioDuration())}`;
+});
+document.getElementById('seekBar').addEventListener('change', e => {
+  seekDragging = false;
+  audioSeek(parseFloat(e.target.value) || 0);
+  if (seekWasPlaying) audioPlay();
+  seekWasPlaying = false;
+});
 
 document.getElementById('uploadForm').addEventListener('submit', async e => {
   e.preventDefault();
