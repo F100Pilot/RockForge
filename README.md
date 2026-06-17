@@ -177,6 +177,62 @@ As principais:
 | `ROCKFORGE_WORK_DIR` | `~/Downloads/RockForge` | onde os bundles gerados são escritos |
 | `WWISEROOT` | (do Audiokinetic Launcher) | localização do Wwise para gerar o `.wem` |
 
+### Via executável standalone (sem instalar Python)
+
+Uma alternativa ao `start.bat` para quem quer distribuir a app a outros sem pedir
+que instalem Python, Redis ou dependências: um único executável (`rockforge.exe`)
+que arranca tudo num processo só — API + worker em memória (sem Redis), com
+ffmpeg incluído. Duplo-clique → abre o browser em `http://localhost:8000`.
+
+**O que funciona no `.exe`:** tudo o que é Guitar Pro → CDLC, PSARC nativo,
+sincronização, tones, edição de letra manual, upload de áudio — o pipeline core
+completo. Se o utilizador tiver o stack ML instalado num Python 3.11 no PATH
+(`pip install rockforge[ml,lyrics]`), a transcrição automática (Demucs/Basic
+Pitch/WhisperX) também funciona. Se não, a app degrada com a mesma mensagem de
+sempre — nenhum crash.
+
+#### Compilar o executável
+
+Pré-requisitos: **Python 3.11** + `pip install pyinstaller` + **ffmpeg**
+(`winget install ffmpeg`).
+
+```cmd
+cd RockForge
+
+REM 1. Instala as dependências core + psarc + PyInstaller
+py -3.11 -m pip install -e ".[dev,psarc]"
+py -3.11 -m pip install pyinstaller
+
+REM 2. (Opcional) Cria a pasta ffmpeg/ com o executável para empacotar
+mkdir ffmpeg
+copy /b "C:\caminho\para\ffmpeg.exe" ffmpeg\ffmpeg.exe
+
+REM 3. Compila
+py -3.11 build_exe.py
+```
+
+O resultado fica em `dist\rockforge\`. Distribui essa pasta inteira (ou
+comprime-a em zip). O utilizador faz duplo-clique em `rockforge.exe` e o
+browser abre automaticamente.
+
+Se não colocares o `ffmpeg.exe` dentro de `ffmpeg/`, o build avisa — a app
+continua a funcionar se o utilizador tiver o ffmpeg no PATH do sistema.
+
+#### Notas sobre o executável
+
+- **Não inclui ML** (torch/demucs/basic-pitch/whisperx) — são vários GB e
+  frágeis para empacotar. O `.exe` serve o fluxo GP e o pipeline core; a
+  transcrição automática precisa do Python com as dependências ML instaladas.
+- **Não inclui Wwise nem DLC Builder** (restrições de licença) — o `.exe`
+  invoca-os se instalados, como sempre.
+- **Tens de recompilar** (`py -3.11 build_exe.py`) sempre que alterares o código.
+  Para desenvolvimento, continua a usar `start.bat` / `pip install -e .`.
+- O idle-shutdown está ativo: fechar o separador do browser para a app
+  automaticamente após ~30 segundos.
+- Para uma **distribuição com ML incluído**, a alternativa é empacotar um Python
+  portátil (`python-build-standalone`) com um venv pré-instalado — mais pesado
+  (~5–10 GB) mas inclui tudo. Ver `CLAUDE.md` para detalhes.
+
 ### Via Docker (alternativa)
 
 ```bash

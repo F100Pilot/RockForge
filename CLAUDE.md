@@ -291,6 +291,24 @@ both download links when `psarc_available` is true. If the `[psarc]` extra
 (`cryptography`) is missing, `NativePsarcPacker` gracefully degrades: the bundle
 is still produced, only the `.psarc` is omitted (no crash).
 
+### Standalone executable (`build_exe.py` / PyInstaller)
+
+`start_standalone.py` is the entry point for the PyInstaller-built `.exe`. It
+sets `ROCKFORGE_WORKER_MODE=inprocess` before any import, so the API dispatches
+tasks to a `ThreadPoolExecutor(max_workers=1)` inside the same process instead
+of to Celery/Redis. The task functions themselves (`generate_cdlc`,
+`detect_lyrics`) are identical — only the dispatch changes. `worker_mode`
+(`config.py`) controls which path `_enqueue`/`_enqueue_detect` take:
+
+- `"celery"` (default): `.delay(job.id)` via Celery (needs Redis + worker).
+- `"inprocess"`: `inprocess.enqueue_generate(job.id)` via thread pool (no Redis).
+
+The PyInstaller spec (`rockforge.spec`) excludes the ML stack (torch, tensorflow,
+demucs, basic-pitch, whisperx, scipy, numpy) — the `.exe` covers the GP pipeline
++ native PSARC core. ML extras work if installed separately on the user's Python.
+ffmpeg is bundled from `ffmpeg/ffmpeg.exe` (placed by the user before build);
+`start_standalone.py` prepends the bundled path to `$PATH` at launch.
+
 ## Commands
 
 ```bash
