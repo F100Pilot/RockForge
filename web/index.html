@@ -206,6 +206,36 @@
 .modal-info p, .modal-info li { font-size: .9rem; color: var(--muted); line-height: 1.6; }
 .modal-info strong { color: var(--text); }
 .modal-info code { background: #0f1013; padding: .05rem .3rem; border-radius: 4px; }
+
+/* Modern file input */
+.file-drop {
+  position: relative; display: flex; align-items: center; gap: .6rem;
+  border: 2px dashed var(--line); border-radius: 10px; padding: .6rem .9rem;
+  background: #15161b; cursor: pointer; transition: border-color .2s, background .2s;
+  min-height: 48px;
+}
+.file-drop:hover, .file-drop.drag-over {
+  border-color: var(--accent); background: var(--accent-soft);
+}
+.file-drop input[type="file"] {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+}
+.file-drop-icon {
+  flex-shrink: 0; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+  border-radius: 8px; background: #2a2c35; color: var(--muted); font-size: 1rem;
+}
+.file-drop.has-file .file-drop-icon { background: #1f3a22; color: var(--ok); }
+.file-drop-text {
+  flex: 1; font-size: .82rem; color: var(--muted); overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+.file-drop.has-file .file-drop-text { color: var(--text); font-weight: 500; }
+.file-drop-btn {
+  flex-shrink: 0; background: #2a2c35; color: #ddd; border: 1px solid var(--line);
+  padding: .3rem .7rem; border-radius: 7px; font-size: .78rem; font-weight: 600;
+  pointer-events: none;
+}
+.file-drop:hover .file-drop-btn { background: #33363f; border-color: var(--accent); color: var(--accent); }
 </style>
 </head>
 <body>
@@ -350,7 +380,8 @@
         <div id="coverArtPanel">
           <div class="anchor-row">
             <img id="coverArtPreview" hidden style="max-width:96px;max-height:96px;border-radius:4px;border:1px solid #262830">
-            <input type="file" id="coverArtFile" accept="image/png,image/jpeg">
+            <div class="file-drop" style="flex:1;max-width:280px"><div class="file-drop-icon">&#128247;</div><span class="file-drop-text">Arrasta ou clica para escolher</span><span class="file-drop-btn">Procurar</span>
+            <input type="file" id="coverArtFile" accept="image/png,image/jpeg"></div>
             <span id="coverArtInfo" class="meta"></span>
             <button class="info-btn" data-info="cover-art">ⓘ</button>
           </div>
@@ -375,7 +406,8 @@
     <div class="tabpanel" data-panel="audio">
       <form id="uploadForm" class="grid" style="margin-top:.5rem">
         <div class="field"><label>Ficheiro</label>
-          <input type="file" name="file" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" required></div>
+          <div class="file-drop"><div class="file-drop-icon">&#128190;</div><span class="file-drop-text">Arrasta ou clica para escolher</span><span class="file-drop-btn">Procurar</span>
+          <input type="file" name="file" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" required></div></div>
         <div class="field"><label>Título</label>
           <input type="text" name="title" placeholder="auto das tags"></div>
         <div class="field"><label>Banda</label>
@@ -411,7 +443,8 @@
     <div class="tabpanel" data-panel="gp" hidden>
       <form id="gpInspectForm" class="grid" style="margin-top:.5rem">
         <div class="field"><label>Ficheiro GP3/GP4/GP5 <button class="info-btn" data-info="gp-format">ⓘ</button></label>
-          <input type="file" name="file" accept=".gp3,.gp4,.gp5" required></div>
+          <div class="file-drop"><div class="file-drop-icon">&#127928;</div><span class="file-drop-text">Arrasta ou clica para escolher</span><span class="file-drop-btn">Procurar</span>
+          <input type="file" name="file" accept=".gp3,.gp4,.gp5" required></div></div>
         <button type="submit" class="secondary">1. Inspecionar pistas</button>
       </form>
       <form id="gpJobForm" class="grid" style="display:none; margin-top:.75rem">
@@ -421,7 +454,8 @@
         <div class="field"><label>Pista Rhythm</label>
           <select name="rhythm_track"><option value="">—</option></select></div>
         <div class="field"><label>Gravação</label>
-          <input type="file" name="audio" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" required></div>
+          <div class="file-drop"><div class="file-drop-icon">&#128190;</div><span class="file-drop-text">Arrasta ou clica para escolher</span><span class="file-drop-btn">Procurar</span>
+          <input type="file" name="audio" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" required></div></div>
         <div class="field"><label>Início da música na gravação (s) <button class="info-btn" data-info="gp-offset">ⓘ</button></label>
           <input type="number" name="offset_s" value="0" step="0.01" min="0" style="width:6rem"></div>
         <div class="field"><label>Tone base</label>
@@ -429,7 +463,8 @@
         <div class="field"><label>Tones extra</label>
           <input type="text" name="tone_names" placeholder="vírgulas, máx. 4"></div>
         <div class="field"><label>Letra (LRC ou UltraStar TXT) <button class="info-btn" data-info="lrc">ⓘ</button></label>
-          <input type="file" name="lrc" accept=".lrc,.txt"></div>
+          <div class="file-drop"><div class="file-drop-icon">&#127925;</div><span class="file-drop-text">Arrasta ou clica (opcional)</span><span class="file-drop-btn">Procurar</span>
+          <input type="file" name="lrc" accept=".lrc,.txt"></div></div>
         <div class="field" style="flex-basis:100%">
           <label class="check"><input type="checkbox" name="import_mutes" value="true" checked>
           Importar palm mute / slap / pop / tap</label></div>
@@ -470,6 +505,25 @@
 <div class="toast-container" id="toasts"></div>
 
 <script>
+// ── Modern file inputs ───────────────────────────────────────────────────────
+document.querySelectorAll('.file-drop').forEach(drop => {
+  const inp = drop.querySelector('input[type="file"]');
+  const txt = drop.querySelector('.file-drop-text');
+  const placeholder = txt.textContent;
+  inp.addEventListener('change', () => {
+    if (inp.files.length) {
+      txt.textContent = inp.files[0].name;
+      drop.classList.add('has-file');
+    } else {
+      txt.textContent = placeholder;
+      drop.classList.remove('has-file');
+    }
+  });
+  drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag-over'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('drag-over'));
+  drop.addEventListener('drop', () => drop.classList.remove('drag-over'));
+});
+
 // ── "Novo job" modal ──────────────────────────────────────────────────────────
 function openNewJobModal() { document.getElementById('newJobOverlay').hidden = false; }
 function closeNewJobModal() { document.getElementById('newJobOverlay').hidden = true; }
