@@ -5,14 +5,16 @@ discover and display a song — distinct from RockForge's own
 ``rockforge_project.json`` (an internal descriptor consumed by DLC Builder on
 import).
 
+Emits per-instrument-arrangement manifests, plus a separate ``Vocals``
+arrangement manifest (``include_vocals``) pointing at the ``<key>_vocals.sng``,
+the aggregated ``.hsan``, and the aggregategraph.
+
 Scope and limitations (honesty principle, CLAUDE.md): this module emits the
-*identity and metadata* fields RockForge's own domain model can populate
+*identity and metadata* fields RockForge's domain model can populate
 (song/arrangement names, artist/album/year, tuning, song length, capo,
 persistent IDs). A full Rocksmith manifest also carries per-note statistics,
-phrase/section iteration tables, dynamic-difficulty level arrays and score
-data — those are derived from the compiled SNG (phase 3) and are NOT yet
-included here. An archive built from these manifests alone is not guaranteed
-to be a fully functional Rocksmith song until phases 3-5 land.
+phrase/section iteration tables and dynamic-difficulty level arrays; RockForge
+ships a single difficulty, so those richer score arrays are not emitted.
 """
 
 from __future__ import annotations
@@ -86,6 +88,34 @@ def build_arrangement_manifest(
     return {"Entries": {pid: {"Attributes": attributes}}}
 
 
+def build_vocals_manifest(meta_source: Arrangement, song_key: str) -> dict[str, object]:
+    """Build the ``Entries`` manifest for the song's vocals arrangement.
+
+    Vocals are a distinct arrangement (``ArrangementType: Vocals``) with their
+    own ``.sng`` and manifest, keyed off the same song. They carry no tuning /
+    capo — only identity and the song asset that points at the vocals SNG.
+    """
+    pid = persistent_id(song_key, "Vocals")
+    key_lower = song_key.lower()
+    attributes = {
+        "ArrangementName": "Vocals",
+        "ArrangementType": "Vocals",
+        "ArtistName": meta_source.metadata.artist,
+        "AlbumName": meta_source.metadata.album,
+        "DLCKey": song_key,
+        "ManifestUrn": f"urn:database:json-db:{key_lower}_vocals",
+        "MasterID": pid,
+        "PersistentID": pid,
+        "SongAsset": f"urn:application:musicgame-song:{key_lower}_vocals",
+        "SongBank": f"song_{key_lower}.bank",
+        "SongKey": song_key,
+        "SongLength": meta_source.metadata.song_length,
+        "SongName": meta_source.metadata.title,
+        "SongYear": meta_source.metadata.year,
+    }
+    return {"Entries": {pid: {"Attributes": attributes}}}
+
+
 def build_hsan(manifests: list[dict[str, object]]) -> dict[str, object]:
     """Merge per-arrangement manifests into the aggregated ``.hsan`` structure."""
     entries: dict[str, object] = {}
@@ -109,28 +139,42 @@ def build_aggregategraph(song_key: str, arrangement_names: list[str]) -> str:
 
 
 def build_manifest_files(
-    arrangements: list[tuple[Arrangement, str]], song_key: str
+    arrangements: list[tuple[Arrangement, str]],
+    song_key: str,
+    include_vocals: bool = False,
 ) -> dict[str, bytes]:
     """Build all ``manifest/`` files for :func:`pack_entries`.
 
     ``arrangements`` is a list of ``(arrangement, arrangement_name)`` pairs,
     e.g. ``[(combined, "Combined")]`` or ``[(lead, "Lead"), (rhythm, "Rhythm")]``.
+    When ``include_vocals`` is set, a "Vocals" arrangement manifest is added
+    (its SNG is the separate ``<key>_vocals.sng`` written by the packer).
     """
     key_lower = song_key.lower()
     files: dict[str, bytes] = {}
     per_arrangement_manifests: list[dict[str, object]] = []
+    asset_names: list[str] = []
     for arrangement, name in arrangements:
         manifest = build_arrangement_manifest(arrangement, song_key, name)
         per_arrangement_manifests.append(manifest)
+        asset_names.append(name)
         path = f"manifests/songs_dlc_{key_lower}/{key_lower}_{name.lower()}.json"
         files[path] = json.dumps(manifest, indent=2).encode("utf-8")
+
+    if include_vocals and arrangements:
+        vocals_manifest = build_vocals_manifest(arrangements[0][0], song_key)
+        per_arrangement_manifests.append(vocals_manifest)
+        asset_names.append("Vocals")
+        files[f"manifests/songs_dlc_{key_lower}/{key_lower}_vocals.json"] = json.dumps(
+            vocals_manifest, indent=2
+        ).encode("utf-8")
 
     hsan = build_hsan(per_arrangement_manifests)
     files[f"manifests/songs_dlc_{key_lower}/songs_dlc_{key_lower}.hsan"] = json.dumps(
         hsan, indent=2
     ).encode("utf-8")
     files[f"flatmodels/rs/{key_lower}_aggregategraph.nt"] = build_aggregategraph(
-        song_key, [name for _, name in arrangements]
+        song_key, asset_names
     ).encode("utf-8")
     files["toolkit.version"] = TOOLKIT_VERSION.encode("utf-8")
     return files

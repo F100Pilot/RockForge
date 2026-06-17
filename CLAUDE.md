@@ -236,23 +236,37 @@ payload via `sng.from_arrangement` + `sng.write_sng`. The binary layout
 as ported from the Rocksmith2014.NET / DLC Builder source (MIT). `read_sng`
 round-trips the payload for test verification.
 
-Sections emitted (in order): BPMs, Phrases, ChordTemplates, ChordNotes, Vocals
-(+ symbol stubs if present), PhraseIterations, 6 × empty
-(PhraseExtraInfo/NLD/Actions/Events/Tones/DNAs), Sections, ArrangementLevels
-(difficulty 0 only — anchors, fingerprints/handshapes, notes with linkage),
-Metadata. `NoteMask` values are the real Rocksmith constants (ported from
-Constants.cs), not RockForge's earlier custom encoding.
+Sections emitted (in order): BPMs, Phrases, ChordTemplates (with per-string MIDI
+notes), ChordNotes, Vocals (+ symbol stubs if present), PhraseIterations, 6 ×
+empty (PhraseExtraInfo/NLD/Actions/Events/Tones/DNAs), Sections,
+ArrangementLevels (difficulty 0 — anchors, **anchor extensions**,
+fingerprints/handshapes, notes with NextIter/PrevIter linkage), Metadata.
+`NoteMask` values are the real Rocksmith constants (ported from Constants.cs).
 
-Current limits (honest):
-- Single difficulty level (no dynamic difficulty model).
-- ChordNotes only for chords with per-string bend/slide; simple chords use
-  `ChordNotesId = -1`.
-- AnchorExtensions, arpeggio fingerprints (Fingerprints2): always empty.
-- Note linkage: NextIterNote/PrevIterNote chains within phrase iterations;
-  ParentPrevNote (linkNext) not modelled.
-- Note Hash always 0 (game does not validate critically).
-- Vocals are included in instrument SNGs; a separate vocals `.sng` (real
-  Rocksmith convention) is not yet emitted.
+Anchor extensions are generated one per sliding note (`BeatTime = time +
+sustain`, `FretId = slideTo`), so the fretboard re-anchors where the slide lands
+(Rocksmith2014.NET `AnchorExtension.fs`, 12-byte layout). Vocals are emitted as
+a **separate `<key>_vocals.sng`** arrangement (same Sng2014 container, only the
+Vocals section populated) with its own `Vocals` manifest entry — not embedded in
+an instrument SNG (which the game would not read as vocals). `sng.from_vocals`
+builds that vocals-only model.
+
+What is intentionally absent (these are correct given the domain model, not
+defects):
+- **Single difficulty level**: RockForge has no dynamic-difficulty (DD) model;
+  the chart plays at full density. A real feature gap, not a malformed file.
+- **ChordNotesId = -1 for simple chords**: only chords with per-string
+  bend/slide/vibrato get a ChordNotes entry — exactly what DLC Builder/EOF do.
+- **Fingerprints2 (arpeggio) empty**: the domain has no arpeggio marking.
+- **ParentPrevNote / linkNext absent**: the domain has no note-link concept (the
+  XML writer hard-codes `linkNext="0"`), so this is correctly `-1`.
+- **Note Hash = 0**: a deliberate choice — the two reference tools
+  (Rocksmith2014.NET vs toolkit) compute mutually different, non-validated hash
+  values, so 0 is safe and source-consistent.
+
+Unverified-by-design: the binary layout is ported from the open format docs and
+round-trip-tested (`read_sng` ∘ `write_sng` = identity), but is NOT byte-diffed
+against a retail/DLC Builder SNG — no reference file exists in CI.
 
 ## Commands
 

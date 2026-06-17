@@ -13,6 +13,7 @@ from rockforge.infrastructure.packaging.psarc.sng import (
     TECHNIQUE_BITS,
     TECHNIQUE_TO_MASK,
     from_arrangement,
+    from_vocals,
     read_sng,
     write_sng,
 )
@@ -254,3 +255,88 @@ def test_arrangement_level_has_phrase_counts() -> None:
     assert level.phrase_count == len(model.phrases)
     assert len(level.avg_notes_per_iteration) == level.phrase_count
     assert len(level.notes_in_iteration1) == len(model.phrase_iterations)
+
+
+def test_slide_notes_produce_anchor_extensions() -> None:
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="Song", artist="A", song_length=5.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(
+            beats=(Beat(time=0.0, measure=1), Beat(time=1.0, measure=-1)), average_bpm=120.0
+        ),
+        notes=[
+            TabNote(string=0, fret=5, time=0.0, sustain=0.5,
+                    techniques=frozenset({Technique.SLIDE}), slide_to_fret=7),
+            TabNote(string=1, fret=3, time=1.0, sustain=0.2),  # no slide
+        ],
+        sections=[Section(name="riff", start_time=0.0)],
+    )
+    model = from_arrangement(arr)
+    exts = model.arrangements[0].anchor_extensions
+    assert len(exts) == 1
+    # BeatTime is when the slide ends (time + sustain), fret is the destination.
+    assert abs(exts[0].beat_time - 0.5) < 1e-6
+    assert exts[0].fret == 7
+
+
+def test_anchor_extensions_round_trip() -> None:
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="Song", artist="A", song_length=5.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(
+            beats=(Beat(time=0.0, measure=1), Beat(time=1.0, measure=-1)), average_bpm=120.0
+        ),
+        notes=[
+            TabNote(string=0, fret=5, time=0.0, sustain=0.5,
+                    techniques=frozenset({Technique.SLIDE}), slide_to_fret=9),
+        ],
+        sections=[Section(name="riff", start_time=0.0)],
+    )
+    model = from_arrangement(arr)
+    restored = read_sng(write_sng(model))
+    exts = restored.arrangements[0].anchor_extensions
+    assert len(exts) == 1
+    assert exts[0].fret == 9
+    assert abs(exts[0].beat_time - 0.5) < 1e-6
+
+
+def test_chord_template_notes_are_real_midi() -> None:
+    # Drop-D-ish chord on standard tuning: open E (40), A fret2 (47), D fret2 (52)
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="Song", artist="A", song_length=5.0),
+        tuning=Tuning(),  # standard: 40,45,50,55,59,64
+        tempo_map=TempoMap(beats=(Beat(time=0.0, measure=1),), average_bpm=120.0),
+        notes=[
+            TabNote(string=0, fret=0, time=0.0, sustain=0.5),
+            TabNote(string=1, fret=2, time=0.0, sustain=0.5),
+            TabNote(string=2, fret=2, time=0.0, sustain=0.5),
+        ],
+        sections=[Section(name="riff", start_time=0.0)],
+    )
+    model = from_arrangement(arr)
+    notes_midi = model.chord_templates[0].notes
+    assert notes_midi[0] == 40  # open low E
+    assert notes_midi[1] == 47  # A + 2
+    assert notes_midi[2] == 52  # D + 2
+    assert notes_midi[3] == 0   # unused string
+
+
+def test_from_vocals_only_populates_vocals() -> None:
+    vocals = [
+        VocalEvent(time=0.5, length=0.3, lyric="hel"),
+        VocalEvent(time=0.8, length=0.4, lyric="lo+"),
+    ]
+    model = from_vocals(vocals)
+    assert len(model.vocals) == 2
+    assert model.beats == []
+    assert model.arrangements == []
+    assert model.chord_templates == []
+
+    restored = read_sng(write_sng(model))
+    assert len(restored.vocals) == 2
+    assert restored.vocals[0].lyric == "hel"
+    assert restored.vocals[1].lyric == "lo+"
+    assert restored.arrangements == []

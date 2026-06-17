@@ -46,6 +46,54 @@ def test_package_produces_valid_psarc(tmp_path: Path) -> None:
     assert any(name.endswith(".hsan") for name in entries)
 
 
+def test_vocals_get_a_separate_sng_and_manifest(tmp_path: Path) -> None:
+    """Vocals must ship as their own <key>_vocals.sng + manifest, not embedded
+    in an instrument SNG (real Rocksmith convention)."""
+    import json
+
+    from rockforge.infrastructure.packaging.psarc import sng
+    from rockforge.infrastructure.packaging.psarc.crypto import decrypt_sng
+
+    audio = tmp_path / "audio.wav"
+    audio.write_bytes(b"RIFF....WAVEfmt ")
+
+    packer = NativePsarcPacker(wem_converter=None)
+    result = packer.package(
+        [_arrangement(ArrangementKind.COMBINED)],
+        audio,
+        tmp_path / "bundle",
+        vocals=[VocalEvent(time=1.0, length=0.5, lyric="hi+")],
+    )
+    entries = container.unpack(result.psarc_path.read_bytes())
+
+    # A dedicated vocals SNG exists and carries the vocal, while the instrument
+    # SNG carries none.
+    vocals_sng = next(k for k in entries if k.endswith("_vocals.sng"))
+    instr_sng = next(
+        k for k in entries if k.endswith(".sng") and not k.endswith("_vocals.sng")
+    )
+    assert sng.read_sng(decrypt_sng(entries[vocals_sng])).vocals[0].lyric == "hi+"
+    assert sng.read_sng(decrypt_sng(entries[instr_sng])).vocals == []
+
+    # A vocals manifest entry is present in the aggregated hsan.
+    hsan_key = next(k for k in entries if k.endswith(".hsan"))
+    hsan = json.loads(entries[hsan_key])
+    types = {e["Attributes"]["ArrangementType"] for e in hsan["Entries"].values()}
+    assert "Vocals" in types
+
+
+def test_no_vocals_means_no_vocals_sng(tmp_path: Path) -> None:
+    audio = tmp_path / "audio.wav"
+    audio.write_bytes(b"RIFF....WAVEfmt ")
+
+    packer = NativePsarcPacker(wem_converter=None)
+    result = packer.package(
+        [_arrangement(ArrangementKind.COMBINED)], audio, tmp_path / "bundle"
+    )
+    entries = container.unpack(result.psarc_path.read_bytes())
+    assert not any(name.endswith("_vocals.sng") for name in entries)
+
+
 def test_package_keeps_dlc_builder_importable_project(tmp_path: Path) -> None:
     """Native mode must still emit the DLC Builder-importable bundle (the zip)."""
     import json

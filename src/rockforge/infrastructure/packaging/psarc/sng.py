@@ -6,13 +6,20 @@ can parse the result. Sections RockForge's domain model cannot populate
 (PhraseExtraInfo, NLD, Actions, Events, Tones, DNAs) are emitted as empty
 (count=0).
 
-Limitations:
-- Single difficulty level (RockForge has no dynamic-difficulty model).
-- ChordNotes are emitted only when a chord has per-string bend/slide data;
-  simple chords use ``ChordNotesId = -1``.
-- AnchorExtensions, arpeggio fingerprints: always empty.
-- Note Hash: always 0 (the game does not validate it critically).
-- ParentPrevNote / linkNext linkage: not modelled in the domain.
+Emitted: chord templates (with per-string MIDI notes), chord notes (for chords
+with per-string techniques), anchors, anchor extensions (per sliding note),
+fingerprints/hand shapes, notes with NextIter/PrevIter linkage, and a separate
+vocals model (:func:`from_vocals`).
+
+Intentionally absent — correct given the domain model, not defects:
+- Single difficulty level only (no dynamic-difficulty model); chart plays full.
+- ``ChordNotesId = -1`` for simple chords (matches DLC Builder/EOF).
+- Arpeggio fingerprints (Fingerprints2): the domain has no arpeggio marking.
+- ParentPrevNote / linkNext: the domain has no note-link concept.
+- Note Hash = 0: the two reference tools compute mutually different,
+  non-validated hashes, so 0 is the safe, source-consistent choice.
+
+The layout is round-trip-tested but not byte-diffed against a retail SNG.
 """
 
 from __future__ import annotations
@@ -169,6 +176,16 @@ class SngAnchor:
 
 
 @dataclass(frozen=True)
+class SngAnchorExtension:
+    """Slide anchor follow-through: the fretboard re-anchors to the slide's
+    destination at the moment the slide ends (Rocksmith2014.NET
+    ``AnchorExtension.fs`` / toolkit ``Sng2014FileWriter``)."""
+
+    beat_time: float  # note.time + note.sustain (when the slide ends)
+    fret: int  # the slide destination fret
+
+
+@dataclass(frozen=True)
 class SngFingerprint:
     chord_id: int
     start_time: float
@@ -220,6 +237,7 @@ class SngVocal:
 class SngArrangementLevel:
     difficulty: int = 0
     anchors: list[SngAnchor] = field(default_factory=list)
+    anchor_extensions: list[SngAnchorExtension] = field(default_factory=list)
     fingerprints1: list[SngFingerprint] = field(default_factory=list)
     fingerprints2: list[SngFingerprint] = field(default_factory=list)
     notes: list[SngNote] = field(default_factory=list)
@@ -369,17 +387,23 @@ def from_arrangement(
 
     # --- Chord templates ---
     template_ids: dict[tuple[int, ...], int] = {}
+    open_midi = arrangement.tuning.midi  # MIDI pitch of each open string
     chord_templates: list[SngChordTemplate] = []
     for g in chord_groups:
         key = _chord_template_key(g)
         if key not in template_ids:
             template_ids[key] = len(template_ids)
             frets_bytes = tuple(max(0, f) if f >= 0 else 255 for f in key)
+            # MIDI note sounding on each used string (open pitch + fret); 0 for
+            # unused strings, mirroring the toolkit's ChordTemplate.Notes.
+            notes_midi = tuple(
+                open_midi[i] + f if f >= 0 else 0 for i, f in enumerate(key)
+            )
             chord_templates.append(SngChordTemplate(
                 mask=0,
                 frets=frets_bytes,
                 fingers=tuple([-1] * 6),
-                notes=tuple([0] * 6),
+                notes=notes_midi,
                 name="",
             ))
 
@@ -447,6 +471,17 @@ def from_arrangement(
             fret=1,
             width=4,
         ))
+
+    # --- Anchor extensions (one per sliding note: re-anchor where the slide
+    # lands, at the time the slide ends). Sorted by time, as the game expects.
+    anchor_extensions = sorted(
+        (
+            SngAnchorExtension(beat_time=n.time + n.sustain, fret=n.slide_to_fret)
+            for n in arrangement.notes
+            if n.slide_to_fret is not None
+        ),
+        key=lambda ae: ae.beat_time,
+    )
 
     # --- Fingerprints / handshapes (one per chord group) ---
     fingerprints: list[SngFingerprint] = []
@@ -588,6 +623,7 @@ def from_arrangement(
     level = SngArrangementLevel(
         difficulty=0,
         anchors=anchors,
+        anchor_extensions=anchor_extensions,
         fingerprints1=fingerprints,
         fingerprints2=[],
         notes=sng_notes,
@@ -638,6 +674,25 @@ def from_arrangement(
     )
 
 
+def from_vocals(vocals: list[VocalEvent]) -> SngModel:
+    """Build a vocals-only SNG model for a separate ``<key>_vocals.sng``.
+
+    A Rocksmith vocals ``.sng`` is the same Sng2014 container as an instrument
+    arrangement, but only the Vocals section is populated (every other section
+    is empty / count=0); the container still ends with a Metadata section
+    (neutral values — the game does not read tuning/length from the vocals SNG).
+    Ported from the toolkit's ``ReadVocals`` over the ``VOCALS_RS2`` template.
+    """
+    return SngModel(
+        vocals=[
+            SngVocal(time=v.time, note=0, length=v.length, lyric=v.lyric)
+            for v in vocals
+        ],
+        arrangements=[],
+        metadata=SngMetadata(),
+    )
+
+
 # ---------------------------------------------------------------------------
 # Binary serialization (write)
 # ---------------------------------------------------------------------------
@@ -651,6 +706,9 @@ _PHRASE_ITER_FMT = "<iffiii"
 _CHORD_TEMPLATE_FMT = "<I6s6s6i32s"
 _SECTION_FMT = "<32siffii36s"
 _ANCHOR_FMT = "<ffffBBBBii"
+# AnchorExtension: BeatTime(float) + FretId(int8) + 7 bytes of zero unknowns
+# (int32 + int16 + int8) = 12 bytes (Rocksmith2014.NET AnchorExtension.fs).
+_ANCHOR_EXT_FMT = "<fbihb"
 _FINGERPRINT_FMT = "<iffff"
 _VOCAL_FMT = f"<fif{_LYRIC_LEN}s"
 _NOTE_FIXED_FMT = "<IIIfBBBBiiiihhhhh" "BBBBBBBhff"
@@ -661,6 +719,7 @@ _PHRASE_ITER_SIZE = struct.calcsize(_PHRASE_ITER_FMT)
 _CHORD_TEMPLATE_SIZE = struct.calcsize(_CHORD_TEMPLATE_FMT)
 _SECTION_SIZE = struct.calcsize(_SECTION_FMT)
 _ANCHOR_SIZE = struct.calcsize(_ANCHOR_FMT)
+_ANCHOR_EXT_SIZE = struct.calcsize(_ANCHOR_EXT_FMT)
 _FINGERPRINT_SIZE = struct.calcsize(_FINGERPRINT_FMT)
 _VOCAL_SIZE = struct.calcsize(_VOCAL_FMT)
 _NOTE_FIXED_SIZE = struct.calcsize(_NOTE_FIXED_FMT)
@@ -752,8 +811,10 @@ def _write_arrangement_level(level: SngArrangementLevel) -> bytes:
             a.width, a.phrase_iteration_id,
         )
 
-    # AnchorExtensions (always empty)
-    out += _write_count(0)
+    # AnchorExtensions (one per sliding note)
+    out += _write_count(len(level.anchor_extensions))
+    for ae in level.anchor_extensions:
+        out += struct.pack(_ANCHOR_EXT_FMT, ae.beat_time, ae.fret, 0, 0, 0)
 
     # Fingerprints1
     out += _write_count(len(level.fingerprints1))
@@ -984,10 +1045,13 @@ def _read_arrangement_level(data: bytes, pos: int) -> tuple[SngArrangementLevel,
             fret=fret_b, width=width, phrase_iteration_id=pi_id,
         ))
 
-    # AnchorExtensions (skip)
+    # AnchorExtensions
     ae_count, pos = _read_count(data, pos)
-    if ae_count > 0:
-        pos += ae_count * 8  # BeatTime(4) + FretId(1) + padding(3)
+    anchor_extensions = []
+    for _ in range(ae_count):
+        beat_time, fret_e, _, _, _ = struct.unpack_from(_ANCHOR_EXT_FMT, data, pos)
+        pos += _ANCHOR_EXT_SIZE
+        anchor_extensions.append(SngAnchorExtension(beat_time=beat_time, fret=fret_e))
 
     # Fingerprints1
     fp1_count, pos = _read_count(data, pos)
@@ -1038,7 +1102,7 @@ def _read_arrangement_level(data: bytes, pos: int) -> tuple[SngArrangementLevel,
         pos += 4
 
     return SngArrangementLevel(
-        difficulty=difficulty, anchors=anchors,
+        difficulty=difficulty, anchors=anchors, anchor_extensions=anchor_extensions,
         fingerprints1=fp1, fingerprints2=fp2, notes=notes,
         phrase_count=phrase_count, avg_notes_per_iteration=avg,
         notes_in_iteration1=ni1, notes_in_iteration2=ni2,
