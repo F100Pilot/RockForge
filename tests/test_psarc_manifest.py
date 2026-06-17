@@ -71,3 +71,26 @@ def test_build_manifest_files_packs_and_round_trips() -> None:
 
     packed = pack_entries(files)
     assert unpack(packed) == files
+
+
+def test_include_vocals_adds_vocals_manifest() -> None:
+    files = build_manifest_files(
+        [(_arrangement(ArrangementKind.COMBINED), "Combined")],
+        "MySong",
+        include_vocals=True,
+    )
+    assert "manifests/songs_dlc_mysong/mysong_vocals.json" in files
+
+    vocals = json.loads(files["manifests/songs_dlc_mysong/mysong_vocals.json"])
+    (_, entry), = vocals["Entries"].items()
+    attrs = entry["Attributes"]
+    assert attrs["ArrangementType"] == "Vocals"
+    assert attrs["ArrangementName"] == "Vocals"
+    assert attrs["SongAsset"] == "urn:application:musicgame-song:mysong_vocals"
+    # The vocals arrangement carries no tuning/capo.
+    assert "Tuning" not in attrs
+
+    hsan = json.loads(files["manifests/songs_dlc_mysong/songs_dlc_mysong.hsan"])
+    assert len(hsan["Entries"]) == 2  # instrument + vocals
+    graph = files["flatmodels/rs/mysong_aggregategraph.nt"].decode()
+    assert "mysong_vocals" in graph

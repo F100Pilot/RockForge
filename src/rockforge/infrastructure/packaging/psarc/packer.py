@@ -6,22 +6,28 @@ manifests (``manifest.py``) and the encrypted PSARC container
 same :class:`~rockforge.application.ports.Packager` Protocol as
 :class:`~rockforge.infrastructure.packaging.dlcbuilder.DlcBuilderPackager`.
 
-Still honest about limits (CLAUDE.md):
+The SNG carries the full Sng2014 section set (``sng.py``): chord templates,
+chord notes, anchors, anchor extensions, fingerprints/hand shapes, note linkage
+and the real NoteMask constants. Vocals are emitted as a *separate*
+``<key>_vocals.sng`` arrangement (Rocksmith convention), with their own manifest.
+
+Honest limits that remain (CLAUDE.md):
 - The ``.wem`` still requires a local Wwise install (Audiokinetic EULA); when
   unavailable, the normalized WAV is packed instead, under a path the retail
-  game will not load — ``packaging.warnings``-equivalent: callers should treat
-  a PSARC without a real ``.wem`` as not yet game-ready, same as DLC Builder
-  without Wwise.
-- SNG compilation is the structural/partial port described in ``sng.py``
-  (no chord templates, anchors, fingerprints, hand shapes, note linkage).
-- Vocals (if provided) are attached to the *first* arrangement's SNG only —
-  Rocksmith's separate vocal-arrangement convention is not modelled yet.
+  game will not load — callers should treat a PSARC without a real ``.wem`` as
+  not yet game-ready, same as DLC Builder without Wwise.
+- Single difficulty level only: RockForge has no dynamic-difficulty model, so
+  the song is fully playable but without the progressive note-density ramp a
+  DDC-processed CDLC has. This is a feature gap, not a malformed file.
 - Requires the ``[psarc]`` extra (``cryptography``) for TOC/SNG encryption;
   raises :class:`PackagingError` with a clear message if missing.
 - ``cover_art`` (if provided) is copied into the bundle and recorded in
   ``rockforge_project.json``, but is NOT yet embedded as an in-game DDS
   texture/``albumArt`` URN — that conversion (DDS encoding + manifest/SNG
   references) is not implemented.
+- The binary layout is ported from open-source format docs (Rocksmith2014.NET,
+  toolkit) and round-trip-tested, but has NOT been byte-validated against a
+  retail/DLC Builder SNG — there is no reference file in CI to diff against.
 
 The bundle still carries the DLC Builder-importable ``rockforge_project.json``
 (via :func:`build_project_metadata`), so the ``GET /jobs/{id}/bundle`` zip
@@ -97,18 +103,26 @@ class NativePsarcPacker:
         key_lower = song_key.lower()
 
         files: dict[str, bytes] = manifest.build_manifest_files(
-            [(arr, arr.kind.value) for arr in arrangements], song_key
+            [(arr, arr.kind.value) for arr in arrangements],
+            song_key,
+            include_vocals=bool(vocals),
         )
 
         try:
             from rockforge.infrastructure.packaging.psarc.crypto import encrypt_sng
 
-            for i, arr in enumerate(arrangements):
-                model = sng.from_arrangement(arr, vocals=vocals if i == 0 else None)
+            for arr in arrangements:
+                model = sng.from_arrangement(arr)
                 payload = sng.write_sng(model)
                 files[f"songs/arr/{key_lower}_{arr.kind.value.lower()}.sng"] = encrypt_sng(
                     payload
                 )
+
+            # Vocals are a separate arrangement with their own SNG (real
+            # Rocksmith convention), not embedded in an instrument SNG.
+            if vocals:
+                vocals_payload = sng.write_sng(sng.from_vocals(vocals))
+                files[f"songs/arr/{key_lower}_vocals.sng"] = encrypt_sng(vocals_payload)
 
             files[f"audio/{key_lower}{audio_for_psarc.suffix}"] = audio_for_psarc.read_bytes()
 
