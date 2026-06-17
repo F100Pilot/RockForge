@@ -236,6 +236,33 @@
   pointer-events: none;
 }
 .file-drop:hover .file-drop-btn { background: #33363f; border-color: var(--accent); color: var(--accent); }
+
+/* Landing hero banners */
+.landing-hero {
+  display: flex; flex-direction: column; gap: .6rem; margin-bottom: 1rem;
+}
+.job-banner {
+  display: flex; align-items: center; gap: 1rem; padding: 1rem 1.2rem;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  cursor: pointer; transition: border-color .2s, background .2s, transform .12s;
+  box-shadow: var(--shadow);
+}
+.job-banner:hover {
+  border-color: var(--accent); background: var(--accent-soft);
+  transform: translateY(-2px);
+}
+.job-banner-icon {
+  flex-shrink: 0; width: 52px; height: 52px; display: flex; align-items: center; justify-content: center;
+  border-radius: 14px; font-size: 1.6rem; background: #23252e;
+}
+.job-banner:hover .job-banner-icon { background: #2a2c35; }
+.job-banner-body { flex: 1; min-width: 0; }
+.job-banner-title { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: .15rem; }
+.job-banner-desc { font-size: .82rem; color: var(--muted); line-height: 1.4; }
+.job-banner-arrow {
+  flex-shrink: 0; color: var(--muted); font-size: 1.2rem; transition: color .15s, transform .15s;
+}
+.job-banner:hover .job-banner-arrow { color: var(--accent); transform: translateX(3px); }
 </style>
 </head>
 <body>
@@ -249,10 +276,38 @@
         <h1>RockForge</h1>
         <span id="appVersion" style="font-size:.7rem;color:var(--muted);margin-left:.1rem"></span>
       </div>
-      <button type="button" id="openNewJob">+ Novo job</button>
+      <button type="button" id="openNewJob" style="display:none">+ Novo job</button>
     </div>
 
-    <section class="card" style="padding:.75rem .9rem">
+    <!-- Landing banners (shown when no jobs) -->
+    <div id="landingHero" class="landing-hero">
+      <div class="job-banner" data-new="audio">
+        <div class="job-banner-icon">&#127911;</div>
+        <div class="job-banner-body">
+          <div class="job-banner-title">A partir de Áudio</div>
+          <div class="job-banner-desc">Carrega MP3, FLAC, WAV — transcricão automática (ML)</div>
+        </div>
+        <span class="job-banner-arrow">&#8250;</span>
+      </div>
+      <div class="job-banner" data-new="youtube">
+        <div class="job-banner-icon">&#9654;</div>
+        <div class="job-banner-body">
+          <div class="job-banner-title">A partir de YouTube</div>
+          <div class="job-banner-desc">Cola o URL do vídeo — áudio extraído automaticamente</div>
+        </div>
+        <span class="job-banner-arrow">&#8250;</span>
+      </div>
+      <div class="job-banner" data-new="gp">
+        <div class="job-banner-icon">&#127928;</div>
+        <div class="job-banner-body">
+          <div class="job-banner-title">A partir de Guitar Pro</div>
+          <div class="job-banner-desc">GP3/GP4/GP5 — notas e técnicas exatas do ficheiro</div>
+        </div>
+        <span class="job-banner-arrow">&#8250;</span>
+      </div>
+    </div>
+
+    <section id="jobListCard" class="card" style="padding:.75rem .9rem; display:none">
       <table id="jobsTable"><thead>
         <tr><th>Título / Artista</th><th>Estado</th><th></th></tr>
       </thead><tbody></tbody></table>
@@ -585,10 +640,19 @@ document.querySelectorAll('.file-drop').forEach(drop => {
 });
 
 // ── "Novo job" modal ──────────────────────────────────────────────────────────
-function openNewJobModal() { document.getElementById('newJobOverlay').hidden = false; }
+function openNewJobModal(tab) {
+  document.getElementById('newJobOverlay').hidden = false;
+  if (tab) {
+    document.querySelectorAll('#newJobTabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    document.querySelectorAll('#newJobOverlay .tabpanel').forEach(p => p.hidden = p.dataset.panel !== tab);
+  }
+}
 function closeNewJobModal() { document.getElementById('newJobOverlay').hidden = true; }
-document.getElementById('openNewJob').addEventListener('click', openNewJobModal);
+document.getElementById('openNewJob').addEventListener('click', () => openNewJobModal());
 document.getElementById('newJobClose').addEventListener('click', closeNewJobModal);
+document.querySelectorAll('.job-banner[data-new]').forEach(b => {
+  b.addEventListener('click', () => openNewJobModal(b.dataset.new));
+});
 fetch('/version').then(r => r.json()).then(d => {
   document.getElementById('appVersion').textContent = 'v' + d.version;
 }).catch(() => {});
@@ -786,10 +850,14 @@ async function refreshJobs() {
   const jobs = await (await fetch('/jobs')).json();
   const tb = document.querySelector('#jobsTable tbody');
   tb.innerHTML = '';
+  const hero = document.getElementById('landingHero');
+  const list = document.getElementById('jobListCard');
+  const btn  = document.getElementById('openNewJob');
   if (!jobs.length) {
-    tb.innerHTML = '<tr class="empty-row"><td colspan="3">Nenhum job ainda.</td></tr>';
+    hero.style.display = '';  list.style.display = 'none'; btn.style.display = 'none';
     return;
   }
+  hero.style.display = 'none'; list.style.display = ''; btn.style.display = '';
   for (const j of jobs) {
     const tr = document.createElement('tr');
     if (selectedJob && j.id === selectedJob.id) tr.className = 'sel';
@@ -1092,9 +1160,12 @@ const LYRICS_STATUS_LABEL = {
   ready: 'deteção concluída', empty: 'nenhuma letra detetada',
   unavailable: 'deteção indisponível (extra "lyrics" não instalado)',
 };
-// Rough share of total detection time for each stage, for the progress bar.
-const LYRICS_PROGRESS = {
-  detecting: 0.05, normalizing: 0.1, separating: 0.45, transcribing: 0.85,
+// Stage start/end percentages and expected duration (ms) for smooth interpolation.
+const LYRICS_STAGES = {
+  detecting:    { start: 0.02, end: 0.05, dur: 15000 },
+  normalizing:  { start: 0.05, end: 0.15, dur: 30000 },
+  separating:   { start: 0.15, end: 0.80, dur: 180000 },
+  transcribing: { start: 0.80, end: 0.98, dur: 60000 },
 };
 const LYRICS_DETECTING_STATUSES = new Set(['detecting', 'normalizing', 'separating', 'transcribing']);
 
@@ -1114,9 +1185,13 @@ function updateLyricsProgress(status, log, forceStuck) {
   const elapsed  = Date.now() - _lyricsStatusSince;
   const stuck    = forceStuck || (isActive && elapsed > (LYRICS_STUCK_MS[status] || 8*60*1000));
 
-  if (status in LYRICS_PROGRESS) {
+  if (status in LYRICS_STAGES) {
     wrap.style.display = '';
-    const pctVal = Math.round(LYRICS_PROGRESS[status] * 100);
+    const stage = LYRICS_STAGES[status];
+    const t = Math.min(elapsed / stage.dur, 1);
+    const eased = t < 1 ? t * (2 - t) : 1;
+    const frac = stage.start + (stage.end - stage.start) * eased;
+    const pctVal = Math.round(frac * 100);
     bar.style.width = `${pctVal}%`;
     pct.textContent  = `${pctVal}%`;
     bar.className    = stuck ? 'stuck' : (isActive ? 'active' : '');
