@@ -162,7 +162,9 @@ def test_package_copies_cover_art(tmp_path: Path) -> None:
     assert "cover_art_note" in project
 
 
-def test_package_requires_psarc_extra(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_package_degrades_without_psarc_extra(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     import builtins
 
     real_import = builtins.__import__
@@ -178,7 +180,6 @@ def test_package_requires_psarc_extra(tmp_path: Path, monkeypatch: pytest.Monkey
     audio.write_bytes(b"RIFF....WAVEfmt ")
 
     packer = NativePsarcPacker(wem_converter=None)
-    from rockforge.domain.errors import PackagingError
-
-    with pytest.raises(PackagingError, match="psarc"):
-        packer.package([_arrangement(ArrangementKind.COMBINED)], audio, tmp_path / "bundle")
+    result = packer.package([_arrangement(ArrangementKind.COMBINED)], audio, tmp_path / "bundle")
+    assert result.psarc_path is None
+    assert result.bundle_dir.exists()

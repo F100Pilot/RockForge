@@ -35,6 +35,7 @@ from rockforge.domain.arrangement import (
 )
 from rockforge.domain.errors import IngestionError
 from rockforge.domain.music import TabNote, Technique
+from rockforge.domain.tone import Tone
 from rockforge.infrastructure.gpimport.parser import (
     GpSection,
     ParsedGpTrack,
@@ -114,6 +115,10 @@ class GpJobSpec:
     tone_base: str | None = None
     tone_names: list[str] = field(default_factory=list)
     tone_changes: list[ToneChange] = field(default_factory=list)
+    # Full gear definitions for the referenced tones (built in the tone editor).
+    # When present they are serialized into the .rs2dlc so the tones work in-game;
+    # tone_base/tone_names reference these by key.
+    tones: list[Tone] = field(default_factory=list)
     # Manual drift-correction rounds. Each round is a list of (chart_time_s,
     # corrected_time_s) anchor pairs, expressed in the timeline produced by the
     # *previous* round (i.e. as shown in the tab viewer at the time the user
@@ -385,6 +390,7 @@ class GenerateFromGpUseCase:
                 tone_base=spec.tone_base,
                 tone_names=list(spec.tone_names),
                 tone_changes=list(spec.tone_changes),
+                tones=list(spec.tones),
             )
             for kind, p in parsed.items()
         ]

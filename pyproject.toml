@@ -76,6 +76,9 @@ where = ["src"]
 # Wwise template projects (from DLC Builder, MIT) — required for Rocksmith-
 # compatible .wem conversion (Vorbis with seek table).
 "rockforge.infrastructure.packaging" = ["wwise_templates/*.zip", "wwise_templates/README.md"]
+# Tone gear catalogue (from Rocksmith2014.NET, MIT) — the amp/cabinet/pedal
+# database used to build in-game-valid tones for the .rs2dlc project.
+"rockforge.infrastructure.packaging.gear" = ["tone_gear_data.json", "README.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

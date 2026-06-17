@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 from rockforge.domain.music import TabNote, TempoMap, Tuning
+from rockforge.domain.tone import Tone
 
 
 class ArrangementKind(Enum):
@@ -57,9 +58,13 @@ class Arrangement:
     capo: int = 0
     stage_confidence: dict[str, ConfidenceLabel] = field(default_factory=dict)
     # Rocksmith supports a base tone + up to 4 switchable tone slots (tonea-toned).
+    # tone_base / tone_names reference tones by key; the XML and the .rs2dlc carry
+    # those keys. ``tones`` holds the full gear definitions (optional — when empty,
+    # the keys are names DLC Builder resolves from its own tone library).
     tone_base: str | None = None
     tone_names: list[str] = field(default_factory=list)
     tone_changes: list[ToneChange] = field(default_factory=list)
+    tones: list[Tone] = field(default_factory=list)
 
     def validate(self) -> list[str]:
         """Domain-level validation; returns human-readable problems (empty = valid)."""
@@ -72,6 +77,14 @@ class Arrangement:
                 problems.append(
                     f"tone change at {tc.time:.3f}s references unknown tone '{tc.name}'"
                 )
+        # When full gear definitions are supplied, every referenced tone key must
+        # have one (otherwise the .rs2dlc would carry a BaseTone/Tones name with no
+        # matching Tones entry and DLC Builder flags it as missing).
+        if self.tones:
+            defined = {t.key for t in self.tones}
+            for key in known:
+                if key not in defined:
+                    problems.append(f"tone '{key}' is referenced but has no gear definition")
         if not self.notes:
             problems.append("arrangement has no notes")
         if self.metadata.song_length <= 0:

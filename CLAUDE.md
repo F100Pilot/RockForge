@@ -222,11 +222,13 @@ semitone offsets (`Tuning.offsets_from_standard`), `TuningPitch` from
 `cent_offset`. `ID`==`PersistentID` (one GUID), `MasterID` random positive int —
 matching a real captured `.rs2dlc`.
 
-Honesty note: RockForge has no tone-gear model, so `Tones` is empty and
-instrumentals carry an empty `BaseTone` (DLC Builder flags a "tone missing"
-issue the user resolves with its tone library); `Volume` uses a neutral default
-(DLC Builder's "Calculate Volumes" recomputes it) and the audio preview is left
-empty (its "Create Preview Audio" generates it).
+RockForge now has a full tone-gear model (`domain/tone.py`, backed by the
+vendored Rocksmith gear catalogue) — custom tones with real amp/cabinet/pedal
+definitions are serialized into the `.rs2dlc`'s `Tones` array and flow through
+to the PSARC. When no tones are defined, `Tones` stays empty and DLC Builder
+flags a "tone missing" issue the user resolves with its tone library. `Volume`
+uses a neutral default (DLC Builder's "Calculate Volumes" recomputes it) and the
+audio preview is left empty (its "Create Preview Audio" generates it).
 
 ### SNG binary compilation (`infrastructure/packaging/psarc/sng.py`)
 
@@ -267,6 +269,15 @@ defects):
 Unverified-by-design: the binary layout is ported from the open format docs and
 round-trip-tested (`read_sng` ∘ `write_sng` = identity), but is NOT byte-diffed
 against a retail/DLC Builder SNG — no reference file exists in CI.
+
+### Dual output: Bundle + PSARC always
+
+`psarc_mode` defaults to `"native"`. Every completed job produces **both** a
+Bundle zip (DLC Builder-importable: XMLs, `.rs2dlc`, audio, project metadata)
+**and** a `.psarc` file (game-ready, encrypted SNG + manifest). The web UI shows
+both download links when `psarc_available` is true. If the `[psarc]` extra
+(`cryptography`) is missing, `NativePsarcPacker` gracefully degrades: the bundle
+is still produced, only the `.psarc` is omitted (no crash).
 
 ## Commands
 

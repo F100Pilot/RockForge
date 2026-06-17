@@ -337,11 +337,29 @@
           <button type="button" id="modeExcerto" class="secondary">Excerto</button>
           <button type="button" id="modeMover" class="secondary">Mover seguintes</button>
           <button type="button" id="modeBeat" class="secondary">Novo beat</button>
+          <button type="button" id="modeTone" class="secondary">Mudança de tom</button>
           <button class="info-btn" data-info="sync-modes">ⓘ</button>
           <span id="selectionInfo" style="margin-left:.5rem"></span>
           <button type="button" id="clearSelection" class="secondary" hidden>Limpar seleção</button>
         </div>
         <div id="syncAnchorsList"></div>
+
+        <!-- Tones: full gear definitions + base/extra slots + timed changes -->
+        <div id="tonePanel" style="margin-top:.75rem;border-top:1px solid var(--line);padding-top:.6rem">
+          <div class="anchor-row">
+            <strong style="color:var(--text)">Tons</strong>
+            <button type="button" id="openToneBuilder" class="secondary">+ Criar / editar tons</button>
+            <button class="info-btn" data-info="tones">ⓘ</button>
+          </div>
+          <div id="toneChips" class="meta" style="display:flex;flex-wrap:wrap;gap:.35rem;margin:.3rem 0"></div>
+          <div class="anchor-row" style="flex-wrap:wrap">
+            <label>Tom base:
+              <select id="toneBaseSel" style="min-width:9rem"><option value="">—</option></select></label>
+            <span class="meta">Extra (máx. 4):</span>
+            <span id="toneExtraChecks" style="display:flex;flex-wrap:wrap;gap:.5rem"></span>
+          </div>
+          <div id="toneChangesList" class="meta" style="margin-top:.3rem"></div>
+        </div>
 
         <div class="anchor-row" style="margin-top:.75rem">
           <button type="button" id="applyAll">Aplicar e reconstruir</button>
@@ -488,6 +506,48 @@
     <button type="button" class="modal-close" id="infoClose">×</button>
     <h3 id="infoTitle" style="margin-top:0"></h3>
     <div id="infoBody"></div>
+  </div>
+</div>
+
+<!-- ══════════ Tone builder modal ══════════ -->
+<div class="modal-overlay" id="toneOverlay" hidden>
+  <div class="modal" style="max-width:900px">
+    <button type="button" class="modal-close" id="toneClose">×</button>
+    <h2>Tons <button class="info-btn" data-info="tones">ⓘ</button></h2>
+    <div style="display:flex;gap:1rem;align-items:flex-start;flex-wrap:wrap">
+      <div style="flex:1 1 200px;min-width:180px">
+        <div class="meta" style="margin-bottom:.3rem">Tons criados</div>
+        <div id="toneListEditor" style="display:flex;flex-direction:column;gap:.3rem"></div>
+        <button type="button" id="newTone" class="secondary" style="margin-top:.5rem">+ Novo tom</button>
+      </div>
+      <div style="flex:2 1 420px;min-width:340px;border-left:1px solid var(--line);padding-left:1rem">
+        <div id="toneEditForm" style="display:none">
+          <div class="field" style="margin-bottom:.5rem"><label>Nome do tom</label>
+            <input type="text" id="teName" placeholder="ex.: JCM800 Lead"></div>
+          <div class="anchor-row" style="flex-wrap:wrap">
+            <label>Volume (dB):
+              <input type="number" id="teVolume" value="-15" step="0.5" style="width:5rem"></label>
+            <label>Descritores:
+              <input type="text" id="teDescriptors" placeholder="Lead, Distortion" style="min-width:10rem"></label>
+          </div>
+          <div class="field" style="margin-top:.5rem"><label>Amplificador</label>
+            <select id="teAmp"></select></div>
+          <div id="teAmpKnobs" class="tuninggrid" style="margin:.4rem 0"></div>
+          <div class="field"><label>Cabine</label>
+            <select id="teCab"></select></div>
+          <div style="margin-top:.6rem">
+            <div class="anchor-row"><strong style="color:var(--text)">Efeitos</strong>
+              <button type="button" id="teAddEffect" class="secondary">+ Efeito</button></div>
+            <div id="teEffects" style="display:flex;flex-direction:column;gap:.5rem"></div>
+          </div>
+          <div class="modal-actions">
+            <button type="button" id="teDelete" class="danger" style="margin-right:auto">Remover tom</button>
+            <button type="button" id="teSave">Guardar tom</button>
+          </div>
+        </div>
+        <div id="toneEditEmpty" class="meta">Seleciona ou cria um tom para editar o gear (amp, cabine, efeitos).</div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -661,6 +721,15 @@ let currentPlayheadT = 0; // display time of playhead; updated by syncFrame and 
 // In-app lyrics editor rows: {time, length, lyric, lineBreak}. lyric excludes
 // the trailing "+" — lineBreak controls whether it's re-appended on save.
 let lyricsEvents = [];
+// Tone editor state (GP jobs). jobTones: full gear dicts (see gear_catalogue
+// .tone_from_dict); toneBase/toneNames reference them by key; toneChanges are
+// the timed switches placed on the partitura ({time(bundle s), name(key)}).
+let gearCatalogue = null;     // {amps, cabinets, pedals, racks, descriptors}
+let jobTones = [];            // [{key,name,volume,descriptors,amp,cabinet,pre,post,racks}]
+let toneBase = null;
+let toneNames = [];
+let toneChanges = [];
+let editingToneKey = null;    // key of the tone open in the builder form
 let lyricsPollTimer = null;
 // Current cent_offset (fine-tuning deviation from A440), pre-filled from the
 // built arrangement and updated by "Detetar afinação" / sent on rebuild.
@@ -808,6 +877,7 @@ async function loadArrangements(id) {
   showArr(0);
   document.getElementById('tabwrap').scrollLeft = 0;
   await loadLyrics(id);
+  await loadTones(id);
 }
 
 // String colors low E -> high e: red, yellow, blue, orange, green, purple.

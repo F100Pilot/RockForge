@@ -12,7 +12,7 @@ import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, Response
@@ -114,6 +114,15 @@ class RebuildIn(BaseModel):
     # empty list), replaces params["lyrics_events"] and clears lyrics_status so
     # the next build uses the edited lyrics. None leaves existing lyrics alone.
     lyrics_events: list[LyricEventOut] | None = None
+    # Tone editor overrides (GP jobs). When set (even to an empty list), each
+    # replaces the corresponding params entry; None leaves it untouched.
+    # ``tones`` are full gear definitions (see gear_catalogue.tone_from_dict);
+    # ``tone_base``/``tone_names`` reference them by key; ``tone_changes`` are the
+    # timed switches placed on the partitura.
+    tone_base: str | None = None
+    tone_names: list[str] | None = None
+    tones: list[dict[str, Any]] | None = None
+    tone_changes: list[dict[str, Any]] | None = None
 
 
 class ArrangementNoteOut(BaseModel):
@@ -596,6 +605,27 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
         if payload.lyrics_events is not None:
             params["lyrics_events"] = [e.model_dump() for e in payload.lyrics_events]
             params.pop("lyrics_status", None)
+        touches_tones = any(
+            v is not None
+            for v in (
+                payload.tones,
+                payload.tone_changes,
+                payload.tone_base,
+                payload.tone_names,
+            )
+        )
+        if touches_tones and original.source_type != "gp":
+            raise HTTPException(422, "tones only apply to Guitar Pro jobs")
+        if payload.tone_base is not None:
+            params["tone_base"] = payload.tone_base or None
+        if payload.tone_names is not None:
+            if len(payload.tone_names) > 4:
+                raise HTTPException(422, "Rocksmith supports at most 4 switchable tones")
+            params["tone_names"] = payload.tone_names
+        if payload.tones is not None:
+            params["tones"] = payload.tones
+        if payload.tone_changes is not None:
+            params["tone_changes"] = payload.tone_changes
         job = Job(
             source=original.source,
             source_type=original.source_type,
@@ -800,6 +830,23 @@ def get_lyrics(job_id: str) -> LyricsOut:
         return LyricsOut(status=status, events=events, log=[str(line) for line in log])
 
 
+@app.get("/jobs/{job_id}/tones")
+def get_tones(job_id: str) -> dict[str, Any]:
+    """The job's current tone setup (full gear definitions, the base/extra tone
+    keys, and the timed changes placed on the partitura). Backs the tone editor."""
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+        params = job.params or {}
+        return {
+            "tone_base": params.get("tone_base"),
+            "tone_names": list(params.get("tone_names") or []),
+            "tones": list(params.get("tones") or []),
+            "tone_changes": list(params.get("tone_changes") or []),
+        }
+
+
 @app.get("/jobs/{job_id}/arrangements", response_model=list[ArrangementOut])
 def get_arrangements(job_id: str) -> list[ArrangementOut]:
     """Parsed arrangement data for human review (tab viewer, tuning confirmation)."""
@@ -982,6 +1029,15 @@ def download_cover_art(job_id: str) -> FileResponse:
 @app.get("/version", include_in_schema=False)
 def version() -> dict[str, str]:
     return {"version": app.version}
+
+
+@app.get("/gear-catalogue")
+def gear_catalogue() -> dict[str, Any]:
+    """The Rocksmith gear catalogue (amps/cabinets/pedals/racks + descriptors)
+    that backs the tone-builder UI. Static data — safe to cache client-side."""
+    from rockforge.infrastructure.packaging.gear.gear_catalogue import catalogue_for_ui
+
+    return catalogue_for_ui()
 
 
 @app.post("/heartbeat", include_in_schema=False)

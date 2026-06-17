@@ -18,11 +18,16 @@ System.Text.Json + FSharp.SystemTextJson default options:
 - ``SortableString`` is ``{"Value": str, "SortValue": str}``; ``AudioFile`` is
   ``{"Path": str, "Volume": float}``.
 
-Honest limits (CLAUDE.md): RockForge has no tone-gear model, so ``Tones`` is
-emitted empty and instrumentals carry an empty ``BaseTone`` — DLC Builder shows
-a "tone missing" issue the user resolves with its tone library. ``Volume`` uses
-a neutral default (DLC Builder's "Calculate Volumes" recomputes it), and the
-audio preview is left empty (DLC Builder's "Create Preview Audio" generates it).
+Tones: when an arrangement carries full gear definitions (``Arrangement.tones``,
+built in the tone editor), they are serialized into the project ``Tones`` array
+as ``ToneDto`` objects (``Tone.toDto`` in Rocksmith2014.NET ``Tone.fs``, MIT) so
+the tone loads and plays in-game with no further editing. With no gear
+definitions, ``Tones`` stays empty and ``BaseTone``/``Tones`` carry bare names
+DLC Builder resolves from its own library (the original honest fallback).
+
+Other honest limits (CLAUDE.md): ``Volume`` on the audio file uses a neutral
+default (DLC Builder's "Calculate Volumes" recomputes it), and the audio preview
+is left empty (DLC Builder's "Create Preview Audio" generates it).
 """
 
 from __future__ import annotations
@@ -33,6 +38,7 @@ from pathlib import Path
 from random import SystemRandom
 
 from rockforge.domain.arrangement import Arrangement, ArrangementKind
+from rockforge.domain.tone import Pedal, Tone
 
 # ArrangementName / RouteMask integer values from Rocksmith2014.NET Arrangement.fs.
 _ARRANGEMENT_NAME = {
@@ -91,6 +97,69 @@ def _instrumental_dto(arr: Arrangement, xml_name: str) -> dict[str, object]:
     }
 
 
+def _pedal_dto(pedal: Pedal) -> dict[str, object]:
+    """A ``PedalDto`` dict (Type, KnobValues, Key, optional Category).
+
+    Field order and the ``PedalKey -> "Key"`` rename match Rocksmith2014.NET
+    ``Tone.fs``; ``Skin``/``SkinIndex``/``Category`` are omitted when unset
+    (System.Text.Json drops null members)."""
+    dto: dict[str, object] = {
+        "Type": pedal.gear_type,
+        "KnobValues": {k: round(v, 4) for k, v in pedal.knob_values.items()},
+        "Key": pedal.key,
+    }
+    if pedal.category is not None:
+        dto["Category"] = pedal.category
+    return dto
+
+
+def _gear_dto(tone: Tone) -> dict[str, object]:
+    """A ``GearDto`` dict: Amp + Cabinet plus only the populated pedal/rack slots
+    (DLC Builder names them Rack1-4 / PrePedal1-4 / PostPedal1-4 and omits empty
+    ones)."""
+    gear = tone.gear
+    dto: dict[str, object] = {
+        "Amp": _pedal_dto(gear.amp),
+        "Cabinet": _pedal_dto(gear.cabinet),
+    }
+    for prefix, slots in (
+        ("PrePedal", gear.pre_pedals),
+        ("PostPedal", gear.post_pedals),
+        ("Rack", gear.racks),
+    ):
+        for i, pedal in enumerate(slots, start=1):
+            if pedal is not None:
+                dto[f"{prefix}{i}"] = _pedal_dto(pedal)
+    return dto
+
+
+def _tone_dto(tone: Tone) -> dict[str, object]:
+    """A ``ToneDto`` dict, as ``Tone.toDto`` serializes it into ``.rs2dlc``.
+
+    ``Volume`` is a string formatted ``0.000`` (Rocksmith2014.NET
+    ``volumeToString``), ``IsCustom`` is always ``true`` (matching ``toDto``)."""
+    return {
+        "GearList": _gear_dto(tone),
+        "ToneDescriptors": list(tone.descriptors),
+        "NameSeparator": " - ",
+        "IsCustom": True,
+        "Volume": f"{tone.volume:.3f}",
+        "Key": tone.key,
+        "Name": tone.name,
+    }
+
+
+def _collect_tones(arrangements: list[Arrangement]) -> list[dict[str, object]]:
+    """Unique ``ToneDto`` dicts across all arrangements, keyed by tone ``key``
+    (the same tone shared by Lead/Rhythm is emitted once)."""
+    seen: dict[str, dict[str, object]] = {}
+    for arr in arrangements:
+        for tone in arr.tones:
+            if tone.key not in seen:
+                seen[tone.key] = _tone_dto(tone)
+    return list(seen.values())
+
+
 def _vocals_dto(xml_name: str) -> dict[str, object]:
     guid = _new_guid()
     return {
@@ -135,7 +204,7 @@ def build_rs2dlc(
         "AudioPreviewFile": {"Path": "", "Volume": _DEFAULT_VOLUME},
         "IgnoredIssues": [],
         "Arrangements": dto_arrangements,
-        "Tones": [],
+        "Tones": _collect_tones(arrangements),
     }
     if meta.song_length > 0:
         project["AudioFileLength"] = round(meta.song_length, 3)
