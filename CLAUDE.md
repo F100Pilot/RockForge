@@ -121,6 +121,18 @@ bundle-time positions), so the playhead starts at 0 instead of at the first
 note. Anchor math stays in bundle time so corrections round-trip through a
 rebuild unchanged.
 
+Playback in the tab viewer goes through the **Web Audio API**
+(`AudioBufferSourceNode` over the buffer already decoded for the waveform),
+driven by a custom transport (`audioPlay`/`audioPause`/`audioSeek`), NOT the
+HTML `<audio>` element. The element seeks by estimating a byte offset from
+time, which is accurate near the start but drifts further in for VBR /
+seek-table-less sources — the "aligned from the start, off in the middle"
+symptom. A buffer source seeks sample-accurately and its clock is
+`audioCtx.currentTime`, so playback, the waveform and the notes share one exact
+timeline. The `<audio>` element survives only as a decode-failure fallback
+(`playBuffer === null`), where seeking is codec-imprecise again. Don't revert
+playback to the `<audio>` element's `currentTime`/seek.
+
 ### Lyrics formats (`infrastructure/rsxml/vocals.py`)
 
 `parse_lyrics` auto-detects **LRC** (`[mm:ss.xx]` lines) vs **UltraStar/USDX
