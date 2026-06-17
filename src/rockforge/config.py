@@ -34,6 +34,10 @@ class Settings(BaseSettings):
         return self.whisperx_device or self.demucs_device
     psarc_packer_cmd: str | None = None  # e.g. external DLC Builder CLI invocation
     psarc_mode: str = "native"  # "native" (default, always produces .psarc) | "dlcbuilder"
+    # "celery" (default): tasks dispatched to the Celery worker (needs Redis).
+    # "inprocess": tasks run in a background thread inside the API process (no
+    # Redis needed). The standalone .exe sets this automatically.
+    worker_mode: str = "celery"
 
     # Local single-user setups (start.bat): if > 0, the API process exits when
     # the web UI stops sending /heartbeat pings for this many seconds (i.e. the

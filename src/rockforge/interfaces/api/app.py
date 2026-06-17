@@ -224,15 +224,25 @@ def _to_out(job: Job) -> JobOut:
 
 
 def _enqueue(job: Job) -> None:
-    from rockforge.interfaces.worker.celery_app import generate_cdlc
+    if settings.worker_mode == "inprocess":
+        from rockforge.interfaces.worker.inprocess import enqueue_generate
 
-    generate_cdlc.delay(job.id)
+        enqueue_generate(job.id)
+    else:
+        from rockforge.interfaces.worker.celery_app import generate_cdlc
+
+        generate_cdlc.delay(job.id)
 
 
 def _enqueue_detect(job: Job) -> None:
-    from rockforge.interfaces.worker.celery_app import detect_lyrics
+    if settings.worker_mode == "inprocess":
+        from rockforge.interfaces.worker.inprocess import enqueue_detect
 
-    detect_lyrics.delay(job.id)
+        enqueue_detect(job.id)
+    else:
+        from rockforge.interfaces.worker.celery_app import detect_lyrics
+
+        detect_lyrics.delay(job.id)
 
 
 @app.post("/jobs/upload", response_model=JobOut, status_code=202)
