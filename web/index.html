@@ -756,6 +756,7 @@ document.addEventListener('click', e => {
 
 const STD = [40, 45, 50, 55, 59, 64];
 let selectedJob = null, arrangements = [], currentArr = 0, pollTimer = null;
+let arrangementsLoadedFor = null;  // job id whose chart+audio are already loaded (avoids re-decoding on every poll)
 // Visual sync (GP): MIN_LEAD must match gp_pipeline.MIN_LEAD_S.
 const MIN_LEAD = 2.0;
 let tabPx = 80, tabH = 280, scoreShift = 0, offsetLive = 0;
@@ -832,7 +833,8 @@ document.getElementById('newJobTabs').addEventListener('click', e => {
 
 function closeDetail() {
   selectedJob = null;
-  clearInterval(pollTimer);
+  arrangementsLoadedFor = null;
+  clearTimeout(pollTimer);
   clearInterval(lyricsPollTimer);
   stopArrangementPreview();
   const au = document.getElementById('syncAudio');
@@ -879,7 +881,7 @@ async function refreshJobs() {
   }
 }
 
-async function selectJob(id) {
+async function selectJob(id, { poll = false, force = false } = {}) {
   const j = await (await fetch(`/jobs/${id}`)).json();
   selectedJob = j;
   document.getElementById('detailOverlay').hidden = false;
@@ -910,16 +912,32 @@ async function selectJob(id) {
   loadCoverArt(j);
 
   document.getElementById('muteChk').checked = j.import_mutes !== false;
-  if (j.status === 'completed' && j.bundle_available) await loadArrangements(j.id);
-  else {
+  if (j.status === 'completed' && j.bundle_available) {
+    // Load arrangements (heavy: decodes the full recording, resets the audio
+    // <src>) only ONCE per job. Re-running it on every status poll would reset
+    // au.src — stopping playback — and null wavePeaks, making the waveform
+    // flicker. force=true is used after a rebuild, when the chart did change.
+    if (force || arrangementsLoadedFor !== id) {
+      arrangementsLoadedFor = id;
+      try {
+        await loadArrangements(id);
+      } catch (e) {
+        arrangementsLoadedFor = null;  // allow a retry on the next click
+        toast('erro a carregar arranjos: ' + (e && e.message || e));
+      }
+    }
+  } else {
+    arrangementsLoadedFor = null;
     document.getElementById('review').style.display = 'none';
     clearInterval(lyricsPollTimer);
     lyricsEvents = [];
   }
 
-  clearInterval(pollTimer);
+  // Re-arm with setTimeout (not setInterval): the next poll is scheduled only
+  // after this one finishes, so a slow render can't stack overlapping calls.
+  clearTimeout(pollTimer);
   if (j.status === 'pending' || j.status === 'running')
-    pollTimer = setInterval(() => selectJob(id), 2500);
+    pollTimer = setTimeout(() => selectJob(id, { poll: true }), 2500);
   refreshJobs();
 }
 
@@ -1113,7 +1131,7 @@ async function applyAll() {
     }),
   });
   const b = await r.json();
-  if (r.ok) { toast('A reconstruir…', 'ok'); syncAnchors.length = 0; selectJob(b.id); }
+  if (r.ok) { toast('A reconstruir…', 'ok'); syncAnchors.length = 0; selectJob(b.id, { force: true }); }
   else toast(b.detail || 'erro');
 }
 document.getElementById('applyAll').addEventListener('click', applyAll);
