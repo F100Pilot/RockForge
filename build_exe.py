@@ -1,7 +1,9 @@
 """Build the RockForge standalone .exe via PyInstaller.
 
 Usage:
-    py -3.11 build_exe.py
+    py -3.11 build_exe.py              # build the exe only
+    py -3.11 build_exe.py --zip        # also create a portable .zip
+    py -3.11 build_exe.py --installer  # also compile the Inno Setup installer
 
 Prerequisites:
     pip install pyinstaller
@@ -9,8 +11,10 @@ Prerequisites:
     (winget install ffmpeg, then copy ffmpeg.exe to ffmpeg/ffmpeg.exe)
 
 Output:
-    dist/rockforge/          — the distributable folder
-    dist/rockforge/rockforge.exe  — double-click to launch
+    dist/rockforge/                    — the distributable folder
+    dist/rockforge/rockforge.exe       — double-click to launch
+    dist/RockForge_portable.zip        — portable zip (with --zip)
+    Output/RockForge_Setup.exe         — installer (with --installer)
 """
 
 import shutil
@@ -25,7 +29,6 @@ def check_ffmpeg() -> None:
     ffmpeg_dir = ROOT / "ffmpeg"
     ffmpeg_exe = ffmpeg_dir / "ffmpeg.exe"
     if not ffmpeg_exe.exists():
-        # Try to locate ffmpeg on PATH and copy it
         found = shutil.which("ffmpeg")
         if found:
             ffmpeg_dir.mkdir(exist_ok=True)
@@ -50,7 +53,49 @@ def build() -> None:
     dist = ROOT / "dist" / "rockforge"
     print(f"\nBuild complete: {dist}")
     print(f"  Launch: {dist / 'rockforge.exe'}")
+    return dist
+
+
+def make_zip(dist: Path) -> None:
+    """Create a portable .zip of the dist folder."""
+    zip_path = ROOT / "dist" / "RockForge_portable"
+    print(f"\nCreating portable ZIP...")
+    shutil.make_archive(str(zip_path), "zip", str(dist.parent), dist.name)
+    print(f"  ZIP: {zip_path}.zip")
+
+
+def make_installer() -> None:
+    """Compile the Inno Setup installer (.iss → .exe)."""
+    iss = ROOT / "installer.iss"
+    if not iss.exists():
+        print(f"ERROR: {iss} not found")
+        return
+    iscc = shutil.which("ISCC")
+    if not iscc:
+        # Common install paths on Windows
+        for candidate in [
+            Path(r"C:\Program Files (x86)\Inno Setup 6\ISCC.exe"),
+            Path(r"C:\Program Files\Inno Setup 6\ISCC.exe"),
+        ]:
+            if candidate.exists():
+                iscc = str(candidate)
+                break
+    if not iscc:
+        print(
+            "ERROR: ISCC.exe (Inno Setup Compiler) not found.\n"
+            "  Install Inno Setup 6 from https://jrsoftware.org/isinfo.php\n"
+            "  or add ISCC.exe to your PATH."
+        )
+        return
+    cmd = [iscc, str(iss)]
+    print(f"\nCompiling installer: {' '.join(cmd)}")
+    subprocess.run(cmd, check=True, cwd=str(ROOT))
+    print(f"  Installer: {ROOT / 'Output' / 'RockForge_Setup.exe'}")
 
 
 if __name__ == "__main__":
-    build()
+    dist = build()
+    if "--zip" in sys.argv:
+        make_zip(dist)
+    if "--installer" in sys.argv:
+        make_installer()
