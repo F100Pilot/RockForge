@@ -287,13 +287,16 @@ def _log_lyrics_stage(params: dict[str, Any], message: str) -> None:
     params["lyrics_log"] = [*log, f"[{stamp}] {message}"][-50:]
 
 
-@celery_app.task(name="rockforge.detect_lyrics")
+@celery_app.task(name="rockforge.detect_lyrics", time_limit=3600)
 def detect_lyrics(job_id: str) -> None:
     """Detect lyrics from a job's source recording (Demucs vocals + WhisperX).
 
     Slow (minutes); progress is reported via params["lyrics_status"] rather
     than JobStatus, so it never hides a completed build or disables /arrangements.
     Human-readable progress is appended to params["lyrics_log"].
+
+    time_limit=3600: Hard timeout at 60 minutes. If the task runs longer,
+    Celery/worker will force-kill it. In inprocess mode, this is advisory only.
     """
     session_factory = make_session_factory(settings.database_url)
     with session_factory() as session:
@@ -301,19 +304,25 @@ def detect_lyrics(job_id: str) -> None:
         if job is None:  # deleted while queued — nothing to do
             return
         job.stage = "lyrics"
-        # Copy: job.params is the same dict object SQLAlchemy holds, and
-        # reassigning that same object back doesn't register as a change
-        # (old == new by identity), so the JSON column never gets written.
         params = dict(job.params or {})
         warnings = list(job.warnings or [])
         params["lyrics_log"] = []
         _log_lyrics_stage(params, "lyric detection started")
         try:
-            _log_lyrics_stage(params, "loading ML models (can take 30–60s on first run)")
+            _log_lyrics_stage(params, "loading ML models (can take 30–60s on first run)…")
+            job.params = params
+            session.commit()
+
+            _log_lyrics_stage(params, "importing torch…")
             job.params = params
             session.commit()
             device = _resolve_device(settings.lyrics_device())
+
+            _log_lyrics_stage(params, "importing demucs and whisperx…")
+            job.params = params
+            session.commit()
             normalizer, separator, transcriber_cls = _build_detection(device)
+
             if not transcriber_cls.available():
                 warnings.append(
                     "lyric detection requested but whisperx is not installed "
