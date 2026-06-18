@@ -36,6 +36,7 @@ import json
 import uuid
 from pathlib import Path
 from random import SystemRandom
+from typing import cast
 
 from rockforge.domain.arrangement import Arrangement, ArrangementKind
 from rockforge.domain.tone import Pedal, Tone
@@ -211,6 +212,30 @@ def build_rs2dlc(
     return project
 
 
+def _write_phrase_levels(project: dict[str, object], out_dir: Path) -> Path:
+    """Write a ``.phrase-levels`` file alongside the ``.rs2dlc``.
+
+    DLC Builder reads this during build (``PhraseLevelComparer.compareToExisting``)
+    to decide whether arrangement IDs need regeneration.  Without it, DLC Builder
+    may fail with a FileNotFoundException when building the project.  RockForge
+    has no dynamic difficulty, so every phrase has maxDifficulty 0.
+    """
+    levels: dict[str, dict[str, int]] = {}
+    arr_list = cast("list[dict[str, object]]", project.get("Arrangements", []))
+    for arr_dto in arr_list:
+        if arr_dto.get("Case") != "Instrumental":
+            continue
+        fields = cast("list[dict[str, object]]", arr_dto.get("Fields", []))
+        if not fields:
+            continue
+        persistent_id = cast(str, fields[0].get("PersistentID", ""))
+        if persistent_id:
+            levels[persistent_id] = {"COUNT": 0, "default": 0, "END": 0}
+    path = out_dir / ".phrase-levels"
+    path.write_text(json.dumps(levels, indent=2, ensure_ascii=False), encoding="utf-8")
+    return path
+
+
 def write_rs2dlc(
     arrangements: list[Arrangement],
     instrumental_xml_names: list[str],
@@ -220,7 +245,11 @@ def write_rs2dlc(
     vocals_xml_name: str | None = None,
     cover_art_name: str | None = None,
 ) -> Path:
-    """Write a ``.rs2dlc`` DLC Builder project file; returns *out_path*."""
+    """Write a ``.rs2dlc`` DLC Builder project file; returns *out_path*.
+
+    Also writes a ``.phrase-levels`` companion in the same directory so DLC
+    Builder's build-time phrase-level comparison works from the first build.
+    """
     project = build_rs2dlc(
         arrangements,
         instrumental_xml_names,
@@ -232,4 +261,5 @@ def write_rs2dlc(
     out_path.write_text(
         json.dumps(project, indent=2, ensure_ascii=False), encoding="utf-8"
     )
+    _write_phrase_levels(project, out_path.parent)
     return out_path
