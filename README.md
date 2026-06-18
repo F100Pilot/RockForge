@@ -18,6 +18,7 @@ Pipeline áudio → arranjos Rocksmith 2014 (CDLC), construído sobre investiga�
 | Cordas/trastes | otimização de playability (DP própria) | determinística, testada |
 | Técnicas | bend (medido), hammer-on/pull-off (regras) | parcial — ver relatório |
 | Letra automática (opcional) | WhisperX sobre o stem vocal isolado (Demucs `htdemucs` 2-stem; `pip install -e ".[lyrics]"`) | **EXPERIMENTAL** — gates anti-alucinação (RMS + confiança/palavra); LRC continua a via preferida; CPU é lento, GPU NVIDIA ≈ ferramentas online |
+| Deteção de tom (opcional) | Demucs `htdemucs_6s` (stem guitarra) + análise espetral (librosa) → presets Lead/Rhythm do catálogo Rocksmith | **EXPERIMENTAL** — classifica o *caráter* do som (clean/crunch/high-gain), não identifica o amp/pedal real; resultado é uma proposta que o utilizador revê e ajusta |
 | XML Song2014 | gerador próprio (formato doc. na comunidade) | testado estruturalmente; emite os 32 `arrangementProperties` e a estrutura COUNT/default/END que o DLC Builder e o jogo exigem |
 | Áudio `.wem` | Wwise local + projeto template do DLC Builder | Vorbis **com seek table** + correção de header (sem isto o jogo carrega mas fica mudo e sai) — Wwise 2019/2021/2022/2023 |
 | PSARC | bundle para DLC Builder; PSARC só com Wwise | **Wwise é obrigatório para .wem** |
@@ -60,6 +61,25 @@ antes de gravares. Cada "Aplicar correções e reconstruir" soma uma nova ronda 
 anteriores — **abre o job mais tarde (mesmo depois de saíres e voltares) e continua a
 ajustar**: as correções já aplicadas ficam no arranjo carregado e as novas somam-se a elas, em
 vez de partir sempre do GP em bruto.
+
+### Deteção automática de tom (Lead / Rhythm)
+
+O botão **"Detetar tom"** no painel de tons analisa a gravação e sugere tones
+Lead + Rhythm do catálogo de gear do Rocksmith, prontos a usar no jogo:
+
+1. O Demucs (`htdemucs_6s`) isola o stem de guitarra da gravação.
+2. A análise espetral (librosa — zero-crossing rate, spectral contrast, centroid,
+   rolloff) classifica o caráter do som numa de três categorias: **Clean**,
+   **Crunch** ou **High Gain**.
+3. São propostos presets curados para Lead e Rhythm (amps, cabinets e pedais reais
+   do catálogo, com knobs ajustados) que correspondem à categoria detetada.
+4. O utilizador carrega em **"Aplicar tons sugeridos"** para carregar os presets
+   no editor de tons, revê/ajusta e grava com **"Aplicar e reconstruir"**.
+
+Nota de honestidade: a análise espetral **não identifica** o amp ou pedal real
+usado na gravação — classifica o *caráter* do som e sugere um match plausível do
+catálogo Rocksmith. Precisa do extra `[ml]` (Demucs + librosa). Funciona em
+qualquer tipo de job (GP, áudio, YouTube).
 
 Leitura obrigatória: [`docs/RELATORIO-TECNICO.md`](docs/RELATORIO-TECNICO.md) (viabilidade,
 arquitetura, riscos) e os relatórios de investigação com fontes em [`docs/research/`](docs/research/).
