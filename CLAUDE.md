@@ -169,6 +169,16 @@ faster *and* more accurate for transcription. The WhisperX model size
 `settings.lyrics_device()`) are configurable — on CPU drop the model to
 `base`/`tiny` to trade accuracy for speed.
 
+**Subprocess isolation.** WhisperX transcription (and the `import whisperx`
+availability check) runs in a **subprocess**, not inside the Celery worker.
+faster-whisper / ctranslate2 has a known deadlock during CUDA initialisation
+inside Celery child processes (faster-whisper #907, celery #3402) that hangs
+the worker indefinitely at the import phase. The fix mirrors how Demucs already
+runs — `_whisperx_runner.py` is spawned via `subprocess.run` with
+`WHISPERX_TIMEOUT_S` (20 min, covers first-run model download + long songs).
+The warm-up signal is `worker_ready` (not `on_after_finalize`) so torch/CUDA
+init never leaks into the API process.
+
 **Device selection (`_resolve_device`).** `demucs_device` defaults to `"auto"`:
 `celery_app._resolve_device` (deferred torch import, worker-only) returns
 `"cuda"` when `torch.cuda.is_available()` and `"cpu"` otherwise; explicit
