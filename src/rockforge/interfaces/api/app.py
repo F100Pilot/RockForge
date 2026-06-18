@@ -911,7 +911,7 @@ def get_detected_tones(job_id: str) -> DetectTonesOut:
         params = job.params or {}
         status = str(params.get("tone_detection_status", "none"))
         log = cast("list[str]", params.get("tone_detection_log") or [])
-        detected = params.get("detected_tones") or {}
+        detected = cast("dict[str, Any]", params.get("detected_tones") or {})
         return DetectTonesOut(
             status=status,
             category=str(detected.get("category", "")),
