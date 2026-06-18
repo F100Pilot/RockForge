@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from datetime import UTC, datetime
 from functools import cache
 from pathlib import Path
@@ -18,6 +19,10 @@ celery_app = Celery(
     "rockforge", broker=settings.broker_url, backend=settings.result_backend
 )
 celery_app.conf.task_track_started = True
+
+# WhisperX runs as a subprocess (avoids faster-whisper CUDA deadlock in Celery).
+# 20 min ceiling: model download on first run + transcription of a long song.
+WHISPERX_TIMEOUT_S = 1200
 
 
 @worker_ready.connect
@@ -327,12 +332,17 @@ def detect_lyrics(job_id: str) -> None:
             job.params = params
             session.commit()
 
+            import time as _time
+
             _log_lyrics_stage(params, "importing torch + resolving device…")
             job.params = params
             session.commit()
+            t0 = _time.monotonic()
             device = _resolve_device(settings.lyrics_device())
             _log_lyrics_stage(
-                params, f"torch ready — device: {device} ({'GPU' if device == 'cuda' else 'CPU'})"
+                params,
+                f"torch ready ({_time.monotonic() - t0:.1f}s) — "
+                f"device: {device} ({'GPU' if device == 'cuda' else 'CPU'})",
             )
             job.params = params
             session.commit()
@@ -340,15 +350,32 @@ def detect_lyrics(job_id: str) -> None:
             _log_lyrics_stage(params, "importing demucs…")
             job.params = params
             session.commit()
-            normalizer, separator, transcriber_cls = _build_detection(device)
-            _log_lyrics_stage(params, "demucs ready — importing whisperx…")
+            t0 = _time.monotonic()
+            normalizer, separator, _transcriber_cls = _build_detection(device)
+            _log_lyrics_stage(
+                params, f"demucs ready ({_time.monotonic() - t0:.1f}s)"
+            )
             job.params = params
             session.commit()
 
-            whisperx_ok = transcriber_cls.available()
+            # Check whisperx availability in a subprocess to avoid the
+            # known faster-whisper/ctranslate2 CUDA deadlock inside Celery
+            # workers (faster-whisper #907, celery #3402).
+            _log_lyrics_stage(params, "checking whisperx availability…")
+            job.params = params
+            session.commit()
+            import subprocess as _sp
+
+            whisperx_check = _sp.run(
+                [sys.executable, "-c", "import whisperx; print('ok')"],
+                capture_output=True, text=True, timeout=180,
+                stdin=_sp.DEVNULL,
+            )
+            whisperx_ok = whisperx_check.returncode == 0
             _log_lyrics_stage(
                 params,
-                "whisperx ready" if whisperx_ok else "whisperx NOT available",
+                "whisperx ready" if whisperx_ok
+                else f"whisperx NOT available: {whisperx_check.stderr[:200]}",
             )
             job.params = params
             session.commit()
@@ -376,19 +403,40 @@ def detect_lyrics(job_id: str) -> None:
                 session.commit()
                 vocals_stem = separator.separate_vocals(normalized, workdir)
 
+                # Run WhisperX transcription in a SUBPROCESS to avoid the
+                # CUDA init deadlock (faster-whisper #907). The runner
+                # script imports whisperx in a fresh process, transcribes,
+                # and writes JSON to a temp file.
                 params["lyrics_status"] = "transcribing"
-                _log_lyrics_stage(params, f"transcribing (WhisperX/{settings.whisper_model})")
+                _log_lyrics_stage(
+                    params,
+                    f"transcribing (WhisperX/{settings.whisper_model}, subprocess)",
+                )
                 job.params = params
                 session.commit()
-                events = transcriber_cls(
-                    model_size=settings.whisper_model, device=device
-                ).transcribe(vocals_stem)
+                events_json = workdir / "whisperx_events.json"
+                runner = (
+                    Path(__file__).resolve().parent.parent.parent
+                    / "infrastructure" / "lyrics" / "_whisperx_runner.py"
+                )
+                _sp.run(
+                    [
+                        sys.executable, str(runner),
+                        "--vocals", str(vocals_stem),
+                        "--output", str(events_json),
+                        "--model", settings.whisper_model,
+                        "--device", device,
+                    ],
+                    check=True, capture_output=True, text=True,
+                    stdin=_sp.DEVNULL, timeout=WHISPERX_TIMEOUT_S,
+                )
 
-                params["lyrics_events"] = [
-                    {"time": e.time, "length": e.length, "lyric": e.lyric} for e in events
-                ]
-                params["lyrics_status"] = "ready" if events else "empty"
-                _log_lyrics_stage(params, f"done — {len(events)} word(s) detected")
+                import json as _json
+
+                raw_events = _json.loads(events_json.read_text(encoding="utf-8"))
+                params["lyrics_events"] = raw_events
+                params["lyrics_status"] = "ready" if raw_events else "empty"
+                _log_lyrics_stage(params, f"done — {len(raw_events)} word(s) detected")
         except Exception as exc:  # never crash the job over lyric detection
             params["lyrics_status"] = "unavailable"
             warnings.append(f"lyric detection failed: {type(exc).__name__}: {exc}")
