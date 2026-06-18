@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from celery import Celery
+from celery.signals import worker_ready
 
 from rockforge.config import settings
 from rockforge.domain.arrangement import SongMetadata
@@ -19,16 +20,29 @@ celery_app = Celery(
 celery_app.conf.task_track_started = True
 
 
-@celery_app.on_after_finalize.connect
+@worker_ready.connect
 def _warm_up_device(**_kwargs: object) -> None:
     """Probe CUDA once at worker startup so the first job doesn't pay for it.
 
     torch.cuda.is_available() initialises the CUDA runtime on first call
     (30–60s on Windows). Running it in the background while the worker waits
     for jobs means it's already cached by the time the first task arrives.
+
+    Bound to ``worker_ready`` (NOT ``on_after_finalize``): the latter also
+    fires in the API/uvicorn process the first time it calls ``.delay()`` to
+    enqueue a job, which would ``import torch`` and initialise a CUDA context
+    in the web process (forbidden by CLAUDE.md) — and a second CUDA init in the
+    worker on the same GPU can then hang. ``worker_ready`` fires only inside a
+    real worker. Run in a daemon thread so a slow CUDA init never blocks the
+    worker's task loop.
     """
-    _resolve_device(settings.demucs_device)
-    _resolve_device(settings.lyrics_device())
+    import threading
+
+    def _probe() -> None:
+        _resolve_device(settings.demucs_device)
+        _resolve_device(settings.lyrics_device())
+
+    threading.Thread(target=_probe, name="rockforge-warmup", daemon=True).start()
 
 
 def _build_packager():  # noqa: ANN202 - heavy imports deferred to worker runtime
@@ -313,17 +327,33 @@ def detect_lyrics(job_id: str) -> None:
             job.params = params
             session.commit()
 
-            _log_lyrics_stage(params, "importing torch…")
+            _log_lyrics_stage(params, "importing torch + resolving device…")
             job.params = params
             session.commit()
             device = _resolve_device(settings.lyrics_device())
+            _log_lyrics_stage(
+                params, f"torch ready — device: {device} ({'GPU' if device == 'cuda' else 'CPU'})"
+            )
+            job.params = params
+            session.commit()
 
-            _log_lyrics_stage(params, "importing demucs and whisperx…")
+            _log_lyrics_stage(params, "importing demucs…")
             job.params = params
             session.commit()
             normalizer, separator, transcriber_cls = _build_detection(device)
+            _log_lyrics_stage(params, "demucs ready — importing whisperx…")
+            job.params = params
+            session.commit()
 
-            if not transcriber_cls.available():
+            whisperx_ok = transcriber_cls.available()
+            _log_lyrics_stage(
+                params,
+                "whisperx ready" if whisperx_ok else "whisperx NOT available",
+            )
+            job.params = params
+            session.commit()
+
+            if not whisperx_ok:
                 warnings.append(
                     "lyric detection requested but whisperx is not installed "
                     "(pip install 'rockforge[lyrics]')"
@@ -334,9 +364,6 @@ def detect_lyrics(job_id: str) -> None:
                 workdir = settings.work_dir / job.id / "lyrics"
                 workdir.mkdir(parents=True, exist_ok=True)
 
-                _log_lyrics_stage(
-                    params, f"device: {device} ({'GPU' if device == 'cuda' else 'CPU'})"
-                )
                 params["lyrics_status"] = "normalizing"
                 _log_lyrics_stage(params, "normalizing source audio (ffmpeg)")
                 job.params = params
