@@ -451,6 +451,9 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
         <div class="anchor-row" style="margin-top:.75rem">
           <button type="button" id="applyAll">Aplicar e reconstruir</button>
           <span class="meta"><b id="applyKind"></b></span>
+          <label id="applyToAllLabel" class="check" style="margin-left:.8rem;display:none">
+            <input type="checkbox" id="applyToAllChk"> Aplicar sync a todos
+          </label>
         </div>
       </div>
 
@@ -1014,6 +1017,8 @@ async function loadArrangements(id) {
   document.getElementById('detectTuningInfo').textContent = '';
   document.getElementById('arrTabs').innerHTML = arrangements.map((a, i) =>
     `<button type="button" class="${i ? '' : 'active'}" onclick="showArr(${i})">${a.kind} (${a.note_count}n/${a.chord_count}c)</button>`).join('');
+  document.getElementById('applyToAllLabel').style.display = arrangements.length > 1 ? '' : 'none';
+  document.getElementById('applyToAllChk').checked = false;
   initSync(selectedJob);
   showArr(0);
   document.getElementById('tabwrap').scrollLeft = 0;
@@ -1171,6 +1176,7 @@ function renderAnchorsList() {
 async function applyAll() {
   if (!selectedJob) return;
   const midi = [...document.querySelectorAll('#tuningInputs input')].map(i => parseInt(i.value, 10));
+  const applyToAll = document.getElementById('applyToAllChk').checked;
   const r = await fetch(`/jobs/${selectedJob.id}/rebuild`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -1181,10 +1187,9 @@ async function applyAll() {
       arrangement: currentKind(),
       tempo_scale: tempoScaleLive,
       sync_anchors: syncAnchors.length ? syncAnchors : null,
+      apply_to_all: applyToAll,
       import_mutes: document.getElementById('muteChk').checked,
       lyrics_events: lyricsEvents.length ? serializeLyrics() : null,
-      // Tones are job-level (shared by every arrangement). Sent only for GP
-      // jobs; for others they stay null so the backend's GP-only guard passes.
       tones: jobTones.length ? jobTones : null,
       tone_base: toneBase || null,
       tone_names: toneNames.length ? toneNames : null,
@@ -1192,7 +1197,15 @@ async function applyAll() {
     }),
   });
   const b = await r.json();
-  if (r.ok) { toast('A reconstruir…', 'ok'); syncAnchors.length = 0; selectJob(b.id, { force: true }); }
+  if (r.ok) {
+    toast('A reconstruir…', 'ok');
+    if (applyToAll) {
+      syncAnchorsByKind = {};
+    } else {
+      syncAnchors.length = 0;
+    }
+    selectJob(b.id, { force: true });
+  }
   else toast(b.detail || 'erro');
 }
 document.getElementById('applyAll').addEventListener('click', applyAll);

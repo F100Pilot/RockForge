@@ -108,6 +108,9 @@ class RebuildIn(BaseModel):
     # When set (ArrangementKind value, e.g. "Lead"/"Rhythm"/"Combined"), tempo_scale
     # and sync_anchors are scoped to that arrangement alone instead of all of them.
     arrangement: str | None = None
+    # When True (with arrangement set), tempo_scale and sync_anchors are applied
+    # to every arrangement that has notes, not just the specified one.
+    apply_to_all: bool = False
     # GP: when False, palm mute / slap / pop / tap are stripped (plain notes).
     import_mutes: bool | None = None
     # Edited per-word lyrics from the in-app lyrics editor. When set (even to an
@@ -580,36 +583,45 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
                 }
             return store[kind]
 
+        def _sync_targets() -> list[dict[str, object]]:
+            """Return the target dicts that tempo_scale/sync_anchors should be
+            written to.  When ``apply_to_all`` is set (with ``arrangement``),
+            the change propagates to every existing per-arrangement override
+            *and* the job-level defaults, so both current and future
+            arrangements share the same correction."""
+            if payload.apply_to_all and payload.arrangement is not None:
+                targets: list[dict[str, object]] = [params]
+                store = cast(
+                    "dict[str, dict[str, object]]",
+                    params.get("arrangement_sync", {}),
+                )
+                for entry in store.values():
+                    targets.append(entry)
+                return targets
+            if payload.arrangement is not None:
+                return [_arr_entry(payload.arrangement)]
+            return [params]
+
         if payload.tempo_scale is not None:
             if original.source_type != "gp":
                 raise HTTPException(422, "tempo_scale only applies to Guitar Pro jobs")
             if payload.tempo_scale <= 0.0:
                 raise HTTPException(422, "tempo_scale must be > 0")
-            if payload.arrangement is not None:
-                _arr_entry(payload.arrangement)["tempo_scale"] = payload.tempo_scale
-            else:
-                params["tempo_scale"] = payload.tempo_scale
+            for target in _sync_targets():
+                target["tempo_scale"] = payload.tempo_scale
         if payload.sync_anchors is not None:
             if original.source_type != "gp":
                 raise HTTPException(422, "sync_anchors only apply to Guitar Pro jobs")
             if payload.sync_anchors:
-                # Append as a new correction round on top of any carried-over rounds, so
-                # corrections made in earlier sessions (after reloading a completed job)
-                # are preserved rather than overwritten. Scope to one arrangement when
-                # requested, else the job-level (shared-default) list.
-                target = (
-                    _arr_entry(payload.arrangement)
-                    if payload.arrangement is not None
-                    else params
-                )
-                stages = [
-                    list(s)
-                    for s in cast(
-                        "list[list[object]]", target.get("sync_anchor_stages", [])
-                    )
-                ]
-                stages.append([list(a) for a in payload.sync_anchors])
-                target["sync_anchor_stages"] = stages
+                for target in _sync_targets():
+                    stages = [
+                        list(s)
+                        for s in cast(
+                            "list[list[object]]", target.get("sync_anchor_stages", [])
+                        )
+                    ]
+                    stages.append([list(a) for a in payload.sync_anchors])
+                    target["sync_anchor_stages"] = stages
         if payload.import_mutes is not None:
             params["import_mute_techniques"] = payload.import_mutes
         if payload.lyrics_events is not None:

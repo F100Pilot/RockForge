@@ -373,6 +373,41 @@ def test_rebuild_scopes_sync_to_one_arrangement(client: TestClient, tmp_path) ->
     assert rebuilt.json()["id"] != job["id"]
 
 
+def test_rebuild_apply_to_all_propagates_sync(client: TestClient, tmp_path) -> None:
+    # apply_to_all=True writes tempo_scale and sync_anchors to every existing
+    # per-arrangement entry AND the job-level defaults.
+    data = _make_gp5_bytes(tmp_path)
+    body = client.post(
+        "/gp/inspect", files={"file": ("song.gp5", data, "application/octet-stream")}
+    ).json()
+    job = client.post(
+        "/jobs/gp",
+        data={"gp_token": body["gp_token"], "lead_track": "0"},
+        files={"audio": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
+    ).json()
+    # First, create a per-arrangement entry for "Lead".
+    r1 = client.post(
+        f"/jobs/{job['id']}/rebuild",
+        json={"arrangement": "Lead", "tempo_scale": 1.1},
+    )
+    assert r1.status_code == 202
+    jid1 = r1.json()["id"]
+    # Now apply_to_all with new tempo + anchors.
+    r2 = client.post(
+        f"/jobs/{jid1}/rebuild",
+        json={
+            "arrangement": "Lead",
+            "apply_to_all": True,
+            "tempo_scale": 0.95,
+            "sync_anchors": [[1.0, 1.5]],
+        },
+    )
+    assert r2.status_code == 202
+    out = r2.json()
+    # The job-level tempo_scale should be updated too.
+    assert out["tempo_scale"] == pytest.approx(0.95)
+
+
 def test_rebuild_arrangement_scoping_rejected_for_non_gp(client: TestClient) -> None:
     original = _create_job(client)
     r = client.post(

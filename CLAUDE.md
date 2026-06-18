@@ -113,7 +113,12 @@ takes an optional `arrangement` to scope `tempo_scale`/`sync_anchors` to one
 chart (seeding its entry from the job-level defaults on first edit). The tab
 viewer keeps a separate pending-anchor set per tab and exposes one
 "Aplicar e reconstruir" that commits the current tab's tempo+anchors plus the
-shared offset/tuning in a single rebuild.
+shared offset/tuning in a single rebuild. When there are multiple arrangements,
+a checkbox "Aplicar sync a todos" appears; when checked, `RebuildIn.apply_to_all`
+is set and the `rebuild_job` endpoint propagates `tempo_scale` and
+`sync_anchors` to every existing per-arrangement override AND the job-level
+defaults, so all charts share the same correction in one rebuild instead of
+requiring the user to adjust each arrangement separately.
 
 The tab viewer's x-axis is **recording time** (0s at the left edge): notes are
 drawn via `timeToX` (which subtracts the lead-in `viewOrigin` from the
