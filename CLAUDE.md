@@ -176,8 +176,9 @@ inside Celery child processes (faster-whisper #907, celery #3402) that hangs
 the worker indefinitely at the import phase. The fix mirrors how Demucs already
 runs — `_whisperx_runner.py` is spawned via `subprocess.run` with
 `WHISPERX_TIMEOUT_S` (20 min, covers first-run model download + long songs).
-The warm-up signal is `worker_ready` (not `on_after_finalize`) so torch/CUDA
-init never leaks into the API process.
+The CUDA warm-up probe was removed entirely (two concurrent `cuInit()` calls —
+warm-up thread vs first task — can deadlock on Windows); the first task pays the
+one-time 30-60s CUDA init cost, and `@cache` avoids repeating it.
 
 **Device selection (`_resolve_device`).** `demucs_device` defaults to `"auto"`:
 `celery_app._resolve_device` (deferred torch import, worker-only) returns
