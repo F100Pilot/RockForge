@@ -16,6 +16,8 @@ from pathlib import Path
 
 from rockforge.domain.errors import SeparationError
 
+DEMUCS_TIMEOUT_S = 1800  # 30 min ceiling — Demucs on CPU is slow but shouldn't hang forever
+
 MODEL = "htdemucs_6s"
 # Lyric detection only needs the vocals stem, so it uses the 4-source htdemucs
 # with --two-stems=vocals instead of the 6-source htdemucs_6s: the 6s model is
@@ -49,10 +51,15 @@ class DemucsSeparator:
             # stdin=DEVNULL: never inherit the worker console's stdin (an
             # inherited stdin can block a CLI subprocess indefinitely).
             subprocess.run(
-                cmd, check=True, capture_output=True, text=True, stdin=subprocess.DEVNULL
+                cmd, check=True, capture_output=True, text=True,
+                stdin=subprocess.DEVNULL, timeout=DEMUCS_TIMEOUT_S,
             )
         except FileNotFoundError as exc:
             raise SeparationError("demucs is not installed (pip install 'rockforge[ml]')") from exc
+        except subprocess.TimeoutExpired as exc:
+            raise SeparationError(
+                f"demucs timed out after {DEMUCS_TIMEOUT_S}s separating {audio.name}"
+            ) from exc
         except subprocess.CalledProcessError as exc:
             raise SeparationError(f"demucs failed: {exc.stderr[-2000:]}") from exc
 
@@ -85,10 +92,15 @@ class DemucsSeparator:
             # stdin=DEVNULL: never inherit the worker console's stdin (an
             # inherited stdin can block a CLI subprocess indefinitely).
             subprocess.run(
-                cmd, check=True, capture_output=True, text=True, stdin=subprocess.DEVNULL
+                cmd, check=True, capture_output=True, text=True,
+                stdin=subprocess.DEVNULL, timeout=DEMUCS_TIMEOUT_S,
             )
         except FileNotFoundError as exc:
             raise SeparationError("demucs is not installed (pip install 'rockforge[ml]')") from exc
+        except subprocess.TimeoutExpired as exc:
+            raise SeparationError(
+                f"demucs timed out after {DEMUCS_TIMEOUT_S}s separating {audio.name}"
+            ) from exc
         except subprocess.CalledProcessError as exc:
             raise SeparationError(f"demucs failed: {exc.stderr[-2000:]}") from exc
 
