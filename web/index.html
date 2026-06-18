@@ -1001,6 +1001,7 @@ async function selectJob(id, { poll = false, force = false } = {}) {
 async function loadArrangements(id) {
   arrangements = await (await fetch(`/jobs/${id}/arrangements`)).json();
   syncAnchorsByKind = {};  // fresh pending corrections per arrangement
+  tempoScaleByKind = {};
   syncAnchors = [];
   selectedTimes = new Set();
   currentArr = 0;  // reset before initSync redraws, so a stale index can't go out of range
@@ -1145,6 +1146,7 @@ window.showArr = showArr;
 // syncAnchors is a reference into syncAnchorsByKind for the current tab.
 let syncAnchors = [];
 let syncAnchorsByKind = {};  // kind -> pending [(chartTime, correctedTime), ...]
+let tempoScaleByKind = {};   // kind -> pending tempoScaleLive (null = use builtScale)
 // selectedTimes: chart times (g.time) of note-groups currently selected for
 // a multi-note excerpt drag.
 let selectedTimes = new Set();
@@ -1201,8 +1203,11 @@ async function applyAll() {
     toast('A reconstruir…', 'ok');
     if (applyToAll) {
       syncAnchorsByKind = {};
+      tempoScaleByKind = {};
     } else {
       syncAnchors.length = 0;
+      const kind = currentKind();
+      if (kind) delete tempoScaleByKind[kind];
     }
     selectJob(b.id, { force: true });
   }
@@ -2256,13 +2261,16 @@ function initSync(j) {
 // into the live globals when the active tab changes. Does NOT redraw — the
 // caller (showArr) renders right after.
 function loadArrSync(i) {
+  // Save the current arrangement's pending tempo before switching away.
+  const prev = arrangements[currentArr];
+  if (prev && Math.abs(tempoScaleLive - (prev.tempo_scale || 1)) > 0.0001) {
+    tempoScaleByKind[prev.kind] = tempoScaleLive;
+  }
   const a = arrangements[i];
   if (!a) return;
   builtScale = a.tempo_scale || 1;
-  // average_bpm already reflects builtScale (gp_bpm / builtScale), so the GP
-  // file's original tempo is average_bpm * builtScale.
   gpBpm = a.average_bpm ? a.average_bpm * builtScale : 0;
-  tempoScaleLive = builtScale;
+  tempoScaleLive = (a.kind in tempoScaleByKind) ? tempoScaleByKind[a.kind] : builtScale;
   syncAnchors = syncAnchorsByKind[a.kind] || (syncAnchorsByKind[a.kind] = []);
   updateTempoControls();
 }
@@ -2284,6 +2292,8 @@ function updateTempoControls() {
 // Set the previewed tempo scale for the CURRENT arrangement and redraw.
 function setTempoLive(scale) {
   tempoScaleLive = Math.min(4, Math.max(0.25, scale || 1));
+  const kind = currentKind();
+  if (kind) tempoScaleByKind[kind] = tempoScaleLive;
   updateTempoControls();
   if (arrangements.length) { syncResetPointer(); showArr(currentArr); }
   updatePendingChangesInfo();
