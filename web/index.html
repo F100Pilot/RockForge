@@ -390,8 +390,9 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
             <label>Início da música (s):
               <input type="number" id="syncOffset" value="0" step="0.01" min="0" style="width:6rem"></label>
             <input type="range" id="syncOffsetRange" min="0" max="20" step="0.01" value="0" style="flex:1;min-width:120px">
+            <label>🔊 Música: <input type="range" id="musicVolume" min="0" max="1" step="0.05" value="1" style="width:6rem;vertical-align:middle"></label>
             <label class="check"><input type="checkbox" id="syncTick" checked> Tique por nota</label>
-            <label>Volume: <input type="range" id="tickVolume" min="0" max="1" step="0.05" value="0.6" style="width:7rem;vertical-align:middle"></label>
+            <label>🎵 Notas: <input type="range" id="tickVolume" min="0" max="1" step="0.05" value="0.6" style="width:6rem;vertical-align:middle"></label>
             <button class="info-btn" data-info="sync-offset">ⓘ</button>
           </div>
           <div class="syncctrls" style="margin-top:.35rem">
@@ -482,6 +483,7 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
         <div class="anchor-row" style="margin-top:.4rem">
           <button type="button" id="addLyricRow" class="secondary">+ palavra</button>
           <button type="button" id="sortLyrics" class="secondary">ordenar por tempo</button>
+          <button type="button" id="exportLrc" class="secondary">Exportar LRC</button>
         </div>
       </div>
 
@@ -832,6 +834,7 @@ let wavePeaks = null, waveDuration = 0;
 // A buffer source seeks sample-accurately and its clock is audioCtx.currentTime,
 // so playback, the waveform and the notes share one exact timeline.
 let playBuffer = null;       // decoded recording (null => use <audio> fallback)
+let playGain = null;         // GainNode for music volume control
 let playSource = null;       // active AudioBufferSourceNode while playing
 let playStartCtx = 0;        // audioCtx.currentTime when the current source started
 let playStartOffset = 0;     // buffer offset (s) the current source started at
@@ -896,7 +899,7 @@ function closeDetail() {
   clearInterval(lyricsPollTimer);
   stopArrangementPreview();
   stopPlayback();
-  playBuffer = null; pausedAt = 0; playing = false;
+  playBuffer = null; playGain = null; pausedAt = 0; playing = false;
   const au = document.getElementById('syncAudio');
   if (au) { au.removeAttribute('src'); au.load(); }
   document.getElementById('detailOverlay').hidden = true;
@@ -1008,7 +1011,7 @@ async function loadArrangements(id) {
   selectedTimes = new Set();
   currentArr = 0;  // reset before initSync redraws, so a stale index can't go out of range
   wavePeaks = null; waveDuration = 0;
-  stopPlayback(); playBuffer = null; pausedAt = 0;
+  stopPlayback(); playBuffer = null; playGain = null; pausedAt = 0;
   if (!arrangements.length) return;
   document.getElementById('review').style.display = '';
   const a0 = arrangements[0];
@@ -1697,6 +1700,43 @@ document.getElementById('sortLyrics').addEventListener('click', () => {
   renderLyricsRows();
 });
 
+document.getElementById('exportLrc').addEventListener('click', () => {
+  if (!lyricsEvents.length) { toast('Sem letras para exportar.'); return; }
+  const sorted = [...lyricsEvents].sort((a, b) => a.time - b.time);
+  let lines = [];
+  let currentLine = [];
+  for (const e of sorted) {
+    const word = e.lyric.trim();
+    if (!word) continue;
+    if (!currentLine.length) currentLine = [e];
+    else currentLine.push(e);
+    if (e.lineBreak) {
+      const first = currentLine[0];
+      const m = Math.floor(first.time / 60);
+      const s = (first.time - m * 60).toFixed(2).padStart(5, '0');
+      const text = currentLine.map(w => w.lyric.trim()).join(' ');
+      lines.push(`[${String(m).padStart(2,'0')}:${s}]${text}`);
+      currentLine = [];
+    }
+  }
+  if (currentLine.length) {
+    const first = currentLine[0];
+    const m = Math.floor(first.time / 60);
+    const s = (first.time - m * 60).toFixed(2).padStart(5, '0');
+    const text = currentLine.map(w => w.lyric.trim()).join(' ');
+    lines.push(`[${String(m).padStart(2,'0')}:${s}]${text}`);
+  }
+  const lrc = lines.join('\n') + '\n';
+  const blob = new Blob([lrc], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  const title = selectedJob ? (selectedJob.title || 'lyrics') : 'lyrics';
+  a.download = `${title}.lrc`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('LRC exportado.', 'ok');
+});
+
 function updatePendingChangesInfo() {
   const el = document.getElementById('pendingChangesInfo');
   if (!el) return;
@@ -1990,6 +2030,9 @@ let tickGain = 0.6;
 document.getElementById('tickVolume')?.addEventListener('input', e => {
   tickGain = parseFloat(e.target.value);
 });
+document.getElementById('musicVolume')?.addEventListener('input', e => {
+  if (playGain) playGain.gain.value = parseFloat(e.target.value);
+});
 
 function playNote(string, fret) {
   if (!audioCtx || string < 0 || string > 5 || fret < 0) return;
@@ -2129,11 +2172,17 @@ function onSourceEnded() {
 function audioPlay() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   audioCtx.resume();
+  if (!playGain) {
+    playGain = audioCtx.createGain();
+    playGain.connect(audioCtx.destination);
+    const vol = parseFloat(document.getElementById('musicVolume')?.value || '1');
+    playGain.gain.value = vol;
+  }
   if (playBuffer) {
     if (playing) return;
     playSource = audioCtx.createBufferSource();
     playSource.buffer = playBuffer;
-    playSource.connect(audioCtx.destination);
+    playSource.connect(playGain);
     playStartOffset = Math.min(Math.max(0, pausedAt), playBuffer.duration);
     playStartCtx = audioCtx.currentTime;
     playSource.onended = onSourceEnded;
@@ -2255,6 +2304,21 @@ function syncFrame() {
       playNote(note.string, note.fret);
     }
     tickIdx++;
+  }
+  // Highlight the lyric word under the playhead without redrawing the full SVG.
+  const recT = currentPlayheadT;  // recording-time (no viewOrigin)
+  for (const lw of document.querySelectorAll('.lyric-word')) {
+    const li = parseInt(lw.dataset.li, 10);
+    const ev = lyricsEvents[li];
+    if (!ev) continue;
+    const active = recT >= ev.time && recT <= ev.time + ev.length;
+    const txt = lw.querySelector('text');
+    if (txt) {
+      txt.setAttribute('fill', active ? '#ff7a45' : '#9aa0ad');
+      txt.setAttribute('font-weight', active ? '700' : '400');
+    }
+    const ln = lw.querySelector('line');
+    if (ln) ln.setAttribute('stroke', active ? '#ff7a45' : '#454852');
   }
   if (audioIsPlaying()) syncRaf = requestAnimationFrame(syncFrame);
   else { syncRaf = null; updatePlayBtn(); }
