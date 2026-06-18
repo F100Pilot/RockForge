@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any, cast
 
 from celery import Celery
-from celery.signals import worker_ready
 
 from rockforge.config import settings
 from rockforge.domain.arrangement import SongMetadata
@@ -24,30 +23,10 @@ celery_app.conf.task_track_started = True
 # 20 min ceiling: model download on first run + transcription of a long song.
 WHISPERX_TIMEOUT_S = 1200
 
-
-@worker_ready.connect
-def _warm_up_device(**_kwargs: object) -> None:
-    """Probe CUDA once at worker startup so the first job doesn't pay for it.
-
-    torch.cuda.is_available() initialises the CUDA runtime on first call
-    (30–60s on Windows). Running it in the background while the worker waits
-    for jobs means it's already cached by the time the first task arrives.
-
-    Bound to ``worker_ready`` (NOT ``on_after_finalize``): the latter also
-    fires in the API/uvicorn process the first time it calls ``.delay()`` to
-    enqueue a job, which would ``import torch`` and initialise a CUDA context
-    in the web process (forbidden by CLAUDE.md) — and a second CUDA init in the
-    worker on the same GPU can then hang. ``worker_ready`` fires only inside a
-    real worker. Run in a daemon thread so a slow CUDA init never blocks the
-    worker's task loop.
-    """
-    import threading
-
-    def _probe() -> None:
-        _resolve_device(settings.demucs_device)
-        _resolve_device(settings.lyrics_device())
-
-    threading.Thread(target=_probe, name="rockforge-warmup", daemon=True).start()
+# No warm-up signal: the on_after_finalize/worker_ready CUDA probe was removed
+# because two concurrent cuInit() calls (warm-up thread + first task) can deadlock
+# on Windows. The first task pays the 30-60s CUDA init cost once; subsequent calls
+# hit the @cache.
 
 
 def _build_packager():  # noqa: ANN202 - heavy imports deferred to worker runtime
