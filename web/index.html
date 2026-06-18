@@ -1546,22 +1546,23 @@ function serializeLyrics() {
 }
 
 const LYRICS_STATUS_LABEL = {
-  none: '', detecting: 'a detetar…', normalizing: 'a normalizar áudio…',
-  separating: 'a isolar a voz (Demucs)…', transcribing: 'a transcrever (WhisperX)…',
+  none: '', detecting: 'a iniciar (a carregar modelos ML)…', normalizing: 'a normalizar áudio…',
+  separating: 'a isolar a voz (Demucs) — pode demorar vários minutos…',
+  transcribing: 'a transcrever (WhisperX)…',
   ready: 'deteção concluída', empty: 'nenhuma letra detetada',
   unavailable: 'deteção indisponível (extra "lyrics" não instalado)',
 };
 // Stage start/end percentages and expected duration (ms) for smooth interpolation.
 const LYRICS_STAGES = {
-  detecting:    { start: 0.02, end: 0.05, dur: 15000 },
-  normalizing:  { start: 0.05, end: 0.15, dur: 30000 },
-  separating:   { start: 0.15, end: 0.80, dur: 180000 },
-  transcribing: { start: 0.80, end: 0.98, dur: 60000 },
+  detecting:    { start: 0.02, end: 0.08, dur: 60000 },
+  normalizing:  { start: 0.08, end: 0.15, dur: 30000 },
+  separating:   { start: 0.15, end: 0.80, dur: 300000 },
+  transcribing: { start: 0.80, end: 0.98, dur: 90000 },
 };
 const LYRICS_DETECTING_STATUSES = new Set(['detecting', 'normalizing', 'separating', 'transcribing']);
 
 // How long (ms) each stage is allowed before we flag it as stuck.
-const LYRICS_STUCK_MS = { detecting: 2*60*1000, normalizing: 10*60*1000, separating: 25*60*1000, transcribing: 15*60*1000 };
+const LYRICS_STUCK_MS = { detecting: 5*60*1000, normalizing: 10*60*1000, separating: 30*60*1000, transcribing: 15*60*1000 };
 let _lyricsLastStatus = null, _lyricsStatusSince = 0;
 
 function updateLyricsProgress(status, log, forceStuck) {

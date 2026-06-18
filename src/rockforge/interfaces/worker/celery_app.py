@@ -309,6 +309,9 @@ def detect_lyrics(job_id: str) -> None:
         params["lyrics_log"] = []
         _log_lyrics_stage(params, "lyric detection started")
         try:
+            _log_lyrics_stage(params, "loading ML models (can take 30–60s on first run)")
+            job.params = params
+            session.commit()
             device = _resolve_device(settings.lyrics_device())
             normalizer, separator, transcriber_cls = _build_detection(device)
             if not transcriber_cls.available():
