@@ -91,6 +91,7 @@ class JobOut(BaseModel):
     import_mutes: bool
     error: str | None
     lyrics_status: str = "none"
+    tone_detection_status: str = "none"
     cover_art: bool = False
 
 
@@ -182,6 +183,18 @@ class LyricEventOut(BaseModel):
     lyric: str
 
 
+class DetectTonesOut(BaseModel):
+    """Proposed lead + rhythm tone presets based on spectral analysis of the
+    guitar stem. Not auto-applied; the user reviews in the tone editor."""
+
+    # "none"|"detecting"|"separating"|"analyzing"|"ready"|"unavailable"
+    status: str
+    category: str = ""  # "clean"|"crunch"|"high_gain"
+    lead: dict[str, Any] = {}
+    rhythm: dict[str, Any] = {}
+    log: list[str] = []
+
+
 class LyricsOut(BaseModel):
     # "none"|"detecting"|"normalizing"|"separating"|"transcribing"|"ready"|"empty"|"unavailable"
     status: str
@@ -222,6 +235,9 @@ def _to_out(job: Job) -> JobOut:
         import_mutes=bool((job.params or {}).get("import_mute_techniques", True)),
         error=job.error,
         lyrics_status=str((job.params or {}).get("lyrics_status", "none")),
+        tone_detection_status=str(
+            (job.params or {}).get("tone_detection_status", "none")
+        ),
         cover_art=bool((job.params or {}).get("cover_art")),
     )
 
@@ -246,6 +262,17 @@ def _enqueue_detect(job: Job) -> None:
         from rockforge.interfaces.worker.celery_app import detect_lyrics
 
         detect_lyrics.delay(job.id)
+
+
+def _enqueue_detect_tones(job: Job) -> None:
+    if settings.worker_mode == "inprocess":
+        from rockforge.interfaces.worker.inprocess import enqueue_detect_tones
+
+        enqueue_detect_tones(job.id)
+    else:
+        from rockforge.interfaces.worker.celery_app import detect_tones
+
+        detect_tones.delay(job.id)
 
 
 @app.post("/jobs/upload", response_model=JobOut, status_code=202)
@@ -850,6 +877,48 @@ def get_lyrics(job_id: str) -> LyricsOut:
                 ]
         log = cast("list[str]", params.get("lyrics_log") or [])
         return LyricsOut(status=status, events=events, log=[str(line) for line in log])
+
+
+@app.post("/jobs/{job_id}/detect-tones", response_model=JobOut, status_code=202)
+def detect_tones_endpoint(job_id: str) -> JobOut:
+    """Kick off asynchronous tone detection (Demucs guitar separation + spectral
+    analysis) on the job's source recording.  Slow — poll
+    GET /jobs/{job_id}/detected-tones for the result.  Progress is tracked via
+    params["tone_detection_status"]; never overwrites a completed build's status."""
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+        if job.source_type not in {"gp", "upload", "youtube"}:
+            raise HTTPException(422, "tone detection is not supported for this job's source")
+        if not Path(job.source).exists():
+            raise HTTPException(409, "source recording no longer exists on the work volume")
+        params = dict(job.params or {})
+        params["tone_detection_status"] = "detecting"
+        job.params = params
+        session.commit()
+        _enqueue_detect_tones(job)
+        return _to_out(job)
+
+
+@app.get("/jobs/{job_id}/detected-tones", response_model=DetectTonesOut)
+def get_detected_tones(job_id: str) -> DetectTonesOut:
+    """Current tone-detection status and suggested presets."""
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+        params = job.params or {}
+        status = str(params.get("tone_detection_status", "none"))
+        log = cast("list[str]", params.get("tone_detection_log") or [])
+        detected = params.get("detected_tones") or {}
+        return DetectTonesOut(
+            status=status,
+            category=str(detected.get("category", "")),
+            lead=dict(detected.get("lead", {})),
+            rhythm=dict(detected.get("rhythm", {})),
+            log=[str(line) for line in log],
+        )
 
 
 @app.get("/jobs/{job_id}/tones")

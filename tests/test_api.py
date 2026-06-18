@@ -20,6 +20,7 @@ def client(tmp_path, monkeypatch) -> Iterator[TestClient]:
     importlib.reload(app_module)
     monkeypatch.setattr(app_module, "_enqueue", lambda job: None)
     monkeypatch.setattr(app_module, "_enqueue_detect", lambda job: None)
+    monkeypatch.setattr(app_module, "_enqueue_detect_tones", lambda job: None)
     with TestClient(app_module.app) as c:
         yield c
 
@@ -576,6 +577,29 @@ def test_rebuild_stores_lyrics_events_and_resets_status(client: TestClient) -> N
     assert body["events"] == [{"time": 1.0, "length": 0.5, "lyric": "hi+"}]
 
 
+def test_detect_tones_enqueues_and_marks_detecting(client: TestClient) -> None:
+    job = _create_job(client)
+    r = client.post(f"/jobs/{job['id']}/detect-tones")
+    assert r.status_code == 202
+    assert r.json()["tone_detection_status"] == "detecting"
+    assert client.get(f"/jobs/{job['id']}").json()["tone_detection_status"] == "detecting"
+
+
+def test_detect_tones_unknown_job_404(client: TestClient) -> None:
+    assert client.post("/jobs/nope/detect-tones").status_code == 404
+
+
+def test_detected_tones_returns_none_status_by_default(client: TestClient) -> None:
+    job = _create_job(client)
+    r = client.get(f"/jobs/{job['id']}/detected-tones")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "none"
+    assert body["category"] == ""
+    assert body["lead"] == {}
+    assert body["rhythm"] == {}
+
+
 def test_cover_art_upload_and_download(client: TestClient) -> None:
     job = _create_job(client)
     png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 16
@@ -661,6 +685,7 @@ def test_idle_shutdown_exits_process_when_heartbeats_stop(monkeypatch, tmp_path)
     importlib.reload(app_module)
     monkeypatch.setattr(app_module, "_enqueue", lambda job: None)
     monkeypatch.setattr(app_module, "_enqueue_detect", lambda job: None)
+    monkeypatch.setattr(app_module, "_enqueue_detect_tones", lambda job: None)
 
     killed: list[tuple[int, int]] = []
     monkeypatch.setattr(app_module.os, "kill", lambda pid, sig: killed.append((pid, sig)))
