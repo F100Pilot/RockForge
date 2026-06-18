@@ -218,6 +218,35 @@ browser abre automaticamente.
 Se não colocares o `ffmpeg.exe` dentro de `ffmpeg/`, o build avisa — a app
 continua a funcionar se o utilizador tiver o ffmpeg no PATH do sistema.
 
+#### Criar um instalador (para distribuir a outros)
+
+Para criar um instalador `.exe` estilo Windows (wizard de instalação, atalho no
+Ambiente de Trabalho, desinstalador no Painel de Controlo):
+
+```cmd
+REM Pré-requisito: instalar o Inno Setup 6 (gratuito)
+REM   https://jrsoftware.org/isinfo.php
+
+REM 1. Compila o executável (se ainda não foi feito)
+py -3.11 build_exe.py
+
+REM 2. Compila o instalador (gera Output\RockForge_Setup.exe)
+py -3.11 build_exe.py --installer
+```
+
+O ficheiro `Output\RockForge_Setup.exe` é o instalador — envia esse ficheiro
+único e o utilizador faz duplo-clique para instalar. Inclui tudo: o executável,
+ffmpeg, templates Wwise e o catálogo de gear.
+
+**Alternativa portátil (sem instalação):** para criar um ZIP portátil que o
+utilizador só extrai e corre:
+
+```cmd
+py -3.11 build_exe.py --zip
+```
+
+Gera `dist\RockForge_portable.zip` — extrair e correr `rockforge.exe`.
+
 #### Notas sobre o executável
 
 - **Não inclui ML** (torch/demucs/basic-pitch/whisperx) — são vários GB e
