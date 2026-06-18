@@ -306,16 +306,25 @@ def detect_lyrics(job_id: str) -> None:
         warnings = list(job.warnings or [])
         params["lyrics_log"] = []
         _log_lyrics_stage(params, "lyric detection started")
+
+        def _commit_params() -> None:
+            """Force SQLAlchemy to see the change by assigning a new dict.
+
+            The JSON column has no MutableDict tracking — reassigning the
+            same dict object is a silent no-op (identity check). Copying
+            on every commit ensures every log/status update reaches the DB.
+            """
+            job.params = {**params}
+            session.commit()
+
         try:
             _log_lyrics_stage(params, "loading ML models (can take 30–60s on first run)…")
-            job.params = params
-            session.commit()
+            _commit_params()
 
             import time as _time
 
             _log_lyrics_stage(params, "importing torch + resolving device…")
-            job.params = params
-            session.commit()
+            _commit_params()
             t0 = _time.monotonic()
             device = _resolve_device(settings.lyrics_device())
             _log_lyrics_stage(
@@ -323,26 +332,22 @@ def detect_lyrics(job_id: str) -> None:
                 f"torch ready ({_time.monotonic() - t0:.1f}s) — "
                 f"device: {device} ({'GPU' if device == 'cuda' else 'CPU'})",
             )
-            job.params = params
-            session.commit()
+            _commit_params()
 
             _log_lyrics_stage(params, "importing demucs…")
-            job.params = params
-            session.commit()
+            _commit_params()
             t0 = _time.monotonic()
             normalizer, separator, _transcriber_cls = _build_detection(device)
             _log_lyrics_stage(
                 params, f"demucs ready ({_time.monotonic() - t0:.1f}s)"
             )
-            job.params = params
-            session.commit()
+            _commit_params()
 
             # Check whisperx availability in a subprocess to avoid the
             # known faster-whisper/ctranslate2 CUDA deadlock inside Celery
             # workers (faster-whisper #907, celery #3402).
             _log_lyrics_stage(params, "checking whisperx availability…")
-            job.params = params
-            session.commit()
+            _commit_params()
             import subprocess as _sp
 
             whisperx_check = _sp.run(
@@ -356,8 +361,7 @@ def detect_lyrics(job_id: str) -> None:
                 "whisperx ready" if whisperx_ok
                 else f"whisperx NOT available: {whisperx_check.stderr[:200]}",
             )
-            job.params = params
-            session.commit()
+            _commit_params()
 
             if not whisperx_ok:
                 warnings.append(
@@ -372,14 +376,15 @@ def detect_lyrics(job_id: str) -> None:
 
                 params["lyrics_status"] = "normalizing"
                 _log_lyrics_stage(params, "normalizing source audio (ffmpeg)")
-                job.params = params
-                session.commit()
+                _commit_params()
                 normalized = normalizer.normalize(Path(job.source), workdir)
 
                 params["lyrics_status"] = "separating"
-                _log_lyrics_stage(params, "isolating vocals (Demucs, 2-stem) — can take a while")
-                job.params = params
-                session.commit()
+                _log_lyrics_stage(
+                    params,
+                    "isolating vocals (Demucs, 2-stem) — can take a while",
+                )
+                _commit_params()
                 vocals_stem = separator.separate_vocals(normalized, workdir)
 
                 # Run WhisperX transcription in a SUBPROCESS to avoid the
@@ -391,8 +396,7 @@ def detect_lyrics(job_id: str) -> None:
                     params,
                     f"transcribing (WhisperX/{settings.whisper_model}, subprocess)",
                 )
-                job.params = params
-                session.commit()
+                _commit_params()
                 events_json = workdir / "whisperx_events.json"
                 runner = (
                     Path(__file__).resolve().parent.parent.parent
@@ -420,8 +424,8 @@ def detect_lyrics(job_id: str) -> None:
             params["lyrics_status"] = "unavailable"
             warnings.append(f"lyric detection failed: {type(exc).__name__}: {exc}")
             _log_lyrics_stage(params, f"failed: {type(exc).__name__}: {exc}")
-        job.params = params
-        job.warnings = warnings
+        job.params = {**params}
+        job.warnings = list(warnings)
         session.commit()
 
 
@@ -450,10 +454,14 @@ def detect_tones(job_id: str) -> None:
         warnings = list(job.warnings or [])
         params["tone_detection_log"] = []
         _log_tone_stage(params, "tone detection started")
+
+        def _commit_params() -> None:
+            job.params = {**params}
+            session.commit()
+
         try:
             _log_tone_stage(params, "importing ML models…")
-            job.params = params
-            session.commit()
+            _commit_params()
 
             device = _resolve_device(settings.demucs_device)
 
@@ -472,20 +480,17 @@ def detect_tones(job_id: str) -> None:
 
             params["tone_detection_status"] = "normalizing"
             _log_tone_stage(params, "normalizing source audio (ffmpeg)")
-            job.params = params
-            session.commit()
+            _commit_params()
             normalized = normalizer.normalize(Path(job.source), workdir)
 
             params["tone_detection_status"] = "separating"
             _log_tone_stage(params, "isolating guitar stem (Demucs, 6-stem)")
-            job.params = params
-            session.commit()
+            _commit_params()
             guitar_stem = separator.separate_guitar(normalized, workdir)
 
             params["tone_detection_status"] = "analyzing"
             _log_tone_stage(params, "analyzing spectral characteristics")
-            job.params = params
-            session.commit()
+            _commit_params()
 
             from rockforge.infrastructure.tone_analysis.analyzer import analyze_guitar_tone
 
@@ -516,6 +521,6 @@ def detect_tones(job_id: str) -> None:
             params["tone_detection_status"] = "unavailable"
             warnings.append(f"tone detection failed: {type(exc).__name__}: {exc}")
             _log_tone_stage(params, f"failed: {type(exc).__name__}: {exc}")
-        job.params = params
-        job.warnings = warnings
+        job.params = {**params}
+        job.warnings = list(warnings)
         session.commit()
