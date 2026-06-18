@@ -98,6 +98,8 @@
   #tabwrap { overflow-x:auto; background:#0f1013; border:1px solid var(--line); border-radius:8px; margin-top:.5rem; }
   .note-grp { cursor: ew-resize; }
   .note-grp.selected .note-shape { stroke: #ffd23f; stroke-width: 3px; }
+  .lyric-word { cursor: grab; }
+  .lyric-word:hover text { fill: #ff7a45 !important; font-weight: 700 !important; }
   #selectionBox { fill: rgba(255,210,63,.15); stroke: #ffd23f; stroke-dasharray: 4,3; pointer-events: none; }
   button.secondary.active-mode { background: #2a2c35; border-color: var(--accent); color: var(--accent); }
   .anchor-row { display:flex; align-items:center; gap:.5rem; font-size:.85rem; color:var(--muted); margin:.2rem 0; }
@@ -1071,13 +1073,16 @@ function showArr(i) {
   }
   // Lyrics editor times are in recording-time (un-padded); shift to bundle
   // time the same way the playhead does so words line up with their notes.
-  for (const e of lyricsEvents) {
+  for (let li = 0; li < lyricsEvents.length; li++) {
+    const e = lyricsEvents[li];
     const word = e.lyric.trim();
     if (!word) continue;
     const x = timeToX(e.time + viewOrigin);
     const active = currentPlayheadT >= e.time && currentPlayheadT <= e.time + e.length;
+    s += `<g class="lyric-word" data-li="${li}" style="cursor:grab">`;
     s += `<text x="${x}" y="26" fill="${active ? '#ff7a45' : '#9aa0ad'}" font-size="13" font-weight="${active ? '700' : '400'}" text-anchor="middle">${esc(word)}${e.lineBreak ? ' /' : ''}</text>`;
     s += `<line x1="${x}" y1="30" x2="${x}" y2="${H-35}" stroke="${active ? '#ff7a45' : '#454852'}" stroke-width="1" stroke-dasharray="2,4" opacity=".35"/>`;
+    s += `</g>`;
   }
   // group simultaneous notes (chords) so they get a connecting bracket
   const groups = [];
@@ -1777,6 +1782,7 @@ function updateSelectionInfo() {
   let dragging = null; // single note: { grps, startX, origT }
   let groupDrag = null; // selection drag: { startX, times }
   let rubberBand = null; // { startX }
+  let lyricDrag = null; // lyric word drag: { el, startX, index }
   const svg = document.getElementById('tabsvg');
 
   document.getElementById('clearSelection').addEventListener('click', () => {
@@ -1786,6 +1792,14 @@ function updateSelectionInfo() {
   });
 
   svg.addEventListener('pointerdown', e => {
+    // Lyric word drag: grab a word on the tab to reposition it in time.
+    const lw = e.target.closest('.lyric-word');
+    if (lw) {
+      const li = parseInt(lw.dataset.li, 10);
+      lyricDrag = { el: lw, startX: e.clientX, index: li };
+      lw.setPointerCapture(e.pointerId);
+      return;
+    }
     const grp = e.target.closest('.note-grp');
     // Tap-sync mode: click a note to anchor it at the current playhead position
     if (syncMode === 'tap' && grp) {
@@ -1859,6 +1873,11 @@ function updateSelectionInfo() {
     grp.setPointerCapture(e.pointerId);
   });
   svg.addEventListener('pointermove', e => {
+    if (lyricDrag) {
+      const dx = e.clientX - lyricDrag.startX;
+      lyricDrag.el.setAttribute('transform', `translate(${dx},0)`);
+      return;
+    }
     if (rubberBand) {
       const rect = svg.getBoundingClientRect();
       const x = e.clientX - rect.left;
@@ -1877,6 +1896,19 @@ function updateSelectionInfo() {
     dragging.grp.setAttribute('transform', `translate(${dx},0)`);
   });
   svg.addEventListener('pointerup', e => {
+    if (lyricDrag) {
+      const dx = e.clientX - lyricDrag.startX;
+      lyricDrag.el.removeAttribute('transform');
+      const deltaS = dx / tabPx;
+      if (Math.abs(deltaS) > 0.005) {
+        lyricsEvents[lyricDrag.index].time = Math.max(0, lyricsEvents[lyricDrag.index].time + deltaS);
+        renderLyricsRows();
+        showArr(currentArr);
+        updatePendingChangesInfo();
+      }
+      lyricDrag = null;
+      return;
+    }
     if (rubberBand) {
       const rect = svg.getBoundingClientRect();
       const x = e.clientX - rect.left;
