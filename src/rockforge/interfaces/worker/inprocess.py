@@ -47,5 +47,18 @@ def enqueue_detect(job_id: str) -> None:
     _pool.submit(_run_detect, job_id)
 
 
+def _run_detect_tones(job_id: str) -> None:
+    try:
+        from rockforge.interfaces.worker.celery_app import detect_tones
+
+        detect_tones(job_id)
+    except Exception:
+        log.exception("in-process detect_tones failed for job %s", job_id)
+
+
+def enqueue_detect_tones(job_id: str) -> None:
+    _pool.submit(_run_detect_tones, job_id)
+
+
 def shutdown() -> None:
     _pool.shutdown(wait=False)

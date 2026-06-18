@@ -369,3 +369,99 @@ def detect_lyrics(job_id: str) -> None:
         job.params = params
         job.warnings = warnings
         session.commit()
+
+
+def _log_tone_stage(params: dict[str, Any], message: str) -> None:
+    """Append a timestamped line to params["tone_detection_log"]."""
+    log = cast("list[str]", params.get("tone_detection_log") or [])
+    stamp = datetime.now(UTC).strftime("%H:%M:%S")
+    params["tone_detection_log"] = [*log, f"[{stamp}] {message}"][-50:]
+
+
+@celery_app.task(name="rockforge.detect_tones", time_limit=3600)
+def detect_tones(job_id: str) -> None:
+    """Detect guitar tone character from the recording (Demucs guitar separation
+    + spectral analysis → preset suggestion).
+
+    Slow (minutes for Demucs); progress tracked via
+    params["tone_detection_status"]. Results land in params["detected_tones"]
+    as lead + rhythm tone dicts ready for the tone editor.
+    """
+    session_factory = make_session_factory(settings.database_url)
+    with session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            return
+        params = dict(job.params or {})
+        warnings = list(job.warnings or [])
+        params["tone_detection_log"] = []
+        _log_tone_stage(params, "tone detection started")
+        try:
+            _log_tone_stage(params, "importing ML models…")
+            job.params = params
+            session.commit()
+
+            device = _resolve_device(settings.demucs_device)
+
+            from rockforge.infrastructure.normalize.ffmpeg import FfmpegNormalizer
+            from rockforge.infrastructure.separation.demucs_adapter import DemucsSeparator
+
+            normalizer = FfmpegNormalizer()
+            separator = DemucsSeparator(device=device)
+
+            workdir = settings.work_dir / job.id / "tone_detection"
+            workdir.mkdir(parents=True, exist_ok=True)
+
+            _log_tone_stage(
+                params, f"device: {device} ({'GPU' if device == 'cuda' else 'CPU'})"
+            )
+
+            params["tone_detection_status"] = "normalizing"
+            _log_tone_stage(params, "normalizing source audio (ffmpeg)")
+            job.params = params
+            session.commit()
+            normalized = normalizer.normalize(Path(job.source), workdir)
+
+            params["tone_detection_status"] = "separating"
+            _log_tone_stage(params, "isolating guitar stem (Demucs, 6-stem)")
+            job.params = params
+            session.commit()
+            guitar_stem = separator.separate_guitar(normalized, workdir)
+
+            params["tone_detection_status"] = "analyzing"
+            _log_tone_stage(params, "analyzing spectral characteristics")
+            job.params = params
+            session.commit()
+
+            from rockforge.infrastructure.tone_analysis.analyzer import analyze_guitar_tone
+
+            profile = analyze_guitar_tone(guitar_stem)
+
+            from rockforge.infrastructure.packaging.gear.tone_presets import suggest_tones
+
+            suggestion = suggest_tones(profile.category)
+
+            params["detected_tones"] = {
+                "category": suggestion["category"],
+                "lead": suggestion["lead"],
+                "rhythm": suggestion["rhythm"],
+                "profile": {
+                    "gain_level": profile.gain_level,
+                    "brightness": profile.brightness,
+                    "low_end": profile.low_end,
+                    "dynamic_range": profile.dynamic_range,
+                },
+            }
+            params["tone_detection_status"] = "ready"
+            _log_tone_stage(
+                params,
+                f"done — category: {profile.category} "
+                f"(gain={profile.gain_level:.2f}, brightness={profile.brightness:.2f})",
+            )
+        except Exception as exc:
+            params["tone_detection_status"] = "unavailable"
+            warnings.append(f"tone detection failed: {type(exc).__name__}: {exc}")
+            _log_tone_stage(params, f"failed: {type(exc).__name__}: {exc}")
+        job.params = params
+        job.warnings = warnings
+        session.commit()

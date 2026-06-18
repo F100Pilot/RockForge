@@ -439,7 +439,12 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
           <div class="anchor-row">
             <strong style="color:var(--text)">Tons</strong>
             <button type="button" id="openToneBuilder" class="secondary">+ Criar / editar tons</button>
+            <button type="button" id="detectTones" class="secondary">Detetar tom</button>
             <button class="info-btn" data-info="tones">ⓘ</button>
+          </div>
+          <div id="toneDetectionWrap" style="display:none;margin:.3rem 0">
+            <pre id="toneDetectionLog" style="margin:0;min-height:1.2rem;max-height:6rem;overflow-y:auto;background:#14151a;border:1px solid #262830;border-radius:4px;padding:.4rem .6rem;font-size:.75rem;color:#9aa0ad;white-space:pre-wrap"></pre>
+            <div id="toneDetectionResult" style="margin-top:.4rem"></div>
           </div>
           <div id="toneChips" class="meta" style="display:flex;flex-wrap:wrap;gap:.35rem;margin:.3rem 0"></div>
           <div class="anchor-row" style="flex-wrap:wrap">
@@ -1030,6 +1035,11 @@ async function loadArrangements(id) {
   document.getElementById('tabwrap').scrollLeft = 0;
   await loadLyrics(id);
   await loadTones(id);
+  // Resume polling if tone detection is in progress.
+  if (selectedJob && selectedJob.tone_detection_status === 'detecting') {
+    document.getElementById('toneDetectionWrap').style.display = '';
+    pollToneDetection();
+  }
 }
 
 // String colors low E -> high e: red, yellow, blue, orange, green, purple.
@@ -1261,8 +1271,10 @@ async function loadTones(id) {
 
 function renderTonePanel() {
   const isGp = selectedJob && selectedJob.source_type === 'gp';
-  document.getElementById('tonePanel').style.display = isGp ? '' : 'none';
-  if (!isGp) return;
+  document.getElementById('tonePanel').style.display = selectedJob ? '' : 'none';
+  document.getElementById('detectTones').style.display = selectedJob ? '' : 'none';
+  document.getElementById('openToneBuilder').style.display = isGp ? '' : 'none';
+  if (!selectedJob) return;
 
   const chips = document.getElementById('toneChips');
   chips.innerHTML = jobTones.length
@@ -1660,6 +1672,63 @@ async function detectLyrics() {
   await loadLyrics(selectedJob.id);
 }
 document.getElementById('detectLyrics').addEventListener('click', detectLyrics);
+
+// ── Tone detection ───────────────────────────────────────────────────────────
+
+async function detectTones() {
+  if (!selectedJob) return;
+  const r = await fetch(`/jobs/${selectedJob.id}/detect-tones`, { method: 'POST' });
+  const b = await r.json();
+  if (!r.ok) { toast(b.detail || 'erro'); return; }
+  toast('A detetar tom… (pode demorar)', 'ok');
+  document.getElementById('toneDetectionWrap').style.display = '';
+  document.getElementById('toneDetectionLog').textContent = 'a iniciar…';
+  document.getElementById('toneDetectionResult').innerHTML = '';
+  pollToneDetection();
+}
+
+let _toneDetectionPoll = null;
+function pollToneDetection() {
+  if (_toneDetectionPoll) clearInterval(_toneDetectionPoll);
+  _toneDetectionPoll = setInterval(async () => {
+    if (!selectedJob) return;
+    const r = await fetch(`/jobs/${selectedJob.id}/detected-tones`);
+    if (!r.ok) return;
+    const d = await r.json();
+    document.getElementById('toneDetectionLog').textContent = (d.log || []).join('\n');
+    if (d.status === 'ready') {
+      clearInterval(_toneDetectionPoll);
+      _toneDetectionPoll = null;
+      const cat = d.category || '?';
+      const catLabel = { clean: 'Limpo (Clean)', crunch: 'Crunch', high_gain: 'Distorcido (High Gain)' }[cat] || cat;
+      document.getElementById('toneDetectionResult').innerHTML =
+        `<div style="margin-top:.3rem"><strong>Categoria detetada:</strong> ${esc(catLabel)}</div>` +
+        `<div class="anchor-row" style="margin-top:.4rem">` +
+        `<button type="button" id="applyDetectedTones" class="secondary">Aplicar tons sugeridos (Lead + Rhythm)</button></div>`;
+      document.getElementById('applyDetectedTones').addEventListener('click', () => applyDetectedTones(d));
+    } else if (d.status === 'unavailable') {
+      clearInterval(_toneDetectionPoll);
+      _toneDetectionPoll = null;
+      document.getElementById('toneDetectionResult').innerHTML =
+        '<span class="meta" style="color:#e88">Deteção falhou — vê o log acima.</span>';
+    }
+  }, 3000);
+}
+
+function applyDetectedTones(detected) {
+  if (!detected.lead || !detected.rhythm) { toast('Sem tons detetados.'); return; }
+  const lead = detected.lead;
+  const rhythm = detected.rhythm;
+  // Merge into current tones, replacing any existing RF-detected ones.
+  jobTones = jobTones.filter(t => !t.key.startsWith('RF'));
+  jobTones.push(lead, rhythm);
+  toneBase = lead.key;
+  toneNames = [lead.key, rhythm.key];
+  renderTonePanel();
+  toast('Tons sugeridos aplicados — "Aplicar e reconstruir" para gravar.', 'ok');
+}
+
+document.getElementById('detectTones').addEventListener('click', detectTones);
 
 function loadCoverArt(j) {
   const img = document.getElementById('coverArtPreview');

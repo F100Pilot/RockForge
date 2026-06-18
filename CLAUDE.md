@@ -219,6 +219,28 @@ texture/`albumArt` URN — the Song2014 XML `albumArt` field
 (`infrastructure/rsxml/writer.py`) stays empty in both DLC Builder and native
 PSARC output, same as building without a cover set.
 
+### Automatic tone detection (`/jobs/{id}/detect-tones`)
+
+`POST /jobs/{id}/detect-tones` (any job type: GP, audio, YouTube) runs Demucs
+guitar separation (`htdemucs_6s`) on the recording and analyzes the guitar
+stem's spectral characteristics (zero-crossing rate, spectral contrast,
+centroid, rolloff) to classify the tone into one of three categories: `clean`,
+`crunch`, or `high_gain`. The classification drives a preset suggestion: curated
+Lead + Rhythm tones from the Rocksmith gear catalogue (real amp/cabinet/pedal
+keys with knob values) are proposed and stored in `params["detected_tones"]`.
+
+Progress is tracked via `params["tone_detection_status"]`
+(`detecting`/`normalizing`/`separating`/`analyzing`/`ready`/`unavailable`),
+never `JobStatus`. The web UI's "Detetar tom" button triggers detection and
+polls `GET /jobs/{id}/detected-tones` for the result; "Aplicar tons sugeridos"
+loads the presets into the tone editor so the user confirms/adjusts, then
+"Aplicar e reconstruir" commits them.
+
+Honesty note: spectral analysis does NOT identify the actual amp/pedal used in
+the recording — it classifies the *character* of the guitar sound and suggests
+a plausible Rocksmith gear match. Detection needs the `[ml]` extra (Demucs +
+librosa).
+
 ### DLC Builder project file (`rockforge.rs2dlc`)
 
 `rockforge_project.json` is RockForge's *own* descriptor — DLC Builder can't
