@@ -3,9 +3,12 @@ real DLC Builder file (see infrastructure/packaging/rs2dlc.py)."""
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from rockforge.domain.arrangement import Arrangement, ArrangementKind, SongMetadata
 from rockforge.domain.music import Beat, TabNote, TempoMap, Tuning
-from rockforge.infrastructure.packaging.rs2dlc import build_rs2dlc
+from rockforge.infrastructure.packaging.rs2dlc import build_rs2dlc, write_rs2dlc
 
 
 def _arr(kind: ArrangementKind, tuning: Tuning | None = None) -> Arrangement:
@@ -91,3 +94,22 @@ def test_vocals_appended_as_separate_case() -> None:
     assert vocals["XML"] == "arrangement_vocals.xml"
     assert vocals["Japanese"] is False
     assert vocals["ID"] == vocals["PersistentID"]
+
+
+def test_write_rs2dlc_creates_phrase_levels(tmp_path: Path) -> None:
+    out = tmp_path / "rockforge.rs2dlc"
+    write_rs2dlc(
+        [_arr(ArrangementKind.LEAD), _arr(ArrangementKind.RHYTHM)],
+        ["arrangement_lead.xml", "arrangement_rhythm.xml"],
+        "audio.wav",
+        "Key",
+        out,
+    )
+    phrase_levels_path = tmp_path / ".phrase-levels"
+    assert phrase_levels_path.exists()
+    levels = json.loads(phrase_levels_path.read_text(encoding="utf-8"))
+    # One entry per instrumental arrangement (Lead + Rhythm)
+    assert len(levels) == 2
+    for _guid, phrases in levels.items():
+        assert set(phrases.keys()) == {"COUNT", "default", "END"}
+        assert all(v == 0 for v in phrases.values())
