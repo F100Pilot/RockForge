@@ -42,7 +42,11 @@ from rockforge.infrastructure.gpimport.parser import (
     inspect_gp,
     parse_gp_track,
 )
-from rockforge.infrastructure.rsxml.vocals import VocalEvent, expand_to_words, parse_lyrics
+from rockforge.infrastructure.rsxml.vocals import (
+    VocalEvent,
+    distribute_syllables,
+    parse_lyrics,
+)
 
 # Minimum lead-in before the first note. DLC Builder's PhraseGenerator inserts a
 # count-in phrase before the arrangement content and fails ("no room for an empty
@@ -412,13 +416,18 @@ class GenerateFromGpUseCase:
             if not vocals:
                 warnings.append("lyrics file contained no recognizable timestamped lines")
         elif first.lyrics:
-            vocals = expand_to_words([
-                VocalEvent(time=line.time, length=2.0, lyric=line.text)
-                for line in first.lyrics
-            ])
+            # GP lyrics carry per-syllable note alignment implicitly: each
+            # syllable lands on the next note attack. Distribute the line text
+            # over the actual (already warped + offset) note onsets so the
+            # timing matches what the GP file shows, rather than an even spread.
+            onsets = sorted({n.time for n in first.notes})
+            vocals = distribute_syllables(
+                [(line.time, line.text) for line in first.lyrics], onsets
+            )
             warnings.append(
-                "lyrics taken from the GP file: line-level timing only (anchored to "
-                "measures) — supply an LRC file for proper sync"
+                "lyrics taken from the GP file, aligned per syllable to the note "
+                "onsets (melismas — one syllable held over several notes — are not "
+                "modelled and may drift until the next line)"
             )
 
         if pad_start_s > 0.0:
