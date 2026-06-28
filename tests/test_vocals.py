@@ -85,6 +85,17 @@ def test_distribute_syllables_no_lyrics_no_events() -> None:
     assert distribute_syllables([(0.0, "   ")], [1.0, 2.0]) == []
 
 
+def test_distribute_syllables_melisma_extends_previous() -> None:
+    # GP "_" = melisma: hold the previous syllable over the next note attack
+    # instead of singing a new syllable.
+    onsets = [0.0, 1.0, 2.0, 3.0]
+    events = distribute_syllables([(0.0, "hold _ _ next")], onsets)
+    assert [e.lyric for e in events] == ["hold", "next+"]
+    assert events[0].time == 0.0
+    assert events[0].length == pytest.approx(3.0)  # held over the two "_" notes
+    assert events[1].time == 3.0
+
+
 def test_parse_lyrics_lrc_expands_to_words() -> None:
     events = parse_lyrics(LRC)
     assert [e.lyric for e in events] == ["First", "line+", "Second", "line+", "Last", "line+"]

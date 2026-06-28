@@ -37,8 +37,13 @@ Rules:
    optional lyrics (WhisperX) → package. Timing is automatic: every timestamp is
    seconds from the start of the normalized audio.
 2. **Guitar Pro** (`gp_pipeline.py`): notes/frets/techniques/sections come exact
-   from the GP3/GP4/GP5 file; audio sync is a manual offset. High fidelity,
-   preferred when a GP file exists. GPX/GP6/GP7 are NOT supported (PyGuitarPro).
+   from the GP file; audio sync is a manual offset. High fidelity, preferred
+   when a GP file exists. Two parsers behind one API (`inspect_gp` /
+   `parse_gp_track` dispatch on format): **GP3/GP4/GP5** binary via PyGuitarPro
+   (`parser.py`), and **GP7/GP8 (`.gp`)** via a native GPIF/XML parser
+   (`gpif_parser.py` — the `.gp` is a ZIP whose `Content/score.gpif` is XML, so
+   no extra dependency). Only **GP6 (`.gpx`)** — a proprietary binary container —
+   is unsupported; export it as GP5 or GP7.
 
 ### Tempo scaling (`tempo_scale`)
 
@@ -471,7 +476,7 @@ cannot run in CI, so tests inject fakes at the port boundary — a Python-based
 fake WwiseConsole (`test_wwise.py`), passthrough stages (`test_pipeline.py`),
 stubbed Celery enqueue + per-test SQLite (`test_api.py`). When you add an
 adapter, add a fake-driven test at the same boundary rather than mocking deep
-internals. 226 tests; `pytest` + `ruff check src tests` + `mypy` must all be
+internals. 233 tests; `pytest` + `ruff check src tests` + `mypy` must all be
 green before committing.
 
 ## Running locally (Windows, native, no Docker)

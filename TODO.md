@@ -6,6 +6,16 @@ ver `TESTING.md`.
 
 ## Concluído recentemente (resumo — detalhe em CLAUDE.md)
 
+- [x] **Suporte a Guitar Pro 7/8 (`.gp`)**: parser GPIF/XML nativo
+  (`gpimport/gpif_parser.py`), sem dependência extra (o `.gp` é um ZIP com
+  `Content/score.gpif` em XML). Dispatch automático por formato em `inspect_gp`/
+  `parse_gp_track`. Cobre afinação, tempo, técnicas (HO/PO via Hopo, palm mute,
+  slide, bend), secções e letra (apanhada da pista Vocals, alinhada às notas com
+  suporte a melisma `_`). Só **GP6 (`.gpx`)** continua sem suporte (container
+  binário proprietário).
+- [x] **Letra do GP alinhada às notas** (`distribute_syllables`): uma sílaba por
+  ataque de nota (em vez do bloco fixo de 2s), com marcadores Rocksmith (`-`
+  junta sílabas, `+` quebra de linha) e melisma (`_` estende a sílaba anterior).
 - [x] **Deteção automática de letra** (`/jobs/{id}/detect-lyrics`): Demucs isola
   os vocais + WhisperX faz force-align. Tarefa Celery assíncrona; estado em
   `params["lyrics_status"]`/`["lyrics_log"]`. WhisperX corre num **subprocesso**
@@ -45,7 +55,8 @@ ver `TESTING.md`.
   carregar no jogo.
 - **`offset_s` (trim) do caminho áudio-ML não é subtraído** dos tempos das
   palavras da letra editada (mesma limitação do WhisperX automático).
-- **GPX/GP6/GP7 não suportado** (PyGuitarPro só lê GP3/GP4/GP5).
+- **GP6 (`.gpx`) não suportado** (container binário proprietário). GP3/GP4/GP5 e
+  GP7/GP8 (`.gp`) são suportados.
 - **Capa de álbum não vira textura DDS in-game** — copiada para o bundle e
   registada no `.rs2dlc`, mas o `albumArt` do Song2014 XML fica vazio.
 - **Não corre no GitHub Pages** (precisa de backend Python + Redis + ML); é uma
