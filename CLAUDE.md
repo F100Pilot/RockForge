@@ -399,13 +399,63 @@ pinned (`mypy~=1.19.0`) so local matches CI — do not bump it casually.
   YouTube ToS, so the gate stays so it can be turned off. PSARC/.wem packing
   needs a local Wwise (Audiokinetic EULA forbids redistribution); RockForge only
   *invokes* an installed copy.
+- **`Job.params` (JSON column) needs a NEW dict object on every write.** It is a
+  plain SQLAlchemy `JSON` column with NO `MutableDict` tracking, so reassigning
+  the *same* dict object (`job.params = params`) is a silent no-op — SQLAlchemy
+  compares by identity, sees no change, and skips the `UPDATE`. The symptom is
+  the worst kind: the task runs fine but every progress update after the first
+  commit is lost, so the UI freezes on the first log line while detection
+  actually completes (or fails) invisibly. This cost a multi-session debug. The
+  async detection tasks use a `_commit_params()` helper that assigns `{**params}`
+  (a fresh copy) every time. ANY incremental write to `Job.params` must copy the
+  dict (`{**params}`/`dict(params)`) on assignment. See `TESTING.md` §8.
+
+## Async detection tasks (the `detect_lyrics` / `detect_tones` pattern)
+
+Both lyric and tone detection are slow (minutes) Celery tasks that follow one
+deliberate pattern — copy it for any future "analyze the recording in the
+background" feature:
+
+- **Progress lives in `Job.params`, never in `JobStatus`.** They write
+  `params["<x>_status"]` (e.g. `detecting`/`separating`/`ready`/`unavailable`)
+  and append timestamped lines to `params["<x>_log"]`. Using `params` (not
+  `JobStatus`) means a long detection never hides a COMPLETED bundle or disables
+  `/arrangements`.
+- **Each step commits via `_commit_params()`** (assigns `{**params}` — see the
+  hard constraint above) so the UI's polling sees live progress.
+- **The endpoint mutates the existing job** (sets status to `detecting`, commits,
+  enqueues) and returns 202 — it does NOT fork a new job like `rebuild` does.
+- **Heavy ML failure never crashes the job:** the whole task body is wrapped in
+  try/except that sets status `unavailable` + a warning and returns.
+- **The UI polls** `GET /jobs/{id}/lyrics` or `/detected-tones` and renders the
+  log; the progress *bar* is a client-side time animation and is NOT a real
+  progress signal — the log is.
+
+## Documentation map (read these to rebuild context)
+
+- **`CLAUDE.md`** (this file) — architecture, every feature's design, hard
+  constraints. The single source of truth for *why* the code is shaped as it is.
+- **`README.md`** — user-facing: install, run, use, distribute. Start here to
+  set up a machine.
+- **`TESTING.md`** — how to run/extend the test suite, the coverage map, and the
+  manual end-to-end checks CI cannot do (ML, Wwise, DLC Builder, in-game).
+- **`TODO.md`** — done (`[x]`) and proposed (`[ ]`) features + current known
+  limitations.
+- **`TONE.md`** — deep dive on the tone-gear model and the `.rs2dlc` `Tones`
+  serialization.
+- **`docs/RELATORIO-TECNICO.md`** + **`docs/research/`** — the sourced grounding
+  behind every technical/feasibility claim.
 
 ## Testing approach
 
-ML/Wwise/external tools cannot run in CI. Tests inject fakes: a Python-based fake
-WwiseConsole (`test_wwise.py`), passthrough stages (`test_pipeline.py`), stubbed
-Celery enqueue + per-test SQLite (`test_api.py`). When you add an adapter, add a
-fake-driven test at the same boundary rather than mocking deep internals.
+**See `TESTING.md` for the full guide** (coverage map, how to add tests, manual
+end-to-end checks, debugging the async tasks). In short: ML/Wwise/external tools
+cannot run in CI, so tests inject fakes at the port boundary — a Python-based
+fake WwiseConsole (`test_wwise.py`), passthrough stages (`test_pipeline.py`),
+stubbed Celery enqueue + per-test SQLite (`test_api.py`). When you add an
+adapter, add a fake-driven test at the same boundary rather than mocking deep
+internals. 222 tests; `pytest` + `ruff check src tests` + `mypy` must all be
+green before committing.
 
 ## Running locally (Windows, native, no Docker)
 

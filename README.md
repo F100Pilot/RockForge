@@ -17,7 +17,7 @@ Pipeline áudio → arranjos Rocksmith 2014 (CDLC), construído sobre investiga�
 | Afinação | librosa cents + heurística drop-D | requer confirmação humana |
 | Cordas/trastes | otimização de playability (DP própria) | determinística, testada |
 | Técnicas | bend (medido), hammer-on/pull-off (regras) | parcial — ver relatório |
-| Letra automática (opcional) | WhisperX sobre o stem vocal isolado (Demucs `htdemucs` 2-stem; `pip install -e ".[lyrics]"`) | **EXPERIMENTAL** — gates anti-alucinação (RMS + confiança/palavra); LRC continua a via preferida; CPU é lento, GPU NVIDIA ≈ ferramentas online |
+| Letra automática (opcional) | WhisperX sobre o stem vocal isolado (Demucs `htdemucs` 2-stem; `pip install -e ".[lyrics]"`) | **EXPERIMENTAL** — gates anti-alucinação (RMS + confiança/palavra); LRC continua a via preferida; CPU é lento, GPU NVIDIA ≈ ferramentas online; corre num **subprocesso** (evita o deadlock CUDA do faster-whisper no Celery) |
 | Deteção de tom (opcional) | Demucs `htdemucs_6s` (stem guitarra) + análise espetral (librosa) → presets Lead/Rhythm do catálogo Rocksmith | **EXPERIMENTAL** — classifica o *caráter* do som (clean/crunch/high-gain), não identifica o amp/pedal real; resultado é uma proposta que o utilizador revê e ajusta |
 | XML Song2014 | gerador próprio (formato doc. na comunidade) | testado estruturalmente; emite os 32 `arrangementProperties` e a estrutura COUNT/default/END que o DLC Builder e o jogo exigem |
 | Áudio `.wem` | Wwise local + projeto template do DLC Builder | Vorbis **com seek table** + correção de header (sem isto o jogo carrega mas fica mudo e sai) — Wwise 2019/2021/2022/2023 |
@@ -302,10 +302,12 @@ pytest && ruff check src tests && mypy
 
 ## Como testar a app (fim-a-fim)
 
-1. **Testes automáticos** (sem ML, rápidos): `pip install -e ".[dev]" && pytest` — 170+ testes
+1. **Testes automáticos** (sem ML, rápidos): `pip install -e ".[dev]" && pytest` — 222 testes
    cobrem domínio, mapeamento corda/traste, XML/acordes, pipeline, API (incl. remoção de jobs),
-   import GP, letra, deteção de device CPU/GPU, separação Demucs (comandos), tags e Wwise
-   (consola simulada).
+   import GP, letra, tom, deteção de device CPU/GPU, separação Demucs (comandos), PSARC nativo
+   (contentor/manifestos/SNG/cifra), `.rs2dlc`, tags e Wwise (consola simulada). Guia completo
+   em **[`TESTING.md`](TESTING.md)** (mapa de cobertura, como adicionar testes, e a checklist
+   manual fim-a-fim que o CI não consegue cobrir).
 2. **Arrancar a stack**: `docker compose up --build`. Abre `http://localhost:8000`.
    O primeiro job descarrega os modelos (Demucs ~2 GB); em CPU, uma música de 4 min
    demora vários minutos na etapa `separate`.
@@ -344,3 +346,22 @@ pytest && ruff check src tests && mypy
 ## Próximos passos
 
 Funcionalidades propostas (ainda não implementadas) estão listadas em `TODO.md`.
+
+## Documentação (para programadores / retomar o projeto)
+
+Se perderes o contexto e precisares de reconstruir tudo, lê por esta ordem:
+
+| Documento | Para quê |
+|---|---|
+| **[`README.md`](README.md)** (este) | instalar, correr, usar, distribuir — começa aqui para preparar uma máquina |
+| **[`CLAUDE.md`](CLAUDE.md)** | arquitetura (Clean Architecture), o desenho de cada funcionalidade, e as **restrições rígidas** que já custaram caro — a fonte de verdade sobre *porquê* o código está como está |
+| **[`TESTING.md`](TESTING.md)** | correr/estender os 222 testes, mapa de cobertura, e a checklist manual fim-a-fim (ML, Wwise, DLC Builder, in-game) que o CI não cobre |
+| **[`TODO.md`](TODO.md)** | o que está feito `[x]`, o que falta `[ ]`, e as limitações conhecidas atuais |
+| **[`TONE.md`](TONE.md)** | o modelo de tom (gear) e a serialização dos `Tones` no `.rs2dlc` |
+| **`docs/RELATORIO-TECNICO.md`** + **`docs/research/`** | a fundamentação com fontes por trás de cada decisão técnica |
+
+> **Restrição crítica** (já custou um debug de várias sessões): a coluna JSON
+> `Job.params` não tem tracking de mutação — escrever o **mesmo** objeto dict
+> (`job.params = params`) é um no-op silencioso no SQLAlchemy. Qualquer escrita
+> incremental tem de atribuir uma cópia nova (`{**params}`). Ver `CLAUDE.md` ▸
+> *Hard constraints* e `TESTING.md` §8.
