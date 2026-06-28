@@ -25,16 +25,17 @@ Pipeline áudio → arranjos Rocksmith 2014 (CDLC), construído sobre investiga�
 
 ## Via Guitar Pro (alta fidelidade — recomendada)
 
-Em alternativa à separação/transcrição por ML, carrega um **GP3/GP4/GP5** + a gravação:
-notas, trastes, técnicas (bend/HO/PO/palm mute/harmónicos/vibrato/slide), tempo, compassos e
-secções vêm **exatos** do ficheiro. Inclui: seleção de pistas Lead/Rhythm, offset de
+Em alternativa à separação/transcrição por ML, carrega um **GP3/GP4/GP5 ou GP7/GP8 (`.gp`)** +
+a gravação: notas, trastes, técnicas (bend/HO/PO/palm mute/harmónicos/vibrato/slide), tempo,
+compassos e secções vêm **exatos** do ficheiro. Inclui: seleção de pistas Lead/Rhythm, offset de
 sincronização com a gravação, letra (ficheiro **LRC** ou **UltraStar TXT** — timing por
-sílaba/linha sincronizado com a gravação — ou letra embutida no GP), e tones (tonebase + até 4
-slots, com mudanças temporizadas). Fluxo na UI: "Inspecionar pistas" → escolher pistas/opções →
-criar CDLC.
+sílaba/linha sincronizado com a gravação — ou letra embutida no GP, alinhada às notas), e tones
+(tonebase + até 4 slots, com mudanças temporizadas). Fluxo na UI: "Inspecionar pistas" →
+escolher pistas/opções → criar CDLC.
 
-Limitações honestas: **GPX/GP6/GP7 não é suportado** (o PyGuitarPro lê GP3/GP4/GP5 —
-exporta como GP5 no Guitar Pro/TuxGuitar); a sincronização é manual — indicas o segundo em
+Limitações honestas: **só GP6 (`.gpx`) não é suportado** (container binário proprietário —
+exporta como GP5 ou GP7 no Guitar Pro/TuxGuitar). GP3/GP4/GP5 são lidos pelo PyGuitarPro;
+GP7/GP8 (`.gp`) têm um parser GPIF/XML nativo. A sincronização é manual — indicas o segundo em
 que a música começa na gravação e a partitura/letra são deslocadas para esse instante (a
 gravação fica intacta, pois já tem o seu intro); há um lead-in mínimo de 2s para o count-in
 do DLC Builder; pistas de baixo (4/5 cordas) ainda não são suportadas.
@@ -302,7 +303,7 @@ pytest && ruff check src tests && mypy
 
 ## Como testar a app (fim-a-fim)
 
-1. **Testes automáticos** (sem ML, rápidos): `pip install -e ".[dev]" && pytest` — 226 testes
+1. **Testes automáticos** (sem ML, rápidos): `pip install -e ".[dev]" && pytest` — 233 testes
    cobrem domínio, mapeamento corda/traste, XML/acordes, pipeline, API (incl. remoção de jobs),
    import GP, letra, tom, deteção de device CPU/GPU, separação Demucs (comandos), PSARC nativo
    (contentor/manifestos/SNG/cifra), `.rs2dlc`, tags e Wwise (consola simulada). Guia completo
@@ -355,7 +356,7 @@ Se perderes o contexto e precisares de reconstruir tudo, lê por esta ordem:
 |---|---|
 | **[`README.md`](README.md)** (este) | instalar, correr, usar, distribuir — começa aqui para preparar uma máquina |
 | **[`CLAUDE.md`](CLAUDE.md)** | arquitetura (Clean Architecture), o desenho de cada funcionalidade, e as **restrições rígidas** que já custaram caro — a fonte de verdade sobre *porquê* o código está como está |
-| **[`TESTING.md`](TESTING.md)** | correr/estender os 226 testes, mapa de cobertura, e a checklist manual fim-a-fim (ML, Wwise, DLC Builder, in-game) que o CI não cobre |
+| **[`TESTING.md`](TESTING.md)** | correr/estender os 233 testes, mapa de cobertura, e a checklist manual fim-a-fim (ML, Wwise, DLC Builder, in-game) que o CI não cobre |
 | **[`TODO.md`](TODO.md)** | o que está feito `[x]`, o que falta `[ ]`, e as limitações conhecidas atuais |
 | **[`TONE.md`](TONE.md)** | o modelo de tom (gear) e a serialização dos `Tones` no `.rs2dlc` |
 | **`docs/RELATORIO-TECNICO.md`** + **`docs/research/`** | a fundamentação com fontes por trás de cada decisão técnica |

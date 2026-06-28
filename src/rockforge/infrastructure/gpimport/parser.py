@@ -72,10 +72,13 @@ def _load(path: Path) -> Any:  # guitarpro.models.Song (untyped library)
         import guitarpro
     except ImportError as exc:
         raise IngestionError("pyguitarpro is not installed") from exc
+    # GP7/GP8 (.gp, ZIP+score.gpif) is handled natively by gpif_parser, dispatched
+    # in inspect_gp/parse_gp_track before _load is reached. A .gp that is NOT a
+    # GPIF zip, or a .gpx (GP6 binary container), is genuinely unsupported here.
     if path.suffix.lower() in {".gpx", ".gp"}:
         raise IngestionError(
-            "GPX/GP7 containers are not supported by the parser (PyGuitarPro reads "
-            "GP3/GP4/GP5 only). Export the file as GP5 in Guitar Pro or TuxGuitar."
+            "GP6 (.gpx) is not supported. Export the file as GP5 or GP7 (.gp) in "
+            "Guitar Pro or TuxGuitar."
         )
     try:
         return guitarpro.parse(str(path))
@@ -95,6 +98,10 @@ def _track_info(index: int, track: Any) -> GpTrackInfo:
 
 
 def inspect_gp(path: Path) -> GpSongInfo:
+    from rockforge.infrastructure.gpimport.gpif_parser import _is_gpif, inspect_gpif
+
+    if _is_gpif(path):
+        return inspect_gpif(path)
     song = _load(path)
     return GpSongInfo(
         title=song.title or "",
@@ -162,6 +169,10 @@ def parse_gp_track(
     """
     if tempo_scale <= 0:
         raise IngestionError(f"tempo_scale must be positive, got {tempo_scale}")
+    from rockforge.infrastructure.gpimport.gpif_parser import _is_gpif, parse_gpif_track
+
+    if _is_gpif(path):
+        return parse_gpif_track(path, track_index, offset_s, tempo_scale)
     song = _load(path)
     if not 0 <= track_index < len(song.tracks):
         raise IngestionError(f"track index {track_index} out of range")

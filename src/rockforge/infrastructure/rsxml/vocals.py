@@ -92,19 +92,24 @@ def expand_to_words(events: list[VocalEvent]) -> list[VocalEvent]:
 DEFAULT_SYLLABLE_LENGTH_S = 0.3
 
 
-def _split_syllables(text: str) -> list[tuple[str, bool]]:
-    """Split a Guitar Pro lyric line into (syllable, joins_next) pairs.
+def _split_syllables(text: str) -> list[tuple[str, bool, bool]]:
+    """Split a Guitar Pro lyric line into (syllable, joins_next, is_hold) items.
 
     GP lyric text separates *words* by whitespace and *syllables within a word*
     by a hyphen (``loo-king a-way`` → loo · king · a · way). ``joins_next`` is
     True when the syllable connects to the following one without a space (i.e.
     they belong to the same word) — that becomes Rocksmith's trailing ``-``.
+    A standalone ``_`` is a melisma marker (``is_hold`` True): the previous
+    syllable is held over one more note attack instead of a new one being sung.
     """
-    out: list[tuple[str, bool]] = []
+    out: list[tuple[str, bool, bool]] = []
     for word in text.split():
-        parts = [p for p in word.split("-") if p]
+        if set(word) == {"_"}:
+            out.append(("", False, True))
+            continue
+        parts = [p for p in word.split("-") if p and set(p) != {"_"}]
         for i, p in enumerate(parts):
-            out.append((p, i < len(parts) - 1))
+            out.append((p, i < len(parts) - 1, False))
     return out
 
 
@@ -128,28 +133,42 @@ def distribute_syllables(
     drift by the number of extra notes until the next line resets it.
     """
     grid = sorted(set(onsets))
+
+    def onset_at(idx: int, fallback: float) -> tuple[float, float]:
+        """(time, length) for the note onset at *idx*; length = gap to next."""
+        if idx < len(grid):
+            t = grid[idx]
+            nxt = grid[idx + 1] if idx + 1 < len(grid) else t + DEFAULT_LAST_LENGTH_S
+            return t, min(MAX_LENGTH_S, max(0.1, nxt - t))
+        anchor = grid[-1] if grid else fallback
+        return anchor + (idx - len(grid) + 1) * DEFAULT_SYLLABLE_LENGTH_S, DEFAULT_SYLLABLE_LENGTH_S
+
     events: list[VocalEvent] = []
     cursor = 0
     for line_time, text in lines:
         syllables = _split_syllables(text)
-        if not syllables:
+        if not any(not is_hold for _, _, is_hold in syllables):
             continue
         first = bisect.bisect_left(grid, line_time - 1e-3)
-        start = max(cursor, first)
-        for k, (syl, joins_next) in enumerate(syllables):
-            idx = start + k
-            if idx < len(grid):
-                t = grid[idx]
-                nxt = grid[idx + 1] if idx + 1 < len(grid) else t + DEFAULT_LAST_LENGTH_S
-                length = min(MAX_LENGTH_S, max(0.1, nxt - t))
-            else:  # ran out of notes — fall back to a default per-syllable spread
-                anchor = grid[-1] if grid else line_time
-                t = anchor + (idx - len(grid) + 1) * DEFAULT_SYLLABLE_LENGTH_S
-                length = DEFAULT_SYLLABLE_LENGTH_S
-            last_of_line = k == len(syllables) - 1
-            lyric = f"{syl}-" if joins_next else (f"{syl}+" if last_of_line else syl)
+        idx = max(cursor, first)
+        last_real = next(
+            i for i in range(len(syllables) - 1, -1, -1) if not syllables[i][2]
+        )
+        for k, (syl, joins_next, is_hold) in enumerate(syllables):
+            t, length = onset_at(idx, line_time)
+            if is_hold:
+                # Melisma: hold the previous syllable over this note attack.
+                if events:
+                    prev = events[-1]
+                    events[-1] = VocalEvent(
+                        prev.time, min(MAX_LENGTH_S, t + length - prev.time), prev.lyric
+                    )
+                idx += 1
+                continue
+            lyric = f"{syl}-" if joins_next else (f"{syl}+" if k == last_real else syl)
             events.append(VocalEvent(time=t, length=length, lyric=lyric))
-        cursor = start + len(syllables)
+            idx += 1
+        cursor = idx
     events.sort(key=lambda e: e.time)
     return events
 
