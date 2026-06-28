@@ -1,6 +1,57 @@
 # TODO / ideias futuras
 
-Lista de funcionalidades propostas, ainda não implementadas.
+Estado do projeto + lista de funcionalidades (concluídas `[x]` e propostas
+`[ ]`). Para *como* cada coisa funciona, ver `CLAUDE.md`. Para *como testar*,
+ver `TESTING.md`.
+
+## Concluído recentemente (resumo — detalhe em CLAUDE.md)
+
+- [x] **Deteção automática de letra** (`/jobs/{id}/detect-lyrics`): Demucs isola
+  os vocais + WhisperX faz force-align. Tarefa Celery assíncrona; estado em
+  `params["lyrics_status"]`/`["lyrics_log"]`. WhisperX corre num **subprocesso**
+  (`_whisperx_runner.py`) para evitar o deadlock CUDA do faster-whisper dentro
+  do Celery. Editor de letra na UI ("Letras") com edição palavra-a-palavra,
+  arrastar palavras na partitura, e exportar LRC.
+- [x] **Deteção automática de tom** (`/jobs/{id}/detect-tones`): separação
+  Demucs `htdemucs_6s` + análise espectral classifica `clean`/`crunch`/
+  `high_gain` e sugere presets de gear (amp/cabine/pedais) reais. Honesto: NÃO
+  identifica o amp real, classifica o *carácter* do som.
+- [x] **Modelo de tom (gear) + construtor na UI**: `domain/tone.py` + catálogo
+  vendido; tons custom serializados no `.rs2dlc` `Tones` e no PSARC. Ver
+  `TONE.md`.
+- [x] **PSARC nativo sempre** (`psarc_mode=native` por defeito): cada job produz
+  Bundle (DLC Builder) **e** `.psarc` (SNG cifrado + manifestos).
+- [x] **Ficheiro `.phrase-levels`**: gerado junto ao `.rs2dlc` — sem ele o DLC
+  Builder falha com `FileNotFoundException` ao compilar.
+- [x] **Sync em massa** (`RebuildIn.apply_to_all`): aplicar tempo/anchors a todos
+  os arranjos de uma vez (checkbox "Aplicar sync a todos").
+- [x] **Persistência de BPM/tempo entre separadores** de arranjo na UI.
+- [x] **Playback via Web Audio API** (não o `<audio>`): seek sample-accurate,
+  sem deriva a meio da música.
+- [x] **Volume da música + destaque da palavra ativa** durante o playback.
+- [x] **Executável standalone** (`build_exe.py`, PyInstaller, worker in-process
+  sem Redis) + **instalador Windows** (Inno Setup) + **ZIP portátil**.
+
+## Estado atual / limitações conhecidas
+
+- **Letra/tom precisam de GPU para ser rápido.** Em CPU a separação Demucs
+  demora minutos. O `pip install torch` no Windows é só-CPU — é preciso o build
+  CUDA (README §2b). Confirmar no log: `device: cuda (GPU)`.
+- **Sem dynamic difficulty (DD):** todas as frases têm `maxDifficulty=0`; a
+  tablatura toca a densidade total. É uma lacuna de funcionalidade, não um
+  ficheiro malformado.
+- **SNG nativo não validado byte-a-byte** contra um SNG retail (não há ficheiro
+  de referência em CI) — só round-trip `read_sng∘write_sng`. A validação real é
+  carregar no jogo.
+- **`offset_s` (trim) do caminho áudio-ML não é subtraído** dos tempos das
+  palavras da letra editada (mesma limitação do WhisperX automático).
+- **GPX/GP6/GP7 não suportado** (PyGuitarPro só lê GP3/GP4/GP5).
+- **Capa de álbum não vira textura DDS in-game** — copiada para o bundle e
+  registada no `.rs2dlc`, mas o `albumArt` do Song2014 XML fica vazio.
+- **Não corre no GitHub Pages** (precisa de backend Python + Redis + ML); é uma
+  app desktop/servidor local por design.
+
+## Ideias futuras (não implementadas)
 
 - [x] **Deteção automática de afinação para jobs GP**: `POST
   /jobs/{id}/detect-tuning` estima o desvio em cents (A440) com
