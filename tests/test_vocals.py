@@ -5,6 +5,7 @@ import pytest
 
 from rockforge.infrastructure.rsxml.vocals import (
     VocalEvent,
+    distribute_syllables,
     events_from_dicts,
     expand_to_words,
     parse_lrc,
@@ -48,6 +49,40 @@ def test_expand_to_words_splits_lines_and_marks_end() -> None:
 def test_expand_to_words_single_word_gets_line_break() -> None:
     events = expand_to_words([VocalEvent(time=1.0, length=2.0, lyric="hello")])
     assert events == [VocalEvent(time=1.0, length=2.0, lyric="hello+")]
+
+
+def test_distribute_syllables_aligns_to_note_onsets() -> None:
+    # "loo-king a-way" over four note onsets: one syllable per note.
+    onsets = [10.0, 11.0, 12.0, 13.0, 14.0]
+    events = distribute_syllables([(10.0, "loo-king a-way")], onsets)
+    assert [e.lyric for e in events] == ["loo-", "king", "a-", "way+"]
+    assert [e.time for e in events] == [10.0, 11.0, 12.0, 13.0]
+    assert events[0].length == pytest.approx(1.0)  # gap to next onset
+
+
+def test_distribute_syllables_two_lines_start_at_their_measures() -> None:
+    onsets = [5.0, 6.0, 20.0, 21.0]
+    events = distribute_syllables(
+        [(5.0, "first line"), (20.0, "second line")], onsets
+    )
+    assert [(e.time, e.lyric) for e in events] == [
+        (5.0, "first"),
+        (6.0, "line+"),
+        (20.0, "second"),
+        (21.0, "line+"),
+    ]
+
+
+def test_distribute_syllables_runs_out_of_notes_gracefully() -> None:
+    # More syllables than onsets: the overflow falls back to a default spread.
+    events = distribute_syllables([(0.0, "a b c")], [0.0])
+    assert [e.lyric for e in events] == ["a", "b", "c+"]
+    assert events[0].time == 0.0
+    assert events[1].time > events[0].time and events[2].time > events[1].time
+
+
+def test_distribute_syllables_no_lyrics_no_events() -> None:
+    assert distribute_syllables([(0.0, "   ")], [1.0, 2.0]) == []
 
 
 def test_parse_lyrics_lrc_expands_to_words() -> None:

@@ -143,10 +143,27 @@ playback to the `<audio>` element's `currentTime`/seek.
 `parse_lyrics` auto-detects **LRC** (`[mm:ss.xx]` lines) vs **UltraStar/USDX
 TXT** (`#BPM:`/`#GAP:` header + `: start length pitch text` / `-` line-break
 note lines; beat→seconds via `15 / BPM`). Rocksmith's vocals XML is
-per-syllable: `expand_to_words` splits line-level events (LRC, GP-embedded
-lyrics) into one `<vocal>` per word and appends `+` to the last word of each
-line — that trailing `+` is what makes the in-game lyric display break to a
-new line. UltraStar input is already per-syllable and is NOT re-expanded.
+per-syllable: `expand_to_words` splits line-level events (LRC) into one
+`<vocal>` per word and appends `+` to the last word of each line — that
+trailing `+` is what makes the in-game lyric display break to a new line.
+UltraStar input is already per-syllable and is NOT re-expanded.
+
+**GP-embedded lyrics → per-syllable note alignment (`distribute_syllables`).**
+A Guitar Pro file stores lyrics as a line of text per `startingMeasure`; the
+per-syllable timing is *implicit* — GP/Songsterr distribute the syllables
+across the note attacks (whitespace = word boundary, hyphen = syllable split
+within a word: `loo-king a-way` → `loo`·`king`·`a`·`way`). `gp_pipeline`
+replicates that: it takes the (already warped + offset) note onsets of the
+chart (`sorted({n.time for n in first.notes})`) and places one syllable per
+onset starting at each line's measure, so the words land on the actual notes
+instead of an even spread. Rocksmith markers: a trailing `-` joins syllables
+within a word (no space, hyphen shown in game), a trailing `+` on a line's last
+syllable is the line break. Honest limit: it assumes **syllabic** singing (one
+syllable per note attack); **melismas** (one syllable held over several notes)
+are not recoverable from the GP text, so a melismatic passage drifts by the
+number of extra notes until the next line resets it — supply an LRC/UltraStar
+file or use the in-app editor for those. The in-app editor (`lyrics_events`)
+and an LRC/UltraStar file both still take precedence over GP-embedded lyrics.
 
 ### Automatic lyric detection + in-app editor
 
@@ -454,7 +471,7 @@ cannot run in CI, so tests inject fakes at the port boundary — a Python-based
 fake WwiseConsole (`test_wwise.py`), passthrough stages (`test_pipeline.py`),
 stubbed Celery enqueue + per-test SQLite (`test_api.py`). When you add an
 adapter, add a fake-driven test at the same boundary rather than mocking deep
-internals. 222 tests; `pytest` + `ruff check src tests` + `mypy` must all be
+internals. 226 tests; `pytest` + `ruff check src tests` + `mypy` must all be
 green before committing.
 
 ## Running locally (Windows, native, no Docker)

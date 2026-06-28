@@ -15,7 +15,7 @@ CI cannot. Read this before adding or changing a test.
 
 ```bash
 pip install -e ".[dev]"     # core + test tooling, NO ML stack — this is all CI needs
-pytest                       # 222 tests, ~10s, all ML/Wwise/external tools faked
+pytest                       # 226 tests, ~10s, all ML/Wwise/external tools faked
 ruff check src tests         # lint
 mypy                         # type check
 ```
@@ -68,7 +68,7 @@ serializers) need no fakes — they are deterministic and tested directly.
 |---|---|---|
 | **Lint** | `ruff check src tests` | style, unused imports/vars, import order, obvious bugs |
 | **Types** | `mypy` | strict on `domain/`/`application/`/`infrastructure/`; relaxed at framework boundaries (FastAPI/SQLAlchemy/Pydantic) via per-module overrides in `pyproject.toml` |
-| **Tests** | `pytest` | 222 functional tests (see §4) |
+| **Tests** | `pytest` | 226 functional tests (see §4) |
 
 mypy strictness is deliberate: the `domain` and `application` layers carry the
 music model and orchestration logic and must be fully typed. The
@@ -78,7 +78,7 @@ explicit `cast(...)`.
 
 ---
 
-## 4. Coverage map (222 tests across 23 files)
+## 4. Coverage map (226 tests across 23 files)
 
 | File | Tests | Guards |
 |---|---:|---|
@@ -89,7 +89,7 @@ explicit `cast(...)`.
 | `test_gp_import.py` | 9 | PyGuitarPro parsing: notes/frets/techniques/sections/tempo |
 | `test_gp_pipeline.py` | 16 | GP use case: `tempo_scale`, `sync_anchor_stages`, `arrangement_sync`, lyrics precedence, `pad_start_s` shift |
 | `test_rsxml_writer.py` | 13 | Song2014 XML: the **32 arrangementProperties** attrs, COUNT/default/END phrase structure, chords |
-| `test_vocals.py` | 14 | `parse_lyrics` (LRC + UltraStar), `expand_to_words` (trailing `+`), `events_from_dicts` |
+| `test_vocals.py` | 18 | `parse_lyrics` (LRC + UltraStar), `expand_to_words` (trailing `+`), `events_from_dicts`, `distribute_syllables` (GP lyrics → note-onset alignment) |
 | `test_lyrics_transcribe.py` | 6 | WhisperX adapter: RMS gate, per-word confidence filter, segment→event mapping (whisperx itself stubbed) |
 | `test_tone_gear.py` | 11 | `domain/tone.py` gear model + `tone_from_dict`/`tones_from_dicts` |
 | `test_tone_detection.py` | 7 | spectral `analyze_guitar_tone` → category → `suggest_tones` presets |

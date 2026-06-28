@@ -21,6 +21,7 @@ turns line-level events (from LRC or GP lyrics) into this per-word form.
 
 from __future__ import annotations
 
+import bisect
 import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
@@ -86,6 +87,71 @@ def expand_to_words(events: list[VocalEvent]) -> list[VocalEvent]:
             lyric = f"{w}+" if i == len(words) - 1 else w
             out.append(VocalEvent(time=e.time + i * word_len, length=word_len, lyric=lyric))
     return out
+
+
+DEFAULT_SYLLABLE_LENGTH_S = 0.3
+
+
+def _split_syllables(text: str) -> list[tuple[str, bool]]:
+    """Split a Guitar Pro lyric line into (syllable, joins_next) pairs.
+
+    GP lyric text separates *words* by whitespace and *syllables within a word*
+    by a hyphen (``loo-king a-way`` → loo · king · a · way). ``joins_next`` is
+    True when the syllable connects to the following one without a space (i.e.
+    they belong to the same word) — that becomes Rocksmith's trailing ``-``.
+    """
+    out: list[tuple[str, bool]] = []
+    for word in text.split():
+        parts = [p for p in word.split("-") if p]
+        for i, p in enumerate(parts):
+            out.append((p, i < len(parts) - 1))
+    return out
+
+
+def distribute_syllables(
+    lines: list[tuple[float, str]], onsets: list[float]
+) -> list[VocalEvent]:
+    """Align Guitar Pro line lyrics to real note onsets, one syllable per note.
+
+    `lines` are ``(line_start_time, line_text)`` in the final bundle clock;
+    `onsets` are the note attack times (also bundle clock). Each line's
+    syllables are placed on consecutive onsets at/after the line's start —
+    replicating how Guitar Pro/Songsterr distribute lyrics across the notes —
+    so the per-syllable timing matches what the GP file shows instead of an
+    even spread. Rocksmith markers: a trailing ``-`` joins syllables within a
+    word (no space, hyphen shown in game), a trailing ``+`` on the last
+    syllable of a line is the line break.
+
+    Honest limit: this assumes one syllable per note attack (syllabic singing).
+    Melismas (one syllable held over several notes) are not modelled — the GP
+    format does not record them recoverably here — so a melismatic passage will
+    drift by the number of extra notes until the next line resets it.
+    """
+    grid = sorted(set(onsets))
+    events: list[VocalEvent] = []
+    cursor = 0
+    for line_time, text in lines:
+        syllables = _split_syllables(text)
+        if not syllables:
+            continue
+        first = bisect.bisect_left(grid, line_time - 1e-3)
+        start = max(cursor, first)
+        for k, (syl, joins_next) in enumerate(syllables):
+            idx = start + k
+            if idx < len(grid):
+                t = grid[idx]
+                nxt = grid[idx + 1] if idx + 1 < len(grid) else t + DEFAULT_LAST_LENGTH_S
+                length = min(MAX_LENGTH_S, max(0.1, nxt - t))
+            else:  # ran out of notes — fall back to a default per-syllable spread
+                anchor = grid[-1] if grid else line_time
+                t = anchor + (idx - len(grid) + 1) * DEFAULT_SYLLABLE_LENGTH_S
+                length = DEFAULT_SYLLABLE_LENGTH_S
+            last_of_line = k == len(syllables) - 1
+            lyric = f"{syl}-" if joins_next else (f"{syl}+" if last_of_line else syl)
+            events.append(VocalEvent(time=t, length=length, lyric=lyric))
+        cursor = start + len(syllables)
+    events.sort(key=lambda e: e.time)
+    return events
 
 
 def parse_ultrastar_txt(text: str, offset_s: float = 0.0) -> list[VocalEvent]:

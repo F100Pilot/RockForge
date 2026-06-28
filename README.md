@@ -302,7 +302,7 @@ pytest && ruff check src tests && mypy
 
 ## Como testar a app (fim-a-fim)
 
-1. **Testes automáticos** (sem ML, rápidos): `pip install -e ".[dev]" && pytest` — 222 testes
+1. **Testes automáticos** (sem ML, rápidos): `pip install -e ".[dev]" && pytest` — 226 testes
    cobrem domínio, mapeamento corda/traste, XML/acordes, pipeline, API (incl. remoção de jobs),
    import GP, letra, tom, deteção de device CPU/GPU, separação Demucs (comandos), PSARC nativo
    (contentor/manifestos/SNG/cifra), `.rs2dlc`, tags e Wwise (consola simulada). Guia completo
@@ -355,7 +355,7 @@ Se perderes o contexto e precisares de reconstruir tudo, lê por esta ordem:
 |---|---|
 | **[`README.md`](README.md)** (este) | instalar, correr, usar, distribuir — começa aqui para preparar uma máquina |
 | **[`CLAUDE.md`](CLAUDE.md)** | arquitetura (Clean Architecture), o desenho de cada funcionalidade, e as **restrições rígidas** que já custaram caro — a fonte de verdade sobre *porquê* o código está como está |
-| **[`TESTING.md`](TESTING.md)** | correr/estender os 222 testes, mapa de cobertura, e a checklist manual fim-a-fim (ML, Wwise, DLC Builder, in-game) que o CI não cobre |
+| **[`TESTING.md`](TESTING.md)** | correr/estender os 226 testes, mapa de cobertura, e a checklist manual fim-a-fim (ML, Wwise, DLC Builder, in-game) que o CI não cobre |
 | **[`TODO.md`](TODO.md)** | o que está feito `[x]`, o que falta `[ ]`, e as limitações conhecidas atuais |
 | **[`TONE.md`](TONE.md)** | o modelo de tom (gear) e a serialização dos `Tones` no `.rs2dlc` |
 | **`docs/RELATORIO-TECNICO.md`** + **`docs/research/`** | a fundamentação com fontes por trás de cada decisão técnica |
