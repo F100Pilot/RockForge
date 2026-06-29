@@ -17,7 +17,7 @@ Verified library facts (inspected in pyguitarpro 0.11 source):
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
@@ -198,6 +198,7 @@ def parse_gp_track(
     raw: list[tuple[TabNote, bool]] = []  # (note, hammer_flag_on_origin)
     sections: list[GpSection] = []
     beats_grid: list[Beat] = []
+    last_on_string: dict[int, int] = {}  # string -> raw index, for tie continuation
 
     for measure in track.measures:
         header = measure.header
@@ -217,6 +218,19 @@ def parse_gp_track(
                 sustain = max(0.0, t(tick + beat.duration.time) - start)
                 for note in beat.notes:
                     string = n_strings - note.string  # GP 1=high -> ours 0=low
+                    # A tie note is a held continuation, not a new attack — extend
+                    # the previous note on this string instead of re-articulating
+                    # it (the "4 notes shown as 5" bug). pyguitarpro: NoteType.tie.
+                    if getattr(note.type, "name", "") == "tie":
+                        prev = last_on_string.get(string)
+                        if prev is not None:
+                            pn = raw[prev][0]
+                            end = start + sustain
+                            raw[prev] = (
+                                replace(pn, sustain=max(pn.sustain, end - pn.time)),
+                                raw[prev][1],
+                            )
+                        continue
                     fret = int(note.value)
                     if not 0 <= fret <= 24:
                         tick += beat.duration.time
@@ -246,6 +260,7 @@ def parse_gp_track(
                         techs.add(Technique.SLAP)
                     elif slap == 3:
                         techs.add(Technique.POP)
+                    last_on_string[string] = len(raw)
                     raw.append(
                         (
                             TabNote(

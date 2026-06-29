@@ -240,7 +240,7 @@ def parse_gpif_track(
     def t(tick: int) -> float:
         return max(0.0, tempo_scale * float(to_seconds(tick))) + offset_s
 
-    raw: list[tuple[TabNote, bool, bool]] = []  # (note, hopo_dest, slide_to)
+    raw: list[tuple[TabNote, bool, bool, bool]] = []  # (note, hopo, slide, tie_dest)
     beats_grid: list[Beat] = []
     sections: list[GpSection] = []
 
@@ -283,7 +283,8 @@ def parse_gpif_track(
                 _emit_beat_notes(beat, notes_map, tuning_midi, start, sustain, raw)
                 tick += dur
 
-    notes = _resolve_techniques([n for n, _, _ in raw], raw)
+    merged = _merge_ties(raw)  # collapse tie continuations into the held note
+    notes = _resolve_techniques([n for n, _, _ in merged], merged)
     notes.sort(key=lambda n: (n.time, n.string))
     beats_grid.sort(key=lambda b: b.time)
 
@@ -342,7 +343,7 @@ def _emit_beat_notes(
     tuning_midi: tuple[int, ...],
     start: float,
     sustain: float,
-    raw: list[tuple[TabNote, bool, bool]],
+    raw: list[tuple[TabNote, bool, bool, bool]],
 ) -> None:
     note_ids = _text(beat.find("Notes"))
     if not note_ids:
@@ -375,6 +376,11 @@ def _emit_beat_notes(
                 techs.add(Technique.SLIDE)
                 slide_to = True
         hopo_dest = "HopoDestination" in props
+        # A tie with destination="true" is a CONTINUATION of the previous note
+        # on this string (held, not re-picked) — GP/Songsterr draw it in
+        # parentheses. It must extend the previous note, not be a new attack.
+        tie = note.find("Tie")
+        tie_dest = tie is not None and tie.get("destination") == "true"
 
         raw.append(
             (
@@ -388,8 +394,44 @@ def _emit_beat_notes(
                 ),
                 hopo_dest,
                 slide_to,
+                tie_dest,
             )
         )
+
+
+def _merge_ties(
+    raw: list[tuple[TabNote, bool, bool, bool]],
+) -> list[tuple[TabNote, bool, bool]]:
+    """Fold tie-continuation notes into the note they extend.
+
+    A note flagged ``tie_dest`` is a held continuation (drawn in parentheses in
+    GP/Songsterr), NOT a new attack. Extend the most recent surviving note on the
+    same string to cover it and drop it — so a tie chain collapses into a single
+    sustained note instead of several re-articulated notes (the "4 notes shown as
+    5" bug). Orphan ties (no predecessor on the string) are kept as plain notes.
+    """
+    notes = [r[0] for r in raw]
+    order = sorted(range(len(notes)), key=lambda i: (notes[i].string, notes[i].time))
+    dropped: set[int] = set()
+    for pos, idx in enumerate(order):
+        if not raw[idx][3]:  # not a tie destination
+            continue
+        prev = None
+        for k in range(pos - 1, -1, -1):
+            j = order[k]
+            if j not in dropped and notes[j].string == notes[idx].string:
+                prev = j
+                break
+        if prev is None:
+            continue  # orphan tie — keep as a normal note
+        end = notes[idx].time + notes[idx].sustain
+        notes[prev] = dataclasses.replace(
+            notes[prev], sustain=max(notes[prev].sustain, end - notes[prev].time)
+        )
+        dropped.add(idx)
+    return [
+        (notes[i], raw[i][1], raw[i][2]) for i in range(len(raw)) if i not in dropped
+    ]
 
 
 def _bend_semitones(props: dict[str, ET.Element]) -> float:

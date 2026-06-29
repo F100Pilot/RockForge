@@ -153,3 +153,26 @@ def test_gpx_rejected_with_clear_message(tmp_path: Path) -> None:
 def test_track_index_out_of_range(gp5_file: Path) -> None:
     with pytest.raises(IngestionError, match="out of range"):
         parse_gp_track(gp5_file, 7)
+
+
+def test_tied_note_extends_previous_not_new_attack(tmp_path: Path) -> None:
+    """A GP5 tie note continues the previous note on the same string (held) —
+    it must not become a separate attack (the '4 notes shown as 5' bug)."""
+    song = gp.Song()
+    song.title, song.artist, song.tempo = "Tie", "B", 120
+    v = song.tracks[0].measures[0].voices[0]
+    _add_beat(v, 4, [(5, 7)])  # quarter on A string, fret 7
+    tied = gp.Beat(v)
+    tied.status = gp.BeatStatus.normal
+    tied.duration = gp.Duration(value=4)
+    n = gp.Note(tied)
+    n.string, n.value, n.type = 5, 7, gp.NoteType.tie  # held continuation
+    tied.notes.append(n)
+    v.beats.append(tied)
+    path = tmp_path / "tie.gp5"
+    gp.write(song, str(path))
+
+    parsed = parse_gp_track(path, 0)
+    assert len(parsed.notes) == 1  # the tie folded into the first note
+    assert parsed.notes[0].fret == 7
+    assert parsed.notes[0].sustain == pytest.approx(1.0)  # two quarters held
