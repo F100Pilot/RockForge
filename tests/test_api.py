@@ -237,6 +237,37 @@ def test_gp_inspect_rejects_gpx(client: TestClient) -> None:
     assert "GP5" in r.json()["detail"]
 
 
+def test_gp_inspect_accepts_gp7(client: TestClient) -> None:
+    import io
+    import zipfile
+
+    gpif = (
+        '<?xml version="1.0" encoding="utf-8"?><GPIF>'
+        "<Score><Title>T</Title><Artist>A</Artist><Album>B</Album></Score>"
+        "<MasterTrack><Automations><Automation><Type>Tempo</Type><Bar>0</Bar>"
+        "<Position>0</Position><Value>120 2</Value></Automation></Automations></MasterTrack>"
+        '<Tracks><Track id="0"><Name>Guitar</Name>'
+        "<InstrumentSet><Type>electricGuitar</Type></InstrumentSet>"
+        '<Staves><Staff><Properties><Property name="Tuning">'
+        "<Pitches>40 45 50 55 59 64</Pitches></Property></Properties></Staff></Staves>"
+        "</Track></Tracks>"
+        "<MasterBars><MasterBar><Time>4/4</Time><Bars>0</Bars></MasterBar></MasterBars>"
+        '<Bars><Bar id="0"><Voices>-1 -1 -1 -1</Voices></Bar></Bars>'
+        "<Voices/><Beats/><Notes/><Rhythms/></GPIF>"
+    )
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("VERSION", "7.0")
+        z.writestr("Content/score.gpif", gpif)
+    r = client.post(
+        "/gp/inspect", files={"file": ("song.gp", buf.getvalue(), "application/octet-stream")}
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["title"] == "T" and body["artist"] == "A"
+    assert body["tracks"][0]["string_count"] == 6
+
+
 def test_gp_inspect_and_job_flow(client: TestClient, tmp_path) -> None:
     data = _make_gp5_bytes(tmp_path)
     r = client.post("/gp/inspect", files={"file": ("song.gp5", data, "application/octet-stream")})

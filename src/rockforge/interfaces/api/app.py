@@ -382,8 +382,8 @@ class GpInspectOut(BaseModel):
     tracks: list[GpTrackOut]
 
 
-GP_SUFFIXES = {".gp3", ".gp4", ".gp5"}
-GP_REJECTED_SUFFIXES = {".gpx", ".gp"}
+GP_SUFFIXES = {".gp3", ".gp4", ".gp5", ".gp"}  # .gp = GP7/GP8 (native GPIF parser)
+GP_REJECTED_SUFFIXES = {".gpx"}  # GP6 only — proprietary binary container
 
 
 @app.post("/gp/inspect", response_model=GpInspectOut)
@@ -394,8 +394,8 @@ async def inspect_gp_file(file: UploadFile = File(...)) -> GpInspectOut:
     if suffix in GP_REJECTED_SUFFIXES:
         raise HTTPException(
             415,
-            "GPX/GP7 is not supported (the parser reads GP3/GP4/GP5 only). "
-            "Export as GP5 from Guitar Pro or TuxGuitar and upload again.",
+            "GP6 (.gpx) is not supported (proprietary binary container). "
+            "Export as GP5 or GP7 (.gp) from Guitar Pro or TuxGuitar and upload again.",
         )
     if suffix not in GP_SUFFIXES:
         raise HTTPException(415, f"unsupported Guitar Pro format: {suffix or '(none)'}")

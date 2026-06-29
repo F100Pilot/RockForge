@@ -559,9 +559,9 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
 
     <div class="tabpanel" data-panel="gp" hidden>
       <form id="gpInspectForm" class="grid" style="margin-top:.5rem">
-        <div class="field"><label>Ficheiro GP3/GP4/GP5 <button class="info-btn" data-info="gp-format">ⓘ</button></label>
+        <div class="field"><label>Ficheiro GP3/GP4/GP5/GP7 <button class="info-btn" data-info="gp-format">ⓘ</button></label>
           <div class="file-drop"><div class="file-drop-icon">&#127928;</div><span class="file-drop-text">Arrasta ou clica para escolher</span><span class="file-drop-btn">Procurar</span>
-          <input type="file" name="file" accept=".gp3,.gp4,.gp5" required></div></div>
+          <input type="file" name="file" accept=".gp3,.gp4,.gp5,.gp" required></div></div>
         <button type="submit" class="secondary">1. Inspecionar pistas</button>
       </form>
       <form id="gpJobForm" class="grid" style="display:none; margin-top:.75rem">
@@ -733,7 +733,7 @@ const INFO = {
   },
   'gp-format': {
     title: 'Formatos Guitar Pro suportados',
-    body: '<p>Suportados: <strong>GP3, GP4, GP5</strong> (via PyGuitarPro).<br><strong>GPX / GP7 não são suportados</strong> — exporta como GP5 no Guitar Pro ou TuxGuitar antes de importar.</p>'
+    body: '<p>Suportados: <strong>GP3, GP4, GP5</strong> (via PyGuitarPro) e <strong>GP7/GP8 (.gp)</strong> (parser GPIF nativo).<br><strong>Só GP6 (.gpx) não é suportado</strong> — exporta como GP5 ou GP7 no Guitar Pro ou TuxGuitar antes de importar.</p>'
   },
   'gp-offset': {
     title: 'Início da música na gravação (s)',
