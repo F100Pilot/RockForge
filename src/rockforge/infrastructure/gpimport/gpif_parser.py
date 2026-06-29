@@ -366,6 +366,8 @@ def _emit_beat_notes(
             techs.add(Technique.PALM_MUTE)
         if "Harmonic" in props or "HarmonicType" in props:
             techs.add(Technique.HARMONIC)
+        if note.find("Vibrato") is not None:  # direct child, not a Property
+            techs.add(Technique.VIBRATO)
         if "Bended" in props:
             techs.add(Technique.BEND)
             bend_semitones = _bend_semitones(props)
