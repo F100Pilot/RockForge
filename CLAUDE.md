@@ -45,6 +45,14 @@ Rules:
    no extra dependency). Only **GP6 (`.gpx`)** — a proprietary binary container —
    is unsupported; export it as GP5 or GP7.
 
+   **Tied notes** (GP `(17)` in parentheses — a held continuation, not a
+   re-pick) are folded into the note they extend in BOTH parsers, never emitted
+   as a second attack: GP5 via `NoteType.tie` (inline, tracking the last note
+   per string), GP7 via `<Tie destination="true">` (`gpif_parser._merge_ties`).
+   Skipping this makes "4 notes show as 5" and throws the rhythm off — guarded by
+   `test_tied_note_extends_previous_not_new_attack` (GP5) and
+   `test_gp7_tied_note_extends_not_duplicates` (GP7).
+
 ### Tempo scaling (`tempo_scale`)
 
 `GpJobSpec.tempo_scale` (default 1.0) multiplies the whole musical timeline at

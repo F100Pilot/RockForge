@@ -146,3 +146,49 @@ def test_gp7_lyrics_sourced_from_track(gp7_file: Path) -> None:
     parsed = parse_gp_track(gp7_file, 0)
     assert len(parsed.lyrics) == 1
     assert parsed.lyrics[0].text == "he-llo world"
+
+
+# A tied note: bar 0 has two quarter notes on string 0 — fret 7, then fret 7
+# again flagged Tie destination="true" (a held continuation, drawn "(7)" in GP).
+# It must NOT become a second attack; it extends the first note's sustain.
+TIE_GPIF = """<?xml version="1.0" encoding="utf-8"?>
+<GPIF>
+  <Score><Title>T</Title><Artist>A</Artist><Album>B</Album></Score>
+  <MasterTrack><Automations><Automation><Type>Tempo</Type><Bar>0</Bar>
+    <Position>0</Position><Value>120 2</Value></Automation></Automations></MasterTrack>
+  <Tracks><Track id="0"><Name>Guitar</Name>
+    <InstrumentSet><Type>electricGuitar</Type></InstrumentSet>
+    <Staves><Staff><Properties>
+      <Property name="Tuning"><Pitches>40 45 50 55 59 64</Pitches></Property>
+    </Properties></Staff></Staves></Track></Tracks>
+  <MasterBars><MasterBar><Time>4/4</Time><Bars>0</Bars></MasterBar></MasterBars>
+  <Bars><Bar id="0"><Voices>0 -1 -1 -1</Voices></Bar></Bars>
+  <Voices><Voice id="0"><Beats>0 1</Beats></Voice></Voices>
+  <Beats>
+    <Beat id="0"><Rhythm ref="0"/><Notes>0</Notes></Beat>
+    <Beat id="1"><Rhythm ref="0"/><Notes>1</Notes></Beat>
+  </Beats>
+  <Notes>
+    <Note id="0"><Properties>
+      <Property name="String"><String>0</String></Property>
+      <Property name="Fret"><Fret>7</Fret></Property></Properties></Note>
+    <Note id="1"><Tie origin="false" destination="true"/><Properties>
+      <Property name="String"><String>0</String></Property>
+      <Property name="Fret"><Fret>7</Fret></Property></Properties></Note>
+  </Notes>
+  <Rhythms><Rhythm id="0"><NoteValue>Quarter</NoteValue></Rhythm></Rhythms>
+</GPIF>
+"""
+
+
+def test_gp7_tied_note_extends_not_duplicates(tmp_path: Path) -> None:
+    path = tmp_path / "tie.gp"
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("VERSION", "7.0")
+        z.writestr("Content/score.gpif", TIE_GPIF)
+    parsed = parse_gp_track(path, 0)
+    # Two beats, but the second is a tie continuation → ONE attack, held longer.
+    assert len(parsed.notes) == 1
+    n = parsed.notes[0]
+    assert n.fret == 7
+    assert n.sustain == pytest.approx(1.0)  # two quarters at 120 BPM held together
