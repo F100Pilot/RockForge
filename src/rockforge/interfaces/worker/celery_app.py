@@ -230,6 +230,15 @@ def generate_cdlc(job_id: str) -> None:
                 job.psarc_path = (
                     str(result.packaging.psarc_path) if result.packaging.psarc_path else None
                 )
+                # Surface GP-embedded lyrics in the "Letras" editor / tab viewer:
+                # store them as lyrics_events (recording clock) so the user can
+                # see/adjust them. Only when the user hasn't supplied their own.
+                if result.gp_lyrics and not params.get("lyrics_events"):
+                    params["lyrics_events"] = [
+                        {"time": e.time, "length": e.length, "lyric": e.lyric}
+                        for e in result.gp_lyrics
+                    ]
+                    job.params = {**params}  # JSON column needs a fresh dict object
                 session.commit()
                 return
 

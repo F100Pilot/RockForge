@@ -391,6 +391,18 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
               <input type="number" id="syncOffset" value="0" step="0.01" min="0" style="width:6rem"></label>
             <input type="range" id="syncOffsetRange" min="0" max="20" step="0.01" value="0" style="flex:1;min-width:120px">
             <label>🔊 Música: <input type="range" id="musicVolume" min="0" max="1" step="0.05" value="1" style="width:6rem;vertical-align:middle"></label>
+            <label>🐢 Velocidade: <select id="playbackSpeed" style="vertical-align:middle">
+              <option value="1">100%</option>
+              <option value="0.9">90%</option>
+              <option value="0.8">80%</option>
+              <option value="0.75">75%</option>
+              <option value="0.7">70%</option>
+              <option value="0.6">60%</option>
+              <option value="0.5">50%</option>
+              <option value="0.4">40%</option>
+              <option value="0.3">30%</option>
+              <option value="0.25">25%</option>
+            </select></label>
             <label class="check"><input type="checkbox" id="syncTick" checked> Tique por nota</label>
             <label>🎵 Notas: <input type="range" id="tickVolume" min="0" max="1" step="0.05" value="0.6" style="width:6rem;vertical-align:middle"></label>
             <button class="info-btn" data-info="sync-offset">ⓘ</button>
@@ -845,6 +857,7 @@ let playStartCtx = 0;        // audioCtx.currentTime when the current source sta
 let playStartOffset = 0;     // buffer offset (s) the current source started at
 let playing = false;         // buffer-backend transport state
 let pausedAt = 0;            // buffer-backend position (s) while paused/stopped
+let playbackRate = 1.0;      // playback speed (<1 slows down; lowers pitch on the buffer source)
 let seekDragging = false, seekWasPlaying = false;
 const WAVE_HZ = 100;
 let syncMode = 'drag'; // 'drag' | 'tap' | 'excerpt'
@@ -2102,6 +2115,12 @@ document.getElementById('tickVolume')?.addEventListener('input', e => {
 document.getElementById('musicVolume')?.addEventListener('input', e => {
   if (playGain) playGain.gain.value = parseFloat(e.target.value);
 });
+document.getElementById('playbackSpeed')?.addEventListener('change', e => {
+  const now = audioTime();          // capture position under the OLD rate first
+  playbackRate = parseFloat(e.target.value);
+  if (audioIsPlaying()) audioSeek(now);  // restart the source at the new rate
+  else { const au = document.getElementById('syncAudio'); if (au) au.playbackRate = playbackRate; }
+});
 
 function playNote(string, fret) {
   if (!audioCtx || string < 0 || string > 5 || fret < 0) return;
@@ -2213,7 +2232,9 @@ function audioDuration() {
 // of the old <audio>.currentTime, consumed by syncFrame/syncResetPointer.
 function audioTime() {
   if (playBuffer)
-    return playing ? playStartOffset + (audioCtx.currentTime - playStartCtx) : pausedAt;
+    return playing
+      ? playStartOffset + (audioCtx.currentTime - playStartCtx) * playbackRate
+      : pausedAt;
   const au = document.getElementById('syncAudio');
   return au ? au.currentTime : 0;
 }
@@ -2251,6 +2272,7 @@ function audioPlay() {
     if (playing) return;
     playSource = audioCtx.createBufferSource();
     playSource.buffer = playBuffer;
+    playSource.playbackRate.value = playbackRate;
     playSource.connect(playGain);
     playStartOffset = Math.min(Math.max(0, pausedAt), playBuffer.duration);
     playStartCtx = audioCtx.currentTime;
@@ -2259,7 +2281,7 @@ function audioPlay() {
     playing = true;
   } else {
     const au = document.getElementById('syncAudio');
-    if (au && au.src) au.play();
+    if (au && au.src) { au.playbackRate = playbackRate; au.play(); }
   }
   startSyncLoop();
   updatePlayBtn();

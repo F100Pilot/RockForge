@@ -401,6 +401,7 @@ class GenerateFromGpUseCase:
 
         stage("lyrics")
         vocals: list[VocalEvent] = []
+        lyrics_from_gp = False
         if spec.lyrics_events:
             vocals = [
                 VocalEvent(time=e.time + pad_start_s, length=e.length, lyric=e.lyric)
@@ -424,6 +425,7 @@ class GenerateFromGpUseCase:
             vocals = distribute_syllables(
                 [(line.time, line.text) for line in first.lyrics], onsets
             )
+            lyrics_from_gp = True
             warnings.append(
                 "lyrics taken from the GP file, aligned per syllable to the note "
                 "onsets (melismas — one syllable held over several notes — are not "
@@ -456,8 +458,21 @@ class GenerateFromGpUseCase:
                 "no PSARC produced: final packing is delegated to DLC Builder "
                 "(bundle is import-ready); configure ROCKFORGE_PSARC_PACKER_CMD to automate it"
             )
+        # Surface GP-embedded lyrics to the editor/tab viewer in the recording
+        # clock (un-padded): the build re-adds pad_start_s, so subtract it here
+        # to round-trip correctly. Only when the lyrics actually came from the GP
+        # file (not user-supplied LRC/editor rows, which the editor already has).
+        gp_lyrics = (
+            tuple(
+                VocalEvent(time=max(0.0, v.time - pad_start_s), length=v.length, lyric=v.lyric)
+                for v in vocals
+            )
+            if lyrics_from_gp
+            else ()
+        )
         return PipelineResult(
             packaging=packaging,
             note_counts={a.kind.value: len(a.notes) for a in arrangements},
             warnings=tuple(warnings),
+            gp_lyrics=gp_lyrics,
         )
