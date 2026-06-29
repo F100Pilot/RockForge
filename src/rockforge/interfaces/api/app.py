@@ -138,6 +138,11 @@ class ArrangementNoteOut(BaseModel):
     techniques: list[str]
 
 
+class BarOut(BaseModel):
+    measure: int  # 1-based bar number
+    time: float   # bundle-time position of the bar's downbeat
+
+
 class ArrangementOut(BaseModel):
     kind: str
     tuning_offsets: list[int]
@@ -147,6 +152,7 @@ class ArrangementOut(BaseModel):
     note_count: int
     chord_count: int
     notes: list[ArrangementNoteOut]
+    bars: list[BarOut] = []  # measure downbeats for the viewer's bar numbering
 
 
 class AutoSyncOut(BaseModel):
@@ -1003,6 +1009,13 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
         ]
         all_notes = sorted(notes + chord_notes, key=lambda n: (n.time, n.string))
         kind = root.findtext("arrangement", "?")
+        # Bar downbeats for the viewer's measure numbering: ebeats with a real
+        # measure number (>0); off-beats carry measure="-1".
+        bars = [
+            BarOut(measure=int(eb.get("measure", "-1")), time=float(eb.get("time", "0")))
+            for eb in root.findall("ebeats/ebeat")
+            if int(eb.get("measure", "-1")) > 0
+        ]
         out.append(
             ArrangementOut(
                 kind=kind,
@@ -1013,6 +1026,7 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
                 note_count=len(notes),
                 chord_count=len(root.findall("levels/level/chords/chord")),
                 notes=all_notes,
+                bars=bars,
             )
         )
     return out

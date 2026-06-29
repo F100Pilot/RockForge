@@ -116,6 +116,14 @@ def test_gp_pipeline_full_bundle(two_track_gp5: Path, tmp_path: Path) -> None:
 
     lead_xml = next(p for p in result.packaging.xml_paths if p.name == "arrangement_lead.xml")
     root = ET.parse(lead_xml).getroot()
+    # Bar numbering source for the viewer: ebeats carry 1-based measure numbers
+    # on downbeats (the /arrangements endpoint filters measure>0 into `bars`).
+    bars = [
+        int(eb.get("measure", "-1"))
+        for eb in root.findall("ebeats/ebeat")
+        if int(eb.get("measure", "-1")) > 0
+    ]
+    assert bars and bars[0] == 1 and bars == sorted(bars)
     assert root.findtext("tonebase") == "clean"
     assert root.findtext("tonea") == "dist"
     tone = root.find("tones/tone")
