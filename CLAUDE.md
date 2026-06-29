@@ -153,6 +153,16 @@ per-syllable: `expand_to_words` splits line-level events (LRC) into one
 trailing `+` is what makes the in-game lyric display break to a new line.
 UltraStar input is already per-syllable and is NOT re-expanded.
 
+**GP-embedded lyrics surface in the editor.** GP-embedded lyrics used to be
+written straight to the vocals XML at build time and never shown in the UI, so
+they looked "missing". Now the GP build returns them on `PipelineResult.gp_lyrics`
+(in the **recording clock** — `pipeline` subtracts `pad_start_s` so a rebuild
+re-adds it cleanly), and the worker stores them in `params["lyrics_events"]`
+when the user hasn't supplied their own — so they appear in the "Letras" editor
+and on the tab viewer, editable. The melisma `_` marker (a syllable held over
+several note attacks) extends the previous syllable's length instead of emitting
+a new event.
+
 **GP-embedded lyrics → per-syllable note alignment (`distribute_syllables`).**
 A Guitar Pro file stores lyrics as a line of text per `startingMeasure`; the
 per-syllable timing is *implicit* — GP/Songsterr distribute the syllables

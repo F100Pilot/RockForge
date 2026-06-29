@@ -50,6 +50,10 @@ class PipelineResult:
     packaging: PackagingResult
     note_counts: dict[str, int]
     warnings: tuple[str, ...]
+    # Lyrics extracted from a GP file (recording clock, i.e. un-padded), so the
+    # worker can surface them in the "Letras" editor / tab viewer. Empty unless
+    # GP-embedded lyrics were used (not when the user supplied LRC/editor rows).
+    gp_lyrics: tuple[VocalEvent, ...] = ()
 
 
 @dataclass

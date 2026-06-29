@@ -135,6 +135,39 @@ def test_gp_pipeline_full_bundle(two_track_gp5: Path, tmp_path: Path) -> None:
     assert float(v.findall("vocal")[0].get("time", "0")) == pytest.approx(2.5)
 
 
+def test_gp_embedded_lyrics_surface_as_recording_clock_events(
+    tmp_path: Path,
+) -> None:
+    """GP-embedded lyrics are returned in result.gp_lyrics (recording clock) so
+    the worker can show them in the editor; the build re-adds pad_start_s."""
+    song = gp.Song()
+    song.title, song.artist, song.tempo = "L", "B", 120
+    lead = song.tracks[0]
+    lead.name = "Lead Gtr"
+    v = lead.measures[0].voices[0]
+    for fret in [5, 7]:
+        b = gp.Beat(v)
+        b.status = gp.BeatStatus.normal
+        b.duration = gp.Duration(value=4)  # quarter = 0.5s at 120 BPM
+        n = gp.Note(b)
+        n.string, n.value, n.type = 1, fret, gp.NoteType.normal
+        b.notes.append(n)
+        v.beats.append(b)
+    song.lyrics.lines[0].startingMeasure = 1
+    song.lyrics.lines[0].lyrics = "hello world"
+    path = tmp_path / "lyr.gp5"
+    gp.write(song, str(path))
+
+    spec = GpJobSpec(gp_path=path, audio_source="x.wav", lead_track=0)
+    result = make_use_case().run(
+        spec, SongMetadata(title="L", artist="B"), tmp_path / "w"
+    )
+    # offset_s=0 → pad_start_s=2.0; gp_lyrics subtract it → recording clock.
+    assert [e.lyric for e in result.gp_lyrics] == ["hello", "world+"]
+    assert result.gp_lyrics[0].time == pytest.approx(0.0)
+    assert result.gp_lyrics[1].time == pytest.approx(0.5)
+
+
 def test_gp_pipeline_auto_track_selection(two_track_gp5: Path, tmp_path: Path) -> None:
     spec = GpJobSpec(gp_path=two_track_gp5, audio_source="x.wav")
     result = make_use_case().run(spec, SongMetadata(title="T", artist="A"), tmp_path / "w")
