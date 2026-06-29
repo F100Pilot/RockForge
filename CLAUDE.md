@@ -131,6 +131,15 @@ bundle-time positions), so the playhead starts at 0 instead of at the first
 note. Anchor math stays in bundle time so corrections round-trip through a
 rebuild unchanged.
 
+**Measure (bar) numbering.** The viewer draws a faint vertical line + bar number
+at each measure downbeat. The source is the Song2014 `<ebeats>` (one `<ebeat
+time measure>` per beat; downbeats carry the 1-based measure, off-beats `-1`),
+which the GP parsers fill from `tempo_map.beats`. `/jobs/{id}/arrangements`
+filters `measure>0` into `ArrangementOut.bars`; the viewer warps each bar time
+through the same `previewScale`+`buildTimeWarp` as the notes, so bar lines track
+pending sync edits. Bars make tempo changes and drift visible — the user can see
+exactly which measure slips against the recording and drag-correct it there.
+
 Playback in the tab viewer goes through the **Web Audio API**
 (`AudioBufferSourceNode` over the buffer already decoded for the waveform),
 driven by a custom transport (`audioPlay`/`audioPause`/`audioSeek`), NOT the
