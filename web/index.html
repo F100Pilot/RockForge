@@ -1084,7 +1084,7 @@ function showArr(i) {
   const dur = Math.max(...a.notes.map(n => n.time + n.sustain), 10);
   const px = BASE_PX * zoomLevel, ROW = 40, R = 13, W = Math.max(900, dur * px + 60), H = 280;
   tabPx = px; tabH = H;
-  viewOrigin = Math.max(0, MIN_LEAD - offsetLive) + leadInBuilt;  // bundle time at the left edge (0s)
+  viewOrigin = Math.max(0, MIN_LEAD - offsetLive);  // bundle time at the left edge (0s)
   svg.setAttribute('width', W);
   let s = '';
   s += waveformSvg(W, H, px);  // audio reference, drawn behind staff + notes
@@ -2236,7 +2236,7 @@ function previewScale(t) {
 // prepended silence (pad = max(0, MIN_LEAD - offset)); independent of tempo
 // since the recording itself is the fixed reference.
 function playheadDisplay(s) {
-  return s + Math.max(0, MIN_LEAD - offsetLive) + leadInBuilt;
+  return s + Math.max(0, MIN_LEAD - offsetLive);
 }
 
 // The x-axis is drawn in *recording* time (0s at the far left), while all the
@@ -2591,7 +2591,17 @@ async function decodeWaveform(id) {
   try {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const buf = await (await fetch(`/jobs/${id}/source-audio`)).arrayBuffer();
-    const audio = await audioCtx.decodeAudioData(buf);
+    let audio = await audioCtx.decodeAudioData(buf);
+    // Reflect the user's intro silence (lead_in_s) the bundle was built with:
+    // prepend that much silence to the decoded buffer so the waveform shows it,
+    // the notes sit after it, and playback runs through the silence first.
+    if (leadInBuilt > 0) {
+      const sr = audio.sampleRate, pad = Math.round(leadInBuilt * sr);
+      const padded = audioCtx.createBuffer(audio.numberOfChannels, pad + audio.length, sr);
+      for (let c = 0; c < audio.numberOfChannels; c++)
+        padded.getChannelData(c).set(audio.getChannelData(c), pad);
+      audio = padded;
+    }
     const ch = audio.getChannelData(0);
     const bins = Math.ceil(audio.duration * WAVE_HZ);
     const peaks = new Float32Array(bins);
