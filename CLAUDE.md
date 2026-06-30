@@ -53,6 +53,18 @@ Rules:
    `test_tied_note_extends_previous_not_new_attack` (GP5) and
    `test_gp7_tied_note_extends_not_duplicates` (GP7).
 
+### Intro silence (`lead_in_s`)
+
+`GpJobSpec.lead_in_s` (default 0) is user-defined extra silence prepended at the
+very start, ON TOP of the automatic `MIN_LEAD_S` lead-in:
+`pad_start_s = max(0, MIN_LEAD_S - offset_s) + lead_in_s`. Because the score
+shifts by the full `pad_start_s` and the audio is padded by the same amount,
+the whole bundle (audio + notes + lyrics) moves later together — a way to "push
+the music forward" with a silent intro. Exposed in the sync panel as "Silêncio
+inicial (s)" (commit-on-rebuild, no live drag). The tab viewer's `viewOrigin`
+and `playheadDisplay` add the built `lead_in_s` (`leadInBuilt`) so notes/playhead
+stay aligned after a rebuild with it.
+
 ### Tempo scaling (`tempo_scale`)
 
 `GpJobSpec.tempo_scale` (default 1.0) multiplies the whole musical timeline at

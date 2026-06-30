@@ -190,6 +190,7 @@ def generate_cdlc(job_id: str) -> None:
                     lead_track=params.get("lead_track"),
                     rhythm_track=params.get("rhythm_track"),
                     offset_s=float(params.get("offset_s", 0.0)),
+                    lead_in_s=float(params.get("lead_in_s", 0.0)),
                     tempo_scale=float(params.get("tempo_scale", 1.0)),
                     lrc_text=params.get("lrc_text"),
                     tone_base=params.get("tone_base"),

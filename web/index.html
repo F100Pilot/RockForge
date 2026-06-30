@@ -416,6 +416,11 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
             <button class="info-btn" data-info="sync-tempo">ⓘ</button>
           </div>
           <div class="syncctrls" style="margin-top:.35rem">
+            <label>Silêncio inicial (s):
+              <input type="number" id="leadInS" value="0" step="0.1" min="0" style="width:6rem"></label>
+            <span class="meta">silêncio extra no início — empurra a música e as notas para a frente (aplica ao reconstruir)</span>
+          </div>
+          <div class="syncctrls" style="margin-top:.35rem">
             <button type="button" id="autoSync" class="secondary">Sincronização automática</button>
             <span id="autoSyncInfo" class="meta"></span>
             <button class="info-btn" data-info="auto-sync">ⓘ</button>
@@ -827,6 +832,9 @@ let tabPx = 80, tabH = 280, scoreShift = 0, offsetLive = 0;
 // arrangement currently loaded; tempoScaleLive is the value being previewed;
 // gpBpm is the GP file's original tempo (before any scaling).
 let builtScale = 1, tempoScaleLive = 1, gpBpm = 0;
+// Extra intro silence the current bundle was built with (seconds). Adds to the
+// lead-in so the viewer's notes/playhead stay aligned after a rebuild with it.
+let leadInBuilt = 0;
 const BASE_PX = 80;
 let zoomLevel = 1;
 
@@ -1076,7 +1084,7 @@ function showArr(i) {
   const dur = Math.max(...a.notes.map(n => n.time + n.sustain), 10);
   const px = BASE_PX * zoomLevel, ROW = 40, R = 13, W = Math.max(900, dur * px + 60), H = 280;
   tabPx = px; tabH = H;
-  viewOrigin = Math.max(0, MIN_LEAD - offsetLive);  // bundle time at the left edge (0s)
+  viewOrigin = Math.max(0, MIN_LEAD - offsetLive) + leadInBuilt;  // bundle time at the left edge (0s)
   svg.setAttribute('width', W);
   let s = '';
   s += waveformSvg(W, H, px);  // audio reference, drawn behind staff + notes
@@ -1228,6 +1236,7 @@ async function applyAll() {
       cent_offset: centOffsetLive,
       split_lead_rhythm: document.getElementById('splitChk').checked,
       offset_s: offsetLive,
+      lead_in_s: Math.max(0, parseFloat(document.getElementById('leadInS').value) || 0),
       arrangement: currentKind(),
       tempo_scale: tempoScaleLive,
       sync_anchors: syncAnchors.length ? syncAnchors : null,
@@ -2227,7 +2236,7 @@ function previewScale(t) {
 // prepended silence (pad = max(0, MIN_LEAD - offset)); independent of tempo
 // since the recording itself is the fixed reference.
 function playheadDisplay(s) {
-  return s + Math.max(0, MIN_LEAD - offsetLive);
+  return s + Math.max(0, MIN_LEAD - offsetLive) + leadInBuilt;
 }
 
 // The x-axis is drawn in *recording* time (0s at the far left), while all the
@@ -2457,7 +2466,9 @@ function initSync(j) {
   playBuffer = null; pausedAt = 0;
   document.getElementById('syncAudio').removeAttribute('src');
   currentPlayheadT = 0;
+  leadInBuilt = j.lead_in_s || 0;
   setOffsetLive(j.offset_s || 0);
+  document.getElementById('leadInS').value = leadInBuilt.toFixed(1);
   updatePlayBtn();
   updateTransportUI();
   decodeWaveform(j.id);
