@@ -1993,7 +1993,13 @@ function updateSelectionInfo() {
       svg.setPointerCapture(e.pointerId);
       return;
     }
-    if (!grp) return;
+    if (!grp) {
+      // Click on empty staff/waveform → move the audio (and playhead) there.
+      // The x-axis is recording time: rt = (x - 30) / tabPx.
+      const rect = svg.getBoundingClientRect();
+      audioSeek(Math.max(0, (e.clientX - rect.left - 30) / tabPx));
+      return;
+    }
     const t = parseFloat(grp.dataset.t);
     if (selectedTimes.size > 1 && selectedTimes.has(t)) {
       // drag the whole selection together
@@ -2391,9 +2397,11 @@ function syncFrame() {
   currentPlayheadT = vtDisp - viewOrigin;  // recording-time offset; used by showArr + tap-sync
   const x = timeToX(vtDisp);  // recording-time x — cursor sits at 0 when audio is at 0
   ph.setAttribute('x1', x); ph.setAttribute('x2', x);
+  // Keep the view aligned with the music while playing — the waveform/notes
+  // scroll under a centered playhead. syncFrame only runs while playing, so
+  // when paused the view stays put and the user can scroll/inspect freely.
   const wrap = document.getElementById('tabwrap');
-  if (x < wrap.scrollLeft + 60 || x > wrap.scrollLeft + wrap.clientWidth - 60)
-    wrap.scrollLeft = x - wrap.clientWidth / 2;
+  wrap.scrollLeft = Math.max(0, x - wrap.clientWidth / 2);
   updateTransportUI();
   const notes = arrangements[currentArr] ? arrangements[currentArr].notes : [];
   const tickOn = document.getElementById('syncTick').checked;
