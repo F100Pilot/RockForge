@@ -411,17 +411,38 @@ def detect_lyrics(job_id: str) -> None:
                     Path(__file__).resolve().parent.parent.parent
                     / "infrastructure" / "lyrics" / "_whisperx_runner.py"
                 )
-                _sp.run(
-                    [
-                        sys.executable, str(runner),
-                        "--vocals", str(vocals_stem),
-                        "--output", str(events_json),
-                        "--model", settings.whisper_model,
-                        "--device", device,
-                    ],
-                    check=True, capture_output=True, text=True,
-                    stdin=_sp.DEVNULL, timeout=WHISPERX_TIMEOUT_S,
-                )
+
+                def _run_whisperx(dev: str):  # type: ignore[no-untyped-def]
+                    return _sp.run(
+                        [
+                            sys.executable, str(runner),
+                            "--vocals", str(vocals_stem),
+                            "--output", str(events_json),
+                            "--model", settings.whisper_model,
+                            "--device", dev,
+                        ],
+                        capture_output=True, text=True,
+                        stdin=_sp.DEVNULL, timeout=WHISPERX_TIMEOUT_S,
+                    )
+
+                proc = _run_whisperx(device)
+                # A GPU run can crash with a native error (e.g. Windows exit
+                # 0xC0000409 / 3221226505 from a cuDNN/ctranslate2 DLL mismatch).
+                # Fall back to CPU so detection still works, just slower.
+                if proc.returncode != 0 and device == "cuda":
+                    _log_lyrics_stage(
+                        params,
+                        f"GPU transcription crashed (exit {proc.returncode}) — "
+                        f"retrying on CPU (slower). Tip: a CUDA build of WhisperX's "
+                        f"cuDNN/ctranslate2 may be missing/mismatched.",
+                    )
+                    _commit_params()
+                    proc = _run_whisperx("cpu")
+                if proc.returncode != 0:
+                    tail = (proc.stderr or "").strip()[-600:]
+                    raise RuntimeError(
+                        f"whisperx exited {proc.returncode}: {tail or '(no stderr output)'}"
+                    )
 
                 import json as _json
 

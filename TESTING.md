@@ -203,6 +203,32 @@ hand when touching the relevant path. **Nothing below runs in CI.**
 4. Download the bundle → open `arrangement_*.xml` in EOF, or import into DLC
    Builder. **This is the validation that counts** — the XML format is de facto.
 
+#### GP sync gotcha: constant tempo vs. tempo changes
+
+A **single offset** aligns the whole song ONLY when the recording's tempo
+matches the GP's at every point. This is true for a **constant-tempo** GP
+(one `<Automation Type="Tempo">`): align the first note and you're done.
+
+A GP with **tempo changes** (multiple tempo automations, e.g. a half-time intro
+at 94 BPM that jumps to 186) is different: the parser places every note at the
+correct tick *per the GP's tempo map* (verified — bar downbeats land exactly,
+the bundle's `<ebeats>` carry the speed-up), but if the *recording's* tempo
+deviates even ~1–3% from the GP, or its tempo change lands a beat off, the chart
+will "sync at the start, then drift." This is **not a parser bug** — it's a
+GP-vs-recording mismatch, and it's exactly what the drift-correction tools are
+for:
+
+- Leave the **BPM/`tempo_scale`** at the built value unless the drift is uniform
+  across the whole song (then nudge it ±a few %).
+- Use the **measure numbers** in the viewer to find where it slips, then drop a
+  **sync anchor** there. Anchor the slow section and the fast section
+  independently (anchors compose across rebuilds).
+
+To diagnose a specific pair offline: the recording's onset grid can be compared
+to the GP note onsets (`parse_gp_track`), but a dense full-mix (drums/vocals/two
+guitars) makes a sub-3% tempo difference hard to measure reliably — the
+interactive tab viewer with live preview is the practical tool.
+
 ### 7b. Audio → ML (needs `[ml]`, ideally a GPU)
 
 1. Start with a **simple, clean** recording (single guitar, low distortion) in
@@ -221,6 +247,15 @@ hand when touching the relevant path. **Nothing below runs in CI.**
 3. Without `[lyrics]` it must report `unavailable` gracefully (no crash).
 4. Edit words/timings, drag lyric words on the tab viewer, "Aplicar e
    reconstruir", confirm the vocals XML reflects the edits.
+
+**GPU crash → CPU fallback.** WhisperX runs in a subprocess; on Windows a CUDA
+run can crash natively (e.g. exit `3221226505` / `0xC0000409` from a
+cuDNN/ctranslate2 DLL mismatch) without a Python traceback. The task now
+auto-retries on CPU (the log shows "GPU transcription crashed … retrying on
+CPU"), so detection still completes, just slower. If the CPU run also fails, the
+error carries the subprocess's stderr tail. To use the GPU, the user needs a
+matching CUDA build of torch/ctranslate2 and the cuDNN DLLs on PATH (README
+§2b); otherwise set `ROCKFORGE_WHISPERX_DEVICE=cpu` to skip the GPU attempt.
 
 ### 7d. Automatic tone detection (needs `[ml]`)
 

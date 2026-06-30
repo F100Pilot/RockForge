@@ -229,6 +229,15 @@ The CUDA warm-up probe was removed entirely (two concurrent `cuInit()` calls —
 warm-up thread vs first task — can deadlock on Windows); the first task pays the
 one-time 30-60s CUDA init cost, and `@cache` avoids repeating it.
 
+**GPU crash → CPU fallback.** The WhisperX subprocess can crash natively on
+Windows GPU (e.g. exit `3221226505`/`0xC0000409` from a cuDNN/ctranslate2 DLL
+mismatch) with no Python traceback. `detect_lyrics` runs the runner via a local
+`_run_whisperx(dev)` helper: if a `cuda` run returns non-zero it logs the crash
+and retries on `cpu` (slower but works); a final failure raises with the
+subprocess's stderr tail so the real cause is visible (the bare
+`CalledProcessError` exit code was useless). Don't restore `check=True` — it
+hides the stderr and prevents the fallback.
+
 **Device selection (`_resolve_device`).** `demucs_device` defaults to `"auto"`:
 `celery_app._resolve_device` (deferred torch import, worker-only) returns
 `"cuda"` when `torch.cuda.is_available()` and `"cpu"` otherwise; explicit
