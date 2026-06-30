@@ -109,6 +109,10 @@ class GpJobSpec:
     lead_track: int | None = None
     rhythm_track: int | None = None
     offset_s: float = 0.0  # second in the recording where the song's first note is heard
+    # Extra silence (seconds) prepended at the very start, on top of the
+    # automatic MIN_LEAD_S lead-in — user-controlled "intro silence" that pushes
+    # the whole bundle (audio + notes + lyrics) later together. 0 = none.
+    lead_in_s: float = 0.0
     # Multiplicative stretch (>1) / compression (<1) of the whole musical
     # timeline, applied at parse time around the song's start — corrects a
     # constant GP-vs-recording tempo mismatch (the linear part of sync drift)
@@ -291,8 +295,8 @@ class GenerateFromGpUseCase:
         # the shortfall up to MIN_LEAD_S so the count-in phrase always has room.
         # The score shifts by the full content time; the audio (and thus an LRC
         # synced to it) shifts only by what silence we actually prepend.
-        pad_start_s = max(0.0, MIN_LEAD_S - spec.offset_s)
-        score_shift = spec.offset_s + pad_start_s  # == max(offset_s, MIN_LEAD_S)
+        pad_start_s = max(0.0, MIN_LEAD_S - spec.offset_s) + max(0.0, spec.lead_in_s)
+        score_shift = spec.offset_s + pad_start_s  # max(offset_s, MIN_LEAD_S) + lead_in_s
 
         stage("ingest")
         raw = self.ingestor.fetch(spec.audio_source, workdir)

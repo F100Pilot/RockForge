@@ -87,6 +87,7 @@ class JobOut(BaseModel):
     bundle_available: bool
     source_type: str
     offset_s: float
+    lead_in_s: float = 0.0
     tempo_scale: float
     import_mutes: bool
     error: str | None
@@ -101,6 +102,7 @@ class RebuildIn(BaseModel):
     tuning_midi: list[int] | None = None  # 6 MIDI pitches, low to high
     cent_offset: float = 0.0
     offset_s: float | None = None  # GP sync: second in the recording where the song starts
+    lead_in_s: float | None = None  # GP: extra intro silence prepended (pushes the song later)
     tempo_scale: float | None = None  # GP sync: stretch/compress the whole chart timeline
     split_lead_rhythm: bool = True
     # Manual drift-correction points: (chart_time_s, corrected_time_s) pairs, in the
@@ -220,6 +222,8 @@ class YouTubeJobIn(BaseModel):
 def _to_out(job: Job) -> JobOut:
     raw_offset = (job.params or {}).get("offset_s")
     offset_s = float(raw_offset) if isinstance(raw_offset, (int, float, str)) else 0.0
+    raw_lead = (job.params or {}).get("lead_in_s")
+    lead_in_s = float(raw_lead) if isinstance(raw_lead, (int, float, str)) else 0.0
     raw_scale = (job.params or {}).get("tempo_scale")
     tempo_scale = float(raw_scale) if isinstance(raw_scale, (int, float, str)) else 1.0
     return JobOut(
@@ -237,6 +241,7 @@ def _to_out(job: Job) -> JobOut:
         bundle_available=job.bundle_dir is not None,
         source_type=job.source_type,
         offset_s=offset_s,
+        lead_in_s=lead_in_s,
         tempo_scale=tempo_scale,
         import_mutes=bool((job.params or {}).get("import_mute_techniques", True)),
         error=job.error,
@@ -446,6 +451,7 @@ async def create_gp_job(
     lead_track: str = Form(""),
     rhythm_track: str = Form(""),
     offset_s: float = Form(0.0),
+    lead_in_s: float = Form(0.0),
     tempo_scale: float = Form(1.0),
     tone_base: str = Form(""),
     tone_names: str = Form(""),  # comma-separated, max 4
@@ -507,6 +513,7 @@ async def create_gp_job(
     params: dict[str, object] = {
         "gp_path": str(gp_path),
         "offset_s": offset_s,
+        "lead_in_s": lead_in_s,
         "tempo_scale": tempo_scale,
         "tone_base": tone_base.strip() or None,
         "tone_names": tones,
@@ -593,6 +600,10 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
             if payload.offset_s < 0.0:
                 raise HTTPException(422, "offset_s must be >= 0")
             params["offset_s"] = payload.offset_s
+        if payload.lead_in_s is not None:
+            if payload.lead_in_s < 0.0:
+                raise HTTPException(422, "lead_in_s must be >= 0")
+            params["lead_in_s"] = payload.lead_in_s
         if payload.arrangement is not None and original.source_type != "gp":
             raise HTTPException(422, "arrangement scoping only applies to Guitar Pro jobs")
 

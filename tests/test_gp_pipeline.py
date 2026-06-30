@@ -176,6 +176,20 @@ def test_gp_embedded_lyrics_surface_as_recording_clock_events(
     assert result.gp_lyrics[1].time == pytest.approx(0.5)
 
 
+def test_lead_in_pushes_song_later(two_track_gp5: Path, tmp_path: Path) -> None:
+    """User-defined intro silence shifts the whole bundle (notes + audio) later
+    on top of the automatic MIN_LEAD_S lead-in."""
+    spec = GpJobSpec(
+        gp_path=two_track_gp5, audio_source="x.wav", lead_track=0,
+        offset_s=0.5, lead_in_s=1.0,
+    )
+    result = make_use_case().run(spec, SongMetadata(title="T", artist="A"), tmp_path / "w")
+    xml = next(p for p in result.packaging.xml_paths if "vocals" not in p.name)
+    first = ET.parse(xml).getroot().find("levels/level/notes/note")
+    # score_shift = max(offset_s, MIN_LEAD_S) + lead_in_s = max(0.5, 2.0) + 1.0
+    assert first is not None and float(first.get("time", "0")) == pytest.approx(3.0)
+
+
 def test_gp_pipeline_auto_track_selection(two_track_gp5: Path, tmp_path: Path) -> None:
     spec = GpJobSpec(gp_path=two_track_gp5, audio_source="x.wav")
     result = make_use_case().run(spec, SongMetadata(title="T", artist="A"), tmp_path / "w")
