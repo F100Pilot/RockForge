@@ -592,6 +592,8 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
           <input type="file" name="audio" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" required></div></div>
         <div class="field"><label>Início da música na gravação (s) <button class="info-btn" data-info="gp-offset">ⓘ</button></label>
           <input type="number" name="offset_s" value="0" step="0.01" min="0" style="width:6rem"></div>
+        <div class="field"><label>Silêncio inicial (s) <button class="info-btn" data-info="lead-in">ⓘ</button></label>
+          <input type="number" name="lead_in_s" value="0" step="0.1" min="0" style="width:6rem"></div>
         <div class="field"><label>Tone base</label>
           <input type="text" name="tone_base" placeholder="ex.: dist_rhythm"></div>
         <div class="field"><label>Tones extra</label>
@@ -755,6 +757,10 @@ const INFO = {
   'gp-offset': {
     title: 'Início da música na gravação (s)',
     body: '<p>O segundo em que a primeira nota é ouvida na tua gravação. A partitura e a letra são deslocadas para esse instante (a gravação fica intacta — o teu intro serve de lead-in).<br>Ouve a gravação, anota a que segundo entra a música e escreve esse valor. Se a partitura e o áudio ainda estiverem dessincronizados, ajusta o valor e reconstrói.<br>Mínimo de 2s de lead-in (exigido pelo DLC Builder); se puseres menos, o silêncio em falta é acrescentado automaticamente.</p>'
+  },
+  'lead-in': {
+    title: 'Silêncio inicial (s)',
+    body: '<p>Silêncio extra acrescentado mesmo no início, <strong>por cima</strong> do lead-in automático de 2s. Empurra a música inteira (áudio + notas + letra) para a frente em conjunto — útil para teres uns segundos de silêncio antes da música começar no jogo.<br>0 = nenhum. Podes alterar depois no painel de sincronização e reconstruir.</p>'
   },
   'lrc': {
     title: 'Letra sincronizada (LRC / UltraStar)',
@@ -1116,14 +1122,16 @@ function showArr(i) {
     s += `<line x1="${x}" y1="30" x2="${x}" y2="${H-35}" stroke="#5a6a8a" stroke-width="1" opacity=".55"/>`;
     s += `<text x="${x+3}" y="42" fill="#7d8aa5" font-size="11" font-weight="700">${b.measure}</text>`;
   }
-  // Lyrics editor times are in recording-time (un-padded); shift to bundle
-  // time the same way the playhead does so words line up with their notes.
+  // Lyrics editor times are in recording-time (un-padded); shift to the display
+  // timeline the same way the notes do — by viewOrigin AND the intro silence
+  // (leadInBuilt) — so words line up with their notes after a lead-in rebuild.
   for (let li = 0; li < lyricsEvents.length; li++) {
     const e = lyricsEvents[li];
     const word = e.lyric.trim();
     if (!word) continue;
-    const x = timeToX(e.time + viewOrigin);
-    const active = currentPlayheadT >= e.time && currentPlayheadT <= e.time + e.length;
+    const x = timeToX(e.time + viewOrigin + leadInBuilt);
+    const active = currentPlayheadT >= e.time + leadInBuilt
+      && currentPlayheadT <= e.time + e.length + leadInBuilt;
     s += `<g class="lyric-word" data-li="${li}" style="cursor:grab">`;
     s += `<text x="${x}" y="26" fill="${active ? '#ff7a45' : '#9aa0ad'}" font-size="13" font-weight="${active ? '700' : '400'}" text-anchor="middle">${esc(word)}${e.lineBreak ? ' /' : ''}</text>`;
     s += `<line x1="${x}" y1="30" x2="${x}" y2="${H-35}" stroke="${active ? '#ff7a45' : '#454852'}" stroke-width="1" stroke-dasharray="2,4" opacity=".35"/>`;
@@ -1793,7 +1801,11 @@ document.getElementById('coverArtFile').addEventListener('change', async ev => {
 });
 
 document.getElementById('addLyricRow').addEventListener('click', () => {
-  lyricsEvents.push({ time: currentPlayheadT + viewOrigin, length: 0.5, lyric: '', lineBreak: false });
+  // Store the un-padded recording-clock time (the playhead is in padded display
+  // time), so a new word lands under the cursor and round-trips through rebuild.
+  lyricsEvents.push({
+    time: Math.max(0, currentPlayheadT - leadInBuilt), length: 0.5, lyric: '', lineBreak: false,
+  });
   renderLyricsRows();
 });
 
@@ -2425,12 +2437,14 @@ function syncFrame() {
     tickIdx++;
   }
   // Highlight the lyric word under the playhead without redrawing the full SVG.
-  const recT = currentPlayheadT;  // recording-time (no viewOrigin)
+  // currentPlayheadT is the padded display time; lyric times are un-padded, so
+  // shift them by leadInBuilt to compare in the same timeline.
+  const recT = currentPlayheadT;
   for (const lw of document.querySelectorAll('.lyric-word')) {
     const li = parseInt(lw.dataset.li, 10);
     const ev = lyricsEvents[li];
     if (!ev) continue;
-    const active = recT >= ev.time && recT <= ev.time + ev.length;
+    const active = recT >= ev.time + leadInBuilt && recT <= ev.time + ev.length + leadInBuilt;
     const txt = lw.querySelector('text');
     if (txt) {
       txt.setAttribute('fill', active ? '#ff7a45' : '#9aa0ad');
