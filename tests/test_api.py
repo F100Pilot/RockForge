@@ -205,6 +205,34 @@ def test_source_audio_404_for_unknown_job(client: TestClient) -> None:
     assert client.get("/jobs/nope/source-audio").status_code == 404
 
 
+def test_source_audio_falls_back_to_workdir(monkeypatch, tmp_path) -> None:
+    """When job.source is a URL (YouTube), the viewer's audio comes from the
+    ingested file in the work dir so audio-ML jobs are still playable."""
+    monkeypatch.setenv("ROCKFORGE_DATABASE_URL", f"sqlite:///{tmp_path}/test.db")
+    monkeypatch.setenv("ROCKFORGE_WORK_DIR", str(tmp_path / "work"))
+    monkeypatch.setenv("ROCKFORGE_ENABLE_YOUTUBE", "true")
+    import rockforge.config as config
+    importlib.reload(config)
+    import rockforge.interfaces.api.app as app_module
+    importlib.reload(app_module)
+    monkeypatch.setattr(app_module, "_enqueue", lambda job: None)
+    monkeypatch.setattr(app_module, "_enqueue_detect", lambda job: None)
+    monkeypatch.setattr(app_module, "_enqueue_detect_tones", lambda job: None)
+
+    with TestClient(app_module.app) as c:
+        r = c.post(
+            "/jobs/youtube",
+            json={"url": "https://www.youtube.com/watch?v=abc", "title": "T", "artist": "A"},
+        )
+        assert r.status_code == 202
+        jid = r.json()["id"]
+        wd = tmp_path / "work" / jid
+        wd.mkdir(parents=True)
+        (wd / "input.wav").write_bytes(b"RIFFyt00WAVE")
+        got = c.get(f"/jobs/{jid}/source-audio")
+        assert got.status_code == 200 and got.content == b"RIFFyt00WAVE"
+
+
 def test_arrangements_404_until_completed(client: TestClient) -> None:
     job = _create_job(client)
     assert client.get(f"/jobs/{job['id']}/arrangements").status_code == 404

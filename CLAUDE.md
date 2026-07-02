@@ -151,6 +151,16 @@ bundle-time positions), so the playhead starts at 0 instead of at the first
 note. Anchor math stays in bundle time so corrections round-trip through a
 rebuild unchanged.
 
+The viewer's **playback + waveform work for audio-ML jobs too** (upload/YouTube),
+not just GP — the notes were transcribed FROM the recording so they're already
+at recording time. For non-GP jobs the frontend uses identity sync
+(`isGpJob()` guards `previewScale`/`playheadDisplay`/`viewOrigin`), hides the GP
+sync controls (`#gpSyncControls`), and still decodes the recording for playback.
+`GET /jobs/{id}/source-audio` serves `job.source` when it's a real file
+(upload/gp) and otherwise falls back to the ingested `input.*` / `normalized.wav`
+in the job's work dir — so YouTube jobs (whose `job.source` is a URL) are still
+playable.
+
 **String labels show the real tuning.** The staff labels each string with its
 actual pitch (`stringLabel` = standard MIDI `[40,45,50,55,59,64]` + the
 arrangement's `tuning_offsets`, mapped to a note name), so a Drop C# chart reads
