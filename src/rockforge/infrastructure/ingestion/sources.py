@@ -49,7 +49,10 @@ class YouTubeIngestor:
         try:
             import yt_dlp
         except ImportError as exc:
-            raise IngestionError("yt-dlp not installed (pip install 'rockforge[youtube]')") from exc
+            raise IngestionError(
+                "yt-dlp is not installed. Install the YouTube extra: "
+                "py -3.11 -m pip install -e \".[youtube]\"  (or: pip install -U yt-dlp)"
+            ) from exc
 
         workdir.mkdir(parents=True, exist_ok=True)
         opts = {
@@ -57,13 +60,24 @@ class YouTubeIngestor:
             "outtmpl": str(workdir / "input.%(ext)s"),
             "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": "wav"}],
             "quiet": True,
+            "no_warnings": True,
         }
         try:
             with yt_dlp.YoutubeDL(opts) as ydl:
                 ydl.download([source])
         except Exception as exc:  # yt-dlp raises many error types
-            raise IngestionError(f"YouTube download failed: {exc}") from exc
+            # YouTube changes its player/signatures often and breaks older
+            # yt-dlp builds — an out-of-date yt-dlp is by far the most common
+            # cause (HTTP 403, "Unable to extract", "Sign in to confirm…").
+            raise IngestionError(
+                f"YouTube download failed ({type(exc).__name__}: {exc}). "
+                "The most common cause is an out-of-date yt-dlp — update it: "
+                "py -3.11 -m pip install -U yt-dlp"
+            ) from exc
         wav = workdir / "input.wav"
         if not wav.exists():
-            raise IngestionError("yt-dlp did not produce expected audio file")
+            raise IngestionError(
+                "yt-dlp ran but produced no audio file — check ffmpeg is installed "
+                "(the WAV extraction step needs it) and on PATH."
+            )
         return wav
