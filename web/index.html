@@ -965,14 +965,18 @@ async function refreshJobs() {
     if (selectedJob && j.id === selectedJob.id) tr.className = 'sel';
     tr.innerHTML = `<td><strong>${esc(j.title)}</strong><br><span style="color:var(--muted);font-size:.8rem">${esc(j.artist)}</span></td>
       <td>${badge(j.status)}</td>
-      <td><button type="button" class="icon del" title="Remover job"
-        ${j.status === 'running' ? 'disabled' : ''}>🗑</button></td>`;
+      <td><button type="button" class="icon del" title="Remover job">🗑</button></td>`;
     tr.onclick = () => selectJob(j.id);
     tr.querySelector('.del').onclick = async ev => {
       ev.stopPropagation();
-      const ok = await confirmModal(`Remover o job "${j.title}"? Isto apaga também o bundle gerado.`);
+      const running = j.status === 'running';
+      const msg = running
+        ? `O job "${j.title}" ainda está a correr. Forçar a remoção? Só o deves fazer se estiver encravado (o worker morreu ou pendurou) — apaga também o bundle gerado.`
+        : `Remover o job "${j.title}"? Isto apaga também o bundle gerado.`;
+      const ok = await confirmModal(msg);
       if (!ok) return;
-      const r = await fetch(`/jobs/${j.id}`, { method: 'DELETE' });
+      const url = running ? `/jobs/${j.id}?force=true` : `/jobs/${j.id}`;
+      const r = await fetch(url, { method: 'DELETE' });
       if (!r.ok && r.status !== 204) { toast((await r.json()).detail || 'erro'); return; }
       if (selectedJob && selectedJob.id === j.id) closeDetail();
       refreshJobs();
