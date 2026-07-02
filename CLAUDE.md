@@ -555,6 +555,12 @@ worker and any Redis it launched too. Default is `0` (disabled) — required for
 shared deployments (docker-compose) where one user's closed tab must not stop
 the service for everyone.
 
+`start.bat` runs uvicorn **without `--reload`**: the reloader's parent/child
+split would fight the SIGTERM (the child gets restarted instead of exiting), so
+a single uvicorn process is used for a clean tab-close shutdown. It also opens
+the browser automatically — a background PowerShell one-liner polls port 8000
+and launches `http://localhost:8000` once the API accepts connections.
+
 ## Conventions
 
 - Keep the honesty: surface warnings via the pipeline's `warnings` list, never
