@@ -100,12 +100,18 @@ class WhisperXLyricTranscriber:
 
     @staticmethod
     def available() -> bool:
-        """Never raises — importing whisperx can fail with more than
-        ImportError (torch CUDA init, missing native libs)."""
-        try:
-            import whisperx  # noqa: F401
+        """Whether whisperx is installed — WITHOUT importing it.
 
-            return True
+        `import whisperx` pulls pyannote/speechbrain into the worker process,
+        and speechbrain 1.0's lazy `integrations.k2_fsa` loader then fails later
+        (e.g. during Basic Pitch's transcribe in the SAME process) with an
+        ImportError. `find_spec` only locates the package, so nothing heavy is
+        imported; the actual whisperx import happens in the isolated subprocess
+        (`_whisperx_runner.py`)."""
+        import importlib.util
+
+        try:
+            return importlib.util.find_spec("whisperx") is not None
         except Exception:
             return False
 
