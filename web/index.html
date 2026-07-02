@@ -1103,9 +1103,10 @@ const TECH_ABBR = {
 // line, hammer/pull slur, harmonic diamond); the rest fall back to a short
 // text badge. Each glyph is authored around a local origin (0,0) that sits
 // just above the note and extends upward (negative y).
+// Vibrato is NOT here: it's drawn as a wavy sustain line (sustainWave) along
+// the note's held time, not as a glyph above it.
 const TECH_GLYPH = {
   bend: '<path d="M-3,1 Q-2,-7 3,-8" fill="none" stroke="#fff" stroke-width="1.5"/><path d="M3,-8 l-3.6,0.4 l1.9,3.1 z" fill="#fff"/>',
-  vibrato: '<path d="M-7,-3 q3.5,-4 7,0 t7,0" fill="none" stroke="#fff" stroke-width="1.5"/>',
   slide: '<line x1="-6" y1="0" x2="6" y2="-8" stroke="#fff" stroke-width="1.6"/>',
   harmonic: '<path d="M0,-11 L5,-5 L0,1 L-5,-5 Z" fill="none" stroke="#fff" stroke-width="1.4"/>',
   hammerOn: '<path d="M-6,-2 q6,-6 12,0" fill="none" stroke="#fff" stroke-width="1.4"/><text x="0" y="-8" fill="#fff" font-size="8" font-weight="700" text-anchor="middle">h</text>',
@@ -1123,6 +1124,21 @@ function techGlyphs(techs, cx, topY) {
     out += `<g transform="translate(${gx},${topY})">${body}</g>`;
   });
   return out;
+}
+
+// A vibrato note's held time is drawn as a wave (the sustain line itself
+// oscillating) instead of a straight bar — the standard vibrato notation.
+// Path of alternating half-wavelength bumps from (x,y) rightwards over width w.
+function sustainWave(x, y, w) {
+  const amp = 4, half = 6;
+  let d = `M${x.toFixed(1)},${y}`, cur = x, up = true;
+  while (cur < x + w - 0.5) {
+    const nx = Math.min(cur + half, x + w);
+    const mid = (cur + nx) / 2;
+    d += ` Q${mid.toFixed(1)},${(y + (up ? -amp : amp)).toFixed(1)} ${nx.toFixed(1)},${y}`;
+    cur = nx; up = !up;
+  }
+  return d;
 }
 
 function showArr(i) {
@@ -1207,23 +1223,29 @@ function showArr(i) {
       const x = timeToX(dispT);
       const ys = g.notes.map(n => H - 35 - n.string * ROW);
       s += `<line x1="${x}" y1="${Math.min(...ys)}" x2="${x}" y2="${Math.max(...ys)}" stroke="#9aa0ad" stroke-width="2"/>`;
-      // Derived chord name (best-effort, from the notes' pitches) above the bracket.
+      // Derived chord name (best-effort, from the notes' pitches). Placed just
+      // BELOW the chord's lowest note — as low as possible without touching it.
       const cn = g.notes.find(n => n.chord_name);
-      if (cn) s += `<text x="${x}" y="${Math.min(...ys) - 22}" fill="#ffd479" font-size="13" font-weight="700" text-anchor="middle">${esc(cn.chord_name)}</text>`;
+      if (cn) s += `<text x="${x}" y="${Math.max(...ys) + R + 14}" fill="#ffd479" font-size="13" font-weight="700" text-anchor="middle">${esc(cn.chord_name)}</text>`;
     }
     for (const n of g.notes) {
       const x = timeToX(dispT), y = H - 35 - n.string * ROW;
       const color = STRING_COLORS[n.string];
       const tech = n.techniques.length > 0;
-      if (n.sustain > 0.05)
-        s += `<rect x="${x}" y="${y-3}" width="${n.sustain*px*(tempoScaleLive/builtScale)}" height="6" fill="${color}" opacity=".4" rx="3"/>`;
+      const vibrato = n.techniques.includes('vibrato');
+      const susW = n.sustain > 0.05 ? n.sustain*px*(tempoScaleLive/builtScale) : 0;
+      if (vibrato)  // held time drawn as an oscillating line (min width so it reads as a wave)
+        s += `<path d="${sustainWave(x, y, Math.max(susW, 24))}" fill="none" stroke="${color}" stroke-width="2.5" opacity=".8"/>`;
+      else if (susW > 0)
+        s += `<rect x="${x}" y="${y-3}" width="${susW}" height="6" fill="${color}" opacity=".4" rx="3"/>`;
       const shape = n.chord
         ? `<rect class="note-shape" x="${x-R}" y="${y-R}" width="${R*2}" height="${R*2}" rx="4" fill="${color}"${tech ? ' stroke="#fff" stroke-width="2.5" stroke-dasharray="3,3"' : ''}/>`
         : `<circle class="note-shape" cx="${x}" cy="${y}" r="${R}" fill="${color}"${tech ? ' stroke="#fff" stroke-width="2.5" stroke-dasharray="3,3"' : ''}/>`;
       s += shape;
       s += `<text x="${x}" y="${y+5}" fill="#14151a" font-size="14" font-weight="700" text-anchor="middle">${n.fret}</text>`;
       if (tech) {
-        s += techGlyphs(n.techniques, x, y - R - 4);
+        const gt = n.techniques.filter(t => t !== 'vibrato');  // vibrato shown as the wavy sustain
+        if (gt.length) s += techGlyphs(gt, x, y - R - 4);
         s += `<title>${n.techniques.join(', ')}</title>`;
       }
     }
