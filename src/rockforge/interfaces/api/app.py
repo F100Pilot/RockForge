@@ -19,7 +19,13 @@ from fastapi.responses import FileResponse, HTMLResponse, Response
 from pydantic import BaseModel, HttpUrl
 
 from rockforge.config import settings
+from rockforge.domain.chords import name_chord
 from rockforge.infrastructure.db.models import Job, JobStatus, make_session_factory
+
+# Standard open-string MIDI pitches (low→high, E A D G B e); a chord's pitches
+# are these + the arrangement's tuning offset + fret. Mirrors the viewer's
+# STD_TUNING_MIDI and domain STANDARD_E_MIDI.
+_STD_TUNING_MIDI = (40, 45, 50, 55, 59, 64)
 
 _last_heartbeat = time.monotonic()
 # When the tab fires `pagehide`, the UI beacons /closing which sets a short
@@ -148,6 +154,7 @@ class ArrangementNoteOut(BaseModel):
     sustain: float
     chord: bool
     techniques: list[str]
+    chord_name: str | None = None  # derived name for the chord this note belongs to
 
 
 class BarOut(BaseModel):
@@ -1026,10 +1033,17 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
             )
 
         notes = [parse_note(el, False) for el in root.findall("levels/level/notes/note")]
-        chord_notes = [
-            parse_note(el, True)
-            for el in root.findall("levels/level/chords/chord/chordNote")
-        ]
+        # Chords: name each from the pitches its chordNotes actually sound
+        # (RockForge stores no authored chord name). pitch = standard open-string
+        # MIDI + this arrangement's tuning offset + fret.
+        chord_notes: list[ArrangementNoteOut] = []
+        for chord_el in root.findall("levels/level/chords/chord"):
+            members = [parse_note(el, True) for el in chord_el.findall("chordNote")]
+            pitches = [_STD_TUNING_MIDI[m.string] + offsets[m.string] + m.fret for m in members]
+            cname = name_chord(pitches)
+            for m in members:
+                m.chord_name = cname
+            chord_notes.extend(members)
         all_notes = sorted(notes + chord_notes, key=lambda n: (n.time, n.string))
         kind = root.findtext("arrangement", "?")
         # Bar downbeats for the viewer's measure numbering: ebeats with a real

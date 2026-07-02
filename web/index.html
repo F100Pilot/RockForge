@@ -848,7 +848,7 @@ let builtScale = 1, tempoScaleLive = 1, gpBpm = 0;
 // lead-in so the viewer's notes/playhead stay aligned after a rebuild with it.
 let leadInBuilt = 0;
 const BASE_PX = 80;
-let zoomLevel = 1;
+let zoomLevel = 1.25;  // start 25% more zoomed in than the base scale
 
 function setZoom(z) {
   zoomLevel = Math.min(8, Math.max(0.25, z));
@@ -1092,11 +1092,38 @@ function stringLabel(str, offsets) {
   return NOTE_NAMES[((midi % 12) + 12) % 12];
 }
 
-// Short on-tab labels for each technique, drawn above notes that have them.
+// Short on-tab labels for each technique (fallback / tooltip text).
 const TECH_ABBR = {
   bend: 'B', hammerOn: 'H', pullOff: 'P', slide: 'S', harmonic: 'HA',
   palmMute: 'PM', vibrato: 'V', tap: 'T', slap: 'SL', pluck: 'PO', accent: 'A',
 };
+
+// Graphical tab-notation glyphs drawn above a note for its techniques.
+// Expressive techniques get a real symbol (bend arrow, vibrato wave, slide
+// line, hammer/pull slur, harmonic diamond); the rest fall back to a short
+// text badge. Each glyph is authored around a local origin (0,0) that sits
+// just above the note and extends upward (negative y).
+const TECH_GLYPH = {
+  bend: '<path d="M-3,1 Q-2,-7 3,-8" fill="none" stroke="#fff" stroke-width="1.5"/><path d="M3,-8 l-3.6,0.4 l1.9,3.1 z" fill="#fff"/>',
+  vibrato: '<path d="M-7,-3 q3.5,-4 7,0 t7,0" fill="none" stroke="#fff" stroke-width="1.5"/>',
+  slide: '<line x1="-6" y1="0" x2="6" y2="-8" stroke="#fff" stroke-width="1.6"/>',
+  harmonic: '<path d="M0,-11 L5,-5 L0,1 L-5,-5 Z" fill="none" stroke="#fff" stroke-width="1.4"/>',
+  hammerOn: '<path d="M-6,-2 q6,-6 12,0" fill="none" stroke="#fff" stroke-width="1.4"/><text x="0" y="-8" fill="#fff" font-size="8" font-weight="700" text-anchor="middle">h</text>',
+  pullOff: '<path d="M-6,-2 q6,-6 12,0" fill="none" stroke="#fff" stroke-width="1.4"/><text x="0" y="-8" fill="#fff" font-size="8" font-weight="700" text-anchor="middle">p</text>',
+};
+const TECH_TEXT = { palmMute: 'P.M.', tap: 'T', slap: 'SL', pluck: 'PO', accent: '›' };
+
+function techGlyphs(techs, cx, topY) {
+  const slot = 15, n = techs.length;
+  let out = '';
+  techs.forEach((t, i) => {
+    const gx = cx - (n - 1) * slot / 2 + i * slot;
+    const body = TECH_GLYPH[t]
+      || `<text x="0" y="-2" fill="#fff" font-size="9" font-weight="700" text-anchor="middle">${TECH_TEXT[t] || TECH_ABBR[t] || t}</text>`;
+    out += `<g transform="translate(${gx},${topY})">${body}</g>`;
+  });
+  return out;
+}
 
 function showArr(i) {
   if (i !== currentArr) { loadArrSync(i); stopArrangementPreview(); }  // tab change: swap in that chart's own sync state
@@ -1180,6 +1207,9 @@ function showArr(i) {
       const x = timeToX(dispT);
       const ys = g.notes.map(n => H - 35 - n.string * ROW);
       s += `<line x1="${x}" y1="${Math.min(...ys)}" x2="${x}" y2="${Math.max(...ys)}" stroke="#9aa0ad" stroke-width="2"/>`;
+      // Derived chord name (best-effort, from the notes' pitches) above the bracket.
+      const cn = g.notes.find(n => n.chord_name);
+      if (cn) s += `<text x="${x}" y="${Math.min(...ys) - 22}" fill="#ffd479" font-size="13" font-weight="700" text-anchor="middle">${esc(cn.chord_name)}</text>`;
     }
     for (const n of g.notes) {
       const x = timeToX(dispT), y = H - 35 - n.string * ROW;
@@ -1193,8 +1223,7 @@ function showArr(i) {
       s += shape;
       s += `<text x="${x}" y="${y+5}" fill="#14151a" font-size="14" font-weight="700" text-anchor="middle">${n.fret}</text>`;
       if (tech) {
-        const abbr = n.techniques.map(t => TECH_ABBR[t] || t).join('');
-        s += `<text x="${x}" y="${y-R-5}" fill="#fff" font-size="12" font-weight="700" text-anchor="middle">${abbr}</text>`;
+        s += techGlyphs(n.techniques, x, y - R - 4);
         s += `<title>${n.techniques.join(', ')}</title>`;
       }
     }
