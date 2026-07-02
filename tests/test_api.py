@@ -253,6 +253,47 @@ def test_arrangements_404_until_completed(client: TestClient) -> None:
     assert client.get(f"/jobs/{job['id']}/arrangements").status_code == 404
 
 
+def test_arrangements_derives_chord_name(client: TestClient) -> None:
+    """A chord in the XML is labelled with its derived name (C major here)."""
+    import rockforge.config as config
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.domain.arrangement import Arrangement, ArrangementKind, SongMetadata
+    from rockforge.domain.music import Beat, TabNote, TempoMap, Tuning
+    from rockforge.infrastructure.db.models import JobStatus
+    from rockforge.infrastructure.rsxml.writer import write_arrangement_xml
+
+    job = _create_job(client)
+    bundle = config.settings.work_dir / job["id"] / "bundle"
+    # C major triad struck together: C2 (str0 f8), E (str1 f7... ) — pick a
+    # simple E-standard voicing that sounds C, E, G simultaneously.
+    beats = tuple(Beat(time=0.5 * i, measure=(i // 4 + 1) if i % 4 == 0 else -1) for i in range(8))
+    arr = Arrangement(
+        kind=ArrangementKind.COMBINED,
+        metadata=SongMetadata(title="Chord", artist="T", song_length=4.0),
+        tuning=Tuning(),
+        notes=[
+            TabNote(string=1, fret=3, time=1.0, sustain=0.5),  # A + 3 = C
+            TabNote(string=2, fret=2, time=1.0, sustain=0.5),  # D + 2 = E
+            TabNote(string=3, fret=0, time=1.0, sustain=0.5),  # G open = G
+        ],
+        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+    )
+    write_arrangement_xml(arr, bundle / "arrangement_combined.xml")
+
+    with app_module._session_factory() as session:
+        db_job = session.get(app_module.Job, job["id"])
+        db_job.status = JobStatus.COMPLETED
+        db_job.bundle_dir = str(bundle)
+        session.commit()
+
+    data = client.get(f"/jobs/{job['id']}/arrangements").json()
+    chord_notes = [n for n in data[0]["notes"] if n["chord"]]
+    assert chord_notes, "expected the simultaneous notes to be emitted as a chord"
+    assert all(n["chord_name"] == "C" for n in chord_notes)
+    # single (non-chord) notes must not carry a chord name
+    assert all(n["chord_name"] is None for n in data[0]["notes"] if not n["chord"])
+
+
 def _make_gp5_bytes(tmp_path) -> bytes:
     import guitarpro as gp
 
