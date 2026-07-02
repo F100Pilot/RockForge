@@ -126,6 +126,13 @@ O install demora (PyTorch/Demucs/Basic Pitch/WhisperX, vários GB). O extra
 sem ele, "Detetar letra" reporta "indisponível". Se quiseres instalar sem
 essa funcionalidade, usa `pip install -e ".[dev,ml]"`.
 
+**Ingestão via YouTube** precisa do extra `youtube` (yt-dlp), que **não** vem
+no comando acima. Para o incluir: `py -3.11 -m pip install -e ".[dev,ml,lyrics,youtube]"`.
+⚠️ O YouTube quebra o yt-dlp com frequência (erros "HTTP 403", "Unable to
+extract", "Sign in to confirm…"). Se a compilação por link falhar, **atualiza o
+yt-dlp**: `py -3.11 -m pip install -U yt-dlp`. Nota legal: descarregar áudio do
+YouTube viola o ToS — ver Avisos legais.
+
 **2b. Aceleração por GPU (NVIDIA — opcional mas muito recomendada)**
 
 O ML (separação Demucs, transcrição Basic Pitch/WhisperX) corre por defeito em
