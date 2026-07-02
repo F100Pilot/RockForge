@@ -151,6 +151,12 @@ bundle-time positions), so the playhead starts at 0 instead of at the first
 note. Anchor math stays in bundle time so corrections round-trip through a
 rebuild unchanged.
 
+**String labels show the real tuning.** The staff labels each string with its
+actual pitch (`stringLabel` = standard MIDI `[40,45,50,55,59,64]` + the
+arrangement's `tuning_offsets`, mapped to a note name), so a Drop C# chart reads
+`C# G# C# F# A# D#` instead of the fixed `E A D G B e`. Falls back to standard
+if `tuning_offsets` is absent.
+
 **Measure (bar) numbering.** The viewer draws a faint vertical line + bar number
 at each measure downbeat. The source is the Song2014 `<ebeats>` (one `<ebeat
 time measure>` per beat; downbeats carry the 1-based measure, off-beats `-1`),
