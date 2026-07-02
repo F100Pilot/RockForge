@@ -733,3 +733,27 @@ def test_idle_shutdown_disabled_by_default(client: TestClient) -> None:
     import rockforge.interfaces.api.app as app_module
 
     assert app_module.settings.idle_shutdown_s == 0.0
+
+
+def test_closing_beacon_arms_and_heartbeat_cancels(monkeypatch, tmp_path) -> None:
+    """POST /closing arms a short shutdown deadline; a following /heartbeat
+    (i.e. a refresh came back) cancels it."""
+    monkeypatch.setenv("ROCKFORGE_DATABASE_URL", f"sqlite:///{tmp_path}/test.db")
+    monkeypatch.setenv("ROCKFORGE_WORK_DIR", str(tmp_path / "work"))
+    monkeypatch.setenv("ROCKFORGE_ENABLE_YOUTUBE", "false")
+    monkeypatch.setenv("ROCKFORGE_IDLE_SHUTDOWN_S", "30")  # long, so nothing exits mid-test
+    import rockforge.config as config
+    importlib.reload(config)
+    import rockforge.interfaces.api.app as app_module
+    importlib.reload(app_module)
+    monkeypatch.setattr(app_module, "_enqueue", lambda job: None)
+    monkeypatch.setattr(app_module, "_enqueue_detect", lambda job: None)
+    monkeypatch.setattr(app_module, "_enqueue_detect_tones", lambda job: None)
+    monkeypatch.setattr(app_module.os, "kill", lambda pid, sig: None)
+
+    with TestClient(app_module.app) as c:
+        assert app_module._closing_at is None
+        assert c.post("/closing").status_code == 200
+        assert app_module._closing_at is not None  # armed
+        assert c.post("/heartbeat").status_code == 200
+        assert app_module._closing_at is None  # a refresh cancelled it
