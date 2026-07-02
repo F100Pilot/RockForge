@@ -468,8 +468,12 @@ pinned (`mypy~=1.19.0`) so local matches CI — do not bump it casually.
   `normalize`/lyrics-`normalizing` stage. `FfmpegNormalizer` passes `-nostdin` +
   `stdin=subprocess.DEVNULL` (plus a `FFMPEG_TIMEOUT_S` ceiling so a genuine
   stall fails loudly); `DemucsSeparator` uses `stdin=subprocess.DEVNULL` too.
-  Guarded by `test_ffmpeg_normalizer.py`. Don't drop these when touching the
-  subprocess calls.
+  `YouTubeIngestor` runs yt-dlp as a subprocess with `stdin=subprocess.DEVNULL`
+  + `YOUTUBE_TIMEOUT_S` + `--no-playlist` (a `watch?v=…&list=…` URL otherwise
+  downloads the whole playlist and looks like an endless hang at `ingest`) — it
+  used to call the yt_dlp *library*, whose internal ffmpeg child could inherit
+  stdin and hang. Guarded by `test_ffmpeg_normalizer.py`. Don't drop these when
+  touching the subprocess calls.
 - **YouTube ingestion is gated by `ROCKFORGE_ENABLE_YOUTUBE`** (currently
   defaulting on at the operator's request) — downloading audio violates the
   YouTube ToS, so the gate stays so it can be turned off. PSARC/.wem packing
