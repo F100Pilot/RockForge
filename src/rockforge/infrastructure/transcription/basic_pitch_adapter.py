@@ -34,12 +34,30 @@ class BasicPitchTranscriber:
                 "basic-pitch is not installed (pip install 'rockforge[ml]')"
             ) from exc
 
-        _, _, note_events = predict(
-            str(audio),
-            ICASSP_2022_MODEL_PATH,
-            onset_threshold=self._onset,
-            frame_threshold=self._frame,
-        )
+        # The default model path is the TensorFlow SavedModel ("nmp"), which
+        # frequently fails to load on a TF version it wasn't serialized with
+        # ("nmp cannot be loaded into TensorFlow/…"). basic-pitch ships an ONNX
+        # copy too; prefer it (onnxruntime loads it portably) when present.
+        model_path: object = ICASSP_2022_MODEL_PATH
+        model_dir = Path(str(ICASSP_2022_MODEL_PATH)).parent
+        onnx = next(iter(sorted(model_dir.glob("*.onnx"))), None)
+        if onnx is not None:
+            model_path = onnx
+
+        try:
+            _, _, note_events = predict(
+                str(audio),
+                model_path,
+                onset_threshold=self._onset,
+                frame_threshold=self._frame,
+            )
+        except Exception as exc:  # model load / inference failures
+            raise TranscriptionError(
+                f"Basic Pitch transcription failed ({type(exc).__name__}: {exc}). "
+                "If it is a model-load error, install onnxruntime "
+                "(pip install onnxruntime) so the portable ONNX model can be used, "
+                "or reinstall a compatible basic-pitch/tensorflow."
+            ) from exc
         out: list[NoteEvent] = []
         for start, end, pitch, amplitude, pitch_bends in note_events:
             if not (GUITAR_MIDI_RANGE[0] <= int(pitch) <= GUITAR_MIDI_RANGE[1]):
