@@ -87,8 +87,12 @@ REM A single uvicorn process exits cleanly, so the cleanup below always runs.
 
 echo.
 echo A parar Redis e o worker...
-REM Only kills the window we started; a reused Memurai service has no such
+REM Primary: kill the windows we launched (and their process trees, so the
+REM worker's ML subprocesses go too). A reused Memurai service has no such
 REM window and is left running.
 taskkill /fi "WindowTitle eq RockForge-Redis*" /t /f >nul 2>&1
 taskkill /fi "WindowTitle eq RockForge-Worker*" /t /f >nul 2>&1
+REM Fallback: if the window title didn't match (some Windows setups), kill the
+REM Celery worker by its command line so it never lingers after the tab closes.
+powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*rockforge.interfaces.worker.celery_app*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }" >nul 2>&1
 endlocal
