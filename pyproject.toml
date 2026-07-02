@@ -29,6 +29,10 @@ dependencies = [
 ml = [
     "demucs>=4.0",          # MIT — htdemucs_6s guitar stem (repo archived 2025-01; see docs/research)
     "basic-pitch>=0.3",     # Apache-2.0 — polyphonic note transcription
+    # basic-pitch's default model is a TF SavedModel that often fails to load on
+    # a mismatched TF version; the adapter prefers basic-pitch's bundled ONNX
+    # copy, so ensure onnxruntime is present to load it.
+    "onnxruntime>=1.16",
     "librosa>=0.10",        # ISC — beat tracking, tuning estimation
     "soundfile>=0.12",
     # Floor only: basic-pitch's "scipy>=1.4.1" lets the resolver settle on an
