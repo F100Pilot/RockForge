@@ -548,8 +548,12 @@ green before committing.
 `start.bat` sets `ROCKFORGE_IDLE_SHUTDOWN_S=15`: the web UI calls `POST
 /heartbeat` every 4s while its tab is open; a background watchdog
 (`_idle_shutdown_watchdog` in `interfaces/api/app.py`) sends `SIGTERM` to the
-API process if no heartbeat arrives within that window (i.e. the tab was
-closed, not just refreshed). The foreground uvicorn then exits, and
+API process if no heartbeat arrives within that window. For a **near-immediate**
+close (not the full 15s), the UI also beacons `POST /closing` on `pagehide`
+(tab close/navigate), which arms a `CLOSE_GRACE_S` (~3s) deadline; a following
+`/heartbeat` (a refresh that came back) clears it, so a refresh doesn't shut the
+server down while a genuine close does after ~3s. The 15s idle timeout is the
+fallback for a crashed browser / lost beacon. The foreground uvicorn then exits, and
 `start.bat`'s existing cleanup (after the `uvicorn` line) stops the Celery
 worker and any Redis it launched too. Default is `0` (disabled) — required for
 shared deployments (docker-compose) where one user's closed tab must not stop

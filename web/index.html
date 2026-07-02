@@ -2765,6 +2765,10 @@ setInterval(refreshJobs, 5000);
 // pings stop, i.e. when the tab is closed. No-op if idle_shutdown_s is unset.
 setInterval(() => fetch('/heartbeat', { method: 'POST' }).catch(() => {}), 4000);
 fetch('/heartbeat', { method: 'POST' }).catch(() => {});
+// On tab close/navigate, beacon /closing so the server shuts down in ~3s
+// instead of waiting the full idle window. A refresh reloads and sends the
+// heartbeat above within the grace, which cancels the pending shutdown.
+addEventListener('pagehide', () => { try { navigator.sendBeacon('/closing'); } catch {} });
 </script>
 </body>
 </html>

@@ -22,19 +22,29 @@ from rockforge.config import settings
 from rockforge.infrastructure.db.models import Job, JobStatus, make_session_factory
 
 _last_heartbeat = time.monotonic()
+# When the tab fires `pagehide`, the UI beacons /closing which sets a short
+# deadline here. A refresh reloads and beacons /heartbeat within the grace,
+# clearing it; a real close doesn't, so the watchdog exits ~CLOSE_GRACE_S later
+# instead of waiting the full idle_shutdown_s. None => no pending close.
+_closing_at: float | None = None
+CLOSE_GRACE_S = 3.0  # short enough to feel immediate, long enough to survive a refresh
 
 
 async def _idle_shutdown_watchdog() -> None:
-    """Exit the process once the web UI stops sending /heartbeat pings.
+    """Exit the process when the web UI's tab closes.
 
-    Lets start.bat's cleanup (which runs after the foreground uvicorn process
-    exits) also stop the Celery worker and any Redis it launched — see
-    Settings.idle_shutdown_s.
+    Two triggers: (1) a /closing beacon set a deadline that has passed (fast
+    path on tab close, refresh-safe); (2) no /heartbeat for the full
+    idle_shutdown_s (fallback for a crashed browser / lost beacon). Exiting lets
+    start.bat's cleanup stop the Celery worker and any Redis it launched.
     """
-    poll_s = min(2.0, settings.idle_shutdown_s / 2)
+    poll_s = min(0.5, settings.idle_shutdown_s / 2)  # responsive to the ~3s close grace
     while True:
         await asyncio.sleep(poll_s)
-        if time.monotonic() - _last_heartbeat > settings.idle_shutdown_s:
+        now = time.monotonic()
+        closing = _closing_at is not None and now >= _closing_at
+        idle = now - _last_heartbeat > settings.idle_shutdown_s
+        if closing or idle:
             os.kill(os.getpid(), signal.SIGTERM)
             return
 
@@ -1161,9 +1171,24 @@ def gear_catalogue() -> dict[str, Any]:
 
 @app.post("/heartbeat", include_in_schema=False)
 def heartbeat() -> dict[str, bool]:
-    """Pinged periodically by the web UI; see Settings.idle_shutdown_s."""
-    global _last_heartbeat
+    """Pinged periodically by the web UI; see Settings.idle_shutdown_s.
+
+    Also cancels a pending /closing — a heartbeat arriving after the tab fired
+    `pagehide` means it was a refresh (the page came back), not a real close."""
+    global _last_heartbeat, _closing_at
     _last_heartbeat = time.monotonic()
+    _closing_at = None
+    return {"ok": True}
+
+
+@app.post("/closing", include_in_schema=False)
+def closing() -> dict[str, bool]:
+    """Beaconed by the web UI on `pagehide` (tab close/navigate). Arms a short
+    shutdown grace; a following /heartbeat (refresh) cancels it. No-op when
+    idle-shutdown is disabled."""
+    global _closing_at
+    if settings.idle_shutdown_s > 0:
+        _closing_at = time.monotonic() + CLOSE_GRACE_S
     return {"ok": True}
 
 
