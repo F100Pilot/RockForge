@@ -386,10 +386,8 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
             <input type="range" id="seekBar" min="0" max="0" step="0.01" value="0" style="flex:1;min-width:140px">
             <span id="timeLabel" class="meta" style="white-space:nowrap">0:00 / 0:00</span>
           </div>
+          <!-- Playback controls — shown for ALL job types -->
           <div class="syncctrls">
-            <label>Início da música (s):
-              <input type="number" id="syncOffset" value="0" step="0.01" min="0" style="width:6rem"></label>
-            <input type="range" id="syncOffsetRange" min="0" max="20" step="0.01" value="0" style="flex:1;min-width:120px">
             <label>🔊 Música: <input type="range" id="musicVolume" min="0" max="1" step="0.05" value="1" style="width:6rem;vertical-align:middle"></label>
             <label>🐢 Velocidade: <select id="playbackSpeed" style="vertical-align:middle">
               <option value="1">100%</option>
@@ -405,25 +403,33 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
             </select></label>
             <label class="check"><input type="checkbox" id="syncTick" checked> Tique por nota</label>
             <label>🎵 Notas: <input type="range" id="tickVolume" min="0" max="1" step="0.05" value="0.6" style="width:6rem;vertical-align:middle"></label>
-            <button class="info-btn" data-info="sync-offset">ⓘ</button>
           </div>
-          <div class="syncctrls" style="margin-top:.35rem">
-            <label>Andamento (BPM):
-              <input type="number" id="tempoBpm" step="0.1" min="1" style="width:6.5rem"></label>
-            <input type="range" id="tempoRange" min="50" max="200" step="0.5" value="100" style="flex:1;min-width:120px">
-            <span id="tempoPct" class="meta"></span>
-            <button type="button" id="tempoReset" class="secondary">Repor GP</button>
-            <button class="info-btn" data-info="sync-tempo">ⓘ</button>
-          </div>
-          <div class="syncctrls" style="margin-top:.35rem">
-            <label>Silêncio inicial (s):
-              <input type="number" id="leadInS" value="0" step="0.1" min="0" style="width:6rem"></label>
-            <span class="meta">silêncio extra no início — empurra a música e as notas para a frente (aplica ao reconstruir)</span>
-          </div>
-          <div class="syncctrls" style="margin-top:.35rem">
-            <button type="button" id="autoSync" class="secondary">Sincronização automática</button>
-            <span id="autoSyncInfo" class="meta"></span>
-            <button class="info-btn" data-info="auto-sync">ⓘ</button>
+          <!-- GP sync controls — hidden for audio-ML jobs (notes already aligned) -->
+          <div id="gpSyncControls">
+            <div class="syncctrls">
+              <label>Início da música (s):
+                <input type="number" id="syncOffset" value="0" step="0.01" min="0" style="width:6rem"></label>
+              <input type="range" id="syncOffsetRange" min="0" max="20" step="0.01" value="0" style="flex:1;min-width:120px">
+              <button class="info-btn" data-info="sync-offset">ⓘ</button>
+            </div>
+            <div class="syncctrls" style="margin-top:.35rem">
+              <label>Andamento (BPM):
+                <input type="number" id="tempoBpm" step="0.1" min="1" style="width:6.5rem"></label>
+              <input type="range" id="tempoRange" min="50" max="200" step="0.5" value="100" style="flex:1;min-width:120px">
+              <span id="tempoPct" class="meta"></span>
+              <button type="button" id="tempoReset" class="secondary">Repor GP</button>
+              <button class="info-btn" data-info="sync-tempo">ⓘ</button>
+            </div>
+            <div class="syncctrls" style="margin-top:.35rem">
+              <label>Silêncio inicial (s):
+                <input type="number" id="leadInS" value="0" step="0.1" min="0" style="width:6rem"></label>
+              <span class="meta">silêncio extra no início — empurra a música e as notas para a frente (aplica ao reconstruir)</span>
+            </div>
+            <div class="syncctrls" style="margin-top:.35rem">
+              <button type="button" id="autoSync" class="secondary">Sincronização automática</button>
+              <span id="autoSyncInfo" class="meta"></span>
+              <button class="info-btn" data-info="auto-sync">ⓘ</button>
+            </div>
           </div>
         </div>
 
@@ -1100,7 +1106,7 @@ function showArr(i) {
   const dur = Math.max(...a.notes.map(n => n.time + n.sustain), 10);
   const px = BASE_PX * zoomLevel, ROW = 40, R = 13, W = Math.max(900, dur * px + 60), H = 280;
   tabPx = px; tabH = H;
-  viewOrigin = Math.max(0, MIN_LEAD - offsetLive);  // bundle time at the left edge (0s)
+  viewOrigin = isGpJob() ? Math.max(0, MIN_LEAD - offsetLive) : 0;  // bundle time at the left edge (0s)
   svg.setAttribute('width', W);
   let s = '';
   s += waveformSvg(W, H, px);  // audio reference, drawn behind staff + notes
@@ -2249,7 +2255,13 @@ function clickSound() {
 // tempoScaleLive/builtScale, then re-anchored to the new lead-in
 // (max(offset_s, MIN_LEAD_S) — see gp_pipeline). The waveform stays fixed
 // (it's the audio reference), so notes slide over it as these change.
+// GP jobs sync the chart to the recording (offset/tempo/lead-in); audio-ML jobs
+// have notes transcribed FROM the recording, so their times ARE recording time
+// — no shifting, the viewer just draws/plays them straight.
+function isGpJob() { return !!selectedJob && selectedJob.source_type === 'gp'; }
+
 function previewScale(t) {
+  if (!isGpJob()) return t;  // audio-ML: raw recording-time positions
   const ratio = tempoScaleLive / builtScale;
   return (t - scoreShift) * ratio + Math.max(offsetLive, MIN_LEAD);
 }
@@ -2258,6 +2270,7 @@ function previewScale(t) {
 // prepended silence (pad = max(0, MIN_LEAD - offset)); independent of tempo
 // since the recording itself is the fixed reference.
 function playheadDisplay(s) {
+  if (!isGpJob()) return s;  // audio-ML: playhead is straight recording time
   return s + Math.max(0, MIN_LEAD - offsetLive);
 }
 
@@ -2478,21 +2491,33 @@ function setOffsetLive(v) {
 
 function initSync(j) {
   const panel = document.getElementById('syncPanel');
-  document.getElementById('detectTuningRow').style.display = j.source_type === 'gp' ? '' : 'none';
-  if (j.source_type !== 'gp') { panel.style.display = 'none'; return; }
+  const isGp = j.source_type === 'gp';
+  document.getElementById('detectTuningRow').style.display = isGp ? '' : 'none';
+  document.getElementById('gpSyncControls').style.display = isGp ? '' : 'none';
+  // The panel (playback + waveform) is shown for ALL job types; only the GP
+  // sync controls (offset/tempo/anchors) are hidden for audio-ML jobs, whose
+  // notes are already aligned to the recording they were transcribed from.
   panel.style.display = '';
-  // The offset (and thus the audio lead-in) is shared by all arrangements.
-  scoreShift = Math.max(j.offset_s || 0, MIN_LEAD);
-  loadArrSync(0);  // tempo/anchors are per-arrangement; load the first tab's
+  if (isGp) {
+    // The offset (and thus the audio lead-in) is shared by all arrangements.
+    scoreShift = Math.max(j.offset_s || 0, MIN_LEAD);
+    loadArrSync(0);  // tempo/anchors are per-arrangement; load the first tab's
+    leadInBuilt = j.lead_in_s || 0;
+  } else {
+    // audio-ML: neutral sync so notes draw at their raw recording times.
+    offsetLive = 0; leadInBuilt = 0; scoreShift = 0;
+    tempoScaleLive = 1; builtScale = 1; syncAnchors = [];
+  }
   // Reset the transport; decodeWaveform fills playBuffer for sample-accurate
   // playback (and falls back to the <audio> element if decode fails).
   stopPlayback();
   playBuffer = null; pausedAt = 0;
   document.getElementById('syncAudio').removeAttribute('src');
   currentPlayheadT = 0;
-  leadInBuilt = j.lead_in_s || 0;
-  setOffsetLive(j.offset_s || 0);
-  document.getElementById('leadInS').value = leadInBuilt.toFixed(1);
+  if (isGp) {
+    setOffsetLive(j.offset_s || 0);
+    document.getElementById('leadInS').value = leadInBuilt.toFixed(1);
+  }
   updatePlayBtn();
   updateTransportUI();
   decodeWaveform(j.id);

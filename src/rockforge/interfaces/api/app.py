@@ -1064,22 +1064,30 @@ def get_job(job_id: str) -> JobOut:
 
 @app.get("/jobs/{job_id}/source-audio")
 def get_source_audio(job_id: str) -> FileResponse:
-    """The original recording, served for the in-app visual sync tool.
+    """The recording, served for the in-app viewer (playback + waveform).
 
-    This is the un-padded upload (source_type upload/gp); the GP sync UI plays it
-    and overlays note ticks so the user can find the second where the song starts.
+    Prefers the original file (upload/gp, where `job.source` is a real path);
+    for YouTube (`job.source` is a URL) or a moved file, falls back to the
+    ingested/normalized audio in the job's work dir so audio-ML jobs are still
+    playable and reviewable against the transcribed notes (normalization doesn't
+    change timing, so the notes still line up).
     """
     with _session_factory() as session:
         job = session.get(Job, job_id)
         if job is None:
             raise HTTPException(404, "job not found")
-        if job.source_type not in {"upload", "gp"}:
-            raise HTTPException(404, "no local source audio for this job")
+        workdir = settings.work_dir / job.id
+        candidates: list[Path] = []
         src = Path(job.source)
-        if not src.exists():
-            raise HTTPException(404, "source audio no longer exists on the work volume")
-        media_type = mimetypes.guess_type(src.name)[0] or "application/octet-stream"
-        return FileResponse(src, media_type=media_type)
+        if src.is_file():
+            candidates.append(src)
+        candidates.append(workdir / "normalized.wav")
+        candidates.extend(sorted(workdir.glob("input.*")))
+        audio = next((c for c in candidates if c.is_file()), None)
+        if audio is None:
+            raise HTTPException(404, "no playable audio found for this job")
+        media_type = mimetypes.guess_type(audio.name)[0] or "application/octet-stream"
+        return FileResponse(audio, media_type=media_type)
 
 
 @app.get("/jobs/{job_id}/bundle")
