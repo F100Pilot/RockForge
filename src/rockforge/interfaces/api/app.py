@@ -563,8 +563,10 @@ def list_jobs(limit: int = 50) -> list[JobOut]:
 
 
 @app.delete("/jobs/{job_id}", status_code=204)
-def delete_job(job_id: str) -> Response:
-    """Delete a job and its work artifacts. Running jobs must finish first.
+def delete_job(job_id: str, force: bool = False) -> Response:
+    """Delete a job and its work artifacts. Running jobs must finish first,
+    unless ``force=true`` — the escape hatch for a job stuck in RUNNING because
+    its worker died or hung (otherwise it could never be deleted).
 
     The uploaded source file is removed only when no other job (e.g. a rebuild)
     still references it."""
@@ -574,7 +576,7 @@ def delete_job(job_id: str) -> Response:
         job = session.get(Job, job_id)
         if job is None:
             raise HTTPException(404, "job not found")
-        if job.status is JobStatus.RUNNING:
+        if job.status is JobStatus.RUNNING and not force:
             raise HTTPException(409, "job is running — wait for it to finish before deleting")
 
         shutil.rmtree(settings.work_dir / job.id, ignore_errors=True)

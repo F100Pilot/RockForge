@@ -151,6 +151,21 @@ def test_delete_running_job_409(client: TestClient) -> None:
     assert client.delete(f"/jobs/{job['id']}").status_code == 409
 
 
+def test_force_delete_running_job(client: TestClient) -> None:
+    """A job stuck in RUNNING (dead/hung worker) can still be removed with force."""
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.infrastructure.db.models import JobStatus
+
+    job = _create_job(client)
+    with app_module._session_factory() as session:
+        db_job = session.get(app_module.Job, job["id"])
+        db_job.status = JobStatus.RUNNING
+        session.commit()
+
+    assert client.delete(f"/jobs/{job['id']}?force=true").status_code == 204
+    assert client.get(f"/jobs/{job['id']}").status_code == 404
+
+
 def test_delete_unknown_job_404(client: TestClient) -> None:
     assert client.delete("/jobs/nope").status_code == 404
 
