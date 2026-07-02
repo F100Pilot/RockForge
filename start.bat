@@ -65,10 +65,14 @@ echo A iniciar o worker Celery em segundo plano (logs\worker.log)...
 start "RockForge-Worker" /min cmd /c "%PY% -m celery -A rockforge.interfaces.worker.celery_app:celery_app worker --pool=solo --loglevel=info > logs\worker.log 2>&1"
 
 echo.
-echo Redis e Worker a correr minimizados. A iniciar a API (Ctrl+C para parar tudo)...
-echo Abre http://localhost:8000 quando a API estiver pronta.
-echo (Fechar o separador do browser tambem para tudo, apos alguns segundos.)
+echo Redis e Worker a correr minimizados. A iniciar a API...
+echo O browser abre automaticamente; fechar o separador para tudo (apos alguns segundos).
 echo.
+
+REM Open the browser automatically once the API is accepting connections.
+REM Polls port 8000 (up to ~30s) in the background, then launches the default
+REM browser at the RockForge page; runs hidden and exits on its own.
+start "" /b powershell -NoProfile -WindowStyle Hidden -Command "for($i=0;$i -lt 60;$i++){try{(New-Object Net.Sockets.TcpClient('localhost',8000)).Close();Start-Process 'http://localhost:8000';break}catch{Start-Sleep -Milliseconds 500}}"
 
 REM The web UI pings /heartbeat while its tab is open; once those pings stop
 REM (tab closed) for this many seconds the API exits, and the cleanup below
@@ -76,7 +80,10 @@ REM (worker/Redis) then runs too. Set only here — disabled by default
 REM (e.g. docker-compose), where closing one user's tab must not affect others.
 set "ROCKFORGE_IDLE_SHUTDOWN_S=15"
 
-%PY% -m uvicorn rockforge.interfaces.api.app:app --reload
+REM No --reload: this is the user-facing launcher, and --reload's parent/child
+REM reloader would fight the idle-shutdown SIGTERM (the tab-close auto-stop).
+REM A single uvicorn process exits cleanly, so the cleanup below always runs.
+%PY% -m uvicorn rockforge.interfaces.api.app:app
 
 echo.
 echo A parar Redis e o worker...
