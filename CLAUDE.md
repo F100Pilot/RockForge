@@ -334,11 +334,25 @@ PSARC output, same as building without a cover set.
 
 `POST /jobs/{id}/detect-tones` (any job type: GP, audio, YouTube) runs Demucs
 guitar separation (`htdemucs_6s`) on the recording and analyzes the guitar
-stem's spectral characteristics (zero-crossing rate, spectral contrast,
-centroid, rolloff) to classify the tone into one of three categories: `clean`,
-`crunch`, or `high_gain`. The classification drives a preset suggestion: curated
-Lead + Rhythm tones from the Rocksmith gear catalogue (real amp/cabinet/pedal
-keys with knob values) are proposed and stored in `params["detected_tones"]`.
+stem (`tone_analysis/analyzer.py`) to classify the tone into one of three
+categories: `clean`, `crunch`, or `high_gain`. The classification drives a
+preset suggestion: curated Lead + Rhythm tones from the Rocksmith gear catalogue
+(real amp/cabinet/pedal keys with knob values) are proposed and stored in
+`params["detected_tones"]`.
+
+**Gain estimation (why it stopped reading "usually too clean").** The gain
+estimate combines **brightness-independent distortion cues** — spectral
+flatness (saturation packs the spectrum → higher) and dynamic compression via
+the crest factor (distortion sustains/compresses → low crest) — with spectral
+contrast and a low-weighted ZCR. Critically, the features are computed **only
+over the frames where the guitar is actually playing loud** (RMS ≥ 30% of the
+peak) after peak-normalizing, so silences, count-ins and clean breaks no longer
+drag a mostly-distorted song down to `clean`. The old version averaged ZCR +
+centroid over the WHOLE stem — both dominated by brightness — so a dark,
+low-tuned or palm-muted high-gain tone was systematically under-read. The
+crunch/high-gain boundary is `gain_level ≥ 0.5`; `flatness`/`compression` are
+surfaced in the tone log and `detected_tones.profile` for transparency. Still a
+heuristic — the character, not the actual amp.
 
 Progress is tracked via `params["tone_detection_status"]`
 (`detecting`/`normalizing`/`separating`/`analyzing`/`ready`/`unavailable`),
