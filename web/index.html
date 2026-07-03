@@ -430,6 +430,11 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
               <span id="autoSyncInfo" class="meta"></span>
               <button class="info-btn" data-info="auto-sync">ⓘ</button>
             </div>
+            <div class="syncctrls" style="margin-top:.35rem">
+              <button type="button" id="reloadGpBtn" class="secondary">Recarregar ficheiro GP</button>
+              <input type="file" id="reloadGpInput" accept=".gp,.gp3,.gp4,.gp5" style="display:none">
+              <span id="reloadGpInfo" class="meta">substitui o GP mantendo sync/tons/letra/afinação — para quando editas uma nota e reexportas</span>
+            </div>
           </div>
         </div>
 
@@ -1372,6 +1377,32 @@ async function applyAll() {
   else toast(b.detail || 'erro');
 }
 document.getElementById('applyAll').addEventListener('click', applyAll);
+
+// Reload the GP file into the current job (keeping all sync/tone/lyric/tuning
+// overrides). Forks a new job on the backend, same as a rebuild.
+const reloadGpBtn = document.getElementById('reloadGpBtn');
+const reloadGpInput = document.getElementById('reloadGpInput');
+reloadGpBtn.addEventListener('click', () => { if (isGpJob()) reloadGpInput.click(); });
+reloadGpInput.addEventListener('change', async () => {
+  const file = reloadGpInput.files[0];
+  if (!file || !selectedJob) return;
+  const info = document.getElementById('reloadGpInfo');
+  const prev = info.textContent;
+  info.textContent = 'A recarregar…';
+  reloadGpBtn.disabled = true;
+  try {
+    const fd = new FormData();
+    fd.append('gp', file);
+    const r = await fetch(`/jobs/${selectedJob.id}/reload-gp`, { method: 'POST', body: fd });
+    const b = await r.json();
+    if (r.ok) { toast('GP recarregado — a reconstruir…', 'ok'); selectJob(b.id, { force: true }); }
+    else toast(b.detail || 'erro ao recarregar o GP');
+  } finally {
+    reloadGpInput.value = '';  // allow re-selecting the same filename
+    reloadGpBtn.disabled = false;
+    info.textContent = prev;
+  }
+});
 
 // ============ Tones: gear builder + base/extra/changes ============
 async function loadGearCatalogue() {

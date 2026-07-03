@@ -6,6 +6,14 @@ ver `TESTING.md`.
 
 ## Concluído recentemente (resumo — detalhe em CLAUDE.md)
 
+- [x] **Recarregar o ficheiro GP** (`/jobs/{id}/reload-gp`): substitui o GP de um
+  job existente por uma reexportação (editaste uma nota no Guitar Pro) sem perder
+  os ajustes — forka um novo job herdando afinação/sync/tons/letra/capa, só troca
+  o `gp_path`. Botão "Recarregar ficheiro GP" no painel de sincronização.
+- [x] **Símbolos gráficos na partitura**: nome do acorde derivado (na faixa
+  inferior), bend como seta com quantidade (full/½), vibrato como linha de
+  sustain ondulada, slide/harmónico/hammer/pull com glifos.
+
 - [x] **Suporte a Guitar Pro 7/8 (`.gp`)**: parser GPIF/XML nativo
   (`gpimport/gpif_parser.py`), sem dependência extra (o `.gp` é um ZIP com
   `Content/score.gpif` em XML). Dispatch automático por formato em `inspect_gp`/

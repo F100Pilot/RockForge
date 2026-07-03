@@ -460,6 +460,57 @@ def test_rebuild_stores_tones_and_changes(client: TestClient, tmp_path) -> None:
     assert tones["tone_changes"][0]["time"] == 5.0
 
 
+def test_reload_gp_forks_job_and_keeps_overrides(client: TestClient, tmp_path) -> None:
+    """Reloading the GP file rebuilds with a fresh gp_path but preserves the
+    job's existing sync/tone overrides (no need to redo alignment work)."""
+    import rockforge.interfaces.api.app as app_module
+
+    def job_params(job_id: str) -> dict:
+        with app_module._session_factory() as session:
+            return dict(session.get(app_module.Job, job_id).params or {})
+
+    job = _gp_job(client, tmp_path)
+    # Give the job some overrides to preserve.
+    rebuilt = client.post(
+        f"/jobs/{job['id']}/rebuild",
+        json={"tempo_scale": 1.2, "tone_base": "lead", "tone_names": ["lead"]},
+    ).json()
+    old_gp = job_params(rebuilt["id"])["gp_path"]
+
+    new_data = _make_gp5_bytes(tmp_path)
+    r = client.post(
+        f"/jobs/{rebuilt['id']}/reload-gp",
+        files={"gp": ("song2.gp5", new_data, "application/octet-stream")},
+    )
+    assert r.status_code == 202
+    reloaded = r.json()
+    assert reloaded["id"] != rebuilt["id"]  # forked a new job
+
+    params = job_params(reloaded["id"])
+    assert params["gp_path"] != old_gp  # points at the freshly uploaded GP file
+    assert params["tempo_scale"] == 1.2  # overrides carried over
+    assert params["tone_base"] == "lead"
+    assert params["lead_track"] == 0
+
+
+def test_reload_gp_rejects_gpx(client: TestClient, tmp_path) -> None:
+    job = _gp_job(client, tmp_path)
+    r = client.post(
+        f"/jobs/{job['id']}/reload-gp",
+        files={"gp": ("song.gpx", b"BCFS", "application/octet-stream")},
+    )
+    assert r.status_code == 415
+
+
+def test_reload_gp_rejects_non_gp_job(client: TestClient, tmp_path) -> None:
+    job = _create_job(client)  # an upload (audio-ML) job, not GP
+    r = client.post(
+        f"/jobs/{job['id']}/reload-gp",
+        files={"gp": ("song.gp5", _make_gp5_bytes(tmp_path), "application/octet-stream")},
+    )
+    assert r.status_code == 422
+
+
 def test_rebuild_rejects_too_many_tones(client: TestClient, tmp_path) -> None:
     job = _gp_job(client, tmp_path)
     r = client.post(
