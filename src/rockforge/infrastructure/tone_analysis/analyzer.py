@@ -51,6 +51,12 @@ def _clamp01(v: float) -> float:
     return min(1.0, max(0.0, v))
 
 
+# Spectral flatness log-range: ~0.002 (tonal/clean) → ~0.04 (saturated). Raw
+# flatness is tiny and spans orders of magnitude, so it is normalized in log10.
+_FLAT_LOG_MIN = -2.7  # log10(0.002)
+_FLAT_LOG_MAX = -1.4  # log10(0.04)
+
+
 def analyze_guitar_tone(audio: Path) -> ToneProfile:
     """Classify the tone character of a guitar audio file.
 
@@ -104,20 +110,24 @@ def analyze_guitar_tone(audio: Path) -> ToneProfile:
     crest = float(np.max(act_rms)) / (mean_rms + 1e-8)
 
     # --- Distortion cues (each 0-1), combined into a gain estimate ---
-    # Spectral flatness: a clean note is tonal (sparse harmonics → low flatness
-    # ~0.005-0.03); saturation packs the spectrum with harmonics/noise (higher).
-    flat_norm = _clamp01((mean_flatness - 0.01) / 0.12)
+    # Spectral flatness: a clean note is tonal (sparse harmonics → very low
+    # flatness); saturation fills the spectrum. The raw values are tiny and span
+    # orders of magnitude (~0.001 clean → ~0.03 distorted), so normalize on a LOG
+    # scale — a linear range floored this to 0 for real guitar stems.
+    flat_log = float(np.log10(max(mean_flatness, 1e-6)))
+    flat_norm = _clamp01((flat_log - _FLAT_LOG_MIN) / (_FLAT_LOG_MAX - _FLAT_LOG_MIN))
     # Spectral contrast (peak-to-valley per band): strong for a clean tone
     # (~25 dB+), flattened by distortion (~10-18 dB). Invert.
     contrast_norm = _clamp01((28.0 - mean_contrast) / 20.0)
-    # Compression from the crest factor (brightness-independent).
+    # Compression from the crest factor (brightness-independent) — the most
+    # reliable cue in practice, so it carries the most weight.
     compression = _clamp01((3.5 - crest) / 2.0)
     # ZCR still helps for bright overdrive, but weight it low — it under-reads
     # dark/low-tuned high-gain, which was the main source of the "too clean" bias.
     zcr_norm = _clamp01((mean_zcr - 0.03) / 0.14)
 
     gain_level = _clamp01(
-        0.34 * flat_norm + 0.28 * contrast_norm + 0.22 * compression + 0.16 * zcr_norm
+        0.34 * compression + 0.28 * contrast_norm + 0.22 * flat_norm + 0.16 * zcr_norm
     )
 
     # Brightness: spectral centroid, guitar range ~1-6 kHz.
