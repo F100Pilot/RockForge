@@ -163,6 +163,9 @@ class RebuildIn(BaseModel):
     offset_s: float | None = None  # GP sync: second in the recording where the song starts
     lead_in_s: float | None = None  # GP: extra intro silence prepended (pushes the song later)
     tempo_scale: float | None = None  # GP sync: stretch/compress the whole chart timeline
+    # GP: track whose sung-note onsets align the lyric syllables (a Vocals track).
+    # -1 clears it (fall back to the guitar chart's onsets); None leaves it as-is.
+    vocals_track: int | None = None
     split_lead_rhythm: bool = True
     # Manual drift-correction points: (chart_time_s, corrected_time_s) pairs, in the
     # chart's already-shifted timeline (as shown in the tab viewer).
@@ -511,6 +514,7 @@ async def create_gp_job(
     audio: UploadFile = File(...),
     lead_track: str = Form(""),
     rhythm_track: str = Form(""),
+    vocals_track: str = Form(""),
     offset_s: float = Form(0.0),
     lead_in_s: float = Form(0.0),
     tempo_scale: float = Form(1.0),
@@ -585,6 +589,8 @@ async def create_gp_job(
         params["lead_track"] = int(lead_track)
     if rhythm_track.strip().isdigit():
         params["rhythm_track"] = int(rhythm_track)
+    if vocals_track.strip().isdigit():
+        params["vocals_track"] = int(vocals_track)
 
     with _session_factory() as session:
         job = Job(
@@ -652,7 +658,7 @@ async def reload_gp(job_id: str, gp: UploadFile = File(...)) -> JobOut:
         # the track layout, but a restructured file may not — fail loudly rather
         # than silently building the wrong track.
         valid = {t.index for t in info.tracks}
-        for key in ("lead_track", "rhythm_track"):
+        for key in ("lead_track", "rhythm_track", "vocals_track"):
             idx = params.get(key)
             if isinstance(idx, int) and idx not in valid:
                 gp_dest.unlink(missing_ok=True)
@@ -820,6 +826,13 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
                     target["sync_anchor_stages"] = stages
         if payload.import_mutes is not None:
             params["import_mute_techniques"] = payload.import_mutes
+        if payload.vocals_track is not None:
+            if original.source_type != "gp":
+                raise HTTPException(422, "vocals_track only applies to Guitar Pro jobs")
+            if payload.vocals_track < 0:
+                params.pop("vocals_track", None)  # -1 clears the Vocals track selection
+            else:
+                params["vocals_track"] = payload.vocals_track
         if payload.lyrics_events is not None:
             params["lyrics_events"] = [e.model_dump() for e in payload.lyrics_events]
             params.pop("lyrics_status", None)

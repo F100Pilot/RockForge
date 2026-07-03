@@ -230,7 +230,24 @@ within a word: `loo-king a-way` → `loo`·`king`·`a`·`way`). `gp_pipeline`
 replicates that: it takes the (already warped + offset) note onsets of the
 chart (`sorted({n.time for n in first.notes})`) and places one syllable per
 onset starting at each line's measure, so the words land on the actual notes
-instead of an even spread. Rocksmith markers: a trailing `-` joins syllables
+instead of an even spread.
+
+**Vocals track (`GpJobSpec.vocals_track`).** By default the syllables are placed
+over the *guitar chart's* onsets, which only matches when the vocal rhythm
+tracks the guitar. When the GP file has a dedicated **Vocals track** (the sung
+melody), select it (UI: "Pista Vocals (letra)" in the track picker; API:
+`vocals_track` on `/jobs/gp` and `/jobs/{id}/rebuild`, `-1` on rebuild clears
+it) and `gp_pipeline` instead aligns each syllable to *that track's* sung-note
+onsets — one syllable per attack, where the words are actually sung. Its onsets
+come from `parser.track_onsets` / `gpif_parser.track_onsets_gpif`, a
+pitch-agnostic beat walk (skipping tie continuations) that does NOT require a
+6-string guitar track — a vocal melody line is not a guitar, so `parse_gp_track`
+(which enforces 6 strings and drops out-of-range frets) cannot be used. The
+onsets are warped with the first arrangement's sync so the lyrics share the
+chart's timeline; an empty vocals track falls back to the guitar onsets. The
+lyric *text* is still auto-found by the parsers (GP5 song-level `song.lyrics`;
+GP7 scans tracks for `<Lyrics>`), so `vocals_track` only changes the onset
+source. Rocksmith markers: a trailing `-` joins syllables
 within a word (no space, hyphen shown in game), a trailing `+` on a line's last
 syllable is the line break. Honest limit: it assumes **syllabic** singing (one
 syllable per note attack); **melismas** (one syllable held over several notes)

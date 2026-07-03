@@ -6,6 +6,11 @@ ver `TESTING.md`.
 
 ## Concluído recentemente (resumo — detalhe em CLAUDE.md)
 
+- [x] **Pista de Vocals (letra) selecionável** (`GpJobSpec.vocals_track`): a letra
+  do GP passa a poder ser alinhada aos onsets da pista de vocais (uma sílaba por
+  nota cantada) em vez dos onsets da guitarra. Seletor "Pista Vocals (letra)" no
+  painel de pistas; extração de onsets agnóstica ao pitch (`track_onsets`) que
+  não exige pista de 6 cordas.
 - [x] **Recarregar o ficheiro GP** (`/jobs/{id}/reload-gp`): substitui o GP de um
   job existente por uma reexportação (editaste uma nota no Guitar Pro) sem perder
   os ajustes — forka um novo job herdando afinação/sync/tons/letra/capa, só troca

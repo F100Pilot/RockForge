@@ -493,6 +493,21 @@ def test_reload_gp_forks_job_and_keeps_overrides(client: TestClient, tmp_path) -
     assert params["lead_track"] == 0
 
 
+def test_rebuild_sets_and_clears_vocals_track(client: TestClient, tmp_path) -> None:
+    import rockforge.interfaces.api.app as app_module
+
+    def job_params(job_id: str) -> dict:
+        with app_module._session_factory() as session:
+            return dict(session.get(app_module.Job, job_id).params or {})
+
+    job = _gp_job(client, tmp_path)
+    rebuilt = client.post(f"/jobs/{job['id']}/rebuild", json={"vocals_track": 1}).json()
+    assert job_params(rebuilt["id"])["vocals_track"] == 1
+    # -1 clears the selection (fall back to the guitar chart's onsets)
+    cleared = client.post(f"/jobs/{rebuilt['id']}/rebuild", json={"vocals_track": -1}).json()
+    assert "vocals_track" not in job_params(cleared["id"])
+
+
 def test_reload_gp_rejects_gpx(client: TestClient, tmp_path) -> None:
     job = _gp_job(client, tmp_path)
     r = client.post(
