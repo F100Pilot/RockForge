@@ -598,9 +598,6 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
           <select name="lead_track"><option value="">—</option></select></div>
         <div class="field"><label>Pista Rhythm</label>
           <select name="rhythm_track"><option value="">—</option></select></div>
-        <div class="field"><label>Pista Vocals (letra)</label>
-          <select name="vocals_track"><option value="">—</option></select>
-          <span class="meta">pista com a melodia cantada — alinha as sílabas às notas cantadas</span></div>
         <div class="field"><label>Gravação</label>
           <div class="file-drop"><div class="file-drop-icon">&#128190;</div><span class="file-drop-text">Arrasta ou clica para escolher</span><span class="file-drop-btn">Procurar</span>
           <input type="file" name="audio" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" required></div></div>
@@ -2883,14 +2880,6 @@ document.getElementById('gpInspectForm').addEventListener('submit', async e => {
       .filter(t => !t.is_percussion && t.string_count === 6)
       .map(t => `<option value="${t.index}">${t.index}: ${esc(t.name)}</option>`).join('');
   }
-  // Vocals can live on any (non-percussion) track — often a 1-line melody, not a
-  // 6-string guitar — so don't restrict it. Pre-select a track named like vocals.
-  const vocalsSel = form.querySelector('select[name=vocals_track]');
-  const nonPerc = b.tracks.filter(t => !t.is_percussion);
-  vocalsSel.innerHTML = '<option value="">—</option>' + nonPerc
-    .map(t => `<option value="${t.index}">${t.index}: ${esc(t.name)}</option>`).join('');
-  const guess = nonPerc.find(t => /voc|voz|sing|lyric|canto|melod/i.test(t.name));
-  if (guess) vocalsSel.value = String(guess.index);
   if (b.title) form.querySelector('input[name=title]').value = b.title;
   if (b.artist) form.querySelector('input[name=artist]').value = b.artist;
   if (b.album) form.querySelector('input[name=album]').value = b.album;
