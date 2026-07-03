@@ -19,6 +19,27 @@ def test_tone_profile_classifies_high_gain() -> None:
     assert profile.category == "high_gain"
 
 
+def _profile(gain: float, **kw: float) -> ToneProfile:
+    base = {"brightness": 0.5, "low_end": 0.5, "dynamic_range": 0.3}
+    base.update(kw)
+    return ToneProfile(gain_level=gain, **base)
+
+
+def test_high_gain_boundary_is_half() -> None:
+    # A distorted song should not be under-read as crunch: the crunch/high-gain
+    # boundary is 0.5, so a solidly-distorted tone reads high_gain.
+    assert _profile(0.49).category == "crunch"
+    assert _profile(0.5).category == "high_gain"
+
+
+def test_tone_profile_carries_distortion_cues() -> None:
+    # flatness / compression are the brightness-independent distortion cues; they
+    # default to 0 so older callers/serialized profiles stay valid.
+    p = _profile(0.6, flatness=0.7, compression=0.65)
+    assert p.flatness == 0.7 and p.compression == 0.65
+    assert _profile(0.1).flatness == 0.0
+
+
 def test_suggest_tones_returns_lead_and_rhythm_for_each_category() -> None:
     for cat in ("clean", "crunch", "high_gain"):
         result = suggest_tones(cat)

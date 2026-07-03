@@ -540,13 +540,16 @@ def detect_tones(job_id: str) -> None:
                     "brightness": profile.brightness,
                     "low_end": profile.low_end,
                     "dynamic_range": profile.dynamic_range,
+                    "flatness": profile.flatness,
+                    "compression": profile.compression,
                 },
             }
             params["tone_detection_status"] = "ready"
             _log_tone_stage(
                 params,
                 f"done — category: {profile.category} "
-                f"(gain={profile.gain_level:.2f}, brightness={profile.brightness:.2f})",
+                f"(gain={profile.gain_level:.2f}, flatness={profile.flatness:.2f}, "
+                f"compression={profile.compression:.2f}, brightness={profile.brightness:.2f})",
             )
         except Exception as exc:
             params["tone_detection_status"] = "unavailable"
