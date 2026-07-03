@@ -571,17 +571,32 @@ green before committing.
 
 `start.bat` sets `ROCKFORGE_IDLE_SHUTDOWN_S=15`: the web UI calls `POST
 /heartbeat` every 4s while its tab is open; a background watchdog
-(`_idle_shutdown_watchdog` in `interfaces/api/app.py`) sends `SIGTERM` to the
-API process if no heartbeat arrives within that window. For a **near-immediate**
-close (not the full 15s), the UI also beacons `POST /closing` on `pagehide`
-(tab close/navigate), which arms a `CLOSE_GRACE_S` (~3s) deadline; a following
-`/heartbeat` (a refresh that came back) clears it, so a refresh doesn't shut the
-server down while a genuine close does after ~3s. The 15s idle timeout is the
-fallback for a crashed browser / lost beacon. The foreground uvicorn then exits, and
-`start.bat`'s existing cleanup (after the `uvicorn` line) stops the Celery
-worker and any Redis it launched too. Default is `0` (disabled) — required for
-shared deployments (docker-compose) where one user's closed tab must not stop
-the service for everyone.
+(`_idle_shutdown_watchdog` in `interfaces/api/app.py`) decides via the pure
+`_should_shutdown(...)` helper (unit-tested). The real close signal is the
+`POST /closing` beacon on `pagehide` (tab close/navigate), which arms a
+`CLOSE_GRACE_S` (~3s) deadline; a following `/heartbeat` (a refresh that came
+back) clears it, so a refresh survives while a genuine close exits after ~3s.
+
+**Do NOT treat missing heartbeats as "closed."** A backgrounded/minimised tab
+has its JS timers throttled or frozen by the browser, so its heartbeats stop
+even though it's still open — treating that 15s silence as a close (the old
+behaviour) killed the API out from under an idle-but-open tab, and every
+subsequent rebuild/delete silently failed. Two guards fix this:
+- The UI marks the tab hidden via Page Visibility: `ping(document.hidden)` sends
+  `POST /heartbeat?hidden=1` (a `sendBeacon`) on `visibilitychange`, and
+  `/heartbeat` sets `_tab_hidden`. While `_tab_hidden`, the idle-kill is
+  suspended — only `/closing` (real close) or the long `HEARTBEAT_MAX_S`
+  (30 min, crashed-browser safety net) stops the server.
+- The watchdog resets its clock when a poll gap exceeds `SUSPEND_JUMP_S` (5s),
+  i.e. the process was frozen by system sleep — waking never finds a dead
+  server. `pageshow`/`visibilitychange→visible` also re-ping immediately.
+
+So: the server stops on a real tab close (~3s) or after 30 min with no signal at
+all, but never merely because you left an open tab backgrounded or the machine
+slept. The foreground uvicorn then exits, and `start.bat`'s cleanup (after the
+`uvicorn` line) stops the Celery worker and any Redis it launched too. Default
+is `0` (disabled) — required for shared deployments (docker-compose) where one
+user's closed tab must not stop the service for everyone.
 
 `start.bat` runs uvicorn **without `--reload`**: the reloader's parent/child
 split would fight the SIGTERM (the child gets restarted instead of exiting), so
