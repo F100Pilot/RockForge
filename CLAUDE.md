@@ -591,8 +591,13 @@ green before committing.
 (`_idle_shutdown_watchdog` in `interfaces/api/app.py`) decides via the pure
 `_should_shutdown(...)` helper (unit-tested). The real close signal is the
 `POST /closing` beacon on `pagehide` (tab close/navigate), which arms a
-`CLOSE_GRACE_S` (~3s) deadline; a following `/heartbeat` (a refresh that came
-back) clears it, so a refresh survives while a genuine close exits after ~3s.
+`CLOSE_GRACE_S` (~3s) deadline; a following **visible** `/heartbeat` (a refresh
+that came back) clears it, so a refresh survives while a genuine close exits
+after ~3s. Only a VISIBLE heartbeat cancels the close: on tab close the browser
+fires `visibilitychange→hidden` (which beacons `/heartbeat?hidden=1`) *before*
+`pagehide` (which beacons `/closing`), and the two beacons race on the server —
+if a hidden heartbeat cleared `_closing_at` it could cancel the very close it
+precedes, so the tab would never shut the server down (this regressed once).
 
 **Do NOT treat missing heartbeats as "closed."** A backgrounded/minimised tab
 has its JS timers throttled or frozen by the browser, so its heartbeats stop
