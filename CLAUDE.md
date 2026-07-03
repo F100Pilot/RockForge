@@ -104,6 +104,17 @@ confirms over the waveform and commits via the normal rebuild; nothing is
 silently applied (honesty principle). Detection is a module-level function so
 tests monkeypatch it without librosa (`test_auto_sync_proposes_alignment`).
 
+**Pinpointing the first note (offset_s).** Because `offset_s` is *the recording
+second the first note is heard* and `audioTime()` is exactly that (the un-padded
+recording clock behind the sample-accurate Web Audio playhead), the sync panel
+has a **"Início = cursor"** button that sets `offset_s` to the current playhead:
+scrub/click the waveform (zoom in for precision) or play to the first attack,
+then lock it — far more precise than typing a number by ear. **±0.01** buttons
+fine-nudge it, and **"Detetar 1ª nota"** reuses `/auto-sync`'s onset detection
+but applies ONLY the offset (leaving the tempo untouched) as an automatic first
+guess, seeking the playhead there to confirm. All three feed the same live
+preview + normal rebuild.
+
 `POST /jobs/{id}/detect-tempo` (`{from_s}`) backs the tab viewer's per-point
 "Novo beat (detetar)" mode: it measures the recording's tempo from a clicked
 instant (`detect_tempo_from`) and returns `suggested_factor =
