@@ -309,6 +309,78 @@ def parse_gpif_track(
     )
 
 
+def _beat_has_attack(beat: ET.Element, notes_map: dict[str, ET.Element]) -> bool:
+    """True if a beat starts at least one NEW note (not a rest and not made up
+    solely of tie continuations of a held note)."""
+    ids = _text(beat.find("Notes")).split()
+    if not ids:
+        return False  # rest
+    for nid in ids:
+        note = notes_map.get(nid)
+        if note is None:
+            continue
+        tie = note.find("Tie")
+        if not (tie is not None and tie.get("destination") == "true"):
+            return True
+    return False
+
+
+def track_onsets_gpif(
+    path: Path, track_index: int, offset_s: float = 0.0, tempo_scale: float = 1.0
+) -> list[float]:
+    """GPIF (GP7/GP8) counterpart of ``parser.track_onsets``: onset times of
+    every note-bearing beat on a track, ignoring pitch and skipping ties."""
+    if tempo_scale <= 0:
+        raise IngestionError(f"tempo_scale must be positive, got {tempo_scale}")
+    root = _load_gpif(path)
+    tracks_el = root.find("Tracks")
+    tracks = list(tracks_el) if tracks_el is not None else []
+    if not 0 <= track_index < len(tracks):
+        raise IngestionError(f"track index {track_index} out of range")
+
+    bars = {b.attrib["id"]: b for b in (root.find("Bars") or [])}
+    voices = {v.attrib["id"]: v for v in (root.find("Voices") or [])}
+    beats = {b.attrib["id"]: b for b in (root.find("Beats") or [])}
+    notes_map = {n.attrib["id"]: n for n in (root.find("Notes") or [])}
+    rhythms = {r.attrib["id"]: r for r in (root.find("Rhythms") or [])}
+    master_bars = list(root.find("MasterBars") or [])
+    durations = _master_bar_durations(master_bars)
+    bar_start_ticks: list[int] = []
+    acc = 0
+    for d in durations:
+        bar_start_ticks.append(acc)
+        acc += d
+    to_seconds = _make_ticks_to_seconds(_tempo_events(root, bar_start_ticks))
+
+    def t(tick: int) -> float:
+        return max(0.0, tempo_scale * float(to_seconds(tick))) + offset_s
+
+    onsets: list[float] = []
+    for mb_index, mb in enumerate(master_bars):
+        bar_ids = _text(mb.find("Bars")).split()
+        if track_index >= len(bar_ids):
+            continue
+        bar = bars.get(bar_ids[track_index])
+        if bar is None:
+            continue
+        for vid in _text(bar.find("Voices")).split():
+            if vid == "-1":
+                continue
+            voice = voices.get(vid)
+            if voice is None:
+                continue
+            tick = bar_start_ticks[mb_index]
+            for bid in _text(voice.find("Beats")).split():
+                beat = beats.get(bid)
+                if beat is None:
+                    continue
+                dur = _rhythm_ticks(rhythms.get(_ref(beat.find("Rhythm"))))
+                if _beat_has_attack(beat, notes_map):
+                    onsets.append(t(tick))
+                tick += dur
+    return sorted(set(onsets))
+
+
 def _ref(el: ET.Element | None) -> str:
     return el.attrib.get("ref", "") if el is not None else ""
 
