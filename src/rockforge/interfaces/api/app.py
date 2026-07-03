@@ -33,7 +33,40 @@ _last_heartbeat = time.monotonic()
 # clearing it; a real close doesn't, so the watchdog exits ~CLOSE_GRACE_S later
 # instead of waiting the full idle_shutdown_s. None => no pending close.
 _closing_at: float | None = None
+# True while the tab is backgrounded/minimised (Page Visibility). Browsers
+# throttle/freeze a hidden tab's timers, so its heartbeats stop — that silence
+# must NOT be read as "closed" (a real close comes through /closing). While
+# hidden the idle-kill is suspended; only HEARTBEAT_MAX_S catches a dead browser.
+_tab_hidden = False
 CLOSE_GRACE_S = 3.0  # short enough to feel immediate, long enough to survive a refresh
+# Absolute safety net: shut down only after this long with NO signal at all,
+# for a browser that died without firing /closing. Generous so a merely idle or
+# backgrounded (but open) tab is never killed prematurely.
+HEARTBEAT_MAX_S = 1800.0  # 30 min
+# A watchdog poll gap larger than this means the process was suspended (laptop
+# sleep/hibernate); the frozen interval is not real idle time, so we reset the
+# heartbeat clock on wake instead of counting it as "closed".
+SUSPEND_JUMP_S = 5.0
+
+
+def _should_shutdown(
+    now: float,
+    last_heartbeat: float,
+    closing_at: float | None,
+    tab_hidden: bool,
+    idle_shutdown_s: float,
+) -> bool:
+    """Pure shutdown decision for the idle watchdog (unit-tested).
+
+    Triggers: (1) a /closing beacon deadline passed (fast tab-close path);
+    (2) the tab is visible but silent past ``idle_shutdown_s`` (its JS stopped);
+    (3) no signal at all for HEARTBEAT_MAX_S (crashed browser). A backgrounded
+    (hidden) tab is never killed by (2) — only a real close or a long crash."""
+    gap = now - last_heartbeat
+    closing = closing_at is not None and now >= closing_at
+    idle = (not tab_hidden) and gap > idle_shutdown_s
+    crashed = gap > HEARTBEAT_MAX_S
+    return closing or idle or crashed
 
 
 async def _idle_shutdown_watchdog() -> None:
@@ -44,13 +77,23 @@ async def _idle_shutdown_watchdog() -> None:
     idle_shutdown_s (fallback for a crashed browser / lost beacon). Exiting lets
     start.bat's cleanup stop the Celery worker and any Redis it launched.
     """
+    global _last_heartbeat
     poll_s = min(0.5, settings.idle_shutdown_s / 2)  # responsive to the ~3s close grace
+    last_poll = time.monotonic()
     while True:
         await asyncio.sleep(poll_s)
         now = time.monotonic()
-        closing = _closing_at is not None and now >= _closing_at
-        idle = now - _last_heartbeat > settings.idle_shutdown_s
-        if closing or idle:
+        # A poll gap far longer than poll_s means the process was frozen (system
+        # sleep). Don't count that as idle — reset the clock and let the UI
+        # re-ping on wake, so waking never finds a dead server.
+        if now - last_poll > SUSPEND_JUMP_S:
+            _last_heartbeat = now
+            last_poll = now
+            continue
+        last_poll = now
+        if _should_shutdown(
+            now, _last_heartbeat, _closing_at, _tab_hidden, settings.idle_shutdown_s
+        ):
             os.kill(os.getpid(), signal.SIGTERM)
             return
 
@@ -1290,13 +1333,17 @@ def gear_catalogue() -> dict[str, Any]:
 
 
 @app.post("/heartbeat", include_in_schema=False)
-def heartbeat() -> dict[str, bool]:
+def heartbeat(hidden: bool = False) -> dict[str, bool]:
     """Pinged periodically by the web UI; see Settings.idle_shutdown_s.
 
-    Also cancels a pending /closing — a heartbeat arriving after the tab fired
-    `pagehide` means it was a refresh (the page came back), not a real close."""
-    global _last_heartbeat, _closing_at
+    ``hidden=1`` (sent on Page Visibility change / from a backgrounded tab)
+    marks the tab as still-open-but-backgrounded, which suspends the idle-kill
+    so a throttled tab isn't mistaken for a closed one. Any heartbeat also
+    cancels a pending /closing — one arriving after `pagehide` means the page
+    came back (a refresh), not a real close."""
+    global _last_heartbeat, _closing_at, _tab_hidden
     _last_heartbeat = time.monotonic()
+    _tab_hidden = hidden
     _closing_at = None
     return {"ok": True}
 

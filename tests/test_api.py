@@ -930,3 +930,31 @@ def test_closing_beacon_arms_and_heartbeat_cancels(monkeypatch, tmp_path) -> Non
         assert app_module._closing_at is not None  # armed
         assert c.post("/heartbeat").status_code == 200
         assert app_module._closing_at is None  # a refresh cancelled it
+
+
+def test_should_shutdown_decision_rules() -> None:
+    """The pure idle-watchdog decision: a hidden (backgrounded) tab is never
+    idle-killed; only a real close or a long crash-timeout stops it."""
+    import rockforge.interfaces.api.app as app_module
+
+    f = app_module._should_shutdown
+    idle = 15.0
+    # visible + silent past the idle window => shut down (its JS stopped)
+    assert f(100.0, 100.0 - 20, None, False, idle)
+    # hidden + silent past idle => do NOT shut down (throttled but still open)
+    assert not f(100.0, 100.0 - 20, None, True, idle)
+    # recent heartbeat => alive
+    assert not f(100.0, 98.0, None, False, idle)
+    # a passed /closing deadline shuts down even when hidden (a real close)
+    assert f(100.0, 99.0, 99.5, True, idle)
+    # crash safety net: silent beyond HEARTBEAT_MAX_S kills even a hidden tab
+    assert f(100.0 + app_module.HEARTBEAT_MAX_S + 1, 100.0, None, True, idle)
+
+
+def test_heartbeat_hidden_flag_toggles_state(client: TestClient) -> None:
+    import rockforge.interfaces.api.app as app_module
+
+    assert client.post("/heartbeat", params={"hidden": "1"}).status_code == 200
+    assert app_module._tab_hidden is True
+    assert client.post("/heartbeat").status_code == 200  # visible again
+    assert app_module._tab_hidden is False

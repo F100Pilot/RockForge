@@ -2899,11 +2899,23 @@ document.getElementById('gpJobForm').addEventListener('submit', async e => {
 refreshJobs();
 setInterval(refreshJobs, 5000);
 
-// Local single-user setups (start.bat): tell the API this tab is still open
-// so it can shut itself (and the worker/Redis it launched) down once these
-// pings stop, i.e. when the tab is closed. No-op if idle_shutdown_s is unset.
-setInterval(() => fetch('/heartbeat', { method: 'POST' }).catch(() => {}), 4000);
-fetch('/heartbeat', { method: 'POST' }).catch(() => {});
+// Local single-user setups (start.bat): tell the API this tab is still open so
+// it can shut itself (and the worker/Redis it launched) down once the tab is
+// CLOSED. A backgrounded/minimised tab has its timers throttled/frozen, so we
+// mark it hidden (Page Visibility) — the server then suspends the idle-kill and
+// only a real close (/closing beacon) stops it. No-op if idle_shutdown_s unset.
+function ping(hidden) {
+  const url = '/heartbeat' + (hidden ? '?hidden=1' : '');
+  // A hidden tab may be frozen mid-fetch — sendBeacon is delivered reliably.
+  if (hidden) { try { if (navigator.sendBeacon(url)) return; } catch {} }
+  fetch(url, { method: 'POST' }).catch(() => {});
+}
+setInterval(() => ping(document.hidden), 4000);
+ping(false);
+// Fire immediately on tab hide/show and on wake/bfcache-restore, so the server
+// learns the tab's state right away instead of waiting for the next interval.
+document.addEventListener('visibilitychange', () => ping(document.hidden));
+addEventListener('pageshow', () => ping(false));
 // On tab close/navigate, beacon /closing so the server shuts down in ~3s
 // instead of waiting the full idle window. A refresh reloads and sends the
 // heartbeat above within the grace, which cancels the pending shutdown.
