@@ -176,55 +176,6 @@ def test_gp_embedded_lyrics_surface_as_recording_clock_events(
     assert result.gp_lyrics[1].time == pytest.approx(0.5)
 
 
-def test_vocals_track_aligns_syllables_to_its_own_onsets(tmp_path: Path) -> None:
-    """With a Vocals track designated, syllables land on that track's sung-note
-    onsets (eighth notes here), not the guitar chart's quarter-note onsets."""
-    song = gp.Song()
-    song.title, song.artist, song.tempo = "L", "B", 120
-    lead = song.tracks[0]
-    lead.name = "Gtr"
-    v = lead.measures[0].voices[0]
-    for fret in [5, 7]:  # quarter notes → onsets 0.0, 0.5
-        b = gp.Beat(v)
-        b.status = gp.BeatStatus.normal
-        b.duration = gp.Duration(value=4)
-        n = gp.Note(b)
-        n.string, n.value, n.type = 1, fret, gp.NoteType.normal
-        b.notes.append(n)
-        v.beats.append(b)
-    voc = gp.Track(song)
-    voc.name = "Vocals"
-    voc.number = 2
-    song.tracks.append(voc)
-    vv = voc.measures[0].voices[0]
-    for pitch in [3, 5]:  # eighth notes → onsets 0.0, 0.25
-        b = gp.Beat(vv)
-        b.status = gp.BeatStatus.normal
-        b.duration = gp.Duration(value=8)
-        n = gp.Note(b)
-        n.string, n.value, n.type = 1, pitch, gp.NoteType.normal
-        b.notes.append(n)
-        vv.beats.append(b)
-    song.lyrics.lines[0].startingMeasure = 1
-    song.lyrics.lines[0].lyrics = "hello world"
-    path = tmp_path / "voc.gp5"
-    gp.write(song, str(path))
-
-    with_vocals = make_use_case().run(
-        GpJobSpec(gp_path=path, audio_source="x.wav", lead_track=0, vocals_track=1),
-        SongMetadata(title="L", artist="B"), tmp_path / "wv",
-    )
-    assert [e.lyric for e in with_vocals.gp_lyrics] == ["hello", "world+"]
-    # "world" lands on the vocals track's second onset (0.25s), not the guitar's 0.5s
-    assert with_vocals.gp_lyrics[1].time == pytest.approx(0.25)
-
-    without = make_use_case().run(
-        GpJobSpec(gp_path=path, audio_source="x.wav", lead_track=0),
-        SongMetadata(title="L", artist="B"), tmp_path / "wo",
-    )
-    assert without.gp_lyrics[1].time == pytest.approx(0.5)  # guitar chart onset
-
-
 def test_lead_in_pushes_song_later(two_track_gp5: Path, tmp_path: Path) -> None:
     """User-defined intro silence shifts the whole bundle (notes + audio) later
     on top of the automatic MIN_LEAD_S lead-in."""

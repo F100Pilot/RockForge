@@ -41,7 +41,6 @@ from rockforge.infrastructure.gpimport.parser import (
     ParsedGpTrack,
     inspect_gp,
     parse_gp_track,
-    track_onsets,
 )
 from rockforge.infrastructure.rsxml.vocals import (
     VocalEvent,
@@ -109,11 +108,6 @@ class GpJobSpec:
     audio_source: str
     lead_track: int | None = None
     rhythm_track: int | None = None
-    # Track whose sung-note onsets (and lyrics) drive per-syllable lyric
-    # placement. A dedicated Vocals track carries the actual melody, so its
-    # onsets land the words where they are sung — unlike distributing the
-    # syllables over the guitar chart's onsets (the fallback when this is None).
-    vocals_track: int | None = None
     offset_s: float = 0.0  # second in the recording where the song's first note is heard
     # Extra silence (seconds) prepended at the very start, on top of the
     # automatic MIN_LEAD_S lead-in — user-controlled "intro silence" that pushes
@@ -369,8 +363,7 @@ class GenerateFromGpUseCase:
                 )
 
         stage("build_arrangements")
-        first_kind = next(iter(parsed.keys()))
-        first = parsed[first_kind]
+        first = next(iter(parsed.values()))
         song_length = (
             max(
                 max((n.time + n.sustain for n in p.notes), default=0.0)
@@ -432,33 +425,14 @@ class GenerateFromGpUseCase:
             # syllable lands on the next note attack. Distribute the line text
             # over the actual (already warped + offset) note onsets so the
             # timing matches what the GP file shows, rather than an even spread.
-            if spec.vocals_track is not None:
-                # Align to the designated Vocals track's own sung-note onsets
-                # (one syllable per attack) — where the words are actually sung
-                # — instead of the guitar chart's onsets. Warp them with the
-                # first arrangement's sync so they share the lyrics' timeline.
-                first_sync = spec.sync_for(first_kind)
-                onsets = track_onsets(
-                    spec.gp_path, spec.vocals_track, score_shift, first_sync.tempo_scale
-                )
-                for stage_anchors in first_sync.sync_anchor_stages:
-                    if stage_anchors:
-                        warp = _build_time_warp(stage_anchors)
-                        onsets = [warp(o) for o in onsets]
-                onsets = sorted(set(onsets))
-                if not onsets:  # vocals track had no notes — fall back to the chart
-                    onsets = sorted({n.time for n in first.notes})
-                aligned_to = "the Vocals track's sung notes"
-            else:
-                onsets = sorted({n.time for n in first.notes})
-                aligned_to = "the chart's note onsets"
+            onsets = sorted({n.time for n in first.notes})
             vocals = distribute_syllables(
                 [(line.time, line.text) for line in first.lyrics], onsets
             )
             lyrics_from_gp = True
             warnings.append(
-                f"lyrics taken from the GP file, aligned per syllable to {aligned_to} "
-                "(melismas — one syllable held over several notes — are not "
+                "lyrics taken from the GP file, aligned per syllable to the note "
+                "onsets (melismas — one syllable held over several notes — are not "
                 "modelled and may drift until the next line)"
             )
 
