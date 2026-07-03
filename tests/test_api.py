@@ -294,6 +294,44 @@ def test_arrangements_derives_chord_name(client: TestClient) -> None:
     assert all(n["chord_name"] is None for n in data[0]["notes"] if not n["chord"])
 
 
+def test_arrangements_exposes_bend_magnitude(client: TestClient) -> None:
+    """A bent note carries its bend magnitude (semitones) so the viewer can
+    label it 'full'/'½'."""
+    import rockforge.config as config
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.domain.arrangement import Arrangement, ArrangementKind, SongMetadata
+    from rockforge.domain.music import Beat, TabNote, Technique, TempoMap, Tuning
+    from rockforge.infrastructure.db.models import JobStatus
+    from rockforge.infrastructure.rsxml.writer import write_arrangement_xml
+
+    job = _create_job(client)
+    bundle = config.settings.work_dir / job["id"] / "bundle"
+    beats = tuple(Beat(time=0.5 * i, measure=(i // 4 + 1) if i % 4 == 0 else -1) for i in range(8))
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="Bend", artist="T", song_length=4.0),
+        tuning=Tuning(),
+        notes=[
+            TabNote(string=2, fret=7, time=1.0, sustain=0.5,
+                    techniques=frozenset({Technique.BEND}), bend_semitones=2.0),
+            TabNote(string=1, fret=5, time=2.0, sustain=0.2),  # plain, no bend
+        ],
+        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+    )
+    write_arrangement_xml(arr, bundle / "arrangement_lead.xml")
+
+    with app_module._session_factory() as session:
+        db_job = session.get(app_module.Job, job["id"])
+        db_job.status = JobStatus.COMPLETED
+        db_job.bundle_dir = str(bundle)
+        session.commit()
+
+    notes = client.get(f"/jobs/{job['id']}/arrangements").json()[0]["notes"]
+    bent = [n for n in notes if "bend" in n["techniques"]]
+    assert len(bent) == 1 and bent[0]["bend_semitones"] == 2
+    assert all(n["bend_semitones"] == 0 for n in notes if "bend" not in n["techniques"])
+
+
 def _make_gp5_bytes(tmp_path) -> bytes:
     import guitarpro as gp
 

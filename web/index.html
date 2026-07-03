@@ -1141,12 +1141,24 @@ function sustainWave(x, y, w) {
   return d;
 }
 
-// Bend: a curved arrow rising from the note (right side up), the standard tab
-// notation for a pitch bend. Rises ~26px so it reads clearly at any zoom.
-function bendArrow(x, y, r) {
-  const ax = x + r + 12, ay = y - 26;  // arrow tip
-  return `<path d="M${x + r - 2},${y} Q${ax},${y - 2} ${ax},${ay + 5}" fill="none" stroke="#fff" stroke-width="2"/>`
-    + `<path d="M${ax - 4},${ay + 6} L${ax},${ay} L${ax + 4},${ay + 6} Z" fill="#fff"/>`;
+// Bend magnitude → tab label (semitones: 1=½, 2=full/whole step, 3=1½…).
+function bendLabel(semis) {
+  if (!semis) return '';
+  if (semis === 1) return '½';
+  if (semis === 2) return 'full';
+  return `${Math.floor(semis / 2)}${semis % 2 ? '½' : ''}`;
+}
+
+// Bend: a near-vertical arrow rising from the note, curving right near the top,
+// with the bend amount ("full", "½", …) above the arrowhead — the standard
+// Guitar-Pro/tab bend notation. Rises in fixed px so it reads at any zoom.
+function bendArrow(x, y, r, label) {
+  const x0 = x, y0 = y - r + 2;          // start just inside the note's top
+  const rise = 30, tipX = x + 9, tipY = y0 - rise;
+  let out = `<path d="M${x0},${y0} C${x0},${(y0 - rise * 0.6).toFixed(1)} ${tipX},${(y0 - rise * 0.5).toFixed(1)} ${tipX},${tipY + 5}" fill="none" stroke="#fff" stroke-width="2"/>`;
+  out += `<path d="M${tipX - 4},${tipY + 6} L${tipX},${tipY} L${tipX + 4},${tipY + 6} Z" fill="#fff"/>`;
+  if (label) out += `<text x="${tipX}" y="${tipY - 3}" fill="#fff" font-size="10" font-weight="700" text-anchor="middle">${label}</text>`;
+  return out;
 }
 
 function showArr(i) {
@@ -1253,7 +1265,7 @@ function showArr(i) {
         : `<circle class="note-shape" cx="${x}" cy="${y}" r="${R}" fill="${color}"${tech ? ' stroke="#fff" stroke-width="2.5" stroke-dasharray="3,3"' : ''}/>`;
       s += shape;
       s += `<text x="${x}" y="${y+5}" fill="#14151a" font-size="14" font-weight="700" text-anchor="middle">${n.fret}</text>`;
-      if (bend) s += bendArrow(x, y, R);  // rising arrow from the note
+      if (bend) s += bendArrow(x, y, R, bendLabel(n.bend_semitones));  // rising arrow + amount
       if (tech) {
         // bend/vibrato are drawn at the note itself, not as glyphs above it
         const gt = n.techniques.filter(t => t !== 'vibrato' && t !== 'bend');

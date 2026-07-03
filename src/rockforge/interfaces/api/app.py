@@ -154,6 +154,7 @@ class ArrangementNoteOut(BaseModel):
     sustain: float
     chord: bool
     techniques: list[str]
+    bend_semitones: int = 0  # bend magnitude (1=half, 2=full, 3=1½…); 0 if no bend
     chord_name: str | None = None  # derived name for the chord this note belongs to
 
 
@@ -1019,7 +1020,12 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
                 )
                 if el.get(t) == "1"
             ]
-            if el.get("bend", "0") != "0":
+            bend = el.get("bend", "0")
+            try:
+                bend_semitones = int(round(float(bend)))
+            except ValueError:
+                bend_semitones = 0
+            if bend_semitones:
                 techs.append("bend")
             if el.get("slideTo", "-1") != "-1":
                 techs.append("slide")
@@ -1030,6 +1036,7 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
                 sustain=float(el.get("sustain", "0")),
                 chord=chord,
                 techniques=techs,
+                bend_semitones=bend_semitones,
             )
 
         notes = [parse_note(el, False) for el in root.findall("levels/level/notes/note")]
