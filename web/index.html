@@ -1171,14 +1171,18 @@ function showArr(i) {
   if (applyKindEl) applyKindEl.textContent = a.kind;
   const svg = document.getElementById('tabsvg');
   const dur = Math.max(...a.notes.map(n => n.time + n.sustain), 10);
-  const px = BASE_PX * zoomLevel, ROW = 40, R = 13, W = Math.max(900, dur * px + 60), H = 280;
+  // SB = staff bottom (string-0 line). The band between SB and H holds the
+  // chord-name row, kept wide enough that names never touch the lowest notes.
+  const px = BASE_PX * zoomLevel, ROW = 40, R = 13, W = Math.max(900, dur * px + 60);
+  const H = 304, SB = H - 59;
   tabPx = px; tabH = H;
   viewOrigin = isGpJob() ? Math.max(0, MIN_LEAD - offsetLive) : 0;  // bundle time at the left edge (0s)
   svg.setAttribute('width', W);
+  svg.setAttribute('height', H);  // includes the chord-name band below the staff
   let s = '';
   s += waveformSvg(W, H, px);  // audio reference, drawn behind staff + notes
   for (let str = 0; str < 6; str++) {
-    const y = H - 35 - str * ROW;
+    const y = SB - str * ROW;
     s += `<line x1="30" y1="${y}" x2="${W-10}" y2="${y}" stroke="#3a3c45"/>`;
     s += `<text x="6" y="${y+5}" fill="${STRING_COLORS[str]}" font-size="15" font-weight="700">${stringLabel(str, a.tuning_offsets)}</text>`;
   }
@@ -1190,7 +1194,7 @@ function showArr(i) {
     const isMajor = q % 20 === 0; // every 5s
     const isSecond = q % 4 === 0; // every 1s
     const stroke = isMajor ? '#6a6f7d' : isSecond ? '#4a4e59' : '#33363f';
-    s += `<line x1="${x}" y1="14" x2="${x}" y2="${H-35}" stroke="${stroke}" stroke-width="${isMajor ? 1 : 0.5}"/>`;
+    s += `<line x1="${x}" y1="14" x2="${x}" y2="${SB}" stroke="${stroke}" stroke-width="${isMajor ? 1 : 0.5}"/>`;
     if (isMajor) s += `<text x="${x}" y="12" fill="#666" font-size="12">${t}s</text>`;
     else if (isSecond) s += `<text x="${x}" y="12" fill="#454852" font-size="9">${t}</text>`;
   }
@@ -1202,7 +1206,7 @@ function showArr(i) {
     const dispT = barWarp(previewScale(b.time));
     const x = timeToX(dispT);
     if (x < 24 || x > W - 4) continue;
-    s += `<line x1="${x}" y1="30" x2="${x}" y2="${H-35}" stroke="#5a6a8a" stroke-width="1" opacity=".55"/>`;
+    s += `<line x1="${x}" y1="30" x2="${x}" y2="${SB}" stroke="#5a6a8a" stroke-width="1" opacity=".55"/>`;
     s += `<text x="${x+3}" y="42" fill="#7d8aa5" font-size="11" font-weight="700">${b.measure}</text>`;
   }
   // Lyrics editor times are in recording-time (un-padded); shift to the display
@@ -1217,7 +1221,7 @@ function showArr(i) {
       && currentPlayheadT <= e.time + e.length + leadInBuilt;
     s += `<g class="lyric-word" data-li="${li}" style="cursor:grab">`;
     s += `<text x="${x}" y="26" fill="${active ? '#ff7a45' : '#9aa0ad'}" font-size="13" font-weight="${active ? '700' : '400'}" text-anchor="middle">${esc(word)}${e.lineBreak ? ' /' : ''}</text>`;
-    s += `<line x1="${x}" y1="30" x2="${x}" y2="${H-35}" stroke="${active ? '#ff7a45' : '#454852'}" stroke-width="1" stroke-dasharray="2,4" opacity=".35"/>`;
+    s += `<line x1="${x}" y1="30" x2="${x}" y2="${SB}" stroke="${active ? '#ff7a45' : '#454852'}" stroke-width="1" stroke-dasharray="2,4" opacity=".35"/>`;
     s += `</g>`;
   }
   // group simultaneous notes (chords) so they get a connecting bracket
@@ -1241,16 +1245,16 @@ function showArr(i) {
     s += `<g class="note-grp${sel}" data-t="${g.time}">`;
     if (g.notes.length > 1) {
       const x = timeToX(dispT);
-      const ys = g.notes.map(n => H - 35 - n.string * ROW);
+      const ys = g.notes.map(n => SB - n.string * ROW);
       s += `<line x1="${x}" y1="${Math.min(...ys)}" x2="${x}" y2="${Math.max(...ys)}" stroke="#9aa0ad" stroke-width="2"/>`;
       // Derived chord name (best-effort, from the notes' pitches). Drawn in the
-      // dark band below the staff (a fixed chord row) so names never overlap the
-      // notes and all line up along the bottom.
+      // dark band below the staff (a fixed chord row, well clear of the lowest
+      // string's notes) so names never overlap the notes and all line up.
       const cn = g.notes.find(n => n.chord_name);
-      if (cn) s += `<text x="${x}" y="${H - 12}" fill="#ffd479" font-size="13" font-weight="700" text-anchor="middle">${esc(cn.chord_name)}</text>`;
+      if (cn) s += `<text x="${x}" y="${H - 16}" fill="#ffd479" font-size="13" font-weight="700" text-anchor="middle">${esc(cn.chord_name)}</text>`;
     }
     for (const n of g.notes) {
-      const x = timeToX(dispT), y = H - 35 - n.string * ROW;
+      const x = timeToX(dispT), y = SB - n.string * ROW;
       const color = STRING_COLORS[n.string];
       const tech = n.techniques.length > 0;
       const vibrato = n.techniques.includes('vibrato');
@@ -1277,7 +1281,7 @@ function showArr(i) {
   }
   for (const [origT, newT] of syncAnchors) {  // already in display coordinates
     const x1 = timeToX(origT), x2 = timeToX(newT);
-    s += `<line x1="${x1}" y1="0" x2="${x1}" y2="${H-35}" stroke="#ff7a45" stroke-width="1.5" stroke-dasharray="4,3"/>`;
+    s += `<line x1="${x1}" y1="0" x2="${x1}" y2="${SB}" stroke="#ff7a45" stroke-width="1.5" stroke-dasharray="4,3"/>`;
     if (Math.abs(x2 - x1) > 0.5)
       s += `<line x1="${x1}" y1="6" x2="${x2}" y2="6" stroke="#ff7a45" stroke-width="2" marker-end="url(#arrow)"/>`;
   }
@@ -2766,7 +2770,7 @@ async function decodeWaveform(id) {
 // previewScale, mapped through timeToX) line up onto it as offset/tempo change.
 function waveformPathData(W, px, H) {
   if (!wavePeaks) return '';
-  const top = 14, bot = H - 35, mid = (top + bot) / 2, amp = (bot - top) / 2 * 0.92;
+  const top = 14, bot = H - 59, mid = (top + bot) / 2, amp = (bot - top) / 2 * 0.92;
   let up = '', down = '';
   for (let x = 30; x <= W; x += 2) {
     const s = (x - 30) / px;  // recording time at this x
