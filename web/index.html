@@ -1103,10 +1103,10 @@ const TECH_ABBR = {
 // line, hammer/pull slur, harmonic diamond); the rest fall back to a short
 // text badge. Each glyph is authored around a local origin (0,0) that sits
 // just above the note and extends upward (negative y).
-// Vibrato is NOT here: it's drawn as a wavy sustain line (sustainWave) along
-// the note's held time, not as a glyph above it.
+// Bend and vibrato are NOT here: they're drawn at the note itself (bend = a
+// rising curved arrow from the note; vibrato = a wavy sustain line), not as a
+// small glyph above it.
 const TECH_GLYPH = {
-  bend: '<path d="M-3,1 Q-2,-7 3,-8" fill="none" stroke="#fff" stroke-width="1.5"/><path d="M3,-8 l-3.6,0.4 l1.9,3.1 z" fill="#fff"/>',
   slide: '<line x1="-6" y1="0" x2="6" y2="-8" stroke="#fff" stroke-width="1.6"/>',
   harmonic: '<path d="M0,-11 L5,-5 L0,1 L-5,-5 Z" fill="none" stroke="#fff" stroke-width="1.4"/>',
   hammerOn: '<path d="M-6,-2 q6,-6 12,0" fill="none" stroke="#fff" stroke-width="1.4"/><text x="0" y="-8" fill="#fff" font-size="8" font-weight="700" text-anchor="middle">h</text>',
@@ -1139,6 +1139,14 @@ function sustainWave(x, y, w) {
     cur = nx; up = !up;
   }
   return d;
+}
+
+// Bend: a curved arrow rising from the note (right side up), the standard tab
+// notation for a pitch bend. Rises ~26px so it reads clearly at any zoom.
+function bendArrow(x, y, r) {
+  const ax = x + r + 12, ay = y - 26;  // arrow tip
+  return `<path d="M${x + r - 2},${y} Q${ax},${y - 2} ${ax},${ay + 5}" fill="none" stroke="#fff" stroke-width="2"/>`
+    + `<path d="M${ax - 4},${ay + 6} L${ax},${ay} L${ax + 4},${ay + 6} Z" fill="#fff"/>`;
 }
 
 function showArr(i) {
@@ -1223,16 +1231,18 @@ function showArr(i) {
       const x = timeToX(dispT);
       const ys = g.notes.map(n => H - 35 - n.string * ROW);
       s += `<line x1="${x}" y1="${Math.min(...ys)}" x2="${x}" y2="${Math.max(...ys)}" stroke="#9aa0ad" stroke-width="2"/>`;
-      // Derived chord name (best-effort, from the notes' pitches). Placed just
-      // BELOW the chord's lowest note — as low as possible without touching it.
+      // Derived chord name (best-effort, from the notes' pitches). Drawn in the
+      // dark band below the staff (a fixed chord row) so names never overlap the
+      // notes and all line up along the bottom.
       const cn = g.notes.find(n => n.chord_name);
-      if (cn) s += `<text x="${x}" y="${Math.max(...ys) + R + 14}" fill="#ffd479" font-size="13" font-weight="700" text-anchor="middle">${esc(cn.chord_name)}</text>`;
+      if (cn) s += `<text x="${x}" y="${H - 12}" fill="#ffd479" font-size="13" font-weight="700" text-anchor="middle">${esc(cn.chord_name)}</text>`;
     }
     for (const n of g.notes) {
       const x = timeToX(dispT), y = H - 35 - n.string * ROW;
       const color = STRING_COLORS[n.string];
       const tech = n.techniques.length > 0;
       const vibrato = n.techniques.includes('vibrato');
+      const bend = n.techniques.includes('bend');
       const susW = n.sustain > 0.05 ? n.sustain*px*(tempoScaleLive/builtScale) : 0;
       if (vibrato)  // held time drawn as an oscillating line (min width so it reads as a wave)
         s += `<path d="${sustainWave(x, y, Math.max(susW, 24))}" fill="none" stroke="${color}" stroke-width="2.5" opacity=".8"/>`;
@@ -1243,8 +1253,10 @@ function showArr(i) {
         : `<circle class="note-shape" cx="${x}" cy="${y}" r="${R}" fill="${color}"${tech ? ' stroke="#fff" stroke-width="2.5" stroke-dasharray="3,3"' : ''}/>`;
       s += shape;
       s += `<text x="${x}" y="${y+5}" fill="#14151a" font-size="14" font-weight="700" text-anchor="middle">${n.fret}</text>`;
+      if (bend) s += bendArrow(x, y, R);  // rising arrow from the note
       if (tech) {
-        const gt = n.techniques.filter(t => t !== 'vibrato');  // vibrato shown as the wavy sustain
+        // bend/vibrato are drawn at the note itself, not as glyphs above it
+        const gt = n.techniques.filter(t => t !== 'vibrato' && t !== 'bend');
         if (gt.length) s += techGlyphs(gt, x, y - R - 4);
         s += `<title>${n.techniques.join(', ')}</title>`;
       }
