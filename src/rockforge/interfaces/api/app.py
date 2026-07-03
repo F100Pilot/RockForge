@@ -559,6 +559,95 @@ async def create_gp_job(
         return _to_out(job)
 
 
+@app.post("/jobs/{job_id}/reload-gp", response_model=JobOut, status_code=202)
+async def reload_gp(job_id: str, gp: UploadFile = File(...)) -> JobOut:
+    """Replace the Guitar Pro file of an existing GP job and rebuild, keeping
+    every override the job already carries (tuning, sync anchors, tempo, tones,
+    lyrics, cover). For when you tweak a note in Guitar Pro and re-export — no
+    need to recreate the job and redo all the alignment work.
+
+    Like /rebuild it forks a NEW job (fresh work dir) so the previous build is
+    preserved; the recording is reused unchanged."""
+    suffix = Path(gp.filename or "").suffix.lower()
+    if suffix in GP_REJECTED_SUFFIXES:
+        raise HTTPException(
+            415,
+            "GP6 (.gpx) is not supported (proprietary binary container). "
+            "Export as GP5 or GP7 (.gp) from Guitar Pro or TuxGuitar and upload again.",
+        )
+    if suffix not in GP_SUFFIXES:
+        raise HTTPException(415, f"unsupported Guitar Pro format: {suffix or '(none)'}")
+
+    from rockforge.domain.errors import IngestionError
+    from rockforge.infrastructure.gpimport.parser import inspect_gp
+
+    with _session_factory() as session:
+        original = session.get(Job, job_id)
+        if original is None:
+            raise HTTPException(404, "job not found")
+        if original.source_type != "gp":
+            raise HTTPException(422, "reload-gp only applies to Guitar Pro jobs")
+        if not Path(original.source).exists():
+            raise HTTPException(409, "original recording no longer exists on the work volume")
+        params: dict[str, object] = dict(original.params or {})
+        src_recording = original.source
+        meta = (original.title, original.artist, original.album, original.year)
+
+        gp_dir = settings.work_dir / "gp"
+        gp_dir.mkdir(parents=True, exist_ok=True)
+        gp_dest = gp_dir / f"{uuid.uuid4()}{suffix}"
+        with gp_dest.open("wb") as fh:
+            shutil.copyfileobj(gp.file, fh)
+
+        try:
+            info = inspect_gp(gp_dest)
+        except IngestionError as exc:
+            gp_dest.unlink(missing_ok=True)
+            raise HTTPException(422, str(exc)) from exc
+
+        # The stored track selection must still be valid: a plain note edit keeps
+        # the track layout, but a restructured file may not — fail loudly rather
+        # than silently building the wrong track.
+        valid = {t.index for t in info.tracks}
+        for key in ("lead_track", "rhythm_track"):
+            idx = params.get(key)
+            if isinstance(idx, int) and idx not in valid:
+                gp_dest.unlink(missing_ok=True)
+                raise HTTPException(
+                    422,
+                    f"the new GP file has no track at the previously selected {key} "
+                    f"(index {idx}) — the track layout changed. Create a new job via "
+                    "'Inspecionar pistas' instead.",
+                )
+
+        params["gp_path"] = str(gp_dest)
+        title, artist, album, year = meta
+        job = Job(
+            source=src_recording,
+            source_type="gp",
+            title=title,
+            artist=artist,
+            album=album,
+            year=year,
+            params=params,
+        )
+        session.add(job)
+        session.commit()
+
+        # Carry the album art across to the forked job's work dir (same as
+        # /rebuild) so a reload never loses the cover.
+        cover_art_name = params.get("cover_art")
+        if cover_art_name:
+            src = settings.work_dir / job_id / cast(str, cover_art_name)
+            if src.exists():
+                dest_dir = settings.work_dir / job.id
+                dest_dir.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, dest_dir / cast(str, cover_art_name))
+
+        _enqueue(job)
+        return _to_out(job)
+
+
 @app.get("/jobs", response_model=list[JobOut])
 def list_jobs(limit: int = 50) -> list[JobOut]:
     from sqlalchemy import select

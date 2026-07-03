@@ -53,6 +53,20 @@ Rules:
    `test_tied_note_extends_previous_not_new_attack` (GP5) and
    `test_gp7_tied_note_extends_not_duplicates` (GP7).
 
+### Reloading the GP file (`/jobs/{id}/reload-gp`)
+
+`POST /jobs/{id}/reload-gp` (multipart `gp`, GP jobs only) swaps the Guitar Pro
+file of an existing job for a re-exported one — for when you tweak a note in
+Guitar Pro and don't want to recreate the job and redo all the alignment. It
+writes the new file to a fresh `work_dir/gp/<uuid>` and, like `/rebuild`, **forks
+a new job** that inherits ALL of the original's params (tuning, `offset_s`,
+`tempo_scale`, `sync_anchor_stages`, `arrangement_sync`, tones, lyrics, cover) —
+only `gp_path` changes. It validates the new file parses (`inspect_gp`) and that
+the previously selected `lead_track`/`rhythm_track` indices still exist (a plain
+note edit keeps the track layout; a restructured file 422s with a "create a new
+job" message rather than silently building the wrong track). Exposed in the sync
+panel as "Recarregar ficheiro GP".
+
 ### Intro silence (`lead_in_s`)
 
 `GpJobSpec.lead_in_s` (default 0) is user-defined extra silence prepended at the

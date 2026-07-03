@@ -168,6 +168,7 @@ GET    /jobs                         list all jobs
 GET    /jobs/{id}                    one job
 DELETE /jobs/{id}                    delete job + its files
 POST   /jobs/{id}/rebuild            rebuild with new params (composes sync rounds)
+POST   /jobs/{id}/reload-gp          swap the GP file, keep all overrides   [GP]
 POST   /jobs/{id}/auto-sync          propose (tempo_scale, offset_s)   [GP, ml extra]
 POST   /jobs/{id}/detect-tempo       per-point tempo from a clicked instant [GP, ml]
 POST   /jobs/{id}/detect-tuning      propose cent offset               [ml extra]
