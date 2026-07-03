@@ -1357,7 +1357,13 @@ def heartbeat(hidden: bool = False) -> dict[str, bool]:
     global _last_heartbeat, _closing_at, _tab_hidden
     _last_heartbeat = time.monotonic()
     _tab_hidden = hidden
-    _closing_at = None
+    # Only a VISIBLE heartbeat cancels a pending close (the page genuinely came
+    # back — a refresh). A hidden beacon ALSO fires on tab close
+    # (visibilitychange→hidden precedes pagehide), and the two beacons race on
+    # the server; if a hidden heartbeat cleared _closing_at it could cancel the
+    # /closing the same close just armed, and the tab would never shut down.
+    if not hidden:
+        _closing_at = None
     return {"ok": True}
 
 
