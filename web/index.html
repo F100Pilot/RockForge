@@ -391,40 +391,6 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
           <!-- Hidden <audio>: decode-failure fallback only. Primary playback is
                Web Audio (sample-accurate seeking — see audioPlay/audioSeek). -->
           <audio id="syncAudio" preload="none" style="display:none"></audio>
-          <div style="display:flex;align-items:center;gap:.6rem;margin:.4rem 0">
-            <button type="button" id="playBtn" onclick="audioToggle()" style="min-width:2.6rem;font-size:1.1rem" aria-label="Reproduzir">▶</button>
-            <input type="range" id="seekBar" min="0" max="0" step="0.01" value="0" style="flex:1;min-width:140px">
-            <span id="timeLabel" class="meta" style="white-space:nowrap">0:00 / 0:00</span>
-          </div>
-          <!-- Playback controls — shown for ALL job types -->
-          <div class="syncctrls">
-            <label>🔊 Música: <input type="range" id="musicVolume" min="0" max="1" step="0.05" value="1" style="width:9rem;vertical-align:middle;accent-color:#a97bff"></label>
-            <label>🐢 Velocidade: <select id="playbackSpeed" style="vertical-align:middle">
-              <option value="1">100%</option>
-              <option value="0.9">90%</option>
-              <option value="0.8">80%</option>
-              <option value="0.75">75%</option>
-              <option value="0.7">70%</option>
-              <option value="0.6">60%</option>
-              <option value="0.5">50%</option>
-              <option value="0.4">40%</option>
-              <option value="0.3">30%</option>
-              <option value="0.25">25%</option>
-            </select></label>
-            <label class="check"><input type="checkbox" id="syncTick" checked> Tique por nota</label>
-            <label>🎵 Notas: <input type="range" id="tickVolume" min="0" max="2" step="0.05" value="1" style="width:9rem;vertical-align:middle;accent-color:#a97bff"></label>
-            <span id="liveBpm" style="font-weight:700;color:#b58cff;margin-left:.4rem"></span>
-          </div>
-          <!-- Audio source: full mix or an isolated Demucs stem (for fine-tuning by ear) -->
-          <div class="syncctrls">
-            <label>🎚️ Fonte de áudio:
-              <select id="audioSource" style="vertical-align:middle;min-width:9rem">
-                <option value="">Mistura completa</option>
-              </select></label>
-            <button type="button" id="separateStems" class="secondary">Separar instrumentos</button>
-            <button class="info-btn" data-info="stems">ⓘ</button>
-            <span id="stemsStatus" class="meta"></span>
-          </div>
           <!-- GP sync controls — hidden for audio-ML jobs (notes already aligned) -->
           <div id="gpSyncControls">
 
@@ -484,6 +450,43 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
                 <span id="reloadGpInfo" class="meta">substitui o GP mantendo sync/tons/letra/afinação — para quando editas uma nota e reexportas</span>
               </div>
             </details>
+          </div>
+
+          <!-- Transport + audio source — placed right before the partitura so
+               play/seek and the audio-source picker sit next to the score. -->
+          <div style="display:flex;align-items:center;gap:.6rem;margin:.4rem 0">
+            <button type="button" id="playBtn" onclick="audioToggle()" style="min-width:2.6rem;font-size:1.1rem" aria-label="Reproduzir">▶</button>
+            <input type="range" id="seekBar" min="0" max="0" step="0.01" value="0" style="flex:1;min-width:140px">
+            <span id="timeLabel" class="meta" style="white-space:nowrap">0:00 / 0:00</span>
+          </div>
+          <!-- Playback controls — shown for ALL job types -->
+          <div class="syncctrls">
+            <label>🔊 Música: <input type="range" id="musicVolume" min="0" max="1" step="0.05" value="1" style="width:9rem;vertical-align:middle;accent-color:#a97bff"></label>
+            <label>🐢 Velocidade: <select id="playbackSpeed" style="vertical-align:middle">
+              <option value="1">100%</option>
+              <option value="0.9">90%</option>
+              <option value="0.8">80%</option>
+              <option value="0.75">75%</option>
+              <option value="0.7">70%</option>
+              <option value="0.6">60%</option>
+              <option value="0.5">50%</option>
+              <option value="0.4">40%</option>
+              <option value="0.3">30%</option>
+              <option value="0.25">25%</option>
+            </select></label>
+            <label class="check"><input type="checkbox" id="syncTick" checked> Tique por nota</label>
+            <label>🎵 Notas: <input type="range" id="tickVolume" min="0" max="2" step="0.05" value="1" style="width:9rem;vertical-align:middle;accent-color:#a97bff"></label>
+            <span id="liveBpm" style="font-weight:700;color:#b58cff;margin-left:.4rem"></span>
+          </div>
+          <!-- Audio source: full mix or an isolated Demucs stem (for fine-tuning by ear) -->
+          <div class="syncctrls">
+            <label>🎚️ Fonte de áudio:
+              <select id="audioSource" style="vertical-align:middle;min-width:9rem">
+                <option value="">Mistura completa</option>
+              </select></label>
+            <button type="button" id="separateStems" class="secondary">Separar instrumentos</button>
+            <button class="info-btn" data-info="stems">ⓘ</button>
+            <span id="stemsStatus" class="meta"></span>
           </div>
         </div>
 
