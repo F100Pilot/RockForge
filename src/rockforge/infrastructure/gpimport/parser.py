@@ -114,18 +114,26 @@ def inspect_gp(path: Path) -> GpSongInfo:
 
 
 def _tempo_events(track: Any) -> list[tuple[int, float]]:
-    """(tick, bpm) change points, starting with the song tempo at tick 0."""
-    events: list[tuple[int, float]] = [(0, float(track.song.tempo))]
-    for measure in track.measures:
-        for voice in measure.voices:
-            tick = measure.start
-            for beat in voice.beats:
-                mtc = beat.effect.mixTableChange
-                if mtc is not None and mtc.tempo is not None:
-                    events.append((tick, float(mtc.tempo.value)))
-                tick += beat.duration.time
-    events.sort(key=lambda e: e[0])
-    return events
+    """(tick, bpm) change points, starting with the song tempo at tick 0.
+
+    Tempo changes are GLOBAL, but GP5 stores each as a per-beat mixTableChange on
+    whatever track it was authored on — frequently NOT the instrument track we
+    parse (a dedicated tempo track, or another instrument). So scan ALL tracks,
+    not just this one, or a mid-song tempo change authored elsewhere is silently
+    lost and the beat grid stays stuck at the initial tempo (guarded by
+    test_tempo_change_on_other_track_is_detected).
+    """
+    events: dict[int, float] = {0: float(track.song.tempo)}
+    for tr in track.song.tracks:
+        for measure in tr.measures:
+            for voice in measure.voices:
+                tick = measure.start
+                for beat in voice.beats:
+                    mtc = beat.effect.mixTableChange
+                    if mtc is not None and mtc.tempo is not None:
+                        events[tick] = float(mtc.tempo.value)
+                    tick += beat.duration.time
+    return sorted(events.items())
 
 
 def _make_ticks_to_seconds(events: list[tuple[int, float]]) -> Callable[[int], float]:

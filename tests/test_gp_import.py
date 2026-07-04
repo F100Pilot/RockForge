@@ -176,3 +176,36 @@ def test_tied_note_extends_previous_not_new_attack(tmp_path: Path) -> None:
     assert len(parsed.notes) == 1  # the tie folded into the first note
     assert parsed.notes[0].fret == 7
     assert parsed.notes[0].sustain == pytest.approx(1.0)  # two quarters held
+
+
+def test_tempo_change_on_other_track_is_detected(tmp_path: Path) -> None:
+    """A mid-song tempo change is GLOBAL but GP5 stores it on ONE track's beat —
+    often not the instrument we parse. It must still reach the beat grid, or the
+    grid stays stuck at the initial tempo (the '186 still shows 93' bug)."""
+    song = gp.Song()
+    song.title, song.artist, song.tempo = "Tempo", "B", 93
+    rhythm = gp.Track(song)
+    rhythm.name, rhythm.number = "Rhythm", 2
+    song.tracks.append(rhythm)
+    for _ in range(3):  # 4 measures total
+        song.newMeasure()
+    for tr in song.tracks:
+        for mi, measure in enumerate(tr.measures):
+            beat = gp.Beat(measure.voices[0])
+            beat.status = gp.BeatStatus.normal
+            beat.duration = gp.Duration(value=1)  # whole note
+            if mi == 2 and tr is rhythm:  # tempo change authored on the OTHER track
+                beat.effect.mixTableChange = gp.MixTableChange(tempo=gp.MixTableItem(value=186))
+            note = gp.Note(beat)
+            note.string, note.value, note.type = 1, 5, gp.NoteType.normal
+            beat.notes.append(note)
+            measure.voices[0].beats.append(beat)
+    path = tmp_path / "tempo.gp5"
+    gp.write(song, str(path))
+
+    # Parse the LEAD track (0); the tempo change lives on the Rhythm track (1).
+    beats = [b.time for b in parse_gp_track(path, 0).tempo_map.beats]
+    intervals = [round(beats[i + 1] - beats[i], 3) for i in range(len(beats) - 1)]
+    # 93 BPM whole-note beat ≈ 0.645s; after the change 186 BPM ≈ 0.323s.
+    assert intervals[0] == pytest.approx(0.645, abs=0.01)
+    assert intervals[-1] == pytest.approx(0.323, abs=0.01)
