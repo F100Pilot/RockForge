@@ -1304,20 +1304,44 @@ function showArr(i) {
     }
   }
   // Bar (measure) lines + numbers — drawn through the same previewScale+warp
-  // as the notes so they track pending sync edits. data-t keeps the original
-  // chart time. Helps spot exactly which measure drifts from the recording.
-  for (const b of (a.bars || [])) {
-    const dispT = barWarp(previewScale(b.time));
-    const x = timeToX(dispT);
+  // as the notes so they track pending sync edits. Helps spot exactly which
+  // measure drifts from the recording.
+  const tbeats = a.beats || [];
+  const barList = a.bars || [];
+  // Real BPM of each measure: the beats inside [downbeat, next downbeat) ×
+  // 60 / the measure's duration, from the same built beat grid the ♩ change
+  // markers use. Shown next to the measure number, thinned out when zoomed
+  // out so labels never overlap.
+  const barBpm = (bi) => {
+    const t0 = barList[bi].time;
+    const t1 = bi + 1 < barList.length ? barList[bi + 1].time : null;
+    if (t1 == null || t1 <= t0) return bi > 0 ? barBpm(bi - 1) : 0;  // last bar: reuse previous
+    let n = 0;
+    for (const tb of tbeats) if (tb >= t0 - 1e-6 && tb < t1 - 1e-6) n++;
+    return n ? Math.round(n * 60 / (t1 - t0)) : 0;
+  };
+  let lastBpmX = -999;
+  for (let bi = 0; bi < barList.length; bi++) {
+    const b = barList[bi];
+    const x = timeToX(barWarp(previewScale(b.time)));
     if (x < 24 || x > W - 4) continue;
     s += `<line x1="${x}" y1="30" x2="${x}" y2="${SB}" stroke="#5a6a8a" stroke-width="1" opacity=".55"/>`;
-    s += `<text x="${x+3}" y="42" fill="#7d8aa5" font-size="11" font-weight="700">${b.measure}</text>`;
+    const bpm = barBpm(bi);
+    if (bpm > 0 && x - lastBpmX > 40) {
+      s += `<text x="${x+3}" y="42" font-size="11" font-weight="700">`
+        + `<tspan fill="#7d8aa5">${b.measure}</tspan>`
+        + `<tspan fill="#b58cff" font-size="10"> &#9833;${bpm}</tspan></text>`;
+      lastBpmX = x;
+    } else {
+      s += `<text x="${x+3}" y="42" fill="#7d8aa5" font-size="11" font-weight="700">${b.measure}</text>`;
+    }
   }
   // Tempo-change markers (♩=NNN): where the beat spacing changes, the GP's
   // authored BPM changed. Derived from the beat grid so mid-song tempo changes
   // are visible on the tab (matching how Guitar Pro shows them). Rare in GP
   // (usually step changes), so a ≥3 BPM jump avoids float-jitter markers.
-  const tbeats = a.beats || [];
+  // Highlight where the authored tempo changes with a dashed line (the BPM
+  // value itself is now on every measure number above).
   let lastBpm = 0;
   for (let i = 0; i + 1 < tbeats.length; i++) {
     const iv = tbeats[i + 1] - tbeats[i];
@@ -1327,8 +1351,7 @@ function showArr(i) {
     lastBpm = bpm;
     const x = timeToX(barWarp(previewScale(tbeats[i])));
     if (x < 24 || x > W - 4) continue;
-    s += `<line x1="${x}" y1="44" x2="${x}" y2="${SB}" stroke="#b58cff" stroke-width="1" stroke-dasharray="3,3" opacity=".55"/>`;
-    s += `<text x="${x+3}" y="54" fill="#b58cff" font-size="11" font-weight="700">&#9833;=${bpm}</text>`;
+    s += `<line x1="${x}" y1="44" x2="${x}" y2="${SB}" stroke="#b58cff" stroke-width="1.5" stroke-dasharray="3,3" opacity=".6"/>`;
   }
   // Lyrics editor times are in recording-time (un-padded); shift to the display
   // timeline the same way the notes do — by viewOrigin AND the intro silence
