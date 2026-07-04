@@ -110,10 +110,11 @@ recording clock behind the sample-accurate Web Audio playhead), the sync panel
 has a **"Início = cursor"** button that sets `offset_s` to the current playhead:
 scrub/click the waveform (zoom in for precision) or play to the first attack,
 then lock it — far more precise than typing a number by ear. **±0.01** buttons
-fine-nudge it, and **"Detetar 1ª nota"** reuses `/auto-sync`'s onset detection
-but applies ONLY the offset (leaving the tempo untouched) as an automatic first
-guess, seeking the playhead there to confirm. All three feed the same live
-preview + normal rebuild.
+fine-nudge it. **"Detetar 1ª nota"** is a guided 3-click flow (`firstNoteFlow`):
+arm it, click the waveform where the first note's sound starts (a green dashed
+marker; re-click to adjust), then click the first note — a single uniform-shift
+anchor moves it (and every note with it) onto that instant. All feed the same
+live preview + normal rebuild.
 
 `POST /jobs/{id}/detect-tempo` (`{from_s}`) backs the tab viewer's per-point
 "Novo beat (detetar)" mode: it measures the recording's tempo from a clicked
@@ -169,8 +170,10 @@ mode: a plain click selects one note (and sets it as the pivot), **Shift+click**
 selects the inclusive range from the pivot to the clicked note (`rangeSelect`),
 **Ctrl/Cmd+click** toggles a single note, and a click on empty staff clears the
 selection. Dragging any selected note moves the whole selection in one rigid
-block (snapping the earliest to the grid). The mode buttons toggle (re-clicking
-the active one returns to "Arrastar"), so a mode is never stuck on. (The older
+block (snapping the earliest to the grid) — but ONLY in the "Arrastar" mode;
+re-clicking the active mode button deselects it to a neutral state (no mode
+highlighted, note-drag disabled, selection still works), rather than falling
+back to "Arrastar". (The older
 rubber-band "Excerto" box-select still exists but Shift+click is the primary
 path.) True note *editing* — moving a note to a different beat in the chart
 itself, not just for sync — remains a separate, larger future feature; today
