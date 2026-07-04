@@ -96,7 +96,7 @@
   .syncctrls { display:flex; gap:.8rem; align-items:center; flex-wrap:wrap; font-size:.85rem; color:var(--muted); }
   #playhead { pointer-events:none; }
   #tabwrap { overflow-x:auto; background:#0f1013; border:1px solid var(--line); border-radius:8px; margin-top:.5rem; }
-  .note-grp { cursor: ew-resize; }
+  .note-grp { cursor: pointer; }
   .note-grp.selected .note-shape { stroke: #ffd23f; stroke-width: 3px; }
   .lyric-word { cursor: grab; }
   .lyric-word:hover text { fill: #ff7a45 !important; font-weight: 700 !important; }
@@ -417,7 +417,7 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
               <button type="button" id="offsetNudgeBack" class="secondary" title="recuar 0.01s">−0.01</button>
               <button type="button" id="offsetNudgeFwd" class="secondary" title="avançar 0.01s">+0.01</button>
               <button type="button" id="detectFirstNote" class="secondary">Detetar 1ª nota</button>
-              <span id="firstNoteInfo" class="meta">põe o cursor na 1ª nota (clica na onda / dá play) e fixa o início — ou deteta automaticamente</span>
+              <span id="firstNoteInfo" class="meta">guiado: clica em "Detetar 1ª nota" → clica na onda onde a 1ª nota soa → clica na 1ª nota para a alinhar (as outras acompanham)</span>
             </div>
             <div class="syncctrls" style="margin-top:.35rem">
               <label>Andamento (BPM):
@@ -912,6 +912,11 @@ let snapToBeats = true;   // note drag snaps to the beat grid (hold Alt = free d
 let snapDiv = 1;          // snap grid: 'bars' | 1 (beat) | 2/3/4 (subdivisions per beat)
 let snapPositions = [];   // grid display-positions cached for the duration of one drag
 let selectionAnchor = null;  // chart time of the last plainly-clicked note (Shift-range pivot)
+// Guided "detect first note" flow: null → idle; 'audio' → waiting for the click
+// on the waveform where the 1st note sounds; 'note' → waiting for the click on
+// the 1st note to align it there. firstNoteAudioT is that recording second.
+let firstNoteFlow = null;
+let firstNoteAudioT = 0;
 let currentPlayheadT = 0; // display time of playhead; updated by syncFrame and seeks
 // In-app lyrics editor rows: {time, length, lyric, lineBreak}. lyric excludes
 // the trailing "+" — lineBreak controls whether it's re-appended on save.
@@ -1329,6 +1334,12 @@ function showArr(i) {
           <path d="M0,0 L6,3 L0,6 z" fill="#ff7a45"/></marker></defs>`;
   const phX = 30 + currentPlayheadT * tabPx;
   s += `<line id="playhead" x1="${phX}" y1="0" x2="${phX}" y2="${H}" stroke="#ff7a45" stroke-width="2" opacity=".9"/>`;
+  // "Detect first note" marker: the recording point where the 1st note sounds.
+  if (firstNoteFlow === 'note') {
+    const mx = 30 + firstNoteAudioT * tabPx;
+    s += `<line x1="${mx}" y1="0" x2="${mx}" y2="${H}" stroke="#3fdc8a" stroke-width="2" stroke-dasharray="5,3"/>`;
+    s += `<text x="${mx+4}" y="52" fill="#3fdc8a" font-size="11" font-weight="700">1ª nota</text>`;
+  }
   svg.innerHTML = s;
   syncResetPointer();
   renderAnchorsList();
@@ -2098,6 +2109,53 @@ function rangeSelect(t) {
   updateSelectionInfo();
 }
 
+// ---- Guided "detect first note" flow (3 clicks) ----
+function firstNoteStatus(text) {
+  const el = document.getElementById('firstNoteInfo');
+  if (el) el.textContent = text;
+  const btn = document.getElementById('detectFirstNote');
+  if (btn) btn.classList.toggle('active-mode', firstNoteFlow !== null);
+}
+function startFirstNoteFlow() {
+  if (!isGpJob()) return;
+  if (firstNoteFlow) { cancelFirstNoteFlow(); return; }  // clicking again cancels
+  firstNoteFlow = 'audio';
+  firstNoteStatus('1) Clica na forma de onda onde COMEÇA o som da 1ª nota (clica de novo para ajustar).');
+}
+function cancelFirstNoteFlow() {
+  firstNoteFlow = null;
+  firstNoteStatus('Deteção cancelada.');
+  if (arrangements.length) showArr(currentArr);
+}
+// Handle a click during the flow. Returns true if it consumed the click.
+function firstNoteFlowClick(e, svg) {
+  if (!firstNoteFlow) return false;
+  const grp = e.target.closest('.note-grp');
+  if (grp && firstNoteFlow === 'note') {
+    // 3rd click: align the clicked (first) note to the marked audio position.
+    // A single uniform-shift anchor moves it there and drags every note with it.
+    const chartT = parseFloat(grp.dataset.t);
+    const target = playheadDisplay(firstNoteAudioT);  // recording→bundle time
+    const dispT = buildTimeWarp(syncAnchors)(previewScale(chartT));
+    setAnchor(dispT, target);
+    firstNoteFlow = null;
+    renderAnchorsList();
+    updatePendingChangesInfo();
+    firstNoteStatus(`1ª nota alinhada a ${firstNoteAudioT.toFixed(2)}s — "Aplicar e reconstruir" para gravar.`);
+    showArr(currentArr);
+    toast('1ª nota alinhada', 'ok');
+    return true;
+  }
+  // 2nd click (or re-adjust): the point on the waveform where the note sounds.
+  const rect = svg.getBoundingClientRect();
+  firstNoteAudioT = Math.max(0, (e.clientX - rect.left - 30) / tabPx);
+  audioSeek(firstNoteAudioT);  // move the playhead there to confirm by ear
+  firstNoteFlow = 'note';
+  firstNoteStatus(`2) Som marcado em ${firstNoteAudioT.toFixed(2)}s — clica na 1ª NOTA para a alinhar aí (ou clica noutro ponto para ajustar).`);
+  showArr(currentArr);
+  return true;
+}
+
 // Snap a display time to the nearest beat (from the cached grid). `bypass` (Alt
 // held, or the snap toggle off) returns it unchanged for free/fine placement.
 function snapDisplay(dispT, bypass) {
@@ -2164,6 +2222,8 @@ function updateSelectionInfo() {
   });
 
   svg.addEventListener('pointerdown', e => {
+    // Guided "detect first note" flow intercepts all clicks while armed.
+    if (firstNoteFlowClick(e, svg)) return;
     // Lyric word drag: grab a word on the tab to reposition it in time.
     const lw = e.target.closest('.lyric-word');
     if (lw) {
@@ -2257,6 +2317,13 @@ function updateSelectionInfo() {
       return;
     }
     const t = parseFloat(grp.dataset.t);
+    if (syncMode !== 'drag') {
+      // Outside "Arrastar" (neutral / excerpt) a plain click on a note just
+      // selects it (and sets the Shift-range pivot) — no anchor drag.
+      selectedTimes.clear(); selectedTimes.add(t); selectionAnchor = t;
+      updateSelectionInfo(); showArr(currentArr);
+      return;
+    }
     snapPositions = beatDisplayPositions();  // cache the snap grid for this drag
     if (selectedTimes.size > 1 && selectedTimes.has(t)) {
       // drag the whole selection together
@@ -2393,16 +2460,15 @@ const SYNC_MODE_BUTTONS = [
   ['modeTone', 'tonechange'],
 ];
 function setSyncMode(mode) {
-  syncMode = mode;
+  syncMode = mode;  // null = neutral: no mode highlighted, note-drag disabled
   SYNC_MODE_BUTTONS.forEach(([bid, bmode]) =>
     document.getElementById(bid)?.classList.toggle('active-mode', bmode === syncMode));
 }
 SYNC_MODE_BUTTONS.forEach(([id, mode]) => {
   document.getElementById(id)?.addEventListener('click', () => {
-    // Clicking the active mode again toggles back to the default "Arrastar" —
-    // so a mode is never stuck on. Selection is independent (Shift/Ctrl clicks),
-    // so switching modes no longer clears it.
-    setSyncMode(syncMode === mode && mode !== 'drag' ? 'drag' : mode);
+    // Clicking the active mode again DESELECTS it → neutral (no mode), rather
+    // than falling back to "Arrastar". Selection is modifier-driven and stays.
+    setSyncMode(syncMode === mode ? null : mode);
   });
 });
 document.getElementById('snapBeats')?.addEventListener('change', e => {
@@ -2889,28 +2955,9 @@ function setTempoLive(scale) {
   back.addEventListener('click', () => { if (isGpJob()) setOffsetLive(offsetLive - 0.01); });
   fwd.addEventListener('click', () => { if (isGpJob()) setOffsetLive(offsetLive + 0.01); });
 
-  detect.addEventListener('click', async () => {
-    if (!selectedJob) return;
-    detect.disabled = true;
-    const prev = info.textContent;
-    info.textContent = 'A detetar a 1ª nota…';
-    try {
-      // Reuse /auto-sync's onset detection but apply ONLY the offset (leave the
-      // tempo untouched — this tool is just about the start point).
-      const r = await fetch(`/jobs/${selectedJob.id}/auto-sync`, { method: 'POST' });
-      const b = await r.json();
-      if (!r.ok) { info.textContent = prev; toast(b.detail || 'erro', 'err'); return; }
-      setOffsetLive(b.suggested_offset_s);
-      audioSeek(b.suggested_offset_s);  // move the playhead there to confirm/nudge
-      info.textContent = `1ª nota detetada em ${b.suggested_offset_s.toFixed(2)}s — ouve e ajusta com ±0.01 se precisar.`;
-      toast('Início detetado — revê e ajusta', 'ok');
-    } catch {
-      info.textContent = prev;
-      toast('falha na análise (precisa do extra ml)', 'err');
-    } finally {
-      detect.disabled = false;
-    }
-  });
+  // Guided 3-click alignment: arm → click the waveform where the 1st note
+  // sounds → click the 1st note to shift it (and all notes) there.
+  detect.addEventListener('click', () => startFirstNoteFlow());
 })();
 
 (function wireDetectTuning() {
