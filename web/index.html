@@ -467,6 +467,10 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
           <span id="selectionInfo" style="margin-left:.5rem"></span>
           <button type="button" id="clearSelection" class="secondary" hidden>Limpar seleção</button>
         </div>
+        <div class="anchor-row" style="margin-top:.3rem">
+          <label class="check"><input type="checkbox" id="snapBeats" checked> Encaixar nos tempos (beats)</label>
+          <span class="meta">ao arrastar, a nota salta de beat em beat; mantém <b>Alt</b> premido para arrasto livre</span>
+        </div>
         <div id="syncAnchorsList"></div>
 
         <!-- Tones: full gear definitions + base/extra slots + timed changes -->
@@ -807,8 +811,9 @@ const INFO = {
   'sync-modes': {
     title: 'Modos de correção da partitura',
     body: `<p><strong>Arrastar nota:</strong> arrasta uma nota horizontalmente para o instante correto — cria um ponto de correção; as notas entre pontos são esticadas/comprimidas.</p>
+<p><strong>Encaixar nos tempos (beats):</strong> com o encaixe ligado, a nota salta de beat em beat (a grelha da partitura, mostrada com marcas no fundo) em vez de deslizar de forma contínua. Mantém <strong>Alt</strong> premido durante o arrasto para colocar livremente (afinação sub-beat).</p>
 <p><strong>Marcar no cursor:</strong> clica numa nota para a ancorar na posição atual do cursor de reprodução — útil para alinhar enquanto o áudio toca.</p>
-<p><strong>Selecionar excerto:</strong> arrasta uma caixa sobre as notas e depois arrasta uma delas — o excerto move-se em bloco.</p>
+<p><strong>Selecionar excerto:</strong> arrasta uma caixa sobre as notas e depois arrasta uma delas — o excerto move-se em bloco (também com encaixe nos beats).</p>
 <p><strong>Mover seguintes:</strong> pausa o áudio no instante certo e clica na nota deslocada — essa nota e todas as seguintes deslocam-se em bloco para o cursor.</p>
 <p><strong>Novo beat (detetar):</strong> clica numa nota onde o andamento muda — o RockForge mede o andamento da gravação a partir desse instante e re-espaça as notas seguintes.</p>`
   },
@@ -893,6 +898,8 @@ let playbackRate = 1.0;      // playback speed (<1 slows down; lowers pitch on t
 let seekDragging = false, seekWasPlaying = false;
 const WAVE_HZ = 100;
 let syncMode = 'drag'; // 'drag' | 'tap' | 'excerpt'
+let snapToBeats = true;   // note drag snaps to the beat grid (hold Alt = free drag)
+let snapPositions = [];   // beat display-positions cached for the duration of one drag
 let currentPlayheadT = 0; // display time of playhead; updated by syncFrame and seeks
 // In-app lyrics editor rows: {time, length, lyric, lineBreak}. lyric excludes
 // the trailing "+" — lineBreak controls whether it's re-appended on save.
@@ -1210,10 +1217,19 @@ function showArr(i) {
     if (isMajor) s += `<text x="${x}" y="12" fill="#666" font-size="12">${t}s</text>`;
     else if (isSecond) s += `<text x="${x}" y="12" fill="#454852" font-size="9">${t}</text>`;
   }
+  const barWarp = buildTimeWarp(syncAnchors);
+  // Beat grid (the note-drag snap targets) — faint short ticks at every beat,
+  // shown while snapping is on so the "jumps" land on something visible.
+  if (snapToBeats) {
+    for (const bt of (a.beats || [])) {
+      const x = timeToX(barWarp(previewScale(bt)));
+      if (x < 24 || x > W - 4) continue;
+      s += `<line x1="${x}" y1="${SB-12}" x2="${x}" y2="${SB}" stroke="#5b6572" stroke-width="1" opacity=".45"/>`;
+    }
+  }
   // Bar (measure) lines + numbers — drawn through the same previewScale+warp
   // as the notes so they track pending sync edits. data-t keeps the original
   // chart time. Helps spot exactly which measure drifts from the recording.
-  const barWarp = buildTimeWarp(syncAnchors);
   for (const b of (a.bars || [])) {
     const dispT = barWarp(previewScale(b.time));
     const x = timeToX(dispT);
@@ -2029,6 +2045,27 @@ function setAnchor(origT, newT) {
   else syncAnchors.push([origT, newT]);
 }
 
+// Display-space positions of every beat (the snap grid), warped through the same
+// previewScale + pending anchors as the notes so they track live sync edits.
+function beatDisplayPositions() {
+  const a = arrangements[currentArr];
+  if (!a || !a.beats || !a.beats.length) return [];
+  const warp = buildTimeWarp(syncAnchors);
+  return a.beats.map(bt => warp(previewScale(bt)));
+}
+
+// Snap a display time to the nearest beat (from the cached grid). `bypass` (Alt
+// held, or the snap toggle off) returns it unchanged for free/fine placement.
+function snapDisplay(dispT, bypass) {
+  if (bypass || !snapToBeats || !snapPositions.length) return dispT;
+  let best = dispT, bestD = Infinity;
+  for (const bd of snapPositions) {
+    const d = Math.abs(bd - dispT);
+    if (d < bestD) { bestD = d; best = bd; }
+  }
+  return best;
+}
+
 // "Novo beat (detetar)": ask the backend for the recording's tempo from the
 // clicked point and re-tempo the following notes to it. Two anchors — a fixed
 // pivot at the click and the last note stretched by the detected factor — make
@@ -2159,6 +2196,7 @@ function updateSelectionInfo() {
       return;
     }
     const t = parseFloat(grp.dataset.t);
+    snapPositions = beatDisplayPositions();  // cache the snap grid for this drag
     if (selectedTimes.size > 1 && selectedTimes.has(t)) {
       // drag the whole selection together
       const grps = [...svg.querySelectorAll('.note-grp.selected')];
@@ -2184,13 +2222,21 @@ function updateSelectionInfo() {
       return;
     }
     if (groupDrag) {
+      // Snap the whole selection: the earliest note lands on a beat, the rest
+      // shift rigidly with it. Alt bypasses the snap for free placement.
       const dx = e.clientX - groupDrag.startX;
-      groupDrag.grps.forEach(g => g.setAttribute('transform', `translate(${dx},0)`));
+      const warp = buildTimeWarp(syncAnchors);
+      const startDisp = warp(previewScale(Math.min(...groupDrag.times)));
+      const snapped = snapDisplay(startDisp + dx / tabPx, e.altKey);
+      const sdx = (snapped - startDisp) * tabPx;
+      groupDrag.grps.forEach(g => g.setAttribute('transform', `translate(${sdx},0)`));
       return;
     }
     if (!dragging) return;
     const dx = e.clientX - dragging.startX;
-    dragging.grp.setAttribute('transform', `translate(${dx},0)`);
+    const origDisp = buildTimeWarp(syncAnchors)(previewScale(dragging.origT));
+    const snapped = snapDisplay(origDisp + dx / tabPx, e.altKey);
+    dragging.grp.setAttribute('transform', `translate(${(snapped - origDisp) * tabPx},0)`);
   });
   svg.addEventListener('pointerup', e => {
     if (lyricDrag) {
@@ -2228,14 +2274,16 @@ function updateSelectionInfo() {
     if (groupDrag) {
       const dx = e.clientX - groupDrag.startX;
       groupDrag.grps.forEach(g => g.removeAttribute('transform'));
-      const deltaS = dx / tabPx;
-      if (Math.abs(deltaS) > 0.01) {
-        const warp = buildTimeWarp(syncAnchors);
-        // anchors live in display coordinates (previewScale of the chart time)
-        const dStart = previewScale(Math.min(...groupDrag.times));
-        const dEnd = previewScale(Math.max(...groupDrag.times));
-        setAnchor(dStart, warp(dStart) + deltaS);
-        if (dEnd !== dStart) setAnchor(dEnd, warp(dEnd) + deltaS);
+      const warp = buildTimeWarp(syncAnchors);
+      // anchors live in display coordinates (previewScale of the chart time)
+      const dStart = previewScale(Math.min(...groupDrag.times));
+      const dEnd = previewScale(Math.max(...groupDrag.times));
+      // Snap the earliest selected note to a beat; shift the group by that delta.
+      const snappedStart = snapDisplay(warp(dStart) + dx / tabPx, e.altKey);
+      const snapDelta = snappedStart - warp(dStart);
+      if (Math.abs(dx) > 3 && Math.abs(snapDelta) > 0.003) {
+        setAnchor(dStart, warp(dStart) + snapDelta);
+        if (dEnd !== dStart) setAnchor(dEnd, warp(dEnd) + snapDelta);
         selectedTimes.clear();
         updateSelectionInfo();
         showArr(currentArr);
@@ -2246,11 +2294,13 @@ function updateSelectionInfo() {
     if (!dragging) return;
     const dx = e.clientX - dragging.startX;
     dragging.grp.removeAttribute('transform');
-    const deltaS = dx / tabPx;
-    if (Math.abs(deltaS) > 0.01) {
-      const warp = buildTimeWarp(syncAnchors);
-      const chart = previewScale(dragging.origT);  // display coordinates
-      setAnchor(chart, warp(chart) + deltaS);
+    const chart = previewScale(dragging.origT);  // display coordinates
+    const origDisp = buildTimeWarp(syncAnchors)(chart);
+    const target = snapDisplay(origDisp + dx / tabPx, e.altKey);
+    // A real drag (> a few px) that actually changes the position becomes an anchor;
+    // a tiny move / near-click that snaps back to the same beat leaves notes untouched.
+    if (Math.abs(dx) > 3 && Math.abs(target - origDisp) > 0.003) {
+      setAnchor(chart, target);
       showArr(currentArr);
     }
     dragging = null;
@@ -2273,6 +2323,10 @@ SYNC_MODE_BUTTONS.forEach(([id, mode]) => {
       document.getElementById(bid)?.classList.toggle('active-mode', bmode === mode));
     if (syncMode !== 'excerpt') { selectedTimes.clear(); updateSelectionInfo(); }
   });
+});
+document.getElementById('snapBeats')?.addEventListener('change', e => {
+  snapToBeats = e.target.checked;
+  if (arrangements.length) showArr(currentArr);  // show/hide the beat grid
 });
 
 // ---- Visual sync tool (GP jobs) ----

@@ -149,6 +149,20 @@ earlier work. Do not collapse this back to a single `sync_anchors` list —
 anchors from different rounds live in different (already-warped) coordinate
 systems and cannot simply be concatenated.
 
+**Beat snapping (drag).** By default (checkbox "Encaixar nos tempos") a note (or
+excerpt) drag snaps its target to the nearest beat of the score's grid, so
+corrections jump beat-to-beat instead of sliding continuously — cleaner and
+jitter-free for the common "align this note to a beat" correction. The grid is
+ALL ebeats (downbeats + off-beats), exposed as `ArrangementOut.beats` (distinct
+from `bars`, which is downbeats only for numbering); the viewer warps each beat
+through the same `previewScale`+anchor warp as the notes, caches those display
+positions at drag start (`snapPositions`), and `snapDisplay()` snaps to the
+nearest. Holding **Alt** during a drag bypasses the snap for sub-beat placement.
+It only changes the drag TARGET — the anchor/warp machinery is unchanged, so it
+composes with everything else. (Snapping to finer subdivisions, and true note
+*editing* — moving a note to a different beat in the chart itself — are a
+separate, larger future feature; today notes come exact from the GP file.)
+
 ### Per-arrangement sync (`arrangement_sync`)
 
 `tempo_scale` and `sync_anchor_stages` are **per-arrangement**: each chart
