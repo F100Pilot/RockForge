@@ -1254,6 +1254,23 @@ function showArr(i) {
     s += `<line x1="${x}" y1="30" x2="${x}" y2="${SB}" stroke="#5a6a8a" stroke-width="1" opacity=".55"/>`;
     s += `<text x="${x+3}" y="42" fill="#7d8aa5" font-size="11" font-weight="700">${b.measure}</text>`;
   }
+  // Tempo-change markers (♩=NNN): where the beat spacing changes, the GP's
+  // authored BPM changed. Derived from the beat grid so mid-song tempo changes
+  // are visible on the tab (matching how Guitar Pro shows them). Rare in GP
+  // (usually step changes), so a ≥3 BPM jump avoids float-jitter markers.
+  const tbeats = a.beats || [];
+  let lastBpm = 0;
+  for (let i = 0; i + 1 < tbeats.length; i++) {
+    const iv = tbeats[i + 1] - tbeats[i];
+    if (iv <= 0.02) continue;
+    const bpm = Math.round(60 / iv);
+    if (Math.abs(bpm - lastBpm) < 3) continue;
+    lastBpm = bpm;
+    const x = timeToX(barWarp(previewScale(tbeats[i])));
+    if (x < 24 || x > W - 4) continue;
+    s += `<line x1="${x}" y1="44" x2="${x}" y2="${SB}" stroke="#b58cff" stroke-width="1" stroke-dasharray="3,3" opacity=".55"/>`;
+    s += `<text x="${x+3}" y="54" fill="#b58cff" font-size="11" font-weight="700">&#9833;=${bpm}</text>`;
+  }
   // Lyrics editor times are in recording-time (un-padded); shift to the display
   // timeline the same way the notes do — by viewOrigin AND the intro silence
   // (leadInBuilt) — so words line up with their notes after a lead-in rebuild.
