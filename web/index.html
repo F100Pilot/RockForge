@@ -1400,14 +1400,27 @@ function showArr(i) {
     }
     s += `</g>`;
   }
+  // Sync anchors (drift corrections). Drawn in a distinct teal — NOT the
+  // playhead's orange — with a numbered pin below the staff, so they read as
+  // "correction points" and never blur into the playhead. A faint ghost tick
+  // marks where the point was; a short connector near the bottom (out of the
+  // note area) shows the shift to where it now sits.
+  const ANCHOR = '#22c1c3';
+  let anchorNo = 0;
   for (const [origT, newT] of syncAnchors) {  // already in display coordinates
+    anchorNo++;
     const x1 = timeToX(origT), x2 = timeToX(newT);
-    s += `<line x1="${x1}" y1="0" x2="${x1}" y2="${SB}" stroke="#ff7a45" stroke-width="1.5" stroke-dasharray="4,3"/>`;
-    if (Math.abs(x2 - x1) > 0.5)
-      s += `<line x1="${x1}" y1="6" x2="${x2}" y2="6" stroke="#ff7a45" stroke-width="2" marker-end="url(#arrow)"/>`;
+    const moved = Math.abs(x2 - x1) > 0.5;
+    if (moved)
+      s += `<line x1="${x1}" y1="30" x2="${x1}" y2="${SB}" stroke="${ANCHOR}" stroke-width="1" stroke-dasharray="2,4" opacity=".4"/>`;
+    s += `<line x1="${x2}" y1="30" x2="${x2}" y2="${SB}" stroke="${ANCHOR}" stroke-width="1.5" opacity=".85"/>`;
+    if (moved)
+      s += `<line x1="${x1}" y1="${SB-5}" x2="${x2}" y2="${SB-5}" stroke="${ANCHOR}" stroke-width="2" marker-end="url(#anchorArrow)"/>`;
+    s += `<circle cx="${x2}" cy="${SB+13}" r="8.5" fill="${ANCHOR}"/>`;
+    s += `<text x="${x2}" y="${SB+17}" fill="#08343a" font-size="11" font-weight="700" text-anchor="middle">${anchorNo}</text>`;
   }
-  s += `<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-          <path d="M0,0 L6,3 L0,6 z" fill="#ff7a45"/></marker></defs>`;
+  s += `<defs><marker id="anchorArrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 z" fill="${ANCHOR}"/></marker></defs>`;
   const phX = 30 + currentPlayheadT * tabPx;
   s += `<line id="playhead" x1="${phX}" y1="0" x2="${phX}" y2="${H}" stroke="#ff7a45" stroke-width="2" opacity=".9"/>`;
   // "Detect first note" marker: the recording point where the 1st note sounds.
