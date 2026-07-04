@@ -120,6 +120,16 @@
   }
   #lyricsProgressBar.stuck { background:#e06363 !important; animation:none; }
   .meta { font-size:.85rem; color:var(--muted); }
+  /* Stepped sync panel: one numbered card per phase of the workflow */
+  .sync-step { background:#171820; border:1px solid var(--line); border-radius:8px; padding:.5rem .7rem; margin-top:.5rem; }
+  .sync-step-head { display:flex; align-items:center; gap:.5rem; font-weight:700; color:var(--text); font-size:.92rem; }
+  .sync-step-num { display:inline-flex; align-items:center; justify-content:center; width:1.4rem; height:1.4rem; border-radius:50%; background:var(--accent); color:#14151a; font-size:.8rem; font-weight:700; flex:none; }
+  .sync-step-desc { font-size:.8rem; color:var(--muted); margin:.25rem 0 .45rem; }
+  details.sync-adv { margin-top:.5rem; border:1px dashed var(--line); border-radius:8px; padding:.1rem .6rem; }
+  details.sync-adv > summary { cursor:pointer; font-size:.85rem; color:var(--muted); padding:.35rem 0; list-style:none; }
+  details.sync-adv > summary::-webkit-details-marker { display:none; }
+  details.sync-adv > summary::before { content:'▸ '; color:var(--accent); }
+  details.sync-adv[open] > summary::before { content:'▾ '; }
   .tuninggrid { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; }
   .tuninggrid input { width:3.4rem; text-align:center; }
 
@@ -417,42 +427,63 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
           </div>
           <!-- GP sync controls — hidden for audio-ML jobs (notes already aligned) -->
           <div id="gpSyncControls">
-            <div class="syncctrls">
-              <label>Início da música (s):
-                <input type="number" id="syncOffset" value="0" step="0.01" min="0" style="width:6rem"></label>
-              <input type="range" id="syncOffsetRange" min="0" max="20" step="0.01" value="0" style="flex:1;min-width:120px">
-              <button class="info-btn" data-info="sync-offset">ⓘ</button>
+
+            <!-- Passo 1 — onde entra a 1ª nota (offset) -->
+            <div class="sync-step">
+              <div class="sync-step-head"><span class="sync-step-num">1</span> Início da música
+                <button class="info-btn" data-info="sync-offset">ⓘ</button></div>
+              <div class="sync-step-desc">O segundo em que se ouve a 1ª nota na gravação. A forma mais precisa: <b>"Detetar 1ª nota"</b> (fluxo guiado) ou <b>"Início = cursor"</b> (leva o cursor até ao 1º ataque e trava-o).</div>
+              <div class="syncctrls">
+                <label>Segundo:
+                  <input type="number" id="syncOffset" value="0" step="0.01" min="0" style="width:6rem"></label>
+                <input type="range" id="syncOffsetRange" min="0" max="20" step="0.01" value="0" style="flex:1;min-width:120px">
+              </div>
+              <div class="syncctrls" style="margin-top:.4rem">
+                <button type="button" id="detectFirstNote" class="secondary">🎯 Detetar 1ª nota</button>
+                <button type="button" id="offsetFromCursor" class="secondary">Início = cursor</button>
+                <button type="button" id="offsetNudgeBack" class="secondary" title="recuar 0.01s">−0.01</button>
+                <button type="button" id="offsetNudgeFwd" class="secondary" title="avançar 0.01s">+0.01</button>
+              </div>
+              <span id="firstNoteInfo" class="meta" style="display:block;margin-top:.35rem">guiado: clica em "Detetar 1ª nota" → clica na onda onde a 1ª nota soa → clica na 1ª nota para a alinhar (as outras acompanham)</span>
             </div>
-            <div class="syncctrls" style="margin-top:.35rem">
-              <button type="button" id="offsetFromCursor" class="secondary">Início = cursor</button>
-              <button type="button" id="offsetNudgeBack" class="secondary" title="recuar 0.01s">−0.01</button>
-              <button type="button" id="offsetNudgeFwd" class="secondary" title="avançar 0.01s">+0.01</button>
-              <button type="button" id="detectFirstNote" class="secondary">Detetar 1ª nota</button>
-              <span id="firstNoteInfo" class="meta">guiado: clica em "Detetar 1ª nota" → clica na onda onde a 1ª nota soa → clica na 1ª nota para a alinhar (as outras acompanham)</span>
+
+            <!-- Passo 2 — andamento (tempo) -->
+            <div class="sync-step">
+              <div class="sync-step-head"><span class="sync-step-num">2</span> Andamento (velocidade)
+                <button class="info-btn" data-info="sync-tempo">ⓘ</button></div>
+              <div class="sync-step-desc">Se a partitura acelera ou atrasa em relação à gravação ao longo da música, corrige o andamento aqui — ou deixa a <b>deteção automática</b> propor.</div>
+              <div class="syncctrls">
+                <label>BPM:
+                  <input type="number" id="tempoBpm" step="0.1" min="1" style="width:6.5rem"></label>
+                <input type="range" id="tempoRange" min="50" max="200" step="0.5" value="100" style="flex:1;min-width:120px">
+                <span id="tempoPct" class="meta"></span>
+                <button type="button" id="tempoReset" class="secondary">Repor GP</button>
+              </div>
+              <div class="syncctrls" style="margin-top:.4rem">
+                <button type="button" id="autoSync" class="secondary">✨ Sincronização automática</button>
+                <button class="info-btn" data-info="auto-sync">ⓘ</button>
+                <span id="autoSyncInfo" class="meta"></span>
+              </div>
             </div>
-            <div class="syncctrls" style="margin-top:.35rem">
-              <label>Andamento (BPM):
-                <input type="number" id="tempoBpm" step="0.1" min="1" style="width:6.5rem"></label>
-              <input type="range" id="tempoRange" min="50" max="200" step="0.5" value="100" style="flex:1;min-width:120px">
-              <span id="tempoPct" class="meta"></span>
-              <button type="button" id="tempoReset" class="secondary">Repor GP</button>
-              <button class="info-btn" data-info="sync-tempo">ⓘ</button>
+
+            <div class="sync-step-desc" style="margin:.55rem 0 0">
+              <b>Passo 3 — correção fina:</b> na partitura abaixo, arrasta uma nota (ou uma seleção) para onde deve soar. Vê os modos por baixo do editor.
             </div>
-            <div class="syncctrls" style="margin-top:.35rem">
-              <label>Silêncio inicial (s):
-                <input type="number" id="leadInS" value="0" step="0.1" min="0" style="width:6rem"></label>
-              <span class="meta">silêncio extra no início — empurra a música e as notas para a frente (aplica ao reconstruir)</span>
-            </div>
-            <div class="syncctrls" style="margin-top:.35rem">
-              <button type="button" id="autoSync" class="secondary">Sincronização automática</button>
-              <span id="autoSyncInfo" class="meta"></span>
-              <button class="info-btn" data-info="auto-sync">ⓘ</button>
-            </div>
-            <div class="syncctrls" style="margin-top:.35rem">
-              <button type="button" id="reloadGpBtn" class="secondary">Recarregar ficheiro GP</button>
-              <input type="file" id="reloadGpInput" accept=".gp,.gp3,.gp4,.gp5" style="display:none">
-              <span id="reloadGpInfo" class="meta">substitui o GP mantendo sync/tons/letra/afinação — para quando editas uma nota e reexportas</span>
-            </div>
+
+            <!-- Opções avançadas / raras — escondidas por defeito -->
+            <details class="sync-adv">
+              <summary>Avançado (silêncio inicial, recarregar GP)</summary>
+              <div class="syncctrls" style="margin-top:.35rem">
+                <label>Silêncio inicial (s):
+                  <input type="number" id="leadInS" value="0" step="0.1" min="0" style="width:6rem"></label>
+                <span class="meta">silêncio extra no início — empurra a música e as notas para a frente (aplica ao reconstruir)</span>
+              </div>
+              <div class="syncctrls" style="margin-top:.35rem">
+                <button type="button" id="reloadGpBtn" class="secondary">Recarregar ficheiro GP</button>
+                <input type="file" id="reloadGpInput" accept=".gp,.gp3,.gp4,.gp5" style="display:none">
+                <span id="reloadGpInfo" class="meta">substitui o GP mantendo sync/tons/letra/afinação — para quando editas uma nota e reexportas</span>
+              </div>
+            </details>
           </div>
         </div>
 
