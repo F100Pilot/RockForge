@@ -120,6 +120,21 @@
   }
   #lyricsProgressBar.stuck { background:#e06363 !important; animation:none; }
   .meta { font-size:.85rem; color:var(--muted); }
+  /* Icon mode buttons: bigger glyph, square-ish, with a hover balloon (.tip) */
+  button.mode-btn { font-size:1.15rem; line-height:1; padding:.3rem .5rem; min-width:2.4rem; }
+  .tip { position:relative; }
+  .tip:hover::after, .tip:focus-visible::after {
+    content:attr(data-tip);
+    position:absolute; left:0; top:calc(100% + 9px); width:250px; max-width:72vw;
+    background:#20222c; color:#d6d9e0; border:1px solid var(--line); border-radius:8px;
+    padding:.5rem .6rem; font-size:.78rem; font-weight:400; line-height:1.45;
+    text-align:left; white-space:normal; z-index:60; box-shadow:0 8px 22px rgba(0,0,0,.45);
+    pointer-events:none;
+  }
+  .tip:hover::before, .tip:focus-visible::before {
+    content:''; position:absolute; left:15px; top:calc(100% + 3px);
+    border:6px solid transparent; border-bottom-color:#20222c; z-index:61; pointer-events:none;
+  }
   /* Stepped sync panel: one numbered card per phase of the workflow */
   .sync-step { background:#171820; border:1px solid var(--line); border-radius:8px; padding:.5rem .7rem; margin-top:.5rem; }
   .sync-step-head { display:flex; align-items:center; gap:.5rem; font-weight:700; color:var(--text); font-size:.92rem; }
@@ -507,12 +522,18 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
         </div>
         <div class="anchor-row" style="margin-top:.4rem">
           <span class="meta">Modo:</span>
-          <button type="button" id="modeArrastar" class="secondary active-mode">Arrastar</button>
-          <button type="button" id="modeMarcar" class="secondary">Marcar</button>
-          <button type="button" id="modeExcerto" class="secondary">Excerto</button>
-          <button type="button" id="modeMover" class="secondary">Mover seguintes</button>
-          <button type="button" id="modeBeat" class="secondary">Novo beat</button>
-          <button type="button" id="modeTone" class="secondary">Mudança de tom</button>
+          <button type="button" id="modeArrastar" class="secondary mode-btn tip active-mode" aria-label="Arrastar"
+            data-tip="Arrastar: arrasta uma nota para o instante da gravação onde deve tocar (encaixa no beat). As notas entre duas correções esticam/comprimem para acompanhar. Ideal para acertar um ponto que escorregou.">↔️</button>
+          <button type="button" id="modeMarcar" class="secondary mode-btn tip" aria-label="Marcar"
+            data-tip="Marcar no cursor: dá play e, quando ouvires uma nota na gravação, clica nessa nota na partitura — ela ancora na posição do cursor. Alinhar a tocar.">👆</button>
+          <button type="button" id="modeExcerto" class="secondary mode-btn tip" aria-label="Excerto"
+            data-tip="Excerto: arrasta uma caixa por cima de várias notas e depois arrasta uma delas — movem-se todas em bloco. (Alternativa: Shift+clique numa nota e noutra para selecionar o intervalo.)">⬚</button>
+          <button type="button" id="modeMover" class="secondary mode-btn tip" aria-label="Mover seguintes"
+            data-tip="Mover seguintes: pausa a gravação no instante certo e clica na 1ª nota desalinhada — essa nota e TODAS as seguintes deslocam-se em bloco para o cursor. Para um trecho inteiro que entrou tarde/cedo.">⏩</button>
+          <button type="button" id="modeBeat" class="secondary mode-btn tip" aria-label="Novo beat"
+            data-tip="Novo beat (detetar): clica na nota onde a música muda de andamento (ex.: o compasso 64). Mede o BPM da gravação daí em diante e re-espaça só as notas seguintes ao novo tempo. Nada antes do clique se mexe.">⏱️</button>
+          <button type="button" id="modeTone" class="secondary mode-btn tip" aria-label="Mudança de tom"
+            data-tip="Mudança de tom: clica numa nota para trocar para um dos tons extra (amp/efeito) a partir daí. Nada a ver com sincronização — é para as mudanças de som ao longo da música.">🎛️</button>
           <button class="info-btn" data-info="sync-modes">ⓘ</button>
           <span id="selectionInfo" style="margin-left:.5rem"></span>
           <button type="button" id="clearSelection" class="secondary" hidden>Limpar seleção</button>
