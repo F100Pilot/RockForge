@@ -330,22 +330,6 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
 
     <!-- Landing banners (shown when no jobs) -->
     <div id="landingHero" class="landing-hero">
-      <div class="job-banner" data-new="audio">
-        <div class="job-banner-icon">&#127911;</div>
-        <div class="job-banner-body">
-          <div class="job-banner-title">A partir de Áudio</div>
-          <div class="job-banner-desc">Carrega MP3, FLAC, WAV — transcricão automática (ML)</div>
-        </div>
-        <span class="job-banner-arrow">&#8250;</span>
-      </div>
-      <div class="job-banner" data-new="youtube">
-        <div class="job-banner-icon">&#9654;</div>
-        <div class="job-banner-body">
-          <div class="job-banner-title">A partir de YouTube</div>
-          <div class="job-banner-desc">Cola o URL do vídeo — áudio extraído automaticamente</div>
-        </div>
-        <span class="job-banner-arrow">&#8250;</span>
-      </div>
       <div class="job-banner" data-new="gp">
         <div class="job-banner-icon">&#127928;</div>
         <div class="job-banner-body">
@@ -636,49 +620,10 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
     <button type="button" class="modal-close" id="newJobClose">×</button>
     <h2>Novo job <button class="info-btn" data-info="new-job">ⓘ</button></h2>
     <div class="tabnav" id="newJobTabs">
-      <button type="button" class="active" data-tab="audio">Áudio</button>
-      <button type="button" data-tab="youtube">YouTube</button>
-      <button type="button" data-tab="gp">Guitar Pro</button>
+      <button type="button" class="active" data-tab="gp">Guitar Pro</button>
     </div>
 
-    <div class="tabpanel" data-panel="audio">
-      <form id="uploadForm" class="grid" style="margin-top:.5rem">
-        <div class="field"><label>Ficheiro</label>
-          <div class="file-drop"><div class="file-drop-icon">&#128190;</div><span class="file-drop-text">Arrasta ou clica para escolher</span><span class="file-drop-btn">Procurar</span>
-          <input type="file" name="file" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" required></div></div>
-        <div class="field"><label>Título</label>
-          <input type="text" name="title" placeholder="auto das tags"></div>
-        <div class="field"><label>Banda</label>
-          <input type="text" name="artist" placeholder="auto das tags"></div>
-        <div class="field"><label>Álbum</label>
-          <input type="text" name="album" placeholder="auto das tags"></div>
-        <div class="field"><label>Ano</label>
-          <input type="number" name="year" min="1900" max="2100" style="width:5.5rem"></div>
-        <div class="field"><label>Início (s) <button class="info-btn" data-info="audio-offset">ⓘ</button></label>
-          <input type="number" name="offset_s" value="0" step="0.01" min="0" style="width:5rem"></div>
-        <label class="check"><input type="checkbox" name="transcribe_lyrics" value="true"> Transcrever letra (EXPERIMENTAL)</label>
-        <button type="submit">Processar</button>
-      </form>
-    </div>
-
-    <div class="tabpanel" data-panel="youtube" hidden>
-      <form id="ytForm" class="grid" style="margin-top:.5rem">
-        <div class="field" style="flex:2 1 280px"><label>URL</label>
-          <input type="url" name="url" placeholder="https://www.youtube.com/watch?v=…" required></div>
-        <div class="field"><label>Título</label>
-          <input type="text" name="title" placeholder="Título" required></div>
-        <div class="field"><label>Banda</label>
-          <input type="text" name="artist" placeholder="Banda" required></div>
-        <div class="field"><label>Álbum</label>
-          <input type="text" name="album" placeholder="opcional"></div>
-        <div class="field"><label>Ano</label>
-          <input type="number" name="year" min="1900" max="2100" style="width:5.5rem"></div>
-        <button type="submit">Processar</button>
-      </form>
-      <p style="font-size:.8rem;color:var(--muted);margin:.5rem 0 0">YouTube pode estar desativado no servidor. <button class="info-btn" data-info="youtube">ⓘ</button></p>
-    </div>
-
-    <div class="tabpanel" data-panel="gp" hidden>
+    <div class="tabpanel" data-panel="gp">
       <form id="gpInspectForm" class="grid" style="margin-top:.5rem">
         <div class="field"><label>Ficheiro GP3/GP4/GP5/GP7 <button class="info-btn" data-info="gp-format">ⓘ</button></label>
           <div class="file-drop"><div class="file-drop-icon">&#127928;</div><span class="file-drop-text">Arrasta ou clica para escolher</span><span class="file-drop-btn">Procurar</span>
@@ -851,7 +796,7 @@ const INFO = {
   },
   'new-job': {
     title: 'Criar um novo job',
-    body: '<p>Escolhe a via de ingestão:<br><strong>Áudio</strong>: qualquer ficheiro de áudio — as notas são transcritas automaticamente pelo Basic Pitch.<br><strong>YouTube</strong>: descarrega o áudio do YouTube (pode estar desativado pelo operador).<br><strong>Guitar Pro</strong>: via de alta fidelidade — notas, trastes, técnicas e secções vêm exatas do ficheiro GP3/GP4/GP5. Requer também o ficheiro de áudio para sincronização.</p>'
+    body: '<p><strong>Guitar Pro</strong>: via de alta fidelidade — notas, trastes, técnicas e secções vêm exatas do ficheiro GP3/GP4/GP5/GP7. Requer também o ficheiro de áudio (a gravação) para sincronização.</p>'
   },
   'audio-offset': {
     title: 'Início (s) — áudio',
@@ -3569,25 +3514,6 @@ document.getElementById('seekBar').addEventListener('change', e => {
   audioSeek(parseFloat(e.target.value) || 0);
   if (seekWasPlaying) audioPlay();
   seekWasPlaying = false;
-});
-
-document.getElementById('uploadForm').addEventListener('submit', async e => {
-  e.preventDefault();
-  const r = await fetch('/jobs/upload', { method: 'POST', body: new FormData(e.target) });
-  const b = await r.json();
-  if (r.ok) { e.target.reset(); toast('Job criado.', 'ok'); closeNewJobModal(); selectJob(b.id); } else toast(b.detail || 'erro');
-});
-
-document.getElementById('ytForm').addEventListener('submit', async e => {
-  e.preventDefault();
-  const payload = Object.fromEntries([...new FormData(e.target)].filter(([, v]) => v !== ''));
-  if (payload.year) payload.year = parseInt(payload.year, 10);
-  const r = await fetch('/jobs/youtube', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  const b = await r.json();
-  if (r.ok) { e.target.reset(); toast('Job criado.', 'ok'); closeNewJobModal(); selectJob(b.id); } else toast(b.detail || 'erro');
 });
 
 // The tuning form no longer submits on its own — the single "Aplicar e
