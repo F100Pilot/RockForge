@@ -341,7 +341,7 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
     </div>
 
     <section id="jobListCard" style="display:none">
-      <h2 class="joblist-title">Jobs</h2>
+      <h2 class="joblist-title">Projetos</h2>
       <div class="card" style="padding:.75rem .9rem">
         <table id="jobsTable"><thead>
           <tr><th>Título / Artista</th><th>Estado</th><th></th></tr>
@@ -618,7 +618,7 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
 <div class="modal-overlay" id="newJobOverlay" hidden>
   <div class="modal" style="max-width:700px">
     <button type="button" class="modal-close" id="newJobClose">×</button>
-    <h2>Novo job <button class="info-btn" data-info="new-job">ⓘ</button></h2>
+    <h2>Novo projeto <button class="info-btn" data-info="new-job">ⓘ</button></h2>
     <div class="tabnav" id="newJobTabs">
       <button type="button" class="active" data-tab="gp">Guitar Pro</button>
     </div>
@@ -795,7 +795,7 @@ const INFO = {
       '<p><strong>Stems separados</strong> (botão "Separar instrumentos") — usa o Demucs para separar a gravação real por instrumento (guitarra, baixo, voz, piano, outros; a bateria é descartada). Sola a <strong>guitarra</strong> para ouvir melhor as notas reais. <em>Limite honesto:</em> o Demucs separa por <em>tipo</em> de instrumento — a faixa "guitarra" é <strong>todas as guitarras misturadas</strong>; não é possível separar a Lead da Rhythm a partir da gravação. Requer o extra <code>[ml]</code> e demora alguns minutos.</p>'
   },
   'new-job': {
-    title: 'Criar um novo job',
+    title: 'Criar um novo projeto',
     body: '<p><strong>Guitar Pro</strong>: via de alta fidelidade — notas, trastes, técnicas e secções vêm exatas do ficheiro GP3/GP4/GP5/GP7. Requer também o ficheiro de áudio (a gravação) para sincronização.</p>'
   },
   'audio-offset': {
@@ -865,7 +865,7 @@ const INFO = {
 <p><strong>Criar:</strong> clica em "+ Criar / editar tons", depois "+ Novo tom". Escolhe o amplificador e a cabine (obrigatórios) e adiciona efeitos opcionais. Cada botão de knob vem com o valor por defeito do catálogo.</p>
 <p><strong>Atribuir:</strong> escolhe o <strong>Tom base</strong> (o que toca no início) e marca até <strong>4</strong> tons "extra" que poderás trocar ao longo da música.</p>
 <p><strong>Trocar a meio:</strong> com o modo "Mudança de tom" ativo, clica numa nota na partitura para colocar lá uma troca para um dos tons extra.</p>
-<p>Os tons são <strong>por arranjo</strong> (Lead/Rhythm/Combined) e só se aplicam a jobs de Guitar Pro. Sem tons definidos, o DLC Builder marca "tone missing" e resolves com a biblioteca dele.</p>`
+<p>Os tons são <strong>por arranjo</strong> (Lead/Rhythm/Combined) e só se aplicam a projetos de Guitar Pro. Sem tons definidos, o DLC Builder marca "tone missing" e resolves com a biblioteca dele.</p>`
   },
 };
 
@@ -1026,14 +1026,14 @@ async function refreshJobs() {
     if (selectedJob && j.id === selectedJob.id) tr.className = 'sel';
     tr.innerHTML = `<td><strong>${esc(j.title)}</strong><br><span style="color:var(--muted);font-size:.8rem">${esc(j.artist)}</span></td>
       <td>${badge(j.status)}</td>
-      <td><button type="button" class="icon del" title="Remover job">🗑</button></td>`;
+      <td><button type="button" class="icon del" title="Remover projeto">🗑</button></td>`;
     tr.onclick = () => selectJob(j.id);
     tr.querySelector('.del').onclick = async ev => {
       ev.stopPropagation();
       const running = j.status === 'running';
       const msg = running
-        ? `O job "${j.title}" ainda está a correr. Forçar a remoção? Só o deves fazer se estiver encravado (o worker morreu ou pendurou) — apaga também o bundle gerado.`
-        : `Remover o job "${j.title}"? Isto apaga também o bundle gerado.`;
+        ? `O projeto "${j.title}" ainda está a correr. Forçar a remoção? Só o deves fazer se estiver encravado (o worker morreu ou pendurou) — apaga também o bundle gerado.`
+        : `Remover o projeto "${j.title}"? Isto apaga também o bundle gerado.`;
       const ok = await confirmModal(msg);
       if (!ok) return;
       const url = running ? `/jobs/${j.id}?force=true` : `/jobs/${j.id}`;
@@ -1640,7 +1640,7 @@ function placeToneChange(chartTime) {
 
 // ---- Tone builder modal ----
 function openToneBuilder() {
-  if (!selectedJob || selectedJob.source_type !== 'gp') { toast('Tons só se aplicam a jobs Guitar Pro.'); return; }
+  if (!selectedJob || selectedJob.source_type !== 'gp') { toast('Tons só se aplicam a projetos Guitar Pro.'); return; }
   loadGearCatalogue().then(() => {
     renderToneListEditor();
     document.getElementById('toneEditForm').style.display = 'none';
@@ -3551,7 +3551,7 @@ document.getElementById('gpJobForm').addEventListener('submit', async e => {
   f.set('import_mutes', e.target.querySelector('input[name=import_mutes]').checked);
   const r = await fetch('/jobs/gp', { method: 'POST', body: f });
   const b = await r.json();
-  if (r.ok) { toast('Job criado.', 'ok'); closeNewJobModal(); selectJob(b.id); } else toast(b.detail || 'erro');
+  if (r.ok) { toast('Projeto criado.', 'ok'); closeNewJobModal(); selectJob(b.id); } else toast(b.detail || 'erro');
 });
 
 refreshJobs();
