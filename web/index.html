@@ -388,7 +388,7 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
           </div>
           <!-- Playback controls — shown for ALL job types -->
           <div class="syncctrls">
-            <label>🔊 Música: <input type="range" id="musicVolume" min="0" max="1" step="0.05" value="1" style="width:6rem;vertical-align:middle"></label>
+            <label>🔊 Música: <input type="range" id="musicVolume" min="0" max="1" step="0.05" value="1" style="width:9rem;vertical-align:middle;accent-color:#a97bff"></label>
             <label>🐢 Velocidade: <select id="playbackSpeed" style="vertical-align:middle">
               <option value="1">100%</option>
               <option value="0.9">90%</option>
@@ -402,7 +402,7 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
               <option value="0.25">25%</option>
             </select></label>
             <label class="check"><input type="checkbox" id="syncTick" checked> Tique por nota</label>
-            <label>🎵 Notas: <input type="range" id="tickVolume" min="0" max="1" step="0.05" value="0.6" style="width:6rem;vertical-align:middle"></label>
+            <label>🎵 Notas: <input type="range" id="tickVolume" min="0" max="2" step="0.05" value="1" style="width:9rem;vertical-align:middle;accent-color:#a97bff"></label>
           </div>
           <!-- GP sync controls — hidden for audio-ML jobs (notes already aligned) -->
           <div id="gpSyncControls">
@@ -2512,7 +2512,7 @@ function midiToHz(midi) {
   return 440 * Math.pow(2, (midi - 69) / 12);
 }
 
-let tickGain = 0.6;
+let tickGain = 1.0;
 document.getElementById('tickVolume')?.addEventListener('input', e => {
   tickGain = parseFloat(e.target.value);
 });
@@ -2526,18 +2526,31 @@ document.getElementById('playbackSpeed')?.addEventListener('change', e => {
   else { const au = document.getElementById('syncAudio'); if (au) au.playbackRate = playbackRate; }
 });
 
-function playNote(string, fret) {
-  if (!audioCtx || string < 0 || string > 5 || fret < 0) return;
+// Per-note "tick": a short plucked-string tone AT THE NOTE'S REAL PITCH so it
+// mirrors the note being played. `midi` already includes the arrangement's
+// tuning offset. A sawtooth through a lowpass (plus a soft sub) reads as a
+// guitar pluck rather than a bare sine beep; a fast attack + ~0.22s decay is
+// the pluck envelope. Gain follows the Notas slider (0-200%).
+function playNote(midi) {
+  if (!audioCtx || midi == null) return;
   const t = audioCtx.currentTime;
-  const midi = STRING_MIDI[string] + fret;
   const hz = midiToHz(midi);
-  const osc = audioCtx.createOscillator(), g = audioCtx.createGain();
-  osc.frequency.value = hz;
+  const g = audioCtx.createGain();
+  const lp = audioCtx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = Math.min(8000, hz * 6);  // tame the sawtooth's fizz, track pitch
+  lp.Q.value = 0.7;
+  const peak = Math.max(0.0001, tickGain * 0.6);  // headroom so 200% is loud, not fully clipped
   g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(Math.max(0.0001, tickGain), t + 0.001);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
-  osc.connect(g); g.connect(audioCtx.destination);
-  osc.start(t); osc.stop(t + 0.1);
+  g.gain.exponentialRampToValueAtTime(peak, t + 0.004);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+  lp.connect(g); g.connect(audioCtx.destination);
+  for (const [type, mix] of [['sawtooth', 1.0], ['triangle', 0.5]]) {
+    const osc = audioCtx.createOscillator(), og = audioCtx.createGain();
+    osc.type = type; osc.frequency.value = hz; og.gain.value = mix;
+    osc.connect(og); og.connect(lp);
+    osc.start(t); osc.stop(t + 0.25);
+  }
 }
 
 // ---- Stand-alone arrangement preview (synthesized from the chart, no
@@ -2802,10 +2815,13 @@ function syncFrame() {
   const warp = buildTimeWarp(syncAnchors);
   // Fire each note's tick when the playhead reaches its *previewed* display
   // position, so live tempo/offset/anchor edits are immediately audible.
+  const arrNow = arrangements[currentArr];
+  const offs = (arrNow && arrNow.tuning_offsets) || [0, 0, 0, 0, 0, 0];
   while (tickIdx < notes.length && warp(previewScale(notes[tickIdx].time)) <= vtDisp) {
     if (tickOn) {
       const note = notes[tickIdx];
-      playNote(note.string, note.fret);
+      if (note.string >= 0 && note.string <= 5 && note.fret >= 0)
+        playNote(STRING_MIDI[note.string] + (offs[note.string] || 0) + note.fret);
     }
     tickIdx++;
   }
