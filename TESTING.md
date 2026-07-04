@@ -102,10 +102,10 @@ explicit `cast(...)`.
 | `test_psarc_packer.py` | 7 | `NativePsarcPacker` wiring; graceful degrade without `[psarc]` |
 | `test_wwise.py` | 6 | `.wem` conversion via **fake** WwiseConsole; seek-table header patch |
 | `test_ffmpeg_normalizer.py` | 3 | command build: `-nostdin`, `stdin=DEVNULL`, `FFMPEG_TIMEOUT_S` |
-| `test_demucs_adapter.py` | 4 | demucs CLI command build, `stdin=DEVNULL`, timeout, vocals vs guitar models |
+| `test_demucs_adapter.py` | 5 | demucs CLI command build, `stdin=DEVNULL`, timeout, vocals vs guitar models, `separate_stems` returns all stems |
 | `test_device_resolution.py` | 4 | `_resolve_device` auto/cpu/cuda + degrade-to-CPU on import failure |
 | `test_tags.py` | 2 | audio metadata tag extraction |
-| `test_api.py` | 55 | every endpoint (§6): job lifecycle, rebuild composition, detect-* enqueue (mocked), lyrics/tones status, deletion, per-test SQLite |
+| `test_api.py` | 59 | every endpoint (§6): job lifecycle, rebuild composition, detect-* / separate-stems enqueue (mocked), lyrics/tones/stems status, deletion, per-test SQLite |
 
 ### Key regression tests — do not delete these without understanding why
 
@@ -176,6 +176,9 @@ POST   /jobs/{id}/detect-lyrics      async lyric detection (202)       [ml+lyric
 GET    /jobs/{id}/lyrics             lyric status + events + log
 POST   /jobs/{id}/detect-tones       async tone detection (202)        [ml extra]
 GET    /jobs/{id}/detected-tones     tone status + suggested presets + log
+POST   /jobs/{id}/separate-stems     async stem separation (202)       [ml extra]
+GET    /jobs/{id}/stems              stem status + available stem names + log
+GET    /jobs/{id}/stem/{name}        one separated stem (audio-source selector)
 GET    /jobs/{id}/tones              current tone setup
 GET    /jobs/{id}/arrangements       per-arrangement tab/sync data for the viewer
 GET    /jobs/{id}/source-audio       the recording (for the waveform)

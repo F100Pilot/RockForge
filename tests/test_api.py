@@ -21,6 +21,7 @@ def client(tmp_path, monkeypatch) -> Iterator[TestClient]:
     monkeypatch.setattr(app_module, "_enqueue", lambda job: None)
     monkeypatch.setattr(app_module, "_enqueue_detect", lambda job: None)
     monkeypatch.setattr(app_module, "_enqueue_detect_tones", lambda job: None)
+    monkeypatch.setattr(app_module, "_enqueue_separate_stems", lambda job: None)
     with TestClient(app_module.app) as c:
         yield c
 
@@ -794,6 +795,31 @@ def test_detect_tones_enqueues_and_marks_detecting(client: TestClient) -> None:
 
 def test_detect_tones_unknown_job_404(client: TestClient) -> None:
     assert client.post("/jobs/nope/detect-tones").status_code == 404
+
+
+def test_separate_stems_enqueues_and_marks_detecting(client: TestClient) -> None:
+    job = _create_job(client)
+    r = client.post(f"/jobs/{job['id']}/separate-stems")
+    assert r.status_code == 202
+    s = client.get(f"/jobs/{job['id']}/stems")
+    assert s.status_code == 200
+    assert s.json()["status"] == "detecting"
+
+
+def test_stems_default_status_none(client: TestClient) -> None:
+    job = _create_job(client)
+    body = client.get(f"/jobs/{job['id']}/stems").json()
+    assert body["status"] == "none"
+    assert body["stems"] == []
+
+
+def test_separate_stems_unknown_job_404(client: TestClient) -> None:
+    assert client.post("/jobs/nope/separate-stems").status_code == 404
+
+
+def test_stem_audio_missing_returns_404(client: TestClient) -> None:
+    job = _create_job(client)
+    assert client.get(f"/jobs/{job['id']}/stem/guitar").status_code == 404
 
 
 def test_detected_tones_returns_none_status_by_default(client: TestClient) -> None:

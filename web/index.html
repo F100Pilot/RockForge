@@ -405,6 +405,16 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
             <label>🎵 Notas: <input type="range" id="tickVolume" min="0" max="2" step="0.05" value="1" style="width:9rem;vertical-align:middle;accent-color:#a97bff"></label>
             <span id="liveBpm" style="font-weight:700;color:#b58cff;margin-left:.4rem"></span>
           </div>
+          <!-- Audio source: full mix or an isolated Demucs stem (for fine-tuning by ear) -->
+          <div class="syncctrls">
+            <label>🎚️ Fonte de áudio:
+              <select id="audioSource" style="vertical-align:middle;min-width:9rem">
+                <option value="">Mistura completa</option>
+              </select></label>
+            <button type="button" id="separateStems" class="secondary">Separar instrumentos</button>
+            <button class="info-btn" data-info="stems">ⓘ</button>
+            <span id="stemsStatus" class="meta"></span>
+          </div>
           <!-- GP sync controls — hidden for audio-ML jobs (notes already aligned) -->
           <div id="gpSyncControls">
             <div class="syncctrls">
@@ -777,6 +787,10 @@ function showSection(name) {
 
 // ── ⓘ info modal ─────────────────────────────────────────────────────────────
 const INFO = {
+  'stems': {
+    title: 'Separar instrumentos (fonte de áudio)',
+    body: '<p>Usa o Demucs para separar a gravação em faixas por instrumento (guitarra, baixo, bateria, voz, piano, outros). Depois podes escolher qual delas ouves no leitor — sola a <strong>guitarra</strong> para ouvir melhor as notas enquanto afinas a sincronização.</p><p>As faixas partilham o mesmo relógio da gravação, por isso as notas continuam alinhadas.</p><p><strong>Limite honesto:</strong> o Demucs separa por <em>tipo</em> de instrumento, não por faixa individual — a faixa "guitarra" é <strong>todas as guitarras misturadas</strong>; não é possível separar a Lead da Rhythm a partir da gravação. Requer o extra <code>[ml]</code> (Demucs) e demora alguns minutos.</p>'
+  },
   'new-job': {
     title: 'Criar um novo job',
     body: '<p>Escolhe a via de ingestão:<br><strong>Áudio</strong>: qualquer ficheiro de áudio — as notas são transcritas automaticamente pelo Basic Pitch.<br><strong>YouTube</strong>: descarrega o áudio do YouTube (pode estar desativado pelo operador).<br><strong>Guitar Pro</strong>: via de alta fidelidade — notas, trastes, técnicas e secções vêm exatas do ficheiro GP3/GP4/GP5. Requer também o ficheiro de áudio para sincronização.</p>'
@@ -905,6 +919,7 @@ let wavePeaks = null, waveDuration = 0;
 // A buffer source seeks sample-accurately and its clock is audioCtx.currentTime,
 // so playback, the waveform and the notes share one exact timeline.
 let playBuffer = null;       // decoded recording (null => use <audio> fallback)
+let audioSourceName = '';    // '' => full mix; else a Demucs stem name (guitar/…)
 let playGain = null;         // GainNode for music volume control
 let playSource = null;       // active AudioBufferSourceNode while playing
 let playStartCtx = 0;        // audioCtx.currentTime when the current source started
@@ -1976,6 +1991,96 @@ function applyDetectedTones(detected) {
 
 document.getElementById('detectTones').addEventListener('click', detectTones);
 
+// ── Stem separation (selectable audio source for fine-tuning) ─────────────────
+
+const STEM_LABELS = {
+  guitar: 'Guitarra', bass: 'Baixo', drums: 'Bateria',
+  vocals: 'Voz', piano: 'Piano', other: 'Outros',
+};
+
+// Rebuild the <select> options from the list of available stems, keeping the
+// current selection if it still exists.
+function renderAudioSources(stems) {
+  const sel = document.getElementById('audioSource');
+  const prev = sel.value;
+  let html = '<option value="">Mistura completa</option>';
+  for (const name of stems)
+    html += `<option value="${esc(name)}">${esc(STEM_LABELS[name] || name)}</option>`;
+  sel.innerHTML = html;
+  // Keep the current pick if it still exists, else fall back to the full mix.
+  sel.value = stems.includes(prev) ? prev : '';
+  audioSourceName = sel.value;
+}
+
+async function separateStems() {
+  if (!selectedJob) return;
+  const r = await fetch(`/jobs/${selectedJob.id}/separate-stems`, { method: 'POST' });
+  const b = await r.json();
+  if (!r.ok) { toast(b.detail || 'erro'); return; }
+  toast('A separar instrumentos… (pode demorar minutos)', 'ok');
+  document.getElementById('stemsStatus').textContent = 'a iniciar…';
+  pollStems();
+}
+
+let _stemsPoll = null;
+function pollStems() {
+  if (_stemsPoll) clearInterval(_stemsPoll);
+  _stemsPoll = setInterval(async () => {
+    if (!selectedJob) return;
+    const r = await fetch(`/jobs/${selectedJob.id}/stems`);
+    if (!r.ok) return;
+    const d = await r.json();
+    const st = document.getElementById('stemsStatus');
+    if (d.status === 'ready') {
+      clearInterval(_stemsPoll); _stemsPoll = null;
+      renderAudioSources(d.stems || []);
+      st.textContent = `${(d.stems || []).length} stems prontos (a guitarra é todas as guitarras juntas)`;
+    } else if (d.status === 'unavailable') {
+      clearInterval(_stemsPoll); _stemsPoll = null;
+      st.textContent = 'separação falhou — precisa do extra [ml] (Demucs).';
+      st.style.color = '#e88';
+    } else if (d.status && d.status !== 'none') {
+      const label = { detecting: 'a iniciar', normalizing: 'a normalizar áudio',
+        separating: 'a separar (Demucs)…' }[d.status] || d.status;
+      st.textContent = label + '…';
+    }
+  }, 3000);
+}
+
+// Load any already-computed stems for the job (so the selector is populated on
+// reopen without re-running Demucs).
+async function loadStems(id) {
+  const sel = document.getElementById('audioSource');
+  sel.value = ''; audioSourceName = '';
+  sel.innerHTML = '<option value="">Mistura completa</option>';
+  document.getElementById('stemsStatus').textContent = '';
+  document.getElementById('stemsStatus').style.color = '';
+  try {
+    const r = await fetch(`/jobs/${id}/stems`);
+    if (!r.ok) return;
+    const d = await r.json();
+    if (d.status === 'separating' || d.status === 'normalizing' || d.status === 'detecting') {
+      document.getElementById('stemsStatus').textContent = 'separação em curso…';
+      pollStems();
+    } else if ((d.stems || []).length) {
+      renderAudioSources(d.stems);
+    }
+  } catch { /* ignore */ }
+}
+
+document.getElementById('separateStems').addEventListener('click', separateStems);
+document.getElementById('audioSource').addEventListener('change', async e => {
+  audioSourceName = e.target.value;
+  if (!selectedJob) return;
+  // Re-decode the chosen source; keep the playhead where it was.
+  const at = currentPlayheadT;
+  const wasPlaying = audioIsPlaying();
+  stopPlayback();
+  await decodeWaveform(selectedJob.id);
+  audioSeek(at);
+  if (wasPlaying) audioPlay();
+});
+
 function loadCoverArt(j) {
   const img = document.getElementById('coverArtPreview');
   const info = document.getElementById('coverArtInfo');
@@ -3001,6 +3106,7 @@ function initSync(j) {
   updatePlayBtn();
   updateTransportUI();
   decodeWaveform(j.id);
+  loadStems(j.id);
 }
 
 // Swap the per-arrangement sync state (tempo scale + pending drift anchors)
@@ -3148,7 +3254,13 @@ function setTempoLive(scale) {
 async function decodeWaveform(id) {
   try {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const buf = await (await fetch(`/jobs/${id}/source-audio`)).arrayBuffer();
+    // The audio-source selector can swap the full mix for an isolated Demucs
+    // stem (guitar/bass/…) so the user hears the notes more clearly while
+    // fine-tuning sync. Stems share the recording clock, so the notes line up.
+    const url = audioSourceName
+      ? `/jobs/${id}/stem/${encodeURIComponent(audioSourceName)}`
+      : `/jobs/${id}/source-audio`;
+    const buf = await (await fetch(url)).arrayBuffer();
     let audio = await audioCtx.decodeAudioData(buf);
     // Reflect the user's intro silence (lead_in_s) the bundle was built with:
     // prepend that much silence to the decoded buffer so the waveform shows it,
@@ -3185,7 +3297,9 @@ async function decodeWaveform(id) {
     const au = document.getElementById('syncAudio');
     if (au) {
       au.preload = 'metadata';
-      au.src = `/jobs/${id}/source-audio`;
+      au.src = audioSourceName
+        ? `/jobs/${id}/stem/${encodeURIComponent(audioSourceName)}`
+        : `/jobs/${id}/source-audio`;
       au.onloadedmetadata = updateTransportUI;
     }
   }

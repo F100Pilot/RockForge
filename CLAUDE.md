@@ -407,6 +407,31 @@ the recording — it classifies the *character* of the guitar sound and suggests
 a plausible Rocksmith gear match. Detection needs the `[ml]` extra (Demucs +
 librosa).
 
+### Stem separation — selectable audio source (`/jobs/{id}/separate-stems`)
+
+`POST /jobs/{id}/separate-stems` (any job type) runs ONE Demucs `htdemucs_6s`
+pass and keeps **all** the stems it produces (`DemucsSeparator.separate_stems`
+globs the model's output dir), storing `params["stems"] = {name: abs_path}`.
+The tab viewer's "Fonte de áudio" dropdown then lets the user solo any stem —
+guitar/bass/drums/vocals/piano/other — instead of the full mix, so the notes are
+easier to hear when fine-tuning the sync alignment by ear. Follows the same
+async pattern as `detect_tones`: progress in `params["stems_status"]`
+(`detecting`/`normalizing`/`separating`/`ready`/`unavailable`) + `params["stems_log"]`,
+the endpoint mutates the job → 202, heavy failure wrapped in try/except →
+`unavailable`. `GET /jobs/{id}/stems` returns the status + the names whose file
+still exists on disk; `GET /jobs/{id}/stem/{name}` serves the WAV.
+
+Frontend: `decodeWaveform` fetches `/stem/{name}` when a stem is selected
+(`audioSourceName`) instead of `/source-audio`, decoding it into the same
+`playBuffer` — the stems share the normalized recording's clock, so the notes
+stay aligned. Changing the dropdown re-decodes and restores the playhead;
+`loadStems` repopulates the selector on reopen without re-running Demucs.
+
+Honest limit (surfaced in the "Separar instrumentos" ⓘ and the done log): Demucs
+separates by **instrument type**, not by individual track — the `guitar` stem is
+ALL guitars mixed together; **Lead vs Rhythm cannot be split** from the
+recording. Needs the `[ml]` extra (Demucs) and takes minutes.
+
 ### DLC Builder project file (`rockforge.rs2dlc`)
 
 `rockforge_project.json` is RockForge's *own* descriptor — DLC Builder can't

@@ -558,3 +558,84 @@ def detect_tones(job_id: str) -> None:
         job.params = {**params}
         job.warnings = list(warnings)
         session.commit()
+
+
+def _log_stems_stage(params: dict[str, Any], message: str) -> None:
+    """Append a timestamped line to params["stems_log"]."""
+    log = cast("list[str]", params.get("stems_log") or [])
+    stamp = datetime.now(UTC).strftime("%H:%M:%S")
+    params["stems_log"] = [*log, f"[{stamp}] {message}"][-50:]
+
+
+@celery_app.task(name="rockforge.separate_stems", time_limit=3600)
+def separate_stems(job_id: str) -> None:
+    """Split the recording into per-instrument stems (Demucs htdemucs_6s) so the
+    sync viewer can solo the guitar (or mute drums/vocals) while the user
+    fine-tunes the note alignment by ear.
+
+    Slow (minutes for Demucs); progress tracked via params["stems_status"]
+    rather than JobStatus, so it never hides a completed build. The resulting
+    stem paths land in params["stems"] as {name: absolute path}.
+
+    Honest limit: Demucs separates by INSTRUMENT TYPE, not by individual track —
+    the guitar stem is ALL guitars mixed together; Lead vs Rhythm cannot be split.
+    """
+    session_factory = make_session_factory(settings.database_url)
+    with session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            return
+        params = dict(job.params or {})
+        warnings = list(job.warnings or [])
+        params["stems_log"] = []
+        _log_stems_stage(params, "stem separation started")
+
+        def _commit_params() -> None:
+            job.params = {**params}
+            session.commit()
+
+        try:
+            _log_stems_stage(params, "importing ML models…")
+            _commit_params()
+
+            device = _resolve_device(settings.demucs_device)
+
+            from rockforge.infrastructure.normalize.ffmpeg import FfmpegNormalizer
+            from rockforge.infrastructure.separation.demucs_adapter import DemucsSeparator
+
+            normalizer = FfmpegNormalizer()
+            separator = DemucsSeparator(device=device)
+
+            workdir = settings.work_dir / job.id / "stem_separation"
+            workdir.mkdir(parents=True, exist_ok=True)
+
+            _log_stems_stage(
+                params, f"device: {device} ({'GPU' if device == 'cuda' else 'CPU'})"
+            )
+
+            params["stems_status"] = "normalizing"
+            _log_stems_stage(params, "normalizing source audio (ffmpeg)")
+            _commit_params()
+            normalized = normalizer.normalize(Path(job.source), workdir)
+
+            params["stems_status"] = "separating"
+            _log_stems_stage(
+                params, "separating instruments (Demucs, 6-stem) — can take a while"
+            )
+            _commit_params()
+            stems = separator.separate_stems(normalized, workdir)
+
+            params["stems"] = {name: str(path) for name, path in stems.items()}
+            params["stems_status"] = "ready"
+            _log_stems_stage(
+                params,
+                f"done — {len(stems)} stem(s): {', '.join(sorted(stems))}. "
+                f"Note: the guitar stem is ALL guitars mixed (Lead+Rhythm can't be split).",
+            )
+        except Exception as exc:
+            params["stems_status"] = "unavailable"
+            warnings.append(f"stem separation failed: {type(exc).__name__}: {exc}")
+            _log_stems_stage(params, f"failed: {type(exc).__name__}: {exc}")
+        job.params = {**params}
+        job.warnings = list(warnings)
+        session.commit()
