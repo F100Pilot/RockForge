@@ -409,28 +409,43 @@ librosa).
 
 ### Stem separation — selectable audio source (`/jobs/{id}/separate-stems`)
 
-`POST /jobs/{id}/separate-stems` (any job type) runs ONE Demucs `htdemucs_6s`
-pass and keeps **all** the stems it produces (`DemucsSeparator.separate_stems`
-globs the model's output dir), storing `params["stems"] = {name: abs_path}`.
-The tab viewer's "Fonte de áudio" dropdown then lets the user solo any stem —
-guitar/bass/drums/vocals/piano/other — instead of the full mix, so the notes are
-easier to hear when fine-tuning the sync alignment by ear. Follows the same
-async pattern as `detect_tones`: progress in `params["stems_status"]`
-(`detecting`/`normalizing`/`separating`/`ready`/`unavailable`) + `params["stems_log"]`,
-the endpoint mutates the job → 202, heavy failure wrapped in try/except →
-`unavailable`. `GET /jobs/{id}/stems` returns the status + the names whose file
-still exists on disk; `GET /jobs/{id}/stem/{name}` serves the WAV.
+The tab viewer's **"Fonte de áudio" dropdown** (`populateAudioSources`) offers
+three kinds of audio source, all decoded into the same `playBuffer` (which
+shares the recording's clock, so the notes stay aligned):
 
-Frontend: `decodeWaveform` fetches `/stem/{name}` when a stem is selected
-(`audioSourceName`) instead of `/source-audio`, decoding it into the same
-`playBuffer` — the stems share the normalized recording's clock, so the notes
-stay aligned. Changing the dropdown re-decodes and restores the playhead;
-`loadStems` repopulates the selector on reopen without re-running Demucs.
+1. **Mistura completa** — the original recording (`/source-audio`).
+2. **`<Kind>` (sintetizada)** — a clean synthesized reference of ONE
+   arrangement's notes, generated **in-browser** (`synthesizeArrangement`, an
+   `OfflineAudioContext` render using the same oscillator voice as the per-note
+   tick). No Demucs, always available. Each note is placed at the exact
+   recording-clock position it's drawn at — `warp((t-scoreShift)*ratio+pad) -
+   viewOrigin` for GP (parameterized by that arrangement's *own* pending
+   `tempo_scale`/anchors from `tempoScaleByKind`/`syncAnchorsByKind`, so it's
+   correct regardless of the open tab), raw `t` for audio-ML. It reflects the
+   pending sync at selection time; re-pick to refresh after more edits. This is
+   the honest answer to "isolate each guitar": the two guitars can't be split
+   from the *recording*, but each arrangement's notes CAN be rendered alone.
+3. **Separated stems** — `POST /jobs/{id}/separate-stems` runs ONE Demucs
+   `htdemucs_6s` pass and keeps the stems it produces (`separate_stems` globs
+   the output dir), **minus `drums`** (dropped in the task — noise for
+   sync-checking a guitar part), storing `params["stems"] = {name: abs_path}`.
+   Same async pattern as `detect_tones`: progress in `params["stems_status"]`
+   (`detecting`/`normalizing`/`separating`/`ready`/`unavailable`) +
+   `params["stems_log"]`, endpoint mutates the job → 202, heavy failure wrapped
+   → `unavailable`. `GET /jobs/{id}/stems` returns the status + the names whose
+   file still exists on disk; `GET /jobs/{id}/stem/{name}` serves the WAV.
 
-Honest limit (surfaced in the "Separar instrumentos" ⓘ and the done log): Demucs
+`decodeWaveform` branches on `audioSourceName`: `synth:<kind>` → synthesize,
+else fetch `/stem/{name}` or `/source-audio`. Changing the dropdown re-decodes
+and restores the playhead; `loadStems` repopulates the selector on reopen (synth
+options always; stems if already computed) without re-running Demucs.
+
+Honest limit (surfaced in the "Fonte de áudio" ⓘ and the done log): Demucs
 separates by **instrument type**, not by individual track — the `guitar` stem is
 ALL guitars mixed together; **Lead vs Rhythm cannot be split** from the
-recording. Needs the `[ml]` extra (Demucs) and takes minutes.
+recording (the per-arrangement *synthesized* source is the workaround). Stem
+separation needs the `[ml]` extra (Demucs) and takes minutes; the synthesized
+source needs neither.
 
 ### DLC Builder project file (`rockforge.rs2dlc`)
 

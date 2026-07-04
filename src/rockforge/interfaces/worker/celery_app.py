@@ -625,6 +625,11 @@ def separate_stems(job_id: str) -> None:
             _commit_params()
             stems = separator.separate_stems(normalized, workdir)
 
+            # Drop the drums stem: it's noise for sync-checking a guitar part and
+            # the user asked not to keep it. Demucs still computes it (one pass),
+            # we just don't reference/serve it.
+            stems = {name: path for name, path in stems.items() if name != "drums"}
+
             params["stems"] = {name: str(path) for name, path in stems.items()}
             params["stems_status"] = "ready"
             _log_stems_stage(

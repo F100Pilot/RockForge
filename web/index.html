@@ -788,8 +788,11 @@ function showSection(name) {
 // ── ⓘ info modal ─────────────────────────────────────────────────────────────
 const INFO = {
   'stems': {
-    title: 'Separar instrumentos (fonte de áudio)',
-    body: '<p>Usa o Demucs para separar a gravação em faixas por instrumento (guitarra, baixo, bateria, voz, piano, outros). Depois podes escolher qual delas ouves no leitor — sola a <strong>guitarra</strong> para ouvir melhor as notas enquanto afinas a sincronização.</p><p>As faixas partilham o mesmo relógio da gravação, por isso as notas continuam alinhadas.</p><p><strong>Limite honesto:</strong> o Demucs separa por <em>tipo</em> de instrumento, não por faixa individual — a faixa "guitarra" é <strong>todas as guitarras misturadas</strong>; não é possível separar a Lead da Rhythm a partir da gravação. Requer o extra <code>[ml]</code> (Demucs) e demora alguns minutos.</p>'
+    title: 'Fonte de áudio (stems + sintetizada)',
+    body: '<p>O dropdown "Fonte de áudio" tem três tipos de fonte:</p>' +
+      '<p><strong>Mistura completa</strong> — a gravação original.</p>' +
+      '<p><strong>… (sintetizada)</strong> — uma referência limpa das notas de cada arranjo (Lead/Rhythm), gerada a partir do próprio ficheiro. É uma guitarra <em>isolada</em> e limpa dessa faixa, útil para conferir o sync de cada arranjo por ouvido. Não precisa do Demucs e está sempre disponível. Reflete a sincronização pendente no momento em que a escolhes — volta a escolhê-la para atualizar depois de mais edições.</p>' +
+      '<p><strong>Stems separados</strong> (botão "Separar instrumentos") — usa o Demucs para separar a gravação real por instrumento (guitarra, baixo, voz, piano, outros; a bateria é descartada). Sola a <strong>guitarra</strong> para ouvir melhor as notas reais. <em>Limite honesto:</em> o Demucs separa por <em>tipo</em> de instrumento — a faixa "guitarra" é <strong>todas as guitarras misturadas</strong>; não é possível separar a Lead da Rhythm a partir da gravação. Requer o extra <code>[ml]</code> e demora alguns minutos.</p>'
   },
   'new-job': {
     title: 'Criar um novo job',
@@ -1994,21 +1997,33 @@ document.getElementById('detectTones').addEventListener('click', detectTones);
 // ── Stem separation (selectable audio source for fine-tuning) ─────────────────
 
 const STEM_LABELS = {
-  guitar: 'Guitarra', bass: 'Baixo', drums: 'Bateria',
+  guitar: 'Guitarra', bass: 'Baixo',
   vocals: 'Voz', piano: 'Piano', other: 'Outros',
 };
 
-// Rebuild the <select> options from the list of available stems, keeping the
-// current selection if it still exists.
-function renderAudioSources(stems) {
+let availableStems = [];  // Demucs stem names present on disk (drums excluded)
+
+// Rebuild the "Fonte de áudio" <select> from three groups: the full mix, a
+// synthesized clean reference per arrangement (Lead/Rhythm/Combined — needs no
+// Demucs), and any separated recording stems. Keeps the current pick if it
+// still exists, else falls back to the full mix.
+function populateAudioSources() {
   const sel = document.getElementById('audioSource');
+  if (!sel) return;
   const prev = sel.value;
+  const values = [''];
   let html = '<option value="">Mistura completa</option>';
-  for (const name of stems)
+  for (const a of arrangements) {
+    const v = `synth:${a.kind}`;
+    values.push(v);
+    html += `<option value="${esc(v)}">${esc(a.kind)} (sintetizada)</option>`;
+  }
+  for (const name of availableStems) {
+    values.push(name);
     html += `<option value="${esc(name)}">${esc(STEM_LABELS[name] || name)}</option>`;
+  }
   sel.innerHTML = html;
-  // Keep the current pick if it still exists, else fall back to the full mix.
-  sel.value = stems.includes(prev) ? prev : '';
+  sel.value = values.includes(prev) ? prev : '';
   audioSourceName = sel.value;
 }
 
@@ -2033,8 +2048,9 @@ function pollStems() {
     const st = document.getElementById('stemsStatus');
     if (d.status === 'ready') {
       clearInterval(_stemsPoll); _stemsPoll = null;
-      renderAudioSources(d.stems || []);
-      st.textContent = `${(d.stems || []).length} stems prontos (a guitarra é todas as guitarras juntas)`;
+      availableStems = d.stems || [];
+      populateAudioSources();
+      st.textContent = `${availableStems.length} stems prontos (a guitarra é todas as guitarras juntas)`;
     } else if (d.status === 'unavailable') {
       clearInterval(_stemsPoll); _stemsPoll = null;
       st.textContent = 'separação falhou — precisa do extra [ml] (Demucs).';
@@ -2047,14 +2063,15 @@ function pollStems() {
   }, 3000);
 }
 
-// Load any already-computed stems for the job (so the selector is populated on
-// reopen without re-running Demucs).
+// Populate the audio-source selector for a job: the synthesized per-arrangement
+// references are always available (no Demucs); separated stems are added if the
+// job already has them (so reopening doesn't re-run Demucs).
 async function loadStems(id) {
-  const sel = document.getElementById('audioSource');
-  sel.value = ''; audioSourceName = '';
-  sel.innerHTML = '<option value="">Mistura completa</option>';
+  availableStems = [];
+  audioSourceName = '';
   document.getElementById('stemsStatus').textContent = '';
   document.getElementById('stemsStatus').style.color = '';
+  populateAudioSources();
   try {
     const r = await fetch(`/jobs/${id}/stems`);
     if (!r.ok) return;
@@ -2063,7 +2080,8 @@ async function loadStems(id) {
       document.getElementById('stemsStatus').textContent = 'separação em curso…';
       pollStems();
     } else if ((d.stems || []).length) {
-      renderAudioSources(d.stems);
+      availableStems = d.stems;
+      populateAudioSources();
     }
   } catch { /* ignore */ }
 }
@@ -2680,6 +2698,61 @@ function playNote(midi) {
   }
 }
 
+// Render one arrangement's notes to a clean AudioBuffer (offline), placing each
+// note at the recording-clock time it currently occupies on screen —
+// warp(previewScale(t)) - viewOrigin, parameterized by the arrangement's own
+// pending sync so it's correct regardless of which tab is open. Used as a
+// selectable "Lead/Rhythm (sintetizada)" audio source: an isolated clean
+// reference of just that guitar's part, to check the sync of each arrangement
+// against the recording by ear. Reflects the pending sync at the moment it's
+// selected (re-pick the source to refresh after more edits).
+async function synthesizeArrangement(kind) {
+  const a = arrangements.find(x => x.kind === kind);
+  if (!a || !a.notes || !a.notes.length) return null;
+  const sr = 44100;
+  const gp = isGpJob();
+  const offs = a.tuning_offsets || [0, 0, 0, 0, 0, 0];
+  const bScale = a.tempo_scale || 1;
+  const tScale = (kind in tempoScaleByKind) ? tempoScaleByKind[kind] : bScale;
+  const ratio = tScale / bScale;
+  const warp = buildTimeWarp(syncAnchorsByKind[kind] || []);
+  const pad = Math.max(offsetLive, MIN_LEAD);
+  const events = [];
+  let maxT = 0;
+  for (const n of a.notes) {
+    if (n.string < 0 || n.string > 5 || n.fret < 0) continue;
+    // Same recording-clock position the note is drawn at (see previewScale /
+    // timeToX): GP applies tempo/offset/anchor sync; audio-ML notes are already
+    // at raw recording time.
+    const tRec = gp ? warp((n.time - scoreShift) * ratio + pad) - viewOrigin : n.time;
+    if (tRec < 0) continue;
+    events.push({ t: tRec, midi: STRING_MIDI[n.string] + (offs[n.string] || 0) + n.fret });
+    if (tRec > maxT) maxT = tRec;
+  }
+  if (!events.length) return null;
+  const dur = maxT + 1.2;
+  const OACtx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  const octx = new OACtx(1, Math.ceil(dur * sr), sr);
+  const NOTE_LEN = 0.28;
+  for (const ev of events) {
+    const hz = midiToHz(ev.midi);
+    const g = octx.createGain();
+    const lp = octx.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = Math.min(8000, hz * 6); lp.Q.value = 0.7;
+    g.gain.setValueAtTime(0.0001, ev.t);
+    g.gain.exponentialRampToValueAtTime(0.5, ev.t + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, ev.t + NOTE_LEN);
+    lp.connect(g); g.connect(octx.destination);
+    for (const [type, mix] of [['sawtooth', 1.0], ['triangle', 0.5]]) {
+      const osc = octx.createOscillator(), og = octx.createGain();
+      osc.type = type; osc.frequency.value = hz; og.gain.value = mix;
+      osc.connect(og); og.connect(lp);
+      osc.start(ev.t); osc.stop(ev.t + NOTE_LEN + 0.05);
+    }
+  }
+  return await octx.startRendering();
+}
+
 // ---- Fretboard (guitar neck) that lights up each note's (string, fret) as it
 // plays, like Guitar Pro's fretboard view. Static neck is drawn once per
 // showArr; a small overlay group is refreshed each frame with the active notes.
@@ -3254,23 +3327,37 @@ function setTempoLive(scale) {
 async function decodeWaveform(id) {
   try {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    // The audio-source selector can swap the full mix for an isolated Demucs
-    // stem (guitar/bass/…) so the user hears the notes more clearly while
-    // fine-tuning sync. Stems share the recording clock, so the notes line up.
-    const url = audioSourceName
-      ? `/jobs/${id}/stem/${encodeURIComponent(audioSourceName)}`
-      : `/jobs/${id}/source-audio`;
-    const buf = await (await fetch(url)).arrayBuffer();
-    let audio = await audioCtx.decodeAudioData(buf);
-    // Reflect the user's intro silence (lead_in_s) the bundle was built with:
-    // prepend that much silence to the decoded buffer so the waveform shows it,
-    // the notes sit after it, and playback runs through the silence first.
-    if (leadInBuilt > 0) {
-      const sr = audio.sampleRate, pad = Math.round(leadInBuilt * sr);
-      const padded = audioCtx.createBuffer(audio.numberOfChannels, pad + audio.length, sr);
-      for (let c = 0; c < audio.numberOfChannels; c++)
-        padded.getChannelData(c).set(audio.getChannelData(c), pad);
-      audio = padded;
+    let audio;
+    if (audioSourceName.startsWith('synth:')) {
+      // A synthesized reference of one arrangement's notes (Lead/Rhythm),
+      // rendered at the notes' current on-screen positions — no recording, so
+      // no lead-in padding (the lead-in is already baked into the note times).
+      audio = await synthesizeArrangement(audioSourceName.slice(6));
+      if (!audio) {
+        wavePeaks = null; playBuffer = null; waveDuration = 0;
+        updateTransportUI();
+        if (arrangements.length) showArr(currentArr);
+        return;
+      }
+    } else {
+      // The audio-source selector can swap the full mix for an isolated Demucs
+      // stem (guitar/bass/…) so the user hears the notes more clearly while
+      // fine-tuning sync. Stems share the recording clock, so the notes line up.
+      const url = audioSourceName
+        ? `/jobs/${id}/stem/${encodeURIComponent(audioSourceName)}`
+        : `/jobs/${id}/source-audio`;
+      const buf = await (await fetch(url)).arrayBuffer();
+      audio = await audioCtx.decodeAudioData(buf);
+      // Reflect the user's intro silence (lead_in_s) the bundle was built with:
+      // prepend that much silence to the decoded buffer so the waveform shows it,
+      // the notes sit after it, and playback runs through the silence first.
+      if (leadInBuilt > 0) {
+        const sr = audio.sampleRate, pad = Math.round(leadInBuilt * sr);
+        const padded = audioCtx.createBuffer(audio.numberOfChannels, pad + audio.length, sr);
+        for (let c = 0; c < audio.numberOfChannels; c++)
+          padded.getChannelData(c).set(audio.getChannelData(c), pad);
+        audio = padded;
+      }
     }
     const ch = audio.getChannelData(0);
     const bins = Math.ceil(audio.duration * WAVE_HZ);
@@ -3293,7 +3380,9 @@ async function decodeWaveform(id) {
   } catch {
     // Unsupported codec etc.: skip the waveform and fall back to the <audio>
     // element for playback (seeking is then codec-imprecise, but it still plays).
-    wavePeaks = null; playBuffer = null;
+    // A synthesized source has no URL, so there's nothing to fall back to.
+    wavePeaks = null; playBuffer = null; waveDuration = 0;
+    if (audioSourceName.startsWith('synth:')) { updateTransportUI(); return; }
     const au = document.getElementById('syncAudio');
     if (au) {
       au.preload = 'metadata';
