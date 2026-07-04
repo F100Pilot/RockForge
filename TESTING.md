@@ -230,6 +230,14 @@ to the GP note onsets (`parse_gp_track`), but a dense full-mix (drums/vocals/two
 guitars) makes a sub-3% tempo difference hard to measure reliably — the
 interactive tab viewer with live preview is the practical tool.
 
+**To verify (manual):** open a GP job whose file has a mid-song tempo change
+authored on a NON-instrument track (a dedicated tempo track, or another guitar)
+— e.g. 93 BPM → 186 at bar 64. In the tab viewer the `♩=NNN` markers must switch
+at the change (not stay at the initial BPM), the bars must bunch up in the fast
+section, and the beat spacing must halve. Regression-guarded for the parser by
+`test_tempo_change_on_other_track_is_detected`, but confirm the full build →
+viewer path on a real file.
+
 ### 7b. Audio → ML (needs `[ml]`, ideally a GPU)
 
 1. Start with a **simple, clean** recording (single guitar, low distortion) in
