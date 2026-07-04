@@ -3411,9 +3411,36 @@ function waveformPathData(W, px, H) {
   return up + down + 'Z';
 }
 
+// Colour + label the waveform by which audio source is playing, so it's obvious
+// at a glance what you're hearing — the full mix, a separated stem, or a
+// synthesized reference (a distinct colour per arrangement, so switching between
+// "Lead (sintetizada)" and "Rhythm (sintetizada)" visibly changes the wave even
+// though both are uniform-loudness blip forests).
+function audioSourceStyle() {
+  const n = audioSourceName;
+  if (n.startsWith('synth:')) {
+    const kind = n.slice(6);
+    const palette = {
+      Lead: '#a97bff', Rhythm: '#3fa7ff', Combo: '#ff8a5c',
+      Combined: '#ff8a5c', Bass: '#5cc24a',
+    };
+    return { color: palette[kind] || '#a97bff', label: `${kind} (sintetizada)` };
+  }
+  if (n) return { color: '#3fb27f', label: STEM_LABELS[n] || n };
+  return { color: '#2a6f97', label: 'Mistura completa' };
+}
+
 function waveformSvg(W, H, px) {
   if (!wavePeaks) return '';
-  return `<path id="wavepath" d="${waveformPathData(W, px, H)}" fill="#2a6f97" opacity=".28"/>`;
+  const st = audioSourceStyle();
+  // A pill label near the top-left corner (time ~0) names the active source.
+  const lw = st.label.length * 6.5 + 14;
+  return (
+    `<path id="wavepath" d="${waveformPathData(W, px, H)}" fill="${st.color}" opacity=".3"/>` +
+    `<rect x="30" y="16" width="${lw.toFixed(0)}" height="17" rx="4" fill="#14151a" opacity=".72"/>` +
+    `<circle cx="40" cy="24.5" r="4" fill="${st.color}"/>` +
+    `<text x="48" y="28" fill="${st.color}" font-size="11" font-weight="700">${esc(st.label)}</text>`
+  );
 }
 
 
