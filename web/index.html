@@ -403,6 +403,7 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
             </select></label>
             <label class="check"><input type="checkbox" id="syncTick" checked> Tique por nota</label>
             <label>🎵 Notas: <input type="range" id="tickVolume" min="0" max="2" step="0.05" value="1" style="width:9rem;vertical-align:middle;accent-color:#a97bff"></label>
+            <span id="liveBpm" style="font-weight:700;color:#b58cff;margin-left:.4rem"></span>
           </div>
           <!-- GP sync controls — hidden for audio-ML jobs (notes already aligned) -->
           <div id="gpSyncControls">
@@ -1367,6 +1368,7 @@ function showArr(i) {
   renderAnchorsList();
   drawFretboard();  // redraw the neck (tuning labels) + refresh the active notes
   updateFretboard(playheadDisplay(audioTime()));
+  updateLiveBpm(playheadDisplay(audioTime()));
 }
 window.showArr = showArr;
 
@@ -2624,6 +2626,30 @@ document.getElementById('showFretboard')?.addEventListener('change', e => {
   if (fretboardOn) updateFretboard(playheadDisplay(audioTime()));
 });
 
+// Live BPM readout: the AUTHORED tempo of the measure under the playhead (from
+// the built beat spacing, so it shows the score's real 93/186 as it plays,
+// switching exactly at the tempo-change bars).
+function liveInfoAtTime(vtDisp) {
+  const a = arrangements[currentArr];
+  if (!a || !a.beats || a.beats.length < 2) return null;
+  const warp = buildTimeWarp(syncAnchors);
+  let idx = 0;
+  for (let i = 0; i < a.beats.length - 1; i++) {
+    if (warp(previewScale(a.beats[i])) <= vtDisp) idx = i; else break;
+  }
+  const iv = a.beats[idx + 1] - a.beats[idx];
+  const bpm = iv > 0.01 ? Math.round(60 / iv) : null;
+  let measure = null;
+  for (const b of (a.bars || [])) { if (b.time <= a.beats[idx] + 1e-6) measure = b.measure; else break; }
+  return { bpm, measure };
+}
+function updateLiveBpm(vtDisp) {
+  const el = document.getElementById('liveBpm');
+  if (!el) return;
+  const info = liveInfoAtTime(vtDisp);
+  el.textContent = info && info.bpm ? `♩ = ${info.bpm}${info.measure ? ` · c.${info.measure}` : ''}` : '';
+}
+
 // ---- Stand-alone arrangement preview (synthesized from the chart, no
 // recording) — lets the user audition the experimental Lead/Rhythm split in
 // isolation. ----
@@ -2834,6 +2860,7 @@ function seekPreview(t) {
   const ph = document.getElementById('playhead');
   if (ph) { const x = timeToX(vt); ph.setAttribute('x1', x); ph.setAttribute('x2', x); }
   updateFretboard(vt);  // scrubbing/pausing lights the neck at the cursor too
+  updateLiveBpm(vt);
 }
 
 function fmtClock(s) {
@@ -2898,6 +2925,7 @@ function syncFrame() {
     tickIdx++;
   }
   updateFretboard(vtDisp);  // light up the notes sounding right now on the neck
+  updateLiveBpm(vtDisp);    // real-time BPM of the current measure
   // Highlight the lyric word under the playhead without redrawing the full SVG.
   // currentPlayheadT is the padded display time; lyric times are un-padded, so
   // shift them by leadInBuilt to compare in the same timeline.
