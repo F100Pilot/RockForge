@@ -292,6 +292,9 @@ def test_arrangements_derives_chord_name(client: TestClient) -> None:
     assert all(n["chord_name"] == "C" for n in chord_notes)
     # single (non-chord) notes must not carry a chord name
     assert all(n["chord_name"] is None for n in data[0]["notes"] if not n["chord"])
+    # ALL beats (not just downbeats) are exposed as the drag snap grid
+    assert data[0]["beats"] == [0.5 * i for i in range(8)]
+    assert [b["measure"] for b in data[0]["bars"]] == [1, 2]  # bars = downbeats only
 
 
 def test_arrangements_exposes_bend_magnitude(client: TestClient) -> None:

@@ -216,6 +216,7 @@ class ArrangementOut(BaseModel):
     chord_count: int
     notes: list[ArrangementNoteOut]
     bars: list[BarOut] = []  # measure downbeats for the viewer's bar numbering
+    beats: list[float] = []  # ALL ebeat times (downbeats + off-beats) — the drag snap grid
 
 
 class AutoSyncOut(BaseModel):
@@ -1187,11 +1188,15 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
         kind = root.findtext("arrangement", "?")
         # Bar downbeats for the viewer's measure numbering: ebeats with a real
         # measure number (>0); off-beats carry measure="-1".
+        ebeats = root.findall("ebeats/ebeat")
         bars = [
             BarOut(measure=int(eb.get("measure", "-1")), time=float(eb.get("time", "0")))
-            for eb in root.findall("ebeats/ebeat")
+            for eb in ebeats
             if int(eb.get("measure", "-1")) > 0
         ]
+        # Every beat (downbeats + off-beats) — the snap grid the tab viewer's
+        # note drag quantizes to.
+        beats = [float(eb.get("time", "0")) for eb in ebeats]
         out.append(
             ArrangementOut(
                 kind=kind,
@@ -1203,6 +1208,7 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
                 chord_count=len(root.findall("levels/level/chords/chord")),
                 notes=all_notes,
                 bars=bars,
+                beats=beats,
             )
         )
     return out
