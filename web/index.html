@@ -473,6 +473,7 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
           <span id="selectionInfo" style="margin-left:.5rem"></span>
           <button type="button" id="clearSelection" class="secondary" hidden>Limpar seleção</button>
         </div>
+        <div id="modeHelp" class="meta" style="margin-top:.25rem;padding:.35rem .5rem;background:#1c1e26;border-radius:6px;border-left:3px solid #a97bff"></div>
         <div class="anchor-row" style="margin-top:.3rem">
           <label class="check"><input type="checkbox" id="snapBeats" checked> Encaixar em:</label>
           <select id="snapDiv" style="width:auto">
@@ -2492,10 +2493,21 @@ const SYNC_MODE_BUTTONS = [
   ['modeBeat', 'newbeat'],
   ['modeTone', 'tonechange'],
 ];
+const MODE_HELP = {
+  drag: '<b>Arrastar:</b> arrasta uma nota para o instante da gravação onde ela deve tocar (encaixa no beat). As notas entre duas correções esticam/comprimem para acompanhar. Ideal para acertar um ponto que escorregou.',
+  tap: '<b>Marcar no cursor:</b> dá play, e quando ouvires uma nota na gravação, clica nessa nota na partitura — ela ancora na posição do cursor. Alinhar a tocar.',
+  excerpt: '<b>Excerto:</b> arrasta uma caixa por cima de várias notas e depois arrasta uma delas — movem-se todas em bloco. (Alternativa: Shift+clique numa nota e noutra para selecionar o intervalo.)',
+  movefrom: '<b>Mover seguintes:</b> pausa a gravação no instante certo e clica na 1ª nota desalinhada — essa nota e TODAS as seguintes deslocam-se em bloco para o cursor. Para um trecho inteiro que entrou tarde/cedo.',
+  newbeat: '<b>Novo beat (detetar):</b> clica na nota onde a música muda de andamento (ex.: o compasso 64). Mede o BPM da gravação daí em diante e re-espaça só as notas seguintes ao novo tempo. Nada antes do clique se mexe.',
+  tonechange: '<b>Mudança de tom:</b> clica numa nota para trocar para um dos tons extra a partir daí.',
+  null: 'Nenhum modo ativo. Clica num modo acima. <b>Dica:</b> para um desvio uniforme em todo o trecho, usa antes o <b>Andamento (BPM)</b> — não precisa de âncoras.',
+};
 function setSyncMode(mode) {
   syncMode = mode;  // null = neutral: no mode highlighted, note-drag disabled
   SYNC_MODE_BUTTONS.forEach(([bid, bmode]) =>
     document.getElementById(bid)?.classList.toggle('active-mode', bmode === syncMode));
+  const help = document.getElementById('modeHelp');
+  if (help) help.innerHTML = MODE_HELP[mode] || MODE_HELP.null;
 }
 SYNC_MODE_BUTTONS.forEach(([id, mode]) => {
   document.getElementById(id)?.addEventListener('click', () => {
@@ -2504,6 +2516,7 @@ SYNC_MODE_BUTTONS.forEach(([id, mode]) => {
     setSyncMode(syncMode === mode ? null : mode);
   });
 });
+setSyncMode(syncMode);  // show the help line for the initial mode
 document.getElementById('snapBeats')?.addEventListener('change', e => {
   snapToBeats = e.target.checked;
   if (arrangements.length) showArr(currentArr);  // show/hide the grid
