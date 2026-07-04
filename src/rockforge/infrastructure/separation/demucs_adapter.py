@@ -71,6 +71,21 @@ class DemucsSeparator:
             )
         return guitar
 
+    def separate_stems(self, audio: Path, workdir: Path) -> dict[str, Path]:
+        """Run the 6-source model once and return EVERY stem it produced —
+        ``{'guitar': path, 'bass': …, 'drums': …, 'vocals': …, 'other': …,
+        'piano': …}``. One Demucs pass yields all of them; used by the sync
+        viewer's audio-source selector so the user can solo the guitar (or mute
+        drums/vocals) while fine-tuning against the notes.
+
+        Honest limit: Demucs separates by INSTRUMENT TYPE, not by individual
+        track — ``guitar`` is ALL guitars mixed together; Lead vs Rhythm cannot
+        be split from the recording.
+        """
+        self.separate_guitar(audio, workdir)  # runs htdemucs_6s + validates guitar.wav
+        stem_dir = workdir / "stems" / self._model / audio.stem
+        return {p.stem: p for p in sorted(stem_dir.glob("*.wav"))}
+
     def separate_vocals(self, audio: Path, workdir: Path) -> Path:
         """Isolate just the vocals stem (for lyric transcription).
 

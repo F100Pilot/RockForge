@@ -70,6 +70,38 @@ def test_separate_guitar_still_uses_six_source_model(monkeypatch, tmp_path) -> N
     assert "--two-stems" not in cmd
 
 
+def test_separate_stems_returns_all_produced_stems(monkeypatch, tmp_path) -> None:
+    """One 6-source pass yields every stem, keyed by name — feeds the viewer's
+    audio-source selector."""
+    captured: list[list[str]] = []
+
+    def runner(cmd, **kwargs):  # noqa: ANN001, ANN202
+        captured.append(cmd)
+        out_dir = Path(cmd[cmd.index("-o") + 1])
+        model = cmd[cmd.index("-n") + 1]
+        stem = Path(cmd[-1]).stem
+        target = out_dir / model / stem
+        target.mkdir(parents=True, exist_ok=True)
+        for name in ("guitar", "bass", "drums", "vocals", "other", "piano"):
+            (target / f"{name}.wav").write_bytes(b"")
+
+        class _Done:
+            stderr = ""
+
+        return _Done()
+
+    monkeypatch.setattr(demucs_adapter.subprocess, "run", runner)
+    audio = tmp_path / "song.wav"
+    audio.write_bytes(b"")
+
+    stems = DemucsSeparator().separate_stems(audio, tmp_path)
+
+    assert set(stems) == {"guitar", "bass", "drums", "vocals", "other", "piano"}
+    assert all(p.exists() for p in stems.values())
+    # Uses the 6-source model (only one that emits a guitar stem).
+    assert captured[0][captured[0].index("-n") + 1] == MODEL
+
+
 def test_device_is_forwarded(monkeypatch, tmp_path) -> None:
     captured: list[list[str]] = []
     monkeypatch.setattr(demucs_adapter.subprocess, "run", _fake_run(captured, True))

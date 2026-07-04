@@ -60,5 +60,18 @@ def enqueue_detect_tones(job_id: str) -> None:
     _pool.submit(_run_detect_tones, job_id)
 
 
+def _run_separate_stems(job_id: str) -> None:
+    try:
+        from rockforge.interfaces.worker.celery_app import separate_stems
+
+        separate_stems(job_id)
+    except Exception:
+        log.exception("in-process separate_stems failed for job %s", job_id)
+
+
+def enqueue_separate_stems(job_id: str) -> None:
+    _pool.submit(_run_separate_stems, job_id)
+
+
 def shutdown() -> None:
     _pool.shutdown(wait=False)
