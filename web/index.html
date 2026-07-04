@@ -1391,6 +1391,8 @@ function renderAnchorsList() {
   el.querySelectorAll('.anchor-remove').forEach(b => b.addEventListener('click', () => {
     syncAnchors.splice(parseInt(b.dataset.i, 10), 1);
     renderAnchorsList();
+    showArr(currentArr);  // redraw so the removed correction's marker disappears
+    updatePendingChangesInfo();
   }));
   document.getElementById('clearAnchors').addEventListener('click', () => {
     syncAnchors.length = 0; renderAnchorsList(); showArr(currentArr);
@@ -2149,18 +2151,23 @@ function firstNoteFlowClick(e, svg) {
   if (!firstNoteFlow) return false;
   const grp = e.target.closest('.note-grp');
   if (grp && firstNoteFlow === 'note') {
-    // 3rd click: align the clicked (first) note to the marked audio position.
-    // A single uniform-shift anchor moves it there and drags every note with it.
+    // 3rd click: align the clicked (first) note to the marked audio point by
+    // updating the START offset (so the "Início da música" field reflects it),
+    // not a hidden anchor. A note shows at recording time
+    // (chartT - scoreShift)*ratio + offsetLive, so solve for offsetLive.
     const chartT = parseFloat(grp.dataset.t);
-    const target = playheadDisplay(firstNoteAudioT);  // recording→bundle time
-    const dispT = buildTimeWarp(syncAnchors)(previewScale(chartT));
-    setAnchor(dispT, target);
+    const ratio = tempoScaleLive / builtScale;
+    const newOffset = firstNoteAudioT - (chartT - scoreShift) * ratio;
     firstNoteFlow = null;
-    renderAnchorsList();
-    updatePendingChangesInfo();
-    firstNoteStatus(`1ª nota alinhada a ${firstNoteAudioT.toFixed(2)}s — "Aplicar e reconstruir" para gravar.`);
-    showArr(currentArr);
-    toast('1ª nota alinhada', 'ok');
+    if (newOffset < 0) {
+      firstNoteStatus('A 1ª nota soa mais cedo do que a partitura permite (o início não pode ser negativo). Usa o andamento (BPM) ou arrasta.');
+      toast('início ficaria negativo — ver aviso', 'err');
+      showArr(currentArr);
+      return true;
+    }
+    setOffsetLive(newOffset);  // updates the field + redraws
+    firstNoteStatus(`Início da música fixado em ${newOffset.toFixed(2)}s — "Aplicar e reconstruir" para gravar.`);
+    toast('Início da música atualizado', 'ok');
     return true;
   }
   // 2nd click (or re-adjust): the point on the waveform where the note sounds.
