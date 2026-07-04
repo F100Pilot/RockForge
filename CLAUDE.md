@@ -149,19 +149,32 @@ earlier work. Do not collapse this back to a single `sync_anchors` list —
 anchors from different rounds live in different (already-warped) coordinate
 systems and cannot simply be concatenated.
 
-**Beat snapping (drag).** By default (checkbox "Encaixar nos tempos") a note (or
-excerpt) drag snaps its target to the nearest beat of the score's grid, so
-corrections jump beat-to-beat instead of sliding continuously — cleaner and
-jitter-free for the common "align this note to a beat" correction. The grid is
-ALL ebeats (downbeats + off-beats), exposed as `ArrangementOut.beats` (distinct
-from `bars`, which is downbeats only for numbering); the viewer warps each beat
+**Beat snapping (drag).** By default (checkbox "Encaixar em:") a note (or
+selection) drag snaps its target to the nearest position of a grid, so
+corrections jump grid-to-grid instead of sliding continuously — cleaner and
+jitter-free for the common "align this note to a beat" correction. The grid
+resolution is a dropdown (`snapDiv`): bars (downbeats only), whole beats, or
+beats subdivided into 2/3/4 (`snapGridTimes` interpolates between the real
+ebeats, so tempo changes are respected). The beat times come from
+`ArrangementOut.beats` (ALL ebeats — downbeats + off-beats, distinct from
+`bars`, which is downbeats only for numbering); the viewer warps each grid point
 through the same `previewScale`+anchor warp as the notes, caches those display
 positions at drag start (`snapPositions`), and `snapDisplay()` snaps to the
-nearest. Holding **Alt** during a drag bypasses the snap for sub-beat placement.
-It only changes the drag TARGET — the anchor/warp machinery is unchanged, so it
-composes with everything else. (Snapping to finer subdivisions, and true note
-*editing* — moving a note to a different beat in the chart itself — are a
-separate, larger future feature; today notes come exact from the GP file.)
+nearest. Holding **Alt** during a drag bypasses the snap for free placement. It
+only changes the drag TARGET — the anchor/warp machinery is unchanged, so it
+composes with everything else.
+
+**Selecting notes.** Selection is modifier-driven and independent of the sync
+mode: a plain click selects one note (and sets it as the pivot), **Shift+click**
+selects the inclusive range from the pivot to the clicked note (`rangeSelect`),
+**Ctrl/Cmd+click** toggles a single note, and a click on empty staff clears the
+selection. Dragging any selected note moves the whole selection in one rigid
+block (snapping the earliest to the grid). The mode buttons toggle (re-clicking
+the active one returns to "Arrastar"), so a mode is never stuck on. (The older
+rubber-band "Excerto" box-select still exists but Shift+click is the primary
+path.) True note *editing* — moving a note to a different beat in the chart
+itself, not just for sync — remains a separate, larger future feature; today
+notes come exact from the GP file.
 
 ### Per-arrangement sync (`arrangement_sync`)
 
