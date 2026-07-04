@@ -3051,6 +3051,22 @@ function audioToggle() {
   if (audioIsPlaying()) audioPause(); else audioPlay();
 }
 
+// SPACE = play/pause, like a media player. Ignored while typing (inputs,
+// selects, editable text) so it doesn't hijack a real space character, and
+// only when a job viewer with playback is open.
+document.addEventListener('keydown', e => {
+  if (e.code !== 'Space' && e.key !== ' ') return;
+  const el = document.activeElement;
+  const tag = el && el.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (el && el.isContentEditable)) return;
+  if (!selectedJob) return;
+  const panel = document.getElementById('syncPanel');
+  if (!panel || panel.style.display === 'none') return;
+  e.preventDefault();            // stop the page from scrolling on space
+  if (tag === 'BUTTON') el.blur();  // don't let a focused button also fire on space
+  audioToggle();
+});
+
 // Hard stop used on job switch / detail close — no UI resume implied.
 function stopPlayback() {
   if (playSource) { playSource.onended = null; try { playSource.stop(); } catch {} playSource = null; }
