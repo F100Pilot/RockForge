@@ -412,7 +412,15 @@ librosa).
 The tab viewer's **"🎸 Testar tom" dropdown** lets the user audition a **created
 tone**'s *character* on the note playback — both the per-note tick and the
 "sintetizada" audio source route through the same `voiceNote(ctx, dest, hz, t0,
-dur, peak, char)` voice. With no tone selected (`previewToneKey === ''`) it's the
+dur, peak, char)` voice. The selector is **disabled until the user creates a
+tone** (nothing to preview). With tones, it offers **"Seguir partitura"**
+(`'__follow__'`) — the character follows the tones marked on the score, switching
+per note via `activeToneKeyAt(chartTime)` (the last `toneChanges` entry at/before
+that time, else `toneBase`; both share the chart timeline) — plus each tone to
+audition alone. `toneCharForNote(chartTime)` resolves the per-note character, so
+a chart with several tone changes mirrors each of them. It defaults to following
+the score when tones are marked, unless the user picks otherwise
+(`previewToneTouched`). With no tone selected (`previewToneKey === ''`) it's the
 plain oscillator pluck (sawtooth+triangle → lowpass); with one, `char =
 {drive, bright}` from `toneCharacter(tone)` inserts a **WaveShaper** (drive) and
 shifts the lowpass cutoff (brightness), plus a little makeup gain (distortion

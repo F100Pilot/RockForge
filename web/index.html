@@ -801,7 +801,8 @@ const INFO = {
   },
   'tone-preview': {
     title: 'Testar tom na partitura',
-    body: '<p>Escolhe um dos <strong>tons que criaste</strong> e ouve-o aplicado às notas da partitura (no tique por nota e na fonte "sintetizada"). Serve para comparar o <em>carácter</em> dos teus tons — limpo, crunch, distorcido — enquanto acompanhas a música.</p>' +
+    body: '<p>Ouve os <strong>tons que criaste</strong> aplicados às notas (no tique por nota e na fonte "sintetizada"), para comparares o <em>carácter</em> — limpo, crunch, distorcido — sem teres de entrar no Rocksmith de cada vez que ajustas uma definição.</p>' +
+      '<p><strong>Seguir partitura</strong>: se marcaste mudanças de tom na música, esta opção troca automaticamente de tom em cada ponto, tal como o criaste. Ou escolhe um tom específico para o ouvir sozinho em toda a música. O seletor fica desativado até criares o primeiro tom.</p>' +
       '<p><strong>Limite honesto:</strong> o RockForge <em>não</em> modela amplificadores. Isto é uma <strong>aproximação do carácter</strong> (ganho/distorção + brilho), calculada a partir dos descritores do tom, do knob de Gain do amp e dos pedais de drive — <strong>não é o som real</strong> do amp/cabine. O som verdadeiro só existe no jogo / DLC Builder, que gera o áudio a partir do gear que gravamos no bundle.</p>'
   },
   'new-job': {
@@ -1567,6 +1568,7 @@ function gearByKey(list, key) { return (list || []).find(g => g.key === key) || 
 
 async function loadTones(id) {
   await loadGearCatalogue();
+  previewToneTouched = false;  // new project: let the preview default to the score's tones
   try {
     const t = await (await fetch(`/jobs/${id}/tones`)).json();
     jobTones = t.tones || [];
@@ -1605,20 +1607,36 @@ function renderTonePanel() {
   populatePreviewTones();
 }
 
-// Keep the "Testar tom" selector in sync with the created tones. Preserves the
-// current pick if it still exists, else falls back to the plain voice.
+// Keep the "Testar tom" selector in sync with the CREATED tones. Disabled when
+// the user hasn't created any tone (nothing to preview). With tones, it offers
+// "Seguir partitura" (mirror the tones marked on the score, switching per note)
+// plus each individual tone to audition alone. Defaults to following the score
+// when tones are marked, unless the user has chosen otherwise.
 function populatePreviewTones() {
   const sel = document.getElementById('previewTone');
   if (!sel) return;
   const prev = sel.value;
-  sel.innerHTML = '<option value="">Voz simples</option>' +
-    jobTones.map(t => `<option value="${esc(t.key)}">${esc(t.name || t.key)}</option>`).join('');
-  sel.value = jobTones.some(t => t.key === prev) ? prev : '';
+  const hasTones = jobTones.length > 0;
+  let html = '<option value="">Voz simples (sem tom)</option>';
+  if (hasTones) {
+    html += '<option value="__follow__">Seguir partitura (tons marcados)</option>' +
+      jobTones.map(t => `<option value="${esc(t.key)}">${esc(t.name || t.key)}</option>`).join('');
+  }
+  sel.innerHTML = html;
+  sel.disabled = !hasTones;
+  sel.title = hasTones ? '' : 'Cria um tom primeiro ("+ Criar / editar tons")';
+  const valid = ['', '__follow__', ...jobTones.map(t => t.key)];
+  if (previewToneTouched && valid.includes(prev)) {
+    sel.value = prev;  // respect the user's explicit choice across tone edits
+  } else {
+    sel.value = hasTones && (toneBase || toneChanges.length || toneNames.length) ? '__follow__' : '';
+  }
   previewToneKey = sel.value;
 }
 
 document.getElementById('previewTone').addEventListener('change', async e => {
   previewToneKey = e.target.value;
+  previewToneTouched = true;
   // The synthesized audio source bakes the voice in, so re-render it if active.
   if (selectedJob && audioSourceName.startsWith('synth:')) {
     const at = currentPlayheadT, wasPlaying = audioIsPlaying();
@@ -2770,8 +2788,27 @@ function toneCharacter(tone) {
   const bright = d.includes('LEAD') ? 0.75 : d.includes('BASS') ? 0.25 : 0.5;
   return { drive, bright };
 }
-function previewToneChar() {
-  return previewToneKey ? toneCharacter(jobTones.find(t => t.key === previewToneKey)) : null;
+let previewToneTouched = false;  // did the user pick a preview source themselves?
+
+// The tone key active at a given CHART time, following the tones marked on the
+// score: the last tone change at/before that time, else the base tone (or the
+// first extra / first created tone). toneChanges[].time and note.time share the
+// chart timeline, so this compares directly.
+function activeToneKeyAt(chartTime) {
+  let key = toneBase || toneNames[0] || (jobTones[0] && jobTones[0].key) || null;
+  for (const c of toneChanges.slice().sort((a, b) => a.time - b.time)) {
+    if (c.time <= chartTime + 1e-6) key = c.name; else break;
+  }
+  return key;
+}
+
+// The character for the note at `chartTime`: none (plain voice), a single forced
+// tone, or — in "follow the score" mode ('__follow__') — the tone marked at that
+// point, so a chart with several tone changes mirrors each of them as it plays.
+function toneCharForNote(chartTime) {
+  if (!previewToneKey) return null;
+  const key = previewToneKey === '__follow__' ? activeToneKeyAt(chartTime) : previewToneKey;
+  return key ? toneCharacter(jobTones.find(t => t.key === key)) : null;
 }
 
 // Build one plucked note into `ctx` at `dest`, at the note's real pitch. Without
@@ -2808,11 +2845,12 @@ function voiceNote(ctx, dest, hz, t0, dur, peak, char) {
 }
 
 // Per-note "tick": a short plucked-string tone AT THE NOTE'S REAL PITCH, shaped
-// by the selected preview tone (if any). Gain follows the Notas slider (0-200%).
-function playNote(midi) {
+// by the preview tone active at this note's chart time (if any). Gain follows
+// the Notas slider (0-200%).
+function playNote(midi, chartTime) {
   if (!audioCtx || midi == null) return;
   voiceNote(audioCtx, audioCtx.destination, midiToHz(midi), audioCtx.currentTime,
-    0.24, Math.max(0.0001, tickGain * 0.6), previewToneChar());
+    0.24, Math.max(0.0001, tickGain * 0.6), toneCharForNote(chartTime));
 }
 
 // Render one arrangement's notes to a clean AudioBuffer (offline), placing each
@@ -2843,7 +2881,7 @@ async function synthesizeArrangement(kind) {
     // at raw recording time.
     const tRec = gp ? warp((n.time - scoreShift) * ratio + pad) - viewOrigin : n.time;
     if (tRec < 0) continue;
-    events.push({ t: tRec, midi: STRING_MIDI[n.string] + (offs[n.string] || 0) + n.fret });
+    events.push({ t: tRec, chartT: n.time, midi: STRING_MIDI[n.string] + (offs[n.string] || 0) + n.fret });
     if (tRec > maxT) maxT = tRec;
   }
   if (!events.length) return null;
@@ -2851,9 +2889,11 @@ async function synthesizeArrangement(kind) {
   const OACtx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
   const octx = new OACtx(1, Math.ceil(dur * sr), sr);
   const NOTE_LEN = 0.28;
-  const char = previewToneChar();  // the synthesized source carries the preview tone too
+  // The synthesized source carries the preview tone too, following the tones
+  // marked on the score (per-note) when '__follow__' is selected.
   for (const ev of events)
-    voiceNote(octx, octx.destination, midiToHz(ev.midi), ev.t, NOTE_LEN, 0.5, char);
+    voiceNote(octx, octx.destination, midiToHz(ev.midi), ev.t, NOTE_LEN, 0.5,
+      toneCharForNote(ev.chartT));
   return await octx.startRendering();
 }
 
@@ -3231,7 +3271,7 @@ function syncFrame() {
     if (tickOn) {
       const note = notes[tickIdx];
       if (note.string >= 0 && note.string <= 5 && note.fret >= 0)
-        playNote(STRING_MIDI[note.string] + (offs[note.string] || 0) + note.fret);
+        playNote(STRING_MIDI[note.string] + (offs[note.string] || 0) + note.fret, note.time);
     }
     tickIdx++;
   }
