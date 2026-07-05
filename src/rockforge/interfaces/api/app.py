@@ -276,6 +276,24 @@ class StemsOut(BaseModel):
     log: list[str] = []
 
 
+class SettingsOut(BaseModel):
+    """App settings editable from the UI (persisted in work_dir/settings.json).
+    `banquet` carries per-path readiness so the UI can show ✓/✗."""
+
+    stem_separator: str = "demucs"  # "demucs" | "banquet"
+    banquet_repo: str = ""
+    banquet_ckpt: str = ""
+    banquet_queries: str = ""
+    banquet: dict[str, Any] = {}  # repo_ok/ckpt_ok/queries_ok/query_names/ready
+
+
+class SettingsIn(BaseModel):
+    stem_separator: str | None = None
+    banquet_repo: str | None = None
+    banquet_ckpt: str | None = None
+    banquet_queries: str | None = None
+
+
 class LyricsOut(BaseModel):
     # "none"|"detecting"|"normalizing"|"separating"|"transcribing"|"ready"|"empty"|"unavailable"
     status: str
@@ -1172,6 +1190,45 @@ def get_stem_audio(job_id: str, name: str) -> FileResponse:
             raise HTTPException(404, "stem file no longer exists on the work volume")
         media_type = mimetypes.guess_type(audio.name)[0] or "application/octet-stream"
         return FileResponse(audio, media_type=media_type)
+
+
+def _settings_out() -> SettingsOut:
+    from rockforge import runtime_settings
+
+    repo, ckpt, queries = runtime_settings.banquet_paths()
+    return SettingsOut(
+        stem_separator=runtime_settings.stem_separator(),
+        banquet_repo=str(repo) if repo else "",
+        banquet_ckpt=str(ckpt) if ckpt else "",
+        banquet_queries=str(queries) if queries else "",
+        banquet=runtime_settings.banquet_validation(),
+    )
+
+
+@app.get("/settings", response_model=SettingsOut)
+def get_settings() -> SettingsOut:
+    """App settings editable from the UI (stem-separator backend + Banquet paths).
+    Includes per-path readiness so the UI can show which parts are configured."""
+    return _settings_out()
+
+
+@app.post("/settings", response_model=SettingsOut)
+def update_settings(body: SettingsIn) -> SettingsOut:
+    """Persist the settings (work_dir/settings.json), shared by the worker. An
+    empty string clears an override (falls back to the env default). Enabling
+    Banquet without valid paths is allowed but flagged not-ready in the response
+    (the separation itself then fails gracefully with a clear message)."""
+    from rockforge import runtime_settings
+
+    if body.stem_separator not in (None, "", "demucs", "banquet"):
+        raise HTTPException(422, "stem_separator must be 'demucs' or 'banquet'")
+    updates = dict(runtime_settings.load())
+    for key in ("stem_separator", "banquet_repo", "banquet_ckpt", "banquet_queries"):
+        val = getattr(body, key)
+        if val is not None:
+            updates[key] = val.strip() if isinstance(val, str) else val
+    runtime_settings.save(updates)
+    return _settings_out()
 
 
 @app.get("/jobs/{job_id}/tones")

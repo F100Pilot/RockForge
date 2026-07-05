@@ -116,15 +116,18 @@ def _build_stem_separator() -> tuple[Any, str, str]:  # heavy imports deferred t
     """The configured stem separator for /separate-stems, with its resolved
     device and a human label for the log. ``demucs`` (default, one aggregated
     guitar stem) or the experimental ``banquet`` (query-based, finer classes)."""
-    if settings.stem_separator == "banquet":
+    from rockforge import runtime_settings
+
+    if runtime_settings.stem_separator() == "banquet":
         from rockforge.infrastructure.separation.banquet_adapter import BanquetSeparator
 
+        repo, ckpt, queries = runtime_settings.banquet_paths()
         device = _resolve_device(settings.banquet_stem_device())
         return (
             BanquetSeparator(
-                repo=settings.banquet_repo,
-                ckpt=settings.banquet_ckpt,
-                queries_dir=settings.banquet_queries,
+                repo=repo,
+                ckpt=ckpt,
+                queries_dir=queries,
                 device=device,
                 batch_size=settings.banquet_batch_size,
             ),

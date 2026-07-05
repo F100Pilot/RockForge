@@ -199,6 +199,7 @@
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: .75rem;
 }
+#openSettings { position: fixed; top: 12px; right: 16px; z-index: 30; }
 .left-header h1 {
   margin: 0; font-size: 1.3rem; letter-spacing: .02em;
   background: linear-gradient(90deg, var(--accent), #ffb088);
@@ -326,6 +327,7 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
         <h1>RockForge</h1>
         <span id="appVersion" style="font-size:.75rem;color:var(--muted)"></span>
       </div>
+      <button type="button" id="openSettings" class="secondary" title="Definições">⚙️ Definições</button>
     </div>
 
     <!-- Landing banners (shown when no jobs) -->
@@ -619,6 +621,40 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
   </div><!-- /#detail -->
 </div><!-- /#detailOverlay -->
 
+<!-- ══════════ "Definições" modal ══════════ -->
+<div class="modal-overlay" id="settingsOverlay" hidden>
+  <div class="modal" style="max-width:640px">
+    <button type="button" class="modal-close" id="settingsClose">×</button>
+    <h2>Definições</h2>
+
+    <div style="margin-top:.5rem">
+      <label style="font-weight:600">Separação de instrumentos (stems)</label>
+      <div class="syncctrls" style="margin-top:.4rem">
+        <label class="check"><input type="radio" name="sepBackend" value="demucs"> Demucs (por defeito) — 1 faixa "guitarra"</label>
+      </div>
+      <div class="syncctrls">
+        <label class="check"><input type="radio" name="sepBackend" value="banquet"> Banquet — separação fina (elétrica/acústica) <b style="color:#e0a54a">⚠️ EM TESTES</b></label>
+      </div>
+    </div>
+
+    <div id="banquetConfig" style="display:none;margin-top:.6rem;border-left:3px solid #e0a54a;padding:.2rem 0 .2rem .7rem">
+      <p class="meta" style="margin:0 0 .5rem">O Banquet precisa do repositório <code>query-bandit</code>, dos pesos, e de clips de referência (um <code>&lt;classe&gt;.wav</code> por stem). Ver <b>TESTING.md §7g</b>. Precisa de PyTorch (GPU recomendada).</p>
+      <div class="field"><label>Pasta do repositório query-bandit <span id="sVrepo"></span></label>
+        <input type="text" id="sBanquetRepo" placeholder="/caminho/query-bandit"></div>
+      <div class="field"><label>Ficheiro do checkpoint (.ckpt) <span id="sVckpt"></span></label>
+        <input type="text" id="sBanquetCkpt" placeholder="/caminho/ev-pre-aug.ckpt"></div>
+      <div class="field"><label>Pasta dos clips de referência <span id="sVqueries"></span></label>
+        <input type="text" id="sBanquetQueries" placeholder="/caminho/queries"></div>
+      <div id="sQueryNames" class="meta" style="margin-top:.2rem"></div>
+    </div>
+
+    <div class="anchor-row" style="margin-top:.9rem">
+      <button type="button" id="settingsSave">Guardar</button>
+      <span id="settingsInfo" class="meta"></span>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════ "Novo job" modal ══════════ -->
 <div class="modal-overlay" id="newJobOverlay" hidden>
   <div class="modal" style="max-width:700px">
@@ -774,6 +810,66 @@ fetch('/version').then(r => r.json()).then(d => {
 }).catch(() => {});
 document.getElementById('newJobOverlay').addEventListener('click', e => {
   if (e.target.id === 'newJobOverlay') closeNewJobModal();
+});
+
+// ── "Definições" modal (stem-separator backend + Banquet paths) ───────────────
+function toggleBanquetConfig() {
+  const on = document.querySelector('input[name=sepBackend]:checked')?.value === 'banquet';
+  document.getElementById('banquetConfig').style.display = on ? '' : 'none';
+}
+function renderBanquetValidation(b) {
+  const ok = '<span style="color:#3fdc8a">✓</span>', bad = '<span style="color:#e88">✗</span>';
+  document.getElementById('sVrepo').innerHTML = b.repo_ok ? ok : bad;
+  document.getElementById('sVckpt').innerHTML = b.ckpt_ok ? ok : bad;
+  document.getElementById('sVqueries').innerHTML = b.queries_ok ? ok : bad;
+  const names = b.query_names || [];
+  document.getElementById('sQueryNames').textContent = names.length
+    ? `Stems detetados: ${names.join(', ')}` : '';
+}
+function fillSettings(s) {
+  for (const r of document.querySelectorAll('input[name=sepBackend]'))
+    r.checked = r.value === (s.stem_separator || 'demucs');
+  document.getElementById('sBanquetRepo').value = s.banquet_repo || '';
+  document.getElementById('sBanquetCkpt').value = s.banquet_ckpt || '';
+  document.getElementById('sBanquetQueries').value = s.banquet_queries || '';
+  toggleBanquetConfig();
+  renderBanquetValidation(s.banquet || {});
+}
+async function openSettings() {
+  document.getElementById('settingsInfo').textContent = '';
+  try {
+    fillSettings(await (await fetch('/settings')).json());
+  } catch { /* keep defaults */ }
+  document.getElementById('settingsOverlay').hidden = false;
+}
+function closeSettings() { document.getElementById('settingsOverlay').hidden = true; }
+document.getElementById('openSettings').addEventListener('click', openSettings);
+document.getElementById('settingsClose').addEventListener('click', closeSettings);
+document.getElementById('settingsOverlay').addEventListener('click', e => {
+  if (e.target.id === 'settingsOverlay') closeSettings();
+});
+for (const r of document.querySelectorAll('input[name=sepBackend]'))
+  r.addEventListener('change', toggleBanquetConfig);
+document.getElementById('settingsSave').addEventListener('click', async () => {
+  const backend = document.querySelector('input[name=sepBackend]:checked')?.value || 'demucs';
+  const payload = {
+    stem_separator: backend,
+    banquet_repo: document.getElementById('sBanquetRepo').value.trim(),
+    banquet_ckpt: document.getElementById('sBanquetCkpt').value.trim(),
+    banquet_queries: document.getElementById('sBanquetQueries').value.trim(),
+  };
+  const r = await fetch('/settings', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+  });
+  const b = await r.json();
+  if (!r.ok) { toast(b.detail || 'erro', 'err'); return; }
+  fillSettings(b);  // re-renders ✓/✗ from the saved values
+  const info = document.getElementById('settingsInfo');
+  if (backend === 'banquet' && !b.banquet.ready)
+    info.innerHTML = '<span style="color:#e0a54a">Guardado — mas o Banquet ainda não está pronto (verifica os ✗ acima).</span>';
+  else
+    info.textContent = 'Guardado.';
+  toast('Definições guardadas.', 'ok');
 });
 
 // ── Section tabs (Partitura / Letras / Capa) ─────────────────────────────────

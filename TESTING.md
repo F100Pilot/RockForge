@@ -15,7 +15,7 @@ CI cannot. Read this before adding or changing a test.
 
 ```bash
 pip install -e ".[dev]"     # core + test tooling, NO ML stack — this is all CI needs
-pytest                       # 271 tests, ~10s, all ML/Wwise/external tools faked
+pytest                       # 276 tests, ~10s, all ML/Wwise/external tools faked
 ruff check src tests         # lint
 mypy                         # type check
 ```
@@ -68,7 +68,7 @@ serializers) need no fakes — they are deterministic and tested directly.
 |---|---|---|
 | **Lint** | `ruff check src tests` | style, unused imports/vars, import order, obvious bugs |
 | **Types** | `mypy` | strict on `domain/`/`application/`/`infrastructure/`; relaxed at framework boundaries (FastAPI/SQLAlchemy/Pydantic) via per-module overrides in `pyproject.toml` |
-| **Tests** | `pytest` | 271 functional tests (see §4) |
+| **Tests** | `pytest` | 276 functional tests (see §4) |
 
 mypy strictness is deliberate: the `domain` and `application` layers carry the
 music model and orchestration logic and must be fully typed. The
@@ -78,7 +78,7 @@ explicit `cast(...)`.
 
 ---
 
-## 4. Coverage map (271 tests across 26 files)
+## 4. Coverage map (276 tests across 27 files)
 
 | File | Tests | Guards |
 |---|---:|---|
@@ -107,6 +107,7 @@ explicit `cast(...)`.
 | `test_device_resolution.py` | 4 | `_resolve_device` auto/cpu/cuda + degrade-to-CPU on import failure |
 | `test_tags.py` | 2 | audio metadata tag extraction |
 | `test_api.py` | 59 | every endpoint (§6): job lifecycle, rebuild composition, detect-* / separate-stems enqueue (mocked), lyrics/tones/stems status, deletion, per-test SQLite |
+| `test_settings.py` | 5 | in-app settings (`/settings`): default demucs, persist+read-back, invalid separator 422, Banquet path validation, empty-string clears override |
 
 ### Key regression tests — do not delete these without understanding why
 
@@ -333,7 +334,9 @@ split — use the per-arrangement synthesized source for that.
    you want — e.g. `electric_guitar.wav`, `acoustic_guitar.wav`, `bass.wav`,
    `vocals.wav`. Banquet is query-based: each clip is an *example* of the sound
    to extract; the produced stem is named after the clip's filename.
-4. Point RockForge at all three and enable it:
+4. Enable it — **either** from the app's **"⚙️ Definições"** menu (choose
+   Banquet, paste the three paths, "Guardar" shows ✓/✗ per path and the detected
+   stems) **or** via env vars:
    ```
    ROCKFORGE_STEM_SEPARATOR=banquet
    ROCKFORGE_BANQUET_REPO=/path/to/query-bandit
@@ -341,6 +344,8 @@ split — use the per-arrangement synthesized source for that.
    ROCKFORGE_BANQUET_QUERIES=/path/to/queries
    # optional: ROCKFORGE_BANQUET_DEVICE=cuda  ROCKFORGE_BANQUET_BATCH_SIZE=4
    ```
+   The UI settings live in `work_dir/settings.json` and **override** the env
+   vars; both the API and the worker read them (no restart needed).
 5. In the tab viewer press **"Separar instrumentos"**. The stems log shows
    `backend: banquet (separação fina, EM TESTES)`. One inference pass runs per
    query clip (slow); the dropdown then lists the produced stems.

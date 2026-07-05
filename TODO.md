@@ -92,8 +92,11 @@ ver `TESTING.md`.
   arXiv 2406.18747) separa por **classe** — elétrica/acústica, limpa/distorcida —
   e bate o htdemucs_6s na guitarra/piano. É **query-based** (um clip de
   referência por classe, em `ROCKFORGE_BANQUET_QUERIES`); pesos no Zenodo
-  (`ev-pre-aug.ckpt`). Setup + como ativar em `TESTING.md §7g`; construção do
-  comando testada em `test_banquet_adapter.py` (o modelo não corre em CI).
+  (`ev-pre-aug.ckpt`). Ativável **na app** (menu "⚙️ Definições" — escolher
+  backend + caminhos, com validação ✓/✗) ou por env vars; as definições da UI
+  vivem em `work_dir/settings.json` (partilhado API↔worker). Setup em
+  `TESTING.md §7g`; testado em `test_banquet_adapter.py` + `test_settings.py`
+  (o modelo não corre em CI).
   **Falta:** validar a qualidade em ficheiros reais (o maintainer testa e
   analisa). **Limite que se mantém:** duas guitarras da *mesma* classe
   (Lead+Rhythm ambas distorcidas) continuam inseparáveis — para isso, a fonte

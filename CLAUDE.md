@@ -491,6 +491,17 @@ set (see TESTING.md §7g). Same fundamental limit holds: two guitars of the SAME
 class stay inseparable. Command-construction is unit-tested
 (`test_banquet_adapter.py`); the model never runs in CI.
 
+**In-app settings (`runtime_settings.py` + `/settings`).** The separator backend
+and Banquet paths are editable from the web UI's **"⚙️ Definições"** modal, not
+only via env vars. `runtime_settings` persists them to `work_dir/settings.json`
+(atomic write) and both the API and the Celery worker read it — an override wins
+over the env `Settings`, empty string clears it back to the env default. `GET
+/settings` returns the effective values plus per-path readiness (`banquet_validation`:
+`repo_ok`/`ckpt_ok`/`queries_ok`/`query_names`/`ready`) so the modal shows ✓/✗;
+`POST /settings` saves. `_build_stem_separator()` reads `runtime_settings`, so a
+change takes effect on the next `separate_stems` run with no restart. Guarded by
+`test_settings.py`.
+
 ### DLC Builder project file (`rockforge.rs2dlc`)
 
 `rockforge_project.json` is RockForge's *own* descriptor — DLC Builder can't
