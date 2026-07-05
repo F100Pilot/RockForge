@@ -98,6 +98,13 @@ ver `TESTING.md`.
   Banquet como opção "separação fina" na UI, com clips de referência embutidos),
   a decidir após validar a qualidade com o runbook em `experiments/banquet/`.
 
+- [x] **Testar tons criados na partitura** ("🎸 Testar tom"): ouvir o *carácter*
+  de um tom criado aplicado às notas (tique + fonte sintetizada), via uma voz
+  Web Audio partilhada (`voiceNote`) com waveshaper de distorção derivado dos
+  descritores/knob de Gain/pedais do tom. Honesto: é aproximação do carácter
+  (limpo/crunch/distorcido + brilho), NÃO o som real do amp (esse só no
+  jogo/DLC Builder).
+
 - [ ] **Exportar/importar estado de sincronização como JSON**: permitir
   guardar/restaurar `sync_anchor_stages`, `tempo_scale`, `arrangement_sync` e
   `lyrics_events` para não perder ajustes manuais finos.

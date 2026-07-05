@@ -407,6 +407,27 @@ the recording — it classifies the *character* of the guitar sound and suggests
 a plausible Rocksmith gear match. Detection needs the `[ml]` extra (Demucs +
 librosa).
 
+### Tone preview on the score (`voiceNote` / "Testar tom")
+
+The tab viewer's **"🎸 Testar tom" dropdown** lets the user audition a **created
+tone**'s *character* on the note playback — both the per-note tick and the
+"sintetizada" audio source route through the same `voiceNote(ctx, dest, hz, t0,
+dur, peak, char)` voice. With no tone selected (`previewToneKey === ''`) it's the
+plain oscillator pluck (sawtooth+triangle → lowpass); with one, `char =
+{drive, bright}` from `toneCharacter(tone)` inserts a **WaveShaper** (drive) and
+shifts the lowpass cutoff (brightness), plus a little makeup gain (distortion
+compresses level). `toneCharacter` derives `drive` from the tone's **descriptors**
+(CLEAN/CRUNCH/OVERDRIVE/DISTORTION/HIGH GAIN), its amp **Gain knob**, and any
+drive/dist/fuzz **pedals**; `bright` from LEAD/BASS. Both the live tick
+(`playNote`) and the offline render (`synthesizeArrangement`) call `voiceNote`,
+so a synth source re-renders when the preview tone changes. `populatePreviewTones`
+(called from `renderTonePanel`) keeps the selector in sync with `jobTones`.
+
+Honesty note (surfaced in the "Testar tom" ⓘ): RockForge does **not** model amps
+— this is a **character approximation** (gain/distortion + brightness), NOT the
+real amp/cabinet sound. The true tone only exists in-game / DLC Builder, which
+generates the audio from the gear keys we serialize into the bundle.
+
 ### Stem separation — selectable audio source (`/jobs/{id}/separate-stems`)
 
 The tab viewer's **"Fonte de áudio" dropdown** (`populateAudioSources`) offers
