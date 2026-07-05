@@ -85,18 +85,19 @@ ver `TESTING.md`.
   notas do arranjo selecionado, isoladamente da gravação — útil para validar
   o split experimental Lead/Rhythm.
 
-- [ ] **Separação fina de guitarras (Banquet) — protótipo em `experiments/banquet/`**:
-  o `DemucsSeparator` (`htdemucs_6s`) junta todas as guitarras numa stem
-  "guitarra". O **Banquet** (`query-bandit`, **MIT**, treinado no MoisesDB,
+- [~] **Separação fina de guitarras (Banquet) — INTEGRADO, EM TESTES**:
+  adaptador `BanquetSeparator` (`infrastructure/separation/banquet_adapter.py`)
+  no port `StemSeparator`, selecionável via `ROCKFORGE_STEM_SEPARATOR=banquet`
+  (Demucs continua por defeito). O **Banquet** (`query-bandit`, **MIT**, MoisesDB,
   arXiv 2406.18747) separa por **classe** — elétrica/acústica, limpa/distorcida —
-  e bate o htdemucs_6s na guitarra/piano com ~25M params. É **query-based** (dás
-  um clip de referência da classe a extrair). Pesos no Zenodo (`ev-pre-aug.ckpt`,
-  <https://zenodo.org/records/13694558>). **Limite que se mantém:** duas
-  guitarras da *mesma* classe (Lead+Rhythm ambas distorcidas) continuam
-  inseparáveis — para isso, a fonte sintetizada por arranjo. Integração futura:
-  adaptador `BanquetSeparator` no port `StemSeparator` (Demucs por defeito,
-  Banquet como opção "separação fina" na UI, com clips de referência embutidos),
-  a decidir após validar a qualidade com o runbook em `experiments/banquet/`.
+  e bate o htdemucs_6s na guitarra/piano. É **query-based** (um clip de
+  referência por classe, em `ROCKFORGE_BANQUET_QUERIES`); pesos no Zenodo
+  (`ev-pre-aug.ckpt`). Setup + como ativar em `TESTING.md §7g`; construção do
+  comando testada em `test_banquet_adapter.py` (o modelo não corre em CI).
+  **Falta:** validar a qualidade em ficheiros reais (o maintainer testa e
+  analisa). **Limite que se mantém:** duas guitarras da *mesma* classe
+  (Lead+Rhythm ambas distorcidas) continuam inseparáveis — para isso, a fonte
+  sintetizada por arranjo. Futuro possível: seletor na UI + clips embutidos.
 
 - [x] **Testar tons criados na partitura** ("🎸 Testar tom"): ouvir o *carácter*
   de um tom criado aplicado às notas (tique + fonte sintetizada), via uma voz
