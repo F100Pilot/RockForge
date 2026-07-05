@@ -802,6 +802,7 @@ const INFO = {
   'tone-preview': {
     title: 'Testar tom na partitura',
     body: '<p>Ouve os <strong>tons que criaste</strong> aplicados às notas (no tique por nota e na fonte "sintetizada"), para comparares o <em>carácter</em> — limpo, crunch, distorcido — sem teres de entrar no Rocksmith de cada vez que ajustas uma definição.</p>' +
+      '<p>As notas são tocadas com uma <strong>simulação de guitarra</strong>: uma corda dedilhada (modelo Karplus-Strong) através de distorção (conforme o ganho do teu tom) e de uma cabine (EQ de corpo + corte de agudos) — bem mais realista que um oscilador simples.</p>' +
       '<p><strong>Seguir partitura</strong>: se marcaste mudanças de tom na música, esta opção troca automaticamente de tom em cada ponto, tal como o criaste. Ou escolhe um tom específico para o ouvir sozinho em toda a música. O seletor fica desativado até criares o primeiro tom.</p>' +
       '<p><strong>Limite honesto:</strong> o RockForge <em>não</em> modela amplificadores. Isto é uma <strong>aproximação do carácter</strong> (ganho/distorção + brilho), calculada a partir dos descritores do tom, do knob de Gain do amp e dos pedais de drive — <strong>não é o som real</strong> do amp/cabine. O som verdadeiro só existe no jogo / DLC Builder, que gera o áudio a partir do gear que gravamos no bundle.</p>'
   },
@@ -2816,32 +2817,77 @@ function toneCharForNote(chartTime) {
 // lowpass); with one, it routes through a waveshaper (drive) and a brighter or
 // darker filter to approximate that tone. Shared by the live tick and the
 // offline synthesized-arrangement render so both sound the same.
-function voiceNote(ctx, dest, hz, t0, dur, peak, char) {
-  // Distortion compresses the level, so add a little makeup so a driven tone
-  // doesn't come out quieter than the plain voice.
-  const mk = char && char.drive > 0.03 ? 1 + char.drive * 0.8 : 1;
-  const env = ctx.createGain();
-  env.gain.setValueAtTime(0.0001, t0);
-  env.gain.exponentialRampToValueAtTime(Math.max(0.0001, peak * mk), t0 + 0.005);
-  env.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-  env.connect(dest);
-  const lp = ctx.createBiquadFilter();
-  lp.type = 'lowpass'; lp.Q.value = 0.7;
-  lp.frequency.value = char ? Math.min(9000, hz * (4 + char.bright * 6)) : Math.min(8000, hz * 6);
-  let tail = lp;
+// A plucked-string (Karplus-Strong) note buffer: a noise excitation fed through
+// a short delay line with a averaging low-pass in the feedback loop, which is
+// what makes it read as a real plucked guitar/bass string (harmonic-rich attack
+// decaying to the fundamental) rather than a bare oscillator. `damping` sets the
+// sustain. Baked-in attack/release fades avoid the noise-burst click and the
+// truncation click at `dur`.
+function karplusBuffer(ctx, hz, dur, damping) {
+  const sr = ctx.sampleRate;
+  const N = Math.max(2, Math.round(sr / Math.max(20, hz)));
+  const total = Math.max(1, Math.floor(dur * sr));
+  const buf = ctx.createBuffer(1, total, sr);
+  const out = buf.getChannelData(0);
+  const ring = new Float32Array(N);
+  let prev = 0;
+  for (let i = 0; i < N; i++) { const w = Math.random() * 2 - 1; ring[i] = prev = prev * 0.5 + w * 0.5; }  // softened pick
+  let pos = 0;
+  for (let i = 0; i < total; i++) {
+    const cur = ring[pos];
+    out[i] = cur;
+    ring[pos] = (cur + ring[(pos + 1) % N]) * 0.5 * damping;
+    pos = (pos + 1) % N;
+  }
+  const atk = Math.min(total, Math.floor(sr * 0.002)), rel = Math.min(total, Math.floor(sr * 0.008));
+  for (let i = 0; i < atk; i++) out[i] *= i / atk;
+  for (let i = 0; i < rel; i++) out[total - 1 - i] *= i / rel;
+  return buf;
+}
+
+// One shared guitar cabinet per audio context, as an EQ chain: a low-mid body
+// bump, a mid scoop, and a speaker high-roll-off — the coloration that makes a
+// signal read as "through an amp/cab" rather than a raw string. (A synthesized
+// convolution IR was tried but only added fizz, since Karplus-Strong is already
+// dark; a real captured IR could drop into a ConvolverNode here later.) Every
+// note routes through it, so they share one physical cabinet like a real rig.
+const _cabinets = new WeakMap();
+function getCabinet(ctx) {
+  let cab = _cabinets.get(ctx);
+  if (cab) return cab;
+  const input = ctx.createGain();
+  const body = ctx.createBiquadFilter(); body.type = 'peaking'; body.frequency.value = 110; body.gain.value = 4; body.Q.value = 0.7;
+  const scoop = ctx.createBiquadFilter(); scoop.type = 'peaking'; scoop.frequency.value = 900; scoop.gain.value = -3; scoop.Q.value = 0.9;
+  const roll = ctx.createBiquadFilter(); roll.type = 'lowpass'; roll.frequency.value = 4000; roll.Q.value = 0.7;
+  const makeup = ctx.createGain(); makeup.gain.value = 1.3;
+  input.connect(body); body.connect(scoop); scoop.connect(roll); roll.connect(makeup); makeup.connect(ctx.destination);
+  cab = { input };
+  _cabinets.set(ctx, cab);
+  return cab;
+}
+
+// Build one plucked note into `ctx`, at the note's real pitch, through the shared
+// cabinet — so it sounds like a guitar playing that note. Without a tone it's a
+// clean plucked string; with one, a waveshaper (drive) + brightness filter
+// approximate the tone's character before the cabinet.
+function voiceNote(ctx, dest, hz, t0, dur, peak, char) {  // dest kept for signature; routed via cabinet
+  const src = ctx.createBufferSource();
+  // 0.99: a plucky decay (attack emphasised) rather than a long sustain — reads
+  // as a picked note. Lower strings (larger delay line) naturally ring longer.
+  src.buffer = karplusBuffer(ctx, hz, dur, 0.99);
+  const mk = char && char.drive > 0.03 ? 1 + char.drive * 0.8 : 1;  // makeup: distortion compresses
+  const lvl = ctx.createGain(); lvl.gain.value = Math.max(0.0001, peak * mk) * 0.9;
   if (char && char.drive > 0.03) {
-    const drv = ctx.createGain(); drv.gain.value = 1 + char.drive * 6;  // push into the shaper
+    const drv = ctx.createGain(); drv.gain.value = 1 + char.drive * 8;   // push into the shaper
     const ws = ctx.createWaveShaper(); ws.curve = distortionCurve(char.drive); ws.oversample = '2x';
-    lp.connect(drv); drv.connect(ws); tail = ws;
+    const bright = ctx.createBiquadFilter(); bright.type = 'lowpass'; bright.Q.value = 0.7;
+    bright.frequency.value = Math.min(9000, 1500 + char.bright * 6000);   // tame fizz, follow brightness
+    src.connect(drv); drv.connect(ws); ws.connect(bright); bright.connect(lvl);
+  } else {
+    src.connect(lvl);
   }
-  tail.connect(env);
-  const oscLvl = char && char.drive > 0.03 ? 0.5 : 1;  // tame level before distortion
-  for (const [type, mix] of [['sawtooth', 1.0], ['triangle', 0.5]]) {
-    const osc = ctx.createOscillator(), og = ctx.createGain();
-    osc.type = type; osc.frequency.value = hz; og.gain.value = mix * oscLvl;
-    osc.connect(og); og.connect(lp);
-    osc.start(t0); osc.stop(t0 + dur + 0.05);
-  }
+  lvl.connect(getCabinet(ctx).input);
+  src.start(t0); src.stop(t0 + dur + 0.05);
 }
 
 // Per-note "tick": a short plucked-string tone AT THE NOTE'S REAL PITCH, shaped

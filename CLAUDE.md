@@ -412,8 +412,11 @@ librosa).
 The tab viewer's **"🎸 Testar tom" dropdown** lets the user audition a **created
 tone**'s *character* on the note playback — both the per-note tick and the
 "sintetizada" audio source route through the same `voiceNote(ctx, dest, hz, t0,
-dur, peak, char)` voice. The selector is **disabled until the user creates a
-tone** (nothing to preview). With tones, it offers **"Seguir partitura"**
+dur, peak, char)` voice — a **plucked-string (Karplus-Strong) note**
+(`karplusBuffer`) through an optional waveshaper (drive) and a **shared cabinet
+EQ** (`getCabinet`: low-mid body bump + mid scoop + 4 kHz speaker roll-off, one
+per audio context), a far more guitar-like simulation than the old oscillators.
+The selector is **disabled until the user creates a tone** (nothing to preview). With tones, it offers **"Seguir partitura"**
 (`'__follow__'`) — the character follows the tones marked on the score, switching
 per note via `activeToneKeyAt(chartTime)` (the last `toneChanges` entry at/before
 that time, else `toneBase`; both share the chart timeline) — plus each tone to
