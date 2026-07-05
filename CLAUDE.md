@@ -476,6 +476,18 @@ recording (the per-arrangement *synthesized* source is the workaround). Stem
 separation needs the `[ml]` extra (Demucs) and takes minutes; the synthesized
 source needs neither.
 
+**Selectable separator backend (`ROCKFORGE_STEM_SEPARATOR`).** The `separate_stems`
+task picks its adapter via `celery_app._build_stem_separator()`: `"demucs"`
+(default, `htdemucs_6s`) or `"banquet"` (EXPERIMENTAL / IN TESTING —
+`BanquetSeparator`, `infrastructure/separation/banquet_adapter.py`). Banquet
+(query-bandit, MIT, MoisesDB-trained) is **query-based**: it shells out to the
+repo's `train.py inference_byoq` once per `<class>.wav` reference clip in
+`ROCKFORGE_BANQUET_QUERIES`, producing one finer stem per clip (electric vs
+acoustic, clean vs distorted) — needs `ROCKFORGE_BANQUET_REPO`/`_CKPT`/`_QUERIES`
+set (see TESTING.md §7g). Same fundamental limit holds: two guitars of the SAME
+class stay inseparable. Command-construction is unit-tested
+(`test_banquet_adapter.py`); the model never runs in CI.
+
 ### DLC Builder project file (`rockforge.rs2dlc`)
 
 `rockforge_project.json` is RockForge's *own* descriptor — DLC Builder can't

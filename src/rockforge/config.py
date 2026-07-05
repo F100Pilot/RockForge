@@ -32,6 +32,24 @@ class Settings(BaseSettings):
 
     def lyrics_device(self) -> str:
         return self.whisperx_device or self.demucs_device
+
+    # Stem-separation backend for POST /jobs/{id}/separate-stems:
+    #   "demucs"  (default) — htdemucs_6s; one aggregated "guitar" stem.
+    #   "banquet" — EXPERIMENTAL / IN TESTING: query-based finer separation
+    #     (electric vs acoustic, clean vs distorted) via the query-bandit model
+    #     (MIT). Needs the three paths below configured. See TESTING.md §Banquet.
+    # Two guitars of the SAME class (both distorted) are still inseparable —
+    # that limit is fundamental, not a backend gap.
+    stem_separator: str = "demucs"
+    banquet_repo: Path | None = None      # a cloned kwatcharasupat/query-bandit
+    banquet_ckpt: Path | None = None      # checkpoint, e.g. ev-pre-aug.ckpt (Zenodo)
+    banquet_queries: Path | None = None   # dir of <class>.wav reference clips
+    banquet_device: str | None = None     # falls back to demucs_device
+    banquet_batch_size: int = 4           # lower than the repo default (VRAM-safe)
+
+    def banquet_stem_device(self) -> str:
+        return self.banquet_device or self.demucs_device
+
     psarc_packer_cmd: str | None = None  # e.g. external DLC Builder CLI invocation
     psarc_mode: str = "native"  # "native" (default, always produces .psarc) | "dlcbuilder"
     # "celery" (default): tasks dispatched to the Celery worker (needs Redis).

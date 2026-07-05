@@ -15,7 +15,7 @@ CI cannot. Read this before adding or changing a test.
 
 ```bash
 pip install -e ".[dev]"     # core + test tooling, NO ML stack — this is all CI needs
-pytest                       # 233 tests, ~10s, all ML/Wwise/external tools faked
+pytest                       # 271 tests, ~10s, all ML/Wwise/external tools faked
 ruff check src tests         # lint
 mypy                         # type check
 ```
@@ -68,7 +68,7 @@ serializers) need no fakes — they are deterministic and tested directly.
 |---|---|---|
 | **Lint** | `ruff check src tests` | style, unused imports/vars, import order, obvious bugs |
 | **Types** | `mypy` | strict on `domain/`/`application/`/`infrastructure/`; relaxed at framework boundaries (FastAPI/SQLAlchemy/Pydantic) via per-module overrides in `pyproject.toml` |
-| **Tests** | `pytest` | 233 functional tests (see §4) |
+| **Tests** | `pytest` | 271 functional tests (see §4) |
 
 mypy strictness is deliberate: the `domain` and `application` layers carry the
 music model and orchestration logic and must be fully typed. The
@@ -78,7 +78,7 @@ explicit `cast(...)`.
 
 ---
 
-## 4. Coverage map (233 tests across 24 files)
+## 4. Coverage map (271 tests across 26 files)
 
 | File | Tests | Guards |
 |---|---:|---|
@@ -103,6 +103,7 @@ explicit `cast(...)`.
 | `test_wwise.py` | 6 | `.wem` conversion via **fake** WwiseConsole; seek-table header patch |
 | `test_ffmpeg_normalizer.py` | 3 | command build: `-nostdin`, `stdin=DEVNULL`, `FFMPEG_TIMEOUT_S` |
 | `test_demucs_adapter.py` | 5 | demucs CLI command build, `stdin=DEVNULL`, timeout, vocals vs guitar models, `separate_stems` returns all stems |
+| `test_banquet_adapter.py` | 5 | Banquet (EM TESTES) `inference_byoq` command build, one pass per query clip, device→`use_cuda`, missing-setup errors |
 | `test_device_resolution.py` | 4 | `_resolve_device` auto/cpu/cuda + degrade-to-CPU on import failure |
 | `test_tags.py` | 2 | audio metadata tag extraction |
 | `test_api.py` | 59 | every endpoint (§6): job lifecycle, rebuild composition, detect-* / separate-stems enqueue (mocked), lyrics/tones/stems status, deletion, per-test SQLite |
@@ -275,6 +276,26 @@ matching CUDA build of torch/ctranslate2 and the cuDNN DLLs on PATH (README
    editor → adjust → "Aplicar e reconstruir".
 2. Confirm the `.rs2dlc` `Tones` array carries the gear.
 
+### 7d-bis. Testar tom na partitura ("🎸 Testar tom") — sem ML
+
+No editor da partitura, o seletor **"🎸 Testar tom"** aplica o *carácter* de um
+tom criado às notas (tique + fonte sintetizada). Não precisa de ML nem de
+gravação — corre no browser.
+
+**Verificar (manual):**
+1. Sem tons criados → o seletor está **desativado**.
+2. Cria dois tons de gain diferente (ex.: um CLEAN, um HIGH GAIN). O seletor
+   passa a ativo e mostra "Seguir partitura", "Voz simples" e cada tom.
+3. Escolhe cada tom e toca: o distorcido deve soar **claramente** mais saturado
+   que o limpo (é uma **aproximação** — waveshaper, não o amp real).
+4. Marca uma **Mudança de tom** a meio da música (modo 🎸) e escolhe "Seguir
+   partitura": ao tocar, o carácter deve **trocar** no ponto marcado.
+5. Muda a fonte de áudio para "… (sintetizada)" e confirma que também reflete o
+   tom escolhido (re-renderiza ao trocar de tom).
+
+Honesto: é o carácter (ganho/brilho), NÃO o som verdadeiro do amp — esse só no
+jogo/DLC Builder.
+
 ### 7e. Wwise `.wem` (needs a local Wwise 2019/2021/2022/2023, Windows)
 
 Run with `WWISEROOT` set. The bundle must contain `audio.wem`. **In-game check:**
@@ -288,6 +309,44 @@ Import the bundle into DLC Builder, or rely on the native `.psarc` (`psarc_mode
 = native`, default). The native SNG layout is round-trip-tested but **NOT**
 byte-validated against a retail SNG — the only true validation is loading the
 CDLC in Rocksmith 2014.
+
+### 7g. Separação fina de guitarras — Banquet (⚠️ EM TESTES, precisa de setup manual)
+
+An alternative stem-separation backend that separates guitars by **class**
+(electric vs acoustic, clean vs distorted) — finer than Demucs's single "guitar"
+stem. Selected with `ROCKFORGE_STEM_SEPARATOR=banquet`. **Not validated yet** —
+this is here for the maintainer to test the quality on real files and report
+back; Demucs stays the default. The command-construction is unit-tested
+(`test_banquet_adapter.py`) but the model itself never runs in CI.
+
+**Honest limit (unchanged):** separation is by instrument *class*, not track.
+Two guitars of the *same* class (Lead + Rhythm, both distorted) still can't be
+split — use the per-arrangement synthesized source for that.
+
+**Setup (needs PyTorch; a CUDA GPU strongly recommended):**
+1. Clone the model: `git clone https://github.com/kwatcharasupat/query-bandit`
+   (MIT). Install its deps.
+2. Download the checkpoint `ev-pre-aug.ckpt` from
+   <https://zenodo.org/records/13694558>.
+3. Prepare **query clips**: a dir with one short `<class>.wav` reference per stem
+   you want — e.g. `electric_guitar.wav`, `acoustic_guitar.wav`, `bass.wav`,
+   `vocals.wav`. Banquet is query-based: each clip is an *example* of the sound
+   to extract; the produced stem is named after the clip's filename.
+4. Point RockForge at all three and enable it:
+   ```
+   ROCKFORGE_STEM_SEPARATOR=banquet
+   ROCKFORGE_BANQUET_REPO=/path/to/query-bandit
+   ROCKFORGE_BANQUET_CKPT=/path/to/ev-pre-aug.ckpt
+   ROCKFORGE_BANQUET_QUERIES=/path/to/queries
+   # optional: ROCKFORGE_BANQUET_DEVICE=cuda  ROCKFORGE_BANQUET_BATCH_SIZE=4
+   ```
+5. In the tab viewer press **"Separar instrumentos"**. The stems log shows
+   `backend: banquet (separação fina, EM TESTES)`. One inference pass runs per
+   query clip (slow); the dropdown then lists the produced stems.
+
+If any of the three paths is missing/unset, the task fails **gracefully** with a
+clear message (`stems_status = unavailable`) — it never crashes the job. Missing
+setup is guarded by `test_banquet_adapter.py::test_missing_setup_raises`.
 
 ---
 

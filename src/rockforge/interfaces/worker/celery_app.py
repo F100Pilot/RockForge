@@ -112,6 +112,31 @@ def _build_use_case():  # noqa: ANN202 - heavy imports deferred to worker runtim
     return make
 
 
+def _build_stem_separator() -> tuple[Any, str, str]:  # heavy imports deferred to worker
+    """The configured stem separator for /separate-stems, with its resolved
+    device and a human label for the log. ``demucs`` (default, one aggregated
+    guitar stem) or the experimental ``banquet`` (query-based, finer classes)."""
+    if settings.stem_separator == "banquet":
+        from rockforge.infrastructure.separation.banquet_adapter import BanquetSeparator
+
+        device = _resolve_device(settings.banquet_stem_device())
+        return (
+            BanquetSeparator(
+                repo=settings.banquet_repo,
+                ckpt=settings.banquet_ckpt,
+                queries_dir=settings.banquet_queries,
+                device=device,
+                batch_size=settings.banquet_batch_size,
+            ),
+            device,
+            "banquet (separação fina, EM TESTES)",
+        )
+    from rockforge.infrastructure.separation.demucs_adapter import DemucsSeparator
+
+    device = _resolve_device(settings.demucs_device)
+    return DemucsSeparator(device=device), device, "demucs htdemucs_6s"
+
+
 def _build_detection(device: str) -> tuple[Any, Any, Any]:  # heavy imports deferred to worker
     from rockforge.infrastructure.lyrics.whisperx_adapter import WhisperXLyricTranscriber
     from rockforge.infrastructure.normalize.ffmpeg import FfmpegNormalizer
@@ -598,19 +623,18 @@ def separate_stems(job_id: str) -> None:
             _log_stems_stage(params, "importing ML models…")
             _commit_params()
 
-            device = _resolve_device(settings.demucs_device)
-
             from rockforge.infrastructure.normalize.ffmpeg import FfmpegNormalizer
-            from rockforge.infrastructure.separation.demucs_adapter import DemucsSeparator
 
             normalizer = FfmpegNormalizer()
-            separator = DemucsSeparator(device=device)
+            separator, device, backend = _build_stem_separator()
 
             workdir = settings.work_dir / job.id / "stem_separation"
             workdir.mkdir(parents=True, exist_ok=True)
 
             _log_stems_stage(
-                params, f"device: {device} ({'GPU' if device == 'cuda' else 'CPU'})"
+                params,
+                f"backend: {backend} · device: {device} "
+                f"({'GPU' if device == 'cuda' else 'CPU'})",
             )
 
             params["stems_status"] = "normalizing"
