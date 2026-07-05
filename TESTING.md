@@ -286,8 +286,9 @@ gravação — corre no browser.
 1. Sem tons criados → o seletor está **desativado**.
 2. Cria dois tons de gain diferente (ex.: um CLEAN, um HIGH GAIN). O seletor
    passa a ativo e mostra "Seguir partitura", "Voz simples" e cada tom.
-3. Escolhe cada tom e toca: o distorcido deve soar **claramente** mais saturado
-   que o limpo (é uma **aproximação** — waveshaper, não o amp real).
+3. Escolhe cada tom e toca: as notas soam como uma **guitarra dedilhada**
+   (Karplus-Strong + cabine); o distorcido deve soar **claramente** mais saturado
+   que o limpo. É uma **aproximação** (não o amp real do jogo).
 4. Marca uma **Mudança de tom** a meio da música (modo 🎸) e escolhe "Seguir
    partitura": ao tocar, o carácter deve **trocar** no ponto marcado.
 5. Muda a fonte de áudio para "… (sintetizada)" e confirma que também reflete o
