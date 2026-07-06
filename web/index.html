@@ -1857,8 +1857,13 @@ function populateGearSelect(sel, items, selectedKey, placeholder, filter) {
     const cur = (items || []).find(g => g.key === selectedKey);
     if (cur) list = [cur, ...list];
   }
+  // Cabinets share one display name across all mic/position variants (e.g.
+  // "Marshall1960A" appears ~9×), so show the FULL key (Cab_Marshall1960A_57_Cone)
+  // — the exact config name from the tone file — to tell them apart. Other gear
+  // (amps/pedals/racks) keep their friendly name.
+  const label = g => (g.key.includes('Cab_') ? g.key : g.name);
   sel.innerHTML = (placeholder ? `<option value="">${placeholder}</option>` : '') +
-    list.map(g => `<option value="${esc(g.key)}">${esc(g.name)}</option>`).join('');
+    list.map(g => `<option value="${esc(g.key)}">${esc(label(g))}</option>`).join('');
   if (selectedKey) sel.value = selectedKey;
   if (q && !list.length) sel.innerHTML = '<option value="">— sem resultados —</option>';
 }
