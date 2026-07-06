@@ -1770,31 +1770,36 @@ document.getElementById('previewTone').addEventListener('change', async e => {
 
 document.getElementById('toneBaseSel').addEventListener('change', e => {
   toneBase = e.target.value || null;
+  if (arrangements.length) showArr(currentArr);  // refresh the on-score tone markers
 });
 document.getElementById('toneExtraChecks').addEventListener('change', e => {
   if (!e.target.classList.contains('tone-extra')) return;
   const checked = [...document.querySelectorAll('.tone-extra:checked')].map(c => c.value);
   if (checked.length > 4) { e.target.checked = false; toast('Máximo de 4 tons extra.'); return; }
   toneNames = checked;
+  if (arrangements.length) showArr(currentArr);
 });
 
 function renderToneChangesList() {
   const el = document.getElementById('toneChangesList');
   if (!toneChanges.length) {
     el.innerHTML = '<span class="meta">Sem mudanças de tom. Ativa o modo "Mudança de tom" e clica numa nota.</span>';
-    return;
+  } else {
+    const sorted = toneChanges.slice().sort((a, b) => a.time - b.time);
+    el.innerHTML = sorted.map((c, i) => {
+      const name = (jobTones.find(t => t.key === c.name) || {}).name || c.name;
+      return `<div class="anchor-row">↪ ${c.time.toFixed(2)}s → <b>${esc(name)}</b>
+        <button type="button" class="tone-change-rm" data-i="${i}">remover</button></div>`;
+    }).join('');
+    el.querySelectorAll('.tone-change-rm').forEach(b => b.addEventListener('click', () => {
+      const target = sorted[parseInt(b.dataset.i, 10)];
+      toneChanges = toneChanges.filter(c => c !== target);
+      renderToneChangesList();
+    }));
   }
-  const sorted = toneChanges.slice().sort((a, b) => a.time - b.time);
-  el.innerHTML = sorted.map((c, i) => {
-    const name = (jobTones.find(t => t.key === c.name) || {}).name || c.name;
-    return `<div class="anchor-row">↪ ${c.time.toFixed(2)}s → <b>${esc(name)}</b>
-      <button type="button" class="tone-change-rm" data-i="${i}">remover</button></div>`;
-  }).join('');
-  el.querySelectorAll('.tone-change-rm').forEach(b => b.addEventListener('click', () => {
-    const target = sorted[parseInt(b.dataset.i, 10)];
-    toneChanges = toneChanges.filter(c => c !== target);
-    renderToneChangesList();
-  }));
+  // Keep the on-score tone markers (amber 🎸) in sync with the changes list —
+  // adding/removing a change (or deleting/renaming a tone) redraws the score.
+  if (arrangements.length) showArr(currentArr);
 }
 
 function placeToneChange(chartTime) {
