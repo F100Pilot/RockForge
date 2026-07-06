@@ -7,7 +7,7 @@ Pipeline áudio → arranjos Rocksmith 2014 (CDLC), construído sobre investiga�
 
 | Etapa | Tecnologia | Confiança |
 |---|---|---|
-| Ingestão (upload; YouTube opcional) | FastAPI / yt-dlp | — (YouTube desativado por defeito: viola o ToS) |
+| Ingestão (Guitar Pro; ~~upload de áudio / YouTube~~ **deprecated**) | FastAPI | — |
 | Normalização | ffmpeg (loudnorm, 44.1 kHz) | determinística |
 | Stem de guitarra | Demucs `htdemucs_6s` (MIT) | "okay" segundo os próprios autores; sem SDR publicado |
 | Lead vs. Rhythm | heurística própria | **EXPERIMENTAL — não existe método publicado** |
@@ -80,7 +80,7 @@ Lead + Rhythm do catálogo de gear do Rocksmith, prontos a usar no jogo:
 Nota de honestidade: a análise espetral **não identifica** o amp ou pedal real
 usado na gravação — classifica o *caráter* do som e sugere um match plausível do
 catálogo Rocksmith. Precisa do extra `[ml]` (Demucs + librosa). Funciona em
-qualquer tipo de job (GP, áudio, YouTube).
+qualquer job que tenha uma gravação.
 
 Leitura obrigatória: [`docs/RELATORIO-TECNICO.md`](docs/RELATORIO-TECNICO.md) (viabilidade,
 arquitetura, riscos) e os relatórios de investigação com fontes em [`docs/research/`](docs/research/).
@@ -126,12 +126,16 @@ O install demora (PyTorch/Demucs/Basic Pitch/WhisperX, vários GB). O extra
 sem ele, "Detetar letra" reporta "indisponível". Se quiseres instalar sem
 essa funcionalidade, usa `pip install -e ".[dev,ml]"`.
 
-**Ingestão via YouTube** precisa do extra `youtube` (yt-dlp), que **não** vem
-no comando acima. Para o incluir: `py -3.11 -m pip install -e ".[dev,ml,lyrics,youtube]"`.
-⚠️ O YouTube quebra o yt-dlp com frequência (erros "HTTP 403", "Unable to
-extract", "Sign in to confirm…"). Se a compilação por link falhar, **atualiza o
-yt-dlp**: `py -3.11 -m pip install -U yt-dlp`. Nota legal: descarregar áudio do
-YouTube viola o ToS — ver Avisos legais.
+> **⚠️ Ingestão via YouTube — DEPRECATED.** Já **não** é oferecida na aplicação
+> (o ecrã inicial só tem a via **Guitar Pro**). O download de áudio do YouTube
+> viola o ToS e o yt-dlp quebra com frequência; a opção foi removida da interface.
+> Os endpoints antigos (`/jobs/youtube`) podem ainda existir no backend por
+> compatibilidade, mas não há forma de os usar pela UI e não são suportados.
+
+O texto abaixo fica só como referência histórica: a ingestão via YouTube usava o
+extra `youtube` (yt-dlp) — `py -3.11 -m pip install -e ".[dev,ml,lyrics,youtube]"`
+— e dependia do `ROCKFORGE_ENABLE_YOUTUBE`. Descarregar áudio do YouTube viola o
+ToS (ver Avisos legais).
 
 **2b. Aceleração por GPU (NVIDIA — opcional mas muito recomendada)**
 
@@ -201,7 +205,7 @@ As principais:
 | `ROCKFORGE_DEMUCS_DEVICE` | `auto` | `auto` (GPU NVIDIA se disponível, senão CPU), `cuda` ou `cpu` — device para todo o ML |
 | `ROCKFORGE_WHISPERX_DEVICE` | (segue `demucs_device`) | sobrepõe o device só da deteção de letra |
 | `ROCKFORGE_WHISPER_MODEL` | `small` | modelo WhisperX da letra: `tiny`/`base`/`small`/`medium`/`large-v3` (maior = mais preciso e mais lento; em CPU baixa para `base`/`tiny`) |
-| `ROCKFORGE_ENABLE_YOUTUBE` | `true` | ativa/desativa a ingestão via YouTube (viola o ToS — ver Avisos legais) |
+| `ROCKFORGE_ENABLE_YOUTUBE` | `true` | **deprecated** — a ingestão via YouTube foi removida da UI; esta flag já não tem efeito prático |
 | `ROCKFORGE_WORK_DIR` | `~/Downloads/RockForge` | onde os bundles gerados são escritos |
 | `WWISEROOT` | (do Audiokinetic Launcher) | localização do Wwise para gerar o `.wem` |
 
@@ -343,11 +347,9 @@ pytest && ruff check src tests && mypy
 - Não existe declaração oficial da Ubisoft sobre CDLC; gerar CDLC a partir de gravações
   protegidas e distribuí-las é distribuição não autorizada. Use apenas com material próprio
   ou autorizado.
-- A ingestão YouTube está desativada por defeito (`ROCKFORGE_ENABLE_YOUTUBE=false`) porque
-  descarregar áudio viola o ToS do YouTube. Para ativar (uso pessoal, só com músicas
-  próprias), cria um ficheiro `.env` na raiz do projeto (ver `.env.example`) com
-  `ROCKFORGE_ENABLE_YOUTUBE=true` e reinicia a API/worker — é uma decisão explícita do
-  operador, e descarregar conteúdo de terceiros continua a violar o ToS.
+- A ingestão via YouTube está **deprecated** e foi **removida da interface** (descarregar
+  áudio viola o ToS do YouTube e o yt-dlp quebra com frequência). A app só ingere
+  ficheiros **Guitar Pro**.
 - O empacotamento final exige o Wwise (EULA Audiokinetic, não redistribuível): o RockForge
   entrega um bundle pronto a importar no [DLC Builder](https://github.com/iminashi/Rocksmith2014.NET).
 
