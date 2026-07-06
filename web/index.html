@@ -898,7 +898,7 @@ const INFO = {
   'tone-preview': {
     title: 'Testar tom na partitura',
     body: '<p>Ouve os <strong>tons que criaste</strong> aplicados às notas (no tique por nota e na fonte "sintetizada"), para comparares o <em>carácter</em> — limpo, crunch, distorcido — sem teres de entrar no Rocksmith de cada vez que ajustas uma definição.</p>' +
-      '<p>As notas são tocadas com uma <strong>simulação de guitarra</strong>: uma corda dedilhada (modelo Karplus-Strong) através de distorção (conforme o ganho do teu tom) e de uma cabine (EQ de corpo + corte de agudos) — bem mais realista que um oscilador simples.</p>' +
+      '<p><strong>Voz simples (sem tom)</strong> = só o tique seco da nota, sem coloração. Ao escolher um tom, as notas passam por uma <strong>simulação de guitarra</strong>: corda dedilhada (Karplus-Strong) + distorção (conforme o ganho do tom) + cabine (EQ de corpo e corte de agudos).</p>' +
       '<p><strong>Seguir partitura</strong>: se marcaste mudanças de tom na música, esta opção troca automaticamente de tom em cada ponto, tal como o criaste. Ou escolhe um tom específico para o ouvir sozinho em toda a música. O seletor fica desativado até criares o primeiro tom.</p>' +
       '<p><strong>Limite honesto:</strong> o RockForge <em>não</em> modela amplificadores. Isto é uma <strong>aproximação do carácter</strong> (ganho/distorção + brilho), calculada a partir dos descritores do tom, do knob de Gain do amp e dos pedais de drive — <strong>não é o som real</strong> do amp/cabine. O som verdadeiro só existe no jogo / DLC Builder, que gera o áudio a partir do gear que gravamos no bundle.</p>'
   },
@@ -2982,7 +2982,9 @@ function voiceNote(ctx, dest, hz, t0, dur, peak, char) {  // dest kept for signa
   } else {
     src.connect(lvl);
   }
-  lvl.connect(getCabinet(ctx).input);
+  // A selected tone goes through the cabinet (amped colour); "Voz simples" (no
+  // tone) is a dry note tick straight out — no cabinet, no distortion.
+  lvl.connect(char ? getCabinet(ctx).input : ctx.destination);
   src.start(t0); src.stop(t0 + dur + 0.05);
 }
 
