@@ -145,6 +145,7 @@
   details.sync-adv > summary::-webkit-details-marker { display:none; }
   details.sync-adv > summary::before { content:'▸ '; color:var(--accent); }
   details.sync-adv[open] > summary::before { content:'▾ '; }
+  .gear-search { display:block; width:100%; max-width:18rem; margin:.15rem 0 .3rem; font-size:.8rem; padding:.22rem .45rem; }
   .tuninggrid { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; }
   .tuninggrid input { width:3.4rem; text-align:center; }
 
@@ -740,9 +741,11 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
               <input type="text" id="teDescriptors" placeholder="Lead, Distortion" style="min-width:10rem"></label>
           </div>
           <div class="field" style="margin-top:.5rem"><label>Amplificador</label>
+            <input type="text" id="teAmpSearch" class="gear-search" placeholder="🔎 procurar amplificador…">
             <select id="teAmp"></select></div>
           <div id="teAmpKnobs" class="tuninggrid" style="margin:.4rem 0"></div>
           <div class="field"><label>Cabine</label>
+            <input type="text" id="teCabSearch" class="gear-search" placeholder="🔎 procurar cabine…">
             <select id="teCab"></select></div>
           <div style="margin-top:.6rem">
             <div class="anchor-row"><strong style="color:var(--text)">Efeitos</strong>
@@ -1836,10 +1839,20 @@ function renderToneListEditor() {
     b.addEventListener('click', () => editToneInForm(b.dataset.key)));
 }
 
-function populateGearSelect(sel, items, selectedKey, placeholder) {
+function populateGearSelect(sel, items, selectedKey, placeholder, filter) {
+  const q = (filter || '').trim().toLowerCase();
+  let list = items || [];
+  if (q) list = list.filter(g => `${g.name} ${g.key}`.toLowerCase().includes(q));
+  // Always keep the current selection in the list, so filtering never silently
+  // drops (and thus changes) the chosen gear.
+  if (selectedKey && !list.some(g => g.key === selectedKey)) {
+    const cur = (items || []).find(g => g.key === selectedKey);
+    if (cur) list = [cur, ...list];
+  }
   sel.innerHTML = (placeholder ? `<option value="">${placeholder}</option>` : '') +
-    (items || []).map(g => `<option value="${esc(g.key)}">${esc(g.name)}</option>`).join('');
+    list.map(g => `<option value="${esc(g.key)}">${esc(g.name)}</option>`).join('');
   if (selectedKey) sel.value = selectedKey;
+  if (q && !list.length) sel.innerHTML = '<option value="">— sem resultados —</option>';
 }
 
 function renderKnobs(container, gearItem, values) {
@@ -1872,6 +1885,7 @@ function addEffectRow(category, gearKey, values) {
         <option value="post">Pós-pedal</option>
         <option value="rack">Rack</option>
       </select>
+      <input type="text" class="te-eff-search" placeholder="🔎 procurar…" style="min-width:8rem;font-size:.8rem;padding:.22rem .45rem">
       <select class="te-eff-gear" style="min-width:11rem"></select>
       <button type="button" class="icon te-eff-rm">remover</button>
     </div>
@@ -1879,14 +1893,17 @@ function addEffectRow(category, gearKey, values) {
   wrap.appendChild(row);
   const catSel = row.querySelector('.te-eff-cat');
   const gearSel = row.querySelector('.te-eff-gear');
+  const searchEl = row.querySelector('.te-eff-search');
   const knobsEl = row.querySelector('.te-eff-knobs');
   catSel.value = category || 'pre';
   const fillGear = (selKey, vals) => {
-    populateGearSelect(gearSel, gearListFor(catSel.value), selKey, null);
+    populateGearSelect(gearSel, gearListFor(catSel.value), selKey, null, searchEl.value);
     renderKnobs(knobsEl, gearByKey(gearListFor(catSel.value), gearSel.value), vals);
   };
   fillGear(gearKey, values);
-  catSel.addEventListener('change', () => fillGear(null, null));
+  catSel.addEventListener('change', () => { searchEl.value = ''; fillGear(null, null); });
+  searchEl.addEventListener('input', () =>
+    populateGearSelect(gearSel, gearListFor(catSel.value), gearSel.value, null, searchEl.value));
   gearSel.addEventListener('change', () =>
     renderKnobs(knobsEl, gearByKey(gearListFor(catSel.value), gearSel.value), null));
   row.querySelector('.te-eff-rm').addEventListener('click', () => row.remove());
@@ -1896,6 +1913,8 @@ function blankFormDefaults() {
   document.getElementById('teName').value = '';
   document.getElementById('teVolume').value = '-15';
   document.getElementById('teDescriptors').value = '';
+  document.getElementById('teAmpSearch').value = '';
+  document.getElementById('teCabSearch').value = '';
   const amps = gearCatalogue.amps, cabs = gearCatalogue.cabinets;
   populateGearSelect(document.getElementById('teAmp'), amps, amps[0] && amps[0].key, null);
   renderKnobs(document.getElementById('teAmpKnobs'), amps[0], null);
@@ -1922,6 +1941,8 @@ function editToneInForm(key) {
   document.getElementById('teName').value = t.name || '';
   document.getElementById('teVolume').value = t.volume != null ? t.volume : -15;
   document.getElementById('teDescriptors').value = (t.descriptors || []).map(descriptorCodeToName).join(', ');
+  document.getElementById('teAmpSearch').value = '';
+  document.getElementById('teCabSearch').value = '';
   populateGearSelect(document.getElementById('teAmp'), gearCatalogue.amps, t.amp && t.amp.key, null);
   renderKnobs(document.getElementById('teAmpKnobs'), gearByKey(gearCatalogue.amps, t.amp && t.amp.key), t.amp && t.amp.knobs);
   populateGearSelect(document.getElementById('teCab'), gearCatalogue.cabinets, t.cabinet && t.cabinet.key, null);
@@ -1938,6 +1959,17 @@ document.getElementById('newTone').addEventListener('click', newToneInForm);
 
 document.getElementById('teAmp').addEventListener('change', e => {
   renderKnobs(document.getElementById('teAmpKnobs'), gearByKey(gearCatalogue.amps, e.target.value), null);
+});
+// Search bars filter the amp / cabinet lists (keeping the current pick visible).
+document.getElementById('teAmpSearch').addEventListener('input', e => {
+  if (!gearCatalogue) return;
+  const sel = document.getElementById('teAmp');
+  populateGearSelect(sel, gearCatalogue.amps, sel.value, null, e.target.value);
+});
+document.getElementById('teCabSearch').addEventListener('input', e => {
+  if (!gearCatalogue) return;
+  const sel = document.getElementById('teCab');
+  populateGearSelect(sel, gearCatalogue.cabinets, sel.value, null, e.target.value);
 });
 document.getElementById('teAddEffect').addEventListener('click', () => addEffectRow('pre', null, null));
 
