@@ -61,6 +61,7 @@ def test_build_manifest_files_packs_and_round_trips() -> None:
         "MySong",
     )
     assert "toolkit.version" in files
+    assert files["appid"] == b"248750"  # Rocksmith 2014 CDLC appid — game won't list it without
     assert "manifests/songs_dlc_mysong/songs_dlc_mysong.hsan" in files
     assert "manifests/songs_dlc_mysong/mysong_lead.json" in files
     assert "manifests/songs_dlc_mysong/mysong_rhythm.json" in files
@@ -68,6 +69,7 @@ def test_build_manifest_files_packs_and_round_trips() -> None:
 
     hsan = json.loads(files["manifests/songs_dlc_mysong/songs_dlc_mysong.hsan"])
     assert len(hsan["Entries"]) == 2
+    assert hsan["InsertRoot"] == "Static.Songs.Entries"
 
     packed = pack_entries(files)
     assert unpack(packed) == files
