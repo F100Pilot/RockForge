@@ -423,7 +423,16 @@ that time, else `toneBase`; both share the chart timeline) — plus each tone to
 audition alone. `toneCharForNote(chartTime)` resolves the per-note character, so
 a chart with several tone changes mirrors each of them. It defaults to following
 the score when tones are marked, unless the user picks otherwise
-(`previewToneTouched`). With no tone selected (`previewToneKey === ''`) it's the
+(`previewToneTouched`).
+
+**On-score tone identification.** The active tone is shown on the tab viewer: an
+amber 🎸 label per tone change (plus the base tone at the start,
+`activeToneKeyAtDisplay`) and a live `#liveTone` label next to the BPM
+(`updateLiveTone`, called from `updateLiveBpm`). `toneCharacter` derives `drive`
+from the descriptor category refined by the amp's actual **Gain knob**
+(continuous blend) + drive pedals, and `bright` from the amp's **treble/bass/
+presence** knobs — so two tones of the same category still differ *if their gear
+differs*. Two tones with identical settings sound identical (correct, not a bug). With no tone selected (`previewToneKey === ''`) it's the
 plain oscillator pluck (sawtooth+triangle → lowpass); with one, `char =
 {drive, bright}` from `toneCharacter(tone)` inserts a **WaveShaper** (drive) and
 shifts the lowpass cutoff (brightness), plus a little makeup gain (distortion

@@ -483,6 +483,7 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
               </select></label>
             <button class="info-btn" data-info="tone-preview">ⓘ</button>
             <span id="liveBpm" style="font-weight:700;color:#b58cff;margin-left:.4rem"></span>
+            <span id="liveTone" style="font-weight:700;color:#e0a54a"></span>
           </div>
           <!-- Audio source: full mix or an isolated Demucs stem (for fine-tuning by ear) -->
           <div class="syncctrls">
@@ -899,7 +900,8 @@ const INFO = {
     title: 'Testar tom na partitura',
     body: '<p>Ouve os <strong>tons que criaste</strong> aplicados às notas (no tique por nota e na fonte "sintetizada"), para comparares o <em>carácter</em> — limpo, crunch, distorcido — sem teres de entrar no Rocksmith de cada vez que ajustas uma definição.</p>' +
       '<p><strong>Voz simples (sem tom)</strong> = só o tique seco da nota, sem coloração. Ao escolher um tom, as notas passam por uma <strong>simulação de guitarra</strong>: corda dedilhada (Karplus-Strong) + distorção (conforme o ganho do tom) + cabine (EQ de corpo e corte de agudos).</p>' +
-      '<p><strong>Seguir partitura</strong>: se marcaste mudanças de tom na música, esta opção troca automaticamente de tom em cada ponto, tal como o criaste. Ou escolhe um tom específico para o ouvir sozinho em toda a música. O seletor fica desativado até criares o primeiro tom.</p>' +
+      '<p><strong>Seguir partitura</strong>: se marcaste mudanças de tom na música, esta opção troca automaticamente de tom em cada ponto, tal como o criaste — e o <strong>tom atual aparece na partitura</strong> (etiqueta âmbar 🎸 em cada mudança + junto ao BPM). Ou escolhe um tom específico para o ouvir sozinho em toda a música. O seletor fica desativado até criares o primeiro tom.</p>' +
+      '<p>Nota: dois tons só soam <em>diferentes</em> se o gear diferir (ganho, EQ do amp, pedais). Dois tons com as <strong>mesmas definições</strong> soam iguais — é esperado. Em "Seguir partitura", se não marcaste nenhuma mudança, toca sempre o tom base.</p>' +
       '<p><strong>Limite honesto:</strong> o RockForge <em>não</em> modela amplificadores. Isto é uma <strong>aproximação do carácter</strong> (ganho/distorção + brilho), calculada a partir dos descritores do tom, do knob de Gain do amp e dos pedais de drive — <strong>não é o som real</strong> do amp/cabine. O som verdadeiro só existe no jogo / DLC Builder, que gera o áudio a partir do gear que gravamos no bundle.</p>'
   },
   'new-job': {
@@ -1426,6 +1428,22 @@ function showArr(i) {
     const x = timeToX(barWarp(previewScale(tbeats[i])));
     if (x < 24 || x > W - 4) continue;
     s += `<line x1="${x}" y1="44" x2="${x}" y2="${SB}" stroke="#b58cff" stroke-width="1.5" stroke-dasharray="3,3" opacity=".6"/>`;
+  }
+  // Tone-change markers: where the tone switches on the score (amber), labelled
+  // with the tone name — so you can see which tone plays where. The base tone is
+  // labelled at the start.
+  if (jobTones.length && (toneBase || toneChanges.length)) {
+    const tName = k => (jobTones.find(t => t.key === k) || {}).name || k;
+    const marks = toneChanges.slice().sort((a, b) => a.time - b.time)
+      .map(c => ({ x: timeToX(barWarp(previewScale(c.time))), name: tName(c.name) }));
+    if (toneBase) marks.unshift({ x: 32, name: tName(toneBase) });
+    for (const m of marks) {
+      if (m.x < 24 || m.x > W - 4) continue;
+      if (m.x > 34) s += `<line x1="${m.x}" y1="44" x2="${m.x}" y2="${SB}" stroke="#e0a54a" stroke-width="1.5" stroke-dasharray="4,2" opacity=".7"/>`;
+      const lw = m.name.length * 6.4 + 20;
+      s += `<rect x="${m.x + 1}" y="${SB + 20}" width="${lw.toFixed(0)}" height="16" rx="4" fill="#14151a" opacity=".8"/>`;
+      s += `<text x="${m.x + 6}" y="${SB + 32}" fill="#e0a54a" font-size="11" font-weight="700">🎸 ${esc(m.name)}</text>`;
+    }
   }
   // Lyrics editor times are in recording-time (un-padded); shift to the display
   // timeline the same way the notes do — by viewOrigin AND the intro silence
@@ -2874,15 +2892,32 @@ function distortionCurve(drive) {
 function toneCharacter(tone) {
   if (!tone) return null;
   const d = (tone.descriptors || []).join(' ').toUpperCase();
-  let drive = 0.12;
-  if (d.includes('HIGH GAIN') || d.includes('DISTORTION') || d.includes('METAL')) drive = 0.85;
-  else if (d.includes('CRUNCH') || d.includes('OVERDRIVE') || d.includes('DRIVE')) drive = 0.5;
-  else if (d.includes('CLEAN')) drive = 0.06;
-  for (const [k, v] of Object.entries((tone.amp && tone.amp.knobs) || {}))
-    if (/gain/i.test(k) && !isNaN(+v)) drive = Math.max(drive, Math.min(1, +v / 100));
+  // Base drive from the gain category…
+  let base = 0.12;
+  if (d.includes('HIGH GAIN') || d.includes('DISTORTION') || d.includes('METAL')) base = 0.85;
+  else if (d.includes('CRUNCH') || d.includes('OVERDRIVE') || d.includes('DRIVE')) base = 0.5;
+  else if (d.includes('CLEAN')) base = 0.06;
+  // …refined by the amp's actual knob values, so two tones of the SAME category
+  // still sound different when their Gain / tone stack differ.
+  let gain = null, treb = null, bass = null, pres = null;
+  for (const [k, v] of Object.entries((tone.amp && tone.amp.knobs) || {})) {
+    if (isNaN(+v)) continue;
+    if (/gain|drive/i.test(k)) gain = +v;
+    else if (/pres/i.test(k)) pres = +v;
+    else if (/treb|high/i.test(k)) treb = +v;
+    else if (/bass|low/i.test(k)) bass = +v;
+  }
+  let drive = gain != null ? base * 0.4 + (gain / 100) * 0.6 : base;
   const pedals = [...(tone.pre || []), ...(tone.post || []), ...(tone.racks || [])].filter(Boolean);
-  if (pedals.some(p => /dist|overdrive|fuzz|metal|drive/i.test(p.key || ''))) drive = Math.min(1, drive + 0.2);
-  const bright = d.includes('LEAD') ? 0.75 : d.includes('BASS') ? 0.25 : 0.5;
+  if (pedals.some(p => /dist|overdrive|fuzz|metal|drive/i.test(p.key || ''))) drive += 0.18;
+  drive = Math.max(0, Math.min(1, drive));
+  // Brightness from the tone stack (treble/presence up, bass down) when present,
+  // else the role — again so distinct tones read differently.
+  let bright = d.includes('BASS') ? 0.25 : d.includes('LEAD') ? 0.7 : 0.5;
+  if (treb != null || bass != null || pres != null) {
+    const t = (treb ?? 50) / 100, b = (bass ?? 50) / 100, p = (pres ?? 50) / 100;
+    bright = Math.max(0.1, Math.min(0.95, 0.35 + t * 0.4 + p * 0.2 - b * 0.15));
+  }
   return { drive, bright };
 }
 let previewToneTouched = false;  // did the user pick a preview source themselves?
@@ -3127,6 +3162,29 @@ function updateLiveBpm(vtDisp) {
   if (!el) return;
   const info = liveInfoAtTime(vtDisp);
   el.textContent = info && info.bpm ? `♩ = ${info.bpm}${info.measure ? ` · c.${info.measure}` : ''}` : '';
+  updateLiveTone(vtDisp);
+}
+
+// The tone key active at a display-time position, following the tones marked on
+// the score (change markers are in chart time → warped to display like notes).
+function activeToneKeyAtDisplay(vtDisp) {
+  const warp = buildTimeWarp(syncAnchors);
+  let key = toneBase || toneNames[0] || (jobTones[0] && jobTones[0].key) || null;
+  for (const c of toneChanges.slice().sort((a, b) => a.time - b.time)) {
+    if (warp(previewScale(c.time)) <= vtDisp) key = c.name; else break;
+  }
+  return key;
+}
+
+// The live "tom atual" label: which created tone plays at the playhead. Shown
+// only when the song actually has tones assigned (a base or a change).
+function updateLiveTone(vtDisp) {
+  const el = document.getElementById('liveTone');
+  if (!el) return;
+  if (!jobTones.length || !(toneBase || toneChanges.length)) { el.textContent = ''; return; }
+  const key = activeToneKeyAtDisplay(vtDisp);
+  const name = key ? ((jobTones.find(t => t.key === key) || {}).name || key) : null;
+  el.textContent = name ? `🎸 ${name}` : '';
 }
 
 // ---- Stand-alone arrangement preview (synthesized from the chart, no
