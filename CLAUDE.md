@@ -588,6 +588,15 @@ both download links when `psarc_available` is true. If the `[psarc]` extra
 (`cryptography`) is missing, `NativePsarcPacker` gracefully degrades: the bundle
 is still produced, only the `.psarc` is omitted (no crash).
 
+**Rocksmith PC load requirements (a song not appearing in the in-game list is
+usually one of these missing):** the file MUST be named `*_p.psarc` (the `_p`
+platform tag — `packer.py`), the PSARC MUST contain an `appid` file at the root
+(`manifest.APP_ID = "248750"`), and the manifests carry `InsertRoot`
+(`Static.Songs.Entries`). These are necessary but the native PSARC is **still
+unverified in-game** (see the SNG note above) and lacks a Wwise SoundBank
+(`.bnk`), so even when it lists, audio may not play — the **trustworthy path is
+the DLC Builder bundle** (import it and let DLC Builder build the PSARC).
+
 ### Standalone executable (`build_exe.py` / PyInstaller)
 
 `start_standalone.py` is the entry point for the PyInstaller-built `.exe`. It

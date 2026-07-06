@@ -128,7 +128,10 @@ class NativePsarcPacker:
             files[f"audio/{key_lower}{audio_for_psarc.suffix}"] = audio_for_psarc.read_bytes()
 
             psarc_bytes = container.pack_entries(files, encrypt=True)
-            psarc_path = out_dir / f"{song_key}.psarc"
+            # Rocksmith 2014 on PC only loads CDLC whose filename ends in
+            # "_p.psarc" (the "_p" platform tag) — without it the game ignores
+            # the file and the song never appears in the song list.
+            psarc_path = out_dir / f"{song_key}_p.psarc"
             psarc_path.write_bytes(psarc_bytes)
         except ImportError:
             pass
