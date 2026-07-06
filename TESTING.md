@@ -15,7 +15,7 @@ CI cannot. Read this before adding or changing a test.
 
 ```bash
 pip install -e ".[dev]"     # core + test tooling, NO ML stack — this is all CI needs
-pytest                       # 276 tests, ~10s, all ML/Wwise/external tools faked
+pytest                       # 278 tests, ~10s, all ML/Wwise/external tools faked
 ruff check src tests         # lint
 mypy                         # type check
 ```
@@ -68,7 +68,7 @@ serializers) need no fakes — they are deterministic and tested directly.
 |---|---|---|
 | **Lint** | `ruff check src tests` | style, unused imports/vars, import order, obvious bugs |
 | **Types** | `mypy` | strict on `domain/`/`application/`/`infrastructure/`; relaxed at framework boundaries (FastAPI/SQLAlchemy/Pydantic) via per-module overrides in `pyproject.toml` |
-| **Tests** | `pytest` | 276 functional tests (see §4) |
+| **Tests** | `pytest` | 278 functional tests (see §4) |
 
 mypy strictness is deliberate: the `domain` and `application` layers carry the
 music model and orchestration logic and must be fully typed. The
@@ -78,7 +78,7 @@ explicit `cast(...)`.
 
 ---
 
-## 4. Coverage map (276 tests across 27 files)
+## 4. Coverage map (278 tests across 27 files)
 
 | File | Tests | Guards |
 |---|---:|---|
