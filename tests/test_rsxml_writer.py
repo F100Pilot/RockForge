@@ -3,9 +3,18 @@ from pathlib import Path
 
 import pytest
 
-from rockforge.domain.arrangement import Arrangement, ArrangementKind, SongMetadata
+from rockforge.domain.arrangement import (
+    Arrangement,
+    ArrangementKind,
+    SongMetadata,
+    ToneChange,
+)
 from rockforge.domain.music import Beat, TabNote, Technique, TempoMap, Tuning
-from rockforge.infrastructure.rsxml.writer import _fmt, write_arrangement_xml
+from rockforge.infrastructure.rsxml.writer import (
+    _fmt,
+    _safe_tone_time,
+    write_arrangement_xml,
+)
 
 
 def make_arrangement() -> Arrangement:
@@ -226,3 +235,30 @@ def test_rejects_invalid_arrangement(tmp_path: Path) -> None:
     arr.notes = []
     with pytest.raises(ValueError, match="no notes"):
         write_arrangement_xml(arr, tmp_path / "bad.xml")
+
+
+def test_tone_change_never_lands_on_a_note(tmp_path: Path) -> None:
+    """DLC Builder errors on a tone change coinciding with a note. The writer
+    nudges it just before the note it starts on, after the previous note."""
+    arr = make_arrangement()  # notes at 1.0, 2.0, 3.0
+    arr.tone_names = ["dist"]
+    arr.tone_changes = [ToneChange(time=2.0, name="dist")]  # exactly on the 2.0 note
+    out = write_arrangement_xml(arr, tmp_path / "lead.xml")
+    tone = ET.parse(out).getroot().find("tones/tone")
+    assert tone is not None and tone.get("name") == "dist"
+    t = float(tone.get("time", "0"))
+    assert t not in {1.0, 2.0, 3.0}  # never exactly on a note
+    assert 1.0 < t < 2.0  # immediately before its note, after the previous one
+
+
+def test_safe_tone_time_uses_gap_then_midpoint() -> None:
+    # comfortable gap before the target note
+    assert _safe_tone_time(2.0, [1.0, 2.0, 3.0]) == pytest.approx(1.98)
+    # previous note too close for the 20 ms gap → sit halfway between them
+    assert _safe_tone_time(2.0, [1.99, 2.0]) == pytest.approx(1.995)
+    # first note (no previous) still nudges before it, never negative
+    assert _safe_tone_time(1.0, [1.0, 2.0]) == pytest.approx(0.98)
+    assert _safe_tone_time(0.01, [0.01, 1.0]) >= 0.0
+    # a time that isn't on any note is left untouched (e.g. a silent arrangement
+    # there) — no dragging it to a far note
+    assert _safe_tone_time(1.5, [1.0, 2.0]) == pytest.approx(1.5)
