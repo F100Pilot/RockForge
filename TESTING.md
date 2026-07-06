@@ -15,7 +15,7 @@ CI cannot. Read this before adding or changing a test.
 
 ```bash
 pip install -e ".[dev]"     # core + test tooling, NO ML stack — this is all CI needs
-pytest                       # 278 tests, ~10s, all ML/Wwise/external tools faked
+pytest                       # 279 tests, ~10s, all ML/Wwise/external tools faked
 ruff check src tests         # lint
 mypy                         # type check
 ```
@@ -68,7 +68,7 @@ serializers) need no fakes — they are deterministic and tested directly.
 |---|---|---|
 | **Lint** | `ruff check src tests` | style, unused imports/vars, import order, obvious bugs |
 | **Types** | `mypy` | strict on `domain/`/`application/`/`infrastructure/`; relaxed at framework boundaries (FastAPI/SQLAlchemy/Pydantic) via per-module overrides in `pyproject.toml` |
-| **Tests** | `pytest` | 278 functional tests (see §4) |
+| **Tests** | `pytest` | 279 functional tests (see §4) |
 
 mypy strictness is deliberate: the `domain` and `application` layers carry the
 music model and orchestration logic and must be fully typed. The
@@ -78,7 +78,7 @@ explicit `cast(...)`.
 
 ---
 
-## 4. Coverage map (278 tests across 27 files)
+## 4. Coverage map (279 tests across 27 files)
 
 | File | Tests | Guards |
 |---|---:|---|
@@ -106,7 +106,7 @@ explicit `cast(...)`.
 | `test_banquet_adapter.py` | 5 | Banquet (EM TESTES) `inference_byoq` command build, one pass per query clip, device→`use_cuda`, missing-setup errors |
 | `test_device_resolution.py` | 4 | `_resolve_device` auto/cpu/cuda + degrade-to-CPU on import failure |
 | `test_tags.py` | 2 | audio metadata tag extraction |
-| `test_api.py` | 59 | every endpoint (§6): job lifecycle, rebuild composition, detect-* / separate-stems enqueue (mocked), lyrics/tones/stems status, deletion, per-test SQLite |
+| `test_api.py` | 60 | every endpoint (§6): job lifecycle, rebuild composition, detect-* / separate-stems enqueue (mocked), lyrics/tones/stems status, deletion, per-test SQLite |
 | `test_settings.py` | 5 | in-app settings (`/settings`): default demucs, persist+read-back, invalid separator 422, Banquet path validation, empty-string clears override |
 
 ### Key regression tests — do not delete these without understanding why

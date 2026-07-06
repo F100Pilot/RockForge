@@ -1613,10 +1613,13 @@ async function applyAll() {
       apply_to_all: applyToAll,
       import_mutes: document.getElementById('muteChk').checked,
       lyrics_events: lyricsEvents.length ? serializeLyrics() : null,
-      tones: jobTones.length ? jobTones : null,
-      tone_base: toneBase || null,
-      tone_names: toneNames.length ? toneNames : null,
-      tone_changes: toneChanges.length ? toneChanges : null,
+      // Send the FULL current tone state for GP jobs (even when empty) so that
+      // clearing tones/changes actually persists — null would mean "keep the
+      // old value". Non-GP jobs have no tones, so send null to skip the guard.
+      tones: isGpJob() ? jobTones : null,
+      tone_base: isGpJob() ? (toneBase || '') : null,
+      tone_names: isGpJob() ? toneNames : null,
+      tone_changes: isGpJob() ? toneChanges : null,
     }),
   });
   const b = await r.json();
