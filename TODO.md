@@ -109,6 +109,11 @@ ver `TESTING.md`.
   (limpo/crunch/distorcido + brilho), NÃO o som real do amp (esse só no
   jogo/DLC Builder).
 
+- [x] **Barra de pesquisa no construtor de tons**: cada seletor de gear
+  (amplificador, cabine, e pedais pré/pós/rack) tem uma pesquisa que filtra a
+  lista por nome/key, mantendo sempre a escolha atual visível (nunca troca o
+  gear silenciosamente). `populateGearSelect(..., filter)` no `web/index.html`.
+
 - [ ] **Exportar/importar estado de sincronização como JSON**: permitir
   guardar/restaurar `sync_anchor_stages`, `tempo_scale`, `arrangement_sync` e
   `lyrics_events` para não perder ajustes manuais finos.
