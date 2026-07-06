@@ -22,6 +22,28 @@ def _fmt(x: float) -> str:
     return f"{x:.3f}"
 
 
+# A tone switch must NOT land exactly on a note time — DLC Builder errors on a
+# tone change coinciding with a note. Place it just before the note it starts on
+# (nearest note to the requested time), but strictly after the previous note so
+# it never overlaps it. Per-arrangement (each arrangement has its own notes).
+TONE_SWITCH_GAP_S = 0.02
+TONE_COLLISION_S = 0.01  # within this of a note = "on the note", must be nudged
+
+
+def _safe_tone_time(t: float, note_times: list[float]) -> float:
+    if not note_times:
+        return round(max(0.0, t), 3)
+    target = min(note_times, key=lambda nt: abs(nt - t))  # nearest note
+    if abs(target - t) > TONE_COLLISION_S:
+        return round(max(0.0, t), 3)  # not on a note — already safe, leave it
+    prev = max((nt for nt in note_times if nt < target - 1e-4), default=None)
+    safe = target - TONE_SWITCH_GAP_S
+    lo = prev if prev is not None else target - 2 * TONE_SWITCH_GAP_S
+    if safe <= lo + 1e-4:  # previous note too close — sit halfway between them
+        safe = (lo + target) / 2.0
+    return round(max(0.0, safe), 3)
+
+
 def _group_chords(notes: list[TabNote]) -> list[list[TabNote]]:
     """Group simultaneous notes; singletons stay single notes, groups become chords."""
     ordered = sorted(notes, key=lambda n: (n.time, n.string))
@@ -259,8 +281,10 @@ def render_arrangement(arr: Arrangement) -> ET.Element:
     for slot, name in zip(("tonea", "toneb", "tonec", "toned"), arr.tone_names, strict=False):
         ET.SubElement(song, slot).text = name
     tones_el = ET.SubElement(song, "tones", count=str(len(arr.tone_changes)))
+    tone_note_times = sorted(n.time for n in arr.notes)
     for tc in sorted(arr.tone_changes, key=lambda c: c.time):
-        ET.SubElement(tones_el, "tone", time=_fmt(tc.time), name=tc.name)
+        safe_t = _safe_tone_time(tc.time, tone_note_times)
+        ET.SubElement(tones_el, "tone", time=_fmt(safe_t), name=tc.name)
 
     # Sections must cover the song and end with the conventional "noguitar"
     # closer at the END phrase time (Riff Repeater navigation + song-end cue).

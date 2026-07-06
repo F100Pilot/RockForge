@@ -645,6 +645,14 @@ pinned (`mypy~=1.19.0`) so local matches CI — do not bump it casually.
   `phraseIteration`. The writer emits COUNT/default/END phrases with END placed
   after the last note, plus a closing `noguitar` section. Guarded by
   `test_phrase_structure_marks_song_end`. Don't remove the END phrase.
+- **A tone change must not coincide with a note.** DLC Builder errors when a
+  `<tone time>` event lands exactly on a note's time. The writer nudges each
+  tone change to `TONE_SWITCH_GAP_S` (20 ms) *before* the note it starts on, but
+  strictly after the previous note (halfway between them if that gap is tighter
+  than 20 ms) — per-arrangement, using that arrangement's own note times. A tone
+  time not on any note (e.g. an arrangement silent there) is left untouched.
+  `_safe_tone_time` in `rsxml/writer.py`, guarded by
+  `test_tone_change_never_lands_on_a_note` / `test_safe_tone_time_uses_gap_then_midpoint`.
 - **External CLIs must not inherit stdin.** ffmpeg (and any console tool) run as
   a subprocess from the Windows `start.bat` worker inherits the console's stdin,
   goes interactive and blocks forever — the symptom is a job stuck at the

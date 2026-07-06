@@ -89,7 +89,7 @@ explicit `cast(...)`.
 | `test_gp_import.py` | 9 | PyGuitarPro (GP3/4/5) parsing: notes/frets/techniques/sections/tempo |
 | `test_gpif_import.py` | 6 | native GP7/GP8 (`.gp`) GPIF/XML parser: tuning, timing, Hopo/slide/palm-mute, lyric sourcing, bass rejection |
 | `test_gp_pipeline.py` | 16 | GP use case: `tempo_scale`, `sync_anchor_stages`, `arrangement_sync`, lyrics precedence, `pad_start_s` shift |
-| `test_rsxml_writer.py` | 13 | Song2014 XML: the **32 arrangementProperties** attrs, COUNT/default/END phrase structure, chords |
+| `test_rsxml_writer.py` | 15 | Song2014 XML: the **32 arrangementProperties** attrs, COUNT/default/END phrase structure, chords |
 | `test_vocals.py` | 19 | `parse_lyrics` (LRC + UltraStar), `expand_to_words` (trailing `+`), `events_from_dicts`, `distribute_syllables` (GP lyrics → note-onset alignment, melisma `_`) |
 | `test_lyrics_transcribe.py` | 6 | WhisperX adapter: RMS gate, per-word confidence filter, segment→event mapping (whisperx itself stubbed) |
 | `test_tone_gear.py` | 11 | `domain/tone.py` gear model + `tone_from_dict`/`tones_from_dicts` |
