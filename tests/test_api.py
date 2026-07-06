@@ -464,6 +464,38 @@ def test_rebuild_stores_tones_and_changes(client: TestClient, tmp_path) -> None:
     assert tones["tone_changes"][0]["time"] == 5.0
 
 
+def test_rebuild_empty_tone_fields_clear_them(client: TestClient, tmp_path) -> None:
+    """Removing all tones/changes must persist: the tone editor sends concrete
+    empties ([]/""), which clear the params — not null, which would keep them."""
+    job = _gp_job(client, tmp_path)
+    tone = {
+        "key": "lead",
+        "name": "Lead",
+        "amp": {"key": "Amp_MarshallJCM800", "knobs": {"Amp_MarshallJCM800_Gain": 90}},
+        "cabinet": {"key": "Cab_Marshall1960TV_Ribbon_Cone"},
+    }
+    set_up = client.post(
+        f"/jobs/{job['id']}/rebuild",
+        json={
+            "tone_base": "lead",
+            "tone_names": ["lead"],
+            "tones": [tone],
+            "tone_changes": [{"time": 5.0, "name": "lead"}],
+        },
+    ).json()
+    assert client.get(f"/jobs/{set_up['id']}/tones").json()["tone_base"] == "lead"
+
+    cleared = client.post(
+        f"/jobs/{set_up['id']}/rebuild",
+        json={"tone_base": "", "tone_names": [], "tones": [], "tone_changes": []},
+    ).json()
+    tones = client.get(f"/jobs/{cleared['id']}/tones").json()
+    assert tones["tone_base"] is None
+    assert tones["tone_names"] == []
+    assert tones["tones"] == []
+    assert tones["tone_changes"] == []
+
+
 def test_reload_gp_forks_job_and_keeps_overrides(client: TestClient, tmp_path) -> None:
     """Reloading the GP file rebuilds with a fresh gp_path but preserves the
     job's existing sync/tone overrides (no need to redo alignment work)."""
