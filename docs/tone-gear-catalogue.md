@@ -1,0 +1,969 @@
+# Catálogo de gear de tons — Rocksmith 2014 (RockForge)
+
+Lista completa do gear disponível no construtor de tons do RockForge, com os knobs de cada peça (nome, key exata, gama, valor por defeito e passo). Fonte: catálogo Rocksmith vendido (`tone_gear_data.json`, de Rocksmith2014.NET/DLC Builder). Gerado automaticamente a partir de `catalogue_for_ui()`.
+
+## Como um tom é montado
+
+Cada tom = **1 amplificador + 1 cabine + até 4 pré-pedais + até 4 pós-pedais + até 4 racks**. Os *pedais* são a mesma lista quer sejam usados como pré ou pós (a posição é do slot, não muda a peça). As *keys* dos knobs são autoritativas (ex.: a Presence do JCM800 é `Amp_MarshallJCM800_Pres`).
+
+Há gear de **guitarra** e de **baixo** (keys com prefixo `Bass_`). Unidades: `number` (sem unidade), `%`, `ms`, `enum` (valor discreto), `dB`, `Hz`.
+
+**Totais:** 63 amps · 450 cabines · 83 pedais · 17 racks · 32 descritores.
+
+
+## Amplificadores — guitarra (45)
+
+- **AMTW-22** — `Amp_TW22`
+    - **Gain** (`Amp_TW22_Gain`): 1–100, default `25`, passo 1
+    - **Bass** (`Amp_TW22_Bass`): 1–100, default `40`, passo 1
+    - **Mid** (`Amp_TW22_Mid`): 1–100, default `56`, passo 1
+    - **Treble** (`Amp_TW22_Treble`): 1–100, default `65`, passo 1
+- **AMTW-26** — `Amp_TW26`
+    - **Gain** (`Amp_TW26_Gain`): 1–100, default `64`, passo 1
+    - **Bass** (`Amp_TW26_Bass`): 1–100, default `44`, passo 1
+    - **Mid** (`Amp_TW26_Mid`): 1–100, default `55`, passo 1
+    - **Treble** (`Amp_TW26_Treble`): 1–100, default `76`, passo 1
+    - **Presence** (`Amp_TW26_Pres`): 1–100, default `69`, passo 1
+- **AMTW-40** — `Amp_TW40`
+    - **Gain** (`Amp_TW40_Gain`): 1–100, default `80`, passo 1
+    - **Bass** (`Amp_TW40_Bass`): 1–100, default `80`, passo 1
+    - **Mid** (`Amp_TW40_Mid`): 1–100, default `80`, passo 1
+    - **Treble** (`Amp_TW40_Treble`): 1–100, default `80`, passo 1
+    - **Presence** (`Amp_TW40_Pres`): 1–100, default `69`, passo 1
+- **AT-120** — `Amp_AT120`
+    - **Gain** (`Amp_AT120_Gain`): 1–100, default `50`, passo 1
+    - **Bass** (`Amp_AT120_Bass`): 1–100, default `44`, passo 1
+    - **Mid** (`Amp_AT120_Mid`): 1–100, default `66`, passo 1
+    - **Treble** (`Amp_AT120_Treble`): 1–100, default `66`, passo 1
+- **AT-20** — `Amp_AT20`
+    - **Gain** (`Amp_AT20_Gain`): 1–100, default `32`, passo 1
+    - **Bass** (`Amp_AT20_Bass`): 1–100, default `50`, passo 1
+    - **Treble** (`Amp_AT20_Treble`): 1–100, default `85`, passo 1
+- **BTQ-15** — `Amp_BT15`
+    - **Gain** (`Amp_BT15_Gain`): 1–100, default `88`, passo 1
+    - **Bass** (`Amp_BT15_Bass`): 1–100, default `65`, passo 1
+    - **Mid** (`Amp_BT15_Mid`): 1–100, default `66`, passo 1
+    - **Treble** (`Amp_BT15_Treble`): 1–100, default `80`, passo 1
+- **BTQ-30** — `Amp_BT30`
+    - **Gain** (`Amp_BT30_Gain`): 1–100, default `72`, passo 1
+    - **Bass** (`Amp_BT30_Bass`): 1–100, default `65`, passo 1
+    - **Mid** (`Amp_BT30_Pres`): 1–100, default `66`, passo 1
+    - **Treble** (`Amp_BT30_Treble`): 1–100, default `74`, passo 1
+- **BTQ-45** — `Amp_BT45`
+    - **Gain** (`Amp_BT45_Gain`): 1–100, default `40`, passo 1
+    - **Bass** (`Amp_BT45_Bass`): 1–100, default `65`, passo 1
+    - **Mid** (`Amp_BT45_Mid`): 1–100, default `66`, passo 1
+    - **Treble** (`Amp_BT45_Treble`): 1–100, default `56`, passo 1
+- **CL-SS 100** — `Amp_CS100`
+    - **Gain** (`Amp_CS100_Gain`): 1–100, default `12`, passo 1
+    - **Bass** (`Amp_CS100_Bass`): 1–100, default `60`, passo 1
+    - **Mid** (`Amp_CS100_Mid`): 1–100, default `60`, passo 1
+    - **Treble** (`Amp_CS100_Treble`): 1–100, default `75`, passo 1
+- **CL-SS 120** — `Amp_CS120`
+    - **Gain** (`Amp_CS120_Gain`): 1–100, default `5`, passo 1
+    - **Bass** (`Amp_CS120_Bass`): 1–100, default `60`, passo 1
+    - **Mid** (`Amp_CS120_Mid`): 1–100, default `60`, passo 1
+    - **Treble** (`Amp_CS120_Treble`): 1–100, default `70`, passo 1
+- **CL-SS 90** — `Amp_CS90`
+    - **Gain** (`Amp_CS90_Gain`): 1–100, default `2`, passo 1
+    - **Bass** (`Amp_CS90_Bass`): 1–100, default `60`, passo 1
+    - **Mid** (`Amp_CS90_Mid`): 1–100, default `60`, passo 1
+    - **Treble** (`Amp_CS90_Treble`): 1–100, default `70`, passo 1
+- **Cali-100** — `Amp_CA100`
+    - **Gain** (`Amp_CA100_Gain`): 1–100, default `100`, passo 1
+    - **Bass** (`Amp_CA100_Bass`): 1–100, default `55`, passo 1
+    - **Mid** (`Amp_CA100_Mid`): 1–100, default `85`, passo 1
+    - **Treble** (`Amp_CA100_Treble`): 1–100, default `100`, passo 1
+    - **Presence** (`Amp_CA100_Pres`): 1–100, default `30`, passo 1
+- **Cali-38** — `Amp_CA38`
+    - **Gain** (`Amp_CA38_Gain`): 1–100, default `65`, passo 1
+    - **Bass** (`Amp_CA38_Bass`): 1–100, default `80`, passo 1
+    - **Mid** (`Amp_CA38_Mid`): 1–100, default `80`, passo 1
+    - **Treble** (`Amp_CA38_Treble`): 1–100, default `70`, passo 1
+- **Cali-85** — `Amp_CA85`
+    - **Gain** (`Amp_CA85_Gain`): 1–100, default `12`, passo 1
+    - **Bass** (`Amp_CA85_Bass`): 1–100, default `71`, passo 1
+    - **Mid** (`Amp_CA85_Mid`): 1–100, default `42`, passo 1
+    - **Treble** (`Amp_CA85_Treble`): 1–100, default `74`, passo 1
+- **DI. Bass Driver** — `DI_Amp_BassDriver`
+    - **Gain** (`DI_Amp_BassDriver_Gain`): 1–100, default `50`, passo 1
+    - **Bass** (`DI_Amp_BassDriver_Bass`): 1–100, default `66`, passo 1
+    - **Presence** (`DI_Amp_BassDriver_Pres`): 1–100, default `45`, passo 1
+    - **Treble** (`DI_Amp_BassDriver_Treble`): 1–100, default `65`, passo 1
+    - **Blend** (`DI_Amp_BassDriver_Blend`): 0–100 %, default `71`, passo 1
+- **DI. Mixer** — `DI_Amp_MixerPre`
+    - **Gain** (`DI_Amp_MixerPre_Gain`): 1–100, default `10`, passo 1
+    - **Bass** (`DI_Amp_MixerPre_Bass`): 1–100, default `50`, passo 1
+    - **Mid** (`DI_Amp_MixerPre_Mid`): 1–100, default `50`, passo 1
+    - **Treble** (`DI_Amp_MixerPre_Treble`): 1–100, default `50`, passo 1
+    - **Tone** (`DI_Amp_MixerPre_Tone`): 1–100, default `76`, passo 1
+- **DI. Pre Tube** — `DI_Amp_TubePre`
+    - **Gain** (`DI_Amp_TubePre_Gain`): 1–100, default `10`, passo 1
+    - **Bass** (`DI_Amp_TubePre_Bass`): 1–100, default `50`, passo 1
+    - **Mid** (`DI_Amp_TubePre_Mid`): 1–100, default `50`, passo 1
+    - **Treble** (`DI_Amp_TubePre_Treble`): 1–100, default `50`, passo 1
+    - **Mid. Freq. Select** (`DI_Amp_TubePre_MidFreq`): 0–2, default `1`, passo 1
+- **EN-30** — `Amp_EN30`
+    - **Gain** (`Amp_EN30_Gain`): 1–100, default `60`, passo 1
+    - **Bass** (`Amp_EN30_Bass`): 1–100, default `32`, passo 1
+    - **Treble** (`Amp_EN30_Treble`): 1–100, default `88`, passo 1
+    - **Mid** (`Amp_EN30_Mid`): 1–100, default `68`, passo 1
+    - **Bright** (`Amp_EN30_Bright`): 0–1, default `1`, passo 1
+    - **Presence** (`Amp_EN30_Pres`): 1–100, default `30`, passo 1
+- **EN-50** — `Amp_EN50`
+    - **Gain** (`Amp_EN50_Gain`): 1–100, default `85`, passo 1
+    - **Bass** (`Amp_EN50_Bass`): 1–100, default `80`, passo 1
+    - **Mid** (`Amp_EN50_Mid`): 1–100, default `24`, passo 1
+    - **Treble** (`Amp_EN50_Treble`): 1–100, default `76`, passo 1
+    - **Bright** (`Amp_EN50_Bright`): 0–1, default `1`, passo 1
+- **Epiphone Electar Century** — `Amp_EpiphoneElectarCentury`
+    - **Volume** (`Amp_EpiphoneElectarCentury_Gain`): 1–100, default `88`, passo 1
+- **Epiphone Electar Model M** — `Amp_EpiphoneElectarM`
+    - **Gain** (`Amp_EpiphoneElectarM_Gain`): 1–100, default `88`, passo 1
+- **Epiphone Electric Hawaiian** — `Amp_EpiphoneElectricHawaiian`
+    - **Gain** (`Amp_EpiphoneElectricHawaiian_Gain`): 1–100, default `88`, passo 1
+    - **Tone** (`Amp_EpiphoneElectricHawaiian_Tone`): 1–100, default `75`, passo 1
+- **Epiphone Zephyr** — `Amp_EpiphoneZephyr`
+    - **Speaker** (`Amp_EpiphoneZephyr_Gain`): 1–100, default `88`, passo 1
+    - **Bass** (`Amp_EpiphoneZephyr_Bass`): 1–100, default `75`, passo 1
+    - **Treble** (`Amp_EpiphoneZephyr_Treble`): 1–100, default `66`, passo 1
+- **GBC-1H** — `Amp_GB100`
+    - **Gain** (`Amp_GB100_Gain`): 1–100, default `100`, passo 1
+    - **Bass** (`Amp_GB100_Bass`): 1–100, default `100`, passo 1
+    - **Mid** (`Amp_GB100_Mid`): 1–100, default `100`, passo 1
+    - **Treble** (`Amp_GB100_Treble`): 1–100, default `100`, passo 1
+    - **Presence** (`Amp_GB100_Pres`): 1–100, default `52`, passo 1
+- **GBC-38** — `Amp_GB38`
+    - **Gain** (`Amp_GB38_Gain`): 1–100, default `65`, passo 1
+    - **Bass** (`Amp_GB38_Bass`): 1–100, default `55`, passo 1
+    - **Mid** (`Amp_GB38_Mid`): 1–100, default `85`, passo 1
+    - **Treble** (`Amp_GB38_Treble`): 1–100, default `80`, passo 1
+    - **Presence** (`Amp_GB38_Pres`): 1–100, default `30`, passo 1
+- **GBC-50** — `Amp_GB50`
+    - **Gain** (`Amp_GB50_Gain`): 1–100, default `55`, passo 1
+    - **Bass** (`Amp_GB50_Bass`): 1–100, default `65`, passo 1
+    - **Mid** (`Amp_GB50_Mid`): 1–100, default `62`, passo 1
+    - **Treble** (`Amp_GB50_Treble`): 1–100, default `80`, passo 1
+    - **Presence** (`Amp_GB50_Pres`): 1–100, default `76`, passo 1
+- **Gibson GA-79** — `Amp_GibsonGA79`
+    - **Volume 1** (`Amp_GibsonGA79_Gain`): 1–100, default `88`, passo 1
+    - **Bass** (`Amp_GibsonGA79_Bass`): 1–100, default `75`, passo 1
+    - **Treble** (`Amp_GibsonGA79_Treble`): 1–100, default `66`, passo 1
+- **Gibson GA-8** — `Amp_GibsonGA8`
+    - **Loudness** (`Amp_GibsonGA8_Gain`): 1–100, default `88`, passo 1
+    - **Bass** (`Amp_GibsonGA8_Bass`): 1–100, default `75`, passo 1
+    - **Treble** (`Amp_GibsonGA8_Treble`): 1–100, default `66`, passo 1
+- **Gibson GA-88** — `Amp_GibsonGA88`
+    - **Volume** (`Amp_GibsonGA88_Gain`): 1–100, default `88`, passo 1
+    - **Bass** (`Amp_GibsonGA88_Bass`): 1–100, default `75`, passo 1
+    - **Treble** (`Amp_GibsonGA88_Treble`): 1–100, default `66`, passo 1
+- **HG-100** — `Amp_HG100`
+    - **Gain** (`Amp_HG100_Gain`): 1–100, default `100`, passo 1
+    - **Bass** (`Amp_HG100_Bass`): 1–100, default `80`, passo 1
+    - **Mid** (`Amp_HG100_Mid`): 1–100, default `69`, passo 1
+    - **Treble** (`Amp_HG100_Treble`): 1–100, default `85`, passo 1
+- **HG-180** — `Amp_HG180`
+    - **Gain** (`Amp_HG180_Gain`): 1–100, default `100`, passo 1
+    - **Bass** (`Amp_HG180_Bass`): 1–100, default `88`, passo 1
+    - **Mid** (`Amp_HG180_Mid`): 1–100, default `80`, passo 1
+    - **Treble** (`Amp_HG180_Treble`): 1–100, default `68`, passo 1
+- **HG-500** — `Amp_HG500`
+    - **Gain** (`Amp_HG500_Gain`): 1–100, default `100`, passo 1
+    - **Bass** (`Amp_HG500_Bass`): 1–100, default `65`, passo 1
+    - **Mid** (`Amp_HG500_Mid`): 1–100, default `44`, passo 1
+    - **Mid-Frequency** (`Amp_HG500_MidFreq`): 1–100, default `38`, passo 1
+    - **Treble** (`Amp_HG500_Treble`): 1–100, default `86`, passo 1
+- **Marshall 1962 "Bluesbreaker" ** — `Amp_Marshall1962Bluesbreaker`
+    - **Volume** (`Amp_Marshall1962Bluesbreaker_Gain`): 1–100, default `88`, passo 1
+    - **Bass** (`Amp_Marshall1962Bluesbreaker_Bass`): 1–100, default `75`, passo 1
+    - **Mid** (`Amp_Marshall1962Bluesbreaker_Mid`): 1–100, default `66`, passo 1
+    - **Treble** (`Amp_Marshall1962Bluesbreaker_Treble`): 1–100, default `66`, passo 1
+    - **Presence** (`Amp_Marshall1962Bluesbreaker_Pres`): 1–100, default `30`, passo 1
+- **Marshall DSL100H** — `Amp_MarshallDSL100H`
+    - **Gain** (`Amp_MarshallDSL100H_Gain`): 1–100, default `88`, passo 1
+    - **Bass** (`Amp_MarshallDSL100H_Bass`): 1–100, default `75`, passo 1
+    - **Mid** (`Amp_MarshallDSL100H_Mid`): 1–100, default `66`, passo 1
+    - **Treble** (`Amp_MarshallDSL100H_Treble`): 1–100, default `66`, passo 1
+    - **Presence** (`Amp_MarshallDSL100H_Pres`): 1–100, default `30`, passo 1
+    - **Resonance** (`Amp_MarshallDSL100H_Res`): 1–100, default `30`, passo 1
+- **Marshall DSL15H** — `Amp_MarshallDSL15H`
+    - **Gain** (`Amp_MarshallDSL15H_Gain`): 1–100, default `88`, passo 1
+    - **Bass** (`Amp_MarshallDSL15H_Bass`): 1–100, default `75`, passo 1
+    - **Mid** (`Amp_MarshallDSL15H_Mid`): 1–100, default `66`, passo 1
+    - **Treble** (`Amp_MarshallDSL15H_Treble`): 1–100, default `66`, passo 1
+    - **Presence** (`Amp_MarshallDSL15H_Pres`): 1–100, default `30`, passo 1
+- **Marshall JCM800** — `Amp_MarshallJCM800`
+    - **PreAmp** (`Amp_MarshallJCM800_Gain`): 1–100, default `88`, passo 1
+    - **Bass** (`Amp_MarshallJCM800_Bass`): 1–100, default `75`, passo 1
+    - **Mid** (`Amp_MarshallJCM800_Mid`): 1–100, default `66`, passo 1
+    - **Treble** (`Amp_MarshallJCM800_Treble`): 1–100, default `66`, passo 1
+    - **Presence** (`Amp_MarshallJCM800_Pres`): 1–100, default `30`, passo 1
+- **Marshall JTM45** — `Amp_MarshallJTM45`
+    - **Vol 1** (`Amp_MarshallJTM45_Gain`): 1–100, default `88`, passo 1
+    - **Bass** (`Amp_MarshallJTM45_Bass`): 1–100, default `75`, passo 1
+    - **Mid** (`Amp_MarshallJTM45_Mid`): 1–100, default `66`, passo 1
+    - **Treble** (`Amp_MarshallJTM45_Treble`): 1–100, default `66`, passo 1
+    - **Presence** (`Amp_MarshallJTM45_Pres`): 1–100, default `30`, passo 1
+- **Marshall JVM410H** — `Amp_MarshallJVM410H`
+    - **Gain** (`Amp_MarshallJVM410H_Gain`): 1–100, default `88`, passo 1
+    - **Bass** (`Amp_MarshallJVM410H_Bass`): 1–100, default `75`, passo 1
+    - **Mid** (`Amp_MarshallJVM410H_Mid`): 1–100, default `66`, passo 1
+    - **Treble** (`Amp_MarshallJVM410H_Treble`): 1–100, default `66`, passo 1
+    - **Presence** (`Amp_MarshallJVM410H_Pres`): 1–100, default `30`, passo 1
+- **Marshall Plexi** — `Amp_MarshallPlexi`
+    - **Loudness 1** (`Amp_MarshallPlexi_Loudness1`): 1–100, default `88`, passo 1
+    - **Loudness 2** (`Amp_MarshallPlexi_Loudness2`): 1–100, default `88`, passo 1
+    - **Bass** (`Amp_MarshallPlexi_Bass`): 1–100, default `75`, passo 1
+    - **Mid** (`Amp_MarshallPlexi_Mid`): 1–100, default `66`, passo 1
+    - **Treble** (`Amp_MarshallPlexi_Treble`): 1–100, default `66`, passo 1
+    - **Presence** (`Amp_MarshallPlexi_Pres`): 1–100, default `30`, passo 1
+- **Orange 'Jimmy Bean' Amp** — `Amp_OrangeJimmyBean`
+    - **Volume** (`Amp_OrangeJimmyBean_Gain`): 1–100, default `88`, passo 1
+    - **Bass** (`Amp_OrangeJimmyBean_Bass`): 1–100, default `75`, passo 1
+    - **Mid** (`Amp_OrangeJimmyBean_Mid`): 1–100, default `66`, passo 1
+    - **Treble** (`Amp_OrangeJimmyBean_Treble`): 1–100, default `66`, passo 1
+- **Orange AD50** — `Amp_OrangeAD50`
+    - **Gain** (`Amp_OrangeAD50_Gain`): 1–100, default `88`, passo 1
+    - **Bass** (`Amp_OrangeAD50_Bass`): 1–100, default `75`, passo 1
+    - **Treble** (`Amp_OrangeAD50_Treble`): 1–100, default `66`, passo 1
+    - **Presence** (`Amp_OrangeAD50_Mid`): 1–100, default `66`, passo 1
+- **Orange OR100** — `Amp_OrangeOR100`
+    - **Gain** (`Amp_OrangeOR100_Gain`): 1–100, default `88`, passo 1
+    - **Bass** (`Amp_OrangeOR100_Bass`): 1–100, default `75`, passo 1
+    - **Mid** (`Amp_OrangeOR100_Mid`): 1–100, default `66`, passo 1
+    - **Treble** (`Amp_OrangeOR100_Treble`): 1–100, default `66`, passo 1
+- **Orange OR50H** — `Amp_OrangeOR50H`
+    - **Gain** (`Amp_OrangeOR50H_Gain`): 1–100, default `88`, passo 1
+    - **Bass** (`Amp_OrangeOR50H_Bass`): 1–100, default `75`, passo 1
+    - **Mid** (`Amp_OrangeOR50H_Mid`): 1–100, default `66`, passo 1
+    - **Treble** (`Amp_OrangeOR50H_Treble`): 1–100, default `66`, passo 1
+    - **Punch** (`Amp_OrangeOR50H_Punch`): 1–100, default `66`, passo 1
+- **Orange Rockerverb 50 MkII** — `Amp_OrangeRockerverb`
+    - **Gain** (`Amp_OrangeRockerverb_Gain`): 1–100, default `88`, passo 1
+    - **Bass** (`Amp_OrangeRockerverb_Bass`): 1–100, default `75`, passo 1
+    - **Mid** (`Amp_OrangeRockerverb_Mid`): 1–100, default `66`, passo 1
+    - **Treble** (`Amp_OrangeRockerverb_Treble`): 1–100, default `66`, passo 1
+- **Orange Tiny Terror** — `Amp_OrangeTinyTerror`
+    - **Gain** (`Amp_OrangeTinyTerror_Gain`): 1–100, default `88`, passo 1
+    - **Tone** (`Amp_OrangeTinyTerror_Tone`): 1–100, default `75`, passo 1
+
+## Amplificadores — baixo (18)
+
+- **BH-600B** — `Bass_Amp_BT600B`
+    - **Gain** (`Bass_Amp_BT600B_Gain`): 1–100, default `20`, passo 1
+    - **Bass** (`Bass_Amp_BT600B_Bass`): 1–100, default `75`, passo 1
+    - **180hz** (`Bass_Amp_BT600B_180`): -12–12 db, default `-4`, passo 0.5
+    - **340hz** (`Bass_Amp_BT600B_340`): -12–12 db, default `2`, passo 0.5
+    - **Mid** (`Bass_Amp_BT600B_Mid`): 1–100, default `65`, passo 1
+    - **1.2khz** (`Bass_Amp_BT600B_1200`): -12–12 db, default `4`, passo 0.5
+    - **2.6khz** (`Bass_Amp_BT600B_2600`): -12–12 db, default `-6`, passo 0.5
+    - **Treble** (`Bass_Amp_BT600B_Treble`): 1–100, default `75`, passo 1
+    - **Compression** (`Bass_Amp_BT600B_Compression`): 0–100 %, default `45`, passo 1
+- **BH-880B** — `Bass_Amp_BT880B`
+    - **Gain** (`Bass_Amp_BT880B_Gain`): 1–100, default `12`, passo 1
+    - **Bass** (`Bass_Amp_BT880B_Bass`): -12–12 db, default `4`, passo 0.5
+    - **Low-Mid** (`Bass_Amp_BT880B_Lo`): -12–12 db, default `-9`, passo 0.5
+    - **Low-Mid Freq.** (`Bass_Amp_BT880B_LoFreq`): 30–300 hz, default `220`, passo 2.5
+    - **Mid** (`Bass_Amp_BT880B_Mid`): -12–12 db, default `4`, passo 0.5
+    - **Mid Frequency** (`Bass_Amp_BT880B_MidFreq`): 200–2000 hz, default `1200`, passo 20
+    - **High-Mid** (`Bass_Amp_BT880B_Hi`): -12–12 db, default `-4`, passo 0.5
+    - **High-Mid Freq.** (`Bass_Amp_BT880B_HiFreq`): 1.2–12 khz, default `1.6`, passo 0.1
+    - **Treble** (`Bass_Amp_BT880B_Treble`): -12–12 db, default `6`, passo 0.5
+- **BH-975B** — `Bass_Amp_BT975B`
+    - **Gain** (`Bass_Amp_BT975B_Gain`): 1–100, default `65`, passo 1
+    - **Low-Shift** (`Bass_Amp_BT975B_LoShift`): 0–1 enum, default `1`, passo 1
+    - **Bass** (`Bass_Amp_BT975B_Bass`): -12–12 db, default `5`, passo 0.5
+    - **Mid** (`Bass_Amp_BT975B_Mid`): -12–12 db, default `6`, passo 0.5
+    - **High-Shift** (`Bass_Amp_BT975B_HiShift`): 0–1 enum, default `1`, passo 1
+    - **Treble** (`Bass_Amp_BT975B_Treble`): -12–12 db, default `4`, passo 0.5
+- **CLH-300B** — `Bass_Amp_CH300B`
+    - **Gain** (`Bass_Amp_CH300B_Gain`): 1–100, default `2`, passo 1
+    - **Bass** (`Bass_Amp_CH300B_Bass`): -12–12 db, default `2`, passo 0.5
+    - **Mid** (`Bass_Amp_CH300B_Mid`): -12–12 db, default `-5`, passo 0.5
+    - **Mid-Frequency** (`Bass_Amp_CH300B_MidFreq`): 200–2000 hz, default `480`, passo 2
+    - **Treble** (`Bass_Amp_CH300B_Treble`): -12–12 db, default `4`, passo 0.5
+    - **Enhance** (`Bass_Amp_CH300B_Enhance`): 1–100 %, default `35`, passo 1
+- **CLH-350B** — `Bass_Amp_CH350B`
+    - **Gain** (`Bass_Amp_CH350B_Gain`): 1–100, default `31`, passo 1
+    - **Bass** (`Bass_Amp_CH350B_Bass`): 1–100, default `6`, passo 1
+    - **Treble** (`Bass_Amp_CH350B_Treble`): 1–100, default `88`, passo 1
+    - **30hz** (`Bass_Amp_CH350B_30`): -12–12 db, default `6`, passo 0.5
+    - **90hz** (`Bass_Amp_CH350B_90`): -12–12 db, default `-4`, passo 0.5
+    - **250hz** (`Bass_Amp_CH350B_250`): -12–12 db, default `-6`, passo 0.5
+    - **800hz** (`Bass_Amp_CH350B_800`): -12–12 db, default `3`, passo 0.5
+    - **2.5khz** (`Bass_Amp_CH350B_2500`): -12–12 db, default `-5`, passo 0.5
+    - **7.5khz** (`Bass_Amp_CH350B_7500`): -12–12 db, default `4`, passo 0.5
+    - **15khz** (`Bass_Amp_CH350B_15000`): -12–12 db, default `6`, passo 0.5
+- **CLH-600B** — `Bass_Amp_CH600B`
+    - **Gain** (`Bass_Amp_CH600B_Gain`): 1–100, default `5`, passo 1
+    - **Bass** (`Bass_Amp_CH600B_Bass`): -12–12 db, default `4`, passo 0.5
+    - **Treble** (`Bass_Amp_CH600B_Treble`): -12–12 db, default `5`, passo 0.5
+    - **30hz** (`Bass_Amp_CH600B_30`): -12–12 db, default `-4`, passo 0.5
+    - **90hz** (`Bass_Amp_CH600B_90`): -12–12 db, default `2`, passo 0.5
+    - **250hz** (`Bass_Amp_CH600B_250`): -12–12 db, default `1`, passo 0.5
+    - **800hz** (`Bass_Amp_CH600B_800`): -12–12 db, default `-6`, passo 0.5
+    - **2.5khz** (`Bass_Amp_CH600B_2500`): -12–12 db, default `0`, passo 0.5
+    - **7.5khz** (`Bass_Amp_CH600B_7500`): -12–12 db, default `-9`, passo 0.5
+    - **Compression** (`Bass_Amp_CH600B_Compression`): 1–100, default `55`, passo 1
+- **CSS-240B** — `Bass_Amp_CS240B`
+    - **Gain** (`Bass_Amp_CS240B_Gain`): 1–100, default `22`, passo 1
+    - **Bass** (`Bass_Amp_CS240B_Bass`): 1–100, default `66`, passo 1
+    - **Treble** (`Bass_Amp_CS240B_Treble`): 1–100, default `68`, passo 1
+- **CSS-300B** — `Bass_Amp_CS300B`
+    - **Gain** (`Bass_Amp_CS300B_Gain`): 1–100, default `10`, passo 1
+    - **Bass** (`Bass_Amp_CS300B_Bass`): 1–100, default `88`, passo 1
+    - **Lo Mid** (`Bass_Amp_CS300B_LoMid`): 1–100, default `58`, passo 1
+    - **Hi Mid** (`Bass_Amp_CS300B_HiMid`): 1–100, default `44`, passo 1
+    - **Treble** (`Bass_Amp_CS300B_Treble`): 1–100, default `68`, passo 1
+- **CSS-75B** — `Bass_Amp_CS75B`
+    - **Gain** (`Bass_Amp_CS75B_Gain`): 1–100, default `45`, passo 1
+    - **Bass** (`Bass_Amp_CS75B_Bass`): -12–12 db, default `2`, passo 0.5
+    - **Mid** (`Bass_Amp_CS75B_Mid`): -12–12 db, default `4`, passo 0.5
+    - **Treble** (`Bass_Amp_CS75B_Treble`): -12–12 db, default `3`, passo 0.5
+- **Eden E300** — `Bass_Amp_EdenE300`
+    - **Gain** (`Bass_Amp_EdenE300_Gain`): 1–100, default `12`, passo 1
+    - **Bass** (`Bass_Amp_EdenE300_Bass`): -12–12 db, default `4`, passo 0.5
+    - **Mid** (`Bass_Amp_EdenE300_Mid`): -12–12 db, default `4`, passo 0.5
+    - **Treble** (`Bass_Amp_EdenE300_Treble`): -12–12 db, default `-5`, passo 0.5
+    - **Enhance** (`Bass_Amp_EdenE300_Enhance`): 1–100 %, default `35`, passo 1
+- **Eden WT550** — `Bass_Amp_EdenWT550`
+    - **Gain** (`Bass_Amp_EdenWT550_Gain`): 1–100, default `12`, passo 1
+    - **Bass** (`Bass_Amp_EdenWT550_Bass`): -12–12 db, default `4`, passo 0.5
+    - **Low-Mid** (`Bass_Amp_EdenWT550_Lo`): -12–12 db, default `-9`, passo 0.5
+    - **Low-Mid Freq.** (`Bass_Amp_EdenWT550_LoFreq`): 30–300 hz, default `220`, passo 2.5
+    - **Mid** (`Bass_Amp_EdenWT550_Mid`): -12–12 db, default `4`, passo 0.5
+    - **Mid Frequency** (`Bass_Amp_EdenWT550_MidFreq`): 200–2000 hz, default `1200`, passo 20
+    - **High-Mid** (`Bass_Amp_EdenWT550_Hi`): -12–12 db, default `-4`, passo 0.5
+    - **High-Mid Freq.** (`Bass_Amp_EdenWT550_HiFreq`): 1.2–12 khz, default `1.6`, passo 0.1
+    - **Treble** (`Bass_Amp_EdenWT550_Treble`): -12–12 db, default `6`, passo 0.5
+    - **Enhance** (`Bass_Amp_EdenWT550_Enhance`): 1–100 %, default `35`, passo 1
+- **Eden WT800** — `Bass_Amp_EdenWT800`
+    - **Gain** (`Bass_Amp_EdenWT800_Gain`): 1–100, default `12`, passo 1
+    - **Bass** (`Bass_Amp_EdenWT800_Bass`): -12–12 db, default `4`, passo 0.5
+    - **Low-Mid** (`Bass_Amp_EdenWT800_Lo`): -12–12 db, default `-9`, passo 0.5
+    - **Low-Mid Freq.** (`Bass_Amp_EdenWT800_LoFreq`): 30–300 hz, default `220`, passo 2.5
+    - **Mid** (`Bass_Amp_EdenWT800_Mid`): -12–12 db, default `4`, passo 0.5
+    - **Mid Frequency** (`Bass_Amp_EdenWT800_MidFreq`): 200–2000 hz, default `1200`, passo 20
+    - **High-Mid** (`Bass_Amp_EdenWT800_Hi`): -12–12 db, default `-4`, passo 0.5
+    - **High-Mid Freq.** (`Bass_Amp_EdenWT800_HiFreq`): 1.2–12 khz, default `1.6`, passo 0.1
+    - **Treble** (`Bass_Amp_EdenWT800_Treble`): -12–12 db, default `6`, passo 0.5
+    - **Enhance** (`Bass_Amp_EdenWT800_Enhance`): 1–100 %, default `35`, passo 1
+- **HW-300B** — `Bass_Amp_HT300B`
+    - **Gain** (`Bass_Amp_HT300B_Gain`): 1–100, default `68`, passo 1
+    - **Bass** (`Bass_Amp_HT300B_Bass`): 1–100, default `88`, passo 1
+    - **Mid** (`Bass_Amp_HT300B_Mid`): 1–100, default `24`, passo 1
+    - **Mid-Frequency** (`Bass_Amp_HT300B_MidFreq`): 0–4 enum, default `1`, passo 1
+    - **Treble** (`Bass_Amp_HT300B_Treble`): 1–100, default `88`, passo 1
+    - **High-Shift** (`Bass_Amp_HT300B_HiShift`): 0–1 enum, default `1`, passo 1
+    - **Low-Shift** (`Bass_Amp_HT300B_LoShift`): 0–1 enum, default `1`, passo 1
+- **HW-400B** — `Bass_Amp_HT400B`
+    - **Gain** (`Bass_Amp_HT400B_Gain`): 1–100, default `100`, passo 1
+    - **Bass** (`Bass_Amp_HT400B_Bass`): -12–12 db, default `4`, passo 0.5
+    - **Mid** (`Bass_Amp_HT400B_Mid`): -12–12 db, default `4`, passo 0.5
+    - **Treble** (`Bass_Amp_HT400B_Treble`): -12–12 db, default `4`, passo 0.5
+    - **High-Shift** (`Bass_Amp_HT400B_HiShift`): 0–1 enum, default `1`, passo 1
+    - **Low-Shift** (`Bass_Amp_HT400B_LoShift`): 0–1 enum, default `1`, passo 1
+- **HW100B** — `Bass_Amp_HT100B`
+    - **Gain** (`Bass_Amp_HT100B_Gain`): 1–100, default `66`, passo 1
+    - **Bass** (`Bass_Amp_HT100B_Bass`): 1–100, default `88`, passo 1
+    - **Mid** (`Bass_Amp_HT100B_Mid`): 1–100, default `68`, passo 1
+    - **Treble** (`Bass_Amp_HT100B_Treble`): 1–100, default `44`, passo 1
+    - **Presence** (`Bass_Amp_HT100B_Pres`): 1–100, default `30`, passo 1
+- **LW-25B** — `Bass_Amp_LT25B`
+    - **Gain** (`Bass_Amp_LT25B_Gain`): 1–100, default `15`, passo 1
+    - **Bass** (`Bass_Amp_LT25B_Bass`): 1–100, default `88`, passo 1
+    - **Mid** (`Bass_Amp_LT25B_Mid`): 1–100, default `88`, passo 1
+    - **Mid-Frequency** (`Bass_Amp_LT25B_MidFreq`): 0–2 enum, default `0`, passo 1
+    - **Treble** (`Bass_Amp_LT25B_Treble`): 1–100, default `88`, passo 1
+    - **High-Shift** (`Bass_Amp_LT25B_HiShift`): 0–1 enum, default `1`, passo 1
+    - **Low-Shift** (`Bass_Amp_LT25B_LoShift`): 0–1 enum, default `1`, passo 1
+- **LW-85B** — `Bass_Amp_LT85B`
+    - **Gain** (`Bass_Amp_LT85B_Gain`): 1–100, default `44`, passo 1
+    - **Bass** (`Bass_Amp_LT85B_Bass`): 1–100, default `44`, passo 1
+    - **Mid** (`Bass_Amp_LT85B_Mid`): 1–100, default `44`, passo 1
+    - **Treble** (`Bass_Amp_LT85B_Treble`): 1–100, default `44`, passo 1
+    - **High-Shift** (`Bass_Amp_LT85B_HiShift`): 0–1 enum, default `1`, passo 1
+- **Orange AD200B** — `Bass_Amp_OrangeAD200B`
+    - **Gain** (`Bass_Amp_OrangeAD200B_Gain`): 1–100, default `88`, passo 1
+    - **Bass** (`Bass_Amp_OrangeAD200B_Bass`): 1–100, default `75`, passo 1
+    - **Mid** (`Bass_Amp_OrangeAD200B_Mid`): 1–100, default `66`, passo 1
+    - **Treble** (`Bass_Amp_OrangeAD200B_Treble`): 1–100, default `50`, passo 1
+
+## Cabines
+
+As cabines **não têm knobs** — escolhes o **modelo** + a **captação** (microfone × posição). Cada modelo existe em várias combinações mic/posição.
+
+**Categorias de captação (mic × posição):** Dynamic Cone, Dynamic Edge, Dynamic Off Axis, Condenser Cone, Condenser Edge, Condenser Off Axis, Tube Cone, Tube Edge, Tube Off Axis, Ribbon Cone, Ribbon Edge, Ribbon Off Axis, PA.
+
+
+### Cabines — guitarra (38 modelos)
+
+- **AT-0112C** — ex.: `Cab_AT0112C_57_Cone` _(categoria: Dynamic Cone)_
+- **AT-112.1C** — ex.: `Cab_AT1121C_57_Cone` _(categoria: Dynamic Cone)_
+- **Audiophile Speakers** — ex.: `Cab_Audiophile` _(categoria: PA)_
+- **Boom Box** — ex.: `Cab_BoomBox` _(categoria: PA)_
+- **BT-1120C** — ex.: `Cab_BT1120C_57_Cone` _(categoria: Dynamic Cone)_
+- **BT-112.1C** — ex.: `Cab_BT1121C_57_Cone` _(categoria: Dynamic Cone)_
+- **BT-410C** — ex.: `Cab_BT410C_57_Cone` _(categoria: Dynamic Cone)_
+- **CA-112C** — ex.: `Cab_CA112C_57_Cone` _(categoria: Dynamic Cone)_
+- **CA-215C** — ex.: `Cab_CA215C_57_Cone` _(categoria: Dynamic Cone)_
+- **CA-412C** — ex.: `Cab_CA412C_57_Cone` _(categoria: Dynamic Cone)_
+- **Console Radio** — ex.: `Cab_CabinetRadio` _(categoria: PA)_
+- **CSS-1120C** — ex.: `Cab_CS1120C_57_Cone` _(categoria: Dynamic Cone)_
+- **CSS-1515C** — ex.: `Cab_CS1515C_57_Cone` _(categoria: Dynamic Cone)_
+- **CSS-212C** — ex.: `Cab_CS212C_57_Cone` _(categoria: Dynamic Cone)_
+- **EN-212C** — ex.: `Cab_EN212C_57_Cone` _(categoria: Dynamic Cone)_
+- **EN-4120C** — ex.: `Cab_EN4120C_57_Cone` _(categoria: Dynamic Cone)_
+- **GB-412 MKIII** — ex.: `Cab_GB412CMKIII_57_Cone` _(categoria: Dynamic Cone)_
+- **GB-412 MKII** — ex.: `Cab_GB412CMKII_57_Cone` _(categoria: Dynamic Cone)_
+- **GB-412 MKI** — ex.: `Cab_GB412CMKI_57_Cone` _(categoria: Dynamic Cone)_
+- **Gramophone** — ex.: `Cab_Gramophone` _(categoria: PA)_
+- **HG-2120C** — ex.: `Cab_HG2120C_57_Cone` _(categoria: Dynamic Cone)_
+- **HG-212C** — ex.: `Cab_HG212C_57_Cone` _(categoria: Dynamic Cone)_
+- **HG-215C** — ex.: `Cab_HG215C_57_Cone` _(categoria: Dynamic Cone)_
+- **Jukebox** — ex.: `Cab_JukeBox` _(categoria: PA)_
+- **Marshall 1936** — ex.: `Cab_Marshall1936_57_Cone` _(categoria: Dynamic Cone)_
+- **Marshall 1960 AX** — ex.: `Cab_Marshall1960AX_57_Cone` _(categoria: Dynamic Cone)_
+- **Marshall 1960a** — ex.: `Cab_Marshall1960a_57_Cone` _(categoria: Dynamic Cone)_
+- **Marshall 1960 TV** — ex.: `Cab_Marshall1960TV_57_Cone` _(categoria: Dynamic Cone)_
+- **Orange 'Jimmy Bean' Cab** — ex.: `Cab_OrangeJimmyBean_57_Cone` _(categoria: Dynamic Cone)_
+- **Orange PPC212OB** — ex.: `Cab_OrangePPC212OB_57_Cone` _(categoria: Dynamic Cone)_
+- **Orange PPC412** — ex.: `Cab_OrangePPC412_57_Cone` _(categoria: Dynamic Cone)_
+- **PS-115.2C** — ex.: `Cab_PA1152C` _(categoria: PA)_
+- **PS-600** — ex.: `Cab_PA600C` _(categoria: PA)_
+- **PA-999C** — ex.: `Cab_PA999C` _(categoria: PA)_
+- **TW-110C** — ex.: `Cab_TW110C_57_Cone` _(categoria: Dynamic Cone)_
+- **TW-112C** — ex.: `Cab_TW112C_57_Cone` _(categoria: Dynamic Cone)_
+- **TW-410C** — ex.: `Cab_TW410C_57_Cone` _(categoria: Dynamic Cone)_
+- **Vintage Hi-Fi setup** — ex.: `Cab_VintageHiFi` _(categoria: PA)_
+
+### Cabines — baixo (20 modelos)
+
+- **AT-1150BC** — ex.: `Bass_Cab_AT1150BC_57_Cone` _(categoria: Dynamic Cone)_
+- **AT-810BC** — ex.: `Bass_Cab_AT810BC_57_Cone` _(categoria: Dynamic Cone)_
+- **BH-115BC** — ex.: `Bass_Cab_BT115BC_57_Cone` _(categoria: Dynamic Cone)_
+- **BH-212BC** — ex.: `Bass_Cab_BT212BC_57_Cone` _(categoria: Dynamic Cone)_
+- **BH-410BC** — ex.: `Bass_Cab_BT410BC_57_Cone` _(categoria: Dynamic Cone)_
+- **CA-1510BC** — ex.: `Bass_Cab_CA1510BC_57_Cone` _(categoria: Dynamic Cone)_
+- **CH-21BC** — ex.: `Bass_Cab_CH210BC_57_Cone` _(categoria: Dynamic Cone)_
+- **CH-3120BC** — ex.: `Bass_Cab_CH310BC_57_Cone` _(categoria: Dynamic Cone)_
+- **CH-410BC** — ex.: `Bass_Cab_CH410BC_57_Cone` _(categoria: Dynamic Cone)_
+- **CS-112BC** — ex.: `Bass_Cab_CS112BC_57_Cone` _(categoria: Dynamic Cone)_
+- **CS-15BC** — ex.: `Bass_Cab_CS15BC_57_Cone` _(categoria: Dynamic Cone)_
+- **CS-410BC** — ex.: `Bass_Cab_CS410BC_57_Cone` _(categoria: Dynamic Cone)_
+- **Eden D115XLT** — ex.: `Bass_Cab_EdenD115XLT_57_Cone` _(categoria: Dynamic Cone)_
+- **Eden D212XLT** — ex.: `Bass_Cab_EdenD212XLT_57_Cone` _(categoria: Dynamic Cone)_
+- **Eden D410XST** — ex.: `Bass_Cab_EdenD410XST_57_Cone` _(categoria: Dynamic Cone)_
+- **Eden D610XST** — ex.: `Bass_Cab_EdenD610XST_57_Cone` _(categoria: Dynamic Cone)_
+- **GB-415BC** — ex.: `Bass_Cab_GB415BC_57_Cone` _(categoria: Dynamic Cone)_
+- **Orange OBC115** — ex.: `Bass_Cab_OrangeOBC115_57_Cone` _(categoria: Dynamic Cone)_
+- **Orange OBC810** — ex.: `Bass_Cab_OrangeOBC810_57_Cone` _(categoria: Dynamic Cone)_
+- **TW-215BC** — ex.: `Bass_Cab_TW215BC_57_Cone` _(categoria: Dynamic Cone)_
+
+## Pedais (usáveis como pré ou pós) — guitarra (68)
+
+- **Analog Delay** — `Pedal_AnalogueDelay`  _(categoria: Delay)_
+    - **Time** (`Pedal_AnalogueDelay_Time`): 10–1000 ms, default `270`, passo 10
+    - **Feedback** (`Pedal_AnalogueDelay_Feedback`): 0–100 %, default `92`, passo 1
+    - **Mix** (`Pedal_AnalogueDelay_Mix`): 1–100 %, default `55`, passo 1
+- **Classic NPN Delay** — `Pedal_NPNDelay`  _(categoria: Delay)_
+    - **Time** (`Pedal_NPNDelay_Time`): 10–1000 ms, default `360`, passo 10
+    - **Feedback** (`Pedal_NPNDelay_Feedback`): 0–100 %, default `69`, passo 1
+    - **Mix** (`Pedal_NPNDelay_Mix`): 1–100 %, default `40`, passo 1
+- **Cosmonaut Echo** — `Pedal_CosmicEcho`  _(categoria: Delay)_
+    - **Time** (`Pedal_CosmicEcho_Time`): 10–1000 ms, default `490`, passo 10
+    - **Feedback** (`Pedal_CosmicEcho_Feedback`): 0–100 %, default `82`, passo 1
+    - **Mix** (`Pedal_CosmicEcho_Mix`): 1–100 %, default `22`, passo 1
+- **Mod Delay** — `Pedal_ModDelay`  _(categoria: Delay)_
+    - **Time** (`Pedal_ModDelay_Time`): 10–1000 ms, default `360`, passo 10
+    - **Feedback** (`Pedal_ModDelay_Feedback`): 0–100 %, default `60`, passo 1
+    - **Mix** (`Pedal_ModDelay_Mix`): 1–100 %, default `70`, passo 1
+    - **Mod Depth** (`Pedal_ModDelay_Depth`): 1–100 %, default `45`, passo 1
+    - **Mod Rate** (`Pedal_ModDelay_Rate`): 0.1–10 hz, default `2.5`, passo 0.1
+- **No-Fi Echo** — `Pedal_NoFiEcho`  _(categoria: Delay)_
+    - **Time** (`Pedal_NoFiEcho_Time`): 10–1000 ms, default `360`, passo 10
+    - **Feedback** (`Pedal_NoFiEcho_Feedback`): 0–100 %, default `68`, passo 1
+    - **Mix** (`Pedal_NoFiEcho_Mix`): 1–100 %, default `76`, passo 1
+- **Oil-Can Echo** — `Pedal_OilCanEcho`  _(categoria: Delay)_
+    - **Time** (`Pedal_OilCanEcho_Time`): 10–1000 ms, default `360`, passo 10
+    - **Feedback** (`Pedal_OilCanEcho_Feedback`): 0–100 %, default `70`, passo 1
+    - **Mix** (`Pedal_OilCanEcho_Mix`): 1–100 %, default `50`, passo 1
+- **Valve Echo** — `Pedal_ValveEcho`  _(categoria: Delay)_
+    - **Time** (`Pedal_ValveEcho_Time`): 10–1000 ms, default `630`, passo 10
+    - **Feedback** (`Pedal_ValveEcho_Feedback`): 0–100 %, default `70`, passo 1
+    - **Mix** (`Pedal_ValveEcho_Mix`): 1–100 %, default `46`, passo 1
+- **Alloy Distortion** — `Pedal_MetalDistortion`  _(categoria: Distortion)_
+    - **Gain** (`Pedal_MetalDistortion_Gain`): 1–100, default `80`, passo 1
+    - **Tone** (`Pedal_MetalDistortion_Tone`): 1–100, default `71`, passo 1
+- **Buzz 1** — `Pedal_BuzzOne`  _(categoria: Distortion)_
+    - **Gain** (`Pedal_BuzzOne_Gain`): 1–100, default `80`, passo 1
+    - **Tone** (`Pedal_BuzzOne_Tone`): 1–100, default `50`, passo 1
+- **Buzz 2** — `Pedal_BuzzToo`  _(categoria: Distortion)_
+    - **Gain** (`Pedal_BuzzToo_Gain`): 1–100, default `80`, passo 1
+    - **Tone** (`Pedal_BuzzToo_Tone`): 1–100, default `50`, passo 1
+- **Captain Fuzzle** — `Pedal_CaptFuzzle`  _(categoria: Distortion)_
+    - **Gain** (`Pedal_CaptFuzzle_Gain`): 1–150, default `100`, passo 1
+    - **Tone** (`Pedal_CaptFuzzle_Tone`): 1–100, default `14`, passo 1
+- **Custom Drive** — `Pedal_CustomDrive`  _(categoria: Distortion)_
+    - **Gain** (`Pedal_CustomDrive_Gain`): 1–100, default `80`, passo 1
+    - **Tone** (`Pedal_CustomDrive_Tone`): 1–100, default `50`, passo 1
+    - **Voicing** (`Pedal_CustomDrive_Voice`): 0–1 enum, default `1`, passo 1
+- **Distortion** — `Pedal_Distortion`  _(categoria: Distortion)_
+    - **Gain** (`Pedal_Distortion_Gain`): 1–100, default `80`, passo 1
+    - **Tone** (`Pedal_Distortion_Tone`): 1–100, default `60`, passo 1
+- **Fuzz Was He?** — `Pedal_FuzzWasHe`  _(categoria: Distortion)_
+    - **Gain** (`Pedal_FuzzWasHe_Gain`): 1–100, default `80`, passo 1
+    - **Tone** (`Pedal_FuzzWasHe_Tone`): 1–100, default `50`, passo 1
+- **Germanium Drive** — `Pedal_GermaniumDrive`  _(categoria: Distortion)_
+    - **Gain** (`Pedal_GermaniumDrive_Gain`): 1–100, default `80`, passo 1
+    - **Tone** (`Pedal_GermaniumDrive_Tone`): 1–100, default `50`, passo 1
+- **Line Drive** — `Pedal_LineDrive`  _(categoria: Distortion)_
+    - **Gain** (`Pedal_LineDrive_Gain`): 1–100, default `80`, passo 1
+    - **Tone** (`Pedal_LineDrive_Tone`): 1–100, default `50`, passo 1
+- **Marshall Guv'nor Plus** — `Pedal_MarshallGuvnorPlus`  _(categoria: Distortion)_
+    - **Gain** (`Pedal_MarshallGuvnorPlus_Gain`): 1–100, default `12`, passo 1
+    - **Deep** (`Pedal_MarshallGuvnorPlus_Deep`): 1–100 %, default `30`, passo 1
+    - **Bass** (`Pedal_MarshallGuvnorPlus_Bass`): 1–100, default `75`, passo 0
+    - **Mid** (`Pedal_MarshallGuvnorPlus_Mid`): 1–100, default `66`, passo 1
+    - **Treble** (`Pedal_MarshallGuvnorPlus_Treble`): 1–100, default `50`, passo 1
+- **Shred Zone** — `Pedal_ShredZone`  _(categoria: Distortion)_
+    - **Gain** (`Pedal_ShredZone_Gain`): 1–100, default `80`, passo 1
+    - **Bass** (`Pedal_ShredZone_Bass`): -9–9 db, default `0`, passo 0.5
+    - **Mid** (`Pedal_ShredZone_Mid`): -9–9 db, default `0`, passo 0.5
+    - **Treble** (`Pedal_ShredZone_Treble`): -9–9 db, default `0`, passo 0.5
+- **Super Drive** — `Pedal_SuperDrive`  _(categoria: Distortion)_
+    - **Gain** (`Pedal_SuperDrive_Gain`): 1–100, default `80`, passo 1
+    - **Tone** (`Pedal_SuperDrive_Tone`): 1–100, default `50`, passo 1
+- **Vintage Distortion** — `Pedal_VintageDistortion`  _(categoria: Distortion)_
+    - **Gain** (`Pedal_VintageDistortion_Gain`): 1–100, default `80`, passo 1
+    - **Tone** (`Pedal_VintageDistortion_Tone`): 1–100, default `60`, passo 1
+- **Compression** — `Pedal_Compression`  _(categoria: Dynamics)_
+    - **Compression** (`Pedal_Compression_Comp`): 1–100, default `66`, passo 1
+    - **Attack** (`Pedal_Compression_Attack`): 1–100 ms, default `30`, passo 1
+    - **Release** (`Pedal_Compression_Release`): 10–1000 ms, default `200`, passo 10
+- **Limiter** — `Pedal_Limiter`  _(categoria: Dynamics)_
+    - **Limit** (`Pedal_Limiter_Limit`): 1–100, default `25`, passo 1
+    - **Speed** (`Pedal_Limiter_Rate`): 1–100, default `60`, passo 1
+- **Noise Gate** — `Pedal_NoiseGate`  _(categoria: Dynamics)_
+    - **Threshold** (`Pedal_NoiseGate_Thresh`): -90–-40 db, default `-55`, passo 0.5
+    - **Rate** (`Pedal_NoiseGate_Rate`): 1–100, default `81`, passo 1
+- **Swole** — `Pedal_Swole`  _(categoria: Dynamics)_
+    - **Smash** (`Pedal_Swole_Smash`): 1–100 %, default `66`, passo 1
+    - **Rate** (`Pedal_Swole_Rate`): 1–100, default `81`, passo 1
+- **5-Band Graphic EQ** — `Pedal_EQ5`  _(categoria: Filter)_
+    - **63hz** (`Pedal_EQ5_63`): -15–15 db, default `-6`, passo 1
+    - **250hz** (`Pedal_EQ5_250`): -15–15 db, default `3`, passo 1
+    - **750hz** (`Pedal_EQ5_750`): -15–15 db, default `10`, passo 1
+    - **2.2khz** (`Pedal_EQ5_2200`): -15–15 db, default `6`, passo 1
+    - **5.7khz** (`Pedal_EQ5_5700`): -15–15 db, default `-7`, passo 1
+- **8-Band Graphic EQ** — `Pedal_EQ8`  _(categoria: Filter)_
+    - **50HZ** (`Pedal_EQ8_50`): -15–15 db, default `4`, passo 1
+    - **100HZ** (`Pedal_EQ8_100`): -15–15 db, default `1`, passo 1
+    - **200HZ** (`Pedal_EQ8_200`): -15–15 db, default `-8`, passo 1
+    - **400HZ** (`Pedal_EQ8_400`): -15–15 db, default `-2`, passo 1
+    - **800HZ** (`Pedal_EQ8_800`): -15–15 db, default `-1`, passo 1
+    - **1.6KHZ** (`Pedal_EQ8_1600`): -12–12 db, default `-5`, passo 1
+    - **3.2KHZ** (`Pedal_EQ8_3200`): -12–12 db, default `-1`, passo 1
+    - **6.4KHZ** (`Pedal_EQ8_6400`): -12–12 db, default `6`, passo 1
+- **Acoustic Emulator** — `Pedal_AcousticEmulator`  _(categoria: Filter)_
+    - **Body** (`Pedal_AcousticEmulator_Body`): 1–100, default `68`, passo 1
+    - **Mid-range** (`Pedal_AcousticEmulator_Mid`): 1–100, default `22`, passo 1
+    - **Mid Frequency** (`Pedal_AcousticEmulator_MidShift`): 50–5000 hz, default `775`, passo 25
+    - **Tone** (`Pedal_AcousticEmulator_Tone`): 1–100, default `82`, passo 1
+- **Amp EQ** — `Pedal_AmpEQ`  _(categoria: Filter)_
+    - **Bass** (`Pedal_AmpEQ_Bass`): 1–100, default `44`, passo 1
+    - **Bass Freq.** (`Pedal_AmpEQ_BassFreq`): 0–1 enum, default `1`, passo 1
+    - **Midrange** (`Pedal_AmpEQ_Mid`): 1–100, default `50`, passo 1
+    - **Mid Freq. Shift** (`Pedal_AmpEQ_MidShift`): 0–2 enum, default `1`, passo 1
+    - **Treble** (`Pedal_AmpEQ_Treble`): 1–100, default `50`, passo 1
+    - **Treble Freq.** (`Pedal_AmpEQ_TrebleFreq`): 0–1 enum, default `1`, passo 1
+- **Analog Filter** — `Pedal_BobFilter`  _(categoria: Filter)_
+    - **Sensitivity** (`Pedal_BobFilter_Sens`): 1–100, default `86`, passo 1
+    - **Attack Speed** (`Pedal_BobFilter_Attack`): 1–250 ms, default `16`, passo 1
+    - **Release Speed** (`Pedal_BobFilter_Release`): 10–1000 ms, default `400`, passo 10
+    - **Filter Type** (`Pedal_BobFilter_Filter`): 0–2 enum, default `1`, passo 1
+    - **Mix** (`Pedal_BobFilter_Mix`): 1–100 %, default `95`, passo 1
+- **Auto Filter** — `Pedal_AutoFilter`  _(categoria: Filter)_
+    - **Sensitivity** (`Pedal_AutoFilter_Sens`): 1–100, default `62`, passo 1
+    - **Attack Speed** (`Pedal_AutoFilter_Attack`): 1–250 ms, default `16`, passo 1
+    - **Release Speed** (`Pedal_AutoFilter_Release`): 10–1000 ms, default `110`, passo 10
+    - **Filter Type** (`Pedal_AutoFilter_FilterType`): 0–2 enum, default `0`, passo 1
+    - **Mix** (`Pedal_AutoFilter_Res`): 1–100 %, default `95`, passo 1
+- **Bit Cruncher** — `Pedal_BitCruncher`  _(categoria: Filter)_
+    - **Mix** (`Pedal_BitCruncher_Mix`): 1–100 %, default `81`, passo 1
+    - **Filter** (`Pedal_BitCruncher_Attack`): 1–100, default `45`, passo 1
+    - **Downsample** (`Pedal_BitCruncher_Release`): 0–32, default `15`, passo 1
+    - **Bit Depth** (`Pedal_BitCruncher_FilterType`): 2–8, default `4`, passo 1
+    - **Rectify** (`Pedal_BitCruncher_Sens`): 1–100, default `80`, passo 1
+- **Guitar>Bass Emulator** — `Pedal_BassEmulator`  _(categoria: Filter)_
+    - **Body** (`Pedal_BassEmulator_Body`): 1–100, default `44`, passo 1
+    - **Tone** (`Pedal_BassEmulator_Tone`): 1–100, default `50`, passo 1
+- **Lo-Fi Filter** — `Pedal_LoFiFilter`  _(categoria: Filter)_
+    - **Hi Cut** (`Pedal_LoFiFilter_FilterType`): 1–100, default `30`, passo 1
+    - **Lo Cut** (`Pedal_LoFiFilter_Mix`): 1–100, default `88`, passo 1
+- **Modern Wah** — `Pedal_ModernWah`  _(categoria: Filter)_
+    - **Auto-Mode** (`Pedal_ModernWah_Auto`): 0–1 enum, default `1`, passo 1
+    - **Sensitivity** (`Pedal_ModernWah_Sens`): 1–100, default `68`, passo 1
+    - **Speed** (`Pedal_ModernWah_Speed`): 1–100, default `97`, passo 1
+    - **Pedal (Auto=OFF)** (`Pedal_ModernWah_Pedal`): 1–100, default `50`, passo 1
+- **Range Booster** — `Pedal_RangeBooster`  _(categoria: Filter)_
+    - **Boost!** (`Pedal_RangeBooster_Boost`): 1–100 %, default `85`, passo 1
+- **UK Wah** — `Pedal_UKWah`  _(categoria: Filter)_
+    - **Auto-Mode** (`Pedal_UKWah_Auto`): 0–1 enum, default `1`, passo 1
+    - **Sensitivity** (`Pedal_UKWah_Sens`): 1–100, default `72`, passo 1
+    - **Speed** (`Pedal_UKWah_Speed`): 1–100, default `85`, passo 1
+    - **Pedal (Auto=OFF)** (`Pedal_UKWah_Pedal`): 1–100, default `15`, passo 1
+- **US Wah** — `Pedal_USWah`  _(categoria: Filter)_
+    - **Auto-Mode** (`Pedal_USWah_Auto`): 0–1 enum, default `1`, passo 1
+    - **Sensitivity** (`Pedal_USWah_Sens`): 1–100, default `75`, passo 1
+    - **Speed** (`Pedal_USWah_Speed`): 1–100, default `90`, passo 1
+    - **Pedal (Auto=OFF)** (`Pedal_USWah_Pedal`): 1–100, default `88`, passo 1
+- **80's Flanger** — `Pedal_80sFlanger`  _(categoria: Modulation)_
+    - **Rate** (`Pedal_80sFlanger_Rate`): 1–100, default `22`, passo 1
+    - **Depth** (`Pedal_80sFlanger_Depth`): 1–100 %, default `54`, passo 1
+    - **Mix** (`Pedal_80sFlanger_Mix`): 1–100 %, default `20`, passo 1
+- **Baked Rotatoe** — `Pedal_BakedRotatoe`  _(categoria: Modulation)_
+    - **Rate** (`Pedal_BakedRotatoe_Rate`): 1–100, default `100`, passo 1
+    - **Depth** (`Pedal_BakedRotatoe_Depth`): 1–100 %, default `75`, passo 1
+    - **Mix** (`Pedal_BakedRotatoe_Mix`): 1–100 %, default `52`, passo 1
+    - **Balance** (`Pedal_BakedRotatoe_Balance`): 1–100 %, default `45`, passo 1
+- **Chorus** — `Pedal_Chorus`  _(categoria: Modulation)_
+    - **Rate** (`Pedal_Chorus_Rate`): 0.1–10 hz, default `2`, passo 0.1
+    - **Depth** (`Pedal_Chorus_Depth`): 1–100 %, default `30`, passo 1
+    - **Mix** (`Pedal_Chorus_Mix`): 0–100 %, default `85`, passo 1
+- **Chorus 2.0** — `Pedal_Chorus20`  _(categoria: Modulation)_
+    - **Rate** (`Pedal_Chorus20_Rate`): 0.1–10 hz, default `0.5`, passo 0.1
+    - **Depth** (`Pedal_Chorus20_Depth`): 1–100 %, default `30`, passo 1
+    - **Mix** (`Pedal_Chorus20_Mix`): 0–100 %, default `35`, passo 1
+- **Classic Flange** — `Pedal_ClassicFlanger`  _(categoria: Modulation)_
+    - **Rate** (`Pedal_ClassicFlanger_Rate`): 1–100, default `25`, passo 1
+    - **Depth** (`Pedal_ClassicFlanger_Depth`): 1–100 %, default `50`, passo 1
+    - **Mix** (`Pedal_ClassicFlanger_Mix`): 1–100 %, default `50`, passo 1
+- **Digital Chorus** — `Pedal_DigitalChorus`  _(categoria: Modulation)_
+    - **Rate** (`Pedal_DigitalChorus_Rate`): 0.1–10 hz, default `0.5`, passo 0.1
+    - **Mix** (`Pedal_DigitalChorus_Mix`): 0–100 %, default `42`, passo 1
+    - **Depth** (`Pedal_DigitalChorus_Depth`): 1–100 %, default `65`, passo 1
+    - **LoFilter** (`Pedal_DigitalChorus_LoFilter`): 1–100 %, default `22`, passo 1
+    - **HiFilter** (`Pedal_DigitalChorus_HiFilter`): 1–100 %, default `22`, passo 1
+- **Enbiggenator** — `Pedal_Enbiggenator`  _(categoria: Modulation)_
+    - **Rate** (`Pedal_Enbiggenator_Rate`): 1–100, default `25`, passo 1
+    - **Depth** (`Pedal_Enbiggenator_Depth`): 1–100 %, default `50`, passo 1
+    - **Mix** (`Pedal_Enbiggenator_Mix`): 1–100 %, default `50`, passo 1
+- **Marshall Supervibe** — `Pedal_MarshallSupervibe`  _(categoria: Modulation)_
+    - **Speed** (`Pedal_MarshallSupervibe_Rate`): 1–100, default `12`, passo 1
+    - **Depth** (`Pedal_MarshallSupervibe_Depth`): 1–100 %, default `30`, passo 1
+    - **Wave** (`Pedal_MarshallSupervibe_Wave`): 1–100, default `40`, passo 1
+    - **Filter** (`Pedal_MarshallSupervibe_Mix`): 0–100, default `40`, passo 1
+- **Modern Flange** — `Pedal_ModernFlanger`  _(categoria: Modulation)_
+    - **Rate** (`Pedal_ModernFlanger_Rate`): 1–100, default `25`, passo 1
+    - **Depth** (`Pedal_ModernFlanger_Depth`): 1–100 %, default `65`, passo 1
+    - **Mix** (`Pedal_ModernFlanger_Mix`): 1–100 %, default `33`, passo 1
+    - **Regen.** (`Pedal_ModernFlanger_Regen`): 1–100 %, default `90`, passo 1
+- **Omni-Mod** — `Pedal_OmniMod`  _(categoria: Modulation)_
+    - **Rate** (`Pedal_OmniMod_Rate`): 1–100, default `68`, passo 1
+    - **Depth** (`Pedal_OmniMod_Depth`): 1–100 %, default `72`, passo 1
+    - **Mix** (`Pedal_OmniMod_Mix`): 1–100 %, default `71`, passo 1
+- **Phaser-363** — `Pedal_Phaser`  _(categoria: Modulation)_
+    - **Rate** (`Pedal_Phaser_Rate`): 1–100, default `25`, passo 1
+- **Plane Phase** — `Pedal_PlanePhase`  _(categoria: Modulation)_
+    - **Rate** (`Pedal_PlanePhase_Rate`): 1–100, default `25`, passo 1
+    - **Depth** (`Pedal_PlanePhase_Depth`): 1–100 %, default `50`, passo 1
+    - **Mix** (`Pedal_PlanePhase_Mix`): 1–100 %, default `50`, passo 1
+- **Ring Mod** — `Pedal_RingMod`  _(categoria: Modulation)_
+    - **Rate** (`Pedal_RingMod_Attack`): 1–250 ms, default `25`, passo 5
+    - **Depth** (`Pedal_RingMod_Depth`): 1–100 %, default `50`, passo 1
+    - **Mix** (`Pedal_RingMod_Sensitivity`): 1–100 %, default `50`, passo 1
+    - **Funk** (`Pedal_RingMod_Waveform`): 0–1 enum, default `0`, passo 1
+- **Send In The Clones!** — `Pedal_SendInTheClones`  _(categoria: Modulation)_
+    - **CLONES!** (`Pedal_SendInTheClones_Clones`): 1–100 %, default `50`, passo 1
+    - **Depth** (`Pedal_SendInTheClones_Depth`): 1–100 %, default `50`, passo 1
+    - **Mix** (`Pedal_SendInTheClones_Mix`): 1–100 %, default `50`, passo 1
+- **Shaver Phaser** — `Pedal_ShaverPhaser`  _(categoria: Modulation)_
+    - **Rate** (`Pedal_ShaverPhaser_Rate`): 1–100, default `25`, passo 1
+    - **Depth** (`Pedal_ShaverPhaser_Depth`): 1–100 %, default `50`, passo 1
+- **Vintage Chorus** — `Pedal_VintageChorus`  _(categoria: Modulation)_
+    - **Rate** (`Pedal_VintageChorus_Rate`): 0.1–10 hz, default `0.5`, passo 0.1
+    - **Mix** (`Pedal_VintageChorus_Mix`): 0–100 %, default `40`, passo 1
+    - **Depth** (`Pedal_VintageChorus_Depth`): 1–100 %, default `65`, passo 1
+- **Vintage Flanger** — `Pedal_VintageFlanger`  _(categoria: Modulation)_
+    - **Rate** (`Pedal_VintageFlanger_Rate`): 1–100, default `25`, passo 1
+    - **Depth** (`Pedal_VintageFlanger_Depth`): 1–100 %, default `50`, passo 1
+    - **Mix** (`Pedal_VintageFlanger_Mix`): 1–100 %, default `50`, passo 1
+- **MultiPitch** — `Pedal_MultiPitch`  _(categoria: Pitch)_
+    - **Pitch 1** (`Pedal_MultiPitch_Pitch1`): -24–24, default `-12`, passo 0.5
+    - **Mix** (`Pedal_MultiPitch_Mix`): 1–100 %, default `50`, passo 1
+    - **Tone** (`Pedal_MultiPitch_Tone`): 1–100, default `50`, passo 1
+- **OctaveUp!** — `Pedal_OctaveUp`  _(categoria: Pitch)_
+    - **Octave-UP!** (`Pedal_OctaveUp_Mix`): 1–100 %, default `66`, passo 1
+    - **Tone** (`Pedal_OctaveUp_Tone`): 1–100, default `50`, passo 1
+- **Octavius** — `Pedal_Octavius`  _(categoria: Pitch)_
+    - **Mix** (`Pedal_Octavius_Mix`): 1–100 %, default `66`, passo 1
+    - **Tone** (`Pedal_Octavius_Tone`): 1–100, default `50`, passo 1
+- **Digital Verb** — `Pedal_DigitalVerb`  _(categoria: Reverb)_
+    - **Time** (`Pedal_DigitalVerb_Time`): 1–100, default `73`, passo 1
+    - **Depth** (`Pedal_DigitalVerb_Depth`): 1–100, default `50`, passo 1
+    - **Mix** (`Pedal_DigitalVerb_Mix`): 1–100 %, default `50`, passo 1
+    - **Tone** (`Pedal_DigitalVerb_Tone`): 1–100, default `50`, passo 1
+- **Plate Reverb** — `Pedal_PlateVerb`  _(categoria: Reverb)_
+    - **Time** (`Pedal_PlateVerb_Time`): 1–100, default `40`, passo 1
+    - **Depth** (`Pedal_PlateVerb_Depth`): 1–100, default `50`, passo 1
+    - **Mix** (`Pedal_PlateVerb_Mix`): 1–100 %, default `50`, passo 1
+    - **Voice** (`Pedal_PlateVerb_Voice`): 0–1 enum, default `1`, passo 1
+- **Spring Reverb** — `Pedal_SpringReverb`  _(categoria: Reverb)_
+    - **Time** (`Pedal_SpringReverb_Time`): 1–100, default `60`, passo 1
+    - **Depth** (`Pedal_SpringReverb_Depth`): 1–100, default `50`, passo 1
+    - **Mix** (`Pedal_SpringReverb_Mix`): 1–100 %, default `50`, passo 1
+- **Tube Spring Reverb** — `Pedal_TubeSpring`  _(categoria: Reverb)_
+    - **Mix** (`Pedal_TubeSpring_Mix`): 1–100, default `40`, passo 1
+    - **Depth** (`Pedal_TubeSpring_Depth`): 1–100, default `50`, passo 1
+- **Amp Trem** — `Pedal_AmpTrem`  _(categoria: Tremolo)_
+    - **Speed** (`Pedal_AmpTrem_Speed`): 1–100, default `33`, passo 1
+    - **Mix** (`Pedal_AmpTrem_Depth`): 1–100, default `50`, passo 1
+- **Amp Vibe** — `Pedal_AmpVibe`  _(categoria: Tremolo)_
+    - **Speed** (`Pedal_AmpVibe_Speed`): 1–100, default `57`, passo 1
+    - **Mix** (`Pedal_AmpVibe_Mix`): 1–100 %, default `73`, passo 1
+- **Auto Vibe** — `Pedal_AutoVibe`  _(categoria: Tremolo)_
+    - **Sensitivity** (`Pedal_AutoVibe_Sens`): 1–100, default `67`, passo 1
+    - **Mix** (`Pedal_AutoVibe_Mix`): 1–100 %, default `47`, passo 1
+    - **Attack Speed** (`Pedal_AutoVibe_Attack`): 1–250 ms, default `24`, passo 1
+    - **Release Speed** (`Pedal_AutoVibe_Release`): 10–1000 ms, default `260`, passo 10
+- **Multi-Trem** — `Pedal_MultiTrem`  _(categoria: Tremolo)_
+    - **Speed** (`Pedal_MultiTrem_Speed`): 1–100, default `62`, passo 1
+    - **Mix** (`Pedal_MultiTrem_Mix`): 1–100 %, default `89`, passo 1
+    - **Waveform** (`Pedal_MultiTrem_Waveform`): 0–4 enum, default `2`, passo 1
+- **Multi-Vibe** — `Pedal_MultiVibe`  _(categoria: Tremolo)_
+    - **Speed** (`Pedal_MultiVibe_Speed`): 1–100, default `74`, passo 1
+    - **Mix** (`Pedal_MultiVibe_Mix`): 1–100 %, default `93`, passo 1
+    - **Waveform** (`Pedal_MultiVibe_Waveform`): 0–4 enum, default `3`, passo 1
+- **TremOle'** — `Pedal_TremOle`  _(categoria: Tremolo)_
+    - **Sensitivity** (`Pedal_TremOle_Sens`): 1–100, default `75`, passo 1
+    - **Mix** (`Pedal_TremOle_Mix`): 1–100 %, default `50`, passo 1
+    - **Attack Speed** (`Pedal_TremOle_Attack`): 1–250 ms, default `10`, passo 1
+    - **Release Speed** (`Pedal_TremOle_Release`): 10–1000 ms, default `200`, passo 10
+- **Tremolo** — `Pedal_Tremolo`  _(categoria: Tremolo)_
+    - **Speed** (`Pedal_Tremolo_Speed`): 1–100, default `81`, passo 1
+    - **Mix** (`Pedal_Tremolo_Mix`): 1–100 %, default `39`, passo 1
+
+## Pedais (usáveis como pré ou pós) — baixo (15)
+
+- **Bass Filter Delay** — `Bass_Pedal_BassFilterDelay`  _(categoria: Delay)_
+    - **Time** (`Bass_Pedal_BassFilterDelay_Time`): 20–2000 ms, default `360`, passo 10
+    - **Feedback** (`Bass_Pedal_BassFilterDelay_Feedback`): 0–100 %, default `45`, passo 1
+    - **Mix** (`Bass_Pedal_BassFilterDelay_Mix`): 1–100 %, default `55`, passo 1
+    - **Low Filter** (`Bass_Pedal_BassFilterDelay_Filter`): 1–100, default `20`, passo 1
+- **Bass Filter Echo** — `Bass_Pedal_BassFilterEcho`  _(categoria: Delay)_
+    - **Time** (`Bass_Pedal_BassFilterEcho_Time`): 20–2000 ms, default `120`, passo 10
+    - **Feedback** (`Bass_Pedal_BassFilterEcho_Feedback`): 0–100 %, default `69`, passo 1
+    - **Mix** (`Bass_Pedal_BassFilterEcho_Mix`): 1–100 %, default `65`, passo 1
+    - **Low Filter** (`Bass_Pedal_BassFilterEcho_Filter`): 1–100, default `20`, passo 1
+- **Bass Distortion** — `Bass_Pedal_BassDistortion`  _(categoria: Distortion)_
+    - **Gain** (`Bass_Pedal_BassDistortion_Gain`): 1–100, default `80`, passo 1
+    - **Tone** (`Bass_Pedal_BassDistortion_Tone`): 1–100, default `28`, passo 1
+    - **Filter** (`Bass_Pedal_BassDistortion_Filter`): 1–100 %, default `50`, passo 1
+- **Bass Fuzz** — `Bass_Pedal_BassFuzz`  _(categoria: Distortion)_
+    - **Gain** (`Bass_Pedal_BassFuzz_Gain`): 1–100, default `66`, passo 1
+    - **Tone** (`Bass_Pedal_BassFuzz_Tone`): 1–100, default `10`, passo 1
+    - **Filter** (`Bass_Pedal_BassFuzz_Filter`): 1–100 %, default `75`, passo 1
+- **Bass Overdrive** — `Bass_Pedal_BassOverdrive`  _(categoria: Distortion)_
+    - **Gain** (`Bass_Pedal_BassOverdrive_Gain`): 1–100, default `80`, passo 1
+    - **Tone** (`Bass_Pedal_BassOverdrive_Tone`): 1–100, default `40`, passo 1
+    - **Blend** (`Bass_Pedal_BassOverdrive_Blend`): 1–100 %, default `55`, passo 1
+    - **Filter** (`Bass_Pedal_BassOverdrive_Filter`): 1–100 %, default `75`, passo 1
+- **MB Comp** — `Bass_Pedal_MBComp`  _(categoria: Dynamics)_
+    - **Compression** (`Bass_Pedal_MBComp_Compress`): 1–100, default `40`, passo 1
+    - **Recovery Speed** (`Bass_Pedal_MBComp_Rate`): 1–100, default `40`, passo 1
+    - **Transition Band** (`Bass_Pedal_MBComp_Filter`): 100–1000 hz, default `600`, passo 10
+- **8-Band Bass EQ** — `Bass_Pedal_BassEQ8`  _(categoria: Filter)_
+    - **30hz** (`Bass_Pedal_BassEQ8_30`): -15–15 db, default `8`, passo 1
+    - **75hz** (`Bass_Pedal_BassEQ8_75`): -15–15 db, default `3`, passo 1
+    - **185hz** (`Bass_Pedal_BassEQ8_185`): -15–15 db, default `-9`, passo 1
+    - **460hz** (`Bass_Pedal_BassEQ8_460`): -15–15 db, default `-2`, passo 1
+    - **1.1khz** (`Bass_Pedal_BassEQ8_1100`): -15–15 db, default `2`, passo 1
+    - **2.7khz** (`Bass_Pedal_BassEQ8_2700`): -15–15 db, default `-3`, passo 1
+    - **6.8khz** (`Bass_Pedal_BassEQ8_6800`): -15–15 db, default `2`, passo 1
+    - **16khz** (`Bass_Pedal_BassEQ8_16000`): -15–15 db, default `4`, passo 1
+- **Bass Auto Filter** — `Bass_Pedal_BassAutoFilter`  _(categoria: Filter)_
+    - **Sensitivity** (`Bass_Pedal_BassAutoFilter_Sens`): 1–100, default `88`, passo 1
+    - **Attack Speed** (`Bass_Pedal_BassAutoFilter_Attack`): 1–250 ms, default `15`, passo 1
+    - **Release Speed** (`Bass_Pedal_BassAutoFilter_Release`): 10–1000 ms, default `120`, passo 10
+    - **Filter Type** (`Bass_Pedal_BassAutoFilter_FilterType`): 0–2 enum, default `1`, passo 1
+    - **Mix** (`Bass_Pedal_BassAutoFilter_Res`): 1–100 %, default `38`, passo 1
+- **Bass Wah** — `Bass_Pedal_BassWah`  _(categoria: Filter)_
+    - **Auto-Mode** (`Bass_Pedal_BassWah_Auto`): 0–1 enum, default `1`, passo 1
+    - **Sensitivity** (`Bass_Pedal_BassWah_Sens`): 1–100, default `68`, passo 1
+    - **Speed** (`Bass_Pedal_BassWah_Speed`): 1–100, default `89`, passo 1
+    - **Pedal (Auto=OFF)** (`Bass_Pedal_BassWah_Pedal`): 1–100, default `50`, passo 1
+- **Eden WT D.I.** — `Bass_Pedal_EdenWTDI`  _(categoria: Filter)_
+    - **Gain** (`Bass_Pedal_EdenWTDI_Gain`): 1–100, default `65`, passo 1
+    - **Bass** (`Bass_Pedal_EdenWTDI_Bass`): -12–12 db, default `4`, passo 0.5
+    - **Mid** (`Bass_Pedal_EdenWTDI_Mid`): -12–12 db, default `4`, passo 0.5
+    - **Treble** (`Bass_Pedal_EdenWTDI_Treble`): -12–12 db, default `-5`, passo 0.5
+    - **Enhance** (`Bass_Pedal_EdenWTDI_Enhance`): 1–100 %, default `35`, passo 1
+    - **Bass Boost** (`Bass_Pedal_EdenWTDI_LoShift`): 0–1 enum, default `1`, passo 1
+    - **Mid-Shift** (`Bass_Pedal_EdenWTDI_MidShift`): 0–1 enum, default `1`, passo 1
+    - **Compression** (`Bass_Pedal_EdenWTDI_Compression`): 0–100 %, default `45`, passo 1
+- **Bass Chorus** — `Bass_Pedal_BassChorus`  _(categoria: Modulation)_
+    - **Rate** (`Bass_Pedal_BassChorus_Rate`): 0.1–10 hz, default `1`, passo 0.1
+    - **Mix** (`Bass_Pedal_BassChorus_Mix`): 0–100 %, default `80`, passo 1
+    - **Depth** (`Bass_Pedal_BassChorus_Depth`): 1–100 %, default `65`, passo 1
+    - **Low Filter** (`Bass_Pedal_BassChorus_LoFilter`): 1–100, default `62`, passo 1
+- **Bass Enbiggenator** — `Bass_Pedal_BassEnbig`  _(categoria: Modulation)_
+    - **Rate** (`Bass_Pedal_BassEnbig_Rate`): 0.1–10 hz, default `4`, passo 0.1
+    - **Mix** (`Bass_Pedal_BassEnbig_Mix`): 0–100 %, default `45`, passo 1
+    - **Depth** (`Bass_Pedal_BassEnbig_Depth`): 1–100 %, default `55`, passo 1
+    - **Filter** (`Bass_Pedal_BassEnbig_Filter`): 1–100 %, default `30`, passo 1
+- **Bass Flange** — `Bass_Pedal_BassFlanger`  _(categoria: Modulation)_
+    - **Rate** (`Bass_Pedal_BassFlanger_Rate`): 1–100, default `20`, passo 1
+    - **Depth** (`Bass_Pedal_BassFlanger_Depth`): 1–100 %, default `50`, passo 1
+    - **Mix** (`Bass_Pedal_BassFlanger_Mix`): 0–100 %, default `65`, passo 1
+    - **Filter** (`Bass_Pedal_BassFlanger_Filter`): 1–100 %, default `50`, passo 1
+- **Bass Phase** — `Bass_Pedal_BassPhase`  _(categoria: Modulation)_
+    - **Rate** (`Bass_Pedal_BassPhase_Rate`): 1–100, default `78`, passo 1
+    - **Depth** (`Bass_Pedal_BassPhase_Depth`): 1–100 %, default `50`, passo 1
+    - **Mix** (`Bass_Pedal_BassPhase_Mix`): 0–100 %, default `65`, passo 1
+    - **Filter** (`Bass_Pedal_BassPhase_Filter`): 1–100 %, default `65`, passo 1
+- **Bass Sub Octave** — `Bass_Pedal_BassSubOctave`  _(categoria: Pitch)_
+    - **Mix** (`Bass_Pedal_BassSubOctave_Mix`): 0–100 %, default `70`, passo 1
+    - **Tone** (`Bass_Pedal_BassSubOctave_Tone`): 1–100, default `88`, passo 1
+
+## Racks (17)
+
+- **Studio Delay** — `Rack_StudioDelay`  _(categoria: Delay)_
+    - **Time Left** (`Rack_StudioDelay_TimeL`): 20–1000 ms, default `360`, passo 10
+    - **Time Right** (`Rack_StudioDelay_TimeR`): 20–1000 ms, default `220`, passo 10
+    - **Feedback** (`Rack_StudioDelay_Feedback`): 0–100 %, default `38`, passo 1
+    - **Mix** (`Rack_StudioDelay_Mix`): 1–100 %, default `40`, passo 1
+    - **Filter** (`Rack_StudioDelay_Filter`): 1–100 %, default `30`, passo 1
+- **Tape Echo** — `Rack_TapeEcho`  _(categoria: Delay)_
+    - **Time** (`Rack_TapeEcho_Time`): 20–2000 ms, default `550`, passo 10
+    - **Feedback** (`Rack_TapeEcho_Feedback`): 0–100 %, default `44`, passo 1
+    - **Mix** (`Rack_TapeEcho_Mix`): 1–100 %, default `62`, passo 1
+    - **Hi Filter** (`Rack_TapeEcho_Stereo`): 1–100 %, default `68`, passo 1
+    - **Lo Filter** (`Rack_TapeEcho_Filter`): 0–2 enum, default `1`, passo 1
+- **Studio Compressor** — `Rack_StudioCompressor`  _(categoria: Dynamics)_
+    - **Threshold** (`Rack_StudioCompressor_Threshold`): -50–0 db, default `-22.5`, passo 0.5
+    - **Ratio** (`Rack_StudioCompressor_Ratio`): 0–4 enum, default `2`, passo 1
+    - **Attack** (`Rack_StudioCompressor_Attack`): 0–250 ms, default `75`, passo 1
+    - **Release** (`Rack_StudioCompressor_Release`): 10–1000 ms, default `170`, passo 10
+- **Studio ParaGraphic EQ** — `Rack_StudioGraphicEQ`  _(categoria: Filter)_
+    - **Bass** (`Rack_StudioGraphicEQ_Bass`): -12–12 db, default `0`, passo 0.5
+    - **Bass Freq.** (`Rack_StudioGraphicEQ_BassFreq`): 20–500 hz, default `125`, passo 5
+    - **Low-Mid** (`Rack_StudioGraphicEQ_LoMid`): -12–12 db, default `0`, passo 0.5
+    - **Low-Mid Freq.** (`Rack_StudioGraphicEQ_LoMidFreq`): 200–2000 hz, default `800`, passo 20
+    - **Mid** (`Rack_StudioGraphicEQ_Mid`): -12–12 db, default `0`, passo 0.5
+    - **Mid Freq.** (`Rack_StudioGraphicEQ_MidFreq`): 0.5–5 khz, default `0.6`, passo 0.05
+    - **High-Mid** (`Rack_StudioGraphicEQ_HiMid`): -12–12 db, default `0`, passo 0.5
+    - **High-Mid Freq.** (`Rack_StudioGraphicEQ_HiMidFreq`): 1–10 khz, default `1.8`, passo 0.1
+    - **Treble** (`Rack_StudioGraphicEQ_Treble`): -12–12 db, default `0`, passo 0.5
+    - **Treble Freq.** (`Rack_StudioGraphicEQ_TrebleFreq`): 2–20 khz, default `5.6`, passo 0.2
+- **Studio Parametric EQ** — `Rack_StudioEQ`  _(categoria: Filter)_
+    - **Bass** (`Rack_StudioEQ_Bass`): -12–12 db, default `0`, passo 0.5
+    - **Bass Freq.** (`Rack_StudioEQ_BassFreq`): 20–500 hz, default `120`, passo 5
+    - **Low-Mid** (`Rack_StudioEQ_LoMid`): -12–12 db, default `0`, passo 0.5
+    - **Low-Mid Freq.** (`Rack_StudioEQ_LoMidFreq`): 100–2000 hz, default `1600`, passo 20
+    - **Low-Mid "Q"** (`Rack_StudioEQ_LoMidQ`): 0–1 enum, default `0`, passo 1
+    - **High-Mid** (`Rack_StudioEQ_HiMid`): -12–12 db, default `0`, passo 0.5
+    - **High-Mid Freq.** (`Rack_StudioEQ_HiMidFreq`): 0.8–8 khz, default `5`, passo 0.1
+    - **High-Mid "Q"** (`Rack_StudioEQ_HiMidQ`): 0–1 enum, default `0`, passo 1
+    - **Treble** (`Rack_StudioEQ_Treble`): -12–12 db, default `0`, passo 0.5
+    - **Treble Freq.** (`Rack_StudioEQ_TrebleFreq`): 2–20 khz, default `5.6`, passo 0.2
+- **Studio Wah Filter** — `Rack_StudioWahFilter`  _(categoria: Filter)_
+    - **Auto-Mode** (`Rack_StudioWahFilter_Auto`): 0–1 enum, default `1`, passo 1
+    - **Sensitivity** (`Rack_StudioWahFilter_Sens`): 1–100, default `65`, passo 1
+    - **Attack** (`Rack_StudioWahFilter_Attack`): 0–1000 ms, default `75`, passo 10
+    - **Release** (`Rack_StudioWahFilter_Release`): 10–1000 ms, default `170`, passo 10
+    - **Pedal** (`Rack_StudioWahFilter_Pedal`): 1–100, default `50`, passo 1
+- **Synth Filter** — `Rack_SynthFilter`  _(categoria: Filter)_
+    - **Sensitivity** (`Rack_SynthFilter_Sens`): 1–100, default `75`, passo 1
+    - **Attack Speed** (`Rack_SynthFilter_Attack`): 10–1000 ms, default `50`, passo 10
+    - **Release Speed** (`Rack_SynthFilter_Release`): 10–1000 ms, default `160`, passo 10
+    - **Filter Type** (`Rack_SynthFilter_FilterType`): 0–2 enum, default `1`, passo 1
+    - **Mix** (`Rack_SynthFilter_Res`): 1–100 %, default `36`, passo 1
+- **RotaVibe** — `Rack_RotaVibe`  _(categoria: Modulation)_
+    - **Rate** (`Rack_RotaVibe_Rate`): 1–100, default `100`, passo 1
+    - **Mix** (`Rack_RotaVibe_Mix`): 0–100 %, default `70`, passo 1
+    - **Depth** (`Rack_RotaVibe_Depth`): 1–100 %, default `48`, passo 1
+    - **Balance** (`Rack_RotaVibe_Balance`): 1–100 %, default `40`, passo 1
+- **Stereo Phaser** — `Rack_StereoPhaser`  _(categoria: Modulation)_
+    - **Rate** (`Rack_StereoPhaser_Rate`): 0.1–10 hz, default `0.5`, passo 0.1
+    - **Mix** (`Rack_StereoPhaser_Mix`): 0–100 %, default `40`, passo 1
+    - **Depth** (`Rack_StereoPhaser_Depth`): 1–100 %, default `55`, passo 1
+- **Studio Chorus** — `Rack_StudioChorus`  _(categoria: Modulation)_
+    - **Rate** (`Rack_StudioChorus_Rate`): 0.1–10 hz, default `0.5`, passo 0.1
+    - **Mix** (`Rack_StudioChorus_Mix`): 0–100 %, default `65`, passo 1
+    - **Depth** (`Rack_StudioChorus_Depth`): 1–100 %, default `67`, passo 1
+    - **Stereo** (`Rack_StudioChorus_Stereo`): 1–100 %, default `44`, passo 1
+    - **Delay** (`Rack_StudioChorus_Delay`): 1–100, default `20`, passo 1
+    - **LoFilter** (`Rack_StudioChorus_LoFilter`): 1–100 %, default `22`, passo 1
+    - **HiFilter** (`Rack_StudioChorus_HiFilter`): 1–100 %, default `22`, passo 1
+- **Studio Flanger** — `Rack_StudioFlanger`  _(categoria: Modulation)_
+    - **Rate** (`Rack_StudioFlanger_Rate`): 0.1–10 hz, default `0.5`, passo 0.1
+    - **Mix** (`Rack_StudioFlanger_Mix`): 0–100 %, default `25`, passo 1
+    - **Regen** (`Rack_StudioFlanger_Regen`): 1–100 %, default `35`, passo 1
+    - **Depth** (`Rack_StudioFlanger_Depth`): 1–100 %, default `30`, passo 1
+    - **Tone** (`Rack_StudioFlanger_Tone`): 1–100, default `60`, passo 1
+- **Studio Pitch** — `Rack_StudioPitch`  _(categoria: Pitch)_
+    - **Pitch** (`Rack_StudioPitch_Pitch`): -24–24, default `-5`, passo 0.5
+    - **Mix** (`Rack_StudioPitch_Mix`): 0–100 %, default `70`, passo 1
+    - **Tone** (`Rack_StudioPitch_Tone`): 1–100, default `60`, passo 1
+    - **Pan** (`Rack_StudioPitch_Pan`): 1–100 %, default `50`, passo 1
+- **Studio Chamber Reverb** — `Rack_StudioChamber`  _(categoria: Reverb)_
+    - **Decay** (`Rack_StudioChamber_Time`): 1–100, default `66`, passo 1
+    - **Diffusion** (`Rack_StudioChamber_Depth`): 1–100, default `80`, passo 1
+    - **Mix** (`Rack_StudioChamber_Mix`): 1–100 %, default `50`, passo 1
+    - **Tone** (`Rack_StudioChamber_Tone`): 1–100, default `60`, passo 1
+- **Studio Hall Reverb** — `Rack_StudioVerb`  _(categoria: Reverb)_
+    - **Decay** (`Rack_StudioVerb_Time`): 1–100, default `66`, passo 1
+    - **Diffusion** (`Rack_StudioVerb_Depth`): 1–100, default `80`, passo 1
+    - **Mix** (`Rack_StudioVerb_Mix`): 1–100 %, default `50`, passo 1
+    - **Tone** (`Rack_StudioVerb_Tone`): 1–100, default `60`, passo 1
+- **Studio Plate Reverb** — `Rack_StudioPlate`  _(categoria: Reverb)_
+    - **Decay** (`Rack_StudioPlate_Time`): 1–100, default `66`, passo 1
+    - **Diffusion** (`Rack_StudioPlate_Depth`): 1–100, default `80`, passo 1
+    - **Mix** (`Rack_StudioPlate_Mix`): 1–100 %, default `50`, passo 1
+    - **Tone** (`Rack_StudioPlate_Tone`): 1–100, default `60`, passo 1
+- **Stereo Analog Vibrato** — `Rack_StereoAnalogVibe`  _(categoria: Tremolo)_
+    - **Speed** (`Rack_StereoAnalogVibe_Speed`): 1–100, default `66`, passo 1
+    - **Mix** (`Rack_StereoAnalogVibe_Mix`): 1–100 %, default `44`, passo 1
+    - **Waveform** (`Rack_StereoAnalogVibe_Waveform`): 0–2 enum, default `1`, passo 1
+- **Stereo Tube Trem** — `Rack_StereoTubeTrem`  _(categoria: Tremolo)_
+    - **Speed** (`Rack_StereoTubeTrem_Speed`): 1–100, default `77`, passo 1
+    - **Mix** (`Rack_StereoTubeTrem_Mix`): 1–100 %, default `80`, passo 1
+    - **Waveform** (`Rack_StereoTubeTrem_Waveform`): 0–2 enum, default `2`, passo 1
+
+## Descritores de tom (32)
+
+Etiquetas que descrevem o carácter do tom (nome → código Rocksmith):
+
+- **Acoustic** — `$[35721]ACOUSTIC`
+- **Banjo** — `$[27201]BANJO`
+- **Bass** — `$[35715]BASS`
+- **Chorus** — `$[35723]CHORUS`
+- **Clean** — `$[35720]CLEAN`
+- **Crunch** — `$[27156]CRUNCH`
+- **Delay** — `$[35753]DELAY`
+- **Direct** — `$[35752]DIRECT`
+- **Distortion** — `$[35722]DISTORTION`
+- **Echo** — `$[35754]ECHO`
+- **Effect** — `$[35733]EFFECT`
+- **Emulated** — `$[27119]EMULATED`
+- **Filter** — `$[35729]FILTER`
+- **Flanger** — `$[35731]FLANGER`
+- **Fuzz** — `$[35756]FUZZ`
+- **High Gain** — `$[35755]HIGH GAIN`
+- **Lead** — `$[35724]LEAD`
+- **Low Output** — `$[35732]LOW OUTPUT`
+- **Mandolin** — `$[27202]MANDOLIN`
+- **Multi Effect** — `$[35751]MULTI-EFFECT`
+- **Octave** — `$[35719]OCTAVE`
+- **Overdrive** — `$[35716]OVERDRIVE`
+- **Phaser** — `$[35730]PHASER`
+- **Piano** — `$[29495]PIANO`
+- **Processed** — `$[35734]PROCESSED`
+- **Reverb** — `$[35726]REVERB`
+- **Rotary** — `$[35725]ROTARY`
+- **Special Effect** — `$[35750]SPECIAL EFFECT`
+- **Tremolo** — `$[35727]TREMOLO`
+- **Ukulele** — `$[27204]UKULELE`
+- **Vibrato** — `$[35728]VIBRATO`
+- **Vocal** — `$[35718]VOCAL`
