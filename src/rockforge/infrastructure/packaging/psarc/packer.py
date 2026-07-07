@@ -37,6 +37,7 @@ additive, never a replacement for the DLC Builder import path.
 from __future__ import annotations
 
 import json
+import logging
 import shutil
 import subprocess
 from pathlib import Path
@@ -84,6 +85,9 @@ def _extract_preview_clip(audio: Path, out: Path, start_s: float, length_s: floa
     return out if out.exists() and out.stat().st_size > 0 else None
 
 
+logger = logging.getLogger(__name__)
+
+
 class NativePsarcPacker:
     def __init__(self, wem_converter: WwiseWemConverter | None = None) -> None:
         self._wem_converter = wem_converter
@@ -120,18 +124,104 @@ class NativePsarcPacker:
         audio_dest = out_dir / f"audio{audio.suffix}"
         shutil.copy2(audio, audio_dest)
 
-        wem_path: Path | None = None
-        if self._wem_converter is not None and self._wem_converter.available():
-            wem = self._wem_converter.convert(audio, out_dir / "wwise_work")
-            wem_path = out_dir / "audio.wem"
-            shutil.copy2(wem, wem_path)
-
         meta = arrangements[0].metadata
         song_key = manifest.song_key_from_title(meta.artist, meta.title)
         key_lower = song_key.lower()
 
-        # Always ship (placeholder) album art so the song list's AlbumArt URN
-        # resolves; DLC Builder generates real DDS textures from the cover.
+        # The Wwise .wem is needed by the native PSARC and referenced in the
+        # bundle's project metadata, but a Wwise failure must NEVER abort the
+        # bundle — DLC Builder can (re)build the .wem itself on import.
+        wem_path: Path | None = None
+        try:
+            if self._wem_converter is not None and self._wem_converter.available():
+                wem = self._wem_converter.convert(audio, out_dir / "wwise_work")
+                wem_path = out_dir / "audio.wem"
+                shutil.copy2(wem, wem_path)
+        except Exception:  # noqa: BLE001 — Wwise is best-effort; keep the bundle
+            logger.warning("Wwise .wem conversion failed; bundle built without it", exc_info=True)
+            wem_path = None
+
+        # The native .psarc is fully isolated: ANY failure here (missing crypto
+        # extra, Wwise/ffmpeg, a packing bug) leaves the DLC Builder bundle — the
+        # trustworthy path — completely intact. The reason is recorded below.
+        psarc_path: Path | None = None
+        psarc_error: str | None = None
+        try:
+            psarc_path = self._build_psarc(
+                arrangements, audio, audio_dest, out_dir, vocals, cover_art_dest,
+                wem_path, song_key, key_lower, meta.song_length,
+            )
+        except Exception as exc:  # noqa: BLE001 — never let the .psarc sink the bundle
+            psarc_error = f"{type(exc).__name__}: {exc}"
+            logger.warning("native .psarc build failed; bundle still produced: %s", psarc_error,
+                           exc_info=True)
+
+        write_rs2dlc(
+            arrangements,
+            [p.name for p in instrumental_xml],
+            audio_dest.name,
+            song_key,
+            out_dir / "rockforge.rs2dlc",
+            vocals_xml_name=vocals_path.name if vocals_path else None,
+            cover_art_name=cover_art_dest.name if cover_art_dest else None,
+        )
+
+        # Keep the bundle DLC Builder-importable (the GET /jobs/{id}/bundle zip)
+        # and additionally record the natively-produced .psarc.
+        project = build_project_metadata(
+            arrangements, audio_dest, wem_path, xml_paths, vocals_path, cover_art_dest
+        )
+        project["song_key"] = song_key
+        if psarc_path is not None:
+            project["psarc"] = psarc_path.name
+            project["native_psarc_note"] = (
+                "RockForge also packed this .psarc natively "
+                "(infrastructure/packaging/psarc); the DLC Builder fields above "
+                "remain valid for re-importing the bundle."
+            )
+        elif psarc_error is not None:
+            project["native_psarc_note"] = (
+                "The native .psarc could not be built "
+                f"({psarc_error}); this bundle is still valid — import it into "
+                "DLC Builder and let it build the .psarc."
+            )
+        if cover_art_dest is not None:
+            project["cover_art_note"] = (
+                "cover_art was packed into the bundle and converted to the in-game "
+                "album-art DDS textures (64/128/256) in the native .psarc (needs "
+                "Pillow, part of the [psarc] extra; falls back to a neutral "
+                "placeholder otherwise)."
+            )
+        (out_dir / "rockforge_project.json").write_text(
+            json.dumps(project, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+
+        return PackagingResult(
+            bundle_dir=out_dir,
+            xml_paths=tuple(xml_paths),
+            wem_path=wem_path,
+            psarc_path=psarc_path,
+        )
+
+    def _build_psarc(
+        self,
+        arrangements: list[Arrangement],
+        audio: Path,
+        audio_dest: Path,
+        out_dir: Path,
+        vocals: list[VocalEvent] | None,
+        cover_art_dest: Path | None,
+        wem_path: Path | None,
+        song_key: str,
+        key_lower: str,
+        song_length: float,
+    ) -> Path:
+        """Assemble the native ``.psarc``. Raises on any failure (missing crypto,
+        Wwise/ffmpeg, packing); the caller keeps the bundle regardless."""
+        from rockforge.infrastructure.packaging.psarc.crypto import encrypt_sng
+
+        # Manifests (+ appid/toolkit) and album art. Placeholder art is always
+        # shipped so the AlbumArt URN resolves; a real cover is DXT1-encoded.
         files: dict[str, bytes] = manifest.build_manifest_files(
             [(arr, manifest.arrangement_asset_name(song_key, arr.kind)) for arr in arrangements],
             song_key,
@@ -158,106 +248,53 @@ class NativePsarcPacker:
             has_album_art=True,
         ).encode("utf-8")
         files[f"songs/arr/{key_lower}_showlights.xml"] = gamedata.build_showlights().encode("utf-8")
-        # Real cover → DXT1 DDS when a cover was uploaded (and Pillow is present);
-        # otherwise a neutral placeholder so the AlbumArt URN still resolves.
         cover_for_dds = cover_art_dest if cover_art_dest is not None else None
         for res in (64, 128, 256):
             files[f"gfxassets/album_art/album_{key_lower}_{res}.dds"] = gamedata.album_art_dds(
                 res, cover_for_dds
             )
 
-        psarc_path: Path | None = None
-        try:
-            from rockforge.infrastructure.packaging.psarc.crypto import encrypt_sng
+        for arr in arrangements:
+            payload = sng.write_sng(sng.from_arrangement(arr))
+            asset = manifest.arrangement_asset_name(song_key, arr.kind)
+            files[f"songs/bin/generic/{asset}.sng"] = encrypt_sng(payload)
 
-            for arr in arrangements:
-                model = sng.from_arrangement(arr)
-                payload = sng.write_sng(model)
-                asset = manifest.arrangement_asset_name(song_key, arr.kind)
-                files[f"songs/bin/generic/{asset}.sng"] = encrypt_sng(payload)
+        # Vocals are a separate arrangement with their own SNG (real Rocksmith
+        # convention), not embedded in an instrument SNG.
+        if vocals:
+            vocals_payload = sng.write_sng(sng.from_vocals(vocals))
+            files[f"songs/bin/generic/{key_lower}_vocals.sng"] = encrypt_sng(vocals_payload)
 
-            # Vocals are a separate arrangement with their own SNG (real
-            # Rocksmith convention), not embedded in an instrument SNG.
-            if vocals:
-                vocals_payload = sng.write_sng(sng.from_vocals(vocals))
-                files[f"songs/bin/generic/{key_lower}_vocals.sng"] = encrypt_sng(vocals_payload)
+        if wem_path is not None:
+            # Real Rocksmith audio: a Wwise SoundBank (Play_<key> event + audio
+            # prefetch) plus the full stream as <fileID>.wem beside it. Without
+            # the .bnk the game has no event to fire and plays silence.
+            wem_bytes = wem_path.read_bytes()
+            bnk_bytes, wem_file_id = soundbank.generate_soundbank(song_key, wem_bytes)
+            files[f"audio/windows/song_{key_lower}.bnk"] = bnk_bytes
+            files[f"audio/windows/{wem_file_id}.wem"] = wem_bytes
 
-            if wem_path is not None:
-                # Real Rocksmith audio: a Wwise SoundBank (Play_<key> event +
-                # audio prefetch) plus the full stream as <fileID>.wem beside it.
-                # Without the .bnk the game has no event to fire and plays silence.
-                # A matching preview bank is required by the manifest/xblock.
-                wem_bytes = wem_path.read_bytes()
-                bnk_bytes, wem_file_id = soundbank.generate_soundbank(song_key, wem_bytes)
-                files[f"audio/windows/song_{key_lower}.bnk"] = bnk_bytes
-                files[f"audio/windows/{wem_file_id}.wem"] = wem_bytes
-
-                # A real ~28 s preview clip (its own .wem), not the full stream.
-                assert self._wem_converter is not None
-                preview_wem_bytes = wem_bytes
-                start_s, length_s = _preview_window(meta.song_length)
-                clip = _extract_preview_clip(
-                    audio, out_dir / "preview.wav", start_s, length_s
-                )
-                if clip is not None:
-                    preview_wem = self._wem_converter.convert(clip, out_dir / "wwise_preview")
-                    preview_wem_bytes = preview_wem.read_bytes()
-                preview_bnk, preview_id = soundbank.generate_soundbank(
-                    f"{song_key}_preview", preview_wem_bytes, preview=True
-                )
-                files[f"audio/windows/song_{key_lower}_preview.bnk"] = preview_bnk
-                files[f"audio/windows/{preview_id}.wem"] = preview_wem_bytes
-            else:
-                # No Wwise available: pack the WAV under a path the retail game
-                # will not load — the bundle stays the trustworthy audio path.
-                files[f"audio/{key_lower}{audio_dest.suffix}"] = audio_dest.read_bytes()
-
-            psarc_bytes = container.pack_entries(files, encrypt=True)
-            # Rocksmith 2014 on PC only loads CDLC whose filename ends in
-            # "_p.psarc" (the "_p" platform tag) — without it the game ignores
-            # the file and the song never appears in the song list.
-            psarc_path = out_dir / f"{song_key}_p.psarc"
-            psarc_path.write_bytes(psarc_bytes)
-        except ImportError:
-            pass
-
-        write_rs2dlc(
-            arrangements,
-            [p.name for p in instrumental_xml],
-            audio_dest.name,
-            song_key,
-            out_dir / "rockforge.rs2dlc",
-            vocals_xml_name=vocals_path.name if vocals_path else None,
-            cover_art_name=cover_art_dest.name if cover_art_dest else None,
-        )
-
-        # Keep the bundle DLC Builder-importable (the GET /jobs/{id}/bundle zip)
-        # and additionally record the natively-produced .psarc.
-        project = build_project_metadata(
-            arrangements, audio_dest, wem_path, xml_paths, vocals_path, cover_art_dest
-        )
-        project["song_key"] = song_key
-        if psarc_path is not None:
-            project["psarc"] = psarc_path.name
-            project["native_psarc_note"] = (
-                "RockForge also packed this .psarc natively "
-                "(infrastructure/packaging/psarc); the DLC Builder fields above "
-                "remain valid for re-importing the bundle."
+            # A real ~28 s preview clip (its own .wem), not the full stream, and
+            # marked single-instance so it never plays over itself.
+            preview_wem_bytes = wem_bytes
+            start_s, length_s = _preview_window(song_length)
+            clip = _extract_preview_clip(audio, out_dir / "preview.wav", start_s, length_s)
+            if clip is not None and self._wem_converter is not None:
+                preview_wem = self._wem_converter.convert(clip, out_dir / "wwise_preview")
+                preview_wem_bytes = preview_wem.read_bytes()
+            preview_bnk, preview_id = soundbank.generate_soundbank(
+                f"{song_key}_preview", preview_wem_bytes, preview=True
             )
-        if cover_art_dest is not None:
-            project["cover_art_note"] = (
-                "cover_art was packed into the bundle and converted to the in-game "
-                "album-art DDS textures (64/128/256) in the native .psarc (needs "
-                "Pillow, part of the [psarc] extra; falls back to a neutral "
-                "placeholder otherwise)."
-            )
-        (out_dir / "rockforge_project.json").write_text(
-            json.dumps(project, indent=2, ensure_ascii=False), encoding="utf-8"
-        )
+            files[f"audio/windows/song_{key_lower}_preview.bnk"] = preview_bnk
+            files[f"audio/windows/{preview_id}.wem"] = preview_wem_bytes
+        else:
+            # No Wwise: pack the WAV under a path the retail game will not load —
+            # the bundle stays the trustworthy audio path.
+            files[f"audio/{key_lower}{audio_dest.suffix}"] = audio_dest.read_bytes()
 
-        return PackagingResult(
-            bundle_dir=out_dir,
-            xml_paths=tuple(xml_paths),
-            wem_path=wem_path,
-            psarc_path=psarc_path,
-        )
+        psarc_bytes = container.pack_entries(files, encrypt=True)
+        # Rocksmith 2014 on PC only loads CDLC whose filename ends in "_p.psarc"
+        # (the "_p" platform tag) — without it the game ignores the file.
+        psarc_path = out_dir / f"{song_key}_p.psarc"
+        psarc_path.write_bytes(psarc_bytes)
+        return psarc_path

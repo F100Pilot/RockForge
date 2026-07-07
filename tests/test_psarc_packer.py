@@ -125,6 +125,26 @@ def test_preview_uses_a_trimmed_clip_not_the_full_stream(tmp_path: Path, monkeyp
     assert entries[f"audio/windows/{prev_id}.wem"] != entries[f"audio/windows/{song_id}.wem"]
 
 
+def test_bundle_survives_wwise_failure(tmp_path: Path) -> None:
+    """A Wwise failure must not abort the DLC Builder bundle (it can build the
+    .wem itself); the .psarc is just packed without a real audio bank."""
+    class _BoomWwise:
+        def available(self) -> bool:
+            return True
+
+        def convert(self, wav: Path, workdir: Path) -> Path:
+            raise RuntimeError("wwise down")
+
+    audio = tmp_path / "audio.wav"
+    audio.write_bytes(b"RIFF....WAVEfmt ")
+    result = NativePsarcPacker(wem_converter=_BoomWwise()).package(
+        [_arrangement(ArrangementKind.COMBINED)], audio, tmp_path / "bundle"
+    )
+    assert result.wem_path is None
+    assert (tmp_path / "bundle" / "rockforge.rs2dlc").exists()
+    assert (tmp_path / "bundle" / "rockforge_project.json").exists()
+
+
 def test_package_produces_valid_psarc(tmp_path: Path) -> None:
     audio = tmp_path / "audio.wav"
     audio.write_bytes(b"RIFF....WAVEfmt ")
