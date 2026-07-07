@@ -579,15 +579,25 @@ builds that vocals-only model.
 
 What is intentionally absent (these are correct given the domain model, not
 defects):
-- **Simple Dynamic Difficulty**: `from_arrangement` emits multiple
-  `ArrangementLevels` (`_MAX_DD_LEVELS`, up to 5) — a note appears once the
-  difficulty reaches its beat-strength tier (`_note_tier`: downbeat→0, beat→1,
-  half→2, quarter→3, finer→4), so level 0 is the downbeats and the top level is
-  the full chart. Anchors/fingerprints are shared across levels (time-windows);
-  only the note subset, per-iteration linkage and counts differ (`_build_level`).
-  `phrases[].max_difficulty` is the phrase's own top tier; the manifest reports
+- **Simplified DDC (Dynamic Difficulty)**: `from_arrangement` emits several
+  `ArrangementLevels` shaped like a real DDC pass (verified by decoding a DLC
+  Builder reference SNG: 23 levels, per-phrase ceilings graduated by density,
+  per-iteration hero triples of ~(¼,½,1)·max). Each **phrase's** ceiling scales
+  with the note count of its BUSIEST iteration (`phrase_max = min(_DD_LEVEL_CAP,
+  busiest-1)`, capped at `_DD_LEVEL_CAP = 11` to keep the SNG small); the song's
+  `max_difficulty` is the max over phrases, and there are `max_difficulty + 1`
+  levels. At level `d`, each iteration shows the strongest-beat prefix of its
+  notes scaled by `d` against that phrase's ceiling (`_level_notes`, ranked by
+  `_note_tier` then time), so level 0 is the strongest beats and the top level is
+  the full chart. `phrase_iterations[].difficulty` is the `(round(max/4),
+  round(max/2), max)` Easy/Medium/Hard hero triple. Anchors/fingerprints are
+  shared across levels (time-windows); only the note subset, per-iteration
+  linkage and counts differ (`_build_level`). The manifest reports
   `MaxPhraseDifficulty` + `NotesEasy/Medium/Hard` from the levels. This is a
-  mechanical density ramp, NOT the musical phrase-leveling a real DDC pass does.
+  mechanical density ramp with NO `NLinkedDifficulty` cross-phrase linkage — a
+  simplified DDC, NOT the full musical phrase-leveling a retail DDC pass does; the
+  in-game difficulty slider therefore spans a shorter range than a retail song's.
+  The trustworthy full-DD path stays the DLC Builder bundle (it runs a real DDC).
 - **ChordNotesId = -1 for simple chords**: only chords with per-string
   bend/slide/vibrato get a ChordNotes entry — exactly what DLC Builder/EOF do.
 - **Fingerprints2 (arpeggio) empty**: the domain has no arpeggio marking.
