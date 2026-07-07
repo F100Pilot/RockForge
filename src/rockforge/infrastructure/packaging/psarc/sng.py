@@ -470,7 +470,12 @@ def from_arrangement(
         chord_notes_list.append(cn)
 
     # --- Build anchors ---
-    anchors: list[SngAnchor] = []
+    # An anchor is the fret-hand position; it is active from its own time until
+    # the NEXT anchor (Rocksmith2014.NET Anchor.fs). Each anchor must have a
+    # distinct, increasing start_time — giving several the same phrase-iteration
+    # start (as an earlier version did) overlaps them and crashes the note
+    # highway on load. So key anchor times off the note where the position moves.
+    raw: list[tuple[float, float, int, int]] = []  # (start, last_note, fret, width)
     current_anchor: tuple[int, int] | None = None
     for g in groups:
         used = [n.fret for n in g if n.fret > 0]
@@ -481,18 +486,20 @@ def from_arrangement(
         ):
             continue
         fret, width = _anchor_for_frets(used)
-        pi_id = _find_phrase_iteration(phrase_iterations, g[0].time)
-        pi = phrase_iterations[pi_id] if phrase_iterations else None
+        raw.append((g[0].time, g[-1].time, fret, width))
+        current_anchor = (fret, width)
+    anchors: list[SngAnchor] = []
+    for i, (t, last_note, fret, width) in enumerate(raw):
+        end = raw[i + 1][0] if i + 1 < len(raw) else song_length
         anchors.append(SngAnchor(
-            start_time=pi.start_time if pi else g[0].time,
-            end_time=pi.end_time if pi else song_length,
-            first_note_time=g[0].time,
-            last_note_time=g[-1].time,
+            start_time=t,
+            end_time=end,
+            first_note_time=t,
+            last_note_time=last_note,
             fret=fret,
             width=width,
-            phrase_iteration_id=pi_id,
+            phrase_iteration_id=_find_phrase_iteration(phrase_iterations, t),
         ))
-        current_anchor = (fret, width)
     if not anchors and groups:
         anchors.append(SngAnchor(
             start_time=0.0,
