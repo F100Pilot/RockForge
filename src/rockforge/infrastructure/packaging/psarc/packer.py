@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import subprocess
 from pathlib import Path
 
 from rockforge.domain.arrangement import Arrangement
@@ -51,6 +52,36 @@ from rockforge.infrastructure.packaging.rs2dlc import write_rs2dlc
 from rockforge.infrastructure.packaging.wwise import WwiseWemConverter
 from rockforge.infrastructure.rsxml.vocals import VocalEvent, write_vocals_xml
 from rockforge.infrastructure.rsxml.writer import write_arrangement_xml
+
+# The song-select preview is a short clip, not the whole track (reusing the full
+# stream makes it play over itself). Default to a ~28 s window a bit into the song.
+PREVIEW_START_S = 15.0
+PREVIEW_LENGTH_S = 28.0
+
+
+def _preview_window(song_length: float) -> tuple[float, float]:
+    if song_length and song_length > PREVIEW_START_S + 5.0:
+        start = min(PREVIEW_START_S, song_length * 0.25)
+        return start, min(PREVIEW_LENGTH_S, song_length - start)
+    return 0.0, min(PREVIEW_LENGTH_S, song_length) if song_length else PREVIEW_LENGTH_S
+
+
+def _extract_preview_clip(audio: Path, out: Path, start_s: float, length_s: float) -> Path | None:
+    """Trim a preview clip with ffmpeg (same stdin/timeout guards as the
+    normalizer). Returns None if ffmpeg is missing or the trim fails."""
+    cmd = [
+        "ffmpeg", "-nostdin", "-y",
+        "-ss", str(start_s), "-t", str(length_s),
+        "-i", str(audio), "-ar", "44100", "-ac", "2", str(out),
+    ]
+    try:
+        subprocess.run(
+            cmd, check=True, capture_output=True, text=True,
+            stdin=subprocess.DEVNULL, timeout=300,
+        )
+    except (FileNotFoundError, subprocess.SubprocessError):
+        return None
+    return out if out.exists() and out.stat().st_size > 0 else None
 
 
 class NativePsarcPacker:
@@ -160,11 +191,22 @@ class NativePsarcPacker:
                 bnk_bytes, wem_file_id = soundbank.generate_soundbank(song_key, wem_bytes)
                 files[f"audio/windows/song_{key_lower}.bnk"] = bnk_bytes
                 files[f"audio/windows/{wem_file_id}.wem"] = wem_bytes
+
+                # A real ~28 s preview clip (its own .wem), not the full stream.
+                assert self._wem_converter is not None
+                preview_wem_bytes = wem_bytes
+                start_s, length_s = _preview_window(meta.song_length)
+                clip = _extract_preview_clip(
+                    audio, out_dir / "preview.wav", start_s, length_s
+                )
+                if clip is not None:
+                    preview_wem = self._wem_converter.convert(clip, out_dir / "wwise_preview")
+                    preview_wem_bytes = preview_wem.read_bytes()
                 preview_bnk, preview_id = soundbank.generate_soundbank(
-                    f"{song_key}_preview", wem_bytes
+                    f"{song_key}_preview", preview_wem_bytes
                 )
                 files[f"audio/windows/song_{key_lower}_preview.bnk"] = preview_bnk
-                files[f"audio/windows/{preview_id}.wem"] = wem_bytes
+                files[f"audio/windows/{preview_id}.wem"] = preview_wem_bytes
             else:
                 # No Wwise available: pack the WAV under a path the retail game
                 # will not load — the bundle stays the trustworthy audio path.
