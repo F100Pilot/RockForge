@@ -263,6 +263,31 @@ def test_arrangement_level_has_phrase_counts() -> None:
     assert len(level.notes_in_iteration1) == len(model.phrase_iterations)
 
 
+def test_anchors_have_distinct_increasing_times() -> None:
+    # Anchors that share a start time (an earlier bug keyed them off the phrase
+    # iteration) overlap and crash the note highway on load.
+    frets = [1, 5, 9, 5, 1, 7, 12, 3]
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=8.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(
+            beats=tuple(Beat(time=i * 0.5, measure=1 if i == 0 else -1) for i in range(18)),
+            average_bpm=120.0,
+        ),
+        notes=[TabNote(string=0, fret=frets[i], time=i * 0.5, sustain=0.4) for i in range(8)],
+        sections=[],
+    )
+    anchors = from_arrangement(arr).arrangements[0].anchors
+    assert len(anchors) >= 2
+    times = [a.start_time for a in anchors]
+    assert times == sorted(times)
+    assert len(set(times)) == len(times)  # strictly distinct
+    # Each anchor ends where the next begins (contiguous coverage).
+    for i in range(len(anchors) - 1):
+        assert anchors[i].end_time == anchors[i + 1].start_time
+
+
 def test_slide_notes_produce_anchor_extensions() -> None:
     arr = Arrangement(
         kind=ArrangementKind.LEAD,
