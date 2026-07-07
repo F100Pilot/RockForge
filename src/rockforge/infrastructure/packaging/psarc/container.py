@@ -26,6 +26,7 @@ Layout:
 
 from __future__ import annotations
 
+import hashlib
 import struct
 import zlib
 
@@ -35,6 +36,10 @@ COMPRESSION = b"zlib"
 HEADER_SIZE = 32
 TOC_ENTRY_SIZE = 30
 BLOCK_SIZE = 65536
+# The name-block entry (index 0) has no archive path. Both a real DLC Builder
+# PSARC and the toolkit's re-pack write this same fixed 16-byte name hash for it,
+# so we replicate it verbatim rather than zeroing it.
+_NAME_BLOCK_DIGEST = bytes.fromhex("4d3d4000dd8eed661b5cfe5f4abc924b")
 
 
 def _uint40(value: int) -> bytes:
@@ -68,19 +73,28 @@ def pack_entries(files: dict[str, bytes], encrypt: bool = False) -> bytes:
     paths = list(files.keys())
     name_block = ("\n".join(paths) + "\n").encode("utf-8")
     contents = [name_block, *(files[p] for p in paths)]
+    # Each TOC entry carries a 16-byte name hash = MD5 of the archive path.
+    # Rocksmith resolves every asset (SNG/manifest/xblock/…) THROUGH this hash,
+    # so leaving it zero made the game unable to find the files and silently drop
+    # the whole song from the list — even with a correct appid (this cost us the
+    # "runs, but not in the list until re-packed by the toolkit" bug). Verified by
+    # byte-diffing a working DLC Builder PSARC and the toolkit's re-pack of our own
+    # output: both give every file entry ``md5(path)``. The name-block entry
+    # (index 0) has no path and both tools write this fixed constant for it.
+    digests = [_NAME_BLOCK_DIGEST] + [hashlib.md5(p.encode("utf-8")).digest() for p in paths]
 
     zlengths: list[int] = []
     block_section = bytearray()
     toc_rows: list[tuple[bytes, int, int, int]] = []  # md5, zindex_begin, length, offset
 
-    for content in contents:
+    for idx, content in enumerate(contents):
         zindex_begin = len(zlengths)
         offset = len(block_section)
         for block in _split_blocks(content):
             stored, zlength = _compress_block(block)
             zlengths.append(zlength)
             block_section.extend(stored)
-        toc_rows.append((b"\x00" * 16, zindex_begin, len(content), offset))
+        toc_rows.append((digests[idx], zindex_begin, len(content), offset))
 
     num_entries = len(toc_rows)
 

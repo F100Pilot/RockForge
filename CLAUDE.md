@@ -650,7 +650,17 @@ emitted so the native PSARC matches the retail layout file-for-file:
   (a neutral solid-DXT1 **placeholder** — real cover DDS is a DLC Builder step),
   and the `song_<key>_preview.bnk` + its `.wem` alongside the main bank;
 - the container's TOC entry offsets are **absolute** from the file start
-  (`container.py`), as retail expects — not block-section-relative.
+  (`container.py`), as retail expects — not block-section-relative;
+- **every TOC entry carries a 16-byte name hash = `md5(archive_path)`**
+  (`container.py`). Rocksmith resolves every asset (SNG/manifest/xblock/…)
+  THROUGH this hash, so a zeroed hash makes the game unable to find the files and
+  it silently drops the whole song from the list **even with a correct appid** —
+  the exact "plays fine once re-packed by the Custom Song Toolkit, but our own
+  `.psarc` never appears" symptom. The name-block entry (index 0) has no path and
+  uses the fixed retail constant `0x4d3d4000dd8eed661b5cfe5f4abc924b` (both DLC
+  Builder and the toolkit write it). Verified by byte-diffing a working DLC
+  Builder PSARC and the toolkit's re-pack of our own output; guarded by
+  `test_toc_entries_carry_md5_of_path`.
 
 The SNG always emits a valid phrase timeline (`sng._default_sections` synthesizes
 a COUNT/riff/END structure when the arrangement has no section markers — without
