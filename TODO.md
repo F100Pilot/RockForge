@@ -253,11 +253,14 @@ ver `TESTING.md`.
     mas não está calibrada para a referência do Rocksmith. Medir a sonoridade do
     `.wem` e mapear para o volume do banco de som (e do manifesto).
 
-- [ ] **Dynamic Difficulty (DD)**: hoje a partitura toca sempre à densidade
-  máxima (um único nível de dificuldade). Gerar níveis de DD (redução
-  progressiva de notas por frase) para uma experiência de jogo a sério — é uma
-  lacuna real, não um ficheiro malformado. Afeta o SNG (ArrangementLevels) e os
-  manifestos.
+- [~] **Dynamic Difficulty (DD)**: implementada uma DD **simples/mecânica** —
+  o `from_arrangement` gera vários `ArrangementLevels` (até 5); uma nota entra
+  quando a dificuldade chega ao seu *tier* de força métrica (`_note_tier`:
+  tempo forte→0, tempo→1, meio→2, quarto→3, mais fino→4), com o manifesto a
+  reportar `MaxPhraseDifficulty` + `NotesEasy/Medium/Hard`. Falta: o *leveling*
+  musical inteligente de um DDC a sério (frases repetidas via `NLinkedDifficulty`,
+  redução por técnica/importância), e validação in-game dos níveis. O caminho
+  de qualidade continua a ser o DDC via DLC Builder.
 
 - [x] **Biblioteca de tons (guardar/carregar entre projetos)**: reutilizar os
   tons criados noutras músicas sem os recriar. Os tons (gear completo) são
