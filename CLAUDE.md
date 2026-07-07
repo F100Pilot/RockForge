@@ -651,6 +651,16 @@ emitted so the native PSARC matches the retail layout file-for-file:
   and the `song_<key>_preview.bnk` + its `.wem` alongside the main bank;
 - the container's TOC entry offsets are **absolute** from the file start
   (`container.py`), as retail expects — not block-section-relative;
+- `toolkit.version`'s **`Toolkit version:` line must be a numeric
+  RocksmithToolkitLib version** (`2.9.2.1-5df928a5`, `manifest.TOOLKIT_VERSION`).
+  The Rocksmith CDLC loader patch (the `D3DX9_42.dll` proxy that disables the DLC
+  signature check) reads this field to recognise a PSARC as legitimate CDLC and
+  only then whitelists it; a custom non-numeric value (`RockForge-native`) made
+  the patch skip our file, so the game silently dropped the song from the list
+  **even with a correct appid** — the "plays only after re-packing with the Custom
+  Song Toolkit / CustomsForge Song Manager" symptom. Byte-diffing the toolkit's
+  re-pack of our own output isolated this as the sole meaningful change (it only
+  rewrites this one line). Guarded by `test_build_manifest_files_packs_and_round_trips`;
 - **every TOC entry carries a 16-byte name hash = `md5(archive_path)`**
   (`container.py`). Rocksmith resolves every asset (SNG/manifest/xblock/…)
   THROUGH this hash, so a zeroed hash makes the game unable to find the files and
