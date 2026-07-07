@@ -236,14 +236,22 @@ ver `TESTING.md`.
     incompleto para *jogar* (arrays de score/frases vazios — dificuldade única
     sem DD; tons não serializados no manifesto; SNG binário não verificado).
 
-  - [ ] **Dados de score/frases/secções + tons no manifesto do PSARC nativo**:
-    para *jogar* bem (não só listar), o manifesto per-arranjo precisa dos arrays
-    de PhraseIterations/Sections/Chords/Notas por dificuldade e das entradas
-    `Tones`/`Tone_Base`. Hoje vão vazios/neutros (lacuna real, não malformado).
+  - [~] **Dados de score/frases/secções no manifesto do PSARC nativo**: já
+    populados a partir do SNG compilado (`manifest.arrangement_stats`) — contagem
+    de notas, `Phrases`/`PhraseIterations`/`Sections`. Falta ainda: os tons
+    (`Tones`/`Tone_Base`) e as contagens por dificuldade (dependem da DD).
 
-  - [ ] **DDS real da capa (em vez do placeholder)**: hoje o PSARC nativo embute
-    um DDS DXT1 de cor sólida para o URN `albumArt` resolver. Converter a capa do
-    utilizador para as texturas DDS in-game (64/128/256) para a capa aparecer.
+  - [x] **DDS real da capa**: o PSARC nativo converte a capa do utilizador para
+    as texturas DDS in-game (64/128/256) via `gamedata.album_art_dds` (encoder
+    DXT1, precisa do Pillow no extra `[psarc]`); sem capa/Pillow usa um placeholder
+    de cor sólida para o URN resolver.
+
+  - [ ] **Calibração de volume ("Calculate Volumes")**: o DLC Builder analisa o
+    áudio e calcula o volume (dB) para uma sonoridade consistente; a RockForge
+    usa um valor neutro (0 dB) no `.bnk`/`.rs2dlc`. Como o áudio já é normalizado
+    para -16 LUFS (loudnorm EBU R128), a sonoridade entre músicas é consistente,
+    mas não está calibrada para a referência do Rocksmith. Medir a sonoridade do
+    `.wem` e mapear para o volume do banco de som (e do manifesto).
 
 - [ ] **Dynamic Difficulty (DD)**: hoje a partitura toca sempre à densidade
   máxima (um único nível de dificuldade). Gerar níveis de DD (redução
