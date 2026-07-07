@@ -88,6 +88,43 @@ def test_package_emits_full_retail_enumeration_layout(tmp_path: Path) -> None:
     assert not any(n.endswith(".sng") and n.startswith("songs/arr/") for n in entries)
 
 
+def test_preview_uses_a_trimmed_clip_not_the_full_stream(tmp_path: Path, monkeypatch) -> None:
+    """The preview bank must reference its own (shorter) .wem, not the full song
+    stream — reusing the full stream makes the preview play over itself."""
+    from rockforge.infrastructure.packaging.psarc import packer as packer_mod
+    from rockforge.infrastructure.packaging.psarc import soundbank
+
+    # Fake ffmpeg trim: write a distinct, shorter "clip" wav.
+    def fake_clip(audio: Path, out: Path, start_s: float, length_s: float) -> Path:
+        out.write_bytes(b"PREVIEWCLIP")
+        return out
+
+    monkeypatch.setattr(packer_mod, "_extract_preview_clip", fake_clip)
+
+    class _WemByInput:
+        def available(self) -> bool:
+            return True
+
+        def convert(self, wav: Path, workdir: Path) -> Path:
+            workdir.mkdir(parents=True, exist_ok=True)
+            out = workdir / "Audio.wem"
+            # Distinct wem per source so full-song and preview differ.
+            out.write_bytes(b"WEM:" + wav.read_bytes() * 500)
+            return out
+
+    audio = tmp_path / "audio.wav"
+    audio.write_bytes(b"FULLSONGWAV")
+    result = packer_mod.NativePsarcPacker(wem_converter=_WemByInput()).package(
+        [_arrangement(ArrangementKind.COMBINED)], audio, tmp_path / "bundle"
+    )
+    entries = container.unpack(result.psarc_path.read_bytes())
+
+    song_id = soundbank.read_wem_file_id(entries["audio/windows/song_artistsong.bnk"])
+    prev_id = soundbank.read_wem_file_id(entries["audio/windows/song_artistsong_preview.bnk"])
+    assert song_id != prev_id
+    assert entries[f"audio/windows/{prev_id}.wem"] != entries[f"audio/windows/{song_id}.wem"]
+
+
 def test_package_produces_valid_psarc(tmp_path: Path) -> None:
     audio = tmp_path / "audio.wav"
     audio.write_bytes(b"RIFF....WAVEfmt ")
