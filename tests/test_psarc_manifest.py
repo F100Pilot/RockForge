@@ -84,6 +84,11 @@ def test_build_manifest_files_packs_and_round_trips() -> None:
         "MySong",
     )
     assert "toolkit.version" in files
+    # The "Toolkit version:" line must be a numeric RocksmithToolkitLib version —
+    # the CDLC loader patch reads it to whitelist the PSARC; a non-numeric value
+    # makes the game drop the song from the list (even with a correct appid).
+    version_line = files["toolkit.version"].decode("utf-8").splitlines()[0]
+    assert version_line.startswith("Toolkit version: 2.9.2.1")
     # Train "Drops of Jupiter" appid, written to the root `appid.appid` file —
     # the game won't list CDLC without it.
     assert files["appid.appid"] == b"492989"
