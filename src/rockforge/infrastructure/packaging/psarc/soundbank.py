@@ -99,8 +99,12 @@ def _data_index(file_id: int, length: int) -> bytes:
 
 
 def _hierarchy_sound(
-    sound_id: int, file_id: int, mixer_id: int, volume: float, rng: random.Random
+    sound_id: int, file_id: int, mixer_id: int, volume: float, rng: random.Random,
+    *, preview: bool = False,
 ) -> bytes:
+    # A preview sound limits itself to a single instance (killNewest) so the
+    # game never layers overlapping copies while the user browses the song list.
+    one = 1 if preview else 0
     return b"".join((
         _u32(sound_id),
         _u32(_PLUGIN_ID),
@@ -112,7 +116,7 @@ def _hierarchy_sound(
         _u8(0),                 # numFX
         _u32(rng.getrandbits(32)),  # parentBusID
         _u32(_DIRECT_PARENT_ID_PC),
-        _u32(0),                # unkID1 (0 = not preview)
+        _u32(4178100890 if preview else 0),  # unkID1 (preview marker)
         _u32(mixer_id),
         _u8(0),                 # priorityOverrideParent
         _u8(0),                 # priorityApplyDist
@@ -130,13 +134,13 @@ def _hierarchy_sound(
         _u8(0),                 # useGameAux
         _u8(0),                 # overrideUserAux
         _u8(0),                 # hasAux
-        _u8(0),                 # virtualQueueBehavior
-        _u8(0),                 # killNewest
+        _u8(one),               # virtualQueueBehavior (1 for preview)
+        _u8(one),               # killNewest (1 for preview)
         _u8(0),                 # useVirtualBehavior
-        _u16(0),                # maxNumInstance
+        _u16(one),              # maxNumInstance (1 for preview)
         _u8(0),                 # isGlobalLimit
         _u8(0),                 # belowThresholdBehavior
-        _u8(0),                 # isMaxNumInstOverrideParent
+        _u8(one),               # isMaxNumInstOverrideParent (1 for preview)
         _u8(0),                 # isVVoiceOptOverrideParent
         _u32(0),                # stateGroupList
         _u16(0),                # rtpcList
@@ -199,11 +203,13 @@ def _hierarchy_event(action_id: int, name: str) -> bytes:
 
 
 def _hierarchy(
-    soundbank_id: int, sound_id: int, file_id: int, name: str, volume: float, rng: random.Random
+    soundbank_id: int, sound_id: int, file_id: int, name: str, volume: float, rng: random.Random,
+    *, preview: bool = False,
 ) -> bytes:
     action_id = rng.getrandbits(32)
     objects = (
-        (_HIERARCHY_SOUND, _hierarchy_sound(sound_id, file_id, _MIXER_ID, volume, rng)),
+        (_HIERARCHY_SOUND,
+         _hierarchy_sound(sound_id, file_id, _MIXER_ID, volume, rng, preview=preview)),
         (_HIERARCHY_ACTORMIXER, _hierarchy_actormixer(_MIXER_ID, sound_id)),
         (_HIERARCHY_ACTION, _hierarchy_action(action_id, sound_id, soundbank_id)),
         (_HIERARCHY_EVENT, _hierarchy_event(action_id, name)),
@@ -233,6 +239,7 @@ def generate_soundbank(
     wem: bytes,
     volume: float = 0.0,
     *,
+    preview: bool = False,
     rng: random.Random | None = None,
 ) -> tuple[bytes, int]:
     """Build a Rocksmith 2014 song ``.bnk`` for ``wem``.
@@ -240,7 +247,9 @@ def generate_soundbank(
     Returns ``(bnk_bytes, file_id)``; the full ``.wem`` must be packed as
     ``<file_id>.wem`` so the bank's DIDX reference resolves. ``volume`` is the
     Wwise bus volume in dB (0 = unity; DLC Builder's "Calculate Volumes"
-    recomputes it on import). ``rng`` is injectable for deterministic tests.
+    recomputes it on import). ``preview=True`` marks a song-select preview bank,
+    which limits itself to one instance so it never plays over itself. ``rng`` is
+    injectable for deterministic tests.
     """
     rng = rng or random.Random()
     soundbank_id = rng.getrandbits(32)
@@ -250,7 +259,9 @@ def generate_soundbank(
     data_chunk = wem[:_PREFETCH_BYTES]
     didx = _data_index(file_id, len(data_chunk))
     header = _header(soundbank_id, len(didx))
-    hierarchy = _hierarchy(soundbank_id, sound_id, file_id, soundbank_name, volume, rng)
+    hierarchy = _hierarchy(
+        soundbank_id, sound_id, file_id, soundbank_name, volume, rng, preview=preview
+    )
     string_id = _string_id(soundbank_id, soundbank_name)
 
     out = io.BytesIO()

@@ -203,7 +203,7 @@ class NativePsarcPacker:
                     preview_wem = self._wem_converter.convert(clip, out_dir / "wwise_preview")
                     preview_wem_bytes = preview_wem.read_bytes()
                 preview_bnk, preview_id = soundbank.generate_soundbank(
-                    f"{song_key}_preview", preview_wem_bytes
+                    f"{song_key}_preview", preview_wem_bytes, preview=True
                 )
                 files[f"audio/windows/song_{key_lower}_preview.bnk"] = preview_bnk
                 files[f"audio/windows/{preview_id}.wem"] = preview_wem_bytes
