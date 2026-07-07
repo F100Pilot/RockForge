@@ -178,24 +178,91 @@ def build_aggregategraph(
     return "﻿" + "\n".join(nodes) + "\n"
 
 
-def solid_dds(size: int, color: tuple[int, int, int] = (40, 42, 48)) -> bytes:
-    """A neutral solid-colour DXT1 ``.dds`` of ``size``×``size`` — a placeholder
-    cover so the song-list art URN resolves (DLC Builder makes the real one)."""
-    r, g, b = color
-    c565 = ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3)
-    block = struct.pack("<HHI", c565, c565, 0)  # both colours equal, all-index-0
-    pixels = block * ((size // 4) * (size // 4))
-    # 128-byte DDS header (magic + 124-byte DDS_HEADER), flags
-    # CAPS|HEIGHT|WIDTH|PIXELFORMAT|LINEARSIZE (0x81007), DXT1 pixel format.
-    header = struct.pack(
+def _dds_header(size: int) -> bytes:
+    """128-byte DXT1 DDS header (magic + 124-byte DDS_HEADER), flags
+    CAPS|HEIGHT|WIDTH|PIXELFORMAT|LINEARSIZE (0x81007), one mip level."""
+    return struct.pack(
         "<4s 7I 44s 2I 4s 5I 5I",
         b"DDS ",
-        124, 0x81007, size, size, (size * size) // 2, 0, 0,  # size,flags,h,w,pitch,depth,mips
+        124, 0x81007, size, size, (size * size) // 2, 0, 1,  # size,flags,h,w,pitch,depth,mips=1
         b"\x00" * 44,                                          # reserved1[11]
         32, 0x4, b"DXT1", 0, 0, 0, 0, 0,                       # pixelformat (fourCC=DXT1)
         0x1000, 0, 0, 0, 0,                                    # caps1..4 + reserved2
     )
-    return header + pixels
+
+
+def _rgb565(r: int, g: int, b: int) -> int:
+    return ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3)
+
+
+def _expand565(c: int) -> tuple[int, int, int]:
+    r = (c >> 11) & 0x1F
+    g = (c >> 5) & 0x3F
+    b = c & 0x1F
+    return (r << 3) | (r >> 2), (g << 2) | (g >> 4), (b << 3) | (b >> 2)
+
+
+def _dxt1_block(px: list[tuple[int, int, int]]) -> bytes:
+    """Compress 16 RGB pixels (row-major 4×4) into an 8-byte DXT1 block via
+    range-fit: the two endpoints are the per-channel min/max, and each pixel
+    takes the nearest of the 4 interpolated colours."""
+    lo = (min(p[0] for p in px), min(p[1] for p in px), min(p[2] for p in px))
+    hi = (max(p[0] for p in px), max(p[1] for p in px), max(p[2] for p in px))
+    c0, c1 = _rgb565(*hi), _rgb565(*lo)
+    if c0 < c1:
+        c0, c1 = c1, c0
+    if c0 == c1:  # flat block — all index 0 (colour0)
+        return struct.pack("<HHI", c0, c1, 0)
+    e0, e1 = _expand565(c0), _expand565(c1)
+    palette = [
+        e0, e1,
+        tuple((2 * e0[i] + e1[i]) // 3 for i in range(3)),
+        tuple((e0[i] + 2 * e1[i]) // 3 for i in range(3)),
+    ]
+    bits = 0
+    for i, p in enumerate(px):
+        best, bestd = 0, 1 << 30
+        for idx, c in enumerate(palette):
+            d = (p[0] - c[0]) ** 2 + (p[1] - c[1]) ** 2 + (p[2] - c[2]) ** 2
+            if d < bestd:
+                best, bestd = idx, d
+        bits |= best << (2 * i)
+    return struct.pack("<HHI", c0, c1, bits)
+
+
+def dxt1_from_rgb(pixels: list[tuple[int, int, int]], size: int) -> bytes:
+    """A full DXT1 ``.dds`` for a ``size``×``size`` RGB image (row-major)."""
+    out = bytearray(_dds_header(size))
+    for by in range(0, size, 4):
+        for bx in range(0, size, 4):
+            block = [pixels[(by + y) * size + (bx + x)] for y in range(4) for x in range(4)]
+            out += _dxt1_block(block)
+    return bytes(out)
+
+
+def solid_dds(size: int, color: tuple[int, int, int] = (40, 42, 48)) -> bytes:
+    """A neutral solid-colour DXT1 ``.dds`` of ``size``×``size`` — a placeholder
+    cover so the song-list art URN resolves (used when no real cover is set)."""
+    c565 = _rgb565(*color)
+    return _dds_header(size) + struct.pack("<HHI", c565, c565, 0) * ((size // 4) * (size // 4))
+
+
+def album_art_dds(size: int, cover_path: object = None) -> bytes:
+    """Real cover converted to DXT1 at ``size``×``size`` if ``cover_path`` is a
+    readable image and Pillow is installed; otherwise the solid placeholder."""
+    if cover_path is None:
+        return solid_dds(size)
+    try:
+        from PIL import Image  # optional; part of the [psarc] extra
+    except ImportError:
+        return solid_dds(size)
+    try:
+        with Image.open(str(cover_path)) as im:
+            im = im.convert("RGB").resize((size, size), Image.LANCZOS)
+            pixels = list(im.getdata())
+    except (OSError, ValueError):
+        return solid_dds(size)
+    return dxt1_from_rgb(pixels, size)
 
 
 def build_showlights() -> str:
