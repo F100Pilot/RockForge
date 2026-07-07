@@ -293,6 +293,36 @@ def test_dynamic_difficulty_generates_ramping_levels() -> None:
     assert [len(lvl.notes) for lvl in restored.arrangements] == counts
 
 
+def test_dd_hero_triples_and_density_graduated_ceilings() -> None:
+    # A DDC-shaped DD: a dense phrase reaches a higher ceiling than a sparse one,
+    # and each iteration's hero triple is (round(max/4), round(max/2), max) — the
+    # Easy/Medium/Hard levels a retail SNG carries (verified against a reference).
+    beats = [Beat(time=i * 0.5, measure=i // 4 + 1 if i % 4 == 0 else -1) for i in range(64)]
+    # Phrase A (0..8s): busy — a note every 0.25s. Phrase B (8..end): sparse.
+    dense = [round(t * 0.25, 3) for t in range(32)]  # 8s of 16th notes
+    sparse = [8.0, 10.0, 12.0]
+    notes = [TabNote(string=i % 6, fret=(i % 7) + 1, time=t, sustain=0.1)
+             for i, t in enumerate(dense + sparse)]
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=16.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=tuple(beats), average_bpm=120.0),
+        notes=notes,
+        sections=[Section(name="busy", number=1, start_time=0.0),
+                  Section(name="calm", number=1, start_time=8.0)],
+    )
+    model = from_arrangement(arr)
+    by_name = {p.name: p.max_difficulty for p in model.phrases}
+    assert by_name["busy"] > by_name["calm"]  # density graduates the ceiling
+    for pi in model.phrase_iterations:
+        pmax = model.phrases[pi.phrase_id].max_difficulty
+        assert pi.difficulty == (round(pmax / 4), round(pmax / 2), pmax)
+    # Consistent song-wide max across levels + metadata.
+    assert model.metadata.max_difficulty == len(model.arrangements) - 1
+    assert model.metadata.max_difficulty == max(by_name.values())
+
+
 def test_plain_notes_have_no_slide() -> None:
     # slide_to must be -1 (no slide) for ordinary notes; writing 0 told the game
     # every note slides to fret 0 — a slide streak on every note.

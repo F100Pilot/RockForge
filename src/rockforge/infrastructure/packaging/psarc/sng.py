@@ -11,8 +11,13 @@ with per-string techniques), anchors, anchor extensions (per sliding note),
 fingerprints/hand shapes, notes with NextIter/PrevIter linkage, and a separate
 vocals model (:func:`from_vocals`).
 
+Dynamic Difficulty is a SIMPLIFIED DDC pass: notes ramp in over several levels
+per phrase (ceiling scaled by the phrase's note density), with retail-shaped hero
+triples, but no NLinkedDifficulty linkage — a mechanical density ramp, not a
+musical phrase-leveling pass. See ``_DD_LEVEL_CAP`` and ``_level_notes``.
+
 Intentionally absent — correct given the domain model, not defects:
-- Single difficulty level only (no dynamic-difficulty model); chart plays full.
+- No NLinkedDifficulty / cross-phrase difficulty linking (simplified DD).
 - ``ChordNotesId = -1`` for simple chords (matches DLC Builder/EOF).
 - Arpeggio fingerprints (Fingerprints2): the domain has no arpeggio marking.
 - ParentPrevNote / linkNext: the domain has no note-link concept.
@@ -88,10 +93,13 @@ _CHORD_EPSILON_S = 0.03
 # fret-hand window stable (a comfortable position) stops the fretboard view from
 # thrashing note-to-note and hiding low notes as they scroll in.
 _MAX_ANCHOR_SPAN = 5
-# Dynamic Difficulty: how many note-density levels to generate (0..N-1). A note
-# appears at a level once the difficulty reaches its beat-strength tier, so
-# level 0 shows only downbeats and the top level shows everything.
-_MAX_DD_LEVELS = 5
+# Dynamic Difficulty ceiling: the most difficulty levels a single phrase can
+# ramp its notes in over (0..CAP). A phrase's ceiling scales with the note count
+# of its busiest iteration, so a dense phrase reaches a higher difficulty than a
+# sparse one; this bound keeps the ramp SIMPLE (a retail DDC pass goes ~20+, we
+# stop lower on purpose — a "simplified DDC": graduated phrases and correct hero
+# triples, no NLinkedDifficulty linkage). Keeps the SNG small and the risk low.
+_DD_LEVEL_CAP = 11
 _BEND_DATA_COUNT = 32  # fixed-size bend array per string in ChordNotes
 
 
@@ -747,39 +755,64 @@ def from_arrangement(
             end_phrase_iteration_id=end_pi,
         ))
 
-    # --- Dynamic Difficulty: per-note tiers, per-phrase max, and one level per
-    # difficulty (a note appears once the difficulty reaches its tier). ---
+    # --- Dynamic Difficulty (DDC-style graduated levels) ---
+    # A real Rocksmith DD ramps each note in over many levels, per phrase, so the
+    # in-game difficulty slider spans 0..songMax (verified against a DLC Builder /
+    # DDC reference SNG: 23 levels, per-phrase ceilings graduated by density, and
+    # per-iteration hero triples of (~¼, ~½, 1)·max). We reproduce that shape.
     note_count = len(sng_notes)
     note_tiers = [_note_tier(sngn.time, beats) for sngn in sng_notes]
-    phrase_max = [0] * len(phrases)
-    for sngn, tier in zip(sng_notes, note_tiers, strict=True):
-        p_id = phrase_iterations[sngn.phrase_iteration_id].phrase_id
-        phrase_max[p_id] = max(phrase_max[p_id], tier)
-    max_diff = min(_MAX_DD_LEVELS - 1, max(phrase_max, default=0))
 
-    phrases = [
-        replace(p, max_difficulty=min(phrase_max[i], max_diff)) for i, p in enumerate(phrases)
-    ]
+    # Notes of each phrase iteration, ranked by importance (beat strength, then
+    # time) so the earliest levels introduce the strongest beats first.
+    per_iter_notes: list[list[int]] = [[] for _ in phrase_iterations]
+    for idx, sngn in enumerate(sng_notes):
+        per_iter_notes[sngn.phrase_iteration_id].append(idx)
+    for lst in per_iter_notes:
+        lst.sort(key=lambda i: (note_tiers[i], sng_notes[i].time))
+
+    # Per-phrase ceiling: one difficulty step per note the BUSIEST iteration must
+    # ramp in, capped. Repeated phrases share a ceiling (busiest, not summed); a
+    # silent COUNT/END phrase stays at 0.
+    busiest = [0] * len(phrases)
+    for pi_id, pi in enumerate(phrase_iterations):
+        busiest[pi.phrase_id] = max(busiest[pi.phrase_id], len(per_iter_notes[pi_id]))
+    phrase_max = [min(_DD_LEVEL_CAP, max(0, b - 1)) for b in busiest]
+    song_max = max(phrase_max, default=0)
+
+    def _level_notes(d: int) -> list[SngNote]:
+        """The notes visible at difficulty ``d``: each iteration shows the
+        strongest-beat prefix scaled by ``d`` against its phrase's ceiling."""
+        keep: set[int] = set()
+        for pi_id, lst in enumerate(per_iter_notes):
+            m = len(lst)
+            if m == 0:
+                continue
+            pm = phrase_max[phrase_iterations[pi_id].phrase_id]
+            if pm <= 0:
+                shown = m
+            else:
+                shown = round((min(d, pm) + 1) / (pm + 1) * m)
+                shown = max(0, min(m, shown))
+            keep.update(lst[:shown])
+        return [sngn for i, sngn in enumerate(sng_notes) if i in keep]
+
+    phrases = [replace(p, max_difficulty=phrase_max[i]) for i, p in enumerate(phrases)]
     phrase_iterations = [
         replace(pi, difficulty=(
-            phrases[pi.phrase_id].max_difficulty // 3,
-            (phrases[pi.phrase_id].max_difficulty * 2) // 3,
-            phrases[pi.phrase_id].max_difficulty,
+            round(phrase_max[pi.phrase_id] / 4),
+            round(phrase_max[pi.phrase_id] / 2),
+            phrase_max[pi.phrase_id],
         ))
         for pi in phrase_iterations
     ]
 
     arrangements = [
         _build_level(
-            d,
-            [sngn for sngn, tier in zip(sng_notes, note_tiers, strict=True) if tier <= d],
-            phrase_iterations,
-            len(phrases),
-            anchors,
-            anchor_extensions,
-            fingerprints,
+            d, _level_notes(d), phrase_iterations, len(phrases),
+            anchors, anchor_extensions, fingerprints,
         )
-        for d in range(max_diff + 1)
+        for d in range(song_max + 1)
     ]
 
     # --- Vocals ---
@@ -807,7 +840,7 @@ def from_arrangement(
         tuning=arrangement.tuning.offsets_from_standard(),
         first_note_time=first_note,
         first_note_time2=first_note,
-        max_difficulty=max_diff,
+        max_difficulty=song_max,
     )
 
     return SngModel(
