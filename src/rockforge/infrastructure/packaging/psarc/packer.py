@@ -21,10 +21,9 @@ Honest limits that remain (CLAUDE.md):
   DDC-processed CDLC has. This is a feature gap, not a malformed file.
 - Requires the ``[psarc]`` extra (``cryptography``) for TOC/SNG encryption;
   raises :class:`PackagingError` with a clear message if missing.
-- ``cover_art`` (if provided) is copied into the bundle and recorded in
-  ``rockforge_project.json``, but is NOT yet embedded as an in-game DDS
-  texture/``albumArt`` URN — that conversion (DDS encoding + manifest/SNG
-  references) is not implemented.
+- ``cover_art`` (if provided) is copied into the bundle AND converted to the
+  in-game album-art DDS textures (64/128/256) in the native ``.psarc`` via
+  ``gamedata.album_art_dds`` (needs Pillow; falls back to a neutral placeholder).
 - The binary layout is ported from open-source format docs (Rocksmith2014.NET,
   toolkit) and round-trip-tested, but has NOT been byte-validated against a
   retail/DLC Builder SNG — there is no reference file in CI to diff against.
@@ -128,8 +127,13 @@ class NativePsarcPacker:
             has_album_art=True,
         ).encode("utf-8")
         files[f"songs/arr/{key_lower}_showlights.xml"] = gamedata.build_showlights().encode("utf-8")
+        # Real cover → DXT1 DDS when a cover was uploaded (and Pillow is present);
+        # otherwise a neutral placeholder so the AlbumArt URN still resolves.
+        cover_for_dds = cover_art_dest if cover_art_dest is not None else None
         for res in (64, 128, 256):
-            files[f"gfxassets/album_art/album_{key_lower}_{res}.dds"] = gamedata.solid_dds(res)
+            files[f"gfxassets/album_art/album_{key_lower}_{res}.dds"] = gamedata.album_art_dds(
+                res, cover_for_dds
+            )
 
         psarc_path: Path | None = None
         try:
@@ -200,9 +204,10 @@ class NativePsarcPacker:
             )
         if cover_art_dest is not None:
             project["cover_art_note"] = (
-                "cover_art was packed into the bundle but is NOT yet embedded as "
-                "an in-game DDS texture in this native .psarc — the song's "
-                "albumArt remains empty, same as DLC Builder without a cover set."
+                "cover_art was packed into the bundle and converted to the in-game "
+                "album-art DDS textures (64/128/256) in the native .psarc (needs "
+                "Pillow, part of the [psarc] extra; falls back to a neutral "
+                "placeholder otherwise)."
             )
         (out_dir / "rockforge_project.json").write_text(
             json.dumps(project, indent=2, ensure_ascii=False), encoding="utf-8"

@@ -70,3 +70,23 @@ def test_aggregategraph_references_every_asset() -> None:
 
 def test_showlights_is_valid_xml() -> None:
     minidom.parseString(gamedata.build_showlights().encode("utf-8"))
+
+
+def test_dxt1_from_rgb_is_a_valid_dds_of_the_right_size() -> None:
+    # A 4×4 red image → one DXT1 block; header 128 + 8 bytes.
+    red = [(255, 0, 0)] * 16
+    dds = gamedata.dxt1_from_rgb(red, 4)
+    assert dds[:4] == b"DDS "
+    assert dds[84:88] == b"DXT1"
+    assert len(dds) == 128 + 8
+    # A flat block encodes both endpoints to the same 565 colour, indices 0.
+    import struct
+
+    c0, c1, bits = struct.unpack_from("<HHI", dds, 128)
+    assert c0 == c1
+    assert bits == 0
+
+
+def test_album_art_falls_back_to_placeholder_without_a_cover() -> None:
+    # No cover path → the neutral solid placeholder (never a broken URN).
+    assert gamedata.album_art_dds(64, None) == gamedata.solid_dds(64)

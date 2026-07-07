@@ -64,7 +64,7 @@ lyrics = [
     "torchaudio>=2.2,<2.5",
 ]
 # Native PSARC/SNG encryption (AES-256-CFB/CTR) — see infrastructure/packaging/psarc.
-psarc = ["cryptography>=42"]
+psarc = ["cryptography>=42", "Pillow>=10"]
 dev = [
     "pytest>=8.0",
     "pytest-cov>=5.0",
