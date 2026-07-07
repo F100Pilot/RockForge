@@ -64,6 +64,16 @@ def test_event_hash_is_present() -> None:
     assert struct.pack("<I", expected) in bnk
 
 
+def test_preview_bank_limits_itself_to_one_instance() -> None:
+    # The preview sound object must carry the single-instance markers, else the
+    # game layers overlapping preview copies while browsing the song list.
+    bnk, _ = soundbank.generate_soundbank("MySong_preview", b"\x00" * 64, preview=True)
+    # unkID1 preview marker, present only for previews.
+    assert struct.pack("<I", 4178100890) in bnk
+    plain, _ = soundbank.generate_soundbank("MySong", b"\x00" * 64, preview=False)
+    assert struct.pack("<I", 4178100890) not in plain
+
+
 def test_generation_is_deterministic_with_seeded_rng() -> None:
     a, ida = soundbank.generate_soundbank("S", b"\x00" * 64, rng=random.Random(1))
     b, idb = soundbank.generate_soundbank("S", b"\x00" * 64, rng=random.Random(1))
