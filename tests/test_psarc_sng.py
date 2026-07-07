@@ -246,6 +246,12 @@ def test_empty_arrangement_produces_valid_sng() -> None:
     restored = read_sng(data)
     assert len(restored.arrangements) == 1
     assert restored.metadata.song_length == 5.0
+    # A song with no section markers must STILL get a phrase timeline, or the
+    # game loads the fretboard, shows no notes and crashes. The last phrase
+    # iteration ends at the song's end so playback doesn't stop early.
+    assert len(restored.phrases) >= 1
+    assert len(restored.phrase_iterations) >= 1
+    assert restored.phrase_iterations[-1].end_time == 5.0
 
 
 def test_arrangement_level_has_phrase_counts() -> None:

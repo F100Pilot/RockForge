@@ -346,6 +346,34 @@ def _find_phrase_iteration(phrase_iters: list[SngPhraseIteration], time: float) 
     return max(0, len(phrase_iters) - 1)
 
 
+def _default_sections(arrangement: Arrangement, song_length: float) -> list[Section]:
+    """A minimal COUNT/riff/END timeline when the arrangement has no sections.
+
+    Rocksmith drives playback off phrase iterations and ends the song at the
+    LAST one; an SNG with zero phrases loads the fretboard but shows no notes and
+    then crashes. Mirrors the XML writer's phrase structure (writer.py): a count
+    phrase at the first beat, the body from the first note, and an END phrase at
+    the song's end. Times are kept strictly increasing so each phrase is real.
+    """
+    beats = arrangement.tempo_map.beats
+    start = beats[0].time if beats else 0.0
+    notes = arrangement.notes
+    first_note = min((n.time for n in notes), default=start)
+    last_note_end = max((n.time + max(n.sustain, 0.0) for n in notes), default=start)
+    last_beat = beats[-1].time if beats else 0.0
+    end_time = last_beat if last_beat > last_note_end else last_note_end + 0.1
+    if song_length > 0:
+        end_time = min(end_time, song_length)
+    body = max(first_note, start)
+
+    secs = [Section(name="COUNT", number=1, start_time=start)]
+    if body > start:
+        secs.append(Section(name="riff", number=1, start_time=body))
+    if end_time > secs[-1].start_time:
+        secs.append(Section(name="END", number=1, start_time=end_time))
+    return secs
+
+
 def from_arrangement(
     arrangement: Arrangement, vocals: list[VocalEvent] | None = None
 ) -> SngModel:
@@ -362,11 +390,14 @@ def from_arrangement(
         beat_in_measure += 1
 
     # --- Phrases & PhraseIterations ---
-    phrases = [SngPhrase(name=s.name) for s in arrangement.sections]
-    ends = _section_end_times(arrangement.sections, song_length)
+    # A song with no section markers still needs a valid phrase timeline, or the
+    # game crashes on the note highway (see _default_sections).
+    sections_src = arrangement.sections or _default_sections(arrangement, song_length)
+    phrases = [SngPhrase(name=s.name) for s in sections_src]
+    ends = _section_end_times(sections_src, song_length)
     phrase_iterations = [
         SngPhraseIteration(phrase_id=i, start_time=s.start_time, end_time=end)
-        for i, (s, end) in enumerate(zip(arrangement.sections, ends, strict=True))
+        for i, (s, end) in enumerate(zip(sections_src, ends, strict=True))
     ]
 
     # Assign phrase_iteration to beats
@@ -593,7 +624,7 @@ def from_arrangement(
 
     # --- Sections ---
     sections: list[SngSection] = []
-    for sec, end in zip(arrangement.sections, ends, strict=True):
+    for sec, end in zip(sections_src, ends, strict=True):
         start_pi = _find_phrase_iteration(phrase_iterations, sec.start_time)
         end_pi = _find_phrase_iteration(phrase_iterations, end - 0.001) if end > 0 else start_pi
         sections.append(SngSection(

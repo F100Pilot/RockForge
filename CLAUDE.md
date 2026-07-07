@@ -635,13 +635,19 @@ emitted so the native PSARC matches the retail layout file-for-file:
 - the container's TOC entry offsets are **absolute** from the file start
   (`container.py`), as retail expects — not block-section-relative.
 
-Verified by unpacking our output and diffing the file list + manifest fields
-against a real DLC Builder PSARC (they match bar cosmetic `LastConversionDateTime`).
-Still **unverified in-game** and playability-incomplete by design: the per-note
-score/phrase/section arrays are empty (single difficulty, no DD), tones are not
-serialized into the manifest, and the SNG binary itself is unverified (see the
-SNG note above). The **trustworthy path remains the DLC Builder bundle** (import
-it and let DLC Builder build the PSARC).
+The SNG always emits a valid phrase timeline (`sng._default_sections` synthesizes
+a COUNT/riff/END structure when the arrangement has no section markers — without
+it the game loads the fretboard, shows no notes and crashes), and the manifest
+reports the real note count + phrase/iteration/section tables
+(`manifest.arrangement_stats`, from the compiled SNG) so the song-list screen
+shows the note count instead of "0". Verified by unpacking our output and diffing
+the file list + manifest fields against a real DLC Builder PSARC (they match bar
+cosmetic `LastConversionDateTime`). Still **unverified in-game** and
+playability-incomplete by design: **single difficulty, no DD** — every phrase is
+`MaxDifficulty 0`, so the in-game difficulty bar is flat (no note-density ramp);
+tones are not serialized into the manifest; and the SNG binary is round-tripped
+but unverified (see the SNG note above). The **trustworthy path remains the DLC
+Builder bundle** (import it and let DLC Builder build the PSARC).
 
 ### Wwise SoundBank (`infrastructure/packaging/psarc/soundbank.py`)
 
