@@ -263,6 +263,33 @@ def test_arrangement_level_has_phrase_counts() -> None:
     assert len(level.notes_in_iteration1) == len(model.phrase_iterations)
 
 
+def test_beats_carry_real_measures_and_downbeat_mask() -> None:
+    # The Sng2014 beat is 16 bytes: the trailing mask (bit0 downbeat, bit1 even
+    # measure) must be present, or every beat is 4 bytes short and the whole SNG
+    # misaligns — the game crashes on load with an access violation.
+    from rockforge.infrastructure.packaging.psarc.sng import _BEAT_SIZE
+
+    assert _BEAT_SIZE == 16
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=8.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(
+            beats=tuple(
+                Beat(time=i * 0.5, measure=(i // 4) + 1 if i % 4 == 0 else -1) for i in range(12)
+            ),
+            average_bpm=120.0,
+        ),
+        notes=[TabNote(string=0, fret=2, time=0.0, sustain=0.5)],
+    )
+    beats = read_sng(write_sng(from_arrangement(arr))).beats
+    # Every beat has a real measure number (never -1), beat-in-measure 0..3.
+    assert all(b.measure >= 1 for b in beats)
+    assert beats[0].mask == 1  # measure 1 downbeat
+    assert beats[4].mask == 3  # measure 2 (even) downbeat
+    assert beats[1].mask == 0  # off-beat
+
+
 def test_anchors_have_distinct_increasing_times() -> None:
     # Anchors that share a start time (an earlier bug keyed them off the phrase
     # iteration) overlap and crash the note highway on load.
