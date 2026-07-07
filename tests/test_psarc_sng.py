@@ -66,9 +66,9 @@ def test_from_arrangement_round_trips_through_write_read() -> None:
     assert len(restored.phrase_iterations) == len(model.phrase_iterations)
     assert len(restored.sections) == len(model.sections)
 
-    assert len(restored.arrangements) == 1
-    level = restored.arrangements[0]
-    orig_level = model.arrangements[0]
+    assert len(restored.arrangements) == len(model.arrangements)
+    level = restored.arrangements[-1]
+    orig_level = model.arrangements[-1]
     assert len(level.notes) == len(orig_level.notes)
     assert len(level.anchors) == len(orig_level.anchors)
 
@@ -79,7 +79,7 @@ def test_from_arrangement_round_trips_through_write_read() -> None:
 def test_note_mask_uses_real_rocksmith_values() -> None:
     arrangement = _arrangement()
     model = from_arrangement(arrangement)
-    notes = model.arrangements[0].notes
+    notes = model.arrangements[-1].notes
     # First note: hammer-on, fret 2, sustain 0.5 → SINGLE | HAMMERON | SUSTAIN
     assert notes[0].mask & NOTE_MASK_HAMMERON
     assert notes[0].mask & NOTE_MASK_SINGLE
@@ -113,7 +113,7 @@ def test_metadata_reflects_capo_and_tuning() -> None:
 def test_anchors_generated_from_notes() -> None:
     arrangement = _arrangement()
     model = from_arrangement(arrangement)
-    level = model.arrangements[0]
+    level = model.arrangements[-1]
     assert len(level.anchors) >= 1
     assert level.anchors[0].fret >= 1
     assert level.anchors[0].width >= 4
@@ -138,7 +138,7 @@ def test_chords_produce_templates_and_fingerprints() -> None:
     assert len(model.chord_templates) == 1
     assert model.chord_templates[0].frets[:3] == (2, 2, 2)
 
-    level = model.arrangements[0]
+    level = model.arrangements[-1]
     assert len(level.fingerprints1) == 1
     assert level.fingerprints1[0].chord_id == 0
 
@@ -164,7 +164,7 @@ def test_double_stop_gets_mask() -> None:
         sections=[Section(name="riff", start_time=0.0)],
     )
     model = from_arrangement(arr)
-    level = model.arrangements[0]
+    level = model.arrangements[-1]
     assert level.notes[0].mask & NOTE_MASK_DOUBLESTOP
 
 
@@ -186,7 +186,7 @@ def test_chord_with_techniques_produces_chord_notes() -> None:
     assert len(model.chord_notes) == 1
     assert model.chord_notes[0].note_mask[0] != 0  # string 0 has bend
 
-    level = model.arrangements[0]
+    level = model.arrangements[-1]
     chord_note = level.notes[0]
     assert chord_note.chord_notes_id == 0
     assert chord_note.mask & NOTE_MASK_CHORDNOTES
@@ -208,7 +208,7 @@ def test_note_linkage_within_phrase() -> None:
         sections=[Section(name="riff", start_time=0.0)],
     )
     model = from_arrangement(arr)
-    notes = model.arrangements[0].notes
+    notes = model.arrangements[-1].notes
     assert len(notes) == 3
     # First note: no prev, has next
     assert notes[0].prev_iter_note == -1
@@ -257,10 +257,40 @@ def test_empty_arrangement_produces_valid_sng() -> None:
 def test_arrangement_level_has_phrase_counts() -> None:
     arrangement = _arrangement()
     model = from_arrangement(arrangement)
-    level = model.arrangements[0]
+    level = model.arrangements[-1]
     assert level.phrase_count == len(model.phrases)
     assert len(level.avg_notes_per_iteration) == level.phrase_count
     assert len(level.notes_in_iteration1) == len(model.phrase_iterations)
+
+
+def test_dynamic_difficulty_generates_ramping_levels() -> None:
+    # Notes on downbeats/beats/half/quarter should produce several DD levels,
+    # each with more notes than the last, the top level being the full chart.
+    beats = []
+    for meas in range(6):
+        for b in range(4):
+            beats.append(Beat(time=meas * 2.0 + b * 0.5, measure=meas + 1 if b == 0 else -1))
+    times = []
+    for meas in range(6):
+        base = meas * 2.0
+        times += [base, base + 0.5, base + 0.75, base + 1.0, base + 1.25]
+    arr = Arrangement(
+        kind=ArrangementKind.COMBINED,
+        metadata=SongMetadata(title="S", artist="A", song_length=12.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=tuple(beats), average_bpm=120.0),
+        notes=[TabNote(string=i % 6, fret=(i % 10) + 1, time=times[i], sustain=0.2)
+               for i in range(len(times))],
+    )
+    model = from_arrangement(arr)
+    counts = [len(lvl.notes) for lvl in model.arrangements]
+    assert len(counts) >= 2                       # DD actually kicked in
+    assert counts == sorted(counts)               # each level adds notes
+    assert counts[-1] == len(times)               # top level is the full chart
+    assert model.metadata.max_difficulty == len(counts) - 1
+    # Round-trips with all levels intact.
+    restored = read_sng(write_sng(model))
+    assert [len(lvl.notes) for lvl in restored.arrangements] == counts
 
 
 def test_plain_notes_have_no_slide() -> None:
@@ -273,7 +303,7 @@ def test_plain_notes_have_no_slide() -> None:
         tempo_map=TempoMap(beats=(Beat(time=0.0, measure=1),), average_bpm=120.0),
         notes=[TabNote(string=s, fret=s + 2, time=s * 0.3, sustain=0.2) for s in range(6)],
     )
-    notes = read_sng(write_sng(from_arrangement(arr))).arrangements[0].notes
+    notes = read_sng(write_sng(from_arrangement(arr))).arrangements[-1].notes
     assert notes and all(n.slide_to == -1 for n in notes)
 
 
@@ -285,7 +315,7 @@ def test_real_slide_is_preserved() -> None:
         tempo_map=TempoMap(beats=(Beat(time=0.0, measure=1),), average_bpm=120.0),
         notes=[TabNote(string=0, fret=5, time=0.0, sustain=0.5, slide_to_fret=7)],
     )
-    note = read_sng(write_sng(from_arrangement(arr))).arrangements[0].notes[0]
+    note = read_sng(write_sng(from_arrangement(arr))).arrangements[-1].notes[0]
     assert note.slide_to == 7
 
 
@@ -331,7 +361,7 @@ def test_anchors_have_distinct_increasing_times() -> None:
         notes=[TabNote(string=0, fret=frets[i], time=i * 0.5, sustain=0.4) for i in range(8)],
         sections=[],
     )
-    anchors = from_arrangement(arr).arrangements[0].anchors
+    anchors = from_arrangement(arr).arrangements[-1].anchors
     assert len(anchors) >= 2
     times = [a.start_time for a in anchors]
     assert times == sorted(times)
@@ -357,7 +387,7 @@ def test_slide_notes_produce_anchor_extensions() -> None:
         sections=[Section(name="riff", start_time=0.0)],
     )
     model = from_arrangement(arr)
-    exts = model.arrangements[0].anchor_extensions
+    exts = model.arrangements[-1].anchor_extensions
     assert len(exts) == 1
     # BeatTime is when the slide ends (time + sustain), fret is the destination.
     assert abs(exts[0].beat_time - 0.5) < 1e-6
@@ -380,7 +410,7 @@ def test_anchor_extensions_round_trip() -> None:
     )
     model = from_arrangement(arr)
     restored = read_sng(write_sng(model))
-    exts = restored.arrangements[0].anchor_extensions
+    exts = restored.arrangements[-1].anchor_extensions
     assert len(exts) == 1
     assert exts[0].fret == 9
     assert abs(exts[0].beat_time - 0.5) < 1e-6

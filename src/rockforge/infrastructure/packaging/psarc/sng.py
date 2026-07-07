@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import struct
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from rockforge.domain.arrangement import Arrangement, Section
 from rockforge.domain.music import TabNote, Technique
@@ -88,6 +88,10 @@ _CHORD_EPSILON_S = 0.03
 # fret-hand window stable (a comfortable position) stops the fretboard view from
 # thrashing note-to-note and hiding low notes as they scroll in.
 _MAX_ANCHOR_SPAN = 5
+# Dynamic Difficulty: how many note-density levels to generate (0..N-1). A note
+# appears at a level once the difficulty reaches its beat-strength tier, so
+# level 0 shows only downbeats and the top level shows everything.
+_MAX_DD_LEVELS = 5
 _BEND_DATA_COUNT = 32  # fixed-size bend array per string in ChordNotes
 
 
@@ -322,6 +326,31 @@ def _anchor_for_frets(frets: list[int]) -> tuple[int, int]:
     return fret, width
 
 
+def _note_tier(time: float, beats: list[SngBeat]) -> int:
+    """A note's beat-strength tier for DD: 0 = downbeat (strongest), 1 = on a
+    beat, 2 = half-beat, 3 = quarter, 4 = finer. Lower tiers appear first as the
+    difficulty ramps up, so the easiest level is just the downbeats."""
+    eps = 0.06
+    for i in range(len(beats) - 1):
+        b0, b1 = beats[i], beats[i + 1]
+        if b0.time <= time < b1.time:
+            span = b1.time - b0.time
+            if span <= 0:
+                return 1
+            frac = (time - b0.time) / span
+            if frac < eps:
+                return 0 if (b0.mask & 1) else 1
+            if frac > 1 - eps:
+                return 0 if (b1.mask & 1) else 1
+            if abs(frac - 0.5) < eps:
+                return 2
+            if abs(frac - 0.25) < eps or abs(frac - 0.75) < eps:
+                return 3
+            return 4
+    # Before the first beat or after the last — treat as a beat-strength note.
+    return 0 if (beats and beats[0].mask & 1 and abs(time - beats[0].time) < eps) else 1
+
+
 def _note_mask(n: TabNote, is_chord: bool = False, is_double_stop: bool = False) -> int:
     mask = 0
     for tech in n.techniques:
@@ -380,6 +409,51 @@ def _default_sections(arrangement: Arrangement, song_length: float) -> list[Sect
     if end_time > secs[-1].start_time:
         secs.append(Section(name="END", number=1, start_time=end_time))
     return secs
+
+
+def _build_level(
+    difficulty: int,
+    notes: list[SngNote],
+    phrase_iterations: list[SngPhraseIteration],
+    phrase_count: int,
+    anchors: list[SngAnchor],
+    anchor_extensions: list[SngAnchorExtension],
+    fingerprints: list[SngFingerprint],
+) -> SngArrangementLevel:
+    """One difficulty level over the given note subset. Anchors/fingerprints are
+    shared across levels (time-windows, valid regardless of note density); the
+    per-iteration note linkage and counts are recomputed for this subset."""
+    linked = list(notes)
+    for pi in phrase_iterations:
+        idxs = [i for i, n in enumerate(linked) if pi.start_time <= n.time < pi.end_time]
+        for j, gi in enumerate(idxs):
+            linked[gi] = replace(
+                linked[gi],
+                prev_iter_note=idxs[j - 1] if j > 0 else -1,
+                next_iter_note=idxs[j + 1] if j < len(idxs) - 1 else -1,
+            )
+    notes_in_iter = [
+        sum(1 for n in linked if pi.start_time <= n.time < pi.end_time)
+        for pi in phrase_iterations
+    ]
+    avg_per_iter = []
+    for p_idx in range(phrase_count):
+        counts = [
+            notes_in_iter[i] for i, pi in enumerate(phrase_iterations) if pi.phrase_id == p_idx
+        ]
+        avg_per_iter.append(sum(counts) / max(1, len(counts)))
+    return SngArrangementLevel(
+        difficulty=difficulty,
+        anchors=anchors,
+        anchor_extensions=anchor_extensions,
+        fingerprints1=fingerprints,
+        fingerprints2=[],
+        notes=linked,
+        phrase_count=phrase_count,
+        avg_notes_per_iteration=avg_per_iter,
+        notes_in_iteration1=notes_in_iter,
+        notes_in_iteration2=notes_in_iter,
+    )
 
 
 def from_arrangement(
@@ -659,16 +733,6 @@ def from_arrangement(
 
     sng_notes.sort(key=lambda n: n.time)
 
-    # --- Note linkage within phrase iterations ---
-    for _pi_idx, pi in enumerate(phrase_iterations):
-        pi_notes = [
-            (i, n) for i, n in enumerate(sng_notes)
-            if pi.start_time <= n.time < pi.end_time
-        ]
-        for j, (_ni, note) in enumerate(pi_notes):
-            note.prev_iter_note = pi_notes[j - 1][0] if j > 0 else -1
-            note.next_iter_note = pi_notes[j + 1][0] if j < len(pi_notes) - 1 else -1
-
     # --- Sections ---
     sections: list[SngSection] = []
     for sec, end in zip(sections_src, ends, strict=True):
@@ -683,33 +747,40 @@ def from_arrangement(
             end_phrase_iteration_id=end_pi,
         ))
 
-    # --- ArrangementLevel ---
+    # --- Dynamic Difficulty: per-note tiers, per-phrase max, and one level per
+    # difficulty (a note appears once the difficulty reaches its tier). ---
     note_count = len(sng_notes)
-    avg_per_iter = []
-    notes_in_iter: list[int] = []
-    for pi in phrase_iterations:
-        count = sum(1 for n in sng_notes if pi.start_time <= n.time < pi.end_time)
-        notes_in_iter.append(count)
-    for p_idx in range(len(phrases)):
-        iters_for_phrase = [
-            notes_in_iter[i] for i, pi in enumerate(phrase_iterations) if pi.phrase_id == p_idx
-        ]
-        avg_per_iter.append(
-            sum(iters_for_phrase) / max(1, len(iters_for_phrase))
-        )
+    note_tiers = [_note_tier(sngn.time, beats) for sngn in sng_notes]
+    phrase_max = [0] * len(phrases)
+    for sngn, tier in zip(sng_notes, note_tiers, strict=True):
+        p_id = phrase_iterations[sngn.phrase_iteration_id].phrase_id
+        phrase_max[p_id] = max(phrase_max[p_id], tier)
+    max_diff = min(_MAX_DD_LEVELS - 1, max(phrase_max, default=0))
 
-    level = SngArrangementLevel(
-        difficulty=0,
-        anchors=anchors,
-        anchor_extensions=anchor_extensions,
-        fingerprints1=fingerprints,
-        fingerprints2=[],
-        notes=sng_notes,
-        phrase_count=len(phrases),
-        avg_notes_per_iteration=avg_per_iter,
-        notes_in_iteration1=notes_in_iter,
-        notes_in_iteration2=notes_in_iter,
-    )
+    phrases = [
+        replace(p, max_difficulty=min(phrase_max[i], max_diff)) for i, p in enumerate(phrases)
+    ]
+    phrase_iterations = [
+        replace(pi, difficulty=(
+            phrases[pi.phrase_id].max_difficulty // 3,
+            (phrases[pi.phrase_id].max_difficulty * 2) // 3,
+            phrases[pi.phrase_id].max_difficulty,
+        ))
+        for pi in phrase_iterations
+    ]
+
+    arrangements = [
+        _build_level(
+            d,
+            [sngn for sngn, tier in zip(sng_notes, note_tiers, strict=True) if tier <= d],
+            phrase_iterations,
+            len(phrases),
+            anchors,
+            anchor_extensions,
+            fingerprints,
+        )
+        for d in range(max_diff + 1)
+    ]
 
     # --- Vocals ---
     sng_vocals = [
@@ -736,7 +807,7 @@ def from_arrangement(
         tuning=arrangement.tuning.offsets_from_standard(),
         first_note_time=first_note,
         first_note_time2=first_note,
-        max_difficulty=0,
+        max_difficulty=max_diff,
     )
 
     return SngModel(
@@ -747,7 +818,7 @@ def from_arrangement(
         vocals=sng_vocals,
         phrase_iterations=phrase_iterations,
         sections=sections,
-        arrangements=[level],
+        arrangements=arrangements,
         metadata=metadata,
     )
 

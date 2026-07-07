@@ -126,12 +126,16 @@ def arrangement_stats(arrangement: Arrangement) -> dict[str, object]:
 
     Derived from the compiled SNG model so they match the actual chart (an
     empty manifest here shows "0 notes" and a blank difficulty bar in game).
-    RockForge is single-difficulty, so every phrase is ``MaxDifficulty 0`` and
-    the Easy/Medium/Hard note counts are identical (no DD reduction)."""
+    With Dynamic Difficulty the top level is the full chart (Hard) and the
+    Easy/Medium counts come from the lower DD levels."""
     from rockforge.infrastructure.packaging.psarc import sng
 
     model = sng.from_arrangement(arrangement)
-    note_count = len(model.arrangements[0].notes) if model.arrangements else 0
+    levels = model.arrangements
+    note_count = len(levels[-1].notes) if levels else 0  # Hard = the full top level
+    n = len(levels)
+    easy_count = len(levels[n // 3].notes) if n > 1 else note_count
+    medium_count = len(levels[(2 * n) // 3].notes) if n > 1 else note_count
     phrases = [
         {
             "MaxDifficulty": p.max_difficulty,
@@ -166,6 +170,8 @@ def arrangement_stats(arrangement: Arrangement) -> dict[str, object]:
     ]
     return {
         "note_count": note_count,
+        "easy_count": easy_count,
+        "medium_count": medium_count,
         "phrases": phrases,
         "phrase_iterations": iterations,
         "sections": sections,
@@ -189,6 +195,8 @@ def build_arrangement_manifest(
     if stats is None:
         stats = arrangement_stats(arrangement)
     note_count = int(stats["note_count"])  # type: ignore[call-overload]
+    easy = int(stats["easy_count"])  # type: ignore[call-overload]
+    medium = int(stats["medium_count"])  # type: ignore[call-overload]
     attributes: dict[str, object] = {
         "AlbumName": meta.album,
         "AlbumNameSort": meta.album,
@@ -213,7 +221,7 @@ def build_arrangement_manifest(
         "ManifestUrn": f"urn:database:json-db:{asset}",
         "MasterID_PS3": -1, "MasterID_XBox360": -1, "MasterID_RDV": _master_id(pid),
         "MaxPhraseDifficulty": stats["max_phrase_difficulty"],
-        "NotesEasy": note_count, "NotesMedium": note_count, "NotesHard": note_count,
+        "NotesEasy": easy, "NotesMedium": medium, "NotesHard": note_count,
         "PersistentID": pid,
         "PhraseIterations": stats["phrase_iterations"],
         "Phrases": stats["phrases"],
@@ -263,6 +271,8 @@ def _header_entry(
     if stats is None:
         stats = arrangement_stats(arrangement)
     note_count = int(stats["note_count"])  # type: ignore[call-overload]
+    easy = int(stats["easy_count"])  # type: ignore[call-overload]
+    medium = int(stats["medium_count"])  # type: ignore[call-overload]
     attrs: dict[str, object] = {
         "AlbumName": meta.album,
         "AlbumNameSort": meta.album,
@@ -277,7 +287,7 @@ def _header_entry(
         "LeaderboardChallengeRating": 0,
         "ManifestUrn": f"urn:database:json-db:{asset}",
         "MasterID_RDV": _master_id(pid),
-        "NotesEasy": note_count, "NotesMedium": note_count, "NotesHard": note_count,
+        "NotesEasy": easy, "NotesMedium": medium, "NotesHard": note_count,
         "PersistentID": pid,
         "Representative": 1,
         "RouteMask": _ROUTE_MASK[arrangement.kind],

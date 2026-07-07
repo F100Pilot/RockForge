@@ -579,8 +579,15 @@ builds that vocals-only model.
 
 What is intentionally absent (these are correct given the domain model, not
 defects):
-- **Single difficulty level**: RockForge has no dynamic-difficulty (DD) model;
-  the chart plays at full density. A real feature gap, not a malformed file.
+- **Simple Dynamic Difficulty**: `from_arrangement` emits multiple
+  `ArrangementLevels` (`_MAX_DD_LEVELS`, up to 5) — a note appears once the
+  difficulty reaches its beat-strength tier (`_note_tier`: downbeat→0, beat→1,
+  half→2, quarter→3, finer→4), so level 0 is the downbeats and the top level is
+  the full chart. Anchors/fingerprints are shared across levels (time-windows);
+  only the note subset, per-iteration linkage and counts differ (`_build_level`).
+  `phrases[].max_difficulty` is the phrase's own top tier; the manifest reports
+  `MaxPhraseDifficulty` + `NotesEasy/Medium/Hard` from the levels. This is a
+  mechanical density ramp, NOT the musical phrase-leveling a real DDC pass does.
 - **ChordNotesId = -1 for simple chords**: only chords with per-string
   bend/slide/vibrato get a ChordNotes entry — exactly what DLC Builder/EOF do.
 - **Fingerprints2 (arpeggio) empty**: the domain has no arpeggio marking.
@@ -642,12 +649,13 @@ reports the real note count + phrase/iteration/section tables
 (`manifest.arrangement_stats`, from the compiled SNG) so the song-list screen
 shows the note count instead of "0". Verified by unpacking our output and diffing
 the file list + manifest fields against a real DLC Builder PSARC (they match bar
-cosmetic `LastConversionDateTime`). Still **unverified in-game** and
-playability-incomplete by design: **single difficulty, no DD** — every phrase is
-`MaxDifficulty 0`, so the in-game difficulty bar is flat (no note-density ramp);
-tones are not serialized into the manifest; and the SNG binary is round-tripped
-but unverified (see the SNG note above). The **trustworthy path remains the DLC
-Builder bundle** (import it and let DLC Builder build the PSARC).
+cosmetic `LastConversionDateTime`). Iterated to playability against a real
+Rocksmith install (the SNG format/beat-mask/slide-sentinel/anchor fixes below
+came from that loop). Remaining honest gaps: the Dynamic Difficulty is a simple
+mechanical density ramp (not a musical DDC pass — see the SNG note); tones are
+not serialized into the manifest; and the SNG binary is round-tripped but not
+byte-diffed against retail. The **trustworthy path remains the DLC Builder
+bundle** (import it and let DLC Builder build the PSARC + a real DDC pass).
 
 ### Wwise SoundBank (`infrastructure/packaging/psarc/soundbank.py`)
 
