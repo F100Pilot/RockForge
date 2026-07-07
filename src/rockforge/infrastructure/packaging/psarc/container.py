@@ -71,7 +71,9 @@ def pack_entries(files: dict[str, bytes], encrypt: bool = False) -> bytes:
     Rocksmith PSARCs. The 32-byte header itself is always plaintext.
     """
     paths = list(files.keys())
-    name_block = ("\n".join(paths) + "\n").encode("utf-8")
+    # No trailing newline — a real DLC Builder PSARC and the toolkit both store
+    # the name block as exactly "\n".join(paths) (byte-verified).
+    name_block = "\n".join(paths).encode("utf-8")
     contents = [name_block, *(files[p] for p in paths)]
     # Each TOC entry carries a 16-byte name hash = MD5 of the archive path.
     # Rocksmith resolves every asset (SNG/manifest/xblock/…) THROUGH this hash,
