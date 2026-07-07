@@ -43,8 +43,13 @@ TOOLKIT_VERSION = (
 
 # The Steam appid CDLC is tagged with so Rocksmith 2014 accepts it. The toolkit
 # writes this into an `appid` file at the PSARC root; without it the game does
-# not surface the song. (Rocksmith 2014 CDLC convention.)
-APP_ID = "248750"
+# not surface the song. Rocksmith only lists a song whose appid the player
+# actually OWNS, so CDLC conventionally reuses the appid of a DLC everyone has.
+# Here we use Train - "Drops of Jupiter" (492989); if a given player doesn't own
+# that DLC the song won't appear — swap this for one they own (e.g. the free
+# base song Smashing Pumpkins - "Cherub Rock", 248750). See RocksmithToolkitLib
+# SongAppId.xml for the full appid table.
+APP_ID = "492989"
 
 # Manifest merge root the game inserts entries under. Real manifests carry it;
 # the per-arrangement JSON and the aggregated .hsan use the same key.
@@ -87,7 +92,8 @@ def build_arrangement_manifest(
         "MasterID": pid,
         "PersistentID": pid,
         "SongAsset": f"urn:application:musicgame-song:{key_lower}_{name_lower}",
-        "SongBank": f"song_{key_lower}.bank",
+        "SongBank": f"song_{key_lower}.bnk",
+        "SongEvent": f"Play_{song_key}",
         "SongKey": song_key,
         "SongLength": meta.song_length,
         "SongName": meta.title,
@@ -116,7 +122,7 @@ def build_vocals_manifest(meta_source: Arrangement, song_key: str) -> dict[str, 
         "MasterID": pid,
         "PersistentID": pid,
         "SongAsset": f"urn:application:musicgame-song:{key_lower}_vocals",
-        "SongBank": f"song_{key_lower}.bank",
+        "SongBank": f"song_{key_lower}.bnk",
         "SongKey": song_key,
         "SongLength": meta_source.metadata.song_length,
         "SongName": meta_source.metadata.title,
