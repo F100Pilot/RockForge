@@ -44,7 +44,7 @@ def test_build_arrangement_manifest_fields() -> None:
     (pid, entry), = entries.items()
     attrs = entry["Attributes"]
     assert attrs["ArrangementName"] == "Lead"
-    assert attrs["ArrangementType"] == "Lead"
+    assert attrs["ArrangementType"] == 0  # int enum (Lead=0), not a string
     assert attrs["ArtistName"] == "My Artist"
     assert attrs["SongKey"] == "MySong"
     assert attrs["SongLength"] == 120.0
@@ -61,16 +61,17 @@ def test_build_manifest_files_packs_and_round_trips() -> None:
         "MySong",
     )
     assert "toolkit.version" in files
-    # Train "Drops of Jupiter" appid — the game won't list CDLC without an appid.
-    assert files["appid"] == b"492989"
+    # Train "Drops of Jupiter" appid, written to the root `appid.appid` file —
+    # the game won't list CDLC without it.
+    assert files["appid.appid"] == b"492989"
     assert "manifests/songs_dlc_mysong/songs_dlc_mysong.hsan" in files
     assert "manifests/songs_dlc_mysong/mysong_lead.json" in files
     assert "manifests/songs_dlc_mysong/mysong_rhythm.json" in files
-    assert "flatmodels/rs/mysong_aggregategraph.nt" in files
 
     hsan = json.loads(files["manifests/songs_dlc_mysong/songs_dlc_mysong.hsan"])
     assert len(hsan["Entries"]) == 2
-    assert hsan["InsertRoot"] == "Static.Songs.Entries"
+    # The .hsan aggregates *headers*; the per-arrangement .json carries entries.
+    assert hsan["InsertRoot"] == "Static.Songs.Headers"
 
     packed = pack_entries(files)
     assert unpack(packed) == files
@@ -87,7 +88,7 @@ def test_include_vocals_adds_vocals_manifest() -> None:
     vocals = json.loads(files["manifests/songs_dlc_mysong/mysong_vocals.json"])
     (_, entry), = vocals["Entries"].items()
     attrs = entry["Attributes"]
-    assert attrs["ArrangementType"] == "Vocals"
+    assert attrs["ArrangementType"] is None  # vocals have no instrument type
     assert attrs["ArrangementName"] == "Vocals"
     assert attrs["SongAsset"] == "urn:application:musicgame-song:mysong_vocals"
     # The vocals arrangement carries no tuning/capo.
@@ -95,5 +96,3 @@ def test_include_vocals_adds_vocals_manifest() -> None:
 
     hsan = json.loads(files["manifests/songs_dlc_mysong/songs_dlc_mysong.hsan"])
     assert len(hsan["Entries"]) == 2  # instrument + vocals
-    graph = files["flatmodels/rs/mysong_aggregategraph.nt"].decode()
-    assert "mysong_vocals" in graph

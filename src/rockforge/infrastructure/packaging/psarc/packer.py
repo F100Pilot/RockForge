@@ -47,7 +47,7 @@ from rockforge.infrastructure.packaging.dlcbuilder import (
     PackagingResult,
     build_project_metadata,
 )
-from rockforge.infrastructure.packaging.psarc import container, manifest, sng, soundbank
+from rockforge.infrastructure.packaging.psarc import container, gamedata, manifest, sng, soundbank
 from rockforge.infrastructure.packaging.rs2dlc import write_rs2dlc
 from rockforge.infrastructure.packaging.wwise import WwiseWemConverter
 from rockforge.infrastructure.rsxml.vocals import VocalEvent, write_vocals_xml
@@ -100,11 +100,36 @@ class NativePsarcPacker:
         song_key = manifest.song_key_from_title(meta.artist, meta.title)
         key_lower = song_key.lower()
 
+        # Always ship (placeholder) album art so the song list's AlbumArt URN
+        # resolves; DLC Builder generates real DDS textures from the cover.
         files: dict[str, bytes] = manifest.build_manifest_files(
-            [(arr, arr.kind.value) for arr in arrangements],
+            [(arr, manifest.arrangement_asset_name(song_key, arr.kind)) for arr in arrangements],
             song_key,
             include_vocals=bool(vocals),
+            has_album_art=True,
         )
+
+        # Game-enumeration assets — without these the song never lists.
+        entities = [
+            (manifest.persistent_id(song_key, manifest.arrangement_asset_name(song_key, arr.kind)),
+             f"{song_key}_{manifest.arrangement_display_name(arr.kind)}")
+            for arr in arrangements
+        ]
+        if vocals:
+            entities.append((manifest.persistent_id(song_key, "Vocals"), f"{song_key}_Vocals"))
+        files[f"gamexblocks/nsongs/{key_lower}.xblock"] = gamedata.build_xblock(
+            song_key, entities, has_album_art=True
+        ).encode("utf-8")
+        files.update(gamedata.load_flat_models())
+        files[f"{key_lower}_aggregategraph.nt"] = gamedata.build_aggregategraph(
+            song_key,
+            [manifest.arrangement_asset_name(song_key, arr.kind) for arr in arrangements],
+            include_vocals=bool(vocals),
+            has_album_art=True,
+        ).encode("utf-8")
+        files[f"songs/arr/{key_lower}_showlights.xml"] = gamedata.build_showlights().encode("utf-8")
+        for res in (64, 128, 256):
+            files[f"gfxassets/album_art/album_{key_lower}_{res}.dds"] = gamedata.solid_dds(res)
 
         psarc_path: Path | None = None
         try:
@@ -113,24 +138,29 @@ class NativePsarcPacker:
             for arr in arrangements:
                 model = sng.from_arrangement(arr)
                 payload = sng.write_sng(model)
-                files[f"songs/arr/{key_lower}_{arr.kind.value.lower()}.sng"] = encrypt_sng(
-                    payload
-                )
+                asset = manifest.arrangement_asset_name(song_key, arr.kind)
+                files[f"songs/bin/generic/{asset}.sng"] = encrypt_sng(payload)
 
             # Vocals are a separate arrangement with their own SNG (real
             # Rocksmith convention), not embedded in an instrument SNG.
             if vocals:
                 vocals_payload = sng.write_sng(sng.from_vocals(vocals))
-                files[f"songs/arr/{key_lower}_vocals.sng"] = encrypt_sng(vocals_payload)
+                files[f"songs/bin/generic/{key_lower}_vocals.sng"] = encrypt_sng(vocals_payload)
 
             if wem_path is not None:
                 # Real Rocksmith audio: a Wwise SoundBank (Play_<key> event +
                 # audio prefetch) plus the full stream as <fileID>.wem beside it.
                 # Without the .bnk the game has no event to fire and plays silence.
+                # A matching preview bank is required by the manifest/xblock.
                 wem_bytes = wem_path.read_bytes()
                 bnk_bytes, wem_file_id = soundbank.generate_soundbank(song_key, wem_bytes)
                 files[f"audio/windows/song_{key_lower}.bnk"] = bnk_bytes
                 files[f"audio/windows/{wem_file_id}.wem"] = wem_bytes
+                preview_bnk, preview_id = soundbank.generate_soundbank(
+                    f"{song_key}_preview", wem_bytes
+                )
+                files[f"audio/windows/song_{key_lower}_preview.bnk"] = preview_bnk
+                files[f"audio/windows/{preview_id}.wem"] = wem_bytes
             else:
                 # No Wwise available: pack the WAV under a path the retail game
                 # will not load — the bundle stays the trustworthy audio path.

@@ -223,10 +223,27 @@ ver `TESTING.md`.
     não-verificado-por-desenho (como `sng.py`). Continua sem validação in-game
     — o caminho de confiança continua a ser o bundle DLC Builder.
 
-  - [ ] **Textura DDS da capa (`albumArt`) no PSARC nativo**: hoje a capa vai no
-    bundle mas o campo `albumArt` do Song2014 fica vazio (nem DLC Builder nem
-    PSARC nativo a embutem). Converter a capa para as texturas DDS in-game
-    (64/128/256) e preencher o `albumArt` para a capa aparecer no jogo.
+  - [x] **Fase 8 — Layout completo de enumeração (o CDLC nativo não aparecia)**:
+    por byte-diff de um PSARC real do DLC Builder contra o nosso, descobriu-se
+    que faltavam/estavam errados muitos ficheiros. Agora o PSARC nativo bate
+    certo com o layout retail (`psarc/gamedata.py`): `gamexblocks/nsongs/<key>.xblock`,
+    `flatmodels/rs/rsenumerable_{root,song}.flat` (vendored), `<key>_aggregategraph.nt`,
+    o `.hsan` como *headers* (`InsertRoot = Static.Songs.Headers`) distinto dos
+    `.json` de *entries* (`Static.Songs.Entries`, com `ArrangementType` **int**),
+    o SNG em `songs/bin/generic/`, `showlights.xml`, DDS de capa (placeholder),
+    banco de preview, `appid.appid`, e offsets **absolutos** na TOC. Verificado
+    por unpack+diff contra o PSARC de referência. **Ainda por validar no jogo** e
+    incompleto para *jogar* (arrays de score/frases vazios — dificuldade única
+    sem DD; tons não serializados no manifesto; SNG binário não verificado).
+
+  - [ ] **Dados de score/frases/secções + tons no manifesto do PSARC nativo**:
+    para *jogar* bem (não só listar), o manifesto per-arranjo precisa dos arrays
+    de PhraseIterations/Sections/Chords/Notas por dificuldade e das entradas
+    `Tones`/`Tone_Base`. Hoje vão vazios/neutros (lacuna real, não malformado).
+
+  - [ ] **DDS real da capa (em vez do placeholder)**: hoje o PSARC nativo embute
+    um DDS DXT1 de cor sólida para o URN `albumArt` resolver. Converter a capa do
+    utilizador para as texturas DDS in-game (64/128/256) para a capa aparecer.
 
 - [ ] **Dynamic Difficulty (DD)**: hoje a partitura toca sempre à densidade
   máxima (um único nível de dificuldade). Gerar níveis de DD (redução

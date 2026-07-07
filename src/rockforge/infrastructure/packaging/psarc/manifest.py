@@ -5,16 +5,16 @@ discover and display a song — distinct from RockForge's own
 ``rockforge_project.json`` (an internal descriptor consumed by DLC Builder on
 import).
 
-Emits per-instrument-arrangement manifests, plus a separate ``Vocals``
-arrangement manifest (``include_vocals``) pointing at the ``<key>_vocals.sng``,
-the aggregated ``.hsan``, and the aggregategraph.
+Two manifest layers, matched to a real DLC Builder PSARC:
 
-Scope and limitations (honesty principle, CLAUDE.md): this module emits the
-*identity and metadata* fields RockForge's domain model can populate
-(song/arrangement names, artist/album/year, tuning, song length, capo,
-persistent IDs). A full Rocksmith manifest also carries per-note statistics,
-phrase/section iteration tables and dynamic-difficulty level arrays; RockForge
-ships a single difficulty, so those richer score arrays are not emitted.
+- the aggregated ``.hsan`` (``Static.Songs.Headers``) — the *header* attributes
+  the in-game song list reads (name/artist/album/length/tuning/difficulty), one
+  entry per arrangement;
+- the per-arrangement ``.json`` (``Static.Songs.Entries``) — the *full* manifest
+  read when the song is selected/played (identity + asset URNs + tuning +
+  arrangement properties). RockForge ships a single difficulty, so the richer
+  per-note score/phrase arrays a retail manifest carries are emitted empty or
+  neutral (a feature gap, not a malformed file).
 """
 
 from __future__ import annotations
@@ -28,11 +28,22 @@ from rockforge.domain.arrangement import Arrangement, ArrangementKind
 # same song/arrangement (Rocksmith identifies content by these IDs).
 _ID_NAMESPACE = uuid.UUID("9b1f3f2e-9c1a-4e9b-8f0a-2f1f3f2e9c1a")
 
-_ARRANGEMENT_TYPE = {
+# ArrangementName string / ArrangementType int / RouteMask per kind, from
+# Rocksmith2014.NET Arrangement.fs (Lead→0/1, Combo→1/1, Rhythm→2/2). A real
+# manifest carries the int ArrangementType (a string import-crashes the game).
+_ARR_NAME = {
     ArrangementKind.LEAD: "Lead",
     ArrangementKind.RHYTHM: "Rhythm",
-    ArrangementKind.COMBINED: "Lead",  # ships as a Lead-type arrangement
+    ArrangementKind.COMBINED: "Combo",
 }
+_ARR_TYPE = {ArrangementKind.LEAD: 0, ArrangementKind.COMBINED: 1, ArrangementKind.RHYTHM: 2}
+_ROUTE_MASK = {ArrangementKind.LEAD: 1, ArrangementKind.COMBINED: 1, ArrangementKind.RHYTHM: 2}
+
+# Constant per-difficulty note-density ramp DLC Builder writes verbatim.
+_DYNAMIC_VISUAL_DENSITY = [
+    5, 4.7, 4.3, 4, 3.8, 3.5, 3.3, 3, 2.8, 2.6,
+    2.5, 2.3, 2.1, 2, 1.9, 1.7, 1.6, 1.5, 1.4, 1.3,
+]
 
 TOOLKIT_VERSION = (
     "Toolkit version: RockForge-native\n"
@@ -42,8 +53,8 @@ TOOLKIT_VERSION = (
 )
 
 # The Steam appid CDLC is tagged with so Rocksmith 2014 accepts it. The toolkit
-# writes this into an `appid` file at the PSARC root; without it the game does
-# not surface the song. Rocksmith only lists a song whose appid the player
+# writes this into an `appid.appid` file at the PSARC root; without it the game
+# does not surface the song. Rocksmith only lists a song whose appid the player
 # actually OWNS, so CDLC conventionally reuses the appid of a DLC everyone has.
 # Here we use Train - "Drops of Jupiter" (492989); if a given player doesn't own
 # that DLC the song won't appear — swap this for one they own (e.g. the free
@@ -51,14 +62,29 @@ TOOLKIT_VERSION = (
 # SongAppId.xml for the full appid table.
 APP_ID = "492989"
 
-# Manifest merge root the game inserts entries under. Real manifests carry it;
-# the per-arrangement JSON and the aggregated .hsan use the same key.
-_INSERT_ROOT = "Static.Songs.Entries"
+# The .hsan aggregates *headers*; the per-arrangement .json carries full entries.
+_HEADERS_ROOT = "Static.Songs.Headers"
+_ENTRIES_ROOT = "Static.Songs.Entries"
 
 
 def persistent_id(song_key: str, arrangement_name: str) -> str:
     """Deterministic persistent/master ID for a song's arrangement."""
     return uuid.uuid5(_ID_NAMESPACE, f"{song_key}:{arrangement_name}").hex.upper()
+
+
+def _master_id(pid: str) -> int:
+    """A stable positive 31-bit MasterID (DLC Builder uses a random one)."""
+    return (int(pid[:8], 16) & 0x7FFFFFFF) or 1
+
+
+def arrangement_asset_name(song_key: str, kind: ArrangementKind) -> str:
+    """The lowercase ``<key>_<combo|lead|rhythm>`` asset stem for a kind."""
+    return f"{song_key.lower()}_{_ARR_NAME[kind].lower()}"
+
+
+def arrangement_display_name(kind: ArrangementKind) -> str:
+    """The ArrangementName string (``Lead``/``Rhythm``/``Combo``) for a kind."""
+    return _ARR_NAME[kind]
 
 
 def song_key_from_title(artist: str, title: str) -> str:
@@ -67,130 +93,247 @@ def song_key_from_title(artist: str, title: str) -> str:
     return cleaned[:30] or "RockForgeSong"
 
 
-def build_arrangement_manifest(
-    arrangement: Arrangement, song_key: str, arrangement_name: str
-) -> dict[str, object]:
-    """Build the ``Entries`` manifest for a single arrangement."""
-    meta = arrangement.metadata
-    pid = persistent_id(song_key, arrangement_name)
-    key_lower = song_key.lower()
-    name_lower = arrangement_name.lower()
-    tuning = dict(zip(
+def _tuning(arrangement: Arrangement) -> dict[str, int]:
+    return dict(zip(
         ("string0", "string1", "string2", "string3", "string4", "string5"),
         arrangement.tuning.offsets_from_standard(),
         strict=True,
     ))
-    attributes = {
-        "ArrangementName": arrangement_name,
-        "ArrangementType": _ARRANGEMENT_TYPE[arrangement.kind],
-        "ArtistName": meta.artist,
+
+
+def _arrangement_properties(arrangement: Arrangement) -> dict[str, int]:
+    """The 30-ish boolean/flag ArrangementProperties block. RockForge does not
+    analyse technique usage, so most flags are 0; path/routing + tuning are set."""
+    kind = arrangement.kind
+    standard = all(o == 0 for o in arrangement.tuning.offsets_from_standard())
+    return {
+        "represent": 1, "bonusArr": 0, "standardTuning": int(standard),
+        "nonStandardChords": 0, "barreChords": 0, "powerChords": 0, "dropDPower": 0,
+        "openChords": 0, "fingerPicking": 0, "pickDirection": 0, "doubleStops": 0,
+        "palmMutes": 0, "harmonics": 0, "pinchHarmonics": 0, "hopo": 0, "tremolo": 0,
+        "slides": 0, "unpitchedSlides": 0, "bends": 0, "tapping": 0, "vibrato": 0,
+        "fretHandMutes": 0, "slapPop": 0, "twoFingerPicking": 0, "fifthsAndOctaves": 0,
+        "syncopation": 0, "bassPick": 0, "sustain": 0,
+        "pathLead": int(kind in (ArrangementKind.LEAD, ArrangementKind.COMBINED)),
+        "pathRhythm": int(kind is ArrangementKind.RHYTHM),
+        "pathBass": 0,
+        "routeMask": _ROUTE_MASK[kind],
+    }
+
+
+def build_arrangement_manifest(
+    arrangement: Arrangement,
+    song_key: str,
+    arrangement_name: str,
+    *,
+    has_album_art: bool = False,
+) -> dict[str, object]:
+    """Build the full ``Entries`` manifest for a single instrumental arrangement."""
+    meta = arrangement.metadata
+    pid = persistent_id(song_key, arrangement_name)
+    key_lower = song_key.lower()
+    asset = arrangement_asset_name(song_key, arrangement.kind)
+    attributes: dict[str, object] = {
         "AlbumName": meta.album,
-        "CapoFret": arrangement.capo,
+        "AlbumNameSort": meta.album,
+        "ArrangementName": _ARR_NAME[arrangement.kind],
+        "ArrangementProperties": _arrangement_properties(arrangement),
+        "ArrangementSort": 0,
+        "ArrangementType": _ARR_TYPE[arrangement.kind],
+        "ArtistName": meta.artist,
+        "ArtistNameSort": meta.artist,
+        "BlockAsset": f"urn:emergent-world:{key_lower}",
         "CentOffset": arrangement.tuning.cent_offset,
+        "CapoFret": arrangement.capo,
+        "Chords": {},
+        "ChordTemplates": [],
+        "DLC": True,
         "DLCKey": song_key,
-        "ManifestUrn": f"urn:database:json-db:{key_lower}_{name_lower}",
-        "MasterID": pid,
+        "DNA_Chords": 0, "DNA_Riffs": 0, "DNA_Solo": 0,
+        "DynamicVisualDensity": _DYNAMIC_VISUAL_DENSITY,
+        "EasyMastery": 0, "MediumMastery": 0,
+        "FullName": f"{song_key}_{_ARR_NAME[arrangement.kind]}",
+        "LeaderboardChallengeRating": 0,
+        "ManifestUrn": f"urn:database:json-db:{asset}",
+        "MasterID_PS3": -1, "MasterID_XBox360": -1, "MasterID_RDV": _master_id(pid),
+        "MaxPhraseDifficulty": 0,
+        "NotesEasy": 0, "NotesMedium": 0, "NotesHard": 0,
         "PersistentID": pid,
-        "SongAsset": f"urn:application:musicgame-song:{key_lower}_{name_lower}",
+        "PhraseIterations": [], "Phrases": [], "Sections": [],
+        "PreviewBankPath": f"song_{key_lower}_preview.bnk",
+        "RelativeDifficulty": 0,
+        "SKU": "RS2",
+        "Score_MaxNotes": 0, "Score_PNV": 0,
+        "Shipping": True,
+        "ShowlightsXML": f"urn:application:xml:{key_lower}_showlights",
+        "SongAsset": f"urn:application:musicgame-song:{asset}",
+        "SongAverageTempo": arrangement.tempo_map.average_bpm,
+        "SongBank": f"song_{key_lower}.bnk",
+        "SongDiffEasy": 0, "SongDiffMed": 0, "SongDiffHard": 0, "SongDifficulty": 0,
+        "SongEvent": f"Play_{song_key}",
+        "SongKey": song_key,
+        "SongLength": meta.song_length,
+        "SongName": meta.title,
+        "SongNameSort": meta.title,
+        "SongOffset": 0.0,
+        "SongPartition": 0,
+        "SongXml": f"urn:application:xml:{asset}",
+        "SongYear": meta.year,
+        "TargetScore": 0,
+        "Techniques": {},
+        # Tone slots: RockForge's native path ships no in-manifest tone yet
+        # (DLC Builder resolves a missing tone via its library on import).
+        "Tone_A": "", "Tone_B": "", "Tone_C": "", "Tone_D": "",
+        "Tone_Base": "", "Tone_Multiplayer": "", "Tones": [],
+        "Tuning": _tuning(arrangement),
+    }
+    if has_album_art:
+        attributes["AlbumArt"] = f"urn:image:dds:album_{key_lower}"
+    return {"Entries": {pid: {"Attributes": attributes}}, "InsertRoot": _ENTRIES_ROOT}
+
+
+def _header_entry(
+    arrangement: Arrangement, song_key: str, arrangement_name: str, *, has_album_art: bool
+) -> tuple[str, dict[str, object]]:
+    """The reduced *header* attribute set for the aggregated ``.hsan`` (the song
+    list). Returns ``(persistent_id, {"Attributes": ...})``."""
+    meta = arrangement.metadata
+    pid = persistent_id(song_key, arrangement_name)
+    asset = arrangement_asset_name(song_key, arrangement.kind)
+    attrs: dict[str, object] = {
+        "AlbumName": meta.album,
+        "AlbumNameSort": meta.album,
+        "ArrangementName": _ARR_NAME[arrangement.kind],
+        "ArtistName": meta.artist,
+        "ArtistNameSort": meta.artist,
+        "CentOffset": arrangement.tuning.cent_offset,
+        "DLC": True,
+        "DLCKey": song_key,
+        "DNA_Chords": 0, "DNA_Riffs": 0, "DNA_Solo": 0,
+        "EasyMastery": 0, "MediumMastery": 0,
+        "LeaderboardChallengeRating": 0,
+        "ManifestUrn": f"urn:database:json-db:{asset}",
+        "MasterID_RDV": _master_id(pid),
+        "NotesEasy": 0, "NotesMedium": 0, "NotesHard": 0,
+        "PersistentID": pid,
+        "Representative": 1,
+        "RouteMask": _ROUTE_MASK[arrangement.kind],
+        "Shipping": True,
+        "SKU": "RS2",
+        "SongDiffEasy": 0, "SongDiffMed": 0, "SongDiffHard": 0, "SongDifficulty": 0,
+        "SongKey": song_key,
+        "SongLength": meta.song_length,
+        "SongName": meta.title,
+        "SongNameSort": meta.title,
+        "SongYear": meta.year,
+        "Tuning": _tuning(arrangement),
+    }
+    if has_album_art:
+        attrs = {"AlbumArt": f"urn:image:dds:album_{song_key.lower()}", **attrs}
+    return pid, {"Attributes": attrs}
+
+
+def build_vocals_manifest(meta_source: Arrangement, song_key: str) -> dict[str, object]:
+    """Full ``Entries`` manifest for the song's vocals arrangement."""
+    pid = persistent_id(song_key, "Vocals")
+    key_lower = song_key.lower()
+    meta = meta_source.metadata
+    attributes = {
+        "AlbumName": meta.album,
+        "ArrangementName": "Vocals",
+        "ArrangementType": None,
+        "ArtistName": meta.artist,
+        "BlockAsset": f"urn:emergent-world:{key_lower}",
+        "DLC": True,
+        "DLCKey": song_key,
+        "LeaderboardChallengeRating": 0,
+        "ManifestUrn": f"urn:database:json-db:{key_lower}_vocals",
+        "MasterID_PS3": -1, "MasterID_XBox360": -1,
+        "MasterID_RDV": _master_id(pid),
+        "PersistentID": pid,
+        "PreviewBankPath": f"song_{key_lower}_preview.bnk",
+        "SKU": "RS2",
+        "Shipping": True,
+        "ShowlightsXML": f"urn:application:xml:{key_lower}_showlights",
+        "SongAsset": f"urn:application:musicgame-song:{key_lower}_vocals",
         "SongBank": f"song_{key_lower}.bnk",
         "SongEvent": f"Play_{song_key}",
         "SongKey": song_key,
         "SongLength": meta.song_length,
         "SongName": meta.title,
         "SongYear": meta.year,
-        "Tuning": tuning,
     }
-    return {"Entries": {pid: {"Attributes": attributes}}, "InsertRoot": _INSERT_ROOT}
+    return {"Entries": {pid: {"Attributes": attributes}}, "InsertRoot": _ENTRIES_ROOT}
 
 
-def build_vocals_manifest(meta_source: Arrangement, song_key: str) -> dict[str, object]:
-    """Build the ``Entries`` manifest for the song's vocals arrangement.
-
-    Vocals are a distinct arrangement (``ArrangementType: Vocals``) with their
-    own ``.sng`` and manifest, keyed off the same song. They carry no tuning /
-    capo — only identity and the song asset that points at the vocals SNG.
-    """
+def _vocals_header(meta_source: Arrangement, song_key: str) -> tuple[str, dict[str, object]]:
     pid = persistent_id(song_key, "Vocals")
     key_lower = song_key.lower()
-    attributes = {
+    meta = meta_source.metadata
+    return pid, {"Attributes": {
+        "AlbumName": meta.album,
         "ArrangementName": "Vocals",
-        "ArrangementType": "Vocals",
-        "ArtistName": meta_source.metadata.artist,
-        "AlbumName": meta_source.metadata.album,
+        "ArtistName": meta.artist,
+        "DLC": True,
         "DLCKey": song_key,
+        "LeaderboardChallengeRating": 0,
         "ManifestUrn": f"urn:database:json-db:{key_lower}_vocals",
-        "MasterID": pid,
+        "MasterID_RDV": _master_id(pid),
         "PersistentID": pid,
-        "SongAsset": f"urn:application:musicgame-song:{key_lower}_vocals",
-        "SongBank": f"song_{key_lower}.bnk",
+        "Shipping": True,
+        "SKU": "RS2",
         "SongKey": song_key,
-        "SongLength": meta_source.metadata.song_length,
-        "SongName": meta_source.metadata.title,
-        "SongYear": meta_source.metadata.year,
-    }
-    return {"Entries": {pid: {"Attributes": attributes}}, "InsertRoot": _INSERT_ROOT}
+        "SongLength": meta.song_length,
+        "SongName": meta.title,
+        "SongYear": meta.year,
+    }}
 
 
-def build_hsan(manifests: list[dict[str, object]]) -> dict[str, object]:
-    """Merge per-arrangement manifests into the aggregated ``.hsan`` structure."""
-    entries: dict[str, object] = {}
-    for manifest in manifests:
-        assert isinstance(manifest["Entries"], dict)
-        entries.update(manifest["Entries"])
-    return {"Entries": entries, "InsertRoot": _INSERT_ROOT}
-
-
-def build_aggregategraph(song_key: str, arrangement_names: list[str]) -> str:
-    """A minimal N-Triples graph linking the song key to its arrangement assets."""
-    key_lower = song_key.lower()
-    lines = []
-    for name in arrangement_names:
-        asset = f"urn:application:musicgame-song:{key_lower}_{name.lower()}"
-        lines.append(
-            f'<urn:rockforge:song:{key_lower}> '
-            f'<urn:rockforge:hasArrangement> "{asset}" .'
-        )
-    return "\n".join(lines) + "\n"
+def build_hsan(headers: list[tuple[str, dict[str, object]]]) -> dict[str, object]:
+    """Aggregate the per-arrangement *header* entries into the ``.hsan``."""
+    entries: dict[str, object] = {pid: entry for pid, entry in headers}
+    return {"Entries": entries, "InsertRoot": _HEADERS_ROOT}
 
 
 def build_manifest_files(
     arrangements: list[tuple[Arrangement, str]],
     song_key: str,
     include_vocals: bool = False,
+    *,
+    has_album_art: bool = False,
 ) -> dict[str, bytes]:
-    """Build all ``manifest/`` files for :func:`pack_entries`.
+    """Build all ``manifests/`` files (+ ``toolkit.version`` and ``appid.appid``).
 
-    ``arrangements`` is a list of ``(arrangement, arrangement_name)`` pairs,
-    e.g. ``[(combined, "Combined")]`` or ``[(lead, "Lead"), (rhythm, "Rhythm")]``.
-    When ``include_vocals`` is set, a "Vocals" arrangement manifest is added
-    (its SNG is the separate ``<key>_vocals.sng`` written by the packer).
+    ``arrangements`` is a list of ``(arrangement, arrangement_name)`` pairs. The
+    per-arrangement full ``.json`` (Static.Songs.Entries) and the aggregated
+    ``.hsan`` header set (Static.Songs.Headers) are emitted. The game-enumeration
+    assets (xblock, flatmodels, aggregategraph, showlights, album art) are added
+    by the packer via :mod:`gamedata`.
     """
     key_lower = song_key.lower()
     files: dict[str, bytes] = {}
-    per_arrangement_manifests: list[dict[str, object]] = []
-    asset_names: list[str] = []
+    headers: list[tuple[str, dict[str, object]]] = []
     for arrangement, name in arrangements:
-        manifest = build_arrangement_manifest(arrangement, song_key, name)
-        per_arrangement_manifests.append(manifest)
-        asset_names.append(name)
-        path = f"manifests/songs_dlc_{key_lower}/{key_lower}_{name.lower()}.json"
-        files[path] = json.dumps(manifest, indent=2).encode("utf-8")
+        manifest = build_arrangement_manifest(
+            arrangement, song_key, name, has_album_art=has_album_art
+        )
+        headers.append(_header_entry(arrangement, song_key, name, has_album_art=has_album_art))
+        asset = arrangement_asset_name(song_key, arrangement.kind)
+        files[f"manifests/songs_dlc_{key_lower}/{asset}.json"] = json.dumps(
+            manifest, indent=2
+        ).encode("utf-8")
 
     if include_vocals and arrangements:
         vocals_manifest = build_vocals_manifest(arrangements[0][0], song_key)
-        per_arrangement_manifests.append(vocals_manifest)
-        asset_names.append("Vocals")
+        headers.append(_vocals_header(arrangements[0][0], song_key))
         files[f"manifests/songs_dlc_{key_lower}/{key_lower}_vocals.json"] = json.dumps(
             vocals_manifest, indent=2
         ).encode("utf-8")
 
-    hsan = build_hsan(per_arrangement_manifests)
+    hsan = build_hsan(headers)
     files[f"manifests/songs_dlc_{key_lower}/songs_dlc_{key_lower}.hsan"] = json.dumps(
         hsan, indent=2
     ).encode("utf-8")
-    files[f"flatmodels/rs/{key_lower}_aggregategraph.nt"] = build_aggregategraph(
-        song_key, asset_names
-    ).encode("utf-8")
     files["toolkit.version"] = TOOLKIT_VERSION.encode("utf-8")
-    files["appid"] = APP_ID.encode("utf-8")
+    files["appid.appid"] = APP_ID.encode("utf-8")
     return files
