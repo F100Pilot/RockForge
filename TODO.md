@@ -205,17 +205,23 @@ ver `TESTING.md`.
     aparecia na lista do Rocksmith porque faltavam três coisas, agora
     corrigidas: o ficheiro tem de terminar em **`_p.psarc`** (etiqueta de
     plataforma PC — `packer.py`), o PSARC tem de conter um ficheiro **`appid`**
-    na raiz (`manifest.APP_ID = "248750"`) e os manifestos precisam de
-    **`InsertRoot`** (`Static.Songs.Entries`). Guardado por `test_psarc_manifest`.
+    na raiz (`manifest.APP_ID`, hoje `492989` — Train "Drops of Jupiter"; o
+    jogo só lista um CDLC cujo appid o jogador **possui**, por isso reutiliza-se
+    o de um DLC que se tem) e os manifestos precisam de **`InsertRoot`**
+    (`Static.Songs.Entries`). Guardado por `test_psarc_manifest`.
     Necessário mas ainda **não suficiente** — o PSARC nativo continua por
-    validar no jogo (ver fases 3/7).
+    validar no jogo (ver fase 3).
 
-  - [ ] **Fase 7 — SoundBank Wwise (`.bnk`) no PSARC nativo**: hoje o packer só
-    copia o `.wem`; o Rocksmith carrega o áudio através de uma SoundBank
-    (`song_<key>.bnk`) que referencia o `.wem` por ID. Sem ela, mesmo que a
-    música apareça na lista, o áudio não toca. É a peça que falta para o PSARC
-    in-app ser autónomo (sem DLC Builder). Precisa de gerar/embutir o `.bnk`
-    (via Wwise, como o caminho DLC Builder já faz para o `.wem`).
+  - [x] **Fase 7 — SoundBank Wwise (`.bnk`) no PSARC nativo**: o Rocksmith
+    carrega o áudio através de uma SoundBank (`song_<key>.bnk`) com um evento
+    `Play_<key>` que referencia o `.wem` por ID; sem ela, mesmo listada, a
+    música não toca. Tal como o DLC Builder, o Wwise só produz o `.wem` — o
+    `.bnk` é gerado em código (`psarc/soundbank.py`, porte do
+    `SoundBankGenerator2014` do toolkit, MIT), e o packer emite
+    `audio/windows/song_<key>.bnk` + `audio/windows/<fileID>.wem`, com o
+    manifesto a apontar `SongBank`/`SongEvent`. Round-trip testado; layout
+    não-verificado-por-desenho (como `sng.py`). Continua sem validação in-game
+    — o caminho de confiança continua a ser o bundle DLC Builder.
 
   - [ ] **Textura DDS da capa (`albumArt`) no PSARC nativo**: hoje a capa vai no
     bundle mas o campo `albumArt` do Song2014 fica vazio (nem DLC Builder nem
@@ -228,10 +234,13 @@ ver `TESTING.md`.
   lacuna real, não um ficheiro malformado. Afeta o SNG (ArrangementLevels) e os
   manifestos.
 
-- [ ] **Biblioteca de tons (guardar/carregar entre projetos)**: reutilizar os
-  tons criados noutras músicas sem os recriar. Guardar os tons (gear completo)
-  num ficheiro/loja partilhada (`work_dir`) e um seletor "importar tom" no
-  construtor de tons. Complementa a barra de pesquisa de gear já existente.
+- [x] **Biblioteca de tons (guardar/carregar entre projetos)**: reutilizar os
+  tons criados noutras músicas sem os recriar. Os tons (gear completo) são
+  guardados numa loja partilhada (`work_dir/tone_library.json`,
+  `tone_library.py`) via `GET/POST /tone-library` + `DELETE /tone-library/{key}`;
+  o construtor de tons tem um bloco "Biblioteca" (carregar ⬇ / remover 🗑) e um
+  botão "★ Biblioteca" para guardar o tom em edição. Carregar copia para o
+  projeto (não altera o original). Complementa a barra de pesquisa de gear.
 
 - [ ] **Processamento em lote**: converter vários ficheiros Guitar Pro de uma
   vez (fila de jobs), em vez de um a um, para quem tem um álbum inteiro.

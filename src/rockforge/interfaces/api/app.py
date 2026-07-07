@@ -1231,6 +1231,41 @@ def update_settings(body: SettingsIn) -> SettingsOut:
     return _settings_out()
 
 
+@app.get("/tone-library")
+def get_tone_library() -> dict[str, Any]:
+    """All tones saved to the cross-project library (work_dir/tone_library.json).
+    The UI loads one of these into a project's tone editor to reuse a dialled-in
+    gear chain without rebuilding it."""
+    from rockforge import tone_library
+
+    return {"tones": tone_library.load()}
+
+
+@app.post("/tone-library")
+def save_tone_to_library(tone: dict[str, Any]) -> dict[str, Any]:
+    """Save (or overwrite, by key) one tone in the library. The body is the same
+    tone dict the tone editor stores in a job — it must carry an amp and cabinet
+    (a tone is meaningless without them) and a key/name to file it under."""
+    from rockforge import tone_library
+    from rockforge.infrastructure.packaging.gear.gear_catalogue import tone_from_dict
+
+    if tone_from_dict(tone) is None:
+        raise HTTPException(422, "a saved tone needs a valid amp and cabinet")
+    try:
+        tones = tone_library.save_tone(tone)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    return {"tones": tones}
+
+
+@app.delete("/tone-library/{key}")
+def delete_tone_from_library(key: str) -> dict[str, Any]:
+    """Remove a tone from the library by its key (a no-op if it isn't there)."""
+    from rockforge import tone_library
+
+    return {"tones": tone_library.delete_tone(key)}
+
+
 @app.get("/jobs/{job_id}/tones")
 def get_tones(job_id: str) -> dict[str, Any]:
     """The job's current tone setup (full gear definitions, the base/extra tone

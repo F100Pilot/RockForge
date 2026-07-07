@@ -47,7 +47,7 @@ from rockforge.infrastructure.packaging.dlcbuilder import (
     PackagingResult,
     build_project_metadata,
 )
-from rockforge.infrastructure.packaging.psarc import container, manifest, sng
+from rockforge.infrastructure.packaging.psarc import container, manifest, sng, soundbank
 from rockforge.infrastructure.packaging.rs2dlc import write_rs2dlc
 from rockforge.infrastructure.packaging.wwise import WwiseWemConverter
 from rockforge.infrastructure.rsxml.vocals import VocalEvent, write_vocals_xml
@@ -91,12 +91,10 @@ class NativePsarcPacker:
         shutil.copy2(audio, audio_dest)
 
         wem_path: Path | None = None
-        audio_for_psarc = audio_dest
         if self._wem_converter is not None and self._wem_converter.available():
             wem = self._wem_converter.convert(audio, out_dir / "wwise_work")
             wem_path = out_dir / "audio.wem"
             shutil.copy2(wem, wem_path)
-            audio_for_psarc = wem_path
 
         meta = arrangements[0].metadata
         song_key = manifest.song_key_from_title(meta.artist, meta.title)
@@ -125,7 +123,18 @@ class NativePsarcPacker:
                 vocals_payload = sng.write_sng(sng.from_vocals(vocals))
                 files[f"songs/arr/{key_lower}_vocals.sng"] = encrypt_sng(vocals_payload)
 
-            files[f"audio/{key_lower}{audio_for_psarc.suffix}"] = audio_for_psarc.read_bytes()
+            if wem_path is not None:
+                # Real Rocksmith audio: a Wwise SoundBank (Play_<key> event +
+                # audio prefetch) plus the full stream as <fileID>.wem beside it.
+                # Without the .bnk the game has no event to fire and plays silence.
+                wem_bytes = wem_path.read_bytes()
+                bnk_bytes, wem_file_id = soundbank.generate_soundbank(song_key, wem_bytes)
+                files[f"audio/windows/song_{key_lower}.bnk"] = bnk_bytes
+                files[f"audio/windows/{wem_file_id}.wem"] = wem_bytes
+            else:
+                # No Wwise available: pack the WAV under a path the retail game
+                # will not load — the bundle stays the trustworthy audio path.
+                files[f"audio/{key_lower}{audio_dest.suffix}"] = audio_dest.read_bytes()
 
             psarc_bytes = container.pack_entries(files, encrypt=True)
             # Rocksmith 2014 on PC only loads CDLC whose filename ends in

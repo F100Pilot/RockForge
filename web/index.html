@@ -729,6 +729,14 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
         <div class="meta" style="margin-bottom:.3rem">Tons criados</div>
         <div id="toneListEditor" style="display:flex;flex-direction:column;gap:.3rem"></div>
         <button type="button" id="newTone" class="secondary" style="margin-top:.5rem">+ Novo tom</button>
+        <div id="toneLibBlock" style="margin-top:.75rem;border-top:1px solid var(--line);padding-top:.55rem">
+          <div class="meta" style="margin-bottom:.3rem">Biblioteca <button class="info-btn" data-info="tone-library">ⓘ</button></div>
+          <select id="toneLibSelect" style="width:100%"><option value="">—</option></select>
+          <div class="anchor-row" style="margin-top:.35rem;gap:.35rem">
+            <button type="button" id="toneLibLoad" class="secondary">⬇ Carregar</button>
+            <button type="button" id="toneLibDelete" class="secondary" title="Remover da biblioteca">🗑</button>
+          </div>
+        </div>
       </div>
       <div style="flex:2 1 420px;min-width:340px;border-left:1px solid var(--line);padding-left:1rem">
         <div id="toneEditForm" style="display:none">
@@ -754,6 +762,7 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
           </div>
           <div class="modal-actions">
             <button type="button" id="teDelete" class="danger" style="margin-right:auto">Remover tom</button>
+            <button type="button" id="teSaveLibrary" class="secondary">★ Biblioteca</button>
             <button type="button" id="teSave">Guardar tom</button>
           </div>
         </div>
@@ -906,6 +915,12 @@ const INFO = {
       '<p><strong>Seguir partitura</strong>: se marcaste mudanças de tom na música, esta opção troca automaticamente de tom em cada ponto, tal como o criaste — e o <strong>tom atual aparece na partitura</strong> (etiqueta âmbar 🎸 em cada mudança + junto ao BPM). Ou escolhe um tom específico para o ouvir sozinho em toda a música. O seletor fica desativado até criares o primeiro tom.</p>' +
       '<p>Nota: dois tons só soam <em>diferentes</em> se o gear diferir (ganho, EQ do amp, pedais). Dois tons com as <strong>mesmas definições</strong> soam iguais — é esperado. Em "Seguir partitura", se não marcaste nenhuma mudança, toca sempre o tom base.</p>' +
       '<p><strong>Limite honesto:</strong> o RockForge <em>não</em> modela amplificadores. Isto é uma <strong>aproximação do carácter</strong> (ganho/distorção + brilho), calculada a partir dos descritores do tom, do knob de Gain do amp e dos pedais de drive — <strong>não é o som real</strong> do amp/cabine. O som verdadeiro só existe no jogo / DLC Builder, que gera o áudio a partir do gear que gravamos no bundle.</p>'
+  },
+  'tone-library': {
+    title: 'Biblioteca de tons',
+    body: '<p>Guarda um tom que afinaste (amp + cabine + efeitos) na <strong>biblioteca</strong> para o reutilizares noutros projetos, sem teres de o reconstruir a cada música — tal como a biblioteca de tons do DLC Builder.</p>' +
+      '<p><strong>★ Guardar na biblioteca</strong> guarda o tom em edição; <strong>⬇ Carregar</strong> adiciona o tom escolhido a este projeto (fica editável, e uma cópia — não afeta o original na biblioteca); 🗑 remove-o da biblioteca.</p>' +
+      '<p>A biblioteca é partilhada por todos os projetos (guardada em <code>work_dir/tone_library.json</code>). Guardar um tom com uma chave já existente substitui o anterior.</p>'
   },
   'new-job': {
     title: 'Criar um novo projeto',
@@ -1068,6 +1083,7 @@ let toneBase = null;
 let toneNames = [];
 let toneChanges = [];
 let editingToneKey = null;    // key of the tone open in the builder form
+let toneLibrary = [];         // cross-project saved tones (GET /tone-library)
 let lyricsPollTimer = null;
 // Current cent_offset (fine-tuning deviation from A440), pre-filled from the
 // built arrangement and updated by "Detetar afinação" / sent on rebuild.
@@ -1822,6 +1838,7 @@ function openToneBuilder() {
   if (!selectedJob || selectedJob.source_type !== 'gp') { toast('Tons só se aplicam a projetos Guitar Pro.'); return; }
   loadGearCatalogue().then(() => {
     renderToneListEditor();
+    loadToneLibrary();
     document.getElementById('toneEditForm').style.display = 'none';
     document.getElementById('toneEditEmpty').style.display = '';
     editingToneKey = null;
@@ -1846,6 +1863,60 @@ function renderToneListEditor() {
   el.querySelectorAll('.tone-pick').forEach(b =>
     b.addEventListener('click', () => editToneInForm(b.dataset.key)));
 }
+
+async function loadToneLibrary() {
+  try {
+    const r = await fetch('/tone-library');
+    toneLibrary = r.ok ? ((await r.json()).tones || []) : [];
+  } catch { toneLibrary = []; }
+  populateToneLibSelect();
+}
+function populateToneLibSelect() {
+  const sel = document.getElementById('toneLibSelect');
+  if (!sel) return;
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">—</option>' +
+    toneLibrary.map(t => `<option value="${esc(t.key)}">${esc(t.name || t.key)}</option>`).join('');
+  if (toneLibrary.some(t => t.key === prev)) sel.value = prev;
+}
+document.getElementById('toneLibLoad').addEventListener('click', () => {
+  const key = document.getElementById('toneLibSelect').value;
+  const src = toneLibrary.find(t => t.key === key);
+  if (!src) { toast('Escolhe um tom da biblioteca.'); return; }
+  // Copy into this project. If the key already exists here, suffix it so the
+  // load never silently overwrites a tone the user already dialled.
+  const tone = JSON.parse(JSON.stringify(src));
+  if (jobTones.some(t => t.key === tone.key)) {
+    let n = 1, base = tone.key;
+    while (jobTones.some(t => t.key === tone.key)) tone.key = `${base}_${++n}`;
+  }
+  jobTones.push(tone);
+  editingToneKey = tone.key;
+  editToneInForm(tone.key);
+  renderToneListEditor();
+  renderTonePanel();
+  toast('Tom carregado da biblioteca.', 'ok');
+});
+document.getElementById('toneLibDelete').addEventListener('click', async () => {
+  const key = document.getElementById('toneLibSelect').value;
+  if (!key) { toast('Escolhe um tom da biblioteca.'); return; }
+  const r = await fetch(`/tone-library/${encodeURIComponent(key)}`, { method: 'DELETE' });
+  if (!r.ok) { toast('Não foi possível remover.'); return; }
+  toneLibrary = (await r.json()).tones || [];
+  populateToneLibSelect();
+  toast('Removido da biblioteca.', 'ok');
+});
+document.getElementById('teSaveLibrary').addEventListener('click', async () => {
+  const tone = jobTones.find(t => t.key === editingToneKey);
+  if (!tone) { toast('Guarda o tom primeiro (Guardar tom).'); return; }
+  const r = await fetch('/tone-library', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(tone),
+  });
+  if (!r.ok) { toast('Não foi possível guardar na biblioteca.'); return; }
+  toneLibrary = (await r.json()).tones || [];
+  populateToneLibSelect();
+  toast('Guardado na biblioteca.', 'ok');
+});
 
 function populateGearSelect(sel, items, selectedKey, placeholder, filter) {
   const q = (filter || '').trim().toLowerCase();

@@ -511,6 +511,21 @@ over the env `Settings`, empty string clears it back to the env default. `GET
 change takes effect on the next `separate_stems` run with no restart. Guarded by
 `test_settings.py`.
 
+### Tone library (`tone_library.py` + `/tone-library`)
+
+A tone dialled in one project's tone editor can be saved to a **cross-project
+library** and reloaded into any other song, so an amp/cabinet/pedal chain isn't
+rebuilt per file (like DLC Builder's tone library). Persistence mirrors
+`runtime_settings`: a shared `work_dir/tone_library.json` (a list of the same
+tone dicts `Job.params["tones"]` holds), atomic writes. `GET /tone-library`
+lists; `POST /tone-library` upserts one tone **by its key** (validated to carry a
+real amp+cabinet via `tone_from_dict`, else 422); `DELETE /tone-library/{key}`
+removes. The tone builder's "Biblioteca" block loads (⬇) / deletes (🗑) and
+"★ Biblioteca" saves the tone in edit. **Loading copies into the project**
+(suffixing a clashing key) so it's editable locally and never clobbers the
+library original, and the project's own tone edits never write back to the
+library unless explicitly saved. Guarded by `test_tone_library.py`.
+
 ### DLC Builder project file (`rockforge.rs2dlc`)
 
 `rockforge_project.json` is RockForge's *own* descriptor — DLC Builder can't
@@ -591,11 +606,34 @@ is still produced, only the `.psarc` is omitted (no crash).
 **Rocksmith PC load requirements (a song not appearing in the in-game list is
 usually one of these missing):** the file MUST be named `*_p.psarc` (the `_p`
 platform tag — `packer.py`), the PSARC MUST contain an `appid` file at the root
-(`manifest.APP_ID = "248750"`), and the manifests carry `InsertRoot`
-(`Static.Songs.Entries`). These are necessary but the native PSARC is **still
-unverified in-game** (see the SNG note above) and lacks a Wwise SoundBank
-(`.bnk`), so even when it lists, audio may not play — the **trustworthy path is
-the DLC Builder bundle** (import it and let DLC Builder build the PSARC).
+(`manifest.APP_ID`), and the manifests carry `InsertRoot`
+(`Static.Songs.Entries`). The `appid` is the Steam id of a DLC the game checks
+ownership of — Rocksmith only lists a CDLC whose appid the player **owns**, so
+CDLC reuses an owned DLC's appid. RockForge ships Train "Drops of Jupiter"
+(`492989`); swap it for one the target player owns (e.g. the free base song
+Smashing Pumpkins "Cherub Rock", `248750`) if the song doesn't appear. These are
+necessary but the native PSARC is **still unverified in-game** (see the SNG note
+above) — the **trustworthy path is the DLC Builder bundle** (import it and let
+DLC Builder build the PSARC).
+
+### Wwise SoundBank (`infrastructure/packaging/psarc/soundbank.py`)
+
+Rocksmith reads a song's audio through a Wwise SoundBank: `song_<key>.bnk`
+carries a `Play_<key>` event plus a ~100 ms *prefetch* of the audio, and the
+full stream lives beside it as `<fileID>.wem`. Without the `.bnk` the game can
+list a song (once appid/manifests are right) but has no event to fire, so it
+plays silence. Exactly as DLC Builder / Rocksmith2014.NET do, RockForge does NOT
+ask Wwise to build the bank — Wwise (`wwise.py`) only produces the `.wem`; the
+`.bnk` is generated in code (`soundbank.generate_soundbank`, ported from the
+toolkit's `SoundBankGenerator2014`, MIT — same lineage as `sng.py`) with a
+random `fileID`, and the packer emits `audio/windows/song_<key>.bnk` +
+`audio/windows/<fileID>.wem`. The manifest points `SongBank` at the real `.bnk`
+and adds `SongEvent = Play_<key>`. Layout (PC/little-endian):
+`BKHD → DIDX → DATA → HIRC → STID`; HIRC holds Sound/ActorMixer/Action/Event
+objects. Same honesty caveat as `sng.py`: round-tripped
+(`read_wem_file_id`/`read_bkhd_version`) but **unverified-by-design** — no
+reference bnk in CI. When no Wwise is available the packer falls back to the old
+non-loading `audio/<key>.<ext>` path (bundle stays the trustworthy audio route).
 
 ### Standalone executable (`build_exe.py` / PyInstaller)
 

@@ -23,6 +23,43 @@ def _arrangement(kind: ArrangementKind) -> Arrangement:
     )
 
 
+class _FakeWemConverter:
+    """Stand-in for Wwise: emits a fixed .wem so the bnk path is exercised."""
+
+    def __init__(self, wem_bytes: bytes) -> None:
+        self._wem = wem_bytes
+
+    def available(self) -> bool:
+        return True
+
+    def convert(self, wav: Path, workdir: Path) -> Path:
+        workdir.mkdir(parents=True, exist_ok=True)
+        out = workdir / "Audio.wem"
+        out.write_bytes(self._wem)
+        return out
+
+
+def test_wem_available_packs_soundbank_and_stream(tmp_path: Path) -> None:
+    """With Wwise, the PSARC carries a song .bnk plus the full .wem named by the
+    file id the bank cross-references (so the game can fire Play_<key>)."""
+    from rockforge.infrastructure.packaging.psarc import soundbank
+
+    audio = tmp_path / "audio.wav"
+    audio.write_bytes(b"RIFF....WAVEfmt ")
+    wem_bytes = b"WEMDATA\x00" * 4000
+
+    packer = NativePsarcPacker(wem_converter=_FakeWemConverter(wem_bytes))
+    result = packer.package([_arrangement(ArrangementKind.COMBINED)], audio, tmp_path / "bundle")
+
+    assert result.wem_path is not None
+    entries = container.unpack(result.psarc_path.read_bytes())
+    bnk_name = next(n for n in entries if n.endswith(".bnk"))
+    assert bnk_name == "audio/windows/song_artistsong.bnk"
+    file_id = soundbank.read_wem_file_id(entries[bnk_name])
+    assert f"audio/windows/{file_id}.wem" in entries
+    assert entries[f"audio/windows/{file_id}.wem"] == wem_bytes
+
+
 def test_package_produces_valid_psarc(tmp_path: Path) -> None:
     audio = tmp_path / "audio.wav"
     audio.write_bytes(b"RIFF....WAVEfmt ")
