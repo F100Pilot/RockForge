@@ -20,17 +20,25 @@ the operator gates documented for YouTube ingestion and Wwise.
 ``cryptography`` is imported lazily (new ``[psarc]`` extra) so importing this
 module does not require it unless these functions are called.
 
-Limitations: :func:`encrypt_sng`/:func:`decrypt_sng` implement only the
-AES-256-CTR primitive over a payload; the retail ``.sng`` file additionally
-wraps a zlib-compressed payload in a small plaintext header (magic/version)
-that is not yet reproduced here — that wrapping is left to the phase 5
-integration once validated against retail files.
+:func:`pack_sng`/:func:`unpack_sng` implement the full retail ``.sng`` file
+format (8-byte header + zero IV + AES-256-CTR of a zlib-compressed,
+size-prefixed payload), verified byte-for-byte against a real DLC Builder SNG
+header — this is what the packer writes. :func:`encrypt_sng`/:func:`decrypt_sng`
+remain the bare AES-256-CTR primitive (random IV) used by earlier tests.
 """
 
 from __future__ import annotations
 
 import os
+import struct
+import zlib
 from typing import Any
+
+# Retail .sng file wrapper (Rocksmith2014.NET SngFile): an 8-byte header
+# (magic 0x4A, platform 3 = PC) + a 16-byte zero IV + AES-256-CTR of a
+# zlib-compressed payload prefixed with its uint32 uncompressed size.
+_SNG_MAGIC = 0x4A
+_SNG_PLATFORM_PC = 3
 
 ARC_KEY = (
     b"\xc5\x3d\xb2\x38\x70\xa1\xa2\xf7\x1c\xae\x64\x06\x1f\xdd\x0e\x11"
@@ -97,3 +105,40 @@ def decrypt_sng(data: bytes) -> bytes:
     cipher = Cipher(algorithms.AES(SNG_PC_KEY), modes.CTR(iv))
     decryptor = cipher.decryptor()
     return bytes(decryptor.update(ciphertext) + decryptor.finalize())
+
+
+def pack_sng(raw: bytes) -> bytes:
+    """Wrap a raw Sng2014 payload as a game-loadable ``.sng`` file.
+
+    Layout (Rocksmith 2014 PC, matching a retail SNG): ``[uint32 magic=0x4A]
+    [uint32 platform=3][16-byte zero IV][AES-256-CTR( [uint32 uncompressed size]
+    + zlib(raw) )]``. The previous packer wrote only the raw AES-CTR primitive
+    (no header/zlib), which the game cannot parse — the note highway froze on
+    load. Uses a zero IV, as retail does.
+    """
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+
+    inner = struct.pack("<I", len(raw)) + zlib.compress(raw, level=9)
+    iv = b"\x00" * 16
+    cipher = Cipher(algorithms.AES(SNG_PC_KEY), modes.CTR(iv))
+    encryptor = cipher.encryptor()
+    body = bytes(encryptor.update(inner) + encryptor.finalize())
+    return struct.pack("<II", _SNG_MAGIC, _SNG_PLATFORM_PC) + iv + body
+
+
+def unpack_sng(data: bytes) -> bytes:
+    """Inverse of :func:`pack_sng` — recover the raw Sng2014 payload."""
+    magic, _platform = struct.unpack_from("<II", data, 0)
+    if magic != _SNG_MAGIC:
+        raise ValueError(f"not a Rocksmith .sng (magic {magic:#x})")
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+
+    iv = data[8:24]
+    cipher = Cipher(algorithms.AES(SNG_PC_KEY), modes.CTR(iv))
+    decryptor = cipher.decryptor()
+    inner = bytes(decryptor.update(data[24:]) + decryptor.finalize())
+    uncompressed_size = struct.unpack_from("<I", inner, 0)[0]
+    raw = zlib.decompress(inner[4:])
+    if len(raw) != uncompressed_size:
+        raise ValueError("SNG uncompressed size mismatch")
+    return raw

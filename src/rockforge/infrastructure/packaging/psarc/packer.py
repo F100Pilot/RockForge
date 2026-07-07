@@ -218,7 +218,7 @@ class NativePsarcPacker:
     ) -> Path:
         """Assemble the native ``.psarc``. Raises on any failure (missing crypto,
         Wwise/ffmpeg, packing); the caller keeps the bundle regardless."""
-        from rockforge.infrastructure.packaging.psarc.crypto import encrypt_sng
+        from rockforge.infrastructure.packaging.psarc.crypto import pack_sng
 
         # Manifests (+ appid/toolkit) and album art. Placeholder art is always
         # shipped so the AlbumArt URN resolves; a real cover is DXT1-encoded.
@@ -257,13 +257,13 @@ class NativePsarcPacker:
         for arr in arrangements:
             payload = sng.write_sng(sng.from_arrangement(arr))
             asset = manifest.arrangement_asset_name(song_key, arr.kind)
-            files[f"songs/bin/generic/{asset}.sng"] = encrypt_sng(payload)
+            files[f"songs/bin/generic/{asset}.sng"] = pack_sng(payload)
 
         # Vocals are a separate arrangement with their own SNG (real Rocksmith
         # convention), not embedded in an instrument SNG.
         if vocals:
             vocals_payload = sng.write_sng(sng.from_vocals(vocals))
-            files[f"songs/bin/generic/{key_lower}_vocals.sng"] = encrypt_sng(vocals_payload)
+            files[f"songs/bin/generic/{key_lower}_vocals.sng"] = pack_sng(vocals_payload)
 
         if wem_path is not None:
             # Real Rocksmith audio: a Wwise SoundBank (Play_<key> event + audio
