@@ -18,6 +18,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, Response
 from pydantic import BaseModel, HttpUrl
 
+from rockforge import __version__
 from rockforge.config import settings
 from rockforge.domain.chords import name_chord
 from rockforge.infrastructure.db.models import Job, JobStatus, make_session_factory
@@ -117,7 +118,7 @@ app = FastAPI(
         "lead/rhythm split is experimental; PSARC finalization requires DLC Builder + Wwise. "
         "See docs/RELATORIO-TECNICO.md."
     ),
-    version="0.1.0",
+    version=__version__,
     lifespan=_lifespan,
 )
 

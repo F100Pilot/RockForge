@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rockforge"
-version = "0.1.0"
+version = "0.9.0.0"
 description = "Audio -> Rocksmith 2014 CDLC arrangement pipeline (research-grounded, honest about limits)"
 readme = "README.md"
 # <3.12: basic-pitch needs tensorflow<2.15.1, whose newest wheels target 3.11.
