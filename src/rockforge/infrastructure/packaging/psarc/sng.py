@@ -112,9 +112,13 @@ class SngBendData32:
 @dataclass(frozen=True)
 class SngBeat:
     time: float
-    measure: int  # short; -1 for non-downbeat
+    measure: int  # short; the beat's measure number (real, not -1)
     beat: int = 0  # beat within measure (short)
     phrase_iteration: int = -1
+    # Bit 0 = first beat of the measure (downbeat), bit 1 = even measure. The
+    # real Sng2014 Bpm carries this trailing int32; omitting it made every beat
+    # 4 bytes short and misaligned the whole SNG, crashing the game on load.
+    mask: int = 0
 
 
 @dataclass(frozen=True)
@@ -381,12 +385,25 @@ def from_arrangement(
     song_length = arrangement.metadata.song_length
 
     # --- Beats ---
+    # The SNG stores the real measure number on EVERY beat (not -1 for off-beats
+    # as the domain does), the beat-within-measure, and a mask (bit0 = downbeat,
+    # bit1 = even measure). Track the running measure to fill both.
     beat_in_measure = 0
+    current_measure = 1
     beats: list[SngBeat] = []
     for b in arrangement.tempo_map.beats:
-        if b.measure >= 0:
+        downbeat = b.measure >= 0
+        if downbeat:
+            current_measure = b.measure
             beat_in_measure = 0
-        beats.append(SngBeat(time=b.time, measure=b.measure, beat=beat_in_measure))
+        mask = 0
+        if downbeat:
+            mask |= 1
+            if current_measure % 2 == 0:
+                mask |= 2
+        beats.append(SngBeat(
+            time=b.time, measure=current_measure, beat=beat_in_measure, mask=mask
+        ))
         beat_in_measure += 1
 
     # --- Phrases & PhraseIterations ---
@@ -400,13 +417,14 @@ def from_arrangement(
         for i, (s, end) in enumerate(zip(sections_src, ends, strict=True))
     ]
 
-    # Assign phrase_iteration to beats
+    # Assign phrase_iteration to beats (preserving measure/beat/mask)
     beats = [
         SngBeat(
             time=b.time,
             measure=b.measure,
             beat=b.beat,
             phrase_iteration=_find_phrase_iteration(phrase_iterations, b.time),
+            mask=b.mask,
         )
         for b in beats
     ]
@@ -738,7 +756,7 @@ def from_vocals(vocals: list[VocalEvent]) -> SngModel:
 _BEND32_FMT = "<ffhBB"
 _BEND32_SIZE = struct.calcsize(_BEND32_FMT)  # 12
 
-_BEAT_FMT = "<fhhi"
+_BEAT_FMT = "<fhhii"
 _PHRASE_FMT = "<BBBBii32s"
 _PHRASE_ITER_FMT = "<iffiii"
 _CHORD_TEMPLATE_FMT = "<I6s6s6i32s"
@@ -898,7 +916,7 @@ def write_sng(model: SngModel) -> bytes:
     # 1. BPMs
     out += _write_count(len(model.beats))
     for b in model.beats:
-        out += struct.pack(_BEAT_FMT, b.time, b.measure, b.beat, b.phrase_iteration)
+        out += struct.pack(_BEAT_FMT, b.time, b.measure, b.beat, b.phrase_iteration, b.mask)
 
     # 2. Phrases
     out += _write_count(len(model.phrases))
@@ -1155,9 +1173,9 @@ def read_sng(data: bytes) -> SngModel:
     b_count, pos = _read_count(data, pos)
     beats = []
     for _ in range(b_count):
-        t, m, bt, pi = struct.unpack_from(_BEAT_FMT, data, pos)
+        t, m, bt, pi, mask = struct.unpack_from(_BEAT_FMT, data, pos)
         pos += _BEAT_SIZE
-        beats.append(SngBeat(time=t, measure=m, beat=bt, phrase_iteration=pi))
+        beats.append(SngBeat(time=t, measure=m, beat=bt, phrase_iteration=pi, mask=mask))
 
     # 2. Phrases
     p_count, pos = _read_count(data, pos)
