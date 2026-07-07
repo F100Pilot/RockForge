@@ -624,7 +624,11 @@ emitted so the native PSARC matches the retail layout file-for-file:
   `songs_dlc_<key>.hsan` (**header** subset, `InsertRoot = Static.Songs.Headers`)
   — two distinct layers;
 - the SNG under **`songs/bin/generic/<asset>.sng`** (not `songs/arr/`, which now
-  holds only the showlights);
+  holds only the showlights), written as a **full retail `.sng` file**
+  (`crypto.pack_sng`: 8-byte header `0x4A`/platform 3 + zero IV + AES-256-CTR of
+  a zlib-compressed, size-prefixed payload — header byte-verified against a real
+  SNG). The earlier bare-AES-CTR primitive produced an unparseable file: the game
+  showed tuning then **froze on the note highway**;
 - `songs/arr/<key>_showlights.xml`, `gfxassets/album_art/album_<key>_{64,128,256}.dds`
   (a neutral solid-DXT1 **placeholder** — real cover DDS is a DLC Builder step),
   and the `song_<key>_preview.bnk` + its `.wem` alongside the main bank;

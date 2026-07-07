@@ -174,7 +174,7 @@ def test_vocals_get_a_separate_sng_and_manifest(tmp_path: Path) -> None:
     import json
 
     from rockforge.infrastructure.packaging.psarc import sng
-    from rockforge.infrastructure.packaging.psarc.crypto import decrypt_sng
+    from rockforge.infrastructure.packaging.psarc.crypto import unpack_sng
 
     audio = tmp_path / "audio.wav"
     audio.write_bytes(b"RIFF....WAVEfmt ")
@@ -194,8 +194,10 @@ def test_vocals_get_a_separate_sng_and_manifest(tmp_path: Path) -> None:
     instr_sng = next(
         k for k in entries if k.endswith(".sng") and not k.endswith("_vocals.sng")
     )
-    assert sng.read_sng(decrypt_sng(entries[vocals_sng])).vocals[0].lyric == "hi+"
-    assert sng.read_sng(decrypt_sng(entries[instr_sng])).vocals == []
+    assert sng.read_sng(unpack_sng(entries[vocals_sng])).vocals[0].lyric == "hi+"
+    assert sng.read_sng(unpack_sng(entries[instr_sng])).vocals == []
+    # The .sng is a game-loadable file: magic 0x4A header, not a bare cipher.
+    assert entries[instr_sng][:4] == b"\x4a\x00\x00\x00"
 
     # A vocals manifest entry is present in the aggregated hsan.
     hsan_key = next(k for k in entries if k.endswith(".hsan"))

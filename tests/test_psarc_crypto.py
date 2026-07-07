@@ -10,6 +10,8 @@ from rockforge.infrastructure.packaging.psarc.crypto import (  # noqa: E402
     decrypt_sng,
     encrypt_psarc_toc,
     encrypt_sng,
+    pack_sng,
+    unpack_sng,
 )
 
 
@@ -31,6 +33,22 @@ def test_sng_round_trip_with_random_iv() -> None:
     encrypted = encrypt_sng(payload)
     assert encrypted[:16] != encrypt_sng(payload)[:16]  # fresh IV each time
     assert decrypt_sng(encrypted) == payload
+
+
+def test_pack_sng_produces_a_loadable_sng_file() -> None:
+    payload = b"raw sng2014 payload" * 100
+    sng_file = pack_sng(payload)
+    # Retail header: magic 0x4A, platform 3 (PC), then a 16-byte zero IV.
+    import struct
+
+    magic, platform = struct.unpack_from("<II", sng_file, 0)
+    assert magic == 0x4A
+    assert platform == 3
+    assert sng_file[8:24] == b"\x00" * 16
+    # Body is AES-CTR of zlib(payload); round-trips back to the raw payload.
+    assert unpack_sng(sng_file) == payload
+    # A zero IV means the file is deterministic (retail is too).
+    assert pack_sng(payload) == sng_file
 
 
 def test_pack_entries_with_encryption_round_trips() -> None:
