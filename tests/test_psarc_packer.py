@@ -53,11 +53,39 @@ def test_wem_available_packs_soundbank_and_stream(tmp_path: Path) -> None:
 
     assert result.wem_path is not None
     entries = container.unpack(result.psarc_path.read_bytes())
-    bnk_name = next(n for n in entries if n.endswith(".bnk"))
-    assert bnk_name == "audio/windows/song_artistsong.bnk"
-    file_id = soundbank.read_wem_file_id(entries[bnk_name])
+    assert "audio/windows/song_artistsong.bnk" in entries
+    assert "audio/windows/song_artistsong_preview.bnk" in entries
+    file_id = soundbank.read_wem_file_id(entries["audio/windows/song_artistsong.bnk"])
     assert f"audio/windows/{file_id}.wem" in entries
     assert entries[f"audio/windows/{file_id}.wem"] == wem_bytes
+
+
+def test_package_emits_full_retail_enumeration_layout(tmp_path: Path) -> None:
+    """A game-listable PSARC needs the xblock, flat models, aggregategraph,
+    album art and showlights, and the SNG under songs/bin/generic/."""
+    audio = tmp_path / "audio.wav"
+    audio.write_bytes(b"RIFF....WAVEfmt ")
+
+    packer = NativePsarcPacker(wem_converter=_FakeWemConverter(b"WEM" * 4000))
+    result = packer.package([_arrangement(ArrangementKind.COMBINED)], audio, tmp_path / "bundle")
+    entries = container.unpack(result.psarc_path.read_bytes())
+
+    for path in (
+        "appid.appid",
+        "gamexblocks/nsongs/artistsong.xblock",
+        "flatmodels/rs/rsenumerable_root.flat",
+        "flatmodels/rs/rsenumerable_song.flat",
+        "artistsong_aggregategraph.nt",
+        "songs/arr/artistsong_showlights.xml",
+        "gfxassets/album_art/album_artistsong_64.dds",
+        "gfxassets/album_art/album_artistsong_256.dds",
+        "songs/bin/generic/artistsong_combo.sng",
+        "manifests/songs_dlc_artistsong/artistsong_combo.json",
+        "manifests/songs_dlc_artistsong/songs_dlc_artistsong.hsan",
+    ):
+        assert path in entries, path
+    # The SNG moved out of songs/arr/ (that dir now only holds showlights).
+    assert not any(n.endswith(".sng") and n.startswith("songs/arr/") for n in entries)
 
 
 def test_package_produces_valid_psarc(tmp_path: Path) -> None:

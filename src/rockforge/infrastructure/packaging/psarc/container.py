@@ -84,12 +84,19 @@ def pack_entries(files: dict[str, bytes], encrypt: bool = False) -> bytes:
 
     num_entries = len(toc_rows)
 
+    # Real Rocksmith PSARCs store the entry data offset as ABSOLUTE from the
+    # start of the file (the game seeks to it directly). The TOC has a fixed
+    # size given the entry/block counts, so compute it up front and add it to
+    # each block-section-relative offset.
+    raw_toc_length = num_entries * TOC_ENTRY_SIZE + len(zlengths) * 2
+    toc_length = HEADER_SIZE + raw_toc_length
+
     toc_body = bytearray()
     for md5, zindex_begin, length, offset in toc_rows:
         toc_body += md5
         toc_body += struct.pack(">I", zindex_begin)
         toc_body += _uint40(length)
-        toc_body += _uint40(offset)
+        toc_body += _uint40(toc_length + offset)
     for zlength in zlengths:
         toc_body += struct.pack(">H", zlength)
 
@@ -98,10 +105,12 @@ def pack_entries(files: dict[str, bytes], encrypt: bool = False) -> bytes:
     if encrypt:
         from rockforge.infrastructure.packaging.psarc.crypto import encrypt_psarc_toc
 
-        toc_bytes = encrypt_psarc_toc(toc_bytes)
+        # AES-256-CFB is a stream mode; trim the encryptor's block padding back
+        # to the exact TOC length (retail PSARCs are not block-padded here).
+        toc_bytes = encrypt_psarc_toc(toc_bytes)[:raw_toc_length]
         archive_flags = 4
 
-    toc_length = HEADER_SIZE + len(toc_bytes)
+    assert toc_length == HEADER_SIZE + len(toc_bytes)
 
     out = bytearray()
     out += MAGIC
@@ -146,22 +155,26 @@ def unpack(data: bytes) -> dict[str, bytes]:
     num_blocks = sum(-(-length // block_size) or 1 for _, length, _ in toc_rows)
     zlengths = list(struct.unpack_from(f">{num_blocks}H", toc_bytes, pos))
 
-    block_section = data[toc_length:]
-
     contents: list[bytes] = []
     for zindex_begin, length, offset in toc_rows:
         out = bytearray()
         block_index = zindex_begin
-        block_offset = offset
+        block_offset = offset  # absolute from the start of the file
         remaining = length
         while remaining > 0:
             zlength = zlengths[block_index]
             raw_size = min(block_size, remaining)
             if zlength == 0:
-                chunk = block_section[block_offset : block_offset + raw_size]
+                chunk = data[block_offset : block_offset + raw_size]
                 consumed = raw_size
             else:
-                chunk = zlib.decompress(block_section[block_offset : block_offset + zlength])
+                # A block may be stored raw even with zlength != 0 (compression
+                # didn't shrink it); fall back to the raw bytes if it isn't zlib.
+                segment = data[block_offset : block_offset + zlength]
+                try:
+                    chunk = zlib.decompress(segment)
+                except zlib.error:
+                    chunk = segment
                 consumed = zlength
             out.extend(chunk)
             remaining -= len(chunk)

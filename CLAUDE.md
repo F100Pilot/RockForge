@@ -603,18 +603,41 @@ both download links when `psarc_available` is true. If the `[psarc]` extra
 (`cryptography`) is missing, `NativePsarcPacker` gracefully degrades: the bundle
 is still produced, only the `.psarc` is omitted (no crash).
 
-**Rocksmith PC load requirements (a song not appearing in the in-game list is
-usually one of these missing):** the file MUST be named `*_p.psarc` (the `_p`
-platform tag — `packer.py`), the PSARC MUST contain an `appid` file at the root
-(`manifest.APP_ID`), and the manifests carry `InsertRoot`
-(`Static.Songs.Entries`). The `appid` is the Steam id of a DLC the game checks
-ownership of — Rocksmith only lists a CDLC whose appid the player **owns**, so
-CDLC reuses an owned DLC's appid. RockForge ships Train "Drops of Jupiter"
-(`492989`); swap it for one the target player owns (e.g. the free base song
-Smashing Pumpkins "Cherub Rock", `248750`) if the song doesn't appear. These are
-necessary but the native PSARC is **still unverified in-game** (see the SNG note
-above) — the **trustworthy path is the DLC Builder bundle** (import it and let
-DLC Builder build the PSARC).
+**Rocksmith PC load requirements — the full enumeration layout (`gamedata.py`).**
+A song not appearing in the in-game list was traced (by byte-diffing a working
+DLC Builder PSARC against ours) to a large set of missing/wrong files, now
+emitted so the native PSARC matches the retail layout file-for-file:
+- filename `*_p.psarc` (the `_p` platform tag — `packer.py`);
+- `appid.appid` at the root (`manifest.APP_ID`) — the Steam id of a DLC the game
+  checks ownership of. Rocksmith only lists a CDLC whose appid the player
+  **owns**, so CDLC reuses an owned DLC's appid. RockForge ships Train "Drops of
+  Jupiter" (`492989`); swap it for one the target player owns (e.g. the free base
+  song Smashing Pumpkins "Cherub Rock", `248750`) if the song doesn't appear;
+- `gamexblocks/nsongs/<key>.xblock` — an `entitySet` with one `RSEnumerable_Song`
+  entity per arrangement (this is what makes the engine enumerate the song);
+- `flatmodels/rs/rsenumerable_{root,song}.flat` — the (song-independent) model
+  schema, vendored verbatim under `psarc/flatmodels/`;
+- `<key>_aggregategraph.nt` — the N-Triples asset table mapping every URN to its
+  archive path;
+- `manifests/…/<arr>.json` (full entries, `InsertRoot = Static.Songs.Entries`,
+  `ArrangementType` an **int** enum not a string) **and** the aggregated
+  `songs_dlc_<key>.hsan` (**header** subset, `InsertRoot = Static.Songs.Headers`)
+  — two distinct layers;
+- the SNG under **`songs/bin/generic/<asset>.sng`** (not `songs/arr/`, which now
+  holds only the showlights);
+- `songs/arr/<key>_showlights.xml`, `gfxassets/album_art/album_<key>_{64,128,256}.dds`
+  (a neutral solid-DXT1 **placeholder** — real cover DDS is a DLC Builder step),
+  and the `song_<key>_preview.bnk` + its `.wem` alongside the main bank;
+- the container's TOC entry offsets are **absolute** from the file start
+  (`container.py`), as retail expects — not block-section-relative.
+
+Verified by unpacking our output and diffing the file list + manifest fields
+against a real DLC Builder PSARC (they match bar cosmetic `LastConversionDateTime`).
+Still **unverified in-game** and playability-incomplete by design: the per-note
+score/phrase/section arrays are empty (single difficulty, no DD), tones are not
+serialized into the manifest, and the SNG binary itself is unverified (see the
+SNG note above). The **trustworthy path remains the DLC Builder bundle** (import
+it and let DLC Builder build the PSARC).
 
 ### Wwise SoundBank (`infrastructure/packaging/psarc/soundbank.py`)
 
