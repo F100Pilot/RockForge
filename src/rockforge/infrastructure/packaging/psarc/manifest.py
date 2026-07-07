@@ -121,18 +121,74 @@ def _arrangement_properties(arrangement: Arrangement) -> dict[str, int]:
     }
 
 
+def arrangement_stats(arrangement: Arrangement) -> dict[str, object]:
+    """Note count + phrase/iteration/section tables the song-list screen reads.
+
+    Derived from the compiled SNG model so they match the actual chart (an
+    empty manifest here shows "0 notes" and a blank difficulty bar in game).
+    RockForge is single-difficulty, so every phrase is ``MaxDifficulty 0`` and
+    the Easy/Medium/Hard note counts are identical (no DD reduction)."""
+    from rockforge.infrastructure.packaging.psarc import sng
+
+    model = sng.from_arrangement(arrangement)
+    note_count = len(model.arrangements[0].notes) if model.arrangements else 0
+    phrases = [
+        {
+            "MaxDifficulty": p.max_difficulty,
+            "Name": p.name,
+            "IterationCount": sum(1 for pi in model.phrase_iterations if pi.phrase_id == i),
+        }
+        for i, p in enumerate(model.phrases)
+    ]
+    iterations = [
+        {
+            "PhraseIndex": pi.phrase_id,
+            "MaxDifficulty": model.phrases[pi.phrase_id].max_difficulty,
+            "Name": model.phrases[pi.phrase_id].name,
+            "StartTime": round(pi.start_time, 3),
+            "EndTime": round(pi.end_time, 3),
+        }
+        for pi in model.phrase_iterations
+        if pi.phrase_id < len(model.phrases)
+    ]
+    sections = [
+        {
+            "Name": s.name,
+            "UIName": s.name,
+            "Number": s.number,
+            "StartTime": round(s.start_time, 3),
+            "EndTime": round(s.end_time, 3),
+            "StartPhraseIterationIndex": s.start_phrase_iteration_id,
+            "EndPhraseIterationIndex": s.end_phrase_iteration_id,
+            "IsSolo": False,
+        }
+        for s in model.sections
+    ]
+    return {
+        "note_count": note_count,
+        "phrases": phrases,
+        "phrase_iterations": iterations,
+        "sections": sections,
+        "max_phrase_difficulty": max((p.max_difficulty for p in model.phrases), default=0),
+    }
+
+
 def build_arrangement_manifest(
     arrangement: Arrangement,
     song_key: str,
     arrangement_name: str,
     *,
     has_album_art: bool = False,
+    stats: dict[str, object] | None = None,
 ) -> dict[str, object]:
     """Build the full ``Entries`` manifest for a single instrumental arrangement."""
     meta = arrangement.metadata
     pid = persistent_id(song_key, arrangement_name)
     key_lower = song_key.lower()
     asset = arrangement_asset_name(song_key, arrangement.kind)
+    if stats is None:
+        stats = arrangement_stats(arrangement)
+    note_count = int(stats["note_count"])  # type: ignore[call-overload]
     attributes: dict[str, object] = {
         "AlbumName": meta.album,
         "AlbumNameSort": meta.album,
@@ -156,14 +212,17 @@ def build_arrangement_manifest(
         "LeaderboardChallengeRating": 0,
         "ManifestUrn": f"urn:database:json-db:{asset}",
         "MasterID_PS3": -1, "MasterID_XBox360": -1, "MasterID_RDV": _master_id(pid),
-        "MaxPhraseDifficulty": 0,
-        "NotesEasy": 0, "NotesMedium": 0, "NotesHard": 0,
+        "MaxPhraseDifficulty": stats["max_phrase_difficulty"],
+        "NotesEasy": note_count, "NotesMedium": note_count, "NotesHard": note_count,
         "PersistentID": pid,
-        "PhraseIterations": [], "Phrases": [], "Sections": [],
+        "PhraseIterations": stats["phrase_iterations"],
+        "Phrases": stats["phrases"],
+        "Sections": stats["sections"],
         "PreviewBankPath": f"song_{key_lower}_preview.bnk",
         "RelativeDifficulty": 0,
         "SKU": "RS2",
-        "Score_MaxNotes": 0, "Score_PNV": 0,
+        "Score_MaxNotes": note_count,
+        "Score_PNV": (100_000.0 / note_count) if note_count else 0,
         "Shipping": True,
         "ShowlightsXML": f"urn:application:xml:{key_lower}_showlights",
         "SongAsset": f"urn:application:musicgame-song:{asset}",
@@ -193,13 +252,17 @@ def build_arrangement_manifest(
 
 
 def _header_entry(
-    arrangement: Arrangement, song_key: str, arrangement_name: str, *, has_album_art: bool
+    arrangement: Arrangement, song_key: str, arrangement_name: str, *, has_album_art: bool,
+    stats: dict[str, object] | None = None,
 ) -> tuple[str, dict[str, object]]:
     """The reduced *header* attribute set for the aggregated ``.hsan`` (the song
     list). Returns ``(persistent_id, {"Attributes": ...})``."""
     meta = arrangement.metadata
     pid = persistent_id(song_key, arrangement_name)
     asset = arrangement_asset_name(song_key, arrangement.kind)
+    if stats is None:
+        stats = arrangement_stats(arrangement)
+    note_count = int(stats["note_count"])  # type: ignore[call-overload]
     attrs: dict[str, object] = {
         "AlbumName": meta.album,
         "AlbumNameSort": meta.album,
@@ -214,7 +277,7 @@ def _header_entry(
         "LeaderboardChallengeRating": 0,
         "ManifestUrn": f"urn:database:json-db:{asset}",
         "MasterID_RDV": _master_id(pid),
-        "NotesEasy": 0, "NotesMedium": 0, "NotesHard": 0,
+        "NotesEasy": note_count, "NotesMedium": note_count, "NotesHard": note_count,
         "PersistentID": pid,
         "Representative": 1,
         "RouteMask": _ROUTE_MASK[arrangement.kind],
@@ -314,10 +377,13 @@ def build_manifest_files(
     files: dict[str, bytes] = {}
     headers: list[tuple[str, dict[str, object]]] = []
     for arrangement, name in arrangements:
+        stats = arrangement_stats(arrangement)
         manifest = build_arrangement_manifest(
-            arrangement, song_key, name, has_album_art=has_album_art
+            arrangement, song_key, name, has_album_art=has_album_art, stats=stats
         )
-        headers.append(_header_entry(arrangement, song_key, name, has_album_art=has_album_art))
+        headers.append(_header_entry(
+            arrangement, song_key, name, has_album_art=has_album_art, stats=stats
+        ))
         asset = arrangement_asset_name(song_key, arrangement.kind)
         files[f"manifests/songs_dlc_{key_lower}/{asset}.json"] = json.dumps(
             manifest, indent=2

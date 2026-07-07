@@ -52,6 +52,29 @@ def test_build_arrangement_manifest_fields() -> None:
     assert attrs["Tuning"]["string0"] == 0
 
 
+def test_manifest_reports_note_count_and_phrase_structure() -> None:
+    from rockforge.domain.music import Beat, TabNote
+
+    arrangement = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=10.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(
+            beats=tuple(Beat(time=i * 0.5, measure=1 if i == 0 else -1) for i in range(20)),
+            average_bpm=120.0,
+        ),
+        notes=[TabNote(string=0, fret=i % 12, time=i * 0.5, sustain=0.4) for i in range(12)],
+    )
+    attrs = list(
+        build_arrangement_manifest(arrangement, "MySong", "Lead")["Entries"].values()
+    )[0]["Attributes"]
+    # The song list shows "0 notes" and a blank difficulty bar if these are empty.
+    assert attrs["NotesHard"] == 12
+    assert attrs["Score_MaxNotes"] == 12
+    assert len(attrs["PhraseIterations"]) >= 1
+    assert len(attrs["Phrases"]) >= 1
+
+
 def test_build_manifest_files_packs_and_round_trips() -> None:
     files = build_manifest_files(
         [
