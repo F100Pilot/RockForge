@@ -61,7 +61,8 @@ def test_build_manifest_files_packs_and_round_trips() -> None:
         "MySong",
     )
     assert "toolkit.version" in files
-    assert files["appid"] == b"248750"  # Rocksmith 2014 CDLC appid — game won't list it without
+    # Train "Drops of Jupiter" appid — the game won't list CDLC without an appid.
+    assert files["appid"] == b"492989"
     assert "manifests/songs_dlc_mysong/songs_dlc_mysong.hsan" in files
     assert "manifests/songs_dlc_mysong/mysong_lead.json" in files
     assert "manifests/songs_dlc_mysong/mysong_rhythm.json" in files
