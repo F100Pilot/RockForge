@@ -84,6 +84,10 @@ TECHNIQUE_BITS = TECHNIQUE_TO_MASK
 _NAME_LEN = 32
 _LYRIC_LEN = 48
 _CHORD_EPSILON_S = 0.03
+# Max frets a single anchor spans before a new one is emitted. Keeping the
+# fret-hand window stable (a comfortable position) stops the fretboard view from
+# thrashing note-to-note and hiding low notes as they scroll in.
+_MAX_ANCHOR_SPAN = 5
 _BEND_DATA_COUNT = 32  # fixed-size bend array per string in ChordNotes
 
 
@@ -488,29 +492,47 @@ def from_arrangement(
         chord_notes_list.append(cn)
 
     # --- Build anchors ---
-    # An anchor is the fret-hand position; it is active from its own time until
-    # the NEXT anchor (Rocksmith2014.NET Anchor.fs). Each anchor must have a
-    # distinct, increasing start_time — giving several the same phrase-iteration
-    # start (as an earlier version did) overlaps them and crashes the note
-    # highway on load. So key anchor times off the note where the position moves.
+    # An anchor is the fret-hand position + the visible fret window; it is active
+    # from its own time until the NEXT anchor (Rocksmith2014.NET Anchor.fs).
+    # RockForge can't do real hand-position planning, so a STABLE window matters
+    # more than a tight one: re-anchoring on every note makes the fretboard view
+    # thrash and low notes vanish off the edge as they scroll in. Greedily group
+    # consecutive positions into one anchor spanning at most MAX_ANCHOR_SPAN
+    # frets, so the view only shifts when the hand genuinely moves. Each anchor
+    # keeps a distinct, increasing start_time (overlapping anchors crash the
+    # highway on load), ending where the next begins.
+    positions = [
+        (g[0].time, g[-1].time, [n.fret for n in g if n.fret > 0]) for g in groups
+    ]
+    positions = [(t, lt, fr) for t, lt, fr in positions if fr]
+
     raw: list[tuple[float, float, int, int]] = []  # (start, last_note, fret, width)
-    current_anchor: tuple[int, int] | None = None
-    for g in groups:
-        used = [n.fret for n in g if n.fret > 0]
-        if not used:
-            continue
-        if current_anchor is not None and all(
-            current_anchor[0] <= f <= current_anchor[0] + current_anchor[1] - 1 for f in used
-        ):
-            continue
-        fret, width = _anchor_for_frets(used)
-        raw.append((g[0].time, g[-1].time, fret, width))
-        current_anchor = (fret, width)
+    i = 0
+    while i < len(positions):
+        lo = min(positions[i][2])
+        hi = max(positions[i][2])
+        last_note = positions[i][1]
+        j = i + 1
+        while j < len(positions):
+            cand_lo = min(lo, *positions[j][2])
+            cand_hi = max(hi, *positions[j][2])
+            if cand_hi - cand_lo + 1 > _MAX_ANCHOR_SPAN:
+                break
+            lo, hi, last_note = cand_lo, cand_hi, positions[j][1]
+            j += 1
+        width = min(max(4, hi - lo + 1), 24)
+        fret = max(1, min(lo, 25 - width))
+        raw.append((positions[i][0], last_note, fret, width))
+        i = j
+
     anchors: list[SngAnchor] = []
-    for i, (t, last_note, fret, width) in enumerate(raw):
-        end = raw[i + 1][0] if i + 1 < len(raw) else song_length
+    for k, (t, last_note, fret, width) in enumerate(raw):
+        # The first anchor covers from the song start so the opening notes are
+        # framed before they reach the strike line.
+        start = 0.0 if k == 0 else t
+        end = raw[k + 1][0] if k + 1 < len(raw) else song_length
         anchors.append(SngAnchor(
-            start_time=t,
+            start_time=start,
             end_time=end,
             first_note_time=t,
             last_note_time=last_note,
