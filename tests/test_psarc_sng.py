@@ -263,6 +263,32 @@ def test_arrangement_level_has_phrase_counts() -> None:
     assert len(level.notes_in_iteration1) == len(model.phrase_iterations)
 
 
+def test_plain_notes_have_no_slide() -> None:
+    # slide_to must be -1 (no slide) for ordinary notes; writing 0 told the game
+    # every note slides to fret 0 — a slide streak on every note.
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=5.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=(Beat(time=0.0, measure=1),), average_bpm=120.0),
+        notes=[TabNote(string=s, fret=s + 2, time=s * 0.3, sustain=0.2) for s in range(6)],
+    )
+    notes = read_sng(write_sng(from_arrangement(arr))).arrangements[0].notes
+    assert notes and all(n.slide_to == -1 for n in notes)
+
+
+def test_real_slide_is_preserved() -> None:
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=5.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=(Beat(time=0.0, measure=1),), average_bpm=120.0),
+        notes=[TabNote(string=0, fret=5, time=0.0, sustain=0.5, slide_to_fret=7)],
+    )
+    note = read_sng(write_sng(from_arrangement(arr))).arrangements[0].notes[0]
+    assert note.slide_to == 7
+
+
 def test_beats_carry_real_measures_and_downbeat_mask() -> None:
     # The Sng2014 beat is 16 bytes: the trailing mask (bit0 downbeat, bit1 even
     # measure) must be present, or every beat is 4 bytes short and the whole SNG

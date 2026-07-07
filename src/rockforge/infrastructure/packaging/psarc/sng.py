@@ -218,8 +218,8 @@ class SngNote:
     next_iter_note: int = -1
     prev_iter_note: int = -1
     parent_prev_note: int = -1
-    slide_to: int = 0
-    slide_unpitch_to: int = 0
+    slide_to: int = -1          # -1 = no slide (a signed byte, 0xFF on disk)
+    slide_unpitch_to: int = -1  # -1 = no unpitched slide
     left_hand: int = 0
     tap: int = 0
     pick_direction: int = 0
@@ -470,8 +470,8 @@ def from_arrangement(
         cn = SngChordNotes(
             note_mask=[0] * 6,
             bend_data=[[] for _ in range(6)],
-            slide_to=[0] * 6,
-            slide_unpitch_to=[0] * 6,
+            slide_to=[0xFF] * 6,          # 0xFF (= -1) per string = no slide
+            slide_unpitch_to=[0xFF] * 6,
             vibrato=[0] * 6,
         )
         for n in g:
@@ -589,7 +589,7 @@ def from_arrangement(
             anchor_width=a_width,
             phrase_id=pi_id,
             phrase_iteration_id=pi_id,
-            slide_to=sn.slide_to_fret if sn.slide_to_fret is not None else 0,
+            slide_to=sn.slide_to_fret if sn.slide_to_fret is not None else -1,
             slap=1 if Technique.SLAP in sn.techniques else 0,
             pluck=1 if Technique.POP in sn.techniques else 0,
             tap=1 if Technique.TAP in sn.techniques else 0,
@@ -767,7 +767,10 @@ _ANCHOR_FMT = "<ffffBBBBii"
 _ANCHOR_EXT_FMT = "<fbihb"
 _FINGERPRINT_FMT = "<iffff"
 _VOCAL_FMT = f"<fif{_LYRIC_LEN}s"
-_NOTE_FIXED_FMT = "<IIIfBBBBiiiihhhhh" "BBBBBBBhff"
+# slide_to / slide_unpitch_to are SIGNED bytes: -1 (0xFF) means "no slide".
+# Writing 0 (unsigned) told the game every note slides to fret 0 — a slide
+# streak on every note, and slide geometry the game chokes on at load.
+_NOTE_FIXED_FMT = "<IIIfBBBBiiiihhhhh" "bbBBBBBhff"
 
 _BEAT_SIZE = struct.calcsize(_BEAT_FMT)
 _PHRASE_SIZE = struct.calcsize(_PHRASE_FMT)
