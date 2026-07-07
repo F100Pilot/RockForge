@@ -200,3 +200,51 @@ ver `TESTING.md`.
   Plano totalmente aditivo: `DlcBuilderPackager` continua a ser o caminho por
   omissão até à fase 5; o novo código vive isolado em
   `infrastructure/packaging/psarc/`.
+
+  - [x] **Fase 6 — Requisitos de carregamento no jogo (parcial)**: o CDLC não
+    aparecia na lista do Rocksmith porque faltavam três coisas, agora
+    corrigidas: o ficheiro tem de terminar em **`_p.psarc`** (etiqueta de
+    plataforma PC — `packer.py`), o PSARC tem de conter um ficheiro **`appid`**
+    na raiz (`manifest.APP_ID = "248750"`) e os manifestos precisam de
+    **`InsertRoot`** (`Static.Songs.Entries`). Guardado por `test_psarc_manifest`.
+    Necessário mas ainda **não suficiente** — o PSARC nativo continua por
+    validar no jogo (ver fases 3/7).
+
+  - [ ] **Fase 7 — SoundBank Wwise (`.bnk`) no PSARC nativo**: hoje o packer só
+    copia o `.wem`; o Rocksmith carrega o áudio através de uma SoundBank
+    (`song_<key>.bnk`) que referencia o `.wem` por ID. Sem ela, mesmo que a
+    música apareça na lista, o áudio não toca. É a peça que falta para o PSARC
+    in-app ser autónomo (sem DLC Builder). Precisa de gerar/embutir o `.bnk`
+    (via Wwise, como o caminho DLC Builder já faz para o `.wem`).
+
+  - [ ] **Textura DDS da capa (`albumArt`) no PSARC nativo**: hoje a capa vai no
+    bundle mas o campo `albumArt` do Song2014 fica vazio (nem DLC Builder nem
+    PSARC nativo a embutem). Converter a capa para as texturas DDS in-game
+    (64/128/256) e preencher o `albumArt` para a capa aparecer no jogo.
+
+- [ ] **Dynamic Difficulty (DD)**: hoje a partitura toca sempre à densidade
+  máxima (um único nível de dificuldade). Gerar níveis de DD (redução
+  progressiva de notas por frase) para uma experiência de jogo a sério — é uma
+  lacuna real, não um ficheiro malformado. Afeta o SNG (ArrangementLevels) e os
+  manifestos.
+
+- [ ] **Biblioteca de tons (guardar/carregar entre projetos)**: reutilizar os
+  tons criados noutras músicas sem os recriar. Guardar os tons (gear completo)
+  num ficheiro/loja partilhada (`work_dir`) e um seletor "importar tom" no
+  construtor de tons. Complementa a barra de pesquisa de gear já existente.
+
+- [ ] **Processamento em lote**: converter vários ficheiros Guitar Pro de uma
+  vez (fila de jobs), em vez de um a um, para quem tem um álbum inteiro.
+
+- [ ] **Editor de secções na partitura (caminho GP)**: marcar/renomear secções
+  (intro/verso/refrão) diretamente no visualizador, em vez de virem só do GP —
+  útil para Riff Repeater e navegação no jogo.
+
+- [ ] **Mais atalhos de teclado no visualizador**: além do espaço (play/pause),
+  ex.: setas ←/→ para saltar nota-a-nota, `+`/`-` para zoom, `Home` para o
+  início — para editar sync mais depressa sem o rato.
+
+- [ ] **Validar o Banquet em ficheiros reais** (ver entrada "Separação fina de
+  guitarras" acima): confirmar a qualidade da separação por classe
+  (elétrica/acústica, limpa/distorcida) e decidir se passa a default ou ganha um
+  seletor dedicado na UI.
