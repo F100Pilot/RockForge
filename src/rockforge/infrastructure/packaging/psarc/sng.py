@@ -464,30 +464,22 @@ def _build_level(
     phrase_iterations: list[SngPhraseIteration],
     phrase_count: int,
     anchors: list[SngAnchor],
-    all_fingerprints: list[SngFingerprint],
     chord_notes_list: list[SngChordNotes],
 ) -> SngArrangementLevel:
     """One difficulty level over the given note subset.
 
     Anchors are shared across levels (a fret-hand window is valid whatever the
-    note density), but handshapes (fingerprints) and slide anchor-extensions are
-    rebuilt from THIS level's notes: a handshape or slide extension pointing at a
-    chord/note the level dropped crashes the game on the first low-difficulty
-    pass through the section (the "always crashes at the chord riff" bug; DLC
-    Builder validates exactly this, and a real DDC emits both per level).
+    note density); the slide anchor-extensions are rebuilt from THIS level's
+    notes (an extension pointing at a note the level dropped crashes the game on
+    the first low-difficulty pass through the section). Fingerprints (handshapes)
+    are NOT emitted at all: both working references — a real CDLC SNG and a DLC
+    Builder build of our own XML (which carries ``handShapes count="0"``) — ship
+    zero fingerprints on every level, while our one-fingerprint-per-chord run
+    (dozens of back-to-back handshapes, including gapped octave shapes) crashed
+    the game at the first octave riff. Chords still render via their chord
+    template + CHORD/STRUM masks.
     """
-    # Handshapes: keep only those referenced by a note present in this level,
-    # remapping the notes' fingerprint ids into the filtered list.
-    used_fps = sorted({n.fingerprint_id[0] for n in notes if n.fingerprint_id[0] >= 0})
-    fp_remap = {old: new for new, old in enumerate(used_fps)}
-    fingerprints = [all_fingerprints[i] for i in used_fps]
-
-    linked = [
-        replace(n, fingerprint_id=(fp_remap[n.fingerprint_id[0]], n.fingerprint_id[1]))
-        if n.fingerprint_id[0] >= 0
-        else n
-        for n in notes
-    ]
+    linked = list(notes)
     for pi in phrase_iterations:
         idxs = [i for i, n in enumerate(linked) if pi.start_time <= n.time < pi.end_time]
         for j, gi in enumerate(idxs):
@@ -528,7 +520,7 @@ def _build_level(
         difficulty=difficulty,
         anchors=anchors,
         anchor_extensions=anchor_extensions,
-        fingerprints1=fingerprints,
+        fingerprints1=[],
         fingerprints2=[],
         notes=linked,
         phrase_count=phrase_count,
@@ -739,26 +731,9 @@ def from_arrangement(
     # (Anchor extensions — the slide re-anchors — are built per difficulty level
     # inside _build_level, from each level's own notes.)
 
-    # --- Fingerprints / handshapes (one per chord group) ---
-    fingerprints: list[SngFingerprint] = []
-    chord_group_fp_map: dict[int, int] = {}
-    all_note_times = sorted(n.time for n in arrangement.notes)
-
-    for gi, g in enumerate(chord_groups):
-        key = _chord_template_key(g)
-        chord_id = template_ids[key]
-        start_t = g[0].time
-        # End at next note/chord time or start + 0.5s
-        idx = next((i for i, t in enumerate(all_note_times) if t > start_t + _CHORD_EPSILON_S), -1)
-        end_t = all_note_times[idx] if idx >= 0 else start_t + 0.5
-        chord_group_fp_map[gi] = len(fingerprints)
-        fingerprints.append(SngFingerprint(
-            chord_id=chord_id,
-            start_time=start_t,
-            end_time=end_t,
-            first_note_time=start_t,
-            last_note_time=g[-1].time,
-        ))
+    # (Fingerprints / handshapes are deliberately NOT emitted — see _build_level's
+    # docstring: both working references ship zero, and our per-chord handshapes
+    # crashed the game at a dense octave riff.)
 
     # --- Build SNG notes ---
     sng_notes: list[SngNote] = []
@@ -814,7 +789,6 @@ def from_arrangement(
                 mask |= TECHNIQUE_TO_MASK.get(tech, 0)
         if any(n.sustain > 0 for n in g):
             mask |= NOTE_MASK_SUSTAIN
-        fp_id = chord_group_fp_map.get(gi, -1)
         mask |= NOTE_MASK_STRUM
         a_fret, a_width = _find_anchor(g[0].time)
         pi_id = _find_phrase_iteration(phrase_iterations, g[0].time)
@@ -831,7 +805,6 @@ def from_arrangement(
             chord_notes_id=cn_id,
             phrase_id=pi_id,
             phrase_iteration_id=pi_id,
-            fingerprint_id=(fp_id, -1),
             bend_data=[],
         ))
 
@@ -920,7 +893,7 @@ def from_arrangement(
     arrangements = [
         _build_level(
             d, _level_notes(d), phrase_iterations, len(phrases),
-            anchors, fingerprints, chord_notes_list,
+            anchors, chord_notes_list,
         )
         for d in range(song_max + 1)
     ]

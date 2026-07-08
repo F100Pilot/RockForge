@@ -565,9 +565,19 @@ round-trips the payload for test verification.
 Sections emitted (in order): BPMs, Phrases, ChordTemplates (with per-string MIDI
 notes), ChordNotes, Vocals (+ symbol stubs if present), PhraseIterations, 6 ×
 empty (PhraseExtraInfo/NLD/Actions/Events/Tones/DNAs), Sections,
-ArrangementLevels (difficulty 0 — anchors, **anchor extensions**,
-fingerprints/handshapes, notes with NextIter/PrevIter linkage), Metadata.
-`NoteMask` values are the real Rocksmith constants (ported from Constants.cs).
+ArrangementLevels (anchors, **anchor extensions**, notes with NextIter/PrevIter
+linkage), Metadata. `NoteMask` values are the real Rocksmith constants (ported
+from Constants.cs).
+
+**Fingerprints (handshapes) are deliberately NOT emitted** (empty on every
+level). Both working references ship zero — a real CDLC SNG (decoded: 0
+fingerprints across all 23 levels) and a DLC Builder build of our own XML (which
+carries `handShapes count="0"`) — while our one-fingerprint-per-chord emission
+(dozens of back-to-back handshapes, including gapped octave shapes) crashed the
+game at the entry of a dense 5-7 octave riff. Chords render via their chord
+template + CHORD/STRUM masks; notes carry `fingerprint_id = (-1, -1)`. Guarded by
+`test_chords_produce_templates_and_no_fingerprints` /
+`test_dd_levels_have_no_handshapes_and_per_level_slide_extensions`.
 
 Anchors never span a phrase-iteration boundary: the game re-anchors at each
 phrase start, so a phrase whose opening notes are covered only by the previous
@@ -599,14 +609,12 @@ defects):
   `_note_tier` then time), so level 0 is the strongest beats and the top level is
   the full chart. `phrase_iterations[].difficulty` is the `(round(max/4),
   round(max/2), max)` Easy/Medium/Hard hero triple. Anchors are shared across
-  levels (fret-hand windows are valid at any density), but **handshapes
-  (fingerprints) and slide anchor-extensions are rebuilt per level from that
-  level's own notes**, with fingerprint ids remapped into each level's filtered
-  list (`_build_level`): a handshape or slide extension pointing at a chord/note
-  the level dropped crashes the game on the first low-difficulty pass through
-  the section (the "always crashes at the chord riff" bug — on a real GP file,
-  level 0 had 4 chords but all 65 handshapes in the crash zone). Guarded by
-  `test_dd_levels_rebuild_handshapes_and_slide_extensions_per_level`. The manifest reports
+  levels (fret-hand windows are valid at any density), but **slide
+  anchor-extensions are rebuilt per level from that level's own notes**
+  (`_build_level`): an extension pointing at a note the level dropped crashes
+  the game on the first low-difficulty pass through the section. (Handshapes are
+  not emitted at all — see the fingerprints note above.) Guarded by
+  `test_dd_levels_have_no_handshapes_and_per_level_slide_extensions`. The manifest reports
   `MaxPhraseDifficulty` + `NotesEasy/Medium/Hard` from the levels. This is a
   mechanical density ramp with NO `NLinkedDifficulty` cross-phrase linkage — a
   simplified DDC, NOT the full musical phrase-leveling a retail DDC pass does; the
