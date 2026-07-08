@@ -293,6 +293,35 @@ def test_dynamic_difficulty_generates_ramping_levels() -> None:
     assert [len(lvl.notes) for lvl in restored.arrangements] == counts
 
 
+def test_sectionless_song_is_segmented_into_multiple_phrases() -> None:
+    # A long GP with no section markers must still be split into many phrases so
+    # DD ramps per-phrase as the player progresses (a real DDC auto-segments); one
+    # giant phrase spanning the whole song gives a poor DD.
+    beats = [Beat(time=i * 0.5, measure=i // 4 + 1 if i % 4 == 0 else -1) for i in range(400)]
+    notes = [TabNote(string=i % 6, fret=(i % 7) + 1, time=round(i * 0.5, 3), sustain=0.2)
+             for i in range(360)]
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=190.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=tuple(beats), average_bpm=120.0),
+        notes=notes,
+        sections=[],
+    )
+    model = from_arrangement(arr)
+    # ~190 s / 13 s ≈ a dozen-plus phrases (not just COUNT/body/END).
+    assert len(model.phrases) >= 8
+    # Phrase iterations stay ordered and non-overlapping.
+    starts = [pi.start_time for pi in model.phrase_iterations]
+    assert starts == sorted(starts)
+    # No anchor crosses a phrase boundary and each phrase owns an anchor at start.
+    bounds = {pi.start_time for pi in model.phrase_iterations}
+    top = model.arrangements[-1]
+    assert not any(a.start_time < b < a.end_time for a in top.anchors for b in bounds)
+    for pi in model.phrase_iterations:
+        assert any(abs(a.start_time - pi.start_time) < 1e-9 for a in top.anchors)
+
+
 def test_dd_low_levels_spread_notes_across_the_phrase() -> None:
     # A long single-phrase song (no section markers): low DD levels must show the
     # strongest beats spread across the WHOLE phrase, not clustered in its first
