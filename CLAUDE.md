@@ -569,6 +569,14 @@ ArrangementLevels (difficulty 0 — anchors, **anchor extensions**,
 fingerprints/handshapes, notes with NextIter/PrevIter linkage), Metadata.
 `NoteMask` values are the real Rocksmith constants (ported from Constants.cs).
 
+Anchors never span a phrase-iteration boundary: the game re-anchors at each
+phrase start, so a phrase whose opening notes are covered only by the previous
+phrase's anchor finds none of its own and crashes on entry (seen exactly at a
+section / tone-change boundary). `from_arrangement` splits any anchor that
+crosses a boundary into per-phrase pieces (same hand position, re-tagged with the
+phrase iteration), so every phrase owns an anchor at its start. Guarded by
+`test_anchors_do_not_cross_phrase_iteration_boundaries`.
+
 Anchor extensions are generated one per sliding note (`BeatTime = time +
 sustain`, `FretId = slideTo`), so the fretboard re-anchors where the slide lands
 (Rocksmith2014.NET `AnchorExtension.fs`, 12-byte layout). Vocals are emitted as

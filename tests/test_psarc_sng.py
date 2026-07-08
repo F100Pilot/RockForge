@@ -441,6 +441,39 @@ def test_anchors_have_distinct_increasing_times() -> None:
         assert anchors[i].end_time == anchors[i + 1].start_time
 
 
+def test_anchors_do_not_cross_phrase_iteration_boundaries() -> None:
+    # An anchor that spans a phrase-iteration boundary leaves the new phrase's
+    # opening notes covered only by the PREVIOUS phrase's anchor; the game
+    # re-anchors at each phrase start, finds none of its own, and crashes on
+    # entry (seen exactly at a section / tone-change boundary). Every anchor must
+    # stay within one phrase iteration, and each phrase must own an anchor at its
+    # start.
+    beats = [Beat(time=i * 0.5, measure=i // 4 + 1 if i % 4 == 0 else -1) for i in range(48)]
+    notes = [TabNote(string=0, fret=(i % 5) + 3, time=round(i * 0.5, 3), sustain=0.4)
+             for i in range(40)]
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=24.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=tuple(beats), average_bpm=120.0),
+        notes=notes,
+        # Sections carve the song into several phrase iterations.
+        sections=[Section(name="a", number=1, start_time=0.0),
+                  Section(name="b", number=1, start_time=8.0),
+                  Section(name="c", number=1, start_time=15.0)],
+    )
+    model = from_arrangement(arr)
+    pis = model.phrase_iterations
+    bounds = {round(pi.start_time, 6) for pi in pis}
+    for lvl in model.arrangements:
+        for a in lvl.anchors:
+            assert not any(a.start_time < b < a.end_time for b in bounds)
+    # Each phrase iteration owns an anchor starting exactly at its start.
+    top = model.arrangements[-1]
+    for pi in pis:
+        assert any(abs(a.start_time - pi.start_time) < 1e-6 for a in top.anchors)
+
+
 def test_slide_notes_produce_anchor_extensions() -> None:
     arr = Arrangement(
         kind=ArrangementKind.LEAD,
