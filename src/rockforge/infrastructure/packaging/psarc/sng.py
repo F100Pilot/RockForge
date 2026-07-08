@@ -411,22 +411,20 @@ def _note_mask(n: TabNote, is_chord: bool = False, is_double_stop: bool = False)
 
 
 def _bend_points(n: TabNote) -> list[SngBendData32]:
-    """A well-formed bend curve for a note with a peak bend amount.
+    """A bend curve for a note with a peak bend amount.
 
-    Rocksmith interpolates pitch BETWEEN bend points, so a lone peak point (the
-    old emission — one point at the note's own time) is a degenerate ramp with no
-    start anchor: it corrupted the note-highway geometry and crashed the game at
-    the first bent chord. Emit two points instead — the picked, still-unbent
-    attack (step 0) and the peak (step = bend in semitones) — inside the note's
-    sustain window so the pitch ramps up as drawn.
+    Match Editor on Fire's export (rs.c): a single bend point one third of the way
+    through the sustain, at the peak strength in half-steps; the game ramps the
+    pitch up to it from the attack. The FIRST attempt put the point at the note's
+    exact attack time — coinciding with the note itself — which corrupted the
+    highway geometry and crashed at the first bent chord. Offsetting into the
+    sustain (as EOF does) is the fix. Floored for a staccato note so the point
+    still lands after the attack.
     """
     if n.bend_semitones <= 0:
         return []
-    ramp = n.sustain if n.sustain > 0.05 else 0.1
-    return [
-        SngBendData32(time=n.time, step=0.0),
-        SngBendData32(time=n.time + ramp, step=n.bend_semitones),
-    ]
+    offset = n.sustain / 3.0 if n.sustain > 0.03 else 0.1
+    return [SngBendData32(time=n.time + offset, step=n.bend_semitones)]
 
 
 def _section_end_times(sections: list[Section], song_length: float) -> list[float]:

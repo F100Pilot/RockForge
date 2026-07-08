@@ -83,12 +83,11 @@ def test_note_attributes(tmp_path: Path) -> None:
     assert bend_note.get("bend") == "2"
     assert bend_note.get("string") == "2" and bend_note.get("fret") == "7"
     # The bend flag alone is only the peak; DLC Builder reads the actual pitch
-    # ramp from <bendValues>. Without it the bend disappears on import. Emit a
-    # two-point curve (unbent attack → peak) inside the note's sustain window.
+    # from <bendValues>. Without it the bend disappears on import. Match EOF: a
+    # single bend point a third into the sustain, at the peak strength.
     bvs = bend_note.find("bendValues")
-    assert bvs is not None and len(bvs) == 2
-    assert bvs[0].get("time") == "2.000" and bvs[0].get("step") == "0.000"
-    assert bvs[1].get("step") == "2.000" and float(bvs[1].get("time")) > 2.0
+    assert bvs is not None and len(bvs) == 1
+    assert bvs[0].get("step") == "2.000" and float(bvs[0].get("time")) > 2.0
     # A plain note carries no bend curve.
     assert notes[0].find("bendValues") is None
     assert notes[2].get("hammerOn") == "1"
