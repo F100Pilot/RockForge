@@ -569,12 +569,42 @@ def from_arrangement(
     # --- Phrases & PhraseIterations ---
     # A song with no section markers still needs a valid phrase timeline, or the
     # game crashes on the note highway (see _default_sections).
-    sections_src = arrangement.sections or _default_sections(arrangement, song_length)
+    sections_src = list(
+        arrangement.sections or _default_sections(arrangement, song_length)
+    )
+    # Retail structure brackets the body with a COUNT phrase (the count-in, max
+    # difficulty 0) and an END phrase after the last note. Without COUNT, a GP
+    # whose first section starts at 0 puts the silent intro inside a high-
+    # difficulty phrase (an all-black bar in the Riff Repeater); without END the
+    # song has no closing empty phrase. _default_sections already emits both;
+    # bracket real GP sections the same way.
+    if arrangement.sections:
+        first_note = min((n.time for n in arrangement.notes), default=0.0)
+        last_note_end = max(
+            (n.time + max(n.sustain, 0.0) for n in arrangement.notes), default=0.0
+        )
+        if sections_src[0].name != "COUNT" and first_note - sections_src[0].start_time > 1.0:
+            count_start = sections_src[0].start_time
+            sections_src[0] = replace(sections_src[0], start_time=first_note)
+            sections_src.insert(0, Section(name="COUNT", number=1, start_time=count_start))
+        if sections_src[-1].name != "END" and song_length - last_note_end > 0.5:
+            end_start = min(last_note_end + 0.1, song_length)
+            if end_start > sections_src[-1].start_time:
+                sections_src.append(Section(name="END", number=1, start_time=end_start))
     phrases = [SngPhrase(name=s.name) for s in sections_src]
     ends = _section_end_times(sections_src, song_length)
     phrase_iterations = [
         SngPhraseIteration(phrase_id=i, start_time=s.start_time, end_time=end)
         for i, (s, end) in enumerate(zip(sections_src, ends, strict=True))
+    ]
+    # Each phrase's PhraseIterationLinks = how many iterations reference it (a
+    # decoded retail CDLC carries the real counts; writing 0 breaks the Riff
+    # Repeater's phrase navigation — the game crashed entering the next phrase).
+    _links = [0] * len(phrases)
+    for pi in phrase_iterations:
+        _links[pi.phrase_id] += 1
+    phrases = [
+        replace(p, phrase_iteration_links=_links[i]) for i, p in enumerate(phrases)
     ]
 
     # Assign phrase_iteration to beats (preserving measure/beat/mask)

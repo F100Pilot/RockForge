@@ -421,6 +421,37 @@ def test_dd_levels_have_no_handshapes_and_per_level_slide_extensions() -> None:
         assert all(round(ae.beat_time, 4) in slide_ends for ae in lvl.anchor_extensions)
 
 
+def test_gp_sections_are_bracketed_with_count_and_end_and_links() -> None:
+    # Real GP sections must still be bracketed by a COUNT phrase (count-in, max
+    # difficulty 0 — without it the silent intro sits inside a high-difficulty
+    # phrase, an all-black bar in the Riff Repeater) and an END phrase after the
+    # last note. Every phrase carries PhraseIterationLinks = its iteration count
+    # (retail values; 0 broke Riff Repeater phrase navigation → crash entering
+    # the next phrase).
+    beats = [Beat(time=i * 0.5, measure=i // 4 + 1 if i % 4 == 0 else -1) for i in range(80)]
+    notes = [TabNote(string=i % 6, fret=(i % 5) + 2, time=round(4.0 + i * 0.5, 3), sustain=0.3)
+             for i in range(40)]  # first note at 4.0s — a silent intro
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=40.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=tuple(beats), average_bpm=120.0),
+        notes=notes,
+        sections=[Section(name="Verse", number=1, start_time=0.0),
+                  Section(name="Chorus", number=1, start_time=12.0)],
+    )
+    model = from_arrangement(arr)
+    names = [p.name for p in model.phrases]
+    assert names[0] == "COUNT" and names[-1] == "END"
+    assert model.phrases[0].max_difficulty == 0
+    assert model.phrases[-1].max_difficulty == 0
+    # COUNT covers the silent intro; the body starts at the first note.
+    assert model.phrase_iterations[0].start_time == 0.0
+    assert model.phrase_iterations[0].end_time == 4.0
+    # Links = per-phrase iteration count, never 0.
+    assert all(p.phrase_iteration_links >= 1 for p in model.phrases)
+
+
 def test_bend_points_carry_absolute_song_time() -> None:
     # SNG bend points use the ABSOLUTE song clock (like the XML's <bendValue
     # time=…>). Writing 0.0 made the game interpolate a bend from the song start
