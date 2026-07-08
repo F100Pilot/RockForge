@@ -556,6 +556,34 @@ def test_anchors_have_distinct_increasing_times() -> None:
         assert anchors[i].end_time == anchors[i + 1].start_time
 
 
+def test_anchors_are_built_per_level_not_shared() -> None:
+    # A real DDC sizes anchors to each level's notes; sharing the full-chart
+    # anchor set on a thinned low level ships anchors framing notes that don't
+    # exist there, crashing the game on phrase entry. Low levels must therefore
+    # carry FEWER anchors than the top level, and each level's anchors must cover
+    # only its own note positions.
+    beats = [Beat(time=i * 0.5, measure=i // 4 + 1 if i % 4 == 0 else -1) for i in range(120)]
+    notes = [TabNote(string=i % 6, fret=(i % 9) + 1, time=round(i * 0.25, 3), sustain=0.1)
+             for i in range(200)]
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=60.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=tuple(beats), average_bpm=120.0),
+        notes=notes,
+    )
+    model = from_arrangement(arr)
+    assert len(model.arrangements) >= 3
+    counts = [len(lvl.anchors) for lvl in model.arrangements]
+    assert counts[0] < counts[-1]  # low levels have fewer anchors than the top
+    # A level's anchors are derived from its OWN notes: each level has a distinct
+    # anchor set (not the shared full-chart one), and every anchor is in range.
+    assert len(set(counts)) > 1
+    for lvl in model.arrangements:
+        for a in lvl.anchors:
+            assert 1 <= a.fret <= 24 and a.start_time < a.end_time
+
+
 def test_anchors_do_not_cross_phrase_iteration_boundaries() -> None:
     # An anchor that spans a phrase-iteration boundary leaves the new phrase's
     # opening notes covered only by the PREVIOUS phrase's anchor; the game
