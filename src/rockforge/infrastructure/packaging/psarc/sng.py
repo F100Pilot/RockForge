@@ -667,6 +667,28 @@ def from_arrangement(
             width=4,
         ))
 
+    # An anchor must NOT span a phrase-iteration boundary. The game re-anchors at
+    # each phrase start, so a phrase whose opening notes are only covered by an
+    # anchor tagged with the PREVIOUS phrase finds no anchor of its own on entry
+    # and crashes (seen exactly at a section / tone-change boundary). Split any
+    # anchor that crosses a boundary into per-phrase pieces (same hand position),
+    # each re-tagged with the phrase iteration it now belongs to.
+    boundaries = sorted({pi.start_time for pi in phrase_iterations})
+    split_anchors: list[SngAnchor] = []
+    for a in anchors:
+        seg_start = a.start_time
+        cuts = [x for x in boundaries if a.start_time < x < a.end_time]
+        for seg_end in [*cuts, a.end_time]:
+            split_anchors.append(replace(
+                a,
+                start_time=seg_start,
+                end_time=seg_end,
+                first_note_time=max(a.first_note_time, seg_start),
+                phrase_iteration_id=_find_phrase_iteration(phrase_iterations, seg_start),
+            ))
+            seg_start = seg_end
+    anchors = split_anchors
+
     # (Anchor extensions — the slide re-anchors — are built per difficulty level
     # inside _build_level, from each level's own notes.)
 
