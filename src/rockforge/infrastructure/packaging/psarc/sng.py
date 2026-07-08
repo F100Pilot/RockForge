@@ -654,8 +654,12 @@ def from_arrangement(
             # highway and crashing mid-riff.
             cn.note_mask[n.string] = _note_mask(n) & ~NOTE_MASK_SINGLE
             if n.bend_semitones > 0:
+                # Bend points carry the ABSOLUTE song time (same clock as note
+                # times), as in the XML's <bendValue time=…>. Writing 0.0 made
+                # the game interpolate a bend from the song start — corrupt
+                # geometry on the highway, crashing at the first bent chord.
                 cn.bend_data[n.string] = [
-                    SngBendData32(time=0.0, step=n.bend_semitones)
+                    SngBendData32(time=n.time, step=n.bend_semitones)
                 ]
             if n.slide_to_fret is not None:
                 cn.slide_to[n.string] = n.slide_to_fret
@@ -772,7 +776,8 @@ def from_arrangement(
         pi_id = _find_phrase_iteration(phrase_iterations, sn.time)
         sn_bends: list[SngBendData32] = []
         if sn.bend_semitones > 0:
-            sn_bends = [SngBendData32(time=0.0, step=sn.bend_semitones)]
+            # Absolute song time, not 0.0 — see the ChordNotes bend note above.
+            sn_bends = [SngBendData32(time=sn.time, step=sn.bend_semitones)]
         sng_notes.append(SngNote(
             time=sn.time,
             string=sn.string,
