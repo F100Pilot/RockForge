@@ -138,6 +138,27 @@ def _note_attrs(n: TabNote) -> dict[str, str]:
     return _drop_defaults(attrs, {"time", "string", "fret", "sustain"})
 
 
+def _append_note_el(parent: ET.Element, tag: str, n: TabNote) -> ET.Element:
+    """Create a <note>/<chordNote> and, for a bend, its <bendValues> curve.
+
+    The `bend="N"` attribute alone is only the peak; Rocksmith/DLC Builder read
+    the actual pitch ramp from <bendValues>. Emitting the flag WITHOUT the curve
+    (the previous behaviour) made DLC Builder build the arrangement with no real
+    bend at all — the half-step bends in the chart simply disappeared. Emit a
+    two-point curve: the picked, unbent attack (step 0) then the peak, inside the
+    note's sustain window, so the bend plays as drawn.
+    """
+    el = ET.SubElement(parent, tag, _note_attrs(n))
+    if Technique.BEND in n.techniques and n.bend_semitones > 0:
+        ramp = n.sustain if n.sustain > 0.05 else 0.1
+        bends = ET.SubElement(el, "bendValues", count="2")
+        ET.SubElement(bends, "bendValue", time=_fmt(n.time), step=_fmt(0.0))
+        ET.SubElement(
+            bends, "bendValue", time=_fmt(n.time + ramp), step=_fmt(n.bend_semitones)
+        )
+    return el
+
+
 def render_arrangement(arr: Arrangement) -> ET.Element:
     song = ET.Element("song", version="8")
     ET.SubElement(song, "title").text = arr.metadata.title
@@ -312,7 +333,7 @@ def render_arrangement(arr: Arrangement) -> ET.Element:
     level = ET.SubElement(levels, "level", difficulty="0")
     notes_el = ET.SubElement(level, "notes", count=str(len(single_notes)))
     for n in single_notes:
-        ET.SubElement(notes_el, "note", _note_attrs(n))
+        _append_note_el(notes_el, "note", n)
     chords_el = ET.SubElement(level, "chords", count=str(len(chord_groups)))
     for g in chord_groups:
         chord_id = template_ids[_chord_template_key(g)]
@@ -341,7 +362,7 @@ def render_arrangement(arr: Arrangement) -> ET.Element:
             chords_el, "chord", _drop_defaults(chord_attrs, {"time", "chordId", "strum"})
         )
         for n in g:  # chordNote children preserve per-string technique data
-            ET.SubElement(chord_el, "chordNote", _note_attrs(n))
+            _append_note_el(chord_el, "chordNote", n)
     anchor_list = _build_anchors(groups)
     anchors = ET.SubElement(level, "anchors", count=str(len(anchor_list)))
     for time, fret, width in anchor_list:
