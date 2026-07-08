@@ -25,7 +25,14 @@ from collections.abc import Callable
 from pathlib import Path
 
 from rockforge.domain.errors import IngestionError
-from rockforge.domain.music import Beat, TabNote, Technique, TempoMap, Tuning
+from rockforge.domain.music import (
+    Beat,
+    TabNote,
+    Technique,
+    TempoMap,
+    Tuning,
+    apply_sustain_gap,
+)
 from rockforge.infrastructure.gpimport.parser import (  # shared model + helpers
     QUARTER_TICKS,
     GpLyricLine,
@@ -285,6 +292,9 @@ def parse_gpif_track(
 
     merged = _merge_ties(raw)  # collapse tie continuations into the held note
     notes = _resolve_techniques([n for n, _, _ in merged], merged)
+    # Leave a small gap before the next note on the string (after slideTo is
+    # resolved, so pitched slides keep their reach).
+    notes = apply_sustain_gap(notes)
     notes.sort(key=lambda n: (n.time, n.string))
     beats_grid.sort(key=lambda b: b.time)
 
