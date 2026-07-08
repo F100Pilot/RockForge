@@ -334,6 +334,26 @@ def _anchor_for_frets(frets: list[int]) -> tuple[int, int]:
     return fret, width
 
 
+def _spread_order(n: int) -> list[int]:
+    """A permutation of ``range(n)`` in bisection order (mid, then quarters, …).
+
+    Taking any prefix yields indices spread roughly evenly across ``[0, n)`` — so
+    when a DD level shows only the first ``k`` notes of a same-strength group, they
+    are distributed across the phrase's timeline instead of clustered at its start
+    (the "low difficulty only shows the first half of the song" bug)."""
+    order: list[int] = []
+    queue: list[tuple[int, int]] = [(0, n - 1)]
+    while queue:
+        lo, hi = queue.pop(0)
+        if lo > hi:
+            continue
+        mid = (lo + hi) // 2
+        order.append(mid)
+        queue.append((lo, mid - 1))
+        queue.append((mid + 1, hi))
+    return order
+
+
 def _note_tier(time: float, beats: list[SngBeat]) -> int:
     """A note's beat-strength tier for DD: 0 = downbeat (strongest), 1 = on a
     beat, 2 = half-beat, 3 = quarter, 4 = finer. Lower tiers appear first as the
@@ -812,13 +832,24 @@ def from_arrangement(
     note_count = len(sng_notes)
     note_tiers = [_note_tier(sngn.time, beats) for sngn in sng_notes]
 
-    # Notes of each phrase iteration, ranked by importance (beat strength, then
-    # time) so the earliest levels introduce the strongest beats first.
+    # Notes of each phrase iteration, ranked by importance so the earliest DD
+    # levels introduce the strongest beats first. Within a beat-strength tier the
+    # notes are visited in bisection order (`_spread_order`), NOT plain time order,
+    # so a level that shows only part of a tier spreads those notes across the
+    # whole phrase instead of clustering them at its start (which left low
+    # difficulties showing only the first half of a long single-phrase song).
     per_iter_notes: list[list[int]] = [[] for _ in phrase_iterations]
     for idx, sngn in enumerate(sng_notes):
         per_iter_notes[sngn.phrase_iteration_id].append(idx)
-    for lst in per_iter_notes:
-        lst.sort(key=lambda i: (note_tiers[i], sng_notes[i].time))
+    for pi_id, lst in enumerate(per_iter_notes):
+        by_tier: dict[int, list[int]] = {}
+        for i in sorted(lst, key=lambda i: sng_notes[i].time):
+            by_tier.setdefault(note_tiers[i], []).append(i)
+        ordered: list[int] = []
+        for tier in sorted(by_tier):
+            grp = by_tier[tier]
+            ordered.extend(grp[pos] for pos in _spread_order(len(grp)))
+        per_iter_notes[pi_id] = ordered
 
     # Per-phrase ceiling: one difficulty step per note the BUSIEST iteration must
     # ramp in, capped. Repeated phrases share a ceiling (busiest, not summed); a

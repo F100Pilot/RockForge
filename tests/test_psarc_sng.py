@@ -293,6 +293,32 @@ def test_dynamic_difficulty_generates_ramping_levels() -> None:
     assert [len(lvl.notes) for lvl in restored.arrangements] == counts
 
 
+def test_dd_low_levels_spread_notes_across_the_phrase() -> None:
+    # A long single-phrase song (no section markers): low DD levels must show the
+    # strongest beats spread across the WHOLE phrase, not clustered in its first
+    # part (the "low difficulty only shows the first half of the song" bug).
+    beats = [Beat(time=i * 0.5, measure=i // 4 + 1 if i % 4 == 0 else -1) for i in range(200)]
+    notes = [TabNote(string=i % 6, fret=(i % 7) + 1, time=round(i * 0.25, 3), sustain=0.1)
+             for i in range(360)]
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=95.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=tuple(beats), average_bpm=120.0),
+        notes=notes,
+        sections=[],  # → one big phrase
+    )
+    model = from_arrangement(arr)
+    song_len = max(n.time for n in notes)
+    low = model.arrangements[0]
+    assert 0 < len(low.notes) < len(notes)  # DD actually thinned it
+    # Split the song into thirds; the low level must have notes in every third.
+    thirds = [0, 0, 0]
+    for n in low.notes:
+        thirds[min(2, int(n.time / song_len * 3))] += 1
+    assert all(t > 0 for t in thirds), thirds
+
+
 def test_dd_hero_triples_and_density_graduated_ceilings() -> None:
     # A DDC-shaped DD: a dense phrase reaches a higher ceiling than a sparse one,
     # and each iteration's hero triple is (round(max/4), round(max/2), max) — the
