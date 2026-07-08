@@ -441,13 +441,15 @@ def _default_sections(arrangement: Arrangement, song_length: float) -> list[Sect
     secs = [Section(name="COUNT", number=1, start_time=start)]
     if body > start:
         secs.append(Section(name="riff", number=1, start_time=body))
-        # Segment the body into ~_DEFAULT_PHRASE_S phrases at measure downbeats.
-        downbeats = [b.time for b in beats if b.measure >= 0 and body < b.time < end_time]
-        last_cut = body
-        for t in downbeats:
-            if t - last_cut >= _DEFAULT_PHRASE_S and end_time - t >= _DEFAULT_PHRASE_S / 2:
-                secs.append(Section(name="riff", number=len(secs), start_time=t))
-                last_cut = t
+    # Segment the body into ~_DEFAULT_PHRASE_S phrases at measure downbeats,
+    # starting from wherever the last phrase begins (the body, or the count-in
+    # when the first note lands right at the song start).
+    last_cut = secs[-1].start_time
+    for t in (b.time for b in beats if b.measure >= 0):
+        if last_cut < t < end_time and t - last_cut >= _DEFAULT_PHRASE_S \
+                and end_time - t >= _DEFAULT_PHRASE_S / 2:
+            secs.append(Section(name="riff", number=len(secs), start_time=t))
+            last_cut = t
     if end_time > secs[-1].start_time:
         secs.append(Section(name="END", number=1, start_time=end_time))
     return secs

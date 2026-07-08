@@ -318,8 +318,11 @@ def test_sectionless_song_is_segmented_into_multiple_phrases() -> None:
     bounds = {pi.start_time for pi in model.phrase_iterations}
     top = model.arrangements[-1]
     assert not any(a.start_time < b < a.end_time for a in top.anchors for b in bounds)
+    # Every NOTE-BEARING phrase owns an anchor at its start (an empty END phrase
+    # needs none — it has no notes to frame).
     for pi in model.phrase_iterations:
-        assert any(abs(a.start_time - pi.start_time) < 1e-9 for a in top.anchors)
+        if any(pi.start_time <= n.time < pi.end_time for n in top.notes):
+            assert any(abs(a.start_time - pi.start_time) < 1e-9 for a in top.anchors)
 
 
 def test_dd_low_levels_spread_notes_across_the_phrase() -> None:
