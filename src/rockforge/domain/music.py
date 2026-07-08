@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from collections.abc import Sequence
+from dataclasses import dataclass, field, replace
 from enum import Enum
 
 # Rocksmith string convention (Song2014): string 0 = lowest-pitched string.
@@ -110,3 +111,42 @@ class TabNote:
             raise ValueError(f"string out of range: {self.string}")
         if not 0 <= self.fret <= MAX_FRET:
             raise ValueError(f"fret out of range: {self.fret}")
+
+
+SUSTAIN_GAP_S = 0.05  # small silence between a sustain's end and the next attack
+
+
+def apply_sustain_gap(
+    notes: Sequence[TabNote], gap: float = SUSTAIN_GAP_S
+) -> list[TabNote]:
+    """Trim each note's sustain so it ends a small gap before the NEXT note on the
+    same string.
+
+    A GP note's duration usually fills the whole beat, so consecutive notes'
+    sustains run right into the following attack — on the Rocksmith highway the
+    sustain trail touches the next note with no separation. Leaving a small gap
+    both matches how real charts are authored and reads cleaner graphically.
+
+    Only trims, never extends; the gap shrinks for closely-spaced notes (never
+    more than 15% of the interval) so fast passages keep most of their length.
+    Shift/legato slide notes (``slide_to_fret`` set) are left untouched — their
+    sustain must reach the slide's landing note.
+    """
+    by_string: dict[int, list[int]] = {}
+    for i, n in enumerate(notes):
+        by_string.setdefault(n.string, []).append(i)
+    result = list(notes)
+    for idxs in by_string.values():
+        idxs.sort(key=lambda i: notes[i].time)
+        for a, b in zip(idxs, idxs[1:], strict=False):
+            na = result[a]
+            if na.sustain <= 0 or na.slide_to_fret is not None:
+                continue
+            interval = notes[b].time - notes[a].time
+            if interval <= 0:
+                continue
+            g = min(gap, interval * 0.15)
+            new_sustain = min(na.sustain, interval - g)
+            if new_sustain < na.sustain:
+                result[a] = replace(na, sustain=max(0.0, new_sustain))
+    return result

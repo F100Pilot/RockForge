@@ -22,7 +22,14 @@ from pathlib import Path
 from typing import Any
 
 from rockforge.domain.errors import IngestionError
-from rockforge.domain.music import Beat, TabNote, Technique, TempoMap, Tuning
+from rockforge.domain.music import (
+    Beat,
+    TabNote,
+    Technique,
+    TempoMap,
+    Tuning,
+    apply_sustain_gap,
+)
 
 QUARTER_TICKS = 960
 
@@ -157,8 +164,11 @@ def _make_ticks_to_seconds(events: list[tuple[int, float]]) -> Callable[[int], f
     return convert
 
 
-_SLIDE_OUT_TYPES = {3, 4}  # outDownwards / outUpwards
-_SLIDE_SHIFT_TYPES = {1, 2}  # shiftSlideTo / legatoSlideTo
+# outDownwards / outUpwards — an unpitched slide OFF the fret with no landing
+# note; NOT emitted as a pitched Rocksmith slide (see the note where slides are
+# tagged). Kept for reference / future unpitched-slide support.
+_SLIDE_OUT_TYPES = {3, 4}
+_SLIDE_SHIFT_TYPES = {1, 2}  # shiftSlideTo / legatoSlideTo — a pitched slide
 
 
 def parse_gp_track(
@@ -256,8 +266,14 @@ def parse_gp_track(
                         techs.add(Technique.HARMONIC)
                     if eff.vibrato:
                         techs.add(Technique.VIBRATO)
-                    if any(int(s.value) in _SLIDE_OUT_TYPES | _SLIDE_SHIFT_TYPES
-                           for s in eff.slides):
+                    # Only a SHIFT/legato slide (types 1/2) is a pitched slide to
+                    # a landing fret — its slideTo is filled from the next note on
+                    # the string below. A slide-OUT (types 3/4) slides off into
+                    # nowhere: it has NO landing note, so tagging it SLIDE made the
+                    # fill loop grab an unrelated later note as a bogus target
+                    # (wrong fret, a stray anchor extension) and the note rendered
+                    # wrong / went missing. Emit it as a plain note instead.
+                    if any(int(s.value) in _SLIDE_SHIFT_TYPES for s in eff.slides):
                         techs.add(Technique.SLIDE)
                     if eff.accentuatedNote or eff.heavyAccentuatedNote:
                         techs.add(Technique.ACCENT)
@@ -314,6 +330,10 @@ def parse_gp_track(
             slide_to_fret=notes[b].fret,
         )
 
+    # Trim sustains so they end a small gap before the next note on the string,
+    # instead of running right into it (done after slideTo is filled so pitched
+    # slides keep their reach).
+    notes = apply_sustain_gap(notes)
     notes.sort(key=lambda n: (n.time, n.string))
     beats_grid.sort(key=lambda b: b.time)
     avg_bpm = float(song.tempo) / tempo_scale
