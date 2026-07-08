@@ -421,6 +421,32 @@ def test_dd_levels_have_no_handshapes_and_per_level_slide_extensions() -> None:
         assert all(round(ae.beat_time, 4) in slide_ends for ae in lvl.anchor_extensions)
 
 
+def test_bend_points_carry_absolute_song_time() -> None:
+    # SNG bend points use the ABSOLUTE song clock (like the XML's <bendValue
+    # time=…>). Writing 0.0 made the game interpolate a bend from the song start
+    # — corrupt highway geometry and a crash at the first bent chord.
+    beats = tuple(Beat(time=i * 0.5, measure=1 if i == 0 else -1) for i in range(20))
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=10.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+        notes=[
+            TabNote(string=0, fret=5, time=3.0, sustain=0.5, bend_semitones=1.0),  # single
+            TabNote(string=1, fret=5, time=6.0, sustain=0.5, bend_semitones=1.0),  # chord…
+            TabNote(string=2, fret=7, time=6.0, sustain=0.5),                      # …mate
+        ],
+    )
+    model = from_arrangement(arr)
+    top = model.arrangements[-1]
+    single = next(n for n in top.notes if n.string == 0)
+    assert single.bend_data and single.bend_data[0].time == 3.0
+    chord = next(n for n in top.notes if n.chord_id >= 0)
+    assert chord.chord_notes_id >= 0
+    cn = model.chord_notes[chord.chord_notes_id]
+    assert cn.bend_data[1] and cn.bend_data[1][0].time == 6.0
+
+
 def test_plain_notes_have_no_slide() -> None:
     # slide_to must be -1 (no slide) for ordinary notes; writing 0 told the game
     # every note slides to fret 0 — a slide streak on every note.
