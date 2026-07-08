@@ -208,6 +208,14 @@ def test_rebuild_creates_new_job_with_overrides(client: TestClient) -> None:
     assert r.json()["id"] != original["id"]
 
 
+def test_rebuild_stores_dynamic_difficulty_flag(client: TestClient) -> None:
+    original = _create_job(client)
+    assert original["dynamic_difficulty"] is True  # default on
+    r = client.post(f"/jobs/{original['id']}/rebuild", json={"dynamic_difficulty": False})
+    assert r.status_code == 202
+    assert r.json()["dynamic_difficulty"] is False
+
+
 def test_rebuild_validates_tuning_length(client: TestClient) -> None:
     original = _create_job(client)
     r = client.post(f"/jobs/{original['id']}/rebuild", json={"tuning_midi": [40, 45]})

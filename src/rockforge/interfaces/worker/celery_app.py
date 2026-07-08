@@ -243,6 +243,7 @@ def generate_cdlc(job_id: str) -> None:
                         else None
                     ),
                     cover_art=cover_art,
+                    dynamic_difficulty=bool(params.get("dynamic_difficulty", True)),
                 )
                 result = gp_use_case.run(
                     spec=spec,
@@ -300,6 +301,7 @@ def generate_cdlc(job_id: str) -> None:
                     else None
                 ),
                 cover_art=cover_art,
+                dynamic_difficulty=bool(params.get("dynamic_difficulty", True)),
                 on_stage=on_stage,
             )
             job.status = JobStatus.COMPLETED

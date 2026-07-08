@@ -150,6 +150,7 @@ class JobOut(BaseModel):
     lead_in_s: float = 0.0
     tempo_scale: float
     import_mutes: bool
+    dynamic_difficulty: bool = True
     error: str | None
     lyrics_status: str = "none"
     tone_detection_status: str = "none"
@@ -176,6 +177,8 @@ class RebuildIn(BaseModel):
     apply_to_all: bool = False
     # GP: when False, palm mute / slap / pop / tap are stripped (plain notes).
     import_mutes: bool | None = None
+    # When False, the native PSARC's SNG is a single full-chart level (no DD).
+    dynamic_difficulty: bool | None = None
     # Edited per-word lyrics from the in-app lyrics editor. When set (even to an
     # empty list), replaces params["lyrics_events"] and clears lyrics_status so
     # the next build uses the edited lyrics. None leaves existing lyrics alone.
@@ -345,6 +348,7 @@ def _to_out(job: Job) -> JobOut:
         lead_in_s=lead_in_s,
         tempo_scale=tempo_scale,
         import_mutes=bool((job.params or {}).get("import_mute_techniques", True)),
+        dynamic_difficulty=bool((job.params or {}).get("dynamic_difficulty", True)),
         error=job.error,
         lyrics_status=str((job.params or {}).get("lyrics_status", "none")),
         tone_detection_status=str(
@@ -871,6 +875,8 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
                     target["sync_anchor_stages"] = stages
         if payload.import_mutes is not None:
             params["import_mute_techniques"] = payload.import_mutes
+        if payload.dynamic_difficulty is not None:
+            params["dynamic_difficulty"] = payload.dynamic_difficulty
         if payload.lyrics_events is not None:
             params["lyrics_events"] = [e.model_dump() for e in payload.lyrics_events]
             params.pop("lyrics_status", None)

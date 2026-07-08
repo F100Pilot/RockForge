@@ -153,6 +153,9 @@ class GpJobSpec:
     # Optional cover-art image (jpg/png), copied into the bundle and recorded
     # in rockforge_project.json; see Packager.package's cover_art parameter.
     cover_art: Path | None = None
+    # When False, the native PSARC's SNG is built with a single full-chart level
+    # (no Dynamic Difficulty) — a safety valve for songs where DD misbehaves.
+    dynamic_difficulty: bool = True
 
     def sync_for(self, kind: ArrangementKind) -> ArrangementSync:
         """Resolve the tempo/drift overrides for one arrangement, falling back
@@ -451,6 +454,7 @@ class GenerateFromGpUseCase:
             workdir / "bundle",
             vocals=vocals or None,
             cover_art=spec.cover_art,
+            dynamic_difficulty=spec.dynamic_difficulty,
         )
         if packaging.wem_path is None:
             warnings.append(

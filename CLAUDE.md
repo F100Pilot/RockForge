@@ -612,6 +612,12 @@ defects):
   simplified DDC, NOT the full musical phrase-leveling a retail DDC pass does; the
   in-game difficulty slider therefore spans a shorter range than a retail song's.
   The trustworthy full-DD path stays the DLC Builder bundle (it runs a real DDC).
+  A section-less GP is auto-segmented into ~13 s phrases (`_default_sections`) so
+  DD still ramps per-phrase, and within a phrase the shown notes are spread across
+  its timeline (`_spread_order`) rather than clustered at its start. **DD is
+  toggleable per song** (`GpJobSpec.dynamic_difficulty` / `RebuildIn`, the "DD"
+  checkbox): off ⇒ a single full-chart level (`from_arrangement(...,
+  dynamic_difficulty=False)`), a safety valve when DD misbehaves on a song.
 - **ChordNotesId = -1 for simple chords**: only chords with per-string
   bend/slide/vibrato get a ChordNotes entry — exactly what DLC Builder/EOF do.
 - **Fingerprints2 (arpeggio) empty**: the domain has no arpeggio marking.

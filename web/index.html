@@ -378,6 +378,7 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
         <span id="tuningInputs"></span>
         <label class="check"><input type="checkbox" id="splitChk" checked> Lead/Rhythm (exp.)</label>
         <label class="check"><input type="checkbox" id="muteChk" checked> Palm mute / slap / tap</label>
+        <label class="check" title="Desliga a dificuldade dinâmica no PSARC nativo — uma única dificuldade com todas as notas. Útil se o DD estiver a dar problemas."><input type="checkbox" id="ddChk" checked> DD (dificuldade dinâmica)</label>
       </form>
 
       <!-- Section tabs -->
@@ -1272,6 +1273,7 @@ async function selectJob(id, { poll = false, force = false } = {}) {
   loadCoverArt(j);
 
   document.getElementById('muteChk').checked = j.import_mutes !== false;
+  document.getElementById('ddChk').checked = j.dynamic_difficulty !== false;
   if (j.status === 'completed' && j.bundle_available) {
     // Load arrangements (heavy: decodes the full recording, resets the audio
     // <src>) only ONCE per job. Re-running it on every status poll would reset
@@ -1694,6 +1696,7 @@ async function applyAll() {
       sync_anchors: syncAnchors.length ? syncAnchors : null,
       apply_to_all: applyToAll,
       import_mutes: document.getElementById('muteChk').checked,
+      dynamic_difficulty: document.getElementById('ddChk').checked,
       lyrics_events: lyricsEvents.length ? serializeLyrics() : null,
       // Send the FULL current tone state for GP jobs (even when empty) so that
       // clearing tones/changes actually persists — null would mean "keep the
