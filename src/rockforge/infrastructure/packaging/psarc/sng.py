@@ -392,11 +392,11 @@ def _note_mask(n: TabNote, is_chord: bool = False, is_double_stop: bool = False)
     mask = 0
     for tech in n.techniques:
         mask |= TECHNIQUE_TO_MASK.get(tech, 0)
-    # Bends are NOT emitted in the SNG — both working references (a real CDLC and
-    # a DLC Builder build of our XML) carry ZERO bends, and our single-point bend
-    # curve is a degenerate pitch ramp that crashed the game at the first bent
-    # chord. The note still plays; it just isn't marked/required as a bend.
-    mask &= ~NOTE_MASK_BEND
+    # Key the BEND bit off the actual bend amount, not only Technique.BEND — the
+    # bend curve (bend_data) and maxBend are emitted from bend_semitones, so the
+    # mask must agree or the game reads a bend note with no curve.
+    if n.bend_semitones > 0:
+        mask |= NOTE_MASK_BEND
     if n.sustain > 0:
         mask |= NOTE_MASK_SUSTAIN
     if n.fret == 0:
@@ -408,6 +408,25 @@ def _note_mask(n: TabNote, is_chord: bool = False, is_double_stop: bool = False)
     if is_double_stop:
         mask |= NOTE_MASK_DOUBLESTOP
     return mask
+
+
+def _bend_points(n: TabNote) -> list[SngBendData32]:
+    """A well-formed bend curve for a note with a peak bend amount.
+
+    Rocksmith interpolates pitch BETWEEN bend points, so a lone peak point (the
+    old emission — one point at the note's own time) is a degenerate ramp with no
+    start anchor: it corrupted the note-highway geometry and crashed the game at
+    the first bent chord. Emit two points instead — the picked, still-unbent
+    attack (step 0) and the peak (step = bend in semitones) — inside the note's
+    sustain window so the pitch ramps up as drawn.
+    """
+    if n.bend_semitones <= 0:
+        return []
+    ramp = n.sustain if n.sustain > 0.05 else 0.1
+    return [
+        SngBendData32(time=n.time, step=0.0),
+        SngBendData32(time=n.time + ramp, step=n.bend_semitones),
+    ]
 
 
 def _section_end_times(sections: list[Section], song_length: float) -> list[float]:
@@ -784,7 +803,7 @@ def from_arrangement(
 
     for gi, g in enumerate(chord_groups):
         has_techniques = any(
-            n.techniques or n.slide_to_fret is not None
+            n.techniques or n.bend_semitones > 0 or n.slide_to_fret is not None
             for n in g
         )
         if not has_techniques:
@@ -803,9 +822,8 @@ def from_arrangement(
             # single note inside a chord, drawing a corrupt vertical bar on the
             # highway and crashing mid-riff.
             cn.note_mask[n.string] = _note_mask(n) & ~NOTE_MASK_SINGLE
-            # Bends are NOT emitted (bend_data stays empty) — see _note_mask: both
-            # working references carry ZERO bends and our single-point curve crashed
-            # the game at the first bent chord.
+            if n.bend_semitones > 0:
+                cn.bend_data[n.string] = _bend_points(n)
             if n.slide_to_fret is not None:
                 cn.slide_to[n.string] = n.slide_to_fret
             if Technique.VIBRATO in n.techniques:
@@ -853,7 +871,7 @@ def from_arrangement(
             string=sn.string,
             fret=sn.fret,
             sustain=sn.sustain,
-            bend=0.0,
+            bend=sn.bend_semitones,
             mask=mask,
             anchor_fret=a_fret,
             anchor_width=a_width,
@@ -864,7 +882,7 @@ def from_arrangement(
             pluck=1 if Technique.POP in sn.techniques else 0,
             tap=1 if Technique.TAP in sn.techniques else 0,
             vibrato=80 if Technique.VIBRATO in sn.techniques else 0,
-            bend_data=[],
+            bend_data=_bend_points(sn),
         ))
 
     # Chord notes
@@ -878,12 +896,10 @@ def from_arrangement(
             mask |= NOTE_MASK_DOUBLESTOP
         if cn_id >= 0:
             mask |= NOTE_MASK_CHORDNOTES
-        # Mirror techniques from individual notes onto chord mask (never BEND —
-        # bends are not emitted; see _note_mask).
+        # Mirror techniques from individual notes onto chord mask
         for n in g:
             for tech in n.techniques:
                 mask |= TECHNIQUE_TO_MASK.get(tech, 0)
-        mask &= ~NOTE_MASK_BEND
         if any(n.sustain > 0 for n in g):
             mask |= NOTE_MASK_SUSTAIN
         mask |= NOTE_MASK_STRUM
@@ -894,7 +910,7 @@ def from_arrangement(
             string=-1,
             fret=-1,
             sustain=max(n.sustain for n in g),
-            bend=0.0,
+            bend=max(n.bend_semitones for n in g),
             mask=mask,
             anchor_fret=a_fret,
             anchor_width=a_width,
