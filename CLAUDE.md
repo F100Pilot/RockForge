@@ -651,6 +651,15 @@ emitted so the native PSARC matches the retail layout file-for-file:
   and the `song_<key>_preview.bnk` + its `.wem` alongside the main bank;
 - the container's TOC entry offsets are **absolute** from the file start
   (`container.py`), as retail expects — not block-section-relative;
+- **a partial uncompressed block stores its real size in the block table, not 0**
+  (`container.py`, `_compress_block`). Rocksmith reserves `zlength == 0` for a
+  *full* `block_size` block (65536, which wraps the 2-byte field to 0); writing 0
+  for a *partial* raw block (e.g. the 6-byte `appid.appid`) made the game read it
+  as a full 65536-byte block, so the appid came back corrupt and the song was
+  silently dropped from the list **even with the right appid value**. Byte-diffing
+  a working DLC Builder PSARC (stores `appid.appid` with `zlength = 6`) and the
+  toolkit's re-pack of our own output (which rewrites exactly this) isolated it.
+  Guarded by `test_partial_uncompressed_block_zlength_is_its_size_not_zero`;
 - `toolkit.version`'s **`Toolkit version:` line must be a numeric
   RocksmithToolkitLib version** (`2.9.2.1-5df928a5`, `manifest.TOOLKIT_VERSION`).
   The Rocksmith CDLC loader patch (the `D3DX9_42.dll` proxy that disables the DLC
