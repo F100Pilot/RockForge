@@ -100,6 +100,9 @@ _MAX_ANCHOR_SPAN = 5
 # stop lower on purpose — a "simplified DDC": graduated phrases and correct hero
 # triples, no NLinkedDifficulty linkage). Keeps the SNG small and the risk low.
 _DD_LEVEL_CAP = 11
+# Target phrase length (seconds) when auto-segmenting a section-less song, so DD
+# ramps per-phrase as the player progresses instead of over the whole song at once.
+_DEFAULT_PHRASE_S = 13.0
 _BEND_DATA_COUNT = 32  # fixed-size bend array per string in ChordNotes
 
 
@@ -412,13 +415,17 @@ def _find_phrase_iteration(phrase_iters: list[SngPhraseIteration], time: float) 
 
 
 def _default_sections(arrangement: Arrangement, song_length: float) -> list[Section]:
-    """A minimal COUNT/riff/END timeline when the arrangement has no sections.
+    """A COUNT / riff… / END timeline when the arrangement has no sections.
 
     Rocksmith drives playback off phrase iterations and ends the song at the
     LAST one; an SNG with zero phrases loads the fretboard but shows no notes and
-    then crashes. Mirrors the XML writer's phrase structure (writer.py): a count
-    phrase at the first beat, the body from the first note, and an END phrase at
-    the song's end. Times are kept strictly increasing so each phrase is real.
+    then crashes. But a SINGLE body phrase spanning the whole song gives a poor
+    Dynamic Difficulty — the whole song ramps as one unit. A real DDC
+    auto-segments a section-less song into many musical phrases (the DLC Builder
+    made 11 for a 215 s song), so DD ramps as the player progresses. We mirror
+    that: a COUNT phrase, then a new "riff" phrase every ~``_DEFAULT_PHRASE_S``
+    seconds aligned to a measure downbeat, then an END phrase. Times stay strictly
+    increasing so each phrase is real.
     """
     beats = arrangement.tempo_map.beats
     start = beats[0].time if beats else 0.0
@@ -434,6 +441,13 @@ def _default_sections(arrangement: Arrangement, song_length: float) -> list[Sect
     secs = [Section(name="COUNT", number=1, start_time=start)]
     if body > start:
         secs.append(Section(name="riff", number=1, start_time=body))
+        # Segment the body into ~_DEFAULT_PHRASE_S phrases at measure downbeats.
+        downbeats = [b.time for b in beats if b.measure >= 0 and body < b.time < end_time]
+        last_cut = body
+        for t in downbeats:
+            if t - last_cut >= _DEFAULT_PHRASE_S and end_time - t >= _DEFAULT_PHRASE_S / 2:
+                secs.append(Section(name="riff", number=len(secs), start_time=t))
+                last_cut = t
     if end_time > secs[-1].start_time:
         secs.append(Section(name="END", number=1, start_time=end_time))
     return secs
