@@ -532,6 +532,32 @@ def test_anchors_do_not_cross_phrase_iteration_boundaries() -> None:
         assert any(abs(a.start_time - pi.start_time) < 1e-6 for a in top.anchors)
 
 
+def test_anchor_does_not_sit_below_a_chord_run() -> None:
+    # A fret 3-5 chord run followed by a lone low (fret 1) note must NOT be folded
+    # into one wide fret 1-5 anchor — the chords would then sit two frets below
+    # where they're played ("anchor shows fret 1 for a 2-5 chord" glitch). The
+    # chord run gets its own anchor that does not extend below fret 3.
+    beats = [Beat(time=i * 0.5, measure=i // 4 + 1 if i % 4 == 0 else -1) for i in range(24)]
+    notes = []
+    for i in range(8):  # a 3-5 power-chord run
+        t = round(i * 0.5, 3)
+        notes.append(TabNote(string=4, fret=3, time=t, sustain=0.3))
+        notes.append(TabNote(string=3, fret=5, time=t, sustain=0.3))
+    notes.append(TabNote(string=5, fret=1, time=4.5, sustain=0.3))  # lone low note
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=8.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=tuple(beats), average_bpm=120.0),
+        notes=notes,
+    )
+    anchors = from_arrangement(arr).arrangements[-1].anchors
+    # The anchor active while the 3-5 chords play (t≈1.0) must not start at fret 1.
+    active = [a for a in anchors if a.start_time <= 1.0 < a.end_time]
+    assert active and active[0].fret >= 2
+    assert all(a.width <= 4 for a in anchors)
+
+
 def test_slide_notes_produce_anchor_extensions() -> None:
     arr = Arrangement(
         kind=ArrangementKind.LEAD,

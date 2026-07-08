@@ -89,10 +89,13 @@ TECHNIQUE_BITS = TECHNIQUE_TO_MASK
 _NAME_LEN = 32
 _LYRIC_LEN = 48
 _CHORD_EPSILON_S = 0.03
-# Max frets a single anchor spans before a new one is emitted. Keeping the
-# fret-hand window stable (a comfortable position) stops the fretboard view from
-# thrashing note-to-note and hiding low notes as they scroll in.
-_MAX_ANCHOR_SPAN = 5
+# Max frets a MERGED anchor spans before a new one is emitted. 4 = the standard
+# Rocksmith fret-hand window; a wider (5) merge let a stray low note (e.g. a
+# lone fret-1) get folded in with a fret 3-5 chord run, so the whole anchor sat
+# a fret or two below the notes actually played (the "anchor shows fret 1 for a
+# 2-5 chord" glitch). A single chord that genuinely spans more than 4 frets still
+# keeps its own full width — this cap only limits merging neighbours together.
+_MAX_ANCHOR_SPAN = 4
 # Dynamic Difficulty ceiling: the most difficulty levels a single phrase can
 # ramp its notes in over (0..CAP). A phrase's ceiling scales with the note count
 # of its busiest iteration, so a dense phrase reaches a higher difficulty than a
