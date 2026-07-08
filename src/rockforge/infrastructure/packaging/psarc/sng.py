@@ -619,6 +619,18 @@ def from_arrangement(
     # --- ChordNotes (for chords with per-string techniques) ---
     chord_notes_list: list[SngChordNotes] = []
     chord_notes_map: dict[int, int] = {}  # group_index -> chord_notes_id
+    # Identical entries are deduplicated by content, as retail does (a decoded
+    # CDLC carries 11 entries for ~2200 chords).
+    cn_ids: dict[tuple[object, ...], int] = {}
+
+    def _cn_key(cn: SngChordNotes) -> tuple[object, ...]:
+        return (
+            tuple(cn.note_mask),
+            tuple(tuple((b.time, b.step) for b in s) for s in cn.bend_data),
+            tuple(cn.slide_to),
+            tuple(cn.slide_unpitch_to),
+            tuple(cn.vibrato),
+        )
 
     for gi, g in enumerate(chord_groups):
         has_techniques = any(
@@ -635,7 +647,12 @@ def from_arrangement(
             vibrato=[0] * 6,
         )
         for n in g:
-            cn.note_mask[n.string] = _note_mask(n)
+            # Technique bits only — NEVER the SINGLE note-kind bit. A decoded
+            # retail CDLC carries e.g. OPEN|PALMMUTE|SUSTAIN per string; our
+            # extra SINGLE (0x800000) told the game each string was a standalone
+            # single note inside a chord, drawing a corrupt vertical bar on the
+            # highway and crashing mid-riff.
+            cn.note_mask[n.string] = _note_mask(n) & ~NOTE_MASK_SINGLE
             if n.bend_semitones > 0:
                 cn.bend_data[n.string] = [
                     SngBendData32(time=0.0, step=n.bend_semitones)
@@ -644,8 +661,11 @@ def from_arrangement(
                 cn.slide_to[n.string] = n.slide_to_fret
             if Technique.VIBRATO in n.techniques:
                 cn.vibrato[n.string] = 80
-        chord_notes_map[gi] = len(chord_notes_list)
-        chord_notes_list.append(cn)
+        cn_key = _cn_key(cn)
+        if cn_key not in cn_ids:
+            cn_ids[cn_key] = len(chord_notes_list)
+            chord_notes_list.append(cn)
+        chord_notes_map[gi] = cn_ids[cn_key]
 
     # --- Build anchors ---
     # An anchor is the fret-hand position + the visible fret window; it is active
