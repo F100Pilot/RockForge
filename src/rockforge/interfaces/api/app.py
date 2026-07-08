@@ -311,6 +311,15 @@ class YouTubeJobIn(BaseModel):
     transcribe_lyrics: bool = False
 
 
+class MetadataIn(BaseModel):
+    """Editable song identity for an existing job (title/artist/album/year)."""
+
+    title: str
+    artist: str
+    album: str = ""
+    year: int | None = None
+
+
 def _to_out(job: Job) -> JobOut:
     raw_offset = (job.params or {}).get("offset_s")
     offset_s = float(raw_offset) if isinstance(raw_offset, (int, float, str)) else 0.0
@@ -1396,6 +1405,30 @@ def get_job(job_id: str) -> JobOut:
         job = session.get(Job, job_id)
         if job is None:
             raise HTTPException(404, "job not found")
+        return _to_out(job)
+
+
+@app.patch("/jobs/{job_id}/metadata", response_model=JobOut)
+def update_metadata(job_id: str, payload: MetadataIn) -> JobOut:
+    """Edit the song's identity (title/artist/album/year) after the job exists.
+
+    Updates the job columns directly; the worker reads these when building, so the
+    change lands in the bundle/PSARC on the next build/rebuild (like the cover
+    art). Does not fork or re-run the job.
+    """
+    title = payload.title.strip()
+    artist = payload.artist.strip()
+    if not title or not artist:
+        raise HTTPException(422, "title and artist are required")
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+        job.title = title
+        job.artist = artist
+        job.album = payload.album.strip()
+        job.year = payload.year
+        session.commit()
         return _to_out(job)
 
 
