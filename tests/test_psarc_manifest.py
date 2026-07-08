@@ -75,6 +75,33 @@ def test_manifest_reports_note_count_and_phrase_structure() -> None:
     assert len(attrs["Phrases"]) >= 1
 
 
+def test_manifest_reports_nonzero_song_difficulty() -> None:
+    # SongDifficulty / EasyMastery / MediumMastery feed the game's skill-based DD
+    # starting level. Zero (the old value) made every song start from difficulty 0
+    # regardless of the player's history.
+    from rockforge.domain.music import Beat, TabNote
+
+    arrangement = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=40.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(
+            beats=tuple(Beat(time=i * 0.5, measure=i // 4 + 1 if i % 4 == 0 else -1)
+                        for i in range(80)),
+            average_bpm=120.0,
+        ),
+        notes=[TabNote(string=i % 6, fret=(i % 7) + 1, time=round(i * 0.5, 3), sustain=0.2)
+               for i in range(60)],
+    )
+    attrs = list(
+        build_arrangement_manifest(arrangement, "MySong", "Lead")["Entries"].values()
+    )[0]["Attributes"]
+    assert 0 < attrs["SongDifficulty"] <= 0.95
+    assert attrs["SongDiffHard"] == attrs["SongDifficulty"]
+    assert 0 < attrs["EasyMastery"] <= 1.0
+    assert attrs["MediumMastery"] >= attrs["EasyMastery"]
+
+
 def test_build_manifest_files_packs_and_round_trips() -> None:
     files = build_manifest_files(
         [

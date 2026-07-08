@@ -191,6 +191,29 @@ def arrangement_stats(
     }
 
 
+def _difficulty_fields(stats: dict[str, object], song_length: float) -> dict[str, float]:
+    """The song-difficulty / mastery fields the game reads to pick a NEW song's
+    starting DD level (crossed with the player's profile). Leaving them 0 made
+    every song start from difficulty 0 regardless of skill. ``SongDifficulty`` is
+    a normalised note-density estimate (a real DDC computes a richer value, but a
+    non-zero density is what unlocks the skill-based start); ``EasyMastery`` /
+    ``MediumMastery`` are the note-count ratios a real DLC Builder manifest
+    carries (verified: NotesEasy/Hard and NotesMedium/Hard)."""
+    hard = int(stats["note_count"])  # type: ignore[call-overload]
+    easy = int(stats["easy_count"])  # type: ignore[call-overload]
+    medium = int(stats["medium_count"])  # type: ignore[call-overload]
+    dur = song_length if song_length > 0 else 1.0
+    song_diff = round(min(0.95, (hard / dur) / 10.0), 6)
+    return {
+        "SongDifficulty": song_diff,
+        "SongDiffEasy": song_diff,
+        "SongDiffMed": song_diff,
+        "SongDiffHard": song_diff,
+        "EasyMastery": round(easy / hard, 6) if hard else 0.0,
+        "MediumMastery": round(medium / hard, 6) if hard else 0.0,
+    }
+
+
 def build_arrangement_manifest(
     arrangement: Arrangement,
     song_key: str,
@@ -209,6 +232,7 @@ def build_arrangement_manifest(
     note_count = int(stats["note_count"])  # type: ignore[call-overload]
     easy = int(stats["easy_count"])  # type: ignore[call-overload]
     medium = int(stats["medium_count"])  # type: ignore[call-overload]
+    diff = _difficulty_fields(stats, meta.song_length)
     attributes: dict[str, object] = {
         "AlbumName": meta.album,
         "AlbumNameSort": meta.album,
@@ -227,7 +251,7 @@ def build_arrangement_manifest(
         "DLCKey": song_key,
         "DNA_Chords": 0, "DNA_Riffs": 0, "DNA_Solo": 0,
         "DynamicVisualDensity": _DYNAMIC_VISUAL_DENSITY,
-        "EasyMastery": 0, "MediumMastery": 0,
+        "EasyMastery": diff["EasyMastery"], "MediumMastery": diff["MediumMastery"],
         "FullName": f"{song_key}_{_ARR_NAME[arrangement.kind]}",
         "LeaderboardChallengeRating": 0,
         "ManifestUrn": f"urn:database:json-db:{asset}",
@@ -248,7 +272,8 @@ def build_arrangement_manifest(
         "SongAsset": f"urn:application:musicgame-song:{asset}",
         "SongAverageTempo": arrangement.tempo_map.average_bpm,
         "SongBank": f"song_{key_lower}.bnk",
-        "SongDiffEasy": 0, "SongDiffMed": 0, "SongDiffHard": 0, "SongDifficulty": 0,
+        "SongDiffEasy": diff["SongDiffEasy"], "SongDiffMed": diff["SongDiffMed"],
+        "SongDiffHard": diff["SongDiffHard"], "SongDifficulty": diff["SongDifficulty"],
         "SongEvent": f"Play_{song_key}",
         "SongKey": song_key,
         "SongLength": meta.song_length,
@@ -285,6 +310,7 @@ def _header_entry(
     note_count = int(stats["note_count"])  # type: ignore[call-overload]
     easy = int(stats["easy_count"])  # type: ignore[call-overload]
     medium = int(stats["medium_count"])  # type: ignore[call-overload]
+    diff = _difficulty_fields(stats, meta.song_length)
     attrs: dict[str, object] = {
         "AlbumName": meta.album,
         "AlbumNameSort": meta.album,
@@ -295,7 +321,7 @@ def _header_entry(
         "DLC": True,
         "DLCKey": song_key,
         "DNA_Chords": 0, "DNA_Riffs": 0, "DNA_Solo": 0,
-        "EasyMastery": 0, "MediumMastery": 0,
+        "EasyMastery": diff["EasyMastery"], "MediumMastery": diff["MediumMastery"],
         "LeaderboardChallengeRating": 0,
         "ManifestUrn": f"urn:database:json-db:{asset}",
         "MasterID_RDV": _master_id(pid),
@@ -305,7 +331,8 @@ def _header_entry(
         "RouteMask": _ROUTE_MASK[arrangement.kind],
         "Shipping": True,
         "SKU": "RS2",
-        "SongDiffEasy": 0, "SongDiffMed": 0, "SongDiffHard": 0, "SongDifficulty": 0,
+        "SongDiffEasy": diff["SongDiffEasy"], "SongDiffMed": diff["SongDiffMed"],
+        "SongDiffHard": diff["SongDiffHard"], "SongDifficulty": diff["SongDifficulty"],
         "SongKey": song_key,
         "SongLength": meta.song_length,
         "SongName": meta.title,
