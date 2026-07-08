@@ -138,23 +138,29 @@ def _note_attrs(n: TabNote) -> dict[str, str]:
     return _drop_defaults(attrs, {"time", "string", "fret", "sustain"})
 
 
+def _bend_time(n: TabNote) -> float:
+    """When a simple bend reaches its peak: one third through the sustain, as
+    Editor on Fire exports it (rs.c). Offset from the attack — a bendValue AT the
+    note's exact time reads as a prebend and misbehaves. Floored for a staccato
+    note so the point still lands after the attack."""
+    return n.time + (n.sustain / 3.0 if n.sustain > 0.03 else 0.1)
+
+
 def _append_note_el(parent: ET.Element, tag: str, n: TabNote) -> ET.Element:
     """Create a <note>/<chordNote> and, for a bend, its <bendValues> curve.
 
     The `bend="N"` attribute alone is only the peak; Rocksmith/DLC Builder read
-    the actual pitch ramp from <bendValues>. Emitting the flag WITHOUT the curve
-    (the previous behaviour) made DLC Builder build the arrangement with no real
-    bend at all — the half-step bends in the chart simply disappeared. Emit a
-    two-point curve: the picked, unbent attack (step 0) then the peak, inside the
-    note's sustain window, so the bend plays as drawn.
+    the actual pitch from <bendValues>. Emitting the flag WITHOUT the curve (the
+    previous behaviour) made DLC Builder build the arrangement with no real bend
+    at all — the half-step bends in the chart simply disappeared. Match EOF: a
+    single bend point a third of the way through the sustain, at the peak strength
+    in half-steps (the game ramps the pitch up to it from the attack).
     """
     el = ET.SubElement(parent, tag, _note_attrs(n))
     if Technique.BEND in n.techniques and n.bend_semitones > 0:
-        ramp = n.sustain if n.sustain > 0.05 else 0.1
-        bends = ET.SubElement(el, "bendValues", count="2")
-        ET.SubElement(bends, "bendValue", time=_fmt(n.time), step=_fmt(0.0))
+        bends = ET.SubElement(el, "bendValues", count="1")
         ET.SubElement(
-            bends, "bendValue", time=_fmt(n.time + ramp), step=_fmt(n.bend_semitones)
+            bends, "bendValue", time=_fmt(_bend_time(n)), step=_fmt(n.bend_semitones)
         )
     return el
 

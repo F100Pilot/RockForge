@@ -453,11 +453,11 @@ def test_gp_sections_are_bracketed_with_count_and_end_and_links() -> None:
     assert all(p.phrase_iteration_links >= 1 for p in model.phrases)
 
 
-def test_bend_is_a_two_point_ramp_not_a_single_point() -> None:
-    # A bend needs a CURVE, not one point: Rocksmith interpolates pitch between
-    # bend points, and a lone peak point (the old emission) is a degenerate ramp
-    # with no start anchor — it crashed the game at the first bent chord. Emit two
-    # points: the still-unbent attack (step 0) at the note time, then the peak.
+def test_bend_point_is_offset_into_the_sustain_not_at_the_attack() -> None:
+    # Match Editor on Fire: a single bend point one third of the way through the
+    # sustain, at the peak strength (half-steps). A point at the note's exact
+    # attack time (the first attempt) coincided with the note and crashed the game
+    # at the first bent chord.
     beats = tuple(Beat(time=i * 0.5, measure=1 if i == 0 else -1) for i in range(20))
     arr = Arrangement(
         kind=ArrangementKind.LEAD,
@@ -465,23 +465,22 @@ def test_bend_is_a_two_point_ramp_not_a_single_point() -> None:
         tuning=Tuning(),
         tempo_map=TempoMap(beats=beats, average_bpm=120.0),
         notes=[
-            TabNote(string=0, fret=5, time=3.0, sustain=0.5, bend_semitones=1.0),  # single
-            TabNote(string=1, fret=5, time=6.0, sustain=0.5, bend_semitones=1.0),  # chord…
-            TabNote(string=2, fret=7, time=6.0, sustain=0.5),                      # …mate
+            TabNote(string=0, fret=5, time=3.0, sustain=0.6, bend_semitones=1.0),  # single
+            TabNote(string=1, fret=5, time=6.0, sustain=0.6, bend_semitones=1.0),  # chord…
+            TabNote(string=2, fret=7, time=6.0, sustain=0.6),                      # …mate
         ],
     )
     model = from_arrangement(arr)
     top = model.arrangements[-1]
     single = next(n for n in top.notes if n.string == 0)
-    assert len(single.bend_data) == 2
-    assert single.bend_data[0].time == 3.0 and single.bend_data[0].step == 0.0
-    assert single.bend_data[1].step == 1.0 and single.bend_data[1].time > 3.0
+    assert len(single.bend_data) == 1
+    assert single.bend_data[0].step == 1.0
+    assert single.bend_data[0].time > 3.0  # offset into the sustain, not the attack
     chord = next(n for n in top.notes if n.chord_id >= 0)
     assert chord.chord_notes_id >= 0
     cn = model.chord_notes[chord.chord_notes_id]
-    assert len(cn.bend_data[1]) == 2
-    assert cn.bend_data[1][0].time == 6.0 and cn.bend_data[1][0].step == 0.0
-    assert cn.bend_data[1][1].step == 1.0
+    assert len(cn.bend_data[1]) == 1
+    assert cn.bend_data[1][0].step == 1.0 and cn.bend_data[1][0].time > 6.0
 
 
 def test_plain_notes_have_no_slide() -> None:
