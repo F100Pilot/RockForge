@@ -119,7 +119,7 @@ def test_anchors_generated_from_notes() -> None:
     assert level.anchors[0].width >= 4
 
 
-def test_chords_produce_templates_and_fingerprints() -> None:
+def test_chords_produce_templates_and_no_fingerprints() -> None:
     arr = Arrangement(
         kind=ArrangementKind.LEAD,
         metadata=SongMetadata(title="Song", artist="A", song_length=5.0),
@@ -139,8 +139,11 @@ def test_chords_produce_templates_and_fingerprints() -> None:
     assert model.chord_templates[0].frets[:3] == (2, 2, 2)
 
     level = model.arrangements[-1]
-    assert len(level.fingerprints1) == 1
-    assert level.fingerprints1[0].chord_id == 0
+    # No handshapes: both working references (a real CDLC SNG and a DLC Builder
+    # build of our XML) ship zero fingerprints; our per-chord ones crashed the
+    # game at a dense octave riff. Chords render via template + CHORD/STRUM.
+    assert level.fingerprints1 == []
+    assert level.notes[0].fingerprint_id == (-1, -1)
 
     # The note entry should be a chord
     chord_note = level.notes[0]
@@ -381,11 +384,12 @@ def test_dd_hero_triples_and_density_graduated_ceilings() -> None:
     assert model.metadata.max_difficulty == max(by_name.values())
 
 
-def test_dd_levels_rebuild_handshapes_and_slide_extensions_per_level() -> None:
-    # A handshape (fingerprint) or slide anchor-extension pointing at a chord/note
-    # a low DD level dropped crashes the game on the first pass through the
-    # section. Each level must carry ONLY the handshapes its own notes reference
-    # (remapped ids) and only its own notes' slide extensions.
+def test_dd_levels_have_no_handshapes_and_per_level_slide_extensions() -> None:
+    # Fingerprints (handshapes) are not emitted at all — both working references
+    # (a real CDLC SNG and a DLC Builder build of our XML) ship zero on every
+    # level, and our per-chord handshapes crashed the game at a dense octave
+    # riff. Slide anchor-extensions ARE per level: an extension pointing at a
+    # note the level dropped crashes the game on the first pass.
     beats = [Beat(time=i * 0.5, measure=i // 4 + 1 if i % 4 == 0 else -1) for i in range(64)]
     notes = []
     # A dense double-stop riff (chords on every 8th) + a sliding single note.
@@ -404,12 +408,10 @@ def test_dd_levels_rebuild_handshapes_and_slide_extensions_per_level() -> None:
     model = from_arrangement(arr)
     assert len(model.arrangements) >= 2
     top = model.arrangements[-1]
-    assert len(top.fingerprints1) == 32  # every chord handshape present at the top
     assert len(top.anchor_extensions) == 1  # the slide
     for lvl in model.arrangements:
-        used = {n.fingerprint_id[0] for n in lvl.notes if n.fingerprint_id[0] >= 0}
-        # Every fingerprint id in range and every fingerprint actually referenced.
-        assert used == set(range(len(lvl.fingerprints1)))
+        assert lvl.fingerprints1 == [] and lvl.fingerprints2 == []
+        assert all(n.fingerprint_id == (-1, -1) for n in lvl.notes)
         # Every extension matches a sliding note present in THIS level.
         slide_ends = {
             round(n.time + n.sustain, 4)
@@ -417,8 +419,6 @@ def test_dd_levels_rebuild_handshapes_and_slide_extensions_per_level() -> None:
             if n.slide_to >= 0 or n.chord_notes_id >= 0
         }
         assert all(round(ae.beat_time, 4) in slide_ends for ae in lvl.anchor_extensions)
-    # Low levels drop chords — their handshape count must shrink with them.
-    assert len(model.arrangements[0].fingerprints1) < len(top.fingerprints1)
 
 
 def test_plain_notes_have_no_slide() -> None:
