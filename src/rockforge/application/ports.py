@@ -90,6 +90,7 @@ class Packager(Protocol):
         out_dir: Path,
         vocals: list[VocalEvent] | None = None,
         cover_art: Path | None = None,
+        dynamic_difficulty: bool = True,
     ) -> PackagingResult:
         """Write the arrangement bundle (and PSARC, if the backend can produce one).
 

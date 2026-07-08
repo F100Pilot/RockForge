@@ -97,7 +97,10 @@ class DlcBuilderPackager:
         out_dir: Path,
         vocals: list[VocalEvent] | None = None,
         cover_art: Path | None = None,
+        dynamic_difficulty: bool = True,
     ) -> PackagingResult:
+        # dynamic_difficulty is a native-SNG concern; the DLC Builder bundle runs
+        # its own DDC on import, so the flag is accepted but not used here.
         if not arrangements:
             raise PackagingError("no arrangements to package")
         out_dir.mkdir(parents=True, exist_ok=True)

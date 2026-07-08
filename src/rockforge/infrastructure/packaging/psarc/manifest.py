@@ -131,7 +131,9 @@ def _arrangement_properties(arrangement: Arrangement) -> dict[str, int]:
     }
 
 
-def arrangement_stats(arrangement: Arrangement) -> dict[str, object]:
+def arrangement_stats(
+    arrangement: Arrangement, *, dynamic_difficulty: bool = True
+) -> dict[str, object]:
     """Note count + phrase/iteration/section tables the song-list screen reads.
 
     Derived from the compiled SNG model so they match the actual chart (an
@@ -140,7 +142,7 @@ def arrangement_stats(arrangement: Arrangement) -> dict[str, object]:
     Easy/Medium counts come from the lower DD levels."""
     from rockforge.infrastructure.packaging.psarc import sng
 
-    model = sng.from_arrangement(arrangement)
+    model = sng.from_arrangement(arrangement, dynamic_difficulty=dynamic_difficulty)
     levels = model.arrangements
     note_count = len(levels[-1].notes) if levels else 0  # Hard = the full top level
     n = len(levels)
@@ -384,6 +386,7 @@ def build_manifest_files(
     include_vocals: bool = False,
     *,
     has_album_art: bool = False,
+    dynamic_difficulty: bool = True,
 ) -> dict[str, bytes]:
     """Build all ``manifests/`` files (+ ``toolkit.version`` and ``appid.appid``).
 
@@ -397,7 +400,7 @@ def build_manifest_files(
     files: dict[str, bytes] = {}
     headers: list[tuple[str, dict[str, object]]] = []
     for arrangement, name in arrangements:
-        stats = arrangement_stats(arrangement)
+        stats = arrangement_stats(arrangement, dynamic_difficulty=dynamic_difficulty)
         manifest = build_arrangement_manifest(
             arrangement, song_key, name, has_album_art=has_album_art, stats=stats
         )

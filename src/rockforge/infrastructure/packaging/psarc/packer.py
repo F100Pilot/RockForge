@@ -99,6 +99,7 @@ class NativePsarcPacker:
         out_dir: Path,
         vocals: list[VocalEvent] | None = None,
         cover_art: Path | None = None,
+        dynamic_difficulty: bool = True,
     ) -> PackagingResult:
         if not arrangements:
             raise PackagingError("no arrangements to package")
@@ -149,7 +150,7 @@ class NativePsarcPacker:
         try:
             psarc_path = self._build_psarc(
                 arrangements, audio, audio_dest, out_dir, vocals, cover_art_dest,
-                wem_path, song_key, key_lower, meta.song_length,
+                wem_path, song_key, key_lower, meta.song_length, dynamic_difficulty,
             )
         except Exception as exc:  # noqa: BLE001 — never let the .psarc sink the bundle
             psarc_error = f"{type(exc).__name__}: {exc}"
@@ -215,6 +216,7 @@ class NativePsarcPacker:
         song_key: str,
         key_lower: str,
         song_length: float,
+        dynamic_difficulty: bool = True,
     ) -> Path:
         """Assemble the native ``.psarc``. Raises on any failure (missing crypto,
         Wwise/ffmpeg, packing); the caller keeps the bundle regardless."""
@@ -227,6 +229,7 @@ class NativePsarcPacker:
             song_key,
             include_vocals=bool(vocals),
             has_album_art=True,
+            dynamic_difficulty=dynamic_difficulty,
         )
 
         # Game-enumeration assets — without these the song never lists.
@@ -255,7 +258,9 @@ class NativePsarcPacker:
             )
 
         for arr in arrangements:
-            payload = sng.write_sng(sng.from_arrangement(arr))
+            payload = sng.write_sng(
+                sng.from_arrangement(arr, dynamic_difficulty=dynamic_difficulty)
+            )
             asset = manifest.arrangement_asset_name(song_key, arr.kind)
             files[f"songs/bin/generic/{asset}.sng"] = pack_sng(payload)
 

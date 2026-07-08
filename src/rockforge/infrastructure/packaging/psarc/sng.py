@@ -536,9 +536,17 @@ def _build_level(
 
 
 def from_arrangement(
-    arrangement: Arrangement, vocals: list[VocalEvent] | None = None
+    arrangement: Arrangement,
+    vocals: list[VocalEvent] | None = None,
+    *,
+    dynamic_difficulty: bool = True,
 ) -> SngModel:
-    """Build the SNG model from a RockForge ``Arrangement``."""
+    """Build the SNG model from a RockForge ``Arrangement``.
+
+    With ``dynamic_difficulty=False`` a single level holding the full chart is
+    emitted (max_difficulty 0, no ramp) — a safety valve for songs where the
+    simplified DD misbehaves; the chart always plays at full density.
+    """
     song_length = arrangement.metadata.song_length
 
     # --- Beats ---
@@ -874,6 +882,9 @@ def from_arrangement(
     for pi_id, pi in enumerate(phrase_iterations):
         busiest[pi.phrase_id] = max(busiest[pi.phrase_id], len(per_iter_notes[pi_id]))
     phrase_max = [min(_DD_LEVEL_CAP, max(0, b - 1)) for b in busiest]
+    if not dynamic_difficulty:
+        # One full-chart level: every phrase saturates at difficulty 0.
+        phrase_max = [0] * len(phrases)
     song_max = max(phrase_max, default=0)
 
     def _level_notes(d: int) -> list[SngNote]:
