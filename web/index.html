@@ -710,6 +710,29 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
   </div>
 </div>
 
+<!-- ══════════ Edit song info modal ══════════ -->
+<div class="modal-overlay" id="metaOverlay" hidden>
+  <div class="modal modal-sm">
+    <button type="button" class="modal-close" id="metaClose">×</button>
+    <h2>Editar informação da música</h2>
+    <form id="metaForm" class="grid" style="margin-top:.5rem">
+      <div class="field" style="flex-basis:100%"><label>Título</label>
+        <input type="text" id="metaTitle" required></div>
+      <div class="field" style="flex-basis:100%"><label>Artista / Banda</label>
+        <input type="text" id="metaArtist" required></div>
+      <div class="field" style="flex-basis:100%"><label>Álbum</label>
+        <input type="text" id="metaAlbum"></div>
+      <div class="field"><label>Ano</label>
+        <input type="number" id="metaYear" min="1900" max="2100" style="width:6rem"></div>
+    </form>
+    <p class="meta" style="margin:.6rem 0 0">Aplica-se ao bundle/PSARC na próxima reconstrução.</p>
+    <div class="modal-actions">
+      <button type="button" class="secondary" id="metaCancel">Cancelar</button>
+      <button type="button" id="metaSave">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════ Info modal ══════════ -->
 <div class="modal-overlay" id="infoOverlay" hidden>
   <div class="modal modal-info">
@@ -1138,6 +1161,48 @@ document.getElementById('detailOverlay').addEventListener('click', e => {
   if (e.target.id === 'detailOverlay') closeDetail();
 });
 
+// ── Edit song info (title/artist/album/year) ──
+function openMetaEdit() {
+  if (!selectedJob) return;
+  document.getElementById('metaTitle').value = selectedJob.title || '';
+  document.getElementById('metaArtist').value = selectedJob.artist || '';
+  document.getElementById('metaAlbum').value = selectedJob.album || '';
+  document.getElementById('metaYear').value = selectedJob.year ?? '';
+  document.getElementById('metaOverlay').hidden = false;
+  document.getElementById('metaTitle').focus();
+}
+function closeMeta() { document.getElementById('metaOverlay').hidden = true; }
+document.getElementById('metaClose').onclick = closeMeta;
+document.getElementById('metaCancel').onclick = closeMeta;
+document.getElementById('metaOverlay').addEventListener('click', e => {
+  if (e.target.id === 'metaOverlay') closeMeta();
+});
+document.getElementById('metaSave').onclick = async () => {
+  if (!selectedJob) return;
+  const title = document.getElementById('metaTitle').value.trim();
+  const artist = document.getElementById('metaArtist').value.trim();
+  if (!title || !artist) { alert('Título e artista são obrigatórios.'); return; }
+  const yearRaw = document.getElementById('metaYear').value.trim();
+  const body = {
+    title, artist,
+    album: document.getElementById('metaAlbum').value.trim(),
+    year: yearRaw ? parseInt(yearRaw, 10) : null,
+  };
+  const r = await fetch(`/jobs/${selectedJob.id}/metadata`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  });
+  if (!r.ok) { alert('Erro ao guardar a informação.'); return; }
+  selectedJob = await r.json();
+  closeMeta();
+  // Refresh the header + the job list titles (no chart reload needed).
+  document.getElementById('detailHead').innerHTML =
+    `<strong>${esc(selectedJob.title)}</strong> — ${esc(selectedJob.artist)}
+     ${selectedJob.album ? `· ${esc(selectedJob.album)}` : ''} ${selectedJob.year ? `(${selectedJob.year})` : ''} ${badge(selectedJob.status)}
+     <button type="button" class="secondary" onclick="openMetaEdit()" title="Editar título, artista, álbum, ano" style="padding:.1rem .4rem;font-size:.75rem;margin-left:.4rem">✎ Editar info</button>
+     <span class="meta">notas: ${esc(JSON.stringify(selectedJob.note_counts))}</span>`;
+  refreshJobs();
+};
+
 async function refreshJobs() {
   const jobs = await (await fetch('/jobs')).json();
   const tb = document.querySelector('#jobsTable tbody');
@@ -1182,6 +1247,7 @@ async function selectJob(id, { poll = false, force = false } = {}) {
   document.getElementById('detailHead').innerHTML =
     `<strong>${esc(j.title)}</strong> — ${esc(j.artist)}
      ${j.album ? `· ${esc(j.album)}` : ''} ${j.year ? `(${j.year})` : ''} ${badge(j.status)}
+     <button type="button" class="secondary" onclick="openMetaEdit()" title="Editar título, artista, álbum, ano" style="padding:.1rem .4rem;font-size:.75rem;margin-left:.4rem">✎ Editar info</button>
      <span class="meta">notas: ${esc(JSON.stringify(j.note_counts))}</span>`;
 
   const bar = document.getElementById('stagesBar');

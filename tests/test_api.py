@@ -102,6 +102,33 @@ def _create_job(client: TestClient) -> dict:
     return r.json()
 
 
+def test_update_metadata_edits_song_identity(client: TestClient) -> None:
+    job = _create_job(client)
+    r = client.patch(
+        f"/jobs/{job['id']}/metadata",
+        json={"title": "New Title", "artist": "New Artist", "album": "New Album", "year": 2001},
+    )
+    assert r.status_code == 200
+    out = r.json()
+    assert out["title"] == "New Title"
+    assert out["artist"] == "New Artist"
+    assert out["album"] == "New Album"
+    assert out["year"] == 2001
+    # Persisted: a fresh GET reflects the change.
+    assert client.get(f"/jobs/{job['id']}").json()["title"] == "New Title"
+
+
+def test_update_metadata_requires_title_and_artist(client: TestClient) -> None:
+    job = _create_job(client)
+    r = client.patch(f"/jobs/{job['id']}/metadata", json={"title": "  ", "artist": "x"})
+    assert r.status_code == 422
+
+
+def test_update_metadata_unknown_job_404(client: TestClient) -> None:
+    r = client.patch("/jobs/nope/metadata", json={"title": "T", "artist": "A"})
+    assert r.status_code == 404
+
+
 def test_list_jobs_newest_first(client: TestClient) -> None:
     a = _create_job(client)
     b = _create_job(client)
