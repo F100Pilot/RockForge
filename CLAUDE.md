@@ -590,9 +590,15 @@ defects):
   notes scaled by `d` against that phrase's ceiling (`_level_notes`, ranked by
   `_note_tier` then time), so level 0 is the strongest beats and the top level is
   the full chart. `phrase_iterations[].difficulty` is the `(round(max/4),
-  round(max/2), max)` Easy/Medium/Hard hero triple. Anchors/fingerprints are
-  shared across levels (time-windows); only the note subset, per-iteration
-  linkage and counts differ (`_build_level`). The manifest reports
+  round(max/2), max)` Easy/Medium/Hard hero triple. Anchors are shared across
+  levels (fret-hand windows are valid at any density), but **handshapes
+  (fingerprints) and slide anchor-extensions are rebuilt per level from that
+  level's own notes**, with fingerprint ids remapped into each level's filtered
+  list (`_build_level`): a handshape or slide extension pointing at a chord/note
+  the level dropped crashes the game on the first low-difficulty pass through
+  the section (the "always crashes at the chord riff" bug — on a real GP file,
+  level 0 had 4 chords but all 65 handshapes in the crash zone). Guarded by
+  `test_dd_levels_rebuild_handshapes_and_slide_extensions_per_level`. The manifest reports
   `MaxPhraseDifficulty` + `NotesEasy/Medium/Hard` from the levels. This is a
   mechanical density ramp with NO `NLinkedDifficulty` cross-phrase linkage — a
   simplified DDC, NOT the full musical phrase-leveling a retail DDC pass does; the
