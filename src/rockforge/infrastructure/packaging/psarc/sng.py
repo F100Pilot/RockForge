@@ -392,8 +392,11 @@ def _note_mask(n: TabNote, is_chord: bool = False, is_double_stop: bool = False)
     mask = 0
     for tech in n.techniques:
         mask |= TECHNIQUE_TO_MASK.get(tech, 0)
-    if n.bend_semitones > 0:
-        mask |= NOTE_MASK_BEND
+    # Bends are NOT emitted in the SNG — both working references (a real CDLC and
+    # a DLC Builder build of our XML) carry ZERO bends, and our single-point bend
+    # curve is a degenerate pitch ramp that crashed the game at the first bent
+    # chord. The note still plays; it just isn't marked/required as a bend.
+    mask &= ~NOTE_MASK_BEND
     if n.sustain > 0:
         mask |= NOTE_MASK_SUSTAIN
     if n.fret == 0:
@@ -781,7 +784,7 @@ def from_arrangement(
 
     for gi, g in enumerate(chord_groups):
         has_techniques = any(
-            n.techniques or n.bend_semitones > 0 or n.slide_to_fret is not None
+            n.techniques or n.slide_to_fret is not None
             for n in g
         )
         if not has_techniques:
@@ -800,14 +803,9 @@ def from_arrangement(
             # single note inside a chord, drawing a corrupt vertical bar on the
             # highway and crashing mid-riff.
             cn.note_mask[n.string] = _note_mask(n) & ~NOTE_MASK_SINGLE
-            if n.bend_semitones > 0:
-                # Bend points carry the ABSOLUTE song time (same clock as note
-                # times), as in the XML's <bendValue time=…>. Writing 0.0 made
-                # the game interpolate a bend from the song start — corrupt
-                # geometry on the highway, crashing at the first bent chord.
-                cn.bend_data[n.string] = [
-                    SngBendData32(time=n.time, step=n.bend_semitones)
-                ]
+            # Bends are NOT emitted (bend_data stays empty) — see _note_mask: both
+            # working references carry ZERO bends and our single-point curve crashed
+            # the game at the first bent chord.
             if n.slide_to_fret is not None:
                 cn.slide_to[n.string] = n.slide_to_fret
             if Technique.VIBRATO in n.techniques:
@@ -850,16 +848,12 @@ def from_arrangement(
         mask = _note_mask(sn, is_chord=False)
         a_fret, a_width = _find_anchor(sn.time)
         pi_id = _find_phrase_iteration(phrase_iterations, sn.time)
-        sn_bends: list[SngBendData32] = []
-        if sn.bend_semitones > 0:
-            # Absolute song time, not 0.0 — see the ChordNotes bend note above.
-            sn_bends = [SngBendData32(time=sn.time, step=sn.bend_semitones)]
         sng_notes.append(SngNote(
             time=sn.time,
             string=sn.string,
             fret=sn.fret,
             sustain=sn.sustain,
-            bend=sn.bend_semitones,
+            bend=0.0,
             mask=mask,
             anchor_fret=a_fret,
             anchor_width=a_width,
@@ -870,7 +864,7 @@ def from_arrangement(
             pluck=1 if Technique.POP in sn.techniques else 0,
             tap=1 if Technique.TAP in sn.techniques else 0,
             vibrato=80 if Technique.VIBRATO in sn.techniques else 0,
-            bend_data=sn_bends,
+            bend_data=[],
         ))
 
     # Chord notes
@@ -884,10 +878,12 @@ def from_arrangement(
             mask |= NOTE_MASK_DOUBLESTOP
         if cn_id >= 0:
             mask |= NOTE_MASK_CHORDNOTES
-        # Mirror techniques from individual notes onto chord mask
+        # Mirror techniques from individual notes onto chord mask (never BEND —
+        # bends are not emitted; see _note_mask).
         for n in g:
             for tech in n.techniques:
                 mask |= TECHNIQUE_TO_MASK.get(tech, 0)
+        mask &= ~NOTE_MASK_BEND
         if any(n.sustain > 0 for n in g):
             mask |= NOTE_MASK_SUSTAIN
         mask |= NOTE_MASK_STRUM
@@ -898,7 +894,7 @@ def from_arrangement(
             string=-1,
             fret=-1,
             sustain=max(n.sustain for n in g),
-            bend=max(n.bend_semitones for n in g),
+            bend=0.0,
             mask=mask,
             anchor_fret=a_fret,
             anchor_width=a_width,
