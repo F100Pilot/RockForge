@@ -55,11 +55,23 @@ def _split_blocks(content: bytes) -> list[bytes]:
 
 
 def _compress_block(block: bytes) -> tuple[bytes, int]:
-    """Return (stored_bytes, zlength) where zlength=0 means stored raw."""
+    """Return ``(stored_bytes, zlength)`` for one block.
+
+    ``zlength`` is the compressed size, or — for a block kept uncompressed — the
+    block's OWN size. Rocksmith reserves ``zlength == 0`` for a *full* block_size
+    block (65536, which wraps the 2-byte field to 0); a *partial* uncompressed
+    block (e.g. the 6-byte ``appid.appid``) must carry its real size. Writing 0
+    for a partial raw block made the game read it as a full 65536-byte block, so
+    the appid came back corrupt and the song was silently dropped from the list —
+    byte-verified against a working PSARC (which stores `appid.appid` with
+    ``zlength = 6``) and the toolkit's re-pack of our own output (which rewrites
+    exactly this). ``% BLOCK_SIZE`` maps a full block to 0 and a partial one to
+    its length.
+    """
     compressed = zlib.compress(block, level=9)
     if len(compressed) < len(block):
         return compressed, len(compressed)
-    return block, 0
+    return block, len(block) % BLOCK_SIZE
 
 
 def pack_entries(files: dict[str, bytes], encrypt: bool = False) -> bytes:

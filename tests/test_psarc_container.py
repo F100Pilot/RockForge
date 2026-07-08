@@ -37,6 +37,23 @@ def test_round_trip_incompressible_data() -> None:
     assert unpack(pack_entries(files)) == files
 
 
+def test_partial_uncompressed_block_zlength_is_its_size_not_zero() -> None:
+    # Rocksmith reserves zlength 0 for a FULL block_size block; a partial
+    # uncompressed block (e.g. the 6-byte appid.appid) must carry its real size,
+    # or the game reads it as a full 65536-byte block and the appid comes back
+    # corrupt (song dropped from the list). Verified against a working PSARC.
+    files = {"appid.appid": b"492989"}  # tiny + incompressible → stored raw
+    packed = pack_entries(files)
+    (toc_length, entry_size, num) = struct.unpack_from(">III", packed, 12)
+    toc = packed[HEADER_SIZE:toc_length]
+    # zlength table follows the num TOC entries.
+    zpos = num * TOC_ENTRY_SIZE
+    zlengths = struct.unpack_from(f">{(len(toc) - zpos) // 2}H", toc, zpos)
+    # Block 0 is the name block, block 1 is appid.appid — both partial + raw here.
+    assert zlengths[1] == len(b"492989")  # == 6, not 0
+    assert unpack(packed) == files
+
+
 def test_toc_entries_carry_md5_of_path() -> None:
     # Rocksmith resolves every asset through the TOC's 16-byte name hash =
     # md5(path). A zeroed hash makes the game unable to find the files and drops
