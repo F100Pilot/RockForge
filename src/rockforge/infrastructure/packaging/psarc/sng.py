@@ -461,20 +461,108 @@ def _default_sections(arrangement: Arrangement, song_length: float) -> list[Sect
     return secs
 
 
+def _build_anchors(
+    positions: list[tuple[float, float, list[int]]],
+    phrase_iterations: list[SngPhraseIteration],
+    song_length: float,
+) -> list[SngAnchor]:
+    """Anchors (fret-hand windows) for a set of note positions. ``positions`` is
+    ``(first_time, last_time, [frets])`` per chord/note group, time-sorted.
+
+    An anchor is active from its own time until the next; RockForge can't plan
+    real hand positions, so it greedily groups consecutive positions into one
+    window spanning ≤ _MAX_ANCHOR_SPAN frets (a STABLE window stops the fretboard
+    from thrashing note-to-note). Built PER difficulty level from that level's own
+    notes — sharing the full-chart anchors on a thinned low level ships anchors
+    framing notes that don't exist there, which crashes the game on phrase entry
+    (a real DDC sizes anchors to each level: 34 for level 0's 42 notes, ~89 at
+    the top). Anchors never span a phrase-iteration boundary (the game re-anchors
+    at each phrase start), so any crossing anchor is split into per-phrase pieces.
+    """
+    positions = [(t, lt, fr) for t, lt, fr in positions if fr]
+    raw: list[tuple[float, float, int, int]] = []  # (start, last_note, fret, width)
+    i = 0
+    while i < len(positions):
+        lo = min(positions[i][2])
+        hi = max(positions[i][2])
+        last_note = positions[i][1]
+        j = i + 1
+        while j < len(positions):
+            cand_lo = min(lo, *positions[j][2])
+            cand_hi = max(hi, *positions[j][2])
+            if cand_hi - cand_lo + 1 > _MAX_ANCHOR_SPAN:
+                break
+            lo, hi, last_note = cand_lo, cand_hi, positions[j][1]
+            j += 1
+        width = min(max(4, hi - lo + 1), 24)
+        fret = max(1, min(lo, 25 - width))
+        raw.append((positions[i][0], last_note, fret, width))
+        i = j
+
+    anchors: list[SngAnchor] = []
+    for k, (t, last_note, fret, width) in enumerate(raw):
+        # The first anchor covers from the song start so the opening notes are
+        # framed before they reach the strike line.
+        start = 0.0 if k == 0 else t
+        end = raw[k + 1][0] if k + 1 < len(raw) else song_length
+        anchors.append(SngAnchor(
+            start_time=start, end_time=end, first_note_time=t, last_note_time=last_note,
+            fret=fret, width=width,
+            phrase_iteration_id=_find_phrase_iteration(phrase_iterations, t),
+        ))
+    if not anchors and positions:
+        anchors.append(SngAnchor(
+            start_time=0.0, end_time=song_length,
+            first_note_time=positions[0][0], last_note_time=positions[0][0], fret=1, width=4,
+        ))
+
+    boundaries = sorted({pi.start_time for pi in phrase_iterations})
+    split_anchors: list[SngAnchor] = []
+    for a in anchors:
+        seg_start = a.start_time
+        cuts = [x for x in boundaries if a.start_time < x < a.end_time]
+        for seg_end in [*cuts, a.end_time]:
+            split_anchors.append(replace(
+                a, start_time=seg_start, end_time=seg_end,
+                first_note_time=max(a.first_note_time, seg_start),
+                phrase_iteration_id=_find_phrase_iteration(phrase_iterations, seg_start),
+            ))
+            seg_start = seg_end
+    return split_anchors
+
+
+def _level_positions(
+    notes: list[SngNote], chord_templates: list[SngChordTemplate], song_length: float
+) -> list[tuple[float, float, list[int]]]:
+    """``(time, time, [fretted frets])`` per note for :func:`_build_anchors`."""
+    out: list[tuple[float, float, list[int]]] = []
+    for n in sorted(notes, key=lambda x: x.time):
+        if n.chord_id >= 0:
+            frets = [f for f in chord_templates[n.chord_id].frets if 0 < f < 250]
+        elif n.fret > 0:
+            frets = [n.fret]
+        else:
+            continue
+        if frets:
+            out.append((n.time, n.time, frets))
+    return out
+
+
 def _build_level(
     difficulty: int,
     notes: list[SngNote],
     phrase_iterations: list[SngPhraseIteration],
     phrase_count: int,
-    anchors: list[SngAnchor],
+    chord_templates: list[SngChordTemplate],
+    song_length: float,
     chord_notes_list: list[SngChordNotes],
 ) -> SngArrangementLevel:
     """One difficulty level over the given note subset.
 
-    Anchors are shared across levels (a fret-hand window is valid whatever the
-    note density); the slide anchor-extensions are rebuilt from THIS level's
-    notes (an extension pointing at a note the level dropped crashes the game on
-    the first low-difficulty pass through the section). Fingerprints (handshapes)
+    Anchors AND slide anchor-extensions are rebuilt from THIS level's own notes
+    (a real DDC sizes them to each level; sharing the full-chart set on a thinned
+    low level ships anchors/extensions framing notes that don't exist there,
+    crashing the game on phrase entry). Fingerprints (handshapes)
     are NOT emitted at all: both working references — a real CDLC SNG and a DLC
     Builder build of our own XML (which carries ``handShapes count="0"``) — ship
     zero fingerprints on every level, while our one-fingerprint-per-chord run
@@ -518,6 +606,10 @@ def _build_level(
             SngAnchorExtension(beat_time=n.time + n.sustain, fret=t) for t in targets
         )
     anchor_extensions.sort(key=lambda ae: ae.beat_time)
+
+    anchors = _build_anchors(
+        _level_positions(linked, chord_templates, song_length), phrase_iterations, song_length
+    )
 
     return SngArrangementLevel(
         difficulty=difficulty,
@@ -727,85 +819,14 @@ def from_arrangement(
         chord_notes_map[gi] = cn_ids[cn_key]
 
     # --- Build anchors ---
-    # An anchor is the fret-hand position + the visible fret window; it is active
-    # from its own time until the NEXT anchor (Rocksmith2014.NET Anchor.fs).
-    # RockForge can't do real hand-position planning, so a STABLE window matters
-    # more than a tight one: re-anchoring on every note makes the fretboard view
-    # thrash and low notes vanish off the edge as they scroll in. Greedily group
-    # consecutive positions into one anchor spanning at most MAX_ANCHOR_SPAN
-    # frets, so the view only shifts when the hand genuinely moves. Each anchor
-    # keeps a distinct, increasing start_time (overlapping anchors crash the
-    # highway on load), ending where the next begins.
-    positions = [
-        (g[0].time, g[-1].time, [n.fret for n in g if n.fret > 0]) for g in groups
-    ]
-    positions = [(t, lt, fr) for t, lt, fr in positions if fr]
-
-    raw: list[tuple[float, float, int, int]] = []  # (start, last_note, fret, width)
-    i = 0
-    while i < len(positions):
-        lo = min(positions[i][2])
-        hi = max(positions[i][2])
-        last_note = positions[i][1]
-        j = i + 1
-        while j < len(positions):
-            cand_lo = min(lo, *positions[j][2])
-            cand_hi = max(hi, *positions[j][2])
-            if cand_hi - cand_lo + 1 > _MAX_ANCHOR_SPAN:
-                break
-            lo, hi, last_note = cand_lo, cand_hi, positions[j][1]
-            j += 1
-        width = min(max(4, hi - lo + 1), 24)
-        fret = max(1, min(lo, 25 - width))
-        raw.append((positions[i][0], last_note, fret, width))
-        i = j
-
-    anchors: list[SngAnchor] = []
-    for k, (t, last_note, fret, width) in enumerate(raw):
-        # The first anchor covers from the song start so the opening notes are
-        # framed before they reach the strike line.
-        start = 0.0 if k == 0 else t
-        end = raw[k + 1][0] if k + 1 < len(raw) else song_length
-        anchors.append(SngAnchor(
-            start_time=start,
-            end_time=end,
-            first_note_time=t,
-            last_note_time=last_note,
-            fret=fret,
-            width=width,
-            phrase_iteration_id=_find_phrase_iteration(phrase_iterations, t),
-        ))
-    if not anchors and groups:
-        anchors.append(SngAnchor(
-            start_time=0.0,
-            end_time=song_length,
-            first_note_time=groups[0][0].time,
-            last_note_time=groups[0][0].time,
-            fret=1,
-            width=4,
-        ))
-
-    # An anchor must NOT span a phrase-iteration boundary. The game re-anchors at
-    # each phrase start, so a phrase whose opening notes are only covered by an
-    # anchor tagged with the PREVIOUS phrase finds no anchor of its own on entry
-    # and crashes (seen exactly at a section / tone-change boundary). Split any
-    # anchor that crosses a boundary into per-phrase pieces (same hand position),
-    # each re-tagged with the phrase iteration it now belongs to.
-    boundaries = sorted({pi.start_time for pi in phrase_iterations})
-    split_anchors: list[SngAnchor] = []
-    for a in anchors:
-        seg_start = a.start_time
-        cuts = [x for x in boundaries if a.start_time < x < a.end_time]
-        for seg_end in [*cuts, a.end_time]:
-            split_anchors.append(replace(
-                a,
-                start_time=seg_start,
-                end_time=seg_end,
-                first_note_time=max(a.first_note_time, seg_start),
-                phrase_iteration_id=_find_phrase_iteration(phrase_iterations, seg_start),
-            ))
-            seg_start = seg_end
-    anchors = split_anchors
+    # Full-chart anchors, only to stamp each NOTE's anchor_fret/anchor_width hint
+    # (via _find_anchor). The per-LEVEL anchor arrays the game actually uses are
+    # rebuilt from each level's own notes inside _build_level — see _build_anchors.
+    anchors = _build_anchors(
+        [(g[0].time, g[-1].time, [n.fret for n in g if n.fret > 0]) for g in groups],
+        phrase_iterations,
+        song_length,
+    )
 
     # (Anchor extensions — the slide re-anchors — are built per difficulty level
     # inside _build_level, from each level's own notes.)
@@ -973,7 +994,7 @@ def from_arrangement(
     arrangements = [
         _build_level(
             d, _level_notes(d), phrase_iterations, len(phrases),
-            anchors, chord_notes_list,
+            chord_templates, song_length, chord_notes_list,
         )
         for d in range(song_max + 1)
     ]
