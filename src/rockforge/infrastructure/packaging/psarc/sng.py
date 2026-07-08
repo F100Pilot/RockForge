@@ -106,6 +106,9 @@ _DD_LEVEL_CAP = 11
 # Target phrase length (seconds) when auto-segmenting a section-less song, so DD
 # ramps per-phrase as the player progresses instead of over the whole song at once.
 _DEFAULT_PHRASE_S = 13.0
+# Max phrase length before it is subdivided (applies to GP sections too), so DD
+# has many short phrases like a real DDC — roughly doubles a typical GP's sections.
+_PHRASE_TARGET_S = 8.0
 _BEND_DATA_COUNT = 32  # fixed-size bend array per string in ChordNotes
 
 
@@ -591,6 +594,28 @@ def from_arrangement(
             end_start = min(last_note_end + 0.1, song_length)
             if end_start > sections_src[-1].start_time:
                 sections_src.append(Section(name="END", number=1, start_time=end_start))
+
+    # Subdivide long body phrases into ~_PHRASE_TARGET_S chunks at measure
+    # downbeats, so DD ramps in finer steps as the player progresses — a real
+    # DDC splits a song into many short phrases (roughly double the GP sections).
+    # COUNT/END and their surrounding structure stay whole.
+    downbeats = [b.time for b in arrangement.tempo_map.beats if b.measure >= 0]
+    refined: list[Section] = []
+    for idx, sec in enumerate(sections_src):
+        refined.append(sec)
+        if sec.name in ("COUNT", "END"):
+            continue
+        sec_end = sections_src[idx + 1].start_time if idx + 1 < len(sections_src) else song_length
+        last = sec.start_time
+        for t in downbeats:
+            if t <= last + _PHRASE_TARGET_S:
+                continue
+            if t >= sec_end - _PHRASE_TARGET_S / 2:
+                break
+            refined.append(Section(name=sec.name, number=len(refined), start_time=t))
+            last = t
+    sections_src = refined
+
     phrases = [SngPhrase(name=s.name) for s in sections_src]
     ends = _section_end_times(sections_src, song_length)
     phrase_iterations = [
