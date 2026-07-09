@@ -27,11 +27,13 @@ from pathlib import Path
 from rockforge.domain.errors import IngestionError
 from rockforge.domain.music import (
     Beat,
+    BendPoint,
     TabNote,
     Technique,
     TempoMap,
     Tuning,
     apply_sustain_gap,
+    is_composite_bend,
 )
 from rockforge.infrastructure.gpimport.parser import (  # shared model + helpers
     QUARTER_TICKS,
@@ -358,6 +360,16 @@ def _emit_beat_notes(
     note_ids = _text(beat.find("Notes"))
     if not note_ids:
         return  # rest
+    # Slap/pop are beat-level in GP. GPIF has stored them as beat Properties
+    # ("Slapped"/"Popped") and as direct <Slap>/<Pop> children across versions;
+    # accept either so a slapped bassline isn't silently dropped.
+    beat_props = {
+        p.attrib["name"]
+        for p in (beat.find("Properties") or [])
+        if p.tag == "Property" and "name" in p.attrib
+    }
+    beat_slap = "Slapped" in beat_props or beat.find("Slap") is not None
+    beat_pop = "Popped" in beat_props or beat.find("Pop") is not None
     for nid in note_ids.split():
         note = notes_map.get(nid)
         if note is None:
@@ -372,21 +384,41 @@ def _emit_beat_notes(
 
         techs: set[Technique] = set()
         bend_semitones = 0.0
+        bend_points: tuple[BendPoint, ...] = ()
         if "PalmMuted" in props:
             techs.add(Technique.PALM_MUTE)
+        if "Muted" in props:  # fret-hand mute / dead note (the "X")
+            techs.add(Technique.FRET_MUTE)
         if "Harmonic" in props or "HarmonicType" in props:
             techs.add(Technique.HARMONIC)
         if note.find("Vibrato") is not None:  # direct child, not a Property
             techs.add(Technique.VIBRATO)
+        # <Accent> is a bitmask: 4 = accent, 8 = heavy accent; 1/2 (staccato/…)
+        # are not Rocksmith accents.
+        accent = note.find("Accent")
+        if accent is not None and (int(_text(accent, "0") or "0") & 0b1100):
+            techs.add(Technique.ACCENT)
+        # Beat-level slap/pop and note-level tap.
+        if beat_slap:
+            techs.add(Technique.SLAP)
+        if beat_pop:
+            techs.add(Technique.POP)
+        if "Tapped" in props or note.find("LeftHandTapped") is not None:
+            techs.add(Technique.TAP)
         if "Bended" in props:
             techs.add(Technique.BEND)
-            bend_semitones = _bend_semitones(props)
+            bend_semitones, bend_points = _bend_curve(props)
         slide_to = False
+        slide_unpitch: int | None = None
         if "Slide" in props:
             flags = int(_text(props["Slide"].find("Flags"), "0") or "0")
-            if flags & _SLIDE_TO_BITS:
+            if flags & _SLIDE_TO_BITS:  # 1/2 = pitched shift/legato slide
                 techs.add(Technique.SLIDE)
                 slide_to = True
+            elif flags & 4:   # slide out downwards → unpitched, toward the nut
+                slide_unpitch = max(1, fret - 5)
+            elif flags & 8:   # slide out upwards → unpitched, toward the bridge
+                slide_unpitch = min(22, fret + 5)
         hopo_dest = "HopoDestination" in props
         # A tie with destination="true" is a CONTINUATION of the previous note
         # on this string (held, not re-picked) — GP/Songsterr draw it in
@@ -403,6 +435,8 @@ def _emit_beat_notes(
                     sustain=sustain,
                     techniques=frozenset(techs),
                     bend_semitones=bend_semitones,
+                    slide_unpitch_to=slide_unpitch,
+                    bend_points=bend_points,
                 ),
                 hopo_dest,
                 slide_to,
@@ -446,17 +480,39 @@ def _merge_ties(
     ]
 
 
-def _bend_semitones(props: dict[str, ET.Element]) -> float:
-    """Peak bend in semitones. GPIF bend value 100 == one whole tone (2 st)."""
-    values = []
-    for key in ("BendOriginValue", "BendMiddleValue", "BendDestinationValue"):
-        if key in props:
-            v = _text(props[key].find("Float")) or _text(props[key])
-            try:
-                values.append(float(v))
-            except ValueError:
-                continue
-    return max(values) / 50.0 if values else 0.0
+def _bend_prop(props: dict[str, ET.Element], key: str) -> float | None:
+    if key not in props:
+        return None
+    v = _text(props[key].find("Float")) or _text(props[key])
+    try:
+        return float(v)
+    except ValueError:
+        return None
+
+
+def _bend_curve(props: dict[str, ET.Element]) -> tuple[float, tuple[BendPoint, ...]]:
+    """(peak in half-steps, full curve). GPIF bend value 100 == one whole tone
+    (2 half-steps); offsets are a 0..100 position along the note. Origin / Middle
+    / Destination give up to three points, so pre-bends and releases survive."""
+    steps = {  # position fraction (0..1) -> value (0..100)
+        "origin": (_bend_prop(props, "BendOriginOffset") or 0.0,
+                   _bend_prop(props, "BendOriginValue")),
+        "middle": (_bend_prop(props, "BendMiddleOffset1")
+                   or _bend_prop(props, "BendMiddleOffset2") or 50.0,
+                   _bend_prop(props, "BendMiddleValue")),
+        "dest": (_bend_prop(props, "BendDestinationOffset") or 100.0,
+                 _bend_prop(props, "BendDestinationValue")),
+    }
+    pts = [
+        BendPoint(position=min(max(off, 0.0), 100.0) / 100.0, step=val / 50.0)
+        for off, val in steps.values()
+        if val is not None
+    ]
+    if not pts:
+        return 0.0, ()
+    pts.sort(key=lambda p: p.position)
+    peak = max(p.step for p in pts)
+    return peak, (tuple(pts) if is_composite_bend(pts) else ())
 
 
 def _resolve_techniques(

@@ -24,11 +24,13 @@ from typing import Any
 from rockforge.domain.errors import IngestionError
 from rockforge.domain.music import (
     Beat,
+    BendPoint,
     TabNote,
     Technique,
     TempoMap,
     Tuning,
     apply_sustain_gap,
+    is_composite_bend,
 )
 
 QUARTER_TICKS = 960
@@ -164,11 +166,25 @@ def _make_ticks_to_seconds(events: list[tuple[int, float]]) -> Callable[[int], f
     return convert
 
 
-# outDownwards / outUpwards — an unpitched slide OFF the fret with no landing
-# note; NOT emitted as a pitched Rocksmith slide (see the note where slides are
-# tagged). Kept for reference / future unpitched-slide support.
-_SLIDE_OUT_TYPES = {3, 4}
+# outDownwards (3) / outUpwards (4) — an unpitched slide OFF the fret with a
+# direction but no landing note → Rocksmith slideUnpitchTo.
+_SLIDE_OUT_DOWN = 3
+_SLIDE_OUT_UP = 4
 _SLIDE_SHIFT_TYPES = {1, 2}  # shiftSlideTo / legatoSlideTo — a pitched slide
+
+
+def _slide_out_target(slides: object, fret: int) -> int | None:
+    """Unpitched slide-out target fret for a GP note, or None.
+
+    Down slides head toward the nut, up slides toward the bridge; the exact fret
+    is cosmetic (the slide is unpitched), so use a fixed 5-fret offset clamped to
+    the neck and guaranteed distinct from the note's own fret."""
+    vals = {int(s.value) for s in slides}  # type: ignore[attr-defined]
+    if _SLIDE_OUT_DOWN in vals:
+        return max(1, fret - 5)
+    if _SLIDE_OUT_UP in vals:
+        return min(22, fret + 5)
+    return None
 
 
 def parse_gp_track(
@@ -256,25 +272,36 @@ def parse_gp_track(
                     eff = note.effect
                     techs: set[Technique] = set()
                     bend_semitones = 0.0
+                    bend_points: tuple[BendPoint, ...] = ()
                     if eff.isBend and eff.bend is not None and eff.bend.points:
-                        bend_semitones = max(p.value for p in eff.bend.points) / 2.0
+                        # Full curve: position 0..12 → fraction; value/2 → half-steps.
+                        pts = [
+                            BendPoint(position=p.position / 12.0, step=p.value / 2.0)
+                            for p in eff.bend.points
+                        ]
+                        bend_semitones = max(p.step for p in pts)
                         if bend_semitones:
                             techs.add(Technique.BEND)
+                            # Keep the curve only for real pre-bends/releases; a
+                            # plain rise stays a single point downstream.
+                            if is_composite_bend(pts):
+                                bend_points = tuple(pts)
                     if eff.palmMute:
                         techs.add(Technique.PALM_MUTE)
                     if eff.isHarmonic:
                         techs.add(Technique.HARMONIC)
                     if eff.vibrato:
                         techs.add(Technique.VIBRATO)
-                    # Only a SHIFT/legato slide (types 1/2) is a pitched slide to
-                    # a landing fret — its slideTo is filled from the next note on
-                    # the string below. A slide-OUT (types 3/4) slides off into
-                    # nowhere: it has NO landing note, so tagging it SLIDE made the
-                    # fill loop grab an unrelated later note as a bogus target
-                    # (wrong fret, a stray anchor extension) and the note rendered
-                    # wrong / went missing. Emit it as a plain note instead.
+                    # A dead note (NoteType.dead) is the muted "X" — a fret-hand mute.
+                    if getattr(note.type, "name", "") == "dead":
+                        techs.add(Technique.FRET_MUTE)
+                    # Only a SHIFT/legato slide (types 1/2) is a pitched slide to a
+                    # landing fret (slideTo, filled from the next note). A slide-OUT
+                    # (types 3/4) slides off into nowhere — an UNPITCHED slide with a
+                    # direction but no landing note; capture it as slideUnpitchTo.
                     if any(int(s.value) in _SLIDE_SHIFT_TYPES for s in eff.slides):
                         techs.add(Technique.SLIDE)
+                    slide_unpitch = _slide_out_target(eff.slides, fret)
                     if eff.accentuatedNote or eff.heavyAccentuatedNote:
                         techs.add(Technique.ACCENT)
                     slap = int(beat.effect.slapEffect.value)
@@ -294,6 +321,8 @@ def parse_gp_track(
                                 sustain=sustain,
                                 techniques=frozenset(techs),
                                 bend_semitones=bend_semitones,
+                                slide_unpitch_to=slide_unpitch,
+                                bend_points=bend_points,
                             ),
                             bool(eff.hammer),
                         )
@@ -308,12 +337,7 @@ def parse_gp_track(
         if notes[a].string != notes[b].string or not raw[a][1]:
             continue
         tech = Technique.HAMMER_ON if notes[b].fret > notes[a].fret else Technique.PULL_OFF
-        n = notes[b]
-        notes[b] = TabNote(
-            string=n.string, fret=n.fret, time=n.time, sustain=n.sustain,
-            techniques=n.techniques | {tech},
-            bend_semitones=n.bend_semitones, slide_to_fret=n.slide_to_fret,
-        )
+        notes[b] = replace(notes[b], techniques=notes[b].techniques | {tech})
 
     # GP marks a pitched slide on the ORIGIN note; Rocksmith's slideTo also
     # belongs on the origin note but needs the DESTINATION fret. Fill it in
@@ -323,12 +347,7 @@ def parse_gp_track(
             continue
         if Technique.SLIDE not in notes[a].techniques:
             continue
-        n = notes[a]
-        notes[a] = TabNote(
-            string=n.string, fret=n.fret, time=n.time, sustain=n.sustain,
-            techniques=n.techniques, bend_semitones=n.bend_semitones,
-            slide_to_fret=notes[b].fret,
-        )
+        notes[a] = replace(notes[a], slide_to_fret=notes[b].fret)
 
     # Trim sustains so they end a small gap before the next note on the string,
     # instead of running right into it (done after slideTo is filled so pitched

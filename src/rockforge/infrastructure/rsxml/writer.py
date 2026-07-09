@@ -133,7 +133,8 @@ def _note_attrs(n: TabNote) -> dict[str, str]:
         "accent": "1" if has(Technique.ACCENT) else "0",
         "hopo": "1" if has(Technique.HAMMER_ON) or has(Technique.PULL_OFF) else "0",
         "slideTo": str(n.slide_to_fret) if n.slide_to_fret is not None else "-1",
-        "slideUnpitchTo": "-1",
+        "slideUnpitchTo": str(n.slide_unpitch_to) if n.slide_unpitch_to is not None else "-1",
+        "mute": "1" if has(Technique.FRET_MUTE) else "0",
     }
     return _drop_defaults(attrs, {"time", "string", "fret", "sustain"})
 
@@ -147,22 +148,33 @@ def _bend_time(n: TabNote) -> float:
     return n.time + (n.sustain if n.sustain > 0.03 else 0.1)
 
 
+def _bend_curve(n: TabNote) -> list[tuple[float, float]]:
+    """(time, step) bend points for a note, in absolute song time.
+
+    A full ``bend_points`` curve (pre-bend / release / multi-step) is emitted as
+    given, its fractional positions scaled onto the note's duration. Otherwise a
+    single peak reached at the note's END (the DLC Builder shape — a visible
+    bend-up rather than an already-bent prebend)."""
+    dur = n.sustain if n.sustain > 0.03 else 0.1
+    if n.bend_points:
+        return [(n.time + p.position * dur, p.step) for p in n.bend_points]
+    return [(_bend_time(n), n.bend_semitones)]
+
+
 def _append_note_el(parent: ET.Element, tag: str, n: TabNote) -> ET.Element:
     """Create a <note>/<chordNote> and, for a bend, its <bendValues> curve.
 
     The `bend="N"` attribute alone is only the peak; Rocksmith/DLC Builder read
     the actual pitch from <bendValues>. Emitting the flag WITHOUT the curve (the
     previous behaviour) made DLC Builder build the arrangement with no real bend
-    at all — the half-step bends in the chart simply disappeared. Match EOF: a
-    single bend point a third of the way through the sustain, at the peak strength
-    in half-steps (the game ramps the pitch up to it from the attack).
+    at all — the half-step bends in the chart simply disappeared.
     """
     el = ET.SubElement(parent, tag, _note_attrs(n))
     if Technique.BEND in n.techniques and n.bend_semitones > 0:
-        bends = ET.SubElement(el, "bendValues", count="1")
-        ET.SubElement(
-            bends, "bendValue", time=_fmt(_bend_time(n)), step=_fmt(n.bend_semitones)
-        )
+        curve = _bend_curve(n)
+        bends = ET.SubElement(el, "bendValues", count=str(len(curve)))
+        for t, step in curve:
+            ET.SubElement(bends, "bendValue", time=_fmt(t), step=_fmt(step))
     return el
 
 
@@ -225,12 +237,13 @@ def render_arrangement(arr: Arrangement) -> ET.Element:
         ("hopo", "1" if {Technique.HAMMER_ON, Technique.PULL_OFF} & techniques else "0"),
         ("tremolo", "0"),
         ("slides", "1" if Technique.SLIDE in techniques else "0"),
-        ("unpitchedSlides", "0"),
+        ("unpitchedSlides", "1" if any(n.slide_unpitch_to is not None for n in arr.notes)
+         else "0"),
         ("bends", "1" if Technique.BEND in techniques else "0"),
-        ("tapping", "0"),
+        ("tapping", "1" if Technique.TAP in techniques else "0"),
         ("vibrato", "1" if Technique.VIBRATO in techniques else "0"),
-        ("fretHandMutes", "0"),
-        ("slapPop", "0"),
+        ("fretHandMutes", "1" if Technique.FRET_MUTE in techniques else "0"),
+        ("slapPop", "1" if {Technique.SLAP, Technique.POP} & techniques else "0"),
         ("twoFingerPicking", "0"),
         ("fifthsAndOctaves", "0"),
         ("syncopation", "0"),
