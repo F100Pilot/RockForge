@@ -312,15 +312,21 @@ Import the bundle into DLC Builder, or rely on the native `.psarc` (`psarc_mode
 byte-validated against a retail SNG — the only true validation is loading the
 CDLC in Rocksmith 2014.
 
-### 7f-bis. Techniques + variable-height DD — awaiting in-game validation
+### 7f-bis. Techniques + variable-height DD — in-game validation status
 
 Everything below was implemented, unit-tested at the domain/XML/SNG boundary,
 and verified to (a) parse the real GP files noted and (b) compile to a
-round-tripping SNG — but **none has been confirmed in Rocksmith 2014 itself yet**
-(the maintainer was away from the test PC when it landed). Validate each by
-building the song **both** ways and comparing: the native `.psarc`
-(`psarc_mode=native`) AND the DLC Builder bundle. If the native `.psarc`
-misbehaves, the DLC Builder bundle is the trustworthy fallback.
+round-tripping SNG. Validate each by building the song **both** ways and
+comparing: the native `.psarc` (`psarc_mode=native`) AND the DLC Builder bundle.
+If the native `.psarc` misbehaves, the DLC Builder bundle is the trustworthy
+fallback.
+
+**Confirmed in-game (Beartooth "Free", native PSARC):** the song lists and loads;
+the ½-bends play with the right size (bend-up to peak, not a prebend) and no
+longer crash at the C-part; slides, fret-mutes and the sustain gap render; the
+variable-height DD works. This song does NOT exercise pinch harmonics, tremolo,
+tap/slap/pop, trills or alternate arrangements — those remain to confirm on a
+song that uses them (see below).
 
 Good source files (already parsed correctly, in the uploads): Ozzy "No More
 Tears" `.gp` (pinch harmonics, slides in/out, fret-mutes, bend-and-release,
