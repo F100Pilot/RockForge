@@ -375,6 +375,16 @@ in-game note-highway glyph/behaviour matches Guitar Pro:
 Guarded at unit level by `test_dd_phrase_heights_vary_with_density` and the
 existing `test_dd_*` tests, but only in-game play confirms it.
 
+**Alternate arrangements** (`ALTERNATE_LEAD` / `ALTERNATE_RHYTHM`): pick a second
+Lead/Rhythm GP track in the "Pista Lead/Rhythm alternativo" selectors. The build
+emits `lead2`/`rhythm2` assets flagged non-representative (`Representative=0`,
+`bonusArr=1`) — byte-for-byte the encoding of a decoded DLC Builder CDLC's
+`lead2` (AAL "Tempting Time"). **In-game check:** both charts appear and are
+selectable for the same song; the primary is the default. Guarded by
+`test_alternate_arrangement_is_nonrepresentative_same_path` and
+`test_build_manifest_files_emits_distinct_lead_and_alternate`, but confirm the
+song shows two Lead entries in-game.
+
 ### 7g. Separação fina de guitarras — Banquet (⚠️ EM TESTES, precisa de setup manual)
 
 An alternative stem-separation backend that separates guitars by **class**

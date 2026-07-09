@@ -186,7 +186,9 @@ def _append_note_el(parent: ET.Element, tag: str, n: TabNote) -> ET.Element:
 def render_arrangement(arr: Arrangement) -> ET.Element:
     song = ET.Element("song", version="8")
     ET.SubElement(song, "title").text = arr.metadata.title
-    ET.SubElement(song, "arrangement").text = arr.kind.value
+    # The <arrangement> tag carries the Rocksmith path name (Lead/Rhythm/Combo) —
+    # an alternate folds onto its base name, not the display "Alternate Lead".
+    ET.SubElement(song, "arrangement").text = arr.kind.base_kind.value
     ET.SubElement(song, "part").text = "1"
     # offset = -startBeat (negative of the first beat's time): DLC Builder/EOF
     # treat this as "song time 0 is `offset` seconds before audio time 0" and
@@ -222,11 +224,12 @@ def render_arrangement(arr: Arrangement) -> ET.Element:
     groups_preview = _group_chords(arr.notes)
     has_chords = any(len(g) > 1 for g in groups_preview)
     has_double_stops = any(len(g) == 2 for g in groups_preview)
-    is_rhythm = arr.kind is ArrangementKind.RHYTHM
+    is_rhythm = arr.kind.base_kind is ArrangementKind.RHYTHM
+    is_alt = arr.kind.is_alternate
     props = ET.SubElement(song, "arrangementProperties")
     for attr, value in (
-        ("represent", "1"),
-        ("bonusArr", "0"),
+        ("represent", "0" if is_alt else "1"),
+        ("bonusArr", "1" if is_alt else "0"),
         ("standardTuning", "1" if all(o == 0 for o in offsets) else "0"),
         ("nonStandardChords", "0"),
         ("barreChords", "0"),

@@ -107,8 +107,11 @@ class NativePsarcPacker:
 
         instrumental_xml: list[Path] = []
         for arr in arrangements:
+            # kind.name (LEAD/ALTERNATE_LEAD/…) is a safe, unique file slug — the
+            # display value ("Alternate Lead") has a space.
+            slug = arr.kind.name.lower()
             instrumental_xml.append(
-                write_arrangement_xml(arr, out_dir / f"arrangement_{arr.kind.value.lower()}.xml")
+                write_arrangement_xml(arr, out_dir / f"arrangement_{slug}.xml")
             )
         xml_paths: list[Path] = list(instrumental_xml)
 
@@ -233,9 +236,13 @@ class NativePsarcPacker:
         )
 
         # Game-enumeration assets — without these the song never lists.
+        # The xblock entity name is unique per arrangement (a decoded CDLC names
+        # the alternate lead's entity "..._Lead2"), unlike the manifest FullName
+        # which stays "..._Lead".
         entities = [
             (manifest.persistent_id(song_key, manifest.arrangement_asset_name(song_key, arr.kind)),
-             f"{song_key}_{manifest.arrangement_display_name(arr.kind)}")
+             f"{song_key}_{manifest.arrangement_display_name(arr.kind)}"
+             + ("2" if arr.kind.is_alternate else ""))
             for arr in arrangements
         ]
         if vocals:

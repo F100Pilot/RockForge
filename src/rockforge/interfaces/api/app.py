@@ -566,6 +566,8 @@ async def create_gp_job(
     audio: UploadFile = File(...),
     lead_track: str = Form(""),
     rhythm_track: str = Form(""),
+    alt_lead_track: str = Form(""),
+    alt_rhythm_track: str = Form(""),
     offset_s: float = Form(0.0),
     lead_in_s: float = Form(0.0),
     tempo_scale: float = Form(1.0),
@@ -640,6 +642,10 @@ async def create_gp_job(
         params["lead_track"] = int(lead_track)
     if rhythm_track.strip().isdigit():
         params["rhythm_track"] = int(rhythm_track)
+    if alt_lead_track.strip().isdigit():
+        params["alt_lead_track"] = int(alt_lead_track)
+    if alt_rhythm_track.strip().isdigit():
+        params["alt_rhythm_track"] = int(alt_rhythm_track)
 
     with _session_factory() as session:
         job = Job(
@@ -707,7 +713,7 @@ async def reload_gp(job_id: str, gp: UploadFile = File(...)) -> JobOut:
         # the track layout, but a restructured file may not — fail loudly rather
         # than silently building the wrong track.
         valid = {t.index for t in info.tracks}
-        for key in ("lead_track", "rhythm_track"):
+        for key in ("lead_track", "rhythm_track", "alt_lead_track", "alt_rhythm_track"):
             idx = params.get(key)
             if isinstance(idx, int) and idx not in valid:
                 gp_dest.unlink(missing_ok=True)

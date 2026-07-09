@@ -680,6 +680,10 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
           <select name="lead_track"><option value="">—</option></select></div>
         <div class="field"><label>Pista Rhythm</label>
           <select name="rhythm_track"><option value="">—</option></select></div>
+        <div class="field"><label>Pista Lead alternativo</label>
+          <select name="alt_lead_track"><option value="">—</option></select></div>
+        <div class="field"><label>Pista Rhythm alternativo</label>
+          <select name="alt_rhythm_track"><option value="">—</option></select></div>
         <div class="field"><label>Gravação</label>
           <div class="file-drop"><div class="file-drop-icon">&#128190;</div><span class="file-drop-text">Arrasta ou clica para escolher</span><span class="file-drop-btn">Procurar</span>
           <input type="file" name="audio" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" required></div></div>
@@ -4027,7 +4031,7 @@ document.getElementById('gpInspectForm').addEventListener('submit', async e => {
   form.style.display = '';
   document.getElementById('gpMeta').textContent =
     `${b.title || '(sem título)'} — ${b.artist || '(sem banda)'} · ${b.tempo} BPM · letra no GP: ${b.has_lyrics ? 'sim' : 'não'}`;
-  for (const name of ['lead_track', 'rhythm_track']) {
+  for (const name of ['lead_track', 'rhythm_track', 'alt_lead_track', 'alt_rhythm_track']) {
     const sel = form.querySelector(`select[name=${name}]`);
     sel.innerHTML = '<option value="">—</option>' + b.tracks
       .filter(t => !t.is_percussion && t.string_count === 6)
