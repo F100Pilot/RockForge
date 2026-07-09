@@ -93,6 +93,16 @@ def test_sustain_gap_preserves_slide_unpitch_and_bend_points() -> None:
     assert out[0].slide_unpitch_to == 4 and out[0].bend_points == pts  # kept
 
 
+def test_sustain_gap_skips_let_ring_notes() -> None:
+    notes = [
+        TabNote(string=0, fret=5, time=0.0, sustain=1.0,
+                techniques=frozenset({Technique.LET_RING})),
+        TabNote(string=0, fret=7, time=1.0, sustain=0.5),
+    ]
+    out = apply_sustain_gap(notes)
+    assert out[0].sustain == 1.0  # let-ring keeps its full sustain into the next note
+
+
 def test_is_composite_bend_only_for_varying_strength() -> None:
     # A flat hold (even a pre-bend held at one value) is simple; only a real
     # release / multi-step curve is composite.
