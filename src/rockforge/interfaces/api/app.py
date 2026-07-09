@@ -1407,6 +1407,8 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
     out: list[ArrangementOut] = []
     for xml_path in sorted(Path(job.bundle_dir).glob("arrangement_*.xml")):
         root = ET.parse(xml_path).getroot()
+        if root.tag != "song":
+            continue  # skip the vocals XML (root <vocals>) — not an instrument tab
         tuning_el = root.find("tuning")
         offsets = (
             [int(tuning_el.get(f"string{i}", "0")) for i in range(6)]
