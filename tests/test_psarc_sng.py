@@ -1,3 +1,5 @@
+import struct
+
 from rockforge.domain.arrangement import Arrangement, ArrangementKind, Section, SongMetadata
 from rockforge.domain.music import Beat, TabNote, Technique, TempoMap, Tuning
 from rockforge.infrastructure.packaging.psarc.sng import (
@@ -85,12 +87,11 @@ def test_note_mask_uses_real_rocksmith_values() -> None:
     assert notes[0].mask & NOTE_MASK_SINGLE
     assert notes[0].mask & NOTE_MASK_SUSTAIN
     assert not (notes[0].mask & NOTE_MASK_CHORD)
-    # Second note: open string (fret 0). Bends are NOT emitted in the SNG (the
-    # binary bend layout crashed the game at the first bent chord and can't be
-    # validated); the bend survives via the XML/DLC Builder path instead.
-    assert not (notes[1].mask & NOTE_MASK_BEND)
+    # Second note: open string (fret 0), half-step bend → OPEN | BEND, peak in the
+    # maxBend field (matches a decoded DLC Builder SNG: bent string 0x3000).
+    assert notes[1].mask & NOTE_MASK_BEND
     assert notes[1].mask & NOTE_MASK_OPEN
-    assert notes[1].bend == 0.0
+    assert notes[1].bend == 1.5
 
 
 def test_technique_bits_alias_matches_technique_to_mask() -> None:
@@ -182,14 +183,14 @@ def test_chord_with_techniques_produces_chord_notes() -> None:
             beats=(Beat(time=0.0, measure=1),), average_bpm=120.0
         ),
         notes=[
-            TabNote(string=0, fret=2, time=0.0, sustain=0.5, slide_to_fret=5),
+            TabNote(string=0, fret=2, time=0.0, sustain=0.5, bend_semitones=1.0),
             TabNote(string=1, fret=3, time=0.0, sustain=0.5),
         ],
         sections=[Section(name="riff", start_time=0.0)],
     )
     model = from_arrangement(arr)
     assert len(model.chord_notes) == 1
-    assert model.chord_notes[0].slide_to[0] == 5  # string 0 slides to fret 5
+    assert model.chord_notes[0].note_mask[0] & NOTE_MASK_BEND  # string 0 bends
 
     level = model.arrangements[-1]
     chord_note = level.notes[0]
@@ -454,11 +455,9 @@ def test_gp_sections_are_bracketed_with_count_and_end_and_links() -> None:
     assert all(p.phrase_iteration_links >= 1 for p in model.phrases)
 
 
-def test_sng_does_not_emit_bends() -> None:
-    # The native SNG deliberately drops bends: the binary bend layout crashed the
-    # game at the entry of the first bent chord even with EOF-faithful placement,
-    # and there's no retail bent SNG to byte-diff against. Bends still reach the
-    # game via the XML / DLC Builder path (which keeps its <bendValues>).
+def test_bend_point_matches_dlc_builder_single_point_at_note_time() -> None:
+    # A decoded DLC Builder SNG of a bent chord carries a single bend point at the
+    # note's own (absolute song) time with step = the bend in half-steps. Match it.
     beats = tuple(Beat(time=i * 0.5, measure=1 if i == 0 else -1) for i in range(20))
     arr = Arrangement(
         kind=ArrangementKind.LEAD,
@@ -473,12 +472,53 @@ def test_sng_does_not_emit_bends() -> None:
     )
     model = from_arrangement(arr)
     top = model.arrangements[-1]
-    for note in top.notes:
-        assert not (note.mask & NOTE_MASK_BEND)
-        assert note.bend == 0.0
-        assert not note.bend_data
-    for cn in model.chord_notes:
-        assert all(not s for s in cn.bend_data)
+    single = next(n for n in top.notes if n.string == 0)
+    assert len(single.bend_data) == 1
+    assert single.bend_data[0].time == 3.0 and single.bend_data[0].step == 1.0
+    chord = next(n for n in top.notes if n.chord_id >= 0)
+    cn = model.chord_notes[chord.chord_notes_id]
+    assert len(cn.bend_data[1]) == 1
+    assert cn.bend_data[1][0].time == 6.0 and cn.bend_data[1][0].step == 1.0
+
+
+def test_chord_notes_bend_usedcount_is_after_the_32_entry_array() -> None:
+    # The Sng2014 ChordNotes BendData layout per string is 32 fixed BendData32
+    # entries THEN the Int32 UsedCount — verified against a DLC Builder SNG.
+    # Writing the count first put it where the game expects the first bend point,
+    # crashing at the first bent chord. This locks the byte order.
+    from rockforge.infrastructure.packaging.psarc.sng import (
+        _BEND32_SIZE,
+        _BEND_DATA_COUNT,
+        SngBendData32,
+        SngChordNotes,
+        _read_chord_notes_entry,
+        _write_chord_notes_entry,
+    )
+
+    cn = SngChordNotes(
+        note_mask=[0, 0x3000, 0, 0, 0, 0],
+        bend_data=[[], [SngBendData32(time=6.0, step=1.0)], [], [], [], []],
+        slide_to=[0xFF] * 6,
+        slide_unpitch_to=[0xFF] * 6,
+        vibrato=[0] * 6,
+    )
+    blob = _write_chord_notes_entry(cn)
+    # String 0 has no bend → UsedCount 0 sits right after its 32 empty entries.
+    string_block = 32 * _BEND32_SIZE + 4
+    s0_count_off = 24 + _BEND_DATA_COUNT * _BEND32_SIZE  # after masks + s0's 32 entries
+    assert struct.unpack_from("<i", blob, s0_count_off)[0] == 0
+    # String 1's UsedCount (1) is at the END of its 32-entry array, not the front.
+    s1_count_off = 24 + string_block + _BEND_DATA_COUNT * _BEND32_SIZE
+    assert struct.unpack_from("<i", blob, s1_count_off)[0] == 1
+    # And the bend point is the FIRST entry of string 1's array.
+    s1_first_entry_off = 24 + string_block
+    t, step = struct.unpack_from("<ff", blob, s1_first_entry_off)
+    assert t == 6.0 and step == 1.0
+    # Round-trips.
+    restored, _ = _read_chord_notes_entry(blob, 0)
+    assert len(restored.bend_data[1]) == 1
+    assert restored.bend_data[1][0].time == 6.0 and restored.bend_data[1][0].step == 1.0
+    assert restored.bend_data[0] == []
 
 
 def test_plain_notes_have_no_slide() -> None:
