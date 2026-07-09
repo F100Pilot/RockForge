@@ -30,6 +30,7 @@ from rockforge.domain.music import (
     TempoMap,
     Tuning,
     apply_sustain_gap,
+    expand_slide_ins,
     is_composite_bend,
 )
 
@@ -214,6 +215,25 @@ def _slide_out_target(slides: object, fret: int) -> int | None:
     return None
 
 
+# pyguitarpro SlideType: intoFromBelow = -1, intoFromAbove = -2 (a scoop INTO the
+# note, no source note of its own).
+_SLIDE_IN_BELOW = -1
+_SLIDE_IN_ABOVE = -2
+
+
+def _slide_in_source(slides: object, fret: int) -> int | None:
+    """Scoop source fret for a slide-INTO a GP note, or None (see expand_slide_ins).
+
+    A slide from below starts a few frets lower, from above a few frets higher —
+    a short lead-in slide, clamped to the neck."""
+    vals = {int(s.value) for s in slides}  # type: ignore[attr-defined]
+    if _SLIDE_IN_BELOW in vals:
+        return max(1, fret - 3)
+    if _SLIDE_IN_ABOVE in vals:
+        return min(22, fret + 3)
+    return None
+
+
 def parse_gp_track(
     path: Path, track_index: int, offset_s: float = 0.0, tempo_scale: float = 1.0
 ) -> ParsedGpTrack:
@@ -339,6 +359,7 @@ def parse_gp_track(
                     if any(int(s.value) in _SLIDE_SHIFT_TYPES for s in eff.slides):
                         techs.add(Technique.SLIDE)
                     slide_unpitch = _slide_out_target(eff.slides, fret)
+                    slide_in = _slide_in_source(eff.slides, fret)
                     if eff.accentuatedNote or eff.heavyAccentuatedNote:
                         techs.add(Technique.ACCENT)
                     slap = int(beat.effect.slapEffect.value)
@@ -362,6 +383,7 @@ def parse_gp_track(
                                 bend_points=bend_points,
                                 left_hand=left_hand,
                                 pick_direction=pick_dir,
+                                slide_in_from=slide_in,
                             ),
                             bool(eff.hammer),
                         )
@@ -388,6 +410,8 @@ def parse_gp_track(
             continue
         notes[a] = replace(notes[a], slide_to_fret=notes[b].fret)
 
+    # Expand slide-into scoops into real lead-in slide notes before the gap trim.
+    notes = expand_slide_ins(notes)
     # Trim sustains so they end a small gap before the next note on the string,
     # instead of running right into it (done after slideTo is filled so pitched
     # slides keep their reach).
