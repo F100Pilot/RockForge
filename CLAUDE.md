@@ -613,6 +613,24 @@ silently never appears even though the arrangement/manifest/xblock are all
 present — isolated by byte-diffing our native "Pride" against a DLC Builder
 build). Guarded by `test_vocals_note_is_non_pitched_sentinel`.
 
+The vocals SNG also embeds the **lyric-font glyph atlas** — the Symbols sections
+(`SymbolsHeader`=2, `SymbolsTexture`=1, `SymbolsDefinition`=192) that map each
+character to a rectangle in the font texture. Writing these **empty** (the old
+behaviour) leaves the game with no glyphs to draw, so the letra silently never
+appears *even with note 254 and a fully-registered arrangement* — the second
+half of the same "Pride" bug. The atlas is **song-independent**: it is the
+default Latin font referencing the built-in game asset
+`assets\ui\lyrics\lyrics.dds` (NOT packed in the PSARC), and is byte-identical
+across DLC Builder builds (md5-equal between a DLC Builder "Free" and "Pride"
+vocals SNG). It is vendored verbatim as
+`packaging/psarc/vocals_symbols.bin` (the SymbolsHeader+Texture+Definition byte
+blob, counts included) and spliced in by `write_sng` for every vocals SNG;
+`read_sng` skips the populated entries by their fixed sizes (32 / 144 / 44
+bytes). Rebuilding DLC Builder's own 324 "Pride" syllables through
+`from_vocals` reproduces its vocals + symbol block exactly. Guarded by
+`test_vocals_sng_carries_the_lyric_font_symbol_atlas` /
+`test_instrument_sng_has_no_vocals_symbol_block`.
+
 What is intentionally absent (these are correct given the domain model, not
 defects):
 - **Simplified DDC (Dynamic Difficulty)**: `from_arrangement` emits several

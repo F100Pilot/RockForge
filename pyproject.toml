@@ -85,7 +85,7 @@ where = ["src"]
 "rockforge.infrastructure.packaging.gear" = ["tone_gear_data.json", "README.md"]
 # Constant RSEnumerable flat models (song-independent) the game's xblock
 # references; required for the native PSARC to enumerate the song.
-"rockforge.infrastructure.packaging.psarc" = ["flatmodels/*.flat"]
+"rockforge.infrastructure.packaging.psarc" = ["flatmodels/*.flat", "vocals_symbols.bin"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -32,10 +32,31 @@ from __future__ import annotations
 import struct
 from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
+from functools import lru_cache
+from pathlib import Path
 
 from rockforge.domain.arrangement import Arrangement, Section
 from rockforge.domain.music import TabNote, Technique
 from rockforge.infrastructure.rsxml.vocals import VOCAL_NOTE, VocalEvent
+
+# The vocals SNG's Symbols sections (SymbolsHeader/Texture/Definition) are the
+# lyric font's glyph atlas: without them the game has no glyphs to draw the
+# lyrics with, so the letra silently never appears even though the vocals
+# arrangement is present. The atlas is song-independent (the default Latin font,
+# referencing the built-in game asset ``assets\ui\lyrics\lyrics.dds``); it is
+# byte-identical across DLC Builder builds (verified md5-equal between a DLC
+# Builder "Free" and "Pride" vocals SNG). Vendored verbatim from a DLC Builder
+# build and emitted for every vocals SNG.
+_SYMBOLS_BLOCK_PATH = Path(__file__).with_name("vocals_symbols.bin")
+
+
+@lru_cache(maxsize=1)
+def _vocals_symbols_block() -> bytes:
+    """The default Latin lyric-font symbol sections, ready to splice into a
+    vocals SNG (SymbolsHeader + SymbolsTexture + SymbolsDefinition, counts
+    included)."""
+    return _SYMBOLS_BLOCK_PATH.read_bytes()
+
 
 # ---------------------------------------------------------------------------
 # Real Rocksmith 2014 NoteMask values (from Rocksmith2014.NET Constants.cs)
@@ -1303,11 +1324,11 @@ def write_sng(model: SngModel) -> bytes:
         out += struct.pack(
             _VOCAL_FMT, v.time, v.note, v.length, _pack_str(v.lyric, _LYRIC_LEN)
         )
-    # Symbol sections (only when vocals are present)
+    # Symbol sections (only when vocals are present): the lyric font glyph atlas
+    # the game needs to draw the lyrics. Vendored default Latin font (see
+    # _vocals_symbols_block) — empty sections here make the letra invisible.
     if model.vocals:
-        out += _write_count(0)  # SymbolsHeader
-        out += _write_count(0)  # SymbolsTexture
-        out += _write_count(0)  # SymbolsDefinition
+        out += _vocals_symbols_block()
 
     # 6. PhraseIterations
     out += _write_count(len(model.phrase_iterations))
@@ -1574,9 +1595,10 @@ def read_sng(data: bytes) -> SngModel:
         pos += _LYRIC_LEN
         vocals.append(SngVocal(time=t, note=n, length=length, lyric=lyric))
     if v_count > 0:
-        for _ in range(3):  # SymbolsHeader, SymbolsTexture, SymbolsDefinition
+        # SymbolsHeader (32-byte entries), SymbolsTexture (144), SymbolsDefinition (44)
+        for entry_size in (32, 144, 44):
             sym_count, pos = _read_count(data, pos)
-            # Skip entries (we emit 0 for all)
+            pos += sym_count * entry_size
 
     # 6. PhraseIterations
     pi_count, pos = _read_count(data, pos)
