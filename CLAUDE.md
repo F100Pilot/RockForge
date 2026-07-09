@@ -319,7 +319,13 @@ mismatch) with no Python traceback. `detect_lyrics` runs the runner via a local
 and retries on `cpu` (slower but works); a final failure raises with the
 subprocess's stderr tail so the real cause is visible (the bare
 `CalledProcessError` exit code was useless). Don't restore `check=True` — it
-hides the stderr and prevents the fallback.
+hides the stderr and prevents the fallback. Because the crash is a *native*
+one we can only observe after it happens, the first crash also drops a
+`work_dir/.whisperx_cuda_broken` marker (`_mark_whisperx_cuda_broken`); every
+later detection checks it (`_whisperx_cuda_known_broken`) and skips straight to
+CPU, so the user pays the ~20-30s doomed GPU attempt + scary log line only
+ONCE, not on every song. Delete the marker to retry the GPU after fixing the
+CUDA/cuDNN install.
 
 **Device selection (`_resolve_device`).** `demucs_device` defaults to `"auto"`:
 `celery_app._resolve_device` (deferred torch import, worker-only) returns
