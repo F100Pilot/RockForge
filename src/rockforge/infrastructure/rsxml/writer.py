@@ -139,11 +139,12 @@ def _note_attrs(n: TabNote) -> dict[str, str]:
 
 
 def _bend_time(n: TabNote) -> float:
-    """When a simple bend reaches its peak: one third through the sustain, as
-    Editor on Fire exports it (rs.c). Offset from the attack — a bendValue AT the
-    note's exact time reads as a prebend and misbehaves. Floored for a staccato
-    note so the point still lands after the attack."""
-    return n.time + (n.sustain / 3.0 if n.sustain > 0.03 else 0.1)
+    """When a simple bend reaches its peak: the note's END (attack + sustain), as
+    a decoded DLC Builder SNG places it — the pitch ramps UP across the note (a
+    visible bend). A bendValue AT the attack is a prebend (already-bent, smaller
+    looking). Floored for a staccato note so the point still lands after the
+    attack."""
+    return n.time + (n.sustain if n.sustain > 0.03 else 0.1)
 
 
 def _append_note_el(parent: ET.Element, tag: str, n: TabNote) -> ET.Element:

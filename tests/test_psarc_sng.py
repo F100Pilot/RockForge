@@ -455,9 +455,10 @@ def test_gp_sections_are_bracketed_with_count_and_end_and_links() -> None:
     assert all(p.phrase_iteration_links >= 1 for p in model.phrases)
 
 
-def test_bend_point_matches_dlc_builder_single_point_at_note_time() -> None:
-    # A decoded DLC Builder SNG of a bent chord carries a single bend point at the
-    # note's own (absolute song) time with step = the bend in half-steps. Match it.
+def test_bend_point_reaches_peak_at_note_end_like_dlc_builder() -> None:
+    # A decoded DLC Builder SNG of a bent note carries a single bend point at the
+    # note's END (attack + sustain) with step = the bend in half-steps — a bend-UP
+    # across the note, not a prebend at the attack.
     beats = tuple(Beat(time=i * 0.5, measure=1 if i == 0 else -1) for i in range(20))
     arr = Arrangement(
         kind=ArrangementKind.LEAD,
@@ -474,11 +475,12 @@ def test_bend_point_matches_dlc_builder_single_point_at_note_time() -> None:
     top = model.arrangements[-1]
     single = next(n for n in top.notes if n.string == 0)
     assert len(single.bend_data) == 1
-    assert single.bend_data[0].time == 3.0 and single.bend_data[0].step == 1.0
+    assert single.bend_data[0].step == 1.0
+    assert single.bend_data[0].time == 3.6  # attack 3.0 + sustain 0.6, not the attack
     chord = next(n for n in top.notes if n.chord_id >= 0)
     cn = model.chord_notes[chord.chord_notes_id]
     assert len(cn.bend_data[1]) == 1
-    assert cn.bend_data[1][0].time == 6.0 and cn.bend_data[1][0].step == 1.0
+    assert cn.bend_data[1][0].step == 1.0 and cn.bend_data[1][0].time == 6.6
 
 
 def test_chord_notes_bend_usedcount_is_after_the_32_entry_array() -> None:
