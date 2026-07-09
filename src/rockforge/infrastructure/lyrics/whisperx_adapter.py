@@ -34,6 +34,11 @@ DEFAULT_MIN_WORD_SCORE = 0.35
 DEFAULT_RMS_THRESHOLD = 0.01
 MAX_WORD_LENGTH_S = 4.0
 DEFAULT_WORD_LENGTH_S = 0.3
+# WhisperX segments can be long sentences; Rocksmith shows lyrics a line at a
+# time, so a long segment scrolls as one wall of text. Break each segment into
+# shorter display lines on a sung pause (gap between words) or a word cap.
+LINE_BREAK_GAP_S = 0.6
+LINE_MAX_WORDS = 7
 
 
 def vocals_has_signal(path: Path, threshold: float = DEFAULT_RMS_THRESHOLD) -> bool:
@@ -49,14 +54,39 @@ def vocals_has_signal(path: Path, threshold: float = DEFAULT_RMS_THRESHOLD) -> b
     return rms >= threshold
 
 
+def _break_into_lines(words: list[VocalEvent]) -> list[VocalEvent]:
+    """Suffix `+` (Rocksmith line break) on the last word of each display line.
+
+    A segment becomes several lines: break on a sung pause (gap to the next word
+    > ``LINE_BREAK_GAP_S``) or once a line reaches ``LINE_MAX_WORDS``; the last
+    word of the segment always ends a line."""
+    out: list[VocalEvent] = []
+    line_words = 0
+    for i, w in enumerate(words):
+        line_words += 1
+        is_last = i == len(words) - 1
+        gap_break = (
+            not is_last
+            and (words[i + 1].time - (w.time + w.length)) > LINE_BREAK_GAP_S
+        )
+        if is_last or gap_break or line_words >= LINE_MAX_WORDS:
+            out.append(VocalEvent(time=w.time, length=w.length, lyric=w.lyric + "+"))
+            line_words = 0
+        else:
+            out.append(w)
+    return out
+
+
 def segments_to_vocal_events(
     segments: list[dict[str, Any]], min_word_score: float = DEFAULT_MIN_WORD_SCORE
 ) -> list[VocalEvent]:
     """Map WhisperX aligned segments to Rocksmith vocal events.
 
-    One event per word; the last word of each segment gets the Rocksmith `+`
-    suffix (line break marker rendered by the game). Words without timestamps
-    (alignment failure) or below the confidence threshold are dropped.
+    One event per word; each display line's last word gets the Rocksmith `+`
+    suffix (the line-break marker rendered by the game) — long segments are
+    split into short lines by :func:`_break_into_lines` so the in-game lyrics
+    don't scroll as one wall of text. Words without timestamps (alignment
+    failure) or below the confidence threshold are dropped.
     """
     events: list[VocalEvent] = []
     for seg in segments:
@@ -77,9 +107,7 @@ def segments_to_vocal_events(
             )
             kept.append(VocalEvent(time=float(start), length=length, lyric=word))
         if kept:
-            last = kept[-1]
-            kept[-1] = VocalEvent(time=last.time, length=last.length, lyric=last.lyric + "+")
-            events.extend(kept)
+            events.extend(_break_into_lines(kept))
     return events
 
 

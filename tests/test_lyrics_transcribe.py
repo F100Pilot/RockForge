@@ -64,6 +64,35 @@ def test_length_is_capped_and_has_floor() -> None:
     assert events[1].length == pytest.approx(0.1)  # floor
 
 
+def test_long_segment_is_split_into_lines_by_word_cap() -> None:
+    """A long, gapless segment must not scroll as one wall of text — it breaks
+    every LINE_MAX_WORDS words."""
+    words = [
+        {"word": f"w{i}", "start": float(i) * 0.3, "end": float(i) * 0.3 + 0.2, "score": 0.9}
+        for i in range(16)
+    ]
+    events = segments_to_vocal_events([seg(words)])
+    breaks = [i for i, e in enumerate(events) if e.lyric.endswith("+")]
+    # 16 words, cap 7 → line breaks after words 7, 14, and the final word (16).
+    assert breaks == [6, 13, 15]
+
+
+def test_segment_breaks_on_a_sung_pause() -> None:
+    """A gap between words (a sung pause) ends a line even under the word cap."""
+    events = segments_to_vocal_events(
+        [
+            seg([
+                {"word": "stay", "start": 1.0, "end": 1.3, "score": 0.9},
+                {"word": "with", "start": 1.4, "end": 1.6, "score": 0.9},
+                # 1.5s gap here → line break after "me"
+                {"word": "me", "start": 1.7, "end": 2.0, "score": 0.9},
+                {"word": "tonight", "start": 3.5, "end": 3.9, "score": 0.9},
+            ])
+        ]
+    )
+    assert [e.lyric for e in events] == ["stay", "with", "me+", "tonight+"]
+
+
 def test_rms_gate_rejects_silence(tmp_path) -> None:
     np = pytest.importorskip("numpy")
     sf = pytest.importorskip("soundfile")
