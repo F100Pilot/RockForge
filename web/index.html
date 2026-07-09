@@ -410,8 +410,6 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
               <div class="syncctrls" style="margin-top:.4rem">
                 <button type="button" id="detectFirstNote" class="secondary">🎯 Detetar 1ª nota</button>
                 <button type="button" id="offsetFromCursor" class="secondary">Início = cursor</button>
-                <button type="button" id="offsetNudgeBack" class="secondary" title="recuar 0.01s">−0.01</button>
-                <button type="button" id="offsetNudgeFwd" class="secondary" title="avançar 0.01s">+0.01</button>
               </div>
               <span id="firstNoteInfo" class="meta" style="display:block;margin-top:.35rem">guiado: clica em "Detetar 1ª nota" → clica na onda onde a 1ª nota soa → clica na 1ª nota para a alinhar (as outras acompanham)</span>
             </div>
@@ -3905,12 +3903,10 @@ function setTempoLive(scale) {
 // defined as the recording second the first note is heard, and audioTime() is
 // exactly that (the un-padded recording clock), so "Início = cursor" turns the
 // sample-accurate playhead into the offset: scrub/click the waveform (zoom in
-// for precision) or play to the first attack, then lock it. Fine-nudge ±0.01s,
-// or let onset detection propose it.
+// for precision) or play to the first attack, then lock it. For a fine nudge,
+// the "Segundo" number field steps by 0.01; or let onset detection propose it.
 (function wireFirstNoteTools() {
   const fromCursor = document.getElementById('offsetFromCursor');
-  const back = document.getElementById('offsetNudgeBack');
-  const fwd = document.getElementById('offsetNudgeFwd');
   const detect = document.getElementById('detectFirstNote');
   const info = document.getElementById('firstNoteInfo');
   if (!fromCursor) return;
@@ -3922,8 +3918,7 @@ function setTempoLive(scale) {
     info.textContent = `Início fixado na posição do cursor: ${t.toFixed(2)}s.`;
     toast('Início = posição do cursor', 'ok');
   });
-  back.addEventListener('click', () => { if (isGpJob()) setOffsetLive(offsetLive - 0.01); });
-  fwd.addEventListener('click', () => { if (isGpJob()) setOffsetLive(offsetLive + 0.01); });
+  // (Fine ±0.01 nudges removed — the "Segundo" number field already steps by 0.01.)
 
   // Guided 3-click alignment: arm → click the waveform where the 1st note
   // sounds → click the 1st note to shift it (and all notes) there.
