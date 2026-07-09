@@ -605,7 +605,13 @@ sustain`, `FretId = slideTo`), so the fretboard re-anchors where the slide lands
 a **separate `<key>_vocals.sng`** arrangement (same Sng2014 container, only the
 Vocals section populated) with its own `Vocals` manifest entry — not embedded in
 an instrument SNG (which the game would not read as vocals). `sng.from_vocals`
-builds that vocals-only model.
+builds that vocals-only model. Each `SngVocal.note` is the non-pitched sentinel
+**`VOCAL_NOTE = 254`**, NOT 0 — 254 is Rocksmith's "scroll lyric, no karaoke
+pitch" marker (a DLC Builder vocals SNG writes 254; note 0 is a real, absurdly
+low MIDI pitch that the game fails to render as a scrolling lyric, so the letra
+silently never appears even though the arrangement/manifest/xblock are all
+present — isolated by byte-diffing our native "Pride" against a DLC Builder
+build). Guarded by `test_vocals_note_is_non_pitched_sentinel`.
 
 What is intentionally absent (these are correct given the domain model, not
 defects):

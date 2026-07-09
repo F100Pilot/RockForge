@@ -849,3 +849,15 @@ def test_from_vocals_only_populates_vocals() -> None:
     assert restored.vocals[0].lyric == "hel"
     assert restored.vocals[1].lyric == "lo+"
     assert restored.arrangements == []
+
+
+def test_vocals_note_is_non_pitched_sentinel() -> None:
+    """Scroll lyrics must carry note 254 (Rocksmith's non-pitched sentinel),
+    not 0. A DLC Builder-built vocals SNG uses 254; note 0 is a real (absurdly
+    low) MIDI pitch, and the game then fails to render the lyric as a scroll —
+    the "letra não aparece" symptom on a native PSARC."""
+    from rockforge.infrastructure.rsxml.vocals import VOCAL_NOTE
+
+    model = from_vocals([VocalEvent(time=0.5, length=0.3, lyric="hi+")])
+    assert model.vocals[0].note == VOCAL_NOTE == 254
+    assert read_sng(write_sng(model)).vocals[0].note == 254

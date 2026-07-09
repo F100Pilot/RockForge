@@ -35,7 +35,7 @@ from dataclasses import dataclass, field, replace
 
 from rockforge.domain.arrangement import Arrangement, Section
 from rockforge.domain.music import TabNote, Technique
-from rockforge.infrastructure.rsxml.vocals import VocalEvent
+from rockforge.infrastructure.rsxml.vocals import VOCAL_NOTE, VocalEvent
 
 # ---------------------------------------------------------------------------
 # Real Rocksmith 2014 NoteMask values (from Rocksmith2014.NET Constants.cs)
@@ -1034,7 +1034,7 @@ def from_arrangement(
 
     # --- Vocals ---
     sng_vocals = [
-        SngVocal(time=v.time, note=0, length=v.length, lyric=v.lyric)
+        SngVocal(time=v.time, note=VOCAL_NOTE, length=v.length, lyric=v.lyric)
         for v in (vocals or [])
     ]
 
@@ -1084,7 +1084,7 @@ def from_vocals(vocals: list[VocalEvent]) -> SngModel:
     """
     return SngModel(
         vocals=[
-            SngVocal(time=v.time, note=0, length=v.length, lyric=v.lyric)
+            SngVocal(time=v.time, note=VOCAL_NOTE, length=v.length, lyric=v.lyric)
             for v in vocals
         ],
         arrangements=[],
