@@ -31,6 +31,7 @@ _ID_NAMESPACE = uuid.UUID("9b1f3f2e-9c1a-4e9b-8f0a-2f1f3f2e9c1a")
 # ArrangementName string / ArrangementType int / RouteMask per kind, from
 # Rocksmith2014.NET Arrangement.fs (Lead→0/1, Combo→1/1, Rhythm→2/2). A real
 # manifest carries the int ArrangementType (a string import-crashes the game).
+# Keyed by the base kind (alternates fold onto it via ``kind.base_kind``).
 _ARR_NAME = {
     ArrangementKind.LEAD: "Lead",
     ArrangementKind.RHYTHM: "Rhythm",
@@ -38,6 +39,18 @@ _ARR_NAME = {
 }
 _ARR_TYPE = {ArrangementKind.LEAD: 0, ArrangementKind.COMBINED: 1, ArrangementKind.RHYTHM: 2}
 _ROUTE_MASK = {ArrangementKind.LEAD: 1, ArrangementKind.COMBINED: 1, ArrangementKind.RHYTHM: 2}
+
+
+def _arr_name(kind: ArrangementKind) -> str:
+    return _ARR_NAME[kind.base_kind]
+
+
+def _arr_type(kind: ArrangementKind) -> int:
+    return _ARR_TYPE[kind.base_kind]
+
+
+def _route_mask(kind: ArrangementKind) -> int:
+    return _ROUTE_MASK[kind.base_kind]
 
 # Constant per-difficulty note-density ramp DLC Builder writes verbatim.
 _DYNAMIC_VISUAL_DENSITY = [
@@ -88,13 +101,17 @@ def _master_id(pid: str) -> int:
 
 
 def arrangement_asset_name(song_key: str, kind: ArrangementKind) -> str:
-    """The lowercase ``<key>_<combo|lead|rhythm>`` asset stem for a kind."""
-    return f"{song_key.lower()}_{_ARR_NAME[kind].lower()}"
+    """The lowercase ``<key>_<combo|lead|rhythm[2]>`` asset stem for a kind.
+
+    An alternate arrangement gets a ``2`` suffix (``lead2``/``rhythm2``), matching
+    DLC Builder, so it never collides with the representative one's files."""
+    suffix = "2" if kind.is_alternate else ""
+    return f"{song_key.lower()}_{_arr_name(kind).lower()}{suffix}"
 
 
 def arrangement_display_name(kind: ArrangementKind) -> str:
     """The ArrangementName string (``Lead``/``Rhythm``/``Combo``) for a kind."""
-    return _ARR_NAME[kind]
+    return _arr_name(kind)
 
 
 def song_key_from_title(artist: str, title: str) -> str:
@@ -115,19 +132,23 @@ def _arrangement_properties(arrangement: Arrangement) -> dict[str, int]:
     """The 30-ish boolean/flag ArrangementProperties block. RockForge does not
     analyse technique usage, so most flags are 0; path/routing + tuning are set."""
     kind = arrangement.kind
+    base = kind.base_kind
     standard = all(o == 0 for o in arrangement.tuning.offsets_from_standard())
+    # An alternate arrangement is non-representative and a bonus (from a decoded
+    # DLC Builder CDLC: lead2 carries represent=0, bonusArr=1).
     return {
-        "represent": 1, "bonusArr": 0, "standardTuning": int(standard),
+        "represent": int(not kind.is_alternate), "bonusArr": int(kind.is_alternate),
+        "standardTuning": int(standard),
         "nonStandardChords": 0, "barreChords": 0, "powerChords": 0, "dropDPower": 0,
         "openChords": 0, "fingerPicking": 0, "pickDirection": 0, "doubleStops": 0,
         "palmMutes": 0, "harmonics": 0, "pinchHarmonics": 0, "hopo": 0, "tremolo": 0,
         "slides": 0, "unpitchedSlides": 0, "bends": 0, "tapping": 0, "vibrato": 0,
         "fretHandMutes": 0, "slapPop": 0, "twoFingerPicking": 0, "fifthsAndOctaves": 0,
         "syncopation": 0, "bassPick": 0, "sustain": 0,
-        "pathLead": int(kind in (ArrangementKind.LEAD, ArrangementKind.COMBINED)),
-        "pathRhythm": int(kind is ArrangementKind.RHYTHM),
+        "pathLead": int(base in (ArrangementKind.LEAD, ArrangementKind.COMBINED)),
+        "pathRhythm": int(base is ArrangementKind.RHYTHM),
         "pathBass": 0,
-        "routeMask": _ROUTE_MASK[kind],
+        "routeMask": _route_mask(kind),
     }
 
 
@@ -236,12 +257,14 @@ def build_arrangement_manifest(
     attributes: dict[str, object] = {
         "AlbumName": meta.album,
         "AlbumNameSort": meta.album,
-        "ArrangementName": _ARR_NAME[arrangement.kind],
+        "ArrangementName": _arr_name(arrangement.kind),
         "ArrangementProperties": _arrangement_properties(arrangement),
         "ArrangementSort": 0,
-        "ArrangementType": _ARR_TYPE[arrangement.kind],
+        "ArrangementType": _arr_type(arrangement.kind),
         "ArtistName": meta.artist,
         "ArtistNameSort": meta.artist,
+        "Representative": int(not arrangement.kind.is_alternate),
+        "RouteMask": _route_mask(arrangement.kind),
         "BlockAsset": f"urn:emergent-world:{key_lower}",
         "CentOffset": arrangement.tuning.cent_offset,
         "CapoFret": arrangement.capo,
@@ -252,7 +275,7 @@ def build_arrangement_manifest(
         "DNA_Chords": 0, "DNA_Riffs": 0, "DNA_Solo": 0,
         "DynamicVisualDensity": _DYNAMIC_VISUAL_DENSITY,
         "EasyMastery": diff["EasyMastery"], "MediumMastery": diff["MediumMastery"],
-        "FullName": f"{song_key}_{_ARR_NAME[arrangement.kind]}",
+        "FullName": f"{song_key}_{_arr_name(arrangement.kind)}",
         "LeaderboardChallengeRating": 0,
         "ManifestUrn": f"urn:database:json-db:{asset}",
         "MasterID_PS3": -1, "MasterID_XBox360": -1, "MasterID_RDV": _master_id(pid),
@@ -314,7 +337,7 @@ def _header_entry(
     attrs: dict[str, object] = {
         "AlbumName": meta.album,
         "AlbumNameSort": meta.album,
-        "ArrangementName": _ARR_NAME[arrangement.kind],
+        "ArrangementName": _arr_name(arrangement.kind),
         "ArtistName": meta.artist,
         "ArtistNameSort": meta.artist,
         "CentOffset": arrangement.tuning.cent_offset,
@@ -327,8 +350,8 @@ def _header_entry(
         "MasterID_RDV": _master_id(pid),
         "NotesEasy": easy, "NotesMedium": medium, "NotesHard": note_count,
         "PersistentID": pid,
-        "Representative": 1,
-        "RouteMask": _ROUTE_MASK[arrangement.kind],
+        "Representative": int(not arrangement.kind.is_alternate),
+        "RouteMask": _route_mask(arrangement.kind),
         "Shipping": True,
         "SKU": "RS2",
         "SongDiffEasy": diff["SongDiffEasy"], "SongDiffMed": diff["SongDiffMed"],

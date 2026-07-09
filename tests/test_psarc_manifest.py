@@ -4,6 +4,7 @@ from rockforge.domain.arrangement import Arrangement, ArrangementKind, SongMetad
 from rockforge.domain.music import TempoMap, Tuning
 from rockforge.infrastructure.packaging.psarc.container import pack_entries, unpack
 from rockforge.infrastructure.packaging.psarc.manifest import (
+    arrangement_asset_name,
     build_arrangement_manifest,
     build_manifest_files,
     persistent_id,
@@ -130,6 +131,43 @@ def test_build_manifest_files_packs_and_round_trips() -> None:
 
     packed = pack_entries(files)
     assert unpack(packed) == files
+
+
+def test_alternate_arrangement_is_nonrepresentative_same_path() -> None:
+    # An Alternate Lead shares the Lead ArrangementName/RouteMask/Type but is
+    # non-representative (Representative 0, represent 0, bonusArr 1), with its own
+    # `lead2` asset and a distinct persistent ID — matching a decoded DLC Builder
+    # CDLC (AAL "Tempting Time" lead vs lead2).
+    lead = _arrangement(ArrangementKind.LEAD)
+    alt = _arrangement(ArrangementKind.ALTERNATE_LEAD)
+    la = list(build_arrangement_manifest(
+        lead, "MySong", arrangement_asset_name("MySong", ArrangementKind.LEAD),
+    )["Entries"].values())[0]["Attributes"]
+    aa = list(build_arrangement_manifest(
+        alt, "MySong", arrangement_asset_name("MySong", ArrangementKind.ALTERNATE_LEAD),
+    )["Entries"].values())[0]["Attributes"]
+    assert aa["ArrangementName"] == "Lead" and aa["ArrangementType"] == 0 and aa["RouteMask"] == 1
+    assert la["Representative"] == 1 and aa["Representative"] == 0
+    assert la["ArrangementProperties"]["represent"] == 1
+    assert aa["ArrangementProperties"]["represent"] == 0
+    assert aa["ArrangementProperties"]["bonusArr"] == 1
+    assert la["PersistentID"] != aa["PersistentID"]
+    assert arrangement_asset_name("MySong", ArrangementKind.ALTERNATE_LEAD) == "mysong_lead2"
+    assert arrangement_asset_name("MySong", ArrangementKind.ALTERNATE_RHYTHM) == "mysong_rhythm2"
+
+
+def test_build_manifest_files_emits_distinct_lead_and_alternate() -> None:
+    files = build_manifest_files(
+        [
+            (_arrangement(ArrangementKind.LEAD), "mysong_lead"),
+            (_arrangement(ArrangementKind.ALTERNATE_LEAD), "mysong_lead2"),
+        ],
+        "MySong",
+    )
+    assert "manifests/songs_dlc_mysong/mysong_lead.json" in files
+    assert "manifests/songs_dlc_mysong/mysong_lead2.json" in files
+    hsan = json.loads(files["manifests/songs_dlc_mysong/songs_dlc_mysong.hsan"])
+    assert len(hsan["Entries"]) == 2  # both leads listed, distinct persistent IDs
 
 
 def test_include_vocals_adds_vocals_manifest() -> None:

@@ -13,6 +13,25 @@ class ArrangementKind(Enum):
     LEAD = "Lead"
     RHYTHM = "Rhythm"
     COMBINED = "Combined"  # fallback when lead/rhythm split is not trusted
+    # Alternate (bonus) arrangements: a SECOND Lead/Rhythm chart on the same path,
+    # flagged non-representative — Rocksmith lists it as an alternate the player can
+    # pick (a decoded DLC Builder CDLC encodes "Alternate Lead" as ArrangementName
+    # Lead, RouteMask 1, Representative 0, bonusArr 1, its own IDs and a `lead2`
+    # asset). They fold onto their base path for every format detail but that flag.
+    ALTERNATE_LEAD = "Alternate Lead"
+    ALTERNATE_RHYTHM = "Alternate Rhythm"
+
+    @property
+    def is_alternate(self) -> bool:
+        return self in (ArrangementKind.ALTERNATE_LEAD, ArrangementKind.ALTERNATE_RHYTHM)
+
+    @property
+    def base_kind(self) -> ArrangementKind:
+        """The primary kind this arrangement's path/name/route derive from."""
+        return {
+            ArrangementKind.ALTERNATE_LEAD: ArrangementKind.LEAD,
+            ArrangementKind.ALTERNATE_RHYTHM: ArrangementKind.RHYTHM,
+        }.get(self, self)
 
 
 class ConfidenceLabel(Enum):

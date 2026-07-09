@@ -546,6 +546,18 @@ semitone offsets (`Tuning.offsets_from_standard`), `TuningPitch` from
 `cent_offset`. `ID`==`PersistentID` (one GUID), `MasterID` random positive int —
 matching a real captured `.rs2dlc`.
 
+**Alternate arrangements.** `ArrangementKind` also has `ALTERNATE_LEAD` /
+`ALTERNATE_RHYTHM` — a SECOND Lead/Rhythm chart (from another GP track) the
+player can pick in game. They `.base_kind` onto Lead/Rhythm for every format
+detail (ArrangementName, RouteMask, ArrangementType, path flags, `<arrangement>`
+tag) but are **non-representative**: `Representative=0`, `represent=0`,
+`bonusArr=1`, a distinct persistent/master ID, a `lead2`/`rhythm2` asset stem,
+and a unique xblock entity name (`…_Lead2`) while the manifest `FullName` stays
+`…_Lead`. This is byte-for-byte how a decoded DLC Builder CDLC (Animals As
+Leaders "Tempting Time") encodes its `lead`+`lead2`. Selected via
+`GpJobSpec.alt_lead_track`/`alt_rhythm_track` (the "Pista Lead/Rhythm
+alternativo" selectors); the `.rs2dlc` marks them `Priority=Bonus` (2).
+
 RockForge now has a full tone-gear model (`domain/tone.py`, backed by the
 vendored Rocksmith gear catalogue) — custom tones with real amp/cabinet/pedal
 definitions are serialized into the `.rs2dlc`'s `Tones` array and flow through

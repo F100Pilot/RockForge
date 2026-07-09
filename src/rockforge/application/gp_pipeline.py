@@ -108,6 +108,10 @@ class GpJobSpec:
     audio_source: str
     lead_track: int | None = None
     rhythm_track: int | None = None
+    # Optional SECOND Lead/Rhythm charts from other GP tracks — produced as
+    # non-representative "Alternate" arrangements the player can pick in game.
+    alt_lead_track: int | None = None
+    alt_rhythm_track: int | None = None
     offset_s: float = 0.0  # second in the recording where the song's first note is heard
     # Extra silence (seconds) prepended at the very start, on top of the
     # automatic MIN_LEAD_S lead-in — user-controlled "intro silence" that pushes
@@ -326,6 +330,13 @@ class GenerateFromGpUseCase:
             )
         if rhythm_idx is not None:
             tracks.append((ArrangementKind.RHYTHM, rhythm_idx))
+        if spec.alt_lead_track is not None:
+            tracks.append((ArrangementKind.ALTERNATE_LEAD, spec.alt_lead_track))
+        if spec.alt_rhythm_track is not None:
+            tracks.append((ArrangementKind.ALTERNATE_RHYTHM, spec.alt_rhythm_track))
+        chosen = [idx for _, idx in tracks]
+        if len(chosen) != len(set(chosen)):
+            raise IngestionError("each arrangement must use a different GP track")
 
         # Each arrangement is parsed and drift-corrected independently with its
         # own tempo_scale / sync_anchor_stages, so corrections never leak

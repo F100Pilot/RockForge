@@ -81,12 +81,16 @@ def _tuning_pitch(cent_offset: float) -> float:
 
 def _instrumental_dto(arr: Arrangement, xml_name: str) -> dict[str, object]:
     guid = _new_guid()
+    # ArrangementPriority: Main=0, Alternative=1, Bonus=2. An alternate arrangement
+    # is a non-representative second chart on the same path — encoded as Bonus, the
+    # way a decoded DLC Builder CDLC (AAL "Tempting Time" lead2) does it.
+    priority = 2 if arr.kind.is_alternate else 0
     return {
         "ID": guid,
         "XML": xml_name,
-        "Name": _ARRANGEMENT_NAME[arr.kind],
-        "RouteMask": _ROUTE_MASK[arr.kind],
-        "Priority": 0,  # ArrangementPriority.Main
+        "Name": _ARRANGEMENT_NAME[arr.kind.base_kind],
+        "RouteMask": _ROUTE_MASK[arr.kind.base_kind],
+        "Priority": priority,
         "ScrollSpeed": _DEFAULT_SCROLL_SPEED,
         "BassPicked": False,
         "Tuning": list(arr.tuning.offsets_from_standard()),

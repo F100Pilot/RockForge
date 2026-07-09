@@ -107,8 +107,10 @@ class DlcBuilderPackager:
 
         instrumental_xml: list[Path] = []
         for arr in arrangements:
+            # kind.name is a safe unique slug ("alternate_lead"); the display value
+            # ("Alternate Lead") has a space.
             instrumental_xml.append(
-                write_arrangement_xml(arr, out_dir / f"arrangement_{arr.kind.value.lower()}.xml")
+                write_arrangement_xml(arr, out_dir / f"arrangement_{arr.kind.name.lower()}.xml")
             )
         xml_paths: list[Path] = list(instrumental_xml)
 
