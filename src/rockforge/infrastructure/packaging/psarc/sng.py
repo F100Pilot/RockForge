@@ -392,12 +392,11 @@ def _note_mask(n: TabNote, is_chord: bool = False, is_double_stop: bool = False)
     mask = 0
     for tech in n.techniques:
         mask |= TECHNIQUE_TO_MASK.get(tech, 0)
-    # The native SNG does NOT emit bends (see _bend_points): the binary bend layout
-    # is unvalidated against a retail bent SNG and crashed the game at the first
-    # bent chord even with EOF-faithful point placement. Strip the bit here so the
-    # mask never claims a bend the payload doesn't carry. Bends still reach the
-    # game through the DLC Builder bundle (the XML keeps its <bendValues>).
-    mask &= ~NOTE_MASK_BEND
+    # BEND keys off the actual bend amount, not only Technique.BEND, so the mask
+    # agrees with the emitted bend point. A DLC Builder SNG of a bent chord marks
+    # the bent string 0x3000 (BEND | SUSTAIN); we mirror that.
+    if n.bend_semitones > 0:
+        mask |= NOTE_MASK_BEND
     if n.sustain > 0:
         mask |= NOTE_MASK_SUSTAIN
     if n.fret == 0:
@@ -412,18 +411,18 @@ def _note_mask(n: TabNote, is_chord: bool = False, is_double_stop: bool = False)
 
 
 def _bend_points(n: TabNote) -> list[SngBendData32]:
-    """Bends are NOT emitted in the native SNG.
+    """The bend curve for a note, matching a decoded DLC Builder SNG.
 
-    We tried two EOF-faithful placements — a point at the attack and a single
-    point one third through the sustain (Editor on Fire's own convention) — and
-    both still crashed the game at the entry of the first bent chord (Beartooth
-    "Free" C-part). The SNG binary bend layout is round-tripped but has never been
-    byte-diffed against a retail SNG that actually contains bends (none exists in
-    CI), so it stays disabled here as the honest, stable choice. The bends are not
-    lost: the XML writer keeps its <bendValues>, so the DLC Builder bundle (the
-    trustworthy path) reproduces them and DLC Builder builds a validated SNG.
+    Byte-diffing a DLC Builder build of this chart showed a bent chord carries a
+    SINGLE bend point at the note's own (absolute song) time with step = the bend
+    in half-steps (a half-step bend → 1.0). Our earlier crashes were NOT this
+    point — they were the ChordNotes BendData layout writing UsedCount before the
+    32-entry array instead of after it (see _write_chord_notes_entry). With that
+    fixed, this matches retail exactly.
     """
-    return []
+    if n.bend_semitones <= 0:
+        return []
+    return [SngBendData32(time=n.time, step=n.bend_semitones)]
 
 
 def _section_end_times(sections: list[Section], song_length: float) -> list[float]:
@@ -799,10 +798,8 @@ def from_arrangement(
         )
 
     for gi, g in enumerate(chord_groups):
-        # Bends are not emitted in the SNG (see _bend_points), so a bend-only chord
-        # needs no ChordNotes entry.
         has_techniques = any(
-            (n.techniques - {Technique.BEND}) or n.slide_to_fret is not None
+            n.techniques or n.bend_semitones > 0 or n.slide_to_fret is not None
             for n in g
         )
         if not has_techniques:
@@ -821,6 +818,8 @@ def from_arrangement(
             # single note inside a chord, drawing a corrupt vertical bar on the
             # highway and crashing mid-riff.
             cn.note_mask[n.string] = _note_mask(n) & ~NOTE_MASK_SINGLE
+            if n.bend_semitones > 0:
+                cn.bend_data[n.string] = _bend_points(n)
             if n.slide_to_fret is not None:
                 cn.slide_to[n.string] = n.slide_to_fret
             if Technique.VIBRATO in n.techniques:
@@ -868,7 +867,7 @@ def from_arrangement(
             string=sn.string,
             fret=sn.fret,
             sustain=sn.sustain,
-            bend=0.0,  # bends not emitted in the SNG — see _bend_points
+            bend=sn.bend_semitones,
             mask=mask,
             anchor_fret=a_fret,
             anchor_width=a_width,
@@ -893,12 +892,10 @@ def from_arrangement(
             mask |= NOTE_MASK_DOUBLESTOP
         if cn_id >= 0:
             mask |= NOTE_MASK_CHORDNOTES
-        # Mirror techniques from individual notes onto chord mask (never BEND —
-        # bends are not emitted in the SNG; see _bend_points).
+        # Mirror techniques from individual notes onto chord mask
         for n in g:
             for tech in n.techniques:
                 mask |= TECHNIQUE_TO_MASK.get(tech, 0)
-        mask &= ~NOTE_MASK_BEND
         if any(n.sustain > 0 for n in g):
             mask |= NOTE_MASK_SUSTAIN
         mask |= NOTE_MASK_STRUM
@@ -909,7 +906,7 @@ def from_arrangement(
             string=-1,
             fret=-1,
             sustain=max(n.sustain for n in g),
-            bend=0.0,  # bends not emitted in the SNG — see _bend_points
+            bend=max(n.bend_semitones for n in g),
             mask=mask,
             anchor_fret=a_fret,
             anchor_width=a_width,
@@ -1118,15 +1115,20 @@ def _write_chord_notes_entry(cn: SngChordNotes) -> bytes:
     # NoteMask[6]
     for m in cn.note_mask:
         out += struct.pack("<I", m)
-    # BendData[6] — fixed 32 entries per string
+    # BendData[6] — per string: 32 fixed BendData32 entries THEN the Int32
+    # UsedCount. The count is at the END of the array, not the front (verified by
+    # decoding a DLC Builder SNG of a bent chord). Writing it first put the used
+    # count where the game expects the first bend point, corrupting the chord and
+    # crashing at the first bent chord — while unbent chords (all zeros either
+    # way) were unaffected, which is exactly the symptom we saw.
     for s in range(6):
         bends = cn.bend_data[s]
-        out += struct.pack("<i", len(bends))
         for j in range(_BEND_DATA_COUNT):
             if j < len(bends):
                 out += _write_bend32(bends[j])
             else:
                 out += b"\x00" * _BEND32_SIZE
+        out += struct.pack("<i", len(bends))
     # SlideTo[6], SlideUnpitchTo[6]
     out += bytes(cn.slide_to)
     out += bytes(cn.slide_unpitch_to)
@@ -1387,14 +1389,13 @@ def _read_chord_notes_entry(data: bytes, pos: int) -> tuple[SngChordNotes, int]:
         pos += 4
     bend_data: list[list[SngBendData32]] = []
     for _ in range(6):
-        (used,) = struct.unpack_from("<i", data, pos)
-        pos += 4
-        bends = []
-        for j in range(_BEND_DATA_COUNT):
+        entries = []
+        for _j in range(_BEND_DATA_COUNT):
             bd, pos = _read_bend32(data, pos)
-            if j < used:
-                bends.append(bd)
-        bend_data.append(bends)
+            entries.append(bd)
+        (used,) = struct.unpack_from("<i", data, pos)  # UsedCount AFTER the array
+        pos += 4
+        bend_data.append(entries[:used])
     slide_to = list(data[pos : pos + 6])
     pos += 6
     slide_unpitch_to = list(data[pos : pos + 6])
