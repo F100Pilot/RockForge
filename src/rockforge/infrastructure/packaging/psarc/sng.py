@@ -413,16 +413,17 @@ def _note_mask(n: TabNote, is_chord: bool = False, is_double_stop: bool = False)
 def _bend_points(n: TabNote) -> list[SngBendData32]:
     """The bend curve for a note, matching a decoded DLC Builder SNG.
 
-    Byte-diffing a DLC Builder build of this chart showed a bent chord carries a
-    SINGLE bend point at the note's own (absolute song) time with step = the bend
-    in half-steps (a half-step bend → 1.0). Our earlier crashes were NOT this
-    point — they were the ChordNotes BendData layout writing UsedCount before the
-    32-entry array instead of after it (see _write_chord_notes_entry). With that
-    fixed, this matches retail exactly.
+    Byte-diffing a DLC Builder build of this chart: a bent note carries a SINGLE
+    bend point at the note's END (attack + sustain) with step = the bend in
+    half-steps (a half-step bend → 1.0). The lone point at the end makes the game
+    ramp the pitch UP across the whole note — a visible bend. Placing it at the
+    ATTACK instead (our first working attempt) is a prebend: the note starts
+    already bent, so the bend looks smaller. Floored for a staccato note.
     """
     if n.bend_semitones <= 0:
         return []
-    return [SngBendData32(time=n.time, step=n.bend_semitones)]
+    offset = n.sustain if n.sustain > 0.03 else 0.1
+    return [SngBendData32(time=n.time + offset, step=n.bend_semitones)]
 
 
 def _section_end_times(sections: list[Section], song_length: float) -> list[float]:
