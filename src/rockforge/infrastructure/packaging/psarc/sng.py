@@ -392,11 +392,12 @@ def _note_mask(n: TabNote, is_chord: bool = False, is_double_stop: bool = False)
     mask = 0
     for tech in n.techniques:
         mask |= TECHNIQUE_TO_MASK.get(tech, 0)
-    # Key the BEND bit off the actual bend amount, not only Technique.BEND — the
-    # bend curve (bend_data) and maxBend are emitted from bend_semitones, so the
-    # mask must agree or the game reads a bend note with no curve.
-    if n.bend_semitones > 0:
-        mask |= NOTE_MASK_BEND
+    # The native SNG does NOT emit bends (see _bend_points): the binary bend layout
+    # is unvalidated against a retail bent SNG and crashed the game at the first
+    # bent chord even with EOF-faithful point placement. Strip the bit here so the
+    # mask never claims a bend the payload doesn't carry. Bends still reach the
+    # game through the DLC Builder bundle (the XML keeps its <bendValues>).
+    mask &= ~NOTE_MASK_BEND
     if n.sustain > 0:
         mask |= NOTE_MASK_SUSTAIN
     if n.fret == 0:
@@ -411,20 +412,18 @@ def _note_mask(n: TabNote, is_chord: bool = False, is_double_stop: bool = False)
 
 
 def _bend_points(n: TabNote) -> list[SngBendData32]:
-    """A bend curve for a note with a peak bend amount.
+    """Bends are NOT emitted in the native SNG.
 
-    Match Editor on Fire's export (rs.c): a single bend point one third of the way
-    through the sustain, at the peak strength in half-steps; the game ramps the
-    pitch up to it from the attack. The FIRST attempt put the point at the note's
-    exact attack time — coinciding with the note itself — which corrupted the
-    highway geometry and crashed at the first bent chord. Offsetting into the
-    sustain (as EOF does) is the fix. Floored for a staccato note so the point
-    still lands after the attack.
+    We tried two EOF-faithful placements — a point at the attack and a single
+    point one third through the sustain (Editor on Fire's own convention) — and
+    both still crashed the game at the entry of the first bent chord (Beartooth
+    "Free" C-part). The SNG binary bend layout is round-tripped but has never been
+    byte-diffed against a retail SNG that actually contains bends (none exists in
+    CI), so it stays disabled here as the honest, stable choice. The bends are not
+    lost: the XML writer keeps its <bendValues>, so the DLC Builder bundle (the
+    trustworthy path) reproduces them and DLC Builder builds a validated SNG.
     """
-    if n.bend_semitones <= 0:
-        return []
-    offset = n.sustain / 3.0 if n.sustain > 0.03 else 0.1
-    return [SngBendData32(time=n.time + offset, step=n.bend_semitones)]
+    return []
 
 
 def _section_end_times(sections: list[Section], song_length: float) -> list[float]:
@@ -800,8 +799,10 @@ def from_arrangement(
         )
 
     for gi, g in enumerate(chord_groups):
+        # Bends are not emitted in the SNG (see _bend_points), so a bend-only chord
+        # needs no ChordNotes entry.
         has_techniques = any(
-            n.techniques or n.bend_semitones > 0 or n.slide_to_fret is not None
+            (n.techniques - {Technique.BEND}) or n.slide_to_fret is not None
             for n in g
         )
         if not has_techniques:
@@ -820,8 +821,6 @@ def from_arrangement(
             # single note inside a chord, drawing a corrupt vertical bar on the
             # highway and crashing mid-riff.
             cn.note_mask[n.string] = _note_mask(n) & ~NOTE_MASK_SINGLE
-            if n.bend_semitones > 0:
-                cn.bend_data[n.string] = _bend_points(n)
             if n.slide_to_fret is not None:
                 cn.slide_to[n.string] = n.slide_to_fret
             if Technique.VIBRATO in n.techniques:
@@ -869,7 +868,7 @@ def from_arrangement(
             string=sn.string,
             fret=sn.fret,
             sustain=sn.sustain,
-            bend=sn.bend_semitones,
+            bend=0.0,  # bends not emitted in the SNG — see _bend_points
             mask=mask,
             anchor_fret=a_fret,
             anchor_width=a_width,
@@ -894,10 +893,12 @@ def from_arrangement(
             mask |= NOTE_MASK_DOUBLESTOP
         if cn_id >= 0:
             mask |= NOTE_MASK_CHORDNOTES
-        # Mirror techniques from individual notes onto chord mask
+        # Mirror techniques from individual notes onto chord mask (never BEND —
+        # bends are not emitted in the SNG; see _bend_points).
         for n in g:
             for tech in n.techniques:
                 mask |= TECHNIQUE_TO_MASK.get(tech, 0)
+        mask &= ~NOTE_MASK_BEND
         if any(n.sustain > 0 for n in g):
             mask |= NOTE_MASK_SUSTAIN
         mask |= NOTE_MASK_STRUM
@@ -908,7 +909,7 @@ def from_arrangement(
             string=-1,
             fret=-1,
             sustain=max(n.sustain for n in g),
-            bend=max(n.bend_semitones for n in g),
+            bend=0.0,  # bends not emitted in the SNG — see _bend_points
             mask=mask,
             anchor_fret=a_fret,
             anchor_width=a_width,

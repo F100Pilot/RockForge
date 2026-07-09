@@ -85,11 +85,12 @@ def test_note_mask_uses_real_rocksmith_values() -> None:
     assert notes[0].mask & NOTE_MASK_SINGLE
     assert notes[0].mask & NOTE_MASK_SUSTAIN
     assert not (notes[0].mask & NOTE_MASK_CHORD)
-    # Second note: open string (fret 0), half-step bend → OPEN | BEND, peak in
-    # the maxBend field.
-    assert notes[1].mask & NOTE_MASK_BEND
+    # Second note: open string (fret 0). Bends are NOT emitted in the SNG (the
+    # binary bend layout crashed the game at the first bent chord and can't be
+    # validated); the bend survives via the XML/DLC Builder path instead.
+    assert not (notes[1].mask & NOTE_MASK_BEND)
     assert notes[1].mask & NOTE_MASK_OPEN
-    assert notes[1].bend == 1.5
+    assert notes[1].bend == 0.0
 
 
 def test_technique_bits_alias_matches_technique_to_mask() -> None:
@@ -181,14 +182,14 @@ def test_chord_with_techniques_produces_chord_notes() -> None:
             beats=(Beat(time=0.0, measure=1),), average_bpm=120.0
         ),
         notes=[
-            TabNote(string=0, fret=2, time=0.0, sustain=0.5, bend_semitones=1.0),
+            TabNote(string=0, fret=2, time=0.0, sustain=0.5, slide_to_fret=5),
             TabNote(string=1, fret=3, time=0.0, sustain=0.5),
         ],
         sections=[Section(name="riff", start_time=0.0)],
     )
     model = from_arrangement(arr)
     assert len(model.chord_notes) == 1
-    assert model.chord_notes[0].note_mask[0] != 0  # string 0 has bend
+    assert model.chord_notes[0].slide_to[0] == 5  # string 0 slides to fret 5
 
     level = model.arrangements[-1]
     chord_note = level.notes[0]
@@ -453,11 +454,11 @@ def test_gp_sections_are_bracketed_with_count_and_end_and_links() -> None:
     assert all(p.phrase_iteration_links >= 1 for p in model.phrases)
 
 
-def test_bend_point_is_offset_into_the_sustain_not_at_the_attack() -> None:
-    # Match Editor on Fire: a single bend point one third of the way through the
-    # sustain, at the peak strength (half-steps). A point at the note's exact
-    # attack time (the first attempt) coincided with the note and crashed the game
-    # at the first bent chord.
+def test_sng_does_not_emit_bends() -> None:
+    # The native SNG deliberately drops bends: the binary bend layout crashed the
+    # game at the entry of the first bent chord even with EOF-faithful placement,
+    # and there's no retail bent SNG to byte-diff against. Bends still reach the
+    # game via the XML / DLC Builder path (which keeps its <bendValues>).
     beats = tuple(Beat(time=i * 0.5, measure=1 if i == 0 else -1) for i in range(20))
     arr = Arrangement(
         kind=ArrangementKind.LEAD,
@@ -472,15 +473,12 @@ def test_bend_point_is_offset_into_the_sustain_not_at_the_attack() -> None:
     )
     model = from_arrangement(arr)
     top = model.arrangements[-1]
-    single = next(n for n in top.notes if n.string == 0)
-    assert len(single.bend_data) == 1
-    assert single.bend_data[0].step == 1.0
-    assert single.bend_data[0].time > 3.0  # offset into the sustain, not the attack
-    chord = next(n for n in top.notes if n.chord_id >= 0)
-    assert chord.chord_notes_id >= 0
-    cn = model.chord_notes[chord.chord_notes_id]
-    assert len(cn.bend_data[1]) == 1
-    assert cn.bend_data[1][0].step == 1.0 and cn.bend_data[1][0].time > 6.0
+    for note in top.notes:
+        assert not (note.mask & NOTE_MASK_BEND)
+        assert note.bend == 0.0
+        assert not note.bend_data
+    for cn in model.chord_notes:
+        assert all(not s for s in cn.bend_data)
 
 
 def test_plain_notes_have_no_slide() -> None:
