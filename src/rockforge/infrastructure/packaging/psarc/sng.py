@@ -101,11 +101,17 @@ _CHORD_EPSILON_S = 0.03
 _MAX_ANCHOR_SPAN = 4
 # Dynamic Difficulty ceiling: the most difficulty levels a single phrase can
 # ramp its notes in over (0..CAP). A phrase's ceiling scales with the note count
-# of its busiest iteration, so a dense phrase reaches a higher difficulty than a
-# sparse one; this bound keeps the ramp SIMPLE (a retail DDC pass goes ~20+, we
-# stop lower on purpose — a "simplified DDC": graduated phrases and correct hero
-# triples, no NLinkedDifficulty linkage). Keeps the SNG small and the risk low.
-_DD_LEVEL_CAP = 11
+# of its busiest iteration (one level per note), so a dense phrase reaches a
+# higher difficulty than a sparse one — this is what gives each phrase's bar its
+# own HEIGHT on the in-game difficulty graph instead of a flat top. Set to 20 to
+# match a real DDC's range (a professional CDLC of Animals As Leaders "Tempting
+# Time" decodes to phrase max-difficulties spread 0..18, mode 6). A HARD cap (not
+# a proportional rescale) is deliberate: it preserves the natural 0..~18 spread of
+# most phrases and only flattens the handful of extreme-density outliers (a fast
+# tapping run can hit 50-70 notes/iteration) at the top, where a single outlier
+# would otherwise squash every other phrase toward zero. Still a simplified DDC —
+# graduated phrases and correct hero triples, no NLinkedDifficulty linkage.
+_DD_LEVEL_CAP = 20
 # Target phrase length (seconds) when auto-segmenting a section-less song, so DD
 # ramps per-phrase as the player progresses instead of over the whole song at once.
 _DEFAULT_PHRASE_S = 13.0

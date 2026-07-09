@@ -602,9 +602,14 @@ defects):
   Builder reference SNG: 23 levels, per-phrase ceilings graduated by density,
   per-iteration hero triples of ~(¼,½,1)·max). Each **phrase's** ceiling scales
   with the note count of its BUSIEST iteration (`phrase_max = min(_DD_LEVEL_CAP,
-  busiest-1)`, capped at `_DD_LEVEL_CAP = 11` to keep the SNG small); the song's
-  `max_difficulty` is the max over phrases, and there are `max_difficulty + 1`
-  levels. At level `d`, each iteration shows the strongest-beat prefix of its
+  busiest-1)`), so each phrase's difficulty bar gets its own HEIGHT instead of a
+  flat top. `_DD_LEVEL_CAP = 20` matches a real DDC's range — a decoded pro CDLC
+  (Animals As Leaders "Tempting Time") spreads phrase max-difficulties 0..18. The
+  cap is a HARD clamp (not a proportional rescale): it preserves the natural
+  0..~18 spread of most phrases and only flattens the handful of extreme-density
+  outliers (a fast tapping run can hit 50-70 notes/iteration) at the top. The
+  song's `max_difficulty` is the max over phrases, and there are
+  `max_difficulty + 1` levels (up to 21). At level `d`, each iteration shows the strongest-beat prefix of its
   notes scaled by `d` against that phrase's ceiling (`_level_notes`, ranked by
   `_note_tier` then time), so level 0 is the strongest beats and the top level is
   the full chart. `phrase_iterations[].difficulty` is the `(round(max/4),
@@ -617,9 +622,10 @@ defects):
   `test_dd_levels_have_no_handshapes_and_per_level_slide_extensions`. The manifest reports
   `MaxPhraseDifficulty` + `NotesEasy/Medium/Hard` from the levels. This is a
   mechanical density ramp with NO `NLinkedDifficulty` cross-phrase linkage — a
-  simplified DDC, NOT the full musical phrase-leveling a retail DDC pass does; the
-  in-game difficulty slider therefore spans a shorter range than a retail song's.
-  The trustworthy full-DD path stays the DLC Builder bundle (it runs a real DDC).
+  simplified DDC, NOT the full musical phrase-leveling a retail DDC pass does (the
+  level *range* is now comparable to retail, but the per-level note selection is
+  density-ranked, not musically phrased). The trustworthy full-DD path stays the
+  DLC Builder bundle (it runs a real DDC).
   A section-less GP is auto-segmented into ~13 s phrases (`_default_sections`) so
   DD still ramps per-phrase, and within a phrase the shown notes are spread across
   its timeline (`_spread_order`) rather than clustered at its start. **DD is
