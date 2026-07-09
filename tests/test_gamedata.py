@@ -70,6 +70,44 @@ def test_aggregategraph_references_every_asset() -> None:
 
 def test_showlights_is_valid_xml() -> None:
     minidom.parseString(gamedata.build_showlights().encode("utf-8"))
+    # No arrangement → the valid empty track.
+    assert 'count="0"' in gamedata.build_showlights()
+
+
+def test_showlights_generated_from_arrangement() -> None:
+    """With an arrangement, the stage-light track carries fog + beam events
+    (start fog, per-section fog, a pitch-coloured beam per onset, end fog),
+    time-ordered and using valid showlight note ranges — not an empty track."""
+    import re
+
+    from rockforge.domain.arrangement import (
+        Arrangement,
+        ArrangementKind,
+        Section,
+        SongMetadata,
+    )
+    from rockforge.domain.music import Beat, TabNote, TempoMap, Tuning
+
+    notes = [
+        TabNote(string=i % 6, fret=(i * 2) % 12, time=5.0 + i * 0.4, sustain=0.1)
+        for i in range(40)
+    ]
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="T", artist="A", song_length=40.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=[Beat(time=5.0, measure=1)], average_bpm=120.0),
+        notes=notes,
+        sections=[Section(name="COUNT", start_time=5.0), Section(name="riff", start_time=15.0)],
+    )
+    xml = gamedata.build_showlights(arr)
+    minidom.parseString(xml.encode("utf-8"))
+    times = [float(t) for t in re.findall(r'time="([\d.]+)"', xml)]
+    vals = [int(n) for n in re.findall(r'note="(\d+)"', xml)]
+    assert len(vals) > 10
+    assert times == sorted(times)  # showlights must be time-ordered
+    assert all(24 <= v <= 35 or 42 <= v <= 59 for v in vals)  # fog or beam ranges
+    assert times[0] == 5.0 and times[-1] == 40.0  # lights from the intro to the end
 
 
 def test_dxt1_from_rgb_is_a_valid_dds_of_the_right_size() -> None:
