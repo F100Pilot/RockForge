@@ -201,8 +201,27 @@ def test_gp_pipeline_same_track_rejected(two_track_gp5: Path, tmp_path: Path) ->
     from rockforge.domain.errors import IngestionError
 
     spec = GpJobSpec(gp_path=two_track_gp5, audio_source="x.wav", lead_track=0, rhythm_track=0)
-    with pytest.raises(IngestionError, match="same GP track"):
+    with pytest.raises(IngestionError, match="different GP track"):
         make_use_case().run(spec, SongMetadata(title="T", artist="A"), tmp_path / "w")
+
+
+def test_gp_pipeline_explicit_combo_track(two_track_gp5: Path, tmp_path: Path) -> None:
+    # Combo is a first-class, explicitly-assignable arrangement.
+    spec = GpJobSpec(gp_path=two_track_gp5, audio_source="x.wav", combo_track=0)
+    result = make_use_case().run(spec, SongMetadata(title="T", artist="A"), tmp_path / "w")
+    assert set(result.note_counts) == {"Combined"}
+
+
+def test_gp_pipeline_alternate_arrangement_from_chosen_track(
+    two_track_gp5: Path, tmp_path: Path
+) -> None:
+    # The user maps whichever tracks they want to whichever arrangement: here
+    # track 0 -> Lead, track 1 -> Alternate Lead (a second Lead chart).
+    spec = GpJobSpec(
+        gp_path=two_track_gp5, audio_source="x.wav", lead_track=0, alt_lead_track=1
+    )
+    result = make_use_case().run(spec, SongMetadata(title="T", artist="A"), tmp_path / "w")
+    assert set(result.note_counts) == {"Lead", "Alternate Lead"}
 
 
 def test_gp_pipeline_sync_anchors_shift_notes(two_track_gp5: Path, tmp_path: Path) -> None:

@@ -676,10 +676,14 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
       </form>
       <form id="gpJobForm" class="grid" style="display:none; margin-top:.75rem">
         <div id="gpMeta" class="meta" style="flex-basis:100%"></div>
+        <div class="meta" style="flex-basis:100%; opacity:.75">
+          Atribui uma pista a cada arranjo que quiseres (todos opcionais). Deixa vazios os que a música não tem.</div>
         <div class="field"><label>Pista Lead</label>
           <select name="lead_track"><option value="">—</option></select></div>
         <div class="field"><label>Pista Rhythm</label>
           <select name="rhythm_track"><option value="">—</option></select></div>
+        <div class="field"><label>Pista Combo</label>
+          <select name="combo_track"><option value="">—</option></select></div>
         <div class="field"><label>Pista Lead alternativo</label>
           <select name="alt_lead_track"><option value="">—</option></select></div>
         <div class="field"><label>Pista Rhythm alternativo</label>
@@ -4031,7 +4035,7 @@ document.getElementById('gpInspectForm').addEventListener('submit', async e => {
   form.style.display = '';
   document.getElementById('gpMeta').textContent =
     `${b.title || '(sem título)'} — ${b.artist || '(sem banda)'} · ${b.tempo} BPM · letra no GP: ${b.has_lyrics ? 'sim' : 'não'}`;
-  for (const name of ['lead_track', 'rhythm_track', 'alt_lead_track', 'alt_rhythm_track']) {
+  for (const name of ['lead_track', 'rhythm_track', 'combo_track', 'alt_lead_track', 'alt_rhythm_track']) {
     const sel = form.querySelector(`select[name=${name}]`);
     sel.innerHTML = '<option value="">—</option>' + b.tracks
       .filter(t => !t.is_percussion && t.string_count === 6)

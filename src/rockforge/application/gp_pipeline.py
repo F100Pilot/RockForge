@@ -106,8 +106,13 @@ class ArrangementSync:
 class GpJobSpec:
     gp_path: Path
     audio_source: str
+    # Each arrangement is an OPTIONAL, independently-assigned slot: the user maps a
+    # GP track to it (or leaves it empty). Nothing is auto-generated — the song
+    # gets exactly the arrangements assigned here. When ALL are empty, tracks are
+    # auto-picked as a convenience (lead+rhythm, or a lone track → Combined).
     lead_track: int | None = None
     rhythm_track: int | None = None
+    combo_track: int | None = None
     # Optional SECOND Lead/Rhythm charts from other GP tracks — produced as
     # non-representative "Alternate" arrangements the player can pick in game.
     alt_lead_track: int | None = None
@@ -311,29 +316,33 @@ class GenerateFromGpUseCase:
         normalized = self.normalizer.normalize(raw, workdir, pad_start_s=pad_start_s)
 
         stage("parse_gp")
-        lead_idx, rhythm_idx = spec.lead_track, spec.rhythm_track
-        if lead_idx is None and rhythm_idx is None:
+        # Explicit per-arrangement track assignment: each slot the user filled maps
+        # its track to that arrangement kind, verbatim. Combo is a first-class slot,
+        # not derived. Only when NOTHING is assigned do we auto-pick a sensible
+        # default (lead+rhythm, or a lone track → Combined).
+        slots: list[tuple[ArrangementKind, int | None]] = [
+            (ArrangementKind.LEAD, spec.lead_track),
+            (ArrangementKind.RHYTHM, spec.rhythm_track),
+            (ArrangementKind.COMBINED, spec.combo_track),
+            (ArrangementKind.ALTERNATE_LEAD, spec.alt_lead_track),
+            (ArrangementKind.ALTERNATE_RHYTHM, spec.alt_rhythm_track),
+        ]
+        if all(idx is None for _, idx in slots):
             lead_idx, rhythm_idx = auto_pick_tracks(spec.gp_path)
             if lead_idx is None and rhythm_idx is None:
                 raise IngestionError("no eligible 6-string guitar track found in the GP file")
             warnings.append(
                 "tracks auto-selected by name heuristic — confirm they are the right ones"
             )
+            slots = [(ArrangementKind.LEAD, lead_idx), (ArrangementKind.RHYTHM, rhythm_idx)]
 
-        if lead_idx is not None and lead_idx == rhythm_idx:
-            raise IngestionError("lead and rhythm cannot use the same GP track")
-        tracks: list[tuple[ArrangementKind, int]] = []
-        if lead_idx is not None:
-            tracks.append(
-                (ArrangementKind.LEAD if rhythm_idx is not None else ArrangementKind.COMBINED,
-                 lead_idx)
-            )
-        if rhythm_idx is not None:
-            tracks.append((ArrangementKind.RHYTHM, rhythm_idx))
-        if spec.alt_lead_track is not None:
-            tracks.append((ArrangementKind.ALTERNATE_LEAD, spec.alt_lead_track))
-        if spec.alt_rhythm_track is not None:
-            tracks.append((ArrangementKind.ALTERNATE_RHYTHM, spec.alt_rhythm_track))
+        tracks: list[tuple[ArrangementKind, int]] = [
+            (kind, idx) for kind, idx in slots if idx is not None
+        ]
+        # A lone Lead (nothing else assigned) is a single all-in-one chart →
+        # Combined, the conventional single-arrangement choice.
+        if len(tracks) == 1 and tracks[0][0] is ArrangementKind.LEAD:
+            tracks = [(ArrangementKind.COMBINED, tracks[0][1])]
         chosen = [idx for _, idx in tracks]
         if len(chosen) != len(set(chosen)):
             raise IngestionError("each arrangement must use a different GP track")
