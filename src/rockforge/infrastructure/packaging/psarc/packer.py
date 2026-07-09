@@ -257,7 +257,12 @@ class NativePsarcPacker:
             include_vocals=bool(vocals),
             has_album_art=True,
         ).encode("utf-8")
-        files[f"songs/arr/{key_lower}_showlights.xml"] = gamedata.build_showlights().encode("utf-8")
+        # Generate the stage-lighting track from the richest chart (most notes),
+        # so every arrangement shares one lit intro/stage instead of a dark one.
+        showlights_src = max(arrangements, key=lambda a: len(a.notes), default=None)
+        files[f"songs/arr/{key_lower}_showlights.xml"] = gamedata.build_showlights(
+            showlights_src
+        ).encode("utf-8")
         cover_for_dds = cover_art_dest if cover_art_dest is not None else None
         for res in (64, 128, 256):
             files[f"gfxassets/album_art/album_{key_lower}_{res}.dds"] = gamedata.album_art_dds(

@@ -722,7 +722,15 @@ emitted so the native PSARC matches the retail layout file-for-file:
   a zlib-compressed, size-prefixed payload — header byte-verified against a real
   SNG). The earlier bare-AES-CTR primitive produced an unparseable file: the game
   showed tuning then **froze on the note highway**;
-- `songs/arr/<key>_showlights.xml`, `gfxassets/album_art/album_<key>_{64,128,256}.dds`
+- `songs/arr/<key>_showlights.xml` — the **stage-lighting track**, generated
+  from the richest chart (`gamedata.build_showlights`): a fog colour (notes
+  24-35) at the song start and at each section, plus a pitch-coloured beam
+  (notes 42-59) at each note onset (thinned to `_SHOWLIGHT_MIN_GAP_S`), matching
+  the fog-per-section + beam-per-onset shape DLC Builder emits. An **empty**
+  showlights (the old behaviour) leaves the stage dark and the song can skip its
+  lit intro — including the song-name/title card the game shows over the intro.
+  Guarded by `test_showlights_generated_from_arrangement`;
+- `gfxassets/album_art/album_<key>_{64,128,256}.dds`
   (a neutral solid-DXT1 **placeholder** — real cover DDS is a DLC Builder step),
   and the `song_<key>_preview.bnk` + its `.wem` alongside the main bank;
 - the container's TOC entry offsets are **absolute** from the file start

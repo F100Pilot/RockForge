@@ -12,7 +12,9 @@ Beyond the SNG + manifests, the game discovers a song through an entity graph:
   its archive path (``relpath``), so the engine can resolve them.
 - ``gfxassets/album_art/album_<key>_{64,128,256}.dds`` — the cover textures the
   song list shows (a neutral placeholder here; DLC Builder generates real ones).
-- ``songs/arr/<key>_showlights.xml`` — the stage-light track (a valid empty one).
+- ``songs/arr/<key>_showlights.xml`` — the stage-light track (fog + beam events
+  generated from the arrangement, like DLC Builder; empty only when there are no
+  notes to light).
 
 Layout/URN conventions are matched to a real DLC Builder PSARC. This is the
 "make the song appear" layer; the honesty caveat of the native PSARC still holds
@@ -265,10 +267,54 @@ def album_art_dds(size: int, cover_path: object = None) -> bytes:
     return dxt1_from_rgb(pixels, size)
 
 
-def build_showlights() -> str:
-    """A valid empty showlights track (no light events)."""
+# Showlight note conventions (the Rocksmith stage-lighting track): fog/stage
+# colour = notes 24-35, beam colour = notes 42-59, laser = 66 (on) / 67 (off).
+# DLC Builder generates a fog change per section plus a beam per note (coloured
+# by the played pitch); an empty track leaves the stage dark and the song can
+# skip its lit intro. We replicate the fog-per-section + beam-per-onset shape.
+_SHOWLIGHT_FOG = (24, 26, 28, 30, 32, 34)
+_SHOWLIGHT_BEAM_LO, _SHOWLIGHT_BEAM_HI = 42, 59
+_SHOWLIGHT_MIN_GAP_S = 0.35  # thin dense passages so the track stays ~DLC-sized
+
+
+def build_showlights(arrangement: object | None = None) -> str:
+    """The stage-lighting track. With an ``arrangement`` (any object exposing
+    ``notes``/``sections``/``tuning``/``metadata`` like the domain
+    :class:`Arrangement`), generate fog + beam events the way DLC Builder does —
+    a fog colour at the start and at each section, and a pitch-coloured beam at
+    each note onset (thinned to ``_SHOWLIGHT_MIN_GAP_S``). Falls back to a valid
+    empty track when there is nothing to light."""
+    events: list[tuple[float, int]] = []
+    notes = list(getattr(arrangement, "notes", None) or [])
+    if arrangement is not None and notes:
+        by_time = sorted(notes, key=lambda n: n.time)
+        start = by_time[0].time
+        events.append((start, _SHOWLIGHT_FOG[0]))
+        fog_i = 1
+        for sec in sorted(getattr(arrangement, "sections", []), key=lambda s: s.start_time):
+            if sec.start_time > start:
+                events.append((sec.start_time, _SHOWLIGHT_FOG[fog_i % len(_SHOWLIGHT_FOG)]))
+                fog_i += 1
+        midi = getattr(getattr(arrangement, "tuning", None), "midi", (40, 45, 50, 55, 59, 64))
+        beam_span = _SHOWLIGHT_BEAM_HI - _SHOWLIGHT_BEAM_LO + 1
+        last = float("-inf")
+        for n in by_time:
+            if n.time - last < _SHOWLIGHT_MIN_GAP_S:
+                continue
+            last = n.time
+            pitch = midi[n.string] + n.fret if 0 <= n.string < len(midi) else 60
+            events.append((n.time, _SHOWLIGHT_BEAM_LO + pitch % beam_span))
+        song_len = float(getattr(getattr(arrangement, "metadata", None), "song_length", 0.0))
+        end = max(song_len, by_time[-1].time)
+        events.append((end, _SHOWLIGHT_FOG[fog_i % len(_SHOWLIGHT_FOG)]))
+
+    events.sort(key=lambda e: e[0])
+    rows = "".join(
+        f'  <showlight time="{t:.3f}" note="{note}" />\n' for t, note in events
+    )
     return (
         '<?xml version="1.0" encoding="utf-8"?>\n'
-        '<showlights count="0">\n'
+        f'<showlights count="{len(events)}">\n'
+        f'{rows}'
         '</showlights>'
     )
