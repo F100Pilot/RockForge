@@ -290,6 +290,14 @@ never hides a completed bundle or disables `/arrangements`. Results land in
 `params["lyrics_events"]` (JSON rows `{"time","length","lyric"}`), readable via
 `GET /jobs/{id}/lyrics`.
 
+**Line breaks.** WhisperX segments are whole sentences, so putting the `+` line
+break only at segment ends made long segments scroll in-game as one wall of
+text. `segments_to_vocal_events` splits each segment into short display lines
+(`_break_into_lines`): a `+` on a sung pause (word gap > `LINE_BREAK_GAP_S`) or
+every `LINE_MAX_WORDS` words. This is detection-only — LRC/UltraStar/GP-embedded
+lyrics keep their authored line structure. Existing jobs need a re-detect to
+pick up the finer breaks (the old `+`s are already baked into `lyrics_events`).
+
 **Speed.** This is the slow path on CPU; the heaviest stage is the Demucs
 separation. Detection uses `DemucsSeparator.separate_vocals` — the lighter
 4-source `htdemucs` with `--two-stems=vocals` — NOT `separate_guitar`'s 6-source
