@@ -224,6 +224,26 @@ def test_gp_pipeline_alternate_arrangement_from_chosen_track(
     assert set(result.note_counts) == {"Lead", "Alternate Lead"}
 
 
+def test_gp_pipeline_per_arrangement_tuning_override(
+    two_track_gp5: Path, tmp_path: Path
+) -> None:
+    # Re-tune only the Lead arrangement to Drop D (low E -> D); Rhythm keeps the GP
+    # file's tuning. Verifies the per-arrangement override reaches the XML.
+    spec = GpJobSpec(
+        gp_path=two_track_gp5, audio_source="x.wav", lead_track=0, rhythm_track=1,
+        tuning_overrides={"Lead": (38, 45, 50, 55, 59, 64)},
+    )
+    result = make_use_case().run(spec, SongMetadata(title="T", artist="A"), tmp_path / "w")
+    lead = ET.parse(
+        next(p for p in result.packaging.xml_paths if p.name == "arrangement_lead.xml")
+    ).getroot().find("tuning")
+    rhythm = ET.parse(
+        next(p for p in result.packaging.xml_paths if p.name == "arrangement_rhythm.xml")
+    ).getroot().find("tuning")
+    assert lead is not None and lead.get("string0") == "-2"     # dropped a whole step
+    assert rhythm is not None and rhythm.get("string0") == "0"  # unchanged
+
+
 def test_gp_pipeline_sync_anchors_shift_notes(two_track_gp5: Path, tmp_path: Path) -> None:
     # offset_s=0 -> score_shift=2.0 (MIN_LEAD_S); notes land at 2.0, 2.5, 3.0.
     # A single anchor (2.5 -> 3.0) is a uniform +0.5s shift applied everywhere.

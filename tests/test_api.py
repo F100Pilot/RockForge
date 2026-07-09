@@ -222,6 +222,22 @@ def test_rebuild_validates_tuning_length(client: TestClient) -> None:
     assert r.status_code == 422
 
 
+def test_gp_tracks_endpoint_rejects_non_gp_job(client: TestClient) -> None:
+    original = _create_job(client)  # an upload job, not GP
+    assert client.get(f"/jobs/{original['id']}/gp-tracks").status_code == 422
+
+
+def test_rebuild_track_assignment_and_tuning_require_gp(client: TestClient) -> None:
+    original = _create_job(client)  # upload job
+    assert client.post(
+        f"/jobs/{original['id']}/rebuild", json={"tracks": {"lead": 0}}
+    ).status_code == 422
+    assert client.post(
+        f"/jobs/{original['id']}/rebuild",
+        json={"tuning_overrides": {"Lead": [40, 45, 50, 55, 59, 64]}},
+    ).status_code == 422
+
+
 def test_rebuild_applies_offset_for_visual_sync(client: TestClient) -> None:
     # The visual sync tool rebuilds with the chosen offset_s; it must land in the
     # new job's params and be reflected in offset_s on the job output.
