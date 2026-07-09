@@ -33,6 +33,9 @@ class Technique(Enum):
     POP = "pluck"
     ACCENT = "accent"
     FRET_MUTE = "mute"  # fret-hand mute / dead note (the "X" in tab)
+    PINCH_HARMONIC = "pinchHarmonic"  # artificial/pinch harmonic (distinct glyph)
+    TREMOLO = "tremolo"  # tremolo picking (rapid repick)
+    LET_RING = "letRing"  # note is left to ring into the following notes
 
 
 @dataclass(frozen=True)
@@ -136,6 +139,8 @@ class TabNote:
     slide_to_fret: int | None = None
     slide_unpitch_to: int | None = None  # target fret of an unpitched slide-out
     bend_points: tuple[BendPoint, ...] = ()  # full bend curve; empty = single peak
+    left_hand: int = -1  # fretting finger (0-4), -1 = unspecified
+    pick_direction: int = 0  # 0 = unspecified, 1 = down, 2 = up
 
     def __post_init__(self) -> None:
         if not 0 <= self.string <= 5:
@@ -171,7 +176,8 @@ def apply_sustain_gap(
         idxs.sort(key=lambda i: notes[i].time)
         for a, b in zip(idxs, idxs[1:], strict=False):
             na = result[a]
-            if na.sustain <= 0 or na.slide_to_fret is not None:
+            if (na.sustain <= 0 or na.slide_to_fret is not None
+                    or Technique.LET_RING in na.techniques):
                 continue
             interval = notes[b].time - notes[a].time
             if interval <= 0:

@@ -10,10 +10,12 @@ from rockforge.infrastructure.packaging.psarc.sng import (
     NOTE_MASK_FRETHANDMUTE,
     NOTE_MASK_HAMMERON,
     NOTE_MASK_OPEN,
+    NOTE_MASK_PINCHHARMONIC,
     NOTE_MASK_SINGLE,
     NOTE_MASK_SLIDEUNPITCHEDTO,
     NOTE_MASK_STRUM,
     NOTE_MASK_SUSTAIN,
+    NOTE_MASK_TREMOLO,
     TECHNIQUE_BITS,
     TECHNIQUE_TO_MASK,
     from_arrangement,
@@ -511,6 +513,28 @@ def test_fret_mute_slide_unpitch_and_composite_bend_in_sng() -> None:
     bend = next(n for n in top.notes if n.string == 2)
     assert len(bend.bend_data) == 3  # full curve, not collapsed to a single point
     assert [round(b.step, 1) for b in bend.bend_data] == [0.0, 1.0, 0.0]
+
+
+def test_pinch_tremolo_finger_and_pickdir_in_sng() -> None:
+    beats = tuple(Beat(time=i * 0.5, measure=1 if i == 0 else -1) for i in range(20))
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=10.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+        notes=[
+            TabNote(string=0, fret=5, time=1.0, sustain=0.4,
+                    techniques=frozenset({Technique.PINCH_HARMONIC})),
+            TabNote(string=1, fret=7, time=2.0, sustain=0.4,
+                    techniques=frozenset({Technique.TREMOLO})),
+            TabNote(string=2, fret=3, time=3.0, sustain=0.4, left_hand=2, pick_direction=1),
+        ],
+    )
+    top = from_arrangement(arr).arrangements[-1]
+    assert next(n for n in top.notes if n.string == 0).mask & NOTE_MASK_PINCHHARMONIC
+    assert next(n for n in top.notes if n.string == 1).mask & NOTE_MASK_TREMOLO
+    finger = next(n for n in top.notes if n.string == 2)
+    assert finger.left_hand == 2 and finger.pick_direction == 1
 
 
 def test_chord_notes_bend_usedcount_is_after_the_32_entry_array() -> None:

@@ -173,6 +173,33 @@ _SLIDE_OUT_UP = 4
 _SLIDE_SHIFT_TYPES = {1, 2}  # shiftSlideTo / legatoSlideTo — a pitched slide
 
 
+def _finger_value(finger: object) -> int:
+    """Fretting-hand finger (0-4) from a PyGuitarPro Fingering, else -1.
+
+    PyGuitarPro Fingering: -2 unknown, -1 open, 0 thumb, 1-4 fingers. Rocksmith's
+    leftHand takes 0-4, so pass through valid finger numbers and drop the rest."""
+    v = getattr(finger, "value", finger)
+    if not isinstance(v, int | float | str):
+        return -1
+    try:
+        iv = int(v)
+    except (TypeError, ValueError):
+        return -1
+    return iv if 0 <= iv <= 4 else -1
+
+
+def _pick_direction(beat_effect: object) -> int:
+    """0 = unspecified, 1 = down, 2 = up, from a GP beat's pick stroke."""
+    stroke = getattr(beat_effect, "pickStroke", None)
+    v = int(getattr(stroke, "value", stroke) or 0)
+    # PyGuitarPro BeatStrokeDirection: 1 = up, 2 = down → RS 1 = down, 2 = up.
+    if v == 2:
+        return 1
+    if v == 1:
+        return 2
+    return 0
+
+
 def _slide_out_target(slides: object, fret: int) -> int | None:
     """Unpitched slide-out target fret for a GP note, or None.
 
@@ -289,12 +316,22 @@ def parse_gp_track(
                     if eff.palmMute:
                         techs.add(Technique.PALM_MUTE)
                     if eff.isHarmonic:
-                        techs.add(Technique.HARMONIC)
+                        # Artificial/pinch harmonics get the distinct pinch glyph;
+                        # natural/tapped/semi map to the plain harmonic.
+                        htype = getattr(getattr(eff, "harmonic", None), "type", 1)
+                        techs.add(Technique.PINCH_HARMONIC if htype in (2, 3)
+                                  else Technique.HARMONIC)
                     if eff.vibrato:
                         techs.add(Technique.VIBRATO)
+                    if getattr(eff, "isTremoloPicking", False) or eff.tremoloPicking:
+                        techs.add(Technique.TREMOLO)
+                    if getattr(eff, "letRing", False):
+                        techs.add(Technique.LET_RING)
                     # A dead note (NoteType.dead) is the muted "X" — a fret-hand mute.
                     if getattr(note.type, "name", "") == "dead":
                         techs.add(Technique.FRET_MUTE)
+                    left_hand = _finger_value(getattr(eff, "leftHandFinger", None))
+                    pick_dir = _pick_direction(beat.effect)
                     # Only a SHIFT/legato slide (types 1/2) is a pitched slide to a
                     # landing fret (slideTo, filled from the next note). A slide-OUT
                     # (types 3/4) slides off into nowhere — an UNPITCHED slide with a
@@ -323,6 +360,8 @@ def parse_gp_track(
                                 bend_semitones=bend_semitones,
                                 slide_unpitch_to=slide_unpitch,
                                 bend_points=bend_points,
+                                left_hand=left_hand,
+                                pick_direction=pick_dir,
                             ),
                             bool(eff.hammer),
                         )

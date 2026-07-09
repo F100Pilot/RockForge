@@ -125,6 +125,32 @@ def test_mute_slide_unpitch_and_multipoint_bend(tmp_path: Path) -> None:
     assert props.get("unpitchedSlides") == "1"
 
 
+def test_pinch_tremolo_finger_and_pick_direction(tmp_path: Path) -> None:
+    beats = tuple(Beat(time=0.5 * i, measure=1 if i == 0 else -1) for i in range(20))
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=10.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+        notes=[
+            TabNote(string=0, fret=5, time=1.0, sustain=0.4,
+                    techniques=frozenset({Technique.PINCH_HARMONIC})),
+            TabNote(string=1, fret=7, time=2.0, sustain=0.4,
+                    techniques=frozenset({Technique.TREMOLO})),
+            TabNote(string=2, fret=3, time=3.0, sustain=0.4, left_hand=2, pick_direction=1),
+        ],
+    )
+    root = ET.parse(write_arrangement_xml(arr, tmp_path / "lead.xml")).getroot()
+    by_string = {int(n.get("string")): n for n in root.findall("levels/level/notes/note")}
+    assert by_string[0].get("harmonicPinch") == "1"
+    assert by_string[1].get("tremolo") == "1"
+    assert by_string[2].get("leftHand") == "2" and by_string[2].get("pickDirection") == "1"
+    props = root.find("arrangementProperties")
+    assert props.get("pinchHarmonics") == "1"
+    assert props.get("tremolo") == "1"
+    assert props.get("pickDirection") == "1"
+
+
 def test_plain_note_emits_only_minimal_attributes(tmp_path: Path) -> None:
     # Regression: a clean sustained note must serialize exactly like Editor on
     # Fire's (time/string/fret/sustain only). Emitting palmMute="0", tap="0",

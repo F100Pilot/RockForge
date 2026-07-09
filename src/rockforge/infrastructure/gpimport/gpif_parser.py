@@ -342,6 +342,43 @@ def _rhythm_ticks(rhythm: ET.Element | None) -> int:
     return base
 
 
+_GPIF_FINGERS = {"P": 0, "T": 0, "I": 1, "M": 2, "A": 3, "C": 4}  # letter fingerings
+
+
+def _left_fingering(note: ET.Element) -> int:
+    """Fretting finger (0-4) from a GPIF note, or -1. GPIF stores it as a letter
+    (P/I/M/A/C) or a number in <LeftFingering>."""
+    el = note.find("LeftFingering")
+    if el is None:
+        return -1
+    raw = (el.text or "").strip().upper()
+    if raw in _GPIF_FINGERS:
+        return _GPIF_FINGERS[raw]
+    try:
+        v = int(raw)
+    except ValueError:
+        return -1
+    return v if 0 <= v <= 4 else -1
+
+
+def _beat_pick_direction(beat: ET.Element) -> int:
+    """0 = unspecified, 1 = down, 2 = up, from a GPIF beat's brush/pick stroke."""
+    brush = beat.find("Brush")
+    direction = _text(brush) if brush is not None else ""
+    if not direction:
+        props = beat.find("Properties")
+        for p in (props or []):
+            if p.attrib.get("name") in ("Brush", "PickStroke"):
+                direction = _text(p.find("Direction")) or _text(p)
+                break
+    d = direction.lower()
+    if d.startswith("down"):
+        return 1
+    if d.startswith("up"):
+        return 2
+    return 0
+
+
 def _note_props(note: ET.Element) -> dict[str, ET.Element]:
     props = note.find("Properties")
     if props is None:
@@ -370,6 +407,8 @@ def _emit_beat_notes(
     }
     beat_slap = "Slapped" in beat_props or beat.find("Slap") is not None
     beat_pop = "Popped" in beat_props or beat.find("Pop") is not None
+    beat_tremolo = beat.find("Tremolo") is not None  # tremolo picking (beat child)
+    beat_pick = _beat_pick_direction(beat)
     for nid in note_ids.split():
         note = notes_map.get(nid)
         if note is None:
@@ -390,9 +429,16 @@ def _emit_beat_notes(
         if "Muted" in props:  # fret-hand mute / dead note (the "X")
             techs.add(Technique.FRET_MUTE)
         if "Harmonic" in props or "HarmonicType" in props:
-            techs.add(Technique.HARMONIC)
+            # Artificial/Pinch harmonics get the distinct pinch glyph.
+            htype = _text(props["HarmonicType"].find("HType")) if "HarmonicType" in props else ""
+            techs.add(Technique.PINCH_HARMONIC if htype in ("Artificial", "Pinch")
+                      else Technique.HARMONIC)
+        if "LetRing" in props:
+            techs.add(Technique.LET_RING)
         if note.find("Vibrato") is not None:  # direct child, not a Property
             techs.add(Technique.VIBRATO)
+        if beat_tremolo:
+            techs.add(Technique.TREMOLO)
         # <Accent> is a bitmask: 4 = accent, 8 = heavy accent; 1/2 (staccato/…)
         # are not Rocksmith accents.
         accent = note.find("Accent")
@@ -420,6 +466,7 @@ def _emit_beat_notes(
             elif flags & 8:   # slide out upwards → unpitched, toward the bridge
                 slide_unpitch = min(22, fret + 5)
         hopo_dest = "HopoDestination" in props
+        left_hand = _left_fingering(note)
         # A tie with destination="true" is a CONTINUATION of the previous note
         # on this string (held, not re-picked) — GP/Songsterr draw it in
         # parentheses. It must extend the previous note, not be a new attack.
@@ -437,6 +484,8 @@ def _emit_beat_notes(
                     bend_semitones=bend_semitones,
                     slide_unpitch_to=slide_unpitch,
                     bend_points=bend_points,
+                    left_hand=left_hand,
+                    pick_direction=beat_pick,
                 ),
                 hopo_dest,
                 slide_to,

@@ -124,8 +124,10 @@ def _note_attrs(n: TabNote) -> dict[str, str]:
         "hammerOn": "1" if has(Technique.HAMMER_ON) else "0",
         "pullOff": "1" if has(Technique.PULL_OFF) else "0",
         "harmonic": "1" if has(Technique.HARMONIC) else "0",
+        "harmonicPinch": "1" if has(Technique.PINCH_HARMONIC) else "0",
         "palmMute": "1" if has(Technique.PALM_MUTE) else "0",
         "vibrato": "1" if has(Technique.VIBRATO) else "0",
+        "tremolo": "1" if has(Technique.TREMOLO) else "0",
         "tap": "1" if has(Technique.TAP) else "0",
         "slap": "1" if has(Technique.SLAP) else "0",
         "pluck": "1" if has(Technique.POP) else "0",
@@ -135,6 +137,8 @@ def _note_attrs(n: TabNote) -> dict[str, str]:
         "slideTo": str(n.slide_to_fret) if n.slide_to_fret is not None else "-1",
         "slideUnpitchTo": str(n.slide_unpitch_to) if n.slide_unpitch_to is not None else "-1",
         "mute": "1" if has(Technique.FRET_MUTE) else "0",
+        "leftHand": str(n.left_hand) if n.left_hand >= 0 else "-1",
+        "pickDirection": str(n.pick_direction),
     }
     return _drop_defaults(attrs, {"time", "string", "fret", "sustain"})
 
@@ -229,13 +233,13 @@ def render_arrangement(arr: Arrangement) -> ET.Element:
         ("dropDPower", "0"),
         ("openChords", "1" if has_chords else "0"),
         ("fingerPicking", "0"),
-        ("pickDirection", "0"),
+        ("pickDirection", "1" if any(n.pick_direction for n in arr.notes) else "0"),
         ("doubleStops", "1" if has_double_stops else "0"),
         ("palmMutes", "1" if Technique.PALM_MUTE in techniques else "0"),
         ("harmonics", "1" if Technique.HARMONIC in techniques else "0"),
-        ("pinchHarmonics", "0"),
+        ("pinchHarmonics", "1" if Technique.PINCH_HARMONIC in techniques else "0"),
         ("hopo", "1" if {Technique.HAMMER_ON, Technique.PULL_OFF} & techniques else "0"),
-        ("tremolo", "0"),
+        ("tremolo", "1" if Technique.TREMOLO in techniques else "0"),
         ("slides", "1" if Technique.SLIDE in techniques else "0"),
         ("unpitchedSlides", "1" if any(n.slide_unpitch_to is not None for n in arr.notes)
          else "0"),

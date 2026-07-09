@@ -82,6 +82,8 @@ TECHNIQUE_TO_MASK: dict[Technique, int] = {
     Technique.POP: NOTE_MASK_PLUCK,
     Technique.ACCENT: NOTE_MASK_ACCENT,
     Technique.FRET_MUTE: NOTE_MASK_FRETHANDMUTE,
+    Technique.PINCH_HARMONIC: NOTE_MASK_PINCHHARMONIC,
+    Technique.TREMOLO: NOTE_MASK_TREMOLO,
 }
 
 # Back-compat alias for existing test imports.
@@ -889,6 +891,8 @@ def from_arrangement(
             phrase_iteration_id=pi_id,
             slide_to=sn.slide_to_fret if sn.slide_to_fret is not None else -1,
             slide_unpitch_to=sn.slide_unpitch_to if sn.slide_unpitch_to is not None else -1,
+            left_hand=sn.left_hand,
+            pick_direction=sn.pick_direction,
             slap=1 if Technique.SLAP in sn.techniques else 0,
             pluck=1 if Technique.POP in sn.techniques else 0,
             tap=1 if Technique.TAP in sn.techniques else 0,
@@ -1100,10 +1104,11 @@ _ANCHOR_FMT = "<ffffBBBBii"
 _ANCHOR_EXT_FMT = "<fbihb"
 _FINGERPRINT_FMT = "<iffff"
 _VOCAL_FMT = f"<fif{_LYRIC_LEN}s"
-# slide_to / slide_unpitch_to are SIGNED bytes: -1 (0xFF) means "no slide".
-# Writing 0 (unsigned) told the game every note slides to fret 0 — a slide
-# streak on every note, and slide geometry the game chokes on at load.
-_NOTE_FIXED_FMT = "<IIIfBBBBiiiihhhhh" "bbBBBBBhff"
+# slide_to / slide_unpitch_to / left_hand are SIGNED bytes: -1 (0xFF) means
+# "none". Writing 0 (unsigned) told the game every note slides to fret 0 — a
+# slide streak on every note — and forced a fretting finger on notes that have
+# none. tap/pickDirection/slap/pluck stay unsigned (0..4).
+_NOTE_FIXED_FMT = "<IIIfBBBBiiiihhhhh" "bbbBBBBhff"
 
 _BEAT_SIZE = struct.calcsize(_BEAT_FMT)
 _PHRASE_SIZE = struct.calcsize(_PHRASE_FMT)
