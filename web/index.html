@@ -721,15 +721,15 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
 
 <!-- ══════════ Edit song info modal ══════════ -->
 <div class="modal-overlay" id="metaOverlay" hidden>
-  <div class="modal modal-sm">
+  <div class="modal" style="max-width:900px">
     <button type="button" class="modal-close" id="metaClose">×</button>
     <h2>Editar informação da música</h2>
     <form id="metaForm" class="grid" style="margin-top:.5rem">
-      <div class="field" style="flex-basis:100%"><label>Título</label>
+      <div class="field" style="flex:1 1 16rem"><label>Título</label>
         <input type="text" id="metaTitle" required></div>
-      <div class="field" style="flex-basis:100%"><label>Artista / Banda</label>
+      <div class="field" style="flex:1 1 16rem"><label>Artista / Banda</label>
         <input type="text" id="metaArtist" required></div>
-      <div class="field" style="flex-basis:100%"><label>Álbum</label>
+      <div class="field" style="flex:1 1 12rem"><label>Álbum</label>
         <input type="text" id="metaAlbum"></div>
       <div class="field"><label>Ano</label>
         <input type="number" id="metaYear" min="1900" max="2100" style="width:6rem"></div>
@@ -1219,8 +1219,8 @@ async function openMetaEdit() {
     const SLOTS = [['lead', 'Lead'], ['rhythm', 'Rhythm'], ['combo', 'Combo'],
                    ['alt_lead', 'Lead alternativo'], ['alt_rhythm', 'Rhythm alternativo']];
     document.getElementById('metaTracks').innerHTML = SLOTS.map(([slot, label]) =>
-      `<div class="field"><label>Pista ${label}</label>
-        <select data-slot="${slot}">${opts}</select></div>`).join('');
+      `<div class="field" style="flex:1 1 11rem"><label>Pista ${label}</label>
+        <select data-slot="${slot}" style="width:100%">${opts}</select></div>`).join('');
     for (const [slot] of SLOTS) {
       const v = tr.assignment[slot];
       if (v !== null && v !== undefined)
@@ -1232,8 +1232,8 @@ async function openMetaEdit() {
       const ov = (tr.tuning_overrides || {})[a.kind];
       const cur = ov ? _presetFromOffsets(ov.map((m, i) => m - STD_MIDI[i])) :
                        _presetFromOffsets(a.tuning_offsets);
-      return `<div class="field"><label>Afinação ${esc(a.kind)}</label>
-        <select data-kind="${esc(a.kind)}">${presetOpts}</select></div>`
+      return `<div class="field" style="flex:1 1 11rem"><label>Afinação ${esc(a.kind)}</label>
+        <select data-kind="${esc(a.kind)}" style="width:100%">${presetOpts}</select></div>`
         .replace(`value="${cur}"`, `value="${cur}" selected`);
     }).join('');
     gp.style.display = '';
