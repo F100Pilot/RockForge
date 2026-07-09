@@ -178,7 +178,8 @@ def _append_note_el(parent: ET.Element, tag: str, n: TabNote) -> ET.Element:
         curve = _bend_curve(n)
         bends = ET.SubElement(el, "bendValues", count=str(len(curve)))
         for t, step in curve:
-            ET.SubElement(bends, "bendValue", time=_fmt(t), step=_fmt(step))
+            # unk5="0" mirrors DLC Builder / a pro chart's <bendValue> format.
+            ET.SubElement(bends, "bendValue", time=_fmt(t), step=_fmt(step), unk5="0")
     return el
 
 
