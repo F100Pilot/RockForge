@@ -9,7 +9,7 @@ from rockforge.domain.arrangement import (
     SongMetadata,
     ToneChange,
 )
-from rockforge.domain.music import Beat, TabNote, Technique, TempoMap, Tuning
+from rockforge.domain.music import Beat, BendPoint, TabNote, Technique, TempoMap, Tuning
 from rockforge.infrastructure.rsxml.writer import (
     _fmt,
     _safe_tone_time,
@@ -83,8 +83,8 @@ def test_note_attributes(tmp_path: Path) -> None:
     assert bend_note.get("bend") == "2"
     assert bend_note.get("string") == "2" and bend_note.get("fret") == "7"
     # The bend flag alone is only the peak; DLC Builder reads the actual pitch
-    # from <bendValues>. Without it the bend disappears on import. Match EOF: a
-    # single bend point a third into the sustain, at the peak strength.
+    # from <bendValues>. Without it the bend disappears on import. A simple bend
+    # is a single point reaching its peak at the note's end (a visible bend-up).
     bvs = bend_note.find("bendValues")
     assert bvs is not None and len(bvs) == 1
     assert bvs[0].get("step") == "2.000" and float(bvs[0].get("time")) > 2.0
@@ -94,6 +94,35 @@ def test_note_attributes(tmp_path: Path) -> None:
     # default-valued attributes are omitted (Editor on Fire convention) so a
     # plain note never carries a spurious technique flag on the highway
     assert notes[0].get("hammerOn") is None
+
+
+def test_mute_slide_unpitch_and_multipoint_bend(tmp_path: Path) -> None:
+    beats = tuple(Beat(time=0.5 * i, measure=1 if i == 0 else -1) for i in range(20))
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=10.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+        notes=[
+            TabNote(string=0, fret=5, time=1.0, sustain=0.4,
+                    techniques=frozenset({Technique.FRET_MUTE})),
+            TabNote(string=1, fret=9, time=2.0, sustain=0.4, slide_unpitch_to=4),
+            TabNote(string=2, fret=7, time=3.0, sustain=0.4, bend_semitones=1.0,
+                    techniques=frozenset({Technique.BEND}),
+                    bend_points=(BendPoint(0.0, 0.0), BendPoint(0.5, 1.0),
+                                 BendPoint(1.0, 0.0))),
+        ],
+    )
+    root = ET.parse(write_arrangement_xml(arr, tmp_path / "lead.xml")).getroot()
+    notes = root.findall("levels/level/notes/note")
+    by_string = {int(n.get("string")): n for n in notes}
+    assert by_string[0].get("mute") == "1"
+    assert by_string[1].get("slideUnpitchTo") == "4"
+    curve = by_string[2].find("bendValues")
+    assert curve is not None and len(curve) == 3  # bend-and-release, full curve
+    props = root.find("arrangementProperties")
+    assert props.get("fretHandMutes") == "1"
+    assert props.get("unpitchedSlides") == "1"
 
 
 def test_plain_note_emits_only_minimal_attributes(tmp_path: Path) -> None:

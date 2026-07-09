@@ -81,6 +81,7 @@ TECHNIQUE_TO_MASK: dict[Technique, int] = {
     Technique.SLAP: NOTE_MASK_SLAP,
     Technique.POP: NOTE_MASK_PLUCK,
     Technique.ACCENT: NOTE_MASK_ACCENT,
+    Technique.FRET_MUTE: NOTE_MASK_FRETHANDMUTE,
 }
 
 # Back-compat alias for existing test imports.
@@ -397,6 +398,10 @@ def _note_mask(n: TabNote, is_chord: bool = False, is_double_stop: bool = False)
     # the bent string 0x3000 (BEND | SUSTAIN); we mirror that.
     if n.bend_semitones > 0:
         mask |= NOTE_MASK_BEND
+    if n.slide_to_fret is not None:
+        mask |= NOTE_MASK_SLIDE
+    if n.slide_unpitch_to is not None:
+        mask |= NOTE_MASK_SLIDEUNPITCHEDTO
     if n.sustain > 0:
         mask |= NOTE_MASK_SUSTAIN
     if n.fret == 0:
@@ -422,8 +427,13 @@ def _bend_points(n: TabNote) -> list[SngBendData32]:
     """
     if n.bend_semitones <= 0:
         return []
-    offset = n.sustain if n.sustain > 0.03 else 0.1
-    return [SngBendData32(time=n.time + offset, step=n.bend_semitones)]
+    dur = n.sustain if n.sustain > 0.03 else 0.1
+    if n.bend_points:
+        # Full curve (pre-bend / release / multi-step): fractional positions
+        # scaled onto the note's duration.
+        return [SngBendData32(time=n.time + p.position * dur, step=p.step)
+                for p in n.bend_points]
+    return [SngBendData32(time=n.time + dur, step=n.bend_semitones)]
 
 
 def _section_end_times(sections: list[Section], song_length: float) -> list[float]:
@@ -800,7 +810,8 @@ def from_arrangement(
 
     for gi, g in enumerate(chord_groups):
         has_techniques = any(
-            n.techniques or n.bend_semitones > 0 or n.slide_to_fret is not None
+            n.techniques or n.bend_semitones > 0
+            or n.slide_to_fret is not None or n.slide_unpitch_to is not None
             for n in g
         )
         if not has_techniques:
@@ -823,6 +834,8 @@ def from_arrangement(
                 cn.bend_data[n.string] = _bend_points(n)
             if n.slide_to_fret is not None:
                 cn.slide_to[n.string] = n.slide_to_fret
+            if n.slide_unpitch_to is not None:
+                cn.slide_unpitch_to[n.string] = n.slide_unpitch_to
             if Technique.VIBRATO in n.techniques:
                 cn.vibrato[n.string] = 80
         cn_key = _cn_key(cn)
@@ -875,6 +888,7 @@ def from_arrangement(
             phrase_id=pi_id,
             phrase_iteration_id=pi_id,
             slide_to=sn.slide_to_fret if sn.slide_to_fret is not None else -1,
+            slide_unpitch_to=sn.slide_unpitch_to if sn.slide_unpitch_to is not None else -1,
             slap=1 if Technique.SLAP in sn.techniques else 0,
             pluck=1 if Technique.POP in sn.techniques else 0,
             tap=1 if Technique.TAP in sn.techniques else 0,

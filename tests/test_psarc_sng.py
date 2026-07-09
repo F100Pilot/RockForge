@@ -7,9 +7,11 @@ from rockforge.infrastructure.packaging.psarc.sng import (
     NOTE_MASK_CHORD,
     NOTE_MASK_CHORDNOTES,
     NOTE_MASK_DOUBLESTOP,
+    NOTE_MASK_FRETHANDMUTE,
     NOTE_MASK_HAMMERON,
     NOTE_MASK_OPEN,
     NOTE_MASK_SINGLE,
+    NOTE_MASK_SLIDEUNPITCHEDTO,
     NOTE_MASK_STRUM,
     NOTE_MASK_SUSTAIN,
     TECHNIQUE_BITS,
@@ -481,6 +483,34 @@ def test_bend_point_reaches_peak_at_note_end_like_dlc_builder() -> None:
     cn = model.chord_notes[chord.chord_notes_id]
     assert len(cn.bend_data[1]) == 1
     assert cn.bend_data[1][0].step == 1.0 and cn.bend_data[1][0].time == 6.6
+
+
+def test_fret_mute_slide_unpitch_and_composite_bend_in_sng() -> None:
+    from rockforge.domain.music import BendPoint
+
+    beats = tuple(Beat(time=i * 0.5, measure=1 if i == 0 else -1) for i in range(20))
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=10.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+        notes=[
+            TabNote(string=0, fret=5, time=1.0, sustain=0.4,
+                    techniques=frozenset({Technique.FRET_MUTE})),        # dead X
+            TabNote(string=1, fret=9, time=2.0, sustain=0.4, slide_unpitch_to=4),  # slide-out
+            TabNote(string=2, fret=7, time=3.0, sustain=0.4, bend_semitones=1.0,   # bend-and-
+                    bend_points=(BendPoint(0.0, 0.0), BendPoint(0.5, 1.0),         # release
+                                 BendPoint(1.0, 0.0))),
+        ],
+    )
+    top = from_arrangement(arr).arrangements[-1]
+    mute = next(n for n in top.notes if n.string == 0)
+    assert mute.mask & NOTE_MASK_FRETHANDMUTE
+    slide = next(n for n in top.notes if n.string == 1)
+    assert slide.slide_unpitch_to == 4 and slide.mask & NOTE_MASK_SLIDEUNPITCHEDTO
+    bend = next(n for n in top.notes if n.string == 2)
+    assert len(bend.bend_data) == 3  # full curve, not collapsed to a single point
+    assert [round(b.step, 1) for b in bend.bend_data] == [0.0, 1.0, 0.0]
 
 
 def test_chord_notes_bend_usedcount_is_after_the_32_entry_array() -> None:

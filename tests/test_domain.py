@@ -2,12 +2,14 @@ import pytest
 
 from rockforge.domain.music import (
     Beat,
+    BendPoint,
     NoteEvent,
     TabNote,
     Technique,
     TempoMap,
     Tuning,
     apply_sustain_gap,
+    is_composite_bend,
 )
 
 
@@ -77,3 +79,26 @@ def test_sustain_gap_keeps_short_staccato_notes() -> None:
     ]
     out = apply_sustain_gap(notes)
     assert out[0].sustain == 0.1  # nowhere near the next note — unchanged
+
+
+def test_sustain_gap_preserves_slide_unpitch_and_bend_points() -> None:
+    pts = (BendPoint(0.0, 0.0), BendPoint(0.5, 1.0), BendPoint(1.0, 0.0))
+    notes = [
+        TabNote(string=0, fret=9, time=0.0, sustain=1.0,
+                slide_unpitch_to=4, bend_points=pts),
+        TabNote(string=0, fret=7, time=1.0, sustain=0.5),
+    ]
+    out = apply_sustain_gap(notes)
+    assert out[0].sustain < 1.0  # trimmed
+    assert out[0].slide_unpitch_to == 4 and out[0].bend_points == pts  # kept
+
+
+def test_is_composite_bend_only_for_varying_strength() -> None:
+    # A flat hold (even a pre-bend held at one value) is simple; only a real
+    # release / multi-step curve is composite.
+    assert not is_composite_bend([BendPoint(1.0, 1.0)])  # single point
+    assert not is_composite_bend([BendPoint(0.0, 1.0), BendPoint(1.0, 1.0)])  # flat hold
+    assert is_composite_bend([BendPoint(0.0, 0.0), BendPoint(1.0, 1.0)])  # a rise
+    assert is_composite_bend(  # bend-and-release
+        [BendPoint(0.0, 0.0), BendPoint(0.5, 1.0), BendPoint(1.0, 0.0)]
+    )

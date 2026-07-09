@@ -32,6 +32,35 @@ class Technique(Enum):
     SLAP = "slap"
     POP = "pluck"
     ACCENT = "accent"
+    FRET_MUTE = "mute"  # fret-hand mute / dead note (the "X" in tab)
+
+
+@dataclass(frozen=True)
+class BendPoint:
+    """One point on a note's bend curve.
+
+    ``position`` is a fraction (0..1) of the note's duration; ``step`` is the
+    bend amount in half-steps at that instant (0 = unbent). A single-point curve
+    is a bend that reaches ``step`` at ``position``; multiple points describe
+    pre-bends, releases and bend-and-hold shapes.
+    """
+
+    position: float
+    step: float
+
+
+def is_composite_bend(points: Sequence[BendPoint]) -> bool:
+    """True when a bend curve's strength actually CHANGES along the note.
+
+    A curve whose step is constant — a plain hold, including a flat pre-bend held
+    at one value — carries no extra shape: it is emitted as a single point at the
+    note's end (a visible bend-up to the peak), the shape a decoded DLC Builder
+    SNG uses and the one verified safe in game. Only a genuine bend-and-release or
+    multi-step curve (two or more distinct strengths) needs the full multi-point
+    curve. Keeping flat bends single-point also avoids a bend point at the note's
+    exact attack, which is the fragile case.
+    """
+    return len({round(p.step, 3) for p in points}) > 1
 
 
 @dataclass(frozen=True)
@@ -103,8 +132,10 @@ class TabNote:
     time: float
     sustain: float
     techniques: frozenset[Technique] = field(default_factory=frozenset)
-    bend_semitones: float = 0.0
+    bend_semitones: float = 0.0  # peak of the bend (half-steps); 0 = no bend
     slide_to_fret: int | None = None
+    slide_unpitch_to: int | None = None  # target fret of an unpitched slide-out
+    bend_points: tuple[BendPoint, ...] = ()  # full bend curve; empty = single peak
 
     def __post_init__(self) -> None:
         if not 0 <= self.string <= 5:
