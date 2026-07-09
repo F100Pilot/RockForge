@@ -34,7 +34,7 @@ from rockforge.domain.arrangement import (
     ToneChange,
 )
 from rockforge.domain.errors import IngestionError
-from rockforge.domain.music import TabNote, Technique
+from rockforge.domain.music import TabNote, Technique, Tuning
 from rockforge.domain.tone import Tone
 from rockforge.infrastructure.gpimport.parser import (
     GpSection,
@@ -165,6 +165,13 @@ class GpJobSpec:
     # When False, the native PSARC's SNG is built with a single full-chart level
     # (no Dynamic Difficulty) — a safety valve for songs where DD misbehaves.
     dynamic_difficulty: bool = True
+    # Per-arrangement tuning override, keyed by ArrangementKind.value → the six
+    # MIDI pitches (low to high). An arrangement absent here keeps the tuning read
+    # from its GP track. Lets the user re-tune an arrangement in the song settings
+    # without touching the GP file.
+    tuning_overrides: dict[str, tuple[int, int, int, int, int, int]] = field(
+        default_factory=dict
+    )
 
     def sync_for(self, kind: ArrangementKind) -> ArrangementSync:
         """Resolve the tempo/drift overrides for one arrangement, falling back
@@ -406,11 +413,17 @@ class GenerateFromGpUseCase:
             "sync_offset": ConfidenceLabel.HEURISTIC,  # manual user offset
             "lyrics": ConfidenceLabel.HEURISTIC if not spec.lrc_text else ConfidenceLabel.MEASURED,
         }
+        def _tuning_for(kind: ArrangementKind, parsed_tuning: Tuning) -> Tuning:
+            override = spec.tuning_overrides.get(kind.value)
+            if override is None or len(override) != 6:
+                return parsed_tuning
+            return Tuning(midi=override, cent_offset=parsed_tuning.cent_offset)
+
         arrangements = [
             Arrangement(
                 kind=kind,
                 metadata=metadata,
-                tuning=p.tuning,
+                tuning=_tuning_for(kind, p.tuning),
                 tempo_map=p.tempo_map,
                 notes=p.notes,
                 sections=[

@@ -179,6 +179,15 @@ class RebuildIn(BaseModel):
     import_mutes: bool | None = None
     # When False, the native PSARC's SNG is a single full-chart level (no DD).
     dynamic_difficulty: bool | None = None
+    # GP: re-assign which GP track feeds which arrangement, post-creation. Keys are
+    # "lead"/"rhythm"/"combo"/"alt_lead"/"alt_rhythm"; a value is the track index,
+    # or null to clear that slot. When set (even to {}), it REPLACES the whole
+    # track assignment. None leaves it unchanged.
+    tracks: dict[str, int | None] | None = None
+    # GP: per-arrangement tuning override, keyed by ArrangementKind value
+    # ("Lead"/"Rhythm"/…) → the six MIDI pitches (low to high). When set (even to
+    # {}), replaces params["tuning_overrides"]; None leaves it untouched.
+    tuning_overrides: dict[str, list[int]] | None = None
     # Edited per-word lyrics from the in-app lyrics editor. When set (even to an
     # empty list), replaces params["lyrics_events"] and clears lyrics_status so
     # the next build uses the edited lyrics. None leaves existing lyrics alone.
@@ -824,6 +833,33 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
         if payload.arrangement is not None and original.source_type != "gp":
             raise HTTPException(422, "arrangement scoping only applies to Guitar Pro jobs")
 
+        _TRACK_SLOTS = {
+            "lead": "lead_track", "rhythm": "rhythm_track", "combo": "combo_track",
+            "alt_lead": "alt_lead_track", "alt_rhythm": "alt_rhythm_track",
+        }
+        if payload.tracks is not None:
+            if original.source_type != "gp":
+                raise HTTPException(422, "track assignment only applies to Guitar Pro jobs")
+            unknown = set(payload.tracks) - set(_TRACK_SLOTS)
+            if unknown:
+                raise HTTPException(422, f"unknown arrangement slot(s): {sorted(unknown)}")
+            chosen = [v for v in payload.tracks.values() if v is not None]
+            if len(chosen) != len(set(chosen)):
+                raise HTTPException(422, "each arrangement must use a different GP track")
+            for slot, key in _TRACK_SLOTS.items():  # replace the whole assignment
+                idx = payload.tracks.get(slot)
+                if idx is None:
+                    params.pop(key, None)
+                else:
+                    params[key] = int(idx)
+        if payload.tuning_overrides is not None:
+            if original.source_type != "gp":
+                raise HTTPException(422, "tuning overrides only apply to Guitar Pro jobs")
+            for kind, midi in payload.tuning_overrides.items():
+                if len(midi) != 6:
+                    raise HTTPException(422, f"tuning for {kind} must have 6 MIDI pitches")
+            params["tuning_overrides"] = {k: list(v) for k, v in payload.tuning_overrides.items()}
+
         def _arr_entry(kind: str) -> dict[str, object]:
             # Per-arrangement tempo/drift overrides live under params["arrangement_sync"].
             # Seed a new entry from the job-level defaults so corrections already
@@ -1310,6 +1346,38 @@ def get_tones(job_id: str) -> dict[str, Any]:
             "tones": list(tones) if isinstance(tones, list) else [],
             "tone_changes": list(changes) if isinstance(changes, list) else [],
         }
+
+
+@app.get("/jobs/{job_id}/gp-tracks")
+def get_gp_tracks(job_id: str) -> dict[str, object]:
+    """The GP file's tracks plus the current track→arrangement assignment and
+    per-arrangement tuning, so the song settings can re-map them post-creation."""
+    from rockforge.infrastructure.gpimport.parser import inspect_gp
+
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+        if job.source_type != "gp":
+            raise HTTPException(422, "not a Guitar Pro job")
+        params = dict(job.params or {})
+    gp_path = Path(str(params.get("gp_path", "")))
+    if not gp_path.exists():
+        raise HTTPException(409, "the Guitar Pro file is no longer on the work volume")
+    info = inspect_gp(gp_path)
+    return {
+        "tracks": [
+            {"index": t.index, "name": t.name, "string_count": t.string_count,
+             "is_percussion": t.is_percussion, "tuning_midi": list(t.tuning_midi)}
+            for t in info.tracks
+        ],
+        "assignment": {
+            "lead": params.get("lead_track"), "rhythm": params.get("rhythm_track"),
+            "combo": params.get("combo_track"), "alt_lead": params.get("alt_lead_track"),
+            "alt_rhythm": params.get("alt_rhythm_track"),
+        },
+        "tuning_overrides": params.get("tuning_overrides") or {},
+    }
 
 
 @app.get("/jobs/{job_id}/arrangements", response_model=list[ArrangementOut])

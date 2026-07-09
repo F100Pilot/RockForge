@@ -733,6 +733,11 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
         <input type="text" id="metaAlbum"></div>
       <div class="field"><label>Ano</label>
         <input type="number" id="metaYear" min="1900" max="2100" style="width:6rem"></div>
+      <div id="metaGp" style="flex-basis:100%; display:none; border-top:1px solid var(--border); margin-top:.5rem; padding-top:.5rem">
+        <div class="meta" style="opacity:.8; margin-bottom:.4rem">Arranjos & afinação (Guitar Pro) — alterar reconstrói o projeto.</div>
+        <div id="metaTracks" class="grid"></div>
+        <div id="metaTunings" class="grid" style="margin-top:.4rem"></div>
+      </div>
     </form>
     <p class="meta" style="margin:.6rem 0 0">Aplica-se ao bundle/PSARC na próxima reconstrução.</p>
     <div class="modal-actions">
@@ -1171,14 +1176,68 @@ document.getElementById('detailOverlay').addEventListener('click', e => {
 });
 
 // ── Edit song info (title/artist/album/year) ──
-function openMetaEdit() {
+const TUNING_PRESETS = {
+  'Manter': null,
+  'Standard E': [0, 0, 0, 0, 0, 0],
+  'Eb Standard': [-1, -1, -1, -1, -1, -1],
+  'Drop D': [-2, 0, 0, 0, 0, 0],
+  'D Standard': [-2, -2, -2, -2, -2, -2],
+  'Drop C#': [-3, -1, -1, -1, -1, -1],
+  'Drop C': [-4, -2, -2, -2, -2, -2],
+  'C Standard': [-4, -4, -4, -4, -4, -4],
+  'Drop B': [-5, -3, -3, -3, -3, -3],
+};
+const STD_MIDI = [40, 45, 50, 55, 59, 64];
+function _presetFromOffsets(off) {
+  for (const [name, o] of Object.entries(TUNING_PRESETS)) {
+    if (o && o.every((v, i) => v === off[i])) return name;
+  }
+  return 'Manter';
+}
+
+async function openMetaEdit() {
   if (!selectedJob) return;
   document.getElementById('metaTitle').value = selectedJob.title || '';
   document.getElementById('metaArtist').value = selectedJob.artist || '';
   document.getElementById('metaAlbum').value = selectedJob.album || '';
   document.getElementById('metaYear').value = selectedJob.year ?? '';
+  const gp = document.getElementById('metaGp');
+  gp.style.display = 'none';
   document.getElementById('metaOverlay').hidden = false;
   document.getElementById('metaTitle').focus();
+  // GP jobs: load the track list + current arrangements so the user can re-map
+  // tracks to arrangements and re-tune each, all rebuilt on save.
+  try {
+    const [tr, arrs] = await Promise.all([
+      fetch(`/jobs/${selectedJob.id}/gp-tracks`).then(r => r.ok ? r.json() : null),
+      fetch(`/jobs/${selectedJob.id}/arrangements`).then(r => r.ok ? r.json() : []),
+    ]);
+    if (!tr) return;  // not a GP job (or file gone) — leave the GP section hidden
+    const opts = '<option value="">—</option>' + tr.tracks
+      .filter(t => !t.is_percussion && t.string_count === 6)
+      .map(t => `<option value="${t.index}">${t.index}: ${esc(t.name)}</option>`).join('');
+    const SLOTS = [['lead', 'Lead'], ['rhythm', 'Rhythm'], ['combo', 'Combo'],
+                   ['alt_lead', 'Lead alternativo'], ['alt_rhythm', 'Rhythm alternativo']];
+    document.getElementById('metaTracks').innerHTML = SLOTS.map(([slot, label]) =>
+      `<div class="field"><label>Pista ${label}</label>
+        <select data-slot="${slot}">${opts}</select></div>`).join('');
+    for (const [slot] of SLOTS) {
+      const v = tr.assignment[slot];
+      if (v !== null && v !== undefined)
+        document.querySelector(`#metaTracks select[data-slot="${slot}"]`).value = String(v);
+    }
+    const presetOpts = Object.keys(TUNING_PRESETS)
+      .map(n => `<option value="${n}">${n}</option>`).join('');
+    document.getElementById('metaTunings').innerHTML = arrs.map(a => {
+      const ov = (tr.tuning_overrides || {})[a.kind];
+      const cur = ov ? _presetFromOffsets(ov.map((m, i) => m - STD_MIDI[i])) :
+                       _presetFromOffsets(a.tuning_offsets);
+      return `<div class="field"><label>Afinação ${esc(a.kind)}</label>
+        <select data-kind="${esc(a.kind)}">${presetOpts}</select></div>`
+        .replace(`value="${cur}"`, `value="${cur}" selected`);
+    }).join('');
+    gp.style.display = '';
+  } catch (e) { /* leave the GP section hidden on any error */ }
 }
 function closeMeta() { document.getElementById('metaOverlay').hidden = true; }
 document.getElementById('metaClose').onclick = closeMeta;
@@ -1202,6 +1261,29 @@ document.getElementById('metaSave').onclick = async () => {
   });
   if (!r.ok) { alert('Erro ao guardar a informação.'); return; }
   selectedJob = await r.json();
+  // GP: if the arrangements/tuning section is shown, a change there needs a full
+  // rebuild (re-parse) — fork a new job with the new track map + tunings.
+  const gp = document.getElementById('metaGp');
+  if (gp.style.display !== 'none') {
+    const tracks = {};
+    for (const sel of document.querySelectorAll('#metaTracks select[data-slot]'))
+      tracks[sel.dataset.slot] = sel.value === '' ? null : parseInt(sel.value, 10);
+    const tuning_overrides = {};
+    for (const sel of document.querySelectorAll('#metaTunings select[data-kind]')) {
+      const off = TUNING_PRESETS[sel.value];
+      if (off) tuning_overrides[sel.dataset.kind] = off.map((v, i) => STD_MIDI[i] + v);
+    }
+    const rr = await fetch(`/jobs/${selectedJob.id}/rebuild`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tracks, tuning_overrides }),
+    });
+    if (!rr.ok) { const e = await rr.json(); alert(e.detail || 'Erro ao reconstruir.'); return; }
+    const nj = await rr.json();
+    closeMeta();
+    toast('Arranjos/afinação aplicados — a reconstruir.', 'ok');
+    refreshJobs(); selectJob(nj.id);
+    return;
+  }
   closeMeta();
   // Refresh the header + the job list titles (no chart reload needed).
   document.getElementById('detailHead').innerHTML =

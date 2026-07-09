@@ -220,6 +220,12 @@ def generate_cdlc(job_id: str) -> None:
                     combo_track=params.get("combo_track"),
                     alt_lead_track=params.get("alt_lead_track"),
                     alt_rhythm_track=params.get("alt_rhythm_track"),
+                    tuning_overrides={
+                        k: cast("tuple[int, int, int, int, int, int]",
+                                tuple(int(x) for x in v))
+                        for k, v in (params.get("tuning_overrides") or {}).items()
+                        if len(v) == 6
+                    },
                     offset_s=float(params.get("offset_s", 0.0)),
                     lead_in_s=float(params.get("lead_in_s", 0.0)),
                     tempo_scale=float(params.get("tempo_scale", 1.0)),
