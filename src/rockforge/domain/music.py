@@ -114,6 +114,37 @@ def expand_slide_ins(
     return out
 
 
+def expand_trills(notes: Sequence[TabNote], *, period: float = 0.06) -> list[TabNote]:
+    """Expand ``trill_fret`` notes into the alternating hammer-on/pull-off burst
+    Rocksmith uses to render a trill (it has no trill attribute).
+
+    Each trill note becomes a run alternating between its own fret and the trill
+    fret across its sustain, one step every ``period`` seconds (2–24 steps). The
+    first step is the picked attack; each later step is a hammer-on (to a higher
+    fret) or pull-off (to a lower one), so the game plays it legato.
+    """
+    out: list[TabNote] = []
+    for n in notes:
+        if n.trill_fret is None or n.sustain <= 0 or not 0 <= n.trill_fret <= MAX_FRET:
+            out.append(replace(n, trill_fret=None) if n.trill_fret is not None else n)
+            continue
+        steps = max(2, min(24, round(n.sustain / period)))
+        dt = n.sustain / steps
+        for k in range(steps):
+            fret = n.fret if k % 2 == 0 else n.trill_fret
+            if k == 0:
+                techs = frozenset(n.techniques - {Technique.HAMMER_ON, Technique.PULL_OFF})
+            else:
+                prev = n.fret if (k - 1) % 2 == 0 else n.trill_fret
+                techs = frozenset({Technique.HAMMER_ON if fret > prev else Technique.PULL_OFF})
+            out.append(TabNote(
+                string=n.string, fret=fret, time=n.time + k * dt, sustain=dt,
+                techniques=techs,
+            ))
+    out.sort(key=lambda x: (x.time, x.string))
+    return out
+
+
 def is_composite_bend(points: Sequence[BendPoint]) -> bool:
     """True when a bend curve's strength actually CHANGES along the note.
 
@@ -204,6 +235,7 @@ class TabNote:
     left_hand: int = -1  # fretting finger (0-4), -1 = unspecified
     pick_direction: int = 0  # 0 = unspecified, 1 = down, 2 = up
     slide_in_from: int | None = None  # scoop: fret a slide-into starts from
+    trill_fret: int | None = None  # trill: fret to rapidly alternate with
 
     def __post_init__(self) -> None:
         if not 0 <= self.string <= 5:

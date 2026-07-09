@@ -10,6 +10,7 @@ from rockforge.domain.music import (
     Tuning,
     apply_sustain_gap,
     expand_slide_ins,
+    expand_trills,
     is_composite_bend,
 )
 
@@ -136,6 +137,23 @@ def test_slide_in_left_plain_on_a_big_jump_with_no_room() -> None:
     out = expand_slide_ins(notes)
     assert len(out) == 2
     assert next(n for n in out if n.fret == 2).slide_to_fret is None  # not forced
+
+
+def test_trill_expands_to_alternating_hammer_pull_run() -> None:
+    n = TabNote(string=0, fret=5, time=0.0, sustain=0.5, trill_fret=7)
+    out = expand_trills([n], period=0.1)  # 0.5 / 0.1 = 5 steps
+    assert [x.fret for x in out] == [5, 7, 5, 7, 5]
+    assert all(x.trill_fret is None for x in out)
+    # first step is the picked attack; later steps hammer on (up) / pull off (down)
+    assert not ({Technique.HAMMER_ON, Technique.PULL_OFF} & out[0].techniques)
+    assert Technique.HAMMER_ON in out[1].techniques   # 5 -> 7
+    assert Technique.PULL_OFF in out[2].techniques    # 7 -> 5
+    assert abs((out[-1].time + out[-1].sustain) - 0.5) < 1e-9  # spans the sustain
+
+
+def test_note_without_trill_is_unchanged() -> None:
+    n = TabNote(string=0, fret=5, time=0.0, sustain=0.5)
+    assert expand_trills([n]) == [n]
 
 
 def test_is_composite_bend_only_for_varying_strength() -> None:
