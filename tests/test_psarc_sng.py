@@ -335,6 +335,30 @@ def test_sectionless_song_is_segmented_into_multiple_phrases() -> None:
             assert any(abs(a.start_time - pi.start_time) < 1e-9 for a in top.anchors)
 
 
+def test_dd_phrase_heights_vary_with_density() -> None:
+    # Variable-height DD: a dense phrase reaches a higher max difficulty than a
+    # sparse one — above the old flat cap of 11 — so the in-game difficulty bars
+    # vary per phrase (matching a real DDC) instead of a flat top.
+    beats = tuple(Beat(time=i * 0.5, measure=i // 8 + 1 if i % 8 == 0 else -1)
+                  for i in range(80))
+    notes = [TabNote(string=0, fret=3, time=t, sustain=0.2) for t in (0.5, 2.0, 3.5)]
+    notes += [TabNote(string=i % 6, fret=(i % 10) + 1, time=6.0 + i * 0.2, sustain=0.15)
+              for i in range(30)]
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=20.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+        notes=notes,
+        sections=[Section(name="sparse", start_time=0.0), Section(name="dense", start_time=6.0)],
+    )
+    model = from_arrangement(arr)
+    heights = {p.name: p.max_difficulty for p in model.phrases}
+    assert heights.get("dense", 0) > 11              # dense phrase exceeds the old cap
+    assert heights.get("sparse", 0) < heights["dense"]  # sparse phrase is shorter
+    assert len({p.max_difficulty for p in model.phrases}) >= 3  # not a flat top
+
+
 def test_dd_low_levels_spread_notes_across_the_phrase() -> None:
     # A long single-phrase song (no section markers): low DD levels must show the
     # strongest beats spread across the WHOLE phrase, not clustered in its first

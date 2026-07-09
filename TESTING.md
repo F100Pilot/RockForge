@@ -312,6 +312,69 @@ Import the bundle into DLC Builder, or rely on the native `.psarc` (`psarc_mode
 byte-validated against a retail SNG — the only true validation is loading the
 CDLC in Rocksmith 2014.
 
+### 7f-bis. Techniques + variable-height DD — awaiting in-game validation
+
+Everything below was implemented, unit-tested at the domain/XML/SNG boundary,
+and verified to (a) parse the real GP files noted and (b) compile to a
+round-tripping SNG — but **none has been confirmed in Rocksmith 2014 itself yet**
+(the maintainer was away from the test PC when it landed). Validate each by
+building the song **both** ways and comparing: the native `.psarc`
+(`psarc_mode=native`) AND the DLC Builder bundle. If the native `.psarc`
+misbehaves, the DLC Builder bundle is the trustworthy fallback.
+
+Good source files (already parsed correctly, in the uploads): Ozzy "No More
+Tears" `.gp` (pinch harmonics, slides in/out, fret-mutes, bend-and-release,
+trills), Animals As Leaders "Tempting Time" (tapping, fingering, DD reference).
+
+**Per-note techniques** — for each, build a chart that uses it and confirm the
+in-game note-highway glyph/behaviour matches Guitar Pro:
+
+- **Bends** — a plain bend rises to its peak by the note's end (a visible
+  bend-up, NOT an already-bent prebend); a **bend-and-release** rises then falls.
+  Byte-matched to a DLC Builder SNG, but confirm the feel in-game.
+- **Slide-out** (`slideUnpitchTo`) — a note that slides off into nowhere (GP `9\`)
+  shows the unpitched slide tail.
+- **Slide-in / scoop** — a note slid *into* from below/above either gets a short
+  lead-in note that slides into it, or (in a dense lick) the previous note slides
+  into it. Big pitch jumps with no room stay plain (honest limit).
+- **Fret-hand mute** (dead "X" notes) — muted, not fretted.
+- **Pinch / artificial harmonic** vs **natural harmonic** — the distinct pinch
+  glyph. (Ozzy "No More Tears" has 9 pinch harmonics.)
+- **Tremolo picking** — the tremolo (rapid-repick) marker.
+- **Let-ring** — the note rings into the following notes (its sustain isn't
+  trimmed).
+- **Pick direction** (up/down) and **left-hand fingering** (0-4) — mostly
+  cosmetic; confirm they don't corrupt anything.
+- **Trill** — expands to an alternating hammer-on/pull-off run between the two
+  frets. Confirm it reads as a trill, not a spurious note storm. (Ozzy rhythm
+  track has 2.)
+- **GP7/GPIF tap / slap / pop** — these had NO example file to validate against;
+  the GPIF tag names (`Slapped`/`Popped`/`Tapped`, beat-level) are best-effort.
+  If you have a `.gp` with slap-bass or tapping and the technique doesn't appear,
+  send the file so the tag can be corrected. (GP5 tap/slap/pop is validated.)
+- Slide flags **64 / 128** in some GP7 files are unidentified and ignored.
+
+**Variable-height Dynamic Difficulty** (the big one — DD was a past crash source):
+
+- Each **phrase's difficulty bar now varies in height** by that phrase's density
+  instead of a flat top. The ceiling is `_DD_LEVEL_CAP = 20` (was 11), so a song
+  now has **up to 21 DD levels** (was 12). Matches a decoded pro CDLC
+  (AAL "Tempting Time": phrase max-difficulties spread 0..18).
+- **In-game check:** the difficulty slider spans a wider range and the
+  Riff Repeater / difficulty graph shows varied per-phrase bar heights (rising
+  and falling), not a flat plateau.
+- **Watch for:** a crash on entry to a dense phrase's higher levels, or a level
+  that shows anchors/notes for notes it dropped. The per-level anchor/slide-
+  extension rebuild (`_build_level`) and phrase-iteration links are unchanged —
+  only the ceiling rose — so more levels of the *same* shape. If a specific song
+  crashes, toggle **DD off** (the "DD" checkbox / `dynamic_difficulty=False`) to
+  confirm DD is the cause, and report the song.
+- The SNG is ~1.6× larger than before (more levels); still well under 1 MB per
+  arrangement. Not a concern unless a song fails to load for size.
+
+Guarded at unit level by `test_dd_phrase_heights_vary_with_density` and the
+existing `test_dd_*` tests, but only in-game play confirms it.
+
 ### 7g. Separação fina de guitarras — Banquet (⚠️ EM TESTES, precisa de setup manual)
 
 An alternative stem-separation backend that separates guitars by **class**
