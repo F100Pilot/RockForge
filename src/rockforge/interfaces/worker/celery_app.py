@@ -71,6 +71,34 @@ def _resolve_device(requested: str) -> str:
     return "cpu"
 
 
+def _whisperx_cuda_marker() -> Path:
+    """Marker file recording that WhisperX's CUDA path crashed on this machine.
+
+    The faster-whisper/ctranslate2 GPU crash (Windows exit 0xC0000409 from a
+    cuDNN DLL mismatch) is a NATIVE crash we can only observe after it happens.
+    Once seen, we persist it here so later detections skip the doomed GPU
+    attempt (and its ~20-30s + scary log line) and run on CPU directly. Delete
+    the file to retry the GPU after fixing the CUDA/cuDNN install.
+    """
+    return settings.work_dir / ".whisperx_cuda_broken"
+
+
+def _whisperx_cuda_known_broken() -> bool:
+    try:
+        return _whisperx_cuda_marker().exists()
+    except OSError:
+        return False
+
+
+def _mark_whisperx_cuda_broken() -> None:
+    try:
+        m = _whisperx_cuda_marker()
+        m.parent.mkdir(parents=True, exist_ok=True)
+        m.touch()
+    except OSError:
+        pass
+
+
 def _build_use_case():  # noqa: ANN202 - heavy imports deferred to worker runtime
     from rockforge.application.pipeline import GenerateCdlcUseCase
     from rockforge.infrastructure.ingestion.sources import LocalFileIngestor, YouTubeIngestor
@@ -465,16 +493,33 @@ def detect_lyrics(job_id: str) -> None:
                         stdin=_sp.DEVNULL, timeout=WHISPERX_TIMEOUT_S,
                     )
 
-                proc = _run_whisperx(device)
+                run_device = device
+                # If the GPU already crashed on this machine once, skip the
+                # doomed attempt (and its ~20-30s + scary log line) entirely.
+                if run_device == "cuda" and _whisperx_cuda_known_broken():
+                    run_device = "cpu"
+                    _log_lyrics_stage(
+                        params,
+                        "GPU transcription crashed on a previous run on this "
+                        "machine — using CPU directly (delete "
+                        f"{_whisperx_cuda_marker().name} in the work dir to retry "
+                        "the GPU after fixing cuDNN/ctranslate2).",
+                    )
+                    _commit_params()
+
+                proc = _run_whisperx(run_device)
                 # A GPU run can crash with a native error (e.g. Windows exit
                 # 0xC0000409 / 3221226505 from a cuDNN/ctranslate2 DLL mismatch).
-                # Fall back to CPU so detection still works, just slower.
-                if proc.returncode != 0 and device == "cuda":
+                # Fall back to CPU so detection still works, just slower — and
+                # remember the crash so the next detection skips the GPU attempt.
+                if proc.returncode != 0 and run_device == "cuda":
+                    _mark_whisperx_cuda_broken()
                     _log_lyrics_stage(
                         params,
                         f"GPU transcription crashed (exit {proc.returncode}) — "
-                        f"retrying on CPU (slower). Tip: a CUDA build of WhisperX's "
-                        f"cuDNN/ctranslate2 may be missing/mismatched.",
+                        f"retrying on CPU (slower), and skipping the GPU on later "
+                        f"runs. Tip: a CUDA build of WhisperX's cuDNN/ctranslate2 "
+                        f"may be missing/mismatched.",
                     )
                     _commit_params()
                     proc = _run_whisperx("cpu")
