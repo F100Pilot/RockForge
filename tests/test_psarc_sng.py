@@ -861,3 +861,34 @@ def test_vocals_note_is_non_pitched_sentinel() -> None:
     model = from_vocals([VocalEvent(time=0.5, length=0.3, lyric="hi+")])
     assert model.vocals[0].note == VOCAL_NOTE == 254
     assert read_sng(write_sng(model)).vocals[0].note == 254
+
+
+def test_vocals_sng_carries_the_lyric_font_symbol_atlas() -> None:
+    """A vocals SNG must embed the Symbols sections (the lyric font glyph
+    atlas). With them empty the game has no glyphs and the letra never shows.
+    The atlas is the vendored default Latin font (SymbolsHeader=2, Texture=1,
+    Definition=192) referencing the built-in assets\\ui\\lyrics\\lyrics.dds, and
+    it round-trips through read_sng."""
+    import struct as _struct
+
+    payload = write_sng(from_vocals([VocalEvent(time=0.5, length=0.3, lyric="hi+")]))
+    # The symbol block sits right after the single vocal (4 zero counts +
+    # vocal count + one 60-byte vocal). Header/Texture/Definition counts:
+    pos = 4 * 4 + 4 + 60
+    sh, = _struct.unpack_from("<I", payload, pos)
+    st, = _struct.unpack_from("<I", payload, pos + 4 + sh * 32)
+    sd, = _struct.unpack_from("<I", payload, pos + 4 + sh * 32 + 4 + st * 144)
+    assert (sh, st, sd) == (2, 1, 192)
+    assert b"lyrics.dds" in payload
+    # Round-trips: the reader skips the populated symbol entries and still finds
+    # the downstream sections intact.
+    assert read_sng(payload).vocals[0].lyric == "hi+"
+
+
+def test_instrument_sng_has_no_vocals_symbol_block() -> None:
+    """Only vocals SNGs carry the symbol atlas — an instrument SNG (no vocals)
+    must not, or the reader would desync."""
+    arrangement = _arrangement()
+    payload = write_sng(from_arrangement(arrangement))
+    assert b"lyrics.dds" not in payload
+    assert read_sng(payload).vocals == []

@@ -36,6 +36,18 @@ gear_file = pkg / "infrastructure" / "packaging" / "gear" / "tone_gear_data.json
 if gear_file.exists():
     datas.append((str(gear_file), "rockforge/infrastructure/packaging/gear"))
 
+# Native-PSARC vendored assets (song-independent): the RSEnumerable flat models
+# the xblock references, and the vocals lyric-font symbol atlas.
+psarc_pkg = pkg / "infrastructure" / "packaging" / "psarc"
+flatmodels_dir = psarc_pkg / "flatmodels"
+if flatmodels_dir.is_dir():
+    for f in flatmodels_dir.iterdir():
+        if f.is_file():
+            datas.append((str(f), "rockforge/infrastructure/packaging/psarc/flatmodels"))
+symbols_bin = psarc_pkg / "vocals_symbols.bin"
+if symbols_bin.exists():
+    datas.append((str(symbols_bin), "rockforge/infrastructure/packaging/psarc"))
+
 # Bundled ffmpeg (place ffmpeg/ffmpeg.exe in the project root before building).
 ffmpeg_dir = Path("ffmpeg")
 if ffmpeg_dir.is_dir():
