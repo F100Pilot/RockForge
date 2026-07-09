@@ -31,6 +31,7 @@ from rockforge.domain.music import (
     Tuning,
     apply_sustain_gap,
     expand_slide_ins,
+    expand_trills,
     is_composite_bend,
 )
 
@@ -360,6 +361,9 @@ def parse_gp_track(
                         techs.add(Technique.SLIDE)
                     slide_unpitch = _slide_out_target(eff.slides, fret)
                     slide_in = _slide_in_source(eff.slides, fret)
+                    trill = getattr(eff, "trill", None)
+                    trill_fret = (int(trill.fret) if trill is not None
+                                  and 0 <= int(trill.fret) <= 24 else None)
                     if eff.accentuatedNote or eff.heavyAccentuatedNote:
                         techs.add(Technique.ACCENT)
                     slap = int(beat.effect.slapEffect.value)
@@ -384,6 +388,7 @@ def parse_gp_track(
                                 left_hand=left_hand,
                                 pick_direction=pick_dir,
                                 slide_in_from=slide_in,
+                                trill_fret=trill_fret,
                             ),
                             bool(eff.hammer),
                         )
@@ -416,6 +421,7 @@ def parse_gp_track(
     # instead of running right into it (done after slideTo is filled so pitched
     # slides keep their reach).
     notes = apply_sustain_gap(notes)
+    notes = expand_trills(notes)  # trills → alternating HO/PO runs (kept tight)
     notes.sort(key=lambda n: (n.time, n.string))
     beats_grid.sort(key=lambda b: b.time)
     avg_bpm = float(song.tempo) / tempo_scale

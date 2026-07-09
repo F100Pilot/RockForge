@@ -34,6 +34,7 @@ from rockforge.domain.music import (
     Tuning,
     apply_sustain_gap,
     expand_slide_ins,
+    expand_trills,
     is_composite_bend,
 )
 from rockforge.infrastructure.gpimport.parser import (  # shared model + helpers
@@ -299,6 +300,7 @@ def parse_gpif_track(
     # Leave a small gap before the next note on the string (after slideTo is
     # resolved, so pitched slides keep their reach).
     notes = apply_sustain_gap(notes)
+    notes = expand_trills(notes)  # trills → alternating HO/PO runs (kept tight)
     notes.sort(key=lambda n: (n.time, n.string))
     beats_grid.sort(key=lambda b: b.time)
 
@@ -476,6 +478,16 @@ def _emit_beat_notes(
                 slide_in = min(22, fret + 3)
         hopo_dest = "HopoDestination" in props
         left_hand = _left_fingering(note)
+        # <Trill> holds the trill target's MIDI pitch; the fret is the base fret
+        # shifted by the pitch difference (tuning-agnostic).
+        trill_fret: int | None = None
+        trill_el = note.find("Trill")
+        if trill_el is not None and "Midi" in props:
+            base_midi = int(_text(props["Midi"].find("Number"), "0") or "0")
+            target = int(_text(trill_el, "0") or "0")
+            tf = fret + (target - base_midi)
+            if 0 <= tf <= 24:
+                trill_fret = tf
         # A tie with destination="true" is a CONTINUATION of the previous note
         # on this string (held, not re-picked) — GP/Songsterr draw it in
         # parentheses. It must extend the previous note, not be a new attack.
@@ -496,6 +508,7 @@ def _emit_beat_notes(
                     left_hand=left_hand,
                     pick_direction=beat_pick,
                     slide_in_from=slide_in,
+                    trill_fret=trill_fret,
                 ),
                 hopo_dest,
                 slide_to,
