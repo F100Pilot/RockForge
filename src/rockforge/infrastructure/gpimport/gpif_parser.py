@@ -429,9 +429,11 @@ def _emit_beat_notes(
         if "Muted" in props:  # fret-hand mute / dead note (the "X")
             techs.add(Technique.FRET_MUTE)
         if "Harmonic" in props or "HarmonicType" in props:
-            # Artificial/Pinch harmonics get the distinct pinch glyph.
-            htype = _text(props["HarmonicType"].find("HType")) if "HarmonicType" in props else ""
-            techs.add(Technique.PINCH_HARMONIC if htype in ("Artificial", "Pinch")
+            # Artificial/Pinch harmonics get the distinct pinch glyph. GPIF writes
+            # the type lower-case (<HType>pinch</HType>), so compare case-folded.
+            htype = (_text(props["HarmonicType"].find("HType"))
+                     if "HarmonicType" in props else "").lower()
+            techs.add(Technique.PINCH_HARMONIC if htype in ("artificial", "pinch")
                       else Technique.HARMONIC)
         if "LetRing" in props:
             techs.add(Technique.LET_RING)
