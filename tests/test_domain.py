@@ -9,6 +9,7 @@ from rockforge.domain.music import (
     TempoMap,
     Tuning,
     apply_sustain_gap,
+    expand_slide_ins,
     is_composite_bend,
 )
 
@@ -101,6 +102,40 @@ def test_sustain_gap_skips_let_ring_notes() -> None:
     ]
     out = apply_sustain_gap(notes)
     assert out[0].sustain == 1.0  # let-ring keeps its full sustain into the next note
+
+
+def test_slide_in_adds_lead_in_note_when_there_is_room() -> None:
+    notes = [
+        TabNote(string=0, fret=5, time=0.0, sustain=0.2),   # ends 0.2, far before
+        TabNote(string=0, fret=12, time=1.0, sustain=0.3, slide_in_from=9),
+    ]
+    out = expand_slide_ins(notes)
+    assert len(out) == 3  # a lead-in note was inserted
+    lead = next(n for n in out if n.fret == 9)
+    assert lead.slide_to_fret == 12 and Technique.SLIDE in lead.techniques
+    assert lead.time < 1.0 and lead.time + lead.sustain <= 1.0 + 1e-9
+    assert next(n for n in out if n.fret == 12).slide_in_from is None  # marker cleared
+
+
+def test_slide_in_makes_previous_note_slide_when_crowded() -> None:
+    notes = [
+        TabNote(string=0, fret=10, time=0.9, sustain=0.1),  # adjacent, near in pitch
+        TabNote(string=0, fret=12, time=1.0, sustain=0.3, slide_in_from=9),
+    ]
+    out = expand_slide_ins(notes)
+    assert len(out) == 2  # no extra note — the previous note carries the slide
+    prev = next(n for n in out if n.fret == 10)
+    assert prev.slide_to_fret == 12 and Technique.SLIDE in prev.techniques
+
+
+def test_slide_in_left_plain_on_a_big_jump_with_no_room() -> None:
+    notes = [
+        TabNote(string=0, fret=2, time=0.9, sustain=0.1),   # adjacent but far in pitch
+        TabNote(string=0, fret=17, time=1.0, sustain=0.3, slide_in_from=14),
+    ]
+    out = expand_slide_ins(notes)
+    assert len(out) == 2
+    assert next(n for n in out if n.fret == 2).slide_to_fret is None  # not forced
 
 
 def test_is_composite_bend_only_for_varying_strength() -> None:

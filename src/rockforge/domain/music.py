@@ -52,6 +52,68 @@ class BendPoint:
     step: float
 
 
+def expand_slide_ins(
+    notes: Sequence[TabNote],
+    *,
+    min_room: float = 0.05,
+    max_dt: float = 0.12,
+    max_scoop_frets: int = 5,
+) -> list[TabNote]:
+    """Turn ``slide_in_from`` scoops into real slides.
+
+    A GP "slide into" a note (from below/above) has no source note — it's a
+    flourish. Rocksmith has no slide-in attribute either (only slideTo out to a
+    fret), so we represent it the way real charts do, in one of two ways per note:
+
+    - **Room before it** (no note crowding the attack): insert a short lead-in
+      note a few frets away that slides INTO the target, ending at its attack.
+    - **A note immediately precedes it** on the string (a dense lick): make THAT
+      note slide into the target instead — no extra note — provided it isn't
+      already sliding and is within a few frets (so the slide reads as a scoop,
+      not a huge jump).
+
+    If neither fits (a big pitch jump with no room), the note is left plain — the
+    honest limit, since Rocksmith can't show a free-floating scoop there. The
+    marker is cleared on the target either way.
+    """
+    by_string: dict[int, list[int]] = {}
+    for i, n in enumerate(notes):
+        by_string.setdefault(n.string, []).append(i)
+    result = list(notes)
+    lead_ins: list[TabNote] = []
+    for idxs in by_string.values():
+        idxs.sort(key=lambda i: notes[i].time)
+        for pos, i in enumerate(idxs):
+            n = result[i]
+            if n.slide_in_from is None:
+                continue
+            result[i] = replace(n, slide_in_from=None)
+            source = n.slide_in_from
+            prev_i = idxs[pos - 1] if pos > 0 else None
+            prev_end = (notes[prev_i].time + notes[prev_i].sustain
+                        if prev_i is not None else float("-inf"))
+            room = n.time - prev_end
+            if room > min_room and source != n.fret:
+                dt = min(max_dt, room * 0.8)
+                lead_ins.append(TabNote(
+                    string=n.string, fret=source, time=n.time - dt, sustain=dt,
+                    techniques=frozenset({Technique.SLIDE}), slide_to_fret=n.fret,
+                ))
+            elif prev_i is not None:
+                p = result[prev_i]
+                if (p.slide_to_fret is None and p.slide_unpitch_to is None
+                        and p.fret != n.fret and abs(p.fret - n.fret) <= max_scoop_frets):
+                    result[prev_i] = replace(
+                        p,
+                        techniques=p.techniques | {Technique.SLIDE},
+                        slide_to_fret=n.fret,
+                        sustain=max(p.sustain, n.time - p.time),
+                    )
+    out = result + lead_ins
+    out.sort(key=lambda x: (x.time, x.string))
+    return out
+
+
 def is_composite_bend(points: Sequence[BendPoint]) -> bool:
     """True when a bend curve's strength actually CHANGES along the note.
 
@@ -141,6 +203,7 @@ class TabNote:
     bend_points: tuple[BendPoint, ...] = ()  # full bend curve; empty = single peak
     left_hand: int = -1  # fretting finger (0-4), -1 = unspecified
     pick_direction: int = 0  # 0 = unspecified, 1 = down, 2 = up
+    slide_in_from: int | None = None  # scoop: fret a slide-into starts from
 
     def __post_init__(self) -> None:
         if not 0 <= self.string <= 5:

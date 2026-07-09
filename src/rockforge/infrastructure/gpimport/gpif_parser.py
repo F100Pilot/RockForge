@@ -33,6 +33,7 @@ from rockforge.domain.music import (
     TempoMap,
     Tuning,
     apply_sustain_gap,
+    expand_slide_ins,
     is_composite_bend,
 )
 from rockforge.infrastructure.gpimport.parser import (  # shared model + helpers
@@ -294,6 +295,7 @@ def parse_gpif_track(
 
     merged = _merge_ties(raw)  # collapse tie continuations into the held note
     notes = _resolve_techniques([n for n, _, _ in merged], merged)
+    notes = expand_slide_ins(notes)  # scoops → lead-in slide notes
     # Leave a small gap before the next note on the string (after slideTo is
     # resolved, so pitched slides keep their reach).
     notes = apply_sustain_gap(notes)
@@ -458,15 +460,20 @@ def _emit_beat_notes(
             bend_semitones, bend_points = _bend_curve(props)
         slide_to = False
         slide_unpitch: int | None = None
+        slide_in: int | None = None
         if "Slide" in props:
             flags = int(_text(props["Slide"].find("Flags"), "0") or "0")
             if flags & _SLIDE_TO_BITS:  # 1/2 = pitched shift/legato slide
                 techs.add(Technique.SLIDE)
                 slide_to = True
-            elif flags & 4:   # slide out downwards → unpitched, toward the nut
+            if flags & 4:     # slide out downwards → unpitched, toward the nut
                 slide_unpitch = max(1, fret - 5)
             elif flags & 8:   # slide out upwards → unpitched, toward the bridge
                 slide_unpitch = min(22, fret + 5)
+            if flags & 16:    # slide INTO from below → scoop up from a lower fret
+                slide_in = max(1, fret - 3)
+            elif flags & 32:  # slide INTO from above → scoop down from a higher fret
+                slide_in = min(22, fret + 3)
         hopo_dest = "HopoDestination" in props
         left_hand = _left_fingering(note)
         # A tie with destination="true" is a CONTINUATION of the previous note
@@ -488,6 +495,7 @@ def _emit_beat_notes(
                     bend_points=bend_points,
                     left_hand=left_hand,
                     pick_direction=beat_pick,
+                    slide_in_from=slide_in,
                 ),
                 hopo_dest,
                 slide_to,
