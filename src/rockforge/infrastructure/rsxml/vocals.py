@@ -91,6 +91,35 @@ def expand_to_words(events: list[VocalEvent]) -> list[VocalEvent]:
 
 DEFAULT_SYLLABLE_LENGTH_S = 0.3
 
+# In-game the lyric bar shows one line at a time; a long line scrolls as a wall
+# of text. This caps ANY line (from detection, GP or LRC) at build time — a
+# safety net so a source with coarse/long lines is still readable, independent of
+# the finer per-segment breaking WhisperX detection does.
+MAX_LINE_WORDS = 7
+
+
+def enforce_max_line_words(
+    events: list[VocalEvent], max_words: int = MAX_LINE_WORDS
+) -> list[VocalEvent]:
+    """Force a line break (trailing ``+``) once a line reaches ``max_words``
+    without one, so no lyric line runs longer than that on screen. Never removes
+    an authored break, never breaks mid-word (a syllable-join ``-``) or on the
+    very last event."""
+    out = list(events)
+    since_break = 0
+    for i, e in enumerate(out):
+        stripped = e.lyric.rstrip()
+        if stripped.endswith("+"):
+            since_break = 0
+            continue
+        since_break += 1
+        if stripped.endswith("-"):
+            continue  # mid-word syllable — a break here would split the word
+        if since_break >= max_words and i < len(out) - 1:
+            out[i] = VocalEvent(time=e.time, length=e.length, lyric=e.lyric + "+")
+            since_break = 0
+    return out
+
 
 def _split_syllables(text: str) -> list[tuple[str, bool, bool]]:
     """Split a Guitar Pro lyric line into (syllable, joins_next, is_hold) items.

@@ -31,7 +31,7 @@ from rockforge.domain.arrangement import (
 from rockforge.domain.music import Beat, NoteEvent, TempoMap, Tuning
 from rockforge.infrastructure.fretboard.mapper import infer_legato, map_to_fretboard
 from rockforge.infrastructure.packaging.dlcbuilder import PackagingResult
-from rockforge.infrastructure.rsxml.vocals import VocalEvent
+from rockforge.infrastructure.rsxml.vocals import VocalEvent, enforce_max_line_words
 
 _BASE_CONFIDENCE: dict[str, ConfidenceLabel] = {
     "separation": ConfidenceLabel.MEASURED,  # htdemucs_6s: published model, quality "okay"
@@ -173,6 +173,9 @@ class GenerateCdlcUseCase:
                         "lyrics transcribed automatically (WhisperX) — EXPERIMENTAL: "
                         "review text and timing; provide an LRC file for measured timing"
                     )
+
+        if vocals_events:
+            vocals_events = enforce_max_line_words(vocals_events)  # cap long lyric lines
 
         stage("package")
         packaging = self.packager.package(

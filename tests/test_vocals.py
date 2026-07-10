@@ -6,6 +6,7 @@ import pytest
 from rockforge.infrastructure.rsxml.vocals import (
     VocalEvent,
     distribute_syllables,
+    enforce_max_line_words,
     events_from_dicts,
     expand_to_words,
     parse_lrc,
@@ -13,6 +14,40 @@ from rockforge.infrastructure.rsxml.vocals import (
     parse_ultrastar_txt,
     write_vocals_xml,
 )
+
+
+def _words(text: str) -> list[VocalEvent]:
+    return [VocalEvent(time=float(i), length=0.5, lyric=w) for i, w in enumerate(text.split())]
+
+
+def test_enforce_max_line_words_breaks_long_lines() -> None:
+    # A 16-word line with no break gets a "+" every max_words (7 here); the final
+    # word is left to the source (the cap only splits over-long lines, it doesn't
+    # add a trailing line-end).
+    events = enforce_max_line_words(_words("a b c d e f g h i j k l m n o p"), max_words=7)
+    breaks = [i for i, e in enumerate(events) if e.lyric.endswith("+")]
+    assert breaks == [6, 13]  # after word 7, then word 14 (words 15-16 remain)
+
+
+def test_enforce_max_line_words_keeps_authored_breaks_and_short_lines() -> None:
+    events = enforce_max_line_words(
+        [VocalEvent(time=0, length=0.5, lyric="short"),
+         VocalEvent(time=1, length=0.5, lyric="line+"),
+         VocalEvent(time=2, length=0.5, lyric="ok")],
+        max_words=7,
+    )
+    # The authored "+" is kept; a short line is untouched; the counter reset after it.
+    assert [e.lyric for e in events] == ["short", "line+", "ok"]
+
+
+def test_enforce_max_line_words_never_breaks_mid_word() -> None:
+    # A syllable-join "-" must not receive a "+" (it would split the word).
+    events = enforce_max_line_words(
+        [VocalEvent(time=float(i), length=0.5, lyric=("syl-" if i == 6 else f"w{i}"))
+         for i in range(9)],
+        max_words=7,
+    )
+    assert events[6].lyric == "syl-"  # not "syl-+"
 
 LRC = """
 [ar:Band]

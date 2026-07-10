@@ -295,8 +295,17 @@ break only at segment ends made long segments scroll in-game as one wall of
 text. `segments_to_vocal_events` splits each segment into short display lines
 (`_break_into_lines`): a `+` on a sung pause (word gap > `LINE_BREAK_GAP_S`) or
 every `LINE_MAX_WORDS` words. This is detection-only — LRC/UltraStar/GP-embedded
-lyrics keep their authored line structure. Existing jobs need a re-detect to
-pick up the finer breaks (the old `+`s are already baked into `lyrics_events`).
+lyrics keep their authored line structure.
+
+**Build-time line cap (`enforce_max_line_words`, `rsxml/vocals.py`).** The finer
+breaking above only touches WhisperX *detection*. Both pipelines additionally run
+every vocals list through `enforce_max_line_words` (cap `MAX_LINE_WORDS = 7`)
+right before packaging, forcing a `+` once a line reaches the cap WITH NO break —
+a safety net so lyrics from ANY source (old detection whose coarse `+`s are
+already baked into `lyrics_events`, GP-embedded, a long-lined LRC) don't scroll
+as a wall of text in-game **without needing a re-detect**. It never removes an
+authored break, never breaks on a syllable-join `-` (mid-word) or on the last
+event. Guarded by `test_enforce_max_line_words_*`.
 
 **Speed.** This is the slow path on CPU; the heaviest stage is the Demucs
 separation. Detection uses `DemucsSeparator.separate_vocals` — the lighter
