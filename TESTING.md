@@ -171,6 +171,8 @@ GET    /jobs/{id}                    one job
 DELETE /jobs/{id}                    delete job + its files
 POST   /jobs/{id}/rebuild            rebuild with new params (composes sync rounds)
 POST   /jobs/{id}/reload-gp          swap the GP file, keep all overrides   [GP]
+GET    /jobs/{id}/sync-state         export hand-tuned sync as portable JSON
+POST   /jobs/{id}/import-sync        apply an exported sync + rebuild (202)
 POST   /jobs/{id}/auto-sync          propose (tempo_scale, offset_s)   [GP, ml extra]
 POST   /jobs/{id}/detect-tempo       per-point tempo from a clicked instant [GP, ml]
 POST   /jobs/{id}/detect-tuning      propose cent offset               [ml extra]
@@ -490,6 +492,26 @@ split — use the per-arrangement synthesized source for that.
 If any of the three paths is missing/unset, the task fails **gracefully** with a
 clear message (`stems_status = unavailable`) — it never crashes the job. Missing
 setup is guarded by `test_banquet_adapter.py::test_missing_setup_raises`.
+
+### 7h. Export / import sync state (JSON)
+
+The hand-tuned sync a user builds in the tab viewer (drift anchors, `tempo_scale`,
+`offset_s`, intro silence, per-arrangement `arrangement_sync`, tuning, edited
+`lyrics_events`, GP track assignment) can be saved to a JSON file and restored
+into another job — so re-uploading the recording or re-exporting the GP doesn't
+mean redoing all the alignment. Buttons **"⬇ Exportar sync" / "⬆ Importar sync"**
+sit under "Aplicar e reconstruir".
+
+Fully unit-tested (`test_api.py`: `test_extract_sync_state_is_whitelisted`,
+`test_sync_state_export_and_import_round_trip`,
+`test_import_sync_drops_gp_only_keys_and_validates`) — the whitelist, the
+round-trip, the GP-only-key drop and the tuning validation. **Manual check (no
+game needed):** tune a song's sync, click **Exportar sync** (downloads
+`<artist>_<title>.sync.json`), create a NEW job for the same song, click
+**Importar sync** and pick that file — it forks a rebuild and the tab viewer
+comes back with the same anchors/tempo/offset/lyrics. Importing a GP-only key
+(a track index / per-arrangement tuning) into a non-GP job silently drops it;
+a malformed `tuning_midi` 422s instead of corrupting the job.
 
 ---
 

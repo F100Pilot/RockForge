@@ -114,9 +114,15 @@ ver `TESTING.md`.
   lista por nome/key, mantendo sempre a escolha atual visível (nunca troca o
   gear silenciosamente). `populateGearSelect(..., filter)` no `web/index.html`.
 
-- [ ] **Exportar/importar estado de sincronização como JSON**: permitir
-  guardar/restaurar `sync_anchor_stages`, `tempo_scale`, `arrangement_sync` e
-  `lyrics_events` para não perder ajustes manuais finos.
+- [x] **Exportar/importar estado de sincronização como JSON**: `GET
+  /jobs/{id}/sync-state` exporta um blob JSON com o subconjunto de sync dos
+  params (whitelist `_SYNC_STATE_KEYS`: `offset_s`/`lead_in_s`/`tempo_scale`/
+  `sync_anchor_stages`/`arrangement_sync`/`tuning_midi`/`cent_offset`/
+  `tuning_overrides`/`lyrics_events` + atribuição de tracks); `POST
+  /jobs/{id}/import-sync` aplica-o (forka um rebuild), largando chaves só-GP num
+  job não-GP e validando afinações. Botões "⬇ Exportar sync / ⬆ Importar sync"
+  no painel de sync. Guardado por `test_api.py` (whitelist, round-trip, drop de
+  chaves GP, validação).
 
 - [ ] **Deteção de secções (intro/verso/refrão) no caminho áudio-ML**: hoje as
   secções só vêm do GP; áudio puro não tem estrutura de secções no Song2014

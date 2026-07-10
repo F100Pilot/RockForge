@@ -576,6 +576,12 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
             <input type="checkbox" id="applyToAllChk"> Aplicar sync a todos
           </label>
         </div>
+        <div class="anchor-row" style="margin-top:.5rem">
+          <button type="button" id="exportSyncBtn" class="secondary">⬇ Exportar sync</button>
+          <button type="button" id="importSyncBtn" class="secondary">⬆ Importar sync</button>
+          <input type="file" id="importSyncInput" accept=".json,application/json" style="display:none">
+          <span class="meta">guarda/restaura os ajustes manuais (anchors, tempo, início, afinação, letra, tracks) como JSON — para não os refazer se recriares o job</span>
+        </div>
       </div>
 
       <!-- TAB: Letras -->
@@ -1836,6 +1842,47 @@ reloadGpInput.addEventListener('change', async () => {
     reloadGpBtn.disabled = false;
     info.textContent = prev;
   }
+});
+
+// Export / import the hand-tuned sync state as a portable JSON file, so manual
+// anchors/tempo/offset/tuning/lyrics/tracks survive re-creating a job.
+document.getElementById('exportSyncBtn').addEventListener('click', async () => {
+  if (!selectedJob) return;
+  try {
+    const r = await fetch(`/jobs/${selectedJob.id}/sync-state`);
+    const b = await r.json();
+    if (!r.ok) { toast(b.detail || 'erro ao exportar sync'); return; }
+    const name = (b.song || selectedJob.id).replace(/[^\w.-]+/g, '_');
+    const blob = new Blob([JSON.stringify(b, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${name}.sync.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast('Sync exportado.', 'ok');
+  } catch { toast('erro ao exportar sync'); }
+});
+
+const importSyncInput = document.getElementById('importSyncInput');
+document.getElementById('importSyncBtn').addEventListener('click', () => {
+  if (selectedJob) importSyncInput.click();
+});
+importSyncInput.addEventListener('change', async () => {
+  const file = importSyncInput.files[0];
+  if (!file || !selectedJob) return;
+  try {
+    const payload = JSON.parse(await file.text());
+    if (!payload || typeof payload.sync !== 'object')
+      { toast('ficheiro de sync inválido'); return; }
+    const r = await fetch(`/jobs/${selectedJob.id}/import-sync`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const b = await r.json();
+    if (r.ok) { toast('Sync importado — a reconstruir…', 'ok'); selectJob(b.id, { force: true }); }
+    else toast(b.detail || 'erro ao importar sync');
+  } catch { toast('erro ao ler o ficheiro de sync'); }
+  finally { importSyncInput.value = ''; }
 });
 
 // ============ Tones: gear builder + base/extra/changes ============
