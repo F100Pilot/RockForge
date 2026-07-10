@@ -377,10 +377,11 @@ in-game note-highway glyph/behaviour matches Guitar Pro:
   bend-up, NOT an already-bent prebend); a **bend-and-release** rises then falls.
   Byte-matched to a DLC Builder SNG, but confirm the feel in-game.
 - **Slide-out** (`slideUnpitchTo`) — a note that slides off into nowhere (GP `9\`)
-  shows the unpitched slide tail.
+  shows the unpitched slide tail. ✅ **Confirmed in-game.**
 - **Slide-in / scoop** — a note slid *into* from below/above either gets a short
   lead-in note that slides into it, or (in a dense lick) the previous note slides
   into it. Big pitch jumps with no room stay plain (honest limit).
+  ✅ **Confirmed in-game.**
 - **Fret-hand mute** (dead "X" notes) — muted, not fretted.
 - **Pinch / artificial harmonic** vs **natural harmonic** — the distinct pinch
   glyph. (Ozzy "No More Tears" has 9 pinch harmonics.)
