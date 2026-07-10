@@ -397,6 +397,44 @@ def test_identical_riffs_share_one_phrase() -> None:
     assert len(model.phrases) < len(model.phrase_iterations)
 
 
+def test_note_phrase_id_is_in_bounds_after_linking() -> None:
+    """Every note's phrase_id must index a REAL phrase, not the iteration index —
+    once phrase-linking makes fewer phrases than iterations, a note carrying its
+    iteration index as phrase_id runs off the end of the Phrases array, and the
+    game crashes reading it *while scoring* that note (a hands-off run never
+    touches it). Regression for the octave-5/7 scoring crash."""
+    # 8 sections, an identical riff repeated in most → phrases < iterations, and
+    # late iterations get an index above the (reduced) phrase count.
+    beats = tuple(Beat(time=i * 0.5, measure=i // 4 + 1 if i % 4 == 0 else -1)
+                  for i in range(200))
+    riff = [(0, 3), (1, 5), (2, 7)]
+    notes: list[TabNote] = []
+    for k in range(8):
+        base = k * 8.0
+        # Alternate an identical riff with a slightly different one so some
+        # sections dedup and the iteration count outruns the phrase count.
+        shape = riff if k % 2 == 0 else [(s, f + 1) for s, f in riff]
+        notes += [TabNote(string=s, fret=f, time=base + j * 0.5, sustain=0.2)
+                  for j, (s, f) in enumerate(shape)]
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=68.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+        notes=notes,
+        sections=[Section(name=f"S{k}", start_time=k * 8.0) for k in range(8)],
+    )
+    for dd in (True, False):
+        model = from_arrangement(arr, dynamic_difficulty=dd)
+        n_phrases = len(model.phrases)
+        assert n_phrases < len(model.phrase_iterations)  # linking happened
+        for level in model.arrangements:
+            for n in level.notes:
+                assert 0 <= n.phrase_id < n_phrases, (
+                    f"note phrase_id {n.phrase_id} out of range (phrases={n_phrases})"
+                )
+
+
 def test_dd_low_levels_spread_notes_across_the_phrase() -> None:
     # A long single-phrase song (no section markers): low DD levels must show the
     # strongest beats spread across the WHOLE phrase, not clustered in its first

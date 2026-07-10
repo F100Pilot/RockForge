@@ -964,7 +964,7 @@ def from_arrangement(
             mask=mask,
             anchor_fret=a_fret,
             anchor_width=a_width,
-            phrase_id=pi_id,
+            phrase_id=phrase_iterations[pi_id].phrase_id,
             phrase_iteration_id=pi_id,
             slide_to=sn.slide_to_fret if sn.slide_to_fret is not None else -1,
             slide_unpitch_to=sn.slide_unpitch_to if sn.slide_unpitch_to is not None else -1,
@@ -1008,7 +1008,7 @@ def from_arrangement(
             anchor_width=a_width,
             chord_id=chord_id,
             chord_notes_id=cn_id,
-            phrase_id=pi_id,
+            phrase_id=phrase_iterations[pi_id].phrase_id,
             phrase_iteration_id=pi_id,
             bend_data=[],
         ))
