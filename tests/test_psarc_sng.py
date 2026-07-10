@@ -868,7 +868,13 @@ def test_chord_template_notes_are_real_midi() -> None:
     assert notes_midi[0] == 40  # open low E
     assert notes_midi[1] == 47  # A + 2
     assert notes_midi[2] == 52  # D + 2
-    assert notes_midi[3] == 0   # unused string
+    # Unused strings MUST be -1, not 0 — byte-verified against a DLC Builder
+    # build of the same song. A 0 there (a real, absurdly low MIDI pitch on a
+    # string that shouldn't sound) crashed the game at a gapped 5/7 octave's
+    # entry, but only while the player was actually playing (the scoring path
+    # dereferences the per-string MIDI; a spectating run never touches it).
+    assert notes_midi[3] == -1
+    assert notes_midi[4] == -1 and notes_midi[5] == -1
 
 
 def test_from_vocals_only_populates_vocals() -> None:

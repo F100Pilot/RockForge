@@ -376,6 +376,14 @@ in-game note-highway glyph/behaviour matches Guitar Pro:
 - **Bends** — a plain bend rises to its peak by the note's end (a visible
   bend-up, NOT an already-bent prebend); a **bend-and-release** rises then falls.
   Byte-matched to a DLC Builder SNG, but confirm the feel in-game.
+- **Chords / octave shapes while scoring** — a gapped 5/7 octave (or any chord)
+  must survive being PLAYED, not just watched. A crash that hits exactly when
+  the player scores a chord — but never on a hands-off run — was the chord
+  template's per-string MIDI `notes` carrying **0 for unused strings instead of
+  -1** (byte-diffed against a DLC Builder build of the same song); the scoring
+  path dereferences those per-string pitches. Fixed; **re-test by playing
+  through the octave section** (Beartooth "Free", after the last solo).
+  Guarded by `test_chord_template_notes_are_real_midi`.
 - **Slide-out** (`slideUnpitchTo`) — a note that slides off into nowhere (GP `9\`)
   shows the unpitched slide tail. ✅ **Confirmed in-game.**
 - **Slide-in / scoop** — a note slid *into* from below/above either gets a short
