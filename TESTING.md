@@ -390,6 +390,17 @@ in-game note-highway glyph/behaviour matches Guitar Pro:
 Guarded at unit level by `test_dd_phrase_heights_vary_with_density` and the
 existing `test_dd_*` tests, but only in-game play confirms it.
 
+**Phrase-linking (repeated riffs share one phrase):** identical iterations now
+collapse onto a shared phrase (`_phrase_signature`), so a repeated riff is ONE
+phrase with many iterations — learned once, mastered on every repeat — instead
+of re-ramping each occurrence. **In-game check:** in the Riff Repeater / phrase
+list the song shows a small handful of distinct phrases (a repeated riff appears
+as the *same* phrase each time, not a new one), and raising your mastery on a
+riff carries to its every repeat. **Watch for:** a phrase that should NOT be
+linked (two riffs that merely look similar) sharing difficulty — the signature
+is an exact (10 ms, string, fret) match so this should be rare; report a song
+where distinct riffs collapse. Guarded by `test_identical_riffs_share_one_phrase`.
+
 **Alternate arrangements** (`ALTERNATE_LEAD` / `ALTERNATE_RHYTHM`): pick a second
 Lead/Rhythm GP track in the "Pista Lead/Rhythm alternativo" selectors. The build
 emits `lead2`/`rhythm2` assets flagged non-representative (`Representative=0`,
