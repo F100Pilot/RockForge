@@ -238,8 +238,12 @@ ver `TESTING.md`.
 
   - [~] **Dados de score/frases/secções no manifesto do PSARC nativo**: já
     populados a partir do SNG compilado (`manifest.arrangement_stats`) — contagem
-    de notas, `Phrases`/`PhraseIterations`/`Sections`. Falta ainda: os tons
-    (`Tones`/`Tone_Base`) e as contagens por dificuldade (dependem da DD).
+    de notas, `Phrases`/`PhraseIterations`/`Sections`. **Os tons também já vão**
+    (`Tones`/`Tone_Base`/`Tone_A`..`Tone_D`, via `packaging/tone_dto.py`
+    partilhado com o `.rs2dlc`; formato validado contra um build DLC Builder dos
+    nossos próprios tons), por isso o tom in-game é o do utilizador e não um
+    default. Falta ainda: as contagens por dificuldade (dependem da DD) e a
+    secção Tones do SNG para *mudanças* de tom a meio (o `tone_base` já aplica).
 
   - [x] **DDS real da capa**: o PSARC nativo converte a capa do utilizador para
     as texturas DDS in-game (64/128/256) via `gamedata.album_art_dds` (encoder
