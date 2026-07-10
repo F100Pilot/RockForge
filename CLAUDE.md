@@ -850,20 +850,24 @@ reference bnk in CI. When no Wwise is available the packer falls back to the old
 non-loading `audio/<key>.<ext>` path (bundle stays the trustworthy audio route).
 
 **Volume ("Calculate Volumes", `normalize/loudness.py`).** The Sound object's
-Wwise bus volume (dB) is no longer a neutral 0: the packer measures the audio's
-integrated loudness with ffmpeg's `ebur128` filter and offsets it to the
-`TARGET_LUFS = -16` EBU R128 reference RockForge normalizes to (`calculate_volume`
-→ `generate_soundbank(volume=…)`). The full song is already loudnorm'd to -16 so
-it lands near 0 dB (matching a DLC Builder bank, whose Calculate Volumes ships 0
-until run); the value this adds is the **preview** — a trimmed clip whose own
-loudness differs is measured on the clip and matched to the song, so it doesn't
-blast over the song list. `parse_ebur128_i` (stderr parse) and
-`volume_for_loudness` (the ±`VOLUME_CLAMP_DB` offset formula) are pure and
-unit-tested without ffmpeg; a missing/failing ffmpeg degrades to 0 dB, never a
-crash. A louder "match retail exactly" target is deliberately NOT guessed — the
-decoded DLC Builder banks were all 0 (uncalibrated), so there's no verified
-retail figure; bump `TARGET_LUFS` if songs read too quiet next to official DLC.
-The `.rs2dlc` audio `Volume` stays neutral (DLC Builder recomputes on import).
+Wwise bus volume (dB) is no longer a neutral 0. **One target
+(`runtime_settings.loudness_target()`, default -12 LUFS) drives BOTH the ffmpeg
+`loudnorm` pass AND the volume calibration**, so the `.wem` and the bus volume
+never drift: the audio is normalized to that loudness, then the packer measures
+it with `ebur128` and offsets the bus volume to the same target (`calculate_volume`
+→ `generate_soundbank(volume=…)`) — a normalized song lands near 0 dB, and the
+song-select **preview** (a trimmed clip whose own loudness differs) is measured
+separately and matched so it doesn't blast over the list. **Why -12, not the -16
+EBU R128 broadcast reference:** retail Rocksmith ships loud music masters (DLC
+Builder's Calculate Volumes lands ~-3/-4 dB of *attenuation* on such a master),
+so -16 read audibly quiet in-game; -12 is a music-game level. The target is
+**user-editable in the ⚙️ Definições modal** ("Volume alvo (LUFS)", clamped
+-20..-6) — push toward -10/-9 if still quiet, back toward -14 if it pumps. Since
+our `.wem` is *normalized* to the target (not just bus-boosted), raising it is
+safe (loudnorm's limiter, not a post-gain that would clip the -1.5 dBTP peaks).
+`parse_ebur128_i`/`volume_for_loudness` are pure and unit-tested without ffmpeg;
+a missing ffmpeg degrades to 0 dB, never a crash. The `.rs2dlc` audio `Volume`
+stays neutral (DLC Builder recomputes on import).
 
 ### Standalone executable (`build_exe.py` / PyInstaller)
 

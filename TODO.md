@@ -267,17 +267,19 @@ ver `TESTING.md`.
     DXT1, precisa do Pillow no extra `[psarc]`); sem capa/Pillow usa um placeholder
     de cor sólida para o URN resolver.
 
-  - [x] **Calibração de volume ("Calculate Volumes")**: o packer mede a
-    sonoridade integrada do áudio com o filtro `ebur128` do ffmpeg e ajusta o
-    volume do bus Wwise no `.bnk` para o alvo `TARGET_LUFS=-16`
-    (`normalize/loudness.py` → `generate_soundbank(volume=…)`). A música completa
-    já vai loudnorm'd a -16, por isso fica perto de 0 dB; o ganho real é o
-    **preview** (clip cortado com sonoridade própria) ser medido no clip e
-    igualado à música, para não rebentar na lista de músicas. Parser + fórmula
-    testados sem ffmpeg (`test_loudness.py`); ffmpeg ausente → 0 dB (sem crash).
-    Falta: um alvo mais alto para igualar o retail exatamente (as referências
-    DLC Builder tinham volume 0, não calibrado — sem figura verificada). O
-    `Volume` do `.rs2dlc` fica neutro (o DLC Builder recalcula na importação).
+  - [x] **Calibração de volume ("Calculate Volumes")**: **um** alvo
+    (`runtime_settings.loudness_target()`, default **-12 LUFS**) comanda o
+    `loudnorm` do ffmpeg **e** a calibração do volume do bus Wwise no `.bnk`, por
+    isso o `.wem` e o volume nunca desalinham (`normalize/loudness.py` +
+    `ffmpeg.py` → `generate_soundbank(volume=…)`). Passou de -16 (broadcast, soava
+    baixo) para -12 (nível de master de música) porque o retail é alto (o DLC
+    Builder atenua ~-3/-4 dB num master alto). **Editável na ⚙️ Definições**
+    ("Volume alvo (LUFS)", clamp -20..-6) — sobe para -10/-9 se ficar baixo,
+    desce para -14 se soar comprimido. Como o `.wem` é *normalizado* ao alvo (não
+    só ganho no bus), subir é seguro (limiter do loudnorm, não corta os picos). O
+    preview é medido no seu próprio clip. Testado (`test_loudness.py`,
+    `test_settings.py`); ffmpeg ausente → 0 dB. O `Volume` do `.rs2dlc` fica
+    neutro (o DLC Builder recalcula na importação).
 
 - [~] **Dynamic Difficulty (DD)**: DD por densidade com **teto variável por
   frase** (até 21 níveis) — uma nota entra quando a dificuldade chega ao seu
