@@ -538,6 +538,14 @@ correction that made things worse. Backend guarded by
 twice, confirm the button walks back one version each click and the older bundle
 still downloads.
 
+**Tab-viewer keyboard shortcuts.** With the sync panel open and no text field
+focused: **Space** play/pause, **←/→** scrub ∓1s (Shift = ∓5s), **Home** to the
+start, **`+`/`-`** zoom. **Manual check:** the playhead moves visually with the
+arrows even while paused, and the shortcuts do NOT fire while typing in an input
+(word/timing fields, tuning boxes). Arrows are a fixed time-step, not
+note-snapping (deliberate — the note↔playhead mapping shifts under pending sync
+edits).
+
 ---
 
 ## 8. Debugging the async detection tasks

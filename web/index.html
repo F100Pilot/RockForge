@@ -3692,17 +3692,32 @@ function audioToggle() {
 // SPACE = play/pause, like a media player. Ignored while typing (inputs,
 // selects, editable text) so it doesn't hijack a real space character, and
 // only when a job viewer with playback is open.
+// Tab-viewer keyboard shortcuts (only while the sync panel is open and no text
+// field is focused): Space play/pause, ←/→ scrub (Shift = bigger step), Home to
+// the start, +/- zoom. Seeks go through audioSeek in recording-time, so they
+// move the playhead visually even while paused.
 document.addEventListener('keydown', e => {
-  if (e.code !== 'Space' && e.key !== ' ') return;
   const el = document.activeElement;
   const tag = el && el.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (el && el.isContentEditable)) return;
   if (!selectedJob) return;
   const panel = document.getElementById('syncPanel');
   if (!panel || panel.style.display === 'none') return;
-  e.preventDefault();            // stop the page from scrolling on space
-  if (tag === 'BUTTON') el.blur();  // don't let a focused button also fire on space
-  audioToggle();
+  if (e.code === 'Space' || e.key === ' ') {
+    e.preventDefault();               // stop the page from scrolling on space
+    if (tag === 'BUTTON') el.blur();  // don't let a focused button also fire on space
+    audioToggle();
+  } else if (e.key === 'ArrowRight') {
+    e.preventDefault(); audioSeek(currentPlayheadT + (e.shiftKey ? 5 : 1));
+  } else if (e.key === 'ArrowLeft') {
+    e.preventDefault(); audioSeek(Math.max(0, currentPlayheadT - (e.shiftKey ? 5 : 1)));
+  } else if (e.key === 'Home') {
+    e.preventDefault(); audioSeek(0);
+  } else if (e.key === '+' || e.key === '=') {
+    e.preventDefault(); setZoom(zoomLevel * 1.5);
+  } else if (e.key === '-' || e.key === '_') {
+    e.preventDefault(); setZoom(zoomLevel / 1.5);
+  }
 });
 
 // Hard stop used on job switch / detail close — no UI resume implied.
