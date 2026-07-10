@@ -39,6 +39,24 @@ def test_update_persists_and_reads_back(client: TestClient) -> None:
     assert client.get("/settings").json()["stem_separator"] == "banquet"
 
 
+def test_loudness_target_default_and_override(client: TestClient) -> None:
+    # Default is the louder music-game level.
+    assert client.get("/settings").json()["loudness_target"] == -12.0
+    r = client.post("/settings", json={"loudness_target": -10.0})
+    assert r.status_code == 200
+    assert r.json()["loudness_target"] == -10.0
+    assert client.get("/settings").json()["loudness_target"] == -10.0
+
+
+def test_loudness_target_is_clamped(client: TestClient) -> None:
+    import rockforge.runtime_settings as rs
+
+    client.post("/settings", json={"loudness_target": 5.0})   # absurdly hot
+    assert rs.loudness_target() == -6.0   # clamped to the max
+    client.post("/settings", json={"loudness_target": -50.0})  # absurdly quiet
+    assert rs.loudness_target() == -20.0  # clamped to the min
+
+
 def test_invalid_separator_rejected(client: TestClient) -> None:
     assert client.post("/settings", json={"stem_separator": "nope"}).status_code == 422
 

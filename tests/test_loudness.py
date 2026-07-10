@@ -41,12 +41,13 @@ def test_parse_ebur128_none_when_absent() -> None:
 
 
 def test_volume_offsets_loudness_to_target() -> None:
-    # A -12.4 LUFS clip pulled to the -16 target → cut ~3.6 dB.
-    assert volume_for_loudness(-12.4) == round(TARGET_LUFS - (-12.4), 1) == -3.6
-    # Already at target → unity.
-    assert volume_for_loudness(-16.0) == 0.0
-    # A quiet mix gets a boost.
-    assert volume_for_loudness(-20.0) == 4.0
+    # Formula is target-relative (explicit target keeps this independent of the
+    # configurable default).
+    assert volume_for_loudness(-12.4, target=-16.0) == -3.6
+    assert volume_for_loudness(-16.0, target=-16.0) == 0.0  # already at target
+    assert volume_for_loudness(-20.0, target=-16.0) == 4.0  # quiet mix boosted
+    # Default target is the louder music-game level, so a -16 clip is pushed up.
+    assert volume_for_loudness(-16.0) == round(TARGET_LUFS - (-16.0), 1) == 4.0
 
 
 def test_volume_is_clamped_both_ways() -> None:

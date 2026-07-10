@@ -22,7 +22,12 @@ class FfmpegNormalizer:
         filters = []
         if pad_start_s > 0:
             filters.append(f"adelay={int(pad_start_s * 1000)}:all=1")
-        filters.append("loudnorm=I=-16:TP=-1.5:LRA=11")
+        # Normalize to the configured loudness (default -12 LUFS, a music-game
+        # level — see runtime_settings). One shared target with the Wwise volume
+        # calibration so the .wem and the volume never drift apart.
+        from rockforge import runtime_settings
+
+        filters.append(f"loudnorm=I={runtime_settings.loudness_target():.1f}:TP=-1.5:LRA=11")
         cmd = [
             # -nostdin: never read stdin. Run from a console (the Windows
             # start.bat worker), ffmpeg inherits the console's stdin and goes

@@ -302,6 +302,9 @@ class SettingsOut(BaseModel):
     banquet_ckpt: str = ""
     banquet_queries: str = ""
     banquet: dict[str, Any] = {}  # repo_ok/ckpt_ok/queries_ok/query_names/ready
+    # Loudness/volume target (LUFS): louder = higher (closer to 0). The audio is
+    # normalized to this AND the Wwise bus volume is calibrated to it.
+    loudness_target: float = -12.0
 
 
 class SettingsIn(BaseModel):
@@ -309,6 +312,7 @@ class SettingsIn(BaseModel):
     banquet_repo: str | None = None
     banquet_ckpt: str | None = None
     banquet_queries: str | None = None
+    loudness_target: float | None = None
 
 
 class LyricsOut(BaseModel):
@@ -1379,6 +1383,7 @@ def _settings_out() -> SettingsOut:
         banquet_ckpt=str(ckpt) if ckpt else "",
         banquet_queries=str(queries) if queries else "",
         banquet=runtime_settings.banquet_validation(),
+        loudness_target=runtime_settings.loudness_target(),
     )
 
 
@@ -1404,6 +1409,8 @@ def update_settings(body: SettingsIn) -> SettingsOut:
         val = getattr(body, key)
         if val is not None:
             updates[key] = val.strip() if isinstance(val, str) else val
+    if body.loudness_target is not None:
+        updates["loudness_target"] = float(body.loudness_target)
     runtime_settings.save(updates)
     return _settings_out()
 

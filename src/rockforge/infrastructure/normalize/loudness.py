@@ -5,13 +5,14 @@ Sound object. DLC Builder's "Calculate Volumes" measures the audio's loudness an
 picks that volume so every song sits at a consistent level; RockForge shipped a
 neutral ``0.0`` instead.
 
-RockForge already loudnorm's the full song to **-16 LUFS** (EBU R128), so a
-normalized full song lands near ``0`` dB — matching a DLC Builder bank, which
-also ships ``0`` until its own Calculate Volumes runs. The value this adds is
-(a) the song-select **preview**, a trimmed clip whose own loudness differs and
-would otherwise blast over (or hide under) the song, and (b) correcting
-loudnorm's single-pass approximation — both pulled to the same target so the
-levels are consistent.
+RockForge loudnorm's the full song to the SAME configurable target
+(``runtime_settings.loudness_target()``, default -12 LUFS — a loud, music-game
+level), so a normalized full song lands near ``0`` dB of bus volume. The value
+this adds is (a) matching retail loudness by normalizing loud instead of the -16
+broadcast level (which read quiet next to official DLC), (b) the song-select
+**preview**, a trimmed clip whose own loudness differs and would otherwise blast
+over (or hide under) the song, and (c) correcting loudnorm's single-pass
+approximation — all pulled to the same target so the levels are consistent.
 
 Measurement uses ffmpeg's ``ebur128`` filter (the same ffmpeg the normalizer
 already requires); the stderr parse and the volume formula are split out
@@ -26,12 +27,13 @@ import re
 import subprocess
 from pathlib import Path
 
-# The EBU R128 reference RockForge normalizes the full song to. A different,
-# louder target (to match retail Rocksmith exactly) is deliberately NOT guessed:
-# a decoded DLC Builder bank ships volume 0 (its Calculate Volumes was never run),
-# so there is no verified retail figure to calibrate against — bump this if songs
-# read too quiet in-game next to official DLC.
-TARGET_LUFS = -16.0
+# Fallback loudness/volume target. The EFFECTIVE target is the user-configurable
+# one from ``runtime_settings.loudness_target()`` (default -12 LUFS) — a louder,
+# music-game level than the -16 broadcast reference, which read too quiet next to
+# retail Rocksmith DLC (its masters are loud; DLC Builder's Calculate Volumes
+# attenuates ~-3/-4 dB). ``calculate_volume`` resolves the runtime value; this
+# constant is only the pure default for :func:`volume_for_loudness`.
+TARGET_LUFS = -12.0
 # Never boost or cut more than this — a boost beyond the .wem's headroom would
 # clip; a huge cut would bury a genuinely quiet mix.
 VOLUME_CLAMP_DB = 8.0
@@ -78,8 +80,13 @@ def measure_loudness_lufs(audio: Path, ffmpeg: str = "ffmpeg") -> float | None:
 
 
 def calculate_volume(
-    audio: Path, ffmpeg: str = "ffmpeg", target: float = TARGET_LUFS
+    audio: Path, ffmpeg: str = "ffmpeg", target: float | None = None
 ) -> float:
     """The Wwise bus volume (dB) for ``audio`` — measure its loudness and offset
-    it to ``target``. ``0.0`` when measurement is unavailable."""
+    it to ``target`` (the runtime loudness target when unset, so it stays in step
+    with the normalization). ``0.0`` when measurement is unavailable."""
+    if target is None:
+        from rockforge import runtime_settings
+
+        target = runtime_settings.loudness_target()
     return volume_for_loudness(measure_loudness_lufs(audio, ffmpeg), target)

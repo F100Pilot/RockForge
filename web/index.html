@@ -655,6 +655,15 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
       <div id="sQueryNames" class="meta" style="margin-top:.2rem"></div>
     </div>
 
+    <div style="margin-top:1rem;border-top:1px solid #262830;padding-top:.8rem">
+      <label style="font-weight:600">Volume / sonoridade</label>
+      <div class="syncctrls" style="margin-top:.4rem">
+        <label>Volume alvo (LUFS):
+          <input type="number" id="sLoudness" step="0.5" min="-20" max="-6" style="width:6rem"></label>
+        <span class="meta">mais alto = mais perto de 0 (ex.: <b>-12</b> por defeito; <b>-10/-9</b> se ficar baixo ao lado do DLC oficial; <b>-14</b> se soar comprimido). Aplica-se ao reconstruir.</span>
+      </div>
+    </div>
+
     <div class="anchor-row" style="margin-top:.9rem">
       <button type="button" id="settingsSave">Guardar</button>
       <span id="settingsInfo" class="meta"></span>
@@ -886,6 +895,7 @@ function fillSettings(s) {
   document.getElementById('sBanquetRepo').value = s.banquet_repo || '';
   document.getElementById('sBanquetCkpt').value = s.banquet_ckpt || '';
   document.getElementById('sBanquetQueries').value = s.banquet_queries || '';
+  document.getElementById('sLoudness').value = s.loudness_target ?? -12;
   toggleBanquetConfig();
   renderBanquetValidation(s.banquet || {});
 }
@@ -911,6 +921,7 @@ document.getElementById('settingsSave').addEventListener('click', async () => {
     banquet_repo: document.getElementById('sBanquetRepo').value.trim(),
     banquet_ckpt: document.getElementById('sBanquetCkpt').value.trim(),
     banquet_queries: document.getElementById('sBanquetQueries').value.trim(),
+    loudness_target: parseFloat(document.getElementById('sLoudness').value),
   };
   const r = await fetch('/settings', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),

@@ -17,7 +17,20 @@ from typing import Any
 
 from rockforge.config import settings
 
-_KEYS = ("stem_separator", "banquet_repo", "banquet_ckpt", "banquet_queries")
+_KEYS = (
+    "stem_separator", "banquet_repo", "banquet_ckpt", "banquet_queries",
+    "loudness_target",
+)
+
+# The loudness (LUFS) the audio is normalized to AND the target the Wwise bus
+# volume is calibrated to — one value so the .wem and the volume stay in step.
+# -16 (broadcast/EBU R128) read too quiet next to retail Rocksmith DLC, which
+# ships loud music masters (DLC Builder's "Calculate Volumes" lands around -3/-4
+# dB of attenuation on such a master); -12 is a louder music-game level. Editable
+# in the UI ("⚙️ Definições") — push toward -10/-9 if still quiet, back toward
+# -14 if it pumps. Clamped to a sane window.
+DEFAULT_LOUDNESS_TARGET = -12.0
+_LOUDNESS_MIN, _LOUDNESS_MAX = -20.0, -6.0
 
 
 def _file() -> Path:
@@ -55,6 +68,17 @@ def _eff(key: str, env_default: Any) -> Any:
 
 def stem_separator() -> str:
     return str(_eff("stem_separator", settings.stem_separator))
+
+
+def loudness_target() -> float:
+    """Effective loudness/volume target (LUFS), clamped to a safe window. Both
+    the ffmpeg loudnorm pass and the Wwise volume calibration read this."""
+    val = load().get("loudness_target")
+    try:
+        target = DEFAULT_LOUDNESS_TARGET if val in (None, "") else float(val)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        target = DEFAULT_LOUDNESS_TARGET
+    return max(_LOUDNESS_MIN, min(_LOUDNESS_MAX, target))
 
 
 def _path(key: str, env_default: Path | None) -> Path | None:
