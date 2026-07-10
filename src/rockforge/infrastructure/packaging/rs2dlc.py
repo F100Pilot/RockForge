@@ -39,7 +39,8 @@ from random import SystemRandom
 from typing import cast
 
 from rockforge.domain.arrangement import Arrangement, ArrangementKind
-from rockforge.domain.tone import Pedal, Tone
+from rockforge.domain.tone import Tone
+from rockforge.infrastructure.packaging.tone_dto import unique_tone_dtos
 
 # ArrangementName / RouteMask integer values from Rocksmith2014.NET Arrangement.fs.
 _ARRANGEMENT_NAME = {
@@ -102,67 +103,11 @@ def _instrumental_dto(arr: Arrangement, xml_name: str) -> dict[str, object]:
     }
 
 
-def _pedal_dto(pedal: Pedal) -> dict[str, object]:
-    """A ``PedalDto`` dict (Type, KnobValues, Key, optional Category).
-
-    Field order and the ``PedalKey -> "Key"`` rename match Rocksmith2014.NET
-    ``Tone.fs``; ``Skin``/``SkinIndex``/``Category`` are omitted when unset
-    (System.Text.Json drops null members)."""
-    dto: dict[str, object] = {
-        "Type": pedal.gear_type,
-        "KnobValues": {k: round(v, 4) for k, v in pedal.knob_values.items()},
-        "Key": pedal.key,
-    }
-    if pedal.category is not None:
-        dto["Category"] = pedal.category
-    return dto
-
-
-def _gear_dto(tone: Tone) -> dict[str, object]:
-    """A ``GearDto`` dict: Amp + Cabinet plus only the populated pedal/rack slots
-    (DLC Builder names them Rack1-4 / PrePedal1-4 / PostPedal1-4 and omits empty
-    ones)."""
-    gear = tone.gear
-    dto: dict[str, object] = {
-        "Amp": _pedal_dto(gear.amp),
-        "Cabinet": _pedal_dto(gear.cabinet),
-    }
-    for prefix, slots in (
-        ("PrePedal", gear.pre_pedals),
-        ("PostPedal", gear.post_pedals),
-        ("Rack", gear.racks),
-    ):
-        for i, pedal in enumerate(slots, start=1):
-            if pedal is not None:
-                dto[f"{prefix}{i}"] = _pedal_dto(pedal)
-    return dto
-
-
-def _tone_dto(tone: Tone) -> dict[str, object]:
-    """A ``ToneDto`` dict, as ``Tone.toDto`` serializes it into ``.rs2dlc``.
-
-    ``Volume`` is a string formatted ``0.000`` (Rocksmith2014.NET
-    ``volumeToString``), ``IsCustom`` is always ``true`` (matching ``toDto``)."""
-    return {
-        "GearList": _gear_dto(tone),
-        "ToneDescriptors": list(tone.descriptors),
-        "NameSeparator": " - ",
-        "IsCustom": True,
-        "Volume": f"{tone.volume:.3f}",
-        "Key": tone.key,
-        "Name": tone.name,
-    }
-
-
 def _collect_tones(arrangements: list[Arrangement]) -> list[dict[str, object]]:
     """Unique ``ToneDto`` dicts across all arrangements, keyed by tone ``key``
     (the same tone shared by Lead/Rhythm is emitted once)."""
-    seen: dict[str, dict[str, object]] = {}
-    for arr in arrangements:
-        for tone in arr.tones:
-            if tone.key not in seen:
-                seen[tone.key] = _tone_dto(tone)
-    return list(seen.values())
+    tones: list[Tone] = [tone for arr in arrangements for tone in arr.tones]
+    return unique_tone_dtos(tones)
 
 
 def _vocals_dto(xml_name: str) -> dict[str, object]:

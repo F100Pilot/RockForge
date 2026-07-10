@@ -54,10 +54,11 @@ def test_whisperx_cuda_broken_marker_round_trips(
 ) -> None:
     """After a native GPU crash the marker persists, so a later detection can
     skip the doomed CUDA attempt and run on CPU directly."""
-    from rockforge.config import settings
     from rockforge.interfaces.worker import celery_app as ca
 
-    monkeypatch.setattr(settings, "work_dir", tmp_path)
+    # Redirect the marker into tmp so the real work dir is never touched.
+    marker = tmp_path / ".whisperx_cuda_broken"
+    monkeypatch.setattr(ca, "_whisperx_cuda_marker", lambda: marker)
     assert ca._whisperx_cuda_known_broken() is False
     ca._mark_whisperx_cuda_broken()
     assert ca._whisperx_cuda_known_broken() is True

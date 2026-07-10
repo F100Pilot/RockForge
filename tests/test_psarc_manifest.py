@@ -51,6 +51,42 @@ def test_build_arrangement_manifest_fields() -> None:
     assert attrs["SongLength"] == 120.0
     assert attrs["PersistentID"] == pid
     assert attrs["Tuning"]["string0"] == 0
+    # No gear definitions on the base arrangement → tone slots stay empty.
+    assert attrs["Tone_Base"] == "" and attrs["Tones"] == []
+
+
+def test_manifest_serializes_custom_tones_into_gearlist() -> None:
+    """A tone with full gear must land in the manifest's Tones array + slots, so
+    the native PSARC applies the user's tone in-game (not a default)."""
+    from rockforge.domain.tone import Gear, Pedal, Tone
+
+    tone = Tone(
+        key="RFLead_Crunch",
+        name="Lead - Crunch",
+        gear=Gear(
+            amp=Pedal(gear_type="Amps", key="Amp_MarshallJCM800",
+                      knob_values={"Amp_MarshallJCM800_Gain": 65.0}),
+            cabinet=Pedal(gear_type="Cabinets", key="Cab_Marshall1960a_57_Cone"),
+        ),
+        descriptors=("$[27156]CRUNCH",),
+        volume=-14.0,
+    )
+    arrangement = _arrangement(ArrangementKind.LEAD)
+    arrangement.tone_base = "RFLead_Crunch"
+    arrangement.tone_names = ["RFLead_Crunch"]
+    arrangement.tones = [tone]
+    attrs = next(iter(
+        build_arrangement_manifest(arrangement, "MySong", "Lead")["Entries"].values()
+    ))["Attributes"]
+    assert attrs["Tone_Base"] == "RFLead_Crunch"
+    assert attrs["Tone_A"] == "RFLead_Crunch"
+    assert len(attrs["Tones"]) == 1
+    dto = attrs["Tones"][0]
+    assert dto["Key"] == "RFLead_Crunch"
+    assert dto["GearList"]["Amp"]["Key"] == "Amp_MarshallJCM800"
+    assert dto["GearList"]["Cabinet"]["Key"] == "Cab_Marshall1960a_57_Cone"
+    assert dto["Volume"] == "-14.000"  # string-formatted like Rocksmith2014.NET
+    assert dto["IsCustom"] is True
 
 
 def test_manifest_reports_note_count_and_phrase_structure() -> None:

@@ -782,11 +782,17 @@ shows the note count instead of "0". Verified by unpacking our output and diffin
 the file list + manifest fields against a real DLC Builder PSARC (they match bar
 cosmetic `LastConversionDateTime`). Iterated to playability against a real
 Rocksmith install (the SNG format/beat-mask/slide-sentinel/anchor fixes below
-came from that loop). Remaining honest gaps: the Dynamic Difficulty is a simple
-mechanical density ramp (not a musical DDC pass — see the SNG note); tones are
-not serialized into the manifest; and the SNG binary is round-tripped but not
-byte-diffed against retail. The **trustworthy path remains the DLC Builder
-bundle** (import it and let DLC Builder build the PSARC + a real DDC pass).
+came from that loop). Custom tones the user builds ARE serialized into each
+arrangement's runtime manifest (`Tones` array + `Tone_Base`/`Tone_A`..`Tone_D`,
+via the shared `packaging/tone_dto.py` — the same `ToneDto` the `.rs2dlc` emits,
+verified byte-identical against a DLC Builder build of our own tones), so the
+in-game tone is the user's, not a default; the SNG's Tones section (mid-song
+tone *changes*) stays empty until per-arrangement `tone_changes` are wired.
+Remaining honest gaps: the Dynamic Difficulty is a simple mechanical density
+ramp (not a musical DDC pass — see the SNG note); and the SNG binary is
+round-tripped but not byte-diffed against retail. The **trustworthy path remains
+the DLC Builder bundle** (import it and let DLC Builder build the PSARC + a real
+DDC pass).
 
 ### Wwise SoundBank (`infrastructure/packaging/psarc/soundbank.py`)
 

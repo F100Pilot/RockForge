@@ -23,6 +23,7 @@ import json
 import uuid
 
 from rockforge.domain.arrangement import Arrangement, ArrangementKind
+from rockforge.infrastructure.packaging.tone_dto import unique_tone_dtos
 
 # Fixed namespace so persistent IDs are deterministic across rebuilds of the
 # same song/arrangement (Rocksmith identifies content by these IDs).
@@ -126,6 +127,37 @@ def _tuning(arrangement: Arrangement) -> dict[str, int]:
         arrangement.tuning.offsets_from_standard(),
         strict=True,
     ))
+
+
+def _tone_fields(arrangement: Arrangement) -> dict[str, object]:
+    """The manifest's tone slots + full gear definitions.
+
+    A DLC Builder build of our own tones serializes these exactly: ``Tones`` is
+    the runtime ``ToneDto`` array (the amp/cabinet/pedal chain the game reads to
+    build the in-game tone), ``Tone_Base``/``Tone_A``..``Tone_D`` name the base
+    and switchable slots. Only emitted when the arrangement carries full gear
+    definitions (``arrangement.tones``); with bare tone names and no gear, the
+    slots stay empty — the native game has no tone library to resolve a name,
+    so a dangling reference is worse than none (DLC Builder's import path keeps
+    the names via the ``.rs2dlc``)."""
+    empty: dict[str, object] = {
+        "Tone_A": "", "Tone_B": "", "Tone_C": "", "Tone_D": "",
+        "Tone_Base": "", "Tone_Multiplayer": "", "Tones": [],
+    }
+    tones = arrangement.tones
+    if not tones:
+        return empty
+    defined = {t.key for t in tones}
+    base = arrangement.tone_base if arrangement.tone_base in defined else tones[0].key
+    # Switchable slots a-d: keep only names that have a gear definition.
+    slots = [n for n in arrangement.tone_names if n in defined]
+    padded = (slots + ["", "", "", ""])[:4]
+    return {
+        "Tone_A": padded[0], "Tone_B": padded[1],
+        "Tone_C": padded[2], "Tone_D": padded[3],
+        "Tone_Base": base, "Tone_Multiplayer": "",
+        "Tones": unique_tone_dtos(list(tones)),
+    }
 
 
 def _arrangement_properties(arrangement: Arrangement) -> dict[str, int]:
@@ -308,10 +340,7 @@ def build_arrangement_manifest(
         "SongYear": meta.year,
         "TargetScore": 0,
         "Techniques": {},
-        # Tone slots: RockForge's native path ships no in-manifest tone yet
-        # (DLC Builder resolves a missing tone via its library on import).
-        "Tone_A": "", "Tone_B": "", "Tone_C": "", "Tone_D": "",
-        "Tone_Base": "", "Tone_Multiplayer": "", "Tones": [],
+        **_tone_fields(arrangement),
         "Tuning": _tuning(arrangement),
     }
     if has_album_art:
