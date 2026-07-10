@@ -328,6 +328,15 @@ variable-height DD works. This song does NOT exercise pinch harmonics, tremolo,
 tap/slap/pop, trills or alternate arrangements — those remain to confirm on a
 song that uses them (see below).
 
+**Confirmed in-game (vocals, multiple songs — native PSARC):** the scrolling
+lyrics now appear (needed BOTH `SngVocal.note = 254`, the non-pitched sentinel,
+AND the vendored lyric-font symbol atlas in the vocals SNG — an empty symbol
+block leaves the game with no glyphs and the letra silently never shows); the
+song-name/title card and stage lighting appear over the intro now that
+`build_showlights` emits a real fog+beam track (an empty showlights left the
+stage dark and skipped the lit intro); WhisperX-detected long segments are now
+broken into short display lines (no more wall-of-text scroll).
+
 Good source files (already parsed correctly, in the uploads): Ozzy "No More
 Tears" `.gp` (pinch harmonics, slides in/out, fret-mutes, bend-and-release,
 trills), Animals As Leaders "Tempting Time" (tapping, fingering, DD reference).
@@ -390,6 +399,33 @@ selectable for the same song; the primary is the default. Guarded by
 `test_alternate_arrangement_is_nonrepresentative_same_path` and
 `test_build_manifest_files_emits_distinct_lead_and_alternate`, but confirm the
 song shows two Lead entries in-game.
+
+### 7f-ter. Custom tones in the native PSARC (in-game validation status)
+
+The user's custom tones (amp/cabinet/pedal chain built in the tone editor) are
+now serialized into each arrangement's **runtime manifest** (`Tones` array +
+`Tone_Base`/`Tone_A`..`Tone_D`, via `packaging/tone_dto.py`). The manifest tone
+DTO was verified **byte-identical** to a DLC Builder build of our own tones
+(`emphaticpride_lead.json`'s `Tones`: `GearList` Amp/Cabinet/pedals,
+`ToneDescriptors`, `NameSeparator`, `IsCustom`, `Volume` as a `"-14.000"`
+string, `Key`, `Name`). Decoding that reference also confirmed the base tone is
+applied entirely from the manifest `Tone_Base` (the reference lead SNG's Tones
+section count is **0**), so a single-tone song is fully covered by the manifest.
+
+**In-game check:** build a song with a tone dialled in the editor (amp + cabinet,
+optionally pedals) as the **native `.psarc`** (not via DLC Builder). In-game the
+guitar should sound like that gear — the amp/gain/cabinet you chose — NOT the
+default clean tone. Confirm the tone name shows in the tone selector and that
+switching arrangements (Lead/Rhythm) keeps each one's assigned tone.
+
+**Not yet covered:** mid-song **tone changes** (the SNG's Tones section stays
+empty — `tone_base` applies for the whole song). If a chart marks tone changes,
+in-game the tone will NOT switch mid-song on the native path; the DLC Builder
+bundle still handles tone changes (via the `<tones>` XML). Report if you need
+mid-song switching on the native PSARC and it can be wired (needs the exact
+Sng2014 Tones struct — the reference had none to byte-match).
+
+Guarded at unit level by `test_manifest_serializes_custom_tones_into_gearlist`.
 
 ### 7g. Separação fina de guitarras — Banquet (⚠️ EM TESTES, precisa de setup manual)
 
