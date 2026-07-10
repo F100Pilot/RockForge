@@ -308,9 +308,13 @@ ver `TESTING.md`.
   (intro/verso/refrão) diretamente no visualizador, em vez de virem só do GP —
   útil para Riff Repeater e navegação no jogo.
 
-- [ ] **Mais atalhos de teclado no visualizador**: além do espaço (play/pause),
-  ex.: setas ←/→ para saltar nota-a-nota, `+`/`-` para zoom, `Home` para o
-  início — para editar sync mais depressa sem o rato.
+- [x] **Mais atalhos de teclado no visualizador**: além do espaço (play/pause),
+  agora **←/→** avançam/recuam o cursor (±1s, **Shift** ±5s), **Home** vai ao
+  início e **`+`/`-`** fazem zoom — só com o painel de sync aberto e sem foco num
+  campo de texto. Os seeks passam pelo `audioSeek` (tempo de gravação), por isso
+  movem o playhead visualmente mesmo em pausa. (Salto ←/→ é por tempo fixo, não
+  nota-a-nota — evita depender do relógio nota↔playhead, que varia com edições de
+  sync pendentes.)
 
 - [ ] **Validar o Banquet em ficheiros reais** (ver entrada "Separação fina de
   guitarras" acima): confirmar a qualidade da separação por classe
