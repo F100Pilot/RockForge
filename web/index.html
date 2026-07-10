@@ -1637,9 +1637,14 @@ function showArr(i) {
     const x = timeToX(e.time + viewOrigin + leadInBuilt);
     const active = currentPlayheadT >= e.time + leadInBuilt
       && currentPlayheadT <= e.time + e.length + leadInBuilt;
+    const brk = e.lineBreak;  // the in-game "+" — this word ends a lyric line
     s += `<g class="lyric-word" data-li="${li}" style="cursor:grab">`;
-    s += `<text x="${x}" y="26" fill="${active ? '#ff7a45' : '#9aa0ad'}" font-size="13" font-weight="${active ? '700' : '400'}" text-anchor="middle">${esc(word)}${e.lineBreak ? ' /' : ''}</text>`;
-    s += `<line x1="${x}" y1="30" x2="${x}" y2="${SB}" stroke="${active ? '#ff7a45' : '#454852'}" stroke-width="1" stroke-dasharray="2,4" opacity=".35"/>`;
+    s += `<text x="${x}" y="26" fill="${active ? '#ff7a45' : '#9aa0ad'}" font-size="13" font-weight="${active ? '700' : '400'}" text-anchor="middle">${esc(word)}</text>`;
+    // A line-break word gets a STRONGER connector (solid amber, thicker) so the
+    // in-game line wrap is visible on the score; a mid-line word keeps the faint
+    // dashed tick.
+    s += `<line x1="${x}" y1="30" x2="${x}" y2="${SB}" stroke="${brk ? '#ffb020' : (active ? '#ff7a45' : '#454852')}" stroke-width="${brk ? 2 : 1}" ${brk ? '' : 'stroke-dasharray="2,4"'} opacity="${brk ? '.6' : '.35'}"/>`;
+    if (brk) s += `<text x="${x + 7}" y="18" fill="#ffb020" font-size="12" font-weight="700">¶</text>`;
     s += `</g>`;
   }
   // group simultaneous notes (chords) so they get a connecting bracket
