@@ -274,6 +274,11 @@ about the drop, not new validation. Guarded by
 3. Without `[lyrics]` it must report `unavailable` gracefully (no crash).
 4. Edit words/timings, drag lyric words on the tab viewer, "Aplicar e
    reconstruir", confirm the vocals XML reflects the edits.
+5. **Line-break marker (visual).** A word that ends a lyric line (the in-game
+   `+` / the "Fim de linha" checkbox) now draws a **solid amber vertical bar +
+   `¶`** on the score, where a mid-line word has only a faint dashed tick — so
+   you can see where the lyric wraps on screen. Toggle a row's line-break and
+   confirm the marker appears/disappears at that word.
 
 **GPU crash → CPU fallback.** WhisperX runs in a subprocess; on Windows a CUDA
 run can crash natively (e.g. exit `3221226505` / `0xC0000409` from a

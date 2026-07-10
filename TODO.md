@@ -137,9 +137,10 @@ ver `TESTING.md`.
   Guardado por `test_forked_jobs_link_back_to_the_original`. (Retenção/limpeza
   automática das versões antigas fica para depois.)
 
-- [ ] **Destaque visual de quebras de linha da letra no tab view**: marcar
-  visualmente os eventos com `+` (fim de linha) com uma barra mais forte,
-  simulando a quebra no jogo.
+- [x] **Destaque visual de quebras de linha da letra no tab view**: a palavra
+  de fim-de-linha (o `+` do jogo) mostra agora um conector vertical **sólido,
+  âmbar e mais grosso** (em vez do tique tracejado das palavras normais) mais um
+  glifo `¶`, para se ver na partitura onde a letra quebra de linha no ecrã.
 
 - [x] **Notas fora do alcance do braço — aviso**: uma nota com fret > 24 ou < 0
   (ou, no GP7, numa corda além da afinação) já era **saltada** por ambos os
