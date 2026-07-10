@@ -128,9 +128,14 @@ ver `TESTING.md`.
   secções só vêm do GP; áudio puro não tem estrutura de secções no Song2014
   XML.
 
-- [ ] **Histórico/desfazer de rebuilds**: manter as últimas N versões do
-  bundle por job, para comparar ou recuar se uma correção de sync piorar o
-  resultado.
+- [x] **Histórico/recuar de rebuilds**: cada rebuild/reload-gp/import-sync já
+  forka um job novo **sem apagar o antigo** (o bundle anterior fica), por isso as
+  versões já persistem — faltava ligá-las. Agora o fork guarda
+  `params["rebuilt_from"]` (o id de origem), exposto em `JobOut.rebuilt_from`, e o
+  tab viewer mostra um botão **"↩ Versão anterior"** que abre o job de onde esta
+  foi reconstruída — recua-se uma correção de sync que tenha piorado o resultado.
+  Guardado por `test_forked_jobs_link_back_to_the_original`. (Retenção/limpeza
+  automática das versões antigas fica para depois.)
 
 - [ ] **Destaque visual de quebras de linha da letra no tab view**: marcar
   visualmente os eventos com `+` (fim de linha) com uma barra mais forte,

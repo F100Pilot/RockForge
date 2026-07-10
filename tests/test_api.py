@@ -261,6 +261,21 @@ def test_rebuild_rejects_negative_offset(client: TestClient) -> None:
     assert r.status_code == 422
 
 
+def test_forked_jobs_link_back_to_the_original(client: TestClient) -> None:
+    """rebuild / import-sync fork a new job but never delete the old one, so the
+    fork records `rebuilt_from` — the UI can walk an iterative sync back."""
+    original = _create_job(client)
+    assert client.get(f"/jobs/{original['id']}").json()["rebuilt_from"] is None
+    rebuilt = client.post(
+        f"/jobs/{original['id']}/rebuild", json={"offset_s": 1.0}
+    ).json()
+    assert rebuilt["rebuilt_from"] == original["id"]
+    imported = client.post(
+        f"/jobs/{original['id']}/import-sync", json={"sync": {"offset_s": 2.0}}
+    ).json()
+    assert imported["rebuilt_from"] == original["id"]
+
+
 def test_extract_sync_state_is_whitelisted() -> None:
     from rockforge.interfaces.api.app import _extract_sync_state
 

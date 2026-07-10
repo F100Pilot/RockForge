@@ -155,6 +155,10 @@ class JobOut(BaseModel):
     lyrics_status: str = "none"
     tone_detection_status: str = "none"
     cover_art: bool = False
+    # The job this one was forked from (rebuild / reload-gp / import-sync). Lets the
+    # UI offer "previous version" so an iterative sync can be walked back — the older
+    # job (and its bundle) is never deleted on a rebuild.
+    rebuilt_from: str | None = None
 
 
 class RebuildIn(BaseModel):
@@ -364,6 +368,7 @@ def _to_out(job: Job) -> JobOut:
             (job.params or {}).get("tone_detection_status", "none")
         ),
         cover_art=bool((job.params or {}).get("cover_art")),
+        rebuilt_from=cast("str | None", (job.params or {}).get("rebuilt_from") or None),
     )
 
 
@@ -738,6 +743,7 @@ async def reload_gp(job_id: str, gp: UploadFile = File(...)) -> JobOut:
                 )
 
         params["gp_path"] = str(gp_dest)
+        params["rebuilt_from"] = original.id
         title, artist, album, year = meta
         job = Job(
             source=src_recording,
@@ -989,6 +995,7 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
             params["tones"] = payload.tones
         if payload.tone_changes is not None:
             params["tone_changes"] = payload.tone_changes
+        params["rebuilt_from"] = original.id
         job = Job(
             source=original.source,
             source_type=original.source_type,
@@ -1063,6 +1070,7 @@ def import_sync_state(job_id: str, payload: SyncStateIn) -> JobOut:
         if "lyrics_events" in clean:
             # Let the next build use the imported lyrics (see rebuild_job).
             params.pop("lyrics_status", None)
+        params["rebuilt_from"] = original.id
         job = Job(
             source=original.source, source_type=original.source_type,
             title=original.title, artist=original.artist, album=original.album,
