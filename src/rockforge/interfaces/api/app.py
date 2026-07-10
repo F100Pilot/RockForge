@@ -806,6 +806,48 @@ def delete_job(job_id: str, force: bool = False) -> Response:
     return Response(status_code=204)
 
 
+# The manually-tuned "sync state": every param a user builds by hand in the tab
+# viewer (drift anchors, tempo, offset, intro silence, per-arrangement overrides,
+# tuning, edited lyrics, GP track assignment). Exported/imported as one JSON blob
+# so those edits survive re-creating a job (a fresh upload or a re-exported GP)
+# instead of being redone from scratch.
+_SYNC_STATE_KEYS: tuple[str, ...] = (
+    "offset_s", "lead_in_s", "tempo_scale",
+    "sync_anchor_stages", "arrangement_sync",
+    "tuning_midi", "cent_offset", "tuning_overrides",
+    "lyrics_events",
+    "lead_track", "rhythm_track", "combo_track", "alt_lead_track", "alt_rhythm_track",
+)
+# Keys that only make sense for a Guitar Pro job (dropped when importing into a
+# non-GP job, mirroring rebuild's per-field 422s).
+_SYNC_STATE_GP_ONLY: frozenset[str] = frozenset({
+    "tuning_overrides",
+    "lead_track", "rhythm_track", "combo_track", "alt_lead_track", "alt_rhythm_track",
+})
+
+
+def _extract_sync_state(params: dict[str, object]) -> dict[str, object]:
+    """The whitelisted sync-relevant subset of a job's params (only keys present)."""
+    return {k: params[k] for k in _SYNC_STATE_KEYS if k in params}
+
+
+def _sanitize_sync_state(incoming: dict[str, object]) -> dict[str, object]:
+    """Keep only whitelisted keys and validate the shapes that would 422 on a
+    rebuild, so a hand-edited or foreign JSON can never corrupt a job."""
+    out = {k: incoming[k] for k in _SYNC_STATE_KEYS if k in incoming}
+    tm = out.get("tuning_midi")
+    if tm is not None and (not isinstance(tm, list) or len(tm) != 6):
+        raise HTTPException(422, "tuning_midi must contain exactly 6 MIDI pitches")
+    to = out.get("tuning_overrides")
+    if to is not None:
+        if not isinstance(to, dict):
+            raise HTTPException(422, "tuning_overrides must be an object keyed by arrangement")
+        for kind, midi in to.items():
+            if not isinstance(midi, list) or len(midi) != 6:
+                raise HTTPException(422, f"tuning for {kind} must have 6 MIDI pitches")
+    return out
+
+
 @app.post("/jobs/{job_id}/rebuild", response_model=JobOut, status_code=202)
 def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
     """Re-run the pipeline on the same source with human-confirmed overrides."""
@@ -964,6 +1006,71 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
         # original job's directory, so copy it across or the worker's
         # candidate.exists() check (celery_app.generate_cdlc) silently finds
         # nothing and the bundle ends up without album art.
+        cover_art_name = params.get("cover_art")
+        if cover_art_name:
+            src = settings.work_dir / original.id / cast(str, cover_art_name)
+            if src.exists():
+                dest_dir = settings.work_dir / job.id
+                dest_dir.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, dest_dir / cast(str, cover_art_name))
+
+        _enqueue(job)
+        return _to_out(job)
+
+
+class SyncStateOut(BaseModel):
+    version: int
+    song: str
+    sync: dict[str, object]
+
+
+class SyncStateIn(BaseModel):
+    version: int | None = None
+    sync: dict[str, object]
+
+
+@app.get("/jobs/{job_id}/sync-state", response_model=SyncStateOut)
+def get_sync_state(job_id: str) -> SyncStateOut:
+    """Export a job's hand-tuned sync (anchors/tempo/offset/tuning/lyrics/tracks)
+    as a portable JSON blob, so it can be re-imported into another job for the
+    same song instead of redoing every manual correction."""
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+        song = " - ".join(p for p in (job.artist, job.title) if p)
+        return SyncStateOut(
+            version=1, song=song, sync=_extract_sync_state(dict(job.params or {}))
+        )
+
+
+@app.post("/jobs/{job_id}/import-sync", response_model=JobOut, status_code=202)
+def import_sync_state(job_id: str, payload: SyncStateIn) -> JobOut:
+    """Apply a previously-exported sync state to this job and rebuild (fork),
+    so hand-tuned drift/tempo/offset/lyrics/tracks survive re-creating a job."""
+    clean = _sanitize_sync_state(payload.sync)
+    with _session_factory() as session:
+        original = session.get(Job, job_id)
+        if original is None:
+            raise HTTPException(404, "job not found")
+        if original.source_type in {"upload", "gp"} and not Path(original.source).exists():
+            raise HTTPException(409, "original upload no longer exists on the work volume")
+        if original.source_type != "gp":
+            for k in _SYNC_STATE_GP_ONLY:  # track/tuning-override keys need a GP file
+                clean.pop(k, None)
+        params: dict[str, object] = dict(original.params or {})
+        params.update(clean)
+        if "lyrics_events" in clean:
+            # Let the next build use the imported lyrics (see rebuild_job).
+            params.pop("lyrics_status", None)
+        job = Job(
+            source=original.source, source_type=original.source_type,
+            title=original.title, artist=original.artist, album=original.album,
+            year=original.year, params=params,
+        )
+        session.add(job)
+        session.commit()
+
         cover_art_name = params.get("cover_art")
         if cover_art_name:
             src = settings.work_dir / original.id / cast(str, cover_art_name)

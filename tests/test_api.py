@@ -261,6 +261,64 @@ def test_rebuild_rejects_negative_offset(client: TestClient) -> None:
     assert r.status_code == 422
 
 
+def test_extract_sync_state_is_whitelisted() -> None:
+    from rockforge.interfaces.api.app import _extract_sync_state
+
+    params = {
+        "offset_s": 3.0, "tempo_scale": 1.1, "sync_anchor_stages": [[[1.0, 1.2]]],
+        "lyrics_events": [{"time": 1.0, "length": 0.5, "lyric": "hi+"}],
+        "cover_art": "cover.png", "psarc_mode": "native",  # NOT sync state
+    }
+    out = _extract_sync_state(params)
+    assert set(out) == {"offset_s", "tempo_scale", "sync_anchor_stages", "lyrics_events"}
+    assert "cover_art" not in out and "psarc_mode" not in out
+
+
+def test_sync_state_export_and_import_round_trip(client: TestClient) -> None:
+    original = _create_job(client)
+    # Bake hand-tuned sync into a rebuilt job's params, then export it.
+    rebuilt = client.post(
+        f"/jobs/{original['id']}/rebuild", json={"offset_s": 3.25, "lead_in_s": 1.5}
+    ).json()
+    exported = client.get(f"/jobs/{rebuilt['id']}/sync-state").json()
+    assert exported["version"] == 1
+    assert exported["song"] == "Artist - Song"
+    assert exported["sync"]["offset_s"] == 3.25
+    assert exported["sync"]["lead_in_s"] == 1.5
+
+    # Import into a DIFFERENT job (the re-created-song case) → forks a new job
+    # carrying the same sync, so the manual work survives.
+    fresh = _create_job(client)
+    r = client.post(f"/jobs/{fresh['id']}/import-sync", json=exported)
+    assert r.status_code == 202
+    imported = r.json()
+    assert imported["id"] not in (fresh["id"], rebuilt["id"])
+    restored = client.get(f"/jobs/{imported['id']}/sync-state").json()["sync"]
+    assert restored["offset_s"] == 3.25 and restored["lead_in_s"] == 1.5
+
+
+def test_import_sync_drops_gp_only_keys_and_validates(client: TestClient) -> None:
+    fresh = _create_job(client)  # an upload (non-GP) job
+    # tuning_overrides is GP-only → silently dropped when imported to a non-GP job.
+    r = client.post(
+        f"/jobs/{fresh['id']}/import-sync",
+        json={"sync": {"offset_s": 2.0, "tuning_overrides": {"Lead": [37, 42, 47, 52, 56, 61]}}},
+    )
+    assert r.status_code == 202
+    st = client.get(f"/jobs/{r.json()['id']}/sync-state").json()["sync"]
+    assert st["offset_s"] == 2.0 and "tuning_overrides" not in st
+    # A malformed tuning is rejected, not stored.
+    bad = client.post(
+        f"/jobs/{fresh['id']}/import-sync", json={"sync": {"tuning_midi": [40, 45]}}
+    )
+    assert bad.status_code == 422
+
+
+def test_sync_state_404_for_unknown_job(client: TestClient) -> None:
+    assert client.get("/jobs/nope/sync-state").status_code == 404
+    assert client.post("/jobs/nope/import-sync", json={"sync": {}}).status_code == 404
+
+
 def test_source_audio_served_for_upload(client: TestClient) -> None:
     job = _create_job(client)
     r = client.get(f"/jobs/{job['id']}/source-audio")
