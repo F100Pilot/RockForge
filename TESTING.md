@@ -245,6 +245,17 @@ section, and the beat spacing must halve. Regression-guarded for the parser by
 `test_tempo_change_on_other_track_is_detected`, but confirm the full build →
 viewer path on a real file.
 
+#### Out-of-range notes are dropped **with a warning**
+
+Both GP parsers skip notes off the 24-fret neck (fret < 0 or > 24, or — GP7 — on
+a string beyond the tuning); this used to be silent. Now the job's warnings list
+carries `"<Kind>: N note(s) dropped: off the 24-fret neck…"`. **Manual check:**
+pick a track that has an extended-range/bass passage (or a note above fret 24)
+and confirm the warning appears (and the rest of the chart still builds).
+`TabNote` still rejects an invalid fret at construction, so this is transparency
+about the drop, not new validation. Guarded by
+`test_gp7_out_of_range_note_dropped_with_warning`.
+
 ### 7b. Audio → ML (needs `[ml]`, ideally a GPU)
 
 1. Start with a **simple, clean** recording (single guitar, low distortion) in

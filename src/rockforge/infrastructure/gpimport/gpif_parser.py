@@ -252,6 +252,7 @@ def parse_gpif_track(
         return max(0.0, tempo_scale * float(to_seconds(tick))) + offset_s
 
     raw: list[tuple[TabNote, bool, bool, bool]] = []  # (note, hopo, slide, tie_dest)
+    dropped_out_of_range = 0  # notes off the 24-fret neck / beyond the tuning
     beats_grid: list[Beat] = []
     sections: list[GpSection] = []
 
@@ -291,7 +292,9 @@ def parse_gpif_track(
                 dur = _rhythm_ticks(rhythm)
                 start = t(tick)
                 sustain = max(0.0, t(tick + dur) - start)
-                _emit_beat_notes(beat, notes_map, tuning_midi, start, sustain, raw)
+                dropped_out_of_range += _emit_beat_notes(
+                    beat, notes_map, tuning_midi, start, sustain, raw
+                )
                 tick += dur
 
     merged = _merge_ties(raw)  # collapse tie continuations into the held note
@@ -320,8 +323,15 @@ def parse_gpif_track(
         if lyrics:
             break
 
+    warnings: list[str] = []
+    if dropped_out_of_range:
+        warnings.append(
+            f"{dropped_out_of_range} note(s) dropped: off the 24-fret neck or on a "
+            f"string beyond the tuning — likely an extended-range/bass part on this track"
+        )
     return ParsedGpTrack(
-        notes=notes, tuning=tuning, tempo_map=tempo_map, sections=sections, lyrics=lyrics
+        notes=notes, tuning=tuning, tempo_map=tempo_map, sections=sections,
+        lyrics=lyrics, warnings=warnings,
     )
 
 
@@ -397,10 +407,14 @@ def _emit_beat_notes(
     start: float,
     sustain: float,
     raw: list[tuple[TabNote, bool, bool, bool]],
-) -> None:
+) -> int:
+    """Append this beat's notes to ``raw``; return how many were dropped for
+    being off the 24-fret neck / on a string beyond the tuning (so the caller
+    can warn instead of silently swallowing them)."""
     note_ids = _text(beat.find("Notes"))
     if not note_ids:
-        return  # rest
+        return 0  # rest
+    dropped = 0
     # Slap/pop are beat-level in GP. GPIF has stored them as beat Properties
     # ("Slapped"/"Popped") and as direct <Slap>/<Pop> children across versions;
     # accept either so a slapped bassline isn't silently dropped.
@@ -423,6 +437,7 @@ def _emit_beat_notes(
         string = int(_text(props["String"].find("String"), "0") or "0")
         fret = int(_text(props["Fret"].find("Fret"), "0") or "0")
         if not (0 <= string < len(tuning_midi) and 0 <= fret <= 24):
+            dropped += 1
             continue
 
         techs: set[Technique] = set()
@@ -515,6 +530,7 @@ def _emit_beat_notes(
                 tie_dest,
             )
         )
+    return dropped
 
 
 def _merge_ties(

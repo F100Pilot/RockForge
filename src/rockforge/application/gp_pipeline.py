@@ -362,6 +362,7 @@ class GenerateFromGpUseCase:
         for kind, idx in tracks:
             sync = spec.sync_for(kind)
             p = parse_gp_track(spec.gp_path, idx, score_shift, sync.tempo_scale)
+            warnings.extend(f"{kind.value}: {w}" for w in p.warnings)
             for stage_anchors in sync.sync_anchor_stages:
                 if not stage_anchors:
                     continue

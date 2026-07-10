@@ -76,6 +76,9 @@ class ParsedGpTrack:
     tempo_map: TempoMap
     sections: list[GpSection]
     lyrics: list[GpLyricLine] = field(default_factory=list)
+    # Non-fatal notices from parsing (e.g. notes dropped for being off the
+    # 24-fret neck) — surfaced to the user instead of silently swallowed.
+    warnings: list[str] = field(default_factory=list)
 
 
 def _load(path: Path) -> Any:  # guitarpro.models.Song (untyped library)
@@ -281,6 +284,7 @@ def parse_gp_track(
     sections: list[GpSection] = []
     beats_grid: list[Beat] = []
     last_on_string: dict[int, int] = {}  # string -> raw index, for tie continuation
+    dropped_out_of_range = 0  # notes off the 24-fret neck (skipped, then warned)
 
     for measure in track.measures:
         header = measure.header
@@ -315,6 +319,7 @@ def parse_gp_track(
                         continue
                     fret = int(note.value)
                     if not 0 <= fret <= 24:
+                        dropped_out_of_range += 1
                         tick += beat.duration.time
                         continue
                     eff = note.effect
@@ -440,6 +445,13 @@ def parse_gp_track(
             start = measure_start_by_number.get(max(1, line.startingMeasure), offset_s)
             lyrics.append(GpLyricLine(time=start, text=text))
 
+    warnings: list[str] = []
+    if dropped_out_of_range:
+        warnings.append(
+            f"{dropped_out_of_range} note(s) dropped: off the 24-fret neck "
+            f"(fret < 0 or > 24) — likely an extended-range/bass part on this track"
+        )
     return ParsedGpTrack(
-        notes=notes, tuning=tuning, tempo_map=tempo_map, sections=sections, lyrics=lyrics
+        notes=notes, tuning=tuning, tempo_map=tempo_map, sections=sections,
+        lyrics=lyrics, warnings=warnings,
     )
