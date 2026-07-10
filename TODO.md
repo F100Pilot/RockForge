@@ -250,12 +250,17 @@ ver `TESTING.md`.
     DXT1, precisa do Pillow no extra `[psarc]`); sem capa/Pillow usa um placeholder
     de cor sólida para o URN resolver.
 
-  - [ ] **Calibração de volume ("Calculate Volumes")**: o DLC Builder analisa o
-    áudio e calcula o volume (dB) para uma sonoridade consistente; a RockForge
-    usa um valor neutro (0 dB) no `.bnk`/`.rs2dlc`. Como o áudio já é normalizado
-    para -16 LUFS (loudnorm EBU R128), a sonoridade entre músicas é consistente,
-    mas não está calibrada para a referência do Rocksmith. Medir a sonoridade do
-    `.wem` e mapear para o volume do banco de som (e do manifesto).
+  - [x] **Calibração de volume ("Calculate Volumes")**: o packer mede a
+    sonoridade integrada do áudio com o filtro `ebur128` do ffmpeg e ajusta o
+    volume do bus Wwise no `.bnk` para o alvo `TARGET_LUFS=-16`
+    (`normalize/loudness.py` → `generate_soundbank(volume=…)`). A música completa
+    já vai loudnorm'd a -16, por isso fica perto de 0 dB; o ganho real é o
+    **preview** (clip cortado com sonoridade própria) ser medido no clip e
+    igualado à música, para não rebentar na lista de músicas. Parser + fórmula
+    testados sem ffmpeg (`test_loudness.py`); ffmpeg ausente → 0 dB (sem crash).
+    Falta: um alvo mais alto para igualar o retail exatamente (as referências
+    DLC Builder tinham volume 0, não calibrado — sem figura verificada). O
+    `Volume` do `.rs2dlc` fica neutro (o DLC Builder recalcula na importação).
 
 - [~] **Dynamic Difficulty (DD)**: DD por densidade com **teto variável por
   frase** (até 21 níveis) — uma nota entra quando a dificuldade chega ao seu

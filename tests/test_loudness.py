@@ -1,0 +1,66 @@
+"""Loudness parsing + Wwise volume formula ("Calculate Volumes").
+
+ffmpeg isn't available in CI, so the subprocess is not exercised; the stderr
+parse and the volume math (the parts that decide the shipped value) are pure and
+tested directly, with a captured ebur128 summary block.
+"""
+
+from __future__ import annotations
+
+from rockforge.infrastructure.normalize.loudness import (
+    TARGET_LUFS,
+    VOLUME_CLAMP_DB,
+    calculate_volume,
+    parse_ebur128_i,
+    volume_for_loudness,
+)
+
+# A real ffmpeg `-af ebur128` summary tail (running frames omitted).
+_EBUR128_SUMMARY = """\
+[Parsed_ebur128_0 @ 0x55] t: 4.7   TARGET:-23 LUFS    M: -19.0 S: -19.2     I: -18.3 LUFS
+[Parsed_ebur128_0 @ 0x55]
+[Parsed_ebur128_0 @ 0x55] Summary:
+
+  Integrated loudness:
+    I:         -12.4 LUFS
+    Threshold: -22.7 LUFS
+
+  Loudness range:
+    LRA:         6.1 LU
+"""
+
+
+def test_parse_ebur128_takes_the_summary_integrated_value() -> None:
+    # The last `I:` line is the whole-file summary, not a running frame value.
+    assert parse_ebur128_i(_EBUR128_SUMMARY) == -12.4
+
+
+def test_parse_ebur128_none_when_absent() -> None:
+    assert parse_ebur128_i("no loudness here") is None
+    assert parse_ebur128_i("") is None
+
+
+def test_volume_offsets_loudness_to_target() -> None:
+    # A -12.4 LUFS clip pulled to the -16 target → cut ~3.6 dB.
+    assert volume_for_loudness(-12.4) == round(TARGET_LUFS - (-12.4), 1) == -3.6
+    # Already at target → unity.
+    assert volume_for_loudness(-16.0) == 0.0
+    # A quiet mix gets a boost.
+    assert volume_for_loudness(-20.0) == 4.0
+
+
+def test_volume_is_clamped_both_ways() -> None:
+    # A wildly hot clip cannot be cut past the clamp (and vice-versa).
+    assert volume_for_loudness(20.0) == -VOLUME_CLAMP_DB
+    assert volume_for_loudness(-40.0) == VOLUME_CLAMP_DB
+
+
+def test_unknown_loudness_is_a_safe_noop() -> None:
+    assert volume_for_loudness(None) == 0.0
+
+
+def test_calculate_volume_falls_back_to_zero_without_ffmpeg(tmp_path) -> None:
+    # A missing ffmpeg binary must degrade to 0 dB, never raise.
+    silent = tmp_path / "x.wav"
+    silent.write_bytes(b"")
+    assert calculate_volume(silent, ffmpeg="definitely-not-ffmpeg") == 0.0

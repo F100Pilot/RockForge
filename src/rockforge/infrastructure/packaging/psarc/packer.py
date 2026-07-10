@@ -44,6 +44,7 @@ from pathlib import Path
 
 from rockforge.domain.arrangement import Arrangement
 from rockforge.domain.errors import PackagingError
+from rockforge.infrastructure.normalize.loudness import calculate_volume
 from rockforge.infrastructure.packaging.dlcbuilder import (
     PackagingResult,
     build_project_metadata,
@@ -287,20 +288,30 @@ class NativePsarcPacker:
             # prefetch) plus the full stream as <fileID>.wem beside it. Without
             # the .bnk the game has no event to fire and plays silence.
             wem_bytes = wem_path.read_bytes()
-            bnk_bytes, wem_file_id = soundbank.generate_soundbank(song_key, wem_bytes)
+            # "Calculate Volumes": measure the audio's loudness and set the Wwise
+            # bus volume so the song sits at a consistent level (the .bnk shipped
+            # a neutral 0). Falls back to 0 dB when ffmpeg can't measure.
+            song_volume = calculate_volume(audio)
+            bnk_bytes, wem_file_id = soundbank.generate_soundbank(
+                song_key, wem_bytes, volume=song_volume
+            )
             files[f"audio/windows/song_{key_lower}.bnk"] = bnk_bytes
             files[f"audio/windows/{wem_file_id}.wem"] = wem_bytes
 
             # A real ~28 s preview clip (its own .wem), not the full stream, and
-            # marked single-instance so it never plays over itself.
+            # marked single-instance so it never plays over itself. Its own
+            # volume is measured on the clip so it matches the song's level.
             preview_wem_bytes = wem_bytes
+            preview_volume = song_volume
             start_s, length_s = _preview_window(song_length)
             clip = _extract_preview_clip(audio, out_dir / "preview.wav", start_s, length_s)
             if clip is not None and self._wem_converter is not None:
                 preview_wem = self._wem_converter.convert(clip, out_dir / "wwise_preview")
                 preview_wem_bytes = preview_wem.read_bytes()
+                # Match the volume to the clip that's actually shipped.
+                preview_volume = calculate_volume(clip)
             preview_bnk, preview_id = soundbank.generate_soundbank(
-                f"{song_key}_preview", preview_wem_bytes, preview=True
+                f"{song_key}_preview", preview_wem_bytes, volume=preview_volume, preview=True
             )
             files[f"audio/windows/song_{key_lower}_preview.bnk"] = preview_bnk
             files[f"audio/windows/{preview_id}.wem"] = preview_wem_bytes

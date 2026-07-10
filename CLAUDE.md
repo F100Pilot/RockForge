@@ -822,6 +822,22 @@ objects. Same honesty caveat as `sng.py`: round-tripped
 reference bnk in CI. When no Wwise is available the packer falls back to the old
 non-loading `audio/<key>.<ext>` path (bundle stays the trustworthy audio route).
 
+**Volume ("Calculate Volumes", `normalize/loudness.py`).** The Sound object's
+Wwise bus volume (dB) is no longer a neutral 0: the packer measures the audio's
+integrated loudness with ffmpeg's `ebur128` filter and offsets it to the
+`TARGET_LUFS = -16` EBU R128 reference RockForge normalizes to (`calculate_volume`
+→ `generate_soundbank(volume=…)`). The full song is already loudnorm'd to -16 so
+it lands near 0 dB (matching a DLC Builder bank, whose Calculate Volumes ships 0
+until run); the value this adds is the **preview** — a trimmed clip whose own
+loudness differs is measured on the clip and matched to the song, so it doesn't
+blast over the song list. `parse_ebur128_i` (stderr parse) and
+`volume_for_loudness` (the ±`VOLUME_CLAMP_DB` offset formula) are pure and
+unit-tested without ffmpeg; a missing/failing ffmpeg degrades to 0 dB, never a
+crash. A louder "match retail exactly" target is deliberately NOT guessed — the
+decoded DLC Builder banks were all 0 (uncalibrated), so there's no verified
+retail figure; bump `TARGET_LUFS` if songs read too quiet next to official DLC.
+The `.rs2dlc` audio `Volume` stays neutral (DLC Builder recomputes on import).
+
 ### Standalone executable (`build_exe.py` / PyInstaller)
 
 `start_standalone.py` is the entry point for the PyInstaller-built `.exe`. It
