@@ -45,6 +45,7 @@ from rockforge.infrastructure.gpimport.parser import (
 from rockforge.infrastructure.rsxml.vocals import (
     VocalEvent,
     distribute_syllables,
+    enforce_max_line_words,
     parse_lyrics,
 )
 
@@ -480,6 +481,8 @@ class GenerateFromGpUseCase:
                 f"count-in. The song's first note now plays at {score_shift:.2f}s — use the "
                 f"visual sync tool if the chart and audio still drift."
             )
+
+        vocals = enforce_max_line_words(vocals)  # cap long lyric lines in-game
 
         stage("package")
         packaging = self.packager.package(
