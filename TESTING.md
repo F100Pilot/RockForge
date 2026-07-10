@@ -305,6 +305,17 @@ the song must play audio, not silence — a seek-table-less `.wem` loads but pla
 silence and exits seconds in. If that happens, in DLC Builder pick the bundle's
 `audio.wav` (not `.wem`) and let DLC Builder convert.
 
+**Volume ("Calculate Volumes", native `.psarc`).** The `.bnk` bus volume is now
+computed from the audio's loudness (ffmpeg `ebur128` → offset to -16 LUFS),
+where it shipped a neutral 0. **In-game check:** the song's loudness sits at a
+sensible level next to official DLC (not obviously quiet/loud), and — the point
+of the feature — the **song-select preview** plays at roughly the same loudness
+as the song itself, instead of a loud chorus clip blasting over the list. If
+songs feel systematically too quiet vs official DLC, raise `TARGET_LUFS` in
+`normalize/loudness.py` (the references gave no verified retail figure to
+calibrate to). Needs ffmpeg; without it the volume degrades to 0 dB (the old
+behaviour), no crash.
+
 ### 7f. Final PSARC + in-game
 
 Import the bundle into DLC Builder, or rely on the native `.psarc` (`psarc_mode
