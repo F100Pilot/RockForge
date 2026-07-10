@@ -13,11 +13,16 @@ vocals model (:func:`from_vocals`).
 
 Dynamic Difficulty is a SIMPLIFIED DDC pass: notes ramp in over several levels
 per phrase (ceiling scaled by the phrase's note density), with retail-shaped hero
-triples, but no NLinkedDifficulty linkage — a mechanical density ramp, not a
-musical phrase-leveling pass. See ``_DD_LEVEL_CAP`` and ``_level_notes``.
+triples. Musically-identical iterations are collapsed onto a shared phrase
+(``_phrase_signature``), so a repeated riff is ONE phrase with many iterations —
+learned once and mastered everywhere, like a real DDC — instead of a separate
+re-ramping phrase per repeat. The finer NLinkedDifficulty section (linking the
+levels of *different* phrases) is still not emitted. See ``_DD_LEVEL_CAP`` and
+``_level_notes``.
 
 Intentionally absent — correct given the domain model, not defects:
-- No NLinkedDifficulty / cross-phrase difficulty linking (simplified DD).
+- No NLinkedDifficulty section (phrases ARE linked by shared id; the finer
+  cross-phrase level linkage is not).
 - ``ChordNotesId = -1`` for simple chords (matches DLC Builder/EOF).
 - Arpeggio fingerprints (Fingerprints2): the domain has no arpeggio marking.
 - ParentPrevNote / linkNext: the domain has no note-link concept.
@@ -393,6 +398,24 @@ def _spread_order(n: int) -> list[int]:
     return order
 
 
+def _phrase_signature(
+    notes: list[TabNote], start: float, end: float
+) -> tuple[tuple[int, int, int], ...] | None:
+    """A hashable fingerprint of the notes in ``[start, end)``, relative to
+    ``start``, so two iterations of the SAME riff match and can share one phrase.
+
+    Returns ``None`` for a span with no notes — a COUNT/END/no-guitar gap stays a
+    distinct phrase rather than collapsing all silences onto one. Relative times
+    are quantised to 10 ms (identical riffs at the same tempo line up; a tempo
+    change shifts them and correctly keeps them separate)."""
+    span = [n for n in notes if start <= n.time < end]
+    if not span:
+        return None
+    return tuple(sorted(
+        (round((n.time - start) * 100), n.string, n.fret) for n in span
+    ))
+
+
 def _note_tier(time: float, beats: list[SngBeat]) -> int:
     """A note's beat-strength tier for DD: 0 = downbeat (strongest), 1 = on a
     beat, 2 = half-beat, 3 = quarter, 4 = finer. Lower tiers appear first as the
@@ -766,10 +789,31 @@ def from_arrangement(
             last = t
     sections_src = refined
 
-    phrases = [SngPhrase(name=s.name) for s in sections_src]
     ends = _section_end_times(sections_src, song_length)
+    # Collapse musically-identical iterations onto ONE shared phrase: a real DDC
+    # recognises a repeated riff as a single phrase with many iterations, so it's
+    # learned once and every repeat plays at the mastered difficulty instead of
+    # re-ramping from scratch (and the difficulty graph / Riff Repeater show the
+    # song's true handful of unique phrases, not one bar per section). Note-less
+    # spans (COUNT/END/gaps) keep a distinct phrase each. This is phrase-level
+    # linking via shared phrase_id — NOT the finer NLinkedDifficulty section,
+    # which stays empty.
+    _sig_to_id: dict[tuple[tuple[int, int, int], ...], int] = {}
+    _phrase_names: list[str] = []
+    _iter_phrase_id: list[int] = []
+    for s, end in zip(sections_src, ends, strict=True):
+        sig = _phrase_signature(arrangement.notes, s.start_time, end)
+        if sig is not None and sig in _sig_to_id:
+            _iter_phrase_id.append(_sig_to_id[sig])
+        else:
+            pid = len(_phrase_names)
+            _phrase_names.append(s.name)
+            if sig is not None:
+                _sig_to_id[sig] = pid
+            _iter_phrase_id.append(pid)
+    phrases = [SngPhrase(name=nm) for nm in _phrase_names]
     phrase_iterations = [
-        SngPhraseIteration(phrase_id=i, start_time=s.start_time, end_time=end)
+        SngPhraseIteration(phrase_id=_iter_phrase_id[i], start_time=s.start_time, end_time=end)
         for i, (s, end) in enumerate(zip(sections_src, ends, strict=True))
     ]
     # Each phrase's PhraseIterationLinks = how many iterations reference it (a

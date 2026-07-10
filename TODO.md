@@ -257,14 +257,19 @@ ver `TESTING.md`.
     mas não está calibrada para a referência do Rocksmith. Medir a sonoridade do
     `.wem` e mapear para o volume do banco de som (e do manifesto).
 
-- [~] **Dynamic Difficulty (DD)**: implementada uma DD **simples/mecânica** —
-  o `from_arrangement` gera vários `ArrangementLevels` (até 5); uma nota entra
-  quando a dificuldade chega ao seu *tier* de força métrica (`_note_tier`:
-  tempo forte→0, tempo→1, meio→2, quarto→3, mais fino→4), com o manifesto a
-  reportar `MaxPhraseDifficulty` + `NotesEasy/Medium/Hard`. Falta: o *leveling*
-  musical inteligente de um DDC a sério (frases repetidas via `NLinkedDifficulty`,
-  redução por técnica/importância), e validação in-game dos níveis. O caminho
-  de qualidade continua a ser o DDC via DLC Builder.
+- [~] **Dynamic Difficulty (DD)**: DD por densidade com **teto variável por
+  frase** (até 21 níveis) — uma nota entra quando a dificuldade chega ao seu
+  *tier* de força métrica (`_note_tier`), com o manifesto a reportar
+  `MaxPhraseDifficulty` + `NotesEasy/Medium/Hard`. **Phrase-linking (novo):**
+  iterações musicalmente idênticas colapsam numa só frase partilhada
+  (`_phrase_signature`), por isso um riff repetido é UMA frase com várias
+  iterações — aprende-se uma vez e domina-se em cada repetição, e o grafo de
+  dificuldade/Riff Repeater mostram as poucas frases únicas reais em vez de uma
+  barra por secção (um CDLC real tem muito menos frases que secções). Falta
+  ainda: a secção `NLinkedDifficulty` (linkar os *níveis* de frases diferentes),
+  a redução por técnica/importância (a seleção de notas por nível continua por
+  densidade, não musicalmente frascada), e validação in-game. O caminho de
+  qualidade continua a ser o DDC via DLC Builder.
 
 - [x] **Biblioteca de tons (guardar/carregar entre projetos)**: reutilizar os
   tons criados noutras músicas sem os recriar. Os tons (gear completo) são

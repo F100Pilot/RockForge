@@ -670,12 +670,21 @@ defects):
   the game on the first low-difficulty pass through the section. (Handshapes are
   not emitted at all — see the fingerprints note above.) Guarded by
   `test_dd_levels_have_no_handshapes_and_per_level_slide_extensions`. The manifest reports
-  `MaxPhraseDifficulty` + `NotesEasy/Medium/Hard` from the levels. This is a
-  mechanical density ramp with NO `NLinkedDifficulty` cross-phrase linkage — a
-  simplified DDC, NOT the full musical phrase-leveling a retail DDC pass does (the
-  level *range* is now comparable to retail, but the per-level note selection is
-  density-ranked, not musically phrased). The trustworthy full-DD path stays the
-  DLC Builder bundle (it runs a real DDC).
+  `MaxPhraseDifficulty` + `NotesEasy/Medium/Hard` from the levels.
+  **Phrase linking:** musically-identical iterations are collapsed onto ONE
+  shared phrase (`_phrase_signature` fingerprints each section's notes relative
+  to its start; a match reuses the phrase id), so a repeated riff is a single
+  phrase with many iterations — learned once and mastered on every repeat, and
+  the difficulty graph / Riff Repeater show the song's true handful of unique
+  phrases instead of one bar per section (a real CDLC has far fewer phrases than
+  sections — decoded DLC Builder "Pride" lead: 12 phrases vs our old 29). The
+  per-phrase ceiling is its BUSIEST iteration, so a repeated riff levels by its
+  hardest occurrence. Note-less spans (COUNT/END/gaps) never dedup. Still a
+  density ramp for the per-level note *selection* (density-ranked, not musically
+  phrased), and the finer `NLinkedDifficulty` section (linking the levels of
+  *different* phrases) is NOT emitted. The trustworthy full-DD path stays the
+  DLC Builder bundle (it runs a real DDC). Guarded by
+  `test_identical_riffs_share_one_phrase`.
   A section-less GP is auto-segmented into ~13 s phrases (`_default_sections`) so
   DD still ramps per-phrase, and within a phrase the shown notes are spread across
   its timeline (`_spread_order`) rather than clustered at its start. **DD is
