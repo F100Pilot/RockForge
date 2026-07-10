@@ -1,6 +1,7 @@
 """Tests for the tone detection feature (spectral analysis + preset mapping)."""
 
-from rockforge.infrastructure.packaging.gear.tone_presets import suggest_tones
+from rockforge.infrastructure.packaging.gear.gear_catalogue import tone_from_dict
+from rockforge.infrastructure.packaging.gear.tone_presets import rank_tones, suggest_tones
 from rockforge.infrastructure.tone_analysis.analyzer import ToneProfile
 
 
@@ -67,9 +68,34 @@ def test_suggest_tones_unknown_category_falls_back_to_crunch() -> None:
     assert result["rhythm"]["key"] == "RFRhythm_Crunch"
 
 
-def test_preset_tone_dicts_have_required_fields() -> None:
-    from rockforge.infrastructure.packaging.gear.gear_catalogue import tone_from_dict
+def test_rank_tones_returns_ranked_candidate_libraries() -> None:
+    # A distorted profile ranks a high-gain lead first and a clean lead last.
+    result = rank_tones(gain_level=0.85, brightness=0.55, low_end=0.6, category="high_gain")
+    lead = result["lead_candidates"]
+    rhythm = result["rhythm_candidates"]
+    assert len(lead) >= 5 and len(rhythm) >= 5
+    # Ranked closest-first: the match score is monotonically non-increasing.
+    lead_matches = [c["match"] for c in lead]
+    assert lead_matches == sorted(lead_matches, reverse=True)
+    # The top lead for a heavy profile is a high-gain/metal preset, not clean.
+    assert "HighGain" in lead[0]["key"] or "Metal" in lead[0]["key"]
+    assert lead[-1]["key"] == "RFLead_Clean" or "Clean" in lead[-1]["key"]
+    # The primary lead/rhythm are the top candidates.
+    assert result["lead"]["key"] == lead[0]["key"]
+    assert result["rhythm"]["key"] == rhythm[0]["key"]
+    # Every candidate is a buildable domain tone.
+    for c in lead + rhythm:
+        assert 0 <= c["match"] <= 100
+        assert tone_from_dict(c) is not None
 
+
+def test_rank_tones_clean_profile_ranks_clean_first() -> None:
+    result = rank_tones(gain_level=0.08, brightness=0.5, low_end=0.4, category="clean")
+    assert "Clean" in result["lead_candidates"][0]["key"]
+    assert "Clean" in result["rhythm_candidates"][0]["key"]
+
+
+def test_preset_tone_dicts_have_required_fields() -> None:
     for cat in ("clean", "crunch", "high_gain"):
         result = suggest_tones(cat)
         for role in ("lead", "rhythm"):

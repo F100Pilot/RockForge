@@ -279,6 +279,11 @@ class DetectTonesOut(BaseModel):
     category: str = ""  # "clean"|"crunch"|"high_gain"
     lead: dict[str, Any] = {}
     rhythm: dict[str, Any] = {}
+    # Full ranked libraries (closest first, each carrying a 0-100 "match") so the
+    # user can browse several "similar tones" rather than only the top guess.
+    lead_candidates: list[dict[str, Any]] = []
+    rhythm_candidates: list[dict[str, Any]] = []
+    profile: dict[str, Any] = {}  # detected spectral profile (gain/brightness/…)
     log: list[str] = []
 
 
@@ -1308,6 +1313,9 @@ def get_detected_tones(job_id: str) -> DetectTonesOut:
             category=str(detected.get("category", "")),
             lead=dict(detected.get("lead", {})),
             rhythm=dict(detected.get("rhythm", {})),
+            lead_candidates=list(detected.get("lead_candidates", [])),
+            rhythm_candidates=list(detected.get("rhythm_candidates", [])),
+            profile=dict(detected.get("profile", {})),
             log=[str(line) for line in log],
         )
 

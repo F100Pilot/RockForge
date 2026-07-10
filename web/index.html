@@ -120,6 +120,17 @@
   }
   #lyricsProgressBar.stuck { background:#e06363 !important; animation:none; }
   .meta { font-size:.85rem; color:var(--muted); }
+  /* Tone-detection profile bars + ranked "similar tones" candidate list */
+  .tone-prof-row { display:flex; align-items:center; gap:.5rem; font-size:.8rem; color:var(--muted); margin:.15rem 0; }
+  .tone-prof-row > span:first-child { flex:0 0 8.5rem; }
+  .tone-prof-track { flex:1; height:.5rem; background:rgba(255,255,255,.08); border-radius:.25rem; overflow:hidden; }
+  .tone-prof-fill { display:block; height:100%; background:linear-gradient(90deg,#5b8cff,#c85bff); }
+  .tone-prof-val { flex:0 0 2.6rem; text-align:right; }
+  .tone-cand { display:flex; align-items:center; gap:.5rem; margin:.15rem 0; font-size:.85rem; }
+  .tone-cand-name { flex:1; }
+  .tone-cand-match { flex:0 0 3rem; text-align:right; color:var(--muted); font-variant-numeric:tabular-nums; }
+  button.tone-cand-use { padding:.15rem .55rem; font-size:.8rem; }
+  .tone-cand-group { margin-top:.3rem; }
   /* Icon mode buttons: bigger glyph, square-ish, with a hover balloon (.tip) */
   button.mode-btn { font-size:1.15rem; line-height:1; padding:.3rem .5rem; min-width:2.4rem; }
   .tip { position:relative; }
@@ -2504,13 +2515,7 @@ function pollToneDetection() {
     if (d.status === 'ready') {
       clearInterval(_toneDetectionPoll);
       _toneDetectionPoll = null;
-      const cat = d.category || '?';
-      const catLabel = { clean: 'Limpo (Clean)', crunch: 'Crunch', high_gain: 'Distorcido (High Gain)' }[cat] || cat;
-      document.getElementById('toneDetectionResult').innerHTML =
-        `<div style="margin-top:.3rem"><strong>Categoria detetada:</strong> ${esc(catLabel)}</div>` +
-        `<div class="anchor-row" style="margin-top:.4rem">` +
-        `<button type="button" id="applyDetectedTones" class="secondary">Aplicar tons sugeridos (Lead + Rhythm)</button></div>`;
-      document.getElementById('applyDetectedTones').addEventListener('click', () => applyDetectedTones(d));
+      renderToneDetectionResult(d);
     } else if (d.status === 'unavailable') {
       clearInterval(_toneDetectionPoll);
       _toneDetectionPoll = null;
@@ -2518,6 +2523,79 @@ function pollToneDetection() {
         '<span class="meta" style="color:#e88">Deteção falhou — vê o log acima.</span>';
     }
   }, 3000);
+}
+
+// Keeps the last detection payload so per-candidate "usar" buttons can look up
+// a tone dict by its key (the ranked candidate lists live here).
+let _lastToneDetection = null;
+
+function _profileBar(label, value) {
+  const pct = Math.round((Number(value) || 0) * 100);
+  return `<div class="tone-prof-row"><span>${esc(label)}</span>` +
+    `<span class="tone-prof-track"><span class="tone-prof-fill" style="width:${pct}%"></span></span>` +
+    `<span class="tone-prof-val">${pct}%</span></div>`;
+}
+
+function _candidateList(role, candidates) {
+  if (!candidates || !candidates.length) return '';
+  const rows = candidates.map(c => {
+    const m = Math.round(Number(c.match) || 0);
+    return `<div class="tone-cand"><span class="tone-cand-name">${esc(c.name || c.key)}</span>` +
+      `<span class="tone-cand-match" title="Semelhança estimada com o gravado">${m}%</span>` +
+      `<button type="button" class="secondary tone-cand-use" data-role="${esc(role)}" data-key="${esc(c.key)}">usar</button></div>`;
+  }).join('');
+  const title = role === 'lead' ? 'Lead — tons semelhantes' : 'Rhythm — tons semelhantes';
+  return `<div class="tone-cand-group"><div class="meta" style="margin:.4rem 0 .2rem">${esc(title)} ` +
+    `<span class="meta">(ordenados por semelhança)</span></div>${rows}</div>`;
+}
+
+function renderToneDetectionResult(d) {
+  _lastToneDetection = d;
+  const cat = d.category || '?';
+  const catLabel = { clean: 'Limpo (Clean)', crunch: 'Crunch', high_gain: 'Distorcido (High Gain)' }[cat] || cat;
+  const p = d.profile || {};
+  let profileHtml = '';
+  if (p && (p.gain_level !== undefined)) {
+    profileHtml = `<div class="tone-prof" style="margin-top:.4rem">` +
+      _profileBar('Ganho/distorção', p.gain_level) +
+      _profileBar('Brilho', p.brightness) +
+      _profileBar('Graves', p.low_end) +
+      `</div>`;
+  }
+  const el = document.getElementById('toneDetectionResult');
+  el.innerHTML =
+    `<div style="margin-top:.3rem"><strong>Categoria detetada:</strong> ${esc(catLabel)}</div>` +
+    profileHtml +
+    `<div class="anchor-row" style="margin-top:.4rem">` +
+    `<button type="button" id="applyDetectedTones" class="secondary">Aplicar melhores (Lead + Rhythm)</button></div>` +
+    `<div class="meta" style="margin-top:.3rem">Não encontraste o tom certo? Experimenta os semelhantes abaixo — cada um dá a sua % de semelhança com o gravado.</div>` +
+    _candidateList('lead', d.lead_candidates) +
+    _candidateList('rhythm', d.rhythm_candidates);
+  document.getElementById('applyDetectedTones').addEventListener('click', () => applyDetectedTones(d));
+  el.querySelectorAll('.tone-cand-use').forEach(btn => {
+    btn.addEventListener('click', () => applyOneTone(btn.dataset.role, btn.dataset.key));
+  });
+}
+
+// Look up a candidate tone dict by role + key in the last detection payload.
+function _findCandidate(role, key) {
+  const list = (role === 'lead' ? _lastToneDetection.lead_candidates : _lastToneDetection.rhythm_candidates) || [];
+  return list.find(c => c.key === key) || null;
+}
+
+// Apply one candidate for a role, replacing only that role's RF-detected tone
+// (so picking a different Lead doesn't wipe the Rhythm the user already chose).
+function applyOneTone(role, key) {
+  if (!_lastToneDetection) return;
+  const tone = _findCandidate(role, key);
+  if (!tone) { toast('Tom não encontrado.'); return; }
+  const prefix = role === 'lead' ? 'RFLead_' : 'RFRhythm_';
+  jobTones = jobTones.filter(t => !t.key.startsWith(prefix));
+  jobTones.push(tone);
+  if (role === 'lead') toneBase = tone.key;
+  toneNames = jobTones.map(t => t.key);
+  renderTonePanel();
+  toast(`Tom "${tone.name || tone.key}" aplicado — "Aplicar e reconstruir" para gravar.`, 'ok');
 }
 
 function applyDetectedTones(detected) {
