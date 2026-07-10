@@ -148,6 +148,18 @@ def test_gp7_lyrics_sourced_from_track(gp7_file: Path) -> None:
     assert parsed.lyrics[0].text == "he-llo world"
 
 
+def test_gp7_out_of_range_note_dropped_with_warning(tmp_path: Path) -> None:
+    # A note above the 24-fret neck is skipped (it can't be placed), but the drop
+    # is surfaced as a warning instead of vanishing silently.
+    path = tmp_path / "oor.gp"
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("VERSION", "7.0")
+        z.writestr("Content/score.gpif", GPIF.replace("<Fret>9</Fret>", "<Fret>30</Fret>"))
+    parsed = parse_gp_track(path, 0)
+    assert len(parsed.notes) == 3  # the fret-30 note was dropped (was 4)
+    assert parsed.warnings and "off the 24-fret neck" in parsed.warnings[0]
+
+
 # A tied note: bar 0 has two quarter notes on string 0 — fret 7, then fret 7
 # again flagged Tie destination="true" (a held continuation, drawn "(7)" in GP).
 # It must NOT become a second attack; it extends the first note's sustain.

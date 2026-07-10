@@ -136,9 +136,14 @@ ver `TESTING.md`.
   visualmente os eventos com `+` (fim de linha) com uma barra mais forte,
   simulando a quebra no jogo.
 
-- [ ] **Validação de tuning vs. alcance das notas**: avisar se, após uma
-  correção de afinação, alguma nota do GP ficar fora do alcance do braço
-  (fret > 24 ou negativo).
+- [x] **Notas fora do alcance do braço — aviso**: uma nota com fret > 24 ou < 0
+  (ou, no GP7, numa corda além da afinação) já era **saltada** por ambos os
+  parsers, mas em silêncio; agora conta-se e emite-se um aviso em
+  `ParsedGpTrack.warnings`, que o `gp_pipeline` propaga para os warnings do job
+  (`"Lead: N note(s) dropped: off the 24-fret neck…"`). O `TabNote` continua a
+  rejeitar frets inválidos na construção; isto só torna transparente o descarte
+  (parte extended-range/bass). Guardado por
+  `test_gp7_out_of_range_note_dropped_with_warning`.
 
 - [ ] **Criar o PSARC diretamente na aplicação (sem DLC Builder)**: hoje o
   empacotamento final depende do DLC Builder (ou de um packer externo via
