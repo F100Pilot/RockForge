@@ -319,8 +319,10 @@ def test_sectionless_song_is_segmented_into_multiple_phrases() -> None:
         sections=[],
     )
     model = from_arrangement(arr)
-    # ~190 s / 13 s ≈ a dozen-plus phrases (not just COUNT/body/END).
-    assert len(model.phrases) >= 8
+    # ~190 s / 13 s ≈ a dozen-plus segments (not just COUNT/body/END). Segments
+    # are phrase ITERATIONS; identical iterations may share one phrase (dedup),
+    # so assert on the iteration count, which measures the segmentation.
+    assert len(model.phrase_iterations) >= 8
     # Phrase iterations stay ordered and non-overlapping.
     starts = [pi.start_time for pi in model.phrase_iterations]
     assert starts == sorted(starts)
@@ -357,6 +359,42 @@ def test_dd_phrase_heights_vary_with_density() -> None:
     assert heights.get("dense", 0) > 11              # dense phrase exceeds the old cap
     assert heights.get("sparse", 0) < heights["dense"]  # sparse phrase is shorter
     assert len({p.max_difficulty for p in model.phrases}) >= 3  # not a flat top
+
+
+def test_identical_riffs_share_one_phrase() -> None:
+    """A riff repeated note-for-note must collapse to ONE phrase with several
+    iterations (real-DDC phrase linking: learned once, mastered everywhere), not
+    a separate re-ramping phrase per repeat. A different riff stays its own
+    phrase."""
+    beats = tuple(Beat(time=i * 0.5, measure=i // 4 + 1 if i % 4 == 0 else -1)
+                  for i in range(80))
+    # Same 4-note riff at t=0 and again at t=8 (identical relative to phrase start);
+    # a different riff at t=16.
+    riff = [(0, 3), (1, 5), (2, 7), (0, 3)]
+    notes = []
+    for base in (0.0, 8.0):
+        notes += [TabNote(string=s, fret=f, time=base + j * 0.5, sustain=0.2)
+                  for j, (s, f) in enumerate(riff)]
+    other = [(3, 2), (4, 4), (5, 1), (3, 9)]
+    notes += [TabNote(string=s, fret=f, time=16.0 + j * 0.5, sustain=0.2)
+              for j, (s, f) in enumerate(other)]
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=24.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+        notes=notes,
+        sections=[Section(name="A", start_time=0.0),
+                  Section(name="A2", start_time=8.0),
+                  Section(name="B", start_time=16.0)],
+    )
+    model = from_arrangement(arr)
+    # The two identical A sections share one phrase_id; B is its own.
+    ids = {round(pi.start_time): pi.phrase_id for pi in model.phrase_iterations}
+    assert ids[0] == ids[8]      # identical riffs → same phrase
+    assert ids[16] != ids[0]     # different riff → different phrase
+    # Fewer unique phrases than iterations (the repeat was linked, not re-ramped).
+    assert len(model.phrases) < len(model.phrase_iterations)
 
 
 def test_dd_low_levels_spread_notes_across_the_phrase() -> None:
