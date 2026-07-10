@@ -524,6 +524,15 @@ comes back with the same anchors/tempo/offset/lyrics. Importing a GP-only key
 (a track index / per-arrangement tuning) into a non-GP job silently drops it;
 a malformed `tuning_midi` 422s instead of corrupting the job.
 
+**Rebuild history (walk back a version).** rebuild / reload-gp / import-sync all
+fork a NEW job and never delete the old one, so every version persists; the fork
+records `rebuilt_from` (`JobOut`). The tab viewer shows a **"↩ Versão anterior"**
+button that opens the job this one was rebuilt from — recover from a sync
+correction that made things worse. Backend guarded by
+`test_forked_jobs_link_back_to_the_original`; **manual check:** rebuild a job
+twice, confirm the button walks back one version each click and the older bundle
+still downloads.
+
 ---
 
 ## 8. Debugging the async detection tasks

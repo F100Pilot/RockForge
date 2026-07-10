@@ -1343,6 +1343,7 @@ async function selectJob(id, { poll = false, force = false } = {}) {
     `<strong>${esc(j.title)}</strong> — ${esc(j.artist)}
      ${j.album ? `· ${esc(j.album)}` : ''} ${j.year ? `(${j.year})` : ''} ${badge(j.status)}
      <button type="button" class="secondary" onclick="openMetaEdit()" title="Editar título, artista, álbum, ano" style="padding:.1rem .4rem;font-size:.75rem;margin-left:.4rem">✎ Editar info</button>
+     ${j.rebuilt_from ? `<button type="button" class="secondary" onclick="selectJob('${j.rebuilt_from}')" title="Abrir a versão de onde esta foi reconstruída — a anterior nunca é apagada" style="padding:.1rem .4rem;font-size:.75rem;margin-left:.4rem">↩ Versão anterior</button>` : ''}
      <span class="meta">notas: ${esc(JSON.stringify(j.note_counts))}</span>`;
 
   const bar = document.getElementById('stagesBar');
