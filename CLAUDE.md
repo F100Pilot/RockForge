@@ -604,6 +604,17 @@ ArrangementLevels (anchors, **anchor extensions**, notes with NextIter/PrevIter
 linkage), Metadata. `NoteMask` values are the real Rocksmith constants (ported
 from Constants.cs).
 
+**A chord template's unused strings carry MIDI note -1, NOT 0.** The per-string
+`Notes` of a template are dereferenced by the game's note-detection/scoring
+path, so writing 0 (a real, absurdly low pitch on a string that shouldn't
+sound) crashed the game at the entry of a gapped 5/7 octave — but ONLY while
+the player was actually playing/scoring that chord; a hands-off run never
+touched the field, which made the crash look intermittent ("fragile"). Isolated
+by byte-diffing our native "Free" against a DLC Builder build of the same song:
+its 5/7 octave template is `[-1, 50, -1, 62, -1, -1]` where ours was
+`[0, 50, 0, 62, 0, 0]` — the only difference on that chord. Guarded by
+`test_chord_template_notes_are_real_midi`.
+
 **Fingerprints (handshapes) are deliberately NOT emitted** (empty on every
 level). Both working references ship zero — a real CDLC SNG (decoded: 0
 fingerprints across all 23 levels) and a DLC Builder build of our own XML (which

@@ -852,10 +852,16 @@ def from_arrangement(
         if key not in template_ids:
             template_ids[key] = len(template_ids)
             frets_bytes = tuple(max(0, f) if f >= 0 else 255 for f in key)
-            # MIDI note sounding on each used string (open pitch + fret); 0 for
-            # unused strings, mirroring the toolkit's ChordTemplate.Notes.
+            # MIDI note sounding on each used string (open pitch + fret); -1 for
+            # unused strings — byte-verified against a DLC Builder build of the
+            # SAME song (its 5/7 octave template carries [-1, 50, -1, 62, -1, -1]).
+            # Writing 0 (a real, absurdly low pitch on a string that shouldn't
+            # sound) crashed the game at the octave's entry, but ONLY while the
+            # player was actually scoring the chord — the per-string MIDI is
+            # dereferenced by the note-detection/scoring path, so a spectating
+            # run never touched it.
             notes_midi = tuple(
-                open_midi[i] + f if f >= 0 else 0 for i, f in enumerate(key)
+                open_midi[i] + f if f >= 0 else -1 for i, f in enumerate(key)
             )
             chord_templates.append(SngChordTemplate(
                 mask=0,
