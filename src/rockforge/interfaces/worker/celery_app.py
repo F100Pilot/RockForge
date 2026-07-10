@@ -611,14 +611,18 @@ def detect_tones(job_id: str) -> None:
 
             profile = analyze_guitar_tone(guitar_stem)
 
-            from rockforge.infrastructure.packaging.gear.tone_presets import suggest_tones
+            from rockforge.infrastructure.packaging.gear.tone_presets import rank_tones
 
-            suggestion = suggest_tones(profile.category)
+            suggestion = rank_tones(
+                profile.gain_level, profile.brightness, profile.low_end, profile.category
+            )
 
             params["detected_tones"] = {
                 "category": suggestion["category"],
                 "lead": suggestion["lead"],
                 "rhythm": suggestion["rhythm"],
+                "lead_candidates": suggestion["lead_candidates"],
+                "rhythm_candidates": suggestion["rhythm_candidates"],
                 "profile": {
                     "gain_level": profile.gain_level,
                     "brightness": profile.brightness,

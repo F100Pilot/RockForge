@@ -93,7 +93,7 @@ explicit `cast(...)`.
 | `test_vocals.py` | 19 | `parse_lyrics` (LRC + UltraStar), `expand_to_words` (trailing `+`), `events_from_dicts`, `distribute_syllables` (GP lyrics → note-onset alignment, melisma `_`) |
 | `test_lyrics_transcribe.py` | 6 | WhisperX adapter: RMS gate, per-word confidence filter, segment→event mapping (whisperx itself stubbed) |
 | `test_tone_gear.py` | 11 | `domain/tone.py` gear model + `tone_from_dict`/`tones_from_dicts` |
-| `test_tone_detection.py` | 7 | spectral `analyze_guitar_tone` → category → `suggest_tones` presets |
+| `test_tone_detection.py` | 9 | spectral `analyze_guitar_tone` → category → `suggest_tones` + ranked `rank_tones` candidates |
 | `test_rs2dlc.py` | 6 | `.rs2dlc` `DLCProject.Dto` shape, Name/RouteMask per kind, vocals case, **`.phrase-levels`** companion |
 | `test_psarc_container.py` | 3 | PSARC v1.4 pack/unpack round-trip |
 | `test_psarc_manifest.py` | 5 | runtime manifests (`.hsan`, `_aggregategraph.nt`, per-arr JSON) |
@@ -291,9 +291,20 @@ matching CUDA build of torch/ctranslate2 and the cuDNN DLLs on PATH (README
 
 ### 7d. Automatic tone detection (needs `[ml]`)
 
-1. "Detetar tom" → poll → "Aplicar tons sugeridos" loads presets into the tone
-   editor → adjust → "Aplicar e reconstruir".
-2. Confirm the `.rs2dlc` `Tones` array carries the gear.
+1. "Detetar tom" → poll → the result now shows the detected **spectral profile**
+   (ganho/brilho/graves bars) plus TWO ranked lists — "Lead — tons semelhantes"
+   and "Rhythm — tons semelhantes" — each preset carrying a **% de semelhança**
+   with the recording (closest first). "Aplicar melhores (Lead + Rhythm)" loads
+   the top pair; each candidate's **"usar"** button loads just that one (Lead vs
+   Rhythm replaced independently, so picking a different Lead keeps the Rhythm).
+2. Adjust in the tone editor → "Aplicar e reconstruir".
+3. Confirm the `.rs2dlc` `Tones` array carries the gear.
+
+The ranking is a weighted distance from the analyzer's `ToneProfile`
+(gain-dominant, then brightness/low-end): `rank_tones(gain, bright, low, cat)`
+returns the whole `_LEAD_LIBRARY`/`_RHYTHM_LIBRARY` sorted by match. Guarded by
+`test_rank_tones_returns_ranked_candidate_libraries` /
+`test_rank_tones_clean_profile_ranks_clean_first` (no ML — pure ranking).
 
 ### 7d-bis. Testar tom na partitura ("🎸 Testar tom") — sem ML
 

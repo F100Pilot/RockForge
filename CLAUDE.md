@@ -421,9 +421,26 @@ heuristic — the character, not the actual amp.
 Progress is tracked via `params["tone_detection_status"]`
 (`detecting`/`normalizing`/`separating`/`analyzing`/`ready`/`unavailable`),
 never `JobStatus`. The web UI's "Detetar tom" button triggers detection and
-polls `GET /jobs/{id}/detected-tones` for the result; "Aplicar tons sugeridos"
-loads the presets into the tone editor so the user confirms/adjusts, then
+polls `GET /jobs/{id}/detected-tones` for the result; "Aplicar melhores"
+loads the top presets into the tone editor so the user confirms/adjusts, then
 "Aplicar e reconstruir" commits them.
+
+**Ranked candidates, not one guess (`rank_tones`).** The old path mapped the
+detected category 1:1 to a single Lead+Rhythm preset (`suggest_tones`), so when
+the guess was off the user had nothing to browse ("dificuldade em encontrar os
+tons semelhantes"). `tone_presets.rank_tones(gain, bright, low, category)` now
+ranks the WHOLE curated library (`_LEAD_LIBRARY`/`_RHYTHM_LIBRARY`, several
+presets spanning the gain axis with brightness/low-end variants, each carrying a
+`(gain, bright, low)` fingerprint) by a **weighted distance** to the analyzer's
+`ToneProfile` — gain dominates (`_W_GAIN=2.2` vs brightness/low `1.0/0.9`), each
+candidate annotated with a 0-100 `match`. The worker stores `lead_candidates` /
+`rhythm_candidates` (closest first) plus the detected `profile` in
+`params["detected_tones"]`; `/detected-tones` returns them and the tab viewer
+renders the profile bars + two ranked lists, each candidate with its `match %`
+and a "usar" button that loads only that role's tone (Lead/Rhythm replaced
+independently). `suggest_tones` is kept for the legacy one-per-category callers/
+tests. Honesty unchanged: this proposes plausible catalogue matches by
+character, it does NOT identify the real amp.
 
 Honesty note: spectral analysis does NOT identify the actual amp/pedal used in
 the recording — it classifies the *character* of the guitar sound and suggests
