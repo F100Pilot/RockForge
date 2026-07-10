@@ -705,6 +705,13 @@ defects):
   *different* phrases) is NOT emitted. The trustworthy full-DD path stays the
   DLC Builder bundle (it runs a real DDC). Guarded by
   `test_identical_riffs_share_one_phrase`.
+  **A note's `phrase_id` is the linked phrase id, NOT its iteration index.**
+  Once linking makes fewer phrases than iterations, setting a note's `PhraseId`
+  to its phrase-*iteration* index (the pre-linking 1:1 shortcut) runs off the end
+  of the Phrases array — the game dereferences it *while scoring that note* and
+  crashes (a hands-off run never touches it, so it looks fragile/intermittent).
+  `from_arrangement` sets `phrase_id = phrase_iterations[pi_id].phrase_id`.
+  Guarded by `test_note_phrase_id_is_in_bounds_after_linking`.
   A section-less GP is auto-segmented into ~13 s phrases (`_default_sections`) so
   DD still ramps per-phrase, and within a phrase the shown notes are spread across
   its timeline (`_spread_order`) rather than clustered at its start. **DD is

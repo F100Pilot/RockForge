@@ -376,14 +376,17 @@ in-game note-highway glyph/behaviour matches Guitar Pro:
 - **Bends** — a plain bend rises to its peak by the note's end (a visible
   bend-up, NOT an already-bent prebend); a **bend-and-release** rises then falls.
   Byte-matched to a DLC Builder SNG, but confirm the feel in-game.
-- **Chords / octave shapes while scoring** — a gapped 5/7 octave (or any chord)
-  must survive being PLAYED, not just watched. A crash that hits exactly when
-  the player scores a chord — but never on a hands-off run — was the chord
-  template's per-string MIDI `notes` carrying **0 for unused strings instead of
-  -1** (byte-diffed against a DLC Builder build of the same song); the scoring
-  path dereferences those per-string pitches. Fixed; **re-test by playing
-  through the octave section** (Beartooth "Free", after the last solo).
-  Guarded by `test_chord_template_notes_are_real_midi`.
+- **Notes/chords while scoring** — a note must survive being PLAYED, not just
+  watched. A crash that hits exactly when the player scores a note in a late
+  section — but never on a hands-off run — was **the note's `PhraseId` set to
+  its phrase-iteration index instead of the (phrase-linked) phrase id**: once DD
+  phrase-linking makes fewer phrases than iterations, that index runs off the end
+  of the Phrases array and the game crashes reading it during scoring. Happens
+  **with DD on OR off**. Fixed (`phrase_id = phrase_iterations[pi].phrase_id`);
+  guarded by `test_note_phrase_id_is_in_bounds_after_linking`. (A separate,
+  earlier finding on the same octave: chord template unused strings must be MIDI
+  **-1, not 0** — `test_chord_template_notes_are_real_midi`.) **Re-test by
+  playing through the octave section** (Beartooth "Free", after the last solo).
 - **Slide-out** (`slideUnpitchTo`) — a note that slides off into nowhere (GP `9\`)
   shows the unpitched slide tail. ✅ **Confirmed in-game.**
 - **Slide-in / scoop** — a note slid *into* from below/above either gets a short
