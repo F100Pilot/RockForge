@@ -495,9 +495,22 @@ def _section_end_times(sections: list[Section], song_length: float) -> list[floa
 
 
 def _find_phrase_iteration(phrase_iters: list[SngPhraseIteration], time: float) -> int:
+    """Index of the phrase iteration containing ``time``.
+
+    A time BEFORE the first iteration's start (e.g. the silent pad before the
+    COUNT phrase, at the very start of the song) must resolve to the FIRST
+    index, not fall through to the "after everything" fallback below — that
+    wrapped a song-start anchor/beat onto the phrase_iteration_id of the LAST
+    phrase in the song (index len-1, e.g. 26 on a real chart), corrupting the
+    fret-hand anchor box and the beat grid right at the opening notes with a
+    context from the song's ending. Only a time genuinely PAST the last
+    iteration's end falls to that fallback.
+    """
     for i, pi in enumerate(phrase_iters):
         if pi.start_time <= time < pi.end_time:
             return i
+    if phrase_iters and time < phrase_iters[0].start_time:
+        return 0
     return max(0, len(phrase_iters) - 1)
 
 
