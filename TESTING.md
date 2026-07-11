@@ -262,13 +262,16 @@ Pure `web/index.html` changes — no backend/model change, so there's nothing
 for `pytest` to guard here; verify by hand in the browser on a GP job with at
 least Lead + Rhythm.
 
-1. **"Início desta pista"** (panel below the arrangement tabs): on the Lead
-   tab, use the numeric field, "Início = cursor", and the guided "🎯 Detetar 1ª
-   nota (esta pista)" flow to move Lead's first note — confirm Rhythm's chart
-   does NOT move. Switch to the Rhythm tab and confirm ITS panel shows Rhythm's
-   own first-note position (not Lead's), independently adjustable. Confirm the
-   correction rides the normal "Aplicar e reconstruir" (no separate commit
-   button) and survives a rebuild.
+1. **"Passo 1 — Início da música" is per-track (ONE field, not two)** — on the
+   Lead tab, use the numeric field, "Início = cursor", and the guided "🎯
+   Detetar 1ª nota" flow to move Lead's first note — confirm Rhythm's chart
+   does NOT move. Switch to the Rhythm tab and confirm Step 1's field now
+   shows RHYTHM's own first-note position (not Lead's, and not frozen at
+   whatever Lead was set to), independently adjustable. Switch back to Lead
+   and confirm its value is still what was set. Confirm the correction rides
+   the normal "Aplicar e reconstruir" (no separate commit button) and
+   survives a rebuild + reopen. There must be exactly ONE "first note time"
+   control in the sync panel.
 2. **Cursor snap for dragging** — set "Encaixar em:" to "Cursor de reprodução",
    play the recording, drag a note mid-playback — it should land exactly on the
    playhead, not the nearest beat. This is the fix for "arrastar para o cursor
