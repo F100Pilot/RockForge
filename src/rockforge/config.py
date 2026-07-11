@@ -29,6 +29,12 @@ class Settings(BaseSettings):
     # accurate but slower; "small" is a good CPU default. Drop to "base"/"tiny"
     # to trade accuracy for speed.
     whisper_model: str = "small"
+    # ctranslate2 compute type for WhisperX. None = pick by device (int8 on CPU,
+    # float16 on CUDA). On some NVIDIA GPUs (notably Turing / RTX 20-series) the
+    # float16 path crashes natively (Windows exit 0xC0000409) on a cuDNN mismatch;
+    # set "int8_float16" (lower VRAM, more compatible) to try to make the GPU work
+    # instead of falling back to CPU. See ROCKFORGE_WHISPERX_COMPUTE_TYPE.
+    whisperx_compute_type: str | None = None
 
     def lyrics_device(self) -> str:
         return self.whisperx_device or self.demucs_device

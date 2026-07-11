@@ -308,7 +308,10 @@ Mostly `web/index.html`; the two completeness signals (`has_tones`,
    (Detetar tom / Carregar capa / Abrir partitura). Add a tone + a sync anchor +
    a cover, rebuild → those rows flip to ✅ and the banner shrinks/disappears.
    A build with no `.psarc` (no Wwise) shows a ❌ "PSARC não gerado" row. The
-   AppID/letra rows are informational (ⓘ), never counted as alerts.
+   AppID/letra rows are informational (ⓘ), never counted as alerts. The **Letra**
+   row reads `has_lyrics` (edited/GP/LRC lyrics OR completed detection), so a
+   song that already has lyrics from ANY source shows "✅ Letra incluída" — NOT
+   "sem letra" (which used to happen when only `lyrics_status` was checked).
 
 ### 7b. Audio → ML (needs `[ml]`, ideally a GPU)
 
@@ -334,14 +337,24 @@ Mostly `web/index.html`; the two completeness signals (`has_tones`,
    you can see where the lyric wraps on screen. Toggle a row's line-break and
    confirm the marker appears/disappears at that word.
 
-**GPU crash → CPU fallback.** WhisperX runs in a subprocess; on Windows a CUDA
-run can crash natively (e.g. exit `3221226505` / `0xC0000409` from a
-cuDNN/ctranslate2 DLL mismatch) without a Python traceback. The task now
-auto-retries on CPU (the log shows "GPU transcription crashed … retrying on
-CPU"), so detection still completes, just slower. If the CPU run also fails, the
-error carries the subprocess's stderr tail. To use the GPU, the user needs a
-matching CUDA build of torch/ctranslate2 and the cuDNN DLLs on PATH (README
-§2b); otherwise set `ROCKFORGE_WHISPERX_DEVICE=cpu` to skip the GPU attempt.
+**GPU crash → CPU fallback (whole ML stack).** Both Demucs (torch) and WhisperX
+(ctranslate2) can crash natively on GPU (e.g. exit `3221226505` / `0xC0000409`
+from a torch/cuDNN mismatch on Turing / RTX 20-series) without a Python
+traceback. Behaviour to confirm on such a machine:
+- The crashing run still completes — the failing CUDA subprocess auto-retries on
+  CPU (WhisperX log: "GPU … retrying on CPU"; Demucs falls back silently).
+- **After the first crash it stops using the GPU entirely.** A `work_dir/
+  .gpu_ml_broken` marker is written, and `_resolve_device` then downgrades
+  `cuda→cpu` for BOTH Demucs and WhisperX on every later run — so a second song
+  does NOT re-crash on the GPU. Delete the marker to retry the GPU after fixing
+  CUDA/cuDNN. Guarded (no GPU needed) by `test_broken_marker_downgrades_cuda_to_cpu`,
+  `test_cuda_crash_falls_back_to_cpu_and_marks`, `test_legacy_marker_still_honoured`.
+- To actually *use* the RTX 20-series GPU, try
+  `ROCKFORGE_WHISPERX_COMPUTE_TYPE=int8_float16` (lower-VRAM, more cuDNN-tolerant
+  than the default `float16`) — passed through to the runner. It only helps the
+  transcribe model; an alignment-step cuDNN crash still falls back to CPU. Needs
+  a matching CUDA build of torch/ctranslate2 + cuDNN DLLs on PATH (README §2b);
+  or `ROCKFORGE_WHISPERX_DEVICE=cpu` / `ROCKFORGE_DEMUCS_DEVICE=cpu` to force CPU.
 
 ### 7d. Automatic tone detection (needs `[ml]`)
 

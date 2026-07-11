@@ -162,6 +162,10 @@ class JobOut(BaseModel):
     # "confirmaste a sincronização?" reminder. Both GP-only.
     has_tones: bool = False
     sync_edited: bool = False
+    # True if the bundle carries lyrics from ANY source — edited/GP-embedded
+    # events, an LRC/UltraStar file, or completed WhisperX detection — not just
+    # `lyrics_status == "ready"` (which only covers detection).
+    has_lyrics: bool = False
     # The job this one was forked from (rebuild / reload-gp / import-sync). Lets the
     # UI offer "previous version" so an iterative sync can be walked back — the older
     # job (and its bundle) is never deleted on a rebuild.
@@ -388,6 +392,11 @@ def _to_out(job: Job) -> JobOut:
     has_tones = bool(
         params.get("tones") or params.get("tone_base") or params.get("tone_names")
     )
+    has_lyrics = bool(
+        params.get("lyrics_events")
+        or params.get("lrc_text")
+        or params.get("lyrics_status") == "ready"
+    )
     return JobOut(
         id=job.id,
         status=job.status.value,
@@ -415,6 +424,7 @@ def _to_out(job: Job) -> JobOut:
         cover_art=bool(params.get("cover_art")),
         has_tones=has_tones,
         sync_edited=_sync_edited(params),
+        has_lyrics=has_lyrics,
         rebuilt_from=cast("str | None", params.get("rebuilt_from") or None),
     )
 

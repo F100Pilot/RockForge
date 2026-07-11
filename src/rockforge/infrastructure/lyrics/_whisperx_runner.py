@@ -26,6 +26,7 @@ def main() -> None:
     parser.add_argument("--output", required=True)
     parser.add_argument("--model", default="small")
     parser.add_argument("--device", default="cpu")
+    parser.add_argument("--compute-type", default="")  # "" → pick by device
     args = parser.parse_args()
 
     from pathlib import Path
@@ -35,7 +36,9 @@ def main() -> None:
     )
 
     transcriber = WhisperXLyricTranscriber(
-        model_size=args.model, device=args.device
+        model_size=args.model,
+        device=args.device,
+        compute_type=args.compute_type or None,
     )
     events = transcriber.transcribe(Path(args.vocals))
     result = [

@@ -47,14 +47,28 @@ def _build_packager():  # noqa: ANN202 - heavy imports deferred to worker runtim
     )
 
 
-@cache
 def _resolve_device(requested: str) -> str:
     """Resolve a configured device to a concrete one for the ML adapters.
 
     "cpu"/"cuda" pass through unchanged; "auto" picks "cuda" when a usable
-    CUDA GPU (NVIDIA) is present and "cpu" otherwise. The torch import is
-    deferred (worker-only, heavy) and any failure degrades to CPU — so "auto"
-    is always safe even without the ml/lyrics extras installed.
+    CUDA GPU (NVIDIA) is present and "cpu" otherwise. Additionally, once the
+    GPU has been recorded as broken on this machine (a native crash tripped the
+    marker — see _cuda_broken_marker), a resolved "cuda" is downgraded to "cpu"
+    so the whole ML stack (Demucs + WhisperX) stops retrying the flaky GPU.
+    Delete the marker to re-enable the GPU after fixing the CUDA/cuDNN install.
+    """
+    dev = _detect_device(requested)
+    if dev == "cuda" and _cuda_known_broken():
+        return "cpu"
+    return dev
+
+
+@cache
+def _detect_device(requested: str) -> str:
+    """CUDA auto-detection (cached: the torch import + CUDA init are heavy).
+
+    The torch import is deferred (worker-only) and any failure degrades to CPU —
+    so "auto" is always safe even without the ml/lyrics extras installed.
 
     Cached per-process: torch import + CUDA init happen only once, not on
     every job (CUDA init on Windows can take 30–60s the first time).
@@ -71,32 +85,44 @@ def _resolve_device(requested: str) -> str:
     return "cpu"
 
 
-def _whisperx_cuda_marker() -> Path:
-    """Marker file recording that WhisperX's CUDA path crashed on this machine.
+def _cuda_broken_marker() -> Path:
+    """Marker file recording that the GPU ML path crashed on this machine.
 
-    The faster-whisper/ctranslate2 GPU crash (Windows exit 0xC0000409 from a
-    cuDNN DLL mismatch) is a NATIVE crash we can only observe after it happens.
-    Once seen, we persist it here so later detections skip the doomed GPU
-    attempt (and its ~20-30s + scary log line) and run on CPU directly. Delete
-    the file to retry the GPU after fixing the CUDA/cuDNN install.
+    Both Demucs (torch) and WhisperX (faster-whisper/ctranslate2) can die with a
+    NATIVE crash we can only observe after it happens — e.g. the Windows exit
+    0xC0000409 from a torch/cuDNN mismatch on Turing / RTX 20-series cards. Once
+    seen, we persist it here so `_resolve_device` downgrades the WHOLE ML stack
+    (Demucs + WhisperX) to CPU on later runs — no more repeated GPU crashes.
+    Delete the file to retry the GPU after fixing the CUDA/cuDNN install.
     """
-    return settings.work_dir / ".whisperx_cuda_broken"
+    return settings.work_dir / ".gpu_ml_broken"
 
 
-def _whisperx_cuda_known_broken() -> bool:
+def _cuda_known_broken() -> bool:
     try:
-        return _whisperx_cuda_marker().exists()
+        if _cuda_broken_marker().exists():
+            return True
+        # Honour the pre-generalisation marker so existing installs stay degraded.
+        return (settings.work_dir / ".whisperx_cuda_broken").exists()
     except OSError:
         return False
 
 
-def _mark_whisperx_cuda_broken() -> None:
+def _mark_cuda_broken() -> None:
     try:
-        m = _whisperx_cuda_marker()
+        m = _cuda_broken_marker()
         m.parent.mkdir(parents=True, exist_ok=True)
         m.touch()
     except OSError:
         pass
+
+
+def _make_demucs(device: str) -> Any:  # heavy import deferred to worker
+    """DemucsSeparator wired to trip the shared GPU-broken marker on a CUDA
+    crash, so a native GPU failure retries on CPU AND later runs skip the GPU."""
+    from rockforge.infrastructure.separation.demucs_adapter import DemucsSeparator
+
+    return DemucsSeparator(device=device, on_cuda_crash=_mark_cuda_broken)
 
 
 def _build_use_case():  # noqa: ANN202 - heavy imports deferred to worker runtime
@@ -105,7 +131,6 @@ def _build_use_case():  # noqa: ANN202 - heavy imports deferred to worker runtim
     from rockforge.infrastructure.normalize.ffmpeg import FfmpegNormalizer
     from rockforge.infrastructure.rhythm.librosa_adapter import LibrosaRhythmAdapter
     from rockforge.infrastructure.rolesplit.heuristic import HeuristicRoleSplitter
-    from rockforge.infrastructure.separation.demucs_adapter import DemucsSeparator
     from rockforge.infrastructure.transcription.basic_pitch_adapter import BasicPitchTranscriber
 
     rhythm = LibrosaRhythmAdapter()
@@ -114,7 +139,9 @@ def _build_use_case():  # noqa: ANN202 - heavy imports deferred to worker runtim
     from rockforge.infrastructure.lyrics.whisperx_adapter import WhisperXLyricTranscriber
 
     lyric_transcriber = (
-        WhisperXLyricTranscriber(device=device)
+        WhisperXLyricTranscriber(
+            device=device, compute_type=settings.whisperx_compute_type
+        )
         if WhisperXLyricTranscriber.available()
         else None
     )
@@ -129,7 +156,7 @@ def _build_use_case():  # noqa: ANN202 - heavy imports deferred to worker runtim
             lyric_transcriber=lyric_transcriber,
             ingestor=ingestor,
             normalizer=FfmpegNormalizer(),
-            separator=DemucsSeparator(device=device),
+            separator=_make_demucs(device),
             transcriber=BasicPitchTranscriber(),
             beat_tracker=rhythm,
             tuning_estimator=rhythm,
@@ -162,20 +189,17 @@ def _build_stem_separator() -> tuple[Any, str, str]:  # heavy imports deferred t
             device,
             "banquet (separação fina, EM TESTES)",
         )
-    from rockforge.infrastructure.separation.demucs_adapter import DemucsSeparator
-
     device = _resolve_device(settings.demucs_device)
-    return DemucsSeparator(device=device), device, "demucs htdemucs_6s"
+    return _make_demucs(device), device, "demucs htdemucs_6s"
 
 
 def _build_detection(device: str) -> tuple[Any, Any, Any]:  # heavy imports deferred to worker
     from rockforge.infrastructure.lyrics.whisperx_adapter import WhisperXLyricTranscriber
     from rockforge.infrastructure.normalize.ffmpeg import FfmpegNormalizer
-    from rockforge.infrastructure.separation.demucs_adapter import DemucsSeparator
 
     return (
         FfmpegNormalizer(),
-        DemucsSeparator(device=device),
+        _make_demucs(device),
         WhisperXLyricTranscriber,
     )
 
@@ -488,6 +512,7 @@ def detect_lyrics(job_id: str) -> None:
                             "--output", str(events_json),
                             "--model", settings.whisper_model,
                             "--device", dev,
+                            "--compute-type", settings.whisperx_compute_type or "",
                         ],
                         capture_output=True, text=True,
                         stdin=_sp.DEVNULL, timeout=WHISPERX_TIMEOUT_S,
@@ -496,14 +521,15 @@ def detect_lyrics(job_id: str) -> None:
                 run_device = device
                 # If the GPU already crashed on this machine once, skip the
                 # doomed attempt (and its ~20-30s + scary log line) entirely.
-                if run_device == "cuda" and _whisperx_cuda_known_broken():
+                # (device is usually already "cpu" here — _resolve_device honours
+                # the same marker — but keep this as a belt-and-suspenders guard.)
+                if run_device == "cuda" and _cuda_known_broken():
                     run_device = "cpu"
                     _log_lyrics_stage(
                         params,
-                        "GPU transcription crashed on a previous run on this "
-                        "machine — using CPU directly (delete "
-                        f"{_whisperx_cuda_marker().name} in the work dir to retry "
-                        "the GPU after fixing cuDNN/ctranslate2).",
+                        "GPU crashed on a previous run on this machine — using CPU "
+                        f"directly (delete {_cuda_broken_marker().name} in the work "
+                        "dir to retry the GPU after fixing cuDNN/ctranslate2).",
                     )
                     _commit_params()
 
@@ -513,7 +539,7 @@ def detect_lyrics(job_id: str) -> None:
                 # Fall back to CPU so detection still works, just slower — and
                 # remember the crash so the next detection skips the GPU attempt.
                 if proc.returncode != 0 and run_device == "cuda":
-                    _mark_whisperx_cuda_broken()
+                    _mark_cuda_broken()
                     _log_lyrics_stage(
                         params,
                         f"GPU transcription crashed (exit {proc.returncode}) — "
@@ -581,10 +607,9 @@ def detect_tones(job_id: str) -> None:
             device = _resolve_device(settings.demucs_device)
 
             from rockforge.infrastructure.normalize.ffmpeg import FfmpegNormalizer
-            from rockforge.infrastructure.separation.demucs_adapter import DemucsSeparator
 
             normalizer = FfmpegNormalizer()
-            separator = DemucsSeparator(device=device)
+            separator = _make_demucs(device)
 
             workdir = settings.work_dir / job.id / "tone_detection"
             workdir.mkdir(parents=True, exist_ok=True)

@@ -122,3 +122,63 @@ def test_missing_vocals_output_raises(monkeypatch, tmp_path) -> None:
     audio.write_bytes(b"")
     with pytest.raises(SeparationError):
         DemucsSeparator().separate_vocals(audio, tmp_path)
+
+
+def test_cuda_crash_falls_back_to_cpu_and_marks(monkeypatch, tmp_path) -> None:
+    """A CUDA run that crashes (native exit) retries on CPU, produces the stem,
+    and fires on_cuda_crash once — mirroring the WhisperX GPU→CPU fallback."""
+    import subprocess as sp
+
+    captured: list[list[str]] = []
+    crashed: list[bool] = []
+
+    def runner(cmd, **kwargs):  # noqa: ANN001, ANN202
+        captured.append(cmd)
+        dev = cmd[cmd.index("-d") + 1]
+        if dev == "cuda":
+            raise sp.CalledProcessError(returncode=3221226505, cmd=cmd, stderr="cuDNN boom")
+        # CPU attempt succeeds — write the expected output.
+        out_dir = Path(cmd[cmd.index("-o") + 1])
+        model = cmd[cmd.index("-n") + 1]
+        target = out_dir / model / Path(cmd[-1]).stem
+        target.mkdir(parents=True, exist_ok=True)
+        (target / "vocals.wav").write_bytes(b"")
+
+        class _Done:
+            stderr = ""
+
+        return _Done()
+
+    monkeypatch.setattr(demucs_adapter.subprocess, "run", runner)
+    audio = tmp_path / "song.wav"
+    audio.write_bytes(b"")
+
+    out = DemucsSeparator(
+        device="cuda", on_cuda_crash=lambda: crashed.append(True)
+    ).separate_vocals(audio, tmp_path)
+
+    assert out.name == "vocals.wav"          # separation still completed
+    assert crashed == [True]                 # marker callback fired exactly once
+    devices = [c[c.index("-d") + 1] for c in captured]
+    assert devices == ["cuda", "cpu"]        # tried GPU, then fell back to CPU
+
+
+def test_cpu_crash_does_not_retry(monkeypatch, tmp_path) -> None:
+    """A CPU run that fails is a real error — no pointless second attempt."""
+    import subprocess as sp
+
+    from rockforge.domain.errors import SeparationError
+
+    captured: list[list[str]] = []
+
+    def runner(cmd, **kwargs):  # noqa: ANN001, ANN202
+        captured.append(cmd)
+        raise sp.CalledProcessError(returncode=1, cmd=cmd, stderr="boom")
+
+    monkeypatch.setattr(demucs_adapter.subprocess, "run", runner)
+    audio = tmp_path / "song.wav"
+    audio.write_bytes(b"")
+
+    with pytest.raises(SeparationError):
+        DemucsSeparator(device="cpu").separate_vocals(audio, tmp_path)
+    assert len(captured) == 1  # no retry on a CPU failure

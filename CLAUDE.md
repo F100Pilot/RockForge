@@ -396,25 +396,41 @@ The CUDA warm-up probe was removed entirely (two concurrent `cuInit()` calls —
 warm-up thread vs first task — can deadlock on Windows); the first task pays the
 one-time 30-60s CUDA init cost, and `@cache` avoids repeating it.
 
-**GPU crash → CPU fallback.** The WhisperX subprocess can crash natively on
-Windows GPU (e.g. exit `3221226505`/`0xC0000409` from a cuDNN/ctranslate2 DLL
-mismatch) with no Python traceback. `detect_lyrics` runs the runner via a local
-`_run_whisperx(dev)` helper: if a `cuda` run returns non-zero it logs the crash
-and retries on `cpu` (slower but works); a final failure raises with the
-subprocess's stderr tail so the real cause is visible (the bare
-`CalledProcessError` exit code was useless). Don't restore `check=True` — it
-hides the stderr and prevents the fallback. Because the crash is a *native*
-one we can only observe after it happens, the first crash also drops a
-`work_dir/.whisperx_cuda_broken` marker (`_mark_whisperx_cuda_broken`); every
-later detection checks it (`_whisperx_cuda_known_broken`) and skips straight to
-CPU, so the user pays the ~20-30s doomed GPU attempt + scary log line only
-ONCE, not on every song. Delete the marker to retry the GPU after fixing the
-CUDA/cuDNN install.
+**GPU crash → CPU fallback (WHOLE ML stack, not just WhisperX).** Both Demucs
+(torch) and WhisperX (faster-whisper/ctranslate2) can crash natively on GPU
+(e.g. exit `3221226505`/`0xC0000409` from a torch/cuDNN mismatch on Turing /
+RTX 20-series cards) with no Python traceback. Two layers handle it:
+- **In-run fallback.** Each GPU subprocess retries on CPU when a CUDA run
+  crashes: `detect_lyrics`'s `_run_whisperx(dev)` (non-zero `cuda` exit →
+  retry `cpu`, final failure raises with the stderr tail — don't restore
+  `check=True`, it hides the stderr and kills the fallback), and
+  `DemucsSeparator._run` (a `CalledProcessError` on a `cuda` device retries the
+  same command on `cpu`; a *timeout* does NOT retry — no burning another 30 min).
+  So the crashing run still completes.
+- **Persisted marker degrades the whole stack.** The first crash drops a
+  `work_dir/.gpu_ml_broken` marker (`_mark_cuda_broken`, wired into Demucs via
+  `on_cuda_crash` in `_make_demucs` AND into the WhisperX fallback).
+  `_resolve_device` consults it (`_cuda_known_broken`) and downgrades a resolved
+  `cuda` to `cpu` — for **Demucs AND WhisperX**, in every task and the main
+  build — so after ONE crash the flaky GPU is skipped everywhere instead of
+  re-crashing each song. The legacy `.whisperx_cuda_broken` filename is still
+  honoured so existing installs stay degraded. Delete the marker to retry the
+  GPU after fixing the CUDA/cuDNN install.
+
+**Making the GPU actually work (`ROCKFORGE_WHISPERX_COMPUTE_TYPE`).** The
+float16 ctranslate2 path is the usual trigger of the Turing/cuDNN crash. The
+compute type is configurable (`settings.whisperx_compute_type`, passed to the
+runner via `--compute-type` and to the adapter): unset picks by device (`int8`
+CPU / `float16` CUDA); set `int8_float16` (lower VRAM, more compatible) to try
+to keep the GPU instead of falling back to CPU. Note it only affects the
+transcribe model — a torch-side cuDNN crash in the wav2vec2 *alignment* step is
+unaffected, in which case the CPU fallback is the answer.
 
 **Device selection (`_resolve_device`).** `demucs_device` defaults to `"auto"`:
-`celery_app._resolve_device` (deferred torch import, worker-only) returns
+`_detect_device` (deferred torch import, worker-only, `@cache`d) returns
 `"cuda"` when `torch.cuda.is_available()` and `"cpu"` otherwise; explicit
-`"cpu"`/`"cuda"` pass through. Any import/CUDA failure degrades to CPU, so
+`"cpu"`/`"cuda"` pass through — then `_resolve_device` downgrades any resolved
+`"cuda"` to `"cpu"` when the GPU-broken marker is set. Any import/CUDA failure degrades to CPU, so
 `"auto"` is safe even without the ml/lyrics extras. Resolution happens *before*
 the adapters are built (the WhisperX adapter keys `compute_type` off the
 concrete device — `float16` on cuda, `int8` on cpu — so it must never see the
@@ -470,7 +486,11 @@ jump-button to the right editor (`COMPLETE_ACTIONS`). Rows + alerts:
 - ✅/⚠️ **Sincronização** ← `sync_edited` (new field; `_sync_edited(params)`:
   offset moved off 0, tempo scaled, or any drift anchor job-level/per-arrangement)
   — a **soft** "confirmaste a sincronização?" reminder, not a hard "desalinhado".
-- ⓘ **Letra** ← `lyrics_status` (informational, never an alert).
+- ⓘ **Letra** ← `has_lyrics` (informational, never an alert). NOTE: read
+  `has_lyrics` (new field: edited `lyrics_events` OR `lrc_text` OR
+  `lyrics_status == "ready"`), NOT `lyrics_status` alone — GP-embedded / LRC /
+  edited lyrics never set `lyrics_status="ready"` (that's WhisperX-detection
+  only), so keying off it made a song WITH lyrics read "sem letra".
 - ⓘ **AppID/propriedade** — informational: the `.psarc` reuses a specific DLC's
   appid the player must own (the #1 "não aparece no jogo" cause, otherwise
   invisible in the UI).
@@ -478,8 +498,9 @@ jump-button to the right editor (`COMPLETE_ACTIONS`). Rows + alerts:
 When any warn/err row exists, an amber banner over the downloads summarizes
 what's missing. Nothing is blocked (honesty principle) — the user can still
 download, but won't silently ship a tone-less/cover-less/unsynced PSARC.
-`has_tones`/`sync_edited` guarded by `test_completeness_fields_reflect_job_state`
-/ `test_sync_edited_true_from_anchor_only`.
+`has_tones`/`sync_edited`/`has_lyrics` guarded by
+`test_completeness_fields_reflect_job_state` /
+`test_sync_edited_true_from_anchor_only` / `test_has_lyrics_true_from_edited_events`.
 
 ### Album cover art
 
