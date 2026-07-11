@@ -325,6 +325,11 @@ class SettingsOut(BaseModel):
     # -stack CPU fallback). The UI shows this + a "reactivate GPU" button so the
     # user doesn't have to hunt for the hidden marker file.
     gpu_broken: bool = False
+    # ctranslate2 compute type for WhisperX ("" = pick by device). May be a
+    # manual choice or auto-persisted by the GPU escalation ladder when a
+    # non-default type is found to work — editable here so the user isn't stuck
+    # setting/clearing the ROCKFORGE_WHISPERX_COMPUTE_TYPE env var by hand.
+    whisperx_compute_type: str = ""
 
 
 class SettingsIn(BaseModel):
@@ -333,6 +338,9 @@ class SettingsIn(BaseModel):
     banquet_ckpt: str | None = None
     banquet_queries: str | None = None
     loudness_target: float | None = None
+    # "" clears the override (falls back to ROCKFORGE_WHISPERX_COMPUTE_TYPE / by
+    # device); None leaves it untouched.
+    whisperx_compute_type: str | None = None
 
 
 class LyricsOut(BaseModel):
@@ -1446,6 +1454,7 @@ def _settings_out() -> SettingsOut:
         banquet=runtime_settings.banquet_validation(),
         loudness_target=runtime_settings.loudness_target(),
         gpu_broken=_cuda_known_broken(),
+        whisperx_compute_type=runtime_settings.whisperx_compute_type(),
     )
 
 
@@ -1467,7 +1476,10 @@ def update_settings(body: SettingsIn) -> SettingsOut:
     if body.stem_separator not in (None, "", "demucs", "banquet"):
         raise HTTPException(422, "stem_separator must be 'demucs' or 'banquet'")
     updates = dict(runtime_settings.load())
-    for key in ("stem_separator", "banquet_repo", "banquet_ckpt", "banquet_queries"):
+    for key in (
+        "stem_separator", "banquet_repo", "banquet_ckpt", "banquet_queries",
+        "whisperx_compute_type",
+    ):
         val = getattr(body, key)
         if val is not None:
             updates[key] = val.strip() if isinstance(val, str) else val
