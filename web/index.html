@@ -202,6 +202,12 @@
   .modal-close:hover { color:var(--text); background:#2a2c35; }
   .modal h2 { margin-top:0; }
   .modal-actions { display:flex; justify-content:flex-end; gap:.5rem; margin-top:1rem; }
+  /* Bar-align popup: a small floating card anchored at the clicked note */
+  #barAlignPopup { position:fixed; z-index:70; background:var(--panel-2); border:1px solid var(--accent);
+    border-radius:10px; box-shadow:var(--shadow); padding:.6rem .7rem; min-width:190px; font-size:.85rem; }
+  #barAlignPopup[hidden] { display:none; }
+  #barAlignPopup .ba-title { font-weight:700; margin-bottom:.45rem; color:var(--accent); }
+  #barAlignPopup .ba-row { display:flex; align-items:center; gap:.4rem; flex-wrap:wrap; }
   /* Creation wizard stepper */
   .wizard-steps { display:flex; align-items:center; gap:.3rem; margin:.9rem 0 .2rem; }
   .wz-dot { display:flex; flex-direction:column; align-items:center; gap:.15rem; opacity:.45; transition:opacity .15s; }
@@ -593,6 +599,8 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
             data-tip="Mover seguintes: pausa a gravação no instante certo e clica na 1ª nota desalinhada — essa nota e TODAS as seguintes deslocam-se em bloco para o cursor. Para um trecho inteiro que entrou tarde/cedo.">⏩</button>
           <button type="button" id="modeBeat" class="secondary mode-btn tip" aria-label="Novo beat"
             data-tip="Novo beat (detetar): clica na nota onde a música muda de andamento (ex.: o compasso 64). Mede o BPM da gravação daí em diante e re-espaça só as notas seguintes ao novo tempo. Nada antes do clique se mexe.">⏱️</button>
+          <button type="button" id="modeBarAlign" class="secondary mode-btn tip" aria-label="Alinhar compasso"
+            data-tip="Alinhar por compasso: pausa a gravação no instante certo e clica numa nota — abre um popup com o número do compasso (o da nota, já escolhido). Confirma e esse compasso alinha-se ao cursor (ou ao mesmo compasso de outra pista), arrastando as notas seguintes. Ideal para várias correções ao longo da música.">📏</button>
           <button type="button" id="modeTone" class="secondary mode-btn tip" aria-label="Mudança de tom"
             data-tip="Mudança de tom: clica numa nota para trocar para um dos tons extra (amp/efeito) a partir daí. Nada a ver com sincronização — é para as mudanças de som ao longo da música.">🎸</button>
           <button class="info-btn" data-info="sync-modes">ⓘ</button>
@@ -947,6 +955,23 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
   </div>
 </div>
 
+<!-- Bar-align popup (floating, positioned at the clicked note) -->
+<div id="barAlignPopup" hidden>
+  <div class="ba-title">Alinhar ao compasso</div>
+  <label class="ba-row">Compasso:
+    <select id="baBar" style="width:auto"></select></label>
+  <div class="ba-row" style="margin-top:.4rem">
+    <button type="button" id="baToCursor" class="secondary">= cursor</button>
+    <span id="baRefWrap" style="display:none">
+      <select id="baRefArr" style="width:auto"></select>
+      <button type="button" id="baToRef" class="secondary">= pista</button>
+    </span>
+  </div>
+  <div class="ba-row" style="margin-top:.4rem;justify-content:flex-end">
+    <button type="button" id="baCancel" class="secondary">Fechar</button>
+  </div>
+</div>
+
 <div class="toast-container" id="toasts"></div>
 
 <script>
@@ -1290,7 +1315,8 @@ const INFO = {
 <p><strong>Marcar no cursor:</strong> clica numa nota para a ancorar na posição atual do cursor de reprodução — útil para alinhar enquanto o áudio toca.</p>
 <p><strong>Selecionar excerto:</strong> arrasta uma caixa sobre as notas e depois arrasta uma delas — o excerto move-se em bloco (também com encaixe nos beats).</p>
 <p><strong>Mover seguintes:</strong> pausa o áudio no instante certo e clica na nota deslocada — essa nota e todas as seguintes deslocam-se em bloco para o cursor.</p>
-<p><strong>Novo beat (detetar):</strong> clica numa nota onde o andamento muda — o RockForge mede o andamento da gravação a partir desse instante e re-espaça as notas seguintes.</p>`
+<p><strong>Novo beat (detetar):</strong> clica numa nota onde o andamento muda — o RockForge mede o andamento da gravação a partir desse instante e re-espaça as notas seguintes.</p>
+<p><strong>Alinhar por compasso (📏):</strong> pausa a gravação onde um compasso deve soar e clica numa nota — abre um popup com o número do compasso (o da nota, já escolhido). Confirma com "= cursor" e esse compasso alinha-se ao cursor, arrastando as notas seguintes; ou "= pista" para o alinhar ao mesmo compasso de outra pista já sincronizada. Feito várias vezes ao longo da música, corrige o desvio compasso a compasso.</p>`
   },
   'lyrics': {
     title: 'Deteção automática de letra',
@@ -2122,6 +2148,27 @@ function updateBarSyncPanel() {
   if (others.some(o => String(o.i) === prevRef)) refSel.value = prevRef;
 }
 
+// Pin a bar's downbeat of the current arrangement to `target` (a bundle-time
+// display position) via a single anchor — the shared primitive behind BOTH the
+// "Sincronizar por compasso" panel AND the click-a-note bar-align popup. The
+// anchor origin is the UNwarped previewScale time (the warp's domain, same as
+// 'drag'/setTrackStart). Multiple such pins compose into a piecewise drift
+// correction. Returns false if the bar doesn't exist.
+function alignBarTo(measure, target) {
+  const chartT = barChartTime(currentArr, measure);
+  if (chartT == null) return false;
+  setAnchor(previewScale(chartT), target);
+  renderAnchorsList();
+  updatePendingChangesInfo();
+  showArr(currentArr);
+  return true;
+}
+// Target display time = another arrangement's SAME bar, at its own live sync.
+function refBarTarget(refIdx, measure) {
+  const refChartT = barChartTime(refIdx, measure);
+  return refChartT == null ? null : arrangementDisplayTime(refIdx, refChartT);
+}
+
 (function wireBarSync() {
   const barSel = document.getElementById('barSyncBar');
   const fromCursor = document.getElementById('barSyncFromCursor');
@@ -2133,13 +2180,7 @@ function updateBarSyncPanel() {
   fromCursor.addEventListener('click', () => {
     if (!isGpJob()) return;
     const measure = parseInt(barSel.value, 10);
-    const chartT = barChartTime(currentArr, measure);
-    if (chartT == null) { toast('compasso não encontrado', 'err'); return; }
-    const origT = previewScale(chartT);  // unwarped — matches 'drag'/setTrackStart's convention
-    setAnchor(origT, currentPlayheadT + viewOrigin);
-    renderAnchorsList();
-    updatePendingChangesInfo();
-    showArr(currentArr);
+    if (!alignBarTo(measure, currentPlayheadT + viewOrigin)) { toast('compasso não encontrado', 'err'); return; }
     info.textContent = `Compasso ${measure} alinhado com o cursor (${currentPlayheadT.toFixed(2)}s).`;
     toast(`Compasso ${measure} alinhado com o cursor`, 'ok');
   });
@@ -2149,21 +2190,70 @@ function updateBarSyncPanel() {
     const measure = parseInt(barSel.value, 10);
     const refIdx = parseInt(refSel.value, 10);
     if (isNaN(refIdx) || !arrangements[refIdx]) { toast('escolhe uma pista de referência', 'err'); return; }
-    const chartT = barChartTime(currentArr, measure);
-    const refChartT = barChartTime(refIdx, measure);
-    if (chartT == null || refChartT == null) {
-      toast(`compasso ${measure} não existe nas duas pistas`, 'err');
-      return;
+    const target = refBarTarget(refIdx, measure);
+    if (target == null || !alignBarTo(measure, target)) {
+      toast(`compasso ${measure} não existe nas duas pistas`, 'err'); return;
     }
-    const target = arrangementDisplayTime(refIdx, refChartT);  // ref track's OWN sync state
-    const origT = previewScale(chartT);
-    setAnchor(origT, target);
-    renderAnchorsList();
-    updatePendingChangesInfo();
-    showArr(currentArr);
     const refKind = arrangements[refIdx].kind;
     info.textContent = `Compasso ${measure} alinhado com o compasso ${measure} de ${refKind} (${(target - viewOrigin).toFixed(2)}s).`;
     toast(`Compasso ${measure} sincronizado com ${refKind}`, 'ok');
+  });
+})();
+
+// ---- Click-a-note bar-align popup ('baralign' mode) ----
+// A faster entry to alignBarTo for doing MANY corrections: click a note, a
+// small floating popup opens with the bar numbers (the note's own bar
+// pre-selected); confirm "= cursor" (or "= pista") and that bar snaps to the
+// cursor / the reference track, dragging the following notes into place.
+function openBarAlignPopup(chartT, clientX, clientY) {
+  const a = arrangements[currentArr];
+  if (!a || !(a.bars && a.bars.length)) { toast('sem compassos nesta pista', 'err'); return; }
+  const pop = document.getElementById('barAlignPopup');
+  const barSel = document.getElementById('baBar');
+  barSel.innerHTML = a.bars.map(b => `<option value="${b.measure}">Compasso ${b.measure}</option>`).join('');
+  const containing = [...a.bars].filter(b => b.time <= chartT + 1e-6).pop();
+  if (containing) barSel.value = String(containing.measure);
+  const others = arrangements.map((x, i) => ({ x, i })).filter(o => o.i !== currentArr);
+  document.getElementById('baRefWrap').style.display = others.length ? '' : 'none';
+  document.getElementById('baRefArr').innerHTML =
+    others.map(o => `<option value="${o.i}">${esc(o.x.kind)}</option>`).join('');
+  pop.hidden = false;
+  // Position near the click, clamped to the viewport.
+  const w = pop.offsetWidth, h = pop.offsetHeight;
+  let x = clientX + 10, y = clientY + 10;
+  if (x + w > window.innerWidth - 8) x = clientX - w - 10;
+  if (y + h > window.innerHeight - 8) y = window.innerHeight - h - 8;
+  pop.style.left = Math.max(8, x) + 'px';
+  pop.style.top = Math.max(8, y) + 'px';
+}
+function closeBarAlignPopup() { document.getElementById('barAlignPopup').hidden = true; }
+
+(function wireBarAlignPopup() {
+  const pop = document.getElementById('barAlignPopup');
+  if (!pop) return;
+  document.getElementById('baCancel').addEventListener('click', closeBarAlignPopup);
+  document.getElementById('baToCursor').addEventListener('click', () => {
+    const m = parseInt(document.getElementById('baBar').value, 10);
+    if (alignBarTo(m, currentPlayheadT + viewOrigin)) {
+      toast(`Compasso ${m} alinhado ao cursor`, 'ok');
+      closeBarAlignPopup();
+    }
+  });
+  document.getElementById('baToRef').addEventListener('click', () => {
+    const m = parseInt(document.getElementById('baBar').value, 10);
+    const refIdx = parseInt(document.getElementById('baRefArr').value, 10);
+    const target = refBarTarget(refIdx, m);
+    if (target == null) { toast(`compasso ${m} não existe nessa pista`, 'err'); return; }
+    if (alignBarTo(m, target)) {
+      toast(`Compasso ${m} alinhado a ${arrangements[refIdx].kind}`, 'ok');
+      closeBarAlignPopup();
+    }
+  });
+  // Dismiss on Escape or a click that's neither the popup nor a note (a note
+  // click reopens/repositions it via the SVG handler).
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeBarAlignPopup(); });
+  document.addEventListener('pointerdown', e => {
+    if (!pop.hidden && !pop.contains(e.target) && !e.target.closest('.note-grp')) closeBarAlignPopup();
   });
 })();
 
@@ -3491,6 +3581,12 @@ function updateSelectionInfo() {
       reTempoFromHere(grp);
       return;
     }
+    // Align-by-bar: click a note → popup with bar numbers (the note's bar
+    // pre-selected) → align that bar to the cursor (or another track's same bar).
+    if (syncMode === 'baralign' && grp) {
+      openBarAlignPopup(parseFloat(grp.dataset.t), e.clientX, e.clientY);
+      return;
+    }
     // Tone change: click a note to switch to one of the extra tones from there.
     if (syncMode === 'tonechange' && grp) {
       placeToneChange(parseFloat(grp.dataset.t));
@@ -3663,6 +3759,7 @@ const SYNC_MODE_BUTTONS = [
   ['modeExcerto', 'excerpt'],
   ['modeMover', 'movefrom'],
   ['modeBeat', 'newbeat'],
+  ['modeBarAlign', 'baralign'],
   ['modeTone', 'tonechange'],
 ];
 const MODE_HELP = {
@@ -3671,6 +3768,7 @@ const MODE_HELP = {
   excerpt: '<b>Excerto:</b> arrasta uma caixa por cima de várias notas e depois arrasta uma delas — movem-se todas em bloco. (Alternativa: Shift+clique numa nota e noutra para selecionar o intervalo.)',
   movefrom: '<b>Mover seguintes:</b> pausa a gravação no instante certo e clica na 1ª nota desalinhada — essa nota e TODAS as seguintes deslocam-se em bloco para o cursor. Para um trecho inteiro que entrou tarde/cedo.',
   newbeat: '<b>Novo beat (detetar):</b> clica na nota onde a música muda de andamento (ex.: o compasso 64). Mede o BPM da gravação daí em diante e re-espaça só as notas seguintes ao novo tempo. Nada antes do clique se mexe.',
+  baralign: '<b>Alinhar por compasso:</b> pausa a gravação no instante certo e clica numa nota — abre um popup com o compasso da nota já escolhido. Confirma com "= cursor" e esse compasso alinha-se ao cursor (ou "= pista" para o mesmo compasso de outra pista). Faz-se várias vezes ao longo da música; cada correção arrasta as notas seguintes.',
   tonechange: '<b>Mudança de tom:</b> clica numa nota para trocar para um dos tons extra a partir daí.',
   null: 'Nenhum modo ativo. Clica num modo acima. <b>Dica:</b> para um desvio uniforme em todo o trecho, usa antes o <b>Andamento (BPM)</b> — não precisa de âncoras.',
 };
