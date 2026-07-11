@@ -41,7 +41,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from rockforge.domain.arrangement import Arrangement, Section
-from rockforge.domain.music import TabNote, Technique
+from rockforge.domain.music import TabNote, Technique, high_density_flags
 from rockforge.infrastructure.rsxml.vocals import VOCAL_NOTE, VocalEvent
 
 # The vocals SNG's Symbols sections (SymbolsHeader/Texture/Definition) are the
@@ -978,6 +978,7 @@ def from_arrangement(
         ))
 
     # Chord notes
+    hd_flags = high_density_flags(chord_groups)
     for gi, g in enumerate(chord_groups):
         key = _chord_template_key(g)
         chord_id = template_ids[key]
@@ -994,6 +995,10 @@ def from_arrangement(
                 mask |= TECHNIQUE_TO_MASK.get(tech, 0)
         if any(n.sustain > 0 for n in g):
             mask |= NOTE_MASK_SUSTAIN
+        # A repeated identical chord renders condensed; without this the full
+        # chord boxes of a fast chug stack into a corrupt highway sprite.
+        if hd_flags[gi]:
+            mask |= NOTE_MASK_HIGHDENSITY
         mask |= NOTE_MASK_STRUM
         a_fret, a_width = _find_anchor(g[0].time)
         pi_id = _find_phrase_iteration(phrase_iterations, g[0].time)
