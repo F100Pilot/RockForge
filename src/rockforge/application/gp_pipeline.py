@@ -57,19 +57,32 @@ from rockforge.infrastructure.rsxml.vocals import (
 MIN_LEAD_S = 2.0
 
 
-def suggest_tempo_scale(gp_bpm: float, detected_bpm: float) -> float:
-    """Octave-corrected tempo_scale aligning the GP tempo to a detected one.
+# Metrical ratios a beat tracker confuses the true pulse with — not just the
+# octave (½/2) but also the triplet / compound-meter grid (⅓, ⅔, 3/2, 3). A
+# GP file whose recording is the SAME song has a true tempo ratio near 1, so a
+# detected tempo that lands 50% high (3/2) or a third off is almost always one
+# of these grid confusions, NOT a real tempo difference. Including them lets the
+# suggestion snap back to ~1.0 instead of proposing a bogus ×1.5 scale.
+_TEMPO_METRICAL_FACTORS = (1 / 4, 1 / 3, 1 / 2, 2 / 3, 1.0, 3 / 2, 2.0, 3.0, 4.0)
 
-    Beat trackers routinely report a tempo an octave off (half/double); since the
-    GP file and the recording are the same song, the true ratio is near 1, so we
-    pick the octave of ``detected_bpm`` whose resulting scale sits closest to 1.0.
+
+def suggest_tempo_scale(gp_bpm: float, detected_bpm: float) -> float:
+    """Metrically-corrected tempo_scale aligning the GP tempo to a detected one.
+
+    Beat trackers routinely report a tempo at the wrong metrical level — an
+    octave off (half/double) or on the triplet/compound grid (e.g. 1.5× the true
+    pulse). Since the GP file and the recording are the same song, the true ratio
+    is near 1, so we pick the metrical multiple of ``detected_bpm``
+    (``_TEMPO_METRICAL_FACTORS``) whose resulting scale sits closest to 1.0 —
+    fixing the "auto-sync jumps the BPM ~50%" case where only ½/1/2 were tried
+    and a 3/2 detection had no nearby octave to snap to.
     ``tempo_scale = gp_bpm / effective_recording_bpm`` because the GP timeline is
     stretched/compressed to the recording's tempo (parser scales the effective BPM
     inversely). Used both for whole-song sync and for a local re-tempo from a point.
     """
     if gp_bpm <= 0 or detected_bpm <= 0:
         raise IngestionError("gp_bpm and detected_bpm must be positive to suggest a tempo")
-    candidates = [detected_bpm * f for f in (0.5, 1.0, 2.0)]
+    candidates = [detected_bpm * f for f in _TEMPO_METRICAL_FACTORS]
     best = min(candidates, key=lambda b: abs((gp_bpm / b) - 1.0))
     return gp_bpm / best
 

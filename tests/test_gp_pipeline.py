@@ -322,6 +322,19 @@ def test_suggest_tempo_scale_octave_corrects() -> None:
     assert suggest_tempo_scale(120.0, 100.0) == pytest.approx(1.2)
 
 
+def test_suggest_tempo_scale_triplet_grid_does_not_jump_bpm() -> None:
+    # The reported "auto-sync jumps the BPM ~50%" bug: a beat tracker on a
+    # triplet/compound feel reports 1.5× the true pulse. With only ½/1/2 octaves
+    # the nearest candidate gave tempo_scale ~1.33/1.5; the triplet grid (2/3,
+    # 3/2) must snap it back to ~1 instead.
+    from rockforge.application.gp_pipeline import suggest_tempo_scale
+
+    assert suggest_tempo_scale(120.0, 180.0) == pytest.approx(1.0)  # 120 / (180 * 2/3)
+    assert suggest_tempo_scale(120.0, 80.0) == pytest.approx(1.0)   # 120 / (80 * 3/2)
+    # A small, genuine tempo difference is still preserved (not over-snapped).
+    assert suggest_tempo_scale(120.0, 126.0) == pytest.approx(120.0 / 126.0)
+
+
 def test_suggest_sync_scales_to_recording_tempo() -> None:
     # Recording is genuinely slower than the GP file (100 vs 90): stretch the
     # chart (tempo_scale > 1) so its effective BPM matches the recording.

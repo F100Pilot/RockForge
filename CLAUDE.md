@@ -96,9 +96,13 @@ clean up residual non-linear drift.
 first onset with librosa (`detect_tempo_and_onset`, ml extra) and combines them
 with the GP file's authored tempo via the pure `suggest_sync(gp_bpm,
 detected_bpm, first_onset_s)` (in `gp_pipeline.py`) into a proposed
-`(tempo_scale, offset_s)`. Beat trackers report octave-off tempos, so
-`suggest_sync` picks the octave of `detected_bpm` whose `tempo_scale` lands
-closest to 1.0 (same song → ratio near unity). The endpoint **returns the
+`(tempo_scale, offset_s)`. Beat trackers report the tempo at the wrong metrical
+level, so `suggest_sync` picks the multiple of `detected_bpm` from
+`_TEMPO_METRICAL_FACTORS` — not just the octave (½/2) but the triplet/compound
+grid (⅓, ⅔, 3/2, 3) — whose `tempo_scale` lands closest to 1.0 (same song →
+ratio near unity). Including the triplet grid fixes the "auto-sync jumps the BPM
+~50%" case: a 3/2 detection had no nearby octave to snap to, so the old ½/1/2
+set proposed a bogus ×1.5. The endpoint **returns the
 proposal only** — the tab viewer loads it into the live preview so the user
 confirms over the waveform and commits via the normal rebuild; nothing is
 silently applied (honesty principle). Detection is a module-level function so
