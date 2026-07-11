@@ -34,7 +34,7 @@ from rockforge.domain.arrangement import (
     ToneChange,
 )
 from rockforge.domain.errors import IngestionError
-from rockforge.domain.music import TabNote, Technique, Tuning
+from rockforge.domain.music import TabNote, Technique, Tuning, apply_sustain_gap
 from rockforge.domain.tone import Tone
 from rockforge.infrastructure.gpimport.parser import (
     GpSection,
@@ -276,10 +276,19 @@ def _strip_mute_techniques(p: ParsedGpTrack) -> ParsedGpTrack:
 
 
 def _warp_parsed_track(p: ParsedGpTrack, warp: Callable[[float], float]) -> ParsedGpTrack:
-    """Apply a time remap to every timestamp of a parsed track (notes, beats, sections, lyrics)."""
+    """Apply a time remap to every timestamp of a parsed track (notes, beats, sections, lyrics).
+
+    A sync correction can locally stretch the timeline (a chart interval mapped
+    to a wider corrected interval): a note's warped sustain scales by that same
+    local factor, which can re-inflate — or even exceed — a sustain that
+    ``apply_sustain_gap`` already trimmed to a small gap at parse time (the
+    "tall sustain pillars"/fused chord boxes bug, first fixed for the un-warped
+    timeline in 4147d89). Re-applying the gap AFTER warping restores the
+    invariant regardless of what the correction did to the local tempo.
+    """
     from rockforge.domain.music import Beat, TempoMap
 
-    notes = [
+    notes = apply_sustain_gap([
         TabNote(
             string=n.string, fret=n.fret, time=warp(n.time),
             sustain=max(0.0, warp(n.time + n.sustain) - warp(n.time)),
@@ -287,7 +296,7 @@ def _warp_parsed_track(p: ParsedGpTrack, warp: Callable[[float], float]) -> Pars
             slide_to_fret=n.slide_to_fret,
         )
         for n in p.notes
-    ]
+    ])
     beats = tuple(Beat(time=warp(b.time), measure=b.measure) for b in p.tempo_map.beats)
     sections = [GpSection(name=s.name, start_time=warp(s.start_time)) for s in p.sections]
     lyrics = [type(line)(time=warp(line.time), text=line.text) for line in p.lyrics]

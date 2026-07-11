@@ -154,6 +154,32 @@ earlier work. Do not collapse this back to a single `sync_anchors` list —
 anchors from different rounds live in different (already-warped) coordinate
 systems and cannot simply be concatenated.
 
+**Conflicting anchors are rejected, not silently warped into nonsense.** Two
+anchors whose corrected times contradict their chart-time order (a later chart
+point mapped to an earlier recording instant than an earlier point) make
+`_build_time_warp` fold back on itself — the beat grid comes out of
+chronological order and construction crashes deep inside `TempoMap` with a
+cryptic `ValueError`, giving no clue which correction caused it. Successive
+"Mover seguintes" clicks are the usual way to create this by accident (each one
+re-anchors the arrangement's LAST note to a new target, so two clicks can leave
+it pointing at inconsistent targets). `_check_anchor_order` validates each
+round before it's applied and raises `IngestionError` naming the two
+conflicting points in seconds, so the user knows which correction to remove or
+adjust. Guarded by `test_conflicting_sync_anchors_raise_clear_error` /
+`test_check_anchor_order_accepts_valid_and_rejects_crossing`.
+
+**A local stretch re-inflates sustain — re-trim after warping.** A correction
+that maps a chart interval to a WIDER corrected interval (a local stretch
+factor > 1) scales every note's warped sustain by that same factor
+(`sustain = warp(time+sustain) - warp(time)`). This can re-inflate — or make
+notes overlap outright — a sustain `apply_sustain_gap` already trimmed to a
+small gap at parse time (first fixed, on the un-warped timeline, in commit
+`4147d89`): on the highway, fused/overlapping sustain trails render as "tall
+pillars" or a solid wall instead of separate note shapes. `_warp_parsed_track`
+re-applies `apply_sustain_gap` to the warped notes so the gap invariant holds
+regardless of what a sync correction did to the local tempo. Guarded by
+`test_warp_re_trims_sustain_after_a_local_stretch`.
+
 **Beat snapping (drag).** By default (checkbox "Encaixar em:") a note (or
 selection) drag snaps its target to the nearest position of a grid, so
 corrections jump grid-to-grid instead of sliding continuously — cleaner and
