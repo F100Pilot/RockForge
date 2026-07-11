@@ -3213,10 +3213,15 @@ async function reTempoFromHere(grp) {
   if (!selectedJob) return;
   const warp = buildTimeWarp(syncAnchors);
   const chartT = parseFloat(grp.dataset.t);
-  const dispT = warp(previewScale(chartT));
+  // Anchor origins are UNwarped previewScale times (the warp's domain); displayed
+  // positions come from warp() so the pivot stays put and the tail stretches
+  // correctly even with pending anchors present.
+  const origT = previewScale(chartT);
+  const dispT = warp(origT);
   const notes = arrangements[currentArr] ? arrangements[currentArr].notes : [];
   const lastChartT = notes.length ? Math.max(...notes.map(n => n.time)) : chartT;
-  const dispLast = warp(previewScale(lastChartT));
+  const origLast = previewScale(lastChartT);
+  const dispLast = warp(origLast);
   if (dispLast <= dispT + 0.01) { toast('é a última nota — nada para re-espaçar', 'err'); return; }
   const fromS = Math.max(0, dispT - viewOrigin);  // click's time in the recording
   toast('A detetar andamento…', 'ok');
@@ -3228,8 +3233,8 @@ async function reTempoFromHere(grp) {
     const b = await r.json();
     if (!r.ok) { toast(b.detail || 'erro', 'err'); return; }
     const factor = b.suggested_factor;
-    setAnchor(dispT, dispT);                                   // fixed pivot at the click
-    setAnchor(dispLast, dispT + (dispLast - dispT) * factor);  // stretch the tail to the local BPM
+    setAnchor(origT, dispT);                                     // fixed pivot at the click
+    setAnchor(origLast, dispT + (dispLast - dispT) * factor);   // stretch the tail to the local BPM
     renderAnchorsList();
     updatePendingChangesInfo();
     showArr(currentArr);
@@ -3291,33 +3296,40 @@ function updateSelectionInfo() {
       showArr(currentArr);
       return;
     }
-    // Tap-sync mode: click a note to anchor it at the current playhead position
+    // Tap-sync mode: click a note to anchor it at the current playhead position.
+    // The anchor ORIGIN must be the UNwarped previewScale time (the warp's
+    // domain, same as 'drag' and the backend) — NOT warp(previewScale(...)),
+    // which is only equal when there are no pending anchors and otherwise
+    // corrupts the map (e.g. after a Step-1 "Início" anchor).
     if (syncMode === 'tap' && grp) {
-      const dispT = buildTimeWarp(syncAnchors)(previewScale(parseFloat(grp.dataset.t)));
-      setAnchor(dispT, currentPlayheadT + viewOrigin);  // anchor target in bundle time
+      const origT = previewScale(parseFloat(grp.dataset.t));
+      setAnchor(origT, currentPlayheadT + viewOrigin);  // move this note to the playhead
       renderAnchorsList();
       updatePendingChangesInfo();
       showArr(currentArr);
       return;
     }
     // Move-from-here: shift the clicked note and ALL following notes (in a block)
-    // to the current playhead, leaving everything before untouched. Built from two
-    // equal-delta anchors (clicked note + last note) so _build_time_warp rigidly
-    // shifts only that excerpt; nothing before the click moves.
+    // to the current playhead, leaving everything before untouched. Two anchors
+    // (clicked note + last note) with the SAME display-space delta rigidly shift
+    // only that excerpt. Origins are the UNwarped previewScale times (the warp's
+    // domain); targets are their CURRENT displayed position + delta, so it
+    // composes correctly with any pending anchors (e.g. the Step-1 "Início").
     if (syncMode === 'movefrom' && grp) {
       const warp = buildTimeWarp(syncAnchors);
-      const chartT = parseFloat(grp.dataset.t);
-      const dispT = warp(previewScale(chartT));
+      const origClicked = previewScale(parseFloat(grp.dataset.t));
+      const dispClicked = warp(origClicked);  // where the clicked note currently shows
       const notes = arrangements[currentArr] ? arrangements[currentArr].notes : [];
-      const lastChartT = notes.length ? Math.max(...notes.map(n => n.time)) : chartT;
-      const dispLast = warp(previewScale(lastChartT));
-      if (dispLast <= dispT + 0.01) {
+      const lastRaw = notes.length ? Math.max(...notes.map(n => n.time)) : parseFloat(grp.dataset.t);
+      const origLast = previewScale(lastRaw);
+      const dispLast = warp(origLast);
+      if (dispLast <= dispClicked + 0.01) {
         toast('é a última nota — usa "Arrastar nota"', 'err');
         return;
       }
-      const delta = (currentPlayheadT + viewOrigin) - dispT;
-      setAnchor(dispT, dispT + delta);
-      setAnchor(dispLast, dispLast + delta);
+      const delta = (currentPlayheadT + viewOrigin) - dispClicked;  // brings clicked note to cursor
+      setAnchor(origClicked, dispClicked + delta);  // clicked note lands on the playhead
+      setAnchor(origLast, dispLast + delta);         // block end shifts by the same amount
       renderAnchorsList();
       updatePendingChangesInfo();
       showArr(currentArr);
