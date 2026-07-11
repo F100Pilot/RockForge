@@ -724,7 +724,17 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
       </div>
       <div class="syncctrls" style="margin-top:.4rem">
         <button type="button" id="gpuReset" class="secondary">Reativar GPU</button>
-        <span class="meta">Se a GPU voltar a crashar, volta a desligar-se sozinha (uma vez por sessão, não a cada música). Dica: experimenta <code>ROCKFORGE_WHISPERX_COMPUTE_TYPE=int8_float16</code> nas placas RTX 20xx.</span>
+        <span class="meta">Se a GPU voltar a crashar, volta a desligar-se sozinha (uma vez por sessão, não a cada música).</span>
+      </div>
+      <div class="syncctrls" style="margin-top:.6rem">
+        <label>Tipo de cálculo WhisperX (compute type):
+          <select id="sWhisperxCompute" style="width:auto">
+            <option value="">Automático (por defeito)</option>
+            <option value="int8_float16">int8_float16 — RTX 20xx (Turing)</option>
+            <option value="float16">float16</option>
+            <option value="int8">int8</option>
+          </select></label>
+        <span class="meta">O RockForge tenta isto automaticamente antes de desistir da GPU e guarda aqui o que funcionar — só precisas de mexer se quiseres forçar um valor ou limpar o que foi guardado (equivale a <code>ROCKFORGE_WHISPERX_COMPUTE_TYPE</code>).</span>
       </div>
     </div>
 
@@ -1036,6 +1046,7 @@ function fillSettings(s) {
   document.getElementById('sLoudness').value = s.loudness_target ?? -12;
   document.getElementById('gpuOk').style.display = s.gpu_broken ? 'none' : '';
   document.getElementById('gpuBroken').style.display = s.gpu_broken ? '' : 'none';
+  document.getElementById('sWhisperxCompute').value = s.whisperx_compute_type || '';
   toggleBanquetConfig();
   renderBanquetValidation(s.banquet || {});
 }
@@ -1071,6 +1082,7 @@ document.getElementById('settingsSave').addEventListener('click', async () => {
     banquet_ckpt: document.getElementById('sBanquetCkpt').value.trim(),
     banquet_queries: document.getElementById('sBanquetQueries').value.trim(),
     loudness_target: parseFloat(document.getElementById('sLoudness').value),
+    whisperx_compute_type: document.getElementById('sWhisperxCompute').value,
   };
   const r = await fetch('/settings', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),

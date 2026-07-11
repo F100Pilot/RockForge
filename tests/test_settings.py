@@ -48,6 +48,19 @@ def test_loudness_target_default_and_override(client: TestClient) -> None:
     assert client.get("/settings").json()["loudness_target"] == -10.0
 
 
+def test_whisperx_compute_type_settable_from_the_ui(client: TestClient) -> None:
+    """The user can set/clear the WhisperX compute type from ⚙️ Definições
+    instead of the ROCKFORGE_WHISPERX_COMPUTE_TYPE env var."""
+    assert client.get("/settings").json()["whisperx_compute_type"] == ""
+    r = client.post("/settings", json={"whisperx_compute_type": "int8_float16"})
+    assert r.status_code == 200
+    assert r.json()["whisperx_compute_type"] == "int8_float16"
+    assert client.get("/settings").json()["whisperx_compute_type"] == "int8_float16"
+    # Empty string clears it back to automatic.
+    cleared = client.post("/settings", json={"whisperx_compute_type": ""})
+    assert cleared.json()["whisperx_compute_type"] == ""
+
+
 def test_loudness_target_is_clamped(client: TestClient) -> None:
     import rockforge.runtime_settings as rs
 
