@@ -424,14 +424,21 @@ RTX 20-series cards) with no Python traceback. Two layers handle it:
   (`_clear_cuda_broken`, also clears the `_detect_device` cache so it takes
   effect without a restart). `SettingsOut.gpu_broken` carries the state.
 
-**Making the GPU actually work (`ROCKFORGE_WHISPERX_COMPUTE_TYPE`).** The
-float16 ctranslate2 path is the usual trigger of the Turing/cuDNN crash. The
-compute type is configurable (`settings.whisperx_compute_type`, passed to the
-runner via `--compute-type` and to the adapter): unset picks by device (`int8`
-CPU / `float16` CUDA); set `int8_float16` (lower VRAM, more compatible) to try
-to keep the GPU instead of falling back to CPU. Note it only affects the
-transcribe model — a torch-side cuDNN crash in the wav2vec2 *alignment* step is
-unaffected, in which case the CPU fallback is the answer.
+**Making the GPU actually work — the escalation ladder + auto-persist.** The
+float16 ctranslate2 path is the usual trigger of the Turing/cuDNN crash, so
+`detect_lyrics` doesn't jump straight to CPU: `_whisperx_attempts(device,
+configured)` builds a ladder — **cuda(configured/float16) → cuda(int8_float16)
+→ cpu** — and the task runs each rung until one succeeds. `int8_float16` (lower
+VRAM, more cuDNN-tolerant) often keeps the GPU working where float16 crashes.
+Outcomes: if a non-default GPU compute type wins, it's **persisted to
+`runtime_settings` (`whisperx_compute_type`)** so later runs skip the doomed
+float16 attempt; if even int8_float16 crashes and it falls to CPU, the
+GPU-broken marker is set (whole stack → CPU). The compute type is also settable
+manually via `ROCKFORGE_WHISPERX_COMPUTE_TYPE` (env) — the runtime override
+wins. Note it only affects the transcribe model — a torch-side cuDNN crash in
+the wav2vec2 *alignment* step is unaffected, in which case the int8_float16 rung
+also crashes and the CPU fallback is the answer. `_whisperx_attempts` guarded by
+`test_whisperx_attempts_escalation_ladder`.
 
 **Device selection (`_resolve_device`).** `demucs_device` defaults to `"auto"`:
 `_detect_device` (deferred torch import, worker-only, `@cache`d) returns

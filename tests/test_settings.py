@@ -72,6 +72,18 @@ def test_gpu_reset_clears_marker(client: TestClient, tmp_path, monkeypatch) -> N
     assert client.get("/settings").json()["gpu_broken"] is False
 
 
+def test_whisperx_compute_type_override_round_trips(client: TestClient) -> None:
+    """The GPU escalation persists a working compute type to runtime_settings;
+    the accessor returns it over the env default, and empty clears it."""
+    import rockforge.runtime_settings as rs
+
+    assert rs.whisperx_compute_type() == ""  # unset → pick by device
+    rs.save({**rs.load(), "whisperx_compute_type": "int8_float16"})
+    assert rs.whisperx_compute_type() == "int8_float16"
+    rs.save({**rs.load(), "whisperx_compute_type": ""})  # empty clears the override
+    assert rs.whisperx_compute_type() == ""
+
+
 def test_invalid_separator_rejected(client: TestClient) -> None:
     assert client.post("/settings", json={"stem_separator": "nope"}).status_code == 422
 

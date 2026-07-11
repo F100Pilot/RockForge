@@ -90,3 +90,20 @@ def test_legacy_marker_still_honoured(tmp_path: Path) -> None:
 
     (tmp_path / ".whisperx_cuda_broken").touch()  # work_dir is tmp_path (fixture)
     assert ca._cuda_known_broken() is True
+
+
+def test_whisperx_attempts_escalation_ladder() -> None:
+    """On the GPU, try float16 then int8_float16 before CPU; never duplicate the
+    int8_float16 rung; and on a CPU device only the CPU rung remains."""
+    from rockforge.interfaces.worker.celery_app import _whisperx_attempts
+
+    # Default GPU: float16 (unset) → int8_float16 → cpu.
+    assert _whisperx_attempts("cuda", "") == [
+        ("cuda", ""), ("cuda", "int8_float16"), ("cpu", ""),
+    ]
+    # Already-int8_float16 GPU: no duplicate rung.
+    assert _whisperx_attempts("cuda", "int8_float16") == [
+        ("cuda", "int8_float16"), ("cpu", ""),
+    ]
+    # CPU device (no GPU, or downgraded by the broken marker): CPU only.
+    assert _whisperx_attempts("cpu", "") == [("cpu", "")]

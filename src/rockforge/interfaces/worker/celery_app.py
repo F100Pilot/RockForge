@@ -128,6 +128,22 @@ def _clear_cuda_broken() -> None:
     _detect_device.cache_clear()
 
 
+def _whisperx_attempts(device: str, configured: str) -> list[tuple[str, str]]:
+    """The GPU→CPU escalation ladder for WhisperX transcription, as (device,
+    compute_type) rungs tried in order. On the GPU, the configured compute type
+    (usually float16) is tried first, then the more cuDNN-tolerant int8_float16
+    — which dodges the native float16 crash on Turing / RTX 20-series — before
+    falling back to CPU. When ``device`` is already ``"cpu"`` (no GPU, or the
+    GPU-broken marker downgraded it), only the CPU rung remains."""
+    attempts: list[tuple[str, str]] = []
+    if device == "cuda":
+        attempts.append(("cuda", configured))
+        if configured.lower() != "int8_float16":
+            attempts.append(("cuda", "int8_float16"))
+    attempts.append(("cpu", ""))
+    return attempts
+
+
 def _make_demucs(device: str) -> Any:  # heavy import deferred to worker
     """DemucsSeparator wired to trip the shared GPU-broken marker on a CUDA
     crash, so a native GPU failure retries on CPU AND later runs skip the GPU."""
@@ -147,11 +163,12 @@ def _build_use_case():  # noqa: ANN202 - heavy imports deferred to worker runtim
     rhythm = LibrosaRhythmAdapter()
     device = _resolve_device(settings.demucs_device)
 
+    from rockforge import runtime_settings
     from rockforge.infrastructure.lyrics.whisperx_adapter import WhisperXLyricTranscriber
 
     lyric_transcriber = (
         WhisperXLyricTranscriber(
-            device=device, compute_type=settings.whisperx_compute_type
+            device=device, compute_type=runtime_settings.whisperx_compute_type() or None
         )
         if WhisperXLyricTranscriber.available()
         else None
@@ -515,7 +532,7 @@ def detect_lyrics(job_id: str) -> None:
                     / "infrastructure" / "lyrics" / "_whisperx_runner.py"
                 )
 
-                def _run_whisperx(dev: str):  # type: ignore[no-untyped-def]
+                def _run_whisperx(dev: str, compute: str):  # type: ignore[no-untyped-def]
                     return _sp.run(
                         [
                             sys.executable, str(runner),
@@ -523,48 +540,76 @@ def detect_lyrics(job_id: str) -> None:
                             "--output", str(events_json),
                             "--model", settings.whisper_model,
                             "--device", dev,
-                            "--compute-type", settings.whisperx_compute_type or "",
+                            "--compute-type", compute,
                         ],
                         capture_output=True, text=True,
                         stdin=_sp.DEVNULL, timeout=WHISPERX_TIMEOUT_S,
                     )
 
-                run_device = device
-                # If the GPU already crashed on this machine once, skip the
-                # doomed attempt (and its ~20-30s + scary log line) entirely.
-                # (device is usually already "cpu" here — _resolve_device honours
-                # the same marker — but keep this as a belt-and-suspenders guard.)
-                if run_device == "cuda" and _cuda_known_broken():
-                    run_device = "cpu"
-                    _log_lyrics_stage(
-                        params,
-                        "GPU crashed on a previous run on this machine — using CPU "
-                        f"directly (delete {_cuda_broken_marker().name} in the work "
-                        "dir to retry the GPU after fixing cuDNN/ctranslate2).",
-                    )
-                    _commit_params()
+                from rockforge import runtime_settings
 
-                proc = _run_whisperx(run_device)
-                # A GPU run can crash with a native error (e.g. Windows exit
-                # 0xC0000409 / 3221226505 from a cuDNN/ctranslate2 DLL mismatch).
-                # Fall back to CPU so detection still works, just slower — and
-                # remember the crash so the next detection skips the GPU attempt.
-                if proc.returncode != 0 and run_device == "cuda":
-                    _mark_cuda_broken()
-                    _log_lyrics_stage(
-                        params,
-                        f"GPU transcription crashed (exit {proc.returncode}) — "
-                        f"retrying on CPU (slower), and skipping the GPU on later "
-                        f"runs. Tip: a CUDA build of WhisperX's cuDNN/ctranslate2 "
-                        f"may be missing/mismatched.",
-                    )
-                    _commit_params()
-                    proc = _run_whisperx("cpu")
+                configured = runtime_settings.whisperx_compute_type()  # "" = by device
+                # Escalation ladder. The float16 GPU path is what crashes natively
+                # on Turing / RTX 20-series (Windows exit 0xC0000409); try the more
+                # cuDNN-tolerant int8_float16 on the GPU BEFORE giving up on it, and
+                # only fall to CPU (marking the whole GPU stack broken) if that also
+                # crashes. `device` is already CPU here when the marker is set
+                # (_resolve_device honours it), so the GPU rungs are skipped then.
+                attempts = _whisperx_attempts(device, configured)
+
+                proc = None
+                used: tuple[str, str] | None = None
+                for i, (dev, compute) in enumerate(attempts):
+                    if i > 0:
+                        _log_lyrics_stage(
+                            params,
+                            f"retrying transcription on {dev}"
+                            + (f" (compute_type={compute})" if compute else "")
+                            + " (slower)" * (dev == "cpu"),
+                        )
+                        _commit_params()
+                    proc = _run_whisperx(dev, compute)
+                    if proc.returncode == 0:
+                        used = (dev, compute)
+                        break
+                    if dev == "cuda":
+                        # Native GPU crash (e.g. cuDNN/ctranslate2 mismatch).
+                        _log_lyrics_stage(
+                            params,
+                            f"GPU transcription crashed (exit {proc.returncode}) with "
+                            f"compute_type '{compute or 'float16'}'.",
+                        )
+                        _commit_params()
+
+                assert proc is not None
                 if proc.returncode != 0:
                     tail = (proc.stderr or "").strip()[-600:]
                     raise RuntimeError(
                         f"whisperx exited {proc.returncode}: {tail or '(no stderr output)'}"
                     )
+                if used is not None and used[0] == "cpu" and device == "cuda":
+                    # Even int8_float16 crashed on the GPU — degrade the whole ML
+                    # stack to CPU on later runs (mirrors the Demucs marker).
+                    _mark_cuda_broken()
+                    _log_lyrics_stage(
+                        params,
+                        "GPU unusable for transcription — skipping it on later runs. "
+                        "Tip: a CUDA build of WhisperX's cuDNN/ctranslate2 may be "
+                        "missing/mismatched. Reactivate the GPU in ⚙️ Definições "
+                        "after fixing it.",
+                    )
+                    _commit_params()
+                elif used is not None and used[0] == "cuda" and used[1] != configured:
+                    # A non-default GPU compute type worked — persist it so the next
+                    # run uses it directly instead of re-crashing on float16 first.
+                    saved = {**runtime_settings.load(), "whisperx_compute_type": used[1]}
+                    runtime_settings.save(saved)
+                    _log_lyrics_stage(
+                        params,
+                        f"GPU works with compute_type '{used[1]}' — saved it as the "
+                        "default so future detections skip the float16 crash.",
+                    )
+                    _commit_params()
 
                 import json as _json
 

@@ -19,7 +19,7 @@ from rockforge.config import settings
 
 _KEYS = (
     "stem_separator", "banquet_repo", "banquet_ckpt", "banquet_queries",
-    "loudness_target",
+    "loudness_target", "whisperx_compute_type",
 )
 
 # The loudness (LUFS) the audio is normalized to AND the target the Wwise bus
@@ -68,6 +68,14 @@ def _eff(key: str, env_default: Any) -> Any:
 
 def stem_separator() -> str:
     return str(_eff("stem_separator", settings.stem_separator))
+
+
+def whisperx_compute_type() -> str:
+    """Effective ctranslate2 compute type for WhisperX ("" = pick by device).
+    A runtime override (persisted automatically when the GPU escalation finds a
+    working compute type, e.g. int8_float16 on a Turing GPU) wins over the env
+    ``ROCKFORGE_WHISPERX_COMPUTE_TYPE``."""
+    return str(_eff("whisperx_compute_type", settings.whisperx_compute_type or ""))
 
 
 def loudness_target() -> float:
