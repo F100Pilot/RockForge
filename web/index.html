@@ -255,16 +255,22 @@
   border-radius: var(--radius); margin-top: 0;
 }
 /* Section tabs inside job detail */
+/* Segmented control — a filled-pill active tab so these read as real, clickable
+   sections instead of passing unnoticed as plain underlined text. */
 .section-tabnav {
-  display: flex; gap: 0; border-bottom: 1px solid var(--line); margin: .75rem 0 1rem;
+  display: inline-flex; gap: .25rem; margin: .75rem 0 1rem;
+  background: #14151a; border: 1px solid var(--line); border-radius: 10px; padding: .28rem;
 }
 .section-tabnav button {
-  background: transparent; color: var(--muted); border: none; border-bottom: 2px solid transparent;
-  font-size: .9rem; font-weight: 600; padding: .5rem 1.1rem; cursor: pointer;
-  border-radius: 0; transition: color .15s, border-color .15s;
+  display: inline-flex; align-items: center; gap: .4rem;
+  background: transparent; color: var(--muted); border: none;
+  font-size: .92rem; font-weight: 600; padding: .45rem 1.05rem; cursor: pointer;
+  border-radius: 8px; transition: background .15s, color .15s;
 }
-.section-tabnav button.active { color: var(--accent); border-bottom-color: var(--accent); }
-.section-tabnav button:hover { color: var(--text); filter: none; }
+.section-tabnav button .tab-ico { font-size: 1.1rem; line-height: 1; }
+.section-tabnav button:hover { color: var(--text); background: #21232b; }
+.section-tabnav button.active { color: #1a1208; background: var(--accent); }
+.section-tabnav button.active:hover { background: var(--accent); }
 /* ⓘ info button */
 .info-btn {
   background: transparent; border: 1px solid var(--line); color: var(--muted);
@@ -426,9 +432,9 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
 
       <!-- Section tabs -->
       <div class="section-tabnav">
-        <button type="button" class="active" onclick="showSection('partitura')">Partitura</button>
-        <button type="button" onclick="showSection('letras')">Letras</button>
-        <button type="button" onclick="showSection('capa')">Capa</button>
+        <button type="button" class="active" data-section="partitura" onclick="showSection('partitura')"><span class="tab-ico">🎼</span> Partitura</button>
+        <button type="button" data-section="letras" onclick="showSection('letras')"><span class="tab-ico">🎤</span> Letras</button>
+        <button type="button" data-section="capa" onclick="showSection('capa')"><span class="tab-ico">🖼️</span> Capa</button>
       </div>
 
       <!-- TAB: Partitura -->
@@ -1088,10 +1094,7 @@ function showSection(name) {
     if (el) el.hidden = (s !== name);
   }
   for (const btn of document.querySelectorAll('.section-tabnav button'))
-    btn.classList.toggle('active', btn.textContent.trim().toLowerCase() === name ||
-      (name === 'partitura' && btn.textContent.trim() === 'Partitura') ||
-      (name === 'letras' && btn.textContent.trim() === 'Letras') ||
-      (name === 'capa' && btn.textContent.trim() === 'Capa'));
+    btn.classList.toggle('active', btn.dataset.section === name);
 }
 
 // ── "Estado do PSARC" completeness checklist ─────────────────────────────────
