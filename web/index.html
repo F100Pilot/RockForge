@@ -3548,17 +3548,16 @@ function updateSelectionInfo() {
       return;
     }
     // Move-from-here: shift the clicked note and ALL following notes (in a block)
-    // to the current playhead, leaving everything before untouched. Two anchors
-    // (clicked note + last note) with the SAME display-space delta rigidly shift
-    // only that excerpt. Origins are the UNwarped previewScale times (the warp's
-    // domain); targets are their CURRENT displayed position + delta, so it
-    // composes correctly with any pending anchors (e.g. the Step-1 "Início").
+    // to the current playhead, leaving everything before untouched. Origins are
+    // the UNwarped previewScale times (the warp's domain); targets are their
+    // CURRENT displayed position + delta, so it composes with any pending anchors.
     if (syncMode === 'movefrom' && grp) {
       const warp = buildTimeWarp(syncAnchors);
-      const origClicked = previewScale(parseFloat(grp.dataset.t));
+      const clickedRaw = parseFloat(grp.dataset.t);
+      const origClicked = previewScale(clickedRaw);
       const dispClicked = warp(origClicked);  // where the clicked note currently shows
       const notes = arrangements[currentArr] ? arrangements[currentArr].notes : [];
-      const lastRaw = notes.length ? Math.max(...notes.map(n => n.time)) : parseFloat(grp.dataset.t);
+      const lastRaw = notes.length ? Math.max(...notes.map(n => n.time)) : clickedRaw;
       const origLast = previewScale(lastRaw);
       const dispLast = warp(origLast);
       if (dispLast <= dispClicked + 0.01) {
@@ -3566,6 +3565,16 @@ function updateSelectionInfo() {
         return;
       }
       const delta = (currentPlayheadT + viewOrigin) - dispClicked;  // brings clicked note to cursor
+      // Pin the note immediately BEFORE the click at its current display, so the
+      // region before the click stays put. Without this, when a prior anchor
+      // (e.g. Step-1 "Início") already exists, adding only the clicked+last
+      // anchors turns the uniform pre-click segment into an interpolated one and
+      // drags the preceding notes along ("mover seguintes moved notes behind it").
+      const priorTimes = notes.map(n => n.time).filter(t => t < clickedRaw - 1e-6);
+      if (priorTimes.length) {
+        const origPrev = previewScale(Math.max(...priorTimes));
+        setAnchor(origPrev, warp(origPrev));  // hold everything up to here in place
+      }
       setAnchor(origClicked, dispClicked + delta);  // clicked note lands on the playhead
       setAnchor(origLast, dispLast + delta);         // block end shifts by the same amount
       renderAnchorsList();
