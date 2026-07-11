@@ -237,6 +237,27 @@ def _build_time_warp(anchors: list[tuple[float, float]]) -> Callable[[float], fl
     return warp
 
 
+def _check_anchor_order(anchors: list[tuple[float, float]]) -> None:
+    """Reject a round of sync anchors whose corrected times contradict their
+    chart-time order (e.g. a later note anchored to an earlier recording instant
+    than an earlier note) — such a pair makes ``_build_time_warp`` fold back on
+    itself, warping the beat grid out of chronological order and crashing deep
+    inside ``TempoMap`` with no clue which correction caused it. Two clicks of
+    "Mover seguintes" that both touch the arrangement's last note (each anchoring
+    it at a different moment) are the usual way to create this by accident.
+    """
+    pts = sorted(anchors, key=lambda p: p[0])
+    for (x0, y0), (x1, y1) in zip(pts, pts[1:], strict=False):
+        if x1 > x0 and y1 < y0:
+            raise IngestionError(
+                "sync corrections conflict: the point at "
+                f"{x1:.2f}s (chart time) is anchored to {y1:.2f}s, which is BEFORE "
+                f"the point at {x0:.2f}s anchored to {y0:.2f}s — later chart time "
+                "cannot land earlier in the recording. Remove or adjust one of "
+                "these corrections (check the pending anchors list)."
+            )
+
+
 def _strip_mute_techniques(p: ParsedGpTrack) -> ParsedGpTrack:
     """Return a copy of the track with palm mute / slap / pop / tap removed."""
     notes = [
@@ -380,6 +401,7 @@ class GenerateFromGpUseCase:
             for stage_anchors in sync.sync_anchor_stages:
                 if not stage_anchors:
                     continue
+                _check_anchor_order(stage_anchors)
                 p = _warp_parsed_track(p, _build_time_warp(stage_anchors))
             parsed[kind] = p
 

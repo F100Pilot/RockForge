@@ -289,6 +289,36 @@ def test_per_arrangement_sync_is_independent(two_track_gp5: Path, tmp_path: Path
     assert not any("Rhythm:" in w and "drift-correction" in w for w in result.warnings)
 
 
+def test_conflicting_sync_anchors_raise_clear_error(
+    two_track_gp5: Path, tmp_path: Path
+) -> None:
+    """Two anchors whose corrected times contradict their chart-time order (a
+    later chart point mapped to an earlier recording instant than an earlier
+    point) used to fold the beat grid out of order and crash deep inside
+    TempoMap with "beats must be in chronological order" — no clue which
+    correction caused it. Now it's rejected with an actionable message at the
+    point the conflicting round is applied."""
+    from rockforge.domain.errors import IngestionError
+
+    spec = GpJobSpec(
+        gp_path=two_track_gp5, audio_source="x.wav", lead_track=0,
+        sync_anchor_stages=[[(2.5, 4.0), (3.0, 3.5)]],  # later chart time, earlier target
+    )
+    with pytest.raises(IngestionError, match="sync corrections conflict"):
+        make_use_case().run(spec, SongMetadata(title="T", artist="A"), tmp_path / "w")
+
+
+def test_check_anchor_order_accepts_valid_and_rejects_crossing() -> None:
+    from rockforge.application.gp_pipeline import _check_anchor_order
+    from rockforge.domain.errors import IngestionError
+
+    _check_anchor_order([(2.0, 2.5), (5.0, 6.0)])  # monotonic — fine
+    _check_anchor_order([(2.0, 2.5)])  # single anchor — fine
+    _check_anchor_order([])  # no anchors — fine
+    with pytest.raises(IngestionError, match="sync corrections conflict"):
+        _check_anchor_order([(2.0, 5.0), (3.0, 4.0)])  # later chart time, earlier target
+
+
 def test_build_time_warp_leaves_notes_outside_excerpt_untouched() -> None:
     # Two-anchor (excerpt) correction: notes between the anchors are rigidly
     # shifted/stretched, but notes before/after the excerpt must NOT move at
