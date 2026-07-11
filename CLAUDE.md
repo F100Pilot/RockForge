@@ -200,28 +200,37 @@ is set and the `rebuild_job` endpoint propagates `tempo_scale` and
 defaults, so all charts share the same correction in one rebuild instead of
 requiring the user to adjust each arrangement separately.
 
-**"Início desta pista" — per-arrangement note start.** `offset_s` itself stays
-job-level for the reason above (one shared, once-padded `.wem`), but the tab
-viewer now gives each arrangement its OWN precision tools for pinning just
-*that chart's* first note, independent of the others — for GP files whose
-tracks were tabbed with a different pickup/lead-in per instrument, where a
-single shared offset can't fit both. It reuses the existing single-anchor
-mechanism (a lone `sync_anchor_stages` anchor = a uniform shift for that
-arrangement) rather than adding a new field: a small panel below the
-arrangement tabs mirrors "Passo 1"'s controls 1:1 — a numeric field + slider
-showing the arrangement's first note's current effective landing time,
-"Início = cursor" (`setArrStart(audioTime())`), and a "🎯 Detetar 1ª nota (esta
-pista)" button reusing the exact same guided 3-click state machine as the
-global tool (`firstNoteFlow`/`firstNoteFlowClick`, now parameterized by
-`firstNoteFlowScope: 'global' | 'arrangement'` — the global scope keeps
-updating `offset_s` via `setOffsetLive`, the arrangement scope calls
-`setAnchor` instead). All three write into the SAME per-tab pending anchor
-array Step 3 already uses (`syncAnchorsByKind[currentKind()]`), so they ride
-the existing "Aplicar e reconstruir" commit — no new button, no backend
-change. `setArrStart`/the guided flow's arrangement branch both pass the note's
-UNwarped `previewScale(chartT)` as the anchor's origin (matching `'drag'`
-mode's convention, not `'tap'` mode's `buildTimeWarp`-wrapped one) specifically
-so that repeatedly nudging the slider/re-running the guided flow updates the
+**"Passo 1 — Início da música" is per-arrangement.** `offset_s` itself stays
+job-level for the reason above (one shared, once-padded `.wem`) and is set
+once at job creation (and by "✨ Sincronização automática", a distinct
+whole-recording proposal); but Step 1's runtime precision tools in the tab
+viewer — the numeric field + slider, "Início = cursor", and the guided "🎯
+Detetar 1ª nota" 3-click flow — pin just the CURRENT arrangement's first note
+independently of the others, for GP files whose tracks were tabbed with a
+different pickup/lead-in per instrument, where a single shared offset can't
+fit both. There is deliberately only ONE "first note time" control in the UI
+(an earlier version added a second, per-arrangement-only panel; users found
+two confusing, so it was folded back into Step 1 — see git history if
+resurrecting the idea). It reuses the existing single-anchor mechanism (a
+lone `sync_anchor_stages` anchor = a uniform shift for that arrangement)
+rather than a new field: `updateSyncOffsetDisplay()` (called from `showArr`
+on every redraw/tab-switch) refreshes Step 1's field from
+`buildTimeWarp(syncAnchors)(previewScale(firstNoteChartTime)) - viewOrigin`
+— for the common case (no per-track anchor yet, the track's first note sits
+at its own timeline's start) this equals `offsetLive` exactly, so switching
+tabs looks unchanged until a track's first note genuinely has its own
+pickup, at which point the field diverges to show and let you fix THAT
+track's own value. Every edit — the field, the slider, "Início = cursor"
+(`setTrackStart(audioTime())`), and the guided flow's final click — always
+writes a per-arrangement anchor via `setAnchor`, never `setOffsetLive`
+(which now only fires from `initSync`'s initial load and the auto-sync
+proposal). All write into the SAME per-tab pending anchor array Step 3
+already uses (`syncAnchorsByKind[currentKind()]`), so they ride the existing
+"Aplicar e reconstruir" commit — no separate button, no backend change.
+`setTrackStart`/the guided flow both pass the note's UNwarped
+`previewScale(chartT)` as the anchor's origin (matching `'drag'` mode's
+convention, not `'tap'` mode's `buildTimeWarp`-wrapped one) specifically so
+that repeatedly nudging the slider/re-running the guided flow updates the
 SAME anchor slot instead of compounding into an unintended multi-point warp.
 
 **Cursor as an explicit snap target (fixes unreliable "drag to the cursor").**
