@@ -443,6 +443,44 @@ subtracted from word times — a known limitation.
 Detection needs both `[lyrics]` (WhisperX) and `[ml]` (Demucs) extras in the
 worker, even for GP jobs whose own build stays ML-free.
 
+### Web UI: creation wizard + "Estado do PSARC" completeness panel
+
+The "Novo projeto" modal is a **4-step wizard** (`web/index.html`), not a flat
+form, because the old single-form layout crammed ~15 fields (including a
+`tone_base`/`tone_names` *text* box impossible to fill by hand) and gave no
+guidance. Steps, each with a medium icon in a stepper header: **🎸 Ficheiro**
+(pick the GP → inspect, which auto-assigns the first eligible track to Lead and
+advances), **🎚️ Pistas** (assign Lead/Rhythm/Combo/Alt — needs ≥1), **💾
+Gravação** (audio + approximate `offset_s`/`lead_in_s`; fine sync is deferred to
+the tab viewer), **🏷️ Detalhes** (title/band/album/year, mutes, optional LRC).
+The tone-base/tone-names text inputs were **removed** — tones are built
+post-creation in the real tone editor. Step 1 is its own form (submit = inspect,
+`/gp/inspect`); steps 2-4 share `gpJobForm` (submit = create, `/jobs/gp`). The
+shared footer nav is `setWizardStep(n)` + `validateWizardStep()`; Enter on an
+early step advances instead of creating (guarded in the submit handler).
+
+The **"Estado do PSARC" checklist** (`renderCompleteness`, rendered above the
+download links on every completed job) reads completeness signals straight off
+`JobOut` and surfaces what would leave the bundle incomplete/poor, each with a
+jump-button to the right editor (`COMPLETE_ACTIONS`). Rows + alerts:
+- ✅/❌ **PSARC jogável** ← `psarc_available` (❌ = no Wwise/.wem).
+- ✅/⚠️ **Tons definidos** ← `has_tones` (new `JobOut` field = `params["tones"]`/
+  `tone_base`/`tone_names` non-empty; else DLC Builder flags "tone missing").
+- ✅/⚠️ **Capa** ← `cover_art` (else `albumArt` empty).
+- ✅/⚠️ **Sincronização** ← `sync_edited` (new field; `_sync_edited(params)`:
+  offset moved off 0, tempo scaled, or any drift anchor job-level/per-arrangement)
+  — a **soft** "confirmaste a sincronização?" reminder, not a hard "desalinhado".
+- ⓘ **Letra** ← `lyrics_status` (informational, never an alert).
+- ⓘ **AppID/propriedade** — informational: the `.psarc` reuses a specific DLC's
+  appid the player must own (the #1 "não aparece no jogo" cause, otherwise
+  invisible in the UI).
+
+When any warn/err row exists, an amber banner over the downloads summarizes
+what's missing. Nothing is blocked (honesty principle) — the user can still
+download, but won't silently ship a tone-less/cover-less/unsynced PSARC.
+`has_tones`/`sync_edited` guarded by `test_completeness_fields_reflect_job_state`
+/ `test_sync_edited_true_from_anchor_only`.
+
 ### Album cover art
 
 `POST /jobs/{id}/cover` (multipart `file`, jpg/png) stores the image as

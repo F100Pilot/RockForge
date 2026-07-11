@@ -588,6 +588,39 @@ def test_rebuild_stores_tones_and_changes(client: TestClient, tmp_path) -> None:
     assert tones["tone_changes"][0]["time"] == 5.0
 
 
+def test_completeness_fields_reflect_job_state(client: TestClient, tmp_path) -> None:
+    """The 'Estado do PSARC' checklist reads has_tones / sync_edited / cover_art
+    straight off JobOut — a fresh GP job has none of them; a rebuild that adds
+    tones + an offset flips them."""
+    job = _gp_job(client, tmp_path)
+    assert job["has_tones"] is False
+    assert job["sync_edited"] is False
+    assert job["cover_art"] is False
+
+    tone = {
+        "key": "lead",
+        "name": "Lead",
+        "amp": {"key": "Amp_MarshallJCM800", "knobs": {"Amp_MarshallJCM800_Gain": 90}},
+        "cabinet": {"key": "Cab_Marshall1960TV_Ribbon_Cone"},
+    }
+    rebuilt = client.post(
+        f"/jobs/{job['id']}/rebuild",
+        json={"tone_base": "lead", "tone_names": ["lead"], "tones": [tone], "offset_s": 1.5},
+    ).json()
+    assert rebuilt["has_tones"] is True
+    assert rebuilt["sync_edited"] is True  # offset moved off 0
+
+
+def test_sync_edited_true_from_anchor_only(client: TestClient, tmp_path) -> None:
+    """A drift anchor (no offset/tempo change) still counts as sync edited."""
+    job = _gp_job(client, tmp_path)
+    rebuilt = client.post(
+        f"/jobs/{job['id']}/rebuild",
+        json={"arrangement": "Lead", "sync_anchors": [[1.0, 1.2]]},
+    ).json()
+    assert rebuilt["sync_edited"] is True
+
+
 def test_rebuild_empty_tone_fields_clear_them(client: TestClient, tmp_path) -> None:
     """Removing all tones/changes must persist: the tone editor sends concrete
     empties ([]/""), which clear the params — not null, which would keep them."""
