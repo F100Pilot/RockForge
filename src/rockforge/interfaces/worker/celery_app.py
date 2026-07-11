@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import sys
 from datetime import UTC, datetime
 from functools import cache
@@ -115,6 +116,16 @@ def _mark_cuda_broken() -> None:
         m.touch()
     except OSError:
         pass
+
+
+def _clear_cuda_broken() -> None:
+    """Delete the GPU-broken marker(s) so the ML stack retries the GPU on the
+    next run — after the user fixed their CUDA/cuDNN install. Also clears the
+    cached device resolution so the change takes effect without a restart."""
+    for p in (_cuda_broken_marker(), settings.work_dir / ".whisperx_cuda_broken"):
+        with contextlib.suppress(OSError):
+            p.unlink()
+    _detect_device.cache_clear()
 
 
 def _make_demucs(device: str) -> Any:  # heavy import deferred to worker
