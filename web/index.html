@@ -1800,13 +1800,22 @@ function showArr(i) {
   const applyKindEl = document.getElementById('applyKind');
   if (applyKindEl) applyKindEl.textContent = a.kind;
   const svg = document.getElementById('tabsvg');
-  const dur = Math.max(...a.notes.map(n => n.time + n.sustain), 10);
+  viewOrigin = isGpJob() ? Math.max(0, MIN_LEAD - offsetLive) : 0;  // bundle time at the left edge (0s)
+  // Size the chart to the FULL song, not just the last NOTE: a track that rests
+  // through the outro (e.g. a lead that stops at bar 120 of 146) still has all
+  // its bars/beats in the grid, and the recording keeps playing — so extend the
+  // width to the last bar/beat and the recording length too, or those trailing
+  // (empty) bars + waveform tail get clipped off the right edge.
+  const lastNote = a.notes.length ? Math.max(...a.notes.map(n => n.time + n.sustain)) : 0;
+  const lastBar = (a.bars && a.bars.length) ? a.bars[a.bars.length - 1].time : 0;
+  const lastBeat = (a.beats && a.beats.length) ? a.beats[a.beats.length - 1] : 0;
+  const audioEnd = (waveDuration || 0) + viewOrigin;  // recording end, in bundle time
+  const dur = Math.max(lastNote, lastBar, lastBeat, audioEnd, 10);
   // SB = staff bottom (string-0 line). The band between SB and H holds the
   // chord-name row, kept wide enough that names never touch the lowest notes.
   const px = BASE_PX * zoomLevel, ROW = 40, R = 13, W = Math.max(900, dur * px + 60);
   const H = 304, SB = H - 59;
   tabPx = px; tabH = H;
-  viewOrigin = isGpJob() ? Math.max(0, MIN_LEAD - offsetLive) : 0;  // bundle time at the left edge (0s)
   svg.setAttribute('width', W);
   svg.setAttribute('height', H);  // includes the chord-name band below the staff
   let s = '';
