@@ -918,6 +918,25 @@ crosses a boundary into per-phrase pieces (same hand position, re-tagged with th
 phrase iteration), so every phrase owns an anchor at its start. Guarded by
 `test_anchors_do_not_cross_phrase_iteration_boundaries`.
 
+**A song-start anchor before the first phrase must not wrap onto the LAST
+phrase.** `_build_anchors` always starts the very first anchor at absolute
+`0.0` (so the opening notes are framed before they reach the strike line) —
+but when the beat grid itself starts after `0.0` (a GP lead-in pad, the usual
+case), that leaves a real gap `[0.0, first_phrase.start_time)` with no phrase
+covering it. `_find_phrase_iteration`'s "not found" fallback returned
+`len(phrase_iterations) - 1` unconditionally — correct for a time genuinely
+PAST the song's end, but wrong for a time BEFORE its start: it wrapped the
+song-opening anchor (and any beat in that same gap) onto a phrase near the
+SONG'S END (index 26 on a real chart), corrupting the fret-hand anchor box
+with a context from the wrong end of the song — the reported "graphical
+glitch"/corrupt highway sprite right at the arrangement's first notes.
+`_find_phrase_iteration` now special-cases a time before the first iteration's
+start to return index 0. Found by decoding a real user PSARC (AES-CFB TOC +
+AES-CTR SNG, both `pycryptodome`-compatible without the sandboxed
+`cryptography` package) and confirming the corrupted `phrase_iteration_id`
+directly. Guarded by `test_find_phrase_iteration_before_first_start_returns_first_index`
+/ `test_song_start_anchor_has_correct_phrase_iteration_not_the_last`.
+
 Anchor extensions are generated one per sliding note (`BeatTime = time +
 sustain`, `FretId = slideTo`), so the fretboard re-anchors where the slide lands
 (Rocksmith2014.NET `AnchorExtension.fs`, 12-byte layout). Vocals are emitted as

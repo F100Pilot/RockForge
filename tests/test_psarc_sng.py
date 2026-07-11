@@ -812,6 +812,57 @@ def test_anchors_are_built_per_level_not_shared() -> None:
             assert 1 <= a.fret <= 24 and a.start_time < a.end_time
 
 
+def test_find_phrase_iteration_before_first_start_returns_first_index() -> None:
+    """A query time before the first phrase iteration's start (the silent pad
+    before COUNT, at the very start of the song) must resolve to index 0, not
+    fall through to the "after everything" branch — which wrapped it onto the
+    LAST phrase's index (26 on a real chart), corrupting the song-start anchor
+    box and beat grid with a context from the song's ending."""
+    from rockforge.infrastructure.packaging.psarc.sng import (
+        SngPhraseIteration,
+        _find_phrase_iteration,
+    )
+
+    pis = [
+        SngPhraseIteration(phrase_id=0, start_time=2.5, end_time=10.0, difficulty=(0, 0, 0)),
+        SngPhraseIteration(phrase_id=1, start_time=10.0, end_time=18.0, difficulty=(0, 0, 0)),
+    ]
+    assert _find_phrase_iteration(pis, 0.0) == 0  # before the first phrase: first index
+    assert _find_phrase_iteration(pis, 1.5) == 0  # still in the pre-COUNT gap
+    assert _find_phrase_iteration(pis, 5.0) == 0  # inside the first phrase
+    assert _find_phrase_iteration(pis, 12.0) == 1  # inside the second phrase
+    assert _find_phrase_iteration(pis, 100.0) == 1  # after everything: last index
+    assert _find_phrase_iteration([], 5.0) == 0  # no phrases at all
+
+
+def test_song_start_anchor_has_correct_phrase_iteration_not_the_last(
+) -> None:
+    """Reproduces a real corrupted chart: a beat grid that starts after t=0 (a
+    GP lead-in pad) leaves a gap before the first phrase iteration; the anchor
+    RockForge forces to start at absolute 0.0 (so the opening notes are framed
+    before they reach the strike line) landed on phrase_iteration_id=len-1 (a
+    phrase near the SONG'S END) instead of the first phrase — corrupting the
+    fret-hand anchor box right at the opening of the song."""
+    beats = [Beat(time=2.5 + i * 0.5, measure=i // 4 + 1 if i % 4 == 0 else -1) for i in range(48)]
+    notes = [TabNote(string=0, fret=(i % 5) + 3, time=round(2.5 + i * 0.5, 3), sustain=0.4)
+             for i in range(40)]
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=26.5),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=tuple(beats), average_bpm=120.0),
+        notes=notes,
+        sections=[Section(name="a", number=1, start_time=2.5),
+                  Section(name="b", number=1, start_time=10.5),
+                  Section(name="c", number=1, start_time=17.5)],
+    )
+    model = from_arrangement(arr)
+    top = model.arrangements[-1]
+    song_start_anchor = next(a for a in top.anchors if a.start_time == 0.0)
+    assert song_start_anchor.phrase_iteration_id == 0
+    assert song_start_anchor.phrase_iteration_id != len(model.phrase_iterations) - 1
+
+
 def test_anchors_do_not_cross_phrase_iteration_boundaries() -> None:
     # An anchor that spans a phrase-iteration boundary leaves the new phrase's
     # opening notes covered only by the PREVIOUS phrase's anchor; the game
