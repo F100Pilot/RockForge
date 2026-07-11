@@ -155,6 +155,13 @@ class JobOut(BaseModel):
     lyrics_status: str = "none"
     tone_detection_status: str = "none"
     cover_art: bool = False
+    # Completeness signals for the "Estado do PSARC" checklist. has_tones: the
+    # user defined at least one custom tone (else DLC Builder flags "tone
+    # missing"). sync_edited: at least one sync adjustment was made (offset moved
+    # off 0, tempo scaled, or a drift anchor placed) — drives the soft
+    # "confirmaste a sincronização?" reminder. Both GP-only.
+    has_tones: bool = False
+    sync_edited: bool = False
     # The job this one was forked from (rebuild / reload-gp / import-sync). Lets the
     # UI offer "previous version" so an iterative sync can be walked back — the older
     # job (and its bundle) is never deleted on a rebuild.
@@ -345,13 +352,42 @@ class MetadataIn(BaseModel):
     year: int | None = None
 
 
+def _sync_edited(params: dict[str, Any]) -> bool:
+    """True if any sync adjustment was made — a moved offset, a scaled tempo, or
+    a drift anchor (job-level or per-arrangement). Drives the soft "confirmaste a
+    sincronização?" completeness reminder."""
+    raw_offset = params.get("offset_s")
+    offset = float(raw_offset) if isinstance(raw_offset, (int, float, str)) else 0.0
+    raw_scale = params.get("tempo_scale")
+    scale = float(raw_scale) if isinstance(raw_scale, (int, float, str)) else 1.0
+    if abs(offset) > 0.001 or abs(scale - 1.0) > 0.001:
+        return True
+    if any(params.get("sync_anchor_stages") or []):
+        return True
+    arr_sync = params.get("arrangement_sync") or {}
+    if isinstance(arr_sync, dict):
+        for entry in arr_sync.values():
+            if not isinstance(entry, dict):
+                continue
+            e_scale = entry.get("tempo_scale")
+            if isinstance(e_scale, (int, float)) and abs(float(e_scale) - 1.0) > 0.001:
+                return True
+            if any(entry.get("sync_anchor_stages") or []):
+                return True
+    return False
+
+
 def _to_out(job: Job) -> JobOut:
-    raw_offset = (job.params or {}).get("offset_s")
+    params = job.params or {}
+    raw_offset = params.get("offset_s")
     offset_s = float(raw_offset) if isinstance(raw_offset, (int, float, str)) else 0.0
-    raw_lead = (job.params or {}).get("lead_in_s")
+    raw_lead = params.get("lead_in_s")
     lead_in_s = float(raw_lead) if isinstance(raw_lead, (int, float, str)) else 0.0
-    raw_scale = (job.params or {}).get("tempo_scale")
+    raw_scale = params.get("tempo_scale")
     tempo_scale = float(raw_scale) if isinstance(raw_scale, (int, float, str)) else 1.0
+    has_tones = bool(
+        params.get("tones") or params.get("tone_base") or params.get("tone_names")
+    )
     return JobOut(
         id=job.id,
         status=job.status.value,
@@ -376,8 +412,10 @@ def _to_out(job: Job) -> JobOut:
         tone_detection_status=str(
             (job.params or {}).get("tone_detection_status", "none")
         ),
-        cover_art=bool((job.params or {}).get("cover_art")),
-        rebuilt_from=cast("str | None", (job.params or {}).get("rebuilt_from") or None),
+        cover_art=bool(params.get("cover_art")),
+        has_tones=has_tones,
+        sync_edited=_sync_edited(params),
+        rebuilt_from=cast("str | None", params.get("rebuilt_from") or None),
     )
 
 

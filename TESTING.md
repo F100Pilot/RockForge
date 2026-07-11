@@ -289,6 +289,27 @@ least Lead + Rhythm.
    browser text highlight appears over the technique letters/tuning
    labels/bar numbers, only the intended note selection.
 
+### 7a-ter. Creation wizard + "Estado do PSARC" completeness panel (browser only)
+
+Mostly `web/index.html`; the two completeness signals (`has_tones`,
+`sync_edited`) are backend fields guarded by `test_completeness_fields_*` in
+`test_api.py`. Manual browser checks:
+
+1. **Wizard flow** — "A partir de Guitar Pro" opens the 4-step modal (🎸→🎚️→💾
+   →🏷️). Step 1 requires a GP file; "Seguinte" inspects and advances to step 2
+   with the first track auto-assigned to Lead. Step 2 blocks advancing with no
+   track; step 3 blocks with no audio (toast). Step 4 shows "✓ Criar CDLC"
+   instead of "Seguinte"; "Anterior" walks back. Create still works and opens
+   the new job. (Driven headlessly in dev via Playwright against a served
+   `index.html` with the API routes stubbed — no assertion errors.)
+2. **Completeness checklist** — on a freshly created job (no tones/cover/sync),
+   the "Estado do PSARC" card shows an amber banner listing "tons, capa,
+   confirmar a sincronização" and three ⚠️ rows, each with a jump-button
+   (Detetar tom / Carregar capa / Abrir partitura). Add a tone + a sync anchor +
+   a cover, rebuild → those rows flip to ✅ and the banner shrinks/disappears.
+   A build with no `.psarc` (no Wwise) shows a ❌ "PSARC não gerado" row. The
+   AppID/letra rows are informational (ⓘ), never counted as alerts.
+
 ### 7b. Audio → ML (needs `[ml]`, ideally a GPU)
 
 1. Start with a **simple, clean** recording (single guitar, low distortion) in
