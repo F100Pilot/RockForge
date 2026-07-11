@@ -200,6 +200,64 @@ is set and the `rebuild_job` endpoint propagates `tempo_scale` and
 defaults, so all charts share the same correction in one rebuild instead of
 requiring the user to adjust each arrangement separately.
 
+**"Início desta pista" — per-arrangement note start.** `offset_s` itself stays
+job-level for the reason above (one shared, once-padded `.wem`), but the tab
+viewer now gives each arrangement its OWN precision tools for pinning just
+*that chart's* first note, independent of the others — for GP files whose
+tracks were tabbed with a different pickup/lead-in per instrument, where a
+single shared offset can't fit both. It reuses the existing single-anchor
+mechanism (a lone `sync_anchor_stages` anchor = a uniform shift for that
+arrangement) rather than adding a new field: a small panel below the
+arrangement tabs mirrors "Passo 1"'s controls 1:1 — a numeric field + slider
+showing the arrangement's first note's current effective landing time,
+"Início = cursor" (`setArrStart(audioTime())`), and a "🎯 Detetar 1ª nota (esta
+pista)" button reusing the exact same guided 3-click state machine as the
+global tool (`firstNoteFlow`/`firstNoteFlowClick`, now parameterized by
+`firstNoteFlowScope: 'global' | 'arrangement'` — the global scope keeps
+updating `offset_s` via `setOffsetLive`, the arrangement scope calls
+`setAnchor` instead). All three write into the SAME per-tab pending anchor
+array Step 3 already uses (`syncAnchorsByKind[currentKind()]`), so they ride
+the existing "Aplicar e reconstruir" commit — no new button, no backend
+change. `setArrStart`/the guided flow's arrangement branch both pass the note's
+UNwarped `previewScale(chartT)` as the anchor's origin (matching `'drag'`
+mode's convention, not `'tap'` mode's `buildTimeWarp`-wrapped one) specifically
+so that repeatedly nudging the slider/re-running the guided flow updates the
+SAME anchor slot instead of compounding into an unintended multi-point warp.
+
+**Cursor as an explicit snap target (fixes unreliable "drag to the cursor").**
+Before, only the click-based `'tap'`/`'movefrom'` modes snapped to the live
+playhead (`currentPlayheadT`); the familiar drag gesture (`'drag'`/`'excerpt'`
+modes) only ever snapped to the beat grid, with no visual difference between
+the two gestures — the likely source of "arrastar para o cursor nem sempre
+funciona". `#snapDiv` now has a `"cursor"` option; `snapDisplay` special-cases
+it to return `currentPlayheadT + viewOrigin` directly (skipping the
+nearest-neighbor grid search), so the ordinary drag gesture reliably lands on
+the playhead when that option is picked, with no mode-switching required.
+
+**Numeric anchor editing.** `renderAnchorsList` rows now show the target time
+as an editable `<input type=number>` (was plain text) — typing an exact value
+calls `setAnchor` the same as a drag would, so a correction no longer has to
+be pixel-perfect by mouse, and an already-placed correction can be adjusted
+without delete-and-redo. Also fixed: the single-note and group-drag `pointerup`
+handlers redrew the score but never called `renderAnchorsList`/
+`updatePendingChangesInfo`, so the pending-anchors list silently went stale
+after a plain mouse drag (it only refreshed after `'tap'`/`'movefrom'`/
+`'newbeat'` clicks) — both handlers now refresh it too.
+
+**Zoom keeps its place.** `setZoom` used to rescale `tabPx` and redraw without
+touching `#tabwrap`'s `scrollLeft`, so the same pixel offset silently mapped to
+a different time after zooming — the view jumped away from whatever passage
+you were trying to zoom into. It now captures the centered time before
+changing `zoomLevel` and restores the equivalent `scrollLeft` after the
+redraw, so zooming in/out keeps the same passage in view.
+
+**No native text selection during score interaction.** Shift+click (a classic
+browser text-selection trigger) or any click-drag over the SVG's `<text>`
+labels (technique letters, tuning names, bar numbers) used to highlight them
+like page text instead of purely driving the custom note-selection/drag logic.
+Fixed with `user-select:none` on `#tabsvg` plus `e.preventDefault()` as the
+first line of the SVG's `pointerdown` handler.
+
 The tab viewer's x-axis is **recording time** (0s at the left edge): notes are
 drawn via `timeToX` (which subtracts the lead-in `viewOrigin` from the
 bundle-time positions), so the playhead starts at 0 instead of at the first
