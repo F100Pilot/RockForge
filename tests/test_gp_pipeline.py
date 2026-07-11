@@ -289,6 +289,37 @@ def test_per_arrangement_sync_is_independent(two_track_gp5: Path, tmp_path: Path
     assert not any("Rhythm:" in w and "drift-correction" in w for w in result.warnings)
 
 
+def test_warp_re_trims_sustain_after_a_local_stretch() -> None:
+    """A sync correction that locally stretches an excerpt (a chart interval
+    mapped to a wider corrected interval) scales each note's warped sustain by
+    that same factor — which can re-inflate a sustain apply_sustain_gap already
+    trimmed at parse time, fusing the note into the next one on the highway
+    ("tall sustain pillars", first fixed pre-warp in 4147d89). _warp_parsed_track
+    must re-trim after warping so the gap survives any local stretch."""
+    from rockforge.application.gp_pipeline import _build_time_warp, _warp_parsed_track
+    from rockforge.domain.music import Beat, TabNote, TempoMap, Tuning
+    from rockforge.infrastructure.gpimport.parser import ParsedGpTrack
+
+    # Two notes on the same string 0.5s apart, already gap-trimmed (sustain
+    # leaves a small gap before the next attack).
+    notes = [
+        TabNote(string=0, fret=3, time=1.0, sustain=0.45),
+        TabNote(string=0, fret=3, time=1.5, sustain=0.45),
+    ]
+    track = ParsedGpTrack(
+        notes=notes, tuning=Tuning(),
+        tempo_map=TempoMap(beats=(Beat(time=0.0, measure=1),), average_bpm=120.0),
+        sections=[],
+    )
+    # A 2-anchor excerpt correction that stretches [1.0, 1.5] to [1.0, 2.5]:
+    # a 3x local stretch. Without re-trimming, the first note's warped sustain
+    # (0.45 * 3 = 1.35s) would run well past the second note's new time (2.5s).
+    warp = _build_time_warp([(1.0, 1.0), (1.5, 2.5)])
+    warped = _warp_parsed_track(track, warp)
+    first, second = sorted(warped.notes, key=lambda n: n.time)
+    assert first.time + first.sustain < second.time
+
+
 def test_conflicting_sync_anchors_raise_clear_error(
     two_track_gp5: Path, tmp_path: Path
 ) -> None:
