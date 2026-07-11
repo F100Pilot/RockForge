@@ -463,6 +463,26 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
               <span id="firstNoteInfo" class="meta" style="display:block;margin-top:.35rem">guiado: clica em "Detetar 1ª nota" → clica na onda onde a 1ª nota soa → clica na 1ª nota para a alinhar (as outras acompanham)</span>
             </div>
 
+            <!-- Sincronizar por compasso — para quando uma pista só entra a partir
+                 de um certo compasso (ex.: Rhythm entra no compasso 7) e alinhar
+                 pela 1ª nota não chega. -->
+            <div class="sync-step" id="barSyncPanel">
+              <div class="sync-step-head">Sincronizar por compasso <span class="meta">(opcional)</span>
+                <button class="info-btn" data-info="bar-sync">ⓘ</button></div>
+              <div class="sync-step-desc">Para quando esta pista só começa a tocar a partir de um certo compasso. Escolhe o compasso e alinha-o com o cursor, ou diretamente com o mesmo compasso de outra pista já sincronizada.</div>
+              <div class="syncctrls">
+                <label>Compasso:
+                  <select id="barSyncBar" style="width:auto"></select></label>
+                <button type="button" id="barSyncFromCursor" class="secondary">= cursor</button>
+              </div>
+              <div class="syncctrls" id="barSyncRefRow" style="margin-top:.4rem">
+                <label>Igualar ao mesmo compasso de:
+                  <select id="barSyncRefArr" style="width:auto"></select></label>
+                <button type="button" id="barSyncFromRef" class="secondary">Sincronizar</button>
+              </div>
+              <span id="barSyncInfo" class="meta" style="display:block;margin-top:.35rem"></span>
+            </div>
+
             <!-- Passo 2 — andamento (tempo) -->
             <div class="sync-step">
               <div class="sync-step-head"><span class="sync-step-num">2</span> Andamento (velocidade)
@@ -1244,6 +1264,13 @@ const INFO = {
     title: 'Sincronização — início e tique',
     body: '<p>Dá play à gravação: o cursor percorre as notas e ouves um <strong>tique</strong> em cada nota. Ajusta o slider "Início da música" até os tiques baterem certo com a gravação.<br><strong>Este valor é por pista</strong> — muda de separador (Lead/Rhythm/Combined) e o campo passa a mostrar e corrigir o início dessa pista, sem mexer nas outras. Útil quando o Lead e o Rhythm foram tabulados com um pickup/compasso de entrada diferente. A afinação continua partilhada por todos.<br>"Início = cursor" trava o valor na posição do leitor; "Detetar 1ª nota" é o mesmo fluxo guiado de 3 cliques. A correção fica pendente e grava com o botão normal "Aplicar e reconstruir".</p>'
   },
+  'bar-sync': {
+    title: 'Sincronizar por compasso',
+    body: `<p>Útil quando uma pista só entra a tocar mais tarde na música — por exemplo, o Rhythm tem compassos de silêncio no início e a primeira nota real coincide com o <b>compasso 7</b>. "Início desta pista" só alinha a 1ª nota; este painel deixa-te alinhar <b>qualquer compasso</b>, escolhido pelo número.</p>
+<p><b>= cursor:</b> escolhe o compasso, dá play/pausa exatamente onde ele deve soar, e clica — o compasso escolhido (e tudo depois dele) alinha com o cursor.</p>
+<p><b>Sincronizar com outra pista:</b> como o número do compasso é o mesmo em todas as pistas do ficheiro Guitar Pro (vêm da mesma partitura), se já tiveres o Lead bem sincronizado podes alinhar o compasso 7 do Rhythm diretamente com o compasso 7 do Lead — sem teres de ouvir/procurar à mão.</p>
+<p>Como as outras ferramentas de sincronização, cria uma correção pendente por pista — grava com "Aplicar e reconstruir".</p>`
+  },
   'sync-tempo': {
     title: 'Sincronização — andamento',
     body: '<p>Se a tabulatura e a gravação se vão afastando ao longo da música (o GP foi escrito num andamento ligeiramente diferente do que foi gravado), ajusta o <strong>andamento</strong>: estica/comprime a música toda de uma vez. As notas movem-se sobre a forma de onda para confirmares o alinhamento.</p>'
@@ -1985,6 +2012,7 @@ function showArr(i) {
   syncResetPointer();
   renderAnchorsList();
   updateSyncOffsetDisplay();
+  updateBarSyncPanel();
   drawFretboard();  // redraw the neck (tuning labels) + refresh the active notes
   updateFretboard(playheadDisplay(audioTime()));
   updateLiveBpm(playheadDisplay(audioTime()));
@@ -2030,6 +2058,105 @@ function updateSyncOffsetDisplay() {
   document.getElementById('syncOffset').value = v.toFixed(2);
   document.getElementById('syncOffsetRange').value = Math.max(0, v);
 }
+
+// ---- Sync by bar number (for a track whose real content only starts several
+// measures in — e.g. Rhythm rests until bar 7). Generalizes the per-track
+// "Início" tools (which only pin the very first note) to ANY chosen bar, and
+// additionally lets that bar be aligned directly to the SAME bar number of
+// another, already-synced arrangement — sound, because bar numbers come from
+// one shared song-level measure header in the GP file (parser.py), so bar N is
+// the same musical instant across every track before any per-track correction.
+
+// previewScale()/buildTimeWarp(syncAnchors) operate on the CURRENTLY loaded
+// arrangement's live globals; these variants read arrangement `idx`'s own
+// tempo (live pending, else built) and pending anchors, regardless of which
+// tab is on screen — needed to compute "where does the reference track's bar
+// N currently sit" without switching tabs.
+function arrangementPreviewScale(idx, t) {
+  if (!isGpJob()) return t;
+  const a = arrangements[idx];
+  if (!a) return t;
+  const built = a.tempo_scale || 1;
+  const live = (a.kind in tempoScaleByKind) ? tempoScaleByKind[a.kind] : built;
+  return (t - scoreShift) * (live / built) + Math.max(offsetLive, MIN_LEAD);
+}
+function arrangementDisplayTime(idx, t) {
+  const a = arrangements[idx];
+  if (!a) return t;
+  return buildTimeWarp(syncAnchorsByKind[a.kind] || [])(arrangementPreviewScale(idx, t));
+}
+// Raw (server) chart time of a bar's downbeat in arrangement `idx`, or null.
+function barChartTime(idx, measure) {
+  const a = arrangements[idx];
+  const b = a && (a.bars || []).find(x => x.measure === measure);
+  return b ? b.time : null;
+}
+
+// Refresh the bar-sync panel's selectors for the current tab: every bar of
+// THIS arrangement, and every OTHER arrangement as a sync-reference option.
+function updateBarSyncPanel() {
+  const panel = document.getElementById('barSyncPanel');
+  if (!panel) return;
+  if (!isGpJob() || !arrangements.length) { panel.style.display = 'none'; return; }
+  panel.style.display = '';
+  const bars = arrangements[currentArr].bars || [];
+  const barSel = document.getElementById('barSyncBar');
+  const prevBar = barSel.value;
+  barSel.innerHTML = bars.map(b => `<option value="${b.measure}">Compasso ${b.measure}</option>`).join('');
+  if (bars.some(b => String(b.measure) === prevBar)) barSel.value = prevBar;
+
+  const others = arrangements.map((a, i) => ({ a, i })).filter(o => o.i !== currentArr);
+  document.getElementById('barSyncRefRow').style.display = others.length ? '' : 'none';
+  const refSel = document.getElementById('barSyncRefArr');
+  const prevRef = refSel.value;
+  refSel.innerHTML = others.map(o => `<option value="${o.i}">${esc(o.a.kind)}</option>`).join('');
+  if (others.some(o => String(o.i) === prevRef)) refSel.value = prevRef;
+}
+
+(function wireBarSync() {
+  const barSel = document.getElementById('barSyncBar');
+  const fromCursor = document.getElementById('barSyncFromCursor');
+  const refSel = document.getElementById('barSyncRefArr');
+  const fromRef = document.getElementById('barSyncFromRef');
+  const info = document.getElementById('barSyncInfo');
+  if (!fromCursor) return;
+
+  fromCursor.addEventListener('click', () => {
+    if (!isGpJob()) return;
+    const measure = parseInt(barSel.value, 10);
+    const chartT = barChartTime(currentArr, measure);
+    if (chartT == null) { toast('compasso não encontrado', 'err'); return; }
+    const origT = previewScale(chartT);  // unwarped — matches 'drag'/setTrackStart's convention
+    setAnchor(origT, currentPlayheadT + viewOrigin);
+    renderAnchorsList();
+    updatePendingChangesInfo();
+    showArr(currentArr);
+    info.textContent = `Compasso ${measure} alinhado com o cursor (${currentPlayheadT.toFixed(2)}s).`;
+    toast(`Compasso ${measure} alinhado com o cursor`, 'ok');
+  });
+
+  fromRef.addEventListener('click', () => {
+    if (!isGpJob()) return;
+    const measure = parseInt(barSel.value, 10);
+    const refIdx = parseInt(refSel.value, 10);
+    if (isNaN(refIdx) || !arrangements[refIdx]) { toast('escolhe uma pista de referência', 'err'); return; }
+    const chartT = barChartTime(currentArr, measure);
+    const refChartT = barChartTime(refIdx, measure);
+    if (chartT == null || refChartT == null) {
+      toast(`compasso ${measure} não existe nas duas pistas`, 'err');
+      return;
+    }
+    const target = arrangementDisplayTime(refIdx, refChartT);  // ref track's OWN sync state
+    const origT = previewScale(chartT);
+    setAnchor(origT, target);
+    renderAnchorsList();
+    updatePendingChangesInfo();
+    showArr(currentArr);
+    const refKind = arrangements[refIdx].kind;
+    info.textContent = `Compasso ${measure} alinhado com o compasso ${measure} de ${refKind} (${(target - viewOrigin).toFixed(2)}s).`;
+    toast(`Compasso ${measure} sincronizado com ${refKind}`, 'ok');
+  });
+})();
 
 function renderAnchorsList() {
   const el = document.getElementById('syncAnchorsList');

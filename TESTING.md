@@ -288,6 +288,20 @@ least Lead + Rhythm.
    select), and click-drag a rubber-band box over several notes — confirm no
    browser text highlight appears over the technique letters/tuning
    labels/bar numbers, only the intended note selection.
+6. **"Mover seguintes" lands on the cursor** (regression: it used to move notes
+   the WRONG way once a pending anchor already existed). First set "Início
+   desta pista" for the tab (creating a pending anchor), THEN pause playback
+   somewhere later and use "Mover seguintes" on a note — it (and everything
+   after it) must land exactly on the playhead, not somewhere else. Repeat for
+   "Marcar" (tap) and "Novo beat (detetar)" — same underlying fix.
+7. **Sync by bar number** (`barSyncPanel`, below Step 1) — on a job with Lead +
+   Rhythm: sync Lead's start via Step 1, switch to Rhythm, pick bar 7 in
+   "Sincronizar por compasso", pick "Lead" as the reference, click
+   "Sincronizar" — confirm Rhythm's bar 7 visually lines up with Lead's bar 7
+   on the score (no manual listening needed). Also try "= cursor": pause
+   playback where a bar should sound and click it — that bar (and everything
+   after) should jump to the cursor. Confirm the reference dropdown never
+   offers the current tab itself.
 
 ### 7a-ter. Creation wizard + "Estado do PSARC" completeness panel (browser only)
 

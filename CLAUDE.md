@@ -237,6 +237,52 @@ convention, not `'tap'` mode's `buildTimeWarp`-wrapped one) specifically so
 that repeatedly nudging the slider/re-running the guided flow updates the
 SAME anchor slot instead of compounding into an unintended multi-point warp.
 
+**All anchor-writing modes use the UNwarped origin (fixed "Mover seguintes"
+moving notes the wrong way).** `'tap'`, `'movefrom'` and `'newbeat'` used to set
+each anchor's ORIGIN to the WARPED position (`warp(previewScale(t))`); with no
+pending anchors that coincides with the unwarped value so it looked fine, but
+the moment a pending anchor already exists (e.g. Step 1's own "Início"), a
+warped origin corrupts `buildTimeWarp`'s piecewise map and the clicked note
+lands somewhere else entirely — the "notes moved away from the cursor instead
+of onto it" bug. All three now use `previewScale(t)` (unwarped) as the origin,
+same convention as `'drag'`/`setTrackStart` above, and compute the target from
+the CURRENT `warp(...)` value + the intended delta.
+
+### Sync by bar number (`barSyncPanel`)
+
+For a track whose real content only starts several measures in — e.g. Rhythm
+rests through the intro and its first real note coincides with **bar 7** — the
+per-track "Início" tools above only pin the very FIRST note, which isn't
+useful when the correction point is mid-song. A dedicated panel right after
+Step 1 lets the user pick **any bar number** of the current arrangement and
+align it two ways:
+- **"= cursor"**: pause/scrub playback to where that bar should sound, click —
+  same `setAnchor(previewScale(barChartTime), currentPlayheadT + viewOrigin)`
+  pattern as `setTrackStart`, just for an arbitrary bar instead of the first
+  note.
+- **"Sincronizar" with another arrangement**: aligns the chosen bar directly to
+  the SAME bar number's current position in an already-synced reference
+  arrangement (e.g. Rhythm's bar 7 → Lead's bar 7) — no listening required.
+  Sound because bar numbers come from ONE shared, song-level measure header in
+  the GP file (`parser.py`: `for measure in track.measures: … header.number` —
+  every track iterates the same measure sequence), so bar N is the same
+  musical instant across every track before any per-track correction.
+
+  Reading "where does the reference arrangement's bar N currently sit" requires
+  that arrangement's OWN live tempo/anchors, independent of whichever tab is on
+  screen — `arrangementPreviewScale(idx, t)`/`arrangementDisplayTime(idx, t)`
+  generalize `previewScale`/`buildTimeWarp(syncAnchors)` to read `arrangements[
+  idx]`'s own `tempo_scale`/`tempoScaleByKind`/`syncAnchorsByKind` instead of
+  the current tab's live globals (`tempoScaleLive`/`syncAnchors`), which is only
+  possible because every arrangement's pending edits stay in those `ByKind` maps
+  for the whole session, not just the active tab's.
+
+  `updateBarSyncPanel()` (called from `showArr`) repopulates the bar dropdown
+  from `arrangements[currentArr].bars` and the reference dropdown from every
+  OTHER arrangement. Both actions write into the SAME per-tab pending anchor
+  array as everything else (`syncAnchorsByKind[currentKind()]`) — rides the
+  normal "Aplicar e reconstruir", no backend change.
+
 **Cursor as an explicit snap target (fixes unreliable "drag to the cursor").**
 Before, only the click-based `'tap'`/`'movefrom'` modes snapped to the live
 playhead (`currentPlayheadT`); the familiar drag gesture (`'drag'`/`'excerpt'`
