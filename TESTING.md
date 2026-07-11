@@ -256,6 +256,36 @@ and confirm the warning appears (and the rest of the chart still builds).
 about the drop, not new validation. Guarded by
 `test_gp7_out_of_range_note_dropped_with_warning`.
 
+### 7a-bis. Per-track note start + note-adjustment precision (browser only, no ML/Wwise)
+
+Pure `web/index.html` changes — no backend/model change, so there's nothing
+for `pytest` to guard here; verify by hand in the browser on a GP job with at
+least Lead + Rhythm.
+
+1. **"Início desta pista"** (panel below the arrangement tabs): on the Lead
+   tab, use the numeric field, "Início = cursor", and the guided "🎯 Detetar 1ª
+   nota (esta pista)" flow to move Lead's first note — confirm Rhythm's chart
+   does NOT move. Switch to the Rhythm tab and confirm ITS panel shows Rhythm's
+   own first-note position (not Lead's), independently adjustable. Confirm the
+   correction rides the normal "Aplicar e reconstruir" (no separate commit
+   button) and survives a rebuild.
+2. **Cursor snap for dragging** — set "Encaixar em:" to "Cursor de reprodução",
+   play the recording, drag a note mid-playback — it should land exactly on the
+   playhead, not the nearest beat. This is the fix for "arrastar para o cursor
+   nem sempre funciona".
+3. **Numeric anchor editing** — drag a note to create a correction, then edit
+   its target-time number directly in the pending-anchors list below the score
+   and confirm the note redraws at the typed value. Also confirm the list
+   updates IMMEDIATELY after a plain drag (previously it only refreshed after
+   "Marcar"/"Mover seguintes"/"Novo beat" clicks, not a drag).
+4. **Zoom keeps its place** — scroll to a specific passage, zoom in/out with
+   `+`/`−`/keyboard shortcuts — the same passage should stay in view instead of
+   jumping to an unrelated part of the song.
+5. **No native text-selection** — Shift+click one note then another (range
+   select), and click-drag a rubber-band box over several notes — confirm no
+   browser text highlight appears over the technique letters/tuning
+   labels/bar numbers, only the intended note selection.
+
 ### 7b. Audio → ML (needs `[ml]`, ideally a GPU)
 
 1. Start with a **simple, clean** recording (single guitar, low distortion) in

@@ -96,6 +96,9 @@
   .syncctrls { display:flex; gap:.8rem; align-items:center; flex-wrap:wrap; font-size:.85rem; color:var(--muted); }
   #playhead { pointer-events:none; }
   #tabwrap { overflow-x:auto; background:#0f1013; border:1px solid var(--line); border-radius:8px; margin-top:.5rem; }
+  /* Shift+click / drag-select on the score must not trigger the browser's own
+     text selection over the SVG's <text> labels (techniques, tuning, bars). */
+  #tabsvg { user-select:none; -webkit-user-select:none; -moz-user-select:none; }
   .note-grp { cursor: pointer; }
   .note-grp.selected .note-shape { stroke: #ffd23f; stroke-width: 3px; }
   .lyric-word { cursor: grab; }
@@ -509,6 +512,21 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
         </div>
 
         <div class="tabnav" id="arrTabs" style="margin-top:.5rem"></div>
+        <div id="arrStartPanel" class="sync-step" style="margin-top:.5rem;display:none">
+          <div class="sync-step-head">Início desta pista <span id="arrStartKind" class="meta"></span>
+            <button class="info-btn" data-info="sync-offset-arr">ⓘ</button></div>
+          <div class="sync-step-desc">Independente de outras pistas — corrige só a 1ª nota <b>deste</b> separador (Lead/Rhythm/Combined), sem mexer nos outros.</div>
+          <div class="syncctrls">
+            <label>Segundo:
+              <input type="number" id="arrStartOffset" value="0" step="0.01" min="0" style="width:6rem"></label>
+            <input type="range" id="arrStartOffsetRange" min="0" max="20" step="0.01" value="0" style="flex:1;min-width:120px">
+          </div>
+          <div class="syncctrls" style="margin-top:.4rem">
+            <button type="button" id="detectFirstNoteArr" class="secondary">🎯 Detetar 1ª nota (esta pista)</button>
+            <button type="button" id="arrStartFromCursor" class="secondary">Início = cursor</button>
+          </div>
+          <span id="arrStartInfo" class="meta" style="display:block;margin-top:.35rem"></span>
+        </div>
         <div class="anchor-row" style="margin-top:.35rem">
           <button type="button" id="zoomOut" class="secondary">−</button>
           <button type="button" id="zoomIn" class="secondary">+</button>
@@ -550,8 +568,9 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
             <option value="2">½ tempo (colcheia)</option>
             <option value="4">¼ tempo (semicolcheia)</option>
             <option value="3">Tercina (⅓ tempo)</option>
+            <option value="cursor">Cursor de reprodução</option>
           </select>
-          <span class="meta">a nota salta para esta grelha; <b>Alt</b> = arrasto livre</span>
+          <span class="meta">a nota salta para esta grelha (ou para o cursor, se escolhido); <b>Alt</b> = arrasto livre</span>
         </div>
         <div class="anchor-row" style="margin-top:.2rem">
           <span class="meta"><b>Selecionar várias:</b> clica numa nota e faz <b>Shift+clique</b> noutra para selecionar o intervalo · <b>Ctrl/Cmd+clique</b> adiciona/remove uma · clica no fundo vazio para limpar</span>
@@ -1019,7 +1038,11 @@ const INFO = {
   },
   'sync-offset': {
     title: 'Sincronização — início e tique',
-    body: '<p>Dá play à gravação: o cursor percorre as notas e ouves um <strong>tique</strong> em cada nota. Ajusta o slider "Início da música" até os tiques baterem certo com a gravação.<br><strong>Cada arranjo (Lead/Rhythm) é sincronizado separadamente</strong> — muda de separador para corrigir cada um. O início e a afinação são partilhados por todos.</p>'
+    body: '<p>Dá play à gravação: o cursor percorre as notas e ouves um <strong>tique</strong> em cada nota. Ajusta o slider "Início da música" até os tiques baterem certo com a gravação.<br><strong>Cada arranjo (Lead/Rhythm) é sincronizado separadamente</strong> — muda de separador para corrigir cada um. O início e a afinação são partilhados por todos.<br>Se só uma pista precisar de um início diferente das outras (ex.: um pickup diferente), usa o painel <b>"Início desta pista"</b> por baixo dos separadores.</p>'
+  },
+  'sync-offset-arr': {
+    title: 'Início desta pista (independente)',
+    body: '<p>Ao contrário do "Início da música" (Passo 1, partilhado por todas as pistas porque só há uma gravação), este painel corrige apenas a <b>1ª nota do separador atual</b> — útil quando o Lead e o Rhythm (ou outra pista) foram tabulados com um pickup/compasso de entrada diferente e um início único não serve para os dois.<br>Funciona tal como o Passo 1: "Início = cursor" trava o valor na posição do leitor; "Detetar 1ª nota" é o mesmo fluxo guiado de 3 cliques, mas só afeta este separador. A correção fica pendente e grava com o botão normal "Aplicar e reconstruir".</p>'
   },
   'sync-tempo': {
     title: 'Sincronização — andamento',
@@ -1036,7 +1059,7 @@ const INFO = {
   'sync-modes': {
     title: 'Modos de correção da partitura',
     body: `<p><strong>Arrastar nota:</strong> arrasta uma nota horizontalmente para o instante correto — cria um ponto de correção; as notas entre pontos são esticadas/comprimidas.</p>
-<p><strong>Encaixar nos tempos (beats):</strong> com o encaixe ligado, a nota salta de beat em beat (a grelha da partitura, mostrada com marcas no fundo) em vez de deslizar de forma contínua. Mantém <strong>Alt</strong> premido durante o arrasto para colocar livremente (afinação sub-beat).</p>
+<p><strong>Encaixar nos tempos (beats):</strong> com o encaixe ligado, a nota salta de beat em beat (a grelha da partitura, mostrada com marcas no fundo) em vez de deslizar de forma contínua. Mantém <strong>Alt</strong> premido durante o arrasto para colocar livremente (afinação sub-beat). Escolhe <strong>"Cursor de reprodução"</strong> na grelha para arrastar a nota diretamente para a posição atual do leitor (em vez do beat mais próximo) — a forma mais fiável de alinhar com o cursor.</p>
 <p><strong>Marcar no cursor:</strong> clica numa nota para a ancorar na posição atual do cursor de reprodução — útil para alinhar enquanto o áudio toca.</p>
 <p><strong>Selecionar excerto:</strong> arrasta uma caixa sobre as notas e depois arrasta uma delas — o excerto move-se em bloco (também com encaixe nos beats).</p>
 <p><strong>Mover seguintes:</strong> pausa o áudio no instante certo e clica na nota deslocada — essa nota e todas as seguintes deslocam-se em bloco para o cursor.</p>
@@ -1093,9 +1116,18 @@ const BASE_PX = 80;
 let zoomLevel = 1.25;  // start 25% more zoomed in than the base scale
 
 function setZoom(z) {
+  // Keep the currently-centered time in view across the zoom change — tabPx
+  // (px/second) changes but #tabwrap's scrollLeft doesn't, so without this the
+  // same pixel offset silently jumps to a different part of the song, making
+  // zoom useless for framing one fast passage precisely.
+  const wrap = document.getElementById('tabwrap');
+  const centerT = arrangements.length ? xToTime(wrap.scrollLeft + wrap.clientWidth / 2) : 0;
   zoomLevel = Math.min(8, Math.max(0.25, z));
   document.getElementById('zoomLevel').textContent = `${Math.round(zoomLevel * 100)}%`;
-  if (arrangements.length) showArr(currentArr);
+  if (arrangements.length) {
+    showArr(currentArr);
+    wrap.scrollLeft = Math.max(0, timeToX(centerT) - wrap.clientWidth / 2);
+  }
 }
 document.getElementById('zoomIn').addEventListener('click', () => setZoom(zoomLevel * 1.5));
 document.getElementById('zoomOut').addEventListener('click', () => setZoom(zoomLevel / 1.5));
@@ -1131,8 +1163,12 @@ let selectionAnchor = null;  // chart time of the last plainly-clicked note (Shi
 // Guided "detect first note" flow: null → idle; 'audio' → waiting for the click
 // on the waveform where the 1st note sounds; 'note' → waiting for the click on
 // the 1st note to align it there. firstNoteAudioT is that recording second.
+// firstNoteFlowScope picks what the final click writes to: 'global' (the
+// shared job-level offset_s, Step 1) or 'arrangement' (a per-tab anchor via
+// the "Início desta pista" panel) — same 3-click gesture, different target.
 let firstNoteFlow = null;
 let firstNoteAudioT = 0;
+let firstNoteFlowScope = 'global';
 let currentPlayheadT = 0; // display time of playhead; updated by syncFrame and seeks
 // In-app lyrics editor rows: {time, length, lyric, lineBreak}. lyric excludes
 // the trailing "+" — lineBreak controls whether it's re-appended on save.
@@ -1756,6 +1792,7 @@ function showArr(i) {
   svg.innerHTML = s;
   syncResetPointer();
   renderAnchorsList();
+  updateArrStartPanel();
   drawFretboard();  // redraw the neck (tuning labels) + refresh the active notes
   updateFretboard(playheadDisplay(audioTime()));
   updateLiveBpm(playheadDisplay(audioTime()));
@@ -1779,14 +1816,47 @@ function currentKind() {
   return arrangements[currentArr] ? arrangements[currentArr].kind : null;
 }
 
+// Chart time of the current arrangement's very first note — the anchor point
+// "Início desta pista" pins independently of the shared job-level offset_s.
+function currentArrFirstNoteTime() {
+  const notes = arrangements[currentArr] ? arrangements[currentArr].notes : [];
+  return notes.length ? Math.min(...notes.map(n => n.time)) : null;
+}
+
+// Refresh the "Início desta pista" panel: only for GP jobs, shows this
+// arrangement's first note's current effective landing time (raw recording
+// seconds, matching the shared offset field's convention) so the numeric
+// field/slider always reflect live pending edits, not just the last commit.
+function updateArrStartPanel() {
+  const panel = document.getElementById('arrStartPanel');
+  if (!panel) return;
+  if (!isGpJob() || !arrangements.length) { panel.style.display = 'none'; return; }
+  panel.style.display = '';
+  document.getElementById('arrStartKind').textContent = `(${currentKind() || ''})`;
+  const chartT = currentArrFirstNoteTime();
+  const v = chartT == null ? 0 : buildTimeWarp(syncAnchors)(previewScale(chartT)) - viewOrigin;
+  document.getElementById('arrStartOffset').value = v.toFixed(2);
+  document.getElementById('arrStartOffsetRange').value = Math.max(0, v);
+}
+
 function renderAnchorsList() {
   const el = document.getElementById('syncAnchorsList');
   if (!syncAnchors.length) { el.innerHTML = ''; updatePendingChangesInfo(); return; }
+  // The target time is an editable number (not just text) so a correction can
+  // be typed exactly instead of only ever being set by dragging.
   el.innerHTML = syncAnchors.map(([o, n], i) =>
-    `<div class="anchor-row">Correção ${i+1}: ${o.toFixed(2)}s → ${n.toFixed(2)}s
+    `<div class="anchor-row">Correção ${i+1}: ${o.toFixed(2)}s →
+     <input type="number" step="0.01" value="${n.toFixed(2)}" data-i="${i}" class="anchor-edit" style="width:6rem">s
      <button type="button" data-i="${i}" class="anchor-remove">remover</button></div>`
   ).join('') + `<div class="anchor-row">
      <button type="button" id="clearAnchors" class="secondary">Limpar correções pendentes</button></div>`;
+  el.querySelectorAll('.anchor-edit').forEach(inp => inp.addEventListener('change', () => {
+    const i = parseInt(inp.dataset.i, 10);
+    const v = parseFloat(inp.value);
+    if (!isNaN(v)) syncAnchors[i][1] = v;
+    showArr(currentArr);  // redraw at the typed position; list itself stays as-is
+    updatePendingChangesInfo();
+  }));
   el.querySelectorAll('.anchor-remove').forEach(b => b.addEventListener('click', () => {
     syncAnchors.splice(parseInt(b.dataset.i, 10), 1);
     renderAnchorsList();
@@ -2844,7 +2914,7 @@ function setAnchor(origT, newT) {
 // ebeats, so tempo changes are respected). Feeds both the drawn grid and snap.
 function snapGridTimes() {
   const a = arrangements[currentArr];
-  if (!a) return [];
+  if (!a || snapDiv === 'cursor') return [];  // 'cursor' snaps live in snapDisplay, no grid
   if (snapDiv === 'bars') return (a.bars || []).map(b => b.time);
   const beats = a.beats || [];
   const div = Number(snapDiv);
@@ -2881,15 +2951,24 @@ function rangeSelect(t) {
 }
 
 // ---- Guided "detect first note" flow (3 clicks) ----
+// Same flow drives both the shared "Início da música" (Step 1) and the
+// per-arrangement "Início desta pista" panel — firstNoteFlowScope says which.
+function firstNoteInfoEl() {
+  return document.getElementById(firstNoteFlowScope === 'arrangement' ? 'arrStartInfo' : 'firstNoteInfo');
+}
+function firstNoteBtnEl() {
+  return document.getElementById(firstNoteFlowScope === 'arrangement' ? 'detectFirstNoteArr' : 'detectFirstNote');
+}
 function firstNoteStatus(text) {
-  const el = document.getElementById('firstNoteInfo');
+  const el = firstNoteInfoEl();
   if (el) el.textContent = text;
-  const btn = document.getElementById('detectFirstNote');
+  const btn = firstNoteBtnEl();
   if (btn) btn.classList.toggle('active-mode', firstNoteFlow !== null);
 }
-function startFirstNoteFlow() {
+function startFirstNoteFlow(scope) {
   if (!isGpJob()) return;
   if (firstNoteFlow) { cancelFirstNoteFlow(); return; }  // clicking again cancels
+  firstNoteFlowScope = scope || 'global';
   firstNoteFlow = 'audio';
   firstNoteStatus('1) Clica na forma de onda onde COMEÇA o som da 1ª nota (clica de novo para ajustar).');
 }
@@ -2903,11 +2982,27 @@ function firstNoteFlowClick(e, svg) {
   if (!firstNoteFlow) return false;
   const grp = e.target.closest('.note-grp');
   if (grp && firstNoteFlow === 'note') {
-    // 3rd click: align the clicked (first) note to the marked audio point by
-    // updating the START offset (so the "Início da música" field reflects it),
-    // not a hidden anchor. A note shows at recording time
-    // (chartT - scoreShift)*ratio + offsetLive, so solve for offsetLive.
     const chartT = parseFloat(grp.dataset.t);
+    if (firstNoteFlowScope === 'arrangement') {
+      // 3rd click, per-track scope: pin THIS note to the marked audio point as
+      // a pending anchor for the current tab only. origT is the UNwarped
+      // previewScale position (not buildTimeWarp(syncAnchors) of it) so
+      // re-running the flow on the same note updates the same anchor slot
+      // instead of compounding into a 2nd point (setAnchor matches by origT).
+      const origT = previewScale(chartT);
+      firstNoteFlow = null;
+      setAnchor(origT, firstNoteAudioT + viewOrigin);
+      renderAnchorsList();
+      updatePendingChangesInfo();
+      firstNoteStatus(`Início desta pista fixado em ${firstNoteAudioT.toFixed(2)}s — "Aplicar e reconstruir" para gravar.`);
+      toast('Início desta pista atualizado', 'ok');
+      showArr(currentArr);
+      return true;
+    }
+    // 3rd click, global scope: align the clicked (first) note to the marked
+    // audio point by updating the START offset (so the "Início da música"
+    // field reflects it), not a hidden anchor. A note shows at recording time
+    // (chartT - scoreShift)*ratio + offsetLive, so solve for offsetLive.
     const ratio = tempoScaleLive / builtScale;
     const newOffset = firstNoteAudioT - (chartT - scoreShift) * ratio;
     firstNoteFlow = null;
@@ -2932,10 +3027,18 @@ function firstNoteFlowClick(e, svg) {
   return true;
 }
 
-// Snap a display time to the nearest beat (from the cached grid). `bypass` (Alt
-// held, or the snap toggle off) returns it unchanged for free/fine placement.
+// Snap a display time to the nearest beat (from the cached grid), or — when
+// snapDiv is 'cursor' — directly to the live playhead position, since that's
+// a single point, not a grid (no nearest-neighbor search needed). This is
+// what makes dragging reliably land on the cursor: 'tap'/'movefrom' modes
+// already snapped a CLICK to the playhead, but a drag in 'drag'/'excerpt'
+// mode only ever snapped to the beat grid, which is the "arrastar para o
+// cursor nem sempre funciona" symptom. `bypass` (Alt held, or the snap
+// toggle off) returns the raw value unchanged for free/fine placement.
 function snapDisplay(dispT, bypass) {
-  if (bypass || !snapToBeats || !snapPositions.length) return dispT;
+  if (bypass || !snapToBeats) return dispT;
+  if (snapDiv === 'cursor') return currentPlayheadT + viewOrigin;
+  if (!snapPositions.length) return dispT;
   let best = dispT, bestD = Infinity;
   for (const bd of snapPositions) {
     const d = Math.abs(bd - dispT);
@@ -2998,6 +3101,11 @@ function updateSelectionInfo() {
   });
 
   svg.addEventListener('pointerdown', e => {
+    // Stop the browser's native text/drag selection (Shift+click is a classic
+    // trigger for it) from highlighting the SVG's <text> labels — technique
+    // letters, tuning names, bar numbers — while the custom note-selection/
+    // drag logic below runs.
+    e.preventDefault();
     // Guided "detect first note" flow intercepts all clicks while armed.
     if (firstNoteFlowClick(e, svg)) return;
     // Lyric word drag: grab a word on the tab to reposition it in time.
@@ -3197,6 +3305,8 @@ function updateSelectionInfo() {
       if (Math.abs(snapDelta) > 0.003) {
         setAnchor(dStart, warp(dStart) + snapDelta);
         if (dEnd !== dStart) setAnchor(dEnd, warp(dEnd) + snapDelta);
+        renderAnchorsList();
+        updatePendingChangesInfo();
         showArr(currentArr);
       }
       groupDrag = null;
@@ -3220,6 +3330,8 @@ function updateSelectionInfo() {
     // move that snaps back to the same beat leaves notes untouched.
     if (Math.abs(target - origDisp) > 0.003) {
       setAnchor(chart, target);
+      renderAnchorsList();
+      updatePendingChangesInfo();
       showArr(currentArr);
     }
     dragging = null;
@@ -4079,7 +4191,46 @@ function setTempoLive(scale) {
 
   // Guided 3-click alignment: arm → click the waveform where the 1st note
   // sounds → click the 1st note to shift it (and all notes) there.
-  detect.addEventListener('click', () => startFirstNoteFlow());
+  detect.addEventListener('click', () => startFirstNoteFlow('global'));
+})();
+
+// Pin the current arrangement's first note to a target recording second as a
+// pending anchor (a single anchor = a uniform shift for that arrangement's
+// whole chart — see ArrangementSync in gp_pipeline.py). origT is the UNwarped
+// previewScale position (like 'drag' mode, not 'tap' mode) so repeated calls
+// from the slider/number field update the same anchor instead of compounding.
+function setArrStart(v) {
+  const chartT = currentArrFirstNoteTime();
+  if (chartT == null) return;
+  const origT = previewScale(chartT);
+  setAnchor(origT, Math.max(0, v) + viewOrigin);
+  renderAnchorsList();
+  updatePendingChangesInfo();
+  showArr(currentArr);
+}
+
+// Per-arrangement counterpart of wireFirstNoteTools: same precision tools
+// ("Segundo" field, slider, "Início = cursor", guided flow), scoped to only
+// the current tab's first note via setArrStart/startFirstNoteFlow('arrangement').
+(function wireArrStartTools() {
+  const offsetInput = document.getElementById('arrStartOffset');
+  const offsetRange = document.getElementById('arrStartOffsetRange');
+  const fromCursor = document.getElementById('arrStartFromCursor');
+  const detect = document.getElementById('detectFirstNoteArr');
+  if (!offsetInput) return;
+
+  offsetInput.addEventListener('input', e => setArrStart(parseFloat(e.target.value) || 0));
+  offsetRange.addEventListener('input', e => setArrStart(parseFloat(e.target.value) || 0));
+
+  fromCursor.addEventListener('click', () => {
+    if (!isGpJob()) return;
+    const t = audioTime();
+    setArrStart(t);
+    document.getElementById('arrStartInfo').textContent = `Início desta pista fixado na posição do cursor: ${t.toFixed(2)}s.`;
+    toast('Início desta pista = posição do cursor', 'ok');
+  });
+
+  detect.addEventListener('click', () => startFirstNoteFlow('arrangement'));
 })();
 
 (function wireDetectTuning() {
