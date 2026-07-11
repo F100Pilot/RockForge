@@ -274,6 +274,21 @@ of onto it" bug. All three now use `previewScale(t)` (unwarped) as the origin,
 same convention as `'drag'`/`setTrackStart` above, and compute the target from
 the CURRENT `warp(...)` value + the intended delta.
 
+**"Mover seguintes" pins the region BEFORE the click so it stays put.**
+`'movefrom'` shifts the clicked note + everything after it by a delta, via two
+anchors (clicked note → cursor, last note → same delta). But those two anchors
+alone don't hold the region before the click: once a prior anchor exists (e.g.
+Step 1's "Início", which as a lone anchor is a *uniform* shift), adding the
+clicked/last anchors turns the previously-uniform pre-click segment into an
+*interpolated* one, dragging the preceding notes along ("mover seguintes
+atualizou também as notas que ficaram para trás"). The fix mirrors what
+`'newbeat'`/`reTempoFromHere` already does with its pivot: also pin the note
+immediately BEFORE the click at its CURRENT displayed position
+(`setAnchor(previewScale(prevNoteTime), warp(previewScale(prevNoteTime)))`) —
+a point already on the current warp curve, so everything up to it is unchanged
+and only `[clicked, last]` shifts. (`'newbeat'` never had the bug because its
+pivot anchor already pins the click to its unchanged position.)
+
 ### Sync by bar number (`barSyncPanel`)
 
 For a track whose real content only starts several measures in — e.g. Rhythm
