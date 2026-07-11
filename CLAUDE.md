@@ -348,6 +348,15 @@ through the same `previewScale`+`buildTimeWarp` as the notes, so bar lines track
 pending sync edits. Bars make tempo changes and drift visible — the user can see
 exactly which measure slips against the recording and drag-correct it there.
 
+**The chart is sized to the whole song, not the last note.** `showArr`'s width
+(`dur`) is the max of the last note end, the last bar/beat time, AND the
+recording length (`waveDuration`) — NOT just `max(note.time)`. A track that
+rests through the outro (e.g. a lead that stops at bar 120 of 146) still owns
+all its bars in the grid, and the recording keeps playing; sizing to the last
+note alone clipped those trailing (empty) bars and the waveform tail off the
+right edge, making the track look shorter than the others ("o lead só aparece
+até ao compasso 122"). All tracks now span the full song width.
+
 Playback in the tab viewer goes through the **Web Audio API**
 (`AudioBufferSourceNode` over the buffer already decoded for the waveform),
 driven by a custom transport (`audioPlay`/`audioPause`/`audioSeek`), NOT the
