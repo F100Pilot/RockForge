@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 from rockforge.domain.errors import SeparationError
@@ -27,42 +28,77 @@ MODEL = "htdemucs_6s"
 VOCAL_MODEL = "htdemucs"
 
 
+def _is_cuda(device: str) -> bool:
+    return device.split(":", 1)[0] == "cuda"
+
+
 class DemucsSeparator:
-    """Implements rockforge.application.ports.StemSeparator via the demucs CLI."""
+    """Implements rockforge.application.ports.StemSeparator via the demucs CLI.
+
+    GPU→CPU fallback: a CUDA run that crashes (e.g. the Windows exit 0xC0000409
+    native crash from a torch/cuDNN mismatch on Turing/RTX 20-series cards) is
+    retried on CPU so separation still completes, and ``on_cuda_crash`` is
+    invoked once so the worker can persist a "GPU broken" marker and skip the
+    GPU on later runs — mirroring the WhisperX path.
+    """
 
     def __init__(
-        self, model: str = MODEL, device: str = "cpu", vocal_model: str = VOCAL_MODEL
+        self,
+        model: str = MODEL,
+        device: str = "cpu",
+        vocal_model: str = VOCAL_MODEL,
+        on_cuda_crash: Callable[[], None] | None = None,
     ) -> None:
         self._model = model
         self._device = device
         self._vocal_model = vocal_model
+        self._on_cuda_crash = on_cuda_crash
+
+    def _run(self, model: str, extra_args: list[str], audio: Path, out_dir: Path) -> None:
+        """Run the demucs CLI for ``model``, retrying on CPU if a CUDA run crashes."""
+        patcher = Path(__file__).resolve().parent / "_demucs_patcher.py"
+
+        def build(dev: str) -> list[str]:
+            return [
+                sys.executable, str(patcher),
+                "-n", model, "-d", dev, *extra_args, "-o", str(out_dir), str(audio),
+            ]
+
+        # First attempt on the configured device; a CUDA crash falls back to CPU.
+        devices = [self._device]
+        if _is_cuda(self._device):
+            devices.append("cpu")
+        for i, dev in enumerate(devices):
+            try:
+                # stdin=DEVNULL: never inherit the worker console's stdin (an
+                # inherited stdin can block a CLI subprocess indefinitely).
+                subprocess.run(
+                    build(dev), check=True, capture_output=True, text=True,
+                    stdin=subprocess.DEVNULL, timeout=DEMUCS_TIMEOUT_S,
+                )
+                return
+            except FileNotFoundError as exc:
+                raise SeparationError(
+                    "demucs is not installed (pip install 'rockforge[ml]')"
+                ) from exc
+            except subprocess.TimeoutExpired as exc:
+                # A timeout is not a GPU crash — don't burn another 30 min on CPU.
+                raise SeparationError(
+                    f"demucs timed out after {DEMUCS_TIMEOUT_S}s separating {audio.name}"
+                ) from exc
+            except subprocess.CalledProcessError as exc:
+                is_last = i == len(devices) - 1
+                if _is_cuda(dev) and not is_last:
+                    # GPU crashed — remember it (so later runs skip the GPU) and
+                    # retry on CPU in the next loop iteration.
+                    if self._on_cuda_crash is not None:
+                        self._on_cuda_crash()
+                    continue
+                raise SeparationError(f"demucs failed: {exc.stderr[-2000:]}") from exc
 
     def separate_guitar(self, audio: Path, workdir: Path) -> Path:
         out_dir = workdir / "stems"
-        patcher = Path(__file__).resolve().parent / "_demucs_patcher.py"
-        cmd = [
-            sys.executable, str(patcher),
-            "-n", self._model,
-            "-d", self._device,
-            "-o", str(out_dir),
-            str(audio),
-        ]
-        try:
-            # stdin=DEVNULL: never inherit the worker console's stdin (an
-            # inherited stdin can block a CLI subprocess indefinitely).
-            subprocess.run(
-                cmd, check=True, capture_output=True, text=True,
-                stdin=subprocess.DEVNULL, timeout=DEMUCS_TIMEOUT_S,
-            )
-        except FileNotFoundError as exc:
-            raise SeparationError("demucs is not installed (pip install 'rockforge[ml]')") from exc
-        except subprocess.TimeoutExpired as exc:
-            raise SeparationError(
-                f"demucs timed out after {DEMUCS_TIMEOUT_S}s separating {audio.name}"
-            ) from exc
-        except subprocess.CalledProcessError as exc:
-            raise SeparationError(f"demucs failed: {exc.stderr[-2000:]}") from exc
-
+        self._run(self._model, [], audio, out_dir)
         guitar = out_dir / self._model / audio.stem / "guitar.wav"
         if not guitar.exists():
             raise SeparationError(
@@ -94,31 +130,7 @@ class DemucsSeparator:
         with better vocal quality. Returns the path to vocals.wav.
         """
         out_dir = workdir / "stems"
-        patcher = Path(__file__).resolve().parent / "_demucs_patcher.py"
-        cmd = [
-            sys.executable, str(patcher),
-            "-n", self._vocal_model,
-            "-d", self._device,
-            "--two-stems", "vocals",
-            "-o", str(out_dir),
-            str(audio),
-        ]
-        try:
-            # stdin=DEVNULL: never inherit the worker console's stdin (an
-            # inherited stdin can block a CLI subprocess indefinitely).
-            subprocess.run(
-                cmd, check=True, capture_output=True, text=True,
-                stdin=subprocess.DEVNULL, timeout=DEMUCS_TIMEOUT_S,
-            )
-        except FileNotFoundError as exc:
-            raise SeparationError("demucs is not installed (pip install 'rockforge[ml]')") from exc
-        except subprocess.TimeoutExpired as exc:
-            raise SeparationError(
-                f"demucs timed out after {DEMUCS_TIMEOUT_S}s separating {audio.name}"
-            ) from exc
-        except subprocess.CalledProcessError as exc:
-            raise SeparationError(f"demucs failed: {exc.stderr[-2000:]}") from exc
-
+        self._run(self._vocal_model, ["--two-stems", "vocals"], audio, out_dir)
         vocals = out_dir / self._vocal_model / audio.stem / "vocals.wav"
         if not vocals.exists():
             raise SeparationError(

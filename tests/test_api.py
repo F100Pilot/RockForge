@@ -596,6 +596,7 @@ def test_completeness_fields_reflect_job_state(client: TestClient, tmp_path) -> 
     assert job["has_tones"] is False
     assert job["sync_edited"] is False
     assert job["cover_art"] is False
+    assert job["has_lyrics"] is False
 
     tone = {
         "key": "lead",
@@ -619,6 +620,19 @@ def test_sync_edited_true_from_anchor_only(client: TestClient, tmp_path) -> None
         json={"arrangement": "Lead", "sync_anchors": [[1.0, 1.2]]},
     ).json()
     assert rebuilt["sync_edited"] is True
+
+
+def test_has_lyrics_true_from_edited_events(client: TestClient, tmp_path) -> None:
+    """has_lyrics reflects lyrics from ANY source (edited events here), not only
+    completed WhisperX detection — the completeness panel must not say "sem
+    letra" when the song already has lyrics."""
+    job = _gp_job(client, tmp_path)
+    assert job["has_lyrics"] is False
+    rebuilt = client.post(
+        f"/jobs/{job['id']}/rebuild",
+        json={"lyrics_events": [{"time": 1.0, "length": 0.5, "lyric": "olá"}]},
+    ).json()
+    assert rebuilt["has_lyrics"] is True
 
 
 def test_rebuild_empty_tone_fields_clear_them(client: TestClient, tmp_path) -> None:

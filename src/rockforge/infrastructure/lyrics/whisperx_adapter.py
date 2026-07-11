@@ -120,11 +120,15 @@ class WhisperXLyricTranscriber:
         device: str = "cpu",
         min_word_score: float = DEFAULT_MIN_WORD_SCORE,
         rms_threshold: float = DEFAULT_RMS_THRESHOLD,
+        compute_type: str | None = None,
     ) -> None:
         self._model_size = model_size
         self._device = device
         self._min_word_score = min_word_score
         self._rms_threshold = rms_threshold
+        # None → pick by device (int8 on CPU, float16 on CUDA). Override with
+        # e.g. "int8_float16" for the Turing/cuDNN float16 crash (see config).
+        self._compute_type = compute_type
 
     @staticmethod
     def available() -> bool:
@@ -149,7 +153,7 @@ class WhisperXLyricTranscriber:
 
         import whisperx
 
-        compute_type = "int8" if self._device == "cpu" else "float16"
+        compute_type = self._compute_type or ("int8" if self._device == "cpu" else "float16")
         model = whisperx.load_model(self._model_size, self._device, compute_type=compute_type)
         audio = whisperx.load_audio(str(vocals_stem))
         result = model.transcribe(audio, batch_size=8)
