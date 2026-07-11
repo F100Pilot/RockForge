@@ -321,6 +321,10 @@ class SettingsOut(BaseModel):
     # Loudness/volume target (LUFS): louder = higher (closer to 0). The audio is
     # normalized to this AND the Wwise bus volume is calibrated to it.
     loudness_target: float = -12.0
+    # True when the GPU-broken marker is set (a CUDA crash tripped the whole-ML
+    # -stack CPU fallback). The UI shows this + a "reactivate GPU" button so the
+    # user doesn't have to hunt for the hidden marker file.
+    gpu_broken: bool = False
 
 
 class SettingsIn(BaseModel):
@@ -1431,6 +1435,7 @@ def get_stem_audio(job_id: str, name: str) -> FileResponse:
 
 def _settings_out() -> SettingsOut:
     from rockforge import runtime_settings
+    from rockforge.interfaces.worker.celery_app import _cuda_known_broken
 
     repo, ckpt, queries = runtime_settings.banquet_paths()
     return SettingsOut(
@@ -1440,6 +1445,7 @@ def _settings_out() -> SettingsOut:
         banquet_queries=str(queries) if queries else "",
         banquet=runtime_settings.banquet_validation(),
         loudness_target=runtime_settings.loudness_target(),
+        gpu_broken=_cuda_known_broken(),
     )
 
 
@@ -1468,6 +1474,17 @@ def update_settings(body: SettingsIn) -> SettingsOut:
     if body.loudness_target is not None:
         updates["loudness_target"] = float(body.loudness_target)
     runtime_settings.save(updates)
+    return _settings_out()
+
+
+@app.post("/gpu-reset", response_model=SettingsOut)
+def reset_gpu() -> SettingsOut:
+    """Delete the GPU-broken marker so the ML stack (Demucs + WhisperX) retries
+    the GPU on the next detection — for after the user fixed their CUDA/cuDNN
+    install. Saves them hunting for the hidden marker file in the work dir."""
+    from rockforge.interfaces.worker.celery_app import _clear_cuda_broken
+
+    _clear_cuda_broken()
     return _settings_out()
 
 

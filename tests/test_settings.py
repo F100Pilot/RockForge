@@ -57,6 +57,21 @@ def test_loudness_target_is_clamped(client: TestClient) -> None:
     assert rs.loudness_target() == -20.0  # clamped to the min
 
 
+def test_gpu_reset_clears_marker(client: TestClient, tmp_path, monkeypatch) -> None:
+    """The GPU-broken marker is reported in /settings and cleared by /gpu-reset,
+    so the user reactivates the GPU from the UI without hunting for the file."""
+    from rockforge.interfaces.worker import celery_app as ca
+
+    monkeypatch.setattr(ca.settings, "work_dir", tmp_path)  # isolate the marker
+
+    assert client.get("/settings").json()["gpu_broken"] is False
+    ca._mark_cuda_broken()
+    assert client.get("/settings").json()["gpu_broken"] is True
+    body = client.post("/gpu-reset").json()
+    assert body["gpu_broken"] is False
+    assert client.get("/settings").json()["gpu_broken"] is False
+
+
 def test_invalid_separator_rejected(client: TestClient) -> None:
     assert client.post("/settings", json={"stem_separator": "nope"}).status_code == 422
 

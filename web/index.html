@@ -705,6 +705,20 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
       </div>
     </div>
 
+    <div style="margin-top:1rem;border-top:1px solid #262830;padding-top:.8rem">
+      <label style="font-weight:600">GPU acelerada (CUDA)</label>
+      <div id="gpuOk" class="syncctrls" style="margin-top:.4rem">
+        <span class="meta">✅ A GPU está ativa (ou não houve nenhum crash). A deteção de letra/tom e a separação usam a GPU quando disponível.</span>
+      </div>
+      <div id="gpuBroken" class="syncctrls" style="margin-top:.4rem;display:none">
+        <span class="meta" style="color:var(--warn)">⚠️ A GPU foi marcada como avariada (houve um crash CUDA) — o RockForge está a usar a <b>CPU</b> para tudo. Depois de corrigires os drivers/cuDNN, reativa aqui.</span>
+      </div>
+      <div class="syncctrls" style="margin-top:.4rem">
+        <button type="button" id="gpuReset" class="secondary">Reativar GPU</button>
+        <span class="meta">Se a GPU voltar a crashar, volta a desligar-se sozinha (uma vez por sessão, não a cada música). Dica: experimenta <code>ROCKFORGE_WHISPERX_COMPUTE_TYPE=int8_float16</code> nas placas RTX 20xx.</span>
+      </div>
+    </div>
+
     <div class="anchor-row" style="margin-top:.9rem">
       <button type="button" id="settingsSave">Guardar</button>
       <span id="settingsInfo" class="meta"></span>
@@ -1011,6 +1025,8 @@ function fillSettings(s) {
   document.getElementById('sBanquetCkpt').value = s.banquet_ckpt || '';
   document.getElementById('sBanquetQueries').value = s.banquet_queries || '';
   document.getElementById('sLoudness').value = s.loudness_target ?? -12;
+  document.getElementById('gpuOk').style.display = s.gpu_broken ? 'none' : '';
+  document.getElementById('gpuBroken').style.display = s.gpu_broken ? '' : 'none';
   toggleBanquetConfig();
   renderBanquetValidation(s.banquet || {});
 }
@@ -1026,6 +1042,15 @@ document.getElementById('openSettings').addEventListener('click', openSettings);
 document.getElementById('settingsClose').addEventListener('click', closeSettings);
 document.getElementById('settingsOverlay').addEventListener('click', e => {
   if (e.target.id === 'settingsOverlay') closeSettings();
+});
+document.getElementById('gpuReset').addEventListener('click', async () => {
+  try {
+    const r = await fetch('/gpu-reset', { method: 'POST' });
+    const b = await r.json();
+    if (!r.ok) { toast(b.detail || 'erro', 'err'); return; }
+    fillSettings(b);
+    toast('GPU reativada — a próxima deteção vai tentar a GPU.', 'ok');
+  } catch { toast('falha ao reativar a GPU', 'err'); }
 });
 for (const r of document.querySelectorAll('input[name=sepBackend]'))
   r.addEventListener('change', toggleBanquetConfig);

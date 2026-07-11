@@ -346,9 +346,13 @@ traceback. Behaviour to confirm on such a machine:
 - **After the first crash it stops using the GPU entirely.** A `work_dir/
   .gpu_ml_broken` marker is written, and `_resolve_device` then downgrades
   `cuda→cpu` for BOTH Demucs and WhisperX on every later run — so a second song
-  does NOT re-crash on the GPU. Delete the marker to retry the GPU after fixing
-  CUDA/cuDNN. Guarded (no GPU needed) by `test_broken_marker_downgrades_cuda_to_cpu`,
-  `test_cuda_crash_falls_back_to_cpu_and_marks`, `test_legacy_marker_still_honoured`.
+  does NOT re-crash on the GPU. To re-enable the GPU after fixing CUDA/cuDNN,
+  use **⚙️ Definições → GPU acelerada → "Reativar GPU"** (it shows whether the
+  GPU is currently marked broken) instead of hunting for the hidden marker file;
+  `POST /gpu-reset` deletes it. Guarded (no GPU needed) by
+  `test_broken_marker_downgrades_cuda_to_cpu`,
+  `test_cuda_crash_falls_back_to_cpu_and_marks`, `test_legacy_marker_still_honoured`,
+  `test_gpu_reset_clears_marker`.
 - To actually *use* the RTX 20-series GPU, try
   `ROCKFORGE_WHISPERX_COMPUTE_TYPE=int8_float16` (lower-VRAM, more cuDNN-tolerant
   than the default `float16`) — passed through to the runner. It only helps the

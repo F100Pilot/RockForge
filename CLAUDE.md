@@ -414,8 +414,11 @@ RTX 20-series cards) with no Python traceback. Two layers handle it:
   `cuda` to `cpu` — for **Demucs AND WhisperX**, in every task and the main
   build — so after ONE crash the flaky GPU is skipped everywhere instead of
   re-crashing each song. The legacy `.whisperx_cuda_broken` filename is still
-  honoured so existing installs stay degraded. Delete the marker to retry the
-  GPU after fixing the CUDA/cuDNN install.
+  honoured so existing installs stay degraded. **The marker is a hidden dotfile
+  in `work_dir` most users can't find, so the ⚙️ Definições modal surfaces its
+  state ("GPU acelerada") + a "Reativar GPU" button** → `POST /gpu-reset`
+  (`_clear_cuda_broken`, also clears the `_detect_device` cache so it takes
+  effect without a restart). `SettingsOut.gpu_broken` carries the state.
 
 **Making the GPU actually work (`ROCKFORGE_WHISPERX_COMPUTE_TYPE`).** The
 float16 ctranslate2 path is the usual trigger of the Turing/cuDNN crash. The
