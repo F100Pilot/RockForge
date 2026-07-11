@@ -926,8 +926,22 @@ entry whenever any string sustains OR carries a technique; `_note_mask` already
 yields `SUSTAIN|OPEN|PALMMUTE` per string, reproducing DLC Builder's
 `0x2000/0x2004/0x2040/0x2044` masks exactly. Found by decrypting a real user
 PSARC (AES-CFB TOC + AES-CTR SNG via `pycryptodome`) and comparing the
-ChordNotes section directly. Guarded by
+ChordNotes section directly. **Confirmed fixed in-game** — the corrupt bars are
+gone on the native PSARC. Guarded by
 `test_sustained_chord_gets_chord_notes_with_per_string_sustain`.
+
+> **Debugging method that cracked this (reusable).** Several native-SNG highway
+> glitches were mis-diagnosed by reasoning about our data alone (a symptom that
+> *changes as you scrub the score in Riff Repeater, at a fixed DD level*, is the
+> game misreading per-note geometry it streams — not a Dynamic Difficulty
+> problem). What actually isolated it: get BOTH a native RockForge `.psarc` AND a
+> DLC Builder rebuild of the SAME song from the user, **decrypt each** (PSARC TOC
+> = AES-256-CFB, SNG payload = AES-256-CTR of a zlib blob — `pycryptodome` works
+> in-sandbox where the `cryptography` pyo3 wheel panics), and **byte-diff the SNG
+> section counts + struct fields**. The DLC Builder build is the ground truth; the
+> first field that differs is the bug. Here it was ChordNotes (9 vs 3 entries).
+> Reach for this before speculating whenever a native-only rendering glitch
+> resists static analysis.
 
 Anchors never span a phrase-iteration boundary: the game re-anchors at each
 phrase start, so a phrase whose opening notes are covered only by the previous
