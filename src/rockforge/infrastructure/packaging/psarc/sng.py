@@ -901,12 +901,24 @@ def from_arrangement(
         )
 
     for gi, g in enumerate(chord_groups):
-        has_techniques = any(
+        # A chord needs a ChordNotes entry to carry per-string state the chord
+        # TEMPLATE alone can't — not only techniques but SUSTAIN. Byte-diffing a
+        # DLC Builder build of this song: every ChordNotes entry carries the
+        # per-string SUSTAIN bit (0x2000), and there are entries with ONLY
+        # sustain (no technique) — DLC Builder emits one for every sustained
+        # chord. Omitting it (the old "techniques only" rule) left a sustained
+        # power-chord chug with chord_notes_id = -1, so the game had no
+        # per-string sustain to render and drew corrupt vertical/lateral bars on
+        # the highway (visible only while streaming notes in Riff Repeater / when
+        # scrubbing). _note_mask already yields SUSTAIN|OPEN|PALMMUTE per string,
+        # matching DLC Builder's 0x2000/0x2004/0x2040/0x2044 exactly.
+        needs_chord_notes = any(
             n.techniques or n.bend_semitones > 0
             or n.slide_to_fret is not None or n.slide_unpitch_to is not None
+            or n.sustain > 0
             for n in g
         )
-        if not has_techniques:
+        if not needs_chord_notes:
             continue
         cn = SngChordNotes(
             note_mask=[0] * 6,

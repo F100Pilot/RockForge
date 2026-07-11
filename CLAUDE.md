@@ -910,6 +910,25 @@ the two paths stay consistent). Guarded by
 `test_repeated_chords_marked_high_density_but_not_the_first` (SNG) /
 `test_repeated_chords_get_high_density` (XML).
 
+**Every SUSTAINED chord gets a ChordNotes entry, not just technique chords.**
+A chord's per-string SUSTAIN lives in its ChordNotes entry, NOT in the chord
+template (which only carries frets/fingers/MIDI). Emitting ChordNotes only for
+chords with a bend/slide/vibrato/palm-mute technique (the old rule) left a
+plain sustained power-chord chug with `chord_notes_id = -1`, so the game had no
+per-string sustain to render and drew **corrupt vertical/lateral bars** on the
+highway — visible only while streaming notes in Riff Repeater / when scrubbing
+the position (the two guitars' Lead single-notes were fine; only the Rhythm
+chords glitched). Byte-diffing a DLC Builder build of the same song is
+conclusive: every one of its ChordNotes entries carries the per-string SUSTAIN
+bit (`0x2000`), and several carry ONLY sustain (no technique) — DLC Builder
+emits one for every sustained chord. `from_arrangement` now emits a ChordNotes
+entry whenever any string sustains OR carries a technique; `_note_mask` already
+yields `SUSTAIN|OPEN|PALMMUTE` per string, reproducing DLC Builder's
+`0x2000/0x2004/0x2040/0x2044` masks exactly. Found by decrypting a real user
+PSARC (AES-CFB TOC + AES-CTR SNG via `pycryptodome`) and comparing the
+ChordNotes section directly. Guarded by
+`test_sustained_chord_gets_chord_notes_with_per_string_sustain`.
+
 Anchors never span a phrase-iteration boundary: the game re-anchors at each
 phrase start, so a phrase whose opening notes are covered only by the previous
 phrase's anchor finds none of its own and crashes on entry (seen exactly at a
@@ -1022,8 +1041,6 @@ defects):
   toggleable per song** (`GpJobSpec.dynamic_difficulty` / `RebuildIn`, the "DD"
   checkbox): off ⇒ a single full-chart level (`from_arrangement(...,
   dynamic_difficulty=False)`), a safety valve when DD misbehaves on a song.
-- **ChordNotesId = -1 for simple chords**: only chords with per-string
-  bend/slide/vibrato get a ChordNotes entry — exactly what DLC Builder/EOF do.
 - **Fingerprints2 (arpeggio) empty**: the domain has no arpeggio marking.
 - **ParentPrevNote / linkNext absent**: the domain has no note-link concept (the
   XML writer hard-codes `linkNext="0"`), so this is correctly `-1`.
