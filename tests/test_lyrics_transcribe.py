@@ -93,6 +93,15 @@ def test_segment_breaks_on_a_sung_pause() -> None:
     assert [e.lyric for e in events] == ["stay", "with", "me+", "tonight+"]
 
 
+def test_add_cuda_dll_dirs_is_noop_off_windows(monkeypatch) -> None:
+    """The CUDA DLL-path shim (which lets ctranslate2 find cuDNN 9 in torch/lib
+    on Windows) must be a safe no-op on non-Windows so CI/Linux is unaffected."""
+    from rockforge.infrastructure.lyrics import _whisperx_runner as runner
+
+    monkeypatch.setattr(runner.sys, "platform", "linux")
+    assert runner._add_cuda_dll_dirs() == []
+
+
 def test_rms_gate_rejects_silence(tmp_path) -> None:
     np = pytest.importorskip("numpy")
     sf = pytest.importorskip("soundfile")
