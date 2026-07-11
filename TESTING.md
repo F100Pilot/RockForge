@@ -302,6 +302,17 @@ least Lead + Rhythm.
    playback where a bar should sound and click it — that bar (and everything
    after) should jump to the cursor. Confirm the reference dropdown never
    offers the current tab itself.
+8. **Bar-align popup** (📏 mode) — select the 📏 mode, pause playback where a
+   bar should sound, click a note: a popup opens with the note's own bar
+   pre-selected. "= cursor" pins that bar to the playhead; "= pista" (only with
+   ≥2 arrangements) pins it to the reference track's same bar. Do it at several
+   points along the song and confirm the drift is corrected piecewise (the
+   pending-anchors list grows one entry per pin). The popup should close on
+   Escape / outside click and reposition when you click another note.
+9. **Full-song width** — open a track that rests through the outro (e.g. a lead
+   that stops mid-song) and confirm the score + bar lines + waveform now extend
+   to the LAST bar of the song, not just the last note. Guarded only by manual
+   check (pure `web/index.html`).
 
 ### 7a-ter. Creation wizard + "Estado do PSARC" completeness panel (browser only)
 

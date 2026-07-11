@@ -283,6 +283,24 @@ align it two ways:
   array as everything else (`syncAnchorsByKind[currentKind()]`) — rides the
   normal "Aplicar e reconstruir", no backend change.
 
+  Both the panel and the click-a-note popup below share one primitive —
+  `alignBarTo(measure, target)`: a single anchor pinning that bar's downbeat
+  (`setAnchor(previewScale(barChartTime), target)`) to a bundle-time display
+  position, which is the cursor (`currentPlayheadT + viewOrigin`) or another
+  arrangement's same bar (`refBarTarget`). Multiple pins compose into a
+  piecewise drift correction.
+
+**Bar-align popup (`'baralign'` mode, 📏).** For doing MANY bar-syncs quickly
+without hunting the bar number in a dropdown each time: a sync mode where
+clicking a note opens a small floating popup (`#barAlignPopup`) with the bar
+numbers, the clicked note's OWN bar pre-selected (`openBarAlignPopup` finds the
+containing bar). "= cursor" calls `alignBarTo(bar, currentPlayheadT +
+viewOrigin)`; "= pista" (shown only with ≥2 arrangements) aligns to the same
+bar of a chosen reference arrangement. It's the same `alignBarTo` primitive as
+the panel — just a faster, note-driven entry meant to be repeated along the
+song for progressive drift correction. Dismisses on Escape or an outside click
+(a note click reopens/repositions it).
+
 **Cursor as an explicit snap target (fixes unreliable "drag to the cursor").**
 Before, only the click-based `'tap'`/`'movefrom'` modes snapped to the live
 playhead (`currentPlayheadT`); the familiar drag gesture (`'drag'`/`'excerpt'`
