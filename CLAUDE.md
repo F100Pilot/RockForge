@@ -866,6 +866,24 @@ template + CHORD/STRUM masks; notes carry `fingerprint_id = (-1, -1)`. Guarded b
 `test_chords_produce_templates_and_no_fingerprints` /
 `test_dd_levels_have_no_handshapes_and_per_level_slide_extensions`.
 
+**Repeated chords are marked HIGH DENSITY (condensed rendering).** A fast
+repeated identical chord — an 8th-note power-chord chug, say — must carry
+`NOTE_MASK_HIGHDENSITY` on every hit AFTER the first, so the game draws it
+condensed (a small strum marker) instead of a full chord box. Emitting them all
+as full boxes (the old behaviour: the constant was defined but never applied)
+stacks the sprites into a **corrupt lateral highway blur** on a dense chug — a
+graphical glitch, NOT a sustain trail (which is longitudinal). The DLC Builder
+path never showed it because its DDC pass recomputes high density; only the
+native SNG (no DDC) was affected. `high_density_flags` (pure, in
+`domain/music.py`) marks a chord high-density when it repeats the previous
+chord's exact shape within `HIGH_DENSITY_MAX_GAP_S` (0.35 s) — the first hit of a
+run stays low density so its shape is still shown, and a shape change or a wider
+gap starts a fresh run. Applied in BOTH the native SNG (`sng.from_arrangement`)
+and the XML writer (`writer.py`, `highDensity="1"`; DDC overrides it there but
+the two paths stay consistent). Guarded by
+`test_repeated_chords_marked_high_density_but_not_the_first` (SNG) /
+`test_repeated_chords_get_high_density` (XML).
+
 Anchors never span a phrase-iteration boundary: the game re-anchors at each
 phrase start, so a phrase whose opening notes are covered only by the previous
 phrase's anchor finds none of its own and crashes on entry (seen exactly at a

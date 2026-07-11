@@ -9,6 +9,7 @@ from rockforge.infrastructure.packaging.psarc.sng import (
     NOTE_MASK_DOUBLESTOP,
     NOTE_MASK_FRETHANDMUTE,
     NOTE_MASK_HAMMERON,
+    NOTE_MASK_HIGHDENSITY,
     NOTE_MASK_OPEN,
     NOTE_MASK_PINCHHARMONIC,
     NOTE_MASK_SINGLE,
@@ -157,6 +158,34 @@ def test_chords_produce_templates_and_no_fingerprints() -> None:
     assert chord_note.mask & NOTE_MASK_CHORD
     assert chord_note.mask & NOTE_MASK_STRUM
     assert chord_note.chord_id == 0
+
+
+def test_repeated_chords_marked_high_density_but_not_the_first() -> None:
+    """A fast repeated chord run condenses via HIGH_DENSITY (the first hit keeps
+    its full box); without it the stacked full chord boxes render as a corrupt
+    lateral highway sprite. Isolated on a real GP7 rhythm chug."""
+    # Four identical power chords a 16th apart (fast chug), then one distinct chord.
+    def pc(t: float, fret: int) -> list[TabNote]:
+        return [TabNote(string=s, fret=fret, time=t, sustain=0.1) for s in (0, 1, 2)]
+
+    notes = pc(0.0, 3) + pc(0.15, 3) + pc(0.30, 3) + pc(0.45, 3) + pc(2.0, 5)
+    arr = Arrangement(
+        kind=ArrangementKind.RHYTHM,
+        metadata=SongMetadata(title="Song", artist="A", song_length=5.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(
+            beats=(Beat(time=0.0, measure=1), Beat(time=0.5, measure=-1)), average_bpm=120.0
+        ),
+        notes=notes,
+        sections=[Section(name="riff", start_time=0.0)],
+    )
+    level = from_arrangement(arr).arrangements[-1]
+    chords = sorted((n for n in level.notes if n.chord_id >= 0), key=lambda n: n.time)
+    # First hit of the run: full box (low density). Repeats: condensed (high density).
+    assert not (chords[0].mask & NOTE_MASK_HIGHDENSITY)
+    assert all(c.mask & NOTE_MASK_HIGHDENSITY for c in chords[1:4])
+    # The distinct chord far later starts a new run — full box again.
+    assert not (chords[4].mask & NOTE_MASK_HIGHDENSITY)
 
 
 def test_double_stop_gets_mask() -> None:

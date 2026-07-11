@@ -13,7 +13,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from rockforge.domain.arrangement import Arrangement, ArrangementKind
-from rockforge.domain.music import TabNote, Technique
+from rockforge.domain.music import TabNote, Technique, high_density_flags
 
 CHORD_EPSILON_S = 0.03  # notes starting within 30 ms form a chord (matches fret mapper)
 
@@ -363,7 +363,8 @@ def render_arrangement(arr: Arrangement) -> ET.Element:
     for n in single_notes:
         _append_note_el(notes_el, "note", n)
     chords_el = ET.SubElement(level, "chords", count=str(len(chord_groups)))
-    for g in chord_groups:
+    hd_flags = high_density_flags(chord_groups)
+    for gi, g in enumerate(chord_groups):
         chord_id = template_ids[_chord_template_key(g)]
         # The game reads palm mute / accent / HOPO from the <chord> element, not
         # from its chordNote children; an inconsistency between the two renders
@@ -380,7 +381,9 @@ def render_arrangement(arr: Arrangement) -> ET.Element:
             "linkNext": "0",
             "accent": "1" if chord_accent else "0",
             "fretHandMute": "0",
-            "highDensity": "0",
+            # Repeated identical chords in a fast run render condensed; emitting
+            # them all as full boxes stacks the sprites into a corrupt blur.
+            "highDensity": "1" if hd_flags[gi] else "0",
             "ignore": "0",
             "palmMute": "1" if chord_pm else "0",
             "hopo": "1" if chord_hopo else "0",

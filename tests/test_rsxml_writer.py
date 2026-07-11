@@ -235,6 +235,23 @@ def test_chord_element_mirrors_palm_mute_of_its_notes(tmp_path: Path) -> None:
     assert all(cn.get("palmMute") is None for cn in plain_chord.findall("chordNote"))
 
 
+def test_repeated_chords_get_high_density(tmp_path: Path) -> None:
+    # A fast repeated chord run condenses via highDensity="1" (first hit keeps a
+    # full box); emitting them all as full boxes stacks into a corrupt sprite.
+    arr = make_arrangement()
+    arr.notes = [
+        TabNote(string=s, fret=3, time=t, sustain=0.1)
+        for t in (1.0, 1.15, 1.30, 1.45)
+        for s in (0, 1, 2)
+    ]
+    out = write_arrangement_xml(arr, tmp_path / "hd.xml")
+    chords = ET.parse(out).getroot().findall("levels/level/chords/chord")
+    assert len(chords) == 4
+    # The first is low density (attribute omitted, default 0); the repeats set 1.
+    assert chords[0].get("highDensity") is None
+    assert all(c.get("highDensity") == "1" for c in chords[1:])
+
+
 def test_chord_counts_are_consistent(tmp_path: Path) -> None:
     out = write_arrangement_xml(make_chord_arrangement(), tmp_path / "c.xml")
     root = ET.parse(out).getroot()

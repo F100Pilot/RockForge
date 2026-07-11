@@ -246,6 +246,39 @@ class TabNote:
 
 SUSTAIN_GAP_S = 0.05  # small silence between a sustain's end and the next attack
 
+# A chord repeated within this gap of an identical chord is "high density": the
+# game draws it condensed (a small strum marker) instead of a full chord box.
+HIGH_DENSITY_MAX_GAP_S = 0.35
+
+
+def _chord_shape(group: Sequence[TabNote]) -> frozenset[tuple[int, int]]:
+    return frozenset((n.string, n.fret) for n in group)
+
+
+def high_density_flags(
+    chord_groups: Sequence[Sequence[TabNote]], max_gap: float = HIGH_DENSITY_MAX_GAP_S
+) -> list[bool]:
+    """Mark repeated identical chords (every one after the first in a fast run) as
+    high density, so Rocksmith renders them condensed.
+
+    A fast repeated strum — e.g. an 8th-note power-chord chug — otherwise emits a
+    full chord box per hit; stacked back-to-back on the highway those sprites
+    overlap into a corrupt lateral blur (NOT a sustain trail). Real charts (and
+    DLC Builder's DDC) condense the repeats via the ``highDensity`` flag; the
+    first hit of a run stays low density so its shape is still shown.
+
+    ``chord_groups`` must be in time order (as produced by ``_group_chords``).
+    A run is broken by a different chord shape or a gap wider than ``max_gap``.
+    """
+    flags = [False] * len(chord_groups)
+    for i in range(1, len(chord_groups)):
+        prev, cur = chord_groups[i - 1], chord_groups[i]
+        if not prev or not cur:
+            continue
+        if cur[0].time - prev[0].time <= max_gap and _chord_shape(prev) == _chord_shape(cur):
+            flags[i] = True
+    return flags
+
 
 def apply_sustain_gap(
     notes: Sequence[TabNote], gap: float = SUSTAIN_GAP_S
