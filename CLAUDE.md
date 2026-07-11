@@ -400,6 +400,17 @@ The CUDA warm-up probe was removed entirely (two concurrent `cuInit()` calls —
 warm-up thread vs first task — can deadlock on Windows); the first task pays the
 one-time 30-60s CUDA init cost, and `@cache` avoids repeating it.
 
+**Windows cuDNN DLL discovery (`_add_cuda_dll_dirs`).** ctranslate2 4.x crashes
+natively (exit `0xC0000409`) when it can't load `cudnn_ops64_9.dll` /
+`cublas64_12.dll` — and it can't even when a matching cuDNN 9 is installed, if
+that copy only lives in `torch/lib` (the torch cu12x wheels bundle it there, but
+that dir isn't on the Windows DLL search path). Before importing whisperx, the
+runner adds torch's `lib` dir (and any standalone `nvidia-cudnn`/`nvidia-cublas`
+pip packages) via `os.add_dll_directory`, so ctranslate2 resolves cuDNN/cuBLAS
+instead of crashing. This is the fix for "GPU crashes even with torch cu121 (which
+bundles cuDNN 9.1) + ctranslate2 4.4.0 (which needs cuDNN 9)". No-op off Windows;
+guarded by `test_add_cuda_dll_dirs_is_noop_off_windows`.
+
 **GPU crash → CPU fallback (WHOLE ML stack, not just WhisperX).** Both Demucs
 (torch) and WhisperX (faster-whisper/ctranslate2) can crash natively on GPU
 (e.g. exit `3221226505`/`0xC0000409` from a torch/cuDNN mismatch on Turing /
