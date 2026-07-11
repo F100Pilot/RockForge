@@ -207,6 +207,36 @@ def test_double_stop_gets_mask() -> None:
     assert level.notes[0].mask & NOTE_MASK_DOUBLESTOP
 
 
+def test_sustained_chord_gets_chord_notes_with_per_string_sustain() -> None:
+    """A plain sustained chord (no technique) must still get a ChordNotes entry
+    carrying the per-string SUSTAIN bit — byte-diffing a DLC Builder build of a
+    real song showed it emits one for EVERY sustained chord (masks 0x2000 /
+    0x2004 with no technique). Without it, chord_notes_id stayed -1, the game
+    had no per-string sustain to render, and drew corrupt vertical/lateral bars
+    on a sustained power-chord chug (visible while scrubbing in Riff Repeater)."""
+    arr = Arrangement(
+        kind=ArrangementKind.RHYTHM,
+        metadata=SongMetadata(title="Song", artist="A", song_length=5.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=(Beat(time=0.0, measure=1),), average_bpm=120.0),
+        notes=[
+            # A plain fretted power chord with sustain, no technique.
+            TabNote(string=0, fret=3, time=0.0, sustain=0.4),
+            TabNote(string=1, fret=3, time=0.0, sustain=0.4),
+        ],
+        sections=[Section(name="riff", start_time=0.0)],
+    )
+    model = from_arrangement(arr)
+    assert len(model.chord_notes) == 1
+    # Both used strings carry SUSTAIN (0x2000); unused strings stay 0.
+    assert model.chord_notes[0].note_mask[0] & NOTE_MASK_SUSTAIN
+    assert model.chord_notes[0].note_mask[1] & NOTE_MASK_SUSTAIN
+    assert model.chord_notes[0].note_mask[2] == 0
+    chord_note = model.arrangements[-1].notes[0]
+    assert chord_note.chord_notes_id == 0
+    assert chord_note.mask & NOTE_MASK_CHORDNOTES
+
+
 def test_chord_with_techniques_produces_chord_notes() -> None:
     arr = Arrangement(
         kind=ArrangementKind.LEAD,
