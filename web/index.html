@@ -391,7 +391,15 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
         <div class="job-banner-icon">&#127928;</div>
         <div class="job-banner-body">
           <div class="job-banner-title">A partir de Guitar Pro</div>
-          <div class="job-banner-desc">GP3/GP4/GP5 — notas e técnicas exatas do ficheiro</div>
+          <div class="job-banner-desc">GP3/GP4/GP5/GP7 — notas e técnicas exatas do ficheiro (alta fidelidade)</div>
+        </div>
+        <span class="job-banner-arrow">&#8250;</span>
+      </div>
+      <div class="job-banner" data-new="audio">
+        <div class="job-banner-icon">&#127925;</div>
+        <div class="job-banner-body">
+          <div class="job-banner-title">A partir de áudio (MP3)</div>
+          <div class="job-banner-desc">Transcrição automática por IA a partir da gravação — aproximada</div>
         </div>
         <span class="job-banner-arrow">&#8250;</span>
       </div>
@@ -1086,7 +1094,7 @@ function setCreateMode(mode) {
   if (gp) setWizardStep(wizardStep);  // restore GP pane visibility
 }
 
-function openNewJobModal() {
+function openNewJobModal(mode) {
   document.getElementById('newJobOverlay').hidden = false;
   document.getElementById('gpInspectForm').reset();
   document.getElementById('gpJobForm').reset();
@@ -1098,7 +1106,7 @@ function openNewJobModal() {
   });
   gpToken = null;
   setWizardStep(1);
-  setCreateMode('gp');
+  setCreateMode(mode === 'audio' ? 'audio' : 'gp');
 }
 document.getElementById('modeGp').addEventListener('click', () => setCreateMode('gp'));
 document.getElementById('modeAudio').addEventListener('click', () => setCreateMode('audio'));
@@ -1112,7 +1120,7 @@ document.getElementById('wizardNext').addEventListener('click', () => {
   setWizardStep(wizardStep + 1);
 });
 document.querySelectorAll('.job-banner[data-new]').forEach(b => {
-  b.addEventListener('click', () => openNewJobModal());
+  b.addEventListener('click', () => openNewJobModal(b.dataset.new));
 });
 fetch('/version').then(r => r.json()).then(d => {
   document.getElementById('appVersion').textContent = 'v' + d.version;
