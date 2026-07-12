@@ -75,7 +75,12 @@ Rules:
    the bundle plays only that stem — honest limit). Each stem is transcribed in
    its own `work_dir/stem_<kind>` sub-dir (files never collide) with its own
    tuning estimate; `_resolve_tuning`/`_clean_and_warn` are the shared per-source
-   helpers. The UI exposes it as a checkbox in the audio-mode form. Guarded by
+   helpers. **Demucs is SKIPPED on per-role stems by default** (`separate_role_stems`
+   / `params["separate_stems"]`, default off) — a stem is already one isolated
+   guitar, and re-separating it is slow (Demucs is the heaviest stage) and can
+   degrade it; the UI checkbox enables it only when a stem still carries other
+   instruments. The UI exposes the whole feature as a checkbox in the audio-mode
+   form. Guarded by
    `test_per_role_sources_build_lead_and_rhythm_without_split` /
    `test_upload_split_*`.
 2. **Guitar Pro** (`gp_pipeline.py`): notes/frets/techniques/sections come exact

@@ -893,6 +893,9 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
         <div class="field" style="flex-basis:100%"><label>🎧 Mistura completa (opcional — é o que toca no jogo)</label>
           <div class="file-drop"><div class="file-drop-icon">&#127911;</div><span class="file-drop-text">Arrasta ou clica (opcional)</span><span class="file-drop-btn">Procurar</span>
           <input type="file" name="mix" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" disabled></div></div>
+        <div class="field" style="flex-basis:100%">
+          <label class="check"><input type="checkbox" name="separate_stems" value="true"> Aplicar Demucs aos stems (só se ainda tiverem outros instrumentos)</label>
+          <span class="meta">por defeito NÃO se aplica — os stems já são guitarras isoladas, e re-separar é lento e pode degradá-los</span></div>
         <span class="meta" style="flex-basis:100%">Pelo menos Lead ou Rhythm. Sem mistura, o áudio do jogo é o stem que deres.</span>
       </div>
       <div class="field"><label>Título</label>

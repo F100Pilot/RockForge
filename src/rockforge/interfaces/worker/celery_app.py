@@ -412,6 +412,7 @@ def generate_cdlc(job_id: str) -> None:
                 on_stage=on_stage,
                 lead_source=params.get("lead_source"),
                 rhythm_source=params.get("rhythm_source"),
+                separate_role_stems=bool(params.get("separate_stems", False)),
             )
             job.status = JobStatus.COMPLETED
             job.warnings = list(result.warnings)
