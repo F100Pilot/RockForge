@@ -28,6 +28,7 @@ from rockforge.domain.arrangement import (
     ConfidenceLabel,
     SongMetadata,
 )
+from rockforge.domain.errors import TranscriptionError
 from rockforge.domain.music import (
     Beat,
     NoteEvent,
@@ -88,57 +89,97 @@ class GenerateCdlcUseCase:
         cover_art: Path | None = None,
         dynamic_difficulty: bool = True,
         on_stage: Callable[[str], None] | None = None,
+        lead_source: str | None = None,
+        rhythm_source: str | None = None,
     ) -> PipelineResult:
+        """When ``lead_source`` and/or ``rhythm_source`` are given, each is
+        transcribed INDEPENDENTLY into its own arrangement (no experimental
+        lead/rhythm split — each recording is already one guitar); ``source``
+        remains the bundle audio (.wem) and the beat/tempo reference. Otherwise
+        ``source`` is transcribed into COMBINED plus the experimental split.
+        """
         def stage(name: str) -> None:
             if on_stage is not None:
                 on_stage(name)
 
         warnings: list[str] = []
+        per_role = lead_source is not None or rhythm_source is not None
+
         stage("ingest")
         raw = self.ingestor.fetch(source, workdir)                     # 1. ingest
         stage("normalize")
         normalized = self.normalizer.normalize(raw, workdir, offset_s)  # 2. normalize + trim
-        stage("separate")
-        guitar_stem = self.separator.separate_guitar(normalized, workdir)  # 3. separate
-        stage("transcribe")
-        notes = self.transcriber.transcribe(guitar_stem)               # 6. notes (4/5 below)
+
+        # guitar stem of the BUNDLE source: the note source in single-source mode,
+        # and (in both modes) the sibling of the vocals stem for lyric transcription.
+        guitar_stem: Path | None = None
+        # (kind, cleaned NoteEvents, tuning) tuples to fret-map into arrangements.
+        to_build: list[tuple[ArrangementKind, list[NoteEvent], Tuning]] = []
+
+        if per_role:
+            # Each provided stem → its own arrangement, transcribed in its own
+            # sub-workdir so the intermediate files never collide.
+            for kind, src in (
+                (ArrangementKind.LEAD, lead_source),
+                (ArrangementKind.RHYTHM, rhythm_source),
+            ):
+                if src is None:
+                    continue
+                stage("separate")
+                sub = workdir / f"stem_{kind.value.lower()}"
+                r_raw = self.ingestor.fetch(src, sub)
+                r_norm = self.normalizer.normalize(r_raw, sub, offset_s)
+                r_guitar = self.separator.separate_guitar(r_norm, sub)
+                stage("transcribe")
+                r_notes = self.transcriber.transcribe(r_guitar)
+                stage("tuning")
+                r_tuning = self._resolve_tuning(
+                    tuning_override, r_guitar, r_notes, warnings, f"{kind.value}: "
+                )
+                r_notes = self._clean_and_warn(
+                    r_notes, r_tuning, warnings, f"{kind.value}: "
+                )
+                to_build.append((kind, r_notes, r_tuning))
+            if not to_build:
+                raise TranscriptionError("no lead/rhythm audio produced any notes")
+            warnings.append(
+                "per-role transcription: Lead and Rhythm come from separate "
+                "recordings, so no experimental split is used"
+            )
+            if transcribe_lyrics:  # need the vocals stem of the bundle mix
+                stage("separate")
+                guitar_stem = self.separator.separate_guitar(normalized, workdir)
+        else:
+            stage("separate")
+            guitar_stem = self.separator.separate_guitar(normalized, workdir)  # 3. separate
+            stage("transcribe")
+            notes = self.transcriber.transcribe(guitar_stem)               # 6. notes
+
         stage("beat_track")
         tempo_map = self.beat_tracker.track(normalized)
-        stage("tuning")
-        if tuning_override is not None:
-            tuning = tuning_override  # human-confirmed tuning takes precedence
-            warnings.append("tuning supplied by user override (automatic estimate skipped)")
-        else:
-            tuning = self.tuning_estimator.estimate(guitar_stem, notes)
-            warnings.append(
-                f"tuning guessed from the transcription: {tuning_name(tuning.midi)} "
-                f"— string-tuning detection from audio is unreliable; set it in the "
-                f"tuning selector if it's wrong (a wrong tuning drops real low notes)"
-            )
 
-        # Prune the transcriber's spurious out-of-range / fragment notes before
-        # mapping, so the fret mapper isn't fed (and doesn't warn about) hundreds
-        # of unplayable sub-harmonic/octave ghosts a distorted mix produces.
-        cleanup = clean_transcription(notes, tuning)
-        notes = cleanup.notes
-        if cleanup.dropped_out_of_range:
-            warnings.append(
-                f"dropped {cleanup.dropped_out_of_range} transcribed note(s) outside "
-                f"the guitar's playable range for this tuning (sub-harmonic/octave "
-                f"ghosts from the mix — automatic transcription is approximate)"
-            )
-        if cleanup.dropped_too_short:
-            warnings.append(
-                f"dropped {cleanup.dropped_too_short} very short transcribed note(s) "
-                f"(detector fragments/noise)"
-            )
-        if cleanup.merged_fragments:
-            warnings.append(
-                f"merged {cleanup.merged_fragments} fragmented note(s) back into "
-                f"sustained notes"
-            )
+        if not per_role:
+            stage("tuning")
+            assert guitar_stem is not None
+            tuning = self._resolve_tuning(tuning_override, guitar_stem, notes, warnings)
+            notes = self._clean_and_warn(notes, tuning, warnings)
+            to_build.append((ArrangementKind.COMBINED, notes, tuning))
+            if split_lead_rhythm:                                      # 5. EXPERIMENTAL split
+                lead, rhythm = self.role_splitter.split(notes)
+                if lead and rhythm:
+                    to_build.append((ArrangementKind.LEAD, lead, tuning))
+                    to_build.append((ArrangementKind.RHYTHM, rhythm, tuning))
+                    warnings.append(
+                        "lead/rhythm split is EXPERIMENTAL (no published method exists); "
+                        "review both arrangements — the COMBINED arrangement is the fallback"
+                    )
+                else:
+                    warnings.append(
+                        "lead/rhythm split produced an empty partition; only COMBINED emitted"
+                    )
 
-        song_length = self._song_length(notes, tempo_map)
+        all_notes = [n for _, ns, _ in to_build for n in ns]
+        song_length = self._song_length(all_notes, tempo_map)
         metadata = SongMetadata(
             title=metadata.title,
             artist=metadata.artist,
@@ -148,32 +189,19 @@ class GenerateCdlcUseCase:
         )
         tempo_map = self._extend_beats_to(tempo_map, song_length)
 
-        def build(kind: ArrangementKind, events: list[NoteEvent]) -> Arrangement:
-            tab = infer_legato(map_to_fretboard(events, tuning, warnings))  # 7. strings/frets
+        def build(kind: ArrangementKind, events: list[NoteEvent], tng: Tuning) -> Arrangement:
+            tab = infer_legato(map_to_fretboard(events, tng, warnings))  # 7. strings/frets
             return Arrangement(                                        # 8. arrangement
                 kind=kind,
                 metadata=metadata,
-                tuning=tuning,
+                tuning=tng,
                 tempo_map=tempo_map,
                 notes=tab,
                 stage_confidence=dict(_BASE_CONFIDENCE),
             )
 
         stage("fret_mapping")
-        arrangements = [build(ArrangementKind.COMBINED, notes)]
-        if split_lead_rhythm:                                          # 5. EXPERIMENTAL split
-            lead, rhythm = self.role_splitter.split(notes)
-            if lead and rhythm:
-                arrangements.append(build(ArrangementKind.LEAD, lead))
-                arrangements.append(build(ArrangementKind.RHYTHM, rhythm))
-                warnings.append(
-                    "lead/rhythm split is EXPERIMENTAL (no published method exists); "
-                    "review both arrangements — the COMBINED arrangement is the fallback"
-                )
-            else:
-                warnings.append(
-                    "lead/rhythm split produced an empty partition; only COMBINED emitted"
-                )
+        arrangements = [build(kind, events, tng) for kind, events, tng in to_build]
 
         # Optional automatic lyrics (EXPERIMENTAL): WhisperX over the vocals
         # stem Demucs htdemucs_6s produces next to the guitar stem. LRC input
@@ -185,13 +213,13 @@ class GenerateCdlcUseCase:
             warnings.append("lyrics from the in-app editor (per-word timing) used")
         elif transcribe_lyrics:
             stage("lyrics")
-            vocals_stem = guitar_stem.parent / "vocals.wav"
+            vocals_stem = guitar_stem.parent / "vocals.wav" if guitar_stem else None
             if self.lyric_transcriber is None:
                 warnings.append(
                     "lyric transcription requested but whisperx is not installed "
                     "(pip install 'rockforge[lyrics]') — no vocals XML emitted"
                 )
-            elif not vocals_stem.exists():
+            elif vocals_stem is None or not vocals_stem.exists():
                 warnings.append(
                     "lyric transcription skipped: separation produced no vocals stem"
                 )
@@ -231,6 +259,52 @@ class GenerateCdlcUseCase:
             note_counts={a.kind.value: len(a.notes) for a in arrangements},
             warnings=tuple(warnings),
         )
+
+    def _resolve_tuning(
+        self,
+        override: Tuning | None,
+        guitar_stem: Path,
+        notes: list[NoteEvent],
+        warnings: list[str],
+        prefix: str = "",
+    ) -> Tuning:
+        if override is not None:
+            warnings.append(
+                f"{prefix}tuning supplied by user override (automatic estimate skipped)"
+            )
+            return override
+        tuning = self.tuning_estimator.estimate(guitar_stem, notes)
+        warnings.append(
+            f"{prefix}tuning guessed from the transcription: {tuning_name(tuning.midi)} "
+            f"— string-tuning detection from audio is unreliable; set it in the "
+            f"tuning selector if it's wrong (a wrong tuning drops real low notes)"
+        )
+        return tuning
+
+    @staticmethod
+    def _clean_and_warn(
+        notes: list[NoteEvent], tuning: Tuning, warnings: list[str], prefix: str = ""
+    ) -> list[NoteEvent]:
+        """Prune spurious out-of-range / fragment notes and surface one aggregated
+        warning per category (a distorted mix yields hundreds of ghosts)."""
+        cleanup = clean_transcription(notes, tuning)
+        if cleanup.dropped_out_of_range:
+            warnings.append(
+                f"{prefix}dropped {cleanup.dropped_out_of_range} transcribed note(s) "
+                f"outside the guitar's playable range for this tuning (sub-harmonic/"
+                f"octave ghosts from the mix — automatic transcription is approximate)"
+            )
+        if cleanup.dropped_too_short:
+            warnings.append(
+                f"{prefix}dropped {cleanup.dropped_too_short} very short transcribed "
+                f"note(s) (detector fragments/noise)"
+            )
+        if cleanup.merged_fragments:
+            warnings.append(
+                f"{prefix}merged {cleanup.merged_fragments} fragmented note(s) back "
+                f"into sustained notes"
+            )
+        return cleanup.notes
 
     @staticmethod
     def _song_length(notes: list[NoteEvent], tempo_map: TempoMap) -> float:

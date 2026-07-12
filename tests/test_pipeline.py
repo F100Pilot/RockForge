@@ -119,6 +119,34 @@ def test_pipeline_copies_cover_art_into_bundle(tmp_path: Path) -> None:
     assert project["cover_art"] == "cover.jpg"
 
 
+def test_per_role_sources_build_lead_and_rhythm_without_split(tmp_path: Path) -> None:
+    """Separate Lead/Rhythm recordings each become their own arrangement, and the
+    experimental split is NOT used (no COMBINED)."""
+    result = make_use_case().run(
+        source="mix.wav",
+        metadata=SongMetadata(title="T", artist="A"),
+        workdir=tmp_path,
+        lead_source="lead.wav",
+        rhythm_source="rhythm.wav",
+    )
+    assert set(result.note_counts) == {"Lead", "Rhythm"}
+    names = {p.name for p in result.packaging.xml_paths}
+    assert names == {"arrangement_lead.xml", "arrangement_rhythm.xml"}
+    joined = " ".join(result.warnings)
+    assert "per-role transcription" in joined
+    assert "EXPERIMENTAL" not in joined  # no lead/rhythm split warning
+
+
+def test_per_role_single_stem_builds_only_that_arrangement(tmp_path: Path) -> None:
+    result = make_use_case().run(
+        source="lead.wav",
+        metadata=SongMetadata(title="T", artist="A"),
+        workdir=tmp_path,
+        lead_source="lead.wav",
+    )
+    assert set(result.note_counts) == {"Lead"}
+
+
 def test_pipeline_flags_experimental_split_and_missing_psarc(tmp_path: Path) -> None:
     result = make_use_case().run(
         source="x.wav", metadata=SongMetadata(title="T", artist="A"), workdir=tmp_path

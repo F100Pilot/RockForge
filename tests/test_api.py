@@ -95,6 +95,54 @@ def test_upload_rejects_malformed_tuning(client: TestClient) -> None:
         assert r.status_code == 422, bad
 
 
+def test_upload_split_stores_per_role_sources(client: TestClient) -> None:
+    """Separate Lead/Rhythm uploads are stored as params['lead_source'] /
+    ['rhythm_source']; the bundle source is the mix when given."""
+    import rockforge.interfaces.api.app as app_module
+
+    r = client.post(
+        "/jobs/upload-split",
+        files={
+            "lead": ("lead.wav", b"RIFF0000WAVE", "audio/wav"),
+            "rhythm": ("rhythm.wav", b"RIFF0000WAVE", "audio/wav"),
+            "mix": ("mix.wav", b"RIFF0000WAVE", "audio/wav"),
+        },
+        data={"title": "S", "artist": "A"},
+    )
+    assert r.status_code == 202
+    with app_module._session_factory() as session:
+        job = session.get(app_module.Job, r.json()["id"])
+        assert job.params["lead_source"].endswith(".wav")
+        assert job.params["rhythm_source"].endswith(".wav")
+        # bundle source is the mix, distinct from both stems
+        assert job.source != job.params["lead_source"]
+        assert job.source != job.params["rhythm_source"]
+
+
+def test_upload_split_without_mix_uses_a_stem_as_source(client: TestClient) -> None:
+    import rockforge.interfaces.api.app as app_module
+
+    r = client.post(
+        "/jobs/upload-split",
+        files={"rhythm": ("rhythm.wav", b"RIFF0000WAVE", "audio/wav")},
+        data={"title": "S", "artist": "A"},
+    )
+    assert r.status_code == 202
+    with app_module._session_factory() as session:
+        job = session.get(app_module.Job, r.json()["id"])
+        assert "lead_source" not in job.params
+        assert job.source == job.params["rhythm_source"]  # the only stem = bundle audio
+
+
+def test_upload_split_requires_at_least_one_stem(client: TestClient) -> None:
+    r = client.post(
+        "/jobs/upload-split",
+        files={"mix": ("mix.wav", b"RIFF0000WAVE", "audio/wav")},
+        data={"title": "S", "artist": "A"},
+    )
+    assert r.status_code == 422
+
+
 def test_upload_rejects_out_of_range_threshold(client: TestClient) -> None:
     r = client.post(
         "/jobs/upload",

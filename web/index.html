@@ -877,9 +877,24 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
         heurística e as técnicas (bend/slide/palm mute) não são detetadas de forma fiável numa mistura
         completa. Revê e corrige na partitura depois. Precisa do extra <code>[ml]</code> no worker.
       </div>
-      <div class="field" style="flex-basis:100%"><label>Gravação (MP3/FLAC/WAV/OGG/M4A/AIFF)</label>
+      <div class="field" style="flex-basis:100%">
+        <label class="check"><input type="checkbox" id="audioSplitToggle"> Tenho ficheiros <b>Lead</b> e <b>Rhythm</b> separados <button class="info-btn" data-info="audio-split">ⓘ</button></label>
+        <span class="meta">transcreve cada um no seu arranjo — evita a divisão experimental Lead/Rhythm</span></div>
+      <div id="audioSingleWrap" class="field" style="flex-basis:100%"><label>Gravação (MP3/FLAC/WAV/OGG/M4A/AIFF)</label>
         <div class="file-drop"><div class="file-drop-icon">&#127925;</div><span class="file-drop-text">Arrasta ou clica para escolher</span><span class="file-drop-btn">Procurar</span>
-        <input type="file" name="file" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" required></div></div>
+        <input type="file" name="file" id="audioSingleFile" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" required></div></div>
+      <div id="audioSplitWrap" class="grid" hidden style="flex-basis:100%;gap:.6rem">
+        <div class="field" style="flex-basis:100%"><label>🎸 Lead (MP3/FLAC/WAV/OGG/M4A/AIFF)</label>
+          <div class="file-drop"><div class="file-drop-icon">&#127928;</div><span class="file-drop-text">Arrasta ou clica (opcional se deres Rhythm)</span><span class="file-drop-btn">Procurar</span>
+          <input type="file" name="lead" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" disabled></div></div>
+        <div class="field" style="flex-basis:100%"><label>🎸 Rhythm (MP3/FLAC/WAV/OGG/M4A/AIFF)</label>
+          <div class="file-drop"><div class="file-drop-icon">&#127928;</div><span class="file-drop-text">Arrasta ou clica (opcional se deres Lead)</span><span class="file-drop-btn">Procurar</span>
+          <input type="file" name="rhythm" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" disabled></div></div>
+        <div class="field" style="flex-basis:100%"><label>🎧 Mistura completa (opcional — é o que toca no jogo)</label>
+          <div class="file-drop"><div class="file-drop-icon">&#127911;</div><span class="file-drop-text">Arrasta ou clica (opcional)</span><span class="file-drop-btn">Procurar</span>
+          <input type="file" name="mix" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" disabled></div></div>
+        <span class="meta" style="flex-basis:100%">Pelo menos Lead ou Rhythm. Sem mistura, o áudio do jogo é o stem que deres.</span>
+      </div>
       <div class="field"><label>Título</label>
         <input type="text" name="title" placeholder="auto das tags"></div>
       <div class="field"><label>Banda</label>
@@ -1107,6 +1122,17 @@ function validateWizardStep() {
   return true;
 }
 
+// Audio sub-mode: single mix vs separate Lead/Rhythm stems. Disabled inputs are
+// excluded from FormData, so only the active set is submitted.
+function setAudioSplit(on) {
+  document.getElementById('audioSingleWrap').hidden = on;
+  document.getElementById('audioSplitWrap').hidden = !on;
+  document.getElementById('audioSingleFile').disabled = on;
+  ['lead', 'rhythm', 'mix'].forEach(n => {
+    document.querySelector(`#audioJobForm input[name=${n}]`).disabled = !on;
+  });
+}
+
 // Create mode: 'gp' (Guitar Pro wizard, exact) or 'audio' (MP3 → ML transcription).
 function setCreateMode(mode) {
   const gp = mode === 'gp';
@@ -1129,10 +1155,13 @@ function openNewJobModal(mode) {
   });
   gpToken = null;
   setWizardStep(1);
+  document.getElementById('audioSplitToggle').checked = false;
+  setAudioSplit(false);
   setCreateMode(mode === 'audio' ? 'audio' : 'gp');
 }
 document.getElementById('modeGp').addEventListener('click', () => setCreateMode('gp'));
 document.getElementById('modeAudio').addEventListener('click', () => setCreateMode('audio'));
+document.getElementById('audioSplitToggle').addEventListener('change', e => setAudioSplit(e.target.checked));
 function closeNewJobModal() { document.getElementById('newJobOverlay').hidden = true; }
 document.getElementById('newJobClose').addEventListener('click', closeNewJobModal);
 document.getElementById('wizardPrev').addEventListener('click', () => setWizardStep(wizardStep - 1));
@@ -1345,6 +1374,12 @@ const INFO = {
   'audio-offset': {
     title: 'Início (s) — áudio',
     body: '<p>Corta o áudio a partir deste segundo (ex.: 5.3 → ignora os primeiros 5.3s). As notas são transcritas do áudio aparado, ficando naturalmente sincronizadas. Usa 0 para usar o ficheiro inteiro.</p>'
+  },
+  'audio-split': {
+    title: 'Lead e Rhythm separados',
+    body: '<p>Se tiveres <strong>gravações separadas</strong> de cada guitarra (stems isolados de um DAW, do Moises, do Demucs, etc.), carrega-as aqui: cada uma é transcrita <strong>independentemente</strong> no seu arranjo (Lead / Rhythm).</p>' +
+      '<p><strong>Vantagem:</strong> evita a divisão Lead/Rhythm experimental (que tenta separar duas guitarras de uma só gravação — algo não resolvido). Cada ficheiro já é uma guitarra, por isso a transcrição é mais limpa e não há "acordes" impossíveis a juntar as duas.</p>' +
+      '<p>Basta <strong>um</strong> dos dois (Lead ou Rhythm). A <strong>Mistura completa</strong> é opcional e serve de áudio no jogo; sem ela, toca o stem que deres. Os stems devem estar <strong>alinhados no tempo</strong> (a sincronização fina faz-se depois na partitura).</p>'
   },
   'audio-tuning': {
     title: 'Afinação — áudio',
@@ -4954,10 +4989,22 @@ document.getElementById('gpJobForm').addEventListener('submit', async e => {
 
 document.getElementById('audioJobForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const f = new FormData(e.target);
+  const split = document.getElementById('audioSplitToggle').checked;
+  const f = new FormData(e.target);  // disabled inputs are excluded automatically
   // Unchecked checkbox isn't sent; set it explicitly so "off" sticks.
   f.set('transcribe_lyrics', e.target.querySelector('input[name=transcribe_lyrics]').checked);
-  const r = await fetch('/jobs/upload', { method: 'POST', body: f });
+  let url = '/jobs/upload';
+  if (split) {
+    url = '/jobs/upload-split';
+    const hasLead = e.target.querySelector('input[name=lead]').files.length;
+    const hasRhythm = e.target.querySelector('input[name=rhythm]').files.length;
+    if (!hasLead && !hasRhythm) { toast('Escolhe pelo menos um ficheiro Lead ou Rhythm.'); return; }
+    // Drop empty file inputs so the backend's optional File(None) params stay unset.
+    for (const n of ['lead', 'rhythm', 'mix']) {
+      if (!e.target.querySelector(`input[name=${n}]`).files.length) f.delete(n);
+    }
+  }
+  const r = await fetch(url, { method: 'POST', body: f });
   const b = await r.json();
   if (r.ok) { toast('Projeto criado — transcrição a começar (pode demorar).', 'ok'); closeNewJobModal(); selectJob(b.id); }
   else toast(b.detail || 'erro');
