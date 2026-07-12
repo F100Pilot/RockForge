@@ -33,9 +33,21 @@ Rules:
 ## The two generation paths
 
 1. **Audio → ML** (`pipeline.py`): ingest → normalize → separate (Demucs) →
-   transcribe (Basic Pitch) → beat track + tuning (librosa) → fret mapping →
-   optional lyrics (WhisperX) → package. Timing is automatic: every timestamp is
-   seconds from the start of the normalized audio.
+   transcribe (Basic Pitch) → beat track + tuning (librosa) → **clean
+   transcription** → fret mapping → optional lyrics (WhisperX) → package. Timing
+   is automatic: every timestamp is seconds from the start of the normalized
+   audio. **Cleanup step (`clean_transcription`, `domain/music.py`):** Basic
+   Pitch on a full distorted electric mix emits many spurious notes — sub-harmonic
+   ghosts below the low string (MIDI 37-39 in standard tuning), octave ghosts
+   above the 24th fret, sub-40 ms fragments, and one held note split into several
+   same-pitch segments. Run right after tuning is known (needs the tuning's
+   playable range), it drops out-of-range/too-short notes and re-joins fragments
+   BEFORE mapping, so the fret mapper isn't fed hundreds of unplayable notes it
+   would drop one-warning-each. The pipeline surfaces ONE aggregated warning per
+   category instead. Honest: it only prunes clearly-spurious/unplayable notes and
+   rejoins fragments — it never invents or octave-shifts (a note detected an
+   octave off is dropped, not silently "corrected"). Guarded by
+   `test_clean_transcription_*`.
 2. **Guitar Pro** (`gp_pipeline.py`): notes/frets/techniques/sections come exact
    from the GP file; audio sync is a manual offset. High fidelity, preferred
    when a GP file exists. Two parsers behind one API (`inspect_gp` /

@@ -9,6 +9,7 @@ from rockforge.domain.music import (
     TempoMap,
     Tuning,
     apply_sustain_gap,
+    clean_transcription,
     expand_slide_ins,
     expand_trills,
     is_composite_bend,
@@ -17,6 +18,58 @@ from rockforge.domain.music import (
 
 def test_standard_tuning_offsets_are_zero() -> None:
     assert Tuning().offsets_from_standard() == (0, 0, 0, 0, 0, 0)
+
+
+def test_clean_transcription_drops_out_of_range_notes() -> None:
+    """Basic Pitch on a distorted mix emits sub-harmonic ghosts below low E and
+    octave ghosts far above the neck; both are unplayable and pruned before
+    mapping (standard tuning: playable MIDI 40..88)."""
+    notes = [
+        NoteEvent(pitch=39, start=1.0, duration=0.5),   # below low E — ghost
+        NoteEvent(pitch=37, start=2.0, duration=0.5),   # below low E — ghost
+        NoteEvent(pitch=92, start=3.0, duration=0.5),   # above the 24th fret — ghost
+        NoteEvent(pitch=52, start=4.0, duration=0.5),   # playable — kept
+        NoteEvent(pitch=40, start=5.0, duration=0.5),   # low E open — kept (boundary)
+        NoteEvent(pitch=88, start=6.0, duration=0.5),   # high E 24th — kept (boundary)
+    ]
+    r = clean_transcription(notes, Tuning())
+    assert r.dropped_out_of_range == 3
+    assert sorted(n.pitch for n in r.notes) == [40, 52, 88]
+
+
+def test_clean_transcription_drops_short_fragments() -> None:
+    notes = [
+        NoteEvent(pitch=52, start=0.0, duration=0.01),  # 10 ms — noise
+        NoteEvent(pitch=52, start=1.0, duration=0.30),  # real
+    ]
+    r = clean_transcription(notes, Tuning())
+    assert r.dropped_too_short == 1
+    assert [n.duration for n in r.notes] == [0.30]
+
+
+def test_clean_transcription_merges_same_pitch_fragments() -> None:
+    """A held note split into adjacent same-pitch segments is rejoined into one."""
+    notes = [
+        NoteEvent(pitch=52, start=0.0, duration=0.20),
+        NoteEvent(pitch=52, start=0.21, duration=0.20),  # 10 ms gap → same note
+        NoteEvent(pitch=52, start=0.42, duration=0.20),  # another 10 ms gap
+    ]
+    r = clean_transcription(notes, Tuning())
+    assert r.merged_fragments == 2
+    assert len(r.notes) == 1
+    assert r.notes[0].start == 0.0
+    assert r.notes[0].start + r.notes[0].duration == pytest.approx(0.62)
+
+
+def test_clean_transcription_keeps_distinct_and_distant_same_pitch() -> None:
+    # Same pitch but a big gap → two separate notes (not merged).
+    notes = [
+        NoteEvent(pitch=52, start=0.0, duration=0.20),
+        NoteEvent(pitch=52, start=2.0, duration=0.20),
+    ]
+    r = clean_transcription(notes, Tuning())
+    assert r.merged_fragments == 0
+    assert len(r.notes) == 2
 
 
 def test_drop_d_offsets() -> None:

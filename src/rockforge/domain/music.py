@@ -197,6 +197,85 @@ class NoteEvent:
             raise ValueError("start/duration must be non-negative")
 
 
+MIN_NOTE_DURATION_S = 0.04  # shorter transcribed notes are fragments/noise
+MERGE_GAP_S = 0.03  # same-pitch notes within this gap are one fragmented note
+
+
+@dataclass(frozen=True)
+class TranscriptionCleanup:
+    """Result of :func:`clean_transcription` — the kept notes plus drop counts,
+    so the pipeline can surface ONE aggregated warning instead of one per note."""
+
+    notes: list[NoteEvent]
+    dropped_out_of_range: int
+    dropped_too_short: int
+    merged_fragments: int
+
+
+def clean_transcription(
+    notes: list[NoteEvent],
+    tuning: Tuning,
+    min_duration: float = MIN_NOTE_DURATION_S,
+    merge_gap: float = MERGE_GAP_S,
+) -> TranscriptionCleanup:
+    """Remove notes a polyphonic transcriber (Basic Pitch) spuriously emits on a
+    full electric-guitar mix, BEFORE fret mapping:
+
+    - **Out of range for the tuning:** below the lowest open string or above the
+      highest string's 24th fret. On a distorted mix Basic Pitch reports many
+      sub-harmonic ghosts below low E (MIDI 37-39 in standard tuning) and octave
+      harmonics far above the neck — all unplayable, and each otherwise triggers
+      a separate "dropped unplayable note" warning from the mapper.
+    - **Too short:** fragments under ``min_duration`` are detector noise.
+    - **Fragmented sustains:** a held note split into several same-pitch segments
+      with tiny gaps is merged back into one (keeps the earliest onset, extends
+      to the last segment's end, keeps the highest confidence).
+
+    Honest: this only prunes clearly-spurious/unplayable notes and re-joins
+    fragments; it never invents notes or octave-shifts (a note detected an octave
+    off is dropped, not silently 'corrected').
+    """
+    lo = min(tuning.midi)
+    hi = max(tuning.midi) + MAX_FRET
+    kept: list[NoteEvent] = []
+    dropped_range = dropped_short = 0
+    for n in notes:
+        if not (lo <= n.pitch <= hi):
+            dropped_range += 1
+            continue
+        if n.duration < min_duration:
+            dropped_short += 1
+            continue
+        kept.append(n)
+
+    # Merge same-pitch fragments (sort by pitch then time; join near-adjacent).
+    kept.sort(key=lambda n: (n.pitch, n.start))
+    merged: list[NoteEvent] = []
+    merged_count = 0
+    for n in kept:
+        if merged and merged[-1].pitch == n.pitch:
+            prev = merged[-1]
+            prev_end = prev.start + prev.duration
+            if n.start <= prev_end + merge_gap:
+                new_end = max(prev_end, n.start + n.duration)
+                merged[-1] = replace(
+                    prev,
+                    duration=new_end - prev.start,
+                    confidence=max(prev.confidence, n.confidence),
+                    bend_semitones=prev.bend_semitones or n.bend_semitones,
+                )
+                merged_count += 1
+                continue
+        merged.append(n)
+    merged.sort(key=lambda n: (n.start, n.pitch))
+    return TranscriptionCleanup(
+        notes=merged,
+        dropped_out_of_range=dropped_range,
+        dropped_too_short=dropped_short,
+        merged_fragments=merged_count,
+    )
+
+
 @dataclass(frozen=True)
 class Beat:
     time: float
