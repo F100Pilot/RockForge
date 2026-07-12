@@ -74,6 +74,21 @@ def test_clean_transcription_drops_out_of_range_notes() -> None:
     assert sorted(n.pitch for n in r.notes) == [40, 52, 88]
 
 
+def test_clean_transcription_drops_low_confidence_notes() -> None:
+    """Weak (low-amplitude) detections are the 'loose notes that make no sense'
+    on a distorted mix; min_confidence prunes them (off by default)."""
+    notes = [
+        NoteEvent(pitch=52, start=0.0, duration=0.3, confidence=0.05),  # weak ghost
+        NoteEvent(pitch=55, start=1.0, duration=0.3, confidence=0.8),   # strong
+    ]
+    # Off by default: both kept.
+    assert len(clean_transcription(notes, Tuning()).notes) == 2
+    # With a threshold, the weak one is dropped.
+    r = clean_transcription(notes, Tuning(), min_confidence=0.3)
+    assert r.dropped_low_confidence == 1
+    assert [n.pitch for n in r.notes] == [55]
+
+
 def test_clean_transcription_drops_short_fragments() -> None:
     notes = [
         NoteEvent(pitch=52, start=0.0, duration=0.01),  # 10 ms — noise

@@ -488,9 +488,17 @@ def _enqueue_separate_stems(job: Job) -> None:
 _AUDIO_SUFFIXES = {".mp3", ".flac", ".wav", ".ogg", ".m4a", ".aiff"}
 
 
-def _validate_thresholds(onset_threshold: float, frame_threshold: float) -> None:
-    if not (0.0 <= onset_threshold <= 1.0 and 0.0 <= frame_threshold <= 1.0):
-        raise HTTPException(422, "onset_threshold/frame_threshold must be between 0 and 1")
+def _validate_thresholds(
+    onset_threshold: float, frame_threshold: float, min_confidence: float = 0.0
+) -> None:
+    if not (
+        0.0 <= onset_threshold <= 1.0
+        and 0.0 <= frame_threshold <= 1.0
+        and 0.0 <= min_confidence <= 1.0
+    ):
+        raise HTTPException(
+            422, "onset_threshold/frame_threshold/min_confidence must be between 0 and 1"
+        )
 
 
 def _parse_tuning_midi(tuning_midi: str) -> list[int] | None:
@@ -530,6 +538,7 @@ async def create_upload_job(
     transcribe_lyrics: bool = Form(False),
     onset_threshold: float = Form(0.5),
     frame_threshold: float = Form(0.3),
+    min_confidence: float = Form(0.0),
     tuning_midi: str = Form(""),
 ) -> JobOut:
     """Form fields are optional: missing values are read from the file's tags
@@ -539,7 +548,7 @@ async def create_upload_job(
     ``onset_threshold``/``frame_threshold`` (0..1) tune Basic Pitch's note
     detection: higher rejects more spurious ghost notes on a distorted mix.
     Defaults (0.5/0.3) match the transcriber and are stored only when changed."""
-    _validate_thresholds(onset_threshold, frame_threshold)
+    _validate_thresholds(onset_threshold, frame_threshold, min_confidence)
     tuning_override_midi = _parse_tuning_midi(tuning_midi)
     upload_dir = settings.work_dir / "uploads"
     dest = _save_upload(file, upload_dir)
@@ -578,6 +587,7 @@ async def create_upload_job(
                         # Store only when changed from the Basic Pitch defaults.
                         ("onset_threshold", onset_threshold if onset_threshold != 0.5 else None),
                         ("frame_threshold", frame_threshold if frame_threshold != 0.3 else None),
+                        ("min_confidence", min_confidence if min_confidence > 0 else None),
                         ("tuning_midi", tuning_override_midi),
                     )
                     if v is not None
@@ -604,6 +614,7 @@ async def create_upload_split_job(
     transcribe_lyrics: bool = Form(False),
     onset_threshold: float = Form(0.5),
     frame_threshold: float = Form(0.3),
+    min_confidence: float = Form(0.0),
     tuning_midi: str = Form(""),
     separate_stems: bool = Form(False),
 ) -> JobOut:
@@ -614,7 +625,7 @@ async def create_upload_split_job(
     (honest limit: then the bundle plays only that stem, not a full mix)."""
     if lead is None and rhythm is None:
         raise HTTPException(422, "provide at least a Lead or a Rhythm recording")
-    _validate_thresholds(onset_threshold, frame_threshold)
+    _validate_thresholds(onset_threshold, frame_threshold, min_confidence)
     tuning_override_midi = _parse_tuning_midi(tuning_midi)
 
     upload_dir = settings.work_dir / "uploads"
@@ -663,6 +674,7 @@ async def create_upload_split_job(
                     ("transcribe_lyrics", transcribe_lyrics or None),
                     ("onset_threshold", onset_threshold if onset_threshold != 0.5 else None),
                     ("frame_threshold", frame_threshold if frame_threshold != 0.3 else None),
+                    ("min_confidence", min_confidence if min_confidence > 0 else None),
                     ("tuning_midi", tuning_override_midi),
                 )
                 if v is not None

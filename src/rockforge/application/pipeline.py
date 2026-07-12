@@ -92,6 +92,7 @@ class GenerateCdlcUseCase:
         lead_source: str | None = None,
         rhythm_source: str | None = None,
         separate_role_stems: bool = False,
+        min_confidence: float = 0.0,
     ) -> PipelineResult:
         """When ``lead_source`` and/or ``rhythm_source`` are given, each is
         transcribed INDEPENDENTLY into its own arrangement (no experimental
@@ -145,7 +146,7 @@ class GenerateCdlcUseCase:
                     tuning_override, r_guitar, r_notes, warnings, f"{kind.value}: "
                 )
                 r_notes = self._clean_and_warn(
-                    r_notes, r_tuning, warnings, f"{kind.value}: "
+                    r_notes, r_tuning, warnings, f"{kind.value}: ", min_confidence
                 )
                 to_build.append((kind, r_notes, r_tuning))
             if not to_build:
@@ -171,7 +172,7 @@ class GenerateCdlcUseCase:
             stage("tuning")
             assert guitar_stem is not None
             tuning = self._resolve_tuning(tuning_override, guitar_stem, notes, warnings)
-            notes = self._clean_and_warn(notes, tuning, warnings)
+            notes = self._clean_and_warn(notes, tuning, warnings, "", min_confidence)
             to_build.append((ArrangementKind.COMBINED, notes, tuning))
             if split_lead_rhythm:                                      # 5. EXPERIMENTAL split
                 lead, rhythm = self.role_splitter.split(notes)
@@ -292,11 +293,20 @@ class GenerateCdlcUseCase:
 
     @staticmethod
     def _clean_and_warn(
-        notes: list[NoteEvent], tuning: Tuning, warnings: list[str], prefix: str = ""
+        notes: list[NoteEvent],
+        tuning: Tuning,
+        warnings: list[str],
+        prefix: str = "",
+        min_confidence: float = 0.0,
     ) -> list[NoteEvent]:
-        """Prune spurious out-of-range / fragment notes and surface one aggregated
-        warning per category (a distorted mix yields hundreds of ghosts)."""
-        cleanup = clean_transcription(notes, tuning)
+        """Prune spurious out-of-range / fragment / weak notes and surface one
+        aggregated warning per category (a distorted mix yields hundreds of ghosts)."""
+        cleanup = clean_transcription(notes, tuning, min_confidence=min_confidence)
+        if cleanup.dropped_low_confidence:
+            warnings.append(
+                f"{prefix}dropped {cleanup.dropped_low_confidence} weak/low-amplitude "
+                f"note(s) below the confidence threshold (spurious overtones)"
+            )
         if cleanup.dropped_out_of_range:
             warnings.append(
                 f"{prefix}dropped {cleanup.dropped_out_of_range} transcribed note(s) "
