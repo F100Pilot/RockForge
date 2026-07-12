@@ -28,7 +28,13 @@ from rockforge.domain.arrangement import (
     ConfidenceLabel,
     SongMetadata,
 )
-from rockforge.domain.music import Beat, NoteEvent, TempoMap, Tuning
+from rockforge.domain.music import (
+    Beat,
+    NoteEvent,
+    TempoMap,
+    Tuning,
+    clean_transcription,
+)
 from rockforge.infrastructure.fretboard.mapper import infer_legato, map_to_fretboard
 from rockforge.infrastructure.packaging.dlcbuilder import PackagingResult
 from rockforge.infrastructure.rsxml.vocals import VocalEvent, enforce_max_line_words
@@ -103,6 +109,28 @@ class GenerateCdlcUseCase:
             warnings.append("tuning supplied by user override (automatic estimate skipped)")
         else:
             tuning = self.tuning_estimator.estimate(guitar_stem, notes)
+
+        # Prune the transcriber's spurious out-of-range / fragment notes before
+        # mapping, so the fret mapper isn't fed (and doesn't warn about) hundreds
+        # of unplayable sub-harmonic/octave ghosts a distorted mix produces.
+        cleanup = clean_transcription(notes, tuning)
+        notes = cleanup.notes
+        if cleanup.dropped_out_of_range:
+            warnings.append(
+                f"dropped {cleanup.dropped_out_of_range} transcribed note(s) outside "
+                f"the guitar's playable range for this tuning (sub-harmonic/octave "
+                f"ghosts from the mix — automatic transcription is approximate)"
+            )
+        if cleanup.dropped_too_short:
+            warnings.append(
+                f"dropped {cleanup.dropped_too_short} very short transcribed note(s) "
+                f"(detector fragments/noise)"
+            )
+        if cleanup.merged_fragments:
+            warnings.append(
+                f"merged {cleanup.merged_fragments} fragmented note(s) back into "
+                f"sustained notes"
+            )
 
         song_length = self._song_length(notes, tempo_map)
         metadata = SongMetadata(
