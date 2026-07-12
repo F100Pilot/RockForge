@@ -891,6 +891,16 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
       <div class="field"><label>Início da música (s) <button class="info-btn" data-info="audio-offset">ⓘ</button></label>
         <input type="number" name="offset_s" value="0" step="0.01" min="0" style="width:6rem"></div>
       <div class="field" style="flex-basis:100%">
+        <label>Sensibilidade da deteção <button class="info-btn" data-info="audio-thresholds">ⓘ</button></label>
+        <div class="anchor-row" style="gap:1rem;flex-wrap:wrap">
+          <label style="font-weight:400">Onset (ataque):
+            <input type="number" name="onset_threshold" value="0.5" step="0.05" min="0" max="1" style="width:4.5rem"></label>
+          <label style="font-weight:400">Frame (sustentação):
+            <input type="number" name="frame_threshold" value="0.3" step="0.05" min="0" max="1" style="width:4.5rem"></label>
+          <span class="meta">↑ mais alto = menos notas-fantasma (para misturas distorcidas); ↓ mais baixo = capta notas mais ténues</span>
+        </div>
+      </div>
+      <div class="field" style="flex-basis:100%">
         <label class="check"><input type="checkbox" name="transcribe_lyrics" value="true">
         Transcrever a letra automaticamente (WhisperX — lento, precisa do extra <code>[lyrics]</code>)</label></div>
       <p class="meta" style="flex-basis:100%">Se o ficheiro não tiver tags de título/banda, preenche os campos — nunca são inventados.</p>
@@ -1322,6 +1332,13 @@ const INFO = {
   'audio-offset': {
     title: 'Início (s) — áudio',
     body: '<p>Corta o áudio a partir deste segundo (ex.: 5.3 → ignora os primeiros 5.3s). As notas são transcritas do áudio aparado, ficando naturalmente sincronizadas. Usa 0 para usar o ficheiro inteiro.</p>'
+  },
+  'audio-thresholds': {
+    title: 'Sensibilidade da deteção (Basic Pitch)',
+    body: '<p>Controlam quão "exigente" é a IA a decidir que ouviu uma nota. Numa guitarra elétrica distorcida, o modelo tende a ouvir harmónicos como notas reais — daí a "parede" de notas a mais.</p>' +
+      '<p><strong>Onset (0–1, defeito 0.5):</strong> confiança mínima no <em>ataque</em> de uma nota nova. <strong>Sobe-o</strong> (ex.: 0.7) para rejeitar ataques-fantasma.</p>' +
+      '<p><strong>Frame (0–1, defeito 0.3):</strong> confiança mínima para a nota se <em>manter</em> a soar. <strong>Sobe-o</strong> para cortar notas ténues/ruído.</p>' +
+      '<p>Regra prática: mistura <strong>distorcida/densa</strong> → sobe ambos (menos fantasmas, mas podes perder notas ténues). Gravação <strong>limpa</strong> → mantém ou baixa (capta mais detalhe). Ajusta e recria o projeto para comparar.</p>'
   },
   'youtube': {
     title: 'YouTube',

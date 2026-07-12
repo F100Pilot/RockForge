@@ -152,7 +152,13 @@ def _make_demucs(device: str) -> Any:  # heavy import deferred to worker
     return DemucsSeparator(device=device, on_cuda_crash=_mark_cuda_broken)
 
 
-def _build_use_case():  # noqa: ANN202 - heavy imports deferred to worker runtime
+def _build_use_case(
+    onset_threshold: float | None = None,
+    frame_threshold: float | None = None,
+) -> Any:  # returns a make(source_type) factory; heavy imports deferred to worker
+    """Build the audio-ML use-case factory. ``onset_threshold``/``frame_threshold``
+    (0..1) tune Basic Pitch's note detection per job — higher = fewer spurious
+    ghost notes on a distorted mix; None keeps the adapter defaults."""
     from rockforge.application.pipeline import GenerateCdlcUseCase
     from rockforge.infrastructure.ingestion.sources import LocalFileIngestor, YouTubeIngestor
     from rockforge.infrastructure.normalize.ffmpeg import FfmpegNormalizer
@@ -174,6 +180,12 @@ def _build_use_case():  # noqa: ANN202 - heavy imports deferred to worker runtim
         else None
     )
 
+    tk: dict[str, float] = {}
+    if onset_threshold is not None:
+        tk["onset_threshold"] = onset_threshold
+    if frame_threshold is not None:
+        tk["frame_threshold"] = frame_threshold
+
     def make(source_type: str) -> GenerateCdlcUseCase:
         ingestor = (
             YouTubeIngestor(enabled=settings.enable_youtube)
@@ -185,7 +197,7 @@ def _build_use_case():  # noqa: ANN202 - heavy imports deferred to worker runtim
             ingestor=ingestor,
             normalizer=FfmpegNormalizer(),
             separator=_make_demucs(device),
-            transcriber=BasicPitchTranscriber(),
+            transcriber=BasicPitchTranscriber(**tk),
             beat_tracker=rhythm,
             tuning_estimator=rhythm,
             role_splitter=HeuristicRoleSplitter(),
@@ -363,7 +375,13 @@ def generate_cdlc(job_id: str) -> None:
 
             from rockforge.infrastructure.rsxml.vocals import events_from_dicts
 
-            use_case = _build_use_case()(job.source_type)
+            def _opt_float(v: object) -> float | None:
+                return float(v) if isinstance(v, (int, float, str)) and str(v) != "" else None
+
+            use_case = _build_use_case(
+                onset_threshold=_opt_float(params.get("onset_threshold")),
+                frame_threshold=_opt_float(params.get("frame_threshold")),
+            )(job.source_type)
             tuning_override = None
             if "tuning_midi" in params:
                 m = [int(x) for x in params["tuning_midi"]]
