@@ -369,6 +369,18 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
   flex-shrink: 0; color: var(--muted); font-size: 1.2rem; transition: color .15s, transform .15s;
 }
 .job-banner:hover .job-banner-arrow { color: var(--accent); transform: translateX(3px); }
+/* Diagonal "Experimental" stamp over a banner (still clickable — pointer-events:none). */
+.job-banner.experimental { position: relative; overflow: hidden; }
+.banner-stamp {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  pointer-events: none; z-index: 3;
+}
+.banner-stamp span {
+  transform: rotate(-14deg); font-size: 1.35rem; font-weight: 800; letter-spacing: .18em;
+  text-transform: uppercase; color: #ffb454; opacity: .55; padding: .1rem .9rem;
+  border: 2px solid #ffb454; border-radius: 7px; background: rgba(20,21,26,.35);
+  white-space: nowrap;
+}
 </style>
 </head>
 <body class="landing">
@@ -395,13 +407,14 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
         </div>
         <span class="job-banner-arrow">&#8250;</span>
       </div>
-      <div class="job-banner" data-new="audio">
+      <div class="job-banner experimental" data-new="audio">
         <div class="job-banner-icon">&#127925;</div>
         <div class="job-banner-body">
           <div class="job-banner-title">A partir de áudio (MP3)</div>
           <div class="job-banner-desc">Transcrição automática por IA a partir da gravação — aproximada</div>
         </div>
         <span class="job-banner-arrow">&#8250;</span>
+        <span class="banner-stamp"><span>Experimental</span></span>
       </div>
     </div>
 
