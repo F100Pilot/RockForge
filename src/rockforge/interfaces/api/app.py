@@ -485,6 +485,40 @@ def _enqueue_separate_stems(job: Job) -> None:
         separate_stems.delay(job.id)
 
 
+_AUDIO_SUFFIXES = {".mp3", ".flac", ".wav", ".ogg", ".m4a", ".aiff"}
+
+
+def _validate_thresholds(onset_threshold: float, frame_threshold: float) -> None:
+    if not (0.0 <= onset_threshold <= 1.0 and 0.0 <= frame_threshold <= 1.0):
+        raise HTTPException(422, "onset_threshold/frame_threshold must be between 0 and 1")
+
+
+def _parse_tuning_midi(tuning_midi: str) -> list[int] | None:
+    """Parse the optional tuning override ("" = auto): 6 comma-separated MIDI
+    pitches, low string to high. Returns None when unset; raises 422 on bad input."""
+    if not tuning_midi.strip():
+        return None
+    try:
+        midi = [int(x) for x in tuning_midi.split(",")]
+    except ValueError:
+        raise HTTPException(422, "tuning_midi must be comma-separated integers") from None
+    if len(midi) != 6 or not all(20 <= m <= 127 for m in midi):
+        raise HTTPException(422, "tuning_midi must be 6 MIDI pitches (20..127)")
+    return midi
+
+
+def _save_upload(upload: UploadFile, upload_dir: Path) -> Path:
+    """Persist an uploaded audio file to a unique path; 415 on a bad extension."""
+    suffix = Path(upload.filename or "upload").suffix.lower()
+    if suffix not in _AUDIO_SUFFIXES:
+        raise HTTPException(415, f"unsupported audio format: {suffix or '(none)'}")
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    dest = upload_dir / f"{uuid.uuid4()}{suffix}"
+    with dest.open("wb") as fh:
+        shutil.copyfileobj(upload.file, fh)
+    return dest
+
+
 @app.post("/jobs/upload", response_model=JobOut, status_code=202)
 async def create_upload_job(
     file: UploadFile = File(...),
@@ -505,29 +539,10 @@ async def create_upload_job(
     ``onset_threshold``/``frame_threshold`` (0..1) tune Basic Pitch's note
     detection: higher rejects more spurious ghost notes on a distorted mix.
     Defaults (0.5/0.3) match the transcriber and are stored only when changed."""
-    suffix = Path(file.filename or "upload").suffix.lower()
-    if suffix not in {".mp3", ".flac", ".wav", ".ogg", ".m4a", ".aiff"}:
-        raise HTTPException(415, f"unsupported audio format: {suffix or '(none)'}")
-    if not (0.0 <= onset_threshold <= 1.0 and 0.0 <= frame_threshold <= 1.0):
-        raise HTTPException(422, "onset_threshold/frame_threshold must be between 0 and 1")
-    # Optional tuning override ("" = auto-detect): six comma-separated MIDI pitches,
-    # low string to high. Reliable string-tuning detection from polyphonic audio is
-    # unsolved, so let the user state it — the worker reads params["tuning_midi"].
-    tuning_override_midi: list[int] | None = None
-    if tuning_midi.strip():
-        try:
-            tuning_override_midi = [int(x) for x in tuning_midi.split(",")]
-        except ValueError:
-            raise HTTPException(422, "tuning_midi must be comma-separated integers") from None
-        if len(tuning_override_midi) != 6 or not all(
-            20 <= m <= 127 for m in tuning_override_midi
-        ):
-            raise HTTPException(422, "tuning_midi must be 6 MIDI pitches (20..127)")
+    _validate_thresholds(onset_threshold, frame_threshold)
+    tuning_override_midi = _parse_tuning_midi(tuning_midi)
     upload_dir = settings.work_dir / "uploads"
-    upload_dir.mkdir(parents=True, exist_ok=True)
-    dest = upload_dir / f"{uuid.uuid4()}{suffix}"
-    with dest.open("wb") as fh:
-        shutil.copyfileobj(file.file, fh)
+    dest = _save_upload(file, upload_dir)
 
     from rockforge.infrastructure.ingestion.tags import read_tags
 
@@ -569,6 +584,87 @@ async def create_upload_job(
                 }
                 or None
             ),
+        )
+        session.add(job)
+        session.commit()
+        _enqueue(job)
+        return _to_out(job)
+
+
+@app.post("/jobs/upload-split", response_model=JobOut, status_code=202)
+async def create_upload_split_job(
+    lead: UploadFile | None = File(None),
+    rhythm: UploadFile | None = File(None),
+    mix: UploadFile | None = File(None),
+    title: str = Form(""),
+    artist: str = Form(""),
+    album: str = Form(""),
+    year: str = Form(""),
+    offset_s: float = Form(0.0),
+    transcribe_lyrics: bool = Form(False),
+    onset_threshold: float = Form(0.5),
+    frame_threshold: float = Form(0.3),
+    tuning_midi: str = Form(""),
+) -> JobOut:
+    """Transcribe separate Lead and/or Rhythm recordings into their OWN
+    arrangements (no experimental split — each recording is already one guitar).
+    At least one of ``lead``/``rhythm`` is required. ``mix`` (optional) is the
+    bundle audio that plays in-game; when omitted the first supplied stem is used
+    (honest limit: then the bundle plays only that stem, not a full mix)."""
+    if lead is None and rhythm is None:
+        raise HTTPException(422, "provide at least a Lead or a Rhythm recording")
+    _validate_thresholds(onset_threshold, frame_threshold)
+    tuning_override_midi = _parse_tuning_midi(tuning_midi)
+
+    upload_dir = settings.work_dir / "uploads"
+    lead_path = _save_upload(lead, upload_dir) if lead is not None else None
+    rhythm_path = _save_upload(rhythm, upload_dir) if rhythm is not None else None
+    mix_path = _save_upload(mix, upload_dir) if mix is not None else None
+    # The bundle audio (.wem / playback) and the tag source: the mix if given,
+    # else whichever stem was supplied.
+    bundle_source = mix_path or lead_path or rhythm_path
+    assert bundle_source is not None  # guaranteed by the lead/rhythm check above
+
+    from rockforge.infrastructure.ingestion.tags import read_tags
+
+    tags = read_tags(bundle_source)
+    final_title = title.strip() or tags.title
+    final_artist = artist.strip() or tags.artist
+    final_album = album.strip() or tags.album or ""
+    final_year: int | None = int(year) if year.strip().isdigit() else tags.year
+
+    missing = [n for n, v in (("title", final_title), ("artist", final_artist)) if not v]
+    if missing:
+        for p in (lead_path, rhythm_path, mix_path):
+            if p is not None:
+                p.unlink(missing_ok=True)
+        raise HTTPException(
+            422,
+            f"no {'/'.join(missing)} tag — fill in the form field(s): {missing}",
+        )
+    assert final_title is not None and final_artist is not None
+
+    with _session_factory() as session:
+        job = Job(
+            source=str(bundle_source),
+            source_type="upload",
+            title=final_title,
+            artist=final_artist,
+            album=final_album,
+            year=final_year,
+            params={
+                k: v
+                for k, v in (
+                    ("lead_source", str(lead_path) if lead_path else None),
+                    ("rhythm_source", str(rhythm_path) if rhythm_path else None),
+                    ("offset_s", offset_s if offset_s > 0 else None),
+                    ("transcribe_lyrics", transcribe_lyrics or None),
+                    ("onset_threshold", onset_threshold if onset_threshold != 0.5 else None),
+                    ("frame_threshold", frame_threshold if frame_threshold != 0.3 else None),
+                    ("tuning_midi", tuning_override_midi),
+                )
+                if v is not None
+            },
         )
         session.add(job)
         session.commit()

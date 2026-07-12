@@ -410,6 +410,8 @@ def generate_cdlc(job_id: str) -> None:
                 cover_art=cover_art,
                 dynamic_difficulty=bool(params.get("dynamic_difficulty", True)),
                 on_stage=on_stage,
+                lead_source=params.get("lead_source"),
+                rhythm_source=params.get("rhythm_source"),
             )
             job.status = JobStatus.COMPLETED
             job.warnings = list(result.warnings)

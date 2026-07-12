@@ -67,6 +67,17 @@ Rules:
    per-job (`params["onset_threshold"]`/`["frame_threshold"]`) to reject
    in-range harmonic ghosts a distorted mix produces. Both plumbed
    form → `/jobs/upload` → params → `_build_use_case`/`tuning_override`.
+   **Per-role stems (`/jobs/upload-split`):** when the user has SEPARATE Lead and
+   Rhythm recordings, each is transcribed INDEPENDENTLY into its own arrangement
+   (`run(lead_source=…, rhythm_source=…)`) — no experimental split, since each
+   file is already one guitar. `source` stays the bundle audio (.wem + beat/tempo);
+   the endpoint uses the optional `mix` upload for it, else the first stem (then
+   the bundle plays only that stem — honest limit). Each stem is transcribed in
+   its own `work_dir/stem_<kind>` sub-dir (files never collide) with its own
+   tuning estimate; `_resolve_tuning`/`_clean_and_warn` are the shared per-source
+   helpers. The UI exposes it as a checkbox in the audio-mode form. Guarded by
+   `test_per_role_sources_build_lead_and_rhythm_without_split` /
+   `test_upload_split_*`.
 2. **Guitar Pro** (`gp_pipeline.py`): notes/frets/techniques/sections come exact
    from the GP file; audio sync is a manual offset. High fidelity, preferred
    when a GP file exists. Two parsers behind one API (`inspect_gp` /
