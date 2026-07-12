@@ -266,6 +266,7 @@ class TranscriptionCleanup:
     dropped_out_of_range: int
     dropped_too_short: int
     merged_fragments: int
+    dropped_low_confidence: int = 0
 
 
 def clean_transcription(
@@ -273,6 +274,7 @@ def clean_transcription(
     tuning: Tuning,
     min_duration: float = MIN_NOTE_DURATION_S,
     merge_gap: float = MERGE_GAP_S,
+    min_confidence: float = 0.0,
 ) -> TranscriptionCleanup:
     """Remove notes a polyphonic transcriber (Basic Pitch) spuriously emits on a
     full electric-guitar mix, BEFORE fret mapping:
@@ -283,6 +285,9 @@ def clean_transcription(
       harmonics far above the neck — all unplayable, and each otherwise triggers
       a separate "dropped unplayable note" warning from the mapper.
     - **Too short:** fragments under ``min_duration`` are detector noise.
+    - **Too weak:** notes whose ``confidence`` (Basic Pitch amplitude) is below
+      ``min_confidence`` are faint/spurious overtones — off by default (0.0), the
+      user raises it per job to prune the "loose notes that make no sense".
     - **Fragmented sustains:** a held note split into several same-pitch segments
       with tiny gaps is merged back into one (keeps the earliest onset, extends
       to the last segment's end, keeps the highest confidence).
@@ -294,13 +299,18 @@ def clean_transcription(
     lo = min(tuning.midi)
     hi = max(tuning.midi) + MAX_FRET
     kept: list[NoteEvent] = []
-    dropped_range = dropped_short = 0
+    dropped_range = dropped_short = dropped_conf = 0
     for n in notes:
         if not (lo <= n.pitch <= hi):
             dropped_range += 1
             continue
         if n.duration < min_duration:
             dropped_short += 1
+            continue
+        if n.confidence < min_confidence:
+            # Weak (low-amplitude) detections are the "loose notes that make no
+            # sense" on a distorted mix — spurious overtones/artifacts.
+            dropped_conf += 1
             continue
         kept.append(n)
 
@@ -329,6 +339,7 @@ def clean_transcription(
         dropped_out_of_range=dropped_range,
         dropped_too_short=dropped_short,
         merged_fragments=merged_count,
+        dropped_low_confidence=dropped_conf,
     )
 
 

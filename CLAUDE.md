@@ -65,8 +65,12 @@ Rules:
    since a wrong tuning makes `clean_transcription` prune real down-tuned low
    notes as out-of-range. Basic Pitch's onset/frame thresholds are likewise
    per-job (`params["onset_threshold"]`/`["frame_threshold"]`) to reject
-   in-range harmonic ghosts a distorted mix produces. Both plumbed
-   form → `/jobs/upload` → params → `_build_use_case`/`tuning_override`.
+   in-range harmonic ghosts a distorted mix produces, and `min_confidence`
+   (`params["min_confidence"]`, 0 = off) prunes weak/low-amplitude notes — the
+   "loose notes that make no sense" (spurious overtones the mapper otherwise
+   keeps), filtered in `clean_transcription` off `NoteEvent.confidence` (Basic
+   Pitch's per-note amplitude). All plumbed
+   form → `/jobs/upload` → params → `_build_use_case`/`run`.
    **Per-role stems (`/jobs/upload-split`):** when the user has SEPARATE Lead and
    Rhythm recordings, each is transcribed INDEPENDENTLY into its own arrangement
    (`run(lead_source=…, rhythm_source=…)`) — no experimental split, since each

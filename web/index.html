@@ -928,7 +928,9 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
             <input type="number" name="onset_threshold" value="0.5" step="0.05" min="0" max="1" style="width:4.5rem"></label>
           <label style="font-weight:400">Frame (sustentação):
             <input type="number" name="frame_threshold" value="0.3" step="0.05" min="0" max="1" style="width:4.5rem"></label>
-          <span class="meta">↑ mais alto = menos notas-fantasma (para misturas distorcidas); ↓ mais baixo = capta notas mais ténues</span>
+          <label style="font-weight:400">Amplitude mín.:
+            <input type="number" name="min_confidence" value="0" step="0.05" min="0" max="1" style="width:4.5rem"></label>
+          <span class="meta">↑ mais alto = menos notas-fantasma (para misturas distorcidas); ↓ mais baixo = capta notas mais ténues. <b>Amplitude mín.</b> corta as notas soltas fracas (0 = desligado)</span>
         </div>
       </div>
       <div class="field" style="flex-basis:100%">
@@ -1395,7 +1397,8 @@ const INFO = {
     body: '<p>Controlam quão "exigente" é a IA a decidir que ouviu uma nota. Numa guitarra elétrica distorcida, o modelo tende a ouvir harmónicos como notas reais — daí a "parede" de notas a mais.</p>' +
       '<p><strong>Onset (0–1, defeito 0.5):</strong> confiança mínima no <em>ataque</em> de uma nota nova. <strong>Sobe-o</strong> (ex.: 0.7) para rejeitar ataques-fantasma.</p>' +
       '<p><strong>Frame (0–1, defeito 0.3):</strong> confiança mínima para a nota se <em>manter</em> a soar. <strong>Sobe-o</strong> para cortar notas ténues/ruído.</p>' +
-      '<p>Regra prática: mistura <strong>distorcida/densa</strong> → sobe ambos (menos fantasmas, mas podes perder notas ténues). Gravação <strong>limpa</strong> → mantém ou baixa (capta mais detalhe). Ajusta e recria o projeto para comparar.</p>'
+      '<p><strong>Amplitude mín. (0–1, defeito 0 = desligado):</strong> descarta as notas cuja <em>força</em> detetada é baixa — são tipicamente os harmónicos/artefactos que aparecem como "notas soltas sem sentido". Começa em 0.1–0.2 e sobe até a parede de notas fracas desaparecer (cuidado: demasiado alto perde notas reais quietas).</p>' +
+      '<p>Regra prática: mistura <strong>distorcida/densa</strong> → sobe os três (menos fantasmas, mas podes perder notas ténues). Gravação <strong>limpa</strong> → mantém baixos (capta mais detalhe). Ajusta e recria o projeto para comparar.</p>'
   },
   'youtube': {
     title: 'YouTube',
