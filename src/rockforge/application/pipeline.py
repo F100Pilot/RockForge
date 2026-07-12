@@ -91,6 +91,7 @@ class GenerateCdlcUseCase:
         on_stage: Callable[[str], None] | None = None,
         lead_source: str | None = None,
         rhythm_source: str | None = None,
+        separate_role_stems: bool = False,
     ) -> PipelineResult:
         """When ``lead_source`` and/or ``rhythm_source`` are given, each is
         transcribed INDEPENDENTLY into its own arrangement (no experimental
@@ -125,11 +126,18 @@ class GenerateCdlcUseCase:
             ):
                 if src is None:
                     continue
-                stage("separate")
                 sub = workdir / f"stem_{kind.value.lower()}"
                 r_raw = self.ingestor.fetch(src, sub)
                 r_norm = self.normalizer.normalize(r_raw, sub, offset_s)
-                r_guitar = self.separator.separate_guitar(r_norm, sub)
+                # A per-role stem is ALREADY one isolated guitar, so Demucs is
+                # skipped by default — re-separating an isolated guitar is slow
+                # (Demucs is the heaviest stage) and can degrade it. Only run it
+                # when the user says the stem still has other instruments.
+                if separate_role_stems:
+                    stage("separate")
+                    r_guitar = self.separator.separate_guitar(r_norm, sub)
+                else:
+                    r_guitar = r_norm
                 stage("transcribe")
                 r_notes = self.transcriber.transcribe(r_guitar)
                 stage("tuning")
@@ -145,6 +153,7 @@ class GenerateCdlcUseCase:
             warnings.append(
                 "per-role transcription: Lead and Rhythm come from separate "
                 "recordings, so no experimental split is used"
+                + ("" if separate_role_stems else "; stems used as-is (Demucs skipped)")
             )
             if transcribe_lyrics:  # need the vocals stem of the bundle mix
                 stage("separate")

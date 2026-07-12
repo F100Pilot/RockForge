@@ -137,6 +137,31 @@ def test_per_role_sources_build_lead_and_rhythm_without_split(tmp_path: Path) ->
     assert "EXPERIMENTAL" not in joined  # no lead/rhythm split warning
 
 
+def test_per_role_skips_demucs_on_stems_by_default(tmp_path: Path) -> None:
+    """Per-role stems are already isolated guitars, so separate_guitar is NOT run
+    on them by default (Demucs is slow and would degrade an isolated stem)."""
+
+    class CountingSeparator(FakePassthrough):
+        calls = 0
+
+        def separate_guitar(self, audio: Path, workdir: Path) -> Path:
+            CountingSeparator.calls += 1
+            return audio
+
+    uc = make_use_case()
+    uc.separator = CountingSeparator()
+    result = uc.run(
+        source="mix.wav",
+        metadata=SongMetadata(title="T", artist="A"),
+        workdir=tmp_path,
+        lead_source="lead.wav",
+        rhythm_source="rhythm.wav",
+    )
+    assert CountingSeparator.calls == 0  # no separation on the stems
+    assert set(result.note_counts) == {"Lead", "Rhythm"}
+    assert any("Demucs skipped" in w for w in result.warnings)
+
+
 def test_per_role_single_stem_builds_only_that_arrangement(tmp_path: Path) -> None:
     result = make_use_case().run(
         source="lead.wav",

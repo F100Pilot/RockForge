@@ -605,6 +605,7 @@ async def create_upload_split_job(
     onset_threshold: float = Form(0.5),
     frame_threshold: float = Form(0.3),
     tuning_midi: str = Form(""),
+    separate_stems: bool = Form(False),
 ) -> JobOut:
     """Transcribe separate Lead and/or Rhythm recordings into their OWN
     arrangements (no experimental split — each recording is already one guitar).
@@ -657,6 +658,7 @@ async def create_upload_split_job(
                 for k, v in (
                     ("lead_source", str(lead_path) if lead_path else None),
                     ("rhythm_source", str(rhythm_path) if rhythm_path else None),
+                    ("separate_stems", separate_stems or None),
                     ("offset_s", offset_s if offset_s > 0 else None),
                     ("transcribe_lyrics", transcribe_lyrics or None),
                     ("onset_threshold", onset_threshold if onset_threshold != 0.5 else None),
