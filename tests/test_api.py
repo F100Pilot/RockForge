@@ -51,6 +51,33 @@ def test_upload_creates_pending_job(client: TestClient) -> None:
     assert r2.json()["title"] == "Song"
 
 
+def test_upload_stores_custom_detection_thresholds(client: TestClient) -> None:
+    """The audio form's Basic Pitch onset/frame thresholds are persisted in
+    params (only when changed from the defaults) for the worker to apply."""
+    import rockforge.interfaces.api.app as app_module
+
+    r = client.post(
+        "/jobs/upload",
+        files={"file": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
+        data={"title": "S", "artist": "A", "onset_threshold": "0.7", "frame_threshold": "0.3"},
+    )
+    assert r.status_code == 202
+    with app_module._session_factory() as session:
+        job = session.get(app_module.Job, r.json()["id"])
+        assert job.params["onset_threshold"] == 0.7
+        # frame stayed at the default (0.3) → not stored, so the worker uses it.
+        assert "frame_threshold" not in job.params
+
+
+def test_upload_rejects_out_of_range_threshold(client: TestClient) -> None:
+    r = client.post(
+        "/jobs/upload",
+        files={"file": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
+        data={"title": "S", "artist": "A", "onset_threshold": "1.5"},
+    )
+    assert r.status_code == 422
+
+
 def test_upload_without_metadata_and_untagged_file_returns_422(client: TestClient) -> None:
     r = client.post(
         "/jobs/upload",

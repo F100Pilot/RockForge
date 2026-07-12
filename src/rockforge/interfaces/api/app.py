@@ -494,13 +494,21 @@ async def create_upload_job(
     year: str = Form(""),
     offset_s: float = Form(0.0),
     transcribe_lyrics: bool = Form(False),
+    onset_threshold: float = Form(0.5),
+    frame_threshold: float = Form(0.3),
 ) -> JobOut:
     """Form fields are optional: missing values are read from the file's tags
     (ID3/Vorbis/MP4). If title or artist is in neither place, returns 422 so the
-    user fills the labels in — values are never invented."""
+    user fills the labels in — values are never invented.
+
+    ``onset_threshold``/``frame_threshold`` (0..1) tune Basic Pitch's note
+    detection: higher rejects more spurious ghost notes on a distorted mix.
+    Defaults (0.5/0.3) match the transcriber and are stored only when changed."""
     suffix = Path(file.filename or "upload").suffix.lower()
     if suffix not in {".mp3", ".flac", ".wav", ".ogg", ".m4a", ".aiff"}:
         raise HTTPException(415, f"unsupported audio format: {suffix or '(none)'}")
+    if not (0.0 <= onset_threshold <= 1.0 and 0.0 <= frame_threshold <= 1.0):
+        raise HTTPException(422, "onset_threshold/frame_threshold must be between 0 and 1")
     upload_dir = settings.work_dir / "uploads"
     upload_dir.mkdir(parents=True, exist_ok=True)
     dest = upload_dir / f"{uuid.uuid4()}{suffix}"
@@ -538,6 +546,9 @@ async def create_upload_job(
                     for k, v in (
                         ("offset_s", offset_s if offset_s > 0 else None),
                         ("transcribe_lyrics", transcribe_lyrics or None),
+                        # Store only when changed from the Basic Pitch defaults.
+                        ("onset_threshold", onset_threshold if onset_threshold != 0.5 else None),
+                        ("frame_threshold", frame_threshold if frame_threshold != 0.3 else None),
                     )
                     if v is not None
                 }
