@@ -47,7 +47,17 @@ Rules:
    category instead. Honest: it only prunes clearly-spurious/unplayable notes and
    rejoins fragments — it never invents or octave-shifts (a note detected an
    octave off is dropped, not silently "corrected"). Guarded by
-   `test_clean_transcription_*`.
+   `test_clean_transcription_*`. **Tuning:** the librosa estimator reliably
+   detects only the A440 cents deviation; **string tuning** (standard/Drop/down)
+   from polyphonic audio is unsolved (research §5) and made worse by the low
+   sub-harmonic ghosts a detection would key off. The estimator keeps a weak
+   Drop-D-only guess, but the audio upload form exposes a **manual tuning
+   selector** (`params["tuning_midi"]` → `tuning_override`) — the reliable path,
+   since a wrong tuning makes `clean_transcription` prune real down-tuned low
+   notes as out-of-range. Basic Pitch's onset/frame thresholds are likewise
+   per-job (`params["onset_threshold"]`/`["frame_threshold"]`) to reject
+   in-range harmonic ghosts a distorted mix produces. Both plumbed
+   form → `/jobs/upload` → params → `_build_use_case`/`tuning_override`.
 2. **Guitar Pro** (`gp_pipeline.py`): notes/frets/techniques/sections come exact
    from the GP file; audio sync is a manual offset. High fidelity, preferred
    when a GP file exists. Two parsers behind one API (`inspect_gp` /

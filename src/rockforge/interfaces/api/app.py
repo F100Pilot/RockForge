@@ -496,6 +496,7 @@ async def create_upload_job(
     transcribe_lyrics: bool = Form(False),
     onset_threshold: float = Form(0.5),
     frame_threshold: float = Form(0.3),
+    tuning_midi: str = Form(""),
 ) -> JobOut:
     """Form fields are optional: missing values are read from the file's tags
     (ID3/Vorbis/MP4). If title or artist is in neither place, returns 422 so the
@@ -509,6 +510,19 @@ async def create_upload_job(
         raise HTTPException(415, f"unsupported audio format: {suffix or '(none)'}")
     if not (0.0 <= onset_threshold <= 1.0 and 0.0 <= frame_threshold <= 1.0):
         raise HTTPException(422, "onset_threshold/frame_threshold must be between 0 and 1")
+    # Optional tuning override ("" = auto-detect): six comma-separated MIDI pitches,
+    # low string to high. Reliable string-tuning detection from polyphonic audio is
+    # unsolved, so let the user state it — the worker reads params["tuning_midi"].
+    tuning_override_midi: list[int] | None = None
+    if tuning_midi.strip():
+        try:
+            tuning_override_midi = [int(x) for x in tuning_midi.split(",")]
+        except ValueError:
+            raise HTTPException(422, "tuning_midi must be comma-separated integers") from None
+        if len(tuning_override_midi) != 6 or not all(
+            20 <= m <= 127 for m in tuning_override_midi
+        ):
+            raise HTTPException(422, "tuning_midi must be 6 MIDI pitches (20..127)")
     upload_dir = settings.work_dir / "uploads"
     upload_dir.mkdir(parents=True, exist_ok=True)
     dest = upload_dir / f"{uuid.uuid4()}{suffix}"
@@ -549,6 +563,7 @@ async def create_upload_job(
                         # Store only when changed from the Basic Pitch defaults.
                         ("onset_threshold", onset_threshold if onset_threshold != 0.5 else None),
                         ("frame_threshold", frame_threshold if frame_threshold != 0.3 else None),
+                        ("tuning_midi", tuning_override_midi),
                     )
                     if v is not None
                 }

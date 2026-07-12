@@ -69,6 +69,32 @@ def test_upload_stores_custom_detection_thresholds(client: TestClient) -> None:
         assert "frame_threshold" not in job.params
 
 
+def test_upload_stores_tuning_override(client: TestClient) -> None:
+    """A user-supplied tuning is stored as params['tuning_midi'] (six ints) for
+    the worker's tuning_override, since reliable auto-detection is unsolved."""
+    import rockforge.interfaces.api.app as app_module
+
+    r = client.post(
+        "/jobs/upload",
+        files={"file": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
+        data={"title": "S", "artist": "A", "tuning_midi": "38,45,50,55,59,64"},  # Drop D
+    )
+    assert r.status_code == 202
+    with app_module._session_factory() as session:
+        job = session.get(app_module.Job, r.json()["id"])
+        assert job.params["tuning_midi"] == [38, 45, 50, 55, 59, 64]
+
+
+def test_upload_rejects_malformed_tuning(client: TestClient) -> None:
+    for bad in ("40,45,50", "40,45,50,55,59,999", "not,a,tuning,x,y,z"):
+        r = client.post(
+            "/jobs/upload",
+            files={"file": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
+            data={"title": "S", "artist": "A", "tuning_midi": bad},
+        )
+        assert r.status_code == 422, bad
+
+
 def test_upload_rejects_out_of_range_threshold(client: TestClient) -> None:
     r = client.post(
         "/jobs/upload",

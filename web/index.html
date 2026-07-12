@@ -888,6 +888,19 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
         <input type="text" name="album" placeholder="auto"></div>
       <div class="field"><label>Ano</label>
         <input type="number" name="year" min="1900" max="2100" style="width:5.5rem"></div>
+      <div class="field" style="flex-basis:100%"><label>Afinação <button class="info-btn" data-info="audio-tuning">ⓘ</button></label>
+        <select name="tuning_midi" style="min-width:16rem">
+          <option value="">Auto (detetar — pouco fiável, ver ⓘ)</option>
+          <option value="40,45,50,55,59,64">E Standard (E A D G B e)</option>
+          <option value="38,45,50,55,59,64">Drop D (D A D G B e)</option>
+          <option value="39,44,49,54,58,63">Eb Standard (½ tom abaixo)</option>
+          <option value="38,43,48,53,57,62">D Standard (1 tom abaixo)</option>
+          <option value="37,44,49,54,58,63">Drop C#</option>
+          <option value="36,43,48,53,57,62">Drop C</option>
+          <option value="35,40,45,50,54,59">B Standard</option>
+          <option value="34,41,46,51,55,60">Drop B</option>
+        </select>
+        <span class="meta">se souberes a afinação, escolhe-a — é bem mais fiável do que a deteção automática</span></div>
       <div class="field"><label>Início da música (s) <button class="info-btn" data-info="audio-offset">ⓘ</button></label>
         <input type="number" name="offset_s" value="0" step="0.01" min="0" style="width:6rem"></div>
       <div class="field" style="flex-basis:100%">
@@ -1332,6 +1345,12 @@ const INFO = {
   'audio-offset': {
     title: 'Início (s) — áudio',
     body: '<p>Corta o áudio a partir deste segundo (ex.: 5.3 → ignora os primeiros 5.3s). As notas são transcritas do áudio aparado, ficando naturalmente sincronizadas. Usa 0 para usar o ficheiro inteiro.</p>'
+  },
+  'audio-tuning': {
+    title: 'Afinação — áudio',
+    body: '<p>Detetar de forma fiável a <strong>afinação das cordas</strong> (standard / Drop D / Drop C…) a partir de áudio polifónico distorcido é um <strong>problema não resolvido</strong> — e os harmónicos-fantasma nas graves enganam ainda mais a deteção.</p>' +
+      '<p><strong>Se souberes a afinação da música, escolhe-a aqui.</strong> É muito mais fiável, e garante que as notas graves reais (de uma guitarra afinada em baixo) não são descartadas como fora da tessitura.</p>' +
+      '<p><strong>Auto</strong>: o desvio de A440 (cents) é detetado, mas a afinação das cordas cai para standard E salvo um indício claro de Drop D — usa só se não souberes a afinação.</p>'
   },
   'audio-thresholds': {
     title: 'Sensibilidade da deteção (Basic Pitch)',
