@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
 from enum import Enum
@@ -199,6 +200,61 @@ class NoteEvent:
 
 MIN_NOTE_DURATION_S = 0.04  # shorter transcribed notes are fragments/noise
 MERGE_GAP_S = 0.03  # same-pitch notes within this gap are one fragmented note
+
+# Common 6-string tunings, low->high MIDI, roughly ordered by prevalence so a tie
+# on the low string resolves to the more common one (Drop D before D Standard).
+COMMON_TUNINGS: tuple[tuple[str, tuple[int, int, int, int, int, int]], ...] = (
+    ("E Standard", (40, 45, 50, 55, 59, 64)),
+    ("Drop D", (38, 45, 50, 55, 59, 64)),
+    ("Eb Standard", (39, 44, 49, 54, 58, 63)),
+    ("D Standard", (38, 43, 48, 53, 57, 62)),
+    ("Drop C#", (37, 44, 49, 54, 58, 63)),
+    ("Drop C", (36, 43, 48, 53, 57, 62)),
+    ("B Standard", (35, 40, 45, 50, 54, 59)),
+    ("Drop B", (34, 41, 46, 51, 55, 60)),
+)
+_TUNING_FLOOR_MIDI = 34  # lowest low-string we guess for a 6-string (Drop B)
+
+
+def suggest_tuning(
+    pitches: Sequence[int],
+) -> tuple[str, tuple[int, int, int, int, int, int]]:
+    """Guess the most viable common tuning from transcribed MIDI pitches.
+
+    The strongest cue is the lowest note actually played: the low open string
+    must be at or below it. We take a ROBUST lowest — the lowest pitch that
+    recurs (so a lone sub-harmonic ghost doesn't drag the guess down) — floored
+    to Drop B, then pick the common tuning whose low string is closest to it
+    without sitting above it (a tuning that can't reach the lowest note is
+    penalised). Ties favour the more common tuning (list order).
+
+    Honest limits: a pitch set is playable on several tunings (Drop D vs D
+    Standard share a low D), and this can't tell them apart from audio, so it is
+    a SUGGESTION for the user to confirm — never authoritative. Returns
+    ``(name, midi)``; ``E Standard`` when there is nothing to go on.
+    """
+    if not pitches:
+        return COMMON_TUNINGS[0]
+    counts = Counter(pitches)
+    threshold = max(3, len(pitches) // 200)
+    frequent = [p for p, c in counts.items() if c >= threshold]
+    robust_low = min(frequent) if frequent else min(pitches)
+    robust_low = max(_TUNING_FLOOR_MIDI, robust_low)
+
+    def penalty(midi: tuple[int, ...]) -> int:
+        low = midi[0]
+        # A tuning whose low string is ABOVE the lowest note can't play it.
+        return (0 if low <= robust_low else 1000) + abs(low - robust_low)
+
+    return min(COMMON_TUNINGS, key=lambda nm: penalty(nm[1]))  # stable → ties by order
+
+
+def tuning_name(midi: Sequence[int]) -> str:
+    """The common-tuning name for a MIDI tuple, or 'custom' if it matches none."""
+    for name, m in COMMON_TUNINGS:
+        if tuple(m) == tuple(midi):
+            return name
+    return "custom"
 
 
 @dataclass(frozen=True)

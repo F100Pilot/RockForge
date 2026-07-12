@@ -50,9 +50,18 @@ Rules:
    `test_clean_transcription_*`. **Tuning:** the librosa estimator reliably
    detects only the A440 cents deviation; **string tuning** (standard/Drop/down)
    from polyphonic audio is unsolved (research §5) and made worse by the low
-   sub-harmonic ghosts a detection would key off. The estimator keeps a weak
-   Drop-D-only guess, but the audio upload form exposes a **manual tuning
-   selector** (`params["tuning_midi"]` → `tuning_override`) — the reliable path,
+   sub-harmonic ghosts a detection would key off. The estimator's string-tuning
+   guess is `suggest_tuning` (pure, `domain/music.py`): it takes a ROBUST lowest
+   note (the lowest pitch that recurs — a lone ghost is below the frequency
+   threshold — floored to Drop B) and picks the common tuning whose low string
+   fits it best, ties favouring the more prevalent one (Drop D over D Standard).
+   It generalises the old Drop-D-only hint to E std / Drop D / Eb / D std / Drop
+   C# / Drop C / B std / Drop B, and the pipeline surfaces the guess as a warning
+   naming the tuning (a wrong tuning makes `clean_transcription` prune real
+   down-tuned low notes). Honest: a pitch set is playable on several tunings, so
+   this is a SUGGESTION, not authoritative — the audio upload form exposes a
+   **manual tuning selector** (`params["tuning_midi"]` → `tuning_override`) that
+   always wins — the reliable path,
    since a wrong tuning makes `clean_transcription` prune real down-tuned low
    notes as out-of-range. Basic Pitch's onset/frame thresholds are likewise
    per-job (`params["onset_threshold"]`/`["frame_threshold"]`) to reject

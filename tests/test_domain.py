@@ -13,7 +13,44 @@ from rockforge.domain.music import (
     expand_slide_ins,
     expand_trills,
     is_composite_bend,
+    suggest_tuning,
+    tuning_name,
 )
+
+
+def test_suggest_tuning_standard_when_lowest_is_low_e() -> None:
+    pitches = [40] * 10 + [47, 52, 55, 59]  # nothing below low E
+    assert suggest_tuning(pitches) == ("E Standard", (40, 45, 50, 55, 59, 64))
+
+
+def test_suggest_tuning_infers_drop_from_low_notes() -> None:
+    # A cluster of C#2 (MIDI 37) → Drop C# (the common tuning whose low string fits).
+    pitches = [37] * 12 + [44, 49, 54, 58]
+    name, midi = suggest_tuning(pitches)
+    assert name == "Drop C#"
+    assert midi[0] == 37
+
+
+def test_suggest_tuning_ignores_lone_sub_harmonic_ghost() -> None:
+    # One stray ghost at MIDI 30 among a standard-tuning song must NOT drag the
+    # guess down — it recurs only once, below the frequency threshold.
+    pitches = [40] * 30 + [45, 50, 55, 59, 64] * 5 + [30]
+    assert suggest_tuning(pitches)[0] == "E Standard"
+
+
+def test_suggest_tuning_drop_d_wins_tie_over_d_standard() -> None:
+    # Low string D2 (38) fits both Drop D and D Standard; the more common Drop D
+    # wins the tie (list order).
+    assert suggest_tuning([38] * 8 + [45, 50, 55])[0] == "Drop D"
+
+
+def test_suggest_tuning_empty_is_standard() -> None:
+    assert suggest_tuning([]) == ("E Standard", (40, 45, 50, 55, 59, 64))
+
+
+def test_tuning_name_maps_known_and_custom() -> None:
+    assert tuning_name((38, 45, 50, 55, 59, 64)) == "Drop D"
+    assert tuning_name((41, 46, 51, 56, 60, 65)) == "custom"
 
 
 def test_standard_tuning_offsets_are_zero() -> None:
