@@ -16,9 +16,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from rockforge.domain.music import Beat, NoteEvent, TempoMap, Tuning
-
-_DROP_D_MIDI = (38, 45, 50, 55, 59, 64)
+from rockforge.domain.music import Beat, NoteEvent, TempoMap, Tuning, suggest_tuning
 
 
 def detect_tempo_and_onset(audio: Path) -> tuple[float, float]:
@@ -113,11 +111,8 @@ class LibrosaRhythmAdapter:
         y, sr = librosa.load(str(audio), sr=None, mono=True)
         cents = float(librosa.estimate_tuning(y=y, sr=sr)) * 100.0
 
-        # HEURISTIC drop-D hint: transcribed pitches below low E (40) but >= D (38).
-        # Flagged for human confirmation — polyphonic tuning detection is unsolved.
-        midi = (40, 45, 50, 55, 59, 64)
-        if notes:
-            lowest = min(n.pitch for n in notes)
-            if 38 <= lowest < 40:
-                midi = _DROP_D_MIDI
+        # A440 cents is reliable; the STRING tuning is a robust-lowest heuristic
+        # over the transcribed pitches (suggest_tuning) — a guess flagged for human
+        # confirmation, since polyphonic string-tuning detection is unsolved.
+        _name, midi = suggest_tuning([n.pitch for n in notes])
         return Tuning(midi=midi, cent_offset=cents)

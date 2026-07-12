@@ -34,6 +34,7 @@ from rockforge.domain.music import (
     TempoMap,
     Tuning,
     clean_transcription,
+    tuning_name,
 )
 from rockforge.infrastructure.fretboard.mapper import infer_legato, map_to_fretboard
 from rockforge.infrastructure.packaging.dlcbuilder import PackagingResult
@@ -109,6 +110,11 @@ class GenerateCdlcUseCase:
             warnings.append("tuning supplied by user override (automatic estimate skipped)")
         else:
             tuning = self.tuning_estimator.estimate(guitar_stem, notes)
+            warnings.append(
+                f"tuning guessed from the transcription: {tuning_name(tuning.midi)} "
+                f"— string-tuning detection from audio is unreliable; set it in the "
+                f"tuning selector if it's wrong (a wrong tuning drops real low notes)"
+            )
 
         # Prune the transcriber's spurious out-of-range / fragment notes before
         # mapping, so the fret mapper isn't fed (and doesn't warn about) hundreds
