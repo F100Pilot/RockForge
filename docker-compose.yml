@@ -3,7 +3,7 @@ services:
     build: { context: ., dockerfile: docker/Dockerfile, target: api }
     ports: ["8000:8000"]
     environment: &env
-      ROCKFORGE_DATABASE_URL: postgresql+psycopg://rockforge:rockforge@db:5432/rockforge
+      ROCKFORGE_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-rockforge}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in a .env file next to docker-compose.yml — see README}@db:5432/${POSTGRES_DB:-rockforge}
       ROCKFORGE_BROKER_URL: redis://redis:6379/0
       ROCKFORGE_RESULT_BACKEND: redis://redis:6379/1
       ROCKFORGE_WORK_DIR: /data
@@ -29,9 +29,14 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: rockforge
-      POSTGRES_PASSWORD: rockforge
-      POSTGRES_DB: rockforge
+      # Credentials come from the same .env as ROCKFORGE_API_TOKEN — never
+      # hardcoded. The password is required (no default), so `docker compose up`
+      # refuses to start with a blank/known password rather than shipping the
+      # old rockforge/rockforge default. Not network-reachable (no published
+      # port), so this is defense-in-depth after another container compromise.
+      POSTGRES_USER: ${POSTGRES_USER:-rockforge}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in a .env file next to docker-compose.yml — see README}
+      POSTGRES_DB: ${POSTGRES_DB:-rockforge}
     volumes: ["pgdata:/var/lib/postgresql/data"]
 
   redis:
