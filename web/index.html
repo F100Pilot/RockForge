@@ -2938,9 +2938,9 @@ function blankFormDefaults() {
   const amps = gearCatalogue.amps, cabs = gearCatalogue.cabinets;
   populateGearSelect(document.getElementById('teAmp'), amps, amps[0] && amps[0].key, null);
   renderKnobs(document.getElementById('teAmpKnobs'), amps[0], null);
-  setGearImage('teAmpImg', amps[0] && amps[0].key);
+  setGearImage('teAmpImg', amps[0] && amps[0].key, 'amp');
   populateGearSelect(document.getElementById('teCab'), cabs, cabs[0] && cabs[0].key, null);
-  setGearImage('teCabImg', cabs[0] && cabs[0].key);
+  setGearImage('teCabImg', cabs[0] && cabs[0].key, 'cabinet');
   document.getElementById('teEffects').innerHTML = '';
 }
 
@@ -2967,9 +2967,9 @@ function editToneInForm(key) {
   document.getElementById('teCabSearch').value = '';
   populateGearSelect(document.getElementById('teAmp'), gearCatalogue.amps, t.amp && t.amp.key, null);
   renderKnobs(document.getElementById('teAmpKnobs'), gearByKey(gearCatalogue.amps, t.amp && t.amp.key), t.amp && t.amp.knobs);
-  setGearImage('teAmpImg', t.amp && t.amp.key);
+  setGearImage('teAmpImg', t.amp && t.amp.key, 'amp');
   populateGearSelect(document.getElementById('teCab'), gearCatalogue.cabinets, t.cabinet && t.cabinet.key, null);
-  setGearImage('teCabImg', t.cabinet && t.cabinet.key);
+  setGearImage('teCabImg', t.cabinet && t.cabinet.key, 'cabinet');
   const eff = document.getElementById('teEffects');
   eff.innerHTML = '';
   for (const p of (t.pre || [])) if (p) addEffectRow('pre', p.key, p.knobs);
@@ -2981,34 +2981,61 @@ function editToneInForm(key) {
 
 document.getElementById('newTone').addEventListener('click', newToneInForm);
 
-// Show a user-supplied picture for a gear (from work_dir/gear_images/<key>), if
-// one exists; hidden otherwise. Lets the user add their own amp/cab photos
-// locally without committing anything to the repo.
-function setGearImage(imgId, key) {
+// A brand-neutral SVG placeholder per gear TYPE (our own art), shown when the
+// user hasn't supplied their own picture. Purely decorative.
+function genericGearSvg(type) {
+  const amber = '#ffb454', panel = '#23252e', line = '#3a3d47', grille = '#14151a';
+  if (type === 'cabinet') {
+    return `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 130'>
+      <rect x='6' y='6' width='308' height='118' rx='8' fill='${panel}' stroke='${line}'/>
+      <rect x='18' y='18' width='284' height='94' rx='5' fill='${grille}' stroke='${line}'/>
+      ${[95, 225].map(cx => `<circle cx='${cx}' cy='65' r='38' fill='#1a1c23' stroke='${line}' stroke-width='2'/><circle cx='${cx}' cy='65' r='13' fill='#2a2c35' stroke='${amber}' stroke-width='1.5'/>`).join('')}
+    </svg>`;
+  }
+  if (type === 'pedal' || type === 'rack') {
+    return `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 130'>
+      <rect x='95' y='10' width='130' height='110' rx='10' fill='${panel}' stroke='${line}'/>
+      <circle cx='132' cy='44' r='12' fill='#2a2c35' stroke='${amber}' stroke-width='1.5'/>
+      <circle cx='188' cy='44' r='12' fill='#2a2c35' stroke='${amber}' stroke-width='1.5'/>
+      <circle cx='160' cy='60' r='4' fill='${amber}'/>
+      <rect x='112' y='80' width='96' height='30' rx='6' fill='${grille}' stroke='${line}'/>
+    </svg>`;
+  }
+  return `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 130'>
+    <rect x='6' y='14' width='308' height='102' rx='10' fill='${panel}' stroke='${line}'/>
+    <rect x='16' y='24' width='180' height='30' rx='5' fill='#101116' stroke='${line}'/>
+    <rect x='206' y='24' width='98' height='82' rx='5' fill='${grille}' stroke='${line}'/>
+    ${[36, 66, 96, 126, 156].map(cx => `<circle cx='${cx}' cy='82' r='11' fill='#2a2c35' stroke='${amber}' stroke-width='1.4'/><line x1='${cx}' y1='82' x2='${cx}' y2='73' stroke='${amber}' stroke-width='1.6'/>`).join('')}
+    <text x='106' y='44' fill='${amber}' font-family='sans-serif' font-size='11' text-anchor='middle' opacity='.65' letter-spacing='2'>AMP</text>
+  </svg>`;
+}
+// Show the user's picture (work_dir/gear_images/<key>) if it exists, else the
+// generic placeholder for that gear type — so there's always a visual.
+function setGearImage(imgId, key, type) {
   const img = document.getElementById(imgId);
   if (!img) return;
-  if (!key) { img.style.display = 'none'; return; }
+  const fallback = 'data:image/svg+xml,' + encodeURIComponent(genericGearSvg(type));
   img.onload = () => { img.style.display = ''; };
-  img.onerror = () => { img.style.display = 'none'; };
-  img.src = '/gear-image/' + encodeURIComponent(key);
+  img.onerror = () => { img.onerror = null; img.src = fallback; };
+  img.src = key ? '/gear-image/' + encodeURIComponent(key) : fallback;
 }
 document.getElementById('teAmp').addEventListener('change', e => {
   renderKnobs(document.getElementById('teAmpKnobs'), gearByKey(gearCatalogue.amps, e.target.value), null);
-  setGearImage('teAmpImg', e.target.value);
+  setGearImage('teAmpImg', e.target.value, 'amp');
 });
-document.getElementById('teCab').addEventListener('change', e => setGearImage('teCabImg', e.target.value));
+document.getElementById('teCab').addEventListener('change', e => setGearImage('teCabImg', e.target.value, 'cabinet'));
 // Search bars filter the amp / cabinet lists (keeping the current pick visible).
 document.getElementById('teAmpSearch').addEventListener('input', e => {
   if (!gearCatalogue) return;
   const sel = document.getElementById('teAmp');
   populateGearSelect(sel, gearCatalogue.amps, sel.value, null, e.target.value);
-  setGearImage('teAmpImg', sel.value);
+  setGearImage('teAmpImg', sel.value, 'amp');
 });
 document.getElementById('teCabSearch').addEventListener('input', e => {
   if (!gearCatalogue) return;
   const sel = document.getElementById('teCab');
   populateGearSelect(sel, gearCatalogue.cabinets, sel.value, null, e.target.value);
-  setGearImage('teCabImg', sel.value);
+  setGearImage('teCabImg', sel.value, 'cabinet');
 });
 document.getElementById('teAddEffect').addEventListener('click', () => addEffectRow('pre', null, null));
 

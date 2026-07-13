@@ -773,8 +773,10 @@ unchanged — purely a UX layer. Each amp/cabinet can also show a **user-supplie
 picture**: `GET /gear-image/{key}` serves `work_dir/gear_images/<key>.<ext>` (the
 RUNTIME data folder, NOT the code repo — the user drops their own amp/cab photos
 there, named by the gear key, without committing anything; the key is sanitised
-to a bare slug against path traversal). The `<img>` is hidden until it loads, so
-absent images fall back to just the knobs. Honesty unchanged: this is visual
+to a bare slug against path traversal). When no user image exists the `<img>`
+falls back to a brand-neutral SVG placeholder per gear TYPE (`genericGearSvg`:
+amp head / speaker cab / stompbox — our own art), so there's always a visual.
+Honesty unchanged: this is visual
 only — RockForge does not model the amp sound (the real tone comes from the gear
 keys in-game / DLC Builder). Guarded by `test_gear_image_serves_local_file_or_404`.
 
