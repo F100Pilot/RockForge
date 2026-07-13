@@ -36,6 +36,26 @@ def detect_tempo_and_onset(audio: Path) -> tuple[float, float]:
     return bpm, first_onset
 
 
+def detect_beats(audio: Path) -> tuple[float, list[float]]:
+    """Estimate ``(bpm, beat_times)`` for the WHOLE recording — the per-beat grid
+    the dynamic-sync alignment warps the GP chart onto (not just the average
+    tempo). ``beat_times`` are seconds from the recording start.
+
+    Standalone (not a port method) so the API can call it directly and tests can
+    monkeypatch it without librosa. Same octave-error caveat as
+    ``detect_tempo_and_onset`` — the caller normalises the metrical level.
+    librosa imported lazily (ml extra).
+    """
+    import librosa
+    import numpy as np
+
+    y, sr = librosa.load(str(audio), sr=None, mono=True)
+    tempo, beat_frames = librosa.beat.beat_track(y=y, sr=sr)
+    bpm = float(np.atleast_1d(tempo)[0])
+    beat_times = [float(t) for t in librosa.frames_to_time(beat_frames, sr=sr)]
+    return bpm, beat_times
+
+
 def detect_tempo_from(audio: Path, start_s: float) -> float:
     """Estimate the recording's tempo (BPM) from ``start_s`` to the end.
 

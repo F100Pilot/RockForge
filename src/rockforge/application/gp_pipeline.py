@@ -114,6 +114,79 @@ def suggest_sync(
     return suggest_tempo_scale(gp_bpm, detected_bpm), max(0.0, first_onset_s)
 
 
+def _median_interval(times: list[float]) -> float:
+    """Median gap between consecutive (sorted) times; 0 if fewer than two."""
+    if len(times) < 2:
+        return 0.0
+    gaps = sorted(times[i + 1] - times[i] for i in range(len(times) - 1))
+    mid = len(gaps) // 2
+    return gaps[mid] if len(gaps) % 2 else (gaps[mid - 1] + gaps[mid]) / 2.0
+
+
+def _snap_metrical(ratio: float) -> float:
+    """Snap a rec-beats-per-GP-beat ratio to the nearest metrical grid value, so
+    an octave/triplet tracker error (rec detected at half/double/⅓ the pulse)
+    doesn't accumulate into drift — same grid the tempo-scale suggestion uses."""
+    if ratio <= 0:
+        return 1.0
+    return min(_TEMPO_METRICAL_FACTORS, key=lambda f: abs(ratio - f))
+
+
+def align_beats_to_recording(
+    gp_beats: list[float],
+    rec_beats: list[float],
+    *,
+    stride: int = 8,
+    max_anchors: int = 64,
+) -> list[tuple[float, float]]:
+    """Map the GP chart's beat grid onto the recording's detected beats, so the
+    score follows the recording's ACTUAL tempo curve instead of a single average.
+
+    Returns ``(chart_time, recording_time)`` anchor pairs: ``chart_time`` is the
+    GP beat's position in the built bundle timeline (what ``/arrangements`` and the
+    tab viewer draw), ``recording_time`` the recording second that beat should
+    sound. The tab viewer turns each pair into an ordinary drift anchor, so this
+    composes with the existing sync machinery and is applied only after the user
+    confirms the preview — never silently.
+
+    The metrical level is normalised first (``_snap_metrical`` on the ratio of
+    median beat intervals), because beat trackers routinely detect the pulse at
+    half/double/⅓ of the true rate; GP beat ``k`` then corresponds to recording
+    beat ``round(k * f)``. Anchors are emitted every ``stride`` GP beats (coarse,
+    to smooth per-beat tracker jitter) up to ``max_anchors`` total, and any pair
+    whose recording time doesn't strictly advance (a tracker glitch) is dropped so
+    the resulting warp stays monotonic.
+
+    Honest limit: accuracy is bounded by the beat tracker — missed/extra beats or
+    an uncorrected metrical error shift the mapping. It assumes the recording's
+    first detected beat is the song's first beat (same assumption as the
+    first-onset offset). It is a starting proposal to refine, not ground truth.
+    """
+    gp = sorted(gp_beats)
+    rec = sorted(rec_beats)
+    if len(gp) < 2 or len(rec) < 2:
+        return []
+    gi = _median_interval(gp)
+    ri = _median_interval(rec)
+    if gi <= 0 or ri <= 0:
+        return []
+    f = _snap_metrical(gi / ri)  # recording beats per GP beat
+    # Widen the stride if a fixed one would blow past max_anchors on a long song.
+    step = max(stride, -(-len(gp) // max_anchors))  # ceil division
+    anchors: list[tuple[float, float]] = []
+    last_rec = float("-inf")
+    for k in range(0, len(gp), step):
+        j = round(k * f)
+        if j >= len(rec):
+            break
+        r = rec[j]
+        if r <= last_rec:
+            continue  # non-advancing recording time → drop the tracker glitch
+        anchors.append((gp[k], r))
+        last_rec = r
+    return anchors
+
+
 @dataclass(frozen=True)
 class ArrangementSync:
     """Per-arrangement chart-timing overrides (tempo + drift anchors).

@@ -932,6 +932,74 @@ def test_auto_sync_rejected_for_non_gp(client: TestClient) -> None:
     assert r.status_code == 422
 
 
+def _completed_gp_job_with_beats(client, tmp_path, beat_times):
+    """A GP job set COMPLETED with a built arrangement XML carrying `beat_times`
+    as its ebeat grid — the input the dynamic-sync endpoint aligns."""
+    import rockforge.config as config
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.domain.arrangement import Arrangement, ArrangementKind, SongMetadata
+    from rockforge.domain.music import Beat, TabNote, TempoMap, Tuning
+    from rockforge.infrastructure.db.models import JobStatus
+    from rockforge.infrastructure.rsxml.writer import write_arrangement_xml
+
+    data = _make_gp5_bytes(tmp_path)
+    body = client.post(
+        "/gp/inspect", files={"file": ("song.gp5", data, "application/octet-stream")}
+    ).json()
+    job = client.post(
+        "/jobs/gp",
+        data={"gp_token": body["gp_token"], "lead_track": "0"},
+        files={"audio": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
+    ).json()
+    bundle = config.settings.work_dir / job["id"] / "bundle"
+    beats = tuple(
+        Beat(time=t, measure=(i // 4 + 1) if i % 4 == 0 else -1)
+        for i, t in enumerate(beat_times)
+    )
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="Dyn", artist="T", song_length=beat_times[-1] + 1),
+        tuning=Tuning(),
+        notes=[TabNote(string=1, fret=5, time=beat_times[0], sustain=0.2)],
+        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+    )
+    write_arrangement_xml(arr, bundle / "arrangement_lead.xml")
+    with app_module._session_factory() as session:
+        db_job = session.get(app_module.Job, job["id"])
+        db_job.status = JobStatus.COMPLETED
+        db_job.bundle_dir = str(bundle)
+        session.commit()
+    return job
+
+
+def test_auto_sync_dynamic_proposes_beat_anchors(client, tmp_path, monkeypatch) -> None:
+    """The endpoint aligns the built chart's beat grid to the recording's detected
+    beats (faked here) and returns drift anchors that follow a tempo offset."""
+    import rockforge.infrastructure.rhythm.librosa_adapter as rhythm
+
+    gp_beats = [0.5 * i for i in range(16)]        # 120 BPM chart
+    # Recording detected ~9% slower (constant), so anchors drift later over time.
+    monkeypatch.setattr(rhythm, "detect_beats", lambda src: (110.0, [0.55 * i for i in range(16)]))
+    job = _completed_gp_job_with_beats(client, tmp_path, gp_beats)
+
+    r = client.post(f"/jobs/{job['id']}/auto-sync-dynamic")
+    assert r.status_code == 200
+    out = r.json()
+    assert out["detected_bpm"] == pytest.approx(110.0)
+    assert out["gp_beat_count"] == 16 and out["rec_beat_count"] == 16
+    anchors = out["anchors"]
+    assert len(anchors) >= 2
+    assert anchors[0] == [0.0, 0.0]
+    # recording times strictly advance (monotonic warp) and drift past the chart time.
+    assert all(anchors[i][1] < anchors[i + 1][1] for i in range(len(anchors) - 1))
+    assert anchors[-1][1] > anchors[-1][0]
+
+
+def test_auto_sync_dynamic_rejected_for_non_gp(client: TestClient) -> None:
+    job = _create_job(client)
+    assert client.post(f"/jobs/{job['id']}/auto-sync-dynamic").status_code == 422
+
+
 def test_detect_tempo_returns_local_factor(client: TestClient, tmp_path, monkeypatch) -> None:
     # Per-point re-tempo: detection is faked. GP tempo 100, detected 200 from the
     # clicked point → octave-corrected factor 1.0 (100 / (200 * 0.5)).
