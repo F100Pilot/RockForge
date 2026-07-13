@@ -159,62 +159,62 @@ existing `_build_time_warp` linearly re-tempos only `[click, last]` and nothing
 before the click moves. No new warp semantics; the per-point tools (drag, tap,
 move-from-here, re-tempo) all compile down to ordinary `sync_anchors`.
 
-### Dynamic beat-alignment sync (`/jobs/{id}/auto-sync-dynamic`)
+### Dynamic sync — align the chart to the recording's real tempo curve
 
 `/auto-sync` proposes a single *average* `tempo_scale`, which only corrects the
 linear part of the drift — an AI-authored tab carries a constant BPM, so the
 chart still slides against the recording wherever the real tempo varies (the
 usual "tabs de IA ficam dessincronizadas" complaint). `POST
-/jobs/{id}/auto-sync-dynamic?arrangement=<Name>` (GP jobs, ml extra) instead
-follows the recording's **actual tempo curve**: `detect_beats` (librosa
-`beat_track`, the beat-times array the old `detect_tempo_and_onset` discarded)
-returns the whole recording's beat grid, and the pure
-`align_beats_to_recording(gp_beats, rec_beats)` maps the built chart's beat grid
-onto it, returning `(chart_time, recording_time)` drift anchors. It normalises
-the metrical level first (`_snap_metrical` on the ratio of median beat
-intervals — same octave/triplet grid as `suggest_tempo_scale`, so a
-half/double/⅓ tracker error doesn't accumulate), matches GP beat `k` to
-recording beat `round(k·f)`, emits **coarse** anchors (every ~8 GP beats, capped
-at `max_anchors`) to smooth per-beat tracker jitter, and drops any
-non-advancing pair so the warp stays monotonic (`_check_anchor_order` guards the
-rest downstream). The endpoint reads the beat grid from the built arrangement
-XML's `<ebeats>` — the exact bundle coordinate the tab viewer draws — so the
-returned `chart_time`s line up with the viewer's own beats.
+/jobs/{id}/auto-sync-dynamic?arrangement=<Name>&chart_start=&rec_start=` (GP
+jobs, ml extra) returns drift anchors following the recording's ACTUAL tempo
+curve, via `align_chart_to_recording(gp_beats, rec_beats, chart_onsets,
+rec_onsets, chart_start=…, rec_start=…)` (pure, in `gp_pipeline.py`). Three
+sources, each used for what it is reliable at:
 
-**The alignment starts at the user's confirmed first note, not at 0s.** The
-first attempt anchored the chart's first beat to the recording's first
-*detected* beat — but librosa "detects" beats in the intro silence/noise too, so
-the whole chart got dragged to ~0s, discarding the user's Step-1 first-note pin
-("as notas começaram o alinhamento logo no início do 0 segundos"). The UI now
-passes `chart_start` (the first note's chart time) + `rec_start` (where it
-currently sounds — the exact value Step 1's field shows, pin or offset) and
-`align_beats_to_recording` starts THERE: recording beats before `rec_start` are
-ignored, the detected grid is phase-shifted so the beat nearest the pin sits
-exactly on it (the tracker supplies the *curve*, the pin the *absolute
-position*), and the FIRST returned anchor is the pin verbatim — byte-identical
-to what `setTrackStart` writes, so replacing the pending set preserves it.
-Guarded by `test_align_beats_pinned_starts_at_the_confirmed_first_note` /
-`test_auto_sync_dynamic_respects_the_pinned_first_note`.
+- the beat tracker's grid (`detect_beats`) supplies the LOCAL TEMPO curve —
+  the median of neighbouring intervals tracks tempo changes well even when
+  individual beats are missed/doubled — integrated beat by beat from the pin.
+  **Its beat COUNT is never trusted**: the first implementation mapped chart
+  beat k to detected beat k, and each missed beat slipped the mapping one full
+  beat, accumulating a multi-second "chart rushes ahead" (user-reported, ~3 s
+  over a real 200 s song).
+- the chart's own note onsets vs the recording's detected attacks
+  (`detect_onsets`) refine each anchor's phase within a short leash (±0.18 s —
+  so a repeated riff can't pull an anchor onto a neighbouring repetition) and
+  yield a per-anchor **confidence** (fraction of nearby chart notes landing on
+  a real attack).
+- the user's Step-1 pin (`chart_start`/`rec_start`, passed by the UI from the
+  current first-note display value) fixes the absolute position: the FIRST
+  anchor is the pin verbatim — byte-identical to what `setTrackStart` writes —
+  so replacing the pending anchors preserves it, and the curve grows from
+  there. Recording beats before the pin (an intro the tab doesn't transcribe)
+  are ignored.
+
+Low-confidence anchors are merged into `weak_ranges` returned to the UI: spans
+where the tab's notes simply don't correspond to the audio (wrong
+notes / extra or missing bars) — content no time-warp can fix, surfaced with a
+⚠ telling the user to fix those sections in Guitar Pro instead. Validated
+against a real AI-generated song (200 s, tempo drifting 175→191 BPM, intro
+absent from the tab, a structurally-wrong mid section): first 20 s align at a
+median 16 ms error, the end at 47 ms (old method: 31 ms start, multi-second
+rush by the end), and the mismatched sections are correctly flagged.
 
 The tab viewer's **"🎯 Sincronização dinâmica"** button loads each pair as an
 ordinary drift anchor via the *same* convention the bar-align tool uses —
 `setAnchor(previewScale(chartT), recT + viewOrigin)` — **replacing** the current
-tab's pending anchors with the fresh alignment (the pin re-enters as the first
-anchor), left in preview for the user to confirm and commit via the normal
-"Aplicar e reconstruir". Like every other
-detection it is **preview-only, never applied silently** (honesty principle),
-and `detect_beats` is a module-level function tests monkeypatch without librosa
-(`test_auto_sync_dynamic_proposes_beat_anchors`; the alignment math is unit-
-tested with synthetic beats in `test_gp_pipeline.py` — constant offset,
-double-time normalisation, a mid-song tempo change, the pinned start + phase
-correction, glitch-dropping, degenerate
-inputs). Honest limits: accuracy is bounded by the beat tracker (missed/extra
-beats or an uncorrected metrical error shift the mapping), the beat counting
-assumes the first note falls on (or near) a chart beat (the norm for AI tabs),
-and **time-signature detection is NOT
-performed** (4/4→3/4 changes affect bar numbering, not the note timing this
-corrects — deferred; librosa doesn't detect meter reliably). It is a starting
-proposal to refine, not ground truth.
+tab's pending anchors (the pin re-enters as the first anchor), left in preview
+for the user to confirm via the normal "Aplicar e reconstruir"; `weak_ranges`
+are shown (in recording seconds, mapped through the returned anchors) in the
+status line. Preview-only, never applied silently (honesty principle).
+`detect_beats`/`detect_onsets` are module-level functions tests monkeypatch
+without librosa; the alignment math is unit-tested pure (constant offset, a
+mid-song tempo change, missed-tracker-beat robustness, low-confidence flagging
+of a mismatched section, degenerate inputs). **The score shows each bar's
+EFFECTIVE ♩BPM** (measure beats × 60 / its *warped* duration — amber when the
+pending sync changed it vs the authored value), so the effect of every anchor
+is visible per bar before rebuilding. Honest limits: time-signature detection
+is NOT performed (deferred; librosa doesn't detect meter reliably), and
+flagged spans are best-effort interpolation — refine by ear or fix the tab.
 
 ### Manual drift correction (`sync_anchor_stages`)
 
