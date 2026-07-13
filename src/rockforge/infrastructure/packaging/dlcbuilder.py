@@ -15,24 +15,16 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
-from dataclasses import dataclass
 from pathlib import Path
 
+from rockforge.application.ports import PackagingResult, VocalEvent
 from rockforge.domain.arrangement import Arrangement
 from rockforge.domain.errors import PackagingError
 from rockforge.infrastructure.packaging.psarc.manifest import song_key_from_title
 from rockforge.infrastructure.packaging.rs2dlc import write_rs2dlc
 from rockforge.infrastructure.packaging.wwise import WwiseWemConverter
-from rockforge.infrastructure.rsxml.vocals import VocalEvent, write_vocals_xml
+from rockforge.infrastructure.rsxml.vocals import write_vocals_xml
 from rockforge.infrastructure.rsxml.writer import write_arrangement_xml
-
-
-@dataclass(frozen=True)
-class PackagingResult:
-    bundle_dir: Path
-    xml_paths: tuple[Path, ...]
-    wem_path: Path | None  # produced only when a local Wwise installation is available
-    psarc_path: Path | None  # None => packer unavailable; bundle is the deliverable
 
 
 def build_project_metadata(

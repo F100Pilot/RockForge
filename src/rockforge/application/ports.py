@@ -6,12 +6,26 @@ Each ML stage hides behind a Protocol so models can be swapped (e.g. htdemucs_6s
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
 from rockforge.domain.arrangement import Arrangement
-from rockforge.infrastructure.packaging.dlcbuilder import PackagingResult
-from rockforge.infrastructure.rsxml.vocals import VocalEvent
+
+
+@dataclass(frozen=True)
+class VocalEvent:
+    time: float
+    length: float
+    lyric: str
+
+
+@dataclass(frozen=True)
+class PackagingResult:
+    bundle_dir: Path
+    xml_paths: tuple[Path, ...]
+    wem_path: Path | None  # produced only when a local Wwise installation is available
+    psarc_path: Path | None  # None => packer unavailable; bundle is the deliverable
 
 
 class AudioIngestor(Protocol):

@@ -28,7 +28,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from rockforge.infrastructure.rsxml.vocals import VocalEvent
+from rockforge.application.ports import VocalEvent
 
 DEFAULT_MIN_WORD_SCORE = 0.35
 DEFAULT_RMS_THRESHOLD = 0.01

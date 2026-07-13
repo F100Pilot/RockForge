@@ -29,6 +29,28 @@ Rules:
   — never import them at module top level in the API path, or the web process
   pays the cost and may fail without the ML extra.
 
+**`VocalEvent`/`PackagingResult` live in `application/ports.py`, not
+`infrastructure/`.** They used to be defined inside
+`infrastructure/rsxml/vocals.py` / `infrastructure/packaging/dlcbuilder.py`,
+which forced `ports.py` (and `gp_pipeline.py`) to import them back FROM
+infrastructure — the inverted, forbidden dependency direction: a `Protocol`
+whose own signature imports its adapter's module isn't an abstraction the
+adapter can be swapped behind. Both are plain data (no I/O, no framework),
+so they belong on the application side of the boundary; infrastructure now
+imports them from `application.ports`, same direction as everything else.
+`gp_pipeline.py` keeps two narrow, deliberate exceptions to the no-infra-import
+rule: `infrastructure/gpimport/parser.py` (`inspect_gp`/`parse_gp_track`) and
+the lyric-format functions in `infrastructure/rsxml/vocals.py`
+(`parse_lyrics`/`distribute_syllables`/`enforce_max_line_words`) are core,
+deterministic, single-implementation format parsers — not a swappable ML
+stage like `Packager`/`LyricTranscriber`/`AudioNormalizer` — so putting them
+behind a `Protocol` would be indirection with no second implementation to
+justify it. `tests/test_architecture.py` guards both: `ports.py` must import
+zero `infrastructure/` modules, and any OTHER `application/` file's
+infrastructure imports must be on the explicit allowlist above, so a future
+accidental import (or an unnoted new exception) fails CI instead of quietly
+re-inverting the dependency.
+
 ## The generation path
 
 > **Audio→note transcription was removed.** RockForge previously had a second
