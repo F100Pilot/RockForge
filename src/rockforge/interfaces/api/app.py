@@ -325,6 +325,19 @@ class AutoSyncOut(BaseModel):
     suggested_offset_s: float
 
 
+class DynamicSyncOut(BaseModel):
+    """Proposed per-beat GP→recording alignment: anchors mapping the chart's beat
+    grid onto the recording's detected beats, so the score follows the real tempo
+    curve. Preview only — the tab viewer loads these as drift anchors the user
+    confirms before rebuilding, never applied silently."""
+
+    detected_bpm: float
+    gp_beat_count: int
+    rec_beat_count: int
+    # (chart_time, recording_time) pairs in the built bundle / recording clocks.
+    anchors: list[tuple[float, float]]
+
+
 class DetectTempoIn(BaseModel):
     from_s: float = 0.0  # recording time to start measuring the local tempo from
 
@@ -1219,6 +1232,69 @@ def auto_sync(job_id: str) -> AutoSyncOut:
         detected_bpm=detected_bpm,
         suggested_tempo_scale=tempo_scale,
         suggested_offset_s=offset_s,
+    )
+
+
+@app.post("/jobs/{job_id}/auto-sync-dynamic", response_model=DynamicSyncOut)
+def auto_sync_dynamic(job_id: str, arrangement: str | None = None) -> DynamicSyncOut:
+    """Propose a per-beat alignment of the chart to the recording's REAL tempo
+    curve (not a single average): detect every beat of the recording (librosa)
+    and map the built arrangement's beat grid onto it. Returns drift anchors the
+    tab viewer previews and the user confirms before rebuilding — like /auto-sync,
+    never applied silently. ``arrangement`` picks which chart's beat grid to align
+    (its ArrangementName, e.g. "Lead"); defaults to the first instrument chart."""
+    import xml.etree.ElementTree as ET
+
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+        if job.source_type != "gp":
+            raise HTTPException(422, "automatic sync only applies to Guitar Pro jobs")
+        if job.status is not JobStatus.COMPLETED or not job.bundle_dir:
+            raise HTTPException(404, "arrangements not available")
+        bundle_dir = job.bundle_dir
+        src = Path(job.source)
+    if not src.exists():
+        raise HTTPException(409, "source audio no longer exists on the work volume")
+
+    # The built arrangement's ebeats are the chart's beat grid in the bundle
+    # timeline the tab viewer draws — the exact coordinate the returned anchors
+    # must reference. Pick the requested chart (by ArrangementName) or the first.
+    gp_beats: list[float] = []
+    for xml_path in sorted(Path(bundle_dir).glob("arrangement_*.xml")):
+        root = ET.parse(xml_path).getroot()
+        if root.tag != "song":  # skip the vocals XML
+            continue
+        if arrangement and root.findtext("arrangement", "?") != arrangement:
+            continue
+        gp_beats = [float(eb.get("time", "0")) for eb in root.findall("ebeats/ebeat")]
+        break
+    if len(gp_beats) < 2:
+        raise HTTPException(
+            422, "the arrangement has no usable beat grid to align (need a built GP chart)"
+        )
+
+    try:
+        from rockforge.infrastructure.rhythm.librosa_adapter import detect_beats
+    except ImportError as exc:  # ml extra absent
+        raise HTTPException(
+            503, "beat detection needs the 'ml' extra (librosa) — install rockforge[ml]"
+        ) from exc
+
+    from rockforge.application.gp_pipeline import align_beats_to_recording
+
+    try:
+        detected_bpm, rec_beats = detect_beats(src)
+    except Exception as exc:  # decode/analysis failure — surface honestly
+        raise HTTPException(422, f"could not analyse the recording: {exc}") from exc
+
+    anchors = align_beats_to_recording(gp_beats, rec_beats)
+    return DynamicSyncOut(
+        detected_bpm=detected_bpm,
+        gp_beat_count=len(gp_beats),
+        rec_beat_count=len(rec_beats),
+        anchors=anchors,
     )
 
 

@@ -509,3 +509,68 @@ def test_gp_pipeline_zero_offset_warns(two_track_gp5: Path, tmp_path: Path) -> N
     # DLC Builder "no room for an empty phrase" crash at content time 0)
     assert any("minimum" in w and "lead-in" in w and "2.00s" in w for w in result.warnings)
     assert result.note_counts == {"Combined": 3}  # single track => combined arrangement
+
+
+# --- Dynamic beat-alignment sync (align_beats_to_recording) --------------------
+
+def test_align_beats_same_level_tracks_a_constant_tempo_offset() -> None:
+    from rockforge.application.gp_pipeline import align_beats_to_recording
+
+    gp = [i * 0.5 for i in range(40)]      # 120 BPM chart
+    rec = [i * 0.55 for i in range(40)]    # constant, ~9% slower recording
+    anchors = align_beats_to_recording(gp, rec, stride=8)
+    assert anchors[0] == (0.0, 0.0)
+    # Later beats map to progressively later recording times (drift), monotonically.
+    assert anchors[1][0] == 4.0 and anchors[1][1] == pytest.approx(4.4)
+    assert all(anchors[i][1] < anchors[i + 1][1] for i in range(len(anchors) - 1))
+    assert all(anchors[i][0] < anchors[i + 1][0] for i in range(len(anchors) - 1))
+
+
+def test_align_beats_normalises_a_double_time_detection() -> None:
+    """A recording detected at DOUBLE the true pulse (half the interval) must be
+    metrically normalised (f=2), so GP beat k maps to rec beat 2k — not a bogus
+    2x stretch."""
+    from rockforge.application.gp_pipeline import align_beats_to_recording
+
+    gp = [i * 0.5 for i in range(20)]
+    rec = [i * 0.25 for i in range(40)]    # same 120 BPM, detected double-time
+    anchors = align_beats_to_recording(gp, rec, stride=4)
+    # chart beat 2.0 (GP beat 4) -> recording 2.0 (rec beat 8), i.e. no drift.
+    for chart, recording in anchors:
+        assert chart == pytest.approx(recording, abs=1e-9)
+
+
+def test_align_beats_follows_a_mid_song_tempo_change() -> None:
+    """The whole point: anchors must track a tempo change, not a single average.
+    A recording that speeds up halfway pulls the later beats earlier."""
+    from rockforge.application.gp_pipeline import align_beats_to_recording
+
+    gp = [i * 0.5 for i in range(40)]
+    rec, t = [], 0.0
+    for i in range(40):
+        rec.append(t)
+        t += 0.5 if i < 20 else 0.35       # speeds up after beat 20
+    anchors = align_beats_to_recording(gp, rec, stride=8)
+    # Before the change the mapping is ~identity; after it, recording time < chart time.
+    early = next(a for a in anchors if a[0] == pytest.approx(8.0))
+    late = next(a for a in anchors if a[0] == pytest.approx(16.0))
+    assert early[1] == pytest.approx(8.0)
+    assert late[1] < 16.0  # pulled earlier by the speed-up
+
+
+def test_align_beats_drops_non_advancing_glitches_and_caps_count() -> None:
+    from rockforge.application.gp_pipeline import align_beats_to_recording
+
+    gp = [i * 0.5 for i in range(400)]
+    rec = [i * 0.5 for i in range(400)]
+    anchors = align_beats_to_recording(gp, rec, stride=8, max_anchors=16)
+    assert len(anchors) <= 16                                   # widened stride caps the count
+    assert all(anchors[i][1] < anchors[i + 1][1] for i in range(len(anchors) - 1))  # monotonic
+
+
+def test_align_beats_degenerate_inputs_return_no_anchors() -> None:
+    from rockforge.application.gp_pipeline import align_beats_to_recording
+
+    assert align_beats_to_recording([], [1.0, 2.0]) == []
+    assert align_beats_to_recording([1.0, 2.0], []) == []
+    assert align_beats_to_recording([1.0], [1.0, 2.0]) == []
