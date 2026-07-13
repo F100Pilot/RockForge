@@ -126,8 +126,7 @@ _session_factory = make_session_factory(settings.database_url)
 
 
 PIPELINE_STAGES = [
-    "ingest", "normalize", "separate", "transcribe",
-    "beat_track", "tuning", "fret_mapping", "lyrics", "package",
+    "ingest", "normalize", "parse_gp", "build_arrangements", "lyrics", "package",
 ]
 
 
