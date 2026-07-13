@@ -181,19 +181,37 @@ rest downstream). The endpoint reads the beat grid from the built arrangement
 XML's `<ebeats>` — the exact bundle coordinate the tab viewer draws — so the
 returned `chart_time`s line up with the viewer's own beats.
 
+**The alignment starts at the user's confirmed first note, not at 0s.** The
+first attempt anchored the chart's first beat to the recording's first
+*detected* beat — but librosa "detects" beats in the intro silence/noise too, so
+the whole chart got dragged to ~0s, discarding the user's Step-1 first-note pin
+("as notas começaram o alinhamento logo no início do 0 segundos"). The UI now
+passes `chart_start` (the first note's chart time) + `rec_start` (where it
+currently sounds — the exact value Step 1's field shows, pin or offset) and
+`align_beats_to_recording` starts THERE: recording beats before `rec_start` are
+ignored, the detected grid is phase-shifted so the beat nearest the pin sits
+exactly on it (the tracker supplies the *curve*, the pin the *absolute
+position*), and the FIRST returned anchor is the pin verbatim — byte-identical
+to what `setTrackStart` writes, so replacing the pending set preserves it.
+Guarded by `test_align_beats_pinned_starts_at_the_confirmed_first_note` /
+`test_auto_sync_dynamic_respects_the_pinned_first_note`.
+
 The tab viewer's **"🎯 Sincronização dinâmica"** button loads each pair as an
 ordinary drift anchor via the *same* convention the bar-align tool uses —
 `setAnchor(previewScale(chartT), recT + viewOrigin)` — **replacing** the current
-tab's pending anchors with the fresh alignment, left in preview for the user to
-confirm and commit via the normal "Aplicar e reconstruir". Like every other
+tab's pending anchors with the fresh alignment (the pin re-enters as the first
+anchor), left in preview for the user to confirm and commit via the normal
+"Aplicar e reconstruir". Like every other
 detection it is **preview-only, never applied silently** (honesty principle),
 and `detect_beats` is a module-level function tests monkeypatch without librosa
 (`test_auto_sync_dynamic_proposes_beat_anchors`; the alignment math is unit-
 tested with synthetic beats in `test_gp_pipeline.py` — constant offset,
-double-time normalisation, a mid-song tempo change, glitch-dropping, degenerate
+double-time normalisation, a mid-song tempo change, the pinned start + phase
+correction, glitch-dropping, degenerate
 inputs). Honest limits: accuracy is bounded by the beat tracker (missed/extra
-beats or an uncorrected metrical error shift the mapping), it assumes the first
-detected beat is the song's first beat, and **time-signature detection is NOT
+beats or an uncorrected metrical error shift the mapping), the beat counting
+assumes the first note falls on (or near) a chart beat (the norm for AI tabs),
+and **time-signature detection is NOT
 performed** (4/4→3/4 changes affect bar numbering, not the note timing this
 corrects — deferred; librosa doesn't detect meter reliably). It is a starting
 proposal to refine, not ground truth.

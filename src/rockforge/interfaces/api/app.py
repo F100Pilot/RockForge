@@ -1236,13 +1236,24 @@ def auto_sync(job_id: str) -> AutoSyncOut:
 
 
 @app.post("/jobs/{job_id}/auto-sync-dynamic", response_model=DynamicSyncOut)
-def auto_sync_dynamic(job_id: str, arrangement: str | None = None) -> DynamicSyncOut:
+def auto_sync_dynamic(
+    job_id: str,
+    arrangement: str | None = None,
+    chart_start: float | None = None,
+    rec_start: float | None = None,
+) -> DynamicSyncOut:
     """Propose a per-beat alignment of the chart to the recording's REAL tempo
     curve (not a single average): detect every beat of the recording (librosa)
     and map the built arrangement's beat grid onto it. Returns drift anchors the
     tab viewer previews and the user confirms before rebuilding — like /auto-sync,
     never applied silently. ``arrangement`` picks which chart's beat grid to align
-    (its ArrangementName, e.g. "Lead"); defaults to the first instrument chart."""
+    (its ArrangementName, e.g. "Lead"); defaults to the first instrument chart.
+
+    ``chart_start`` (bundle chart time of the first note) + ``rec_start`` (the
+    recording second the user pinned it to — Step 1) make the alignment START at
+    the confirmed first note: the first returned anchor is exactly that pin, and
+    recording "beats" the tracker found before it (intro silence/noise) are
+    ignored. Without them the alignment starts at the two grids' first beats."""
     import xml.etree.ElementTree as ET
 
     with _session_factory() as session:
@@ -1289,7 +1300,9 @@ def auto_sync_dynamic(job_id: str, arrangement: str | None = None) -> DynamicSyn
     except Exception as exc:  # decode/analysis failure — surface honestly
         raise HTTPException(422, f"could not analyse the recording: {exc}") from exc
 
-    anchors = align_beats_to_recording(gp_beats, rec_beats)
+    anchors = align_beats_to_recording(
+        gp_beats, rec_beats, chart_start=chart_start, rec_start=rec_start
+    )
     return DynamicSyncOut(
         detected_bpm=detected_bpm,
         gp_beat_count=len(gp_beats),
