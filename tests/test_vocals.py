@@ -131,6 +131,22 @@ def test_distribute_syllables_melisma_extends_previous() -> None:
     assert events[1].time == 3.0
 
 
+def test_distribute_syllables_all_melisma_line_extends_previous_across_the_line() -> None:
+    """A GP line consisting ONLY of "_" holds (a melisma spanning a whole
+    authored line) used to be dropped entirely, so those note attacks never
+    extended the previous line's last syllable. It now holds that syllable
+    across the whole line instead of the line silently disappearing."""
+    onsets = [0.0, 1.0, 2.0, 3.0, 4.0]
+    events = distribute_syllables([(0.0, "sing high"), (2.0, "_ _"), (4.0, "again")], onsets)
+    # "high+" carries line 1's break marker and is the syllable the melisma holds.
+    assert [e.lyric for e in events] == ["sing", "high+", "again+"]
+    high = next(e for e in events if e.lyric == "high+")
+    assert high.time == 1.0
+    assert high.length == pytest.approx(3.0)  # 1.0 -> end of the 3.0 note (4.0)
+    # The all-hold line consumed onsets 2.0 and 3.0, so "again" lands on 4.0.
+    assert next(e for e in events if e.lyric == "again+").time == 4.0
+
+
 def test_parse_lyrics_lrc_expands_to_words() -> None:
     events = parse_lyrics(LRC)
     assert [e.lyric for e in events] == ["First", "line+", "Second", "line+", "Last", "line+"]
