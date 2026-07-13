@@ -56,6 +56,19 @@ def detect_beats(audio: Path) -> tuple[float, list[float]]:
     return bpm, beat_times
 
 
+def detect_onsets(audio: Path) -> list[float]:
+    """The recording's note-attack times (seconds) — the phase/confidence source
+    for the dynamic-sync alignment: the chart's own note onsets are matched
+    against these to fine-tune each anchor and to measure how well the tab
+    actually corresponds to the audio at that point. Standalone and lazily
+    imported like the rest of this module (ml extra)."""
+    import librosa
+
+    y, sr = librosa.load(str(audio), sr=None, mono=True)
+    times = librosa.onset.onset_detect(y=y, sr=sr, units="time", backtrack=False)
+    return sorted(float(t) for t in times)
+
+
 def detect_tempo_from(audio: Path, start_s: float) -> float:
     """Estimate the recording's tempo (BPM) from ``start_s`` to the end.
 

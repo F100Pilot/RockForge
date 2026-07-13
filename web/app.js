@@ -320,7 +320,7 @@ const INFO = {
   },
   'auto-sync-dynamic': {
     title: 'Sincronização dinâmica (segue o andamento real)',
-    body: '<p>A sincronização automática acima aplica UM andamento médio — não chega quando o tempo da gravação varia (o problema típico das tabs de IA). Esta deteta TODAS as batidas da gravação e alinha a grelha da partitura à curva de andamento real, criando várias âncoras de correção ao longo da música.<br><b>Começa na primeira nota:</b> define primeiro o início no Passo 1 (ou com "🎯 Detetar 1ª nota") — o alinhamento respeita esse ponto e aplica-se daí para a frente; "batidas" detetadas no silêncio inicial são ignoradas.<br>Substitui as correções pendentes da pista atual por esta proposta; fica em pré-visualização — confirma na partitura e clica em "Aplicar e reconstruir".<br><b>Limite honesto:</b> a precisão depende do detetor de batidas (pode falhar/duplicar batidas). É um <i>ponto de partida</i> para refinares à mão, não verdade absoluta. Requer o extra <code>ml</code> (librosa).</p>'
+    body: '<p>A sincronização automática acima aplica UM andamento médio — não chega quando o tempo da gravação varia (o problema típico das tabs de IA). Esta segue a <b>curva de andamento real</b>: usa a grelha de batidas para o tempo local, e afina cada âncora encaixando as notas da própria tab nos ataques do áudio.<br><b>Começa na primeira nota:</b> define primeiro o início no Passo 1 (ou com "🎯 Detetar 1ª nota") — a primeira âncora é exatamente esse ponto e o alinhamento aplica-se daí para a frente.<br>Substitui as correções pendentes da pista atual por esta proposta; fica em pré-visualização — vê o <b>♩BPM por compasso</b> na partitura (âmbar = alterado pelas âncoras) e confirma com "Aplicar e reconstruir".<br><b>Limite honesto:</b> secções onde as notas da tab não batem com o áudio são assinaladas com ⚠ — aí o problema é o conteúdo da tab (notas/compassos errados), que nenhuma sincronização corrige; ajusta essas partes no Guitar Pro. Requer o extra <code>ml</code> (librosa).</p>'
   },
   'tab-viewer': {
     title: 'Partitura — legenda',
@@ -903,17 +903,22 @@ function showArr(i) {
   // measure drifts from the recording.
   const tbeats = a.beats || [];
   const barList = a.bars || [];
-  // Real BPM of each measure: the beats inside [downbeat, next downbeat) ×
-  // 60 / the measure's duration, from the same built beat grid the ♩ change
-  // markers use. Shown next to the measure number, thinned out when zoomed
-  // out so labels never overlap.
+  // EFFECTIVE BPM of each measure — beats in [downbeat, next downbeat) × 60 /
+  // the measure's WARPED duration, i.e. the tempo the bar will actually play
+  // at after the pending offset/tempo/anchor edits (a dynamic-sync anchor that
+  // locally re-tempos a passage shows its new BPM right on the bars it spans).
+  // Amber = the pending sync changed this bar's tempo vs the authored GP value.
   const barBpm = (bi) => {
     const t0 = barList[bi].time;
     const t1 = bi + 1 < barList.length ? barList[bi + 1].time : null;
-    if (t1 == null || t1 <= t0) return bi > 0 ? barBpm(bi - 1) : 0;  // last bar: reuse previous
+    if (t1 == null || t1 <= t0) return bi > 0 ? barBpm(bi - 1) : { eff: 0, auth: 0 };
     let n = 0;
     for (const tb of tbeats) if (tb >= t0 - 1e-6 && tb < t1 - 1e-6) n++;
-    return n ? Math.round(n * 60 / (t1 - t0)) : 0;
+    if (!n) return { eff: 0, auth: 0 };
+    const auth = Math.round(n * 60 / (t1 - t0));
+    const dur = barWarp(previewScale(t1)) - barWarp(previewScale(t0));
+    const eff = dur > 0.01 ? Math.round(n * 60 / dur) : auth;
+    return { eff, auth };
   };
   let lastBpmX = -999;
   for (let bi = 0; bi < barList.length; bi++) {
@@ -921,11 +926,12 @@ function showArr(i) {
     const x = timeToX(barWarp(previewScale(b.time)));
     if (x < 24 || x > W - 4) continue;
     s += `<line x1="${x}" y1="30" x2="${x}" y2="${SB}" stroke="#5a6a8a" stroke-width="1" opacity=".55"/>`;
-    const bpm = barBpm(bi);
-    if (bpm > 0 && x - lastBpmX > 40) {
+    const bb = barBpm(bi);
+    if (bb.eff > 0 && x - lastBpmX > 40) {
+      const changed = Math.abs(bb.eff - bb.auth) >= 2;  // pending sync re-tempos this bar
       s += `<text x="${x+3}" y="42" font-size="11" font-weight="700">`
         + `<tspan fill="#7d8aa5">${b.measure}</tspan>`
-        + `<tspan fill="#b58cff" font-size="10"> &#9833;${bpm}</tspan></text>`;
+        + `<tspan fill="${changed ? '#f2b84b' : '#b58cff'}" font-size="10"> &#9833;${bb.eff}</tspan></text>`;
       lastBpmX = x;
     } else {
       s += `<text x="${x+3}" y="42" fill="#7d8aa5" font-size="11" font-weight="700">${b.measure}</text>`;
@@ -3933,10 +3939,31 @@ function setTempoLive(scale) {
       renderAnchorsList();
       updatePendingChangesInfo();
       showArr(currentArr);
+      // Honesty: spans whose chart notes don't land on real attacks — the tab
+      // likely doesn't correspond to the audio there (content, not timing;
+      // no sync can fix it). Shown in recording seconds via the anchor map.
+      let weakTxt = '';
+      if (b.weak_ranges && b.weak_ranges.length) {
+        const toRec = t => {
+          const A = b.anchors;
+          if (t <= A[0][0]) return A[0][1];
+          for (let i = 0; i + 1 < A.length; i++) {
+            if (t <= A[i + 1][0]) {
+              const f = (t - A[i][0]) / (A[i + 1][0] - A[i][0] || 1);
+              return A[i][1] + f * (A[i + 1][1] - A[i][1]);
+            }
+          }
+          return A[A.length - 1][1];
+        };
+        const spans = b.weak_ranges.map(([a2, b2]) => `${Math.round(toRec(a2))}–${Math.round(toRec(b2))}s`).join(', ');
+        weakTxt = ` ⚠ A tab parece não corresponder ao áudio em: ${spans} — nenhuma sincronização corrige conteúdo; revê essas secções no Guitar Pro.`;
+      }
       info.textContent =
         `${b.detected_bpm.toFixed(1)} BPM · ${b.anchors.length} âncoras alinhadas. ` +
-        `Revê na partitura e clica em "Aplicar e reconstruir".`;
-      toast('Alinhamento dinâmico proposto — revê e aplica', 'ok');
+        `Revê na partitura e clica em "Aplicar e reconstruir".` + weakTxt;
+      toast(b.weak_ranges && b.weak_ranges.length
+        ? 'Alinhamento proposto — atenção às secções assinaladas ⚠'
+        : 'Alinhamento dinâmico proposto — revê e aplica', 'ok');
     } catch (e) {
       info.textContent = '';
       toast('falha na análise', 'err');

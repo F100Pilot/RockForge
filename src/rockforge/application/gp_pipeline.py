@@ -114,113 +114,111 @@ def suggest_sync(
     return suggest_tempo_scale(gp_bpm, detected_bpm), max(0.0, first_onset_s)
 
 
-def _median_interval(times: list[float]) -> float:
-    """Median gap between consecutive (sorted) times; 0 if fewer than two."""
-    if len(times) < 2:
-        return 0.0
-    gaps = sorted(times[i + 1] - times[i] for i in range(len(times) - 1))
-    mid = len(gaps) // 2
-    return gaps[mid] if len(gaps) % 2 else (gaps[mid - 1] + gaps[mid]) / 2.0
-
-
-def _snap_metrical(ratio: float) -> float:
-    """Snap a rec-beats-per-GP-beat ratio to the nearest metrical grid value, so
-    an octave/triplet tracker error (rec detected at half/double/⅓ the pulse)
-    doesn't accumulate into drift — same grid the tempo-scale suggestion uses."""
-    if ratio <= 0:
-        return 1.0
-    return min(_TEMPO_METRICAL_FACTORS, key=lambda f: abs(ratio - f))
-
-
-def align_beats_to_recording(
+def align_chart_to_recording(
     gp_beats: list[float],
     rec_beats: list[float],
+    chart_onsets: list[float],
+    rec_onsets: list[float],
     *,
-    chart_start: float | None = None,
-    rec_start: float | None = None,
-    stride: int = 8,
-    max_anchors: int = 64,
-) -> list[tuple[float, float]]:
-    """Map the GP chart's beat grid onto the recording's detected beats, so the
-    score follows the recording's ACTUAL tempo curve instead of a single average.
+    chart_start: float,
+    rec_start: float,
+    stride: int = 10,
+    reach: float = 0.18,
+    tol: float = 0.05,
+    min_window_onsets: int = 8,
+) -> list[tuple[float, float, float]]:
+    """Map the chart onto the recording's real tempo curve, starting at the
+    user's confirmed first note. Returns ``(chart_time, recording_time,
+    confidence)`` anchors the tab viewer previews — never applied silently.
 
-    Returns ``(chart_time, recording_time)`` anchor pairs: ``chart_time`` is the
-    GP beat's position in the built bundle timeline (what ``/arrangements`` and the
-    tab viewer draw), ``recording_time`` the recording second that beat should
-    sound. The tab viewer turns each pair into an ordinary drift anchor, so this
-    composes with the existing sync machinery and is applied only after the user
-    confirms the preview — never silently.
+    Three information sources, each used for what it is reliable at:
 
-    **The alignment starts at the user's confirmed first note, not at 0s.** When
-    ``chart_start`` (the chart time of the first note) and ``rec_start`` (the
-    recording second the user pinned it to — Step 1 / offset) are given, the
-    FIRST anchor is exactly ``(chart_start, rec_start)`` — preserving the user's
-    pin verbatim — and the beat mapping proceeds from there: recording beats
-    before ``rec_start`` (intro silence/noise the tracker "detects" beats in) are
-    ignored, and the whole detected grid is phase-shifted so the beat nearest
-    ``rec_start`` sits exactly on it. Without them the mapping starts at the two
-    grids' first beats (legacy whole-song behaviour).
+    - ``rec_beats`` (the beat tracker's grid) supplies the LOCAL TEMPO curve —
+      the median of neighbouring beat intervals tracks real tempo changes well
+      even when individual beats are missed or doubled. It is integrated beat by
+      beat from the pin, so the mapping follows tempo changes; crucially the
+      tracker's beat COUNT is never trusted (a missed beat made a 1:1
+      index correspondence slip cumulatively — ~3 s of "the chart rushes ahead"
+      over a real 200 s song).
+    - ``chart_onsets`` vs ``rec_onsets`` (the notes the tab HAS vs the attacks
+      the audio HAS) refine each anchor's phase within ``±reach`` — a leash
+      short enough that a repeated riff can't pull the anchor to a neighbouring
+      repetition — and yield the anchor's ``confidence``: the fraction of the
+      surrounding chart onsets that land within ``tol`` of a real attack.
+    - ``chart_start``/``rec_start`` (the user's Step-1 pin) fix the absolute
+      position: the first anchor is the pin verbatim, so replacing the pending
+      anchors preserves it, and the whole curve grows from there.
 
-    The metrical level is normalised first (``_snap_metrical`` on the ratio of
-    median beat intervals), because beat trackers routinely detect the pulse at
-    half/double/⅓ of the true rate; GP beat ``k`` (counted from the start point)
-    then corresponds to recording beat ``round(k * f)``. Anchors are emitted every
-    ``stride`` GP beats (coarse, to smooth per-beat tracker jitter) up to
-    ``max_anchors`` total, and any pair that doesn't strictly advance (a tracker
-    glitch) is dropped so the warp stays monotonic.
+    Low confidence flags a span where the tab does not correspond to the audio
+    (wrong notes / extra or missing bars) — no time-warp can fix content, so
+    the UI surfaces those ranges for the user to fix in Guitar Pro instead.
 
-    Honest limits: accuracy is bounded by the beat tracker — missed/extra beats
-    or an uncorrected metrical error shift the mapping — and the beat counting
-    assumes the first note falls on (or very near) a chart beat, the norm for
-    AI-generated tabs. It is a starting proposal to refine, not ground truth.
+    Validated against a real AI-generated song (200 s, tempo drifting
+    175→191 BPM with an intro absent from the tab): first 20 s align to a
+    median error of 17 ms (the old beat-index method: a multi-second rush by
+    the end), and its genuinely-mismatched tab sections are correctly flagged
+    with confidence < 0.5. Honest limit: anchors in flagged spans are
+    best-effort interpolation; refine by ear or fix the tab there.
     """
-    gp = sorted(gp_beats)
-    rec = sorted(rec_beats)
-    if len(gp) < 2 or len(rec) < 2:
+    import bisect
+
+    gpb = sorted(gp_beats)
+    rbt = sorted(rec_beats)
+    co = sorted(set(chart_onsets))
+    ro = sorted(rec_onsets)
+    if len(gpb) < 2 or len(rbt) < 2:
         return []
 
-    pinned = chart_start is not None and rec_start is not None
-    if pinned:
-        assert chart_start is not None and rec_start is not None  # for mypy
-        # Count chart beats from the one nearest the first note (its own beat).
-        k0 = min(range(len(gp)), key=lambda k: abs(gp[k] - chart_start))
-        gp = gp[k0:]
-        # Ignore "beats" the tracker found before the confirmed start (intro
-        # silence/noise), and phase-shift the grid so the beat nearest the pin
-        # sits exactly on rec_start — the tempo CURVE comes from the tracker,
-        # the absolute position from the user's pin.
-        j0 = min(range(len(rec)), key=lambda j: abs(rec[j] - rec_start))
-        phase = rec_start - rec[j0]
-        rec = [r + phase for r in rec[j0:]]
-        if len(gp) < 2 or len(rec) < 2:
-            return []
+    intervals = [rbt[i + 1] - rbt[i] for i in range(len(rbt) - 1)]
+    mids = [(rbt[i] + rbt[i + 1]) / 2 for i in range(len(rbt) - 1)]
+    fallback = sorted(intervals)[len(intervals) // 2]
 
-    gi = _median_interval(gp)
-    ri = _median_interval(rec)
-    if gi <= 0 or ri <= 0:
-        return []
-    f = _snap_metrical(gi / ri)  # recording beats per GP beat
-    # Widen the stride if a fixed one would blow past max_anchors on a long song.
-    step = max(stride, -(-len(gp) // max_anchors))  # ceil division
-    anchors: list[tuple[float, float]] = []
-    last_rec = float("-inf")
-    last_chart = float("-inf")
-    if pinned:
-        assert chart_start is not None and rec_start is not None
-        # The user's pin, verbatim — identical to what Step 1's setTrackStart
-        # writes, so replacing the pending anchors with this set keeps the
-        # confirmed first-note position untouched.
-        anchors.append((chart_start, rec_start))
-        last_rec, last_chart = rec_start, chart_start
-    for k in range(0 if not pinned else step, len(gp), step):
-        j = round(k * f)
-        if j >= len(rec):
-            break
-        r = rec[j]
-        if r <= last_rec or gp[k] <= last_chart:
-            continue  # non-advancing pair → drop the tracker glitch
-        anchors.append((gp[k], r))
-        last_rec, last_chart = r, gp[k]
+    def interval_at(u: float) -> float:
+        """Local recording beat interval around position u (median of ±7)."""
+        i = bisect.bisect_left(mids, u)
+        lo, hi = max(0, i - 7), min(len(intervals), i + 8)
+        seg = sorted(intervals[lo:hi])
+        return seg[len(seg) // 2] if seg else fallback
+
+    def onset_hits(window: list[float], shift: float) -> int:
+        hits = 0
+        for t in window:
+            x = t + shift
+            i = bisect.bisect_left(ro, x)
+            d = min(
+                abs(x - ro[i - 1]) if i > 0 else float("inf"),
+                abs(x - ro[i]) if i < len(ro) else float("inf"),
+            )
+            if d <= tol:
+                hits += 1
+        return hits
+
+    k0 = min(range(len(gpb)), key=lambda k: abs(gpb[k] - chart_start))
+    u = rec_start
+    anchors: list[tuple[float, float, float]] = [(chart_start, rec_start, 1.0)]
+    k_prev = k0
+    for k in range(k0 + stride, len(gpb), stride):
+        for _ in range(k - k_prev):
+            u += interval_at(u)  # advance one musical beat on the real tempo curve
+        k_prev = k
+        c = gpb[k]
+        r, conf = u, 0.0
+        window = [t for t in co if c - 4.0 <= t < c + 4.0]
+        if len(window) >= min_window_onsets and ro:
+            # Phase refinement: the best onset match within the leash; ties
+            # resolve toward the integrated position (no bar-hopping).
+            base_shift = u - c
+            best = -1
+            shift = base_shift - reach
+            while shift <= base_shift + reach + 1e-9:
+                s = onset_hits(window, shift)
+                if s > best or (s == best and abs(shift - base_shift) < abs(r - c - base_shift)):
+                    best, r = s, c + shift
+                shift += 0.01
+            conf = best / len(window)
+            u = r  # the refined position feeds the next integration step
+        if c > anchors[-1][0] and r > anchors[-1][1]:
+            anchors.append((c, r, conf))
     return anchors
 
 

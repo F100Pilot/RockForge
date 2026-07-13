@@ -980,6 +980,7 @@ def test_auto_sync_dynamic_proposes_beat_anchors(client, tmp_path, monkeypatch) 
     gp_beats = [0.5 * i for i in range(16)]        # 120 BPM chart
     # Recording detected ~9% slower (constant), so anchors drift later over time.
     monkeypatch.setattr(rhythm, "detect_beats", lambda src: (110.0, [0.55 * i for i in range(16)]))
+    monkeypatch.setattr(rhythm, "detect_onsets", lambda src: [])
     job = _completed_gp_job_with_beats(client, tmp_path, gp_beats)
 
     r = client.post(f"/jobs/{job['id']}/auto-sync-dynamic")
@@ -993,6 +994,9 @@ def test_auto_sync_dynamic_proposes_beat_anchors(client, tmp_path, monkeypatch) 
     # recording times strictly advance (monotonic warp) and drift past the chart time.
     assert all(anchors[i][1] < anchors[i + 1][1] for i in range(len(anchors) - 1))
     assert anchors[-1][1] > anchors[-1][0]
+    # one confidence per anchor + the honesty spans field
+    assert len(out["confidences"]) == len(anchors)
+    assert "weak_ranges" in out
 
 
 def test_auto_sync_dynamic_rejected_for_non_gp(client: TestClient) -> None:
@@ -1015,6 +1019,7 @@ def test_auto_sync_dynamic_respects_the_pinned_first_note(
         rhythm, "detect_beats",
         lambda src: (110.0, [0.3, 1.1, 2.0] + [4.2 + 0.55 * i for i in range(16)]),
     )
+    monkeypatch.setattr(rhythm, "detect_onsets", lambda src: [])
     job = _completed_gp_job_with_beats(client, tmp_path, gp_beats)
 
     r = client.post(
