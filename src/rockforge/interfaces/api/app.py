@@ -1,4 +1,18 @@
-"""REST API: submit audio/YouTube jobs, poll status, download results."""
+"""REST API: submit Guitar Pro jobs, poll status, edit sync/tones/lyrics,
+download the bundle + PSARC.
+
+Kept as a single module by deliberate choice (a splitting-into-APIRouters
+refactor was considered — audit IMP-1 — and deferred): the endpoints share a
+lot of module-level state (``settings``, ``_session_factory``, the four
+``_enqueue*`` dispatchers, the heartbeat/idle-shutdown globals) that the API
+test suite patches directly as ``app_module.<symbol>`` in ~90 tests. Moving
+endpoints into separate router modules would make those endpoints resolve the
+shared state from a different module, silently defeating the monkeypatches (a
+patch that no longer intercepts does not error — the test just exercises real
+code), for a purely organizational gain. Revisit as its own change with a
+matching migration of the test patch targets; the endpoints are already
+clearly delineated within this file.
+"""
 
 from __future__ import annotations
 
