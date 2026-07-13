@@ -60,6 +60,33 @@ def test_wem_available_packs_soundbank_and_stream(tmp_path: Path) -> None:
     assert entries[f"audio/windows/{file_id}.wem"] == wem_bytes
 
 
+def test_from_arrangement_is_built_once_per_arrangement(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The SNG model (up to ~21 Dynamic Difficulty levels, each doing
+    phrase-linking/anchor/chord-notes work over the full note list) must be
+    compiled ONCE per arrangement per packaging run — not once for the
+    manifest's note/phrase counts and again for the .sng payload."""
+    from rockforge.infrastructure.packaging.psarc import sng as sng_mod
+
+    calls: list[Arrangement] = []
+    real_from_arrangement = sng_mod.from_arrangement
+
+    def counting_from_arrangement(arrangement, **kwargs):  # noqa: ANN001, ANN202
+        calls.append(arrangement)
+        return real_from_arrangement(arrangement, **kwargs)
+
+    monkeypatch.setattr(sng_mod, "from_arrangement", counting_from_arrangement)
+
+    audio = tmp_path / "audio.wav"
+    audio.write_bytes(b"RIFF....WAVEfmt ")
+    packer = NativePsarcPacker(wem_converter=None)
+    arrangements = [_arrangement(ArrangementKind.LEAD), _arrangement(ArrangementKind.RHYTHM)]
+    packer.package(arrangements, audio, tmp_path / "bundle")
+
+    assert len(calls) == len(arrangements)
+
+
 def test_package_emits_full_retail_enumeration_layout(tmp_path: Path) -> None:
     """A game-listable PSARC needs the xblock, flat models, aggregategraph,
     album art and showlights, and the SNG under songs/bin/generic/."""

@@ -226,6 +226,16 @@ class NativePsarcPacker:
         Wwise/ffmpeg, packing); the caller keeps the bundle regardless."""
         from rockforge.infrastructure.packaging.psarc.crypto import pack_sng
 
+        # Build each arrangement's SNG model ONCE (up to ~21 Dynamic Difficulty
+        # levels, each doing phrase-linking/anchor/chord-notes work over the
+        # full note list — not cheap) and reuse it for both the manifest's
+        # note/phrase counts AND the actual .sng payload below, instead of
+        # compiling the same arrangement twice.
+        sng_models = [
+            sng.from_arrangement(arr, dynamic_difficulty=dynamic_difficulty)
+            for arr in arrangements
+        ]
+
         # Manifests (+ appid/toolkit) and album art. Placeholder art is always
         # shipped so the AlbumArt URN resolves; a real cover is DXT1-encoded.
         files: dict[str, bytes] = manifest.build_manifest_files(
@@ -234,6 +244,7 @@ class NativePsarcPacker:
             include_vocals=bool(vocals),
             has_album_art=True,
             dynamic_difficulty=dynamic_difficulty,
+            models=sng_models,
         )
 
         # Game-enumeration assets — without these the song never lists.
@@ -270,10 +281,8 @@ class NativePsarcPacker:
                 res, cover_for_dds
             )
 
-        for arr in arrangements:
-            payload = sng.write_sng(
-                sng.from_arrangement(arr, dynamic_difficulty=dynamic_difficulty)
-            )
+        for arr, model in zip(arrangements, sng_models, strict=True):
+            payload = sng.write_sng(model)
             asset = manifest.arrangement_asset_name(song_key, arr.kind)
             files[f"songs/bin/generic/{asset}.sng"] = pack_sng(payload)
 

@@ -169,6 +169,29 @@ def test_build_manifest_files_packs_and_round_trips() -> None:
     assert unpack(packed) == files
 
 
+def test_build_manifest_files_reuses_a_precomputed_sng_model(monkeypatch) -> None:
+    """Passing `models=` must skip compiling the SNG a second time — the packer
+    already builds one per arrangement (up to ~21 Dynamic Difficulty levels of
+    phrase-linking/anchor/chord-notes work) to write the .sng payload, and
+    arrangement_stats used to redundantly rebuild it just to read note/phrase
+    counts for the manifest."""
+    from rockforge.infrastructure.packaging.psarc import sng as sng_mod
+
+    arrangements = [
+        (_arrangement(ArrangementKind.LEAD), "Lead"),
+        (_arrangement(ArrangementKind.RHYTHM), "Rhythm"),
+    ]
+    precomputed = [sng_mod.from_arrangement(arr) for arr, _ in arrangements]
+
+    def boom(*args, **kwargs):
+        raise AssertionError("from_arrangement should not be called when models= is given")
+
+    monkeypatch.setattr(sng_mod, "from_arrangement", boom)
+
+    files = build_manifest_files(arrangements, "MySong", models=precomputed)
+    assert "manifests/songs_dlc_mysong/mysong_lead.json" in files
+
+
 def test_alternate_arrangement_is_nonrepresentative_same_path() -> None:
     # An Alternate Lead shares the Lead ArrangementName/RouteMask/Type but is
     # non-representative (Representative 0, represent 0, bonusArr 1), with its own

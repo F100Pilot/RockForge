@@ -21,9 +21,14 @@ from __future__ import annotations
 
 import json
 import uuid
+from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 from rockforge.domain.arrangement import Arrangement, ArrangementKind
 from rockforge.infrastructure.packaging.tone_dto import unique_tone_dtos
+
+if TYPE_CHECKING:
+    from rockforge.infrastructure.packaging.psarc.sng import SngModel
 
 # Fixed namespace so persistent IDs are deterministic across rebuilds of the
 # same song/arrangement (Rocksmith identifies content by these IDs).
@@ -185,17 +190,26 @@ def _arrangement_properties(arrangement: Arrangement) -> dict[str, int]:
 
 
 def arrangement_stats(
-    arrangement: Arrangement, *, dynamic_difficulty: bool = True
+    arrangement: Arrangement,
+    *,
+    dynamic_difficulty: bool = True,
+    model: SngModel | None = None,
 ) -> dict[str, object]:
     """Note count + phrase/iteration/section tables the song-list screen reads.
 
     Derived from the compiled SNG model so they match the actual chart (an
     empty manifest here shows "0 notes" and a blank difficulty bar in game).
     With Dynamic Difficulty the top level is the full chart (Hard) and the
-    Easy/Medium counts come from the lower DD levels."""
-    from rockforge.infrastructure.packaging.psarc import sng
+    Easy/Medium counts come from the lower DD levels.
 
-    model = sng.from_arrangement(arrangement, dynamic_difficulty=dynamic_difficulty)
+    Pass an already-built ``model`` (the packer builds one per arrangement to
+    write the actual .sng payload) to avoid compiling the whole SNG — up to
+    ~21 Dynamic Difficulty levels, each doing phrase-linking/anchor/chord-notes
+    work over the full note list — a SECOND time just to read these counts."""
+    if model is None:
+        from rockforge.infrastructure.packaging.psarc import sng
+
+        model = sng.from_arrangement(arrangement, dynamic_difficulty=dynamic_difficulty)
     levels = model.arrangements
     note_count = len(levels[-1].notes) if levels else 0  # Hard = the full top level
     n = len(levels)
@@ -466,6 +480,7 @@ def build_manifest_files(
     *,
     has_album_art: bool = False,
     dynamic_difficulty: bool = True,
+    models: Sequence[SngModel | None] | None = None,
 ) -> dict[str, bytes]:
     """Build all ``manifests/`` files (+ ``toolkit.version`` and ``appid.appid``).
 
@@ -474,12 +489,18 @@ def build_manifest_files(
     ``.hsan`` header set (Static.Songs.Headers) are emitted. The game-enumeration
     assets (xblock, flatmodels, aggregategraph, showlights, album art) are added
     by the packer via :mod:`gamedata`.
+
+    ``models``, when given, is a list of already-built ``SngModel``s parallel
+    to ``arrangements`` (the packer builds one per arrangement to write the
+    .sng payload anyway) — reused here instead of compiling the SNG a second
+    time just to read note/phrase counts.
     """
     key_lower = song_key.lower()
     files: dict[str, bytes] = {}
     headers: list[tuple[str, dict[str, object]]] = []
-    for arrangement, name in arrangements:
-        stats = arrangement_stats(arrangement, dynamic_difficulty=dynamic_difficulty)
+    for i, (arrangement, name) in enumerate(arrangements):
+        model = models[i] if models is not None else None
+        stats = arrangement_stats(arrangement, dynamic_difficulty=dynamic_difficulty, model=model)
         manifest = build_arrangement_manifest(
             arrangement, song_key, name, has_album_art=has_album_art, stats=stats
         )
