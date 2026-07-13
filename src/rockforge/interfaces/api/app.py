@@ -1976,6 +1976,27 @@ def gear_catalogue() -> dict[str, Any]:
     return catalogue_for_ui()
 
 
+@app.get("/gear-image/{key}")
+def gear_image(key: str) -> FileResponse:
+    """Serve a user-supplied gear image for the tone editor, if one exists.
+
+    Images live in ``work_dir/gear_images/<key>.<ext>`` — the app's RUNTIME data
+    folder, never the code repo — so the user can drop their own amp/cabinet/
+    pedal pictures there (named by the gear's key) without committing anything.
+    404 when absent; the UI then falls back to the generic panel. The key is
+    sanitised to a bare slug so it can't escape the folder."""
+    slug = "".join(c for c in key if c.isalnum() or c in "-_")
+    if not slug:
+        raise HTTPException(404, "no such gear image")
+    folder = settings.work_dir / "gear_images"
+    for ext in (".png", ".jpg", ".jpeg", ".webp"):
+        candidate = folder / f"{slug}{ext}"
+        if candidate.is_file():
+            media = "image/jpeg" if ext in (".jpg", ".jpeg") else f"image/{ext[1:]}"
+            return FileResponse(candidate, media_type=media)
+    raise HTTPException(404, "no gear image for this key")
+
+
 @app.post("/heartbeat", include_in_schema=False)
 def heartbeat(hidden: bool = False) -> dict[str, bool]:
     """Pinged periodically by the web UI; see Settings.idle_shutdown_s.

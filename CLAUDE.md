@@ -763,6 +763,21 @@ the recording — it classifies the *character* of the guitar sound and suggests
 a plausible Rocksmith gear match. Detection needs the `[ml]` extra (Demucs +
 librosa).
 
+### Tone editor: rotary knobs + optional local gear images
+
+Gear knobs (amp/effect Gain/Bass/Mid/…) render as **draggable rotary dials**
+(`renderKnobs`/`wireKnob`, `web/index.html`): drag the dial (−135°..+135° sweep),
+type the exact value, or double-click to reset to the catalogue default. The
+value still lives in an `input[data-knob]` so `readKnobs` and the tone model are
+unchanged — purely a UX layer. Each amp/cabinet can also show a **user-supplied
+picture**: `GET /gear-image/{key}` serves `work_dir/gear_images/<key>.<ext>` (the
+RUNTIME data folder, NOT the code repo — the user drops their own amp/cab photos
+there, named by the gear key, without committing anything; the key is sanitised
+to a bare slug against path traversal). The `<img>` is hidden until it loads, so
+absent images fall back to just the knobs. Honesty unchanged: this is visual
+only — RockForge does not model the amp sound (the real tone comes from the gear
+keys in-game / DLC Builder). Guarded by `test_gear_image_serves_local_file_or_404`.
+
 ### Tone preview on the score (`voiceNote` / "Testar tom")
 
 The tab viewer's **"🎸 Testar tom" dropdown** lets the user audition a **created

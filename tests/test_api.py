@@ -95,6 +95,23 @@ def test_upload_rejects_malformed_tuning(client: TestClient) -> None:
         assert r.status_code == 422, bad
 
 
+def test_gear_image_serves_local_file_or_404(client: TestClient) -> None:
+    """The tone editor's gear image is served from work_dir/gear_images/<key>;
+    404 when absent, and the key is sanitised against path traversal."""
+    import rockforge.interfaces.api.app as app_module
+
+    # No image yet → 404.
+    assert client.get("/gear-image/some_amp").status_code == 404
+    # Drop a user image and it's served.
+    folder = app_module.settings.work_dir / "gear_images"
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "some_amp.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+    r = client.get("/gear-image/some_amp")
+    assert r.status_code == 200 and r.headers["content-type"] == "image/png"
+    # Path traversal is stripped to a bare slug → no escape, 404.
+    assert client.get("/gear-image/..%2f..%2fsecret").status_code in (404, 400)
+
+
 def test_upload_split_stores_per_role_sources(client: TestClient) -> None:
     """Separate Lead/Rhythm uploads are stored as params['lead_source'] /
     ['rhythm_source']; the bundle source is the mix when given."""
