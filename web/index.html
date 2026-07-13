@@ -215,15 +215,32 @@
   .gear-panel.gear-photo .gear-bg { position:relative; inset:auto; width:100%;
     height:auto; max-height:170px; object-fit:contain; opacity:1; background:#14151a; }
   .gear-panel.gear-photo .knob-face { background:transparent; }
-  /* Effect (pedal/rack) rows: only wrap in a framed panel once a real photo
-     loads; with no image, the plain gradient knob strip stays (the generic
-     pedal SVG has drawn knobs, so it must NOT back the strip). */
   .te-eff-panel { position:relative; margin-top:.3rem; }
-  .te-eff-panel.gear-photo { display:flex; flex-direction:column;
-    border:1px solid var(--line); border-radius:8px; overflow:hidden; }
-  .te-eff-panel.gear-photo .gear-bg { position:relative; inset:auto; width:100%;
-    height:auto; max-height:150px; object-fit:contain; opacity:1; background:#14151a; display:block; }
-  .te-eff-panel.gear-photo .te-eff-knobs.knob-face { background:transparent; border-top:none; }
+  /* Aligned overlay: a gear with a hand-made KNOB_LAYOUT shows its picture with
+     the functional knobs positioned exactly ON the drawn knobs (sized in % of
+     the image, so it scales), and the value inputs in a row BELOW the device.
+     Gear without a layout falls back to the plain generic knob strip. */
+  .te-eff-panel.gear-aligned { border:1px solid var(--line); border-radius:8px;
+    overflow:hidden; background:#14151a; }
+  .rack-overlay { position:relative; width:100%; user-select:none; line-height:0; }
+  .rack-overlay img { display:block; width:100%; }
+  .oknob { position:absolute; transform:translate(-50%,-50%); aspect-ratio:1;
+    border-radius:50%; cursor:ns-resize; touch-action:none; }
+  .oknob .hit { position:absolute; inset:0; border-radius:50%;
+    border:2px solid rgba(255,122,69,.5);
+    background:radial-gradient(circle at 50% 50%,rgba(255,122,69,.12),transparent 70%); }
+  .oknob:hover .hit { border-color:var(--accent);
+    background:radial-gradient(circle at 50% 50%,rgba(255,122,69,.22),transparent 72%); }
+  .oknob .ptr { position:absolute; left:50%; top:6%; width:3px; height:44%;
+    background:var(--accent); border-radius:2px; transform-origin:50% 100%;
+    box-shadow:0 0 4px var(--accent),0 0 2px #000; }
+  .rack-values { position:relative; display:block; height:2.6rem;
+    background:linear-gradient(180deg,#26282f,#191a20); border-top:1px solid #3a3d47; }
+  .rack-values .vcell { position:absolute; top:.25rem; transform:translateX(-50%);
+    display:flex; flex-direction:column; align-items:center; gap:.05rem; }
+  .rack-values .vcell .vname { font-size:.5rem; color:var(--muted); text-transform:uppercase; }
+  .rack-values .vcell input { width:2.9rem; font-size:.68rem; text-align:center; padding:.05rem;
+    background:#14151a; color:var(--text); border:1px solid var(--line); border-radius:4px; }
 
   .downloads { display:flex; gap:.6rem; flex-wrap:wrap; margin:.6rem 0; align-items:center; }
   .downloads a { background:var(--accent-soft); border:1px solid var(--accent); color:var(--accent); padding:.4rem .8rem; border-radius:8px; font-weight:600; font-size:.85rem; }
@@ -2924,6 +2941,86 @@ function gearListFor(category) {
   return category === 'rack' ? gearCatalogue.racks : gearCatalogue.pedals;
 }
 
+// Per-gear hand-made knob positions (fractions of the bundled image) so the
+// functional knobs sit exactly ON the drawn knobs. `name` matches the catalogue
+// knob's display name; coords are pixels in the WxH source image. Only gear
+// listed here uses the aligned overlay — everything else uses the generic strip.
+// TODO (see TODO.md): map the remaining racks/pedals/amps one by one.
+const KNOB_LAYOUTS = {
+  'Rack_StudioCompressor': { w: 588, h: 120, knobs: [
+    { name: 'Threshold', x: 103, y: 60, r: 13 },  // drawn as "Input"
+    { name: 'Attack',    x: 302, y: 35, r: 9 },
+    { name: 'Release',   x: 391, y: 60, r: 13 },
+    { name: 'Ratio',     x: 479, y: 60, r: 13 },
+  ] },
+};
+
+function wireAlignedKnob(oknob, input, g) {
+  const min = g.min, max = g.max, step = g.step || 1;
+  const decimals = (String(step).split('.')[1] || '').length;
+  const ptr = oknob.querySelector('.ptr');
+  const spin = () => { ptr.style.transform =
+    `translateX(-50%) rotate(${knobAngle(parseFloat(input.value) || min, min, max).toFixed(1)}deg)`; };
+  const apply = raw => {
+    let v = Math.max(min, Math.min(max, raw));
+    v = Math.round(v / step) * step;
+    v = Math.max(min, Math.min(max, parseFloat(v.toFixed(4))));
+    input.value = decimals ? v.toFixed(decimals) : String(v);
+    spin();
+  };
+  spin();
+  input.addEventListener('input', spin);
+  oknob.addEventListener('dblclick', () => apply(parseFloat(g.default)));
+  oknob.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    oknob.setPointerCapture(e.pointerId);
+    const startY = e.clientY, startV = parseFloat(input.value) || min;
+    const sens = (max - min) / 150;
+    const move = ev => apply(startV - (ev.clientY - startY) * sens);
+    const up = () => { oknob.removeEventListener('pointermove', move); oknob.removeEventListener('pointerup', up); };
+    oknob.addEventListener('pointermove', move);
+    oknob.addEventListener('pointerup', up);
+  });
+}
+
+// Render a gear that HAS a layout: picture with knobs overlaid at the drawn
+// positions, value inputs (with data-knob so readKnobs still works) below.
+function renderAlignedEffect(panel, gearItem, layout, values) {
+  panel.className = 'te-eff-panel gear-aligned';
+  const W = layout.w, H = layout.h;
+  const byName = {}; (gearItem.knobs || []).forEach(k => { byName[k.name] = k; });
+  const matched = layout.knobs.filter(kn => byName[kn.name]);
+  let ov = `<div class="rack-overlay"><img class="te-eff-img" src="/gear-image/${encodeURIComponent(gearItem.key)}" alt="">`;
+  let vr = '<div class="te-eff-knobs rack-values">';
+  matched.forEach((kn, i) => {
+    const g = byName[kn.name];
+    const v = (values && g.key in values) ? values[g.key] : g.default;
+    ov += `<div class="oknob" data-i="${i}" title="${esc(kn.name)} — arrasta ou escreve o valor"
+      style="left:${(kn.x / W * 100).toFixed(3)}%;top:${(kn.y / H * 100).toFixed(3)}%;width:${(2 * kn.r / W * 100).toFixed(3)}%">
+      <div class="hit"></div><div class="ptr"></div></div>`;
+    vr += `<div class="vcell" style="left:${(kn.x / W * 100).toFixed(3)}%">
+      <span class="vname">${esc(kn.name)}</span>
+      <input type="number" class="knob-val" data-knob="${esc(g.key)}" min="${g.min}" max="${g.max}" step="${g.step}" value="${v}"></div>`;
+  });
+  panel.innerHTML = ov + '</div>' + vr + '</div>';
+  const oknobs = panel.querySelectorAll('.oknob');
+  const inputs = panel.querySelectorAll('.rack-values input[data-knob]');
+  matched.forEach((kn, i) => wireAlignedKnob(oknobs[i], inputs[i], byName[kn.name]));
+}
+
+// Render a gear WITHOUT a layout: the plain generic knob strip (no image).
+function renderGenericEffect(panel, gearItem, values) {
+  panel.className = 'te-eff-panel';
+  panel.innerHTML = '<div class="te-eff-knobs tuninggrid knob-face" style="border-radius:6px"></div>';
+  renderKnobs(panel.querySelector('.te-eff-knobs'), gearItem, values);
+}
+
+function renderEffectGear(panel, gearItem, values) {
+  const layout = gearItem && KNOB_LAYOUTS[gearItem.key];
+  if (layout) renderAlignedEffect(panel, gearItem, layout, values);
+  else renderGenericEffect(panel, gearItem, values);
+}
+
 function addEffectRow(category, gearKey, values) {
   const wrap = document.getElementById('teEffects');
   const row = document.createElement('div');
@@ -2940,31 +3037,23 @@ function addEffectRow(category, gearKey, values) {
       <select class="te-eff-gear" style="min-width:11rem"></select>
       <button type="button" class="icon te-eff-rm">remover</button>
     </div>
-    <div class="te-eff-panel">
-      <img class="te-eff-img gear-bg" alt="" style="display:none">
-      <div class="te-eff-knobs tuninggrid knob-face" style="border-radius:6px"></div>
-    </div>`;
+    <div class="te-eff-panel"></div>`;
   wrap.appendChild(row);
   const catSel = row.querySelector('.te-eff-cat');
   const gearSel = row.querySelector('.te-eff-gear');
   const searchEl = row.querySelector('.te-eff-search');
-  const knobsEl = row.querySelector('.te-eff-knobs');
-  const imgEl = row.querySelector('.te-eff-img');
+  const panelEl = row.querySelector('.te-eff-panel');
   catSel.value = category || 'pre';
-  const imgType = () => catSel.value === 'rack' ? 'rack' : 'pedal';
   const fillGear = (selKey, vals) => {
     populateGearSelect(gearSel, gearListFor(catSel.value), selKey, null, searchEl.value);
-    renderKnobs(knobsEl, gearByKey(gearListFor(catSel.value), gearSel.value), vals);
-    applyGearImageEl(imgEl, gearSel.value, imgType(), true);
+    renderEffectGear(panelEl, gearByKey(gearListFor(catSel.value), gearSel.value), vals);
   };
   fillGear(gearKey, values);
   catSel.addEventListener('change', () => { searchEl.value = ''; fillGear(null, null); });
   searchEl.addEventListener('input', () =>
     populateGearSelect(gearSel, gearListFor(catSel.value), gearSel.value, null, searchEl.value));
-  gearSel.addEventListener('change', () => {
-    renderKnobs(knobsEl, gearByKey(gearListFor(catSel.value), gearSel.value), null);
-    applyGearImageEl(imgEl, gearSel.value, imgType(), true);
-  });
+  gearSel.addEventListener('change', () =>
+    renderEffectGear(panelEl, gearByKey(gearListFor(catSel.value), gearSel.value), null));
   row.querySelector('.te-eff-rm').addEventListener('click', () => row.remove());
 }
 
