@@ -415,11 +415,18 @@ let playBuffer = null;       // decoded recording (null => use <audio> fallback)
 let audioSourceName = '';    // '' => full mix; else a Demucs stem name (guitar/…)
 let playGain = null;         // GainNode for music volume control
 let playSource = null;       // active AudioBufferSourceNode while playing
+let playFade = null;         // per-source GainNode for the anti-click seek/pause fade
 let playStartCtx = 0;        // audioCtx.currentTime when the current source started
 let playStartOffset = 0;     // buffer offset (s) the current source started at
 let playing = false;         // buffer-backend transport state
 let pausedAt = 0;            // buffer-backend position (s) while paused/stopped
 let playbackRate = 1.0;      // playback speed (<1 slows down; lowers pitch on the buffer source)
+// A buffer source stopped/started mid-waveform (every seek/pause) is a hard
+// amplitude discontinuity — an audible click. Scrubbing back and forth stacks
+// those clicks into "noise". A ~6 ms gain ramp at start (fade in) and before
+// stop (fade out) removes it; on a seek the outgoing fade-out and the incoming
+// fade-in briefly overlap into a click-free crossfade.
+const AUDIO_FADE_S = 0.006;
 let seekDragging = false, seekWasPlaying = false;
 const WAVE_HZ = 100;
 let syncMode = 'drag'; // 'drag' | 'tap' | 'excerpt'
@@ -3499,9 +3506,34 @@ function onSourceEnded() {
   // for pause/seek. Park the transport at the end.
   playing = false;
   playSource = null;
+  playFade = null;
   pausedAt = audioDuration();
   updatePlayBtn();
   updateTransportUI();
+}
+
+// Stop the current music source WITHOUT a click: fade its gain to 0 over
+// AUDIO_FADE_S, then stop it just after the ramp (a hard stop() mid-waveform
+// pops). onended is cleared first so this manual stop never triggers the
+// natural-end handler. Detaches playSource/playFade immediately so callers can
+// start a fresh source right away (the tails overlap into a clean crossfade).
+function stopMusicSource() {
+  if (!playSource) return;
+  const src = playSource, fade = playFade;
+  src.onended = null;
+  const now = audioCtx ? audioCtx.currentTime : 0;
+  if (fade && audioCtx) {
+    try {
+      fade.gain.cancelScheduledValues(now);
+      fade.gain.setValueAtTime(fade.gain.value, now);
+      fade.gain.linearRampToValueAtTime(0, now + AUDIO_FADE_S);
+    } catch {}
+    try { src.stop(now + AUDIO_FADE_S + 0.01); } catch {}
+  } else {
+    try { src.stop(); } catch {}
+  }
+  playSource = null;
+  playFade = null;
 }
 
 function audioPlay() {
@@ -3518,9 +3550,16 @@ function audioPlay() {
     playSource = audioCtx.createBufferSource();
     playSource.buffer = playBuffer;
     playSource.playbackRate.value = playbackRate;
-    playSource.connect(playGain);
+    // Route through a per-source fade gain and ramp it up, so the attack at the
+    // seek offset doesn't click (see AUDIO_FADE_S).
+    playFade = audioCtx.createGain();
+    const t0 = audioCtx.currentTime;
+    playFade.gain.setValueAtTime(0, t0);
+    playFade.gain.linearRampToValueAtTime(1, t0 + AUDIO_FADE_S);
+    playSource.connect(playFade);
+    playFade.connect(playGain);
     playStartOffset = Math.min(Math.max(0, pausedAt), playBuffer.duration);
-    playStartCtx = audioCtx.currentTime;
+    playStartCtx = t0;
     playSource.onended = onSourceEnded;
     playSource.start(0, playStartOffset);
     playing = true;
@@ -3535,9 +3574,8 @@ function audioPlay() {
 function audioPause() {
   if (playBuffer) {
     if (!playing) return;
-    pausedAt = audioTime();
-    if (playSource) { playSource.onended = null; try { playSource.stop(); } catch {} }
-    playSource = null;
+    pausedAt = audioTime();   // capture position before fading/stopping the source
+    stopMusicSource();
     playing = false;
   } else {
     const au = document.getElementById('syncAudio');
@@ -3583,7 +3621,7 @@ document.addEventListener('keydown', e => {
 
 // Hard stop used on job switch / detail close — no UI resume implied.
 function stopPlayback() {
-  if (playSource) { playSource.onended = null; try { playSource.stop(); } catch {} playSource = null; }
+  stopMusicSource();
   playing = false;
   const au = document.getElementById('syncAudio');
   if (au) { try { au.pause(); } catch {} }
@@ -3594,10 +3632,10 @@ function audioSeek(t) {
   t = Math.max(0, Math.min(t, audioDuration() || t));
   if (playBuffer) {
     const was = playing;
-    if (playing && playSource) { playSource.onended = null; try { playSource.stop(); } catch {} }
-    playSource = null; playing = false;
+    if (playing) stopMusicSource();  // fade the outgoing source out (no seek click)
+    playing = false;
     pausedAt = t;
-    if (was) audioPlay();
+    if (was) audioPlay();            // new source fades in → clean crossfade
   } else {
     const au = document.getElementById('syncAudio');
     if (au) au.currentTime = t;
