@@ -1,31 +1,26 @@
 # RockForge
 
-Pipeline áudio → arranjos Rocksmith 2014 (CDLC), construído sobre investigação verificada e
+Pipeline Guitar Pro → arranjos Rocksmith 2014 (CDLC), construído sobre investigação verificada e
 **honesto quanto aos limites** da tecnologia atual.
 
 ## O que faz (e o que não promete)
 
 | Etapa | Tecnologia | Confiança |
 |---|---|---|
-| Ingestão (Guitar Pro; ~~upload de áudio / YouTube~~ **deprecated**) | FastAPI | — |
-| Normalização | ffmpeg (loudnorm, 44.1 kHz) | determinística |
-| Stem de guitarra | Demucs `htdemucs_6s` (MIT) | "okay" segundo os próprios autores; sem SDR publicado |
-| Lead vs. Rhythm | heurística própria | **EXPERIMENTAL — não existe método publicado** |
-| Notas (pitch/onsets/bends) | Basic Pitch (Apache-2.0) | publicada; degrada com distorção |
-| BPM/beats | librosa (ISC) | publicada; inferior a trackers neuronais (escolha por licença) |
-| Compasso | assumido 4/4 | **não detetado** — elo mais fraco da literatura |
-| Afinação | librosa cents + heurística drop-D | requer confirmação humana |
-| Cordas/trastes | otimização de playability (DP própria) | determinística, testada |
-| Técnicas | bend (medido), hammer-on/pull-off (regras) | parcial — ver relatório |
+| Ingestão (Guitar Pro) | FastAPI | — |
+| Notas/trastes/técnicas/tempo/secções | parser Guitar Pro (GP3/4/5 via PyGuitarPro; GP7/8 nativo) | **exatos** do ficheiro |
+| Normalização (gravação) | ffmpeg (loudnorm, 44.1 kHz) | determinística |
+| Stem de guitarra (separação/deteção de tom) | Demucs `htdemucs_6s` (MIT) | "okay" segundo os próprios autores; sem SDR publicado |
+| BPM/onset e afinação (cents) da gravação — só sincronização automática GP | librosa (ISC) | publicada; requer confirmação humana |
 | Letra automática (opcional) | WhisperX sobre o stem vocal isolado (Demucs `htdemucs` 2-stem; `pip install -e ".[lyrics]"`) | **EXPERIMENTAL** — gates anti-alucinação (RMS + confiança/palavra); LRC continua a via preferida; CPU é lento, GPU NVIDIA ≈ ferramentas online; corre num **subprocesso** (evita o deadlock CUDA do faster-whisper no Celery) |
 | Deteção de tom (opcional) | Demucs `htdemucs_6s` (stem guitarra) + análise espetral (librosa) → presets Lead/Rhythm do catálogo Rocksmith | **EXPERIMENTAL** — classifica o *caráter* do som (clean/crunch/high-gain), não identifica o amp/pedal real; resultado é uma proposta que o utilizador revê e ajusta |
 | XML Song2014 | gerador próprio (formato doc. na comunidade) | testado estruturalmente; emite os 32 `arrangementProperties` e a estrutura COUNT/default/END que o DLC Builder e o jogo exigem |
 | Áudio `.wem` | Wwise local + projeto template do DLC Builder | Vorbis **com seek table** + correção de header (sem isto o jogo carrega mas fica mudo e sai) — Wwise 2019/2021/2022/2023 |
 | PSARC | bundle para DLC Builder; PSARC só com Wwise | **Wwise é obrigatório para .wem** |
 
-## Via Guitar Pro (alta fidelidade — recomendada)
+## Via Guitar Pro (alta fidelidade)
 
-Em alternativa à separação/transcrição por ML, carrega um **GP3/GP4/GP5 ou GP7/GP8 (`.gp`)** +
+Carrega um **GP3/GP4/GP5 ou GP7/GP8 (`.gp`)** +
 a gravação: notas, trastes, técnicas (bend/HO/PO/palm mute/harmónicos/vibrato/slide), tempo,
 compassos e secções vêm **exatos** do ficheiro. Inclui: seleção de pistas Lead/Rhythm, offset de
 sincronização com a gravação, letra (ficheiro **LRC** ou **UltraStar TXT** — timing por
@@ -88,7 +83,7 @@ arquitetura, riscos) e os relatórios de investigação com fontes em [`docs/res
 ## Arquitetura
 
 Clean Architecture: `domain/` (modelo musical puro) → `application/` (ports + use case do
-pipeline) → `infrastructure/` (adapters: Demucs, Basic Pitch, librosa, ffmpeg, XML, packaging,
+pipeline Guitar Pro) → `infrastructure/` (adapters: Demucs, librosa, ffmpeg, XML, packaging,
 DB) → `interfaces/` (API FastAPI, worker Celery). Cada estágio ML é um Protocol substituível.
 Para contribuir, ver [`CLAUDE.md`](CLAUDE.md) (camadas, comandos e restrições que já custaram caro).
 
@@ -101,10 +96,10 @@ Para contribuir, ver [`CLAUDE.md`](CLAUDE.md) (camadas, comandos e restrições 
 | Software | Como instalar | Para quê |
 |---|---|---|
 | Git | https://git-scm.com/download/win | clonar o repositório |
-| Python **3.11** (exatamente — 3.12+ não funciona: o TensorFlow exigido pelo Basic Pitch só tem wheels até 3.11) | https://www.python.org/downloads/ — ⚠️ marca **"Add Python to PATH"** | correr a app |
+| Python **3.11** (exatamente — 3.12+ não funciona: o stack ML/letra `torch<2.5`/demucs/whisperx só tem wheels até 3.11) | https://www.python.org/downloads/ — ⚠️ marca **"Add Python to PATH"** | correr a app |
 | ffmpeg | `winget install ffmpeg` | normalização de áudio |
 | Redis | [Memurai](https://www.memurai.com/) (Developer, grátis; corre como serviço) | fila de jobs |
-| GPU NVIDIA (opcional, muito recomendado) | driver NVIDIA atualizado + build CUDA do PyTorch (ver **2b**) | acelera ML (separação/transcrição/letra) ~10–20× |
+| GPU NVIDIA (opcional, muito recomendado) | driver NVIDIA atualizado + build CUDA do PyTorch (ver **2b**) | acelera ML (separação de stems/deteção de tom/letra) ~10–20× |
 | Wwise (opcional) | Audiokinetic Launcher | gerar `.wem` automaticamente |
 | DLC Builder (opcional) | [releases](https://github.com/iminashi/Rocksmith2014.NET/releases) | empacotar o PSARC final |
 
@@ -121,25 +116,14 @@ py -3.11 -m pip install -e ".[dev,ml,lyrics]"
 predefinida; o `start.bat` deteta o 3.11 automaticamente. (Se só tens o 3.11,
 `pip install -e ".[dev,ml,lyrics]"` também serve.)
 
-O install demora (PyTorch/Demucs/Basic Pitch/WhisperX, vários GB). O extra
+O install demora (PyTorch/Demucs/WhisperX, vários GB). O extra
 `lyrics` (WhisperX) é necessário para a **deteção automática de letra** —
 sem ele, "Detetar letra" reporta "indisponível". Se quiseres instalar sem
 essa funcionalidade, usa `pip install -e ".[dev,ml]"`.
 
-> **⚠️ Ingestão via YouTube — DEPRECATED.** Já **não** é oferecida na aplicação
-> (o ecrã inicial só tem a via **Guitar Pro**). O download de áudio do YouTube
-> viola o ToS e o yt-dlp quebra com frequência; a opção foi removida da interface.
-> Os endpoints antigos (`/jobs/youtube`) podem ainda existir no backend por
-> compatibilidade, mas não há forma de os usar pela UI e não são suportados.
-
-O texto abaixo fica só como referência histórica: a ingestão via YouTube usava o
-extra `youtube` (yt-dlp) — `py -3.11 -m pip install -e ".[dev,ml,lyrics,youtube]"`
-— e dependia do `ROCKFORGE_ENABLE_YOUTUBE`. Descarregar áudio do YouTube viola o
-ToS (ver Avisos legais).
-
 **2b. Aceleração por GPU (NVIDIA — opcional mas muito recomendada)**
 
-O ML (separação Demucs, transcrição Basic Pitch/WhisperX) corre por defeito em
+O ML (separação Demucs, letra WhisperX) corre por defeito em
 **CPU**, onde uma música de 4 min demora vários minutos por etapa. Com uma GPU
 NVIDIA o tempo cai drasticamente (a deteção de letra aproxima-se dos ~3 min das
 ferramentas online).
@@ -205,7 +189,6 @@ As principais:
 | `ROCKFORGE_DEMUCS_DEVICE` | `auto` | `auto` (GPU NVIDIA se disponível, senão CPU), `cuda` ou `cpu` — device para todo o ML |
 | `ROCKFORGE_WHISPERX_DEVICE` | (segue `demucs_device`) | sobrepõe o device só da deteção de letra |
 | `ROCKFORGE_WHISPER_MODEL` | `small` | modelo WhisperX da letra: `tiny`/`base`/`small`/`medium`/`large-v3` (maior = mais preciso e mais lento; em CPU baixa para `base`/`tiny`) |
-| `ROCKFORGE_ENABLE_YOUTUBE` | `true` | **deprecated** — a ingestão via YouTube foi removida da UI; esta flag já não tem efeito prático |
 | `ROCKFORGE_WORK_DIR` | `~/Downloads/RockForge` | onde os bundles gerados são escritos |
 | `WWISEROOT` | (do Audiokinetic Launcher) | localização do Wwise para gerar o `.wem` |
 
@@ -217,10 +200,10 @@ que arranca tudo num processo só — API + worker em memória (sem Redis), com
 ffmpeg incluído. Duplo-clique → abre o browser em `http://localhost:8000`.
 
 **O que funciona no `.exe`:** tudo o que é Guitar Pro → CDLC, PSARC nativo,
-sincronização, tones, edição de letra manual, upload de áudio — o pipeline core
+sincronização, tones, edição de letra manual — o pipeline core
 completo. Se o utilizador tiver o stack ML instalado num Python 3.11 no PATH
-(`pip install rockforge[ml,lyrics]`), a transcrição automática (Demucs/Basic
-Pitch/WhisperX) também funciona. Se não, a app degrada com a mesma mensagem de
+(`pip install rockforge[ml,lyrics]`), a deteção de stems/tom/letra
+(Demucs/WhisperX) também funciona. Se não, a app degrada com a mesma mensagem de
 sempre — nenhum crash.
 
 #### Compilar o executável
@@ -281,9 +264,9 @@ Gera `dist\RockForge_portable.zip` — extrair e correr `rockforge.exe`.
 
 #### Notas sobre o executável
 
-- **Não inclui ML** (torch/demucs/basic-pitch/whisperx) — são vários GB e
+- **Não inclui ML** (torch/demucs/whisperx) — são vários GB e
   frágeis para empacotar. O `.exe` serve o fluxo GP e o pipeline core; a
-  transcrição automática precisa do Python com as dependências ML instaladas.
+  deteção de stems/tom/letra precisa do Python com as dependências ML instaladas.
 - **Não inclui Wwise nem DLC Builder** (restrições de licença) — o `.exe`
   invoca-os se instalados, como sempre.
 - **Tens de recompilar** (`py -3.11 build_exe.py`) sempre que alterares o código.
@@ -307,26 +290,25 @@ Desenvolvimento:
 
 ```bash
 pip install -e ".[dev]"            # núcleo + testes (sem ML)
-pip install -e ".[dev,ml]"         # com Demucs/Basic Pitch/librosa
+pip install -e ".[dev,ml]"         # com Demucs/librosa
 pip install -e ".[dev,ml,lyrics]"  # + deteção automática de letra (WhisperX)
 pytest && ruff check src tests && mypy
 ```
 
 ## Como testar a app (fim-a-fim)
 
-1. **Testes automáticos** (sem ML, rápidos): `pip install -e ".[dev]" && pytest` — 233 testes
-   cobrem domínio, mapeamento corda/traste, XML/acordes, pipeline, API (incl. remoção de jobs),
+1. **Testes automáticos** (sem ML, rápidos): `pip install -e ".[dev]" && pytest` — a suíte
+   cobre domínio, XML/acordes, use case GP, API (incl. remoção de jobs),
    import GP, letra, tom, deteção de device CPU/GPU, separação Demucs (comandos), PSARC nativo
    (contentor/manifestos/SNG/cifra), `.rs2dlc`, tags e Wwise (consola simulada). Guia completo
    em **[`TESTING.md`](TESTING.md)** (mapa de cobertura, como adicionar testes, e a checklist
    manual fim-a-fim que o CI não consegue cobrir).
 2. **Arrancar a stack**: `docker compose up --build`. Abre `http://localhost:8000`.
-   O primeiro job descarrega os modelos (Demucs ~2 GB); em CPU, uma música de 4 min
-   demora vários minutos na etapa `separate`.
-3. **Smoke test honesto**: começa com uma gravação **tua, simples e limpa** (guitarra única,
-   pouca distorção) em FLAC/WAV — é o cenário onde a transcrição tem evidência de funcionar.
-   Acompanha a barra de etapas; no fim, revê a tablatura no visualizador, corrige a afinação
-   se necessário e usa "Reconstruir".
+   A deteção opcional de stems/tom/letra descarrega os modelos (Demucs ~2 GB) na primeira
+   utilização; em CPU, uma música de 4 min demora vários minutos na etapa `separate`.
+3. **Smoke test honesto**: usa "Inspecionar pistas" num **GP3/GP4/GP5 ou GP7/GP8** + a
+   gravação, escolhe as pistas Lead/Rhythm e cria o CDLC. Abre o job, afina a sincronização
+   no visualizador (início da música, BPM, arrastar notas) e usa "Aplicar e reconstruir".
 4. **Validar o XML**: descarrega o bundle e abre os `arrangement_*.xml` no EOF ou importa no
    DLC Builder. Esta é a validação que conta — o formato é de facto, sem schema oficial.
 5. **Com Wwise (Windows, nativo)**: corre Redis + API + worker fora do Docker
@@ -347,9 +329,6 @@ pytest && ruff check src tests && mypy
 - Não existe declaração oficial da Ubisoft sobre CDLC; gerar CDLC a partir de gravações
   protegidas e distribuí-las é distribuição não autorizada. Use apenas com material próprio
   ou autorizado.
-- A ingestão via YouTube está **deprecated** e foi **removida da interface** (descarregar
-  áudio viola o ToS do YouTube e o yt-dlp quebra com frequência). A app só ingere
-  ficheiros **Guitar Pro**.
 - O empacotamento final exige o Wwise (EULA Audiokinetic, não redistribuível): o RockForge
   entrega um bundle pronto a importar no [DLC Builder](https://github.com/iminashi/Rocksmith2014.NET).
 
@@ -365,7 +344,7 @@ Se perderes o contexto e precisares de reconstruir tudo, lê por esta ordem:
 |---|---|
 | **[`README.md`](README.md)** (este) | instalar, correr, usar, distribuir — começa aqui para preparar uma máquina |
 | **[`CLAUDE.md`](CLAUDE.md)** | arquitetura (Clean Architecture), o desenho de cada funcionalidade, e as **restrições rígidas** que já custaram caro — a fonte de verdade sobre *porquê* o código está como está |
-| **[`TESTING.md`](TESTING.md)** | correr/estender os 233 testes, mapa de cobertura, e a checklist manual fim-a-fim (ML, Wwise, DLC Builder, in-game) que o CI não cobre |
+| **[`TESTING.md`](TESTING.md)** | correr/estender a suíte de testes, mapa de cobertura, e a checklist manual fim-a-fim (ML, Wwise, DLC Builder, in-game) que o CI não cobre |
 | **[`TODO.md`](TODO.md)** | o que está feito `[x]`, o que falta `[ ]`, e as limitações conhecidas atuais |
 | **[`TONE.md`](TONE.md)** | o modelo de tom (gear) e a serialização dos `Tones` no `.rs2dlc` |
 | **`docs/RELATORIO-TECNICO.md`** + **`docs/research/`** | a fundamentação com fontes por trás de cada decisão técnica |

@@ -15,7 +15,7 @@ CI cannot. Read this before adding or changing a test.
 
 ```bash
 pip install -e ".[dev]"     # core + test tooling, NO ML stack — this is all CI needs
-pytest                       # 279 tests, ~10s, all ML/Wwise/external tools faked
+pytest                       # the suite, ~10s, all ML/Wwise/external tools faked
 ruff check src tests         # lint
 mypy                         # type check
 ```
@@ -26,8 +26,8 @@ runs exactly these. There is no separate "ML test" job — the ML stages are
 no GPU, no ffmpeg, no Wwise.
 
 - **Python 3.11 only** (`requires-python = ">=3.11,<3.12"`). On Windows:
-  `py -3.11 -m pytest`. Do not test on 3.12+ — `basic-pitch`/`tensorflow` have
-  no wheels there and the install itself fails.
+  `py -3.11 -m pytest`. Do not test on 3.12+ — the ml/lyrics stack
+  (`torch<2.5`/demucs/whisperx) targets 3.11 wheels and the install itself fails.
 - **mypy is pinned** (`mypy~=1.19.0`). Do not bump it casually — CI must match
   local exactly, and minor mypy versions flag different issues.
 
@@ -40,8 +40,8 @@ in `application/ports.py`. Tests exploit this: instead of mocking deep library
 internals, they **substitute a fake adapter** at the same boundary the real one
 plugs into.
 
-- **ML stages** (Demucs, Basic Pitch, librosa, WhisperX) → passthrough/stub
-  adapters that return canned data (`test_pipeline.py`).
+- **ML stages** (Demucs, librosa, WhisperX) → passthrough/stub adapters that
+  return canned data (`test_lyrics_transcribe.py`, `test_tone_detection.py`).
 - **WwiseConsole** → a Python-based fake console that mimics the CLI
   (`test_wwise.py`).
 - **Celery enqueue** → monkeypatched so `POST /jobs/...` returns without a
@@ -68,7 +68,7 @@ serializers) need no fakes — they are deterministic and tested directly.
 |---|---|---|
 | **Lint** | `ruff check src tests` | style, unused imports/vars, import order, obvious bugs |
 | **Types** | `mypy` | strict on `domain/`/`application/`/`infrastructure/`; relaxed at framework boundaries (FastAPI/SQLAlchemy/Pydantic) via per-module overrides in `pyproject.toml` |
-| **Tests** | `pytest` | 279 functional tests (see §4) |
+| **Tests** | `pytest` | the functional suite (see §4) |
 
 mypy strictness is deliberate: the `domain` and `application` layers carry the
 music model and orchestration logic and must be fully typed. The
@@ -78,14 +78,11 @@ explicit `cast(...)`.
 
 ---
 
-## 4. Coverage map (279 tests across 27 files)
+## 4. Coverage map (by file)
 
 | File | Tests | Guards |
 |---|---:|---|
 | `test_domain.py` | 7 | pure music model: `Tuning`, `TabNote`, `TempoMap`, `Arrangement` invariants |
-| `test_fret_mapper.py` | 10 | string/fret playability optimization (DP), tuning-aware |
-| `test_rolesplit.py` | 3 | EXPERIMENTAL Lead/Rhythm heuristic split |
-| `test_pipeline.py` | 10 | audio→ML use case end-to-end with **faked** stages; supplied `lyrics_events` precedence |
 | `test_gp_import.py` | 9 | PyGuitarPro (GP3/4/5) parsing: notes/frets/techniques/sections/tempo |
 | `test_gpif_import.py` | 6 | native GP7/GP8 (`.gp`) GPIF/XML parser: tuning, timing, Hopo/slide/palm-mute, lyric sourcing, bass rejection |
 | `test_gp_pipeline.py` | 16 | GP use case: `tempo_scale`, `sync_anchor_stages`, `arrangement_sync`, lyrics precedence, `pad_start_s` shift |
@@ -123,8 +120,8 @@ incident report.
   them ffmpeg goes interactive and hangs the `normalize` stage forever.
 - `test_write_rs2dlc_creates_phrase_levels` — DLC Builder needs a
   `.phrase-levels` companion file or the build throws `FileNotFoundException`.
-- `test_supplied_lyrics_events_emits_vocals_xml` / `test_gp_lyrics_events_precedence`
-  — edited lyrics must win over LRC/GP-embedded/auto-WhisperX.
+- `test_gp_lyrics_events_precedence` — edited lyrics must win over
+  LRC/GP-embedded/auto-WhisperX.
 
 ---
 
@@ -162,8 +159,6 @@ def test_new_separator_builds_correct_command(monkeypatch):
 ## 6. API endpoints (all exercised by `test_api.py`)
 
 ```
-POST   /jobs/upload                  create job from uploaded audio
-POST   /jobs/youtube                 create job from YouTube URL (gated)
 POST   /gp/inspect                   list tracks in a GP file (pre-job)
 POST   /jobs/gp                      create job from GP file + recording
 GET    /jobs                         list all jobs
@@ -337,15 +332,6 @@ Mostly `web/index.html`; the two completeness signals (`has_tones`,
    row reads `has_lyrics` (edited/GP/LRC lyrics OR completed detection), so a
    song that already has lyrics from ANY source shows "✅ Letra incluída" — NOT
    "sem letra" (which used to happen when only `lyrics_status` was checked).
-
-### 7b. Audio → ML (needs `[ml]`, ideally a GPU)
-
-1. Start with a **simple, clean** recording (single guitar, low distortion) in
-   FLAC/WAV — the scenario where transcription has evidence of working.
-2. Watch the stage bar through `separate`/`transcribe`. On CPU a 4-min song
-   takes several minutes per stage; the first run also downloads ~2 GB of
-   models.
-3. Review the tab, fix tuning, rebuild.
 
 ### 7c. Automatic lyric detection (needs `[ml,lyrics]`)
 
