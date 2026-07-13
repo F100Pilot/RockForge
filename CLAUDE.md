@@ -964,6 +964,23 @@ ArrangementLevels (anchors, **anchor extensions**, notes with NextIter/PrevIter
 linkage), Metadata. `NoteMask` values are the real Rocksmith constants (ported
 from Constants.cs).
 
+**`from_arrangement` is an orchestrator over named stage helpers, not one
+452-line function.** Each `# --- Section ---` block from the original single
+function is its own module-level `_build_*` helper — `_build_beats`/
+`_assign_beat_phrase_iterations`, `_prepare_sections`, `_link_phrases`,
+`_build_chord_data`, `_build_sng_notes`, `_build_sng_sections`,
+`_build_difficulty_levels`, `_build_sng_metadata` — called in sequence,
+threading the same intermediate values (beats, phrase_iterations, sng_notes,
+…) that the inline code used to share as locals. Pure extract-function: no
+logic changed, verified by the full existing `test_psarc_sng.py` suite passing
+unchanged plus two new tests exercising `_build_chord_data`/`_build_sng_notes`
+directly (`test_build_chord_data_is_independently_callable`,
+`test_build_sng_notes_is_independently_callable`) — each confirmed to fail
+with the reverted logic before restoring it. Keep new stages as separate
+`_build_*` helpers rather than growing `from_arrangement` itself; the binary
+layout is delicate enough (see the crash-history notes throughout this
+section) that a stage should stay independently readable and testable.
+
 **A chord template's unused strings carry MIDI note -1, NOT 0.** The per-string
 `Notes` of a template are dereferenced by the game's note-detection/scoring
 path, so writing 0 (a real, absurdly low pitch on a string that shouldn't

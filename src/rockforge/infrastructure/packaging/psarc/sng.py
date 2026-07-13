@@ -735,24 +735,15 @@ def _build_level(
     )
 
 
-def from_arrangement(
-    arrangement: Arrangement,
-    vocals: list[VocalEvent] | None = None,
-    *,
-    dynamic_difficulty: bool = True,
-) -> SngModel:
-    """Build the SNG model from a RockForge ``Arrangement``.
+def _build_beats(arrangement: Arrangement) -> list[SngBeat]:
+    """Beats with measure/beat-in-measure/mask filled. ``phrase_iteration``
+    is stamped later by :func:`_assign_beat_phrase_iterations`, once the
+    phrase timeline exists.
 
-    With ``dynamic_difficulty=False`` a single level holding the full chart is
-    emitted (max_difficulty 0, no ramp) — a safety valve for songs where the
-    simplified DD misbehaves; the chart always plays at full density.
+    The SNG stores the real measure number on EVERY beat (not -1 for off-beats
+    as the domain does), the beat-within-measure, and a mask (bit0 = downbeat,
+    bit1 = even measure). Track the running measure to fill both.
     """
-    song_length = arrangement.metadata.song_length
-
-    # --- Beats ---
-    # The SNG stores the real measure number on EVERY beat (not -1 for off-beats
-    # as the domain does), the beat-within-measure, and a mask (bit0 = downbeat,
-    # bit1 = even measure). Track the running measure to fill both.
     beat_in_measure = 0
     current_measure = 1
     beats: list[SngBeat] = []
@@ -770,19 +761,41 @@ def from_arrangement(
             time=b.time, measure=current_measure, beat=beat_in_measure, mask=mask
         ))
         beat_in_measure += 1
+    return beats
 
-    # --- Phrases & PhraseIterations ---
-    # A song with no section markers still needs a valid phrase timeline, or the
-    # game crashes on the note highway (see _default_sections).
+
+def _assign_beat_phrase_iterations(
+    beats: list[SngBeat], phrase_iterations: list[SngPhraseIteration]
+) -> list[SngBeat]:
+    return [
+        SngBeat(
+            time=b.time,
+            measure=b.measure,
+            beat=b.beat,
+            phrase_iteration=_find_phrase_iteration(phrase_iterations, b.time),
+            mask=b.mask,
+        )
+        for b in beats
+    ]
+
+
+def _prepare_sections(arrangement: Arrangement, song_length: float) -> list[Section]:
+    """The phrase timeline's source sections: COUNT/END-bracketed and
+    subdivided into ~_PHRASE_TARGET_S chunks so DD ramps in finer steps.
+
+    A song with no section markers still needs a valid phrase timeline, or the
+    game crashes on the note highway (see _default_sections).
+
+    Retail structure brackets the body with a COUNT phrase (the count-in, max
+    difficulty 0) and an END phrase after the last note. Without COUNT, a GP
+    whose first section starts at 0 puts the silent intro inside a high-
+    difficulty phrase (an all-black bar in the Riff Repeater); without END the
+    song has no closing empty phrase. _default_sections already emits both;
+    bracket real GP sections the same way.
+    """
     sections_src = list(
         arrangement.sections or _default_sections(arrangement, song_length)
     )
-    # Retail structure brackets the body with a COUNT phrase (the count-in, max
-    # difficulty 0) and an END phrase after the last note. Without COUNT, a GP
-    # whose first section starts at 0 puts the silent intro inside a high-
-    # difficulty phrase (an all-black bar in the Riff Repeater); without END the
-    # song has no closing empty phrase. _default_sections already emits both;
-    # bracket real GP sections the same way.
     if arrangement.sections:
         first_note = min((n.time for n in arrangement.notes), default=0.0)
         last_note_end = max(
@@ -816,17 +829,21 @@ def from_arrangement(
                 break
             refined.append(Section(name=sec.name, number=len(refined), start_time=t))
             last = t
-    sections_src = refined
+    return refined
 
-    ends = _section_end_times(sections_src, song_length)
-    # Collapse musically-identical iterations onto ONE shared phrase: a real DDC
-    # recognises a repeated riff as a single phrase with many iterations, so it's
-    # learned once and every repeat plays at the mastered difficulty instead of
-    # re-ramping from scratch (and the difficulty graph / Riff Repeater show the
-    # song's true handful of unique phrases, not one bar per section). Note-less
-    # spans (COUNT/END/gaps) keep a distinct phrase each. This is phrase-level
-    # linking via shared phrase_id — NOT the finer NLinkedDifficulty section,
-    # which stays empty.
+
+def _link_phrases(
+    arrangement: Arrangement, sections_src: list[Section], ends: list[float]
+) -> tuple[list[SngPhrase], list[SngPhraseIteration]]:
+    """Collapse musically-identical iterations onto ONE shared phrase: a real DDC
+    recognises a repeated riff as a single phrase with many iterations, so it's
+    learned once and every repeat plays at the mastered difficulty instead of
+    re-ramping from scratch (and the difficulty graph / Riff Repeater show the
+    song's true handful of unique phrases, not one bar per section). Note-less
+    spans (COUNT/END/gaps) keep a distinct phrase each. This is phrase-level
+    linking via shared phrase_id — NOT the finer NLinkedDifficulty section,
+    which stays empty.
+    """
     _sig_to_id: dict[tuple[tuple[int, int, int], ...], int] = {}
     _phrase_names: list[str] = []
     _iter_phrase_id: list[int] = []
@@ -854,25 +871,22 @@ def from_arrangement(
     phrases = [
         replace(p, phrase_iteration_links=_links[i]) for i, p in enumerate(phrases)
     ]
+    return phrases, phrase_iterations
 
-    # Assign phrase_iteration to beats (preserving measure/beat/mask)
-    beats = [
-        SngBeat(
-            time=b.time,
-            measure=b.measure,
-            beat=b.beat,
-            phrase_iteration=_find_phrase_iteration(phrase_iterations, b.time),
-            mask=b.mask,
-        )
-        for b in beats
-    ]
 
-    # --- Chord grouping ---
-    groups = _group_chords(arrangement.notes)
-    single_groups = [g for g in groups if len(g) == 1]
-    chord_groups = [g for g in groups if len(g) > 1]
-
-    # --- Chord templates ---
+def _build_chord_data(
+    arrangement: Arrangement, chord_groups: list[list[TabNote]]
+) -> tuple[
+    dict[tuple[int, ...], int],
+    list[SngChordTemplate],
+    list[SngChordNotes],
+    dict[int, int],
+]:
+    """Chord templates (per-string MIDI/frets) and ChordNotes (per-string
+    technique/sustain state) for every chord group. Returns
+    ``(template_ids, chord_templates, chord_notes_list, chord_notes_map)``,
+    where ``chord_notes_map`` keys the chord GROUP index (not the template).
+    """
     template_ids: dict[tuple[int, ...], int] = {}
     open_midi = arrangement.tuning.midi  # MIDI pitch of each open string
     chord_templates: list[SngChordTemplate] = []
@@ -900,11 +914,10 @@ def from_arrangement(
                 name="",
             ))
 
-    # --- ChordNotes (for chords with per-string techniques) ---
-    chord_notes_list: list[SngChordNotes] = []
-    chord_notes_map: dict[int, int] = {}  # group_index -> chord_notes_id
     # Identical entries are deduplicated by content, as retail does (a decoded
     # CDLC carries 11 entries for ~2200 chords).
+    chord_notes_list: list[SngChordNotes] = []
+    chord_notes_map: dict[int, int] = {}  # group_index -> chord_notes_id
     cn_ids: dict[tuple[object, ...], int] = {}
 
     def _cn_key(cn: SngChordNotes) -> tuple[object, ...]:
@@ -964,24 +977,29 @@ def from_arrangement(
             chord_notes_list.append(cn)
         chord_notes_map[gi] = cn_ids[cn_key]
 
-    # --- Build anchors ---
-    # Full-chart anchors, only to stamp each NOTE's anchor_fret/anchor_width hint
-    # (via _find_anchor). The per-LEVEL anchor arrays the game actually uses are
-    # rebuilt from each level's own notes inside _build_level — see _build_anchors.
-    anchors = _build_anchors(
-        [(g[0].time, g[-1].time, [n.fret for n in g if n.fret > 0]) for g in groups],
-        phrase_iterations,
-        song_length,
-    )
+    return template_ids, chord_templates, chord_notes_list, chord_notes_map
 
-    # (Anchor extensions — the slide re-anchors — are built per difficulty level
-    # inside _build_level, from each level's own notes.)
 
-    # (Fingerprints / handshapes are deliberately NOT emitted — see _build_level's
-    # docstring: both working references ship zero, and our per-chord handshapes
-    # crashed the game at a dense octave riff.)
+def _build_sng_notes(
+    single_groups: list[list[TabNote]],
+    chord_groups: list[list[TabNote]],
+    anchors: list[SngAnchor],
+    phrase_iterations: list[SngPhraseIteration],
+    template_ids: dict[tuple[int, ...], int],
+    chord_notes_map: dict[int, int],
+) -> list[SngNote]:
+    """Single-note and chord SngNotes, time-sorted.
 
-    # --- Build SNG notes ---
+    ``anchor_fret``/``anchor_width`` on each note are only a display hint from
+    the full-chart ``anchors``; the per-LEVEL anchor arrays the game actually
+    uses are rebuilt from each level's own notes inside ``_build_level``.
+
+    (Anchor extensions — the slide re-anchors — are built per difficulty level
+    inside ``_build_level``, from each level's own notes. Fingerprints/hand
+    shapes are deliberately NOT emitted — see ``_build_level``'s docstring:
+    both working references ship zero, and our per-chord handshapes crashed
+    the game at a dense octave riff.)
+    """
     sng_notes: list[SngNote] = []
 
     def _find_anchor(time: float) -> tuple[int, int]:
@@ -1060,8 +1078,12 @@ def from_arrangement(
         ))
 
     sng_notes.sort(key=lambda n: n.time)
+    return sng_notes
 
-    # --- Sections ---
+
+def _build_sng_sections(
+    sections_src: list[Section], ends: list[float], phrase_iterations: list[SngPhraseIteration]
+) -> list[SngSection]:
     sections: list[SngSection] = []
     for sec, end in zip(sections_src, ends, strict=True):
         start_pi = _find_phrase_iteration(phrase_iterations, sec.start_time)
@@ -1074,13 +1096,30 @@ def from_arrangement(
             start_phrase_iteration_id=start_pi,
             end_phrase_iteration_id=end_pi,
         ))
+    return sections
 
-    # --- Dynamic Difficulty (DDC-style graduated levels) ---
-    # A real Rocksmith DD ramps each note in over many levels, per phrase, so the
-    # in-game difficulty slider spans 0..songMax (verified against a DLC Builder /
-    # DDC reference SNG: 23 levels, per-phrase ceilings graduated by density, and
-    # per-iteration hero triples of (~¼, ~½, 1)·max). We reproduce that shape.
-    note_count = len(sng_notes)
+
+def _build_difficulty_levels(
+    sng_notes: list[SngNote],
+    beats: list[SngBeat],
+    phrases: list[SngPhrase],
+    phrase_iterations: list[SngPhraseIteration],
+    chord_templates: list[SngChordTemplate],
+    chord_notes_list: list[SngChordNotes],
+    song_length: float,
+    dynamic_difficulty: bool,
+) -> tuple[list[SngPhrase], list[SngPhraseIteration], list[SngArrangementLevel], int]:
+    """DDC-style graduated levels: notes ramp in per phrase over several
+    difficulty levels. A real Rocksmith DD ramps each note in over many
+    levels, per phrase, so the in-game difficulty slider spans 0..songMax
+    (verified against a DLC Builder / DDC reference SNG: 23 levels, per-phrase
+    ceilings graduated by density, and per-iteration hero triples of
+    (~¼, ~½, 1)·max). We reproduce that shape.
+
+    Returns the updated ``phrases``/``phrase_iterations`` (stamped with
+    ``max_difficulty``/``difficulty``), one ``SngArrangementLevel`` per level,
+    and the song's ``max_difficulty``.
+    """
     note_tiers = [_note_tier(sngn.time, beats) for sngn in sng_notes]
 
     # Notes of each phrase iteration, ranked by importance so the earliest DD
@@ -1141,27 +1180,25 @@ def from_arrangement(
         for pi in phrase_iterations
     ]
 
-    arrangements = [
+    levels = [
         _build_level(
             d, _level_notes(d), phrase_iterations, len(phrases),
             chord_templates, song_length, chord_notes_list,
         )
         for d in range(song_max + 1)
     ]
+    return phrases, phrase_iterations, levels, song_max
 
-    # --- Vocals ---
-    sng_vocals = [
-        SngVocal(time=v.time, note=VOCAL_NOTE, length=v.length, lyric=v.lyric)
-        for v in (vocals or [])
-    ]
 
-    # --- Metadata ---
+def _build_sng_metadata(
+    arrangement: Arrangement, note_count: int, song_length: float, song_max: int
+) -> SngMetadata:
     first_note = min((n.time for n in arrangement.notes), default=0.0)
     first_beat_len = 0.5
     if len(arrangement.tempo_map.beats) >= 2:
         first_beat_len = arrangement.tempo_map.beats[1].time - arrangement.tempo_map.beats[0].time
     points = 100_000.0 / max(1, note_count) if note_count else 0.0
-    metadata = SngMetadata(
+    return SngMetadata(
         max_score=100_000.0,
         max_notes_and_chords=float(note_count),
         max_notes_and_chords_real=float(note_count),
@@ -1176,6 +1213,62 @@ def from_arrangement(
         first_note_time2=first_note,
         max_difficulty=song_max,
     )
+
+
+def from_arrangement(
+    arrangement: Arrangement,
+    vocals: list[VocalEvent] | None = None,
+    *,
+    dynamic_difficulty: bool = True,
+) -> SngModel:
+    """Build the SNG model from a RockForge ``Arrangement``.
+
+    With ``dynamic_difficulty=False`` a single level holding the full chart is
+    emitted (max_difficulty 0, no ramp) — a safety valve for songs where the
+    simplified DD misbehaves; the chart always plays at full density.
+    """
+    song_length = arrangement.metadata.song_length
+
+    beats = _build_beats(arrangement)
+
+    sections_src = _prepare_sections(arrangement, song_length)
+    ends = _section_end_times(sections_src, song_length)
+    phrases, phrase_iterations = _link_phrases(arrangement, sections_src, ends)
+    beats = _assign_beat_phrase_iterations(beats, phrase_iterations)
+
+    groups = _group_chords(arrangement.notes)
+    single_groups = [g for g in groups if len(g) == 1]
+    chord_groups = [g for g in groups if len(g) > 1]
+    template_ids, chord_templates, chord_notes_list, chord_notes_map = _build_chord_data(
+        arrangement, chord_groups
+    )
+
+    # Full-chart anchors, only to stamp each NOTE's anchor_fret/anchor_width
+    # hint (via _find_anchor in _build_sng_notes). The per-LEVEL anchor arrays
+    # the game actually uses are rebuilt from each level's own notes inside
+    # _build_level — see _build_anchors.
+    anchors = _build_anchors(
+        [(g[0].time, g[-1].time, [n.fret for n in g if n.fret > 0]) for g in groups],
+        phrase_iterations,
+        song_length,
+    )
+
+    sng_notes = _build_sng_notes(
+        single_groups, chord_groups, anchors, phrase_iterations, template_ids, chord_notes_map
+    )
+    sections = _build_sng_sections(sections_src, ends, phrase_iterations)
+
+    note_count = len(sng_notes)
+    phrases, phrase_iterations, arrangements, song_max = _build_difficulty_levels(
+        sng_notes, beats, phrases, phrase_iterations,
+        chord_templates, chord_notes_list, song_length, dynamic_difficulty,
+    )
+
+    sng_vocals = [
+        SngVocal(time=v.time, note=VOCAL_NOTE, length=v.length, lyric=v.lyric)
+        for v in (vocals or [])
+    ]
+    metadata = _build_sng_metadata(arrangement, note_count, song_length, song_max)
 
     return SngModel(
         beats=beats,
