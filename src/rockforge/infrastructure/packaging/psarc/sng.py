@@ -34,6 +34,7 @@ The layout is round-trip-tested but not byte-diffed against a retail SNG.
 
 from __future__ import annotations
 
+import bisect
 import struct
 from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
@@ -670,18 +671,27 @@ def _build_level(
     template + CHORD/STRUM masks.
     """
     linked = list(notes)
+    # `linked` is time-sorted (guaranteed by the sng_notes.sort() upstream in
+    # from_arrangement), so each phrase iteration's note range is a contiguous
+    # slice locatable by binary search — O(phrases * log notes) — instead of
+    # rescanning the WHOLE note list per phrase iteration (O(phrases * notes),
+    # run again for the notes_in_iter count below: on a long song this was
+    # tens of millions of comparisons per Dynamic Difficulty level, of which
+    # there are up to ~21). The two rescans collapse into one pass here, since
+    # notes_in_iter is just len(idxs).
+    times = [n.time for n in linked]
+    notes_in_iter: list[int] = []
     for pi in phrase_iterations:
-        idxs = [i for i, n in enumerate(linked) if pi.start_time <= n.time < pi.end_time]
+        lo = bisect.bisect_left(times, pi.start_time)
+        hi = bisect.bisect_left(times, pi.end_time)
+        idxs = list(range(lo, hi))
         for j, gi in enumerate(idxs):
             linked[gi] = replace(
                 linked[gi],
                 prev_iter_note=idxs[j - 1] if j > 0 else -1,
                 next_iter_note=idxs[j + 1] if j < len(idxs) - 1 else -1,
             )
-    notes_in_iter = [
-        sum(1 for n in linked if pi.start_time <= n.time < pi.end_time)
-        for pi in phrase_iterations
-    ]
+        notes_in_iter.append(len(idxs))
     avg_per_iter = []
     for p_idx in range(phrase_count):
         counts = [
