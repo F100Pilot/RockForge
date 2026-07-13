@@ -31,6 +31,7 @@ import sys
 from pathlib import Path
 
 from rockforge.domain.errors import SeparationError
+from rockforge.infrastructure._subprocess import HARDENED_RUN_KWARGS, map_external_errors
 
 BANQUET_TIMEOUT_S = 3600  # per-query inference; longer than Demucs (bigger model, per-class passes)
 
@@ -82,23 +83,17 @@ class BanquetSeparator:
             f"--batch_size={self._batch_size}",
             f"--use_cuda={'true' if self._device == 'cuda' else 'false'}",
         ]
-        try:
-            # stdin=DEVNULL: never inherit the worker console's stdin (mirrors the
-            # Demucs adapter — an inherited stdin can block a CLI subprocess).
-            subprocess.run(
-                cmd, check=True, capture_output=True, text=True,
-                stdin=subprocess.DEVNULL, timeout=BANQUET_TIMEOUT_S, cwd=repo,
-            )
-        except FileNotFoundError as exc:
-            raise SeparationError(
+        with map_external_errors(
+            error_cls=SeparationError,
+            not_installed_msg=(
                 "python/query-bandit not runnable — check the Banquet install (PyTorch)"
-            ) from exc
-        except subprocess.TimeoutExpired as exc:
-            raise SeparationError(
-                f"Banquet timed out after {BANQUET_TIMEOUT_S}s on {query.stem}"
-            ) from exc
-        except subprocess.CalledProcessError as exc:
-            raise SeparationError(f"Banquet failed on {query.stem}: {exc.stderr[-2000:]}") from exc
+            ),
+            timeout_msg=f"Banquet timed out after {BANQUET_TIMEOUT_S}s on {query.stem}",
+            fail_msg_prefix=f"Banquet failed on {query.stem}: ",
+        ):
+            # cwd=repo runs train.py from the query-bandit checkout; HARDENED_RUN_KWARGS
+            # carries stdin=DEVNULL so the CLI can't block on an inherited stdin.
+            subprocess.run(cmd, timeout=BANQUET_TIMEOUT_S, cwd=repo, **HARDENED_RUN_KWARGS)
 
     def separate_stems(self, audio: Path, workdir: Path) -> dict[str, Path]:
         """Extract one stem per reference clip in the queries dir — ``{clip stem:

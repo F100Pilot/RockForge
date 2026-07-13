@@ -6,6 +6,7 @@ import subprocess
 from pathlib import Path
 
 from rockforge.domain.errors import NormalizationError
+from rockforge.infrastructure._subprocess import HARDENED_RUN_KWARGS, map_external_errors
 
 # Generous ceiling so a genuinely long file still normalizes, but a stuck ffmpeg
 # fails loudly instead of hanging the stage forever (matches wwise.py's 600s).
@@ -39,21 +40,11 @@ class FfmpegNormalizer:
             "-ar", "44100", "-ac", "2",
             str(out),
         ]
-        try:
-            subprocess.run(
-                cmd,
-                check=True,
-                capture_output=True,
-                text=True,
-                stdin=subprocess.DEVNULL,
-                timeout=FFMPEG_TIMEOUT_S,
-            )
-        except FileNotFoundError as exc:
-            raise NormalizationError("ffmpeg is not installed") from exc
-        except subprocess.TimeoutExpired as exc:
-            raise NormalizationError(
-                f"ffmpeg timed out after {FFMPEG_TIMEOUT_S}s normalizing {audio.name}"
-            ) from exc
-        except subprocess.CalledProcessError as exc:
-            raise NormalizationError(f"ffmpeg failed: {exc.stderr[-2000:]}") from exc
+        with map_external_errors(
+            error_cls=NormalizationError,
+            not_installed_msg="ffmpeg is not installed",
+            timeout_msg=f"ffmpeg timed out after {FFMPEG_TIMEOUT_S}s normalizing {audio.name}",
+            fail_msg_prefix="ffmpeg failed: ",
+        ):
+            subprocess.run(cmd, timeout=FFMPEG_TIMEOUT_S, **HARDENED_RUN_KWARGS)
         return out
