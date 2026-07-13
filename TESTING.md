@@ -90,7 +90,7 @@ Per-file counts below reflect the suite at the time of writing; run
 | `test_chords.py` | 10 | `domain/chords.py` `name_chord`: triads, power chords, inversions, chord naming |
 | `test_gp_import.py` | 11 | PyGuitarPro (GP3/4/5) parsing: notes/frets/techniques/sections/tempo |
 | `test_gpif_import.py` | 8 | native GP7/GP8 (`.gp`) GPIF/XML parser: tuning, timing, Hopo/slide/palm-mute, lyric sourcing, bass rejection |
-| `test_gp_pipeline.py` | 25 | GP use case: `tempo_scale`, `sync_anchor_stages`, `arrangement_sync`, lyrics precedence, `pad_start_s` shift, tied notes |
+| `test_gp_pipeline.py` | 31 | GP use case: `tempo_scale`, `sync_anchor_stages`, `arrangement_sync`, lyrics precedence, `pad_start_s` shift, tied notes, dynamic beat-alignment (`align_beats_to_recording`) |
 | `test_rsxml_writer.py` | 18 | Song2014 XML: the **32 arrangementProperties** attrs, COUNT/default/END phrase structure, chords |
 | `test_vocals.py` | 22 | `parse_lyrics` (LRC + UltraStar), `expand_to_words` (trailing `+`), `events_from_dicts`, `distribute_syllables` (GP lyrics → note-onset alignment, melisma `_`) |
 | `test_lyrics_transcribe.py` | 9 | WhisperX adapter: RMS gate, per-word confidence filter, segment→event mapping (whisperx itself stubbed) |
@@ -113,7 +113,7 @@ Per-file counts below reflect the suite at the time of writing; run
 | `test_banquet_adapter.py` | 5 | Banquet (EM TESTES) `inference_byoq` command build, one pass per query clip, device→`use_cuda`, missing-setup errors |
 | `test_device_resolution.py` | 8 | `_resolve_device` auto/cpu/cuda + degrade-to-CPU on import failure |
 | `test_tags.py` | 2 | audio metadata tag extraction |
-| `test_api.py` | 91 | every endpoint (§6): job lifecycle, rebuild composition, detect-* / separate-stems enqueue (mocked), lyrics/tones/stems status, gear images, deletion, per-test SQLite |
+| `test_api.py` | 93 | every endpoint (§6): job lifecycle, rebuild composition, detect-* / separate-stems enqueue (mocked), auto-sync + dynamic beat-alignment (faked librosa), lyrics/tones/stems status, gear images, deletion, per-test SQLite |
 | `test_settings.py` | 10 | in-app settings (`/settings`): default demucs, persist+read-back, invalid separator 422, Banquet path validation, empty-string clears override |
 | `test_celery_tasks.py` | 9 | the actual `@celery_app.task` function BODIES — `generate_cdlc`/`detect_tones`/`separate_stems`/`detect_lyrics` called directly (not `.delay()`) against a per-test SQLite `Job` row, heavy adapters faked; success + never-crashes-on-failure paths |
 | `test_architecture.py` | 2 | Clean Architecture layering: `application/ports.py` imports zero `infrastructure/`; other `application/` files only the explicitly-accepted exceptions |
@@ -181,6 +181,7 @@ POST   /jobs/{id}/reload-gp          swap the GP file, keep all overrides   [GP]
 GET    /jobs/{id}/sync-state         export hand-tuned sync as portable JSON
 POST   /jobs/{id}/import-sync        apply an exported sync + rebuild (202)
 POST   /jobs/{id}/auto-sync          propose (tempo_scale, offset_s)   [GP, ml extra]
+POST   /jobs/{id}/auto-sync-dynamic  propose per-beat drift anchors (real tempo curve) [GP, ml]
 POST   /jobs/{id}/detect-tempo       per-point tempo from a clicked instant [GP, ml]
 POST   /jobs/{id}/detect-tuning      propose cent offset               [ml extra]
 POST   /jobs/{id}/detect-lyrics      async lyric detection (202)       [ml+lyrics]

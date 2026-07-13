@@ -159,6 +159,45 @@ existing `_build_time_warp` linearly re-tempos only `[click, last]` and nothing
 before the click moves. No new warp semantics; the per-point tools (drag, tap,
 move-from-here, re-tempo) all compile down to ordinary `sync_anchors`.
 
+### Dynamic beat-alignment sync (`/jobs/{id}/auto-sync-dynamic`)
+
+`/auto-sync` proposes a single *average* `tempo_scale`, which only corrects the
+linear part of the drift — an AI-authored tab carries a constant BPM, so the
+chart still slides against the recording wherever the real tempo varies (the
+usual "tabs de IA ficam dessincronizadas" complaint). `POST
+/jobs/{id}/auto-sync-dynamic?arrangement=<Name>` (GP jobs, ml extra) instead
+follows the recording's **actual tempo curve**: `detect_beats` (librosa
+`beat_track`, the beat-times array the old `detect_tempo_and_onset` discarded)
+returns the whole recording's beat grid, and the pure
+`align_beats_to_recording(gp_beats, rec_beats)` maps the built chart's beat grid
+onto it, returning `(chart_time, recording_time)` drift anchors. It normalises
+the metrical level first (`_snap_metrical` on the ratio of median beat
+intervals — same octave/triplet grid as `suggest_tempo_scale`, so a
+half/double/⅓ tracker error doesn't accumulate), matches GP beat `k` to
+recording beat `round(k·f)`, emits **coarse** anchors (every ~8 GP beats, capped
+at `max_anchors`) to smooth per-beat tracker jitter, and drops any
+non-advancing pair so the warp stays monotonic (`_check_anchor_order` guards the
+rest downstream). The endpoint reads the beat grid from the built arrangement
+XML's `<ebeats>` — the exact bundle coordinate the tab viewer draws — so the
+returned `chart_time`s line up with the viewer's own beats.
+
+The tab viewer's **"🎯 Sincronização dinâmica"** button loads each pair as an
+ordinary drift anchor via the *same* convention the bar-align tool uses —
+`setAnchor(previewScale(chartT), recT + viewOrigin)` — **replacing** the current
+tab's pending anchors with the fresh alignment, left in preview for the user to
+confirm and commit via the normal "Aplicar e reconstruir". Like every other
+detection it is **preview-only, never applied silently** (honesty principle),
+and `detect_beats` is a module-level function tests monkeypatch without librosa
+(`test_auto_sync_dynamic_proposes_beat_anchors`; the alignment math is unit-
+tested with synthetic beats in `test_gp_pipeline.py` — constant offset,
+double-time normalisation, a mid-song tempo change, glitch-dropping, degenerate
+inputs). Honest limits: accuracy is bounded by the beat tracker (missed/extra
+beats or an uncorrected metrical error shift the mapping), it assumes the first
+detected beat is the song's first beat, and **time-signature detection is NOT
+performed** (4/4→3/4 changes affect bar numbering, not the note timing this
+corrects — deferred; librosa doesn't detect meter reliably). It is a starting
+proposal to refine, not ground truth.
+
 ### Manual drift correction (`sync_anchor_stages`)
 
 A single `offset_s` only fixes a constant lead-in; if the GP file's tempo map
