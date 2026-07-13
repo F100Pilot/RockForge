@@ -193,6 +193,9 @@
   .knob-dial:hover { border-color:var(--accent); }
   .knob-name { font-size:.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; text-align:center; line-height:1.1; }
   .knob-val { width:3rem !important; font-size:.7rem; text-align:center; padding:.05rem .1rem; }
+  /* User-supplied gear picture (from work_dir/gear_images/<key>). Hidden until loaded. */
+  .gear-img { display:none; max-width:100%; max-height:130px; object-fit:contain;
+    border:1px solid var(--line); border-radius:8px; margin:.4rem 0; background:#14151a; }
 
   .downloads { display:flex; gap:.6rem; flex-wrap:wrap; margin:.6rem 0; align-items:center; }
   .downloads a { background:var(--accent-soft); border:1px solid var(--accent); color:var(--accent); padding:.4rem .8rem; border-radius:8px; font-weight:600; font-size:.85rem; }
@@ -1044,10 +1047,12 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
           <div class="field" style="margin-top:.5rem"><label>Amplificador</label>
             <input type="text" id="teAmpSearch" class="gear-search" placeholder="🔎 procurar amplificador…">
             <select id="teAmp"></select></div>
+          <img id="teAmpImg" class="gear-img" alt="">
           <div id="teAmpKnobs" class="tuninggrid" style="margin:.4rem 0"></div>
           <div class="field"><label>Cabine</label>
             <input type="text" id="teCabSearch" class="gear-search" placeholder="🔎 procurar cabine…">
             <select id="teCab"></select></div>
+          <img id="teCabImg" class="gear-img" alt="">
           <div style="margin-top:.6rem">
             <div class="anchor-row"><strong style="color:var(--text)">Efeitos</strong>
               <button type="button" id="teAddEffect" class="secondary">+ Efeito</button></div>
@@ -2933,7 +2938,9 @@ function blankFormDefaults() {
   const amps = gearCatalogue.amps, cabs = gearCatalogue.cabinets;
   populateGearSelect(document.getElementById('teAmp'), amps, amps[0] && amps[0].key, null);
   renderKnobs(document.getElementById('teAmpKnobs'), amps[0], null);
+  setGearImage('teAmpImg', amps[0] && amps[0].key);
   populateGearSelect(document.getElementById('teCab'), cabs, cabs[0] && cabs[0].key, null);
+  setGearImage('teCabImg', cabs[0] && cabs[0].key);
   document.getElementById('teEffects').innerHTML = '';
 }
 
@@ -2960,7 +2967,9 @@ function editToneInForm(key) {
   document.getElementById('teCabSearch').value = '';
   populateGearSelect(document.getElementById('teAmp'), gearCatalogue.amps, t.amp && t.amp.key, null);
   renderKnobs(document.getElementById('teAmpKnobs'), gearByKey(gearCatalogue.amps, t.amp && t.amp.key), t.amp && t.amp.knobs);
+  setGearImage('teAmpImg', t.amp && t.amp.key);
   populateGearSelect(document.getElementById('teCab'), gearCatalogue.cabinets, t.cabinet && t.cabinet.key, null);
+  setGearImage('teCabImg', t.cabinet && t.cabinet.key);
   const eff = document.getElementById('teEffects');
   eff.innerHTML = '';
   for (const p of (t.pre || [])) if (p) addEffectRow('pre', p.key, p.knobs);
@@ -2972,19 +2981,34 @@ function editToneInForm(key) {
 
 document.getElementById('newTone').addEventListener('click', newToneInForm);
 
+// Show a user-supplied picture for a gear (from work_dir/gear_images/<key>), if
+// one exists; hidden otherwise. Lets the user add their own amp/cab photos
+// locally without committing anything to the repo.
+function setGearImage(imgId, key) {
+  const img = document.getElementById(imgId);
+  if (!img) return;
+  if (!key) { img.style.display = 'none'; return; }
+  img.onload = () => { img.style.display = ''; };
+  img.onerror = () => { img.style.display = 'none'; };
+  img.src = '/gear-image/' + encodeURIComponent(key);
+}
 document.getElementById('teAmp').addEventListener('change', e => {
   renderKnobs(document.getElementById('teAmpKnobs'), gearByKey(gearCatalogue.amps, e.target.value), null);
+  setGearImage('teAmpImg', e.target.value);
 });
+document.getElementById('teCab').addEventListener('change', e => setGearImage('teCabImg', e.target.value));
 // Search bars filter the amp / cabinet lists (keeping the current pick visible).
 document.getElementById('teAmpSearch').addEventListener('input', e => {
   if (!gearCatalogue) return;
   const sel = document.getElementById('teAmp');
   populateGearSelect(sel, gearCatalogue.amps, sel.value, null, e.target.value);
+  setGearImage('teAmpImg', sel.value);
 });
 document.getElementById('teCabSearch').addEventListener('input', e => {
   if (!gearCatalogue) return;
   const sel = document.getElementById('teCab');
   populateGearSelect(sel, gearCatalogue.cabinets, sel.value, null, e.target.value);
+  setGearImage('teCabImg', sel.value);
 });
 document.getElementById('teAddEffect').addEventListener('click', () => addEffectRow('pre', null, null));
 
