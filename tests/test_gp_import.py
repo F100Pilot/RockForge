@@ -155,6 +155,30 @@ def test_track_index_out_of_range(gp5_file: Path) -> None:
         parse_gp_track(gp5_file, 7)
 
 
+def test_dropped_out_of_range_note_does_not_desync_subsequent_timing(
+    tmp_path: Path,
+) -> None:
+    """A beat with an out-of-range note must still advance the tick by exactly
+    one beat duration, not two — regression for a bug where dropping the note
+    advanced `tick` once inside the drop branch AND once more after the note
+    loop, pushing every later note in the measure one full beat late."""
+    song = gp.Song()
+    song.title, song.artist, song.tempo = "T", "A", 120
+    track = song.tracks[0]
+    v = track.measures[0].voices[0]
+    _add_beat(v, 4, [(6, 30)])  # fret 30 is off the 24-fret neck -> dropped
+    _add_beat(v, 4, [(6, 5)])  # must land at t=0.5s (quarter note @ 120bpm)
+    _add_beat(v, 4, [(6, 7)])  # must land at t=1.0s
+
+    path = tmp_path / "song.gp5"
+    gp.write(song, str(path))
+
+    tab = parse_gp_track(path, 0)
+    assert any("dropped" in w for w in tab.warnings)
+    times = sorted(n.time for n in tab.notes)
+    assert times == [pytest.approx(0.5), pytest.approx(1.0)]
+
+
 def test_tied_note_extends_previous_not_new_attack(tmp_path: Path) -> None:
     """A GP5 tie note continues the previous note on the same string (held) —
     it must not become a separate attack (the '4 notes shown as 5' bug)."""
