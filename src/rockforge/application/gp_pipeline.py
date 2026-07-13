@@ -293,6 +293,55 @@ def align_chart_to_recording(
     return anchors
 
 
+def align_chart_to_midi(
+    gp_bars: list[float],
+    midi_measures: list[float],
+    *,
+    chart_start: float,
+    rec_start: float,
+    stride: int = 1,
+) -> list[tuple[float, float, float]]:
+    """Align the chart to a MIDI tempo map — the ground-truth alternative to the
+    librosa estimate of :func:`align_chart_to_recording`. Returns the same
+    ``(chart_time, recording_time, confidence)`` anchors the tab viewer previews.
+
+    ``gp_bars`` are the chart's measure-downbeat times (the ebeats with a real
+    measure number); ``midi_measures`` are the recording-second times of each
+    measure downbeat read from the MIDI (``parse_midi_tempo``). One anchor per
+    measure makes every bar play at its own real tempo — literally the "BPM por
+    compasso" the MIDI carries — instead of one averaged tempo.
+
+    The user's Step-1 pin (``chart_start``/``rec_start``) fixes the absolute
+    position: the first anchor is the pin verbatim, the chart's pinned measure is
+    taken to be the MIDI's first measure, and each later bar is placed at
+    ``rec_start`` plus that measure's elapsed time in the MIDI (a *relative*
+    offset, so it works whether the MIDI clock is absolute to the recording or
+    starts at its own zero). ``confidence`` is 1.0: the MIDI is user-provided
+    ground truth, not an estimate, so no span is flagged weak.
+
+    Honest limit: the MIDI must begin at the tab's first measure (trim any
+    recording intro the tab does not transcribe), and the two must share a
+    measure structure — where the tab has extra/missing bars the mapping drifts
+    there (the tab is wrong, not the warp). Preview-only, never applied silently.
+    """
+    bars = sorted(gp_bars)
+    mm = sorted(midi_measures)
+    if len(bars) < 1 or len(mm) < 2:
+        return []
+    # The chart measure the pin sits in = the MIDI's first measure.
+    b0 = max((i for i, t in enumerate(bars) if t <= chart_start + 1e-9), default=0)
+    anchors: list[tuple[float, float, float]] = [(chart_start, rec_start, 1.0)]
+    for b in range(b0 + stride, len(bars), stride):
+        d = b - b0
+        if d >= len(mm):
+            break
+        c = bars[b]
+        r = rec_start + (mm[d] - mm[0])
+        if c > anchors[-1][0] and r > anchors[-1][1]:
+            anchors.append((c, r, 1.0))
+    return anchors
+
+
 @dataclass(frozen=True)
 class ArrangementSync:
     """Per-arrangement chart-timing overrides (tempo + drift anchors).

@@ -1344,6 +1344,82 @@ def auto_sync_dynamic(
     )
 
 
+@app.post("/jobs/{job_id}/sync-from-midi", response_model=DynamicSyncOut)
+def sync_from_midi(
+    job_id: str,
+    midi: UploadFile = File(...),
+    arrangement: str | None = None,
+    chart_start: float | None = None,
+    rec_start: float | None = None,
+) -> DynamicSyncOut:
+    """Align the chart to a MIDI tempo map (e.g. exported from RIPX) instead of
+    the librosa estimate — a ground-truth alternative for when the automatic
+    dynamic sync isn't perfect. The MIDI carries the recording's real time for
+    each measure downbeat ("BPM por compasso"); each chart bar is anchored to
+    its MIDI measure, pinned at the user's Step-1 first note (``chart_start``/
+    ``rec_start``). Returns the same drift-anchor proposal the tab viewer previews
+    and the user confirms before rebuilding — never applied silently.
+
+    The MIDI must begin at the tab's first measure (trim any recording-only
+    intro the tab doesn't transcribe) and share the tab's measure structure."""
+    import xml.etree.ElementTree as ET
+
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+        if job.source_type != "gp":
+            raise HTTPException(422, "MIDI sync only applies to Guitar Pro jobs")
+        if job.status is not JobStatus.COMPLETED or not job.bundle_dir:
+            raise HTTPException(404, "arrangements not available")
+        bundle_dir = job.bundle_dir
+
+    data = _read_upload_capped(midi)
+
+    # The chart's measure-downbeat times in the built bundle timeline: the ebeats
+    # carrying a real (1-based) measure number, for the requested arrangement or
+    # the first instrument chart.
+    gp_bars: list[float] = []
+    for xml_path in sorted(Path(bundle_dir).glob("arrangement_*.xml")):
+        root = ET.parse(xml_path).getroot()
+        if root.tag != "song":  # skip the vocals XML
+            continue
+        if not arrangement or root.findtext("arrangement", "?") == arrangement:
+            gp_bars = [
+                float(eb.get("time", "0"))
+                for eb in root.findall("ebeats/ebeat")
+                if int(eb.get("measure", "-1")) > 0
+            ]
+            break
+    if len(gp_bars) < 1:
+        raise HTTPException(422, "the arrangement has no measure grid to align")
+
+    from rockforge.application.gp_pipeline import align_chart_to_midi
+    from rockforge.domain.errors import IngestionError
+    from rockforge.infrastructure.rhythm.midi_tempo import parse_midi_tempo
+
+    try:
+        tempo = parse_midi_tempo(data)
+    except IngestionError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    if len(tempo.measures) < 2:
+        raise HTTPException(422, "the MIDI file has no usable measure/tempo map")
+
+    cs = chart_start if chart_start is not None else gp_bars[0]
+    rs = rec_start if rec_start is not None else 0.0
+    triples = align_chart_to_midi(
+        gp_bars, tempo.measures, chart_start=cs, rec_start=rs
+    )
+    return DynamicSyncOut(
+        detected_bpm=tempo.average_bpm,
+        gp_beat_count=len(gp_bars),
+        rec_beat_count=len(tempo.measures),
+        anchors=[(c, r) for c, r, _ in triples],
+        confidences=[conf for _, _, conf in triples],
+        weak_ranges=[],
+    )
+
+
 @app.post("/jobs/{job_id}/detect-tempo", response_model=DetectTempoOut)
 def detect_tempo(job_id: str, payload: DetectTempoIn) -> DetectTempoOut:
     """Measure the recording's tempo from ``from_s`` onward (librosa) and return a
