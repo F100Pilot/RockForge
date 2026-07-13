@@ -942,7 +942,7 @@ function showArr(i) {
   // labelled at the start.
   if (jobTones.length && (toneBase || toneChanges.length)) {
     const tName = k => (jobTones.find(t => t.key === k) || {}).name || k;
-    const marks = toneChanges.slice().sort((a, b) => a.time - b.time)
+    const marks = toneChanges  // already time-sorted (see loadTones)
       .map(c => ({ x: timeToX(barWarp(previewScale(c.time))), name: tName(c.name) }));
     if (toneBase) marks.unshift({ x: 32, name: tName(toneBase) });
     for (const m of marks) {
@@ -1447,7 +1447,10 @@ async function loadTones(id) {
     jobTones = t.tones || [];
     toneBase = t.tone_base || null;
     toneNames = t.tone_names || [];
-    toneChanges = t.tone_changes || [];
+    // Kept sorted by time at its two disordering mutation sites (here + the
+    // add-marker push below) so the many read paths — including activeToneKeyAt,
+    // called once per note in the synth render — don't each re-sort a copy.
+    toneChanges = (t.tone_changes || []).slice().sort((a, b) => a.time - b.time);
   } catch {
     jobTones = []; toneBase = null; toneNames = []; toneChanges = [];
   }
@@ -1537,7 +1540,7 @@ function renderToneChangesList() {
   if (!toneChanges.length) {
     el.innerHTML = '<span class="meta">Sem mudanças de tom. Ativa o modo "Mudança de tom" e clica numa nota.</span>';
   } else {
-    const sorted = toneChanges.slice().sort((a, b) => a.time - b.time);
+    const sorted = toneChanges;  // already time-sorted (see loadTones)
     el.innerHTML = sorted.map((c, i) => {
       const name = (jobTones.find(t => t.key === c.name) || {}).name || c.name;
       return `<div class="anchor-row">↪ ${c.time.toFixed(2)}s → <b>${esc(name)}</b>
@@ -1565,6 +1568,7 @@ function placeToneChange(chartTime) {
   const idx = parseInt(pick, 10) - 1;
   if (isNaN(idx) || idx < 0 || idx >= toneNames.length) { toast('Escolha inválida.'); return; }
   toneChanges.push({ time: chartTime, name: toneNames[idx] });
+  toneChanges.sort((a, b) => a.time - b.time);  // keep the sorted invariant (see loadTones)
   renderToneChangesList();
   toast('Mudança de tom adicionada.', 'ok');
 }
@@ -3107,7 +3111,7 @@ let previewToneTouched = false;  // did the user pick a preview source themselve
 // chart timeline, so this compares directly.
 function activeToneKeyAt(chartTime) {
   let key = toneBase || toneNames[0] || (jobTones[0] && jobTones[0].key) || null;
-  for (const c of toneChanges.slice().sort((a, b) => a.time - b.time)) {
+  for (const c of toneChanges) {  // already time-sorted (see loadTones)
     if (c.time <= chartTime + 1e-6) key = c.name; else break;
   }
   return key;
@@ -3265,6 +3269,7 @@ function fretXY(string, fret) {
   const x = fret <= 0 ? FB.x0 - 6 : FB.x0 + (fret - 0.5) * FB.fw;  // open note at the nut
   return { x, y };
 }
+let _lastFretHTML = null;  // skip redundant #fretOverlay innerHTML churn (see updateFretboard)
 function drawFretboard() {
   const svg = document.getElementById('fretboard');
   if (!svg) return;
@@ -3293,13 +3298,14 @@ function drawFretboard() {
   }
   s += `<g id="fretOverlay"></g>`;
   svg.innerHTML = s;
+  _lastFretHTML = null;  // overlay was just recreated empty — force the next fill
 }
-function updateFretboard(vtDisp) {
+function updateFretboard(vtDisp, warp) {
   if (!fretboardOn) return;
   const ov = document.getElementById('fretOverlay');
   if (!ov) return;
   const notes = arrangements[currentArr] ? arrangements[currentArr].notes : [];
-  const warp = buildTimeWarp(syncAnchors);
+  warp = warp || buildTimeWarp(syncAnchors);  // reuse the frame's warp when given
   const ratio = tempoScaleLive / builtScale;
   let s = '';
   for (const n of notes) {
@@ -3311,7 +3317,9 @@ function updateFretboard(vtDisp) {
     s += `<circle cx="${x}" cy="${y}" r="9" fill="${STRING_COLORS[n.string]}" stroke="#fff" stroke-width="1.5"/>`;
     s += `<text x="${x}" y="${y + 4}" fill="#14151a" font-size="11" font-weight="700" text-anchor="middle">${n.fret}</text>`;
   }
-  ov.innerHTML = s;
+  // At 60fps the set of currently-lit notes is unchanged across most frames;
+  // only re-parse the overlay's DOM when the markup actually differs.
+  if (s !== _lastFretHTML) { ov.innerHTML = s; _lastFretHTML = s; }
 }
 document.getElementById('showFretboard')?.addEventListener('change', e => {
   fretboardOn = e.target.checked;
@@ -3322,10 +3330,10 @@ document.getElementById('showFretboard')?.addEventListener('change', e => {
 // Live BPM readout: the AUTHORED tempo of the measure under the playhead (from
 // the built beat spacing, so it shows the score's real 93/186 as it plays,
 // switching exactly at the tempo-change bars).
-function liveInfoAtTime(vtDisp) {
+function liveInfoAtTime(vtDisp, warp) {
   const a = arrangements[currentArr];
   if (!a || !a.beats || a.beats.length < 2) return null;
-  const warp = buildTimeWarp(syncAnchors);
+  warp = warp || buildTimeWarp(syncAnchors);
   let idx = 0;
   for (let i = 0; i < a.beats.length - 1; i++) {
     if (warp(previewScale(a.beats[i])) <= vtDisp) idx = i; else break;
@@ -3336,20 +3344,20 @@ function liveInfoAtTime(vtDisp) {
   for (const b of (a.bars || [])) { if (b.time <= a.beats[idx] + 1e-6) measure = b.measure; else break; }
   return { bpm, measure };
 }
-function updateLiveBpm(vtDisp) {
+function updateLiveBpm(vtDisp, warp) {
   const el = document.getElementById('liveBpm');
   if (!el) return;
-  const info = liveInfoAtTime(vtDisp);
+  const info = liveInfoAtTime(vtDisp, warp);
   el.textContent = info && info.bpm ? `♩ = ${info.bpm}${info.measure ? ` · c.${info.measure}` : ''}` : '';
-  updateLiveTone(vtDisp);
+  updateLiveTone(vtDisp, warp);
 }
 
 // The tone key active at a display-time position, following the tones marked on
 // the score (change markers are in chart time → warped to display like notes).
-function activeToneKeyAtDisplay(vtDisp) {
-  const warp = buildTimeWarp(syncAnchors);
+function activeToneKeyAtDisplay(vtDisp, warp) {
+  warp = warp || buildTimeWarp(syncAnchors);
   let key = toneBase || toneNames[0] || (jobTones[0] && jobTones[0].key) || null;
-  for (const c of toneChanges.slice().sort((a, b) => a.time - b.time)) {
+  for (const c of toneChanges) {  // already time-sorted (see loadTones)
     if (warp(previewScale(c.time)) <= vtDisp) key = c.name; else break;
   }
   return key;
@@ -3357,11 +3365,11 @@ function activeToneKeyAtDisplay(vtDisp) {
 
 // The live "tom atual" label: which created tone plays at the playhead. Shown
 // only when the song actually has tones assigned (a base or a change).
-function updateLiveTone(vtDisp) {
+function updateLiveTone(vtDisp, warp) {
   const el = document.getElementById('liveTone');
   if (!el) return;
   if (!jobTones.length || !(toneBase || toneChanges.length)) { el.textContent = ''; return; }
-  const key = activeToneKeyAtDisplay(vtDisp);
+  const key = activeToneKeyAtDisplay(vtDisp, warp);
   const name = key ? ((jobTones.find(t => t.key === key) || {}).name || key) : null;
   el.textContent = name ? `🎸 ${name}` : '';
 }
@@ -3671,8 +3679,8 @@ function syncFrame() {
     }
     tickIdx++;
   }
-  updateFretboard(vtDisp);  // light up the notes sounding right now on the neck
-  updateLiveBpm(vtDisp);    // real-time BPM of the current measure
+  updateFretboard(vtDisp, warp);  // light up the notes sounding right now on the neck
+  updateLiveBpm(vtDisp, warp);    // real-time BPM of the current measure
   // Highlight the lyric word under the playhead without redrawing the full SVG.
   // currentPlayheadT is the padded display time; lyric times are un-padded, so
   // shift them by leadInBuilt to compare in the same timeline.
@@ -3692,6 +3700,21 @@ function syncFrame() {
   }
   if (audioIsPlaying()) syncRaf = requestAnimationFrame(syncFrame);
   else { syncRaf = null; updatePlayBtn(); }
+}
+
+// rAF-coalesced full-score redraw: the live-preview sliders (tempo/offset) fire
+// 'input' faster than the display refreshes, and each showArr() is a full SVG
+// rebuild — so dragging them repaints many times per frame. Collapsing the
+// edits within one frame into a single redraw removes the jank without changing
+// the final drawn state (mirrors the note-drag path, which defers showArr to
+// pointerup).
+let _showArrRaf = null;
+function requestShowArr() {
+  if (_showArrRaf != null) return;
+  _showArrRaf = requestAnimationFrame(() => {
+    _showArrRaf = null;
+    if (arrangements.length) showArr(currentArr);
+  });
 }
 
 function setOffsetLive(v) {
@@ -3776,7 +3799,10 @@ function setTempoLive(scale) {
   const kind = currentKind();
   if (kind) tempoScaleByKind[kind] = tempoScaleLive;
   updateTempoControls();
-  if (arrangements.length) { syncResetPointer(); showArr(currentArr); }
+  // Slider-driven: coalesce the expensive redraw to one per frame (the numeric
+  // readouts above stay synchronous). syncResetPointer must run now so the tick
+  // pointer is correct before the next frame's draw.
+  if (arrangements.length) { syncResetPointer(); requestShowArr(); }
   updatePendingChangesInfo();
 }
 
@@ -3834,7 +3860,7 @@ function setTrackStart(v) {
   setAnchor(origT, Math.max(0, v) + viewOrigin);
   renderAnchorsList();
   updatePendingChangesInfo();
-  showArr(currentArr);
+  requestShowArr();  // slider-driven: coalesce the redraw to one per frame
 }
 
 // Precisely place the CURRENT arrangement's first note. audioTime() is the
