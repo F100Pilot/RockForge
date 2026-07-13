@@ -1000,6 +1000,33 @@ def test_auto_sync_dynamic_rejected_for_non_gp(client: TestClient) -> None:
     assert client.post(f"/jobs/{job['id']}/auto-sync-dynamic").status_code == 422
 
 
+def test_auto_sync_dynamic_respects_the_pinned_first_note(
+    client, tmp_path, monkeypatch
+) -> None:
+    """chart_start/rec_start (the Step-1 first-note pin the UI passes) make the
+    alignment START there: the first anchor is the pin verbatim and tracker
+    'beats' in the intro silence are ignored — the fix for 'as notas começaram
+    o alinhamento logo no início do 0 segundos'."""
+    import rockforge.infrastructure.rhythm.librosa_adapter as rhythm
+
+    gp_beats = [2.0 + 0.5 * i for i in range(16)]   # chart grid from the built pad
+    # Garbage intro "beats", then the real grid starting at 4.2s.
+    monkeypatch.setattr(
+        rhythm, "detect_beats",
+        lambda src: (110.0, [0.3, 1.1, 2.0] + [4.2 + 0.55 * i for i in range(16)]),
+    )
+    job = _completed_gp_job_with_beats(client, tmp_path, gp_beats)
+
+    r = client.post(
+        f"/jobs/{job['id']}/auto-sync-dynamic",
+        params={"chart_start": 2.0, "rec_start": 4.2},
+    )
+    assert r.status_code == 200
+    anchors = r.json()["anchors"]
+    assert anchors[0] == [2.0, 4.2]                 # the pin, untouched
+    assert all(a[1] >= 4.2 for a in anchors)        # nothing mapped into the intro
+
+
 def test_detect_tempo_returns_local_factor(client: TestClient, tmp_path, monkeypatch) -> None:
     # Per-point re-tempo: detection is faked. GP tempo 100, detected 200 from the
     # clicked point → octave-corrected factor 1.0 (100 / (200 * 0.5)).

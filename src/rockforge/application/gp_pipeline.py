@@ -136,6 +136,8 @@ def align_beats_to_recording(
     gp_beats: list[float],
     rec_beats: list[float],
     *,
+    chart_start: float | None = None,
+    rec_start: float | None = None,
     stride: int = 8,
     max_anchors: int = 64,
 ) -> list[tuple[float, float]]:
@@ -149,23 +151,50 @@ def align_beats_to_recording(
     composes with the existing sync machinery and is applied only after the user
     confirms the preview — never silently.
 
+    **The alignment starts at the user's confirmed first note, not at 0s.** When
+    ``chart_start`` (the chart time of the first note) and ``rec_start`` (the
+    recording second the user pinned it to — Step 1 / offset) are given, the
+    FIRST anchor is exactly ``(chart_start, rec_start)`` — preserving the user's
+    pin verbatim — and the beat mapping proceeds from there: recording beats
+    before ``rec_start`` (intro silence/noise the tracker "detects" beats in) are
+    ignored, and the whole detected grid is phase-shifted so the beat nearest
+    ``rec_start`` sits exactly on it. Without them the mapping starts at the two
+    grids' first beats (legacy whole-song behaviour).
+
     The metrical level is normalised first (``_snap_metrical`` on the ratio of
     median beat intervals), because beat trackers routinely detect the pulse at
-    half/double/⅓ of the true rate; GP beat ``k`` then corresponds to recording
-    beat ``round(k * f)``. Anchors are emitted every ``stride`` GP beats (coarse,
-    to smooth per-beat tracker jitter) up to ``max_anchors`` total, and any pair
-    whose recording time doesn't strictly advance (a tracker glitch) is dropped so
-    the resulting warp stays monotonic.
+    half/double/⅓ of the true rate; GP beat ``k`` (counted from the start point)
+    then corresponds to recording beat ``round(k * f)``. Anchors are emitted every
+    ``stride`` GP beats (coarse, to smooth per-beat tracker jitter) up to
+    ``max_anchors`` total, and any pair that doesn't strictly advance (a tracker
+    glitch) is dropped so the warp stays monotonic.
 
-    Honest limit: accuracy is bounded by the beat tracker — missed/extra beats or
-    an uncorrected metrical error shift the mapping. It assumes the recording's
-    first detected beat is the song's first beat (same assumption as the
-    first-onset offset). It is a starting proposal to refine, not ground truth.
+    Honest limits: accuracy is bounded by the beat tracker — missed/extra beats
+    or an uncorrected metrical error shift the mapping — and the beat counting
+    assumes the first note falls on (or very near) a chart beat, the norm for
+    AI-generated tabs. It is a starting proposal to refine, not ground truth.
     """
     gp = sorted(gp_beats)
     rec = sorted(rec_beats)
     if len(gp) < 2 or len(rec) < 2:
         return []
+
+    pinned = chart_start is not None and rec_start is not None
+    if pinned:
+        assert chart_start is not None and rec_start is not None  # for mypy
+        # Count chart beats from the one nearest the first note (its own beat).
+        k0 = min(range(len(gp)), key=lambda k: abs(gp[k] - chart_start))
+        gp = gp[k0:]
+        # Ignore "beats" the tracker found before the confirmed start (intro
+        # silence/noise), and phase-shift the grid so the beat nearest the pin
+        # sits exactly on rec_start — the tempo CURVE comes from the tracker,
+        # the absolute position from the user's pin.
+        j0 = min(range(len(rec)), key=lambda j: abs(rec[j] - rec_start))
+        phase = rec_start - rec[j0]
+        rec = [r + phase for r in rec[j0:]]
+        if len(gp) < 2 or len(rec) < 2:
+            return []
+
     gi = _median_interval(gp)
     ri = _median_interval(rec)
     if gi <= 0 or ri <= 0:
@@ -175,15 +204,23 @@ def align_beats_to_recording(
     step = max(stride, -(-len(gp) // max_anchors))  # ceil division
     anchors: list[tuple[float, float]] = []
     last_rec = float("-inf")
-    for k in range(0, len(gp), step):
+    last_chart = float("-inf")
+    if pinned:
+        assert chart_start is not None and rec_start is not None
+        # The user's pin, verbatim — identical to what Step 1's setTrackStart
+        # writes, so replacing the pending anchors with this set keeps the
+        # confirmed first-note position untouched.
+        anchors.append((chart_start, rec_start))
+        last_rec, last_chart = rec_start, chart_start
+    for k in range(0 if not pinned else step, len(gp), step):
         j = round(k * f)
         if j >= len(rec):
             break
         r = rec[j]
-        if r <= last_rec:
-            continue  # non-advancing recording time → drop the tracker glitch
+        if r <= last_rec or gp[k] <= last_chart:
+            continue  # non-advancing pair → drop the tracker glitch
         anchors.append((gp[k], r))
-        last_rec = r
+        last_rec, last_chart = r, gp[k]
     return anchors
 
 

@@ -320,7 +320,7 @@ const INFO = {
   },
   'auto-sync-dynamic': {
     title: 'Sincronização dinâmica (segue o andamento real)',
-    body: '<p>A sincronização automática acima aplica UM andamento médio — não chega quando o tempo da gravação varia (o problema típico das tabs de IA). Esta deteta TODAS as batidas da gravação e alinha a grelha da partitura à curva de andamento real, criando várias âncoras de correção ao longo da música.<br>Substitui as correções pendentes da pista atual por esta proposta; fica em pré-visualização — confirma na partitura e clica em "Aplicar e reconstruir".<br><b>Limite honesto:</b> a precisão depende do detetor de batidas (pode falhar/duplicar batidas). É um <i>ponto de partida</i> para refinares à mão, não verdade absoluta. Requer o extra <code>ml</code> (librosa).</p>'
+    body: '<p>A sincronização automática acima aplica UM andamento médio — não chega quando o tempo da gravação varia (o problema típico das tabs de IA). Esta deteta TODAS as batidas da gravação e alinha a grelha da partitura à curva de andamento real, criando várias âncoras de correção ao longo da música.<br><b>Começa na primeira nota:</b> define primeiro o início no Passo 1 (ou com "🎯 Detetar 1ª nota") — o alinhamento respeita esse ponto e aplica-se daí para a frente; "batidas" detetadas no silêncio inicial são ignoradas.<br>Substitui as correções pendentes da pista atual por esta proposta; fica em pré-visualização — confirma na partitura e clica em "Aplicar e reconstruir".<br><b>Limite honesto:</b> a precisão depende do detetor de batidas (pode falhar/duplicar batidas). É um <i>ponto de partida</i> para refinares à mão, não verdade absoluta. Requer o extra <code>ml</code> (librosa).</p>'
   },
   'tab-viewer': {
     title: 'Partitura — legenda',
@@ -3906,7 +3906,19 @@ function setTempoLive(scale) {
     btn.disabled = true;
     info.textContent = 'A detetar batidas da gravação…';
     try {
-      const url = `/jobs/${selectedJob.id}/auto-sync-dynamic?arrangement=${encodeURIComponent(kind)}`;
+      // The alignment must START at the confirmed first note (Step 1's pin /
+      // the current offset), not at the recording's 0s: pass the first note's
+      // chart time (built bundle, the ebeats coordinate) and where it CURRENTLY
+      // sounds in the recording (the same value Step 1's field shows). The
+      // backend then ignores tracker "beats" before it and returns that pin
+      // verbatim as the first anchor, so replacing the pending set keeps it.
+      let pin = '';
+      const chartT = currentArrFirstNoteTime();
+      if (chartT != null) {
+        const recT = buildTimeWarp(syncAnchors)(previewScale(chartT)) - viewOrigin;
+        pin = `&chart_start=${encodeURIComponent(chartT)}&rec_start=${encodeURIComponent(Math.max(0, recT))}`;
+      }
+      const url = `/jobs/${selectedJob.id}/auto-sync-dynamic?arrangement=${encodeURIComponent(kind)}${pin}`;
       const r = await fetch(url, { method: 'POST' });
       const b = await r.json();
       if (!r.ok) { info.textContent = ''; toast(b.detail || 'erro', 'err'); return; }

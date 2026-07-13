@@ -574,3 +574,38 @@ def test_align_beats_degenerate_inputs_return_no_anchors() -> None:
     assert align_beats_to_recording([], [1.0, 2.0]) == []
     assert align_beats_to_recording([1.0, 2.0], []) == []
     assert align_beats_to_recording([1.0], [1.0, 2.0]) == []
+
+
+def test_align_beats_pinned_starts_at_the_confirmed_first_note() -> None:
+    """The user pins the first note (Step 1) BEFORE running dynamic sync: the
+    first anchor must be exactly that pin, tracker 'beats' found in the intro
+    silence before it must be ignored, and the curve follows from there — the
+    'notas começaram o alinhamento logo no 0 segundos' bug."""
+    from rockforge.application.gp_pipeline import align_beats_to_recording
+
+    # Tracker finds garbage beats in the 4s intro, then the real ~109 BPM grid.
+    rec = [0.3, 1.1, 2.0, 3.0] + [4.2 + i * 0.55 for i in range(40)]
+    gp = [2.0 + i * 0.5 for i in range(40)]  # chart grid from the built pad
+    anchors = align_beats_to_recording(gp, rec, chart_start=2.0, rec_start=4.2)
+    assert anchors[0] == (2.0, 4.2)  # the pin, verbatim — NOT (0-ish, 0-ish)
+    # The curve continues from the pin on the real grid (8 beats * 0.55 = 4.4s).
+    assert anchors[1] == (pytest.approx(6.0), pytest.approx(8.6))
+    assert all(a[1] > 4.0 for a in anchors)  # nothing anchored into the intro
+    assert all(
+        anchors[i][0] < anchors[i + 1][0] and anchors[i][1] < anchors[i + 1][1]
+        for i in range(len(anchors) - 1)
+    )
+
+
+def test_align_beats_pinned_phase_corrects_the_tracker_grid() -> None:
+    """The pin defines the absolute position; the tracker only supplies
+    the CURVE. A pin 0.07s off the nearest detected beat shifts the whole grid
+    by that phase so the first anchor sits exactly on the pin."""
+    from rockforge.application.gp_pipeline import align_beats_to_recording
+
+    rec = [4.2 + i * 0.55 for i in range(40)]
+    gp = [2.0 + i * 0.5 for i in range(40)]
+    anchors = align_beats_to_recording(gp, rec, chart_start=2.0, rec_start=4.13)
+    assert anchors[0] == (2.0, 4.13)
+    # Subsequent anchors carry the same -0.07 phase (8.6 - 0.07 = 8.53).
+    assert anchors[1][1] == pytest.approx(8.53)
