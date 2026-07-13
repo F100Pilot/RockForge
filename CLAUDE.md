@@ -776,7 +776,12 @@ there, named by the gear key, without committing anything; the key is sanitised
 to a bare slug against path traversal). When no user image exists the `<img>`
 falls back to a brand-neutral SVG placeholder per gear TYPE (`genericGearSvg`:
 amp head / speaker cab / stompbox — our own art), so there's always a visual.
-Honesty unchanged: this is visual
+The amp panel is a `.gear-panel`: the picture (user image or generic faceplate,
+NO drawn knobs) is a `.gear-bg` backdrop and the REAL rotary knobs overlay it
+(`.knob-face`), so the knobs shown are always exactly the gear's own controls —
+however many (3, 5, 8…) — compatible with every gear. Effect knob rows get the
+same faceplate look; `renderKnobs` hides an empty container so a knob-less gear
+shows no empty bar. Honesty unchanged: this is visual
 only — RockForge does not model the amp sound (the real tone comes from the gear
 keys in-game / DLC Builder). Guarded by `test_gear_image_serves_local_file_or_404`.
 
