@@ -12,7 +12,6 @@ from typing import Any, cast
 from celery import Celery
 
 from rockforge.config import settings
-from rockforge.domain.arrangement import SongMetadata
 from rockforge.infrastructure.db.models import Job, JobStatus, make_session_factory
 
 celery_app = Celery(
@@ -152,61 +151,6 @@ def _make_demucs(device: str) -> Any:  # heavy import deferred to worker
     return DemucsSeparator(device=device, on_cuda_crash=_mark_cuda_broken)
 
 
-def _build_use_case(
-    onset_threshold: float | None = None,
-    frame_threshold: float | None = None,
-) -> Any:  # returns a make(source_type) factory; heavy imports deferred to worker
-    """Build the audio-ML use-case factory. ``onset_threshold``/``frame_threshold``
-    (0..1) tune Basic Pitch's note detection per job — higher = fewer spurious
-    ghost notes on a distorted mix; None keeps the adapter defaults."""
-    from rockforge.application.pipeline import GenerateCdlcUseCase
-    from rockforge.infrastructure.ingestion.sources import LocalFileIngestor, YouTubeIngestor
-    from rockforge.infrastructure.normalize.ffmpeg import FfmpegNormalizer
-    from rockforge.infrastructure.rhythm.librosa_adapter import LibrosaRhythmAdapter
-    from rockforge.infrastructure.rolesplit.heuristic import HeuristicRoleSplitter
-    from rockforge.infrastructure.transcription.basic_pitch_adapter import BasicPitchTranscriber
-
-    rhythm = LibrosaRhythmAdapter()
-    device = _resolve_device(settings.demucs_device)
-
-    from rockforge import runtime_settings
-    from rockforge.infrastructure.lyrics.whisperx_adapter import WhisperXLyricTranscriber
-
-    lyric_transcriber = (
-        WhisperXLyricTranscriber(
-            device=device, compute_type=runtime_settings.whisperx_compute_type() or None
-        )
-        if WhisperXLyricTranscriber.available()
-        else None
-    )
-
-    tk: dict[str, float] = {}
-    if onset_threshold is not None:
-        tk["onset_threshold"] = onset_threshold
-    if frame_threshold is not None:
-        tk["frame_threshold"] = frame_threshold
-
-    def make(source_type: str) -> GenerateCdlcUseCase:
-        ingestor = (
-            YouTubeIngestor(enabled=settings.enable_youtube)
-            if source_type == "youtube"
-            else LocalFileIngestor()
-        )
-        return GenerateCdlcUseCase(
-            lyric_transcriber=lyric_transcriber,
-            ingestor=ingestor,
-            normalizer=FfmpegNormalizer(),
-            separator=_make_demucs(device),
-            transcriber=BasicPitchTranscriber(**tk),
-            beat_tracker=rhythm,
-            tuning_estimator=rhythm,
-            role_splitter=HeuristicRoleSplitter(),
-            packager=_build_packager(),
-        )
-
-    return make
-
-
 def _build_stem_separator() -> tuple[Any, str, str]:  # heavy imports deferred to worker
     """The configured stem separator for /separate-stems, with its resolved
     device and a human label for the log. ``demucs`` (default, one aggregated
@@ -267,8 +211,6 @@ def generate_cdlc(job_id: str) -> None:
         session.commit()
 
         try:
-            from rockforge.domain.music import Tuning
-
             workdir = settings.work_dir / job.id
             workdir.mkdir(parents=True, exist_ok=True)
             # params is an untyped JSON boundary (values arrive as `object`);
@@ -373,54 +315,12 @@ def generate_cdlc(job_id: str) -> None:
                 session.commit()
                 return
 
-            from rockforge.infrastructure.rsxml.vocals import events_from_dicts
-
-            def _opt_float(v: object) -> float | None:
-                return float(v) if isinstance(v, (int, float, str)) and str(v) != "" else None
-
-            use_case = _build_use_case(
-                onset_threshold=_opt_float(params.get("onset_threshold")),
-                frame_threshold=_opt_float(params.get("frame_threshold")),
-            )(job.source_type)
-            tuning_override = None
-            if "tuning_midi" in params:
-                m = [int(x) for x in params["tuning_midi"]]
-                if len(m) != 6:
-                    raise ValueError(f"tuning_midi must have 6 values, got {len(m)}")
-                tuning_override = Tuning(
-                    midi=(m[0], m[1], m[2], m[3], m[4], m[5]),
-                    cent_offset=float(params.get("cent_offset", 0.0)),
-                )
-
-            result = use_case.run(
-                source=job.source,
-                metadata=SongMetadata(
-                    title=job.title, artist=job.artist, album=job.album, year=job.year
-                ),
-                workdir=Path(workdir),
-                split_lead_rhythm=bool(params.get("split_lead_rhythm", True)),
-                tuning_override=tuning_override,
-                offset_s=float(params.get("offset_s", 0.0)),
-                transcribe_lyrics=bool(params.get("transcribe_lyrics", False)),
-                lyrics_events=(
-                    events_from_dicts(params["lyrics_events"])
-                    if params.get("lyrics_events")
-                    else None
-                ),
-                cover_art=cover_art,
-                dynamic_difficulty=bool(params.get("dynamic_difficulty", True)),
-                on_stage=on_stage,
-                lead_source=params.get("lead_source"),
-                rhythm_source=params.get("rhythm_source"),
-                separate_role_stems=bool(params.get("separate_stems", False)),
-                min_confidence=float(params.get("min_confidence") or 0.0),
-            )
-            job.status = JobStatus.COMPLETED
-            job.warnings = list(result.warnings)
-            job.note_counts = result.note_counts
-            job.bundle_dir = str(result.packaging.bundle_dir)
-            job.psarc_path = (
-                str(result.packaging.psarc_path) if result.packaging.psarc_path else None
+            # Audio→note transcription was removed; only Guitar Pro jobs build an
+            # arrangement. (Stem separation / tone / lyric detection run as their
+            # own tasks on any job's recording — see separate_stems/detect_*.)
+            raise ValueError(
+                f"unsupported source_type {job.source_type!r}: only Guitar Pro "
+                "jobs build an arrangement"
             )
         except Exception as exc:  # report faithfully; never mask failures
             job.status = JobStatus.FAILED

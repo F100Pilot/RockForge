@@ -80,7 +80,6 @@ a = Analysis(
         "rockforge.infrastructure.normalize.ffmpeg",
         "rockforge.infrastructure.db.models",
         "rockforge.application.gp_pipeline",
-        "rockforge.application.pipeline",
         "rockforge.config",
         "uvicorn.logging",
         "uvicorn.loops.auto",
@@ -91,7 +90,7 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
-        "torch", "torchaudio", "tensorflow", "demucs", "basic_pitch",
+        "torch", "torchaudio", "demucs",
         "librosa", "whisperx", "scipy", "numpy",
         "tkinter", "matplotlib", "notebook", "IPython",
     ],

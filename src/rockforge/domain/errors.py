@@ -19,17 +19,5 @@ class SeparationError(RockForgeError):
     pass
 
 
-class TranscriptionError(RockForgeError):
-    pass
-
-
-class FretMappingError(RockForgeError):
-    pass
-
-
 class PackagingError(RockForgeError):
     pass
-
-
-class FeatureDisabledError(RockForgeError):
-    """Raised when a feature is disabled by configuration (e.g. YouTube ingestion)."""

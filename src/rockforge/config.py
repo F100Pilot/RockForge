@@ -15,7 +15,6 @@ class Settings(BaseSettings):
     broker_url: str = "redis://localhost:6379/0"
     result_backend: str = "redis://localhost:6379/1"
     work_dir: Path = Path.home() / "Downloads" / "RockForge"
-    enable_youtube: bool = True  # operator-enabled; downloading audio violates the YouTube ToS
     # ML device: "auto" (default) picks a CUDA GPU when one is usable and falls
     # back to CPU; force with "cpu" or "cuda". Resolution happens in the worker
     # (deferred torch import) — see celery_app._resolve_device.

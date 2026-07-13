@@ -33,7 +33,8 @@ def _is_cuda(device: str) -> bool:
 
 
 class DemucsSeparator:
-    """Implements rockforge.application.ports.StemSeparator via the demucs CLI.
+    """Guitar/stem separation via the demucs CLI (used by the separate-stems,
+    tone-detection and lyric-detection tasks).
 
     GPU→CPU fallback: a CUDA run that crashes (e.g. the Windows exit 0xC0000409
     native crash from a torch/cuDNN mismatch on Turing/RTX 20-series cards) is

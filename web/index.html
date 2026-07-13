@@ -435,18 +435,6 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
   flex-shrink: 0; color: var(--muted); font-size: 1.2rem; transition: color .15s, transform .15s;
 }
 .job-banner:hover .job-banner-arrow { color: var(--accent); transform: translateX(3px); }
-/* Diagonal "Experimental" stamp over a banner (still clickable — pointer-events:none). */
-.job-banner.experimental { position: relative; overflow: hidden; }
-.banner-stamp {
-  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-  pointer-events: none; z-index: 3;
-}
-.banner-stamp span {
-  transform: rotate(-14deg); font-size: 1.35rem; font-weight: 800; letter-spacing: .18em;
-  text-transform: uppercase; color: #ffb454; opacity: .55; padding: .1rem .9rem;
-  border: 2px solid #ffb454; border-radius: 7px; background: rgba(20,21,26,.35);
-  white-space: nowrap;
-}
 </style>
 </head>
 <body class="landing">
@@ -472,15 +460,6 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
           <div class="job-banner-desc">GP3/GP4/GP5/GP7 — notas e técnicas exatas do ficheiro (alta fidelidade)</div>
         </div>
         <span class="job-banner-arrow">&#8250;</span>
-      </div>
-      <div class="job-banner experimental" data-new="audio">
-        <div class="job-banner-icon">&#127925;</div>
-        <div class="job-banner-body">
-          <div class="job-banner-title">A partir de áudio (MP3)</div>
-          <div class="job-banner-desc">Transcrição automática por IA a partir da gravação — aproximada</div>
-        </div>
-        <span class="job-banner-arrow">&#8250;</span>
-        <span class="banner-stamp"><span>Experimental</span></span>
       </div>
     </div>
 
@@ -866,12 +845,6 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
     <button type="button" class="modal-close" id="newJobClose">×</button>
     <h2>Novo projeto <button class="info-btn" data-info="new-job">ⓘ</button></h2>
 
-    <!-- Source mode: Guitar Pro (exact) or Áudio (ML transcription) -->
-    <div class="anchor-row" id="createModeSel" style="margin:.4rem 0 .2rem">
-      <button type="button" id="modeGp" class="secondary mode-btn active-mode">🎸 Guitar Pro</button>
-      <button type="button" id="modeAudio" class="secondary mode-btn">🎵 Áudio (MP3)</button>
-    </div>
-
     <!-- Guitar Pro wizard (stepper + forms + nav) -->
     <div id="gpCreate">
     <!-- Stepper -->
@@ -947,79 +920,6 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
       <button type="submit" form="gpJobForm" id="wizardCreate" style="display:none">✓ Criar CDLC</button>
     </div>
     </div><!-- /#gpCreate -->
-
-    <!-- Áudio (MP3 → transcrição automática por IA) -->
-    <form id="audioJobForm" class="grid" hidden style="margin-top:.75rem">
-      <div class="meta" style="flex-basis:100%;background:#1c1e26;border-left:3px solid #a97bff;border-radius:6px;padding:.5rem .6rem">
-        ⚠️ <b>Transcrição automática (experimental).</b> As notas são detetadas do áudio por IA — é uma
-        <b>aproximação</b>, sem a fidelidade de um ficheiro Guitar Pro: cordas/trastes são estimados por
-        heurística e as técnicas (bend/slide/palm mute) não são detetadas de forma fiável numa mistura
-        completa. Revê e corrige na partitura depois. Precisa do extra <code>[ml]</code> no worker.
-      </div>
-      <div class="field" style="flex-basis:100%">
-        <label class="check"><input type="checkbox" id="audioSplitToggle"> Tenho ficheiros <b>Lead</b> e <b>Rhythm</b> separados <button class="info-btn" data-info="audio-split">ⓘ</button></label>
-        <span class="meta">transcreve cada um no seu arranjo — evita a divisão experimental Lead/Rhythm</span></div>
-      <div id="audioSingleWrap" class="field" style="flex-basis:100%"><label>Gravação (MP3/FLAC/WAV/OGG/M4A/AIFF)</label>
-        <div class="file-drop"><div class="file-drop-icon">&#127925;</div><span class="file-drop-text">Arrasta ou clica para escolher</span><span class="file-drop-btn">Procurar</span>
-        <input type="file" name="file" id="audioSingleFile" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" required></div></div>
-      <div id="audioSplitWrap" class="grid" hidden style="flex-basis:100%;gap:.6rem">
-        <div class="field" style="flex-basis:100%"><label>🎸 Lead (MP3/FLAC/WAV/OGG/M4A/AIFF)</label>
-          <div class="file-drop"><div class="file-drop-icon">&#127928;</div><span class="file-drop-text">Arrasta ou clica (opcional se deres Rhythm)</span><span class="file-drop-btn">Procurar</span>
-          <input type="file" name="lead" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" disabled></div></div>
-        <div class="field" style="flex-basis:100%"><label>🎸 Rhythm (MP3/FLAC/WAV/OGG/M4A/AIFF)</label>
-          <div class="file-drop"><div class="file-drop-icon">&#127928;</div><span class="file-drop-text">Arrasta ou clica (opcional se deres Lead)</span><span class="file-drop-btn">Procurar</span>
-          <input type="file" name="rhythm" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" disabled></div></div>
-        <div class="field" style="flex-basis:100%"><label>🎧 Mistura completa (opcional — é o que toca no jogo)</label>
-          <div class="file-drop"><div class="file-drop-icon">&#127911;</div><span class="file-drop-text">Arrasta ou clica (opcional)</span><span class="file-drop-btn">Procurar</span>
-          <input type="file" name="mix" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" disabled></div></div>
-        <div class="field" style="flex-basis:100%">
-          <label class="check"><input type="checkbox" name="separate_stems" value="true"> Aplicar Demucs aos stems (só se ainda tiverem outros instrumentos)</label>
-          <span class="meta">por defeito NÃO se aplica — os stems já são guitarras isoladas, e re-separar é lento e pode degradá-los</span></div>
-        <span class="meta" style="flex-basis:100%">Pelo menos Lead ou Rhythm. Sem mistura, o áudio do jogo é o stem que deres.</span>
-      </div>
-      <div class="field"><label>Título</label>
-        <input type="text" name="title" placeholder="auto das tags"></div>
-      <div class="field"><label>Banda</label>
-        <input type="text" name="artist" placeholder="auto das tags"></div>
-      <div class="field"><label>Álbum</label>
-        <input type="text" name="album" placeholder="auto"></div>
-      <div class="field"><label>Ano</label>
-        <input type="number" name="year" min="1900" max="2100" style="width:5.5rem"></div>
-      <div class="field" style="flex-basis:100%"><label>Afinação <button class="info-btn" data-info="audio-tuning">ⓘ</button></label>
-        <select name="tuning_midi" style="min-width:16rem">
-          <option value="">Auto (detetar — pouco fiável, ver ⓘ)</option>
-          <option value="40,45,50,55,59,64">E Standard (E A D G B e)</option>
-          <option value="38,45,50,55,59,64">Drop D (D A D G B e)</option>
-          <option value="39,44,49,54,58,63">Eb Standard (½ tom abaixo)</option>
-          <option value="38,43,48,53,57,62">D Standard (1 tom abaixo)</option>
-          <option value="37,44,49,54,58,63">Drop C#</option>
-          <option value="36,43,48,53,57,62">Drop C</option>
-          <option value="35,40,45,50,54,59">B Standard</option>
-          <option value="34,41,46,51,55,60">Drop B</option>
-        </select>
-        <span class="meta">se souberes a afinação, escolhe-a — é bem mais fiável do que a deteção automática</span></div>
-      <div class="field"><label>Início da música (s) <button class="info-btn" data-info="audio-offset">ⓘ</button></label>
-        <input type="number" name="offset_s" value="0" step="0.01" min="0" style="width:6rem"></div>
-      <div class="field" style="flex-basis:100%">
-        <label>Sensibilidade da deteção <button class="info-btn" data-info="audio-thresholds">ⓘ</button></label>
-        <div class="anchor-row" style="gap:1rem;flex-wrap:wrap">
-          <label style="font-weight:400">Onset (ataque):
-            <input type="number" name="onset_threshold" value="0.5" step="0.05" min="0" max="1" style="width:4.5rem"></label>
-          <label style="font-weight:400">Frame (sustentação):
-            <input type="number" name="frame_threshold" value="0.3" step="0.05" min="0" max="1" style="width:4.5rem"></label>
-          <label style="font-weight:400">Amplitude mín.:
-            <input type="number" name="min_confidence" value="0" step="0.05" min="0" max="1" style="width:4.5rem"></label>
-          <span class="meta">↑ mais alto = menos notas-fantasma (para misturas distorcidas); ↓ mais baixo = capta notas mais ténues. <b>Amplitude mín.</b> corta as notas soltas fracas (0 = desligado)</span>
-        </div>
-      </div>
-      <div class="field" style="flex-basis:100%">
-        <label class="check"><input type="checkbox" name="transcribe_lyrics" value="true">
-        Transcrever a letra automaticamente (WhisperX — lento, precisa do extra <code>[lyrics]</code>)</label></div>
-      <p class="meta" style="flex-basis:100%">Se o ficheiro não tiver tags de título/banda, preenche os campos — nunca são inventados.</p>
-      <div class="modal-actions" style="flex-basis:100%">
-        <button type="submit">✓ Criar CDLC (transcrever)</button>
-      </div>
-    </form>
   </div>
 </div>
 
@@ -1208,32 +1108,10 @@ function validateWizardStep() {
   return true;
 }
 
-// Audio sub-mode: single mix vs separate Lead/Rhythm stems. Disabled inputs are
-// excluded from FormData, so only the active set is submitted.
-function setAudioSplit(on) {
-  document.getElementById('audioSingleWrap').hidden = on;
-  document.getElementById('audioSplitWrap').hidden = !on;
-  document.getElementById('audioSingleFile').disabled = on;
-  ['lead', 'rhythm', 'mix'].forEach(n => {
-    document.querySelector(`#audioJobForm input[name=${n}]`).disabled = !on;
-  });
-}
-
-// Create mode: 'gp' (Guitar Pro wizard, exact) or 'audio' (MP3 → ML transcription).
-function setCreateMode(mode) {
-  const gp = mode === 'gp';
-  document.getElementById('gpCreate').hidden = !gp;
-  document.getElementById('audioJobForm').hidden = gp;
-  document.getElementById('modeGp').classList.toggle('active-mode', gp);
-  document.getElementById('modeAudio').classList.toggle('active-mode', !gp);
-  if (gp) setWizardStep(wizardStep);  // restore GP pane visibility
-}
-
-function openNewJobModal(mode) {
+function openNewJobModal() {
   document.getElementById('newJobOverlay').hidden = false;
   document.getElementById('gpInspectForm').reset();
   document.getElementById('gpJobForm').reset();
-  document.getElementById('audioJobForm').reset();
   document.querySelectorAll('#newJobOverlay .file-drop').forEach(d => {
     d.classList.remove('has-file');
     const t = d.querySelector('.file-drop-text');
@@ -1241,13 +1119,7 @@ function openNewJobModal(mode) {
   });
   gpToken = null;
   setWizardStep(1);
-  document.getElementById('audioSplitToggle').checked = false;
-  setAudioSplit(false);
-  setCreateMode(mode === 'audio' ? 'audio' : 'gp');
 }
-document.getElementById('modeGp').addEventListener('click', () => setCreateMode('gp'));
-document.getElementById('modeAudio').addEventListener('click', () => setCreateMode('audio'));
-document.getElementById('audioSplitToggle').addEventListener('change', e => setAudioSplit(e.target.checked));
 function closeNewJobModal() { document.getElementById('newJobOverlay').hidden = true; }
 document.getElementById('newJobClose').addEventListener('click', closeNewJobModal);
 document.getElementById('wizardPrev').addEventListener('click', () => setWizardStep(wizardStep - 1));
@@ -1452,38 +1324,8 @@ const INFO = {
   },
   'new-job': {
     title: 'Criar um novo projeto',
-    body: `<p>Há duas vias, escolhidas nos botões no topo:</p>
-<p><strong>🎸 Guitar Pro</strong>: via de <b>alta fidelidade</b> — notas, trastes, técnicas e secções vêm exatas do ficheiro GP3/GP4/GP5/GP7. Assistente de 4 passos: <b>Ficheiro</b> (escolhe o GP e inspeciona as pistas) → <b>Pistas</b> (atribui Lead/Rhythm/Combo) → <b>Gravação</b> (o áudio + o início aproximado) → <b>Detalhes</b> (título/banda, opcionais).</p>
-<p><strong>🎵 Áudio (MP3)</strong>: <b>transcrição automática por IA</b> a partir só de uma gravação, sem ficheiro Guitar Pro. É uma <b>aproximação</b> (como o CDLC.ai / o gerador do Songsterr): as notas são detetadas do áudio, cordas/trastes são estimados e as técnicas não são fiáveis — revê e corrige na partitura. Precisa do extra <code>[ml]</code> no worker.</p>
-<p>Em ambos, os <b>tons</b>, a <b>capa</b> e a <b>sincronização fina</b> fazem-se depois de criar. O projeto mostra um checklist <b>"Estado do PSARC"</b> com o que ainda falta.</p>`
-  },
-  'audio-offset': {
-    title: 'Início (s) — áudio',
-    body: '<p>Corta o áudio a partir deste segundo (ex.: 5.3 → ignora os primeiros 5.3s). As notas são transcritas do áudio aparado, ficando naturalmente sincronizadas. Usa 0 para usar o ficheiro inteiro.</p>'
-  },
-  'audio-split': {
-    title: 'Lead e Rhythm separados',
-    body: '<p>Se tiveres <strong>gravações separadas</strong> de cada guitarra (stems isolados de um DAW, do Moises, do Demucs, etc.), carrega-as aqui: cada uma é transcrita <strong>independentemente</strong> no seu arranjo (Lead / Rhythm).</p>' +
-      '<p><strong>Vantagem:</strong> evita a divisão Lead/Rhythm experimental (que tenta separar duas guitarras de uma só gravação — algo não resolvido). Cada ficheiro já é uma guitarra, por isso a transcrição é mais limpa e não há "acordes" impossíveis a juntar as duas.</p>' +
-      '<p>Basta <strong>um</strong> dos dois (Lead ou Rhythm). A <strong>Mistura completa</strong> é opcional e serve de áudio no jogo; sem ela, toca o stem que deres. Os stems devem estar <strong>alinhados no tempo</strong> (a sincronização fina faz-se depois na partitura).</p>'
-  },
-  'audio-tuning': {
-    title: 'Afinação — áudio',
-    body: '<p>Detetar de forma fiável a <strong>afinação das cordas</strong> (standard / Drop D / Drop C…) a partir de áudio polifónico distorcido é um <strong>problema não resolvido</strong> — e os harmónicos-fantasma nas graves enganam ainda mais a deteção.</p>' +
-      '<p><strong>Se souberes a afinação da música, escolhe-a aqui.</strong> É muito mais fiável, e garante que as notas graves reais (de uma guitarra afinada em baixo) não são descartadas como fora da tessitura.</p>' +
-      '<p><strong>Auto</strong>: o desvio de A440 (cents) é detetado, mas a afinação das cordas cai para standard E salvo um indício claro de Drop D — usa só se não souberes a afinação.</p>'
-  },
-  'audio-thresholds': {
-    title: 'Sensibilidade da deteção (Basic Pitch)',
-    body: '<p>Controlam quão "exigente" é a IA a decidir que ouviu uma nota. Numa guitarra elétrica distorcida, o modelo tende a ouvir harmónicos como notas reais — daí a "parede" de notas a mais.</p>' +
-      '<p><strong>Onset (0–1, defeito 0.5):</strong> confiança mínima no <em>ataque</em> de uma nota nova. <strong>Sobe-o</strong> (ex.: 0.7) para rejeitar ataques-fantasma.</p>' +
-      '<p><strong>Frame (0–1, defeito 0.3):</strong> confiança mínima para a nota se <em>manter</em> a soar. <strong>Sobe-o</strong> para cortar notas ténues/ruído.</p>' +
-      '<p><strong>Amplitude mín. (0–1, defeito 0 = desligado):</strong> descarta as notas cuja <em>força</em> detetada é baixa — são tipicamente os harmónicos/artefactos que aparecem como "notas soltas sem sentido". Começa em 0.1–0.2 e sobe até a parede de notas fracas desaparecer (cuidado: demasiado alto perde notas reais quietas).</p>' +
-      '<p>Regra prática: mistura <strong>distorcida/densa</strong> → sobe os três (menos fantasmas, mas podes perder notas ténues). Gravação <strong>limpa</strong> → mantém baixos (capta mais detalhe). Ajusta e recria o projeto para comparar.</p>'
-  },
-  'youtube': {
-    title: 'YouTube',
-    body: '<p>Descarregar áudio do YouTube pode violar os Termos de Serviço do YouTube. Esta funcionalidade está desativada por defeito; o servidor devolve 403 a menos que o operador tenha definido <code>ROCKFORGE_ENABLE_YOUTUBE=true</code>.</p>'
+    body: `<p><strong>🎸 A partir de Guitar Pro</strong>: notas, trastes, técnicas e secções vêm <b>exatas</b> do ficheiro GP3/GP4/GP5/GP7. Assistente de 4 passos: <b>Ficheiro</b> (escolhe o GP e inspeciona as pistas) → <b>Pistas</b> (atribui Lead/Rhythm/Combo) → <b>Gravação</b> (o áudio + o início aproximado) → <b>Detalhes</b> (título/banda, opcionais).</p>
+<p>Os <b>tons</b>, a <b>capa</b> e a <b>sincronização fina</b> fazem-se depois de criar. O projeto mostra um checklist <b>"Estado do PSARC"</b> com o que ainda falta.</p>`
   },
   'gp-format': {
     title: 'Formatos Guitar Pro suportados',
@@ -5261,29 +5103,6 @@ document.getElementById('gpJobForm').addEventListener('submit', async e => {
   const r = await fetch('/jobs/gp', { method: 'POST', body: f });
   const b = await r.json();
   if (r.ok) { toast('Projeto criado.', 'ok'); closeNewJobModal(); selectJob(b.id); } else toast(b.detail || 'erro');
-});
-
-document.getElementById('audioJobForm').addEventListener('submit', async e => {
-  e.preventDefault();
-  const split = document.getElementById('audioSplitToggle').checked;
-  const f = new FormData(e.target);  // disabled inputs are excluded automatically
-  // Unchecked checkbox isn't sent; set it explicitly so "off" sticks.
-  f.set('transcribe_lyrics', e.target.querySelector('input[name=transcribe_lyrics]').checked);
-  let url = '/jobs/upload';
-  if (split) {
-    url = '/jobs/upload-split';
-    const hasLead = e.target.querySelector('input[name=lead]').files.length;
-    const hasRhythm = e.target.querySelector('input[name=rhythm]').files.length;
-    if (!hasLead && !hasRhythm) { toast('Escolhe pelo menos um ficheiro Lead ou Rhythm.'); return; }
-    // Drop empty file inputs so the backend's optional File(None) params stay unset.
-    for (const n of ['lead', 'rhythm', 'mix']) {
-      if (!e.target.querySelector(`input[name=${n}]`).files.length) f.delete(n);
-    }
-  }
-  const r = await fetch(url, { method: 'POST', body: f });
-  const b = await r.json();
-  if (r.ok) { toast('Projeto criado — transcrição a começar (pode demorar).', 'ok'); closeNewJobModal(); selectJob(b.id); }
-  else toast(b.detail || 'erro');
 });
 
 refreshJobs();
