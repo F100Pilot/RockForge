@@ -1272,3 +1272,27 @@ def test_hidden_heartbeat_does_not_cancel_pending_close(monkeypatch, tmp_path) -
         assert app_module._closing_at is not None  # hidden beacon must NOT cancel it
         assert c.post("/heartbeat").status_code == 200  # a real refresh (visible)
         assert app_module._closing_at is None  # now cancelled
+
+
+def test_upload_endpoints_are_plain_def_not_async(client: TestClient) -> None:
+    """inspect_gp_file/create_gp_job/reload_gp/upload_cover_art must stay plain
+    `def`, not `async def` — Starlette runs a sync route in its worker thread
+    pool, so a slow multipart upload/parse there doesn't block the event loop
+    (and every other in-flight request, including /heartbeat polling). An
+    `async def` route runs directly on the loop, so any blocking call inside it
+    (chunked file I/O, GP parsing) stalls the whole server for its duration."""
+    import inspect
+
+    import rockforge.interfaces.api.app as app_module
+
+    for name in (
+        "inspect_gp_file",
+        "create_gp_job",
+        "reload_gp",
+        "upload_cover_art",
+    ):
+        fn = getattr(app_module, name)
+        assert not inspect.iscoroutinefunction(fn), (
+            f"{name} must be a plain `def` (blocking upload work belongs in "
+            "Starlette's thread pool, not the event loop)"
+        )

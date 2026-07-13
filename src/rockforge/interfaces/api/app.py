@@ -583,13 +583,16 @@ def _copy_upload_capped(src: UploadFile, dest: Path) -> None:
         raise
 
 
-async def _read_upload_capped(src: UploadFile) -> bytes:
+def _read_upload_capped(src: UploadFile) -> bytes:
     """Read ``src`` fully into memory, capped — for small text uploads (LRC)
-    that are parsed in-process rather than written to disk."""
+    that are parsed in-process rather than written to disk. Reads the
+    underlying file synchronously (like ``_copy_upload_capped``) rather than
+    ``await``ing ``UploadFile.read`` so callers can be plain ``def`` routes,
+    which FastAPI/Starlette run in a thread pool instead of on the event loop."""
     chunks: list[bytes] = []
     total = 0
     while True:
-        chunk = await src.read(_UPLOAD_CHUNK)
+        chunk = src.file.read(_UPLOAD_CHUNK)
         if not chunk:
             break
         total += len(chunk)
@@ -602,7 +605,7 @@ async def _read_upload_capped(src: UploadFile) -> bytes:
 
 
 @app.post("/gp/inspect", response_model=GpInspectOut)
-async def inspect_gp_file(file: UploadFile = File(...)) -> GpInspectOut:
+def inspect_gp_file(file: UploadFile = File(...)) -> GpInspectOut:
     """Upload a Guitar Pro file, get its tracks for selection. The file is kept
     server-side and referenced by gp_token when creating the job."""
     suffix = Path(file.filename or "").suffix.lower()
@@ -648,7 +651,7 @@ async def inspect_gp_file(file: UploadFile = File(...)) -> GpInspectOut:
 
 
 @app.post("/jobs/gp", response_model=JobOut, status_code=202)
-async def create_gp_job(
+def create_gp_job(
     gp_token: str = Form(...),
     audio: UploadFile = File(...),
     lead_track: str = Form(""),
@@ -710,7 +713,7 @@ async def create_gp_job(
 
     lrc_text: str | None = None
     if lrc is not None and lrc.filename:
-        lrc_text = (await _read_upload_capped(lrc)).decode("utf-8", errors="replace")
+        lrc_text = _read_upload_capped(lrc).decode("utf-8", errors="replace")
 
     if tempo_scale <= 0:
         raise HTTPException(422, "tempo_scale must be > 0")
@@ -753,7 +756,7 @@ async def create_gp_job(
 
 
 @app.post("/jobs/{job_id}/reload-gp", response_model=JobOut, status_code=202)
-async def reload_gp(job_id: str, gp: UploadFile = File(...)) -> JobOut:
+def reload_gp(job_id: str, gp: UploadFile = File(...)) -> JobOut:
     """Replace the Guitar Pro file of an existing GP job and rebuild, keeping
     every override the job already carries (tuning, sync anchors, tempo, tones,
     lyrics, cover). For when you tweak a note in Guitar Pro and re-export — no
@@ -1782,7 +1785,7 @@ _COVER_ART_SUFFIXES = {".jpg", ".jpeg", ".png"}
 
 
 @app.post("/jobs/{job_id}/cover", response_model=JobOut, status_code=202)
-async def upload_cover_art(job_id: str, file: UploadFile = File(...)) -> JobOut:
+def upload_cover_art(job_id: str, file: UploadFile = File(...)) -> JobOut:
     """Upload/replace the album-art image used by the next rebuild (jpg/png).
 
     Stored as ``<work_dir>/<job_id>/cover<ext>``; referenced via
