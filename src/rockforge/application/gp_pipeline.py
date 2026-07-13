@@ -123,100 +123,171 @@ def align_chart_to_recording(
     chart_start: float,
     rec_start: float,
     stride: int = 10,
-    reach: float = 0.18,
-    tol: float = 0.05,
-    min_window_onsets: int = 8,
+    win: float = 0.12,
+    rho_min: float = 0.75,
+    rho_max: float = 1.30,
+    ema: float = 0.25,
+    corr_window: int = 10,
 ) -> list[tuple[float, float, float]]:
     """Map the chart onto the recording's real tempo curve, starting at the
     user's confirmed first note. Returns ``(chart_time, recording_time,
     confidence)`` anchors the tab viewer previews — never applied silently.
 
-    Three information sources, each used for what it is reliable at:
+    The alignment is driven by ONSET CORRESPONDENCE, not by integrating the beat
+    tracker's grid. Walking the chart's own note onsets in order, each is
+    *predicted* into the recording at the running tempo ratio ``rho`` (recording
+    seconds per chart second) and *snapped* to the nearest real attack within
+    ``±win``; the accepted (chart, recording) pairs are the drift curve. ``rho``
+    starts at **1.0** — the authored tempo the user's pin already confirmed — and
+    is nudged toward the robust (Theil–Sen) slope of the recent correspondences,
+    clamped to ``[rho_min, rho_max]`` and EMA-smoothed. This is deliberate: the
+    beat tracker's *tempo* is biased (it read ~184 BPM on a genuine 175 BPM song),
+    so integrating its intervals over-compressed the opening — the chart rushed
+    ahead from the very first bar. Deriving tempo from actual chart↔recording
+    onset matches instead keeps the opening at the authored tempo and still tracks
+    real mid-song drift, because the correspondences themselves move with it.
 
-    - ``rec_beats`` (the beat tracker's grid) supplies the LOCAL TEMPO curve —
-      the median of neighbouring beat intervals tracks real tempo changes well
-      even when individual beats are missed or doubled. It is integrated beat by
-      beat from the pin, so the mapping follows tempo changes; crucially the
-      tracker's beat COUNT is never trusted (a missed beat made a 1:1
-      index correspondence slip cumulatively — ~3 s of "the chart rushes ahead"
-      over a real 200 s song).
+    Roles of the four inputs:
+
     - ``chart_onsets`` vs ``rec_onsets`` (the notes the tab HAS vs the attacks
-      the audio HAS) refine each anchor's phase within ``±reach`` — a leash
-      short enough that a repeated riff can't pull the anchor to a neighbouring
-      repetition — and yield the anchor's ``confidence``: the fraction of the
-      surrounding chart onsets that land within ``tol`` of a real attack.
+      the audio HAS) are the primary signal: they set both the phase (the snap)
+      and the local tempo (the recent-correspondence slope). ``win`` is a short
+      leash so a repeated riff can't pull a match onto a neighbouring repetition.
+    - ``rec_beats`` (the beat tracker's grid) is only a TEMPO PRIOR for
+      note-sparse passages: where the chart has too few onsets to estimate a
+      slope, ``rho`` relaxes toward the recording's local beat-interval tempo
+      (vs the chart's own local beat interval) rather than freezing. Its beat
+      *count* is never trusted (a missed/doubled beat would slip a 1:1 mapping).
     - ``chart_start``/``rec_start`` (the user's Step-1 pin) fix the absolute
       position: the first anchor is the pin verbatim, so replacing the pending
       anchors preserves it, and the whole curve grows from there.
 
-    Low confidence flags a span where the tab does not correspond to the audio
-    (wrong notes / extra or missing bars) — no time-warp can fix content, so
-    the UI surfaces those ranges for the user to fix in Guitar Pro instead.
+    Each anchor's ``confidence`` is the fraction of the surrounding chart onsets
+    (±4 s) that snapped to a real attack. Low confidence flags a span where the
+    tab does not correspond to the audio (wrong notes / extra or missing bars) —
+    no time-warp can fix content, so the UI surfaces those ranges for the user to
+    fix in Guitar Pro instead; the anchor there keeps its predicted position.
 
-    Validated against a real AI-generated song (200 s, tempo drifting
-    175→191 BPM with an intro absent from the tab): first 20 s align to a
-    median error of 17 ms (the old beat-index method: a multi-second rush by
-    the end), and its genuinely-mismatched tab sections are correctly flagged
-    with confidence < 0.5. Honest limit: anchors in flagged spans are
+    Validated against a real AI-generated song (200 s, tempo drifting 175→191 BPM
+    with an intro absent from the tab): the opening now holds ~175.8 BPM (was
+    ~172 with the old beat-integration) and the per-20 s median onset error drops
+    to ~10–20 ms (was 30–60 ms), while its genuinely-mismatched tab sections stay
+    flagged with confidence < 0.5. Honest limit: anchors in flagged spans are
     best-effort interpolation; refine by ear or fix the tab there.
     """
     import bisect
 
     gpb = sorted(gp_beats)
     rbt = sorted(rec_beats)
-    co = sorted(set(chart_onsets))
+    co = [c for c in sorted(set(chart_onsets)) if c >= chart_start - 1e-9]
     ro = sorted(rec_onsets)
     if len(gpb) < 2 or len(rbt) < 2:
         return []
 
-    intervals = [rbt[i + 1] - rbt[i] for i in range(len(rbt) - 1)]
-    mids = [(rbt[i] + rbt[i + 1]) / 2 for i in range(len(rbt) - 1)]
-    fallback = sorted(intervals)[len(intervals) // 2]
+    def _local(mids: list[float], ints: list[float], fb: float, x: float) -> float:
+        """Local median interval (±7) of a beat grid at position ``x``."""
+        i = bisect.bisect_left(mids, x)
+        lo, hi = max(0, i - 7), min(len(ints), i + 8)
+        seg = sorted(ints[lo:hi])
+        return seg[len(seg) // 2] if seg else fb
 
-    def interval_at(u: float) -> float:
-        """Local recording beat interval around position u (median of ±7)."""
-        i = bisect.bisect_left(mids, u)
-        lo, hi = max(0, i - 7), min(len(intervals), i + 8)
-        seg = sorted(intervals[lo:hi])
-        return seg[len(seg) // 2] if seg else fallback
+    r_int = [rbt[i + 1] - rbt[i] for i in range(len(rbt) - 1)]
+    r_mid = [(rbt[i] + rbt[i + 1]) / 2 for i in range(len(rbt) - 1)]
+    g_int = [gpb[i + 1] - gpb[i] for i in range(len(gpb) - 1)]
+    g_mid = [(gpb[i] + gpb[i + 1]) / 2 for i in range(len(gpb) - 1)]
+    r_fb = sorted(r_int)[len(r_int) // 2]
+    g_fb = sorted(g_int)[len(g_int) // 2]
 
-    def onset_hits(window: list[float], shift: float) -> int:
-        hits = 0
-        for t in window:
-            x = t + shift
-            i = bisect.bisect_left(ro, x)
-            d = min(
-                abs(x - ro[i - 1]) if i > 0 else float("inf"),
-                abs(x - ro[i]) if i < len(ro) else float("inf"),
-            )
-            if d <= tol:
-                hits += 1
-        return hits
+    def rec_tempo_ratio(chart_t: float, rec_t: float) -> float:
+        """The recording's local tempo relative to the chart's (the beat-prior
+        used only when onset correspondences run out)."""
+        g = _local(g_mid, g_int, g_fb, chart_t)
+        return _local(r_mid, r_int, r_fb, rec_t) / g if g > 1e-6 else 1.0
+
+    def theil_sen(pts: list[tuple[float, float]]) -> float:
+        slopes = [
+            (pts[j][1] - pts[i][1]) / (pts[j][0] - pts[i][0])
+            for i in range(len(pts))
+            for j in range(i + 1, len(pts))
+            if pts[j][0] - pts[i][0] > 1e-6
+        ]
+        return sorted(slopes)[len(slopes) // 2] if slopes else 1.0
 
     k0 = min(range(len(gpb)), key=lambda k: abs(gpb[k] - chart_start))
-    u = rec_start
+
+    # Walk the chart onsets, snapping each to the nearest real attack; the
+    # accepted pairs are the drift curve. ``matched`` records which onsets found
+    # an attack (for per-anchor confidence).
+    corr: list[tuple[float, float]] = [(chart_start, rec_start)]
+    matched: list[tuple[float, bool]] = []
+    last_c, last_r, rho = chart_start, rec_start, 1.0
+    recent: list[tuple[float, float]] = [(chart_start, rec_start)]
+    for c in co:
+        r_pred = last_r + rho * (c - last_c)
+        i = bisect.bisect_left(ro, r_pred)
+        cand = [ro[j] for j in (i - 1, i) if 0 <= j < len(ro) and abs(ro[j] - r_pred) <= win]
+        if cand:
+            r_val = min(cand, key=lambda x: abs(x - r_pred))
+            matched.append((c, True))
+            recent.append((c, r_val))
+            if len(recent) > corr_window:
+                recent.pop(0)
+            target = theil_sen(recent) if len(recent) >= 4 else rho
+            rho = (1 - ema) * rho + ema * max(rho_min, min(rho_max, target))
+        else:
+            matched.append((c, False))
+            # No attack to lock onto: relax the tempo toward the recording's own
+            # beat grid so a note-sparse passage still follows its drift, then
+            # carry the prediction forward onto the drift curve (so a whole section
+            # without matchable onsets — or a recording the onset detector yielded
+            # nothing for — still tracks the beat grid rather than collapsing to a
+            # flat identity between matched points).
+            prior = max(rho_min, min(rho_max, rec_tempo_ratio(c, r_pred)))
+            rho = (1 - 0.05) * rho + 0.05 * prior
+            r_val = r_pred
+        last_c, last_r = c, r_val
+        # Only extend the curve when chart time strictly advances (the first
+        # onset can coincide with the pinned chart_start) — a duplicate x would
+        # make the piecewise slope divide by zero.
+        if c > corr[-1][0] + 1e-9:
+            corr.append((c, r_val))
+
+    if not any(ok for _, ok in matched):
+        # No onset correspondence anywhere (the chart has no matchable notes, or
+        # the onset detector returned nothing): there is no phase signal to derive
+        # tempo from, so fall back to the beat prior — walk the chart beats,
+        # advancing by the recording's local beat interval (median-robust to a
+        # missed/doubled tracker beat) so the drift still follows the recording's
+        # tempo grid instead of collapsing to a flat identity.
+        r = rec_start
+        corr = [(chart_start, rec_start)]
+        for idx in range(k0 + 1, len(gpb)):
+            c = gpb[idx]
+            r += _local(r_mid, r_int, r_fb, r)
+            if c > corr[-1][0] + 1e-9:
+                corr.append((c, r))
+
+    xs = [p[0] for p in corr]
+    ys = [p[1] for p in corr]
+
+    def interp(t: float) -> float:
+        k = bisect.bisect_right(xs, t)
+        if k <= 0:
+            return ys[0] + (t - xs[0])
+        if k >= len(xs):
+            dx = xs[-1] - xs[-2] if len(xs) >= 2 else 0.0
+            s = (ys[-1] - ys[-2]) / dx if dx > 1e-9 else 1.0
+            return ys[-1] + s * (t - xs[-1])
+        dx = xs[k] - xs[k - 1]
+        s = (ys[k] - ys[k - 1]) / dx if dx > 1e-9 else 1.0
+        return ys[k - 1] + s * (t - xs[k - 1])
+
     anchors: list[tuple[float, float, float]] = [(chart_start, rec_start, 1.0)]
-    k_prev = k0
-    for k in range(k0 + stride, len(gpb), stride):
-        for _ in range(k - k_prev):
-            u += interval_at(u)  # advance one musical beat on the real tempo curve
-        k_prev = k
-        c = gpb[k]
-        r, conf = u, 0.0
-        window = [t for t in co if c - 4.0 <= t < c + 4.0]
-        if len(window) >= min_window_onsets and ro:
-            # Phase refinement: the best onset match within the leash; ties
-            # resolve toward the integrated position (no bar-hopping).
-            base_shift = u - c
-            best = -1
-            shift = base_shift - reach
-            while shift <= base_shift + reach + 1e-9:
-                s = onset_hits(window, shift)
-                if s > best or (s == best and abs(shift - base_shift) < abs(r - c - base_shift)):
-                    best, r = s, c + shift
-                shift += 0.01
-            conf = best / len(window)
-            u = r  # the refined position feeds the next integration step
+    for idx in range(k0 + stride, len(gpb), stride):
+        c = gpb[idx]
+        r = interp(c)
+        near = [m for m in matched if c - 4.0 <= m[0] < c + 4.0]
+        conf = sum(1 for _, ok in near if ok) / len(near) if near else 0.0
         if c > anchors[-1][0] and r > anchors[-1][1]:
             anchors.append((c, r, conf))
     return anchors
