@@ -512,10 +512,12 @@ def test_gp_pipeline_zero_offset_warns(two_track_gp5: Path, tmp_path: Path) -> N
 
 
 # --- Dynamic sync (align_chart_to_recording) -----------------------------------
-# The aligner integrates the recording's LOCAL tempo curve (from the detected
-# beat grid's intervals — never its beat count) from the user's pinned first
-# note, then refines each anchor's phase against the recording's onsets within
-# a short leash, reporting a per-anchor confidence.
+# The aligner walks the chart's note onsets from the user's pinned first note,
+# snapping each to the nearest recording attack; the tempo ratio it carries
+# forward is derived from those correspondences (start 1.0 = the authored tempo
+# the pin confirmed), NOT from integrating the beat tracker's biased tempo. The
+# detected beat grid is only a tempo prior for note-sparse passages. Each anchor
+# reports a per-anchor confidence (how well the tab matches the audio there).
 
 def _steady(interval: float, n: int, start: float = 0.0) -> list[float]:
     return [start + i * interval for i in range(n)]

@@ -168,26 +168,44 @@ usual "tabs de IA ficam dessincronizadas" complaint). `POST
 /jobs/{id}/auto-sync-dynamic?arrangement=<Name>&chart_start=&rec_start=` (GP
 jobs, ml extra) returns drift anchors following the recording's ACTUAL tempo
 curve, via `align_chart_to_recording(gp_beats, rec_beats, chart_onsets,
-rec_onsets, chart_start=…, rec_start=…)` (pure, in `gp_pipeline.py`). Three
-sources, each used for what it is reliable at:
+rec_onsets, chart_start=…, rec_start=…)` (pure, in `gp_pipeline.py`).
 
-- the beat tracker's grid (`detect_beats`) supplies the LOCAL TEMPO curve —
-  the median of neighbouring intervals tracks tempo changes well even when
-  individual beats are missed/doubled — integrated beat by beat from the pin.
-  **Its beat COUNT is never trusted**: the first implementation mapped chart
-  beat k to detected beat k, and each missed beat slipped the mapping one full
-  beat, accumulating a multi-second "chart rushes ahead" (user-reported, ~3 s
-  over a real 200 s song).
-- the chart's own note onsets vs the recording's detected attacks
-  (`detect_onsets`) refine each anchor's phase within a short leash (±0.18 s —
-  so a repeated riff can't pull an anchor onto a neighbouring repetition) and
-  yield a per-anchor **confidence** (fraction of nearby chart notes landing on
-  a real attack).
+The alignment is driven by **onset correspondence, NOT by integrating the beat
+tracker's tempo**. Walking the chart's own note onsets in order, each is
+*predicted* into the recording at a running tempo ratio `rho` (recording
+seconds per chart second) and *snapped* to the nearest real attack within
+±`win` (0.12 s — a leash short enough a repeated riff can't pull the match onto
+a neighbouring repetition); the accepted `(chart, recording)` pairs are the
+drift curve. `rho` starts at **1.0** — the authored tempo the user's pin already
+confirmed — and is nudged toward the robust (Theil–Sen) slope of the recent
+correspondences, clamped and EMA-smoothed. This is the fix for "começa logo a
+177 quando deveria ser 175, e acelera muito a meio": the beat tracker's *tempo*
+is biased (it read ~184 BPM on a genuine 175 BPM song), so the earlier method —
+integrating its beat intervals from the pin — over-compressed the opening and
+the chart rushed ahead from the very first bar. Deriving tempo from the actual
+chart↔recording onset matches keeps the opening at ~175 and still tracks real
+mid-song drift, because the correspondences themselves move with it.
+
+Roles of the four inputs:
+
+- `chart_onsets` vs `rec_onsets` (`detect_onsets`) are the PRIMARY signal — they
+  set both the phase (the snap) and the local tempo (the recent-correspondence
+  slope) — and yield each anchor's **confidence** (fraction of the surrounding
+  ±4 s chart onsets that snapped to a real attack).
+- the beat tracker's grid (`detect_beats`) is only a TEMPO PRIOR for note-sparse
+  passages: where the chart has too few matchable onsets, `rho` relaxes toward
+  the recording's local beat-interval tempo instead of freezing; and if there is
+  NO onset correspondence anywhere (the detector returned nothing), the whole
+  curve falls back to integrating the recording's beat grid over the chart beats
+  (median-robust to a missed/doubled beat). **Its beat COUNT is never trusted**:
+  an earlier version mapped chart beat k to detected beat k, and each missed beat
+  slipped the mapping a full beat, accumulating a multi-second "chart rushes
+  ahead" over a real 200 s song.
 - the user's Step-1 pin (`chart_start`/`rec_start`, passed by the UI from the
   current first-note display value) fixes the absolute position: the FIRST
   anchor is the pin verbatim — byte-identical to what `setTrackStart` writes —
   so replacing the pending anchors preserves it, and the curve grows from
-  there. Recording beats before the pin (an intro the tab doesn't transcribe)
+  there. Recording attacks before the pin (an intro the tab doesn't transcribe)
   are ignored.
 
 Low-confidence anchors are merged into `weak_ranges` returned to the UI: spans
@@ -195,9 +213,11 @@ where the tab's notes simply don't correspond to the audio (wrong
 notes / extra or missing bars) — content no time-warp can fix, surfaced with a
 ⚠ telling the user to fix those sections in Guitar Pro instead. Validated
 against a real AI-generated song (200 s, tempo drifting 175→191 BPM, intro
-absent from the tab, a structurally-wrong mid section): first 20 s align at a
-median 16 ms error, the end at 47 ms (old method: 31 ms start, multi-second
-rush by the end), and the mismatched sections are correctly flagged.
+absent from the tab, a structurally-wrong mid section): the opening now holds
+~175.8 BPM (was ~172 with the old beat-integration), the per-20 s median onset
+error drops to ~10–20 ms (was 30–60 ms), and the mismatched mid section is
+correctly flagged (its higher residual error is the tab being wrong there, not
+the warp).
 
 The tab viewer's **"🎯 Sincronização dinâmica"** button loads each pair as an
 ordinary drift anchor via the *same* convention the bar-align tool uses —
