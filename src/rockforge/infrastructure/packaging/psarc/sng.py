@@ -508,7 +508,11 @@ def _section_end_times(sections: list[Section], song_length: float) -> list[floa
     return [s.start_time for s in sections[1:]] + [song_length]
 
 
-def _find_phrase_iteration(phrase_iters: list[SngPhraseIteration], time: float) -> int:
+def _find_phrase_iteration(
+    phrase_iters: list[SngPhraseIteration],
+    time: float,
+    starts: list[float] | None = None,
+) -> int:
     """Index of the phrase iteration containing ``time``.
 
     A time BEFORE the first iteration's start (e.g. the silent pad before the
@@ -519,13 +523,21 @@ def _find_phrase_iteration(phrase_iters: list[SngPhraseIteration], time: float) 
     fret-hand anchor box and the beat grid right at the opening notes with a
     context from the song's ending. Only a time genuinely PAST the last
     iteration's end falls to that fallback.
+
+    Iterations tile [first.start, song_length] contiguously (each end_time is
+    the next start_time — see ``_section_end_times``), so a single
+    ``bisect_right`` on the start times reproduces the old linear containment
+    scan exactly (before-first → 0, past-end → last), in O(log n) instead of
+    O(n) per call — this is called once per note/beat across up to ~21 DD
+    levels. Pass a precomputed ``starts`` (the iteration start times) to avoid
+    rebuilding it on every call inside a hot loop; it is built on demand when
+    omitted.
     """
-    for i, pi in enumerate(phrase_iters):
-        if pi.start_time <= time < pi.end_time:
-            return i
-    if phrase_iters and time < phrase_iters[0].start_time:
+    if not phrase_iters:
         return 0
-    return max(0, len(phrase_iters) - 1)
+    if starts is None:
+        starts = [pi.start_time for pi in phrase_iters]
+    return min(len(phrase_iters) - 1, max(0, bisect.bisect_right(starts, time) - 1))
 
 
 def _default_sections(arrangement: Arrangement, song_length: float) -> list[Section]:
@@ -588,6 +600,7 @@ def _build_anchors(
     at each phrase start), so any crossing anchor is split into per-phrase pieces.
     """
     positions = [(t, lt, fr) for t, lt, fr in positions if fr]
+    pi_starts = [pi.start_time for pi in phrase_iterations]
     raw: list[tuple[float, float, int, int]] = []  # (start, last_note, fret, width)
     i = 0
     while i < len(positions):
@@ -616,7 +629,7 @@ def _build_anchors(
         anchors.append(SngAnchor(
             start_time=start, end_time=end, first_note_time=t, last_note_time=last_note,
             fret=fret, width=width,
-            phrase_iteration_id=_find_phrase_iteration(phrase_iterations, t),
+            phrase_iteration_id=_find_phrase_iteration(phrase_iterations, t, pi_starts),
         ))
     if not anchors and positions:
         anchors.append(SngAnchor(
@@ -633,7 +646,7 @@ def _build_anchors(
             split_anchors.append(replace(
                 a, start_time=seg_start, end_time=seg_end,
                 first_note_time=max(a.first_note_time, seg_start),
-                phrase_iteration_id=_find_phrase_iteration(phrase_iterations, seg_start),
+                phrase_iteration_id=_find_phrase_iteration(phrase_iterations, seg_start, pi_starts),
             ))
             seg_start = seg_end
     return split_anchors
@@ -774,12 +787,13 @@ def _build_beats(arrangement: Arrangement) -> list[SngBeat]:
 def _assign_beat_phrase_iterations(
     beats: list[SngBeat], phrase_iterations: list[SngPhraseIteration]
 ) -> list[SngBeat]:
+    starts = [pi.start_time for pi in phrase_iterations]
     return [
         SngBeat(
             time=b.time,
             measure=b.measure,
             beat=b.beat,
-            phrase_iteration=_find_phrase_iteration(phrase_iterations, b.time),
+            phrase_iteration=_find_phrase_iteration(phrase_iterations, b.time, starts),
             mask=b.mask,
         )
         for b in beats
@@ -1008,19 +1022,27 @@ def _build_sng_notes(
     the game at a dense octave riff.)
     """
     sng_notes: list[SngNote] = []
+    # Precomputed once so the per-note lookups below are O(log n), not O(n):
+    # both lists are already time-sorted (anchors by first_note_time, iterations
+    # by start_time), and these run once per single note AND per chord.
+    pi_starts = [pi.start_time for pi in phrase_iterations]
+    anchor_first_times = [a.first_note_time for a in anchors]
 
     def _find_anchor(time: float) -> tuple[int, int]:
-        for a in reversed(anchors):
-            if a.first_note_time <= time:
-                return a.fret, a.width
-        return anchors[0].fret if anchors else 1, anchors[0].width if anchors else 4
+        # Last anchor whose first_note_time <= time (bisect reproduces the old
+        # reversed-linear scan); a time before the first anchor falls to
+        # anchors[0], and an empty anchor list to the neutral (1, 4) default.
+        if not anchors:
+            return 1, 4
+        idx = max(0, bisect.bisect_right(anchor_first_times, time) - 1)
+        return anchors[idx].fret, anchors[idx].width
 
     # Single notes
     for g in single_groups:
         sn = g[0]
         mask = _note_mask(sn, is_chord=False)
         a_fret, a_width = _find_anchor(sn.time)
-        pi_id = _find_phrase_iteration(phrase_iterations, sn.time)
+        pi_id = _find_phrase_iteration(phrase_iterations, sn.time, pi_starts)
         sng_notes.append(SngNote(
             time=sn.time,
             string=sn.string,
@@ -1067,7 +1089,7 @@ def _build_sng_notes(
             mask |= NOTE_MASK_HIGHDENSITY
         mask |= NOTE_MASK_STRUM
         a_fret, a_width = _find_anchor(g[0].time)
-        pi_id = _find_phrase_iteration(phrase_iterations, g[0].time)
+        pi_id = _find_phrase_iteration(phrase_iterations, g[0].time, pi_starts)
         sng_notes.append(SngNote(
             time=g[0].time,
             string=-1,
@@ -1092,9 +1114,13 @@ def _build_sng_sections(
     sections_src: list[Section], ends: list[float], phrase_iterations: list[SngPhraseIteration]
 ) -> list[SngSection]:
     sections: list[SngSection] = []
+    pi_starts = [pi.start_time for pi in phrase_iterations]
     for sec, end in zip(sections_src, ends, strict=True):
-        start_pi = _find_phrase_iteration(phrase_iterations, sec.start_time)
-        end_pi = _find_phrase_iteration(phrase_iterations, end - 0.001) if end > 0 else start_pi
+        start_pi = _find_phrase_iteration(phrase_iterations, sec.start_time, pi_starts)
+        end_pi = (
+            _find_phrase_iteration(phrase_iterations, end - 0.001, pi_starts)
+            if end > 0 else start_pi
+        )
         sections.append(SngSection(
             name=sec.name,
             number=sec.number,

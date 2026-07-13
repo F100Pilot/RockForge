@@ -962,6 +962,24 @@ def test_find_phrase_iteration_before_first_start_returns_first_index() -> None:
     assert _find_phrase_iteration([], 5.0) == 0  # no phrases at all
 
 
+def test_find_phrase_iteration_precomputed_starts_matches_on_demand() -> None:
+    """The optional precomputed ``starts`` (passed from hot loops to skip the
+    O(n) rebuild) must give the identical index to the on-demand path."""
+    from rockforge.infrastructure.packaging.psarc.sng import (
+        SngPhraseIteration,
+        _find_phrase_iteration,
+    )
+
+    pis = [
+        SngPhraseIteration(phrase_id=0, start_time=2.5, end_time=10.0),
+        SngPhraseIteration(phrase_id=1, start_time=10.0, end_time=18.0),
+        SngPhraseIteration(phrase_id=2, start_time=18.0, end_time=25.0),
+    ]
+    starts = [pi.start_time for pi in pis]
+    for t in (-1.0, 0.0, 2.5, 5.0, 10.0, 17.999, 18.0, 24.9, 25.0, 100.0):
+        assert _find_phrase_iteration(pis, t) == _find_phrase_iteration(pis, t, starts)
+
+
 def test_song_start_anchor_has_correct_phrase_iteration_not_the_last(
 ) -> None:
     """Reproduces a real corrupted chart: a beat grid that starts after t=0 (a
