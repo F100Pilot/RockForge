@@ -1304,6 +1304,15 @@ def detect_lyrics_endpoint(job_id: str) -> JobOut:
         return _to_out(job)
 
 
+# NOTE: these three detection-status polls (/lyrics, /detected-tones, /stems)
+# read job.params, which deserializes the whole JSON column. A dedicated
+# *_status column was considered (to avoid that on each ~few-second poll) and
+# deliberately NOT added: each endpoint also RETURNS payload that lives in
+# params (the events + log, the detected-tones blob, the stem names + log), so
+# params is loaded regardless — a status column would save nothing here while
+# duplicating the status into a second source of truth to keep in sync (exactly
+# the params-copy trap documented in CLAUDE.md). Revisit only if a status-ONLY
+# poll path is ever added under real Postgres concurrency.
 @app.get("/jobs/{job_id}/lyrics", response_model=LyricsOut)
 def get_lyrics(job_id: str) -> LyricsOut:
     """Current lyric-detection status and events (raw, before pad_start_s shift
