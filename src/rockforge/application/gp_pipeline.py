@@ -256,10 +256,26 @@ def _check_anchor_order(anchors: list[tuple[float, float]]) -> None:
     inside ``TempoMap`` with no clue which correction caused it. Two clicks of
     "Mover seguintes" that both touch the arrangement's last note (each anchoring
     it at a different moment) are the usual way to create this by accident.
+
+    Also rejects two anchors sharing the EXACT SAME chart time but anchored to
+    different recording instants: the strict ``x1 > x0`` comparison below skips
+    a tied pair entirely, so that contradiction previously passed validation
+    unnoticed and ``_build_time_warp`` silently picked whichever of the two
+    matched first in its scan — exactly the "warped into nonsense" outcome this
+    check exists to prevent.
     """
     pts = sorted(anchors, key=lambda p: p[0])
     for (x0, y0), (x1, y1) in zip(pts, pts[1:], strict=False):
-        if x1 > x0 and y1 < y0:
+        if x1 == x0:
+            if y1 != y0:
+                raise IngestionError(
+                    "sync corrections conflict: two corrections both anchor "
+                    f"chart time {x0:.2f}s, but to different recording instants "
+                    f"({y0:.2f}s and {y1:.2f}s). Remove or adjust one of "
+                    "these corrections (check the pending anchors list)."
+                )
+            continue
+        if y1 < y0:
             raise IngestionError(
                 "sync corrections conflict: the point at "
                 f"{x1:.2f}s (chart time) is anchored to {y1:.2f}s, which is BEFORE "

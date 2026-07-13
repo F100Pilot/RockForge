@@ -2765,12 +2765,18 @@ function wireKnob(knob) {
     const startY = e.clientY, startV = parseFloat(input.value) || min;
     const sens = (max - min) / 150;                         // ~150px of drag = full sweep
     const move = ev => apply(startV - (ev.clientY - startY) * sens);
+    // pointercancel (tab/window blur mid-drag, a touch gesture the browser
+    // cancels) never fires pointerup — without also cleaning up here, `move`
+    // stays attached and the NEXT drag stacks another listener on top, so each
+    // later turn spins 2x/3x as fast for the same pixel delta.
     const up = () => {
       dial.removeEventListener('pointermove', move);
       dial.removeEventListener('pointerup', up);
+      dial.removeEventListener('pointercancel', up);
     };
     dial.addEventListener('pointermove', move);
     dial.addEventListener('pointerup', up);
+    dial.addEventListener('pointercancel', up);
   });
 }
 function readKnobs(container) {
@@ -2819,9 +2825,16 @@ function wireAlignedKnob(oknob, input, g) {
     const startY = e.clientY, startV = parseFloat(input.value) || min;
     const sens = (max - min) / 150;
     const move = ev => apply(startV - (ev.clientY - startY) * sens);
-    const up = () => { oknob.removeEventListener('pointermove', move); oknob.removeEventListener('pointerup', up); };
+    // See wireKnob's comment above: pointercancel must also clean up, or an
+    // interrupted drag leaves `move` attached and the next drag stacks another.
+    const up = () => {
+      oknob.removeEventListener('pointermove', move);
+      oknob.removeEventListener('pointerup', up);
+      oknob.removeEventListener('pointercancel', up);
+    };
     oknob.addEventListener('pointermove', move);
     oknob.addEventListener('pointerup', up);
+    oknob.addEventListener('pointercancel', up);
   });
 }
 
@@ -4009,6 +4022,17 @@ function updateSelectionInfo() {
       showArr(currentArr);
     }
     dragging = null;
+  });
+  // pointercancel (tab/window blur mid-drag, a touch gesture the browser
+  // interrupts) never fires pointerup — without this, a stale dragging/
+  // groupDrag/rubberBand/lyricDrag flag survives and misreads the NEXT
+  // ordinary mouse move (no button held) as a continuing drag. Unlike
+  // pointerup this only resets state — a cancelled gesture must not commit.
+  svg.addEventListener('pointercancel', () => {
+    if (lyricDrag) { lyricDrag.el.removeAttribute('transform'); lyricDrag = null; }
+    if (rubberBand) { document.getElementById('selectionBox')?.remove(); rubberBand = null; }
+    if (groupDrag) { groupDrag.grps.forEach(g => g.removeAttribute('transform')); groupDrag = null; }
+    if (dragging) { dragging.grp.removeAttribute('transform'); dragging = null; }
   });
 })();
 

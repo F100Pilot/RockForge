@@ -350,6 +350,22 @@ def test_check_anchor_order_accepts_valid_and_rejects_crossing() -> None:
         _check_anchor_order([(2.0, 5.0), (3.0, 4.0)])  # later chart time, earlier target
 
 
+def test_check_anchor_order_rejects_same_chart_time_different_targets() -> None:
+    """Two anchors at the IDENTICAL chart time with different targets used to
+    slip past validation entirely: the strict `x1 > x0` comparison skipped a
+    tied pair, so `_build_time_warp` silently picked whichever matched first."""
+    from rockforge.application.gp_pipeline import _check_anchor_order
+    from rockforge.domain.errors import IngestionError
+
+    # A duplicate anchor (same x, same y) is harmless — no contradiction.
+    _check_anchor_order([(5.0, 5.0), (5.0, 5.0), (10.0, 10.0)])
+    with pytest.raises(IngestionError, match="sync corrections conflict"):
+        _check_anchor_order([(5.0, 5.0), (5.0, 3.0), (10.0, 10.0)])
+    # Order-independent: the same conflict, points given the other way round.
+    with pytest.raises(IngestionError, match="sync corrections conflict"):
+        _check_anchor_order([(5.0, 3.0), (5.0, 5.0), (10.0, 10.0)])
+
+
 def test_build_time_warp_leaves_notes_outside_excerpt_untouched() -> None:
     # Two-anchor (excerpt) correction: notes between the anchors are rigidly
     # shifted/stretched, but notes before/after the excerpt must NOT move at
