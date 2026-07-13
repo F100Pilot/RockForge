@@ -602,3 +602,46 @@ def test_align_chart_degenerate_inputs_return_no_anchors() -> None:
 
     assert align_chart_to_recording([], [1, 2], [], [], chart_start=0, rec_start=0) == []
     assert align_chart_to_recording([1, 2], [], [], [], chart_start=0, rec_start=0) == []
+
+
+# --- MIDI-driven sync (align_chart_to_midi) ------------------------------------
+# A MIDI tempo map (e.g. exported from RIPX) gives the recording's real time for
+# each measure downbeat — ground truth, not an estimate. align_chart_to_midi
+# pins the chart's first measure to the recording and places every later bar at
+# the MIDI's own measure time (one anchor per bar = "BPM por compasso").
+
+
+def test_align_to_midi_pins_then_follows_the_midi_measures() -> None:
+    from rockforge.application.gp_pipeline import align_chart_to_midi
+
+    gp_bars = [0.0, 2.0, 4.0, 6.0, 8.0]           # chart measure downbeats
+    midi = [10.0, 12.0, 14.5, 17.0]               # recording times (2.0, 2.5, 2.5s bars)
+    out = align_chart_to_midi(gp_bars, midi, chart_start=0.0, rec_start=10.0)
+    assert out[0] == (0.0, 10.0, 1.0)             # the pin, verbatim
+    # Each later bar sits at rec_start + the MIDI measure's elapsed time.
+    assert out == [
+        (0.0, 10.0, 1.0),
+        (2.0, 12.0, 1.0),
+        (4.0, 14.5, 1.0),
+        (6.0, 17.0, 1.0),
+    ]
+
+
+def test_align_to_midi_respects_a_mid_song_pin() -> None:
+    """Pinning a bar mid-song maps THAT bar to the MIDI's first measure and the
+    following bars to the subsequent MIDI measures (relative offset)."""
+    from rockforge.application.gp_pipeline import align_chart_to_midi
+
+    gp_bars = [0.0, 2.0, 4.0, 6.0, 8.0]
+    midi = [10.0, 12.0, 14.5, 17.0]
+    out = align_chart_to_midi(gp_bars, midi, chart_start=4.0, rec_start=20.0)
+    assert out[0] == (4.0, 20.0, 1.0)
+    assert out[1] == (6.0, 22.0, 1.0)             # +2.0s (MIDI measure 0→1)
+    assert out[2] == (8.0, 24.5, 1.0)             # +4.5s (MIDI measure 0→2)
+
+
+def test_align_to_midi_degenerate_inputs_return_no_anchors() -> None:
+    from rockforge.application.gp_pipeline import align_chart_to_midi
+
+    assert align_chart_to_midi([], [1.0, 2.0], chart_start=0, rec_start=0) == []
+    assert align_chart_to_midi([0.0, 2.0], [1.0], chart_start=0, rec_start=0) == []
