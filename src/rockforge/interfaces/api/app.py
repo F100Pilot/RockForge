@@ -1917,15 +1917,30 @@ def closing() -> dict[str, bool]:
     return {"ok": True}
 
 
+def _web_file_candidates(name: str) -> tuple[Path, Path]:
+    """The two places a bundled `web/` file can live, first hit wins — the same
+    resolution `_gear_image_dirs()` uses for gear images."""
+    return (
+        # repo checkout: src/rockforge/interfaces/api/app.py -> repo root
+        Path(__file__).resolve().parents[3].parent / "web" / name,
+        # pip-installed (e.g. Docker WORKDIR /app with COPY web ./web)
+        Path.cwd() / "web" / name,
+    )
+
+
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 def index() -> str:
-    candidates = (
-        # repo checkout: src/rockforge/interfaces/api/app.py -> repo root
-        Path(__file__).resolve().parents[3].parent / "web" / "index.html",
-        # pip-installed (e.g. Docker WORKDIR /app with COPY web ./web)
-        Path.cwd() / "web" / "index.html",
-    )
-    for ui in candidates:
+    for ui in _web_file_candidates("index.html"):
         if ui.exists():
             return ui.read_text(encoding="utf-8")
     return "<h1>RockForge</h1><p>UI not bundled; see /docs for the API.</p>"
+
+
+@app.get("/app.js", include_in_schema=False)
+def app_js() -> FileResponse:
+    """The web UI's JS, extracted out of index.html's inline <script> so it can
+    be linted (ESLint has no way to check an inline block on its own)."""
+    for js in _web_file_candidates("app.js"):
+        if js.exists():
+            return FileResponse(js, media_type="text/javascript")
+    raise HTTPException(404, "app.js not bundled")

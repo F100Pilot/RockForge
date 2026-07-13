@@ -23,6 +23,19 @@ jobs:
       - name: Tests
         run: pytest --cov=rockforge --cov-report=term-missing
 
+  web-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Lint web/app.js
+        run: npm run lint
+
   docker:
     runs-on: ubuntu-latest
     steps:
