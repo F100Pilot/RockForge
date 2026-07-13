@@ -97,10 +97,21 @@ class DemucsSeparator:
                     continue
                 raise SeparationError(f"demucs failed: {exc.stderr[-2000:]}") from exc
 
+    def has_cached_guitar_stem(self, audio: Path, workdir: Path) -> bool:
+        """Whether a prior separate_guitar/separate_stems call already produced
+        a guitar stem for this exact (audio, workdir) — lets a caller log an
+        accurate "reusing" message before the (near-instant, cache-hit) call."""
+        return (workdir / "stems" / self._model / audio.stem / "guitar.wav").exists()
+
     def separate_guitar(self, audio: Path, workdir: Path) -> Path:
         out_dir = workdir / "stems"
-        self._run(self._model, [], audio, out_dir)
         guitar = out_dir / self._model / audio.stem / "guitar.wav"
+        # htdemucs_6s writes every source in one pass, so an existing guitar.wav
+        # means a full separation of this exact (audio, workdir) already ran —
+        # e.g. tone detection and stem separation both ask for it on the same
+        # recording. Skip the ~minutes-long re-run and reuse it.
+        if not guitar.exists():
+            self._run(self._model, [], audio, out_dir)
         if not guitar.exists():
             raise SeparationError(
                 f"expected guitar stem not produced at {guitar} — "

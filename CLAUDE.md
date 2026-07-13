@@ -820,6 +820,23 @@ shares the recording's clock, so the notes stay aligned):
    → `unavailable`. `GET /jobs/{id}/stems` returns the status + the names whose
    file still exists on disk; `GET /jobs/{id}/stem/{name}` serves the WAV.
 
+**`detect_tones` and `separate_stems` (demucs backend) share one guitar-stem
+cache.** Both run the exact same `htdemucs_6s` pass over the same normalized
+recording, so running one after the other used to pay for Demucs twice —
+several redundant minutes. `celery_app._demucs_stems_cache_dir(job_id)` points
+both tasks' normalization output and `DemucsSeparator` workdir at the same
+`work_dir/<job_id>/demucs_stems`, and `DemucsSeparator.separate_guitar` checks
+for an existing `guitar.wav` before invoking the subprocess (htdemucs_6s writes
+every source in one pass, so its presence means a full separation already ran)
+— whichever task runs second reuses it instantly instead of recomputing.
+`has_cached_guitar_stem` lets each task log "reusing an already-separated
+guitar stem" instead of the normal "separating…" message when this happens.
+Banquet (`separate_stems`' experimental backend) keeps its own `stem_separation`
+workdir — its query-based, per-clip output isn't compatible with the shared
+htdemucs_6s cache. Guarded by
+`test_separate_guitar_reuses_an_existing_stem_without_rerunning` /
+`test_separate_stems_reuses_a_guitar_stem_from_a_prior_separate_guitar_call`.
+
 `decodeWaveform` branches on `audioSourceName`: `synth:<kind>` → synthesize,
 else fetch `/stem/{name}` or `/source-audio`. Changing the dropdown re-decodes
 and restores the playhead; `loadStems` repopulates the selector on reopen (synth
