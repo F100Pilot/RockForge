@@ -41,9 +41,10 @@ from dataclasses import dataclass, field, replace
 from functools import lru_cache
 from pathlib import Path
 
+from rockforge.application.ports import VocalEvent
 from rockforge.domain.arrangement import Arrangement, Section
 from rockforge.domain.music import TabNote, Technique, high_density_flags
-from rockforge.infrastructure.rsxml.vocals import VOCAL_NOTE, VocalEvent
+from rockforge.infrastructure.rsxml.vocals import VOCAL_NOTE
 
 # The vocals SNG's Symbols sections (SymbolsHeader/Texture/Definition) are the
 # lyric font's glyph atlas: without them the game has no glyphs to draw the

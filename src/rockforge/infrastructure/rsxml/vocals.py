@@ -24,8 +24,9 @@ from __future__ import annotations
 import bisect
 import re
 import xml.etree.ElementTree as ET
-from dataclasses import dataclass
 from pathlib import Path
+
+from rockforge.application.ports import VocalEvent
 
 VOCAL_NOTE = 254
 DEFAULT_LAST_LENGTH_S = 2.0
@@ -34,13 +35,6 @@ MAX_LENGTH_S = 4.0
 _LRC_LINE = re.compile(r"\[(\d+):(\d+(?:\.\d+)?)\](.*)")
 _USTAR_NOTE = re.compile(r"^([:*FRG])\s+(-?\d+)\s+(-?\d+)\s+(-?\d+)\s?(.*)$")
 _USTAR_HEADER = re.compile(r"^#(TITLE|ARTIST|BPM|GAP)\s*:", re.IGNORECASE)
-
-
-@dataclass(frozen=True)
-class VocalEvent:
-    time: float
-    length: float
-    lyric: str
 
 
 def parse_lrc(text: str, offset_s: float = 0.0) -> list[VocalEvent]:

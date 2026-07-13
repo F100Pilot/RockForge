@@ -23,7 +23,13 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from rockforge.application.ports import AudioIngestor, AudioNormalizer, Packager
+from rockforge.application.ports import (
+    AudioIngestor,
+    AudioNormalizer,
+    Packager,
+    PackagingResult,
+    VocalEvent,
+)
 from rockforge.domain.arrangement import (
     Arrangement,
     ArrangementKind,
@@ -41,9 +47,7 @@ from rockforge.infrastructure.gpimport.parser import (
     inspect_gp,
     parse_gp_track,
 )
-from rockforge.infrastructure.packaging.dlcbuilder import PackagingResult
 from rockforge.infrastructure.rsxml.vocals import (
-    VocalEvent,
     distribute_syllables,
     enforce_max_line_words,
     parse_lyrics,

@@ -42,17 +42,15 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from rockforge.application.ports import PackagingResult, VocalEvent
 from rockforge.domain.arrangement import Arrangement
 from rockforge.domain.errors import PackagingError
 from rockforge.infrastructure.normalize.loudness import calculate_volume
-from rockforge.infrastructure.packaging.dlcbuilder import (
-    PackagingResult,
-    build_project_metadata,
-)
+from rockforge.infrastructure.packaging.dlcbuilder import build_project_metadata
 from rockforge.infrastructure.packaging.psarc import container, gamedata, manifest, sng, soundbank
 from rockforge.infrastructure.packaging.rs2dlc import write_rs2dlc
 from rockforge.infrastructure.packaging.wwise import WwiseWemConverter
-from rockforge.infrastructure.rsxml.vocals import VocalEvent, write_vocals_xml
+from rockforge.infrastructure.rsxml.vocals import write_vocals_xml
 from rockforge.infrastructure.rsxml.writer import write_arrangement_xml
 
 # The song-select preview is a short clip, not the whole track (reusing the full
