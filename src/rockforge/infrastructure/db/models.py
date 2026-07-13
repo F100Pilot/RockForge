@@ -25,7 +25,14 @@ class Job(Base):
     __tablename__ = "jobs"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    status: Mapped[JobStatus] = mapped_column(Enum(JobStatus), default=JobStatus.PENDING)
+    # Indexed: list_jobs sorts by created_at.desc() on every /jobs poll (the web
+    # UI polls every ~5s per open tab). status is indexed too for the common
+    # "still-running" scans. Cheap on SQLite, matters once job history grows on
+    # Postgres. (create_all adds these for a fresh DB; an existing SQLite file
+    # keeps working unindexed — it just doesn't gain the index retroactively.)
+    status: Mapped[JobStatus] = mapped_column(
+        Enum(JobStatus), default=JobStatus.PENDING, index=True
+    )
     source: Mapped[str] = mapped_column(Text)
     source_type: Mapped[str] = mapped_column(String(16))  # "gp" (only type created today)
     title: Mapped[str] = mapped_column(String(255))
@@ -33,7 +40,7 @@ class Job(Base):
     album: Mapped[str] = mapped_column(String(255), default="")
     year: Mapped[int | None] = mapped_column(nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), index=True
     )
     stage: Mapped[str | None] = mapped_column(String(32), nullable=True)  # current pipeline stage
     params: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)  # rebuild/GP overrides
