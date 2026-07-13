@@ -13,6 +13,8 @@ produce the final PSARC; otherwise packaging stops at the bundle, explicitly.
 from __future__ import annotations
 
 import json
+import os
+import shlex
 import shutil
 import subprocess
 from pathlib import Path
@@ -25,6 +27,29 @@ from rockforge.infrastructure.packaging.rs2dlc import write_rs2dlc
 from rockforge.infrastructure.packaging.wwise import WwiseWemConverter
 from rockforge.infrastructure.rsxml.vocals import write_vocals_xml
 from rockforge.infrastructure.rsxml.writer import write_arrangement_xml
+
+
+def _build_packer_argv(template: str, project: str) -> list[str]:
+    """Turn the operator's ``psarc_packer_cmd`` template into an argv list so it
+    can run WITHOUT ``shell=True``.
+
+    The template (e.g. ``dlc-builder-cli pack {project}``) is tokenised FIRST,
+    then ``{project}`` is substituted into each token — so the project path
+    (a server-generated UUID dir, but possibly containing spaces) stays a single
+    argument and is never re-parsed by a shell or the tokeniser. No user-
+    controlled string reaches this today; building the argv keeps it safe if
+    that ever changes. ``posix=False`` on Windows preserves backslash paths in
+    the template; a matching pair of surrounding quotes is then stripped per
+    token so quoted args still pass through cleanly.
+    """
+    win = os.name == "nt"
+    parts = shlex.split(template, posix=not win)
+    if win:
+        parts = [
+            p[1:-1] if len(p) >= 2 and p[0] == p[-1] and p[0] in "\"'" else p
+            for p in parts
+        ]
+    return [p.replace("{project}", project) for p in parts]
 
 
 def build_project_metadata(
@@ -145,9 +170,9 @@ class DlcBuilderPackager:
 
         psarc: Path | None = None
         if self._packer_cmd:
-            cmd = self._packer_cmd.format(project=str(out_dir))
+            argv = _build_packer_argv(self._packer_cmd, str(out_dir))
             try:
-                subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
+                subprocess.run(argv, check=True, capture_output=True, text=True)
             except subprocess.CalledProcessError as exc:
                 raise PackagingError(f"external PSARC packer failed: {exc.stderr[-2000:]}") from exc
             candidates = sorted(out_dir.glob("*.psarc"))
