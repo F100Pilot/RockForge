@@ -27,7 +27,7 @@ class Job(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     status: Mapped[JobStatus] = mapped_column(Enum(JobStatus), default=JobStatus.PENDING)
     source: Mapped[str] = mapped_column(Text)
-    source_type: Mapped[str] = mapped_column(String(16))  # "upload" | "youtube"
+    source_type: Mapped[str] = mapped_column(String(16))  # "gp" (only type created today)
     title: Mapped[str] = mapped_column(String(255))
     artist: Mapped[str] = mapped_column(String(255))
     album: Mapped[str] = mapped_column(String(255), default="")
