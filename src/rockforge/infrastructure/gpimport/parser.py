@@ -320,7 +320,6 @@ def parse_gp_track(
                     fret = int(note.value)
                     if not 0 <= fret <= 24:
                         dropped_out_of_range += 1
-                        tick += beat.duration.time
                         continue
                     eff = note.effect
                     techs: set[Technique] = set()

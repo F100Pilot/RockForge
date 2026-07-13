@@ -19,12 +19,43 @@ from rockforge.infrastructure.packaging.psarc.sng import (
     NOTE_MASK_TREMOLO,
     TECHNIQUE_BITS,
     TECHNIQUE_TO_MASK,
+    _pack_str,
+    _unpack_str,
     from_arrangement,
     from_vocals,
     read_sng,
     write_sng,
 )
 from rockforge.infrastructure.rsxml.vocals import VocalEvent
+
+
+def test_pack_str_truncates_on_a_utf8_character_boundary() -> None:
+    """A raw byte slice can split a multi-byte UTF-8 character in half, shipping
+    invalid bytes into the packed .sng and crashing read-back (_unpack_str)."""
+    # "ção" is 2+2+1 = 5 bytes ('ç'/'ã' are each 2 bytes); 46 ASCII 'a's + that
+    # = 51 bytes. A raw byte slice to 47 bytes (_LYRIC_LEN - 1) lands 1 byte
+    # into 'ç', splitting it — the exact bug this guards against.
+    value = "a" * 46 + "ção"
+    packed = _pack_str(value, 48)
+    assert len(packed) == 48
+    # Must decode cleanly (no UnicodeDecodeError from a split character); the
+    # incomplete trailing 'ç' is dropped rather than emitted half-broken.
+    assert _unpack_str(packed) == "a" * 46
+
+
+def test_pack_str_keeps_a_multi_byte_char_that_fits_whole() -> None:
+    """Sanity check the boundary isn't overly conservative: a multi-byte
+    character that fits entirely within the limit is kept, not dropped."""
+    value = "a" * 42 + "ção"  # 42 + 5 = 47 bytes == exactly length - 1
+    packed = _pack_str(value, 48)
+    assert _unpack_str(packed) == value
+
+
+def test_pack_str_exact_fit_and_empty_are_unaffected() -> None:
+    assert _unpack_str(_pack_str("hello", 32)) == "hello"
+    assert _unpack_str(_pack_str("", 32)) == ""
+    exact = "x" * 31
+    assert _unpack_str(_pack_str(exact, 32)) == exact
 
 
 def _arrangement() -> Arrangement:

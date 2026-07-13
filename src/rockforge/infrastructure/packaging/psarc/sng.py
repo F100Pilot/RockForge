@@ -148,7 +148,12 @@ _BEND_DATA_COUNT = 32  # fixed-size bend array per string in ChordNotes
 
 
 def _pack_str(value: str, length: int) -> bytes:
+    # A raw byte slice can split a multi-byte UTF-8 character in half, shipping
+    # invalid bytes into the packed .sng and crashing _unpack_str on read-back.
+    # Decoding with errors="ignore" drops only the incomplete trailing
+    # sequence the slice may have cut into, leaving everything before intact.
     raw = value.encode("utf-8")[: length - 1]
+    raw = raw.decode("utf-8", errors="ignore").encode("utf-8")
     return raw + b"\x00" * (length - len(raw))
 
 
