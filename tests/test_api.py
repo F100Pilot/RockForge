@@ -112,6 +112,27 @@ def test_gear_image_serves_local_file_or_404(client: TestClient) -> None:
     assert client.get("/gear-image/..%2f..%2fsecret").status_code in (404, 400)
 
 
+def test_gear_image_falls_back_to_bundled_and_workdir_wins(client: TestClient) -> None:
+    """A key with no work_dir override is served from the bundled
+    web/gear_images/; a work_dir image of the same key takes precedence."""
+    import rockforge.interfaces.api.app as app_module
+
+    dirs = app_module._gear_image_dirs()
+    bundled = next((d for d in dirs if d.name == "gear_images" and "web" in d.parts), None)
+    assert bundled is not None and (bundled / "Rack_StudioCompressor.png").is_file()
+
+    # No work_dir override → served from the bundled folder.
+    r = client.get("/gear-image/Rack_StudioCompressor")
+    assert r.status_code == 200 and r.headers["content-type"] == "image/png"
+
+    # A work_dir image of the SAME key overrides the bundled one.
+    folder = app_module.settings.work_dir / "gear_images"
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "Rack_StudioCompressor.png").write_bytes(b"\x89PNG\r\n\x1a\nOVERRIDE")
+    r2 = client.get("/gear-image/Rack_StudioCompressor")
+    assert r2.status_code == 200 and r2.content == b"\x89PNG\r\n\x1a\nOVERRIDE"
+
+
 def test_upload_split_stores_per_role_sources(client: TestClient) -> None:
     """Separate Lead/Rhythm uploads are stored as params['lead_source'] /
     ['rhythm_source']; the bundle source is the mix when given."""

@@ -1976,24 +1976,43 @@ def gear_catalogue() -> dict[str, Any]:
     return catalogue_for_ui()
 
 
+def _gear_image_dirs() -> list[Path]:
+    """Folders searched (in order) for a gear image, first hit wins.
+
+    ``work_dir/gear_images`` is the RUNTIME override — the user drops their own
+    amp/cab/pedal pictures there (named by the gear key) without committing.
+    The bundled ``web/gear_images`` (resolved the same way ``index()`` finds the
+    web UI) ships RockForge's own gear art in the repo, so a fresh install has
+    pictures out of the box even before the user adds any."""
+    dirs = [settings.work_dir / "gear_images"]
+    for base in (
+        Path(__file__).resolve().parents[3].parent / "web" / "gear_images",
+        Path.cwd() / "web" / "gear_images",
+    ):
+        if base not in dirs:
+            dirs.append(base)
+    return dirs
+
+
 @app.get("/gear-image/{key}")
 def gear_image(key: str) -> FileResponse:
-    """Serve a user-supplied gear image for the tone editor, if one exists.
+    """Serve a gear image for the tone editor, if one exists.
 
-    Images live in ``work_dir/gear_images/<key>.<ext>`` — the app's RUNTIME data
-    folder, never the code repo — so the user can drop their own amp/cabinet/
-    pedal pictures there (named by the gear's key) without committing anything.
-    404 when absent; the UI then falls back to the generic panel. The key is
-    sanitised to a bare slug so it can't escape the folder."""
+    Looks first in ``work_dir/gear_images/<key>.<ext>`` (the user's own
+    override) then the bundled ``web/gear_images/<key>.<ext>`` shipped in the
+    repo. 404 when absent in both; the UI then falls back to the generic panel.
+    The key is sanitised to a bare slug so it can't escape the folder."""
     slug = "".join(c for c in key if c.isalnum() or c in "-_")
     if not slug:
         raise HTTPException(404, "no such gear image")
-    folder = settings.work_dir / "gear_images"
-    for ext in (".png", ".jpg", ".jpeg", ".webp"):
-        candidate = folder / f"{slug}{ext}"
-        if candidate.is_file():
-            media = "image/jpeg" if ext in (".jpg", ".jpeg") else f"image/{ext[1:]}"
-            return FileResponse(candidate, media_type=media)
+    for folder in _gear_image_dirs():
+        for ext in (".png", ".jpg", ".jpeg", ".webp"):
+            candidate = folder / f"{slug}{ext}"
+            if candidate.is_file():
+                media = (
+                    "image/jpeg" if ext in (".jpg", ".jpeg") else f"image/{ext[1:]}"
+                )
+                return FileResponse(candidate, media_type=media)
     raise HTTPException(404, "no gear image for this key")
 
 
