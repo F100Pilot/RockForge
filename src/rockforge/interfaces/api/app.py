@@ -1289,7 +1289,10 @@ def detect_lyrics_endpoint(job_id: str) -> JobOut:
         job = session.get(Job, job_id)
         if job is None:
             raise HTTPException(404, "job not found")
-        if job.source_type not in {"gp", "upload", "youtube"}:
+        # Detection is source-type-agnostic (operates on job.source, the
+        # recording). "gp" is the only type the app creates today; the
+        # long-removed "youtube" URL-ingestion type is gone from the set.
+        if job.source_type not in {"gp", "upload"}:
             raise HTTPException(422, "lyric detection is not supported for this job's source")
         if not Path(job.source).exists():
             raise HTTPException(409, "source recording no longer exists on the work volume")
@@ -1350,7 +1353,7 @@ def detect_tones_endpoint(job_id: str) -> JobOut:
         job = session.get(Job, job_id)
         if job is None:
             raise HTTPException(404, "job not found")
-        if job.source_type not in {"gp", "upload", "youtube"}:
+        if job.source_type not in {"gp", "upload"}:
             raise HTTPException(422, "tone detection is not supported for this job's source")
         if not Path(job.source).exists():
             raise HTTPException(409, "source recording no longer exists on the work volume")
@@ -1398,7 +1401,7 @@ def separate_stems_endpoint(job_id: str) -> JobOut:
         job = session.get(Job, job_id)
         if job is None:
             raise HTTPException(404, "job not found")
-        if job.source_type not in {"gp", "upload", "youtube"}:
+        if job.source_type not in {"gp", "upload"}:
             raise HTTPException(422, "stem separation is not supported for this job's source")
         if not Path(job.source).exists():
             raise HTTPException(409, "source recording no longer exists on the work volume")
