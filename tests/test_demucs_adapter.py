@@ -112,6 +112,61 @@ def test_device_is_forwarded(monkeypatch, tmp_path) -> None:
     assert captured[0][captured[0].index("-d") + 1] == "cuda"
 
 
+def test_separate_guitar_reuses_an_existing_stem_without_rerunning(
+    monkeypatch, tmp_path
+) -> None:
+    """A second separate_guitar call over the same (audio, workdir) — e.g. tone
+    detection running after stem separation already produced a guitar stem, or
+    vice versa — must not re-invoke the multi-minute demucs subprocess."""
+    captured: list[list[str]] = []
+    monkeypatch.setattr(demucs_adapter.subprocess, "run", _fake_run(captured, True))
+
+    audio = tmp_path / "song.wav"
+    audio.write_bytes(b"")
+    sep = DemucsSeparator()
+
+    assert sep.has_cached_guitar_stem(audio, tmp_path) is False
+    first = sep.separate_guitar(audio, tmp_path)
+    assert len(captured) == 1
+    assert sep.has_cached_guitar_stem(audio, tmp_path) is True
+
+    second = sep.separate_guitar(audio, tmp_path)
+    assert len(captured) == 1  # no second subprocess invocation
+    assert second == first
+
+
+def test_separate_stems_reuses_a_guitar_stem_from_a_prior_separate_guitar_call(
+    monkeypatch, tmp_path
+) -> None:
+    captured: list[list[str]] = []
+
+    def runner(cmd, **kwargs):  # noqa: ANN001, ANN202
+        captured.append(cmd)
+        out_dir = Path(cmd[cmd.index("-o") + 1])
+        model = cmd[cmd.index("-n") + 1]
+        target = out_dir / model / Path(cmd[-1]).stem
+        target.mkdir(parents=True, exist_ok=True)
+        for name in ("guitar", "bass", "drums", "vocals", "other", "piano"):
+            (target / f"{name}.wav").write_bytes(b"")
+
+        class _Done:
+            stderr = ""
+
+        return _Done()
+
+    monkeypatch.setattr(demucs_adapter.subprocess, "run", runner)
+    audio = tmp_path / "song.wav"
+    audio.write_bytes(b"")
+    sep = DemucsSeparator()
+
+    sep.separate_guitar(audio, tmp_path)  # a prior tone-detection style call
+    assert len(captured) == 1
+
+    stems = sep.separate_stems(audio, tmp_path)  # a later separate-stems call
+    assert len(captured) == 1  # reused the cached guitar.wav, no second pass
+    assert set(stems) == {"guitar", "bass", "drums", "vocals", "other", "piano"}
+
+
 def test_missing_vocals_output_raises(monkeypatch, tmp_path) -> None:
     from rockforge.domain.errors import SeparationError
 

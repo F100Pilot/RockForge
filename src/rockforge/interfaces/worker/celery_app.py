@@ -143,6 +143,17 @@ def _whisperx_attempts(device: str, configured: str) -> list[tuple[str, str]]:
     return attempts
 
 
+def _demucs_stems_cache_dir(job_id: str) -> Path:
+    """Shared Demucs working directory for a job's guitar-stem separation.
+
+    Both detect_tones and separate_stems (demucs backend) run the same
+    htdemucs_6s pass over the same normalized recording; pointing them at the
+    same workdir/filename lets DemucsSeparator.separate_guitar's on-disk cache
+    (an existing guitar.wav) skip the second, redundant multi-minute pass
+    instead of the two tasks each separating the recording from scratch."""
+    return settings.work_dir / job_id / "demucs_stems"
+
+
 def _make_demucs(device: str) -> Any:  # heavy import deferred to worker
     """DemucsSeparator wired to trip the shared GPU-broken marker on a CUDA
     crash, so a native GPU failure retries on CPU AND later runs skip the GPU."""
@@ -589,7 +600,9 @@ def detect_tones(job_id: str) -> None:
             normalizer = FfmpegNormalizer()
             separator = _make_demucs(device)
 
-            workdir = settings.work_dir / job.id / "tone_detection"
+            # Shared with separate_stems (demucs backend) so a guitar stem
+            # already separated by either task is reused, not recomputed.
+            workdir = _demucs_stems_cache_dir(job.id)
             workdir.mkdir(parents=True, exist_ok=True)
 
             _log_tone_stage(
@@ -602,7 +615,10 @@ def detect_tones(job_id: str) -> None:
             normalized = normalizer.normalize(Path(job.source), workdir)
 
             params["tone_detection_status"] = "separating"
-            _log_tone_stage(params, "isolating guitar stem (Demucs, 6-stem)")
+            if separator.has_cached_guitar_stem(normalized, workdir):
+                _log_tone_stage(params, "reusing an already-separated guitar stem")
+            else:
+                _log_tone_stage(params, "isolating guitar stem (Demucs, 6-stem)")
             _commit_params()
             guitar_stem = separator.separate_guitar(normalized, workdir)
 
@@ -694,7 +710,16 @@ def separate_stems(job_id: str) -> None:
             normalizer = FfmpegNormalizer()
             separator, device, backend = _build_stem_separator()
 
-            workdir = settings.work_dir / job.id / "stem_separation"
+            # The demucs backend shares detect_tones' workdir so an already
+            # separated guitar stem is reused instead of recomputed (see
+            # _demucs_stems_cache_dir). Banquet is a different, query-based
+            # mechanism with its own incompatible output layout — keep it in
+            # its own workdir.
+            workdir = (
+                _demucs_stems_cache_dir(job.id)
+                if backend.startswith("demucs")
+                else settings.work_dir / job.id / "stem_separation"
+            )
             workdir.mkdir(parents=True, exist_ok=True)
 
             _log_stems_stage(
@@ -709,9 +734,14 @@ def separate_stems(job_id: str) -> None:
             normalized = normalizer.normalize(Path(job.source), workdir)
 
             params["stems_status"] = "separating"
-            _log_stems_stage(
-                params, "separating instruments (Demucs, 6-stem) — can take a while"
-            )
+            if backend.startswith("demucs") and separator.has_cached_guitar_stem(
+                normalized, workdir
+            ):
+                _log_stems_stage(params, "reusing an already-separated guitar stem")
+            else:
+                _log_stems_stage(
+                    params, "separating instruments (Demucs, 6-stem) — can take a while"
+                )
             _commit_params()
             stems = separator.separate_stems(normalized, workdir)
 
