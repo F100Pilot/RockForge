@@ -69,6 +69,7 @@ serializers) need no fakes — they are deterministic and tested directly.
 | **Lint** | `ruff check src tests` | style, unused imports/vars, import order, obvious bugs |
 | **Types** | `mypy` | strict on `domain/`/`application/`/`infrastructure/`; relaxed at framework boundaries (FastAPI/SQLAlchemy/Pydantic) via per-module overrides in `pyproject.toml` |
 | **Tests** | `pytest` | the functional suite (see §4) |
+| **Web lint** | `npm ci && npm run lint` | `web/app.js` (the UI's client script) via ESLint — real-bug rules only (`no-undef`, `no-redeclare`, …), not a style reformat. CI job `web-lint`. |
 
 mypy strictness is deliberate: the `domain` and `application` layers carry the
 music model and orchestration logic and must be fully typed. The

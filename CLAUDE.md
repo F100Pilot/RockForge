@@ -624,7 +624,38 @@ subtracted from word times — a known limitation.
 Detection needs both `[lyrics]` (WhisperX) and `[ml]` (Demucs) extras in the
 worker, even for GP jobs whose own build stays ML-free.
 
-### Web UI: creation wizard + "Estado do PSARC" completeness panel
+### Web UI structure: `index.html` (markup) + `app.js` (script) + ESLint
+
+The web UI's client-side script lives in **`web/app.js`**, not inline in
+`web/index.html` — it used to be one ~4100-line inline `<script>` block, which
+meant no linter could ever check it (ESLint parses files, not markup) and
+every past JS change was verified only by `node --check` (syntax only) or by
+hand. `index.html` now loads it via `<script src="/app.js"></script>`; the
+FastAPI route `app_js()` (`interfaces/api/app.py`, alongside `index()`, both
+now sharing `_web_file_candidates(name)`) serves it with a real
+`text/javascript` content type, resolved the same repo-checkout-vs-installed
+two-path lookup `_gear_image_dirs()` already used for gear images.
+
+**`npm run lint`** (`eslint.config.js` at the repo root, scoped to
+`web/app.js` only) is real-bug-focused — `no-undef`/`no-redeclare`/
+`no-dupe-keys`/etc as errors, `no-unused-vars` as a warning (not an error: the
+file predates any lint config, and a handful of pre-existing unused bindings —
+an intentionally-unused `catch (e)`, a couple of functions only ever called
+from an `onclick="…"` attribute inside a template-literal string ESLint can't
+trace — aren't worth blocking CI over). It is **not** a stylistic
+reformat/rewrite of the file — only real-bug rule categories are enabled, so
+the existing code style is undisturbed. CI runs it as the `web-lint` job
+(`.github/workflows/ci.yml`, Node 22 + `npm ci`), separate from the Python
+`test` job. Run locally with `npm ci && npm run lint` (or a bare `eslint
+web/app.js` if `eslint` is already on `PATH`); `node --check web/app.js`
+remains a useful quick syntax-only sanity check but ESLint is the real gate
+now. Verified the extraction preserves behavior: the full existing
+`test_psarc_sng.py`-style discipline doesn't apply here (no pure-function
+logic changed, it's a pure file-split), but the served page was driven with
+Playwright (a real headless Chromium) confirming zero console/page errors and
+that DOM wiring (e.g. `openNewJobModal`'s modal toggle) still works after the
+split, plus two new API tests (`test_index_page_references_the_extracted_app_js`,
+`test_app_js_is_served_with_a_javascript_content_type`).
 
 The "Novo projeto" modal is a **4-step wizard** (`web/index.html`), not a flat
 form, because the old single-form layout crammed ~15 fields (including a

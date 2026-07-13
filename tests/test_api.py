@@ -31,6 +31,22 @@ def test_no_auth_by_default(client: TestClient) -> None:
     assert client.get("/jobs").status_code == 200
 
 
+def test_index_page_references_the_extracted_app_js(client: TestClient) -> None:
+    """The UI's JS lives in web/app.js (extracted out of index.html's inline
+    <script> so it's lintable), loaded via a <script src> tag."""
+    r = client.get("/")
+    assert r.status_code == 200
+    assert '<script src="/app.js"></script>' in r.text
+    assert "<script>" not in r.text  # no inline JS left behind
+
+
+def test_app_js_is_served_with_a_javascript_content_type(client: TestClient) -> None:
+    r = client.get("/app.js")
+    assert r.status_code == 200
+    assert "javascript" in r.headers["content-type"]
+    assert "document.querySelectorAll" in r.text
+
+
 def test_api_token_gates_every_route_when_set(tmp_path, monkeypatch) -> None:
     """Setting ROCKFORGE_API_TOKEN turns on an HTTP Basic gate in front of the
     whole app — wrong/missing credentials are rejected, the right password
