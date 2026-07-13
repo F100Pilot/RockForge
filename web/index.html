@@ -206,6 +206,24 @@
   .knob-face { position:relative; z-index:1; justify-content:center; gap:.7rem;
     padding:.75rem .6rem; margin:0; background:rgba(12,13,17,.45); }
   .te-eff-knobs.knob-face { background:linear-gradient(180deg,#26282f,#191a20); border-top:1px solid #3a3d47; }
+  /* A REAL gear photo (user/bundled) already has its own knobs drawn on it, so
+     overlaying functional knobs would double them. When one loads, the panel
+     switches to a stacked layout: picture on top (shown whole, full opacity)
+     with the functional knobs BELOW it. The knob-less generic SVG faceplate
+     keeps the overlay above (no drawn knobs to clash with). */
+  .gear-panel.gear-photo { display:flex; flex-direction:column; }
+  .gear-panel.gear-photo .gear-bg { position:relative; inset:auto; width:100%;
+    height:auto; max-height:170px; object-fit:contain; opacity:1; background:#14151a; }
+  .gear-panel.gear-photo .knob-face { background:transparent; }
+  /* Effect (pedal/rack) rows: only wrap in a framed panel once a real photo
+     loads; with no image, the plain gradient knob strip stays (the generic
+     pedal SVG has drawn knobs, so it must NOT back the strip). */
+  .te-eff-panel { position:relative; margin-top:.3rem; }
+  .te-eff-panel.gear-photo { display:flex; flex-direction:column;
+    border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .te-eff-panel.gear-photo .gear-bg { position:relative; inset:auto; width:100%;
+    height:auto; max-height:150px; object-fit:contain; opacity:1; background:#14151a; display:block; }
+  .te-eff-panel.gear-photo .te-eff-knobs.knob-face { background:transparent; border-top:none; }
 
   .downloads { display:flex; gap:.6rem; flex-wrap:wrap; margin:.6rem 0; align-items:center; }
   .downloads a { background:var(--accent-soft); border:1px solid var(--accent); color:var(--accent); padding:.4rem .8rem; border-radius:8px; font-weight:600; font-size:.85rem; }
@@ -2922,23 +2940,31 @@ function addEffectRow(category, gearKey, values) {
       <select class="te-eff-gear" style="min-width:11rem"></select>
       <button type="button" class="icon te-eff-rm">remover</button>
     </div>
-    <div class="te-eff-knobs tuninggrid knob-face" style="margin-top:.3rem;border-radius:6px"></div>`;
+    <div class="te-eff-panel">
+      <img class="te-eff-img gear-bg" alt="" style="display:none">
+      <div class="te-eff-knobs tuninggrid knob-face" style="border-radius:6px"></div>
+    </div>`;
   wrap.appendChild(row);
   const catSel = row.querySelector('.te-eff-cat');
   const gearSel = row.querySelector('.te-eff-gear');
   const searchEl = row.querySelector('.te-eff-search');
   const knobsEl = row.querySelector('.te-eff-knobs');
+  const imgEl = row.querySelector('.te-eff-img');
   catSel.value = category || 'pre';
+  const imgType = () => catSel.value === 'rack' ? 'rack' : 'pedal';
   const fillGear = (selKey, vals) => {
     populateGearSelect(gearSel, gearListFor(catSel.value), selKey, null, searchEl.value);
     renderKnobs(knobsEl, gearByKey(gearListFor(catSel.value), gearSel.value), vals);
+    applyGearImageEl(imgEl, gearSel.value, imgType(), true);
   };
   fillGear(gearKey, values);
   catSel.addEventListener('change', () => { searchEl.value = ''; fillGear(null, null); });
   searchEl.addEventListener('input', () =>
     populateGearSelect(gearSel, gearListFor(catSel.value), gearSel.value, null, searchEl.value));
-  gearSel.addEventListener('change', () =>
-    renderKnobs(knobsEl, gearByKey(gearListFor(catSel.value), gearSel.value), null));
+  gearSel.addEventListener('change', () => {
+    renderKnobs(knobsEl, gearByKey(gearListFor(catSel.value), gearSel.value), null);
+    applyGearImageEl(imgEl, gearSel.value, imgType(), true);
+  });
   row.querySelector('.te-eff-rm').addEventListener('click', () => row.remove());
 }
 
@@ -3026,15 +3052,32 @@ function genericGearSvg(type) {
     <text x='99' y='38' fill='${amber}' font-family='sans-serif' font-size='10' text-anchor='middle' opacity='.7' letter-spacing='3'>AMPLIFIER</text>
   </svg>`;
 }
-// Show the user's picture (work_dir/gear_images/<key>) if it exists, else the
-// generic placeholder for that gear type — so there's always a visual.
-function setGearImage(imgId, key, type) {
-  const img = document.getElementById(imgId);
+// Show a gear picture (work_dir/gear_images/<key> or the bundled web/gear_images)
+// if one exists. A REAL photo carries its own drawn knobs, so the panel switches
+// to the stacked "picture above, functional knobs below" layout (`.gear-photo`)
+// to avoid doubling them; the generic knob-less SVG faceplate keeps the overlay.
+// `photoOnly` (effects): with no real image, show NOTHING (the generic pedal SVG
+// HAS drawn knobs, so it must not back the knob strip) — keep the plain strip.
+function applyGearImageEl(img, key, type, photoOnly) {
   if (!img) return;
-  const fallback = 'data:image/svg+xml,' + encodeURIComponent(genericGearSvg(type));
-  img.onload = () => { img.style.display = ''; };
-  img.onerror = () => { img.onerror = null; img.src = fallback; };
-  img.src = key ? '/gear-image/' + encodeURIComponent(key) : fallback;
+  const panel = img.closest('.gear-panel, .te-eff-panel');
+  const setPhoto = on => { if (panel) panel.classList.toggle('gear-photo', on); };
+  img.onload = () => { img.style.display = ''; setPhoto(img.dataset.real === '1'); };
+  img.onerror = () => {
+    img.onerror = null; img.dataset.real = '0'; setPhoto(false);
+    if (photoOnly) { img.removeAttribute('src'); img.style.display = 'none'; }
+    else img.src = 'data:image/svg+xml,' + encodeURIComponent(genericGearSvg(type));
+  };
+  if (photoOnly && !key) {                         // no gear picked → show nothing
+    img.onerror = null; img.dataset.real = '0'; setPhoto(false);
+    img.removeAttribute('src'); img.style.display = 'none'; return;
+  }
+  img.dataset.real = key ? '1' : '0';
+  img.src = key ? '/gear-image/' + encodeURIComponent(key)
+                : 'data:image/svg+xml,' + encodeURIComponent(genericGearSvg(type));
+}
+function setGearImage(imgId, key, type) {
+  applyGearImageEl(document.getElementById(imgId), key, type, false);
 }
 document.getElementById('teAmp').addEventListener('change', e => {
   renderKnobs(document.getElementById('teAmpKnobs'), gearByKey(gearCatalogue.amps, e.target.value), null);

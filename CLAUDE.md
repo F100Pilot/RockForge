@@ -769,21 +769,34 @@ Gear knobs (amp/effect Gain/Bass/Mid/…) render as **draggable rotary dials**
 (`renderKnobs`/`wireKnob`, `web/index.html`): drag the dial (−135°..+135° sweep),
 type the exact value, or double-click to reset to the catalogue default. The
 value still lives in an `input[data-knob]` so `readKnobs` and the tone model are
-unchanged — purely a UX layer. Each amp/cabinet can also show a **user-supplied
-picture**: `GET /gear-image/{key}` serves `work_dir/gear_images/<key>.<ext>` (the
-RUNTIME data folder, NOT the code repo — the user drops their own amp/cab photos
-there, named by the gear key, without committing anything; the key is sanitised
-to a bare slug against path traversal). When no user image exists the `<img>`
-falls back to a brand-neutral SVG placeholder per gear TYPE (`genericGearSvg`:
-amp head / speaker cab / stompbox — our own art), so there's always a visual.
-The amp panel is a `.gear-panel`: the picture (user image or generic faceplate,
-NO drawn knobs) is a `.gear-bg` backdrop and the REAL rotary knobs overlay it
-(`.knob-face`), so the knobs shown are always exactly the gear's own controls —
-however many (3, 5, 8…) — compatible with every gear. Effect knob rows get the
-same faceplate look; `renderKnobs` hides an empty container so a knob-less gear
-shows no empty bar. Honesty unchanged: this is visual
-only — RockForge does not model the amp sound (the real tone comes from the gear
-keys in-game / DLC Builder). Guarded by `test_gear_image_serves_local_file_or_404`.
+unchanged — purely a UX layer. Each amp/cabinet **and every effect (pre-pedal,
+post-pedal, rack)** can also show a **gear picture**: `GET /gear-image/{key}`
+serves `<key>.<ext>` looking first in `work_dir/gear_images/` (the RUNTIME
+override — the user drops their own photos there, named by the gear key, without
+committing) then the **bundled `web/gear_images/`** shipped in the repo
+(`_gear_image_dirs`, resolved the same way `index()` finds the web UI), so a
+fresh install has art out of the box and a user file of the same key still wins.
+The key is sanitised to a bare slug against path traversal. RockForge ships its
+own hand-drawn rack faces there (`Rack_StudioCompressor`, `Rack_StudioGraphicEQ`,
+`Rack_StudioEQ`, `Rack_TapeEcho`, `Rack_StudioPlate`, `Rack_StudioChamber`) — the
+repo art is the user's OWN (no brand/Ubisoft assets committed).
+
+**Two layouts, chosen by whether a REAL picture loads (`applyGearImageEl`).** A
+real photo (user or bundled) already has its own knobs drawn on it, so overlaying
+functional knobs would double them; when the `<img>` `onload`s a real image the
+panel gets `.gear-photo` and switches to a **stacked** layout — picture on top
+(shown whole, full opacity) with the functional rotary knobs BELOW it. The
+knob-less generic SVG faceplate (`genericGearSvg`: amp head / speaker cab /
+stompbox — our own art) keeps the **overlay** layout (knobs `.knob-face` sit on
+the `.gear-bg` backdrop), so the knobs shown are always exactly the gear's own
+controls — however many (3, 5, 8…). Effects pass `photoOnly=true`: with no real
+image they show NOTHING (not the generic pedal SVG, which HAS drawn knobs that
+would clash) — just the plain gradient knob strip; a real rack photo switches
+that row to the stacked layout. `renderKnobs` hides an empty container so a
+knob-less gear shows no empty bar. Honesty unchanged: this is visual only —
+RockForge does not model the amp sound (the real tone comes from the gear keys
+in-game / DLC Builder). Guarded by `test_gear_image_serves_local_file_or_404` /
+`test_gear_image_falls_back_to_bundled_and_workdir_wins`.
 
 ### Tone preview on the score (`voiceNote` / "Testar tom")
 
