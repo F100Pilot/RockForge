@@ -279,9 +279,19 @@ Gera `dist\RockForge_portable.zip` — extrair e correr `rockforge.exe`.
 
 ### Via Docker (alternativa)
 
+Esta é a única via que abre uma porta de rede (`8000:8000`) — ao contrário do
+`start.bat`/executável standalone (ambos ligados a `127.0.0.1`), a API aqui não
+tem autenticação nenhuma por defeito. Cria um `.env` (fica fora do git) ao lado
+do `docker-compose.yml` com um segredo:
+
 ```bash
+echo "ROCKFORGE_API_TOKEN=$(openssl rand -hex 32)" > .env
 docker compose up --build   # API em http://localhost:8000 (UI em /, OpenAPI em /docs)
 ```
+
+O browser pede as credenciais nativamente (utilizador tanto faz, o token como
+password) na primeira visita. Sem o `.env`, o `docker compose up` recusa-se a
+arrancar — é intencional, para nunca correr exposto sem proteção.
 
 Nota: dentro do Docker o Wwise não está disponível — o `.wem` só é gerado na
 execução nativa Windows com o Wwise instalado.

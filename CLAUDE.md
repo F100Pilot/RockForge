@@ -1258,6 +1258,33 @@ safe (loudnorm's limiter, not a post-gain that would clip the -1.5 dBTP peaks).
 a missing ffmpeg degrades to 0 dB, never a crash. The `.rs2dlc` audio `Volume`
 stays neutral (DLC Builder recomputes on import).
 
+### Optional API authentication (`ROCKFORGE_API_TOKEN`)
+
+RockForge has **no authentication by design** for local single-user setups —
+`start.bat` and the standalone `.exe` both bind `127.0.0.1`, so nothing outside
+the machine can reach the API. Docker Compose is the one deployment path that
+actually opens a network port (`8000:8000`), and a full-codebase audit found
+that with no auth layer, every job (including uploaded GP files, cover art, and
+built bundles) is readable/deletable by anyone who can reach the port, and the
+unauthenticated `/settings` endpoint can repoint the Banquet stem-separator's
+`banquet_repo` at an arbitrary filesystem path the worker then executes
+`train.py` from.
+
+`app._verify_api_auth` is a global FastAPI dependency (wired via
+`FastAPI(dependencies=[...])`, so it runs before every route) gated on
+`settings.api_token` (env `ROCKFORGE_API_TOKEN`): `None` (default) is a no-op —
+zero behavior change for local setups. When set, it requires **HTTP Basic**
+credentials whose password matches the token (any username;
+`secrets.compare_digest` for a constant-time comparison) via
+`fastapi.security.HTTPBasic`. Basic, not a custom bearer header, deliberately:
+a plain browser gets a native login prompt on first visit and then
+auto-attaches the credentials to every subsequent same-origin request
+(including the page's own `fetch()` calls) — no frontend code needed.
+`docker-compose.yml` requires `ROCKFORGE_API_TOKEN` via `${VAR:?…}` compose
+syntax, so `docker compose up` refuses to start without a `.env`-supplied
+secret rather than silently running exposed and unauthenticated. Guarded by
+`test_no_auth_by_default` / `test_api_token_gates_every_route_when_set`.
+
 ### Standalone executable (`build_exe.py` / PyInstaller)
 
 `start_standalone.py` is the entry point for the PyInstaller-built `.exe`. It

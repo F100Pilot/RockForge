@@ -74,6 +74,14 @@ class Settings(BaseSettings):
     # the standard WWISEROOT env var set by the Audiokinetic Launcher.
     wwise_root: Path | None = None
 
+    # Optional shared-secret gate (HTTP Basic — the browser's native prompt
+    # attaches it automatically to every subsequent request, no frontend code
+    # needed) in front of EVERY route. None (default) = no auth, correct for the
+    # single-user local setups (start.bat / the standalone .exe) that bind
+    # 127.0.0.1. Any deployment that opens a network port (docker-compose) MUST
+    # set this — see app._verify_api_auth and docker-compose.yml.
+    api_token: str | None = None
+
     def resolved_wwise_root(self) -> Path | None:
         if self.wwise_root is not None:
             return self.wwise_root

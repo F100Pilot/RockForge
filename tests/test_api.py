@@ -25,6 +25,36 @@ def client(tmp_path, monkeypatch) -> Iterator[TestClient]:
         yield c
 
 
+def test_no_auth_by_default(client: TestClient) -> None:
+    """ROCKFORGE_API_TOKEN unset (the default for local single-user setups) —
+    every route is reachable with no credentials at all."""
+    assert client.get("/jobs").status_code == 200
+
+
+def test_api_token_gates_every_route_when_set(tmp_path, monkeypatch) -> None:
+    """Setting ROCKFORGE_API_TOKEN turns on an HTTP Basic gate in front of the
+    whole app — wrong/missing credentials are rejected, the right password
+    (any username) is accepted."""
+    monkeypatch.setenv("ROCKFORGE_DATABASE_URL", f"sqlite:///{tmp_path}/test.db")
+    monkeypatch.setenv("ROCKFORGE_WORK_DIR", str(tmp_path / "work"))
+    monkeypatch.setenv("ROCKFORGE_API_TOKEN", "s3cr3t")
+    import rockforge.config as config
+    importlib.reload(config)
+    import rockforge.interfaces.api.app as app_module
+    importlib.reload(app_module)
+
+    with TestClient(app_module.app) as c:
+        no_auth = c.get("/jobs")
+        assert no_auth.status_code == 401
+        assert no_auth.headers["www-authenticate"] == "Basic"
+
+        wrong = c.get("/jobs", auth=("anyone", "wrong-token"))
+        assert wrong.status_code == 401
+
+        right = c.get("/jobs", auth=("anyone", "s3cr3t"))
+        assert right.status_code == 200
+
+
 def test_gear_image_serves_local_file_or_404(client: TestClient) -> None:
     """The tone editor's gear image is served from work_dir/gear_images/<key>;
     404 when absent, and the key is sanitised against path traversal."""
