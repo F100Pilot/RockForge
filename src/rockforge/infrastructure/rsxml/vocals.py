@@ -170,13 +170,16 @@ def distribute_syllables(
     cursor = 0
     for line_time, text in lines:
         syllables = _split_syllables(text)
-        if not any(not is_hold for _, _, is_hold in syllables):
+        if not syllables:
             continue
         first = bisect.bisect_left(grid, line_time - 1e-3)
         idx = max(cursor, first)
-        last_real = next(
-            i for i in range(len(syllables) - 1, -1, -1) if not syllables[i][2]
-        )
+        # An all-melisma line (only "_" holds — the tail of a melisma spanning a
+        # whole authored line) has no real syllable to carry the line-break "+";
+        # last_real stays -1 and the loop just extends the previous line's last
+        # syllable over these attacks instead of dropping the line entirely.
+        real_indices = [i for i, s in enumerate(syllables) if not s[2]]
+        last_real = real_indices[-1] if real_indices else -1
         for k, (syl, joins_next, is_hold) in enumerate(syllables):
             t, length = onset_at(idx, line_time)
             if is_hold:
