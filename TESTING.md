@@ -80,31 +80,40 @@ explicit `cast(...)`.
 
 ## 4. Coverage map (by file)
 
+Per-file counts below reflect the suite at the time of writing; run
+`pytest --co -q` for the live totals.
+
 | File | Tests | Guards |
 |---|---:|---|
-| `test_domain.py` | 7 | pure music model: `Tuning`, `TabNote`, `TempoMap`, `Arrangement` invariants |
-| `test_gp_import.py` | 9 | PyGuitarPro (GP3/4/5) parsing: notes/frets/techniques/sections/tempo |
-| `test_gpif_import.py` | 6 | native GP7/GP8 (`.gp`) GPIF/XML parser: tuning, timing, Hopo/slide/palm-mute, lyric sourcing, bass rejection |
-| `test_gp_pipeline.py` | 16 | GP use case: `tempo_scale`, `sync_anchor_stages`, `arrangement_sync`, lyrics precedence, `pad_start_s` shift |
-| `test_rsxml_writer.py` | 15 | Song2014 XML: the **32 arrangementProperties** attrs, COUNT/default/END phrase structure, chords |
-| `test_vocals.py` | 19 | `parse_lyrics` (LRC + UltraStar), `expand_to_words` (trailing `+`), `events_from_dicts`, `distribute_syllables` (GP lyrics → note-onset alignment, melisma `_`) |
-| `test_lyrics_transcribe.py` | 6 | WhisperX adapter: RMS gate, per-word confidence filter, segment→event mapping (whisperx itself stubbed) |
+| `test_domain.py` | 18 | pure music model: `Tuning`, `TabNote`, `TempoMap`, `Arrangement` invariants, sustain gap, high-density flags |
+| `test_chords.py` | 10 | `domain/chords.py` `name_chord`: triads, power chords, inversions, chord naming |
+| `test_gp_import.py` | 11 | PyGuitarPro (GP3/4/5) parsing: notes/frets/techniques/sections/tempo |
+| `test_gpif_import.py` | 8 | native GP7/GP8 (`.gp`) GPIF/XML parser: tuning, timing, Hopo/slide/palm-mute, lyric sourcing, bass rejection |
+| `test_gp_pipeline.py` | 25 | GP use case: `tempo_scale`, `sync_anchor_stages`, `arrangement_sync`, lyrics precedence, `pad_start_s` shift, tied notes |
+| `test_rsxml_writer.py` | 18 | Song2014 XML: the **32 arrangementProperties** attrs, COUNT/default/END phrase structure, chords |
+| `test_vocals.py` | 22 | `parse_lyrics` (LRC + UltraStar), `expand_to_words` (trailing `+`), `events_from_dicts`, `distribute_syllables` (GP lyrics → note-onset alignment, melisma `_`) |
+| `test_lyrics_transcribe.py` | 9 | WhisperX adapter: RMS gate, per-word confidence filter, segment→event mapping (whisperx itself stubbed) |
 | `test_tone_gear.py` | 11 | `domain/tone.py` gear model + `tone_from_dict`/`tones_from_dicts` |
-| `test_tone_detection.py` | 9 | spectral `analyze_guitar_tone` → category → `suggest_tones` + ranked `rank_tones` candidates |
+| `test_tone_detection.py` | 11 | spectral `analyze_guitar_tone` → category → `suggest_tones` + ranked `rank_tones` candidates |
+| `test_tone_library.py` | 5 | cross-project tone library (`/tone-library`): save/read-back, key overwrite, validation |
 | `test_rs2dlc.py` | 6 | `.rs2dlc` `DLCProject.Dto` shape, Name/RouteMask per kind, vocals case, **`.phrase-levels`** companion |
-| `test_psarc_container.py` | 3 | PSARC v1.4 pack/unpack round-trip |
-| `test_psarc_manifest.py` | 5 | runtime manifests (`.hsan`, `_aggregategraph.nt`, per-arr JSON) |
-| `test_psarc_sng.py` | 17 | Sng2014 binary `write_sng`∘`read_sng` = identity, NoteMask, anchor extensions, vocals SNG |
-| `test_psarc_crypto.py` | 4 | AES-256-CFB TOC + AES-256-CTR SNG (needs `[psarc]`) |
-| `test_psarc_packer.py` | 7 | `NativePsarcPacker` wiring; graceful degrade without `[psarc]` |
+| `test_gamedata.py` | 9 | native-PSARC enumeration assets: flatmodels, solid DDS, xblock, aggregategraph, showlights |
+| `test_psarc_container.py` | 5 | PSARC v1.4 pack/unpack round-trip |
+| `test_psarc_manifest.py` | 10 | runtime manifests (`.hsan`, `_aggregategraph.nt`, per-arr JSON) |
+| `test_psarc_sng.py` | 44 | Sng2014 binary `write_sng`∘`read_sng` = identity, NoteMask, anchor extensions, DD levels, vocals SNG |
+| `test_psarc_crypto.py` | 5 | AES-256-CFB TOC + AES-256-CTR SNG (needs `[psarc]`) |
+| `test_psarc_packer.py` | 11 | `NativePsarcPacker` wiring; graceful degrade without `[psarc]` |
+| `test_packer_resilience.py` | 1 | the Bundle is still produced when the `.psarc` build raises |
+| `test_soundbank.py` | 8 | ported Wwise `.bnk` generator: chunk order, BKHD version, DIDX↔wem id |
+| `test_loudness.py` | 6 | `parse_ebur128_i` / `volume_for_loudness` loudness calc (pure, no ffmpeg) |
 | `test_wwise.py` | 6 | `.wem` conversion via **fake** WwiseConsole; seek-table header patch |
 | `test_ffmpeg_normalizer.py` | 3 | command build: `-nostdin`, `stdin=DEVNULL`, `FFMPEG_TIMEOUT_S` |
-| `test_demucs_adapter.py` | 5 | demucs CLI command build, `stdin=DEVNULL`, timeout, vocals vs guitar models, `separate_stems` returns all stems |
+| `test_demucs_adapter.py` | 7 | demucs CLI command build, `stdin=DEVNULL`, timeout, vocals vs guitar models, `separate_stems` returns all stems |
 | `test_banquet_adapter.py` | 5 | Banquet (EM TESTES) `inference_byoq` command build, one pass per query clip, device→`use_cuda`, missing-setup errors |
-| `test_device_resolution.py` | 4 | `_resolve_device` auto/cpu/cuda + degrade-to-CPU on import failure |
+| `test_device_resolution.py` | 8 | `_resolve_device` auto/cpu/cuda + degrade-to-CPU on import failure |
 | `test_tags.py` | 2 | audio metadata tag extraction |
-| `test_api.py` | 60 | every endpoint (§6): job lifecycle, rebuild composition, detect-* / separate-stems enqueue (mocked), lyrics/tones/stems status, deletion, per-test SQLite |
-| `test_settings.py` | 5 | in-app settings (`/settings`): default demucs, persist+read-back, invalid separator 422, Banquet path validation, empty-string clears override |
+| `test_api.py` | 83 | every endpoint (§6): job lifecycle, rebuild composition, detect-* / separate-stems enqueue (mocked), lyrics/tones/stems status, gear images, deletion, per-test SQLite |
+| `test_settings.py` | 10 | in-app settings (`/settings`): default demucs, persist+read-back, invalid separator 422, Banquet path validation, empty-string clears override |
 
 ### Key regression tests — do not delete these without understanding why
 
