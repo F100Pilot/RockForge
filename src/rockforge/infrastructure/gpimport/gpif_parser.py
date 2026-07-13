@@ -76,12 +76,29 @@ def _is_gpif(path: Path) -> bool:
         return False
 
 
+# A real score.gpif is plain markup, typically well under 1 MB even for a long
+# song — generous ceiling so a maliciously crafted small-ZIP/huge-decompressed
+# member ("zip bomb") can't be used to exhaust worker memory.
+_MAX_GPIF_BYTES = 50 * 1024 * 1024
+
+
 def _load_gpif(path: Path) -> ET.Element:
     try:
         with zipfile.ZipFile(path) as z:
-            xml = z.read("Content/score.gpif").decode("utf-8")
+            info = z.getinfo("Content/score.gpif")
+            if info.file_size > _MAX_GPIF_BYTES:
+                raise IngestionError(
+                    f"GP7 score.gpif is implausibly large ({info.file_size} bytes "
+                    "uncompressed) — refusing to decompress"
+                )
+            xml = z.read(info).decode("utf-8")
     except (zipfile.BadZipFile, KeyError, OSError) as exc:
         raise IngestionError(f"could not read GP7 file: {exc}") from exc
+    # A GPIF score has no legitimate DOCTYPE/internal-entity declaration; reject
+    # either outright rather than let the stdlib parser expand an entity bomb
+    # ("billion laughs") — xml.etree.ElementTree has no built-in guard for this.
+    if "<!DOCTYPE" in xml or "<!ENTITY" in xml:
+        raise IngestionError("GP7 score.gpif contains a DOCTYPE/ENTITY declaration — rejected")
     try:
         return ET.fromstring(xml)
     except ET.ParseError as exc:
