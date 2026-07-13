@@ -292,6 +292,41 @@ def test_chord_with_techniques_produces_chord_notes() -> None:
     assert chord_note.mask & NOTE_MASK_CHORDNOTES
 
 
+def test_note_exactly_on_a_phrase_boundary_belongs_to_the_later_iteration() -> None:
+    """_build_level locates each phrase iteration's notes via binary search on
+    the time-sorted note list (a rewrite from a per-phrase O(notes) rescan, for
+    speed on a long song) — the boundary semantics must stay EXACTLY the
+    original `pi.start_time <= n.time < pi.end_time`: a note landing precisely
+    on the shared instant between two contiguous iterations (section end ==
+    next section's start) belongs to the iteration it STARTS, not the one it
+    ends, and must never be double-counted or dropped."""
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="Song", artist="A", song_length=10.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(
+            beats=(Beat(time=0.0, measure=1), Beat(time=1.0, measure=-1)), average_bpm=120.0
+        ),
+        notes=[
+            TabNote(string=0, fret=1, time=0.0, sustain=0.2),
+            TabNote(string=0, fret=2, time=4.9, sustain=0.2),
+            TabNote(string=0, fret=3, time=5.0, sustain=0.2),  # exactly the boundary
+            TabNote(string=0, fret=4, time=7.0, sustain=0.2),
+        ],
+        sections=[
+            Section(name="riffA", start_time=0.0),
+            Section(name="riffB", start_time=5.0),
+        ],
+    )
+    model = from_arrangement(arr)
+    top = model.arrangements[-1]
+    assert len(top.notes) == 4  # nothing dropped or duplicated
+    counts = top.notes_in_iteration1
+    assert sum(counts) == 4  # every note attributed to exactly one iteration
+    assert counts[0] == 2  # riffA: notes at 0.0 and 4.9
+    assert counts[1] == 2  # riffB: notes at 5.0 (the boundary) and 7.0
+
+
 def test_note_linkage_within_phrase() -> None:
     arr = Arrangement(
         kind=ArrangementKind.LEAD,
