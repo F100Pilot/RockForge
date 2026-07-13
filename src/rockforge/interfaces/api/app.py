@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import mimetypes
 import os
+import secrets
 import shutil
 import signal
 import time
@@ -14,8 +15,9 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, cast
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, Response
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel
 
 from rockforge import __version__
@@ -111,6 +113,32 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         task.cancel()
 
 
+_basic_auth = HTTPBasic(auto_error=False)
+
+
+def _verify_api_auth(
+    credentials: HTTPBasicCredentials | None = Depends(_basic_auth),
+) -> None:
+    """Optional shared-secret gate applied to EVERY route, off by default.
+
+    A no-op unless the operator sets ROCKFORGE_API_TOKEN — local single-user
+    setups (start.bat / the standalone .exe, both bound to 127.0.0.1) are
+    unaffected. HTTP Basic (not a custom header) so a plain browser gets a
+    native login prompt and then auto-attaches the credentials to every
+    subsequent same-origin request (including the page's own fetch() calls) —
+    no frontend code change needed. The username is not checked; the shared
+    token is entered as the password. Any deployment that opens a network port
+    (docker-compose) MUST set this — see docker-compose.yml.
+    """
+    token = settings.api_token
+    if not token:
+        return
+    if credentials is None or not secrets.compare_digest(credentials.password, token):
+        raise HTTPException(
+            401, "missing or invalid credentials", headers={"WWW-Authenticate": "Basic"}
+        )
+
+
 app = FastAPI(
     title="RockForge",
     description=(
@@ -120,6 +148,7 @@ app = FastAPI(
     ),
     version=__version__,
     lifespan=_lifespan,
+    dependencies=[Depends(_verify_api_auth)],
 )
 
 _session_factory = make_session_factory(settings.database_url)

@@ -7,9 +7,12 @@ services:
       ROCKFORGE_BROKER_URL: redis://redis:6379/0
       ROCKFORGE_RESULT_BACKEND: redis://redis:6379/1
       ROCKFORGE_WORK_DIR: /data
-      # Projeto pessoal: ativado por decisão explícita do utilizador.
-      # Nota: descarregar áudio continua a violar o ToS do YouTube.
-      ROCKFORGE_ENABLE_YOUTUBE: "true"
+      # This is the ONE deployment path that opens a real network port — unlike
+      # start.bat/the standalone .exe (both bind 127.0.0.1), the API here has no
+      # auth unless this is set. Put a real secret in a .env file next to this
+      # compose file (never commit it); compose fails to start without one
+      # rather than silently running the API unauthenticated on the network.
+      ROCKFORGE_API_TOKEN: ${ROCKFORGE_API_TOKEN:?set a secret in a .env file next to docker-compose.yml — see README}
       # Wwise local (nunca incluído na imagem — EULA Audiokinetic). Em Docker/Linux
       # exigiria Wine + instalação manual; para usar o teu Wwise, corre o worker
       # nativamente no Windows (ver README "Como testar").
