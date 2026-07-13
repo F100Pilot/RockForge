@@ -61,8 +61,6 @@ ver `TESTING.md`.
 - **SNG nativo não validado byte-a-byte** contra um SNG retail (não há ficheiro
   de referência em CI) — só round-trip `read_sng∘write_sng`. A validação real é
   carregar no jogo.
-- **`offset_s` (trim) do caminho áudio-ML não é subtraído** dos tempos das
-  palavras da letra editada (mesma limitação do WhisperX automático).
 - **GP6 (`.gpx`) não suportado** (container binário proprietário). GP3/GP4/GP5 e
   GP7/GP8 (`.gp`) são suportados.
 - **Capa de álbum não vira textura DDS in-game** — copiada para o bundle e
@@ -155,10 +153,6 @@ ver `TESTING.md`.
   no painel de sync. Guardado por `test_api.py` (whitelist, round-trip, drop de
   chaves GP, validação).
 
-- [ ] **Deteção de secções (intro/verso/refrão) no caminho áudio-ML**: hoje as
-  secções só vêm do GP; áudio puro não tem estrutura de secções no Song2014
-  XML.
-
 - [x] **Histórico/recuar de rebuilds**: cada rebuild/reload-gp/import-sync já
   forka um job novo **sem apagar o antigo** (o bundle anterior fica), por isso as
   versões já persistem — faltava ligá-las. Agora o fork guarda
@@ -233,11 +227,10 @@ ver `TESTING.md`.
 
   - [x] **Fase 5 — Adaptador e wiring** (`infrastructure/packaging/psarc/packer.py`):
     `NativePsarcPacker` junta as fases 1-4 atrás do `Packager` Protocol
-    (extraído para `application/ports.py`; `application/pipeline.py` e
-    `gp_pipeline.py` deixam de depender do tipo concreto
-    `DlcBuilderPackager`). Nova opção `settings.psarc_mode` (`"dlcbuilder"`
-    default | `"native"`), lida por um novo `celery_app._build_packager()`
-    partilhado entre `_build_use_case()` e `_build_gp_use_case()`.
+    (extraído para `application/ports.py`; `gp_pipeline.py` deixa de depender do
+    tipo concreto `DlcBuilderPackager`). Nova opção `settings.psarc_mode`
+    (`"dlcbuilder"` default | `"native"`), lida por `celery_app._build_packager()`
+    (usado por `_build_gp_use_case()`).
     `GET /jobs/{id}/psarc` não precisa de alterações — já serve qualquer
     `PackagingResult.psarc_path`, seja do DLC Builder ou nativo. Honestidade:
     `NativePsarcPacker` empacota o `.wem` se o Wwise estiver disponível, senão

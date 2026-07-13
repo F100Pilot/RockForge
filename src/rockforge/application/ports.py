@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Protocol
 
 from rockforge.domain.arrangement import Arrangement
-from rockforge.domain.music import NoteEvent, TempoMap, Tuning
 from rockforge.infrastructure.packaging.dlcbuilder import PackagingResult
 from rockforge.infrastructure.rsxml.vocals import VocalEvent
 
@@ -34,38 +33,6 @@ class AudioNormalizer(Protocol):
         When *pad_start_s* > 0, that many seconds of silence are prepended —
         used by the GP path to insert a lead-in while shifting the score and
         lyrics by the same amount (see gp_pipeline.GpJobSpec.offset_s).
-        """
-        ...
-
-
-class StemSeparator(Protocol):
-    def separate_guitar(self, audio: Path, workdir: Path) -> Path:
-        """Return path to the aggregated guitar stem."""
-        ...
-
-
-class NoteTranscriber(Protocol):
-    def transcribe(self, audio: Path) -> list[NoteEvent]:
-        """Polyphonic note events (pitch/onset/duration/bends) from a guitar stem."""
-        ...
-
-
-class BeatTracker(Protocol):
-    def track(self, audio: Path) -> TempoMap:
-        ...
-
-
-class TuningEstimator(Protocol):
-    def estimate(self, audio: Path, notes: list[NoteEvent]) -> Tuning:
-        ...
-
-
-class GuitarRoleSplitter(Protocol):
-    def split(self, notes: list[NoteEvent]) -> tuple[list[NoteEvent], list[NoteEvent]]:
-        """EXPERIMENTAL: partition note events into (lead, rhythm) candidates.
-
-        No published method or labelled dataset exists for this task
-        (docs/research/01-source-separation.md §Q2). Output must be reviewed.
         """
         ...
 

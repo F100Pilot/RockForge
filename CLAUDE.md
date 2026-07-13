@@ -16,78 +16,35 @@ See `TODO.md` for proposed (not yet implemented) future features.
 
 ```
 domain/         pure music model (Arrangement, TabNote, Tuning, TempoMap) — no I/O, no frameworks
-application/    ports.py (Protocols) + pipeline.py / gp_pipeline.py (use cases) — orchestration only
-infrastructure/ adapters implementing the ports (Demucs, Basic Pitch, librosa, ffmpeg, Wwise, RS XML, DB)
+application/    ports.py (Protocols) + gp_pipeline.py (use case) — orchestration only
+infrastructure/ adapters implementing the ports (Demucs, librosa, ffmpeg, Wwise, RS XML, DB)
 interfaces/     api/ (FastAPI) and worker/ (Celery) — the boundary; wiring lives here
 ```
 
 Rules:
 - `domain/` and `application/` must not import frameworks or `infrastructure/`.
   Each ML stage is a swappable `Protocol` in `application/ports.py`.
-- A COMBINED arrangement is always produced as the trustworthy fallback; the
-  Lead/Rhythm split is EXPERIMENTAL (no published method exists) and additive.
-- Heavy imports (torch, demucs, basic-pitch, whisperx) are deferred into the
-  Celery worker's `_build_use_case()` — never import them at module top level in
-  the API path, or the web process pays the cost and may fail without the ML extra.
+- Heavy imports (torch, demucs, whisperx) are deferred into the Celery worker's
+  builders (`_build_gp_use_case()`, `_build_detection()`, `_build_stem_separator()`)
+  — never import them at module top level in the API path, or the web process
+  pays the cost and may fail without the ML extra.
 
-## The two generation paths
+## The generation path
 
-1. **Audio → ML** (`pipeline.py`): ingest → normalize → separate (Demucs) →
-   transcribe (Basic Pitch) → beat track + tuning (librosa) → **clean
-   transcription** → fret mapping → optional lyrics (WhisperX) → package. Timing
-   is automatic: every timestamp is seconds from the start of the normalized
-   audio. **Cleanup step (`clean_transcription`, `domain/music.py`):** Basic
-   Pitch on a full distorted electric mix emits many spurious notes — sub-harmonic
-   ghosts below the low string (MIDI 37-39 in standard tuning), octave ghosts
-   above the 24th fret, sub-40 ms fragments, and one held note split into several
-   same-pitch segments. Run right after tuning is known (needs the tuning's
-   playable range), it drops out-of-range/too-short notes and re-joins fragments
-   BEFORE mapping, so the fret mapper isn't fed hundreds of unplayable notes it
-   would drop one-warning-each. The pipeline surfaces ONE aggregated warning per
-   category instead. Honest: it only prunes clearly-spurious/unplayable notes and
-   rejoins fragments — it never invents or octave-shifts (a note detected an
-   octave off is dropped, not silently "corrected"). Guarded by
-   `test_clean_transcription_*`. **Tuning:** the librosa estimator reliably
-   detects only the A440 cents deviation; **string tuning** (standard/Drop/down)
-   from polyphonic audio is unsolved (research §5) and made worse by the low
-   sub-harmonic ghosts a detection would key off. The estimator's string-tuning
-   guess is `suggest_tuning` (pure, `domain/music.py`): it takes a ROBUST lowest
-   note (the lowest pitch that recurs — a lone ghost is below the frequency
-   threshold — floored to Drop B) and picks the common tuning whose low string
-   fits it best, ties favouring the more prevalent one (Drop D over D Standard).
-   It generalises the old Drop-D-only hint to E std / Drop D / Eb / D std / Drop
-   C# / Drop C / B std / Drop B, and the pipeline surfaces the guess as a warning
-   naming the tuning (a wrong tuning makes `clean_transcription` prune real
-   down-tuned low notes). Honest: a pitch set is playable on several tunings, so
-   this is a SUGGESTION, not authoritative — the audio upload form exposes a
-   **manual tuning selector** (`params["tuning_midi"]` → `tuning_override`) that
-   always wins — the reliable path,
-   since a wrong tuning makes `clean_transcription` prune real down-tuned low
-   notes as out-of-range. Basic Pitch's onset/frame thresholds are likewise
-   per-job (`params["onset_threshold"]`/`["frame_threshold"]`) to reject
-   in-range harmonic ghosts a distorted mix produces, and `min_confidence`
-   (`params["min_confidence"]`, 0 = off) prunes weak/low-amplitude notes — the
-   "loose notes that make no sense" (spurious overtones the mapper otherwise
-   keeps), filtered in `clean_transcription` off `NoteEvent.confidence` (Basic
-   Pitch's per-note amplitude). All plumbed
-   form → `/jobs/upload` → params → `_build_use_case`/`run`.
-   **Per-role stems (`/jobs/upload-split`):** when the user has SEPARATE Lead and
-   Rhythm recordings, each is transcribed INDEPENDENTLY into its own arrangement
-   (`run(lead_source=…, rhythm_source=…)`) — no experimental split, since each
-   file is already one guitar. `source` stays the bundle audio (.wem + beat/tempo);
-   the endpoint uses the optional `mix` upload for it, else the first stem (then
-   the bundle plays only that stem — honest limit). Each stem is transcribed in
-   its own `work_dir/stem_<kind>` sub-dir (files never collide) with its own
-   tuning estimate; `_resolve_tuning`/`_clean_and_warn` are the shared per-source
-   helpers. **Demucs is SKIPPED on per-role stems by default** (`separate_role_stems`
-   / `params["separate_stems"]`, default off) — a stem is already one isolated
-   guitar, and re-separating it is slow (Demucs is the heaviest stage) and can
-   degrade it; the UI checkbox enables it only when a stem still carries other
-   instruments. The UI exposes the whole feature as a checkbox in the audio-mode
-   form. Guarded by
-   `test_per_role_sources_build_lead_and_rhythm_without_split` /
-   `test_upload_split_*`.
-2. **Guitar Pro** (`gp_pipeline.py`): notes/frets/techniques/sections come exact
+> **Audio→note transcription was removed.** RockForge previously had a second
+> path that turned a raw MP3 into an arrangement via Basic Pitch (`pipeline.py`,
+> the fret mapper, the role splitter, `clean_transcription`/`suggest_tuning`,
+> `/jobs/upload` + `/jobs/upload-split`, YouTube ingestion). Basic Pitch's
+> accuracy on a distorted electric-guitar mix was never good enough to be
+> trustworthy, so the whole path was deleted to slim the codebase. What remains
+> that still uses the recording: **stem separation** (`/jobs/{id}/separate-stems`),
+> **tone detection** (`/detect-tones`), **lyric detection** (`/detect-lyrics`),
+> and the GP auto-sync tempo/onset/tuning-cents helpers — all operate on an
+> existing GP job's recording, none transcribe notes. `[ml]` (Demucs/librosa)
+> is still needed for those; `basic-pitch`/`onnxruntime` and the `[youtube]`
+> extra are gone.
+
+**Guitar Pro** (`gp_pipeline.py`): notes/frets/techniques/sections come exact
    from the GP file; audio sync is a manual offset. High fidelity, preferred
    when a GP file exists. Two parsers behind one API (`inspect_gp` /
    `parse_gp_track` dispatch on format): **GP3/GP4/GP5** binary via PyGuitarPro
@@ -433,15 +390,11 @@ bundle-time positions), so the playhead starts at 0 instead of at the first
 note. Anchor math stays in bundle time so corrections round-trip through a
 rebuild unchanged.
 
-The viewer's **playback + waveform work for audio-ML jobs too** (upload/YouTube),
-not just GP — the notes were transcribed FROM the recording so they're already
-at recording time. For non-GP jobs the frontend uses identity sync
-(`isGpJob()` guards `previewScale`/`playheadDisplay`/`viewOrigin`), hides the GP
-sync controls (`#gpSyncControls`), and still decodes the recording for playback.
-`GET /jobs/{id}/source-audio` serves `job.source` when it's a real file
-(upload/gp) and otherwise falls back to the ingested `input.*` / `normalized.wav`
-in the job's work dir — so YouTube jobs (whose `job.source` is a URL) are still
-playable.
+The viewer's `isGpJob()` guard on `previewScale`/`playheadDisplay`/`viewOrigin`
+(identity sync for non-GP jobs, hiding `#gpSyncControls`) remains for legacy
+non-GP job rows; today only GP jobs are created. `GET /jobs/{id}/source-audio`
+serves `job.source` when it's a real file and otherwise falls back to the
+ingested `input.*` / `normalized.wav` in the job's work dir.
 
 **String labels show the real tuning.** The staff labels each string with its
 actual pitch (`stringLabel` = standard MIDI `[40,45,50,55,59,64]` + the
@@ -712,7 +665,7 @@ PSARC output, same as building without a cover set.
 
 ### Automatic tone detection (`/jobs/{id}/detect-tones`)
 
-`POST /jobs/{id}/detect-tones` (any job type: GP, audio, YouTube) runs Demucs
+`POST /jobs/{id}/detect-tones` (GP jobs) runs Demucs
 guitar separation (`htdemucs_6s`) on the recording and analyzes the guitar
 stem (`tone_analysis/analyzer.py`) to classify the tone into one of three
 categories: `clean`, `crunch`, or `high_gain`. The classification drives a
@@ -1317,9 +1270,9 @@ of to Celery/Redis. The task functions themselves (`generate_cdlc`,
 - `"celery"` (default): `.delay(job.id)` via Celery (needs Redis + worker).
 - `"inprocess"`: `inprocess.enqueue_generate(job.id)` via thread pool (no Redis).
 
-The PyInstaller spec (`rockforge.spec`) excludes the ML stack (torch, tensorflow,
-demucs, basic-pitch, whisperx, scipy, numpy) — the `.exe` covers the GP pipeline
-+ native PSARC core. ML extras work if installed separately on the user's Python.
+The PyInstaller spec (`rockforge.spec`) excludes the ML stack (torch, demucs,
+whisperx, scipy, numpy) — the `.exe` covers the GP pipeline + native PSARC core.
+ML extras work if installed separately on the user's Python.
 ffmpeg is bundled from `ffmpeg/ffmpeg.exe` (placed by the user before build);
 `start_standalone.py` prepends the bundled path to `$PATH` at launch.
 
@@ -1327,7 +1280,7 @@ ffmpeg is bundled from `ffmpeg/ffmpeg.exe` (placed by the user before build);
 
 ```bash
 pip install -e ".[dev]"             # core + tests, no ML
-pip install -e ".[dev,ml]"          # adds Demucs/Basic Pitch/librosa
+pip install -e ".[dev,ml]"          # adds Demucs/librosa (stem sep, tone detect, GP auto-sync)
 pip install -e ".[dev,ml,lyrics]"   # + WhisperX (automatic lyric detection)
 pytest                           # full suite (ML stages are faked in tests)
 ruff check src tests             # lint — must pass
@@ -1339,12 +1292,15 @@ pinned (`mypy~=1.19.0`) so local matches CI — do not bump it casually.
 
 ## Hard constraints (these have bitten us — keep them)
 
-- **Python 3.11 only** (`requires-python = ">=3.11,<3.12"`). `basic-pitch` needs
-  `tensorflow<2.15.1`, whose newest wheels target 3.11. On Windows use
-  `py -3.11 -m pip ...`; the user does NOT want virtualenvs.
+- **Python 3.11 only** (`requires-python = ">=3.11,<3.12"`). The ml/lyrics stack
+  (torch<2.5 / demucs / whisperx) targets 3.11 wheels. On Windows use
+  `py -3.11 -m pip ...`; the user does NOT want virtualenvs. (The old, stricter
+  reason — `basic-pitch`'s `tensorflow<2.15.1` — is gone now that audio note
+  transcription was removed, so this pin *could* be relaxed after re-validating
+  the full `[ml,lyrics]` install.)
 - **`whisperx` is pinned `<3.4`** (the `lyrics` extra). `whisperx>=3.4` pulls
-  `pyannote-audio>=4.0`/`numpy>=2.1`, which directly conflicts with
-  `basic-pitch`'s `tensorflow<2.15.1` (needs `numpy<2`) — installing `[ml,lyrics]`
+  `pyannote-audio>=4.0`/`numpy>=2.1`, which directly conflicts with the `[ml]`
+  stack's `numpy<2` pin — installing `[ml,lyrics]`
   together then sends pip's resolver into `ResolutionTooDeep` (it backtracks
   over the whole `transformers`/`numpy` version range and never finishes). Don't
   bump this without re-checking the `numpy` ranges of both stacks.
@@ -1376,17 +1332,10 @@ pinned (`mypy~=1.19.0`) so local matches CI — do not bump it casually.
   `normalize`/lyrics-`normalizing` stage. `FfmpegNormalizer` passes `-nostdin` +
   `stdin=subprocess.DEVNULL` (plus a `FFMPEG_TIMEOUT_S` ceiling so a genuine
   stall fails loudly); `DemucsSeparator` uses `stdin=subprocess.DEVNULL` too.
-  `YouTubeIngestor` runs yt-dlp as a subprocess with `stdin=subprocess.DEVNULL`
-  + `YOUTUBE_TIMEOUT_S` + `--no-playlist` (a `watch?v=…&list=…` URL otherwise
-  downloads the whole playlist and looks like an endless hang at `ingest`) — it
-  used to call the yt_dlp *library*, whose internal ffmpeg child could inherit
-  stdin and hang. Guarded by `test_ffmpeg_normalizer.py`. Don't drop these when
-  touching the subprocess calls.
-- **YouTube ingestion is gated by `ROCKFORGE_ENABLE_YOUTUBE`** (currently
-  defaulting on at the operator's request) — downloading audio violates the
-  YouTube ToS, so the gate stays so it can be turned off. PSARC/.wem packing
-  needs a local Wwise (Audiokinetic EULA forbids redistribution); RockForge only
-  *invokes* an installed copy.
+  Guarded by `test_ffmpeg_normalizer.py`. Don't drop these when touching the
+  subprocess calls.
+- PSARC/.wem packing needs a local Wwise (Audiokinetic EULA forbids
+  redistribution); RockForge only *invokes* an installed copy.
 - **`Job.params` (JSON column) needs a NEW dict object on every write.** It is a
   plain SQLAlchemy `JSON` column with NO `MutableDict` tracking, so reassigning
   the *same* dict object (`job.params = params`) is a silent no-op — SQLAlchemy
@@ -1439,10 +1388,10 @@ background" feature:
 **See `TESTING.md` for the full guide** (coverage map, how to add tests, manual
 end-to-end checks, debugging the async tasks). In short: ML/Wwise/external tools
 cannot run in CI, so tests inject fakes at the port boundary — a Python-based
-fake WwiseConsole (`test_wwise.py`), passthrough stages (`test_pipeline.py`),
+fake WwiseConsole (`test_wwise.py`), a fake GP parser + packager (`test_gp_pipeline.py`),
 stubbed Celery enqueue + per-test SQLite (`test_api.py`). When you add an
 adapter, add a fake-driven test at the same boundary rather than mocking deep
-internals. 233 tests; `pytest` + `ruff check src tests` + `mypy` must all be
+internals. `pytest` + `ruff check src tests` + `mypy` must all be
 green before committing.
 
 ## Running locally (Windows, native, no Docker)
@@ -1499,3 +1448,33 @@ and launches `http://localhost:8000` once the API accepts connections.
   invent metadata, label confidence explicitly.
 - Match surrounding code style. The codebase comments only to state non-obvious
   constraints (often citing the research doc section), not to narrate.
+
+## Working method (how to make changes here)
+
+A short playbook for working in this repo. It complements the hard constraints
+above; when the two conflict, the constraints win.
+
+- **Plan non-trivial work first.** For anything 3+ steps or with an
+  architectural decision, write the plan down (`tasks/todo.md`, checkable items)
+  before editing, and adjust it as you learn. Simple, obvious fixes skip this —
+  don't over-engineer.
+- **Use subagents to keep context clean.** Offload research, codebase mapping,
+  and parallel analysis to subagents (one focused task each). Before deleting a
+  module, have a subagent (or a grep sweep) map its full surface — *this repo
+  shares symbols across "separate" modules* (e.g. `PipelineResult` lived in the
+  audio `pipeline.py` but was imported by `gp_pipeline.py`), so "only X imports
+  it" must be verified, not assumed.
+- **Verify before calling it done.** Never mark work complete on a green
+  typecheck alone. Run `pytest` + `ruff check src tests` + `mypy` (all three
+  green — the hard rule), and for a behavioural change exercise the actual path
+  (drive the endpoint / `node --check` the inline UI JS / diff behaviour vs the
+  previous version). If tests fail, say so with the output.
+- **Prefer the elegant, minimal-impact change.** Find the root cause, not a
+  patch over it; touch only what's necessary and match the surrounding style, so
+  a change introduces no new side effects. If a fix feels hacky, redo it properly.
+- **Fix reported bugs autonomously.** Point at the failing test / error / log,
+  diagnose, and resolve it without asking for hand-holding — then verify.
+- **Capture lessons after a correction.** When the user corrects a mistake,
+  append the pattern (and the rule that prevents it) to `tasks/lessons.md`, and
+  skim that file at the start of a session. Ruthlessly iterate so the same
+  mistake doesn't recur.

@@ -23,7 +23,6 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from rockforge.application.pipeline import PipelineResult
 from rockforge.application.ports import AudioIngestor, AudioNormalizer, Packager
 from rockforge.domain.arrangement import (
     Arrangement,
@@ -42,12 +41,24 @@ from rockforge.infrastructure.gpimport.parser import (
     inspect_gp,
     parse_gp_track,
 )
+from rockforge.infrastructure.packaging.dlcbuilder import PackagingResult
 from rockforge.infrastructure.rsxml.vocals import (
     VocalEvent,
     distribute_syllables,
     enforce_max_line_words,
     parse_lyrics,
 )
+
+
+@dataclass(frozen=True)
+class PipelineResult:
+    packaging: PackagingResult
+    note_counts: dict[str, int]
+    warnings: tuple[str, ...]
+    # Lyrics extracted from a GP file (recording clock, i.e. un-padded), so the
+    # worker can surface them in the "Letras" editor / tab viewer. Empty unless
+    # GP-embedded lyrics were used (not when the user supplied LRC/editor rows).
+    gp_lyrics: tuple[VocalEvent, ...] = ()
 
 # Minimum lead-in before the first note. DLC Builder's PhraseGenerator inserts a
 # count-in phrase before the arrangement content and fails ("no room for an empty

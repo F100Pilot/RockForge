@@ -7,7 +7,7 @@ stem and, being query-based, can isolate a *narrow class* by example: you give i
 a short reference clip of the target sound (``--query_path``) and it extracts that
 class from the mixture.
 
-This adapter is a drop-in `StemSeparator` for `POST /jobs/{id}/separate-stems`,
+This adapter is a drop-in guitar/stem separator for `POST /jobs/{id}/separate-stems`,
 selected with ``ROCKFORGE_STEM_SEPARATOR=banquet``. It shells out to the repo's
 native ``train.py inference_byoq`` (same subprocess discipline as the Demucs
 adapter) once per reference clip found in ``banquet_queries``, producing one stem
@@ -36,7 +36,7 @@ BANQUET_TIMEOUT_S = 3600  # per-query inference; longer than Demucs (bigger mode
 
 
 class BanquetSeparator:
-    """Implements rockforge.application.ports.StemSeparator via the query-bandit CLI."""
+    """Guitar/stem separation via the query-bandit (Banquet) CLI."""
 
     def __init__(
         self,
@@ -120,8 +120,8 @@ class BanquetSeparator:
         return stems
 
     def separate_guitar(self, audio: Path, workdir: Path) -> Path:
-        """Aggregated guitar stem (StemSeparator port): runs the first query whose
-        name looks like a guitar (``*guitar*`` / ``*electric*``)."""
+        """Aggregated guitar stem: runs the first query whose name looks like a
+        guitar (``*guitar*`` / ``*electric*``)."""
         _, _, queries_dir = self._require_setup()
         guitar_q = next(
             (q for q in sorted(queries_dir.glob("*.wav"))

@@ -16,8 +16,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from rockforge.domain.music import Beat, NoteEvent, TempoMap, Tuning, suggest_tuning
-
 
 def detect_tempo_and_onset(audio: Path) -> tuple[float, float]:
     """Estimate (bpm, first_onset_seconds) for automatic GP→recording sync.
@@ -68,51 +66,3 @@ def estimate_tuning_cents(audio: Path) -> float:
 
     y, sr = librosa.load(str(audio), sr=None, mono=True)
     return float(librosa.estimate_tuning(y=y, sr=sr)) * 100.0
-
-
-def _strictly_increasing(times: list[float]) -> list[float]:
-    """Sort and drop non-advancing entries, so the result satisfies TempoMap's
-    chronological-order invariant regardless of what an upstream detector returns.
-
-    librosa's DP beat tracker normally returns strictly increasing frames, but on
-    some recordings it doesn't (observed on real user audio) — better to silently
-    fold a stray/duplicate beat than crash the whole job on a third-party
-    detector's raw output.
-    """
-    ordered = sorted(times)
-    return [t for i, t in enumerate(ordered) if i == 0 or t > ordered[i - 1]]
-
-
-class LibrosaRhythmAdapter:
-    """Implements BeatTracker and TuningEstimator ports."""
-
-    def track(self, audio: Path) -> TempoMap:
-        import librosa
-        import numpy as np
-
-        y, sr = librosa.load(str(audio), sr=None, mono=True)
-        tempo, beat_frames = librosa.beat.beat_track(y=y, sr=sr)
-        times = librosa.frames_to_time(beat_frames, sr=sr)
-        bpm = float(np.atleast_1d(tempo)[0])
-        beats_per_measure = 4  # not detected — see module docstring
-        strict_times = _strictly_increasing([float(t) for t in times])
-        beats = tuple(
-            Beat(
-                time=t,
-                measure=(i // beats_per_measure + 1) if i % beats_per_measure == 0 else -1,
-            )
-            for i, t in enumerate(strict_times)
-        )
-        return TempoMap(beats=beats, average_bpm=bpm, beats_per_measure=beats_per_measure)
-
-    def estimate(self, audio: Path, notes: list[NoteEvent]) -> Tuning:
-        import librosa
-
-        y, sr = librosa.load(str(audio), sr=None, mono=True)
-        cents = float(librosa.estimate_tuning(y=y, sr=sr)) * 100.0
-
-        # A440 cents is reliable; the STRING tuning is a robust-lowest heuristic
-        # over the transcribed pitches (suggest_tuning) — a guess flagged for human
-        # confirmation, since polyphonic string-tuning detection is unsolved.
-        _name, midi = suggest_tuning([n.pitch for n in notes])
-        return Tuning(midi=midi, cent_offset=cents)

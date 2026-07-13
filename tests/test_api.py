@@ -13,7 +13,6 @@ from fastapi.testclient import TestClient
 def client(tmp_path, monkeypatch) -> Iterator[TestClient]:
     monkeypatch.setenv("ROCKFORGE_DATABASE_URL", f"sqlite:///{tmp_path}/test.db")
     monkeypatch.setenv("ROCKFORGE_WORK_DIR", str(tmp_path / "work"))
-    monkeypatch.setenv("ROCKFORGE_ENABLE_YOUTUBE", "false")
     import rockforge.config as config
     importlib.reload(config)
     import rockforge.interfaces.api.app as app_module
@@ -24,75 +23,6 @@ def client(tmp_path, monkeypatch) -> Iterator[TestClient]:
     monkeypatch.setattr(app_module, "_enqueue_separate_stems", lambda job: None)
     with TestClient(app_module.app) as c:
         yield c
-
-
-def test_upload_rejects_unknown_format(client: TestClient) -> None:
-    r = client.post(
-        "/jobs/upload",
-        files={"file": ("song.txt", b"not audio", "text/plain")},
-        data={"title": "T", "artist": "A"},
-    )
-    assert r.status_code == 415
-
-
-def test_upload_creates_pending_job(client: TestClient) -> None:
-    r = client.post(
-        "/jobs/upload",
-        files={"file": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
-        data={"title": "Song", "artist": "Artist", "year": "1986"},
-    )
-    assert r.status_code == 202
-    body = r.json()
-    assert body["status"] == "pending"
-    assert body["year"] == 1986
-
-    r2 = client.get(f"/jobs/{body['id']}")
-    assert r2.status_code == 200
-    assert r2.json()["title"] == "Song"
-
-
-def test_upload_stores_custom_detection_thresholds(client: TestClient) -> None:
-    """The audio form's Basic Pitch onset/frame thresholds are persisted in
-    params (only when changed from the defaults) for the worker to apply."""
-    import rockforge.interfaces.api.app as app_module
-
-    r = client.post(
-        "/jobs/upload",
-        files={"file": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
-        data={"title": "S", "artist": "A", "onset_threshold": "0.7", "frame_threshold": "0.3"},
-    )
-    assert r.status_code == 202
-    with app_module._session_factory() as session:
-        job = session.get(app_module.Job, r.json()["id"])
-        assert job.params["onset_threshold"] == 0.7
-        # frame stayed at the default (0.3) → not stored, so the worker uses it.
-        assert "frame_threshold" not in job.params
-
-
-def test_upload_stores_tuning_override(client: TestClient) -> None:
-    """A user-supplied tuning is stored as params['tuning_midi'] (six ints) for
-    the worker's tuning_override, since reliable auto-detection is unsolved."""
-    import rockforge.interfaces.api.app as app_module
-
-    r = client.post(
-        "/jobs/upload",
-        files={"file": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
-        data={"title": "S", "artist": "A", "tuning_midi": "38,45,50,55,59,64"},  # Drop D
-    )
-    assert r.status_code == 202
-    with app_module._session_factory() as session:
-        job = session.get(app_module.Job, r.json()["id"])
-        assert job.params["tuning_midi"] == [38, 45, 50, 55, 59, 64]
-
-
-def test_upload_rejects_malformed_tuning(client: TestClient) -> None:
-    for bad in ("40,45,50", "40,45,50,55,59,999", "not,a,tuning,x,y,z"):
-        r = client.post(
-            "/jobs/upload",
-            files={"file": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
-            data={"title": "S", "artist": "A", "tuning_midi": bad},
-        )
-        assert r.status_code == 422, bad
 
 
 def test_gear_image_serves_local_file_or_404(client: TestClient) -> None:
@@ -133,112 +63,30 @@ def test_gear_image_falls_back_to_bundled_and_workdir_wins(client: TestClient) -
     assert r2.status_code == 200 and r2.content == b"\x89PNG\r\n\x1a\nOVERRIDE"
 
 
-def test_upload_split_stores_per_role_sources(client: TestClient) -> None:
-    """Separate Lead/Rhythm uploads are stored as params['lead_source'] /
-    ['rhythm_source']; the bundle source is the mix when given."""
-    import rockforge.interfaces.api.app as app_module
-
-    r = client.post(
-        "/jobs/upload-split",
-        files={
-            "lead": ("lead.wav", b"RIFF0000WAVE", "audio/wav"),
-            "rhythm": ("rhythm.wav", b"RIFF0000WAVE", "audio/wav"),
-            "mix": ("mix.wav", b"RIFF0000WAVE", "audio/wav"),
-        },
-        data={"title": "S", "artist": "A"},
-    )
-    assert r.status_code == 202
-    with app_module._session_factory() as session:
-        job = session.get(app_module.Job, r.json()["id"])
-        assert job.params["lead_source"].endswith(".wav")
-        assert job.params["rhythm_source"].endswith(".wav")
-        # bundle source is the mix, distinct from both stems
-        assert job.source != job.params["lead_source"]
-        assert job.source != job.params["rhythm_source"]
-
-
-def test_upload_split_without_mix_uses_a_stem_as_source(client: TestClient) -> None:
-    import rockforge.interfaces.api.app as app_module
-
-    r = client.post(
-        "/jobs/upload-split",
-        files={"rhythm": ("rhythm.wav", b"RIFF0000WAVE", "audio/wav")},
-        data={"title": "S", "artist": "A"},
-    )
-    assert r.status_code == 202
-    with app_module._session_factory() as session:
-        job = session.get(app_module.Job, r.json()["id"])
-        assert "lead_source" not in job.params
-        assert job.source == job.params["rhythm_source"]  # the only stem = bundle audio
-
-
-def test_upload_split_requires_at_least_one_stem(client: TestClient) -> None:
-    r = client.post(
-        "/jobs/upload-split",
-        files={"mix": ("mix.wav", b"RIFF0000WAVE", "audio/wav")},
-        data={"title": "S", "artist": "A"},
-    )
-    assert r.status_code == 422
-
-
-def test_upload_rejects_out_of_range_threshold(client: TestClient) -> None:
-    r = client.post(
-        "/jobs/upload",
-        files={"file": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
-        data={"title": "S", "artist": "A", "onset_threshold": "1.5"},
-    )
-    assert r.status_code == 422
-
-
-def test_upload_without_metadata_and_untagged_file_returns_422(client: TestClient) -> None:
-    r = client.post(
-        "/jobs/upload",
-        files={"file": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
-        data={},
-    )
-    assert r.status_code == 422
-    assert "title" in r.json()["detail"] and "artist" in r.json()["detail"]
-
-
-def test_upload_falls_back_to_file_tags(client: TestClient, monkeypatch) -> None:
-    from rockforge.infrastructure.ingestion import tags as tags_mod
-
-    monkeypatch.setattr(
-        tags_mod, "read_tags",
-        lambda path: tags_mod.AudioTags(
-            title="Tagged", artist="TagBand", album="TagAlbum", year=1999
-        ),
-    )
-    r = client.post(
-        "/jobs/upload",
-        files={"file": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
-        data={"artist": "FormBand"},  # form value must win over the tag
-    )
-    assert r.status_code == 202
-    body = r.json()
-    assert body["title"] == "Tagged"
-    assert body["artist"] == "FormBand"
-    assert body["album"] == "TagAlbum"
-    assert body["year"] == 1999
-
-
-def test_youtube_returns_403_when_disabled(client: TestClient) -> None:
-    r = client.post(
-        "/jobs/youtube",
-        json={"url": "https://www.youtube.com/watch?v=x", "title": "T", "artist": "A"},
-    )
-    assert r.status_code == 403
-    assert "ToS" in r.json()["detail"]
-
-
 def _create_job(client: TestClient) -> dict:
-    r = client.post(
-        "/jobs/upload",
-        files={"file": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
-        data={"title": "Song", "artist": "Artist"},
-    )
-    assert r.status_code == 202
-    return r.json()
+    """Insert a minimal non-GP job row directly.
+
+    The audio-upload endpoint (note transcription) was removed, but many
+    downstream tests just need *a* job to operate on — and several rely on it
+    being a non-GP job so GP-only endpoints reject it. We insert an
+    ``"upload"``-type row straight into the DB with a real ``source`` file so
+    ``/source-audio`` serves it."""
+    import uuid
+
+    import rockforge.interfaces.api.app as app_module
+
+    uploads = app_module.settings.work_dir / "uploads"
+    uploads.mkdir(parents=True, exist_ok=True)
+    src = uploads / f"{uuid.uuid4()}.wav"
+    src.write_bytes(b"RIFF0000WAVE")
+    with app_module._session_factory() as session:
+        job = app_module.Job(
+            source=str(src), source_type="upload", title="Song", artist="Artist"
+        )
+        session.add(job)
+        session.commit()
+        jid = job.id
+    return client.get(f"/jobs/{jid}").json()
 
 
 def test_update_metadata_edits_song_identity(client: TestClient) -> None:
@@ -484,32 +332,24 @@ def test_source_audio_404_for_unknown_job(client: TestClient) -> None:
     assert client.get("/jobs/nope/source-audio").status_code == 404
 
 
-def test_source_audio_falls_back_to_workdir(monkeypatch, tmp_path) -> None:
-    """When job.source is a URL (YouTube), the viewer's audio comes from the
-    ingested file in the work dir so audio-ML jobs are still playable."""
-    monkeypatch.setenv("ROCKFORGE_DATABASE_URL", f"sqlite:///{tmp_path}/test.db")
-    monkeypatch.setenv("ROCKFORGE_WORK_DIR", str(tmp_path / "work"))
-    monkeypatch.setenv("ROCKFORGE_ENABLE_YOUTUBE", "true")
-    import rockforge.config as config
-    importlib.reload(config)
+def test_source_audio_falls_back_to_workdir(client: TestClient) -> None:
+    """When job.source is not a real file (e.g. a URL), the viewer's audio comes
+    from the ingested file in the work dir."""
     import rockforge.interfaces.api.app as app_module
-    importlib.reload(app_module)
-    monkeypatch.setattr(app_module, "_enqueue", lambda job: None)
-    monkeypatch.setattr(app_module, "_enqueue_detect", lambda job: None)
-    monkeypatch.setattr(app_module, "_enqueue_detect_tones", lambda job: None)
 
-    with TestClient(app_module.app) as c:
-        r = c.post(
-            "/jobs/youtube",
-            json={"url": "https://www.youtube.com/watch?v=abc", "title": "T", "artist": "A"},
+    with app_module._session_factory() as session:
+        job = app_module.Job(
+            source="https://example.invalid/song", source_type="upload",
+            title="T", artist="A",
         )
-        assert r.status_code == 202
-        jid = r.json()["id"]
-        wd = tmp_path / "work" / jid
-        wd.mkdir(parents=True)
-        (wd / "input.wav").write_bytes(b"RIFFyt00WAVE")
-        got = c.get(f"/jobs/{jid}/source-audio")
-        assert got.status_code == 200 and got.content == b"RIFFyt00WAVE"
+        session.add(job)
+        session.commit()
+        jid = job.id
+    wd = app_module.settings.work_dir / jid
+    wd.mkdir(parents=True)
+    (wd / "input.wav").write_bytes(b"RIFFyt00WAVE")
+    got = client.get(f"/jobs/{jid}/source-audio")
+    assert got.status_code == 200 and got.content == b"RIFFyt00WAVE"
 
 
 def test_arrangements_404_until_completed(client: TestClient) -> None:
@@ -867,10 +707,7 @@ def test_rebuild_rejects_too_many_tones(client: TestClient, tmp_path) -> None:
 
 
 def test_rebuild_tones_rejected_for_non_gp(client: TestClient) -> None:
-    original = client.post(
-        "/jobs/upload", files={"file": ("a.wav", b"RIFF0000WAVE", "audio/wav")},
-        data={"title": "T", "artist": "A"},
-    ).json()
+    original = _create_job(client)  # a non-GP job
     r = client.post(
         f"/jobs/{original['id']}/rebuild", json={"tone_base": "clean"}
     )
@@ -1252,7 +1089,6 @@ def test_idle_shutdown_exits_process_when_heartbeats_stop(monkeypatch, tmp_path)
     """Settings.idle_shutdown_s (start.bat): no /heartbeat pings => process exits."""
     monkeypatch.setenv("ROCKFORGE_DATABASE_URL", f"sqlite:///{tmp_path}/test.db")
     monkeypatch.setenv("ROCKFORGE_WORK_DIR", str(tmp_path / "work"))
-    monkeypatch.setenv("ROCKFORGE_ENABLE_YOUTUBE", "false")
     monkeypatch.setenv("ROCKFORGE_IDLE_SHUTDOWN_S", "0.05")
     import rockforge.config as config
     importlib.reload(config)
@@ -1284,7 +1120,6 @@ def test_closing_beacon_arms_and_heartbeat_cancels(monkeypatch, tmp_path) -> Non
     (i.e. a refresh came back) cancels it."""
     monkeypatch.setenv("ROCKFORGE_DATABASE_URL", f"sqlite:///{tmp_path}/test.db")
     monkeypatch.setenv("ROCKFORGE_WORK_DIR", str(tmp_path / "work"))
-    monkeypatch.setenv("ROCKFORGE_ENABLE_YOUTUBE", "false")
     monkeypatch.setenv("ROCKFORGE_IDLE_SHUTDOWN_S", "30")  # long, so nothing exits mid-test
     import rockforge.config as config
     importlib.reload(config)
@@ -1337,7 +1172,6 @@ def test_hidden_heartbeat_does_not_cancel_pending_close(monkeypatch, tmp_path) -
     would never shut the server down. A VISIBLE heartbeat (refresh) still does."""
     monkeypatch.setenv("ROCKFORGE_DATABASE_URL", f"sqlite:///{tmp_path}/test.db")
     monkeypatch.setenv("ROCKFORGE_WORK_DIR", str(tmp_path / "work"))
-    monkeypatch.setenv("ROCKFORGE_ENABLE_YOUTUBE", "false")
     monkeypatch.setenv("ROCKFORGE_IDLE_SHUTDOWN_S", "30")  # long, so nothing exits mid-test
     import rockforge.config as config
 
