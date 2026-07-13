@@ -1562,6 +1562,13 @@ and launches `http://localhost:8000` once the API accepts connections.
   invent metadata, label confidence explicitly.
 - Match surrounding code style. The codebase comments only to state non-obvious
   constraints (often citing the research doc section), not to narrate.
+- **Errors: typed at port boundaries, `ValueError` for internal invariants.** A
+  pipeline-stage adapter (an `application.ports` implementation) raises the
+  matching `RockForgeError` subclass (`IngestionError`/`NormalizationError`/
+  `SeparationError`/`PackagingError`) so the use case/API can map the failing
+  stage; a pure `domain/` invariant or a fixed-spec binary parser/writer
+  (`packaging/psarc` SNG/container/crypto) raises a bare `ValueError`. Full rule
+  in `domain/errors.py`'s module docstring.
 
 ## Working method (how to make changes here)
 
