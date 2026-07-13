@@ -125,6 +125,20 @@ def test_list_jobs_newest_first(client: TestClient) -> None:
     assert all("stage" in j and "stages" in j for j in jobs)
 
 
+def test_job_stages_match_the_gp_pipeline_on_stage_calls(client: TestClient) -> None:
+    """JobOut.stages drives the progress-pill bar (web/index.html highlights the
+    entry matching job.stage). It must list the SAME names, in the SAME order,
+    that GenerateFromGpUseCase.run actually reports via on_stage — see
+    test_gp_pipeline_full_bundle's `stages == [...]` assertion — or the pills
+    never highlight for a running job (this drifted once when the audio-ML
+    pipeline, with its own longer stage list, was removed)."""
+    job = _create_job(client)
+    body = client.get(f"/jobs/{job['id']}").json()
+    assert body["stages"] == [
+        "ingest", "normalize", "parse_gp", "build_arrangements", "lyrics", "package",
+    ]
+
+
 def test_delete_job_removes_job_workdir_and_upload(client: TestClient) -> None:
     import rockforge.config as config
 
