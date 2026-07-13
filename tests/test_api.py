@@ -510,6 +510,43 @@ def test_gp_inspect_rejects_gpx(client: TestClient) -> None:
     assert "GP5" in r.json()["detail"]
 
 
+def test_cross_origin_post_is_rejected(client: TestClient) -> None:
+    """A POST carrying a foreign Origin header (the CSRF shape: a malicious
+    page's <form> blind-posting to this API) is rejected; no Origin at all
+    (curl, the desktop app, this test suite normally) passes through."""
+    cross_origin = client.post(
+        "/gp/inspect",
+        files={"file": ("song.gpx", b"BCFS", "application/octet-stream")},
+        headers={"Origin": "https://evil.example"},
+    )
+    assert cross_origin.status_code == 403
+
+    same_origin = client.post(
+        "/gp/inspect",
+        files={"file": ("song.gpx", b"BCFS", "application/octet-stream")},
+        headers={"Origin": f"http://{client.base_url.host}"},
+    )
+    assert same_origin.status_code != 403  # rejected for being .gpx (415), not origin
+
+
+def test_upload_over_the_size_cap_is_rejected_and_leaves_no_partial_file(
+    client: TestClient, monkeypatch
+) -> None:
+    """copyfileobj alone has no size cap — an oversized upload must be rejected
+    (413) and must not leave a partial file behind on disk."""
+    import rockforge.interfaces.api.app as app_module
+
+    monkeypatch.setattr(app_module, "_MAX_UPLOAD_BYTES", 16)
+    r = client.post(
+        "/gp/inspect",
+        files={"file": ("song.gp5", b"x" * 64, "application/octet-stream")},
+    )
+    assert r.status_code == 413
+    gp_dir = app_module.settings.work_dir / "gp"
+    if gp_dir.exists():
+        assert list(gp_dir.glob("*")) == []
+
+
 def test_gp_inspect_accepts_gp7(client: TestClient) -> None:
     import io
     import zipfile

@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+from rockforge.domain.errors import IngestionError
 from rockforge.domain.music import Technique
 from rockforge.infrastructure.gpimport.parser import inspect_gp, parse_gp_track
 
@@ -99,6 +100,44 @@ def gp7_file(tmp_path: Path) -> Path:
         z.writestr("VERSION", "7.0")
         z.writestr("Content/score.gpif", GPIF)
     return path
+
+
+def test_gp7_oversized_score_gpif_is_rejected(tmp_path: Path) -> None:
+    """A small ZIP whose score.gpif entry decompresses far past the sane
+    ceiling (a 'zip bomb') is rejected before decompression, not read fully
+    into memory."""
+    path = tmp_path / "song.gp"
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("VERSION", "7.0")
+        # Highly compressible, but declares (via ZipInfo.file_size, read from
+        # the local file header before any decompression) a size over the cap.
+        z.writestr("Content/score.gpif", "x" * (10**8))
+    import rockforge.infrastructure.gpimport.gpif_parser as gpif_parser
+
+    monkey_cap = 1024  # tiny cap so the test doesn't need a real 50 MB payload
+    orig_cap = gpif_parser._MAX_GPIF_BYTES
+    gpif_parser._MAX_GPIF_BYTES = monkey_cap
+    try:
+        with pytest.raises(IngestionError, match="implausibly large"):
+            inspect_gp(path)
+    finally:
+        gpif_parser._MAX_GPIF_BYTES = orig_cap
+
+
+def test_gp7_doctype_declaration_is_rejected(tmp_path: Path) -> None:
+    """A score.gpif carrying a DOCTYPE/internal-entity declaration ("billion
+    laughs") is rejected outright — a real GP7 export never has one."""
+    path = tmp_path / "song.gp"
+    bomb = (
+        '<?xml version="1.0"?>'
+        "<!DOCTYPE GPIF [<!ENTITY a \"lol\"><!ENTITY b \"&a;&a;&a;&a;&a;\">]>"
+        "<GPIF>&b;</GPIF>"
+    )
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("VERSION", "7.0")
+        z.writestr("Content/score.gpif", bomb)
+    with pytest.raises(IngestionError, match="DOCTYPE/ENTITY"):
+        inspect_gp(path)
 
 
 def test_inspect_gp7_reads_metadata_and_tracks(gp7_file: Path) -> None:

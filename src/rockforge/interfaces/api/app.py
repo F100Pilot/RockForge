@@ -14,8 +14,9 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, cast
+from urllib.parse import urlparse
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel
@@ -139,6 +140,32 @@ def _verify_api_auth(
         )
 
 
+_MUTATING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+
+
+def _verify_same_origin(request: Request) -> None:
+    """Reject a cross-origin mutating request — CSRF via a plain HTML <form>.
+
+    multipart/form-data (GP/audio/cover uploads) is a browser "simple request":
+    no CORS preflight is sent, so with no CORS middleware configured (there is
+    none here) a malicious webpage can blind-POST a <form> straight to this API
+    while the victim's browser has network access to it — no auth needed if
+    ROCKFORGE_API_TOKEN is unset, and even WITH it set the browser attaches
+    cached Basic-auth credentials automatically. A real browser reliably sends
+    Origin (or falls back to Referer) on a cross-site POST; a request with
+    neither (curl, the desktop app's own fetches, this test suite) is not a
+    browser CSRF vector and passes through unaffected.
+    """
+    if request.method not in _MUTATING_METHODS:
+        return
+    origin = request.headers.get("origin") or request.headers.get("referer")
+    if not origin:
+        return
+    origin_host = urlparse(origin).netloc
+    if origin_host and origin_host != request.headers.get("host", ""):
+        raise HTTPException(403, "cross-origin request rejected")
+
+
 app = FastAPI(
     title="RockForge",
     description=(
@@ -148,7 +175,7 @@ app = FastAPI(
     ),
     version=__version__,
     lifespan=_lifespan,
-    dependencies=[Depends(_verify_api_auth)],
+    dependencies=[Depends(_verify_api_auth), Depends(_verify_same_origin)],
 )
 
 _session_factory = make_session_factory(settings.database_url)
@@ -525,6 +552,54 @@ class GpInspectOut(BaseModel):
 GP_SUFFIXES = {".gp3", ".gp4", ".gp5", ".gp"}  # .gp = GP7/GP8 (native GPIF parser)
 GP_REJECTED_SUFFIXES = {".gpx"}  # GP6 only — proprietary binary container
 
+# Generous ceiling for any single upload (GP file, recording, cover art, LRC) —
+# high enough that no legitimate file is ever rejected, low enough that an
+# upload can't fill the disk. shutil.copyfileobj has no size cap of its own, so
+# without this an unauthenticated caller (or one bypassing ROCKFORGE_API_TOKEN)
+# could exhaust the work volume with a single request.
+_MAX_UPLOAD_BYTES = 500 * 1024 * 1024
+_UPLOAD_CHUNK = 1024 * 1024
+
+
+def _copy_upload_capped(src: UploadFile, dest: Path) -> None:
+    """Stream ``src`` into ``dest`` in chunks, aborting (and removing the
+    partial file) once ``_MAX_UPLOAD_BYTES`` is exceeded. Reads the module-level
+    cap fresh on every call (not a bound default) so tests can monkeypatch it."""
+    total = 0
+    try:
+        with dest.open("wb") as fh:
+            while True:
+                chunk = src.file.read(_UPLOAD_CHUNK)
+                if not chunk:
+                    break
+                total += len(chunk)
+                if total > _MAX_UPLOAD_BYTES:
+                    raise HTTPException(
+                        413, f"file too large (max {_MAX_UPLOAD_BYTES // (1024 * 1024)} MB)"
+                    )
+                fh.write(chunk)
+    except HTTPException:
+        dest.unlink(missing_ok=True)
+        raise
+
+
+async def _read_upload_capped(src: UploadFile) -> bytes:
+    """Read ``src`` fully into memory, capped — for small text uploads (LRC)
+    that are parsed in-process rather than written to disk."""
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await src.read(_UPLOAD_CHUNK)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > _MAX_UPLOAD_BYTES:
+            raise HTTPException(
+                413, f"file too large (max {_MAX_UPLOAD_BYTES // (1024 * 1024)} MB)"
+            )
+        chunks.append(chunk)
+    return b"".join(chunks)
+
 
 @app.post("/gp/inspect", response_model=GpInspectOut)
 async def inspect_gp_file(file: UploadFile = File(...)) -> GpInspectOut:
@@ -542,8 +617,7 @@ async def inspect_gp_file(file: UploadFile = File(...)) -> GpInspectOut:
     gp_dir = settings.work_dir / "gp"
     gp_dir.mkdir(parents=True, exist_ok=True)
     dest = gp_dir / f"{uuid.uuid4()}{suffix}"
-    with dest.open("wb") as fh:
-        shutil.copyfileobj(file.file, fh)
+    _copy_upload_capped(file, dest)
 
     from rockforge.domain.errors import IngestionError
     from rockforge.infrastructure.gpimport.parser import inspect_gp
@@ -605,8 +679,7 @@ async def create_gp_job(
     upload_dir = settings.work_dir / "uploads"
     upload_dir.mkdir(parents=True, exist_ok=True)
     audio_dest = upload_dir / f"{uuid.uuid4()}{suffix}"
-    with audio_dest.open("wb") as fh:
-        shutil.copyfileobj(audio.file, fh)
+    _copy_upload_capped(audio, audio_dest)
 
     from rockforge.domain.errors import IngestionError
     from rockforge.infrastructure.gpimport.parser import inspect_gp
@@ -637,7 +710,7 @@ async def create_gp_job(
 
     lrc_text: str | None = None
     if lrc is not None and lrc.filename:
-        lrc_text = (await lrc.read()).decode("utf-8", errors="replace")
+        lrc_text = (await _read_upload_capped(lrc)).decode("utf-8", errors="replace")
 
     if tempo_scale <= 0:
         raise HTTPException(422, "tempo_scale must be > 0")
@@ -716,8 +789,7 @@ async def reload_gp(job_id: str, gp: UploadFile = File(...)) -> JobOut:
         gp_dir = settings.work_dir / "gp"
         gp_dir.mkdir(parents=True, exist_ok=True)
         gp_dest = gp_dir / f"{uuid.uuid4()}{suffix}"
-        with gp_dest.open("wb") as fh:
-            shutil.copyfileobj(gp.file, fh)
+        _copy_upload_capped(gp, gp_dest)
 
         try:
             info = inspect_gp(gp_dest)
@@ -1732,8 +1804,7 @@ async def upload_cover_art(job_id: str, file: UploadFile = File(...)) -> JobOut:
         for old in _COVER_ART_SUFFIXES:
             (job_dir / f"cover{old}").unlink(missing_ok=True)
         dest = job_dir / f"cover{suffix}"
-        with dest.open("wb") as fh:
-            shutil.copyfileobj(file.file, fh)
+        _copy_upload_capped(file, dest)
 
         params = dict(job.params or {})
         params["cover_art"] = dest.name
