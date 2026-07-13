@@ -19,6 +19,8 @@ from rockforge.infrastructure.packaging.psarc.sng import (
     NOTE_MASK_TREMOLO,
     TECHNIQUE_BITS,
     TECHNIQUE_TO_MASK,
+    SngBeat,
+    _note_tier,
     _pack_str,
     _unpack_str,
     from_arrangement,
@@ -27,6 +29,35 @@ from rockforge.infrastructure.packaging.psarc.sng import (
     write_sng,
 )
 from rockforge.infrastructure.rsxml.vocals import VocalEvent
+
+
+def test_note_tier_at_song_end_uses_the_last_beat_not_the_first() -> None:
+    """A note at/after the song's final beat must be scored against the LAST
+    beat, not beats[0]. The old fallback always compared to beats[0], so a note
+    on the final downbeat was mis-scored as tier 1 instead of 0 (cosmetic DD
+    note-intro ordering, but a real logic bug)."""
+    beats = [
+        SngBeat(time=0.0, measure=1, mask=1),   # downbeat
+        SngBeat(time=1.0, measure=1, mask=0),
+        SngBeat(time=10.0, measure=2, mask=1),  # final downbeat
+    ]
+    # On / just past the final downbeat → tier 0 (it IS a downbeat).
+    assert _note_tier(10.0, beats) == 0
+    assert _note_tier(10.02, beats) == 0
+    # Well past it, not near any edge downbeat → tier 1.
+    assert _note_tier(10.5, beats) == 1
+    # Before the first downbeat still resolves against beats[0].
+    assert _note_tier(-0.02, beats) == 0
+
+
+def test_note_tier_after_a_non_downbeat_last_beat_is_tier_one() -> None:
+    """If the final beat is NOT a downbeat, an end-of-song note is tier 1, not
+    0 — proving the fix reads the last beat's mask, not beats[0]'s."""
+    beats = [
+        SngBeat(time=0.0, measure=1, mask=1),   # downbeat
+        SngBeat(time=10.0, measure=1, mask=0),  # final beat, NOT a downbeat
+    ]
+    assert _note_tier(10.0, beats) == 1
 
 
 def test_pack_str_truncates_on_a_utf8_character_boundary() -> None:

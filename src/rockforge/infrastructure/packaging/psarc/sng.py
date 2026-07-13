@@ -444,8 +444,15 @@ def _note_tier(time: float, beats: list[SngBeat]) -> int:
             if abs(frac - 0.25) < eps or abs(frac - 0.75) < eps:
                 return 3
             return 4
-    # Before the first beat or after the last — treat as a beat-strength note.
-    return 0 if (beats and beats[0].mask & 1 and abs(time - beats[0].time) < eps) else 1
+    # Before the first beat or after the last — treat as a beat-strength note by
+    # proximity to the NEAREST edge beat: beats[0] before the song starts,
+    # beats[-1] after it ends. The old code always compared to beats[0], so a
+    # note near the song's FINAL downbeat never registered as a downbeat (tier 0)
+    # and always fell to tier 1 regardless of where it actually sat.
+    if not beats:
+        return 1
+    edge = beats[0] if time < beats[0].time else beats[-1]
+    return 0 if (edge.mask & 1 and abs(time - edge.time) < eps) else 1
 
 
 def _note_mask(n: TabNote, is_chord: bool = False, is_double_stop: bool = False) -> int:
