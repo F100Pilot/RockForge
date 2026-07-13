@@ -318,6 +318,10 @@ const INFO = {
     title: 'Sincronização automática',
     body: '<p>Deteta o andamento e o início da gravação (como o CDLC.AI) e propõe um ajuste. Os valores ficam em pré-visualização — confirma na partitura e clica em "Aplicar e reconstruir".<br>Requer o extra <code>ml</code> (librosa). Refina depois com os modos manuais.</p>'
   },
+  'auto-sync-dynamic': {
+    title: 'Sincronização dinâmica (segue o andamento real)',
+    body: '<p>A sincronização automática acima aplica UM andamento médio — não chega quando o tempo da gravação varia (o problema típico das tabs de IA). Esta deteta TODAS as batidas da gravação e alinha a grelha da partitura à curva de andamento real, criando várias âncoras de correção ao longo da música.<br>Substitui as correções pendentes da pista atual por esta proposta; fica em pré-visualização — confirma na partitura e clica em "Aplicar e reconstruir".<br><b>Limite honesto:</b> a precisão depende do detetor de batidas (pode falhar/duplicar batidas). É um <i>ponto de partida</i> para refinares à mão, não verdade absoluta. Requer o extra <code>ml</code> (librosa).</p>'
+  },
   'tab-viewer': {
     title: 'Partitura — legenda',
     body: '<p>● nota · ▮ nota de acorde (ligadas por barra vertical) · sigla sobreposta = técnica:<br>B bend · H hammer-on · P pull-off · S slide · HA harmónico · PM palm mute · V vibrato · T tapping · SL slap · PO pop · A acento<br>Passa o cursor sobre a nota para ver a lista completa.<br>Cor = corda (igual ao Rocksmith): <span style="color:#e6483c">E</span> <span style="color:#f5dc3c">A</span> <span style="color:#3f9bdc">D</span> <span style="color:#f0973c">G</span> <span style="color:#5cc24a">B</span> <span style="color:#b56cdc">e</span> (grave→agudo). Eixo X em segundos.</p>'
@@ -3875,6 +3879,52 @@ function setTempoLive(scale) {
         `Proposto: início ${b.suggested_offset_s.toFixed(2)}s, andamento ×${b.suggested_tempo_scale.toFixed(3)}. ` +
         `Confirma e carrega em "Aplicar e reconstruir".`;
       toast('Sincronização proposta — revê e aplica', 'ok');
+    } catch (e) {
+      info.textContent = '';
+      toast('falha na análise', 'err');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+})();
+
+// Dynamic sync: detect EVERY beat of the recording and align the current
+// arrangement's beat grid to it, so the score follows the real tempo curve
+// (not a single average). The backend returns (chart_time, recording_time)
+// pairs in the built bundle / recording clocks; each becomes an ordinary drift
+// anchor via the same convention as the bar-align tool — setAnchor(previewScale
+// (chartT), recT + viewOrigin). It REPLACES the current tab's pending anchors
+// with a fresh proposal, left in preview for the user to confirm + rebuild.
+(function wireAutoSyncDynamic() {
+  const btn = document.getElementById('autoSyncDynamic');
+  const info = document.getElementById('autoSyncDynamicInfo');
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    if (!selectedJob) return;
+    const kind = currentKind();
+    if (!kind) return;
+    btn.disabled = true;
+    info.textContent = 'A detetar batidas da gravação…';
+    try {
+      const url = `/jobs/${selectedJob.id}/auto-sync-dynamic?arrangement=${encodeURIComponent(kind)}`;
+      const r = await fetch(url, { method: 'POST' });
+      const b = await r.json();
+      if (!r.ok) { info.textContent = ''; toast(b.detail || 'erro', 'err'); return; }
+      if (!b.anchors || !b.anchors.length) {
+        info.textContent = 'Sem batidas suficientes para alinhar.';
+        toast('não foi possível alinhar', 'err');
+        return;
+      }
+      // Fresh proposal: clear this tab's pending anchors, then load the aligned set.
+      syncAnchors.length = 0;
+      for (const [chartT, recT] of b.anchors) setAnchor(previewScale(chartT), recT + viewOrigin);
+      renderAnchorsList();
+      updatePendingChangesInfo();
+      showArr(currentArr);
+      info.textContent =
+        `${b.detected_bpm.toFixed(1)} BPM · ${b.anchors.length} âncoras alinhadas. ` +
+        `Revê na partitura e clica em "Aplicar e reconstruir".`;
+      toast('Alinhamento dinâmico proposto — revê e aplica', 'ok');
     } catch (e) {
       info.textContent = '';
       toast('falha na análise', 'err');
