@@ -1150,3 +1150,57 @@ def test_instrument_sng_has_no_vocals_symbol_block() -> None:
     payload = write_sng(from_arrangement(arrangement))
     assert b"lyrics.dds" not in payload
     assert read_sng(payload).vocals == []
+
+
+def test_build_chord_data_is_independently_callable() -> None:
+    """from_arrangement's chord-template/ChordNotes logic (_build_chord_data)
+    is now a standalone helper — construct it directly from a chord group
+    without going through the whole pipeline, and confirm the ChordNotes
+    sustain bit + template MIDI notes it's guarded to always emit."""
+    from rockforge.infrastructure.packaging.psarc.sng import _build_chord_data
+
+    arrangement = Arrangement(
+        kind=ArrangementKind.RHYTHM,
+        metadata=SongMetadata(title="S", artist="A", song_length=4.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=(Beat(time=0.0, measure=1),), average_bpm=120.0),
+        notes=[],
+    )
+    group = [
+        TabNote(string=0, fret=0, time=0.0, sustain=0.5),
+        TabNote(string=1, fret=2, time=0.0, sustain=0.5),
+    ]
+    template_ids, templates, chord_notes, chord_notes_map = _build_chord_data(
+        arrangement, [group]
+    )
+    assert len(templates) == 1
+    key = (0, 2, -1, -1, -1, -1)
+    assert template_ids[key] == 0
+    # Open string (fret 0) keeps its real open-string MIDI note, not -1.
+    assert templates[0].notes[0] == arrangement.tuning.midi[0]
+    assert templates[0].notes[1] == arrangement.tuning.midi[1] + 2
+    # A sustained chord gets a ChordNotes entry even with no technique.
+    assert 0 in chord_notes_map
+    assert chord_notes[chord_notes_map[0]].note_mask[0] & NOTE_MASK_SUSTAIN
+
+
+def test_build_sng_notes_is_independently_callable() -> None:
+    """The single-note/chord SngNote assembly (_build_sng_notes) is now a
+    standalone helper — feed it pre-built groups/anchors/phrase data directly."""
+    from rockforge.infrastructure.packaging.psarc.sng import (
+        SngAnchor,
+        SngPhraseIteration,
+        _build_sng_notes,
+    )
+
+    single = [[TabNote(string=0, fret=3, time=0.0, sustain=0.0)]]
+    anchors = [SngAnchor(
+        start_time=0.0, end_time=4.0, first_note_time=0.0, last_note_time=0.0,
+        fret=3, width=4,
+    )]
+    phrase_iterations = [SngPhraseIteration(phrase_id=0, start_time=0.0, end_time=4.0)]
+    notes = _build_sng_notes(single, [], anchors, phrase_iterations, {}, {})
+    assert len(notes) == 1
+    assert notes[0].string == 0 and notes[0].fret == 3
+    assert notes[0].anchor_fret == 3 and notes[0].anchor_width == 4
+    assert notes[0].phrase_iteration_id == 0
