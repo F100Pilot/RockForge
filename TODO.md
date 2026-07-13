@@ -114,6 +114,37 @@ ver `TESTING.md`.
   lista por nome/key, mantendo sempre a escolha atual visível (nunca troca o
   gear silenciosamente). `populateGearSelect(..., filter)` no `web/index.html`.
 
+- [~] **Knobs funcionais alinhados sobre a imagem do gear** (`KNOB_LAYOUTS`,
+  `web/index.html`): um gear com layout feito à mão mostra a sua imagem com os
+  knobs funcionais posicionados EXATAMENTE sobre os knobs desenhados (tamanho em
+  % da imagem, escala sozinho) e os valores numa faixa POR BAIXO do aparelho.
+  Sem layout → faixa de knobs genérica (sem imagem). Feito para
+  `Rack_StudioCompressor` (Threshold→knob "Input", Attack/Release/Ratio nos knobs
+  homónimos; 2 knobs extra da arte ficam decorativos). **Falta mapear os
+  restantes, um a um** — para cada, medir `(x,y,r)` de cada knob na imagem
+  (`web/gear_images/<key>.png`) e ligar aos knobs reais do catálogo por nome:
+  - `Rack_StudioGraphicEQ` (588×232) — 10 knobs reais (Bass, Bass Freq., Low-Mid,
+    Low-Mid Freq., Mid, Mid Freq., High-Mid, High-Mid Freq., Treble, Treble
+    Freq.); a arte tem *sliders*, não knobs → decidir se os controlos ficam nos
+    sliders desenhados ou numa faixa abaixo.
+  - `Rack_StudioEQ` — Parametric EQ, 10 knobs reais; a arte só desenha 3
+    (Frequency/Gain/Q) → mapear subset + restantes numa faixa abaixo.
+  - `Rack_TapeEcho` — 5 reais (Time, Feedback, Mix, Hi Filter, Lo Filter); arte
+    tem 3 (Delay/Repeats/Level) → 3 sobre a arte + 2 numa faixa abaixo.
+  - `Rack_StudioPlate` — 4 reais (Decay, Diffusion, Mix, Tone); arte tem 3
+    (Pre-Delay/Decay/Tone).
+  - `Rack_StudioChamber` — 4 reais (Decay, Diffusion, Mix, Tone); arte tem 3
+    (Room Size/Damping/Wet-Dry).
+  - Depois estender também a **amps e cabines** (hoje amp usa faceplate genérica
+    com knobs por cima; cabine mostra só a imagem). Enquanto um gear não tem
+    layout, fica a versão genérica.
+
+- [x] **Imagens de gear empacotadas + fallback** (`GET /gear-image/{key}`,
+  `_gear_image_dirs`): procura primeiro em `work_dir/gear_images/` (override do
+  utilizador) e depois nas imagens do repo (`web/gear_images/`). RockForge traz a
+  arte própria dos racks (Compressor, ParaGraphic EQ, Parametric EQ, Tape Echo,
+  Plate, Chamber), sem molduras verdes.
+
 - [x] **Exportar/importar estado de sincronização como JSON**: `GET
   /jobs/{id}/sync-state` exporta um blob JSON com o subconjunto de sync dos
   params (whitelist `_SYNC_STATE_KEYS`: `offset_s`/`lead_in_s`/`tempo_scale`/
