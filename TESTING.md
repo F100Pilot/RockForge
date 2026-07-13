@@ -101,7 +101,7 @@ Per-file counts below reflect the suite at the time of writing; run
 | `test_gamedata.py` | 9 | native-PSARC enumeration assets: flatmodels, solid DDS, xblock, aggregategraph, showlights |
 | `test_psarc_container.py` | 5 | PSARC v1.4 pack/unpack round-trip |
 | `test_psarc_manifest.py` | 10 | runtime manifests (`.hsan`, `_aggregategraph.nt`, per-arr JSON) |
-| `test_psarc_sng.py` | 44 | Sng2014 binary `write_sng`∘`read_sng` = identity, NoteMask, anchor extensions, DD levels, vocals SNG |
+| `test_psarc_sng.py` | 50 | Sng2014 binary `write_sng`∘`read_sng` = identity, NoteMask, anchor extensions, DD levels, vocals SNG |
 | `test_psarc_crypto.py` | 5 | AES-256-CFB TOC + AES-256-CTR SNG (needs `[psarc]`) |
 | `test_psarc_packer.py` | 11 | `NativePsarcPacker` wiring; graceful degrade without `[psarc]` |
 | `test_packer_resilience.py` | 1 | the Bundle is still produced when the `.psarc` build raises |
@@ -109,12 +109,14 @@ Per-file counts below reflect the suite at the time of writing; run
 | `test_loudness.py` | 6 | `parse_ebur128_i` / `volume_for_loudness` loudness calc (pure, no ffmpeg) |
 | `test_wwise.py` | 6 | `.wem` conversion via **fake** WwiseConsole; seek-table header patch |
 | `test_ffmpeg_normalizer.py` | 3 | command build: `-nostdin`, `stdin=DEVNULL`, `FFMPEG_TIMEOUT_S` |
-| `test_demucs_adapter.py` | 7 | demucs CLI command build, `stdin=DEVNULL`, timeout, vocals vs guitar models, `separate_stems` returns all stems |
+| `test_demucs_adapter.py` | 9 | demucs CLI command build, `stdin=DEVNULL`, timeout, vocals vs guitar models, `separate_stems` returns all stems, guitar-stem cache reuse |
 | `test_banquet_adapter.py` | 5 | Banquet (EM TESTES) `inference_byoq` command build, one pass per query clip, device→`use_cuda`, missing-setup errors |
 | `test_device_resolution.py` | 8 | `_resolve_device` auto/cpu/cuda + degrade-to-CPU on import failure |
 | `test_tags.py` | 2 | audio metadata tag extraction |
-| `test_api.py` | 83 | every endpoint (§6): job lifecycle, rebuild composition, detect-* / separate-stems enqueue (mocked), lyrics/tones/stems status, gear images, deletion, per-test SQLite |
+| `test_api.py` | 91 | every endpoint (§6): job lifecycle, rebuild composition, detect-* / separate-stems enqueue (mocked), lyrics/tones/stems status, gear images, deletion, per-test SQLite |
 | `test_settings.py` | 10 | in-app settings (`/settings`): default demucs, persist+read-back, invalid separator 422, Banquet path validation, empty-string clears override |
+| `test_celery_tasks.py` | 9 | the actual `@celery_app.task` function BODIES — `generate_cdlc`/`detect_tones`/`separate_stems`/`detect_lyrics` called directly (not `.delay()`) against a per-test SQLite `Job` row, heavy adapters faked; success + never-crashes-on-failure paths |
+| `test_architecture.py` | 2 | Clean Architecture layering: `application/ports.py` imports zero `infrastructure/`; other `application/` files only the explicitly-accepted exceptions |
 
 ### Key regression tests — do not delete these without understanding why
 
@@ -666,6 +668,15 @@ edits).
 ---
 
 ## 8. Debugging the async detection tasks
+
+`test_celery_tasks.py` calls `generate_cdlc`/`detect_tones`/`separate_stems`/
+`detect_lyrics` directly (not through Celery, not through the API's stubbed
+`_enqueue*`) against a real per-test SQLite `Job` row, so the task body itself
+— the try/except-never-crashes wrapper, the `params["*_status"]` transitions,
+the drums-drop in `separate_stems`, `generate_cdlc`'s COMPLETED/FAILED
+transitions — is exercised directly instead of only through mocks. Add a new
+case there (rather than only in `test_api.py`) when changing what a task body
+itself does, not just how the API enqueues it.
 
 `detect_lyrics` and `detect_tones` are Celery tasks whose progress lives in
 `Job.params` (`lyrics_status`/`lyrics_log`, `tone_detection_status`/
