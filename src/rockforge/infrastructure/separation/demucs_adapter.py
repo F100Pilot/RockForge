@@ -16,6 +16,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from rockforge.domain.errors import SeparationError
+from rockforge.infrastructure._subprocess import HARDENED_RUN_KWARGS
 
 DEMUCS_TIMEOUT_S = 1800  # 30 min ceiling — Demucs on CPU is slow but shouldn't hang forever
 
@@ -71,12 +72,12 @@ class DemucsSeparator:
             devices.append("cpu")
         for i, dev in enumerate(devices):
             try:
-                # stdin=DEVNULL: never inherit the worker console's stdin (an
-                # inherited stdin can block a CLI subprocess indefinitely).
-                subprocess.run(
-                    build(dev), check=True, capture_output=True, text=True,
-                    stdin=subprocess.DEVNULL, timeout=DEMUCS_TIMEOUT_S,
-                )
+                # HARDENED_RUN_KWARGS carries stdin=DEVNULL (never inherit the
+                # worker console's stdin — it can block a CLI subprocess forever).
+                # The error mapping stays inline (not the shared context manager)
+                # because a CUDA CalledProcessError must be intercepted here to
+                # retry on CPU rather than surface immediately.
+                subprocess.run(build(dev), timeout=DEMUCS_TIMEOUT_S, **HARDENED_RUN_KWARGS)
                 return
             except FileNotFoundError as exc:
                 raise SeparationError(
