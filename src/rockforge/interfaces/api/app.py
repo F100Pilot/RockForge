@@ -33,7 +33,7 @@ from urllib.parse import urlparse
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from rockforge import __version__
 from rockforge.config import settings
@@ -290,6 +290,12 @@ class RebuildIn(BaseModel):
     # list), replaces the GP-parsed sections for every arrangement; None
     # leaves each arrangement's own GP-authored sections untouched.
     section_overrides: list[SectionOverrideIn] | None = None
+    # In-app note-editor edits (GP jobs), keyed by ArrangementKind.value —
+    # genuinely per-arrangement, unlike tone_changes/section_overrides. Each
+    # entry upserts a note at (time, string), or removes it when
+    # ``deleted``. When set (even to {}), REPLACES params["note_overrides"]
+    # wholesale; None leaves it untouched.
+    note_overrides: dict[str, list[NoteOverrideIn]] | None = None
 
 
 class SectionOverrideIn(BaseModel):
@@ -301,6 +307,17 @@ class SectionOut(BaseModel):
     time: float
     name: str
     number: int
+
+
+class NoteOverrideIn(BaseModel):
+    time: float
+    string: int = Field(ge=0, le=5)
+    fret: int = Field(default=0, ge=0, le=24)
+    sustain: float = 0.0
+    techniques: list[str] = []
+    bend_semitones: float = 0.0
+    slide_to_fret: int | None = Field(default=None, ge=0, le=24)
+    deleted: bool = False
 
 
 class ArrangementNoteOut(BaseModel):
@@ -1125,6 +1142,11 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
             params["tone_changes"] = payload.tone_changes
         if payload.section_overrides is not None:
             params["section_overrides"] = [s.model_dump() for s in payload.section_overrides]
+        if payload.note_overrides is not None:
+            params["note_overrides"] = {
+                kind: [n.model_dump() for n in notes]
+                for kind, notes in payload.note_overrides.items()
+            }
         params["rebuilt_from"] = original.id
         job = Job(
             source=original.source,

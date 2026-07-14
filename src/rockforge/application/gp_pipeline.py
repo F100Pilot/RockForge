@@ -360,6 +360,55 @@ class ArrangementSync:
 
 
 @dataclass(frozen=True)
+class NoteOverride:
+    """One in-app note-editor edit: upserts a note at (time, string), or
+    deletes the note already there when ``deleted`` is True (the other fields
+    are then ignored). Bundle-clock time, like tone_changes/section_overrides
+    — the note editor places these directly on the already-warped score, so
+    no extra per-arrangement time-warp is applied to them."""
+
+    time: float
+    string: int
+    fret: int = 0
+    sustain: float = 0.0
+    techniques: frozenset[Technique] = field(default_factory=frozenset)
+    bend_semitones: float = 0.0
+    slide_to_fret: int | None = None
+    deleted: bool = False
+
+
+def _apply_note_overrides(
+    notes: list[TabNote], overrides: list[NoteOverride]
+) -> list[TabNote]:
+    """Merge in-app note edits on top of the GP-parsed notes.
+
+    Keyed by (time, string) — an override either replaces the note already at
+    that exact position (upsert) or removes it (deleted=True). Not applied
+    inside _warp_parsed_track: overrides are placed by the user on the
+    ALREADY-warped score, so they land directly in the final coordinate space
+    rather than needing to be warped again.
+    """
+    by_key: dict[tuple[float, int], TabNote] = {
+        (round(n.time, 6), n.string): n for n in notes
+    }
+    for ov in overrides:
+        key = (round(ov.time, 6), ov.string)
+        if ov.deleted:
+            by_key.pop(key, None)
+        else:
+            by_key[key] = TabNote(
+                string=ov.string,
+                fret=ov.fret,
+                time=ov.time,
+                sustain=ov.sustain,
+                techniques=ov.techniques,
+                bend_semitones=ov.bend_semitones,
+                slide_to_fret=ov.slide_to_fret,
+            )
+    return sorted(by_key.values(), key=lambda n: (n.time, n.string))
+
+
+@dataclass(frozen=True)
 class GpJobSpec:
     gp_path: Path
     audio_source: str
@@ -434,6 +483,14 @@ class GpJobSpec:
     # REPLACES the GP-parsed section markers for EVERY arrangement; None keeps
     # each arrangement's own GP-authored sections untouched.
     section_overrides: list[Section] | None = None
+    # In-app note-editor edits, keyed by ArrangementKind.value — unlike
+    # tone_changes/section_overrides these are genuinely per-arrangement (Lead
+    # and Rhythm have entirely different note content), so each kind's list is
+    # independent; an arrangement absent here (or with an empty list) is
+    # completely unaffected. Applied AFTER parsing/warp/mute-stripping, so the
+    # user always edits the FINAL note set, and a manual edit is never
+    # silently stripped by import_mute_techniques=False.
+    note_overrides: dict[str, list[NoteOverride]] = field(default_factory=dict)
 
     def sync_for(self, kind: ArrangementKind) -> ArrangementSync:
         """Resolve the tempo/drift overrides for one arrangement, falling back
@@ -701,6 +758,23 @@ class GenerateFromGpUseCase:
                     f"palm mute / slap / pop / tap removed from {stripped} note(s) on request "
                     "(imported as plain notes)"
                 )
+
+        for kind_value, note_ov in spec.note_overrides.items():
+            match = next((k for k in parsed if k.value == kind_value), None)
+            if match is None or not note_ov:
+                continue
+            p = parsed[match]
+            parsed[match] = ParsedGpTrack(
+                notes=_apply_note_overrides(p.notes, note_ov),
+                tuning=p.tuning,
+                tempo_map=p.tempo_map,
+                sections=p.sections,
+                lyrics=p.lyrics,
+                warnings=p.warnings,
+            )
+            warnings.append(
+                f"{kind_value}: {len(note_ov)} manual note edit(s) from the in-app editor applied"
+            )
 
         stage("build_arrangements")
         first = next(iter(parsed.values()))

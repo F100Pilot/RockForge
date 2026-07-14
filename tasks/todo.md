@@ -3,6 +3,26 @@
 Short-lived plan/checklist for the change in progress. `TODO.md` (repo root) is
 the durable feature list; this file is the working notes for the current task.
 
+## Done: note editor (add/edit/delete notes + techniques on the score)
+
+- [x] Backend: `GpJobSpec.note_overrides: dict[str, list[NoteOverride]]`
+      (per-arrangement, unlike tone_changes/section_overrides), applied in
+      `gp_pipeline.py` after parse+warp+mute-strip via `_apply_note_overrides`
+      (keyed (time,string) upsert/delete patch). `RebuildIn.note_overrides`
+      (null-sentinel, Field-constrained string 0-5 / fret 0-24). Celery
+      reconstruction. Tests in `test_gp_pipeline.py`/`test_api.py`.
+- [x] Frontend: "Editar notas" (✏️) sync mode, `#noteEditPopup` (mirrors the
+      bar-align popup), `noteOverridesByKind` state (always-sent, no dirty
+      flag needed — no prior default to lose), `mergeNoteOverrides` (visual
+      merge only, spliced into showArr's note-drawing loop), per-note
+      `data-string` click targeting, `nearestGridChartTime` for placing new
+      notes on the snap grid without inverting the warp chain.
+- [x] Docs: CLAUDE.md ("Note editor"), TESTING.md (7a-septies), TODO.md
+      (marked done, honest limits noted: bound by the song's own tempo map,
+      chords built one note at a time).
+- [x] Verify: ruff/mypy/pytest/node --check/eslint all green; Playwright
+      smoke of mergeNoteOverrides + nearestGridChartTime.
+
 ## Done: batch processing + section editor
 
 ### 1. Section editor (backend)

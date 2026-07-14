@@ -455,7 +455,8 @@ const INFO = {
 <p><strong>Mover seguintes:</strong> pausa o áudio no instante certo e clica na nota deslocada — essa nota e todas as seguintes deslocam-se em bloco para o cursor.</p>
 <p><strong>Novo beat (detetar):</strong> clica numa nota onde o andamento muda — o RockForge mede o andamento da gravação a partir desse instante e re-espaça as notas seguintes.</p>
 <p><strong>Alinhar por compasso (📏):</strong> pausa a gravação onde um compasso deve soar e clica numa nota — abre um popup com o número do compasso (o da nota, já escolhido). Confirma com "= cursor" e esse compasso alinha-se ao cursor, arrastando as notas seguintes; ou "= pista" para o alinhar ao mesmo compasso de outra pista já sincronizada. Feito várias vezes ao longo da música, corrige o desvio compasso a compasso.</p>
-<p><strong>Secção (🏷️):</strong> clica numa nota para nomear onde começa uma secção (intro/verso/refrão…) — nada a ver com sincronização, é só estrutura da música. Ver o painel "🏷️ Secções" abaixo.</p>`
+<p><strong>Secção (🏷️):</strong> clica numa nota para nomear onde começa uma secção (intro/verso/refrão…) — nada a ver com sincronização, é só estrutura da música. Ver o painel "🏷️ Secções" abaixo.</p>
+<p><strong>Editar notas (✏️):</strong> clica numa nota existente para a editar (traste, sustain, técnicas, bend, slide) ou removê-la; clica no pentagrama vazio para inserir uma nota nova, encaixada na grelha de sincronização. Muda o <em>conteúdo</em> da partitura — as notas deixam de vir só do ficheiro Guitar Pro — e fica pendente (contorno tracejado verde-água) até "Aplicar e reconstruir".</p>`
   },
   'sections': {
     title: 'Secções da música',
@@ -513,6 +514,11 @@ let builtScale = 1, tempoScaleLive = 1, gpBpm = 0;
 let leadInBuilt = 0;
 const BASE_PX = 80;
 let zoomLevel = 1.25;  // start 25% more zoomed in than the base scale
+// Staff layout constants (showArr recomputes H/SB/ROW/R identically every
+// call — they never vary with zoom/song) hoisted here so the note editor's
+// click handler can convert a click's Y position to a string index without
+// duplicating showArr's internals.
+const STAFF_H = 304, STAFF_SB = STAFF_H - 59, STAFF_ROW = 40, NOTE_R = 13;
 
 function setZoom(z) {
   // Keep the currently-centered time in view across the zoom change — tabPx
@@ -865,6 +871,7 @@ async function loadArrangements(id) {
   arrangements = await (await fetch(`/jobs/${id}/arrangements`)).json();
   syncAnchorsByKind = {};  // fresh pending corrections per arrangement
   tempoScaleByKind = {};
+  noteOverridesByKind = {};
   syncAnchors = [];
   selectedTimes = new Set();
   currentArr = 0;  // reset before initSync redraws, so a stale index can't go out of range
@@ -1002,8 +1009,8 @@ function showArr(i) {
   const dur = Math.max(lastNote, lastBar, lastBeat, audioEnd, 10);
   // SB = staff bottom (string-0 line). The band between SB and H holds the
   // chord-name row, kept wide enough that names never touch the lowest notes.
-  const px = BASE_PX * zoomLevel, ROW = 40, R = 13, W = Math.max(900, dur * px + 60);
-  const H = 304, SB = H - 59;
+  const px = BASE_PX * zoomLevel, ROW = STAFF_ROW, R = NOTE_R, W = Math.max(900, dur * px + 60);
+  const H = STAFF_H, SB = STAFF_SB;
   tabPx = px; tabH = H;
   svg.setAttribute('width', W);
   svg.setAttribute('height', H);  // includes the chord-name band below the staff
@@ -1139,9 +1146,17 @@ function showArr(i) {
     if (brk) s += `<text x="${x + 7}" y="18" fill="#ffb020" font-size="12" font-weight="700">¶</text>`;
     s += `</g>`;
   }
+  // Merge in pending note-editor edits (add/edit/delete) for THIS arrangement
+  // — a purely visual, additive step: everything else in showArr (dur, drag
+  // mechanics, playback/synth) still reads a.notes untouched, so a pending
+  // note edit only affects what's drawn, not sync/playback, until a rebuild
+  // actually bakes it into the built arrangement.
+  const pendingNoteOv = noteOverridesByKind[a.kind] || [];
+  const notes = pendingNoteOv.length ? mergeNoteOverrides(a.notes, pendingNoteOv) : a.notes;
+  const pendingKeys = new Set(pendingNoteOv.map(o => `${o.time.toFixed(6)}:${o.string}`));
   // group simultaneous notes (chords) so they get a connecting bracket
   const groups = [];
-  for (const n of a.notes) {
+  for (const n of notes) {
     const last = groups[groups.length - 1];
     if (last && n.chord && Math.abs(n.time - last.time) < 0.03) last.notes.push(n);
     else groups.push({ time: n.time, notes: [n] });
@@ -1175,6 +1190,11 @@ function showArr(i) {
       const vibrato = n.techniques.includes('vibrato');
       const bend = n.techniques.includes('bend');
       const susW = n.sustain > 0.05 ? n.sustain*px*(tempoScaleLive/builtScale) : 0;
+      // A note with a pending (unbuilt) note-editor edit gets a dashed cyan
+      // ring so it reads as "not yet rebuilt", same spirit as the amber
+      // "changed by pending sync" bar-BPM marker above.
+      const pending = pendingKeys.has(`${n.time.toFixed(6)}:${n.string}`);
+      s += `<g class="note-single" data-string="${n.string}">`;
       if (vibrato)  // held time drawn as an oscillating line (min width so it reads as a wave)
         s += `<path d="${sustainWave(x, y, Math.max(susW, 24))}" fill="none" stroke="${color}" stroke-width="2.5" opacity=".8"/>`;
       else if (susW > 0)
@@ -1183,6 +1203,7 @@ function showArr(i) {
         ? `<rect class="note-shape" x="${x-R}" y="${y-R}" width="${R*2}" height="${R*2}" rx="4" fill="${color}"${tech ? ' stroke="#fff" stroke-width="2.5" stroke-dasharray="3,3"' : ''}/>`
         : `<circle class="note-shape" cx="${x}" cy="${y}" r="${R}" fill="${color}"${tech ? ' stroke="#fff" stroke-width="2.5" stroke-dasharray="3,3"' : ''}/>`;
       s += shape;
+      if (pending) s += `<circle cx="${x}" cy="${y}" r="${R+3}" fill="none" stroke="#3ddcc4" stroke-width="1.5" stroke-dasharray="2,2"/>`;
       s += `<text x="${x}" y="${y+5}" fill="#14151a" font-size="14" font-weight="700" text-anchor="middle">${n.fret}</text>`;
       if (bend) s += bendArrow(x, y, R, bendLabel(n.bend_semitones));  // rising arrow + amount
       if (tech) {
@@ -1191,6 +1212,7 @@ function showArr(i) {
         if (gt.length) s += techGlyphs(gt, x, y - R - 4);
         s += `<title>${n.techniques.join(', ')}</title>`;
       }
+      s += `</g>`;
     }
     s += `</g>`;
   }
@@ -1246,6 +1268,54 @@ let tempoScaleByKind = {};   // kind -> pending tempoScaleLive (null = use built
 // selectedTimes: chart times (g.time) of note-groups currently selected for
 // a multi-note excerpt drag.
 let selectedTimes = new Set();
+
+// Note editor (add/edit/delete notes + techniques directly on the score).
+// Unlike sync anchors/tone changes/sections, note edits are genuinely
+// per-arrangement (Lead and Rhythm have different note content), so this is
+// keyed by kind with no shared/job-level list. Bundle-clock times, placed
+// directly on the already-warped display (same convention as tone_changes/
+// sections) — no prior GP-authored default to lose, so (like tone_changes)
+// the whole dict is just sent as-is on every rebuild; an untouched job sends
+// {} and nothing changes.
+let noteOverridesByKind = {};  // kind -> pending [{time,string,fret,sustain,techniques,bend_semitones,slide_to_fret,deleted}, ...]
+
+// Merge pending note-editor overrides on top of the built notes for display
+// (mirrors _apply_note_overrides in gp_pipeline.py — keyed by (time,string),
+// deleted=true removes, otherwise upserts). Purely a rendering-time view:
+// does not mutate a.notes.
+function mergeNoteOverrides(baseNotes, overrides) {
+  const byKey = new Map(baseNotes.map(n => [`${n.time.toFixed(6)}:${n.string}`, { ...n }]));
+  for (const ov of overrides) {
+    const key = `${ov.time.toFixed(6)}:${ov.string}`;
+    if (ov.deleted) { byKey.delete(key); continue; }
+    byKey.set(key, {
+      time: ov.time, string: ov.string, fret: ov.fret, sustain: ov.sustain,
+      chord: false, chord_name: null,
+      techniques: ov.techniques.slice(), bend_semitones: ov.bend_semitones || 0,
+    });
+  }
+  const merged = [...byKey.values()].sort((a, b) => a.time - b.time || a.string - b.string);
+  for (const n of merged) n.chord = merged.some(o => o !== n && Math.abs(o.time - n.time) < 0.03);
+  return merged;
+}
+
+// Nearest sync-grid chart time to a click's DISPLAY x — used to place a new
+// note exactly on a real beat/subdivision, reusing the same grid note-drag
+// snapping already uses. Returns the grid point's ORIGINAL (unwarped) chart
+// time, matching note.time's coordinate space — found by forward-projecting
+// each grid candidate to display space rather than inverting the click (the
+// warp+tempo chain isn't cheaply invertible), which needs no new machinery.
+function nearestGridChartTime(displayX) {
+  const grid = snapGridTimes();
+  if (!grid.length) return xToTime(displayX);
+  const warp = buildTimeWarp(syncAnchors);
+  let best = grid[0], bestDist = Infinity;
+  for (const t of grid) {
+    const d = Math.abs(timeToX(warp(previewScale(t))) - displayX);
+    if (d < bestDist) { bestDist = d; best = t; }
+  }
+  return best;
+}
 
 function currentKind() {
   return arrangements[currentArr] ? arrangements[currentArr].kind : null;
@@ -1437,6 +1507,117 @@ function closeBarAlignPopup() { document.getElementById('barAlignPopup').hidden 
   });
 })();
 
+// ---- Note editor ('editnotes' mode): add/edit/delete a note + its
+// techniques directly on the score, without going back to Guitar Pro. ----
+// TECH_CHECK_IDS maps each checkbox to its Technique value string (the same
+// strings ArrangementNoteOut already uses for n.techniques).
+const TECH_CHECK_IDS = [
+  ['neHammerOn', 'hammerOn'], ['nePullOff', 'pullOff'], ['neHarmonic', 'harmonic'],
+  ['nePalmMute', 'palmMute'], ['neVibrato', 'vibrato'], ['neTap', 'tap'],
+  ['neSlap', 'slap'], ['nePluck', 'pluck'], ['neAccent', 'accent'],
+];
+let neContext = null;  // { time, string } of the popup currently open, or null
+
+function findBuiltNoteAt(chartTime, string) {
+  const a = arrangements[currentArr];
+  if (!a) return null;
+  return a.notes.find(n => n.string === string && Math.abs(n.time - chartTime) < 0.03) || null;
+}
+function findPendingNoteOverrideAt(chartTime, string) {
+  const list = noteOverridesByKind[currentKind()] || [];
+  return list.find(o => o.string === string && Math.abs(o.time - chartTime) < 0.03 && !o.deleted) || null;
+}
+
+function openNoteEditPopup(chartTime, string, clientX, clientY) {
+  const a = arrangements[currentArr];
+  if (!a) return;
+  const pending = findPendingNoteOverrideAt(chartTime, string);
+  const existing = findBuiltNoteAt(chartTime, string);
+  const base = pending || existing;
+  neContext = { time: chartTime, string };
+
+  document.getElementById('nePopupTitle').textContent = base ? 'Editar nota' : 'Nova nota';
+  const stringSel = document.getElementById('neString');
+  stringSel.innerHTML = [0, 1, 2, 3, 4, 5]
+    .map(i => `<option value="${i}">${esc(stringLabel(i, a.tuning_offsets))}</option>`).join('');
+  stringSel.value = String(string);
+  document.getElementById('neFret').value = base ? base.fret : 0;
+  document.getElementById('neSustain').value = base ? base.sustain : 0.25;
+  const techs = base ? (base.techniques || []) : [];
+  for (const [id, val] of TECH_CHECK_IDS) document.getElementById(id).checked = techs.includes(val);
+  document.getElementById('neBend').value = base ? (base.bend_semitones || 0) : 0;
+  const slideTo = base ? (base.slide_to_fret ?? null) : null;
+  document.getElementById('neSlideTo').value = slideTo == null ? '' : slideTo;
+  document.getElementById('neDelete').style.display = base ? '' : 'none';
+
+  const pop = document.getElementById('noteEditPopup');
+  pop.hidden = false;
+  const w = pop.offsetWidth, h = pop.offsetHeight;
+  let x = clientX + 10, y = clientY + 10;
+  if (x + w > window.innerWidth - 8) x = clientX - w - 10;
+  if (y + h > window.innerHeight - 8) y = window.innerHeight - h - 8;
+  pop.style.left = Math.max(8, x) + 'px';
+  pop.style.top = Math.max(8, y) + 'px';
+}
+function closeNoteEditPopup() { document.getElementById('noteEditPopup').hidden = true; neContext = null; }
+
+// Upsert (or push) a pending override for the CURRENT arrangement, keyed by
+// (time, string) — matches _apply_note_overrides' merge key on the backend.
+function upsertNoteOverride(ov) {
+  const k = currentKind();
+  if (!k) return;
+  if (!noteOverridesByKind[k]) noteOverridesByKind[k] = [];
+  const list = noteOverridesByKind[k];
+  const i = list.findIndex(o => o.string === ov.string && Math.abs(o.time - ov.time) < 0.03);
+  if (i >= 0) list[i] = ov; else list.push(ov);
+}
+
+(function wireNoteEditPopup() {
+  const pop = document.getElementById('noteEditPopup');
+  if (!pop) return;
+  document.getElementById('neCancel').addEventListener('click', closeNoteEditPopup);
+  document.getElementById('neSave').addEventListener('click', () => {
+    if (!neContext) return;
+    const string = parseInt(document.getElementById('neString').value, 10);
+    const fret = parseInt(document.getElementById('neFret').value, 10);
+    if (isNaN(fret) || fret < 0 || fret > 24) { toast('traste inválido (0-24)', 'err'); return; }
+    const sustain = Math.max(0, parseFloat(document.getElementById('neSustain').value) || 0);
+    const techniques = TECH_CHECK_IDS.filter(([id]) => document.getElementById(id).checked).map(([, v]) => v);
+    const bend_semitones = Math.max(0, parseFloat(document.getElementById('neBend').value) || 0);
+    const slideRaw = document.getElementById('neSlideTo').value.trim();
+    const slide_to_fret = slideRaw === '' ? null : parseInt(slideRaw, 10);
+    // Changing the string moves the note: delete the old (time, oldString)
+    // slot and upsert the new one, so the merge key stays consistent.
+    if (string !== neContext.string) {
+      upsertNoteOverride({
+        time: neContext.time, string: neContext.string, fret: 0, sustain: 0,
+        techniques: [], bend_semitones: 0, slide_to_fret: null, deleted: true,
+      });
+    }
+    upsertNoteOverride({
+      time: neContext.time, string, fret, sustain, techniques,
+      bend_semitones, slide_to_fret, deleted: false,
+    });
+    closeNoteEditPopup();
+    showArr(currentArr);
+    toast('Nota guardada — pendente até "Aplicar e reconstruir".', 'ok');
+  });
+  document.getElementById('neDelete').addEventListener('click', () => {
+    if (!neContext) return;
+    upsertNoteOverride({
+      time: neContext.time, string: neContext.string, fret: 0, sustain: 0,
+      techniques: [], bend_semitones: 0, slide_to_fret: null, deleted: true,
+    });
+    closeNoteEditPopup();
+    showArr(currentArr);
+    toast('Nota removida — pendente até "Aplicar e reconstruir".', 'ok');
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeNoteEditPopup(); });
+  document.addEventListener('pointerdown', e => {
+    if (!pop.hidden && !pop.contains(e.target) && !e.target.closest('#tabsvg')) closeNoteEditPopup();
+  });
+})();
+
 function renderAnchorsList() {
   const el = document.getElementById('syncAnchorsList');
   if (!syncAnchors.length) { el.innerHTML = ''; updatePendingChangesInfo(); return; }
@@ -1501,6 +1682,10 @@ async function applyAll() {
       // null leaves each arrangement's own GP-authored sections alone (unlike
       // tones, which never had a prior non-user-supplied default to lose).
       section_overrides: (isGpJob() && sectionsTouched) ? songSections : null,
+      // Genuinely per-arrangement (unlike tone_changes/sections) — sent as
+      // one dict covering every tab's pending edits from this session, same
+      // no-prior-default reasoning as tone_changes (an untouched job sends {}).
+      note_overrides: isGpJob() ? noteOverridesByKind : null,
     }),
   });
   const b = await r.json();
@@ -1514,6 +1699,7 @@ async function applyAll() {
       const kind = currentKind();
       if (kind) delete tempoScaleByKind[kind];
     }
+    noteOverridesByKind = {};  // baked into the new build regardless of applyToAll
     selectJob(b.id, { force: true });
   }
   else toast(b.detail || 'erro');
@@ -3052,6 +3238,21 @@ function updateSelectionInfo() {
       placeSectionMarker(parseFloat(grp.dataset.t));
       return;
     }
+    // Note editor: click an existing note (by its exact string within a
+    // chord) to edit/remove it, or empty staff space to insert a new one —
+    // snapped to the sync grid so it lands on a real chart time.
+    if (syncMode === 'editnotes') {
+      const single = e.target.closest('.note-single');
+      if (grp && single) {
+        openNoteEditPopup(parseFloat(grp.dataset.t), parseInt(single.dataset.string, 10), e.clientX, e.clientY);
+        return;
+      }
+      const rect = svg.getBoundingClientRect();
+      const clickY = e.clientY - rect.top;
+      const string = Math.min(5, Math.max(0, Math.round((STAFF_SB - clickY) / STAFF_ROW)));
+      openNoteEditPopup(nearestGridChartTime(e.clientX - rect.left), string, e.clientX, e.clientY);
+      return;
+    }
     if (syncMode === 'excerpt' && !(grp && selectedTimes.has(parseFloat(grp.dataset.t)))) {
       // start a rubber-band selection (also when starting on an unselected note)
       const rect = svg.getBoundingClientRect();
@@ -3233,6 +3434,7 @@ const SYNC_MODE_BUTTONS = [
   ['modeBarAlign', 'baralign'],
   ['modeTone', 'tonechange'],
   ['modeSection', 'section'],
+  ['modeEditNotes', 'editnotes'],
 ];
 const MODE_HELP = {
   drag: '<b>Arrastar:</b> arrasta uma nota para o instante da gravação onde ela deve tocar (encaixa no beat). As notas entre duas correções esticam/comprimem para acompanhar. Ideal para acertar um ponto que escorregou.',
@@ -3243,6 +3445,7 @@ const MODE_HELP = {
   baralign: '<b>Alinhar por compasso:</b> pausa a gravação no instante certo e clica numa nota — abre um popup com o compasso da nota já escolhido. Confirma com "= cursor" e esse compasso alinha-se ao cursor (ou "= pista" para o mesmo compasso de outra pista). Faz-se várias vezes ao longo da música; cada correção arrasta as notas seguintes.',
   tonechange: '<b>Mudança de tom:</b> clica numa nota para trocar para um dos tons extra a partir daí.',
   section: '<b>Secção:</b> clica numa nota para nomear onde começa uma secção (intro/verso/refrão…). Nada a ver com sincronização — é para navegação e o Riff Repeater.',
+  editnotes: '<b>Editar notas:</b> clica numa nota para a editar (traste, sustain, técnicas, bend/slide) ou remover; clica no pentagrama vazio para inserir uma nota nova, encaixada na grelha. Muda o CONTEÚDO da partitura, não a sincronização — fica pendente até "Aplicar e reconstruir".',
   null: 'Nenhum modo ativo. Clica num modo acima. <b>Dica:</b> para um desvio uniforme em todo o trecho, usa antes o <b>Andamento (BPM)</b> — não precisa de âncoras.',
 };
 function setSyncMode(mode) {

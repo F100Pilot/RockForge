@@ -685,6 +685,60 @@ def test_rebuild_stores_section_overrides(client: TestClient, tmp_path) -> None:
     assert stored == [{"time": 2.0, "name": "Solo"}, {"time": 0.0, "name": "Intro"}]
 
 
+def test_rebuild_stores_note_overrides_keyed_by_arrangement(client: TestClient, tmp_path) -> None:
+    import rockforge.interfaces.api.app as app_module
+
+    def job_params(job_id: str) -> dict:
+        with app_module._session_factory() as session:
+            return dict(session.get(app_module.Job, job_id).params or {})
+
+    job = _gp_job(client, tmp_path)
+    assert "note_overrides" not in job_params(job["id"])
+
+    rebuilt = client.post(
+        f"/jobs/{job['id']}/rebuild",
+        json={
+            "note_overrides": {
+                "Lead": [
+                    {"time": 2.0, "string": 3, "fret": 5, "techniques": ["hammerOn"]},
+                    {"time": 3.0, "string": 1, "deleted": True},
+                ]
+            }
+        },
+    ).json()
+    stored = job_params(rebuilt["id"])["note_overrides"]
+    assert stored == {
+        "Lead": [
+            {
+                "time": 2.0, "string": 3, "fret": 5, "sustain": 0.0,
+                "techniques": ["hammerOn"], "bend_semitones": 0.0,
+                "slide_to_fret": None, "deleted": False,
+            },
+            {
+                "time": 3.0, "string": 1, "fret": 0, "sustain": 0.0,
+                "techniques": [], "bend_semitones": 0.0,
+                "slide_to_fret": None, "deleted": True,
+            },
+        ]
+    }
+
+
+def test_rebuild_note_overrides_reject_out_of_range_string_or_fret(
+    client: TestClient, tmp_path
+) -> None:
+    job = _gp_job(client, tmp_path)
+    r = client.post(
+        f"/jobs/{job['id']}/rebuild",
+        json={"note_overrides": {"Lead": [{"time": 1.0, "string": 6, "fret": 0}]}},
+    )
+    assert r.status_code == 422
+    r2 = client.post(
+        f"/jobs/{job['id']}/rebuild",
+        json={"note_overrides": {"Lead": [{"time": 1.0, "string": 0, "fret": 25}]}},
+    )
+    assert r2.status_code == 422
+
+
 def test_rebuild_without_section_overrides_leaves_them_untouched(
     client: TestClient, tmp_path
 ) -> None:
