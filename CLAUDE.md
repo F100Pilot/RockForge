@@ -675,18 +675,25 @@ a deferred build failure.
 `syncAnchorsByKind`) needs no dirty-flag/None-sentinel gymnastics the way
 `section_overrides` does — like `tone_changes`, there's no prior non-user
 default to lose (a note edit only ever originates from the user), so the
-whole dict is simply sent every rebuild; an untouched job sends `{}`. Clicking
-an existing note (in "Editar notas" mode) opens a small floating popup
-(`#noteEditPopup`, styled like the bar-align popup) pre-filled with its
-current fret/sustain/technique checkboxes/bend/slide-to; "Guardar" upserts an
-override, "Remover nota" marks it deleted. Clicking empty staff space opens
-the same popup blank, defaulting the string from the click's Y position and
-the time from **`nearestGridChartTime`** — the nearest sync-grid point
-(`snapGridTimes()`, the same bars/beats/subdivision grid note-dragging
-already snaps to), found by forward-projecting each grid candidate to display
-X and picking the closest, rather than inverting the click position through
-the warp+tempo-scale chain (not cheaply invertible) — so a new note always
-lands on a real chart time with no new coordinate machinery.
+whole dict is simply sent every rebuild; an untouched job sends `{}`. A
+single click on an existing note (in "Editar notas" mode) opens a small
+floating popup (`#noteEditPopup`, styled like the bar-align popup) pre-filled
+with its current fret/sustain/technique checkboxes/bend/slide-to; "Guardar"
+upserts an override, "Remover nota" marks it deleted. **A single click on
+EMPTY staff space still seeks (moves the playhead), same as every other
+note-click mode — inserting a new note is a DOUBLE-click** (`svg`'s `dblclick`
+handler). This is deliberate: an earlier version inserted on a single
+empty-space click, which silently hijacked click-to-seek the moment the user
+was in this mode ("não consigo clicar na partitura e o cursor mover-se") —
+the one mode that broke the otherwise-universal "click empty space = move the
+cursor" convention. The double-click insert defaults the string from the
+click's Y position and the time from **`nearestGridChartTime`** — the nearest
+sync-grid point (`snapGridTimes()`, the same bars/beats/subdivision grid
+note-dragging already snaps to), found by forward-projecting each grid
+candidate to display X and picking the closest, rather than inverting the
+click position through the warp+tempo-scale chain (not cheaply invertible) —
+so a new note always lands on a real chart time with no new coordinate
+machinery.
 
 **Preview merges visually without touching sync/playback.** `mergeNoteOverrides`
 (pure, JS) is the client-side mirror of `_apply_note_overrides` — it's spliced
@@ -700,10 +707,13 @@ carrying a pending edit gets a dashed cyan ring (`.note-single[data-string]`,
 added per-note so a specific note within a chord can be targeted precisely)
 so it reads as "not yet rebuilt".
 
-**Copy/paste ("📋 Copiar" / "📥 Colar no cursor", Ctrl+C/Ctrl+V).** Duplicates
-a selected excerpt elsewhere in the score — the same arrangement, or a
-*different* one (e.g. copy a riff from Lead into Rhythm), without
-re-entering it note by note. `copySelectedNotes()` reads whichever notes are
+**Copy/paste ("📋 Copiar seleção" / "📥 Colar no cursor", Ctrl+C/Ctrl+V).**
+Duplicates a selected excerpt elsewhere in the score — the same arrangement,
+or a *different* one (e.g. copy a riff from Lead into Rhythm), without
+re-entering it note by note. The two buttons live in their **own labelled
+"Copiar/colar notas:" row** below the sync-mode buttons (not crammed into the
+end of the 9-emoji mode row, where they were easy to miss when greyed-out).
+`copySelectedNotes()` reads whichever notes are
 currently in `selectedTimes` (the same selection Shift+click/Ctrl+click/
 "Excerto" already populate) from the CURRENT arrangement's live
 (`mergeNoteOverrides`-merged, so already-pending edits are copyable too) note
