@@ -1235,6 +1235,20 @@ else fetch `/stem/{name}` or `/source-audio`. Changing the dropdown re-decodes
 and restores the playhead; `loadStems` repopulates the selector on reopen (synth
 options always; stems if already computed) without re-running Demucs.
 
+**`initSync` resets `audioSourceName` SYNCHRONOUSLY, before firing
+`decodeWaveform`/`loadStems`.** Both are async and neither is awaited, so they
+run concurrently; `loadStems` also resets `audioSourceName` to `''` once its
+own fetch resolves. Without the synchronous reset, a stale `audioSourceName`
+left over from a *previous* job (e.g. `"synth:Lead"`, still set from before
+the user switched jobs) could still be in effect when `decodeWaveform` reads
+it, decoding a synthesized buffer into `playBuffer`; `loadStems` then resets
+the dropdown back to "Mistura completa" *without re-decoding*, leaving the
+synth buffer silently playing under a selector that reads the full mix — the
+"dá música sintetizada mas a seleção está em mistura" bug. `initSync` now
+sets `audioSourceName = ''` and the `#audioSource` select's value before
+either async call starts, closing the race regardless of which one resolves
+first.
+
 Honest limit (surfaced in the "Fonte de áudio" ⓘ and the done log): Demucs
 separates by **instrument type**, not by individual track — the `guitar` stem is
 ALL guitars mixed together; **Lead vs Rhythm cannot be split** from the
