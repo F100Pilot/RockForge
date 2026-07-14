@@ -3190,6 +3190,48 @@ function updateSelectionInfo() {
   let rubberBand = null; // { startX }
   let lyricDrag = null; // lyric word drag: { el, startX, index }
   const svg = document.getElementById('tabsvg');
+  const wrap = document.getElementById('tabwrap');
+
+  // Auto-scroll #tabwrap horizontally while any drag/rubber-band gesture's
+  // pointer nears the visible edge. Without this, none of them can ever
+  // reach a note scrolled off-screen: the mouse itself is bounded by the
+  // browser viewport, and #tabwrap's native overflow-x:auto never scrolls on
+  // its own while a pointer-capture drag is in progress (the classic "box
+  // selection only grabs what's currently visible" bug).
+  const AUTO_SCROLL_EDGE_PX = 48;
+  const AUTO_SCROLL_MAX_PX = 22;
+  let autoScrollRAF = null;
+  let lastClientX = 0, lastClientY = 0, lastAltKey = false;
+
+  function activeGesture() { return rubberBand || groupDrag || dragging || lyricDrag; }
+
+  function autoScrollStep() {
+    if (!activeGesture()) { autoScrollRAF = null; return; }
+    const rect = wrap.getBoundingClientRect();
+    let dx = 0;
+    if (lastClientX < rect.left + AUTO_SCROLL_EDGE_PX) {
+      const t = (rect.left + AUTO_SCROLL_EDGE_PX - lastClientX) / AUTO_SCROLL_EDGE_PX;
+      dx = -Math.ceil(AUTO_SCROLL_MAX_PX * Math.min(1, t));
+    } else if (lastClientX > rect.right - AUTO_SCROLL_EDGE_PX) {
+      const t = (lastClientX - (rect.right - AUTO_SCROLL_EDGE_PX)) / AUTO_SCROLL_EDGE_PX;
+      dx = Math.ceil(AUTO_SCROLL_MAX_PX * Math.min(1, t));
+    }
+    if (dx !== 0) {
+      wrap.scrollLeft = Math.max(0, wrap.scrollLeft + dx);
+      // Re-run the gesture's own live update at the new scroll position — the
+      // mouse hasn't moved, but the SVG has shifted under it (e.g. the
+      // rubber-band box's SVG-local x/width must grow to keep tracking it).
+      handlePointerMove(lastClientX, lastClientY, lastAltKey);
+    }
+    autoScrollRAF = requestAnimationFrame(autoScrollStep);
+  }
+  function startAutoScrollLoop() {
+    if (!autoScrollRAF) autoScrollRAF = requestAnimationFrame(autoScrollStep);
+  }
+  function stopAutoScrollLoop() {
+    if (autoScrollRAF) cancelAnimationFrame(autoScrollRAF);
+    autoScrollRAF = null;
+  }
 
   document.getElementById('clearSelection').addEventListener('click', () => {
     selectedTimes.clear();
@@ -3358,15 +3400,16 @@ function updateSelectionInfo() {
     dragging = { grp, startX: e.clientX, origT: t };
     grp.setPointerCapture(e.pointerId);
   });
-  svg.addEventListener('pointermove', e => {
+  function handlePointerMove(clientX, clientY, altKey) {
+    lastClientX = clientX; lastClientY = clientY; lastAltKey = altKey;
     if (lyricDrag) {
-      const dx = e.clientX - lyricDrag.startX;
+      const dx = clientX - lyricDrag.startX;
       lyricDrag.el.setAttribute('transform', `translate(${dx},0)`);
       return;
     }
     if (rubberBand) {
       const rect = svg.getBoundingClientRect();
-      const x = e.clientX - rect.left;
+      const x = clientX - rect.left;
       const box = document.getElementById('selectionBox');
       box.setAttribute('x', String(Math.min(rubberBand.startX, x)));
       box.setAttribute('width', String(Math.abs(x - rubberBand.startX)));
@@ -3375,21 +3418,26 @@ function updateSelectionInfo() {
     if (groupDrag) {
       // Snap the whole selection: the earliest note lands on a beat, the rest
       // shift rigidly with it. Alt bypasses the snap for free placement.
-      const dx = e.clientX - groupDrag.startX;
+      const dx = clientX - groupDrag.startX;
       const warp = buildTimeWarp(syncAnchors);
       const startDisp = warp(previewScale(Math.min(...groupDrag.times)));
-      const snapped = snapDisplay(startDisp + dx / tabPx, e.altKey);
+      const snapped = snapDisplay(startDisp + dx / tabPx, altKey);
       const sdx = (snapped - startDisp) * tabPx;
       groupDrag.grps.forEach(g => g.setAttribute('transform', `translate(${sdx},0)`));
       return;
     }
     if (!dragging) return;
-    const dx = e.clientX - dragging.startX;
+    const dx = clientX - dragging.startX;
     const origDisp = buildTimeWarp(syncAnchors)(previewScale(dragging.origT));
-    const snapped = snapDisplay(origDisp + dx / tabPx, e.altKey);
+    const snapped = snapDisplay(origDisp + dx / tabPx, altKey);
     dragging.grp.setAttribute('transform', `translate(${(snapped - origDisp) * tabPx},0)`);
+  }
+  svg.addEventListener('pointermove', e => {
+    handlePointerMove(e.clientX, e.clientY, e.altKey);
+    if (rubberBand || groupDrag || dragging || lyricDrag) startAutoScrollLoop();
   });
   svg.addEventListener('pointerup', e => {
+    stopAutoScrollLoop();
     if (lyricDrag) {
       const dx = e.clientX - lyricDrag.startX;
       lyricDrag.el.removeAttribute('transform');
@@ -3481,6 +3529,7 @@ function updateSelectionInfo() {
   // ordinary mouse move (no button held) as a continuing drag. Unlike
   // pointerup this only resets state — a cancelled gesture must not commit.
   svg.addEventListener('pointercancel', () => {
+    stopAutoScrollLoop();
     if (lyricDrag) { lyricDrag.el.removeAttribute('transform'); lyricDrag = null; }
     if (rubberBand) { document.getElementById('selectionBox')?.remove(); rubberBand = null; }
     if (groupDrag) { groupDrag.grps.forEach(g => g.removeAttribute('transform')); groupDrag = null; }
