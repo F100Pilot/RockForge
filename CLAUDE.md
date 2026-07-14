@@ -275,7 +275,7 @@ status line. Preview-only, never applied silently (honesty principle).
 without librosa; the alignment math is unit-tested pure (constant offset, a
 mid-song tempo change, missed-tracker-beat robustness, low-confidence flagging
 of a mismatched section, degenerate inputs). **The score shows each bar's
-EFFECTIVE ♪BPM** (measure beats × 60 / its *warped* duration — amber when the
+EFFECTIVE ♩BPM** (measure beats × 60 / its *warped* duration — amber when the
 pending sync changed it vs the authored value), so the effect of every anchor
 is visible per bar before rebuilding. Honest limits: time-signature detection
 is NOT performed (deferred; librosa doesn't detect meter reliably), and
