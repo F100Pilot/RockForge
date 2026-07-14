@@ -493,6 +493,21 @@ wiring and the visual preview:
    rebuild fails with a clear error mentioning "beyond final ebeat" (an
    existing `Arrangement.validate()` invariant, not a new one) rather than
    silently corrupting the chart or crashing without explanation.
+8. **Copy/paste a riff** — Shift+click two notes to select the range between
+   them (or use "Excerto"), click "📋 Copiar" ("N nota(s) copiada(s)" appears
+   next to the button). Move the playhead somewhere else, click "📥 Colar no
+   cursor": confirm the copied notes reappear starting at the cursor, with
+   the SAME relative spacing/frets/techniques as the original — pending
+   (dashed cyan rings), not yet rebuilt. Repeat with Ctrl+C/Ctrl+V instead of
+   the buttons.
+9. **Copy on one tab, paste on another** — copy a passage on Lead, switch to
+   the Rhythm tab, "Colar no cursor": confirm the notes land on Rhythm and
+   Lead is unaffected — copy/paste works across arrangements, not just
+   within one.
+10. **Clipboard doesn't leak across jobs** — copy some notes, close the job,
+    open a different one: confirm "📥 Colar no cursor" is disabled again
+    (the clipboard is cleared on job load, so you can't accidentally paste
+    one song's notes into another).
 
 ### 7c. Automatic lyric detection (needs `[ml,lyrics]`)
 

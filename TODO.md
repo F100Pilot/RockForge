@@ -380,6 +380,12 @@ ver `TESTING.md`.
   compassos no Guitar Pro. Criar acordes é possível adicionando várias notas
   ao mesmo tempo/corda-diferente uma a uma (sem um gesto dedicado
   "criar acorde"). Ver `CLAUDE.md` ("Note editor").
+  - [x] **Copiar/colar notas** ("📋 Copiar" / "📥 Colar no cursor", Ctrl+C/
+    Ctrl+V): copia o excerto selecionado (a mesma seleção Shift+clique/
+    Ctrl+clique/"Excerto") e cola-o a partir do cursor — noutro ponto da
+    mesma pista, ou noutra pista (ex. Lead → Rhythm), preservando o ritmo
+    relativo entre as notas copiadas. Puramente client-side: cada nota colada
+    é só mais um `note_overrides` upsert, sem novo conceito no backend.
 
 - [x] **Mais atalhos de teclado no visualizador**: além do espaço (play/pause),
   agora **←/→** avançam/recuam o cursor (±1s, **Shift** ±5s), **Home** vai ao

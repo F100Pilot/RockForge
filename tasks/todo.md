@@ -3,6 +3,24 @@
 Short-lived plan/checklist for the change in progress. `TODO.md` (repo root) is
 the durable feature list; this file is the working notes for the current task.
 
+## Done: copy/paste notes (extends the note editor)
+
+- [x] "📋 Copiar" / "📥 Colar no cursor" buttons + Ctrl+C/Ctrl+V. Frontend
+      only — no backend change (a pasted note is just another
+      `note_overrides` upsert). `copySelectedNotes()` reads `selectedTimes`
+      from the live merged note list, normalizes to `dTime` offsets;
+      `pasteNotesAtCursor()` re-anchors at the playhead (only the first note
+      snaps to the grid, `nearestGridChartTime`; the rest keep relative
+      spacing). Works across arrangements (copy Lead, paste into Rhythm).
+      Clipboard (`noteClipboard`) is in-memory JS state, cleared on job load.
+- [x] Docs: CLAUDE.md ("Note editor" section, copy/paste paragraph),
+      TESTING.md (7a-septies items 8-10), TODO.md (added under the note
+      editor bullet).
+- [x] Verify: node --check/eslint green (frontend-only change, no backend
+      diff — pytest/ruff/mypy unaffected, re-ran anyway to confirm);
+      Playwright smoke exercising copySelectedNotes/pasteNotesAtCursor
+      end-to-end confirms relative spacing + note attributes preserved.
+
 ## Done: note editor (add/edit/delete notes + techniques on the score)
 
 - [x] Backend: `GpJobSpec.note_overrides: dict[str, list[NoteOverride]]`
