@@ -55,12 +55,16 @@ ver `TESTING.md`.
 - **Letra/tom precisam de GPU para ser rápido.** Em CPU a separação Demucs
   demora minutos. O `pip install torch` no Windows é só-CPU — é preciso o build
   CUDA (README §2b). Confirmar no log: `device: cuda (GPU)`.
-- **Sem dynamic difficulty (DD):** todas as frases têm `maxDifficulty=0`; a
-  tablatura toca a densidade total. É uma lacuna de funcionalidade, não um
-  ficheiro malformado.
+- **Dynamic Difficulty é uma rampa por densidade, não uma passagem DDC
+  musical real:** níveis com teto variável por frase (até 21), com
+  phrase-linking (riffs repetidos partilham uma única frase). Funciona e é
+  jogável, mas a seleção de notas por nível é por densidade/força métrica, não
+  frascada musicalmente — o caminho de maior qualidade de DD continua a ser o
+  DLC Builder.
 - **SNG nativo não validado byte-a-byte** contra um SNG retail (não há ficheiro
-  de referência em CI) — só round-trip `read_sng∘write_sng`. A validação real é
-  carregar no jogo.
+  de referência em CI) — só round-trip `read_sng∘write_sng` + validação manual
+  no jogo (vários bugs de renderização já isolados e corrigidos por byte-diff
+  contra PSARC do DLC Builder — ver `CLAUDE.md`).
 - **GP6 (`.gpx`) não suportado** (container binário proprietário). GP3/GP4/GP5 e
   GP7/GP8 (`.gp`) são suportados.
 - **Capa de álbum não vira textura DDS in-game** — copiada para o bundle e
@@ -176,15 +180,25 @@ ver `TESTING.md`.
   (parte extended-range/bass). Guardado por
   `test_gp7_out_of_range_note_dropped_with_warning`.
 
-- [ ] **Criar o PSARC diretamente na aplicação (sem DLC Builder)**: hoje o
-  empacotamento final depende do DLC Builder (ou de um packer externo via
-  `ROCKFORGE_PSARC_PACKER_CMD`) para compilar SNG, gerar DD e produzir o
-  `.psarc`. Objetivo: gerar o PSARC nativamente, reimplementado em Python puro
-  a partir da implementação aberta do Rocksmith2014.NET (DLC Builder, MIT). O
-  `.wem` continua a precisar do Wwise (a EULA Audiokinetic proíbe
-  redistribuição), por isso esta etapa só remove a dependência do DLC Builder
-  para a parte de empacotamento, não para a conversão de áudio. Plano em 5
-  fases, cada uma com testes próprios:
+- [x] **Criar o PSARC diretamente na aplicação (sem DLC Builder) — CONCLUÍDO**:
+  o empacotamento final já não depende do DLC Builder — `psarc_mode="native"`
+  (por defeito) compila o SNG, gera a Dynamic Difficulty, serializa os tons e
+  produz o `.psarc` jogável inteiramente em Python, a partir da implementação
+  aberta do Rocksmith2014.NET (DLC Builder, MIT). O `.wem` continua a precisar
+  do Wwise (a EULA Audiokinetic proíbe redistribuição) — só a parte de
+  empacotamento deixou de depender do DLC Builder, não a conversão de áudio.
+  Vários bugs de renderização in-game (chord templates com MIDI -1, high
+  density em acordes repetidos, ChordNotes por sustain, anchors cruzando
+  fronteiras de frase, `phrase_id` fora de alcance após o phrase-linking, o
+  vocal-note sentinel 254 + atlas de glifos da letra) foram isolados por
+  byte-diff contra PSARC reais do DLC Builder e **confirmados corrigidos no
+  jogo** — ver `CLAUDE.md` (secção "SNG binary compilation") para a lista
+  completa e o método de debug reutilizável. Honesto: o SNG binário continua
+  *round-tripped* mas não byte-diffed contra um SNG retail em CI (não há
+  ficheiro de referência); a Dynamic Difficulty é uma rampa de densidade por
+  frase, não uma passagem DDC musical real — o caminho de maior confiança
+  para DD continua a ser o bundle DLC Builder. Construído em 8 fases, cada
+  uma com testes próprios:
 
   - [x] **Fase 1 — Contentor PSARC** (`infrastructure/packaging/psarc/container.py`):
     `pack_entries(files: dict[str, bytes]) -> bytes` / `unpack(data: bytes) ->
@@ -250,8 +264,7 @@ ver `TESTING.md`.
     jogo só lista um CDLC cujo appid o jogador **possui**, por isso reutiliza-se
     o de um DLC que se tem) e os manifestos precisam de **`InsertRoot`**
     (`Static.Songs.Entries`). Guardado por `test_psarc_manifest`.
-    Necessário mas ainda **não suficiente** — o PSARC nativo continua por
-    validar no jogo (ver fase 3).
+    Necessário mas não suficiente sozinho — via as fases seguintes.
 
   - [x] **Fase 7 — SoundBank Wwise (`.bnk`) no PSARC nativo**: o Rocksmith
     carrega o áudio através de uma SoundBank (`song_<key>.bnk`) com um evento
@@ -261,8 +274,8 @@ ver `TESTING.md`.
     `SoundBankGenerator2014` do toolkit, MIT), e o packer emite
     `audio/windows/song_<key>.bnk` + `audio/windows/<fileID>.wem`, com o
     manifesto a apontar `SongBank`/`SongEvent`. Round-trip testado; layout
-    não-verificado-por-desenho (como `sng.py`). Continua sem validação in-game
-    — o caminho de confiança continua a ser o bundle DLC Builder.
+    unverified-by-design (como `sng.py` — sem ficheiro `.bnk` retail em CI),
+    mas o áudio confirmado a tocar no jogo a partir do PSARC nativo.
 
   - [x] **Fase 8 — Layout completo de enumeração (o CDLC nativo não aparecia)**:
     por byte-diff de um PSARC real do DLC Builder contra o nosso, descobriu-se
@@ -273,18 +286,19 @@ ver `TESTING.md`.
     `.json` de *entries* (`Static.Songs.Entries`, com `ArrangementType` **int**),
     o SNG em `songs/bin/generic/`, `showlights.xml`, DDS de capa (placeholder),
     banco de preview, `appid.appid`, e offsets **absolutos** na TOC. Verificado
-    por unpack+diff contra o PSARC de referência. **Ainda por validar no jogo** e
-    incompleto para *jogar* (arrays de score/frases vazios — dificuldade única
-    sem DD; tons não serializados no manifesto; SNG binário não verificado).
+    por unpack+diff contra o PSARC de referência **e validado no jogo**
+    (carrega, lista, toca e é jogável).
 
-  - [~] **Dados de score/frases/secções no manifesto do PSARC nativo**: já
-    populados a partir do SNG compilado (`manifest.arrangement_stats`) — contagem
-    de notas, `Phrases`/`PhraseIterations`/`Sections`. **Os tons também já vão**
-    (`Tones`/`Tone_Base`/`Tone_A`..`Tone_D`, via `packaging/tone_dto.py`
-    partilhado com o `.rs2dlc`; formato validado contra um build DLC Builder dos
-    nossos próprios tons), por isso o tom in-game é o do utilizador e não um
-    default. Falta ainda: as contagens por dificuldade (dependem da DD) e a
-    secção Tones do SNG para *mudanças* de tom a meio (o `tone_base` já aplica).
+  - [x] **Dados de score/frases/secções no manifesto do PSARC nativo**:
+    populados a partir do SNG compilado (`manifest.arrangement_stats`) —
+    contagem de notas, `Phrases`/`PhraseIterations`/`Sections`,
+    `MaxPhraseDifficulty` + `NotesEasy/Medium/Hard` (a partir da Dynamic
+    Difficulty por densidade). **Os tons também vão** (`Tones`/`Tone_Base`/
+    `Tone_A`..`Tone_D`, via `packaging/tone_dto.py` partilhado com o
+    `.rs2dlc`; formato validado contra um build DLC Builder dos nossos
+    próprios tons), por isso o tom in-game é o do utilizador e não um default.
+    Falta ainda: a secção Tones do SNG para *mudanças* de tom a meio da
+    música (o `tone_base` já aplica desde o início).
 
   - [x] **DDS real da capa**: o PSARC nativo converte a capa do utilizador para
     as texturas DDS in-game (64/128/256) via `gamedata.album_art_dds` (encoder
@@ -333,6 +347,23 @@ ver `TESTING.md`.
 - [ ] **Editor de secções na partitura (caminho GP)**: marcar/renomear secções
   (intro/verso/refrão) diretamente no visualizador, em vez de virem só do GP —
   útil para Riff Repeater e navegação no jogo.
+
+- [ ] **Editor de notas na partitura (adicionar notas e técnicas)**: hoje as
+  notas vêm sempre **exatas** do ficheiro Guitar Pro — a partitura só permite
+  corrigir *sincronização* (mover no tempo), nunca o *conteúdo* musical (mudar
+  um traste, adicionar uma nota nova, marcar bend/slide/hammer-on/pull-off/
+  vibrato/palm-mute numa nota existente). Objetivo: um modo de edição na
+  partitura que permita clicar numa corda/traste vazio para inserir uma nota
+  (ou um acorde), apagar uma nota, e alternar as técnicas de uma nota via um
+  pequeno menu — sem ter de voltar ao Guitar Pro para afinações finas. É uma
+  funcionalidade maior e distinta da correção de sync (que já existe e fica
+  intacta): precisa de decidir onde a edição vive (`sync_anchor_stages` não
+  serve — isto muda a nota em si, não o tempo) — provavelmente um novo
+  `note_overrides` em `GpJobSpec`, aplicado pelo `gp_pipeline` por cima do
+  parse do GP, com o mesmo padrão de precedência que `lyrics_events` já usa
+  para as letras. Também implica desenhar/editar acordes na UI (hoje só
+  mostrados, nunca criados). Mencionado como feature futura maior na secção
+  "Selecionar notas" do `CLAUDE.md`.
 
 - [x] **Mais atalhos de teclado no visualizador**: além do espaço (play/pause),
   agora **←/→** avançam/recuam o cursor (±1s, **Shift** ±5s), **Home** vai ao
