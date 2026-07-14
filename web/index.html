@@ -577,6 +577,17 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
                 <button class="info-btn" data-info="auto-sync-dynamic">ⓘ</button>
                 <span id="autoSyncDynamicInfo" class="meta"></span>
               </div>
+              <div class="syncctrls" style="margin-top:.4rem">
+                <input type="file" id="midiSyncFile" accept=".mid,.midi,audio/midi,audio/x-midi" style="display:none">
+                <button type="button" id="midiSyncBtn" class="secondary">🎹 Importar mapa de tempo (MIDI)</button>
+                <button class="info-btn" data-info="sync-from-midi">ⓘ</button>
+                <span id="midiSyncInfo" class="meta"></span>
+              </div>
+              <p class="meta" style="margin:.35rem 0 0;line-height:1.35">
+                💡 Se a sincronização automática não ficar ideal, exporta um MIDI com o tempo
+                por compasso (ex.: RIPX) — com a música a começar no 1.º compasso da tab — e
+                importa-o aqui para alinhar com o andamento real, compasso a compasso.
+              </p>
             </div>
 
             <div class="sync-step-desc" style="margin:.55rem 0 0">
