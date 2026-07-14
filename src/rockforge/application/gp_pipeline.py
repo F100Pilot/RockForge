@@ -429,6 +429,11 @@ class GpJobSpec:
     tuning_overrides: dict[str, tuple[int, int, int, int, int, int]] = field(
         default_factory=dict
     )
+    # In-app section-editor overrides (bundle-clock times, like tone_changes —
+    # no per-arrangement warp applied). When set (even to an empty list),
+    # REPLACES the GP-parsed section markers for EVERY arrangement; None keeps
+    # each arrangement's own GP-authored sections untouched.
+    section_overrides: list[Section] | None = None
 
     def sync_for(self, kind: ArrangementKind) -> ArrangementSync:
         """Resolve the tempo/drift overrides for one arrangement, falling back
@@ -724,6 +729,27 @@ class GenerateFromGpUseCase:
                 return parsed_tuning
             return Tuning(midi=override, cent_offset=parsed_tuning.cent_offset)
 
+        # Section-editor overrides replace the GP-parsed markers identically for
+        # EVERY arrangement (job-level, like tone_changes — no per-arrangement
+        # warp applied to the override times, which are already in bundle
+        # clock). None keeps each arrangement's own GP-authored sections.
+        override_sections = (
+            [
+                Section(name=s.name, start_time=s.start_time, number=i + 1)
+                for i, s in enumerate(sorted(spec.section_overrides, key=lambda s: s.start_time))
+            ]
+            if spec.section_overrides is not None
+            else None
+        )
+
+        def _sections_for(p: ParsedGpTrack) -> list[Section]:
+            if override_sections is not None:
+                return override_sections
+            return [
+                Section(name=s.name, start_time=s.start_time, number=i + 1)
+                for i, s in enumerate(p.sections)
+            ]
+
         arrangements = [
             Arrangement(
                 kind=kind,
@@ -731,10 +757,7 @@ class GenerateFromGpUseCase:
                 tuning=_tuning_for(kind, p.tuning),
                 tempo_map=p.tempo_map,
                 notes=p.notes,
-                sections=[
-                    Section(name=s.name, start_time=s.start_time, number=i + 1)
-                    for i, s in enumerate(p.sections)
-                ],
+                sections=_sections_for(p),
                 stage_confidence=dict(confidence),
                 tone_base=spec.tone_base,
                 tone_names=list(spec.tone_names),

@@ -91,6 +91,114 @@ document.getElementById('newJobOverlay').addEventListener('click', e => {
   if (e.target.id === 'newJobOverlay') closeNewJobModal();
 });
 
+// ── Batch processing: several (GP, audio) pairs, created one job at a time ───
+// No new backend endpoint — this loops the same /gp/inspect + /jobs/gp calls
+// the single-project wizard makes, so each pair gets exactly the same
+// auto-pick-tracks / metadata-fallback behavior as creating one job by hand.
+let batchPairs = [];  // [{gp: File, audio: File|null, status: 'pending'|'working'|'done'|'error', jobId, error}]
+
+function batchStem(f) { return f.name.replace(/\.[^.]+$/, '').toLowerCase(); }
+
+function pairBatchFiles(gpFiles, audioFiles) {
+  const audioByStem = new Map(audioFiles.map(f => [batchStem(f), f]));
+  const used = new Set();
+  const pairs = gpFiles.map(gp => {
+    const m = audioByStem.get(batchStem(gp));
+    if (m && !used.has(m)) { used.add(m); return { gp, audio: m, status: 'pending' }; }
+    return { gp, audio: null, status: 'pending' };
+  });
+  // Fill unmatched GP files with leftover audio files, in the order both were chosen.
+  const leftover = audioFiles.filter(f => !used.has(f));
+  let li = 0;
+  for (const p of pairs) if (!p.audio && li < leftover.length) p.audio = leftover[li++];
+  return pairs;
+}
+
+function renderBatchPairs() {
+  const el = document.getElementById('batchPairsList');
+  const submitBtn = document.getElementById('batchSubmit');
+  if (!batchPairs.length) {
+    el.innerHTML = '<span class="meta">Escolhe os ficheiros GP e as gravações acima.</span>';
+    submitBtn.disabled = true;
+    return;
+  }
+  const STATUS_ICO = { pending: '⏳', working: '⏳', done: '✅', error: '❌' };
+  el.innerHTML = batchPairs.map(p => `<div class="anchor-row">
+    ${STATUS_ICO[p.status] || ''} <b>${esc(p.gp.name)}</b> → ${p.audio ? esc(p.audio.name) : '<span style="color:#e88">sem gravação — não vai ser criado</span>'}
+    ${p.error ? `<span style="color:#e88">(${esc(p.error)})</span>` : ''}
+  </div>`).join('');
+  submitBtn.disabled = !batchPairs.some(p => p.audio && p.status === 'pending');
+}
+
+function openBatchModal() {
+  document.getElementById('batchGpFiles').value = '';
+  document.getElementById('batchAudioFiles').value = '';
+  document.getElementById('batchArtist').value = '';
+  document.getElementById('batchAlbum').value = '';
+  document.getElementById('batchYear').value = '';
+  batchPairs = [];
+  renderBatchPairs();
+  document.getElementById('batchOverlay').hidden = false;
+}
+function closeBatchModal() { document.getElementById('batchOverlay').hidden = true; }
+document.getElementById('openBatchModal').addEventListener('click', openBatchModal);
+document.getElementById('batchClose').addEventListener('click', closeBatchModal);
+document.getElementById('batchClose2').addEventListener('click', closeBatchModal);
+document.getElementById('batchOverlay').addEventListener('click', e => {
+  if (e.target.id === 'batchOverlay') closeBatchModal();
+});
+function refreshBatchPairing() {
+  const gpFiles = [...document.getElementById('batchGpFiles').files];
+  const audioFiles = [...document.getElementById('batchAudioFiles').files];
+  batchPairs = gpFiles.length ? pairBatchFiles(gpFiles, audioFiles) : [];
+  renderBatchPairs();
+}
+document.getElementById('batchGpFiles').addEventListener('change', refreshBatchPairing);
+document.getElementById('batchAudioFiles').addEventListener('change', refreshBatchPairing);
+
+document.getElementById('batchSubmit').addEventListener('click', async () => {
+  const submitBtn = document.getElementById('batchSubmit');
+  submitBtn.disabled = true;
+  const artist = document.getElementById('batchArtist').value.trim();
+  const album = document.getElementById('batchAlbum').value.trim();
+  const year = document.getElementById('batchYear').value.trim();
+  let okCount = 0, errCount = 0;
+  for (const p of batchPairs) {
+    if (!p.audio || p.status !== 'pending') continue;
+    p.status = 'working';
+    renderBatchPairs();
+    try {
+      const inspectForm = new FormData();
+      inspectForm.append('file', p.gp);
+      const insR = await fetch('/gp/inspect', { method: 'POST', body: inspectForm });
+      const insBody = await insR.json();
+      if (!insR.ok) throw new Error(insBody.detail || 'falha ao inspecionar o GP');
+      const jobForm = new FormData();
+      jobForm.append('gp_token', insBody.gp_token);
+      jobForm.append('audio', p.audio);
+      if (artist) jobForm.append('artist', artist);
+      if (album) jobForm.append('album', album);
+      if (year) jobForm.append('year', year);
+      // Track fields left blank on purpose: the backend's auto_pick_tracks
+      // heuristic (name-based) fills Lead/Rhythm in, same as a lone-track pick
+      // in the normal wizard when nothing is assigned.
+      const jobR = await fetch('/jobs/gp', { method: 'POST', body: jobForm });
+      const jobBody = await jobR.json();
+      if (!jobR.ok) throw new Error(jobBody.detail || 'falha ao criar o projeto');
+      p.status = 'done';
+      p.jobId = jobBody.id;
+      okCount++;
+    } catch (e) {
+      p.status = 'error';
+      p.error = (e && e.message) || 'erro';
+      errCount++;
+    }
+    renderBatchPairs();
+  }
+  toast(`Lote concluído: ${okCount} criado(s)${errCount ? `, ${errCount} com erro` : ''}.`, errCount ? 'err' : 'ok');
+  refreshJobs();
+});
+
 // ── "Definições" modal (stem-separator backend + Banquet paths) ───────────────
 function toggleBanquetConfig() {
   const on = document.querySelector('input[name=sepBackend]:checked')?.value === 'banquet';
@@ -279,6 +387,14 @@ const INFO = {
     body: `<p><strong>🎸 A partir de Guitar Pro</strong>: notas, trastes, técnicas e secções vêm <b>exatas</b> do ficheiro GP3/GP4/GP5/GP7. Assistente de 4 passos: <b>Ficheiro</b> (escolhe o GP e inspeciona as pistas) → <b>Pistas</b> (atribui Lead/Rhythm/Combo) → <b>Gravação</b> (o áudio + o início aproximado) → <b>Detalhes</b> (título/banda, opcionais).</p>
 <p>Os <b>tons</b>, a <b>capa</b> e a <b>sincronização fina</b> fazem-se depois de criar. O projeto mostra um checklist <b>"Estado do PSARC"</b> com o que ainda falta.</p>`
   },
+  'batch': {
+    title: 'Processamento em lote',
+    body: '<p>Cria vários projetos de uma vez a partir de vários ficheiros Guitar Pro + as gravações correspondentes — útil para converter um álbum inteiro sem repetir o assistente música a música.</p>' +
+      '<p><strong>Emparelhamento:</strong> cada ficheiro GP é associado à gravação com o <strong>mesmo nome</strong> (sem extensão) — ex. <code>faixa1.gp5</code> com <code>faixa1.mp3</code>. Quando não há correspondência pelo nome, o RockForge empareha pela <strong>ordem</strong> em que escolheste os ficheiros. Confirma a lista de pares antes de criar.</p>' +
+      '<p><strong>Pistas Lead/Rhythm:</strong> cada projeto usa a mesma heurística automática do assistente normal (escolhe as pistas de 6 cordas pelo nome — "lead"/"rhythm") em vez de perguntares música a música. Se uma escolha ficar errada, corrige depois em "✎ Editar info" desse projeto (não precisas de recriar o lote todo).</p>' +
+      '<p>Banda/álbum/ano ficam <strong>partilhados</strong> por todos os pares; título/artista específicos vêm do próprio ficheiro GP ou das tags do áudio, como no assistente normal.</p>' +
+      '<p>Os projetos são criados um a um (mesmo caminho que criar um único projeto, repetido); acompanha o progresso na lista de pares e depois na lista de projetos.</p>'
+  },
   'gp-format': {
     title: 'Formatos Guitar Pro suportados',
     body: '<p>Suportados: <strong>GP3, GP4, GP5</strong> (via PyGuitarPro) e <strong>GP7/GP8 (.gp)</strong> (parser GPIF nativo).<br><strong>Só GP6 (.gpx) não é suportado</strong> — exporta como GP5 ou GP7 no Guitar Pro ou TuxGuitar antes de importar.</p>'
@@ -338,7 +454,15 @@ const INFO = {
 <p><strong>Selecionar excerto:</strong> arrasta uma caixa sobre as notas e depois arrasta uma delas — o excerto move-se em bloco (também com encaixe nos beats).</p>
 <p><strong>Mover seguintes:</strong> pausa o áudio no instante certo e clica na nota deslocada — essa nota e todas as seguintes deslocam-se em bloco para o cursor.</p>
 <p><strong>Novo beat (detetar):</strong> clica numa nota onde o andamento muda — o RockForge mede o andamento da gravação a partir desse instante e re-espaça as notas seguintes.</p>
-<p><strong>Alinhar por compasso (📏):</strong> pausa a gravação onde um compasso deve soar e clica numa nota — abre um popup com o número do compasso (o da nota, já escolhido). Confirma com "= cursor" e esse compasso alinha-se ao cursor, arrastando as notas seguintes; ou "= pista" para o alinhar ao mesmo compasso de outra pista já sincronizada. Feito várias vezes ao longo da música, corrige o desvio compasso a compasso.</p>`
+<p><strong>Alinhar por compasso (📏):</strong> pausa a gravação onde um compasso deve soar e clica numa nota — abre um popup com o número do compasso (o da nota, já escolhido). Confirma com "= cursor" e esse compasso alinha-se ao cursor, arrastando as notas seguintes; ou "= pista" para o alinhar ao mesmo compasso de outra pista já sincronizada. Feito várias vezes ao longo da música, corrige o desvio compasso a compasso.</p>
+<p><strong>Secção (🏷️):</strong> clica numa nota para nomear onde começa uma secção (intro/verso/refrão…) — nada a ver com sincronização, é só estrutura da música. Ver o painel "🏷️ Secções" abaixo.</p>`
+  },
+  'sections': {
+    title: 'Secções da música',
+    body: '<p>Marca e nomeia a estrutura da música (intro/verso/refrão/solo…) diretamente na partitura — útil para navegar e para o <strong>Riff Repeater</strong> no jogo, sem teres de voltar ao Guitar Pro.</p>' +
+      '<p><strong>Adicionar:</strong> ativa o modo "Secção" (🏷️) e clica numa nota para a nomear, ou usa "+ Adicionar no cursor" para marcar a posição atual do leitor sem precisares de acertar numa nota.</p>' +
+      '<p><strong>Editar:</strong> a lista abaixo tem o tempo e o nome de cada secção editáveis diretamente — muda o número para reposicionar, o texto para renomear, ou remove-a.</p>' +
+      '<p>As secções são <strong>partilhadas por todos os arranjos</strong> (Lead/Rhythm/Combined) — tal como as mudanças de tom, marcadas uma vez e aplicadas a todos. Ficam em pré-visualização (etiqueta 🏷️ verde-água na partitura) até confirmares com "Aplicar e reconstruir"; sem qualquer edição, a música mantém as secções que já vinham do ficheiro Guitar Pro.</p>'
   },
   'lyrics': {
     title: 'Deteção automática de letra',
@@ -463,6 +587,13 @@ let toneNames = [];
 let toneChanges = [];
 let editingToneKey = null;    // key of the tone open in the builder form
 let toneLibrary = [];         // cross-project saved tones (GET /tone-library)
+// Section-editor state (GP jobs). Shared across arrangements (like
+// toneChanges) — bundle-clock {time, name} pairs. songSections is seeded from
+// arrangements[0].sections on load (whatever the GP file authored, or a prior
+// override); sectionsTouched gates whether it's sent on rebuild at all, so an
+// untouched job never overwrites GP-authored sections with their own mirror.
+let songSections = [];
+let sectionsTouched = false;
 let lyricsPollTimer = null;
 // Current cent_offset (fine-tuning deviation from A440), pre-filled from the
 // built arrangement and updated by "Detetar afinação" / sent on rebuild.
@@ -743,6 +874,8 @@ async function loadArrangements(id) {
   document.getElementById('review').style.display = '';
   const a0 = arrangements[0];
   centOffsetLive = a0.cent_offset;
+  songSections = (a0.sections || []).map(s => ({ time: s.time, name: s.name }));
+  sectionsTouched = false;
   document.getElementById('tuningInfo').innerHTML =
     `<p class="meta">offsets: [${a0.tuning_offsets.join(', ')}] · desvio: <span id="centOffsetVal">${a0.cent_offset.toFixed(1)}</span> cents · BPM médio: ${a0.average_bpm.toFixed(1)}</p>`;
   document.getElementById('tuningInputs').innerHTML = STD.map((std, i) =>
@@ -755,6 +888,7 @@ async function loadArrangements(id) {
   initSync(selectedJob);
   showArr(0);
   document.getElementById('tabwrap').scrollLeft = 0;
+  renderSectionsList();
   await loadLyrics(id);
   await loadTones(id);
   // Resume polling if tone detection is in progress.
@@ -973,6 +1107,17 @@ function showArr(i) {
       s += `<rect x="${m.x + 1}" y="${SB + 20}" width="${lw.toFixed(0)}" height="16" rx="4" fill="#14151a" opacity=".8"/>`;
       s += `<text x="${m.x + 6}" y="${SB + 32}" fill="#e0a54a" font-size="11" font-weight="700">🎸 ${esc(m.name)}</text>`;
     }
+  }
+  // Section markers (song structure — intro/verso/refrão…): a labeled marker
+  // spanning the FULL staff height (distinct from the tone-change band below
+  // the staff), teal, so the structure is visible at a glance while scrolling.
+  for (const sec of songSections) {
+    const x = timeToX(barWarp(previewScale(sec.time)));
+    if (x < 24 || x > W - 4) continue;
+    s += `<line x1="${x}" y1="14" x2="${x}" y2="${SB}" stroke="#3ddcc4" stroke-width="1.5" stroke-dasharray="5,3" opacity=".65"/>`;
+    const lw = sec.name.length * 6.2 + 16;
+    s += `<rect x="${x + 1}" y="4" width="${lw.toFixed(0)}" height="15" rx="4" fill="#14151a" opacity=".85"/>`;
+    s += `<text x="${x + 5}" y="15" fill="#3ddcc4" font-size="11" font-weight="700">🏷 ${esc(sec.name)}</text>`;
   }
   // Lyrics editor times are in recording-time (un-padded); shift to the display
   // timeline the same way the notes do — by viewOrigin AND the intro silence
@@ -1352,6 +1497,10 @@ async function applyAll() {
       tone_base: isGpJob() ? (toneBase || '') : null,
       tone_names: isGpJob() ? toneNames : null,
       tone_changes: isGpJob() ? toneChanges : null,
+      // Only sent once the user actually touches the section editor — untouched,
+      // null leaves each arrangement's own GP-authored sections alone (unlike
+      // tones, which never had a prior non-user-supplied default to lose).
+      section_overrides: (isGpJob() && sectionsTouched) ? songSections : null,
     }),
   });
   const b = await r.json();
@@ -1593,6 +1742,62 @@ function placeToneChange(chartTime) {
   renderToneChangesList();
   toast('Mudança de tom adicionada.', 'ok');
 }
+
+// ---- Section editor (song structure markers: intro/verso/refrão…) ----
+// songSections is shared across every arrangement (like toneChanges) — see
+// the state declaration above for why sectionsTouched gates the rebuild send.
+function renderSectionsList() {
+  const el = document.getElementById('sectionsList');
+  if (!el) return;
+  if (!songSections.length) {
+    el.innerHTML = '<span class="meta">Sem secções. Usa "+ Adicionar no cursor" ou o modo "Secção" (clica numa nota).</span>';
+  } else {
+    el.innerHTML = songSections.map((s, i) => `<div class="anchor-row">
+      <input type="number" step="0.01" value="${s.time.toFixed(2)}" data-section-time="${i}" style="width:6rem">s
+      <input type="text" value="${esc(s.name)}" data-section-name="${i}" style="width:10rem">
+      <button type="button" class="section-rm" data-i="${i}">remover</button></div>`).join('');
+    el.querySelectorAll('[data-section-time]').forEach(inp => inp.addEventListener('change', () => {
+      const i = parseInt(inp.dataset.sectionTime, 10);
+      const v = parseFloat(inp.value);
+      if (!isNaN(v)) songSections[i].time = Math.max(0, v);
+      songSections.sort((a, b) => a.time - b.time);
+      sectionsTouched = true;
+      renderSectionsList();
+    }));
+    el.querySelectorAll('[data-section-name]').forEach(inp => inp.addEventListener('change', () => {
+      const i = parseInt(inp.dataset.sectionName, 10);
+      songSections[i].name = inp.value.trim() || 'Secção';
+      sectionsTouched = true;
+      renderSectionsList();
+    }));
+    el.querySelectorAll('.section-rm').forEach(b => b.addEventListener('click', () => {
+      songSections.splice(parseInt(b.dataset.i, 10), 1);
+      sectionsTouched = true;
+      renderSectionsList();
+    }));
+  }
+  // Keep the on-score section markers in sync with the list — adding/renaming/
+  // removing/redraws the score, same as the tone-change list does.
+  if (arrangements.length) showArr(currentArr);
+}
+
+function placeSectionMarker(chartTime) {
+  const name = prompt('Nome da secção:', 'Nova secção');
+  if (name === null) return;
+  songSections.push({ time: chartTime, name: name.trim() || 'Secção' });
+  songSections.sort((a, b) => a.time - b.time);
+  sectionsTouched = true;
+  renderSectionsList();
+  toast('Secção adicionada.', 'ok');
+}
+
+document.getElementById('addSectionAtCursor')?.addEventListener('click', () => {
+  if (!arrangements.length) return;
+  songSections.push({ time: currentPlayheadT + viewOrigin, name: 'Nova secção' });
+  songSections.sort((a, b) => a.time - b.time);
+  sectionsTouched = true;
+  renderSectionsList();
+});
 
 // ---- Tone builder modal ----
 function openToneBuilder() {
@@ -2842,6 +3047,11 @@ function updateSelectionInfo() {
       placeToneChange(parseFloat(grp.dataset.t));
       return;
     }
+    // Section marker: click a note to name a song-structure section starting there.
+    if (syncMode === 'section' && grp) {
+      placeSectionMarker(parseFloat(grp.dataset.t));
+      return;
+    }
     if (syncMode === 'excerpt' && !(grp && selectedTimes.has(parseFloat(grp.dataset.t)))) {
       // start a rubber-band selection (also when starting on an unselected note)
       const rect = svg.getBoundingClientRect();
@@ -3022,6 +3232,7 @@ const SYNC_MODE_BUTTONS = [
   ['modeBeat', 'newbeat'],
   ['modeBarAlign', 'baralign'],
   ['modeTone', 'tonechange'],
+  ['modeSection', 'section'],
 ];
 const MODE_HELP = {
   drag: '<b>Arrastar:</b> arrasta uma nota para o instante da gravação onde ela deve tocar (encaixa no beat). As notas entre duas correções esticam/comprimem para acompanhar. Ideal para acertar um ponto que escorregou.',
@@ -3031,6 +3242,7 @@ const MODE_HELP = {
   newbeat: '<b>Novo beat (detetar):</b> clica na nota onde a música muda de andamento (ex.: o compasso 64). Mede o BPM da gravação daí em diante e re-espaça só as notas seguintes ao novo tempo. Nada antes do clique se mexe.',
   baralign: '<b>Alinhar por compasso:</b> pausa a gravação no instante certo e clica numa nota — abre um popup com o compasso da nota já escolhido. Confirma com "= cursor" e esse compasso alinha-se ao cursor (ou "= pista" para o mesmo compasso de outra pista). Faz-se várias vezes ao longo da música; cada correção arrasta as notas seguintes.',
   tonechange: '<b>Mudança de tom:</b> clica numa nota para trocar para um dos tons extra a partir daí.',
+  section: '<b>Secção:</b> clica numa nota para nomear onde começa uma secção (intro/verso/refrão…). Nada a ver com sincronização — é para navegação e o Riff Repeater.',
   null: 'Nenhum modo ativo. Clica num modo acima. <b>Dica:</b> para um desvio uniforme em todo o trecho, usa antes o <b>Andamento (BPM)</b> — não precisa de âncoras.',
 };
 function setSyncMode(mode) {

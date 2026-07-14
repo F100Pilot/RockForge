@@ -9,7 +9,7 @@ import guitarpro as gp
 import pytest
 
 from rockforge.application.gp_pipeline import GenerateFromGpUseCase, GpJobSpec
-from rockforge.domain.arrangement import SongMetadata, ToneChange
+from rockforge.domain.arrangement import Section, SongMetadata, ToneChange
 from rockforge.infrastructure.packaging.dlcbuilder import DlcBuilderPackager
 
 
@@ -141,6 +141,56 @@ def test_gp_pipeline_full_bundle(two_track_gp5: Path, tmp_path: Path) -> None:
     v = ET.parse(vocals_xml).getroot()
     # LRC shifts only by the prepended silence (pad = 2.0 - 0.5 = 1.5): 1.0 + 1.5
     assert float(v.findall("vocal")[0].get("time", "0")) == pytest.approx(2.5)
+
+
+def _section_rows(xml_path: Path) -> list[tuple[str, int, float]]:
+    root = ET.parse(xml_path).getroot()
+    return [
+        (el.get("name", "?"), int(el.get("number", "0")), float(el.get("startTime", "0")))
+        for el in root.findall("sections/section")
+    ]
+
+
+def test_section_overrides_replace_gp_parsed_sections_on_every_arrangement(
+    two_track_gp5: Path, tmp_path: Path
+) -> None:
+    """The section editor's overrides are job-level (like tone_changes): when
+    set, they replace the GP-parsed section markers identically on every
+    arrangement, renumbered/sorted by time regardless of input order."""
+    spec = GpJobSpec(
+        gp_path=two_track_gp5,
+        audio_source="x.wav",
+        lead_track=0,
+        rhythm_track=1,
+        section_overrides=[
+            Section(name="Solo", start_time=3.0, number=0),
+            Section(name="Intro", start_time=0.5, number=0),
+        ],
+    )
+    result = make_use_case().run(
+        spec, SongMetadata(title="Two", artist="Tracks"), tmp_path / "w"
+    )
+    for name in ("arrangement_lead.xml", "arrangement_rhythm.xml"):
+        xml_path = next(p for p in result.packaging.xml_paths if p.name == name)
+        rows = _section_rows(xml_path)
+        # sorted by time, renumbered 1-based, plus the writer's own trailing
+        # "noguitar" end sentinel (always appended, untouched by the override).
+        assert rows[:-1] == [("Intro", 1, pytest.approx(0.5)), ("Solo", 2, pytest.approx(3.0))]
+        assert rows[-1][0] == "noguitar"
+
+
+def test_section_overrides_none_keeps_default_gp_parsed_sections(
+    two_track_gp5: Path, tmp_path: Path
+) -> None:
+    """The default (no section_overrides) is unaffected: the two_track_gp5
+    fixture has no GP marker, so the writer's fallback single "riff" section
+    (plus the trailing "noguitar" sentinel) is unchanged."""
+    spec = GpJobSpec(gp_path=two_track_gp5, audio_source="x.wav", lead_track=0, rhythm_track=1)
+    result = make_use_case().run(
+        spec, SongMetadata(title="Two", artist="Tracks"), tmp_path / "w"
+    )
+    lead_xml = next(p for p in result.packaging.xml_paths if p.name == "arrangement_lead.xml")
+    assert [name for name, _, _ in _section_rows(lead_xml)] == ["riff", "noguitar"]
 
 
 def test_gp_embedded_lyrics_surface_as_recording_clock_events(
