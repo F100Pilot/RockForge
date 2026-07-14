@@ -479,11 +479,14 @@ wiring and the visual preview:
    checkboxes/bend/slide. Change the fret and toggle a technique (e.g. Palm
    mute), "Guardar" — confirm the note immediately shows the new fret AND a
    dashed cyan ring (pending, not yet built) without a rebuild.
-2. **Add a note in empty space** — click on a string's line where there's no
-   note: the popup opens blank (fret 0, sustain 0.25), with the STRING
-   pre-selected from the click's row. Confirm the new note appears at the
-   nearest beat/subdivision (per the current "Encaixar em:" grid setting),
-   not exactly under the cursor pixel — the exact snap-to-grid behavior.
+2. **Add a note in empty space (double-click)** — DOUBLE-click on a string's
+   line where there's no note: the popup opens blank (fret 0, sustain 0.25),
+   with the STRING pre-selected from the click's row. Confirm the new note
+   appears at the nearest beat/subdivision (per the current "Encaixar em:"
+   grid setting), not exactly under the cursor pixel — the snap-to-grid
+   behavior. A SINGLE click on empty space must NOT insert — it must move the
+   playhead (seek), same as every other mode (regression guard for "não
+   consigo clicar na partitura e o cursor mover-se").
 3. **Delete a note** — click an existing note, "Remover nota": confirm it
    disappears from the score immediately (still just pending).
 4. **Move a note to a different string** — edit an existing note and change

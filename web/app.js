@@ -456,7 +456,7 @@ const INFO = {
 <p><strong>Novo beat (detetar):</strong> clica numa nota onde o andamento muda — o RockForge mede o andamento da gravação a partir desse instante e re-espaça as notas seguintes.</p>
 <p><strong>Alinhar por compasso (📏):</strong> pausa a gravação onde um compasso deve soar e clica numa nota — abre um popup com o número do compasso (o da nota, já escolhido). Confirma com "= cursor" e esse compasso alinha-se ao cursor, arrastando as notas seguintes; ou "= pista" para o alinhar ao mesmo compasso de outra pista já sincronizada. Feito várias vezes ao longo da música, corrige o desvio compasso a compasso.</p>
 <p><strong>Secção (🏷️):</strong> clica numa nota para nomear onde começa uma secção (intro/verso/refrão…) — nada a ver com sincronização, é só estrutura da música. Ver o painel "🏷️ Secções" abaixo.</p>
-<p><strong>Editar notas (✏️):</strong> clica numa nota existente para a editar (traste, sustain, técnicas, bend, slide) ou removê-la; clica no pentagrama vazio para inserir uma nota nova, encaixada na grelha de sincronização. Muda o <em>conteúdo</em> da partitura — as notas deixam de vir só do ficheiro Guitar Pro — e fica pendente (contorno tracejado verde-água) até "Aplicar e reconstruir".</p>`
+<p><strong>Editar notas (✏️):</strong> clica numa nota existente para a editar (traste, sustain, técnicas, bend, slide) ou removê-la; <strong>duplo-clique</strong> no pentagrama vazio insere uma nota nova, encaixada na grelha de sincronização (um clique simples no vazio move o cursor, como nos outros modos). Muda o <em>conteúdo</em> da partitura — as notas deixam de vir só do ficheiro Guitar Pro — e fica pendente (contorno tracejado verde-água) até "Aplicar e reconstruir".</p>`
   },
   'sections': {
     title: 'Secções da música',
@@ -3344,20 +3344,19 @@ function updateSelectionInfo() {
       placeSectionMarker(parseFloat(grp.dataset.t));
       return;
     }
-    // Note editor: click an existing note (by its exact string within a
-    // chord) to edit/remove it, or empty staff space to insert a new one —
-    // snapped to the sync grid so it lands on a real chart time.
+    // Note editor: a SINGLE click on an existing note (by its exact string
+    // within a chord) edits/removes it. A single click on EMPTY space does NOT
+    // insert here — it falls through to the seek branch below, so clicking the
+    // score to move the cursor keeps working in this mode too (matching every
+    // other note-click mode). Inserting a new note is a DOUBLE click on empty
+    // space (see the svg 'dblclick' handler), which is unambiguous.
     if (syncMode === 'editnotes') {
       const single = e.target.closest('.note-single');
       if (grp && single) {
         openNoteEditPopup(parseFloat(grp.dataset.t), parseInt(single.dataset.string, 10), e.clientX, e.clientY);
         return;
       }
-      const rect = svg.getBoundingClientRect();
-      const clickY = e.clientY - rect.top;
-      const string = Math.min(5, Math.max(0, Math.round((STAFF_SB - clickY) / STAFF_ROW)));
-      openNoteEditPopup(nearestGridChartTime(e.clientX - rect.left), string, e.clientX, e.clientY);
-      return;
+      // empty space → fall through to the click-to-seek branch below
     }
     if (syncMode === 'excerpt' && !(grp && selectedTimes.has(parseFloat(grp.dataset.t)))) {
       // start a rubber-band selection (also when starting on an unselected note)
@@ -3535,6 +3534,18 @@ function updateSelectionInfo() {
     if (groupDrag) { groupDrag.grps.forEach(g => g.removeAttribute('transform')); groupDrag = null; }
     if (dragging) { dragging.grp.removeAttribute('transform'); dragging = null; }
   });
+  // Insert a new note by DOUBLE-clicking empty staff space in "Editar notas"
+  // mode — single click there now seeks (see the editnotes branch above), so
+  // the insert gesture must be distinct. A double-click on an existing note is
+  // ignored here (the single click already opened its edit popup).
+  svg.addEventListener('dblclick', e => {
+    if (syncMode !== 'editnotes') return;
+    if (e.target.closest('.note-single')) return;
+    const rect = svg.getBoundingClientRect();
+    const clickY = e.clientY - rect.top;
+    const string = Math.min(5, Math.max(0, Math.round((STAFF_SB - clickY) / STAFF_ROW)));
+    openNoteEditPopup(nearestGridChartTime(e.clientX - rect.left), string, e.clientX, e.clientY);
+  });
 })();
 
 // ---- Sync mode buttons ----
@@ -3558,7 +3569,7 @@ const MODE_HELP = {
   baralign: '<b>Alinhar por compasso:</b> pausa a gravação no instante certo e clica numa nota — abre um popup com o compasso da nota já escolhido. Confirma com "= cursor" e esse compasso alinha-se ao cursor (ou "= pista" para o mesmo compasso de outra pista). Faz-se várias vezes ao longo da música; cada correção arrasta as notas seguintes.',
   tonechange: '<b>Mudança de tom:</b> clica numa nota para trocar para um dos tons extra a partir daí.',
   section: '<b>Secção:</b> clica numa nota para nomear onde começa uma secção (intro/verso/refrão…). Nada a ver com sincronização — é para navegação e o Riff Repeater.',
-  editnotes: '<b>Editar notas:</b> clica numa nota para a editar (traste, sustain, técnicas, bend/slide) ou remover; clica no pentagrama vazio para inserir uma nota nova, encaixada na grelha. Muda o CONTEÚDO da partitura, não a sincronização — fica pendente até "Aplicar e reconstruir".',
+  editnotes: '<b>Editar notas:</b> clica numa nota para a editar (traste, sustain, técnicas, bend/slide) ou remover; <b>duplo-clique</b> no pentagrama vazio insere uma nota nova, encaixada na grelha. Um clique simples no vazio move o cursor, como nos outros modos. Muda o CONTEÚDO da partitura — fica pendente até "Aplicar e reconstruir".',
   null: 'Nenhum modo ativo. Clica num modo acima. <b>Dica:</b> para um desvio uniforme em todo o trecho, usa antes o <b>Andamento (BPM)</b> — não precisa de âncoras.',
 };
 function setSyncMode(mode) {
