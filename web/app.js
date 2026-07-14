@@ -322,6 +322,10 @@ const INFO = {
     title: 'Sincronização dinâmica (segue o andamento real)',
     body: '<p>A sincronização automática acima aplica UM andamento médio — não chega quando o tempo da gravação varia (o problema típico das tabs de IA). Esta segue a <b>curva de andamento real</b>: usa a grelha de batidas para o tempo local, e afina cada âncora encaixando as notas da própria tab nos ataques do áudio.<br><b>Começa na primeira nota:</b> define primeiro o início no Passo 1 (ou com "🎯 Detetar 1ª nota") — a primeira âncora é exatamente esse ponto e o alinhamento aplica-se daí para a frente.<br>Substitui as correções pendentes da pista atual por esta proposta; fica em pré-visualização — vê o <b>♩BPM por compasso</b> na partitura (âmbar = alterado pelas âncoras) e confirma com "Aplicar e reconstruir".<br><b>Limite honesto:</b> secções onde as notas da tab não batem com o áudio são assinaladas com ⚠ — aí o problema é o conteúdo da tab (notas/compassos errados), que nenhuma sincronização corrige; ajusta essas partes no Guitar Pro. Requer o extra <code>ml</code> (librosa).</p>'
   },
+  'sync-from-midi': {
+    title: 'Importar mapa de tempo (MIDI)',
+    body: '<p>Quando a sincronização automática não fica perfeita, dá-lhe a <b>verdade em vez de uma estimativa</b>: um MIDI com o andamento por compasso (exportado do RIPX ou de qualquer DAW a partir da mesma gravação). Em vez de adivinhar o tempo pelo áudio, o RockForge lê o mapa de tempo do MIDI e alinha <b>cada compasso da tab ao seu tempo real</b> — uma âncora por compasso, o "BPM por compasso".<br>Continua a respeitar o <b>Passo 1</b>: fixa a 1.ª nota e o alinhamento cresce daí. Fica em pré-visualização — revê na partitura e confirma com "Aplicar e reconstruir".<br><b>Para resultar:</b> o MIDI tem de começar no 1.º compasso da tab (corta um intro que a tab não tenha) e ter a mesma estrutura de compassos. A precisão é a da deteção do RIPX. Só formato PPQ (o normal).</p>'
+  },
   'tab-viewer': {
     title: 'Partitura — legenda',
     body: '<p>● nota · ▮ nota de acorde (ligadas por barra vertical) · sigla sobreposta = técnica:<br>B bend · H hammer-on · P pull-off · S slide · HA harmónico · PM palm mute · V vibrato · T tapping · SL slap · PO pop · A acento<br>Passa o cursor sobre a nota para ver a lista completa.<br>Cor = corda (igual ao Rocksmith): <span style="color:#e6483c">E</span> <span style="color:#f5dc3c">A</span> <span style="color:#3f9bdc">D</span> <span style="color:#f0973c">G</span> <span style="color:#5cc24a">B</span> <span style="color:#b56cdc">e</span> (grave→agudo). Eixo X em segundos.</p>'
@@ -3969,6 +3973,65 @@ function setTempoLive(scale) {
       toast('falha na análise', 'err');
     } finally {
       btn.disabled = false;
+    }
+  });
+})();
+
+// MIDI tempo-map import: a ground-truth alternative to the librosa dynamic sync.
+// The user uploads a MIDI (e.g. from RIPX) whose tempo track carries the real
+// BPM per measure; the backend anchors each chart bar to its MIDI measure,
+// pinned at Step 1's first note. Loads the anchors as a preview exactly like the
+// dynamic-sync button, for the same "Aplicar e reconstruir" confirmation.
+(function wireSyncFromMidi() {
+  const btn = document.getElementById('midiSyncBtn');
+  const fileEl = document.getElementById('midiSyncFile');
+  const info = document.getElementById('midiSyncInfo');
+  if (!btn || !fileEl) return;
+  btn.addEventListener('click', () => { if (selectedJob) fileEl.click(); });
+  fileEl.addEventListener('change', async () => {
+    const f = fileEl.files && fileEl.files[0];
+    if (!f || !selectedJob) { fileEl.value = ''; return; }
+    const kind = currentKind();
+    if (!kind) { fileEl.value = ''; return; }
+    btn.disabled = true;
+    info.textContent = 'A ler o mapa de tempo do MIDI…';
+    try {
+      // Same pin convention as the dynamic-sync button: START at the confirmed
+      // first note so the MIDI's tempo curve applies from there.
+      let pin = '';
+      const chartT = currentArrFirstNoteTime();
+      if (chartT != null) {
+        const recT = buildTimeWarp(syncAnchors)(previewScale(chartT)) - viewOrigin;
+        pin = `&chart_start=${encodeURIComponent(chartT)}&rec_start=${encodeURIComponent(Math.max(0, recT))}`;
+      }
+      const fd = new FormData();
+      fd.append('midi', f);
+      const url = `/jobs/${selectedJob.id}/sync-from-midi?arrangement=${encodeURIComponent(kind)}${pin}`;
+      const r = await fetch(url, { method: 'POST', body: fd });
+      const b = await r.json();
+      if (!r.ok) { info.textContent = ''; toast(b.detail || 'erro no MIDI', 'err'); return; }
+      if (!b.anchors || !b.anchors.length) {
+        info.textContent = 'O MIDI não tem um mapa de compassos utilizável.';
+        toast('MIDI sem compassos', 'err');
+        return;
+      }
+      // Fresh proposal (same as the dynamic-sync button): replace this tab's
+      // pending anchors with the MIDI-aligned set (the pin re-enters first).
+      syncAnchors.length = 0;
+      for (const [cT, rT] of b.anchors) setAnchor(previewScale(cT), rT + viewOrigin);
+      renderAnchorsList();
+      updatePendingChangesInfo();
+      showArr(currentArr);
+      info.textContent =
+        `MIDI: ${b.detected_bpm.toFixed(1)} BPM médio · ${b.anchors.length} compassos alinhados. ` +
+        `Revê na partitura e clica em "Aplicar e reconstruir".`;
+      toast('Mapa de tempo do MIDI aplicado — revê e aplica', 'ok');
+    } catch (e) {
+      info.textContent = '';
+      toast('falha ao ler o MIDI', 'err');
+    } finally {
+      btn.disabled = false;
+      fileEl.value = '';
     }
   });
 })();
