@@ -244,8 +244,8 @@ def generate_cdlc(job_id: str) -> None:
                     GenerateFromGpUseCase,
                     GpJobSpec,
                 )
+                from rockforge.domain.arrangement import Section, ToneChange
                 from rockforge.domain.arrangement import SongMetadata as Meta
-                from rockforge.domain.arrangement import ToneChange
                 from rockforge.infrastructure.packaging.gear.gear_catalogue import (
                     tones_from_dicts,
                 )
@@ -291,6 +291,14 @@ def generate_cdlc(job_id: str) -> None:
                         for kind, ov in (params.get("arrangement_sync") or {}).items()
                     },
                     import_mute_techniques=bool(params.get("import_mute_techniques", True)),
+                    section_overrides=(
+                        [
+                            Section(name=str(s["name"]), start_time=float(s["time"]), number=0)
+                            for s in params["section_overrides"]
+                        ]
+                        if params.get("section_overrides") is not None
+                        else None
+                    ),
                     lyrics_events=(
                         events_from_dicts(params["lyrics_events"])
                         if params.get("lyrics_events")

@@ -341,12 +341,26 @@ ver `TESTING.md`.
   botão "★ Biblioteca" para guardar o tom em edição. Carregar copia para o
   projeto (não altera o original). Complementa a barra de pesquisa de gear.
 
-- [ ] **Processamento em lote**: converter vários ficheiros Guitar Pro de uma
-  vez (fila de jobs), em vez de um a um, para quem tem um álbum inteiro.
+- [x] **Processamento em lote** (`📦 Processamento em lote`): cria vários
+  projetos GP de uma vez a partir de vários ficheiros Guitar Pro + gravações,
+  em vez de repetir o assistente música a música — para quem tem um álbum
+  inteiro. Só frontend: emparelha ficheiro↔gravação pelo **nome** (sem
+  extensão; sobras emparelham pela ordem), e por cada par corre exatamente os
+  mesmos dois pedidos do assistente normal (`/gp/inspect` → `/jobs/gp`), com as
+  pistas em branco (a heurística `auto_pick_tracks` já existente escolhe
+  Lead/Rhythm pelo nome). Sem passo próprio de revisão por música — uma
+  escolha errada corrige-se depois em "✎ Editar info" de cada projeto, como
+  qualquer outro job. Ver `CLAUDE.md` ("Batch processing").
 
-- [ ] **Editor de secções na partitura (caminho GP)**: marcar/renomear secções
-  (intro/verso/refrão) diretamente no visualizador, em vez de virem só do GP —
-  útil para Riff Repeater e navegação no jogo.
+- [x] **Editor de secções na partitura** (`🏷️ Secções` + modo "Secção"):
+  marcar/renomear/mover secções (intro/verso/refrão…) diretamente no
+  visualizador, em vez de virem só do GP — útil para Riff Repeater e
+  navegação no jogo. `GpJobSpec.section_overrides` (job-level, partilhado por
+  todos os arranjos, como `tone_changes`) substitui as secções vindas do GP
+  quando definido; `ArrangementOut.sections` expõe-as (excluindo o sentinela
+  `"noguitar"` do writer). Sem edição, mantém as secções do GP inalteradas
+  (dirty-flag no frontend, não um always-send). Ver `CLAUDE.md` ("Section
+  editor").
 
 - [ ] **Editor de notas na partitura (adicionar notas e técnicas)**: hoje as
   notas vêm sempre **exatas** do ficheiro Guitar Pro — a partitura só permite

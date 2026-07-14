@@ -285,6 +285,22 @@ class RebuildIn(BaseModel):
     tone_names: list[str] | None = None
     tones: list[dict[str, Any]] | None = None
     tone_changes: list[dict[str, Any]] | None = None
+    # In-app section-editor overrides (bundle-clock times, placed on the tab
+    # viewer, same convention as tone_changes). When set (even to an empty
+    # list), replaces the GP-parsed sections for every arrangement; None
+    # leaves each arrangement's own GP-authored sections untouched.
+    section_overrides: list[SectionOverrideIn] | None = None
+
+
+class SectionOverrideIn(BaseModel):
+    time: float
+    name: str
+
+
+class SectionOut(BaseModel):
+    time: float
+    name: str
+    number: int
 
 
 class ArrangementNoteOut(BaseModel):
@@ -314,6 +330,10 @@ class ArrangementOut(BaseModel):
     notes: list[ArrangementNoteOut]
     bars: list[BarOut] = []  # measure downbeats for the viewer's bar numbering
     beats: list[float] = []  # ALL ebeat times (downbeats + off-beats) — the drag snap grid
+    # Named song-structure markers (GP-authored, or the in-app editor's
+    # overrides), bundle-clock time — the writer's synthetic trailing
+    # "noguitar" end sentinel is never included here.
+    sections: list[SectionOut] = []
 
 
 class AutoSyncOut(BaseModel):
@@ -1103,6 +1123,8 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
             params["tones"] = payload.tones
         if payload.tone_changes is not None:
             params["tone_changes"] = payload.tone_changes
+        if payload.section_overrides is not None:
+            params["section_overrides"] = [s.model_dump() for s in payload.section_overrides]
         params["rebuilt_from"] = original.id
         job = Job(
             source=original.source,
@@ -1904,6 +1926,19 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
         # Every beat (downbeats + off-beats) — the snap grid the tab viewer's
         # note drag quantizes to.
         beats = [float(eb.get("time", "0")) for eb in ebeats]
+        # Song-structure markers, for the section editor — the writer always
+        # appends a synthetic "noguitar" sentinel at the very end (to mark
+        # where the phrase timeline ends); that one is a structural closer,
+        # not a user-facing section, so it's excluded here.
+        sections = [
+            SectionOut(
+                time=float(el.get("startTime", "0")),
+                name=el.get("name", "?"),
+                number=int(el.get("number", "1")),
+            )
+            for el in root.findall("sections/section")
+            if el.get("name") != "noguitar"
+        ]
         out.append(
             ArrangementOut(
                 kind=kind,
@@ -1916,6 +1951,7 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
                 notes=all_notes,
                 bars=bars,
                 beats=beats,
+                sections=sections,
             )
         )
     return out

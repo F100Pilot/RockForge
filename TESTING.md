@@ -90,7 +90,7 @@ Per-file counts below reflect the suite at the time of writing; run
 | `test_chords.py` | 10 | `domain/chords.py` `name_chord`: triads, power chords, inversions, chord naming |
 | `test_gp_import.py` | 11 | PyGuitarPro (GP3/4/5) parsing: notes/frets/techniques/sections/tempo |
 | `test_gpif_import.py` | 8 | native GP7/GP8 (`.gp`) GPIF/XML parser: tuning, timing, Hopo/slide/palm-mute, lyric sourcing, bass rejection |
-| `test_gp_pipeline.py` | 34 | GP use case: `tempo_scale`, `sync_anchor_stages`, `arrangement_sync`, lyrics precedence, `pad_start_s` shift, tied notes, dynamic beat-alignment (`align_beats_to_recording`), MIDI-tempo-map alignment (`align_chart_to_midi`) |
+| `test_gp_pipeline.py` | 36 | GP use case: `tempo_scale`, `sync_anchor_stages`, `arrangement_sync`, lyrics precedence, `pad_start_s` shift, tied notes, dynamic beat-alignment (`align_beats_to_recording`), MIDI-tempo-map alignment (`align_chart_to_midi`), section-editor overrides (`section_overrides`) |
 | `test_midi_tempo.py` | 5 | native Standard-MIDI-File tempo/time-signature parser (`parse_midi_tempo`): constant tempo, a mid-song tempo change, running status, SMPTE division rejected |
 | `test_rsxml_writer.py` | 18 | Song2014 XML: the **32 arrangementProperties** attrs, COUNT/default/END phrase structure, chords |
 | `test_vocals.py` | 22 | `parse_lyrics` (LRC + UltraStar), `expand_to_words` (trailing `+`), `events_from_dicts`, `distribute_syllables` (GP lyrics → note-onset alignment, melisma `_`) |
@@ -114,7 +114,7 @@ Per-file counts below reflect the suite at the time of writing; run
 | `test_banquet_adapter.py` | 5 | Banquet (EM TESTES) `inference_byoq` command build, one pass per query clip, device→`use_cuda`, missing-setup errors |
 | `test_device_resolution.py` | 8 | `_resolve_device` auto/cpu/cuda + degrade-to-CPU on import failure |
 | `test_tags.py` | 2 | audio metadata tag extraction |
-| `test_api.py` | 98 | every endpoint (§6): job lifecycle, rebuild composition, detect-* / separate-stems enqueue (mocked), auto-sync + dynamic beat-alignment (faked librosa) + MIDI-tempo-map sync, lyrics/tones/stems status, gear images, deletion, per-test SQLite |
+| `test_api.py` | 101 | every endpoint (§6): job lifecycle, rebuild composition, detect-* / separate-stems enqueue (mocked), auto-sync + dynamic beat-alignment (faked librosa) + MIDI-tempo-map sync, section overrides, lyrics/tones/stems status, gear images, deletion, per-test SQLite |
 | `test_settings.py` | 10 | in-app settings (`/settings`): default demucs, persist+read-back, invalid separator 422, Banquet path validation, empty-string clears override |
 | `test_celery_tasks.py` | 9 | the actual `@celery_app.task` function BODIES — `generate_cdlc`/`detect_tones`/`separate_stems`/`detect_lyrics` called directly (not `.delay()`) against a per-test SQLite `Job` row, heavy adapters faked; success + never-crashes-on-failure paths |
 | `test_architecture.py` | 2 | Clean Architecture layering: `application/ports.py` imports zero `infrastructure/`; other `application/` files only the explicitly-accepted exceptions |
@@ -388,6 +388,70 @@ button's live wiring in the browser — check these by hand:
    weak-range warnings — it's ground truth, not an estimate; a mismatch here
    means the tab's own bar count/structure diverges from the MIDI (fix the tab
    in Guitar Pro, not the sync).
+
+### 7a-quinquies. Section editor (browser only, no ML)
+
+The pure alignment/precedence logic is covered by CI
+(`test_section_overrides_*` in `test_gp_pipeline.py`, `test_rebuild_stores_
+section_overrides` / `test_rebuild_without_section_overrides_leaves_them_
+untouched` / `test_arrangements_excludes_the_noguitar_sentinel_from_sections`
+in `test_api.py`). What CI cannot cover is the live tab-viewer wiring:
+
+1. **Default (untouched) sections survive an unrelated rebuild** — open a GP
+   job whose file has authored section markers (or none, in which case the
+   panel shows the writer's single default "riff"), rebuild with an unrelated
+   change (e.g. tuning), and confirm the section list is unchanged — proves
+   the dirty-flag gate (`sectionsTouched`) works, not just the backend's
+   None-sentinel.
+2. **Add a section two ways** — activate the "Secção" (🏷️) sync mode and
+   click a note: a prompt asks for a name, and a teal, full-staff-height
+   marker appears at that note. Separately, use "+ Adicionar no cursor" while
+   the recording is paused mid-song: a marker appears at the current playhead
+   without needing to land on a note.
+3. **Edit the list directly** — in the "🏷️ Secções" panel, change a marker's
+   time number and name text in place; confirm the score marker moves/renames
+   live and the list re-sorts by time. Remove one and confirm both the list
+   and the score update.
+4. **Shared across arrangements** — with Lead + Rhythm both present, add a
+   section on the Lead tab, switch to Rhythm, and confirm the SAME marker
+   shows there too (the job-level, tone_changes-style convention) — then
+   "Aplicar e reconstruir" and reopen the job to confirm it persisted on both
+   arrangements' built XML (via `/arrangements`' new `sections` field).
+5. **The "noguitar" sentinel never appears** — whatever the song, the section
+   list must never show an entry literally named "noguitar" (the writer's own
+   end-of-phrase-timeline marker, filtered out server-side).
+6. **Honest limit** — if Lead and Rhythm have very different pending
+   `tempo_scale`/anchor corrections, confirm (and don't be surprised) that a
+   shared section time can land at slightly different musical instants on
+   each — documented in `CLAUDE.md`, same accepted simplification as
+   `tone_changes`.
+
+### 7a-sexies. Batch processing (browser only, no backend change)
+
+Pure `web/index.html`/`web/app.js` — the batch modal loops the exact same
+`/gp/inspect` + `/jobs/gp` calls the single-project wizard makes, so there is
+nothing new for `pytest` to guard (same category as 7a-bis/7a-ter). Verify by
+hand:
+
+1. **Pairing by filename** — pick several GP files and several recordings
+   named to match (`song1.gp5` / `song1.mp3`, case differences and different
+   extensions both fine) plus one deliberately mismatched pair (different
+   stems) — confirm the preview list pairs the matching ones by name and
+   falls back to matching the mismatched one(s) by the order both lists were
+   chosen. Pick one extra GP file with no corresponding recording at all and
+   confirm its row reads "sem gravação — não vai ser criado" and it's
+   excluded when clicking "Criar projetos" (not silently paired wrong).
+2. **Shared fields** — fill in Banda/Álbum/Ano in the modal, submit, and
+   confirm every created job carries them (still allowing each song's own GP
+   file/audio tags to fill in title, per the existing per-job precedence).
+3. **Sequential status** — confirm each row's icon goes ⏳ → ✅ (or ❌ with an
+   error message) one at a time, not all at once, and that a failure on one
+   pair (e.g. a corrupt GP file) doesn't stop the rest of the batch.
+4. **Auto-picked tracks, fixable afterward** — open one of the created jobs
+   and confirm its warnings mention "tracks auto-selected by name heuristic"
+   (the same warning a single-track wizard job gets); if a track was picked
+   wrong, confirm "✎ Editar info" can re-map it and rebuild, exactly as for
+   any other job — batch doesn't need its own fix-up path.
 
 ### 7c. Automatic lyric detection (needs `[ml,lyrics]`)
 

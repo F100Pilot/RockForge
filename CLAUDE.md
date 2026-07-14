@@ -555,6 +555,56 @@ through the same `previewScale`+`buildTimeWarp` as the notes, so bar lines track
 pending sync edits. Bars make tempo changes and drift visible — the user can see
 exactly which measure slips against the recording and drag-correct it there.
 
+### Section editor — mark/rename song structure on the score
+
+Sections (intro/verso/refrão/solo…) used to come **only** from the GP file's
+own measure markers (`GpSection`, extracted in both parsers from a Guitar Pro
+"marker" on a measure); there was no way to add, rename, or move one without
+going back to Guitar Pro. A new **"🏷️ Secções"** panel (right below the tone
+panel) plus a **"Secção" sync mode** (🏷️, click a note to name where it starts)
+let the user edit them directly in the tab viewer, for Riff Repeater and
+navigation.
+
+**Job-level, shared across arrangements — same convention as `tone_changes`.**
+`GpJobSpec.section_overrides: list[Section] | None = None` (bundle-clock
+times, `application/gp_pipeline.py`): `None` keeps each arrangement's own
+GP-parsed sections (today's default, unchanged); a list — even empty —
+**replaces** the section markers identically on every arrangement, sorted by
+time and renumbered. Times are NOT run through each arrangement's own
+per-track warp (unlike notes/beats), exactly like `tone_changes` — an accepted
+simplification (documented, not silently assumed): if arrangements have very
+different `tempo_scale`/drift corrections, a shared section time may not land
+on the same musical instant in every chart. `celery_app.py` reconstructs it
+from `params.get("section_overrides")` (`None` vs an explicit list — the same
+tri-state as `lyrics_events`).
+
+**Surfaced via `ArrangementOut.sections`, not a new endpoint.** `GET
+/jobs/{id}/arrangements` already parses each arrangement's built XML; it now
+also reads `<sections><section>` into `SectionOut(time, name, number)`,
+**excluding** the writer's synthetic trailing `"noguitar"` entry (`writer.py`
+always appends one to mark where the phrase timeline ends — a structural
+closer, never a user-facing section). `RebuildIn.section_overrides: list[
+SectionOverrideIn] | None = None` follows the standard null-sentinel
+convention (`None` = untouched; `rebuild_job` writes `params[
+"section_overrides"]` only when not `None`).
+
+**Frontend dirty-flag, not always-send.** Unlike `tuning_midi`/`tempo_scale`
+(always sent, safe because they're always pre-filled with the live value),
+sections have a real prior default (the GP file's own markers) that an
+untouched, always-send round-trip could silently overwrite on an unrelated
+rebuild. `songSections` (state, shared across tabs) is seeded from
+`arrangements[0].sections` on job load; `sectionsTouched` only flips true once
+the user actually adds/renames/moves/removes a marker, and `applyAll()` sends
+`section_overrides: (isGpJob() && sectionsTouched) ? songSections : null` —
+so a rebuild that never touches sections leaves the GP-authored ones alone.
+Adding a marker: either the "Secção" sync mode (click a note, prompts for a
+name) or "+ Adicionar no cursor" (places one at the current playhead without
+needing to land exactly on a note); the list panel's time/name fields are
+directly editable (like the sync-anchors list), each edit re-sorting by time.
+On the score, section markers span the **full staff height** (distinct from
+the tone-change markers, which live in a band below the staff) in teal, with
+a `🏷️` label, so the song structure is visible at a glance while scrolling.
+
 **The chart is sized to the whole song, not the last note.** `showArr`'s width
 (`dur`) is the max of the last note end, the last bar/beat time, AND the
 recording length (`waveDuration`) — NOT just `max(note.time)`. A track that
@@ -792,6 +842,51 @@ post-creation in the real tone editor. Step 1 is its own form (submit = inspect,
 `/gp/inspect`); steps 2-4 share `gpJobForm` (submit = create, `/jobs/gp`). The
 shared footer nav is `setWizardStep(n)` + `validateWizardStep()`; Enter on an
 early step advances instead of creating (guarded in the submit handler).
+
+### Batch processing (`📦 Processamento em lote`)
+
+For an entire album: a second landing banner opens a batch modal
+(`#batchOverlay`) that creates several GP jobs without repeating the wizard
+per song. **Frontend-only — no new backend endpoint.** Each pair is created by
+looping the exact same two calls the single-project wizard makes
+(`POST /gp/inspect` → `POST /jobs/gp`), with the track fields left blank so
+the pipeline's existing `auto_pick_tracks` name-heuristic fallback
+(`gp_pipeline.py`, fires when every track slot is unassigned) fills in
+Lead/Rhythm — the same thing that already happens for a lone-track GP in the
+normal wizard. This keeps the batch path byte-for-byte the same code as
+creating one job by hand; nothing new to guard in `pytest` (pure
+`web/index.html`/`web/app.js`, same category as the other browser-only
+sections in `TESTING.md`).
+
+**Pairing (`pairBatchFiles`, pure, `web/app.js`).** The user picks multiple GP
+files and multiple recordings; each GP file is matched to the recording
+sharing its **filename stem** (case-insensitive, extension stripped — e.g.
+`faixa1.gp5` ↔ `FAIXA1.wav`); any GP file left unmatched pairs with a leftover
+recording **in the order both lists were chosen**, so an album where names
+don't line up still gets a pair per song as long as the counts roughly match.
+A GP file with no recording left at all shows "sem gravação — não vai ser
+criado" in the preview list and is skipped on submit, never silently paired
+with the wrong track. The preview list (`renderBatchPairs`) is the only
+confirmation step — there is no per-pair track/metadata screen (that would be
+the normal wizard, one song at a time).
+
+Submission is **sequential**, one pair at a time (not `Promise.all`), so the
+browser isn't uploading N recordings simultaneously; each pair's row updates
+its own ⏳/✅/❌ status live. Album/artist/year fields in the modal are
+**shared** across every pair (sent as the form fields on every `/jobs/gp`
+call, same precedence rule the single-project endpoint already has — form
+value beats the GP file beats the audio tags); title/artist otherwise come
+from each song's own GP metadata or audio tags, exactly as for a single job.
+
+**Honest limits:** the auto-pick heuristic is a name match ("lead"/"rhythm"
+substrings), the same heuristic the single-project wizard falls back to and
+already warns about (`"tracks auto-selected by name heuristic — confirm they
+are the right ones"` in that job's warnings) — a wrong pick on an unusually
+named track is fixed the same way as any other job: reopen it and use "✎
+Editar info" to re-map tracks, which forks a rebuild. No dedicated track
+review step exists for batch-created jobs; that's the whole point of skipping
+per-song setup, and the completeness checklist plus that pre-existing warning
+surface it rather than hiding it.
 
 The **"Estado do PSARC" checklist** (`renderCompleteness`, rendered above the
 download links on every completed job) reads completeness signals straight off

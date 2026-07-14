@@ -664,6 +664,85 @@ def test_rebuild_stores_tones_and_changes(client: TestClient, tmp_path) -> None:
     assert tones["tone_changes"][0]["time"] == 5.0
 
 
+def test_rebuild_stores_section_overrides(client: TestClient, tmp_path) -> None:
+    """The section editor's overrides (When set, even to []) are written into
+    params verbatim; the pipeline-side merge (sort + renumber + apply to every
+    arrangement) is covered end-to-end in test_gp_pipeline.py."""
+    import rockforge.interfaces.api.app as app_module
+
+    def job_params(job_id: str) -> dict:
+        with app_module._session_factory() as session:
+            return dict(session.get(app_module.Job, job_id).params or {})
+
+    job = _gp_job(client, tmp_path)
+    assert "section_overrides" not in job_params(job["id"])
+
+    rebuilt = client.post(
+        f"/jobs/{job['id']}/rebuild",
+        json={"section_overrides": [{"time": 2.0, "name": "Solo"}, {"time": 0.0, "name": "Intro"}]},
+    ).json()
+    stored = job_params(rebuilt["id"])["section_overrides"]
+    assert stored == [{"time": 2.0, "name": "Solo"}, {"time": 0.0, "name": "Intro"}]
+
+
+def test_rebuild_without_section_overrides_leaves_them_untouched(
+    client: TestClient, tmp_path
+) -> None:
+    """None (the field simply absent from the payload) must not wipe a
+    previously-set section override on an unrelated rebuild."""
+    import rockforge.interfaces.api.app as app_module
+
+    def job_params(job_id: str) -> dict:
+        with app_module._session_factory() as session:
+            return dict(session.get(app_module.Job, job_id).params or {})
+
+    job = _gp_job(client, tmp_path)
+    with_sections = client.post(
+        f"/jobs/{job['id']}/rebuild",
+        json={"section_overrides": [{"time": 1.0, "name": "Verse"}]},
+    ).json()
+    unrelated = client.post(
+        f"/jobs/{with_sections['id']}/rebuild", json={"offset_s": 2.5}
+    ).json()
+    assert job_params(unrelated["id"])["section_overrides"] == [{"time": 1.0, "name": "Verse"}]
+
+
+def test_arrangements_excludes_the_noguitar_sentinel_from_sections(
+    client: TestClient,
+) -> None:
+    """The writer's synthetic trailing "noguitar" section (marks where the
+    phrase timeline ends) is a structural closer, not a user-facing section —
+    it must never appear in the section editor's data."""
+    import rockforge.config as config
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.domain.arrangement import Arrangement, ArrangementKind, Section, SongMetadata
+    from rockforge.domain.music import Beat, TabNote, TempoMap, Tuning
+    from rockforge.infrastructure.db.models import JobStatus
+    from rockforge.infrastructure.rsxml.writer import write_arrangement_xml
+
+    job = _create_job(client)
+    bundle = config.settings.work_dir / job["id"] / "bundle"
+    beats = tuple(Beat(time=0.5 * i, measure=(i // 4 + 1) if i % 4 == 0 else -1) for i in range(8))
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="Sec", artist="T", song_length=4.0),
+        tuning=Tuning(),
+        notes=[TabNote(string=1, fret=3, time=1.0, sustain=0.5)],
+        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+        sections=[Section(name="Intro", start_time=0.0, number=1)],
+    )
+    write_arrangement_xml(arr, bundle / "arrangement_lead.xml")
+
+    with app_module._session_factory() as session:
+        db_job = session.get(app_module.Job, job["id"])
+        db_job.status = JobStatus.COMPLETED
+        db_job.bundle_dir = str(bundle)
+        session.commit()
+
+    sections = client.get(f"/jobs/{job['id']}/arrangements").json()[0]["sections"]
+    assert [s["name"] for s in sections] == ["Intro"]
+
+
 def test_completeness_fields_reflect_job_state(client: TestClient, tmp_path) -> None:
     """The 'Estado do PSARC' checklist reads has_tones / sync_edited / cover_art
     straight off JobOut — a fresh GP job has none of them; a rebuild that adds

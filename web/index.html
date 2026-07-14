@@ -461,6 +461,14 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
         </div>
         <span class="job-banner-arrow">&#8250;</span>
       </div>
+      <div class="job-banner" id="openBatchModal">
+        <div class="job-banner-icon">&#128230;</div>
+        <div class="job-banner-body">
+          <div class="job-banner-title">Processamento em lote</div>
+          <div class="job-banner-desc">Vários ficheiros Guitar Pro + gravações de uma vez — um álbum inteiro</div>
+        </div>
+        <span class="job-banner-arrow">&#8250;</span>
+      </div>
     </div>
 
     <section id="jobListCard" style="display:none">
@@ -685,6 +693,8 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
             data-tip="Alinhar por compasso: pausa a gravação no instante certo e clica numa nota — abre um popup com o número do compasso (o da nota, já escolhido). Confirma e esse compasso alinha-se ao cursor (ou ao mesmo compasso de outra pista), arrastando as notas seguintes. Ideal para várias correções ao longo da música.">📏</button>
           <button type="button" id="modeTone" class="secondary mode-btn tip" aria-label="Mudança de tom"
             data-tip="Mudança de tom: clica numa nota para trocar para um dos tons extra (amp/efeito) a partir daí. Nada a ver com sincronização — é para as mudanças de som ao longo da música.">🎸</button>
+          <button type="button" id="modeSection" class="secondary mode-btn tip" aria-label="Secção"
+            data-tip="Secção: clica numa nota para nomear onde começa uma secção (intro/verso/refrão…). Nada a ver com sincronização — é para navegação e o Riff Repeater.">🏷️</button>
           <button class="info-btn" data-info="sync-modes">ⓘ</button>
           <span id="selectionInfo" style="margin-left:.5rem"></span>
           <button type="button" id="clearSelection" class="secondary" hidden>Limpar seleção</button>
@@ -727,6 +737,16 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
             <span id="toneExtraChecks" style="display:flex;flex-wrap:wrap;gap:.5rem"></span>
           </div>
           <div id="toneChangesList" class="meta" style="margin-top:.3rem"></div>
+        </div>
+
+        <!-- Sections: song-structure markers (intro/verso/refrão…) -->
+        <div id="sectionsPanel" style="margin-top:.75rem;border-top:1px solid var(--line);padding-top:.6rem">
+          <div class="anchor-row">
+            <strong style="color:var(--text)">🏷️ Secções</strong>
+            <button type="button" id="addSectionAtCursor" class="secondary">+ Adicionar no cursor</button>
+            <button class="info-btn" data-info="sections">ⓘ</button>
+          </div>
+          <div id="sectionsList" class="meta" style="margin-top:.3rem"></div>
         </div>
 
         <div class="anchor-row" style="margin-top:.75rem">
@@ -936,6 +956,34 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
       <button type="submit" form="gpJobForm" id="wizardCreate" style="display:none">✓ Criar CDLC</button>
     </div>
     </div><!-- /#gpCreate -->
+  </div>
+</div>
+
+<!-- ══════════ Batch processing modal ══════════ -->
+<div class="modal-overlay" id="batchOverlay" hidden>
+  <div class="modal" style="max-width:720px">
+    <button type="button" class="modal-close" id="batchClose">×</button>
+    <h2>Processamento em lote <button class="info-btn" data-info="batch">ⓘ</button></h2>
+    <div class="grid" style="margin-top:.5rem">
+      <div class="field" style="flex-basis:100%"><label>Ficheiros Guitar Pro (vários)</label>
+        <div class="file-drop"><div class="file-drop-icon">&#127928;</div><span class="file-drop-text">Arrasta ou clica para escolher (vários)</span><span class="file-drop-btn">Procurar</span>
+        <input type="file" id="batchGpFiles" accept=".gp3,.gp4,.gp5,.gp" multiple></div></div>
+      <div class="field" style="flex-basis:100%"><label>Gravações (várias — o mesmo número, nomeadas como os ficheiros GP)</label>
+        <div class="file-drop"><div class="file-drop-icon">&#128190;</div><span class="file-drop-text">Arrasta ou clica para escolher (várias)</span><span class="file-drop-btn">Procurar</span>
+        <input type="file" id="batchAudioFiles" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" multiple></div></div>
+      <div class="field"><label>Banda (partilhado)</label>
+        <input type="text" id="batchArtist" placeholder="auto do GP/tags se vazio"></div>
+      <div class="field"><label>Álbum (partilhado)</label>
+        <input type="text" id="batchAlbum"></div>
+      <div class="field"><label>Ano (partilhado)</label>
+        <input type="number" id="batchYear" min="1900" max="2100" style="width:5.5rem"></div>
+    </div>
+    <p class="meta" style="margin-top:.4rem">Cada par (ficheiro GP + gravação) cria um projeto próprio, emparelhados pelo nome do ficheiro (sem extensão) — ex. <code>faixa1.gp5</code> com <code>faixa1.mp3</code> — ou pela ordem quando o nome não bate certo. As pistas Lead/Rhythm são escolhidas automaticamente (heurística pelo nome); confirma/corrige depois em "✎ Editar info" de cada projeto.</p>
+    <div id="batchPairsList" style="margin-top:.5rem"></div>
+    <div class="modal-actions">
+      <button type="button" class="secondary" id="batchClose2">Cancelar</button>
+      <button type="button" id="batchSubmit" disabled>Criar projetos</button>
+    </div>
   </div>
 </div>
 
