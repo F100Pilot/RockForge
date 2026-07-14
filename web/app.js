@@ -4352,6 +4352,18 @@ function initSync(j) {
   }
   updatePlayBtn();
   updateTransportUI();
+  // Reset the audio-source selection to the full mix SYNCHRONOUSLY, before
+  // firing the two async calls below. decodeWaveform() and loadStems() both
+  // run concurrently (neither is awaited) and loadStems() ALSO resets
+  // audioSourceName once its own fetch resolves — without this, a stale
+  // audioSourceName left over from a PREVIOUS job (e.g. "synth:Lead") could
+  // still be set when decodeWaveform() reads it, so it decodes a synthesized
+  // buffer; loadStems() then resets the dropdown back to "Mistura completa"
+  // without re-decoding, leaving the synth buffer silently playing under a
+  // selector that reads the full mix. Setting it here first closes that race.
+  audioSourceName = '';
+  const audioSourceSel = document.getElementById('audioSource');
+  if (audioSourceSel) audioSourceSel.value = '';
   decodeWaveform(j.id);
   loadStems(j.id);
 }

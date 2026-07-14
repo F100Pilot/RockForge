@@ -335,6 +335,13 @@ least Lead + Rhythm.
     ("Arrastar" mode) auto-scroll the same way when held near an edge, and
     that scrolling stops the instant you release the mouse (no runaway
     scroll after `pointerup`).
+11. **Audio source doesn't leak across jobs** (regression: "dá música
+    sintetizada, mas a seleção está em música mistura") — on job A, pick a
+    synthesized source ("`<Kind>` (sintetizada)") in "Fonte de áudio" and
+    confirm it plays. Close the job and open a DIFFERENT job B: confirm
+    "Fonte de áudio" shows "Mistura completa" AND the full recording is what
+    actually plays (not job A's leftover synthesized buffer) — the dropdown
+    and the audible source must always agree, even right after switching.
 
 ### 7a-ter. Creation wizard + "Estado do PSARC" completeness panel (browser only)
 
