@@ -872,6 +872,7 @@ async function loadArrangements(id) {
   syncAnchorsByKind = {};  // fresh pending corrections per arrangement
   tempoScaleByKind = {};
   noteOverridesByKind = {};
+  noteClipboard = [];  // avoid pasting a previous song's notes into this one
   syncAnchors = [];
   selectedTimes = new Set();
   currentArr = 0;  // reset before initSync redraws, so a stale index can't go out of range
@@ -896,6 +897,8 @@ async function loadArrangements(id) {
   showArr(0);
   document.getElementById('tabwrap').scrollLeft = 0;
   renderSectionsList();
+  updateClipboardInfo();
+  updateSelectionInfo();
   await loadLyrics(id);
   await loadTones(id);
   // Resume polling if tone detection is in progress.
@@ -1316,6 +1319,65 @@ function nearestGridChartTime(displayX) {
   }
   return best;
 }
+
+// ---- Copy/paste notes: duplicate a selected excerpt elsewhere in the score
+// (the same arrangement, or a different tab — e.g. copy a riff from Lead
+// into Rhythm) without re-entering it note by note. The clipboard is plain
+// in-memory JS state (not the OS clipboard) — session-only, like every other
+// pending-edit state in this viewer.
+let noteClipboard = [];  // [{dTime, string, fret, sustain, techniques, bend_semitones}, ...]
+
+function updateClipboardInfo() {
+  const el = document.getElementById('clipboardInfo');
+  const btn = document.getElementById('pasteNotes');
+  if (!el || !btn) return;
+  el.textContent = noteClipboard.length ? `${noteClipboard.length} nota(s) copiada(s)` : '';
+  btn.disabled = !noteClipboard.length;
+}
+
+// Copies the CURRENTLY SELECTED notes (selectedTimes, from Shift+click/
+// Ctrl+click/Excerto — the same selection "Excerto" drag already uses) from
+// this arrangement's live (pending-edits-merged) note list, normalized to
+// relative offsets from the earliest copied note so paste can re-anchor them
+// anywhere.
+function copySelectedNotes() {
+  if (!selectedTimes.size) { toast('seleciona notas primeiro (Shift+clique ou modo Excerto)', 'err'); return; }
+  const a = arrangements[currentArr];
+  if (!a) return;
+  const pendingOv = noteOverridesByKind[a.kind] || [];
+  const merged = pendingOv.length ? mergeNoteOverrides(a.notes, pendingOv) : a.notes;
+  const times = [...selectedTimes];
+  const picked = merged.filter(n => times.some(t => Math.abs(t - n.time) < 0.03));
+  if (!picked.length) { toast('nada selecionado para copiar', 'err'); return; }
+  const minTime = Math.min(...picked.map(n => n.time));
+  noteClipboard = picked.map(n => ({
+    dTime: n.time - minTime, string: n.string, fret: n.fret, sustain: n.sustain,
+    techniques: (n.techniques || []).slice(), bend_semitones: n.bend_semitones || 0,
+  }));
+  updateClipboardInfo();
+  toast(`${noteClipboard.length} nota(s) copiada(s).`, 'ok');
+}
+
+// Pastes the clipboard at the current playhead, snapped to the sync grid
+// (nearestGridChartTime) — only the anchor note snaps; the rest keep their
+// original relative spacing, so a copied riff's own rhythm is preserved.
+function pasteNotesAtCursor() {
+  if (!noteClipboard.length) { toast('nada copiado ainda', 'err'); return; }
+  if (!arrangements[currentArr]) return;
+  const anchor = nearestGridChartTime(timeToX(currentPlayheadT + viewOrigin));
+  for (const c of noteClipboard) {
+    upsertNoteOverride({
+      time: anchor + c.dTime, string: c.string, fret: c.fret, sustain: c.sustain,
+      techniques: c.techniques.slice(), bend_semitones: c.bend_semitones,
+      slide_to_fret: null, deleted: false,
+    });
+  }
+  showArr(currentArr);
+  toast(`${noteClipboard.length} nota(s) colada(s) — pendente até "Aplicar e reconstruir".`, 'ok');
+}
+
+document.getElementById('copyNotes')?.addEventListener('click', copySelectedNotes);
+document.getElementById('pasteNotes')?.addEventListener('click', pasteNotesAtCursor);
 
 function currentKind() {
   return arrangements[currentArr] ? arrangements[currentArr].kind : null;
@@ -3118,6 +3180,8 @@ function updateSelectionInfo() {
   const n = selectedTimes.size;
   info.textContent = n ? `${n} nota(s) selecionada(s) — arrasta uma para mover todas em bloco` : '';
   clearBtn.hidden = n === 0;
+  const copyBtn = document.getElementById('copyNotes');
+  if (copyBtn) copyBtn.disabled = n === 0;
 }
 
 (() => {
@@ -4045,6 +4109,10 @@ document.addEventListener('keydown', e => {
     e.preventDefault(); setZoom(zoomLevel * 1.5);
   } else if (e.key === '-' || e.key === '_') {
     e.preventDefault(); setZoom(zoomLevel / 1.5);
+  } else if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C') && isGpJob()) {
+    e.preventDefault(); copySelectedNotes();
+  } else if ((e.ctrlKey || e.metaKey) && (e.key === 'v' || e.key === 'V') && isGpJob()) {
+    e.preventDefault(); pasteNotesAtCursor();
   }
 });
 

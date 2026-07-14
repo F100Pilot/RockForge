@@ -675,6 +675,24 @@ carrying a pending edit gets a dashed cyan ring (`.note-single[data-string]`,
 added per-note so a specific note within a chord can be targeted precisely)
 so it reads as "not yet rebuilt".
 
+**Copy/paste ("📋 Copiar" / "📥 Colar no cursor", Ctrl+C/Ctrl+V).** Duplicates
+a selected excerpt elsewhere in the score — the same arrangement, or a
+*different* one (e.g. copy a riff from Lead into Rhythm), without
+re-entering it note by note. `copySelectedNotes()` reads whichever notes are
+currently in `selectedTimes` (the same selection Shift+click/Ctrl+click/
+"Excerto" already populate) from the CURRENT arrangement's live
+(`mergeNoteOverrides`-merged, so already-pending edits are copyable too) note
+list, and normalizes each to a `dTime` offset from the earliest copied note —
+`noteClipboard` is plain in-memory JS state, not the OS clipboard, so it's
+session-only (cleared on a fresh job load, to avoid pasting one song's notes
+into another). `pasteNotesAtCursor()` re-anchors the clipboard at the
+playhead: only the FIRST copied note snaps to the sync grid
+(`nearestGridChartTime`), and every other note keeps its original relative
+spacing from it, so a copied riff's own rhythm survives the paste intact.
+Each pasted note becomes an ordinary `note_overrides` upsert — no new
+backend concept, it's a client-side composition over the same primitive the
+single-note editor uses.
+
 **The chart is sized to the whole song, not the last note.** `showArr`'s width
 (`dur`) is the max of the last note end, the last bar/beat time, AND the
 recording length (`waveDuration`) — NOT just `max(note.time)`. A track that
