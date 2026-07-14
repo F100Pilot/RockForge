@@ -243,9 +243,11 @@ def generate_cdlc(job_id: str) -> None:
                     ArrangementSync,
                     GenerateFromGpUseCase,
                     GpJobSpec,
+                    NoteOverride,
                 )
                 from rockforge.domain.arrangement import Section, ToneChange
                 from rockforge.domain.arrangement import SongMetadata as Meta
+                from rockforge.domain.music import Technique
                 from rockforge.infrastructure.packaging.gear.gear_catalogue import (
                     tones_from_dicts,
                 )
@@ -299,6 +301,28 @@ def generate_cdlc(job_id: str) -> None:
                         if params.get("section_overrides") is not None
                         else None
                     ),
+                    note_overrides={
+                        kind: [
+                            NoteOverride(
+                                time=float(n["time"]),
+                                string=int(n["string"]),
+                                fret=int(n.get("fret", 0)),
+                                sustain=float(n.get("sustain", 0.0)),
+                                techniques=frozenset(
+                                    Technique(t) for t in n.get("techniques", [])
+                                ),
+                                bend_semitones=float(n.get("bend_semitones", 0.0)),
+                                slide_to_fret=(
+                                    int(n["slide_to_fret"])
+                                    if n.get("slide_to_fret") is not None
+                                    else None
+                                ),
+                                deleted=bool(n.get("deleted", False)),
+                            )
+                            for n in note_list
+                        ]
+                        for kind, note_list in (params.get("note_overrides") or {}).items()
+                    },
                     lyrics_events=(
                         events_from_dicts(params["lyrics_events"])
                         if params.get("lyrics_events")

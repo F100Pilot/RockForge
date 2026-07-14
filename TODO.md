@@ -362,22 +362,24 @@ ver `TESTING.md`.
   (dirty-flag no frontend, não um always-send). Ver `CLAUDE.md` ("Section
   editor").
 
-- [ ] **Editor de notas na partitura (adicionar notas e técnicas)**: hoje as
-  notas vêm sempre **exatas** do ficheiro Guitar Pro — a partitura só permite
-  corrigir *sincronização* (mover no tempo), nunca o *conteúdo* musical (mudar
-  um traste, adicionar uma nota nova, marcar bend/slide/hammer-on/pull-off/
-  vibrato/palm-mute numa nota existente). Objetivo: um modo de edição na
-  partitura que permita clicar numa corda/traste vazio para inserir uma nota
-  (ou um acorde), apagar uma nota, e alternar as técnicas de uma nota via um
-  pequeno menu — sem ter de voltar ao Guitar Pro para afinações finas. É uma
-  funcionalidade maior e distinta da correção de sync (que já existe e fica
-  intacta): precisa de decidir onde a edição vive (`sync_anchor_stages` não
-  serve — isto muda a nota em si, não o tempo) — provavelmente um novo
-  `note_overrides` em `GpJobSpec`, aplicado pelo `gp_pipeline` por cima do
-  parse do GP, com o mesmo padrão de precedência que `lyrics_events` já usa
-  para as letras. Também implica desenhar/editar acordes na UI (hoje só
-  mostrados, nunca criados). Mencionado como feature futura maior na secção
-  "Selecionar notas" do `CLAUDE.md`.
+- [x] **Editor de notas na partitura** (modo "Editar notas", ✏️): clicar numa
+  nota existente abre um popup para editar traste/sustain/técnicas
+  (hammer-on/pull-off/harmónico/palm mute/vibrato/tapping/slap/pop/acento) +
+  bend/slide, ou removê-la; clicar no pentagrama vazio insere uma nota nova,
+  encaixada na grelha de sincronização (`nearestGridChartTime`). Backend:
+  `GpJobSpec.note_overrides` (por arranjo, ao contrário de `tone_changes`/
+  `section_overrides` que são partilhados) — um patch `(time, string) →
+  fret/sustain/técnicas/deleted`, aplicado pelo `gp_pipeline` depois do parse
+  **e** do corte de mute techniques, para uma edição manual nunca ser
+  silenciosamente descartada. Pré-visualização no browser funde as edições
+  pendentes só visualmente (`mergeNoteOverrides`); a sincronização/reprodução
+  continuam a usar as notas construídas até um "Aplicar e reconstruir" real.
+  **Limite honesto:** uma nota só pode ser colocada dentro do mapa de tempo já
+  autorado no GP (`Arrangement.validate()` já rejeitava notas além do último
+  ebeat) — para estender a música em si continua a ser preciso acrescentar
+  compassos no Guitar Pro. Criar acordes é possível adicionando várias notas
+  ao mesmo tempo/corda-diferente uma a uma (sem um gesto dedicado
+  "criar acorde"). Ver `CLAUDE.md` ("Note editor").
 
 - [x] **Mais atalhos de teclado no visualizador**: além do espaço (play/pause),
   agora **←/→** avançam/recuam o cursor (±1s, **Shift** ±5s), **Home** vai ao

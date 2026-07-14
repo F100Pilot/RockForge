@@ -8,8 +8,9 @@ from pathlib import Path
 import guitarpro as gp
 import pytest
 
-from rockforge.application.gp_pipeline import GenerateFromGpUseCase, GpJobSpec
+from rockforge.application.gp_pipeline import GenerateFromGpUseCase, GpJobSpec, NoteOverride
 from rockforge.domain.arrangement import Section, SongMetadata, ToneChange
+from rockforge.domain.music import Technique
 from rockforge.infrastructure.packaging.dlcbuilder import DlcBuilderPackager
 
 
@@ -191,6 +192,79 @@ def test_section_overrides_none_keeps_default_gp_parsed_sections(
     )
     lead_xml = next(p for p in result.packaging.xml_paths if p.name == "arrangement_lead.xml")
     assert [name for name, _, _ in _section_rows(lead_xml)] == ["riff", "noguitar"]
+
+
+def _lead_notes(xml_path: Path) -> list[tuple[float, int, int, str]]:
+    root = ET.parse(xml_path).getroot()
+    return [
+        (float(el.get("time", "0")), int(el.get("string", "0")), int(el.get("fret", "0")),
+         el.get("hammerOn", "0"))
+        for el in root.findall("levels/level/notes/note")
+    ]
+
+
+def test_note_overrides_add_edit_and_delete_are_per_arrangement(
+    two_track_gp5: Path, tmp_path: Path
+) -> None:
+    """The note editor's overrides upsert/delete notes at (time, string), only
+    on the arrangement they're keyed to — Rhythm is untouched."""
+    base_spec = GpJobSpec(gp_path=two_track_gp5, audio_source="x.wav", lead_track=0, rhythm_track=1)
+    base_result = make_use_case().run(
+        base_spec, SongMetadata(title="Two", artist="Tracks"), tmp_path / "base"
+    )
+    lead_xml = next(p for p in base_result.packaging.xml_paths if p.name == "arrangement_lead.xml")
+    base_notes = _lead_notes(lead_xml)
+    assert len(base_notes) == 3
+    del_time, del_string, _, _ = base_notes[0]
+    edit_time, edit_string, _, _ = base_notes[1]
+
+    spec = GpJobSpec(
+        gp_path=two_track_gp5,
+        audio_source="x.wav",
+        lead_track=0,
+        rhythm_track=1,
+        note_overrides={
+            "Lead": [
+                NoteOverride(time=del_time, string=del_string, deleted=True),
+                NoteOverride(
+                    time=edit_time, string=edit_string, fret=12, sustain=0.3,
+                    techniques=frozenset({Technique.HAMMER_ON}),
+                ),
+                # A time strictly between two existing beats, on a string none
+                # of the base notes use — within the tempo map's beat range
+                # (Arrangement.validate() rejects a note past the final ebeat).
+                NoteOverride(time=2.75, string=2, fret=3, sustain=0.2),
+            ]
+        },
+    )
+    result = make_use_case().run(spec, SongMetadata(title="Two", artist="Tracks"), tmp_path / "w")
+
+    lead_xml2 = next(p for p in result.packaging.xml_paths if p.name == "arrangement_lead.xml")
+    notes = _lead_notes(lead_xml2)
+    assert len(notes) == 3  # 3 base - 1 deleted + 1 edited (same slot) + 1 added
+    assert not any(t == del_time and s == del_string for t, s, _, _ in notes)
+    edited = next(n for n in notes if n[0] == edit_time and n[1] == edit_string)
+    assert edited[2] == 12 and edited[3] == "1"
+    assert any(t == 2.75 and s == 2 and f == 3 for t, s, f, _ in notes)
+
+    # Rhythm has no note_overrides entry — its chord is unaffected.
+    rhythm_xml = next(p for p in result.packaging.xml_paths if p.name == "arrangement_rhythm.xml")
+    assert len(ET.parse(rhythm_xml).getroot().findall("levels/level/chords/chord")) == 1
+
+
+def test_note_overrides_empty_or_absent_kind_leaves_notes_untouched(
+    two_track_gp5: Path, tmp_path: Path
+) -> None:
+    spec = GpJobSpec(
+        gp_path=two_track_gp5,
+        audio_source="x.wav",
+        lead_track=0,
+        rhythm_track=1,
+        note_overrides={"Lead": []},  # present but empty — a no-op, same as absent
+    )
+    result = make_use_case().run(spec, SongMetadata(title="Two", artist="Tracks"), tmp_path / "w")
+    lead_xml = next(p for p in result.packaging.xml_paths if p.name == "arrangement_lead.xml")
+    assert len(_lead_notes(lead_xml)) == 3
 
 
 def test_gp_embedded_lyrics_surface_as_recording_clock_events(

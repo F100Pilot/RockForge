@@ -605,6 +605,76 @@ On the score, section markers span the **full staff height** (distinct from
 the tone-change markers, which live in a band below the staff) in teal, with
 a `🏷️` label, so the song structure is visible at a glance while scrolling.
 
+### Note editor — add/edit/remove notes and techniques on the score
+
+Until now the tab viewer only ever corrected *sync* (moving a note in time);
+the note's *content* — fret, sustain, techniques, bend/slide — always came
+verbatim from the GP file, with no way to fix or add a note without
+re-exporting from Guitar Pro. A new **"Editar notas" sync mode** (✏️) lets the
+user click an existing note to edit or remove it, or click empty staff space
+to insert a new one, directly in the browser.
+
+**Genuinely per-arrangement, unlike `tone_changes`/`section_overrides`.**
+`GpJobSpec.note_overrides: dict[str, list[NoteOverride]]` (`gp_pipeline.py`)
+is keyed by `ArrangementKind.value` — Lead and Rhythm have entirely different
+note content, so (unlike the job-level, shared-across-arrangements sections/
+tone-changes convention) each kind's edit list is independent; an arrangement
+absent from the dict (or with an empty list) is completely unaffected.
+`NoteOverride(time, string, fret, sustain, techniques, bend_semitones,
+slide_to_fret, deleted)` is a **patch keyed by `(time, string)`**: `deleted=
+True` removes whatever note is at that exact slot, otherwise it upserts
+(inserts if nothing was there, replaces if something was) — one primitive
+covers add/edit/delete uniformly. `_apply_note_overrides` (pure) does the
+merge; applied in `run()` **after** parsing, per-arrangement time-warp, tempo-
+scale, AND the `import_mute_techniques` strip — so a manual edit is the final
+say and is never silently stripped by that unrelated global checkbox. Times
+are bundle-clock, same convention as `tone_changes`/`section_overrides` — the
+editor places them directly on the already-warped score, no extra warp needed.
+
+**Honest limit: still bound by the song's own tempo map.** `Arrangement.
+validate()` already rejects a note past the arrangement's final ebeat
+("note at Ns beyond final ebeat Ms") — a real, pre-existing invariant, not
+new — so a note can only be added within the GP file's authored measure
+range; extending the song itself still requires adding measures in Guitar
+Pro first. Surfaced as a plain rebuild failure (`job.error`) if violated,
+same as any other pipeline error.
+
+**API**: `RebuildIn.note_overrides: dict[str, list[NoteOverrideIn]] | None =
+None` (null-sentinel convention — `None` leaves `params["note_overrides"]`
+untouched; a set dict, even `{}`, replaces it wholesale). `NoteOverrideIn`
+Field-constrains `string` (0-5) and `fret`/`slide_to_fret` (0-24) so an
+out-of-range value 422s immediately at rebuild time rather than surfacing as
+a deferred build failure.
+
+**Frontend**: `noteOverridesByKind` (state, per-kind, reset on job load like
+`syncAnchorsByKind`) needs no dirty-flag/None-sentinel gymnastics the way
+`section_overrides` does — like `tone_changes`, there's no prior non-user
+default to lose (a note edit only ever originates from the user), so the
+whole dict is simply sent every rebuild; an untouched job sends `{}`. Clicking
+an existing note (in "Editar notas" mode) opens a small floating popup
+(`#noteEditPopup`, styled like the bar-align popup) pre-filled with its
+current fret/sustain/technique checkboxes/bend/slide-to; "Guardar" upserts an
+override, "Remover nota" marks it deleted. Clicking empty staff space opens
+the same popup blank, defaulting the string from the click's Y position and
+the time from **`nearestGridChartTime`** — the nearest sync-grid point
+(`snapGridTimes()`, the same bars/beats/subdivision grid note-dragging
+already snaps to), found by forward-projecting each grid candidate to display
+X and picking the closest, rather than inverting the click position through
+the warp+tempo-scale chain (not cheaply invertible) — so a new note always
+lands on a real chart time with no new coordinate machinery.
+
+**Preview merges visually without touching sync/playback.** `mergeNoteOverrides`
+(pure, JS) is the client-side mirror of `_apply_note_overrides` — it's spliced
+into `showArr`'s note-drawing loop only (chord grouping recomputed from the
+merged set, so an edit that changes which notes are simultaneous updates the
+chord bracket/shape correctly), while `dur` sizing, drag mechanics, and
+synth/playback still read the untouched `a.notes` until an actual rebuild
+bakes the edit in — a deliberate, low-risk scope: pending note edits are
+visually accurate on the score but don't yet drive other machinery. A note
+carrying a pending edit gets a dashed cyan ring (`.note-single[data-string]`,
+added per-note so a specific note within a chord can be targeted precisely)
+so it reads as "not yet rebuilt".
+
 **The chart is sized to the whole song, not the last note.** `showArr`'s width
 (`dur`) is the max of the last note end, the last bar/beat time, AND the
 recording length (`waveDuration`) — NOT just `max(note.time)`. A track that
