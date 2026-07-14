@@ -357,9 +357,34 @@ re-clicking the active mode button deselects it to a neutral state (no mode
 highlighted, note-drag disabled, selection still works), rather than falling
 back to "Arrastar". (The older
 rubber-band "Excerto" box-select still exists but Shift+click is the primary
-path.) True note *editing* — moving a note to a different beat in the chart
-itself, not just for sync — remains a separate, larger future feature; today
-notes come exact from the GP file.
+path.) True note *editing* — moving a note to a different beat, changing its
+fret/techniques, or inserting/removing one — is a separate mode ("Editar
+notas", see "Note editor" below), no longer notes-come-exact-from-the-GP-only.
+
+**Auto-scroll during a drag/box-select (fixes "só seleciono o que está
+visível").** `#tabwrap` is a plain `overflow-x:auto` container around a
+potentially very wide SVG (a long song can be thousands of pixels), and it
+never scrolls on its own while a pointer-capture drag is in progress — so
+before this fix, the rubber-band ("Excerto") box, a single-note drag, or a
+selected-block drag could only ever reach whatever was already visible in the
+current viewport; the mouse itself is bounded by the browser window, and
+dragging to the screen edge did nothing. `handlePointerMove` (the pointermove
+body, refactored into a named function so it can be re-invoked from a second
+caller) is now also driven by a `requestAnimationFrame` loop
+(`autoScrollStep`) that runs for as long as ANY of the four gestures
+(`rubberBand`/`groupDrag`/`dragging`/`lyricDrag`) is active and the last known
+pointer position sits within `AUTO_SCROLL_EDGE_PX` (48px) of `#tabwrap`'s left
+or right edge: each frame it nudges `scrollLeft` (up to `AUTO_SCROLL_MAX_PX`,
+scaling with proximity to the very edge) and re-runs `handlePointerMove` with
+the cached last pointer position — necessary because the rubber-band box's
+x/width are SVG-local coordinates (`clientX - rect.left`), and `rect.left`
+itself shifts as the container scrolls, so the box must be recomputed even
+though the mouse hasn't moved. Stops immediately on `pointerup`/`pointercancel`
+(verified: no further `scrollLeft` change after release). Guarded manually via
+Playwright (a 4000px-wide synthetic chart, a 600px viewport, holding the
+rubber-band drag at the right edge reaches and selects a note far outside the
+initial view) — no pytest coverage (pure `web/app.js`, same category as the
+other browser-only interaction fixes in `TESTING.md`).
 
 ### Per-arrangement sync (`arrangement_sync`)
 

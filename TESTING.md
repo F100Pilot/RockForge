@@ -323,6 +323,18 @@ least Lead + Rhythm.
    that stops mid-song) and confirm the score + bar lines + waveform now extend
    to the LAST bar of the song, not just the last note. Guarded only by manual
    check (pure `web/index.html`).
+10. **Auto-scroll reaches off-screen notes** (regression: "só dá para
+    selecionar o que está visível, não dá para arrastar para o resto das
+    notas") — on a long song zoomed in enough that it doesn't fully fit the
+    viewport, activate "Excerto", start a rubber-band box near the LEFT edge
+    of the visible score, then drag toward and HOLD at the right edge of
+    `#tabwrap` (don't release) — the score must auto-scroll right while the
+    selection box keeps growing, letting you reach and select notes that were
+    off-screen at drag-start. Try the mirror case (hold at the left edge to
+    scroll left). Also confirm a single-note drag and a selected-block drag
+    ("Arrastar" mode) auto-scroll the same way when held near an edge, and
+    that scrolling stops the instant you release the mouse (no runaway
+    scroll after `pointerup`).
 
 ### 7a-ter. Creation wizard + "Estado do PSARC" completeness panel (browser only)
 
