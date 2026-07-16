@@ -43,6 +43,14 @@ ver `TESTING.md`.
   Builder falha com `FileNotFoundException` ao compilar.
 - [x] **Sync em massa** (`RebuildIn.apply_to_all`): aplicar tempo/anchors a todos
   os arranjos de uma vez (checkbox "Aplicar sync a todos").
+- [x] **Sincronização pela bateria com IA** (`/sync-from-stem`, extra `beatthis`):
+  detetor de batidas neural (Beat This!) sobre a gravação (bateria isolada quando
+  há separação, senão a mistura) — o equivalente ao MIDI do RIPX feito dentro da
+  app, sem exportar de um DAW. Deteta o início de cada compasso e alinha via o
+  mesmo `align_chart_to_midi`. Botão "🥁 Sincronizar pela bateria (IA)".
+  **Estimativa neural** (não verdade absoluta como um MIDI conferido à mão); o
+  import de MIDI continua a ser o fallback de referência. `dbn=False` (não puxa o
+  madmom, CC BY-NC-SA). Guardado por `test_sync_from_stem_*`.
 - [x] **Persistência de BPM/tempo entre separadores** de arranjo na UI.
 - [x] **Playback via Web Audio API** (não o `<audio>`): seek sample-accurate,
   sem deriva a meio da música.

@@ -1303,6 +1303,82 @@ def test_sync_from_midi_rejects_a_non_midi_upload(client, tmp_path) -> None:
     assert "Standard MIDI File" in r.json()["detail"]
 
 
+def test_sync_from_stem_maps_bars_to_detected_downbeats(client, tmp_path, monkeypatch) -> None:
+    """The neural downbeat tracker (faked) gives per-measure downbeat times; the
+    endpoint anchors each chart bar to its detected downbeat — the same
+    align_chart_to_midi machinery as the MIDI import, but detected in-app."""
+    import rockforge.infrastructure.rhythm.beatthis_adapter as bt
+
+    gp_beats = [0.5 * i for i in range(16)]  # bars (measure>0) at 0,2,4,6s
+    monkeypatch.setattr(bt, "detect_downbeats", lambda src: [0.0, 2.1, 4.3, 6.6, 9.0])
+    job = _completed_gp_job_with_beats(client, tmp_path, gp_beats)
+
+    r = client.post(f"/jobs/{job['id']}/sync-from-stem")
+    assert r.status_code == 200, r.text
+    out = r.json()
+    assert out["used_drum_stem"] is False
+    anchors = out["anchors"]
+    assert anchors[0] == [0.0, 0.0]              # the pin (defaulted)
+    assert anchors[1] == pytest.approx([2.0, 2.1])
+    assert anchors[2] == pytest.approx([4.0, 4.3])
+    assert len(out["confidences"]) == len(anchors)
+    assert out["weak_ranges"] == []
+
+
+def test_sync_from_stem_respects_the_pin(client, tmp_path, monkeypatch) -> None:
+    """With a Step-1 pin, the first anchor is the pin verbatim and the detected
+    downbeats are mapped relative to the one nearest the pinned recording time."""
+    import rockforge.infrastructure.rhythm.beatthis_adapter as bt
+
+    gp_beats = [0.5 * i for i in range(16)]
+    # An intro downbeat at 3.0 the tab doesn't cover, then the pinned bar at ~10s.
+    monkeypatch.setattr(bt, "detect_downbeats", lambda src: [3.0, 10.0, 12.2, 14.5])
+    job = _completed_gp_job_with_beats(client, tmp_path, gp_beats)
+
+    r = client.post(
+        f"/jobs/{job['id']}/sync-from-stem",
+        params={"chart_start": 2.0, "rec_start": 10.0},
+    )
+    assert r.status_code == 200, r.text
+    anchors = r.json()["anchors"]
+    assert anchors[0] == [2.0, 10.0]             # pin verbatim (nearest downbeat = 10.0)
+    assert anchors[1] == pytest.approx([4.0, 12.2])
+    assert anchors[2] == pytest.approx([6.0, 14.5])
+
+
+def test_sync_from_stem_uses_the_drum_stem_when_available(client, tmp_path, monkeypatch) -> None:
+    """Detection runs on the isolated drum stem (the cleanest beat signal) when a
+    separation exists, falling back to the full mix otherwise."""
+    import rockforge.infrastructure.rhythm.beatthis_adapter as bt
+    import rockforge.interfaces.api.app as app_module
+
+    seen: dict[str, str] = {}
+    monkeypatch.setattr(
+        bt, "detect_downbeats",
+        lambda src: (seen.__setitem__("src", str(src)), [0.0, 2.0, 4.0, 6.0])[1],
+    )
+    job = _completed_gp_job_with_beats(client, tmp_path, [0.5 * i for i in range(16)])
+
+    stem_dir = tmp_path / "dstems"
+    stem_dir.mkdir()
+    guitar = stem_dir / "guitar.wav"
+    guitar.write_bytes(b"RIFFguitarWAVE")
+    (stem_dir / "drums.wav").write_bytes(b"RIFFdrumsWAVE")
+    with app_module._session_factory() as session:
+        db_job = session.get(app_module.Job, job["id"])
+        db_job.params = {**db_job.params, "stems": {"guitar": str(guitar)}}
+        session.commit()
+
+    r = client.post(f"/jobs/{job['id']}/sync-from-stem")
+    assert r.status_code == 200 and r.json()["used_drum_stem"] is True
+    assert seen["src"] == str(stem_dir / "drums.wav")
+
+
+def test_sync_from_stem_rejects_non_gp(client: TestClient) -> None:
+    job = _create_job(client)
+    assert client.post(f"/jobs/{job['id']}/sync-from-stem").status_code == 422
+
+
 def test_auto_sync_dynamic_respects_the_pinned_first_note(
     client, tmp_path, monkeypatch
 ) -> None:
