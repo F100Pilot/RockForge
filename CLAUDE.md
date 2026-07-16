@@ -138,6 +138,28 @@ confirms over the waveform and commits via the normal rebuild; nothing is
 silently applied (honesty principle). Detection is a module-level function so
 tests monkeypatch it without librosa (`test_auto_sync_proposes_alignment`).
 
+**Beat/tempo detection runs on the isolated DRUM stem when available (`_drum_stem`
+/ `_guitar_stem` in `app.py`).** librosa's `beat_track` locks onto the wrong
+metrical level on a full mix of fast, dense music — a real case read **123 BPM
+on a genuine ~180 BPM metal song**, so BOTH `/auto-sync` (single tempo) and
+`/auto-sync-dynamic` proposed nonsense. Isolated drums are the cleanest beat
+signal, so when the user has already run "Separar instrumentos" (Demucs
+`htdemucs_6s`), the tempo-critical detection reads the drum stem instead of the
+mix — no new separation, because that 6-stem pass already writes `drums.wav` (a
+sibling of the `guitar.wav` kept in `params["stems"]`; it's only omitted from
+the playback list). `_drum_stem` derives it as that sibling; `/auto-sync` and
+`/detect-tempo` feed it to the librosa tempo functions, and `/auto-sync-dynamic`
+takes the beat GRID from the drums but the onset PHASE from the isolated
+**guitar** (`_guitar_stem`) so the chart's guitar notes match guitar attacks,
+not drum hits. Each falls back to the full mix when no separation exists, and
+the response carries `used_drum_stem` so the UI can say "🥁 medido na bateria
+isolada" vs "⚠ mistura completa — separa primeiro". No detection-function
+signatures changed (the endpoints just choose which audio path to pass).
+Guarded by `test_auto_sync_uses_the_drum_stem_when_available` /
+`test_auto_sync_dynamic_uses_drum_and_guitar_stems`. This does NOT replace
+librosa — it gives it a far cleaner input; a MIDI tempo map (`/sync-from-midi`)
+is still the ground-truth path when even isolated-drum detection isn't enough.
+
 **Pinpointing the first note (offset_s).** Because `offset_s` is *the recording
 second the first note is heard* and `audioTime()` is exactly that (the un-padded
 recording clock behind the sample-accurate Web Audio playhead), the sync panel

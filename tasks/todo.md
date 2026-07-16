@@ -3,6 +3,33 @@
 Short-lived plan/checklist for the change in progress. `TODO.md` (repo root) is
 the durable feature list; this file is the working notes for the current task.
 
+## Done: beat/tempo detection on the isolated Demucs DRUM stem
+
+Motivation: proven that librosa's beat_track fails on fast dense metal (read
+123 BPM on a genuine ~180 BPM song), breaking /auto-sync AND /auto-sync-dynamic.
+Fix: run the tempo-critical detection on an isolated drum stem (drums = the
+cleanest beat signal) instead of the full mix. We already have Demucs; the
+drums.wav is already produced by htdemucs_6s and persists on disk (sibling of
+guitar.wav), just omitted from the playback list. No new dependency.
+
+Design (no detection-function signature changes — endpoints choose the audio):
+- [x] `app.py` helpers: `_beat_audio(job)` → drums stem (sibling of the stored
+      guitar stem) if on disk, else the source; `_onset_audio(job)` → guitar
+      stem if on disk, else the source.
+- [x] `/auto-sync`: `detect_tempo_and_onset(_beat_audio)` (tempo+onset from drums).
+- [x] `/auto-sync-dynamic`: `detect_beats(_beat_audio)` (grid from drums) +
+      `detect_onsets(_onset_audio)` (guitar attacks for phase).
+- [x] `/detect-tempo`: `detect_tempo_from(_beat_audio, from_s)`.
+- [x] Surface in the responses whether drums were used (transparency), and a
+      one-line warning/hint when the full mix was used (separate first).
+- [x] Tests: with a fake guitar+drums stem on disk, the endpoint passes the
+      drums/guitar paths to the (monkeypatched) detection fns; fall back to
+      source when absent.
+- [x] Frontend: hint in the auto-sync / dynamic-sync info that separating
+      instruments first makes detection much more reliable (uses isolated drums).
+- [x] Docs: CLAUDE.md (detection-on-drums section), TESTING.md.
+- [x] Verify: ruff/mypy/pytest/node --check/eslint green.
+
 ## Done: copy/paste notes (extends the note editor)
 
 - [x] "📋 Copiar" / "📥 Colar no cursor" buttons + Ctrl+C/Ctrl+V. Frontend

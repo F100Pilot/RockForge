@@ -531,6 +531,28 @@ wiring and the visual preview:
     (the clipboard is cleared on job load, so you can't accidentally paste
     one song's notes into another).
 
+### 7b-drums. Beat/tempo detection on the isolated drum stem (needs `[ml]`)
+
+The endpoint wiring (which audio path is passed to the detection functions) is
+covered by CI (`test_auto_sync_uses_the_drum_stem_when_available`,
+`test_auto_sync_dynamic_uses_drum_and_guitar_stems`, with fake stem files).
+What CI can't cover is whether isolated drums actually improve the detection —
+verify by hand on a fast/dense song where librosa mis-reads the tempo:
+
+1. On a GP job WITHOUT separating first, run "✨ Sincronização automática" —
+   the info line should end with **"⚠ Medido na mistura completa — … Separar
+   instrumentos primeiro"**. Note the detected BPM (on a hard song it's often
+   at the wrong metrical level).
+2. Click **"Separar instrumentos"** and wait for it to finish (Demucs, minutes).
+3. Run "✨ Sincronização automática" again — now the info line should end with
+   **"🥁 Medido na bateria isolada (mais fiável)"**, and the detected BPM should
+   be more sensible (closer to the song's real tempo) than in step 1.
+4. Same for "🎯 Sincronização dinâmica": after separating, its status shows
+   "🥁 batidas da bateria isolada" and the alignment should track better.
+5. Honest limit: on some songs even isolated-drum detection isn't perfect
+   (blast beats, half/double-time feels) — the MIDI tempo-map import
+   (`/sync-from-midi`) remains the ground-truth fallback.
+
 ### 7c. Automatic lyric detection (needs `[ml,lyrics]`)
 
 1. Open a completed job → "Letras" → "Detetar letra".
