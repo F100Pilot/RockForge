@@ -226,11 +226,14 @@ def test_vocals_get_a_separate_sng_and_manifest(tmp_path: Path) -> None:
     # The .sng is a game-loadable file: magic 0x4A header, not a bare cipher.
     assert entries[instr_sng][:4] == b"\x4a\x00\x00\x00"
 
-    # A vocals manifest entry is present in the aggregated hsan.
+    # A vocals header is aggregated into the .hsan. Identify it by ArrangementName
+    # (present in every header): the .hsan is a REDUCED header subset that matches
+    # retail — it does NOT carry ArrangementType (that's an int enum, and None for
+    # vocals, only in the full per-arrangement manifest), so key off the name here.
     hsan_key = next(k for k in entries if k.endswith(".hsan"))
     hsan = json.loads(entries[hsan_key])
-    types = {e["Attributes"]["ArrangementType"] for e in hsan["Entries"].values()}
-    assert "Vocals" in types
+    names = {e["Attributes"]["ArrangementName"] for e in hsan["Entries"].values()}
+    assert "Vocals" in names
 
 
 def test_no_vocals_means_no_vocals_sng(tmp_path: Path) -> None:
