@@ -1059,6 +1059,52 @@ def test_auto_sync_proposes_alignment(client: TestClient, tmp_path, monkeypatch)
     assert out["suggested_offset_s"] == pytest.approx(2.3)
 
 
+def test_auto_sync_uses_the_drum_stem_when_available(client, tmp_path, monkeypatch) -> None:
+    """When a Demucs separation already produced a drum stem, auto-sync measures
+    the tempo on the isolated drums (the sibling drums.wav of the guitar stem),
+    not the full mix — far more reliable on dense music. The full mix is used
+    (used_drum_stem False) when no separation exists yet."""
+    import rockforge.infrastructure.rhythm.librosa_adapter as rhythm
+    import rockforge.interfaces.api.app as app_module
+
+    seen: dict[str, str] = {}
+
+    def fake_detect(src):
+        seen["path"] = str(src)
+        return (90.0, 1.0)
+
+    monkeypatch.setattr(rhythm, "detect_tempo_and_onset", fake_detect)
+    data = _make_gp5_bytes(tmp_path)
+    body = client.post(
+        "/gp/inspect", files={"file": ("song.gp5", data, "application/octet-stream")}
+    ).json()
+    job = client.post(
+        "/jobs/gp",
+        data={"gp_token": body["gp_token"], "lead_track": "0"},
+        files={"audio": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
+    ).json()
+
+    # No separation yet → full mix, used_drum_stem False.
+    r = client.post(f"/jobs/{job['id']}/auto-sync")
+    assert r.status_code == 200 and r.json()["used_drum_stem"] is False
+    assert seen["path"] == job["source"] if "source" in job else seen["path"].endswith(".wav")
+
+    # Simulate a completed separation: guitar stem in params + drums.wav sibling.
+    stem_dir = tmp_path / "stems"
+    stem_dir.mkdir()
+    guitar = stem_dir / "guitar.wav"
+    guitar.write_bytes(b"RIFFguitarWAVE")
+    (stem_dir / "drums.wav").write_bytes(b"RIFFdrumsWAVE")
+    with app_module._session_factory() as session:
+        db_job = session.get(app_module.Job, job["id"])
+        db_job.params = {**db_job.params, "stems": {"guitar": str(guitar)}}
+        session.commit()
+
+    r2 = client.post(f"/jobs/{job['id']}/auto-sync")
+    assert r2.status_code == 200 and r2.json()["used_drum_stem"] is True
+    assert seen["path"] == str(stem_dir / "drums.wav")
+
+
 def test_auto_sync_rejected_for_non_gp(client: TestClient) -> None:
     job = _create_job(client)
     r = client.post(f"/jobs/{job['id']}/auto-sync")
@@ -1130,6 +1176,40 @@ def test_auto_sync_dynamic_proposes_beat_anchors(client, tmp_path, monkeypatch) 
     # one confidence per anchor + the honesty spans field
     assert len(out["confidences"]) == len(anchors)
     assert "weak_ranges" in out
+
+
+def test_auto_sync_dynamic_uses_drum_and_guitar_stems(client, tmp_path, monkeypatch) -> None:
+    """Dynamic sync takes the beat GRID from the isolated drums and the onset
+    PHASE from the isolated guitar when a separation exists — so the tempo comes
+    from the cleanest beat signal and the chart's guitar notes match guitar
+    attacks, not drum hits."""
+    import rockforge.infrastructure.rhythm.librosa_adapter as rhythm
+    import rockforge.interfaces.api.app as app_module
+
+    seen: dict[str, str] = {}
+    monkeypatch.setattr(
+        rhythm, "detect_beats",
+        lambda src: (seen.__setitem__("beats", str(src)), (120.0, [0.5 * i for i in range(16)]))[1],
+    )
+    monkeypatch.setattr(
+        rhythm, "detect_onsets", lambda src: (seen.__setitem__("onsets", str(src)), [])[1]
+    )
+    job = _completed_gp_job_with_beats(client, tmp_path, [0.5 * i for i in range(16)])
+
+    stem_dir = tmp_path / "dstems"
+    stem_dir.mkdir()
+    guitar = stem_dir / "guitar.wav"
+    guitar.write_bytes(b"RIFFguitarWAVE")
+    (stem_dir / "drums.wav").write_bytes(b"RIFFdrumsWAVE")
+    with app_module._session_factory() as session:
+        db_job = session.get(app_module.Job, job["id"])
+        db_job.params = {**db_job.params, "stems": {"guitar": str(guitar)}}
+        session.commit()
+
+    r = client.post(f"/jobs/{job['id']}/auto-sync-dynamic")
+    assert r.status_code == 200 and r.json()["used_drum_stem"] is True
+    assert seen["beats"] == str(stem_dir / "drums.wav")
+    assert seen["onsets"] == str(guitar)
 
 
 def test_auto_sync_dynamic_rejected_for_non_gp(client: TestClient) -> None:

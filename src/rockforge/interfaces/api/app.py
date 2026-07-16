@@ -360,6 +360,10 @@ class AutoSyncOut(BaseModel):
     detected_bpm: float
     suggested_tempo_scale: float
     suggested_offset_s: float
+    # True when the tempo was measured on an isolated Demucs drum stem (far more
+    # reliable than the full mix on dense music). False = the mix was used
+    # because no separation exists yet — the UI hints to separate first.
+    used_drum_stem: bool = False
 
 
 class DynamicSyncOut(BaseModel):
@@ -380,6 +384,9 @@ class DynamicSyncOut(BaseModel):
     # Chart-time spans whose anchors are low-confidence, merged for display —
     # "a tab não bate certo com o áudio aqui" honesty ranges.
     weak_ranges: list[tuple[float, float]]
+    # True when the recording's beat grid was detected on an isolated Demucs
+    # drum stem (much more reliable than the mix). False = full mix used.
+    used_drum_stem: bool = False
 
 
 class DetectTempoIn(BaseModel):
@@ -392,6 +399,7 @@ class DetectTempoOut(BaseModel):
     gp_bpm: float
     detected_bpm: float
     suggested_factor: float  # multiply note spacing after the point by this
+    used_drum_stem: bool = False  # tempo measured on the isolated drum stem?
 
 
 class DetectTuningOut(BaseModel):
@@ -1243,6 +1251,46 @@ def import_sync_state(job_id: str, payload: SyncStateIn) -> JobOut:
         return _to_out(job)
 
 
+# --- Isolated-drum beat detection ---------------------------------------------
+# librosa's beat/tempo tracker (used by every auto-sync endpoint below) is
+# unreliable on a full mix of fast, dense music — it locks onto the wrong
+# metrical level (observed: 123 BPM read on a genuine ~180 BPM metal song),
+# which derails both the single-tempo and the dynamic sync. Isolated DRUMS are
+# by far the cleanest beat signal, so when the user has already run "Separar
+# instrumentos" (Demucs htdemucs_6s), the tempo-critical detection runs on the
+# drum stem instead of the mix. The 6-stem pass already produces drums.wav (a
+# sibling of the guitar stem we keep in params["stems"]); it's just omitted from
+# the playback list, so we can locate and reuse it with no extra separation.
+
+
+def _drum_stem(params: dict[str, Any]) -> Path | None:
+    """The isolated drum stem for beat/tempo detection, if a Demucs separation
+    already produced one for this job — else None (fall back to the full mix).
+    Derived as the sibling drums.wav of the stored guitar stem (one htdemucs_6s
+    pass writes both), so no separate bookkeeping is needed."""
+    stems = params.get("stems")
+    if not isinstance(stems, dict):
+        return None
+    guitar = stems.get("guitar")
+    if not isinstance(guitar, str) or not guitar:
+        return None
+    drums = Path(guitar).with_name("drums.wav")
+    return drums if drums.exists() else None
+
+
+def _guitar_stem(params: dict[str, Any]) -> Path | None:
+    """The isolated guitar stem, if present — used as the ONSET (phase) source
+    for dynamic sync so the chart's guitar notes match guitar attacks, not drum
+    hits. None → fall back to the full mix."""
+    stems = params.get("stems")
+    if not isinstance(stems, dict):
+        return None
+    guitar = stems.get("guitar")
+    if isinstance(guitar, str) and guitar and Path(guitar).exists():
+        return Path(guitar)
+    return None
+
+
 @app.post("/jobs/{job_id}/auto-sync", response_model=AutoSyncOut)
 def auto_sync(job_id: str) -> AutoSyncOut:
     """Detect the recording's tempo/first onset (librosa) and propose how to
@@ -1257,6 +1305,7 @@ def auto_sync(job_id: str) -> AutoSyncOut:
             raise HTTPException(422, "automatic sync only applies to Guitar Pro jobs")
         gp_path = Path(str((job.params or {}).get("gp_path", "")))
         src = Path(job.source)
+        params = dict(job.params or {})
     if not gp_path.exists():
         raise HTTPException(409, "the Guitar Pro file no longer exists on the work volume")
     if not src.exists():
@@ -1273,8 +1322,13 @@ def auto_sync(job_id: str) -> AutoSyncOut:
         ) from exc
 
     gp_bpm = float(inspect_gp(gp_path).tempo)
+    # Prefer the isolated drum stem for tempo detection — the full mix confuses
+    # librosa's metrical level on dense music. Falls back to the mix if the user
+    # hasn't separated instruments yet.
+    drums = _drum_stem(params)
+    beat_audio = drums or src
     try:
-        detected_bpm, first_onset = detect_tempo_and_onset(src)
+        detected_bpm, first_onset = detect_tempo_and_onset(beat_audio)
     except Exception as exc:  # decode/analysis failure — surface honestly
         raise HTTPException(422, f"could not analyse the recording: {exc}") from exc
     tempo_scale, offset_s = suggest_sync(gp_bpm, detected_bpm, first_onset)
@@ -1283,6 +1337,7 @@ def auto_sync(job_id: str) -> AutoSyncOut:
         detected_bpm=detected_bpm,
         suggested_tempo_scale=tempo_scale,
         suggested_offset_s=offset_s,
+        used_drum_stem=drums is not None,
     )
 
 
@@ -1317,6 +1372,7 @@ def auto_sync_dynamic(
             raise HTTPException(404, "arrangements not available")
         bundle_dir = job.bundle_dir
         src = Path(job.source)
+        params = dict(job.params or {})
     if not src.exists():
         raise HTTPException(409, "source audio no longer exists on the work volume")
 
@@ -1354,9 +1410,15 @@ def auto_sync_dynamic(
 
     from rockforge.application.gp_pipeline import align_chart_to_recording
 
+    # Beat GRID from the isolated drums (the cleanest tempo signal); onset PHASE
+    # from the isolated guitar (so the chart's guitar notes match guitar
+    # attacks, not drum hits). Both come from one htdemucs_6s pass; each falls
+    # back to the full mix when no separation exists.
+    drums = _drum_stem(params)
+    guitar = _guitar_stem(params)
     try:
-        detected_bpm, rec_beats = detect_beats(src)
-        rec_onsets = detect_onsets(src)
+        detected_bpm, rec_beats = detect_beats(drums or src)
+        rec_onsets = detect_onsets(guitar or src)
     except Exception as exc:  # decode/analysis failure — surface honestly
         raise HTTPException(422, f"could not analyse the recording: {exc}") from exc
 
@@ -1385,6 +1447,7 @@ def auto_sync_dynamic(
         anchors=anchors,
         confidences=confidences,
         weak_ranges=weak_ranges,
+        used_drum_stem=drums is not None,
     )
 
 
@@ -1477,6 +1540,7 @@ def detect_tempo(job_id: str, payload: DetectTempoIn) -> DetectTempoOut:
             raise HTTPException(422, "tempo detection only applies to Guitar Pro jobs")
         gp_path = Path(str((job.params or {}).get("gp_path", "")))
         src = Path(job.source)
+        params = dict(job.params or {})
     if not gp_path.exists():
         raise HTTPException(409, "the Guitar Pro file no longer exists on the work volume")
     if not src.exists():
@@ -1493,14 +1557,16 @@ def detect_tempo(job_id: str, payload: DetectTempoIn) -> DetectTempoOut:
         ) from exc
 
     gp_bpm = float(inspect_gp(gp_path).tempo)
+    drums = _drum_stem(params)
     try:
-        detected_bpm = detect_tempo_from(src, payload.from_s)
+        detected_bpm = detect_tempo_from(drums or src, payload.from_s)
     except Exception as exc:
         raise HTTPException(422, f"could not analyse the recording: {exc}") from exc
     return DetectTempoOut(
         gp_bpm=gp_bpm,
         detected_bpm=detected_bpm,
         suggested_factor=suggest_tempo_scale(gp_bpm, detected_bpm),
+        used_drum_stem=drums is not None,
     )
 
 

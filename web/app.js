@@ -432,11 +432,11 @@ const INFO = {
   },
   'auto-sync': {
     title: 'Sincronização automática',
-    body: '<p>Deteta o andamento e o início da gravação (como o CDLC.AI) e propõe um ajuste. Os valores ficam em pré-visualização — confirma na partitura e clica em "Aplicar e reconstruir".<br>Requer o extra <code>ml</code> (librosa). Refina depois com os modos manuais.</p>'
+    body: '<p>Deteta o andamento e o início da gravação (como o CDLC.AI) e propõe um ajuste. Os valores ficam em pré-visualização — confirma na partitura e clica em "Aplicar e reconstruir".<br><b>Dica importante:</b> se já tiveres corrido <b>"Separar instrumentos"</b>, a deteção do andamento passa a ser feita na <b>bateria isolada</b> — muito mais fiável em música rápida e densa (na mistura completa, o detetor de batidas engana-se no nível métrico). Separa primeiro para um resultado bem melhor.<br>Requer o extra <code>ml</code> (librosa). Refina depois com os modos manuais.</p>'
   },
   'auto-sync-dynamic': {
     title: 'Sincronização dinâmica (segue o andamento real)',
-    body: '<p>A sincronização automática acima aplica UM andamento médio — não chega quando o tempo da gravação varia (o problema típico das tabs de IA). Esta segue a <b>curva de andamento real</b>: usa a grelha de batidas para o tempo local, e afina cada âncora encaixando as notas da própria tab nos ataques do áudio.<br><b>Começa na primeira nota:</b> define primeiro o início no Passo 1 (ou com "🎯 Detetar 1ª nota") — a primeira âncora é exatamente esse ponto e o alinhamento aplica-se daí para a frente.<br>Substitui as correções pendentes da pista atual por esta proposta; fica em pré-visualização — vê o <b>♩BPM por compasso</b> na partitura (âmbar = alterado pelas âncoras) e confirma com "Aplicar e reconstruir".<br><b>Limite honesto:</b> secções onde as notas da tab não batem com o áudio são assinaladas com ⚠ — aí o problema é o conteúdo da tab (notas/compassos errados), que nenhuma sincronização corrige; ajusta essas partes no Guitar Pro. Requer o extra <code>ml</code> (librosa).</p>'
+    body: '<p>A sincronização automática acima aplica UM andamento médio — não chega quando o tempo da gravação varia (o problema típico das tabs de IA). Esta segue a <b>curva de andamento real</b>: usa a grelha de batidas para o tempo local, e afina cada âncora encaixando as notas da própria tab nos ataques do áudio.<br><b>Corre "Separar instrumentos" primeiro:</b> a grelha de batidas passa a vir da <b>bateria isolada</b> e os ataques da <b>guitarra isolada</b> — muito mais fiável que a mistura completa (onde o detetor de batidas se engana no andamento). Sem separação, usa a mistura e avisa-te.<br><b>Começa na primeira nota:</b> define primeiro o início no Passo 1 (ou com "🎯 Detetar 1ª nota") — a primeira âncora é exatamente esse ponto e o alinhamento aplica-se daí para a frente.<br>Substitui as correções pendentes da pista atual por esta proposta; fica em pré-visualização — vê o <b>♩BPM por compasso</b> na partitura (âmbar = alterado pelas âncoras) e confirma com "Aplicar e reconstruir".<br><b>Limite honesto:</b> secções onde as notas da tab não batem com o áudio são assinaladas com ⚠ — aí o problema é o conteúdo da tab (notas/compassos errados), que nenhuma sincronização corrige; ajusta essas partes no Guitar Pro. Requer o extra <code>ml</code> (librosa).</p>'
   },
   'sync-from-midi': {
     title: 'Importar mapa de tempo (MIDI)',
@@ -4442,6 +4442,9 @@ function setTempoLive(scale) {
       info.textContent =
         `Detetado: ${b.detected_bpm.toFixed(1)} BPM (GP ${b.gp_bpm.toFixed(0)}). ` +
         `Proposto: início ${b.suggested_offset_s.toFixed(2)}s, andamento ×${b.suggested_tempo_scale.toFixed(3)}. ` +
+        (b.used_drum_stem
+          ? '🥁 Medido na bateria isolada (mais fiável). '
+          : '⚠ Medido na mistura completa — para uma deteção mais fiável, "Separar instrumentos" primeiro. ') +
         `Confirma e carrega em "Aplicar e reconstruir".`;
       toast('Sincronização proposta — revê e aplica', 'ok');
     } catch (e) {
@@ -4517,8 +4520,11 @@ function setTempoLive(scale) {
         const spans = b.weak_ranges.map(([a2, b2]) => `${Math.round(toRec(a2))}–${Math.round(toRec(b2))}s`).join(', ');
         weakTxt = ` ⚠ A tab parece não corresponder ao áudio em: ${spans} — nenhuma sincronização corrige conteúdo; revê essas secções no Guitar Pro.`;
       }
+      const stemTxt = b.used_drum_stem
+        ? ' 🥁 batidas da bateria isolada.'
+        : ' ⚠ batidas da mistura completa — "Separar instrumentos" primeiro melhora muito a deteção.';
       info.textContent =
-        `${b.detected_bpm.toFixed(1)} BPM · ${b.anchors.length} âncoras alinhadas. ` +
+        `${b.detected_bpm.toFixed(1)} BPM · ${b.anchors.length} âncoras alinhadas.${stemTxt} ` +
         `Revê na partitura e clica em "Aplicar e reconstruir".` + weakTxt;
       toast(b.weak_ranges && b.weak_ranges.length
         ? 'Alinhamento proposto — atenção às secções assinaladas ⚠'
