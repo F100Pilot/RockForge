@@ -1527,6 +1527,115 @@ def sync_from_midi(
     )
 
 
+def _downbeat_bpm(measures: list[float]) -> float:
+    """A rough average BPM from measure-downbeat spacing, assuming 4/4 (4 beats
+    per measure). Display only — the tracker emits downbeats, not a meter, so
+    this is labelled a heuristic in the UI like the rest of the tempo detection."""
+    if len(measures) < 2:
+        return 0.0
+    span = measures[-1] - measures[0]
+    if span <= 0:
+        return 0.0
+    return round(4.0 * 60.0 * (len(measures) - 1) / span, 1)
+
+
+@app.post("/jobs/{job_id}/sync-from-stem", response_model=DynamicSyncOut)
+def sync_from_stem(
+    job_id: str,
+    arrangement: str | None = None,
+    chart_start: float | None = None,
+    rec_start: float | None = None,
+) -> DynamicSyncOut:
+    """Derive a per-measure tempo map straight from the recording with a neural
+    downbeat tracker (Beat This!) and align the chart to it — the in-app
+    equivalent of importing a RIPX MIDI, without a DAW export. Detection runs on
+    the isolated DRUM stem when a separation exists (the cleanest beat signal),
+    else the full mix. Each detected measure downbeat anchors a chart bar, pinned
+    at the user's Step-1 first note. Like every sync tool it returns a proposal
+    the tab viewer previews and the user confirms before rebuilding — never
+    applied silently.
+
+    Honest limit: a neural estimate is strong but NOT ground truth like a hand-
+    checked RIPX MIDI; if it locks onto the wrong metrical level on unusual
+    material, the MIDI import (``/sync-from-midi``) stays the fallback. Separate
+    instruments first ("Separar instrumentos") for a cleaner drum signal."""
+    import xml.etree.ElementTree as ET
+
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+        if job.source_type != "gp":
+            raise HTTPException(422, "stem sync only applies to Guitar Pro jobs")
+        if job.status is not JobStatus.COMPLETED or not job.bundle_dir:
+            raise HTTPException(404, "arrangements not available")
+        bundle_dir = job.bundle_dir
+        src = Path(job.source)
+        params = dict(job.params or {})
+    if not src.exists():
+        raise HTTPException(409, "source audio no longer exists on the work volume")
+
+    # The chart's measure-downbeat times in the built bundle timeline (same as
+    # the MIDI import): the ebeats carrying a real (1-based) measure number.
+    gp_bars: list[float] = []
+    for xml_path in sorted(Path(bundle_dir).glob("arrangement_*.xml")):
+        root = ET.parse(xml_path).getroot()
+        if root.tag != "song":  # skip the vocals XML
+            continue
+        if not arrangement or root.findtext("arrangement", "?") == arrangement:
+            gp_bars = [
+                float(eb.get("time", "0"))
+                for eb in root.findall("ebeats/ebeat")
+                if int(eb.get("measure", "-1")) > 0
+            ]
+            break
+    if len(gp_bars) < 1:
+        raise HTTPException(422, "the arrangement has no measure grid to align")
+
+    try:
+        from rockforge.infrastructure.rhythm.beatthis_adapter import detect_downbeats
+    except ImportError as exc:  # beatthis extra absent
+        raise HTTPException(
+            503,
+            "neural downbeat detection needs the 'beatthis' extra (Beat This! + torch)"
+            " — install rockforge[beatthis]",
+        ) from exc
+
+    from rockforge.application.gp_pipeline import align_chart_to_midi
+
+    # Detect on the isolated drums (cleanest beat signal) when a separation
+    # exists, else the full mix — same choice the librosa sync tools make.
+    drums = _drum_stem(params)
+    try:
+        downbeats = sorted(detect_downbeats(drums or src))
+    except Exception as exc:  # decode/analysis failure — surface honestly
+        raise HTTPException(422, f"could not analyse the recording: {exc}") from exc
+    if len(downbeats) < 2:
+        raise HTTPException(422, "the tracker found no usable measure downbeats")
+
+    cs = chart_start if chart_start is not None else gp_bars[0]
+    rs = rec_start if rec_start is not None else 0.0
+    # Unlike the MIDI (which the user trims to start at the tab's first measure),
+    # the detected downbeats span the WHOLE recording including any intro the tab
+    # doesn't transcribe. Take the pinned bar to be the detected downbeat nearest
+    # the pin (rec_start) and map from there, so measures[0] lines up with the
+    # chart's pinned bar exactly as align_chart_to_midi expects.
+    k0 = min(range(len(downbeats)), key=lambda k: abs(downbeats[k] - rs))
+    measures = downbeats[k0:]
+    if len(measures) < 2:
+        raise HTTPException(422, "not enough measure downbeats after the pinned start to align")
+    triples = align_chart_to_midi(gp_bars, measures, chart_start=cs, rec_start=rs)
+    return DynamicSyncOut(
+        detected_bpm=_downbeat_bpm(measures),
+        gp_beat_count=len(gp_bars),
+        rec_beat_count=len(measures),
+        anchors=[(c, r) for c, r, _ in triples],
+        confidences=[conf for _, _, conf in triples],
+        weak_ranges=[],
+        used_drum_stem=drums is not None,
+    )
+
+
 @app.post("/jobs/{job_id}/detect-tempo", response_model=DetectTempoOut)
 def detect_tempo(job_id: str, payload: DetectTempoIn) -> DetectTempoOut:
     """Measure the recording's tempo from ``from_s`` onward (librosa) and return a

@@ -3,6 +3,43 @@
 Short-lived plan/checklist for the change in progress. `TODO.md` (repo root) is
 the durable feature list; this file is the working notes for the current task.
 
+## Done: sync from the drum stem via a neural downbeat tracker (Beat This!)
+
+Motivation: the user's AI-generated tabs only align via a RIPX-exported MIDI
+tempo map, because librosa reads the wrong metrical level on fast/dense metal
+(184.6 BPM on a ~175 song) even on the isolated drum stem. "Create a MIDI from
+the stem" = detect downbeats with a proper neural tracker on the drum stem the
+app already separates, then feed those measure-downbeats into the SAME
+`align_chart_to_midi` path as the MIDI import — an in-app RIPX equivalent, no
+DAW export needed. The MIDI is just a format; the real lever is a better
+detector than librosa.
+
+- [x] `pyproject.toml`: new optional extra `beatthis` (CPJKU/beat_this, MIT,
+      torch-based; `dbn=False` so it does NOT pull madmom).
+- [x] `infrastructure/rhythm/beatthis_adapter.py`: module-level
+      `detect_downbeats(audio) -> list[float]` (measure-downbeat seconds), lazy
+      import, CPU by default (sidesteps the Turing/cuDNN torch crashes),
+      monkeypatchable like the librosa fns.
+- [x] `interfaces/api/app.py`: `POST /jobs/{id}/sync-from-stem` → `DynamicSyncOut`.
+      Reuses `_drum_stem(params)` (falls back to full mix), reads `gp_bars` like
+      `sync_from_midi`, trims detected downbeats so `measures[0]` = the pinned
+      bar (nearest rec_start), then `align_chart_to_midi(gp_bars, measures, …)`.
+      `used_drum_stem` in the response; 503 when beat_this absent.
+- [x] `web/index.html` + `web/app.js`: "🥁 Sincronizar pela bateria (IA)" button
+      next to the MIDI import, `wireSyncFromStem` mirroring `wireSyncFromMidi`
+      (POST, no upload; same pin + preview + "Aplicar e reconstruir"). New INFO
+      entry `sync-from-stem` (honest: neural estimate, not ground truth like the
+      RIPX MIDI; separate instruments first for a cleaner drum signal).
+- [x] Tests: `test_api.py` monkeypatching `detect_downbeats` (maps bars to
+      detected downbeats; respects the pin; uses the drum stem when present;
+      rejects non-GP). Full-mix fallback exercised by the map/pin tests (no stem).
+- [x] Docs: CLAUDE.md (new section under the sync features), TESTING.md
+      (7a-quater-bis + endpoint table), TODO.md.
+- [x] Verify: ruff/mypy/pytest(new)/node --check/eslint green. NOTE: one
+      PRE-EXISTING unrelated failure on main (`test_psarc_packer.py::
+      test_vocals_get_a_separate_sng_and_manifest`, KeyError 'ArrangementType')
+      — confirmed failing before this change via `git stash`; not touched here.
+
 ## Done: beat/tempo detection on the isolated Demucs DRUM stem
 
 Motivation: proven that librosa's beat_track fails on fast dense metal (read

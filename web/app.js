@@ -438,6 +438,10 @@ const INFO = {
     title: 'Sincronização dinâmica (segue o andamento real)',
     body: '<p>A sincronização automática acima aplica UM andamento médio — não chega quando o tempo da gravação varia (o problema típico das tabs de IA). Esta segue a <b>curva de andamento real</b>: usa a grelha de batidas para o tempo local, e afina cada âncora encaixando as notas da própria tab nos ataques do áudio.<br><b>Corre "Separar instrumentos" primeiro:</b> a grelha de batidas passa a vir da <b>bateria isolada</b> e os ataques da <b>guitarra isolada</b> — muito mais fiável que a mistura completa (onde o detetor de batidas se engana no andamento). Sem separação, usa a mistura e avisa-te.<br><b>Começa na primeira nota:</b> define primeiro o início no Passo 1 (ou com "🎯 Detetar 1ª nota") — a primeira âncora é exatamente esse ponto e o alinhamento aplica-se daí para a frente.<br>Substitui as correções pendentes da pista atual por esta proposta; fica em pré-visualização — vê o <b>♩BPM por compasso</b> na partitura (âmbar = alterado pelas âncoras) e confirma com "Aplicar e reconstruir".<br><b>Limite honesto:</b> secções onde as notas da tab não batem com o áudio são assinaladas com ⚠ — aí o problema é o conteúdo da tab (notas/compassos errados), que nenhuma sincronização corrige; ajusta essas partes no Guitar Pro. Requer o extra <code>ml</code> (librosa).</p>'
   },
+  'sync-from-stem': {
+    title: 'Sincronizar pela bateria (IA)',
+    body: '<p>O equivalente ao MIDI do RIPX, mas <b>feito dentro do RockForge</b> — sem exportares nada de um DAW. Corre um detetor de batidas <b>neural</b> (muito mais fiável que o automático normal em música rápida e densa, onde o detetor clássico se engana no nível métrico) sobre a gravação, deteta o <b>início de cada compasso</b> e alinha cada compasso da tab a esse tempo real — a mesma âncora-por-compasso do mapa de tempo MIDI.<br><b>Corre "Separar instrumentos" primeiro:</b> a deteção passa a ser feita na <b>bateria isolada</b> (o sinal de batida mais limpo); sem separação usa a mistura completa e avisa-te.<br>Respeita o <b>Passo 1</b> (fixa a 1.ª nota, o alinhamento cresce daí) e fica em pré-visualização — revê o <b>♩BPM por compasso</b> na partitura e confirma com "Aplicar e reconstruir".<br><b>Limite honesto:</b> é uma <b>estimativa neural</b>, forte mas não é verdade absoluta como um MIDI do RIPX conferido à mão — se falhar em material invulgar, importa o MIDI. Requer o extra <code>beatthis</code> (Beat This! + torch); pode demorar algum tempo.</p>'
+  },
   'sync-from-midi': {
     title: 'Importar mapa de tempo (MIDI)',
     body: '<p>Quando a sincronização automática não fica perfeita, dá-lhe a <b>verdade em vez de uma estimativa</b>: um MIDI com o andamento por compasso (exportado do RIPX ou de qualquer DAW a partir da mesma gravação). Em vez de adivinhar o tempo pelo áudio, o RockForge lê o mapa de tempo do MIDI e alinha <b>cada compasso da tab ao seu tempo real</b> — uma âncora por compasso, o "BPM por compasso".<br>Continua a respeitar o <b>Passo 1</b>: fixa a 1.ª nota e o alinhamento cresce daí. Fica em pré-visualização — revê na partitura e confirma com "Aplicar e reconstruir".<br><b>Para resultar:</b> o MIDI tem de começar no 1.º compasso da tab (corta um intro que a tab não tenha) e ter a mesma estrutura de compassos. A precisão é a da deteção do RIPX. Só formato PPQ (o normal).</p>'
@@ -4593,6 +4597,63 @@ function setTempoLive(scale) {
     } finally {
       btn.disabled = false;
       fileEl.value = '';
+    }
+  });
+})();
+
+// In-app equivalent of the RIPX MIDI import: a neural downbeat tracker (Beat
+// This!) derives a per-measure tempo map straight from the recording (the
+// isolated drum stem when available, else the full mix), and the backend anchors
+// each chart bar to its detected measure downbeat, pinned at Step 1's first note.
+// Loads the anchors as a preview exactly like the MIDI / dynamic-sync buttons,
+// for the same "Aplicar e reconstruir" confirmation.
+(function wireSyncFromStem() {
+  const btn = document.getElementById('stemSyncBtn');
+  const info = document.getElementById('stemSyncInfo');
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    if (!selectedJob) return;
+    const kind = currentKind();
+    if (!kind) return;
+    btn.disabled = true;
+    info.textContent = 'A detetar compassos na gravação (rede neural)…';
+    try {
+      // Same pin convention as the dynamic-sync / MIDI buttons: START at the
+      // confirmed first note so the detected tempo curve applies from there.
+      let pin = '';
+      const chartT = currentArrFirstNoteTime();
+      if (chartT != null) {
+        const recT = buildTimeWarp(syncAnchors)(previewScale(chartT)) - viewOrigin;
+        pin = `&chart_start=${encodeURIComponent(chartT)}&rec_start=${encodeURIComponent(Math.max(0, recT))}`;
+      }
+      const url = `/jobs/${selectedJob.id}/sync-from-stem?arrangement=${encodeURIComponent(kind)}${pin}`;
+      const r = await fetch(url, { method: 'POST' });
+      const b = await r.json();
+      if (!r.ok) { info.textContent = ''; toast(b.detail || 'erro na deteção', 'err'); return; }
+      if (!b.anchors || !b.anchors.length) {
+        info.textContent = 'Sem compassos suficientes para alinhar.';
+        toast('não foi possível alinhar', 'err');
+        return;
+      }
+      // Fresh proposal (same as the MIDI / dynamic-sync buttons): replace this
+      // tab's pending anchors with the detected set (the pin re-enters first).
+      syncAnchors.length = 0;
+      for (const [cT, rT] of b.anchors) setAnchor(previewScale(cT), rT + viewOrigin);
+      renderAnchorsList();
+      updatePendingChangesInfo();
+      showArr(currentArr);
+      const stemTxt = b.used_drum_stem
+        ? ' 🥁 medido na bateria isolada.'
+        : ' ⚠ medido na mistura completa — "Separar instrumentos" primeiro melhora a deteção.';
+      info.textContent =
+        `Bateria (IA): ${b.detected_bpm.toFixed(1)} BPM médio · ${b.anchors.length} compassos alinhados.${stemTxt} ` +
+        `Estimativa neural — revê na partitura e clica em "Aplicar e reconstruir".`;
+      toast('Sincronização pela bateria proposta — revê e aplica', 'ok');
+    } catch (e) {
+      info.textContent = '';
+      toast('falha na deteção', 'err');
+    } finally {
+      btn.disabled = false;
     }
   });
 })();

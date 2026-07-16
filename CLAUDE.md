@@ -303,6 +303,49 @@ is visible per bar before rebuilding. Honest limits: time-signature detection
 is NOT performed (deferred; librosa doesn't detect meter reliably), and
 flagged spans are best-effort interpolation — refine by ear or fix the tab.
 
+### Neural downbeat sync — the in-app RIPX-MIDI equivalent (`/sync-from-stem`)
+
+The MIDI import above is the ground-truth path, but it makes the user export a
+tempo-map MIDI from a DAW. `POST /jobs/{id}/sync-from-stem` (GP jobs, `beatthis`
+extra) does the same thing **in-app**: it runs a neural downbeat tracker
+(**"Beat This!"**, `CPJKU/beat_this`, MIT) over the recording, gets the time of
+every measure downbeat, and feeds those into the **exact same
+`align_chart_to_midi` machinery** as the MIDI import — one anchor per bar, each
+at its own real tempo. This is the answer to "can't you solve it with the stems
+instead of RIPX?": the MIDI is only a *format*; the real lever is a **better
+detector than librosa**, which locks onto the wrong metrical level on fast dense
+metal (read ~184 BPM on a genuine ~175 BPM song, even on the isolated drum
+stem). A neural tracker is far more robust there.
+
+- **Detection** (`infrastructure/rhythm/beatthis_adapter.py`,
+  `detect_downbeats(audio) -> list[float]`): lazy `beat_this` import, module-level
+  so tests monkeypatch it without torch (like the librosa functions). Runs on
+  **CPU by default** (`ROCKFORGE_BEATTHIS_DEVICE`) — the model is small and this
+  sidesteps the Turing/cuDNN native torch crashes; checkpoint via
+  `ROCKFORGE_BEATTHIS_CHECKPOINT` (default `final0`). **`dbn=False`** keeps the
+  pure-torch "minimal" post-processor: the DBN one would pull in **madmom**
+  (CC BY-NC-SA, deliberately excluded).
+- **Runs on the isolated DRUM stem** (`_drum_stem`) when a separation exists —
+  the cleanest beat signal — else the full mix, same choice the librosa sync
+  tools make; `used_drum_stem` in the response so the UI says "🥁 medido na
+  bateria isolada" vs "⚠ mistura completa".
+- **Pinning.** Unlike the MIDI (which the user trims to start at the tab's first
+  measure), the detected downbeats span the WHOLE recording including any intro
+  the tab doesn't transcribe. The endpoint takes the pinned bar to be the
+  detected downbeat **nearest `rec_start`** and maps from there, so `measures[0]`
+  lines up with the chart's pinned bar exactly as `align_chart_to_midi` expects.
+- **UI** (`web/index.html`+`web/app.js`): "🥁 Sincronizar pela bateria (IA)"
+  button next to the MIDI import; `wireSyncFromStem` mirrors `wireSyncFromMidi`
+  (POST, no upload; same pin → preview → "Aplicar e reconstruir").
+- **Honesty:** a neural estimate is strong but NOT ground truth like a
+  hand-checked RIPX MIDI — surfaced in the ⓘ and the status line. If it locks
+  onto the wrong metrical level on unusual material, the MIDI import stays the
+  fallback. Preview-only, never applied silently. `beatthis` is an optional
+  extra (torch, pinned `<2.5` to match `[lyrics]`); the endpoint 503s cleanly
+  when it's absent. Guarded by `test_sync_from_stem_*` in `test_api.py`
+  (maps bars to detected downbeats, respects the pin, uses the drum stem,
+  rejects non-GP).
+
 ### Manual drift correction (`sync_anchor_stages`)
 
 A single `offset_s` only fixes a constant lead-in; if the GP file's tempo map

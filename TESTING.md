@@ -184,6 +184,7 @@ POST   /jobs/{id}/import-sync        apply an exported sync + rebuild (202)
 POST   /jobs/{id}/auto-sync          propose (tempo_scale, offset_s)   [GP, ml extra]
 POST   /jobs/{id}/auto-sync-dynamic  propose per-beat drift anchors (real tempo curve) [GP, ml]
 POST   /jobs/{id}/sync-from-midi     propose per-bar drift anchors from a MIDI tempo map (ground truth) [GP]
+POST   /jobs/{id}/sync-from-stem     propose per-bar drift anchors from a neural downbeat tracker [GP, beatthis]
 POST   /jobs/{id}/detect-tempo       per-point tempo from a clicked instant [GP, ml]
 POST   /jobs/{id}/detect-tuning      propose cent offset               [ml extra]
 POST   /jobs/{id}/detect-lyrics      async lyric detection (202)       [ml+lyrics]
@@ -407,6 +408,31 @@ button's live wiring in the browser — check these by hand:
    weak-range warnings — it's ground truth, not an estimate; a mismatch here
    means the tab's own bar count/structure diverges from the MIDI (fix the tab
    in Guitar Pro, not the sync).
+
+### 7a-quater-bis. Neural downbeat sync (`/sync-from-stem`) — needs `beatthis`
+
+The in-app equivalent of the MIDI import: a neural downbeat tracker (Beat This!)
+derives the per-measure tempo map straight from the recording instead of a DAW
+export. CI covers the endpoint's wiring by monkeypatching `detect_downbeats`
+(`test_sync_from_stem_*` in `test_api.py`: maps bars to detected downbeats,
+respects the pin, uses the drum stem when present, rejects non-GP) — the neural
+model itself never runs in CI. Verify the real detection by hand:
+
+1. **Install the extra** — `pip install -e ".[ml,beatthis]"` (torch + Beat This!
+   from `git+https://github.com/CPJKU/beat_this.git`). Without it the endpoint
+   503s with a clear "install rockforge[beatthis]" message (confirm that too).
+2. **Separate first for the drum signal** — run "Separar instrumentos", then
+   click "🥁 Sincronizar pela bateria (IA)". Confirm the status line says
+   "🥁 medido na bateria isolada"; without a prior separation it says
+   "⚠ mistura completa" and still works (full-mix fallback).
+3. **Preview + pin** — like the MIDI button: the pending-anchors list grows to
+   one entry per bar starting at Step 1's pin, the `♩BPM` markers update (amber),
+   and nothing is written until "Aplicar e reconstruir". Preview-only.
+4. **Honest estimate** — this is a neural *estimate*, not ground truth: on the
+   fast/dense metal song where librosa failed, confirm it lands near the real
+   tempo (the whole point). If it locks onto the wrong metrical level on unusual
+   material, fall back to the RIPX MIDI import (`/sync-from-midi`) — that stays
+   the ground-truth path.
 
 ### 7a-quinquies. Section editor (browser only, no ML)
 
