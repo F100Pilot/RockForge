@@ -387,6 +387,11 @@ class DynamicSyncOut(BaseModel):
     # True when the recording's beat grid was detected on an isolated Demucs
     # drum stem (much more reliable than the mix). False = full mix used.
     used_drum_stem: bool = False
+    # Metrical-level correction applied to a detected downbeat grid (sync-from-stem
+    # only): 1.0 = none; >1 the grid was subdivided (detector was too sparse, e.g.
+    # one downbeat per 2 bars); <1 decimated (too dense). Lets the UI say a BPM
+    # correction was applied. Always 1.0 for the librosa/MIDI paths.
+    metrical_factor: float = 1.0
 
 
 class DetectTempoIn(BaseModel):
@@ -1592,7 +1597,7 @@ def sync_from_stem(
     if len(gp_bars) < 1:
         raise HTTPException(422, "the arrangement has no measure grid to align")
 
-    from rockforge.application.gp_pipeline import align_chart_to_midi
+    from rockforge.application.gp_pipeline import align_chart_to_midi, match_metrical_level
     from rockforge.infrastructure.rhythm.beatthis_adapter import detect_downbeats
 
     # Detect on the isolated drums (cleanest beat signal) when a separation
@@ -1623,6 +1628,13 @@ def sync_from_stem(
     # chart's pinned bar exactly as align_chart_to_midi expects.
     k0 = min(range(len(downbeats)), key=lambda k: abs(downbeats[k] - rs))
     measures = downbeats[k0:]
+    # Snap the detected grid to the chart's bar level: a neural tracker can lock
+    # onto the wrong metrical level (a downbeat every 2 bars, or every half bar),
+    # which otherwise compresses/stretches the whole BPM. bar_interval is the
+    # chart's median bar spacing.
+    bar_diffs = sorted(gp_bars[i + 1] - gp_bars[i] for i in range(len(gp_bars) - 1))
+    bar_interval = bar_diffs[len(bar_diffs) // 2] if bar_diffs else 0.0
+    measures, metrical_factor = match_metrical_level(measures, bar_interval)
     if len(measures) < 2:
         raise HTTPException(422, "not enough measure downbeats after the pinned start to align")
     triples = align_chart_to_midi(gp_bars, measures, chart_start=cs, rec_start=rs)
@@ -1634,6 +1646,7 @@ def sync_from_stem(
         confidences=[conf for _, _, conf in triples],
         weak_ranges=[],
         used_drum_stem=drums is not None,
+        metrical_factor=metrical_factor,
     )
 
 

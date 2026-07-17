@@ -4645,8 +4645,14 @@ function setTempoLive(scale) {
       const stemTxt = b.used_drum_stem
         ? ' 🥁 medido na bateria isolada.'
         : ' ⚠ medido na mistura completa — "Separar instrumentos" primeiro melhora a deteção.';
+      let metrTxt = '';
+      if (b.metrical_factor && Math.abs(b.metrical_factor - 1) > 0.01) {
+        metrTxt = b.metrical_factor > 1
+          ? ` 🎚️ corrigido nível métrico ×${b.metrical_factor.toFixed(0)} (o detetor marcava 1 compasso a cada ${b.metrical_factor.toFixed(0)}).`
+          : ` 🎚️ corrigido nível métrico ÷${(1 / b.metrical_factor).toFixed(0)} (o detetor marcava ${(1 / b.metrical_factor).toFixed(0)} por compasso).`;
+      }
       info.textContent =
-        `Bateria (IA): ${b.detected_bpm.toFixed(1)} BPM médio · ${b.anchors.length} compassos alinhados.${stemTxt} ` +
+        `Bateria (IA): ${b.detected_bpm.toFixed(1)} BPM médio · ${b.anchors.length} compassos alinhados.${stemTxt}${metrTxt} ` +
         `Estimativa neural — revê na partitura e clica em "Aplicar e reconstruir".`;
       toast('Sincronização pela bateria proposta — revê e aplica', 'ok');
     } catch (e) {

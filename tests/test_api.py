@@ -1374,6 +1374,24 @@ def test_sync_from_stem_uses_the_drum_stem_when_available(client, tmp_path, monk
     assert seen["src"] == str(stem_dir / "drums.wav")
 
 
+def test_sync_from_stem_corrects_a_wrong_metrical_level(client, tmp_path, monkeypatch) -> None:
+    """A detected grid at half the density (one downbeat per 2 chart bars) is
+    subdivided so the BPM isn't halved — anchors still land bar-on-downbeat."""
+    import rockforge.infrastructure.rhythm.beatthis_adapter as bt
+
+    # Chart bars at 0,2,4,6 (interval 2.0); detector marks one every 4.0s.
+    gp_beats = [0.5 * i for i in range(16)]
+    monkeypatch.setattr(bt, "detect_downbeats", lambda src: [0.0, 4.0, 8.0, 12.0])
+    job = _completed_gp_job_with_beats(client, tmp_path, gp_beats)
+
+    r = client.post(f"/jobs/{job['id']}/sync-from-stem")
+    assert r.status_code == 200, r.text
+    out = r.json()
+    assert out["metrical_factor"] == 2.0
+    assert out["anchors"][0] == [0.0, 0.0]
+    assert out["anchors"][1] == pytest.approx([2.0, 2.0])  # not [2.0, 4.0] (halved)
+
+
 def test_sync_from_stem_rejects_non_gp(client: TestClient) -> None:
     job = _create_job(client)
     assert client.post(f"/jobs/{job['id']}/sync-from-stem").status_code == 422

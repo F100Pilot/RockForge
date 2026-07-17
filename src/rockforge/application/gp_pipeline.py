@@ -342,6 +342,45 @@ def align_chart_to_midi(
     return anchors
 
 
+def match_metrical_level(downbeats: list[float], bar_interval: float) -> tuple[list[float], float]:
+    """Snap a detected downbeat grid to the chart's bar level, returning
+    ``(adjusted_downbeats, factor)``.
+
+    A neural (or any) downbeat tracker can lock onto the wrong metrical level on
+    unusual material — reporting one downbeat every 2 chart bars, or one every
+    half bar — which makes the bar↔downbeat index mapping in
+    :func:`align_chart_to_midi` compress or stretch the whole tempo (the "can't
+    get the BPM right" symptom). Compare the median detected interval to the
+    chart's median bar interval; if it is close to 2×/3× the bar (grid too
+    sparse) subdivide each detected span, and if close to ½×/⅓× (grid too dense)
+    keep every k-th downbeat, so one detected downbeat ≈ one chart bar. A grid
+    already at the right level (ratio ≈ 1) is returned unchanged (``factor``
+    1.0). ``factor`` >1 means the grid was subdivided, <1 decimated — surfaced so
+    the caller can tell the user a metrical correction was applied.
+    """
+    if len(downbeats) < 3 or bar_interval <= 0:
+        return downbeats, 1.0
+    diffs = sorted(downbeats[i + 1] - downbeats[i] for i in range(len(downbeats) - 1))
+    det = diffs[len(diffs) // 2]  # median detected downbeat interval
+    if det <= 0:
+        return downbeats, 1.0
+    ratio = det / bar_interval
+    # Grid too SPARSE (one detected downbeat spans k chart bars): subdivide.
+    for k in (2, 3):
+        if abs(ratio - k) <= 0.3:
+            out: list[float] = []
+            for i in range(len(downbeats) - 1):
+                a, b = downbeats[i], downbeats[i + 1]
+                out.extend(a + (b - a) * j / k for j in range(k))
+            out.append(downbeats[-1])
+            return out, float(k)
+    # Grid too DENSE (k detected downbeats per chart bar): keep every k-th.
+    for k in (2, 3):
+        if abs(ratio - 1.0 / k) <= 0.3 / k:
+            return downbeats[::k], 1.0 / k
+    return downbeats, 1.0
+
+
 @dataclass(frozen=True)
 class ArrangementSync:
     """Per-arrangement chart-timing overrides (tempo + drift anchors).

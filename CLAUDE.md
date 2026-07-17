@@ -343,6 +343,17 @@ stem). A neural tracker is far more robust there.
   the tab doesn't transcribe. The endpoint takes the pinned bar to be the
   detected downbeat **nearest `rec_start`** and maps from there, so `measures[0]`
   lines up with the chart's pinned bar exactly as `align_chart_to_midi` expects.
+- **Metrical-level correction** (`gp_pipeline.match_metrical_level`, pure). Even a
+  neural tracker can lock onto the wrong metrical level on unusual material —
+  reporting one downbeat every 2 chart bars, or one every half bar — which makes
+  the bar↔downbeat 1:1 index mapping compress or stretch the whole BPM (the
+  "consigo detetar mas não acerto com o BPM" symptom, the same octave error
+  librosa has). The endpoint compares the detected grid's median interval to the
+  chart's median bar interval and, when the ratio is ≈2/3 (too sparse) or ≈½/⅓
+  (too dense), subdivides/decimates the detected downbeats so one ≈ one bar. The
+  applied `metrical_factor` is returned (1.0 = none) and shown in the status
+  line ("🎚️ corrigido nível métrico"). Guarded by `test_match_metrical_level_*`
+  (pure) and `test_sync_from_stem_corrects_a_wrong_metrical_level` (endpoint).
 - **UI** (`web/index.html`+`web/app.js`): "🥁 Sincronizar pela bateria (IA)"
   button next to the MIDI import; `wireSyncFromStem` mirrors `wireSyncFromMidi`
   (POST, no upload; same pin → preview → "Aplicar e reconstruir").

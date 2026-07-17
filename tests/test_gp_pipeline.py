@@ -769,3 +769,33 @@ def test_align_to_midi_degenerate_inputs_return_no_anchors() -> None:
 
     assert align_chart_to_midi([], [1.0, 2.0], chart_start=0, rec_start=0) == []
     assert align_chart_to_midi([0.0, 2.0], [1.0], chart_start=0, rec_start=0) == []
+
+
+def test_match_metrical_level_subdivides_a_too_sparse_grid() -> None:
+    """A tracker reporting one downbeat per 2 chart bars (interval 2× the bar) is
+    subdivided so one detected downbeat ≈ one bar — the BPM-halved fix."""
+    from rockforge.application.gp_pipeline import match_metrical_level
+
+    out, factor = match_metrical_level([0.0, 2.0, 4.0, 6.0], 1.0)  # bar interval 1.0
+    assert factor == 2.0
+    assert out == [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
+
+
+def test_match_metrical_level_decimates_a_too_dense_grid() -> None:
+    """Two detected downbeats per bar (interval ½ the bar) → keep every 2nd."""
+    from rockforge.application.gp_pipeline import match_metrical_level
+
+    out, factor = match_metrical_level([0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0], 1.0)
+    assert factor == 0.5
+    assert out == [0.0, 1.0, 2.0, 3.0]
+
+
+def test_match_metrical_level_leaves_a_correct_grid_unchanged() -> None:
+    from rockforge.application.gp_pipeline import match_metrical_level
+
+    grid = [0.0, 1.0, 2.0, 3.0]
+    out, factor = match_metrical_level(grid, 1.0)
+    assert factor == 1.0 and out == grid
+    # Degenerate inputs are safe no-ops.
+    assert match_metrical_level([1.0], 1.0) == ([1.0], 1.0)
+    assert match_metrical_level([0.0, 1.0, 2.0], 0.0) == ([0.0, 1.0, 2.0], 1.0)
