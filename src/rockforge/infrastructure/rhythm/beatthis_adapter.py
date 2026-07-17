@@ -34,7 +34,9 @@ def detect_downbeats(audio: Path) -> list[float]:
     Runs on CPU by default: the model is small and this sidesteps the Turing /
     cuDNN native GPU crashes documented for the torch stack (see CLAUDE.md).
     Overridable via ``ROCKFORGE_BEATTHIS_DEVICE`` and, for the checkpoint,
-    ``ROCKFORGE_BEATTHIS_CHECKPOINT`` (default ``final0``).
+    ``ROCKFORGE_BEATTHIS_CHECKPOINT`` (default ``final0``). A shortname checkpoint
+    is downloaded from cloud.cp.jku.at on first use; if that download fails, set
+    ``ROCKFORGE_BEATTHIS_CHECKPOINT`` to a manually-downloaded local ``.ckpt``.
 
     ``dbn=False`` keeps the pure-torch "minimal" post-processor: the DBN
     post-processor would pull in madmom, whose models are CC BY-NC-SA
@@ -44,6 +46,22 @@ def detect_downbeats(audio: Path) -> list[float]:
 
     checkpoint = os.environ.get("ROCKFORGE_BEATTHIS_CHECKPOINT", "final0")
     device = os.environ.get("ROCKFORGE_BEATTHIS_DEVICE", "cpu")
-    file2beats = File2Beats(checkpoint_path=checkpoint, device=device, dbn=False)
+    try:
+        file2beats = File2Beats(checkpoint_path=checkpoint, device=device, dbn=False)
+    except Exception as exc:
+        # A shortname like "final0" is downloaded from cloud.cp.jku.at on first
+        # use (torch.hub). If that download fails (offline, firewall, transient
+        # server error) beat_this raises a terse "Could not load the checkpoint";
+        # re-raise with the manual-download fallback so the user can fix it.
+        if isinstance(checkpoint, str) and not os.path.exists(checkpoint):
+            raise RuntimeError(
+                f"could not load the Beat This! checkpoint {checkpoint!r} — on first "
+                "use it is downloaded from cloud.cp.jku.at. If that fails, download "
+                f"https://cloud.cp.jku.at/public.php/dav/files/7ik4RrBKTS273gp/{checkpoint}.ckpt "
+                "manually and set ROCKFORGE_BEATTHIS_CHECKPOINT to the saved file path."
+            ) from exc
+        raise
+    # File2Beats returns (beats, downbeats) in seconds (README usage order); take
+    # the downbeats (measure starts) as the per-measure tempo map.
     _beats, downbeats = file2beats(str(audio))
     return sorted(float(t) for t in downbeats)
