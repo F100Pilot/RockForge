@@ -1592,22 +1592,23 @@ def sync_from_stem(
     if len(gp_bars) < 1:
         raise HTTPException(422, "the arrangement has no measure grid to align")
 
-    try:
-        from rockforge.infrastructure.rhythm.beatthis_adapter import detect_downbeats
-    except ImportError as exc:  # beatthis extra absent
-        raise HTTPException(
-            503,
-            "neural downbeat detection needs the 'beatthis' extra (Beat This! + torch)"
-            " — install rockforge[beatthis]",
-        ) from exc
-
     from rockforge.application.gp_pipeline import align_chart_to_midi
+    from rockforge.infrastructure.rhythm.beatthis_adapter import detect_downbeats
 
     # Detect on the isolated drums (cleanest beat signal) when a separation
     # exists, else the full mix — same choice the librosa sync tools make.
     drums = _drum_stem(params)
     try:
         downbeats = sorted(detect_downbeats(drums or src))
+    except ImportError as exc:
+        # beat_this / torch is imported lazily INSIDE detect_downbeats, so an
+        # absent 'beatthis' extra surfaces here — map it to a clean 503 with the
+        # install hint, not the generic "could not analyse" 422 below.
+        raise HTTPException(
+            503,
+            "neural downbeat detection needs the 'beatthis' extra (Beat This! + torch)"
+            " — install rockforge[beatthis]",
+        ) from exc
     except Exception as exc:  # decode/analysis failure — surface honestly
         raise HTTPException(422, f"could not analyse the recording: {exc}") from exc
     if len(downbeats) < 2:

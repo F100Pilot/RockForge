@@ -1379,6 +1379,22 @@ def test_sync_from_stem_rejects_non_gp(client: TestClient) -> None:
     assert client.post(f"/jobs/{job['id']}/sync-from-stem").status_code == 422
 
 
+def test_sync_from_stem_503_when_beatthis_missing(client, tmp_path, monkeypatch) -> None:
+    """beat_this is imported lazily inside detect_downbeats, so an absent extra
+    must surface as a clean 503 (install hint), not the generic analysis 422."""
+    import rockforge.infrastructure.rhythm.beatthis_adapter as bt
+
+    def _missing(_src):
+        raise ImportError("No module named 'beat_this'")
+
+    monkeypatch.setattr(bt, "detect_downbeats", _missing)
+    job = _completed_gp_job_with_beats(client, tmp_path, [0.5 * i for i in range(16)])
+
+    r = client.post(f"/jobs/{job['id']}/sync-from-stem")
+    assert r.status_code == 503
+    assert "beatthis" in r.json()["detail"]
+
+
 def test_auto_sync_dynamic_respects_the_pinned_first_note(
     client, tmp_path, monkeypatch
 ) -> None:
