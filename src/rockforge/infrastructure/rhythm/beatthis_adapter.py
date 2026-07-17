@@ -104,11 +104,12 @@ def detect_downbeats(audio: Path) -> list[float]:
         # already pointed us at an explicit local file (then surface the real error).
         if not os.path.exists(checkpoint):
             raise RuntimeError(
-                f"could not load the Beat This! checkpoint {checkpoint!r} — it is "
-                "downloaded from cloud.cp.jku.at on first use. If that keeps failing, "
-                f"download https://cloud.cp.jku.at/public.php/dav/files/7ik4RrBKTS273gp/"
-                f"{checkpoint}.ckpt manually and set ROCKFORGE_BEATTHIS_CHECKPOINT to "
-                "the saved file path."
+                f"could not load the Beat This! checkpoint {checkpoint!r} "
+                f"[{type(exc).__name__}: {exc}]. It is downloaded from cloud.cp.jku.at "
+                "on first use. If that keeps failing, download "
+                f"https://cloud.cp.jku.at/public.php/dav/files/7ik4RrBKTS273gp/{checkpoint}.ckpt "
+                "manually (a browser works) and set ROCKFORGE_BEATTHIS_CHECKPOINT to the "
+                "saved file path, then restart."
             ) from exc
         raise
     # File2Beats returns (beats, downbeats) in seconds (README usage order); take
