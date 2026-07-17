@@ -23,7 +23,56 @@ like the librosa detection functions.
 from __future__ import annotations
 
 import os
+import shutil
+import urllib.request
 from pathlib import Path
+
+# A Beat This! shortname (e.g. "final0") resolves to "{_CHECKPOINT_BASE}/{name}.ckpt"
+# (CPJKU cloud, WebDAV public share). beat_this fetches it via torch.hub on first
+# use, which fails on some networks (redirects/headers on the Nextcloud link); we
+# download it ourselves with a plain redirect-following urllib GET instead.
+_CHECKPOINT_BASE = "https://cloud.cp.jku.at/public.php/dav/files/7ik4RrBKTS273gp"
+
+
+def _cache_dir() -> Path:
+    return Path(
+        os.environ.get("ROCKFORGE_BEATTHIS_CACHE")
+        or (Path.home() / ".cache" / "rockforge" / "beat_this")
+    )
+
+
+def _resolve_checkpoint(name: str) -> str:
+    """Return a local ``.ckpt`` path for ``name``.
+
+    A local file (or an explicit path) is used as-is. A bare shortname like
+    ``final0`` is downloaded once from ``_CHECKPOINT_BASE`` to the cache dir and
+    reused — a redirect-following ``urllib`` GET, more robust than torch.hub's
+    downloader which fails on some networks. Anything path-like or ending in
+    ``.ckpt`` that does not exist is left to beat_this to resolve/report.
+    """
+    if os.path.exists(name):
+        return name
+    if os.sep in name or (os.altsep and os.altsep in name) or name.endswith(".ckpt"):
+        return name  # an explicit (missing) path — let beat_this report it
+
+    cache_dir = _cache_dir()
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    dest = cache_dir / f"{name}.ckpt"
+    if dest.exists() and dest.stat().st_size > 0:
+        return str(dest)
+
+    url = f"{_CHECKPOINT_BASE}/{name}.ckpt"
+    tmp = dest.with_name(dest.name + ".part")
+    req = urllib.request.Request(url, headers={"User-Agent": "RockForge/beat_this"})
+    with urllib.request.urlopen(req, timeout=180) as resp:  # noqa: S310 (fixed https host)
+        head = resp.read(2)
+        if head[:1] == b"<":  # an HTML error/login page, not a checkpoint
+            raise RuntimeError(f"checkpoint URL returned a non-file response: {url}")
+        with open(tmp, "wb") as f:
+            f.write(head)
+            shutil.copyfileobj(resp, f)
+    os.replace(tmp, dest)
+    return str(dest)
 
 
 def detect_downbeats(audio: Path) -> list[float]:
@@ -35,8 +84,8 @@ def detect_downbeats(audio: Path) -> list[float]:
     cuDNN native GPU crashes documented for the torch stack (see CLAUDE.md).
     Overridable via ``ROCKFORGE_BEATTHIS_DEVICE`` and, for the checkpoint,
     ``ROCKFORGE_BEATTHIS_CHECKPOINT`` (default ``final0``). A shortname checkpoint
-    is downloaded from cloud.cp.jku.at on first use; if that download fails, set
-    ``ROCKFORGE_BEATTHIS_CHECKPOINT`` to a manually-downloaded local ``.ckpt``.
+    is downloaded once from cloud.cp.jku.at (by us, then cached); if even that
+    fails, set ``ROCKFORGE_BEATTHIS_CHECKPOINT`` to a manually-downloaded ``.ckpt``.
 
     ``dbn=False`` keeps the pure-torch "minimal" post-processor: the DBN
     post-processor would pull in madmom, whose models are CC BY-NC-SA
@@ -47,18 +96,19 @@ def detect_downbeats(audio: Path) -> list[float]:
     checkpoint = os.environ.get("ROCKFORGE_BEATTHIS_CHECKPOINT", "final0")
     device = os.environ.get("ROCKFORGE_BEATTHIS_DEVICE", "cpu")
     try:
-        file2beats = File2Beats(checkpoint_path=checkpoint, device=device, dbn=False)
+        local_ckpt = _resolve_checkpoint(checkpoint)
+        file2beats = File2Beats(checkpoint_path=local_ckpt, device=device, dbn=False)
     except Exception as exc:
-        # A shortname like "final0" is downloaded from cloud.cp.jku.at on first
-        # use (torch.hub). If that download fails (offline, firewall, transient
-        # server error) beat_this raises a terse "Could not load the checkpoint";
-        # re-raise with the manual-download fallback so the user can fix it.
-        if isinstance(checkpoint, str) and not os.path.exists(checkpoint):
+        # Download or load failed (offline, firewall, corrupt cache). Re-raise
+        # with the manual-download fallback so the user can fix it, unless they
+        # already pointed us at an explicit local file (then surface the real error).
+        if not os.path.exists(checkpoint):
             raise RuntimeError(
-                f"could not load the Beat This! checkpoint {checkpoint!r} — on first "
-                "use it is downloaded from cloud.cp.jku.at. If that fails, download "
-                f"https://cloud.cp.jku.at/public.php/dav/files/7ik4RrBKTS273gp/{checkpoint}.ckpt "
-                "manually and set ROCKFORGE_BEATTHIS_CHECKPOINT to the saved file path."
+                f"could not load the Beat This! checkpoint {checkpoint!r} — it is "
+                "downloaded from cloud.cp.jku.at on first use. If that keeps failing, "
+                f"download https://cloud.cp.jku.at/public.php/dav/files/7ik4RrBKTS273gp/"
+                f"{checkpoint}.ckpt manually and set ROCKFORGE_BEATTHIS_CHECKPOINT to "
+                "the saved file path."
             ) from exc
         raise
     # File2Beats returns (beats, downbeats) in seconds (README usage order); take

@@ -325,6 +325,15 @@ stem). A neural tracker is far more robust there.
   `ROCKFORGE_BEATTHIS_CHECKPOINT` (default `final0`). **`dbn=False`** keeps the
   pure-torch "minimal" post-processor: the DBN one would pull in **madmom**
   (CC BY-NC-SA, deliberately excluded).
+  **The checkpoint is downloaded by RockForge itself** (`_resolve_checkpoint`:
+  a redirect-following `urllib` GET to `cloud.cp.jku.at`, cached under
+  `ROCKFORGE_BEATTHIS_CACHE` or `~/.cache/rockforge/beat_this`), NOT via
+  `torch.hub` — whose downloader fails on some networks against the JKU Nextcloud
+  WebDAV link, producing the terse "Could not load the checkpoint" the user hit.
+  An HTML/login response is rejected (not cached as a corrupt `.ckpt`); on any
+  failure the endpoint's error names the manual fallback (download the `.ckpt`
+  and point `ROCKFORGE_BEATTHIS_CHECKPOINT` at it). Guarded by
+  `test_beatthis_adapter.py`.
 - **Runs on the isolated DRUM stem** (`_drum_stem`) when a separation exists —
   the cleanest beat signal — else the full mix, same choice the librosa sync
   tools make; `used_drum_stem` in the response so the UI says "🥁 medido na
