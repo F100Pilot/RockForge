@@ -4645,15 +4645,28 @@ function setTempoLive(scale) {
       const stemTxt = b.used_drum_stem
         ? ' 🥁 medido na bateria isolada.'
         : ' ⚠ medido na mistura completa — "Separar instrumentos" primeiro melhora a deteção.';
-      let metrTxt = '';
-      if (b.metrical_factor && Math.abs(b.metrical_factor - 1) > 0.01) {
-        metrTxt = b.metrical_factor > 1
-          ? ` 🎚️ corrigido nível métrico ×${b.metrical_factor.toFixed(0)} (o detetor marcava 1 compasso a cada ${b.metrical_factor.toFixed(0)}).`
-          : ` 🎚️ corrigido nível métrico ÷${(1 / b.metrical_factor).toFixed(0)} (o detetor marcava ${(1 / b.metrical_factor).toFixed(0)} por compasso).`;
+      // Structure-mismatch spans (>=3 consecutive tab bars with no matching
+      // downbeat) — the tab's bars don't correspond to the recording there.
+      let weakTxt = '';
+      if (b.weak_ranges && b.weak_ranges.length) {
+        const A = b.anchors;
+        const toRec = t => {
+          if (!A.length) return t;
+          if (t <= A[0][0]) return A[0][1];
+          for (let i = 0; i + 1 < A.length; i++) {
+            if (t <= A[i + 1][0]) {
+              const f = (t - A[i][0]) / (A[i + 1][0] - A[i][0] || 1);
+              return A[i][1] + f * (A[i + 1][1] - A[i][1]);
+            }
+          }
+          return A[A.length - 1][1];
+        };
+        const spans = b.weak_ranges.map(([a2, b2]) => `${Math.round(toRec(a2))}–${Math.round(toRec(b2))}s`).join(', ');
+        weakTxt = ` ⚠ A estrutura da tab não corresponde à gravação em: ${spans} — corrige esses compassos no Guitar Pro.`;
       }
       info.textContent =
-        `Bateria (IA): ${b.detected_bpm.toFixed(1)} BPM médio · ${b.anchors.length} compassos alinhados.${stemTxt}${metrTxt} ` +
-        `Estimativa neural — revê na partitura e clica em "Aplicar e reconstruir".`;
+        `Bateria (IA): ${b.detected_bpm.toFixed(1)} BPM médio · ${b.anchors.length} compassos alinhados.${stemTxt} ` +
+        `Estimativa neural — revê na partitura e clica em "Aplicar e reconstruir".${weakTxt}`;
       toast('Sincronização pela bateria proposta — revê e aplica', 'ok');
     } catch (e) {
       info.textContent = '';

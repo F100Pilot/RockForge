@@ -387,11 +387,6 @@ class DynamicSyncOut(BaseModel):
     # True when the recording's beat grid was detected on an isolated Demucs
     # drum stem (much more reliable than the mix). False = full mix used.
     used_drum_stem: bool = False
-    # Metrical-level correction applied to a detected downbeat grid (sync-from-stem
-    # only): 1.0 = none; >1 the grid was subdivided (detector was too sparse, e.g.
-    # one downbeat per 2 bars); <1 decimated (too dense). Lets the UI say a BPM
-    # correction was applied. Always 1.0 for the librosa/MIDI paths.
-    metrical_factor: float = 1.0
 
 
 class DetectTempoIn(BaseModel):
@@ -1597,7 +1592,7 @@ def sync_from_stem(
     if len(gp_bars) < 1:
         raise HTTPException(422, "the arrangement has no measure grid to align")
 
-    from rockforge.application.gp_pipeline import align_chart_to_midi, match_metrical_level
+    from rockforge.application.gp_pipeline import align_bars_to_downbeats
     from rockforge.infrastructure.rhythm.beatthis_adapter import detect_downbeats
 
     # Detect on the isolated drums (cleanest beat signal) when a separation
@@ -1628,25 +1623,24 @@ def sync_from_stem(
     # chart's pinned bar exactly as align_chart_to_midi expects.
     k0 = min(range(len(downbeats)), key=lambda k: abs(downbeats[k] - rs))
     measures = downbeats[k0:]
-    # Snap the detected grid to the chart's bar level: a neural tracker can lock
-    # onto the wrong metrical level (a downbeat every 2 bars, or every half bar),
-    # which otherwise compresses/stretches the whole BPM. bar_interval is the
-    # chart's median bar spacing.
-    bar_diffs = sorted(gp_bars[i + 1] - gp_bars[i] for i in range(len(gp_bars) - 1))
-    bar_interval = bar_diffs[len(bar_diffs) // 2] if bar_diffs else 0.0
-    measures, metrical_factor = match_metrical_level(measures, bar_interval)
     if len(measures) < 2:
         raise HTTPException(422, "not enough measure downbeats after the pinned start to align")
-    triples = align_chart_to_midi(gp_bars, measures, chart_start=cs, rec_start=rs)
+    # Align by TIME correspondence, not bar-index: an AI/DAW tab is often notated
+    # with a different measure/meter structure than the drums (e.g. many 2/4 bars
+    # where the drums read 4/4), so mapping bar N -> downbeat N drifts wildly.
+    # align_bars_to_downbeats snaps each bar to the nearest real downbeat and
+    # skips the extra bars, following the recording's real tempo curve.
+    triples, weak_ranges = align_bars_to_downbeats(
+        gp_bars, measures, chart_start=cs, rec_start=rs
+    )
     return DynamicSyncOut(
         detected_bpm=_downbeat_bpm(measures),
         gp_beat_count=len(gp_bars),
         rec_beat_count=len(measures),
         anchors=[(c, r) for c, r, _ in triples],
         confidences=[conf for _, _, conf in triples],
-        weak_ranges=[],
+        weak_ranges=weak_ranges,
         used_drum_stem=drums is not None,
-        metrical_factor=metrical_factor,
     )
 
 

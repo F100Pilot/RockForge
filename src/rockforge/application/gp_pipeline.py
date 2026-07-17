@@ -19,6 +19,7 @@ shortfall as silence so there is always room — see MIN_LEAD_S.
 
 from __future__ import annotations
 
+import bisect
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -342,43 +343,66 @@ def align_chart_to_midi(
     return anchors
 
 
-def match_metrical_level(downbeats: list[float], bar_interval: float) -> tuple[list[float], float]:
-    """Snap a detected downbeat grid to the chart's bar level, returning
-    ``(adjusted_downbeats, factor)``.
+def align_bars_to_downbeats(
+    bars: list[float],
+    downbeats: list[float],
+    *,
+    chart_start: float,
+    rec_start: float,
+) -> tuple[list[tuple[float, float, float]], list[tuple[float, float]]]:
+    """Align a chart's measure downbeats to a detected/recorded downbeat grid by
+    TIME correspondence (predict + snap) — tolerant of a DIFFERENT measure/meter
+    structure, unlike the 1:1 index mapping of :func:`align_chart_to_midi`.
 
-    A neural (or any) downbeat tracker can lock onto the wrong metrical level on
-    unusual material — reporting one downbeat every 2 chart bars, or one every
-    half bar — which makes the bar↔downbeat index mapping in
-    :func:`align_chart_to_midi` compress or stretch the whole tempo (the "can't
-    get the BPM right" symptom). Compare the median detected interval to the
-    chart's median bar interval; if it is close to 2×/3× the bar (grid too
-    sparse) subdivide each detected span, and if close to ½×/⅓× (grid too dense)
-    keep every k-th downbeat, so one detected downbeat ≈ one chart bar. A grid
-    already at the right level (ratio ≈ 1) is returned unchanged (``factor``
-    1.0). ``factor`` >1 means the grid was subdivided, <1 decimated — surfaced so
-    the caller can tell the user a metrical correction was applied.
+    Many AI/DAW tabs notate a song with a different bar structure than a drum
+    tracker (or a DAW) reads — e.g. a lot of 2/4 bars where the drums read a
+    steady 4/4 — so tab bar N does NOT correspond to detected downbeat N and the
+    index mapping drifts wildly (a real case measured +58 s of error by bar 113).
+    Here each tab bar (after the pin) is PREDICTED into the recording at the
+    global tempo ratio and SNAPPED to the nearest detected downbeat within a
+    window, with a monotonic guard keeping each downbeat used once: where the tab
+    has more bars than the recording has measures, the extra (e.g. 2/4) bars find
+    no free downbeat and are skipped, riding the interpolation between the anchors
+    that did match. The result follows the recording's real (locally varying)
+    tempo instead of one average.
+
+    Returns ``(anchors, weak_spans)``: ``anchors`` are ``(chart, recording, 1.0)``
+    triples (the pin first); ``weak_spans`` are chart-time ranges of >= 3
+    consecutive UNMATCHED bars — a genuine structure mismatch (wrong/missing bars
+    in the tab), distinct from the odd single skipped odd-meter bar.
     """
-    if len(downbeats) < 3 or bar_interval <= 0:
-        return downbeats, 1.0
-    diffs = sorted(downbeats[i + 1] - downbeats[i] for i in range(len(downbeats) - 1))
-    det = diffs[len(diffs) // 2]  # median detected downbeat interval
-    if det <= 0:
-        return downbeats, 1.0
-    ratio = det / bar_interval
-    # Grid too SPARSE (one detected downbeat spans k chart bars): subdivide.
-    for k in (2, 3):
-        if abs(ratio - k) <= 0.3:
-            out: list[float] = []
-            for i in range(len(downbeats) - 1):
-                a, b = downbeats[i], downbeats[i + 1]
-                out.extend(a + (b - a) * j / k for j in range(k))
-            out.append(downbeats[-1])
-            return out, float(k)
-    # Grid too DENSE (k detected downbeats per chart bar): keep every k-th.
-    for k in (2, 3):
-        if abs(ratio - 1.0 / k) <= 0.3 / k:
-            return downbeats[::k], 1.0 / k
-    return downbeats, 1.0
+    bars = sorted(b for b in bars if b >= chart_start - 1e-9)
+    db = sorted(downbeats)
+    if len(bars) < 2 or len(db) < 2:
+        return [(chart_start, rec_start, 1.0)], []
+    span_c = bars[-1] - chart_start
+    ratio = ((db[-1] - rec_start) / span_c) if span_c > 1e-9 else 1.0
+    med = sorted(db[i + 1] - db[i] for i in range(len(db) - 1))[len(db) // 2]
+    win = 0.6 * med
+
+    anchors: list[tuple[float, float, float]] = [(chart_start, rec_start, 1.0)]
+    weak_spans: list[tuple[float, float]] = []
+    skip_run: list[float] = []
+
+    def _flush() -> None:
+        if len(skip_run) >= 3:
+            weak_spans.append((skip_run[0], skip_run[-1]))
+        skip_run.clear()
+
+    for c in bars:
+        if c <= chart_start + 1e-9:
+            continue
+        pred = rec_start + (c - chart_start) * ratio
+        lo = bisect.bisect_left(db, pred)
+        cand = [db[i] for i in (lo, lo - 1) if 0 <= i < len(db)]
+        d = min(cand, key=lambda x: abs(x - pred))
+        if abs(d - pred) <= win and c > anchors[-1][0] + 1e-6 and d > anchors[-1][1] + 1e-6:
+            anchors.append((c, d, 1.0))
+            _flush()
+        else:
+            skip_run.append(c)
+    _flush()
+    return anchors, weak_spans
 
 
 @dataclass(frozen=True)

@@ -1305,12 +1305,12 @@ def test_sync_from_midi_rejects_a_non_midi_upload(client, tmp_path) -> None:
 
 def test_sync_from_stem_maps_bars_to_detected_downbeats(client, tmp_path, monkeypatch) -> None:
     """The neural downbeat tracker (faked) gives per-measure downbeat times; the
-    endpoint anchors each chart bar to its detected downbeat — the same
-    align_chart_to_midi machinery as the MIDI import, but detected in-app."""
+    endpoint anchors each chart bar to its nearest detected downbeat by time
+    correspondence, following the recording's real (slightly slower) tempo."""
     import rockforge.infrastructure.rhythm.beatthis_adapter as bt
 
     gp_beats = [0.5 * i for i in range(16)]  # bars (measure>0) at 0,2,4,6s
-    monkeypatch.setattr(bt, "detect_downbeats", lambda src: [0.0, 2.1, 4.3, 6.6, 9.0])
+    monkeypatch.setattr(bt, "detect_downbeats", lambda src: [0.0, 2.1, 4.3, 6.6])
     job = _completed_gp_job_with_beats(client, tmp_path, gp_beats)
 
     r = client.post(f"/jobs/{job['id']}/sync-from-stem")
@@ -1374,22 +1374,25 @@ def test_sync_from_stem_uses_the_drum_stem_when_available(client, tmp_path, monk
     assert seen["src"] == str(stem_dir / "drums.wav")
 
 
-def test_sync_from_stem_corrects_a_wrong_metrical_level(client, tmp_path, monkeypatch) -> None:
-    """A detected grid at half the density (one downbeat per 2 chart bars) is
-    subdivided so the BPM isn't halved — anchors still land bar-on-downbeat."""
+def test_sync_from_stem_aligns_by_time_not_bar_index(client, tmp_path, monkeypatch) -> None:
+    """The stem sync snaps each bar to the nearest REAL detected downbeat (time
+    correspondence): a tab whose bar structure is denser than the recording's
+    measures has its extra bars skipped instead of mis-mapped by index."""
     import rockforge.infrastructure.rhythm.beatthis_adapter as bt
 
-    # Chart bars at 0,2,4,6 (interval 2.0); detector marks one every 4.0s.
-    gp_beats = [0.5 * i for i in range(16)]
-    monkeypatch.setattr(bt, "detect_downbeats", lambda src: [0.0, 4.0, 8.0, 12.0])
+    gp_beats = [0.5 * i for i in range(16)]  # bars at 0,2,4,6
+    # The recording has FEWER downbeats than the tab has bars, drifting late.
+    monkeypatch.setattr(bt, "detect_downbeats", lambda src: [0.0, 3.1, 6.3])
     job = _completed_gp_job_with_beats(client, tmp_path, gp_beats)
 
     r = client.post(f"/jobs/{job['id']}/sync-from-stem")
     assert r.status_code == 200, r.text
-    out = r.json()
-    assert out["metrical_factor"] == 2.0
-    assert out["anchors"][0] == [0.0, 0.0]
-    assert out["anchors"][1] == pytest.approx([2.0, 2.0])  # not [2.0, 4.0] (halved)
+    anchors = r.json()["anchors"]
+    assert anchors[0] == [0.0, 0.0]
+    recs = [rc for _c, rc in anchors]
+    assert recs == sorted(recs)  # strictly monotonic
+    # every anchor lands on a real detected downbeat, never a wrong in-between one
+    assert all(any(abs(rc - d) < 1e-6 for d in (0.0, 3.1, 6.3)) for rc in recs)
 
 
 def test_sync_from_stem_rejects_non_gp(client: TestClient) -> None:

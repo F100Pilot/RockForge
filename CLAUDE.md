@@ -341,19 +341,28 @@ stem). A neural tracker is far more robust there.
 - **Pinning.** Unlike the MIDI (which the user trims to start at the tab's first
   measure), the detected downbeats span the WHOLE recording including any intro
   the tab doesn't transcribe. The endpoint takes the pinned bar to be the
-  detected downbeat **nearest `rec_start`** and maps from there, so `measures[0]`
-  lines up with the chart's pinned bar exactly as `align_chart_to_midi` expects.
-- **Metrical-level correction** (`gp_pipeline.match_metrical_level`, pure). Even a
-  neural tracker can lock onto the wrong metrical level on unusual material —
-  reporting one downbeat every 2 chart bars, or one every half bar — which makes
-  the bar↔downbeat 1:1 index mapping compress or stretch the whole BPM (the
-  "consigo detetar mas não acerto com o BPM" symptom, the same octave error
-  librosa has). The endpoint compares the detected grid's median interval to the
-  chart's median bar interval and, when the ratio is ≈2/3 (too sparse) or ≈½/⅓
-  (too dense), subdivides/decimates the detected downbeats so one ≈ one bar. The
-  applied `metrical_factor` is returned (1.0 = none) and shown in the status
-  line ("🎚️ corrigido nível métrico"). Guarded by `test_match_metrical_level_*`
-  (pure) and `test_sync_from_stem_corrects_a_wrong_metrical_level` (endpoint).
+  detected downbeat **nearest `rec_start`** and maps from there.
+- **Alignment is by TIME correspondence, not bar index** (`gp_pipeline.
+  align_bars_to_downbeats`, pure — the crucial fix). An AI/DAW tab is frequently
+  **notated with a different measure/meter structure than the recording**: a real
+  case ("longing", Ayla Chan) has a GP tab of **165 bars** (a 2/4+4/4 mix) where
+  the drums read a steady **114 bars of 4/4**. Mapping tab bar N → detected
+  downbeat N (the old `align_chart_to_midi` index mapping, still used by the MIDI
+  import where the user trims to a 1:1 structure) then drifts wildly — that song
+  measured **+58 s of error by bar 113** and left 51 bars unanchored, the
+  "consigo detetar mas não acerto com o BPM" symptom. Instead, each tab bar is
+  *predicted* into the recording at the global tempo ratio and *snapped* to the
+  nearest real detected downbeat within a window, with a monotonic guard keeping
+  each downbeat used once: where the tab has more bars than the recording has
+  measures, the extra (e.g. 2/4) bars find no free downbeat and are **skipped**,
+  riding the interpolation between the anchors that matched. Validated on that
+  song: 114 anchors, all on real downbeats, 293 s tab → 285 s recording,
+  following the local tempo curve (was garbage before). Runs of **≥3 consecutive
+  unmatched bars** are returned as `weak_ranges` (a genuine structure mismatch —
+  wrong/missing bars in the tab — surfaced with a ⚠, distinct from the odd single
+  skipped odd-meter bar). Guarded by `test_align_bars_to_downbeats_*` (pure:
+  1:1, meter-mismatch skip, weak-run flag) and
+  `test_sync_from_stem_aligns_by_time_not_bar_index` (endpoint).
 - **UI** (`web/index.html`+`web/app.js`): "🥁 Sincronizar pela bateria (IA)"
   button next to the MIDI import; `wireSyncFromStem` mirrors `wireSyncFromMidi`
   (POST, no upload; same pin → preview → "Aplicar e reconstruir").
