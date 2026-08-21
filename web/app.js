@@ -569,6 +569,9 @@ let playbackRate = 1.0;      // playback speed (<1 slows down; lowers pitch on t
 // stop (fade out) removes it; on a seek the outgoing fade-out and the incoming
 // fade-in briefly overlap into a click-free crossfade.
 const AUDIO_FADE_S = 0.006;
+// Most note ticks one animation frame may sound (see the drain loop in
+// syncFrame): a stalled frame must not fire its whole backlog at one instant.
+const MAX_TICKS_PER_FRAME = 3;
 let seekDragging = false, seekWasPlaying = false;
 const WAVE_HZ = 100;
 let syncMode = 'drag'; // 'drag' | 'tap' | 'excerpt'
@@ -1060,12 +1063,25 @@ function showArr(i) {
   // at after the pending offset/tempo/anchor edits (a dynamic-sync anchor that
   // locally re-tempos a passage shows its new BPM right on the bars it spans).
   // Amber = the pending sync changed this bar's tempo vs the authored GP value.
+  // Beats per bar, precomputed in ONE merge walk over the two sorted lists.
+  // Counting them inside barBpm rescanned every beat for every bar — O(bars ×
+  // beats), ~85k iterations on a 146-bar song and ~360k on a long one, paid on
+  // every single redraw.
+  const beatsInBar = new Array(barList.length).fill(0);
+  for (let bi = 0, k = 0; bi < barList.length; bi++) {
+    const t0 = barList[bi].time;
+    const t1 = bi + 1 < barList.length ? barList[bi + 1].time : Infinity;
+    while (k < tbeats.length && tbeats[k] < t0 - 1e-6) k++;
+    let n = 0;
+    while (k + n < tbeats.length && tbeats[k + n] < t1 - 1e-6) n++;
+    beatsInBar[bi] = n;
+    k += n;
+  }
   const barBpm = (bi) => {
     const t0 = barList[bi].time;
     const t1 = bi + 1 < barList.length ? barList[bi + 1].time : null;
     if (t1 == null || t1 <= t0) return bi > 0 ? barBpm(bi - 1) : { eff: 0, auth: 0 };
-    let n = 0;
-    for (const tb of tbeats) if (tb >= t0 - 1e-6 && tb < t1 - 1e-6) n++;
+    const n = beatsInBar[bi];
     if (!n) return { eff: 0, auth: 0 };
     const auth = Math.round(n * 60 / (t1 - t0));
     const dur = barWarp(previewScale(t1)) - barWarp(previewScale(t0));
@@ -1253,6 +1269,7 @@ function showArr(i) {
     s += `<text x="${mx+4}" y="52" fill="#3fdc8a" font-size="11" font-weight="700">1ª nota</text>`;
   }
   svg.innerHTML = s;
+  invalidateLyricWords();  // the nodes the playhead frame highlights were just replaced
   syncResetPointer();
   renderAnchorsList();
   updateSyncOffsetDisplay();
@@ -1302,7 +1319,17 @@ function mergeNoteOverrides(baseNotes, overrides) {
     });
   }
   const merged = [...byKey.values()].sort((a, b) => a.time - b.time || a.string - b.string);
-  for (const n of merged) n.chord = merged.some(o => o !== n && Math.abs(o.time - n.time) < 0.03);
+  // Chord flag = "another note sounds at the same instant". merged is sorted by
+  // time, so a simultaneous partner is always an immediate NEIGHBOUR — a linear
+  // sweep suffices. (This used to be `merged.some(...)` per note, i.e. O(n^2):
+  // on a 3000-note chart ~4.5M comparisons on EVERY redraw, and it switched on
+  // permanently after the first note edit, which is what made the score crawl
+  // and the audio stutter the longer you edited.)
+  for (let i = 0; i < merged.length; i++) {
+    const prev = merged[i - 1], next = merged[i + 1];
+    merged[i].chord = (!!prev && Math.abs(prev.time - merged[i].time) < 0.03)
+                   || (!!next && Math.abs(next.time - merged[i].time) < 0.03);
+  }
   return merged;
 }
 
@@ -2553,8 +2580,9 @@ function renderLyricsRows() {
     const i = parseInt(tr.dataset.i, 10);
     const redraw = () => { if (arrangements.length) showArr(currentArr); };
     tr.querySelector('.ly-time').addEventListener('change', e => { lyricsEvents[i].time = parseFloat(e.target.value) || 0; redraw(); });
+    // 'change' only (fires on blur/Enter) — an 'input' handler here rebuilt the
+    // WHOLE score SVG on every keystroke, which froze typing on a long song.
     tr.querySelector('.ly-text').addEventListener('change', e => { lyricsEvents[i].lyric = e.target.value; redraw(); });
-    tr.querySelector('.ly-text').addEventListener('input',  e => { lyricsEvents[i].lyric = e.target.value; redraw(); });
     tr.querySelector('.ly-break').addEventListener('change', e => { lyricsEvents[i].lineBreak = e.target.checked; redraw(); });
     tr.querySelector('.ly-length').addEventListener('change', e => { lyricsEvents[i].length = Math.max(0.1, parseFloat(e.target.value) || 0.1); redraw(); });
     tr.querySelector('.ly-remove').addEventListener('click', () => { lyricsEvents.splice(i, 1); renderLyricsRows(); redraw(); });
@@ -3012,10 +3040,17 @@ function buildTimeWarp(anchors) {
     }
     if (t < pts[0][0]) return t;
     if (t > pts[pts.length - 1][0]) return t;
-    let x0, y0, x1, y1;
-    for (let i = 0; i < pts.length - 1; i++) {
-      if (pts[i][0] <= t && t <= pts[i + 1][0]) { [x0, y0] = pts[i]; [x1, y1] = pts[i + 1]; break; }
+    // Binary search for the bracketing pair. This runs for every note, beat,
+    // bar and grid point on every redraw AND every playhead frame, so a linear
+    // scan made the whole viewer slow down in proportion to how many drift
+    // corrections the user had placed — exactly the "fica mais lenta enquanto
+    // corrijo" symptom.
+    let lo = 0, hi = pts.length - 1;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if (pts[mid][0] <= t) lo = mid; else hi = mid;
     }
+    const [x0, y0] = pts[lo], [x1, y1] = pts[hi];
     if (x1 === x0) return t + (y0 - x0);
     return y0 + (y1 - y0) * (t - x0) / (x1 - x0);
   };
@@ -3701,8 +3736,19 @@ function toneCharForNote(chartTime) {
 // decaying to the fundamental) rather than a bare oscillator. `damping` sets the
 // sustain. Baked-in attack/release fades avoid the noise-burst click and the
 // truncation click at `dur`.
+// Rendered buffers are cached per (pitch, duration, damping, sample rate): a
+// guitar only has ~50 distinct pitches, and the DSP loop below runs ~10k
+// iterations on the MAIN thread — regenerating it for every tick was a large
+// per-note cost inside the animation frame, starving the playhead and adding
+// GC pressure that glitches the audio. Rounding the pitch to 0.1 Hz is far
+// finer than a semitone, so no note changes timbre.
+const _karplusCache = new Map();
+
 function karplusBuffer(ctx, hz, dur, damping) {
   const sr = ctx.sampleRate;
+  const ck = `${sr}:${hz.toFixed(1)}:${dur.toFixed(3)}:${damping}`;
+  const hit = _karplusCache.get(ck);
+  if (hit) return hit;
   const N = Math.max(2, Math.round(sr / Math.max(20, hz)));
   const total = Math.max(1, Math.floor(dur * sr));
   const buf = ctx.createBuffer(1, total, sr);
@@ -3720,6 +3766,8 @@ function karplusBuffer(ctx, hz, dur, damping) {
   const atk = Math.min(total, Math.floor(sr * 0.002)), rel = Math.min(total, Math.floor(sr * 0.008));
   for (let i = 0; i < atk; i++) out[i] *= i / atk;
   for (let i = 0; i < rel; i++) out[total - 1 - i] *= i / rel;
+  if (_karplusCache.size > 256) _karplusCache.clear();  // bounded; a song needs ~50
+  _karplusCache.set(ck, buf);
   return buf;
 }
 
@@ -4243,6 +4291,23 @@ function updateTransportUI() {
   if (lbl) lbl.textContent = `${fmtClock(t)} / ${fmtClock(dur)}`;
 }
 
+// Lyric-word highlight targets, resolved ONCE per score redraw instead of on
+// every animation frame (showArr replaces the whole SVG, so the cache is
+// invalidated there). `active` memoises the last state so a frame that changes
+// nothing writes no attributes at all.
+let _lyricWords = null;
+function invalidateLyricWords() { _lyricWords = null; }
+function lyricWordCache() {
+  if (_lyricWords) return _lyricWords;
+  _lyricWords = Array.from(document.querySelectorAll('.lyric-word'), lw => ({
+    li: parseInt(lw.dataset.li, 10),
+    txt: lw.querySelector('text'),
+    ln: lw.querySelector('line'),
+    active: null,
+  }));
+  return _lyricWords;
+}
+
 function syncResetPointer() {
   // Compare in display coordinates so the ticks follow the live preview
   // (tempo/offset/anchors), making alignment audible without a rebuild.
@@ -4261,12 +4326,16 @@ function syncFrame() {
   const vtDisp = playheadDisplay(audioTime());  // bundle time (for tick compare)
   currentPlayheadT = vtDisp - viewOrigin;  // recording-time offset; used by showArr + tap-sync
   const x = timeToX(vtDisp);  // recording-time x — cursor sits at 0 when audio is at 0
-  ph.setAttribute('x1', x); ph.setAttribute('x2', x);
   // Keep the view aligned with the music while playing — the waveform/notes
   // scroll under a centered playhead. syncFrame only runs while playing, so
   // when paused the view stays put and the user can scroll/inspect freely.
+  // READ clientWidth BEFORE writing the playhead attributes: writing first
+  // dirties layout, so the read forced a synchronous relayout of a SVG that can
+  // be tens of thousands of px wide with ~10k children — every single frame.
   const wrap = document.getElementById('tabwrap');
-  wrap.scrollLeft = Math.max(0, x - wrap.clientWidth / 2);
+  const halfView = wrap.clientWidth / 2;
+  ph.setAttribute('x1', x); ph.setAttribute('x2', x);
+  wrap.scrollLeft = Math.max(0, x - halfView);
   updateTransportUI();
   const notes = arrangements[currentArr] ? arrangements[currentArr].notes : [];
   const tickOn = document.getElementById('syncTick').checked;
@@ -4275,11 +4344,20 @@ function syncFrame() {
   // position, so live tempo/offset/anchor edits are immediately audible.
   const arrNow = arrangements[currentArr];
   const offs = (arrNow && arrNow.tuning_offsets) || [0, 0, 0, 0, 0, 0];
+  // Cap how many overdue ticks one frame may sound. playNote schedules at
+  // audioCtx.currentTime ("now"), so if the main thread stalled (a redraw, GC),
+  // draining the whole backlog started every missed note at the SAME sample
+  // instant — a dozen summed voices clip the output as an audible burst of
+  // noise. Past the cap the notes are skipped (tickIdx still advances) so the
+  // tick stays in sync instead of machine-gunning the backlog.
+  let sounded = 0;
   while (tickIdx < notes.length && warp(previewScale(notes[tickIdx].time)) <= vtDisp) {
-    if (tickOn) {
+    if (tickOn && sounded < MAX_TICKS_PER_FRAME) {
       const note = notes[tickIdx];
-      if (note.string >= 0 && note.string <= 5 && note.fret >= 0)
+      if (note.string >= 0 && note.string <= 5 && note.fret >= 0) {
         playNote(STRING_MIDI[note.string] + (offs[note.string] || 0) + note.fret, note.time);
+        sounded++;
+      }
     }
     tickIdx++;
   }
@@ -4289,18 +4367,20 @@ function syncFrame() {
   // currentPlayheadT is the padded display time; lyric times are un-padded, so
   // shift them by leadInBuilt to compare in the same timeline.
   const recT = currentPlayheadT;
-  for (const lw of document.querySelectorAll('.lyric-word')) {
-    const li = parseInt(lw.dataset.li, 10);
-    const ev = lyricsEvents[li];
+  // Cached per redraw (see showArr): re-running querySelectorAll + two
+  // querySelector per word EVERY frame was ~1500 DOM queries per 16 ms on a
+  // 500-word song. Also skipped entirely when the song has no lyrics.
+  for (const w of lyricWordCache()) {
+    const ev = lyricsEvents[w.li];
     if (!ev) continue;
     const active = recT >= ev.time + leadInBuilt && recT <= ev.time + ev.length + leadInBuilt;
-    const txt = lw.querySelector('text');
-    if (txt) {
-      txt.setAttribute('fill', active ? '#ff7a45' : '#9aa0ad');
-      txt.setAttribute('font-weight', active ? '700' : '400');
+    if (w.active === active) continue;  // only touch the DOM on a real change
+    w.active = active;
+    if (w.txt) {
+      w.txt.setAttribute('fill', active ? '#ff7a45' : '#9aa0ad');
+      w.txt.setAttribute('font-weight', active ? '700' : '400');
     }
-    const ln = lw.querySelector('line');
-    if (ln) ln.setAttribute('stroke', active ? '#ff7a45' : '#454852');
+    if (w.ln) w.ln.setAttribute('stroke', active ? '#ff7a45' : '#454852');
   }
   if (audioIsPlaying()) syncRaf = requestAnimationFrame(syncFrame);
   else { syncRaf = null; updatePlayBtn(); }
