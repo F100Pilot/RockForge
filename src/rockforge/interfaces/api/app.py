@@ -1018,7 +1018,22 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
             raise HTTPException(404, "job not found")
         if original.source_type in {"upload", "gp"} and not Path(original.source).exists():
             raise HTTPException(409, "original upload no longer exists on the work volume")
+        from rockforge.application.gp_pipeline import MIN_LEAD_S
+
         params: dict[str, object] = dict(original.params or {})
+        # Snapshot the PRE-EDIT timeline parameters before anything below mutates
+        # them (dict() is shallow, so nested entries are shared). They are needed
+        # to conjugate already-committed anchor stages — see _remap_committed_anchors.
+        _old_scale = float(cast(float, params.get("tempo_scale", 1.0) or 1.0))
+        _old_shift = max(
+            float(cast(float, params.get("offset_s", 0.0) or 0.0)), MIN_LEAD_S
+        ) + float(cast(float, params.get("lead_in_s", 0.0) or 0.0))
+        _old_arr_scales: dict[str, float] = {
+            k: float(cast(float, (v or {}).get("tempo_scale", _old_scale) or _old_scale))
+            for k, v in cast(
+                "dict[str, dict[str, object]]", params.get("arrangement_sync", {}) or {}
+            ).items()
+        }
         params["split_lead_rhythm"] = payload.split_lead_rhythm
         if payload.tuning_midi is not None:
             params["tuning_midi"] = payload.tuning_midi
@@ -1107,6 +1122,66 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
                 raise HTTPException(422, "tempo_scale must be > 0")
             for target in _sync_targets():
                 target["tempo_scale"] = payload.tempo_scale
+
+        def _remap_committed_anchors() -> None:
+            """Re-express already-committed anchor stages in the NEW timeline.
+
+            The build applies ``W(x·s + S)`` — parse at tempo_scale ``s`` with
+            score shift ``S``, THEN warp — while the tab viewer previews
+            ``R(W(x·s_built + S_built))``: it rescales the ALREADY-WARPED times it
+            read back from the built XML. Function composition does not commute
+            (``R∘W ≠ W∘R``), so as soon as ONE anchor stage is committed, changing
+            the tempo or the offset makes the rebuild differ from the preview by
+            ``d·(r−1)`` on EVERY note (``d`` = net shift the committed anchors
+            introduce, ``r`` = the tempo ratio) — a CONSTANT desync, invisible in
+            the viewer (which never re-derives the raw GP times) but plainly
+            audible in game. That is the "no programa está sincronizado, no
+            Rocksmith não" bug.
+
+            Mapping every stored anchor pair through the viewer's own map
+            ``φ(t) = (t − S_old)·r + S_new`` makes each stage ``W' = φ∘W∘φ⁻¹``,
+            hence ``W'∘φ = φ∘W`` exactly — the rebuild then reproduces the
+            preview. Each arrangement is conjugated with ITS OWN tempo ratio
+            (tempo_scale is per-arrangement) but the shared job-level shift.
+            """
+            new_scale = float(cast(float, params.get("tempo_scale", 1.0) or 1.0))
+            new_shift = max(
+                float(cast(float, params.get("offset_s", 0.0) or 0.0)), MIN_LEAD_S
+            ) + float(cast(float, params.get("lead_in_s", 0.0) or 0.0))
+            store = cast(
+                "dict[str, dict[str, object]]", params.get("arrangement_sync", {}) or {}
+            )
+            targets: list[tuple[dict[str, object], float, float]] = [
+                (params, _old_scale, new_scale)
+            ]
+            for kind, entry in store.items():
+                targets.append((
+                    entry,
+                    _old_arr_scales.get(kind, _old_scale),
+                    float(cast(float, entry.get("tempo_scale", new_scale) or new_scale)),
+                ))
+            for target, s_old, s_new in targets:
+                stages = cast(
+                    "list[list[list[float]]]", target.get("sync_anchor_stages") or []
+                )
+                if not stages or s_old <= 0.0:
+                    continue
+                ratio = s_new / s_old
+                if abs(ratio - 1.0) < 1e-12 and abs(new_shift - _old_shift) < 1e-12:
+                    continue  # timeline unchanged for this arrangement
+                target["sync_anchor_stages"] = [
+                    [
+                        [
+                            (float(a) - _old_shift) * ratio + new_shift,
+                            (float(b) - _old_shift) * ratio + new_shift,
+                        ]
+                        for a, b in stage
+                    ]
+                    for stage in stages
+                ]
+
+        if original.source_type == "gp":
+            _remap_committed_anchors()
         if payload.sync_anchors is not None:
             if original.source_type != "gp":
                 raise HTTPException(422, "sync_anchors only apply to Guitar Pro jobs")

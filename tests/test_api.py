@@ -831,6 +831,62 @@ def test_sync_edited_true_from_anchor_only(client: TestClient, tmp_path) -> None
     assert rebuilt["sync_edited"] is True
 
 
+def _stages(client: TestClient, job_id: str, kind: str = "Lead") -> list:
+    import rockforge.interfaces.api.app as app_module
+
+    with app_module._session_factory() as session:
+        p = dict(session.get(app_module.Job, job_id).params or {})
+    return (p.get("arrangement_sync", {}).get(kind, {}) or {}).get("sync_anchor_stages", [])
+
+
+def test_tempo_change_reexpresses_committed_anchors_in_the_new_timeline(
+    client: TestClient, tmp_path
+) -> None:
+    """Changing the tempo AFTER an anchor stage was committed must re-express that
+    stage in the new timeline.
+
+    The build computes W(x*s + S) while the viewer previews R(W(x*s_built + S)) —
+    it rescales the already-warped times read back from the built XML. Those do
+    not commute, so without this the rebuild silently differs from the preview by
+    a constant on every note: the chart looked synced in RockForge but was off in
+    Rocksmith. phi(t) = (t - S_old)*ratio + S_new is the viewer's own map.
+    """
+    job = _gp_job(client, tmp_path)
+    # Stage 1: commit a drift anchor at the default tempo (1.0), offset 0
+    # => S = max(0, MIN_LEAD_S=2.0) + 0 = 2.0.
+    once = client.post(
+        f"/jobs/{job['id']}/rebuild",
+        json={"arrangement": "Lead", "sync_anchors": [[3.0, 3.5]]},
+    ).json()
+    assert _stages(client, once["id"]) == [[[3.0, 3.5]]]
+
+    # Now change ONLY the tempo (ratio 1.5). The committed stage must move with it.
+    twice = client.post(
+        f"/jobs/{once['id']}/rebuild",
+        json={"arrangement": "Lead", "tempo_scale": 1.5},
+    ).json()
+    got = _stages(client, twice["id"])
+    # phi(3.0) = (3.0-2.0)*1.5 + 2.0 = 3.5 ; phi(3.5) = (3.5-2.0)*1.5 + 2.0 = 4.25
+    assert len(got) == 1 and len(got[0]) == 1
+    assert got[0][0] == pytest.approx([3.5, 4.25])
+
+
+def test_committed_anchors_untouched_when_the_timeline_does_not_change(
+    client: TestClient, tmp_path
+) -> None:
+    """No tempo/offset/lead-in change => the stored anchors must be left exactly
+    as they are (the remap is a no-op, never a lossy round-trip)."""
+    job = _gp_job(client, tmp_path)
+    once = client.post(
+        f"/jobs/{job['id']}/rebuild",
+        json={"arrangement": "Lead", "sync_anchors": [[3.0, 3.5]]},
+    ).json()
+    twice = client.post(
+        f"/jobs/{once['id']}/rebuild", json={"arrangement": "Lead", "import_mutes": True}
+    ).json()
+    assert _stages(client, twice["id"]) == [[[3.0, 3.5]]]
+
+
 def test_has_lyrics_true_from_edited_events(client: TestClient, tmp_path) -> None:
     """has_lyrics reflects lyrics from ANY source (edited events here), not only
     completed WhisperX detection — the completeness panel must not say "sem

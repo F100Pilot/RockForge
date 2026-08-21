@@ -4008,10 +4008,15 @@ function clickSound() {
 // — no shifting, the viewer just draws/plays them straight.
 function isGpJob() { return !!selectedJob && selectedJob.source_type === 'gp'; }
 
+// Mirror of the backend's score shift: parse-time tempo_scale + the shift the
+// build applies (max(offset, MIN_LEAD) + lead_in). Both halves must match
+// gp_pipeline exactly, or the preview and the rebuild disagree by a constant.
+// lead_in_s has no live control (commit-on-rebuild), so the built value is the
+// live value.
 function previewScale(t) {
   if (!isGpJob()) return t;  // audio-ML: raw recording-time positions
   const ratio = tempoScaleLive / builtScale;
-  return (t - scoreShift) * ratio + Math.max(offsetLive, MIN_LEAD);
+  return (t - scoreShift) * ratio + Math.max(offsetLive, MIN_LEAD) + leadInBuilt;
 }
 
 // Audio→display mapping for the playhead: audio time s appears after the
@@ -4336,9 +4341,14 @@ function initSync(j) {
   panel.style.display = '';
   if (isGp) {
     // The offset (and thus the audio lead-in) is shared by all arrangements.
-    scoreShift = Math.max(j.offset_s || 0, MIN_LEAD);
-    loadArrSync(0);  // tempo/anchors are per-arrangement; load the first tab's
+    // scoreShift must be the FULL built score shift the backend used —
+    // max(offset_s, MIN_LEAD) + lead_in_s (gp_pipeline: score_shift = offset_s +
+    // pad_start_s). Omitting lead_in_s here made previewScale un-shift by less
+    // than the build shifted by, so any tempo change desynced the rebuild from
+    // the preview by lead_in_s*(ratio-1) — a constant, in-game-only offset.
     leadInBuilt = j.lead_in_s || 0;
+    scoreShift = Math.max(j.offset_s || 0, MIN_LEAD) + leadInBuilt;
+    loadArrSync(0);  // tempo/anchors are per-arrangement; load the first tab's
   } else {
     // audio-ML: neutral sync so notes draw at their raw recording times.
     offsetLive = 0; leadInBuilt = 0; scoreShift = 0;

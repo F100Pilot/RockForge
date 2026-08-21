@@ -400,6 +400,30 @@ earlier work. Do not collapse this back to a single `sync_anchors` list —
 anchors from different rounds live in different (already-warped) coordinate
 systems and cannot simply be concatenated.
 
+**A tempo/offset change RE-EXPRESSES the already-committed anchors (the preview
+must equal the rebuild).** The build computes `W(x·s + S)` — parse at
+`tempo_scale` `s` with score shift `S = max(offset_s, MIN_LEAD_S) + lead_in_s`,
+THEN warp — while the tab viewer previews `R(W(x·s_built + S_built))`: it
+rescales the ALREADY-WARPED times it read back from the built XML (it never
+re-derives the raw GP times). Composition does not commute (`R∘W ≠ W∘R`), so once
+ANY anchor stage is committed, changing the tempo made the rebuild differ from
+the preview by **`d·(r−1)` on every note** (`d` = net shift the committed anchors
+introduce, `r` = the tempo ratio) — a *constant* desync, invisible in the viewer
+but plainly wrong in game. That was the "no programa está sincronizado, no
+Rocksmith não" bug, and it fires on the ordinary workflow (drag → rebuild →
+auto-sync/BPM → rebuild). `rebuild_job._remap_committed_anchors` maps every
+stored anchor pair through the viewer's own map `φ(t) = (t − S_old)·r + S_new`,
+making each stage `W' = φ∘W∘φ⁻¹` so `W'∘φ = φ∘W` exactly; each arrangement is
+conjugated with ITS OWN tempo ratio (tempo_scale is per-arrangement) but the
+shared job-level shift. Guarded by
+`test_tempo_change_reexpresses_committed_anchors_in_the_new_timeline` and
+`test_committed_anchors_untouched_when_the_timeline_does_not_change`.
+**The two halves of `S` must match on both sides**: `web/app.js`'s `scoreShift`
+omitted `lead_in_s` (and `previewScale` did not re-add it), which desynced the
+rebuild by `lead_in_s·(r−1)` on its own — both now include it. If you change how
+`score_shift` is computed in `gp_pipeline`, change `scoreShift`/`previewScale`
+in the same commit.
+
 **Conflicting anchors are rejected, not silently warped into nonsense.** Two
 anchors whose corrected times contradict their chart-time order (a later chart
 point mapped to an earlier recording instant than an earlier point) make
