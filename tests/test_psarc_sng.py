@@ -494,27 +494,43 @@ def test_sectionless_song_is_segmented_into_multiple_phrases() -> None:
 
 
 def test_dd_phrase_heights_vary_with_density() -> None:
-    # Variable-height DD: a dense phrase reaches a higher max difficulty than a
-    # sparse one — above the old flat cap of 11 — so the in-game difficulty bars
-    # vary per phrase (matching a real DDC) instead of a flat top.
+    # Variable-height DD: a phrase's max difficulty scales with ITS OWN note
+    # density, so the in-game difficulty bars vary per phrase (matching a real
+    # DDC) instead of a flat top. NOTE: this guards the ORDERING/spread, not an
+    # absolute level count — the ceiling counts groups of notes
+    # (_NOTES_PER_DD_LEVEL), because a level per single note made the ramp so
+    # long the player never left the minimum difficulty in-game.
     beats = tuple(Beat(time=i * 0.5, measure=i // 8 + 1 if i % 8 == 0 else -1)
                   for i in range(80))
-    notes = [TabNote(string=0, fret=3, time=t, sustain=0.2) for t in (0.5, 2.0, 3.5)]
-    notes += [TabNote(string=i % 6, fret=(i % 10) + 1, time=6.0 + i * 0.2, sustain=0.15)
-              for i in range(30)]
+    notes = [TabNote(string=0, fret=3, time=0.5 + i * 0.5, sustain=0.2) for i in range(6)]
+    notes += [TabNote(string=i % 6, fret=(i % 10) + 1, time=6.0 + i * 0.4, sustain=0.15)
+              for i in range(15)]
+    notes += [TabNote(string=i % 6, fret=(i % 12) + 1, time=13.0 + i * 0.12, sustain=0.1)
+              for i in range(36)]
     arr = Arrangement(
         kind=ArrangementKind.LEAD,
         metadata=SongMetadata(title="S", artist="A", song_length=20.0),
         tuning=Tuning(),
         tempo_map=TempoMap(beats=beats, average_bpm=120.0),
         notes=notes,
-        sections=[Section(name="sparse", start_time=0.0), Section(name="dense", start_time=6.0)],
+        sections=[
+            Section(name="sparse", start_time=0.0),
+            Section(name="medium", start_time=6.0),
+            Section(name="dense", start_time=13.0),
+        ],
     )
     model = from_arrangement(arr)
     heights = {p.name: p.max_difficulty for p in model.phrases}
-    assert heights.get("dense", 0) > 11              # dense phrase exceeds the old cap
-    assert heights.get("sparse", 0) < heights["dense"]  # sparse phrase is shorter
+    # Strictly increasing with density — the bars have their own heights.
+    assert heights["sparse"] < heights["medium"] < heights["dense"]
     assert len({p.max_difficulty for p in model.phrases}) >= 3  # not a flat top
+    # ...and the ramp is GROUPED: the densest phrase's ceiling is far below its
+    # note count, so the player climbs it in a handful of plays, not ~36.
+    dense_notes = max(
+        sum(1 for n in model.arrangements[-1].notes if pi.start_time <= n.time < pi.end_time)
+        for pi in model.phrase_iterations
+    )
+    assert heights["dense"] <= (dense_notes - 1) // 2
 
 
 def test_identical_riffs_share_one_phrase() -> None:
@@ -682,6 +698,36 @@ def test_dd_levels_have_no_handshapes_and_per_level_slide_extensions() -> None:
             if n.slide_to >= 0 or n.chord_notes_id >= 0
         }
         assert all(round(ae.beat_time, 4) in slide_ends for ae in lvl.anchor_extensions)
+
+
+def test_dd_ramp_is_grouped_not_one_level_per_note() -> None:
+    """A phrase's DD ceiling counts GROUPS of notes, not single notes.
+
+    The game promotes a phrase one level per successful play, so a ceiling of
+    (notes - 1) meant ~20 perfect playthroughs to reach the full chart and only a
+    sliver of the notes after two — in-game that reads as "the difficulty never
+    leaves the minimum" (the reported bug). Guards the ramp shape AND that the
+    top level is still the complete chart.
+    """
+    beats = [Beat(time=i * 0.5, measure=i // 4 + 1 if i % 4 == 0 else -1) for i in range(64)]
+    # One dense phrase: 31 single notes inside the first section.
+    notes = [TabNote(string=2, fret=7, time=round(i * 0.25, 3), sustain=0.1) for i in range(31)]
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=16.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=tuple(beats), average_bpm=120.0),
+        notes=notes,
+    )
+    model = from_arrangement(arr)
+    busiest = max(len(n.notes) for n in [model.arrangements[-1]])
+    ceiling = max(p.max_difficulty for p in model.phrases)
+    # Grouped: roughly notes/3, decisively fewer levels than one-per-note.
+    assert 0 < ceiling <= (busiest - 1) // 2, f"ramp too long: {ceiling} for {busiest} notes"
+    # The top level is still 100% of the chart — the fix changes only how fast the
+    # player climbs, never what the summit contains.
+    assert len(model.arrangements[-1].notes) == len(notes)
+    assert len(model.arrangements) == model.metadata.max_difficulty + 1
 
 
 def test_gp_sections_are_bracketed_with_count_and_end_and_links() -> None:

@@ -129,17 +129,30 @@ _CHORD_EPSILON_S = 0.03
 _MAX_ANCHOR_SPAN = 4
 # Dynamic Difficulty ceiling: the most difficulty levels a single phrase can
 # ramp its notes in over (0..CAP). A phrase's ceiling scales with the note count
-# of its busiest iteration (one level per note), so a dense phrase reaches a
-# higher difficulty than a sparse one — this is what gives each phrase's bar its
-# own HEIGHT on the in-game difficulty graph instead of a flat top. Set to 20 to
-# match a real DDC's range (a professional CDLC of Animals As Leaders "Tempting
-# Time" decodes to phrase max-difficulties spread 0..18, mode 6). A HARD cap (not
-# a proportional rescale) is deliberate: it preserves the natural 0..~18 spread of
-# most phrases and only flattens the handful of extreme-density outliers (a fast
-# tapping run can hit 50-70 notes/iteration) at the top, where a single outlier
-# would otherwise squash every other phrase toward zero. Still a simplified DDC —
-# graduated phrases and correct hero triples, no NLinkedDifficulty linkage.
+# of its busiest iteration, so a dense phrase reaches a higher difficulty than a
+# sparse one — this is what gives each phrase's bar its own HEIGHT on the in-game
+# difficulty graph instead of a flat top. Set to 20 to match a real DDC's range (a
+# professional CDLC of Animals As Leaders "Tempting Time" decodes to phrase
+# max-difficulties spread 0..18, mode 6). A HARD cap (not a proportional rescale)
+# is deliberate: it preserves the natural 0..~18 spread of most phrases and only
+# flattens the handful of extreme-density outliers (a fast tapping run can hit
+# 50-70 notes/iteration) at the top, where a single outlier would otherwise squash
+# every other phrase toward zero. Still a simplified DDC — graduated phrases and
+# correct hero triples, no NLinkedDifficulty linkage.
 _DD_LEVEL_CAP = 20
+# Notes admitted per difficulty level. The game promotes a phrase ONE level per
+# successful play of it, so the ceiling is literally how many times the passage
+# must be played to reach the full chart. Ramping one note per level (the original
+# rule) put the ceiling of almost every phrase at the cap: measured on a realistic
+# 756-note chart the ceilings came out spread 11..20 with mode 20, i.e. TWENTY
+# perfect playthroughs to see the whole song, and only ~15% of the notes after
+# two — which reads in-game as "the difficulty never moves off the minimum", the
+# reported bug. Admitting a small GROUP of notes per level reproduces the real
+# DDC's shape instead: at 3 the same chart gives ceilings spread 3..15 with mode 7
+# against the reference's 0..18 / mode 6. The top level is still the complete
+# chart either way (``_level_notes`` saturates at the phrase ceiling) — this only
+# sets how fast the player climbs to it.
+_NOTES_PER_DD_LEVEL = 3
 # Target phrase length (seconds) when auto-segmenting a section-less song, so DD
 # ramps per-phrase as the player progresses instead of over the whole song at once.
 _DEFAULT_PHRASE_S = 13.0
@@ -1174,13 +1187,17 @@ def _build_difficulty_levels(
             ordered.extend(grp[pos] for pos in _spread_order(len(grp)))
         per_iter_notes[pi_id] = ordered
 
-    # Per-phrase ceiling: one difficulty step per note the BUSIEST iteration must
-    # ramp in, capped. Repeated phrases share a ceiling (busiest, not summed); a
-    # silent COUNT/END phrase stays at 0.
+    # Per-phrase ceiling: one difficulty step per GROUP of notes the BUSIEST
+    # iteration must ramp in, capped (see _NOTES_PER_DD_LEVEL — a step per single
+    # note pins nearly every phrase at the cap and makes the in-game ramp far too
+    # long to ever leave the minimum). Repeated phrases share a ceiling (busiest,
+    # not summed); a silent COUNT/END phrase stays at 0.
     busiest = [0] * len(phrases)
     for pi_id, pi in enumerate(phrase_iterations):
         busiest[pi.phrase_id] = max(busiest[pi.phrase_id], len(per_iter_notes[pi_id]))
-    phrase_max = [min(_DD_LEVEL_CAP, max(0, b - 1)) for b in busiest]
+    phrase_max = [
+        min(_DD_LEVEL_CAP, max(0, (b - 1) // _NOTES_PER_DD_LEVEL)) for b in busiest
+    ]
     if not dynamic_difficulty:
         # One full-chart level: every phrase saturates at difficulty 0.
         phrase_max = [0] * len(phrases)
