@@ -443,6 +443,53 @@ anchors (a rejected finding contributes nothing, so the music it covers keeps th
 timing it already had — the entire point), left in preview for the usual
 "Aplicar e reconstruir".
 
+### Exporting a corrected Guitar Pro file (`/export-gp`)
+
+`infrastructure/gpexport/tempo_writer.py` writes the accepted tempo corrections
+into a **copy** of the user's Guitar Pro file, so the fix is permanent in Guitar
+Pro itself and not only inside RockForge. The uploaded original is only ever read.
+
+| format | write | how |
+|---|---|---|
+| `.gp3`/`.gp4`/`.gp5` | yes | PyGuitarPro. A tempo change is a `MixTableChange` on a **beat** (there is no tempo field in the measure header); measure 1 is the song header's `tempo`. |
+| `.gp` (GP7/8) | yes | The container is a plain ZIP: every entry is copied **byte-for-byte** and ONLY `Content/score.gpif` is replaced. Tempo is a `MasterTrack/Automations/Automation[Type=Tempo]`, `<Value>` = `"<bpm> 2"` (reference 2 = quarter). |
+| `.gpx` (GP6) | **no** | A proprietary container nobody writes — not alphaTab, not TuxGuitar, not MuseScore. Refused, pointing at GP5/GP7 like the importer does. |
+
+Routes ruled out by research, so nobody re-litigates them: MuseScore imports GP
+but **cannot export it** (import-only module); MusicXML drops vibrato and palm
+mute; MIDI loses tab/tuning/technique entirely. Neither leads back to a `.gp*`.
+
+Details that were measured and will bite anyone editing this:
+- **The binary formats store tempo as an INTEGER**, so 119.085 BPM is written as
+  119. `write_tempo_corrections` returns an `AppliedCorrection` per measure with
+  `requested_bpm`/`written_bpm`/`rounded` so the API and UI can say so instead of
+  quietly handing back a different tempo. GPIF keeps the decimals.
+- A fresh `MixTableChange` has `wah=None`, but GP5 always stores a wah byte, so
+  it reads back as `WahEffect(-1)` and the file stops round-tripping; and
+  `hideTempo` defaults `True` while the field does not exist before GP5.1. Both
+  are set explicitly.
+- An existing `MixTableChange` on the target beat is **mutated**, not replaced —
+  it may carry an instrument/volume/wah change that is not ours to drop. A tempo
+  change the user authored themselves survives untouched (guarded by
+  `test_an_authored_tempo_change_is_preserved`), as does a mid-bar GPIF
+  automation (only `Position == 0` entries are ours).
+- Only **tempo** is exportable. A *jump* cannot be expressed as a BPM change (it
+  would need a bar inserted or removed), so it stays a RockForge-side correction
+  and the UI says so rather than approximating it.
+
+`POST /jobs/{id}/export-gp` writes `work_dir/<job>/corrected.<ext>` and returns
+the report; `GET /jobs/{id}/corrected-gp` downloads it. Guarded by
+`test_gp_tempo_writer.py` (preservation of notes/frets/techniques/tracks/tuning/
+sections across a real write, byte-identity of the .gp ZIP's opaque entries,
+rounding reported, `.gpx` refused, bad corrections rejected with nothing
+half-written) and `test_export_gp_*` in `test_api.py`.
+
+**Unverified by design:** no Guitar Pro is available in CI or in the sandbox, so
+the exported files are round-trip-verified through our own parsers but have NOT
+been opened in Guitar Pro itself. The `.gp` ZIP-surgery route in particular is
+sound in theory (it is exactly what alphaTab's `Gp7Exporter` builds) but needs a
+human to confirm against a real install.
+
 ### Manual drift correction (`sync_anchor_stages`)
 
 A single `offset_s` only fixes a constant lead-in; if the GP file's tempo map

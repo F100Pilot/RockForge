@@ -1524,6 +1524,62 @@ def test_analyse_sync_warns_when_no_guitar_stem(client, tmp_path, monkeypatch) -
     assert any("full mix" in w for w in out["warnings"])
 
 
+def test_export_gp_writes_a_corrected_copy_and_reports_rounding(
+    client: TestClient, tmp_path
+) -> None:
+    """The accepted corrections are written into a COPY; the uploaded original is
+    untouched; and because gp5 stores tempo as an integer the caller is told what
+    was actually written rather than quietly handed a different tempo."""
+    from pathlib import Path
+
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.infrastructure.gpimport.parser import inspect_gp
+
+    job = _gp_job(client, tmp_path)
+    with app_module._session_factory() as session:
+        gp_path = Path(str(dict(session.get(app_module.Job, job["id"]).params)["gp_path"]))
+    before = gp_path.read_bytes()
+
+    r = client.post(
+        f"/jobs/{job['id']}/export-gp",
+        json={"corrections": [{"measure": 1, "bpm": 119.085}]},
+    )
+    assert r.status_code == 200, r.text
+    out = r.json()
+    assert out["format"] == "gp5" and out["size_bytes"] > 0
+    assert out["applied"][0]["requested_bpm"] == 119.085
+    assert out["applied"][0]["written_bpm"] == 119.0
+    assert out["applied"][0]["rounded"] is True
+    assert any("whole number" in w for w in out["warnings"])
+
+    # The user's own file is never modified.
+    assert gp_path.read_bytes() == before
+
+    # The exported copy is downloadable and really carries the new tempo.
+    d = client.get(f"/jobs/{job['id']}/corrected-gp")
+    assert d.status_code == 200
+    saved = tmp_path / "dl.gp5"
+    saved.write_bytes(d.content)
+    assert inspect_gp(saved).tempo == 119
+
+
+def test_corrected_gp_404s_before_any_export(client: TestClient, tmp_path) -> None:
+    job = _gp_job(client, tmp_path)
+    assert client.get(f"/jobs/{job['id']}/corrected-gp").status_code == 404
+
+
+def test_export_gp_rejects_non_gp_and_empty_corrections(client: TestClient, tmp_path) -> None:
+    audio_job = _create_job(client)
+    assert client.post(
+        f"/jobs/{audio_job['id']}/export-gp",
+        json={"corrections": [{"measure": 1, "bpm": 120.0}]},
+    ).status_code == 422
+    job = _gp_job(client, tmp_path)
+    assert client.post(
+        f"/jobs/{job['id']}/export-gp", json={"corrections": []}
+    ).status_code == 422
+
+
 def test_analyse_sync_rejects_non_gp(client: TestClient) -> None:
     job = _create_job(client)
     assert client.post(f"/jobs/{job['id']}/analyse-sync").status_code == 422

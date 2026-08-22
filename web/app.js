@@ -438,6 +438,10 @@ const INFO = {
     title: 'Sincronização dinâmica (segue o andamento real)',
     body: '<p>A sincronização automática acima aplica UM andamento médio — não chega quando o tempo da gravação varia (o problema típico das tabs de IA). Esta segue a <b>curva de andamento real</b>: usa a grelha de batidas para o tempo local, e afina cada âncora encaixando as notas da própria tab nos ataques do áudio.<br><b>Corre "Separar instrumentos" primeiro:</b> a grelha de batidas passa a vir da <b>bateria isolada</b> e os ataques da <b>guitarra isolada</b> — muito mais fiável que a mistura completa (onde o detetor de batidas se engana no andamento). Sem separação, usa a mistura e avisa-te.<br><b>Começa na primeira nota:</b> define primeiro o início no Passo 1 (ou com "🎯 Detetar 1ª nota") — a primeira âncora é exatamente esse ponto e o alinhamento aplica-se daí para a frente.<br>Substitui as correções pendentes da pista atual por esta proposta; fica em pré-visualização — vê o <b>♩BPM por compasso</b> na partitura (âmbar = alterado pelas âncoras) e confirma com "Aplicar e reconstruir".<br><b>Limite honesto:</b> secções onde as notas da tab não batem com o áudio são assinaladas com ⚠ — aí o problema é o conteúdo da tab (notas/compassos errados), que nenhuma sincronização corrige; ajusta essas partes no Guitar Pro. Requer o extra <code>ml</code> (librosa).</p>'
   },
+  'export-gp': {
+    title: 'Exportar Guitar Pro corrigido',
+    body: '<p>Escreve as correções de <b>andamento</b> que aceitaste numa <b>cópia</b> do teu ficheiro Guitar Pro, para a correção ficar permanente no próprio Guitar Pro e não só no RockForge. <b>O teu ficheiro original nunca é alterado.</b><br>Tudo o resto é preservado: notas, técnicas, afinação, faixas, secções, letra — e as mudanças de andamento que tu próprio tenhas escrito também sobrevivem.<br><b>Formatos:</b> <code>.gp3</code>/<code>.gp4</code>/<code>.gp5</code> e <code>.gp</code> (GP7/8). O <code>.gpx</code> (GP6) <b>não é escrito por ferramenta nenhuma</b> — nem o Guitar Pro o exporta para si próprio; exporta como GP5 ou GP7 primeiro.<br><b>Limite honesto:</b> os formatos binários (gp3/4/5) guardam o andamento como número <b>inteiro</b>, por isso 119,085 fica 119 — dizemos-te sempre o que foi mesmo escrito. O <code>.gp</code> mantém as casas decimais.<br><b>Só andamento:</b> um <b>salto</b> não é exprimível como mudança de BPM (seria preciso inserir/remover um compasso), por isso não vai no ficheiro — corrige esse no Guitar Pro.</p>'
+  },
   'analyse-sync': {
     title: 'Analisar sincronização',
     body: '<p>Não corrige nada — <b>diagnostica</b>. Todas as outras ferramentas respondem "onde deve ficar cada nota"; esta responde <b>"que tipo de problema é este"</b>, que é o que decide a correção certa.<br>Encaixa as notas da tab nos ataques reais da gravação e analisa a curva de desvio:<br>• <b>Desvio progressivo</b> — a diferença cresce a um ritmo constante: o andamento da tab não é bem o da gravação. Corrige-se com um <b>BPM novo, só naquele troço</b>.<br>• <b>Salto</b> — a diferença dá um degrau: compasso a mais/menos, pausa em falta, repetição. <b>Nunca</b> se corrige com BPM — isso espalharia um erro local por música que estava correta.<br>• <b>Diferença estrutural</b> — as notas da tab não correspondem ao áudio ali; nenhuma correção temporal resolve, é o conteúdo que está errado.<br><b>Separa os instrumentos primeiro:</b> as notas são encaixadas nos ataques da <b>guitarra isolada</b>, bem mais fiável que a mistura.<br>Cada conclusão é aceite ou rejeitada individualmente e só entra em pré-visualização — o "Aplicar e reconstruir" continua a ser quem grava.<br><b>Limite honesto:</b> num trecho de ritmo muito regular, um compasso a mais/menos pode ser matematicamente indistinguível de notas em falta — aí verás "sincronizado" e notas sem par, não um salto.</p>'
@@ -5268,5 +5272,61 @@ function renderSyncFindings() {
     showArr(currentArr);
     info.textContent = `${anchors.length} ponto(s) em pré-visualização — confirma e clica em "Aplicar e reconstruir".`;
     toast('Correções carregadas — revê e aplica', 'ok');
+  });
+})();
+
+
+// Export the accepted DRIFT corrections into a copy of the user's Guitar Pro
+// file. Only tempo travels: a jump cannot be expressed as a BPM change (it would
+// need a bar inserted/removed), so it stays a RockForge-side correction and is
+// reported to the user instead of being silently approximated.
+(function wireExportGp() {
+  const btn = document.getElementById('exportGpBtn');
+  const info = document.getElementById('applyFindingsInfo');
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    const a = syncAnalysis;
+    if (!a || !selectedJob) return;
+    const f = syncFindings(a);
+    const corrections = [];
+    let skipped = 0;
+    for (let i = 0; i < f.length; i++) {
+      const x = f[i];
+      if (!findingAccepted[i]) continue;
+      if (x.type !== 'drift') { skipped++; continue; }
+      if (!x.recommended_bpm) continue;
+      corrections.push({ measure: Math.max(1, x.start_measure), bpm: x.recommended_bpm });
+    }
+    if (!corrections.length) {
+      toast('nenhuma correção de andamento aceite para exportar', 'err');
+      return;
+    }
+    btn.disabled = true;
+    info.textContent = 'A escrever o ficheiro corrigido…';
+    try {
+      const r = await fetch(`/jobs/${selectedJob.id}/export-gp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ corrections }),
+      });
+      const b = await r.json();
+      if (!r.ok) { info.textContent = ''; toast(b.detail || 'erro ao exportar', 'err'); return; }
+      const rounded = (b.applied || []).filter(x => x.rounded);
+      let msg = `${b.applied.length} mudança(s) de andamento escritas em ${b.filename}.`;
+      if (rounded.length) {
+        msg += ` ⚠ ${rounded.length} arredondada(s) (${rounded.map(
+          x => `${x.requested_bpm}→${x.written_bpm}`).join(', ')}) — o formato .${b.format} só guarda inteiros.`;
+      }
+      if (skipped) {
+        msg += ` ${skipped} salto/diferença estrutural NÃO vai no ficheiro (não é exprimível como andamento) — corrige no Guitar Pro.`;
+      }
+      info.innerHTML = msg + ` <a href="/jobs/${selectedJob.id}/corrected-gp" download>⬇ Descarregar</a>`;
+      toast('Guitar Pro corrigido pronto', 'ok');
+    } catch (e) {
+      info.textContent = '';
+      toast('falha ao exportar', 'err');
+    } finally {
+      btn.disabled = false;
+    }
   });
 })();

@@ -444,6 +444,32 @@ class SyncAnalysisOut(BaseModel):
     warnings: list[str]
 
 
+class TempoCorrectionIn(BaseModel):
+    measure: int = Field(ge=1)
+    bpm: float = Field(gt=10.0, lt=400.0)
+
+
+class ExportGpIn(BaseModel):
+    corrections: list[TempoCorrectionIn]
+
+
+class AppliedCorrectionOut(BaseModel):
+    measure: int
+    requested_bpm: float
+    written_bpm: float
+    rounded: bool
+
+
+class ExportGpOut(BaseModel):
+    """Report of a corrected Guitar Pro export — the file is fetched separately."""
+
+    filename: str
+    format: str
+    size_bytes: int
+    applied: list[AppliedCorrectionOut]
+    warnings: list[str]
+
+
 class DetectTempoIn(BaseModel):
     from_s: float = 0.0  # recording time to start measuring the local tempo from
 
@@ -1907,6 +1933,87 @@ def analyse_sync(
         used_drum_stem=drums is not None,
         warnings=result.warnings,
     )
+
+
+@app.post("/jobs/{job_id}/export-gp", response_model=ExportGpOut)
+def export_gp(job_id: str, payload: ExportGpIn) -> ExportGpOut:
+    """Write the accepted tempo corrections into a COPY of the job's Guitar Pro
+    file, so the correction is permanent in Guitar Pro itself and not only in
+    RockForge. The uploaded original is never modified.
+
+    Returns a report of what was actually written — the binary formats store
+    tempo as an integer, so a recommendation of 119.085 lands as 119, and the
+    user is told rather than quietly handed a different tempo. Fetch the file
+    from ``GET /jobs/{id}/corrected-gp``."""
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+        if job.source_type != "gp":
+            raise HTTPException(422, "Guitar Pro export only applies to Guitar Pro jobs")
+        params = dict(job.params or {})
+        gp_path = Path(str(params.get("gp_path") or ""))
+    if not gp_path.exists():
+        raise HTTPException(409, "the Guitar Pro file no longer exists on the work volume")
+    if not payload.corrections:
+        raise HTTPException(422, "no tempo corrections to write")
+
+    from rockforge.domain.errors import IngestionError
+    from rockforge.infrastructure.gpexport.tempo_writer import (
+        TempoCorrection,
+        write_tempo_corrections,
+    )
+
+    out_dir = settings.work_dir / job_id
+    out_dir.mkdir(parents=True, exist_ok=True)
+    dst = out_dir / f"corrected{gp_path.suffix.lower()}"
+    try:
+        applied = write_tempo_corrections(
+            gp_path,
+            dst,
+            [TempoCorrection(measure=c.measure, bpm=c.bpm) for c in payload.corrections],
+        )
+    except IngestionError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+    warnings: list[str] = []
+    if any(a.rounded for a in applied):
+        warnings.append(
+            "this Guitar Pro format stores tempo as a whole number, so the "
+            "recommended values were rounded — export as .gp (GP7/8) to keep the decimals"
+        )
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is not None:
+            job.params = {**dict(job.params or {}), "corrected_gp": dst.name}
+            session.commit()
+    return ExportGpOut(
+        filename=dst.name,
+        format=gp_path.suffix.lower().lstrip("."),
+        size_bytes=dst.stat().st_size,
+        applied=[AppliedCorrectionOut(**vars(a) | {"rounded": a.rounded}) for a in applied],
+        warnings=warnings,
+    )
+
+
+@app.get("/jobs/{job_id}/corrected-gp")
+def get_corrected_gp(job_id: str) -> FileResponse:
+    """Download the corrected Guitar Pro file written by ``/export-gp``."""
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+        name = str((job.params or {}).get("corrected_gp") or "")
+        title = job.title or "song"
+    if not name:
+        raise HTTPException(404, "no corrected Guitar Pro file has been exported yet")
+    path = settings.work_dir / job_id / name
+    if not path.exists():
+        raise HTTPException(404, "the corrected file is no longer on the work volume")
+    # The title reaches a Content-Disposition header, so keep it to characters
+    # that cannot break the header or escape a directory.
+    safe = "".join(c for c in title if c.isalnum() or c in " -_").strip() or "song"
+    return FileResponse(path, filename=f"{safe}_synced{path.suffix}")
 
 
 @app.post("/jobs/{job_id}/detect-tempo", response_model=DetectTempoOut)
