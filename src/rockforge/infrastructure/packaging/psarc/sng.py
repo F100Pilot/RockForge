@@ -1145,6 +1145,48 @@ def _build_sng_sections(
     return sections
 
 
+def _apply_section_string_masks(
+    sections: list[SngSection],
+    levels: list[SngArrangementLevel],
+    chord_templates: list[SngChordTemplate],
+) -> list[SngSection]:
+    """Fill each section's 36-byte StringMask: one byte per difficulty level, a
+    bitmask of the strings actually played in that section AT that level.
+
+    This was left as 36 zero bytes, which tells the game "no string is played at
+    any difficulty in this section". It is per-DIFFICULTY data the engine reads
+    when deciding what a section contains at each level, so leaving it blank is
+    unambiguously wrong versus the format (a real DDC-built SNG has non-zero
+    entries for levels 0..maxDD of every section that has notes).
+
+    A chord note carries string -1; its sounding strings come from its chord
+    template's frets (a real fret is 0..24, the unused slots are the -1/255
+    sentinel).
+    """
+    if not sections:
+        return sections
+    out: list[SngSection] = []
+    for sec in sections:
+        mask = bytearray(36)
+        for lvl in levels:
+            d = lvl.difficulty
+            if not 0 <= d < 36:
+                continue
+            bits = 0
+            for n in lvl.notes:
+                if not (sec.start_time - 1e-6 <= n.time < sec.end_time - 1e-6):
+                    continue
+                if 0 <= n.string <= 5:
+                    bits |= 1 << n.string
+                elif 0 <= n.chord_id < len(chord_templates):
+                    for si, fret in enumerate(chord_templates[n.chord_id].frets[:6]):
+                        if 0 <= fret <= 24:
+                            bits |= 1 << si
+            mask[d] = bits
+        out.append(replace(sec, string_mask=bytes(mask)))
+    return out
+
+
 def _build_difficulty_levels(
     sng_notes: list[SngNote],
     beats: list[SngBeat],
@@ -1313,6 +1355,10 @@ def from_arrangement(
         sng_notes, beats, phrases, phrase_iterations,
         chord_templates, chord_notes_list, song_length, dynamic_difficulty,
     )
+    # Per-difficulty string usage per section — needs the levels, so it runs after
+    # them (see _apply_section_string_masks: blank masks tell the game no string
+    # is ever played).
+    sections = _apply_section_string_masks(sections, arrangements, chord_templates)
 
     sng_vocals = [
         SngVocal(time=v.time, note=VOCAL_NOTE, length=v.length, lyric=v.lyric)

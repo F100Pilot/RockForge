@@ -730,6 +730,44 @@ def test_dd_ramp_is_grouped_not_one_level_per_note() -> None:
     assert len(model.arrangements) == model.metadata.max_difficulty + 1
 
 
+def test_sections_carry_per_difficulty_string_masks() -> None:
+    """Each section's 36-byte StringMask must say which strings are played at
+    each difficulty level.
+
+    It used to be written as 36 zero bytes — i.e. "no string is played at any
+    difficulty in this section" — which is per-DD data the engine reads. Guards
+    that byte d is populated for every emitted level, that the bits are a subset
+    of the strings the chart actually uses, and that it survives the binary
+    round-trip.
+    """
+    beats = [Beat(time=i * 0.5, measure=i // 4 + 1 if i % 4 == 0 else -1) for i in range(64)]
+    notes = [
+        TabNote(string=i % 4, fret=(i % 9) + 1, time=round(i * 0.25, 3), sustain=0.1)
+        for i in range(28)
+    ]
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=16.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=tuple(beats), average_bpm=120.0),
+        notes=notes,
+        sections=[Section(name="a", start_time=0.0), Section(name="b", start_time=4.0)],
+    )
+    model = from_arrangement(arr)
+    assert any(any(s.string_mask) for s in model.sections), "all masks were blank"
+    for s in model.sections:
+        assert len(s.string_mask) == 36
+        # Only strings 0-3 are used by this chart, so bits 4/5 must never be set.
+        assert all(b & ~0b1111 == 0 for b in s.string_mask)
+    # A section with notes has a mask byte for every emitted difficulty level.
+    busy = next(s for s in model.sections if any(s.string_mask))
+    for lvl in model.arrangements:
+        if any(busy.start_time - 1e-6 <= n.time < busy.end_time - 1e-6 for n in lvl.notes):
+            assert busy.string_mask[lvl.difficulty] != 0
+    back = read_sng(write_sng(model))
+    assert [s.string_mask for s in back.sections] == [s.string_mask for s in model.sections]
+
+
 def test_gp_sections_are_bracketed_with_count_and_end_and_links() -> None:
     # Real GP sections must still be bracketed by a COUNT phrase (count-in, max
     # difficulty 0 — without it the silent intro sits inside a high-difficulty
