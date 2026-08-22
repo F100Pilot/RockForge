@@ -198,7 +198,33 @@ def _first_tempo(root: ET.Element) -> float:
     return 120.0
 
 
-def _tempo_events(root: ET.Element, bar_start_ticks: list[int]) -> list[tuple[int, float]]:
+# GPIF tempo <Value> is "<number> <reference>", where the reference indexes a
+# note-value multiplier: the authored number counts THAT note per minute, not
+# always the quarter. Index 2 (x1.0) is the ordinary quarter-note BPM. Taken
+# from alphaTab's model/Automation.ts; index 0 is unused, out-of-range clamps
+# to 2, and a single-token <Value> (a GPX quirk) means reference 1.
+_TEMPO_REFERENCES = (1.0, 0.5, 1.0, 1.5, 2.0, 3.0)
+
+
+def _tempo_bpm(value: list[str]) -> float:
+    """Quarter-note BPM from a GPIF <Value> token list."""
+    bpm = float(value[0])
+    ref = 1
+    if len(value) > 1:
+        try:
+            ref = int(float(value[1]))
+        except ValueError:
+            ref = 2
+    if not 1 <= ref <= 5:
+        ref = 2
+    return bpm * _TEMPO_REFERENCES[ref]
+
+
+def _tempo_events(
+    root: ET.Element,
+    bar_start_ticks: list[int],
+    bar_durations: list[int] | None = None,
+) -> list[tuple[int, float]]:
     """(tick, bpm) change points; defaults to 120 at tick 0 if none authored."""
     events: list[tuple[int, float]] = []
     master = root.find("MasterTrack")
@@ -210,11 +236,21 @@ def _tempo_events(root: ET.Element, bar_start_ticks: list[int]) -> list[tuple[in
             value = _text(auto.find("Value")).split()
             if not value:
                 continue
-            bpm = float(value[0])
+            bpm = _tempo_bpm(value)
             bar = int(_text(auto.find("Bar"), "0") or "0")
             ratio = float(_text(auto.find("Position"), "0") or "0")
             base = bar_start_ticks[bar] if 0 <= bar < len(bar_start_ticks) else 0
-            events.append((base + int(ratio * QUARTER_TICKS), bpm))
+            # <Position> is a fraction of the BAR's own duration (alphaTab
+            # MidiFileGenerator: barStartTick + ratioPosition * barDuration), not
+            # a count of quarter notes — the two only coincide at Position 0 in
+            # 4/4, so treating it as quarters put every mid-bar tempo change at
+            # the wrong tick (and scaled it by the meter).
+            span = (
+                bar_durations[bar]
+                if bar_durations is not None and 0 <= bar < len(bar_durations)
+                else 4 * QUARTER_TICKS
+            )
+            events.append((base + int(ratio * span), bpm))
     if not any(tick == 0 for tick, _ in events):
         events.insert(0, (0, events[0][1] if events else 120.0))
     events.sort(key=lambda e: e[0])
@@ -263,7 +299,7 @@ def parse_gpif_track(
         bar_start_ticks.append(acc)
         acc += d
 
-    to_seconds = _make_ticks_to_seconds(_tempo_events(root, bar_start_ticks))
+    to_seconds = _make_ticks_to_seconds(_tempo_events(root, bar_start_ticks, durations))
 
     def t(tick: int) -> float:
         return max(0.0, tempo_scale * float(to_seconds(tick))) + offset_s
@@ -324,7 +360,7 @@ def parse_gpif_track(
     notes.sort(key=lambda n: (n.time, n.string))
     beats_grid.sort(key=lambda b: b.time)
 
-    tempo_events = _tempo_events(root, bar_start_ticks)
+    tempo_events = _tempo_events(root, bar_start_ticks, durations)
     avg_bpm = (tempo_events[0][1] if tempo_events else 120.0) / tempo_scale
     first_num = _time_signature(master_bars[0])[0] if master_bars else 4
     tempo_map = TempoMap(

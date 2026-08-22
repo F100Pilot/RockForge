@@ -243,3 +243,84 @@ def test_gp7_tied_note_extends_not_duplicates(tmp_path: Path) -> None:
     n = parsed.notes[0]
     assert n.fret == 7
     assert n.sustain == pytest.approx(1.0)  # two quarters at 120 BPM held together
+
+
+# --- Tempo automation semantics (GPIF) ------------------------------------
+# Two independent details that both used to be read wrong, and which silently
+# corrupt the whole GP timeline (and therefore any sync analysis built on it).
+
+def _tempo_gpif(automations: str, bars: str = "4/4") -> str:
+    """A minimal 2-bar GPIF with a caller-supplied <Automations> block."""
+    return f"""<?xml version="1.0" encoding="utf-8"?>
+<GPIF>
+  <Score><Title>T</Title><Artist>A</Artist></Score>
+  <MasterTrack><Automations>{automations}</Automations></MasterTrack>
+  <Tracks><Track id="0"><Name>Guitar</Name>
+    <InstrumentSet><Type>electricGuitar</Type></InstrumentSet>
+    <Staves><Staff><Properties>
+      <Property name="Tuning"><Pitches>40 45 50 55 59 64</Pitches></Property>
+    </Properties></Staff></Staves></Track></Tracks>
+  <MasterBars>
+    <MasterBar><Time>{bars}</Time><Bars>0</Bars></MasterBar>
+    <MasterBar><Time>{bars}</Time><Bars>1</Bars></MasterBar>
+  </MasterBars>
+  <Bars><Bar id="0"><Voices>-1</Voices></Bar><Bar id="1"><Voices>-1</Voices></Bar></Bars>
+  <Voices/><Beats/><Notes/><Rhythms/>
+</GPIF>
+"""
+
+
+def _gp_with(tmp_path: Path, gpif: str) -> Path:
+    path = tmp_path / "tempo.gp"
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("VERSION", "7.0")
+        z.writestr("Content/score.gpif", gpif)
+    return path
+
+
+def test_gpif_tempo_reference_multiplier_is_applied(tmp_path: Path) -> None:
+    """<Value> is "<number> <reference>" — the reference says WHICH note value
+    the number counts per minute, not always the quarter. Ignoring it reads a
+    score authored in half notes (reference 4, x2.0) at half the real tempo."""
+    from rockforge.infrastructure.gpimport.gpif_parser import _tempo_bpm
+
+    assert _tempo_bpm(["120", "2"]) == 120.0     # quarter (the ordinary case)
+    assert _tempo_bpm(["60", "4"]) == 120.0      # half note = 2x
+    assert _tempo_bpm(["120", "1"]) == 60.0      # x0.5
+    assert _tempo_bpm(["80", "3"]) == 120.0      # dotted quarter = 1.5x
+    assert _tempo_bpm(["40", "5"]) == 120.0      # x3.0
+    assert _tempo_bpm(["120", "9"]) == 120.0     # out of range clamps to quarter
+    assert _tempo_bpm(["120"]) == 60.0           # single token = reference 1
+
+    # End to end: a half-note-referenced tempo must reach the parsed track.
+    gp = _gp_with(tmp_path, _tempo_gpif(
+        "<Automation><Type>Tempo</Type><Bar>0</Bar><Position>0</Position>"
+        "<Value>60 4</Value></Automation>"
+    ))
+    assert inspect_gp(gp).tempo == pytest.approx(120.0)
+
+
+def test_gpif_tempo_position_is_a_fraction_of_the_bar(tmp_path: Path) -> None:
+    """<Position> is a fraction of that bar's OWN duration, not a quarter-note
+    count. A change at half of bar 1 must land at bar 1 + half a bar."""
+    from rockforge.infrastructure.gpimport.gpif_parser import _tempo_events
+    from rockforge.infrastructure.gpimport.parser import QUARTER_TICKS
+
+    bar = 4 * QUARTER_TICKS                      # one 4/4 bar in ticks
+    gpif = _tempo_gpif(
+        "<Automation><Type>Tempo</Type><Bar>0</Bar><Position>0</Position>"
+        "<Value>120 2</Value></Automation>"
+        "<Automation><Type>Tempo</Type><Bar>1</Bar><Position>0.5</Position>"
+        "<Value>150 2</Value></Automation>"
+    )
+    import xml.etree.ElementTree as ET
+    root = ET.fromstring(gpif)
+    events = _tempo_events(root, [0, bar], [bar, bar])
+    assert events[0] == (0, 120.0)
+    # Half of a 4/4 bar = 2 quarters past the bar start — NOT 0.5 quarters.
+    assert events[1] == (bar + bar // 2, 150.0)
+
+    # In 3/4 the same ratio is a shorter distance: the bar's own duration rules.
+    bar34 = 3 * QUARTER_TICKS
+    events34 = _tempo_events(root, [0, bar34], [bar34, bar34])
+    assert events34[1] == (bar34 + bar34 // 2, 150.0)
