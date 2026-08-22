@@ -438,6 +438,10 @@ const INFO = {
     title: 'Sincronização dinâmica (segue o andamento real)',
     body: '<p>A sincronização automática acima aplica UM andamento médio — não chega quando o tempo da gravação varia (o problema típico das tabs de IA). Esta segue a <b>curva de andamento real</b>: usa a grelha de batidas para o tempo local, e afina cada âncora encaixando as notas da própria tab nos ataques do áudio.<br><b>Corre "Separar instrumentos" primeiro:</b> a grelha de batidas passa a vir da <b>bateria isolada</b> e os ataques da <b>guitarra isolada</b> — muito mais fiável que a mistura completa (onde o detetor de batidas se engana no andamento). Sem separação, usa a mistura e avisa-te.<br><b>Começa na primeira nota:</b> define primeiro o início no Passo 1 (ou com "🎯 Detetar 1ª nota") — a primeira âncora é exatamente esse ponto e o alinhamento aplica-se daí para a frente.<br>Substitui as correções pendentes da pista atual por esta proposta; fica em pré-visualização — vê o <b>♩BPM por compasso</b> na partitura (âmbar = alterado pelas âncoras) e confirma com "Aplicar e reconstruir".<br><b>Limite honesto:</b> secções onde as notas da tab não batem com o áudio são assinaladas com ⚠ — aí o problema é o conteúdo da tab (notas/compassos errados), que nenhuma sincronização corrige; ajusta essas partes no Guitar Pro. Requer o extra <code>ml</code> (librosa).</p>'
   },
+  'analyse-sync': {
+    title: 'Analisar sincronização',
+    body: '<p>Não corrige nada — <b>diagnostica</b>. Todas as outras ferramentas respondem "onde deve ficar cada nota"; esta responde <b>"que tipo de problema é este"</b>, que é o que decide a correção certa.<br>Encaixa as notas da tab nos ataques reais da gravação e analisa a curva de desvio:<br>• <b>Desvio progressivo</b> — a diferença cresce a um ritmo constante: o andamento da tab não é bem o da gravação. Corrige-se com um <b>BPM novo, só naquele troço</b>.<br>• <b>Salto</b> — a diferença dá um degrau: compasso a mais/menos, pausa em falta, repetição. <b>Nunca</b> se corrige com BPM — isso espalharia um erro local por música que estava correta.<br>• <b>Diferença estrutural</b> — as notas da tab não correspondem ao áudio ali; nenhuma correção temporal resolve, é o conteúdo que está errado.<br><b>Separa os instrumentos primeiro:</b> as notas são encaixadas nos ataques da <b>guitarra isolada</b>, bem mais fiável que a mistura.<br>Cada conclusão é aceite ou rejeitada individualmente e só entra em pré-visualização — o "Aplicar e reconstruir" continua a ser quem grava.<br><b>Limite honesto:</b> num trecho de ritmo muito regular, um compasso a mais/menos pode ser matematicamente indistinguível de notas em falta — aí verás "sincronizado" e notas sem par, não um salto.</p>'
+  },
   'sync-from-stem': {
     title: 'Sincronizar pela bateria (IA)',
     body: '<p>O equivalente ao MIDI do RIPX, mas <b>feito dentro do RockForge</b> — sem exportares nada de um DAW. Corre um detetor de batidas <b>neural</b> (muito mais fiável que o automático normal em música rápida e densa, onde o detetor clássico se engana no nível métrico) sobre a gravação, deteta o <b>início de cada compasso</b> e alinha cada compasso da tab a esse tempo real — a mesma âncora-por-compasso do mapa de tempo MIDI.<br><b>Corre "Separar instrumentos" primeiro:</b> a deteção passa a ser feita na <b>bateria isolada</b> (o sinal de batida mais limpo); sem separação usa a mistura completa e avisa-te.<br>Respeita o <b>Passo 1</b> (fixa a 1.ª nota, o alinhamento cresce daí) e fica em pré-visualização — revê o <b>♩BPM por compasso</b> na partitura e confirma com "Aplicar e reconstruir".<br><b>Limite honesto:</b> é uma <b>estimativa neural</b>, forte mas não é verdade absoluta como um MIDI do RIPX conferido à mão — se falhar em material invulgar, importa o MIDI. Requer o extra <code>beatthis</code> (Beat This! + torch); pode demorar algum tempo.</p>'
@@ -5052,3 +5056,217 @@ addEventListener('pageshow', () => ping(false));
 // instead of waiting the full idle window. A refresh reloads and sends the
 // heartbeat above within the grace, which cancels the pending shutdown.
 addEventListener('pagehide', () => { try { navigator.sendBeacon('/closing'); } catch {} });
+
+
+// ---------------------------------------------------------------------------
+// Sync analysis: diagnose HOW the chart diverges (drift vs jump vs structural)
+// and let the user accept each finding individually. Analysis is read-only; an
+// accepted finding becomes ordinary pending anchors, committed by the usual
+// "Aplicar e reconstruir" — same preview-then-commit rule as every other tool.
+// ---------------------------------------------------------------------------
+let syncAnalysis = null;      // last SyncAnalysisOut
+let findingAccepted = [];     // parallel to the flattened findings list
+
+const VERDICT_TEXT = {
+  in_sync: ['✅', 'A partitura acompanha a gravação — não há nada a corrigir.'],
+  global_tempo_mismatch: ['📈', 'Desvio progressivo em toda a música: o andamento da tab não é o da gravação.'],
+  local_tempo_mismatch: ['📉', 'Desvio progressivo apenas em parte da música — o resto está bem.'],
+  sudden_offset: ['⏭️', 'Salto: a sincronização parte-se de repente. Compasso a mais/menos ou pausa — não é problema de andamento.'],
+  mixed: ['🔀', 'Vários problemas: há desvio progressivo E pelo menos um salto.'],
+  structural_mismatch: ['⚠️', 'As notas da tab não correspondem ao áudio nalgumas zonas — nenhuma correção temporal resolve isso.'],
+  insufficient_data: ['❓', 'Notas insuficientes para analisar com confiança.'],
+};
+
+// Findings = the actionable subset, in chart order. A "synced" segment is not a
+// finding (there is nothing to accept), but it IS drawn on the graph.
+function syncFindings(a) {
+  const out = [];
+  for (const s of a.segments) if (s.kind === 'drift') out.push({ type: 'drift', ...s });
+  for (const j of a.jumps) out.push({ type: 'jump', ...j, start_chart: j.chart_time });
+  for (const s of a.segments) if (s.kind === 'structural') out.push({ type: 'structural', ...s });
+  out.sort((x, y) => x.start_chart - y.start_chart);
+  return out;
+}
+
+function renderDriftGraph(a) {
+  const svg = document.getElementById('driftGraph');
+  if (!svg) return;
+  const W = Math.max(320, svg.clientWidth || svg.parentElement.clientWidth || 700), H = 170;
+  const padL = 46, padR = 10, padT = 12, padB = 22;
+  const pts = a.points || [];
+  if (!pts.length) { svg.innerHTML = ''; return; }
+  const xs = pts.map(p => p.chart_time), ys = pts.map(p => p.drift);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs);
+  // Always include 0 so "no drift" reads as the baseline, and keep a floor on
+  // the range so a nearly-synced song doesn't render as dramatic noise.
+  let y0 = Math.min(0, ...ys), y1 = Math.max(0, ...ys);
+  if (y1 - y0 < 0.2) { const m = (y0 + y1) / 2; y0 = m - 0.1; y1 = m + 0.1; }
+  const pad = (y1 - y0) * 0.12; y0 -= pad; y1 += pad;
+  const X = t => padL + (x1 - x0 ? (t - x0) / (x1 - x0) : 0) * (W - padL - padR);
+  const Y = d => padT + (1 - (d - y0) / (y1 - y0 || 1)) * (H - padT - padB);
+  const esc2 = v => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  let g = '';
+  // Bands for each diagnosed segment, so the classification is visible at a glance.
+  const BAND = { synced: '#1d3a24', drift: '#3a3320', structural: '#3a2020' };
+  for (const s of a.segments) {
+    const xa = X(s.start_chart), xb = X(s.end_chart);
+    g += `<rect x="${xa}" y="${padT}" width="${Math.max(1, xb - xa)}" height="${H - padT - padB}" fill="${BAND[s.kind] || '#22252d'}"/>`;
+  }
+  // Zero line = perfectly in sync.
+  g += `<line x1="${padL}" y1="${Y(0)}" x2="${W - padR}" y2="${Y(0)}" stroke="#5cc24a" stroke-width="1" stroke-dasharray="4 3"/>`;
+  // Y axis labels (seconds of drift).
+  for (const d of [y1, 0, y0]) {
+    g += `<text x="4" y="${Y(d) + 4}" fill="#9aa0ad" font-size="10">${d >= 0 ? '+' : ''}${d.toFixed(2)}s</text>`;
+  }
+  // The drift curve. Unmatched points are drawn faint: they are predictions,
+  // not evidence, and must not read as measurements.
+  let path = '';
+  pts.forEach((p, i) => { path += (i ? 'L' : 'M') + X(p.chart_time).toFixed(1) + ' ' + Y(p.drift).toFixed(1) + ' '; });
+  g += `<path d="${path}" fill="none" stroke="#3f9bdc" stroke-width="1.6"/>`;
+  for (const p of pts) if (!p.matched) g += `<circle cx="${X(p.chart_time)}" cy="${Y(p.drift)}" r="1.5" fill="#6b7280"/>`;
+  // Jumps as vertical markers.
+  for (const j of a.jumps) {
+    g += `<line x1="${X(j.chart_time)}" y1="${padT}" x2="${X(j.chart_time)}" y2="${H - padB}" stroke="#e6483c" stroke-width="1.5"/>`;
+    g += `<text x="${X(j.chart_time) + 3}" y="${padT + 10}" fill="#e6483c" font-size="10">salto ${j.step_s > 0 ? '+' : ''}${j.step_s.toFixed(2)}s</text>`;
+  }
+  // X axis: chart seconds.
+  for (let k = 0; k <= 4; k++) {
+    const t = x0 + (x1 - x0) * k / 4;
+    g += `<text x="${X(t)}" y="${H - 6}" fill="#9aa0ad" font-size="10" text-anchor="middle">${esc2(Math.round(t))}s</text>`;
+  }
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = g;
+}
+
+function renderSyncFindings() {
+  const el = document.getElementById('syncFindings');
+  const a = syncAnalysis;
+  if (!el || !a) return;
+  const f = syncFindings(a);
+  if (!f.length) {
+    el.innerHTML = '<div class="meta">Nada a corrigir — a partitura acompanha a gravação.</div>';
+    return;
+  }
+  let h = '<table style="width:100%;border-collapse:collapse;font-size:.85rem">'
+        + '<tr style="color:#9aa0ad;text-align:left">'
+        + '<th style="padding:.2rem .3rem">Aplicar</th><th>Compassos</th><th>Problema</th>'
+        + '<th>Desvio</th><th>BPM</th><th>Confiança</th></tr>';
+  f.forEach((x, i) => {
+    const acc = findingAccepted[i];
+    let what, drift, bpm;
+    if (x.type === 'drift') {
+      what = '📈 desvio progressivo';
+      drift = `${x.drift_start_s >= 0 ? '+' : ''}${x.drift_start_s.toFixed(2)}s → ${x.drift_end_s >= 0 ? '+' : ''}${x.drift_end_s.toFixed(2)}s`;
+      bpm = x.original_bpm ? `${x.original_bpm.toFixed(1)} → <b style="color:#f2b84b">${x.recommended_bpm.toFixed(2)}</b>` : '—';
+    } else if (x.type === 'jump') {
+      what = '⏭️ salto (não é andamento)';
+      drift = `${x.step_s >= 0 ? '+' : ''}${x.step_s.toFixed(2)}s de uma vez`;
+      bpm = '<span class="meta">não se corrige com BPM</span>';
+    } else {
+      what = '⚠️ diferença estrutural';
+      drift = 'a tab não corresponde ao áudio';
+      bpm = '<span class="meta">corrige no Guitar Pro</span>';
+    }
+    const measures = x.type === 'jump' ? `compasso ${x.measure}` : `${x.start_measure}–${x.end_measure}`;
+    const dis = x.type === 'structural' ? 'disabled' : '';
+    h += `<tr style="border-top:1px solid #2b2f3a">`
+       + `<td style="padding:.25rem .3rem"><input type="checkbox" class="fnd" data-i="${i}" ${acc ? 'checked' : ''} ${dis}></td>`
+       + `<td>${measures}</td><td>${what}</td><td>${drift}</td><td>${bpm}</td>`
+       + `<td>${Math.round((x.confidence || 0) * 100)}%</td></tr>`;
+  });
+  h += '</table>';
+  el.innerHTML = h;
+  el.querySelectorAll('.fnd').forEach(cb => cb.addEventListener('change', e => {
+    findingAccepted[parseInt(e.target.dataset.i, 10)] = e.target.checked;
+  }));
+}
+
+(function wireAnalyseSync() {
+  const btn = document.getElementById('analyseSyncBtn');
+  const info = document.getElementById('analyseSyncInfo');
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    if (!selectedJob) return;
+    const kind = currentKind();
+    if (!kind) return;
+    btn.disabled = true;
+    info.textContent = 'A analisar a sincronização…';
+    try {
+      // Same Step-1 pin every sync tool passes, so the two clocks are related
+      // and the drift is measured from the confirmed first note.
+      let pin = '';
+      const chartT = currentArrFirstNoteTime();
+      if (chartT != null) {
+        const recT = buildTimeWarp(syncAnchors)(previewScale(chartT)) - viewOrigin;
+        pin = `&chart_start=${encodeURIComponent(chartT)}&rec_start=${encodeURIComponent(Math.max(0, recT))}`;
+      }
+      const r = await fetch(`/jobs/${selectedJob.id}/analyse-sync?arrangement=${encodeURIComponent(kind)}${pin}`,
+                           { method: 'POST' });
+      const b = await r.json();
+      if (!r.ok) { info.textContent = ''; toast(b.detail || 'erro na análise', 'err'); return; }
+      syncAnalysis = b;
+      const f = syncFindings(b);
+      // Structural findings are never auto-accepted: no time warp can fix content.
+      findingAccepted = f.map(x => x.type !== 'structural');
+      document.getElementById('syncReport').style.display = '';
+      const [icon, text] = VERDICT_TEXT[b.classification] || ['❓', b.classification];
+      const div = b.first_divergence_s != null
+        ? ` Primeira divergência: <b>${b.first_divergence_s.toFixed(1)}s</b>.` : '';
+      const warn = (b.warnings || []).map(w => `<br>⚠ ${w}`).join('');
+      document.getElementById('syncVerdict').innerHTML =
+        `${icon} <b>${text}</b>${div} Confiança ${Math.round(b.confidence * 100)}% `
+        + `(${b.point_count} notas analisadas).${warn}`;
+      renderDriftGraph(b);
+      renderSyncFindings();
+      info.textContent = '';
+      toast('Análise concluída', 'ok');
+    } catch (e) {
+      info.textContent = '';
+      toast('falha na análise', 'err');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+})();
+
+(function wireApplyFindings() {
+  const btn = document.getElementById('applyFindings');
+  const info = document.getElementById('applyFindingsInfo');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    const a = syncAnalysis;
+    if (!a) return;
+    const f = syncFindings(a);
+    // Build the target curve from the ACCEPTED findings only, accumulating their
+    // deltas. A rejected finding contributes nothing, so the music it covers
+    // keeps whatever timing it already had — which is the entire point: never
+    // touch what is already right.
+    const anchors = [];
+    let applied = 0;
+    for (let i = 0; i < f.length; i++) {
+      const x = f[i];
+      if (!findingAccepted[i] || x.type === 'structural') continue;
+      if (x.type === 'drift') {
+        anchors.push([x.start_chart, applied]);
+        applied += (x.drift_end_s - x.drift_start_s);
+        anchors.push([x.end_chart, applied]);
+      } else {
+        // A step: pin just before the jump at the current correction, then the
+        // new one at the jump. Anchors are piecewise-linear so the transition is
+        // a short ramp rather than a true discontinuity.
+        anchors.push([Math.max(0, x.chart_time - 0.05), applied]);
+        applied += x.step_s;
+        anchors.push([x.chart_time, applied]);
+      }
+    }
+    if (!anchors.length) { toast('nenhuma correção aceite', 'err'); return; }
+    for (const [chartT, delta] of anchors) {
+      setAnchor(previewScale(chartT), buildTimeWarp(syncAnchors)(previewScale(chartT)) + delta);
+    }
+    renderAnchorsList();
+    updatePendingChangesInfo();
+    showArr(currentArr);
+    info.textContent = `${anchors.length} ponto(s) em pré-visualização — confirma e clica em "Aplicar e reconstruir".`;
+    toast('Correções carregadas — revê e aplica', 'ok');
+  });
+})();

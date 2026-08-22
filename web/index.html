@@ -592,6 +592,22 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
                 <span id="autoSyncDynamicInfo" class="meta"></span>
               </div>
               <div class="syncctrls" style="margin-top:.4rem">
+                <button type="button" id="analyseSyncBtn" class="secondary">🔍 Analisar sincronização</button>
+                <button class="info-btn" data-info="analyse-sync">ⓘ</button>
+                <span id="analyseSyncInfo" class="meta"></span>
+              </div>
+              <div id="syncReport" style="display:none;margin:.5rem 0 .2rem">
+                <div id="syncVerdict" class="meta" style="margin-bottom:.35rem;line-height:1.4"></div>
+                <div style="overflow-x:auto;border:1px solid #2b2f3a;border-radius:6px;background:#14161c">
+                  <svg id="driftGraph" width="100%" height="170" style="display:block"></svg>
+                </div>
+                <div id="syncFindings" style="margin-top:.45rem"></div>
+                <div class="syncctrls" style="margin-top:.4rem">
+                  <button type="button" id="applyFindings" class="secondary">✅ Aplicar correções aceites</button>
+                  <span id="applyFindingsInfo" class="meta"></span>
+                </div>
+              </div>
+              <div class="syncctrls" style="margin-top:.4rem">
                 <button type="button" id="stemSyncBtn" class="secondary">🥁 Sincronizar pela bateria (IA)</button>
                 <button class="info-btn" data-info="sync-from-stem">ⓘ</button>
                 <span id="stemSyncInfo" class="meta"></span>

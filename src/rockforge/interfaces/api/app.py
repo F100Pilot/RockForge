@@ -1870,6 +1870,14 @@ def analyse_sync(
     )
     result = diagnose(points, gp_bars, gp_beats, warnings=warnings)
 
+    # Report drift RELATIVE to the first matched point. The raw residual mixes
+    # two clocks (chart times are bundle seconds, audio times recording seconds),
+    # so it carries a constant offset that would make the graph unreadable and
+    # tell the user about a lead-in rather than about drift. Subtracting a
+    # constant changes no slope and no step, so the diagnosis is unaffected — and
+    # a constant head offset is what the Step 1 pin exists for, not this tool.
+    base = result.points[0].residual if result.points else 0.0
+
     # Decimate for transport: the graph needs a shape, not every onset.
     step = max(1, len(result.points) // max(1, max_points))
     shown = result.points[::step]
@@ -1877,13 +1885,20 @@ def analyse_sync(
         classification=result.classification,
         confidence=result.confidence,
         first_divergence_s=result.first_divergence_s,
-        segments=[DriftSegmentOut(**vars(s)) for s in result.segments],
+        segments=[
+            DriftSegmentOut(**{
+                **vars(s),
+                "drift_start_s": round(s.drift_start_s - base, 4),
+                "drift_end_s": round(s.drift_end_s - base, 4),
+            })
+            for s in result.segments
+        ],
         jumps=[SyncJumpOut(**vars(j)) for j in result.jumps],
         points=[
             SyncPointOut(
                 chart_time=round(p.chart_time, 4),
                 audio_time=round(p.audio_time, 4),
-                drift=round(p.residual, 4),
+                drift=round(p.residual - base, 4),
                 matched=p.matched,
             )
             for p in shown

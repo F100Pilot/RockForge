@@ -375,6 +375,74 @@ stem). A neural tracker is far more robust there.
   (maps bars to detected downbeats, respects the pin, uses the drum stem,
   rejects non-GP).
 
+### Sync diagnosis — WHAT kind of desync, not just where (`/analyse-sync`)
+
+Every other sync tool answers "where should each note go". This one answers
+**"what kind of problem is this"**, which is what decides the right fix — and
+getting it wrong makes things worse: correcting a *jump* with a tempo change
+smears a local error across music that was already in sync.
+
+`application/sync_analysis.py` is **pure** (no audio, no I/O, no ml extra) and
+derives everything from one primitive: the **correspondence series** — the pairs
+`(chart_time, audio_time)` where a chart note onset was matched to a real attack.
+Its residual `d(t) = audio − chart` is the drift curve; segmenting that curve IS
+the diagnosis:
+
+| curve shape | `kind` | proposed fix |
+|---|---|---|
+| steady slope | `drift` | a new BPM for **that span only** (`recommended_bpm`) |
+| step | jump | a shift at one measure — **never** a BPM change |
+| few matches | `structural` | none: the tab does not correspond to the audio |
+
+Classification is on the drift **RATE** (`NEGLIGIBLE_SLOPE`), not a segment's own
+total: judging by total let a long gentle slide be chopped into short pieces that
+each read "synced" while the song ended ~1.8 s out. Adjacent segments whose
+slopes agree are merged, because the eager recursive split (which must not miss a
+real change of slope) otherwise reports one smooth passage as many corrections.
+`original_bpm` is read from the chart's own beat grid over the span, so a
+recommendation respects tempo changes already authored in the file.
+
+**Re-acquisition is what makes jumps visible at all.** Predict-and-snap cannot
+see across a jump: it moves the recording far outside the matching window, so
+nothing matches, the walker coasts on its prediction, the residual never steps,
+and a 1.7 s discontinuity reads as "in sync". `_reacquire` proposes a candidate
+shift from each real attack near the lost prediction and believes one only when
+it also explains several of the NEXT onsets (one note can match by luck, a run
+cannot), ties going to the smallest shift so a small gap is never explained away
+as a large one. Two details that were measured, not guessed: the trigger is a
+**windowed** miss count (a consecutive-run counter is reset by the coincidental
+matches an irregular rhythm throws after a jump, and only recovered ~20 s late,
+reporting the jump far from where it happened), and on recovery the points since
+the loss are **back-filled** against the recovered shift so the step lands where
+the music actually moved. Measured on an irregular rhythm with a true jump at
+60.0 s: shifts of +1.7/+2.0/+3.5 recovered to within 0.15 s, at 60.0 s.
+
+**Honest limit, and it is a real one:** on a perfectly regular passage, shifting
+the audio by a whole number of grid steps produces an *identical* attack set — a
+missing bar is then mathematically indistinguishable from missing notes, and the
+tool correctly says "in sync, some notes unmatched" rather than inventing a jump.
+Guarded by `test_a_grid_aligned_shift_is_honestly_reported_as_in_sync`.
+
+`POST /jobs/{id}/analyse-sync` (GP jobs, ml extra) wires it up: onsets from the
+isolated **guitar** stem when a separation exists (the chart's notes are guitar
+notes; else the full mix, with a warning), the requested arrangement's own bars
+and beat grid, the Step-1 pin like every other sync tool. **Read-only** — it
+proposes nothing and writes nothing. The reported `drift` is normalised to the
+first matched point (the raw residual mixes bundle and recording clocks, so it
+carries a constant offset that is what Step 1 is for, not this tool; subtracting
+a constant changes no slope and no step).
+
+**UI** (`web/index.html` + `web/app.js`): a "🔍 Analisar sincronização" panel with
+an SVG **drift graph** (bands coloured per segment kind, a green zero line, faint
+dots for unmatched/predicted points so a prediction never reads as a measurement,
+red markers at jumps) and a **findings table** — measures, problem, drift,
+original→recommended BPM, confidence — with a checkbox per finding. Structural
+findings are never auto-accepted and cannot be accepted at all. "Aplicar
+correções aceites" accumulates only the accepted deltas into ordinary pending
+anchors (a rejected finding contributes nothing, so the music it covers keeps the
+timing it already had — the entire point), left in preview for the usual
+"Aplicar e reconstruir".
+
 ### Manual drift correction (`sync_anchor_stages`)
 
 A single `offset_s` only fixes a constant lead-in; if the GP file's tempo map
