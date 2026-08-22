@@ -157,3 +157,58 @@ def test_multi_slope_drift_is_split_into_scoped_corrections() -> None:
     assert segs[0].start_measure == 1
     assert all(s.end_measure >= s.start_measure for s in segs)
     assert d.first_divergence_s == pytest.approx(0.0, abs=1.0)
+
+
+def _irregular(limit: float = 120.0, seed: int = 11) -> list[float]:
+    """A non-periodic rhythm. Real music is not a uniform grid, and uniformity
+    makes jumps genuinely undetectable (a shift of a whole number of grid steps
+    produces an identical attack set), so realistic tests must be irregular."""
+    import random
+
+    rng = random.Random(seed)
+    out, t = [], 0.0
+    while t < limit:
+        out.append(round(t, 4))
+        t += rng.choice([0.25, 0.25, 0.5, 0.5, 0.75, 1.0])
+    return out
+
+
+def test_correspondence_reacquires_after_a_real_jump() -> None:
+    """A jump moves the recording far outside the matching window, so plain
+    predict-and-snap stops matching and coasts — the residual never steps and the
+    jump becomes invisible, which is the one thing this analysis exists to find.
+    Re-acquisition must find the displaced music, recover the true step, and
+    place it where the music actually moved."""
+    chart = _irregular()
+    bars = [i * 2.0 for i in range(61)]
+    for shift in (1.7, 2.0, 3.5):
+        rec = [c if c < 60.0 else c + shift for c in chart]
+        d = diagnose(build_correspondence(chart, rec, chart_start=0.0, rec_start=0.0),
+                     bars, chart)
+        assert d.classification == "sudden_offset", (shift, d.classification)
+        assert len(d.jumps) == 1, (shift, d.jumps)
+        assert d.jumps[0].step_s == pytest.approx(shift, abs=0.15)
+        assert d.jumps[0].chart_time == pytest.approx(60.0, abs=3.0)
+
+
+def test_a_grid_aligned_shift_is_honestly_reported_as_in_sync() -> None:
+    """On a uniform grid, shifting by a whole number of steps leaves the attacks
+    exactly where the chart expects them: the music really does line up, only
+    some notes have no partner. Claiming a jump there would be an invention."""
+    chart = [0.5 * i for i in range(240)]
+    rec = [t if t < 60.0 else t + 1.5 for t in chart]     # 1.5s == 3 grid steps
+    d = diagnose(build_correspondence(chart, rec, chart_start=0.0, rec_start=0.0),
+                 [i * 2.0 for i in range(60)], chart)
+    assert d.classification == "in_sync"
+    assert d.jumps == []
+
+
+def test_reacquisition_does_not_invent_a_jump_in_a_clean_song() -> None:
+    """The wide re-acquisition search must not fire on music that is simply
+    sparse or has a rest — no jump may appear where none exists."""
+    chart = _irregular(seed=3)
+    rec = list(chart)
+    d = diagnose(build_correspondence(chart, rec, chart_start=0.0, rec_start=0.0),
+                 [i * 2.0 for i in range(61)], chart)
+    assert d.classification == "in_sync"
+    assert d.jumps == []

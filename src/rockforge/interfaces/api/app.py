@@ -389,6 +389,61 @@ class DynamicSyncOut(BaseModel):
     used_drum_stem: bool = False
 
 
+class SyncPointOut(BaseModel):
+    """One chart onset and where it actually sounds — a point on the drift graph."""
+
+    chart_time: float
+    audio_time: float
+    drift: float           # audio - chart; + = the chart runs early
+    matched: bool          # False = predicted, no real attack found (not evidence)
+
+
+class DriftSegmentOut(BaseModel):
+    """A span sharing one tempo relationship to the recording."""
+
+    kind: str              # "synced" | "drift" | "structural"
+    start_chart: float
+    end_chart: float
+    start_measure: int
+    end_measure: int
+    drift_start_s: float
+    drift_end_s: float
+    slope: float           # seconds of drift gained per chart second
+    tempo_ratio: float
+    original_bpm: float
+    recommended_bpm: float
+    confidence: float
+
+
+class SyncJumpOut(BaseModel):
+    """A step discontinuity: a structural difference, NOT a tempo error."""
+
+    chart_time: float
+    measure: int
+    step_s: float
+    confidence: float
+
+
+class SyncAnalysisOut(BaseModel):
+    """Diagnosis of HOW the chart diverges from the recording.
+
+    Analysis only — nothing is applied. The tab viewer renders the drift curve
+    and offers each segment/jump as an individually acceptable correction, which
+    is then committed through the ordinary rebuild like every other sync tool."""
+
+    classification: str    # in_sync | global_tempo_mismatch | local_tempo_mismatch
+                           # | sudden_offset | mixed | structural_mismatch
+                           # | insufficient_data
+    confidence: float
+    first_divergence_s: float | None
+    segments: list[DriftSegmentOut]
+    jumps: list[SyncJumpOut]
+    points: list[SyncPointOut]   # decimated for transport; drives the graph
+    point_count: int             # how many were actually analysed
+    used_drum_stem: bool
+    warnings: list[str]
+
+
 class DetectTempoIn(BaseModel):
     from_s: float = 0.0  # recording time to start measuring the local tempo from
 
@@ -1716,6 +1771,126 @@ def sync_from_stem(
         confidences=[conf for _, _, conf in triples],
         weak_ranges=weak_ranges,
         used_drum_stem=drums is not None,
+    )
+
+
+@app.post("/jobs/{job_id}/analyse-sync", response_model=SyncAnalysisOut)
+def analyse_sync(
+    job_id: str,
+    arrangement: str | None = None,
+    chart_start: float | None = None,
+    rec_start: float | None = None,
+    max_points: int = 600,
+) -> SyncAnalysisOut:
+    """Diagnose HOW the chart is out of sync with the recording, without fixing it.
+
+    Every other sync tool answers "where should each note go"; this one answers
+    "what kind of problem is this", which decides the right fix. It matches the
+    chart's note onsets to real attacks in the recording and segments the
+    resulting drift curve into progressive drift (a tempo error, correctable by
+    re-tempoing THAT span), sudden jumps (a bar too many/few — correctable only
+    by a shift, never by a BPM change) and structural mismatches (the tab does
+    not correspond to the audio; no time warp helps).
+
+    Read-only: it proposes nothing and writes nothing. The tab viewer renders the
+    drift curve and lets the user accept individual corrections, which are then
+    committed through the ordinary rebuild."""
+    import xml.etree.ElementTree as ET
+
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+        if job.source_type != "gp":
+            raise HTTPException(422, "sync analysis only applies to Guitar Pro jobs")
+        if job.status is not JobStatus.COMPLETED or not job.bundle_dir:
+            raise HTTPException(404, "arrangements not available")
+        bundle_dir = job.bundle_dir
+        src = Path(job.source)
+        params = dict(job.params or {})
+    if not src.exists():
+        raise HTTPException(409, "source audio no longer exists on the work volume")
+
+    # The chart's own grids in the built bundle timeline — the coordinate every
+    # returned time is expressed in. Onsets come from the requested chart only
+    # (unlike dynamic sync, which unions every chart): the diagnosis is about
+    # THIS arrangement's timing.
+    gp_bars: list[float] = []
+    gp_beats: list[float] = []
+    chart_onsets: set[float] = set()
+    for xml_path in sorted(Path(bundle_dir).glob("arrangement_*.xml")):
+        root = ET.parse(xml_path).getroot()
+        if root.tag != "song":  # skip the vocals XML
+            continue
+        if arrangement and root.findtext("arrangement", "?") != arrangement:
+            continue
+        for el in root.findall("levels/level/notes/note"):
+            chart_onsets.add(float(el.get("time", "0")))
+        for el in root.findall("levels/level/chords/chord"):
+            chart_onsets.add(float(el.get("time", "0")))
+        gp_beats = [float(eb.get("time", "0")) for eb in root.findall("ebeats/ebeat")]
+        gp_bars = [
+            float(eb.get("time", "0"))
+            for eb in root.findall("ebeats/ebeat")
+            if int(eb.get("measure", "-1")) > 0
+        ]
+        break
+    if len(chart_onsets) < 4:
+        raise HTTPException(422, "the arrangement has too few notes to analyse")
+
+    try:
+        from rockforge.infrastructure.rhythm.librosa_adapter import detect_onsets
+    except ImportError as exc:  # ml extra absent
+        raise HTTPException(
+            503, "sync analysis needs the 'ml' extra (librosa) — install rockforge[ml]"
+        ) from exc
+
+    from rockforge.application.sync_analysis import build_correspondence, diagnose
+
+    # Onsets from the isolated GUITAR when a separation exists: the chart's notes
+    # are guitar notes, so guitar attacks are the right thing to match them to.
+    guitar = _guitar_stem(params)
+    drums = _drum_stem(params)
+    try:
+        rec_onsets = detect_onsets(guitar or src)
+    except Exception as exc:  # decode/analysis failure — surface honestly
+        raise HTTPException(422, f"could not analyse the recording: {exc}") from exc
+
+    warnings: list[str] = []
+    if guitar is None:
+        warnings.append(
+            "measured on the full mix — separating instruments first makes the "
+            "note matching considerably more reliable"
+        )
+
+    cs = chart_start if chart_start is not None else min(chart_onsets)
+    rs = rec_start if rec_start is not None else 0.0
+    points = build_correspondence(
+        sorted(chart_onsets), rec_onsets, chart_start=cs, rec_start=rs
+    )
+    result = diagnose(points, gp_bars, gp_beats, warnings=warnings)
+
+    # Decimate for transport: the graph needs a shape, not every onset.
+    step = max(1, len(result.points) // max(1, max_points))
+    shown = result.points[::step]
+    return SyncAnalysisOut(
+        classification=result.classification,
+        confidence=result.confidence,
+        first_divergence_s=result.first_divergence_s,
+        segments=[DriftSegmentOut(**vars(s)) for s in result.segments],
+        jumps=[SyncJumpOut(**vars(j)) for j in result.jumps],
+        points=[
+            SyncPointOut(
+                chart_time=round(p.chart_time, 4),
+                audio_time=round(p.audio_time, 4),
+                drift=round(p.residual, 4),
+                matched=p.matched,
+            )
+            for p in shown
+        ],
+        point_count=len(result.points),
+        used_drum_stem=drums is not None,
+        warnings=result.warnings,
     )
 
 

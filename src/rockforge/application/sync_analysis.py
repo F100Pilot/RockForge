@@ -46,6 +46,22 @@ NEGLIGIBLE_SLOPE = NEGLIGIBLE_DRIFT_S / 30.0
 # Fraction of nearby chart onsets that must have matched a real attack for a
 # span to be trusted; below this the tab likely does not correspond to the audio.
 MIN_CONFIDENCE = 0.5
+# Re-acquisition after the match is lost. A real jump moves the recording by far
+# more than the matching window, so predict-and-snap simply stops matching and
+# coasts — the residual never steps and the jump becomes invisible, which is the
+# one thing this analysis exists to find. After this many consecutive misses we
+# search much wider for a shift that re-explains the music.
+# Judged over a WINDOW, not as a consecutive run: after a jump an irregular
+# rhythm still throws the odd coincidental match, and a run counter that resets
+# on each of those only recovers tens of seconds later — which would report the
+# jump far from where it happened.
+REACQUIRE_WINDOW = 8
+REACQUIRE_AFTER = 4
+# How far a jump may move the recording, and how many upcoming onsets must agree
+# before a shift is believed (one note could match by luck; several cannot).
+REACQUIRE_MAX_SHIFT_S = 10.0
+REACQUIRE_HORIZON = 10
+REACQUIRE_MIN_SUPPORT = 4
 
 
 @dataclass(frozen=True)
@@ -122,6 +138,44 @@ def _median(xs: list[float]) -> float:
     return sorted(xs)[len(xs) // 2] if xs else 0.0
 
 
+def _reacquire(
+    upcoming: list[float],
+    ro: list[float],
+    r_pred: float,
+    rho: float,
+    win: float,
+) -> float | None:
+    """Find the time shift that makes the music line up again after a lost match.
+
+    Not a single-note snap: each real attack near the prediction proposes a
+    candidate shift, and a candidate is only believed when it also explains
+    several of the NEXT chart onsets. One note can match by luck; a run cannot.
+    Ties go to the smallest shift, so a genuine small gap is never explained away
+    as a large one.
+    """
+    if not upcoming or not ro:
+        return None
+    lo = bisect.bisect_left(ro, r_pred - REACQUIRE_MAX_SHIFT_S)
+    hi = bisect.bisect_right(ro, r_pred + REACQUIRE_MAX_SHIFT_S)
+    c0 = upcoming[0]
+    best: tuple[int, float] | None = None
+    for a in ro[lo:hi]:
+        shift = a - r_pred
+        support = 0
+        for c in upcoming[:REACQUIRE_HORIZON]:
+            pred = r_pred + shift + rho * (c - c0)
+            i = bisect.bisect_left(ro, pred)
+            if any(
+                0 <= j < len(ro) and abs(ro[j] - pred) <= win for j in (i - 1, i)
+            ):
+                support += 1
+        if support >= REACQUIRE_MIN_SUPPORT and (
+            best is None or support > best[0] or (support == best[0] and abs(shift) < abs(best[1]))
+        ):
+            best = (support, shift)
+    return best[1] if best else None
+
+
 def build_correspondence(
     chart_onsets: list[float],
     rec_onsets: list[float],
@@ -146,12 +200,19 @@ def build_correspondence(
     out: list[SyncPoint] = []
     last_c, last_r, rho = chart_start, rec_start, 1.0
     recent: list[tuple[float, float]] = []
-    for c in co:
+    recent_ok: list[bool] = []
+    lost_at = 0
+    for idx, c in enumerate(co):
+        if len(recent_ok) > REACQUIRE_WINDOW:
+            recent_ok.pop(0)
         r_pred = last_r + rho * (c - last_c)
         i = bisect.bisect_left(ro, r_pred)
         cand = [ro[j] for j in (i - 1, i) if 0 <= j < len(ro) and abs(ro[j] - r_pred) <= win]
         if cand:
             r_val = min(cand, key=lambda x: abs(x - r_pred))
+            if not recent_ok or recent_ok[-1]:
+                lost_at = len(out) + 1  # a clean run; nothing to back-fill from
+            recent_ok.append(True)
             out.append(SyncPoint(chart_time=c, audio_time=r_val, matched=True))
             recent.append((c, r_val))
             if len(recent) > 12:
@@ -159,7 +220,36 @@ def build_correspondence(
             if len(recent) >= 4:
                 rho = max(rho_min, min(rho_max, 0.75 * rho + 0.25 * _theil_sen(recent)))
         else:
+            recent_ok.append(False)
             r_val = r_pred
+            if sum(1 for ok in recent_ok if not ok) >= REACQUIRE_AFTER:
+                shift = _reacquire(co[idx:], ro, r_pred, rho, win)
+                if shift is not None:
+                    # The music was found again, displaced. Back-fill the points
+                    # since the match was lost: any of them that DOES line up
+                    # under the recovered shift already belonged after the jump,
+                    # so the residual steps where the music actually moved rather
+                    # than where we happened to notice.
+                    for j in range(lost_at, len(out)):
+                        cand_t = out[j].audio_time + shift
+                        k = bisect.bisect_left(ro, cand_t)
+                        hit = [
+                            ro[m] for m in (k - 1, k)
+                            if 0 <= m < len(ro) and abs(ro[m] - cand_t) <= win
+                        ]
+                        if hit:
+                            out[j] = SyncPoint(
+                                chart_time=out[j].chart_time,
+                                audio_time=min(hit, key=lambda x: abs(x - cand_t)),
+                                matched=True,
+                            )
+                    r_val = r_pred + shift
+                    recent_ok.clear()
+                    recent.clear()
+                    lost_at = len(out) + 1
+                    out.append(SyncPoint(chart_time=c, audio_time=r_val, matched=True))
+                    last_c, last_r = c, r_val
+                    continue
             out.append(SyncPoint(chart_time=c, audio_time=r_val, matched=False))
         last_c, last_r = c, r_val
     return out

@@ -1167,7 +1167,7 @@ def test_auto_sync_rejected_for_non_gp(client: TestClient) -> None:
     assert r.status_code == 422
 
 
-def _completed_gp_job_with_beats(client, tmp_path, beat_times):
+def _completed_gp_job_with_beats(client, tmp_path, beat_times, notes_on_every_beat=False):
     """A GP job set COMPLETED with a built arrangement XML carrying `beat_times`
     as its ebeat grid — the input the dynamic-sync endpoint aligns."""
     import rockforge.config as config
@@ -1195,7 +1195,11 @@ def _completed_gp_job_with_beats(client, tmp_path, beat_times):
         kind=ArrangementKind.LEAD,
         metadata=SongMetadata(title="Dyn", artist="T", song_length=beat_times[-1] + 1),
         tuning=Tuning(),
-        notes=[TabNote(string=1, fret=5, time=beat_times[0], sustain=0.2)],
+        notes=(
+            [TabNote(string=1, fret=5, time=t, sustain=0.2) for t in beat_times]
+            if notes_on_every_beat
+            else [TabNote(string=1, fret=5, time=beat_times[0], sustain=0.2)]
+        ),
         tempo_map=TempoMap(beats=beats, average_bpm=120.0),
     )
     write_arrangement_xml(arr, bundle / "arrangement_lead.xml")
@@ -1449,6 +1453,80 @@ def test_sync_from_stem_aligns_by_time_not_bar_index(client, tmp_path, monkeypat
     assert recs == sorted(recs)  # strictly monotonic
     # every anchor lands on a real detected downbeat, never a wrong in-between one
     assert all(any(abs(rc - d) < 1e-6 for d in (0.0, 3.1, 6.3)) for rc in recs)
+
+
+def test_analyse_sync_diagnoses_progressive_drift(client, tmp_path, monkeypatch) -> None:
+    """The chart's notes are matched to real attacks and the drift curve is
+    classified. Here the recording runs steadily slower than the chart, so the
+    answer must be a TEMPO problem with a lower recommended BPM — not a jump."""
+    import rockforge.infrastructure.rhythm.librosa_adapter as rhythm
+
+    gp_beats = [0.5 * i for i in range(240)]      # 120s of 8th notes at 120 BPM
+    # The recording drifts 1% late relative to the chart.
+    monkeypatch.setattr(rhythm, "detect_onsets", lambda src: [t * 1.01 for t in gp_beats])
+    job = _completed_gp_job_with_beats(client, tmp_path, gp_beats, notes_on_every_beat=True)
+
+    r = client.post(f"/jobs/{job['id']}/analyse-sync")
+    assert r.status_code == 200, r.text
+    out = r.json()
+    assert out["classification"] in {"global_tempo_mismatch", "local_tempo_mismatch"}
+    assert out["jumps"] == []
+    drift = [s for s in out["segments"] if s["kind"] == "drift"]
+    assert drift, out["segments"]
+    assert drift[0]["recommended_bpm"] < drift[0]["original_bpm"]
+    assert drift[0]["start_measure"] >= 1
+    # The graph payload is present and decimated.
+    assert out["points"] and out["point_count"] >= len(out["points"])
+    assert {"chart_time", "audio_time", "drift", "matched"} <= set(out["points"][0])
+
+
+def test_analyse_sync_reports_a_jump_not_a_tempo_change(client, tmp_path, monkeypatch) -> None:
+    """In sync, then abruptly late and steady: that is a structural offset. The
+    analysis must NOT propose re-tempoing music that was already correct."""
+    # An IRREGULAR rhythm on purpose: on a perfectly periodic grid a shift that
+    # is a whole number of grid steps produces an identical attack set, so the
+    # jump is mathematically invisible (and correctly reported as in sync).
+    import random
+
+    import rockforge.infrastructure.rhythm.librosa_adapter as rhythm
+
+    random.seed(11)
+    gp_beats, t = [], 0.0
+    while t < 120.0:
+        gp_beats.append(round(t, 4))
+        t += random.choice([0.25, 0.25, 0.5, 0.5, 0.75, 1.0])
+    monkeypatch.setattr(
+        rhythm, "detect_onsets",
+        lambda src: [t if t < 60.0 else t + 1.7 for t in gp_beats],
+    )
+    job = _completed_gp_job_with_beats(client, tmp_path, gp_beats, notes_on_every_beat=True)
+
+    r = client.post(f"/jobs/{job['id']}/analyse-sync")
+    assert r.status_code == 200, r.text
+    out = r.json()
+    assert out["classification"] == "sudden_offset"
+    assert len(out["jumps"]) == 1
+    assert out["jumps"][0]["step_s"] == pytest.approx(1.7, abs=0.2)
+    # Localised where the music actually moved, not where the matcher noticed.
+    assert out["jumps"][0]["chart_time"] == pytest.approx(60.0, abs=3.0)
+    assert out["jumps"][0]["measure"] >= 1
+    assert all(s["kind"] == "synced" for s in out["segments"])
+
+
+def test_analyse_sync_warns_when_no_guitar_stem(client, tmp_path, monkeypatch) -> None:
+    """Without a separation the matching runs on the full mix — say so."""
+    import rockforge.infrastructure.rhythm.librosa_adapter as rhythm
+
+    gp_beats = [0.5 * i for i in range(240)]
+    monkeypatch.setattr(rhythm, "detect_onsets", lambda src: list(gp_beats))
+    job = _completed_gp_job_with_beats(client, tmp_path, gp_beats, notes_on_every_beat=True)
+    out = client.post(f"/jobs/{job['id']}/analyse-sync").json()
+    assert any("full mix" in w for w in out["warnings"])
+
+
+def test_analyse_sync_rejects_non_gp(client: TestClient) -> None:
+    job = _create_job(client)
+    assert client.post(f"/jobs/{job['id']}/analyse-sync").status_code == 422
 
 
 def test_sync_from_stem_rejects_non_gp(client: TestClient) -> None:
