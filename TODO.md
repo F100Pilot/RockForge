@@ -4,6 +4,19 @@ Estado do projeto + lista de funcionalidades (concluídas `[x]` e propostas
 `[ ]`). Para *como* cada coisa funciona, ver `CLAUDE.md`. Para *como testar*,
 ver `TESTING.md`.
 
+## Sincronização automática — REMOVIDA (2026-08)
+
+Todas as funcionalidades de sincronização **automática** foram removidas a
+pedido do utilizador, por não darem resultado utilizável no material real dele:
+sincronização automática (andamento médio), sincronização dinâmica, import de
+mapa de tempo MIDI (RIPX), sincronização pela bateria com rede neural, e o
+painel de análise/diagnóstico com gráfico de desvio. Ficaram **só as ferramentas
+manuais** (Passo 1, andamento/BPM, alinhar por compasso, arrastar/marcar/mover,
+novo beat), que o utilizador consegue verificar de ouvido.
+
+Estão todas no histórico do git com os algoritmos e os modos de falha medidos
+documentados nas mensagens de commit, caso valha a pena ressuscitar alguma.
+
 ## Concluído recentemente (resumo — detalhe em CLAUDE.md)
 
 - [x] **Recarregar o ficheiro GP** (`/jobs/{id}/reload-gp`): substitui o GP de um
@@ -43,14 +56,6 @@ ver `TESTING.md`.
   Builder falha com `FileNotFoundException` ao compilar.
 - [x] **Sync em massa** (`RebuildIn.apply_to_all`): aplicar tempo/anchors a todos
   os arranjos de uma vez (checkbox "Aplicar sync a todos").
-- [x] **Sincronização pela bateria com IA** (`/sync-from-stem`, extra `beatthis`):
-  detetor de batidas neural (Beat This!) sobre a gravação (bateria isolada quando
-  há separação, senão a mistura) — o equivalente ao MIDI do RIPX feito dentro da
-  app, sem exportar de um DAW. Deteta o início de cada compasso e alinha via o
-  mesmo `align_chart_to_midi`. Botão "🥁 Sincronizar pela bateria (IA)".
-  **Estimativa neural** (não verdade absoluta como um MIDI conferido à mão); o
-  import de MIDI continua a ser o fallback de referência. `dbn=False` (não puxa o
-  madmom, CC BY-NC-SA). Guardado por `test_sync_from_stem_*`.
 - [x] **Persistência de BPM/tempo entre separadores** de arranjo na UI.
 - [x] **Playback via Web Audio API** (não o `<audio>`): seek sample-accurate,
   sem deriva a meio da música.

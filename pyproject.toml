@@ -42,17 +42,6 @@ ml = [
     "numpy>=1.24,<2",
 ]
 postgres = ["psycopg[binary]>=3.1"]
-# Neural downbeat tracking for in-app tempo-map sync (the RIPX-MIDI equivalent
-# derived from the drum stem — see infrastructure/rhythm/beatthis_adapter.py).
-# "Beat This!" (CPJKU/beat_this, MIT) is torch-based; the torch pin matches the
-# [lyrics] stack (<2.5) so [ml,lyrics,beatthis] resolve together. Uses the
-# pure-torch "minimal" post-processor (dbn=False) — madmom is NOT pulled in.
-# Not on PyPI at time of writing; installed from the source repo.
-beatthis = [
-    "beat_this @ git+https://github.com/CPJKU/beat_this.git",
-    "torch>=2.2,<2.5",
-    "torchaudio>=2.2,<2.5",
-]
 # Automatic lyric transcription (EXPERIMENTAL) — WhisperX over the Demucs
 # vocals stem. Heavy (torch + model weights); the LRC path needs none of this.
 # <3.4: whisperx>=3.4 pulls pyannote-audio>=4.0/numpy>=2.1, which conflicts with

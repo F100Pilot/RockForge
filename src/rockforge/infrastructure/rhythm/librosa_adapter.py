@@ -4,9 +4,15 @@ librosa is deliberately the default: madmom's models are CC BY-NC-SA
 (non-commercial) and Essentia is AGPL (docs/research/02-transcription.md §4).
 Trade-off accepted: neural trackers (Beat This!, madmom) report better F1.
 
+What remains here backs the two MANUAL tools that ask a direct question about
+one point in the recording: "what is the tempo from here?" (the per-point
+re-tempo) and "how far from A440 is this?" (the tuning proposal). The
+whole-song estimators that used to live here (beat grids, onset series,
+average tempo) were removed with the automatic sync features they served —
+they were not reliable enough on real material to be worth keeping.
+
 Limitations stated up front:
-- time-signature detection is NOT performed (weakest link in the literature);
-  beats_per_measure defaults to 4 and is labelled HEURISTIC in the output.
+- time-signature detection is NOT performed (weakest link in the literature).
 - estimate_tuning yields the deviation from A440 in cents; it does NOT detect
   drop/open string tunings. String-tuning detection from polyphonic audio has
   no production-grade solution (research §5) — the user must confirm tuning.
@@ -15,58 +21,6 @@ Limitations stated up front:
 from __future__ import annotations
 
 from pathlib import Path
-
-
-def detect_tempo_and_onset(audio: Path) -> tuple[float, float]:
-    """Estimate (bpm, first_onset_seconds) for automatic GP→recording sync.
-
-    Standalone (not a port method) so the API can call it directly for the
-    auto-sync proposal, and tests can monkeypatch it without librosa installed.
-    The onset is the first audible attack — used as the proposed offset_s (the
-    second the song's first note is heard). librosa imported lazily (ml extra).
-    """
-    import librosa
-    import numpy as np
-
-    y, sr = librosa.load(str(audio), sr=None, mono=True)
-    tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
-    bpm = float(np.atleast_1d(tempo)[0])
-    onsets = librosa.onset.onset_detect(y=y, sr=sr, units="time")
-    first_onset = float(onsets[0]) if len(onsets) else 0.0
-    return bpm, first_onset
-
-
-def detect_beats(audio: Path) -> tuple[float, list[float]]:
-    """Estimate ``(bpm, beat_times)`` for the WHOLE recording — the per-beat grid
-    the dynamic-sync alignment warps the GP chart onto (not just the average
-    tempo). ``beat_times`` are seconds from the recording start.
-
-    Standalone (not a port method) so the API can call it directly and tests can
-    monkeypatch it without librosa. Same octave-error caveat as
-    ``detect_tempo_and_onset`` — the caller normalises the metrical level.
-    librosa imported lazily (ml extra).
-    """
-    import librosa
-    import numpy as np
-
-    y, sr = librosa.load(str(audio), sr=None, mono=True)
-    tempo, beat_frames = librosa.beat.beat_track(y=y, sr=sr)
-    bpm = float(np.atleast_1d(tempo)[0])
-    beat_times = [float(t) for t in librosa.frames_to_time(beat_frames, sr=sr)]
-    return bpm, beat_times
-
-
-def detect_onsets(audio: Path) -> list[float]:
-    """The recording's note-attack times (seconds) — the phase/confidence source
-    for the dynamic-sync alignment: the chart's own note onsets are matched
-    against these to fine-tune each anchor and to measure how well the tab
-    actually corresponds to the audio at that point. Standalone and lazily
-    imported like the rest of this module (ml extra)."""
-    import librosa
-
-    y, sr = librosa.load(str(audio), sr=None, mono=True)
-    times = librosa.onset.onset_detect(y=y, sr=sr, units="time", backtrack=False)
-    return sorted(float(t) for t in times)
 
 
 def detect_tempo_from(audio: Path, start_s: float) -> float:

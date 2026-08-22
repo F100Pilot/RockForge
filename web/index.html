@@ -581,50 +581,6 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
                 <span id="tempoPct" class="meta"></span>
                 <button type="button" id="tempoReset" class="secondary">Repor GP</button>
               </div>
-              <div class="syncctrls" style="margin-top:.4rem">
-                <button type="button" id="autoSync" class="secondary">✨ Sincronização automática</button>
-                <button class="info-btn" data-info="auto-sync">ⓘ</button>
-                <span id="autoSyncInfo" class="meta"></span>
-              </div>
-              <div class="syncctrls" style="margin-top:.4rem">
-                <button type="button" id="autoSyncDynamic" class="secondary">🎯 Sincronização dinâmica</button>
-                <button class="info-btn" data-info="auto-sync-dynamic">ⓘ</button>
-                <span id="autoSyncDynamicInfo" class="meta"></span>
-              </div>
-              <div class="syncctrls" style="margin-top:.4rem">
-                <button type="button" id="analyseSyncBtn" class="secondary">🔍 Analisar sincronização</button>
-                <button class="info-btn" data-info="analyse-sync">ⓘ</button>
-                <span id="analyseSyncInfo" class="meta"></span>
-              </div>
-              <div id="syncReport" style="display:none;margin:.5rem 0 .2rem">
-                <div id="syncVerdict" class="meta" style="margin-bottom:.35rem;line-height:1.4"></div>
-                <div style="overflow-x:auto;border:1px solid #2b2f3a;border-radius:6px;background:#14161c">
-                  <svg id="driftGraph" width="100%" height="170" style="display:block"></svg>
-                </div>
-                <div id="syncFindings" style="margin-top:.45rem"></div>
-                <div class="syncctrls" style="margin-top:.4rem">
-                  <button type="button" id="applyFindings" class="secondary">✅ Aplicar correções aceites</button>
-                  <button type="button" id="exportGpBtn" class="secondary">💾 Exportar Guitar Pro corrigido</button>
-                  <button class="info-btn" data-info="export-gp">ⓘ</button>
-                  <span id="applyFindingsInfo" class="meta"></span>
-                </div>
-              </div>
-              <div class="syncctrls" style="margin-top:.4rem">
-                <button type="button" id="stemSyncBtn" class="secondary">🥁 Sincronizar pela bateria (IA)</button>
-                <button class="info-btn" data-info="sync-from-stem">ⓘ</button>
-                <span id="stemSyncInfo" class="meta"></span>
-              </div>
-              <div class="syncctrls" style="margin-top:.4rem">
-                <input type="file" id="midiSyncFile" accept=".mid,.midi,audio/midi,audio/x-midi" style="display:none">
-                <button type="button" id="midiSyncBtn" class="secondary">🎹 Importar mapa de tempo (MIDI)</button>
-                <button class="info-btn" data-info="sync-from-midi">ⓘ</button>
-                <span id="midiSyncInfo" class="meta"></span>
-              </div>
-              <p class="meta" style="margin:.35rem 0 0;line-height:1.35">
-                💡 Se a sincronização automática não ficar ideal, exporta um MIDI com o tempo
-                por compasso (ex.: RIPX) — com a música a começar no 1.º compasso da tab — e
-                importa-o aqui para alinhar com o andamento real, compasso a compasso.
-              </p>
             </div>
 
             <div class="sync-step-desc" style="margin:.55rem 0 0">

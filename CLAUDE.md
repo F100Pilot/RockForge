@@ -61,7 +61,7 @@ re-inverting the dependency.
 > trustworthy, so the whole path was deleted to slim the codebase. What remains
 > that still uses the recording: **stem separation** (`/jobs/{id}/separate-stems`),
 > **tone detection** (`/detect-tones`), **lyric detection** (`/detect-lyrics`),
-> and the GP auto-sync tempo/onset/tuning-cents helpers — all operate on an
+> and the per-point tempo / tuning-cents helpers — all operate on an
 > existing GP job's recording, none transcribe notes. `[ml]` (Demucs/librosa)
 > is still needed for those; `basic-pitch`/`onnxruntime` and the `[youtube]`
 > extra are gone.
@@ -120,344 +120,39 @@ editable BPM/% control with live preview (notes slide over the fixed waveform).
 Use it *before* the per-note `sync_anchor_stages` below, which then only need to
 clean up residual non-linear drift.
 
-### Automatic sync proposal (`/jobs/{id}/auto-sync`)
+### Automatic sync was REMOVED (2026-08) — manual only
 
-`POST /jobs/{id}/auto-sync` (GP jobs only) detects the recording's tempo and
-first onset with librosa (`detect_tempo_and_onset`, ml extra) and combines them
-with the GP file's authored tempo via the pure `suggest_sync(gp_bpm,
-detected_bpm, first_onset_s)` (in `gp_pipeline.py`) into a proposed
-`(tempo_scale, offset_s)`. Beat trackers report the tempo at the wrong metrical
-level, so `suggest_sync` picks the multiple of `detected_bpm` from
-`_TEMPO_METRICAL_FACTORS` — not just the octave (½/2) but the triplet/compound
-grid (⅓, ⅔, 3/2, 3) — whose `tempo_scale` lands closest to 1.0 (same song →
-ratio near unity). Including the triplet grid fixes the "auto-sync jumps the BPM
-~50%" case: a 3/2 detection had no nearby octave to snap to, so the old ½/1/2
-set proposed a bogus ×1.5. The endpoint **returns the
-proposal only** — the tab viewer loads it into the live preview so the user
-confirms over the waveform and commits via the normal rebuild; nothing is
-silently applied (honesty principle). Detection is a module-level function so
-tests monkeypatch it without librosa (`test_auto_sync_proposes_alignment`).
+> Every **automatic** synchronisation feature was deleted at the user's explicit
+> request after none of them produced a usable result on their real material:
+> `/auto-sync` (one average tempo), `/auto-sync-dynamic` (onset-correspondence
+> drift curve), `/sync-from-midi` (RIPX tempo-map import), `/sync-from-stem`
+> (Beat This! neural downbeats) and `/analyse-sync` (drift diagnosis + graph +
+> per-finding accept/reject), along with `application/sync_analysis.py`,
+> `infrastructure/rhythm/{beatthis_adapter,midi_tempo}.py`, the
+> `align_chart_to_recording`/`align_chart_to_midi`/`align_bars_to_downbeats`/
+> `suggest_sync` helpers, the librosa whole-song estimators
+> (`detect_beats`/`detect_onsets`/`detect_tempo_and_onset`) and the `beatthis`
+> extra. The UI's automatic buttons and the drift-graph panel went with them.
+>
+> **Why, honestly:** on the user's songs (AI-generated tabs against their source
+> recordings) the estimators either read the wrong metrical level, or produced
+> so many corrections that applying them scrambled the score. They were correct
+> on synthetic data and repeatedly wrong on real audio. Rather than ship
+> plausible-looking machinery that misleads, the feature set was cut back to the
+> tools the user can verify by ear.
+>
+> **What remains is deliberate and sufficient:** the whole manual toolkit — Step 1
+> (first-note pin: field/slider, "Início = cursor", the guided 3-click "Detetar
+> 1ª nota"), `tempo_scale` (BPM/%) for a uniform difference, the bar-align panel
+> and 📏 popup, and the per-note modes (drag/tap/excerpt/move-from-here/new-beat)
+> — plus `/detect-tempo` (local BPM from one clicked instant, which backs the
+> per-point re-tempo) and `/detect-tuning`. `suggest_tempo_scale` stays because
+> `/detect-tempo` uses it.
+>
+> Git history has all of it (`git log -- src/rockforge/application/sync_analysis.py`)
+> if any of it is ever worth reviving — the algorithms are documented in those
+> commit messages, including the measured failure modes.
 
-**Beat/tempo detection runs on the isolated DRUM stem when available (`_drum_stem`
-/ `_guitar_stem` in `app.py`).** librosa's `beat_track` locks onto the wrong
-metrical level on a full mix of fast, dense music — a real case read **123 BPM
-on a genuine ~180 BPM metal song**, so BOTH `/auto-sync` (single tempo) and
-`/auto-sync-dynamic` proposed nonsense. Isolated drums are the cleanest beat
-signal, so when the user has already run "Separar instrumentos" (Demucs
-`htdemucs_6s`), the tempo-critical detection reads the drum stem instead of the
-mix — no new separation, because that 6-stem pass already writes `drums.wav` (a
-sibling of the `guitar.wav` kept in `params["stems"]`; it's only omitted from
-the playback list). `_drum_stem` derives it as that sibling; `/auto-sync` and
-`/detect-tempo` feed it to the librosa tempo functions, and `/auto-sync-dynamic`
-takes the beat GRID from the drums but the onset PHASE from the isolated
-**guitar** (`_guitar_stem`) so the chart's guitar notes match guitar attacks,
-not drum hits. Each falls back to the full mix when no separation exists, and
-the response carries `used_drum_stem` so the UI can say "🥁 medido na bateria
-isolada" vs "⚠ mistura completa — separa primeiro". No detection-function
-signatures changed (the endpoints just choose which audio path to pass).
-Guarded by `test_auto_sync_uses_the_drum_stem_when_available` /
-`test_auto_sync_dynamic_uses_drum_and_guitar_stems`. This does NOT replace
-librosa — it gives it a far cleaner input; a MIDI tempo map (`/sync-from-midi`)
-is still the ground-truth path when even isolated-drum detection isn't enough.
-
-**Pinpointing the first note (offset_s).** Because `offset_s` is *the recording
-second the first note is heard* and `audioTime()` is exactly that (the un-padded
-recording clock behind the sample-accurate Web Audio playhead), the sync panel
-has a **"Início = cursor"** button that sets `offset_s` to the current playhead:
-scrub/click the waveform (zoom in for precision) or play to the first attack,
-then lock it — far more precise than typing a number by ear. **±0.01** buttons
-fine-nudge it. **"Detetar 1ª nota"** is a guided 3-click flow (`firstNoteFlow`):
-arm it, click the waveform where the first note's sound starts (a green dashed
-marker; re-click to adjust), then click the first note — a single uniform-shift
-anchor moves it (and every note with it) onto that instant. All feed the same
-live preview + normal rebuild.
-
-`POST /jobs/{id}/detect-tempo` (`{from_s}`) backs the tab viewer's per-point
-"Novo beat (detetar)" mode: it measures the recording's tempo from a clicked
-instant (`detect_tempo_from`) and returns `suggested_factor =
-suggest_tempo_scale(gp_bpm, detected_bpm)`. The UI turns that into two anchors —
-a fixed pivot at the click and the last note stretched by `factor` — so the
-existing `_build_time_warp` linearly re-tempos only `[click, last]` and nothing
-before the click moves. No new warp semantics; the per-point tools (drag, tap,
-move-from-here, re-tempo) all compile down to ordinary `sync_anchors`.
-
-### Dynamic sync — align the chart to the recording's real tempo curve
-
-`/auto-sync` proposes a single *average* `tempo_scale`, which only corrects the
-linear part of the drift — an AI-authored tab carries a constant BPM, so the
-chart still slides against the recording wherever the real tempo varies (the
-usual "tabs de IA ficam dessincronizadas" complaint). `POST
-/jobs/{id}/auto-sync-dynamic?arrangement=<Name>&chart_start=&rec_start=` (GP
-jobs, ml extra) returns drift anchors following the recording's ACTUAL tempo
-curve, via `align_chart_to_recording(gp_beats, rec_beats, chart_onsets,
-rec_onsets, chart_start=…, rec_start=…)` (pure, in `gp_pipeline.py`).
-
-The alignment is driven by **onset correspondence, NOT by integrating the beat
-tracker's tempo**. Walking the chart's own note onsets in order, each is
-*predicted* into the recording at a running tempo ratio `rho` (recording
-seconds per chart second) and *snapped* to the nearest real attack within
-±`win` (0.12 s — a leash short enough a repeated riff can't pull the match onto
-a neighbouring repetition); the accepted `(chart, recording)` pairs are the
-drift curve. `rho` starts at **1.0** — the authored tempo the user's pin already
-confirmed — and is nudged toward the robust (Theil–Sen) slope of the recent
-correspondences, clamped and EMA-smoothed. This is the fix for "começa logo a
-177 quando deveria ser 175, e acelera muito a meio": the beat tracker's *tempo*
-is biased (it read ~184 BPM on a genuine 175 BPM song), so the earlier method —
-integrating its beat intervals from the pin — over-compressed the opening and
-the chart rushed ahead from the very first bar. Deriving tempo from the actual
-chart↔recording onset matches keeps the opening at ~175 and still tracks real
-mid-song drift, because the correspondences themselves move with it.
-
-Roles of the four inputs:
-
-- `chart_onsets` vs `rec_onsets` (`detect_onsets`) are the PRIMARY signal — they
-  set both the phase (the snap) and the local tempo (the recent-correspondence
-  slope) — and yield each anchor's **confidence** (fraction of the surrounding
-  ±4 s chart onsets that snapped to a real attack).
-- the beat tracker's grid (`detect_beats`) is only a TEMPO PRIOR for note-sparse
-  passages: where the chart has too few matchable onsets, `rho` relaxes toward
-  the recording's local beat-interval tempo instead of freezing; and if there is
-  NO onset correspondence anywhere (the detector returned nothing), the whole
-  curve falls back to integrating the recording's beat grid over the chart beats
-  (median-robust to a missed/doubled beat). **Its beat COUNT is never trusted**:
-  an earlier version mapped chart beat k to detected beat k, and each missed beat
-  slipped the mapping a full beat, accumulating a multi-second "chart rushes
-  ahead" over a real 200 s song.
-- the user's Step-1 pin (`chart_start`/`rec_start`, passed by the UI from the
-  current first-note display value) fixes the absolute position: the FIRST
-  anchor is the pin verbatim — byte-identical to what `setTrackStart` writes —
-  so replacing the pending anchors preserves it, and the curve grows from
-  there. Recording attacks before the pin (an intro the tab doesn't transcribe)
-  are ignored.
-
-Low-confidence anchors are merged into `weak_ranges` returned to the UI: spans
-where the tab's notes simply don't correspond to the audio (wrong
-notes / extra or missing bars) — content no time-warp can fix, surfaced with a
-⚠ telling the user to fix those sections in Guitar Pro instead. Validated
-against a real AI-generated song (200 s, tempo drifting 175→191 BPM, intro
-absent from the tab, a structurally-wrong mid section): the opening now holds
-~175.8 BPM (was ~172 with the old beat-integration), the per-20 s median onset
-error drops to ~10–20 ms (was 30–60 ms), and the mismatched mid section is
-correctly flagged (its higher residual error is the tab being wrong there, not
-the warp).
-
-### MIDI tempo-map sync — ground truth instead of an estimate (`/sync-from-midi`)
-
-Even the onset-correspondence aligner is an *estimate* from the audio. When it
-isn't good enough, the user can supply the recording's real tempo curve as a
-MIDI: any DAW (the user uses **RIPX**) can export a MIDI whose tempo track
-carries the BPM per measure. `POST /jobs/{id}/sync-from-midi` (multipart `midi`,
-+ `arrangement`/`chart_start`/`rec_start`, GP jobs) reads that curve and aligns
-**every chart bar to its MIDI measure** — one anchor per measure, so each bar
-plays at its own real tempo (literally the "BPM por compasso" the MIDI carries),
-not one averaged tempo. It returns the same `DynamicSyncOut` anchor proposal the
-dynamic-sync button uses (confidence 1.0 — ground truth, no weak spans), loaded
-into the live preview and confirmed via the normal "Aplicar e reconstruir";
-never applied silently.
-
-- **Parser** (`infrastructure/rhythm/midi_tempo.py`, `parse_midi_tempo(bytes) ->
-  MidiTempo(measures, beats, average_bpm)`): a native Standard-MIDI-File reader
-  — no new dependency, same "deterministic single-implementation format parser"
-  category as the `.gp` parsers, so it's imported directly. It integrates the
-  set-tempo meta events (FF 51) over the PPQ division to get each tick's seconds,
-  and uses the time-signature meta events (FF 58) for the beat unit / beats-per-
-  measure, emitting the absolute time of every measure downbeat. Handles running
-  status, sysex/channel-event skipping, and variable-length quantities; SMPTE
-  division raises (PPQ only — what DAWs export). Guarded by `test_midi_tempo.py`.
-- **Alignment** (`gp_pipeline.align_chart_to_midi(gp_bars, midi_measures, *,
-  chart_start, rec_start)`, pure): the first anchor is the Step-1 pin verbatim;
-  the pinned chart bar is taken to be the MIDI's first measure and each later bar
-  is placed at `rec_start` plus that measure's elapsed MIDI time — a *relative*
-  offset, so it works whether the MIDI clock is absolute to the recording or
-  starts at its own zero. Guarded by `test_align_to_midi_*` in
-  `test_gp_pipeline.py`; the endpoint by `test_sync_from_midi_*` in
-  `test_api.py`.
-- **UI** (`web/index.html` + `web/app.js`): a "🎹 Importar mapa de tempo (MIDI)"
-  file picker in the sync panel right below "🎯 Sincronização dinâmica", with a
-  **visible note** telling the user to export a per-measure-tempo MIDI (e.g. from
-  RIPX) if the automatic sync isn't ideal. Its handler uploads the MIDI with the
-  same pin the dynamic-sync button computes and loads the anchors as a preview
-  via the identical `setAnchor(previewScale(chartT), recT + viewOrigin)`
-  convention.
-
-**Honest limits** (in the ⓘ): the MIDI must begin at the tab's first measure
-(trim any recording-only intro the tab doesn't transcribe) and share the tab's
-measure structure — where the tab has extra/missing bars the mapping drifts
-there (the tab is wrong, not the warp); accuracy is the DAW's tempo detection;
-PPQ MIDI only.
-
-The tab viewer's **"🎯 Sincronização dinâmica"** button loads each pair as an
-ordinary drift anchor via the *same* convention the bar-align tool uses —
-`setAnchor(previewScale(chartT), recT + viewOrigin)` — **replacing** the current
-tab's pending anchors (the pin re-enters as the first anchor), left in preview
-for the user to confirm via the normal "Aplicar e reconstruir"; `weak_ranges`
-are shown (in recording seconds, mapped through the returned anchors) in the
-status line. Preview-only, never applied silently (honesty principle).
-`detect_beats`/`detect_onsets` are module-level functions tests monkeypatch
-without librosa; the alignment math is unit-tested pure (constant offset, a
-mid-song tempo change, missed-tracker-beat robustness, low-confidence flagging
-of a mismatched section, degenerate inputs). **The score shows each bar's
-EFFECTIVE ♩BPM** (measure beats × 60 / its *warped* duration — amber when the
-pending sync changed it vs the authored value), so the effect of every anchor
-is visible per bar before rebuilding. Honest limits: time-signature detection
-is NOT performed (deferred; librosa doesn't detect meter reliably), and
-flagged spans are best-effort interpolation — refine by ear or fix the tab.
-
-### Neural downbeat sync — the in-app RIPX-MIDI equivalent (`/sync-from-stem`)
-
-The MIDI import above is the ground-truth path, but it makes the user export a
-tempo-map MIDI from a DAW. `POST /jobs/{id}/sync-from-stem` (GP jobs, `beatthis`
-extra) does the same thing **in-app**: it runs a neural downbeat tracker
-(**"Beat This!"**, `CPJKU/beat_this`, MIT) over the recording, gets the time of
-every measure downbeat, and feeds those into the **exact same
-`align_chart_to_midi` machinery** as the MIDI import — one anchor per bar, each
-at its own real tempo. This is the answer to "can't you solve it with the stems
-instead of RIPX?": the MIDI is only a *format*; the real lever is a **better
-detector than librosa**, which locks onto the wrong metrical level on fast dense
-metal (read ~184 BPM on a genuine ~175 BPM song, even on the isolated drum
-stem). A neural tracker is far more robust there.
-
-- **Detection** (`infrastructure/rhythm/beatthis_adapter.py`,
-  `detect_downbeats(audio) -> list[float]`): lazy `beat_this` import, module-level
-  so tests monkeypatch it without torch (like the librosa functions). Runs on
-  **CPU by default** (`ROCKFORGE_BEATTHIS_DEVICE`) — the model is small and this
-  sidesteps the Turing/cuDNN native torch crashes; checkpoint via
-  `ROCKFORGE_BEATTHIS_CHECKPOINT` (default `final0`). **`dbn=False`** keeps the
-  pure-torch "minimal" post-processor: the DBN one would pull in **madmom**
-  (CC BY-NC-SA, deliberately excluded).
-  **The checkpoint is downloaded by RockForge itself** (`_resolve_checkpoint`:
-  a redirect-following `urllib` GET to `cloud.cp.jku.at`, cached under
-  `ROCKFORGE_BEATTHIS_CACHE` or `~/.cache/rockforge/beat_this`), NOT via
-  `torch.hub` — whose downloader fails on some networks against the JKU Nextcloud
-  WebDAV link, producing the terse "Could not load the checkpoint" the user hit.
-  An HTML/login response is rejected (not cached as a corrupt `.ckpt`); on any
-  failure the endpoint's error names the manual fallback (download the `.ckpt`
-  and point `ROCKFORGE_BEATTHIS_CHECKPOINT` at it). Guarded by
-  `test_beatthis_adapter.py`.
-- **Runs on the isolated DRUM stem** (`_drum_stem`) when a separation exists —
-  the cleanest beat signal — else the full mix, same choice the librosa sync
-  tools make; `used_drum_stem` in the response so the UI says "🥁 medido na
-  bateria isolada" vs "⚠ mistura completa".
-- **Pinning.** Unlike the MIDI (which the user trims to start at the tab's first
-  measure), the detected downbeats span the WHOLE recording including any intro
-  the tab doesn't transcribe. The endpoint takes the pinned bar to be the
-  detected downbeat **nearest `rec_start`** and maps from there.
-- **Alignment is by TIME correspondence, not bar index** (`gp_pipeline.
-  align_bars_to_downbeats`, pure — the crucial fix). An AI/DAW tab is frequently
-  **notated with a different measure/meter structure than the recording**: a real
-  case ("longing", Ayla Chan) has a GP tab of **165 bars** (a 2/4+4/4 mix) where
-  the drums read a steady **114 bars of 4/4**. Mapping tab bar N → detected
-  downbeat N (the old `align_chart_to_midi` index mapping, still used by the MIDI
-  import where the user trims to a 1:1 structure) then drifts wildly — that song
-  measured **+58 s of error by bar 113** and left 51 bars unanchored, the
-  "consigo detetar mas não acerto com o BPM" symptom. Instead, each tab bar is
-  *predicted* into the recording at the global tempo ratio and *snapped* to the
-  nearest real detected downbeat within a window, with a monotonic guard keeping
-  each downbeat used once: where the tab has more bars than the recording has
-  measures, the extra (e.g. 2/4) bars find no free downbeat and are **skipped**,
-  riding the interpolation between the anchors that matched. Validated on that
-  song: 114 anchors, all on real downbeats, 293 s tab → 285 s recording,
-  following the local tempo curve (was garbage before). Runs of **≥3 consecutive
-  unmatched bars** are returned as `weak_ranges` (a genuine structure mismatch —
-  wrong/missing bars in the tab — surfaced with a ⚠, distinct from the odd single
-  skipped odd-meter bar). Guarded by `test_align_bars_to_downbeats_*` (pure:
-  1:1, meter-mismatch skip, weak-run flag) and
-  `test_sync_from_stem_aligns_by_time_not_bar_index` (endpoint).
-- **UI** (`web/index.html`+`web/app.js`): "🥁 Sincronizar pela bateria (IA)"
-  button next to the MIDI import; `wireSyncFromStem` mirrors `wireSyncFromMidi`
-  (POST, no upload; same pin → preview → "Aplicar e reconstruir").
-- **Honesty:** a neural estimate is strong but NOT ground truth like a
-  hand-checked RIPX MIDI — surfaced in the ⓘ and the status line. If it locks
-  onto the wrong metrical level on unusual material, the MIDI import stays the
-  fallback. Preview-only, never applied silently. `beatthis` is an optional
-  extra (torch, pinned `<2.5` to match `[lyrics]`); the endpoint 503s cleanly
-  when it's absent. Guarded by `test_sync_from_stem_*` in `test_api.py`
-  (maps bars to detected downbeats, respects the pin, uses the drum stem,
-  rejects non-GP).
-
-### Sync diagnosis — WHAT kind of desync, not just where (`/analyse-sync`)
-
-Every other sync tool answers "where should each note go". This one answers
-**"what kind of problem is this"**, which is what decides the right fix — and
-getting it wrong makes things worse: correcting a *jump* with a tempo change
-smears a local error across music that was already in sync.
-
-`application/sync_analysis.py` is **pure** (no audio, no I/O, no ml extra) and
-derives everything from one primitive: the **correspondence series** — the pairs
-`(chart_time, audio_time)` where a chart note onset was matched to a real attack.
-Its residual `d(t) = audio − chart` is the drift curve; segmenting that curve IS
-the diagnosis:
-
-| curve shape | `kind` | proposed fix |
-|---|---|---|
-| steady slope | `drift` | a new BPM for **that span only** (`recommended_bpm`) |
-| step | jump | a shift at one measure — **never** a BPM change |
-| few matches | `structural` | none: the tab does not correspond to the audio |
-
-Classification is on the drift **RATE** (`NEGLIGIBLE_SLOPE`), not a segment's own
-total: judging by total let a long gentle slide be chopped into short pieces that
-each read "synced" while the song ended ~1.8 s out. Adjacent segments whose
-slopes agree are merged, because the eager recursive split (which must not miss a
-real change of slope) otherwise reports one smooth passage as many corrections.
-`original_bpm` is read from the chart's own beat grid over the span, so a
-recommendation respects tempo changes already authored in the file.
-
-**Re-acquisition is what makes jumps visible at all.** Predict-and-snap cannot
-see across a jump: it moves the recording far outside the matching window, so
-nothing matches, the walker coasts on its prediction, the residual never steps,
-and a 1.7 s discontinuity reads as "in sync". `_reacquire` proposes a candidate
-shift from each real attack near the lost prediction and believes one only when
-it also explains several of the NEXT onsets (one note can match by luck, a run
-cannot), ties going to the smallest shift so a small gap is never explained away
-as a large one. Two details that were measured, not guessed: the trigger is a
-**windowed** miss count (a consecutive-run counter is reset by the coincidental
-matches an irregular rhythm throws after a jump, and only recovered ~20 s late,
-reporting the jump far from where it happened), and on recovery the points since
-the loss are **back-filled** against the recovered shift so the step lands where
-the music actually moved. Measured on an irregular rhythm with a true jump at
-60.0 s: shifts of +1.7/+2.0/+3.5 recovered to within 0.15 s, at 60.0 s.
-
-**A jump must be SUSTAINED, or real audio buries the score in anchors.** On the
-first real run the analysis reported dozens of "jumps" and produced 100+
-correction points. The cause: an onset that snaps to the WRONG attack makes a
-large one-sample step in the residual, indistinguishable from a jump if you only
-look at consecutive points. A real jump displaces the music and it STAYS
-displaced; a mis-snap steps and comes straight back. `_is_sustained_step`
-compares the MEDIAN residual over 10 matched points each side, and
-`_coalesce_jumps` then sums candidates within `JUMP_MERGE_S` into one event
-(placed at the largest single step) so an outlier adjacent to a real jump — its
-step, then the step back — cancels instead of becoming two extra findings.
-Measured on synthetic data with 25% of onsets mis-snapped: a real +1.7 s jump at
-70 s is still reported exactly once, at 70 s, at +1.7 s, while pure noise and
-pure jitter yield nothing at all. `diagnose` additionally warns when more than
-`MAX_TRUSTWORTHY_FINDINGS` findings survive — that many is itself evidence the
-matching is not tracking the music, not that the tab has that many faults.
-
-**Honest limit, and it is a real one:** on a perfectly regular passage, shifting
-the audio by a whole number of grid steps produces an *identical* attack set — a
-missing bar is then mathematically indistinguishable from missing notes, and the
-tool correctly says "in sync, some notes unmatched" rather than inventing a jump.
-Guarded by `test_a_grid_aligned_shift_is_honestly_reported_as_in_sync`.
-
-`POST /jobs/{id}/analyse-sync` (GP jobs, ml extra) wires it up: onsets from the
-isolated **guitar** stem when a separation exists (the chart's notes are guitar
-notes; else the full mix, with a warning), the requested arrangement's own bars
-and beat grid, the Step-1 pin like every other sync tool. **Read-only** — it
-proposes nothing and writes nothing. The reported `drift` is normalised to the
-first matched point (the raw residual mixes bundle and recording clocks, so it
-carries a constant offset that is what Step 1 is for, not this tool; subtracting
-a constant changes no slope and no step).
-
-**UI** (`web/index.html` + `web/app.js`): a "🔍 Analisar sincronização" panel with
-an SVG **drift graph** (bands coloured per segment kind, a green zero line, faint
-dots for unmatched/predicted points so a prediction never reads as a measurement,
-red markers at jumps) and a **findings table** — measures, problem, drift,
-original→recommended BPM, confidence — with a checkbox per finding. Structural
-findings are never auto-accepted and cannot be accepted at all. "Aplicar
-correções aceites" accumulates only the accepted deltas into ordinary pending
-anchors (a rejected finding contributes nothing, so the music it covers keeps the
-timing it already had — the entire point), left in preview for the usual
-"Aplicar e reconstruir".
 
 ### Exporting a corrected Guitar Pro file (`/export-gp`)
 
@@ -494,7 +189,11 @@ Details that were measured and will bite anyone editing this:
   and the UI says so rather than approximating it.
 
 `POST /jobs/{id}/export-gp` writes `work_dir/<job>/corrected.<ext>` and returns
-the report; `GET /jobs/{id}/corrected-gp` downloads it. Guarded by
+the report; `GET /jobs/{id}/corrected-gp` downloads it. **It currently has no UI
+button** — its only entry point was the analysis panel, removed with the
+automatic sync features. The backend is kept because it is independent, tested
+and correct: it takes an explicit list of (measure, bpm) and could be wired to
+manually-derived corrections. Delete it if that never happens. Guarded by
 `test_gp_tempo_writer.py` (preservation of notes/frets/techniques/tracks/tuning/
 sections across a real write, byte-identity of the .gp ZIP's opaque entries,
 rounding reported, `.gpx` refused, bad corrections rejected with nothing
@@ -542,7 +241,7 @@ the preview by **`d·(r−1)` on every note** (`d` = net shift the committed anc
 introduce, `r` = the tempo ratio) — a *constant* desync, invisible in the viewer
 but plainly wrong in game. That was the "no programa está sincronizado, no
 Rocksmith não" bug, and it fires on the ordinary workflow (drag → rebuild →
-auto-sync/BPM → rebuild). `rebuild_job._remap_committed_anchors` maps every
+BPM change → rebuild). `rebuild_job._remap_committed_anchors` maps every
 stored anchor pair through the viewer's own map `φ(t) = (t − S_old)·r + S_new`,
 making each stage `W' = φ∘W∘φ⁻¹` so `W'∘φ = φ∘W` exactly; each arrangement is
 conjugated with ITS OWN tempo ratio (tempo_scale is per-arrangement) but the
@@ -658,8 +357,7 @@ requiring the user to adjust each arrangement separately.
 
 **"Passo 1 — Início da música" is per-arrangement.** `offset_s` itself stays
 job-level for the reason above (one shared, once-padded `.wem`) and is set
-once at job creation (and by "✨ Sincronização automática", a distinct
-whole-recording proposal); but Step 1's runtime precision tools in the tab
+once at job creation; but Step 1's runtime precision tools in the tab
 viewer — the numeric field + slider, "Início = cursor", and the guided "🎯
 Detetar 1ª nota" 3-click flow — pin just the CURRENT arrangement's first note
 independently of the others, for GP files whose tracks were tabbed with a
@@ -679,8 +377,7 @@ pickup, at which point the field diverges to show and let you fix THAT
 track's own value. Every edit — the field, the slider, "Início = cursor"
 (`setTrackStart(audioTime())`), and the guided flow's final click — always
 writes a per-arrangement anchor via `setAnchor`, never `setOffsetLive`
-(which now only fires from `initSync`'s initial load and the auto-sync
-proposal). All write into the SAME per-tab pending anchor array Step 3
+(which now only fires from `initSync`'s initial load). All write into the SAME per-tab pending anchor array Step 3
 already uses (`syncAnchorsByKind[currentKind()]`), so they ride the existing
 "Aplicar e reconstruir" commit — no separate button, no backend change.
 `setTrackStart`/the guided flow both pass the note's UNwarped
@@ -1997,7 +1694,7 @@ ffmpeg is bundled from `ffmpeg/ffmpeg.exe` (placed by the user before build);
 
 ```bash
 pip install -e ".[dev]"             # core + tests, no ML
-pip install -e ".[dev,ml]"          # adds Demucs/librosa (stem sep, tone detect, GP auto-sync)
+pip install -e ".[dev,ml]"          # adds Demucs/librosa (stem separation, tone detection, per-point tempo/tuning)
 pip install -e ".[dev,ml,lyrics]"   # + WhisperX (automatic lyric detection)
 pytest                           # full suite (ML stages are faked in tests)
 ruff check src tests             # lint — must pass

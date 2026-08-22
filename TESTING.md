@@ -90,8 +90,7 @@ Per-file counts below reflect the suite at the time of writing; run
 | `test_chords.py` | 10 | `domain/chords.py` `name_chord`: triads, power chords, inversions, chord naming |
 | `test_gp_import.py` | 11 | PyGuitarPro (GP3/4/5) parsing: notes/frets/techniques/sections/tempo |
 | `test_gpif_import.py` | 8 | native GP7/GP8 (`.gp`) GPIF/XML parser: tuning, timing, Hopo/slide/palm-mute, lyric sourcing, bass rejection |
-| `test_gp_pipeline.py` | 38 | GP use case: `tempo_scale`, `sync_anchor_stages`, `arrangement_sync`, lyrics precedence, `pad_start_s` shift, tied notes, dynamic beat-alignment (`align_beats_to_recording`), MIDI-tempo-map alignment (`align_chart_to_midi`), section-editor overrides (`section_overrides`), note-editor overrides (`note_overrides` add/edit/delete, per-arrangement) |
-| `test_midi_tempo.py` | 5 | native Standard-MIDI-File tempo/time-signature parser (`parse_midi_tempo`): constant tempo, a mid-song tempo change, running status, SMPTE division rejected |
+| `test_gp_pipeline.py` | 38 | GP use case: `tempo_scale`, `sync_anchor_stages`, `arrangement_sync`, lyrics precedence, `pad_start_s` shift, tied notes, section-editor overrides (`section_overrides`), note-editor overrides (`note_overrides` add/edit/delete, per-arrangement) |
 | `test_rsxml_writer.py` | 18 | Song2014 XML: the **32 arrangementProperties** attrs, COUNT/default/END phrase structure, chords |
 | `test_vocals.py` | 22 | `parse_lyrics` (LRC + UltraStar), `expand_to_words` (trailing `+`), `events_from_dicts`, `distribute_syllables` (GP lyrics → note-onset alignment, melisma `_`) |
 | `test_lyrics_transcribe.py` | 9 | WhisperX adapter: RMS gate, per-word confidence filter, segment→event mapping (whisperx itself stubbed) |
@@ -181,10 +180,6 @@ POST   /jobs/{id}/rebuild            rebuild with new params (composes sync roun
 POST   /jobs/{id}/reload-gp          swap the GP file, keep all overrides   [GP]
 GET    /jobs/{id}/sync-state         export hand-tuned sync as portable JSON
 POST   /jobs/{id}/import-sync        apply an exported sync + rebuild (202)
-POST   /jobs/{id}/auto-sync          propose (tempo_scale, offset_s)   [GP, ml extra]
-POST   /jobs/{id}/auto-sync-dynamic  propose per-beat drift anchors (real tempo curve) [GP, ml]
-POST   /jobs/{id}/sync-from-midi     propose per-bar drift anchors from a MIDI tempo map (ground truth) [GP]
-POST   /jobs/{id}/sync-from-stem     propose per-bar drift anchors from a neural downbeat tracker [GP, beatthis]
 POST   /jobs/{id}/detect-tempo       per-point tempo from a clicked instant [GP, ml]
 POST   /jobs/{id}/detect-tuning      propose cent offset               [ml extra]
 POST   /jobs/{id}/detect-lyrics      async lyric detection (202)       [ml+lyrics]
@@ -367,72 +362,6 @@ Mostly `web/index.html`; the two completeness signals (`has_tones`,
    row reads `has_lyrics` (edited/GP/LRC lyrics OR completed detection), so a
    song that already has lyrics from ANY source shows "✅ Letra incluída" — NOT
    "sem letra" (which used to happen when only `lyrics_status` was checked).
-
-### 7a-quater. MIDI tempo-map sync (`/sync-from-midi`) — browser only, no ML
-
-The parser (`parse_midi_tempo`), the pure alignment
-(`align_chart_to_midi`) and the endpoint's request/response wiring are all
-covered by CI (`test_midi_tempo.py`, `test_align_to_midi_*` in
-`test_gp_pipeline.py`, `test_sync_from_midi_*` in `test_api.py`, all against a
-small synthetic SMF). What CI **cannot** cover is a real DAW export and the
-button's live wiring in the browser — check these by hand:
-
-1. **Export a tempo MIDI from a real DAW** (the tool this was built against is
-   **RIPX**): analyze the recording, then export a MIDI whose tempo track
-   carries the BPM per measure (a "tap tempo"/tempo-map export, not a fixed
-   constant-BPM MIDI). Confirm the exported file is **PPQ**, not SMPTE
-   (`parse_midi_tempo` raises on SMPTE division — the file must come from a
-   normal DAW export, not a hardware/legacy tool).
-2. **Button does something** — open a GP job in the tab viewer, Step 1 "Início
-   da música" already pinned. Click "🎹 Importar mapa de tempo (MIDI)", pick
-   the exported file. Confirm: a toast/log line acknowledges the upload (not
-   silence), the pending-anchors list grows to one entry per bar, and the
-   score's `♩BPM` markers update (turn amber where changed) — this is the
-   regression check for the "o botão não faz nada" bug (the button's handler
-   lives in `web/app.js`; `index.html`'s markup alone does nothing).
-3. **The visible hint** — with the info modal (ⓘ next to the button) closed,
-   confirm the short warning paragraph right under the button is visible
-   *without* opening the modal (`CLAUDE.md`'s "visível ao utilizador" ask) —
-   it should point the user at this tool specifically for when automatic sync
-   "não fica perfeita".
-4. **Trim the intro** — if the recording has an intro the tab doesn't
-   transcribe (e.g. a count-in or ambient intro before bar 1), confirm you
-   trimmed the MIDI (or noted the correct `rec_start`) to start at the tab's
-   first measure — an untrimmed MIDI misaligns every bar by that intro's
-   length, which is the documented honest limit, not a bug.
-5. **Preview only** — after loading the anchors, confirm nothing was written
-   to the job yet (no rebuild fired); only "Aplicar e reconstruir" commits it,
-   and reopening the job afterward shows the same per-bar correction.
-6. **Confidence 1.0, no weak ranges** — unlike "Sincronização dinâmica" (which
-   flags low-confidence spans with ⚠), a MIDI-sourced alignment should show no
-   weak-range warnings — it's ground truth, not an estimate; a mismatch here
-   means the tab's own bar count/structure diverges from the MIDI (fix the tab
-   in Guitar Pro, not the sync).
-
-### 7a-quater-bis. Neural downbeat sync (`/sync-from-stem`) — needs `beatthis`
-
-The in-app equivalent of the MIDI import: a neural downbeat tracker (Beat This!)
-derives the per-measure tempo map straight from the recording instead of a DAW
-export. CI covers the endpoint's wiring by monkeypatching `detect_downbeats`
-(`test_sync_from_stem_*` in `test_api.py`: maps bars to detected downbeats,
-respects the pin, uses the drum stem when present, rejects non-GP) — the neural
-model itself never runs in CI. Verify the real detection by hand:
-
-1. **Install the extra** — `pip install -e ".[ml,beatthis]"` (torch + Beat This!
-   from `git+https://github.com/CPJKU/beat_this.git`). Without it the endpoint
-   503s with a clear "install rockforge[beatthis]" message (confirm that too).
-2. **Separate first for the drum signal** — run "Separar instrumentos", then
-   click "🥁 Sincronizar pela bateria (IA)". Confirm the status line says
-   "🥁 medido na bateria isolada"; without a prior separation it says
-   "⚠ mistura completa" and still works (full-mix fallback).
-3. **Preview + pin** — like the MIDI button: the pending-anchors list grows to
-   one entry per bar starting at Step 1's pin, the `♩BPM` markers update (amber),
-   and nothing is written until "Aplicar e reconstruir". Preview-only.
-4. **Honest estimate** — this is a neural *estimate*, not ground truth: on the
-   fast/dense metal song where librosa failed, confirm it lands near the real
-   tempo (the whole point). If it locks onto the wrong metrical level on unusual
-   material, fall back to the RIPX MIDI import (`/sync-from-midi`) — that stays
-   the ground-truth path.
 
 ### 7a-quinquies. Section editor (browser only, no ML)
 
