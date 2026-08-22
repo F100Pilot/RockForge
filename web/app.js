@@ -582,7 +582,12 @@ const AUDIO_FADE_S = 0.006;
 const MAX_TICKS_PER_FRAME = 3;
 let seekDragging = false, seekWasPlaying = false;
 const WAVE_HZ = 100;
-let syncMode = 'drag'; // 'drag' | 'tap' | 'excerpt'
+// Default to the re-tempo mode: it is the workflow that actually holds up on
+// real material. The user supplies the one thing every automatic tool got wrong
+// — WHERE the drift starts — and the machine answers the easy, reliable
+// question: what is the recording's tempo from here? It also pins the clicked
+// note where it already is, so nothing before the click can move.
+let syncMode = 'newbeat'; // 'drag' | 'tap' | 'excerpt' | 'newbeat' | ...
 let snapToBeats = true;   // note drag snaps to the beat grid (hold Alt = free drag)
 let snapDiv = 1;          // snap grid: 'bars' | 1 (beat) | 2/3/4 (subdivisions per beat)
 let snapPositions = [];   // grid display-positions cached for the duration of one drag
@@ -3648,7 +3653,7 @@ const MODE_HELP = {
   tap: '<b>Marcar no cursor:</b> dá play, e quando ouvires uma nota na gravação, clica nessa nota na partitura — ela ancora na posição do cursor. Alinhar a tocar.',
   excerpt: '<b>Excerto:</b> arrasta uma caixa por cima de várias notas e depois arrasta uma delas — movem-se todas em bloco. (Alternativa: Shift+clique numa nota e noutra para selecionar o intervalo.)',
   movefrom: '<b>Mover seguintes:</b> pausa a gravação no instante certo e clica na 1ª nota desalinhada — essa nota e TODAS as seguintes deslocam-se em bloco para o cursor. Para um trecho inteiro que entrou tarde/cedo.',
-  newbeat: '<b>Novo beat (detetar):</b> clica na nota onde a música muda de andamento (ex.: o compasso 64). Mede o BPM da gravação daí em diante e re-espaça só as notas seguintes ao novo tempo. Nada antes do clique se mexe.',
+  newbeat: '<b>Corrigir daqui (detetar andamento) — o modo recomendado:</b> ouve até ao ponto onde a partitura começa a fugir da gravação e clica nessa nota. Mede o BPM real da gravação daí em diante e re-espaça só as notas seguintes. <b>Nada antes do clique se mexe</b>, por isso o que já estava bem fica intacto. Repete sempre que voltar a fugir — cada correção parte de onde a anterior deixou.',
   baralign: '<b>Alinhar por compasso:</b> pausa a gravação no instante certo e clica numa nota — abre um popup com o compasso da nota já escolhido. Confirma com "= cursor" e esse compasso alinha-se ao cursor (ou "= pista" para o mesmo compasso de outra pista). Faz-se várias vezes ao longo da música; cada correção arrasta as notas seguintes.',
   tonechange: '<b>Mudança de tom:</b> clica numa nota para trocar para um dos tons extra a partir daí.',
   section: '<b>Secção:</b> clica numa nota para nomear onde começa uma secção (intro/verso/refrão…). Nada a ver com sincronização — é para navegação e o Riff Repeater.',

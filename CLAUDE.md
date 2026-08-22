@@ -205,6 +205,34 @@ been opened in Guitar Pro itself. The `.gp` ZIP-surgery route in particular is
 sound in theory (it is exactly what alphaTab's `Gp7Exporter` builds) but needs a
 human to confirm against a real install.
 
+### The recommended workflow: "Corrigir daqui" (`newbeat` mode, `/detect-tempo`)
+
+This is the DEFAULT sync mode (`syncMode = 'newbeat'`), and it is the one the
+user found actually holds up on real material — worth recording why, because it
+is the same principle every removed automatic tool was trying and failing to
+apply on its own.
+
+The user listens until the chart starts drifting away from the recording and
+clicks that note. `reTempoFromHere` then:
+
+1. pins the clicked note **where it already sits** (`setAnchor(origT, dispT)`) —
+   so nothing before the click can move, and whatever was already correct stays
+   correct;
+2. measures the recording's tempo **from that instant onward**
+   (`/detect-tempo` → `detect_tempo_from`, metrically corrected by
+   `suggest_tempo_scale`);
+3. stretches only the tail `[click, last note]` by that factor.
+
+The division of labour is the point: the HUMAN supplies the one thing the
+automatic tools kept getting wrong — WHERE the divergence starts — and the
+machine answers the narrow, reliable question, "what is the tempo from here?".
+Estimating a whole song's drift curve is hard and was consistently wrong;
+measuring a local tempo from a known-good starting point is not.
+
+It repeats safely: each application starts from the timeline the previous one
+produced (`dispLast` is read through the current warp), so correcting the same
+song four or five times along its length composes instead of fighting itself.
+
 ### Manual drift correction (`sync_anchor_stages`)
 
 A single `offset_s` only fixes a constant lead-in; if the GP file's tempo map
