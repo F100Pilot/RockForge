@@ -254,6 +254,18 @@ rebuild by `lead_in_s·(r−1)` on its own — both now include it. If you chang
 `score_shift` is computed in `gp_pipeline`, change `scoreShift`/`previewScale`
 in the same commit.
 
+**Pending anchors are kept in CHART order, and a crossing is flagged in the
+list.** `setAnchor` used to append, so the list showed insertion order — a real
+case read "Correção 4: 196.93s" above "Correção 5: 195.88s", which makes the
+numbering describe an order the music does not have and hides a correction that
+crosses another. `setAnchor` now sorts by chart time (the warp sorts internally
+on both sides, so no timing changes — only what is shown and the numbering that
+follows), and `renderAnchorsList` marks any row whose target is at or before the
+previous row's with "⚠ cruza a anterior". That is the same condition
+`_check_anchor_order` rejects at build time; surfacing it in the list means it
+is fixable while it is still pending, instead of failing at "Aplicar e
+reconstruir".
+
 **Conflicting anchors are rejected, not silently warped into nonsense.** Two
 anchors whose corrected times contradict their chart-time order (a later chart
 point mapped to an earlier recording instant than an earlier point) make

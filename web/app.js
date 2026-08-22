@@ -1744,17 +1744,26 @@ function renderAnchorsList() {
   if (!syncAnchors.length) { el.innerHTML = ''; updatePendingChangesInfo(); return; }
   // The target time is an editable number (not just text) so a correction can
   // be typed exactly instead of only ever being set by dragging.
-  el.innerHTML = syncAnchors.map(([o, n], i) =>
-    `<div class="anchor-row">Correção ${i+1}: ${o.toFixed(2)}s →
+  // A correction CROSSES the previous one when a later point in the score is
+  // sent to an earlier instant in the recording. The timeline would have to fold
+  // back on itself, so the backend refuses to build it — flag it here, while it
+  // can still be fixed, instead of failing at "Aplicar e reconstruir".
+  el.innerHTML = syncAnchors.map(([o, n], i) => {
+    const crosses = i > 0 && n <= syncAnchors[i - 1][1];
+    const warn = crosses
+      ? ` <span style="color:#e6483c" title="Esta correção manda um ponto MAIS À FRENTE da partitura para um instante ANTERIOR ao da correção acima — impossível de aplicar. Corrige o valor ou remove uma delas.">⚠ cruza a anterior</span>`
+      : '';
+    return `<div class="anchor-row"${crosses ? ' style="border-left:3px solid #e6483c;padding-left:.4rem"' : ''}>Correção ${i+1}: ${o.toFixed(2)}s →
      <input type="number" step="0.01" value="${n.toFixed(2)}" data-i="${i}" class="anchor-edit" style="width:6rem">s
-     <button type="button" data-i="${i}" class="anchor-remove">remover</button></div>`
-  ).join('') + `<div class="anchor-row">
+     <button type="button" data-i="${i}" class="anchor-remove">remover</button>${warn}</div>`;
+  }).join('') + `<div class="anchor-row">
      <button type="button" id="clearAnchors" class="secondary">Limpar correções pendentes</button></div>`;
   el.querySelectorAll('.anchor-edit').forEach(inp => inp.addEventListener('change', () => {
     const i = parseInt(inp.dataset.i, 10);
     const v = parseFloat(inp.value);
     if (!isNaN(v)) syncAnchors[i][1] = v;
-    showArr(currentArr);  // redraw at the typed position; list itself stays as-is
+    renderAnchorsList();  // a typed value can create/clear a crossing — re-flag
+    showArr(currentArr);
     updatePendingChangesInfo();
   }));
   el.querySelectorAll('.anchor-remove').forEach(b => b.addEventListener('click', () => {
@@ -3088,6 +3097,13 @@ function setAnchor(origT, newT) {
   const i = syncAnchors.findIndex(([o]) => Math.abs(o - origT) < 0.05);
   if (i >= 0) syncAnchors[i] = [origT, newT];
   else syncAnchors.push([origT, newT]);
+  // Keep them in CHART order. They used to sit in insertion order, so the list
+  // could show "Correção 4: 196.93s" above "Correção 5: 195.88s" — the numbering
+  // implied an order the music does not have, and a correction that crossed
+  // another was invisible until the rebuild rejected it. The warp itself sorts
+  // internally (here and in the backend), so this changes no timing — only what
+  // the user is shown, and the numbering that follows from it.
+  syncAnchors.sort((a, b) => a[0] - b[0]);
 }
 
 // Chart-time positions of the current snap grid: measure downbeats ('bars'),
