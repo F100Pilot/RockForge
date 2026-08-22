@@ -1096,21 +1096,26 @@ function showArr(i) {
     const eff = dur > 0.01 ? Math.round(n * 60 / dur) : auth;
     return { eff, auth };
   };
-  let lastBpmX = -999;
+  // Label spacing. Bar lines are always drawn, but the TEXT beside them is
+  // dropped when it would collide with the previous label: on a dense chart
+  // (or when zoomed out) numbers and BPMs otherwise pile into an unreadable
+  // wall. The full BPM label needs more room than a bare bar number.
+  let lastBpmX = -999, lastNumX = -999;
   for (let bi = 0; bi < barList.length; bi++) {
     const b = barList[bi];
     const x = timeToX(barWarp(previewScale(b.time)));
     if (x < 24 || x > W - 4) continue;
     s += `<line x1="${x}" y1="30" x2="${x}" y2="${SB}" stroke="#5a6a8a" stroke-width="1" opacity=".55"/>`;
     const bb = barBpm(bi);
-    if (bb.eff > 0 && x - lastBpmX > 40) {
+    if (bb.eff > 0 && x - lastBpmX > 64) {
       const changed = Math.abs(bb.eff - bb.auth) >= 2;  // pending sync re-tempos this bar
       s += `<text x="${x+3}" y="42" font-size="11" font-weight="700">`
         + `<tspan fill="#7d8aa5">${b.measure}</tspan>`
         + `<tspan fill="${changed ? '#f2b84b' : '#b58cff'}" font-size="10"> &#9833;${bb.eff}</tspan></text>`;
-      lastBpmX = x;
-    } else {
+      lastBpmX = lastNumX = x;
+    } else if (x - lastNumX > 26) {
       s += `<text x="${x+3}" y="42" fill="#7d8aa5" font-size="11" font-weight="700">${b.measure}</text>`;
+      lastNumX = x;
     }
   }
   // Tempo-change markers (♩=NNN): where the beat spacing changes, the GP's
@@ -1200,6 +1205,8 @@ function showArr(i) {
   // backend uses, so anchors round-trip exactly through a rebuild even with a
   // tempo/offset change still pending.
   const warp = buildTimeWarp(syncAnchors);
+  let lastChordX = -999;
+  const lastTechX = [-999, -999, -999, -999, -999, -999];
   for (const g of groups) {
     const sel = selectedTimes.has(g.time) ? ' selected' : '';
     const dispT = warp(previewScale(g.time));
@@ -1212,7 +1219,14 @@ function showArr(i) {
       // dark band below the staff (a fixed chord row, well clear of the lowest
       // string's notes) so names never overlap the notes and all line up.
       const cn = g.notes.find(n => n.chord_name);
-      if (cn) s += `<text x="${x}" y="${H - 16}" fill="#ffd479" font-size="13" font-weight="700" text-anchor="middle">${esc(cn.chord_name)}</text>`;
+      // Skip a name that would overlap the previous one. Chord names are wide
+      // and centred, so on a dense chart every group printing its own turned the
+      // row into an unreadable smear; the omitted ones are still identifiable
+      // from the fret numbers.
+      if (cn && x - lastChordX > Math.max(30, cn.chord_name.length * 7)) {
+        s += `<text x="${x}" y="${H - 16}" fill="#ffd479" font-size="13" font-weight="700" text-anchor="middle">${esc(cn.chord_name)}</text>`;
+        lastChordX = x;
+      }
     }
     for (const n of g.notes) {
       const x = timeToX(dispT), y = SB - n.string * ROW;
@@ -1240,7 +1254,13 @@ function showArr(i) {
       if (tech) {
         // bend/vibrato are drawn at the note itself, not as glyphs above it
         const gt = n.techniques.filter(t => t !== 'vibrato' && t !== 'bend');
-        if (gt.length) s += techGlyphs(gt, x, y - R - 4);
+        // Per STRING spacing: a run of palm mutes printed "P.M." over every
+        // single note, which is both unreadable and redundant — the dashed ring
+        // on the note itself already marks it, and the tooltip lists them all.
+        if (gt.length && x - (lastTechX[n.string] ?? -999) > 30) {
+          s += techGlyphs(gt, x, y - R - 4);
+          if (n.string >= 0 && n.string < 6) lastTechX[n.string] = x;
+        }
         s += `<title>${n.techniques.join(', ')}</title>`;
       }
       s += `</g>`;
