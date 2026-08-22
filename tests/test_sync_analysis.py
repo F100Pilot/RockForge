@@ -212,3 +212,65 @@ def test_reacquisition_does_not_invent_a_jump_in_a_clean_song() -> None:
                  [i * 2.0 for i in range(61)], chart)
     assert d.classification == "in_sync"
     assert d.jumps == []
+
+
+def _noisy(drift, *, rate: float, seed: int = 1, size: float = 0.35,
+           n: int = 361) -> list[SyncPoint]:
+    """Realistic input: some onsets snap to the WRONG attack, which produces a
+    large one-sample spike in the residual. Real audio always does this."""
+    import random
+
+    rng = random.Random(seed)
+    out = []
+    for i in range(n):
+        t = i * 0.5
+        d = drift(t)
+        if rng.random() < rate:
+            d += rng.choice([-1, 1]) * size
+        out.append(SyncPoint(t, t + d, True))
+    return out
+
+
+def _actionable(d) -> int:
+    return sum(1 for s in d.segments if s.kind != "synced") + len(d.jumps)
+
+
+def test_mis_snapped_onsets_do_not_become_phantom_jumps() -> None:
+    """The bug this guards: on real audio the analysis produced dozens of
+    'jumps' and buried the score in over a hundred correction points. A jump
+    displaces the music and it STAYS displaced; a mis-snapped onset steps and
+    comes straight back. Only the sustained kind may be reported."""
+    bars, beats = _bars(91), _beats(361)
+    # Pure jitter and pure noise must yield NOTHING to correct.
+    for rate in (0.15, 0.30):
+        d = diagnose(_noisy(lambda t: 0.0, rate=rate), bars, beats)
+        assert d.classification == "in_sync", (rate, d.classification, d.jumps)
+        assert d.jumps == []
+        assert _actionable(d) == 0
+    # A steady drift stays ONE finding even with many mis-snaps.
+    d = diagnose(_noisy(lambda t: 0.010 * t, rate=0.08), bars, beats)
+    assert d.jumps == []
+    assert _actionable(d) <= 3, [s.kind for s in d.segments]
+
+
+def test_a_real_jump_survives_heavy_noise_and_is_reported_once() -> None:
+    """The real displacement must still be found, exactly once, at the right
+    place and with the right size — even when a quarter of the onsets mis-snap,
+    including right next to the jump itself."""
+    bars, beats = _bars(91), _beats(361)
+    for rate in (0.10, 0.25):
+        d = diagnose(_noisy(lambda t: 0.0 if t < 70.0 else 1.7, rate=rate), bars, beats)
+        assert d.classification == "sudden_offset", (rate, d.classification)
+        assert len(d.jumps) == 1, (rate, [(j.chart_time, j.step_s) for j in d.jumps])
+        assert d.jumps[0].chart_time == pytest.approx(70.0, abs=1.0)
+        assert d.jumps[0].step_s == pytest.approx(1.7, abs=0.1)
+
+
+def test_a_spike_pair_cancels_instead_of_becoming_two_jumps() -> None:
+    """One outlier is a step away and a step back. Summing candidates that
+    belong to the same event makes that pair cancel to nothing."""
+    pts = [SyncPoint(i * 0.5, i * 0.5, True) for i in range(200)]
+    pts[100] = SyncPoint(50.0, 50.0 + 0.4, True)      # a single wild point
+    d = diagnose(pts, _bars(51), _beats(200))
+    assert d.jumps == []
+    assert d.classification == "in_sync"

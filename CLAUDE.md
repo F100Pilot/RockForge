@@ -417,6 +417,22 @@ the loss are **back-filled** against the recovered shift so the step lands where
 the music actually moved. Measured on an irregular rhythm with a true jump at
 60.0 s: shifts of +1.7/+2.0/+3.5 recovered to within 0.15 s, at 60.0 s.
 
+**A jump must be SUSTAINED, or real audio buries the score in anchors.** On the
+first real run the analysis reported dozens of "jumps" and produced 100+
+correction points. The cause: an onset that snaps to the WRONG attack makes a
+large one-sample step in the residual, indistinguishable from a jump if you only
+look at consecutive points. A real jump displaces the music and it STAYS
+displaced; a mis-snap steps and comes straight back. `_is_sustained_step`
+compares the MEDIAN residual over 10 matched points each side, and
+`_coalesce_jumps` then sums candidates within `JUMP_MERGE_S` into one event
+(placed at the largest single step) so an outlier adjacent to a real jump — its
+step, then the step back — cancels instead of becoming two extra findings.
+Measured on synthetic data with 25% of onsets mis-snapped: a real +1.7 s jump at
+70 s is still reported exactly once, at 70 s, at +1.7 s, while pure noise and
+pure jitter yield nothing at all. `diagnose` additionally warns when more than
+`MAX_TRUSTWORTHY_FINDINGS` findings survive — that many is itself evidence the
+matching is not tracking the music, not that the tab has that many faults.
+
 **Honest limit, and it is a real one:** on a perfectly regular passage, shifting
 the audio by a whole number of grid steps produces an *identical* attack set — a
 missing bar is then mathematically indistinguishable from missing notes, and the

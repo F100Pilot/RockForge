@@ -35,6 +35,17 @@ NEGLIGIBLE_DRIFT_S = 0.05
 # cannot be gradual drift at any plausible tempo error — it is a discontinuity.
 JUMP_MIN_STEP_S = 0.12
 JUMP_MAX_GAP_S = 1.5
+# A candidate step is only believed when the residual STAYS shifted: the median
+# over this many matched points on each side must differ by most of the step.
+# A mis-snapped onset steps and comes straight back; a real jump does not.
+JUMP_CONFIRM_WINDOW = 10
+JUMP_CONFIRM_RATIO = 0.6
+# Candidate steps closer together than this belong to one event (see
+# _coalesce_jumps) and are summed rather than reported separately.
+JUMP_MERGE_S = 3.0
+# Above this many actionable findings the result is not trustworthy — see the
+# warning raised in diagnose().
+MAX_TRUSTWORTHY_FINDINGS = 12
 # Minimum chart seconds a drift segment must span to be worth reporting (a
 # correction over a couple of seconds is noise, not a tempo error).
 MIN_SEGMENT_S = 12.0
@@ -255,23 +266,81 @@ def build_correspondence(
     return out
 
 
-def _split_on_jumps(pts: list[SyncPoint]) -> tuple[list[list[SyncPoint]], list[int]]:
-    """Cut the series where the residual steps. Returns (pieces, jump indices)."""
+def _is_sustained_step(pts: list[SyncPoint], i: int) -> bool:
+    """Does the residual STAY shifted after index ``i``?
+
+    A real jump displaces the music and it stays displaced. A single onset that
+    snapped to the wrong attack also produces a large one-sample step — but the
+    residual comes straight back. Comparing the MEDIAN residual on each side
+    (median, so one more outlier cannot swing it) separates the two. Without
+    this, real audio produced dozens of phantom jumps and buried the score in
+    correction points.
+    """
+    before = [p.residual for p in pts[max(0, i - JUMP_CONFIRM_WINDOW):i] if p.matched]
+    after = [p.residual for p in pts[i:i + JUMP_CONFIRM_WINDOW] if p.matched]
+    if len(before) < 3 or len(after) < 3:
+        return False
+    return abs(_median(after) - _median(before)) >= JUMP_MIN_STEP_S * JUMP_CONFIRM_RATIO
+
+
+def _coalesce_jumps(
+    pts: list[SyncPoint], cand: list[tuple[int, float]]
+) -> list[tuple[int, float]]:
+    """Merge candidate steps that belong to the same event.
+
+    Two things make one displacement look like several: an outlier right next to
+    a real jump (its own step, then the step back), and the confirm window
+    spanning the real jump so the outlier reads as sustained. Candidates within
+    ``JUMP_MERGE_S`` are therefore summed into ONE jump, placed where the largest
+    single step was — that is where the music actually moved — and dropped
+    entirely if the net comes to less than a real step, which is exactly what a
+    spike (up then straight back down) does.
+    """
+    out: list[tuple[int, float]] = []
+    group: list[tuple[int, float]] = []
+
+    def flush() -> None:
+        if not group:
+            return
+        net = sum(st for _, st in group)
+        if abs(net) >= JUMP_MIN_STEP_S:
+            idx = max(group, key=lambda g: abs(g[1]))[0]
+            out.append((idx, net))
+        group.clear()
+
+    for i, step in cand:
+        if group and pts[i].chart_time - pts[group[-1][0]].chart_time > JUMP_MERGE_S:
+            flush()
+        group.append((i, step))
+    flush()
+    return out
+
+
+def _split_on_jumps(
+    pts: list[SyncPoint],
+) -> tuple[list[list[SyncPoint]], list[tuple[int, float]]]:
+    """Cut the series where the residual steps AND STAYS.
+
+    Returns ``(pieces, jumps)`` where each jump is ``(index, net_step)`` — the
+    NET of the coalesced candidates, which is what actually displaced the music.
+    """
+    cand: list[tuple[int, float]] = []
+    for i in range(1, len(pts)):
+        dc = pts[i].chart_time - pts[i - 1].chart_time
+        dd = pts[i].residual - pts[i - 1].residual
+        if (
+            abs(dd) >= JUMP_MIN_STEP_S
+            and 0 < dc <= JUMP_MAX_GAP_S
+            and _is_sustained_step(pts, i)
+        ):
+            cand.append((i, dd))
+    jumps = _coalesce_jumps(pts, cand)
     pieces: list[list[SyncPoint]] = []
-    jumps: list[int] = []
-    cur: list[SyncPoint] = []
-    for i, p in enumerate(pts):
-        if cur:
-            prev = cur[-1]
-            dc = p.chart_time - prev.chart_time
-            dd = p.residual - prev.residual
-            if abs(dd) >= JUMP_MIN_STEP_S and 0 < dc <= JUMP_MAX_GAP_S:
-                pieces.append(cur)
-                jumps.append(i)
-                cur = []
-        cur.append(p)
-    if cur:
-        pieces.append(cur)
+    start = 0
+    for i, _ in jumps:
+        pieces.append(pts[start:i])
+        start = i
+    pieces.append(pts[start:])
     return pieces, jumps
 
 
@@ -385,12 +454,12 @@ def diagnose(
 
     pieces, jump_idx = _split_on_jumps(points)
     jumps: list[SyncJump] = []
-    for i in jump_idx:
-        prev, cur = points[i - 1], points[i]
+    for i, net in jump_idx:
+        cur = points[i]
         jumps.append(SyncJump(
             chart_time=cur.chart_time,
             measure=_measure_of(bars, cur.chart_time),
-            step_s=round(cur.residual - prev.residual, 4),
+            step_s=round(net, 4),
             confidence=_confidence(points[max(0, i - 8):i + 8]),
         ))
 
@@ -437,6 +506,16 @@ def diagnose(
 
     overall = _classify(segments, jumps)
     conf = _confidence(points)
+    # A wall of findings is itself a diagnosis: it means the matching is not
+    # tracking the music, so every one of them is suspect. Say so rather than
+    # handing over dozens of corrections that would bury the score in anchors.
+    actionable = sum(1 for s in segments if s.kind != "synced") + len(jumps)
+    if actionable > MAX_TRUSTWORTHY_FINDINGS:
+        warns.append(
+            f"{actionable} problems detected — that many usually means the notes are "
+            "not being matched reliably (separate the instruments first, and check "
+            "the Step 1 first-note pin) rather than that the tab has that many faults"
+        )
     return SyncDiagnosis(
         points=points, segments=segments, jumps=jumps,
         classification=overall, confidence=round(conf, 3),
