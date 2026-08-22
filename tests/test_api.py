@@ -34,9 +34,19 @@ def test_no_auth_by_default(client: TestClient) -> None:
 def test_index_page_references_the_extracted_app_js(client: TestClient) -> None:
     """The UI's JS lives in web/app.js (extracted out of index.html's inline
     <script> so it's lintable), loaded via a <script src> tag."""
+    import re
+
     r = client.get("/")
     assert r.status_code == 200
-    assert '<script src="/app.js"></script>' in r.text
+    # Loaded from /app.js, and CACHE-BUSTED by the file's own mtime: the browser
+    # otherwise keeps a stale app.js, leaving new markup wired to an old script —
+    # a new button that exists and does nothing, which reads as a broken feature.
+    m = re.search(r'<script src="/app\.js\?v=(\d+)"></script>', r.text)
+    assert m, r.text[-300:]
+    assert int(m.group(1)) > 0
+    # The file itself must revalidate, so a changed version always wins.
+    js = client.get("/app.js")
+    assert js.headers["cache-control"] == "no-cache"
     assert "<script>" not in r.text  # no inline JS left behind
 
 

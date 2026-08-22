@@ -2769,7 +2769,19 @@ def _web_file_candidates(name: str) -> tuple[Path, Path]:
 def index() -> str:
     for ui in _web_file_candidates("index.html"):
         if ui.exists():
-            return ui.read_text(encoding="utf-8")
+            html = ui.read_text(encoding="utf-8")
+            # Cache-bust app.js by its own mtime. index.html is generated per
+            # request and never cached, but the browser happily keeps a stale
+            # app.js — which leaves NEW markup wired to an OLD script, so a new
+            # button exists and does nothing. That failure looks exactly like a
+            # broken feature and has cost real debugging time.
+            for js in _web_file_candidates("app.js"):
+                if js.exists():
+                    html = html.replace(
+                        'src="/app.js"', f'src="/app.js?v={int(js.stat().st_mtime)}"'
+                    )
+                    break
+            return html
     return "<h1>RockForge</h1><p>UI not bundled; see /docs for the API.</p>"
 
 
@@ -2779,5 +2791,11 @@ def app_js() -> FileResponse:
     be linted (ESLint has no way to check an inline block on its own)."""
     for js in _web_file_candidates("app.js"):
         if js.exists():
-            return FileResponse(js, media_type="text/javascript")
+            # Revalidate every load: the URL is mtime-stamped by index(), so a
+            # changed file always wins, and an unchanged one still 304s.
+            return FileResponse(
+                js,
+                media_type="text/javascript",
+                headers={"Cache-Control": "no-cache"},
+            )
     raise HTTPException(404, "app.js not bundled")

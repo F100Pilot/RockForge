@@ -5190,9 +5190,14 @@ function renderSyncFindings() {
   const info = document.getElementById('analyseSyncInfo');
   if (!btn) return;
   btn.addEventListener('click', async () => {
-    if (!selectedJob) return;
+    // Never fail silently — a button that does nothing reads as a broken feature.
+    if (!selectedJob) { toast('abre primeiro um projeto', 'err'); return; }
     const kind = currentKind();
-    if (!kind) return;
+    if (!kind) {
+      info.textContent = 'Sem partitura carregada — espera que o projeto acabe de abrir.';
+      toast('partitura ainda não carregada', 'err');
+      return;
+    }
     btn.disabled = true;
     info.textContent = 'A analisar a sincronização…';
     try {
@@ -5239,7 +5244,7 @@ function renderSyncFindings() {
   if (!btn) return;
   btn.addEventListener('click', () => {
     const a = syncAnalysis;
-    if (!a) return;
+    if (!a) { toast('corre primeiro "Analisar sincronização"', 'err'); return; }
     const f = syncFindings(a);
     // Build the target curve from the ACCEPTED findings only, accumulating their
     // deltas. A rejected finding contributes nothing, so the music it covers
@@ -5286,7 +5291,7 @@ function renderSyncFindings() {
   if (!btn) return;
   btn.addEventListener('click', async () => {
     const a = syncAnalysis;
-    if (!a || !selectedJob) return;
+    if (!a || !selectedJob) { toast('corre primeiro "Analisar sincronização"', 'err'); return; }
     const f = syncFindings(a);
     const corrections = [];
     let skipped = 0;
