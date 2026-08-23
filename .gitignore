@@ -11,3 +11,7 @@ rockforge.db
 .ruff_cache/
 .pytest_cache/
 node_modules/
+# Build output (setuptools / pip wheel / PyInstaller).
+build/
+dist/
+*.whl
