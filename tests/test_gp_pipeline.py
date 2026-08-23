@@ -526,6 +526,26 @@ def test_suggest_tempo_scale_triplet_grid_does_not_jump_bpm() -> None:
     assert suggest_tempo_scale(120.0, 126.0) == pytest.approx(120.0 / 126.0)
 
 
+def test_suggest_tempo_scale_does_not_favour_the_faster_reading_on_a_tie() -> None:
+    """Half and double are equally far from the true pulse, so an exactly
+    ambiguous pair must not be broken toward the faster one. abs(scale - 1) is
+    asymmetric (an octave high scores 0.5, an octave low scores 1.0) and always
+    picked the higher BPM — the "always a higher tempo, never a lower one" bias,
+    whose ×0.8 factor then compressed the chart and made it run fast. In log
+    space the two directions score alike, so the ranking follows the real
+    distance instead of the metric's own downward skew."""
+    from rockforge.application.gp_pipeline import suggest_tempo_scale
+
+    # 100 vs 125: linearly the 1× (125 → 0.8) and 2/3× (83.3 → 1.2) candidates
+    # tie, and float noise handed it to the compressing 0.8; in log space 1.2 is
+    # strictly the closer of the two.
+    assert suggest_tempo_scale(100.0, 125.0) == pytest.approx(1.2)
+    # Symmetry: mirroring the ratio mirrors the scale.
+    fast = suggest_tempo_scale(100.0, 100.0 * 1.1)
+    slow = suggest_tempo_scale(100.0, 100.0 / 1.1)
+    assert fast == pytest.approx(1 / slow)
+
+
 def test_build_time_warp_single_anchor_shifts_everything() -> None:
     # A single anchor remains a uniform shift applied everywhere (e.g. "the
     # whole song's lead-in is off by X"), unlike the two-anchor excerpt case.

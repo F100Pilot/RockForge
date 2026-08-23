@@ -381,12 +381,18 @@ class ExportGpOut(BaseModel):
 
 class DetectTempoIn(BaseModel):
     from_s: float = 0.0  # recording time to start measuring the local tempo from
+    # The chart's tempo AS CURRENTLY DISPLAYED at that point (the viewer's live
+    # BPM readout: authored spacing × tempo_scale × pending anchors). Optional —
+    # falls back to the GP file's header tempo, which is only right for a song
+    # with no tempo changes and no corrections applied yet.
+    chart_bpm: float | None = None
 
 
 class DetectTempoOut(BaseModel):
     """Local tempo measured from a point — for the per-point 're-tempo from here' tool."""
 
-    gp_bpm: float
+    gp_bpm: float  # the GP file's header tempo (informational)
+    reference_bpm: float  # what the factor is measured against (chart_bpm, else gp_bpm)
     detected_bpm: float
     suggested_factor: float  # multiply note spacing after the point by this
     used_drum_stem: bool = False  # tempo measured on the isolated drum stem?
@@ -1454,15 +1460,27 @@ def detect_tempo(job_id: str, payload: DetectTempoIn) -> DetectTempoOut:
         ) from exc
 
     gp_bpm = float(inspect_gp(gp_path).tempo)
+    # The factor is applied by the viewer as a RELATIVE stretch of the tail of the
+    # already-displayed timeline, so it must be measured against the tempo that
+    # timeline currently plays at — not against the GP header tempo. Using the
+    # header was wrong twice over: it ignores the song's own tempo changes (a
+    # section authored slower than bar 1 got "corrected" by that whole
+    # difference), and it ignores the tempo_scale/anchors already applied, so
+    # correcting the same passage twice applied the same absolute factor again
+    # and compounded into a chart running far too fast.
+    reference_bpm = (
+        float(payload.chart_bpm) if payload.chart_bpm and payload.chart_bpm > 0 else gp_bpm
+    )
     drums = _drum_stem(params)
     try:
-        detected_bpm = detect_tempo_from(drums or src, payload.from_s)
+        detected_bpm = detect_tempo_from(drums or src, payload.from_s, reference_bpm)
     except Exception as exc:
         raise HTTPException(422, f"could not analyse the recording: {exc}") from exc
     return DetectTempoOut(
         gp_bpm=gp_bpm,
+        reference_bpm=reference_bpm,
         detected_bpm=detected_bpm,
-        suggested_factor=suggest_tempo_scale(gp_bpm, detected_bpm),
+        suggested_factor=suggest_tempo_scale(reference_bpm, detected_bpm),
         used_drum_stem=drums is not None,
     )
 

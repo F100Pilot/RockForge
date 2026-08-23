@@ -19,6 +19,7 @@ shortfall as silence so there is always room — see MIN_LEAD_S.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -90,7 +91,12 @@ def suggest_tempo_scale(gp_bpm: float, detected_bpm: float) -> float:
     is near 1, so we pick the metrical multiple of ``detected_bpm``
     (``_TEMPO_METRICAL_FACTORS``) whose resulting scale sits closest to 1.0 —
     fixing the "auto-sync jumps the BPM ~50%" case where only ½/1/2 were tried
-    and a 3/2 detection had no nearby octave to snap to.
+    and a 3/2 detection had no nearby octave to snap to. "Closest to 1.0" is
+    measured in LOG space: ``abs(scale - 1)`` is asymmetric (a candidate an
+    octave high scores 0.5, one an octave low scores 1.0), so on a genuinely
+    ambiguous half/double pair it always preferred the FASTER reading — the
+    "always a higher tempo, never a lower one" bias, which then compresses the
+    chart. ``abs(log(scale))`` treats the two directions alike.
     ``tempo_scale = gp_bpm / effective_recording_bpm`` because the GP timeline is
     stretched/compressed to the recording's tempo (parser scales the effective BPM
     inversely). Used both for whole-song sync and for a local re-tempo from a point.
@@ -98,7 +104,7 @@ def suggest_tempo_scale(gp_bpm: float, detected_bpm: float) -> float:
     if gp_bpm <= 0 or detected_bpm <= 0:
         raise IngestionError("gp_bpm and detected_bpm must be positive to suggest a tempo")
     candidates = [detected_bpm * f for f in _TEMPO_METRICAL_FACTORS]
-    best = min(candidates, key=lambda b: abs((gp_bpm / b) - 1.0))
+    best = min(candidates, key=lambda b: abs(math.log(gp_bpm / b)))
     return gp_bpm / best
 
 

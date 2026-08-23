@@ -1205,7 +1205,7 @@ def test_detect_tempo_returns_local_factor(client: TestClient, tmp_path, monkeyp
     # clicked point → octave-corrected factor 1.0 (100 / (200 * 0.5)).
     import rockforge.infrastructure.rhythm.librosa_adapter as rhythm
 
-    monkeypatch.setattr(rhythm, "detect_tempo_from", lambda src, start: 200.0)
+    monkeypatch.setattr(rhythm, "detect_tempo_from", lambda src, start, expected=None: 200.0)
     data = _make_gp5_bytes(tmp_path)
     body = client.post(
         "/gp/inspect", files={"file": ("song.gp5", data, "application/octet-stream")}
@@ -1219,8 +1219,50 @@ def test_detect_tempo_returns_local_factor(client: TestClient, tmp_path, monkeyp
     assert r.status_code == 200
     out = r.json()
     assert out["gp_bpm"] == pytest.approx(100.0)
+    assert out["reference_bpm"] == pytest.approx(100.0)  # no chart_bpm → header tempo
     assert out["detected_bpm"] == pytest.approx(200.0)
     assert out["suggested_factor"] == pytest.approx(1.0)
+
+
+def test_detect_tempo_measures_against_the_chart_bpm_not_the_header(
+    client: TestClient, tmp_path, monkeypatch
+) -> None:
+    """The viewer applies the factor as a relative stretch of the timeline it is
+    showing, so the factor must be measured against the tempo THAT timeline plays
+    at — the header tempo double-counts every tempo change and every correction
+    already applied, which is what made repeated 'Corrigir daqui' runs pile up
+    into a chart running far too fast. The chart tempo must also reach the
+    detector as its tempo prior (librosa defaults it to 120 and otherwise reads a
+    slow song at double time)."""
+    import rockforge.infrastructure.rhythm.librosa_adapter as rhythm
+
+    seen: dict[str, float | None] = {}
+
+    def _fake(src, start, expected=None):
+        seen["expected"] = expected
+        return 150.0
+
+    monkeypatch.setattr(rhythm, "detect_tempo_from", _fake)
+    data = _make_gp5_bytes(tmp_path)
+    body = client.post(
+        "/gp/inspect", files={"file": ("song.gp5", data, "application/octet-stream")}
+    ).json()
+    job = client.post(
+        "/jobs/gp",
+        data={"gp_token": body["gp_token"], "lead_track": "0"},
+        files={"audio": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
+    ).json()
+    # The GP header says 100, but the passage under the click currently plays at
+    # 150 — exactly the recording's tempo, so nothing should move.
+    r = client.post(
+        f"/jobs/{job['id']}/detect-tempo", json={"from_s": 12.0, "chart_bpm": 150.0}
+    )
+    assert r.status_code == 200
+    out = r.json()
+    assert seen["expected"] == pytest.approx(150.0)  # prior centred on the chart
+    assert out["gp_bpm"] == pytest.approx(100.0)  # still reported, informational
+    assert out["reference_bpm"] == pytest.approx(150.0)
+    assert out["suggested_factor"] == pytest.approx(1.0)  # was 100/150 = 0.667 (too fast)
 
 
 def test_detect_tuning_returns_cent_offset(client: TestClient, tmp_path, monkeypatch) -> None:

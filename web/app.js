@@ -3244,11 +3244,18 @@ async function reTempoFromHere(grp) {
   const dispLast = warp(origLast);
   if (dispLast <= dispT + 0.01) { toast('é a última nota — nada para re-espaçar', 'err'); return; }
   const fromS = Math.max(0, dispT - viewOrigin);  // click's time in the recording
+  // The chart's tempo as it plays RIGHT NOW at the click (authored spacing ×
+  // tempo_scale × pending anchors). The factor is applied below as a relative
+  // stretch of this timeline's tail, so this — not the GP header tempo — is what
+  // it has to be measured against; it also centres the detector's tempo prior,
+  // which otherwise defaults to 120 and reads a slow song at double time.
+  const info = liveInfoAtTime(dispT, warp);
+  const chartBpm = info && info.bpm ? info.bpm : null;
   toast('A detetar andamento…', 'ok');
   try {
     const r = await fetch(`/jobs/${selectedJob.id}/detect-tempo`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from_s: fromS }),
+      body: JSON.stringify({ from_s: fromS, chart_bpm: chartBpm }),
     });
     const b = await r.json();
     if (!r.ok) { toast(b.detail || 'erro', 'err'); return; }
@@ -3258,7 +3265,8 @@ async function reTempoFromHere(grp) {
     renderAnchorsList();
     updatePendingChangesInfo();
     showArr(currentArr);
-    toast(`Andamento: ${b.detected_bpm.toFixed(1)} BPM (×${factor.toFixed(3)})`, 'ok');
+    const ref = b.reference_bpm ? ` (partitura ${b.reference_bpm.toFixed(1)})` : '';
+    toast(`Andamento: ${b.detected_bpm.toFixed(1)} BPM${ref} → ×${factor.toFixed(3)}`, 'ok');
   } catch (e) { toast('falha na deteção', 'err'); }
 }
 
@@ -3988,9 +3996,12 @@ document.getElementById('showFretboard')?.addEventListener('change', e => {
   if (fretboardOn) updateFretboard(playheadDisplay(audioTime()));
 });
 
-// Live BPM readout: the AUTHORED tempo of the measure under the playhead (from
-// the built beat spacing, so it shows the score's real 93/186 as it plays,
-// switching exactly at the tempo-change bars).
+// Live BPM readout: the tempo of the measure under the playhead, measured on the
+// beat spacing AS DISPLAYED — the built spacing (so it shows the score's real
+// 93/186, switching exactly at the tempo-change bars) run through the pending
+// tempo_scale and anchors, so it reads what you actually hear right now. Taking
+// the raw interval instead made the label ignore every pending correction, and
+// fed the re-tempo tool a reference tempo the chart was no longer playing at.
 function liveInfoAtTime(vtDisp, warp) {
   const a = arrangements[currentArr];
   if (!a || !a.beats || a.beats.length < 2) return null;
@@ -3999,8 +4010,8 @@ function liveInfoAtTime(vtDisp, warp) {
   for (let i = 0; i < a.beats.length - 1; i++) {
     if (warp(previewScale(a.beats[i])) <= vtDisp) idx = i; else break;
   }
-  const iv = a.beats[idx + 1] - a.beats[idx];
-  const bpm = iv > 0.01 ? Math.round(60 / iv) : null;
+  const iv = warp(previewScale(a.beats[idx + 1])) - warp(previewScale(a.beats[idx]));
+  const bpm = iv > 0.01 ? 60 / iv : null;
   let measure = null;
   for (const b of (a.bars || [])) { if (b.time <= a.beats[idx] + 1e-6) measure = b.measure; else break; }
   return { bpm, measure };
@@ -4009,7 +4020,7 @@ function updateLiveBpm(vtDisp, warp) {
   const el = document.getElementById('liveBpm');
   if (!el) return;
   const info = liveInfoAtTime(vtDisp, warp);
-  el.textContent = info && info.bpm ? `♩ = ${info.bpm}${info.measure ? ` · c.${info.measure}` : ''}` : '';
+  el.textContent = info && info.bpm ? `♩ = ${Math.round(info.bpm)}${info.measure ? ` · c.${info.measure}` : ''}` : '';
   updateLiveTone(vtDisp, warp);
 }
 

@@ -223,6 +223,31 @@ clicks that note. `reTempoFromHere` then:
    `suggest_tempo_scale`);
 3. stretches only the tail `[click, last note]` by that factor.
 
+**The factor is relative to the timeline on screen, and the detector's prior is
+the chart's own tempo.** Both halves were wrong and both pushed the same way —
+"dá sempre tempo maior e fica muito acelerado". (a) `/detect-tempo` measured the
+factor against the GP file's **header** tempo, while the viewer applies it as a
+relative stretch of the ALREADY-displayed tail: that double-counts the song's own
+tempo changes (a section authored slower than bar 1 got "corrected" by that whole
+difference) and, worse, re-applies the same absolute factor on every repeat, so
+correcting one passage twice compounds (×0.9 → ×0.81 → ×0.73) into a chart
+running away. The viewer now sends `chart_bpm` — the live BPM readout at the
+click — and the factor is measured against that, so a second run on an
+already-correct passage returns ×1.000. (b) librosa weights its tempo candidates
+with a log-normal prior centred on `start_bpm`, which **defaults to 120**; left
+there it reads a slow song at double time, which is literally "always a higher
+tempo, never a lower one". `chart_bpm` is passed through as `start_bpm`, turning
+the open question into the narrow one ("faster or slower than this?"). (c)
+`suggest_tempo_scale` broke a genuinely ambiguous half/double pair with
+`abs(scale - 1)`, which is asymmetric — an octave high scores 0.5, an octave low
+scores 1.0 — so it always preferred the faster reading; it now compares
+`abs(log(scale))`. Guarded by
+`test_detect_tempo_measures_against_the_chart_bpm_not_the_header` and
+`test_suggest_tempo_scale_does_not_favour_the_faster_reading_on_a_tie`.
+`liveInfoAtTime` was also measuring the beat interval on the RAW beat times, so
+the `♩ =` readout ignored every pending tempo/anchor edit; it now measures the
+displayed spacing (which is what makes it usable as `chart_bpm`).
+
 The division of labour is the point: the HUMAN supplies the one thing the
 automatic tools kept getting wrong — WHERE the divergence starts — and the
 machine answers the narrow, reliable question, "what is the tempo from here?".
