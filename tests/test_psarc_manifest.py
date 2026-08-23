@@ -1,7 +1,7 @@
 import json
 
 from rockforge.domain.arrangement import Arrangement, ArrangementKind, SongMetadata
-from rockforge.domain.music import TempoMap, Tuning
+from rockforge.domain.music import Beat, TabNote, Technique, TempoMap, Tuning
 from rockforge.infrastructure.packaging.psarc.container import pack_entries, unpack
 from rockforge.infrastructure.packaging.psarc.manifest import (
     arrangement_asset_name,
@@ -53,6 +53,63 @@ def test_build_arrangement_manifest_fields() -> None:
     assert attrs["Tuning"]["string0"] == 0
     # No gear definitions on the base arrangement → tone slots stay empty.
     assert attrs["Tone_Base"] == "" and attrs["Tones"] == []
+
+
+def test_arrangement_properties_report_the_techniques_actually_played() -> None:
+    """The technique flags were all hard-zero, so every chart advertised itself as
+    using no techniques at all — a false claim about the arrangement's content
+    (a DLC Builder build of the same song sets palmMutes/powerChords/slides/
+    sustain/vibrato/hopo/openChords from the notes). They must be derived from
+    the chart, and a technique the chart does NOT use must stay 0."""
+    notes = [
+        # A power chord (root + fifth on the adjacent string, two frets up).
+        TabNote(string=0, fret=5, time=0.0, sustain=0.5,
+                techniques=frozenset({Technique.PALM_MUTE})),
+        TabNote(string=1, fret=7, time=0.0, sustain=0.5),
+        # A slide with vibrato.
+        TabNote(string=2, fret=3, time=1.0, sustain=0.4, slide_to_fret=7,
+                techniques=frozenset({Technique.VIBRATO})),
+    ]
+    arrangement = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="My Song", artist="My Artist", song_length=10.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=(Beat(time=0.0, measure=1),), average_bpm=120.0),
+        notes=notes,
+    )
+    (entry,) = build_arrangement_manifest(arrangement, "MySong", "Lead")["Entries"].values()
+    props = entry["Attributes"]["ArrangementProperties"]
+    assert props["palmMutes"] == 1
+    assert props["powerChords"] == 1
+    assert props["slides"] == 1
+    assert props["vibrato"] == 1
+    assert props["sustain"] == 1
+    # Not played here — must not be claimed.
+    assert props["tapping"] == 0
+    assert props["harmonics"] == 0
+    assert props["bends"] == 0
+    assert props["hopo"] == 0
+
+
+def test_manifest_reports_the_lead_in_and_a_real_target_score() -> None:
+    """SongOffset (the recording's lead-in, which the game shifts its clock by)
+    and TargetScore (the score counting as full mastery) were both hard 0. A DLC
+    Builder build of the same song writes -startTime and 100000."""
+    arrangement = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="My Song", artist="My Artist", song_length=120.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(
+            beats=(Beat(time=6.421, measure=1), Beat(time=6.921, measure=-1)),
+            average_bpm=120.0,
+        ),
+        notes=[TabNote(string=0, fret=2, time=6.421, sustain=0.5)],
+    )
+    (entry,) = build_arrangement_manifest(arrangement, "MySong", "Lead")["Entries"].values()
+    attrs = entry["Attributes"]
+    assert attrs["SongOffset"] == -6.421
+    assert attrs["TargetScore"] == 100_000
+    assert attrs["SongPartition"] == 1
 
 
 def test_manifest_serializes_custom_tones_into_gearlist() -> None:

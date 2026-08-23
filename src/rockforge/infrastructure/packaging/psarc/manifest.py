@@ -25,6 +25,7 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 from rockforge.domain.arrangement import Arrangement, ArrangementKind
+from rockforge.domain.music import TabNote, Technique
 from rockforge.infrastructure.packaging.tone_dto import unique_tone_dtos
 
 if TYPE_CHECKING:
@@ -165,9 +166,66 @@ def _tone_fields(arrangement: Arrangement) -> dict[str, object]:
     }
 
 
+# The score that counts as full mastery of an arrangement, matching the SNG's own
+# Metadata.MaxScore. Was 0 (a placeholder); a DLC Builder build writes 100000.
+_MAX_SCORE = 100_000
+
+
+def _technique_flags(arrangement: Arrangement) -> dict[str, int]:
+    """Which techniques the chart actually uses, for ArrangementProperties.
+
+    These were all hard-zero, which byte-diffing a DLC Builder build of the same
+    song showed to be simply wrong: it sets palmMutes/powerChords/slides/sustain/
+    vibrato/hopo/openChords/doubleStops/fretHandMutes from the notes. They are
+    the arrangement's advertised technique content — what the song-list and the
+    game's technique tracking read — so reporting none on a chart full of palm
+    mutes and power chords is a false claim, not a missing nicety. Derived here
+    from the domain notes; a technique the domain cannot express stays 0.
+    """
+    notes = arrangement.notes
+    has = {t for n in notes for t in n.techniques}
+    # A chord = simultaneous notes; a power chord is a 2-note fifth (root + 5th
+    # on the adjacent string, 2 frets up), a double stop any other 2-note shape.
+    by_time: dict[float, list[TabNote]] = {}
+    for n in notes:
+        by_time.setdefault(round(n.time, 4), []).append(n)
+    power = double = openc = 0
+    for grp in by_time.values():
+        if len(grp) < 2:
+            continue
+        frets = sorted((g.string, g.fret) for g in grp)
+        if any(f == 0 for _, f in frets):
+            openc = 1
+        if len(grp) == 2:
+            (s0, f0), (s1, f1) = frets
+            if s1 == s0 + 1 and f1 - f0 == 2 and f0 > 0:
+                power = 1
+            else:
+                double = 1
+    return {
+        "powerChords": power, "doubleStops": double, "openChords": openc,
+        "palmMutes": int(Technique.PALM_MUTE in has),
+        "fretHandMutes": int(Technique.FRET_MUTE in has),
+        "harmonics": int(Technique.HARMONIC in has),
+        "pinchHarmonics": int(Technique.PINCH_HARMONIC in has),
+        "hopo": int(bool(has & {Technique.HAMMER_ON, Technique.PULL_OFF})),
+        "tremolo": int(Technique.TREMOLO in has),
+        "slides": int(any(n.slide_to_fret is not None for n in notes)),
+        "unpitchedSlides": int(any(n.slide_unpitch_to is not None for n in notes)),
+        "bends": int(Technique.BEND in has or any(n.bend_semitones for n in notes)),
+        "tapping": int(Technique.TAP in has),
+        "vibrato": int(Technique.VIBRATO in has),
+        "slapPop": int(bool(has & {Technique.SLAP, Technique.POP})),
+        "sustain": int(any(n.sustain > 0 for n in notes)),
+        "pickDirection": int(any(n.pick_direction for n in notes)),
+    }
+
+
 def _arrangement_properties(arrangement: Arrangement) -> dict[str, int]:
-    """The 30-ish boolean/flag ArrangementProperties block. RockForge does not
-    analyse technique usage, so most flags are 0; path/routing + tuning are set."""
+    """The 30-ish boolean/flag ArrangementProperties block: path/routing, tuning
+    and the technique flags derived from the chart (see _technique_flags). The
+    handful RockForge's domain cannot express — barre/non-standard chords,
+    finger-picking, syncopation, bass pick — stay 0 rather than being guessed."""
     kind = arrangement.kind
     base = kind.base_kind
     standard = all(o == 0 for o in arrangement.tuning.offsets_from_standard())
@@ -176,12 +234,10 @@ def _arrangement_properties(arrangement: Arrangement) -> dict[str, int]:
     return {
         "represent": int(not kind.is_alternate), "bonusArr": int(kind.is_alternate),
         "standardTuning": int(standard),
-        "nonStandardChords": 0, "barreChords": 0, "powerChords": 0, "dropDPower": 0,
-        "openChords": 0, "fingerPicking": 0, "pickDirection": 0, "doubleStops": 0,
-        "palmMutes": 0, "harmonics": 0, "pinchHarmonics": 0, "hopo": 0, "tremolo": 0,
-        "slides": 0, "unpitchedSlides": 0, "bends": 0, "tapping": 0, "vibrato": 0,
-        "fretHandMutes": 0, "slapPop": 0, "twoFingerPicking": 0, "fifthsAndOctaves": 0,
-        "syncopation": 0, "bassPick": 0, "sustain": 0,
+        "nonStandardChords": 0, "barreChords": 0, "dropDPower": 0,
+        "fingerPicking": 0, "twoFingerPicking": 0, "fifthsAndOctaves": 0,
+        "syncopation": 0, "bassPick": 0,
+        **_technique_flags(arrangement),
         "pathLead": int(base in (ArrangementKind.LEAD, ArrangementKind.COMBINED)),
         "pathRhythm": int(base is ArrangementKind.RHYTHM),
         "pathBass": 0,
@@ -348,11 +404,21 @@ def build_arrangement_manifest(
         "SongLength": meta.song_length,
         "SongName": meta.title,
         "SongNameSort": meta.title,
-        "SongOffset": 0.0,
-        "SongPartition": 0,
+        # The recording's lead-in: the game shifts its clock by this, so 0 on a
+        # chart that starts seconds in was wrong (a DLC Builder build of the same
+        # song writes -6.421 = -startTime).
+        "SongOffset": -round(
+            arrangement.tempo_map.beats[0].time if arrangement.tempo_map.beats else 0.0, 3
+        ),
+        "SongPartition": 1,
         "SongXml": f"urn:application:xml:{asset}",
         "SongYear": meta.year,
-        "TargetScore": 0,
+        # The score that counts as full mastery. 0 was a placeholder; DLC Builder
+        # writes the arrangement's own max score.
+        "TargetScore": _MAX_SCORE,
+        # Per-difficulty technique map ({level: {phraseIteration: [ids]}}). Still
+        # empty — the ids are a game-internal enum we have not mapped. The
+        # arrangement-level flags in ArrangementProperties ARE now filled in.
         "Techniques": {},
         **_tone_fields(arrangement),
         "Tuning": _tuning(arrangement),

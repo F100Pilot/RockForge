@@ -533,6 +533,43 @@ def test_dd_phrase_heights_vary_with_density() -> None:
     assert heights["dense"] <= (dense_notes - 1) // 2
 
 
+def test_a_short_phrase_still_gets_levels_to_climb() -> None:
+    """A phrase with only a handful of notes must still have a ramp. The ceiling
+    was a bare (notes-1)//group, so a 3-note phrase got ZERO levels — one level,
+    nothing to promote to, permanently stuck at the minimum however well it was
+    played. A DLC Builder build of the user's own song gives every phrase that
+    has notes a ceiling of at least 4 (its own 3-note phrase gets exactly 4);
+    ours handed out 0 to four phrases and 1 to three more out of 29, which is the
+    shape of the reported "the difficulty never leaves the minimum". A phrase
+    with NO notes (COUNT/END/a rest) still stays at 0 — there is nothing to
+    ramp."""
+    beats = tuple(Beat(time=i * 0.5, measure=i // 8 + 1 if i % 8 == 0 else -1)
+                  for i in range(80))
+    notes = [TabNote(string=0, fret=3, time=0.5 + i * 0.5, sustain=0.2) for i in range(3)]
+    notes += [TabNote(string=i % 6, fret=(i % 12) + 1, time=13.0 + i * 0.12, sustain=0.1)
+              for i in range(36)]
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=20.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+        notes=notes,
+        sections=[
+            Section(name="tiny", start_time=0.0),
+            Section(name="silent", start_time=6.0),
+            Section(name="dense", start_time=13.0),
+        ],
+    )
+    heights = {p.name: p.max_difficulty for p in from_arrangement(arr).phrases}
+    # 3 notes -> at least one level per note it has to reveal (2), where the bare
+    # (n-1)//group rule gave 0. The reference's own 3-note phrase gets 4; the
+    # floor is bounded by the note count so a ONE-note phrase does not get five
+    # identical levels, which would be no ramp either.
+    assert heights["tiny"] >= 2, "a phrase with notes must have levels to climb"
+    assert heights["silent"] == 0, "a phrase with no notes has nothing to ramp"
+    assert heights["dense"] > heights["tiny"]
+
+
 def test_identical_riffs_share_one_phrase() -> None:
     """A riff repeated note-for-note must collapse to ONE phrase with several
     iterations (real-DDC phrase linking: learned once, mastered everywhere), not

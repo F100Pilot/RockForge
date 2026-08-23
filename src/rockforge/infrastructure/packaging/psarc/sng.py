@@ -139,7 +139,7 @@ _MAX_ANCHOR_SPAN = 4
 # 50-70 notes/iteration) at the top, where a single outlier would otherwise squash
 # every other phrase toward zero. Still a simplified DDC — graduated phrases and
 # correct hero triples, no NLinkedDifficulty linkage.
-_DD_LEVEL_CAP = 20
+_DD_LEVEL_CAP = 22
 # Notes admitted per difficulty level. The game promotes a phrase ONE level per
 # successful play of it, so the ceiling is literally how many times the passage
 # must be played to reach the full chart. Ramping one note per level (the original
@@ -152,7 +152,24 @@ _DD_LEVEL_CAP = 20
 # against the reference's 0..18 / mode 6. The top level is still the complete
 # chart either way (``_level_notes`` saturates at the phrase ceiling) — this only
 # sets how fast the player climbs to it.
-_NOTES_PER_DD_LEVEL = 3
+_NOTES_PER_DD_LEVEL = 2
+# Floor on the ceiling of a phrase that HAS notes. Without it a short phrase gets
+# (n-1)//NOTES_PER_LEVEL == 0 levels — one level, no ramp, permanently pinned at
+# the minimum no matter how well it is played. Byte-diffing a DLC Builder build
+# of the user's own song against ours (both decoded from the shipped .psarc)
+# showed this directly: a real DDC pass gives EVERY phrase with notes a ceiling
+# of at least 4 (its 3-note phrase gets 4), while ours handed out 0 to four
+# phrases and 1 to three more out of 29. Its ceilings also run about twice ours
+# for the same note count (a 30-note phrase: 16 there, 9 here; a 63-note phrase:
+# 22 there, 20 here), which is what _NOTES_PER_DD_LEVEL 3 -> 2 and the cap
+# 20 -> 22 close. HONEST LIMIT: this is calibrated against that one reference
+# file, not against the game — it removes phrases that provably cannot level up
+# and brings the ramp's shape into the reference's range, but whether it is the
+# whole of the reported "DD never leaves the minimum" is unverified in-game.
+# ...bounded by how many notes the phrase actually has to reveal, so a one-note
+# phrase still gets a single level (five identical levels would be no ramp at
+# all) while a 3-note phrase ramps one note per level.
+_DD_MIN_LEVELS = 4
 # Target phrase length (seconds) when auto-segmenting a section-less song, so DD
 # ramps per-phrase as the player progresses instead of over the whole song at once.
 _DEFAULT_PHRASE_S = 13.0
@@ -1230,15 +1247,19 @@ def _build_difficulty_levels(
         per_iter_notes[pi_id] = ordered
 
     # Per-phrase ceiling: one difficulty step per GROUP of notes the BUSIEST
-    # iteration must ramp in, capped (see _NOTES_PER_DD_LEVEL — a step per single
-    # note pins nearly every phrase at the cap and makes the in-game ramp far too
-    # long to ever leave the minimum). Repeated phrases share a ceiling (busiest,
-    # not summed); a silent COUNT/END phrase stays at 0.
+    # iteration must ramp in, floored and capped (see _NOTES_PER_DD_LEVEL /
+    # _DD_MIN_LEVELS — a step per single note pins nearly every phrase at the cap,
+    # while no floor leaves a SHORT phrase with zero levels, unable to leave the
+    # minimum however well it is played). Repeated phrases share a ceiling
+    # (busiest, not summed); a phrase with no notes at all stays at 0.
     busiest = [0] * len(phrases)
     for pi_id, pi in enumerate(phrase_iterations):
         busiest[pi.phrase_id] = max(busiest[pi.phrase_id], len(per_iter_notes[pi_id]))
     phrase_max = [
-        min(_DD_LEVEL_CAP, max(0, (b - 1) // _NOTES_PER_DD_LEVEL)) for b in busiest
+        min(_DD_LEVEL_CAP, max(min(_DD_MIN_LEVELS, b - 1), (b - 1) // _NOTES_PER_DD_LEVEL))
+        if b
+        else 0
+        for b in busiest
     ]
     if not dynamic_difficulty:
         # One full-chart level: every phrase saturates at difficulty 0.

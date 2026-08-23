@@ -1516,13 +1516,43 @@ defects):
   per-iteration hero triples of ~(¼,½,1)·max). Each **phrase's** ceiling scales
   with the note count of its BUSIEST iteration (`phrase_max = min(_DD_LEVEL_CAP,
   busiest-1)`), so each phrase's difficulty bar gets its own HEIGHT instead of a
-  flat top. `_DD_LEVEL_CAP = 20` matches a real DDC's range — a decoded pro CDLC
-  (Animals As Leaders "Tempting Time") spreads phrase max-difficulties 0..18. The
+  flat top: `phrase_max = min(_DD_LEVEL_CAP, max(min(_DD_MIN_LEVELS, busiest-1),
+  (busiest-1)//_NOTES_PER_DD_LEVEL))`, and a phrase with NO notes stays 0. The
   cap is a HARD clamp (not a proportional rescale): it preserves the natural
-  0..~18 spread of most phrases and only flattens the handful of extreme-density
+  spread of most phrases and only flattens the handful of extreme-density
   outliers (a fast tapping run can hit 50-70 notes/iteration) at the top. The
   song's `max_difficulty` is the max over phrases, and there are
-  `max_difficulty + 1` levels (up to 21). At level `d`, each iteration shows the strongest-beat prefix of its
+  `max_difficulty + 1` levels (up to 23).
+
+  **The constants are calibrated against a DLC Builder build of the user's own
+  song** (both `.psarc`s decoded and byte-diffed — see the debugging-method note
+  above). Two defects showed up directly in that diff and drove the reported "DD
+  never leaves the minimum, even set to maximum":
+  - `_DD_MIN_LEVELS = 4` (new). The ceiling was a bare `(busiest-1)//group`, so a
+    SHORT phrase got **zero** levels — one level, nothing to be promoted to,
+    permanently pinned at the minimum however well it was played. The reference
+    gives every phrase that has notes a ceiling of at least 4 (its own 3-note
+    phrase gets exactly 4). On the user's song this was 1 phrase at 0 and 5 at
+    ≤2 out of 27; now 0 and 1. The floor is bounded by `busiest-1` so a one-note
+    phrase does not get five identical levels, which would be no ramp either.
+  - `_NOTES_PER_DD_LEVEL` 3 → 2 and `_DD_LEVEL_CAP` 20 → 22. The reference's
+    ceilings run about twice ours for the same note count (a 30-note phrase: 16
+    there, 9 here; 63 notes: 22 there, 20 here), so the whole ramp read lower
+    than a real DDC's. On the user's song the song max now comes out 22 —
+    exactly the reference's.
+
+  **Unverified in-game.** This removes phrases that provably cannot level up and
+  puts the ramp's shape in the reference's range; whether it is the whole of the
+  reported symptom is not proven. The same byte-diff found further gaps that are
+  NOT fixed and are candidates if it persists: the manifest `Techniques` map is
+  `{}` (the reference fills `{level: {phraseIteration: [ids]}}` — a game-internal
+  enum we have not mapped); the SNG note `Hash` is 0 and `NoteFlags`' numbered
+  bit is never set (the reference writes both); our `Levels` repeat a saturated
+  phrase's notes at every higher level instead of dropping it to zero once past
+  its ceiling (redundant, and only harmless if the game clamps per phrase — which
+  the reference's own shape implies it must, since its top level holds 126 of the
+  song's 623 notes); phrase names are all `riff` where a real DDC emits unique
+  `p0`…`pN`; and the crowd/stage Events (`e2`/`E3`/`E13`/`D3`) are absent. At level `d`, each iteration shows the strongest-beat prefix of its
   notes scaled by `d` against that phrase's ceiling (`_level_notes`, ranked by
   `_note_tier` then time), so level 0 is the strongest beats and the top level is
   the full chart. `phrase_iterations[].difficulty` is the `(round(max/4),
@@ -1639,6 +1669,18 @@ emitted so the native PSARC matches the retail layout file-for-file:
   Song Toolkit / CustomsForge Song Manager" symptom. Byte-diffing the toolkit's
   re-pack of our own output isolated this as the sole meaningful change (it only
   rewrites this one line). Guarded by `test_build_manifest_files_packs_and_round_trips`;
+- **`ArrangementProperties`' technique flags, `SongOffset` and `TargetScore` are
+  real values, not zeros.** All the technique flags were hard 0, so every chart
+  advertised itself as using no palm mutes, power chords, slides, sustain or
+  vibrato — a false claim about its own content (byte-diffing a DLC Builder build
+  of the same song: it sets all of those from the notes). `_technique_flags`
+  derives them from the domain notes; the handful the domain cannot express
+  (barre/non-standard chords, finger-picking, syncopation, bass pick) stay 0
+  rather than being guessed. `SongOffset` (the recording's lead-in, which the
+  game shifts its clock by) was 0 where the reference writes `-startTime`, and
+  `TargetScore` (the score counting as full mastery) was 0 where it writes
+  100000; `SongPartition` 0 → 1. The manifest `Techniques` map stays `{}` — see
+  the DD note above;
 - **every TOC entry carries a 16-byte name hash = `md5(archive_path)`**
   (`container.py`). Rocksmith resolves every asset (SNG/manifest/xblock/…)
   THROUGH this hash, so a zeroed hash makes the game unable to find the files and
