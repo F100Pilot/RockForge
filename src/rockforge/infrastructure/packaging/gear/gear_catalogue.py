@@ -79,11 +79,6 @@ def _by_key() -> dict[str, dict[str, Any]]:
     return {g["Key"]: g for g in _raw_catalogue()}
 
 
-def gear_by_key(key: str) -> dict[str, Any] | None:
-    """The raw catalogue entry for a gear ``Key`` (or ``None`` if unknown)."""
-    return _by_key().get(key)
-
-
 def knob_defaults(key: str) -> dict[str, float]:
     """Every knob of a gear piece at its catalogue ``DefaultValue``."""
     entry = _by_key().get(key)

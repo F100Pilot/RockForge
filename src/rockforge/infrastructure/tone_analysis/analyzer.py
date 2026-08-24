@@ -23,6 +23,7 @@ the frames where the guitar is actually playing loud.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -109,33 +110,62 @@ def analyze_guitar_tone(audio: Path) -> ToneProfile:
     # toward ~1.5-2.5. Low crest ⇒ compressed ⇒ distorted.
     crest = float(np.max(act_rms)) / (mean_rms + 1e-8)
 
+    return profile_from_features(
+        zcr=mean_zcr,
+        centroid=mean_centroid,
+        contrast=mean_contrast,
+        rolloff=mean_rolloff,
+        flatness=mean_flatness,
+        crest=crest,
+        rms_std_ratio=float(np.std(act_rms)) / (mean_rms + 1e-8),
+    )
+
+
+def profile_from_features(
+    *,
+    zcr: float,
+    centroid: float,
+    contrast: float,
+    rolloff: float,
+    flatness: float,
+    crest: float,
+    rms_std_ratio: float,
+) -> ToneProfile:
+    """Map the measured features to a :class:`ToneProfile`. Pure — no librosa.
+
+    Split out of :func:`analyze_guitar_tone` so the weights, thresholds and
+    category boundaries can be unit-tested in CI, which has no ML stack: the
+    whole calibration used to sit inline in a librosa-importing function and was
+    therefore covered by nothing. Same split ``normalize/loudness.py`` already
+    uses for ``parse_ebur128_i`` / ``volume_for_loudness``.
+    """
     # --- Distortion cues (each 0-1), combined into a gain estimate ---
     # Spectral flatness: a clean note is tonal (sparse harmonics → very low
     # flatness); saturation fills the spectrum. The raw values are tiny and span
     # orders of magnitude (~0.001 clean → ~0.03 distorted), so normalize on a LOG
     # scale — a linear range floored this to 0 for real guitar stems.
-    flat_log = float(np.log10(max(mean_flatness, 1e-6)))
+    flat_log = math.log10(max(flatness, 1e-6))
     flat_norm = _clamp01((flat_log - _FLAT_LOG_MIN) / (_FLAT_LOG_MAX - _FLAT_LOG_MIN))
     # Spectral contrast (peak-to-valley per band): strong for a clean tone
     # (~25 dB+), flattened by distortion (~10-18 dB). Invert.
-    contrast_norm = _clamp01((28.0 - mean_contrast) / 20.0)
+    contrast_norm = _clamp01((28.0 - contrast) / 20.0)
     # Compression from the crest factor (brightness-independent) — the most
     # reliable cue in practice, so it carries the most weight.
     compression = _clamp01((3.5 - crest) / 2.0)
     # ZCR still helps for bright overdrive, but weight it low — it under-reads
     # dark/low-tuned high-gain, which was the main source of the "too clean" bias.
-    zcr_norm = _clamp01((mean_zcr - 0.03) / 0.14)
+    zcr_norm = _clamp01((zcr - 0.03) / 0.14)
 
     gain_level = _clamp01(
         0.34 * compression + 0.28 * contrast_norm + 0.22 * flat_norm + 0.16 * zcr_norm
     )
 
     # Brightness: spectral centroid, guitar range ~1-6 kHz.
-    brightness = _clamp01((mean_centroid - 1000.0) / 4000.0)
+    brightness = _clamp01((centroid - 1000.0) / 4000.0)
     # Low-end: inverse of the rolloff position (low rolloff = more bass).
-    low_end = _clamp01(1.0 - (mean_rolloff - 2000.0) / 8000.0)
+    low_end = _clamp01(1.0 - (rolloff - 2000.0) / 8000.0)
     # Dynamic range of the active region (informational; high = dynamic/clean).
-    dynamic_range = _clamp01(float(np.std(act_rms)) / (mean_rms + 1e-8))
+    dynamic_range = _clamp01(rms_std_ratio)
 
     return ToneProfile(
         gain_level=round(gain_level, 3),

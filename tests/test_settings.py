@@ -129,3 +129,37 @@ def test_empty_string_clears_override(client: TestClient) -> None:
     # clearing falls back to the env default (demucs)
     body = client.post("/settings", json={"stem_separator": ""}).json()
     assert body["stem_separator"] == "demucs"
+
+
+def test_concurrent_writers_never_publish_each_others_content(tmp_path, monkeypatch) -> None:
+    """The temp file used to be a fixed "<file>.tmp", and the API and worker both
+    write here: with a shared name two writers interleave — A creates it, B
+    overwrites it, A renames it into place and publishes B's content. A unique
+    temp name per write closes that; os.replace still makes the swap atomic."""
+    import importlib
+    import threading
+
+    monkeypatch.setenv("ROCKFORGE_WORK_DIR", str(tmp_path))
+    import rockforge.config as config
+    importlib.reload(config)
+    import rockforge.runtime_settings as rs
+    importlib.reload(rs)
+
+    a, b = "/repo-" + "a" * 40, "/repo-" + "b" * 40
+    seen: list[str | None] = []
+
+    def _writer(value: str) -> None:
+        for _ in range(40):
+            rs.save({"banquet_repo": value})
+            seen.append(rs.load().get("banquet_repo"))
+
+    threads = [threading.Thread(target=_writer, args=(v,)) for v in (a, b)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert seen, "the writers ran"
+    # Every read is one writer's COMPLETE value — never a truncation or a blend.
+    assert set(seen) <= {a, b}, [v for v in seen if v not in (a, b)]
+    assert not list(tmp_path.glob("*.tmp")), "no temp file left behind"

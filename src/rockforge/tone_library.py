@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -45,9 +46,19 @@ def load() -> list[dict[str, Any]]:
 def _write(tones: list[dict[str, Any]]) -> list[dict[str, Any]]:
     f = _file()
     f.parent.mkdir(parents=True, exist_ok=True)
-    tmp = f.with_name(f.name + ".tmp")
-    tmp.write_text(json.dumps(tones, indent=2, ensure_ascii=False), encoding="utf-8")
-    os.replace(tmp, f)
+    # A UNIQUE temp name, not a fixed "<file>.tmp": the API and the worker both
+    # write here, and with a shared name two concurrent writers interleave —
+    # A creates it, B overwrites it, A renames it into place and publishes B's
+    # content. os.replace is still what makes the swap atomic for readers.
+    fd, tmp_name = tempfile.mkstemp(dir=f.parent, prefix=f.name + ".", suffix=".tmp")
+    tmp = Path(tmp_name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(json.dumps(tones, indent=2, ensure_ascii=False))
+        os.replace(tmp, f)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
     return tones
 
 

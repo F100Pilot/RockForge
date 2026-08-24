@@ -2,7 +2,7 @@
 
 from rockforge.infrastructure.packaging.gear.gear_catalogue import tone_from_dict
 from rockforge.infrastructure.packaging.gear.tone_presets import rank_tones, suggest_tones
-from rockforge.infrastructure.tone_analysis.analyzer import ToneProfile
+from rockforge.infrastructure.tone_analysis.analyzer import ToneProfile, profile_from_features
 
 
 def test_tone_profile_classifies_clean() -> None:
@@ -107,3 +107,58 @@ def test_preset_tone_dicts_have_required_fields() -> None:
             tone = tone_from_dict(tone_dict)
             assert tone is not None, f"tone_from_dict failed for {cat}/{role}"
             assert len(tone.gear.amp.knob_values) > 0
+
+
+# ---- The gain heuristic itself -------------------------------------------
+# The weights, thresholds and category boundaries used to sit inline inside
+# analyze_guitar_tone(), which imports librosa, so CI (no ML stack) covered none
+# of the calibration. profile_from_features() is the pure half; these pin its
+# behaviour the way test_loudness.py pins the ffmpeg-free loudness maths.
+
+_CLEAN = dict(zcr=0.04, centroid=1800.0, contrast=27.0, rolloff=5000.0,
+              flatness=0.002, crest=5.0, rms_std_ratio=0.6)
+_HIGH_GAIN = dict(zcr=0.14, centroid=2600.0, contrast=13.0, rolloff=7000.0,
+                  flatness=0.03, crest=1.8, rms_std_ratio=0.2)
+
+
+def test_gain_estimate_separates_clean_from_high_gain() -> None:
+    assert profile_from_features(**_CLEAN).category == "clean"
+    assert profile_from_features(**_HIGH_GAIN).category == "high_gain"
+
+
+def test_a_dark_low_tuned_high_gain_tone_is_not_read_as_clean() -> None:
+    """The exact bias the heuristic was redesigned to fix ("usually too clean").
+
+    Zero-crossing rate and spectral centroid both measure BRIGHTNESS, so a dark,
+    down-tuned or palm-muted high-gain tone read low on both and was classified
+    clean. The brightness-independent cues — spectral flatness and the crest
+    factor — have to carry it: this tone is dim (low centroid/rolloff) yet
+    saturated and compressed, and must still come out high gain."""
+    dark = profile_from_features(zcr=0.05, centroid=1400.0, contrast=12.0, rolloff=3500.0,
+                                 flatness=0.025, crest=1.7, rms_std_ratio=0.15)
+    assert dark.brightness < 0.2, "precondition: this tone really is dark"
+    assert dark.category == "high_gain"
+
+
+def test_the_crest_factor_dominates_the_gain_estimate() -> None:
+    """Compression carries the most weight by design (it is the most reliable
+    cue in practice), so squashing the dynamics alone must move the estimate."""
+    picked = profile_from_features(**{**_CLEAN, "crest": 5.0})
+    squashed = profile_from_features(**{**_CLEAN, "crest": 1.5})
+    assert squashed.gain_level > picked.gain_level + 0.3
+    assert squashed.compression == 1.0 and picked.compression == 0.0
+
+
+def test_features_are_clamped_and_never_escape_zero_to_one() -> None:
+    """Every field is a 0-1 normalized cue; absurd inputs must clamp, not leak a
+    negative or >1 value into the preset ranking's weighted distance."""
+    for extreme in (
+        dict(zcr=99.0, centroid=99999.0, contrast=-99.0, rolloff=-99.0,
+             flatness=1.0, crest=0.0, rms_std_ratio=99.0),
+        dict(zcr=-99.0, centroid=-99999.0, contrast=999.0, rolloff=99999.0,
+             flatness=1e-12, crest=999.0, rms_std_ratio=-99.0),
+    ):
+        p = profile_from_features(**extreme)
+        for field in (p.gain_level, p.brightness, p.low_end, p.dynamic_range,
+                      p.flatness, p.compression):
+            assert 0.0 <= field <= 1.0, f"{field} out of range for {extreme}"
