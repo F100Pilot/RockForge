@@ -756,6 +756,10 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
           <input type="file" id="importSyncInput" accept=".json,application/json" style="display:none">
           <span class="meta">guarda/restaura os ajustes manuais (anchors, tempo, início, afinação, letra, tracks) como JSON — para não os refazer se recriares o job</span>
         </div>
+        <div class="anchor-row" style="margin-top:.5rem">
+          <button type="button" id="exportGpBtn" class="secondary">🎼 Exportar GP corrigido</button>
+          <span class="meta" id="exportGpInfo">escreve os andamentos corrigidos numa <b>cópia</b> do teu ficheiro Guitar Pro (o original nunca é tocado) — para a correção ficar permanente no Guitar Pro, não só aqui. Só exporta <b>tempo</b>: um desfasamento constante não se consegue escrever como mudança de BPM.</span>
+        </div>
       </div>
 
       <!-- TAB: Letras -->

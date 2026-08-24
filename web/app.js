@@ -1089,6 +1089,58 @@ function bendArrow(x, y, r, label) {
   return out;
 }
 
+// Per-measure tempo of an arrangement: the AUTHORED value from the GP file and
+// the EFFECTIVE one after the pending offset/tempo/anchor edits. Pulled out of
+// showArr so the score's amber "this bar was re-tempoed" labels and the
+// "Exportar GP corrigido" button read the SAME numbers — two implementations
+// would silently drift and the exported file would not match what was shown.
+function barTempoTable(a, warp) {
+  const tbeats = a.beats || [];
+  const barList = a.bars || [];
+  // Beats per bar in ONE merge walk over the two sorted lists. Counting them
+  // inside barBpm rescanned every beat for every bar — O(bars × beats), ~85k
+  // iterations on a 146-bar song, paid on every single redraw.
+  const beatsInBar = new Array(barList.length).fill(0);
+  for (let bi = 0, k = 0; bi < barList.length; bi++) {
+    const t0 = barList[bi].time;
+    const t1 = bi + 1 < barList.length ? barList[bi + 1].time : Infinity;
+    while (k < tbeats.length && tbeats[k] < t0 - 1e-6) k++;
+    let n = 0;
+    while (k + n < tbeats.length && tbeats[k + n] < t1 - 1e-6) n++;
+    beatsInBar[bi] = n;
+    k += n;
+  }
+  const barBpm = (bi) => {
+    const t0 = barList[bi].time;
+    const t1 = bi + 1 < barList.length ? barList[bi + 1].time : null;
+    if (t1 == null || t1 <= t0) return bi > 0 ? barBpm(bi - 1) : { eff: 0, auth: 0 };
+    const n = beatsInBar[bi];
+    if (!n) return { eff: 0, auth: 0 };
+    const auth = Math.round(n * 60 / (t1 - t0));
+    const dur = warp(previewScale(t1)) - warp(previewScale(t0));
+    const eff = dur > 0.01 ? Math.round(n * 60 / dur) : auth;
+    return { eff, auth };
+  };
+  return { beatsInBar, barBpm };
+}
+
+// The bars whose tempo the pending sync actually changed — exactly the ones the
+// score draws in amber. `changed` uses the same >= 2 BPM threshold as the label,
+// so what you see marked is what gets written.
+const GP_EXPORT_MIN_BPM = 10.5, GP_EXPORT_MAX_BPM = 399.5;  // the endpoint's own bounds
+
+function retempoedBars(a) {
+  const { barBpm } = barTempoTable(a, buildTimeWarp(syncAnchors));
+  const out = [];
+  for (let bi = 0; bi < (a.bars || []).length; bi++) {
+    const { eff, auth } = barBpm(bi);
+    if (eff > 0 && Math.abs(eff - auth) >= 2) {
+      out.push({ measure: a.bars[bi].measure, bpm: eff, auth });
+    }
+  }
+  return out;
+}
+
 function showArr(i) {
   if (i !== currentArr) { loadArrSync(i); stopArrangementPreview(); }  // tab change: swap in that chart's own sync state
   currentArr = i;
@@ -1159,27 +1211,7 @@ function showArr(i) {
   // Counting them inside barBpm rescanned every beat for every bar — O(bars ×
   // beats), ~85k iterations on a 146-bar song and ~360k on a long one, paid on
   // every single redraw.
-  const beatsInBar = new Array(barList.length).fill(0);
-  for (let bi = 0, k = 0; bi < barList.length; bi++) {
-    const t0 = barList[bi].time;
-    const t1 = bi + 1 < barList.length ? barList[bi + 1].time : Infinity;
-    while (k < tbeats.length && tbeats[k] < t0 - 1e-6) k++;
-    let n = 0;
-    while (k + n < tbeats.length && tbeats[k + n] < t1 - 1e-6) n++;
-    beatsInBar[bi] = n;
-    k += n;
-  }
-  const barBpm = (bi) => {
-    const t0 = barList[bi].time;
-    const t1 = bi + 1 < barList.length ? barList[bi + 1].time : null;
-    if (t1 == null || t1 <= t0) return bi > 0 ? barBpm(bi - 1) : { eff: 0, auth: 0 };
-    const n = beatsInBar[bi];
-    if (!n) return { eff: 0, auth: 0 };
-    const auth = Math.round(n * 60 / (t1 - t0));
-    const dur = barWarp(previewScale(t1)) - barWarp(previewScale(t0));
-    const eff = dur > 0.01 ? Math.round(n * 60 / dur) : auth;
-    return { eff, auth };
-  };
+  const { barBpm } = barTempoTable(a, barWarp);
   // Label spacing. Bar lines are always drawn, but the TEXT beside them is
   // dropped when it would collide with the previous label: on a dense chart
   // (or when zoomed out) numbers and BPMs otherwise pile into an unreadable
@@ -1948,6 +1980,61 @@ reloadGpInput.addEventListener('change', async () => {
 
 // Export / import the hand-tuned sync state as a portable JSON file, so manual
 // anchors/tempo/offset/tuning/lyrics/tracks survive re-creating a job.
+// Bake the sync corrections back into a COPY of the Guitar Pro file, so the fix
+// is permanent in Guitar Pro itself and not only inside RockForge. The bars sent
+// are exactly the ones the score draws in amber (retempoedBars → the same
+// barTempoTable the drawing uses), so what is shown is what gets written.
+//
+// Honest limit, surfaced in the UI and again in the result: ONLY tempo is
+// exportable. A jump — a constant shift of the whole passage — cannot be
+// expressed as a BPM change (it would need a bar inserted or removed), so it
+// stays a RockForge-side correction.
+document.getElementById('exportGpBtn').addEventListener('click', async () => {
+  if (!selectedJob) return;
+  const a = arrangements[currentArr];
+  if (!a) { toast('abre um arranjo primeiro'); return; }
+  const bars = retempoedBars(a);
+  if (!bars.length) {
+    toast('nenhum compasso mudou de andamento — não há nada para escrever no ficheiro GP');
+    return;
+  }
+  // The endpoint bounds BPM to (10, 400); a wild warp can push a bar outside it.
+  // Drop those rather than letting the whole export 422, and say how many.
+  const writable = bars.filter(b => b.bpm > GP_EXPORT_MIN_BPM && b.bpm < GP_EXPORT_MAX_BPM);
+  const dropped = bars.length - writable.length;
+  if (!writable.length) {
+    toast('os andamentos corrigidos estão fora do intervalo que o Guitar Pro aceita (10-400 BPM)');
+    return;
+  }
+  const btn = document.getElementById('exportGpBtn');
+  btn.disabled = true;
+  try {
+    const b = await getJSON(`/jobs/${selectedJob.id}/export-gp`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ corrections: writable.map(c => ({ measure: c.measure, bpm: c.bpm })) }),
+    });
+    const rounded = b.applied.filter(x => x.rounded).length;
+    const notes = [];
+    if (dropped) notes.push(`${dropped} compasso(s) fora de 10-400 BPM ignorado(s)`);
+    if (rounded) notes.push(`${rounded} arredondado(s) — este formato guarda o tempo como inteiro`);
+    document.getElementById('exportGpInfo').innerHTML =
+      `<b>${b.applied.length} compasso(s)</b> escritos em <code>${esc(b.filename)}</code>` +
+      (notes.length ? ` — ${esc(notes.join('; '))}` : '') +
+      '. Só o <b>tempo</b> é exportável: um desfasamento constante continua a ser uma correção só do RockForge.';
+    // Download the copy. Same-origin navigation, so the Basic-auth credentials
+    // (when ROCKFORGE_API_TOKEN is set) ride along as on any other link.
+    const link = document.createElement('a');
+    link.href = `/jobs/${selectedJob.id}/corrected-gp`;
+    link.download = b.filename;
+    link.click();
+    toast(`GP corrigido: ${b.applied.length} compasso(s).`, 'ok');
+  } catch (err) {
+    toast(`falha ao exportar o GP: ${err.message}`);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
 document.getElementById('exportSyncBtn').addEventListener('click', async () => {
   if (!selectedJob) return;
   try {

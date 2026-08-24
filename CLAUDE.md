@@ -189,11 +189,15 @@ Details that were measured and will bite anyone editing this:
   and the UI says so rather than approximating it.
 
 `POST /jobs/{id}/export-gp` writes `work_dir/<job>/corrected.<ext>` and returns
-the report; `GET /jobs/{id}/corrected-gp` downloads it. **It currently has no UI
-button** — its only entry point was the analysis panel, removed with the
-automatic sync features. The backend is kept because it is independent, tested
-and correct: it takes an explicit list of (measure, bpm) and could be wired to
-manually-derived corrections. Delete it if that never happens. Guarded by
+the report; `GET /jobs/{id}/corrected-gp` downloads it. Wired to the sync panel's
+**"🎼 Exportar GP corrigido"** button, which derives the `(measure, bpm)` list
+from the pending sync: `retempoedBars()` returns exactly the bars the score
+already draws in AMBER (the same `>= 2` BPM threshold), so what is marked on
+screen is what gets written. Both the drawing and the export read one
+`barTempoTable(a, warp)` — they were the same code inline in `showArr` before,
+and two copies would silently drift until the exported file no longer matched
+the score. Bars whose corrected tempo falls outside the endpoint's (10, 400)
+bound are dropped with a count rather than 422-ing the whole export. Guarded by
 `test_gp_tempo_writer.py` (preservation of notes/frets/techniques/tracks/tuning/
 sections across a real write, byte-identity of the .gp ZIP's opaque entries,
 rounding reported, `.gpx` refused, bad corrections rejected with nothing
