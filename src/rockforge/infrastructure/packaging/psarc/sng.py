@@ -893,6 +893,29 @@ def _prepare_sections(arrangement: Arrangement, song_length: float) -> list[Sect
     return refined
 
 
+# Phrase names are UNIQUE per phrase (p0, p1, …), not the section name repeated.
+# A GP file with no section markers is auto-segmented into spans all called
+# "riff" (see _default_sections), so a 200 s song shipped 27 phrases sharing one
+# name while a real DDC emits p0…pN — all distinct — and keeps the descriptive
+# names on the SECTIONS instead, which are a separate list. This is
+# song-specific: a GP that DOES carry markers already produced varied names,
+# which is why the symptom follows the song rather than the build.
+_STRUCTURAL_PHRASE_NAMES = frozenset({"COUNT", "END", "NOGUITAR", "noguitar"})
+
+
+def _body_count(names: list[str]) -> int:
+    """How many non-structural phrases have been named so far."""
+    return sum(1 for n in names if n not in _STRUCTURAL_PHRASE_NAMES)
+
+
+def _phrase_name(section_name: str, body_index: int) -> str:
+    """``COUNT``/``END``/``NOGUITAR`` keep their structural name; everything else
+    becomes ``p<N>``, matching what a real DDC pass emits."""
+    if section_name in _STRUCTURAL_PHRASE_NAMES:
+        return section_name
+    return f"p{body_index}"
+
+
 def _link_phrases(
     arrangement: Arrangement, sections_src: list[Section], ends: list[float]
 ) -> tuple[list[SngPhrase], list[SngPhraseIteration]]:
@@ -914,7 +937,7 @@ def _link_phrases(
             _iter_phrase_id.append(_sig_to_id[sig])
         else:
             pid = len(_phrase_names)
-            _phrase_names.append(s.name)
+            _phrase_names.append(_phrase_name(s.name, _body_count(_phrase_names)))
             if sig is not None:
                 _sig_to_id[sig] = pid
             _iter_phrase_id.append(pid)

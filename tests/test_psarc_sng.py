@@ -493,6 +493,30 @@ def test_sectionless_song_is_segmented_into_multiple_phrases() -> None:
             assert any(abs(a.start_time - pi.start_time) < 1e-9 for a in top.anchors)
 
 
+def _phrase_heights_by_section(model, sections) -> dict[str, int]:
+    """Max difficulty per SOURCE section name.
+
+    Phrases are named p0…pN (unique per phrase, as a real DDC emits), so they can
+    no longer be looked up by the section name they came from — map through the
+    phrase iterations' start times instead, which is what actually ties a phrase
+    back to its section.
+    """
+    starts = sorted((sec.start_time, sec.name) for sec in sections)
+    out: dict[str, int] = {}
+    for it in model.phrase_iterations:
+        name = None
+        for t, n in starts:
+            if t <= it.start_time + 1e-6:
+                name = n
+            else:
+                break
+        if name is None:
+            continue
+        maxd = model.phrases[it.phrase_id].max_difficulty
+        out[name] = max(out.get(name, 0), maxd)
+    return out
+
+
 def test_dd_phrase_heights_vary_with_density() -> None:
     # Variable-height DD: a phrase's max difficulty scales with ITS OWN note
     # density, so the in-game difficulty bars vary per phrase (matching a real
@@ -520,7 +544,7 @@ def test_dd_phrase_heights_vary_with_density() -> None:
         ],
     )
     model = from_arrangement(arr)
-    heights = {p.name: p.max_difficulty for p in model.phrases}
+    heights = _phrase_heights_by_section(model, arr.sections)
     # Strictly increasing with density — the bars have their own heights.
     assert heights["sparse"] < heights["medium"] < heights["dense"]
     assert len({p.max_difficulty for p in model.phrases}) >= 3  # not a flat top
@@ -560,7 +584,7 @@ def test_a_short_phrase_still_gets_levels_to_climb() -> None:
             Section(name="dense", start_time=13.0),
         ],
     )
-    heights = {p.name: p.max_difficulty for p in from_arrangement(arr).phrases}
+    heights = _phrase_heights_by_section(from_arrangement(arr), arr.sections)
     # 3 notes -> at least one level per note it has to reveal (2), where the bare
     # (n-1)//group rule gave 0. The reference's own 3-note phrase gets 4; the
     # floor is bounded by the note count so a ONE-note phrase does not get five
@@ -690,14 +714,16 @@ def test_dd_hero_triples_and_density_graduated_ceilings() -> None:
                   Section(name="calm", number=1, start_time=8.0)],
     )
     model = from_arrangement(arr)
-    by_name = {p.name: p.max_difficulty for p in model.phrases}
+    by_name = _phrase_heights_by_section(model, arr.sections)
     assert by_name["busy"] > by_name["calm"]  # density graduates the ceiling
     for pi in model.phrase_iterations:
         pmax = model.phrases[pi.phrase_id].max_difficulty
         assert pi.difficulty == (round(pmax / 4), round(pmax / 2), pmax)
     # Consistent song-wide max across levels + metadata.
     assert model.metadata.max_difficulty == len(model.arrangements) - 1
-    assert model.metadata.max_difficulty == max(by_name.values())
+    assert model.metadata.max_difficulty == max(
+        p.max_difficulty for p in model.phrases
+    )
 
 
 def test_dd_levels_have_no_handshapes_and_per_level_slide_extensions() -> None:
@@ -1447,3 +1473,35 @@ def test_read_sng_skips_populated_sections_a_real_file_carries() -> None:
     assert [s.name for s in restored.sections] == [s.name for s in plain.sections]
     assert len(restored.arrangements) == len(plain.arrangements)
     assert restored.metadata.max_difficulty == plain.metadata.max_difficulty
+
+
+def test_phrase_names_are_unique_like_a_real_ddc() -> None:
+    """A GP with no section markers is auto-segmented into spans all called
+    "riff", so the shipped SNG carried 27 phrases sharing ONE name while a real
+    DDC emits p0…pN, all distinct, and keeps the descriptive names on the
+    SECTIONS (a separate list) instead. This is song-specific — a GP that does
+    carry markers already produced varied names — which is why the reported
+    Dynamic Difficulty symptom follows the song and not the build.
+
+    The structural names stay: the reference keeps COUNT/END/NOGUITAR verbatim.
+    """
+    beats = tuple(Beat(time=i * 0.5, measure=i // 4 + 1 if i % 4 == 0 else -1)
+                  for i in range(240))
+    notes = [TabNote(string=i % 6, fret=(i % 9) + 1, time=2.0 + i * 0.7, sustain=0.2)
+             for i in range(90)]
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=118.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+        notes=notes,
+        sections=[],  # no markers -> auto-segmented, every span named "riff"
+    )
+    model = from_arrangement(arr)
+    names = [p.name for p in model.phrases]
+    assert len(names) > 3, "expected the song to be segmented into several phrases"
+    assert len(set(names)) == len(names), f"phrase names must be unique: {names}"
+    body = [n for n in names if n not in ("COUNT", "END", "NOGUITAR", "noguitar")]
+    assert body == [f"p{i}" for i in range(len(body))], body
+    # The SECTIONS keep their descriptive names — that is where they belong.
+    assert {s.name for s in model.sections} & {"riff", "COUNT", "END"}
