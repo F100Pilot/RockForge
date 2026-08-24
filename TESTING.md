@@ -154,6 +154,11 @@ incident report.
   had nothing behind it: the whole UI was inert, and no gate could see it. The
   spec now walks `web/` and this test executes it (with the PyInstaller builders
   stubbed) to check the real `datas` against the folder.
+- `test_work_in_flight_defers_every_shutdown_trigger` (`test_api.py`) — in the
+  standalone `.exe` the worker shares the API's process, so closing the tab
+  aborted a running build and left its job at `RUNNING` forever. Asserts each
+  trigger still fires once the queue drains, so the deferral can't become a
+  server that never exits.
 - `test_tuning_rejects_an_impossible_pitch_at_construction` (`test_domain.py`) —
   `Tuning` had no invariant, so a nonsense pitch reached the SNG writer's int16
   pack and died there as a `struct.error` pointing at nothing. Pins real drop

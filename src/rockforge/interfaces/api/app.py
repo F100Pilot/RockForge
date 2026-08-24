@@ -83,18 +83,43 @@ def _should_shutdown(
     closing_at: float | None,
     tab_hidden: bool,
     idle_shutdown_s: float,
+    work_in_flight: bool = False,
 ) -> bool:
     """Pure shutdown decision for the idle watchdog (unit-tested).
 
     Triggers: (1) a /closing beacon deadline passed (fast tab-close path);
     (2) the tab is visible but silent past ``idle_shutdown_s`` (its JS stopped);
     (3) no signal at all for HEARTBEAT_MAX_S (crashed browser). A backgrounded
-    (hidden) tab is never killed by (2) — only a real close or a long crash."""
+    (hidden) tab is never killed by (2) — only a real close or a long crash.
+
+    **Work in flight defers all three.** In ``inprocess`` mode (the standalone
+    .exe) the worker runs in this very process, so exiting mid-task aborts a
+    build or a 20-minute separation and leaves its job stuck at RUNNING in the
+    database with nothing left to finish it. Closing the tab should let the work
+    complete — the bundle lands on disk and is there on the next launch — so the
+    close reason is remembered and applied the moment the queue drains. Every
+    heavy stage is bounded by its own timeout, so this cannot defer forever."""
+    if work_in_flight:
+        return False
     gap = now - last_heartbeat
     closing = closing_at is not None and now >= closing_at
     idle = (not tab_hidden) and gap > idle_shutdown_s
     crashed = gap > HEARTBEAT_MAX_S
     return closing or idle or crashed
+
+
+def _work_in_flight() -> bool:
+    """Whether killing this process right now would destroy running work.
+
+    Only true for the in-process worker. Under Celery the worker is a SEPARATE
+    process that survives the API exiting, and a job left at RUNNING there is a
+    stale row from a dead worker — waiting on it would hang shutdown forever.
+    """
+    if settings.worker_mode != "inprocess":
+        return False
+    from rockforge.interfaces.worker.inprocess import work_in_flight
+
+    return work_in_flight()
 
 
 async def _idle_shutdown_watchdog() -> None:
@@ -106,6 +131,7 @@ async def _idle_shutdown_watchdog() -> None:
     start.bat's cleanup stop the Celery worker and any Redis it launched.
     """
     global _last_heartbeat
+    _deferred_for_work = False  # log the deferral once, not every poll
     poll_s = min(0.5, settings.idle_shutdown_s / 2)  # responsive to the ~3s close grace
     last_poll = time.monotonic()
     while True:
@@ -119,8 +145,12 @@ async def _idle_shutdown_watchdog() -> None:
             last_poll = now
             continue
         last_poll = now
+        busy = _work_in_flight()
+        if busy and not _deferred_for_work:
+            logger.info("shutdown deferred: a task is still running in this process")
+            _deferred_for_work = True
         if _should_shutdown(
-            now, _last_heartbeat, _closing_at, _tab_hidden, settings.idle_shutdown_s
+            now, _last_heartbeat, _closing_at, _tab_hidden, settings.idle_shutdown_s, busy
         ):
             os.kill(os.getpid(), signal.SIGTERM)
             return
@@ -139,6 +169,12 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     yield
     if task is not None:
         task.cancel()
+    if settings.worker_mode == "inprocess":
+        # Close the pool explicitly instead of leaving it to interpreter
+        # teardown. shutdown() was written for this and had no caller.
+        from rockforge.interfaces.worker.inprocess import shutdown as _worker_shutdown
+
+        _worker_shutdown()
 
 
 _basic_auth = HTTPBasic(auto_error=False)

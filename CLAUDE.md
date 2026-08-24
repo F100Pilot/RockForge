@@ -2043,6 +2043,23 @@ fires `visibilitychange→hidden` (which beacons `/heartbeat?hidden=1`) *before*
 if a hidden heartbeat cleared `_closing_at` it could cancel the very close it
 precedes, so the tab would never shut the server down (this regressed once).
 
+**Work in flight defers the shutdown (the standalone `.exe`).** In `inprocess`
+mode the worker runs in the API's OWN process, so exiting on a closed tab
+aborted whatever it was doing — a build, or a 20-minute Demucs separation — and
+left that job stuck at `RUNNING` in the database with nothing left to finish it.
+`_should_shutdown` now takes `work_in_flight` and defers ALL THREE triggers
+while it is true; the close reason is remembered and applied the moment the
+queue drains, so closing the tab lets the work complete and the bundle is there
+on the next launch. `inprocess.work_in_flight()` counts tasks that are **queued
+as well as running** — the pool holds one worker, so a rebuild can sit behind a
+separation, and exiting between the two would lose the queued one. Every heavy
+stage is bounded by its own timeout (`DEMUCS_TIMEOUT_S`/`WHISPERX_TIMEOUT_S`/
+`FFMPEG_TIMEOUT_S`), so this cannot defer forever. `_work_in_flight()` returns
+False under **Celery**, deliberately: that worker is a separate process which
+survives the API exiting, and a job left at `RUNNING` there is a stale row from
+a dead worker — waiting on it would hang shutdown forever. `inprocess.shutdown()`
+(which existed with no caller) is now wired to the lifespan teardown.
+
 **Do NOT treat missing heartbeats as "closed."** A backgrounded/minimised tab
 has its JS timers throttled or frozen by the browser, so its heartbeats stop
 even though it's still open — treating that 15s silence as a close (the old

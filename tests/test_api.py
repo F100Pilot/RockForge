@@ -1860,6 +1860,67 @@ def test_should_shutdown_decision_rules() -> None:
     assert f(100.0 + app_module.HEARTBEAT_MAX_S + 1, 100.0, None, True, idle)
 
 
+def test_work_in_flight_defers_every_shutdown_trigger() -> None:
+    """In `inprocess` mode (the standalone .exe) the worker runs in this very
+    process, so exiting mid-task aborted a build or a 20-minute separation and
+    left its job stuck at RUNNING with nothing to ever finish it. All three
+    triggers must wait for the queue to drain — and then still fire."""
+    import rockforge.interfaces.api.app as app_module
+
+    f = app_module._should_shutdown
+    idle = 15.0
+    triggers = [
+        (100.0, 100.0 - 20, None, False, idle),                              # idle
+        (100.0, 99.0, 99.5, True, idle),                                     # /closing
+        (100.0 + app_module.HEARTBEAT_MAX_S + 1, 100.0, None, True, idle),   # crashed
+    ]
+    for args in triggers:
+        assert f(*args), "precondition: this must shut down when idle"
+        assert not f(*args, True), "work in flight must defer the shutdown"
+        assert f(*args, False), "and it must still fire once the work drains"
+
+
+def test_in_flight_counts_queued_work_and_drains(monkeypatch) -> None:
+    """The pool holds ONE worker, so a rebuild can sit queued behind a
+    20-minute separation — a task that has not started yet still counts, or the
+    process would exit between the two and lose the queued one."""
+    import threading
+
+    from rockforge.interfaces.worker import inprocess
+
+    started, release = threading.Event(), threading.Event()
+
+    def _slow(_job_id: str) -> None:
+        started.set()
+        assert release.wait(5), "test deadlock"
+
+    assert not inprocess.work_in_flight()
+    inprocess._submit(_slow, "job-a")
+    inprocess._submit(_slow, "job-b")  # queued behind the first
+    assert started.wait(2), "first task never started"
+    assert inprocess.work_in_flight()
+    release.set()
+    for _ in range(100):
+        if not inprocess.work_in_flight():
+            break
+        time.sleep(0.05)
+    assert not inprocess.work_in_flight(), "counter must return to zero"
+
+
+def test_celery_mode_never_defers_on_worker_state(monkeypatch) -> None:
+    """Under Celery the worker is a SEPARATE process that survives the API
+    exiting, and a job left at RUNNING is a stale row from a dead worker —
+    waiting on it would hang shutdown forever."""
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.interfaces.worker import inprocess
+
+    monkeypatch.setattr(inprocess, "work_in_flight", lambda: True)
+    monkeypatch.setattr(app_module.settings, "worker_mode", "celery")
+    assert app_module._work_in_flight() is False
+    monkeypatch.setattr(app_module.settings, "worker_mode", "inprocess")
+    assert app_module._work_in_flight() is True
+
+
 def test_heartbeat_hidden_flag_toggles_state(client: TestClient) -> None:
     import rockforge.interfaces.api.app as app_module
 
