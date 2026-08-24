@@ -1374,3 +1374,76 @@ def test_build_sng_notes_is_independently_callable() -> None:
     assert notes[0].string == 0 and notes[0].fret == 3
     assert notes[0].anchor_fret == 3 and notes[0].anchor_width == 4
     assert notes[0].phrase_iteration_id == 0
+
+
+def _count_at(data: bytes, pos: int) -> int:
+    import struct
+
+    return int(struct.unpack_from("<i", data, pos)[0])
+
+
+def _skip(data: bytes, pos: int, entry_size: int) -> int:
+    """Advance past one counted, fixed-size SNG section."""
+    return pos + 4 + _count_at(data, pos) * entry_size
+
+
+def test_read_sng_skips_populated_sections_a_real_file_carries() -> None:
+    """RockForge writes PhraseExtraInfo/NLD/Actions/Events/Tones/DNAs empty, and
+    read_sng used to read only their COUNTS — fine for our own output, but it
+    desynced on any real file: a DLC Builder SNG carries crowd/stage Events
+    (e2/E3/E13/D3), and the parser then read the Sections count out of the
+    middle of an event and came back with zero sections and zero levels. That
+    made our own reader useless for byte-diffing against a reference build,
+    which is the technique that has isolated every native-SNG rendering bug so
+    far. The entries have to be skipped by SIZE.
+
+    Builds the six sections by hand — their byte sizes are exactly what is under
+    test — and checks the reader lands on the real data that follows.
+    """
+    import struct
+
+    from rockforge.infrastructure.packaging.psarc import sng as sng_mod
+
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=8.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(
+            beats=tuple(Beat(time=i * 0.5, measure=i // 4 + 1 if i % 4 == 0 else -1)
+                        for i in range(16)),
+            average_bpm=120.0,
+        ),
+        notes=[TabNote(string=0, fret=3, time=0.5 + i * 0.5, sustain=0.2) for i in range(6)],
+        sections=[Section(name="riff", start_time=0.0)],
+    )
+    data = write_sng(from_arrangement(arr))
+    plain = read_sng(data)
+    assert plain.sections and plain.arrangements, "precondition: our own file parses"
+
+    # Walk to the six empty counts our writer emits, rather than searching for a
+    # zero run (an SNG is full of them). Every section before them is
+    # fixed-size here: this arrangement has only single notes, so ChordNotes and
+    # Vocals are both empty.
+    at = _skip(data, 0, sng_mod._BEAT_SIZE)    # beats
+    at = _skip(data, at, 12 + sng_mod._NAME_LEN)          # phrases
+    at = _skip(data, at, 40 + sng_mod._NAME_LEN)          # chord templates
+    assert _count_at(data, at) == 0, "expected no chord notes for a single-note chart"
+    at = _skip(data, at, 0)                    # chord notes (none)
+    assert _count_at(data, at) == 0, "expected no vocals"
+    at = _skip(data, at, 0)                    # vocals (none)
+    at = _skip(data, at, sng_mod._PHRASE_ITER_SIZE)       # phrase iterations
+    empties = struct.pack("<6i", 0, 0, 0, 0, 0, 0)
+    assert data[at : at + len(empties)] == empties, "expected six empty section counts here"
+    event = struct.pack("<f", 1.25) + b"E3".ljust(256, b"\x00")
+    assert len(event) == sng_mod._EVENT_SIZE
+    patched = (
+        data[:at]
+        + struct.pack("<3i", 0, 0, 0)      # PhraseExtraInfo, NLD, Actions: still empty
+        + struct.pack("<i", 1) + event      # Events: one entry
+        + struct.pack("<2i", 0, 0)          # Tones, DNAs: still empty
+        + data[at + len(empties):]
+    )
+    restored = read_sng(patched)
+    assert [s.name for s in restored.sections] == [s.name for s in plain.sections]
+    assert len(restored.arrangements) == len(plain.arrangements)
+    assert restored.metadata.max_difficulty == plain.metadata.max_difficulty

@@ -176,6 +176,16 @@ _DEFAULT_PHRASE_S = 13.0
 # Max phrase length before it is subdivided (applies to GP sections too), so DD
 # has many short phrases like a real DDC — roughly doubles a typical GP's sections.
 _PHRASE_TARGET_S = 8.0
+# Entry sizes of the Sng2014 sections RockForge writes empty but a real file may
+# populate. Needed to SKIP them when reading someone else's SNG (see read_sng).
+_PHRASE_EXTRA_SIZE = 12   # PhraseExtraInfoByLevel
+_ACTION_SIZE = 260        # float time + char[256] name
+_EVENT_SIZE = 260         # float time + char[256] name  (e2/E3/E13/D3 crowd cues)
+_SNG_TONE_SIZE = 8        # float time + int32 tone id
+_DNA_SIZE = 8             # float time + int32 dna id
+# The SNG's CapoFret byte when the arrangement has no capo (a DLC Builder
+# build writes 255; 0 would mean a capo placed at fret 0).
+NO_CAPO = 255
 _BEND_DATA_COUNT = 32  # fixed-size bend array per string in ChordNotes
 
 
@@ -1318,7 +1328,14 @@ def _build_sng_metadata(
         points_per_note=points,
         first_beat_length=first_beat_len,
         start_time=arrangement.tempo_map.beats[0].time if arrangement.tempo_map.beats else 0.0,
-        capo_fret=arrangement.capo,
+        # 255, not 0, when there is no capo. This is the same sentinel pattern
+        # that already bit us twice: a chord template's unused strings need MIDI
+        # -1 (0 is a real, absurdly low pitch and crashed the game), and a vocal
+        # needs note 254 (0 is a real pitch and the lyrics silently never
+        # appeared). Byte-diffing a DLC Builder build of the same song: it
+        # writes CapoFret 255 where we wrote 0, i.e. "capo at fret 0" instead of
+        # "no capo".
+        capo_fret=arrangement.capo if arrangement.capo else NO_CAPO,
         part=1,
         song_length=song_length,
         tuning=arrangement.tuning.offsets_from_standard(),
@@ -1916,9 +1933,24 @@ def read_sng(data: bytes) -> SngModel:
             phrase_id=pid, start_time=st, end_time=et, difficulty=(d0, d1, d2),
         ))
 
-    # 7-12. Empty sections
-    for _ in range(6):
-        skip_count, pos = _read_count(data, pos)
+    # 7-12. Sections RockForge writes empty (PhraseExtraInfo, NLinkedDifficulty,
+    # Actions, Events, Tones, DNAs) — but a REAL file populates several of them,
+    # so their entries must be skipped by size, not assumed absent. Reading only
+    # the counts desynced the parser on every DLC Builder SNG (its 5 crowd/stage
+    # Events alone), which made our own reader useless for byte-diffing against
+    # a reference build — the one technique that has isolated every native-SNG
+    # rendering bug so far. NLinkedDifficulty is variable-length: a header pair
+    # plus one int32 per linked phrase.
+    _NLD = -1  # sentinel: NLinkedDifficulty entries are variable-length
+    for entry_size in (_PHRASE_EXTRA_SIZE, _NLD, _ACTION_SIZE, _EVENT_SIZE,
+                       _SNG_TONE_SIZE, _DNA_SIZE):
+        count, pos = _read_count(data, pos)
+        if entry_size == _NLD:
+            for _ in range(count):
+                _level_break, phrase_count = struct.unpack_from("<ii", data, pos)
+                pos += 8 + 4 * phrase_count
+        else:
+            pos += count * entry_size
 
     # 13. Sections
     s_count, pos = _read_count(data, pos)
