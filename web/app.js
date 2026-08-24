@@ -229,7 +229,7 @@ function fillSettings(s) {
 async function openSettings() {
   document.getElementById('settingsInfo').textContent = '';
   try {
-    fillSettings(await (await fetch('/settings')).json());
+    fillSettings(await getJSON('/settings'));
   } catch { /* keep defaults */ }
   document.getElementById('settingsOverlay').hidden = false;
 }
@@ -636,6 +636,65 @@ function toast(message, kind = 'err') {
   setTimeout(() => el.remove(), 5000);
 }
 
+// A last-resort net: anything that still escapes surfaces as a toast instead of
+// a silent console error, so a failed action is never invisible to the user.
+window.addEventListener('unhandledrejection', ev => {
+  const msg = (ev.reason && ev.reason.message) || String(ev.reason || '');
+  if (msg) toast(`erro: ${msg}`, 'err');
+});
+
+// ---- Server reachability ----------------------------------------------------
+// The app deliberately shuts itself down when the tab closes (see
+// ROCKFORGE_IDLE_SHUTDOWN_S), and a machine can sleep, so the API really can
+// vanish while this page stays open. Before this, every fetch that went
+// `(await fetch(...)).json()` threw an unhandled rejection and the action just
+// did nothing — indistinguishable from a broken feature. getJSON() surfaces it
+// once, as a persistent banner, instead of failing silently N times.
+let serverOffline = false;
+
+function setServerOffline(down) {
+  if (down === serverOffline) return;
+  serverOffline = down;
+  let el = document.getElementById('serverOffline');
+  if (down) {
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'serverOffline';
+      el.setAttribute('role', 'status');
+      el.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:999;padding:.5rem 1rem;' +
+        'background:#7a2520;color:#fff;font-size:.85rem;text-align:center';
+      el.textContent = 'Sem ligação ao RockForge — a app terminou ou perdeu-se a rede. ' +
+        'Reinicia o start.bat e recarrega esta página.';
+      document.body.appendChild(el);
+    }
+  } else if (el) {
+    el.remove();
+  }
+}
+
+// Fetch + parse JSON, raising on a non-2xx so a failure can never be mistaken
+// for an empty result. Network errors flip the offline banner.
+async function getJSON(url, opts) {
+  let r;
+  try {
+    r = await fetch(url, opts);
+  } catch (err) {
+    setServerOffline(true);
+    throw err;
+  }
+  setServerOffline(false);
+  if (!r.ok) {
+    let detail = `HTTP ${r.status}`;
+    try {
+      const body = await r.json();
+      if (body && body.detail) detail = typeof body.detail === 'string'
+        ? body.detail : JSON.stringify(body.detail);
+    } catch { /* not a JSON error body; keep the status */ }
+    throw new Error(detail);
+  }
+  return r.json();
+}
+
 function confirmModal(text) {
   const overlay = document.getElementById('confirmOverlay');
   document.getElementById('confirmText').textContent = text;
@@ -728,8 +787,13 @@ async function openMetaEdit() {
         .replace(`value="${cur}"`, `value="${cur}" selected`);
     }).join('');
     gp.style.display = '';
-  } catch (e) { /* leave the GP section hidden on any error */ }
+  } catch { /* leave the GP section hidden on any error */ }
 }
+// Reached from onclick="openMetaEdit()" inside the job-row template strings,
+// which ESLint cannot trace — inline handlers resolve through global scope, so
+// say so explicitly instead of leaving it looking unused.
+window.openMetaEdit = openMetaEdit;
+
 function closeMeta() { document.getElementById('metaOverlay').hidden = true; }
 document.getElementById('metaClose').onclick = closeMeta;
 document.getElementById('metaCancel').onclick = closeMeta;
@@ -786,7 +850,12 @@ document.getElementById('metaSave').onclick = async () => {
 };
 
 async function refreshJobs() {
-  const jobs = await (await fetch('/jobs')).json();
+  let jobs;
+  try {
+    jobs = await getJSON('/jobs');
+  } catch {
+    return;  // the offline banner already says why; don't blank the table
+  }
   const tb = document.querySelector('#jobsTable tbody');
   tb.innerHTML = '';
   // Banners (the job options) are always visible; the job list shows below
@@ -823,7 +892,17 @@ async function refreshJobs() {
 }
 
 async function selectJob(id, { poll = false, force = false } = {}) {
-  const j = await (await fetch(`/jobs/${id}`)).json();
+  let j;
+  try {
+    j = await getJSON(`/jobs/${id}`);
+  } catch (err) {
+    // Keep the poll alive across a blip: the banner already says the server is
+    // unreachable, and dropping the timer here would leave a job that finished
+    // meanwhile stuck showing "running" until the user clicks something.
+    if (poll) { clearTimeout(pollTimer); pollTimer = setTimeout(() => selectJob(id, { poll }), 2500); }
+    else toast(`não foi possível abrir o projeto: ${err.message}`, 'err');
+    return;
+  }
   selectedJob = j;
   document.getElementById('detailOverlay').hidden = false;
   document.getElementById('detailHead').innerHTML =
@@ -888,7 +967,7 @@ async function selectJob(id, { poll = false, force = false } = {}) {
 }
 
 async function loadArrangements(id) {
-  arrangements = await (await fetch(`/jobs/${id}/arrangements`)).json();
+  arrangements = await getJSON(`/jobs/${id}/arrangements`);
   syncAnchorsByKind = {};  // fresh pending corrections per arrangement
   tempoScaleByKind = {};
   noteOverridesByKind = {};
@@ -1912,7 +1991,7 @@ importSyncInput.addEventListener('change', async () => {
 async function loadGearCatalogue() {
   if (gearCatalogue) return gearCatalogue;
   try {
-    gearCatalogue = await (await fetch('/gear-catalogue')).json();
+    gearCatalogue = await getJSON('/gear-catalogue');
   } catch {
     gearCatalogue = { amps: [], cabinets: [], pedals: [], racks: [], descriptors: {} };
   }
@@ -1934,7 +2013,7 @@ async function loadTones(id) {
   await loadGearCatalogue();
   previewToneTouched = false;  // new project: let the preview default to the score's tones
   try {
-    const t = await (await fetch(`/jobs/${id}/tones`)).json();
+    const t = await getJSON(`/jobs/${id}/tones`);
     jobTones = t.tones || [];
     toneBase = t.tone_base || null;
     toneNames = t.tone_names || [];
@@ -3267,7 +3346,7 @@ async function reTempoFromHere(grp) {
     showArr(currentArr);
     const ref = b.reference_bpm ? ` (partitura ${b.reference_bpm.toFixed(1)})` : '';
     toast(`Andamento: ${b.detected_bpm.toFixed(1)} BPM${ref} → ×${factor.toFixed(3)}`, 'ok');
-  } catch (e) { toast('falha na deteção', 'err'); }
+  } catch { toast('falha na deteção', 'err'); }
 }
 
 function updateSelectionInfo() {
@@ -4093,17 +4172,6 @@ function playArrangementPreview() {
 }
 document.getElementById('previewArr').addEventListener('click', playArrangementPreview);
 
-function clickSound() {
-  if (!audioCtx) return;
-  const t = audioCtx.currentTime;
-  const osc = audioCtx.createOscillator(), g = audioCtx.createGain();
-  osc.frequency.value = 1100;
-  g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(0.5, t + 0.001);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.04);
-  osc.connect(g); g.connect(audioCtx.destination);
-  osc.start(t); osc.stop(t + 0.05);
-}
 
 // Preview where a chart time (already shifted to the built timeline, optionally
 // sync-warped) would land on rebuild with the current live offset and tempo:
@@ -4640,7 +4708,7 @@ function setTrackStart(v) {
         `Aplica-se em "Aplicar e reconstruir". A afinação das cordas (drop/open) ` +
         `não é detetada — vem do ficheiro GP.`;
       toast('Afinação proposta — revê e aplica', 'ok');
-    } catch (e) {
+    } catch {
       info.textContent = '';
       toast('falha na análise', 'err');
     } finally {

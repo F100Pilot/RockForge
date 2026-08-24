@@ -930,6 +930,22 @@ subtracted from word times — a known limitation.
 Detection needs both `[lyrics]` (WhisperX) and `[ml]` (Demucs) extras in the
 worker, even for GP jobs whose own build stays ML-free.
 
+### The UI says when the server is gone (`getJSON` + the offline banner)
+
+The app deliberately shuts itself down when the tab closes
+(`ROCKFORGE_IDLE_SHUTDOWN_S`) and a machine can sleep, so the API really can
+vanish while the page stays open. Several calls went `(await fetch(...)).json()`
+with no check at all, so that threw an unhandled rejection and the action simply
+did nothing — indistinguishable from a broken feature. `getJSON(url, opts)`
+raises on a non-2xx (so a failure can never be mistaken for an empty result) and
+flips a persistent `#serverOffline` banner on a network error, clearing it when
+a request succeeds again. `selectJob`'s poll keeps retrying across a blip
+instead of dying on the first failure, and a global `unhandledrejection`
+listener toasts anything that still escapes. Browser-only, so there is no pytest
+coverage: verified with Playwright against a live server — banner absent on load,
+present once `/jobs` is routed to fail, gone again when it succeeds, no page
+errors throughout.
+
 ### Web UI structure: `index.html` (markup) + `app.js` (script) + ESLint
 
 The web UI's client-side script lives in **`web/app.js`**, not inline in
@@ -944,11 +960,13 @@ two-path lookup `_gear_image_dirs()` already used for gear images.
 
 **`npm run lint`** (`eslint.config.js` at the repo root, scoped to
 `web/app.js` only) is real-bug-focused — `no-undef`/`no-redeclare`/
-`no-dupe-keys`/etc as errors, `no-unused-vars` as a warning (not an error: the
-file predates any lint config, and a handful of pre-existing unused bindings —
-an intentionally-unused `catch (e)`, a couple of functions only ever called
-from an `onclick="…"` attribute inside a template-literal string ESLint can't
-trace — aren't worth blocking CI over). It is **not** a stylistic
+`no-dupe-keys`/etc as errors, `no-unused-vars` as a warning rather than an
+error (the file predates any lint config). It now reports **zero** problems:
+the unused `catch (e)` bindings became bare `catch {}`, the genuinely dead
+`clickSound()` was deleted, and `openMetaEdit` — a FALSE positive, reached from
+an `onclick="…"` inside a template-literal string ESLint cannot trace — is
+assigned to `window` explicitly, which is both what inline handlers actually
+resolve against and honest about why it looked unused. It is **not** a stylistic
 reformat/rewrite of the file — only real-bug rule categories are enabled, so
 the existing code style is undisturbed. CI runs it as the `web-lint` job
 (`.github/workflows/ci.yml`, Node 22 + `npm ci`), separate from the Python
@@ -1863,6 +1881,23 @@ never raises: failed housekeeping must not stop the API from starting. Guarded b
 `test_orphaned_gp_uploads_are_swept_but_referenced_ones_are_kept` and
 `test_the_orphan_sweep_actually_runs_on_startup` (which drives a real startup,
 because a sweep nothing calls is worthless).
+
+### The database schema is frozen; drift fails loudly at startup
+
+There is no migration tool, and `Base.metadata.create_all` creates missing
+TABLES but never `ALTER`s an existing one. **This is a deliberate constraint,
+not an oversight: the `jobs` schema is effectively frozen and everything that
+varies lives in the `params` JSON column** — which is exactly why adding
+features has never needed a migration. If a column ever is added anyway, every
+query against an older database dies with a bare `no such column`, request after
+request, saying nothing about why. `_check_schema` (`db/models.py`) compares the
+model's columns against the real table at startup and raises
+`SchemaOutOfDateError` naming the missing ones and what to do. **Detect-only on
+purpose** — a hand-rolled auto-`ALTER` is a migration system in disguise, and
+this app has no need of one; if that changes, adopt Alembic rather than growing
+this. The check itself never blocks startup for any other reason (an inspector
+that cannot read the dialect just yields nothing). Guarded by
+`test_db_schema.py`.
 
 ### `Tuning` validates its own pitches (and the API range-checks them)
 
