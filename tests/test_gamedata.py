@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import xml.dom.minidom as minidom
 
+import pytest
+
 from rockforge.infrastructure.packaging.psarc import gamedata
 
 
@@ -128,3 +130,35 @@ def test_dxt1_from_rgb_is_a_valid_dds_of_the_right_size() -> None:
 def test_album_art_falls_back_to_placeholder_without_a_cover() -> None:
     # No cover path → the neutral solid placeholder (never a broken URN).
     assert gamedata.album_art_dds(64, None) == gamedata.solid_dds(64)
+
+
+def test_album_art_converts_a_real_cover(tmp_path) -> None:
+    """The Pillow conversion path — the only part of album_art_dds that was
+    never executed by any test, because the fallback above needs no Pillow and
+    CI ran without the [psarc] extra that provides it. It stayed unexercised
+    long enough to accumulate a type error nobody could see (Image.open returns
+    an ImageFile, convert() an Image; the resampling filters moved under
+    Image.Resampling in Pillow 9.1)."""
+    Image = pytest.importorskip("PIL.Image")
+
+    cover = tmp_path / "cover.png"
+    Image.new("RGB", (300, 220), (200, 40, 60)).save(cover)
+
+    dds = gamedata.album_art_dds(64, cover)
+    assert dds[:4] == b"DDS "
+    assert dds[84:88] == b"DXT1"
+    assert len(dds) == len(gamedata.solid_dds(64))  # same DXT1 geometry
+    # ...but the real cover's pixels, not the neutral placeholder's.
+    assert dds != gamedata.solid_dds(64)
+    # Non-square input is squashed to size×size (Rocksmith wants square art).
+    assert len(gamedata.album_art_dds(128, cover)) == len(gamedata.solid_dds(128))
+
+
+def test_album_art_falls_back_when_the_cover_is_not_an_image(tmp_path) -> None:
+    """A corrupt or non-image file must degrade to the placeholder, not raise —
+    the cover is user-uploaded and must never sink the build."""
+    pytest.importorskip("PIL.Image")
+
+    junk = tmp_path / "cover.png"
+    junk.write_bytes(b"this is not a PNG")
+    assert gamedata.album_art_dds(64, junk) == gamedata.solid_dds(64)

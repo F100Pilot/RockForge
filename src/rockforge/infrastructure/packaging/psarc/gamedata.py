@@ -259,9 +259,20 @@ def album_art_dds(size: int, cover_path: object = None) -> bytes:
     except ImportError:
         return solid_dds(size)
     try:
-        with Image.open(str(cover_path)) as im:
-            im = im.convert("RGB").resize((size, size), Image.LANCZOS)
-            pixels = list(im.getdata())
+        with Image.open(str(cover_path)) as opened:
+            # Not rebound onto `opened`: Image.open returns an ImageFile and
+            # convert() an Image, so reusing the name is a type error. And the
+            # resampling filters live under Image.Resampling since Pillow 9.1 —
+            # the bare Image.LANCZOS alias still works at runtime but is absent
+            # from the type stubs, so it only surfaces where Pillow is installed
+            # (it stayed invisible while CI ran without the [psarc] extra).
+            rgb = opened.convert("RGB").resize((size, size), Image.Resampling.LANCZOS)
+            # tobytes(), not getdata(): the latter is deprecated and removed in
+            # Pillow 14, and the extra pins Pillow>=10 with no upper bound. An
+            # "RGB" image's raw bytes are exactly the (r,g,b) triples, verified
+            # identical to getdata()'s output.
+            raw = rgb.tobytes()
+            pixels = list(zip(raw[0::3], raw[1::3], raw[2::3], strict=True))
     except (OSError, ValueError):
         return solid_dds(size)
     return dxt1_from_rgb(pixels, size)

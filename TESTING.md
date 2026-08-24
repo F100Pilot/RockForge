@@ -110,7 +110,7 @@ Per-file counts below reflect the suite at the time of writing; run
 | `test_tone_detection.py` | 11 | spectral `analyze_guitar_tone` → category → `suggest_tones` + ranked `rank_tones` candidates |
 | `test_tone_library.py` | 5 | cross-project tone library (`/tone-library`): save/read-back, key overwrite, validation |
 | `test_rs2dlc.py` | 6 | `.rs2dlc` `DLCProject.Dto` shape, Name/RouteMask per kind, vocals case, **`.phrase-levels`** companion |
-| `test_gamedata.py` | 9 | native-PSARC enumeration assets: flatmodels, solid DDS, xblock, aggregategraph, showlights |
+| `test_gamedata.py` | 11 | native-PSARC enumeration assets: flatmodels, solid DDS, xblock, aggregategraph, showlights, **real-cover DXT1 conversion** (needs Pillow, from `[psarc]`) |
 | `test_psarc_container.py` | 5 | PSARC v1.4 pack/unpack round-trip |
 | `test_psarc_manifest.py` | 10 | runtime manifests (`.hsan`, `_aggregategraph.nt`, per-arr JSON) |
 | `test_psarc_sng.py` | 50 | Sng2014 binary `write_sng`∘`read_sng` = identity, NoteMask, anchor extensions, DD levels, vocals SNG |
