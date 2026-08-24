@@ -1580,8 +1580,19 @@ defects):
   phrase's notes at every higher level instead of dropping it to zero once past
   its ceiling (redundant, and only harmless if the game clamps per phrase — which
   the reference's own shape implies it must, since its top level holds 126 of the
-  song's 623 notes); phrase names are all `riff` where a real DDC emits unique
-  `p0`…`pN`; and the crowd/stage Events (`e2`/`E3`/`E13`/`D3`) are absent.
+  song's 623 notes); and the crowd/stage Events (`e2`/`E3`/`E13`/`D3`) are absent.
+
+  **Phrase names are now unique (`p0`…`pN`) — the one SONG-SPECIFIC divergence
+  found.** They used to be the section name repeated, and a GP with no section
+  markers is auto-segmented into spans all called `riff`, so this song shipped
+  **27 phrases sharing one name** where the reference has 20, all distinct. That
+  shape matters: the user reports DD working on a DIFFERENT song and failing on
+  this one, and a GP that DOES carry markers already produced varied names — so
+  the symptom follows the song, not the build, and this is the only difference
+  that behaves that way. `_phrase_name` keeps `COUNT`/`END`/`NOGUITAR` verbatim
+  (the reference does too) and numbers the rest; the descriptive names stay on
+  the SECTIONS, a separate list — again matching the reference, whose sections
+  are `riff`/`noguitar` while its phrases are `p0`…`p16`. Unverified in-game.
 
   **The per-phrase ceiling is NOT the variable — established by elimination, so
   do not tune it again hoping to fix DD.** Git bisect over a fixed synthetic
