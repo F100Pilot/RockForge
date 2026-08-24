@@ -237,6 +237,11 @@ PIPELINE_STAGES = [
 # whole timeline. Rejecting it at the boundary is the project's own convention:
 # surface the error where the bad value entered, never default silently.
 Finite = Annotated[float, Field(allow_inf_nan=False)]
+# A string's open-string pitch. The length check stays an explicit 422 (it needs
+# a message naming the six strings), but the RANGE belongs here: an absurd pitch
+# used to reach the SNG writer, where the semitone offset is packed as an int16
+# and died as a `struct.error` pointing at nothing.
+MidiPitch = Annotated[int, Field(ge=0, le=127)]
 
 
 def _json_safe(value: object) -> object:
@@ -272,6 +277,14 @@ def _ml_extra_missing(what: str, exc: ImportError) -> HTTPException:
     return HTTPException(
         503, f"{what} needs the 'ml' extra ({missing}) — install rockforge[ml]"
     )
+
+
+def _reject_bad_midi(field: str, pitches: list[object]) -> None:
+    """Range guard for tunings restored via /import-sync, which takes a raw JSON
+    blob and so never passes through the ``MidiPitch`` models."""
+    bad = [p for p in pitches if not isinstance(p, int) or isinstance(p, bool) or not 0 <= p <= 127]
+    if bad:
+        raise HTTPException(422, f"{field}: MIDI pitch out of range (0-127): {bad}")
 
 
 def _reject_non_finite(**values: float) -> None:
@@ -326,7 +339,7 @@ class JobOut(BaseModel):
 class RebuildIn(BaseModel):
     """Human-review overrides: confirmed tuning and whether to attempt the experimental split."""
 
-    tuning_midi: list[int] | None = None  # 6 MIDI pitches, low to high
+    tuning_midi: list[MidiPitch] | None = None  # 6 MIDI pitches, low to high
     cent_offset: Finite = 0.0
     offset_s: Finite | None = None  # GP sync: second in the recording where the song starts
     lead_in_s: Finite | None = None  # GP: extra intro silence prepended (pushes the song later)
@@ -353,7 +366,7 @@ class RebuildIn(BaseModel):
     # GP: per-arrangement tuning override, keyed by ArrangementKind value
     # ("Lead"/"Rhythm"/…) → the six MIDI pitches (low to high). When set (even to
     # {}), replaces params["tuning_overrides"]; None leaves it untouched.
-    tuning_overrides: dict[str, list[int]] | None = None
+    tuning_overrides: dict[str, list[MidiPitch]] | None = None
     # Edited per-word lyrics from the in-app lyrics editor. When set (even to an
     # empty list), replaces params["lyrics_events"] and clears lyrics_status so
     # the next build uses the edited lyrics. None leaves existing lyrics alone.
@@ -1160,6 +1173,8 @@ def _sanitize_sync_state(incoming: dict[str, object]) -> dict[str, object]:
     tm = out.get("tuning_midi")
     if tm is not None and (not isinstance(tm, list) or len(tm) != 6):
         raise HTTPException(422, "tuning_midi must contain exactly 6 MIDI pitches")
+    if isinstance(tm, list):
+        _reject_bad_midi("tuning_midi", tm)
     to = out.get("tuning_overrides")
     if to is not None:
         if not isinstance(to, dict):
@@ -1167,6 +1182,7 @@ def _sanitize_sync_state(incoming: dict[str, object]) -> dict[str, object]:
         for kind, midi in to.items():
             if not isinstance(midi, list) or len(midi) != 6:
                 raise HTTPException(422, f"tuning for {kind} must have 6 MIDI pitches")
+            _reject_bad_midi(f"tuning for {kind}", midi)
     # This path takes a raw JSON blob, so none of the ``Finite`` models apply:
     # a hand-edited or foreign file could otherwise restore a NaN offset/tempo
     # or a NaN drift anchor straight into the job's params.

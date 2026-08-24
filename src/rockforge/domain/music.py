@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
 from enum import Enum
@@ -165,6 +166,20 @@ class Tuning:
 
     midi: tuple[int, int, int, int, int, int] = (40, 45, 50, 55, 59, 64)
     cent_offset: float = 0.0  # deviation from A440 in cents
+
+    def __post_init__(self) -> None:
+        # Tuning was the one pitch-carrying type here with no invariant, while
+        # NoteEvent/TabNote/Beat/TempoMap all check theirs. An out-of-range value
+        # therefore travelled all the way to the SNG writer, where the semitone
+        # offset is packed as an int16 and a nonsense pitch died as a cryptic
+        # `struct.error` with nothing pointing back at the tuning.
+        if len(self.midi) != 6:
+            raise ValueError(f"tuning needs 6 strings, got {len(self.midi)}")
+        for string, pitch in enumerate(self.midi):
+            if not 0 <= pitch <= 127:
+                raise ValueError(f"tuning MIDI pitch out of range on string {string}: {pitch}")
+        if not math.isfinite(self.cent_offset):
+            raise ValueError(f"cent_offset must be a finite number: {self.cent_offset}")
 
     def offsets_from_standard(self) -> tuple[int, ...]:
         """Semitone offsets per string relative to E standard (Song2014 <tuning> format)."""

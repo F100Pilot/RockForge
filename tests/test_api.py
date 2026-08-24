@@ -1315,6 +1315,45 @@ def test_detect_tuning_rejected_for_non_gp(client: TestClient) -> None:
     assert r.status_code == 422
 
 
+def test_tuning_pitches_are_range_checked_at_the_api(client: TestClient, tmp_path) -> None:
+    """Only the LENGTH of tuning_midi was checked, so an absurd pitch 202'd, was
+    persisted, and only failed at packaging time inside struct.pack. Guards the
+    two model paths and /import-sync, which takes raw JSON and bypasses them."""
+    data = _make_gp5_bytes(tmp_path)
+    body = client.post(
+        "/gp/inspect", files={"file": ("song.gp5", data, "application/octet-stream")}
+    ).json()
+    job = client.post(
+        "/jobs/gp",
+        data={"gp_token": body["gp_token"], "lead_track": "0"},
+        files={"audio": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
+    ).json()
+    jid = job["id"]
+    for payload in (
+        '{"tuning_midi": [999999, 1, 2, 3, 4, 5]}',
+        '{"tuning_midi": [-1, 45, 50, 55, 59, 64]}',
+        '{"tuning_overrides": {"Lead": [999, 1, 2, 3, 4, 5]}}',
+    ):
+        r = client.post(
+            f"/jobs/{jid}/rebuild", content=payload, headers={"Content-Type": "application/json"}
+        )
+        assert r.status_code == 422, f"{payload} -> {r.status_code}"
+    r = client.post(
+        f"/jobs/{jid}/import-sync",
+        content='{"sync": {"tuning_midi": [999999, 1, 2, 3, 4, 5]}}',
+        headers={"Content-Type": "application/json"},
+    )
+    assert r.status_code == 422, r.text
+    # A real low tuning (Drop C#) still rebuilds — this rejects nonsense, not
+    # the tunings the app exists to handle.
+    ok = client.post(
+        f"/jobs/{jid}/rebuild",
+        content='{"tuning_midi": [37, 44, 49, 54, 58, 63]}',
+        headers={"Content-Type": "application/json"},
+    )
+    assert ok.status_code == 202, ok.text
+
+
 def test_deleting_a_job_removes_its_gp_file_but_not_a_forks(
     client: TestClient, tmp_path
 ) -> None:

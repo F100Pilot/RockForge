@@ -154,6 +154,10 @@ incident report.
   had nothing behind it: the whole UI was inert, and no gate could see it. The
   spec now walks `web/` and this test executes it (with the PyInstaller builders
   stubbed) to check the real `datas` against the folder.
+- `test_tuning_rejects_an_impossible_pitch_at_construction` (`test_domain.py`) —
+  `Tuning` had no invariant, so a nonsense pitch reached the SNG writer's int16
+  pack and died there as a `struct.error` pointing at nothing. Pins real drop
+  tunings as still valid, so the guard can't be tightened into a regression.
 - `test_deleting_a_job_removes_its_gp_file_but_not_a_forks` (`test_api.py`) —
   the GP upload lives outside the job's work dir, so deleting a job used to leak
   it forever; and a rebuild fork shares `gp_path`, so the delete must be

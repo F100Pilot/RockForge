@@ -24,6 +24,27 @@ def test_drop_d_offsets() -> None:
     assert drop_d.offsets_from_standard() == (-2, 0, 0, 0, 0, 0)
 
 
+def test_tuning_rejects_an_impossible_pitch_at_construction() -> None:
+    """Tuning was the one pitch-carrying domain type with no invariant, while
+    NoteEvent/TabNote/Beat/TempoMap all check theirs. An out-of-range value
+    therefore travelled all the way to the SNG writer, where the semitone offset
+    is packed as an int16, and died there as a cryptic struct.error with nothing
+    pointing back at the tuning that caused it."""
+    with pytest.raises(ValueError, match="out of range"):
+        Tuning(midi=(999999, 1, 2, 3, 4, 5))
+    with pytest.raises(ValueError, match="out of range"):
+        Tuning(midi=(-1, 45, 50, 55, 59, 64))
+    with pytest.raises(ValueError, match="6 strings"):
+        Tuning(midi=(40, 45, 50, 55, 59))  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="finite"):
+        Tuning(cent_offset=float("nan"))
+    # Real low tunings must still construct — the guard is against nonsense, not
+    # against the drop/down tunings the app exists to handle.
+    drop = Tuning(midi=(37, 44, 49, 54, 58, 63))  # low string -3, the rest -1
+    assert drop.offsets_from_standard() == (-3, -1, -1, -1, -1, -1)
+    assert Tuning(midi=(34, 41, 46, 51, 55, 60)).midi[0] == 34  # Drop B territory
+
+
 def test_candidate_positions_open_e() -> None:
     # E2 (40) is playable only as open string 0 in standard tuning
     assert Tuning().candidate_positions(40) == [(0, 0)]

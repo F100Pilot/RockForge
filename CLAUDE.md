@@ -1864,6 +1864,22 @@ never raises: failed housekeeping must not stop the API from starting. Guarded b
 `test_the_orphan_sweep_actually_runs_on_startup` (which drives a real startup,
 because a sweep nothing calls is worthless).
 
+### `Tuning` validates its own pitches (and the API range-checks them)
+
+`Tuning` was the one pitch-carrying domain type with **no** `__post_init__`,
+while `NoteEvent` (0-127), `TabNote` (string/fret) and `TempoMap` all check
+theirs. Only the LENGTH of `tuning_midi` was validated at the API, so an absurd
+pitch 202'd, was persisted into `params`, and only died much later inside
+`struct.pack("<h", ...)` in the SNG writer — a `struct.error` with nothing
+pointing back at the tuning. It now raises a plain `ValueError` (the project's
+convention for a pure domain invariant) on a non-6-string tuning, a pitch
+outside 0-127, or a non-finite `cent_offset`; the API's `MidiPitch =
+Annotated[int, Field(ge=0, le=127)]` turns the same thing into a 422 at the
+boundary, and `_reject_bad_midi` covers `/import-sync`, which takes raw JSON and
+bypasses the models. Real drop/down tunings are unaffected — the guard is
+against nonsense, and `test_tuning_rejects_an_impossible_pitch_at_construction`
+pins a Drop C# and a Drop B as still-valid alongside the rejections.
+
 ### API input validation: every client float is `Finite`
 
 `Finite = Annotated[float, Field(allow_inf_nan=False)]` (`interfaces/api/app.py`)
