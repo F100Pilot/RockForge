@@ -1399,6 +1399,13 @@ with the reverted logic before restoring it. Keep new stages as separate
 layout is delicate enough (see the crash-history notes throughout this
 section) that a stage should stay independently readable and testable.
 
+**`CapoFret` is 255 when there is no capo, NOT 0.** Same sentinel pattern as the
+two below — 0 is a real value (a capo AT fret 0) where the format wants
+"absent". Found by byte-diffing a DLC Builder build of the same song. Unlike the
+two below, the in-game consequence is UNPROVEN: it was fixed because the value
+was plainly wrong and the pattern identical, not because a symptom was traced
+to it.
+
 **A chord template's unused strings carry MIDI note -1, NOT 0.** The per-string
 `Notes` of a template are dereferenced by the game's note-detection/scoring
 path, so writing 0 (a real, absurdly low pitch on a string that shouldn't
@@ -1574,7 +1581,21 @@ defects):
   its ceiling (redundant, and only harmless if the game clamps per phrase — which
   the reference's own shape implies it must, since its top level holds 126 of the
   song's 623 notes); phrase names are all `riff` where a real DDC emits unique
-  `p0`…`pN`; and the crowd/stage Events (`e2`/`E3`/`E13`/`D3`) are absent. At level `d`, each iteration shows the strongest-beat prefix of its
+  `p0`…`pN`; and the crowd/stage Events (`e2`/`E3`/`E13`/`D3`) are absent.
+
+  **The ceiling recalibration did NOT fix it.** A REBUILT PSARC was decoded and
+  confirmed to carry it (23 levels, max 22, no phrase-with-notes left at ceiling
+  0) and the in-game difficulty still sat at the minimum. So the ceilings were
+  not the cause and every candidate above is still open. Two things were ruled
+  OUT along the way and must not be re-investigated: `PersistentID` and
+  `MasterID_RDV` are byte-identical across rebuilds (the game is NOT seeing each
+  build as a new song and losing its progress), and `DynamicVisualDensity` is a
+  fixed 20-element constant in both files, unrelated to `MaxPhraseDifficulty`.
+  The experiment that would actually halve the search space is one only the user
+  can run: play the DLC Builder build of the SAME song and see whether ITS
+  difficulty ramps — if it does not, the cause is not in our file at all.
+
+  At level `d`, each iteration shows the strongest-beat prefix of its
   notes scaled by `d` against that phrase's ceiling (`_level_notes`, ranked by
   `_note_tier` then time), so level 0 is the strongest beats and the top level is
   the full chart. `phrase_iterations[].difficulty` is the `(round(max/4),
