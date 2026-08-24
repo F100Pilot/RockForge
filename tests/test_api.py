@@ -1313,6 +1313,133 @@ def test_detect_tuning_rejected_for_non_gp(client: TestClient) -> None:
     assert r.status_code == 422
 
 
+def test_non_finite_floats_are_rejected_at_the_boundary(
+    client: TestClient, tmp_path
+) -> None:
+    """JSON carries the literals NaN and Infinity and Pydantic accepts them in a
+    float by default, so every timing field used to take them: the ``<= 0``
+    tempo guard waved NaN through (``NaN <= 0`` is False), the job forked, the
+    value was persisted into the JSON params column, and the build failed much
+    later with an error pointing nowhere — ``_build_time_warp`` propagates a NaN
+    silently across the whole timeline. Each of these must 422 at the edge."""
+    data = _make_gp5_bytes(tmp_path)
+    body = client.post(
+        "/gp/inspect", files={"file": ("song.gp5", data, "application/octet-stream")}
+    ).json()
+    job = client.post(
+        "/jobs/gp",
+        data={"gp_token": body["gp_token"], "lead_track": "0"},
+        files={"audio": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
+    ).json()
+    for payload in (
+        '{"tempo_scale": NaN}',
+        '{"tempo_scale": Infinity}',
+        '{"offset_s": NaN}',
+        '{"lead_in_s": Infinity}',
+        '{"cent_offset": NaN}',
+        '{"sync_anchors": [[1.0, NaN]]}',
+        '{"tone_changes": [{"time": NaN, "name": "a"}]}',
+        '{"section_overrides": [{"time": NaN, "name": "a"}]}',
+        '{"note_overrides": {"Lead": [{"time": NaN, "string": 0}]}}',
+        '{"lyrics_events": [{"time": NaN, "length": 1.0, "lyric": "a"}]}',
+    ):
+        r = client.post(
+            f"/jobs/{job['id']}/rebuild",
+            content=payload,
+            headers={"Content-Type": "application/json"},
+        )
+        assert r.status_code == 422, f"{payload} -> {r.status_code}"
+        # The 422 body must be encodable: FastAPI echoes the rejected input, and
+        # Starlette serializes with allow_nan=False, so without scrubbing the
+        # payload this came back as a bare 500 with no explanation at all.
+        assert "finite" in r.text, r.text[:200]
+    # A valid value still goes through — the guard rejects NaN, not floats.
+    ok = client.post(
+        f"/jobs/{job['id']}/rebuild",
+        content='{"tempo_scale": 1.05}',
+        headers={"Content-Type": "application/json"},
+    )
+    assert ok.status_code == 202, ok.text
+
+
+def test_non_finite_form_fields_and_imported_sync_are_rejected(
+    client: TestClient, tmp_path
+) -> None:
+    """The two paths that bypass the ``Finite`` models: multipart form fields
+    (they arrive as strings and coerce) and /import-sync, which takes a raw JSON
+    blob that a hand-edited or foreign file could carry a NaN into."""
+    data = _make_gp5_bytes(tmp_path)
+
+    def _token() -> str:
+        return client.post(
+            "/gp/inspect", files={"file": ("song.gp5", data, "application/octet-stream")}
+        ).json()["gp_token"]
+
+    for field in ("offset_s", "lead_in_s", "tempo_scale"):
+        r = client.post(
+            "/jobs/gp",
+            data={"gp_token": _token(), "lead_track": "0", field: "NaN"},
+            files={"audio": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
+        )
+        assert r.status_code == 422, f"{field} -> {r.status_code}"
+        assert field in r.json()["detail"]
+
+    job = client.post(
+        "/jobs/gp",
+        data={"gp_token": _token(), "lead_track": "0"},
+        files={"audio": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
+    ).json()
+    for sync in ('{"offset_s": NaN}', '{"sync_anchor_stages": [[[1.0, NaN]]]}'):
+        r = client.post(
+            f"/jobs/{job['id']}/import-sync",
+            content='{"sync": ' + sync + "}",
+            headers={"Content-Type": "application/json"},
+        )
+        assert r.status_code == 422, f"{sync} -> {r.status_code}"
+    ok = client.post(
+        f"/jobs/{job['id']}/import-sync",
+        content='{"sync": {"offset_s": 3.5, "tempo_scale": 1.1}}',
+        headers={"Content-Type": "application/json"},
+    )
+    assert ok.status_code == 202, ok.text
+
+
+def test_missing_ml_extra_reports_503_not_a_confusing_422(
+    client: TestClient, tmp_path, monkeypatch
+) -> None:
+    """The adapters import librosa INSIDE their function bodies (so the API
+    process never pays for the ML stack), which made the old
+    ``try: from ...librosa_adapter import ...  except ImportError`` guard dead
+    code — the module import always succeeded and the real failure surfaced on
+    the call, where the generic handler turned it into
+    "422 could not analyse the recording: No module named 'librosa'". The
+    ImportError has to be caught around the CALL, ahead of that handler."""
+    import rockforge.infrastructure.rhythm.librosa_adapter as rhythm
+
+    def _no_librosa(*_args, **_kwargs):
+        raise ModuleNotFoundError("No module named 'librosa'", name="librosa")
+
+    monkeypatch.setattr(rhythm, "detect_tempo_from", _no_librosa)
+    monkeypatch.setattr(rhythm, "estimate_tuning_cents", _no_librosa)
+    data = _make_gp5_bytes(tmp_path)
+    body = client.post(
+        "/gp/inspect", files={"file": ("song.gp5", data, "application/octet-stream")}
+    ).json()
+    job = client.post(
+        "/jobs/gp",
+        data={"gp_token": body["gp_token"], "lead_track": "0"},
+        files={"audio": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
+    ).json()
+
+    r = client.post(f"/jobs/{job['id']}/detect-tempo", json={"from_s": 5.0})
+    assert r.status_code == 503, r.text
+    assert "rockforge[ml]" in r.json()["detail"] and "librosa" in r.json()["detail"]
+
+    r = client.post(f"/jobs/{job['id']}/detect-tuning")
+    assert r.status_code == 503, r.text
+    assert "rockforge[ml]" in r.json()["detail"]
+
+
 def test_detect_tempo_rejected_for_non_gp(client: TestClient) -> None:
     job = _create_job(client)
     r = client.post(f"/jobs/{job['id']}/detect-tempo", json={"from_s": 0.0})

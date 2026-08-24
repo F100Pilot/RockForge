@@ -1838,6 +1838,44 @@ throughout while never running any of it. It now installs `[dev,psarc]`, asserts
 runs `pytest -rs` so any remaining skip is printed with its reason. A silent
 skip reads as coverage, which is worse than a failure.
 
+### API input validation: every client float is `Finite`
+
+`Finite = Annotated[float, Field(allow_inf_nan=False)]` (`interfaces/api/app.py`)
+is what EVERY float a client can send is typed as — never a bare `float`. JSON
+carries the literals `NaN`/`Infinity`, Pydantic accepts them in a float by
+default, and `NaN <= 0` is False, so the `tempo_scale <= 0` guard waved NaN
+straight through: the job forked, the value was persisted into the `params` JSON
+column, and the build only failed much later with an error pointing nowhere
+(`_build_time_warp` propagates a NaN silently across the whole timeline).
+
+Two paths bypass the models and carry their own guard: **multipart form fields**
+(`/jobs/gp`'s `offset_s`/`lead_in_s`/`tempo_scale` arrive as strings and coerce)
+and **`/import-sync`** (a raw JSON blob a hand-edited file could poison), both
+via `_reject_non_finite(**values)` / `_iter_floats`.
+
+**Rejecting NaN needs the `RequestValidationError` handler too.** FastAPI echoes
+the rejected input back inside the 422 body and Starlette serializes with
+`allow_nan=False`, so a refused NaN crashed the encoder and surfaced as a bare
+**500** — trading a silent accept for an unexplained crash. `_validation_error`
+returns the same 422 through `_json_safe`, which replaces non-finite floats with
+their name. Guarded by `test_non_finite_floats_are_rejected_at_the_boundary`
+(which asserts the body says "finite", i.e. that it encoded at all) and
+`test_non_finite_form_fields_and_imported_sync_are_rejected`.
+
+### A missing ML extra is a 503, caught around the CALL
+
+`/detect-tempo` and `/detect-tuning` used to wrap the ADAPTER IMPORT in
+`try/except ImportError` to raise a 503 naming the extra. That was dead code:
+the adapters `import librosa` **inside** their function bodies (deliberately —
+the API process must never pay for the ML stack), so the module import always
+succeeds and the real `ImportError` only surfaces on the call, where the generic
+`except Exception` turned it into `422 could not analyse the recording: No
+module named 'librosa'`. Catch `ImportError` around the CALL, ahead of that
+handler, via `_ml_extra_missing(what, exc)`. Guarded by
+`test_missing_ml_extra_reports_503_not_a_confusing_422`. Any future ML-backed
+endpoint must follow the same shape — an import guard at module level is
+guaranteed to be dead here.
+
 ## Hard constraints (these have bitten us — keep them)
 
 - **Python 3.11 only** (`requires-python = ">=3.11,<3.12"`). The ml/lyrics stack

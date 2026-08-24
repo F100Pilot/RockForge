@@ -154,6 +154,14 @@ incident report.
   had nothing behind it: the whole UI was inert, and no gate could see it. The
   spec now walks `web/` and this test executes it (with the PyInstaller builders
   stubbed) to check the real `datas` against the folder.
+- `test_non_finite_floats_are_rejected_at_the_boundary` (`test_api.py`) — JSON
+  carries `NaN`/`Infinity`, Pydantic accepted them, and `NaN <= 0` is False, so
+  the tempo guard waved them through into the persisted params. It also asserts
+  the 422 BODY encodes: FastAPI echoes the rejected input and Starlette uses
+  `allow_nan=False`, so without `_json_safe` the refusal came back as a 500.
+- `test_missing_ml_extra_reports_503_not_a_confusing_422` (`test_api.py`) — the
+  ImportError must be caught around the CALL; a module-level import guard is
+  dead code, because the adapters import librosa inside their function bodies.
 - `test_bundled_web_files_are_found_in_the_pyinstaller_bundle`
   (`test_api.py`) — the other half of the same incident: inside the `.exe` the
   UI lives under `sys._MEIPASS/web`, which neither of the other two path

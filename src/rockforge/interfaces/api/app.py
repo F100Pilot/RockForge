@@ -17,6 +17,7 @@ clearly delineated within this file.
 from __future__ import annotations
 
 import asyncio
+import math
 import mimetypes
 import os
 import secrets
@@ -25,14 +26,16 @@ import signal
 import sys
 import time
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, cast
+from typing import Annotated, Any, cast
 from urllib.parse import urlparse
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, Response
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel, Field
 
@@ -193,12 +196,81 @@ app = FastAPI(
     dependencies=[Depends(_verify_api_auth), Depends(_verify_same_origin)],
 )
 
+
+
+@app.exception_handler(RequestValidationError)
+async def _validation_error(_request: Request, exc: RequestValidationError) -> JSONResponse:
+    """FastAPI's default 422, minus the non-finite floats it echoes back.
+
+    The default handler puts the rejected input into the error body verbatim, so
+    a NaN that ``Finite`` correctly refuses would then crash the serializer and
+    surface as a bare 500 (see ``_json_safe``). Same status, same shape, just a
+    body that can actually be encoded.
+    """
+    detail = _json_safe(jsonable_encoder(exc.errors()))
+    return JSONResponse(status_code=422, content={"detail": detail})
+
+
 _session_factory = make_session_factory(settings.database_url)
 
 
 PIPELINE_STAGES = [
     "ingest", "normalize", "parse_gp", "build_arrangements", "lyrics", "package",
 ]
+
+
+# Every float a CLIENT can send goes through this, never a bare ``float``.
+# JSON carries the literals ``NaN`` and ``Infinity``, Pydantic accepts them in a
+# float by default, and ``NaN <= 0`` is False — so the ``tempo_scale <= 0`` guard
+# waved NaN straight through, the job forked, the value was persisted into the
+# JSON params column, and the build only failed much later with an error that
+# pointed nowhere. ``_build_time_warp`` propagates a NaN silently across the
+# whole timeline. Rejecting it at the boundary is the project's own convention:
+# surface the error where the bad value entered, never default silently.
+Finite = Annotated[float, Field(allow_inf_nan=False)]
+
+
+def _json_safe(value: object) -> object:
+    """Replace non-finite floats with their name, recursively.
+
+    Starlette serializes with ``allow_nan=False``, so a response body carrying a
+    NaN raises deep inside ``json.dumps``. FastAPI echoes the offending input
+    back inside a validation error, which means rejecting NaN turns a clean 422
+    into a 500 with no explanation — trading a silent accept for an unexplained
+    crash. Scrubbing the payload keeps the 422 and names the field.
+    """
+    if isinstance(value, float) and not math.isfinite(value):
+        return repr(value)
+    if isinstance(value, dict):
+        return {k: _json_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(v) for v in value]
+    return value
+
+
+def _ml_extra_missing(what: str, exc: ImportError) -> HTTPException:
+    """503 for a stage whose ML dependency is not installed.
+
+    These endpoints used to wrap the ADAPTER IMPORT in try/except ImportError to
+    raise this — dead code every time: the adapters import librosa inside their
+    function bodies (deliberately, so the API process never pays for the ML
+    stack), so the module import always succeeds and the real ImportError only
+    surfaces on the CALL, where the generic handler turned it into
+    "422 could not analyse the recording: No module named 'librosa'". Catch it
+    around the call instead, ahead of that handler.
+    """
+    missing = getattr(exc, "name", None) or "the ml extra"
+    return HTTPException(
+        503, f"{what} needs the 'ml' extra ({missing}) — install rockforge[ml]"
+    )
+
+
+def _reject_non_finite(**values: float) -> None:
+    """Boundary guard for floats that do NOT pass through a ``Finite`` model —
+    multipart form fields and hand-written JSON restored via /import-sync."""
+    bad = sorted(k for k, v in values.items() if not math.isfinite(v))
+    if bad:
+        raise HTTPException(422, f"must be a finite number: {', '.join(bad)}")
 
 
 class JobOut(BaseModel):
@@ -246,14 +318,14 @@ class RebuildIn(BaseModel):
     """Human-review overrides: confirmed tuning and whether to attempt the experimental split."""
 
     tuning_midi: list[int] | None = None  # 6 MIDI pitches, low to high
-    cent_offset: float = 0.0
-    offset_s: float | None = None  # GP sync: second in the recording where the song starts
-    lead_in_s: float | None = None  # GP: extra intro silence prepended (pushes the song later)
-    tempo_scale: float | None = None  # GP sync: stretch/compress the whole chart timeline
+    cent_offset: Finite = 0.0
+    offset_s: Finite | None = None  # GP sync: second in the recording where the song starts
+    lead_in_s: Finite | None = None  # GP: extra intro silence prepended (pushes the song later)
+    tempo_scale: Finite | None = None  # GP sync: stretch/compress the whole chart timeline
     split_lead_rhythm: bool = True
     # Manual drift-correction points: (chart_time_s, corrected_time_s) pairs, in the
     # chart's already-shifted timeline (as shown in the tab viewer).
-    sync_anchors: list[tuple[float, float]] | None = None
+    sync_anchors: list[tuple[Finite, Finite]] | None = None
     # When set (ArrangementKind value, e.g. "Lead"/"Rhythm"/"Combined"), tempo_scale
     # and sync_anchors are scoped to that arrangement alone instead of all of them.
     arrangement: str | None = None
@@ -285,7 +357,7 @@ class RebuildIn(BaseModel):
     tone_base: str | None = None
     tone_names: list[str] | None = None
     tones: list[dict[str, Any]] | None = None
-    tone_changes: list[dict[str, Any]] | None = None
+    tone_changes: list[ToneChangeIn] | None = None
     # In-app section-editor overrides (bundle-clock times, placed on the tab
     # viewer, same convention as tone_changes). When set (even to an empty
     # list), replaces the GP-parsed sections for every arrangement; None
@@ -299,8 +371,17 @@ class RebuildIn(BaseModel):
     note_overrides: dict[str, list[NoteOverrideIn]] | None = None
 
 
+class ToneChangeIn(BaseModel):
+    """A timed tone switch placed on the score. Was a free ``dict[str, Any]``,
+    so its time bypassed validation entirely — same shape as the section and
+    note overrides, so it gets the same treatment."""
+
+    time: Finite
+    name: str
+
+
 class SectionOverrideIn(BaseModel):
-    time: float
+    time: Finite
     name: str
 
 
@@ -311,12 +392,12 @@ class SectionOut(BaseModel):
 
 
 class NoteOverrideIn(BaseModel):
-    time: float
+    time: Finite
     string: int = Field(ge=0, le=5)
     fret: int = Field(default=0, ge=0, le=24)
-    sustain: float = 0.0
+    sustain: Finite = 0.0
     techniques: list[str] = []
-    bend_semitones: float = 0.0
+    bend_semitones: Finite = 0.0
     slide_to_fret: int | None = Field(default=None, ge=0, le=24)
     deleted: bool = False
 
@@ -381,12 +462,12 @@ class ExportGpOut(BaseModel):
 
 
 class DetectTempoIn(BaseModel):
-    from_s: float = 0.0  # recording time to start measuring the local tempo from
+    from_s: Finite = 0.0  # recording time to start measuring the local tempo from
     # The chart's tempo AS CURRENTLY DISPLAYED at that point (the viewer's live
     # BPM readout: authored spacing × tempo_scale × pending anchors). Optional —
     # falls back to the GP file's header tempo, which is only right for a song
     # with no tempo changes and no corrections applied yet.
-    chart_bpm: float | None = None
+    chart_bpm: Finite | None = None
 
 
 class DetectTempoOut(BaseModel):
@@ -406,9 +487,11 @@ class DetectTuningOut(BaseModel):
     suggested_cent_offset: float
 
 
+# Doubles as an INPUT model (RebuildIn.lyrics_events carries the in-app lyric
+# editor's rows), hence the finite times.
 class LyricEventOut(BaseModel):
-    time: float
-    length: float
+    time: Finite
+    length: Finite
     lyric: str
 
 
@@ -468,7 +551,7 @@ class SettingsIn(BaseModel):
     banquet_repo: str | None = None
     banquet_ckpt: str | None = None
     banquet_queries: str | None = None
-    loudness_target: float | None = None
+    loudness_target: Finite | None = None
     # "" clears the override (falls back to ROCKFORGE_WHISPERX_COMPUTE_TYPE / by
     # device); None leaves it untouched.
     whisperx_compute_type: str | None = None
@@ -791,6 +874,10 @@ def create_gp_job(
     if lrc is not None and lrc.filename:
         lrc_text = _read_upload_capped(lrc).decode("utf-8", errors="replace")
 
+    # Multipart form floats bypass the ``Finite`` models above (they arrive as
+    # strings and coerce), and NaN would slip past the ``<= 0`` guard below
+    # because ``NaN <= 0`` is False.
+    _reject_non_finite(offset_s=offset_s, lead_in_s=lead_in_s, tempo_scale=tempo_scale)
     if tempo_scale <= 0:
         raise HTTPException(422, "tempo_scale must be > 0")
 
@@ -1001,7 +1088,35 @@ def _sanitize_sync_state(incoming: dict[str, object]) -> dict[str, object]:
         for kind, midi in to.items():
             if not isinstance(midi, list) or len(midi) != 6:
                 raise HTTPException(422, f"tuning for {kind} must have 6 MIDI pitches")
+    # This path takes a raw JSON blob, so none of the ``Finite`` models apply:
+    # a hand-edited or foreign file could otherwise restore a NaN offset/tempo
+    # or a NaN drift anchor straight into the job's params.
+    _reject_non_finite(
+        **{
+            k: float(v)
+            for k in ("offset_s", "lead_in_s", "tempo_scale", "cent_offset")
+            if isinstance(v := out.get(k), (int, float))
+        }
+    )
+    for key in ("sync_anchor_stages", "arrangement_sync"):
+        for value in _iter_floats(out.get(key)):
+            if not math.isfinite(value):
+                raise HTTPException(422, f"{key} contains a non-finite time")
     return out
+
+
+def _iter_floats(value: object) -> Iterator[float]:
+    """Every number nested anywhere inside a decoded-JSON structure."""
+    if isinstance(value, bool):
+        return
+    if isinstance(value, (int, float)):
+        yield float(value)
+    elif isinstance(value, dict):
+        for v in value.values():
+            yield from _iter_floats(v)
+    elif isinstance(value, (list, tuple)):
+        for v in value:
+            yield from _iter_floats(v)
 
 
 @app.post("/jobs/{job_id}/rebuild", response_model=JobOut, status_code=202)
@@ -1219,7 +1334,7 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
         if payload.tones is not None:
             params["tones"] = payload.tones
         if payload.tone_changes is not None:
-            params["tone_changes"] = payload.tone_changes
+            params["tone_changes"] = [c.model_dump() for c in payload.tone_changes]
         if payload.section_overrides is not None:
             params["section_overrides"] = [s.model_dump() for s in payload.section_overrides]
         if payload.note_overrides is not None:
@@ -1452,13 +1567,7 @@ def detect_tempo(job_id: str, payload: DetectTempoIn) -> DetectTempoOut:
 
     from rockforge.application.gp_pipeline import suggest_tempo_scale
     from rockforge.infrastructure.gpimport.parser import inspect_gp
-
-    try:
-        from rockforge.infrastructure.rhythm.librosa_adapter import detect_tempo_from
-    except ImportError as exc:  # ml extra absent
-        raise HTTPException(
-            503, "beat detection needs the 'ml' extra (librosa) — install rockforge[ml]"
-        ) from exc
+    from rockforge.infrastructure.rhythm.librosa_adapter import detect_tempo_from
 
     gp_bpm = float(inspect_gp(gp_path).tempo)
     # The factor is applied by the viewer as a RELATIVE stretch of the tail of the
@@ -1475,6 +1584,8 @@ def detect_tempo(job_id: str, payload: DetectTempoIn) -> DetectTempoOut:
     drums = _drum_stem(params)
     try:
         detected_bpm = detect_tempo_from(drums or src, payload.from_s, reference_bpm)
+    except ImportError as exc:
+        raise _ml_extra_missing("beat detection", exc) from exc
     except Exception as exc:
         raise HTTPException(422, f"could not analyse the recording: {exc}") from exc
     return DetectTempoOut(
@@ -1503,15 +1614,12 @@ def detect_tuning(job_id: str) -> DetectTuningOut:
     if not src.exists():
         raise HTTPException(409, "source audio no longer exists on the work volume")
 
-    try:
-        from rockforge.infrastructure.rhythm.librosa_adapter import estimate_tuning_cents
-    except ImportError as exc:  # ml extra absent
-        raise HTTPException(
-            503, "tuning detection needs the 'ml' extra (librosa) — install rockforge[ml]"
-        ) from exc
+    from rockforge.infrastructure.rhythm.librosa_adapter import estimate_tuning_cents
 
     try:
         cents = estimate_tuning_cents(src)
+    except ImportError as exc:
+        raise _ml_extra_missing("tuning detection", exc) from exc
     except Exception as exc:
         raise HTTPException(422, f"could not analyse the recording: {exc}") from exc
     return DetectTuningOut(suggested_cent_offset=cents)
