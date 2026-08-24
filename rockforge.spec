@@ -5,7 +5,7 @@ Produces a one-folder distribution (--onedir) containing:
   rockforge.exe          — the launcher
   _internal/             — Python runtime + all packages
   ffmpeg/ffmpeg.exe      — bundled ffmpeg (must be placed before building)
-  web/index.html         — the UI
+  web/                   — the UI (index.html + app.js + gear art)
 
 Build:
   pip install pyinstaller
@@ -21,9 +21,18 @@ src = Path("src")
 pkg = src / "rockforge"
 
 # Collect package data that setuptools.package-data normally handles.
-datas = [
-    ("web/index.html", "web"),
-]
+datas = []
+
+# The whole web UI — index.html, app.js and the bundled gear art. Walked, NOT
+# listed by hand: the hand-written list said only ("web/index.html", "web"), and
+# when app.js was extracted out of index.html's inline <script> the list silently
+# didn't follow. The shipped .exe then served an index.html whose
+# <script src="/app.js"> had nothing behind it, so the entire UI was inert.
+# Walking the folder means any file added under web/ is bundled automatically.
+web_dir = Path("web")
+for f in sorted(web_dir.rglob("*")):
+    if f.is_file():
+        datas.append((str(f), str(Path("web") / f.relative_to(web_dir).parent)))
 
 # Wwise templates (MIT, from DLC Builder).
 wwise_dir = pkg / "infrastructure" / "packaging" / "wwise_templates"

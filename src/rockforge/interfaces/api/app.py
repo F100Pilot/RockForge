@@ -22,6 +22,7 @@ import os
 import secrets
 import shutil
 import signal
+import sys
 import time
 import uuid
 from collections.abc import AsyncIterator
@@ -2116,10 +2117,7 @@ def _gear_image_dirs() -> list[Path]:
     web UI) ships RockForge's own gear art in the repo, so a fresh install has
     pictures out of the box even before the user adds any."""
     dirs = [settings.work_dir / "gear_images"]
-    for base in (
-        Path(__file__).resolve().parents[3].parent / "web" / "gear_images",
-        Path.cwd() / "web" / "gear_images",
-    ):
+    for base in _web_file_candidates("gear_images"):
         if base not in dirs:
             dirs.append(base)
     return dirs
@@ -2180,15 +2178,30 @@ def closing() -> dict[str, bool]:
     return {"ok": True}
 
 
-def _web_file_candidates(name: str) -> tuple[Path, Path]:
-    """The two places a bundled `web/` file can live, first hit wins — the same
-    resolution `_gear_image_dirs()` uses for gear images."""
-    return (
+def _web_dirs() -> tuple[Path, ...]:
+    """The places a bundled ``web/`` folder can live, first hit wins.
+
+    ``sys._MEIPASS`` is the PyInstaller bundle's extraction directory and MUST
+    come first: inside the standalone .exe neither of the other two resolves
+    (``__file__`` points into the frozen archive and the launcher never chdirs),
+    so without it every bundled web file 404s — index.html falls back to the
+    "UI not bundled" stub and /app.js is simply missing, leaving a dead page.
+    """
+    meipass = getattr(sys, "_MEIPASS", None)
+    dirs = [Path(meipass) / "web"] if meipass else []
+    dirs += [
         # repo checkout: src/rockforge/interfaces/api/app.py -> repo root
-        Path(__file__).resolve().parents[3].parent / "web" / name,
+        Path(__file__).resolve().parents[3].parent / "web",
         # pip-installed (e.g. Docker WORKDIR /app with COPY web ./web)
-        Path.cwd() / "web" / name,
-    )
+        Path.cwd() / "web",
+    ]
+    return tuple(dirs)
+
+
+def _web_file_candidates(name: str) -> tuple[Path, ...]:
+    """The places a bundled `web/` file can live, first hit wins — the same
+    resolution `_gear_image_dirs()` uses for gear images."""
+    return tuple(d / name for d in _web_dirs())
 
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)

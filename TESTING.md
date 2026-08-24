@@ -14,7 +14,7 @@ CI cannot. Read this before adding or changing a test.
 ## 1. Quick start
 
 ```bash
-pip install -e ".[dev]"     # core + test tooling, NO ML stack — this is all CI needs
+pip install -e ".[dev,psarc]"  # core + test tooling + cryptography/Pillow, NO ML stack
 pytest                       # the suite, ~10s, all ML/Wwise/external tools faked
 ruff check src tests         # lint
 mypy                         # type check
@@ -24,6 +24,18 @@ mypy                         # type check
 runs exactly these. There is no separate "ML test" job — the ML stages are
 *faked* (see §3), so the full suite runs on a plain Python 3.11 with no torch,
 no GPU, no ffmpeg, no Wwise.
+
+**Install `[psarc]`, not just `[dev]`.** `test_psarc_packer.py` and
+`test_psarc_crypto.py` open with `pytest.importorskip("cryptography")`, so
+without that extra they skip themselves entirely — **17 tests**, covering the
+encrypted PSARC container and the Sng2014 binary, the most delicate output in
+the project. CI installed only `[dev]` for a long time and was green the whole
+while, having never run any of it; it now installs `[dev,psarc]`, asserts
+`import cryptography, PIL` succeeds as its own step (so losing the extra fails
+loudly instead of silently dropping the tests), and runs `pytest -rs` so any
+remaining skip is printed with its reason. A silent skip is worse than a
+failure: it reads as coverage. The one skip that remains is
+`test_lyrics_transcribe.py`'s numpy/soundfile case — a deliberate ML boundary.
 
 - **Python 3.11 only** (`requires-python = ">=3.11,<3.12"`). On Windows:
   `py -3.11 -m pytest`. Do not test on 3.12+ — the ml/lyrics stack
@@ -103,7 +115,7 @@ Per-file counts below reflect the suite at the time of writing; run
 | `test_psarc_manifest.py` | 10 | runtime manifests (`.hsan`, `_aggregategraph.nt`, per-arr JSON) |
 | `test_psarc_sng.py` | 50 | Sng2014 binary `write_sng`∘`read_sng` = identity, NoteMask, anchor extensions, DD levels, vocals SNG |
 | `test_psarc_crypto.py` | 5 | AES-256-CFB TOC + AES-256-CTR SNG (needs `[psarc]`) |
-| `test_psarc_packer.py` | 11 | `NativePsarcPacker` wiring; graceful degrade without `[psarc]` |
+| `test_psarc_packer.py` | 12 | `NativePsarcPacker` wiring; graceful degrade without `[psarc]` |
 | `test_packer_resilience.py` | 1 | the Bundle is still produced when the `.psarc` build raises |
 | `test_soundbank.py` | 8 | ported Wwise `.bnk` generator: chunk order, BKHD version, DIDX↔wem id |
 | `test_loudness.py` | 6 | `parse_ebur128_i` / `volume_for_loudness` loudness calc (pure, no ffmpeg) |
@@ -117,6 +129,7 @@ Per-file counts below reflect the suite at the time of writing; run
 | `test_settings.py` | 10 | in-app settings (`/settings`): default demucs, persist+read-back, invalid separator 422, Banquet path validation, empty-string clears override |
 | `test_celery_tasks.py` | 9 | the actual `@celery_app.task` function BODIES — `generate_cdlc`/`detect_tones`/`separate_stems`/`detect_lyrics` called directly (not `.delay()`) against a per-test SQLite `Job` row, heavy adapters faked; success + never-crashes-on-failure paths |
 | `test_architecture.py` | 2 | Clean Architecture layering: `application/ports.py` imports zero `infrastructure/`; other `application/` files only the explicitly-accepted exceptions |
+| `test_standalone_spec.py` | 3 | the PyInstaller spec bundles EVERY file under `web/` (executes `rockforge.spec` with stubbed builders and inspects the real `datas`), puts them where the server looks, and index.html references nothing that isn't bundled |
 
 ### Key regression tests — do not delete these without understanding why
 
@@ -134,6 +147,18 @@ incident report.
   `.phrase-levels` companion file or the build throws `FileNotFoundException`.
 - `test_gp_lyrics_events_precedence` — edited lyrics must win over
   LRC/GP-embedded/auto-WhisperX.
+- `test_spec_bundles_every_web_file` (`test_standalone_spec.py`) — the
+  PyInstaller spec listed its web files BY HAND, so when 4107 lines of JS were
+  extracted out of `index.html` into `web/app.js` the list silently didn't
+  follow. The shipped `.exe` served an `index.html` whose `<script src="/app.js">`
+  had nothing behind it: the whole UI was inert, and no gate could see it. The
+  spec now walks `web/` and this test executes it (with the PyInstaller builders
+  stubbed) to check the real `datas` against the folder.
+- `test_bundled_web_files_are_found_in_the_pyinstaller_bundle`
+  (`test_api.py`) — the other half of the same incident: inside the `.exe` the
+  UI lives under `sys._MEIPASS/web`, which neither of the other two path
+  candidates reaches (`__file__` points into the frozen archive; the launcher
+  never chdirs). `_web_file_candidates()` must try `_MEIPASS` first.
 
 ---
 

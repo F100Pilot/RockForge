@@ -50,6 +50,30 @@ def test_index_page_references_the_extracted_app_js(client: TestClient) -> None:
     assert "<script>" not in r.text  # no inline JS left behind
 
 
+def test_bundled_web_files_are_found_in_the_pyinstaller_bundle(monkeypatch, tmp_path) -> None:
+    """Inside the standalone .exe the web UI lives under ``sys._MEIPASS/web``.
+
+    Neither of the other two candidates resolves there — ``__file__`` points into
+    the frozen archive and the launcher never chdirs — so without _MEIPASS first
+    every bundled file 404s: index.html falls back to the "UI not bundled" stub
+    and /app.js is missing outright, leaving a page that loads and does nothing.
+    """
+    import sys
+
+    import rockforge.interfaces.api.app as app_module
+
+    bundle = tmp_path / "meipass"
+    (bundle / "web" / "gear_images").mkdir(parents=True)
+    (bundle / "web" / "app.js").write_text("// bundled", encoding="utf-8")
+    monkeypatch.setattr(sys, "_MEIPASS", str(bundle), raising=False)
+
+    candidates = app_module._web_file_candidates("app.js")
+    assert candidates[0] == bundle / "web" / "app.js", candidates
+    assert next(p for p in candidates if p.exists()).read_text() == "// bundled"
+    # Gear art resolves through the same list, after the work_dir override.
+    assert bundle / "web" / "gear_images" in app_module._gear_image_dirs()
+
+
 def test_app_js_is_served_with_a_javascript_content_type(client: TestClient) -> None:
     r = client.get("/app.js")
     assert r.status_code == 200

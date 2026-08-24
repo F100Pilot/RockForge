@@ -1797,10 +1797,27 @@ ML extras work if installed separately on the user's Python.
 ffmpeg is bundled from `ffmpeg/ffmpeg.exe` (placed by the user before build);
 `start_standalone.py` prepends the bundled path to `$PATH` at launch.
 
+**The spec WALKS `web/`; it must never list those files by hand again.** It used
+to carry a single literal `("web/index.html", "web")`, so when `index.html`'s
+~4100-line inline `<script>` was extracted into `web/app.js` the list did not
+follow — the shipped `.exe` served an `index.html` whose `<script src="/app.js">`
+had nothing behind it and **the entire UI was inert**, with `web/gear_images/`
+missing too. Nothing could catch it: no gate ever looked at the spec.
+`test_standalone_spec.py` now executes `rockforge.spec` with the PyInstaller
+builders stubbed out and asserts its real `datas` covers every file under `web/`,
+at the matching destination.
+
+**`_web_file_candidates()` tries `sys._MEIPASS/web` FIRST** (`_web_dirs()`), which
+is the other half of that bug: inside the bundle neither of the other candidates
+resolves — `__file__` points into the frozen archive and `start_standalone.py`
+never chdirs — so a bundled file would 404 even once the spec ships it.
+`_gear_image_dirs()` shares the same list (after the `work_dir` override).
+Guarded by `test_bundled_web_files_are_found_in_the_pyinstaller_bundle`.
+
 ## Commands
 
 ```bash
-pip install -e ".[dev]"             # core + tests, no ML
+pip install -e ".[dev,psarc]"       # core + tests + cryptography/Pillow, no ML
 pip install -e ".[dev,ml]"          # adds Demucs/librosa (stem separation, tone detection, per-point tempo/tuning)
 pip install -e ".[dev,ml,lyrics]"   # + WhisperX (automatic lyric detection)
 pytest                           # full suite (ML stages are faked in tests)
@@ -1808,8 +1825,18 @@ ruff check src tests             # lint — must pass
 mypy                             # strict on domain/application/infra; relaxed at boundaries
 ```
 
-CI runs ruff + mypy + pytest. All three must be green before committing. mypy is
-pinned (`mypy~=1.19.0`) so local matches CI — do not bump it casually.
+CI runs ruff + mypy + pytest (+ ESLint on `web/app.js`, + a Docker build). All
+must be green before committing. mypy is pinned (`mypy~=1.19.0`) so local matches
+CI — do not bump it casually.
+
+**Install `[psarc]`, not bare `[dev]`.** `test_psarc_packer.py` and
+`test_psarc_crypto.py` `importorskip("cryptography")`, so without that extra
+they skip themselves entirely — 17 tests covering the encrypted PSARC container
+and the Sng2014 binary. CI installed only `[dev]` for a long time and was green
+throughout while never running any of it. It now installs `[dev,psarc]`, asserts
+`import cryptography, PIL` as its own step so losing the extra fails loudly, and
+runs `pytest -rs` so any remaining skip is printed with its reason. A silent
+skip reads as coverage, which is worse than a failure.
 
 ## Hard constraints (these have bitten us — keep them)
 

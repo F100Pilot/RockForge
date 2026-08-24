@@ -15,13 +15,24 @@ jobs:
           python-version: "3.11"
           cache: pip
       - name: Install
-        run: pip install -e ".[dev]"
+        # [psarc] is NOT optional here: without cryptography, test_psarc_packer
+        # and test_psarc_crypto importorskip themselves out entirely and CI goes
+        # green having never run the native PSARC container/SNG code — the most
+        # delicate output in the project, and the hardest to verify by hand.
+        run: pip install -e ".[dev,psarc]"
+      - name: Verify the optional test dependencies really installed
+        # A silent skip is worse than a failure: it looks like coverage. If the
+        # install line above ever loses [psarc] again, fail here and say so
+        # instead of quietly dropping 17 tests.
+        run: python -c "import cryptography, PIL"
       - name: Lint
         run: ruff check src tests
       - name: Type-check
         run: mypy
       - name: Tests
-        run: pytest --cov=rockforge --cov-report=term-missing
+        # -rs reports every skipped test with its reason, so a test that stops
+        # running is visible in the log rather than hidden in the dot output.
+        run: pytest -rs --cov=rockforge --cov-report=term-missing
 
   web-lint:
     runs-on: ubuntu-latest
