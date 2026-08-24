@@ -128,6 +128,7 @@ Per-file counts below reflect the suite at the time of writing; run
 | `test_api.py` | 103 | every endpoint (§6): job lifecycle, rebuild composition, detect-* / separate-stems enqueue (mocked), auto-sync + dynamic beat-alignment (faked librosa) + MIDI-tempo-map sync, section + note overrides, lyrics/tones/stems status, gear images, deletion, per-test SQLite |
 | `test_settings.py` | 10 | in-app settings (`/settings`): default demucs, persist+read-back, invalid separator 422, Banquet path validation, empty-string clears override |
 | `test_celery_tasks.py` | 9 | the actual `@celery_app.task` function BODIES — `generate_cdlc`/`detect_tones`/`separate_stems`/`detect_lyrics` called directly (not `.delay()`) against a per-test SQLite `Job` row, heavy adapters faked; success + never-crashes-on-failure paths |
+| `test_db_schema.py` | 3 | the startup schema check: fresh DB accepted, a column dropped from an existing DB fails loudly naming it, and the check itself never blocks startup |
 | `test_architecture.py` | 2 | Clean Architecture layering: `application/ports.py` imports zero `infrastructure/`; other `application/` files only the explicitly-accepted exceptions |
 | `test_standalone_spec.py` | 3 | the PyInstaller spec bundles EVERY file under `web/` (executes `rockforge.spec` with stubbed builders and inspects the real `datas`), puts them where the server looks, and index.html references nothing that isn't bundled |
 
