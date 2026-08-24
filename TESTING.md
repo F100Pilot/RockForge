@@ -154,6 +154,13 @@ incident report.
   had nothing behind it: the whole UI was inert, and no gate could see it. The
   spec now walks `web/` and this test executes it (with the PyInstaller builders
   stubbed) to check the real `datas` against the folder.
+- `test_deleting_a_job_removes_its_gp_file_but_not_a_forks` (`test_api.py`) —
+  the GP upload lives outside the job's work dir, so deleting a job used to leak
+  it forever; and a rebuild fork shares `gp_path`, so the delete must be
+  reference-counted or it pulls the file out from under the fork.
+- `test_the_orphan_sweep_actually_runs_on_startup` (`test_api.py`) — drives a
+  real lifespan. Nothing else calls the sweep, so testing the function alone
+  would pass while the feature did nothing.
 - `test_non_finite_floats_are_rejected_at_the_boundary` (`test_api.py`) — JSON
   carries `NaN`/`Infinity`, Pydantic accepted them, and `NaN <= 0` is False, so
   the tempo guard waved them through into the persisted params. It also asserts

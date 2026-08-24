@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import importlib
+import time
 from collections.abc import Iterator
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -1311,6 +1313,110 @@ def test_detect_tuning_rejected_for_non_gp(client: TestClient) -> None:
     job = _create_job(client)
     r = client.post(f"/jobs/{job['id']}/detect-tuning")
     assert r.status_code == 422
+
+
+def test_deleting_a_job_removes_its_gp_file_but_not_a_forks(
+    client: TestClient, tmp_path
+) -> None:
+    """The uploaded Guitar Pro file lives outside the job's work dir
+    (work_dir/gp/<uuid>.gp*), so delete_job's rmtree never touched it and every
+    deleted job left its GP behind forever. It is reference-counted like the
+    recording: a rebuild forks and SHARES gp_path, so deleting one of the pair
+    must not pull the file out from under the other."""
+    data = _make_gp5_bytes(tmp_path)
+    body = client.post(
+        "/gp/inspect", files={"file": ("song.gp5", data, "application/octet-stream")}
+    ).json()
+    job = client.post(
+        "/jobs/gp",
+        data={"gp_token": body["gp_token"], "lead_track": "0"},
+        files={"audio": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
+    ).json()
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.infrastructure.db.models import Job
+
+    with app_module._session_factory() as session:
+        gp_file = Path(str(session.get(Job, job["id"]).params["gp_path"]))
+    assert gp_file.is_file()
+
+    fork = client.post(f"/jobs/{job['id']}/rebuild", json={"tempo_scale": 1.1}).json()
+    assert client.delete(f"/jobs/{job['id']}").status_code == 204
+    assert gp_file.is_file(), "the fork still points at this GP file"
+
+    assert client.delete(f"/jobs/{fork['id']}").status_code == 204
+    assert not gp_file.exists(), "last job referencing it is gone; the GP must go too"
+
+
+def test_orphaned_gp_uploads_are_swept_but_referenced_ones_are_kept(
+    client: TestClient, tmp_path
+) -> None:
+    """/gp/inspect stores the upload BEFORE the job exists, so abandoning the
+    creation wizard (or the batch modal, one inspect per song) left a file with
+    nothing to ever collect it. The sweep only touches files past the age limit
+    and referenced by no job — a fresh upload someone is still working with, and
+    any file a job points at, must survive regardless of age."""
+    import os
+
+    from sqlalchemy import select
+
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.infrastructure.db.models import Job
+
+    data = _make_gp5_bytes(tmp_path)
+
+    def _inspect() -> Path:
+        token = client.post(
+            "/gp/inspect", files={"file": ("song.gp5", data, "application/octet-stream")}
+        ).json()["gp_token"]
+        return app_module.settings.work_dir / "gp" / token
+
+    abandoned = _inspect()   # wizard closed, never became a job
+    fresh = _inspect()       # uploaded moments ago, wizard still open
+    used_token = client.post(
+        "/gp/inspect", files={"file": ("song.gp5", data, "application/octet-stream")}
+    ).json()["gp_token"]
+    client.post(
+        "/jobs/gp",
+        data={"gp_token": used_token, "lead_track": "0"},
+        files={"audio": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
+    )
+    with app_module._session_factory() as session:
+        used = Path(str(session.scalars(select(Job)).one().params["gp_path"]))
+
+    # Age out the abandoned upload AND the referenced one; only the first may go.
+    old = time.time() - app_module.GP_ORPHAN_MAX_AGE_S - 60
+    os.utime(abandoned, (old, old))
+    os.utime(used, (old, old))
+
+    assert app_module._sweep_orphan_gp_uploads() == 1
+    assert not abandoned.exists(), "an aged, unreferenced upload must be collected"
+    assert fresh.is_file(), "a recent upload may still belong to an open wizard"
+    assert used.is_file(), "a file a job points at must survive any age"
+
+
+def test_the_orphan_sweep_actually_runs_on_startup(tmp_path, monkeypatch) -> None:
+    """The sweep is only useful if something calls it. Nothing else does — there
+    is no scheduler here — so it hangs off the app's lifespan, and this drives a
+    real startup to prove the wiring, not just the function."""
+    import os
+
+    monkeypatch.setenv("ROCKFORGE_DATABASE_URL", f"sqlite:///{tmp_path}/t.db")
+    monkeypatch.setenv("ROCKFORGE_WORK_DIR", str(tmp_path / "work"))
+    import rockforge.config as config
+    importlib.reload(config)
+    import rockforge.interfaces.api.app as app_module
+    importlib.reload(app_module)
+
+    gp_dir = app_module.settings.work_dir / "gp"
+    gp_dir.mkdir(parents=True, exist_ok=True)
+    stale = gp_dir / "abandoned.gp5"
+    stale.write_bytes(b"not a real GP file")
+    old = time.time() - app_module.GP_ORPHAN_MAX_AGE_S - 60
+    os.utime(stale, (old, old))
+
+    with TestClient(app_module.app):  # entering the context runs the lifespan
+        pass
+    assert not stale.exists()
 
 
 def test_non_finite_floats_are_rejected_at_the_boundary(

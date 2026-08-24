@@ -1838,6 +1838,32 @@ throughout while never running any of it. It now installs `[dev,psarc]`, asserts
 runs `pytest -rs` so any remaining skip is printed with its reason. A silent
 skip reads as coverage, which is worse than a failure.
 
+### Uploaded GP files are reference-counted and swept
+
+The Guitar Pro upload lives OUTSIDE the job's work dir — `/gp/inspect` and
+`/reload-gp` both write `work_dir/gp/<uuid>.gp*` — so `delete_job`'s
+`rmtree(work_dir/<job_id>)` never touched it and every deleted job left its GP
+behind forever. `delete_job` now removes it too, reference-counted like the
+recording (`_gp_path_in_use`): a `/rebuild` or `/reload-gp` fork SHARES
+`gp_path`, so deleting one of a pair must not pull the file out from under the
+other. The check runs in Python over `(id, params)` rather than in SQL because
+`gp_path` sits inside the JSON column and JSON-path querying differs between
+SQLite and Postgres — this is a single-user app with a job list measured in
+tens, so portability beats the scan.
+
+The other half is orphans: `/gp/inspect` stores the file BEFORE the job exists
+(the wizard inspects tracks first), so abandoning the wizard — or the batch
+modal, which inspects one file per song — left an upload nothing would ever
+collect. `_sweep_orphan_gp_uploads()` runs from the app's **lifespan** (nothing
+else calls it; there is no scheduler here) and deletes only files that no job
+references AND that are older than `GP_ORPHAN_MAX_AGE_S` (24 h) — a fresh upload
+may still belong to an open wizard, including one left open across a restart. It
+never raises: failed housekeeping must not stop the API from starting. Guarded by
+`test_deleting_a_job_removes_its_gp_file_but_not_a_forks`,
+`test_orphaned_gp_uploads_are_swept_but_referenced_ones_are_kept` and
+`test_the_orphan_sweep_actually_runs_on_startup` (which drives a real startup,
+because a sweep nothing calls is worthless).
+
 ### API input validation: every client float is `Finite`
 
 `Finite = Annotated[float, Field(allow_inf_nan=False)]` (`interfaces/api/app.py`)

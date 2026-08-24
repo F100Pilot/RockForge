@@ -17,6 +17,7 @@ clearly delineated within this file.
 from __future__ import annotations
 
 import asyncio
+import logging
 import math
 import mimetypes
 import os
@@ -29,7 +30,7 @@ import uuid
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Annotated, Any, cast
+from typing import TYPE_CHECKING, Annotated, Any, cast
 from urllib.parse import urlparse
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
@@ -43,6 +44,11 @@ from rockforge import __version__
 from rockforge.config import settings
 from rockforge.domain.chords import name_chord
 from rockforge.infrastructure.db.models import Job, JobStatus, make_session_factory
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 # Standard open-string MIDI pitches (low→high, E A D G B e); a chord's pitches
 # are these + the arrangement's tuning offset + fret. Mirrors the viewer's
@@ -124,6 +130,9 @@ async def _idle_shutdown_watchdog() -> None:
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     global _last_heartbeat
     _last_heartbeat = time.monotonic()
+    # Housekeeping: GP uploads from abandoned wizard sessions have nothing else
+    # to collect them (the file is stored before the job exists).
+    _sweep_orphan_gp_uploads()
     task: asyncio.Task[None] | None = None
     if settings.idle_shutdown_s > 0:
         task = asyncio.create_task(_idle_shutdown_watchdog())
@@ -1019,6 +1028,68 @@ def list_jobs(limit: int = 50) -> list[JobOut]:
         return [_to_out(j) for j in jobs]
 
 
+# A GP upload nobody has turned into a job yet is legitimate (the creation
+# wizard inspects the file before the job exists), so orphans are only swept
+# once they are older than this. Generous on purpose: the sweep runs at startup,
+# and a wizard left open across a restart must not lose its file.
+GP_ORPHAN_MAX_AGE_S = 24 * 3600
+
+
+def _gp_path_in_use(session: Session, gp_path: str, exclude_job_id: str | None = None) -> bool:
+    """Whether any OTHER job still points at this Guitar Pro file.
+
+    ``gp_path`` lives inside the ``params`` JSON column, and JSON-path querying
+    differs between SQLite and Postgres, so the check is done in Python over the
+    id/params pair rather than in SQL — this is a single-user app with a job
+    list measured in tens, and portability matters more than the scan.
+    """
+    from sqlalchemy import select
+
+    rows = session.execute(select(Job.id, Job.params)).all()
+    return any(
+        job_id != exclude_job_id and (params or {}).get("gp_path") == gp_path
+        for job_id, params in rows
+    )
+
+
+def _sweep_orphan_gp_uploads() -> int:
+    """Delete GP uploads that no job references and that are past the age limit.
+
+    ``/gp/inspect`` stores every uploaded file server-side before the job exists,
+    so abandoning the wizard (or the batch modal, which inspects one file per
+    song) left the upload behind forever with nothing to ever collect it.
+    Returns how many files were removed; never raises — a failed sweep must not
+    stop the API from starting.
+    """
+    from sqlalchemy import select
+
+    gp_dir = settings.work_dir / "gp"
+    if not gp_dir.is_dir():
+        return 0
+    removed = 0
+    try:
+        cutoff = time.time() - GP_ORPHAN_MAX_AGE_S
+        with _session_factory() as session:
+            in_use = {
+                str((params or {}).get("gp_path"))
+                for (params,) in session.execute(select(Job.params)).all()
+            }
+        for f in gp_dir.iterdir():
+            if not f.is_file() or str(f) in in_use:
+                continue
+            try:
+                if f.stat().st_mtime < cutoff:
+                    f.unlink()
+                    removed += 1
+            except OSError:  # vanished under us, or not ours to delete
+                continue
+    except Exception:  # noqa: BLE001 — housekeeping must never block startup
+        logger.warning("orphan GP sweep failed", exc_info=True)
+    if removed:
+        logger.info("removed %d orphaned GP upload(s) from %s", removed, gp_dir)
+    return removed
+
+
 @app.delete("/jobs/{job_id}", status_code=204)
 def delete_job(job_id: str, force: bool = False) -> Response:
     """Delete a job and its work artifacts. Running jobs must finish first,
@@ -1043,6 +1114,14 @@ def delete_job(job_id: str, force: bool = False) -> Response:
         )
         if not others and job.source_type in {"upload", "gp"}:
             Path(job.source).unlink(missing_ok=True)
+
+        # The uploaded Guitar Pro file too — it lives outside the job's work dir
+        # (work_dir/gp/<uuid>.gp*) and was previously left behind forever, so a
+        # deleted job still cost its GP file on disk. Reference-counted like the
+        # recording above, because a rebuild/reload-gp fork shares the path.
+        gp_path = (job.params or {}).get("gp_path")
+        if isinstance(gp_path, str) and gp_path and not _gp_path_in_use(session, gp_path, job.id):
+            Path(gp_path).unlink(missing_ok=True)
 
         session.delete(job)
         session.commit()
