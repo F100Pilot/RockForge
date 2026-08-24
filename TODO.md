@@ -69,11 +69,14 @@ documentados nas mensagens de commit, caso valha a pena ressuscitar alguma.
   demora minutos. O `pip install torch` no Windows é só-CPU — é preciso o build
   CUDA (README §2b). Confirmar no log: `device: cuda (GPU)`.
 - **Dynamic Difficulty é uma rampa por densidade, não uma passagem DDC
-  musical real:** níveis com teto variável por frase (até 21), com
-  phrase-linking (riffs repetidos partilham uma única frase). Funciona e é
-  jogável, mas a seleção de notas por nível é por densidade/força métrica, não
-  frascada musicalmente — o caminho de maior qualidade de DD continua a ser o
-  DLC Builder.
+  musical real:** níveis com teto variável por frase (até 23), com
+  phrase-linking (riffs repetidos partilham uma única frase). Os tetos foram
+  calibrados contra um build do DLC Builder da mesma música (ambos os `.psarc`
+  descodificados e comparados byte a byte): nenhuma frase com notas fica sem
+  níveis para subir, e o máximo da música bate certo com o da referência. **Por
+  confirmar no jogo.** A seleção de notas por nível continua a ser por
+  densidade/força métrica, não frascada musicalmente — o caminho de maior
+  qualidade de DD continua a ser o DLC Builder.
 - **SNG nativo não validado byte-a-byte** contra um SNG retail (não há ficheiro
   de referência em CI) — só round-trip `read_sng∘write_sng` + validação manual
   no jogo (vários bugs de renderização já isolados e corrigidos por byte-diff
