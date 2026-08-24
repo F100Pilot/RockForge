@@ -233,6 +233,34 @@ browser abre automaticamente.
 Se não colocares o `ffmpeg.exe` dentro de `ffmpeg/`, o build avisa — a app
 continua a funcionar se o utilizador tiver o ffmpeg no PATH do sistema.
 
+#### Verificar o build antes de distribuir
+
+**Faz sempre estas três verificações.** Um `.exe` já foi distribuído com a
+interface completamente morta: o `rockforge.spec` listava os ficheiros da UI à
+mão, e quando o JavaScript saiu do `index.html` para o `web/app.js` a lista não
+acompanhou. O `index.html` carregava um `/app.js` que não estava no bundle, e o
+resultado era uma página que abre e não faz absolutamente nada. Nenhum teste
+olhava para o spec, por isso nada apanhou o erro até alguém abrir a app.
+
+```cmd
+REM 1. ANTES de compilar — o teste que garante que o spec recolhe tudo o que
+REM    está em web\. Se falhar, o .exe vai sair partido; não compiles.
+py -3.11 -m pytest tests\test_standalone_spec.py -v
+
+REM 2. DEPOIS de compilar — os ficheiros da UI têm de estar dentro do bundle.
+REM    Devem aparecer o index.html, o app.js e as 6 imagens de gear.
+dir /s /b dist\rockforge\_internal\web
+
+REM 3. Corre o .exe e confirma que a interface está VIVA (não basta abrir):
+REM    - a versão aparece no canto (vem de uma chamada à API, prova que o JS correu)
+REM    - clicar em "Novo projeto" abre o assistente de 4 passos
+REM    - F12 → Console não mostra erros (o 404 do favicon é normal)
+dist\rockforge\rockforge.exe
+```
+
+Se a página abrir mas nenhum botão responder, é este o problema: o `/app.js`
+está a dar 404. Confirma-o em `F12 → Network`.
+
 #### Criar um instalador (para distribuir a outros)
 
 Para criar um instalador `.exe` estilo Windows (wizard de instalação, atalho no
@@ -272,7 +300,10 @@ Gera `dist\RockForge_portable.zip` — extrair e correr `rockforge.exe`.
 - **Tens de recompilar** (`py -3.11 build_exe.py`) sempre que alterares o código.
   Para desenvolvimento, continua a usar `start.bat` / `pip install -e .`.
 - O idle-shutdown está ativo: fechar o separador do browser para a app
-  automaticamente após ~30 segundos.
+  automaticamente após ~3 segundos. **Se houver trabalho a decorrer** (uma
+  build, uma separação de stems, uma deteção de letra) a app espera que termine
+  antes de sair — fechar o separador a meio de uma build já não a cancelava
+  deixando o projeto preso em "running" para sempre.
 - Para uma **distribuição com ML incluído**, a alternativa é empacotar um Python
   portátil (`python-build-standalone`) com um venv pré-instalado — mais pesado
   (~5–10 GB) mas inclui tudo. Ver `CLAUDE.md` para detalhes.
@@ -299,15 +330,19 @@ execução nativa Windows com o Wwise instalado.
 Desenvolvimento:
 
 ```bash
-pip install -e ".[dev]"            # núcleo + testes (sem ML)
+pip install -e ".[dev,psarc]"      # núcleo + testes (sem ML) — usa SEMPRE este
 pip install -e ".[dev,ml]"         # com Demucs/librosa
 pip install -e ".[dev,ml,lyrics]"  # + deteção automática de letra (WhisperX)
 pytest && ruff check src tests && mypy
 ```
 
+O extra `[psarc]` não é opcional para testar: sem o `cryptography`, 17 testes do
+PSARC nativo (o container encriptado e o binário SNG) saltam-se sozinhos em
+silêncio e a suíte fica verde sem nunca os ter corrido.
+
 ## Como testar a app (fim-a-fim)
 
-1. **Testes automáticos** (sem ML, rápidos): `pip install -e ".[dev]" && pytest` — a suíte
+1. **Testes automáticos** (sem ML, rápidos): `pip install -e ".[dev,psarc]" && pytest` — a suíte
    cobre domínio, XML/acordes, use case GP, API (incl. remoção de jobs),
    import GP, letra, tom, deteção de device CPU/GPU, separação Demucs (comandos), PSARC nativo
    (contentor/manifestos/SNG/cifra), `.rs2dlc`, tags e Wwise (consola simulada). Guia completo
