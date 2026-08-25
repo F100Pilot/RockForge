@@ -68,15 +68,18 @@ documentados nas mensagens de commit, caso valha a pena ressuscitar alguma.
 - **Letra/tom precisam de GPU para ser rápido.** Em CPU a separação Demucs
   demora minutos. O `pip install torch` no Windows é só-CPU — é preciso o build
   CUDA (README §2b). Confirmar no log: `device: cuda (GPU)`.
-- **Dynamic Difficulty é uma rampa por densidade, não uma passagem DDC
-  musical real:** níveis com teto variável por frase (até 23), com
-  phrase-linking (riffs repetidos partilham uma única frase). Os tetos foram
-  calibrados contra um build do DLC Builder da mesma música (ambos os `.psarc`
-  descodificados e comparados byte a byte): nenhuma frase com notas fica sem
-  níveis para subir, e o máximo da música bate certo com o da referência. **Por
-  confirmar no jogo.** A seleção de notas por nível continua a ser por
-  densidade/força métrica, não frascada musicalmente — o caminho de maior
-  qualidade de DD continua a ser o DLC Builder.
+- **Dynamic Difficulty FUNCIONA no jogo (confirmado 2026-08-25)** — sobe e o
+  nível é guardado. Chegou lá por byte-diff contra um build do DLC Builder da
+  mesma música (ambos os `.psarc` descodificados e comparados campo a campo);
+  as sete correções (nomes de frase únicos, frases a sair dos níveis acima do
+  seu teto, `Techniques`, eventos de palco, as três densidades
+  `SongDiff*`, `LastConversionDateTime` e a lista de secções) foram numa só
+  leva, por isso **não se sabe qual delas resolveu** — não remover nenhuma por
+  parecer cosmética. Detalhe e o resultado negativo útil (o `Hash`/`NoteFlags`
+  das notas ficaram a 0 e portanto NÃO são precisos) em `CLAUDE.md`.
+  Continua a ser uma **rampa por densidade**, não uma passagem DDC musical: a
+  seleção de notas por nível é por força métrica, não frascada musicalmente —
+  para esse fraseado o caminho continua a ser o DLC Builder.
 - **SNG nativo não validado byte-a-byte** contra um SNG retail (não há ficheiro
   de referência em CI) — só round-trip `read_sng∘write_sng` + validação manual
   no jogo (vários bugs de renderização já isolados e corrigidos por byte-diff

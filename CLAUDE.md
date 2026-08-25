@@ -1617,7 +1617,9 @@ bytes). Rebuilding DLC Builder's own 324 "Pride" syllables through
 
 What is intentionally absent (these are correct given the domain model, not
 defects):
-- **Simplified DDC (Dynamic Difficulty)**: `from_arrangement` emits several
+- **Simplified DDC (Dynamic Difficulty)** — **working in game as of
+  2026-08-25** (it ramps and the level persists; see the resolution note at the
+  end of this section). `from_arrangement` emits several
   `ArrangementLevels` shaped like a real DDC pass (verified by decoding a DLC
   Builder reference SNG: 23 levels, per-phrase ceilings graduated by density,
   per-iteration hero triples of ~(¼,½,1)·max). Each **phrase's** ceiling scales
@@ -1801,7 +1803,7 @@ defects):
   99 notes). Guarded by
   `test_note_counts_are_per_iteration_hero_totals_not_one_level`.
 
-  **The symptom is now known to be PERSISTENCE, not level data (2026-08-25).**
+  **The symptom was isolated to PERSISTENCE, not level data (2026-08-25).**
   The user's later report is precise: the levels ARE there, Riff Repeater DOES
   raise them, and the new level is not kept — it zeroes every time. So the DD
   tables are being read correctly and something about how the song is
@@ -1845,9 +1847,26 @@ defects):
     `test_section_numbers_continue_across_arrangements` and
     `test_section_ui_name_is_a_localisation_token_when_known`.
 
-  **Still unverified in game.** B, C, D, E, G and H are confirmed divergences
-  from a build known to work, and each is independently a defect; none is
-  PROVEN to be the cause. The `.psarc` the user tested is byte-identical to their
+  **RESOLVED IN GAME (2026-08-25).** A rebuild carrying A, B, C, D, E, G and H
+  ramps Dynamic Difficulty and KEEPS the level. The long-running symptom is
+  closed.
+
+  **Which one fixed it is NOT known, and that matters.** All seven shipped in
+  one batch, so there is no evidence isolating the cause — do not "simplify"
+  any of them away later on the grounds that it looks cosmetic. Each was an
+  independently confirmed divergence from a build known to work; the ones with
+  a plausible mechanism for the *final* symptom (the level rose and then
+  zeroed, i.e. a persistence failure rather than missing level data) are G
+  (`LastConversionDateTime` absent, so nothing pinned the song's conversion
+  identity) and H (duplicate section numbers). B/C/D/E were structural
+  correctness. If any of this is ever revisited, the only honest statement is
+  "the batch fixed it".
+
+  What stayed at 0 throughout and is therefore proven NOT to be required: the
+  note `Hash`, the `NoteFlags` bit (finding F), `NLinkedDifficulty`,
+  `PhraseExtraInfo`, Actions, Tones and DNAs. That is a useful negative
+  result — F was the largest remaining unknown and it can now be closed rather
+  than re-opened. The `.psarc` the user tested is byte-identical to their
   2026-08-24 one (same md5), so it predates even fix A — a rebuild on current
   `main` is what the next round of evidence has to come from.
 
@@ -2010,11 +2029,12 @@ via the shared `packaging/tone_dto.py` — the same `ToneDto` the `.rs2dlc` emit
 verified byte-identical against a DLC Builder build of our own tones), so the
 in-game tone is the user's, not a default; the SNG's Tones section (mid-song
 tone *changes*) stays empty until per-arrangement `tone_changes` are wired.
-Remaining honest gaps: the Dynamic Difficulty is a simple mechanical density
-ramp (not a musical DDC pass — see the SNG note); and the SNG binary is
-round-tripped but not byte-diffed against retail. The **trustworthy path remains
-the DLC Builder bundle** (import it and let DLC Builder build the PSARC + a real
-DDC pass).
+Remaining honest gaps: the Dynamic Difficulty ramps and persists in game
+(confirmed 2026-08-25) but is still a mechanical DENSITY ramp, not a musical
+DDC pass — it picks notes by strongest-beat rank, so it levels correctly
+without phrasing the way a real DDC would; and the SNG binary is round-tripped
+but not byte-diffed against retail. The DLC Builder bundle remains the route to
+a real DDC pass if that phrasing matters for a given song.
 
 ### Wwise SoundBank (`infrastructure/packaging/psarc/soundbank.py`)
 
