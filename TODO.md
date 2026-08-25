@@ -402,6 +402,25 @@ documentados nas mensagens de commit, caso valha a pena ressuscitar alguma.
     mesma pista, ou noutra pista (ex. Lead → Rhythm), preservando o ritmo
     relativo entre as notas copiadas. Puramente client-side: cada nota colada
     é só mais um `note_overrides` upsert, sem novo conceito no backend.
+  - [x] **Limpar as edições de notas** ("🧹 Limpar edições" / "🧹 Limpar em
+    todas"): descartar explicitamente os `note_overrides` desta pista ou de
+    todas. Necessário depois de as edições já commitadas passarem a ser
+    re-semeadas no visualizador (`ArrangementOut.note_overrides`) — antes
+    disso, um rebuild sobre um job reaberto apagava-as em silêncio.
+  - [x] **Exportar o GP com as notas editadas**
+    (`POST /jobs/{id}/export-arrangement-gp`, "🎸 Exportar GP com as notas
+    editadas"): gera um ficheiro **GP5 novo** a partir do arranjo já
+    construído — notas editadas, técnicas, afinação, secções e a linha
+    temporal corrigida incluídas. Complementa o `/export-gp` (que só escreve
+    andamentos numa **cópia** do ficheiro do utilizador, preservando tudo o
+    resto): este traz as edições de notas, ao custo de levar **só esta
+    pista**. Lê o XML **construído** (`infrastructure/rsxml/reader.py`), não
+    o GP de origem, para apanhar `tempo_scale` + anchors + `note_overrides`
+    de uma vez. **Limite honesto:** o Guitar Pro guarda ritmo *notado*, por
+    isso um ataque fora da grelha tem de ser quantizado — o relatório diz
+    quantas notas foram movidas e o desvio máximo, em vez de as re-temporizar
+    em silêncio. Ver `CLAUDE.md` ("Exporting the EDITED chart as a new GP
+    file").
 
 - [x] **Mais atalhos de teclado no visualizador**: além do espaço (play/pause),
   agora **←/→** avançam/recuam o cursor (±1s, **Shift** ±5s), **Home** vai ao

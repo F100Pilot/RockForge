@@ -101,6 +101,7 @@ Per-file counts below reflect the suite at the time of writing; run
 | `test_domain.py` | 18 | pure music model: `Tuning`, `TabNote`, `TempoMap`, `Arrangement` invariants, sustain gap, high-density flags |
 | `test_chords.py` | 10 | `domain/chords.py` `name_chord`: triads, power chords, inversions, chord naming |
 | `test_gp_import.py` | 11 | PyGuitarPro (GP3/4/5) parsing: notes/frets/techniques/sections/tempo |
+| `test_gp_arrangement_writer.py` | 7 | generating a NEW GP5 from an `Arrangement`: notes/times/strings/frets and the corrected tempo map round-trip through our own importer, techniques, chords-as-one-beat, tuning/metadata/sections, reported quantization, the always-stated single-track cost, empty beat grid refused |
 | `test_gpif_import.py` | 8 | native GP7/GP8 (`.gp`) GPIF/XML parser: tuning, timing, Hopo/slide/palm-mute, lyric sourcing, bass rejection |
 | `test_gp_pipeline.py` | 38 | GP use case: `tempo_scale`, `sync_anchor_stages`, `arrangement_sync`, lyrics precedence, `pad_start_s` shift, tied notes, section-editor overrides (`section_overrides`), note-editor overrides (`note_overrides` add/edit/delete, per-arrangement) |
 | `test_rsxml_writer.py` | 18 | Song2014 XML: the **32 arrangementProperties** attrs, COUNT/default/END phrase structure, chords |
@@ -125,7 +126,7 @@ Per-file counts below reflect the suite at the time of writing; run
 | `test_banquet_adapter.py` | 5 | Banquet (EM TESTES) `inference_byoq` command build, one pass per query clip, device→`use_cuda`, missing-setup errors |
 | `test_device_resolution.py` | 8 | `_resolve_device` auto/cpu/cuda + degrade-to-CPU on import failure |
 | `test_tags.py` | 2 | audio metadata tag extraction |
-| `test_api.py` | 103 | every endpoint (§6): job lifecycle, rebuild composition, detect-* / separate-stems enqueue (mocked), auto-sync + dynamic beat-alignment (faked librosa) + MIDI-tempo-map sync, section + note overrides, lyrics/tones/stems status, gear images, deletion, per-test SQLite |
+| `test_api.py` | 105 | every endpoint (§6): job lifecycle, rebuild composition, detect-* / separate-stems enqueue (mocked), auto-sync + dynamic beat-alignment (faked librosa) + MIDI-tempo-map sync, section + note overrides, lyrics/tones/stems status, gear images, deletion, per-test SQLite |
 | `test_settings.py` | 10 | in-app settings (`/settings`): default demucs, persist+read-back, invalid separator 422, Banquet path validation, empty-string clears override |
 | `test_celery_tasks.py` | 9 | the actual `@celery_app.task` function BODIES — `generate_cdlc`/`detect_tones`/`separate_stems`/`detect_lyrics` called directly (not `.delay()`) against a per-test SQLite `Job` row, heavy adapters faked; success + never-crashes-on-failure paths |
 | `test_db_schema.py` | 3 | the startup schema check: fresh DB accepted, a column dropped from an existing DB fails loudly naming it, and the check itself never blocks startup |
@@ -240,6 +241,9 @@ POST   /jobs/{id}/separate-stems     async stem separation (202)       [ml extra
 GET    /jobs/{id}/stems              stem status + available stem names + log
 GET    /jobs/{id}/stem/{name}        one separated stem (audio-source selector)
 GET    /jobs/{id}/tones              current tone setup
+POST   /jobs/{id}/export-gp          write tempo fixes into a copy of the GP [GP]
+POST   /jobs/{id}/export-arrangement-gp  generate a new GP5 from one built chart [GP]
+GET    /jobs/{id}/corrected-gp       download whichever GP export ran last  [GP]
 GET    /jobs/{id}/arrangements       per-arrangement tab/sync data for the viewer
 GET    /jobs/{id}/source-audio       the recording (for the waveform)
 GET    /jobs/{id}/bundle             the DLC Builder bundle zip
@@ -535,6 +539,37 @@ wiring and the visual preview:
     open a different one: confirm "📥 Colar no cursor" is disabled again
     (the clipboard is cleared on job load, so you can't accidentally paste
     one song's notes into another).
+11. **Clear the edits** — with several committed edits, "🧹 Limpar edições"
+    then "Aplicar e reconstruir": confirm the chart comes back as the GP file
+    authored it and the counter next to the button reads zero. Repeat with
+    two arrangements edited and "🧹 Limpar em todas". Also confirm the
+    reverse: edit notes, rebuild, reopen the job, change ONLY the tuning and
+    rebuild — the note edits must still be there (the seeding fix; a
+    regression here is silent data loss).
+
+### 7a-octies. Guitar Pro export (browser + a real Guitar Pro install)
+
+Two buttons, two different guarantees — check both, because CI can only
+round-trip them through RockForge's own importer:
+
+1. **"🎼 Exportar GP corrigido"** (tempo only) — re-tempo a few bars until
+   they show AMBER on the score, export, then **open the file in Guitar
+   Pro**: confirm those measures carry the new BPM, every other track /
+   note / technique / marker is untouched, and the ORIGINAL upload is
+   unchanged on disk. On a `.gp` (GP7/8) source, confirm the file still
+   opens at all — that route is byte-copy ZIP surgery on `score.gpif` and
+   has never been validated against a real install.
+2. **"🎸 Exportar GP com as notas editadas"** (the whole arrangement) — make
+   a few note edits (add, change a fret, delete), export, open in Guitar
+   Pro: confirm the edits are there, the tuning matches, sections appear as
+   markers, and the bars fall where the recording puts them. Then check the
+   two costs are visible and honest: the report must say it carries only
+   this track, and if any onset was off the grid it must report how many
+   were moved and by how much — compare a quantized note's position by ear
+   against RockForge's own playback.
+3. **Download naming** — both write `corrected.*` and both come back through
+   the same download link; export one, then the other, and confirm the link
+   serves the MOST RECENT export, not the first.
 
 ### 7b-drums. Beat/tempo detection on the isolated drum stem (needs `[ml]`)
 

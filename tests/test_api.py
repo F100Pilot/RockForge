@@ -1326,6 +1326,80 @@ def test_detect_tuning_rejected_for_non_gp(client: TestClient) -> None:
     assert r.status_code == 422
 
 
+def test_export_arrangement_gp_generates_a_playable_file(client: TestClient, tmp_path) -> None:
+    """The whole point: what RockForge shows — including the note editor's edits
+    and the corrected timeline — comes out as a real Guitar Pro file. Checked by
+    reading it back with our OWN importer, the only verification available here
+    (no Guitar Pro in CI)."""
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.domain.arrangement import Arrangement, ArrangementKind, SongMetadata
+    from rockforge.domain.music import Beat, TabNote, TempoMap, Tuning
+    from rockforge.infrastructure.db.models import JobStatus
+    from rockforge.infrastructure.gpimport.parser import parse_gp_track
+    from rockforge.infrastructure.rsxml.writer import write_arrangement_xml
+
+    job = _create_job(client)
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+    beats = tuple(
+        Beat(time=i * 0.5, measure=(i // 4) + 1 if i % 4 == 0 else -1) for i in range(17)
+    )
+    notes = [TabNote(string=i % 6, fret=(i % 5) + 1, time=i * 0.5, sustain=0.3) for i in range(12)]
+    write_arrangement_xml(
+        Arrangement(
+            kind=ArrangementKind.COMBINED,
+            metadata=SongMetadata(title="T", artist="A", song_length=8.0),
+            tuning=Tuning(midi=(38, 45, 50, 55, 59, 64)),
+            tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+            notes=notes,
+        ),
+        bundle / "arrangement_combined.xml",
+    )
+    with app_module._session_factory() as session:
+        db_job = session.get(app_module.Job, job["id"])
+        db_job.status = JobStatus.COMPLETED
+        db_job.bundle_dir = str(bundle)
+        db_job.source_type = "gp"
+        session.commit()
+
+    r = client.post(f"/jobs/{job['id']}/export-arrangement-gp", params={"arrangement": "Combined"})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["notes_written"] == 12
+    # The single-track trade-off is stated on every export, not only on failure.
+    assert any("pista" in w for w in body["warnings"])
+
+    dl = client.get(f"/jobs/{job['id']}/corrected-gp")
+    assert dl.status_code == 200
+    out = tmp_path / "got.gp5"
+    out.write_bytes(dl.content)
+    parsed = parse_gp_track(out, 0)
+    assert len(parsed.notes) == 12
+    assert parsed.tuning.midi == (38, 45, 50, 55, 59, 64), "the tuning must survive"
+    for original, got in zip(notes, parsed.notes, strict=True):
+        assert got.time == pytest.approx(original.time, abs=1e-3)
+        assert (got.string, got.fret) == (original.string, original.fret)
+
+
+def test_export_arrangement_gp_rejects_an_unknown_arrangement(
+    client: TestClient, tmp_path
+) -> None:
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.infrastructure.db.models import JobStatus
+
+    job = _create_job(client)
+    bundle = tmp_path / "b2"
+    bundle.mkdir()
+    with app_module._session_factory() as session:
+        db_job = session.get(app_module.Job, job["id"])
+        db_job.status = JobStatus.COMPLETED
+        db_job.bundle_dir = str(bundle)
+        db_job.source_type = "gp"
+        session.commit()
+    r = client.post(f"/jobs/{job['id']}/export-arrangement-gp", params={"arrangement": "Lead"})
+    assert r.status_code == 404
+
+
 def test_committed_note_edits_survive_an_unrelated_rebuild(
     client: TestClient, tmp_path
 ) -> None:

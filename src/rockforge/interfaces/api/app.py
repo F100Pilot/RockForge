@@ -525,6 +525,19 @@ class ExportGpOut(BaseModel):
     warnings: list[str]
 
 
+class ExportArrangementGpOut(BaseModel):
+    """Report of a generated Guitar Pro file — the file is fetched separately."""
+
+    filename: str
+    arrangement: str
+    measures: int
+    notes_written: int
+    notes_dropped: int
+    quantized: int
+    max_shift_ms: float
+    warnings: list[str]
+
+
 class DetectTempoIn(BaseModel):
     from_s: Finite = 0.0  # recording time to start measuring the local tempo from
     # The chart's tempo AS CURRENTLY DISPLAYED at that point (the viewer's live
@@ -1663,9 +1676,67 @@ def export_gp(job_id: str, payload: ExportGpIn) -> ExportGpOut:
     )
 
 
+@app.post("/jobs/{job_id}/export-arrangement-gp", response_model=ExportArrangementGpOut)
+def export_arrangement_gp(job_id: str, arrangement: str) -> ExportArrangementGpOut:
+    """Generate a NEW Guitar Pro file from one built arrangement.
+
+    The companion to ``/export-gp``, which patches tempo into a copy of the
+    user's own file. This one writes what RockForge holds — so the in-app note
+    edits and the corrected timeline come out as a real score — at the cost of
+    carrying only this arrangement: the original's other tracks and formatting
+    are not in it, which the report states every time. Fetch the file from
+    ``GET /jobs/{id}/corrected-gp``.
+    """
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None or job.status is not JobStatus.COMPLETED or not job.bundle_dir:
+            raise HTTPException(404, "arrangements not available")
+        if job.source_type != "gp":
+            raise HTTPException(422, "Guitar Pro export only applies to Guitar Pro jobs")
+        bundle = Path(job.bundle_dir)
+
+    from rockforge.domain.errors import IngestionError
+    from rockforge.infrastructure.gpexport.arrangement_writer import write_arrangement_gp5
+    from rockforge.infrastructure.rsxml.reader import read_arrangement_xml
+
+    path = bundle / f"arrangement_{arrangement.lower()}.xml"
+    if not path.is_file():
+        raise HTTPException(404, f"no built arrangement named {arrangement!r}")
+    try:
+        arr = read_arrangement_xml(path)
+    except (OSError, ValueError) as exc:
+        raise HTTPException(422, f"could not read the built arrangement: {exc}") from exc
+
+    out_dir = settings.work_dir / job_id
+    dst = out_dir / "corrected.gp5"
+    try:
+        report = write_arrangement_gp5(arr, dst, track_name=arrangement)
+    except IngestionError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is not None:
+            job.params = {**dict(job.params or {}), "corrected_gp": dst.name}
+            session.commit()
+    return ExportArrangementGpOut(
+        filename=dst.name,
+        arrangement=arrangement,
+        measures=report.measures,
+        notes_written=report.notes_written,
+        notes_dropped=report.notes_dropped,
+        quantized=report.quantized,
+        max_shift_ms=round(report.max_shift_s * 1000, 1),
+        warnings=report.warnings,
+    )
+
+
 @app.get("/jobs/{job_id}/corrected-gp")
 def get_corrected_gp(job_id: str) -> FileResponse:
-    """Download the corrected Guitar Pro file written by ``/export-gp``."""
+    """Download the last Guitar Pro file written by ``/export-gp`` (tempo
+    patched into a copy of the user's own file) or by
+    ``/export-arrangement-gp`` (a new file carrying one built arrangement).
+    Both record their own filename, so the most recent export is served."""
     with _session_factory() as session:
         job = session.get(Job, job_id)
         if job is None:

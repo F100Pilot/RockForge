@@ -2052,6 +2052,38 @@ reloadGpInput.addEventListener('change', async () => {
 // exportable. A jump — a constant shift of the whole passage — cannot be
 // expressed as a BPM change (it would need a bar inserted or removed), so it
 // stays a RockForge-side correction.
+// Generate a NEW Guitar Pro file from the built arrangement — the note editor's
+// edits and the corrected timeline included. The trade against the tempo-only
+// export above (which patches a copy of the user's own file) is that this one
+// carries ONE track: the report repeats that every time, not just on failure.
+document.getElementById('exportArrGpBtn').addEventListener('click', async () => {
+  if (!selectedJob) return;
+  const a = arrangements[currentArr];
+  if (!a) { toast('abre um arranjo primeiro'); return; }
+  const btn = document.getElementById('exportArrGpBtn');
+  btn.disabled = true;
+  try {
+    const b = await getJSON(
+      `/jobs/${selectedJob.id}/export-arrangement-gp?arrangement=${encodeURIComponent(a.kind)}`,
+      { method: 'POST' });
+    const notes = [`<b>${b.notes_written} nota(s)</b> em ${b.measures} compasso(s)`];
+    if (b.quantized) notes.push(`${b.quantized} ajustada(s) à grelha (máx ${b.max_shift_ms} ms)`);
+    if (b.notes_dropped) notes.push(`${b.notes_dropped} fora dos compassos, não escrita(s)`);
+    document.getElementById('exportGpInfo').innerHTML =
+      `${notes.join(' — ')} em <code>${esc(b.filename)}</code>. ` +
+      esc(b.warnings.join(' '));
+    const link = document.createElement('a');
+    link.href = `/jobs/${selectedJob.id}/corrected-gp`;
+    link.download = b.filename;
+    link.click();
+    toast(`GP gerado: ${b.notes_written} nota(s).`, 'ok');
+  } catch (err) {
+    toast(`falha ao gerar o GP: ${err.message}`);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
 document.getElementById('exportGpBtn').addEventListener('click', async () => {
   if (!selectedJob) return;
   const a = arrangements[currentArr];

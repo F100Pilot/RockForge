@@ -209,6 +209,69 @@ been opened in Guitar Pro itself. The `.gp` ZIP-surgery route in particular is
 sound in theory (it is exactly what alphaTab's `Gp7Exporter` builds) but needs a
 human to confirm against a real install.
 
+### Exporting the EDITED chart as a new GP file (`/export-arrangement-gp`)
+
+`/export-gp` above only ever writes **tempo** into a copy of the user's own
+file, so the note editor's edits (and any note added/removed in the browser)
+had no way back into Guitar Pro at all. `infrastructure/gpexport/
+arrangement_writer.py` closes that: `write_arrangement_gp5(arrangement, dst)`
+generates a **brand-new GP5** from what RockForge actually holds — notes,
+frets, techniques, tuning, section markers and the corrected beat grid.
+
+**It reads the BUILT XML, not the Guitar Pro source.** `infrastructure/rsxml/
+reader.py`'s `read_arrangement_xml` is the partial inverse of `writer.py`: it
+recovers tuning, ebeats, notes-with-techniques and sections — everything the
+exporter needs — and deliberately NOT phrases/DD levels/anchors/tones, which
+are derived data with no GP counterpart. Reading the built file is the whole
+point: it already carries `tempo_scale`, every `sync_anchor_stages` round and
+every `note_overrides` patch, so what comes out is the chart as RockForge
+plays it. (`find("tuning") or fallback` is a trap here — an ElementTree
+element with no children is **falsy**, and `<tuning>` has only attributes, so
+the truth test threw the real tuning away and every export came back in
+standard E. Use `is None`.)
+
+**The two honest costs, stated on every export, not only on failure:**
+- **One track.** A generated file cannot carry the user's other tracks,
+  formatting or anything else from the original — it is this arrangement
+  alone. That is why `/export-gp` still exists: use it when only the tempo is
+  wrong and the original file must survive intact.
+- **Quantization.** Guitar Pro stores *notated rhythm*, not absolute seconds,
+  so an onset that falls between grid positions has to move. `_quantize`
+  snaps to the measure grid and the report returns `quantized` +
+  `max_shift_s`; the UI shows both. Silently re-timing notes into a score
+  that looks authoritative but plays differently would be the worst outcome
+  here. `_split_ticks` decomposes an arbitrary span into notatable durations
+  (`Duration.fromTime` raises on anything it cannot represent).
+
+PyGuitarPro details that were measured and will bite anyone editing this:
+`MeasureHeader.start` does **not** auto-accumulate — each header's start tick
+must be set explicitly, or the score drifts (166.7 ms on the first test song);
+`MeasureHeader` has no `tempo` field at all, so a per-measure tempo is a
+`MixTableChange` on the measure's first beat, same as `tempo_writer`; string
+numbering is 1 = highest pitch.
+
+`POST /jobs/{id}/export-arrangement-gp?arrangement=<Kind>` writes
+`work_dir/<job>/corrected.gp5` and records it in `params["corrected_gp"]`, so
+the existing `GET /jobs/{id}/corrected-gp` serves it — whichever export ran
+last wins, each recording its own filename. Wired to the sync panel's **"🎸
+Exportar GP com as notas editadas"**, beside the tempo-only button.
+Guarded by `test_gp_arrangement_writer.py` (notes/times/strings/frets,
+techniques, chords-as-one-beat, tuning/metadata/sections, a mid-song tempo
+change, the reported quantization, the always-present single-track warning,
+and an empty beat grid refused) and `test_export_arrangement_gp_*` in
+`test_api.py`. Same **unverified-by-design** caveat as above: round-tripped
+through our own importer, never opened in Guitar Pro itself.
+
+### Clearing note edits (`🧹 Limpar edições`)
+
+The companion to the seeding fix in the note-editor section: once committed
+edits are seeded back into the viewer, discarding them has to be an explicit
+action rather than a side effect of reopening the job. "🧹 Limpar edições"
+drops the current arrangement's `note_overrides`, "🧹 Limpar em todas" drops
+every arrangement's; both send the smaller dict on the next rebuild, which
+genuinely removes them. `updateNoteEditsInfo` shows the per-arrangement count
+and disables both buttons when there is nothing to clear.
+
 ### The recommended workflow: "Corrigir daqui" (`newbeat` mode, `/detect-tempo`)
 
 This is the DEFAULT sync mode (`syncMode = 'newbeat'`), and it is the one the
