@@ -42,7 +42,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from rockforge.application.ports import VocalEvent
-from rockforge.domain.arrangement import Arrangement, Section
+from rockforge.domain.arrangement import Arrangement, Section, number_sections
 from rockforge.domain.music import TabNote, Technique, high_density_flags
 from rockforge.infrastructure.rsxml.vocals import VOCAL_NOTE
 
@@ -1236,13 +1236,34 @@ def _build_sng_notes(
     return sng_notes
 
 
+# The SNG SECTION name for a structural phrase. A DLC Builder build keeps the
+# COUNT phrase but gives it NO section at all (19 sections over 20 phrase
+# iterations, starting at iteration 1), and names the END phrase's section
+# "noguitar" — the same closer the XML writer already appends. The PHRASE keeps
+# its structural name either way; only the section list differs.
+_NO_SECTION_PHRASE_NAMES = frozenset({"COUNT"})
+_SECTION_CLOSER_NAME = "noguitar"
+_CLOSER_PHRASE_NAMES = frozenset({"END"})
+
+
 def _build_sng_sections(
     sections_src: list[Section], ends: list[float], phrase_iterations: list[SngPhraseIteration]
 ) -> list[SngSection]:
-    sections: list[SngSection] = []
     pi_starts = [pi.start_time for pi in phrase_iterations]
+    named: list[Section] = []
+    spans: list[tuple[float, float]] = []
     for sec, end in zip(sections_src, ends, strict=True):
-        start_pi = _find_phrase_iteration(phrase_iterations, sec.start_time, pi_starts)
+        if sec.name in _NO_SECTION_PHRASE_NAMES:
+            continue
+        name = _SECTION_CLOSER_NAME if sec.name in _CLOSER_PHRASE_NAMES else sec.name
+        named.append(replace(sec, name=name))
+        spans.append((sec.start_time, end))
+
+    # Per-NAME ordinals, not list indices — see domain.number_sections.
+    numbered, _counts = number_sections(named)
+    sections: list[SngSection] = []
+    for sec, (start, end) in zip(numbered, spans, strict=True):
+        start_pi = _find_phrase_iteration(phrase_iterations, start, pi_starts)
         end_pi = (
             _find_phrase_iteration(phrase_iterations, end - 0.001, pi_starts)
             if end > 0 else start_pi
@@ -1250,12 +1271,32 @@ def _build_sng_sections(
         sections.append(SngSection(
             name=sec.name,
             number=sec.number,
-            start_time=sec.start_time,
+            start_time=start,
             end_time=end,
             start_phrase_iteration_id=start_pi,
             end_phrase_iteration_id=end_pi,
         ))
     return sections
+
+
+def renumber_sections_across(models: Sequence[SngModel]) -> list[SngModel]:
+    """Continue each section NAME's numbering across a song's arrangements.
+
+    A DLC Builder build numbers sections once over the whole project rather
+    than per arrangement: its Lead riffs run 1-17 and its Rhythm riffs continue
+    18-34 (noguitars 1-2 then 3-4). Pure: returns new models, in the order
+    given, so the packer can apply it before both the manifests and the .sng
+    payloads are derived from them and the two can never disagree.
+    """
+    counts: dict[str, int] = {}
+    out: list[SngModel] = []
+    for model in models:
+        plain = [Section(name=s.name, start_time=s.start_time) for s in model.sections]
+        numbered, counts = number_sections(plain, counts)
+        out.append(replace(model, sections=[
+            replace(s, number=n.number) for s, n in zip(model.sections, numbered, strict=True)
+        ]))
+    return out
 
 
 def _apply_section_string_masks(

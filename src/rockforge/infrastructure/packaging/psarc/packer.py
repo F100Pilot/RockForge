@@ -229,10 +229,14 @@ class NativePsarcPacker:
         # full note list — not cheap) and reuse it for both the manifest's
         # note/phrase counts AND the actual .sng payload below, instead of
         # compiling the same arrangement twice.
-        sng_models = [
+        # Section numbers continue across the song's arrangements, as a DLC
+        # Builder build does — applied here, before BOTH the manifests and the
+        # .sng payloads are derived from these models, so the two can never
+        # disagree about what "Riff 18" is.
+        sng_models = sng.renumber_sections_across([
             sng.from_arrangement(arr, dynamic_difficulty=dynamic_difficulty)
             for arr in arrangements
-        ]
+        ])
 
         # Manifests (+ appid/toolkit) and album art. Placeholder art is always
         # shipped so the AlbumArt URN resolves; a real cover is DXT1-encoded.

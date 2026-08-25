@@ -174,9 +174,11 @@ def test_section_overrides_replace_gp_parsed_sections_on_every_arrangement(
     for name in ("arrangement_lead.xml", "arrangement_rhythm.xml"):
         xml_path = next(p for p in result.packaging.xml_paths if p.name == name)
         rows = _section_rows(xml_path)
-        # sorted by time, renumbered 1-based, plus the writer's own trailing
+        # Sorted by time; the number is an ordinal WITHIN each name, so the
+        # first Solo is "Solo 1" — it used to be numbered by list position, so
+        # an Intro before it made it "Solo 2". Plus the writer's own trailing
         # "noguitar" end sentinel (always appended, untouched by the override).
-        assert rows[:-1] == [("Intro", 1, pytest.approx(0.5)), ("Solo", 2, pytest.approx(3.0))]
+        assert rows[:-1] == [("Intro", 1, pytest.approx(0.5)), ("Solo", 1, pytest.approx(3.0))]
         assert rows[-1][0] == "noguitar"
 
 

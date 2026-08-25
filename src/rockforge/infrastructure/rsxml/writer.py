@@ -12,7 +12,7 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-from rockforge.domain.arrangement import Arrangement, ArrangementKind
+from rockforge.domain.arrangement import Arrangement, ArrangementKind, Section, number_sections
 from rockforge.domain.music import TabNote, Technique, high_density_flags
 
 CHORD_EPSILON_S = 0.03  # notes starting within 30 ms form a chord (matches fret mapper)
@@ -337,16 +337,20 @@ def render_arrangement(arr: Arrangement) -> ET.Element:
 
     # Sections must cover the song and end with the conventional "noguitar"
     # closer at the END phrase time (Riff Repeater navigation + song-end cue).
-    section_rows: list[tuple[str, int, float]] = [
-        (s.name, s.number, s.start_time) for s in arr.sections if s.start_time < end_time
-    ]
+    # Numbers are PER NAME, 1-based (domain.number_sections) — the same helper
+    # the SNG path uses, so the two can't drift. Renumbering here also fixes the
+    # closer: it was hard-coded to 1 and collided with a real "noguitar" section
+    # of the same number.
+    section_rows = [s for s in arr.sections if s.start_time < end_time]
     if not section_rows:
-        section_rows.append(("riff", 1, default_t))
-    section_rows.append(("noguitar", 1, end_time))
-    sections = ET.SubElement(song, "sections", count=str(len(section_rows)))
-    for name, number, start_time in section_rows:
+        section_rows = [Section(name="riff", start_time=default_t)]
+    section_rows.append(Section(name="noguitar", start_time=end_time))
+    numbered, _counts = number_sections(section_rows)
+    sections = ET.SubElement(song, "sections", count=str(len(numbered)))
+    for sec in numbered:
         ET.SubElement(
-            sections, "section", name=name, number=str(number), startTime=_fmt(start_time)
+            sections, "section", name=sec.name, number=str(sec.number),
+            startTime=_fmt(sec.start_time),
         )
 
     ET.SubElement(song, "events", count="0")

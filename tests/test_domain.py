@@ -186,3 +186,40 @@ def test_is_composite_bend_only_for_varying_strength() -> None:
     assert is_composite_bend(  # bend-and-release
         [BendPoint(0.0, 0.0), BendPoint(0.5, 1.0), BendPoint(1.0, 0.0)]
     )
+
+
+def test_number_sections_counts_per_name_not_by_position() -> None:
+    """Rocksmith shows a section as "<name> <number>", so the number is an
+    ordinal WITHIN that name. Both callers used to pass the section's INDEX,
+    which with COUNT/END and several names mixed in produced duplicates and
+    gaps — a real build shipped two consecutive sections both numbered 2."""
+    from rockforge.domain.arrangement import Section, number_sections
+
+    src = [
+        Section(name="COUNT", start_time=0.0),
+        Section(name="riff", start_time=1.0),
+        Section(name="riff", start_time=2.0),
+        Section(name="noguitar", start_time=3.0),
+        Section(name="riff", start_time=4.0),
+    ]
+    numbered, counts = number_sections(src)
+    assert [(s.name, s.number) for s in numbered] == [
+        ("COUNT", 1), ("riff", 1), ("riff", 2), ("noguitar", 1), ("riff", 3),
+    ]
+    assert counts["riff"] == 3
+
+    # The tally carries forward, so a caller can continue the numbering across
+    # arrangements — which is what a DLC Builder build does.
+    more, counts = number_sections(
+        [Section(name="riff", start_time=9.0), Section(name="noguitar", start_time=10.0)],
+        counts,
+    )
+    assert [(s.name, s.number) for s in more] == [("riff", 4), ("noguitar", 2)]
+
+    # Names are matched case-insensitively: one counter per section, not per
+    # spelling.
+    mixed, _ = number_sections(
+        [Section(name="Verse", start_time=0.0), Section(name="verse", start_time=1.0)]
+    )
+    assert [s.number for s in mixed] == [1, 2]
+    assert number_sections([]) == ([], {})

@@ -434,3 +434,86 @@ def test_last_conversion_is_present_and_stable_across_rebuilds() -> None:
     b = list(second["Entries"].values())[0]["Attributes"]
     assert a["LastConversionDateTime"] == b["LastConversionDateTime"]
     assert a["LastConversionDateTime"]
+
+
+def _auto_segmented_arrangement(kind: ArrangementKind = ArrangementKind.LEAD) -> Arrangement:
+    """No section markers, so the pipeline auto-segments into COUNT / riff… /
+    END — exactly the reference song's shape (a GP with no markers)."""
+    beats = tuple(Beat(time=round(i * 0.5, 4), measure=i // 4 + 1 if i % 4 == 0 else -1)
+                  for i in range(320))
+    notes = [
+        TabNote(string=i % 6, fret=(i % 9) + 1, time=round(8.0 + i * 0.4, 4), sustain=0.15)
+        for i in range(240)
+    ]
+    return Arrangement(
+        kind=kind,
+        metadata=SongMetadata(title="S", artist="A", song_length=160.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+        notes=notes,
+    )
+
+
+def test_sections_match_the_reference_shape() -> None:
+    """Three divergences from a DLC Builder build of the same song, all fixed
+    together because they are all about the SECTION list:
+
+    - the COUNT phrase gets NO section (the reference has 19 sections over 20
+      phrase iterations, starting at iteration 1) — the phrase itself stays;
+    - the END phrase's section is named "noguitar", the same closer the XML
+      writer already appends;
+    - numbers are per NAME, so they no longer repeat (we shipped two
+      consecutive sections both numbered 2).
+    """
+    from rockforge.infrastructure.packaging.psarc.sng import from_arrangement
+
+    arr = _auto_segmented_arrangement()
+    model = from_arrangement(arr, dynamic_difficulty=True)
+    assert [p.name for p in model.phrases][0] == "COUNT", "the COUNT PHRASE stays"
+
+    names = [s.name for s in model.sections]
+    assert "COUNT" not in names, "the COUNT phrase must have no section"
+    assert "END" not in names, "the END phrase's section is the noguitar closer"
+    assert names[-1] == "noguitar"
+    pairs = [(s.name, s.number) for s in model.sections]
+    assert len(set(pairs)) == len(pairs), f"duplicate (name, number): {pairs}"
+    riffs = [n for name, n in pairs if name == "riff"]
+    assert riffs == list(range(1, len(riffs) + 1)), "per-name ordinals, 1-based, in order"
+
+
+def test_section_numbers_continue_across_arrangements() -> None:
+    """A DLC Builder build numbers sections once over the whole project, not per
+    arrangement: its Lead riffs run 1-17 and its Rhythm riffs continue 18-34
+    (noguitars 1-2 then 3-4). Applied in the packer before both the manifests
+    and the .sng payloads are derived, so the two can never disagree."""
+    from rockforge.infrastructure.packaging.psarc.sng import (
+        from_arrangement,
+        renumber_sections_across,
+    )
+
+    lead = _auto_segmented_arrangement()
+    rhythm = _auto_segmented_arrangement(ArrangementKind.RHYTHM)
+    models = renumber_sections_across([from_arrangement(a) for a in (lead, rhythm)])
+    lead_riffs = [s.number for s in models[0].sections if s.name == "riff"]
+    rhythm_riffs = [s.number for s in models[1].sections if s.name == "riff"]
+    assert lead_riffs and rhythm_riffs
+    assert rhythm_riffs[0] == lead_riffs[-1] + 1
+    assert lead_riffs + rhythm_riffs == list(range(1, len(lead_riffs) + len(rhythm_riffs) + 1))
+    # The closer's own counter continues too, independently of the riffs'.
+    assert [s.number for s in models[0].sections if s.name == "noguitar"] == [1]
+    assert [s.number for s in models[1].sections if s.name == "noguitar"] == [2]
+
+
+def test_section_ui_name_is_a_localisation_token_when_known() -> None:
+    """The game resolves a section's display name from a localisation token
+    ("$[34298] Riff [1]"), not the raw string we used to write. Only the two ids
+    a reference build actually contains are known; any other name falls back to
+    the raw string, exactly as before, so it is no worse off."""
+    from rockforge.infrastructure.packaging.psarc.sng import from_arrangement
+
+    arr = _auto_segmented_arrangement()
+    stats = arrangement_stats(arr, model=from_arrangement(arr))
+    by_name = {s["Name"]: s["UIName"] for s in stats["sections"]}  # type: ignore[union-attr]
+    assert by_name["riff"] == "$[34298] Riff [1]"
+    assert by_name["noguitar"] == "$[6091] No Guitar [1]"
+    assert manifest._section_ui_name("Chorus") == "Chorus", "unknown names fall back"

@@ -573,10 +573,15 @@ class GenerateFromGpUseCase:
         # EVERY arrangement (job-level, like tone_changes — no per-arrangement
         # warp applied to the override times, which are already in bundle
         # clock). None keeps each arrangement's own GP-authored sections.
+        # Sorted by time; the NUMBER is assigned downstream by
+        # domain.number_sections (per name, 1-based) in both the XML writer and
+        # the SNG builder, so it is left at the default here rather than being
+        # set by position — which numbered the first Solo "2" just because an
+        # Intro preceded it.
         override_sections = (
             [
-                Section(name=s.name, start_time=s.start_time, number=i + 1)
-                for i, s in enumerate(sorted(spec.section_overrides, key=lambda s: s.start_time))
+                Section(name=s.name, start_time=s.start_time)
+                for s in sorted(spec.section_overrides, key=lambda s: s.start_time)
             ]
             if spec.section_overrides is not None
             else None
@@ -585,10 +590,8 @@ class GenerateFromGpUseCase:
         def _sections_for(p: ParsedGpTrack) -> list[Section]:
             if override_sections is not None:
                 return override_sections
-            return [
-                Section(name=s.name, start_time=s.start_time, number=i + 1)
-                for i, s in enumerate(p.sections)
-            ]
+            # Same as above: the number is assigned per name downstream.
+            return [Section(name=s.name, start_time=s.start_time) for s in p.sections]
 
         arrangements = [
             Arrangement(

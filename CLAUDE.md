@@ -1705,6 +1705,7 @@ defects):
   | E | `SongDiffEasy`/`Med`/`Hard` one value written three times | **fixed** (formula below) |
   | F | note `Hash` always 0, `NoteFlags` never sets its bit | **not fixable** — see below |
   | G | manifest `LastConversionDateTime` missing entirely | **fixed** (constant) |
+  | H | raw `UIName`, a `COUNT` section, repeated section `Number`s | **fixed** |
 
   Two candidates were **eliminated** by that same diff and must not be
   re-investigated. The note `Hash` is NOT a stable cross-level note identity —
@@ -1810,15 +1811,43 @@ defects):
   in BOTH files (the game is not reading progress under one key and saving it
   under another), and `ArrangementProperties` is byte-identical between the two
   builds. `DynamicVisualDensity` is likewise the same fixed 20-element constant
-  in both. What is still different and unexplored: our `Sections` carry the raw
-  name as `UIName` where the reference writes a localisation token
-  (`$[34298] Riff [1]`), we emit a section for the `COUNT` phrase where the
-  reference emits none, and our section `Number` repeats (two sections numbered
-  2 in a row) where the reference's increments per name.
+  in both. The `Sections` divergences this left open are now fixed — H below.
 
-  **Still unverified in game.** B, C, D, E and G are confirmed divergences from
-  a build known to work, and each is independently a defect; none is PROVEN to
-  be the cause. The `.psarc` the user tested is byte-identical to their
+  **H — the section list.** Three divergences, all fixed together because they
+  are all about the same list, and all read off the reference:
+  - **`UIName` is a localisation token**, not the raw string: the reference
+    writes `$[34298] Riff [1]` / `$[6091] No Guitar [1]` where we wrote `riff` /
+    `noguitar`. Only those two ids are known (the full name→id table is a game
+    resource we do not have), so `_SECTION_UI_NAMES` carries exactly them and
+    every other name falls back to the raw string — i.e. no worse than before.
+    The trailing `[1]` is part of the token, NOT the number (the reference's
+    "Riff 17" still ends `[1]`).
+  - **The `COUNT` phrase gets no section.** The reference has 19 sections over
+    20 phrase iterations, starting at iteration 1; the COUNT *phrase* stays. Its
+    END phrase's section is named `noguitar`, the same closer the XML writer
+    already appends.
+  - **`Number` is an ordinal per NAME, not the list index.** Both callers passed
+    the index, so with COUNT/END and several names mixed in the numbers
+    duplicated and skipped — the shipped build had two consecutive sections both
+    numbered 2, naming two different passages the same thing in Riff Repeater.
+    `domain/arrangement.py`'s `number_sections` is the single pure
+    implementation, used by BOTH the SNG builder and the XML writer so the two
+    cannot drift, and it carries a running tally so the packer's
+    `renumber_sections_across` can continue the numbering across the song's
+    arrangements — which is what the reference does (Lead riffs 1-17, Rhythm
+    riffs 18-34; noguitars 1-2 then 3-4). Applied before both the manifests and
+    the `.sng` payloads are derived, so they can never disagree about what
+    "Riff 18" is. `gp_pipeline` no longer numbers `section_overrides` by
+    position either (it made the first Solo "Solo 2" just because an Intro
+    preceded it). Guarded by
+    `test_number_sections_counts_per_name_not_by_position`,
+    `test_sections_match_the_reference_shape`,
+    `test_section_numbers_continue_across_arrangements` and
+    `test_section_ui_name_is_a_localisation_token_when_known`.
+
+  **Still unverified in game.** B, C, D, E, G and H are confirmed divergences
+  from a build known to work, and each is independently a defect; none is
+  PROVEN to be the cause. The `.psarc` the user tested is byte-identical to their
   2026-08-24 one (same md5), so it predates even fix A — a rebuild on current
   `main` is what the next round of evidence has to come from.
 

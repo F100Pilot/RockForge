@@ -248,6 +248,25 @@ def _arrangement_properties(arrangement: Arrangement) -> dict[str, int]:
     }
 
 
+# Rocksmith shows a section's name from a LOCALISATION token, not the raw
+# string: a DLC Builder build writes "$[34298] Riff [1]" / "$[6091] No Guitar
+# [1]" where we wrote "riff" / "noguitar". Only these two ids are known — they
+# are the ones a reference build of the user's song actually contains, and the
+# full name->id table is a game resource we do not have. Every other name falls
+# back to the raw string, which is what we shipped for all of them before, so an
+# unknown name is no worse off than it was. The trailing "[1]" is a fixed part
+# of the token, NOT the section number (the reference's "Riff 17" still ends
+# "[1]").
+_SECTION_UI_NAMES = {
+    "riff": "$[34298] Riff [1]",
+    "noguitar": "$[6091] No Guitar [1]",
+}
+
+
+def _section_ui_name(name: str) -> str:
+    return _SECTION_UI_NAMES.get(name.casefold(), name)
+
+
 def arrangement_stats(
     arrangement: Arrangement,
     *,
@@ -314,7 +333,7 @@ def arrangement_stats(
     sections = [
         {
             "Name": s.name,
-            "UIName": s.name,
+            "UIName": _section_ui_name(s.name),
             "Number": s.number,
             "StartTime": round(s.start_time, 3),
             "EndTime": round(s.end_time, 3),

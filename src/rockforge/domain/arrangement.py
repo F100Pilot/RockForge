@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field, replace
 from enum import Enum
 
 from rockforge.domain.music import TabNote, TempoMap, Tuning
@@ -47,6 +48,32 @@ class Section:
     name: str
     start_time: float
     number: int = 1
+
+
+def number_sections(
+    sections: Sequence[Section], counts: Mapping[str, int] | None = None
+) -> tuple[list[Section], dict[str, int]]:
+    """Number sections PER NAME, 1-based, in the order given.
+
+    Rocksmith shows a section as "<name> <number>" ("Riff 3"), so the number is
+    an ordinal WITHIN that name — not the section's index in the list, which is
+    what both callers used to pass. With COUNT/END and several names mixed in,
+    an index produced duplicates and gaps (a real build shipped two consecutive
+    sections both numbered 2), naming two different passages the same thing.
+
+    ``counts`` carries a running tally in, and the updated tally comes back out,
+    so a caller can continue the numbering across several arrangements — which
+    is what a DLC Builder build does (its Lead riffs run 1-17 and its Rhythm
+    riffs continue 18-34, its noguitars 1-2 then 3-4). Names are matched
+    case-insensitively so "Verse"/"verse" share one counter.
+    """
+    tally = dict(counts or {})
+    out: list[Section] = []
+    for sec in sections:
+        key = sec.name.casefold()
+        tally[key] = tally.get(key, 0) + 1
+        out.append(replace(sec, number=tally[key]))
+    return out, tally
 
 
 @dataclass(frozen=True)
