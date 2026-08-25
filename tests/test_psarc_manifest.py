@@ -1,7 +1,10 @@
 import json
 
+import pytest
+
 from rockforge.domain.arrangement import Arrangement, ArrangementKind, SongMetadata
 from rockforge.domain.music import Beat, TabNote, Technique, TempoMap, Tuning
+from rockforge.infrastructure.packaging.psarc import manifest
 from rockforge.infrastructure.packaging.psarc.container import pack_entries, unpack
 from rockforge.infrastructure.packaging.psarc.manifest import (
     arrangement_asset_name,
@@ -305,3 +308,22 @@ def test_include_vocals_adds_vocals_manifest() -> None:
 
     hsan = json.loads(files["manifests/songs_dlc_mysong/songs_dlc_mysong.hsan"])
     assert len(hsan["Entries"]) == 2  # instrument + vocals
+
+
+def test_song_difficulty_easy_medium_hard_are_three_different_densities() -> None:
+    """They used to be ONE value written three times.
+
+    Byte-diffing a DLC Builder build of the same song gives the formula exactly:
+    each is that difficulty's note density scaled back up by how much of the
+    chart it shows — 4x NotesEasy, 2x NotesMedium, 1x NotesHard, each over
+    10 x songLength. On the reference (182/331/623 notes over 202.509 s) that
+    reproduces its 0.359490191 / 0.326899047 / 0.307640644 to the last digit,
+    where we wrote 0.307641 for all three.
+    """
+    stats = {"note_count": 623, "easy_count": 182, "medium_count": 331}
+    fields = manifest._difficulty_fields(stats, 202.509)
+    assert fields["SongDiffEasy"] == pytest.approx(0.359490191, abs=5e-7)
+    assert fields["SongDiffMed"] == pytest.approx(0.326899047, abs=5e-7)
+    assert fields["SongDiffHard"] == pytest.approx(0.307640644, abs=5e-7)
+    assert fields["SongDifficulty"] == fields["SongDiffHard"]
+    assert len({fields["SongDiffEasy"], fields["SongDiffMed"], fields["SongDiffHard"]}) == 3

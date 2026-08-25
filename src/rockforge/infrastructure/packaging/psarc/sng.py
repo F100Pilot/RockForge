@@ -1301,18 +1301,30 @@ def _build_difficulty_levels(
 
     def _level_notes(d: int) -> list[SngNote]:
         """The notes visible at difficulty ``d``: each iteration shows the
-        strongest-beat prefix scaled by ``d`` against its phrase's ceiling."""
+        strongest-beat prefix scaled by ``d`` against its phrase's ceiling, and
+        NOTHING once ``d`` passes that ceiling.
+
+        Dropping out above the ceiling is the reference's shape, not an
+        optimisation: byte-diffing a DLC Builder build of the same song, its top
+        level holds 126 of the song's 623 notes - only the two phrases whose own
+        ceiling is the song max - while every phrase that topped out earlier
+        contributes zero. Ours used to clamp (``min(d, pm)``) and therefore
+        repeat a saturated phrase's full content at every higher level, so
+        ``Levels[max]`` was the whole chart. The ramp itself was identical up to
+        each phrase's ceiling; what differed is that a phrase never disappeared,
+        leaving every phrase present at all 23 levels regardless of its declared
+        ``max_difficulty``.
+        """
         keep: set[int] = set()
         for pi_id, lst in enumerate(per_iter_notes):
             m = len(lst)
             if m == 0:
                 continue
             pm = phrase_max[phrase_iterations[pi_id].phrase_id]
-            if pm <= 0:
-                shown = m
-            else:
-                shown = round((min(d, pm) + 1) / (pm + 1) * m)
-                shown = max(0, min(m, shown))
+            if d > pm:
+                continue
+            # d <= pm here, so d == pm yields the phrase's full content.
+            shown = m if pm <= 0 else max(0, min(m, round((d + 1) / (pm + 1) * m)))
             keep.update(lst[:shown])
         return [sngn for i, sngn in enumerate(sng_notes) if i in keep]
 

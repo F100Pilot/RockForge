@@ -1505,3 +1505,66 @@ def test_phrase_names_are_unique_like_a_real_ddc() -> None:
     assert body == [f"p{i}" for i in range(len(body))], body
     # The SECTIONS keep their descriptive names — that is where they belong.
     assert {s.name for s in model.sections} & {"riff", "COUNT", "END"}
+
+
+def test_a_phrase_drops_out_of_levels_above_its_own_ceiling() -> None:
+    """A real DDC pass makes each phrase VANISH from every level above its own
+    ``max_difficulty`` — it does not repeat the saturated content upward.
+
+    Byte-diffing a DLC Builder build of the user's song against ours: its top
+    level holds 126 of the song's 623 notes (only the two phrases whose ceiling
+    is the song max), while ours held all 623 because ``_level_notes`` clamped
+    with ``min(d, pm)`` instead of dropping the phrase. The ramp UP to each
+    ceiling was already identical; what differed is that no phrase ever left,
+    so every phrase was present at all 23 levels regardless of its declared
+    ceiling.
+    """
+    beats = tuple(Beat(time=round(i * 0.5, 4), measure=i // 4 + 1 if i % 4 == 0 else -1)
+                  for i in range(160))
+    # Alternating dense/sparse spans, so the phrases get genuinely different
+    # ceilings and there is something to drop out.
+    notes: list[TabNote] = []
+    t, i = 0.0, 0
+    while t < 78.0:
+        step = 0.125 if (int(t) // 20) % 2 == 0 else 0.5
+        notes.append(TabNote(string=i % 6, fret=(i % 12) + 1, time=round(t, 4), sustain=0.1))
+        t += step
+        i += 1
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=80.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+        notes=notes,
+        sections=[Section(name=f"s{k}", start_time=round(k * 8.0, 3)) for k in range(10)],
+    )
+    model = from_arrangement(arr, dynamic_difficulty=True)
+    ceilings = [p.max_difficulty for p in model.phrases]
+    assert len(set(ceilings)) > 1, "the fixture must produce differing ceilings"
+
+    for d, level in enumerate(model.arrangements):
+        for note in level.notes:
+            phrase = model.phrase_iterations[note.phrase_iteration_id].phrase_id
+            assert d <= ceilings[phrase], (
+                f"level {d} carries a note of phrase {phrase}, whose ceiling is "
+                f"{ceilings[phrase]} — a saturated phrase must drop out, not repeat"
+            )
+
+    # Each phrase must still reach its FULL content exactly at its own ceiling:
+    # dropping out must not eat the top of the ramp.
+    top = model.arrangements[-1]
+    assert 0 < len(top.notes) < len(notes), (
+        "the top level should hold only the phrases whose ceiling is the song max"
+    )
+    for pi_id, pi in enumerate(model.phrase_iterations):
+        ceiling = ceilings[pi.phrase_id]
+        counts = [
+            sum(1 for n in lvl.notes if n.phrase_iteration_id == pi_id)
+            for lvl in model.arrangements
+        ]
+        if not any(counts):
+            continue
+        assert counts[ceiling] == max(counts), (
+            f"phrase iteration {pi_id} peaks at level {counts.index(max(counts))}, "
+            f"not at its ceiling {ceiling}"
+        )

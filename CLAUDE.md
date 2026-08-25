@@ -1653,11 +1653,10 @@ defects):
   NOT fixed and are candidates if it persists: the manifest `Techniques` map is
   `{}` (the reference fills `{level: {phraseIteration: [ids]}}` — a game-internal
   enum we have not mapped); the SNG note `Hash` is 0 and `NoteFlags`' numbered
-  bit is never set (the reference writes both); our `Levels` repeat a saturated
+  bit is never set (the reference writes both); our `Levels` REPEATED a saturated
   phrase's notes at every higher level instead of dropping it to zero once past
-  its ceiling (redundant, and only harmless if the game clamps per phrase — which
-  the reference's own shape implies it must, since its top level holds 126 of the
-  song's 623 notes); and the crowd/stage Events (`e2`/`E3`/`E13`/`D3`) are absent.
+  its ceiling (**since fixed** — see B below); and the crowd/stage Events
+  (`e2`/`E3`/`E13`/`D3`) are absent.
 
   **Phrase names are now unique (`p0`…`pN`) — the one SONG-SPECIFIC divergence
   found.** They used to be the section name repeated, and a GP with no section
@@ -1691,14 +1690,67 @@ defects):
   `MasterID_RDV` are byte-identical across rebuilds (the game is NOT seeing each
   build as a new song and losing its progress), and `DynamicVisualDensity` is a
   fixed 20-element constant in both files, unrelated to `MaxPhraseDifficulty`.
-  The experiment that would actually halve the search space is one only the user
-  can run: play the DLC Builder build of the SAME song and see whether ITS
-  difficulty ramps — if it does not, the cause is not in our file at all.
+  **The user ran the decisive experiment (2026-08-25): the DLC Builder build of
+  the SAME song DOES ramp.** So the cause IS in our file, and the search space
+  is halved. Byte-diffing that working build against our `.psarc` of the same
+  song (the method above) leaves exactly these differences, all confirmed:
+
+  | # | difference | status |
+  |---|---|---|
+  | A | 27 phrases all named `riff` vs `COUNT`/`p0`…`p16`/`NOGUITAR`/`END` | fixed (`_phrase_name`), unverified in game |
+  | B | a saturated phrase never left the levels above its ceiling | **fixed below** |
+  | C | manifest `Techniques` is `{}` vs 23 populated levels | open |
+  | D | SNG `Events` empty vs `e2`/`E3`/`E13`/`D3`/`E13` | open |
+  | E | `SongDiffEasy`/`Med`/`Hard` one value written three times | **fixed** (formula below) |
+  | F | note `Hash` always 0, `NoteFlags` never sets its bit | open |
+
+  Two candidates were **eliminated** by that same diff and must not be
+  re-investigated. The note `Hash` is NOT a stable cross-level note identity —
+  the same `(time, string, fret)` carries different hashes at different levels
+  in the reference (281 of 752 notes), and there are 1081 distinct hashes over
+  6018 note instances, so zeroing it cannot be collapsing a per-note identity
+  the DD engine relies on. And `NoteFlags`' set bit correlates with nothing
+  legible: not "new at this level", not chord membership, not first-in-phrase
+  (agreement 133/211) — so it cannot be reproduced without guessing, and
+  guessing a flag the game dereferences is how the earlier highway crashes
+  happened.
+
+  **B — a phrase now DROPS OUT of every level above its own ceiling.** This was
+  the largest structural difference. `_level_notes` clamped with `min(d, pm)`,
+  so once a phrase saturated it repeated its full content at every higher level
+  and `Levels[max]` was the entire chart; the reference's top level holds 126 of
+  its 623 notes — only the two phrases whose ceiling IS the song max — and every
+  phrase that topped out earlier contributes zero. The ramp UP to each ceiling
+  was already identical between the two files (verified per phrase: both reach
+  full content exactly AT the ceiling, never above it), so this changes nothing
+  a player sees below a phrase's ceiling; what it fixes is that no phrase ever
+  left, leaving all 29 present at all 23 levels regardless of their declared
+  `max_difficulty`. Anchors follow for free (`_build_level` already derives them
+  from that level's own notes), which reproduces the reference's declining
+  anchor counts too. Guarded by
+  `test_a_phrase_drops_out_of_levels_above_its_own_ceiling`, confirmed to fail
+  on the old `min(d, pm)`.
+
+  **E — the difficulty densities are three different values.** Each is that
+  difficulty's note density scaled back up by how much of the chart it shows:
+  `4 x NotesEasy`, `2 x NotesMedium`, `1 x NotesHard`, each over
+  `10 x songLength`. Derived from the reference and checked to the last digit
+  (182/331/623 notes over 202.509 s reproduces its 0.359490191 / 0.326899047 /
+  0.307640644, where we wrote 0.307641 three times). Guarded by
+  `test_song_difficulty_easy_medium_hard_are_three_different_densities`.
+
+  **Still unverified in game.** B and E are confirmed divergences from a build
+  known to work, and each is independently a defect; neither is PROVEN to be the
+  cause. The `.psarc` the user tested is byte-identical to their 2026-08-24 one
+  (same md5), so it predates even fix A — the next step is a rebuild on current
+  `main` before drawing any further conclusion. If it still does not ramp, C/D/F
+  are what remain, and C (`Techniques`, `{level: {phraseIteration: [ids]}}` — a
+  game-internal enum we have not mapped) is the largest of them.
 
   At level `d`, each iteration shows the strongest-beat prefix of its
   notes scaled by `d` against that phrase's ceiling (`_level_notes`, ranked by
-  `_note_tier` then time), so level 0 is the strongest beats and the top level is
-  the full chart. `phrase_iterations[].difficulty` is the `(round(max/4),
+  `_note_tier` then time), so level 0 is the strongest beats and a phrase's own
+  ceiling is where it shows its full content (and above which it drops out). `phrase_iterations[].difficulty` is the `(round(max/4),
   round(max/2), max)` Easy/Medium/Hard hero triple. Anchors are shared across
   levels (fret-hand windows are valid at any density), but **slide
   anchor-extensions are rebuilt per level from that level's own notes**

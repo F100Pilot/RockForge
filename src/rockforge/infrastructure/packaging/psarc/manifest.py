@@ -321,17 +321,30 @@ def _difficulty_fields(stats: dict[str, object], song_length: float) -> dict[str
     a normalised note-density estimate (a real DDC computes a richer value, but a
     non-zero density is what unlocks the skill-based start); ``EasyMastery`` /
     ``MediumMastery`` are the note-count ratios a real DLC Builder manifest
-    carries (verified: NotesEasy/Hard and NotesMedium/Hard)."""
+    carries (verified: NotesEasy/Hard and NotesMedium/Hard).
+
+    The Easy/Med/Hard trio are three DIFFERENT densities, not one value copied
+    three times (which is what this used to write). Byte-diffing a DLC Builder
+    build of the same song gives the formula exactly: each is the note density
+    of that difficulty scaled back up by how much of the chart it shows -
+    ``4 x NotesEasy``, ``2 x NotesMedium``, ``1 x NotesHard``, each over
+    ``10 x songLength``. On the reference (623/331/182 notes over 202.509 s)
+    that reproduces its 0.307640644 / 0.326899047 / 0.359490191 to the last
+    digit, where we wrote 0.307641 for all three.
+    """
     hard = int(stats["note_count"])  # type: ignore[call-overload]
     easy = int(stats["easy_count"])  # type: ignore[call-overload]
     medium = int(stats["medium_count"])  # type: ignore[call-overload]
     dur = song_length if song_length > 0 else 1.0
-    song_diff = round(min(0.95, (hard / dur) / 10.0), 6)
+
+    def _density(notes: int, scale: float) -> float:
+        return round(min(0.95, scale * notes / (10.0 * dur)), 6)
+
     return {
-        "SongDifficulty": song_diff,
-        "SongDiffEasy": song_diff,
-        "SongDiffMed": song_diff,
-        "SongDiffHard": song_diff,
+        "SongDifficulty": _density(hard, 1.0),
+        "SongDiffEasy": _density(easy, 4.0),
+        "SongDiffMed": _density(medium, 2.0),
+        "SongDiffHard": _density(hard, 1.0),
         "EasyMastery": round(easy / hard, 6) if hard else 0.0,
         "MediumMastery": round(medium / hard, 6) if hard else 0.0,
     }
