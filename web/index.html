@@ -693,6 +693,13 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
           <span id="clipboardInfo" class="meta"></span>
           <span class="meta">seleciona notas (Shift+clique), copia, e cola noutro ponto — ou noutra pista</span>
         </div>
+        <div class="anchor-row" style="margin-top:.3rem">
+          <span class="meta" style="font-weight:700;color:var(--text)">Edições de notas:</span>
+          <span id="noteEditsInfo" class="meta"></span>
+          <button type="button" id="clearNoteEdits" class="secondary" disabled title="Descartar as edições de notas desta pista">🧹 Limpar edições</button>
+          <button type="button" id="clearNoteEditsAll" class="secondary" disabled title="Descartar as edições de notas de TODAS as pistas">🧹 Limpar em todas</button>
+          <span class="meta">só tem efeito ao "Aplicar e reconstruir"</span>
+        </div>
         <div id="modeHelp" class="meta" style="margin-top:.25rem;padding:.35rem .5rem;background:#1c1e26;border-radius:6px;border-left:3px solid #a97bff"></div>
         <div class="anchor-row" style="margin-top:.3rem">
           <label class="check"><input type="checkbox" id="snapBeats" checked> Encaixar em:</label>
@@ -745,6 +752,7 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
 
         <div class="anchor-row" style="margin-top:.75rem">
           <button type="button" id="applyAll">Aplicar e reconstruir</button>
+          <span id="pendingChangesInfo" class="meta" style="color:var(--warn);font-weight:600"></span>
           <span class="meta"><b id="applyKind"></b></span>
           <label id="applyToAllLabel" class="check" style="margin-left:.8rem;display:none">
             <input type="checkbox" id="applyToAllChk"> Aplicar sync a todos

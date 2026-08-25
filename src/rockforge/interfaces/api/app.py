@@ -38,7 +38,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from rockforge import __version__
 from rockforge.config import settings
@@ -491,6 +491,12 @@ class ArrangementOut(BaseModel):
     # overrides), bundle-clock time — the writer's synthetic trailing
     # "noguitar" end sentinel is never included here.
     sections: list[SectionOut] = []
+    # The note-editor edits ALREADY COMMITTED for this arrangement (from
+    # params["note_overrides"]). The viewer seeds its pending list from these, so
+    # the always-send round-trip is lossless: it used to reset to {} on every job
+    # open and a rebuild for any unrelated reason (a tuning change, say) then
+    # sent {} and silently erased every note edit the user had applied.
+    note_overrides: list[NoteOverrideIn] = []
 
 
 class TempoCorrectionIn(BaseModel):
@@ -2099,6 +2105,22 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
     )
     arr_sync = job_params.get("arrangement_sync") or {}
 
+    raw_note_ov = job_params.get("note_overrides")
+    note_ov = raw_note_ov if isinstance(raw_note_ov, dict) else {}
+
+    def committed_note_overrides(kind: str) -> list[NoteOverrideIn]:
+        rows = note_ov.get(kind)
+        if not isinstance(rows, list):
+            return []
+        out_rows: list[NoteOverrideIn] = []
+        for row in rows:
+            if isinstance(row, dict):
+                try:
+                    out_rows.append(NoteOverrideIn(**row))
+                except ValidationError:  # a hand-edited params row; skip it
+                    continue
+        return out_rows
+
     def scale_for(kind: str) -> float:
         entry = arr_sync.get(kind) if isinstance(arr_sync, dict) else None
         if isinstance(entry, dict):
@@ -2195,6 +2217,7 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
                 bars=bars,
                 beats=beats,
                 sections=sections,
+                note_overrides=committed_note_overrides(kind),
             )
         )
     return out

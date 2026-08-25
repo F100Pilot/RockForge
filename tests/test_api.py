@@ -484,9 +484,20 @@ def test_arrangements_derives_chord_name(client: TestClient) -> None:
         db_job = session.get(app_module.Job, job["id"])
         db_job.status = JobStatus.COMPLETED
         db_job.bundle_dir = str(bundle)
+        db_job.params = {
+            **dict(db_job.params or {}),
+            "note_overrides": {"Combined": [{"time": 0.5, "string": 1, "fret": 9}]},
+        }
         session.commit()
 
     data = client.get(f"/jobs/{job['id']}/arrangements").json()
+    # The committed note edits come back per arrangement, so the viewer can seed
+    # its pending list from them instead of resetting to {} and erasing them on
+    # the next unrelated rebuild.
+    assert data[0]["note_overrides"] == [
+        {"time": 0.5, "string": 1, "fret": 9, "sustain": 0.0, "techniques": [],
+         "bend_semitones": 0.0, "slide_to_fret": None, "deleted": False}
+    ], data[0]["note_overrides"]
     chord_notes = [n for n in data[0]["notes"] if n["chord"]]
     assert chord_notes, "expected the simultaneous notes to be emitted as a chord"
     assert all(n["chord_name"] == "C" for n in chord_notes)
@@ -1313,6 +1324,58 @@ def test_detect_tuning_rejected_for_non_gp(client: TestClient) -> None:
     job = _create_job(client)
     r = client.post(f"/jobs/{job['id']}/detect-tuning")
     assert r.status_code == 422
+
+
+def test_committed_note_edits_survive_an_unrelated_rebuild(
+    client: TestClient, tmp_path
+) -> None:
+    """Reopening a job and rebuilding for ANY other reason used to erase every
+    note edit already applied.
+
+    The viewer always sends the whole note_overrides dict and the backend
+    REPLACES the stored value, but the viewer reset its pending list to {} on
+    every job open — so changing the tuning on a reopened job sent {} and the
+    edits were gone with no warning. /arrangements now returns the committed
+    edits per arrangement so the viewer can seed from them; this pins the API
+    half of that contract."""
+    data = _make_gp5_bytes(tmp_path)
+    body = client.post(
+        "/gp/inspect", files={"file": ("song.gp5", data, "application/octet-stream")}
+    ).json()
+    job = client.post(
+        "/jobs/gp",
+        data={"gp_token": body["gp_token"], "lead_track": "0"},
+        files={"audio": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
+    ).json()
+    edit = {"time": 1.5, "string": 2, "fret": 7, "sustain": 0.4}
+    edited = client.post(
+        f"/jobs/{job['id']}/rebuild", json={"note_overrides": {"Lead": [edit]}}
+    ).json()
+
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.infrastructure.db.models import Job
+
+    with app_module._session_factory() as session:
+        stored = session.get(Job, edited["id"]).params["note_overrides"]
+    assert stored["Lead"][0]["fret"] == 7
+
+    # The viewer can now read them back and re-send them, so an unrelated
+    # rebuild keeps them.
+    kept = client.post(
+        f"/jobs/{edited['id']}/rebuild",
+        json={"tuning_midi": [38, 45, 50, 55, 59, 64], "note_overrides": stored},
+    ).json()
+    with app_module._session_factory() as session:
+        after = session.get(Job, kept["id"]).params["note_overrides"]
+    assert after["Lead"][0]["fret"] == 7, "an unrelated rebuild must not drop note edits"
+
+    # And clearing them is still possible — an EXPLICIT empty dict wipes them,
+    # which is what the "Limpar edições" button sends.
+    cleared = client.post(
+        f"/jobs/{kept['id']}/rebuild", json={"note_overrides": {}}
+    ).json()
+    with app_module._session_factory() as session:
+        assert session.get(Job, cleared["id"]).params["note_overrides"] == {}
 
 
 def test_tuning_pitches_are_range_checked_at_the_api(client: TestClient, tmp_path) -> None:

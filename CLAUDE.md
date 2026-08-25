@@ -686,8 +686,22 @@ Field-constrains `string` (0-5) and `fret`/`slide_to_fret` (0-24) so an
 out-of-range value 422s immediately at rebuild time rather than surfacing as
 a deferred build failure.
 
-**Frontend**: `noteOverridesByKind` (state, per-kind, reset on job load like
-`syncAnchorsByKind`) needs no dirty-flag/None-sentinel gymnastics the way
+**Committed edits are SEEDED back into the viewer, or an unrelated rebuild
+erases them.** `applyAll()` always sends the whole `note_overrides` dict and
+`rebuild_job` REPLACES the stored value, so resetting the viewer's list to `{}`
+on job load meant: edit notes → rebuild (stored) → reopen the job → change the
+tuning → "Aplicar e reconstruir" sends `{}` → **every committed note edit is
+silently gone**. `ArrangementOut.note_overrides` now returns each arrangement's
+committed edits and `loadArrangements` seeds `noteOverridesByKind` from them, so
+the always-send round-trip is lossless. `noteOverridesBuilt` (a JSON snapshot at
+load) is what makes "Pendente" mean *changed since the build* rather than "this
+job has note edits". Clearing them is then an explicit action — the "🧹 Limpar
+edições" / "🧹 Limpar em todas" buttons — which sends the smaller dict and
+genuinely removes them on the next rebuild. Guarded by
+`test_committed_note_edits_survive_an_unrelated_rebuild`.
+
+**Frontend**: `noteOverridesByKind` (state, per-kind, seeded on job load from the
+committed edits) needs no dirty-flag/None-sentinel gymnastics the way
 `section_overrides` does — like `tone_changes`, there's no prior non-user
 default to lose (a note edit only ever originates from the user), so the
 whole dict is simply sent every rebuild; an untouched job sends `{}`. A

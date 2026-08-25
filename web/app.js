@@ -970,7 +970,20 @@ async function loadArrangements(id) {
   arrangements = await getJSON(`/jobs/${id}/arrangements`);
   syncAnchorsByKind = {};  // fresh pending corrections per arrangement
   tempoScaleByKind = {};
+  // Seed the pending note edits from the ones ALREADY COMMITTED for each
+  // arrangement, instead of starting empty. applyAll() always sends the whole
+  // dict, so starting empty meant a rebuild for any unrelated reason (a tuning
+  // change, say) sent {} and the backend — which REPLACES the stored value —
+  // silently erased every note edit the user had applied.
   noteOverridesByKind = {};
+  for (const a of arrangements) {
+    if (a.note_overrides && a.note_overrides.length) {
+      noteOverridesByKind[a.kind] = a.note_overrides.map(o => ({ ...o }));
+    }
+  }
+  // Snapshot of what is ALREADY built, so "pendente" means changed-since-build
+  // rather than "this job has note edits" (which it now legitimately does).
+  noteOverridesBuilt = JSON.stringify(noteOverridesByKind);
   noteClipboard = [];  // avoid pasting a previous song's notes into this one
   syncAnchors = [];
   selectedTimes = new Set();
@@ -1418,6 +1431,7 @@ function showArr(i) {
   renderAnchorsList();
   updateSyncOffsetDisplay();
   updateBarSyncPanel();
+  updateNoteEditsInfo();
   drawFretboard();  // redraw the neck (tuning labels) + refresh the active notes
   updateFretboard(playheadDisplay(audioTime()));
   updateLiveBpm(playheadDisplay(audioTime()));
@@ -1501,6 +1515,7 @@ function nearestGridChartTime(displayX) {
 // in-memory JS state (not the OS clipboard) — session-only, like every other
 // pending-edit state in this viewer.
 let noteClipboard = [];  // [{dTime, string, fret, sustain, techniques, bend_semitones}, ...]
+let noteOverridesBuilt = '{}';  // JSON of the note edits already baked into the build
 
 function updateClipboardInfo() {
   const el = document.getElementById('clipboardInfo');
@@ -1755,6 +1770,53 @@ const TECH_CHECK_IDS = [
 ];
 let neContext = null;  // { time, string } of the popup currently open, or null
 
+// ---- Note-edit bookkeeping --------------------------------------------------
+// The list shown here is BOTH the edits already committed to the job (seeded in
+// loadArrangements) and the ones pending in this session — they are the same
+// thing to the backend, which stores the whole dict. Clearing is therefore a
+// real edit: it takes effect on the next "Aplicar e reconstruir".
+function noteEditCounts() {
+  const kind = currentKind();
+  const mine = (noteOverridesByKind[kind] || []).length;
+  let total = 0;
+  for (const k of Object.keys(noteOverridesByKind)) total += (noteOverridesByKind[k] || []).length;
+  return { mine, total, kind };
+}
+
+function updateNoteEditsInfo() {
+  const el = document.getElementById('noteEditsInfo');
+  const one = document.getElementById('clearNoteEdits');
+  const all = document.getElementById('clearNoteEditsAll');
+  if (!el || !one || !all) return;
+  const { mine, total, kind } = noteEditCounts();
+  el.textContent = total
+    ? `${mine} nesta pista (${kind}), ${total} no total`
+    : 'nenhuma';
+  one.disabled = !mine;
+  all.disabled = !total;
+}
+
+async function clearNoteEdits(everyArrangement) {
+  const { mine, total, kind } = noteEditCounts();
+  const n = everyArrangement ? total : mine;
+  if (!n) return;
+  const where = everyArrangement ? 'de todas as pistas' : `da pista ${kind}`;
+  if (!await confirmModal(
+    `Descartar ${n} edição(ões) de notas ${where}?\n\n` +
+    'Inclui as que já foram aplicadas em reconstruções anteriores. ' +
+    'As notas voltam ao que está no ficheiro Guitar Pro assim que fizeres ' +
+    '"Aplicar e reconstruir".')) return;
+  if (everyArrangement) noteOverridesByKind = {};
+  else delete noteOverridesByKind[kind];
+  updateNoteEditsInfo();
+  updatePendingChangesInfo();
+  showArr(currentArr);
+  toast(`${n} edição(ões) descartada(s) — pendente até "Aplicar e reconstruir".`, 'ok');
+}
+
+document.getElementById('clearNoteEdits').addEventListener('click', () => clearNoteEdits(false));
+document.getElementById('clearNoteEditsAll').addEventListener('click', () => clearNoteEdits(true));
+
 function findBuiltNoteAt(chartTime, string) {
   const a = arrangements[currentArr];
   if (!a) return null;
@@ -1946,6 +2008,7 @@ async function applyAll() {
       if (kind) delete tempoScaleByKind[kind];
     }
     noteOverridesByKind = {};  // baked into the new build regardless of applyToAll
+    noteOverridesBuilt = '{}';
     selectJob(b.id, { force: true });
   }
   else toast(b.detail || 'erro');
@@ -3230,6 +3293,7 @@ function updatePendingChangesInfo() {
   if (Math.abs(offsetLive - builtOffset) > 0.01) parts.push('offset');
   if (Math.abs(tempoScaleLive - builtScale) > 0.001) parts.push('andamento');
   if (syncAnchors.length) parts.push(`${syncAnchors.length} ponto(s) de correção`);
+  if (JSON.stringify(noteOverridesByKind) !== noteOverridesBuilt) parts.push('edições de notas');
   el.textContent = parts.length ? `Pendente: ${parts.join(', ')}` : '';
 }
 
