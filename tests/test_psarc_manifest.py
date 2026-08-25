@@ -2,12 +2,13 @@ import json
 
 import pytest
 
-from rockforge.domain.arrangement import Arrangement, ArrangementKind, SongMetadata
+from rockforge.domain.arrangement import Arrangement, ArrangementKind, Section, SongMetadata
 from rockforge.domain.music import Beat, TabNote, Technique, TempoMap, Tuning
 from rockforge.infrastructure.packaging.psarc import manifest
 from rockforge.infrastructure.packaging.psarc.container import pack_entries, unpack
 from rockforge.infrastructure.packaging.psarc.manifest import (
     arrangement_asset_name,
+    arrangement_stats,
     build_arrangement_manifest,
     build_manifest_files,
     persistent_id,
@@ -327,3 +328,109 @@ def test_song_difficulty_easy_medium_hard_are_three_different_densities() -> Non
     assert fields["SongDiffHard"] == pytest.approx(0.307640644, abs=5e-7)
     assert fields["SongDifficulty"] == fields["SongDiffHard"]
     assert len({fields["SongDiffEasy"], fields["SongDiffMed"], fields["SongDiffHard"]}) == 3
+
+
+def _dd_arrangement() -> Arrangement:
+    """A chart with enough variety that DD produces several levels and the
+    phrases get genuinely different ceilings."""
+    beats = tuple(Beat(time=round(i * 0.5, 4), measure=i // 4 + 1 if i % 4 == 0 else -1)
+                  for i in range(96))
+    notes: list[TabNote] = []
+    t, i = 0.0, 0
+    while t < 46.0:
+        tech = set()
+        if i % 5 == 1:
+            tech.add(Technique.HAMMER_ON)
+        if i % 5 == 2:
+            tech.add(Technique.PULL_OFF)
+        if i % 7 == 3:
+            tech.add(Technique.VIBRATO)
+        notes.append(TabNote(
+            string=i % 6, fret=(i % 9) + 1, time=round(t, 4), sustain=0.15,
+            techniques=frozenset(tech),
+            slide_to_fret=(i % 9) + 3 if i % 11 == 4 else None,
+        ))
+        t += 0.125 if (int(t) // 12) % 2 == 0 else 0.5
+        i += 1
+    return Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=48.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+        notes=notes,
+        sections=[Section(name=f"s{k}", start_time=round(k * 6.0, 3)) for k in range(8)],
+    )
+
+
+def test_note_counts_are_per_iteration_hero_totals_not_one_level() -> None:
+    """NotesEasy/Medium/Hard are what the player SEES at each hero setting: for
+    every phrase iteration, the count at ITS OWN hero level, summed.
+
+    They used to be ``len(levels[k].notes)`` for a fixed k, which was only ever
+    right for Hard while the top level held the whole chart. Now that a phrase
+    drops out of the levels above its ceiling, NO single level is the full
+    chart — the reference's top levels hold 126 of 623 and 99 of 525 notes —
+    so reading a level would under-report Hard badly. Derived from a DLC
+    Builder build and exact on both its arrangements (182/331/623 and
+    155/283/525).
+    """
+    from rockforge.infrastructure.packaging.psarc.sng import from_arrangement
+
+    arr = _dd_arrangement()
+    model = from_arrangement(arr, dynamic_difficulty=True)
+    assert len(model.arrangements) > 3, "precondition: the fixture must ramp"
+    assert len(model.arrangements[-1].notes) < len(arr.notes), (
+        "precondition: the top level must no longer be the whole chart"
+    )
+    stats = arrangement_stats(arr, model=model)
+    assert stats["note_count"] == len(arr.notes), "Hard must still be the FULL chart"
+    assert 0 < int(stats["easy_count"]) <= int(stats["medium_count"]) <= int(stats["note_count"])
+
+
+def test_techniques_map_carries_only_the_derived_ids() -> None:
+    """The per-difficulty technique map was ``{}``. It now carries the five ids
+    that were derived at exact equivalence against a DLC Builder build
+    (hammer-on 3, HOPO 6, pull-off 9, slide 11, vibrato 16) — and NOTHING else:
+    the rest of that game-internal enum has no evidence behind it, and a
+    guessed id in a field the game reads is how the earlier highway crashes
+    happened.
+    """
+    from rockforge.infrastructure.packaging.psarc.sng import from_arrangement
+
+    arr = _dd_arrangement()
+    model = from_arrangement(arr, dynamic_difficulty=True)
+    man = build_arrangement_manifest(
+        arr, "Key", "Lead", stats=arrangement_stats(arr, model=model)
+    )
+    attrs = list(man["Entries"].values())[0]["Attributes"]
+    tech = attrs["Techniques"]
+    assert tech, "the fixture carries hammer-ons, pull-offs, slides and vibrato"
+    used = {i for level in tech.values() for ids in level.values() for i in ids}
+    assert used <= {3, 6, 9, 11, 16}, f"an unmapped technique id leaked out: {used}"
+    assert {3, 9, 11, 16} <= used
+
+    # A HOPO id must accompany every hammer-on / pull-off, and the keys must be
+    # real level and phrase-iteration indices the game can dereference.
+    for level_s, per_iter in tech.items():
+        assert 0 <= int(level_s) < len(model.arrangements)
+        for it_s, ids in per_iter.items():
+            assert 0 <= int(it_s) < len(model.phrase_iterations)
+            if 3 in ids or 9 in ids:
+                assert 6 in ids
+    # The stats dict carries the compiled model for this; it must not leak into
+    # the JSON the game parses.
+    assert "model" not in attrs
+    assert json.dumps(attrs)
+
+
+def test_last_conversion_is_present_and_stable_across_rebuilds() -> None:
+    """It was missing entirely. It is emitted as a CONSTANT: a value that
+    changes every rebuild is exactly what could make the game treat a rebuilt
+    song as newly converted and drop its saved progress."""
+    arr = _dd_arrangement()
+    first = build_arrangement_manifest(arr, "Key", "Lead")
+    second = build_arrangement_manifest(arr, "Key", "Lead")
+    a = list(first["Entries"].values())[0]["Attributes"]
+    b = list(second["Entries"].values())[0]["Attributes"]
+    assert a["LastConversionDateTime"] == b["LastConversionDateTime"]
+    assert a["LastConversionDateTime"]

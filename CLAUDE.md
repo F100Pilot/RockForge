@@ -1453,8 +1453,9 @@ as ported from the Rocksmith2014.NET / DLC Builder source (MIT). `read_sng`
 round-trips the payload for test verification.
 
 Sections emitted (in order): BPMs, Phrases, ChordTemplates (with per-string MIDI
-notes), ChordNotes, Vocals (+ symbol stubs if present), PhraseIterations, 6 ×
-empty (PhraseExtraInfo/NLD/Actions/Events/Tones/DNAs), Sections,
+notes), ChordNotes, Vocals (+ symbol stubs if present), PhraseIterations, 3 ×
+empty (PhraseExtraInfo/NLD/Actions), **Events** (the stage/crowd cues — see
+finding D in the DD section), 2 × empty (Tones/DNAs), Sections,
 ArrangementLevels (anchors, **anchor extensions**, notes with NextIter/PrevIter
 linkage), Metadata. `NoteMask` values are the real Rocksmith constants (ported
 from Constants.cs).
@@ -1699,10 +1700,11 @@ defects):
   |---|---|---|
   | A | 27 phrases all named `riff` vs `COUNT`/`p0`…`p16`/`NOGUITAR`/`END` | fixed (`_phrase_name`), unverified in game |
   | B | a saturated phrase never left the levels above its ceiling | **fixed below** |
-  | C | manifest `Techniques` is `{}` vs 23 populated levels | open |
-  | D | SNG `Events` empty vs `e2`/`E3`/`E13`/`D3`/`E13` | open |
+  | C | manifest `Techniques` is `{}` vs 23 populated levels | **partly fixed** (5 derived ids) |
+  | D | SNG `Events` empty vs `e2`/`E3`/`E13`/`D3`/`E13` | **fixed** |
   | E | `SongDiffEasy`/`Med`/`Hard` one value written three times | **fixed** (formula below) |
-  | F | note `Hash` always 0, `NoteFlags` never sets its bit | open |
+  | F | note `Hash` always 0, `NoteFlags` never sets its bit | **not fixable** — see below |
+  | G | manifest `LastConversionDateTime` missing entirely | **fixed** (constant) |
 
   Two candidates were **eliminated** by that same diff and must not be
   re-investigated. The note `Hash` is NOT a stable cross-level note identity —
@@ -1739,13 +1741,86 @@ defects):
   0.307640644, where we wrote 0.307641 three times). Guarded by
   `test_song_difficulty_easy_medium_hard_are_three_different_densities`.
 
-  **Still unverified in game.** B and E are confirmed divergences from a build
-  known to work, and each is independently a defect; neither is PROVEN to be the
-  cause. The `.psarc` the user tested is byte-identical to their 2026-08-24 one
-  (same md5), so it predates even fix A — the next step is a rebuild on current
-  `main` before drawing any further conclusion. If it still does not ramp, C/D/F
-  are what remain, and C (`Techniques`, `{level: {phraseIteration: [ids]}}` — a
-  game-internal enum we have not mapped) is the largest of them.
+  **C — `Techniques`, five ids and no more.** The map is
+  `{level: {phraseIteration: [ids]}}` over a game-internal enum. Five ids were
+  DERIVED, not guessed: each was tested for exact equivalence ("this id is
+  listed for this (level, iteration)" ⟺ "a note there carries this technique")
+  across all 508 level×iteration pairs of BOTH reference arrangements, and each
+  scored **1.000** — `3` hammer-on, `6` HOPO (hammer-on OR pull-off), `9`
+  pull-off, `11` slide, `16` vibrato. The rest is deliberately NOT emitted: the
+  reference song uses only a handful of techniques, so there is no evidence at
+  all for bends/harmonics/tapping/tremolo/slap-pop/accents/unpitched slides, and
+  three ids that DO appear (`7`, `13`, `33`, `35`) top out at 0.87–0.97 against
+  their best-matching feature, i.e. their real definition is not pinned down.
+  An omitted technique behaves exactly like the empty map we shipped before, so
+  partial-but-certain beats complete-but-invented. `_techniques` in
+  `manifest.py`; guarded by `test_techniques_map_carries_only_the_derived_ids`,
+  which fails if an unmapped id ever leaks out.
+
+  **D — the stage cues.** `_build_events` emits the reference's five, and the
+  placement rule is read off the reference and confirmed to hold independently
+  on BOTH its arrangements, whose start/first-note times differ: `e2` at
+  `start_time`, `E3` at `first_note + 0.6`, `E13` at `E3 + 2.5`, `D3` at
+  `song_length - 9`, `E13` at `song_length` (lead 6.421/8.6/11.1/193.509/202.509
+  from 6.421/8.0; rhythm 5.0/14.021/16.521/193.509/202.509 from 5.0/13.421).
+  Only the PLACEMENT is reproduced — what the codes mean to the game is not
+  documented anywhere citable — and they are inert 256-byte strings in a
+  venue/crowd-staging section, not note geometry. A song shorter than the
+  intro+outro leads DROPS the outro cue rather than clamping it to 0, which
+  would put a "nine seconds from the end" cue at the very start.
+  **`read_sng` must dispatch on the section's IDENTITY, not its entry size:
+  Actions and Events are both 260 bytes**, so keying off the size read the
+  Actions section as Events and left the real ones unread (caught by
+  `test_read_sng_skips_populated_sections_a_real_file_carries`).
+
+  **F — not fixable without guessing, so not attempted.** The note `Hash` was
+  brute-forced against the reference: no CRC-32 or adler32 over ANY contiguous
+  byte range of the serialized note matches, and neither does the full standard
+  CRC-32 catalogue (11 variants) crossed with every subset of plausibly-zeroed
+  fields. It is computed over a representation we do not have. `NoteFlags`'
+  bit is no better: "new at this level, per phrase iteration" agrees only
+  0.695, and nothing else correlates. Writing a guessed value into a field the
+  game dereferences is precisely how the earlier highway crashes happened, so
+  both stay 0. Do not re-open this without a new source of truth.
+
+  **G — `LastConversionDateTime`.** Was missing from the manifest entirely (the
+  SNG's own copy also used a different format from the reference). Now emitted
+  in both, as a **constant** (`LAST_CONVERSION`, kept in sync between `sng.py`
+  and `manifest.py`) — a field named "last conversion" is exactly what a game
+  could use to decide a song was re-authored and drop its saved progress, and a
+  value that changed every rebuild would be the bug rather than the fix. Same
+  reasoning as the deterministic persistent IDs. Unproven either way.
+
+  **The note counts had to change with B.** `NotesEasy`/`Medium`/`Hard` were
+  `len(levels[k].notes)` for a fixed `k` — only ever right for Hard while the
+  top level held the whole chart. They are now what the player SEES at each
+  hero setting: for every phrase iteration, the count at ITS OWN hero level,
+  summed over the song. Derived from the reference and exact on both its
+  arrangements (182/331/623 and 155/283/525, whose top levels hold just 126 and
+  99 notes). Guarded by
+  `test_note_counts_are_per_iteration_hero_totals_not_one_level`.
+
+  **The symptom is now known to be PERSISTENCE, not level data (2026-08-25).**
+  The user's later report is precise: the levels ARE there, Riff Repeater DOES
+  raise them, and the new level is not kept — it zeroes every time. So the DD
+  tables are being read correctly and something about how the song is
+  identified or dated is stopping the profile write from sticking. Two more
+  candidates were eliminated against the reference along the way: the `.hsan`
+  header and the per-arrangement `.json` agree on `PersistentID`/`MasterID_RDV`
+  in BOTH files (the game is not reading progress under one key and saving it
+  under another), and `ArrangementProperties` is byte-identical between the two
+  builds. `DynamicVisualDensity` is likewise the same fixed 20-element constant
+  in both. What is still different and unexplored: our `Sections` carry the raw
+  name as `UIName` where the reference writes a localisation token
+  (`$[34298] Riff [1]`), we emit a section for the `COUNT` phrase where the
+  reference emits none, and our section `Number` repeats (two sections numbered
+  2 in a row) where the reference's increments per name.
+
+  **Still unverified in game.** B, C, D, E and G are confirmed divergences from
+  a build known to work, and each is independently a defect; none is PROVEN to
+  be the cause. The `.psarc` the user tested is byte-identical to their
+  2026-08-24 one (same md5), so it predates even fix A — a rebuild on current
+  `main` is what the next round of evidence has to come from.
 
   At level `d`, each iteration shows the strongest-beat prefix of its
   notes scaled by `d` against that phrase's ceiling (`_level_notes`, ranked by
@@ -1791,7 +1866,11 @@ defects):
   XML writer hard-codes `linkNext="0"`), so this is correctly `-1`.
 - **Note Hash = 0**: a deliberate choice — the two reference tools
   (Rocksmith2014.NET vs toolkit) compute mutually different, non-validated hash
-  values, so 0 is safe and source-consistent.
+  values, so 0 is safe and source-consistent. It was later brute-forced against
+  a DLC Builder reference (no CRC-32/adler32 over any contiguous byte range of
+  the serialized note matches, nor the full standard CRC-32 catalogue crossed
+  with every subset of plausibly-zeroed fields) and is NOT reproducible — see
+  finding F in the DD section.
 
 Unverified-by-design: the binary layout is ported from the open format docs and
 round-trip-tested (`read_sng` ∘ `write_sng` = identity), but is NOT byte-diffed

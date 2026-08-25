@@ -1458,21 +1458,64 @@ def test_read_sng_skips_populated_sections_a_real_file_carries() -> None:
     assert _count_at(data, at) == 0, "expected no vocals"
     at = _skip(data, at, 0)                    # vocals (none)
     at = _skip(data, at, sng_mod._PHRASE_ITER_SIZE)       # phrase iterations
-    empties = struct.pack("<6i", 0, 0, 0, 0, 0, 0)
-    assert data[at : at + len(empties)] == empties, "expected six empty section counts here"
+
+    # PhraseExtraInfo / NLinkedDifficulty / Actions, then OUR OWN Events, then
+    # Tones / DNAs. Events are no longer empty — we emit the reference's stage
+    # cues — so the round trip has to carry them back too.
+    block_start = at
+    assert data[at : at + 12] == struct.pack("<3i", 0, 0, 0)
+    at += 12
+    assert _count_at(data, at) == len(plain.events) > 0, "we now emit stage cues"
+    at = _skip(data, at, sng_mod._EVENT_SIZE)
+    assert data[at : at + 8] == struct.pack("<2i", 0, 0), "Tones/DNAs stay empty"
+    block_end = at + 8
+
+    # Replace the whole six-section block with one where EVERY section is
+    # populated, including the five we don't model, and confirm the reader
+    # skips those by size instead of desyncing on their contents.
+    action = struct.pack("<f", 2.5) + b"action".ljust(256, b"\x00")
+    assert len(action) == sng_mod._ACTION_SIZE
     event = struct.pack("<f", 1.25) + b"E3".ljust(256, b"\x00")
     assert len(event) == sng_mod._EVENT_SIZE
-    patched = (
-        data[:at]
-        + struct.pack("<3i", 0, 0, 0)      # PhraseExtraInfo, NLD, Actions: still empty
-        + struct.pack("<i", 1) + event      # Events: one entry
-        + struct.pack("<2i", 0, 0)          # Tones, DNAs: still empty
-        + data[at + len(empties):]
+    block = (
+        struct.pack("<i", 1) + struct.pack("<f", 1.0) + b"\x00" * 8  # PhraseExtraInfo
+        + struct.pack("<ii", 1, 1) + struct.pack("<i", 0)             # NLD: 1 linked phrase
+        + struct.pack("<i", 1) + action                               # Actions
+        + struct.pack("<i", 1) + event                                # Events
+        + struct.pack("<i", 1) + struct.pack("<fi", 3.0, 0)           # Tones
+        + struct.pack("<i", 1) + struct.pack("<fi", 4.0, 0)           # DNAs
     )
-    restored = read_sng(patched)
+    restored = read_sng(data[:block_start] + block + data[block_end:])
     assert [s.name for s in restored.sections] == [s.name for s in plain.sections]
     assert len(restored.arrangements) == len(plain.arrangements)
     assert restored.metadata.max_difficulty == plain.metadata.max_difficulty
+    assert [(e.time, e.code) for e in restored.events] == [(1.25, "E3")]
+
+
+def test_stage_cues_are_emitted_where_the_reference_puts_them() -> None:
+    """Our Events section used to be EMPTY, which leaves the venue inert.
+
+    The placement is read off a DLC Builder build of the user's song and holds
+    independently on BOTH its arrangements, whose start/first-note times differ
+    (lead 6.421/8.0 → 6.421/8.6/11.1/193.509/202.509; rhythm 5.0/13.421 →
+    5.0/14.021/16.521/193.509/202.509). Only the PLACEMENT is reproduced —
+    what the codes mean to the game is not documented anywhere we can cite.
+    """
+    from rockforge.infrastructure.packaging.psarc.sng import _build_events
+
+    assert [(round(e.time, 3), e.code) for e in _build_events(6.421, 8.0, 202.509)] == [
+        (6.421, "e2"), (8.6, "E3"), (11.1, "E13"), (193.509, "D3"), (202.509, "E13"),
+    ]
+    assert [(round(e.time, 3), e.code) for e in _build_events(5.0, 13.421, 202.509)] == [
+        (5.0, "e2"), (14.021, "E3"), (16.521, "E13"), (193.509, "D3"), (202.509, "E13"),
+    ]
+    # A song shorter than the intro+outro leads DROPS the outro cue rather than
+    # clamping it to 0, which would put a "nine seconds from the end" cue at the
+    # very start. The track must stay chronological either way.
+    short = _build_events(0.0, 0.5, 8.0)
+    assert [e.code for e in short] == ["e2", "E3", "E13", "E13"]
+    assert [e.time for e in short] == sorted(e.time for e in short)
+    assert _build_events(0.0, 0.0, 0.0) == []
 
 
 def test_phrase_names_are_unique_like_a_real_ddc() -> None:

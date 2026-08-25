@@ -180,7 +180,9 @@ _PHRASE_TARGET_S = 8.0
 # populate. Needed to SKIP them when reading someone else's SNG (see read_sng).
 _PHRASE_EXTRA_SIZE = 12   # PhraseExtraInfoByLevel
 _ACTION_SIZE = 260        # float time + char[256] name
-_EVENT_SIZE = 260         # float time + char[256] name  (e2/E3/E13/D3 crowd cues)
+LAST_CONVERSION = "01-01-00 00:00"   # see SngMetadata.last_conversion
+_EVENT_CODE_LEN = 256     # the cue string's fixed field width
+_EVENT_SIZE = 4 + _EVENT_CODE_LEN   # float time + char[256] (e2/E3/E13/D3 crowd cues)
 _SNG_TONE_SIZE = 8        # float time + int32 tone id
 _DNA_SIZE = 8             # float time + int32 dna id
 # The SNG's CapoFret byte when the arrangement has no capo (a DLC Builder
@@ -367,7 +369,12 @@ class SngMetadata:
     first_beat_length: float = 0.5
     start_time: float = 0.0
     capo_fret: int = 0
-    last_conversion: str = "1-1-2000 00:00:00"
+    # The reference writes its build time as MM-DD-YY HH:MM. Ours is FIXED, not
+    # a timestamp: a value that changes on every rebuild is the kind of thing
+    # that could invalidate saved per-song progress, and a deterministic build
+    # is worth more here than an accurate date (same reasoning as the
+    # deterministic persistent IDs). The format now matches the reference.
+    last_conversion: str = LAST_CONVERSION
     part: int = 1
     song_length: float = 0.0
     string_count: int = 6
@@ -375,6 +382,61 @@ class SngMetadata:
     first_note_time: float = 0.0
     first_note_time2: float = 0.0
     max_difficulty: int = 0
+
+
+@dataclass(frozen=True)
+class SngEvent:
+    """One stage/crowd cue on the song timeline (SNG section 10)."""
+
+    time: float
+    code: str
+
+
+# The crowd/stage cue track a DLC Builder build carries. Ours shipped an EMPTY
+# Events section, which leaves the venue inert. The rule below is not invented:
+# it is read off a DLC Builder build of the user's song and confirmed to hold
+# independently on BOTH of its arrangements, whose start/first-note times differ
+# (lead 6.421/8.0, rhythm 5.0/13.421):
+#
+#   e2  at the arrangement's start_time      (6.421 / 5.0)
+#   E3  at first_note + _EVENT_INTRO_LEAD_S  (8.6   / 14.021)
+#   E13 at E3 + _EVENT_INTRO_HOLD_S          (11.1  / 16.521)
+#   D3  at song_length - _EVENT_OUTRO_LEAD_S (193.509 both)
+#   E13 at song_length                       (202.509 both)
+#
+# What each code MEANS to the game is not documented anywhere we can cite, so
+# nothing here is derived from the codes' semantics — only their placement is
+# reproduced. They are inert 256-byte strings in a section the game reads for
+# venue/crowd staging, not note geometry.
+_EVENT_INTRO_LEAD_S = 0.6
+_EVENT_INTRO_HOLD_S = 2.5
+_EVENT_OUTRO_LEAD_S = 9.0
+
+
+def _build_events(
+    start_time: float, first_note_time: float, song_length: float
+) -> list[SngEvent]:
+    """The five stage cues, in the reference's order and placement."""
+    if song_length <= 0:
+        return []
+    intro = first_note_time + _EVENT_INTRO_LEAD_S
+    candidates = [
+        SngEvent(time=start_time, code="e2"),
+        SngEvent(time=intro, code="E3"),
+        SngEvent(time=intro + _EVENT_INTRO_HOLD_S, code="E13"),
+        SngEvent(time=song_length - _EVENT_OUTRO_LEAD_S, code="D3"),
+        SngEvent(time=song_length, code="E13"),
+    ]
+    # The cues are defined in CHRONOLOGICAL order above, and the game expects
+    # the track that way. On a song shorter than the intro+outro leads the
+    # outro cue's natural time falls before the intro ones; DROP it rather than
+    # clamping it to 0, which would emit a "nine seconds from the end" cue at
+    # the very start. Same for any cue past the end.
+    ordered: list[SngEvent] = []
+    for ev in candidates:
+        if 0.0 <= ev.time <= song_length and (not ordered or ev.time >= ordered[-1].time):
+            ordered.append(ev)
+    return ordered
 
 
 @dataclass
@@ -385,6 +447,7 @@ class SngModel:
     chord_notes: list[SngChordNotes] = field(default_factory=list)
     vocals: list[SngVocal] = field(default_factory=list)
     phrase_iterations: list[SngPhraseIteration] = field(default_factory=list)
+    events: list[SngEvent] = field(default_factory=list)
     sections: list[SngSection] = field(default_factory=list)
     arrangements: list[SngArrangementLevel] = field(default_factory=list)
     metadata: SngMetadata = field(default_factory=SngMetadata)
@@ -1446,6 +1509,7 @@ def from_arrangement(
         chord_notes=chord_notes_list,
         vocals=sng_vocals,
         phrase_iterations=phrase_iterations,
+        events=_build_events(metadata.start_time, metadata.first_note_time, song_length),
         sections=sections,
         arrangements=arrangements,
         metadata=metadata,
@@ -1697,8 +1761,17 @@ def write_sng(model: SngModel) -> bytes:
             *pi.difficulty,
         )
 
-    # 7-12. Empty sections: PhraseExtraInfo, NLD, Actions, Events, Tones, DNAs
-    for _ in range(6):
+    # 7-9. Empty: PhraseExtraInfo, NLinkedDifficulty, Actions.
+    for _ in range(3):
+        out += _write_count(0)
+
+    # 10. Events (stage/crowd cues) — see _build_events.
+    out += _write_count(len(model.events))
+    for ev in model.events:
+        out += struct.pack("<f", ev.time) + _pack_str(ev.code, _EVENT_CODE_LEN)
+
+    # 11-12. Empty: Tones, DNAs.
+    for _ in range(2):
         out += _write_count(0)
 
     # 13. Sections
@@ -1968,22 +2041,35 @@ def read_sng(data: bytes) -> SngModel:
             phrase_id=pid, start_time=st, end_time=et, difficulty=(d0, d1, d2),
         ))
 
-    # 7-12. Sections RockForge writes empty (PhraseExtraInfo, NLinkedDifficulty,
-    # Actions, Events, Tones, DNAs) — but a REAL file populates several of them,
-    # so their entries must be skipped by size, not assumed absent. Reading only
-    # the counts desynced the parser on every DLC Builder SNG (its 5 crowd/stage
-    # Events alone), which made our own reader useless for byte-diffing against
-    # a reference build — the one technique that has isolated every native-SNG
-    # rendering bug so far. NLinkedDifficulty is variable-length: a header pair
-    # plus one int32 per linked phrase.
-    _NLD = -1  # sentinel: NLinkedDifficulty entries are variable-length
-    for entry_size in (_PHRASE_EXTRA_SIZE, _NLD, _ACTION_SIZE, _EVENT_SIZE,
-                       _SNG_TONE_SIZE, _DNA_SIZE):
+    # 7-12. PhraseExtraInfo, NLinkedDifficulty, Actions, Events, Tones, DNAs.
+    # RockForge populates only Events; the rest are written empty. A REAL file
+    # populates several of them, so their entries must be skipped by size, not
+    # assumed absent. Reading only the counts desynced the parser on every DLC
+    # Builder SNG (its 5 crowd/stage Events alone), which made our own reader
+    # useless for byte-diffing against a reference build — the one technique
+    # that has isolated every native-SNG rendering bug so far.
+    # Dispatch on the section's IDENTITY, not on its entry size: Actions and
+    # Events are both 260 bytes, so keying off the size read the Actions
+    # section as Events (and left the real ones unread).
+    events: list[SngEvent] = []
+    for kind, entry_size in (
+        ("skip", _PHRASE_EXTRA_SIZE), ("nld", 0), ("skip", _ACTION_SIZE),
+        ("events", _EVENT_SIZE), ("skip", _SNG_TONE_SIZE), ("skip", _DNA_SIZE),
+    ):
         count, pos = _read_count(data, pos)
-        if entry_size == _NLD:
+        if kind == "nld":
+            # Variable-length: a header pair plus one int32 per linked phrase.
             for _ in range(count):
                 _level_break, phrase_count = struct.unpack_from("<ii", data, pos)
                 pos += 8 + 4 * phrase_count
+        elif kind == "events":
+            for _ in range(count):
+                (ev_time,) = struct.unpack_from("<f", data, pos)
+                events.append(SngEvent(
+                    time=ev_time,
+                    code=_unpack_str(data[pos + 4 : pos + 4 + _EVENT_CODE_LEN]),
+                ))
+                pos += _EVENT_SIZE
         else:
             pos += count * entry_size
 
@@ -2045,6 +2131,6 @@ def read_sng(data: bytes) -> SngModel:
     return SngModel(
         beats=beats, phrases=phrases, chord_templates=chord_templates,
         chord_notes=chord_notes, vocals=vocals,
-        phrase_iterations=phrase_iterations, sections=sections,
+        phrase_iterations=phrase_iterations, events=events, sections=sections,
         arrangements=arrangements, metadata=metadata,
     )

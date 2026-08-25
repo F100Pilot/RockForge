@@ -92,6 +92,9 @@ TOOLKIT_VERSION = (
 # SongAppId.xml for the full appid table.
 APP_ID = "492989"
 
+# Kept in sync with the SNG metadata field of the same name (see sng.py).
+LAST_CONVERSION = "01-01-00 00:00"
+
 # The .hsan aggregates *headers*; the per-arrangement .json carries full entries.
 _HEADERS_ROOT = "Static.Songs.Headers"
 _ENTRIES_ROOT = "Static.Songs.Entries"
@@ -267,10 +270,28 @@ def arrangement_stats(
 
         model = sng.from_arrangement(arrangement, dynamic_difficulty=dynamic_difficulty)
     levels = model.arrangements
-    note_count = len(levels[-1].notes) if levels else 0  # Hard = the full top level
-    n = len(levels)
-    easy_count = len(levels[n // 3].notes) if n > 1 else note_count
-    medium_count = len(levels[(2 * n) // 3].notes) if n > 1 else note_count
+    # Easy/Medium/Hard are the notes the player actually SEES at each hero
+    # setting: for every phrase iteration, the count at ITS OWN hero level,
+    # summed over the song. NOT `len(levels[k].notes)` for some k — since a
+    # phrase now drops out of the levels above its ceiling (see sng.py's
+    # `_level_notes`), no single level is the full chart, and the top one holds
+    # only the phrases whose ceiling IS the song max. Derived from a DLC
+    # Builder build of the user's song and exact on BOTH its arrangements
+    # (lead 182/331/623, rhythm 155/283/525, where its top levels hold just
+    # 126 and 99 notes).
+    def _hero_total(which: int) -> int:
+        if not levels:
+            return 0
+        top = len(levels) - 1
+        return sum(
+            levels[min(pi.difficulty[which], top)].notes_in_iteration1[i]
+            for i, pi in enumerate(model.phrase_iterations)
+            if i < len(levels[0].notes_in_iteration1)
+        )
+
+    note_count = _hero_total(2)
+    easy_count = _hero_total(0)
+    medium_count = _hero_total(1)
     phrases = [
         {
             "MaxDifficulty": p.max_difficulty,
@@ -311,7 +332,65 @@ def arrangement_stats(
         "phrase_iterations": iterations,
         "sections": sections,
         "max_phrase_difficulty": max((p.max_difficulty for p in model.phrases), default=0),
+        # Kept so the manifest can build the per-difficulty technique map
+        # without recompiling the whole SNG (see _techniques).
+        "model": model,
     }
+
+
+# The manifest's per-difficulty technique map is {level: {phraseIteration:
+# [ids]}}, where the ids are a game-internal enum. Only these five were
+# DERIVED, not guessed: each was checked for exact equivalence ("the id is
+# listed for this (level, iteration)" <=> "a note there carries this
+# technique") across all 508 level x iteration pairs of BOTH arrangements of a
+# DLC Builder build, and each scored 1.000.
+#
+# The rest of the enum is deliberately NOT emitted. The reference song uses
+# only a handful of techniques, so there is no evidence at all for the ids of
+# bends, harmonics, tapping, tremolo, slap/pop, accents or unpitched slides;
+# and three ids that DO appear (7, 13, 33, 35) top out at 0.87-0.97 against
+# their best-matching feature, i.e. their real definition is something we have
+# not pinned down. Writing a guessed id into a field the game reads is exactly
+# how the earlier highway crashes happened, and an omitted technique behaves
+# the same as the empty map we shipped before — so partial-but-certain beats
+# complete-but-invented.
+_TECHNIQUE_HAMMER_ON = 3
+_TECHNIQUE_HOPO = 6          # a hammer-on OR a pull-off
+_TECHNIQUE_PULL_OFF = 9
+_TECHNIQUE_SLIDE = 11
+_TECHNIQUE_VIBRATO = 16
+
+
+def _techniques(model: SngModel) -> dict[str, dict[str, list[int]]]:
+    """``{level: {phraseIteration: [technique ids]}}`` for the ids we derived."""
+    from rockforge.infrastructure.packaging.psarc import sng as sng_mod
+
+    single = (
+        (sng_mod.NOTE_MASK_HAMMERON, _TECHNIQUE_HAMMER_ON),
+        (sng_mod.NOTE_MASK_PULLOFF, _TECHNIQUE_PULL_OFF),
+        (sng_mod.NOTE_MASK_SLIDE, _TECHNIQUE_SLIDE),
+        (sng_mod.NOTE_MASK_VIBRATO, _TECHNIQUE_VIBRATO),
+    )
+    hopo_bits = sng_mod.NOTE_MASK_HAMMERON | sng_mod.NOTE_MASK_PULLOFF
+    out: dict[str, dict[str, list[int]]] = {}
+    for level in model.arrangements:
+        per_iter: dict[int, int] = {}
+        for note in level.notes:
+            masks = note.mask
+            if note.chord_notes_id >= 0 and note.chord_notes_id < len(model.chord_notes):
+                for m in model.chord_notes[note.chord_notes_id].note_mask:
+                    masks |= m
+            per_iter[note.phrase_iteration_id] = per_iter.get(note.phrase_iteration_id, 0) | masks
+        found = {}
+        for pi_id, bits in sorted(per_iter.items()):
+            ids = [tid for bit, tid in single if bits & bit]
+            if bits & hopo_bits:
+                ids.append(_TECHNIQUE_HOPO)
+            if ids:
+                found[str(pi_id)] = sorted(ids)
+        if found:
+            out[str(level.difficulty)] = found
+    return out
 
 
 def _difficulty_fields(stats: dict[str, object], song_length: float) -> dict[str, float]:
@@ -365,6 +444,12 @@ def build_arrangement_manifest(
     asset = arrangement_asset_name(song_key, arrangement.kind)
     if stats is None:
         stats = arrangement_stats(arrangement)
+    # Lazy import: sng.py is the heavier module and manifest.py is imported on
+    # the API path, so the type-only import at the top stays under TYPE_CHECKING.
+    from rockforge.infrastructure.packaging.psarc.sng import SngModel as _SngModel
+
+    raw_model = stats.get("model")
+    sng_model = raw_model if isinstance(raw_model, _SngModel) else None
     note_count = int(stats["note_count"])  # type: ignore[call-overload]
     easy = int(stats["easy_count"])  # type: ignore[call-overload]
     medium = int(stats["medium_count"])  # type: ignore[call-overload]
@@ -392,6 +477,12 @@ def build_arrangement_manifest(
         "EasyMastery": diff["EasyMastery"], "MediumMastery": diff["MediumMastery"],
         "FullName": f"{song_key}_{_arr_name(arrangement.kind)}",
         "LeaderboardChallengeRating": 0,
+        # Present and STABLE. It was missing entirely (the reference writes its
+        # build time); a field named "last conversion" is exactly what a game
+        # could use to decide a song was re-authored and drop saved progress,
+        # so it is emitted, and emitted as a constant so a rebuild of the same
+        # song never looks like a new conversion. Unproven either way.
+        "LastConversionDateTime": LAST_CONVERSION,
         "ManifestUrn": f"urn:database:json-db:{asset}",
         "MasterID_PS3": -1, "MasterID_XBox360": -1, "MasterID_RDV": _master_id(pid),
         "MaxPhraseDifficulty": stats["max_phrase_difficulty"],
@@ -429,10 +520,10 @@ def build_arrangement_manifest(
         # The score that counts as full mastery. 0 was a placeholder; DLC Builder
         # writes the arrangement's own max score.
         "TargetScore": _MAX_SCORE,
-        # Per-difficulty technique map ({level: {phraseIteration: [ids]}}). Still
-        # empty — the ids are a game-internal enum we have not mapped. The
-        # arrangement-level flags in ArrangementProperties ARE now filled in.
-        "Techniques": {},
+        # Per-difficulty technique map ({level: {phraseIteration: [ids]}}) — see
+        # _techniques: only the five ids derived at exact equivalence against a
+        # DLC Builder build are emitted, never a guessed one.
+        "Techniques": _techniques(sng_model) if sng_model is not None else {},
         **_tone_fields(arrangement),
         "Tuning": _tuning(arrangement),
     }
