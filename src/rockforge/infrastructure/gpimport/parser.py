@@ -141,11 +141,21 @@ def _tempo_events(track: Any) -> list[tuple[int, float]]:
     for tr in track.song.tracks:
         for measure in tr.measures:
             for voice in measure.voices:
-                tick = measure.start
+                # RELATIVE to the song's origin, because that is the scale the
+                # caller looks tempo up on: notes and beats are timed with
+                # ``to_seconds(tick - QUARTER_TICKS)``. Keying these events at the
+                # ABSOLUTE ``measure.start`` (bar 1 begins at tick 960) mixed the
+                # two scales and applied every mid-song tempo change one quarter
+                # note LATE — so a song drifted by the difference between one beat
+                # at the old tempo and one at the new, at every change, and it
+                # accumulated. Invisible in a constant-tempo file, which is how it
+                # survived. Guarded by
+                # test_a_mid_song_tempo_change_takes_effect_on_its_own_beat.
+                tick = measure.start - QUARTER_TICKS
                 for beat in voice.beats:
                     mtc = beat.effect.mixTableChange
                     if mtc is not None and mtc.tempo is not None:
-                        events[tick] = float(mtc.tempo.value)
+                        events[max(0, tick)] = float(mtc.tempo.value)
                     tick += beat.duration.time
     return sorted(events.items())
 

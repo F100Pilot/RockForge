@@ -233,3 +233,51 @@ def test_tempo_change_on_other_track_is_detected(tmp_path: Path) -> None:
     # 93 BPM whole-note beat ≈ 0.645s; after the change 186 BPM ≈ 0.323s.
     assert intervals[0] == pytest.approx(0.645, abs=0.01)
     assert intervals[-1] == pytest.approx(0.323, abs=0.01)
+
+
+def test_a_mid_song_tempo_change_takes_effect_on_its_own_beat(tmp_path: Path) -> None:
+    """A tempo change must apply from the beat it sits on, not a quarter later.
+
+    _tempo_events keys each change at ``measure.start``, which is ABSOLUTE (bar 1
+    begins at tick 960), while notes and beats are looked up at ``tick - origin``
+    with origin = 960. Mixing the two applied every mid-song tempo change one
+    quarter note late, so a song drifted by the difference between one beat at
+    the old tempo and one at the new — at EVERY change, cumulatively. That is
+    invisible in a constant-tempo file, which is why it survived this long.
+    """
+    song = gp.Song()
+    song.title, song.artist, song.tempo = "T", "A", 120
+    track = song.tracks[0]
+    for m in range(4):
+        if m == 0:
+            measure = track.measures[0]
+        else:
+            header = gp.MeasureHeader()
+            header.number = m + 1
+            header.start = track.measures[-1].start + track.measures[-1].length
+            song.measureHeaders.append(header)
+            measure = gp.Measure(track, header)
+            track.measures.append(measure)
+        voice = measure.voices[0]
+        for k in range(4):
+            beat = _add_beat(voice, 4, [(6, 0)])
+            if m == 2 and k == 0:  # halve the tempo from bar 3
+                mtc = gp.MixTableChange()
+                mtc.wah = gp.WahEffect.none
+                mtc.hideTempo = False
+                mtc.tempo = gp.MixTableItem(value=60, duration=0, allTracks=False)
+                beat.effect.mixTableChange = mtc
+    path = tmp_path / "tempo.gp5"
+    with open(path, "wb") as fh:
+        gp.write(song, fh, version=(5, 1, 0))
+
+    parsed = parse_gp_track(path, 0)
+    downbeats = {b.measure: b.time for b in parsed.tempo_map.beats if b.measure > 0}
+    # Bars 1-2 at 120 BPM: 4 quarters x 0.5 s each.
+    assert downbeats[2] == pytest.approx(2.0, abs=1e-3)
+    assert downbeats[3] == pytest.approx(4.0, abs=1e-3)
+    # Bar 3 runs entirely at 60 BPM (1.0 s per quarter), so bar 4 starts 4 s later.
+    # The bug made this 7.5 s: the first beat of bar 3 was still timed at 120.
+    assert downbeats[4] == pytest.approx(8.0, abs=1e-3), (
+        "the tempo change must apply from its own beat, not one quarter later"
+    )
