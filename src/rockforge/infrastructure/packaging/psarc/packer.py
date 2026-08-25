@@ -104,13 +104,20 @@ class NativePsarcPacker:
             raise PackagingError("no arrangements to package")
         out_dir.mkdir(parents=True, exist_ok=True)
 
+        meta = arrangements[0].metadata
+        song_key = manifest.song_key_from_title(meta.artist, meta.title)
+        key_lower = song_key.lower()
+        album_art_urn = f"urn:image:dds:album_{key_lower}"
+
         instrumental_xml: list[Path] = []
         for arr in arrangements:
             # kind.name (LEAD/ALTERNATE_LEAD/…) is a safe, unique file slug — the
             # display value ("Alternate Lead") has a space.
             slug = arr.kind.name.lower()
             instrumental_xml.append(
-                write_arrangement_xml(arr, out_dir / f"arrangement_{slug}.xml")
+                write_arrangement_xml(
+                    arr, out_dir / f"arrangement_{slug}.xml", album_art_urn
+                )
             )
         xml_paths: list[Path] = list(instrumental_xml)
 
@@ -126,10 +133,6 @@ class NativePsarcPacker:
 
         audio_dest = out_dir / f"audio{audio.suffix}"
         shutil.copy2(audio, audio_dest)
-
-        meta = arrangements[0].metadata
-        song_key = manifest.song_key_from_title(meta.artist, meta.title)
-        key_lower = song_key.lower()
 
         # The Wwise .wem is needed by the native PSARC and referenced in the
         # bundle's project metadata, but a Wwise failure must NEVER abort the

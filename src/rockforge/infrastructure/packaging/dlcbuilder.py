@@ -122,12 +122,18 @@ class DlcBuilderPackager:
             raise PackagingError("no arrangements to package")
         out_dir.mkdir(parents=True, exist_ok=True)
 
+        album_art_urn = "urn:image:dds:album_" + song_key_from_title(
+            arrangements[0].metadata.artist, arrangements[0].metadata.title
+        ).lower()
+
         instrumental_xml: list[Path] = []
         for arr in arrangements:
             # kind.name is a safe unique slug ("alternate_lead"); the display value
             # ("Alternate Lead") has a space.
             instrumental_xml.append(
-                write_arrangement_xml(arr, out_dir / f"arrangement_{arr.kind.name.lower()}.xml")
+                write_arrangement_xml(
+                    arr, out_dir / f"arrangement_{arr.kind.name.lower()}.xml", album_art_urn
+                )
             )
         xml_paths: list[Path] = list(instrumental_xml)
 

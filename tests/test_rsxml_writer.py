@@ -13,6 +13,7 @@ from rockforge.domain.music import Beat, BendPoint, TabNote, Technique, TempoMap
 from rockforge.infrastructure.rsxml.writer import (
     _fmt,
     _safe_tone_time,
+    render_arrangement,
     write_arrangement_xml,
 )
 
@@ -342,3 +343,15 @@ def test_safe_tone_time_uses_gap_then_midpoint() -> None:
     # a time that isn't on any note is left untouched (e.g. a silent arrangement
     # there) — no dragging it to a far note
     assert _safe_tone_time(1.5, [1.0, 2.0]) == pytest.approx(1.5)
+
+
+def test_album_art_urn_is_written_when_the_caller_knows_the_song_key() -> None:
+    """``<albumArt>`` was always empty. It is completeness for the DLC Builder
+    path only: the game resolves the in-game cover through the MANIFEST's
+    AlbumArt attribute, and the instrumental XML is not even shipped inside the
+    .psarc (only the showlights one is). Empty when no key is supplied, exactly
+    as before."""
+    arr = make_arrangement()
+    assert render_arrangement(arr).findtext("albumArt") == ""
+    urn = "urn:image:dds:album_artistsong"
+    assert render_arrangement(arr, urn).findtext("albumArt") == urn

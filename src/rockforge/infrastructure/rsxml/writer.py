@@ -183,7 +183,7 @@ def _append_note_el(parent: ET.Element, tag: str, n: TabNote) -> ET.Element:
     return el
 
 
-def render_arrangement(arr: Arrangement) -> ET.Element:
+def render_arrangement(arr: Arrangement, album_art_urn: str | None = None) -> ET.Element:
     song = ET.Element("song", version="8")
     ET.SubElement(song, "title").text = arr.metadata.title
     # The <arrangement> tag carries the Rocksmith path name (Lead/Rhythm/Combo) —
@@ -214,7 +214,12 @@ def render_arrangement(arr: Arrangement) -> ET.Element:
     ET.SubElement(song, "albumNameSort").text = arr.metadata.album
     if arr.metadata.year is not None:
         ET.SubElement(song, "albumYear").text = str(arr.metadata.year)
-    ET.SubElement(song, "albumArt").text = ""
+    # The DDS album-art URN. Rocksmith resolves the in-game cover through the
+    # MANIFEST's AlbumArt attribute, not this field, and the instrumental XML is
+    # not even shipped inside the .psarc (only the showlights one is) — so this
+    # is completeness for the DLC Builder path, which reads the XML on import.
+    # Empty when the caller has no song key, exactly as before.
+    ET.SubElement(song, "albumArt").text = album_art_urn or ""
     ET.SubElement(song, "crowdSpeed").text = "1"
 
     # arrangementProperties: the DLC Builder parser (Rocksmith2014.XML
@@ -406,11 +411,13 @@ def render_arrangement(arr: Arrangement) -> ET.Element:
     return song
 
 
-def write_arrangement_xml(arr: Arrangement, path: Path) -> Path:
+def write_arrangement_xml(
+    arr: Arrangement, path: Path, album_art_urn: str | None = None
+) -> Path:
     problems = arr.validate()
     if problems:
         raise ValueError("invalid arrangement: " + "; ".join(problems))
-    root = render_arrangement(arr)
+    root = render_arrangement(arr, album_art_urn)
     tree = ET.ElementTree(root)
     ET.indent(tree)
     path.parent.mkdir(parents=True, exist_ok=True)

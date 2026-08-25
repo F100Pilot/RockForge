@@ -1160,11 +1160,27 @@ up via the worker's `params.get("cover_art")` lookup and passes it as
 Both `DlcBuilderPackager` and `NativePsarcPacker` copy the image into the bundle
 as `cover.<ext>` and record it in `rockforge_project.json["cover_art"]` (via the
 shared `build_project_metadata()`), so it's available as the album art when
-creating/updating the DLC Builder project (DLC Builder generates the in-game DDS
-textures itself). Honesty note: this is NOT yet converted to an in-game DDS
-texture/`albumArt` URN — the Song2014 XML `albumArt` field
-(`infrastructure/rsxml/writer.py`) stays empty in both DLC Builder and native
-PSARC output, same as building without a cover set.
+creating/updating the DLC Builder project (DLC Builder generates its own in-game
+DDS textures on import).
+
+**The native PSARC already ships the real cover as a game texture.**
+`gamedata.album_art_dds(size, cover_path)` converts it to **DXT1** at 64/128/256
+with Pillow (from the `[psarc]` extra) and the packer writes
+`gfxassets/album_art/album_<key>_{64,128,256}.dds`; the manifest's `AlbumArt`
+attribute carries `urn:image:dds:album_<key>` and the xblock's
+`AlbumArtSmall`/`Medium`/`Large` point at it. Without Pillow, or with an
+unreadable image, it degrades to the neutral solid placeholder rather than
+failing the build — so the URN always resolves. Verified end to end by driving
+the packer with a real image and decoding the DXT1 block colour back out of the
+packed `.psarc`. (An earlier honesty note here claimed the opposite; it was
+stale, and the recommendation built on it was wrong.)
+
+The Song2014 XML's `<albumArt>` now carries the same URN
+(`render_arrangement(arr, album_art_urn)`), which is **completeness for the DLC
+Builder path only**: the game resolves the cover through the MANIFEST, and the
+instrumental XML is not even shipped inside the `.psarc` (only
+`<key>_showlights.xml` is). It stays empty when no key is supplied, so a direct
+`write_arrangement_xml` call is unchanged.
 
 ### Automatic tone detection (`/jobs/{id}/detect-tones`)
 

@@ -86,8 +86,14 @@ documentados nas mensagens de commit, caso valha a pena ressuscitar alguma.
   contra PSARC do DLC Builder — ver `CLAUDE.md`).
 - **GP6 (`.gpx`) não suportado** (container binário proprietário). GP3/GP4/GP5 e
   GP7/GP8 (`.gp`) são suportados.
-- **Capa de álbum não vira textura DDS in-game** — copiada para o bundle e
-  registada no `.rs2dlc`, mas o `albumArt` do Song2014 XML fica vazio.
+- **Capa de álbum: resolvido.** O PSARC nativo converte a capa real para **DDS
+  DXT1** em 64/128/256 (`gamedata.album_art_dds`, precisa de Pillow do extra
+  `[psarc]`), o manifesto leva o URN e o xblock aponta-lhe — verificado ponta a
+  ponta a descodificar a cor do bloco DXT1 de dentro do `.psarc` empacotado. Sem
+  Pillow, ou com imagem ilegível, degrada para o placeholder neutro em vez de
+  falhar. O `<albumArt>` do XML também leva o URN, mas isso é só completude para
+  o caminho do DLC Builder (o jogo lê o manifesto, e o XML dos instrumentos nem
+  sequer entra no `.psarc`).
 - **Não corre no GitHub Pages** (precisa de backend Python + Redis + ML); é uma
   app desktop/servidor local por design.
 
