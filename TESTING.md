@@ -16,7 +16,7 @@ CI cannot. Read this before adding or changing a test.
 ```bash
 pip install -e ".[dev,psarc]"  # core + test tooling + cryptography/Pillow, NO ML stack
 pytest                       # the suite, ~10s, all ML/Wwise/external tools faked
-ruff check src tests         # lint
+ruff check src tests start_standalone.py build_exe.py   # lint
 mypy                         # type check
 ```
 
@@ -78,7 +78,7 @@ serializers) need no fakes — they are deterministic and tested directly.
 
 | Gate | Command | Enforces |
 |---|---|---|
-| **Lint** | `ruff check src tests` | style, unused imports/vars, import order, obvious bugs |
+| **Lint** | `ruff check src tests start_standalone.py build_exe.py` | style, unused imports/vars, import order, obvious bugs |
 | **Types** | `mypy` | strict on `domain/`/`application/`/`infrastructure/`; relaxed at framework boundaries (FastAPI/SQLAlchemy/Pydantic) via per-module overrides in `pyproject.toml` |
 | **Tests** | `pytest` | the functional suite (see §4) |
 | **Web lint** | `npm ci && npm run lint` | `web/app.js` (the UI's client script) via ESLint — real-bug rules only (`no-undef`, `no-redeclare`, …), not a style reformat. CI job `web-lint`. |
@@ -132,6 +132,7 @@ Per-file counts below reflect the suite at the time of writing; run
 | `test_db_schema.py` | 3 | the startup schema check: fresh DB accepted, a column dropped from an existing DB fails loudly naming it, and the check itself never blocks startup |
 | `test_architecture.py` | 2 | Clean Architecture layering: `application/ports.py` imports zero `infrastructure/`; other `application/` files only the explicitly-accepted exceptions |
 | `test_standalone_spec.py` | 3 | the PyInstaller spec bundles EVERY file under `web/` (executes `rockforge.spec` with stubbed builders and inspects the real `datas`), puts them where the server looks, and index.html references nothing that isn't bundled |
+| `test_standalone_launcher.py` | 18 | the standalone launcher's decisions, with no GUI: the worker-mode/idle-shutdown defaults (and that an explicit setting still wins), the close-confirmation logic, the readiness poll, the ffmpeg PATH order, the log fallback, and — against a fake `webview` — that the window opens on the local API, that its close handler is wired to `work_in_flight`, and that both failure paths release the port |
 
 ### Key regression tests — do not delete these without understanding why
 
@@ -668,6 +669,36 @@ gravação — corre no browser.
 
 Honesto: é o carácter (ganho/brilho), NÃO o som verdadeiro do amp — esse só no
 jogo/DLC Builder.
+
+### 7d-ter. The standalone `.exe` opens a native window (Windows only)
+
+CI cannot build or run it — PyInstaller cannot cross-compile, and there is no
+Edge WebView2 on a Linux runner. The launcher's DECISIONS are covered by
+`test_standalone_launcher.py` (including the window orchestration, against a
+fake `webview`) and the bundled files by `test_standalone_spec.py`; what only a
+real Windows build shows is whether the window actually comes up.
+
+Build with `py -3.11 build_exe.py` after installing `.[dev,psarc,desktop]`, then:
+
+1. **It opens in its own window** — no browser tab, and no black console box
+   behind it. The UI inside must be the full app (a blank window means the
+   spec is not shipping `web/`; §7 of the README covers that check).
+2. **Closing the window exits the process.** Check Task Manager: no
+   `rockforge.exe` left behind. The idle-shutdown watchdog is deliberately off
+   in windowed mode, so the window IS the only exit signal — if it leaks, the
+   next launch will fail to bind port 8000.
+3. **Closing mid-build asks first.** Start a build, close the window while it
+   runs: a confirmation dialog must appear. Cancel → the app stays open and the
+   build finishes. Confirm → it exits (and that job is left unfinished, which
+   is what the dialog says). In `inprocess` mode the worker is in the API's own
+   process, so closing really does abort it — the dialog is the whole guard.
+4. **Without `[desktop]` it still works.** Build once with pywebview NOT
+   installed: `build_exe.py` must warn, and the `.exe` must fall back to
+   serving and opening the default browser rather than failing.
+5. **The log exists.** `%USERPROFILE%\Downloads\RockForge\rockforge.log`
+   should have uvicorn's startup lines. With `console=False` there is no stdout
+   at all, so if this file is missing or empty, any future crash is
+   unreportable.
 
 ### 7e. Wwise `.wem` (needs a local Wwise 2019/2021/2022/2023, Windows)
 

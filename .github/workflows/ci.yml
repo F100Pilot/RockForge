@@ -26,7 +26,7 @@ jobs:
         # instead of quietly dropping 17 tests.
         run: python -c "import cryptography, PIL"
       - name: Lint
-        run: ruff check src tests
+        run: ruff check src tests start_standalone.py build_exe.py
       - name: Type-check
         run: mypy
       - name: Tests

@@ -95,6 +95,9 @@ a = Analysis(
         "uvicorn.protocols.http.auto",
         "uvicorn.lifespan.on",
     ],
+    # pywebview (the native window) needs nothing here: its wheel declares a
+    # `pyinstaller40` entry point pointing at its own hook directory, which
+    # PyInstaller discovers automatically. Do not add its internals by hand.
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -119,7 +122,11 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=True,
+    # No console window: the launcher opens a native window (pywebview), and a
+    # black cmd box behind it reads as a bug. A windowed build has NO stdout or
+    # stderr, so start_standalone.main() redirects both to a log file before
+    # anything can write to them — see redirect_output_to_log.
+    console=False,
     icon=None,
 )
 

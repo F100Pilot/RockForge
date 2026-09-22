@@ -41,8 +41,24 @@ def check_ffmpeg() -> None:
             )
 
 
+def check_desktop_window() -> None:
+    """The .exe opens a native window via pywebview. Without it the build still
+    works — the launcher falls back to the default browser — so this warns
+    rather than failing, but a silent fallback would look like the window
+    feature simply did not work."""
+    try:
+        import webview  # noqa: F401
+    except ImportError:
+        print(
+            "WARNING: pywebview is not installed, so the .exe will open the\n"
+            "  default BROWSER instead of a native window.\n"
+            '  Install it with:  py -3.11 -m pip install -e ".[desktop]"'
+        )
+
+
 def build() -> None:
     check_ffmpeg()
+    check_desktop_window()
     spec = ROOT / "rockforge.spec"
     if not spec.exists():
         print(f"ERROR: {spec} not found")
@@ -59,7 +75,7 @@ def build() -> None:
 def make_zip(dist: Path) -> None:
     """Create a portable .zip of the dist folder."""
     zip_path = ROOT / "dist" / "RockForge_portable"
-    print(f"\nCreating portable ZIP...")
+    print("\nCreating portable ZIP...")
     shutil.make_archive(str(zip_path), "zip", str(dist.parent), dist.name)
     print(f"  ZIP: {zip_path}.zip")
 

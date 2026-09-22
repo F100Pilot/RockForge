@@ -214,8 +214,8 @@ Pré-requisitos: **Python 3.11** + `pip install pyinstaller` + **ffmpeg**
 ```cmd
 cd RockForge
 
-REM 1. Instala as dependências core + psarc + PyInstaller
-py -3.11 -m pip install -e ".[dev,psarc]"
+REM 1. Instala as dependências core + psarc + janela nativa + PyInstaller
+py -3.11 -m pip install -e ".[dev,psarc,desktop]"
 py -3.11 -m pip install pyinstaller
 
 REM 2. (Opcional) Cria a pasta ffmpeg/ com o executável para empacotar
@@ -226,12 +226,23 @@ REM 3. Compila
 py -3.11 build_exe.py
 ```
 
-O resultado fica em `dist\rockforge\`. Distribui essa pasta inteira (ou
-comprime-a em zip). O utilizador faz duplo-clique em `rockforge.exe` e o
-browser abre automaticamente.
+O resultado fica em `dist\rockforge\`. Distribui essa pasta inteira (ou usa
+`--zip` / `--installer` abaixo). O utilizador faz duplo-clique em
+`rockforge.exe` e a app abre **numa janela própria** — sem separador do browser
+e sem janela preta de consola.
+
+O extra `[desktop]` é o que dá a janela nativa (pywebview, que usa o **Edge
+WebView2** já incluído no Windows — não empacota um segundo browser). **Sem ele
+o build continua a funcionar**, mas cai no comportamento antigo: serve e abre o
+browser predefinido. O `build_exe.py` avisa se faltar, para não passares por
+isso sem dar conta.
 
 Se não colocares o `ffmpeg.exe` dentro de `ffmpeg/`, o build avisa — a app
 continua a funcionar se o utilizador tiver o ffmpeg no PATH do sistema.
+
+**Onde ver os erros:** sem consola, a app escreve tudo para
+`%USERPROFILE%\Downloads\RockForge\rockforge.log`. É o primeiro sítio a
+consultar se o `.exe` não arrancar.
 
 #### Verificar o build antes de distribuir
 
@@ -333,7 +344,7 @@ Desenvolvimento:
 pip install -e ".[dev,psarc]"      # núcleo + testes (sem ML) — usa SEMPRE este
 pip install -e ".[dev,ml]"         # com Demucs/librosa
 pip install -e ".[dev,ml,lyrics]"  # + deteção automática de letra (WhisperX)
-pytest && ruff check src tests && mypy
+pytest && ruff check src tests start_standalone.py build_exe.py && mypy
 ```
 
 O extra `[psarc]` não é opcional para testar: sem o `cryptography`, 17 testes do

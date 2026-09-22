@@ -57,6 +57,11 @@ lyrics = [
 ]
 # Native PSARC/SNG encryption (AES-256-CFB/CTR) — see infrastructure/packaging/psarc.
 psarc = ["cryptography>=42", "Pillow>=10"]
+# Native desktop window for the standalone build (start_standalone.py). pywebview
+# wraps the platform's OWN webview — Edge WebView2 on Windows, which ships with
+# the OS — so it costs a few MB instead of bundling a second browser. Optional:
+# without it the launcher serves and opens the default browser, as before.
+desktop = ["pywebview>=5.0"]
 dev = [
     "pytest>=8.0",
     "pytest-cov>=5.0",

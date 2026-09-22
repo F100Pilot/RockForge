@@ -2120,10 +2120,49 @@ secret rather than silently running exposed and unauthenticated. Guarded by
 
 ### Standalone executable (`build_exe.py` / PyInstaller)
 
-`start_standalone.py` is the entry point for the PyInstaller-built `.exe`. It
-sets `ROCKFORGE_WORKER_MODE=inprocess` before any import, so the API dispatches
-tasks to a `ThreadPoolExecutor(max_workers=1)` inside the same process instead
-of to Celery/Redis. The task functions themselves (`generate_cdlc`,
+**It opens a NATIVE WINDOW, not a browser tab.** `start_standalone.py` runs
+uvicorn on a daemon thread and shows the UI in a `pywebview` window
+(`run_windowed`); `webview.start()` must own the main thread, which is why the
+server is what moves aside. pywebview wraps the platform's OWN webview — Edge
+WebView2 on Windows, which ships with the OS — so it costs a few MB rather than
+bundling a second browser the way Electron would, and `web/` is served and
+rendered completely unchanged. It is the optional `[desktop]` extra: without it
+(or when the GUI backend cannot start — no WebView2 runtime, no display)
+`run_in_browser` restores the old behaviour, serve-and-open-the-default-browser,
+after releasing the port so the fallback can bind it.
+
+**A window close is unambiguous, so windowed mode turns the idle-shutdown
+watchdog OFF** (`ROCKFORGE_IDLE_SHUTDOWN_S=0`). That whole mechanism exists only
+because "the browser tab closed" is a guess made from missing heartbeats — a
+guess a backgrounded tab breaks, which needed its own guard. The window replaces
+it, and `should_close_now` keeps the part that matters: in `inprocess` mode the
+worker runs in the API's own process, so closing mid-build would abort it and
+leave the job stuck at RUNNING, exactly what `_should_shutdown(work_in_flight)`
+prevents on the browser path. The window's `closing` event (cancellable —
+returning `False` vetoes) asks the user to confirm instead of silently
+discarding the work or refusing to close at all.
+
+**`console=False` means the process has NO stdout or stderr** — they are
+`None`, and uvicorn's logging raises on the first line. `main()` redirects both
+to `work_dir/rockforge.log` before anything can write (`redirect_output_to_log`),
+falling back to a temp file if settings cannot even load: a crash with no console
+AND no log is unreportable. pywebview needs no `hiddenimports` — its wheel
+declares a `pyinstaller40` entry point pointing at its own hook directory, which
+PyInstaller discovers automatically.
+
+Everything in the launcher is a plain function called from `main()`, nothing runs
+at import: the environment must be configured before anything imports
+`rockforge.config` (pydantic-settings reads the environment once, at import), and
+a module that did that on the way in could not be tested without side effects.
+Guarded by `test_standalone_launcher.py` (the watchdog/worker-mode defaults and
+that an explicit setting still wins, the close-confirmation logic, the readiness
+poll, the ffmpeg PATH order, the log fallback, and — with a fake `webview` — that
+the window opens on the local API, that the close handler is actually wired to
+`work_in_flight`, and that BOTH failure paths release the port).
+
+It sets `ROCKFORGE_WORKER_MODE=inprocess` before any import, so the API
+dispatches tasks to a `ThreadPoolExecutor(max_workers=1)` inside the same process
+instead of to Celery/Redis. The task functions themselves (`generate_cdlc`,
 `detect_lyrics`) are identical — only the dispatch changes. `worker_mode`
 (`config.py`) controls which path `_enqueue`/`_enqueue_detect` take:
 
@@ -2160,7 +2199,9 @@ pip install -e ".[dev,psarc]"       # core + tests + cryptography/Pillow, no ML
 pip install -e ".[dev,ml]"          # adds Demucs/librosa (stem separation, tone detection, per-point tempo/tuning)
 pip install -e ".[dev,ml,lyrics]"   # + WhisperX (automatic lyric detection)
 pytest                           # full suite (ML stages are faked in tests)
-ruff check src tests             # lint — must pass
+ruff check src tests start_standalone.py build_exe.py   # lint — must pass
+                                 # (the root scripts are shipped code; rockforge.spec
+                                 #  is excluded — it calls PyInstaller-injected names)
 mypy                             # strict on domain/application/infra; relaxed at boundaries
 ```
 
