@@ -99,6 +99,43 @@ documentados nas mensagens de commit, caso valha a pena ressuscitar alguma.
 
 ## Ideias futuras (não implementadas)
 
+- [ ] **Pré-visualizar o *note highway* em 3D (three.js)**: desenhar a
+  autoestrada de notas do Rocksmith no browser, **a partir do `.sng` já
+  construído** (`crypto.unpack_sng` + `read_sng`, que já existem) e não do
+  `Arrangement` do domínio — assim mostra o que está mesmo no binário. Com um
+  slider de nível de DD, mostraria: as notas por nível, as caixas de âncora com
+  o seu traste/largura e `phrase_iteration_id`, os sustains ao comprimento real,
+  acordes condensados (alta densidade) vs caixa completa, e as fronteiras das
+  iterações de frase.
+
+  **Porquê:** todos os bugs nativos de SNG que custaram sessões inteiras —
+  o borrão lateral (faltava `HIGHDENSITY`), os "pilares altos" (sustain
+  re-inflado por um stretch local), o crash à entrada de uma frase (âncora
+  sem cobertura), a âncora do início a enrolar para a ÚLTIMA frase, os
+  handshapes a crashar — são **geometria de notas e âncoras**, e a única
+  forma de os ver hoje é construir o PSARC, abrir o jogo e tocar até ao
+  sítio. Isto trocaria esse ciclo por arrastar um slider.
+
+  **Limite honesto:** renderiza a NOSSA leitura do binário. Se o jogo
+  interpretar mal algo que escrevemos, a pré-visualização mostra-o correto —
+  não teria apanhado o `VOCAL_NOTE = 254` nem o `zlength = 0` do bloco
+  parcial, que são interpretação do jogo e não geometria. Encurta o ciclo
+  para uma classe real de bugs; **não substitui o teste no jogo**.
+
+  **Constrangimentos:** o `web/` não tem hoje nenhuma dependência em runtime
+  nem build step, por isso o three.js (MIT) teria de ser **vendorizado** em
+  `web/` como ES module + importmap — **CDN está fora**, a app é local-first,
+  distribui-se como `.exe` e tem de funcionar offline. O `rockforge.spec` já
+  percorre todo o `web/`, por isso entra no `.exe` sozinho. Precisa de um
+  endpoint que sirva o SNG descodificado em JSON (ou estender o
+  `/arrangements` com níveis e âncoras). O código novo fica num ficheiro
+  próprio dentro do alcance do ESLint; a biblioteca vendorizada fora.
+
+  **Onde NÃO vale a pena 3D:** gear no editor de tons (já há faceplates 2D
+  com knobs funcionais, e são explicitamente só cosméticos), braço/acordes
+  (um diagrama plano é melhor e é o que a concorrência faz), e
+  waveform/espectrograma (um espectrograma 2D seria estritamente mais útil).
+
 - [x] **Deteção automática de afinação para jobs GP**: `POST
   /jobs/{id}/detect-tuning` estima o desvio em cents (A440) com
   `librosa.estimate_tuning` sobre a gravação; é apenas uma proposta — o
