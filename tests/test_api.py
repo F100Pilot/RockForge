@@ -2116,3 +2116,40 @@ def test_upload_endpoints_are_plain_def_not_async(client: TestClient) -> None:
             f"{name} must be a plain `def` (blocking upload work belongs in "
             "Starlette's thread pool, not the event loop)"
         )
+
+
+def test_system_check_reports_every_dependency_with_its_cost(client: TestClient) -> None:
+    """One place that answers "what is installed, and what does each gap cost
+    me?". Without it every absence only shows up downstream, where it reads as
+    a bug in RockForge rather than as missing software."""
+    r = client.get("/system-check")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    keys = {q["key"] for q in body["requirements"]}
+    assert {"ffmpeg", "wwise", "psarc", "ml", "lyrics", "gpu", "cdlc_patch"} <= keys
+    for q in body["requirements"]:
+        assert q["found"] in (True, False, None)
+        assert q["unlocks"] and q["without_it"] and q["install"]
+    # `found: null` must survive Pydantic as null, not collapse to false — it is
+    # the "cannot be checked from here" answer, and the UI renders it apart.
+    patch = next(q for q in body["requirements"] if q["key"] == "cdlc_patch")
+    assert patch["found"] is None
+    assert body["missing_required"] == [
+        q["key"] for q in body["requirements"] if q["required"] and q["found"] is False
+    ]
+
+
+def test_system_check_survives_a_probe_that_raises(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A diagnostics page that 500s is worse than one reporting "missing" — it
+    is exactly when the machine is in a bad state that the user opens it."""
+    import importlib.util
+
+    def raising(name: str) -> object:
+        raise ValueError("broken install")
+
+    monkeypatch.setattr(importlib.util, "find_spec", raising)
+    r = client.get("/system-check")
+    assert r.status_code == 200
+    assert r.json()["requirements"]

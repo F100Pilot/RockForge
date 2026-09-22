@@ -226,13 +226,58 @@ function fillSettings(s) {
   toggleBanquetConfig();
   renderBanquetValidation(s.banquet || {});
 }
+// The external-software report. `found` is a TRI-STATE: null means "cannot be
+// checked from here" (the CDLC loader patch — we don't know where the game is;
+// a CUDA build of torch — only importing it would tell), which is a different
+// and more honest answer than "missing", so it gets its own marker.
+const SYS_MARK = { true: '✅', false: '❌', null: 'ⓘ' };
+
+function renderSystemCheck(data) {
+  const el = document.getElementById('sysCheck');
+  if (!el) return;
+  const rows = (data.requirements || []).map(r => {
+    const mark = SYS_MARK[String(r.found)] || 'ⓘ';
+    // Only spell out the cost and the fix for what is actually missing or
+    // unknown — a wall of install commands next to every ✅ is noise.
+    const gap = r.found !== true;
+    const why = gap
+      ? `<div class="meta" style="margin-left:1.4rem">${esc(r.without_it)}</div>` +
+        `<div class="meta" style="margin-left:1.4rem"><b>Instalar:</b> <code>${esc(r.install)}</code></div>`
+      : '';
+    const flag = (r.required && r.found === false)
+      ? ' <b style="color:var(--err,#e05a5a)">OBRIGATÓRIO</b>' : '';
+    return `<div style="margin:.35rem 0">
+      <div>${mark} <b>${esc(r.name)}</b>${flag}</div>
+      <div class="meta" style="margin-left:1.4rem">${esc(r.detail)}</div>${why}</div>`;
+  });
+  const missing = data.missing_required || [];
+  const banner = missing.length
+    ? `<div class="meta" style="color:var(--err,#e05a5a);margin-bottom:.4rem">
+         ⚠️ Falta software <b>obrigatório</b> (${missing.map(esc).join(', ')}) —
+         nenhum job vai chegar ao fim até o instalares.</div>`
+    : '';
+  el.innerHTML = banner + rows.join('');
+}
+
+async function loadSystemCheck() {
+  const el = document.getElementById('sysCheck');
+  if (el) el.textContent = 'a verificar…';
+  try {
+    renderSystemCheck(await getJSON('/system-check'));
+  } catch {
+    if (el) el.textContent = 'não foi possível verificar (o servidor não respondeu)';
+  }
+}
+
 async function openSettings() {
   document.getElementById('settingsInfo').textContent = '';
   try {
     fillSettings(await getJSON('/settings'));
   } catch { /* keep defaults */ }
   document.getElementById('settingsOverlay').hidden = false;
+  loadSystemCheck();
 }
+document.getElementById('sysCheckRefresh').addEventListener('click', loadSystemCheck);
 function closeSettings() { document.getElementById('settingsOverlay').hidden = true; }
 document.getElementById('openSettings').addEventListener('click', openSettings);
 document.getElementById('settingsClose').addEventListener('click', closeSettings);

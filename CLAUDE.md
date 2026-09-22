@@ -2091,6 +2091,50 @@ safe (loudnorm's limiter, not a post-gain that would clip the -1.5 dBTP peaks).
 a missing ffmpeg degrades to 0 dB, never a crash. The `.rs2dlc` audio `Volume`
 stays neutral (DLC Builder recomputes on import).
 
+### What external software is installed (`/system-check` + `diagnostics.py`)
+
+RockForge ships almost none of its dependencies — Wwise cannot legally be
+redistributed, the ML stack is gigabytes, ffmpeg is better taken from the
+system. Each already degrades cleanly ON ITS OWN (no Wwise still produces the
+bundle, a missing `[ml]` extra is a 503 naming it, no `[psarc]` just omits the
+`.psarc`), but every one of those symptoms surfaces DOWNSTREAM and reads as a
+bug in RockForge: "o PSARC não é jogável", "a deteção de letra não faz nada".
+
+`infrastructure/diagnostics.py` answers the one question that fixes that — *what
+is installed, and what does each gap cost me?* — and `GET /system-check` serves
+it to the ⚙️ Definições modal's **🩺 Software externo** block. Each
+`Requirement` carries `unlocks` (what it enables), `without_it` (what actually
+happens when absent — the honest cost, not a scare) and `install`.
+
+**`found` is a TRI-STATE, and that is the point.** `None` means "cannot be
+checked from this process", which is a different and more useful answer than
+`False`:
+- the **Rocksmith CDLC loader patch** is the single most common reason a song
+  never appears in game, and we have no idea where the user installed
+  Rocksmith — calling it "missing" would be a confident guess about someone
+  else's machine;
+- **PyTorch installed** tells us nothing about whether it is the CUDA build;
+  only importing it would, and the API process must never import torch (the
+  layering rule above). Installed-and-unverifiable is `None`; marked broken
+  after a CUDA crash IS knowable, and is `False`.
+
+**Nothing heavy is imported.** Detection uses `importlib.util.find_spec`, which
+locates a package without importing it — the same trick
+`whisperx_adapter.available()` already uses. `find_spec` RAISES on a
+half-removed package rather than returning `None`, so `_has` catches that: a
+diagnostics page that 500s is worse than one that says "missing", and a broken
+install is exactly when the user opens it. The ffmpeg probe runs `-version`
+with a timeout and `stdin=DEVNULL` (the hard constraint about console tools
+inheriting stdin applies here too); a binary that will not answer is still
+reported as FOUND, with the detail saying the probe failed.
+
+**Only ffmpeg is `required`** — everything else has a documented degraded path,
+and `missing_required` is what the UI turns into the red banner. Guarded by
+`test_diagnostics.py` (including a test that fails if the probe ever starts
+importing torch/demucs/librosa/whisperx) and `test_system_check_*` in
+`test_api.py`. This is the machine-level view; the per-job **"Estado do PSARC"**
+checklist stays the per-song one.
+
 ### Optional API authentication (`ROCKFORGE_API_TOKEN`)
 
 RockForge has **no authentication by design** for local single-user setups —

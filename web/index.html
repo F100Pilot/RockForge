@@ -821,7 +821,23 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
     <button type="button" class="modal-close" id="settingsClose">×</button>
     <h2>Definições</h2>
 
-    <div style="margin-top:.5rem">
+    <!-- Software externo. First, because it explains most "isto não funciona":
+         RockForge ships almost none of its dependencies (Wwise cannot legally
+         be redistributed, the ML stack is gigabytes), and every absence shows
+         up downstream as something that looks like a bug. -->
+    <div style="margin-top:.5rem;border-bottom:1px solid #262830;padding-bottom:.9rem">
+      <label style="font-weight:600">🩺 Software externo</label>
+      <p class="meta" style="margin:.25rem 0 .5rem">O RockForge não distribui as ferramentas de que depende
+        — umas por licença (Wwise), outras por tamanho (o stack de ML). Aqui vês o que está instalado
+        nesta máquina e <b>o que perdes</b> com cada uma que falte.</p>
+      <div id="sysCheck" class="meta">a verificar…</div>
+      <div class="syncctrls" style="margin-top:.5rem">
+        <button type="button" id="sysCheckRefresh" class="secondary">Verificar de novo</button>
+        <span class="meta">corre outra vez depois de instalares alguma coisa</span>
+      </div>
+    </div>
+
+    <div style="margin-top:.9rem">
       <label style="font-weight:600">Separação de instrumentos (stems)</label>
       <div class="syncctrls" style="margin-top:.4rem">
         <label class="check"><input type="radio" name="sepBackend" value="demucs"> Demucs (por defeito) — 1 faixa "guitarra"</label>

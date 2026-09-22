@@ -2432,6 +2432,51 @@ def version() -> dict[str, str]:
     return {"version": app.version}
 
 
+class RequirementOut(BaseModel):
+    """One external dependency and what its absence actually costs."""
+
+    key: str
+    name: str
+    #: True = present, False = absent, None = NOT CHECKABLE from this process —
+    #: a different answer from "absent", and the honest one for the CDLC loader
+    #: patch (we do not know where the game is) and for a CUDA build of torch
+    #: (only importing it would tell, which the API process must never do).
+    found: bool | None
+    detail: str
+    required: bool
+    unlocks: str
+    without_it: str
+    install: str
+    extras: list[str] = []
+
+
+class SystemCheckOut(BaseModel):
+    requirements: list[RequirementOut]
+    #: Keys of the required dependencies that are missing — the app cannot
+    #: produce anything at all while this is non-empty.
+    missing_required: list[str]
+
+
+@app.get("/system-check", response_model=SystemCheckOut)
+def system_check() -> SystemCheckOut:
+    """What external software this machine has, and what each gap costs.
+
+    RockForge ships almost none of its dependencies — Wwise cannot legally be
+    redistributed, the ML stack is gigabytes, ffmpeg is better taken from the
+    system. Each already degrades cleanly on its own, but the symptom always
+    surfaces downstream and reads as a bug ("o PSARC não é jogável"), so this
+    is the one place that names the cause instead.
+    """
+    from rockforge.infrastructure import diagnostics
+    from rockforge.interfaces.worker.celery_app import _cuda_known_broken
+
+    reqs = diagnostics.check_requirements(settings, gpu_broken=_cuda_known_broken())
+    return SystemCheckOut(
+        requirements=[RequirementOut(**vars(r)) for r in reqs],
+        missing_required=[r.key for r in diagnostics.missing_required(reqs)],
+    )
+
+
 @app.get("/gear-catalogue")
 def gear_catalogue() -> dict[str, Any]:
     """The Rocksmith gear catalogue (amps/cabinets/pedals/racks + descriptors)

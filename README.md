@@ -87,6 +87,38 @@ pipeline Guitar Pro) → `infrastructure/` (adapters: Demucs, librosa, ffmpeg, X
 DB) → `interfaces/` (API FastAPI, worker Celery). Cada estágio ML é um Protocol substituível.
 Para contribuir, ver [`CLAUDE.md`](CLAUDE.md) (camadas, comandos e restrições que já custaram caro).
 
+## Software externo (o que instalar, e o que perdes sem cada coisa)
+
+O RockForge **não distribui** as ferramentas de que depende: o Wwise não pode
+ser redistribuído (licença da Audiokinetic), o stack de ML são gigabytes, e o
+ffmpeg vem melhor do sistema. Cada ausência degrada em condições — mas o
+sintoma aparece sempre mais à frente e parece um bug da app ("o PSARC não é
+jogável", "a deteção de letra não faz nada").
+
+Por isso há um sítio que te diz o que tens: **⚙️ Definições → 🩺 Software
+externo** (ou `GET /system-check`). Mostra o que está instalado nesta máquina,
+o que cada falta te custa, e o comando para instalar.
+
+| Software | Preciso para | Sem ele | Instalar |
+|---|---|---|---|
+| **ffmpeg** | tudo — a gravação é normalizada por aqui | **nenhum job acaba** | `winget install ffmpeg` |
+| **Wwise** 2019/2021/2022/2023 | converter o áudio para `.wem` → `.psarc` **jogável** | o bundle para o DLC Builder sai na mesma; o `.psarc` fica sem áudio | Audiokinetic Launcher + `ROCKFORGE_WWISE_ROOT` |
+| **`[psarc]`** (cryptography, Pillow) | escrever o `.psarc` nativo e a capa em DDS | só sai o bundle, sem crash | `pip install -e ".[psarc]"` |
+| **`[ml]`** (Demucs, librosa) | separar stems, detetar tom, "Corrigir daqui" | esses botões respondem 503 a dizer o que falta | `pip install -e ".[ml]"` |
+| **`[lyrics]`** (WhisperX) | transcrever a letra da gravação | a letra continua a vir do GP, de um LRC, ou do editor | `pip install -e ".[ml,lyrics]"` |
+| **PyTorch CUDA** | GPU: minutos em vez de dezenas de minutos | corre tudo em CPU | ver §2b |
+| **Patch de CDLC** (`D3DX9_42.dll`) | o Rocksmith aceitar *qualquer* CDLC | a música **nunca aparece** na lista | CustomsForge, na pasta do jogo |
+
+Só o **ffmpeg** é obrigatório. Duas notas honestas sobre a tabela: a app não
+consegue verificar o patch de CDLC (não sabe onde tens o jogo), e se o PyTorch
+instalado é a build CUDA ou a de CPU também não — sabê-lo exigia importar o
+torch no processo da API, o que é proibido de propósito. Nesses dois casos o
+painel diz **ⓘ desconhecido**, não ✅ nem ❌.
+
+O `.exe` standalone leva o núcleo (GP → PSARC) e, se puseres o `ffmpeg.exe` na
+pasta `ffmpeg/` antes de compilar, leva-o também. Tudo o resto instala-se
+**fora** da app, na tua instalação de Python — o `.exe` usa o que encontrar.
+
 ## Execução
 
 ### Instalação num PC novo (Windows, sem Docker — recomendado)
