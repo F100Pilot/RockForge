@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import contextlib
-import sys
 from datetime import UTC, datetime
 from functools import cache
 from pathlib import Path
@@ -444,16 +443,29 @@ def detect_lyrics(job_id: str) -> None:
             _commit_params()
             import subprocess as _sp
 
-            whisperx_check = _sp.run(
-                [sys.executable, "-c", "import whisperx; print('ok')"],
-                capture_output=True, text=True, timeout=180,
-                stdin=_sp.DEVNULL,
+            from rockforge.infrastructure import ml_python as _mlpy
+
+            # NOT sys.executable: in the standalone build that is the .exe, so
+            # this would relaunch RockForge. The resolver returns the configured
+            # ML interpreter there (and sys.executable everywhere else), which
+            # is what lets the .exe detect lyrics at all.
+            _python = _mlpy.resolve()
+            whisperx_check = (
+                _sp.run(
+                    [_python, "-c", "import whisperx; print('ok')"],
+                    capture_output=True, text=True, timeout=180,
+                    stdin=_sp.DEVNULL,
+                )
+                if _python
+                else None
             )
-            whisperx_ok = whisperx_check.returncode == 0
+            whisperx_ok = whisperx_check is not None and whisperx_check.returncode == 0
             _log_lyrics_stage(
                 params,
                 "whisperx ready" if whisperx_ok
-                else f"whisperx NOT available: {whisperx_check.stderr[:200]}",
+                else f"whisperx NOT available: {whisperx_check.stderr[:200]}"
+                if whisperx_check is not None
+                else _mlpy.missing_message("A deteção de letra"),
             )
             _commit_params()
 
@@ -461,10 +473,14 @@ def detect_lyrics(job_id: str) -> None:
                 warnings.append(
                     "lyric detection requested but whisperx is not installed "
                     "(pip install 'rockforge[lyrics]')"
+                    if whisperx_check is not None
+                    else _mlpy.missing_message("A deteção de letra")
                 )
                 params["lyrics_status"] = "unavailable"
                 _log_lyrics_stage(params, "whisperx is not installed — aborting")
             else:
+                # whisperx_ok implies the check ran, which implies an interpreter.
+                assert _python is not None
                 workdir = settings.work_dir / job.id / "lyrics"
                 workdir.mkdir(parents=True, exist_ok=True)
 
@@ -492,15 +508,16 @@ def detect_lyrics(job_id: str) -> None:
                 )
                 _commit_params()
                 events_json = workdir / "whisperx_events.json"
-                runner = (
+                runner = _mlpy.runner_path(
                     Path(__file__).resolve().parent.parent.parent
-                    / "infrastructure" / "lyrics" / "_whisperx_runner.py"
+                    / "infrastructure" / "lyrics",
+                    "_whisperx_runner.py",
                 )
 
                 def _run_whisperx(dev: str, compute: str):  # type: ignore[no-untyped-def]
                     return _sp.run(
                         [
-                            sys.executable, str(runner),
+                            _python, str(runner),
                             "--vocals", str(vocals_stem),
                             "--output", str(events_json),
                             "--model", settings.whisper_model,

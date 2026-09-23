@@ -2,7 +2,8 @@
 
 Extracts features from the separated guitar audio and maps them to broad
 tone categories (clean, crunch, high-gain) using spectral heuristics.
-librosa is imported lazily (ml extra).
+The librosa half runs through ``_librosa_runner``, so it works both in a
+Python install and in the standalone .exe (see ``infrastructure/ml_python``).
 
 Honesty note: this does NOT identify the actual amp/pedal used in the
 recording — it classifies the *character* of the guitar sound and
@@ -26,6 +27,8 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from pathlib import Path
+
+from rockforge.infrastructure import _librosa_runner, ml_python
 
 
 @dataclass(frozen=True)
@@ -61,64 +64,21 @@ _FLAT_LOG_MAX = -1.4  # log10(0.04)
 def analyze_guitar_tone(audio: Path) -> ToneProfile:
     """Classify the tone character of a guitar audio file.
 
-    Returns a ToneProfile with normalized 0-1 features derived from spectral
-    analysis over the frames where the guitar is actually sounding. librosa is
-    imported lazily (ml extra).
+    The librosa MEASUREMENT lives in ``_librosa_runner.tone_features`` (one
+    implementation, callable in-process or run by the configured ML
+    interpreter — see ``infrastructure/ml_python.py``, which is what lets the
+    standalone `.exe` do this at all); mapping the features to a
+    :class:`ToneProfile` stays here, pure, so CI can test the calibration
+    without an ML stack.
     """
-    import librosa
-    import numpy as np
-
-    y, sr = librosa.load(str(audio), sr=None, mono=True)
-    if len(y) == 0:
-        raise ValueError("empty audio file")
-
-    # Peak-normalize so the thresholds below are independent of how loud the
-    # stem happens to be (Demucs output level varies wildly).
-    peak = float(np.max(np.abs(y)))
-    if peak > 0:
-        y = y / peak
-
-    rms = librosa.feature.rms(y=y)[0]
-    zcr = librosa.feature.zero_crossing_rate(y=y)[0]
-    centroid = librosa.feature.spectral_centroid(y=y, sr=sr)[0]
-    contrast = librosa.feature.spectral_contrast(y=y, sr=sr)
-    rolloff = librosa.feature.spectral_rolloff(y=y, sr=sr, roll_percent=0.85)[0]
-    flatness = librosa.feature.spectral_flatness(y=y)[0]
-
-    # Align frame counts (features can differ by one frame) then keep only the
-    # frames where the guitar is actually playing — above 30% of the peak RMS —
-    # so silence, count-ins and clean breaks don't pull the estimate toward clean.
-    n = min(len(rms), len(zcr), len(centroid), len(rolloff), len(flatness), contrast.shape[1])
-    rms, zcr = rms[:n], zcr[:n]
-    centroid, rolloff, flatness = centroid[:n], rolloff[:n], flatness[:n]
-    contrast = contrast[:, :n]
-
-    peak_rms = float(np.max(rms)) if n else 0.0
-    active = rms >= 0.3 * peak_rms if peak_rms > 0 else np.ones(n, dtype=bool)
-    if not bool(active.any()):
-        active = np.ones(n, dtype=bool)
-
-    act_rms = rms[active]
-    mean_zcr = float(np.mean(zcr[active]))
-    mean_centroid = float(np.mean(centroid[active]))
-    mean_contrast = float(np.mean(contrast[:, active]))
-    mean_rolloff = float(np.mean(rolloff[active]))
-    mean_flatness = float(np.mean(flatness[active]))
-    mean_rms = float(np.mean(act_rms))
-    # Crest factor over the active region: clean, transient picking keeps peaks
-    # well above the average (~3-6); heavy distortion sustains and compresses it
-    # toward ~1.5-2.5. Low crest ⇒ compressed ⇒ distorted.
-    crest = float(np.max(act_rms)) / (mean_rms + 1e-8)
-
-    return profile_from_features(
-        zcr=mean_zcr,
-        centroid=mean_centroid,
-        contrast=mean_contrast,
-        rolloff=mean_rolloff,
-        flatness=mean_flatness,
-        crest=crest,
-        rms_std_ratio=float(np.std(act_rms)) / (mean_rms + 1e-8),
-    )
+    if ml_python.librosa_here():
+        features = _librosa_runner.tone_features(str(audio))
+    else:
+        features = {
+            k: float(v)
+            for k, v in dict(ml_python.run_librosa("tone", audio)["features"]).items()
+        }
+    return profile_from_features(**features)
 
 
 def profile_from_features(

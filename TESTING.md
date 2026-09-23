@@ -128,11 +128,12 @@ Per-file counts below reflect the suite at the time of writing; run
 | `test_tags.py` | 2 | audio metadata tag extraction |
 | `test_api.py` | 105 | every endpoint (§6): job lifecycle, rebuild composition, detect-* / separate-stems enqueue (mocked), auto-sync + dynamic beat-alignment (faked librosa) + MIDI-tempo-map sync, section + note overrides, lyrics/tones/stems status, gear images, deletion, per-test SQLite |
 | `test_settings.py` | 10 | in-app settings (`/settings`): default demucs, persist+read-back, invalid separator 422, Banquet path validation, empty-string clears override |
-| `test_diagnostics.py` | 10 | the external-software report (`/system-check`): every row carries its cost and its fix, what cannot be checked reports UNKNOWN rather than missing (the CDLC patch, a CUDA build of torch), ffmpeg's version parsed and a non-answering binary still reported as found, Wwise distinguishing unset-variable from wrong-folder, a broken install reading as absent instead of raising — and a guard that fails if the probe ever starts IMPORTING torch/demucs/librosa/whisperx |
+| `test_diagnostics.py` | 15 | the external-software report (`/system-check`): every row carries its cost and its fix, what cannot be checked reports UNKNOWN rather than missing (the CDLC patch, a CUDA build of torch), ffmpeg's version parsed and a non-answering binary still reported as found, Wwise distinguishing unset-variable from wrong-folder, a broken install reading as absent instead of raising; that the ML rows follow the interpreter that will RUN the work (in the `.exe` a different Python entirely) and say where they looked, that one which does not start is reported as that rather than as a missing Demucs, that nothing is probed when this process IS that interpreter, and that the `.exe`'s install instruction points at ⚙️ Definições instead of claiming the feature is unreachable — and a guard that fails if the probe ever starts IMPORTING torch/demucs/librosa/whisperx |
 | `test_celery_tasks.py` | 9 | the actual `@celery_app.task` function BODIES — `generate_cdlc`/`detect_tones`/`separate_stems`/`detect_lyrics` called directly (not `.delay()`) against a per-test SQLite `Job` row, heavy adapters faked; success + never-crashes-on-failure paths |
 | `test_db_schema.py` | 3 | the startup schema check: fresh DB accepted, a column dropped from an existing DB fails loudly naming it, and the check itself never blocks startup |
 | `test_architecture.py` | 2 | Clean Architecture layering: `application/ports.py` imports zero `infrastructure/`; other `application/` files only the explicitly-accepted exceptions |
-| `test_standalone_spec.py` | 3 | the PyInstaller spec bundles EVERY file under `web/` (executes `rockforge.spec` with stubbed builders and inspects the real `datas`), puts them where the server looks, and index.html references nothing that isn't bundled |
+| `test_standalone_spec.py` | 4 | the PyInstaller spec bundles EVERY file under `web/` (executes `rockforge.spec` with stubbed builders and inspects the real `datas`), puts them where the server looks, index.html references nothing that isn't bundled, and every ML runner (`_*_runner.py`/`_demucs_patcher.py`) ships as a real file at its package path — another interpreter has to be able to EXECUTE it |
+| `test_ml_python.py` | 16 | which interpreter the heavy ML stages run on: a Python install resolves to itself (the old path, byte for byte), a frozen build to None rather than to the `.exe` (running it would relaunch RockForge), a configured path wins over both; the per-extra probe and its failure modes (not a Python / non-zero / non-JSON / missing — every one a False, never an exception); the real subprocess transport, driven against `_librosa_runner.py` with a stub librosa; that a missing librosa fails loudly instead of printing a fabricated tempo; that the librosa measurements have ONE implementation (neither adapter may grow its own `import librosa`); and — by PARSING the call sites, since they now explain in comments why it is gone — that none of them passes `sys.executable` |
 | `test_standalone_launcher.py` | 18 | the standalone launcher's decisions, with no GUI: the worker-mode/idle-shutdown defaults (and that an explicit setting still wins), the close-confirmation logic, the readiness poll, the ffmpeg PATH order, the log fallback, and — against a fake `webview` — that the window opens on the local API, that its close handler is wired to `work_in_flight`, and that both failure paths release the port |
 
 ### Key regression tests — do not delete these without understanding why
@@ -701,6 +702,40 @@ Build with `py -3.11 build_exe.py` after installing `.[dev,psarc,desktop]`, then
    should have uvicorn's startup lines. With `console=False` there is no stdout
    at all, so if this file is missing or empty, any future crash is
    unreportable.
+
+### 7d-quater. ML from the `.exe` via an external Python (Windows only)
+
+The standalone build cannot IMPORT the ML stack, but every ML stage runs as a
+subprocess, so it delegates them to the interpreter `ROCKFORGE_ML_PYTHON` names
+(⚙️ Definições → "🐍 Python para o ML"). CI covers the resolution rules, the
+per-extra probe, the real subprocess transport (`_librosa_runner.py` driven
+with a stub librosa) and that no call site passes `sys.executable`
+(`test_ml_python.py`) — what it cannot do is run a frozen build against a real
+Demucs, which is exactly where the interesting failure would be.
+
+With the `.exe` built and a Python 3.11 carrying `.[ml,lyrics]`:
+
+1. **Empty field, `.exe`: the buttons fail honestly.** With nothing configured,
+   "Detetar tom" / "Separar stems" / "Corrigir daqui" must report the missing
+   ML Python and name ⚙️ Definições — not a traceback, and not silence.
+2. **A wrong path is diagnosed as a wrong path.** Point it at `notepad.exe`:
+   the panel must say it did not start as a Python, NOT "Demucs em falta"
+   (which would send you to reinstall Demucs).
+3. **A correct path lights the ✓ per extra**, and `/system-check`'s ML rows
+   name that interpreter rather than reporting the `.exe`'s own (empty) one.
+4. **"Corrigir daqui" actually re-tempos.** This is the one that exercises the
+   new `_librosa_runner` transport end to end: click a drifting note, confirm
+   the measured BPM is plausible and the tail moves. A per-click subprocess
+   costs an interpreter start plus a librosa import (~2-4 s) — slower than
+   `start.bat`, where the in-process path is kept precisely for this.
+5. **Stem separation and lyric detection complete.** Both were already
+   subprocesses; what is new is which interpreter runs them. Watch the job log
+   for the device line, and confirm the `.exe` does NOT relaunch itself (the
+   `sys.executable` bug's signature is a second RockForge window appearing
+   instead of a separation starting).
+6. **`start.bat` is unchanged.** Leave the field empty there and re-run one of
+   each: the resolver returns that very interpreter, so this must be the same
+   path it always was — no new subprocess, no behaviour change.
 
 ### 7e. Wwise `.wem` (needs a local Wwise 2019/2021/2022/2023, Windows)
 

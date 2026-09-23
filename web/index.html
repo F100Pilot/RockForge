@@ -837,6 +837,20 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
       </div>
     </div>
 
+    <div style="margin-top:.9rem;border-bottom:1px solid #262830;padding-bottom:.9rem">
+      <label style="font-weight:600">🐍 Python para o ML</label>
+      <p class="meta" style="margin:.25rem 0 .5rem">O Demucs, o WhisperX e o librosa correm todos em
+        <b>subprocesso</b>, por isso não têm de estar dentro da aplicação — basta existir um Python 3.11
+        que os tenha. É assim que o <b>.exe</b> consegue separar stems, detetar tom e letra e usar o
+        «Corrigir daqui»: o próprio .exe não os pode instalar (tem o seu Python), mas pode entregar-lhes
+        o trabalho. A correr a partir do <code>start.bat</code> deixa vazio — usa o próprio.</p>
+      <label style="display:block">Caminho do <code>python.exe</code>
+        <input type="text" id="sMlPython" placeholder="C:\Python311\python.exe" style="width:100%"></label>
+      <div class="meta" id="sMlPythonInfo" style="margin-top:.4rem"></div>
+      <p class="meta" style="margin:.35rem 0 0">Instala lá:
+        <code>pip install "rockforge[ml,lyrics]"</code></p>
+    </div>
+
     <div style="margin-top:.9rem">
       <label style="font-weight:600">Separação de instrumentos (stems)</label>
       <div class="syncctrls" style="margin-top:.4rem">

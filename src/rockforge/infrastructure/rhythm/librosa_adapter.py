@@ -22,33 +22,29 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from rockforge.infrastructure import _librosa_runner, ml_python
+
 
 def detect_tempo_from(audio: Path, start_s: float, expected_bpm: float | None = None) -> float:
     """Estimate the recording's tempo (BPM) from ``start_s`` to the end.
 
     Used by the per-point "new beat" tool: the user clicks where the chart drifts
     out of the recording and we re-tempo the following notes to the local BPM
-    measured from that instant. librosa imported lazily (ml extra).
+    measured from that instant.
 
-    ``expected_bpm`` is passed to librosa as ``start_bpm``. This matters a lot:
-    librosa's estimator weights the autocorrelation peaks by a log-normal prior
-    centred on ``start_bpm``, which defaults to **120**. Left at that default the
-    prior systematically pulls the answer toward 120 — a song at 70 reads as 140,
-    the "always a higher tempo, never a lower one" bias — and the re-tempo then
-    compresses the tail and the chart runs fast. The caller already knows what
-    the chart plays at the clicked point, so centring the prior there asks the
-    narrow question ("is the recording faster or slower than this?") instead of
-    the open one librosa answers badly.
+    The measurement itself lives in ``_librosa_runner`` so it has ONE
+    implementation reachable two ways: called directly here when this process
+    has librosa, and run by the configured ML interpreter when it does not (the
+    standalone `.exe` — see ``infrastructure/ml_python.py``). The in-process
+    path is kept because this is a per-click tool: paying an interpreter start
+    and a librosa import on every click would make the workflow unusable.
     """
-    import librosa
-    import numpy as np
-
-    y, sr = librosa.load(str(audio), sr=None, mono=True, offset=max(0.0, start_s))
-    if len(y) == 0:
-        raise ValueError("no audio after the requested start point")
-    kwargs = {"start_bpm": float(expected_bpm)} if expected_bpm and expected_bpm > 0 else {}
-    tempo, _ = librosa.beat.beat_track(y=y, sr=sr, **kwargs)
-    return float(np.atleast_1d(tempo)[0])
+    if ml_python.librosa_here():
+        return _librosa_runner.tempo_from(str(audio), start_s, expected_bpm)
+    result = ml_python.run_librosa(
+        "tempo", audio, start=start_s, expected_bpm=expected_bpm or 0.0
+    )
+    return float(result["bpm"])
 
 
 def estimate_tuning_cents(audio: Path) -> float:
@@ -60,7 +56,6 @@ def estimate_tuning_cents(audio: Path) -> float:
     polyphonic audio (see module docstring) — string/drop tuning is NOT
     detected and must come from the GP file or human confirmation.
     """
-    import librosa
-
-    y, sr = librosa.load(str(audio), sr=None, mono=True)
-    return float(librosa.estimate_tuning(y=y, sr=sr)) * 100.0
+    if ml_python.librosa_here():
+        return _librosa_runner.tuning_cents(str(audio))
+    return float(ml_python.run_librosa("tuning", audio)["cents"])

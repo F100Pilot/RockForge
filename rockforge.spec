@@ -57,6 +57,16 @@ symbols_bin = psarc_pkg / "vocals_symbols.bin"
 if symbols_bin.exists():
     datas.append((str(symbols_bin), "rockforge/infrastructure/packaging/psarc"))
 
+# The standalone ML runners. These are executed as SCRIPTS by another Python
+# (the one ROCKFORGE_ML_PYTHON points at — see infrastructure/ml_python.py), so
+# unlike every other module they must exist as real .py FILES on disk: inside
+# the bundle a package's modules live in the archive, where no other
+# interpreter can run them. Shipped at their package path, which is where
+# `ml_python.runner_path` looks. Walked, not listed by hand, for the same
+# reason web/ is — a new runner must not need someone to remember this file.
+for f in sorted(pkg.rglob("_*_runner.py")) + sorted(pkg.rglob("_demucs_patcher.py")):
+    datas.append((str(f), str(Path("rockforge") / f.relative_to(pkg).parent)))
+
 # Bundled ffmpeg (place ffmpeg/ffmpeg.exe in the project root before building).
 ffmpeg_dir = Path("ffmpeg")
 if ffmpeg_dir.is_dir():

@@ -27,10 +27,10 @@ the queries dir. Requires PyTorch; a CUDA GPU is strongly recommended.
 from __future__ import annotations
 
 import subprocess
-import sys
 from pathlib import Path
 
 from rockforge.domain.errors import SeparationError
+from rockforge.infrastructure import ml_python
 from rockforge.infrastructure._subprocess import HARDENED_RUN_KWARGS, map_external_errors
 
 BANQUET_TIMEOUT_S = 3600  # per-query inference; longer than Demucs (bigger model, per-class passes)
@@ -70,12 +70,23 @@ class BanquetSeparator:
             )
         return self._repo, self._ckpt, self._queries_dir
 
+    def _python(self) -> str:
+        """The interpreter to run query-bandit's train.py with.
+
+        NOT sys.executable: in the standalone build that is the .exe, which
+        would relaunch RockForge. See infrastructure/ml_python.py.
+        """
+        python = ml_python.resolve()
+        if not python:
+            raise SeparationError(ml_python.missing_message("A separação Banquet"))
+        return python
+
     def _run_query(self, audio: Path, query: Path, target: Path) -> None:
         repo, ckpt, _ = self._repo, self._ckpt, self._queries_dir
         assert repo is not None and ckpt is not None  # _require_setup ran
         target.parent.mkdir(parents=True, exist_ok=True)
         cmd = [
-            sys.executable, "train.py", "inference_byoq",
+            self._python(), "train.py", "inference_byoq",
             f"--ckpt_path={ckpt}",
             f"--input_path={audio}",
             f"--output_path={target}",

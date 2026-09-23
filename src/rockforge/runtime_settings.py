@@ -3,7 +3,8 @@
 values without an env-var/restart. Any key not overridden here falls back to the
 env-based :class:`Settings`.
 
-Kept deliberately small: only the stem-separator backend + Banquet paths for now
+Kept deliberately small: the stem-separator backend, the Banquet paths and the
+ML interpreter for now
 (the rest of `Settings` stays env-only). Writes are atomic (temp + os.replace)
 so a worker reading mid-write never sees a truncated file.
 """
@@ -20,7 +21,7 @@ from rockforge.config import settings
 
 _KEYS = (
     "stem_separator", "banquet_repo", "banquet_ckpt", "banquet_queries",
-    "loudness_target", "whisperx_compute_type",
+    "loudness_target", "whisperx_compute_type", "ml_python",
 )
 
 # The loudness (LUFS) the audio is normalized to AND the target the Wwise bus
@@ -131,4 +132,38 @@ def banquet_validation() -> dict[str, Any]:
         "queries_ok": bool(query_names),
         "query_names": query_names,
         "ready": repo_ok and ckpt_ok and bool(query_names),
+    }
+
+
+def ml_python() -> Path | None:
+    """The interpreter the heavy ML stages run on, or None for "this one".
+
+    Editable in the UI because the standalone `.exe` has no other way to reach
+    an ML install: its own interpreter is the executable. See
+    ``infrastructure/ml_python.py`` for why every stage can run out-of-process.
+    """
+    return _path("ml_python", settings.ml_python)
+
+
+def ml_python_validation() -> dict[str, Any]:
+    """Readiness of the ML interpreter, for the UI's per-extra ✓/✗.
+
+    Reads ``ml_python.availability()`` — the same source the ⚙️ diagnostics
+    rows use, so the two halves of the same modal cannot contradict each other,
+    and so this never spawns a probe just to ask THIS process what it can
+    import. It also never imports torch: when the answer does need another
+    interpreter, that interpreter is asked in a subprocess.
+    """
+    from rockforge.infrastructure import ml_python as _mlpy
+
+    found = _mlpy.availability()
+    return {
+        "path": str(found["interpreter"]) if found["external"] else "",
+        "frozen": _mlpy.frozen(),
+        # False for a path that is not a working interpreter at all, which is a
+        # different fix from "it runs but has no demucs".
+        "python_ok": bool(found["python"]),
+        "ml_ok": bool(found["demucs"] and found["librosa"]),
+        "lyrics_ok": bool(found["whisperx"]),
+        "torch_ok": bool(found["torch"]),
     }

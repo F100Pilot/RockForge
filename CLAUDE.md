@@ -2128,11 +2128,22 @@ with a timeout and `stdin=DEVNULL` (the hard constraint about console tools
 inheriting stdin applies here too); a binary that will not answer is still
 reported as FOUND, with the detail saying the probe failed.
 
-**Inside the `.exe` an install instruction is rewritten, not printed.** A
-frozen app cannot gain a Python package at all (see the standalone section), so
-`_extras_install` swaps the `pip install` for the truth — that feature needs the
-Python install — rather than handing out a command that cannot work. ffmpeg and
-Wwise are ordinary programs, so THEIR instructions are untouched.
+**Inside the `.exe` an install instruction is rewritten, not printed.** The
+frozen process cannot IMPORT a package the user pip-installs (see the
+standalone section), so a bare `pip install` would be a lie — but it can hand
+the work to another interpreter, so `_extras_install` rewrites the instruction
+to say *where* the packages have to go (the Python `ROCKFORGE_ML_PYTHON` points
+at) rather than claiming the feature is unreachable. ffmpeg and Wwise are
+ordinary programs, so THEIR instructions are untouched.
+
+**The ML rows report the interpreter that will RUN the work, not this
+process.** In the `.exe` those are different Pythons, and our own answer
+("nothing installed") says nothing about whether the feature works. They read
+`ml_python.availability()`, which probes the other interpreter in a subprocess
+when there is one — so the API still never imports torch, and could not answer
+for a different interpreter anyway. A `ml_python` row names that interpreter
+and its extras; it reads "o próprio Python do RockForge" under `start.bat`,
+where the setting is unnecessary.
 
 **Only ffmpeg is `required`** — everything else has a documented degraded path,
 and `missing_required` is what the UI turns into the red banner. Guarded by
@@ -2222,15 +2233,71 @@ instead of to Celery/Redis. The task functions themselves (`generate_cdlc`,
 The PyInstaller spec (`rockforge.spec`) excludes the ML stack (torch, demucs,
 whisperx, scipy, numpy) — the `.exe` covers the GP pipeline + native PSARC core.
 
-**The `.exe` can therefore NEVER do ML, and no `pip install` changes that.** An
-earlier note here claimed "ML extras work if installed separately on the user's
-Python"; that is false and was corrected after building a minimal frozen app
-and reading `sys.path` back: a PyInstaller build's path is just its own
-`_internal`, so the system's site-packages are never importable. Stem
-separation, tone detection, lyric detection and `/detect-tempo` are exclusive to
-running from a Python 3.11 install (`start.bat`). `diagnostics.frozen()` makes
-the ⚙️ panel say so instead of printing a `pip install` the running process
-could never load.
+**The `.exe` cannot IMPORT the ML stack — and does not need to
+(`infrastructure/ml_python.py`).** A PyInstaller build's `sys.path` is just its
+own `_internal`, so the system's site-packages are never importable (verified
+by building a minimal frozen app and reading `sys.path` back; an earlier note
+claiming "ML extras work if installed separately on the user's Python" was
+false about this). But **every ML stage runs, or now runs, as a subprocess** —
+Demucs via `_demucs_patcher.py`, WhisperX via `_whisperx_runner.py` (for the
+ctranslate2 CUDA deadlock), Banquet via query-bandit's own `train.py`, and
+librosa via `_librosa_runner.py` — so none of them needs the package importable
+in the calling process.
+
+What actually kept them out of the standalone build was one argument repeated
+at each of those call sites: **`sys.executable`, which in a frozen app is the
+`.exe` itself**, so the subprocess would relaunch RockForge instead of running
+Demucs. `ROCKFORGE_ML_PYTHON` (⚙️ Definições → "Python para o ML", persisted
+via `runtime_settings`) closes that: point it at a Python 3.11 carrying
+`[ml,lyrics]` and the `.exe` gains stem separation, tone detection, lyric
+detection and "Corrigir daqui". It is the same arrangement ffmpeg and Wwise
+already have — external software, installed once, outside the app.
+
+`ml_python.resolve()` returns the configured interpreter, else `sys.executable`
+when NOT frozen (so running from a Python install is the byte-for-byte old
+path), else **None** — which callers turn into the ordinary "that extra is
+missing" error naming the setting, never a crash. `test_ml_python.py` pins the
+call sites by **parsing** them for a `sys.executable` attribute access (a text
+grep would trip on the comments explaining why it is gone): a regression there
+is invisible from a Python install, where the two values are equal, and breaks
+only the `.exe`, which CI can neither build nor run.
+
+**The librosa measurements have ONE implementation, reachable two ways.**
+`infrastructure/_librosa_runner.py` holds `tempo_from`/`tuning_cents`/
+`tone_features` and a `main()` that prints one line of JSON; it imports
+**nothing from `rockforge`** (same rule as the other two runners — that is what
+lets an interpreter which has librosa but has never heard of RockForge run it).
+`librosa_adapter` and `tone_analysis/analyzer` call those functions **directly**
+when this process has librosa and shell out otherwise, so `start.bat` keeps the
+in-process path — "Corrigir daqui" is a per-click tool and paying an
+interpreter start plus a librosa import on every click would make it unusable.
+Two copies of the feature extraction would drift and silently classify a tone
+differently in the `.exe`; `test_the_librosa_measurements_have_one_implementation`
+fails if either adapter grows an `import librosa` of its own. The split of the
+tone analyzer was already right for this: the librosa half produces seven
+scalars, and the calibration that maps them to a `ToneProfile`
+(`profile_from_features`) is pure and stays where CI can test it.
+
+**`ml_python.availability()` is the ONE place that decides whom to ask.** With
+nothing configured and not frozen, this process IS the interpreter that will do
+the work, so `find_spec` answers exactly and instantly — spawning a probe to
+ask ourselves would cost a subprocess on every `/settings` open. Otherwise the
+packages live elsewhere and only that interpreter can answer, so it is asked in
+a subprocess (`probe`) — the API process must never import torch. Both the ⚙️
+diagnostics rows and the settings page's per-extra ✓/✗ read it, so the two
+halves of the same modal cannot contradict each other. A configured path that
+is not a working interpreter reports `python: False`, deliberately distinct
+from "it runs but has no demucs": "Demucs em falta" would send the user to
+reinstall Demucs instead of fixing the path.
+
+**The runners must be shipped as real `.py` FILES.** Inside the bundle a
+package's modules live in the archive, where no other interpreter can execute
+them, so `rockforge.spec` WALKS for `_*_runner.py`/`_demucs_patcher.py` and
+bundles each at its package path — which is where `ml_python.runner_path`
+looks. Walked, not listed by hand, for the same reason `web/` is (below), and
+guarded by `test_spec_bundles_every_ml_runner_at_its_package_path`, which
+asserts the destination too: a runner bundled to the wrong folder is exactly as
+broken as one not bundled at all.
 ffmpeg is bundled from `ffmpeg/ffmpeg.exe` (placed by the user before build);
 `start_standalone.py` prepends the bundled path to `$PATH` at launch.
 

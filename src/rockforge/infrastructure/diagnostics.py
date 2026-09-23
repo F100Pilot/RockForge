@@ -22,15 +22,18 @@ absence cost me?* — in one place, honestly:
   is a different and more useful answer than `False`. The Rocksmith CDLC loader
   patch is the clearest case: it is the single most common reason a song never
   appears in game, and we have no idea where the user's game is installed.
-- **Inside the `.exe`, a `pip install` instruction would be a lie.** A frozen
-  PyInstaller app has its OWN Python: its `sys.path` is just the bundle's
-  `_internal`, so the system's site-packages are not importable (verified by
-  building a minimal frozen app and reading `sys.path` back — an earlier doc
-  claim that "ML extras work if installed separately on the user's Python" was
-  simply wrong). Telling someone to `pip install` a package the running process
-  can never load is worse than saying nothing, so `_extras_install` swaps those
-  instructions for the truth: the `.exe` cannot gain them at all, and that
-  feature needs the Python install instead.
+- **Inside the `.exe`, a bare `pip install` instruction would be a lie.** A
+  frozen PyInstaller app has its OWN Python: its `sys.path` is just the
+  bundle's `_internal`, so the system's site-packages are never importable
+  (verified by building a minimal frozen app and reading `sys.path` back).
+  What it CAN do is hand the work to another interpreter — every ML stage
+  already runs as a subprocess — so `_extras_install` rewrites those
+  instructions to say where the packages have to go: the Python 3.11 that
+  ``ROCKFORGE_ML_PYTHON`` points at. See ``infrastructure/ml_python.py``.
+- **The ML rows report the interpreter that will actually run the work**, not
+  this process. When that is another Python, it is asked in a subprocess what
+  it has (`ml_python.probe`) — the API process must never import torch, and it
+  could not answer for a different interpreter anyway.
 """
 
 from __future__ import annotations
@@ -38,9 +41,10 @@ from __future__ import annotations
 import importlib.util
 import shutil
 import subprocess
-import sys
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
+
+from rockforge.infrastructure.ml_python import frozen
 
 if TYPE_CHECKING:
     from rockforge.config import Settings
@@ -72,23 +76,22 @@ class Requirement:
     extras: list[str] = field(default_factory=list)
 
 
-def frozen() -> bool:
-    """Whether this is the PyInstaller build rather than a Python install."""
-    return bool(getattr(sys, "frozen", False))
-
-
 def _extras_install(pip_command: str, feature: str) -> str:
-    """The install instruction, honest about where it can actually be run.
+    """The install instruction, pointing at the interpreter that will run it.
 
-    A `pip install` into the user's Python does nothing for a frozen `.exe` —
-    it has its own interpreter and never sees those packages.
+    A `pip install` into the user's Python does nothing for the *frozen* `.exe`
+    process — it has its own interpreter and never sees those packages. But the
+    heavy stages all run as subprocesses, so the `.exe` can hand them to a
+    Python that DOES have them: the instruction becomes "install there, and
+    point ⚙️ Definições at it".
     """
     if not frozen():
         return pip_command
     return (
-        f"NÃO é possível no .exe — tem o seu próprio Python e nunca vê os "
-        f"pacotes que instalas. Para ter {feature}, corre o RockForge a partir "
-        f'do Python 3.11 (start.bat) e instala lá:  {pip_command}'
+        f"O .exe tem o seu próprio Python e não instala pacotes. Para ter "
+        f"{feature}: instala o Python 3.11, corre lá  {pip_command} , e indica "
+        f"esse python.exe em ⚙️ Definições → «Python para o ML» "
+        f"(ROCKFORGE_ML_PYTHON)."
     )
 
 
@@ -179,13 +182,102 @@ def _psarc() -> Requirement:
     )
 
 
-def _ml() -> Requirement:
-    ok = _has("demucs", "librosa")
+@dataclass(frozen=True)
+class _MlAvailability:
+    """What the interpreter that will RUN the ML stages has.
+
+    Not what this process has: in the `.exe` those are different interpreters,
+    and reporting our own (empty) one would tell the user nothing about whether
+    the feature works.
+    """
+
+    demucs: bool
+    librosa: bool
+    whisperx: bool
+    torch: bool
+    #: The interpreter's path, "" when there is none configured in a frozen build.
+    interpreter: str
+    #: Whether the work runs on a DIFFERENT interpreter from this process.
+    external: bool
+    #: Whether that interpreter could be run at all (False = wrong path / not a Python).
+    reachable: bool
+
+
+def _ml_availability() -> _MlAvailability:
+    """Whom to ask is decided in ONE place (``ml_python.availability``), shared
+    with the settings page — two answers to "does this machine have Demucs"
+    would be worse than none."""
+    from rockforge.infrastructure import ml_python
+
+    found = ml_python.availability()
+    return _MlAvailability(
+        demucs=bool(found["demucs"]),
+        librosa=bool(found["librosa"]),
+        whisperx=bool(found["whisperx"]),
+        torch=bool(found["torch"]),
+        interpreter=str(found["interpreter"]),
+        external=bool(found["external"]),
+        reachable=bool(found["python"]),
+    )
+
+
+def _where(av: _MlAvailability) -> str:
+    """The trailing "…, in <this/that> Python" half of a detail line."""
+    if not av.external:
+        return ""
+    if not av.interpreter:
+        return " — falta indicar o Python para o ML em ⚙️ Definições"
+    if not av.reachable:
+        return f" — {av.interpreter} não arrancou (não é um Python?)"
+    return f" em {av.interpreter}"
+
+
+def _ml_interpreter(av: _MlAvailability) -> Requirement:
+    """The Python the heavy stages run on — the `.exe`'s one prerequisite for
+    having any ML at all, and invisible until it is named."""
+    if not av.external:
+        found: bool | None = True
+        detail = f"o próprio Python do RockForge ({av.interpreter})"
+    elif not av.interpreter:
+        found = False
+        detail = "não está definido"
+    elif not av.reachable:
+        found = False
+        detail = f"{av.interpreter} — não arrancou (o caminho aponta para um Python 3.11?)"
+    else:
+        have = [n for n, ok in (("ml", av.demucs and av.librosa), ("lyrics", av.whisperx)) if ok]
+        detail = f"{av.interpreter} — extras: {', '.join(have) if have else 'nenhum'}"
+        found = True
+    return Requirement(
+        key="ml_python",
+        name="Python 3.11 para o ML",
+        found=found,
+        detail=detail,
+        required=False,
+        unlocks=(
+            "É o interpretador onde correm o Demucs, o WhisperX e o librosa. "
+            "Todos já corriam em subprocesso, por isso não precisam de estar "
+            "dentro da app — só de existir um Python que os tenha."
+        ),
+        without_it=(
+            "No .exe, separação de stems, deteção de tom e de letra e «Corrigir "
+            "daqui» respondem 503. A partir do Python 3.11 (start.bat) usa-se o "
+            "próprio e isto não é preciso."
+        ),
+        install=(
+            "Instalar o Python 3.11, correr lá  pip install "
+            'rockforge[ml,lyrics]  e indicar esse python.exe em ⚙️ Definições.'
+        ),
+    )
+
+
+def _ml(av: _MlAvailability) -> Requirement:
+    ok = av.demucs and av.librosa
     return Requirement(
         key="ml",
         name="Separação de stems e deteção de tom (Demucs, librosa)",
         found=ok,
-        detail="instalado" if ok else "em falta",
+        detail=("instalado" if ok else "em falta") + _where(av),
         required=False,
         unlocks=(
             "Separar instrumentos, detetar o tom da guitarra e medir o "
@@ -197,13 +289,13 @@ def _ml() -> Requirement:
     )
 
 
-def _lyrics() -> Requirement:
-    ok = _has("whisperx")
+def _lyrics(av: _MlAvailability) -> Requirement:
+    ok = av.whisperx
     return Requirement(
         key="lyrics",
         name="Deteção automática de letra (WhisperX)",
         found=ok,
-        detail="instalado" if ok else "em falta",
+        detail=("instalado" if ok else "em falta") + _where(av),
         required=False,
         unlocks="Transcrever a letra da gravação e alinhá-la palavra a palavra.",
         without_it=(
@@ -218,8 +310,8 @@ def _lyrics() -> Requirement:
     )
 
 
-def _gpu(gpu_broken: bool) -> Requirement:
-    installed = _has("torch")
+def _gpu(gpu_broken: bool, av: _MlAvailability | None = None) -> Requirement:
+    installed = av.torch if av is not None else _has("torch")
     if not installed:
         detail = "PyTorch não está instalado"
     elif gpu_broken:
@@ -275,13 +367,15 @@ def _loader_patch() -> Requirement:
 
 def check_requirements(settings: Settings, *, gpu_broken: bool = False) -> list[Requirement]:
     """Probe every external dependency, most consequential first."""
+    av = _ml_availability()
     return [
         _ffmpeg(),
         _wwise(settings),
         _psarc(),
-        _ml(),
-        _lyrics(),
-        _gpu(gpu_broken),
+        _ml_interpreter(av),
+        _ml(av),
+        _lyrics(av),
+        _gpu(gpu_broken, av),
         _loader_patch(),
     ]
 

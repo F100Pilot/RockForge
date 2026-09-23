@@ -11,11 +11,11 @@ replace this adapter without touching the rest of the system.
 from __future__ import annotations
 
 import subprocess
-import sys
 from collections.abc import Callable
 from pathlib import Path
 
 from rockforge.domain.errors import SeparationError
+from rockforge.infrastructure import ml_python
 from rockforge.infrastructure._subprocess import HARDENED_RUN_KWARGS
 
 DEMUCS_TIMEOUT_S = 1800  # 30 min ceiling — Demucs on CPU is slow but shouldn't hang forever
@@ -58,11 +58,18 @@ class DemucsSeparator:
 
     def _run(self, model: str, extra_args: list[str], audio: Path, out_dir: Path) -> None:
         """Run the demucs CLI for ``model``, retrying on CPU if a CUDA run crashes."""
-        patcher = Path(__file__).resolve().parent / "_demucs_patcher.py"
+        patcher = ml_python.runner_path(Path(__file__).resolve().parent, "_demucs_patcher.py")
+        # NOT sys.executable: in the standalone build that is the .exe itself,
+        # so this would relaunch RockForge instead of running Demucs. The
+        # resolver returns the configured ML interpreter there, and plain
+        # sys.executable everywhere else. See infrastructure/ml_python.py.
+        python = ml_python.resolve()
+        if not python:
+            raise SeparationError(ml_python.missing_message("A separação de áudio"))
 
         def build(dev: str) -> list[str]:
             return [
-                sys.executable, str(patcher),
+                python, str(patcher),
                 "-n", model, "-d", dev, *extra_args, "-o", str(out_dir), str(audio),
             ]
 

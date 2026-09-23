@@ -178,25 +178,101 @@ def test_a_broken_install_reads_as_absent_not_as_a_crash(
     assert diagnostics.check_requirements(Settings())  # no exception
 
 
-def test_inside_the_exe_a_pip_instruction_is_replaced_by_the_truth(
+def test_inside_the_exe_a_pip_instruction_points_at_the_ml_interpreter(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A frozen PyInstaller app has its OWN Python — `sys.path` is just the
     bundle's `_internal`, so the system's site-packages are never importable
-    (verified by building a minimal frozen app and reading `sys.path` back).
-    Telling someone to `pip install` something the running process can never
-    load is worse than saying nothing, so inside the .exe the instruction has
-    to point at the Python install instead."""
+    (verified by building a minimal frozen app and reading `sys.path` back). A
+    bare `pip install` would therefore be a lie.
+
+    But every ML stage runs as a SUBPROCESS, so the .exe can hand the work to a
+    Python that does have the packages. The instruction has to say that — where
+    to install them, and that the path goes in ⚙️ Definições — instead of the
+    earlier flat "not possible in the .exe", which was true only of an
+    in-process import and sent the user away from a setup that works.
+    """
     monkeypatch.setattr(sys, "frozen", True, raising=False)
     frozen = _by_key(diagnostics.check_requirements(Settings()))
     for key in ("ml", "lyrics", "gpu"):
-        assert "NÃO é possível no .exe" in frozen[key].install, key
-        assert "start.bat" in frozen[key].install, key
+        install = frozen[key].install
+        assert "Python 3.11" in install, key
+        assert "Definições" in install, key
+        assert "pip install" in install, key
+        # The old claim must not come back: it is reachable, just not in-process.
+        assert "NÃO é possível" not in install, key
 
     monkeypatch.delattr(sys, "frozen", raising=False)
     plain = _by_key(diagnostics.check_requirements(Settings()))
     assert plain["ml"].install == 'pip install -e ".[ml]"'
-    assert "NÃO é possível" not in plain["lyrics"].install
+    assert "Definições" not in plain["lyrics"].install
+
+
+def test_the_ml_rows_describe_the_interpreter_that_runs_the_work(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """In the .exe the ML packages live in a DIFFERENT interpreter, so reporting
+    what this process can import would answer a question nobody asked. The rows
+    have to follow `ml_python.probe`, and say where they looked."""
+    from rockforge.infrastructure import ml_python
+
+    monkeypatch.setattr(ml_python, "configured", lambda: Path("/opt/py311/python"))
+    monkeypatch.setattr(
+        ml_python,
+        "probe",
+        lambda *_a: {
+            "python": True, "demucs": True, "librosa": True,
+            "whisperx": False, "torch": True,
+        },
+    )
+    # _has must NOT be what decides: this process has none of them.
+    monkeypatch.setattr(diagnostics, "_has", lambda *_m: False)
+
+    reqs = _by_key(diagnostics.check_requirements(Settings()))
+    assert reqs["ml"].found is True
+    assert "/opt/py311/python" in reqs["ml"].detail
+    assert reqs["lyrics"].found is False
+    assert reqs["ml_python"].found is True
+    # torch present but the CUDA build unverifiable — still the third answer.
+    assert reqs["gpu"].found is None
+
+
+def test_an_ml_interpreter_that_does_not_run_says_so(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Pointing the setting at the wrong file is the likeliest mistake, and
+    "Demucs em falta" would send the user to reinstall Demucs instead of fixing
+    the path. The two cases get different detail."""
+    from rockforge.infrastructure import ml_python
+
+    monkeypatch.setattr(ml_python, "configured", lambda: Path("/nope/python.exe"))
+    monkeypatch.setattr(ml_python, "probe", lambda *_a: dict.fromkeys(
+        ("python", "demucs", "librosa", "whisperx", "torch"), False
+    ))
+    reqs = _by_key(diagnostics.check_requirements(Settings()))
+    assert reqs["ml_python"].found is False
+    assert "não arrancou" in reqs["ml_python"].detail
+    assert "/nope/python.exe" in reqs["ml"].detail
+
+
+def test_nothing_is_probed_when_this_process_is_the_ml_interpreter(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Running from a Python install, `resolve()` returns this very
+    interpreter — spawning a subprocess to ask ourselves what we can import
+    would cost a second on every settings page for an answer `find_spec`
+    already has exactly."""
+    from rockforge.infrastructure import ml_python
+
+    monkeypatch.setattr(ml_python, "configured", lambda: None)
+
+    def fail(*_a: Any, **_k: Any) -> Any:
+        raise AssertionError("probe spawned a subprocess against ourselves")
+
+    monkeypatch.setattr(ml_python, "probe", fail)
+    reqs = _by_key(diagnostics.check_requirements(Settings()))
+    assert reqs["ml_python"].found is True
+    assert "próprio Python" in reqs["ml_python"].detail
 
 
 def test_the_hard_requirement_keeps_its_real_fix_inside_the_exe(

@@ -55,6 +55,14 @@ class Settings(BaseSettings):
     def banquet_stem_device(self) -> str:
         return self.banquet_device or self.demucs_device
 
+    # The Python that runs the heavy ML stages (Demucs / WhisperX / librosa),
+    # which all run as subprocesses anyway. Unset means "this one" — which is
+    # right for a Python install and impossible for the frozen .exe, whose own
+    # sys.executable is the .exe. Point it at a Python 3.11 carrying
+    # [ml,lyrics] and the standalone build gains stem separation, tone and
+    # lyric detection and the per-point tempo. See infrastructure/ml_python.py.
+    ml_python: Path | None = None
+
     psarc_packer_cmd: str | None = None  # e.g. external DLC Builder CLI invocation
     psarc_mode: str = "native"  # "native" (default, always produces .psarc) | "dlcbuilder"
     # "celery" (default): tasks dispatched to the Celery worker (needs Redis).

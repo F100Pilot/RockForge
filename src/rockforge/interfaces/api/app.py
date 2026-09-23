@@ -621,6 +621,13 @@ class SettingsOut(BaseModel):
     # non-default type is found to work — editable here so the user isn't stuck
     # setting/clearing the ROCKFORGE_WHISPERX_COMPUTE_TYPE env var by hand.
     whisperx_compute_type: str = ""
+    # The Python the heavy ML stages (Demucs / WhisperX / librosa) are run
+    # with. Empty = this very process, which is right for a Python install and
+    # impossible for the frozen .exe, whose own interpreter IS the executable.
+    # `ml_python` carries per-extra readiness, probed in a subprocess so this
+    # process never imports torch.
+    ml_python: str = ""
+    ml_python_info: dict[str, Any] = {}
 
 
 class SettingsIn(BaseModel):
@@ -632,6 +639,8 @@ class SettingsIn(BaseModel):
     # "" clears the override (falls back to ROCKFORGE_WHISPERX_COMPUTE_TYPE / by
     # device); None leaves it untouched.
     whisperx_compute_type: str | None = None
+    # "" clears the override (falls back to ROCKFORGE_ML_PYTHON / this process).
+    ml_python: str | None = None
 
 
 class LyricsOut(BaseModel):
@@ -2026,6 +2035,8 @@ def _settings_out() -> SettingsOut:
         loudness_target=runtime_settings.loudness_target(),
         gpu_broken=_cuda_known_broken(),
         whisperx_compute_type=runtime_settings.whisperx_compute_type(),
+        ml_python=str(runtime_settings.ml_python() or ""),
+        ml_python_info=runtime_settings.ml_python_validation(),
     )
 
 
@@ -2049,7 +2060,7 @@ def update_settings(body: SettingsIn) -> SettingsOut:
     updates = dict(runtime_settings.load())
     for key in (
         "stem_separator", "banquet_repo", "banquet_ckpt", "banquet_queries",
-        "whisperx_compute_type",
+        "whisperx_compute_type", "ml_python",
     ):
         val = getattr(body, key)
         if val is not None:

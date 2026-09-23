@@ -90,3 +90,30 @@ def test_index_html_only_references_bundled_local_assets() -> None:
     assert local, "expected index.html to reference at least app.js"
     for ref in local:
         assert (REPO_ROOT / "web" / ref).is_file(), f"index.html references missing web/{ref}"
+
+
+def test_spec_bundles_every_ml_runner_at_its_package_path() -> None:
+    """The ML runners are the one kind of module another interpreter executes.
+
+    Demucs, WhisperX, Banquet and (since ``_librosa_runner``) librosa all run in
+    a subprocess, which is what lets the frozen .exe delegate them to a Python
+    that has the packages. But a subprocess runs a FILE, and inside the bundle a
+    package's modules live in the archive — so each runner has to be shipped as
+    a data file, at the package path ``ml_python.runner_path`` looks in.
+
+    Same failure mode as the web/app.js regression this module was written for:
+    nothing at runtime would notice until someone ran the .exe, which CI cannot
+    do. The destination is asserted too, because a runner bundled to the wrong
+    folder is exactly as broken as one not bundled at all.
+    """
+    datas = _run_spec()
+    bundled = {Path(src).resolve(): dest for src, dest in datas}
+    pkg = REPO_ROOT / "src" / "rockforge"
+    runners = sorted(
+        {*pkg.rglob("_*_runner.py"), *pkg.rglob("_demucs_patcher.py")}
+    )
+    assert runners, "no ML runners found — has the layout changed?"
+    for runner in runners:
+        assert runner in bundled, f"{runner.relative_to(REPO_ROOT)} is not bundled"
+        expected = Path("rockforge") / runner.relative_to(pkg).parent
+        assert Path(bundled[runner]) == expected, runner.name

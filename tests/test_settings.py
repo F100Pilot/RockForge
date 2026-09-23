@@ -163,3 +163,59 @@ def test_concurrent_writers_never_publish_each_others_content(tmp_path, monkeypa
     # Every read is one writer's COMPLETE value — never a truncation or a blend.
     assert set(seen) <= {a, b}, [v for v in seen if v not in (a, b)]
     assert not list(tmp_path.glob("*.tmp")), "no temp file left behind"
+
+
+def test_ml_python_round_trips_and_reaches_the_resolver(client: TestClient, tmp_path) -> None:
+    """The setting is the standalone build's ONLY route to stem separation,
+    tone/lyric detection and "Corrigir daqui": every one of those runs as a
+    subprocess, so the `.exe` does not need the packages — it needs an
+    interpreter that has them. Saving it has to actually change what the
+    resolver hands those subprocesses, not merely echo back in the JSON.
+    """
+    from rockforge.infrastructure import ml_python
+
+    assert client.get("/settings").json()["ml_python"] == ""
+
+    fake = tmp_path / "py311" / "python"
+    fake.parent.mkdir(parents=True)
+    fake.write_text("")
+    body = client.post("/settings", json={"ml_python": str(fake)}).json()
+    assert body["ml_python"] == str(fake)
+    assert ml_python.resolve() == str(fake)
+    assert client.get("/settings").json()["ml_python"] == str(fake)
+
+    # Cleared, it falls back to this process — which is what a Python install
+    # wants, and what the .exe must NOT silently get (sys.executable is the
+    # .exe there, so `resolve()` returns None instead; see test_ml_python.py).
+    client.post("/settings", json={"ml_python": ""})
+    assert client.get("/settings").json()["ml_python"] == ""
+
+
+def test_ml_python_readiness_is_reported_per_extra(
+    client: TestClient, tmp_path, monkeypatch
+) -> None:
+    """The likeliest mistakes are a path that is not a Python and a Python
+    missing one of the two extras, and they need different fixes — so the UI
+    gets a flag per extra rather than one "ready" boolean.
+
+    The flags must come from probing THAT interpreter, not from what this
+    process can import: in the .exe they are different Pythons, and our own
+    answer is always "nothing".
+    """
+    from rockforge.infrastructure import ml_python
+
+    fake = tmp_path / "python311"
+    fake.write_text("")
+    client.post("/settings", json={"ml_python": str(fake)})
+    monkeypatch.setattr(
+        ml_python, "probe",
+        lambda *_a: {
+            "python": True, "demucs": True, "librosa": True,
+            "whisperx": False, "torch": True,
+        },
+    )
+    info = client.get("/settings").json()["ml_python_info"]
+    assert info["path"] == str(fake)
+    assert info["python_ok"] is True
+    assert info["ml_ok"] is True      # stems, tone, "Corrigir daqui"
+    assert info["lyrics_ok"] is False  # but no automatic lyrics

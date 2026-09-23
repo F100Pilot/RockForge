@@ -4,6 +4,15 @@ Estado do projeto + lista de funcionalidades (concluídas `[x]` e propostas
 `[ ]`). Para *como* cada coisa funciona, ver `CLAUDE.md`. Para *como testar*,
 ver `TESTING.md`.
 
+- [x] **ML a partir do `.exe`, através de um Python 3.11 externo.** O executável
+  não pode *importar* o Demucs/WhisperX/librosa (tem o seu próprio Python), mas
+  todas essas fases correm em **subprocesso** — o que faltava era não passar
+  `sys.executable` (que no `.exe` é o próprio `.exe`). `ROCKFORGE_ML_PYTHON`
+  (⚙️ Definições) aponta para um Python com `[ml,lyrics]` e o `.exe` ganha
+  stems, deteção de tom e de letra e "Corrigir daqui". Ver
+  `infrastructure/ml_python.py` e o §7d-quater do TESTING.md (por validar numa
+  build Windows real).
+
 ## Sincronização automática — REMOVIDA (2026-08)
 
 Todas as funcionalidades de sincronização **automática** foram removidas a

@@ -115,26 +115,37 @@ instalado é a build CUDA ou a de CPU também não — sabê-lo exigia importar 
 torch no processo da API, o que é proibido de propósito. Nesses dois casos o
 painel diz **ⓘ desconhecido**, não ✅ nem ❌.
 
-### O `.exe` nunca faz ML — e nenhum `pip install` muda isso
+### ML no `.exe`: indica-lhe um Python 3.11
 
 O `.exe` leva o núcleo (**GP → PSARC**) e, se puseres o `ffmpeg.exe` na pasta
-`ffmpeg/` antes de compilar, leva-o também. **Mas tem o seu próprio Python**: um
+`ffmpeg/` antes de compilar, leva-o também. **Tem o seu próprio Python**: um
 executável PyInstaller só vê os pacotes que traz dentro, nunca os que instalas
-no teu Python. Por isso a **separação de stems, a deteção de tom, a deteção de
-letra e o "Corrigir daqui"** só existem a correr a partir de uma instalação
-Python 3.11 (o `start.bat`).
+no teu Python — por isso não consegue *importar* o Demucs, o WhisperX nem o
+librosa, e nenhum `pip install` muda isso.
 
-Ferramentas externas normais — **ffmpeg**, **Wwise**, o **patch de CDLC** — não
-têm esse problema: instalam-se no sistema e o `.exe` usa-as na mesma.
+Só que **não precisa de os importar**: todas essas fases já correm em
+**subprocesso**. Basta existir um Python 3.11 que as tenha, e dizer-lhe onde
+está — exactamente como já fazes com o ffmpeg e o Wwise.
+
+1. Instala o **Python 3.11** (`winget install Python.Python.3.11`).
+2. Nesse Python: `py -3.11 -m pip install "rockforge[ml,lyrics]"`
+   (para GPU, instala antes o torch CUDA — ver a secção do ffmpeg/GPU abaixo).
+3. No `.exe`: **⚙️ Definições → 🐍 Python para o ML** → o caminho do
+   `python.exe` (ex.: `C:\Users\tu\AppData\Local\Programs\Python\Python311\python.exe`).
+
+O painel mostra ✓/✗ por extra — `[ml]` (stems, tom, "Corrigir daqui") e
+`[lyrics]` (letra) — e distingue "esse caminho não é um Python" de "é um Python
+mas falta-lhe o Demucs", que se resolvem de maneiras diferentes.
 
 | | `.exe` | `start.bat` (Python 3.11) |
 |---|---|---|
 | GP → bundle + `.psarc` | ✅ | ✅ |
 | Wwise / ffmpeg / patch de CDLC | ✅ (do sistema) | ✅ |
-| stems, tom, letra, "Corrigir daqui" | ❌ **nunca** | ✅ com `[ml]` / `[ml,lyrics]` |
+| stems, tom, letra, "Corrigir daqui" | ✅ com o Python do ML indicado | ✅ com `[ml]` / `[ml,lyrics]` |
 
-O painel 🩺 sabe onde está a correr e, dentro do `.exe`, diz isto em vez de te
-dar um comando que não serviria para nada.
+A correr pelo `start.bat` deixa o campo vazio: usa o próprio Python, e nada
+disto é preciso. Sem o campo preenchido, o `.exe` responde 503 nesses botões a
+dizer o que falta — nunca falha em silêncio.
 
 ## Execução
 

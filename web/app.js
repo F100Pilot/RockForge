@@ -213,6 +213,30 @@ function renderBanquetValidation(b) {
   document.getElementById('sQueryNames').textContent = names.length
     ? `Stems detetados: ${names.join(', ')}` : '';
 }
+// Which extras the interpreter that will actually RUN the ML has — asked of
+// IT, in a subprocess, not of the API process (which must never import torch,
+// and in the .exe is a different Python entirely).
+function renderMlPythonInfo(i) {
+  const el = document.getElementById('sMlPythonInfo');
+  if (!el) return;
+  const ok = '<span style="color:#3fdc8a">✓</span>', bad = '<span style="color:#e88">✗</span>';
+  if (!i.path) {
+    // In the .exe there is no fallback: its own interpreter is the executable.
+    el.innerHTML = i.frozen
+      ? '<span style="color:#e0a54a">Por definir — sem isto o .exe não faz stems, tom, letra nem «Corrigir daqui».</span>'
+      : 'Vazio: usa o próprio Python do RockForge.';
+    return;
+  }
+  if (!i.python_ok) {
+    el.innerHTML = `${bad} esse caminho não arrancou como Python — aponta ao <code>python.exe</code> do Python 3.11.`;
+    return;
+  }
+  el.innerHTML = `${ok} Python encontrado &nbsp; ` +
+    `${i.ml_ok ? ok : bad} <code>[ml]</code> (stems, tom, «Corrigir daqui») &nbsp; ` +
+    `${i.lyrics_ok ? ok : bad} <code>[lyrics]</code> (letra) &nbsp; ` +
+    `${i.torch_ok ? ok : bad} PyTorch`;
+}
+
 function fillSettings(s) {
   for (const r of document.querySelectorAll('input[name=sepBackend]'))
     r.checked = r.value === (s.stem_separator || 'demucs');
@@ -223,6 +247,8 @@ function fillSettings(s) {
   document.getElementById('gpuOk').style.display = s.gpu_broken ? 'none' : '';
   document.getElementById('gpuBroken').style.display = s.gpu_broken ? '' : 'none';
   document.getElementById('sWhisperxCompute').value = s.whisperx_compute_type || '';
+  document.getElementById('sMlPython').value = s.ml_python || '';
+  renderMlPythonInfo(s.ml_python_info || {});
   toggleBanquetConfig();
   renderBanquetValidation(s.banquet || {});
 }
@@ -304,6 +330,7 @@ document.getElementById('settingsSave').addEventListener('click', async () => {
     banquet_queries: document.getElementById('sBanquetQueries').value.trim(),
     loudness_target: parseFloat(document.getElementById('sLoudness').value),
     whisperx_compute_type: document.getElementById('sWhisperxCompute').value,
+    ml_python: document.getElementById('sMlPython').value.trim(),
   };
   const r = await fetch('/settings', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
@@ -311,6 +338,7 @@ document.getElementById('settingsSave').addEventListener('click', async () => {
   const b = await r.json();
   if (!r.ok) { toast(b.detail || 'erro', 'err'); return; }
   fillSettings(b);  // re-renders ✓/✗ from the saved values
+  loadSystemCheck();  // the ML rows follow the interpreter, so they change too
   const info = document.getElementById('settingsInfo');
   if (backend === 'banquet' && !b.banquet.ready)
     info.innerHTML = '<span style="color:#e0a54a">Guardado — mas o Banquet ainda não está pronto (verifica os ✗ acima).</span>';
