@@ -176,3 +176,37 @@ def test_a_broken_install_reads_as_absent_not_as_a_crash(
     monkeypatch.setattr(importlib.util, "find_spec", raising)
     assert diagnostics._has("anything") is False
     assert diagnostics.check_requirements(Settings())  # no exception
+
+
+def test_inside_the_exe_a_pip_instruction_is_replaced_by_the_truth(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A frozen PyInstaller app has its OWN Python — `sys.path` is just the
+    bundle's `_internal`, so the system's site-packages are never importable
+    (verified by building a minimal frozen app and reading `sys.path` back).
+    Telling someone to `pip install` something the running process can never
+    load is worse than saying nothing, so inside the .exe the instruction has
+    to point at the Python install instead."""
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    frozen = _by_key(diagnostics.check_requirements(Settings()))
+    for key in ("ml", "lyrics", "gpu"):
+        assert "NÃO é possível no .exe" in frozen[key].install, key
+        assert "start.bat" in frozen[key].install, key
+
+    monkeypatch.delattr(sys, "frozen", raising=False)
+    plain = _by_key(diagnostics.check_requirements(Settings()))
+    assert plain["ml"].install == 'pip install -e ".[ml]"'
+    assert "NÃO é possível" not in plain["lyrics"].install
+
+
+def test_the_hard_requirement_keeps_its_real_fix_inside_the_exe(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """ffmpeg and Wwise are ordinary programs, not Python packages — installing
+    them works exactly the same for the .exe, so their instructions must NOT be
+    rewritten."""
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    reqs = _by_key(diagnostics.check_requirements(Settings()))
+    assert "winget install ffmpeg" in reqs["ffmpeg"].install
+    assert "NÃO é possível" not in reqs["ffmpeg"].install
+    assert "NÃO é possível" not in reqs["wwise"].install

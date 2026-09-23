@@ -2128,6 +2128,12 @@ with a timeout and `stdin=DEVNULL` (the hard constraint about console tools
 inheriting stdin applies here too); a binary that will not answer is still
 reported as FOUND, with the detail saying the probe failed.
 
+**Inside the `.exe` an install instruction is rewritten, not printed.** A
+frozen app cannot gain a Python package at all (see the standalone section), so
+`_extras_install` swaps the `pip install` for the truth — that feature needs the
+Python install — rather than handing out a command that cannot work. ffmpeg and
+Wwise are ordinary programs, so THEIR instructions are untouched.
+
 **Only ffmpeg is `required`** — everything else has a documented degraded path,
 and `missing_required` is what the UI turns into the red banner. Guarded by
 `test_diagnostics.py` (including a test that fails if the probe ever starts
@@ -2215,7 +2221,16 @@ instead of to Celery/Redis. The task functions themselves (`generate_cdlc`,
 
 The PyInstaller spec (`rockforge.spec`) excludes the ML stack (torch, demucs,
 whisperx, scipy, numpy) — the `.exe` covers the GP pipeline + native PSARC core.
-ML extras work if installed separately on the user's Python.
+
+**The `.exe` can therefore NEVER do ML, and no `pip install` changes that.** An
+earlier note here claimed "ML extras work if installed separately on the user's
+Python"; that is false and was corrected after building a minimal frozen app
+and reading `sys.path` back: a PyInstaller build's path is just its own
+`_internal`, so the system's site-packages are never importable. Stem
+separation, tone detection, lyric detection and `/detect-tempo` are exclusive to
+running from a Python 3.11 install (`start.bat`). `diagnostics.frozen()` makes
+the ⚙️ panel say so instead of printing a `pip install` the running process
+could never load.
 ffmpeg is bundled from `ffmpeg/ffmpeg.exe` (placed by the user before build);
 `start_standalone.py` prepends the bundled path to `$PATH` at launch.
 

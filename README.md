@@ -115,9 +115,26 @@ instalado é a build CUDA ou a de CPU também não — sabê-lo exigia importar 
 torch no processo da API, o que é proibido de propósito. Nesses dois casos o
 painel diz **ⓘ desconhecido**, não ✅ nem ❌.
 
-O `.exe` standalone leva o núcleo (GP → PSARC) e, se puseres o `ffmpeg.exe` na
-pasta `ffmpeg/` antes de compilar, leva-o também. Tudo o resto instala-se
-**fora** da app, na tua instalação de Python — o `.exe` usa o que encontrar.
+### O `.exe` nunca faz ML — e nenhum `pip install` muda isso
+
+O `.exe` leva o núcleo (**GP → PSARC**) e, se puseres o `ffmpeg.exe` na pasta
+`ffmpeg/` antes de compilar, leva-o também. **Mas tem o seu próprio Python**: um
+executável PyInstaller só vê os pacotes que traz dentro, nunca os que instalas
+no teu Python. Por isso a **separação de stems, a deteção de tom, a deteção de
+letra e o "Corrigir daqui"** só existem a correr a partir de uma instalação
+Python 3.11 (o `start.bat`).
+
+Ferramentas externas normais — **ffmpeg**, **Wwise**, o **patch de CDLC** — não
+têm esse problema: instalam-se no sistema e o `.exe` usa-as na mesma.
+
+| | `.exe` | `start.bat` (Python 3.11) |
+|---|---|---|
+| GP → bundle + `.psarc` | ✅ | ✅ |
+| Wwise / ffmpeg / patch de CDLC | ✅ (do sistema) | ✅ |
+| stems, tom, letra, "Corrigir daqui" | ❌ **nunca** | ✅ com `[ml]` / `[ml,lyrics]` |
+
+O painel 🩺 sabe onde está a correr e, dentro do `.exe`, diz isto em vez de te
+dar um comando que não serviria para nada.
 
 ## Execução
 

@@ -22,6 +22,15 @@ absence cost me?* — in one place, honestly:
   is a different and more useful answer than `False`. The Rocksmith CDLC loader
   patch is the clearest case: it is the single most common reason a song never
   appears in game, and we have no idea where the user's game is installed.
+- **Inside the `.exe`, a `pip install` instruction would be a lie.** A frozen
+  PyInstaller app has its OWN Python: its `sys.path` is just the bundle's
+  `_internal`, so the system's site-packages are not importable (verified by
+  building a minimal frozen app and reading `sys.path` back — an earlier doc
+  claim that "ML extras work if installed separately on the user's Python" was
+  simply wrong). Telling someone to `pip install` a package the running process
+  can never load is worse than saying nothing, so `_extras_install` swaps those
+  instructions for the truth: the `.exe` cannot gain them at all, and that
+  feature needs the Python install instead.
 """
 
 from __future__ import annotations
@@ -29,6 +38,7 @@ from __future__ import annotations
 import importlib.util
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -60,6 +70,26 @@ class Requirement:
     #: How to get it.
     install: str
     extras: list[str] = field(default_factory=list)
+
+
+def frozen() -> bool:
+    """Whether this is the PyInstaller build rather than a Python install."""
+    return bool(getattr(sys, "frozen", False))
+
+
+def _extras_install(pip_command: str, feature: str) -> str:
+    """The install instruction, honest about where it can actually be run.
+
+    A `pip install` into the user's Python does nothing for a frozen `.exe` —
+    it has its own interpreter and never sees those packages.
+    """
+    if not frozen():
+        return pip_command
+    return (
+        f"NÃO é possível no .exe — tem o seu próprio Python e nunca vê os "
+        f"pacotes que instalas. Para ter {feature}, corre o RockForge a partir "
+        f'do Python 3.11 (start.bat) e instala lá:  {pip_command}'
+    )
 
 
 def _has(*modules: str) -> bool:
@@ -144,7 +174,7 @@ def _psarc() -> Requirement:
         required=False,
         unlocks="Escrever o .psarc nativo (SNG encriptado) e a capa em DDS.",
         without_it="Só sai o bundle do DLC Builder; o .psarc é omitido, sem crash.",
-        install='pip install -e ".[psarc]"',
+        install=_extras_install('pip install -e ".[psarc]"', "o .psarc nativo"),
         extras=["psarc"],
     )
 
@@ -162,7 +192,7 @@ def _ml() -> Requirement:
             "andamento a partir de um ponto (Corrigir daqui)."
         ),
         without_it="Esses botões respondem 503 a dizer que falta o extra; o resto funciona.",
-        install='pip install -e ".[ml]"',
+        install=_extras_install('pip install -e ".[ml]"', "separação e deteção de tom"),
         extras=["ml"],
     )
 
@@ -180,7 +210,10 @@ def _lyrics() -> Requirement:
             "A letra continua a poder vir do ficheiro GP, de um LRC/UltraStar, "
             "ou ser escrita à mão no editor."
         ),
-        install='pip install -e ".[ml,lyrics]"  (precisa também do [ml])',
+        install=_extras_install(
+            'pip install -e ".[ml,lyrics]"  (precisa também do [ml])',
+            "deteção de letra",
+        ),
         extras=["ml", "lyrics"],
     )
 
@@ -212,10 +245,11 @@ def _gpu(gpu_broken: bool) -> Requirement:
         required=False,
         unlocks="Separação e transcrição em minutos em vez de dezenas de minutos.",
         without_it="Tudo funciona na mesma, em CPU — só demora muito mais.",
-        install=(
+        install=_extras_install(
             "pip install torch==2.4.1 torchaudio==2.4.1 --index-url "
             "https://download.pytorch.org/whl/cu121   (o pip install torch "
-            "normal no Windows é só-CPU)"
+            "normal no Windows é só-CPU)",
+            "aceleração por GPU",
         ),
     )
 
