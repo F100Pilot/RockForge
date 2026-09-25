@@ -1145,15 +1145,21 @@ that DOM wiring (e.g. `openNewJobModal`'s modal toggle) still works after the
 split, plus two new API tests (`test_index_page_references_the_extracted_app_js`,
 `test_app_js_is_served_with_a_javascript_content_type`).
 
-**The note tools under the score live in one banner (`#toolBanner`).** They
-used to be a loose row of bare emoji buttons ("Modo:") plus two free-floating
-rows for copy/paste and clearing edits. They are now labelled tiles (large icon
-over a short name, `.tool-tile`) in four bordered groups — Sincronizar,
-Partitura, Copiar / colar notas, Edições de notas — with the ⓘ, the selection/
-clipboard/edit counts in a status line at the bottom. Every element id, the
-`mode-btn` class and each `data-tip` are unchanged: `app.js` reaches them only
-by id (`SYNC_MODE_BUTTONS`, `updateNoteEditsInfo`, …), so the reorganisation is
-markup + CSS only. Icons elsewhere are enlarged by `wrapIcons` at the end of
+**The note tools under the score are one bar with two dropdowns
+(`#toolBanner`).** They used to be a loose row of bare emoji buttons plus two
+free-floating rows (copy/paste, clear edits); a banner of labelled tiles came
+next, and the user then chose — from three sketched options — a dropdown bar:
+"Modo ▾" (`#modeMenuBtn` → `#modeMenu`, the nine modes grouped Sincronizar /
+Partitura, each with a big icon, its name and a one-line description) and
+"Notas ▾" (`#notesMenuBtn` → `#notesMenu`: copy, paste, clear this track /
+all), with the selection/clipboard/edit counts on the right. The mode items
+ARE the old buttons — same ids, still `mode-btn`, still wired through
+`SYNC_MODE_BUTTONS` — so `setSyncMode` also writes the trigger's icon/label
+from the active item's `data-ico`/`data-name` ("Nenhum modo" when re-clicking
+deselects). `wireDropdown` handles open/close (Escape, outside click, picking
+an item), arrow-key focus, and **flips the menu upward and caps its height**
+when it would run past the job modal's bottom — the job view is a scrolling
+`.modal`, so a menu near its end was otherwise clipped. Icons elsewhere are enlarged by `wrapIcons` at the end of
 `app.js`: the leading emoji of a button/link/label/heading is wrapped in
 `<span class="ico">` (1.3em), re-applied by a `MutationObserver` because many
 buttons are written at runtime; it never walks the score's SVG. Nothing in

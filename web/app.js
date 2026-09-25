@@ -4077,11 +4077,72 @@ const MODE_HELP = {
 };
 function setSyncMode(mode) {
   syncMode = mode;  // null = neutral: no mode highlighted, note-drag disabled
-  SYNC_MODE_BUTTONS.forEach(([bid, bmode]) =>
-    document.getElementById(bid)?.classList.toggle('active-mode', bmode === syncMode));
+  SYNC_MODE_BUTTONS.forEach(([bid, bmode]) => {
+    const b = document.getElementById(bid);
+    if (!b) return;
+    b.classList.toggle('active-mode', bmode === syncMode);
+    b.setAttribute('aria-checked', String(bmode === syncMode));
+  });
+  // The "Modo" dropdown's trigger shows the active mode (or that none is).
+  const activeBtn = SYNC_MODE_BUTTONS.find(([, bmode]) => bmode === syncMode);
+  const src = activeBtn && document.getElementById(activeBtn[0]);
+  const ico = document.getElementById('modeMenuIco');
+  const lbl = document.getElementById('modeMenuLbl');
+  if (ico) ico.textContent = src ? src.dataset.ico : '🖱️';
+  if (lbl) lbl.textContent = src ? src.dataset.name : 'Nenhum modo';
+  document.getElementById('modeMenuBtn')?.classList.toggle('has-mode', !!src);
   const help = document.getElementById('modeHelp');
   if (help) help.innerHTML = MODE_HELP[mode] || MODE_HELP.null;
 }
+
+// The tool bar's dropdowns: the trigger toggles its menu; picking an item,
+// Escape or a click outside closes it; arrow keys move between enabled items.
+function wireDropdown(triggerId, menuId) {
+  const trigger = document.getElementById(triggerId);
+  const menu = document.getElementById(menuId);
+  if (!trigger || !menu) return;
+  const items = () => [...menu.querySelectorAll('button.dd-item:not(:disabled)')];
+  const close = (refocus) => {
+    if (menu.hidden) return;
+    menu.hidden = true;
+    trigger.setAttribute('aria-expanded', 'false');
+    if (refocus) trigger.focus();
+  };
+  const open = () => {
+    document.querySelectorAll('.dd-menu:not([hidden])').forEach(m => {
+      if (m !== menu) m.hidden = true;
+    });
+    menu.hidden = false;
+    trigger.setAttribute('aria-expanded', 'true');
+    // The job view is a scrolling modal, so a menu near its bottom would open
+    // past the edge: flip it upward when there is more room above, and cap
+    // its height to the room it gets either way.
+    const t = trigger.getBoundingClientRect();
+    const box = (trigger.closest('.modal') || document.documentElement).getBoundingClientRect();
+    const below = Math.min(window.innerHeight, box.bottom) - t.bottom - 12;
+    const above = t.top - Math.max(0, box.top) - 12;
+    const up = menu.scrollHeight > below && above > below;
+    menu.classList.toggle('dd-up', up);
+    menu.style.maxHeight = `${Math.max(160, up ? above : below)}px`;
+    (menu.querySelector('.active-mode') || items()[0])?.focus();
+  };
+  trigger.addEventListener('click', () => (menu.hidden ? open() : close(false)));
+  menu.addEventListener('click', e => { if (e.target.closest('button.dd-item')) close(false); });
+  menu.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { e.preventDefault(); close(true); return; }
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    e.preventDefault();
+    const list = items();
+    const i = list.indexOf(document.activeElement);
+    const next = e.key === 'ArrowDown' ? i + 1 : i - 1;
+    list[(next + list.length) % list.length]?.focus();
+  });
+  document.addEventListener('pointerdown', e => {
+    if (!menu.hidden && !menu.contains(e.target) && !trigger.contains(e.target)) close(false);
+  });
+}
+wireDropdown('modeMenuBtn', 'modeMenu');
+wireDropdown('notesMenuBtn', 'notesMenu');
 SYNC_MODE_BUTTONS.forEach(([id, mode]) => {
   document.getElementById(id)?.addEventListener('click', () => {
     // Clicking the active mode again DESELECTS it → neutral (no mode), rather
@@ -5295,7 +5356,7 @@ const LEADING_ICON = /^\s*((?:\p{Extended_Pictographic}|[←-⇿⬀-⯿■-◿])
 const ICON_HOSTS = 'button, summary, a, label, strong, b, h2, h3';
 
 function wrapIcon(el) {
-  if (el.closest('.tool-tile, .info-btn') || el.classList.contains('tool-tile')) return;
+  if (el.closest('.dd-trigger, .dd-item, .info-btn')) return;
   const first = el.firstChild;
   if (!first || first.nodeType !== Node.TEXT_NODE) return;
   const m = first.data.match(LEADING_ICON);
