@@ -9,8 +9,9 @@ a recording "perfectly": nobody estimated anything. It is the principle behind
 video to prefer.
 
 What RockForge takes is ONLY the timestamps. The recording comes from the user
-(converted from the same YouTube video, or downloaded from Songsterr), so
-nothing here downloads audio.
+(converted from that same YouTube video — Songsterr's own audio is a
+different recording and does not match these times), so nothing here
+downloads audio.
 
 Honest limits, stated where they bite:
 

@@ -147,15 +147,21 @@ A correr pelo `start.bat` deixa o campo vazio: usa o próprio Python, e nada
 disto é preciso. Sem o campo preenchido, o `.exe` responde 503 nesses botões a
 dizer o que falta — nunca falha em silêncio.
 
-### Sincronizar pelos tempos do Songsterr
+### Extra: sincronizar pelos tempos do Songsterr
+
+É opcional e fica fechado no passo 3 do assistente, em **➕ Extra**; sem ele,
+tudo funciona como antes.
+
 
 O Songsterr guarda o instante de **cada compasso** num vídeo do YouTube, marcado
 por pessoas. No passo 3 do assistente, cola o link da música no Songsterr e
 carrega em **Procurar**: escolhes o vídeo e o RockForge usa esses tempos para
 alinhar a partitura — sem acertos à mão, mesmo com o andamento a variar.
 
-- O RockForge vai buscar **só os tempos**. O MP3 é o teu: convertido **desse
-  mesmo vídeo** (o link aparece no assistente) ou descarregado do Songsterr.
+- O RockForge vai buscar **só os tempos**. O MP3 é o teu e tem de ser
+  **convertido desse mesmo vídeo do YouTube** (o link aparece no assistente).
+  O áudio que o próprio Songsterr disponibiliza é **outro** e não bate com os
+  tempos.
 - O ficheiro GP tem de ser **o tab do Songsterr** (exportado de lá), para o
   compasso 5 de um ser o compasso 5 do outro. Se não bater, o projeto avisa.
 - Se cortaste o início do MP3, ajusta "Início da música" nesse valor.

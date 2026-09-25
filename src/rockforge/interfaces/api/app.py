@@ -943,8 +943,9 @@ class SongsterrOut(BaseModel):
 def songsterr_lookup(song: str) -> SongsterrOut:
     """Per-measure timestamps Songsterr's users marked for a song's videos.
 
-    Only the times are fetched — the recording is the user's own (converted
-    from that video or downloaded from Songsterr). The API is undocumented, so
+    Only the times are fetched — the recording is the user's own, converted
+    from that YouTube video (Songsterr's own audio is a different recording
+    and does not match these times). The API is undocumented, so
     a changed or unreachable Songsterr is a 502 saying so, never a crash; a
     link we cannot read is a 422. See ``infrastructure/songsterr.py``.
     """

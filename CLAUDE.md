@@ -129,10 +129,12 @@ re-inverting the dependency.
    (see below). `infrastructure/songsterr.py` fetches ONLY those times
    (`/api/meta/{id}` → `revisionId`, then `/api/video-points/{id}/{rev}/list`),
    with stdlib `urllib` (no new dependency), ordering the videos the way that
-   tool picks them. **No audio is downloaded** — the user brings the MP3
-   (converted from the same video, or from Songsterr), which is why the
+   tool picks them. **No audio is downloaded** — the user brings the MP3,
+   **converted from that same YouTube video** — Songsterr's own audio is a
+   different recording and does NOT match the times — which is why the
    `[youtube]`/yt-dlp route stays removed. `GET /songsterr?song=` returns the
-   videos with their points (422 for a link we cannot read, **502** when the
+   videos with their points (the wizard offers it as a closed, optional
+   "➕ Extra" in step 3, so the default flow is untouched) (422 for a link we cannot read, **502** when the
    undocumented API changed or is unreachable — never a 500); the wizard's
    step 3 lets the user pick a video, pre-fills "Início da música" with bar 1's
    instant in that video, and sends the points back as `/jobs/gp`'s

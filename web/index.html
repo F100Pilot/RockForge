@@ -970,19 +970,20 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
           <input type="number" name="offset_s" value="0" step="0.01" min="0" style="width:6rem"></div>
         <div class="field"><label>Silêncio inicial (s) <button class="info-btn" data-info="lead-in">ⓘ</button></label>
           <input type="number" name="lead_in_s" value="0" step="0.1" min="0" style="width:6rem"></div>
-        <div class="field" id="songsterrBlock" style="flex-basis:100%">
-          <label>🎼 Sincronizar pelos tempos do Songsterr (opcional)</label>
-          <p class="meta" style="margin:.2rem 0 .35rem">O Songsterr guarda o instante de <b>cada compasso</b> num vídeo do
-            YouTube, marcado por pessoas. Cola o link da música: o RockForge vai buscar só esses tempos — o áudio é o teu
-            (convertido desse vídeo ou descarregado do Songsterr). O ficheiro GP tem de ser o tab do Songsterr, para o
-            compasso N ser o mesmo nos dois.</p>
+        <details class="field" id="songsterrBlock" style="flex-basis:100%">
+          <summary style="cursor:pointer">➕ <b>Extra</b> — sincronizar pelos tempos do Songsterr (opcional)</summary>
+          <p class="meta" style="margin:.4rem 0 .35rem">O Songsterr guarda o instante de <b>cada compasso</b> num vídeo do
+            YouTube, marcado por pessoas. Cola o link da música: o RockForge vai buscar só esses tempos. O MP3 tem de ser
+            <b>convertido desse mesmo vídeo do YouTube</b> (o link aparece depois de procurares) — o áudio que o próprio
+            Songsterr disponibiliza é outro e não bate com estes tempos. O ficheiro GP tem de ser o tab do Songsterr,
+            para o compasso N ser o mesmo nos dois.</p>
           <div class="syncctrls">
             <input type="text" id="songsterrLink" placeholder="https://www.songsterr.com/a/wsa/…-tab-s23063" style="flex:1;min-width:14rem">
             <button type="button" id="songsterrFetch" class="secondary">Procurar</button>
           </div>
           <select id="songsterrVideo" style="margin-top:.4rem;width:100%" hidden></select>
           <p class="meta" id="songsterrInfo" style="margin:.35rem 0 0"></p>
-        </div>
+        </details>
         <p class="meta" id="gpSyncHint" style="flex-basis:100%;color:#3fdc8a" hidden></p>
         <p class="meta" style="flex-basis:100%">Um valor aproximado chega — a <b>sincronização fina</b> (início por pista, andamento, arrastar notas) faz-se depois, na partitura.</p>
       </div>

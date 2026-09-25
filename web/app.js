@@ -85,6 +85,7 @@ const SONGSTERR_FEATURES = {
 };
 function resetSongsterr() {
   songsterrSong = null; songsterrPoints = null;
+  document.getElementById('songsterrBlock').open = false;  // an extra: closed unless wanted
   document.getElementById('songsterrLink').value = '';
   document.getElementById('songsterrVideo').hidden = true;
   document.getElementById('songsterrInfo').textContent = '';
@@ -100,7 +101,8 @@ function applySongsterrVideo() {
   // whole video; a trimmed copy starts earlier, and the user adjusts.
   document.querySelector('#gpJobForm input[name=offset_s]').value = start.toFixed(3);
   info.innerHTML = `✅ ${v.points.length} compassos com tempo marcado. Os tempos são do vídeo ` +
-    `<a href="${esc(v.url)}" target="_blank" rel="noopener">${esc(v.url)}</a> — o teu MP3 tem de ser esse áudio. ` +
+    `<a href="${esc(v.url)}" target="_blank" rel="noopener">${esc(v.url)}</a> — o teu MP3 tem de ser convertido desse vídeo ` +
+    '(o áudio do próprio Songsterr é outro e não bate com estes tempos). ' +
     `O compasso 1 começa em <b>${start.toFixed(3)} s</b> desse vídeo; já pus esse valor em "Início da música". ` +
     'Se o teu MP3 foi cortado no início, ajusta-o.';
 }
