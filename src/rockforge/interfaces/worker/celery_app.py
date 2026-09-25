@@ -292,6 +292,7 @@ def generate_cdlc(job_id: str) -> None:
                         for kind, ov in (params.get("arrangement_sync") or {}).items()
                     },
                     import_mute_techniques=bool(params.get("import_mute_techniques", True)),
+                    bar_times=tuple(float(x) for x in params.get("bar_times") or ()),
                     section_overrides=(
                         [
                             Section(name=str(s["name"]), start_time=float(s["time"]), number=0)

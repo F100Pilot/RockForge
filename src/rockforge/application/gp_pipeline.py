@@ -221,6 +221,12 @@ class GpJobSpec:
     # ("Lead"/"Rhythm"/"Combined"). An arrangement absent here falls back to the
     # job-level tempo_scale / sync_anchor_stages above.
     arrangement_sync: dict[str, ArrangementSync] = field(default_factory=dict)
+    # Where each bar starts in the recording, from an external source — today
+    # Songsterr's human-marked per-measure video timestamps. When set, the
+    # parser re-times the score onto them (relative to bar 1, so offset_s keeps
+    # its meaning) before tempo_scale and the anchor stages, which then only
+    # correct whatever those times got wrong. Empty = the file's own timing.
+    bar_times: tuple[float, ...] = ()
     # When False, the mute/attack techniques (palm mute, slap, pop, tap) are
     # stripped from every note so they import as plain notes. These are the
     # techniques that change the Rocksmith note sprite (the palm-mute chevron
@@ -492,7 +498,9 @@ class GenerateFromGpUseCase:
         parsed: dict[ArrangementKind, ParsedGpTrack] = {}
         for kind, idx in tracks:
             sync = spec.sync_for(kind)
-            p = parse_gp_track(spec.gp_path, idx, score_shift, sync.tempo_scale)
+            p = parse_gp_track(
+                spec.gp_path, idx, score_shift, sync.tempo_scale, spec.bar_times or None
+            )
             warnings.extend(f"{kind.value}: {w}" for w in p.warnings)
             for stage_anchors in sync.sync_anchor_stages:
                 if not stage_anchors:

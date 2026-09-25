@@ -281,3 +281,33 @@ def test_a_mid_song_tempo_change_takes_effect_on_its_own_beat(tmp_path: Path) ->
     assert downbeats[4] == pytest.approx(8.0, abs=1e-3), (
         "the tempo change must apply from its own beat, not one quarter later"
     )
+
+
+def test_gp5_bar_times_retime_the_chart_relative_to_bar_one(gp5_file: Path) -> None:
+    """Songsterr's human-marked per-measure timestamps re-time a GP5 file the
+    same way Guitar Pro 8's sync points re-time a .gp: bar N starts where the
+    times say, relative to bar 1, so offset_s still means "where bar 1 is".
+
+    The file is 120 BPM (2 s a bar); the times say bar 1 really lasts 3 s.
+    """
+    plain = parse_gp_track(gp5_file, 0)
+    assert [round(n.time, 3) for n in plain.notes][:1] == [0.0]
+    assert not any("bar times" in w for w in plain.warnings)
+
+    timed = parse_gp_track(gp5_file, 0, offset_s=1.0, bar_times=[10.0, 13.0])
+    onsets = sorted({round(n.time, 3) for n in timed.notes})
+    # Bar 1's four quarters now span 3 s; bar 2 starts at 1.0 + 3.0.
+    assert onsets[:4] == [1.0, 1.75, 2.5, 3.25]
+    assert onsets[4] == 4.0
+    downbeats = [b.time for b in timed.tempo_map.beats if b.measure > 0]
+    assert downbeats[:2] == pytest.approx([1.0, 4.0])
+    assert any("bar times" in w for w in timed.warnings)
+    # What plays, not the header: 8 quarters over 3 s + 3 s = 80 BPM.
+    assert timed.tempo_map.average_bpm == pytest.approx(80.0)
+
+
+def test_gp5_bar_times_that_do_not_match_the_file_are_reported(gp5_file: Path) -> None:
+    """Times marked on a different version of the tab do not line up bar for
+    bar; that has to be said, not silently applied."""
+    timed = parse_gp_track(gp5_file, 0, bar_times=[0.0, 2.0, 4.0, 6.0])
+    assert any("do not match the file's bar count (4 vs 2)" in w for w in timed.warnings)

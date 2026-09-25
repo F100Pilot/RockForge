@@ -16,7 +16,7 @@ Verified library facts (inspected in pyguitarpro 0.11 source):
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
@@ -33,6 +33,11 @@ from rockforge.domain.music import (
     expand_slide_ins,
     expand_trills,
     is_composite_bend,
+)
+from rockforge.infrastructure.gpimport.sync_map import (
+    bar_time_points,
+    bar_times_warnings,
+    relative_to_bar_one,
 )
 
 QUARTER_TICKS = 960
@@ -249,7 +254,11 @@ def _slide_in_source(slides: object, fret: int) -> int | None:
 
 
 def parse_gp_track(
-    path: Path, track_index: int, offset_s: float = 0.0, tempo_scale: float = 1.0
+    path: Path,
+    track_index: int,
+    offset_s: float = 0.0,
+    tempo_scale: float = 1.0,
+    bar_times: Sequence[float] | None = None,
 ) -> ParsedGpTrack:
     """Convert one Guitar Pro track to RockForge domain objects.
 
@@ -261,13 +270,18 @@ def parse_gp_track(
     GP file's authored tempo and the recording's real tempo (the dominant,
     linearly-growing component of sync drift). The effective average tempo is
     scaled inversely (stretching the timeline means a slower song).
+
+    bar_times, when given, are where each bar starts in the recording (e.g.
+    Songsterr's human-marked measure timestamps); the score is re-timed onto
+    them relative to bar 1, exactly like Guitar Pro 8's own sync points, so
+    offset_s still means "where bar 1 is". See ``sync_map``.
     """
     if tempo_scale <= 0:
         raise IngestionError(f"tempo_scale must be positive, got {tempo_scale}")
     from rockforge.infrastructure.gpimport.gpif_parser import _is_gpif, parse_gpif_track
 
     if _is_gpif(path):
-        return parse_gpif_track(path, track_index, offset_s, tempo_scale)
+        return parse_gpif_track(path, track_index, offset_s, tempo_scale, bar_times)
     song = _load(path)
     if not 0 <= track_index < len(song.tracks):
         raise IngestionError(f"track index {track_index} out of range")
@@ -285,6 +299,9 @@ def parse_gp_track(
     tuning = Tuning(midi=tuning_midi)
     to_seconds = _make_ticks_to_seconds(_tempo_events(track))
     origin = QUARTER_TICKS  # measure 1 starts at tick 960; song time 0
+    bar_ticks = [m.start - origin for m in track.measures]
+    bar_points, bar_skipped = bar_time_points(bar_ticks, bar_times or [])
+    to_seconds = relative_to_bar_one(to_seconds, bar_points)
 
     def t(tick: int) -> float:
         return max(0.0, tempo_scale * float(to_seconds(tick - origin))) + offset_s
@@ -438,7 +455,15 @@ def parse_gp_track(
     notes = expand_trills(notes)  # trills → alternating HO/PO runs (kept tight)
     notes.sort(key=lambda n: (n.time, n.string))
     beats_grid.sort(key=lambda b: b.time)
-    avg_bpm = float(song.tempo) / tempo_scale
+    base_bpm = float(song.tempo)
+    if bar_points and track.measures:
+        # Re-timed from outside, the header tempo is not what plays.
+        last = track.measures[-1]
+        total_ticks = last.start + last.length - origin
+        total_s = float(to_seconds(total_ticks))
+        if total_ticks > 0 and total_s > 0:
+            base_bpm = (total_ticks / QUARTER_TICKS) / (total_s / 60.0)
+    avg_bpm = base_bpm / tempo_scale
     numerator = track.measures[0].header.timeSignature.numerator if track.measures else 4
     tempo_map = TempoMap(
         beats=tuple(beats_grid), average_bpm=avg_bpm, beats_per_measure=numerator
@@ -455,6 +480,8 @@ def parse_gp_track(
             lyrics.append(GpLyricLine(time=start, text=text))
 
     warnings: list[str] = []
+    if bar_times:
+        warnings.extend(bar_times_warnings(len(bar_ticks), len(bar_times), bar_skipped))
     if dropped_out_of_range:
         warnings.append(
             f"{dropped_out_of_range} note(s) dropped: off the 24-fret neck "

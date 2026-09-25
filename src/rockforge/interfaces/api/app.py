@@ -17,6 +17,7 @@ clearly delineated within this file.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import math
 import mimetypes
@@ -920,6 +921,83 @@ def inspect_gp_file(file: UploadFile = File(...)) -> GpInspectOut:
     )
 
 
+class SongsterrVideoOut(BaseModel):
+    video_id: str
+    url: str
+    #: None = Songsterr's default video; else "alternative"/"backing"/"solo"/…
+    feature: str | None
+    #: Where each measure starts in THAT video, in seconds — sent back as
+    #: /jobs/gp's ``bar_times`` when the user picks this video.
+    points: list[float]
+
+
+class SongsterrOut(BaseModel):
+    song_id: int
+    revision_id: int
+    title: str
+    artist: str
+    videos: list[SongsterrVideoOut]
+
+
+@app.get("/songsterr", response_model=SongsterrOut)
+def songsterr_lookup(song: str) -> SongsterrOut:
+    """Per-measure timestamps Songsterr's users marked for a song's videos.
+
+    Only the times are fetched — the recording is the user's own (converted
+    from that video or downloaded from Songsterr). The API is undocumented, so
+    a changed or unreachable Songsterr is a 502 saying so, never a crash; a
+    link we cannot read is a 422. See ``infrastructure/songsterr.py``.
+    """
+    from rockforge.infrastructure.songsterr import SongsterrError, fetch_song, parse_song_id
+
+    try:
+        parse_song_id(song)
+    except SongsterrError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    try:
+        found = fetch_song(song)
+    except SongsterrError as exc:
+        raise HTTPException(502, str(exc)) from exc
+    return SongsterrOut(
+        song_id=found.song_id,
+        revision_id=found.revision_id,
+        title=found.title,
+        artist=found.artist,
+        videos=[
+            SongsterrVideoOut(
+                video_id=v.video_id, url=v.url, feature=v.feature, points=list(v.points)
+            )
+            for v in found.videos
+        ],
+    )
+
+
+# A song has a few hundred bars at most; the ceiling only stops an absurd
+# payload from being persisted into params.
+_MAX_BAR_TIMES = 10_000
+
+
+def _parse_bar_times(raw: str) -> list[float]:
+    """``bar_times`` arrives as a JSON list inside a multipart form, so it
+    bypasses the models — validate it here like the other form floats."""
+    if not raw.strip():
+        return []
+    try:
+        values = json.loads(raw)
+    except ValueError as exc:
+        raise HTTPException(422, "bar_times must be a JSON list of seconds") from exc
+    if not isinstance(values, list) or not all(
+        isinstance(v, int | float) and not isinstance(v, bool) for v in values
+    ):
+        raise HTTPException(422, "bar_times must be a JSON list of seconds")
+    if len(values) > _MAX_BAR_TIMES:
+        raise HTTPException(422, f"bar_times has more than {_MAX_BAR_TIMES} entries")
+    floats = [float(v) for v in values]
+    if not all(math.isfinite(v) and v >= 0 for v in floats):
+        raise HTTPException(422, "bar_times must be finite, non-negative seconds")
+    return floats
+
+
 @app.post("/jobs/gp", response_model=JobOut, status_code=202)
 def create_gp_job(
     gp_token: str = Form(...),
@@ -927,6 +1005,10 @@ def create_gp_job(
     # Use the recording the GP8 file carries instead of an upload — the audio
     # its sync points were made against (see gpif_parser.embedded_audio).
     use_embedded_audio: bool = Form(False),
+    # Where each bar starts in the recording (JSON list of seconds), e.g. the
+    # Songsterr timestamps /songsterr returned for the video the user picked.
+    bar_times: str = Form(""),
+    bar_times_source: str = Form(""),
     lead_track: str = Form(""),
     rhythm_track: str = Form(""),
     combo_track: str = Form(""),
@@ -1008,8 +1090,12 @@ def create_gp_job(
     if tempo_scale <= 0:
         raise HTTPException(422, "tempo_scale must be > 0")
 
+    parsed_bar_times = _parse_bar_times(bar_times)
+
     params: dict[str, object] = {
         "gp_path": str(gp_path),
+        "bar_times": parsed_bar_times,
+        "bar_times_source": bar_times_source.strip()[:200] if parsed_bar_times else "",
         "offset_s": offset_s,
         "lead_in_s": lead_in_s,
         "tempo_scale": tempo_scale,

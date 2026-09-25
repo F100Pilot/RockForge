@@ -525,3 +525,13 @@ def test_a_gp_without_a_backing_track_has_no_embedded_audio(tmp_path: Path) -> N
     from rockforge.infrastructure.gpimport.gpif_parser import embedded_audio
 
     assert embedded_audio(_gp_with(tmp_path, _synced_gpif(""))) is None
+
+
+def test_bar_times_retime_a_gp7_file_and_win_over_its_own_sync_points(tmp_path: Path) -> None:
+    """Externally supplied bar times (Songsterr) are what the user chose for
+    THIS recording, so they take precedence over the file's GP8 sync points."""
+    gp = _gp_with(tmp_path, _synced_gpif(_sync(0, 1.0) + _sync(1, 3.5) + _sync(2, 5.0)))
+    parsed = parse_gp_track(gp, 0, bar_times=[20.0, 21.0, 23.0])
+    assert [round(n.time, 3) for n in parsed.notes] == [0.0, 1.0, 3.0]
+    assert any("bar times" in w for w in parsed.warnings)
+    assert not any("Guitar Pro 8 audio sync used" in w for w in parsed.warnings)

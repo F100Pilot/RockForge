@@ -641,3 +641,52 @@ def _steady(interval: float, n: int, start: float = 0.0) -> list[float]:
     return [start + i * interval for i in range(n)]
 
 
+
+
+def _two_bar_gp5(tmp_path: Path) -> Path:
+    """Lead + Rhythm, two 4/4 bars at 120 BPM (2 s a bar), a note on each downbeat."""
+    song = gp.Song()
+    song.title, song.artist, song.tempo = "Two Bars", "Band", 120
+    rhythm = gp.Track(song)
+    rhythm.number = 2
+    song.tracks.append(rhythm)
+    header2 = gp.MeasureHeader()
+    header2.number = 2
+    first = song.tracks[0].measures[0]
+    header2.start = first.start + first.length
+    song.measureHeaders.append(header2)
+    for track, name in ((song.tracks[0], "Lead Gtr"), (rhythm, "Rhythm Gtr")):
+        track.name = name
+        track.measures.append(gp.Measure(track, header2))
+        for measure in track.measures:
+            v = measure.voices[0]
+            b = gp.Beat(v)
+            b.status = gp.BeatStatus.normal
+            b.duration = gp.Duration(value=1)
+            n = gp.Note(b)
+            n.string, n.value, n.type = 1, 5, gp.NoteType.normal
+            b.notes.append(n)
+            v.beats.append(b)
+    path = tmp_path / "two_bars.gp5"
+    gp.write(song, str(path))
+    return path
+
+
+def test_bar_times_reach_the_parser_and_retime_the_built_chart(tmp_path: Path) -> None:
+    """Songsterr's per-measure times (GpJobSpec.bar_times) must actually drive
+    the build, for every arrangement — not stop at the job's params. Bar 1 is
+    said to last 3 s, so bar 2's downbeat lands 3 s after bar 1's in the XML."""
+    spec = GpJobSpec(
+        gp_path=_two_bar_gp5(tmp_path), audio_source="x.wav", lead_track=0, rhythm_track=1,
+        bar_times=(10.0, 13.0),
+    )
+    result = make_use_case().run(spec, SongMetadata(title="Two", artist="Bars"), tmp_path / "w")
+    assert any("bar times" in w for w in result.warnings)
+    for name in ("arrangement_lead.xml", "arrangement_rhythm.xml"):
+        xml_path = next(p for p in result.packaging.xml_paths if p.name == name)
+        downbeats = [
+            float(e.get("time", "0"))
+            for e in ET.parse(xml_path).getroot().iter("ebeat")
+            if int(e.get("measure", "-1")) > 0
+        ]
+        assert downbeats[1] - downbeats[0] == pytest.approx(3.0, abs=1e-3), name

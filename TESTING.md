@@ -100,7 +100,7 @@ Per-file counts below reflect the suite at the time of writing; run
 |---|---:|---|
 | `test_domain.py` | 18 | pure music model: `Tuning`, `TabNote`, `TempoMap`, `Arrangement` invariants, sustain gap, high-density flags |
 | `test_chords.py` | 10 | `domain/chords.py` `name_chord`: triads, power chords, inversions, chord naming |
-| `test_gp_import.py` | 11 | PyGuitarPro (GP3/4/5) parsing: notes/frets/techniques/sections/tempo |
+| `test_gp_import.py` | 15 | PyGuitarPro (GP3/4/5) parsing: notes/frets/techniques/sections/tempo; per-bar times from outside (Songsterr) re-timing the chart relative to bar 1, and a bar-count mismatch reported |
 | `test_gp_arrangement_writer.py` | 7 | generating a NEW GP5 from an `Arrangement`: notes/times/strings/frets and the corrected tempo map round-trip through our own importer, techniques, chords-as-one-beat, tuning/metadata/sections, reported quantization, the always-stated single-track cost, empty beat grid refused |
 | `test_gpif_import.py` | 20 | native GP7/GP8 (`.gp`) GPIF/XML parser: tuning, timing, Hopo/slide/palm-mute, lyric sourcing, bass rejection; Guitar Pro 8 audio-track SYNC POINTS re-timing the chart (relative to bar 1), the backing-track padding, repeat/backwards points skipped and counted, the synced average BPM, an unsynced file timed exactly as before, and the recording EMBEDDED in a GP8 file found and extracted (disabled / YouTube-linked / missing / non-audio members read as "none", never an error) |
 | `test_gp_pipeline.py` | 38 | GP use case: `tempo_scale`, `sync_anchor_stages`, `arrangement_sync`, lyrics precedence, `pad_start_s` shift, tied notes, section-editor overrides (`section_overrides`), note-editor overrides (`note_overrides` add/edit/delete, per-arrangement) |
@@ -133,6 +133,7 @@ Per-file counts below reflect the suite at the time of writing; run
 | `test_db_schema.py` | 3 | the startup schema check: fresh DB accepted, a column dropped from an existing DB fails loudly naming it, and the check itself never blocks startup |
 | `test_architecture.py` | 2 | Clean Architecture layering: `application/ports.py` imports zero `infrastructure/`; other `application/` files only the explicitly-accepted exceptions |
 | `test_standalone_spec.py` | 4 | the PyInstaller spec bundles EVERY file under `web/` (executes `rockforge.spec` with stubbed builders and inspects the real `datas`), puts them where the server looks, index.html references nothing that isn't bundled, and every ML runner (`_*_runner.py`/`_demucs_patcher.py`) ships as a real file at its package path — another interpreter has to be able to EXECUTE it |
+| `test_songsterr.py` | 12 | Songsterr's per-measure timestamps, against a FAKE `get_json` (the API is undocumented and unreachable from CI and the sandbox): the song id from a link or a number (the LAST `-s<digits>`), videos ordered like guitar-pro-youtube-sync picks them (default → worldwide alternative → alternatives → the rest; not-done, point-less and duplicate entries dropped), the revision taken from `meta` and used for the points, and every changed shape or unreachable host as a clear `SongsterrError` |
 | `test_ml_python.py` | 16 | which interpreter the heavy ML stages run on: a Python install resolves to itself (the old path, byte for byte), a frozen build to None rather than to the `.exe` (running it would relaunch RockForge), a configured path wins over both; the per-extra probe and its failure modes (not a Python / non-zero / non-JSON / missing — every one a False, never an exception); the real subprocess transport, driven against `_librosa_runner.py` with a stub librosa; that a missing librosa fails loudly instead of printing a fabricated tempo; that the librosa measurements have ONE implementation (neither adapter may grow its own `import librosa`); and — by PARSING the call sites, since they now explain in comments why it is gone — that none of them passes `sys.executable` |
 | `test_standalone_launcher.py` | 18 | the standalone launcher's decisions, with no GUI: the worker-mode/idle-shutdown defaults (and that an explicit setting still wins), the close-confirmation logic, the readiness poll, the ffmpeg PATH order, the log fallback, and — against a fake `webview` — that the window opens on the local API, that its close handler is wired to `work_in_flight`, and that both failure paths release the port |
 
@@ -736,6 +737,23 @@ With the `.exe` built and a Python 3.11 carrying `.[ml,lyrics]`:
 6. **`start.bat` is unchanged.** Leave the field empty there and re-run one of
    each: the resolver returns that very interpreter, so this must be the same
    path it always was — no new subprocess, no behaviour change.
+
+### 7d-quinquies. Songsterr bar times against the REAL API
+
+CI and the development sandbox cannot reach songsterr.com, so the client was
+built from teaqu/guitar-pro-youtube-sync's use of the same endpoints and tested
+against a fake. On a real machine:
+
+1. In the wizard's step 3, paste a Songsterr link and press **Procurar**: the
+   videos must list, the default one first, each with its bar count.
+2. With the GP exported from THAT Songsterr tab and an MP3 of THAT video (the
+   whole video), create the project without touching "Início da música": the
+   chart should follow the recording through tempo changes without a single
+   manual correction.
+3. The job's warnings must say "bar times from an external source … N times
+   for N bars". A mismatch there means the GP is not that tab.
+4. A trimmed MP3 needs "Início da música" moved back by what was trimmed; that
+   is the one number the times cannot know.
 
 ### 7e. Wwise `.wem` (needs a local Wwise 2019/2021/2022/2023, Windows)
 

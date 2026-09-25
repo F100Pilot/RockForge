@@ -4,6 +4,13 @@ Estado do projeto + lista de funcionalidades (concluídas `[x]` e propostas
 `[ ]`). Para *como* cada coisa funciona, ver `CLAUDE.md`. Para *como testar*,
 ver `TESTING.md`.
 
+- [x] **Sincronização pelos tempos do Songsterr.** O princípio do
+  guitar-pro-youtube-sync: tempos por compasso marcados por pessoas, lidos da
+  API (não documentada) do Songsterr e aplicados como os sync points do GP8. Só
+  os tempos — o MP3 é do utilizador. Por validar contra a API real (bloqueada
+  no sandbox): TESTING.md §7d-quinquies.
+- [x] **Áudio embebido no `.gp`.** O assistente usa a gravação que vem dentro de
+  um ficheiro GP8 (a que os sync points descrevem) sem pedir MP3.
 - [x] **ML a partir do `.exe`, através de um Python 3.11 externo.** O executável
   não pode *importar* o Demucs/WhisperX/librosa (tem o seu próprio Python), mas
   todas essas fases correm em **subprocesso** — o que faltava era não passar

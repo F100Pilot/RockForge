@@ -83,7 +83,7 @@ re-inverting the dependency.
    `<BackingTrack><FramePadding>`. Guitar Pro then SHOWS a varying BPM computed
    from the points. Reading only `Type=Tempo` locked such a file to its header
    tempo, so a chart the user had synced perfectly in Guitar Pro drifted in
-   RockForge. `gpif_parser._sync_points`/`_audio_clock` map each span between
+   RockForge. `gpif_parser._sync_points` + `sync_map.audio_clock` map each span between
    neighbouring points linearly onto the audio (format and semantics from
    alphaTab's `GpifParser.ts`/`MidiFileGenerator.ts`; alphaTab holds a constant
    BPM after each point instead — identical whenever a span has no tempo change
@@ -120,6 +120,41 @@ re-inverting the dependency.
    `test_no_usable_embedded_audio_is_none_never_an_error`,
    `test_a_gp8_job_can_use_the_audio_embedded_in_the_file` and
    `test_a_gp_job_without_any_recording_is_refused_clearly`.
+
+   **Songsterr's per-measure timestamps (`bar_times`) — human-marked sync,
+   fetched rather than estimated.** Songsterr stores, per song, the instant
+   every measure starts in one or more YouTube videos, marked by people; that
+   is the whole reason a `teaqu/guitar-pro-youtube-sync` file lines up
+   "perfectly", and the opposite of the automatic estimators that were removed
+   (see below). `infrastructure/songsterr.py` fetches ONLY those times
+   (`/api/meta/{id}` → `revisionId`, then `/api/video-points/{id}/{rev}/list`),
+   with stdlib `urllib` (no new dependency), ordering the videos the way that
+   tool picks them. **No audio is downloaded** — the user brings the MP3
+   (converted from the same video, or from Songsterr), which is why the
+   `[youtube]`/yt-dlp route stays removed. `GET /songsterr?song=` returns the
+   videos with their points (422 for a link we cannot read, **502** when the
+   undocumented API changed or is unreachable — never a 500); the wizard's
+   step 3 lets the user pick a video, pre-fills "Início da música" with bar 1's
+   instant in that video, and sends the points back as `/jobs/gp`'s
+   `bar_times` (a JSON list, validated in `_parse_bar_times` because multipart
+   bypasses the models: finite, non-negative, ≤ 10 000). They live in
+   `params["bar_times"]`, so rebuild/reload forks inherit them, and reach
+   `GpJobSpec.bar_times` → `parse_gp_track(..., bar_times)` in BOTH parsers.
+   The re-timing is the SAME machinery as GP8's sync points, now shared in
+   `gpimport/sync_map.py` (`audio_clock`/`relative_to_bar_one`/
+   `bar_time_points`), applied at parse time — before `tempo_scale` and the
+   anchor stages, exactly where the GP8 sync sits, so a later BPM change or
+   anchor round composes the same way it does for any file. External bar times
+   **win over** a file's own GP8 sync points (they were chosen for this
+   recording). Honest limits, all surfaced: the API is undocumented; measure N
+   must be measure N (the GP has to be that Songsterr tab — a bar-count
+   mismatch is a warning, not silence); the times belong to one video's audio,
+   so a trimmed MP3 needs its start moved. **Never verified against the real
+   API from here** (the sandbox's network policy blocks songsterr.com) —
+   TESTING.md §7d-quinquies. Guarded by `test_songsterr.py`,
+   `test_gp5_bar_times_*`, `test_bar_times_retime_a_gp7_file_and_win_over_its_own_sync_points`,
+   `test_bar_times_reach_the_parser_and_retime_the_built_chart` (mutation-checked)
+   and `test_songsterr_lookup_*` / `test_*bar_times*` in `test_api.py`.
 
    **Tied notes** (GP `(17)` in parentheses — a held continuation, not a
    re-pick) are folded into the note they extend in BOTH parsers, never emitted

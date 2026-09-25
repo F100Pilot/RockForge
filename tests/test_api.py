@@ -785,6 +785,84 @@ def test_a_gp_job_without_any_recording_is_refused_clearly(client: TestClient) -
     assert r.status_code == 422 and "no embedded audio" in r.text
 
 
+def test_songsterr_lookup_returns_the_videos_and_their_bar_times(
+    client: TestClient, monkeypatch
+) -> None:
+    from rockforge.infrastructure import songsterr
+
+    def fake(song: str, **_k):
+        assert song == "https://www.songsterr.com/a/wsa/x-tab-s42"
+        return songsterr.SongsterrSong(
+            song_id=42, revision_id=7, title="T", artist="A",
+            videos=(songsterr.SongsterrVideo("vid", None, (1.37, 2.77)),),
+        )
+
+    monkeypatch.setattr(songsterr, "fetch_song", fake)
+    r = client.get("/songsterr", params={"song": "https://www.songsterr.com/a/wsa/x-tab-s42"})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["song_id"] == 42 and body["revision_id"] == 7
+    assert body["videos"] == [
+        {"video_id": "vid", "url": "https://youtu.be/vid", "feature": None, "points": [1.37, 2.77]}
+    ]
+
+
+def test_songsterr_lookup_errors_are_422_for_a_bad_link_and_502_for_songsterr(
+    client: TestClient, monkeypatch
+) -> None:
+    """A link we cannot read is the user's to fix (422); an undocumented API
+    that changed or is unreachable is upstream (502) — never a 500."""
+    from rockforge.infrastructure import songsterr
+
+    assert client.get("/songsterr", params={"song": "not a link"}).status_code == 422
+
+    def down(*_a, **_k):
+        raise songsterr.SongsterrError("não consegui contactar o Songsterr (timeout)")
+
+    monkeypatch.setattr(songsterr, "fetch_song", down)
+    r = client.get("/songsterr", params={"song": "42"})
+    assert r.status_code == 502 and "contactar o Songsterr" in r.text
+
+
+def test_a_gp_job_stores_the_bar_times_it_was_created_with(client: TestClient, tmp_path) -> None:
+    """The Songsterr times travel with the job, so every rebuild (and every
+    /rebuild or /reload-gp fork, which copy params) keeps them."""
+    body = client.post(
+        "/gp/inspect", files={"file": ("s.gp", _gp8_with_embedded_audio(b"ID3x"), "x")}
+    ).json()
+    r = client.post(
+        "/jobs/gp",
+        data={
+            "gp_token": body["gp_token"], "lead_track": "0", "use_embedded_audio": "true",
+            "bar_times": "[1.37, 2.77, 4.17]", "bar_times_source": "songsterr:42:7",
+        },
+    )
+    assert r.status_code == 202, r.text
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.infrastructure.db.models import Job
+
+    with app_module._session_factory() as db:
+        job = db.get(Job, r.json()["id"])
+        assert job is not None
+        assert job.params["bar_times"] == [1.37, 2.77, 4.17]
+        assert job.params["bar_times_source"] == "songsterr:42:7"
+
+
+@pytest.mark.parametrize(
+    "bad", ["not json", '{"a": 1}', '[1, "x"]', "[1, NaN]", "[-1, 2]", "[true, 2]"]
+)
+def test_bad_bar_times_are_rejected_before_anything_is_stored(client: TestClient, bad: str) -> None:
+    body = client.post(
+        "/gp/inspect", files={"file": ("s.gp", _gp8_with_embedded_audio(b"ID3x"), "x")}
+    ).json()
+    r = client.post(
+        "/jobs/gp",
+        data={"gp_token": body["gp_token"], "lead_track": "0",
+              "use_embedded_audio": "true", "bar_times": bad},
+    )
+    assert r.status_code == 422, (bad, r.text)
+
+
 def test_gear_catalogue_endpoint_returns_grouped_gear(client: TestClient) -> None:
     r = client.get("/gear-catalogue")
     assert r.status_code == 200

@@ -76,12 +76,64 @@ function applyEmbeddedAudioChoice() {
 }
 document.getElementById('useEmbeddedAudio').addEventListener('change', applyEmbeddedAudioChoice);
 
+// Songsterr's per-measure timestamps for the chosen video (null = not used).
+// Only the times travel; the recording is the user's own.
+let songsterrSong = null;
+let songsterrPoints = null;
+const SONGSTERR_FEATURES = {
+  alternative: 'vídeo alternativo', backing: 'backing track', solo: 'solo', playthrough: 'playthrough',
+};
+function resetSongsterr() {
+  songsterrSong = null; songsterrPoints = null;
+  document.getElementById('songsterrLink').value = '';
+  document.getElementById('songsterrVideo').hidden = true;
+  document.getElementById('songsterrInfo').textContent = '';
+}
+function applySongsterrVideo() {
+  const sel = document.getElementById('songsterrVideo');
+  const info = document.getElementById('songsterrInfo');
+  const v = songsterrSong && sel.value !== '' ? songsterrSong.videos[Number(sel.value)] : null;
+  songsterrPoints = v ? v.points : null;
+  if (!v) { info.textContent = 'Tempos do Songsterr não usados.'; return; }
+  const start = v.points[0];
+  // Bar 1's instant in THAT video — right as the start when the MP3 is the
+  // whole video; a trimmed copy starts earlier, and the user adjusts.
+  document.querySelector('#gpJobForm input[name=offset_s]').value = start.toFixed(3);
+  info.innerHTML = `✅ ${v.points.length} compassos com tempo marcado. Os tempos são do vídeo ` +
+    `<a href="${esc(v.url)}" target="_blank" rel="noopener">${esc(v.url)}</a> — o teu MP3 tem de ser esse áudio. ` +
+    `O compasso 1 começa em <b>${start.toFixed(3)} s</b> desse vídeo; já pus esse valor em "Início da música". ` +
+    'Se o teu MP3 foi cortado no início, ajusta-o.';
+}
+document.getElementById('songsterrVideo').addEventListener('change', applySongsterrVideo);
+document.getElementById('songsterrFetch').addEventListener('click', async () => {
+  const link = document.getElementById('songsterrLink').value.trim();
+  const info = document.getElementById('songsterrInfo');
+  const sel = document.getElementById('songsterrVideo');
+  if (!link) { toast('Cola o link da música no Songsterr.'); return; }
+  info.textContent = 'a procurar no Songsterr…';
+  try {
+    songsterrSong = await getJSON(`/songsterr?song=${encodeURIComponent(link)}`);
+  } catch (err) {
+    songsterrSong = null; songsterrPoints = null; sel.hidden = true;
+    info.textContent = `❌ ${err.message || err}`;
+    return;
+  }
+  sel.innerHTML = '<option value="">— não usar os tempos do Songsterr —</option>' +
+    songsterrSong.videos.map((v, i) =>
+      `<option value="${i}">${esc(v.feature ? (SONGSTERR_FEATURES[v.feature] || v.feature) : 'Vídeo principal')}` +
+      ` · ${v.points.length} compassos · ${esc(v.url)}</option>`).join('');
+  sel.value = '0';
+  sel.hidden = false;
+  applySongsterrVideo();
+});
+
 function openNewJobModal() {
   document.getElementById('newJobOverlay').hidden = false;
   document.getElementById('gpInspectForm').reset();
   document.getElementById('gpJobForm').reset();
   document.getElementById('gpEmbeddedAudioRow').hidden = true;  // until a file says it has one
   applyEmbeddedAudioChoice();
+  resetSongsterr();
   document.querySelectorAll('#newJobOverlay .file-drop').forEach(d => {
     d.classList.remove('has-file');
     const t = d.querySelector('.file-drop-text');
@@ -5194,6 +5246,10 @@ document.getElementById('gpJobForm').addEventListener('submit', async e => {
   f.append('gp_token', gpToken);
   if (usingEmbeddedAudio()) { f.set('use_embedded_audio', 'true'); f.delete('audio'); }
   else f.set('use_embedded_audio', 'false');
+  if (songsterrPoints) {
+    f.set('bar_times', JSON.stringify(songsterrPoints));
+    f.set('bar_times_source', `songsterr:${songsterrSong.song_id}:${songsterrSong.revision_id}`);
+  }
   // Unchecked checkboxes are not sent; set the value explicitly so "off" sticks.
   f.set('import_mutes', e.target.querySelector('input[name=import_mutes]').checked);
   const r = await fetch('/jobs/gp', { method: 'POST', body: f });

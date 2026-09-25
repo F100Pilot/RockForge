@@ -17,17 +17,17 @@ imports **dentro do processo**. Verificado no código:
 
 ## Plano
 
-- [ ] 1. `Settings.ml_python` + override em `runtime_settings` (editável na UI)
-- [ ] 2. `infrastructure/ml_python.py`: resolve o interpretador + acha os runners
+- [x] 1. `Settings.ml_python` + override em `runtime_settings` (editável na UI)
+- [x] 2. `infrastructure/ml_python.py`: resolve o interpretador + acha os runners
       (no bundle os `.py` não existem em disco — têm de vir por `_MEIPASS`)
-- [ ] 3. Trocar os 4 `sys.executable` pelo resolver
-- [ ] 4. `_librosa_runner.py` standalone (padrão do `_whisperx_runner.py`, zero
+- [x] 3. Trocar os 4 `sys.executable` pelo resolver
+- [x] 4. `_librosa_runner.py` standalone (padrão do `_whisperx_runner.py`, zero
       imports de rockforge) para as 3 funções librosa; in-process quando dá
-- [ ] 5. `diagnostics`: sondar o Python externo por subprocesso; corrigir a
+- [x] 5. `diagnostics`: sondar o Python externo por subprocesso; corrigir a
       mensagem "NÃO é possível no .exe"
-- [ ] 6. `/settings` + campo na modal ⚙️ com validação ✓/✗
-- [ ] 7. `rockforge.spec`: embarcar os runners como datas
-- [ ] 8. Testes + docs (CLAUDE.md, README, TESTING)
+- [x] 6. `/settings` + campo na modal ⚙️ com validação ✓/✗
+- [x] 7. `rockforge.spec`: embarcar os runners como datas
+- [x] 8. Testes + docs (CLAUDE.md, README, TESTING)
 
 ## Invariantes a não partir
 
@@ -47,3 +47,27 @@ imports **dentro do processo**. Verificado no código:
 - [x] 6. `/settings` + campo na modal com ✓/✗ por extra
 - [x] 7. `rockforge.spec` embarca os runners (walk, guardado por teste)
 - [x] 8. Docs
+
+---
+
+# Sincronização pelo Songsterr (2026-09-25)
+
+O princípio do guitar-pro-youtube-sync: o Songsterr guarda, por música, o instante
+de CADA COMPASSO num vídeo do YouTube, marcado por pessoas. O utilizador obtém o
+MP3 por outra via (conversor do YouTube ou o próprio Songsterr), por isso o
+RockForge só precisa dos tempos — não descarrega áudio nenhum.
+
+- [x] `gpimport/sync_map.py`: o mapeamento por pontos (já usado pelos sync points
+      do GP8) passa a ser partilhado pelos dois parsers
+- [x] `parse_gp_track(..., bar_times=...)` nos DOIS parsers (GP5 e GP7/8):
+      tempos por compasso externos, com prioridade sobre os sync points do GP8
+- [x] `infrastructure/songsterr.py`: id a partir do link, meta + video-points
+      (urllib, sem dependência nova), vídeos ordenados como o programa faz
+- [x] `GET /songsterr?song=...` + `/jobs/gp` aceita `bar_times` (validado)
+- [x] `GpJobSpec.bar_times` + worker
+- [x] Assistente, passo 3: link → vídeos → escolhe → pré-preenche o início
+- [x] Testes (HTTP falso — a API está bloqueada neste sandbox) + docs
+
+Limites a dizer ao utilizador: API não documentada; o compasso N do Songsterr
+tem de ser o compasso N do GP (o GP deve vir do Songsterr); o MP3 tem de ser o
+áudio daquele vídeo; não verificado contra a API real a partir daqui.
