@@ -71,3 +71,22 @@ RockForge só precisa dos tempos — não descarrega áudio nenhum.
 Limites a dizer ao utilizador: API não documentada; o compasso N do Songsterr
 tem de ser o compasso N do GP (o GP deve vir do Songsterr); o MP3 tem de ser o
 áudio daquele vídeo; não verificado contra a API real a partir daqui.
+
+---
+
+# Layout novo: projeto em ecrã inteiro + ícones de traço (2026-09-25)
+
+Aprovado pelo utilizador a partir dos esboços (tela "Novo layout"): ícones de
+traço em vez de emojis, e o projeto em ecrã inteiro em vez de um modal.
+
+- [x] Ícones: sprite SVG (`<symbol id="i-…">`) + `icon(name)` em app.js;
+      trocar os emojis dos botões, menus, cabeçalhos, checklist e início
+- [x] Projeto em ecrã inteiro: barra no topo (← voltar, título, estado,
+      "Aplicar e reconstruir", Descarregar), barra lateral (Partitura, Tons,
+      Letra, Capa, Exportar), centro = leitor + ferramentas + partitura,
+      painel direito = Sincronização / Secções
+- [x] Exportar: estado do build, avisos, checklist, downloads, exportar GP,
+      afinação e opções da construção
+- [x] Início: barra no topo (Novo projeto, Lote, Definições) + cartões
+- [x] Nenhum id removido (app.js liga tudo por id) — verificar por diff
+- [x] Verificar no browser (Playwright) + todos os gates; docs

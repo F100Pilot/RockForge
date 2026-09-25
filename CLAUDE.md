@@ -177,8 +177,8 @@ a new job** that inherits ALL of the original's params (tuning, `offset_s`,
 only `gp_path` changes. It validates the new file parses (`inspect_gp`) and that
 the previously selected `lead_track`/`rhythm_track` indices still exist (a plain
 note edit keeps the track layout; a restructured file 422s with a "create a new
-job" message rather than silently building the wrong track). Exposed in the sync
-panel as "Recarregar ficheiro GP".
+job" message rather than silently building the wrong track). Exposed in the
+Partitura inspector's "Mais opções" as "Recarregar ficheiro GP".
 
 ### Intro silence (`lead_in_s`)
 
@@ -187,8 +187,8 @@ very start, ON TOP of the automatic `MIN_LEAD_S` lead-in:
 `pad_start_s = max(0, MIN_LEAD_S - offset_s) + lead_in_s`. Because the score
 shifts by the full `pad_start_s` and the audio is padded by the same amount,
 the whole bundle (audio + notes + lyrics) moves later together — a way to "push
-the music forward" with a silent intro. Exposed in the sync panel as "Silêncio
-inicial (s)" (commit-on-rebuild, no live drag). The tab viewer's `viewOrigin`
+the music forward" with a silent intro. Exposed in the Partitura inspector's
+"Mais opções" as "Silêncio inicial" (commit-on-rebuild, no live drag). The tab viewer's `viewOrigin`
 and `playheadDisplay` add the built `lead_in_s` (`leadInBuilt`) so notes/playhead
 stay aligned after a rebuild with it.
 
@@ -272,8 +272,8 @@ Details that were measured and will bite anyone editing this:
   and the UI says so rather than approximating it.
 
 `POST /jobs/{id}/export-gp` writes `work_dir/<job>/corrected.<ext>` and returns
-the report; `GET /jobs/{id}/corrected-gp` downloads it. Wired to the sync panel's
-**"🎼 Exportar GP corrigido"** button, which derives the `(measure, bpm)` list
+the report; `GET /jobs/{id}/corrected-gp` downloads it. Wired to the Exportar
+page's **"Guitar Pro com os andamentos corrigidos"** row (`#exportGpBtn`), which derives the `(measure, bpm)` list
 from the pending sync: `retempoedBars()` returns exactly the bars the score
 already draws in AMBER (the same `>= 2` BPM threshold), so what is marked on
 screen is what gets written. Both the drawing and the export read one
@@ -336,8 +336,8 @@ numbering is 1 = highest pitch.
 `POST /jobs/{id}/export-arrangement-gp?arrangement=<Kind>` writes
 `work_dir/<job>/corrected.gp5` and records it in `params["corrected_gp"]`, so
 the existing `GET /jobs/{id}/corrected-gp` serves it — whichever export ran
-last wins, each recording its own filename. Wired to the sync panel's **"🎸
-Exportar GP com as notas editadas"**, beside the tempo-only button.
+last wins, each recording its own filename. Wired to the Exportar page's
+**"Guitar Pro com as notas editadas"** row (`#exportArrGpBtn`), under the tempo-only one.
 Guarded by `test_gp_arrangement_writer.py` (notes/times/strings/frets,
 techniques, chords-as-one-beat, tuning/metadata/sections, a mid-song tempo
 change, the reported quantization, the always-present single-track warning,
@@ -345,12 +345,12 @@ and an empty beat grid refused) and `test_export_arrangement_gp_*` in
 `test_api.py`. Same **unverified-by-design** caveat as above: round-tripped
 through our own importer, never opened in Guitar Pro itself.
 
-### Clearing note edits (`🧹 Limpar edições`)
+### Clearing note edits ("Notas ▾" → Limpar)
 
 The companion to the seeding fix in the note-editor section: once committed
 edits are seeded back into the viewer, discarding them has to be an explicit
-action rather than a side effect of reopening the job. "🧹 Limpar edições"
-drops the current arrangement's `note_overrides`, "🧹 Limpar em todas" drops
+action rather than a side effect of reopening the job. "Limpar esta pista"
+drops the current arrangement's `note_overrides`, "Limpar em todas" drops
 every arrangement's; both send the smaller dict on the next rebuild, which
 genuinely removes them. `updateNoteEditsInfo` shows the per-arrangement count
 and disables both buttons when there is nothing to clear.
@@ -746,8 +746,8 @@ exactly which measure slips against the recording and drag-correct it there.
 Sections (intro/verso/refrão/solo…) used to come **only** from the GP file's
 own measure markers (`GpSection`, extracted in both parsers from a Guitar Pro
 "marker" on a measure); there was no way to add, rename, or move one without
-going back to Guitar Pro. A new **"🏷️ Secções"** panel (right below the tone
-panel) plus a **"Secção" sync mode** (🏷️, click a note to name where it starts)
+going back to Guitar Pro. The **"Secções"** tab of the Partitura inspector
+plus a **"Secção" sync mode** (click a note to name where it starts)
 let the user edit them directly in the tab viewer, for Riff Repeater and
 navigation.
 
@@ -841,8 +841,8 @@ silently gone**. `ArrangementOut.note_overrides` now returns each arrangement's
 committed edits and `loadArrangements` seeds `noteOverridesByKind` from them, so
 the always-send round-trip is lossless. `noteOverridesBuilt` (a JSON snapshot at
 load) is what makes "Pendente" mean *changed since the build* rather than "this
-job has note edits". Clearing them is then an explicit action — the "🧹 Limpar
-edições" / "🧹 Limpar em todas" buttons — which sends the smaller dict and
+job has note edits". Clearing them is then an explicit action — "Notas ▾" →
+"Limpar esta pista" / "Limpar em todas" — which sends the smaller dict and
 genuinely removes them on the next rebuild. Guarded by
 `test_committed_note_edits_survive_an_unrelated_rebuild`.
 
@@ -1145,26 +1145,69 @@ that DOM wiring (e.g. `openNewJobModal`'s modal toggle) still works after the
 split, plus two new API tests (`test_index_page_references_the_extracted_app_js`,
 `test_app_js_is_served_with_a_javascript_content_type`).
 
-**The note tools under the score are one bar with two dropdowns
-(`#toolBanner`).** They used to be a loose row of bare emoji buttons plus two
-free-floating rows (copy/paste, clear edits); a banner of labelled tiles came
-next, and the user then chose — from three sketched options — a dropdown bar:
-"Modo ▾" (`#modeMenuBtn` → `#modeMenu`, the nine modes grouped Sincronizar /
-Partitura, each with a big icon, its name and a one-line description) and
-"Notas ▾" (`#notesMenuBtn` → `#notesMenu`: copy, paste, clear this track /
-all), with the selection/clipboard/edit counts on the right. The mode items
-ARE the old buttons — same ids, still `mode-btn`, still wired through
-`SYNC_MODE_BUTTONS` — so `setSyncMode` also writes the trigger's icon/label
-from the active item's `data-ico`/`data-name` ("Nenhum modo" when re-clicking
-deselects). `wireDropdown` handles open/close (Escape, outside click, picking
-an item), arrow-key focus, and **flips the menu upward and caps its height**
-when it would run past the job modal's bottom — the job view is a scrolling
-`.modal`, so a menu near its end was otherwise clipped. Icons elsewhere are enlarged by `wrapIcons` at the end of
-`app.js`: the leading emoji of a button/link/label/heading is wrapped in
-`<span class="ico">` (1.3em), re-applied by a `MutationObserver` because many
-buttons are written at runtime; it never walks the score's SVG. Nothing in
-`app.js` reads a button's text back, which is what makes the wrapping safe —
-keep it that way (compare state, not `textContent`).
+### The layout: home page, full-screen project view, stroke icons
+
+Reworked from sketches the user approved (a Design canvas, "Novo layout"):
+the old job view was one very long 75%-wide modal that stacked everything —
+warnings, checklist, downloads, tuning, the sync steps, the player, the score,
+tones, sections and the exports — which is what made it confusing.
+
+- **Home** (`.app-layout`): a top bar (brand, "Lote (álbum)", "Novo projeto",
+  Definições) and the projects as cards (`renderJobCards`: cover when there is
+  one, title, artist, a status chip from `jobCardStatus` — the same gaps the
+  Exportar page lists), with status filters and a search box over `jobsCache`.
+  The first card is a drop zone: a Guitar Pro file dropped on it opens the
+  wizard with that file already in step 1's input (a `change` event is
+  dispatched so the file-drop label updates).
+- **Project** (`#detailOverlay`, now `.project-view`): fixed full-screen at z 40,
+  UNDER every modal (z 50), so Definições, tone builder, meta edit and ⓘ all open
+  on top of it. Top bar: ← back (`#detailClose`), title/artist with "Editar info"
+  and "Versão anterior", a status chip (`setStatusChip`; opens Exportar),
+  pending count, "Aplicar e reconstruir", Descarregar. A rail switches pages
+  (`showSection`: partitura / tons / letras / capa / exportar, with
+  Definições at the bottom).
+  - **Partitura** splits into the score (centre: transport with an "Áudio ▾"
+    panel for volumes/source/tone preview, then arrangement tabs, "Modo ▾",
+    "Notas ▾", snap, the score, fretboard, view controls, the mode hint) and an
+    inspector (right: "Sincronização" = the three steps + "Mais opções";
+    "Secções" = the section markers). Each column scrolls on its own; the
+    `data-page` attribute on `.pv-scroll` is what gives `#review` its full
+    height only on this page — without it, every other page opened below a
+    screen-tall empty `#review` and looked blank.
+  - **Exportar** sits OUTSIDE `#review`: it is also what a building or failed
+    job shows (`setReviewReady(false)` disables the other pages and hides
+    "Aplicar e reconstruir"/pending, which need a built chart — as when they
+    lived inside `#review`). A job's first ready view opens Partitura
+    (`sectionShownFor`), so a rebuild shows its progress and comes back to the
+    score by itself. Errors stay visible; the pipeline's technical warnings fold
+    into one "N avisos técnicos" line.
+- **The note tools are two dropdowns** in the score's tool row: "Modo ▾"
+  (`#modeMenuBtn` → `#modeMenu`, the nine modes grouped Sincronizar /
+  Partitura, each with an icon, name and one-line description) and "Notas ▾"
+  (copy, paste, clear this track / all). The user picked this from three
+  sketched options. The mode items ARE the old buttons — same ids, still
+  `mode-btn`, still wired through `SYNC_MODE_BUTTONS` — so `setSyncMode` also
+  writes the trigger's icon/label from the active item's `data-ico`/`data-name`
+  ("Nenhum modo" when re-clicking deselects). `wireDropdown` handles
+  open/close (Escape, outside click, picking an item), arrow-key focus, and
+  flips a menu upward with a capped height when it would run past the bottom
+  of its scrolling column.
+- **Icons are stroke SVGs**, not emoji: a `<symbol id="i-NAME">` sprite at the
+  top of `<body>`, used as `<svg class="ic"><use href="#i-NAME"/></svg>` and,
+  from script, `icon(name)` — a function DECLARATION at the top of `app.js`,
+  because tables like `SYS_MARK` build markup at load and a `const` there was
+  a TDZ crash that blanked the whole UI. They take `currentColor`, so a
+  button's state colours its icon. The score's tone/section labels use the
+  same symbols through `<use>` inside the SVG. Emoji left in long ⓘ prose or
+  toasts is text, not UI.
+- **Every id survived the move** (checked by diffing the id list before/after):
+  `app.js` reaches the DOM by id, so the reorganisation is markup + CSS plus the
+  page/inspector switching above. `[hidden]` is `display:none !important`, so a
+  component's own `display` rule can never un-hide what the script hid. Pure
+  browser code: verified with Playwright (every page, the dropdowns, modals on
+  top, Space to play, drop-to-wizard, a real rebuild going Exportar →
+  Partitura, a 1000px viewport), no pytest coverage — same category as the
+  other browser-only sections in `TESTING.md`.
 
 The "Novo projeto" modal is a **4-step wizard** (`web/index.html`), not a flat
 form, because the old single-form layout crammed ~15 fields (including a
@@ -1180,9 +1223,9 @@ post-creation in the real tone editor. Step 1 is its own form (submit = inspect,
 shared footer nav is `setWizardStep(n)` + `validateWizardStep()`; Enter on an
 early step advances instead of creating (guarded in the submit handler).
 
-### Batch processing (`📦 Processamento em lote`)
+### Batch processing ("Lote (álbum)")
 
-For an entire album: a second landing banner opens a batch modal
+For an entire album: the home page's "Lote (álbum)" button opens a batch modal
 (`#batchOverlay`) that creates several GP jobs without repeating the wizard
 per song. **Frontend-only — no new backend endpoint.** Each pair is created by
 looping the exact same two calls the single-project wizard makes
@@ -1225,8 +1268,8 @@ review step exists for batch-created jobs; that's the whole point of skipping
 per-song setup, and the completeness checklist plus that pre-existing warning
 surface it rather than hiding it.
 
-The **"Estado do PSARC" checklist** (`renderCompleteness`, rendered above the
-download links on every completed job) reads completeness signals straight off
+The **"Antes de usar" checklist** (`renderCompleteness`, on the Exportar page
+beside the downloads; its gaps also feed the top bar's status chip) reads completeness signals straight off
 `JobOut` and surfaces what would leave the bundle incomplete/poor, each with a
 jump-button to the right editor (`COMPLETE_ACTIONS`). Rows + alerts:
 - ✅/❌ **PSARC jogável** ← `psarc_available` (❌ = no Wwise/.wem).
@@ -1376,7 +1419,7 @@ in-game / DLC Builder). Guarded by `test_gear_image_serves_local_file_or_404` /
 
 ### Tone preview on the score (`voiceNote` / "Testar tom")
 
-The tab viewer's **"🎸 Testar tom" dropdown** lets the user audition a **created
+The **"Testar tom" selector** (in the transport's "Áudio ▾" panel) lets the user audition a **created
 tone**'s *character* on the note playback — both the per-note tick and the
 "sintetizada" audio source route through the same `voiceNote(ctx, dest, hz, t0,
 dur, peak, char)` voice — a **plucked-string (Karplus-Strong) note**
@@ -1417,7 +1460,7 @@ generates the audio from the gear keys we serialize into the bundle.
 
 ### Stem separation — selectable audio source (`/jobs/{id}/separate-stems`)
 
-The tab viewer's **"Fonte de áudio" dropdown** (`populateAudioSources`) offers
+The **"Fonte de áudio" selector** (in the transport's "Áudio ▾" panel, `populateAudioSources`) offers
 three kinds of audio source, all decoded into the same `playBuffer` (which
 shares the recording's clock, so the notes stay aligned):
 

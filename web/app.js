@@ -1,3 +1,9 @@
+// A stroke icon from the sprite at the top of index.html. A declaration, not a
+// const: some tables near the top of this file build their markup at load.
+function icon(name, cls = '') {
+  return `<svg class="ic${cls ? ' ' + cls : ''}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+}
+
 // ── Modern file inputs ───────────────────────────────────────────────────────
 document.querySelectorAll('.file-drop').forEach(drop => {
   const inp = drop.querySelector('input[type="file"]');
@@ -100,7 +106,7 @@ function applySongsterrVideo() {
   // Bar 1's instant in THAT video — right as the start when the MP3 is the
   // whole video; a trimmed copy starts earlier, and the user adjusts.
   document.querySelector('#gpJobForm input[name=offset_s]').value = start.toFixed(3);
-  info.innerHTML = `✅ ${v.points.length} compassos com tempo marcado. Os tempos são do vídeo ` +
+  info.innerHTML = `${icon('check')} ${v.points.length} compassos com tempo marcado. Os tempos são do vídeo ` +
     `<a href="${esc(v.url)}" target="_blank" rel="noopener">${esc(v.url)}</a> — o teu MP3 tem de ser convertido desse vídeo ` +
     '(o áudio do próprio Songsterr é outro e não bate com estes tempos). ' +
     `O compasso 1 começa em <b>${start.toFixed(3)} s</b> desse vídeo; já pus esse valor em "Início da música". ` +
@@ -117,7 +123,7 @@ document.getElementById('songsterrFetch').addEventListener('click', async () => 
     songsterrSong = await getJSON(`/songsterr?song=${encodeURIComponent(link)}`);
   } catch (err) {
     songsterrSong = null; songsterrPoints = null; sel.hidden = true;
-    info.textContent = `❌ ${err.message || err}`;
+    info.textContent = `Erro: ${err.message || err}`;
     return;
   }
   sel.innerHTML = '<option value="">— não usar os tempos do Songsterr —</option>' +
@@ -153,8 +159,22 @@ document.getElementById('wizardNext').addEventListener('click', () => {
   if (wizardStep === 1) { document.getElementById('gpInspectForm').requestSubmit(); return; }
   setWizardStep(wizardStep + 1);
 });
-document.querySelectorAll('.job-banner[data-new]').forEach(b => {
+document.querySelectorAll('[data-new]').forEach(b => {
   b.addEventListener('click', () => openNewJobModal(b.dataset.new));
+});
+// The home page's drop card: a Guitar Pro file dropped on it opens the wizard
+// with that file already chosen, as if it had been picked in step 1.
+const homeDrop = document.getElementById('homeDrop');
+homeDrop.addEventListener('dragover', e => { e.preventDefault(); homeDrop.classList.add('drag-over'); });
+homeDrop.addEventListener('dragleave', () => homeDrop.classList.remove('drag-over'));
+homeDrop.addEventListener('drop', e => {
+  e.preventDefault();
+  homeDrop.classList.remove('drag-over');
+  if (!e.dataTransfer || !e.dataTransfer.files.length) return;
+  openNewJobModal('gp');
+  const inp = document.querySelector('#gpInspectForm input[type=file]');
+  inp.files = e.dataTransfer.files;
+  inp.dispatchEvent(new Event('change'));
 });
 fetch('/version').then(r => r.json()).then(d => {
   document.getElementById('appVersion').textContent = 'v' + d.version;
@@ -194,7 +214,7 @@ function renderBatchPairs() {
     submitBtn.disabled = true;
     return;
   }
-  const STATUS_ICO = { pending: '⏳', working: '⏳', done: '✅', error: '❌' };
+  const STATUS_ICO = { pending: icon('clock'), working: icon('clock'), done: icon('check'), error: icon('x') };
   el.innerHTML = batchPairs.map(p => `<div class="anchor-row">
     ${STATUS_ICO[p.status] || ''} <b>${esc(p.gp.name)}</b> → ${p.audio ? esc(p.audio.name) : '<span style="color:#e88">sem gravação — não vai ser criado</span>'}
     ${p.error ? `<span style="color:#e88">(${esc(p.error)})</span>` : ''}
@@ -328,13 +348,13 @@ function fillSettings(s) {
 // checked from here" (the CDLC loader patch — we don't know where the game is;
 // a CUDA build of torch — only importing it would tell), which is a different
 // and more honest answer than "missing", so it gets its own marker.
-const SYS_MARK = { true: '✅', false: '❌', null: 'ⓘ' };
+const SYS_MARK = { true: icon('check'), false: icon('x'), null: icon('info') };
 
 function renderSystemCheck(data) {
   const el = document.getElementById('sysCheck');
   if (!el) return;
   const rows = (data.requirements || []).map(r => {
-    const mark = SYS_MARK[String(r.found)] || 'ⓘ';
+    const mark = SYS_MARK[String(r.found)] || icon('info');
     // Only spell out the cost and the fix for what is actually missing or
     // unknown — a wall of install commands next to every ✅ is noise.
     const gap = r.found !== true;
@@ -351,7 +371,7 @@ function renderSystemCheck(data) {
   const missing = data.missing_required || [];
   const banner = missing.length
     ? `<div class="meta" style="color:var(--err,#e05a5a);margin-bottom:.4rem">
-         ⚠️ Falta software <b>obrigatório</b> (${missing.map(esc).join(', ')}) —
+         ${icon('alert')} Falta software <b>obrigatório</b> (${missing.map(esc).join(', ')}) —
          nenhum job vai chegar ao fim até o instalares.</div>`
     : '';
   el.innerHTML = banner + rows.join('');
@@ -378,6 +398,7 @@ async function openSettings() {
 document.getElementById('sysCheckRefresh').addEventListener('click', loadSystemCheck);
 function closeSettings() { document.getElementById('settingsOverlay').hidden = true; }
 document.getElementById('openSettings').addEventListener('click', openSettings);
+document.querySelectorAll('[data-open-settings]').forEach(b => b.addEventListener('click', openSettings));
 document.getElementById('settingsClose').addEventListener('click', closeSettings);
 document.getElementById('settingsOverlay').addEventListener('click', e => {
   if (e.target.id === 'settingsOverlay') closeSettings();
@@ -419,16 +440,46 @@ document.getElementById('settingsSave').addEventListener('click', async () => {
   toast('Definições guardadas.', 'ok');
 });
 
-// ── Section tabs (Partitura / Letras / Capa) ─────────────────────────────────
+// ── The project's pages (the rail on the left of the project view) ──────────
+// Exportar lives outside #review: it is also what shows while a job builds,
+// when the other pages have nothing to show and their rail buttons are off.
+const PROJECT_PAGES = ['partitura', 'tons', 'letras', 'capa', 'exportar'];
 function showSection(name) {
-  const sections = ['partitura', 'letras', 'capa'];
-  for (const s of sections) {
+  for (const s of PROJECT_PAGES) {
     const el = document.getElementById('section' + s.charAt(0).toUpperCase() + s.slice(1));
     if (el) el.hidden = (s !== name);
   }
-  for (const btn of document.querySelectorAll('.section-tabnav button'))
+  for (const btn of document.querySelectorAll('.pv-rail [data-section]'))
     btn.classList.toggle('active', btn.dataset.section === name);
+  const view = document.getElementById('detail');
+  view.dataset.page = name;
+  view.scrollTop = 0;
 }
+document.querySelectorAll('.pv-rail [data-section]').forEach(b =>
+  b.addEventListener('click', () => showSection(b.dataset.section)));
+document.querySelectorAll('[data-goto]').forEach(b =>
+  b.addEventListener('click', () => showSection(b.dataset.goto)));
+function setReviewReady(ready) {
+  document.getElementById('review').style.display = ready ? '' : 'none';
+  document.querySelectorAll('.needs-review').forEach(el => { el.hidden = !ready; });
+  for (const btn of document.querySelectorAll('.pv-rail [data-section]'))
+    if (btn.dataset.section !== 'exportar') btn.disabled = !ready;
+  // Rebuilding needs a built chart to edit, as before (the button used to
+  // live inside #review), and "pending" describes edits to that chart.
+  document.getElementById('applyAll').hidden = !ready;
+  document.getElementById('pendingChangesInfo').hidden = !ready;
+}
+// The Partitura page's right-hand inspector: Sincronização | Secções.
+function showInspector(name) {
+  document.getElementById('inspSync').hidden = name !== 'sync';
+  document.getElementById('inspSections').hidden = name !== 'sections';
+  document.querySelectorAll('.pv-seg [data-insp]').forEach(b => {
+    b.classList.toggle('active', b.dataset.insp === name);
+    b.setAttribute('aria-selected', String(b.dataset.insp === name));
+  });
+}
+document.querySelectorAll('.pv-seg [data-insp]').forEach(b =>
+  b.addEventListener('click', () => showInspector(b.dataset.insp)));
 
 // ── "Estado do PSARC" completeness checklist ─────────────────────────────────
 // Reads the signals JobOut already exposes (psarc_available, has_tones,
@@ -437,9 +488,9 @@ function showSection(name) {
 // blocked (honesty principle): the user can still download, but won't silently
 // ship a tone-less / cover-less / unsynced PSARC.
 const COMPLETE_ACTIONS = {
-  tones: () => { showSection('partitura'); openToneBuilder(); },
+  tones: () => { showSection('tons'); openToneBuilder(); },
   cover: () => { showSection('capa'); },
-  sync:  () => { showSection('partitura'); document.getElementById('gpSyncControls')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); },
+  sync:  () => { showSection('partitura'); showInspector('sync'); },
   lyrics: () => { showSection('letras'); },
 };
 
@@ -451,50 +502,51 @@ function renderCompleteness(j) {
   const rows = [];
 
   if (j.psarc_available)
-    rows.push({ state: 'ok', ico: '✅', title: 'PSARC jogável gerado', note: '.psarc pronto para o jogo.' });
+    rows.push({ state: 'ok', ico: 'check', title: 'PSARC jogável gerado', note: '.psarc pronto para o jogo.' });
   else
-    rows.push({ state: 'err', ico: '❌', title: 'PSARC não gerado', short: 'gerar o PSARC (Wwise)',
+    rows.push({ state: 'err', ico: 'x', title: 'PSARC não gerado', short: 'gerar o PSARC (Wwise)',
       note: 'Só saiu o bundle (DLC Builder). Falta o Wwise/.wem para produzir o .psarc jogável — vê o README.' });
 
   if (j.has_tones)
-    rows.push({ state: 'ok', ico: '✅', title: 'Tons definidos', note: 'O som in-game usa os teus tons.' });
+    rows.push({ state: 'ok', ico: 'check', title: 'Tons definidos', note: 'O som in-game usa os teus tons.' });
   else
-    rows.push({ state: 'warn', ico: '🎸', title: 'Sem tons definidos', short: 'tons', act: 'tones', actLabel: 'Detetar / criar tom',
+    rows.push({ state: 'warn', ico: 'wave', title: 'Sem tons definidos', short: 'tons', act: 'tones', actLabel: 'Detetar / criar tom',
       note: 'O DLC Builder vai marcar "tone missing" e o som será um default.' });
 
   if (j.cover_art)
-    rows.push({ state: 'ok', ico: '✅', title: 'Capa do álbum', note: 'Incluída no bundle.' });
+    rows.push({ state: 'ok', ico: 'check', title: 'Capa do álbum', note: 'Incluída no bundle.' });
   else
-    rows.push({ state: 'warn', ico: '🖼️', title: 'Sem capa', short: 'capa', act: 'cover', actLabel: 'Carregar capa',
+    rows.push({ state: 'warn', ico: 'image', title: 'Sem capa', short: 'capa', act: 'cover', actLabel: 'Carregar capa',
       note: 'O albumArt fica vazio (sem arte no jogo).' });
 
   if (isGp) {
     if (j.sync_edited)
-      rows.push({ state: 'ok', ico: '✅', title: 'Sincronização ajustada', note: 'Fizeste pelo menos uma correção de início/andamento.' });
+      rows.push({ state: 'ok', ico: 'check', title: 'Sincronização ajustada', note: 'Fizeste pelo menos uma correção de início/andamento.' });
     else
-      rows.push({ state: 'warn', ico: '🎚️', title: 'Confirmaste a sincronização?', short: 'confirmar a sincronização', act: 'sync', actLabel: 'Abrir partitura',
+      rows.push({ state: 'warn', ico: 'timer', title: 'Confirmaste a sincronização?', short: 'confirmar a sincronização', act: 'sync', actLabel: 'Abrir partitura',
         note: 'Ainda não há ajustes de início/andamento — abre a partitura e confirma que as notas batem com a gravação.' });
   }
 
   if (j.has_lyrics)
-    rows.push({ state: 'ok', ico: '✅', title: 'Letra incluída', note: 'A letra vai aparecer no jogo.' });
+    rows.push({ state: 'ok', ico: 'check', title: 'Letra incluída', note: 'A letra vai aparecer no jogo.' });
   else
-    rows.push({ state: 'info', ico: '🎤', title: 'Letra (opcional)', act: 'lyrics', actLabel: 'Detetar / editar',
+    rows.push({ state: 'info', ico: 'mic', title: 'Letra (opcional)', act: 'lyrics', actLabel: 'Detetar / editar',
       note: 'Sem letra — o arranjo de vocais não é obrigatório.' });
 
-  rows.push({ state: 'info', ico: '🆔', title: 'AppID / propriedade',
+  rows.push({ state: 'info', ico: 'key', title: 'AppID / propriedade',
     note: 'O .psarc usa o AppID de uma DLC específica; o jogador tem de a possuir para a música aparecer na lista. Causa nº1 de "não aparece no jogo".' });
 
   const alerts = rows.filter(r => r.state === 'warn' || r.state === 'err');
-  let html = '<div class="complete-card"><h4>📋 Estado do PSARC</h4>';
-  if (alerts.length) {
-    const parts = alerts.map(r => r.short || r.title.toLowerCase());
-    html += `<div class="complete-banner">⚠️ Antes de usar, ainda falta: <b>${esc(parts.join(', '))}</b>. Podes descarregar na mesma, mas o PSARC fica mais pobre.</div>`;
-  }
+  let html = '<div class="complete-card"><h4>Antes de usar</h4>';
+  const parts = alerts.map(r => r.short || r.title.toLowerCase());
+  if (alerts.length)
+    html += `<div class="complete-banner">${icon('alert')} Ainda falta: <b>${esc(parts.join(', '))}</b>. Podes descarregar na mesma, mas o PSARC fica mais pobre.</div>`;
+  setStatusChip(alerts.length ? 'warn' : 'ok',
+    alerts.length ? `Falta: ${parts.join(', ')}` : 'Pronto a usar', alerts.length ? 'alert' : 'check');
   for (const r of rows) {
-    const cls = r.state === 'err' ? ' err' : r.state === 'warn' ? ' warn' : '';
+    const cls = r.state === 'err' ? ' err' : r.state === 'warn' ? ' warn' : r.state === 'ok' ? ' ok' : '';
     const btn = r.act ? `<button type="button" class="secondary" data-act="${esc(r.act)}">${esc(r.actLabel)}</button>` : '';
-    html += `<div class="complete-row${cls}"><span class="complete-ico">${r.ico}</span>`
+    html += `<div class="complete-row${cls}"><span class="complete-ico">${icon(r.ico)}</span>`
       + `<span class="complete-body"><span class="complete-title">${esc(r.title)}</span>`
       + `<span class="complete-note">${esc(r.note)}</span></span>${btn}</div>`;
   }
@@ -529,14 +581,14 @@ const INFO = {
   },
   'new-job': {
     title: 'Criar um novo projeto',
-    body: `<p><strong>🎸 A partir de Guitar Pro</strong>: notas, trastes, técnicas e secções vêm <b>exatas</b> do ficheiro GP3/GP4/GP5/GP7. Assistente de 4 passos: <b>Ficheiro</b> (escolhe o GP e inspeciona as pistas) → <b>Pistas</b> (atribui Lead/Rhythm/Combo) → <b>Gravação</b> (o áudio + o início aproximado) → <b>Detalhes</b> (título/banda, opcionais).</p>
+    body: `<p><strong>A partir de Guitar Pro</strong>: notas, trastes, técnicas e secções vêm <b>exatas</b> do ficheiro GP3/GP4/GP5/GP7. Assistente de 4 passos: <b>Ficheiro</b> (escolhe o GP e inspeciona as pistas) → <b>Pistas</b> (atribui Lead/Rhythm/Combo) → <b>Gravação</b> (o áudio + o início aproximado) → <b>Detalhes</b> (título/banda, opcionais).</p>
 <p>Os <b>tons</b>, a <b>capa</b> e a <b>sincronização fina</b> fazem-se depois de criar. O projeto mostra um checklist <b>"Estado do PSARC"</b> com o que ainda falta.</p>`
   },
   'batch': {
     title: 'Processamento em lote',
     body: '<p>Cria vários projetos de uma vez a partir de vários ficheiros Guitar Pro + as gravações correspondentes — útil para converter um álbum inteiro sem repetir o assistente música a música.</p>' +
       '<p><strong>Emparelhamento:</strong> cada ficheiro GP é associado à gravação com o <strong>mesmo nome</strong> (sem extensão) — ex. <code>faixa1.gp5</code> com <code>faixa1.mp3</code>. Quando não há correspondência pelo nome, o RockForge empareha pela <strong>ordem</strong> em que escolheste os ficheiros. Confirma a lista de pares antes de criar.</p>' +
-      '<p><strong>Pistas Lead/Rhythm:</strong> cada projeto usa a mesma heurística automática do assistente normal (escolhe as pistas de 6 cordas pelo nome — "lead"/"rhythm") em vez de perguntares música a música. Se uma escolha ficar errada, corrige depois em "✎ Editar info" desse projeto (não precisas de recriar o lote todo).</p>' +
+      '<p><strong>Pistas Lead/Rhythm:</strong> cada projeto usa a mesma heurística automática do assistente normal (escolhe as pistas de 6 cordas pelo nome — "lead"/"rhythm") em vez de perguntares música a música. Se uma escolha ficar errada, corrige depois em "Editar info" desse projeto (não precisas de recriar o lote todo).</p>' +
       '<p>Banda/álbum/ano ficam <strong>partilhados</strong> por todos os pares; título/artista específicos vêm do próprio ficheiro GP ou das tags do áudio, como no assistente normal.</p>' +
       '<p>Os projetos são criados um a um (mesmo caminho que criar um único projeto, repetido); acompanha o progresso na lista de pares e depois na lista de projetos.</p>'
   },
@@ -611,14 +663,14 @@ const INFO = {
 <p><strong>Selecionar excerto:</strong> arrasta uma caixa sobre as notas e depois arrasta uma delas — o excerto move-se em bloco (também com encaixe nos beats).</p>
 <p><strong>Mover seguintes:</strong> pausa o áudio no instante certo e clica na nota deslocada — essa nota e todas as seguintes deslocam-se em bloco para o cursor.</p>
 <p><strong>Novo beat (detetar):</strong> clica numa nota onde o andamento muda — o RockForge mede o andamento da gravação a partir desse instante e re-espaça as notas seguintes.</p>
-<p><strong>Alinhar por compasso (📏):</strong> pausa a gravação onde um compasso deve soar e clica numa nota — abre um popup com o número do compasso (o da nota, já escolhido). Confirma com "= cursor" e esse compasso alinha-se ao cursor, arrastando as notas seguintes; ou "= pista" para o alinhar ao mesmo compasso de outra pista já sincronizada. Feito várias vezes ao longo da música, corrige o desvio compasso a compasso.</p>
-<p><strong>Secção (🏷️):</strong> clica numa nota para nomear onde começa uma secção (intro/verso/refrão…) — nada a ver com sincronização, é só estrutura da música. Ver o painel "🏷️ Secções" abaixo.</p>
-<p><strong>Editar notas (✏️):</strong> clica numa nota existente para a editar (traste, sustain, técnicas, bend, slide) ou removê-la; <strong>duplo-clique</strong> no pentagrama vazio insere uma nota nova, encaixada na grelha de sincronização (um clique simples no vazio move o cursor, como nos outros modos). Muda o <em>conteúdo</em> da partitura — as notas deixam de vir só do ficheiro Guitar Pro — e fica pendente (contorno tracejado verde-água) até "Aplicar e reconstruir".</p>`
+<p><strong>Alinhar compasso:</strong> pausa a gravação onde um compasso deve soar e clica numa nota — abre um popup com o número do compasso (o da nota, já escolhido). Confirma com "= cursor" e esse compasso alinha-se ao cursor, arrastando as notas seguintes; ou "= pista" para o alinhar ao mesmo compasso de outra pista já sincronizada. Feito várias vezes ao longo da música, corrige o desvio compasso a compasso.</p>
+<p><strong>Secção:</strong> clica numa nota para nomear onde começa uma secção (intro/verso/refrão…) — nada a ver com sincronização, é só estrutura da música. Ver o painel "🏷️ Secções" abaixo.</p>
+<p><strong>Editar notas:</strong> clica numa nota existente para a editar (traste, sustain, técnicas, bend, slide) ou removê-la; <strong>duplo-clique</strong> no pentagrama vazio insere uma nota nova, encaixada na grelha de sincronização (um clique simples no vazio move o cursor, como nos outros modos). Muda o <em>conteúdo</em> da partitura — as notas deixam de vir só do ficheiro Guitar Pro — e fica pendente (contorno tracejado verde-água) até "Aplicar e reconstruir".</p>`
   },
   'sections': {
     title: 'Secções da música',
     body: '<p>Marca e nomeia a estrutura da música (intro/verso/refrão/solo…) diretamente na partitura — útil para navegar e para o <strong>Riff Repeater</strong> no jogo, sem teres de voltar ao Guitar Pro.</p>' +
-      '<p><strong>Adicionar:</strong> ativa o modo "Secção" (🏷️) e clica numa nota para a nomear, ou usa "+ Adicionar no cursor" para marcar a posição atual do leitor sem precisares de acertar numa nota.</p>' +
+      '<p><strong>Adicionar:</strong> ativa o modo "Secção" e clica numa nota para a nomear, ou usa "+ Adicionar no cursor" para marcar a posição atual do leitor sem precisares de acertar numa nota.</p>' +
       '<p><strong>Editar:</strong> a lista abaixo tem o tempo e o nome de cada secção editáveis diretamente — muda o número para reposicionar, o texto para renomear, ou remove-a.</p>' +
       '<p>As secções são <strong>partilhadas por todos os arranjos</strong> (Lead/Rhythm/Combined) — tal como as mudanças de tom, marcadas uma vez e aplicadas a todos. Ficam em pré-visualização (etiqueta 🏷️ verde-água na partitura) até confirmares com "Aplicar e reconstruir"; sem qualquer edição, a música mantém as secções que já vinham do ficheiro Guitar Pro.</p>'
   },
@@ -770,7 +822,6 @@ let lyricsPollTimer = null;
 // built arrangement and updated by "Detetar afinação" / sent on rebuild.
 let centOffsetLive = 0;
 
-const badge = s => `<span class="badge b-${s}">${s}</span>`;
 const esc = t => { const d = document.createElement('span'); d.textContent = t ?? ''; return d.innerHTML; };
 
 function toast(message, kind = 'err') {
@@ -863,12 +914,10 @@ function closeDetail() {
   const au = document.getElementById('syncAudio');
   if (au) { au.removeAttribute('src'); au.load(); }
   document.getElementById('detailOverlay').hidden = true;
+  sectionShownFor = null;
   refreshJobs();
 }
 document.getElementById('detailClose').onclick = closeDetail;
-document.getElementById('detailOverlay').addEventListener('click', e => {
-  if (e.target.id === 'detailOverlay') closeDetail();
-});
 
 // ── Edit song info (title/artist/album/year) ──
 const TUNING_PRESETS = {
@@ -986,40 +1035,58 @@ document.getElementById('metaSave').onclick = async () => {
   }
   closeMeta();
   // Refresh the header + the job list titles (no chart reload needed).
-  document.getElementById('detailHead').innerHTML =
-    `<strong>${esc(selectedJob.title)}</strong> — ${esc(selectedJob.artist)}
-     ${selectedJob.album ? `· ${esc(selectedJob.album)}` : ''} ${selectedJob.year ? `(${selectedJob.year})` : ''} ${badge(selectedJob.status)}
-     <button type="button" class="secondary" onclick="openMetaEdit()" title="Editar título, artista, álbum, ano" style="padding:.1rem .4rem;font-size:.75rem;margin-left:.4rem">✎ Editar info</button>
-     <span class="meta">notas: ${esc(JSON.stringify(selectedJob.note_counts))}</span>`;
+  renderDetailHead(selectedJob);
   refreshJobs();
 };
 
-async function refreshJobs() {
-  let jobs;
-  try {
-    jobs = await getJSON('/jobs');
-  } catch {
-    return;  // the offline banner already says why; don't blank the table
+// ── Home: the projects as cards ──────────────────────────────────────────────
+let jobsCache = [];
+let jobFilter = 'all';
+const JOB_FILTERS = {
+  all: () => true,
+  ready: j => j.status === 'completed',
+  busy: j => j.status === 'pending' || j.status === 'running',
+  failed: j => j.status === 'failed',
+};
+// What a card says about its project: the same gaps the Exportar page lists.
+function jobCardStatus(j) {
+  if (j.status === 'failed') return ['err', 'Falhou', 'x'];
+  if (j.status === 'pending') return ['run', 'Na fila…', 'clock'];
+  if (j.status === 'running') return ['run', 'A construir…', 'clock'];
+  if (!j.bundle_available) return ['warn', 'Sem ficheiros', 'alert'];
+  const gaps = [];
+  if (!j.psarc_available) gaps.push('PSARC');
+  if (!j.has_tones) gaps.push('tons');
+  if (!j.cover_art) gaps.push('capa');
+  return gaps.length ? ['warn', `Falta: ${gaps.join(', ')}`, 'alert'] : ['ok', 'Pronto a jogar', 'check'];
+}
+function renderJobCards() {
+  const grid = document.getElementById('jobsGrid');
+  grid.querySelectorAll('.proj-card, .home-empty').forEach(el => el.remove());
+  const q = (document.getElementById('jobSearch').value || '').trim().toLowerCase();
+  const shown = jobsCache.filter(JOB_FILTERS[jobFilter])
+    .filter(j => !q || `${j.title} ${j.artist}`.toLowerCase().includes(q));
+  if (jobsCache.length && !shown.length) {
+    grid.insertAdjacentHTML('beforeend', '<p class="home-empty">Nenhum projeto corresponde a este filtro.</p>');
   }
-  const tb = document.querySelector('#jobsTable tbody');
-  tb.innerHTML = '';
-  // Banners (the job options) are always visible; the job list shows below
-  // them only once there are jobs.
-  const list = document.getElementById('jobListCard');
-  if (!jobs.length) {
-    list.style.display = 'none';
-    return;
-  }
-  list.style.display = '';
-  for (const j of jobs) {
-    const tr = document.createElement('tr');
-    if (selectedJob && j.id === selectedJob.id) tr.className = 'sel';
-    tr.innerHTML = `<td><strong>${esc(j.title)}</strong><br><span style="color:var(--muted);font-size:.8rem">${esc(j.artist)}</span></td>
-      <td>${badge(j.status)}</td>
-      <td><button type="button" class="icon del" title="Remover projeto">🗑</button></td>`;
-    tr.onclick = () => selectJob(j.id);
-    tr.querySelector('.del').onclick = async ev => {
-      ev.stopPropagation();
+  for (const j of shown) {
+    const [kind, text, ico] = jobCardStatus(j);
+    const card = document.createElement('article');
+    card.className = 'proj-card';
+    card.innerHTML = `
+      <button type="button" class="proj-open" aria-label="Abrir ${esc(j.title)}">
+        <div class="proj-cover">${j.cover_art ? `<img src="/jobs/${j.id}/cover" alt="" loading="lazy">` : icon('music')}</div>
+        <div class="proj-meta">
+          <div class="proj-title">${esc(j.title)}</div>
+          <div class="proj-artist">${esc(j.artist)}</div>
+          <span class="pv-chip ${kind}">${icon(ico)}${esc(text)}</span>
+        </div>
+      </button>
+      <button type="button" class="proj-del" title="Remover projeto" aria-label="Remover ${esc(j.title)}">${icon('trash')}</button>`;
+    card.querySelector('.proj-open').onclick = () => selectJob(j.id);
+    const img = card.querySelector('.proj-cover img');
+    if (img) img.onerror = () => { img.replaceWith(document.createRange().createContextualFragment(icon('music'))); };
+    card.querySelector('.proj-del').onclick = async () => {
       const running = j.status === 'running';
       const msg = running
         ? `O projeto "${j.title}" ainda está a correr. Forçar a remoção? Só o deves fazer se estiver encravado (o worker morreu ou pendurou) — apaga também o bundle gerado.`
@@ -1032,9 +1099,47 @@ async function refreshJobs() {
       if (selectedJob && selectedJob.id === j.id) closeDetail();
       refreshJobs();
     };
-    tb.appendChild(tr);
+    grid.appendChild(card);
   }
 }
+document.querySelectorAll('.home-filters [data-filter]').forEach(b => b.addEventListener('click', () => {
+  jobFilter = b.dataset.filter;
+  document.querySelectorAll('.home-filters [data-filter]').forEach(x => x.classList.toggle('active', x === b));
+  renderJobCards();
+}));
+document.getElementById('jobSearch').addEventListener('input', renderJobCards);
+
+async function refreshJobs() {
+  try {
+    jobsCache = await getJSON('/jobs');
+  } catch {
+    return;  // the offline banner already says why; don't blank the cards
+  }
+  renderJobCards();
+}
+
+// The project view's top bar: title, and a line with artist/album/year and
+// the actions on the song's details.
+function renderDetailHead(j) {
+  const bits = [j.artist, j.album, j.year].filter(Boolean).map(esc).join(' · ');
+  document.getElementById('detailHead').innerHTML =
+    `<div class="pv-title">${esc(j.title)}</div>
+     <div class="pv-sub"><span>${bits}</span>
+       <button type="button" onclick="openMetaEdit()" title="Editar título, artista, álbum, ano">${icon('edit')}Editar info</button>
+       ${j.rebuilt_from ? `<button type="button" onclick="selectJob('${j.rebuilt_from}')" title="Abrir a versão de onde esta foi reconstruída — a anterior nunca é apagada">${icon('undo')}Versão anterior</button>` : ''}
+     </div>`;
+}
+// The chip beside the title: what the project still needs, at a glance.
+// Clicking it opens the Exportar page, where each gap has its fix.
+function setStatusChip(kind, text, ico) {
+  const chip = document.getElementById('pvStatusChip');
+  chip.className = `pv-chip ${kind}`;
+  chip.innerHTML = `${icon(ico)}${esc(text)}`;
+  chip.title = text;
+  chip.hidden = false;
+}
+document.getElementById('pvStatusChip').addEventListener('click', () => showSection('exportar'));
+let sectionShownFor = null;  // the job whose first "ready" view opened Partitura
 
 async function selectJob(id, { poll = false, force = false } = {}) {
   let j;
@@ -1050,12 +1155,7 @@ async function selectJob(id, { poll = false, force = false } = {}) {
   }
   selectedJob = j;
   document.getElementById('detailOverlay').hidden = false;
-  document.getElementById('detailHead').innerHTML =
-    `<strong>${esc(j.title)}</strong> — ${esc(j.artist)}
-     ${j.album ? `· ${esc(j.album)}` : ''} ${j.year ? `(${j.year})` : ''} ${badge(j.status)}
-     <button type="button" class="secondary" onclick="openMetaEdit()" title="Editar título, artista, álbum, ano" style="padding:.1rem .4rem;font-size:.75rem;margin-left:.4rem">✎ Editar info</button>
-     ${j.rebuilt_from ? `<button type="button" class="secondary" onclick="selectJob('${j.rebuilt_from}')" title="Abrir a versão de onde esta foi reconstruída — a anterior nunca é apagada" style="padding:.1rem .4rem;font-size:.75rem;margin-left:.4rem">↩ Versão anterior</button>` : ''}
-     <span class="meta">notas: ${esc(JSON.stringify(j.note_counts))}</span>`;
+  renderDetailHead(j);
 
   const bar = document.getElementById('stagesBar');
   const idx = j.stages.indexOf(j.stage);
@@ -1066,17 +1166,40 @@ async function selectJob(id, { poll = false, force = false } = {}) {
     return `<span class="${cls}">${s}</span>`;
   }).join('');
 
+  // An error stays in plain sight; the pipeline's technical warnings fold
+  // into one line, so they no longer push everything else down the page.
+  const warns = j.warnings || [];
   document.getElementById('warnings').innerHTML =
-    (j.warnings || []).map(w => `<div class="warnbox">⚠ ${esc(w)}</div>`).join('') +
-    (j.error ? `<div class="errbox">✖ ${esc(j.error)}</div>` : '');
+    (j.error ? `<div class="errbox">${icon('x')} ${esc(j.error)}</div>` : '') +
+    (warns.length
+      ? `<details class="pv-warn"><summary>${warns.length} ${warns.length === 1 ? 'aviso técnico' : 'avisos técnicos'}</summary>` +
+        warns.map(w => `<div class="warnbox">${esc(w)}</div>`).join('') + '</details>'
+      : '');
 
-  renderCompleteness(j);
+  if (j.status === 'completed' && j.bundle_available) renderCompleteness(j);
+  else {
+    renderCompleteness(j);
+    if (j.status === 'failed') setStatusChip('err', 'Falhou', 'x');
+    else if (j.status === 'completed') setStatusChip('warn', 'Concluído sem ficheiros', 'alert');
+    else setStatusChip('run', j.status === 'pending' ? 'Na fila…' : `A construir…${j.stage ? ` ${j.stage}` : ''}`, 'clock');
+  }
 
   const dl = document.getElementById('downloads');
   dl.innerHTML = '';
-  if (j.bundle_available) dl.innerHTML += `<a href="/jobs/${j.id}/bundle">Bundle (DLC Builder)</a>`;
-  if (j.psarc_available) dl.innerHTML += `<a href="/jobs/${j.id}/psarc">PSARC</a>`;
+  if (j.psarc_available)
+    dl.innerHTML += `<a class="dl-card" href="/jobs/${j.id}/psarc">${icon('gamepad')}<b>PSARC para o jogo</b><span>pronto a copiar para a pasta dlc do Rocksmith</span></a>`;
+  if (j.bundle_available)
+    dl.innerHTML += `<a class="dl-card" href="/jobs/${j.id}/bundle">${icon('package')}<b>Bundle DLC Builder</b><span>XML, áudio e projeto .rs2dlc para abrir no DLC Builder</span></a>`;
   if (j.bundle_available && !j.psarc_available) dl.innerHTML += `<span class="meta">PSARC requer Wwise — ver README</span>`;
+  if (!j.bundle_available) dl.innerHTML = '<span class="meta">Os ficheiros aparecem aqui quando a construção terminar.</span>';
+  document.getElementById('noteCountsInfo').textContent =
+    `Notas por pista: ${Object.entries(j.note_counts || {}).map(([k, v]) => `${k} ${v}`).join(' · ') || '—'}`;
+
+  // A job that is still building (or failed) only has its Exportar page.
+  const ready = j.status === 'completed' && j.bundle_available;
+  if (!ready) { setReviewReady(false); showSection('exportar'); }
+  else if (sectionShownFor !== j.id) showSection('partitura');
+  sectionShownFor = ready ? j.id : null;
 
   loadCoverArt(j);
 
@@ -1098,7 +1221,7 @@ async function selectJob(id, { poll = false, force = false } = {}) {
     }
   } else {
     arrangementsLoadedFor = null;
-    document.getElementById('review').style.display = 'none';
+    setReviewReady(false);
     clearInterval(lyricsPollTimer);
     lyricsEvents = [];
   }
@@ -1136,7 +1259,7 @@ async function loadArrangements(id) {
   wavePeaks = null; waveDuration = 0;
   stopPlayback(); playBuffer = null; playGain = null; pausedAt = 0;
   if (!arrangements.length) return;
-  document.getElementById('review').style.display = '';
+  setReviewReady(true);
   const a0 = arrangements[0];
   centOffsetLive = a0.cent_offset;
   songSections = (a0.sections || []).map(s => ({ time: s.time, name: s.name }));
@@ -1422,7 +1545,8 @@ function showArr(i) {
       if (m.x > 34) s += `<line x1="${m.x}" y1="44" x2="${m.x}" y2="${SB}" stroke="#e0a54a" stroke-width="1.5" stroke-dasharray="4,2" opacity=".7"/>`;
       const lw = m.name.length * 6.4 + 20;
       s += `<rect x="${m.x + 1}" y="${SB + 20}" width="${lw.toFixed(0)}" height="16" rx="4" fill="#14151a" opacity=".8"/>`;
-      s += `<text x="${m.x + 6}" y="${SB + 32}" fill="#e0a54a" font-size="11" font-weight="700">🎸 ${esc(m.name)}</text>`;
+      s += `<use href="#i-wave" x="${m.x + 4}" y="${SB + 22}" width="12" height="12" style="color:#e0a54a"/>`;
+      s += `<text x="${m.x + 19}" y="${SB + 32}" fill="#e0a54a" font-size="11" font-weight="700">${esc(m.name)}</text>`;
     }
   }
   // Section markers (song structure — intro/verso/refrão…): a labeled marker
@@ -1434,7 +1558,8 @@ function showArr(i) {
     s += `<line x1="${x}" y1="14" x2="${x}" y2="${SB}" stroke="#3ddcc4" stroke-width="1.5" stroke-dasharray="5,3" opacity=".65"/>`;
     const lw = sec.name.length * 6.2 + 16;
     s += `<rect x="${x + 1}" y="4" width="${lw.toFixed(0)}" height="15" rx="4" fill="#14151a" opacity=".85"/>`;
-    s += `<text x="${x + 5}" y="15" fill="#3ddcc4" font-size="11" font-weight="700">🏷 ${esc(sec.name)}</text>`;
+    s += `<use href="#i-tag" x="${x + 3}" y="5" width="12" height="12" style="color:#3ddcc4"/>`;
+    s += `<text x="${x + 18}" y="15" fill="#3ddcc4" font-size="11" font-weight="700">${esc(sec.name)}</text>`;
   }
   // Lyrics editor times are in recording-time (un-padded); shift to the display
   // timeline the same way the notes do — by viewOrigin AND the intro silence
@@ -2797,7 +2922,7 @@ function addEffectRow(category, gearKey, values) {
         <option value="post">Pós-pedal</option>
         <option value="rack">Rack</option>
       </select>
-      <input type="text" class="te-eff-search" placeholder="🔎 procurar…" style="min-width:8rem;font-size:.8rem;padding:.22rem .45rem">
+      <input type="text" class="te-eff-search" placeholder="procurar…" style="min-width:8rem;font-size:.8rem;padding:.22rem .45rem">
       <select class="te-eff-gear" style="min-width:11rem"></select>
       <button type="button" class="icon te-eff-rm">remover</button>
     </div>
@@ -3022,7 +3147,7 @@ function renderLyricsRows() {
       <td><input type="text" value="${esc(e.lyric)}" class="ly-text" style="width:100%"></td>
       <td style="text-align:center"><input type="checkbox" class="ly-break" ${e.lineBreak ? 'checked' : ''}></td>
       <td><input type="number" step="0.01" min="0.1" value="${e.length.toFixed(2)}" class="ly-length" style="width:5rem"></td>
-      <td><button type="button" class="icon ly-remove" title="Remover">✖</button></td>
+      <td><button type="button" class="icon ly-remove" title="Remover" aria-label="Remover">${icon('x')}</button></td>
     </tr>`).join('');
   tb.querySelectorAll('tr').forEach(tr => {
     const i = parseInt(tr.dataset.i, 10);
@@ -4088,7 +4213,7 @@ function setSyncMode(mode) {
   const src = activeBtn && document.getElementById(activeBtn[0]);
   const ico = document.getElementById('modeMenuIco');
   const lbl = document.getElementById('modeMenuLbl');
-  if (ico) ico.textContent = src ? src.dataset.ico : '🖱️';
+  if (ico) ico.innerHTML = icon(src ? src.dataset.ico : 'mouse', 'dd-ico');
   if (lbl) lbl.textContent = src ? src.dataset.name : 'Nenhum modo';
   document.getElementById('modeMenuBtn')?.classList.toggle('has-mode', !!src);
   const help = document.getElementById('modeHelp');
@@ -4118,7 +4243,7 @@ function wireDropdown(triggerId, menuId) {
     // past the edge: flip it upward when there is more room above, and cap
     // its height to the room it gets either way.
     const t = trigger.getBoundingClientRect();
-    const box = (trigger.closest('.modal') || document.documentElement).getBoundingClientRect();
+    const box = (trigger.closest('.pv-center, .pv-inspector, .pv-scroll, .modal') || document.documentElement).getBoundingClientRect();
     const below = Math.min(window.innerHeight, box.bottom) - t.bottom - 12;
     const above = t.top - Math.max(0, box.top) - 12;
     const up = menu.scrollHeight > below && above > below;
@@ -4143,6 +4268,7 @@ function wireDropdown(triggerId, menuId) {
 }
 wireDropdown('modeMenuBtn', 'modeMenu');
 wireDropdown('notesMenuBtn', 'notesMenu');
+wireDropdown('audioMenuBtn', 'audioMenu');
 SYNC_MODE_BUTTONS.forEach(([id, mode]) => {
   document.getElementById(id)?.addEventListener('click', () => {
     // Clicking the active mode again DESELECTS it → neutral (no mode), rather
@@ -4511,7 +4637,7 @@ function updateLiveTone(vtDisp, warp) {
   if (!jobTones.length || !(toneBase || toneChanges.length)) { el.textContent = ''; return; }
   const key = activeToneKeyAtDisplay(vtDisp, warp);
   const name = key ? ((jobTones.find(t => t.key === key) || {}).name || key) : null;
-  el.textContent = name ? `🎸 ${name}` : '';
+  el.innerHTML = name ? `${icon('wave')}${esc(name)}` : '';
 }
 
 // ---- Stand-alone arrangement preview (synthesized from the chart, no
@@ -4795,7 +4921,7 @@ function fmtClock(s) {
 
 function updatePlayBtn() {
   const b = document.getElementById('playBtn');
-  if (b) b.textContent = audioIsPlaying() ? '⏸' : '▶';
+  if (b) b.innerHTML = icon(audioIsPlaying() ? 'pause' : 'play');
 }
 
 function updateTransportUI() {
@@ -5286,7 +5412,7 @@ document.getElementById('gpInspectForm').addEventListener('submit', async e => {
   const syncHint = document.getElementById('gpSyncHint');
   if (b.sync_start_s != null) {
     form.querySelector('input[name=offset_s]').value = b.sync_start_s.toFixed(3);
-    syncHint.textContent = `🎯 Este ficheiro foi sincronizado com o áudio no Guitar Pro 8 — o compasso 1 começa em ${b.sync_start_s.toFixed(3)} s desse áudio. ` +
+    syncHint.textContent = `Este ficheiro foi sincronizado com o áudio no Guitar Pro 8 — o compasso 1 começa em ${b.sync_start_s.toFixed(3)} s desse áudio. ` +
       (b.embedded_audio
         ? 'Com o áudio do ficheiro GP (acima) o valor já está certo e as notas seguem o tempo variável do GP.'
         : 'Se a gravação que carregas é esse mesmo ficheiro de áudio, o valor já está certo e as notas seguem o tempo variável do GP.');
@@ -5345,42 +5471,3 @@ addEventListener('pageshow', () => ping(false));
 // heartbeat above within the grace, which cancels the pending shutdown.
 addEventListener('pagehide', () => { try { navigator.sendBeacon('/closing'); } catch {} });
 
-// Bigger icons everywhere: the leading emoji of a button/link/label/heading is wrapped in
-// <span class="ico"> so CSS can size it apart from the label beside it. Many
-// buttons are (re)written at runtime — innerHTML templates, a textContent swap
-// like play/pause — so a MutationObserver re-applies it; a node already
-// starting with .ico is skipped, which is also what stops it re-triggering
-// itself. The score's SVG is never walked (it is redrawn constantly and has no
-// buttons).
-const LEADING_ICON = /^\s*((?:\p{Extended_Pictographic}|[←-⇿⬀-⯿■-◿])(?:️|‍\p{Extended_Pictographic}|[\u{1F3FB}-\u{1F3FF}])*)\s*/u;
-const ICON_HOSTS = 'button, summary, a, label, strong, b, h2, h3';
-
-function wrapIcon(el) {
-  if (el.closest('.dd-trigger, .dd-item, .info-btn')) return;
-  const first = el.firstChild;
-  if (!first || first.nodeType !== Node.TEXT_NODE) return;
-  const m = first.data.match(LEADING_ICON);
-  if (!m) return;
-  const ico = document.createElement('span');
-  ico.className = 'ico';
-  ico.textContent = m[1];
-  first.data = first.data.slice(m[0].length);
-  el.insertBefore(ico, first);
-  if (!el.textContent.slice(m[1].length).trim()) ico.classList.add('ico-only');
-  else first.data = ' ' + first.data;
-}
-
-function wrapIconsIn(root) {
-  if (!(root instanceof Element) || root.namespaceURI === 'http://www.w3.org/2000/svg') return;
-  if (root.matches(ICON_HOSTS)) wrapIcon(root);
-  root.querySelectorAll(ICON_HOSTS).forEach(wrapIcon);
-}
-
-wrapIconsIn(document.body);
-new MutationObserver(records => {
-  for (const r of records) {
-    const host = r.target instanceof Element && r.target.closest(ICON_HOSTS);
-    if (host) wrapIcon(host);
-    r.addedNodes.forEach(wrapIconsIn);
-  }
-}).observe(document.body, { childList: true, subtree: true });

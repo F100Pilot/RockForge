@@ -398,25 +398,26 @@ least Lead + Rhythm.
     actually plays (not job A's leftover synthesized buffer) — the dropdown
     and the audible source must always agree, even right after switching.
 
-### 7a-ter. Creation wizard + "Estado do PSARC" completeness panel (browser only)
+### 7a-ter. Creation wizard + "Antes de usar" completeness checklist (browser only)
 
 Mostly `web/index.html`; the two completeness signals (`has_tones`,
 `sync_edited`) are backend fields guarded by `test_completeness_fields_*` in
 `test_api.py`. Manual browser checks:
 
-1. **Wizard flow** — "A partir de Guitar Pro" opens the 4-step modal (🎸→🎚️→💾
-   →🏷️). Step 1 requires a GP file; "Seguinte" inspects and advances to step 2
+1. **Wizard flow** — "Novo projeto" (or a GP file dropped on the home page's
+   first card) opens the 4-step modal (Ficheiro → Pistas → Gravação → Detalhes). Step 1 requires a GP file; "Seguinte" inspects and advances to step 2
    with the first track auto-assigned to Lead. Step 2 blocks advancing with no
-   track; step 3 blocks with no audio (toast). Step 4 shows "✓ Criar CDLC"
+   track; step 3 blocks with no audio (toast). Step 4 shows "Criar CDLC"
    instead of "Seguinte"; "Anterior" walks back. Create still works and opens
    the new job. (Driven headlessly in dev via Playwright against a served
    `index.html` with the API routes stubbed — no assertion errors.)
 2. **Completeness checklist** — on a freshly created job (no tones/cover/sync),
-   the "Estado do PSARC" card shows an amber banner listing "tons, capa,
-   confirmar a sincronização" and three ⚠️ rows, each with a jump-button
+   the top bar's chip reads "Falta: …" and the Exportar page's "Antes de usar"
+   card shows an amber banner listing "tons, capa,
+   confirmar a sincronização" and three amber rows, each with a jump-button
    (Detetar tom / Carregar capa / Abrir partitura). Add a tone + a sync anchor +
-   a cover, rebuild → those rows flip to ✅ and the banner shrinks/disappears.
-   A build with no `.psarc` (no Wwise) shows a ❌ "PSARC não gerado" row. The
+   a cover, rebuild → those rows flip to green ticks and the banner shrinks/disappears.
+   A build with no `.psarc` (no Wwise) shows a red "PSARC não gerado" row. The
    AppID/letra rows are informational (ⓘ), never counted as alerts. The **Letra**
    row reads `has_lyrics` (edited/GP/LRC lyrics OR completed detection), so a
    song that already has lyrics from ANY source shows "✅ Letra incluída" — NOT
@@ -557,14 +558,14 @@ wiring and the visual preview:
 Two buttons, two different guarantees — check both, because CI can only
 round-trip them through RockForge's own importer:
 
-1. **"🎼 Exportar GP corrigido"** (tempo only) — re-tempo a few bars until
+1. **Exportar → "Guitar Pro com os andamentos corrigidos"** (tempo only) — re-tempo a few bars until
    they show AMBER on the score, export, then **open the file in Guitar
    Pro**: confirm those measures carry the new BPM, every other track /
    note / technique / marker is untouched, and the ORIGINAL upload is
    unchanged on disk. On a `.gp` (GP7/8) source, confirm the file still
    opens at all — that route is byte-copy ZIP surgery on `score.gpif` and
    has never been validated against a real install.
-2. **"🎸 Exportar GP com as notas editadas"** (the whole arrangement) — make
+2. **Exportar → "Guitar Pro com as notas editadas"** (the whole arrangement) — make
    a few note edits (add, change a fret, delete), export, open in Guitar
    Pro: confirm the edits are there, the tuning matches, sections appear as
    markers, and the bars fall where the recording puts them. Then check the
