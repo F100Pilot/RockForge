@@ -149,6 +149,30 @@
   .tone-cand-group { margin-top:.3rem; }
   /* Icon mode buttons: bigger glyph, square-ish, with a hover balloon (.tip) */
   button.mode-btn { font-size:1.15rem; line-height:1; padding:.3rem .5rem; min-width:2.4rem; }
+  /* Icons across the app: a leading emoji in a button/summary/heading is
+     wrapped in .ico by app.js (wrapIcons) so it can be sized apart from the
+     text beside it. */
+  .ico { font-size:1.3em; line-height:1; vertical-align:-.12em; }
+  .ico.ico-only { font-size:1.4em; }
+  button.info-btn { font-size:1rem; }
+  /* The note tools under the score: one banner of labelled tiles in groups,
+     instead of a loose row of bare emoji. */
+  .tool-banner { display:flex; flex-wrap:wrap; gap:.5rem; align-items:stretch; margin-top:.5rem;
+    padding:.6rem .75rem; background:#171920; border:1px solid var(--line); border-radius:10px; }
+  .tool-group { display:flex; flex-direction:column; gap:.3rem; padding:.4rem .5rem .5rem; background:#1d2028;
+    border:1px solid var(--line); border-radius:8px; }
+  .tool-group-title { font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
+  .tool-group-row { display:flex; flex-wrap:wrap; gap:.35rem; }
+  button.tool-tile { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.25rem;
+    min-width:4.6rem; padding:.45rem .5rem .4rem; border:1px solid transparent; border-radius:8px; line-height:1.1; }
+  button.tool-tile .tool-ico { font-size:1.75rem; line-height:1; }
+  button.tool-tile .tool-lbl { font-size:.72rem; font-weight:600; white-space:nowrap; }
+  button.tool-tile:disabled { opacity:.45; cursor:default; }
+  button.tool-tile.active-mode { background:#2a2c35; border-color:var(--accent); color:var(--accent);
+    box-shadow:0 0 0 1px var(--accent) inset; }
+  button.tool-tile.tool-recommended .tool-lbl::after { content:" ★"; color:var(--accent); }
+  .tool-banner-status { flex-basis:100%; display:flex; flex-wrap:wrap; align-items:center; gap:.5rem;
+    font-size:.82rem; color:var(--muted); border-top:1px solid var(--line); padding-top:.45rem; }
   .tip { position:relative; }
   .tip:hover::after, .tip:focus-visible::after {
     content:attr(data-tip);
@@ -283,7 +307,7 @@
   /* Creation wizard stepper */
   .wizard-steps { display:flex; align-items:center; gap:.3rem; margin:.9rem 0 .2rem; }
   .wz-dot { display:flex; flex-direction:column; align-items:center; gap:.15rem; opacity:.45; transition:opacity .15s; }
-  .wz-dot .wz-ico { font-size:1.5rem; line-height:1; filter:grayscale(1); transition:filter .15s; }
+  .wz-dot .wz-ico { font-size:1.9rem; line-height:1; filter:grayscale(1); transition:filter .15s; }
   .wz-dot .wz-lbl { font-size:.72rem; color:var(--muted); }
   .wz-dot.active { opacity:1; }
   .wz-dot.active .wz-ico { filter:none; }
@@ -345,7 +369,7 @@
   font-size: .92rem; font-weight: 600; padding: .45rem 1.05rem; cursor: pointer;
   border-radius: 8px; transition: background .15s, color .15s;
 }
-.section-tabnav button .tab-ico { font-size: 1.1rem; line-height: 1; }
+.section-tabnav button .tab-ico { font-size: 1.45rem; line-height: 1; }
 .section-tabnav button:hover { color: var(--text); background: #21232b; }
 .section-tabnav button.active { color: #1a1208; background: var(--accent); }
 .section-tabnav button.active:hover { background: var(--accent); }
@@ -662,43 +686,56 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
         <div id="fretboardWrap" style="overflow-x:auto;margin-top:.4rem;background:#0f1013;border:1px solid var(--line);border-radius:8px;text-align:center">
           <svg id="fretboard" height="150" style="display:inline-block"></svg>
         </div>
-        <div class="anchor-row" style="margin-top:.4rem">
-          <span class="meta">Modo:</span>
-          <button type="button" id="modeArrastar" class="secondary mode-btn tip" aria-label="Arrastar"
-            data-tip="Arrastar: arrasta uma nota para o instante da gravação onde deve tocar (encaixa no beat). As notas entre duas correções esticam/comprimem para acompanhar. Ideal para acertar um ponto que escorregou.">↔️</button>
-          <button type="button" id="modeMarcar" class="secondary mode-btn tip" aria-label="Marcar"
-            data-tip="Marcar no cursor: dá play e, quando ouvires uma nota na gravação, clica nessa nota na partitura — ela ancora na posição do cursor. Alinhar a tocar.">👆</button>
-          <button type="button" id="modeExcerto" class="secondary mode-btn tip" aria-label="Excerto"
-            data-tip="Excerto: arrasta uma caixa por cima de várias notas e depois arrasta uma delas — movem-se todas em bloco. (Alternativa: Shift+clique numa nota e noutra para selecionar o intervalo.)">⬚</button>
-          <button type="button" id="modeMover" class="secondary mode-btn tip" aria-label="Mover seguintes"
-            data-tip="Mover seguintes: pausa a gravação no instante certo e clica na 1ª nota desalinhada — essa nota e TODAS as seguintes deslocam-se em bloco para o cursor. Para um trecho inteiro que entrou tarde/cedo.">⏩</button>
-          <button type="button" id="modeBeat" class="secondary mode-btn tip active-mode" aria-label="Corrigir daqui (detetar andamento)"
-            data-tip="Corrigir daqui (RECOMENDADO): ouve até onde a partitura começa a fugir da gravação e clica nessa nota. Mede o BPM real daí em diante e re-espaça só as notas seguintes. Nada antes do clique se mexe. Repete sempre que voltar a fugir.">⏱️ Corrigir daqui</button>
-          <button type="button" id="modeBarAlign" class="secondary mode-btn tip" aria-label="Alinhar compasso"
-            data-tip="Alinhar por compasso: pausa a gravação no instante certo e clica numa nota — abre um popup com o número do compasso (o da nota, já escolhido). Confirma e esse compasso alinha-se ao cursor (ou ao mesmo compasso de outra pista), arrastando as notas seguintes. Ideal para várias correções ao longo da música.">📏</button>
-          <button type="button" id="modeTone" class="secondary mode-btn tip" aria-label="Mudança de tom"
-            data-tip="Mudança de tom: clica numa nota para trocar para um dos tons extra (amp/efeito) a partir daí. Nada a ver com sincronização — é para as mudanças de som ao longo da música.">🎸</button>
-          <button type="button" id="modeSection" class="secondary mode-btn tip" aria-label="Secção"
-            data-tip="Secção: clica numa nota para nomear onde começa uma secção (intro/verso/refrão…). Nada a ver com sincronização — é para navegação e o Riff Repeater.">🏷️</button>
-          <button type="button" id="modeEditNotes" class="secondary mode-btn tip" aria-label="Editar notas"
-            data-tip="Editar notas: clica numa nota existente para a editar (traste, técnicas, bend/slide) ou remover; DUPLO-clique no pentagrama vazio insere uma nota nova (encaixa na grelha). Um clique simples no vazio move o cursor. Muda o CONTEÚDO da partitura.">✏️</button>
-          <button class="info-btn" data-info="sync-modes">ⓘ</button>
-          <span id="selectionInfo" style="margin-left:.5rem"></span>
-          <button type="button" id="clearSelection" class="secondary" hidden>Limpar seleção</button>
-        </div>
-        <div class="anchor-row" style="margin-top:.3rem">
-          <span class="meta" style="font-weight:700;color:var(--text)">Copiar/colar notas:</span>
-          <button type="button" id="copyNotes" class="secondary" title="Copiar as notas selecionadas (Ctrl+C)">📋 Copiar seleção</button>
-          <button type="button" id="pasteNotes" class="secondary" disabled title="Colar no cursor (Ctrl+V)">📥 Colar no cursor</button>
-          <span id="clipboardInfo" class="meta"></span>
-          <span class="meta">seleciona notas (Shift+clique), copia, e cola noutro ponto — ou noutra pista</span>
-        </div>
-        <div class="anchor-row" style="margin-top:.3rem">
-          <span class="meta" style="font-weight:700;color:var(--text)">Edições de notas:</span>
-          <span id="noteEditsInfo" class="meta"></span>
-          <button type="button" id="clearNoteEdits" class="secondary" disabled title="Descartar as edições de notas desta pista">🧹 Limpar edições</button>
-          <button type="button" id="clearNoteEditsAll" class="secondary" disabled title="Descartar as edições de notas de TODAS as pistas">🧹 Limpar em todas</button>
-          <span class="meta">só tem efeito ao "Aplicar e reconstruir"</span>
+        <div class="tool-banner" id="toolBanner">
+          <div class="tool-group">
+            <div class="tool-group-title">Sincronizar</div>
+            <div class="tool-group-row">
+            <button type="button" id="modeArrastar" class="secondary mode-btn tool-tile tip" aria-label="Arrastar"
+              data-tip="Arrastar: arrasta uma nota para o instante da gravação onde deve tocar (encaixa no beat). As notas entre duas correções esticam/comprimem para acompanhar. Ideal para acertar um ponto que escorregou."><span class="tool-ico">↔️</span><span class="tool-lbl">Arrastar</span></button>
+            <button type="button" id="modeMarcar" class="secondary mode-btn tool-tile tip" aria-label="Marcar"
+              data-tip="Marcar no cursor: dá play e, quando ouvires uma nota na gravação, clica nessa nota na partitura — ela ancora na posição do cursor. Alinhar a tocar."><span class="tool-ico">👆</span><span class="tool-lbl">Marcar</span></button>
+            <button type="button" id="modeExcerto" class="secondary mode-btn tool-tile tip" aria-label="Excerto"
+              data-tip="Excerto: arrasta uma caixa por cima de várias notas e depois arrasta uma delas — movem-se todas em bloco. (Alternativa: Shift+clique numa nota e noutra para selecionar o intervalo.)"><span class="tool-ico">⬚</span><span class="tool-lbl">Excerto</span></button>
+            <button type="button" id="modeMover" class="secondary mode-btn tool-tile tip" aria-label="Mover seguintes"
+              data-tip="Mover seguintes: pausa a gravação no instante certo e clica na 1ª nota desalinhada — essa nota e TODAS as seguintes deslocam-se em bloco para o cursor. Para um trecho inteiro que entrou tarde/cedo."><span class="tool-ico">⏩</span><span class="tool-lbl">Mover seguintes</span></button>
+            <button type="button" id="modeBeat" class="secondary mode-btn tool-tile tip tool-recommended active-mode" aria-label="Corrigir daqui"
+              data-tip="Corrigir daqui (RECOMENDADO): ouve até onde a partitura começa a fugir da gravação e clica nessa nota. Mede o BPM real daí em diante e re-espaça só as notas seguintes. Nada antes do clique se mexe. Repete sempre que voltar a fugir."><span class="tool-ico">⏱️</span><span class="tool-lbl">Corrigir daqui</span></button>
+            <button type="button" id="modeBarAlign" class="secondary mode-btn tool-tile tip" aria-label="Alinhar compasso"
+              data-tip="Alinhar por compasso: pausa a gravação no instante certo e clica numa nota — abre um popup com o número do compasso (o da nota, já escolhido). Confirma e esse compasso alinha-se ao cursor (ou ao mesmo compasso de outra pista), arrastando as notas seguintes. Ideal para várias correções ao longo da música."><span class="tool-ico">📏</span><span class="tool-lbl">Alinhar compasso</span></button>
+            </div>
+          </div>
+          <div class="tool-group">
+            <div class="tool-group-title">Partitura</div>
+            <div class="tool-group-row">
+            <button type="button" id="modeTone" class="secondary mode-btn tool-tile tip" aria-label="Mudança de tom"
+              data-tip="Mudança de tom: clica numa nota para trocar para um dos tons extra (amp/efeito) a partir daí. Nada a ver com sincronização — é para as mudanças de som ao longo da música."><span class="tool-ico">🎸</span><span class="tool-lbl">Mudança de tom</span></button>
+            <button type="button" id="modeSection" class="secondary mode-btn tool-tile tip" aria-label="Secção"
+              data-tip="Secção: clica numa nota para nomear onde começa uma secção (intro/verso/refrão…). Nada a ver com sincronização — é para navegação e o Riff Repeater."><span class="tool-ico">🏷️</span><span class="tool-lbl">Secção</span></button>
+            <button type="button" id="modeEditNotes" class="secondary mode-btn tool-tile tip" aria-label="Editar notas"
+              data-tip="Editar notas: clica numa nota existente para a editar (traste, técnicas, bend/slide) ou remover; DUPLO-clique no pentagrama vazio insere uma nota nova (encaixa na grelha). Um clique simples no vazio move o cursor. Muda o CONTEÚDO da partitura."><span class="tool-ico">✏️</span><span class="tool-lbl">Editar notas</span></button>
+            </div>
+          </div>
+          <div class="tool-group">
+            <div class="tool-group-title">Copiar / colar notas</div>
+            <div class="tool-group-row">
+              <button type="button" id="copyNotes" class="secondary tool-tile" title="Copiar as notas selecionadas (Ctrl+C) — seleciona com Shift+clique"><span class="tool-ico">📋</span><span class="tool-lbl">Copiar seleção</span></button>
+              <button type="button" id="pasteNotes" class="secondary tool-tile" disabled title="Colar no cursor (Ctrl+V) — nesta pista ou noutra"><span class="tool-ico">📥</span><span class="tool-lbl">Colar no cursor</span></button>
+            </div>
+          </div>
+          <div class="tool-group">
+            <div class="tool-group-title">Edições de notas</div>
+            <div class="tool-group-row">
+              <button type="button" id="clearNoteEdits" class="secondary tool-tile" disabled title="Descartar as edições de notas desta pista (só ao Aplicar e reconstruir)"><span class="tool-ico">🧹</span><span class="tool-lbl">Limpar esta pista</span></button>
+              <button type="button" id="clearNoteEditsAll" class="secondary tool-tile" disabled title="Descartar as edições de notas de TODAS as pistas (só ao Aplicar e reconstruir)"><span class="tool-ico">🧹</span><span class="tool-lbl">Limpar em todas</span></button>
+            </div>
+          </div>
+          <div class="tool-banner-status">
+            <button class="info-btn" data-info="sync-modes">ⓘ</button>
+            <span id="selectionInfo"></span>
+            <button type="button" id="clearSelection" class="secondary" hidden>Limpar seleção</button>
+            <span id="clipboardInfo" class="meta"></span>
+            <span class="meta">Edições: <span id="noteEditsInfo">nenhuma</span> · só contam ao "Aplicar e reconstruir"</span>
+          </div>
         </div>
         <div id="modeHelp" class="meta" style="margin-top:.25rem;padding:.35rem .5rem;background:#1c1e26;border-radius:6px;border-left:3px solid #a97bff"></div>
         <div class="anchor-row" style="margin-top:.3rem">

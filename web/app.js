@@ -5283,3 +5283,43 @@ addEventListener('pageshow', () => ping(false));
 // instead of waiting the full idle window. A refresh reloads and sends the
 // heartbeat above within the grace, which cancels the pending shutdown.
 addEventListener('pagehide', () => { try { navigator.sendBeacon('/closing'); } catch {} });
+
+// Bigger icons everywhere: the leading emoji of a button/link/label/heading is wrapped in
+// <span class="ico"> so CSS can size it apart from the label beside it. Many
+// buttons are (re)written at runtime — innerHTML templates, a textContent swap
+// like play/pause — so a MutationObserver re-applies it; a node already
+// starting with .ico is skipped, which is also what stops it re-triggering
+// itself. The score's SVG is never walked (it is redrawn constantly and has no
+// buttons).
+const LEADING_ICON = /^\s*((?:\p{Extended_Pictographic}|[←-⇿⬀-⯿■-◿])(?:️|‍\p{Extended_Pictographic}|[\u{1F3FB}-\u{1F3FF}])*)\s*/u;
+const ICON_HOSTS = 'button, summary, a, label, strong, b, h2, h3';
+
+function wrapIcon(el) {
+  if (el.closest('.tool-tile, .info-btn') || el.classList.contains('tool-tile')) return;
+  const first = el.firstChild;
+  if (!first || first.nodeType !== Node.TEXT_NODE) return;
+  const m = first.data.match(LEADING_ICON);
+  if (!m) return;
+  const ico = document.createElement('span');
+  ico.className = 'ico';
+  ico.textContent = m[1];
+  first.data = first.data.slice(m[0].length);
+  el.insertBefore(ico, first);
+  if (!el.textContent.slice(m[1].length).trim()) ico.classList.add('ico-only');
+  else first.data = ' ' + first.data;
+}
+
+function wrapIconsIn(root) {
+  if (!(root instanceof Element) || root.namespaceURI === 'http://www.w3.org/2000/svg') return;
+  if (root.matches(ICON_HOSTS)) wrapIcon(root);
+  root.querySelectorAll(ICON_HOSTS).forEach(wrapIcon);
+}
+
+wrapIconsIn(document.body);
+new MutationObserver(records => {
+  for (const r of records) {
+    const host = r.target instanceof Element && r.target.closest(ICON_HOSTS);
+    if (host) wrapIcon(host);
+    r.addedNodes.forEach(wrapIconsIn);
+  }
+}).observe(document.body, { childList: true, subtree: true });

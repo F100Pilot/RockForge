@@ -1145,6 +1145,21 @@ that DOM wiring (e.g. `openNewJobModal`'s modal toggle) still works after the
 split, plus two new API tests (`test_index_page_references_the_extracted_app_js`,
 `test_app_js_is_served_with_a_javascript_content_type`).
 
+**The note tools under the score live in one banner (`#toolBanner`).** They
+used to be a loose row of bare emoji buttons ("Modo:") plus two free-floating
+rows for copy/paste and clearing edits. They are now labelled tiles (large icon
+over a short name, `.tool-tile`) in four bordered groups — Sincronizar,
+Partitura, Copiar / colar notas, Edições de notas — with the ⓘ, the selection/
+clipboard/edit counts in a status line at the bottom. Every element id, the
+`mode-btn` class and each `data-tip` are unchanged: `app.js` reaches them only
+by id (`SYNC_MODE_BUTTONS`, `updateNoteEditsInfo`, …), so the reorganisation is
+markup + CSS only. Icons elsewhere are enlarged by `wrapIcons` at the end of
+`app.js`: the leading emoji of a button/link/label/heading is wrapped in
+`<span class="ico">` (1.3em), re-applied by a `MutationObserver` because many
+buttons are written at runtime; it never walks the score's SVG. Nothing in
+`app.js` reads a button's text back, which is what makes the wrapping safe —
+keep it that way (compare state, not `textContent`).
+
 The "Novo projeto" modal is a **4-step wizard** (`web/index.html`), not a flat
 form, because the old single-form layout crammed ~15 fields (including a
 `tone_base`/`tone_names` *text* box impossible to fill by hand) and gave no
