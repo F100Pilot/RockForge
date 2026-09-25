@@ -391,6 +391,91 @@ def sync_start_s(path: Path) -> float | None:
     return None if clock is None else max(0.0, clock(0))
 
 
+# The recording Guitar Pro 8 carries INSIDE the .gp (its "audio track"). The
+# sync points describe THIS file, not whatever the user imported into GP: a tool
+# such as guitar-pro-youtube-sync trims the video's intro so bar 1 is at 0 s
+# before embedding it, and GP itself stores its own copy. Uploading the original
+# recording instead left the chart off by exactly that trimmed intro (one bar on
+# the user's song), so when the file has one, it is the recording to use.
+_EMBEDDED_AUDIO_SUFFIXES = frozenset({".mp3", ".wav", ".ogg", ".flac", ".m4a", ".aiff"})
+#: Same ceiling as any uploaded recording; checked on the declared size before
+#: decompressing, like _MAX_GPIF_BYTES.
+MAX_EMBEDDED_AUDIO_BYTES = 500 * 1024 * 1024
+
+
+@dataclasses.dataclass(frozen=True)
+class EmbeddedAudio:
+    member: str
+    suffix: str
+    size_bytes: int
+
+
+def embedded_audio(path: Path) -> EmbeddedAudio | None:
+    """The backing-track audio stored in a GP8 file, or None.
+
+    Only an ENABLED, LOCAL backing track counts (alphaTab applies the same two
+    conditions; "YouTube" sources are a link, not a file), and only a member
+    that really exists in the ZIP with an audio extension — anything else is
+    None, never an error: the user can still upload a recording.
+    """
+    if not _is_gpif(path):
+        return None
+    try:
+        root = _load_gpif(path)
+    except IngestionError:
+        return None
+    backing = root.find("BackingTrack")
+    if backing is None:
+        return None
+    if _text(backing.find("Enabled")).lower() != "true" or _text(backing.find("Source")) != "Local":
+        return None
+    asset_id = _text(backing.find("AssetId"))
+    assets = root.find("Assets")
+    member = ""
+    for asset in assets.findall("Asset") if assets is not None else []:
+        if asset.get("id") == asset_id:
+            member = _text(asset.find("EmbeddedFilePath")).replace("\\", "/")
+            break
+    suffix = Path(member).suffix.lower()
+    if not member or suffix not in _EMBEDDED_AUDIO_SUFFIXES:
+        return None
+    try:
+        with zipfile.ZipFile(path) as z:
+            info = z.getinfo(member)
+    except (KeyError, zipfile.BadZipFile, OSError):
+        return None
+    if info.file_size <= 0:
+        return None
+    return EmbeddedAudio(member=member, suffix=suffix, size_bytes=info.file_size)
+
+
+def extract_embedded_audio(path: Path, dest: Path) -> Path:
+    """Copy the embedded recording out to ``dest`` (its suffix is replaced by
+    the audio's own). The name inside the ZIP is never used as a path — only
+    read as a member — so it cannot write outside ``dest``'s folder."""
+    audio = embedded_audio(path)
+    if audio is None:
+        raise IngestionError("this Guitar Pro file carries no embedded audio track")
+    if audio.size_bytes > MAX_EMBEDDED_AUDIO_BYTES:
+        raise IngestionError(
+            f"the embedded audio is implausibly large ({audio.size_bytes} bytes) — refusing it"
+        )
+    out = dest.with_suffix(audio.suffix)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with zipfile.ZipFile(path) as z, z.open(audio.member) as src, out.open("wb") as fh:
+            written = 0
+            while chunk := src.read(1024 * 1024):
+                written += len(chunk)
+                if written > MAX_EMBEDDED_AUDIO_BYTES:
+                    raise IngestionError("the embedded audio exceeds the size limit")
+                fh.write(chunk)
+    except BaseException:
+        out.unlink(missing_ok=True)
+        raise
+    return out
+
+
 def parse_gpif_track(
     path: Path, track_index: int, offset_s: float = 0.0, tempo_scale: float = 1.0
 ) -> ParsedGpTrack:

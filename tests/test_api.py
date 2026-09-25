@@ -710,6 +710,81 @@ def test_gp_inspect_and_job_flow(client: TestClient, tmp_path) -> None:
     assert job["title"] == "GpT" and job["artist"] == "GpA"  # metadata from the GP file
 
 
+def _gp8_with_embedded_audio(audio: bytes | None) -> bytes:
+    """A minimal .gp whose backing track is an embedded MP3 (when ``audio``)."""
+    import io
+    import zipfile
+
+    backing = (
+        "<BackingTrack><Enabled>true</Enabled><Source>Local</Source><AssetId>0</AssetId>"
+        "<FramePadding>0</FramePadding></BackingTrack><Assets><Asset id=\"0\">"
+        "<EmbeddedFilePath><![CDATA[Content/Assets/a.mp3]]></EmbeddedFilePath></Asset></Assets>"
+        if audio is not None
+        else ""
+    )
+    gpif = (
+        '<?xml version="1.0" encoding="utf-8"?><GPIF>'
+        "<Score><Title>T</Title><Artist>A</Artist></Score>"
+        "<MasterTrack><Automations><Automation><Type>Tempo</Type><Bar>0</Bar>"
+        "<Position>0</Position><Value>120 2</Value></Automation></Automations></MasterTrack>"
+        f"{backing}"
+        '<Tracks><Track id="0"><Name>Guitar</Name>'
+        "<InstrumentSet><Type>electricGuitar</Type></InstrumentSet>"
+        '<Staves><Staff><Properties><Property name="Tuning">'
+        "<Pitches>40 45 50 55 59 64</Pitches></Property></Properties></Staff></Staves>"
+        "</Track></Tracks>"
+        "<MasterBars><MasterBar><Time>4/4</Time><Bars>0</Bars></MasterBar></MasterBars>"
+        '<Bars><Bar id="0"><Voices>-1 -1 -1 -1</Voices></Bar></Bars>'
+        "<Voices/><Beats/><Notes/><Rhythms/></GPIF>"
+    )
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("VERSION", "7.0")
+        z.writestr("Content/score.gpif", gpif)
+        if audio is not None:
+            z.writestr("Content/Assets/a.mp3", audio)
+    return buf.getvalue()
+
+
+def test_a_gp8_job_can_use_the_audio_embedded_in_the_file(client: TestClient, tmp_path) -> None:
+    """The recording a GP8 file carries is the one its sync points describe; a
+    tool like guitar-pro-youtube-sync trims the intro before embedding it, so
+    uploading the original instead left a real chart one bar late. With
+    use_embedded_audio there is nothing to upload and nothing to get wrong."""
+    mp3 = b"ID3embedded-recording"
+    r = client.post("/gp/inspect", files={"file": ("s.gp", _gp8_with_embedded_audio(mp3), "x")})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["embedded_audio"] == {"name": "a.mp3", "size_bytes": len(mp3)}
+
+    r2 = client.post(
+        "/jobs/gp",
+        data={"gp_token": body["gp_token"], "lead_track": "0", "use_embedded_audio": "true"},
+    )
+    assert r2.status_code == 202, r2.text
+    uploads = list((tmp_path / "work" / "uploads").iterdir())
+    assert [u.read_bytes() for u in uploads] == [mp3]
+    assert uploads[0].suffix == ".mp3"
+
+
+def test_a_gp_job_without_any_recording_is_refused_clearly(client: TestClient) -> None:
+    body = client.post(
+        "/gp/inspect", files={"file": ("s.gp", _gp8_with_embedded_audio(None), "x")}
+    ).json()
+    assert body["embedded_audio"] is None
+
+    # Neither an upload nor an embedded track to fall back on.
+    r = client.post("/jobs/gp", data={"gp_token": body["gp_token"], "lead_track": "0"})
+    assert r.status_code == 422 and "recording is required" in r.text
+
+    # Asking for the embedded track of a file that has none.
+    r = client.post(
+        "/jobs/gp",
+        data={"gp_token": body["gp_token"], "lead_track": "0", "use_embedded_audio": "true"},
+    )
+    assert r.status_code == 422 and "no embedded audio" in r.text
+
+
 def test_gear_catalogue_endpoint_returns_grouped_gear(client: TestClient) -> None:
     r = client.get("/gear-catalogue")
     assert r.status_code == 200

@@ -458,3 +458,70 @@ def test_gp8_synced_average_bpm_is_what_plays_not_the_header(tmp_path: Path) -> 
     the header's 120 is a number nothing plays at."""
     gp = _gp_with(tmp_path, _synced_gpif(_sync(0, 1.0) + _sync(1, 3.5) + _sync(2, 5.0)))
     assert parse_gp_track(gp, 0).tempo_map.average_bpm == pytest.approx(12 / 5.5 * 60)
+
+
+_BACKING = (
+    "<BackingTrack><Enabled>{enabled}</Enabled><Source>{source}</Source>"
+    "<AssetId>0</AssetId><FramePadding>0</FramePadding></BackingTrack>"
+    "<Assets><Asset id=\"0\"><EmbeddedFilePath><![CDATA[{member}]]></EmbeddedFilePath>"
+    "</Asset></Assets>"
+)
+
+
+def _gp_with_audio(
+    tmp_path: Path, *, enabled: str = "true", source: str = "Local",
+    member: str = "Content/Assets/abc.mp3", store: str | None = "Content/Assets/abc.mp3",
+) -> Path:
+    backing = _BACKING.format(enabled=enabled, source=source, member=member)
+    gpif = _synced_gpif(_sync(0, 0.0), backing)
+    path = tmp_path / "with_audio.gp"
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("VERSION", "7.0")
+        z.writestr("Content/score.gpif", gpif)
+        if store:
+            z.writestr(store, b"ID3fake-mp3-bytes")
+    return path
+
+
+def test_the_audio_embedded_in_a_gp8_file_is_found_and_extracted(tmp_path: Path) -> None:
+    """A GP8 file carries its own recording, and that copy is what its sync
+    points describe. guitar-pro-youtube-sync, for one, trims the video's intro
+    before embedding it — so the ORIGINAL download starts earlier, and uploading
+    it put a real user's chart exactly one bar late. The embedded copy is the
+    one to use."""
+    from rockforge.infrastructure.gpimport.gpif_parser import (
+        embedded_audio,
+        extract_embedded_audio,
+    )
+
+    gp = _gp_with_audio(tmp_path)
+    found = embedded_audio(gp)
+    assert found is not None
+    assert found.suffix == ".mp3" and found.size_bytes == len(b"ID3fake-mp3-bytes")
+
+    out = extract_embedded_audio(gp, tmp_path / "out" / "recording")
+    assert out.suffix == ".mp3"
+    assert out.read_bytes() == b"ID3fake-mp3-bytes"
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"enabled": "false"},                               # audio track switched off
+        {"source": "YouTube"},                              # a link, not a file
+        {"store": None},                                    # referenced but absent
+        {"member": "Content/Assets/abc.exe", "store": "Content/Assets/abc.exe"},
+    ],
+)
+def test_no_usable_embedded_audio_is_none_never_an_error(tmp_path: Path, kwargs: dict) -> None:
+    """Anything short of a real, enabled, local audio member is simply "no
+    embedded audio" — the user can still upload a recording."""
+    from rockforge.infrastructure.gpimport.gpif_parser import embedded_audio
+
+    assert embedded_audio(_gp_with_audio(tmp_path, **kwargs)) is None
+
+
+def test_a_gp_without_a_backing_track_has_no_embedded_audio(tmp_path: Path) -> None:
+    from rockforge.infrastructure.gpimport.gpif_parser import embedded_audio
+
+    assert embedded_audio(_gp_with(tmp_path, _synced_gpif(""))) is None

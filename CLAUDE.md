@@ -100,6 +100,27 @@ re-inverting the dependency.
    Guarded by `test_gp8_sync_points_*` and
    `test_gp_inspect_reports_where_a_gp8_synced_file_starts`.
 
+   **The recording INSIDE the `.gp` is the one to use.** A GP8 file with an
+   audio track carries its own copy (`<BackingTrack>` Enabled + Source=Local →
+   `<Assets><Asset id=AssetId><EmbeddedFilePath>`), and the sync points
+   describe THAT copy, not whatever file was imported. The user's case proved
+   it matters: `teaqu/guitar-pro-youtube-sync` (which built their file from
+   Songsterr's human-marked per-measure video timestamps) **trims the video's
+   intro to bar 1 before embedding** (`ffmpeg -ss <bar-1 time> -c copy`), so
+   uploading the untrimmed download put the chart exactly one bar late — a
+   constant offset, which is why one "Início" nudge fixed the whole song.
+   `gpif_parser.embedded_audio`/`extract_embedded_audio` find and copy it out
+   (declared-size cap like `score.gpif`; the ZIP member name is only ever READ,
+   never used as an output path); `/gp/inspect` returns `embedded_audio`
+   `{name, size_bytes}` and `/jobs/gp` takes `use_embedded_audio=true` with no
+   `audio` upload at all. The wizard's step 3 ticks "🎧 Usar o áudio que vem
+   dentro do ficheiro GP" by default when present (hiding the upload and its
+   `required`). Anything short of a real, enabled, local audio member is "none",
+   never an error. Guarded by `test_the_audio_embedded_in_a_gp8_file_is_*`,
+   `test_no_usable_embedded_audio_is_none_never_an_error`,
+   `test_a_gp8_job_can_use_the_audio_embedded_in_the_file` and
+   `test_a_gp_job_without_any_recording_is_refused_clearly`.
+
    **Tied notes** (GP `(17)` in parentheses — a held continuation, not a
    re-pick) are folded into the note they extend in BOTH parsers, never emitted
    as a second attack: GP5 via `NoteType.tie` (inline, tracking the last note

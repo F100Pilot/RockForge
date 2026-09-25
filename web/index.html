@@ -958,7 +958,12 @@ body.landing .job-banner-arrow { font-size: 1.7rem; }
       </div>
 
       <div class="grid wizard-pane" data-step="3" style="margin-top:.75rem">
-        <div class="field" style="flex-basis:100%"><label>Gravação (áudio da música)</label>
+        <div class="field" id="gpEmbeddedAudioRow" style="flex-basis:100%" hidden>
+          <label><input type="checkbox" name="use_embedded_audio" id="useEmbeddedAudio" checked>
+            🎧 Usar o áudio que vem dentro do ficheiro GP <span class="meta" id="gpEmbeddedAudioInfo"></span></label>
+          <p class="meta" style="margin:.2rem 0 0">É exatamente o áudio com que o Guitar Pro foi sincronizado — a opção mais precisa.
+            Desliga só se quiseres usar outra gravação (que tem de começar no mesmo sítio).</p></div>
+        <div class="field" id="gpAudioUploadField" style="flex-basis:100%"><label>Gravação (áudio da música)</label>
           <div class="file-drop"><div class="file-drop-icon">&#128190;</div><span class="file-drop-text">Arrasta ou clica para escolher</span><span class="file-drop-btn">Procurar</span>
           <input type="file" name="audio" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" required></div></div>
         <div class="field"><label>Início da música na gravação (s) <button class="info-btn" data-info="gp-offset">ⓘ</button></label>

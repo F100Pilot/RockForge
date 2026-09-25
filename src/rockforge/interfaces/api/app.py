@@ -796,6 +796,10 @@ class GpInspectOut(BaseModel):
     # sync points), or None. When the recording is that same file this IS the
     # offset, so the wizard pre-fills it instead of asking for a guess.
     sync_start_s: float | None = None
+    # The recording a GP8 file carries inside it (its audio track), as
+    # {"name", "size_bytes"}, or None. When present it is the audio the sync
+    # points describe, so the wizard offers it instead of asking for an upload.
+    embedded_audio: dict[str, Any] | None = None
 
 
 GP_SUFFIXES = {".gp3", ".gp4", ".gp5", ".gp"}  # .gp = GP7/GP8 (native GPIF parser)
@@ -879,16 +883,25 @@ def inspect_gp_file(file: UploadFile = File(...)) -> GpInspectOut:
     except IngestionError as exc:
         dest.unlink(missing_ok=True)
         raise HTTPException(422, str(exc)) from exc
-    from rockforge.infrastructure.gpimport.gpif_parser import sync_start_s
+    from rockforge.infrastructure.gpimport.gpif_parser import embedded_audio, sync_start_s
 
+    # Both are hints for the wizard, never a reason to refuse a file that parsed.
     try:
         synced_start = sync_start_s(dest)
     except Exception:
-        # A hint for the wizard, never a reason to refuse a file that parsed.
         synced_start = None
+    try:
+        embedded = embedded_audio(dest)
+    except Exception:
+        embedded = None
     return GpInspectOut(
         gp_token=dest.name,
         sync_start_s=synced_start,
+        embedded_audio=(
+            {"name": Path(embedded.member).name, "size_bytes": embedded.size_bytes}
+            if embedded is not None
+            else None
+        ),
         title=info.title,
         artist=info.artist,
         album=info.album,
@@ -910,7 +923,10 @@ def inspect_gp_file(file: UploadFile = File(...)) -> GpInspectOut:
 @app.post("/jobs/gp", response_model=JobOut, status_code=202)
 def create_gp_job(
     gp_token: str = Form(...),
-    audio: UploadFile = File(...),
+    audio: UploadFile | None = File(None),
+    # Use the recording the GP8 file carries instead of an upload — the audio
+    # its sync points were made against (see gpif_parser.embedded_audio).
+    use_embedded_audio: bool = Form(False),
     lead_track: str = Form(""),
     rhythm_track: str = Form(""),
     combo_track: str = Form(""),
@@ -933,15 +949,28 @@ def create_gp_job(
     if not gp_path.exists():
         raise HTTPException(404, "gp_token not found — upload the GP file via /gp/inspect first")
 
-    suffix = Path(audio.filename or "upload").suffix.lower()
-    if suffix not in {".mp3", ".flac", ".wav", ".ogg", ".m4a", ".aiff"}:
-        raise HTTPException(415, f"unsupported audio format: {suffix or '(none)'}")
+    from rockforge.domain.errors import IngestionError
+
     upload_dir = settings.work_dir / "uploads"
     upload_dir.mkdir(parents=True, exist_ok=True)
-    audio_dest = upload_dir / f"{uuid.uuid4()}{suffix}"
-    _copy_upload_capped(audio, audio_dest)
+    if use_embedded_audio:
+        from rockforge.infrastructure.gpimport.gpif_parser import extract_embedded_audio
 
-    from rockforge.domain.errors import IngestionError
+        try:
+            audio_dest = extract_embedded_audio(gp_path, upload_dir / str(uuid.uuid4()))
+        except IngestionError as exc:
+            raise HTTPException(422, str(exc)) from exc
+    else:
+        if audio is None or not audio.filename:
+            raise HTTPException(
+                422, "a recording is required (or use_embedded_audio for a GP8 file that has one)"
+            )
+        suffix = Path(audio.filename).suffix.lower()
+        if suffix not in {".mp3", ".flac", ".wav", ".ogg", ".m4a", ".aiff"}:
+            raise HTTPException(415, f"unsupported audio format: {suffix or '(none)'}")
+        audio_dest = upload_dir / f"{uuid.uuid4()}{suffix}"
+        _copy_upload_capped(audio, audio_dest)
+
     from rockforge.infrastructure.gpimport.parser import inspect_gp
     from rockforge.infrastructure.ingestion.tags import read_tags
 

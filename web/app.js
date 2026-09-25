@@ -53,17 +53,35 @@ function validateWizardStep() {
       .some(n => document.querySelector(`#gpJobForm select[name=${n}]`).value !== '');
     if (!anyTrack) { toast('Atribui pelo menos uma pista.'); return false; }
   } else if (wizardStep === 3) {
-    if (!document.querySelector('#gpJobForm input[name=audio]').files.length) {
+    if (!usingEmbeddedAudio() && !document.querySelector('#gpJobForm input[name=audio]').files.length) {
       toast('Escolhe a gravação (áudio) da música.'); return false;
     }
   }
   return true;
 }
 
+// A GP8 file can carry its own recording — the exact audio its sync points were
+// made against. When it does, the wizard uses it instead of asking for an
+// upload (an upload of the ORIGINAL file can start earlier: tools that build
+// these files trim the intro before embedding, and that is a constant offset).
+function usingEmbeddedAudio() {
+  const row = document.getElementById('gpEmbeddedAudioRow');
+  return !row.hidden && document.getElementById('useEmbeddedAudio').checked;
+}
+function applyEmbeddedAudioChoice() {
+  const embedded = usingEmbeddedAudio();
+  document.getElementById('gpAudioUploadField').hidden = embedded;
+  // `required` would block the submit on a field the user never needs to fill.
+  document.querySelector('#gpJobForm input[name=audio]').required = !embedded;
+}
+document.getElementById('useEmbeddedAudio').addEventListener('change', applyEmbeddedAudioChoice);
+
 function openNewJobModal() {
   document.getElementById('newJobOverlay').hidden = false;
   document.getElementById('gpInspectForm').reset();
   document.getElementById('gpJobForm').reset();
+  document.getElementById('gpEmbeddedAudioRow').hidden = true;  // until a file says it has one
+  applyEmbeddedAudioChoice();
   document.querySelectorAll('#newJobOverlay .file-drop').forEach(d => {
     d.classList.remove('has-file');
     const t = d.querySelector('.file-drop-text');
@@ -5144,11 +5162,19 @@ document.getElementById('gpInspectForm').addEventListener('submit', async e => {
   if (b.album) form.querySelector('input[name=album]').value = b.album;
   // Synced to an audio track in Guitar Pro 8: the file itself says where bar 1
   // is in that audio, so offer the exact value instead of asking for a guess.
+  const embeddedRow = document.getElementById('gpEmbeddedAudioRow');
+  embeddedRow.hidden = !b.embedded_audio;
+  document.getElementById('useEmbeddedAudio').checked = !!b.embedded_audio;
+  document.getElementById('gpEmbeddedAudioInfo').textContent = b.embedded_audio
+    ? `(${b.embedded_audio.name}, ${(b.embedded_audio.size_bytes / 1048576).toFixed(1)} MB)` : '';
+  applyEmbeddedAudioChoice();
   const syncHint = document.getElementById('gpSyncHint');
   if (b.sync_start_s != null) {
     form.querySelector('input[name=offset_s]').value = b.sync_start_s.toFixed(3);
-    syncHint.textContent = `🎯 Este ficheiro foi sincronizado com o áudio no Guitar Pro 8 — o compasso 1 começa em ${b.sync_start_s.toFixed(3)} s. ` +
-      'Se a gravação que carregas é esse mesmo ficheiro de áudio, o valor já está certo e as notas seguem o tempo variável do GP.';
+    syncHint.textContent = `🎯 Este ficheiro foi sincronizado com o áudio no Guitar Pro 8 — o compasso 1 começa em ${b.sync_start_s.toFixed(3)} s desse áudio. ` +
+      (b.embedded_audio
+        ? 'Com o áudio do ficheiro GP (acima) o valor já está certo e as notas seguem o tempo variável do GP.'
+        : 'Se a gravação que carregas é esse mesmo ficheiro de áudio, o valor já está certo e as notas seguem o tempo variável do GP.');
     syncHint.hidden = false;
   } else {
     syncHint.hidden = true;
@@ -5166,6 +5192,8 @@ document.getElementById('gpJobForm').addEventListener('submit', async e => {
   }
   const f = new FormData(e.target);
   f.append('gp_token', gpToken);
+  if (usingEmbeddedAudio()) { f.set('use_embedded_audio', 'true'); f.delete('audio'); }
+  else f.set('use_embedded_audio', 'false');
   // Unchecked checkboxes are not sent; set the value explicitly so "off" sticks.
   f.set('import_mutes', e.target.querySelector('input[name=import_mutes]').checked);
   const r = await fetch('/jobs/gp', { method: 'POST', body: f });
