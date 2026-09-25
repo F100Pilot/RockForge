@@ -77,3 +77,81 @@ def test_a_failing_task_is_swallowed_not_propagated(
 def test_shutdown_stops_the_pool_without_waiting(sync_pool: _SyncPool) -> None:
     inprocess.shutdown()
     assert sync_pool.shutdown_calls == [False]
+
+
+def _job_db(monkeypatch, tmp_path, **fields):  # noqa: ANN001, ANN202
+    from rockforge.config import settings
+    from rockforge.infrastructure.db.models import Job, make_session_factory
+
+    url = f"sqlite:///{tmp_path / 'jobs.sqlite'}"
+    monkeypatch.setattr(settings, "database_url", url)
+    factory = make_session_factory(url)
+    with factory() as session:
+        session.add(Job(id="job-1", source="song.mp3", source_type="gp", title="t", artist="a",
+                        **fields))
+        session.commit()
+    return factory
+
+
+def test_a_build_that_dies_before_it_starts_fails_the_job_visibly(
+    monkeypatch, tmp_path, sync_pool: _SyncPool
+) -> None:
+    """The standalone build once lacked a module Celery imports by name, so the
+    worker died importing celery_app — before generate_cdlc's own error handling
+    existed to catch anything. The job stayed PENDING forever and the reason
+    went only to a log file; the UI just sat on the first stage."""
+    from rockforge.infrastructure.db.models import Job, JobStatus
+
+    factory = _job_db(monkeypatch, tmp_path)
+
+    def _missing(job_id: str) -> None:
+        raise ModuleNotFoundError("No module named 'celery.fixups'")
+
+    monkeypatch.setattr(celery_app, "generate_cdlc", _missing)
+    inprocess.enqueue_generate("job-1")
+
+    with factory() as session:
+        job = session.get(Job, "job-1")
+        assert job.status is JobStatus.FAILED
+        assert job.error == "ModuleNotFoundError: No module named 'celery.fixups'"
+
+
+def test_a_detection_that_dies_before_it_starts_stops_saying_detecting(
+    monkeypatch, tmp_path, sync_pool: _SyncPool
+) -> None:
+    """A detection is polled through its own status in params, not the job's —
+    a completed project must stay completed, with the detection marked
+    unavailable and the reason in the log the panel shows."""
+    from rockforge.infrastructure.db.models import Job, JobStatus
+
+    factory = _job_db(monkeypatch, tmp_path, status=JobStatus.COMPLETED,
+                      params={"lyrics_status": "detecting", "lyrics_log": ["[t] queued"]})
+
+    def _boom(job_id: str) -> None:
+        raise ImportError("cannot import name 'x'")
+
+    monkeypatch.setattr(celery_app, "detect_lyrics", _boom)
+    inprocess.enqueue_detect("job-1")
+
+    with factory() as session:
+        job = session.get(Job, "job-1")
+        assert job.status is JobStatus.COMPLETED
+        assert job.params["lyrics_status"] == "unavailable"
+        assert job.params["lyrics_log"] == [
+            "[t] queued", "failed before it started: ImportError: cannot import name 'x'"]
+
+
+def test_a_job_that_already_failed_keeps_its_own_error(
+    monkeypatch, tmp_path, sync_pool: _SyncPool
+) -> None:
+    """generate_cdlc records its own failures; the safety net must not
+    overwrite that more precise reason with whatever escaped afterwards."""
+    from rockforge.infrastructure.db.models import Job, JobStatus
+
+    factory = _job_db(monkeypatch, tmp_path, status=JobStatus.FAILED, error="IngestionError: x")
+    monkeypatch.setattr(celery_app, "generate_cdlc",
+                        lambda job_id: (_ for _ in ()).throw(RuntimeError("later")))
+    inprocess.enqueue_generate("job-1")
+
+    with factory() as session:
+        assert session.get(Job, "job-1").error == "IngestionError: x"

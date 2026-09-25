@@ -74,6 +74,20 @@ if ffmpeg_dir.is_dir():
         if f.is_file():
             datas.append((str(f), "ffmpeg"))
 
+# Celery imports some of its OWN modules by name when the app is created — its
+# fixups and loaders ("celery.fixups.django:fixup") — so PyInstaller's static
+# analysis never sees them. Without them the worker died on `import celery_app`
+# before any job ran ("No module named 'celery.fixups'"), and every new project
+# sat pending forever: the in-process worker still builds the Celery app even
+# though it calls the tasks directly. Read from Celery's own tables, so an
+# upgrade that adds or renames one follows by itself.
+from celery.app.base import BUILTIN_FIXUPS
+from celery.loaders import LOADER_ALIASES
+
+celery_by_name = sorted(
+    {ref.split(":")[0] for ref in (*BUILTIN_FIXUPS, *LOADER_ALIASES.values())}
+)
+
 a = Analysis(
     ["start_standalone.py"],
     pathex=[str(src)],
@@ -104,6 +118,7 @@ a = Analysis(
         "uvicorn.loops.auto",
         "uvicorn.protocols.http.auto",
         "uvicorn.lifespan.on",
+        *celery_by_name,
     ],
     # pywebview (the native window) needs nothing here: its wheel declares a
     # `pyinstaller40` entry point pointing at its own hook directory, which

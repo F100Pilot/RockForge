@@ -55,56 +55,73 @@ def _submit(fn: Callable[[str], None], job_id: str) -> None:
     _pool.submit(_run)
 
 
-def _run_generate(job_id: str) -> None:
+# Where each detection task's progress is polled from (its own status and log
+# in Job.params); a build reports through the job's own status instead.
+_DETECTION_KEYS = {
+    "detect_lyrics": ("lyrics_status", "lyrics_log"),
+    "detect_tones": ("tone_detection_status", "tone_detection_log"),
+    "separate_stems": ("stems_status", "stems_log"),
+}
+
+
+def _record_failure(task: str, job_id: str, exc: BaseException) -> None:
+    """Every task handles its own errors — once it is running. One that dies
+    before that left its job PENDING forever with the reason only in a log file
+    nobody opens, so the UI just sat on the first stage: the frozen build
+    missing a module Celery imports by name did exactly that. Say it where the
+    UI looks."""
+    reason = f"{type(exc).__name__}: {exc}"
     try:
-        from rockforge.interfaces.worker.celery_app import generate_cdlc
+        from rockforge.config import settings
+        from rockforge.infrastructure.db.models import Job, JobStatus, make_session_factory
 
-        generate_cdlc(job_id)
+        with make_session_factory(settings.database_url)() as session:
+            job = session.get(Job, job_id)
+            if job is None:
+                return
+            keys = _DETECTION_KEYS.get(task)
+            if keys is None:
+                if job.status in (JobStatus.PENDING, JobStatus.RUNNING):
+                    job.status = JobStatus.FAILED
+                    job.error = reason
+            else:
+                status_key, log_key = keys
+                params = dict(job.params or {})  # a NEW dict, or the write is lost
+                params[status_key] = "unavailable"
+                previous = list(params.get(log_key) or [])
+                params[log_key] = [*previous, f"failed before it started: {reason}"][-50:]
+                job.params = params
+            session.commit()
     except Exception:
-        log.exception("in-process generate_cdlc failed for job %s", job_id)
+        log.exception("could not record the failure of %s for job %s", task, job_id)
 
 
-def _run_detect(job_id: str) -> None:
+def _run_task(task: str, job_id: str) -> None:
+    """Run one celery_app task function here, in this thread. Never raises: a
+    failed run must not take the pool's only worker down with it."""
     try:
-        from rockforge.interfaces.worker.celery_app import detect_lyrics
+        from rockforge.interfaces.worker import celery_app
 
-        detect_lyrics(job_id)
-    except Exception:
-        log.exception("in-process detect_lyrics failed for job %s", job_id)
+        getattr(celery_app, task)(job_id)
+    except Exception as exc:
+        log.exception("in-process %s failed for job %s", task, job_id)
+        _record_failure(task, job_id, exc)
 
 
 def enqueue_generate(job_id: str) -> None:
-    _submit(_run_generate, job_id)
+    _submit(lambda job: _run_task("generate_cdlc", job), job_id)
 
 
 def enqueue_detect(job_id: str) -> None:
-    _submit(_run_detect, job_id)
-
-
-def _run_detect_tones(job_id: str) -> None:
-    try:
-        from rockforge.interfaces.worker.celery_app import detect_tones
-
-        detect_tones(job_id)
-    except Exception:
-        log.exception("in-process detect_tones failed for job %s", job_id)
+    _submit(lambda job: _run_task("detect_lyrics", job), job_id)
 
 
 def enqueue_detect_tones(job_id: str) -> None:
-    _submit(_run_detect_tones, job_id)
-
-
-def _run_separate_stems(job_id: str) -> None:
-    try:
-        from rockforge.interfaces.worker.celery_app import separate_stems
-
-        separate_stems(job_id)
-    except Exception:
-        log.exception("in-process separate_stems failed for job %s", job_id)
+    _submit(lambda job: _run_task("detect_tones", job), job_id)
 
 
 def enqueue_separate_stems(job_id: str) -> None:
-    _submit(_run_separate_stems, job_id)
+    _submit(lambda job: _run_task("separate_stems", job), job_id)
 
 
 def shutdown() -> None:

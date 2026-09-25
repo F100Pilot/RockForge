@@ -21,13 +21,13 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SPEC = REPO_ROOT / "rockforge.spec"
 
 
-def _run_spec() -> list[tuple[str, str]]:
+def _analysis_kwargs() -> dict[str, Any]:
     """Execute rockforge.spec with the PyInstaller builders stubbed out, and
-    return the ``datas`` list it actually hands to Analysis()."""
+    return the keyword arguments it actually hands to Analysis()."""
     captured: dict[str, Any] = {}
 
     def _analysis(*_args: Any, **kwargs: Any) -> SimpleNamespace:
-        captured["datas"] = kwargs["datas"]
+        captured.update(kwargs)
         return SimpleNamespace(pure=[], zipped_data=[], scripts=[], binaries=[], datas=[])
 
     namespace: dict[str, Any] = {
@@ -47,7 +47,12 @@ def _run_spec() -> list[tuple[str, str]]:
         exec(compile(SPEC.read_text(encoding="utf-8"), str(SPEC), "exec"), namespace)
     finally:
         os.chdir(cwd)
-    return list(captured["datas"])
+    return captured
+
+
+def _run_spec() -> list[tuple[str, str]]:
+    """The ``datas`` list the spec hands to Analysis()."""
+    return list(_analysis_kwargs()["datas"])
 
 
 def test_spec_bundles_every_web_file() -> None:
@@ -117,3 +122,19 @@ def test_spec_bundles_every_ml_runner_at_its_package_path() -> None:
         assert runner in bundled, f"{runner.relative_to(REPO_ROOT)} is not bundled"
         expected = Path("rockforge") / runner.relative_to(pkg).parent
         assert Path(bundled[runner]) == expected, runner.name
+
+
+def test_spec_bundles_the_modules_celery_imports_by_name() -> None:
+    """Creating the Celery app imports its fixups and loaders from strings, which
+    PyInstaller cannot see. The standalone build still creates that app (the
+    in-process worker imports celery_app and calls the tasks directly), and
+    without these modules every job died before it started: "No module named
+    'celery.fixups'", leaving new projects pending forever in the .exe."""
+    from celery.app.base import BUILTIN_FIXUPS
+    from celery.loaders import LOADER_ALIASES
+
+    hidden = set(_analysis_kwargs()["hiddenimports"])
+    by_name = {ref.split(":")[0] for ref in (*BUILTIN_FIXUPS, *LOADER_ALIASES.values())}
+    assert by_name, "precondition: Celery still names modules to import"
+    missing = sorted(by_name - hidden)
+    assert not missing, f"rockforge.spec does not bundle {missing}"

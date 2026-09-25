@@ -2380,6 +2380,29 @@ instead of to Celery/Redis. The task functions themselves (`generate_cdlc`,
 The PyInstaller spec (`rockforge.spec`) excludes the ML stack (torch, demucs,
 whisperx, scipy, numpy) — the `.exe` covers the GP pipeline + native PSARC core.
 
+**The in-process worker still CREATES the Celery app, so the spec must bundle
+what Celery imports by name.** `inprocess` calls the task functions directly,
+but it gets them by importing `celery_app`, whose module-level `Celery(...)`
+loads its fixups and loaders from strings (`celery.fixups.django:fixup`,
+`celery.loaders.app:AppLoader`) — invisible to PyInstaller's static analysis,
+and no hook in pyinstaller-hooks-contrib covers Celery. The frozen worker died
+on that import (`No module named 'celery.fixups'`) before any job ran, so every
+project created in the `.exe` sat PENDING forever. `rockforge.spec` now adds
+`celery_by_name`, read from Celery's own `BUILTIN_FIXUPS`/`LOADER_ALIASES` so an
+upgrade follows by itself, guarded by
+`test_spec_bundles_the_modules_celery_imports_by_name`. Reproduced and verified
+by actually building the spec (a Linux build here, same bundling logic) and
+running jobs through it to completion — CI cannot build the `.exe`.
+
+**A task that dies before its own error handling runs now says so.** That
+failure was silent: `_run_task` logged the traceback to a file and the job never
+left PENDING, so the UI just sat on its first stage. `inprocess._record_failure`
+marks a build FAILED with the reason (never overwriting a failure the task
+already recorded) and a detection `unavailable` with a line in its log, the
+places the UI actually reads. Guarded by `test_a_build_that_dies_before_it_starts_*`,
+`test_a_detection_that_dies_before_it_starts_*` and
+`test_a_job_that_already_failed_keeps_its_own_error` (`test_inprocess.py`).
+
 **The `.exe` cannot IMPORT the ML stack — and does not need to
 (`infrastructure/ml_python.py`).** A PyInstaller build's `sys.path` is just its
 own `_internal`, so the system's site-packages are never importable (verified
