@@ -5142,6 +5142,17 @@ document.getElementById('gpInspectForm').addEventListener('submit', async e => {
   if (b.title) form.querySelector('input[name=title]').value = b.title;
   if (b.artist) form.querySelector('input[name=artist]').value = b.artist;
   if (b.album) form.querySelector('input[name=album]').value = b.album;
+  // Synced to an audio track in Guitar Pro 8: the file itself says where bar 1
+  // is in that audio, so offer the exact value instead of asking for a guess.
+  const syncHint = document.getElementById('gpSyncHint');
+  if (b.sync_start_s != null) {
+    form.querySelector('input[name=offset_s]').value = b.sync_start_s.toFixed(3);
+    syncHint.textContent = `🎯 Este ficheiro foi sincronizado com o áudio no Guitar Pro 8 — o compasso 1 começa em ${b.sync_start_s.toFixed(3)} s. ` +
+      'Se a gravação que carregas é esse mesmo ficheiro de áudio, o valor já está certo e as notas seguem o tempo variável do GP.';
+    syncHint.hidden = false;
+  } else {
+    syncHint.hidden = true;
+  }
   setWizardStep(2);  // advance the wizard now that inspection succeeded
 });
 

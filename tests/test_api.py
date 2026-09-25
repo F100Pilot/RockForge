@@ -639,6 +639,50 @@ def test_gp_inspect_accepts_gp7(client: TestClient) -> None:
     body = r.json()
     assert body["title"] == "T" and body["artist"] == "A"
     assert body["tracks"][0]["string_count"] == 6
+    # No Guitar Pro 8 audio sync in this file: nothing to pre-fill.
+    assert body["sync_start_s"] is None
+
+
+def test_gp_inspect_reports_where_a_gp8_synced_file_starts(client: TestClient) -> None:
+    """A file synced to its audio track in Guitar Pro 8 knows exactly where bar 1
+    falls in that audio. /gp/inspect hands that back so the wizard pre-fills
+    the offset instead of asking for a guess."""
+    import io
+    import zipfile
+
+    def sync(bar: int, seconds: float) -> str:
+        return (
+            f"<Automation><Type>SyncPoint</Type><Bar>{bar}</Bar><Position>0</Position>"
+            f"<Value><BarIndex>{bar}</BarIndex><BarOccurrence>0</BarOccurrence>"
+            f"<FrameOffset>{seconds * 44100}</FrameOffset></Value></Automation>"
+        )
+
+    gpif = (
+        '<?xml version="1.0" encoding="utf-8"?><GPIF>'
+        "<Score><Title>T</Title><Artist>A</Artist></Score>"
+        "<MasterTrack><Automations><Automation><Type>Tempo</Type><Bar>0</Bar>"
+        f"<Position>0</Position><Value>120 2</Value></Automation>{sync(0, 2.25)}{sync(1, 4.0)}"
+        "</Automations></MasterTrack>"
+        '<Tracks><Track id="0"><Name>Guitar</Name>'
+        "<InstrumentSet><Type>electricGuitar</Type></InstrumentSet>"
+        '<Staves><Staff><Properties><Property name="Tuning">'
+        "<Pitches>40 45 50 55 59 64</Pitches></Property></Properties></Staff></Staves>"
+        "</Track></Tracks>"
+        "<MasterBars><MasterBar><Time>4/4</Time><Bars>0</Bars></MasterBar>"
+        "<MasterBar><Time>4/4</Time><Bars>1</Bars></MasterBar></MasterBars>"
+        '<Bars><Bar id="0"><Voices>-1 -1 -1 -1</Voices></Bar>'
+        '<Bar id="1"><Voices>-1 -1 -1 -1</Voices></Bar></Bars>'
+        "<Voices/><Beats/><Notes/><Rhythms/></GPIF>"
+    )
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("VERSION", "7.0")
+        z.writestr("Content/score.gpif", gpif)
+    r = client.post(
+        "/gp/inspect", files={"file": ("song.gp", buf.getvalue(), "application/octet-stream")}
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["sync_start_s"] == pytest.approx(2.25)
 
 
 def test_gp_inspect_and_job_flow(client: TestClient, tmp_path) -> None:

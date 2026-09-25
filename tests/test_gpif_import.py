@@ -324,3 +324,137 @@ def test_gpif_tempo_position_is_a_fraction_of_the_bar(tmp_path: Path) -> None:
     bar34 = 3 * QUARTER_TICKS
     events34 = _tempo_events(root, [0, bar34], [bar34, bar34])
     assert events34[1] == (bar34 + bar34 // 2, 150.0)
+
+
+def _synced_gpif(sync_points: str, backing: str = "") -> str:
+    """Three 4/4 bars at a single authored 120 BPM (2 s per bar by the score),
+    one whole note opening each bar, plus Guitar Pro 8 sync points."""
+    bars = "".join(
+        f'<MasterBar><Time>4/4</Time><Bars>{i}</Bars></MasterBar>' for i in range(3)
+    )
+    return f"""<?xml version="1.0" encoding="utf-8"?>
+<GPIF>
+  <Score><Title>T</Title><Artist>A</Artist></Score>
+  <MasterTrack><Automations>
+    <Automation><Type>Tempo</Type><Bar>0</Bar><Position>0</Position>
+      <Value>120 2</Value></Automation>
+    {sync_points}
+  </Automations></MasterTrack>
+  {backing}
+  <Tracks><Track id="0"><Name>Guitar</Name>
+    <InstrumentSet><Type>electricGuitar</Type></InstrumentSet>
+    <Staves><Staff><Properties>
+      <Property name="Tuning"><Pitches>40 45 50 55 59 64</Pitches></Property>
+    </Properties></Staff></Staves></Track></Tracks>
+  <MasterBars>{bars}</MasterBars>
+  <Bars>
+    <Bar id="0"><Voices>0 -1 -1 -1</Voices></Bar>
+    <Bar id="1"><Voices>1 -1 -1 -1</Voices></Bar>
+    <Bar id="2"><Voices>2 -1 -1 -1</Voices></Bar>
+  </Bars>
+  <Voices>
+    <Voice id="0"><Beats>0</Beats></Voice>
+    <Voice id="1"><Beats>1</Beats></Voice>
+    <Voice id="2"><Beats>2</Beats></Voice>
+  </Voices>
+  <Beats>
+    <Beat id="0"><Rhythm ref="0"/><Notes>0</Notes></Beat>
+    <Beat id="1"><Rhythm ref="0"/><Notes>1</Notes></Beat>
+    <Beat id="2"><Rhythm ref="0"/><Notes>2</Notes></Beat>
+  </Beats>
+  <Notes>
+    <Note id="0"><Properties><Property name="String"><String>0</String></Property>
+      <Property name="Fret"><Fret>3</Fret></Property></Properties></Note>
+    <Note id="1"><Properties><Property name="String"><String>0</String></Property>
+      <Property name="Fret"><Fret>5</Fret></Property></Properties></Note>
+    <Note id="2"><Properties><Property name="String"><String>0</String></Property>
+      <Property name="Fret"><Fret>7</Fret></Property></Properties></Note>
+  </Notes>
+  <Rhythms><Rhythm id="0"><NoteValue>Whole</NoteValue></Rhythm></Rhythms>
+</GPIF>
+"""
+
+
+def _sync(bar: int, audio_s: float, occurrence: int = 0, position: float = 0.0) -> str:
+    frame = audio_s * 44100
+    return (
+        f"<Automation><Type>SyncPoint</Type><Linear>false</Linear><Bar>{bar}</Bar>"
+        f"<Position>{position}</Position><Visible>true</Visible><Value>"
+        f"<BarIndex>{bar}</BarIndex><BarOccurrence>{occurrence}</BarOccurrence>"
+        f"<ModifiedTempo>0</ModifiedTempo><OriginalTempo>120</OriginalTempo>"
+        f"<FrameOffset>{frame}</FrameOffset></Value></Automation>"
+    )
+
+
+def test_gp8_sync_points_retime_the_chart_to_the_synced_audio(tmp_path: Path) -> None:
+    """Guitar Pro 8 aligns a score to its audio track with SYNC POINTS, not tempo
+    markings: the authored tempo stays one number (here 120 — two seconds a bar)
+    and GP shows a varying BPM computed from the points. Ignoring them locked the
+    chart to that one number, so a file the user had synced perfectly in Guitar
+    Pro drifted in RockForge.
+
+    Bar 1 is pinned at 1.0 s of audio, bar 2 at 3.5 s, bar 3 at 5.0 s: the first
+    bar really lasts 2.5 s (96 BPM) and the second 1.5 s (160 BPM). Times are
+    relative to bar 1, so ``offset_s`` still means "where bar 1 is".
+    """
+    gp = _gp_with(tmp_path, _synced_gpif(_sync(0, 1.0) + _sync(1, 3.5) + _sync(2, 5.0)))
+    parsed = parse_gp_track(gp, 0, offset_s=1.0)
+
+    assert [round(n.time, 3) for n in parsed.notes] == [1.0, 3.5, 5.0]
+    downbeats = [b.time for b in parsed.tempo_map.beats if b.measure > 0]
+    assert downbeats[:3] == pytest.approx([1.0, 3.5, 5.0])
+    # Past the last point the final span's stretch continues (1.5 s a bar).
+    assert parsed.notes[-1].sustain == pytest.approx(1.5, abs=0.1)
+    assert any("sync" in w.lower() for w in parsed.warnings)
+
+    from rockforge.infrastructure.gpimport.gpif_parser import sync_start_s
+
+    # The exact offset for that same audio file — what the wizard pre-fills.
+    assert sync_start_s(gp) == pytest.approx(1.0)
+
+
+def test_gp8_sync_points_respect_the_backing_track_padding(tmp_path: Path) -> None:
+    """alphaTab subtracts <FramePadding> from every sync point's frame offset
+    before using it as a position in the audio file."""
+    backing = (
+        "<BackingTrack><Enabled>true</Enabled><Source>Local</Source>"
+        "<FramePadding>22050</FramePadding></BackingTrack>"
+    )
+    gp = _gp_with(tmp_path, _synced_gpif(_sync(0, 1.0) + _sync(1, 3.5), backing))
+    from rockforge.infrastructure.gpimport.gpif_parser import sync_start_s
+
+    assert sync_start_s(gp) == pytest.approx(0.5)
+    # The spacing is unaffected — padding moves every point equally.
+    parsed = parse_gp_track(gp, 0)
+    assert parsed.notes[1].time - parsed.notes[0].time == pytest.approx(2.5)
+
+
+def test_gp8_sync_points_on_repeats_or_running_backwards_are_skipped(
+    tmp_path: Path,
+) -> None:
+    """Repeats are not expanded, so a point for a bar's SECOND pass has no tick
+    to attach to; and a point earlier in the audio than its predecessor would
+    fold the timeline back. Both are dropped and COUNTED, never silently."""
+    gp = _gp_with(tmp_path, _synced_gpif(
+        _sync(0, 1.0) + _sync(1, 3.5) + _sync(1, 9.0, occurrence=1) + _sync(2, 2.0)
+    ))
+    parsed = parse_gp_track(gp, 0)
+    assert parsed.notes[1].time - parsed.notes[0].time == pytest.approx(2.5)
+    assert any("2 Guitar Pro sync point(s) ignored" in w for w in parsed.warnings)
+
+
+def test_a_file_without_sync_points_is_timed_exactly_as_before(tmp_path: Path) -> None:
+    gp = _gp_with(tmp_path, _synced_gpif(""))
+    parsed = parse_gp_track(gp, 0)
+    assert [round(n.time, 3) for n in parsed.notes] == [0.0, 2.0, 4.0]
+    assert not any("sync" in w.lower() for w in parsed.warnings)
+    from rockforge.infrastructure.gpimport.gpif_parser import sync_start_s
+
+    assert sync_start_s(gp) is None
+
+
+def test_gp8_synced_average_bpm_is_what_plays_not_the_header(tmp_path: Path) -> None:
+    """12 quarters over 4.0 + 1.5 s = 5.5 s of audio is 130.9 BPM on average;
+    the header's 120 is a number nothing plays at."""
+    gp = _gp_with(tmp_path, _synced_gpif(_sync(0, 1.0) + _sync(1, 3.5) + _sync(2, 5.0)))
+    assert parse_gp_track(gp, 0).tempo_map.average_bpm == pytest.approx(12 / 5.5 * 60)

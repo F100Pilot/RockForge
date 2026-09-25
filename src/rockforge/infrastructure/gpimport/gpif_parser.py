@@ -18,7 +18,10 @@ the same set the GP5 path emits. Melody/rhythm timing is exact from the file.
 
 from __future__ import annotations
 
+import bisect
 import dataclasses
+import itertools
+import math
 import xml.etree.ElementTree as ET
 import zipfile
 from collections.abc import Callable
@@ -257,6 +260,137 @@ def _tempo_events(
     return events
 
 
+# Guitar Pro 8's audio-track sync. GP8 lets the user load the recording into the
+# score and pin bars to it; that alignment is NOT stored as tempo automations —
+# the authored <Tempo> stays whatever it was — but as <Automation
+# Type="SyncPoint"> entries whose <Value> carries <BarIndex>, <BarOccurrence>
+# and <FrameOffset> (a sample position at 44.1 kHz), minus the
+# <BackingTrack><FramePadding> the audio was shifted by. Between two points the
+# score is stretched to fit the audio, which is why Guitar Pro shows a varying
+# BPM on a score whose only tempo marking is one number. Ignoring them left the
+# chart locked to that one number. Format and semantics from alphaTab
+# (importer/GpifParser.ts, midi/MidiFileGenerator.ts, BackingTrackSyncPoint).
+_GP_AUDIO_SAMPLE_RATE = 44100.0
+
+
+def _sync_points(
+    root: ET.Element,
+    bar_start_ticks: list[int],
+    bar_durations: list[int],
+) -> tuple[list[tuple[int, float]], int]:
+    """(tick, audio seconds) sync points, ordered, plus how many were skipped.
+
+    Only a bar's FIRST occurrence can be used: the parser lays bars out once, in
+    order, without expanding repeats, so a point for a repeated pass has no tick
+    to attach to. Points that would run the audio backwards are dropped too —
+    they would fold the timeline back on itself.
+    """
+    backing = root.find("BackingTrack")
+    padding_s = 0.0
+    if backing is not None:
+        padding_s = _float(_text(backing.find("FramePadding"), "0")) / _GP_AUDIO_SAMPLE_RATE
+
+    raw: list[tuple[int, float]] = []
+    skipped = 0
+    master = root.find("MasterTrack")
+    autos = master.find("Automations") if master is not None else None
+    for auto in autos.findall("Automation") if autos is not None else []:
+        if _text(auto.find("Type")) != "SyncPoint":
+            continue
+        value = auto.find("Value")
+        if value is None:
+            skipped += 1
+            continue
+        bar = int(_float(_text(value.find("BarIndex"), _text(auto.find("Bar"), "0"))))
+        occurrence = int(_float(_text(value.find("BarOccurrence"), "0")))
+        frame = value.find("FrameOffset")
+        if occurrence != 0 or frame is None or not 0 <= bar < len(bar_start_ticks):
+            skipped += 1
+            continue
+        ratio = _float(_text(auto.find("Position"), "0"))
+        tick = bar_start_ticks[bar] + int(ratio * bar_durations[bar])
+        audio_s = _float(_text(frame, "0")) / _GP_AUDIO_SAMPLE_RATE - padding_s
+        raw.append((tick, audio_s))
+
+    raw.sort()
+    points: list[tuple[int, float]] = []
+    for tick, audio_s in raw:
+        if points and (tick <= points[-1][0] or audio_s <= points[-1][1]):
+            skipped += 1
+            continue
+        points.append((tick, audio_s))
+    return points, skipped
+
+
+def _float(text: str) -> float:
+    try:
+        value = float(text)
+    except ValueError:
+        return 0.0
+    return value if math.isfinite(value) else 0.0
+
+
+def _audio_clock(
+    to_seconds: Callable[[int], float], points: list[tuple[int, float]]
+) -> Callable[[int], float] | None:
+    """tick → seconds in the synced audio's clock, or None with no sync points.
+
+    Each pair of neighbouring points maps the score's own time span linearly
+    onto the audio span between them, so tempo changes authored inside a span
+    keep their proportions. Before the first point and after the last, the
+    nearest span's stretch continues; a lone point is a pure shift. alphaTab
+    holds a constant BPM after each point instead — the two agree exactly
+    whenever a span carries no tempo change of its own.
+    """
+    if not points:
+        return None
+    score = [float(to_seconds(tick)) for tick, _ in points]
+    audio = [a for _, a in points]
+    if len(points) == 1:
+        return lambda tick: audio[0] + float(to_seconds(tick)) - score[0]
+
+    def convert(tick: int) -> float:
+        s = float(to_seconds(tick))
+        i = min(max(bisect.bisect_right(score, s) - 1, 0), len(score) - 2)
+        ratio = (audio[i + 1] - audio[i]) / (score[i + 1] - score[i])
+        return audio[i] + (s - score[i]) * ratio
+
+    return convert
+
+
+def _synced(
+    to_seconds: Callable[[int], float], points: list[tuple[int, float]]
+) -> Callable[[int], float]:
+    """The score re-timed onto the synced audio, RELATIVE to bar 1.
+
+    Relative so ``offset_s`` keeps the one meaning it has for every file —
+    where bar 1 sits in the recording. The absolute value GP8 stored is what
+    :func:`sync_start_s` reports, so the wizard can pre-fill it.
+    """
+    clock = _audio_clock(to_seconds, points)
+    if clock is None:
+        return to_seconds
+    origin = clock(0)
+    return lambda tick: clock(tick) - origin
+
+
+def sync_start_s(path: Path) -> float | None:
+    """Where bar 1 falls in the audio Guitar Pro 8 was synced to, or None.
+
+    When the recording given to RockForge is that same audio file, this is the
+    exact ``offset_s``, so the wizard offers it instead of asking for a guess.
+    """
+    if not _is_gpif(path):
+        return None
+    root = _load_gpif(path)
+    durations = _master_bar_durations(list(root.find("MasterBars") or []))
+    starts = list(itertools.accumulate([0, *durations[:-1]])) if durations else []
+    points, _ = _sync_points(root, starts, durations)
+    base = _make_ticks_to_seconds(_tempo_events(root, starts, durations))
+    clock = _audio_clock(base, points)
+    return None if clock is None else max(0.0, clock(0))
+
+
 def parse_gpif_track(
     path: Path, track_index: int, offset_s: float = 0.0, tempo_scale: float = 1.0
 ) -> ParsedGpTrack:
@@ -300,6 +434,8 @@ def parse_gpif_track(
         acc += d
 
     to_seconds = _make_ticks_to_seconds(_tempo_events(root, bar_start_ticks, durations))
+    sync, sync_skipped = _sync_points(root, bar_start_ticks, durations)
+    to_seconds = _synced(to_seconds, sync)
 
     def t(tick: int) -> float:
         return max(0.0, tempo_scale * float(to_seconds(tick))) + offset_s
@@ -361,7 +497,12 @@ def parse_gpif_track(
     beats_grid.sort(key=lambda b: b.time)
 
     tempo_events = _tempo_events(root, bar_start_ticks, durations)
-    avg_bpm = (tempo_events[0][1] if tempo_events else 120.0) / tempo_scale
+    base_bpm = tempo_events[0][1] if tempo_events else 120.0
+    total_ticks = sum(durations)
+    if sync and total_ticks > 0 and to_seconds(total_ticks) > 0:
+        # Synced, the header tempo is not what plays; the real average is.
+        base_bpm = (total_ticks / QUARTER_TICKS) / (float(to_seconds(total_ticks)) / 60.0)
+    avg_bpm = base_bpm / tempo_scale
     first_num = _time_signature(master_bars[0])[0] if master_bars else 4
     tempo_map = TempoMap(
         beats=tuple(beats_grid), average_bpm=avg_bpm, beats_per_measure=first_num
@@ -377,6 +518,17 @@ def parse_gpif_track(
             break
 
     warnings: list[str] = []
+    if sync:
+        warnings.append(
+            f"Guitar Pro 8 audio sync used: {len(sync)} sync points re-time the "
+            "chart to the recording GP was synced to (the score's own tempo "
+            "marking is not what plays)"
+        )
+    if sync_skipped:
+        warnings.append(
+            f"{sync_skipped} Guitar Pro sync point(s) ignored: on a repeated pass of "
+            "a bar (repeats are not expanded) or running the audio backwards"
+        )
     if dropped_out_of_range:
         warnings.append(
             f"{dropped_out_of_range} note(s) dropped: off the 24-fret neck or on a "

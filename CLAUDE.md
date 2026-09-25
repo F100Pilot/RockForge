@@ -75,6 +75,31 @@ re-inverting the dependency.
    no extra dependency). Only **GP6 (`.gpx`)** — a proprietary binary container —
    is unsupported; export it as GP5 or GP7.
 
+   **Guitar Pro 8 audio sync (`SyncPoint` automations) drives the timing.** GP8
+   aligns a score to its audio track WITHOUT touching the tempo markings: the
+   authored `<Tempo>` stays one number and the alignment lives in
+   `MasterTrack/Automations/Automation[Type=SyncPoint]`, each `<Value>` carrying
+   `<BarIndex>`/`<BarOccurrence>`/`<FrameOffset>` (samples at 44.1 kHz) minus
+   `<BackingTrack><FramePadding>`. Guitar Pro then SHOWS a varying BPM computed
+   from the points. Reading only `Type=Tempo` locked such a file to its header
+   tempo, so a chart the user had synced perfectly in Guitar Pro drifted in
+   RockForge. `gpif_parser._sync_points`/`_audio_clock` map each span between
+   neighbouring points linearly onto the audio (format and semantics from
+   alphaTab's `GpifParser.ts`/`MidiFileGenerator.ts`; alphaTab holds a constant
+   BPM after each point instead — identical whenever a span has no tempo change
+   of its own). The result is **relative to bar 1**, so `offset_s` keeps its one
+   meaning; the absolute bar-1 position is `sync_start_s(path)`, returned by
+   `/gp/inspect` and pre-filled into the wizard's offset field, exact when the
+   uploaded recording IS the audio GP was synced to. Only a bar's FIRST
+   occurrence can be used (repeats are not expanded), and a point earlier in the
+   audio than its predecessor is dropped — both counted in the warnings. The
+   synced file's `average_bpm` is what actually plays, not the header. **Gradual
+   tempo ramps are NOT modelled** (GPIF `<Linear>true`, GP5's MixTableChange
+   duration): alphaTab reads the flag but its timing ignores it, so there is no
+   citable reference for how Guitar Pro interpolates, and they are read as steps.
+   Guarded by `test_gp8_sync_points_*` and
+   `test_gp_inspect_reports_where_a_gp8_synced_file_starts`.
+
    **Tied notes** (GP `(17)` in parentheses — a held continuation, not a
    re-pick) are folded into the note they extend in BOTH parsers, never emitted
    as a second attack: GP5 via `NoteType.tie` (inline, tracking the last note

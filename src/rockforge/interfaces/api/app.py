@@ -792,6 +792,10 @@ class GpInspectOut(BaseModel):
     tempo: int
     has_lyrics: bool
     tracks: list[GpTrackOut]
+    # Where bar 1 falls in the audio Guitar Pro 8 was synced to (its audio-track
+    # sync points), or None. When the recording is that same file this IS the
+    # offset, so the wizard pre-fills it instead of asking for a guess.
+    sync_start_s: float | None = None
 
 
 GP_SUFFIXES = {".gp3", ".gp4", ".gp5", ".gp"}  # .gp = GP7/GP8 (native GPIF parser)
@@ -875,8 +879,16 @@ def inspect_gp_file(file: UploadFile = File(...)) -> GpInspectOut:
     except IngestionError as exc:
         dest.unlink(missing_ok=True)
         raise HTTPException(422, str(exc)) from exc
+    from rockforge.infrastructure.gpimport.gpif_parser import sync_start_s
+
+    try:
+        synced_start = sync_start_s(dest)
+    except Exception:
+        # A hint for the wizard, never a reason to refuse a file that parsed.
+        synced_start = None
     return GpInspectOut(
         gp_token=dest.name,
+        sync_start_s=synced_start,
         title=info.title,
         artist=info.artist,
         album=info.album,
