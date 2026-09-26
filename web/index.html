@@ -1180,7 +1180,7 @@ details.pv-warn > summary { cursor:pointer; font-size:.88rem; color:var(--muted)
     </form>
 
     <!-- Steps 2-4 share one form (submit = create) -->
-    <form id="gpJobForm">
+    <form id="gpJobForm" novalidate>
       <div class="grid wizard-pane" data-step="2" style="margin-top:.75rem">
         <div id="gpMeta" class="meta" style="flex-basis:100%"></div>
         <div class="meta" style="flex-basis:100%; opacity:.75">
@@ -1207,9 +1207,9 @@ details.pv-warn > summary { cursor:pointer; font-size:.88rem; color:var(--muted)
           <div class="file-drop"><div class="file-drop-icon"><svg class="ic" aria-hidden="true"><use href="#i-headphones"/></svg></div><span class="file-drop-text">Arrasta ou clica para escolher</span><span class="file-drop-btn">Procurar</span>
           <input type="file" name="audio" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" required></div></div>
         <div class="field"><label>Início da música na gravação (s) <button class="info-btn" data-info="gp-offset">ⓘ</button></label>
-          <input type="number" name="offset_s" value="0" step="0.01" min="0" style="width:6rem"></div>
+          <input type="number" name="offset_s" value="0" step="any" min="0" style="width:6rem"></div>
         <div class="field"><label>Silêncio inicial (s) <button class="info-btn" data-info="lead-in">ⓘ</button></label>
-          <input type="number" name="lead_in_s" value="0" step="0.1" min="0" style="width:6rem"></div>
+          <input type="number" name="lead_in_s" value="0" step="any" min="0" style="width:6rem"></div>
         <details class="field" id="songsterrBlock" style="flex-basis:100%">
           <summary style="cursor:pointer"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg> <b>Extra</b> — sincronizar pelos tempos do Songsterr (opcional)</summary>
           <p class="meta" style="margin:.4rem 0 .35rem">O Songsterr guarda o instante de <b>cada compasso</b> num vídeo do

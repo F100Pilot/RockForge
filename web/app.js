@@ -5431,6 +5431,17 @@ document.getElementById('gpJobForm').addEventListener('submit', async e => {
     if (validateWizardStep()) setWizardStep(wizardStep + 1);
     return;
   }
+  // The form is `novalidate` because the browser's own check is silent here:
+  // it refuses a bad field on an EARLIER (hidden) step without showing it, so
+  // "Criar CDLC" just did nothing — a start time pre-filled with 3 decimals
+  // against step="0.01" did exactly that. Take the user to the field instead.
+  const bad = e.target.querySelector(':invalid');
+  if (bad) {
+    const pane = bad.closest('.wizard-pane');
+    if (pane) setWizardStep(Number(pane.dataset.step));
+    bad.reportValidity();
+    return;
+  }
   const f = new FormData(e.target);
   f.append('gp_token', gpToken);
   if (usingEmbeddedAudio()) { f.set('use_embedded_audio', 'true'); f.delete('audio'); }

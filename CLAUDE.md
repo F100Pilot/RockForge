@@ -1223,6 +1223,18 @@ post-creation in the real tone editor. Step 1 is its own form (submit = inspect,
 shared footer nav is `setWizardStep(n)` + `validateWizardStep()`; Enter on an
 early step advances instead of creating (guarded in the submit handler).
 
+**`gpJobForm` is `novalidate`, and the submit handler does the check.** The
+browser's own validation is silent in a wizard: it refuses an invalid field on
+an EARLIER, hidden step without being able to show it ("An invalid form control
+… is not focusable" in the console only), so "Criar CDLC" simply did nothing.
+That is exactly what happened when the start time was pre-filled from GP8 sync
+points or Songsterr with `toFixed(3)` into an input declared `step="0.01"` —
+4.583 is a step mismatch. The seconds inputs are now `step="any"`, and the
+handler finds the first `:invalid` control, jumps to its step and calls
+`reportValidity()`. Browser-only (no pytest coverage); reproduced and verified
+with Playwright: 4.583 now creates the job, and a genuinely invalid value takes
+the user back to step 3 with the field focused.
+
 ### Batch processing ("Lote (álbum)")
 
 For an entire album: the home page's "Lote (álbum)" button opens a batch modal
