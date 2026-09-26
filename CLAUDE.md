@@ -1402,9 +1402,11 @@ load is marked `cover_broken` (placeholder shown, `cover_url` not sent). The
 Capa page's "Procurar capa online" applies a card to an existing project
 (`cover-from-url`, plus `PATCH /metadata` when "Preencher também o álbum e o
 ano" is ticked). The grid is built with DOM calls, not `innerHTML`, since the
-names and URLs come from third parties. **Never verified against the live
-services** (the sandbox blocks them all) — TESTING.md §7d-sexies; the
-`600x600bb` iTunes rendition is widely used but undocumented. Guarded by
+names and URLs come from third parties. **Confirmed working against the live
+services by the user (2026-09-26)** on a real machine with an official
+release — the sandbox itself still blocks them all, so CI only ever sees the
+fakes (TESTING.md §7d-sexies). The `600x600bb` iTunes rendition is
+undocumented; if covers ever stop loading, check that first. Guarded by
 `test_album_lookup.py` and, in `test_api.py`, `test_album_lookup_*`,
 `test_a_chosen_cover_is_downloaded_into_the_job`,
 `test_a_cover_url_off_the_cover_services_is_refused_without_fetching`,

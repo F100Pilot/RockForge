@@ -7,8 +7,8 @@ ver `TESTING.md`.
 - [x] **Álbum, ano e capa automáticos.** Pesquisa por título + banda no iTunes
   e no MusicBrainz/Cover Art Archive; o utilizador escolhe entre as capas
   encontradas (passo 4 do assistente e página Capa). Download só dos servidores
-  de imagens desses serviços. Por validar contra os serviços reais (bloqueados
-  no sandbox): TESTING.md §7d-sexies.
+  de imagens desses serviços. Confirmado a funcionar pelo utilizador com os
+  serviços reais (2026-09-26); o sandbox continua sem acesso — TESTING.md §7d-sexies.
 - [x] **Sincronização pelos tempos do Songsterr.** O princípio do
   guitar-pro-youtube-sync: tempos por compasso marcados por pessoas, lidos da
   API (não documentada) do Songsterr e aplicados como os sync points do GP8. Só

@@ -1001,8 +1001,7 @@ def album_lookup(title: str = "", artist: str = "") -> AlbumLookupOut:
     Asks the iTunes Search API and MusicBrainz/Cover Art Archive (no keys);
     nothing is written anywhere until the user picks one. No results is an
     empty list; both services unreachable is a 502. See
-    ``infrastructure/album_lookup.py`` — never verified against the live
-    services from the sandbox.
+    ``infrastructure/album_lookup.py``.
     """
     from rockforge.infrastructure.album_lookup import (
         AlbumLookupError,

@@ -761,7 +761,10 @@ against a fake. On a real machine:
 CI and the sandbox cannot reach iTunes, MusicBrainz or the Cover Art Archive
 (nor Apple's image CDN), so `infrastructure/album_lookup.py` was written from
 the services' documented response shapes and tested only against fakes; the UI
-was driven with Playwright with `/album-lookup` and the image hosts faked. On a
+was driven with Playwright with `/album-lookup` and the image hosts faked.
+**Status: confirmed by the user on a real machine (2026-09-26)** — an official
+release found and filled; a fan remix ("Strangers Now") correctly came back
+empty with the explanation. Re-run these after touching the module. On a
 machine with internet:
 
 1. Create a project from a GP file whose title/band are a known song. On

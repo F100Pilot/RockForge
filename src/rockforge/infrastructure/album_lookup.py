@@ -16,9 +16,10 @@ what they return; nothing is written into a project without that choice:
 
 Honest limits: the match is by title and artist text, so a cover song, a
 remaster or a compilation can come back first — which is why the result is a
-LIST to choose from. **Never verified against the live services from here**:
-the sandbox's network policy blocks all of them, so the response shapes come
-from the services' documentation and the tests use recorded-shape fakes.
+LIST to choose from. The sandbox's network policy blocks all of these
+services, so the response shapes come from their documentation and the tests
+use recorded-shape fakes; the user confirmed it against the live services on a
+real machine (2026-09-26).
 Downloading a chosen cover goes through ``fetch_cover``, which only follows
 URLs on these services' own image hosts.
 """
