@@ -501,8 +501,24 @@ const COMPLETE_ACTIONS = {
   tones: () => { showSection('tons'); openToneBuilder(); },
   cover: () => { showSection('capa'); },
   sync:  () => { showSection('partitura'); showInspector('sync'); },
+  syncok:   () => setSyncConfirmed(true),
+  syncundo: () => setSyncConfirmed(false),
   lyrics: () => { showSection('letras'); },
 };
+
+async function setSyncConfirmed(confirmed) {
+  if (!selectedJob) return;
+  try {
+    const j = await getJSON(`/jobs/${selectedJob.id}/sync-confirmed`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ confirmed }),
+    });
+    selectedJob.sync_confirmed = j.sync_confirmed;
+    renderCompleteness(selectedJob);  // also re-sets the top bar's status chip
+  } catch (err) {
+    toast(`Não foi possível guardar: ${err.message}`);
+  }
+}
 
 function renderCompleteness(j) {
   const el = document.getElementById('completeness');
@@ -532,9 +548,13 @@ function renderCompleteness(j) {
   if (isGp) {
     if (j.sync_edited)
       rows.push({ state: 'ok', ico: 'check', title: 'Sincronização ajustada', note: 'Fizeste pelo menos uma correção de início/andamento.' });
+    else if (j.sync_confirmed)
+      rows.push({ state: 'ok', ico: 'check', title: 'Sincronização confirmada', act: 'syncundo', actLabel: 'Desfazer',
+        note: 'Confirmaste que as notas batem com a gravação.' });
     else
-      rows.push({ state: 'warn', ico: 'timer', title: 'Confirmaste a sincronização?', short: 'confirmar a sincronização', act: 'sync', actLabel: 'Abrir partitura',
-        note: 'Ainda não há ajustes de início/andamento — abre a partitura e confirma que as notas batem com a gravação.' });
+      rows.push({ state: 'warn', ico: 'timer', title: 'Confirmaste a sincronização?', short: 'confirmar a sincronização',
+        act: 'syncok', actLabel: 'Está sincronizada', act2: 'sync', act2Label: 'Abrir partitura',
+        note: 'Não há ajustes de início/andamento. Se já ouviste e as notas batem com a gravação (p. ex. vinha sincronizada do Guitar Pro), confirma aqui.' });
   }
 
   if (j.has_lyrics)
@@ -555,7 +575,9 @@ function renderCompleteness(j) {
     alerts.length ? `Falta: ${parts.join(', ')}` : 'Pronto a usar', alerts.length ? 'alert' : 'check');
   for (const r of rows) {
     const cls = r.state === 'err' ? ' err' : r.state === 'warn' ? ' warn' : r.state === 'ok' ? ' ok' : '';
-    const btn = r.act ? `<button type="button" class="secondary" data-act="${esc(r.act)}">${esc(r.actLabel)}</button>` : '';
+    const acts = [[r.act, r.actLabel], [r.act2, r.act2Label]].filter(([a]) => a)
+      .map(([a, label]) => `<button type="button" class="secondary" data-act="${esc(a)}">${esc(label)}</button>`);
+    const btn = acts.length > 1 ? `<span class="complete-acts">${acts.join('')}</span>` : acts.join('');
     html += `<div class="complete-row${cls}"><span class="complete-ico">${icon(r.ico)}</span>`
       + `<span class="complete-body"><span class="complete-title">${esc(r.title)}</span>`
       + `<span class="complete-note">${esc(r.note)}</span></span>${btn}</div>`;

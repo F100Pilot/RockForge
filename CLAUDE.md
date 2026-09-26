@@ -1304,6 +1304,16 @@ jump-button to the right editor (`COMPLETE_ACTIONS`). Rows + alerts:
 - ✅/⚠️ **Sincronização** ← `sync_edited` (new field; `_sync_edited(params)`:
   offset moved off 0, tempo scaled, or any drift anchor job-level/per-arrangement)
   — a **soft** "confirmaste a sincronização?" reminder, not a hard "desalinhado".
+  Songsterr `bar_times` count as synced too. **The row can be cleared by the
+  user** ("Está sincronizada" → `PATCH /jobs/{id}/sync-confirmed`, stored as
+  `params["sync_confirmed"]`, surfaced as `JobOut.sync_confirmed`, undoable):
+  a chart that needed NO adjustment — synced in Guitar Pro 8, its embedded
+  audio, or simply right from the start — has nothing for `sync_edited` to see,
+  so before this the reminder could never go away ("nunca consigo tirar, mesmo
+  quando está sincronizado"). A checklist flag only: no rebuild, and a fork
+  inherits it with the rest of `params`. Guarded by
+  `test_a_song_that_needed_no_adjustment_can_be_confirmed_as_in_sync` /
+  `test_songsterr_bar_times_count_as_synchronised`.
 - ⓘ **Letra** ← `has_lyrics` (informational, never an alert). NOTE: read
   `has_lyrics` (new field: edited `lyrics_events` OR `lrc_text` OR
   `lyrics_status == "ready"`), NOT `lyrics_status` alone — GP-embedded / LRC /

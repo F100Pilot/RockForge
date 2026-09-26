@@ -363,6 +363,11 @@ class JobOut(BaseModel):
     # "confirmaste a sincronização?" reminder. Both GP-only.
     has_tones: bool = False
     sync_edited: bool = False
+    # The user said "it is in sync" (`PATCH /jobs/{id}/sync-confirmed`). A song
+    # that needed no adjustment — synced in Guitar Pro 8, its embedded audio, or
+    # simply right from the start — has nothing for `sync_edited` to see, so
+    # without this the reminder could never be cleared.
+    sync_confirmed: bool = False
     # True if the bundle carries lyrics from ANY source — edited/GP-embedded
     # events, an LRC/UltraStar file, or completed WhisperX detection — not just
     # `lyrics_status == "ready"` (which only covers detection).
@@ -662,8 +667,11 @@ class MetadataIn(BaseModel):
 
 def _sync_edited(params: dict[str, Any]) -> bool:
     """True if any sync adjustment was made — a moved offset, a scaled tempo, or
-    a drift anchor (job-level or per-arrangement). Drives the soft "confirmaste a
+    a drift anchor (job-level or per-arrangement), or human-marked bar times
+    (Songsterr) driving the timing. Drives the soft "confirmaste a
     sincronização?" completeness reminder."""
+    if params.get("bar_times"):
+        return True
     raw_offset = params.get("offset_s")
     offset = float(raw_offset) if isinstance(raw_offset, (int, float, str)) else 0.0
     raw_scale = params.get("tempo_scale")
@@ -728,6 +736,7 @@ def _to_out(job: Job) -> JobOut:
         cover_art=bool(params.get("cover_art")),
         has_tones=has_tones,
         sync_edited=_sync_edited(params),
+        sync_confirmed=bool(params.get("sync_confirmed")),
         has_lyrics=has_lyrics,
         rebuilt_from=cast("str | None", params.get("rebuilt_from") or None),
     )
@@ -2515,6 +2524,28 @@ def get_job(job_id: str) -> JobOut:
         job = session.get(Job, job_id)
         if job is None:
             raise HTTPException(404, "job not found")
+        return _to_out(job)
+
+
+class SyncConfirmedIn(BaseModel):
+    confirmed: bool
+
+
+@app.patch("/jobs/{job_id}/sync-confirmed", response_model=JobOut)
+def set_sync_confirmed(job_id: str, payload: SyncConfirmedIn) -> JobOut:
+    """Record that the user checked the chart against the recording.
+
+    Only the checklist reads it — nothing in the bundle changes, so there is no
+    rebuild. It lives in `params`, so a rebuild/reload fork inherits it.
+    """
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+        params = dict(job.params or {})
+        params["sync_confirmed"] = payload.confirmed
+        job.params = params
+        session.commit()
         return _to_out(job)
 
 

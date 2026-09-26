@@ -1075,6 +1075,36 @@ def test_sync_edited_true_from_anchor_only(client: TestClient, tmp_path) -> None
     assert rebuilt["sync_edited"] is True
 
 
+def test_a_song_that_needed_no_adjustment_can_be_confirmed_as_in_sync(
+    client: TestClient, tmp_path
+) -> None:
+    """A chart already in sync (synced in Guitar Pro 8, its embedded audio, or
+    simply right) has no adjustment for sync_edited to see — the reminder could
+    never be cleared. The user's confirmation clears it, survives a rebuild,
+    and can be taken back."""
+    job = _gp_job(client, tmp_path)
+    assert job["sync_edited"] is False and job["sync_confirmed"] is False
+
+    r = client.patch(f"/jobs/{job['id']}/sync-confirmed", json={"confirmed": True})
+    assert r.status_code == 200, r.text
+    assert r.json()["sync_confirmed"] is True
+    assert r.json()["status"] == job["status"], "a checklist flag, not a rebuild"
+
+    rebuilt = client.post(f"/jobs/{job['id']}/rebuild", json={}).json()
+    assert rebuilt["sync_confirmed"] is True
+
+    r = client.patch(f"/jobs/{job['id']}/sync-confirmed", json={"confirmed": False})
+    assert r.json()["sync_confirmed"] is False
+    assert client.patch("/jobs/nope/sync-confirmed", json={"confirmed": True}).status_code == 404
+
+
+def test_songsterr_bar_times_count_as_synchronised() -> None:
+    from rockforge.interfaces.api.app import _sync_edited
+
+    assert _sync_edited({"bar_times": [0.0, 2.1, 4.2]}) is True
+    assert _sync_edited({"bar_times": []}) is False
+
+
 def _stages(client: TestClient, job_id: str, kind: str = "Lead") -> list:
     import rockforge.interfaces.api.app as app_module
 
