@@ -8,10 +8,10 @@ a recording "perfectly": nobody estimated anything. It is the principle behind
 ``/api/video-points/{id}/{revision}/list`` for the timestamps), and for which
 video to prefer.
 
-What RockForge takes is ONLY the timestamps. The recording comes from the user
-(converted from that same YouTube video — Songsterr's own audio is a
-different recording and does not match these times), so nothing here
-downloads audio.
+What this module takes is ONLY the timestamps (and, in ``fetch_tab``, the tab).
+The recording must be that same YouTube video's audio — Songsterr's own audio
+is a different recording and does not match these times — which
+``youtube_audio`` fetches, or the user converts; nothing HERE downloads audio.
 
 Honest limits, stated where they bite:
 

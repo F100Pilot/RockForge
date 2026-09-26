@@ -782,6 +782,14 @@ against a fake. On a real machine:
    slides, palm mutes, and the sections. The warnings name what was left out
    (drums, grace notes). If every track fails with 403, Songsterr has moved its
    part distributions (`songsterr._PART_CDNS`).
+6. **The video's audio** (`pip install yt-dlp`): after an import, step 3 must
+   start downloading the default video's audio by itself and end with "Áudio
+   do vídeo descarregado", the file upload hidden. If YouTube refuses (403 /
+   "not a bot"), pick a browser where YouTube is open in "Sessão do browser"
+   and press the button again. Picking another video must drop the audio and
+   ask again. The built chart must sit on the recording from bar 1 with no
+   "Início" change. Without yt-dlp the message must name `pip install yt-dlp`,
+   and ⚙️ Definições → Software externo must show yt-dlp as missing.
 
 ### 7d-sexies. Album, year and cover lookup against the REAL services
 

@@ -60,8 +60,8 @@ function validateWizardStep() {
       .some(n => document.querySelector(`#gpJobForm select[name=${n}]`).value !== '');
     if (!anyTrack) { toast('Atribui pelo menos uma pista.'); return false; }
   } else if (wizardStep === 3) {
-    if (!usingEmbeddedAudio() && !document.querySelector('#gpJobForm input[name=audio]').files.length) {
-      toast('Escolhe a gravação (áudio) da música.'); return false;
+    if (!usingEmbeddedAudio() && !ytAudio && !document.querySelector('#gpJobForm input[name=audio]').files.length) {
+      toast('Escolhe a gravação (áudio) da música ou descarrega a do vídeo.'); return false;
     }
   }
   return true;
@@ -76,11 +76,15 @@ function usingEmbeddedAudio() {
   return !row.hidden && document.getElementById('useEmbeddedAudio').checked;
 }
 function applyEmbeddedAudioChoice() {
-  const embedded = usingEmbeddedAudio();
-  document.getElementById('gpAudioUploadField').hidden = embedded;
+  // The GP8 file's own audio, or the chosen YouTube video's (fetched), both
+  // stand in for an upload.
+  const provided = usingEmbeddedAudio() || !!ytAudio;
+  document.getElementById('gpAudioUploadField').hidden = provided;
   // `required` would block the submit on a field the user never needs to fill.
-  document.querySelector('#gpJobForm input[name=audio]').required = !embedded;
+  document.querySelector('#gpJobForm input[name=audio]').required = !provided;
 }
+// The chosen YouTube video's audio, fetched by /youtube/audio: {token, videoId, name, size}.
+let ytAudio = null;
 document.getElementById('useEmbeddedAudio').addEventListener('change', applyEmbeddedAudioChoice);
 
 // Songsterr's per-measure timestamps for the chosen video (null = not used).
@@ -96,25 +100,37 @@ function resetSongsterr() {
   document.getElementById('songsterrLink').value = '';
   document.getElementById('songsterrVideo').hidden = true;
   document.getElementById('songsterrInfo').textContent = '';
+  ytAudio = null;
+  document.getElementById('ytAudioRow').hidden = true;
+  document.getElementById('ytAudioInfo').textContent = '';
+  document.getElementById('ytCookies').value = '';
 }
 function applySongsterrVideo() {
   const sel = document.getElementById('songsterrVideo');
   const info = document.getElementById('songsterrInfo');
   const v = songsterrSong && sel.value !== '' ? songsterrSong.videos[Number(sel.value)] : null;
   songsterrPoints = v ? v.points : null;
+  document.getElementById('ytAudioRow').hidden = !v;
+  // Audio fetched for ANOTHER video does not match these times.
+  if (ytAudio && (!v || ytAudio.videoId !== v.video_id)) {
+    ytAudio = null;
+    document.getElementById('ytAudioInfo').textContent = '';
+    applyEmbeddedAudioChoice();
+  }
   if (!v) { info.textContent = 'Tempos do Songsterr não usados.'; return; }
   const start = v.points[0];
   // Bar 1's instant in THAT video — right as the start when the MP3 is the
   // whole video; a trimmed copy starts earlier, and the user adjusts.
   document.querySelector('#gpJobForm input[name=offset_s]').value = start.toFixed(3);
   info.innerHTML = `${icon('check')} ${v.points.length} compassos com tempo marcado. Os tempos são do vídeo ` +
-    `<a href="${esc(v.url)}" target="_blank" rel="noopener">${esc(v.url)}</a> — o teu MP3 tem de ser convertido desse vídeo ` +
-    '(o áudio do próprio Songsterr é outro e não bate com estes tempos). ' +
+    `<a href="${esc(v.url)}" target="_blank" rel="noopener">${esc(v.url)}</a> — a gravação tem de ser o áudio desse vídeo ` +
+    '(descarrega-o abaixo, ou carrega um MP3 convertido dele; o áudio do próprio Songsterr é outro e não bate). ' +
     `O compasso 1 começa em <b>${start.toFixed(3)} s</b> desse vídeo; já pus esse valor em "Início da música". ` +
     'Se o teu MP3 foi cortado no início, ajusta-o.';
 }
 document.getElementById('songsterrVideo').addEventListener('change', applySongsterrVideo);
-document.getElementById('songsterrFetch').addEventListener('click', async () => {
+document.getElementById('songsterrFetch').addEventListener('click', () => fetchSongsterrVideos());
+async function fetchSongsterrVideos() {
   const link = document.getElementById('songsterrLink').value.trim();
   const info = document.getElementById('songsterrInfo');
   const sel = document.getElementById('songsterrVideo');
@@ -134,7 +150,36 @@ document.getElementById('songsterrFetch').addEventListener('click', async () => 
   sel.value = '0';
   sel.hidden = false;
   applySongsterrVideo();
-});
+  return true;
+}
+
+async function downloadYtAudio() {
+  const sel = document.getElementById('songsterrVideo');
+  const v = songsterrSong && sel.value !== '' ? songsterrSong.videos[Number(sel.value)] : null;
+  if (!v) return;
+  const info = document.getElementById('ytAudioInfo');
+  const btn = document.getElementById('ytAudioBtn');
+  const browser = document.getElementById('ytCookies').value;
+  btn.disabled = true;
+  info.textContent = `A descarregar o áudio de ${v.url}… (pode demorar um minuto)`;
+  try {
+    const b = await getJSON('/youtube/audio', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ video_id: v.video_id, cookies_browser: browser || null }),
+    });
+    ytAudio = { token: b.audio_token, videoId: v.video_id, name: b.name, size: b.size_bytes };
+    info.innerHTML = `${icon('check')} Áudio do vídeo descarregado (${(b.size_bytes / 1048576).toFixed(1)} MB) — ` +
+      'vai ser usado como gravação; não precisas de carregar nenhum ficheiro.';
+  } catch (err) {
+    ytAudio = null;
+    info.textContent = `Não consegui descarregar: ${err.message}. ` +
+      'Podes tentar de novo com a sessão de um browser, ou carregar um MP3 do vídeo.';
+  } finally {
+    btn.disabled = false;
+    applyEmbeddedAudioChoice();
+  }
+}
+document.getElementById('ytAudioBtn').addEventListener('click', downloadYtAudio);
 
 function openNewJobModal() {
   document.getElementById('newJobOverlay').hidden = false;
@@ -735,6 +780,12 @@ const INFO = {
     body: '<p>Em vez de um ficheiro Guitar Pro, cola o link da música no <strong>Songsterr</strong>. O RockForge descarrega as pistas da tab e cria com elas um ficheiro Guitar Pro 5, que segue o caminho normal (escolhes as pistas no passo 2).</p>' +
       '<p>No passo 3 aparecem os <strong>vídeos do YouTube</strong> dessa música com o tempo de cada compasso marcado por pessoas. Escolhe um e carrega o <strong>MP3 convertido desse mesmo vídeo</strong> — o RockForge não descarrega áudio. Com isso, as notas seguem a gravação compasso a compasso, sem acertos manuais.</p>' +
       '<p>Limites: a API do Songsterr não é pública e pode mudar; as pistas de bateria ficam de fora; notas de ornamento (grace) não são incluídas; a letra não vem (procura-a na página Letra). O ficheiro criado pode ser exportado e aberto no Guitar Pro.</p>'
+  },
+  'youtube-audio': {
+    title: 'Áudio do vídeo do YouTube',
+    body: '<p>Os tempos por compasso do Songsterr foram marcados num vídeo do YouTube, por isso a gravação que bate certo com eles é o <strong>áudio desse vídeo</strong>. Este botão descarrega-o com o <strong>yt-dlp</strong> e usa-o como gravação do projeto — já não precisas de o converter à mão.</p>' +
+      '<p><strong>Se o YouTube recusar</strong> (erro 403 ou "confirma que não és um robô"), escolhe em "Sessão do browser" um browser onde tenhas o YouTube aberto e tenta de novo: o yt-dlp usa essa sessão.</p>' +
+      '<p>Precisa do yt-dlp instalado (<code>pip install yt-dlp</code>); se o YouTube mudar e os downloads falharem, atualizar o yt-dlp costuma resolver. Descarregar do YouTube vai contra os termos do YouTube fora das funções que ele oferece — usa só para uso pessoal, com música a que tens direito.</p>'
   },
   'cover-art': {
     title: 'Capa do álbum',
@@ -5901,7 +5952,8 @@ async function importSongsterrTab() {
   // Step 3: the same song's per-measure times, ready to pick a video.
   document.getElementById('songsterrLink').value = link;
   document.getElementById('songsterrBlock').open = true;
-  document.getElementById('songsterrFetch').click();
+  // …and the chosen video's audio, so the whole song comes from one link.
+  if (await fetchSongsterrVideos()) downloadYtAudio();
 }
 document.getElementById('songsterrImportBtn').addEventListener('click', importSongsterrTab);
 document.getElementById('songsterrImportLink').addEventListener('keydown', e => {
@@ -5931,7 +5983,10 @@ document.getElementById('gpJobForm').addEventListener('submit', async e => {
   const f = new FormData(e.target);
   f.append('gp_token', gpToken);
   if (usingEmbeddedAudio()) { f.set('use_embedded_audio', 'true'); f.delete('audio'); }
-  else f.set('use_embedded_audio', 'false');
+  else {
+    f.set('use_embedded_audio', 'false');
+    if (ytAudio) { f.set('audio_token', ytAudio.token); f.delete('audio'); }
+  }
   if (songsterrPoints) {
     f.set('bar_times', JSON.stringify(songsterrPoints));
     f.set('bar_times_source', `songsterr:${songsterrSong.song_id}:${songsterrSong.revision_id}`);

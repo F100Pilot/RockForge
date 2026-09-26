@@ -63,8 +63,9 @@ re-inverting the dependency.
 > **tone detection** (`/detect-tones`), **lyric detection** (`/detect-lyrics`),
 > and the per-point tempo / tuning-cents helpers — all operate on an
 > existing GP job's recording, none transcribe notes. `[ml]` (Demucs/librosa)
-> is still needed for those; `basic-pitch`/`onnxruntime` and the `[youtube]`
-> extra are gone.
+> is still needed for those; `basic-pitch`/`onnxruntime` and the old
+> `[youtube]` INGESTION are gone (today's `[youtube]` extra only fetches the
+> audio of the one video Songsterr's bar times belong to — see below).
 
 **Guitar Pro** (`gp_pipeline.py`): notes/frets/techniques/sections come exact
    from the GP file; audio sync is a manual offset. High fidelity, preferred
@@ -129,10 +130,10 @@ re-inverting the dependency.
    (see below). `infrastructure/songsterr.py` fetches ONLY those times
    (`/api/meta/{id}` → `revisionId`, then `/api/video-points/{id}/{rev}/list`),
    with stdlib `urllib` (no new dependency), ordering the videos the way that
-   tool picks them. **No audio is downloaded** — the user brings the MP3,
-   **converted from that same YouTube video** — Songsterr's own audio is a
-   different recording and does NOT match the times — which is why the
-   `[youtube]`/yt-dlp route stays removed. `GET /songsterr?song=` returns the
+   tool picks them. The recording has to be **that same YouTube video's audio**
+   — Songsterr's own audio is a different recording and does NOT match the
+   times — so the wizard can fetch it (`youtube_audio`, below) or take an MP3
+   the user converted from it. `GET /songsterr?song=` returns the
    videos with their points (the wizard offers it as a closed, optional
    "➕ Extra" in step 3, so the default flow is untouched) (422 for a link we cannot read, **502** when the
    undocumented API changed or is unreachable — never a 500); the wizard's
@@ -189,8 +190,8 @@ re-inverting the dependency.
    (the Letra page finds them on LRCLIB). After an import the wizard fills step
    3's Songsterr link and fetches the videos, so the per-measure times of the
    SAME song are one pick away — tab and times from one source is exactly what
-   makes "measure N is measure N" hold. **Audio is still the user's** (the MP3
-   converted from the chosen video): the yt-dlp route stays removed on purpose.
+   makes "measure N is measure N" hold — and then fetches the default video's
+   audio too, so one link gives tab, times AND recording.
    Never run against the real Songsterr from here (blocked) — TESTING.md
    §7d-quinquies. Guarded by `test_songsterr_gp.py` (a note-for-note round trip
    through `parse_gp_track`: ties, triplets, dead notes, hammer target, bend,
@@ -199,6 +200,40 @@ re-inverting the dependency.
    `test_a_songsterr_tab_becomes_a_gp_file_the_wizard_can_use`. Verified with
    Playwright end to end (Songsterr answers faked): import → tracks → step 3
    with the video's times → a real build whose bars sit on those times.
+
+   **The chosen video's audio, fetched (`/youtube/audio`, `youtube_audio.py`).**
+   Without it the Songsterr import still needed one manual step — convert the
+   video to MP3 by hand — and the user judged the feature not worth having
+   without that step gone, so the earlier "no yt-dlp" decision was reversed at
+   their request (2026-09). Scope is deliberately ONE video's audio: the client
+   sends only an 11-character id (`VIDEO_ID`), we build the `youtu.be` URL, and
+   yt-dlp runs as a **subprocess** with no stdin (the console-tool hard rule),
+   `bestaudio` kept as-is (m4a preferred, no re-encode — the build's ffmpeg
+   reads any of it), `--max-filesize`, a timeout, and the file it reports is
+   only trusted if it is ours (`yt-<uuid>` in `uploads/`). yt-dlp is found like
+   the ML stages find their interpreter (`ytdlp_command`: this process's module
+   when not frozen, a `yt-dlp` program on PATH, else the configured
+   `ml_python`), so the `.exe` works with any of them, and it is the optional
+   `[youtube]` extra, unpinned above because YouTube breaks old releases.
+   YouTube often refuses anonymous downloads; a 403 / "sign in to confirm"
+   comes back as a 502 whose detail says so (`needs_cookies`), and the wizard
+   offers `--cookies-from-browser` from a FIXED list (`COOKIE_BROWSERS`) — the
+   same retry the reference tool offers. No yt-dlp = 503 naming the install;
+   `/system-check` lists it (`_ytdlp`). `/jobs/gp` takes the result as
+   `audio_token` (a bare `yt-…` name under `uploads/`, never a path), and
+   `_sweep_orphan_youtube_audio` collects downloads an abandoned wizard left
+   (same 24 h rule as the GP sweep, keyed on `Job.source`). UI: step 3's
+   Songsterr panel has "Descarregar o áudio deste vídeo" + "Sessão do browser";
+   it runs by itself after an import; audio fetched for one video is dropped
+   when another is picked (its times would not match); a fetched file hides and
+   un-requires the upload like the GP8 embedded audio does. Honest limits: it
+   is against YouTube's terms outside YouTube's own features — personal use,
+   said in the ⓘ; never run against YouTube from here (blocked). Guarded by
+   `test_youtube_audio.py` (the command, id/browser validation, no stdin, the
+   untrusted reported path, 403 → `needs_cookies`, missing/hung yt-dlp),
+   `test_a_youtube_videos_audio_becomes_the_projects_recording` and
+   `test_fetched_youtube_audio_no_job_uses_is_swept`; the wizard flow (refusal
+   → retry with a browser → switch video → build) with Playwright.
 
    **Tied notes** (GP `(17)` in parentheses — a held continuation, not a
    re-pick) are folded into the note they extend in BOTH parsers, never emitted

@@ -15,8 +15,11 @@ MP3 (do vídeo do YouTube) e os tempos por compasso do Songsterr.
       os vídeos dessa música (tempos por compasso) e o link para o MP3
 - [x] 5. Testes (JSON de exemplo, sem rede), docs, Playwright, gates
 
-Decisão: o áudio continua a vir do utilizador (converte o vídeo escolhido) —
-o download do YouTube (yt-dlp) foi removido de propósito e fica removido.
+Decisão (revista a pedido do utilizador, 2026-09): sem o áudio a importação
+"não vale a pena" — o áudio do vídeo escolhido é descarregado com o yt-dlp
+(`youtube_audio.py`, extra `[youtube]`), só esse vídeo, por id.
+- [x] 6. `/youtube/audio` + `audio_token` no `/jobs/gp` + limpeza de órfãos;
+      passo 3 descarrega sozinho após a importação; sessão do browser se 403
 
 # Procurar a letra online e sincronizá-la
 

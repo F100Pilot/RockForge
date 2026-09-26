@@ -1283,6 +1283,16 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
           </div>
           <select id="songsterrVideo" style="margin-top:.4rem;width:100%" hidden></select>
           <p class="meta" id="songsterrInfo" style="margin:.35rem 0 0"></p>
+          <div id="ytAudioRow" class="syncctrls" style="margin-top:.45rem;flex-wrap:wrap" hidden>
+            <button type="button" id="ytAudioBtn" class="secondary"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg> Descarregar o áudio deste vídeo</button>
+            <label class="meta" style="display:flex;align-items:center;gap:.35rem">Sessão do browser
+              <select id="ytCookies" title="Se o YouTube recusar o download, usa a sessão de um browser onde tenhas o YouTube aberto">
+                <option value="">nenhuma</option><option>chrome</option><option>firefox</option><option>edge</option>
+                <option>brave</option><option>opera</option><option>vivaldi</option><option>safari</option><option>chromium</option>
+              </select></label>
+            <button class="info-btn" type="button" data-info="youtube-audio">ⓘ</button>
+          </div>
+          <p class="meta" id="ytAudioInfo" style="margin:.35rem 0 0"></p>
         </details>
         <p class="meta" id="gpSyncHint" style="flex-basis:100%;color:#3fdc8a" hidden></p>
         <p class="meta" style="flex-basis:100%">Um valor aproximado chega — a <b>sincronização fina</b> (início por pista, andamento, arrastar notas) faz-se depois, na partitura.</p>

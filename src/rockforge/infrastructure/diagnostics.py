@@ -365,6 +365,28 @@ def _loader_patch() -> Requirement:
     )
 
 
+def _ytdlp() -> Requirement:
+    from rockforge.infrastructure.youtube_audio import ytdlp_command
+
+    try:
+        cmd = ytdlp_command()
+    except Exception:  # noqa: BLE001 — a diagnostics page must not 500
+        cmd = None
+    return Requirement(
+        key="ytdlp",
+        name="yt-dlp (áudio do YouTube)",
+        found=cmd is not None,
+        detail=" ".join(cmd) if cmd else "em falta",
+        required=False,
+        unlocks=(
+            "Descarregar o áudio do vídeo do YouTube em que o Songsterr marcou os "
+            "tempos por compasso, para usar como gravação."
+        ),
+        without_it="Tens de carregar tu o MP3 convertido desse vídeo.",
+        install='pip install yt-dlp  (ou pip install -e ".[youtube]")',
+    )
+
+
 def check_requirements(settings: Settings, *, gpu_broken: bool = False) -> list[Requirement]:
     """Probe every external dependency, most consequential first."""
     av = _ml_availability()
@@ -376,6 +398,7 @@ def check_requirements(settings: Settings, *, gpu_broken: bool = False) -> list[
         _ml(av),
         _lyrics(av),
         _gpu(gpu_broken, av),
+        _ytdlp(),
         _loader_patch(),
     ]
 

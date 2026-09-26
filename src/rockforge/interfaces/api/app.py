@@ -164,6 +164,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Housekeeping: GP uploads from abandoned wizard sessions have nothing else
     # to collect them (the file is stored before the job exists).
     _sweep_orphan_gp_uploads()
+    _sweep_orphan_youtube_audio()
     task: asyncio.Task[None] | None = None
     if settings.idle_shutdown_s > 0:
         task = asyncio.create_task(_idle_shutdown_watchdog())
@@ -958,6 +959,52 @@ class SongsterrOut(BaseModel):
     videos: list[SongsterrVideoOut]
 
 
+class YouTubeAudioIn(BaseModel):
+    video_id: str = Field(max_length=20)
+    #: A browser on this machine whose YouTube login yt-dlp may reuse, for when
+    #: YouTube refuses an anonymous download.
+    cookies_browser: str | None = Field(default=None, max_length=20)
+
+
+class YouTubeAudioOut(BaseModel):
+    audio_token: str
+    name: str
+    size_bytes: int
+
+
+@app.post("/youtube/audio", response_model=YouTubeAudioOut)
+def youtube_audio(payload: YouTubeAudioIn) -> YouTubeAudioOut:
+    """Fetch the audio of one YouTube video (the one Songsterr's bar times were
+    marked on) with yt-dlp, for ``/jobs/gp``'s ``audio_token``. 422 for a bad id
+    or browser name, 503 when yt-dlp is not installed, 502 when the download
+    fails — its detail says when YouTube wants a browser login. See
+    ``infrastructure/youtube_audio.py``."""
+    from rockforge.infrastructure.youtube_audio import (
+        COOKIE_BROWSERS,
+        VIDEO_ID,
+        YouTubeAudioError,
+        YtDlpMissingError,
+        download_audio,
+    )
+
+    if not VIDEO_ID.match(payload.video_id):
+        raise HTTPException(422, "invalid YouTube video id")
+    if payload.cookies_browser and payload.cookies_browser not in COOKIE_BROWSERS:
+        raise HTTPException(422, f"unknown browser: {payload.cookies_browser}")
+    try:
+        path = download_audio(
+            payload.video_id, settings.work_dir / "uploads",
+            cookies_browser=payload.cookies_browser or None,
+        )
+    except YtDlpMissingError as exc:
+        raise HTTPException(503, str(exc)) from exc
+    except YouTubeAudioError as exc:
+        hint = (" — o YouTube pediu uma sessão iniciada: escolhe um browser onde "
+                "tenhas o YouTube aberto e tenta de novo") if exc.needs_cookies else ""
+        raise HTTPException(502, f"{exc}{hint}") from exc
+    return YouTubeAudioOut(audio_token=path.name, name=path.name, size_bytes=path.stat().st_size)
+
+
 class SongsterrImportIn(BaseModel):
     song: str = Field(max_length=500)
 
@@ -1119,6 +1166,8 @@ def create_gp_job(
     # Use the recording the GP8 file carries instead of an upload — the audio
     # its sync points were made against (see gpif_parser.embedded_audio).
     use_embedded_audio: bool = Form(False),
+    # The audio of the chosen YouTube video, already fetched by /youtube/audio.
+    audio_token: str = Form(""),
     # Where each bar starts in the recording (JSON list of seconds), e.g. the
     # Songsterr timestamps /songsterr returned for the video the user picked.
     bar_times: str = Form(""),
@@ -1159,6 +1208,14 @@ def create_gp_job(
             audio_dest = extract_embedded_audio(gp_path, upload_dir / str(uuid.uuid4()))
         except IngestionError as exc:
             raise HTTPException(422, str(exc)) from exc
+    elif audio_token.strip():
+        from rockforge.infrastructure.youtube_audio import FILE_PREFIX
+
+        # Only a bare name this server wrote (yt-…) under uploads/ — never a path.
+        name = Path(audio_token.strip()).name
+        audio_dest = upload_dir / name
+        if not name.startswith(FILE_PREFIX) or not audio_dest.is_file():
+            raise HTTPException(404, "audio_token not found — fetch the audio via /youtube/audio")
     else:
         if audio is None or not audio.filename:
             raise HTTPException(
@@ -1429,6 +1486,37 @@ def _sweep_orphan_gp_uploads() -> int:
         logger.warning("orphan GP sweep failed", exc_info=True)
     if removed:
         logger.info("removed %d orphaned GP upload(s) from %s", removed, gp_dir)
+    return removed
+
+
+def _sweep_orphan_youtube_audio() -> int:
+    """Delete fetched YouTube audio (``uploads/yt-*``) no job uses, past the age
+    limit — ``/youtube/audio`` runs in the wizard, before the job exists, so an
+    abandoned wizard leaves the file behind (same reasoning as the GP sweep).
+    Never raises."""
+    from sqlalchemy import select
+
+    from rockforge.infrastructure.youtube_audio import FILE_PREFIX
+
+    up_dir = settings.work_dir / "uploads"
+    if not up_dir.is_dir():
+        return 0
+    removed = 0
+    try:
+        cutoff = time.time() - GP_ORPHAN_MAX_AGE_S
+        with _session_factory() as session:
+            in_use = {str(src) for (src,) in session.execute(select(Job.source)).all()}
+        for f in up_dir.glob(f"{FILE_PREFIX}*"):
+            if not f.is_file() or str(f) in in_use:
+                continue
+            try:
+                if f.stat().st_mtime < cutoff:
+                    f.unlink()
+                    removed += 1
+            except OSError:
+                continue
+    except Exception:  # noqa: BLE001 — housekeeping must never block startup
+        logger.warning("orphan YouTube audio sweep failed", exc_info=True)
     return removed
 
 

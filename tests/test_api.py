@@ -846,6 +846,76 @@ def test_a_songsterr_tab_becomes_a_gp_file_the_wizard_can_use(
     assert r.status_code == 502 and "Songsterr" in r.text
 
 
+def test_a_youtube_videos_audio_becomes_the_projects_recording(
+    client: TestClient, monkeypatch, tmp_path
+) -> None:
+    """/youtube/audio fetches the chosen video's audio; /jobs/gp takes its token
+    in place of an upload — only a yt-… file this server wrote, never a path."""
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.infrastructure import youtube_audio
+
+    def fake(video_id: str, dest: Path, **kw):  # noqa: ANN003, ANN202
+        assert video_id == "dQw4w9WgXcQ" and kw["cookies_browser"] == "firefox"
+        dest.mkdir(parents=True, exist_ok=True)
+        out = dest / "yt-abc.m4a"
+        out.write_bytes(b"audio!")
+        return out
+
+    monkeypatch.setattr(youtube_audio, "download_audio", fake)
+    r = client.post(
+        "/youtube/audio", json={"video_id": "dQw4w9WgXcQ", "cookies_browser": "firefox"})
+    assert r.status_code == 200, r.text
+    assert r.json() == {"audio_token": "yt-abc.m4a", "name": "yt-abc.m4a", "size_bytes": 6}
+
+    gp = client.post("/gp/inspect", files={
+        "file": ("song.gp5", _make_gp5_bytes(tmp_path), "application/octet-stream")}).json()
+    job = client.post("/jobs/gp", data={
+        "gp_token": gp["gp_token"], "lead_track": "0", "audio_token": "yt-abc.m4a"})
+    assert job.status_code == 202, job.text
+    with app_module._session_factory() as session:
+        source = session.get(app_module.Job, job.json()["id"]).source
+    assert Path(source) == app_module.settings.work_dir / "uploads" / "yt-abc.m4a"
+
+    for bad in ("../../etc/passwd", "someone-elses.mp3", "yt-missing.m4a"):
+        r = client.post("/jobs/gp", data={
+            "gp_token": gp["gp_token"], "lead_track": "0", "audio_token": bad})
+        assert r.status_code == 404, bad
+
+    assert client.post("/youtube/audio", json={"video_id": "nope"}).status_code == 422
+    assert client.post("/youtube/audio", json={
+        "video_id": "dQw4w9WgXcQ", "cookies_browser": "netscape"}).status_code == 422
+
+    def refused(*_a, **_k):  # noqa: ANN002, ANN003, ANN202
+        raise youtube_audio.YouTubeAudioError("HTTP Error 403", needs_cookies=True)
+
+    monkeypatch.setattr(youtube_audio, "download_audio", refused)
+    r = client.post("/youtube/audio", json={"video_id": "dQw4w9WgXcQ"})
+    assert r.status_code == 502 and "browser" in r.json()["detail"]
+
+    def missing(*_a, **_k):  # noqa: ANN002, ANN003, ANN202
+        raise youtube_audio.YtDlpMissingError("o yt-dlp não está instalado")
+
+    monkeypatch.setattr(youtube_audio, "download_audio", missing)
+    assert client.post("/youtube/audio", json={"video_id": "dQw4w9WgXcQ"}).status_code == 503
+
+
+def test_fetched_youtube_audio_no_job_uses_is_swept(client: TestClient, tmp_path) -> None:
+    import os
+
+    import rockforge.interfaces.api.app as app_module
+
+    up = app_module.settings.work_dir / "uploads"
+    up.mkdir(parents=True, exist_ok=True)
+    old, fresh, other = up / "yt-old.m4a", up / "yt-fresh.m4a", up / "mine.mp3"
+    for f in (old, fresh, other):
+        f.write_bytes(b"x")
+    ancient = 0
+    os.utime(old, (ancient, ancient))
+    os.utime(other, (ancient, ancient))
+    assert app_module._sweep_orphan_youtube_audio() == 1
+    assert not old.exists() and fresh.exists() and other.exists()
+
+
 def test_songsterr_lookup_errors_are_422_for_a_bad_link_and_502_for_songsterr(
     client: TestClient, monkeypatch
 ) -> None:
