@@ -1209,6 +1209,19 @@ tones, sections and the exports — which is what made it confusing.
   Partitura, a 1000px viewport), no pytest coverage — same category as the
   other browser-only sections in `TESTING.md`.
 
+**Modals with typed input never close from the backdrop.** The wizard, batch,
+"Editar info", tone builder and ⚙️ Definições close only from their own
+✕/Cancelar. A press that starts inside a field (selecting text, a trackpad tap
+that drifts) and is released outside the box is dispatched by the browser as a
+click on the OVERLAY — the common ancestor — so `e.target === overlay`
+"click outside to close" silently threw away a half-filled wizard ("a caixa
+desaparece e tenho de voltar ao início"). Reproduced with Playwright (press in
+the title field, release on the backdrop → closed) and verified fixed. Only the
+read-only ⓘ box and the confirm dialog still close from outside. Likewise a
+file dropped OUTSIDE a drop zone is `preventDefault`ed at the document level
+(`isDropZone`): the browser's default is to open the file, navigating away
+from the app. Do not re-add backdrop-close to a form modal.
+
 The "Novo projeto" modal is a **4-step wizard** (`web/index.html`), not a flat
 form, because the old single-form layout crammed ~15 fields (including a
 `tone_base`/`tone_names` *text* box impossible to fill by hand) and gave no

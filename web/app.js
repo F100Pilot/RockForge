@@ -161,6 +161,23 @@ document.getElementById('wizardNext').addEventListener('click', () => {
   if (wizardStep === 1) { document.getElementById('gpInspectForm').requestSubmit(); return; }
   setWizardStep(wizardStep + 1);
 });
+// Modals that hold typed input (new project, batch, info edit, tones,
+// settings) close ONLY from their own ✕/Cancelar — never from a click on the
+// backdrop. A press that starts in a field (selecting text, a trackpad tap
+// that drifts) and is released outside the box is dispatched as a click on
+// the backdrop, so "click outside to close" threw away a half-filled wizard.
+// Only the read-only ⓘ box and the confirm dialog still close from outside.
+//
+// A file dropped anywhere that is not a drop zone must not reach the browser:
+// its default action is to OPEN the file, navigating away from the app (the
+// wizard and everything typed in it gone).
+const isDropZone = t => !!(t && t.closest) && !!t.closest('.file-drop, #homeDrop');
+document.addEventListener('dragover', e => {
+  if (isDropZone(e.target)) return;
+  e.preventDefault();
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'none';
+});
+document.addEventListener('drop', e => { if (!isDropZone(e.target)) e.preventDefault(); });
 document.querySelectorAll('[data-new]').forEach(b => {
   b.addEventListener('click', () => openNewJobModal(b.dataset.new));
 });
@@ -181,9 +198,6 @@ homeDrop.addEventListener('drop', e => {
 fetch('/version').then(r => r.json()).then(d => {
   document.getElementById('appVersion').textContent = 'v' + d.version;
 }).catch(() => {});
-document.getElementById('newJobOverlay').addEventListener('click', e => {
-  if (e.target.id === 'newJobOverlay') closeNewJobModal();
-});
 
 // ── Batch processing: several (GP, audio) pairs, created one job at a time ───
 // No new backend endpoint — this loops the same /gp/inspect + /jobs/gp calls
@@ -238,9 +252,6 @@ function closeBatchModal() { document.getElementById('batchOverlay').hidden = tr
 document.getElementById('openBatchModal').addEventListener('click', openBatchModal);
 document.getElementById('batchClose').addEventListener('click', closeBatchModal);
 document.getElementById('batchClose2').addEventListener('click', closeBatchModal);
-document.getElementById('batchOverlay').addEventListener('click', e => {
-  if (e.target.id === 'batchOverlay') closeBatchModal();
-});
 function refreshBatchPairing() {
   const gpFiles = [...document.getElementById('batchGpFiles').files];
   const audioFiles = [...document.getElementById('batchAudioFiles').files];
@@ -402,9 +413,6 @@ function closeSettings() { document.getElementById('settingsOverlay').hidden = t
 document.getElementById('openSettings').addEventListener('click', openSettings);
 document.querySelectorAll('[data-open-settings]').forEach(b => b.addEventListener('click', openSettings));
 document.getElementById('settingsClose').addEventListener('click', closeSettings);
-document.getElementById('settingsOverlay').addEventListener('click', e => {
-  if (e.target.id === 'settingsOverlay') closeSettings();
-});
 document.getElementById('gpuReset').addEventListener('click', async () => {
   try {
     const r = await fetch('/gpu-reset', { method: 'POST' });
@@ -999,9 +1007,6 @@ window.openMetaEdit = openMetaEdit;
 function closeMeta() { document.getElementById('metaOverlay').hidden = true; }
 document.getElementById('metaClose').onclick = closeMeta;
 document.getElementById('metaCancel').onclick = closeMeta;
-document.getElementById('metaOverlay').addEventListener('click', e => {
-  if (e.target.id === 'metaOverlay') closeMeta();
-});
 document.getElementById('metaSave').onclick = async () => {
   if (!selectedJob) return;
   const title = document.getElementById('metaTitle').value.trim();
@@ -2677,9 +2682,6 @@ function closeToneBuilder() {
 }
 document.getElementById('openToneBuilder').addEventListener('click', openToneBuilder);
 document.getElementById('toneClose').addEventListener('click', closeToneBuilder);
-document.getElementById('toneOverlay').addEventListener('click', e => {
-  if (e.target.id === 'toneOverlay') closeToneBuilder();
-});
 
 function renderToneListEditor() {
   const el = document.getElementById('toneListEditor');
