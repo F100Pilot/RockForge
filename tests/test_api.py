@@ -2017,6 +2017,75 @@ def test_detect_lyrics_unknown_job_404(client: TestClient) -> None:
     assert client.post("/jobs/nope/detect-lyrics").status_code == 404
 
 
+def test_detect_lyrics_can_align_known_lyrics_instead_of_transcribing(
+    client: TestClient,
+) -> None:
+    job = _create_job(client)
+    r = client.post(f"/jobs/{job['id']}/detect-lyrics", json={"align_lines": [
+        {"time": 12.0, "text": "Eu não sei o que fazer"},
+        {"time": None, "text": "com o meu coração, está tudo"},
+        {"time": 20.0, "text": "   "},
+    ]})
+    assert r.status_code == 202, r.text
+
+    import rockforge.interfaces.api.app as app_module
+
+    with app_module._session_factory() as session:
+        params = dict(session.get(app_module.Job, job["id"]).params or {})
+    assert params["lyrics_align"] == {"language": "pt", "lines": [
+        {"time": 12.0, "text": "Eu não sei o que fazer"},
+        {"time": None, "text": "com o meu coração, está tudo"}]}
+
+    client.post(f"/jobs/{job['id']}/detect-lyrics")  # a plain detection again
+    with app_module._session_factory() as session:
+        params = dict(session.get(app_module.Job, job["id"]).params or {})
+    assert "lyrics_align" not in params
+    bad = client.post(f"/jobs/{job['id']}/detect-lyrics",
+                      json={"align_lines": [{"text": "x"}], "language": "Portuguese!"})
+    assert bad.status_code == 422
+
+
+def test_lyrics_lookup_returns_the_lrclib_candidates(client: TestClient, monkeypatch) -> None:
+    from rockforge.infrastructure import lyrics_lookup
+
+    seen: list[str] = []
+
+    def fake(url: str):  # noqa: ANN202
+        seen.append(url)
+        return [{"id": 7, "trackName": "Ocean Eyes", "artistName": "Billie Eilish",
+                 "albumName": "dont smile at me", "duration": 200.0, "instrumental": False,
+                 "plainLyrics": "I've been watching you", "syncedLyrics": "[00:10.00] I've been"}]
+
+    monkeypatch.setattr(lyrics_lookup, "_http_get_json", fake)
+    r = client.get("/lyrics-lookup", params={
+        "title": "Ocean Eyes", "artist": "Billie Eilish feat. X", "duration": 201.5})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["searched_artist"] == "Billie Eilish"
+    assert body["candidates"][0]["synced"] == "[00:10.00] I've been"
+    assert "artist_name=Billie+Eilish" in seen[0]
+
+    assert client.get("/lyrics-lookup", params={"title": "x"}).status_code == 422
+
+    def down(url: str):  # noqa: ANN202
+        raise lyrics_lookup.LyricsLookupError("não consegui contactar o LRCLIB (timeout)")
+
+    monkeypatch.setattr(lyrics_lookup, "_http_get_json", down)
+    r = client.get("/lyrics-lookup", params={"title": "x", "artist": "y"})
+    assert r.status_code == 502 and "LRCLIB" in r.text
+
+
+def test_lrc_text_becomes_the_editors_words_with_the_offset(client: TestClient) -> None:
+    r = client.post("/lyrics/parse", json={
+        "text": "[00:10.00] hello darkness\n[00:14.00] my old friend", "offset_s": -2.0})
+    assert r.status_code == 200, r.text
+    words = [(e["lyric"], round(e["time"], 2)) for e in r.json()["events"]]
+    assert words[0] == ("hello", 8.0)
+    assert words[-1][0] == "friend+" and words[2] == ("my", 12.0)
+    plain = client.post("/lyrics/parse", json={"text": "hello darkness\nmy old friend"})
+    assert plain.status_code == 422
+
+
 def test_rebuild_stores_lyrics_events_and_resets_status(client: TestClient) -> None:
     job = _create_job(client)
     client.post(f"/jobs/{job['id']}/detect-lyrics")

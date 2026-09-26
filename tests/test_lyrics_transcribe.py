@@ -116,3 +116,46 @@ def test_rms_gate_rejects_silence(tmp_path) -> None:
     t = np.linspace(0, 1, sr, dtype="float32")
     sf.write(loud, (0.5 * np.sin(2 * np.pi * 220 * t)).astype("float32"), sr)
     assert vocals_has_signal(loud)
+
+
+def test_known_lines_are_aligned_in_windows_around_their_timestamps() -> None:
+    from rockforge.infrastructure.lyrics.whisperx_adapter import (
+        ALIGN_LAST_LINE_S,
+        ALIGN_MARGIN_S,
+        alignment_segments,
+    )
+
+    segs = alignment_segments(
+        [{"time": 20.0, "text": "second line"}, {"time": 10.0, "text": "first line"},
+         {"time": 30.0, "text": "  "}],
+        duration=40.0,
+    )
+    assert segs == [
+        {"start": 10.0 - ALIGN_MARGIN_S, "end": 20.0 + ALIGN_MARGIN_S, "text": "first line"},
+        {"start": 20.0 - ALIGN_MARGIN_S,
+         "end": min(40.0, 20.0 + ALIGN_LAST_LINE_S + ALIGN_MARGIN_S), "text": "second line"},
+    ]
+
+
+def test_plain_lyrics_are_aligned_over_the_whole_recording() -> None:
+    from rockforge.infrastructure.lyrics.whisperx_adapter import alignment_segments
+
+    segs = alignment_segments(
+        [{"time": None, "text": "hello darkness"}, {"time": None, "text": "my old friend"}], 180.0)
+    assert segs == [{"start": 0.0, "end": 180.0, "text": "hello darkness my old friend"}]
+    assert alignment_segments([], 180.0) == []
+
+
+def test_aligned_known_lyrics_keep_every_word_and_their_lines() -> None:
+    from rockforge.infrastructure.lyrics.whisperx_adapter import aligned_lines_to_events
+
+    events = aligned_lines_to_events([
+        {"start": 9.0, "words": [
+            {"word": "hello", "start": 10.0, "end": 10.4, "score": 0.1},  # low score: kept
+            {"word": "99"},                                             # unplaceable: kept
+            {"word": "friends", "start": 11.0, "end": 11.5},
+        ]},
+        {"start": 12.0, "words": [{"word": "again", "start": 12.2, "end": 12.8}]},
+    ], one_line_per_segment=True)
+    assert [(e.lyric, round(e.time, 2)) for e in events] == [
+        ("hello", 10.0), ("99", 10.4), ("friends+", 11.0), ("again+", 12.2)]

@@ -379,6 +379,33 @@ def _log_lyrics_stage(params: dict[str, Any], message: str) -> None:
     params["lyrics_log"] = [*log, f"[{stamp}] {message}"][-50:]
 
 
+def _whisperx_command(
+    python: str,
+    runner: Path,
+    vocals: Path,
+    output: Path,
+    *,
+    model: str,
+    device: str,
+    compute_type: str,
+    align_json: Path | None = None,
+) -> list[str]:
+    """The runner invocation — transcription, or alignment of KNOWN lyrics when
+    ``align_json`` names the lines to place (``/detect-lyrics`` with
+    ``align_lines``)."""
+    cmd = [
+        python, str(runner),
+        "--vocals", str(vocals),
+        "--output", str(output),
+        "--model", model,
+        "--device", device,
+        "--compute-type", compute_type,
+    ]
+    if align_json is not None:
+        cmd += ["--align-json", str(align_json)]
+    return cmd
+
+
 @celery_app.task(name="rockforge.detect_lyrics", time_limit=3600)
 def detect_lyrics(job_id: str) -> None:
     """Detect lyrics from a job's source recording (Demucs vocals + WhisperX).
@@ -498,15 +525,30 @@ def detect_lyrics(job_id: str) -> None:
                 _commit_params()
                 vocals_stem = separator.separate_vocals(normalized, workdir)
 
-                # Run WhisperX transcription in a SUBPROCESS to avoid the
-                # CUDA init deadlock (faster-whisper #907). The runner
-                # script imports whisperx in a fresh process, transcribes,
-                # and writes JSON to a temp file.
-                params["lyrics_status"] = "transcribing"
-                _log_lyrics_stage(
-                    params,
-                    f"transcribing (WhisperX/{settings.whisper_model}, subprocess)",
-                )
+                # Run WhisperX in a SUBPROCESS to avoid the CUDA init
+                # deadlock (faster-whisper #907). The runner script imports
+                # whisperx in a fresh process and writes JSON to a temp file.
+                # With lyrics to align (found online, or already in the
+                # editor) it places THOSE words instead of transcribing.
+                import json as _json
+
+                align = params.get("lyrics_align")
+                align_json: Path | None = None
+                if isinstance(align, dict) and align.get("lines"):
+                    align_json = workdir / "align_lines.json"
+                    align_json.write_text(_json.dumps(align, ensure_ascii=False), encoding="utf-8")
+                    params["lyrics_status"] = "aligning"
+                    _log_lyrics_stage(
+                        params,
+                        f"aligning {len(align['lines'])} known line(s) to the vocals "
+                        f"(WhisperX, language '{align.get('language') or 'en'}')",
+                    )
+                else:
+                    params["lyrics_status"] = "transcribing"
+                    _log_lyrics_stage(
+                        params,
+                        f"transcribing (WhisperX/{settings.whisper_model}, subprocess)",
+                    )
                 _commit_params()
                 events_json = workdir / "whisperx_events.json"
                 runner = _mlpy.runner_path(
@@ -517,14 +559,11 @@ def detect_lyrics(job_id: str) -> None:
 
                 def _run_whisperx(dev: str, compute: str):  # type: ignore[no-untyped-def]
                     return _sp.run(
-                        [
-                            _python, str(runner),
-                            "--vocals", str(vocals_stem),
-                            "--output", str(events_json),
-                            "--model", settings.whisper_model,
-                            "--device", dev,
-                            "--compute-type", compute,
-                        ],
+                        _whisperx_command(
+                            _python, runner, vocals_stem, events_json,
+                            model=settings.whisper_model, device=dev,
+                            compute_type=compute, align_json=align_json,
+                        ),
                         capture_output=True, text=True,
                         stdin=_sp.DEVNULL, timeout=WHISPERX_TIMEOUT_S,
                     )
@@ -594,16 +633,20 @@ def detect_lyrics(job_id: str) -> None:
                     )
                     _commit_params()
 
-                import json as _json
-
                 raw_events = _json.loads(events_json.read_text(encoding="utf-8"))
                 params["lyrics_events"] = raw_events
                 params["lyrics_status"] = "ready" if raw_events else "empty"
-                _log_lyrics_stage(params, f"done — {len(raw_events)} word(s) detected")
+                _log_lyrics_stage(
+                    params,
+                    f"done — {len(raw_events)} word(s) "
+                    + ("aligned" if align_json is not None else "detected"),
+                )
         except Exception as exc:  # never crash the job over lyric detection
             params["lyrics_status"] = "unavailable"
             warnings.append(f"lyric detection failed: {type(exc).__name__}: {exc}")
             _log_lyrics_stage(params, f"failed: {type(exc).__name__}: {exc}")
+        # One request, one run: a later plain "Detetar letra" must transcribe.
+        params.pop("lyrics_align", None)
         job.params = {**params}
         job.warnings = list(warnings)
         session.commit()

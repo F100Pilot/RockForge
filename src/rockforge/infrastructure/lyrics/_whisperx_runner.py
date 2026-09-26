@@ -10,7 +10,8 @@ Usage:
     python -m rockforge.infrastructure.lyrics._whisperx_runner \
         --vocals /path/to/vocals.wav \
         --output /path/to/events.json \
-        --model small --device cuda
+        --model small --device cuda \
+        [--align-json /path/to/lines.json]   # align known lyrics instead
 """
 
 from __future__ import annotations
@@ -67,6 +68,9 @@ def main() -> None:
     parser.add_argument("--model", default="small")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--compute-type", default="")  # "" → pick by device
+    # Align KNOWN lyrics instead of transcribing: a JSON file of
+    # {"lines": [{"time", "text"}], "language": "pt"}.
+    parser.add_argument("--align-json", default="")
     args = parser.parse_args()
 
     # Must happen BEFORE whisperx/ctranslate2 load their CUDA libs (below).
@@ -86,7 +90,13 @@ def main() -> None:
         device=args.device,
         compute_type=args.compute_type or None,
     )
-    events = transcriber.transcribe(Path(args.vocals))
+    if args.align_json:
+        spec = json.loads(Path(args.align_json).read_text(encoding="utf-8"))
+        events = transcriber.align(
+            Path(args.vocals), list(spec.get("lines") or []), str(spec.get("language") or "en")
+        )
+    else:
+        events = transcriber.transcribe(Path(args.vocals))
     result = [
         {"time": e.time, "length": e.length, "lyric": e.lyric} for e in events
     ]

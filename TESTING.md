@@ -637,6 +637,25 @@ traceback. Behaviour to confirm on such a machine:
   a matching CUDA build of torch/ctranslate2 + cuDNN DLLs on PATH (README §2b);
   or `ROCKFORGE_WHISPERX_DEVICE=cpu` / `ROCKFORGE_DEMUCS_DEVICE=cpu` to force CPU.
 
+### 7c-bis. Lyrics from LRCLIB + synchronising them (network; alignment needs `[ml,lyrics]`)
+
+The sandbox cannot reach lrclib.net, so the lookup was tested only against
+fakes and the UI with `/lyrics-lookup` faked. On a machine with internet:
+
+1. Open a project of an official song → Letra → "Procurar letra online": cards
+   must list, entries marked "sincronizada" first, each with its length against
+   the recording.
+2. "Usar" on a synced one → the editor fills and the words appear on the score.
+   If they are early/late, put the cursor where the voice starts →
+   "1ª palavra = cursor"; −/+ nudge. "Aplicar e reconstruir" → in game.
+3. With `[ml,lyrics]`: "Sincronizar com a gravação" → the log must say
+   "aligning N known line(s)… language 'xx'" and end "done — N word(s)
+   aligned"; every word of the lyrics must still be there, now timed per word.
+4. Without the extras: the same button must end "unavailable" and the editor
+   must still hold the lyrics it had (not the old committed ones).
+5. A plain-only entry's "Sincronizar com a gravação" aligns over the whole
+   song — expect it to be rougher; check a few lines by ear.
+
 ### 7d. Automatic tone detection (needs `[ml]`)
 
 1. "Detetar tom" → poll → the result now shows the detected **spectral profile**

@@ -716,6 +716,13 @@ const INFO = {
       '<p>A pesquisa é por texto, por isso pode trazer versões de outros artistas, compilações ou reedições — cada cartão mostra a faixa encontrada e a fonte para o veres. "Sem capa" não usa imagem nenhuma. Precisa de internet; sem ela, preenche à mão como antes.</p>' +
       '<p>A capa escolhida é descarregada quando o projeto é criado. Num projeto que já existe, usa "Procurar capa online" na página Capa.</p>'
   },
+  'lyrics-lookup': {
+    title: 'Procurar a letra e sincronizá-la',
+    body: '<p>Procura a letra no <strong>LRCLIB</strong> (base de dados aberta de letras) pelo título e banda do projeto. Muitas letras vêm <strong>sincronizadas</strong> por linha; outras são <strong>só texto</strong>.</p>' +
+      '<p><strong>Usar</strong> carrega a letra sincronizada no editor com os tempos da versão em que foi feita (normalmente a oficial). Se a tua gravação é essa versão, já bate certo; se tem uma introdução diferente, <strong>1ª palavra = cursor</strong> (põe o cursor onde começa a voz) ou os botões −/+ deslocam a letra toda.</p>' +
+      '<p><strong>Sincronizar com a gravação</strong> usa o WhisperX para medir na voz da <em>tua</em> gravação o tempo de <em>cada palavra</em> da letra que está no editor — as palavras ficam as certas, só os tempos são medidos. Numa letra só texto procura na música inteira (menos fiável). Precisa dos extras <code>[ml,lyrics]</code> e demora alguns minutos.</p>' +
+      '<p>A letra fica pendente até "Aplicar e reconstruir". Remixes de fãs e músicas feitas por IA raramente estão no LRCLIB — aí usa "Detetar letra" ou escreve-a no editor.</p>'
+  },
   'cover-art': {
     title: 'Capa do álbum',
     body: '<p>Imagem JPG ou PNG incluída no bundle como <code>cover.*</code> e referenciada no <code>rockforge.rs2dlc</code> — usa-a como capa ao abrir o projeto no DLC Builder (que gera as texturas DDS do jogo).<br>O upload não reconstrói o bundle — clica em "Aplicar e reconstruir" na tab Partitura para incluir a capa.</p>'
@@ -3172,6 +3179,7 @@ document.getElementById('teDelete').addEventListener('click', () => {
 
 // ---- Lyrics editor ----
 function renderLyricsRows() {
+  document.getElementById('lyricsSyncRow').hidden = !lyricsEvents.length;
   const tb = document.getElementById('lyricsRows');
   tb.innerHTML = lyricsEvents.map((e, i) => `
     <tr data-i="${i}">
@@ -3211,6 +3219,7 @@ const LYRICS_STATUS_LABEL = {
   none: '', detecting: 'a iniciar (a carregar modelos ML)…', normalizing: 'a normalizar áudio…',
   separating: 'a isolar a voz (Demucs) — pode demorar vários minutos…',
   transcribing: 'a transcrever (WhisperX)…',
+  aligning: 'a sincronizar a letra com a gravação (WhisperX)…',
   ready: 'deteção concluída', empty: 'nenhuma letra detetada',
   unavailable: 'deteção indisponível (extra "lyrics" não instalado)',
 };
@@ -3220,11 +3229,12 @@ const LYRICS_STAGES = {
   normalizing:  { start: 0.08, end: 0.15, dur: 30000 },
   separating:   { start: 0.15, end: 0.80, dur: 300000 },
   transcribing: { start: 0.80, end: 0.98, dur: 90000 },
+  aligning:     { start: 0.80, end: 0.98, dur: 60000 },
 };
-const LYRICS_DETECTING_STATUSES = new Set(['detecting', 'normalizing', 'separating', 'transcribing']);
+const LYRICS_DETECTING_STATUSES = new Set(['detecting', 'normalizing', 'separating', 'transcribing', 'aligning']);
 
 // How long (ms) each stage is allowed before we flag it as stuck.
-const LYRICS_STUCK_MS = { detecting: 5*60*1000, normalizing: 10*60*1000, separating: 30*60*1000, transcribing: 15*60*1000 };
+const LYRICS_STUCK_MS = { detecting: 5*60*1000, normalizing: 10*60*1000, separating: 30*60*1000, transcribing: 15*60*1000, aligning: 15*60*1000 };
 let _lyricsLastStatus = null, _lyricsStatusSince = 0;
 
 function updateLyricsProgress(status, log, forceStuck) {
@@ -3294,6 +3304,13 @@ async function loadLyrics(id) {
       if (!LYRICS_DETECTING_STATUSES.has(b.status)) {
         clearInterval(lyricsPollTimer);
         lyricsEvents = eventsToRows(b.events);
+        // A failed alignment must not cost the lyrics it was aligning: they
+        // may exist only in the editor (loaded from LRCLIB, not yet rebuilt).
+        if (lyricsBeforeAlign && b.status !== 'ready') {
+          lyricsEvents = lyricsBeforeAlign;
+          toast('A sincronização não correu — a letra ficou como estava. Vê o registo acima.');
+        }
+        lyricsBeforeAlign = null;
         renderLyricsRows();
       }
     }, 3000);
@@ -3309,6 +3326,165 @@ async function detectLyrics() {
   await loadLyrics(selectedJob.id);
 }
 document.getElementById('detectLyrics').addEventListener('click', detectLyrics);
+
+// ── Lyrics found online (LRCLIB) + synchronising them to the recording ───────
+// Found → CHOSEN → placed. An entry with timestamps goes straight into the
+// editor (its times are those of the release it was made from); the tools
+// below then line it up with THIS recording: shift it, or have WhisperX
+// measure every word on the vocals (/detect-lyrics with align_lines).
+let lyricsCandidates = [];
+let lyricsBeforeAlign = null;  // the editor's rows while an alignment runs
+const redrawScore = () => { if (arrangements.length) showArr(currentArr); };
+
+const fmtMinSec = s => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
+
+// Plain lyrics (no timing) as alignment lines.
+const plainLines = text => text.split(/\r?\n/).map(t => t.trim()).filter(Boolean)
+  .map(t => ({ time: null, text: t }));
+
+// The editor's words regrouped into the lines they end ("+"), each at the time
+// of its first word — what alignment needs to know where to look.
+function editorLines() {
+  const lines = [];
+  let cur = null;
+  for (const e of [...lyricsEvents].sort((a, b) => a.time - b.time)) {
+    const w = e.lyric.trim();
+    if (!w) continue;
+    if (!cur) cur = { time: e.time, text: '' };
+    cur.text += w.endsWith('-') ? w.slice(0, -1) : (cur.text && !cur.joinNext ? ` ${w}` : w);
+    cur.joinNext = w.endsWith('-');
+    if (e.lineBreak) { lines.push({ time: cur.time, text: cur.text }); cur = null; }
+  }
+  if (cur) lines.push({ time: cur.time, text: cur.text });
+  return lines;
+}
+
+function renderLyricsCandidates() {
+  const el = document.getElementById('lyricsResults');
+  el.replaceChildren();
+  for (const c of lyricsCandidates) {
+    const card = document.createElement('div');
+    card.className = 'lyr-card';
+    const body = document.createElement('div');
+    body.className = 'lyr-body';
+    const title = document.createElement('b');
+    title.textContent = `${c.track} — ${c.artist}`;
+    const meta = document.createElement('span');
+    meta.className = 'lyr-meta';
+    const badge = document.createElement('span');
+    badge.className = 'lyr-badge ' + (c.synced ? 'synced' : 'plain');
+    badge.textContent = c.instrumental ? 'instrumental' : c.synced ? 'sincronizada' : 'só texto';
+    let len = '';
+    if (c.duration) {
+      len = fmtMinSec(c.duration);
+      if (waveDuration) {
+        const gap = waveDuration - c.duration;
+        len += Math.abs(gap) < 2 ? ' (igual à tua gravação)'
+          : ` (a tua gravação: ${fmtMinSec(waveDuration)}, ${gap > 0 ? '+' : '−'}${Math.round(Math.abs(gap))} s)`;
+      }
+    }
+    meta.append(badge, [c.album, len].filter(Boolean).join(' · '));
+    const preview = document.createElement('span');
+    preview.className = 'lyr-preview';
+    preview.textContent = (c.plain || '').split('\n').filter(Boolean).slice(0, 2).join('\n');
+    body.append(title, meta, preview);
+    const acts = document.createElement('div');
+    acts.className = 'lyr-acts';
+    const btn = (label, fn) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'secondary'; b.textContent = label;
+      b.addEventListener('click', fn);
+      acts.append(b);
+    };
+    if (c.synced) btn('Usar', () => useLyricsCandidate(c));
+    else if (c.plain) btn('Sincronizar com a gravação', () => alignLyrics(plainLines(c.plain), 'só texto'));
+    card.append(body, acts);
+    el.append(card);
+  }
+}
+
+document.getElementById('lyricsSearch').addEventListener('click', async () => {
+  if (!selectedJob) return;
+  const info = document.getElementById('lyricsSearchInfo');
+  const btn = document.getElementById('lyricsSearch');
+  btn.disabled = true;
+  info.textContent = 'A procurar…';
+  try {
+    const q = `title=${encodeURIComponent(selectedJob.title || '')}&artist=${encodeURIComponent(selectedJob.artist || '')}`
+      + (waveDuration ? `&duration=${waveDuration.toFixed(1)}` : '');
+    const r = await getJSON(`/lyrics-lookup?${q}`);
+    lyricsCandidates = r.candidates || [];
+    info.textContent = lyricsCandidates.length
+      ? `${lyricsCandidates.length} resultado(s) no LRCLIB — escolhe a versão da tua gravação.`
+      : `Nada encontrado no LRCLIB para "${r.searched_title}" de ${r.searched_artist}. `
+        + 'Remixes de fãs e músicas feitas por IA raramente lá estão — usa "Detetar letra" ou escreve-a no editor.';
+  } catch (err) {
+    lyricsCandidates = [];
+    info.textContent = `Não consegui procurar agora (${err.message}).`;
+  } finally {
+    btn.disabled = false;
+  }
+  renderLyricsCandidates();
+});
+
+async function useLyricsCandidate(c) {
+  if (lyricsEvents.length && !(await confirmModal('Substituir a letra que está no editor por esta?'))) return;
+  try {
+    const r = await getJSON('/lyrics/parse', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: c.synced, offset_s: 0 }),
+    });
+    lyricsEvents = eventsToRows(r.events);
+  } catch (err) {
+    toast(`Não foi possível usar esta letra: ${err.message}`);
+    return;
+  }
+  renderLyricsRows();
+  redrawScore();
+  document.getElementById('lyricsSearchInfo').textContent =
+    'Letra carregada com os tempos do LRCLIB. Ouve-a na partitura: se estiver adiantada ou atrasada, '
+    + 'usa "1ª palavra = cursor"; se sair do tempo a meio, "Sincronizar com a gravação".';
+  toast('Letra carregada — "Aplicar e reconstruir" para a incluir.', 'ok');
+}
+
+function shiftLyrics(delta) {
+  if (!lyricsEvents.length || !Number.isFinite(delta) || !delta) return;
+  const first = Math.min(...lyricsEvents.map(e => e.time));
+  const d = Math.max(delta, -first);  // never before the recording starts
+  for (const e of lyricsEvents) e.time = Math.round((e.time + d) * 1000) / 1000;
+  renderLyricsRows();
+  redrawScore();
+}
+document.getElementById('lyricsFirstToCursor').addEventListener('click', () => {
+  if (!lyricsEvents.length) return;
+  // Same clock as "+ palavra": the playhead minus the built lead-in.
+  const target = Math.max(0, currentPlayheadT - leadInBuilt);
+  shiftLyrics(target - Math.min(...lyricsEvents.map(e => e.time)));
+});
+const lyricsStep = () => Math.abs(parseFloat(document.getElementById('lyricsShift').value) || 0.5);
+document.getElementById('lyricsShiftBack').addEventListener('click', () => shiftLyrics(-lyricsStep()));
+document.getElementById('lyricsShiftFwd').addEventListener('click', () => shiftLyrics(lyricsStep()));
+
+async function alignLyrics(lines, what) {
+  if (!selectedJob || !lines.length) return;
+  const msg = what === 'só texto'
+    ? 'Esta letra não tem tempos: o WhisperX vai procurar cada palavra na voz da música inteira (alguns minutos, precisa dos extras ML). Continuar?'
+    : 'O WhisperX vai medir na gravação o tempo de cada palavra desta letra (alguns minutos, precisa dos extras ML). Substitui os tempos atuais. Continuar?';
+  if (!(await confirmModal(msg))) return;
+  try {
+    await getJSON(`/jobs/${selectedJob.id}/detect-lyrics`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ align_lines: lines }),
+    });
+  } catch (err) {
+    toast(`Não foi possível sincronizar: ${err.message}`);
+    return;
+  }
+  toast('A sincronizar a letra com a gravação… (pode demorar)', 'ok');
+  lyricsBeforeAlign = lyricsEvents.map(e => ({ ...e }));
+  await loadLyrics(selectedJob.id);
+}
+document.getElementById('lyricsAlign').addEventListener('click', () => alignLyrics(editorLines(), 'editor'));
 
 // ── Tone detection ───────────────────────────────────────────────────────────
 

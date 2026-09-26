@@ -588,6 +588,21 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
 .album-card .album-art .ic { width:2rem; height:2rem; margin:0; }
 .album-card b { font-size:.82rem; line-height:1.25; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
 .album-card span { font-size:.72rem; color:var(--muted); }
+
+/* Lyrics found online: one row per candidate, the lines it starts with, and
+   whether it carries timing. */
+.lyr-results { display:flex; flex-direction:column; gap:.5rem; margin:.6rem 0; }
+.lyr-results:empty { display:none; }
+.lyr-card { display:flex; gap:.8rem; align-items:flex-start; padding:.6rem .75rem; border:1px solid #262831; border-radius:12px; background:#16171d; }
+.lyr-card .lyr-body { flex:1; min-width:0; display:flex; flex-direction:column; gap:.2rem; }
+.lyr-card b { font-size:.9rem; }
+.lyr-card .lyr-meta { font-size:.76rem; color:var(--muted); }
+.lyr-card .lyr-preview { font-size:.78rem; color:#b9bcc7; white-space:pre-line; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+.lyr-card .lyr-badge { display:inline-block; padding:0 .45rem; border-radius:999px; font-size:.7rem; font-weight:700; margin-right:.35rem; }
+.lyr-card .lyr-badge.synced { background:#16331f; color:#5fd68a; }
+.lyr-card .lyr-badge.plain { background:#3a2e12; color:#f2c14e; }
+.lyr-card .lyr-acts { display:flex; flex-direction:column; gap:.35rem; align-self:center; }
+.lyr-sync { flex-wrap:wrap; margin:.4rem 0 .6rem; }
 </style>
 </head>
 <body class="landing">
@@ -976,6 +991,21 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
         <div class="pv-card pv-card-lg">
 
           <div>
+            <div class="pv-row" style="flex-wrap:wrap">
+              <button type="button" id="lyricsSearch" class="secondary"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg> Procurar letra online</button>
+              <span id="lyricsSearchInfo" class="meta"></span>
+              <button class="info-btn" data-info="lyrics-lookup">ⓘ</button>
+            </div>
+            <div id="lyricsResults" class="lyr-results"></div>
+            <div id="lyricsSyncRow" class="pv-row lyr-sync" hidden>
+              <span class="meta">Acertar à gravação:</span>
+              <button type="button" id="lyricsFirstToCursor" class="secondary" title="Desloca a letra toda para a 1ª palavra ficar onde está o cursor"><svg class="ic" aria-hidden="true"><use href="#i-crosshair"/></svg> 1ª palavra = cursor</button>
+              <button type="button" id="lyricsShiftBack" class="secondary" title="Mais cedo">−</button>
+              <input type="number" id="lyricsShift" value="0.5" min="0.01" step="0.1" style="width:4.5rem" aria-label="Deslocar (s)">
+              <button type="button" id="lyricsShiftFwd" class="secondary" title="Mais tarde">+</button>
+              <span class="meta">s</span>
+              <button type="button" id="lyricsAlign" class="secondary" title="Mede na gravação o tempo de cada palavra (WhisperX)"><svg class="ic" aria-hidden="true"><use href="#i-wand"/></svg> Sincronizar com a gravação</button>
+            </div>
             <div class="anchor-row">
               <button type="button" id="detectLyrics" class="secondary">Detetar letra</button>
               <span id="lyricsInfo" class="meta"></span>

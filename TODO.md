@@ -4,6 +4,11 @@ Estado do projeto + lista de funcionalidades (concluídas `[x]` e propostas
 `[ ]`). Para *como* cada coisa funciona, ver `CLAUDE.md`. Para *como testar*,
 ver `TESTING.md`.
 
+- [x] **Letra encontrada online e sincronizada.** Pesquisa no LRCLIB; "Usar"
+  carrega a letra sincronizada no editor, "1ª palavra = cursor"/−/+ acertam o
+  início, e "Sincronizar com a gravação" mede cada palavra na voz com o
+  WhisperX (alinhamento do texto conhecido, não transcrição). Por validar
+  contra o LRCLIB real e com o WhisperX instalado: TESTING.md §7c-bis.
 - [x] **Álbum, ano e capa automáticos.** Pesquisa por título + banda no iTunes
   e no MusicBrainz/Cover Art Archive; o utilizador escolhe entre as capas
   encontradas (passo 4 do assistente e página Capa). Download só dos servidores

@@ -650,7 +650,8 @@ class SettingsIn(BaseModel):
 
 
 class LyricsOut(BaseModel):
-    # "none"|"detecting"|"normalizing"|"separating"|"transcribing"|"ready"|"empty"|"unavailable"
+    # "none"|"detecting"|"normalizing"|"separating"|"transcribing"|"aligning"|
+    # "ready"|"empty"|"unavailable"
     status: str
     events: list[LyricEventOut]
     log: list[str] = []
@@ -2055,12 +2056,31 @@ def detect_tuning(job_id: str) -> DetectTuningOut:
     return DetectTuningOut(suggested_cent_offset=cents)
 
 
+class AlignLineIn(BaseModel):
+    #: Where the line is believed to start (un-padded recording clock); None
+    #: for plain lyrics with no timing at all.
+    time: Finite | None = Field(default=None, ge=0)
+    text: str = Field(max_length=500)
+
+
+class DetectLyricsIn(BaseModel):
+    """Optional: KNOWN lyrics to place on the recording instead of transcribing."""
+
+    align_lines: list[AlignLineIn] = Field(default_factory=list, max_length=2000)
+    #: WhisperX alignment-model language; guessed from the words when omitted.
+    language: str | None = Field(default=None, pattern=r"^[a-z]{2,3}$")
+
+
 @app.post("/jobs/{job_id}/detect-lyrics", response_model=JobOut, status_code=202)
-def detect_lyrics_endpoint(job_id: str) -> JobOut:
+def detect_lyrics_endpoint(job_id: str, payload: DetectLyricsIn | None = None) -> JobOut:
     """Kick off asynchronous lyric detection (Demucs vocal isolation + WhisperX
     forced alignment) on the job's source recording. Slow — poll
     GET /jobs/{job_id}/lyrics for the result. Never overwrites a completed
-    build's status; progress is tracked via params["lyrics_status"]."""
+    build's status; progress is tracked via params["lyrics_status"].
+
+    With ``align_lines`` (lyrics found on LRCLIB, or already in the editor) the
+    same task ALIGNS those words to the vocals instead of transcribing — the
+    text is right by construction, only the timing is measured."""
     with _session_factory() as session:
         job = session.get(Job, job_id)
         if job is None:
@@ -2074,10 +2094,86 @@ def detect_lyrics_endpoint(job_id: str) -> JobOut:
             raise HTTPException(409, "source recording no longer exists on the work volume")
         params = dict(job.params or {})
         params["lyrics_status"] = "detecting"
+        params.pop("lyrics_align", None)
+        lines = [ln for ln in (payload.align_lines if payload else []) if ln.text.strip()]
+        if lines:
+            from rockforge.infrastructure.lyrics_lookup import guess_language
+
+            assert payload is not None
+            params["lyrics_align"] = {
+                "lines": [{"time": ln.time, "text": ln.text.strip()} for ln in lines],
+                "language": payload.language
+                or guess_language(" ".join(ln.text for ln in lines)),
+            }
         job.params = params
         session.commit()
         _enqueue_detect(job)
         return _to_out(job)
+
+
+class LyricsCandidateOut(BaseModel):
+    id: int
+    track: str
+    artist: str
+    album: str
+    duration: float | None
+    synced: str | None
+    plain: str | None
+    instrumental: bool
+
+
+class LyricsLookupOut(BaseModel):
+    candidates: list[LyricsCandidateOut]
+    searched_title: str = ""
+    searched_artist: str = ""
+
+
+@app.get("/lyrics-lookup", response_model=LyricsLookupOut)
+def lyrics_lookup(title: str = "", artist: str = "", duration: float = 0.0) -> LyricsLookupOut:
+    """Lyrics candidates from LRCLIB for the user to choose — nothing is written
+    until they pick one. ``duration`` (the recording's length) ranks the entry
+    of the same edit first. LRCLIB unreachable is a 502. See
+    ``infrastructure/lyrics_lookup.py``."""
+    from rockforge.infrastructure.album_lookup import primary_artist, search_title
+    from rockforge.infrastructure.lyrics_lookup import LyricsLookupError, search_lyrics
+
+    if not title.strip() or not artist.strip():
+        raise HTTPException(422, "title and artist are required to look up lyrics")
+    try:
+        found = search_lyrics(
+            title, artist, duration if math.isfinite(duration) and duration > 0 else None
+        )
+    except LyricsLookupError as exc:
+        raise HTTPException(502, str(exc)) from exc
+    return LyricsLookupOut(
+        candidates=[LyricsCandidateOut(**vars(c)) for c in found],
+        searched_title=search_title(title),
+        searched_artist=primary_artist(artist),
+    )
+
+
+class LyricsParseIn(BaseModel):
+    text: str = Field(max_length=200_000)
+    offset_s: Finite = 0.0
+
+
+class LyricsParseOut(BaseModel):
+    events: list[LyricEventOut]
+
+
+@app.post("/lyrics/parse", response_model=LyricsParseOut)
+def parse_lyrics_text(payload: LyricsParseIn) -> LyricsParseOut:
+    """LRC/UltraStar text → the editor's per-word events (with ``offset_s``
+    added). The same parser the build uses for an uploaded LRC, so what the
+    editor shows is what the build would have made of the file."""
+    from rockforge.infrastructure.rsxml.vocals import parse_lyrics
+
+    events = [e for e in parse_lyrics(payload.text, payload.offset_s) if e.time >= 0]
+    if not events:
+        raise HTTPException(422, "no timed lines in that text (it has no LRC timestamps)")
+    return LyricsParseOut(
+        events=[LyricEventOut(time=e.time, length=e.length, lyric=e.lyric) for e in events]
+    )
 
 
 # NOTE: these three detection-status polls (/lyrics, /detected-tones, /stems)

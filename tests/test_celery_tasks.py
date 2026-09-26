@@ -266,3 +266,23 @@ def test_detect_lyrics_reports_unavailable_when_whisperx_is_not_installed(db) ->
     assert job.params["lyrics_status"] == "unavailable"
     assert any("lyric detection requested but whisperx is not installed" in w
                for w in job.warnings)
+
+
+def test_the_whisperx_runner_aligns_known_lyrics_only_when_asked(tmp_path) -> None:
+    common = dict(model="small", device="cpu", compute_type="")
+    cmd = ca._whisperx_command("py", Path("r.py"), Path("v.wav"), Path("o.json"), **common)
+    assert "--align-json" not in cmd
+    cmd = ca._whisperx_command("py", Path("r.py"), Path("v.wav"), Path("o.json"),
+                               align_json=tmp_path / "lines.json", **common)
+    assert cmd[-2:] == ["--align-json", str(tmp_path / "lines.json")]
+
+
+def test_an_alignment_request_is_used_once_even_when_it_fails(db) -> None:
+    """The request lives in params for exactly one run: a later plain
+    "Detetar letra" must transcribe, not re-align stale lines."""
+    job_id = _job(db, params={"lyrics_align": {"lines": [{"time": 1.0, "text": "hi"}],
+                                               "language": "en"}})
+    ca.detect_lyrics(job_id)  # whisperx is not installed here → unavailable
+    job = _reload(db, job_id)
+    assert job.params["lyrics_status"] == "unavailable"
+    assert "lyrics_align" not in job.params

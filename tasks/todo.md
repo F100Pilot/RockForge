@@ -1,3 +1,23 @@
+# Procurar a letra online e sincronizá-la
+
+Pedido: "tenta procurar a letra… e sincronizá-la".
+
+- [x] 1. `infrastructure/lyrics_lookup.py`: LRCLIB (`/api/search`, sem chave) por
+      título + artista principal; candidatos com letra sincronizada (LRC) e/ou só
+      texto; ordenar: sincronizada primeiro, depois duração mais próxima da gravação
+- [x] 2. `GET /lyrics-lookup` e `POST /lyrics/parse` (LRC → eventos por palavra,
+      com deslocamento)
+- [x] 3. Sincronizar com a gravação: `POST /detect-lyrics` aceita `align_lines`
+      (+ idioma adivinhado); o runner do WhisperX ALINHA o texto dado à voz em
+      vez de transcrever (janelas por linha quando há tempos; a música inteira
+      quando é só texto)
+- [x] 4. UI "Letras": procurar, escolher, "1ª palavra = cursor", deslocar,
+      "Sincronizar com a gravação"
+- [x] 5. Testes (fakes), docs (CLAUDE/TESTING/TODO), Playwright, gates
+
+Limites honestos: LRCLIB nunca contactado daqui (bloqueado); tempos do LRC são
+os da versão oficial; o alinhamento precisa dos extras `[ml,lyrics]`.
+
 # ML no .exe — delegar as fases pesadas a um Python externo
 
 ## O que eu disse antes estava incompleto

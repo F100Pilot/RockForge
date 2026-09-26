@@ -1094,6 +1094,61 @@ subtracted from word times — a known limitation.
 Detection needs both `[lyrics]` (WhisperX) and `[ml]` (Demucs) extras in the
 worker, even for GP jobs whose own build stays ML-free.
 
+### Lyrics found online (LRCLIB) and synchronised to the recording
+
+The "Letra" page's **"Procurar letra online"** asks **LRCLIB** (`lrclib.net`,
+open, no key) via `infrastructure/lyrics_lookup.py` (`GET /lyrics-lookup`):
+same shape as the album lookup — searched by the MAIN artist and the title
+without a featuring credit (it reuses `primary_artist`/`search_title`/`_same`),
+a ranked LIST the user chooses from (entries WITH timestamps first, then the
+length closest to the recording — the likeliest same edit), an instrumental
+kept as an answer, a free-text `q=` retry when the field search finds nothing,
+502 when LRCLIB is unreachable. Each card shows the length against the user's
+recording ("3:20 (a tua gravação: 3:17, −3 s)") so a live take or an extended
+mix is visible before it is used.
+
+**Two ways to line it up, deliberately separate:**
+- **"Usar"** (synced entries) runs the LRC through `POST /lyrics/parse` — the
+  SAME `parse_lyrics` the build uses for an uploaded LRC, so the editor shows
+  exactly what the build would make of it — and fills the editor. Its times are
+  those of the release the LRC was made from, so the page offers **"1ª palavra
+  = cursor"** and **−/+** shifts (the playhead minus `leadInBuilt`, the same
+  clock "+ palavra" uses). Pending until "Aplicar e reconstruir", like any edit.
+- **"Sincronizar com a gravação"** sends the editor's lines (regrouped from
+  its words by their `+` line ends, `editorLines`) — or a plain-only entry's
+  lines, untimed — as `/detect-lyrics`'s `align_lines`. The SAME async task
+  then **aligns known words instead of transcribing**: `params["lyrics_align"]`
+  → `--align-json` on `_whisperx_runner.py` (`_whisperx_command`) →
+  `WhisperXLyricTranscriber.align`: `alignment_segments` windows each timed line
+  from `ALIGN_MARGIN_S` before it to that margin past the next one (so a line a
+  little off still finds its words), or ONE whole-recording segment for
+  untimed text (less reliable — the confirm dialog says so), then
+  `whisperx.align` (wav2vec2, no transcription model) and
+  `aligned_lines_to_events`, which **keeps every word** (the text is right by
+  construction — no confidence filter; an unplaceable word goes right after
+  the previous one) and ends each line where the lyrics end it. The language
+  for the alignment model is `guess_language` (distinct stopwords, so a "la la
+  la" refrain cannot outvote a verse; 'en' when unsure) unless the client sends
+  one. The request is **consumed by that one run** (popped in the task's
+  `finally`), so a later plain "Detetar letra" transcribes. Status `aligning`.
+  If the run does not end `ready`, the UI **restores the editor's rows**
+  (`lyricsBeforeAlign`): those lyrics may exist only in the editor, loaded from
+  LRCLIB and not yet rebuilt, and a failed alignment must not cost them.
+
+Honest limits: LRCLIB has never been contacted from here (the sandbox blocks
+it; recorded-shape fakes in `test_lyrics_lookup.py`); fan remixes and AI-made
+songs are rarely there; alignment needs `[ml,lyrics]` like detection and has
+never run in CI (`alignment_segments`/`aligned_lines_to_events` are pure and
+tested, `whisperx.align` itself is not). TESTING.md §7c-bis. Guarded by
+`test_lyrics_lookup.py`, `test_known_lines_are_aligned_*`,
+`test_plain_lyrics_are_aligned_over_the_whole_recording`,
+`test_aligned_known_lyrics_keep_every_word_and_their_lines`,
+`test_the_whisperx_runner_aligns_known_lyrics_only_when_asked`,
+`test_an_alignment_request_is_used_once_even_when_it_fails`,
+`test_detect_lyrics_can_align_known_lyrics_instead_of_transcribing`,
+`test_lyrics_lookup_returns_the_lrclib_candidates` and
+`test_lrc_text_becomes_the_editors_words_with_the_offset`.
+
 ### The UI says when the server is gone (`getJSON` + the offline banner)
 
 The app deliberately shuts itself down when the tab closes
