@@ -1341,6 +1341,53 @@ instrumental XML is not even shipped inside the `.psarc` (only
 `<key>_showlights.xml` is). It stays empty when no key is supplied, so a direct
 `write_arrangement_xml` call is unchanged.
 
+### Album, year and cover — looked up, then CHOSEN (`/album-lookup`)
+
+`infrastructure/album_lookup.py` asks two keyless services by title + band —
+the **iTunes Search API** (album, release date, artwork) and **MusicBrainz**
+(official releases of the recording) with covers from the **Cover Art
+Archive** — and returns a ranked LIST (`search_albums`: albums, then EPs,
+singles, compilations; earliest year first within each, since a later date is
+usually a reissue). Nothing is written from a guess: the user picks a card, and
+every card shows the matched track and the source, because a text match can
+return a cover version or a compilation first. Matching is case/accent
+insensitive containment (`_same`). One service down still returns the other;
+both down is a **502**, never a 500, and never an empty list pretending nothing
+exists. stdlib `urllib`, no new dependency — same as `songsterr.py`.
+
+**Downloading a chosen cover is the SSRF-sensitive part.** `/jobs/gp`'s
+`cover_url` form field and `POST /jobs/{id}/cover-from-url` take a URL from the
+client, so `fetch_cover` only accepts **https** on the services' own image hosts
+(`*.mzstatic.com`, `coverartarchive.org`, `*.archive.org` — the archive
+redirects there), re-checks EVERY redirect against the same allowlist
+(`_AllowlistRedirects`), caps the read at 10 MB (`read_capped`) and trusts the
+file's **magic bytes**, not its name (`image_suffix`: JPEG/PNG only). A
+disallowed URL is a 422 before anything is opened. The stored file goes through
+the same `_replace_cover`/`_record_cover` as a manual upload, so the rest of the
+cover path (bundle, `.rs2dlc`, the PSARC's DDS) is unchanged.
+
+**In the wizard a cover failure must not lose the project**: the job is
+committed first, the download is attempted after, and a failure only leaves
+`cover_art` false — the worker overwrites `job.warnings` at the end, so the UI
+reports it from that flag (toast) instead of a warning that would vanish.
+
+UI: wizard step 4 runs the search once on arrival (`maybeAutoAlbumSearch`),
+preselects the best guess filling Álbum/Ano **only if empty**, a card click
+fills them outright, "Sem capa" opts out, and a card whose thumbnail fails to
+load is marked `cover_broken` (placeholder shown, `cover_url` not sent). The
+Capa page's "Procurar capa online" applies a card to an existing project
+(`cover-from-url`, plus `PATCH /metadata` when "Preencher também o álbum e o
+ano" is ticked). The grid is built with DOM calls, not `innerHTML`, since the
+names and URLs come from third parties. **Never verified against the live
+services** (the sandbox blocks them all) — TESTING.md §7d-sexies; the
+`600x600bb` iTunes rendition is widely used but undocumented. Guarded by
+`test_album_lookup.py` and, in `test_api.py`, `test_album_lookup_*`,
+`test_a_chosen_cover_is_downloaded_into_the_job`,
+`test_a_cover_url_off_the_cover_services_is_refused_without_fetching`,
+`test_a_cover_that_will_not_download_is_a_502_and_changes_nothing`,
+`test_the_wizards_chosen_cover_is_in_place_before_the_first_build` and
+`test_a_wizard_cover_that_fails_still_creates_the_project`.
+
 ### Automatic tone detection (`/jobs/{id}/detect-tones`)
 
 `POST /jobs/{id}/detect-tones` (GP jobs) runs Demucs

@@ -973,6 +973,42 @@ def songsterr_lookup(song: str) -> SongsterrOut:
     )
 
 
+class AlbumCandidateOut(BaseModel):
+    source: str
+    album: str
+    artist: str
+    year: int | None
+    cover_url: str | None
+    thumb_url: str | None
+    track: str
+    kind: str
+
+
+class AlbumLookupOut(BaseModel):
+    candidates: list[AlbumCandidateOut]
+
+
+@app.get("/album-lookup", response_model=AlbumLookupOut)
+def album_lookup(title: str = "", artist: str = "") -> AlbumLookupOut:
+    """Album name, year and cover candidates for a song, for the user to choose.
+
+    Asks the iTunes Search API and MusicBrainz/Cover Art Archive (no keys);
+    nothing is written anywhere until the user picks one. No results is an
+    empty list; both services unreachable is a 502. See
+    ``infrastructure/album_lookup.py`` — never verified against the live
+    services from the sandbox.
+    """
+    from rockforge.infrastructure.album_lookup import AlbumLookupError, search_albums
+
+    if not title.strip() or not artist.strip():
+        raise HTTPException(422, "title and artist are required to look up an album")
+    try:
+        found = search_albums(title, artist)
+    except AlbumLookupError as exc:
+        raise HTTPException(502, str(exc)) from exc
+    return AlbumLookupOut(candidates=[AlbumCandidateOut(**vars(c)) for c in found])
+
+
 # A song has a few hundred bars at most; the ceiling only stops an absurd
 # payload from being persisted into params.
 _MAX_BAR_TIMES = 10_000
@@ -1026,6 +1062,9 @@ def create_gp_job(
     artist: str = Form(""),
     album: str = Form(""),
     year: str = Form(""),
+    # A cover the user chose from /album-lookup, downloaded before the job is
+    # queued so the very first build carries it.
+    cover_url: str = Form(""),
 ) -> JobOut:
     """Create a CDLC job from a previously inspected GP file + the recording."""
     gp_path = settings.work_dir / "gp" / Path(gp_token).name
@@ -1092,6 +1131,12 @@ def create_gp_job(
         raise HTTPException(422, "tempo_scale must be > 0")
 
     parsed_bar_times = _parse_bar_times(bar_times)
+    cover_url = cover_url.strip()
+    if cover_url:
+        from rockforge.infrastructure.album_lookup import cover_url_allowed
+
+        if not cover_url_allowed(cover_url):
+            raise HTTPException(422, "cover_url is not from a known cover service")
 
     params: dict[str, object] = {
         "gp_path": str(gp_path),
@@ -1128,6 +1173,21 @@ def create_gp_job(
         )
         session.add(job)
         session.commit()
+        if cover_url:
+            # Best effort: a cover that will not download must not cost the
+            # user the project. The response's empty cover_art says so, and the
+            # UI tells them to pick another on the Capa page.
+            from rockforge.infrastructure.album_lookup import AlbumLookupError, fetch_cover
+
+            try:
+                data, suffix = fetch_cover(cover_url)
+            except AlbumLookupError:
+                pass
+            else:
+                dest = _replace_cover(job, suffix)
+                dest.write_bytes(data)
+                _record_cover(job, dest)
+                session.commit()
         _enqueue(job)
         return _to_out(job)
 
@@ -2537,17 +2597,60 @@ def upload_cover_art(job_id: str, file: UploadFile = File(...)) -> JobOut:
         if suffix not in _COVER_ART_SUFFIXES:
             raise HTTPException(415, f"unsupported image format: {suffix or '(none)'}")
 
-        job_dir = settings.work_dir / job.id
-        job_dir.mkdir(parents=True, exist_ok=True)
-        # Remove any previous cover with a different extension.
-        for old in _COVER_ART_SUFFIXES:
-            (job_dir / f"cover{old}").unlink(missing_ok=True)
-        dest = job_dir / f"cover{suffix}"
+        dest = _replace_cover(job, suffix)
         _copy_upload_capped(file, dest)
+        _record_cover(job, dest)
+        session.commit()
+        return _to_out(job)
 
-        params = dict(job.params or {})
-        params["cover_art"] = dest.name
-        job.params = params
+
+def _replace_cover(job: Job, suffix: str) -> Path:
+    """Where the job's cover goes, with any previous cover (of any extension)
+    removed so only one is ever picked up by the build."""
+    job_dir: Path = settings.work_dir / str(job.id)
+    job_dir.mkdir(parents=True, exist_ok=True)
+    for old in _COVER_ART_SUFFIXES:
+        (job_dir / f"cover{old}").unlink(missing_ok=True)
+    return job_dir / f"cover{suffix}"
+
+
+def _record_cover(job: Job, dest: Path) -> None:
+    params = dict(job.params or {})  # a NEW dict, or the JSON column is not written
+    params["cover_art"] = dest.name
+    job.params = params
+
+
+class CoverFromUrlIn(BaseModel):
+    url: str = Field(max_length=2000)
+
+
+@app.post("/jobs/{job_id}/cover-from-url", response_model=JobOut, status_code=202)
+def cover_from_url(job_id: str, payload: CoverFromUrlIn) -> JobOut:
+    """Use a cover chosen from /album-lookup as the job's album art.
+
+    Only the cover services' own image hosts are fetched from (and redirected
+    to), and only a real JPEG/PNG is stored. Like an upload it does not
+    rebuild — the next build picks it up.
+    """
+    from rockforge.infrastructure.album_lookup import (
+        AlbumLookupError,
+        cover_url_allowed,
+        fetch_cover,
+    )
+
+    if not cover_url_allowed(payload.url):
+        raise HTTPException(422, "url is not from a known cover service")
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+        try:
+            data, suffix = fetch_cover(payload.url)
+        except AlbumLookupError as exc:
+            raise HTTPException(502, str(exc)) from exc
+        dest = _replace_cover(job, suffix)
+        dest.write_bytes(data)
+        _record_cover(job, dest)
         session.commit()
         return _to_out(job)
 

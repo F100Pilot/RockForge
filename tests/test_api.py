@@ -2350,3 +2350,128 @@ def test_system_check_survives_a_probe_that_raises(
     r = client.get("/system-check")
     assert r.status_code == 200
     assert r.json()["requirements"]
+
+
+_COVER = "https://is1-ssl.mzstatic.com/image/thumb/Music/x/600x600bb.jpg"
+_JPEG = b"\xff\xd8\xff\xe0" + b"\x00" * 16
+
+
+def test_album_lookup_returns_the_candidates_to_choose_from(
+    client: TestClient, monkeypatch
+) -> None:
+    from rockforge.infrastructure import album_lookup
+
+    def fake(title: str, artist: str, **_k):
+        assert (title, artist) == ("ocean eyes", "Billie Eilish")
+        return [album_lookup.AlbumCandidate(
+            source="itunes", album="dont smile at me", artist="Billie Eilish", year=2017,
+            cover_url=_COVER, thumb_url=_COVER, track="ocean eyes", kind="album")]
+
+    monkeypatch.setattr(album_lookup, "search_albums", fake)
+    r = client.get("/album-lookup", params={"title": "ocean eyes", "artist": "Billie Eilish"})
+    assert r.status_code == 200, r.text
+    assert r.json()["candidates"][0] == {
+        "source": "itunes", "album": "dont smile at me", "artist": "Billie Eilish",
+        "year": 2017, "cover_url": _COVER, "thumb_url": _COVER, "track": "ocean eyes",
+        "kind": "album"}
+
+
+def test_album_lookup_needs_both_names_and_reports_the_services_being_down(
+    client: TestClient, monkeypatch
+) -> None:
+    from rockforge.infrastructure import album_lookup
+
+    assert client.get("/album-lookup", params={"title": "x"}).status_code == 422
+
+    def down(*_a, **_k):
+        raise album_lookup.AlbumLookupError("não consegui contactar o serviço (timeout)")
+
+    monkeypatch.setattr(album_lookup, "search_albums", down)
+    r = client.get("/album-lookup", params={"title": "x", "artist": "y"})
+    assert r.status_code == 502 and "contactar o serviço" in r.text
+
+
+def test_a_chosen_cover_is_downloaded_into_the_job(client: TestClient, monkeypatch) -> None:
+    from rockforge.infrastructure import album_lookup
+
+    job = _create_job(client)
+    monkeypatch.setattr(album_lookup, "_open_url", lambda url: _JPEG)
+    r = client.post(f"/jobs/{job['id']}/cover-from-url", json={"url": _COVER})
+    assert r.status_code == 202, r.text
+    assert r.json()["cover_art"] is True
+    assert client.get(f"/jobs/{job['id']}/cover").content == _JPEG
+
+
+def test_a_cover_url_off_the_cover_services_is_refused_without_fetching(
+    client: TestClient, monkeypatch
+) -> None:
+    """The server downloads the URL, so an arbitrary one would make it fetch
+    anything on the user's network for whoever can reach the API."""
+    from rockforge.infrastructure import album_lookup
+
+    job = _create_job(client)
+    monkeypatch.setattr(album_lookup, "_open_url", lambda url: pytest.fail("fetched"))
+    r = client.post(f"/jobs/{job['id']}/cover-from-url",
+                    json={"url": "http://169.254.169.254/latest/meta-data"})
+    assert r.status_code == 422
+
+
+def test_a_cover_that_will_not_download_is_a_502_and_changes_nothing(
+    client: TestClient, monkeypatch
+) -> None:
+    from rockforge.infrastructure import album_lookup
+
+    job = _create_job(client)
+    monkeypatch.setattr(album_lookup, "_open_url", lambda url: b"<html>404</html>")
+    r = client.post(f"/jobs/{job['id']}/cover-from-url", json={"url": _COVER})
+    assert r.status_code == 502
+    assert client.get(f"/jobs/{job['id']}/cover").status_code == 404
+
+
+def test_the_wizards_chosen_cover_is_in_place_before_the_first_build(
+    client: TestClient, monkeypatch
+) -> None:
+    """Fetched before the job is queued, so the first build already packs it."""
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.infrastructure import album_lookup
+
+    monkeypatch.setattr(album_lookup, "_open_url", lambda url: _JPEG)
+    at_enqueue: list[object] = []
+    monkeypatch.setattr(app_module, "_enqueue",
+                        lambda job: at_enqueue.append((job.params or {}).get("cover_art")))
+    body = client.post(
+        "/gp/inspect", files={"file": ("s.gp", _gp8_with_embedded_audio(b"ID3x"), "x")}
+    ).json()
+    r = client.post("/jobs/gp", data={
+        "gp_token": body["gp_token"], "lead_track": "0", "use_embedded_audio": "true",
+        "cover_url": _COVER})
+    assert r.status_code == 202, r.text
+    assert at_enqueue == ["cover.jpg"]
+    assert client.get(f"/jobs/{r.json()['id']}/cover").content == _JPEG
+
+
+def test_a_wizard_cover_that_fails_still_creates_the_project(
+    client: TestClient, monkeypatch
+) -> None:
+    """A cover is a nicety; losing it must not cost the user the project. The
+    response's cover_art=False is what tells the UI to say so."""
+    from rockforge.infrastructure import album_lookup
+
+    def down(url: str) -> bytes:
+        raise album_lookup.AlbumLookupError("timeout")
+
+    monkeypatch.setattr(album_lookup, "_open_url", down)
+    body = client.post(
+        "/gp/inspect", files={"file": ("s.gp", _gp8_with_embedded_audio(b"ID3x"), "x")}
+    ).json()
+    data = {"gp_token": body["gp_token"], "lead_track": "0", "use_embedded_audio": "true",
+            "cover_url": _COVER}
+    r = client.post("/jobs/gp", data=data)
+    assert r.status_code == 202 and r.json()["cover_art"] is False
+
+    body = client.post(
+        "/gp/inspect", files={"file": ("s.gp", _gp8_with_embedded_audio(b"ID3x"), "x")}
+    ).json()
+    r = client.post("/jobs/gp", data={**data, "gp_token": body["gp_token"],
+                                      "cover_url": "https://example.com/c.jpg"})
+    assert r.status_code == 422, "an address off the cover services is refused up front"

@@ -756,6 +756,31 @@ against a fake. On a real machine:
 4. A trimmed MP3 needs "Início da música" moved back by what was trimmed; that
    is the one number the times cannot know.
 
+### 7d-sexies. Album, year and cover lookup against the REAL services
+
+CI and the sandbox cannot reach iTunes, MusicBrainz or the Cover Art Archive
+(nor Apple's image CDN), so `infrastructure/album_lookup.py` was written from
+the services' documented response shapes and tested only against fakes; the UI
+was driven with Playwright with `/album-lookup` and the image hosts faked. On a
+machine with internet:
+
+1. Create a project from a GP file whose title/band are a known song. On
+   arriving at step 4 the search must run by itself and show cover cards; the
+   first is preselected and fills Álbum/Ano only if they were empty.
+2. Pick another card → Álbum/Ano change to it; "Sem capa" → no image. Create:
+   the project must open with that cover already on its Capa page (a toast
+   says so if the download failed — the project is created either way).
+3. On an existing project's Capa page, "Procurar capa online" → click a card:
+   the preview changes, and with "Preencher também o álbum e o ano" ticked the
+   header/metadata update. "Aplicar e reconstruir" must carry it into the
+   `.psarc` album art.
+4. Cards whose image does not load (a MusicBrainz release with no cover in the
+   archive) must show the placeholder, not a broken image; choosing one in the
+   wizard creates the project without a cover.
+5. If `/album-lookup` 502s on a machine that does have internet, the
+   undocumented part is the likely culprit: iTunes' `600x600bb` artwork
+   rendition (only `artworkUrl100` is documented) — check the returned URLs.
+
 ### 7e. Wwise `.wem` (needs a local Wwise 2019/2021/2022/2023, Windows)
 
 Run with `WWISEROOT` set. The bundle must contain `audio.wem`. **In-game check:**

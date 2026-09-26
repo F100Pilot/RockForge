@@ -46,6 +46,7 @@ function setWizardStep(n) {
   document.getElementById('wizardPrev').style.visibility = wizardStep > 1 ? '' : 'hidden';
   document.getElementById('wizardNext').style.display = wizardStep < WIZARD_MAX ? '' : 'none';
   document.getElementById('wizardCreate').style.display = wizardStep < WIZARD_MAX ? 'none' : '';
+  if (wizardStep === WIZARD_MAX) maybeAutoAlbumSearch();
 }
 
 // Validate the current step before advancing. Returns true if OK.
@@ -142,6 +143,7 @@ function openNewJobModal() {
   document.getElementById('gpEmbeddedAudioRow').hidden = true;  // until a file says it has one
   applyEmbeddedAudioChoice();
   resetSongsterr();
+  resetWizardAlbum();
   document.querySelectorAll('#newJobOverlay .file-drop').forEach(d => {
     d.classList.remove('has-file');
     const t = d.querySelector('.file-drop-text');
@@ -677,6 +679,12 @@ const INFO = {
   'lyrics': {
     title: 'Deteção automática de letra',
     body: '<p>Isola a voz com o Demucs e transcreve com o WhisperX — pode demorar alguns minutos (Demucs na CPU é lento).<br>Requer <code>pip install -e ".[lyrics]"</code>.<br>Depois podes editar palavras e tempos à mão, ou criar tudo manualmente sem detetar.</p>'
+  },
+  'album-lookup': {
+    title: 'Álbum, ano e capa automáticos',
+    body: '<p>Procura a música pelo <strong>título e banda</strong> no iTunes e no MusicBrainz (capas do Cover Art Archive) e mostra os álbuns onde ela aparece. <strong>Escolhes tu</strong> o certo: o clique preenche o álbum e o ano e usa essa capa.</p>' +
+      '<p>A pesquisa é por texto, por isso pode trazer versões de outros artistas, compilações ou reedições — cada cartão mostra a faixa encontrada e a fonte para o veres. "Sem capa" não usa imagem nenhuma. Precisa de internet; sem ela, preenche à mão como antes.</p>' +
+      '<p>A capa escolhida é descarregada quando o projeto é criado. Num projeto que já existe, usa "Procurar capa online" na página Capa.</p>'
   },
   'cover-art': {
     title: 'Capa do álbum',
@@ -3508,6 +3516,12 @@ document.getElementById('audioSource').addEventListener('change', async e => {
 });
 
 function loadCoverArt(j) {
+  if (capaResultsFor !== j.id) {
+    capaResultsFor = j.id;
+    capaCandidates = [];
+    document.getElementById('capaResults').replaceChildren();
+    document.getElementById('capaSearchInfo').textContent = '';
+  }
   const img = document.getElementById('coverArtPreview');
   const info = document.getElementById('coverArtInfo');
   if (j.cover_art) {
@@ -3534,6 +3548,203 @@ document.getElementById('coverArtFile').addEventListener('change', async ev => {
   loadCoverArt(selectedJob);
   toast('Capa carregada — "Aplicar e reconstruir" para a incluir no bundle.', 'ok');
   ev.target.value = '';
+});
+
+// ── Album, year and cover lookup (wizard step 4 + the Capa page) ──────────────
+// /album-lookup asks iTunes and MusicBrainz/Cover Art Archive by title + band
+// and returns candidates; the USER picks one — nothing is filled from a guess
+// they cannot see. Each card shows the matched track and the source, so a
+// wrong match (a cover version, a compilation) is visible before it is used.
+const ALBUM_KIND = { album: 'álbum', ep: 'EP', single: 'single', compilation: 'compilação' };
+const ALBUM_SOURCE = { itunes: 'iTunes', musicbrainz: 'MusicBrainz' };
+
+async function lookupAlbums(title, artist) {
+  const q = `title=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`;
+  return (await getJSON(`/album-lookup?${q}`)).candidates || [];
+}
+
+// Build the grid with DOM calls, not innerHTML: the URLs and names come from
+// third-party services.
+function renderAlbumGrid(el, candidates, selected, onPick, { withNone = false } = {}) {
+  el.replaceChildren();
+  const card = (idx, artChild, title, lines) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'album-card' + (idx === selected ? ' selected' : '');
+    b.dataset.idx = String(idx);
+    const art = document.createElement('div');
+    art.className = 'album-art';
+    art.append(artChild);
+    const t = document.createElement('b');
+    t.textContent = title;
+    b.append(art, t);
+    for (const line of lines) {
+      const s = document.createElement('span');
+      s.textContent = line;
+      b.append(s);
+    }
+    b.addEventListener('click', () => onPick(idx));
+    el.append(b);
+    return b;
+  };
+  const placeholder = name => {
+    const d = document.createElement('div');
+    d.innerHTML = icon(name);
+    return d.firstElementChild;
+  };
+  candidates.forEach((c, i) => {
+    let art = placeholder('image');
+    if (c.thumb_url) {
+      art = document.createElement('img');
+      art.alt = '';
+      art.loading = 'lazy';
+      art.src = c.thumb_url;
+      // No cover at that address (common on the Cover Art Archive): say so on
+      // the card instead of showing a broken image.
+      art.addEventListener('error', () => {
+        c.cover_broken = true;
+        art.replaceWith(placeholder('image'));
+      });
+    }
+    const meta = [c.year, ALBUM_KIND[c.kind] || c.kind].filter(Boolean).join(' · ');
+    card(i, art, c.album, [meta, `"${c.track}" · ${ALBUM_SOURCE[c.source] || c.source}`]);
+  });
+  if (withNone && candidates.length)
+    card(-1, placeholder('x'), 'Sem capa', ['não usar nenhuma imagem']);
+}
+
+// Wizard step 4: searched once automatically on arrival (title and band are
+// normally already there from the GP file), again on demand.
+let wzAlbumCandidates = [];
+let wzAlbumPick = null;          // index into wzAlbumCandidates, -1 = no cover
+let wzAlbumAutoDone = false;
+
+function resetWizardAlbum() {
+  wzAlbumCandidates = [];
+  wzAlbumPick = null;
+  wzAlbumAutoDone = false;
+  document.getElementById('wzAlbumResults').replaceChildren();
+  document.getElementById('wzAlbumInfo').textContent = '';
+  document.getElementById('wzCoverUrl').value = '';
+}
+
+function pickWizardAlbum(idx, { fillEmptyOnly = false } = {}) {
+  const form = document.getElementById('gpJobForm');
+  wzAlbumPick = idx;
+  const c = wzAlbumCandidates[idx];
+  document.getElementById('wzCoverUrl').value = c && c.cover_url ? c.cover_url : '';
+  if (c) {
+    const album = form.querySelector('input[name=album]');
+    const year = form.querySelector('input[name=year]');
+    if (!fillEmptyOnly || !album.value.trim()) album.value = c.album;
+    if (c.year && (!fillEmptyOnly || !year.value.trim())) year.value = String(c.year);
+  }
+  renderAlbumGrid(document.getElementById('wzAlbumResults'), wzAlbumCandidates, idx,
+    i => pickWizardAlbum(i), { withNone: true });
+}
+
+async function searchWizardAlbum() {
+  const form = document.getElementById('gpJobForm');
+  const title = form.querySelector('input[name=title]').value.trim();
+  const artist = form.querySelector('input[name=artist]').value.trim();
+  const info = document.getElementById('wzAlbumInfo');
+  if (!title || !artist) { info.textContent = 'Preenche o título e a banda para procurar.'; return; }
+  const btn = document.getElementById('wzAlbumSearch');
+  btn.disabled = true;
+  info.textContent = 'A procurar…';
+  try {
+    wzAlbumCandidates = await lookupAlbums(title, artist);
+  } catch (err) {
+    wzAlbumCandidates = [];
+    info.textContent = `Não consegui procurar agora (${err.message}). Podes preencher à mão.`;
+    document.getElementById('wzAlbumResults').replaceChildren();
+    return;
+  } finally {
+    btn.disabled = false;
+  }
+  if (!wzAlbumCandidates.length) {
+    info.textContent = 'Nada encontrado para este título e banda.';
+    document.getElementById('wzAlbumResults').replaceChildren();
+    document.getElementById('wzCoverUrl').value = '';
+    return;
+  }
+  info.textContent = `${wzAlbumCandidates.length} resultado(s) — escolhe o álbum e a capa certos.`;
+  // Preselect the best guess but never overwrite what the user (or the GP
+  // file) already typed; clicking a card is an explicit choice and does.
+  pickWizardAlbum(0, { fillEmptyOnly: true });
+}
+document.getElementById('wzAlbumSearch').addEventListener('click', searchWizardAlbum);
+
+function maybeAutoAlbumSearch() {
+  if (wzAlbumAutoDone) return;
+  wzAlbumAutoDone = true;
+  searchWizardAlbum();
+}
+
+// Capa page: the same candidates, applied to an existing project.
+let capaCandidates = [];
+let capaResultsFor = null;   // results belong to one project
+
+async function applyCapaCandidate(idx) {
+  const c = capaCandidates[idx];
+  if (!selectedJob || !c) return;
+  renderAlbumGrid(document.getElementById('capaResults'), capaCandidates, idx, applyCapaCandidate);
+  const info = document.getElementById('capaSearchInfo');
+  const done = [];
+  try {
+    if (c.cover_url && !c.cover_broken) {
+      info.textContent = 'A descarregar a capa…';
+      const b = await getJSON(`/jobs/${selectedJob.id}/cover-from-url`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: c.cover_url }),
+      });
+      selectedJob.cover_art = b.cover_art;
+      loadCoverArt(selectedJob);
+      done.push('capa');
+    }
+    if (document.getElementById('capaFillMeta').checked) {
+      const j = await getJSON(`/jobs/${selectedJob.id}/metadata`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: selectedJob.title, artist: selectedJob.artist,
+          album: c.album, year: c.year ?? selectedJob.year ?? null,
+        }),
+      });
+      Object.assign(selectedJob, { album: j.album, year: j.year });
+      renderDetailHead(selectedJob);
+      refreshJobs();
+      done.push('álbum e ano');
+    }
+  } catch (err) {
+    info.textContent = `Não foi possível: ${err.message}`;
+    toast(`Não foi possível aplicar: ${err.message}`);
+    return;
+  }
+  info.textContent = done.length ? `Aplicado: ${done.join(' + ')}.` : 'Esse resultado não tem capa.';
+  if (done.length) toast('Aplicado — "Aplicar e reconstruir" para o incluir no bundle.', 'ok');
+}
+
+document.getElementById('capaSearch').addEventListener('click', async () => {
+  if (!selectedJob) return;
+  const info = document.getElementById('capaSearchInfo');
+  const grid = document.getElementById('capaResults');
+  const btn = document.getElementById('capaSearch');
+  btn.disabled = true;
+  info.textContent = 'A procurar…';
+  try {
+    capaCandidates = await lookupAlbums(selectedJob.title || '', selectedJob.artist || '');
+  } catch (err) {
+    capaCandidates = [];
+    grid.replaceChildren();
+    info.textContent = `Não consegui procurar agora (${err.message}).`;
+    return;
+  } finally {
+    btn.disabled = false;
+  }
+  info.textContent = capaCandidates.length
+    ? `${capaCandidates.length} resultado(s) — clica no certo para o aplicar.`
+    : 'Nada encontrado para este título e banda.';
+  renderAlbumGrid(grid, capaCandidates, null, applyCapaCandidate);
 });
 
 document.getElementById('addLyricRow').addEventListener('click', () => {
@@ -5452,9 +5663,19 @@ document.getElementById('gpJobForm').addEventListener('submit', async e => {
   }
   // Unchecked checkboxes are not sent; set the value explicitly so "off" sticks.
   f.set('import_mutes', e.target.querySelector('input[name=import_mutes]').checked);
+  // The picked card's image never loaded: its cover is not there to download.
+  const picked = wzAlbumCandidates[wzAlbumPick];
+  if (picked && picked.cover_broken) f.delete('cover_url');
   const r = await fetch('/jobs/gp', { method: 'POST', body: f });
   const b = await r.json();
-  if (r.ok) { toast('Projeto criado.', 'ok'); closeNewJobModal(); selectJob(b.id); } else toast(b.detail || 'erro');
+  if (!r.ok) { toast(b.detail || 'erro'); return; }
+  // The cover is downloaded while the job is created; a failure there must
+  // not lose the project, so it is reported here instead.
+  if (f.get('cover_url') && !b.cover_art)
+    toast('Projeto criado, mas não consegui descarregar a capa — escolhe outra na página Capa.');
+  else toast('Projeto criado.', 'ok');
+  closeNewJobModal();
+  selectJob(b.id);
 });
 
 refreshJobs();

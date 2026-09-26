@@ -4,6 +4,11 @@ Estado do projeto + lista de funcionalidades (concluídas `[x]` e propostas
 `[ ]`). Para *como* cada coisa funciona, ver `CLAUDE.md`. Para *como testar*,
 ver `TESTING.md`.
 
+- [x] **Álbum, ano e capa automáticos.** Pesquisa por título + banda no iTunes
+  e no MusicBrainz/Cover Art Archive; o utilizador escolhe entre as capas
+  encontradas (passo 4 do assistente e página Capa). Download só dos servidores
+  de imagens desses serviços. Por validar contra os serviços reais (bloqueados
+  no sandbox): TESTING.md §7d-sexies.
 - [x] **Sincronização pelos tempos do Songsterr.** O princípio do
   guitar-pro-youtube-sync: tempos por compasso marcados por pessoas, lidos da
   API (não documentada) do Songsterr e aplicados como os sync points do GP8. Só

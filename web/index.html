@@ -571,6 +571,21 @@ details.pv-warn > summary { cursor:pointer; font-size:.88rem; color:var(--muted)
   .pv-rail { width:4.5rem; }
   .pv-rail button { width:3.9rem; font-size:.68rem; }
 }
+
+/* Album/cover candidates (wizard step 4 and the Capa page): a grid of covers
+   to choose from; the chosen one is outlined in the accent colour. */
+.album-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(8.5rem, 1fr)); gap:.7rem; margin-top:.6rem; }
+.album-grid:empty { display:none; }
+button.album-card { display:flex; flex-direction:column; gap:.35rem; padding:.45rem; border:2px solid #262831;
+  border-radius:12px; background:#16171d; color:var(--text); text-align:left; font-weight:400; }
+button.album-card:hover { border-color:#3a3d48; filter:none; }
+button.album-card.selected { border-color:var(--accent); background:#221d1a; }
+.album-card .album-art { aspect-ratio:1; border-radius:8px; background:#1f2129; display:flex; align-items:center;
+  justify-content:center; color:#5d606d; overflow:hidden; }
+.album-card .album-art img { width:100%; height:100%; object-fit:cover; }
+.album-card .album-art .ic { width:2rem; height:2rem; margin:0; }
+.album-card b { font-size:.82rem; line-height:1.25; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+.album-card span { font-size:.72rem; color:var(--muted); }
 </style>
 </head>
 <body class="landing">
@@ -1000,6 +1015,12 @@ details.pv-warn > summary { cursor:pointer; font-size:.88rem; color:var(--muted)
                 <span id="coverArtInfo" class="meta"></span>
                 <button class="info-btn" data-info="cover-art">ⓘ</button>
               </div>
+              <div class="pv-row" style="margin-top:1rem;flex-wrap:wrap">
+                <button type="button" id="capaSearch" class="secondary"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg> Procurar capa online</button>
+                <label class="check"><input type="checkbox" id="capaFillMeta" checked> Preencher também o álbum e o ano</label>
+                <span id="capaSearchInfo" class="meta"></span>
+              </div>
+              <div id="capaResults" class="album-grid"></div>
             </div>
           </div>
         </div>
@@ -1237,6 +1258,15 @@ details.pv-warn > summary { cursor:pointer; font-size:.88rem; color:var(--muted)
           <input type="text" name="album" placeholder="auto"></div>
         <div class="field"><label>Ano</label>
           <input type="number" name="year" min="1900" max="2100" style="width:5.5rem"></div>
+        <div class="field" style="flex-basis:100%">
+          <label>Álbum, ano e capa <button class="info-btn" data-info="album-lookup">ⓘ</button></label>
+          <div class="pv-row">
+            <button type="button" id="wzAlbumSearch" class="secondary"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg> Procurar online</button>
+            <span id="wzAlbumInfo" class="meta"></span>
+          </div>
+          <div id="wzAlbumResults" class="album-grid"></div>
+          <input type="hidden" name="cover_url" id="wzCoverUrl">
+        </div>
         <div class="field" style="flex-basis:100%">
           <label class="check"><input type="checkbox" name="import_mutes" value="true" checked>
           Importar palm mute / slap / pop / tap</label></div>
