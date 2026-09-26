@@ -2391,6 +2391,25 @@ def test_album_lookup_needs_both_names_and_reports_the_services_being_down(
     assert r.status_code == 502 and "contactar o serviço" in r.text
 
 
+def test_an_empty_album_lookup_says_what_was_searched_and_which_service_failed(
+    client: TestClient, monkeypatch
+) -> None:
+    from rockforge.infrastructure import album_lookup
+
+    def mb_down(url: str):  # noqa: ANN202
+        if url.startswith(album_lookup.ITUNES_URL):
+            return {"results": []}
+        raise album_lookup.AlbumLookupError("o serviço respondeu 503")
+
+    monkeypatch.setattr(album_lookup, "_http_get_json", mb_down)
+    r = client.get("/album-lookup", params={
+        "title": "Strangers Now (feat. Avril Lavigne)", "artist": "Eminem feat. Avril Lavigne"})
+    assert r.status_code == 200, r.text
+    assert r.json() == {
+        "candidates": [], "searched_title": "Strangers Now", "searched_artist": "Eminem",
+        "failures": ["MusicBrainz: o serviço respondeu 503"]}
+
+
 def test_a_chosen_cover_is_downloaded_into_the_job(client: TestClient, monkeypatch) -> None:
     from rockforge.infrastructure import album_lookup
 

@@ -195,3 +195,36 @@ def test_an_oversized_cover_is_refused() -> None:
     with pytest.raises(al.AlbumLookupError):
         al.read_capped(io.BytesIO(b"x" * 11), limit=10)
     assert al.read_capped(io.BytesIO(b"x" * 10), limit=10) == b"x" * 10
+
+
+@pytest.mark.parametrize(("credit", "main"), [
+    ("Eminem feat. Avril Lavigne", "Eminem"),
+    ("Eminem ft Rihanna", "Eminem"),
+    ("Daft Punk featuring Pharrell Williams", "Daft Punk"),
+    ("Simon & Garfunkel", "Simon & Garfunkel"),     # "&" is part of real names
+    ("Earth, Wind & Fire", "Earth, Wind & Fire"),
+    ("Little Feat", "Little Feat"),
+])
+def test_only_a_featuring_credit_is_dropped_from_the_artist(credit: str, main: str) -> None:
+    assert al.primary_artist(credit) == main
+
+
+def test_the_search_is_by_the_main_artist_and_a_featured_hit_still_matches() -> None:
+    seen: list[str] = []
+    data = {"results": [{"kind": "song", "artistName": "Eminem",
+                         "trackName": "Love the Way You Lie", "collectionName": "Recovery",
+                         "releaseDate": "2010-06-18", "artworkUrl100": _ART}]}
+    found = al.search_albums("Love the Way You Lie (feat. Rihanna)", "Eminem feat. Rihanna",
+                             get_json=_fetcher(data, {"recordings": []}, seen=seen))
+    assert [c.album for c in found] == ["Recovery"]
+    assert urllib.parse.parse_qs(urllib.parse.urlsplit(seen[0]).query)["term"] == [
+        "Eminem Love the Way You Lie"]
+    mb = urllib.parse.parse_qs(urllib.parse.urlsplit(seen[1]).query)["query"][0]
+    assert mb == 'recording:"Love the Way You Lie" AND artist:"Eminem"'
+
+
+def test_a_service_that_failed_is_reported_not_passed_off_as_nothing_found() -> None:
+    failures: list[str] = []
+    found = al.search_albums("x", "y", failures=failures, get_json=_fetcher(
+        {"results": []}, al.AlbumLookupError("o serviço respondeu 503")))
+    assert found == [] and failures == ["MusicBrainz: o serviço respondeu 503"]

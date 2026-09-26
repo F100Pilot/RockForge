@@ -3562,7 +3562,23 @@ const ALBUM_SOURCE = { itunes: 'iTunes', musicbrainz: 'MusicBrainz' };
 
 async function lookupAlbums(title, artist) {
   const q = `title=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`;
-  return (await getJSON(`/album-lookup?${q}`)).candidates || [];
+  const r = await getJSON(`/album-lookup?${q}`);
+  lastAlbumLookup = r;
+  return r.candidates || [];
+}
+let lastAlbumLookup = null;
+
+// Said when a search comes back empty: WHAT was searched (the main artist,
+// without the featuring credit) and why a real answer can be "nothing" — a
+// fan remix, a cover or an AI-made song is simply not in these catalogues.
+function albumNothingFound() {
+  const r = lastAlbumLookup || {};
+  const what = r.searched_title ? `"${r.searched_title}" de ${r.searched_artist}` : 'este título e banda';
+  const down = (r.failures || []).length
+    ? ` (não consegui perguntar a ${r.failures.map(f => f.split(':')[0]).join(', ')}.)` : '';
+  return `Nada encontrado para ${what} no iTunes nem no MusicBrainz${down}. ` +
+    'Remixes de fãs, versões e músicas feitas por IA não estão nestes catálogos — ' +
+    'corrige o título/banda e procura de novo, ou carrega a capa à mão.';
 }
 
 // Build the grid with DOM calls, not innerHTML: the URLs and names come from
@@ -3665,7 +3681,7 @@ async function searchWizardAlbum() {
     btn.disabled = false;
   }
   if (!wzAlbumCandidates.length) {
-    info.textContent = 'Nada encontrado para este título e banda.';
+    info.textContent = albumNothingFound();
     document.getElementById('wzAlbumResults').replaceChildren();
     document.getElementById('wzCoverUrl').value = '';
     return;
@@ -3745,7 +3761,7 @@ document.getElementById('capaSearch').addEventListener('click', async () => {
   }
   info.textContent = capaCandidates.length
     ? `${capaCandidates.length} resultado(s) — clica no certo para o aplicar.`
-    : 'Nada encontrado para este título e banda.';
+    : albumNothingFound();
   renderAlbumGrid(grid, capaCandidates, null, applyCapaCandidate);
 });
 

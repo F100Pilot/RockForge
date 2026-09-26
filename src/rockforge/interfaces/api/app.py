@@ -986,6 +986,12 @@ class AlbumCandidateOut(BaseModel):
 
 class AlbumLookupOut(BaseModel):
     candidates: list[AlbumCandidateOut]
+    #: What was actually searched (the main artist, the title without a
+    #: featuring credit), so "nothing found" can say for what.
+    searched_title: str = ""
+    searched_artist: str = ""
+    #: A service that could not be asked — its silence is not "not there".
+    failures: list[str] = []
 
 
 @app.get("/album-lookup", response_model=AlbumLookupOut)
@@ -998,15 +1004,26 @@ def album_lookup(title: str = "", artist: str = "") -> AlbumLookupOut:
     ``infrastructure/album_lookup.py`` — never verified against the live
     services from the sandbox.
     """
-    from rockforge.infrastructure.album_lookup import AlbumLookupError, search_albums
+    from rockforge.infrastructure.album_lookup import (
+        AlbumLookupError,
+        primary_artist,
+        search_albums,
+        search_title,
+    )
 
     if not title.strip() or not artist.strip():
         raise HTTPException(422, "title and artist are required to look up an album")
+    failures: list[str] = []
     try:
-        found = search_albums(title, artist)
+        found = search_albums(title, artist, failures=failures)
     except AlbumLookupError as exc:
         raise HTTPException(502, str(exc)) from exc
-    return AlbumLookupOut(candidates=[AlbumCandidateOut(**vars(c)) for c in found])
+    return AlbumLookupOut(
+        candidates=[AlbumCandidateOut(**vars(c)) for c in found],
+        searched_title=search_title(title),
+        searched_artist=primary_artist(artist),
+        failures=failures,
+    )
 
 
 # A song has a few hundred bars at most; the ceiling only stops an absurd

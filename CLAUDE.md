@@ -1368,6 +1368,17 @@ insensitive containment (`_same`). One service down still returns the other;
 both down is a **502**, never a 500, and never an empty list pretending nothing
 exists. stdlib `urllib`, no new dependency — same as `songsterr.py`.
 
+**The search is by the MAIN artist; an empty answer says why.** A credit like
+"Eminem feat. Avril Lavigne" is searched as "Eminem" (`primary_artist`; a
+"(feat. …)" in the title is dropped by `search_title`) — only the unambiguous
+feat./ft./featuring markers split it, never "&" or ",", which are part of real
+names ("Simon & Garfunkel"). `/album-lookup` returns `searched_title`/
+`searched_artist` and `failures` (a service that could not be asked), so the UI
+can say "nothing found for X by Y" and never passes a service outage off as
+"not in the catalogue". The user's first real test hit exactly the honest
+empty case: "Strangers Now" is a fan remix on YouTube, in neither catalogue —
+fan remixes, covers and AI-made songs have no official release to find.
+
 **Downloading a chosen cover is the SSRF-sensitive part.** `/jobs/gp`'s
 `cover_url` form field and `POST /jobs/{id}/cover-from-url` take a URL from the
 client, so `fetch_cover` only accepts **https** on the services' own image hosts

@@ -107,6 +107,23 @@ def _same(a: str, b: str) -> bool:
     return bool(x and y) and (x in y or y in x)
 
 
+# "Eminem feat. Avril Lavigne": the catalogues file the recording under the
+# main artist, and a search term carrying the whole credit can miss it. Only
+# the unambiguous featuring markers split the credit — "&" and "," are part of
+# real band names ("Simon & Garfunkel", "Earth, Wind & Fire").
+_FEATURING = re.compile(r"\s*[\(\[]?\s*\b(?:feat\.?|ft\.?|featuring)\s.*$", re.IGNORECASE)
+
+
+def primary_artist(artist: str) -> str:
+    """The credit without its featured artists: what the catalogues search by."""
+    return _FEATURING.sub("", artist).strip() or artist.strip()
+
+
+def search_title(title: str) -> str:
+    """The title without a "(feat. …)" credit tacked on."""
+    return _FEATURING.sub("", title).strip() or title.strip()
+
+
 def _itunes(title: str, artist: str, get_json: Callable[[str], Any]) -> list[AlbumCandidate]:
     query = urllib.parse.urlencode(
         {"term": f"{artist} {title}", "media": "music", "entity": "song", "limit": 25}
@@ -186,27 +203,36 @@ _KIND_RANK = {"album": 0, "ep": 1, "single": 2, "compilation": 3}
 
 
 def search_albums(
-    title: str, artist: str, *, get_json: Callable[[str], Any] | None = None
+    title: str,
+    artist: str,
+    *,
+    get_json: Callable[[str], Any] | None = None,
+    failures: list[str] | None = None,
 ) -> list[AlbumCandidate]:
     """Candidates for the song's album, year and cover, best first.
 
     Albums before singles before compilations, and the earliest year first
     within each (a later date is usually a reissue); one service failing still
-    returns the other's answers, both failing raises ``AlbumLookupError``.
+    returns the other's answers (its reason appended to ``failures``, so an
+    empty list is never mistaken for "not in that catalogue"), both failing
+    raises ``AlbumLookupError``. The search is by the MAIN artist and the title
+    without a featuring credit.
     """
     get_json = get_json or _http_get_json
-    title, artist = title.strip(), artist.strip()
+    title, artist = search_title(title), primary_artist(artist)
     if not title or not artist:
         raise AlbumLookupError("preciso do título e da banda para procurar")
     found: list[AlbumCandidate] = []
     errors: list[str] = []
-    for source in (_itunes, _musicbrainz):
+    for name, source in (("iTunes", _itunes), ("MusicBrainz", _musicbrainz)):
         try:
             found.extend(source(title, artist, get_json))
         except AlbumLookupError as exc:
-            errors.append(str(exc))
+            errors.append(f"{name}: {exc}")
     if len(errors) == 2:
         raise AlbumLookupError("; ".join(errors))
+    if failures is not None:
+        failures.extend(errors)
 
     seen: set[tuple[str, str, int | None]] = set()
     unique: list[AlbumCandidate] = []
