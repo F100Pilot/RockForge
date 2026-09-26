@@ -1230,6 +1230,13 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
         <div class="file-drop"><div class="file-drop-icon"><svg class="ic" aria-hidden="true"><use href="#i-file"/></svg></div><span class="file-drop-text">Arrasta ou clica para escolher</span><span class="file-drop-btn">Procurar</span>
         <input type="file" name="file" accept=".gp3,.gp4,.gp5,.gp" required></div></div>
       <p class="meta" style="flex-basis:100%">Escolhe o ficheiro Guitar Pro e clica em <b>Seguinte</b> para ver as pistas.</p>
+      <div class="field" style="flex-basis:100%;margin-top:.4rem"><label>… ou importa a tab do Songsterr <button class="info-btn" data-info="songsterr-import">ⓘ</button></label>
+        <div class="syncctrls">
+          <input type="text" id="songsterrImportLink" placeholder="https://www.songsterr.com/a/wsa/…-tab-s23063" style="flex:1;min-width:14rem">
+          <button type="button" id="songsterrImportBtn" class="secondary"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg> Importar</button>
+        </div>
+        <p class="meta" id="songsterrImportInfo" style="margin:.35rem 0 0"></p>
+      </div>
     </form>
 
     <!-- Steps 2-4 share one form (submit = create) -->

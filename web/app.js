@@ -52,8 +52,8 @@ function setWizardStep(n) {
 // Validate the current step before advancing. Returns true if OK.
 function validateWizardStep() {
   if (wizardStep === 1) {
-    if (!document.querySelector('#gpInspectForm input[name=file]').files.length) {
-      toast('Escolhe um ficheiro Guitar Pro.'); return false;
+    if (!document.querySelector('#gpInspectForm input[name=file]').files.length && !songsterrImported) {
+      toast('Escolhe um ficheiro Guitar Pro ou importa a tab do Songsterr.'); return false;
     }
   } else if (wizardStep === 2) {
     const anyTrack = ['lead_track', 'rhythm_track', 'combo_track', 'alt_lead_track', 'alt_rhythm_track']
@@ -144,6 +144,8 @@ function openNewJobModal() {
   applyEmbeddedAudioChoice();
   resetSongsterr();
   resetWizardAlbum();
+  songsterrImported = false;
+  document.getElementById('songsterrImportInfo').textContent = '';
   document.querySelectorAll('#newJobOverlay .file-drop').forEach(d => {
     d.classList.remove('has-file');
     const t = d.querySelector('.file-drop-text');
@@ -158,7 +160,12 @@ document.getElementById('wizardPrev').addEventListener('click', () => setWizardS
 document.getElementById('wizardNext').addEventListener('click', () => {
   if (!validateWizardStep()) return;
   // Step 1's "Seguinte" runs the inspect; its success handler advances to step 2.
-  if (wizardStep === 1) { document.getElementById('gpInspectForm').requestSubmit(); return; }
+  if (wizardStep === 1) {
+    if (songsterrImported && !document.querySelector('#gpInspectForm input[name=file]').files.length) {
+      setWizardStep(2); return;
+    }
+    document.getElementById('gpInspectForm').requestSubmit(); return;
+  }
   setWizardStep(wizardStep + 1);
 });
 // Modals that hold typed input (new project, batch, info edit, tones,
@@ -722,6 +729,12 @@ const INFO = {
       '<p><strong>Usar</strong> carrega a letra sincronizada no editor com os tempos da versão em que foi feita (normalmente a oficial). Se a tua gravação é essa versão, já bate certo; se tem uma introdução diferente, <strong>1ª palavra = cursor</strong> (põe o cursor onde começa a voz) ou os botões −/+ deslocam a letra toda.</p>' +
       '<p><strong>Sincronizar com a gravação</strong> usa o WhisperX para medir na voz da <em>tua</em> gravação o tempo de <em>cada palavra</em> da letra que está no editor — as palavras ficam as certas, só os tempos são medidos. Numa letra só texto procura na música inteira (menos fiável). Precisa dos extras <code>[ml,lyrics]</code> e demora alguns minutos.</p>' +
       '<p>A letra fica pendente até "Aplicar e reconstruir". Remixes de fãs e músicas feitas por IA raramente estão no LRCLIB — aí usa "Detetar letra" ou escreve-a no editor.</p>'
+  },
+  'songsterr-import': {
+    title: 'Importar a tab do Songsterr',
+    body: '<p>Em vez de um ficheiro Guitar Pro, cola o link da música no <strong>Songsterr</strong>. O RockForge descarrega as pistas da tab e cria com elas um ficheiro Guitar Pro 5, que segue o caminho normal (escolhes as pistas no passo 2).</p>' +
+      '<p>No passo 3 aparecem os <strong>vídeos do YouTube</strong> dessa música com o tempo de cada compasso marcado por pessoas. Escolhe um e carrega o <strong>MP3 convertido desse mesmo vídeo</strong> — o RockForge não descarrega áudio. Com isso, as notas seguem a gravação compasso a compasso, sem acertos manuais.</p>' +
+      '<p>Limites: a API do Songsterr não é pública e pode mudar; as pistas de bateria ficam de fora; notas de ornamento (grace) não são incluídas; a letra não vem (procura-a na página Letra). O ficheiro criado pode ser exportado e aberto no Guitar Pro.</p>'
   },
   'cover-art': {
     title: 'Capa do álbum',
@@ -5812,6 +5825,13 @@ document.getElementById('gpInspectForm').addEventListener('submit', async e => {
   const r = await fetch('/gp/inspect', { method: 'POST', body: new FormData(e.target) });
   const b = await r.json();
   if (!r.ok) return toast(b.detail || 'erro');
+  songsterrImported = false;
+  applyInspectResult(b);
+});
+
+// Step 1's answer — from an uploaded file (/gp/inspect) or a tab built from
+// Songsterr (/songsterr/import), which answers in the same shape.
+function applyInspectResult(b) {
   gpToken = b.gp_token;
   const form = document.getElementById('gpJobForm');
   document.getElementById('gpMeta').textContent =
@@ -5848,6 +5868,45 @@ document.getElementById('gpInspectForm').addEventListener('submit', async e => {
     syncHint.hidden = true;
   }
   setWizardStep(2);  // advance the wizard now that inspection succeeded
+}
+
+// "… ou importa a tab do Songsterr": the tab is rebuilt as a GP5 on the server
+// and the wizard continues exactly as with an uploaded file. The same link
+// then feeds step 3's Songsterr bar times — the tab and the times come from the
+// same song, which is what makes measure N the same in both.
+let songsterrImported = false;
+async function importSongsterrTab() {
+  const link = document.getElementById('songsterrImportLink').value.trim();
+  const info = document.getElementById('songsterrImportInfo');
+  const btn = document.getElementById('songsterrImportBtn');
+  if (!link) { toast('Cola o link da música no Songsterr.'); return; }
+  btn.disabled = true;
+  info.textContent = 'A descarregar a tab do Songsterr e a criar o ficheiro Guitar Pro…';
+  let b;
+  try {
+    b = await getJSON('/songsterr/import', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ song: link }),
+    });
+  } catch (err) {
+    info.textContent = `Não consegui importar: ${err.message}`;
+    return;
+  } finally {
+    btn.disabled = false;
+  }
+  info.textContent = b.import_warnings && b.import_warnings.length
+    ? `Importada, com avisos: ${b.import_warnings.join('; ')}.` : 'Tab importada.';
+  songsterrImported = true;
+  applyInspectResult(b);
+  // Step 3: the same song's per-measure times, ready to pick a video.
+  document.getElementById('songsterrLink').value = link;
+  document.getElementById('songsterrBlock').open = true;
+  document.getElementById('songsterrFetch').click();
+}
+document.getElementById('songsterrImportBtn').addEventListener('click', importSongsterrTab);
+document.getElementById('songsterrImportLink').addEventListener('keydown', e => {
+  // Inside step 1's form, Enter would submit the file inspect instead.
+  if (e.key === 'Enter') { e.preventDefault(); importSongsterrTab(); }
 });
 
 document.getElementById('gpJobForm').addEventListener('submit', async e => {

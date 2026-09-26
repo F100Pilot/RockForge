@@ -811,6 +811,11 @@ class GpInspectOut(BaseModel):
     # {"name", "size_bytes"}, or None. When present it is the audio the sync
     # points describe, so the wizard offers it instead of asking for an upload.
     embedded_audio: dict[str, Any] | None = None
+    # Set when the file was built from a Songsterr tab (/songsterr/import): the
+    # link, so the wizard can fetch that song's bar times too, and what the
+    # conversion could not carry over.
+    songsterr_song: str | None = None
+    import_warnings: list[str] = []
 
 
 GP_SUFFIXES = {".gp3", ".gp4", ".gp5", ".gp"}  # .gp = GP7/GP8 (native GPIF parser)
@@ -885,7 +890,11 @@ def inspect_gp_file(file: UploadFile = File(...)) -> GpInspectOut:
     gp_dir.mkdir(parents=True, exist_ok=True)
     dest = gp_dir / f"{uuid.uuid4()}{suffix}"
     _copy_upload_capped(file, dest)
+    return _inspect_stored_gp(dest)
 
+
+def _inspect_stored_gp(dest: Path) -> GpInspectOut:
+    """The wizard's track list for a GP file already stored under work_dir/gp."""
     from rockforge.domain.errors import IngestionError
     from rockforge.infrastructure.gpimport.parser import inspect_gp
 
@@ -947,6 +956,48 @@ class SongsterrOut(BaseModel):
     title: str
     artist: str
     videos: list[SongsterrVideoOut]
+
+
+class SongsterrImportIn(BaseModel):
+    song: str = Field(max_length=500)
+
+
+@app.post("/songsterr/import", response_model=GpInspectOut)
+def songsterr_import(payload: SongsterrImportIn) -> GpInspectOut:
+    """Build a Guitar Pro file from a Songsterr tab, in place of uploading one.
+
+    The tab's tracks are fetched (``songsterr.fetch_tab``), written as a GP5
+    (``gpimport/songsterr_gp``) under ``work_dir/gp`` like an upload, and the
+    answer is exactly ``/gp/inspect``'s — so the rest of the wizard, the job
+    and every later tool see an ordinary GP file. No audio is fetched. 422 for
+    a link we cannot read, 502 when Songsterr is unreachable or changed.
+    """
+    from rockforge.domain.errors import IngestionError
+    from rockforge.infrastructure.gpimport.songsterr_gp import write_songsterr_gp5
+    from rockforge.infrastructure.songsterr import SongsterrError, fetch_tab, parse_song_id
+
+    try:
+        parse_song_id(payload.song)
+    except SongsterrError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    try:
+        tab = fetch_tab(payload.song)
+    except SongsterrError as exc:
+        raise HTTPException(502, str(exc)) from exc
+    gp_dir = settings.work_dir / "gp"
+    dest = gp_dir / f"{uuid.uuid4()}.gp5"
+    try:
+        report = write_songsterr_gp5(list(tab.parts), dest, title=tab.title, artist=tab.artist)
+    except IngestionError as exc:
+        dest.unlink(missing_ok=True)
+        raise HTTPException(422, str(exc)) from exc
+    out = _inspect_stored_gp(dest)
+    warnings = list(report.warnings)
+    if tab.missing:
+        warnings.insert(0, "não consegui descarregar: " + ", ".join(tab.missing))
+    out.songsterr_song = str(tab.song_id)
+    out.import_warnings = warnings
+    return out
 
 
 @app.get("/songsterr", response_model=SongsterrOut)

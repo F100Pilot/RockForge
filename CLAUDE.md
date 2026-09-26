@@ -158,6 +158,48 @@ re-inverting the dependency.
    `test_bar_times_reach_the_parser_and_retime_the_built_chart` (mutation-checked)
    and `test_songsterr_lookup_*` / `test_*bar_times*` in `test_api.py`.
 
+   **Or no Guitar Pro file at all: the tab imported from Songsterr
+   (`/songsterr/import`).** Step 1 of the wizard also takes a Songsterr link.
+   `songsterr.fetch_tab` reads `/api/meta/{id}` (revision, `image` hash, the
+   track list) and then each track's JSON **part** — what Songsterr's own player
+   draws — from its CloudFront distributions (`part_urls`: the `image` layout,
+   a `-stage` one, and the legacy `part/{rev}/{i}` one; each distribution is
+   tried in turn because the others answer 403; hostnames read from
+   `teaqu/guitar-pro-youtube-sync`, which found them in the player's bundle). A
+   track that will not download is NAMED in the warnings, not fatal; none at
+   all is a 502. `gpimport/songsterr_gp.write_songsterr_gp5` writes the parts as
+   a **GP5 with PyGuitarPro** — not GP7 like that tool (and none of its code:
+   it carries no licence) — because GP5 is what our importer and
+   `arrangement_writer` already speak, so the file lands in `work_dir/gp/` like
+   an upload and `/songsterr/import` answers exactly `/gp/inspect`'s shape
+   (`_inspect_stored_gp`, shared) plus `songsterr_song`/`import_warnings`.
+   Nothing downstream knows the difference: track choice, bar times, reload,
+   export all apply. Mapping details that matter: Songsterr lists tuning and
+   numbers strings from the HIGHEST (its string 0 = GP5 string 1); `hp` marks
+   the TARGET of a hammer/pull while GP5 marks the ORIGIN (the previous note on
+   that string); bend `position` 0..60 → 0..12 and `tone` 50 = one semitone →
+   value 2 (what `parser.py` reads as `value / 2` semitones); every
+   `MeasureHeader.start` is set by hand from the time signatures, so an
+   under-/over-filled Songsterr bar cannot push the next one; tempo = the first
+   track's `automations.tempo` (song tempo + a mix-table change per later
+   measure, as `tempo_writer` does). Honest losses, all counted in the report
+   and shown in the wizard: drums skipped, **grace notes dropped** (a GP5 grace
+   is an ornament on the NEXT note — written as beats they would push the
+   rhythm late), a mid-bar tempo change moved to its bar's start, no lyrics
+   (the Letra page finds them on LRCLIB). After an import the wizard fills step
+   3's Songsterr link and fetches the videos, so the per-measure times of the
+   SAME song are one pick away — tab and times from one source is exactly what
+   makes "measure N is measure N" hold. **Audio is still the user's** (the MP3
+   converted from the chosen video): the yt-dlp route stays removed on purpose.
+   Never run against the real Songsterr from here (blocked) — TESTING.md
+   §7d-quinquies. Guarded by `test_songsterr_gp.py` (a note-for-note round trip
+   through `parse_gp_track`: ties, triplets, dead notes, hammer target, bend,
+   palm mute/vibrato, slide, sections, tempo change, odd meters, an empty bar,
+   drums skipped), the `fetch_tab` tests in `test_songsterr.py` and
+   `test_a_songsterr_tab_becomes_a_gp_file_the_wizard_can_use`. Verified with
+   Playwright end to end (Songsterr answers faked): import → tracks → step 3
+   with the video's times → a real build whose bars sit on those times.
+
    **Tied notes** (GP `(17)` in parentheses — a held continuation, not a
    re-pick) are folded into the note they extend in BOTH parsers, never emitted
    as a second attack: GP5 via `NoteType.tie` (inline, tracking the last note

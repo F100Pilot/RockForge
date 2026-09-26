@@ -807,6 +807,45 @@ def test_songsterr_lookup_returns_the_videos_and_their_bar_times(
     ]
 
 
+def test_a_songsterr_tab_becomes_a_gp_file_the_wizard_can_use(
+    client: TestClient, monkeypatch
+) -> None:
+    """/songsterr/import answers like /gp/inspect, with a stored GP file behind
+    the token — so the rest of the wizard and the job need nothing new."""
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.infrastructure import songsterr
+
+    part = {"name": "Lead", "instrument": "Distortion Guitar", "strings": 6,
+            "tuning": [64, 59, 55, 50, 45, 40],
+            "automations": {"tempo": [{"measure": 0, "bpm": 100}]},
+            "measures": [{"signature": [4, 4], "voices": [{"beats": [
+                {"type": 1, "notes": [{"string": 5, "fret": 3}]}]}]}]}
+
+    def fake(song: str, **_k):  # noqa: ANN202
+        assert song == "https://www.songsterr.com/a/wsa/x-tab-s42"
+        return songsterr.SongsterrTab(song_id=42, revision_id=7, title="Tema", artist="Banda",
+                                      parts=(part,), missing=("Voz",))
+
+    monkeypatch.setattr(songsterr, "fetch_tab", fake)
+    r = client.post("/songsterr/import", json={"song": "https://www.songsterr.com/a/wsa/x-tab-s42"})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert (body["title"], body["artist"], body["tempo"]) == ("Tema", "Banda", 100)
+    assert [t["name"] for t in body["tracks"]] == ["Lead"]
+    assert body["songsterr_song"] == "42"
+    assert body["import_warnings"][0] == "não consegui descarregar: Voz"
+    assert (app_module.settings.work_dir / "gp" / body["gp_token"]).is_file()
+
+    assert client.post("/songsterr/import", json={"song": "not a link"}).status_code == 422
+
+    def down(song: str, **_k):  # noqa: ANN202
+        raise songsterr.SongsterrError("não consegui contactar o Songsterr (timeout)")
+
+    monkeypatch.setattr(songsterr, "fetch_tab", down)
+    r = client.post("/songsterr/import", json={"song": "42"})
+    assert r.status_code == 502 and "Songsterr" in r.text
+
+
 def test_songsterr_lookup_errors_are_422_for_a_bad_link_and_502_for_songsterr(
     client: TestClient, monkeypatch
 ) -> None:

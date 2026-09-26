@@ -104,3 +104,75 @@ def test_an_unreachable_songsterr_is_a_clear_error(monkeypatch: pytest.MonkeyPat
     monkeypatch.setattr(urllib.request, "urlopen", refuse)
     with pytest.raises(SongsterrError, match="não consegui contactar o Songsterr"):
         fetch_song("1")
+
+
+# --- the tab itself (fetch_tab) ---------------------------------------------
+
+def _tab_fetcher(answers: dict[str, Any], seen: list[str] | None = None):  # noqa: ANN202
+    def get_json(url: str) -> Any:
+        if seen is not None:
+            seen.append(url)
+        answer = answers.get(url)
+        if isinstance(answer, Exception):
+            raise answer
+        if answer is None:
+            raise SongsterrError(f"o Songsterr respondeu 403 a {url}", 403)
+        return answer
+    return get_json
+
+
+_META = {"revisionId": 55, "title": "T", "artist": "A", "image": "abc123",
+         "tracks": [{"name": "Lead", "instrument": "Distortion Guitar",
+                     "tuning": [64, 59, 55, 50, 45, 40]},
+                    {"name": "Drums", "instrument": "Drums"}]}
+
+
+def test_the_tab_parts_are_fetched_trying_each_distribution_in_turn() -> None:
+    from rockforge.infrastructure.songsterr import fetch_tab, part_urls
+
+    lead_urls = part_urls(9, 55, "abc123", 0)
+    drum_urls = part_urls(9, 55, "abc123", 1)
+    seen: list[str] = []
+    tab = fetch_tab("https://www.songsterr.com/a/wsa/x-tab-s9", get_json=_tab_fetcher({
+        "https://www.songsterr.com/api/meta/9": _META,
+        lead_urls[1]: {"measures": [{}]},            # the first distribution says 403
+        drum_urls[0]: {"measures": [{}]},
+    }, seen))
+    assert (tab.song_id, tab.revision_id, tab.title, tab.artist) == (9, 55, "T", "A")
+    assert [p["name"] for p in tab.parts] == ["Lead", "Drums"]
+    # The meta's tuning/instrument reach the part when the part lacks them.
+    assert tab.parts[0]["tuning"] == [64, 59, 55, 50, 45, 40]
+    assert lead_urls[0] in seen and lead_urls[1] in seen
+    assert lead_urls[0] == "https://dqsljvtekg760.cloudfront.net/9/55/abc123/0.json"
+
+
+def test_an_older_revision_without_an_image_uses_the_legacy_addresses() -> None:
+    from rockforge.infrastructure.songsterr import part_urls
+
+    assert part_urls(9, 55, None, 2)[0] == "https://d3rrfvx08uyjp1.cloudfront.net/part/55/2"
+
+
+def test_a_track_that_will_not_download_is_named_not_fatal() -> None:
+    from rockforge.infrastructure.songsterr import fetch_tab, part_urls
+
+    tab = fetch_tab("9", get_json=_tab_fetcher({
+        "https://www.songsterr.com/api/meta/9": _META,
+        part_urls(9, 55, "abc123", 0)[0]: {"measures": [{}]},
+    }))
+    assert [p["name"] for p in tab.parts] == ["Lead"] and tab.missing == ("Drums",)
+
+
+def test_no_track_at_all_or_a_real_failure_is_an_error() -> None:
+    from rockforge.infrastructure.songsterr import fetch_tab, part_urls
+
+    with pytest.raises(SongsterrError, match="nenhuma pista"):
+        fetch_tab("9", get_json=_tab_fetcher({"https://www.songsterr.com/api/meta/9": _META}))
+    boom = SongsterrError("não consegui contactar o Songsterr (timeout)")
+    with pytest.raises(SongsterrError, match="timeout"):
+        fetch_tab("9", get_json=_tab_fetcher({
+            "https://www.songsterr.com/api/meta/9": _META,
+            part_urls(9, 55, "abc123", 0)[0]: boom,
+        }))
+    with pytest.raises(SongsterrError, match="pistas"):
+        fetch_tab("9", get_json=_tab_fetcher({
+            "https://www.songsterr.com/api/meta/9": {"revisionId": 1, "tracks": []}}))

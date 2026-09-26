@@ -1,3 +1,23 @@
+# Importar a tab diretamente do Songsterr (em vez de um ficheiro GP)
+
+Pedido: colar o link da tab do Songsterr em vez de carregar um GP; juntar o
+MP3 (do vídeo do YouTube) e os tempos por compasso do Songsterr.
+
+- [x] 1. `songsterr.fetch_tab`: meta + JSON de cada pista (CDN do leitor do
+      Songsterr, como o guitar-pro-youtube-sync) — só leitura, sem descarregar áudio
+- [x] 2. `gpimport/songsterr_gp.py`: pistas do Songsterr → GP5 (PyGuitarPro):
+      compassos/assinaturas/marcadores, andamento, ritmo (pontos, tercinas),
+      trastes/cordas, ligaduras, hammer-on, slides, bends, vibrato, palm mute,
+      notas mortas/fantasma, harmónicos, let ring, acentos
+- [x] 3. `POST /songsterr/import`: gera o GP5 em `work_dir/gp/` e responde como
+      o `/gp/inspect` (o resto do assistente não muda)
+- [x] 4. Assistente passo 1: "Ou importa do Songsterr"; o passo 3 abre já com
+      os vídeos dessa música (tempos por compasso) e o link para o MP3
+- [x] 5. Testes (JSON de exemplo, sem rede), docs, Playwright, gates
+
+Decisão: o áudio continua a vir do utilizador (converte o vídeo escolhido) —
+o download do YouTube (yt-dlp) foi removido de propósito e fica removido.
+
 # Procurar a letra online e sincronizá-la
 
 Pedido: "tenta procurar a letra… e sincronizá-la".

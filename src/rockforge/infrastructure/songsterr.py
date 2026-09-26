@@ -48,6 +48,11 @@ _USER_AGENT = "Mozilla/5.0 (RockForge)"
 class SongsterrError(IngestionError):
     """Songsterr could not be reached, or answered in a shape we do not know."""
 
+    def __init__(self, message: str, status: int | None = None) -> None:
+        super().__init__(message)
+        #: The HTTP status when the failure was an HTTP answer (403, 404…).
+        self.status = status
+
 
 @dataclass(frozen=True)
 class SongsterrVideo:
@@ -93,7 +98,7 @@ def _http_get_json(url: str) -> Any:
         with urllib.request.urlopen(request, timeout=TIMEOUT_S) as response:
             return json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
-        raise SongsterrError(f"o Songsterr respondeu {exc.code} a {url}") from exc
+        raise SongsterrError(f"o Songsterr respondeu {exc.code} a {url}", exc.code) from exc
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         raise SongsterrError(f"não consegui contactar o Songsterr ({exc})") from exc
     except ValueError as exc:
@@ -169,4 +174,94 @@ def fetch_song(
         title=str(meta.get("title") or ""),
         artist=str(meta.get("artist") or ""),
         videos=tuple(videos),
+    )
+
+
+# The tab itself — the JSON "parts" Songsterr's own player draws each track
+# from. They are served from CloudFront, not www.songsterr.com; these are the
+# distributions the player's bundle names (read from guitar-pro-youtube-sync,
+# which found them there). A revision with an ``image`` hash uses the first
+# list, an older one without it the second; each list is tried in turn because
+# a distribution answers 403 for revisions it does not hold. If Songsterr moves
+# them, every attempt fails and the error says so — nothing is guessed.
+_PART_CDNS = ("dqsljvtekg760", "d34shlm8p2ums2", "d3cqchs6g3b5ew")
+_PART_CDNS_STAGE = ("d3d3l6a6rcgkaf",)
+_PART_CDNS_LEGACY = ("d3rrfvx08uyjp1", "dodkcbujl0ebx", "dj1usja78sinh")
+
+
+@dataclass(frozen=True)
+class SongsterrTab:
+    song_id: int
+    revision_id: int
+    title: str
+    artist: str
+    #: One JSON part per track, in Songsterr's order; None for a track that
+    #: could not be fetched (named in ``missing``).
+    parts: tuple[dict[str, Any], ...]
+    missing: tuple[str, ...]
+
+
+def part_urls(song_id: int, revision_id: int, image: str | None, index: int) -> list[str]:
+    """Every address a track's part may be at, in the order to try them."""
+    if image:
+        cdns = _PART_CDNS_STAGE if image.endswith("-stage") else _PART_CDNS
+        return [f"https://{c}.cloudfront.net/{song_id}/{revision_id}/{image}/{index}.json"
+                for c in cdns]
+    return [f"https://{c}.cloudfront.net/part/{revision_id}/{index}" for c in _PART_CDNS_LEGACY]
+
+
+def fetch_tab(
+    song: str, *, get_json: Callable[[str], Any] = _http_get_json
+) -> SongsterrTab:
+    """The tab of a Songsterr song — every track's part, for writing a GP file."""
+    song_id = parse_song_id(song)
+    meta = get_json(f"{BASE_URL}/api/meta/{song_id}")
+    if not isinstance(meta, dict) or "revisionId" not in meta:
+        raise SongsterrError("o Songsterr não devolveu a revisão da música (a API mudou?)")
+    try:
+        revision_id = int(meta["revisionId"])
+    except (TypeError, ValueError) as exc:
+        raise SongsterrError("revisão da música ilegível (a API mudou?)") from exc
+    tracks = meta.get("tracks")
+    if not isinstance(tracks, list) or not tracks:
+        raise SongsterrError("o Songsterr não devolveu as pistas da música (a API mudou?)")
+    image = meta.get("image") if isinstance(meta.get("image"), str) else None
+
+    parts: list[dict[str, Any]] = []
+    missing: list[str] = []
+    for index, info in enumerate(tracks):
+        name = str(info.get("name") or info.get("instrument") or f"Pista {index + 1}") \
+            if isinstance(info, dict) else f"Pista {index + 1}"
+        part: dict[str, Any] | None = None
+        for url in part_urls(song_id, revision_id, image, index):
+            try:
+                got = get_json(url)
+            except SongsterrError as exc:
+                if exc.status in (403, 404):
+                    continue  # not on this distribution — try the next one
+                raise
+            if isinstance(got, dict):
+                part = got
+                break
+        if part is None:
+            missing.append(name)
+            continue
+        part.setdefault("name", name)
+        if isinstance(info, dict):
+            for key in ("instrument", "tuning", "strings"):
+                if key in info:
+                    part.setdefault(key, info[key])
+        parts.append(part)
+    if not parts:
+        raise SongsterrError(
+            "não consegui descarregar nenhuma pista desta tab — o Songsterr pode ter "
+            "mudado onde as guarda"
+        )
+    return SongsterrTab(
+        song_id=song_id,
+        revision_id=revision_id,
+        title=str(meta.get("title") or ""),
+        artist=str(meta.get("artist") or ""),
+        parts=tuple(parts),
+        missing=tuple(missing),
     )

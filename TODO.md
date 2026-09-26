@@ -4,6 +4,11 @@ Estado do projeto + lista de funcionalidades (concluídas `[x]` e propostas
 `[ ]`). Para *como* cada coisa funciona, ver `CLAUDE.md`. Para *como testar*,
 ver `TESTING.md`.
 
+- [x] **Importar a tab do Songsterr (sem ficheiro GP).** No passo 1 cola-se o
+  link do Songsterr: as pistas são descarregadas e escritas num GP5, e o passo 3
+  já mostra os vídeos com os tempos por compasso da mesma música. O áudio
+  continua a ser o MP3 do utilizador (convertido desse vídeo). Por validar
+  contra o Songsterr real: TESTING.md §7d-quinquies.
 - [x] **Letra encontrada online e sincronizada.** Pesquisa no LRCLIB; "Usar"
   carrega a letra sincronizada no editor, "1ª palavra = cursor"/−/+ acertam o
   início, e "Sincronizar com a gravação" mede cada palavra na voz com o

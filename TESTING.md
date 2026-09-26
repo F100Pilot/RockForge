@@ -774,6 +774,14 @@ against a fake. On a real machine:
    for N bars". A mismatch there means the GP is not that tab.
 4. A trimmed MP3 needs "Início da música" moved back by what was trimmed; that
    is the one number the times cannot know.
+5. **Importing the tab itself** (no GP file): in step 1 paste the Songsterr link
+   under "… ou importa a tab do Songsterr" → "Importar". The tracks must list in
+   step 2 with the right names/tunings; step 3 must open with that song's
+   videos already listed. Build with an MP3 of the chosen video and compare a
+   few passages with Songsterr's own player: frets, ties, hammer-ons, bends,
+   slides, palm mutes, and the sections. The warnings name what was left out
+   (drums, grace notes). If every track fails with 403, Songsterr has moved its
+   part distributions (`songsterr._PART_CDNS`).
 
 ### 7d-sexies. Album, year and cover lookup against the REAL services
 
