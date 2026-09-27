@@ -28,22 +28,19 @@ Honest limits, stated where they bite:
 
 from __future__ import annotations
 
-import json
 import math
 import re
-import urllib.error
-import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
+import requests
+
 from rockforge.domain.errors import IngestionError
-from rockforge.infrastructure._https import network_error_message, ssl_context
+from rockforge.infrastructure._https import network_error_message
 
 BASE_URL = "https://www.songsterr.com"
 TIMEOUT_S = 20.0
-# A plain browser UA: the site rejects some default library agents.
-_USER_AGENT = "Mozilla/5.0 (RockForge)"
 
 
 class SongsterrError(IngestionError):
@@ -94,14 +91,27 @@ def parse_song_id(text: str) -> int:
 
 
 def _http_get_json(url: str) -> Any:
-    request = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})
+    # ``requests`` with its DEFAULT headers, exactly as
+    # teaqu/guitar-pro-youtube-sync fetches these same endpoints — the client
+    # known to get answers. A browser-looking User-Agent on a client that is
+    # not a browser is what bot protection refuses: that version got 403 from
+    # /api/meta on the user's machine where the reference tool works.
     try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT_S, context=ssl_context()) as response:
-            return json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        raise SongsterrError(f"o Songsterr respondeu {exc.code} a {url}", exc.code) from exc
-    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        response = requests.get(url, timeout=TIMEOUT_S)
+    except requests.RequestException as exc:
         raise SongsterrError(network_error_message(exc, "Songsterr")) from exc
+    if response.status_code == 403 and url.startswith(BASE_URL):
+        raise SongsterrError(
+            f"o Songsterr recusou o pedido (403) a {url} — o site pode estar a "
+            "bloquear pedidos automáticos a partir desta ligação",
+            403,
+        )
+    if response.status_code >= 400:
+        raise SongsterrError(
+            f"o Songsterr respondeu {response.status_code} a {url}", response.status_code
+        )
+    try:
+        return response.json()
     except ValueError as exc:
         raise SongsterrError(f"resposta do Songsterr ilegível em {url}") from exc
 

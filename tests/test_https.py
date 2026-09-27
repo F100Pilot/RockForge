@@ -10,7 +10,7 @@ from typing import Any
 
 import pytest
 
-from rockforge.infrastructure import _https, album_lookup, lyrics_lookup, songsterr
+from rockforge.infrastructure import _https, album_lookup, lyrics_lookup
 
 _EXPIRED = ssl.SSLCertVerificationError(
     1, "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: certificate has expired"
@@ -66,7 +66,6 @@ def _fake_urlopen(calls: list[Any], exc: BaseException | None = None) -> Any:
 @pytest.mark.parametrize(
     ("module", "error", "service"),
     [
-        (songsterr, songsterr.SongsterrError, "Songsterr"),
         (lyrics_lookup, lyrics_lookup.LyricsLookupError, "LRCLIB"),
         (album_lookup, album_lookup.AlbumLookupError, "serviço"),
     ],
@@ -90,8 +89,8 @@ def test_an_ordinary_network_failure_keeps_its_plain_message(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(urllib.request, "urlopen", _fake_urlopen([]))
-    with pytest.raises(songsterr.SongsterrError, match="não consegui contactar o Songsterr"):
-        songsterr._http_get_json("https://example.invalid/x")
+    with pytest.raises(lyrics_lookup.LyricsLookupError, match="não consegui contactar o LRCLIB"):
+        lyrics_lookup._http_get_json("https://example.invalid/x")
 
 
 def test_the_cover_download_verifies_with_the_shared_context(

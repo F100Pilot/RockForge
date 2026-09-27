@@ -796,6 +796,11 @@ against a fake. On a real machine:
    antivirus that inspects HTTPS, then `pip install --upgrade certifi`. First
    reported (2026-09-27) as `certificate has expired` with the system store
    alone; fixed by adding certifi's roots, not yet re-tested by the user.
+8. **403 from `/api/meta`.** After the TLS fix the user got "o Songsterr
+   respondeu 403" with a browser-looking User-Agent over urllib; the client is
+   now `requests` with default headers, like the reference tool. A remaining
+   403 ("o Songsterr recusou o pedido") on a machine where the reference tool
+   itself works would mean the two clients still differ — compare them first.
 
 ### 7d-sexies. Album, year and cover lookup against the REAL services
 

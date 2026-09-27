@@ -43,7 +43,10 @@ def ssl_context() -> ssl.SSLContext:
 def is_certificate_error(exc: BaseException) -> bool:
     """Whether a failed request failed on the server's certificate."""
     reason = exc.reason if isinstance(exc, urllib.error.URLError) else exc
-    return isinstance(reason, ssl.SSLCertVerificationError)
+    # ``requests`` wraps the ssl error twice over; its text still names it.
+    return isinstance(reason, ssl.SSLCertVerificationError) or (
+        "CERTIFICATE_VERIFY_FAILED" in str(exc)
+    )
 
 
 def network_error_message(exc: BaseException, service: str) -> str:

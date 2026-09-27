@@ -129,7 +129,8 @@ re-inverting the dependency.
    "perfectly", and the opposite of the automatic estimators that were removed
    (see below). `infrastructure/songsterr.py` fetches ONLY those times
    (`/api/meta/{id}` → `revisionId`, then `/api/video-points/{id}/{rev}/list`),
-   with stdlib `urllib` (no new dependency), ordering the videos the way that
+   with **`requests` and its default headers — the reference tool's exact
+   client** (see the 403 note below), ordering the videos the way that
    tool picks them. The recording has to be **that same YouTube video's audio**
    — Songsterr's own audio is a different recording and does NOT match the
    times — so the wizard can fetch it (`youtube_audio`, below) or take an MP3
@@ -1508,7 +1509,7 @@ every card shows the matched track and the source, because a text match can
 return a cover version or a compilation first. Matching is case/accent
 insensitive containment (`_same`). One service down still returns the other;
 both down is a **502**, never a 500, and never an empty list pretending nothing
-exists. stdlib `urllib`, no new dependency — same as `songsterr.py`.
+exists. stdlib `urllib`, no new dependency.
 
 **The search is by the MAIN artist; an empty answer says why.** A credit like
 "Eminem feat. Avril Lavigne" is searched as "Eminem" (`primary_artist`; a
@@ -1558,8 +1559,8 @@ undocumented; if covers ever stop loading, check that first. Guarded by
 
 ### Outbound HTTPS trusts the system roots PLUS certifi's (`infrastructure/_https.py`)
 
-Every stdlib `urllib` client (Songsterr, LRCLIB, iTunes/MusicBrainz, the
-cover download) opens its connection with `_https.ssl_context()`: the system
+Every stdlib `urllib` client (LRCLIB, iTunes/MusicBrainz, the cover
+download) opens its connection with `_https.ssl_context()`: the system
 default context with `certifi.where()` ADDED via `load_verify_locations` —
 plain system default only when `certifi` is missing (a core dependency, so a
 broken install). **Verification stays on** — this adds trusted roots, never
@@ -1588,6 +1589,26 @@ a reproduction. Guarded by `test_https.py` (certifi's roots loaded into a
 root-less stand-in for the system store — mutation-checked — the system roots
 kept, `CERT_REQUIRED` throughout, the fallback, every client passing the
 shared context, and the explained message).
+
+**Songsterr is asked with `requests`, default headers — NOT urllib, NOT a
+browser User-Agent.** With the certificate fixed, the user's import got **403
+from `/api/meta`**: `songsterr._http_get_json` sent `User-Agent: Mozilla/5.0
+(RockForge)` through `urllib`, a client claiming to be a browser while
+behaving like none, which is what bot protection refuses. The one client
+known to get answers from the user's machine is teaqu/guitar-pro-youtube-sync
+(their GP file was built with it), and it calls every one of these endpoints
+— meta, video points, the CloudFront parts — as a bare `requests.get(url,
+timeout=…)`. RockForge now does exactly that (`requests` is a core
+dependency; `types-requests` in `[dev]` for mypy), and
+`test_songsterr_is_asked_with_the_default_requests_client` fails if a header
+is ever added back. Consequence: Songsterr's TLS trust is requests' own
+(certifi), not `_https.ssl_context()` — the same as the reference tool, so a
+machine whose antivirus re-signs HTTPS cannot reach Songsterr here either
+(`REQUESTS_CA_BUNDLE` points it at another bundle). A 403 from songsterr.com
+now says the site may be blocking automated requests; a 403 from a part CDN
+keeps meaning "try the next distribution". **Not verified from here** (the
+sandbox cannot reach Songsterr) — it rests on the reference tool working on
+that machine.
 
 ### Automatic tone detection (`/jobs/{id}/detect-tones`)
 

@@ -140,3 +140,5 @@ traço em vez de emojis, e o projeto em ecrã inteiro em vez de um modal.
 - [x] Clear message for a refused certificate (clock / antivirus / certifi)
 - [x] `certifi` core dependency; PyInstaller contrib hook bundles it
 - [x] Tests (mutation-checked), docs, gates
+- [x] Then 403 from /api/meta: Songsterr now asked with default `requests`
+      (the reference tool's exact client), not urllib + a Mozilla UA

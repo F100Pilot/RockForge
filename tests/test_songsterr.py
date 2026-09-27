@@ -94,15 +94,78 @@ def test_an_api_that_changed_shape_is_a_clear_error(meta: Any, entries: Any, mat
         fetch_song("1", get_json=_fake(meta, entries))
 
 
+class _Answer:
+    def __init__(self, status: int, body: Any = None) -> None:
+        self.status_code, self._body = status, body
+
+    def json(self) -> Any:
+        if isinstance(self._body, Exception):
+            raise self._body
+        return self._body
+
+
+def test_songsterr_is_asked_with_the_default_requests_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The reference tool's exact call (requests, default headers). A custom
+    # browser-looking User-Agent is what Songsterr answered 403 to.
+    import requests
+
+    from rockforge.infrastructure import songsterr
+
+    calls: list[tuple[tuple[Any, ...], dict[str, Any]]] = []
+
+    def fake_get(*a: Any, **k: Any) -> _Answer:
+        calls.append((a, k))
+        return _Answer(200, {"ok": True})
+
+    monkeypatch.setattr(requests, "get", fake_get)
+    assert songsterr._http_get_json("https://www.songsterr.com/api/meta/1") == {"ok": True}
+    assert calls == [(("https://www.songsterr.com/api/meta/1",), {"timeout": songsterr.TIMEOUT_S})]
+
+
+@pytest.mark.parametrize(
+    ("answer", "match", "status"),
+    [
+        (_Answer(403), "recusou o pedido \\(403\\)", 403),
+        (_Answer(404), "respondeu 404", 404),
+        (_Answer(200, ValueError("not json")), "ilegível", None),
+    ],
+)
+def test_a_refusal_or_an_unreadable_answer_is_a_clear_error(
+    monkeypatch: pytest.MonkeyPatch, answer: _Answer, match: str, status: int | None
+) -> None:
+    import requests
+
+    from rockforge.infrastructure import songsterr
+
+    monkeypatch.setattr(requests, "get", lambda *_a, **_k: answer)
+    with pytest.raises(SongsterrError, match=match) as info:
+        songsterr._http_get_json("https://www.songsterr.com/api/meta/1")
+    assert info.value.status == status
+
+
 def test_an_unreachable_songsterr_is_a_clear_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    import urllib.error
-    import urllib.request
+    import requests
 
     def refuse(*_a: Any, **_k: Any) -> Any:
-        raise urllib.error.URLError("connection refused")
+        raise requests.ConnectionError("connection refused")
 
-    monkeypatch.setattr(urllib.request, "urlopen", refuse)
+    monkeypatch.setattr(requests, "get", refuse)
     with pytest.raises(SongsterrError, match="não consegui contactar o Songsterr"):
+        fetch_song("1")
+
+
+def test_a_refused_certificate_is_explained(monkeypatch: pytest.MonkeyPatch) -> None:
+    import requests
+
+    def refuse(*_a: Any, **_k: Any) -> Any:
+        raise requests.exceptions.SSLError(
+            "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: certificate has expired"
+        )
+
+    monkeypatch.setattr(requests, "get", refuse)
+    with pytest.raises(SongsterrError, match="ligação segura ao Songsterr"):
         fetch_song("1")
 
 
