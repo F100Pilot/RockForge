@@ -46,7 +46,7 @@ function setWizardStep(n) {
   document.getElementById('wizardPrev').style.visibility = wizardStep > 1 ? '' : 'hidden';
   document.getElementById('wizardNext').style.display = wizardStep < WIZARD_MAX ? '' : 'none';
   document.getElementById('wizardCreate').style.display = wizardStep < WIZARD_MAX ? 'none' : '';
-  if (wizardStep === WIZARD_MAX) maybeAutoAlbumSearch();
+  if (wizardStep === WIZARD_MAX) { maybeAutoAlbumSearch(); maybeAutoLyricsSearch(); }
 }
 
 // Validate the current step before advancing. Returns true if OK.
@@ -190,6 +190,7 @@ function openNewJobModal() {
   applyEmbeddedAudioChoice();
   resetSongsterr();
   resetWizardAlbum();
+  resetWizardLyrics();
   songsterrImported = false;
   document.getElementById('songsterrImportInfo').textContent = '';
   document.querySelectorAll('#newJobOverlay .file-drop').forEach(d => {
@@ -769,6 +770,12 @@ const INFO = {
     body: '<p>Procura a música pelo <strong>título e banda</strong> no iTunes e no MusicBrainz (capas do Cover Art Archive) e mostra os álbuns onde ela aparece. <strong>Escolhes tu</strong> o certo: o clique preenche o álbum e o ano e usa essa capa.</p>' +
       '<p>A pesquisa é por texto, por isso pode trazer versões de outros artistas, compilações ou reedições — cada cartão mostra a faixa encontrada e a fonte para o veres. "Sem capa" não usa imagem nenhuma. Precisa de internet; sem ela, preenche à mão como antes.</p>' +
       '<p>A capa escolhida é descarregada quando o projeto é criado. Num projeto que já existe, usa "Procurar capa online" na página Capa.</p>'
+  },
+  'wz-lyrics': {
+    title: 'Letra sincronizada (ao criar)',
+    body: '<p>Procura a letra da música no <b>LRCLIB</b> (base aberta, sem conta) pelo título e pela banda — corre sozinha quando chegas a este passo. A melhor versão <b>com tempos</b> fica escolhida e entra logo no primeiro build; clica noutra para mudar, ou em "Escolhida ✓" para não usar nenhuma.</p>' +
+      '<p>Os tempos são os da gravação original. Se a tua versão tiver outra introdução, ajusta-os depois na página <b>Letra</b> ("1ª palavra = cursor", −/+, ou "Sincronizar com a gravação"). Se o ficheiro GP já trouxer letra, nada fica escolhido sozinho — uma letra daqui substituiria a do GP. Um ficheiro LRC carregado abaixo tem sempre prioridade.</p>' +
+      '<p>Remixes de fãs e músicas feitas por IA raramente estão no LRCLIB.</p>'
   },
   'lyrics-lookup': {
     title: 'Procurar a letra e sincronizá-la',
@@ -3578,35 +3585,42 @@ function editorLines() {
   return lines;
 }
 
+// One LRCLIB result's description — shared by the Letra page and the wizard.
+// Built with DOM calls: every string here comes from a third party.
+function lyricsCardBody(c, recordingS) {
+  const body = document.createElement('div');
+  body.className = 'lyr-body';
+  const title = document.createElement('b');
+  title.textContent = `${c.track} — ${c.artist}`;
+  const meta = document.createElement('span');
+  meta.className = 'lyr-meta';
+  const badge = document.createElement('span');
+  badge.className = 'lyr-badge ' + (c.synced ? 'synced' : 'plain');
+  badge.textContent = c.instrumental ? 'instrumental' : c.synced ? 'sincronizada' : 'só texto';
+  let len = '';
+  if (c.duration) {
+    len = fmtMinSec(c.duration);
+    if (recordingS) {
+      const gap = recordingS - c.duration;
+      len += Math.abs(gap) < 2 ? ' (igual à tua gravação)'
+        : ` (a tua gravação: ${fmtMinSec(recordingS)}, ${gap > 0 ? '+' : '−'}${Math.round(Math.abs(gap))} s)`;
+    }
+  }
+  meta.append(badge, [c.album, len].filter(Boolean).join(' · '));
+  const preview = document.createElement('span');
+  preview.className = 'lyr-preview';
+  preview.textContent = (c.plain || '').split('\n').filter(Boolean).slice(0, 2).join('\n');
+  body.append(title, meta, preview);
+  return body;
+}
+
 function renderLyricsCandidates() {
   const el = document.getElementById('lyricsResults');
   el.replaceChildren();
   for (const c of lyricsCandidates) {
     const card = document.createElement('div');
     card.className = 'lyr-card';
-    const body = document.createElement('div');
-    body.className = 'lyr-body';
-    const title = document.createElement('b');
-    title.textContent = `${c.track} — ${c.artist}`;
-    const meta = document.createElement('span');
-    meta.className = 'lyr-meta';
-    const badge = document.createElement('span');
-    badge.className = 'lyr-badge ' + (c.synced ? 'synced' : 'plain');
-    badge.textContent = c.instrumental ? 'instrumental' : c.synced ? 'sincronizada' : 'só texto';
-    let len = '';
-    if (c.duration) {
-      len = fmtMinSec(c.duration);
-      if (waveDuration) {
-        const gap = waveDuration - c.duration;
-        len += Math.abs(gap) < 2 ? ' (igual à tua gravação)'
-          : ` (a tua gravação: ${fmtMinSec(waveDuration)}, ${gap > 0 ? '+' : '−'}${Math.round(Math.abs(gap))} s)`;
-      }
-    }
-    meta.append(badge, [c.album, len].filter(Boolean).join(' · '));
-    const preview = document.createElement('span');
-    preview.className = 'lyr-preview';
-    preview.textContent = (c.plain || '').split('\n').filter(Boolean).slice(0, 2).join('\n');
-    body.append(title, meta, preview);
+    const body = lyricsCardBody(c, waveDuration);
     const acts = document.createElement('div');
     acts.className = 'lyr-acts';
     const btn = (label, fn) => {
@@ -4114,6 +4128,138 @@ function maybeAutoAlbumSearch() {
   if (wzAlbumAutoDone) return;
   wzAlbumAutoDone = true;
   searchWizardAlbum();
+}
+
+// Wizard step 4: synced lyrics from LRCLIB, chosen BEFORE the project exists,
+// so the first build already carries them. The chosen LRC text goes to
+// /jobs/gp as ``lyrics_lrc`` — stored exactly like an uploaded LRC file (which
+// still wins). The best synced result is preselected unless the GP file brings
+// its own lyrics (an LRC would replace them) or an LRC file was chosen.
+let wzLyricsCandidates = [];
+let wzLyricsPick = -1;           // index into wzLyricsCandidates, -1 = none
+let wzLyricsAutoDone = false;
+let wzGpHasLyrics = false;       // set from /gp/inspect
+let wzRecordingS = null;         // the chosen audio file's length, when known
+
+function resetWizardLyrics() {
+  wzLyricsCandidates = [];
+  wzLyricsPick = -1;
+  wzLyricsAutoDone = false;
+  wzRecordingS = null;
+  document.getElementById('wzLyricsResults').replaceChildren();
+  document.getElementById('wzLyricsInfo').textContent = '';
+  document.getElementById('wzLyricsLrc').value = '';
+}
+
+function wizardLrcFileChosen() {
+  const f = document.querySelector('#gpJobForm input[name=lrc]');
+  return !!(f && f.files && f.files.length);
+}
+
+function renderWizardLyrics() {
+  const el = document.getElementById('wzLyricsResults');
+  el.replaceChildren();
+  wzLyricsCandidates.forEach((c, i) => {
+    const card = document.createElement('div');
+    card.className = 'lyr-card' + (i === wzLyricsPick ? ' picked' : '');
+    const acts = document.createElement('div');
+    acts.className = 'lyr-acts';
+    if (c.synced) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = i === wzLyricsPick ? '' : 'secondary';
+      b.textContent = i === wzLyricsPick ? 'Escolhida ✓' : 'Usar';
+      b.addEventListener('click', () => pickWizardLyrics(i === wzLyricsPick ? -1 : i));
+      acts.append(b);
+    } else {
+      const note = document.createElement('span');
+      note.className = 'meta';
+      note.textContent = c.plain ? 'sem tempos — sincroniza-a depois na página Letra' : '';
+      acts.append(note);
+    }
+    card.append(lyricsCardBody(c, wzRecordingS), acts);
+    el.append(card);
+  });
+}
+
+function pickWizardLyrics(idx) {
+  const c = wzLyricsCandidates[idx];
+  wzLyricsPick = c && c.synced ? idx : -1;
+  document.getElementById('wzLyricsLrc').value = wzLyricsPick >= 0 ? c.synced : '';
+  const info = document.getElementById('wzLyricsInfo');
+  if (wzLyricsPick < 0) info.textContent = 'Sem letra do LRCLIB — podes procurá-la depois na página Letra.';
+  else if (wizardLrcFileChosen()) info.textContent = 'Escolheste também um ficheiro LRC: é esse que vai ser usado.';
+  else info.textContent = `Vai ser usada a letra de "${c.track}" (${c.album || 'LRCLIB'}). `
+    + 'Os tempos são os da gravação original: ajusta-os depois na página Letra se a tua versão tiver outra introdução.';
+  renderWizardLyrics();
+}
+
+// Length of an audio file picked in step 3, read by the browser itself.
+function audioFileDuration(file) {
+  return new Promise(resolve => {
+    if (!file) { resolve(null); return; }
+    const url = URL.createObjectURL(file);
+    const el = new Audio();
+    const done = v => { URL.revokeObjectURL(url); resolve(v); };
+    el.preload = 'metadata';
+    el.onloadedmetadata = () => done(Number.isFinite(el.duration) ? el.duration : null);
+    el.onerror = () => done(null);
+    setTimeout(() => done(null), 4000);
+    el.src = url;
+  });
+}
+
+async function searchWizardLyrics() {
+  const form = document.getElementById('gpJobForm');
+  const title = form.querySelector('input[name=title]').value.trim();
+  const artist = form.querySelector('input[name=artist]').value.trim();
+  const info = document.getElementById('wzLyricsInfo');
+  if (!title || !artist) { info.textContent = 'Preenche o título e a banda para procurar.'; return; }
+  const btn = document.getElementById('wzLyricsSearch');
+  btn.disabled = true;
+  info.textContent = 'A procurar…';
+  const audio = form.querySelector('input[name=audio]');
+  wzRecordingS = await audioFileDuration(audio && audio.files && audio.files[0]);
+  try {
+    const q = `title=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`
+      + (wzRecordingS ? `&duration=${wzRecordingS.toFixed(1)}` : '');
+    const r = await getJSON(`/lyrics-lookup?${q}`);
+    wzLyricsCandidates = r.candidates || [];
+    if (!wzLyricsCandidates.length) {
+      pickWizardLyrics(-1);
+      info.textContent = `Nada encontrado no LRCLIB para "${r.searched_title}" de ${r.searched_artist}. `
+        + 'Podes carregar um LRC abaixo, ou tratar da letra depois de criar.';
+      return;
+    }
+  } catch (err) {
+    wzLyricsCandidates = [];
+    info.textContent = `Não consegui procurar agora (${err.message}). Podes tratar da letra depois de criar.`;
+    renderWizardLyrics();
+    return;
+  } finally {
+    btn.disabled = false;
+  }
+  const best = wzLyricsCandidates.findIndex(c => c.synced);
+  if (best >= 0 && !wzGpHasLyrics && !wizardLrcFileChosen()) {
+    pickWizardLyrics(best);
+  } else {
+    wzLyricsPick = -1;
+    document.getElementById('wzLyricsLrc').value = '';
+    info.textContent = `${wzLyricsCandidates.length} resultado(s) no LRCLIB. `
+      + (wzGpHasLyrics ? 'O ficheiro GP já traz letra — escolhe uma daqui só se a quiseres substituir por esta, com tempos.'
+        : best < 0 ? 'Nenhuma tem tempos — sincroniza-a depois na página Letra.' : 'Escolhe a versão da tua gravação.');
+    renderWizardLyrics();
+  }
+}
+document.getElementById('wzLyricsSearch').addEventListener('click', searchWizardLyrics);
+document.querySelector('#gpJobForm input[name=lrc]').addEventListener('change', () => {
+  if (wzLyricsPick >= 0) pickWizardLyrics(wzLyricsPick);  // refresh which one will be used
+});
+
+function maybeAutoLyricsSearch() {
+  if (wzLyricsAutoDone) return;
+  wzLyricsAutoDone = true;
+  searchWizardLyrics();
 }
 
 // Capa page: the same candidates, applied to an existing project.
@@ -6039,6 +6185,7 @@ document.getElementById('gpInspectForm').addEventListener('submit', async e => {
 // Songsterr (/songsterr/import), which answers in the same shape.
 function applyInspectResult(b) {
   gpToken = b.gp_token;
+  wzGpHasLyrics = !!b.has_lyrics;
   const form = document.getElementById('gpJobForm');
   document.getElementById('gpMeta').textContent =
     `${b.title || '(sem título)'} — ${b.artist || '(sem banda)'} · ${b.tempo} BPM · letra no GP: ${b.has_lyrics ? 'sim' : 'não'}`;

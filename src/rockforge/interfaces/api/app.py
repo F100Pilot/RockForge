@@ -853,6 +853,10 @@ def _copy_upload_capped(src: UploadFile, dest: Path) -> None:
         raise
 
 
+# A whole song's LRC is a few KB; this only stops a runaway form field.
+MAX_LYRICS_LRC_CHARS = 200_000
+
+
 def _read_upload_capped(src: UploadFile) -> bytes:
     """Read ``src`` fully into memory, capped — for small text uploads (LRC)
     that are parsed in-process rather than written to disk. Reads the
@@ -1184,6 +1188,9 @@ def create_gp_job(
     tone_names: str = Form(""),  # comma-separated, max 4
     import_mutes: bool = Form(True),
     lrc: UploadFile | None = File(None),
+    # Synced lyrics the wizard found on LRCLIB (/lyrics-lookup) and the user
+    # kept — the same LRC text an uploaded file carries; an upload still wins.
+    lyrics_lrc: str = Form("", max_length=MAX_LYRICS_LRC_CHARS),
     title: str = Form(""),
     artist: str = Form(""),
     album: str = Form(""),
@@ -1256,6 +1263,14 @@ def create_gp_job(
     lrc_text: str | None = None
     if lrc is not None and lrc.filename:
         lrc_text = _read_upload_capped(lrc).decode("utf-8", errors="replace")
+    elif lyrics_lrc.strip():
+        from rockforge.infrastructure.rsxml.vocals import parse_lyrics
+
+        # Refused here, not at build time: an unreadable text would only
+        # surface later as a build that silently has no lyrics.
+        if not parse_lyrics(lyrics_lrc):
+            raise HTTPException(422, "a letra escolhida não tem tempos que se possam ler (LRC)")
+        lrc_text = lyrics_lrc
 
     # Multipart form floats bypass the ``Finite`` models above (they arrive as
     # strings and coerce), and NaN would slip past the ``<= 0`` guard below

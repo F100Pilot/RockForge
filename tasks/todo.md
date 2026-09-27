@@ -150,3 +150,8 @@ traço em vez de emojis, e o projeto em ecrã inteiro em vez de um modal.
 - [x] `planBarRetempo` (pure) + `setBarsTempo`: range → BPM, tail keeps tempo and shifts
 - [x] 📏 popup + "Sincronizar por compasso" panel: Andamento row, pre-filled
 - [x] Node checks (mutation-checked), Playwright on a real chart + rebuild, docs
+
+## Letra sincronizada logo ao criar o projeto
+- [x] Wizard step 4: LRCLIB search on arrival, best synced preselected (not over GP lyrics / an LRC file)
+- [x] /jobs/gp `lyrics_lrc` → params["lrc_text"]; upload wins; unreadable → 422
+- [x] Shared lyricsCardBody; test; Playwright wizard + Letra page regression; docs

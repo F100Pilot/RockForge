@@ -1270,6 +1270,27 @@ mix is visible before it is used.
   (`lyricsBeforeAlign`): those lyrics may exist only in the editor, loaded from
   LRCLIB and not yet rebuilt, and a failed alignment must not cost them.
 
+**Also at creation time — the wizard's step 4 ("Letra sincronizada").**
+The user asked to fetch synced lyrics "when I'm still at the start of
+preparing the song", so the first build already carries them. Step 4 runs
+the same `/lyrics-lookup` once on arrival (next to the album search, same
+title/band fields; the recording's length comes from the chosen audio file,
+read by the browser, when there is one) and **preselects the best synced
+result** — unless the GP file brings its own lyrics (`/gp/inspect`'s
+`has_lyrics`: an LRC would replace them, so nothing is chosen for the user)
+or an LRC file was picked. Click another card to change it, or "Escolhida ✓"
+to use none. The chosen LRC goes to `/jobs/gp` as the `lyrics_lrc` form
+field and is stored exactly like an uploaded LRC (`params["lrc_text"]`) —
+an uploaded file still wins, and a text `parse_lyrics` cannot read is a 422
+up front rather than a build that silently has no lyrics. Plain-only results
+are listed but cannot be chosen there: without timing they need the
+recording, i.e. the Letra page's "Sincronizar com a gravação" after
+creation. `lyricsCardBody` renders a result for both places (DOM calls —
+third-party strings). Guarded by
+`test_synced_lyrics_chosen_in_the_wizard_travel_with_the_new_job`; the
+wizard flow (auto-search, preselect, unpick/repick, the created job holding
+the words) verified with Playwright against faked LRCLIB answers.
+
 Honest limits: LRCLIB has never been contacted from here (the sandbox blocks
 it; recorded-shape fakes in `test_lyrics_lookup.py`); fan remixes and AI-made
 songs are rarely there; alignment needs `[ml,lyrics]` like detection and has

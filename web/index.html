@@ -601,6 +601,8 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
 .lyr-card .lyr-badge { display:inline-block; padding:0 .45rem; border-radius:999px; font-size:.7rem; font-weight:700; margin-right:.35rem; }
 .lyr-card .lyr-badge.synced { background:#16331f; color:#5fd68a; }
 .lyr-card .lyr-badge.plain { background:#3a2e12; color:#f2c14e; }
+.lyr-card.picked { border-color:var(--accent); background:#1c1a17; }
+.lyr-card .lyr-acts .meta { max-width:11rem; font-size:.74rem; text-align:right; }
 .lyr-card .lyr-acts { display:flex; flex-direction:column; gap:.35rem; align-self:center; }
 .lyr-sync { flex-wrap:wrap; margin:.4rem 0 .6rem; }
 </style>
@@ -1322,6 +1324,15 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
           </div>
           <div id="wzAlbumResults" class="album-grid"></div>
           <input type="hidden" name="cover_url" id="wzCoverUrl">
+        </div>
+        <div class="field" style="flex-basis:100%">
+          <label>Letra sincronizada <button class="info-btn" data-info="wz-lyrics">ⓘ</button></label>
+          <div class="pv-row">
+            <button type="button" id="wzLyricsSearch" class="secondary"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg> Procurar letra online</button>
+            <span id="wzLyricsInfo" class="meta"></span>
+          </div>
+          <div id="wzLyricsResults" class="lyr-results"></div>
+          <input type="hidden" name="lyrics_lrc" id="wzLyricsLrc">
         </div>
         <div class="field" style="flex-basis:100%">
           <label class="check"><input type="checkbox" name="import_mutes" value="true" checked>

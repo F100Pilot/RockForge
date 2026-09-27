@@ -656,6 +656,12 @@ fakes and the UI with `/lyrics-lookup` faked. On a machine with internet:
 5. A plain-only entry's "Sincronizar com a gravação" aligns over the whole
    song — expect it to be rougher; check a few lines by ear.
 
+**At creation:** in the "Novo projeto" wizard's step 4 the "Letra sincronizada"
+list must fill by itself for an official song, with the best synced version
+chosen; the created project's Letra page must show those words, and the
+build must carry them. With a GP that has its own lyrics nothing is chosen
+automatically.
+
 ### 7d. Automatic tone detection (needs `[ml]`)
 
 1. "Detetar tom" → poll → the result now shows the detected **spectral profile**

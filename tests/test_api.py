@@ -2702,3 +2702,40 @@ def test_a_wizard_cover_that_fails_still_creates_the_project(
     r = client.post("/jobs/gp", data={**data, "gp_token": body["gp_token"],
                                       "cover_url": "https://example.com/c.jpg"})
     assert r.status_code == 422, "an address off the cover services is refused up front"
+
+
+def test_synced_lyrics_chosen_in_the_wizard_travel_with_the_new_job(
+    client: TestClient, tmp_path
+) -> None:
+    """The wizard can keep an LRCLIB result at creation time: it arrives as
+    ``lyrics_lrc`` and is stored exactly like an uploaded LRC; an uploaded
+    file still wins, and text without timestamps is refused up front."""
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.infrastructure.db.models import Job
+
+    lrc = "[00:12.00] first line of the song\n[00:15.50] second line"
+
+    def create(extra: dict, files: dict | None = None):  # noqa: ANN202
+        body = client.post(
+            "/gp/inspect", files={"file": ("s.gp5", _make_gp5_bytes(tmp_path), "x")}
+        ).json()
+        return client.post(
+            "/jobs/gp",
+            data={"gp_token": body["gp_token"], "lead_track": "0", **extra},
+            files={"audio": ("song.wav", b"RIFF0000WAVE", "audio/wav"), **(files or {})},
+        )
+
+    r = create({"lyrics_lrc": lrc})
+    assert r.status_code == 202, r.text
+    assert r.json()["has_lyrics"] is True
+    with app_module._session_factory() as db:
+        job = db.get(Job, r.json()["id"])
+        assert job is not None and job.params["lrc_text"] == lrc
+
+    r = create({"lyrics_lrc": lrc}, {"lrc": ("mine.lrc", b"[00:01.00] my own", "text/plain")})
+    with app_module._session_factory() as db:
+        job = db.get(Job, r.json()["id"])
+        assert job is not None and job.params["lrc_text"] == "[00:01.00] my own"
+
+    r = create({"lyrics_lrc": "just words, no timestamps"})
+    assert r.status_code == 422 and "tempos" in r.text
