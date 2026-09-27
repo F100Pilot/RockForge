@@ -133,3 +133,10 @@ traço em vez de emojis, e o projeto em ecrã inteiro em vez de um modal.
 - [x] Início: barra no topo (Novo projeto, Lote, Definições) + cartões
 - [x] Nenhum id removido (app.js liga tudo por id) — verificar por diff
 - [x] Verificar no browser (Playwright) + todos os gates; docs
+
+## Songsterr: CERTIFICATE_VERIFY_FAILED (certificate has expired)
+- [x] `_https.ssl_context()`: system roots + certifi, verification on
+- [x] Songsterr, LRCLIB, album lookup and cover download use it
+- [x] Clear message for a refused certificate (clock / antivirus / certifi)
+- [x] `certifi` core dependency; PyInstaller contrib hook bundles it
+- [x] Tests (mutation-checked), docs, gates

@@ -1556,6 +1556,39 @@ undocumented; if covers ever stop loading, check that first. Guarded by
 `test_the_wizards_chosen_cover_is_in_place_before_the_first_build` and
 `test_a_wizard_cover_that_fails_still_creates_the_project`.
 
+### Outbound HTTPS trusts the system roots PLUS certifi's (`infrastructure/_https.py`)
+
+Every stdlib `urllib` client (Songsterr, LRCLIB, iTunes/MusicBrainz, the
+cover download) opens its connection with `_https.ssl_context()`: the system
+default context with `certifi.where()` ADDED via `load_verify_locations` —
+plain system default only when `certifi` is missing (a core dependency, so a
+broken install). **Verification stays on** — this adds trusted roots, never
+turns checking off; do not "fix" a TLS error by disabling it.
+
+Why: the user's Songsterr import failed with `CERTIFICATE_VERIFY_FAILED:
+certificate has expired` while the album lookup worked on the same machine.
+Python trusts only the roots the OS store already HOLDS, and Windows installs
+roots lazily (its own networking fetches a missing one on demand; Python's
+enumeration never triggers that), so a store missing a current root but still
+carrying an expired cross-signed path (classically Let's Encrypt's ISRG Root
+X1 via the expired DST Root CA X3) refuses a valid site. certifi supplies the
+missing root, and OpenSSL prefers a time-valid issuer when names collide.
+**Do not switch to certifi ALONE** (`cafile=certifi.where()` in
+`create_default_context`): an antivirus or company proxy that inspects HTTPS
+re-signs every site with a root it installs only in the SYSTEM store, so
+certifi-only would break every lookup on those machines — including the ones
+that work today. `network_error_message` turns a certificate refusal into a
+sentence that says what to check (clock, antivirus HTTPS scanning,
+`pip install --upgrade certifi`) instead of a raw `urlopen error`.
+PyInstaller's contrib `hook-certifi` bundles `cacert.pem` into the `.exe`.
+yt-dlp does its own TLS (and uses certifi itself when installed). **Not
+verified against the user's machine from here** (the sandbox cannot reach
+Songsterr); the cause above is the likeliest reading of that exact error, not
+a reproduction. Guarded by `test_https.py` (certifi's roots loaded into a
+root-less stand-in for the system store — mutation-checked — the system roots
+kept, `CERT_REQUIRED` throughout, the fallback, every client passing the
+shared context, and the explained message).
+
 ### Automatic tone detection (`/jobs/{id}/detect-tones`)
 
 `POST /jobs/{id}/detect-tones` (GP jobs) runs Demucs

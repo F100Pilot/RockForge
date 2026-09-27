@@ -790,6 +790,12 @@ against a fake. On a real machine:
    ask again. The built chart must sit on the recording from bar 1 with no
    "Início" change. Without yt-dlp the message must name `pip install yt-dlp`,
    and ⚙️ Definições → Software externo must show yt-dlp as missing.
+7. **TLS.** An import that fails with "a ligação segura ao Songsterr foi
+   recusada" means the certificate chain was refused even with the system roots
+   plus certifi's (`infrastructure/_https.py`): check the clock and any
+   antivirus that inspects HTTPS, then `pip install --upgrade certifi`. First
+   reported (2026-09-27) as `certificate has expired` with the system store
+   alone; fixed by adding certifi's roots, not yet re-tested by the user.
 
 ### 7d-sexies. Album, year and cover lookup against the REAL services
 

@@ -24,6 +24,7 @@ dependencies = [
     "python-multipart>=0.0.9",
     "tinytag>=1.10",
     "pyguitarpro>=0.10",  # LGPL-3.0 (used as unmodified library) — GP3/GP4/GP5 only, no GPX
+    "certifi>=2024.2.2",  # current Mozilla roots for outbound HTTPS — see infrastructure/_https.py
 ]
 
 [project.optional-dependencies]

@@ -38,6 +38,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from rockforge.domain.errors import IngestionError
+from rockforge.infrastructure._https import network_error_message, ssl_context
 
 BASE_URL = "https://www.songsterr.com"
 TIMEOUT_S = 20.0
@@ -95,12 +96,12 @@ def parse_song_id(text: str) -> int:
 def _http_get_json(url: str) -> Any:
     request = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})
     try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT_S) as response:
+        with urllib.request.urlopen(request, timeout=TIMEOUT_S, context=ssl_context()) as response:
             return json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         raise SongsterrError(f"o Songsterr respondeu {exc.code} a {url}", exc.code) from exc
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
-        raise SongsterrError(f"não consegui contactar o Songsterr ({exc})") from exc
+        raise SongsterrError(network_error_message(exc, "Songsterr")) from exc
     except ValueError as exc:
         raise SongsterrError(f"resposta do Songsterr ilegível em {url}") from exc
 

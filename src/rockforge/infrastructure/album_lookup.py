@@ -37,6 +37,11 @@ from dataclasses import dataclass
 from typing import IO, Any
 
 from rockforge.domain.errors import IngestionError
+from rockforge.infrastructure._https import (
+    is_certificate_error,
+    network_error_message,
+    ssl_context,
+)
 
 ITUNES_URL = "https://itunes.apple.com/search"
 MUSICBRAINZ_URL = "https://musicbrainz.org/ws/2/recording/"
@@ -78,12 +83,12 @@ class AlbumCandidate:
 def _http_get_json(url: str) -> Any:
     request = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})
     try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT_S) as response:
+        with urllib.request.urlopen(request, timeout=TIMEOUT_S, context=ssl_context()) as response:
             return json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         raise AlbumLookupError(f"o serviço respondeu {exc.code}") from exc
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
-        raise AlbumLookupError(f"não consegui contactar o serviço ({exc})") from exc
+        raise AlbumLookupError(network_error_message(exc, "serviço")) from exc
     except ValueError as exc:
         raise AlbumLookupError("resposta ilegível do serviço") from exc
 
@@ -270,7 +275,9 @@ def read_capped(stream: IO[bytes], limit: int = MAX_COVER_BYTES) -> bytes:
 
 
 def _open_url(url: str) -> bytes:
-    opener = urllib.request.build_opener(_AllowlistRedirects)
+    opener = urllib.request.build_opener(
+        _AllowlistRedirects, urllib.request.HTTPSHandler(context=ssl_context())
+    )
     request = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})
     try:
         with opener.open(request, timeout=TIMEOUT_S) as response:
@@ -278,6 +285,8 @@ def _open_url(url: str) -> bytes:
     except urllib.error.HTTPError as exc:
         raise AlbumLookupError(f"a capa não está disponível ({exc.code})") from exc
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        if is_certificate_error(exc):
+            raise AlbumLookupError(network_error_message(exc, "serviço da capa")) from exc
         raise AlbumLookupError(f"não consegui descarregar a capa ({exc})") from exc
 
 
