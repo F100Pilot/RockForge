@@ -155,3 +155,7 @@ traço em vez de emojis, e o projeto em ecrã inteiro em vez de um modal.
 - [x] Wizard step 4: LRCLIB search on arrival, best synced preselected (not over GP lyrics / an LRC file)
 - [x] /jobs/gp `lyrics_lrc` → params["lrc_text"]; upload wins; unreadable → 422
 - [x] Shared lyricsCardBody; test; Playwright wizard + Letra page regression; docs
+
+## Alinhar o compasso pela linha (mesmo sem notas)
+- [x] `.bar-hit` on each bar line/number; 📏 mode opens the popup for that bar; elsewhere still seeks
+- [x] Playwright check (bar without a note on its start → "= cursor"), docs

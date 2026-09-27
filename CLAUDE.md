@@ -787,6 +787,19 @@ bar of a chosen reference arrangement. It's the same `alignBarTo` primitive as
 the panel — just a faster, note-driven entry meant to be repeated along the
 song for progressive drift correction. Dismisses on Escape or an outside click
 (a note click reopens/repositions it).
+**The bar line itself opens it too** — "alinhar o compasso no início dele,
+mesmo que não tenha notas": `alignBarTo` always pinned the bar's DOWNBEAT,
+but the only way in was clicking a note, so a bar starting on a rest or a
+note held from the previous bar could not be picked on the score. Each bar
+line (and its number) now carries a transparent `.bar-hit` target
+(`data-t` = the bar's chart time), drawn BEFORE the notes so a note on the
+line still wins; in `'baralign'` mode a click on it opens the popup for
+that bar, and in every other mode it is ordinary empty staff and still
+seeks (the click-to-seek convention the note editor learnt the hard way).
+`#tabsvg.mode-baralign` gives it a pointer and a hover band. Verified with
+Playwright: bar 4 (no note on its downbeat) opens from its line, "=
+cursor" lands its start exactly on the cursor, and the same click in
+"Arrastar" moves the playhead.
 
 **Per-bar tempo — "mudar o BPM do compasso" (`setBarsTempo`).** The 📏
 popup and the "Sincronizar por compasso" panel both carry an **Andamento**

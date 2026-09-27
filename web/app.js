@@ -1619,6 +1619,12 @@ function showArr(i) {
     const x = timeToX(barWarp(previewScale(b.time)));
     if (x < 24 || x > W - 4) continue;
     s += `<line x1="${x}" y1="30" x2="${x}" y2="${SB}" stroke="#5a6a8a" stroke-width="1" opacity=".55"/>`;
+    // The bar line and its number are a click target of their own, so a bar
+    // can be aligned by its START in the "Alinhar compasso" mode even when no
+    // note sits there (a rest, a held note from the bar before). Drawn before
+    // the notes, so a note on the line still wins the click.
+    s += `<rect class="bar-hit" data-t="${b.time}" x="${x - 6}" y="28" width="12" height="${SB - 28}" fill="transparent"/>`
+      + `<rect class="bar-hit" data-t="${b.time}" x="${x}" y="30" width="30" height="16" fill="transparent"/>`;
     const bb = barBpm(bi);
     if (bb.eff > 0 && x - lastBpmX > 64) {
       const changed = Math.abs(bb.eff - bb.auth) >= 2;  // pending sync re-tempos this bar
@@ -2293,7 +2299,7 @@ function closeBarAlignPopup() { document.getElementById('barAlignPopup').hidden 
   // click reopens/repositions it via the SVG handler).
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeBarAlignPopup(); });
   document.addEventListener('pointerdown', e => {
-    if (!pop.hidden && !pop.contains(e.target) && !e.target.closest('.note-grp')) closeBarAlignPopup();
+    if (!pop.hidden && !pop.contains(e.target) && !e.target.closest('.note-grp, .bar-hit')) closeBarAlignPopup();
   });
 })();
 
@@ -4676,6 +4682,13 @@ function updateSelectionInfo() {
       return;
     }
     const grp = e.target.closest('.note-grp');
+    // Align-by-bar on the bar line itself: the bar's start, with or without a
+    // note there. Anywhere else on empty staff still seeks, as in every mode.
+    const barHit = !grp && e.target.closest('.bar-hit');
+    if (syncMode === 'baralign' && barHit) {
+      openBarAlignPopup(parseFloat(barHit.dataset.t), e.clientX, e.clientY);
+      return;
+    }
     // Multi-select (works in ANY mode — a modifier is unambiguous):
     // Shift+click selects the range from the pivot note to this one; Ctrl/Cmd+
     // click toggles a single note in/out of the selection.
@@ -4986,7 +4999,7 @@ const MODE_HELP = {
   excerpt: '<b>Excerto:</b> arrasta uma caixa por cima de várias notas e depois arrasta uma delas — movem-se todas em bloco. (Alternativa: Shift+clique numa nota e noutra para selecionar o intervalo.)',
   movefrom: '<b>Mover seguintes:</b> pausa a gravação no instante certo e clica na 1ª nota desalinhada — essa nota e TODAS as seguintes deslocam-se em bloco para o cursor. Para um trecho inteiro que entrou tarde/cedo.',
   newbeat: '<b>Corrigir daqui (detetar andamento) — o modo recomendado:</b> ouve até ao ponto onde a partitura começa a fugir da gravação e clica nessa nota. Mede o BPM real da gravação daí em diante e re-espaça só as notas seguintes. <b>Nada antes do clique se mexe</b>, por isso o que já estava bem fica intacto. Repete sempre que voltar a fugir — cada correção parte de onde a anterior deixou.',
-  baralign: '<b>Alinhar por compasso:</b> pausa a gravação no instante certo e clica numa nota — abre um popup com o compasso da nota já escolhido. Confirma com "= cursor" e esse compasso alinha-se ao cursor (ou "= pista" para o mesmo compasso de outra pista). Faz-se várias vezes ao longo da música; cada correção arrasta as notas seguintes. No mesmo popup, <b>Andamento</b> muda o BPM desse compasso (ou de vários seguidos) e o resto da música acompanha, cada compasso com o seu próprio andamento.',
+  baralign: '<b>Alinhar por compasso:</b> pausa a gravação no instante certo e clica numa nota — ou na <b>linha/número do compasso</b>, para o alinhar pelo seu início mesmo sem notas — abre um popup com esse compasso já escolhido. Confirma com "= cursor" e esse compasso alinha-se ao cursor (ou "= pista" para o mesmo compasso de outra pista). Faz-se várias vezes ao longo da música; cada correção arrasta as notas seguintes. No mesmo popup, <b>Andamento</b> muda o BPM desse compasso (ou de vários seguidos) e o resto da música acompanha, cada compasso com o seu próprio andamento.',
   tonechange: '<b>Mudança de tom:</b> clica numa nota para trocar para um dos tons extra a partir daí.',
   section: '<b>Secção:</b> clica numa nota para nomear onde começa uma secção (intro/verso/refrão…). Nada a ver com sincronização — é para navegação e o Riff Repeater.',
   editnotes: '<b>Editar notas:</b> clica numa nota para a editar (traste, sustain, técnicas, bend/slide) ou remover; <b>duplo-clique</b> no pentagrama vazio insere uma nota nova, encaixada na grelha. Um clique simples no vazio move o cursor, como nos outros modos. Muda o CONTEÚDO da partitura — fica pendente até "Aplicar e reconstruir".',
@@ -5008,6 +5021,7 @@ function setSyncMode(mode) {
   if (ico) ico.innerHTML = icon(src ? src.dataset.ico : 'mouse', 'dd-ico');
   if (lbl) lbl.textContent = src ? src.dataset.name : 'Nenhum modo';
   document.getElementById('modeMenuBtn')?.classList.toggle('has-mode', !!src);
+  document.getElementById('tabsvg')?.classList.toggle('mode-baralign', syncMode === 'baralign');
   const help = document.getElementById('modeHelp');
   if (help) help.innerHTML = MODE_HELP[mode] || MODE_HELP.null;
 }

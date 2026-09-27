@@ -314,6 +314,8 @@
   #barAlignPopup { position:fixed; z-index:70; background:var(--panel-2); border:1px solid var(--accent);
     border-radius:10px; box-shadow:var(--shadow); padding:.6rem .7rem; min-width:190px; font-size:.85rem; }
   #barAlignPopup[hidden] { display:none; }
+  #tabsvg.mode-baralign .bar-hit { cursor:pointer; }
+  #tabsvg.mode-baralign .bar-hit:hover { fill:rgba(181,140,255,.18); }
   #barAlignPopup .ba-title { font-weight:700; margin-bottom:.45rem; color:var(--accent); }
   #barAlignPopup .ba-row { display:flex; align-items:center; gap:.4rem; flex-wrap:wrap; }
   /* Note-editor popup: same floating-card treatment as the bar-align popup */
@@ -788,7 +790,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                 <button type="button" id="modeBeat" class="mode-btn dd-item" role="menuitemradio" aria-checked="false"
                   data-ico="timer" data-name="Corrigir daqui" title="Corrigir daqui (RECOMENDADO): ouve até onde a partitura começa a fugir da gravação e clica nessa nota. Mede o BPM real daí em diante e re-espaça só as notas seguintes. Nada antes do clique se mexe. Repete sempre que voltar a fugir."><svg class="ic dd-ico" aria-hidden="true"><use href="#i-timer"/></svg><span class="dd-txt"><span class="dd-name">Corrigir daqui</span><span class="dd-desc">Recomendado · mede o BPM daqui em diante</span></span></button>
                 <button type="button" id="modeBarAlign" class="mode-btn dd-item" role="menuitemradio" aria-checked="false"
-                  data-ico="ruler" data-name="Alinhar compasso" title="Alinhar por compasso: pausa a gravação no instante certo e clica numa nota — abre um popup com o número do compasso (o da nota, já escolhido). Confirma e esse compasso alinha-se ao cursor (ou ao mesmo compasso de outra pista), arrastando as notas seguintes. Ideal para várias correções ao longo da música."><svg class="ic dd-ico" aria-hidden="true"><use href="#i-ruler"/></svg><span class="dd-txt"><span class="dd-name">Alinhar compasso</span><span class="dd-desc">Encosta um compasso ao cursor, ou muda o seu BPM</span></span></button>
+                  data-ico="ruler" data-name="Alinhar compasso" title="Alinhar por compasso: pausa a gravação no instante certo e clica numa nota — abre um popup com o número do compasso (o da nota, já escolhido). Confirma e esse compasso alinha-se ao cursor (ou ao mesmo compasso de outra pista), arrastando as notas seguintes. Ideal para várias correções ao longo da música."><svg class="ic dd-ico" aria-hidden="true"><use href="#i-ruler"/></svg><span class="dd-txt"><span class="dd-name">Alinhar compasso</span><span class="dd-desc">Clica numa nota ou na linha do compasso: encosta-o ao cursor, ou muda o BPM</span></span></button>
                 <div class="dd-cap">Partitura</div>
                 <button type="button" id="modeTone" class="mode-btn dd-item" role="menuitemradio" aria-checked="false"
                   data-ico="wave" data-name="Mudança de tom" title="Mudança de tom: clica numa nota para trocar para um dos tons extra (amp/efeito) a partir daí. Nada a ver com sincronização — é para as mudanças de som ao longo da música."><svg class="ic dd-ico" aria-hidden="true"><use href="#i-wave"/></svg><span class="dd-txt"><span class="dd-name">Mudança de tom</span><span class="dd-desc">Troca de som a partir desta nota</span></span></button>
