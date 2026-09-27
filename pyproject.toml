@@ -66,8 +66,11 @@ psarc = ["cryptography>=42", "Pillow>=10"]
 desktop = ["pywebview>=5.0"]
 # The audio of the YouTube video whose Songsterr bar times are used
 # (infrastructure/youtube_audio.py). Unpinned above on purpose: YouTube breaks
-# old yt-dlp releases, and the fix is always "upgrade yt-dlp".
-youtube = ["yt-dlp>=2024.1"]
+# old yt-dlp releases, and the fix is always "upgrade yt-dlp". [default] brings
+# yt-dlp-ejs, the solver for YouTube's JavaScript challenge (it also needs a JS
+# runtime — Deno — installed separately); the floor is what the reference tool
+# (teaqu/guitar-pro-youtube-sync) requires.
+youtube = ["yt-dlp[default]>=2026.8.19"]
 dev = [
     "pytest>=8.0",
     "pytest-cov>=5.0",

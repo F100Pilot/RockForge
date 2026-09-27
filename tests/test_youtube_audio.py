@@ -86,3 +86,46 @@ def test_no_ytdlp_or_a_hung_one_is_a_clear_error(tmp_path: Path, monkeypatch) ->
 
     with pytest.raises(ya.YouTubeAudioError, match="demorou"):
         ya.download_audio(VID, tmp_path, command=["yt-dlp"], run=slow)
+
+
+def test_every_installed_js_runtime_is_enabled_in_yt_dlps_priority_order() -> None:
+    # Only deno is on by default in yt-dlp; node/quickjs/bun must be asked for.
+    found = {"node": "/usr/bin/node", "bun": "/opt/bun"}
+    assert ya.js_runtime_args(found.get) == [
+        "--js-runtimes", "node:/usr/bin/node", "--js-runtimes", "bun:/opt/bun",
+    ]
+    assert ya.js_runtime_args(lambda _p: None) == []
+
+
+def test_the_command_keeps_warnings_and_passes_the_runtimes(tmp_path: Path) -> None:
+    runtimes = ["--js-runtimes", "deno:/d/deno"]
+    args = ya.build_args(["yt-dlp"], VID, tmp_path / "t", None, runtimes)
+    # --no-warnings hid "No supported JavaScript runtime", the real cause.
+    assert "--no-warnings" not in args
+    assert args[args.index("--js-runtimes") + 1] == "deno:/d/deno"
+    with_session = ya.build_args(["yt-dlp"], VID, tmp_path / "t", "firefox", [])
+    assert with_session[with_session.index("--extractor-args") + 1] == (
+        "youtube:player_client=default,web_embedded"
+    )
+
+
+def test_a_missing_js_runtime_is_named_not_passed_off_as_a_login() -> None:
+    stderr = (
+        "WARNING: [youtube] No supported JavaScript runtime could be found. Only deno is "
+        "enabled by default\nERROR: unable to download video data: HTTP Error 403: Forbidden\n"
+    )
+    exc = ya.classify_failure(stderr, 1)
+    assert "motor JavaScript" in str(exc) and "Deno" in str(exc)
+    assert not exc.needs_cookies
+
+
+def test_an_unreadable_chrome_session_says_to_pick_another_browser() -> None:
+    line = ("ERROR: Failed to decrypt with DPAPI. See  "
+            "https://github.com/yt-dlp/yt-dlp/issues/10927  for more info")
+    exc = ya.classify_failure(f"{line}\n{line}\n", 1)
+    assert "Firefox" in str(exc) and not exc.needs_cookies
+
+
+def test_a_plain_failure_shows_each_error_once() -> None:
+    exc = ya.classify_failure("ERROR: Video unavailable\nERROR: Video unavailable\n", 1)
+    assert str(exc) == "ERROR: Video unavailable"

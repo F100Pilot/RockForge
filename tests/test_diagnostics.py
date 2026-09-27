@@ -286,3 +286,21 @@ def test_the_hard_requirement_keeps_its_real_fix_inside_the_exe(
     assert "winget install ffmpeg" in reqs["ffmpeg"].install
     assert "NÃO é possível" not in reqs["ffmpeg"].install
     assert "NÃO é possível" not in reqs["wwise"].install
+
+
+def test_ytdlp_without_a_js_runtime_is_reported_missing(monkeypatch) -> None:  # noqa: ANN001
+    # yt-dlp alone cannot get YouTube's audio: the JS challenge needs a runtime.
+    from rockforge.infrastructure import diagnostics, youtube_audio
+
+    monkeypatch.setattr(youtube_audio, "ytdlp_command", lambda: ["/bin/yt-dlp"])
+    monkeypatch.setattr(diagnostics.shutil, "which", lambda _p: None)
+    row = diagnostics._ytdlp()
+    assert row.found is False and "motor JavaScript" in row.detail
+    assert "Deno" in row.install
+
+    monkeypatch.setattr(
+        diagnostics.shutil, "which", lambda p: "/usr/bin/deno" if p == "deno" else None
+    )
+    row = diagnostics._ytdlp()
+    # A yt-dlp program cannot be asked whether it has the solver: unknown.
+    assert row.found is None and "deno" in row.detail

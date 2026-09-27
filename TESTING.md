@@ -782,13 +782,13 @@ against a fake. On a real machine:
    slides, palm mutes, and the sections. The warnings name what was left out
    (drums, grace notes). If every track fails with 403, Songsterr has moved its
    part distributions (`songsterr._PART_CDNS`).
-6. **The video's audio** (`pip install yt-dlp`): after an import, step 3 must
+6. **The video's audio** (`pip install -U "yt-dlp[default]"` + Deno, `winget install DenoLand.Deno`; ⚙️ Definições → Software externo must show yt-dlp with "motor JS: deno"): after an import, step 3 must
    start downloading the default video's audio by itself and end with "Áudio
    do vídeo descarregado", the file upload hidden. If YouTube refuses (403 /
    "not a bot"), pick a browser where YouTube is open in "Sessão do browser"
    and press the button again. Picking another video must drop the audio and
    ask again. The built chart must sit on the recording from bar 1 with no
-   "Início" change. Without yt-dlp the message must name `pip install yt-dlp`,
+   "Início" change. Without a JS runtime the message must name Deno, not a browser session; with Chrome as the session on Windows it must say to pick Firefox. Without yt-dlp the message must name `pip install -U "yt-dlp[default]"`,
    and ⚙️ Definições → Software externo must show yt-dlp as missing.
 7. **TLS.** An import that fails with "a ligação segura ao Songsterr foi
    recusada" means the certificate chain was refused even with the system roots

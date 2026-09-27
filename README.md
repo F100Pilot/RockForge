@@ -106,7 +106,7 @@ o que cada falta te custa, e o comando para instalar.
 | **`[psarc]`** (cryptography, Pillow) | escrever o `.psarc` nativo e a capa em DDS | só sai o bundle, sem crash | `pip install -e ".[psarc]"` |
 | **`[ml]`** (Demucs, librosa) | separar stems, detetar tom, "Corrigir daqui" | esses botões respondem 503 a dizer o que falta | `pip install -e ".[ml]"` |
 | **`[lyrics]`** (WhisperX) | transcrever a letra da gravação | a letra continua a vir do GP, de um LRC, ou do editor | `pip install -e ".[ml,lyrics]"` |
-| **`[youtube]`** (yt-dlp) | descarregar o áudio do vídeo do YouTube em que o Songsterr marcou os tempos | carregas tu o MP3 desse vídeo | `pip install yt-dlp` |
+| **`[youtube]`** (yt-dlp) + **Deno** | descarregar o áudio do vídeo do YouTube em que o Songsterr marcou os tempos (o YouTube exige resolver um desafio em JavaScript: o solucionador vem no `yt-dlp[default]`, o motor é o Deno) | carregas tu o MP3 desse vídeo | `pip install -U "yt-dlp[default]"` e `winget install DenoLand.Deno` |
 | **PyTorch CUDA** | GPU: minutos em vez de dezenas de minutos | corre tudo em CPU | ver §2b |
 | **Patch de CDLC** (`D3DX9_42.dll`) | o Rocksmith aceitar *qualquer* CDLC | a música **nunca aparece** na lista | CustomsForge, na pasta do jogo |
 

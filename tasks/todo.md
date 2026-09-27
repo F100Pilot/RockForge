@@ -142,3 +142,6 @@ traço em vez de emojis, e o projeto em ecrã inteiro em vez de um modal.
 - [x] Tests (mutation-checked), docs, gates
 - [x] Then 403 from /api/meta (turned out: ERR_UNPUBLISHED tab): default `requests`
       like the reference tool, and the refusal now shows Songsterr's own reason
+- [x] YouTube download failed where the reference tool worked: yt-dlp[default]
+      (solver) + JS runtimes on PATH, warnings kept, failures classified
+      (no runtime / unreadable Chromium session / login), diagnostics row

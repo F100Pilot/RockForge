@@ -172,8 +172,9 @@ async function downloadYtAudio() {
       'vai ser usado como gravação; não precisas de carregar nenhum ficheiro.';
   } catch (err) {
     ytAudio = null;
-    info.textContent = `Não consegui descarregar: ${err.message}. ` +
-      'Podes tentar de novo com a sessão de um browser, ou carregar um MP3 do vídeo.';
+    // The server's message already says what to do (install the JS runtime,
+    // pick another browser, log in); only the always-true fallback is added.
+    info.textContent = `Não consegui descarregar: ${err.message}. Também podes carregar um MP3 do vídeo.`;
   } finally {
     btn.disabled = false;
     applyEmbeddedAudioChoice();
@@ -784,8 +785,9 @@ const INFO = {
   'youtube-audio': {
     title: 'Áudio do vídeo do YouTube',
     body: '<p>Os tempos por compasso do Songsterr foram marcados num vídeo do YouTube, por isso a gravação que bate certo com eles é o <strong>áudio desse vídeo</strong>. Este botão descarrega-o com o <strong>yt-dlp</strong> e usa-o como gravação do projeto — já não precisas de o converter à mão.</p>' +
-      '<p><strong>Se o YouTube recusar</strong> (erro 403 ou "confirma que não és um robô"), escolhe em "Sessão do browser" um browser onde tenhas o YouTube aberto e tenta de novo: o yt-dlp usa essa sessão.</p>' +
-      '<p>Precisa do yt-dlp instalado (<code>pip install yt-dlp</code>); se o YouTube mudar e os downloads falharem, atualizar o yt-dlp costuma resolver. Descarregar do YouTube vai contra os termos do YouTube fora das funções que ele oferece — usa só para uso pessoal, com música a que tens direito.</p>'
+      '<p><strong>Precisa de duas coisas instaladas:</strong> o yt-dlp com o solucionador do YouTube (<code>pip install -U "yt-dlp[default]"</code>) e um <strong>motor JavaScript</strong>, o Deno (<code>winget install DenoLand.Deno</code>; o Node também serve). O YouTube só entrega o áudio a quem resolver um desafio em JavaScript — sem o motor recusa, mesmo sem pedir login. Depois de instalar, reinicia o RockForge. ⚙️ Definições → Software externo mostra o que falta.</p>' +
+      '<p><strong>Se o YouTube pedir uma sessão</strong> ("confirma que não és um robô"), escolhe em "Sessão do browser" um browser onde tenhas o YouTube aberto. No Windows usa o <strong>Firefox</strong>: o yt-dlp não consegue ler a sessão do Chrome, do Edge nem dos outros baseados no Chromium.</p>' +
+      '<p>Se o YouTube mudar e os downloads falharem, atualizar o yt-dlp costuma resolver. Descarregar do YouTube vai contra os termos do YouTube fora das funções que ele oferece — usa só para uso pessoal, com música a que tens direito.</p>'
   },
   'cover-art': {
     title: 'Capa do álbum',

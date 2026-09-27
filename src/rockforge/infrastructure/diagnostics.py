@@ -366,24 +366,44 @@ def _loader_patch() -> Requirement:
 
 
 def _ytdlp() -> Requirement:
-    from rockforge.infrastructure.youtube_audio import ytdlp_command
+    from rockforge.infrastructure.youtube_audio import JS_RUNTIMES, ytdlp_command
 
     try:
         cmd = ytdlp_command()
     except Exception:  # noqa: BLE001 — a diagnostics page must not 500
         cmd = None
+    runtimes = [name for name, program in JS_RUNTIMES if shutil.which(program)]
+    # The solver can only be looked up when yt-dlp runs in THIS interpreter;
+    # for a yt-dlp program or another Python it is unknown, not missing.
+    in_process = cmd is not None and cmd[1:3] == ["-m", "yt_dlp"] and not frozen()
+    solver = _has("yt_dlp_ejs") if in_process else None
+    found: bool | None
+    if cmd is None:
+        found, detail = False, "em falta"
+    elif not runtimes:
+        found, detail = False, "yt-dlp encontrado, mas sem motor JavaScript (Deno)"
+    elif solver is False:
+        found, detail = False, "yt-dlp sem o solucionador do YouTube (yt-dlp-ejs)"
+    else:
+        found = True if solver else None
+        detail = f"{' '.join(cmd)} · motor JS: {', '.join(runtimes)}"
     return Requirement(
         key="ytdlp",
         name="yt-dlp (áudio do YouTube)",
-        found=cmd is not None,
-        detail=" ".join(cmd) if cmd else "em falta",
+        found=found,
+        detail=detail,
         required=False,
         unlocks=(
             "Descarregar o áudio do vídeo do YouTube em que o Songsterr marcou os "
             "tempos por compasso, para usar como gravação."
         ),
-        without_it="Tens de carregar tu o MP3 convertido desse vídeo.",
-        install='pip install yt-dlp  (ou pip install -e ".[youtube]")',
+        without_it=(
+            "Tens de carregar tu o MP3 convertido desse vídeo. Sem o motor "
+            "JavaScript o YouTube recusa o download mesmo com o yt-dlp instalado."
+        ),
+        install=(
+            'pip install -U "yt-dlp[default]"  +  o Deno: winget install DenoLand.Deno'
+        ),
     )
 
 

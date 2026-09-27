@@ -236,6 +236,33 @@ re-inverting the dependency.
    `test_fetched_youtube_audio_no_job_uses_is_swept`; the wizard flow (refusal
    → retry with a browser → switch video → build) with Playwright.
 
+   **YouTube's JavaScript challenge: yt-dlp needs a solver AND a runtime.**
+   The user's first real download failed where the reference tool, on the
+   same machine and video, succeeded. The reference installs
+   `yt-dlp[default]>=2026.8.19` (whose `[default]` brings `yt-dlp-ejs`, the
+   challenge-solver scripts) and BUNDLES Deno; we asked for a bare
+   `yt-dlp>=2024.1` and had no runtime, and yt-dlp enables only Deno by
+   default. Without both, YouTube refuses in a way that reads like "log in",
+   and `--no-warnings` hid the one line that said so ("No supported
+   JavaScript runtime could be found"), so the UI sent the user to pick a
+   browser session — and Chrome's cookies are then unreadable on Windows
+   ("Failed to decrypt with DPAPI", yt-dlp#10927: Chromium's app-bound
+   encryption). Now: `[youtube]` = `yt-dlp[default]>=2026.8.19`;
+   `js_runtime_args` enables every runtime yt-dlp supports that is on PATH
+   (deno/node/quickjs/bun, yt-dlp's own priority order and program names,
+   `utils/_jsruntime.py`); warnings are kept; `classify_failure` reads ALL of
+   stderr and names the missing runtime first (install Deno + the solver —
+   a session would not help), then an unreadable Chromium session ("pick
+   Firefox"), and only then the login case, printing each `ERROR` line once.
+   With a session it also passes the reference tool's
+   `--extractor-args youtube:player_client=default,web_embedded`. The ⚙️
+   diagnostics row reports yt-dlp as missing without a JS runtime, and the
+   solver as unknown (`None`) unless yt-dlp runs in this interpreter.
+   Guarded by the runtime/classification tests in `test_youtube_audio.py`
+   and `test_ytdlp_without_a_js_runtime_is_reported_missing`. **Not run
+   against YouTube from here** (blocked) — it rests on yt-dlp's own source
+   and the reference tool working on the user's machine.
+
    **Tied notes** (GP `(17)` in parentheses — a held continuation, not a
    re-pick) are folded into the note they extend in BOTH parsers, never emitted
    as a second attack: GP5 via `NoteType.tie` (inline, tracking the last note

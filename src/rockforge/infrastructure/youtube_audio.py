@@ -21,6 +21,15 @@ and nothing else: one video, by its 11-character id, audio only.
   list. The reference tool offers the same retry.
 - The best audio stream is kept AS IS (m4a preferred, no re-encode); the
   build's ffmpeg normalisation reads any of them.
+- **YouTube requires a JavaScript challenge to be solved** before it serves
+  the audio formats. yt-dlp does that with a solver script (the
+  ``yt-dlp-ejs`` package that ``yt-dlp[default]`` installs) run by a JS
+  runtime, and enables only Deno by default. The reference tool ships both;
+  a plain ``pip install yt-dlp`` has neither, and without them YouTube
+  refuses in a way that LOOKS like a login problem. Every runtime yt-dlp
+  supports that is on PATH is enabled (``js_runtime_args``), the warnings are
+  kept (``--no-warnings`` hid exactly this one), and a failure that names the
+  missing runtime says so instead of suggesting a browser session.
 
 Downloading from YouTube is against YouTube's terms of service except where
 YouTube offers it; like the reference tool, this is for personal use with
@@ -85,15 +94,35 @@ def ytdlp_command() -> list[str] | None:
     return None
 
 
+# yt-dlp's supported JS runtimes, in its own priority order, with the program
+# each one is found as (yt_dlp/utils/_jsruntime.py).
+JS_RUNTIMES = (("deno", "deno"), ("node", "node"), ("quickjs", "qjs"), ("bun", "bun"))
+
+
+def js_runtime_args(which: Callable[[str], str | None] = shutil.which) -> list[str]:
+    """``--js-runtimes`` for every runtime yt-dlp supports that is installed here."""
+    args: list[str] = []
+    for name, program in JS_RUNTIMES:
+        path = which(program)
+        if path:
+            args += ["--js-runtimes", f"{name}:{path}"]
+    return args
+
+
 def build_args(
-    base: list[str], video_id: str, template: Path, cookies_browser: str | None
+    base: list[str],
+    video_id: str,
+    template: Path,
+    cookies_browser: str | None,
+    js_runtimes: list[str] | None = None,
 ) -> list[str]:
     """The full yt-dlp command line for one video's audio."""
     if not VIDEO_ID.match(video_id):
         raise YouTubeAudioError("identificador de vídeo do YouTube inválido")
     args = [
         *base,
-        "--no-playlist", "--no-progress", "--no-warnings",
+        "--no-playlist", "--no-progress",
+        *(js_runtime_args() if js_runtimes is None else js_runtimes),
         "-f", "bestaudio[ext=m4a]/bestaudio/best",
         "--max-filesize", MAX_FILESIZE,
         "-o", str(template),
@@ -102,12 +131,51 @@ def build_args(
     if cookies_browser:
         if cookies_browser not in COOKIE_BROWSERS:
             raise YouTubeAudioError(f"browser desconhecido: {cookies_browser}")
-        args += ["--cookies-from-browser", cookies_browser]
+        args += [
+            "--cookies-from-browser", cookies_browser,
+            # The reference tool's upstream workaround for authenticated
+            # "page needs to be reloaded" errors.
+            "--extractor-args", "youtube:player_client=default,web_embedded",
+        ]
     return [*args, f"https://youtu.be/{video_id}"]
 
 
 _LOGIN_HINTS = ("403", "sign in to confirm", "confirm you’re not a bot",
                 "confirm you're not a bot", "cookies")
+# yt-dlp's own words when no JS runtime / challenge solver could run.
+_NO_JS_HINTS = ("no supported javascript runtime", "challenge solving failed",
+                "signature solving failed")
+# yt-dlp cannot read a Chromium browser's cookies on Windows (yt-dlp#10927).
+_COOKIE_READ_HINTS = ("failed to decrypt with dpapi", "could not copy chrome cookie database")
+
+NO_JS_MESSAGE = (
+    "o yt-dlp não tem um motor JavaScript para resolver o desafio do YouTube, e "
+    "sem ele o YouTube recusa o áudio. Instala o Deno (winget install "
+    "DenoLand.Deno) e o solucionador (pip install -U \"yt-dlp[default]\"), "
+    "reinicia o RockForge e tenta de novo"
+)
+COOKIE_READ_MESSAGE = (
+    "o yt-dlp não consegue ler a sessão deste browser no Windows (o Chrome, o "
+    "Edge e os outros baseados no Chromium encriptam os cookies de uma forma "
+    "que ele não abre). Escolhe o Firefox, ou tenta sem sessão"
+)
+
+
+def classify_failure(stderr: str, returncode: int) -> YouTubeAudioError:
+    """The error to show for a failed run, from everything yt-dlp printed."""
+    text = stderr.lower()
+    # The runtime first: without it YouTube refuses in a way that also reads
+    # as "log in", and a browser session would not help.
+    if any(h in text for h in _NO_JS_HINTS):
+        return YouTubeAudioError(NO_JS_MESSAGE)
+    if any(h in text for h in _COOKIE_READ_HINTS):
+        return YouTubeAudioError(COOKIE_READ_MESSAGE)
+    errors = [ln.strip() for ln in stderr.splitlines() if ln.strip().startswith("ERROR")]
+    tail = list(dict.fromkeys(errors))[-2:] or stderr.strip().splitlines()[-3:]
+    message = " / ".join(tail) or f"o yt-dlp terminou com o código {returncode}"
+    return YouTubeAudioError(
+        message, needs_cookies=any(h in message.lower() for h in _LOGIN_HINTS)
+    )
 
 
 def download_audio(
@@ -122,8 +190,8 @@ def download_audio(
     base = command if command is not None else ytdlp_command()
     if base is None:
         raise YtDlpMissingError(
-            "o yt-dlp não está instalado — instala com pip install yt-dlp "
-            "(ou pip install -e \".[youtube]\") e tenta de novo"
+            "o yt-dlp não está instalado — instala com pip install -U "
+            "\"yt-dlp[default]\" (ou pip install -e \".[youtube]\") e tenta de novo"
         )
     dest_dir.mkdir(parents=True, exist_ok=True)
     stem = f"{FILE_PREFIX}{uuid.uuid4()}"
@@ -136,10 +204,7 @@ def download_audio(
     except OSError as exc:
         raise YtDlpMissingError(f"não consegui executar o yt-dlp ({exc})") from exc
     if proc.returncode != 0:
-        tail = (proc.stderr or "").strip().splitlines()[-3:]
-        message = " / ".join(tail) or f"o yt-dlp terminou com o código {proc.returncode}"
-        needs_cookies = any(h in message.lower() for h in _LOGIN_HINTS)
-        raise YouTubeAudioError(message, needs_cookies=needs_cookies)
+        raise classify_failure(proc.stderr or "", proc.returncode)
     # The file it reports, but only if it really is ours, in dest_dir.
     reported = [ln.strip() for ln in (proc.stdout or "").splitlines() if ln.strip()]
     candidates = [Path(p) for p in reported[-1:]] + sorted(dest_dir.glob(f"{stem}.*"))
