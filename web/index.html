@@ -786,7 +786,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                 <button type="button" id="modeBeat" class="mode-btn dd-item" role="menuitemradio" aria-checked="false"
                   data-ico="timer" data-name="Corrigir daqui" title="Corrigir daqui (RECOMENDADO): ouve até onde a partitura começa a fugir da gravação e clica nessa nota. Mede o BPM real daí em diante e re-espaça só as notas seguintes. Nada antes do clique se mexe. Repete sempre que voltar a fugir."><svg class="ic dd-ico" aria-hidden="true"><use href="#i-timer"/></svg><span class="dd-txt"><span class="dd-name">Corrigir daqui</span><span class="dd-desc">Recomendado · mede o BPM daqui em diante</span></span></button>
                 <button type="button" id="modeBarAlign" class="mode-btn dd-item" role="menuitemradio" aria-checked="false"
-                  data-ico="ruler" data-name="Alinhar compasso" title="Alinhar por compasso: pausa a gravação no instante certo e clica numa nota — abre um popup com o número do compasso (o da nota, já escolhido). Confirma e esse compasso alinha-se ao cursor (ou ao mesmo compasso de outra pista), arrastando as notas seguintes. Ideal para várias correções ao longo da música."><svg class="ic dd-ico" aria-hidden="true"><use href="#i-ruler"/></svg><span class="dd-txt"><span class="dd-name">Alinhar compasso</span><span class="dd-desc">Encosta um compasso ao cursor ou a outra pista</span></span></button>
+                  data-ico="ruler" data-name="Alinhar compasso" title="Alinhar por compasso: pausa a gravação no instante certo e clica numa nota — abre um popup com o número do compasso (o da nota, já escolhido). Confirma e esse compasso alinha-se ao cursor (ou ao mesmo compasso de outra pista), arrastando as notas seguintes. Ideal para várias correções ao longo da música."><svg class="ic dd-ico" aria-hidden="true"><use href="#i-ruler"/></svg><span class="dd-txt"><span class="dd-name">Alinhar compasso</span><span class="dd-desc">Encosta um compasso ao cursor, ou muda o seu BPM</span></span></button>
                 <div class="dd-cap">Partitura</div>
                 <button type="button" id="modeTone" class="mode-btn dd-item" role="menuitemradio" aria-checked="false"
                   data-ico="wave" data-name="Mudança de tom" title="Mudança de tom: clica numa nota para trocar para um dos tons extra (amp/efeito) a partir daí. Nada a ver com sincronização — é para as mudanças de som ao longo da música."><svg class="ic dd-ico" aria-hidden="true"><use href="#i-wave"/></svg><span class="dd-txt"><span class="dd-name">Mudança de tom</span><span class="dd-desc">Troca de som a partir desta nota</span></span></button>
@@ -906,7 +906,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
               <div class="pv-card" id="barSyncPanel">
               <div class="pv-card-head">Sincronizar por compasso <span class="meta">(opcional)</span>
                   <button class="info-btn" data-info="bar-sync">ⓘ</button></div>
-                  <div class="pv-card-desc">Para quando esta pista só entra a partir de um certo compasso.</div>
+                  <div class="pv-card-desc">Alinhar um compasso ao cursor ou a outra pista, ou mudar o BPM de um compasso.</div>
                 <div class="syncctrls">
                   <label>Compasso:
                     <select id="barSyncBar" style="width:auto"></select></label>
@@ -916,6 +916,13 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                   <label>Igualar ao mesmo compasso de:
                     <select id="barSyncRefArr" style="width:auto"></select></label>
                   <button type="button" id="barSyncFromRef" class="secondary">Sincronizar</button>
+                </div>
+                <div class="syncctrls" style="margin-top:.4rem">
+                  <label>Andamento: ♩ =
+                    <input type="number" id="barBpm" min="10" max="400" step="any" style="width:6rem" aria-label="BPM do compasso"> BPM</label>
+                  <label>até ao
+                    <select id="barBpmTo" style="width:auto" aria-label="Até ao compasso"></select></label>
+                  <button type="button" id="barBpmApply" class="secondary">Aplicar</button>
                 </div>
                 <span id="barSyncInfo" class="meta" style="display:block;margin-top:.35rem"></span>
               </div>
@@ -1468,7 +1475,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
 
 <!-- Bar-align popup (floating, positioned at the clicked note) -->
 <div id="barAlignPopup" hidden>
-  <div class="ba-title">Alinhar ao compasso</div>
+  <div class="ba-title">Compasso</div>
   <label class="ba-row">Compasso:
     <select id="baBar" style="width:auto"></select></label>
   <div class="ba-row" style="margin-top:.4rem">
@@ -1478,6 +1485,12 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
       <button type="button" id="baToRef" class="secondary">= pista</button>
     </span>
   </div>
+  <div class="ba-title" style="margin:.7rem 0 .35rem">Andamento</div>
+  <div class="ba-row">♩ =
+    <input type="number" id="baBpm" min="10" max="400" step="any" style="width:5.6rem" aria-label="BPM do compasso"> BPM
+    até ao <select id="baBarTo" style="width:auto" aria-label="Até ao compasso"></select>
+    <button type="button" id="baSetBpm" class="secondary">Aplicar</button></div>
+  <div class="meta" id="baBpmInfo" style="max-width:19rem;margin-top:.3rem"></div>
   <div class="ba-row" style="margin-top:.4rem;justify-content:flex-end">
     <button type="button" id="baCancel" class="secondary">Fechar</button>
   </div>

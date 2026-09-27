@@ -145,3 +145,8 @@ traço em vez de emojis, e o projeto em ecrã inteiro em vez de um modal.
 - [x] YouTube download failed where the reference tool worked: yt-dlp[default]
       (solver) + JS runtimes on PATH, warnings kept, failures classified
       (no runtime / unreadable Chromium session / login), diagnostics row
+
+## Mudar o BPM do compasso
+- [x] `planBarRetempo` (pure) + `setBarsTempo`: range → BPM, tail keeps tempo and shifts
+- [x] 📏 popup + "Sincronizar por compasso" panel: Andamento row, pre-filled
+- [x] Node checks (mutation-checked), Playwright on a real chart + rebuild, docs

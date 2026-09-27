@@ -706,6 +706,7 @@ const INFO = {
     body: `<p>Útil quando uma pista só entra a tocar mais tarde na música — por exemplo, o Rhythm tem compassos de silêncio no início e a primeira nota real coincide com o <b>compasso 7</b>. "Início desta pista" só alinha a 1ª nota; este painel deixa-te alinhar <b>qualquer compasso</b>, escolhido pelo número.</p>
 <p><b>= cursor:</b> escolhe o compasso, dá play/pausa exatamente onde ele deve soar, e clica — o compasso escolhido (e tudo depois dele) alinha com o cursor.</p>
 <p><b>Sincronizar com outra pista:</b> como o número do compasso é o mesmo em todas as pistas do ficheiro Guitar Pro (vêm da mesma partitura), se já tiveres o Lead bem sincronizado podes alinhar o compasso 7 do Rhythm diretamente com o compasso 7 do Lead — sem teres de ouvir/procurar à mão.</p>
+<p><b>Andamento (BPM do compasso):</b> escreve o BPM que o compasso deve ter (vem preenchido com o atual) e, se quiseres, até que compasso aplicar — todos passam a esse BPM. O que vem depois <b>não muda de andamento</b>: só se desloca pela diferença, por isso cada compasso seguinte continua com o seu. O compasso fica marcado a âmbar na partitura, e "Guitar Pro com os andamentos corrigidos" (Exportar) grava-o no ficheiro.</p>
 <p>Como as outras ferramentas de sincronização, cria uma correção pendente por pista — grava com "Aplicar e reconstruir".</p>`
   },
   'sync-tempo': {
@@ -2019,6 +2020,11 @@ function updateBarSyncPanel() {
   const prevBar = barSel.value;
   barSel.innerHTML = bars.map(b => `<option value="${b.measure}">Compasso ${b.measure}</option>`).join('');
   if (bars.some(b => String(b.measure) === prevBar)) barSel.value = prevBar;
+  const bpmInput = document.getElementById('barBpm');
+  // Leave a value the user is typing alone; a redraw happens on every edit.
+  if (bpmInput && document.activeElement !== bpmInput && barSel.value) {
+    fillBarTempoControls(parseInt(barSel.value, 10), document.getElementById('barBpmTo'), bpmInput);
+  }
 
   const others = arrangements.map((a, i) => ({ a, i })).filter(o => o.i !== currentArr);
   document.getElementById('barSyncRefRow').style.display = others.length ? '' : 'none';
@@ -2047,6 +2053,124 @@ function alignBarTo(measure, target) {
 function refBarTarget(refIdx, measure) {
   const refChartT = barChartTime(refIdx, measure);
   return refChartT == null ? null : arrangementDisplayTime(refIdx, refChartT);
+}
+
+// ---- Per-bar tempo: "mudar o BPM do compasso" ----
+// Sets bars [from..to] to one BPM and moves EVERYTHING after them by the
+// difference, so each later bar keeps its own tempo (a passage does not get
+// re-timed just because an earlier bar was). Expressed as ordinary pending
+// anchors — the same currency as every other sync tool — so it previews live,
+// rides "Aplicar e reconstruir", is drawn in amber by barTempoTable and is what
+// "Guitar Pro com os andamentos corrigidos" writes.
+
+// Chart-time span of bars [fromM..toM]: from the first bar's downbeat to the
+// next bar's; for the song's LAST bar (which has no next downbeat) to its own
+// last beat, one beat short. Null when there is nothing to re-time.
+function barSpan(a, fromM, toM) {
+  const bars = a.bars || [], beats = a.beats || [];
+  const i0 = bars.findIndex(b => b.measure === fromM);
+  const i1 = bars.findIndex(b => b.measure === toM);
+  if (i0 < 0 || i1 < i0) return null;
+  const startT = bars[i0].time;
+  let endT = i1 + 1 < bars.length ? bars[i1 + 1].time : null;
+  if (endT == null) {
+    const inLast = beats.filter(t => t >= bars[i1].time - 1e-6);
+    if (inLast.length < 2) return null;
+    endT = inLast[inLast.length - 1];
+  }
+  const n = beats.filter(t => t >= startT - 1e-6 && t < endT - 1e-6).length;
+  return n > 0 && endT > startT ? { startT, endT, beats: n } : null;
+}
+
+// Where the chart ends, in chart time: the last beat, bar or note end.
+function songEndChartTime(a) {
+  let end = 0;
+  for (const t of a.beats || []) end = Math.max(end, t);
+  for (const b of a.bars || []) end = Math.max(end, b.time);
+  for (const n of a.notes || []) end = Math.max(end, n.time + (n.sustain || 0));
+  return end;
+}
+
+// The anchor list (pure) that gives the span [startO, endO] (warp-domain
+// times, i.e. previewScale'd) `beats` beats at `bpm`, keeping everything before
+// it where it is on screen and shifting everything after it by the difference.
+// Pending anchors inside the span are superseded; the ones after it move with
+// the tail. A LONE anchor is a uniform shift of the whole song, which stops
+// being one as soon as a second anchor exists — so the song start is pinned
+// with that same shift first, or the bars before this one would lose it.
+function planBarRetempo(anchors, warp, p) {
+  const EPS = 0.05;
+  const startD = warp(p.startO), endD = warp(p.endO);
+  const newEndD = startD + p.beats * 60 / p.bpm;
+  const delta = newEndD - endD;
+  const out = [];
+  if (anchors.length === 1 && p.songStartO < p.startO - EPS
+      && p.songStartO < anchors[0][0] - EPS) {
+    out.push([p.songStartO, warp(p.songStartO)]);
+  }
+  for (const [o, t] of anchors) {
+    if (o < p.startO - EPS) out.push([o, t]);
+    else if (o > p.endO + EPS) out.push([o, t + delta]);
+  }
+  out.push([p.startO, startD], [p.endO, newEndD]);
+  if (p.tailO > p.endO + EPS && !out.some(([o]) => Math.abs(o - p.tailO) < EPS)) {
+    out.push([p.tailO, warp(p.tailO) + delta]);
+  }
+  out.sort((x, y) => x[0] - y[0]);
+  return { anchors: out, delta };
+}
+
+// The bar's tempo as the score shows it now (pending edits included).
+function barDisplayBpm(measure) {
+  const a = arrangements[currentArr];
+  const span = a && barSpan(a, measure, measure);
+  if (!span) return null;
+  const warp = buildTimeWarp(syncAnchors);
+  const dur = warp(previewScale(span.endT)) - warp(previewScale(span.startT));
+  return dur > 0.01 ? span.beats * 60 / dur : null;
+}
+
+const BAR_BPM_MIN = 10, BAR_BPM_MAX = 400;  // the Guitar Pro export's own bounds
+
+function setBarsTempo(fromM, toM, bpm) {
+  const a = arrangements[currentArr];
+  if (!a || !isGpJob()) return { ok: false, why: 'sem partitura' };
+  if (!(bpm >= BAR_BPM_MIN && bpm <= BAR_BPM_MAX)) {
+    return { ok: false, why: `o BPM tem de estar entre ${BAR_BPM_MIN} e ${BAR_BPM_MAX}` };
+  }
+  const span = barSpan(a, fromM, toM);
+  if (!span) return { ok: false, why: 'esses compassos não têm tempos que se possam mudar' };
+  const firstBar = (a.bars || [])[0];
+  const plan = planBarRetempo(syncAnchors, buildTimeWarp(syncAnchors), {
+    startO: previewScale(span.startT), endO: previewScale(span.endT), beats: span.beats, bpm,
+    tailO: previewScale(songEndChartTime(a)),
+    songStartO: previewScale(firstBar ? firstBar.time : span.startT),
+  });
+  // In place: syncAnchors IS this arrangement's entry in syncAnchorsByKind.
+  syncAnchors.splice(0, syncAnchors.length, ...plan.anchors);
+  renderAnchorsList();
+  updatePendingChangesInfo();
+  showArr(currentArr);
+  return { ok: true, delta: plan.delta };
+}
+
+function barTempoMessage(fromM, toM, bpm, delta) {
+  const which = fromM === toM ? `Compasso ${fromM}` : `Compassos ${fromM}–${toM}`;
+  const shift = Math.abs(delta) < 0.0005 ? 'o resto não se mexe'
+    : `o resto da música ${delta > 0 ? 'atrasa' : 'adianta'} ${Math.abs(delta).toFixed(3)} s`;
+  return `${which}: ♩ = ${Number(bpm.toFixed(1))} BPM (${shift}).`;
+}
+
+// Fill a "até ao compasso" select with the bars from `fromM` on, and the BPM
+// field with that bar's current tempo.
+function fillBarTempoControls(fromM, toSel, bpmInput) {
+  const bars = (arrangements[currentArr] || {}).bars || [];
+  const prev = parseInt(toSel.value, 10);
+  toSel.innerHTML = bars.filter(b => b.measure >= fromM)
+    .map(b => `<option value="${b.measure}">${b.measure}</option>`).join('');
+  toSel.value = String(prev >= fromM && bars.some(b => b.measure === prev) ? prev : fromM);
+  const bpm = barDisplayBpm(fromM);
+  bpmInput.value = bpm ? bpm.toFixed(1) : '';
 }
 
 (function wireBarSync() {
@@ -2078,6 +2202,19 @@ function refBarTarget(refIdx, measure) {
     info.textContent = `Compasso ${measure} alinhado com o compasso ${measure} de ${refKind} (${(target - viewOrigin).toFixed(2)}s).`;
     toast(`Compasso ${measure} sincronizado com ${refKind}`, 'ok');
   });
+
+  const bpmInput = document.getElementById('barBpm');
+  const toSel = document.getElementById('barBpmTo');
+  const refreshTempo = () => fillBarTempoControls(parseInt(barSel.value, 10), toSel, bpmInput);
+  barSel.addEventListener('change', refreshTempo);
+  document.getElementById('barBpmApply').addEventListener('click', () => {
+    const fromM = parseInt(barSel.value, 10), toM = parseInt(toSel.value, 10);
+    const bpm = parseFloat(bpmInput.value);
+    const r = setBarsTempo(fromM, toM, bpm);
+    if (!r.ok) { toast(r.why, 'err'); return; }
+    info.textContent = barTempoMessage(fromM, toM, bpm, r.delta);
+    toast(info.textContent, 'ok');
+  });
 })();
 
 // ---- Click-a-note bar-align popup ('baralign' mode) ----
@@ -2093,6 +2230,9 @@ function openBarAlignPopup(chartT, clientX, clientY) {
   barSel.innerHTML = a.bars.map(b => `<option value="${b.measure}">Compasso ${b.measure}</option>`).join('');
   const containing = [...a.bars].filter(b => b.time <= chartT + 1e-6).pop();
   if (containing) barSel.value = String(containing.measure);
+  fillBarTempoControls(parseInt(barSel.value, 10), document.getElementById('baBarTo'),
+    document.getElementById('baBpm'));
+  document.getElementById('baBpmInfo').textContent = '';
   const others = arrangements.map((x, i) => ({ x, i })).filter(o => o.i !== currentArr);
   document.getElementById('baRefWrap').style.display = others.length ? '' : 'none';
   document.getElementById('baRefArr').innerHTML =
@@ -2112,6 +2252,19 @@ function closeBarAlignPopup() { document.getElementById('barAlignPopup').hidden 
   const pop = document.getElementById('barAlignPopup');
   if (!pop) return;
   document.getElementById('baCancel').addEventListener('click', closeBarAlignPopup);
+  const baBar = document.getElementById('baBar');
+  baBar.addEventListener('change', () => fillBarTempoControls(parseInt(baBar.value, 10),
+    document.getElementById('baBarTo'), document.getElementById('baBpm')));
+  document.getElementById('baSetBpm').addEventListener('click', () => {
+    const fromM = parseInt(baBar.value, 10);
+    const toM = parseInt(document.getElementById('baBarTo').value, 10);
+    const bpm = parseFloat(document.getElementById('baBpm').value);
+    const r = setBarsTempo(fromM, toM, bpm);
+    if (!r.ok) { toast(r.why, 'err'); return; }
+    const msg = barTempoMessage(fromM, toM, bpm, r.delta);
+    document.getElementById('baBpmInfo').textContent = msg;
+    toast(msg, 'ok');
+  });
   document.getElementById('baToCursor').addEventListener('click', () => {
     const m = parseInt(document.getElementById('baBar').value, 10);
     if (alignBarTo(m, currentPlayheadT + viewOrigin)) {
@@ -4687,7 +4840,7 @@ const MODE_HELP = {
   excerpt: '<b>Excerto:</b> arrasta uma caixa por cima de várias notas e depois arrasta uma delas — movem-se todas em bloco. (Alternativa: Shift+clique numa nota e noutra para selecionar o intervalo.)',
   movefrom: '<b>Mover seguintes:</b> pausa a gravação no instante certo e clica na 1ª nota desalinhada — essa nota e TODAS as seguintes deslocam-se em bloco para o cursor. Para um trecho inteiro que entrou tarde/cedo.',
   newbeat: '<b>Corrigir daqui (detetar andamento) — o modo recomendado:</b> ouve até ao ponto onde a partitura começa a fugir da gravação e clica nessa nota. Mede o BPM real da gravação daí em diante e re-espaça só as notas seguintes. <b>Nada antes do clique se mexe</b>, por isso o que já estava bem fica intacto. Repete sempre que voltar a fugir — cada correção parte de onde a anterior deixou.',
-  baralign: '<b>Alinhar por compasso:</b> pausa a gravação no instante certo e clica numa nota — abre um popup com o compasso da nota já escolhido. Confirma com "= cursor" e esse compasso alinha-se ao cursor (ou "= pista" para o mesmo compasso de outra pista). Faz-se várias vezes ao longo da música; cada correção arrasta as notas seguintes.',
+  baralign: '<b>Alinhar por compasso:</b> pausa a gravação no instante certo e clica numa nota — abre um popup com o compasso da nota já escolhido. Confirma com "= cursor" e esse compasso alinha-se ao cursor (ou "= pista" para o mesmo compasso de outra pista). Faz-se várias vezes ao longo da música; cada correção arrasta as notas seguintes. No mesmo popup, <b>Andamento</b> muda o BPM desse compasso (ou de vários seguidos) e o resto da música acompanha, cada compasso com o seu próprio andamento.',
   tonechange: '<b>Mudança de tom:</b> clica numa nota para trocar para um dos tons extra a partir daí.',
   section: '<b>Secção:</b> clica numa nota para nomear onde começa uma secção (intro/verso/refrão…). Nada a ver com sincronização — é para navegação e o Riff Repeater.',
   editnotes: '<b>Editar notas:</b> clica numa nota para a editar (traste, sustain, técnicas, bend/slide) ou remover; <b>duplo-clique</b> no pentagrama vazio insere uma nota nova, encaixada na grelha. Um clique simples no vazio move o cursor, como nos outros modos. Muda o CONTEÚDO da partitura — fica pendente até "Aplicar e reconstruir".',

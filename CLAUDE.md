@@ -788,6 +788,33 @@ the panel — just a faster, note-driven entry meant to be repeated along the
 song for progressive drift correction. Dismisses on Escape or an outside click
 (a note click reopens/repositions it).
 
+**Per-bar tempo — "mudar o BPM do compasso" (`setBarsTempo`).** The 📏
+popup and the "Sincronizar por compasso" panel both carry an **Andamento**
+row: ♩ = [BPM, pre-filled with the bar's current tempo as displayed] até ao
+[compasso] → Aplicar. Every bar in the range gets that BPM; everything AFTER
+it keeps its own tempo and is only shifted by the difference (a later
+passage is never re-timed because an earlier bar was). No new backend
+concept: `planBarRetempo` (pure) turns it into ordinary pending anchors —
+pin the span's start where it currently sits, put its end at
+`start + beats·60/bpm`, move every pending anchor after the span by the
+difference (anchors inside the span are superseded), and pin the song's end
+with that difference so the tail follows. A LONE pending anchor is a
+uniform whole-song shift that stops being one once a second anchor exists
+(`buildTimeWarp` is identity outside a multi-anchor range), so the song
+start is pinned with that same shift first — without it the bars before
+the edited one silently lost Step 1's "Início". `syncAnchors` is mutated in
+place (it IS the `syncAnchorsByKind` entry). Because it is anchors, it
+previews live, rides "Aplicar e reconstruir", is drawn amber by
+`barTempoTable` and is exactly what "Guitar Pro com os andamentos
+corrigidos" writes. The last bar has no next downbeat, so its span runs to
+its own last beat (one beat short). BPM bounded 10–400 (the GP export's
+own bounds). Browser-only, no pytest coverage: `planBarRetempo`/`barSpan`
+checked with Node (no anchors, a lone anchor before/after the span —
+mutation-checked —, anchors after/inside the span, faster and slower, the
+last bar) and the UI with Playwright on a 139-bar chart: bar 4 171→90 BPM
+leaves bars 3/5/6/8 at 171.43 and shifts the rest by exactly 1.267 s,
+bars 6–7 → 100 via the panel, and a real rebuild keeps 90/100/100.
+
 **Cursor as an explicit snap target (fixes unreliable "drag to the cursor").**
 Before, only the click-based `'tap'`/`'movefrom'` modes snapped to the live
 playhead (`currentPlayheadT`); the familiar drag gesture (`'drag'`/`'excerpt'`
