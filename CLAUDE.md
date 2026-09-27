@@ -1590,25 +1590,30 @@ root-less stand-in for the system store — mutation-checked — the system root
 kept, `CERT_REQUIRED` throughout, the fallback, every client passing the
 shared context, and the explained message).
 
-**Songsterr is asked with `requests`, default headers — NOT urllib, NOT a
-browser User-Agent.** With the certificate fixed, the user's import got **403
-from `/api/meta`**: `songsterr._http_get_json` sent `User-Agent: Mozilla/5.0
-(RockForge)` through `urllib`, a client claiming to be a browser while
-behaving like none, which is what bot protection refuses. The one client
-known to get answers from the user's machine is teaqu/guitar-pro-youtube-sync
-(their GP file was built with it), and it calls every one of these endpoints
-— meta, video points, the CloudFront parts — as a bare `requests.get(url,
-timeout=…)`. RockForge now does exactly that (`requests` is a core
-dependency; `types-requests` in `[dev]` for mypy), and
-`test_songsterr_is_asked_with_the_default_requests_client` fails if a header
-is ever added back. Consequence: Songsterr's TLS trust is requests' own
-(certifi), not `_https.ssl_context()` — the same as the reference tool, so a
-machine whose antivirus re-signs HTTPS cannot reach Songsterr here either
-(`REQUESTS_CA_BUNDLE` points it at another bundle). A 403 from songsterr.com
-now says the site may be blocking automated requests; a 403 from a part CDN
-keeps meaning "try the next distribution". **Not verified from here** (the
-sandbox cannot reach Songsterr) — it rests on the reference tool working on
-that machine.
+**Songsterr is asked with `requests`, default headers — the reference tool's
+exact client.** teaqu/guitar-pro-youtube-sync (the tool the user's own GP
+file was built with, proven to work on their machine) calls meta, video
+points and the CloudFront parts as a bare `requests.get(url, timeout=…)`, so
+RockForge does the same instead of `urllib` with an invented `Mozilla/5.0
+(RockForge)` User-Agent (`requests` is a core dependency; `types-requests`
+in `[dev]` for mypy); `test_songsterr_is_asked_with_the_default_requests_client`
+fails if a header is ever added back. Songsterr's TLS trust is therefore
+requests' own (certifi), not `_https.ssl_context()` — the same as the
+reference tool (`REQUESTS_CA_BUNDLE` points it at another bundle).
+
+**A refusal says Songsterr's OWN reason (`_refusal`).** The 403 that
+prompted the switch was NOT bot protection — the user's diagnosis showed it
+plainly: `/api/meta/6019365` answered `403` from nginx with JSON
+`{"code":"ERR_UNPUBLISHED","reason":"This tab is unpublished. Only authors
+can view their own unpublished tabs."}`, while `/api/meta/84` answered 200
+and the reference tool worked on a DIFFERENT, published tab (5993626). The
+old message ("o Songsterr respondeu 403") and then a guessed "may be
+blocking automated requests" sent the diagnosis the wrong way twice.
+`_REFUSAL_CODES` maps the one code actually seen to a Portuguese sentence;
+any other JSON `reason`/`error` is shown verbatim; a non-JSON refusal keeps
+the plain status. The status is still carried, so a 403 from a part CDN
+still means "try the next distribution". Guarded by
+`test_a_refusal_or_an_unreadable_answer_is_a_clear_error`.
 
 ### Automatic tone detection (`/jobs/{id}/detect-tones`)
 

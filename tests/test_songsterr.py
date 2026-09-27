@@ -127,7 +127,13 @@ def test_songsterr_is_asked_with_the_default_requests_client(
 @pytest.mark.parametrize(
     ("answer", "match", "status"),
     [
-        (_Answer(403), "recusou o pedido \\(403\\)", 403),
+        (_Answer(403, {
+            "error": "Tab is not published!",
+            "reason": "This tab is unpublished. Only authors can view their own unpublished tabs.",
+            "code": "ERR_UNPUBLISHED",
+        }), "não está publicada", 403),
+        (_Answer(403, {"reason": "Something new"}), "recusou \\(403\\): Something new", 403),
+        (_Answer(403, ValueError("html page")), "respondeu 403", 403),
         (_Answer(404), "respondeu 404", 404),
         (_Answer(200, ValueError("not json")), "ilegível", None),
     ],

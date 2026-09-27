@@ -90,26 +90,42 @@ def parse_song_id(text: str) -> int:
     )
 
 
+# What Songsterr's API says when it refuses a song, in the user's language.
+# It answers JSON with a ``code`` (seen: ERR_UNPUBLISHED on a 403 for a tab
+# only its author may view); anything else is shown with its own ``reason``.
+_REFUSAL_CODES = {
+    "ERR_UNPUBLISHED": (
+        "esta tab do Songsterr não está publicada — só o autor a pode ver. "
+        "Usa o link de uma tab publicada da mesma música"
+    ),
+}
+
+
+def _refusal(response: Any, url: str) -> str:
+    try:
+        body = response.json()
+    except ValueError:
+        body = None
+    if isinstance(body, dict):
+        known = _REFUSAL_CODES.get(str(body.get("code") or ""))
+        if known:
+            return known
+        reason = body.get("reason") or body.get("error")
+        if isinstance(reason, str) and reason.strip():
+            return f"o Songsterr recusou ({response.status_code}): {reason.strip()}"
+    return f"o Songsterr respondeu {response.status_code} a {url}"
+
+
 def _http_get_json(url: str) -> Any:
     # ``requests`` with its DEFAULT headers, exactly as
     # teaqu/guitar-pro-youtube-sync fetches these same endpoints — the client
-    # known to get answers. A browser-looking User-Agent on a client that is
-    # not a browser is what bot protection refuses: that version got 403 from
-    # /api/meta on the user's machine where the reference tool works.
+    # proven to get answers from the user's machine.
     try:
         response = requests.get(url, timeout=TIMEOUT_S)
     except requests.RequestException as exc:
         raise SongsterrError(network_error_message(exc, "Songsterr")) from exc
-    if response.status_code == 403 and url.startswith(BASE_URL):
-        raise SongsterrError(
-            f"o Songsterr recusou o pedido (403) a {url} — o site pode estar a "
-            "bloquear pedidos automáticos a partir desta ligação",
-            403,
-        )
     if response.status_code >= 400:
-        raise SongsterrError(
-            f"o Songsterr respondeu {response.status_code} a {url}", response.status_code
-        )
+        raise SongsterrError(_refusal(response, url), response.status_code)
     try:
         return response.json()
     except ValueError as exc:

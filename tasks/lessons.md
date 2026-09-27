@@ -27,3 +27,12 @@ functional knobs blindly doubles/misaligns them.
 NOT from the picture. Only gear with a hand-made `KNOB_LAYOUTS` entry (measured
 `(x,y,r)` per catalogue knob) uses the aligned overlay; everything else uses the
 generic knob strip. Size overlays in % of the source image so they scale.
+
+## Read the refusal before explaining it (Songsterr 403, 2026-09-27)
+A 403 from Songsterr was explained twice by guesswork ("bot protection", then
+"the User-Agent") and code was changed on that basis, when the response BODY
+already said `ERR_UNPUBLISHED` — the tab simply was not public. Rule: when an
+external service refuses, first get its status, server header and body (one
+diagnostic command for the user if the sandbox cannot reach it), and compare
+against a known-good request (another id, the reference tool) before touching
+code. Error messages must carry the service's own reason, not a guess.
