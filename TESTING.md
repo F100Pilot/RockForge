@@ -662,6 +662,15 @@ chosen; the created project's Letra page must show those words, and the
 build must carry them. With a GP that has its own lyrics nothing is chosen
 automatically.
 
+### 7c-quater. Apagar notas (browser-only, sem rede)
+
+1. Partitura: Ctrl+clique em duas notas (ou Shift+clique para um intervalo) —
+   aparece "Apagar" ao lado de "Limpar seleção" e "Notas ▾ → Apagar seleção"
+   fica ativo.
+2. Tecla Delete: as notas saem da partitura, "Pendente: edições de notas".
+3. Ctrl+Z (ou "Desfazer apagar"): voltam, e o pendente apaga-se.
+4. Apaga de novo → "Aplicar e reconstruir": o novo build já não as tem.
+
 ### 7c-ter. Acertar a letra na partitura (browser-only, sem rede)
 
 1. Num projeto com letra, página Partitura: clica numa palavra na partitura —

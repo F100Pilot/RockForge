@@ -803,10 +803,13 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
               </div>
               <div class="dd">
                 <button type="button" id="notesMenuBtn" class="dd-trigger" aria-haspopup="menu" aria-expanded="false" aria-controls="notesMenu"><svg class="ic dd-ico" aria-hidden="true"><use href="#i-copy"/></svg><span>Notas</span><svg class="ic dd-chev" aria-hidden="true"><use href="#i-chev-down"/></svg></button>
-                <div class="dd-menu" id="notesMenu" role="menu" aria-label="Copiar, colar e limpar notas" hidden>
+                <div class="dd-menu" id="notesMenu" role="menu" aria-label="Copiar, colar, apagar e limpar notas" hidden>
                 <div class="dd-cap">Copiar / colar</div>
                 <button type="button" id="copyNotes" class="dd-item" role="menuitem" title="Copiar as notas selecionadas (Ctrl+C)"><svg class="ic dd-ico" aria-hidden="true"><use href="#i-copy"/></svg><span class="dd-txt"><span class="dd-name">Copiar seleção</span><span class="dd-desc">Ctrl+C — seleciona antes com Shift+clique</span></span></button>
                 <button type="button" id="pasteNotes" class="dd-item" role="menuitem" disabled title="Colar no cursor (Ctrl+V)"><svg class="ic dd-ico" aria-hidden="true"><use href="#i-paste"/></svg><span class="dd-txt"><span class="dd-name">Colar no cursor</span><span class="dd-desc">Ctrl+V — nesta pista ou noutra</span></span></button>
+                <div class="dd-cap">Apagar</div>
+                <button type="button" id="deleteNotes" class="dd-item" role="menuitem" disabled title="Apagar as notas selecionadas (Delete)"><svg class="ic dd-ico" aria-hidden="true"><use href="#i-trash"/></svg><span class="dd-txt"><span class="dd-name">Apagar seleção</span><span class="dd-desc">Delete — seleciona com Ctrl/Shift+clique ou Excerto</span></span></button>
+                <button type="button" id="undoDeleteNotes" class="dd-item" role="menuitem" disabled title="Repor as notas apagadas por último (Ctrl+Z)"><svg class="ic dd-ico" aria-hidden="true"><use href="#i-undo"/></svg><span class="dd-txt"><span class="dd-name">Desfazer apagar</span><span class="dd-desc">Ctrl+Z — repõe o último apagar</span></span></button>
                 <div class="dd-cap">Edições de notas</div>
                 <button type="button" id="clearNoteEdits" class="dd-item" role="menuitem" disabled title="Descartar as edições de notas desta pista (só ao Aplicar e reconstruir)"><svg class="ic dd-ico" aria-hidden="true"><use href="#i-eraser"/></svg><span class="dd-txt"><span class="dd-name">Limpar esta pista</span><span class="dd-desc">Descarta as edições desta pista</span></span></button>
                 <button type="button" id="clearNoteEditsAll" class="dd-item" role="menuitem" disabled title="Descartar as edições de notas de TODAS as pistas (só ao Aplicar e reconstruir)"><svg class="ic dd-ico" aria-hidden="true"><use href="#i-eraser"/></svg><span class="dd-txt"><span class="dd-name">Limpar em todas</span><span class="dd-desc">Descarta as edições de todas as pistas</span></span></button>
@@ -844,6 +847,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
             <button class="info-btn" data-info="tab-viewer">ⓘ</button>
             <span class="pv-spacer"></span>
             <span id="selectionInfo"></span>
+            <button type="button" id="deleteSelection" class="secondary" hidden title="Apaga as notas selecionadas (Delete); Ctrl+Z desfaz"><svg class="ic" aria-hidden="true"><use href="#i-trash"/></svg>Apagar</button>
             <button type="button" id="clearSelection" class="secondary" hidden>Limpar seleção</button>
             <span id="clipboardInfo"></span>
             <span>Edições: <span id="noteEditsInfo">nenhuma</span></span>

@@ -453,6 +453,31 @@ and an empty beat grid refused) and `test_export_arrangement_gp_*` in
 `test_api.py`. Same **unverified-by-design** caveat as above: round-tripped
 through our own importer, never opened in Guitar Pro itself.
 
+### Deleting notes ("Apagar", Delete, Ctrl+Z)
+
+"cria uma forma de apagar notas": the only way was "Editar notas" → click one
+note → popup → "Remover nota", one note at a time. Now every SELECTED note
+(Ctrl/Shift+click or Excerto — selection works in any mode) of the current
+arrangement is deleted at once by the **Delete**/Backspace key, the
+**"Apagar"** button that appears next to "Limpar seleção", or "Notas ▾" →
+"Apagar seleção" (`deleteSelectedNotes`). Same primitive as "Remover nota" — a
+`deleted` note override (`deleteNoteAt`, keyed on the built note's OWN time,
+which is what `_apply_note_overrides` matches) — so it previews, counts as
+"Pendente: edições de notas" and rides "Aplicar e reconstruir"; no backend
+change. A note that exists only as a pending insertion just loses that
+insertion (and an emptied kind is dropped, or "Pendente" would stay lit).
+**The last delete can be undone** (Ctrl+Z / "Desfazer apagar"): once a built
+note is off the score there is nothing left to click to bring it back, short
+of "Limpar esta pista", which discards every edit. `noteDeleteUndo` records the
+override each deleted slot had BEFORE (null = none) and undo restores exactly
+those slots — so a pending fret edit on a deleted note comes back as that
+edit, and edits made after the delete elsewhere survive. Cleared on job load
+and by "Limpar". Browser-only, no pytest coverage; verified with Playwright
+(Ctrl+click two notes → Delete → 623→621 groups, pending lit → Ctrl+Z restores
+and clears it; an inserted note deleted leaves `{}`; edit-then-delete-then-undo
+keeps fret 9; a real rebuild goes 1374→1372 notes with none left at those
+times).
+
 ### Clearing note edits ("Notas ▾" → Limpar)
 
 The companion to the seeding fix in the note-editor section: once committed

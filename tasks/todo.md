@@ -164,3 +164,8 @@ traço em vez de emojis, e o projeto em ecrã inteiro em vez de um modal.
 - [x] Inspector tab "Letra": whole-lyric shift, selected word (from here / only this / nudge / remove), pick/add at cursor
 - [x] Click a word on the score selects it and opens the tab (no seek); "Pendente: letra"
 - [x] Playwright check, docs
+
+## Apagar notas
+- [x] Delete / "Apagar" / "Notas ▾ → Apagar seleção" on the selected notes (any mode), deleted overrides
+- [x] Ctrl+Z / "Desfazer apagar" restores exactly the deleted slots
+- [x] Playwright check + real rebuild, docs

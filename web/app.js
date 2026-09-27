@@ -1380,6 +1380,7 @@ async function loadArrangements(id) {
   // rather than "this job has note edits" (which it now legitimately does).
   noteOverridesBuilt = JSON.stringify(noteOverridesByKind);
   noteClipboard = [];  // avoid pasting a previous song's notes into this one
+  noteDeleteUndo = null;
   syncAnchors = [];
   selectedTimes = new Set();
   currentArr = 0;  // reset before initSync redraws, so a stale index can't go out of range
@@ -1835,6 +1836,7 @@ function showArr(i) {
   updateSyncOffsetDisplay();
   updateBarSyncPanel();
   updateNoteEditsInfo();
+  updateDeleteNotesUi();
   drawFretboard();  // redraw the neck (tuning labels) + refresh the active notes
   updateFretboard(playheadDisplay(audioTime()));
   updateLiveBpm(playheadDisplay(audioTime()));
@@ -1969,6 +1971,91 @@ function pasteNotesAtCursor() {
   toast(`${noteClipboard.length} nota(s) colada(s) — pendente até "Aplicar e reconstruir".`, 'ok');
 }
 
+// ---- Deleting notes: every selected note (Ctrl/Shift+click, Excerto) of this
+// arrangement at once, from any mode — the single-note "Remover nota" needs
+// the "Editar notas" popup one note at a time. Same primitive as that button
+// (a deleted override), so it previews, rides "Aplicar e reconstruir" and
+// round-trips like any note edit. The last delete can be undone: once a
+// built note is gone from the score there is nothing left to click to bring
+// it back, short of discarding EVERY edit of the track.
+// {kind, prior: [{time, string, ov}]} — the override each deleted note had
+// before (null = none). Undo restores exactly those slots, so an edit made
+// AFTER the delete (elsewhere in the track) survives the undo.
+let noteDeleteUndo = null;
+
+// Removes one note of the CURRENT arrangement: a built note gets a deleted
+// override (keyed on its own exact time, as the backend matches); a note that
+// exists only as a pending insertion simply loses that insertion.
+function deleteNoteAt(time, string) {
+  const built = findBuiltNoteAt(time, string);
+  if (built) {
+    upsertNoteOverride({
+      time: built.time, string, fret: 0, sustain: 0,
+      techniques: [], bend_semitones: 0, slide_to_fret: null, deleted: true,
+    });
+    return;
+  }
+  const k = currentKind();
+  const list = noteOverridesByKind[k] || [];
+  const i = list.findIndex(o => o.string === string && Math.abs(o.time - time) < 0.03);
+  if (i >= 0) list.splice(i, 1);
+  // An empty list would still read as "Pendente: edições de notas".
+  if (!list.length) delete noteOverridesByKind[k];
+}
+
+function updateDeleteNotesUi() {
+  const n = selectedTimes.size;
+  const del = document.getElementById('deleteNotes');
+  if (del) del.disabled = n === 0;
+  const btn = document.getElementById('deleteSelection');
+  if (btn) btn.hidden = n === 0;
+  const undo = document.getElementById('undoDeleteNotes');
+  if (undo) undo.disabled = !noteDeleteUndo || noteDeleteUndo.kind !== currentKind();
+}
+
+function deleteSelectedNotes() {
+  if (!selectedTimes.size) { toast('seleciona notas primeiro (Ctrl+clique, Shift+clique ou modo Excerto)', 'err'); return; }
+  const a = arrangements[currentArr];
+  if (!a) return;
+  const pendingOv = noteOverridesByKind[a.kind] || [];
+  const merged = pendingOv.length ? mergeNoteOverrides(a.notes, pendingOv) : a.notes;
+  const times = [...selectedTimes];
+  const picked = merged.filter(n => times.some(t => Math.abs(t - n.time) < 0.03));
+  if (!picked.length) { toast('nada selecionado para apagar', 'err'); return; }
+  const slot = n => pendingOv.find(o => o.string === n.string && Math.abs(o.time - n.time) < 0.03);
+  noteDeleteUndo = {
+    kind: a.kind,
+    prior: picked.map(n => ({ time: n.time, string: n.string, ov: slot(n) ? JSON.parse(JSON.stringify(slot(n))) : null })),
+  };
+  for (const n of picked) deleteNoteAt(n.time, n.string);
+  selectedTimes.clear();
+  updateSelectionInfo();
+  updatePendingChangesInfo();
+  showArr(currentArr);
+  toast(`${picked.length} nota(s) apagada(s) — Ctrl+Z desfaz; pendente até "Aplicar e reconstruir".`, 'ok');
+}
+
+function undoNoteDelete() {
+  const u = noteDeleteUndo;
+  if (!u) { toast('nada apagado para desfazer', 'err'); return; }
+  if (u.kind !== currentKind()) { toast(`o último apagar foi na pista ${u.kind} — muda para ela para desfazer`, 'err'); return; }
+  const list = noteOverridesByKind[u.kind] || [];
+  for (const p of u.prior) {
+    const i = list.findIndex(o => o.string === p.string && Math.abs(o.time - p.time) < 0.03);
+    if (i >= 0) list.splice(i, 1);
+    if (p.ov) list.push(p.ov);
+  }
+  if (list.length) noteOverridesByKind[u.kind] = list;
+  else delete noteOverridesByKind[u.kind];
+  noteDeleteUndo = null;
+  updatePendingChangesInfo();
+  showArr(currentArr);
+  toast('Notas repostas.', 'ok');
+}
+
+document.getElementById('deleteNotes')?.addEventListener('click', deleteSelectedNotes);
+document.getElementById('deleteSelection')?.addEventListener('click', deleteSelectedNotes);
+document.getElementById('undoDeleteNotes')?.addEventListener('click', undoNoteDelete);
 document.getElementById('copyNotes')?.addEventListener('click', copySelectedNotes);
 document.getElementById('pasteNotes')?.addEventListener('click', pasteNotesAtCursor);
 
@@ -2363,6 +2450,7 @@ async function clearNoteEdits(everyArrangement) {
     '"Aplicar e reconstruir".')) return;
   if (everyArrangement) noteOverridesByKind = {};
   else delete noteOverridesByKind[kind];
+  noteDeleteUndo = null;  // nothing left for it to restore on top of
   updateNoteEditsInfo();
   updatePendingChangesInfo();
   showArr(currentArr);
@@ -4766,6 +4854,7 @@ function updateSelectionInfo() {
   clearBtn.hidden = n === 0;
   const copyBtn = document.getElementById('copyNotes');
   if (copyBtn) copyBtn.disabled = n === 0;
+  updateDeleteNotesUi();
 }
 
 (() => {
@@ -5839,6 +5928,10 @@ document.addEventListener('keydown', e => {
     e.preventDefault(); copySelectedNotes();
   } else if ((e.ctrlKey || e.metaKey) && (e.key === 'v' || e.key === 'V') && isGpJob()) {
     e.preventDefault(); pasteNotesAtCursor();
+  } else if ((e.key === 'Delete' || e.key === 'Backspace') && isGpJob() && selectedTimes.size) {
+    e.preventDefault(); deleteSelectedNotes();
+  } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z') && isGpJob() && noteDeleteUndo) {
+    e.preventDefault(); undoNoteDelete();
   }
 });
 
