@@ -36,3 +36,13 @@ external service refuses, first get its status, server header and body (one
 diagnostic command for the user if the sandbox cannot reach it), and compare
 against a known-good request (another id, the reference tool) before touching
 code. Error messages must carry the service's own reason, not a guess.
+
+## Verify an edit at more than one point of the song (note deletes, 2026-09-27)
+"Apagar notas" was verified by deleting two notes near the START of a chart,
+which happened to sit on exact millisecond times — so a real bug passed: the
+pipeline matched note edits by exact 6-decimal time while the editor only sees
+the XML's millisecond-rounded times, and half the notes at the end of the song
+could not be deleted (or edited without a twin). Rule: when verifying anything
+keyed on a float read back from a serialized file, exercise it at several
+places (start, middle, end) and count the result, and compare with what the
+serialization precision actually is.

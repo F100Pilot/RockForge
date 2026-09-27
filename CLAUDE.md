@@ -981,9 +981,19 @@ tone-changes convention) each kind's edit list is independent; an arrangement
 absent from the dict (or with an empty list) is completely unaffected.
 `NoteOverride(time, string, fret, sustain, techniques, bend_semitones,
 slide_to_fret, deleted)` is a **patch keyed by `(time, string)`**: `deleted=
-True` removes whatever note is at that exact slot, otherwise it upserts
-(inserts if nothing was there, replaces if something was) — one primitive
-covers add/edit/delete uniformly. `_apply_note_overrides` (pure) does the
+True` removes the note at that slot, otherwise it upserts (inserts if nothing
+was there, replaces if something was) — one primitive covers add/edit/delete
+uniformly. **The slot is matched within `NOTE_OVERRIDE_MATCH_S` (5 ms) on the
+same string, never by exact time.** The editor only ever sees times read back
+from the built XML, which `writer.py` rounds to the millisecond, while the
+pipeline's notes carry the parser's full float; the old `round(time, 6)` key
+missed about half of them, so a deleted note stayed in the song ("apaguei um
+excerto do final mas o som das notas ainda se ouve, mesmo depois de
+recompilar": 6 of the last 12 survived) and an edited one gained a twin beside
+it (7 of 10 fret edits, 1374 → 1381 notes). A replaced note keeps its own
+exact time. Guarded by `test_note_overrides_find_notes_whose_time_the_xml_rounded`
+(fails on the exact-key version); reproduced and verified through real rebuilds
+of a 1374-note chart (12/12 deleted, 10/10 edited with no twins). `_apply_note_overrides` (pure) does the
 merge; applied in `run()` **after** parsing, per-arrangement time-warp, tempo-
 scale, AND the `import_mute_techniques` strip — so a manual edit is the final
 say and is never silently stripped by that unrelated global checkbox. Times

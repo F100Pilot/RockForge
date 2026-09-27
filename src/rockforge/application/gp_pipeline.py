@@ -143,35 +143,56 @@ class NoteOverride:
     deleted: bool = False
 
 
+# How far an edit's time may sit from the note it targets. The editor only
+# ever sees times read back from the built XML, which the writer rounds to the
+# millisecond (``rsxml/writer.py``), while the notes here carry the parser's
+# full-precision float — so an exact (6-decimal) match silently missed about
+# half of them: a deleted note stayed in the song and an edited one gained a
+# twin beside it. Two notes on one string are never this close.
+NOTE_OVERRIDE_MATCH_S = 0.005
+
+
 def _apply_note_overrides(
     notes: list[TabNote], overrides: list[NoteOverride]
 ) -> list[TabNote]:
     """Merge in-app note edits on top of the GP-parsed notes.
 
-    Keyed by (time, string) — an override either replaces the note already at
-    that exact position (upsert) or removes it (deleted=True). Not applied
-    inside _warp_parsed_track: overrides are placed by the user on the
-    ALREADY-warped score, so they land directly in the final coordinate space
-    rather than needing to be warped again.
+    Keyed by (time, string) — an override either replaces the note on that
+    string within ``NOTE_OVERRIDE_MATCH_S`` of its time (upsert) or removes it
+    (deleted=True); with no such note, an upsert inserts a new one. A replaced
+    note keeps its own exact time, so it stays in step with the notes around
+    it. Not applied inside _warp_parsed_track: overrides are placed by the user
+    on the ALREADY-warped score, so they land directly in the final coordinate
+    space rather than needing to be warped again.
     """
-    by_key: dict[tuple[float, int], TabNote] = {
-        (round(n.time, 6), n.string): n for n in notes
-    }
+    merged = list(notes)
     for ov in overrides:
-        key = (round(ov.time, 6), ov.string)
+        hit = min(
+            (
+                i for i, n in enumerate(merged)
+                if n.string == ov.string and abs(n.time - ov.time) <= NOTE_OVERRIDE_MATCH_S
+            ),
+            key=lambda i: abs(merged[i].time - ov.time),
+            default=None,
+        )
         if ov.deleted:
-            by_key.pop(key, None)
+            if hit is not None:
+                del merged[hit]
+            continue
+        note = TabNote(
+            string=ov.string,
+            fret=ov.fret,
+            time=merged[hit].time if hit is not None else ov.time,
+            sustain=ov.sustain,
+            techniques=ov.techniques,
+            bend_semitones=ov.bend_semitones,
+            slide_to_fret=ov.slide_to_fret,
+        )
+        if hit is None:
+            merged.append(note)
         else:
-            by_key[key] = TabNote(
-                string=ov.string,
-                fret=ov.fret,
-                time=ov.time,
-                sustain=ov.sustain,
-                techniques=ov.techniques,
-                bend_semitones=ov.bend_semitones,
-                slide_to_fret=ov.slide_to_fret,
-            )
-    return sorted(by_key.values(), key=lambda n: (n.time, n.string))
+            merged[hit] = note
+    return sorted(merged, key=lambda n: (n.time, n.string))
 
 
 @dataclass(frozen=True)

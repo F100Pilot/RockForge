@@ -8,9 +8,14 @@ from pathlib import Path
 import guitarpro as gp
 import pytest
 
-from rockforge.application.gp_pipeline import GenerateFromGpUseCase, GpJobSpec, NoteOverride
+from rockforge.application.gp_pipeline import (
+    GenerateFromGpUseCase,
+    GpJobSpec,
+    NoteOverride,
+    _apply_note_overrides,
+)
 from rockforge.domain.arrangement import Section, SongMetadata, ToneChange
-from rockforge.domain.music import Technique
+from rockforge.domain.music import TabNote, Technique
 from rockforge.infrastructure.packaging.dlcbuilder import DlcBuilderPackager
 
 
@@ -252,6 +257,29 @@ def test_note_overrides_add_edit_and_delete_are_per_arrangement(
     # Rhythm has no note_overrides entry — its chord is unaffected.
     rhythm_xml = next(p for p in result.packaging.xml_paths if p.name == "arrangement_rhythm.xml")
     assert len(ET.parse(rhythm_xml).getroot().findall("levels/level/chords/chord")) == 1
+
+
+def test_note_overrides_find_notes_whose_time_the_xml_rounded() -> None:
+    """The editor only sees millisecond times (the XML writer rounds them), so
+    an edit must still find a note whose real time has more decimals — or a
+    deleted note stays in the song and an edited one gains a twin."""
+    notes = [
+        TabNote(string=1, fret=5, time=183.4836512, sustain=0.2),
+        TabNote(string=1, fret=7, time=183.6951274, sustain=0.2),
+        TabNote(string=2, fret=3, time=183.6951274, sustain=0.2),
+        TabNote(string=1, fret=9, time=183.7051274, sustain=0.2),  # 10 ms later
+    ]
+    merged = _apply_note_overrides(notes, [
+        NoteOverride(time=183.484, string=1, deleted=True),
+        NoteOverride(time=183.695, string=1, fret=12, sustain=0.3),
+        NoteOverride(time=190.0, string=4, fret=2, sustain=0.1),
+    ])
+    assert [(n.time, n.string, n.fret) for n in merged] == [
+        (183.6951274, 1, 12),  # replaced in place, keeping its own time
+        (183.6951274, 2, 3),   # the other string of that instant untouched
+        (183.7051274, 1, 9),   # a neighbour 10 ms away is not the target
+        (190.0, 4, 2),         # nothing there: inserted
+    ]
 
 
 def test_note_overrides_empty_or_absent_kind_leaves_notes_untouched(

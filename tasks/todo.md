@@ -169,3 +169,7 @@ traço em vez de emojis, e o projeto em ecrã inteiro em vez de um modal.
 - [x] Delete / "Apagar" / "Notas ▾ → Apagar seleção" on the selected notes (any mode), deleted overrides
 - [x] Ctrl+Z / "Desfazer apagar" restores exactly the deleted slots
 - [x] Playwright check + real rebuild, docs
+
+## Notas apagadas continuavam no build
+- [x] Reproduce (6 of the last 12 deletes ignored; fret edits made twins)
+- [x] Match overrides within 5 ms on the same string; unit test (mutation-checked); real rebuilds; docs + lesson
