@@ -259,9 +259,12 @@ re-inverting the dependency.
    diagnostics row reports yt-dlp as missing without a JS runtime, and the
    solver as unknown (`None`) unless yt-dlp runs in this interpreter.
    Guarded by the runtime/classification tests in `test_youtube_audio.py`
-   and `test_ytdlp_without_a_js_runtime_is_reported_missing`. **Not run
-   against YouTube from here** (blocked) — it rests on yt-dlp's own source
-   and the reference tool working on the user's machine.
+   and `test_ytdlp_without_a_js_runtime_is_reported_missing`. **Confirmed
+   working by the user (2026-09-27)** on their Windows machine after
+   `pip install -U "yt-dlp[default]"` + `winget install DenoLand.Deno`: the
+   Songsterr link → video times → the video's audio downloaded, no browser
+   session needed. The sandbox itself still cannot reach YouTube or
+   Songsterr, so CI only ever sees the fakes.
 
    **Tied notes** (GP `(17)` in parentheses — a held continuation, not a
    re-pick) are folded into the note they extend in BOTH parsers, never emitted

@@ -760,6 +760,14 @@ With the `.exe` built and a Python 3.11 carrying `.[ml,lyrics]`:
 
 ### 7d-quinquies. Songsterr bar times against the REAL API
 
+**Status (2026-09-27): confirmed by the user on a real Windows machine** —
+the Songsterr link, its video times and the video's audio download (with
+`yt-dlp[default]` + Deno) all worked; the first attempts surfaced, in order,
+an expired-certificate chain (fixed: system roots + certifi), an unpublished
+tab (`ERR_UNPUBLISHED`, now explained) and a missing JS runtime (now named).
+The build/sync of the imported tab against that audio (steps 2 and 5) is the
+next thing to check.
+
 CI and the development sandbox cannot reach songsterr.com, so the client was
 built from teaqu/guitar-pro-youtube-sync's use of the same endpoints and tested
 against a fake. On a real machine:
