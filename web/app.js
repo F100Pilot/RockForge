@@ -533,10 +533,11 @@ function setReviewReady(ready) {
   document.getElementById('applyAll').hidden = !ready;
   document.getElementById('pendingChangesInfo').hidden = !ready;
 }
-// The Partitura page's right-hand inspector: Sincronização | Secções.
+// The Partitura page's right-hand inspector: Sincronização | Secções | Letra.
 function showInspector(name) {
   document.getElementById('inspSync').hidden = name !== 'sync';
   document.getElementById('inspSections').hidden = name !== 'sections';
+  document.getElementById('inspLyrics').hidden = name !== 'lyrics';
   document.querySelectorAll('.pv-seg [data-insp]').forEach(b => {
     b.classList.toggle('active', b.dataset.insp === name);
     b.setAttribute('aria-selected', String(b.dataset.insp === name));
@@ -777,6 +778,12 @@ const INFO = {
       '<p>Os tempos são os da gravação original. Se a tua versão tiver outra introdução, ajusta-os depois na página <b>Letra</b> ("1ª palavra = cursor", −/+, ou "Sincronizar com a gravação"). Se o ficheiro GP já trouxer letra, nada fica escolhido sozinho — uma letra daqui substituiria a do GP. Um ficheiro LRC carregado abaixo tem sempre prioridade.</p>' +
       '<p>Remixes de fãs e músicas feitas por IA raramente estão no LRCLIB.</p>'
   },
+  'insp-lyrics': {
+    title: 'Acertar a letra na partitura',
+    body: '<p>As mesmas edições da página <b>Letra</b>, ao lado das notas onde a ouves. Clica numa palavra na partitura para a escolher (arrastá-la também a move).</p>' +
+      '<p><b>Daqui em diante = cursor</b> — põe o cursor onde a palavra devia soar: ela vai para lá e todas as seguintes acompanham-na, as anteriores ficam onde estão. É a forma rápida de corrigir uma letra que sai do tempo a meio: vai de palavra em palavra onde começa a desviar. <b>Só esta = cursor</b> move apenas essa palavra; −/+ movem-na com as seguintes pelo passo indicado em cima.</p>' +
+      '<p><b>1ª palavra = cursor</b> e −/+ em "Letra toda" movem a letra inteira (adiantada ou atrasada por igual). Tudo fica pendente até "Aplicar e reconstruir".</p>'
+  },
   'lyrics-lookup': {
     title: 'Procurar a letra e sincronizá-la',
     body: '<p>Procura a letra no <strong>LRCLIB</strong> (base de dados aberta de letras) pelo título e banda do projeto. Muitas letras vêm <strong>sincronizadas</strong> por linha; outras são <strong>só texto</strong>.</p>' +
@@ -919,6 +926,9 @@ let currentPlayheadT = 0; // display time of playhead; updated by syncFrame and 
 // In-app lyrics editor rows: {time, length, lyric, lineBreak}. lyric excludes
 // the trailing "+" — lineBreak controls whether it's re-appended on save.
 let lyricsEvents = [];
+// serializeLyrics() of the rows as last loaded — what makes "Pendente: letra"
+// mean changed since the build.
+let lyricsBuilt = '[]';
 // Tone editor state (GP jobs). jobTones: full gear dicts (see gear_catalogue
 // .tone_from_dict); toneBase/toneNames reference them by key; toneChanges are
 // the timed switches placed on the partitura ({time(bundle s), name(key)}).
@@ -1340,6 +1350,7 @@ async function selectJob(id, { poll = false, force = false } = {}) {
     setReviewReady(false);
     clearInterval(lyricsPollTimer);
     lyricsEvents = [];
+    lyricsBuilt = '[]';
   }
 
   // Re-arm with setTimeout (not setInterval): the next poll is scheduled only
@@ -1694,7 +1705,7 @@ function showArr(i) {
     const active = currentPlayheadT >= e.time + leadInBuilt
       && currentPlayheadT <= e.time + e.length + leadInBuilt;
     const brk = e.lineBreak;  // the in-game "+" — this word ends a lyric line
-    s += `<g class="lyric-word" data-li="${li}" style="cursor:grab">`;
+    s += `<g class="lyric-word${e === lyricSelected ? ' sel' : ''}" data-li="${li}" style="cursor:grab">`;
     s += `<text x="${x}" y="26" fill="${active ? '#ff7a45' : '#9aa0ad'}" font-size="13" font-weight="${active ? '700' : '400'}" text-anchor="middle">${esc(word)}</text>`;
     // A line-break word gets a STRONGER connector (solid amber, thicker) so the
     // in-game line wrap is visible on the score; a mid-line word keeps the faint
@@ -3423,7 +3434,7 @@ function renderLyricsRows() {
     </tr>`).join('');
   tb.querySelectorAll('tr').forEach(tr => {
     const i = parseInt(tr.dataset.i, 10);
-    const redraw = () => { if (arrangements.length) showArr(currentArr); };
+    const redraw = () => { if (arrangements.length) showArr(currentArr); updatePendingChangesInfo(); };
     tr.querySelector('.ly-time').addEventListener('change', e => { lyricsEvents[i].time = parseFloat(e.target.value) || 0; redraw(); });
     // 'change' only (fires on blur/Enter) — an 'input' handler here rebuilt the
     // WHOLE score SVG on every keystroke, which froze typing on a long song.
@@ -3432,6 +3443,7 @@ function renderLyricsRows() {
     tr.querySelector('.ly-length').addEventListener('change', e => { lyricsEvents[i].length = Math.max(0.1, parseFloat(e.target.value) || 0.1); redraw(); });
     tr.querySelector('.ly-remove').addEventListener('click', () => { lyricsEvents.splice(i, 1); renderLyricsRows(); redraw(); });
   });
+  renderInspLyrics();
 }
 
 function eventsToRows(events) {
@@ -3512,7 +3524,9 @@ async function loadLyrics(id) {
   if (!r.ok) return;
   const body = await r.json();
   lyricsEvents = eventsToRows(body.events);
+  lyricsBuilt = JSON.stringify(serializeLyrics());
   renderLyricsRows();
+  updatePendingChangesInfo();
   document.getElementById('lyricsInfo').textContent = LYRICS_STATUS_LABEL[body.status] || '';
   updateLyricsProgress(body.status, body.log);
   clearInterval(lyricsPollTimer);
@@ -3693,6 +3707,7 @@ function shiftLyrics(delta) {
   for (const e of lyricsEvents) e.time = Math.round((e.time + d) * 1000) / 1000;
   renderLyricsRows();
   redrawScore();
+  updatePendingChangesInfo();
 }
 document.getElementById('lyricsFirstToCursor').addEventListener('click', () => {
   if (!lyricsEvents.length) return;
@@ -3703,6 +3718,148 @@ document.getElementById('lyricsFirstToCursor').addEventListener('click', () => {
 const lyricsStep = () => Math.abs(parseFloat(document.getElementById('lyricsShift').value) || 0.5);
 document.getElementById('lyricsShiftBack').addEventListener('click', () => shiftLyrics(-lyricsStep()));
 document.getElementById('lyricsShiftFwd').addEventListener('click', () => shiftLyrics(lyricsStep()));
+
+// ── Letra next to the score (the Partitura inspector's "Letra" tab) ──────────
+// The Letra page's timing tools, where the words are actually heard: click a
+// word on the score and move it — alone, or with everything after it — to the
+// cursor. Same rows, same clock (playhead minus leadInBuilt), so every edit
+// here is an ordinary pending lyric edit ridden by "Aplicar e reconstruir".
+// The selection is the ROW OBJECT, not its index: sorting or deleting rows
+// renumbers them, and a reload replaces them (dropping the selection).
+let lyricSelected = null;
+const lyricCursorTime = () => Math.max(0, currentPlayheadT - leadInBuilt);
+const ilStep = () => Math.abs(parseFloat(document.getElementById('ilShift').value) || 0.1);
+const lyricsByTime = () => [...lyricsEvents].sort((a, b) => a.time - b.time);
+
+function lyricsEdited() {
+  renderLyricsRows();  // also refreshes this inspector
+  redrawScore();
+  updatePendingChangesInfo();
+}
+
+function selectLyric(e) {
+  lyricSelected = e && lyricsEvents.includes(e) ? e : null;
+  renderInspLyrics();
+  redrawScore();
+}
+
+// Moves one word and every word from it onward by delta. Earlier words stay
+// where they are, so the word cannot be pushed back past the one before it
+// (that would reorder the lyric).
+function shiftLyricsFrom(word, delta) {
+  if (!lyricsEvents.includes(word) || !Number.isFinite(delta) || !delta) return false;
+  const t0 = word.time;
+  const earlier = lyricsEvents.filter(w => w.time < t0).map(w => w.time);
+  const floor = earlier.length ? Math.max(...earlier) + 0.01 : 0;
+  const d = Math.max(delta, floor - t0);
+  if (!d) return false;
+  for (const w of lyricsEvents) {
+    if (w.time >= t0) w.time = Math.round((w.time + d) * 1000) / 1000;
+  }
+  return d !== delta;  // true when the move was limited
+}
+
+function renderInspLyrics() {
+  const body = document.getElementById('inspLyrics');
+  if (!body) return;
+  if (lyricSelected && !lyricsEvents.includes(lyricSelected)) lyricSelected = null;
+  const words = lyricsEvents.filter(e => e.lyric.trim()).length;
+  document.getElementById('ilCount').textContent = words ? `${words} palavra(s)` : '';
+  document.getElementById('ilEmpty').hidden = lyricsEvents.length > 0;
+  document.getElementById('ilAllTools').hidden = !lyricsEvents.length;
+  const e = lyricSelected;
+  document.getElementById('ilNoSel').hidden = !!e;
+  document.getElementById('ilSelTools').hidden = !e;
+  document.getElementById('ilPickAtCursor').disabled = !lyricsEvents.length;
+  if (!e) return;
+  const set = (id, v) => {
+    const el = document.getElementById(id);
+    if (document.activeElement !== el) el.value = v;  // never under the user's typing
+  };
+  set('ilWord', e.lyric);
+  set('ilTime', e.time.toFixed(2));
+  document.getElementById('ilBreak').checked = !!e.lineBreak;
+  const order = lyricsByTime();
+  const i = order.indexOf(e);
+  document.getElementById('ilPrev').disabled = i <= 0;
+  document.getElementById('ilNext').disabled = i >= order.length - 1;
+  document.getElementById('ilSelInfo').textContent =
+    `palavra ${i + 1} de ${order.length} · ${order.length - i - 1} depois dela`;
+}
+
+document.getElementById('ilOpenPage').addEventListener('click', ev => {
+  ev.preventDefault();
+  showSection('letras');
+});
+document.getElementById('ilFirstToCursor').addEventListener('click', () => {
+  if (!lyricsEvents.length) return;
+  shiftLyrics(lyricCursorTime() - Math.min(...lyricsEvents.map(e => e.time)));
+});
+document.getElementById('ilShiftBack').addEventListener('click', () => shiftLyrics(-ilStep()));
+document.getElementById('ilShiftFwd').addEventListener('click', () => shiftLyrics(ilStep()));
+document.getElementById('ilFromHere').addEventListener('click', () => {
+  const e = lyricSelected;
+  if (!e) return;
+  if (shiftLyricsFrom(e, lyricCursorTime() - e.time)) {
+    toast('A palavra não pode passar para antes da anterior — ficou logo a seguir a ela.');
+  }
+  lyricsEdited();
+});
+document.getElementById('ilWordNudgeBack').addEventListener('click', () => {
+  if (lyricSelected) { shiftLyricsFrom(lyricSelected, -ilStep()); lyricsEdited(); }
+});
+document.getElementById('ilWordNudgeFwd').addEventListener('click', () => {
+  if (lyricSelected) { shiftLyricsFrom(lyricSelected, ilStep()); lyricsEdited(); }
+});
+document.getElementById('ilWordToCursor').addEventListener('click', () => {
+  if (!lyricSelected) return;
+  lyricSelected.time = Math.round(lyricCursorTime() * 1000) / 1000;
+  lyricsEdited();
+});
+document.getElementById('ilTime').addEventListener('change', ev => {
+  if (!lyricSelected) return;
+  lyricSelected.time = Math.max(0, parseFloat(ev.target.value) || 0);
+  lyricsEdited();
+});
+document.getElementById('ilWord').addEventListener('change', ev => {
+  if (!lyricSelected) return;
+  lyricSelected.lyric = ev.target.value;
+  lyricsEdited();
+});
+document.getElementById('ilBreak').addEventListener('change', ev => {
+  if (!lyricSelected) return;
+  lyricSelected.lineBreak = ev.target.checked;
+  lyricsEdited();
+});
+const stepLyric = dir => {
+  const order = lyricsByTime();
+  const next = order[order.indexOf(lyricSelected) + dir];
+  if (next) selectLyric(next);
+};
+document.getElementById('ilPrev').addEventListener('click', () => stepLyric(-1));
+document.getElementById('ilNext').addEventListener('click', () => stepLyric(1));
+document.getElementById('ilRemove').addEventListener('click', () => {
+  const e = lyricSelected;
+  if (!e) return;
+  const order = lyricsByTime();
+  const i = order.indexOf(e);
+  lyricsEvents.splice(lyricsEvents.indexOf(e), 1);
+  lyricSelected = order[i + 1] || order[i - 1] || null;
+  lyricsEdited();
+});
+// The word being sung at the cursor: the last one starting at or before it.
+document.getElementById('ilPickAtCursor').addEventListener('click', () => {
+  const t = lyricCursorTime();
+  const order = lyricsByTime();
+  selectLyric(order.filter(e => e.time <= t + 1e-6).pop() || order[0] || null);
+});
+document.getElementById('ilAddAtCursor').addEventListener('click', () => {
+  const e = { time: Math.round(lyricCursorTime() * 1000) / 1000, length: 0.5, lyric: '', lineBreak: false };
+  lyricsEvents.push(e);
+  lyricSelected = e;
+  lyricsEdited();
+  document.getElementById('ilWord').focus();
+});
 
 async function alignLyrics(lines, what) {
   if (!selectedJob || !lines.length) return;
@@ -4394,6 +4551,7 @@ function updatePendingChangesInfo() {
   if (Math.abs(tempoScaleLive - builtScale) > 0.001) parts.push('andamento');
   if (syncAnchors.length) parts.push(`${syncAnchors.length} ponto(s) de correção`);
   if (JSON.stringify(noteOverridesByKind) !== noteOverridesBuilt) parts.push('edições de notas');
+  if (JSON.stringify(serializeLyrics()) !== lyricsBuilt) parts.push('letra');
   el.textContent = parts.length ? `Pendente: ${parts.join(', ')}` : '';
 }
 
@@ -4874,12 +5032,14 @@ function updateSelectionInfo() {
       const dx = e.clientX - lyricDrag.startX;
       lyricDrag.el.removeAttribute('transform');
       const deltaS = dx / tabPx;
-      if (Math.abs(deltaS) > 0.005) {
-        lyricsEvents[lyricDrag.index].time = Math.max(0, lyricsEvents[lyricDrag.index].time + deltaS);
-        renderLyricsRows();
-        showArr(currentArr);
-        updatePendingChangesInfo();
-      }
+      const word = lyricsEvents[lyricDrag.index];
+      if (Math.abs(deltaS) > 0.005) word.time = Math.max(0, word.time + deltaS);
+      // A click (or a drag) on a word opens its tools beside the score.
+      lyricSelected = word;
+      showInspector('lyrics');
+      renderLyricsRows();
+      showArr(currentArr);
+      updatePendingChangesInfo();
       lyricDrag = null;
       return;
     }

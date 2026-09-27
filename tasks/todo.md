@@ -159,3 +159,8 @@ traço em vez de emojis, e o projeto em ecrã inteiro em vez de um modal.
 ## Alinhar o compasso pela linha (mesmo sem notas)
 - [x] `.bar-hit` on each bar line/number; 📏 mode opens the popup for that bar; elsewhere still seeks
 - [x] Playwright check (bar without a note on its start → "= cursor"), docs
+
+## Acertar a letra ao pé da partitura
+- [x] Inspector tab "Letra": whole-lyric shift, selected word (from here / only this / nudge / remove), pick/add at cursor
+- [x] Click a word on the score selects it and opens the tab (no seek); "Pendente: letra"
+- [x] Playwright check, docs

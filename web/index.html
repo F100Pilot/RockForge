@@ -314,6 +314,7 @@
   #barAlignPopup { position:fixed; z-index:70; background:var(--panel-2); border:1px solid var(--accent);
     border-radius:10px; box-shadow:var(--shadow); padding:.6rem .7rem; min-width:190px; font-size:.85rem; }
   #barAlignPopup[hidden] { display:none; }
+  #tabsvg .lyric-word.sel text { fill:#3ddcc4; font-weight:700; }
   #tabsvg.mode-baralign .bar-hit { cursor:pointer; }
   #tabsvg.mode-baralign .bar-hit:hover { fill:rgba(181,140,255,.18); }
   #barAlignPopup .ba-title { font-weight:700; margin-bottom:.45rem; color:var(--accent); }
@@ -857,10 +858,11 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
           </div>
         </div>
 
-        <aside class="pv-inspector" aria-label="Sincronização e secções">
+        <aside class="pv-inspector" aria-label="Sincronização, secções e letra">
           <div class="pv-seg" role="tablist">
             <button type="button" role="tab" class="active" data-insp="sync">Sincronização</button>
             <button type="button" role="tab" data-insp="sections">Secções</button>
+            <button type="button" role="tab" data-insp="lyrics">Letra</button>
           </div>
 
           <div id="inspSync" class="pv-insp-body">
@@ -964,6 +966,55 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                 <button class="info-btn" data-info="sections">ⓘ</button>
               </div>
               <div id="sectionsList" class="meta" style="margin-top:.3rem"></div>
+            </div>
+          </div>
+
+          <div id="inspLyrics" class="pv-insp-body" hidden>
+            <!-- Lyric timing next to the score: the same edits as the Letra page -->
+            <div class="pv-card">
+              <div class="pv-card-head">Letra toda <span id="ilCount" class="meta"></span>
+                <button class="info-btn" data-info="insp-lyrics">ⓘ</button></div>
+              <div id="ilEmpty" class="pv-card-desc">Ainda não há letra. Procura-a online ou deteta-a na página
+                <a href="#" id="ilOpenPage">Letra</a>, ou junta palavras aqui com "+ palavra no cursor".</div>
+              <div id="ilAllTools">
+                <div class="pv-card-desc">Adiantada ou atrasada por igual? Move-a toda.</div>
+                <button type="button" id="ilFirstToCursor" class="secondary pv-wide"><svg class="ic" aria-hidden="true"><use href="#i-crosshair"/></svg>1ª palavra = cursor</button>
+                <div class="pv-row">
+                  <button type="button" id="ilShiftBack" class="secondary" title="Toda mais cedo">−</button>
+                  <input type="number" id="ilShift" value="0.1" min="0.01" step="0.05" aria-label="Deslocar (s)">
+                  <button type="button" id="ilShiftFwd" class="secondary" title="Toda mais tarde">+</button>
+                  <span class="meta">s</span>
+                </div>
+              </div>
+            </div>
+            <div class="pv-card">
+              <div class="pv-card-head">Palavra</div>
+              <div id="ilNoSel" class="pv-card-desc">Clica numa palavra na partitura (ou usa "Palavra no cursor")
+                para a acertar. Arrastá-la também a move.</div>
+              <div id="ilSelTools" hidden>
+                <div class="pv-row">
+                  <button type="button" id="ilPrev" class="secondary" title="Palavra anterior" aria-label="Palavra anterior">◀</button>
+                  <input type="text" id="ilWord" aria-label="Palavra" style="flex:1;min-width:0">
+                  <button type="button" id="ilNext" class="secondary" title="Palavra seguinte" aria-label="Palavra seguinte">▶</button>
+                </div>
+                <div class="pv-row">
+                  <input type="number" id="ilTime" step="0.01" min="0" aria-label="Tempo da palavra (s)">
+                  <span class="meta">s</span>
+                  <label class="meta"><input type="checkbox" id="ilBreak"> fim de linha</label>
+                </div>
+                <button type="button" id="ilFromHere" class="secondary pv-wide" title="Esta palavra vai para o cursor e as seguintes acompanham-na"><svg class="ic" aria-hidden="true"><use href="#i-forward"/></svg>Daqui em diante = cursor</button>
+                <div class="pv-row">
+                  <button type="button" id="ilWordToCursor" class="secondary" title="Só esta palavra vai para o cursor">Só esta = cursor</button>
+                  <button type="button" id="ilWordNudgeBack" class="secondary" title="Esta e as seguintes mais cedo">−</button>
+                  <button type="button" id="ilWordNudgeFwd" class="secondary" title="Esta e as seguintes mais tarde">+</button>
+                  <button type="button" id="ilRemove" class="icon" title="Remover palavra" aria-label="Remover palavra"><svg class="ic" aria-hidden="true"><use href="#i-trash"/></svg></button>
+                </div>
+                <span id="ilSelInfo" class="meta"></span>
+              </div>
+            </div>
+            <div class="pv-row" style="flex-wrap:wrap">
+              <button type="button" id="ilPickAtCursor" class="secondary">Palavra no cursor</button>
+              <button type="button" id="ilAddAtCursor" class="secondary"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>palavra no cursor</button>
             </div>
           </div>
         </aside>

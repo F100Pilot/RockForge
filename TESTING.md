@@ -662,6 +662,19 @@ chosen; the created project's Letra page must show those words, and the
 build must carry them. With a GP that has its own lyrics nothing is chosen
 automatically.
 
+### 7c-ter. Acertar a letra na partitura (browser-only, sem rede)
+
+1. Num projeto com letra, página Partitura: clica numa palavra na partitura —
+   abre a aba **Letra** do inspetor com essa palavra escolhida (a teal) e o
+   cursor NÃO se mexe.
+2. Põe o cursor onde essa palavra devia soar → **Daqui em diante = cursor**:
+   ela e as seguintes movem-se, as anteriores não; o topo mostra
+   "Pendente: letra".
+3. Cursor antes da palavra anterior → a palavra fica 10 ms depois dela, com um
+   aviso. "Só esta = cursor", −/+, ◀/▶, remover, "Palavra no cursor" e
+   "+ palavra no cursor" fazem o que dizem; a tabela da página Letra acompanha.
+4. "Aplicar e reconstruir" → os novos tempos ficam na letra do bundle.
+
 ### 7d. Automatic tone detection (needs `[ml]`)
 
 1. "Detetar tom" → poll → the result now shows the detected **spectral profile**

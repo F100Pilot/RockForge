@@ -1242,6 +1242,34 @@ subtracted from word times — a known limitation.
 Detection needs both `[lyrics]` (WhisperX) and `[ml]` (Demucs) extras in the
 worker, even for GP jobs whose own build stays ML-free.
 
+### Adjusting the lyric beside the score (the inspector's "Letra" tab)
+
+"é difícil de ajustar a letra, porque deveria existir uma opção perto da
+partitura": the timing tools lived only on the separate Letra page, so fixing
+a word meant listening on Partitura, switching pages, finding the row by its
+number and typing seconds. The Partitura inspector now has a third tab,
+**Letra** (`#inspLyrics`, beside Sincronização/Secções), and **clicking a word
+on the score** (or dropping it after a drag) selects it and opens that tab. A
+click on a word does NOT seek — the cursor has to stay where the word should
+sound. Tools: "Letra toda" = "1ª palavra = cursor" and −/+ by a step (the same
+`shiftLyrics`); for the selected word ◀/▶ (by time), its text, time and line
+end, **"Daqui em diante = cursor"** (`shiftLyricsFrom`: the word goes to the
+cursor, every word at or after it follows, earlier words stay put — the
+lyric-side twin of "Corrigir daqui"; it cannot pass the previous word and
+stops 10 ms after it, saying so), "Só esta = cursor", −/+ (this word and the
+following), remove; "Palavra no cursor" picks the word being sung, "+ palavra
+no cursor" inserts one and focuses its text. Same rows and clock as the Letra
+page (`lyricsEvents`, playhead − `leadInBuilt`), so both views edit one list
+(`renderLyricsRows` refreshes the inspector) and every change is an ordinary
+pending edit for "Aplicar e reconstruir". The selection is the row OBJECT
+(`lyricSelected`), not an index — sorting/removing rows renumbers them and a
+reload replaces them. "Pendente: letra" now appears too (`lyricsBuilt`, the
+serialized rows as last loaded — before, a lyric edit showed no pending sign
+at all). The selected word is drawn teal (`.lyric-word.sel`). Browser-only, no
+pytest coverage; verified with Playwright (click → tab + selection without
+seeking, from-here/limited/only-this/nudge/remove/pick/add/whole-shift, drag
+selects, the Letra page table follows, no page errors).
+
 ### Lyrics found online (LRCLIB) and synchronised to the recording
 
 The "Letra" page's **"Procurar letra online"** asks **LRCLIB** (`lrclib.net`,
