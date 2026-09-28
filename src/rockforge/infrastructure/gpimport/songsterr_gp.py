@@ -29,11 +29,19 @@ What a part carries, and how it maps:
   first one is the song tempo, later ones a mix-table change on that measure's
   first beat, exactly how GP5 stores it (see ``gpexport/tempo_writer``).
 
+- lyrics: a part's ``newLyrics[]`` ``{text, offset}`` — the sung text (words
+  by spaces, syllables by hyphens; extra spaces skip notes) and the 0-based
+  measure it starts on. Written as the GP5 song lyrics, bound to THAT part's
+  track (``trackChoice``), so the importer hands each syllable to the next note
+  of the part it was written for — normally the vocal line — exactly as
+  Guitar Pro would. GP5 holds five lines; more are dropped and counted.
+
 Honest limits, all counted in the report rather than hidden: grace notes are
 dropped (in GP5 they are an ornament on the NEXT note, not a beat, and writing
 them as beats would push the rhythm late); a mid-measure tempo change is moved
-to its measure's start; lyrics are not carried over (the "Letra" page can find
-them on LRCLIB).
+to its measure's start; lyrics on a part that could not be written (no strings)
+fall back to the first track's notes; text GP5 cannot store (it is cp1252)
+becomes "?".
 """
 
 from __future__ import annotations
@@ -64,7 +72,52 @@ class SongsterrGpReport:
     skipped_tracks: list[str] = field(default_factory=list)
     grace_dropped: int = 0
     tempo_moved: int = 0
+    lyric_lines: int = 0
     warnings: list[str] = field(default_factory=list)
+
+
+def _gp5_text(value: str) -> str:
+    """Text GP5 can store: its strings are cp1252 (PyGuitarPro encodes them
+    strictly), so anything outside it — a Cyrillic or Japanese title, say —
+    would abort the whole write. It becomes "?" instead."""
+    return value.encode("cp1252", "replace").decode("cp1252")
+
+
+def _lyrics(
+    parts: list[dict[str, Any]],
+    kept: list[tuple[str, dict[str, Any]]],
+    report: SongsterrGpReport,
+    guitarpro: Any,
+) -> Any | None:
+    """The first part's ``newLyrics`` as GP5 song lyrics, bound to its track."""
+    for part in parts:
+        lines = [
+            ln for ln in part.get("newLyrics") or []
+            if isinstance(ln, dict) and str(ln.get("text") or "").strip()
+        ]
+        if not lines:
+            continue
+        lyrics = guitarpro.Lyrics()
+        index = next((i for i, (_n, p) in enumerate(kept) if p is part), None)
+        if index is None:
+            index = 0
+            name = str(part.get("name") or part.get("instrument") or "?")
+            report.warnings.append(
+                f"a letra está numa pista que não foi incluída ({name}): as sílabas "
+                "seguem as notas da primeira pista"
+            )
+        lyrics.trackChoice = index + 1  # GP5 counts tracks from 1; 0 = none
+        for slot, line in zip(lyrics.lines, lines, strict=False):
+            slot.startingMeasure = max(0, _int(line.get("offset"), 0)) + 1
+            slot.lyrics = _gp5_text(str(line["text"]))
+        report.lyric_lines = min(len(lines), guitarpro.Lyrics.maxLineCount)
+        if len(lines) > guitarpro.Lyrics.maxLineCount:
+            report.warnings.append(
+                f"{len(lines) - guitarpro.Lyrics.maxLineCount} linha(s) de letra a mais "
+                f"não incluídas (o GP5 guarda {guitarpro.Lyrics.maxLineCount})"
+            )
+        return lyrics
+    return None
 
 
 def is_percussion(part: dict[str, Any]) -> bool:
@@ -200,7 +253,7 @@ def write_songsterr_gp5(
         raise IngestionError("esta tab do Songsterr não tem nenhuma pista com cordas")
 
     song = guitarpro.Song()
-    song.title, song.artist = title, artist
+    song.title, song.artist = _gp5_text(title), _gp5_text(artist)
     first = kept[0][1]
     tempos = [t for t in (first.get("automations") or {}).get("tempo") or [] if isinstance(t, dict)]
     song.tempo = max(10, min(400, _int(tempos[0].get("bpm"), 120) if tempos else 120))
@@ -232,14 +285,14 @@ def write_songsterr_gp5(
         header.timeSignature.denominator = guitarpro.Duration(value=sig[1])
         marker = src.get("marker")
         if isinstance(marker, dict) and str(marker.get("text") or "").strip():
-            header.marker = guitarpro.Marker(title=str(marker["text"]).strip())
+            header.marker = guitarpro.Marker(title=_gp5_text(str(marker["text"]).strip()))
         song.measureHeaders.append(header)
         start += sig[0] * QUARTER_TICKS * 4 // sig[1]
 
     song.tracks = []
     for t_idx, (name, part) in enumerate(kept):
         tuning = [_int(v, 0) for v in part["tuning"]]  # highest string first
-        track = guitarpro.Track(song, number=t_idx + 1, name=name[:40])
+        track = guitarpro.Track(song, number=t_idx + 1, name=_gp5_text(name[:40]))
         track.strings = [
             guitarpro.GuitarString(number=i + 1, value=v) for i, v in enumerate(tuning)
         ]
@@ -266,6 +319,9 @@ def write_songsterr_gp5(
             track.measures.append(measure)
         song.tracks.append(track)
     report.tracks = len(song.tracks)
+    lyrics = _lyrics(parts, kept, report, guitarpro)
+    if lyrics is not None:
+        song.lyrics = lyrics
 
     if report.skipped_tracks:
         report.warnings.append("pistas não incluídas: " + ", ".join(report.skipped_tracks))

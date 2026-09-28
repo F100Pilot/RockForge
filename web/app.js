@@ -795,7 +795,7 @@ const INFO = {
     title: 'Importar a tab do Songsterr',
     body: '<p>Em vez de um ficheiro Guitar Pro, cola o link da música no <strong>Songsterr</strong>. O RockForge descarrega as pistas da tab e cria com elas um ficheiro Guitar Pro 5, que segue o caminho normal (escolhes as pistas no passo 2).</p>' +
       '<p>No passo 3 aparecem os <strong>vídeos do YouTube</strong> dessa música com o tempo de cada compasso marcado por pessoas. Escolhe um e carrega o <strong>MP3 convertido desse mesmo vídeo</strong> — o RockForge não descarrega áudio. Com isso, as notas seguem a gravação compasso a compasso, sem acertos manuais.</p>' +
-      '<p>Limites: a API do Songsterr não é pública e pode mudar; as pistas de bateria ficam de fora; notas de ornamento (grace) não são incluídas; a letra não vem (procura-a na página Letra). O ficheiro criado pode ser exportado e aberto no Guitar Pro.</p>'
+      '<p>Limites: a API do Songsterr não é pública e pode mudar; as pistas de bateria ficam de fora; notas de ornamento (grace) não são incluídas. A letra vem quando a tab a tem, com cada sílaba na nota da pista em que está escrita (normalmente a da voz); se não tiver, procura-a no passo 4 ou na página Letra. O ficheiro criado pode ser exportado e aberto no Guitar Pro.</p>'
   },
   'youtube-audio': {
     title: 'Áudio do vídeo do YouTube',
@@ -4497,7 +4497,7 @@ async function searchWizardLyrics() {
     wzLyricsPick = -1;
     document.getElementById('wzLyricsLrc').value = '';
     info.textContent = `${wzLyricsCandidates.length} resultado(s) no LRCLIB. `
-      + (wzGpHasLyrics ? 'O ficheiro GP já traz letra — escolhe uma daqui só se a quiseres substituir por esta, com tempos.'
+      + (wzGpHasLyrics ? 'A pauta já traz letra — escolhe uma daqui só se a quiseres substituir por esta, com tempos.'
         : best < 0 ? 'Nenhuma tem tempos — sincroniza-a depois na página Letra.' : 'Escolhe a versão da tua gravação.');
     renderWizardLyrics();
   }

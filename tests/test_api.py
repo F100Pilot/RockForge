@@ -846,6 +846,32 @@ def test_a_songsterr_tab_becomes_a_gp_file_the_wizard_can_use(
     assert r.status_code == 502 and "Songsterr" in r.text
 
 
+def test_a_songsterr_tab_with_lyrics_is_imported_with_them(
+    client: TestClient, monkeypatch
+) -> None:
+    """The lyrics of a Songsterr tab travel into the GP file, so the wizard
+    sees ``has_lyrics`` (and does not pick an LRCLIB text over them)."""
+    from rockforge.infrastructure import songsterr
+
+    guitar = {"name": "Lead", "tuning": [64, 59, 55, 50, 45, 40],
+              "measures": [{"signature": [4, 4], "voices": [{"beats": [
+                  {"type": 1, "notes": [{"string": 5, "fret": 3}]}]}]}]}
+    vocals = {"name": "Voz", "tuning": [64],
+              "measures": [{"voices": [{"beats": [
+                  {"type": 2, "notes": [{"string": 0, "fret": 2}]},
+                  {"type": 2, "notes": [{"string": 0, "fret": 4}]}]}]}],
+              "newLyrics": [{"text": "o-la", "offset": 0}]}
+
+    def fake(song: str, **_k):  # noqa: ANN202
+        return songsterr.SongsterrTab(song_id=42, revision_id=7, title="T", artist="A",
+                                      parts=(guitar, vocals), missing=())
+
+    monkeypatch.setattr(songsterr, "fetch_tab", fake)
+    r = client.post("/songsterr/import", json={"song": "42"})
+    assert r.status_code == 200, r.text
+    assert r.json()["has_lyrics"] is True
+
+
 def test_a_youtube_videos_audio_becomes_the_projects_recording(
     client: TestClient, monkeypatch, tmp_path
 ) -> None:

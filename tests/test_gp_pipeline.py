@@ -13,9 +13,11 @@ from rockforge.application.gp_pipeline import (
     GpJobSpec,
     NoteOverride,
     _apply_note_overrides,
+    _warp_parsed_track,
 )
 from rockforge.domain.arrangement import Section, SongMetadata, ToneChange
-from rockforge.domain.music import TabNote, Technique
+from rockforge.domain.music import Beat, BendPoint, TabNote, Technique, TempoMap, Tuning
+from rockforge.infrastructure.gpimport.parser import GpLyricLine, ParsedGpTrack
 from rockforge.infrastructure.packaging.dlcbuilder import DlcBuilderPackager
 
 
@@ -328,6 +330,72 @@ def test_gp_embedded_lyrics_surface_as_recording_clock_events(
     assert [e.lyric for e in result.gp_lyrics] == ["hello", "world+"]
     assert result.gp_lyrics[0].time == pytest.approx(0.0)
     assert result.gp_lyrics[1].time == pytest.approx(0.5)
+
+
+def test_gp_lyrics_are_sung_on_the_vocal_line_not_the_charted_guitar(
+    tmp_path: Path,
+) -> None:
+    """The lyrics of a tab belong to its vocal track: each syllable takes the
+    next VOCAL note (a rest is skipped, an extra space skips a note), even
+    though the arrangement being built is the guitar, whose notes differ."""
+    from rockforge.infrastructure.gpimport.songsterr_gp import write_songsterr_gp5
+
+    std = [64, 59, 55, 50, 45, 40]
+    quarter = {"type": 4, "notes": [{"string": 5, "fret": 3}]}
+    eighth = {"type": 8, "notes": [{"string": 0, "fret": 7}]}
+    guitar = {"name": "Guitar", "tuning": std, "measures": [
+        {"signature": [4, 4], "voices": [{"beats": [quarter] * 4}]},
+        {"voices": [{"beats": [quarter] * 4}]},
+        {"voices": [{"beats": [{"type": 1, "notes": [{"string": 5, "fret": 0}]}]}]},
+    ], "automations": {"tempo": [{"measure": 0, "position": 0, "bpm": 120}]}}
+    vocals = {"name": "Vocals", "tuning": [64], "measures": [
+        {"voices": [{"beats": [{"type": 1, "rest": True}]}]},
+        {"voices": [{"beats": [eighth] * 8}]},
+        {"voices": [{"beats": [
+            {"type": 2, "notes": [{"string": 0, "fret": 5}]},
+            {"type": 4, "rest": True},
+            {"type": 4, "notes": [{"string": 0, "fret": 3}]},
+        ]}]},
+    ], "newLyrics": [
+        {"text": "Hel-lo  world is here now", "offset": 1},
+        {"text": "la la", "offset": 2},
+    ]}
+    path = tmp_path / "tab.gp5"
+    write_songsterr_gp5([guitar, vocals], path, title="T", artist="A")
+
+    spec = GpJobSpec(gp_path=path, audio_source="x.wav", lead_track=0)
+    result = make_use_case().run(spec, SongMetadata(title="T", artist="A"), tmp_path / "w")
+    assert [(round(e.time, 3), e.lyric) for e in result.gp_lyrics] == [
+        (2.0, "Hel-"), (2.25, "lo"), (2.75, "world"), (3.0, "is"),
+        (3.25, "here"), (3.5, "now+"), (4.0, "la"), (5.5, "la+"),
+    ]
+    source = "one syllable per note of the track they are written on"
+    assert any(source in w for w in result.warnings)
+
+
+def test_a_sync_correction_keeps_every_note_field_and_moves_the_lyric_notes() -> None:
+    """The warp used to rebuild each note from a hand-picked list of fields,
+    silently dropping the rest (bend curve, fingering, pick direction) as soon
+    as a song had a sync correction; the vocal line's notes must move too."""
+    note = TabNote(
+        string=0, fret=5, time=1.0, sustain=0.5, bend_semitones=1.0,
+        bend_points=(BendPoint(position=0.0, step=0.0), BendPoint(position=0.5, step=1.0)),
+        left_hand=2, pick_direction=1, slide_unpitch_to=3,
+    )
+    track = ParsedGpTrack(
+        notes=[note], tuning=Tuning(midi=(40, 45, 50, 55, 59, 64)),
+        tempo_map=TempoMap(beats=(Beat(time=0.0, measure=1), Beat(time=4.0, measure=2)),
+                           average_bpm=60.0, beats_per_measure=4),
+        sections=[], lyrics=[GpLyricLine(time=0.0, text="la")],
+        lyric_onsets=(1.0, 2.0),
+    )
+    warped = _warp_parsed_track(track, lambda t: t + 0.5)
+    moved = warped.notes[0]
+    assert moved.time == 1.5
+    assert (moved.bend_points, moved.left_hand, moved.pick_direction, moved.slide_unpitch_to) == (
+        note.bend_points, 2, 1, 3,
+    )
+    assert warped.lyric_onsets == (1.5, 2.5)
 
 
 def test_lead_in_pushes_song_later(two_track_gp5: Path, tmp_path: Path) -> None:

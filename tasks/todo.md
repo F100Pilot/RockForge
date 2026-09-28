@@ -173,3 +173,11 @@ traço em vez de emojis, e o projeto em ecrã inteiro em vez de um modal.
 ## Notas apagadas continuavam no build
 - [x] Reproduce (6 of the last 12 deletes ignored; fret edits made twins)
 - [x] Match overrides within 5 ms on the same string; unit test (mutation-checked); real rebuilds; docs + lesson
+
+## Letra da pauta: Songsterr + tempo pela pista da voz
+- [x] vocals: GP lyric text rules — 2+ spaces skip note beats, [comments] dropped, newline = line end, "Mo- ney" joins
+- [x] ParsedGpTrack.lyric_onsets: beats (voice 1, not rests) of the track the lyrics belong to (GP5 trackChoice, GPIF track with <Lyrics>)
+- [x] gp_pipeline: warp/strip/overrides carry it (dataclasses.replace); syllables timed on it, chart notes only as fallback
+- [x] songsterr_gp: newLyrics → GP5 song.lyrics on the part that carries them (offset 0-based → startingMeasure+1)
+- [x] tests (mutation-checked), real Songsterr-shaped import → build, docs
+- [x] Found on the way: the warp dropped bend curves/fingering; GP lyrics never reached the editor (params mutated in place); cp1252 text aborted a Songsterr import

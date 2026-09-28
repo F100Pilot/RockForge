@@ -119,3 +119,73 @@ def test_odd_meters_keep_every_bar_where_it_belongs(tmp_path: Path) -> None:
     dst, _ = _write(tmp_path, [part])
     # 7/8 at 120 BPM = 1.75 s per bar; an under-filled bar does not pull the next in.
     assert [round(n.time, 3) for n in parse_gp_track(dst, 0).notes] == [0.0, 1.75, 5.0]
+
+
+def _q(fret: int, string: int = 5) -> dict:
+    return {"type": 4, "notes": [{"string": string, "fret": fret}]}
+
+
+def _guitar_and_vocals(**vocal_extra: object) -> list[dict]:
+    """A guitar strumming quarters and a vocal line with its own rhythm — the
+    lyrics belong to the vocal line, whose notes do not match the guitar's."""
+    guitar = {
+        "name": "Guitar", "instrument": "Overdriven Guitar", "strings": 6, "tuning": STANDARD,
+        "automations": {"tempo": [{"measure": 0, "position": 0, "bpm": 120}]},
+        "measures": [
+            {"signature": [4, 4], "voices": [{"beats": [_q(0), _q(2), _q(3), _q(5)]}]},
+            {"voices": [{"beats": [_q(0), _q(2), _q(3), _q(5)]}]},
+            {"voices": [{"beats": [{"type": 1, "notes": [{"string": 5, "fret": 0}]}]}]},
+        ],
+        "newLyrics": [],
+    }
+    eighth = {"type": 8, "notes": [{"string": 0, "fret": 7}]}
+    vocals = {
+        "name": "Vocals", "instrument": "Voice Oohs", "strings": 1, "tuning": [64],
+        "measures": [
+            {"voices": [{"beats": [{"type": 1, "rest": True}]}]},
+            {"voices": [{"beats": [eighth] * 8}]},
+            {"voices": [{"beats": [
+                {"type": 2, "notes": [{"string": 0, "fret": 5}]},
+                {"type": 4, "rest": True},
+                {"type": 4, "notes": [{"string": 0, "fret": 3}]},
+            ]}]},
+        ],
+        "newLyrics": [
+            {"text": "Hel-lo  world is here now", "offset": 1},
+            {"text": "la la", "offset": 2},
+        ],
+        **vocal_extra,
+    }
+    return [guitar, vocals]
+
+
+def test_songsterr_lyrics_are_written_on_the_part_that_sings_them(tmp_path: Path) -> None:
+    dst, report = _write(tmp_path, _guitar_and_vocals())
+    assert inspect_gp(dst).has_lyrics
+    assert report.lyric_lines == 2
+    parsed = parse_gp_track(dst, 0)  # the GUITAR is the chart
+    # Each line starts on its (0-based) Songsterr offset's bar: bars 2 and 3.
+    assert [(line.time, line.text) for line in parsed.lyrics] == [
+        (2.0, "Hel-lo  world is here now"), (4.0, "la la"),
+    ]
+    # The syllables go to the VOCAL line's notes (rests skipped), not the guitar's.
+    assert parsed.lyric_onsets == (
+        2.0, 2.25, 2.5, 2.75, 3.0, 3.25, 3.5, 3.75, 4.0, 5.5,
+    )
+
+
+def test_lyrics_on_a_part_that_could_not_be_written_fall_back_and_say_so(
+    tmp_path: Path,
+) -> None:
+    dst, report = _write(tmp_path, _guitar_and_vocals(tuning=[]))  # no strings
+    parsed = parse_gp_track(dst, 0)
+    assert parsed.lyrics and parsed.lyric_onsets == (0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0)
+    assert any("primeira pista" in w for w in report.warnings)
+
+
+def test_text_gp5_cannot_store_does_not_abort_the_import(tmp_path: Path) -> None:
+    parts = _guitar_and_vocals()
+    parts[1]["newLyrics"] = [{"text": "Кино ok", "offset": 1}]
+    dst = tmp_path / "tab.gp5"
+    write_songsterr_gp5(parts, dst, title="Группа крови", artist="Кино")
+    assert parse_gp_track(dst, 0).lyrics[0].text == "???? ok"

@@ -46,3 +46,13 @@ could not be deleted (or edited without a twin). Rule: when verifying anything
 keyed on a float read back from a serialized file, exercise it at several
 places (start, middle, end) and count the result, and compare with what the
 serialization precision actually is.
+
+## Copy Job.params on READ, not only on write (GP lyrics never reached the editor, 2026-09-28)
+The build task did `params = job.params`, wrote `lyrics_events` into it and then
+assigned `{**params}` — the documented "fresh dict" rule, followed to the
+letter, and still a silent no-op: with `expire_on_commit=False` the dict read
+IS the committed value, so old and new compared equal. A documented feature
+("GP-embedded lyrics surface in the editor") had never worked in a real run,
+and no test drove the task body with lyrics. Rule: `dict(job.params or {})`
+before writing into it, and a feature that persists something needs a test
+that reads it back from the database after the real task runs.

@@ -24,6 +24,7 @@ from __future__ import annotations
 import bisect
 import re
 import xml.etree.ElementTree as ET
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from rockforge.application.ports import VocalEvent
@@ -115,24 +116,63 @@ def enforce_max_line_words(
     return out
 
 
-def _split_syllables(text: str) -> list[tuple[str, bool, bool]]:
-    """Split a Guitar Pro lyric line into (syllable, joins_next, is_hold) items.
+@dataclass(frozen=True)
+class _Syllable:
+    text: str
+    joins_next: bool = False  # same word as the next syllable (Rocksmith "-")
+    is_hold: bool = False  # "_" melisma: hold the previous syllable one more note
+    skip_before: int = 0  # note attacks passed over, unsung, before this one
+    line_end: bool = False  # a newline in the text follows (Rocksmith "+")
 
-    GP lyric text separates *words* by whitespace and *syllables within a word*
-    by a hyphen (``loo-king a-way`` → loo · king · a · way). ``joins_next`` is
-    True when the syllable connects to the following one without a space (i.e.
-    they belong to the same word) — that becomes Rocksmith's trailing ``-``.
-    A standalone ``_`` is a melisma marker (``is_hold`` True): the previous
-    syllable is held over one more note attack instead of a new one being sung.
+
+_COMMENT = re.compile(r"[ \t]*\[[^\]]*\]")
+_GAP = re.compile(r"[ \t\r\n]+")
+
+
+def _split_syllables(text: str) -> list[_Syllable]:
+    """Split a Guitar Pro lyric line into syllables, the way Guitar Pro reads it.
+
+    Whitespace separates *words* and a hyphen separates *syllables within a
+    word* (``loo-king a-way`` → loo · king · a · way; a hyphen before a space,
+    ``Mo- ney``, still joins). Each syllable takes the next note attack, and
+    the text says which attacks to pass over: a run of N spaces inside a line
+    skips N-1 notes, and across a line break every space on either side of the
+    newline skips one (Songsterr's rule too — its tabs mark rests in a vocal
+    line exactly this way). A newline also ends a display line. ``[...]`` is a
+    comment, and a standalone ``_`` is a melisma (the previous syllable held
+    over one more note).
     """
-    out: list[tuple[str, bool, bool]] = []
-    for word in text.split():
-        if set(word) == {"_"}:
-            out.append(("", False, True))
-            continue
-        parts = [p for p in word.split("-") if p and set(p) != {"_"}]
-        for i, p in enumerate(parts):
-            out.append((p, i < len(parts) - 1, False))
+    out: list[_Syllable] = []
+    text = _COMMENT.sub("", text)
+    tokens = _GAP.split(text)
+    gaps = _GAP.findall(text)
+    # gaps[i] separates tokens[i] and tokens[i + 1].
+    skip = 0
+    for i, token in enumerate(tokens):
+        if token:
+            if set(token) == {"_"}:
+                out.append(_Syllable("", is_hold=True, skip_before=skip))
+            else:
+                parts = token.split("-")
+                trailing_hyphen = token.endswith("-")
+                real = [p for p in parts if p and set(p) != {"_"}]
+                for k, part in enumerate(real):
+                    last = k == len(real) - 1
+                    out.append(_Syllable(
+                        part,
+                        joins_next=not last or trailing_hyphen,
+                        skip_before=skip if k == 0 else 0,
+                    ))
+            skip = 0
+        if i < len(gaps) and out:  # space before the first syllable skips nothing
+            gap = gaps[i].replace("\t", " ").replace("\r", "")
+            spaces = gap.count(" ")
+            if "\n" in gap:
+                if out[-1].text:
+                    out[-1] = replace(out[-1], line_end=True, joins_next=False)
+                skip += spaces
+            else:
+                skip += spaces - 1
     return out
 
 
@@ -178,11 +218,12 @@ def distribute_syllables(
         # whole authored line) has no real syllable to carry the line-break "+";
         # last_real stays -1 and the loop just extends the previous line's last
         # syllable over these attacks instead of dropping the line entirely.
-        real_indices = [i for i, s in enumerate(syllables) if not s[2]]
+        real_indices = [i for i, s in enumerate(syllables) if not s.is_hold]
         last_real = real_indices[-1] if real_indices else -1
-        for k, (syl, joins_next, is_hold) in enumerate(syllables):
+        for k, syl in enumerate(syllables):
+            idx += syl.skip_before  # rests in the vocal line: attacks nobody sings
             t, length = onset_at(idx, line_time)
-            if is_hold:
+            if syl.is_hold:
                 # Melisma: hold the previous syllable over this note attack.
                 if events:
                     prev = events[-1]
@@ -191,7 +232,12 @@ def distribute_syllables(
                     )
                 idx += 1
                 continue
-            lyric = f"{syl}-" if joins_next else (f"{syl}+" if k == last_real else syl)
+            if syl.joins_next and k != last_real:
+                lyric = f"{syl.text}-"
+            elif syl.line_end or k == last_real:
+                lyric = f"{syl.text}+"
+            else:
+                lyric = syl.text
             events.append(VocalEvent(time=t, length=length, lyric=lyric))
             idx += 1
         cursor = idx

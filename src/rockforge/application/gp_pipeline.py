@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from rockforge.application.ports import (
@@ -375,18 +375,11 @@ def _check_anchor_order(anchors: list[tuple[float, float]]) -> None:
 def _strip_mute_techniques(p: ParsedGpTrack) -> ParsedGpTrack:
     """Return a copy of the track with palm mute / slap / pop / tap removed."""
     notes = [
-        TabNote(
-            string=n.string, fret=n.fret, time=n.time, sustain=n.sustain,
-            techniques=frozenset(n.techniques - _MUTE_TECHNIQUES),
-            bend_semitones=n.bend_semitones, slide_to_fret=n.slide_to_fret,
-        )
+        replace(n, techniques=frozenset(n.techniques - _MUTE_TECHNIQUES))
         if n.techniques & _MUTE_TECHNIQUES else n
         for n in p.notes
     ]
-    return ParsedGpTrack(
-        notes=notes, tuning=p.tuning, tempo_map=p.tempo_map,
-        sections=p.sections, lyrics=p.lyrics,
-    )
+    return replace(p, notes=notes)
 
 
 def _warp_parsed_track(p: ParsedGpTrack, warp: Callable[[float], float]) -> ParsedGpTrack:
@@ -402,21 +395,26 @@ def _warp_parsed_track(p: ParsedGpTrack, warp: Callable[[float], float]) -> Pars
     """
     from rockforge.domain.music import Beat, TempoMap
 
+    # replace(), not a fresh TabNote: rebuilding it field by field silently
+    # dropped every field it did not list (bend curves, fingering, pick
+    # direction, unpitched slide-outs) the moment a song had a sync correction.
     notes = apply_sustain_gap([
-        TabNote(
-            string=n.string, fret=n.fret, time=warp(n.time),
+        replace(
+            n,
+            time=warp(n.time),
             sustain=max(0.0, warp(n.time + n.sustain) - warp(n.time)),
-            techniques=n.techniques, bend_semitones=n.bend_semitones,
-            slide_to_fret=n.slide_to_fret,
         )
         for n in p.notes
     ])
     beats = tuple(Beat(time=warp(b.time), measure=b.measure) for b in p.tempo_map.beats)
     sections = [GpSection(name=s.name, start_time=warp(s.start_time)) for s in p.sections]
     lyrics = [type(line)(time=warp(line.time), text=line.text) for line in p.lyrics]
-    return ParsedGpTrack(
+    lyric_onsets = (
+        tuple(warp(x) for x in p.lyric_onsets) if p.lyric_onsets is not None else None
+    )
+    return replace(
+        p,
         notes=notes,
-        tuning=p.tuning,
         tempo_map=TempoMap(
             beats=beats,
             average_bpm=p.tempo_map.average_bpm,
@@ -424,6 +422,7 @@ def _warp_parsed_track(p: ParsedGpTrack, warp: Callable[[float], float]) -> Pars
         ),
         sections=sections,
         lyrics=lyrics,
+        lyric_onsets=lyric_onsets,
     )
 
 
@@ -559,14 +558,7 @@ class GenerateFromGpUseCase:
             if match is None or not note_ov:
                 continue
             p = parsed[match]
-            parsed[match] = ParsedGpTrack(
-                notes=_apply_note_overrides(p.notes, note_ov),
-                tuning=p.tuning,
-                tempo_map=p.tempo_map,
-                sections=p.sections,
-                lyrics=p.lyrics,
-                warnings=p.warnings,
-            )
+            parsed[match] = replace(p, notes=_apply_note_overrides(p.notes, note_ov))
             warnings.append(
                 f"{kind_value}: {len(note_ov)} manual note edit(s) from the in-app editor applied"
             )
@@ -658,17 +650,23 @@ class GenerateFromGpUseCase:
                 warnings.append("lyrics file contained no recognizable timestamped lines")
         elif first.lyrics:
             # GP lyrics carry per-syllable note alignment implicitly: each
-            # syllable lands on the next note attack. Distribute the line text
-            # over the actual (already warped + offset) note onsets so the
-            # timing matches what the GP file shows, rather than an even spread.
-            onsets = sorted({n.time for n in first.notes})
+            # syllable lands on the next note attack OF THE TRACK THEY ARE SUNG
+            # ON (usually a vocal track). Distribute the text over those
+            # (already warped + offset) attacks, as Guitar Pro does; the charted
+            # guitar's notes are only the fallback when the file does not say.
+            if first.lyric_onsets:
+                onsets = sorted(first.lyric_onsets)
+                source = "the track they are written on"
+            else:
+                onsets = sorted({n.time for n in first.notes})
+                source = "this chart (the file does not say which track they are sung on)"
             vocals = distribute_syllables(
                 [(line.time, line.text) for line in first.lyrics], onsets
             )
             lyrics_from_gp = True
             warnings.append(
-                "lyrics taken from the GP file, aligned per syllable to the note "
-                "onsets (melismas — one syllable held over several notes — are not "
+                f"lyrics taken from the GP file, one syllable per note of {source} "
+                "(melismas — one syllable held over several notes — are not "
                 "modelled and may drift until the next line)"
             )
 

@@ -187,8 +187,20 @@ re-inverting the dependency.
    measure, as `tempo_writer` does). Honest losses, all counted in the report
    and shown in the wizard: drums skipped, **grace notes dropped** (a GP5 grace
    is an ornament on the NEXT note — written as beats they would push the
-   rhythm late), a mid-bar tempo change moved to its bar's start, no lyrics
-   (the Letra page finds them on LRCLIB). After an import the wizard fills step
+   rhythm late), a mid-bar tempo change moved to its bar's start, text GP5
+   cannot store (it is cp1252 — a Cyrillic title used to abort the whole
+   write) turned into "?" by `_gp5_text`. **Lyrics come along**: a part's
+   `newLyrics[]` `{text, offset}` (0-based bar) becomes the GP5 song lyrics
+   bound to THAT part's track (`trackChoice`, 1-based) — normally the vocal
+   line, which is written as a track of its own (a 1-string one is fine) — so
+   the importer times each syllable on that line's notes, below; five lines
+   at most (GP5's limit, the rest counted); lyrics on a part that could not be
+   written fall back to track 1 with a warning. The wizard then sees
+   `has_lyrics` and does not preselect an LRCLIB text over them. Guarded by
+   `test_songsterr_lyrics_are_written_on_the_part_that_sings_them`,
+   `test_lyrics_on_a_part_that_could_not_be_written_fall_back_and_say_so`,
+   `test_text_gp5_cannot_store_does_not_abort_the_import` and
+   `test_a_songsterr_tab_with_lyrics_is_imported_with_them`. After an import the wizard fills step
    3's Songsterr link and fetches the videos, so the per-measure times of the
    SAME song are one pick away — tab and times from one source is exactly what
    makes "measure N is measure N" hold — and then fetches the default video's
@@ -626,7 +638,12 @@ small gap at parse time (first fixed, on the un-warped timeline, in commit
 pillars" or a solid wall instead of separate note shapes. `_warp_parsed_track`
 re-applies `apply_sustain_gap` to the warped notes so the gap invariant holds
 regardless of what a sync correction did to the local tempo. Guarded by
-`test_warp_re_trims_sustain_after_a_local_stretch`.
+`test_warp_re_trims_sustain_after_a_local_stretch`. **It moves notes with
+`dataclasses.replace`, never a fresh `TabNote`**: rebuilding each note from a
+hand-picked field list dropped every field it did not name — bend curves,
+fingering, pick direction, unpitched slide-outs — the moment a song had ANY
+sync correction (`_strip_mute_techniques` had the same shape). Guarded by
+`test_a_sync_correction_keeps_every_note_field_and_moves_the_lyric_notes`.
 
 **Beat snapping (drag).** By default (checkbox "Encaixar em:") a note (or
 selection) drag snaps its target to the nearest position of a grid, so
@@ -1123,7 +1140,13 @@ they looked "missing". Now the GP build returns them on `PipelineResult.gp_lyric
 (in the **recording clock** — `pipeline` subtracts `pad_start_s` so a rebuild
 re-adds it cleanly), and the worker stores them in `params["lyrics_events"]`
 when the user hasn't supplied their own — so they appear in the "Letras" editor
-and on the tab viewer, editable. The melisma `_` marker (a syllable held over
+and on the tab viewer, editable. **That store silently never happened in a real
+run until 2026-09-28**: the task wrote `lyrics_events` into `job.params`' own
+dict (the session keeps it as the column's committed value — `expire_on_commit`
+is off), so the `{**params}` it then assigned compared equal to "unchanged"
+and no UPDATE was issued; the lyrics reached the bundle but never the editor.
+`generate_cdlc` now takes a `dict(...)` copy. Guarded by
+`test_a_gp_files_lyrics_reach_the_editor_after_the_build`. The melisma `_` marker (a syllable held over
 several note attacks) extends the previous syllable's length instead of emitting
 a new event.
 
@@ -1131,11 +1154,28 @@ a new event.
 A Guitar Pro file stores lyrics as a line of text per `startingMeasure`; the
 per-syllable timing is *implicit* — GP/Songsterr distribute the syllables
 across the note attacks (whitespace = word boundary, hyphen = syllable split
-within a word: `loo-king a-way` → `loo`·`king`·`a`·`way`). `gp_pipeline`
-replicates that: it takes the (already warped + offset) note onsets of the
-chart (`sorted({n.time for n in first.notes})`) and places one syllable per
-onset starting at each line's measure, so the words land on the actual notes
-instead of an even spread. Rocksmith markers: a trailing `-` joins syllables
+within a word: `loo-king a-way` → `loo`·`king`·`a`·`way`). **The attacks are
+those of the track the lyrics are WRITTEN on** — usually a vocal track, whose
+rhythm is not the guitar's: GP3-5 name it in `song.lyrics.trackChoice`
+(1-based, 0 = none) and GPIF puts `<Lyrics>` on the track itself, and Guitar
+Pro hands one syllable to each beat of that track's first voice that is not a
+rest (alphaTab's `Track.applyLyrics`). Both parsers record those beat starts as
+`ParsedGpTrack.lyric_onsets`, on the charted track's own clock (ticks are
+song-wide); `_warp_parsed_track` moves them with every sync round, and
+`gp_pipeline` distributes the text over them, falling back to the chart's own
+notes only when the file names no track (the warning says which was used).
+Before 2026-09-28 it always used the guitar chart's notes, so a vocal line
+with a different rhythm slid off. `_split_syllables` reads the text the way
+Guitar Pro does: a run of N spaces skips N-1 notes (an unsung note in the
+vocal line), every space around a line break skips one (Songsterr's rule
+too), a newline also ends a display line (`+`), `[...]` is a comment and a
+hyphen before a space (`Mo- ney`) still joins. Guarded by
+`test_gp_lyrics_are_sung_on_the_vocal_line_not_the_charted_guitar`,
+`test_gp7_lyrics_are_timed_on_the_notes_of_their_own_track`,
+`test_extra_spaces_skip_notes_and_a_newline_ends_a_line` and
+`test_comments_and_a_hyphen_before_a_space_are_read_like_guitar_pro` (all
+mutation-checked), and a real in-process build of a Songsterr-shaped tab
+whose words land on the vocal eighths. Rocksmith markers: a trailing `-` joins syllables
 within a word (no space, hyphen shown in game), a trailing `+` on a line's last
 syllable is the line break. Honest limit: it assumes **syllabic** singing (one
 syllable per note attack); **melismas** (one syllable held over several notes)
@@ -3107,6 +3147,12 @@ guaranteed to be dead here.
   async detection tasks use a `_commit_params()` helper that assigns `{**params}`
   (a fresh copy) every time. ANY incremental write to `Job.params` must copy the
   dict (`{**params}`/`dict(params)`) on assignment. See `TESTING.md` §8.
+  **Copy it on READ too, before writing into it.** The session factory has
+  `expire_on_commit=False`, so the dict you read IS the column's committed
+  value: `params = job.params; params[k] = v; job.params = {**params}` changes
+  the "old" value along with the new one, they compare equal, and nothing is
+  written. Take `dict(job.params or {})` first (every detection task does; the
+  build task did not, and lost the GP file's lyrics that way).
 
 ## Async detection tasks (the `detect_lyrics` / `detect_tones` pattern)
 

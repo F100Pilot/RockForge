@@ -567,9 +567,13 @@ def parse_gpif_track(
     # Vocals track), not the charted instrument — so scan all tracks and use
     # the first with non-empty text.
     lyrics: list[GpLyricLine] = []
-    for cand in tracks:
+    lyric_onsets: tuple[float, ...] | None = None
+    for cand_index, cand in enumerate(tracks):
         lyrics = _track_lyrics(cand, bar_start_ticks, t)
         if lyrics:
+            lyric_onsets = _lyric_onsets(
+                cand_index, master_bars, bar_start_ticks, bars, voices, beats, rhythms, t
+            )
             break
 
     warnings: list[str] = []
@@ -593,8 +597,42 @@ def parse_gpif_track(
         )
     return ParsedGpTrack(
         notes=notes, tuning=tuning, tempo_map=tempo_map, sections=sections,
-        lyrics=lyrics, warnings=warnings,
+        lyrics=lyrics, lyric_onsets=lyric_onsets, warnings=warnings,
     )
+
+
+def _lyric_onsets(
+    track_index: int,
+    master_bars: list[ET.Element],
+    bar_start_ticks: list[int],
+    bars: dict[str, ET.Element],
+    voices: dict[str, ET.Element],
+    beats: dict[str, ET.Element],
+    rhythms: dict[str, ET.Element],
+    t: Callable[[int], float],
+) -> tuple[float, ...] | None:
+    """Start of every note-bearing beat in the first voice of the lyrics' track —
+    the attacks Guitar Pro hands the syllables to, one each (a beat with no
+    ``<Notes>`` is a rest). Same walk as the chart loop, on another track."""
+    onsets: list[float] = []
+    for mb_index, mb in enumerate(master_bars):
+        bar_ids = _text(mb.find("Bars")).split()
+        bar = bars.get(bar_ids[track_index]) if track_index < len(bar_ids) else None
+        if bar is None:
+            continue
+        voice_ids = [v for v in _text(bar.find("Voices")).split() if v != "-1"]
+        voice = voices.get(voice_ids[0]) if voice_ids else None
+        if voice is None:
+            continue
+        tick = bar_start_ticks[mb_index]
+        for bid in _text(voice.find("Beats")).split():
+            beat = beats.get(bid)
+            if beat is None:
+                continue
+            if _text(beat.find("Notes")).split():
+                onsets.append(t(tick))
+            tick += _rhythm_ticks(rhythms.get(_ref(beat.find("Rhythm"))))
+    return tuple(onsets) or None
 
 
 def _ref(el: ET.Element | None) -> str:

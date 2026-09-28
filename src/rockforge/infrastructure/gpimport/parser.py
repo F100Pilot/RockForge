@@ -81,6 +81,11 @@ class ParsedGpTrack:
     tempo_map: TempoMap
     sections: list[GpSection]
     lyrics: list[GpLyricLine] = field(default_factory=list)
+    # When each note of the track the lyrics BELONG to starts (its first voice,
+    # rests skipped) — the attacks Guitar Pro hands the syllables to, one each.
+    # Usually a vocal track, not the charted guitar; None when the file does not
+    # say which track that is, and the syllables fall back to the chart's notes.
+    lyric_onsets: tuple[float, ...] | None = None
     # Non-fatal notices from parsing (e.g. notes dropped for being off the
     # 24-fret neck) — surfaced to the user instead of silently swallowed.
     warnings: list[str] = field(default_factory=list)
@@ -478,6 +483,7 @@ def parse_gp_track(
         if text:
             start = measure_start_by_number.get(max(1, line.startingMeasure), offset_s)
             lyrics.append(GpLyricLine(time=start, text=text))
+    lyric_onsets = _lyric_onsets(song, t) if lyrics else None
 
     warnings: list[str] = []
     if bar_times:
@@ -489,5 +495,28 @@ def parse_gp_track(
         )
     return ParsedGpTrack(
         notes=notes, tuning=tuning, tempo_map=tempo_map, sections=sections,
-        lyrics=lyrics, warnings=warnings,
+        lyrics=lyrics, lyric_onsets=lyric_onsets, warnings=warnings,
     )
+
+
+def _lyric_onsets(song: Any, t: Callable[[int], float]) -> tuple[float, ...] | None:
+    """Start of every note-bearing beat in the first voice of the lyrics' track.
+
+    GP3-5 store the lyrics once per song with the (1-based) track they are
+    sung on — ``trackChoice``, 0 meaning none — and Guitar Pro hands one
+    syllable to each beat of that track that is not a rest (alphaTab's
+    ``Track.applyLyrics`` does the same). Ticks are song-wide, so the charted
+    track's own clock ``t`` times them."""
+    index = int(getattr(song.lyrics, "trackChoice", 0) or 0) - 1
+    if not 0 <= index < len(song.tracks):
+        return None
+    onsets: list[float] = []
+    for measure in song.tracks[index].measures:
+        if not measure.voices:
+            continue
+        tick = measure.start
+        for beat in measure.voices[0].beats:
+            if beat.notes:
+                onsets.append(t(tick))
+            tick += beat.duration.time
+    return tuple(onsets) or None

@@ -229,3 +229,25 @@ def test_write_vocals_xml(tmp_path: Path) -> None:
     v = root.find("vocal")
     assert v is not None
     assert v.get("lyric") == "word" and v.get("note") == "254"
+
+
+def test_extra_spaces_skip_notes_and_a_newline_ends_a_line() -> None:
+    """Guitar Pro (and Songsterr) mark an unsung note in a vocal line with an
+    extra space: N spaces skip N-1 notes, and every space around a line break
+    skips one. A newline also ends the display line."""
+    events = distribute_syllables(
+        [(0.0, "Hel-lo  world\n Song")], [float(i) for i in range(10)]
+    )
+    assert [(e.time, e.lyric) for e in events] == [
+        (0.0, "Hel-"), (1.0, "lo"), (3.0, "world+"), (5.0, "Song+"),
+    ]
+
+
+def test_comments_and_a_hyphen_before_a_space_are_read_like_guitar_pro() -> None:
+    events = distribute_syllables(
+        [(0.0, "[Chorus] Mo- ney _ now")], [0.0, 1.0, 2.0, 3.0, 4.0]
+    )
+    assert [(e.time, e.lyric) for e in events] == [
+        (0.0, "Mo-"), (1.0, "ney"), (3.0, "now+"),
+    ]
+    assert events[1].length == pytest.approx(2.0)  # "_" held "ney" one more note

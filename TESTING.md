@@ -662,6 +662,17 @@ chosen; the created project's Letra page must show those words, and the
 build must carry them. With a GP that has its own lyrics nothing is chosen
 automatically.
 
+### 7c-quinquies. Letra da pauta (GP e Songsterr)
+
+1. Um ficheiro GP com uma pista de voz e letra nela (ou uma tab do Songsterr
+   com letra): cria o projeto com a pista de guitarra.
+2. Depois do build, a letra aparece na página Letra e por baixo da partitura, e
+   cada sílaba cai numa nota da VOZ (não nas da guitarra); uma pausa na voz é
+   saltada. O aviso do build diz "one syllable per note of the track they are
+   written on".
+3. Songsterr: não verificado contra o Songsterr real a partir daqui (rede
+   bloqueada); confirmar que uma tab com letra a traz.
+
 ### 7c-quater. Apagar notas (browser-only, sem rede)
 
 1. Partitura: Ctrl+clique em duas notas (ou Shift+clique para um intervalo) —

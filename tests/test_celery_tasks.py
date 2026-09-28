@@ -127,6 +127,43 @@ def test_generate_cdlc_gp_job_completes(db, tmp_path, monkeypatch) -> None:
     assert job.error is None
 
 
+def test_a_gp_files_lyrics_reach_the_editor_after_the_build(db, tmp_path, monkeypatch) -> None:
+    """The build stores the GP file's own lyrics as the editor's rows. It never
+    did in a real run: the task wrote into the very dict the session holds as
+    the column's stored value, so the fresh copy it then assigned compared
+    equal to "unchanged" and no UPDATE was issued."""
+    from rockforge.application.gp_pipeline import GenerateFromGpUseCase
+
+    song = gp.Song()
+    song.title, song.artist, song.tempo = "T", "A", 120
+    v = song.tracks[0].measures[0].voices[0]
+    for fret in (3, 5):
+        b = gp.Beat(v)
+        b.status, b.duration = gp.BeatStatus.normal, gp.Duration(value=4)
+        n = gp.Note(b)
+        n.string, n.value, n.type = 1, fret, gp.NoteType.normal
+        b.notes.append(n)
+        v.beats.append(b)
+    song.lyrics.trackChoice = 1
+    song.lyrics.lines[0].lyrics = "hel-lo"
+    gp_path = tmp_path / "lyrics.gp5"
+    gp.write(song, str(gp_path))
+    monkeypatch.setattr(
+        ca, "_build_gp_use_case",
+        lambda: GenerateFromGpUseCase(
+            ingestor=_FakeIngestor(), normalizer=_FakeNormalizer(), packager=_FakePackager()
+        ),
+    )
+    job_id = _job(db, params={"gp_path": str(gp_path), "lead_track": 0})
+
+    ca.generate_cdlc(job_id)
+
+    rows = _reload(db, job_id).params.get("lyrics_events")
+    assert [(round(r["time"], 3), r["lyric"]) for r in rows or []] == [
+        (0.0, "hel-"), (0.5, "lo+"),
+    ]
+
+
 def test_generate_cdlc_never_crashes_on_packaging_failure(db, tmp_path, monkeypatch) -> None:
     """A heavy-stage exception must land the job in FAILED with the error
     recorded, not propagate out of the task (which would look like a crashed

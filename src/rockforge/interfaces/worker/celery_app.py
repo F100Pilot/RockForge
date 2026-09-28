@@ -224,8 +224,13 @@ def generate_cdlc(job_id: str) -> None:
             workdir = settings.work_dir / job.id
             workdir.mkdir(parents=True, exist_ok=True)
             # params is an untyped JSON boundary (values arrive as `object`);
-            # cast once and coerce explicitly below.
-            params = cast(dict[str, Any], job.params or {})
+            # cast once and coerce explicitly below. A COPY: the session keeps
+            # the loaded dict as the column's committed value (expire_on_commit
+            # is off), so writing into it in place made the later
+            # `job.params = {**params}` compare equal to "what is already
+            # stored" and never reach the database — the GP file's lyrics were
+            # built into the bundle but never shown in the editor.
+            params = dict(cast(dict[str, Any], job.params or {}))
 
             def on_stage(name: str) -> None:
                 job.stage = name

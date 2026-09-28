@@ -535,3 +535,74 @@ def test_bar_times_retime_a_gp7_file_and_win_over_its_own_sync_points(tmp_path: 
     assert [round(n.time, 3) for n in parsed.notes] == [0.0, 1.0, 3.0]
     assert any("bar times" in w for w in parsed.warnings)
     assert not any("Guitar Pro 8 audio sync used" in w for w in parsed.warnings)
+
+
+# Guitar strums quarters; the lyrics sit on a separate Vocals track whose
+# rhythm differs (eighth, eighth rest, eighth, then a dotted half).
+GPIF_VOCALS = """<?xml version="1.0" encoding="utf-8"?>
+<GPIF>
+  <Score><Title>V</Title><Artist>B</Artist></Score>
+  <MasterTrack><Automations>
+    <Automation><Type>Tempo</Type><Bar>0</Bar><Position>0</Position>
+      <Value>120 2</Value></Automation>
+  </Automations></MasterTrack>
+  <Tracks>
+    <Track id="0"><Name>Guitar</Name>
+      <Staves><Staff><Properties>
+        <Property name="Tuning"><Pitches>40 45 50 55 59 64</Pitches></Property>
+      </Properties></Staff></Staves>
+    </Track>
+    <Track id="1"><Name>Vocals</Name>
+      <Lyrics><Line><Text><![CDATA[sing  a song]]></Text><Offset>0</Offset></Line></Lyrics>
+      <Staves><Staff><Properties>
+        <Property name="Tuning"><Pitches>40 45 50 55 59 64</Pitches></Property>
+      </Properties></Staff></Staves>
+    </Track>
+  </Tracks>
+  <MasterBars><MasterBar><Time>4/4</Time><Bars>0 1</Bars></MasterBar></MasterBars>
+  <Bars>
+    <Bar id="0"><Voices>0 -1 -1 -1</Voices></Bar>
+    <Bar id="1"><Voices>1 -1 -1 -1</Voices></Bar>
+  </Bars>
+  <Voices>
+    <Voice id="0"><Beats>0 1 2 3</Beats></Voice>
+    <Voice id="1"><Beats>4 5 6 7</Beats></Voice>
+  </Voices>
+  <Beats>
+    <Beat id="0"><Rhythm ref="0"/><Notes>0</Notes></Beat>
+    <Beat id="1"><Rhythm ref="0"/><Notes>0</Notes></Beat>
+    <Beat id="2"><Rhythm ref="0"/><Notes>0</Notes></Beat>
+    <Beat id="3"><Rhythm ref="0"/><Notes>0</Notes></Beat>
+    <Beat id="4"><Rhythm ref="1"/><Notes>1</Notes></Beat>
+    <Beat id="5"><Rhythm ref="1"/></Beat>
+    <Beat id="6"><Rhythm ref="1"/><Notes>1</Notes></Beat>
+    <Beat id="7"><Rhythm ref="2"/><Notes>1</Notes></Beat>
+  </Beats>
+  <Notes>
+    <Note id="0"><Properties>
+      <Property name="String"><String>0</String></Property>
+      <Property name="Fret"><Fret>3</Fret></Property>
+    </Properties></Note>
+    <Note id="1"><Properties>
+      <Property name="String"><String>5</String></Property>
+      <Property name="Fret"><Fret>5</Fret></Property>
+    </Properties></Note>
+  </Notes>
+  <Rhythms>
+    <Rhythm id="0"><NoteValue>Quarter</NoteValue></Rhythm>
+    <Rhythm id="1"><NoteValue>Eighth</NoteValue></Rhythm>
+    <Rhythm id="2"><NoteValue>Half</NoteValue><AugmentationDot count="1"/></Rhythm>
+  </Rhythms>
+</GPIF>
+"""
+
+
+def test_gp7_lyrics_are_timed_on_the_notes_of_their_own_track(tmp_path: Path) -> None:
+    path = tmp_path / "vocals.gp"
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("VERSION", "7.0")
+        z.writestr("Content/score.gpif", GPIF_VOCALS)
+    parsed = parse_gp_track(path, 0)  # the guitar chart
+    assert parsed.lyrics[0].text == "sing  a song"
+    # Vocals: eighth at 0, eighth REST at 0.25, eighth at 0.5, dotted half at 0.75.
+    assert parsed.lyric_onsets == (0.0, 0.5, 0.75)
