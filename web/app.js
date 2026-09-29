@@ -301,22 +301,31 @@ fetch('/version').then(r => r.json()).then(d => {
 // No new backend endpoint — this loops the same /gp/inspect + /jobs/gp calls
 // the single-project wizard makes, so each pair gets exactly the same
 // auto-pick-tracks / metadata-fallback behavior as creating one job by hand.
-let batchPairs = [];  // [{gp: File, audio: File|null, status: 'pending'|'working'|'done'|'error', jobId, error}]
+let batchPairs = [];  // [{gp: File, audio: File|null, own: bool, ignored: File|null, status: 'pending'|'working'|'done'|'error', jobId, error}]
+// /gp/inspect's answer per chosen GP file (read as soon as it is picked, so a
+// file carrying its own audio is known before pairing): File → body | {error}.
+const batchInspected = new Map();
 
 function batchStem(f) { return f.name.replace(/\.[^.]+$/, '').toLowerCase(); }
 
-function pairBatchFiles(gpFiles, audioFiles) {
+// ownAudio(gp): the GP file carries its own recording (Guitar Pro 8). That one
+// is used — it is the audio its sync points describe — and takes no recording
+// from the list; a recording named like it is set aside (`ignored`) rather
+// than handed to another song.
+function pairBatchFiles(gpFiles, audioFiles, ownAudio = () => false) {
   const audioByStem = new Map(audioFiles.map(f => [batchStem(f), f]));
   const used = new Set();
   const pairs = gpFiles.map(gp => {
     const m = audioByStem.get(batchStem(gp));
-    if (m && !used.has(m)) { used.add(m); return { gp, audio: m, status: 'pending' }; }
-    return { gp, audio: null, status: 'pending' };
+    const matched = m && !used.has(m) ? m : null;
+    if (matched) used.add(matched);
+    if (ownAudio(gp)) return { gp, audio: null, own: true, ignored: matched, status: 'pending' };
+    return { gp, audio: matched, own: false, ignored: null, status: 'pending' };
   });
   // Fill unmatched GP files with leftover audio files, in the order both were chosen.
   const leftover = audioFiles.filter(f => !used.has(f));
   let li = 0;
-  for (const p of pairs) if (!p.audio && li < leftover.length) p.audio = leftover[li++];
+  for (const p of pairs) if (!p.own && !p.audio && li < leftover.length) p.audio = leftover[li++];
   return pairs;
 }
 
@@ -329,11 +338,25 @@ function renderBatchPairs() {
     return;
   }
   const STATUS_ICO = { pending: icon('clock'), working: icon('clock'), done: icon('check'), error: icon('x') };
-  el.innerHTML = batchPairs.map(p => `<div class="anchor-row">
-    ${STATUS_ICO[p.status] || ''} <b>${esc(p.gp.name)}</b> → ${p.audio ? esc(p.audio.name) : '<span style="color:#e88">sem gravação — não vai ser criado</span>'}
+  const reading = batchPairs.some(p => !batchInspected.has(p.gp));
+  el.innerHTML = batchPairs.map(p => {
+    const ins = batchInspected.get(p.gp);
+    const target = !ins ? '<span class="meta">a ler o ficheiro…</span>'
+      : ins.error ? `<span style="color:#e88">não consegui ler o ficheiro (${esc(ins.error)})</span>`
+      : p.own ? `${icon('headphones')} o áudio que vem dentro do ficheiro GP` +
+          (p.ignored ? ` <span class="meta">(${esc(p.ignored.name)} fica de fora)</span>` : '')
+      : p.audio ? esc(p.audio.name)
+      : '<span style="color:#e88">sem gravação — não vai ser criado</span>';
+    return `<div class="anchor-row">
+    ${STATUS_ICO[p.status] || ''} <b>${esc(p.gp.name)}</b> → ${target}
     ${p.error ? `<span style="color:#e88">(${esc(p.error)})</span>` : ''}
-  </div>`).join('');
-  submitBtn.disabled = !batchPairs.some(p => p.audio && p.status === 'pending');
+  </div>`;
+  }).join('');
+  submitBtn.disabled = reading || !batchPairs.some(p => batchCreatable(p) && p.status === 'pending');
+}
+function batchCreatable(p) {
+  const ins = batchInspected.get(p.gp);
+  return !!ins && !ins.error && (p.own || !!p.audio);
 }
 
 function openBatchModal() {
@@ -343,6 +366,7 @@ function openBatchModal() {
   document.getElementById('batchAlbum').value = '';
   document.getElementById('batchYear').value = '';
   batchPairs = [];
+  batchInspected.clear();
   renderBatchPairs();
   document.getElementById('batchOverlay').hidden = false;
 }
@@ -353,10 +377,27 @@ document.getElementById('batchClose2').addEventListener('click', closeBatchModal
 function refreshBatchPairing() {
   const gpFiles = [...document.getElementById('batchGpFiles').files];
   const audioFiles = [...document.getElementById('batchAudioFiles').files];
-  batchPairs = gpFiles.length ? pairBatchFiles(gpFiles, audioFiles) : [];
+  const own = gp => !!batchInspected.get(gp)?.embedded_audio;
+  batchPairs = gpFiles.length ? pairBatchFiles(gpFiles, audioFiles, own) : [];
   renderBatchPairs();
 }
-document.getElementById('batchGpFiles').addEventListener('change', refreshBatchPairing);
+// Each GP file is read once, as soon as it is chosen (one at a time, like the
+// submit): whether it carries its own audio decides the pairing.
+async function inspectBatchGpFiles() {
+  refreshBatchPairing();
+  for (const gp of [...document.getElementById('batchGpFiles').files]) {
+    if (batchInspected.has(gp)) continue;
+    try {
+      const form = new FormData();
+      form.append('file', gp);
+      batchInspected.set(gp, await getJSON('/gp/inspect', { method: 'POST', body: form }));
+    } catch (e) {
+      batchInspected.set(gp, { error: (e && e.message) || 'erro' });
+    }
+    refreshBatchPairing();
+  }
+}
+document.getElementById('batchGpFiles').addEventListener('change', inspectBatchGpFiles);
 document.getElementById('batchAudioFiles').addEventListener('change', refreshBatchPairing);
 
 document.getElementById('batchSubmit').addEventListener('click', async () => {
@@ -367,18 +408,17 @@ document.getElementById('batchSubmit').addEventListener('click', async () => {
   const year = document.getElementById('batchYear').value.trim();
   let okCount = 0, errCount = 0;
   for (const p of batchPairs) {
-    if (!p.audio || p.status !== 'pending') continue;
+    if (!batchCreatable(p) || p.status !== 'pending') continue;
     p.status = 'working';
     renderBatchPairs();
     try {
-      const inspectForm = new FormData();
-      inspectForm.append('file', p.gp);
-      const insR = await fetch('/gp/inspect', { method: 'POST', body: inspectForm });
-      const insBody = await insR.json();
-      if (!insR.ok) throw new Error(insBody.detail || 'falha ao inspecionar o GP');
+      const insBody = batchInspected.get(p.gp);
       const jobForm = new FormData();
       jobForm.append('gp_token', insBody.gp_token);
-      jobForm.append('audio', p.audio);
+      if (p.own) jobForm.append('use_embedded_audio', 'true');
+      else jobForm.append('audio', p.audio);
+      // Where bar 1 sits in the file's own audio (GP8 sync), as the wizard offers.
+      if (p.own && insBody.sync_start_s != null) jobForm.append('offset_s', insBody.sync_start_s.toFixed(3));
       if (artist) jobForm.append('artist', artist);
       if (album) jobForm.append('album', album);
       if (year) jobForm.append('year', year);
@@ -2798,9 +2838,18 @@ reloadGpInput.addEventListener('change', async () => {
   try {
     const fd = new FormData();
     fd.append('gp', file);
+    // The file's own audio (GP8) is the one its sync points describe — used
+    // unless unticked; a file without audio keeps the current recording.
+    fd.append('use_embedded_audio', document.getElementById('reloadGpUseAudio').checked ? 'true' : 'false');
+    const wasFromGp = !!selectedJob.recording_from_gp;
     const r = await fetch(`/jobs/${selectedJob.id}/reload-gp`, { method: 'POST', body: fd });
     const b = await r.json();
-    if (r.ok) { toast('GP recarregado — a reconstruir…', 'ok'); selectJob(b.id, { force: true }); }
+    if (r.ok) {
+      toast(b.recording_from_gp && !wasFromGp
+        ? 'GP recarregado com o áudio que vem dentro dele (o início passou para o do ficheiro) — a reconstruir…'
+        : b.recording_from_gp ? 'GP recarregado, com o áudio dele — a reconstruir…' : 'GP recarregado — a reconstruir…', 'ok');
+      selectJob(b.id, { force: true });
+    }
     else toast(b.detail || 'erro ao recarregar o GP');
   } finally {
     reloadGpInput.value = '';  // allow re-selecting the same filename

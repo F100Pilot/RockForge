@@ -379,6 +379,9 @@ class JobOut(BaseModel):
     sync_source: str | None = None
     # The charts the user marked as in sync, one by one (their tabs turn green).
     synced_arrangements: list[str] = []
+    # The recording is the audio the Guitar Pro file carries (its own copy, the
+    # one its sync points describe), not a separate upload.
+    recording_from_gp: bool = False
     # True if the bundle carries lyrics from ANY source — edited/GP-embedded
     # events, an LRC/UltraStar file, or completed WhisperX detection — not just
     # `lyrics_status == "ready"` (which only covers detection).
@@ -772,6 +775,7 @@ def _to_out(job: Job) -> JobOut:
         sync_confirmed=bool(params.get("sync_confirmed")),
         sync_source=_sync_source(params),
         synced_arrangements=_synced_arrangements(params, job.bundle_dir),
+        recording_from_gp=bool(params.get("recording_from_gp")),
         has_lyrics=has_lyrics,
         rebuilt_from=cast("str | None", params.get("rebuilt_from") or None),
     )
@@ -1345,6 +1349,7 @@ def create_gp_job(
         "tone_names": tones,
         "lrc_text": lrc_text,
         "import_mute_techniques": import_mutes,
+        "recording_from_gp": use_embedded_audio,
     }
     if lead_track.strip().isdigit():
         params["lead_track"] = int(lead_track)
@@ -1389,14 +1394,21 @@ def create_gp_job(
 
 
 @app.post("/jobs/{job_id}/reload-gp", response_model=JobOut, status_code=202)
-def reload_gp(job_id: str, gp: UploadFile = File(...)) -> JobOut:
+def reload_gp(
+    job_id: str,
+    gp: UploadFile = File(...),
+    use_embedded_audio: bool = Form(True),
+) -> JobOut:
     """Replace the Guitar Pro file of an existing GP job and rebuild, keeping
     every override the job already carries (tuning, sync anchors, tempo, tones,
     lyrics, cover). For when you tweak a note in Guitar Pro and re-export — no
     need to recreate the job and redo all the alignment work.
 
     Like /rebuild it forks a NEW job (fresh work dir) so the previous build is
-    preserved; the recording is reused unchanged."""
+    preserved. The recording is reused unchanged — unless the new file carries
+    its own audio and ``use_embedded_audio`` (the default) says to use it, as
+    the wizard does: that copy is the one the file's sync points describe. A
+    file with audio also stands in for a recording that no longer exists."""
     suffix = Path(gp.filename or "").suffix.lower()
     if suffix in GP_REJECTED_SUFFIXES:
         raise HTTPException(
@@ -1416,8 +1428,6 @@ def reload_gp(job_id: str, gp: UploadFile = File(...)) -> JobOut:
             raise HTTPException(404, "job not found")
         if original.source_type != "gp":
             raise HTTPException(422, "reload-gp only applies to Guitar Pro jobs")
-        if not Path(original.source).exists():
-            raise HTTPException(409, "original recording no longer exists on the work volume")
         params: dict[str, object] = dict(original.params or {})
         src_recording = original.source
         meta = (original.title, original.artist, original.album, original.year)
@@ -1448,6 +1458,31 @@ def reload_gp(job_id: str, gp: UploadFile = File(...)) -> JobOut:
                     f"(index {idx}) — the track layout changed. Create a new job via "
                     "'Inspecionar pistas' instead.",
                 )
+
+        from rockforge.infrastructure.gpimport.gpif_parser import (
+            embedded_audio,
+            extract_embedded_audio,
+            sync_start_s,
+        )
+
+        recording_gone = not Path(src_recording).exists()
+        if embedded_audio(gp_dest) is not None and (use_embedded_audio or recording_gone):
+            upload_dir = settings.work_dir / "uploads"
+            try:
+                src_recording = str(extract_embedded_audio(gp_dest, upload_dir / str(uuid.uuid4())))
+            except IngestionError as exc:
+                gp_dest.unlink(missing_ok=True)
+                raise HTTPException(422, str(exc)) from exc
+            if not params.get("recording_from_gp"):
+                # Another recording's start does not fit this one; where bar 1
+                # sits in the file's own audio is what the wizard would offer.
+                start = sync_start_s(gp_dest)
+                if start is not None:
+                    params["offset_s"] = round(start, 3)
+            params["recording_from_gp"] = True
+        elif recording_gone:
+            gp_dest.unlink(missing_ok=True)
+            raise HTTPException(409, "original recording no longer exists on the work volume")
 
         params["gp_path"] = str(gp_dest)
         params["rebuilt_from"] = original.id

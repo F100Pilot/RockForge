@@ -744,6 +744,7 @@ def test_gp_inspect_and_job_flow(client: TestClient, tmp_path) -> None:
 def _gp8_with_embedded_audio(
     audio: bytes | None, *, enabled: str = "true", source: str = "Local", link: str = "",
     asset: str = "<EmbeddedFilePath><![CDATA[Content/Assets/a.mp3]]></EmbeddedFilePath>",
+    bar_one_frame: int | None = None,
 ) -> bytes:
     """A minimal .gp whose backing track is an embedded MP3 (when ``audio``)."""
     import io
@@ -760,7 +761,14 @@ def _gp8_with_embedded_audio(
         '<?xml version="1.0" encoding="utf-8"?><GPIF>'
         "<Score><Title>T</Title><Artist>A</Artist></Score>"
         "<MasterTrack><Automations><Automation><Type>Tempo</Type><Bar>0</Bar>"
-        "<Position>0</Position><Value>120 2</Value></Automation></Automations></MasterTrack>"
+        "<Position>0</Position><Value>120 2</Value></Automation>"
+        + (
+            "<Automation><Type>SyncPoint</Type><Bar>0</Bar><Position>0</Position><Value>"
+            "<BarIndex>0</BarIndex><BarOccurrence>0</BarOccurrence>"
+            f"<FrameOffset>{bar_one_frame}</FrameOffset></Value></Automation>"
+            if bar_one_frame is not None else ""
+        )
+        + "</Automations></MasterTrack>"
         f"{backing}"
         '<Tracks><Track id="0"><Name>Guitar</Name>'
         "<InstrumentSet><Type>electricGuitar</Type></InstrumentSet>"
@@ -799,6 +807,7 @@ def test_a_gp8_job_can_use_the_audio_embedded_in_the_file(client: TestClient, tm
     uploads = list((tmp_path / "work" / "uploads").iterdir())
     assert [u.read_bytes() for u in uploads] == [mp3]
     assert uploads[0].suffix == ".mp3"
+    assert r2.json()["recording_from_gp"] is True
 
 
 def test_gp_inspect_says_where_the_audio_is_when_it_is_not_inside(client: TestClient) -> None:
@@ -1541,6 +1550,68 @@ def test_reload_gp_forks_job_and_keeps_overrides(client: TestClient, tmp_path) -
     assert params["tempo_scale"] == 1.2  # overrides carried over
     assert params["tone_base"] == "lead"
     assert params["lead_track"] == 0
+
+
+def _job_row(job_id: str) -> tuple[str, dict]:
+    import rockforge.interfaces.api.app as app_module
+
+    with app_module._session_factory() as session:
+        job = session.get(app_module.Job, job_id)
+        return job.source, dict(job.params or {})
+
+
+def test_reloading_a_gp_file_that_carries_audio_uses_that_audio(
+    client: TestClient, tmp_path
+) -> None:
+    """"Porque é que continuas a não aproveitar o mp3 do ficheiro gp?": the
+    wizard used it, "Recarregar ficheiro GP" always kept the old recording. The
+    new file's own audio is the one its sync points describe, so it is used
+    (unless the user unticks it), and bar 1's place in it becomes the start."""
+    job = _gp_job(client, tmp_path)  # a recording uploaded separately
+    old_source, _ = _job_row(job["id"])
+    mp3 = b"ID3the-files-own-audio"
+    synced = _gp8_with_embedded_audio(mp3, bar_one_frame=88200)  # bar 1 at 2.0 s
+
+    kept = client.post(
+        f"/jobs/{job['id']}/reload-gp",
+        files={"gp": ("s.gp", synced, "x")}, data={"use_embedded_audio": "false"},
+    )
+    assert kept.status_code == 202, kept.text
+    assert kept.json()["recording_from_gp"] is False
+    assert _job_row(kept.json()["id"])[0] == old_source
+
+    used = client.post(f"/jobs/{job['id']}/reload-gp", files={"gp": ("s.gp", synced, "x")})
+    assert used.status_code == 202, used.text
+    assert used.json()["recording_from_gp"] is True
+    source, params = _job_row(used.json()["id"])
+    assert source != old_source and Path(source).read_bytes() == mp3
+    assert params["offset_s"] == 2.0 and params["lead_track"] == 0
+
+    # Already the file's audio: a start the user adjusted is theirs to keep.
+    adjusted = client.post(f"/jobs/{used.json()['id']}/rebuild", json={"offset_s": 2.25}).json()
+    again = client.post(
+        f"/jobs/{adjusted['id']}/reload-gp", files={"gp": ("s.gp", synced, "x")}
+    ).json()
+    assert _job_row(again["id"])[1]["offset_s"] == 2.25
+
+
+def test_a_gp_file_with_audio_stands_in_for_a_recording_that_is_gone(
+    client: TestClient, tmp_path
+) -> None:
+    job = _gp_job(client, tmp_path)
+    Path(_job_row(job["id"])[0]).unlink()
+    without = client.post(
+        f"/jobs/{job['id']}/reload-gp",
+        files={"gp": ("s.gp5", _make_gp5_bytes(tmp_path), "x")},
+    )
+    assert without.status_code == 409
+    r = client.post(
+        f"/jobs/{job['id']}/reload-gp",
+        files={"gp": ("s.gp", _gp8_with_embedded_audio(b"ID3x"), "x")},
+        data={"use_embedded_audio": "false"},
+    )
+    assert r.status_code == 202, r.text
+    assert Path(_job_row(r.json()["id"])[0]).read_bytes() == b"ID3x"
 
 
 def test_reload_gp_rejects_gpx(client: TestClient, tmp_path) -> None:

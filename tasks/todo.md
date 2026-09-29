@@ -1,3 +1,19 @@
+# Usar o áudio do ficheiro GP em todos os caminhos
+
+Pedido: "Porque é que continuas a não aproveitar o mp3 do ficheiro gp?". O
+ficheiro do utilizador (Ocean Eyes_synced.gp) é detetado pelo assistente normal
+(verificado com Playwright), mas dois caminhos ignoram o áudio embutido.
+
+- [x] 1. `/jobs/gp` regista `params["recording_from_gp"]`; `JobOut.recording_from_gp`
+- [x] 2. `/reload-gp`: com `use_embedded_audio` (por omissão sim), o áudio do NOVO
+      ficheiro substitui a gravação; se a gravação antiga desapareceu e o novo
+      ficheiro tem áudio, usa-o em vez do 409; ao passar de um upload para o áudio
+      do GP, o início vem de `sync_start_s` (como no assistente)
+- [x] 3. UI "Recarregar ficheiro GP": caixa "usar o áudio do ficheiro, se trouxer"
+- [x] 4. Lote: inspeciona cada GP ao escolher; os que trazem áudio usam-no e não
+      consomem nenhuma gravação do emparelhamento
+- [x] 5. Testes, docs, Playwright com o ficheiro do utilizador, gates
+
 # Importar a tab diretamente do Songsterr (em vez de um ficheiro GP)
 
 Pedido: colar o link da tab do Songsterr em vez de carregar um GP; juntar o

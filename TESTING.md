@@ -232,7 +232,7 @@ GET    /jobs                         list all jobs
 GET    /jobs/{id}                    one job
 DELETE /jobs/{id}                    delete job + its files
 POST   /jobs/{id}/rebuild            rebuild with new params (composes sync rounds)
-POST   /jobs/{id}/reload-gp          swap the GP file, keep all overrides   [GP]
+POST   /jobs/{id}/reload-gp          swap the GP file, keep all overrides; its own audio if it has one [GP]
 GET    /jobs/{id}/sync-state         export hand-tuned sync as portable JSON
 POST   /jobs/{id}/import-sync        apply an exported sync + rebuild (202)
 POST   /jobs/{id}/detect-tempo       per-point tempo from a clicked instant [GP, ml]

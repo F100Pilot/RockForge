@@ -70,3 +70,13 @@ The voice source "did nothing" in Playwright: its OfflineAudioContext render of
 `performance.now()` around any in-browser render of a whole song; a few
 hundred scheduled nodes are slow — compute simple waveforms into an
 AudioBuffer directly.
+
+## A feature is every path that reaches it, not the one you built it in (2026-09-29)
+"Continuas a não aproveitar o mp3 do ficheiro gp": the embedded-audio detection
+was right for the user's file, but only the wizard used it — the batch and
+"Recarregar ficheiro GP" also give a job its recording and never asked. Two
+rounds of "more tolerant detection" were spent on the wrong half. Rule: when a
+fix is reported as not working, first run the user's own file (it was in the
+session uploads) through the real flow; and when adding a capability, grep for
+EVERY entry point that does the same job (here: everything that sets
+`Job.source`) and cover each.

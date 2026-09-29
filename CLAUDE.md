@@ -117,7 +117,13 @@ re-inverting the dependency.
    `audio` upload at all. The wizard's step 3 ticks "🎧 Usar o áudio que vem
    dentro do ficheiro GP" by default when present (hiding the upload and its
    `required`). Anything short of a real, local audio member is "none",
-   never an error.
+   never an error. **Every path that gives a job its recording honours it**,
+   not only the wizard ("porque é que continuas a não aproveitar o mp3 do
+   ficheiro gp?" — the user's file was detected fine; "Lote (álbum)" and
+   "Recarregar ficheiro GP" simply never asked): `/jobs/gp` records
+   `params["recording_from_gp"]` (`JobOut.recording_from_gp`), `/reload-gp`
+   takes the new file's audio (below), and the batch reads each GP as it is
+   picked (below).
 
    **Detection is tolerant, and says where the audio is when it is not
    inside** (`backing_track` → `BackingTrackInfo`). "Carreguei um ficheiro gp
@@ -333,6 +339,23 @@ the previously selected `lead_track`/`rhythm_track` indices still exist (a plain
 note edit keeps the track layout; a restructured file 422s with a "create a new
 job" message rather than silently building the wrong track). Exposed in the
 Partitura inspector's "Mais opções" as "Recarregar ficheiro GP".
+
+**The new file's own audio replaces the recording** when it carries one
+(`use_embedded_audio`, default true — "usar o áudio que vem dentro do
+ficheiro, se trouxer", ticked beside the button): that copy is the one its
+sync points describe, exactly as the wizard decides. It used to keep the old
+recording no matter what, so a project could never move onto the GP8 audio
+without being recreated. When the recording was a separate upload until now,
+`offset_s` becomes `sync_start_s` of the new file (another recording's start
+does not fit this one — same value the wizard pre-fills); when it already came
+from the GP, the user's own start is kept. A file with audio also stands in
+for a recording that no longer exists (it was a 409 regardless). Committed
+sync anchors are kept as they are — they are the user's corrections, in the
+old timeline. Guarded by
+`test_reloading_a_gp_file_that_carries_audio_uses_that_audio` and
+`test_a_gp_file_with_audio_stands_in_for_a_recording_that_is_gone` (each
+branch mutation-checked); with Playwright and a real build on the user's
+Ocean Eyes file (upload + start 5 s → reload → its 6.2 MB MP3, start 0 s).
 
 ### Intro silence (`lead_in_s`)
 
@@ -1734,7 +1757,18 @@ recording **in the order both lists were chosen**, so an album where names
 don't line up still gets a pair per song as long as the counts roughly match.
 A GP file with no recording left at all shows "sem gravação — não vai ser
 criado" in the preview list and is skipped on submit, never silently paired
-with the wrong track. The preview list (`renderBatchPairs`) is the only
+with the wrong track. **A GP file that carries its own audio (GP8) needs no
+recording**: each GP is sent to `/gp/inspect` as soon as it is picked
+(`inspectBatchGpFiles`, one at a time, cached per `File` in `batchInspected`
+and reused at submit, so nothing is uploaded twice), and `pairBatchFiles(gp,
+audio, ownAudio)` gives such a file "o áudio que vem dentro do ficheiro GP"
+(`use_embedded_audio=true` + its `sync_start_s` as the start). A recording
+named like it is set aside ("fica de fora") rather than handed to the next
+song by the in-order fill — before, that file was either skipped or paired
+with another song's recording. "Criar projetos" waits until every file has
+been read. An abandoned selection leaves inspected uploads for the orphan
+sweep, like an abandoned wizard. Verified with Playwright (the user's GP8 +
+a GP5 + two recordings → own audio / the leftover wav, both jobs as said). The preview list (`renderBatchPairs`) is the only
 confirmation step — there is no per-pair track/metadata screen (that would be
 the normal wizard, one song at a time).
 
