@@ -714,6 +714,18 @@ automatically.
 4. Nunca corrido contra o YouTube a partir daqui (rede bloqueada; o
    `/youtube/audio` foi simulado no Playwright).
 
+### 7c-quinquies. Pista 3D (browser-only, sem rede; precisa de WebGL)
+
+1. Partitura: marca **Pista 3D** (ao lado de "Braço"). Aparece o painel por cima
+   da partitura, com o headstock e a afinação da música escrita na pestana.
+2. Tocar: as notas descem nas cores das cordas; ao chegar, a corda brilha e a
+   nota fica pousada nela com o número (uma nota longa fica enquanto soa).
+3. Mudar o andamento (BPM) sem reconstruir: as notas na pista mudam de sítio
+   como na partitura por baixo.
+4. "Traste na nota", "Câmara" e "Ecrã inteiro" funcionam; fechar e reabrir o
+   projeto volta a abrir a pista; desmarcar esconde-a e fica lembrado.
+5. Num PC real, confirmar que corre fluido (aqui só com WebGL por software).
+
 ### 7c-quater. Apagar notas (browser-only, sem rede)
 
 1. Partitura: Ctrl+clique em duas notas (ou Shift+clique para um intervalo) —

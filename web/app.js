@@ -885,6 +885,12 @@ const INFO = {
     title: 'Importar mapa de tempo (MIDI)',
     body: '<p>Quando a sincronização automática não fica perfeita, dá-lhe a <b>verdade em vez de uma estimativa</b>: um MIDI com o andamento por compasso (exportado do RIPX ou de qualquer DAW a partir da mesma gravação). Em vez de adivinhar o tempo pelo áudio, o RockForge lê o mapa de tempo do MIDI e alinha <b>cada compasso da tab ao seu tempo real</b> — uma âncora por compasso, o "BPM por compasso".<br>Continua a respeitar o <b>Passo 1</b>: fixa a 1.ª nota e o alinhamento cresce daí. Fica em pré-visualização — revê na partitura e confirma com "Aplicar e reconstruir".<br><b>Para resultar:</b> o MIDI tem de começar no 1.º compasso da tab (corta um intro que a tab não tenha) e ter a mesma estrutura de compassos. A precisão é a da deteção do RIPX. Só formato PPQ (o normal).</p>'
   },
+  'highway-3d': {
+    title: 'Pista 3D',
+    body: '<p>As notas da pista escolhida a descer para as cordas, como no Rocksmith: cada corda na sua cor (Mi grave vermelho em cima), o traste na face da nota e uma linha até ao traste onde se toca. Quando a nota chega à corda, a corda brilha e a nota fica pousada nela, com o número, enquanto soa.</p>' +
+      '<p>A afinação está escrita na pestana do headstock. Acordes têm moldura e nome; uma corda solta é uma barra ao longo da zona da mão (a faixa azul), que a câmara segue. Por cima da nota aparece a técnica (H hammer-on, P pull-off, PM palm mute, ↑ bend, / \\ slide, ~ vibrato…).</p>' +
+      '<p>Segue a gravação e as correções de sincronização <strong>ainda por aplicar</strong>, tal como a partitura por baixo — serve para confirmar a sincronização a ver as notas chegar. Precisa de WebGL (aceleração gráfica) no browser.</p>'
+  },
   'tab-viewer': {
     title: 'Partitura — legenda',
     body: '<p>● nota · ▮ nota de acorde (ligadas por barra vertical) · sigla sobreposta = técnica:<br>B bend · H hammer-on · P pull-off · S slide · HA harmónico · PM palm mute · V vibrato · T tapping · SL slap · PO pop · A acento<br>Passa o cursor sobre a nota para ver a lista completa.<br>Cor = corda (igual ao Rocksmith): <span style="color:#e6483c">E</span> <span style="color:#f5dc3c">A</span> <span style="color:#3f9bdc">D</span> <span style="color:#f0973c">G</span> <span style="color:#5cc24a">B</span> <span style="color:#b56cdc">e</span> (grave→agudo). Eixo X em segundos.</p>'
@@ -1186,6 +1192,8 @@ function confirmModal(text) {
 }
 
 function closeDetail() {
+  window.Highway3D?.close();  // nothing to draw once the project is closed
+  hw3dLastSong = null;
   selectedJob = null;
   arrangementsLoadedFor = null;
   clearTimeout(pollTimer);
@@ -1559,6 +1567,7 @@ async function loadArrangements(id) {
   document.getElementById('applyToAllChk').checked = false;
   initSync(selectedJob);
   showArr(0);
+  if (hw3dOn) setHw3d(true);  // remembered on: open the highway on this project too
   document.getElementById('tabwrap').scrollLeft = 0;
   renderSectionsList();
   updateClipboardInfo();
@@ -1880,6 +1889,7 @@ function showArr(i) {
   // actually bakes it into the built arrangement.
   const pendingNoteOv = noteOverridesByKind[a.kind] || [];
   const notes = pendingNoteOv.length ? mergeNoteOverrides(a.notes, pendingNoteOv) : a.notes;
+  hw3dRefresh(a, notes);  // the 3D highway shows the same notes, on the same clock
   const pendingKeys = new Set(pendingNoteOv.map(o => `${o.time.toFixed(6)}:${o.string}`));
   // group simultaneous notes (chords) so they get a connecting bracket
   const groups = [];
@@ -2037,6 +2047,7 @@ function mergeNoteOverrides(baseNotes, overrides) {
       time: ov.time, string: ov.string, fret: ov.fret, sustain: ov.sustain,
       chord: false, chord_name: null,
       techniques: ov.techniques.slice(), bend_semitones: ov.bend_semitones || 0,
+      slide_to: ov.slide_to_fret ?? -1,
     });
   }
   const merged = [...byKey.values()].sort((a, b) => a.time - b.time || a.string - b.string);
@@ -5982,6 +5993,68 @@ document.getElementById('showFretboard')?.addEventListener('change', e => {
   drawFretboard();
   if (fretboardOn) updateFretboard(playheadDisplay(audioTime()));
 });
+
+// --- Pista 3D (web/highway3d.js, three.js loaded on first use) ---------------------------------
+// Same clock as the score: each note at warp(previewScale(t)) — so pending
+// tempo/anchor edits move it here too, live — and the playhead at
+// playheadDisplay(audioTime()). The highway draws; it knows nothing about sync.
+let hw3dOn = false;
+try { hw3dOn = localStorage.getItem('rf-hw3d') === '1'; } catch { /* storage blocked: off */ }
+let hw3dLastSong = null;
+function hw3dNow() { return { t: playheadDisplay(audioTime()), playing: audioIsPlaying() }; }
+function hw3dRefresh(a, notes) {
+  if (!hw3dOn || !window.Highway3D || !window.Highway3D.ready || !a) return;
+  const warp = buildTimeWarp(syncAnchors);
+  const at = t => warp(previewScale(t));
+  const data = {
+    notes: notes.map(n => {
+      const t = at(n.time);
+      return {
+        t, sustain: n.sustain > 0 ? Math.max(0, at(n.time + n.sustain) - t) : 0,
+        string: n.string, fret: n.fret, techniques: n.techniques || [],
+        bend: n.bend_semitones || 0, slideTo: n.slide_to ?? -1, chordName: n.chord_name || '',
+      };
+    }),
+    bars: (a.bars || []).map(b => ({ t: at(b.time), measure: b.measure })),
+    beats: (a.beats || []).map(at),
+    sections: songSections.map(sec => ({ t: at(sec.time), name: sec.name })),
+    tuning: a.tuning_offsets || [0, 0, 0, 0, 0, 0],
+  };
+  // showArr runs on every pending edit; rebuilding the lane only when something changed.
+  const key = JSON.stringify(data);
+  if (key === hw3dLastSong) return;
+  hw3dLastSong = key;
+  window.Highway3D.setSong(data);
+}
+async function setHw3d(on) {
+  hw3dOn = on;
+  try { localStorage.setItem('rf-hw3d', on ? '1' : '0'); } catch { /* not remembered */ }
+  const wrap = document.getElementById('hw3dWrap');
+  const msg = document.getElementById('hw3dMsg');
+  document.getElementById('show3d').checked = on;
+  wrap.hidden = !on;
+  if (!window.Highway3D) return;
+  if (!on) { window.Highway3D.close(); return; }
+  msg.hidden = true;
+  try {
+    await window.Highway3D.open(wrap, hw3dNow);
+    window.Highway3D.setOptions({
+      numbers: document.getElementById('hw3dNumbers').checked,
+      tilt: Number(document.getElementById('hw3dTilt').value) / 100,
+    });
+    hw3dLastSong = null;
+    if (arrangements.length) showArr(currentArr);
+  } catch (err) {
+    msg.textContent = err && err.message && err.message.includes('WebGL')
+      ? err.message
+      : `Não consegui abrir a pista 3D: ${(err && err.message) || err}`;
+    msg.hidden = false;
+  }
+}
+document.getElementById('show3d').addEventListener('change', e => setHw3d(e.target.checked));
+document.getElementById('hw3dNumbers').addEventListener('change', e => window.Highway3D?.setOptions({ numbers: e.target.checked }));
+document.getElementById('hw3dTilt').addEventListener('input', e => window.Highway3D?.setOptions({ tilt: Number(e.target.value) / 100 }));
+document.getElementById('hw3dFull').addEventListener('click', () => window.Highway3D?.fullscreen());
 
 // Live BPM readout: the tempo of the measure under the playhead, measured on the
 // beat spacing AS DISPLAYED — the built spacing (so it shows the score's real

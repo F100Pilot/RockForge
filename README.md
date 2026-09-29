@@ -58,6 +58,16 @@ anteriores — **abre o job mais tarde (mesmo depois de saíres e voltares) e co
 ajustar**: as correções já aplicadas ficam no arranjo carregado e as novas somam-se a elas, em
 vez de partir sempre do GP em bruto.
 
+### Pista 3D (como no Rocksmith)
+
+Na página Partitura, marca **Pista 3D** (ao lado de "Braço"): as notas da pista
+escolhida descem para as cordas como no Rocksmith, com o headstock e a afinação
+escrita na pestana, o traste na face de cada nota, brilho quando a nota chega à
+corda (e a nota fica pousada nela enquanto soa), acordes com o nome, e a câmara a
+seguir a zona do braço. Segue a gravação e as correções de sincronização ainda por
+aplicar, tal como a partitura. Usa o three.js, incluído na aplicação (funciona sem
+internet); precisa de WebGL no browser.
+
 ### Deteção automática de tom (Lead / Rhythm)
 
 O botão **"Detetar tom"** no painel de tons analisa a gravação e sugere tones

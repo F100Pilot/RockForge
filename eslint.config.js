@@ -1,11 +1,11 @@
-// Lint config for web/app.js — the RockForge web UI's client-side script
+// Lint config for web/app.js — the RockForge web UI's client-side script — and web/highway3d.js
 // (extracted from index.html's inline <script> so it can be linted at all;
 // see CLAUDE.md's "Web UI" section). Browser-globals script, not a module —
 // the file relies on top-level `function`/`const` declarations being visible
 // to inline event-handler attributes and to each other in load order.
 module.exports = [
   {
-    files: ["web/app.js"],
+    files: ["web/app.js", "web/highway3d.js"],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "script",
@@ -42,6 +42,7 @@ module.exports = [
         prompt: "readonly",
         performance: "readonly",
         structuredClone: "readonly",
+        ResizeObserver: "readonly",
       },
     },
     rules: {

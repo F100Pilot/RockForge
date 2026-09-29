@@ -1631,6 +1631,55 @@ that DOM wiring (e.g. `openNewJobModal`'s modal toggle) still works after the
 split, plus two new API tests (`test_index_page_references_the_extracted_app_js`,
 `test_app_js_is_served_with_a_javascript_content_type`).
 
+### The 3D note highway ("Pista 3D", `web/highway3d.js`)
+
+"grafismo 3D, com three.js, para o braço da guitarra … o mais idêntico
+possível com o rocksmith", built from a sketch the user approved (a published
+artifact, iterated once: "o número da nota não deve desaparecer quando toca na
+corda"). A "Pista 3D" checkbox beside "Braço" opens a panel above the score
+(`#hw3dWrap`, remembered in `localStorage` `rf-hw3d`, reopened on the next
+project by `loadArrangements`, closed by `closeDetail`) with the notes coming
+down a Rocksmith-style highway: string colours with low E red and on top, a
+six-in-line headstock whose **nut carries the tuning** (one name per string, in
+its colour, from `tuning_offsets`), rounded-rectangle gems with the fret on the
+face and a drop line to the highway, a glow on the string + flash + sparks when
+a note arrives, and **the note stays on the string, number and all** — a short
+one `HOLD_MIN` (0.32 s), a sustained one for as long as it sounds, then it
+fades. Chords get a frame and the name `/arrangements` already derives; an open
+string is a bar across the hand window; the anchor band and the camera follow
+the frets about to be played (`anchorAt`); sustains are trails and a slide's
+trail runs to the fret it ends on (`ArrangementNoteOut.slide_to`, new, read from
+`slideTo`/`slideUnpitchTo`); techniques are short marks above the gem; bar and
+beat lines cross the highway, sections are labelled. Controls: "Traste na
+nota", "Câmara" (tilt), "Ecrã inteiro".
+
+**It knows nothing about sync — it reads the score's own clock.** `hw3dRefresh`
+(called from `showArr`, so on every pending edit) hands it each note at
+`warp(previewScale(t))` — the score's merged notes, pending note edits
+included — and `getNow()` answers `playheadDisplay(audioTime())`; so pending
+tempo/anchor corrections move the highway live, exactly as the score
+(verified: a +10 % tempo moved note 100 from 41.096 s to 45.006 s, where the
+score draws it). The whole song is JSON-compared before a `setSong`, since
+`showArr` runs far more often than the notes change. A jump (seek, a new
+preview) clears the effects and fires no backlog of hits.
+
+**three.js 0.186.1 is vendored** in `web/vendor/three/` (the module + the core it
+imports, byte-identical to `npm pack three@0.186.1`, MIT), imported by
+`highway3d.js` only when the panel is first opened — the rest of the UI never
+pays for it, and it works offline and in the `.exe` (the spec walks `web/`).
+`GET /vendor/three/{name}` answers those two names only; `/highway3d.js` is
+served and cache-busted like `/app.js` (`WEB_SCRIPTS`, `_serve_web_js`). ESLint
+covers `highway3d.js` too. **Only the notes in view become meshes** (a window
+from `now − song.back` to `now + AHEAD`, created on entry and dropped on exit,
+geometries and materials shared), so a 1374-note song holds ~40 note meshes at
+a time. A line lying on the floor is seen almost edge-on — a 0.07-unit bar line
+was under a pixel and simply invisible — hence the 0.3/0.13 widths. Guarded by
+`test_the_3d_highway_and_its_three_js_are_served` and
+`test_arrangements_say_where_a_slide_ends`; the rest is browser-only, verified
+with Playwright on the user's Ocean Eyes build (toggle, playback glow, held
+note, chords, headstock, numbers/tilt, live tempo follow, close/reopen, no page
+errors) — under software WebGL, so real-GPU frame rate is not measured here.
+
 ### The layout: home page, full-screen project view, stroke icons
 
 Reworked from sketches the user approved (a Design canvas, "Novo layout"):

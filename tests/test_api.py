@@ -83,6 +83,22 @@ def test_app_js_is_served_with_a_javascript_content_type(client: TestClient) -> 
     assert "document.querySelectorAll" in r.text
 
 
+def test_the_3d_highway_and_its_three_js_are_served(client: TestClient) -> None:
+    """Partitura → "Pista 3D": highway3d.js loads the vendored three.js on first
+    use, so both have to be served (and cache-busted like app.js)."""
+    page = client.get("/").text
+    assert '<script src="/highway3d.js?v=' in page and '<script src="/app.js?v=' in page
+    r = client.get("/highway3d.js")
+    assert r.status_code == 200 and "javascript" in r.headers["content-type"]
+    assert "window.Highway3D" in r.text and "/vendor/three/three.module.js" in r.text
+    for name in ("three.module.js", "three.core.js"):
+        three = client.get(f"/vendor/three/{name}")
+        assert three.status_code == 200 and "javascript" in three.headers["content-type"]
+    # Only those two files: never an arbitrary path under web/.
+    assert client.get("/vendor/three/LICENSE").status_code == 404
+    assert client.get("/vendor/three/..%2F..%2Findex.html").status_code == 404
+
+
 def test_api_token_gates_every_route_when_set(tmp_path, monkeypatch) -> None:
     """Setting ROCKFORGE_API_TOKEN turns on an HTTP Basic gate in front of the
     whole app — wrong/missing credentials are rejected, the right password
@@ -575,6 +591,40 @@ def test_arrangements_exposes_bend_magnitude(client: TestClient) -> None:
     bent = [n for n in notes if "bend" in n["techniques"]]
     assert len(bent) == 1 and bent[0]["bend_semitones"] == 2
     assert all(n["bend_semitones"] == 0 for n in notes if "bend" not in n["techniques"])
+
+
+def test_arrangements_say_where_a_slide_ends(client: TestClient) -> None:
+    """The 3D highway draws a slide's trail running to the fret it ends on."""
+    import rockforge.config as config
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.domain.arrangement import Arrangement, ArrangementKind, SongMetadata
+    from rockforge.domain.music import Beat, TabNote, Technique, TempoMap, Tuning
+    from rockforge.infrastructure.db.models import JobStatus
+    from rockforge.infrastructure.rsxml.writer import write_arrangement_xml
+
+    job = _create_job(client)
+    bundle = config.settings.work_dir / job["id"] / "bundle"
+    beats = tuple(Beat(time=0.5 * i, measure=(i // 4 + 1) if i % 4 == 0 else -1) for i in range(8))
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="Slide", artist="T", song_length=4.0),
+        tuning=Tuning(),
+        notes=[
+            TabNote(string=2, fret=5, time=1.0, sustain=0.5,
+                    techniques=frozenset({Technique.SLIDE}), slide_to_fret=7),
+            TabNote(string=1, fret=5, time=2.0, sustain=0.2),
+        ],
+        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+    )
+    write_arrangement_xml(arr, bundle / "arrangement_lead.xml")
+    with app_module._session_factory() as session:
+        db_job = session.get(app_module.Job, job["id"])
+        db_job.status = JobStatus.COMPLETED
+        db_job.bundle_dir = str(bundle)
+        session.commit()
+
+    notes = client.get(f"/jobs/{job['id']}/arrangements").json()[0]["notes"]
+    assert [(n["fret"], n["slide_to"]) for n in notes] == [(5, 7), (5, -1)]
 
 
 def _make_gp5_bytes(tmp_path) -> bytes:

@@ -492,6 +492,9 @@ class ArrangementNoteOut(BaseModel):
     techniques: list[str]
     bend_semitones: int = 0  # bend magnitude (1=half, 2=full, 3=1½…); 0 if no bend
     chord_name: str | None = None  # derived name for the chord this note belongs to
+    # The fret a slide ends on (pitched, else unpitched slide-out), -1 if none —
+    # the 3D highway draws the trail running to it.
+    slide_to: int = -1
 
 
 class BarOut(BaseModel):
@@ -2913,6 +2916,9 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
                 techs.append("bend")
             if el.get("slideTo", "-1") != "-1":
                 techs.append("slide")
+            slide_to = int(el.get("slideTo", "-1"))
+            if slide_to < 0:
+                slide_to = int(el.get("slideUnpitchTo", "-1"))
             return ArrangementNoteOut(
                 time=float(el.get("time", "0")),
                 string=int(el.get("string", "0")),
@@ -2921,6 +2927,7 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
                 chord=chord,
                 techniques=techs,
                 bend_semitones=bend_semitones,
+                slide_to=slide_to,
             )
 
         notes = [parse_note(el, False) for el in root.findall("levels/level/notes/note")]
@@ -3372,21 +3379,26 @@ def index() -> str:
             # app.js — which leaves NEW markup wired to an OLD script, so a new
             # button exists and does nothing. That failure looks exactly like a
             # broken feature and has cost real debugging time.
-            for js in _web_file_candidates("app.js"):
-                if js.exists():
-                    html = html.replace(
-                        'src="/app.js"', f'src="/app.js?v={int(js.stat().st_mtime)}"'
-                    )
-                    break
+            for name in WEB_SCRIPTS:
+                for js in _web_file_candidates(name):
+                    if js.exists():
+                        html = html.replace(
+                            f'src="/{name}"', f'src="/{name}?v={int(js.stat().st_mtime)}"'
+                        )
+                        break
             return html
     return "<h1>RockForge</h1><p>UI not bundled; see /docs for the API.</p>"
 
 
-@app.get("/app.js", include_in_schema=False)
-def app_js() -> FileResponse:
-    """The web UI's JS, extracted out of index.html's inline <script> so it can
-    be linted (ESLint has no way to check an inline block on its own)."""
-    for js in _web_file_candidates("app.js"):
+# The web UI's own scripts, served by name (never a client path): app.js (the UI)
+# and highway3d.js (the 3D note highway, which loads three.js on first use).
+WEB_SCRIPTS = ("app.js", "highway3d.js")
+# three.js, vendored so the app works offline: the module and the core it imports.
+THREE_FILES = ("three.module.js", "three.core.js")
+
+
+def _serve_web_js(relative: str) -> FileResponse:
+    for js in _web_file_candidates(relative):
         if js.exists():
             # Revalidate every load: the URL is mtime-stamped by index(), so a
             # changed file always wins, and an unchanged one still 304s.
@@ -3395,4 +3407,25 @@ def app_js() -> FileResponse:
                 media_type="text/javascript",
                 headers={"Cache-Control": "no-cache"},
             )
-    raise HTTPException(404, "app.js not bundled")
+    raise HTTPException(404, f"{relative} not bundled")
+
+
+@app.get("/app.js", include_in_schema=False)
+def app_js() -> FileResponse:
+    """The web UI's JS, extracted out of index.html's inline <script> so it can
+    be linted (ESLint has no way to check an inline block on its own)."""
+    return _serve_web_js("app.js")
+
+
+@app.get("/highway3d.js", include_in_schema=False)
+def highway3d_js() -> FileResponse:
+    """The 3D note highway (Partitura → "Pista 3D")."""
+    return _serve_web_js("highway3d.js")
+
+
+@app.get("/vendor/three/{name}", include_in_schema=False)
+def three_js(name: str) -> FileResponse:
+    """three.js, only the two files it is made of — never an arbitrary path."""
+    if name not in THREE_FILES:
+        raise HTTPException(404, "not found")
+    return _serve_web_js(f"vendor/three/{name}")

@@ -1,3 +1,19 @@
+# Pista 3D ao estilo Rocksmith (three.js) na Partitura
+
+Pedido: "grafismo 3D, com three.js, para o braço da guitarra … o mais idêntico
+possível com o rocksmith"; esboço aprovado (headstock, afinação na pestana,
+notas arredondadas, brilho no toque, a nota fica na corda com o número).
+
+- [x] 1. three.js 0.186.1 vendido em `web/vendor/three/` (MIT) + rota `/vendor/three/{f}`
+- [x] 2. `web/highway3d.js`: módulo que carrega o three.js só quando a pista é ligada;
+      notas criadas só para a janela visível (canções com milhares de notas)
+- [x] 3. Mesmo relógio que a partitura: `warp(previewScale(t))` das notas e
+      `playheadDisplay(audioTime())` do cursor — segue as correções pendentes ao vivo
+- [x] 4. API: `ArrangementNoteOut.slide_to` (o traste final do slide)
+- [x] 5. UI: caixa "Pista 3D" ao lado de "Braço", painel por cima da partitura,
+      câmara/traste na nota/ecrã inteiro; lembrado no browser
+- [x] 6. ESLint também no `highway3d.js`; teste da rota e do spec; docs; Playwright
+
 # Usar o áudio do ficheiro GP em todos os caminhos
 
 Pedido: "Porque é que continuas a não aproveitar o mp3 do ficheiro gp?". O
