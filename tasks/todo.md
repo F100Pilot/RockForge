@@ -186,3 +186,21 @@ traço em vez de emojis, e o projeto em ecrã inteiro em vez de um modal.
 - [x] Reproduced with the user's GP5 (last note on the "and" of 4, grid ended on beat 4)
 - [x] close_beat_grid in both parsers; exporter and /arrangements treat the final downbeat as the bar line
 - [x] Tests (mutation-checked), the user's file built end to end, docs
+
+# A pista de voz: frases, durações e melodia; áudio do YouTube sem Songsterr (2026-09-29)
+
+Pedido: "implementa a 1, a 2 e a 3" (quebras de linha pelas pausas da voz,
+duração da sílaba pela nota, melodia da voz como fonte de áudio) + "quando só
+carrego um gp5, o mp3 não vem incluído — já não existia download de mp3?"
+
+- [x] 1. Parsers: `lyric_onsets` → `lyric_notes` (início, fim, MIDI, pausa antes)
+- [x] 2. `distribute_syllables`: duração = fim da nota; quebra de linha antes de
+      uma palavra com maiúscula junto a uma pausa da voz (só quando o texto não
+      traz as suas próprias quebras); sem maiúsculas → pela pausa
+- [x] 3. Melodia da voz: `PipelineResult.vocal_melody` → `params["vocal_melody"]`
+      → `GET /jobs/{id}/vocal-melody` → "Voz (sintetizada)" na Fonte de áudio
+- [x] 4. Assistente passo 3: link do YouTube direto (sem Songsterr) → `/youtube/audio`
+- [x] 5. Testes, docs, Playwright, gates
+- [x] extra: o limite de 7 palavras contava sílabas e deixava palavras órfãs →
+      conta palavras e parte ao meio; "Voltar à letra da pauta" para projetos
+      já criados (as linhas do editor ganham ao ficheiro)

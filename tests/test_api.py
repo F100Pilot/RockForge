@@ -2252,6 +2252,29 @@ def test_lrc_text_becomes_the_editors_words_with_the_offset(client: TestClient) 
     assert plain.status_code == 422
 
 
+def test_the_vocal_line_is_served_for_the_viewers_voice_source(client: TestClient) -> None:
+    import rockforge.interfaces.api.app as app_module
+
+    job = _create_job(client)
+    assert client.get(f"/jobs/{job['id']}/vocal-line").json() == {
+        "notes": [], "gp_has_lyrics": False,
+    }
+    with app_module._session_factory() as session:
+        db_job = session.get(app_module.Job, job["id"])
+        db_job.params = {**(db_job.params or {}), "gp_has_lyrics": True, "vocal_melody": [
+            {"time": 1.0, "length": 0.25, "midi": 64},
+            {"time": 1.5, "length": 0.5, "midi": None},
+            {"time": "not a time", "length": 1},  # malformed: skipped, not a 500
+        ]}
+        session.commit()
+    r = client.get(f"/jobs/{job['id']}/vocal-line")
+    assert r.status_code == 200
+    assert r.json() == {"gp_has_lyrics": True, "notes": [
+        {"time": 1.0, "length": 0.25, "midi": 64}, {"time": 1.5, "length": 0.5, "midi": None},
+    ]}
+    assert client.get("/jobs/nope/vocal-line").status_code == 404
+
+
 def test_rebuild_stores_lyrics_events_and_resets_status(client: TestClient) -> None:
     job = _create_job(client)
     client.post(f"/jobs/{job['id']}/detect-lyrics")

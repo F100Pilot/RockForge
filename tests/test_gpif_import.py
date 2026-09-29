@@ -604,8 +604,12 @@ def test_gp7_lyrics_are_timed_on_the_notes_of_their_own_track(tmp_path: Path) ->
         z.writestr("Content/score.gpif", GPIF_VOCALS)
     parsed = parse_gp_track(path, 0)  # the guitar chart
     assert parsed.lyrics[0].text == "sing  a song"
-    # Vocals: eighth at 0, eighth REST at 0.25, eighth at 0.5, dotted half at 0.75.
-    assert parsed.lyric_onsets == (0.0, 0.5, 0.75)
+    # Vocals: eighth at 0, eighth REST at 0.25, eighth at 0.5, dotted half at
+    # 0.75 — each with its end, its pitch (high E + 5 = A4) and the breath.
+    assert parsed.lyric_notes is not None
+    assert [(n.time, n.end, n.midi, n.rest_before) for n in parsed.lyric_notes] == [
+        (0.0, 0.25, 69, False), (0.5, 0.75, 69, True), (0.75, 2.25, 69, False),
+    ]
 
 
 def test_gp7_grid_closes_the_last_bar_so_a_late_eighth_fits(tmp_path: Path) -> None:

@@ -56,3 +56,17 @@ IS the committed value, so old and new compared equal. A documented feature
 and no test drove the task body with lyrics. Rule: `dict(job.params or {})`
 before writing into it, and a feature that persists something needs a test
 that reads it back from the database after the real task runs.
+
+## Read your own debug output unambiguously before designing on it (2026-09-29)
+I printed "word |gap|" meaning "rest BEFORE this word", then read it as "rest
+after" and built a "pickup before the breath" tolerance on the misreading —
+which split "High / Noon". Rule: label debug output with what it means
+(`rest_before=`), and re-check the reading against one case you know (here:
+"who (rest) But she's…" is how the song goes) before turning it into a rule.
+
+## Time what the browser renders, not just whether it renders (2026-09-29)
+The voice source "did nothing" in Playwright: its OfflineAudioContext render of
+411 oscillators took 20 s, so the check ran before it finished. Rule: measure
+`performance.now()` around any in-browser render of a whole song; a few
+hundred scheduled nodes are slow — compute simple waveforms into an
+AudioBuffer directly.

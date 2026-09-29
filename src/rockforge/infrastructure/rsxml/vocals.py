@@ -24,6 +24,7 @@ from __future__ import annotations
 import bisect
 import re
 import xml.etree.ElementTree as ET
+from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
 
@@ -93,26 +94,66 @@ DEFAULT_SYLLABLE_LENGTH_S = 0.3
 MAX_LINE_WORDS = 7
 
 
+_PRONOUN_I = {"i", "i'm", "i'll", "i've", "i'd"}
+
+
+def _capitalised(text: str) -> bool:
+    letters = text.lstrip("\"'“‘(¿¡[-")
+    return bool(letters) and letters[0].isupper()
+
+
+def _pronoun_i(text: str) -> bool:
+    return text.strip("\"'“”‘’(),.!?;:+-").replace("’", "'").lower() in _PRONOUN_I
+
+
+def _break_fit(events: list[VocalEvent], word_end: int) -> int:
+    """How good a line break after event *word_end* is: before a capitalised
+    word (not "I") best, after punctuation next, anywhere else last."""
+    nxt = events[word_end + 1].lyric
+    if _capitalised(nxt) and not _pronoun_i(nxt):
+        return 2
+    return 1 if events[word_end].lyric.rstrip("+ ")[-1:] in ",;.!?" else 0
+
+
 def enforce_max_line_words(
     events: list[VocalEvent], max_words: int = MAX_LINE_WORDS
 ) -> list[VocalEvent]:
-    """Force a line break (trailing ``+``) once a line reaches ``max_words``
-    without one, so no lyric line runs longer than that on screen. Never removes
-    an authored break, never breaks mid-word (a syllable-join ``-``) or on the
-    very last event."""
+    """Split every line longer than ``max_words`` words into the fewest lines
+    that fit, of about equal length — an 8-word line becomes 4 + 4, not 7 + an
+    orphaned last word. Within two words of an even split it prefers a break
+    before a capitalised word (lyrics start their lines with one; the pronoun
+    "I" aside), then after punctuation. A word is counted once however many
+    syllables it has (a syllable-join ``-`` is not a word end). Never removes
+    an authored break, never breaks mid-word and never adds one after the very
+    last event."""
     out = list(events)
-    since_break = 0
+    start = 0
     for i, e in enumerate(out):
-        stripped = e.lyric.rstrip()
-        if stripped.endswith("+"):
-            since_break = 0
+        if not (e.lyric.rstrip().endswith("+") or i == len(out) - 1):
             continue
-        since_break += 1
-        if stripped.endswith("-"):
-            continue  # mid-word syllable — a break here would split the word
-        if since_break >= max_words and i < len(out) - 1:
-            out[i] = VocalEvent(time=e.time, length=e.length, lyric=e.lyric + "+")
-            since_break = 0
+        word_ends = [
+            j for j in range(start, i + 1) if not out[j].lyric.rstrip().endswith("-")
+        ]
+        start = i + 1
+        n = len(word_ends)
+        if n <= max_words:
+            continue
+        lines = -(-n // max_words)
+        before = 0  # words already placed on earlier lines
+        for k in range(1, lines):
+            left = lines - k  # lines still to fill after this break
+            ok = [
+                c for c in (round(k * n / lines) + d for d in (0, -1, 1, -2, 2))
+                if 0 < c - before <= max_words and n - c <= left * max_words
+            ]
+            if not ok:
+                continue
+            # max() keeps the first (nearest the even split) of equals.
+            fits = [_break_fit(out, word_ends[c - 1]) for c in ok]
+            cut = ok[fits.index(max(fits))]
+            j = word_ends[cut - 1]
+            out[j] = VocalEvent(time=out[j].time, length=out[j].length, lyric=out[j].lyric + "+")
+            before = cut
     return out
 
 
@@ -123,6 +164,7 @@ class _Syllable:
     is_hold: bool = False  # "_" melisma: hold the previous syllable one more note
     skip_before: int = 0  # note attacks passed over, unsung, before this one
     line_end: bool = False  # a newline in the text follows (Rocksmith "+")
+    starts_word: bool = False  # the first syllable of a word
 
 
 _COMMENT = re.compile(r"[ \t]*\[[^\]]*\]")
@@ -162,6 +204,7 @@ def _split_syllables(text: str) -> list[_Syllable]:
                         part,
                         joins_next=not last or trailing_hyphen,
                         skip_before=skip if k == 0 else 0,
+                        starts_word=k == 0,
                     ))
             skip = 0
         if i < len(gaps) and out:  # space before the first syllable skips nothing
@@ -177,7 +220,11 @@ def _split_syllables(text: str) -> list[_Syllable]:
 
 
 def distribute_syllables(
-    lines: list[tuple[float, str]], onsets: list[float]
+    lines: list[tuple[float, str]],
+    onsets: Sequence[float],
+    *,
+    ends: Sequence[float] | None = None,
+    rests_before: Sequence[bool] | None = None,
 ) -> list[VocalEvent]:
     """Align Guitar Pro line lyrics to real note onsets, one syllable per note.
 
@@ -190,26 +237,70 @@ def distribute_syllables(
     word (no space, hyphen shown in game), a trailing ``+`` on the last
     syllable of a line is the line break.
 
+    When the onsets are the notes of a VOCAL line, two more things are read
+    from it. `ends` (when each note stops) sets how long a syllable is shown,
+    instead of stretching it over the rest that follows. `rests_before` (the
+    line rests before this note) finds the phrases when the text has no line
+    breaks of its own (one lyric line, no newline): a word starting with a
+    capital — how lyrics mark a new line — begins one when the vocal line
+    rests just before it. A capital alone is not enough ("High Noon" is not
+    two lines) and neither is a rest (lines are breaths, but not every breath
+    is a line: "tequila (breath) with High Noon"). Lyrics with no capitals to
+    go by (all lower or all upper case; the pronoun "I" does not count) break
+    at every rest before a word. Never inside a word.
+
     Honest limit: this assumes one syllable per note attack (syllabic singing).
     Melismas (one syllable held over several notes) are not modelled — the GP
     format does not record them recoverably here — so a melismatic passage will
     drift by the number of extra notes until the next line resets it.
     """
-    grid = sorted(set(onsets))
+    by_time: dict[float, tuple[float | None, bool]] = {}
+    for i, t in enumerate(onsets):
+        if t not in by_time:
+            by_time[t] = (
+                ends[i] if ends is not None else None,
+                bool(rests_before[i]) if rests_before is not None else False,
+            )
+    grid = sorted(by_time)
+    note_end = [by_time[t][0] for t in grid]
+    rest = [by_time[t][1] for t in grid]
 
     def onset_at(idx: int, fallback: float) -> tuple[float, float]:
-        """(time, length) for the note onset at *idx*; length = gap to next."""
+        """(time, length) for the note onset at *idx*: until the note ends when
+        that is known, else until the next note."""
         if idx < len(grid):
             t = grid[idx]
-            nxt = grid[idx + 1] if idx + 1 < len(grid) else t + DEFAULT_LAST_LENGTH_S
-            return t, min(MAX_LENGTH_S, max(0.1, nxt - t))
+            stop = note_end[idx]
+            if stop is None:
+                stop = grid[idx + 1] if idx + 1 < len(grid) else t + DEFAULT_LAST_LENGTH_S
+            return t, min(MAX_LENGTH_S, max(0.1, stop - t))
         anchor = grid[-1] if grid else fallback
         return anchor + (idx - len(grid) + 1) * DEFAULT_SYLLABLE_LENGTH_S, DEFAULT_SYLLABLE_LENGTH_S
 
+    parsed = [(line_time, _split_syllables(text)) for line_time, text in lines]
+    # Phrases from the vocal line's rests only when the text does not already
+    # say where its lines end: a newline in it, or lyrics written as several
+    # lines (each from its own bar), are the author's own choice.
+    phrasing = (
+        rests_before is not None
+        and sum(1 for _t, syls in parsed if syls) == 1
+        and not any(syl.line_end for _t, syls in parsed for syl in syls)
+    )
+    words = [
+        syl.text for _t, syls in parsed for syl in syls
+        if syl.starts_word and not _pronoun_i(syl.text)
+    ][1:]
+    capitals = sum(_capitalised(w) for w in words)
+    by_capitals = 0 < capitals < len(words)
+
+    def starts_phrase(syl: _Syllable, idx: int) -> bool:
+        if not (phrasing and syl.starts_word and idx < len(grid) and rest[idx]):
+            return False
+        return _capitalised(syl.text) if by_capitals else True
+
     events: list[VocalEvent] = []
     cursor = 0
-    for line_time, text in lines:
-        syllables = _split_syllables(text)
+    for line_time, syllables in parsed:
         if not syllables:
             continue
         first = bisect.bisect_left(grid, line_time - 1e-3)
@@ -232,6 +323,10 @@ def distribute_syllables(
                     )
                 idx += 1
                 continue
+            if events and starts_phrase(syl, idx):
+                prev = events[-1]
+                if not prev.lyric.endswith(("+", "-")):
+                    events[-1] = VocalEvent(prev.time, prev.length, prev.lyric + "+")
             if syl.joins_next and k != last_real:
                 lyric = f"{syl.text}-"
             elif syl.line_end or k == last_real:

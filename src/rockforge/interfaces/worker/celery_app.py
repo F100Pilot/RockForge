@@ -359,7 +359,17 @@ def generate_cdlc(job_id: str) -> None:
                         {"time": e.time, "length": e.length, "lyric": e.lyric}
                         for e in result.gp_lyrics
                     ]
-                    job.params = {**params}  # JSON column needs a fresh dict object
+                # The vocal line is re-read on every build (it follows the
+                # sync corrections), so it is replaced, never kept from before.
+                if result.vocal_melody:
+                    params["vocal_melody"] = [
+                        {"time": t, "length": ln, "midi": m}
+                        for t, ln, m in result.vocal_melody
+                    ]
+                else:
+                    params.pop("vocal_melody", None)
+                params["gp_has_lyrics"] = result.gp_has_lyrics
+                job.params = {**params}  # JSON column needs a fresh dict object
                 session.commit()
                 return
 

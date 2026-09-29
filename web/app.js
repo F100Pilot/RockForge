@@ -80,6 +80,8 @@ function applyEmbeddedAudioChoice() {
   // stand in for an upload.
   const provided = usingEmbeddedAudio() || !!ytAudio;
   document.getElementById('gpAudioUploadField').hidden = provided;
+  // The file's own recording is the right one; a download would be another.
+  document.getElementById('ytBlock').hidden = usingEmbeddedAudio();
   // `required` would block the submit on a field the user never needs to fill.
   document.querySelector('#gpJobForm input[name=audio]').required = !provided;
 }
@@ -100,19 +102,53 @@ function resetSongsterr() {
   document.getElementById('songsterrLink').value = '';
   document.getElementById('songsterrVideo').hidden = true;
   document.getElementById('songsterrInfo').textContent = '';
+}
+function resetYtAudio() {
   ytAudio = null;
-  document.getElementById('ytAudioRow').hidden = true;
+  document.getElementById('ytBlock').open = false;
+  document.getElementById('ytLink').value = '';
   document.getElementById('ytAudioInfo').textContent = '';
   document.getElementById('ytCookies').value = '';
+}
+// The 11-character id of a YouTube video from a link (watch?v=, youtu.be/,
+// shorts/, embed/, live/) or a bare id; null when there is none. Only the id
+// is sent to the server, which builds the URL itself.
+function youtubeVideoId(text) {
+  const s = String(text || '').trim();
+  const ID = /^[A-Za-z0-9_-]{11}$/;
+  if (ID.test(s)) return s;
+  let u;
+  try { u = new URL(s.includes('://') ? s : `https://${s}`); } catch { return null; }
+  const host = u.hostname.toLowerCase().replace(/^(www|m|music)\./, '');
+  let id = null;
+  if (host === 'youtu.be') id = u.pathname.split('/')[1];
+  else if (host === 'youtube.com' || host === 'youtube-nocookie.com') {
+    id = u.searchParams.get('v');
+    if (!id) {
+      const m = u.pathname.match(/^\/(?:shorts|embed|live|v)\/([^/?#]+)/);
+      id = m && m[1];
+    }
+  }
+  return id && ID.test(id) ? id : null;
+}
+// The Songsterr video whose times are in use, or null.
+function songsterrChosenVideo() {
+  const sel = document.getElementById('songsterrVideo');
+  return songsterrSong && sel.value !== '' ? songsterrSong.videos[Number(sel.value)] : null;
 }
 function applySongsterrVideo() {
   const sel = document.getElementById('songsterrVideo');
   const info = document.getElementById('songsterrInfo');
   const v = songsterrSong && sel.value !== '' ? songsterrSong.videos[Number(sel.value)] : null;
   songsterrPoints = v ? v.points : null;
-  document.getElementById('ytAudioRow').hidden = !v;
+  if (v) {
+    // The recording these times belong to is that video's audio: its link
+    // goes to the download block, one click away.
+    document.getElementById('ytLink').value = v.url;
+    document.getElementById('ytBlock').open = true;
+  }
   // Audio fetched for ANOTHER video does not match these times.
-  if (ytAudio && (!v || ytAudio.videoId !== v.video_id)) {
+  if (ytAudio && v && ytAudio.videoId !== v.video_id) {
     ytAudio = null;
     document.getElementById('ytAudioInfo').textContent = '';
     applyEmbeddedAudioChoice();
@@ -124,7 +160,7 @@ function applySongsterrVideo() {
   document.querySelector('#gpJobForm input[name=offset_s]').value = start.toFixed(3);
   info.innerHTML = `${icon('check')} ${v.points.length} compassos com tempo marcado. Os tempos são do vídeo ` +
     `<a href="${esc(v.url)}" target="_blank" rel="noopener">${esc(v.url)}</a> — a gravação tem de ser o áudio desse vídeo ` +
-    '(descarrega-o abaixo, ou carrega um MP3 convertido dele; o áudio do próprio Songsterr é outro e não bate). ' +
+    '(descarrega-o em "Não tens o áudio?", acima, ou carrega um MP3 convertido dele; o áudio do próprio Songsterr é outro e não bate). ' +
     `O compasso 1 começa em <b>${start.toFixed(3)} s</b> desse vídeo; já pus esse valor em "Início da música". ` +
     'Se o teu MP3 foi cortado no início, ajusta-o.';
 }
@@ -154,22 +190,29 @@ async function fetchSongsterrVideos() {
 }
 
 async function downloadYtAudio() {
-  const sel = document.getElementById('songsterrVideo');
-  const v = songsterrSong && sel.value !== '' ? songsterrSong.videos[Number(sel.value)] : null;
-  if (!v) return;
   const info = document.getElementById('ytAudioInfo');
+  const videoId = youtubeVideoId(document.getElementById('ytLink').value);
+  if (!videoId) {
+    info.textContent = 'Cola o link de um vídeo do YouTube (youtube.com/watch?v=… ou youtu.be/…).';
+    return;
+  }
+  const url = `https://youtu.be/${videoId}`;
   const btn = document.getElementById('ytAudioBtn');
   const browser = document.getElementById('ytCookies').value;
   btn.disabled = true;
-  info.textContent = `A descarregar o áudio de ${v.url}… (pode demorar um minuto)`;
+  info.textContent = `A descarregar o áudio de ${url}… (pode demorar um minuto)`;
   try {
     const b = await getJSON('/youtube/audio', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ video_id: v.video_id, cookies_browser: browser || null }),
+      body: JSON.stringify({ video_id: videoId, cookies_browser: browser || null }),
     });
-    ytAudio = { token: b.audio_token, videoId: v.video_id, name: b.name, size: b.size_bytes };
+    ytAudio = { token: b.audio_token, videoId, name: b.name, size: b.size_bytes };
+    const sv = songsterrChosenVideo();
     info.innerHTML = `${icon('check')} Áudio do vídeo descarregado (${(b.size_bytes / 1048576).toFixed(1)} MB) — ` +
-      'vai ser usado como gravação; não precisas de carregar nenhum ficheiro.';
+      'vai ser usado como gravação; não precisas de carregar nenhum ficheiro.' +
+      (sv && sv.video_id !== videoId
+        ? ' <b>Atenção:</b> não é o vídeo dos tempos do Songsterr escolhidos, e esses tempos não vão bater com ele.'
+        : '');
   } catch (err) {
     ytAudio = null;
     // The server's message already says what to do (install the JS runtime,
@@ -189,6 +232,7 @@ function openNewJobModal() {
   document.getElementById('gpEmbeddedAudioRow').hidden = true;  // until a file says it has one
   applyEmbeddedAudioChoice();
   resetSongsterr();
+  resetYtAudio();
   resetWizardAlbum();
   resetWizardLyrics();
   songsterrImported = false;
@@ -794,12 +838,13 @@ const INFO = {
   'songsterr-import': {
     title: 'Importar a tab do Songsterr',
     body: '<p>Em vez de um ficheiro Guitar Pro, cola o link da música no <strong>Songsterr</strong>. O RockForge descarrega as pistas da tab e cria com elas um ficheiro Guitar Pro 5, que segue o caminho normal (escolhes as pistas no passo 2).</p>' +
-      '<p>No passo 3 aparecem os <strong>vídeos do YouTube</strong> dessa música com o tempo de cada compasso marcado por pessoas. Escolhe um e carrega o <strong>MP3 convertido desse mesmo vídeo</strong> — o RockForge não descarrega áudio. Com isso, as notas seguem a gravação compasso a compasso, sem acertos manuais.</p>' +
+      '<p>No passo 3 aparecem os <strong>vídeos do YouTube</strong> dessa música com o tempo de cada compasso marcado por pessoas, e o áudio do vídeo escolhido é descarregado para ser a gravação (ou carregas um MP3 convertido dele). Com isso, as notas seguem a gravação compasso a compasso, sem acertos manuais.</p>' +
       '<p>Limites: a API do Songsterr não é pública e pode mudar; as pistas de bateria ficam de fora; notas de ornamento (grace) não são incluídas. A letra vem quando a tab a tem, com cada sílaba na nota da pista em que está escrita (normalmente a da voz); se não tiver, procura-a no passo 4 ou na página Letra. O ficheiro criado pode ser exportado e aberto no Guitar Pro.</p>'
   },
   'youtube-audio': {
     title: 'Áudio do vídeo do YouTube',
-    body: '<p>Os tempos por compasso do Songsterr foram marcados num vídeo do YouTube, por isso a gravação que bate certo com eles é o <strong>áudio desse vídeo</strong>. Este botão descarrega-o com o <strong>yt-dlp</strong> e usa-o como gravação do projeto — já não precisas de o converter à mão.</p>' +
+    body: '<p>Cola o link de um vídeo do YouTube com a música: o RockForge descarrega o áudio com o <strong>yt-dlp</strong> e usa-o como gravação do projeto — já não precisas de o converter à mão. Serve para qualquer ficheiro GP, também um feito por ti. A sincronização acerta-se depois na partitura.</p>' +
+      '<p>Com os <strong>tempos por compasso do Songsterr</strong> tem de ser o vídeo em que esses tempos foram marcados — ao escolheres o vídeo lá, o link aparece aqui sozinho.</p>' +
       '<p><strong>Precisa de duas coisas instaladas:</strong> o yt-dlp com o solucionador do YouTube (<code>pip install -U "yt-dlp[default]"</code>) e um <strong>motor JavaScript</strong>, o Deno (<code>winget install DenoLand.Deno</code>; o Node também serve). O YouTube só entrega o áudio a quem resolver um desafio em JavaScript — sem o motor recusa, mesmo sem pedir login. Depois de instalar, reinicia o RockForge. ⚙️ Definições → Software externo mostra o que falta.</p>' +
       '<p><strong>Se o YouTube pedir uma sessão</strong> ("confirma que não és um robô"), escolhe em "Sessão do browser" um browser onde tenhas o YouTube aberto. No Windows usa o <strong>Firefox</strong>: o yt-dlp não consegue ler a sessão do Chrome, do Edge nem dos outros baseados no Chromium.</p>' +
       '<p>Se o YouTube mudar e os downloads falharem, atualizar o yt-dlp costuma resolver. Descarregar do YouTube vai contra os termos do YouTube fora das funções que ele oferece — usa só para uso pessoal, com música a que tens direito.</p>'
@@ -2621,7 +2666,9 @@ async function applyAll() {
       apply_to_all: applyToAll,
       import_mutes: document.getElementById('muteChk').checked,
       dynamic_difficulty: document.getElementById('ddChk').checked,
-      lyrics_events: lyricsEvents.length ? serializeLyrics() : null,
+      // null keeps the stored rows; [] drops them, so the build reads the GP
+      // file's own lyrics again ("Voltar à letra da pauta").
+      lyrics_events: lyricsEvents.length ? serializeLyrics() : (lyricsBackToScore ? [] : null),
       // Send the FULL current tone state for GP jobs (even when empty) so that
       // clearing tones/changes actually persists — null would mean "keep the
       // old value". Non-GP jobs have no tones, so send null to skip the guard.
@@ -3607,10 +3654,27 @@ function updateLyricsProgress(status, log, forceStuck) {
   }
 }
 
+// "Voltar à letra da pauta": the editor's rows are dropped on the next rebuild
+// and the build reads the lyrics from the GP file again — the way to get the
+// score's own phrasing back after the rows replaced it.
+let lyricsBackToScore = false;
+document.getElementById('lyricsFromScore').addEventListener('click', async () => {
+  if (!(await confirmModal('Descartar a letra do editor e voltar a lê-la do ficheiro Guitar Pro? ' +
+    'Acontece em "Aplicar e reconstruir"; as edições feitas aqui perdem-se.'))) return;
+  lyricsEvents = [];
+  lyricSelected = null;
+  lyricsBackToScore = true;
+  renderLyricsRows();
+  updatePendingChangesInfo();
+  document.getElementById('lyricsInfo').textContent =
+    'A letra da pauta volta a ser lida em "Aplicar e reconstruir".';
+});
+
 async function loadLyrics(id) {
   const r = await fetch(`/jobs/${id}/lyrics`);
   if (!r.ok) return;
   const body = await r.json();
+  lyricsBackToScore = false;
   lyricsEvents = eventsToRows(body.events);
   lyricsBuilt = JSON.stringify(serializeLyrics());
   renderLyricsRows();
@@ -4117,6 +4181,11 @@ function populateAudioSources() {
     const v = `synth:${a.kind}`;
     values.push(v);
     html += `<option value="${esc(v)}">${esc(a.kind)} (sintetizada)</option>`;
+  }
+  if (vocalLine.notes.length) {
+    const v = `synth:${VOICE_SOURCE}`;
+    values.push(v);
+    html += `<option value="${v}">Voz (sintetizada)</option>`;
   }
   for (const name of availableStems) {
     values.push(name);
@@ -5541,7 +5610,58 @@ function playNote(midi, chartTime) {
 // reference of just that guitar's part, to check the sync of each arrangement
 // against the recording by ear. Reflects the pending sync at the moment it's
 // selected (re-pick the source to refresh after more edits).
+// The notes the GP lyrics are sung on (GET /jobs/{id}/vocal-line), as of the
+// last build, in the lyrics' own clock — offered as "Voz (sintetizada)" so the
+// rhythm the words follow can be heard against the recording.
+let vocalLine = { notes: [], gp_has_lyrics: false };
+const VOICE_SOURCE = 'Voz';
+async function loadVocalLine(id) {
+  vocalLine = { notes: [], gp_has_lyrics: false };
+  try {
+    const r = await fetch(`/jobs/${id}/vocal-line`);
+    if (r.ok) vocalLine = await r.json();
+  } catch { /* then the source is simply not offered */ }
+  if (!selectedJob || selectedJob.id !== id) return;
+  populateAudioSources();
+  document.getElementById('lyricsFromScore').hidden = !(isGpJob() && vocalLine.gp_has_lyrics);
+}
+
+// The vocal line as a sung-like tone, not a plucked string: each note held for
+// its written length, with a little vibrato. It sits where the lyrics are drawn
+// (their clock + the built intro silence), so a word and its note sound
+// together. A note with no pitch in the file plays an A4. The samples are
+// computed directly, not through audio nodes: a few hundred scheduled
+// oscillators took several times longer to render than the whole line needs.
+async function synthesizeVoice() {
+  const notes = vocalLine.notes || [];
+  if (!notes.length) return null;
+  const sr = 44100;
+  const last = notes.reduce((m, n) => Math.max(m, n.time + n.length), 0);
+  const buf = new AudioBuffer({
+    length: Math.ceil((last + leadInBuilt + 1) * sr), sampleRate: sr, numberOfChannels: 1,
+  });
+  const out = buf.getChannelData(0);
+  for (const n of notes) {
+    const hz = midiToHz(n.midi ?? 69);
+    const dur = Math.max(0.08, n.length);
+    const i0 = Math.round((n.time + leadInBuilt) * sr);
+    const len = Math.min(Math.round(dur * sr), out.length - i0);
+    const attack = 0.02 * sr, release = Math.min(0.06, dur / 3) * sr;
+    let phase = 0;
+    for (let k = 0; k < len; k++) {
+      const t = k / sr;
+      const vibrato = 1 + 0.006 * Math.sin(2 * Math.PI * 5.5 * t) * Math.min(1, t / 0.25);
+      phase += 2 * Math.PI * hz * vibrato / sr;
+      const env = Math.min(1, k / attack, (len - k) / release);
+      // A soft vowel: the fundamental with a little of the 2nd and 3rd harmonic.
+      out[i0 + k] += 0.3 * env * (Math.sin(phase) + 0.35 * Math.sin(2 * phase) + 0.12 * Math.sin(3 * phase));
+    }
+  }
+  return buf;
+}
+
 async function synthesizeArrangement(kind) {
+  if (kind === VOICE_SOURCE) return synthesizeVoice();
   const a = arrangements.find(x => x.kind === kind);
   if (!a || !a.notes || !a.notes.length) return null;
   const sr = 44100;
@@ -6162,6 +6282,7 @@ function initSync(j) {
   if (audioSourceSel) audioSourceSel.value = '';
   decodeWaveform(j.id);
   loadStems(j.id);
+  loadVocalLine(j.id);
 }
 
 // Swap the per-arrangement sync state (tempo scale + pending drift anchors)
@@ -6391,7 +6512,7 @@ function audioSourceStyle() {
     const kind = n.slice(6);
     const palette = {
       Lead: '#a97bff', Rhythm: '#3fa7ff', Combo: '#ff8a5c',
-      Combined: '#ff8a5c', Bass: '#5cc24a',
+      Combined: '#ff8a5c', Bass: '#5cc24a', [VOICE_SOURCE]: '#ff5fa2',
     };
     return { color: palette[kind] || '#a97bff', label: `${kind} (sintetizada)` };
   }

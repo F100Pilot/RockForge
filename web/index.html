@@ -1074,6 +1074,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
             </div>
             <div class="anchor-row">
               <button type="button" id="detectLyrics" class="secondary">Detetar letra</button>
+              <button type="button" id="lyricsFromScore" class="secondary" title="Descarta estas linhas e volta a ler a letra do ficheiro Guitar Pro na próxima reconstrução" hidden><svg class="ic" aria-hidden="true"><use href="#i-undo"/></svg> Voltar à letra da pauta</button>
               <span id="lyricsInfo" class="meta"></span>
               <button class="info-btn" data-info="lyrics">ⓘ</button>
             </div>
@@ -1332,25 +1333,13 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
         <div class="field" id="gpAudioUploadField" style="flex-basis:100%"><label>Gravação (áudio da música)</label>
           <div class="file-drop"><div class="file-drop-icon"><svg class="ic" aria-hidden="true"><use href="#i-headphones"/></svg></div><span class="file-drop-text">Arrasta ou clica para escolher</span><span class="file-drop-btn">Procurar</span>
           <input type="file" name="audio" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" required></div></div>
-        <div class="field"><label>Início da música na gravação (s) <button class="info-btn" data-info="gp-offset">ⓘ</button></label>
-          <input type="number" name="offset_s" value="0" step="any" min="0" style="width:6rem"></div>
-        <div class="field"><label>Silêncio inicial (s) <button class="info-btn" data-info="lead-in">ⓘ</button></label>
-          <input type="number" name="lead_in_s" value="0" step="any" min="0" style="width:6rem"></div>
-        <details class="field" id="songsterrBlock" style="flex-basis:100%">
-          <summary style="cursor:pointer"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg> <b>Extra</b> — sincronizar pelos tempos do Songsterr (opcional)</summary>
-          <p class="meta" style="margin:.4rem 0 .35rem">O Songsterr guarda o instante de <b>cada compasso</b> num vídeo do
-            YouTube, marcado por pessoas. Cola o link da música: o RockForge vai buscar só esses tempos. O MP3 tem de ser
-            <b>convertido desse mesmo vídeo do YouTube</b> (o link aparece depois de procurares) — o áudio que o próprio
-            Songsterr disponibiliza é outro e não bate com estes tempos. O ficheiro GP tem de ser o tab do Songsterr,
-            para o compasso N ser o mesmo nos dois.</p>
-          <div class="syncctrls">
-            <input type="text" id="songsterrLink" placeholder="https://www.songsterr.com/a/wsa/…-tab-s23063" style="flex:1;min-width:14rem">
-            <button type="button" id="songsterrFetch" class="secondary">Procurar</button>
-          </div>
-          <select id="songsterrVideo" style="margin-top:.4rem;width:100%" hidden></select>
-          <p class="meta" id="songsterrInfo" style="margin:.35rem 0 0"></p>
-          <div id="ytAudioRow" class="syncctrls" style="margin-top:.45rem;flex-wrap:wrap" hidden>
-            <button type="button" id="ytAudioBtn" class="secondary"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg> Descarregar o áudio deste vídeo</button>
+        <details class="field" id="ytBlock" style="flex-basis:100%">
+          <summary style="cursor:pointer"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg> <b>Não tens o áudio?</b> — descarregá-lo de um vídeo do YouTube</summary>
+          <p class="meta" style="margin:.4rem 0 .35rem">Cola o link do vídeo com a música: o áudio passa a ser a gravação do
+            projeto, sem converteres nada à mão. A sincronização acerta-se depois na partitura (ou pelos tempos do Songsterr, abaixo).</p>
+          <div class="syncctrls" style="flex-wrap:wrap">
+            <input type="text" id="ytLink" placeholder="https://www.youtube.com/watch?v=…" style="flex:1;min-width:14rem">
+            <button type="button" id="ytAudioBtn" class="secondary"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg> Descarregar o áudio</button>
             <label class="meta" style="display:flex;align-items:center;gap:.35rem">Sessão do browser
               <select id="ytCookies" title="Se o YouTube recusar o download, usa a sessão de um browser onde tenhas o YouTube aberto">
                 <option value="">nenhuma</option><option>chrome</option><option>firefox</option><option>edge</option>
@@ -1359,6 +1348,24 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
             <button class="info-btn" type="button" data-info="youtube-audio">ⓘ</button>
           </div>
           <p class="meta" id="ytAudioInfo" style="margin:.35rem 0 0"></p>
+        </details>
+        <div class="field"><label>Início da música na gravação (s) <button class="info-btn" data-info="gp-offset">ⓘ</button></label>
+          <input type="number" name="offset_s" value="0" step="any" min="0" style="width:6rem"></div>
+        <div class="field"><label>Silêncio inicial (s) <button class="info-btn" data-info="lead-in">ⓘ</button></label>
+          <input type="number" name="lead_in_s" value="0" step="any" min="0" style="width:6rem"></div>
+        <details class="field" id="songsterrBlock" style="flex-basis:100%">
+          <summary style="cursor:pointer"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg> <b>Extra</b> — sincronizar pelos tempos do Songsterr (opcional)</summary>
+          <p class="meta" style="margin:.4rem 0 .35rem">O Songsterr guarda o instante de <b>cada compasso</b> num vídeo do
+            YouTube, marcado por pessoas. Cola o link da música: o RockForge vai buscar só esses tempos. A gravação tem de ser
+            <b>o áudio desse mesmo vídeo do YouTube</b> (depois de escolheres o vídeo, o link passa para "Não tens o áudio?",
+            acima, e podes descarregá-lo) — o áudio que o próprio Songsterr disponibiliza é outro e não bate com estes tempos.
+            O ficheiro GP tem de ser o tab do Songsterr, para o compasso N ser o mesmo nos dois.</p>
+          <div class="syncctrls">
+            <input type="text" id="songsterrLink" placeholder="https://www.songsterr.com/a/wsa/…-tab-s23063" style="flex:1;min-width:14rem">
+            <button type="button" id="songsterrFetch" class="secondary">Procurar</button>
+          </div>
+          <select id="songsterrVideo" style="margin-top:.4rem;width:100%" hidden></select>
+          <p class="meta" id="songsterrInfo" style="margin:.35rem 0 0"></p>
         </details>
         <p class="meta" id="gpSyncHint" style="flex-basis:100%;color:#3fdc8a" hidden></p>
         <p class="meta" style="flex-basis:100%">Um valor aproximado chega — a <b>sincronização fina</b> (início por pista, andamento, arrastar notas) faz-se depois, na partitura.</p>

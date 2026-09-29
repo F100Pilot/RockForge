@@ -17,7 +17,7 @@ from rockforge.application.gp_pipeline import (
 )
 from rockforge.domain.arrangement import Section, SongMetadata, ToneChange
 from rockforge.domain.music import Beat, BendPoint, TabNote, Technique, TempoMap, Tuning
-from rockforge.infrastructure.gpimport.parser import GpLyricLine, ParsedGpTrack
+from rockforge.infrastructure.gpimport.parser import GpLyricLine, LyricNote, ParsedGpTrack
 from rockforge.infrastructure.packaging.dlcbuilder import DlcBuilderPackager
 
 
@@ -369,8 +369,17 @@ def test_gp_lyrics_are_sung_on_the_vocal_line_not_the_charted_guitar(
         (2.0, "Hel-"), (2.25, "lo"), (2.75, "world"), (3.0, "is"),
         (3.25, "here"), (3.5, "now+"), (4.0, "la"), (5.5, "la+"),
     ]
+    # A syllable lasts as long as its note: the half note's "la" is 1 s, not
+    # the 1.5 s up to the next note across the rest.
+    assert [round(e.length, 3) for e in result.gp_lyrics][-2:] == [1.0, 0.5]
     source = "one syllable per note of the track they are written on"
     assert any(source in w for w in result.warnings)
+    # The vocal line itself comes back too, in the lyrics' clock, with pitches
+    # (the one-string vocal track is tuned to E4: fret 7 = B4, 5 = A4, 3 = G4).
+    assert result.gp_has_lyrics
+    assert [(round(t, 3), round(ln, 3), m) for t, ln, m in result.vocal_melody] == [
+        *[(2.0 + 0.25 * i, 0.25, 71) for i in range(8)], (4.0, 1.0, 69), (5.5, 0.5, 67),
+    ]
 
 
 def test_a_song_ending_on_the_and_of_four_builds(tmp_path: Path) -> None:
@@ -412,7 +421,10 @@ def test_a_sync_correction_keeps_every_note_field_and_moves_the_lyric_notes() ->
         tempo_map=TempoMap(beats=(Beat(time=0.0, measure=1), Beat(time=4.0, measure=2)),
                            average_bpm=60.0, beats_per_measure=4),
         sections=[], lyrics=[GpLyricLine(time=0.0, text="la")],
-        lyric_onsets=(1.0, 2.0),
+        lyric_notes=(
+            LyricNote(time=1.0, end=1.2),
+            LyricNote(time=2.0, end=2.4, midi=64, rest_before=True),
+        ),
     )
     warped = _warp_parsed_track(track, lambda t: t + 0.5)
     moved = warped.notes[0]
@@ -420,7 +432,10 @@ def test_a_sync_correction_keeps_every_note_field_and_moves_the_lyric_notes() ->
     assert (moved.bend_points, moved.left_hand, moved.pick_direction, moved.slide_unpitch_to) == (
         note.bend_points, 2, 1, 3,
     )
-    assert warped.lyric_onsets == (1.5, 2.5)
+    assert warped.lyric_notes == (
+        LyricNote(time=1.5, end=1.7),
+        LyricNote(time=2.5, end=2.9, midi=64, rest_before=True),
+    )
 
 
 def test_lead_in_pushes_song_later(two_track_gp5: Path, tmp_path: Path) -> None:

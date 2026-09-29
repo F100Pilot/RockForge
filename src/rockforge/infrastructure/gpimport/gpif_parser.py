@@ -45,6 +45,7 @@ from rockforge.infrastructure.gpimport.parser import (  # shared model + helpers
     GpSection,
     GpSongInfo,
     GpTrackInfo,
+    LyricNote,
     ParsedGpTrack,
     _make_ticks_to_seconds,
     close_beat_grid,
@@ -574,12 +575,13 @@ def parse_gpif_track(
     # Vocals track), not the charted instrument — so scan all tracks and use
     # the first with non-empty text.
     lyrics: list[GpLyricLine] = []
-    lyric_onsets: tuple[float, ...] | None = None
+    lyric_notes: tuple[LyricNote, ...] | None = None
     for cand_index, cand in enumerate(tracks):
         lyrics = _track_lyrics(cand, bar_start_ticks, t)
         if lyrics:
-            lyric_onsets = _lyric_onsets(
-                cand_index, master_bars, bar_start_ticks, bars, voices, beats, rhythms, t
+            lyric_notes = _lyric_notes(
+                cand_index, _track_tuning(cand), master_bars, bar_start_ticks,
+                bars, voices, beats, notes_map, rhythms, t,
             )
             break
 
@@ -604,24 +606,27 @@ def parse_gpif_track(
         )
     return ParsedGpTrack(
         notes=notes, tuning=tuning, tempo_map=tempo_map, sections=sections,
-        lyrics=lyrics, lyric_onsets=lyric_onsets, warnings=warnings,
+        lyrics=lyrics, lyric_notes=lyric_notes, warnings=warnings,
     )
 
 
-def _lyric_onsets(
+def _lyric_notes(
     track_index: int,
+    tuning: tuple[int, ...],
     master_bars: list[ET.Element],
     bar_start_ticks: list[int],
     bars: dict[str, ET.Element],
     voices: dict[str, ET.Element],
     beats: dict[str, ET.Element],
+    notes_map: dict[str, ET.Element],
     rhythms: dict[str, ET.Element],
     t: Callable[[int], float],
-) -> tuple[float, ...] | None:
-    """Start of every note-bearing beat in the first voice of the lyrics' track —
-    the attacks Guitar Pro hands the syllables to, one each (a beat with no
+) -> tuple[LyricNote, ...] | None:
+    """Every note-bearing beat in the first voice of the lyrics' track — the
+    attacks Guitar Pro hands the syllables to, one each (a beat with no
     ``<Notes>`` is a rest). Same walk as the chart loop, on another track."""
-    onsets: list[float] = []
+    out: list[LyricNote] = []
+    rest = False
     for mb_index, mb in enumerate(master_bars):
         bar_ids = _text(mb.find("Bars")).split()
         bar = bars.get(bar_ids[track_index]) if track_index < len(bar_ids) else None
@@ -636,10 +641,39 @@ def _lyric_onsets(
             beat = beats.get(bid)
             if beat is None:
                 continue
-            if _text(beat.find("Notes")).split():
-                onsets.append(t(tick))
-            tick += _rhythm_ticks(rhythms.get(_ref(beat.find("Rhythm"))))
-    return tuple(onsets) or None
+            length = _rhythm_ticks(rhythms.get(_ref(beat.find("Rhythm"))))
+            note_ids = _text(beat.find("Notes")).split()
+            if note_ids:
+                pitches = [
+                    p for nid in note_ids
+                    if (p := _note_midi(notes_map.get(nid), tuning)) is not None
+                ]
+                out.append(LyricNote(
+                    time=t(tick), end=t(tick + length),
+                    midi=max(pitches) if pitches else None, rest_before=rest,
+                ))
+                rest = False
+            else:
+                rest = True
+            tick += length
+    return tuple(out) or None
+
+
+def _note_midi(note: ET.Element | None, tuning: tuple[int, ...]) -> int | None:
+    """A GPIF note's pitch: its ``Midi`` property, else string tuning + fret."""
+    if note is None:
+        return None
+    props = _note_props(note)
+    try:
+        if "Midi" in props:
+            return int(_text(props["Midi"].find("Number"), "") or "")
+        if "String" in props and "Fret" in props:
+            string = int(_text(props["String"].find("String"), "0") or "0")
+            if 0 <= string < len(tuning):
+                return tuning[string] + int(_text(props["Fret"].find("Fret"), "0") or "0")
+    except ValueError:
+        return None
+    return None
 
 
 def _ref(el: ET.Element | None) -> str:

@@ -28,6 +28,7 @@ module.exports = [
         Audio: "readonly",
         AudioContext: "readonly",
         OfflineAudioContext: "readonly",
+        AudioBuffer: "readonly",
         requestAnimationFrame: "readonly",
         cancelAnimationFrame: "readonly",
         setInterval: "readonly",

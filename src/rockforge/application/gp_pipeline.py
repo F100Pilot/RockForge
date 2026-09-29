@@ -64,6 +64,13 @@ class PipelineResult:
     # worker can surface them in the "Letras" editor / tab viewer. Empty unless
     # GP-embedded lyrics were used (not when the user supplied LRC/editor rows).
     gp_lyrics: tuple[VocalEvent, ...] = ()
+    # The notes of the track the GP lyrics are sung on, as (time, length, midi)
+    # in the same recording clock — a reference the viewer can play to hear
+    # where the words should fall. midi is None when the file gives no pitch.
+    vocal_melody: tuple[tuple[float, float, int | None], ...] = ()
+    # Whether the GP file carries lyrics at all (used or not), so the editor can
+    # offer to go back to them after its own rows replaced them.
+    gp_has_lyrics: bool = False
 
 # Minimum lead-in before the first note. DLC Builder's PhraseGenerator inserts a
 # count-in phrase before the arrangement content and fails ("no room for an empty
@@ -409,8 +416,10 @@ def _warp_parsed_track(p: ParsedGpTrack, warp: Callable[[float], float]) -> Pars
     beats = tuple(Beat(time=warp(b.time), measure=b.measure) for b in p.tempo_map.beats)
     sections = [GpSection(name=s.name, start_time=warp(s.start_time)) for s in p.sections]
     lyrics = [type(line)(time=warp(line.time), text=line.text) for line in p.lyrics]
-    lyric_onsets = (
-        tuple(warp(x) for x in p.lyric_onsets) if p.lyric_onsets is not None else None
+    lyric_notes = (
+        tuple(replace(n, time=warp(n.time), end=warp(n.end)) for n in p.lyric_notes)
+        if p.lyric_notes is not None
+        else None
     )
     return replace(
         p,
@@ -422,7 +431,7 @@ def _warp_parsed_track(p: ParsedGpTrack, warp: Callable[[float], float]) -> Pars
         ),
         sections=sections,
         lyrics=lyrics,
-        lyric_onsets=lyric_onsets,
+        lyric_notes=lyric_notes,
     )
 
 
@@ -654,15 +663,21 @@ class GenerateFromGpUseCase:
             # ON (usually a vocal track). Distribute the text over those
             # (already warped + offset) attacks, as Guitar Pro does; the charted
             # guitar's notes are only the fallback when the file does not say.
-            if first.lyric_onsets:
-                onsets = sorted(first.lyric_onsets)
+            gp_lines = [(line.time, line.text) for line in first.lyrics]
+            if first.lyric_notes:
+                # The vocal line also says how long each syllable is sung and
+                # where it breathes (its rests), which is where phrases end.
+                sung = sorted(first.lyric_notes, key=lambda n: n.time)
+                vocals = distribute_syllables(
+                    gp_lines,
+                    [n.time for n in sung],
+                    ends=[n.end for n in sung],
+                    rests_before=[n.rest_before for n in sung],
+                )
                 source = "the track they are written on"
             else:
-                onsets = sorted({n.time for n in first.notes})
+                vocals = distribute_syllables(gp_lines, sorted({n.time for n in first.notes}))
                 source = "this chart (the file does not say which track they are sung on)"
-            vocals = distribute_syllables(
-                [(line.time, line.text) for line in first.lyrics], onsets
-            )
             lyrics_from_gp = True
             warnings.append(
                 f"lyrics taken from the GP file, one syllable per note of {source} "
@@ -711,9 +726,15 @@ class GenerateFromGpUseCase:
             if lyrics_from_gp
             else ()
         )
+        vocal_melody = tuple(
+            (max(0.0, n.time - pad_start_s), max(0.0, n.end - n.time), n.midi)
+            for n in sorted(first.lyric_notes or (), key=lambda n: n.time)
+        )
         return PipelineResult(
             packaging=packaging,
             note_counts={a.kind.value: len(a.notes) for a in arrangements},
             warnings=tuple(warnings),
             gp_lyrics=gp_lyrics,
+            vocal_melody=vocal_melody,
+            gp_has_lyrics=bool(first.lyrics),
         )

@@ -2378,6 +2378,42 @@ def get_lyrics(job_id: str) -> LyricsOut:
         return LyricsOut(status=status, events=events, log=[str(line) for line in log])
 
 
+class VocalNoteOut(BaseModel):
+    time: float
+    length: float
+    midi: int | None = None
+
+
+class VocalLineOut(BaseModel):
+    notes: list[VocalNoteOut]
+    gp_has_lyrics: bool = False
+
+
+@app.get("/jobs/{job_id}/vocal-line", response_model=VocalLineOut)
+def get_vocal_line(job_id: str) -> VocalLineOut:
+    """The notes of the track the GP lyrics are sung on, in the lyrics' own
+    recording clock, as of the last build — played by the viewer as "Voz
+    (sintetizada)" to hear where the words should fall. Empty when the file
+    names no such track (or the job was never built)."""
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+        params = job.params or {}
+        rows = cast("list[dict[str, Any]]", params.get("vocal_melody") or [])
+        notes = []
+        for r in rows:
+            try:
+                midi = r.get("midi")
+                notes.append(VocalNoteOut(
+                    time=float(r["time"]), length=float(r["length"]),
+                    midi=int(midi) if midi is not None else None,
+                ))
+            except (KeyError, TypeError, ValueError):
+                continue  # a malformed row is skipped, never a 500
+        return VocalLineOut(notes=notes, gp_has_lyrics=bool(params.get("gp_has_lyrics")))
+
+
 @app.post("/jobs/{job_id}/detect-tones", response_model=JobOut, status_code=202)
 def detect_tones_endpoint(job_id: str) -> JobOut:
     """Kick off asynchronous tone detection (Demucs guitar separation + spectral

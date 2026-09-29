@@ -235,11 +235,21 @@ re-inverting the dependency.
    `/system-check` lists it (`_ytdlp`). `/jobs/gp` takes the result as
    `audio_token` (a bare `yt-…` name under `uploads/`, never a path), and
    `_sweep_orphan_youtube_audio` collects downloads an abandoned wizard left
-   (same 24 h rule as the GP sweep, keyed on `Job.source`). UI: step 3's
-   Songsterr panel has "Descarregar o áudio deste vídeo" + "Sessão do browser";
-   it runs by itself after an import; audio fetched for one video is dropped
-   when another is picked (its times would not match); a fetched file hides and
-   un-requires the upload like the GP8 embedded audio does. Honest limits: it
+   (same 24 h rule as the GP sweep, keyed on `Job.source`). UI: step 3's own
+   **"Não tens o áudio?"** block (`#ytBlock`, a YouTube link + "Descarregar o
+   áudio" + "Sessão do browser") — for ANY GP file, not only a Songsterr
+   import: it used to live inside the Songsterr "Extra", so a user who only
+   uploaded a GP5 (their own, from a PDF) never saw that a download existed
+   ("quando só carrego um gp5, o mp3 não vem incluído"). `youtubeVideoId`
+   takes the id out of any link shape (watch?v=, youtu.be/, shorts/, embed/,
+   live/, music./m.) or a bare id, and only the id goes to the server as
+   before. Picking a Songsterr video writes its link into that block and opens
+   it; after an import the download runs by itself; audio fetched for another
+   video is dropped when a Songsterr video is picked (its times would not
+   match), and one downloaded from a different link while Songsterr times are
+   in use says so; the block hides when the GP8 file's own audio is used; a
+   fetched file hides and un-requires the upload like the GP8 embedded audio
+   does. Honest limits: it
    is against YouTube's terms outside YouTube's own features — personal use,
    said in the ⓘ; never run against YouTube from here (blocked). Guarded by
    `test_youtube_audio.py` (the command, id/browser validation, no stdin, the
@@ -1179,8 +1189,9 @@ those of the track the lyrics are WRITTEN on** — usually a vocal track, whose
 rhythm is not the guitar's: GP3-5 name it in `song.lyrics.trackChoice`
 (1-based, 0 = none) and GPIF puts `<Lyrics>` on the track itself, and Guitar
 Pro hands one syllable to each beat of that track's first voice that is not a
-rest (alphaTab's `Track.applyLyrics`). Both parsers record those beat starts as
-`ParsedGpTrack.lyric_onsets`, on the charted track's own clock (ticks are
+rest (alphaTab's `Track.applyLyrics`). Both parsers record those beats as
+`ParsedGpTrack.lyric_notes` (`LyricNote`: start, end, MIDI pitch, whether the
+line rests before it), on the charted track's own clock (ticks are
 song-wide); `_warp_parsed_track` moves them with every sync round, and
 `gp_pipeline` distributes the text over them, falling back to the chart's own
 notes only when the file names no track (the warning says which was used).
@@ -1195,7 +1206,46 @@ hyphen before a space (`Mo- ney`) still joins. Guarded by
 `test_extra_spaces_skip_notes_and_a_newline_ends_a_line` and
 `test_comments_and_a_hyphen_before_a_space_are_read_like_guitar_pro` (all
 mutation-checked), and a real in-process build of a Songsterr-shaped tab
-whose words land on the vocal eighths. Rocksmith markers: a trailing `-` joins syllables
+whose words land on the vocal eighths.
+
+**The vocal line also gives each syllable its length and the lyric its
+phrases.** "O GP5 também tinha uma track de Voz, mas unicamente com a letra —
+como podes aproveitá-la?": the syllables already rode its notes, but the rest
+of what it says was thrown away. Now (a) a syllable lasts its note's written
+length (`ends`), not until the next note across a rest; (b) when the text has
+no line breaks of its own (ONE lyric line, no newline — the user's PDF→GP5
+file is a single 1860-character line, so every break came from the 7-word
+cap, mid-phrase: "with+ / who") `distribute_syllables` ends a line at a
+**breath before a capitalised word**: the vocal line rests just before it
+AND it starts with a capital, how lyrics mark a line. Neither alone: "High
+Noon" is a capital with no breath, "tequila (breath) with" a breath before
+lower case. Lyrics with no capitals to go by (all lower/upper case; "I" does
+not count) break at every breath before a word; never inside a word; lines
+the text already has always win. On that file: 65 lines, the ones a person
+would write ("Don't know how long / she's been movin' on"). An earlier draft
+also accepted a rest just AFTER the capital (a misread of the data) and split
+"High / Noon" — `test_a_vocal_lines_breaths_before_a_capital_end_the_lyric_lines`
+pins that. (c) The notes themselves go out as `PipelineResult.vocal_melody`
+→ `params["vocal_melody"]` (replaced on every build — it follows sync
+corrections, unlike stored editor rows) → `GET /jobs/{id}/vocal-line`
+(`{notes: [{time, length, midi}], gp_has_lyrics}`) → "Voz (sintetizada)" in
+the Fonte de áudio selector (below). And because a job's first build stores
+the GP lyrics as editor rows, which then win over the file, the Letra page
+has **"Voltar à letra da pauta"** (shown when `gp_has_lyrics`): it empties
+the rows and makes "Aplicar e reconstruir" send `lyrics_events: []` (not
+`null`, which means "untouched"), so the build reads the file again — how an
+existing project gets the new phrasing. Guarded by
+`test_a_vocal_lines_breaths_before_a_capital_end_the_lyric_lines`,
+`test_lyrics_without_capitals_break_at_every_breath_but_never_mid_word`,
+`test_lines_the_text_already_has_are_kept_and_breaths_are_not_used`,
+`test_a_syllable_lasts_as_long_as_its_note_not_until_the_next_one` (all four
+mutation-checked), the pitches/ends/rests in
+`test_gp7_lyrics_are_timed_on_the_notes_of_their_own_track` and
+`test_gp_lyrics_are_sung_on_the_vocal_line_not_the_charted_guitar`, the
+worker storing it in `test_a_gp_files_lyrics_reach_the_editor_after_the_build`
+and `test_the_vocal_line_is_served_for_the_viewers_voice_source`; the user's
+own file built end to end, and a real rebuild with `lyrics_events: []`
+replaced its old rows. Rocksmith markers: a trailing `-` joins syllables
 within a word (no space, hyphen shown in game), a trailing `+` on a line's last
 syllable is the line break. Honest limit: it assumes **syllabic** singing (one
 syllable per note attack); **melismas** (one syllable held over several notes)
@@ -1224,12 +1274,17 @@ lyrics keep their authored line structure.
 **Build-time line cap (`enforce_max_line_words`, `rsxml/vocals.py`).** The finer
 breaking above only touches WhisperX *detection*. Both pipelines additionally run
 every vocals list through `enforce_max_line_words` (cap `MAX_LINE_WORDS = 7`)
-right before packaging, forcing a `+` once a line reaches the cap WITH NO break —
-a safety net so lyrics from ANY source (old detection whose coarse `+`s are
-already baked into `lyrics_events`, GP-embedded, a long-lined LRC) don't scroll
-as a wall of text in-game **without needing a re-detect**. It never removes an
-authored break, never breaks on a syllable-join `-` (mid-word) or on the last
-event. Guarded by `test_enforce_max_line_words_*`.
+right before packaging — a safety net so lyrics from ANY source (old detection
+whose coarse `+`s are already baked into `lyrics_events`, GP-embedded, a
+long-lined LRC) don't scroll as a wall of text in-game **without needing a
+re-detect**. A line over the cap is split into the FEWEST lines that fit, of
+about equal length (8 words → 4 + 4, not 7 + an orphaned "who"), preferring
+within two words of the even split a break before a capitalised word, then
+after punctuation (`_break_fit`). It counts WORDS: it used to count every
+syllable event, so "chas-in' te-qui-la" used up five of the seven. It never
+removes an authored break, never breaks on a syllable-join `-` (mid-word) or
+on the last event. Guarded by `test_enforce_max_line_words_*` and
+`test_a_long_line_is_split_evenly_counting_words_not_syllables`.
 
 **Speed.** This is the slow path on CPU; the heaviest stage is the Demucs
 separation. Detection uses `DemucsSeparator.separate_vocals` — the lighter
@@ -1976,6 +2031,17 @@ shares the recording's clock, so the notes stay aligned):
    pending sync at selection time; re-pick to refresh after more edits. This is
    the honest answer to "isolate each guitar": the two guitars can't be split
    from the *recording*, but each arrangement's notes CAN be rendered alone.
+   **Voz (sintetizada)** (`synth:Voz`, offered when `/vocal-line` has notes)
+   plays the notes the GP lyrics are sung on, held for their length with a
+   little vibrato, at the lyrics' own clock + `leadInBuilt` — so a word and
+   its note sound together and the lyric sync can be checked by ear. Its
+   samples are computed directly into an `AudioBuffer` (`synthesizeVoice`),
+   NOT through audio nodes: 411 scheduled oscillators took 5-20 s to render
+   here (even bare ones, ~3 s), long enough that picking the source looked
+   broken; the direct loop takes ~0.4 s. It is the vocal line as of the last
+   build (it follows committed sync, not pending edits). A PDF→GP converter
+   may write every note on one pitch (the user's file does), so it can be a
+   rhythm on one note — it plays what the file says.
 3. **Separated stems** — `POST /jobs/{id}/separate-stems` runs ONE Demucs
    `htdemucs_6s` pass and keeps the stems it produces (`separate_stems` globs
    the output dir), **minus `drums`** (dropped in the task — noise for

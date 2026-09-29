@@ -162,6 +162,13 @@ def test_a_gp_files_lyrics_reach_the_editor_after_the_build(db, tmp_path, monkey
     assert [(round(r["time"], 3), r["lyric"]) for r in rows or []] == [
         (0.0, "hel-"), (0.5, "lo+"),
     ]
+    # The notes they are sung on travel too, for the viewer's "Voz" source.
+    params = _reload(db, job_id).params
+    assert params["gp_has_lyrics"] is True
+    assert [
+        (round(r["time"], 3), round(r["length"], 3), r["midi"])
+        for r in params["vocal_melody"]
+    ] == [(0.0, 0.5, 67), (0.5, 0.5, 69)]
 
 
 def test_generate_cdlc_never_crashes_on_packaging_failure(db, tmp_path, monkeypatch) -> None:

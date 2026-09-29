@@ -21,12 +21,30 @@ def _words(text: str) -> list[VocalEvent]:
 
 
 def test_enforce_max_line_words_breaks_long_lines() -> None:
-    # A 16-word line with no break gets a "+" every max_words (7 here); the final
-    # word is left to the source (the cap only splits over-long lines, it doesn't
-    # add a trailing line-end).
+    # A 16-word line with no break becomes the fewest lines of at most
+    # max_words (7 here) — three — of about equal length (5 + 6 + 5), not 7 + 7
+    # + an orphaned 2; the final word is left to the source (the cap only splits
+    # over-long lines, it doesn't add a trailing line-end).
     events = enforce_max_line_words(_words("a b c d e f g h i j k l m n o p"), max_words=7)
     breaks = [i for i, e in enumerate(events) if e.lyric.endswith("+")]
-    assert breaks == [6, 13]  # after word 7, then word 14 (words 15-16 remain)
+    assert breaks == [4, 10]  # 5 + 6 + 5: round(16/3) = 5, round(32/3) = 11
+
+
+def test_a_long_line_is_split_evenly_counting_words_not_syllables() -> None:
+    # "I don't know who broke up with who" is 8 words: 4 + 4, never 7 + "who".
+    # A hyphenated word counts once, and a break prefers a comma nearby.
+    events = enforce_max_line_words(
+        _words("I don't know who broke up with who+")
+        + [VocalEvent(time=20.0, length=0.2, lyric=w) for w in (
+            "May-", "be", "five", "weeks", "or", "five", "min-", "utes,", "but", "it",
+            "can't", "be", "too", "long+")],
+        max_words=7,
+    )
+    text = " ".join(e.lyric for e in events).replace("- ", "")
+    assert text == (
+        "I don't know who+ broke up with who+ "
+        "Maybe five weeks or five minutes,+ but it can't be too long+"
+    )
 
 
 def test_enforce_max_line_words_keeps_authored_breaks_and_short_lines() -> None:
@@ -251,3 +269,56 @@ def test_comments_and_a_hyphen_before_a_space_are_read_like_guitar_pro() -> None
         (0.0, "Mo-"), (1.0, "ney"), (3.0, "now+"),
     ]
     assert events[1].length == pytest.approx(2.0)  # "_" held "ney" one more note
+
+
+def _sing(text: str, rests: set[int], *, spacing: float = 0.5) -> list[VocalEvent]:
+    """One eighth-long note per syllable of *text*, the vocal line resting
+    before the notes whose index is in *rests*."""
+    count = sum(len([p for p in w.split("-") if p]) for w in text.split())
+    onsets = [i * spacing for i in range(count)]
+    return distribute_syllables(
+        [(0.0, text)], onsets,
+        ends=[t + 0.25 for t in onsets],
+        rests_before=[i in rests for i in range(count)],
+    )
+
+
+def test_a_vocal_lines_breaths_before_a_capital_end_the_lyric_lines() -> None:
+    # "who (rest) But ... te-qui-la (rest) with High Noon (rest) Don't": a line
+    # starts at a breath before a capital — not at "with" (a breath, lower
+    # case) nor at "Noon" (a capital, no breath).
+    events = _sing(
+        "I don't know who But she's in here te-qui-la with High Noon Don't know",
+        rests={4, 11, 14},
+    )
+    assert [e.lyric for e in events] == [
+        "I", "don't", "know", "who+", "But", "she's", "in", "here", "te-", "qui-", "la",
+        "with", "High", "Noon+", "Don't", "know+",
+    ]
+
+
+def test_lyrics_without_capitals_break_at_every_breath_but_never_mid_word() -> None:
+    events = _sing("i don't know who but she's te-qui-la now", rests={4, 7})
+    # A breath before "but" ends a line; the one inside "tequila" does not.
+    assert [e.lyric for e in events] == [
+        "i", "don't", "know", "who+", "but", "she's", "te-", "qui-", "la", "now+",
+    ]
+
+
+def test_lines_the_text_already_has_are_kept_and_breaths_are_not_used() -> None:
+    onsets = [0.0, 0.5, 1.0, 1.5]
+    events = distribute_syllables(
+        [(0.0, "One two\nthree Four")], onsets,
+        ends=[t + 0.25 for t in onsets], rests_before=[False, False, False, True],
+    )
+    assert [e.lyric for e in events] == ["One", "two+", "three", "Four+"]
+
+
+def test_a_syllable_lasts_as_long_as_its_note_not_until_the_next_one() -> None:
+    events = distribute_syllables(
+        [(0.0, "long short")], [0.0, 3.0], ends=[1.5, 3.25], rests_before=[False, True],
+    )
+    assert [(e.time, e.length) for e in events] == [(0.0, 1.5), (3.0, 0.25)]
+    # Without the note ends it is still the gap to the next note, as before.
+    events = distribute_syllables([(0.0, "long short")], [0.0, 3.0])
+    assert events[0].length == 3.0

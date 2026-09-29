@@ -169,7 +169,8 @@ def test_songsterr_lyrics_are_written_on_the_part_that_sings_them(tmp_path: Path
         (2.0, "Hel-lo  world is here now"), (4.0, "la la"),
     ]
     # The syllables go to the VOCAL line's notes (rests skipped), not the guitar's.
-    assert parsed.lyric_onsets == (
+    assert parsed.lyric_notes is not None
+    assert tuple(n.time for n in parsed.lyric_notes) == (
         2.0, 2.25, 2.5, 2.75, 3.0, 3.25, 3.5, 3.75, 4.0, 5.5,
     )
 
@@ -179,7 +180,10 @@ def test_lyrics_on_a_part_that_could_not_be_written_fall_back_and_say_so(
 ) -> None:
     dst, report = _write(tmp_path, _guitar_and_vocals(tuning=[]))  # no strings
     parsed = parse_gp_track(dst, 0)
-    assert parsed.lyrics and parsed.lyric_onsets == (0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0)
+    assert parsed.lyrics and parsed.lyric_notes is not None
+    assert tuple(n.time for n in parsed.lyric_notes) == (
+        0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0,
+    )
     assert any("primeira pista" in w for w in report.warnings)
 
 

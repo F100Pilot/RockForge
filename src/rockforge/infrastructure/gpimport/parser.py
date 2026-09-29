@@ -75,17 +75,31 @@ class GpSection:
 
 
 @dataclass(frozen=True)
+class LyricNote:
+    """One note of the track the lyrics are sung on — the attack a syllable
+    takes. ``end`` is when the note stops (its written length), ``midi`` its
+    pitch when the file says it, and ``rest_before`` whether the vocal line
+    rests between the previous note and this one (a breath: where a phrase
+    usually ends)."""
+
+    time: float
+    end: float
+    midi: int | None = None
+    rest_before: bool = False
+
+
+@dataclass(frozen=True)
 class ParsedGpTrack:
     notes: list[TabNote]
     tuning: Tuning
     tempo_map: TempoMap
     sections: list[GpSection]
     lyrics: list[GpLyricLine] = field(default_factory=list)
-    # When each note of the track the lyrics BELONG to starts (its first voice,
-    # rests skipped) — the attacks Guitar Pro hands the syllables to, one each.
+    # The notes of the track the lyrics BELONG to (its first voice, rests
+    # skipped) — the attacks Guitar Pro hands the syllables to, one each.
     # Usually a vocal track, not the charted guitar; None when the file does not
     # say which track that is, and the syllables fall back to the chart's notes.
-    lyric_onsets: tuple[float, ...] | None = None
+    lyric_notes: tuple[LyricNote, ...] | None = None
     # Non-fatal notices from parsing (e.g. notes dropped for being off the
     # 24-fret neck) — surfaced to the user instead of silently swallowed.
     warnings: list[str] = field(default_factory=list)
@@ -511,7 +525,7 @@ def parse_gp_track(
         if text:
             start = measure_start_by_number.get(max(1, line.startingMeasure), offset_s)
             lyrics.append(GpLyricLine(time=start, text=text))
-    lyric_onsets = _lyric_onsets(song, t) if lyrics else None
+    lyric_notes = _lyric_notes(song, t) if lyrics else None
 
     warnings: list[str] = []
     if bar_times:
@@ -523,28 +537,42 @@ def parse_gp_track(
         )
     return ParsedGpTrack(
         notes=notes, tuning=tuning, tempo_map=tempo_map, sections=sections,
-        lyrics=lyrics, lyric_onsets=lyric_onsets, warnings=warnings,
+        lyrics=lyrics, lyric_notes=lyric_notes, warnings=warnings,
     )
 
 
-def _lyric_onsets(song: Any, t: Callable[[int], float]) -> tuple[float, ...] | None:
-    """Start of every note-bearing beat in the first voice of the lyrics' track.
+def _lyric_notes(song: Any, t: Callable[[int], float]) -> tuple[LyricNote, ...] | None:
+    """Every note-bearing beat in the first voice of the lyrics' track.
 
     GP3-5 store the lyrics once per song with the (1-based) track they are
     sung on — ``trackChoice``, 0 meaning none — and Guitar Pro hands one
     syllable to each beat of that track that is not a rest (alphaTab's
     ``Track.applyLyrics`` does the same). Ticks are song-wide, so the charted
-    track's own clock ``t`` times them."""
+    track's own clock ``t`` times them. The pitch is the beat's highest note
+    (string tuning + fret) — a vocal line is one note at a time."""
     index = int(getattr(song.lyrics, "trackChoice", 0) or 0) - 1
     if not 0 <= index < len(song.tracks):
         return None
-    onsets: list[float] = []
-    for measure in song.tracks[index].measures:
+    track = song.tracks[index]
+    tuning = {s.number: s.value for s in track.strings}
+    out: list[LyricNote] = []
+    rest = False
+    for measure in track.measures:
         if not measure.voices:
             continue
         tick = measure.start
         for beat in measure.voices[0].beats:
+            length = beat.duration.time
             if beat.notes:
-                onsets.append(t(tick))
-            tick += beat.duration.time
-    return tuple(onsets) or None
+                pitches = [
+                    tuning[n.string] + n.value for n in beat.notes if n.string in tuning
+                ]
+                out.append(LyricNote(
+                    time=t(tick), end=t(tick + length),
+                    midi=max(pitches) if pitches else None, rest_before=rest,
+                ))
+                rest = False
+            else:
+                rest = True
+            tick += length
+    return tuple(out) or None

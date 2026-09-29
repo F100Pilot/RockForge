@@ -672,6 +672,27 @@ automatically.
    written on".
 3. Songsterr: não verificado contra o Songsterr real a partir daqui (rede
    bloqueada); confirmar que uma tab com letra a traz.
+4. Letra num texto só, sem mudanças de linha (ex.: um GP5 gerado de um PDF):
+   as linhas acabam nas respirações da voz antes de uma palavra com maiúscula
+   ("Don't know how long / she's been movin' on"), nenhuma linha passa de 7
+   palavras e uma linha comprida parte-se a meio, não "7 + 1". Cada sílaba dura
+   o que dura a sua nota.
+5. Áudio ▾ → Fonte de áudio → **Voz (sintetizada)**: ouve-se a linha da voz,
+   cada nota no instante da sua palavra; demora menos de um segundo a gerar.
+6. Num projeto criado antes disto: página Letra → **Voltar à letra da pauta** →
+   "Aplicar e reconstruir" — a letra é lida outra vez do ficheiro, com as
+   linhas novas.
+
+### 7c-sexies. Áudio do YouTube só com um ficheiro GP
+
+1. Novo projeto com um GP5 qualquer (sem Songsterr) → passo 3 → **Não tens o
+   áudio?** → cola um link do YouTube (watch?v=, youtu.be, shorts…) →
+   Descarregar. O upload desaparece e o projeto é criado com esse áudio.
+2. Um link que não é do YouTube é recusado no browser, sem pedido ao servidor.
+3. Com os tempos do Songsterr, escolher um vídeo põe o link dele nesse bloco;
+   descarregar outro vídeo avisa que os tempos não vão bater.
+4. Nunca corrido contra o YouTube a partir daqui (rede bloqueada; o
+   `/youtube/audio` foi simulado no Playwright).
 
 ### 7c-quater. Apagar notas (browser-only, sem rede)
 
