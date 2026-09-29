@@ -359,6 +359,9 @@ def generate_cdlc(job_id: str) -> None:
                         {"time": e.time, "length": e.length, "lyric": e.lyric}
                         for e in result.gp_lyrics
                     ]
+                    # Timed on the score's notes: a sync correction of the chart
+                    # has to move them too (the viewer does, while it is pending).
+                    params["lyrics_follow_chart"] = True
                 # The vocal line is re-read on every build (it follows the
                 # sync corrections), so it is replaced, never kept from before.
                 if result.vocal_melody:
@@ -650,6 +653,8 @@ def detect_lyrics(job_id: str) -> None:
 
                 raw_events = _json.loads(events_json.read_text(encoding="utf-8"))
                 params["lyrics_events"] = raw_events
+                # Timed to the RECORDING, so a chart correction must not move them.
+                params["lyrics_follow_chart"] = False
                 params["lyrics_status"] = "ready" if raw_events else "empty"
                 _log_lyrics_stage(
                     params,

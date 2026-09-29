@@ -204,3 +204,14 @@ carrego um gp5, o mp3 não vem incluído — já não existia download de mp3?"
 - [x] extra: o limite de 7 palavras contava sílabas e deixava palavras órfãs →
       conta palavras e parte ao meio; "Voltar à letra da pauta" para projetos
       já criados (as linhas do editor ganham ao ficheiro)
+
+# A letra acompanha as correções de sincronização (2026-09-29)
+
+Pedido: "quando corrijo o início das notas, a letra não se está a mover".
+
+- [x] Linhas guardadas onde se veem; ao mudar a sincronização pendente da pista
+      de referência passam do mapa antigo para o novo (pré-visualização e build)
+- [x] Só a letra da pauta segue (`lyrics_follow_chart`); LRC/deteção não
+- [x] Caixa no separador Letra; a voz sintetizada segue também
+- [x] Silêncio inicial em falta em `arrangementPreviewScale`/`synthesizeArrangement`
+- [x] Testes, Playwright com o ficheiro do utilizador, docs, gates

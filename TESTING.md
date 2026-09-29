@@ -682,6 +682,10 @@ automatically.
 6. Num projeto criado antes disto: página Letra → **Voltar à letra da pauta** →
    "Aplicar e reconstruir" — a letra é lida outra vez do ficheiro, com as
    linhas novas.
+7. Com letra da pauta, corrige o início das notas (Passo 1), o andamento ou
+   arrasta notas: as palavras mudam com elas já na pré-visualização, e ficam lá
+   depois de "Aplicar e reconstruir". Desfazer a correção devolve-as. Com a
+   caixa "Acompanha as correções…" desligada (ou uma letra do LRCLIB) não mexem.
 
 ### 7c-sexies. Áudio do YouTube só com um ficheiro GP
 

@@ -2150,7 +2150,7 @@ def test_lyrics_default_status_none(client: TestClient) -> None:
     job = _create_job(client)
     r = client.get(f"/jobs/{job['id']}/lyrics")
     assert r.status_code == 200
-    assert r.json() == {"status": "none", "events": [], "log": []}
+    assert r.json() == {"status": "none", "events": [], "log": [], "follow_chart": False}
 
 
 def test_lyrics_falls_back_to_supplied_lrc_text(client: TestClient) -> None:
@@ -2273,6 +2273,39 @@ def test_the_vocal_line_is_served_for_the_viewers_voice_source(client: TestClien
         {"time": 1.0, "length": 0.25, "midi": 64}, {"time": 1.5, "length": 0.5, "midi": None},
     ]}
     assert client.get("/jobs/nope/vocal-line").status_code == 404
+
+
+def test_lyrics_say_whether_they_follow_the_charts_sync_corrections(
+    client: TestClient,
+) -> None:
+    """Lyrics timed on the score move with its sync corrections, lyrics timed to
+    the recording stay put; the flag travels through a rebuild."""
+    import rockforge.interfaces.api.app as app_module
+
+    job = _create_job(client)
+
+    def follows(job_id: str) -> bool:
+        return bool(client.get(f"/jobs/{job_id}/lyrics").json()["follow_chart"])
+
+    def set_params(**values: object) -> None:
+        with app_module._session_factory() as session:
+            db_job = session.get(app_module.Job, job["id"])
+            db_job.params = {**(db_job.params or {}), **values}
+            session.commit()
+
+    assert not follows(job["id"])  # no lyrics from the score at all
+    set_params(gp_has_lyrics=True)  # a job built before the flag: from the GP file
+    assert follows(job["id"])
+    set_params(lrc_text="[00:01.00] hi")  # ...unless an LRC is what it uses
+    assert not follows(job["id"])
+    set_params(lyrics_follow_chart=True)  # the flag, once set, is the answer
+    assert follows(job["id"])
+    rebuilt = client.post(
+        f"/jobs/{job['id']}/rebuild", json={"lyrics_follow_chart": False},
+    ).json()
+    assert not follows(rebuilt["id"])
+    untouched = client.post(f"/jobs/{rebuilt['id']}/rebuild", json={}).json()
+    assert not follows(untouched["id"])
 
 
 def test_rebuild_stores_lyrics_events_and_resets_status(client: TestClient) -> None:

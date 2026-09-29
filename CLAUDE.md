@@ -1420,6 +1420,43 @@ pytest coverage; verified with Playwright (click → tab + selection without
 seeking, from-here/limited/only-this/nudge/remove/pick/add/whole-shift, drag
 selects, the Letra page table follows, no page errors).
 
+**Lyrics timed on the score follow the chart's sync corrections.** "Quando
+corrijo o início das notas, a letra não se está a mover": after the first
+build the GP lyrics live as editor rows in the recording clock, and nothing
+moved them when the notes were re-timed — not in the preview, not at the
+rebuild. Now the rows are always kept where they are SHOWN (every lyric tool
+already works in that clock), and `lyricsFollowSync` (run at the top of
+`showArr` and of `applyAll`) carries them whenever the reference chart's
+pending sync changes: back through the previous map, forward through the new
+one (`lyricSyncMap` — the notes' own `previewScale` + anchor warp applied to
+the lyric's bundle time, `lyric + lyricPadBuilt`; `invertIncreasing` bisects
+the piecewise-linear map), so undoing a correction brings them back exactly
+and a rebuild stores rows that already carry it. The reference chart is the
+first in the BUILD's slot order (Lead, Rhythm, Combined, Alternate…,
+`lyricRefArr`), the same chart `gp_pipeline` times the GP lyrics on, never the
+`/arrangements` file order. **Only lyrics timed on the score follow**: an LRC
+or a WhisperX detection is timed to the RECORDING, which a chart correction
+does not move. `params["lyrics_follow_chart"]` says which — the build sets it
+True when it stores the GP lyrics, detection sets it False, "Usar" (LRCLIB)
+clears it and "Voltar à letra da pauta" sets it in the viewer, and it rides
+`RebuildIn.lyrics_follow_chart`; a job from before the flag follows when
+`gp_has_lyrics` and no LRC/detection (`_lyrics_follow_chart`). The Letra tab
+shows it as "Acompanha as correções de sincronização da partitura (pista X)".
+"Voz (sintetizada)" goes through the same map, so the vocal line follows the
+pending sync too. Two lead-in slips surfaced on the way and were fixed:
+`arrangementPreviewScale` (bar sync against another track) and
+`synthesizeArrangement` left out `leadInBuilt`, which `previewScale` adds, so
+with a "Silêncio inicial" the other track's bar and the synthesized notes sat
+that much early. Guarded by
+`test_lyrics_say_whether_they_follow_the_charts_sync_corrections`
+(mutation-checked) and the flag in
+`test_a_gp_files_lyrics_reach_the_editor_after_the_build`; the viewer with
+Playwright on the user's file: "Início" +0.75 s moves every word +0.75 s, a
+tempo change on top lands word 200 exactly where the notes' map puts it
+(length scaled too), undoing restores the rows to the last digit, unticked
+nothing moves, and a real rebuild leaves the first guitar note, the first
+vocal note and the first word all +0.75 s, each word still on its note.
+
 ### Lyrics found online (LRCLIB) and synchronised to the recording
 
 The "Letra" page's **"Procurar letra online"** asks **LRCLIB** (`lrclib.net`,

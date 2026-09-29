@@ -414,6 +414,9 @@ class RebuildIn(BaseModel):
     # empty list), replaces params["lyrics_events"] and clears lyrics_status so
     # the next build uses the edited lyrics. None leaves existing lyrics alone.
     lyrics_events: list[LyricEventOut] | None = None
+    # Whether the lyric rows move with the chart's sync corrections (lyrics timed
+    # on the score) or stay put (timed to the recording). None leaves it alone.
+    lyrics_follow_chart: bool | None = None
     # Tone editor overrides (GP jobs). When set (even to an empty list), each
     # replaces the corresponding params entry; None leaves it untouched.
     # ``tones`` are full gear definitions (see gear_catalogue.tone_from_dict);
@@ -656,6 +659,9 @@ class LyricsOut(BaseModel):
     status: str
     events: list[LyricEventOut]
     log: list[str] = []
+    # The rows move with the chart's sync corrections (timed on the score) —
+    # see _lyrics_follow_chart.
+    follow_chart: bool = False
 
 
 class MetadataIn(BaseModel):
@@ -1841,6 +1847,8 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
         if payload.lyrics_events is not None:
             params["lyrics_events"] = [e.model_dump() for e in payload.lyrics_events]
             params.pop("lyrics_status", None)
+        if payload.lyrics_follow_chart is not None:
+            params["lyrics_follow_chart"] = payload.lyrics_follow_chart
         touches_tones = any(
             v is not None
             for v in (
@@ -2375,7 +2383,24 @@ def get_lyrics(job_id: str) -> LyricsOut:
                     for e in parse_lyrics(lrc_text)
                 ]
         log = cast("list[str]", params.get("lyrics_log") or [])
-        return LyricsOut(status=status, events=events, log=[str(line) for line in log])
+        return LyricsOut(
+            status=status, events=events, log=[str(line) for line in log],
+            follow_chart=_lyrics_follow_chart(params),
+        )
+
+
+def _lyrics_follow_chart(params: dict[str, Any]) -> bool:
+    """Whether the lyric rows are timed on the score (and so must move with its
+    sync corrections) rather than to the recording. Set by whoever filled the
+    rows; a job from before the flag existed follows the chart when its lyrics
+    came from the GP file and not from an LRC or a detection."""
+    if "lyrics_follow_chart" in params:
+        return bool(params["lyrics_follow_chart"])
+    return (
+        bool(params.get("gp_has_lyrics"))
+        and not params.get("lrc_text")
+        and params.get("lyrics_status") != "ready"
+    )
 
 
 class VocalNoteOut(BaseModel):

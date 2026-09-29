@@ -165,6 +165,8 @@ def test_a_gp_files_lyrics_reach_the_editor_after_the_build(db, tmp_path, monkey
     # The notes they are sung on travel too, for the viewer's "Voz" source.
     params = _reload(db, job_id).params
     assert params["gp_has_lyrics"] is True
+    # Timed on the score, so the viewer moves them with the chart's corrections.
+    assert params["lyrics_follow_chart"] is True
     assert [
         (round(r["time"], 3), round(r["length"], 3), r["midi"])
         for r in params["vocal_melody"]

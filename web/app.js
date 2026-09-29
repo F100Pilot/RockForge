@@ -826,7 +826,8 @@ const INFO = {
     title: 'Acertar a letra na partitura',
     body: '<p>As mesmas edições da página <b>Letra</b>, ao lado das notas onde a ouves. Clica numa palavra na partitura para a escolher (arrastá-la também a move).</p>' +
       '<p><b>Daqui em diante = cursor</b> — põe o cursor onde a palavra devia soar: ela vai para lá e todas as seguintes acompanham-na, as anteriores ficam onde estão. É a forma rápida de corrigir uma letra que sai do tempo a meio: vai de palavra em palavra onde começa a desviar. <b>Só esta = cursor</b> move apenas essa palavra; −/+ movem-na com as seguintes pelo passo indicado em cima.</p>' +
-      '<p><b>1ª palavra = cursor</b> e −/+ em "Letra toda" movem a letra inteira (adiantada ou atrasada por igual). Tudo fica pendente até "Aplicar e reconstruir".</p>'
+      '<p><b>1ª palavra = cursor</b> e −/+ em "Letra toda" movem a letra inteira (adiantada ou atrasada por igual). Tudo fica pendente até "Aplicar e reconstruir".</p>' +
+      '<p><b>Acompanha as correções de sincronização da partitura</b> — quando a letra vem da própria pauta, está presa às notas: se corriges o início, o andamento ou arrastas notas, as palavras mudam com elas. Segue a pista indicada (a primeira: Lead, senão Rhythm, senão Combo). Vem desligado para uma letra do LRCLIB ou detetada na gravação, que está presa à gravação e não às notas.</p>'
   },
   'lyrics-lookup': {
     title: 'Procurar a letra e sincronizá-la',
@@ -971,6 +972,11 @@ let currentPlayheadT = 0; // display time of playhead; updated by syncFrame and 
 // In-app lyrics editor rows: {time, length, lyric, lineBreak}. lyric excludes
 // the trailing "+" — lineBreak controls whether it's re-appended on save.
 let lyricsEvents = [];
+// Lyrics timed on the SCORE (the GP file's own) are tied to its notes, so a
+// sync correction of the chart — "Início", tempo, a dragged note — has to move
+// them too; lyrics timed to the RECORDING (LRCLIB, detection) must stay put.
+// The server says which (follow_chart); the Letra tab's checkbox can change it.
+let lyricsFollowChart = false;
 // serializeLyrics() of the rows as last loaded — what makes "Pendente: letra"
 // mean changed since the build.
 let lyricsBuilt = '[]';
@@ -1410,6 +1416,7 @@ async function loadArrangements(id) {
   arrangements = await getJSON(`/jobs/${id}/arrangements`);
   syncAnchorsByKind = {};  // fresh pending corrections per arrangement
   tempoScaleByKind = {};
+  resetLyricFollow();
   // Seed the pending note edits from the ones ALREADY COMMITTED for each
   // arrangement, instead of starting empty. applyAll() always sends the whole
   // dict, so starting empty meant a rebuild for any unrelated reason (a tuning
@@ -1598,6 +1605,7 @@ function retempoedBars(a) {
 function showArr(i) {
   if (i !== currentArr) { loadArrSync(i); stopArrangementPreview(); }  // tab change: swap in that chart's own sync state
   currentArr = i;
+  lyricsFollowSync();  // lyrics timed on the score move with its pending sync
   for (const [idx, btn] of document.querySelectorAll('#arrTabs button').entries())
     btn.classList.toggle('active', idx === i);
   const a = arrangements[i];
@@ -2150,7 +2158,7 @@ function arrangementPreviewScale(idx, t) {
   if (!a) return t;
   const built = a.tempo_scale || 1;
   const live = (a.kind in tempoScaleByKind) ? tempoScaleByKind[a.kind] : built;
-  return (t - scoreShift) * (live / built) + Math.max(offsetLive, MIN_LEAD);
+  return (t - scoreShift) * (live / built) + Math.max(offsetLive, MIN_LEAD) + leadInBuilt;
 }
 function arrangementDisplayTime(idx, t) {
   const a = arrangements[idx];
@@ -2650,6 +2658,7 @@ function renderAnchorsList() {
 // keep their own already-committed sync untouched.
 async function applyAll() {
   if (!selectedJob) return;
+  lyricsFollowSync();  // the rows sent must carry every pending chart correction
   const midi = [...document.querySelectorAll('#tuningInputs input')].map(i => parseInt(i.value, 10));
   const applyToAll = document.getElementById('applyToAllChk').checked;
   const r = await fetch(`/jobs/${selectedJob.id}/rebuild`, {
@@ -2669,6 +2678,7 @@ async function applyAll() {
       // null keeps the stored rows; [] drops them, so the build reads the GP
       // file's own lyrics again ("Voltar à letra da pauta").
       lyrics_events: lyricsEvents.length ? serializeLyrics() : (lyricsBackToScore ? [] : null),
+      lyrics_follow_chart: isGpJob() ? lyricsFollowChart : null,
       // Send the FULL current tone state for GP jobs (even when empty) so that
       // clearing tones/changes actually persists — null would mean "keep the
       // old value". Non-GP jobs have no tones, so send null to skip the guard.
@@ -2697,6 +2707,9 @@ async function applyAll() {
       const kind = currentKind();
       if (kind) delete tempoScaleByKind[kind];
     }
+    // The rows just sent already carry the corrections; clearing the pending
+    // sync must not carry them back before the new build's rows load.
+    resetLyricFollow();
     noteOverridesByKind = {};  // baked into the new build regardless of applyToAll
     noteOverridesBuilt = '{}';
     selectJob(b.id, { force: true });
@@ -3654,6 +3667,86 @@ function updateLyricsProgress(status, log, forceStuck) {
   }
 }
 
+// Which chart the lyrics follow: the first in the build's own slot order — the
+// same chart the build times the GP file's lyrics on (gp_pipeline's `first`).
+const LYRIC_REF_ORDER = ['Lead', 'Rhythm', 'Combined', 'Alternate Lead', 'Alternate Rhythm'];
+function lyricRefArr() {
+  for (const k of LYRIC_REF_ORDER) {
+    const i = arrangements.findIndex(a => a.kind === k);
+    if (i >= 0) return i;
+  }
+  return arrangements.length ? 0 : -1;
+}
+// Lyric-clock padding of the BUILT bundle (lyric time + this = bundle time).
+let lyricPadBuilt = 0;
+// Built lyric time → where the reference chart's PENDING tempo/anchors put it,
+// in the same (lyric) clock: the notes' preview (previewScale + the anchor
+// warp) applied to the lyric's bundle time. Identity when nothing is pending.
+// A snapshot: it reads the pending state now, not when it is called.
+function lyricSyncMap() {
+  const a = arrangements[lyricRefArr()];
+  if (!isGpJob() || !a) return t => t;
+  const built = a.tempo_scale || 1;
+  const ratio = ((a.kind in tempoScaleByKind) ? tempoScaleByKind[a.kind] : built) / built;
+  const warp = buildTimeWarp((syncAnchorsByKind[a.kind] || []).map(p => p.slice()));
+  const shift = scoreShift, pad = lyricPadBuilt;
+  const lead = Math.max(offsetLive, MIN_LEAD) + leadInBuilt;
+  const origin = Math.max(0, MIN_LEAD - offsetLive) + leadInBuilt;
+  return t => warp((t + pad - shift) * ratio + lead) - origin;
+}
+function lyricSyncSig() {
+  const a = arrangements[lyricRefArr()];
+  if (!isGpJob() || !a) return '';
+  return JSON.stringify([a.kind, a.tempo_scale || 1, tempoScaleByKind[a.kind] ?? null,
+    syncAnchorsByKind[a.kind] || [], offsetLive, scoreShift, lyricPadBuilt]);
+}
+// x with f(x) = y for an increasing f (the sync maps are piecewise linear).
+function invertIncreasing(f, y) {
+  let lo = y - 1, hi = y + 1;
+  for (let k = 0; k < 40 && f(lo) > y; k++) lo = y - 2 ** (k + 1);
+  for (let k = 0; k < 40 && f(hi) < y; k++) hi = y + 2 ** (k + 1);
+  for (let k = 0; k < 60; k++) {
+    const mid = (lo + hi) / 2;
+    if (f(mid) < y) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+// The rows are always kept where they are SHOWN (every lyric tool works in that
+// clock), so when the reference chart's pending sync changes they are carried
+// from the old map to the new one: back through the old, forward through the
+// new. Undoing a correction brings them back. Called before every redraw.
+let lyricFollowSig = null, lyricFollowMap = t => t;
+function resetLyricFollow() { lyricFollowSig = lyricSyncSig(); lyricFollowMap = lyricSyncMap(); }
+function lyricsFollowSync() {
+  const sig = lyricSyncSig();
+  if (sig === lyricFollowSig) return;
+  const prev = lyricFollowMap, next = lyricSyncMap();
+  const baseline = !lyricFollowSig;  // nothing to carry from (not loaded yet)
+  lyricFollowSig = sig; lyricFollowMap = next;
+  if (baseline || !lyricsFollowChart || !lyricsEvents.length) return;
+  for (const r of lyricsEvents) {
+    const start = invertIncreasing(prev, r.time);
+    const end = invertIncreasing(prev, r.time + r.length);
+    r.time = Math.max(0, next(start));
+    r.length = Math.max(0.05, next(end) - r.time);
+  }
+  renderLyricsRows();
+  updatePendingChangesInfo();
+}
+function setLyricsFollowChart(on) {
+  lyricsFollowChart = !!on;
+  updateLyricFollowUi();
+}
+function updateLyricFollowUi() {
+  const box = document.getElementById('ilFollowChart');
+  if (!box) return;
+  box.checked = lyricsFollowChart;
+  box.disabled = !isGpJob();
+  const a = arrangements[lyricRefArr()];
+  document.getElementById('ilFollowRef').textContent = a ? `(pista ${a.kind})` : '';
+}
+document.getElementById('ilFollowChart').addEventListener('change', e => setLyricsFollowChart(e.target.checked));
+
 // "Voltar à letra da pauta": the editor's rows are dropped on the next rebuild
 // and the build reads the lyrics from the GP file again — the way to get the
 // score's own phrasing back after the rows replaced it.
@@ -3664,6 +3757,7 @@ document.getElementById('lyricsFromScore').addEventListener('click', async () =>
   lyricsEvents = [];
   lyricSelected = null;
   lyricsBackToScore = true;
+  setLyricsFollowChart(true);
   renderLyricsRows();
   updatePendingChangesInfo();
   document.getElementById('lyricsInfo').textContent =
@@ -3677,6 +3771,8 @@ async function loadLyrics(id) {
   lyricsBackToScore = false;
   lyricsEvents = eventsToRows(body.events);
   lyricsBuilt = JSON.stringify(serializeLyrics());
+  setLyricsFollowChart(body.follow_chart);
+  resetLyricFollow();
   renderLyricsRows();
   updatePendingChangesInfo();
   document.getElementById('lyricsInfo').textContent = LYRICS_STATUS_LABEL[body.status] || '';
@@ -3707,8 +3803,11 @@ async function loadLyrics(id) {
         if (lyricsBeforeAlign && b.status !== 'ready') {
           lyricsEvents = lyricsBeforeAlign;
           toast('A sincronização não correu — a letra ficou como estava. Vê o registo acima.');
+        } else {
+          setLyricsFollowChart(b.follow_chart);  // detected/aligned: timed to the recording
         }
         lyricsBeforeAlign = null;
+        resetLyricFollow();
         renderLyricsRows();
       }
     }, 3000);
@@ -3840,6 +3939,7 @@ async function useLyricsCandidate(c) {
       body: JSON.stringify({ text: c.synced, offset_s: 0 }),
     });
     lyricsEvents = eventsToRows(r.events);
+    setLyricsFollowChart(false);  // an LRC is timed to a recording, not to the score
   } catch (err) {
     toast(`Não foi possível usar esta letra: ${err.message}`);
     return;
@@ -3914,6 +4014,7 @@ function shiftLyricsFrom(word, delta) {
 function renderInspLyrics() {
   const body = document.getElementById('inspLyrics');
   if (!body) return;
+  updateLyricFollowUi();
   if (lyricSelected && !lyricsEvents.includes(lyricSelected)) lyricSelected = null;
   const words = lyricsEvents.filter(e => e.lyric.trim()).length;
   document.getElementById('ilCount').textContent = words ? `${words} palavra(s)` : '';
@@ -5641,10 +5742,13 @@ async function synthesizeVoice() {
     length: Math.ceil((last + leadInBuilt + 1) * sr), sampleRate: sr, numberOfChannels: 1,
   });
   const out = buf.getChannelData(0);
+  // The vocal line is the score's, so it follows the pending chart corrections.
+  const follow = lyricSyncMap();
   for (const n of notes) {
     const hz = midiToHz(n.midi ?? 69);
-    const dur = Math.max(0.08, n.length);
-    const i0 = Math.round((n.time + leadInBuilt) * sr);
+    const start = follow(n.time);
+    const dur = Math.max(0.08, follow(n.time + n.length) - start);
+    const i0 = Math.round((start + leadInBuilt) * sr);
     const len = Math.min(Math.round(dur * sr), out.length - i0);
     const attack = 0.02 * sr, release = Math.min(0.06, dur / 3) * sr;
     let phase = 0;
@@ -5671,7 +5775,7 @@ async function synthesizeArrangement(kind) {
   const tScale = (kind in tempoScaleByKind) ? tempoScaleByKind[kind] : bScale;
   const ratio = tScale / bScale;
   const warp = buildTimeWarp(syncAnchorsByKind[kind] || []);
-  const pad = Math.max(offsetLive, MIN_LEAD);
+  const pad = Math.max(offsetLive, MIN_LEAD) + leadInBuilt;  // previewScale's own shift
   const events = [];
   let maxT = 0;
   for (const n of a.notes) {
@@ -6250,6 +6354,7 @@ function initSync(j) {
     // the preview by lead_in_s*(ratio-1) — a constant, in-game-only offset.
     leadInBuilt = j.lead_in_s || 0;
     scoreShift = Math.max(j.offset_s || 0, MIN_LEAD) + leadInBuilt;
+    lyricPadBuilt = Math.max(0, MIN_LEAD - (j.offset_s || 0)) + leadInBuilt;
     loadArrSync(0);  // tempo/anchors are per-arrangement; load the first tab's
   } else {
     // audio-ML: neutral sync so notes draw at their raw recording times.
