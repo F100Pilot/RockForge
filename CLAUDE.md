@@ -1017,6 +1017,26 @@ say and is never silently stripped by that unrelated global checkbox. Times
 are bundle-clock, same convention as `tone_changes`/`section_overrides` — the
 editor places them directly on the already-warped score, no extra warp needed.
 
+**The grid closes the last bar (`close_beat_grid`).** Both parsers used to
+emit one beat per counted beat of every bar and stop there, so the grid ended
+on the LAST BEAT of the last bar, not at its end — and any song whose final
+notes fall after that beat (eighths to the end: the user's own PDF→GP5 file,
+"note at 187.797s beyond final ebeat 187.542s") failed `Arrangement.validate`
+and never built. Now the end of the last bar is appended as a downbeat
+numbered as the bar that would follow (how EOF charts carry a grid past the
+last bar), and an overfull last bar (more than its signature, as a converter
+can write) keeps the grid going at the last spacing until it covers the final
+note. Two readers had to learn that final downbeat is a bar LINE, not a bar:
+`arrangement_writer._measure_grid` stops there (it had been tacking an empty
+one-beat bar onto every export — `_steady` in its own tests already had this
+shape) and `/jobs/{id}/arrangements` leaves it out of `bars` (still in `beats`,
+the snap grid). Guarded by `test_a_song_ending_on_the_and_of_four_builds`,
+`test_gp7_grid_closes_the_last_bar_so_a_late_eighth_fits`,
+`test_an_overfull_last_bar_still_ends_inside_the_grid`,
+`test_the_closing_bar_line_ends_the_last_bar_instead_of_adding_one` and
+`test_the_closing_bar_line_is_not_listed_as_a_bar` (all mutation-checked); the
+user's file builds end to end.
+
 **Honest limit: still bound by the song's own tempo map.** `Arrangement.
 validate()` already rejects a note past the arrangement's final ebeat
 ("note at Ns beyond final ebeat Ms") — a real, pre-existing invariant, not

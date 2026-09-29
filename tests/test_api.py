@@ -508,6 +508,37 @@ def test_arrangements_derives_chord_name(client: TestClient) -> None:
     assert [b["measure"] for b in data[0]["bars"]] == [1, 2]  # bars = downbeats only
 
 
+def test_the_closing_bar_line_is_not_listed_as_a_bar(client: TestClient) -> None:
+    """The grid ends on the song's closing bar line (a downbeat with nothing
+    after it); the viewer must not number it or offer it as a bar to align."""
+    import rockforge.config as config
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.domain.arrangement import Arrangement, ArrangementKind, SongMetadata
+    from rockforge.domain.music import Beat, TabNote, TempoMap, Tuning
+    from rockforge.infrastructure.db.models import JobStatus
+    from rockforge.infrastructure.rsxml.writer import write_arrangement_xml
+
+    job = _create_job(client)
+    bundle = config.settings.work_dir / job["id"] / "bundle"
+    beats = tuple(Beat(time=0.5 * i, measure=(i // 4 + 1) if i % 4 == 0 else -1) for i in range(9))
+    write_arrangement_xml(Arrangement(
+        kind=ArrangementKind.COMBINED,
+        metadata=SongMetadata(title="End", artist="T", song_length=4.5),
+        tuning=Tuning(),
+        notes=[TabNote(string=1, fret=3, time=3.75, sustain=0.2)],
+        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+    ), bundle / "arrangement_combined.xml")
+    with app_module._session_factory() as session:
+        db_job = session.get(app_module.Job, job["id"])
+        db_job.status = JobStatus.COMPLETED
+        db_job.bundle_dir = str(bundle)
+        session.commit()
+
+    data = client.get(f"/jobs/{job['id']}/arrangements").json()
+    assert [b["measure"] for b in data[0]["bars"]] == [1, 2]
+    assert data[0]["beats"][-1] == 4.0  # still part of the snap grid
+
+
 def test_arrangements_exposes_bend_magnitude(client: TestClient) -> None:
     """A bent note carries its bend magnitude (semitones) so the viewer can
     label it 'full'/'½'."""

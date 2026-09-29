@@ -181,3 +181,8 @@ traço em vez de emojis, e o projeto em ecrã inteiro em vez de um modal.
 - [x] songsterr_gp: newLyrics → GP5 song.lyrics on the part that carries them (offset 0-based → startingMeasure+1)
 - [x] tests (mutation-checked), real Songsterr-shaped import → build, docs
 - [x] Found on the way: the warp dropped bend curves/fingering; GP lyrics never reached the editor (params mutated in place); cp1252 text aborted a Songsterr import
+
+## "note beyond final ebeat" on a song ending in eighths
+- [x] Reproduced with the user's GP5 (last note on the "and" of 4, grid ended on beat 4)
+- [x] close_beat_grid in both parsers; exporter and /arrangements treat the final downbeat as the bar line
+- [x] Tests (mutation-checked), the user's file built end to end, docs

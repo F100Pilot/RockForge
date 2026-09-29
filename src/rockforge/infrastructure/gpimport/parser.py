@@ -91,6 +91,29 @@ class ParsedGpTrack:
     warnings: list[str] = field(default_factory=list)
 
 
+def close_beat_grid(beats: list[Beat], bar_end: float, last_note: float | None) -> None:
+    """Add the song's final bar line to the grid, in place.
+
+    The grid holds one beat per counted beat of every bar, so without this it
+    stops at the LAST BEAT of the last bar, not at its end — and a note after
+    that beat (an eighth on the "and" of 4, the ordinary way a song ends in a
+    strummed pattern) lay past the final ebeat, which ``Arrangement.validate``
+    rightly refuses. The closing line is a downbeat, numbered as the bar that
+    would follow (how EOF-authored charts carry a grid past the last bar). A
+    last bar holding more than its time signature (an overfull bar, which a
+    converter can write) keeps the grid going at the last spacing until it
+    covers the final note."""
+    if not beats:
+        return
+    if bar_end > beats[-1].time + 1e-6:
+        number = max(b.measure for b in beats) + 1
+        beats.append(Beat(time=bar_end, measure=max(1, number)))
+    step = beats[-1].time - beats[-2].time if len(beats) > 1 else 0.5
+    step = step if step > 0 else 0.5
+    while last_note is not None and last_note > beats[-1].time:
+        beats.append(Beat(time=beats[-1].time + step, measure=-1))
+
+
 def _load(path: Path) -> Any:  # guitarpro.models.Song (untyped library)
     try:
         import guitarpro
@@ -460,6 +483,11 @@ def parse_gp_track(
     notes = expand_trills(notes)  # trills → alternating HO/PO runs (kept tight)
     notes.sort(key=lambda n: (n.time, n.string))
     beats_grid.sort(key=lambda b: b.time)
+    if track.measures:
+        last = track.measures[-1]
+        close_beat_grid(
+            beats_grid, t(last.start + last.length), notes[-1].time if notes else None
+        )
     base_bpm = float(song.tempo)
     if bar_points and track.measures:
         # Re-timed from outside, the header tempo is not what plays.

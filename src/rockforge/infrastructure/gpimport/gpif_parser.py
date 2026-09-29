@@ -47,6 +47,7 @@ from rockforge.infrastructure.gpimport.parser import (  # shared model + helpers
     GpTrackInfo,
     ParsedGpTrack,
     _make_ticks_to_seconds,
+    close_beat_grid,
 )
 from rockforge.infrastructure.gpimport.sync_map import (
     audio_clock,
@@ -550,6 +551,12 @@ def parse_gpif_track(
     notes = expand_trills(notes)  # trills → alternating HO/PO runs (kept tight)
     notes.sort(key=lambda n: (n.time, n.string))
     beats_grid.sort(key=lambda b: b.time)
+    if bar_start_ticks:
+        close_beat_grid(
+            beats_grid,
+            t(bar_start_ticks[-1] + durations[-1]),
+            notes[-1].time if notes else None,
+        )
 
     tempo_events = _tempo_events(root, bar_start_ticks, durations)
     base_bpm = tempo_events[0][1] if tempo_events else 120.0

@@ -373,6 +373,31 @@ def test_gp_lyrics_are_sung_on_the_vocal_line_not_the_charted_guitar(
     assert any(source in w for w in result.warnings)
 
 
+def test_a_song_ending_on_the_and_of_four_builds(tmp_path: Path) -> None:
+    """The grid used to stop at the last BEAT of the last bar, so a note after it
+    — eighths to the end, the ordinary way a strummed song ends — was "beyond
+    final ebeat" and the whole build failed. The grid now closes the bar."""
+    song = gp.Song()
+    song.title, song.artist, song.tempo = "End", "B", 120
+    v = song.tracks[0].measures[0].voices[0]
+    for i in range(8):
+        b = gp.Beat(v)
+        b.status, b.duration = gp.BeatStatus.normal, gp.Duration(value=8)
+        n = gp.Note(b)
+        n.string, n.value, n.type = 1, 3 + (i % 2), gp.NoteType.normal
+        b.notes.append(n)
+        v.beats.append(b)
+    path = tmp_path / "eighths.gp5"
+    gp.write(song, str(path))
+
+    spec = GpJobSpec(gp_path=path, audio_source="x.wav", lead_track=0)
+    result = make_use_case().run(spec, SongMetadata(title="End", artist="B"), tmp_path / "w")
+    xml = next(p for p in result.packaging.xml_paths if "vocals" not in p.name)
+    times = sorted(t for t, *_ in _lead_notes(xml))
+    assert len(times) == 8
+    assert times[-1] == pytest.approx(2.0 + 1.75)  # the last "and", after the 2 s lead-in
+
+
 def test_a_sync_correction_keeps_every_note_field_and_moves_the_lyric_notes() -> None:
     """The warp used to rebuild each note from a hand-picked list of fields,
     silently dropping the rest (bend curve, fingering, pick direction) as soon

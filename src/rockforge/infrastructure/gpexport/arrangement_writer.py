@@ -92,6 +92,10 @@ def _measure_grid(arrangement: Arrangement) -> list[tuple[float, float, int]]:
         if n + 1 < len(downbeat_idx):
             j = downbeat_idx[n + 1]
             end, count = beats[j].time, j - i
+        elif i == len(beats) - 1 and grid:
+            # A downbeat with nothing after it is the closing bar line
+            # (``close_beat_grid``): it ends the previous bar, it is not a bar.
+            break
         else:
             # Last measure: keep the beat spacing of the one before it so the
             # trailing bar is a real bar rather than a zero-length stub.

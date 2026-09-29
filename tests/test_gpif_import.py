@@ -606,3 +606,22 @@ def test_gp7_lyrics_are_timed_on_the_notes_of_their_own_track(tmp_path: Path) ->
     assert parsed.lyrics[0].text == "sing  a song"
     # Vocals: eighth at 0, eighth REST at 0.25, eighth at 0.5, dotted half at 0.75.
     assert parsed.lyric_onsets == (0.0, 0.5, 0.75)
+
+
+def test_gp7_grid_closes_the_last_bar_so_a_late_eighth_fits(tmp_path: Path) -> None:
+    gpif = GPIF_VOCALS.replace(
+        '<Voice id="0"><Beats>0 1 2 3</Beats></Voice>',
+        '<Voice id="0"><Beats>0 1 2 3 8</Beats></Voice>',
+    ).replace(
+        '<Beat id="3"><Rhythm ref="0"/><Notes>0</Notes></Beat>',
+        '<Beat id="3"><Rhythm ref="1"/><Notes>0</Notes></Beat>\n'
+        '    <Beat id="8"><Rhythm ref="1"/><Notes>0</Notes></Beat>',
+    )
+    path = tmp_path / "late.gp"
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("VERSION", "7.0")
+        z.writestr("Content/score.gpif", gpif)
+    parsed = parse_gp_track(path, 0)
+    assert parsed.notes[-1].time == pytest.approx(1.75)  # the "and" of 4
+    closing = parsed.tempo_map.beats[-1]
+    assert (closing.time, closing.measure) == (pytest.approx(2.0), 2)

@@ -2733,6 +2733,10 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
             for eb in ebeats
             if int(eb.get("measure", "-1")) > 0
         ]
+        if bars and ebeats and int(ebeats[-1].get("measure", "-1")) > 0:
+            # The grid ends on the song's closing bar line (``close_beat_grid``):
+            # the end of the last bar, not a bar of its own to number or align.
+            bars.pop()
         # Every beat (downbeats + off-beats) — the snap grid the tab viewer's
         # note drag quantizes to.
         beats = [float(eb.get("time", "0")) for eb in ebeats]

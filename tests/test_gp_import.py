@@ -138,8 +138,10 @@ def test_tempo_scale_must_be_positive(gp5_file: Path) -> None:
 def test_tempo_map_has_measure_numbers(gp5_file: Path) -> None:
     parsed = parse_gp_track(gp5_file, 0)
     downbeats = [b for b in parsed.tempo_map.beats if b.measure != -1]
-    assert [b.measure for b in downbeats] == [1, 2]
+    # Two bars, then the closing bar line where bar 2 ends (close_beat_grid).
+    assert [b.measure for b in downbeats] == [1, 2, 3]
     assert downbeats[1].time == pytest.approx(2.0)
+    assert downbeats[2].time == pytest.approx(4.0)
     assert parsed.tempo_map.average_bpm == 120.0
 
 
@@ -311,3 +313,14 @@ def test_gp5_bar_times_that_do_not_match_the_file_are_reported(gp5_file: Path) -
     bar; that has to be said, not silently applied."""
     timed = parse_gp_track(gp5_file, 0, bar_times=[0.0, 2.0, 4.0, 6.0])
     assert any("do not match the file's bar count (4 vs 2)" in w for w in timed.warnings)
+
+
+def test_an_overfull_last_bar_still_ends_inside_the_grid() -> None:
+    """A converter can write a last bar holding more than its time signature;
+    the grid keeps its spacing past the bar line until it covers the last note."""
+    from rockforge.domain.music import Beat
+    from rockforge.infrastructure.gpimport.parser import close_beat_grid
+
+    beats = [Beat(0.0, 1), Beat(0.5, -1), Beat(1.0, -1), Beat(1.5, -1)]
+    close_beat_grid(beats, bar_end=2.0, last_note=2.7)
+    assert [(b.time, b.measure) for b in beats[4:]] == [(2.0, 2), (2.5, -1), (3.0, -1)]

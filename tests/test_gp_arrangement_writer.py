@@ -165,3 +165,16 @@ def test_an_arrangement_with_no_beat_grid_is_refused(tmp_path: Path) -> None:
     )
     with pytest.raises(IngestionError, match="beat grid"):
         write_arrangement_gp5(arr, tmp_path / "none.gp5")
+
+
+def test_the_closing_bar_line_ends_the_last_bar_instead_of_adding_one(tmp_path: Path) -> None:
+    """A built grid ends on the song's closing bar line — a downbeat with nothing
+    after it (``close_beat_grid``). It is where the last bar ENDS; exporting it
+    as a bar of its own tacked an empty one-beat bar onto every song."""
+    import guitarpro
+
+    notes = [TabNote(string=0, fret=3, time=7.75, sustain=0.2)]  # the "and" of 4, bar 4
+    dst = tmp_path / "out.gp5"
+    write_arrangement_gp5(_arrangement(notes), dst)  # _steady: 4 bars + the closing line
+    assert len(guitarpro.parse(str(dst)).measureHeaders) == 4
+    assert parse_gp_track(dst, 0).notes[0].time == pytest.approx(7.75, abs=1e-3)
