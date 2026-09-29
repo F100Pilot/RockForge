@@ -210,6 +210,17 @@ def _build_gp_use_case():  # noqa: ANN202
     )
 
 
+def _gp_carries_sync(gp_path: Path) -> bool:
+    """Whether a GP8 file carries its own audio sync points (synced in Guitar
+    Pro). A hint for the checklist, so never a reason to fail a build."""
+    from rockforge.infrastructure.gpimport.gpif_parser import sync_start_s
+
+    try:
+        return sync_start_s(gp_path) is not None
+    except Exception:
+        return False
+
+
 @celery_app.task(name="rockforge.generate_cdlc")
 def generate_cdlc(job_id: str) -> None:
     session_factory = make_session_factory(settings.database_url)
@@ -372,6 +383,9 @@ def generate_cdlc(job_id: str) -> None:
                 else:
                     params.pop("vocal_melody", None)
                 params["gp_has_lyrics"] = result.gp_has_lyrics
+                # Synced to its audio in Guitar Pro 8: the file's own sync points
+                # time the chart, which counts as synchronised (the checklist).
+                params["gp_synced"] = _gp_carries_sync(Path(params["gp_path"]))
                 job.params = {**params}  # JSON column needs a fresh dict object
                 session.commit()
                 return

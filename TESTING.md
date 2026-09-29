@@ -687,6 +687,19 @@ automatically.
    depois de "Aplicar e reconstruir". Desfazer a correção devolve-as. Com a
    caixa "Acompanha as correções…" desligada (ou uma letra do LRCLIB) não mexem.
 
+### 7c-septies. Áudio dentro do GP8 e marca "sincronizada"
+
+1. Um GP8 com faixa de áudio (mesmo desligada no Guitar Pro, ou em .opus/.webm):
+   no passo 3 aparece "Usar o áudio que vem dentro do ficheiro GP".
+2. Um GP8 cujo áudio é um vídeo do YouTube: o link aparece em "Não tens o
+   áudio?" e o áudio descarrega-se sozinho. Um GP8 cujo áudio está fora do
+   ficheiro: o passo 3 diz qual é o ficheiro a carregar.
+3. Um projeto sincronizado no Guitar Pro 8 mostra "Sincronizada" no cartão e
+   "Sincronizada no Guitar Pro" na lista "Antes de usar", sem perguntar.
+4. Partitura → Sincronização → "Estado da sincronização" → "Marcar como
+   sincronizada": o cartão do projeto passa a mostrar "Sincronizada";
+   "Desmarcar" tira-a.
+
 ### 7c-sexies. Áudio do YouTube só com um ficheiro GP
 
 1. Novo projeto com um GP5 qualquer (sem Songsterr) → passo 3 → **Não tens o

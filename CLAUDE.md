@@ -116,11 +116,35 @@ re-inverting the dependency.
    `{name, size_bytes}` and `/jobs/gp` takes `use_embedded_audio=true` with no
    `audio` upload at all. The wizard's step 3 ticks "🎧 Usar o áudio que vem
    dentro do ficheiro GP" by default when present (hiding the upload and its
-   `required`). Anything short of a real, enabled, local audio member is "none",
-   never an error. Guarded by `test_the_audio_embedded_in_a_gp8_file_is_*`,
+   `required`). Anything short of a real, local audio member is "none",
+   never an error.
+
+   **Detection is tolerant, and says where the audio is when it is not
+   inside** (`backing_track` → `BackingTrackInfo`). "Carreguei um ficheiro gp
+   com áudio mas não foi detetado": the check wanted an ENABLED track, one of
+   six extensions and the exact member name, so one detail hid the audio. Now
+   an audio track switched off in Guitar Pro still names the audio the sync
+   points describe and is used (`disabled`, said in the wizard); the asset is
+   found by its id, else any declared asset, else the ONE audio file in
+   `Content/Assets`, matched regardless of case/leading slash (the member name
+   is still only READ); `.opus/.webm/.aac/.mp4/.wma` count (a YouTube download
+   embedded as-is). When it is not inside: a **YouTube** source (GP8 can play
+   the audio from a video — its sync points then describe THAT video) is
+   returned as `backing_youtube_url`, and the wizard puts it in "Não tens o
+   áudio?" and downloads it by itself, like after a Songsterr import; a file
+   elsewhere on disk is `backing_external_path`, named in step 3 so the user
+   knows which file to upload. The actual file was never seen here (the user
+   did not attach it), so this covers every way the old check could miss one,
+   not a reproduction. Guarded by `test_the_audio_embedded_in_a_gp8_file_is_*`,
    `test_no_usable_embedded_audio_is_none_never_an_error`,
+   `test_the_embedded_audio_is_found_despite_details_that_used_to_hide_it`
+   (disabled / .opus + case + slash / an undeclared single asset —
+   mutation-checked), `test_audio_that_is_not_in_the_file_says_where_it_is`,
+   `test_gp_inspect_says_where_the_audio_is_when_it_is_not_inside`,
    `test_a_gp8_job_can_use_the_audio_embedded_in_the_file` and
-   `test_a_gp_job_without_any_recording_is_refused_clearly`.
+   `test_a_gp_job_without_any_recording_is_refused_clearly`; the wizard with
+   Playwright on a GP8 whose audio is a YouTube link (link filled, download
+   run, upload hidden).
 
    **Songsterr's per-measure timestamps (`bar_times`) — human-marked sync,
    fetched rather than estimated.** Songsterr stores, per song, the instant
@@ -1753,6 +1777,25 @@ jump-button to the right editor (`COMPLETE_ACTIONS`). Rows + alerts:
   inherits it with the rest of `params`. Guarded by
   `test_a_song_that_needed_no_adjustment_can_be_confirmed_as_in_sync` /
   `test_songsterr_bar_times_count_as_synchronised`.
+  **A chart synced in Guitar Pro 8 counts by itself, and "synced" is visible
+  everywhere** ("cria uma forma de identificar que a track já foi sincronizada
+  por mim, ou aceite como sincronizada"). The build stores
+  `params["gp_synced"]` (the file carries its own SyncPoints,
+  `_gp_carries_sync`), and `_backfill_gp_synced` marks projects built before
+  that key existed once at startup, so they need no rebuild.
+  `JobOut.sync_source` says why a chart counts as in sync — `confirmed` (the
+  user's word wins), `songsterr`, `gp`, `adjusted` (corrected here, not yet
+  confirmed) or None (`_sync_source`). It drives a "Sincronizada" chip on the
+  project card (`isSynced`), an **"Estado da sincronização"** card at the top
+  of the Sincronização tab with "Marcar como sincronizada"/"Desmarcar"
+  (`renderSyncState`, the same `PATCH /sync-confirmed` — it was only reachable
+  from the Exportar page before), and the checklist row ("Sincronizada no
+  Guitar Pro" / "pelo Songsterr"; an adjusted chart also offers "Marcar como
+  sincronizada"). Guarded by `test_a_chart_says_why_it_counts_as_in_sync`,
+  `test_a_gp8_file_synced_in_guitar_pro_is_recognised` and
+  `test_projects_synced_in_guitar_pro_before_the_flag_existed_are_marked_on_startup`
+  (mutation-checked); the UI with Playwright (mark → card chip → undo), and
+  15 real GP8-synced projects read `gp` after one restart.
 - ⓘ **Letra** ← `has_lyrics` (informational, never an alert). NOTE: read
   `has_lyrics` (new field: edited `lyrics_events` OR `lrc_text` OR
   `lyrics_status == "ready"`), NOT `lyrics_status` alone — GP-embedded / LRC /

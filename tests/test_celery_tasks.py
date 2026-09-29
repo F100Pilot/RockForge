@@ -167,6 +167,7 @@ def test_a_gp_files_lyrics_reach_the_editor_after_the_build(db, tmp_path, monkey
     assert params["gp_has_lyrics"] is True
     # Timed on the score, so the viewer moves them with the chart's corrections.
     assert params["lyrics_follow_chart"] is True
+    assert params["gp_synced"] is False  # a GP5 cannot carry Guitar Pro 8 sync points
     assert [
         (round(r["time"], 3), round(r["length"], 3), r["midi"])
         for r in params["vocal_melody"]
@@ -332,3 +333,31 @@ def test_an_alignment_request_is_used_once_even_when_it_fails(db) -> None:
     job = _reload(db, job_id)
     assert job.params["lyrics_status"] == "unavailable"
     assert "lyrics_align" not in job.params
+
+
+def test_a_gp8_file_synced_in_guitar_pro_is_recognised(tmp_path) -> None:
+    """The build marks a file that carries its own Guitar Pro 8 sync points, so
+    the checklist stops asking "confirmaste a sincronização?" about it."""
+    import zipfile
+
+    def gp(automations: str) -> Path:
+        path = tmp_path / f"s{len(automations)}.gp"
+        with zipfile.ZipFile(path, "w") as z:
+            z.writestr("VERSION", "7.0")
+            z.writestr("Content/score.gpif", (
+                '<?xml version="1.0" encoding="utf-8"?><GPIF><Score><Title>T</Title></Score>'
+                "<MasterTrack><Automations><Automation><Type>Tempo</Type><Bar>0</Bar>"
+                f"<Position>0</Position><Value>120 2</Value></Automation>{automations}"
+                "</Automations></MasterTrack><MasterBars><MasterBar><Time>4/4</Time>"
+                "<Bars>0</Bars></MasterBar></MasterBars></GPIF>"
+            ))
+        return path
+
+    point = (
+        "<Automation><Type>SyncPoint</Type><Bar>0</Bar><Position>0</Position><Value>"
+        "<BarIndex>0</BarIndex><BarOccurrence>0</BarOccurrence>"
+        "<FrameOffset>44100</FrameOffset></Value></Automation>"
+    )
+    assert ca._gp_carries_sync(gp(point)) is True
+    assert ca._gp_carries_sync(gp("")) is False
+    assert ca._gp_carries_sync(tmp_path / "missing.gp") is False

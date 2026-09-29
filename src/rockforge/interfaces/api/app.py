@@ -165,6 +165,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     # to collect them (the file is stored before the job exists).
     _sweep_orphan_gp_uploads()
     _sweep_orphan_youtube_audio()
+    _backfill_gp_synced()
     task: asyncio.Task[None] | None = None
     if settings.idle_shutdown_s > 0:
         task = asyncio.create_task(_idle_shutdown_watchdog())
@@ -369,6 +370,11 @@ class JobOut(BaseModel):
     # simply right from the start — has nothing for `sync_edited` to see, so
     # without this the reminder could never be cleared.
     sync_confirmed: bool = False
+    # Why the chart counts as in sync, for the badge on the project card and the
+    # score: "confirmed" (the user said so), "gp" (synced in Guitar Pro 8 — the
+    # file carries its own sync points), "songsterr" (human-marked bar times),
+    # "adjusted" (corrected here, not yet confirmed) or None.
+    sync_source: str | None = None
     # True if the bundle carries lyrics from ANY source — edited/GP-embedded
     # events, an LRC/UltraStar file, or completed WhisperX detection — not just
     # `lyrics_status == "ready"` (which only covers detection).
@@ -678,7 +684,7 @@ def _sync_edited(params: dict[str, Any]) -> bool:
     a drift anchor (job-level or per-arrangement), or human-marked bar times
     (Songsterr) driving the timing. Drives the soft "confirmaste a
     sincronização?" completeness reminder."""
-    if params.get("bar_times"):
+    if params.get("bar_times") or params.get("gp_synced"):
         return True
     raw_offset = params.get("offset_s")
     offset = float(raw_offset) if isinstance(raw_offset, (int, float, str)) else 0.0
@@ -699,6 +705,18 @@ def _sync_edited(params: dict[str, Any]) -> bool:
             if any(entry.get("sync_anchor_stages") or []):
                 return True
     return False
+
+
+def _sync_source(params: dict[str, Any]) -> str | None:
+    """Why the chart counts as in sync (see JobOut.sync_source); the user's own
+    confirmation first, then what timed it, then corrections made here."""
+    if params.get("sync_confirmed"):
+        return "confirmed"
+    if params.get("bar_times"):
+        return "songsterr"
+    if params.get("gp_synced"):
+        return "gp"
+    return "adjusted" if _sync_edited(params) else None
 
 
 def _to_out(job: Job) -> JobOut:
@@ -745,6 +763,7 @@ def _to_out(job: Job) -> JobOut:
         has_tones=has_tones,
         sync_edited=_sync_edited(params),
         sync_confirmed=bool(params.get("sync_confirmed")),
+        sync_source=_sync_source(params),
         has_lyrics=has_lyrics,
         rebuilt_from=cast("str | None", params.get("rebuilt_from") or None),
     )
@@ -818,6 +837,12 @@ class GpInspectOut(BaseModel):
     # {"name", "size_bytes"}, or None. When present it is the audio the sync
     # points describe, so the wizard offers it instead of asking for an upload.
     embedded_audio: dict[str, Any] | None = None
+    # When the audio GP8 was synced to is NOT inside the file, where it is: a
+    # YouTube video (the wizard fetches its audio) or a file on the user's disk.
+    backing_youtube_url: str | None = None
+    backing_external_path: str | None = None
+    # The audio track is switched off in Guitar Pro (its audio is used anyway).
+    backing_disabled: bool = False
     # Set when the file was built from a Songsterr tab (/songsterr/import): the
     # link, so the wizard can fetch that song's bar times too, and what the
     # conversion could not carry over.
@@ -914,7 +939,11 @@ def _inspect_stored_gp(dest: Path) -> GpInspectOut:
     except IngestionError as exc:
         dest.unlink(missing_ok=True)
         raise HTTPException(422, str(exc)) from exc
-    from rockforge.infrastructure.gpimport.gpif_parser import embedded_audio, sync_start_s
+    from rockforge.infrastructure.gpimport.gpif_parser import (
+        BackingTrackInfo,
+        backing_track,
+        sync_start_s,
+    )
 
     # Both are hints for the wizard, never a reason to refuse a file that parsed.
     try:
@@ -922,12 +951,16 @@ def _inspect_stored_gp(dest: Path) -> GpInspectOut:
     except Exception:
         synced_start = None
     try:
-        embedded = embedded_audio(dest)
+        backing = backing_track(dest)
     except Exception:
-        embedded = None
+        backing = BackingTrackInfo()
+    embedded = backing.audio
     return GpInspectOut(
         gp_token=dest.name,
         sync_start_s=synced_start,
+        backing_youtube_url=backing.youtube_url,
+        backing_external_path=backing.external_path,
+        backing_disabled=backing.disabled,
         embedded_audio=(
             {"name": Path(embedded.member).name, "size_bytes": embedded.size_bytes}
             if embedded is not None
@@ -1508,6 +1541,38 @@ def _sweep_orphan_gp_uploads() -> int:
     if removed:
         logger.info("removed %d orphaned GP upload(s) from %s", removed, gp_dir)
     return removed
+
+
+def _backfill_gp_synced() -> int:
+    """Mark the GP jobs built before ``gp_synced`` existed that carry their own
+    Guitar Pro 8 sync points, so a project the user synced in Guitar Pro stops
+    being asked "confirmaste a sincronização?" without having to be rebuilt.
+    Once per job (the key, even False, stops it being read again); returns how
+    many were marked; never raises — housekeeping must not block startup."""
+    from sqlalchemy import select
+
+    from rockforge.infrastructure.gpimport.gpif_parser import sync_start_s
+
+    marked = 0
+    try:
+        with _session_factory() as session:
+            known: dict[str, bool] = {}
+            for job in session.execute(select(Job)).scalars():
+                params = dict(job.params or {})
+                gp_path = params.get("gp_path")
+                if job.source_type != "gp" or "gp_synced" in params or not gp_path:
+                    continue
+                if gp_path not in known:
+                    try:
+                        known[gp_path] = sync_start_s(Path(gp_path)) is not None
+                    except Exception:  # noqa: BLE001 — a missing/odd file is just "no"
+                        known[gp_path] = False
+                job.params = {**params, "gp_synced": known[gp_path]}
+                marked += known[gp_path]
+            session.commit()
+    except Exception:  # noqa: BLE001 — housekeeping must never block startup
+        logger.warning("gp_synced backfill failed", exc_info=True)
+    return marked
 
 
 def _sweep_orphan_youtube_audio() -> int:

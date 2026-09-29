@@ -507,18 +507,67 @@ def test_the_audio_embedded_in_a_gp8_file_is_found_and_extracted(tmp_path: Path)
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"enabled": "false"},                               # audio track switched off
         {"source": "YouTube"},                              # a link, not a file
         {"store": None},                                    # referenced but absent
         {"member": "Content/Assets/abc.exe", "store": "Content/Assets/abc.exe"},
     ],
 )
 def test_no_usable_embedded_audio_is_none_never_an_error(tmp_path: Path, kwargs: dict) -> None:
-    """Anything short of a real, enabled, local audio member is simply "no
-    embedded audio" — the user can still upload a recording."""
+    """Anything short of a real, local audio member is simply "no embedded
+    audio" — the user can still upload a recording."""
     from rockforge.infrastructure.gpimport.gpif_parser import embedded_audio
 
     assert embedded_audio(_gp_with_audio(tmp_path, **kwargs)) is None
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        # The audio track switched off in Guitar Pro: still the audio it was synced to.
+        {"enabled": "false"},
+        # What a YouTube download is when embedded as-is, and a path whose case
+        # and leading slash differ from the ZIP member's.
+        {"member": "/content/assets/ABC.opus", "store": "Content/Assets/abc.opus"},
+        # The asset names another file, but the one audio file in Assets is there.
+        {"member": "Content/Assets/gone.mp3", "store": "Content/Assets/other.m4a"},
+    ],
+)
+def test_the_embedded_audio_is_found_despite_details_that_used_to_hide_it(
+    tmp_path: Path, kwargs: dict,
+) -> None:
+    """A user's GP8 file with its audio "was not detected": the old check wanted
+    an enabled track, one of six extensions and the exact member name."""
+    from rockforge.infrastructure.gpimport.gpif_parser import backing_track, extract_embedded_audio
+
+    gp = _gp_with_audio(tmp_path, **kwargs)
+    info = backing_track(gp)
+    assert info.audio is not None and info.audio.size_bytes == len(b"ID3fake-mp3-bytes")
+    assert info.disabled == (kwargs.get("enabled") == "false")
+    out = extract_embedded_audio(gp, tmp_path / "out" / "recording")
+    assert out.read_bytes() == b"ID3fake-mp3-bytes"
+
+
+def test_audio_that_is_not_in_the_file_says_where_it_is(tmp_path: Path) -> None:
+    """No recording inside, but the file says which one: a YouTube video (the
+    wizard can fetch its audio) or a file elsewhere on the user's disk."""
+    from rockforge.infrastructure.gpimport.gpif_parser import backing_track
+
+    gpif = _synced_gpif(_sync(0, 0.0), (
+        "<BackingTrack><Enabled>true</Enabled><Source>YouTube</Source>"
+        "<YouTubeVideoUrl>https://www.youtube.com/watch?v=dQw4w9WgXcQ</YouTubeVideoUrl>"
+        "<AssetId>0</AssetId></BackingTrack>"
+    ))
+    link = _gp_with(tmp_path, gpif)
+    assert backing_track(link).youtube_url == "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    assert backing_track(link).audio is None
+
+    outside = _synced_gpif(_sync(0, 0.0), (
+        "<BackingTrack><Enabled>true</Enabled><Source>Local</Source><AssetId>0</AssetId>"
+        "</BackingTrack><Assets><Asset id=\"0\"><OriginalFilePath><![CDATA[C:\\m\\song.mp3]]>"
+        "</OriginalFilePath></Asset></Assets>"
+    ))
+    info = backing_track(_gp_with(tmp_path, outside))
+    assert info.audio is None and info.external_path == "C:\\m\\song.mp3"
 
 
 def test_a_gp_without_a_backing_track_has_no_embedded_audio(tmp_path: Path) -> None:

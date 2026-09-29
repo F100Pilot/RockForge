@@ -872,6 +872,11 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
           <div id="inspSync" class="pv-insp-body">
             <!-- GP sync controls — hidden for audio-ML jobs (notes already aligned) -->
             <div id="gpSyncControls">
+              <div class="pv-card" id="syncStateCard">
+                <div class="pv-card-head">Estado da sincronização</div>
+                <div id="syncStateText" class="pv-card-desc"></div>
+                <button type="button" id="syncStateBtn" class="secondary pv-wide"></button>
+              </div>
               <div class="pv-card">
                 <div class="pv-card-head"><span class="sync-step-num">1</span> Início da música <span id="syncOffsetKind" class="meta"></span>
                   <button class="info-btn" data-info="sync-offset">ⓘ</button></div>

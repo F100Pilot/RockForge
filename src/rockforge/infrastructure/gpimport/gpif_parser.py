@@ -360,7 +360,11 @@ def sync_start_s(path: Path) -> float | None:
 # before embedding it, and GP itself stores its own copy. Uploading the original
 # recording instead left the chart off by exactly that trimmed intro (one bar on
 # the user's song), so when the file has one, it is the recording to use.
-_EMBEDDED_AUDIO_SUFFIXES = frozenset({".mp3", ".wav", ".ogg", ".flac", ".m4a", ".aiff"})
+_EMBEDDED_AUDIO_SUFFIXES = frozenset({
+    ".mp3", ".wav", ".ogg", ".flac", ".m4a", ".aiff", ".aif",
+    # What a YouTube download keeps when it is embedded as-is (-c copy).
+    ".opus", ".webm", ".aac", ".mp4", ".wma",
+})
 #: Same ceiling as any uploaded recording; checked on the declared size before
 #: decompressing, like _MAX_GPIF_BYTES.
 MAX_EMBEDDED_AUDIO_BYTES = 500 * 1024 * 1024
@@ -373,43 +377,83 @@ class EmbeddedAudio:
     size_bytes: int
 
 
-def embedded_audio(path: Path) -> EmbeddedAudio | None:
-    """The backing-track audio stored in a GP8 file, or None.
+@dataclasses.dataclass(frozen=True)
+class BackingTrackInfo:
+    """What a GP8 file says about the audio it was synced to."""
 
-    Only an ENABLED, LOCAL backing track counts (alphaTab applies the same two
-    conditions; "YouTube" sources are a link, not a file), and only a member
-    that really exists in the ZIP with an audio extension — anything else is
-    None, never an error: the user can still upload a recording.
+    #: The recording stored inside the .gp, when there is one.
+    audio: EmbeddedAudio | None = None
+    #: Guitar Pro plays the audio from this YouTube video (not stored in the file).
+    youtube_url: str | None = None
+    #: The file the audio track names, when it is NOT inside the .gp.
+    external_path: str | None = None
+    #: The audio track is switched off in Guitar Pro (the audio is still used).
+    disabled: bool = False
+
+
+def backing_track(path: Path) -> BackingTrackInfo:
+    """The audio a GP8 file was synced to: stored in the file, a YouTube link,
+    or a file outside it. Tolerant on purpose — a file the user synced in
+    Guitar Pro must not look like it has no audio because of one detail:
+
+    - an audio track switched OFF still names the audio the sync points
+      describe, so it is used (and ``disabled`` says so);
+    - the asset is found by its id, else any declared asset, else the one
+      audio file in ``Content/Assets`` — matched without regard to case or a
+      leading slash, and the member name is only ever READ, never a path;
+    - a YouTube source is a link, not a file: it is reported, never guessed.
+
+    Never raises: anything unreadable is simply "nothing found".
     """
     if not _is_gpif(path):
-        return None
+        return BackingTrackInfo()
     try:
         root = _load_gpif(path)
-    except IngestionError:
-        return None
-    backing = root.find("BackingTrack")
-    if backing is None:
-        return None
-    if _text(backing.find("Enabled")).lower() != "true" or _text(backing.find("Source")) != "Local":
-        return None
-    asset_id = _text(backing.find("AssetId"))
-    assets = root.find("Assets")
-    member = ""
-    for asset in assets.findall("Asset") if assets is not None else []:
-        if asset.get("id") == asset_id:
-            member = _text(asset.find("EmbeddedFilePath")).replace("\\", "/")
-            break
-    suffix = Path(member).suffix.lower()
-    if not member or suffix not in _EMBEDDED_AUDIO_SUFFIXES:
-        return None
-    try:
         with zipfile.ZipFile(path) as z:
-            info = z.getinfo(member)
-    except (KeyError, zipfile.BadZipFile, OSError):
-        return None
-    if info.file_size <= 0:
-        return None
-    return EmbeddedAudio(member=member, suffix=suffix, size_bytes=info.file_size)
+            infos = {i.filename.replace("\\", "/").lstrip("/").lower(): i for i in z.infolist()}
+    except (IngestionError, zipfile.BadZipFile, OSError):
+        return BackingTrackInfo()
+
+    def audio_member(name: str) -> EmbeddedAudio | None:
+        info = infos.get(name.replace("\\", "/").lstrip("/").lower()) if name else None
+        suffix = Path(name).suffix.lower()
+        if info is None or suffix not in _EMBEDDED_AUDIO_SUFFIXES or info.file_size <= 0:
+            return None
+        return EmbeddedAudio(member=info.filename, suffix=suffix, size_bytes=info.file_size)
+
+    backing = next(root.iter("BackingTrack"), None)
+    assets = {a.get("id", ""): a for a in root.iter("Asset")}
+    disabled = False
+    ordered: list[ET.Element] = []
+    if backing is not None:
+        disabled = _text(backing.find("Enabled")).lower() == "false"
+        if _text(backing.find("Source")).lower() == "youtube":
+            url = _text(backing.find("YouTubeVideoUrl"))
+            # The sync points describe that video's audio; a stale local asset does not.
+            return BackingTrackInfo(youtube_url=url or None, disabled=disabled)
+        chosen = assets.get(_text(backing.find("AssetId")))
+        if chosen is not None:
+            ordered.append(chosen)
+    ordered += [a for a in assets.values() if a not in ordered]
+    external = None
+    for asset in ordered:
+        declared = _text(asset.find("EmbeddedFilePath"))
+        found = audio_member(declared)
+        if found is not None:
+            return BackingTrackInfo(audio=found, disabled=disabled)
+        external = external or _text(asset.find("OriginalFilePath")) or declared or None
+    loose = [
+        audio for name, info in infos.items()
+        if name.startswith("content/assets/") and (audio := audio_member(info.filename))
+    ]
+    if len(loose) == 1:
+        return BackingTrackInfo(audio=loose[0], disabled=disabled)
+    return BackingTrackInfo(external_path=external, disabled=disabled)
+
+
+def embedded_audio(path: Path) -> EmbeddedAudio | None:
+    """The recording stored inside a GP8 file, or None (see backing_track)."""
+    return backing_track(path).audio
 
 
 def extract_embedded_audio(path: Path, dest: Path) -> Path:

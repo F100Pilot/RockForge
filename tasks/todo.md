@@ -215,3 +215,12 @@ Pedido: "quando corrijo o início das notas, a letra não se está a mover".
 - [x] Caixa no separador Letra; a voz sintetizada segue também
 - [x] Silêncio inicial em falta em `arrangementPreviewScale`/`synthesizeArrangement`
 - [x] Testes, Playwright com o ficheiro do utilizador, docs, gates
+
+# Áudio do GP8 não detetado + marca "sincronizada" (2026-09-29)
+
+- [x] Deteção tolerante (faixa desligada, .opus/.webm, nome com outra
+      capitalização, um único áudio em Assets); YouTube e ficheiro externo ditos
+- [x] Assistente: link do YouTube do próprio GP descarregado sozinho
+- [x] `gp_synced` no build + preenchido no arranque para projetos antigos
+- [x] `sync_source`; chip "Sincronizada"; cartão "Estado da sincronização"
+- [x] Testes (mutação), Playwright, docs, gates

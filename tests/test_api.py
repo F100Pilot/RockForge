@@ -741,15 +741,18 @@ def test_gp_inspect_and_job_flow(client: TestClient, tmp_path) -> None:
     assert job["title"] == "GpT" and job["artist"] == "GpA"  # metadata from the GP file
 
 
-def _gp8_with_embedded_audio(audio: bytes | None) -> bytes:
+def _gp8_with_embedded_audio(
+    audio: bytes | None, *, enabled: str = "true", source: str = "Local", link: str = "",
+    asset: str = "<EmbeddedFilePath><![CDATA[Content/Assets/a.mp3]]></EmbeddedFilePath>",
+) -> bytes:
     """A minimal .gp whose backing track is an embedded MP3 (when ``audio``)."""
     import io
     import zipfile
 
     backing = (
-        "<BackingTrack><Enabled>true</Enabled><Source>Local</Source><AssetId>0</AssetId>"
+        f"<BackingTrack><Enabled>{enabled}</Enabled><Source>{source}</Source>{link}<AssetId>0</AssetId>"
         "<FramePadding>0</FramePadding></BackingTrack><Assets><Asset id=\"0\">"
-        "<EmbeddedFilePath><![CDATA[Content/Assets/a.mp3]]></EmbeddedFilePath></Asset></Assets>"
+        f"{asset}</Asset></Assets>"
         if audio is not None
         else ""
     )
@@ -796,6 +799,31 @@ def test_a_gp8_job_can_use_the_audio_embedded_in_the_file(client: TestClient, tm
     uploads = list((tmp_path / "work" / "uploads").iterdir())
     assert [u.read_bytes() for u in uploads] == [mp3]
     assert uploads[0].suffix == ".mp3"
+
+
+def test_gp_inspect_says_where_the_audio_is_when_it_is_not_inside(client: TestClient) -> None:
+    """A GP8 file whose audio "was not detected": when Guitar Pro plays it from
+    a YouTube video, or from a file outside the .gp, the wizard is told which."""
+    youtube = _gp8_with_embedded_audio(
+        b"x", source="YouTube",
+        link="<YouTubeVideoUrl>https://youtu.be/dQw4w9WgXcQ</YouTubeVideoUrl>",
+    )
+    body = client.post("/gp/inspect", files={"file": ("y.gp", youtube, "x")}).json()
+    assert body["embedded_audio"] is None
+    assert body["backing_youtube_url"] == "https://youtu.be/dQw4w9WgXcQ"
+
+    outside = _gp8_with_embedded_audio(
+        b"x",
+        asset="<OriginalFilePath><![CDATA[D:\\music\\take.mp3]]></OriginalFilePath>",
+    )
+    body = client.post("/gp/inspect", files={"file": ("o.gp", outside, "x")}).json()
+    assert body["backing_youtube_url"] is None
+    # The stored a.mp3 is the one audio file in Assets, so it is still found.
+    assert body["embedded_audio"] == {"name": "a.mp3", "size_bytes": 1}
+
+    off = _gp8_with_embedded_audio(b"ID3x", enabled="false")
+    body = client.post("/gp/inspect", files={"file": ("d.gp", off, "x")}).json()
+    assert body["embedded_audio"] and body["backing_disabled"] is True
 
 
 def test_a_gp_job_without_any_recording_is_refused_clearly(client: TestClient) -> None:
@@ -1269,6 +1297,19 @@ def test_songsterr_bar_times_count_as_synchronised() -> None:
 
     assert _sync_edited({"bar_times": [0.0, 2.1, 4.2]}) is True
     assert _sync_edited({"bar_times": []}) is False
+
+
+def test_a_chart_says_why_it_counts_as_in_sync() -> None:
+    """The card and the score show a "Sincronizada" badge; the user's own word
+    comes first, then what timed the chart, then corrections made here."""
+    from rockforge.interfaces.api.app import _sync_edited, _sync_source
+
+    assert _sync_source({}) is None
+    assert _sync_source({"tempo_scale": 1.05}) == "adjusted"
+    assert _sync_source({"gp_synced": True}) == "gp"
+    assert _sync_edited({"gp_synced": True}) is True  # the checklist stops asking
+    assert _sync_source({"bar_times": [0.0, 2.0], "gp_synced": True}) == "songsterr"
+    assert _sync_source({"gp_synced": True, "sync_confirmed": True}) == "confirmed"
 
 
 def _stages(client: TestClient, job_id: str, kind: str = "Lead") -> list:
@@ -1986,6 +2027,47 @@ def test_the_orphan_sweep_actually_runs_on_startup(tmp_path, monkeypatch) -> Non
     with TestClient(app_module.app):  # entering the context runs the lifespan
         pass
     assert not stale.exists()
+
+
+def test_projects_synced_in_guitar_pro_before_the_flag_existed_are_marked_on_startup(
+    tmp_path, monkeypatch,
+) -> None:
+    """A project built before ``gp_synced`` existed would keep asking
+    "confirmaste a sincronização?" until rebuilt; startup reads its GP file once."""
+    import zipfile
+
+    monkeypatch.setenv("ROCKFORGE_DATABASE_URL", f"sqlite:///{tmp_path}/t.db")
+    monkeypatch.setenv("ROCKFORGE_WORK_DIR", str(tmp_path / "work"))
+    import rockforge.config as config
+    importlib.reload(config)
+    import rockforge.interfaces.api.app as app_module
+    importlib.reload(app_module)
+
+    synced = tmp_path / "synced.gp"
+    with zipfile.ZipFile(synced, "w") as z:
+        z.writestr("VERSION", "7.0")
+        z.writestr("Content/score.gpif", (
+            '<?xml version="1.0" encoding="utf-8"?><GPIF><Score><Title>T</Title></Score>'
+            "<MasterTrack><Automations><Automation><Type>Tempo</Type><Bar>0</Bar>"
+            "<Position>0</Position><Value>120 2</Value></Automation>"
+            "<Automation><Type>SyncPoint</Type><Bar>0</Bar><Position>0</Position><Value>"
+            "<BarIndex>0</BarIndex><BarOccurrence>0</BarOccurrence>"
+            "<FrameOffset>44100</FrameOffset></Value></Automation>"
+            "</Automations></MasterTrack><MasterBars><MasterBar><Time>4/4</Time>"
+            "<Bars>0</Bars></MasterBar></MasterBars></GPIF>"
+        ))
+    with TestClient(app_module.app):
+        pass  # create the schema
+    with app_module._session_factory() as session:
+        for gp_path in (str(synced), str(tmp_path / "gone.gp5")):
+            session.add(app_module.Job(
+                source="x.wav", source_type="gp", title="T", artist="A",
+                params={"gp_path": gp_path},
+            ))
+        session.commit()
+    with TestClient(app_module.app) as c:  # a real startup runs the backfill
+        sources = sorted(str(j["sync_source"]) for j in c.get("/jobs").json())
+    assert sources == ["None", "gp"]
 
 
 def test_non_finite_floats_are_rejected_at_the_boundary(

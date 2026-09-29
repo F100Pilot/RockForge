@@ -613,13 +613,40 @@ async function setSyncConfirmed(confirmed) {
       body: JSON.stringify({ confirmed }),
     });
     selectedJob.sync_confirmed = j.sync_confirmed;
+    selectedJob.sync_source = j.sync_source;
     renderCompleteness(selectedJob);  // also re-sets the top bar's status chip
+    refreshJobs();  // the project card's badge
   } catch (err) {
     toast(`Não foi possível guardar: ${err.message}`);
   }
 }
 
+// Why a chart counts as in sync (JobOut.sync_source), for the badge on the
+// project card, the Sincronização tab and the checklist: the user's own word,
+// the Guitar Pro 8 file's own sync points, or Songsterr's marked bar times.
+const SYNC_SOURCE_TEXT = {
+  confirmed: 'Marcada por ti como sincronizada.',
+  gp: 'Sincronizada no Guitar Pro 8: o ficheiro traz os pontos de sincronização, e as notas seguem o áudio com que foi sincronizado.',
+  songsterr: 'Sincronizada pelos tempos de cada compasso do Songsterr.',
+  adjusted: 'Fizeste correções de início/andamento. Quando as notas baterem com a gravação, marca-a como sincronizada.',
+};
+function isSynced(j) { return ['confirmed', 'gp', 'songsterr'].includes(j && j.sync_source); }
+function renderSyncState(j) {
+  const card = document.getElementById('syncStateCard');
+  if (!card) return;
+  const gp = !!j && j.source_type === 'gp' && j.status === 'completed';
+  card.hidden = !gp;
+  if (!gp) return;
+  const src = j.sync_source;
+  document.getElementById('syncStateText').innerHTML = (isSynced(j) ? `${icon('check')} ` : '') +
+    esc(SYNC_SOURCE_TEXT[src] || 'Ainda não marcada como sincronizada. Quando as notas baterem com a gravação, marca-a.');
+  const btn = document.getElementById('syncStateBtn');
+  btn.textContent = src === 'confirmed' ? 'Desmarcar' : 'Marcar como sincronizada';
+  btn.onclick = () => setSyncConfirmed(src !== 'confirmed');
+}
+
 function renderCompleteness(j) {
+  renderSyncState(j);
   const el = document.getElementById('completeness');
   if (!el) return;
   if (!(j.status === 'completed' && j.bundle_available)) { el.innerHTML = ''; return; }
@@ -645,11 +672,16 @@ function renderCompleteness(j) {
       note: 'O albumArt fica vazio (sem arte no jogo).' });
 
   if (isGp) {
-    if (j.sync_edited)
-      rows.push({ state: 'ok', ico: 'check', title: 'Sincronização ajustada', note: 'Fizeste pelo menos uma correção de início/andamento.' });
-    else if (j.sync_confirmed)
+    if (j.sync_source === 'confirmed')
       rows.push({ state: 'ok', ico: 'check', title: 'Sincronização confirmada', act: 'syncundo', actLabel: 'Desfazer',
-        note: 'Confirmaste que as notas batem com a gravação.' });
+        note: 'Marcaste que as notas batem com a gravação.' });
+    else if (j.sync_source === 'gp' || j.sync_source === 'songsterr')
+      rows.push({ state: 'ok', ico: 'check',
+        title: j.sync_source === 'gp' ? 'Sincronizada no Guitar Pro' : 'Sincronizada pelo Songsterr',
+        note: SYNC_SOURCE_TEXT[j.sync_source] });
+    else if (j.sync_edited)
+      rows.push({ state: 'ok', ico: 'check', title: 'Sincronização ajustada', act: 'syncok', actLabel: 'Marcar como sincronizada',
+        note: 'Fizeste pelo menos uma correção de início/andamento.' });
     else
       rows.push({ state: 'warn', ico: 'timer', title: 'Confirmaste a sincronização?', short: 'confirmar a sincronização',
         act: 'syncok', actLabel: 'Está sincronizada', act2: 'sync', act2Label: 'Abrir partitura',
@@ -1257,6 +1289,7 @@ function renderJobCards() {
           <div class="proj-title">${esc(j.title)}</div>
           <div class="proj-artist">${esc(j.artist)}</div>
           <span class="pv-chip ${kind}">${icon(ico)}${esc(text)}</span>
+          ${isSynced(j) ? `<span class="pv-chip ok" title="${esc(SYNC_SOURCE_TEXT[j.sync_source])}">${icon('timer')}Sincronizada</span>` : ''}
         </div>
       </button>
       <button type="button" class="proj-del" title="Remover projeto" aria-label="Remover ${esc(j.title)}">${icon('trash')}</button>`;
@@ -6702,16 +6735,32 @@ function applyInspectResult(b) {
   document.getElementById('gpEmbeddedAudioInfo').textContent = b.embedded_audio
     ? `(${b.embedded_audio.name}, ${(b.embedded_audio.size_bytes / 1048576).toFixed(1)} MB)` : '';
   applyEmbeddedAudioChoice();
+  // The audio GP8 was synced to, when it is not inside the file: a YouTube
+  // video (fetched like a Songsterr video) or a file elsewhere on the disk.
+  if (b.backing_youtube_url && !b.embedded_audio) {
+    document.getElementById('ytLink').value = b.backing_youtube_url;
+    document.getElementById('ytBlock').open = true;
+    downloadYtAudio();
+  }
   const syncHint = document.getElementById('gpSyncHint');
+  const where = b.embedded_audio
+    ? (b.backing_disabled ? ' A faixa de áudio está desligada no Guitar Pro, mas é o áudio com que o ficheiro foi sincronizado, por isso é usado.' : '')
+    : b.backing_youtube_url
+      ? ` No Guitar Pro o áudio é o deste vídeo do YouTube (${b.backing_youtube_url}) — estou a descarregá-lo em "Não tens o áudio?".`
+      : b.backing_external_path
+        ? ` O áudio não vem dentro do ficheiro: o Guitar Pro usa «${b.backing_external_path}». Carrega esse ficheiro abaixo.`
+        : '';
   if (b.sync_start_s != null) {
     form.querySelector('input[name=offset_s]').value = b.sync_start_s.toFixed(3);
     syncHint.textContent = `Este ficheiro foi sincronizado com o áudio no Guitar Pro 8 — o compasso 1 começa em ${b.sync_start_s.toFixed(3)} s desse áudio. ` +
       (b.embedded_audio
         ? 'Com o áudio do ficheiro GP (acima) o valor já está certo e as notas seguem o tempo variável do GP.'
-        : 'Se a gravação que carregas é esse mesmo ficheiro de áudio, o valor já está certo e as notas seguem o tempo variável do GP.');
+        : 'Se a gravação que carregas é esse mesmo ficheiro de áudio, o valor já está certo e as notas seguem o tempo variável do GP.') +
+      where;
     syncHint.hidden = false;
   } else {
-    syncHint.hidden = true;
+    syncHint.textContent = where.trim();
+    syncHint.hidden = !where;
   }
   setWizardStep(2);  // advance the wizard now that inspection succeeded
 }
