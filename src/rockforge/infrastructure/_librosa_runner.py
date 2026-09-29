@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from typing import Any
 
 
 def tempo_from(audio: str, start_s: float, expected_bpm: float | None = None) -> float:
@@ -61,60 +62,105 @@ def tuning_cents(audio: str) -> float:
     return float(librosa.estimate_tuning(y=y, sr=sr)) * 100.0
 
 
-def tone_features(audio: str) -> dict[str, float]:
-    """The spectral features a guitar tone is classified from.
+# Per-window analysis ("tone over time"): long enough to hold a few notes, so
+# a window's crest factor still sees attacks and decay; one-second steps, fine
+# enough to find where a section changes character.
+WINDOW_S = 4.0
+HOP_S = 1.0
+# A window counts as "the guitar is playing" when this share of its frames is
+# above the song's activity threshold (30% of the peak RMS, as for the song).
+WINDOW_ACTIVE_SHARE = 0.4
 
-    Only the MEASUREMENT lives here; mapping these to a ``ToneProfile`` is pure
-    and stays in ``tone_analysis/analyzer.py`` where CI can test it without an
-    ML stack.
-    """
+
+def _frame_features(y: Any, sr: int) -> tuple[dict[str, Any], Any, int]:
+    """Frame-level features of a peak-normalized signal, frame counts aligned."""
     import librosa
     import numpy as np
 
-    y, sr = librosa.load(audio, sr=None, mono=True)
-    if len(y) == 0:
-        raise ValueError("empty audio file")
-
-    # Peak-normalize so the thresholds below are independent of how loud the
-    # stem happens to be (Demucs output level varies wildly).
     peak = float(np.max(np.abs(y)))
     if peak > 0:
         y = y / peak
-
     rms = librosa.feature.rms(y=y)[0]
     zcr = librosa.feature.zero_crossing_rate(y=y)[0]
     centroid = librosa.feature.spectral_centroid(y=y, sr=sr)[0]
     contrast = librosa.feature.spectral_contrast(y=y, sr=sr)
     rolloff = librosa.feature.spectral_rolloff(y=y, sr=sr, roll_percent=0.85)[0]
     flatness = librosa.feature.spectral_flatness(y=y)[0]
-
-    # Align frame counts (features can differ by one frame) then keep only the
-    # frames where the guitar is actually playing — above 30% of the peak RMS —
-    # so silence, count-ins and clean breaks don't pull the estimate toward clean.
     n = min(len(rms), len(zcr), len(centroid), len(rolloff), len(flatness), contrast.shape[1])
-    rms, zcr = rms[:n], zcr[:n]
-    centroid, rolloff, flatness = centroid[:n], rolloff[:n], flatness[:n]
-    contrast = contrast[:, :n]
+    frames = {
+        "rms": rms[:n], "zcr": zcr[:n], "centroid": centroid[:n],
+        "contrast": contrast[:, :n].mean(axis=0), "rolloff": rolloff[:n],
+        "flatness": flatness[:n],
+    }
+    peak_rms = float(np.max(frames["rms"])) if n else 0.0
+    # Frames where the guitar is actually playing — above 30% of the peak RMS —
+    # so silence, count-ins and clean breaks don't pull the estimate toward clean.
+    active = frames["rms"] >= 0.3 * peak_rms if peak_rms > 0 else np.ones(n, dtype=bool)
+    return frames, active, n
 
-    peak_rms = float(np.max(rms)) if n else 0.0
-    active = rms >= 0.3 * peak_rms if peak_rms > 0 else np.ones(n, dtype=bool)
-    if not bool(active.any()):
-        active = np.ones(n, dtype=bool)
 
-    act_rms = rms[active]
+def _summarize(frames: dict[str, Any], mask: Any) -> dict[str, float]:
+    """The feature means over the frames in ``mask`` (the ToneProfile inputs)."""
+    import numpy as np
+
+    act_rms = frames["rms"][mask]
     mean_rms = float(np.mean(act_rms))
     return {
-        "zcr": float(np.mean(zcr[active])),
-        "centroid": float(np.mean(centroid[active])),
-        "contrast": float(np.mean(contrast[:, active])),
-        "rolloff": float(np.mean(rolloff[active])),
-        "flatness": float(np.mean(flatness[active])),
+        "zcr": float(np.mean(frames["zcr"][mask])),
+        "centroid": float(np.mean(frames["centroid"][mask])),
+        "contrast": float(np.mean(frames["contrast"][mask])),
+        "rolloff": float(np.mean(frames["rolloff"][mask])),
+        "flatness": float(np.mean(frames["flatness"][mask])),
         # Crest factor over the active region: clean, transient picking keeps
         # peaks well above the average (~3-6); heavy distortion sustains and
         # compresses it toward ~1.5-2.5. Low crest ⇒ compressed ⇒ distorted.
         "crest": float(np.max(act_rms)) / (mean_rms + 1e-8),
         "rms_std_ratio": float(np.std(act_rms)) / (mean_rms + 1e-8),
     }
+
+
+def tone_features(audio: str) -> dict[str, float]:
+    """The spectral features a guitar tone is classified from (whole song).
+
+    Only the MEASUREMENT lives here; mapping these to a ``ToneProfile`` is pure
+    and stays in ``tone_analysis/analyzer.py`` where CI can test it without an
+    ML stack.
+    """
+    return tone_report(audio)["features"]  # type: ignore[return-value]
+
+
+def tone_report(audio: str) -> dict[str, object]:
+    """The whole-song features AND the same features window by window, from one
+    read of the audio: ``{"features": {...}, "windows": [{"t", "active", ...}]}``.
+    ``t`` is the window's centre in seconds of this file."""
+    import librosa
+    import numpy as np
+
+    y, sr = librosa.load(audio, sr=None, mono=True)
+    if len(y) == 0:
+        raise ValueError("empty audio file")
+    frames, active, n = _frame_features(y, sr)
+    if not bool(active.any()):
+        active = np.ones(n, dtype=bool)
+    features = _summarize(frames, active)
+
+    times = librosa.frames_to_time(np.arange(n), sr=sr)
+    duration = float(len(y)) / sr
+    windows: list[dict[str, float]] = []
+    start = 0.0
+    while start < duration:
+        in_win = (times >= start) & (times < start + WINDOW_S)
+        if bool(in_win.any()):
+            win_active = in_win & active
+            share = float(win_active.sum()) / float(in_win.sum())
+            mask = win_active if bool(win_active.any()) else in_win
+            windows.append({
+                "t": round(min(start + WINDOW_S / 2, duration), 3),
+                "active": 1.0 if share >= WINDOW_ACTIVE_SHARE else 0.0,
+                **{k: round(v, 5) for k, v in _summarize(frames, mask).items()},
+            })
+        start += HOP_S
+    return {"features": features, "windows": windows}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -135,7 +181,7 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "tuning":
         result = {"cents": tuning_cents(args.audio)}
     else:
-        result = {"features": tone_features(args.audio)}
+        result = tone_report(args.audio)
     print(json.dumps(result))
     return 0
 

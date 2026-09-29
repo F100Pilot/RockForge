@@ -256,6 +256,7 @@ def generate_cdlc(job_id: str) -> None:
             if job.source_type == "gp":
                 from rockforge.application.gp_pipeline import (
                     ArrangementSync,
+                    ArrangementTones,
                     GenerateFromGpUseCase,
                     GpJobSpec,
                     NoteOverride,
@@ -300,6 +301,18 @@ def generate_cdlc(job_id: str) -> None:
                     ],
                     tones=tones_from_dicts(list(params.get("tones") or [])),
                     sync_anchor_stages=_stages(params.get("sync_anchor_stages")),
+                    arrangement_tones={
+                        str(kind): ArrangementTones(
+                            tone_base=ov.get("tone_base") or None,
+                            tone_names=[str(n) for n in ov.get("tone_names") or []],
+                            tone_changes=[
+                                ToneChange(time=float(c["time"]), name=str(c["name"]))
+                                for c in ov.get("tone_changes") or []
+                            ],
+                        )
+                        for kind, ov in (params.get("arrangement_tones") or {}).items()
+                        if isinstance(ov, dict)
+                    },
                     arrangement_sync={
                         str(kind): ArrangementSync(
                             tempo_scale=float(ov.get("tempo_scale", 1.0)),
@@ -753,9 +766,9 @@ def detect_tones(job_id: str) -> None:
             _log_tone_stage(params, "analyzing spectral characteristics")
             _commit_params()
 
-            from rockforge.infrastructure.tone_analysis.analyzer import analyze_guitar_tone
+            from rockforge.infrastructure.tone_analysis.analyzer import analyze_guitar_timeline
 
-            profile = analyze_guitar_tone(guitar_stem)
+            profile, windows = analyze_guitar_timeline(guitar_stem)
 
             from rockforge.infrastructure.packaging.gear.tone_presets import rank_tones
 
@@ -777,8 +790,19 @@ def detect_tones(job_id: str) -> None:
                     "flatness": profile.flatness,
                     "compression": profile.compression,
                 },
+                # The tone over time, in the RECORDING's clock (the stem is
+                # the unpadded source): [t, gain, brightness, low end, active].
+                # /tone-suggestions maps it onto the current build's parts.
+                "timeline": [
+                    [w.t, w.gain_level, w.brightness, w.low_end, 1 if w.active else 0]
+                    for w in windows
+                ],
             }
             params["tone_detection_status"] = "ready"
+            heard = sum(1 for w in windows if w.active)
+            _log_tone_stage(
+                params, f"tone over time: {len(windows)} windows, guitar heard in {heard}"
+            )
             _log_tone_stage(
                 params,
                 f"done — category: {profile.category} "

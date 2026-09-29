@@ -1,3 +1,26 @@
+# Deteção de tons melhorada + sugestões de tons por secção de cada pista
+
+Pedido: "melhorar a deteção de tons das músicas e com sugestões para atribuir
+tons a partes específicas da música (track)".
+
+- [x] 1. `_librosa_runner`: as medições por janela (4 s, passo 1 s) numa só leitura
+      do áudio, junto com as da música inteira (`tone_report`)
+- [x] 2. `analyzer.window_profiles` (puro): cada janela ancorada no perfil da
+      música inteira (calibrado) e variada pelas pistas que não dependem do
+      tamanho da janela; janelas sem guitarra marcadas
+- [x] 3. Tarefa `detect_tones` guarda a linha do tempo (relógio da gravação)
+- [x] 4. `tone_analysis/sections.py` (puro): por secção × pista, o estilo do que
+      a pista toca (acordes, palm mute, notas soltas agudas, bends, let ring) +
+      o som da gravação nessa secção → papel (limpo/ritmo/solo) + tom da
+      biblioteca + confiança + motivos; secções vazias herdam; junta seguidas;
+      máximo 4 tons por pista (os espaços A-D, com o base)
+- [x] 5. `GET /jobs/{id}/tone-suggestions`: calculado a partir do build ATUAL
+- [x] 6. Tons por pista: `GpJobSpec.arrangement_tones` (+ worker, rebuild, /tones);
+      sem entrada = os tons da música, como hoje
+- [x] 7. UI Tons: pista escolhida + "os mesmos tons em todas as pistas";
+      "Sugestões por secção" com a faixa colorida, motivos e "Aplicar"
+- [x] 8. Testes, docs, verificação com a gravação real + Playwright
+
 # Pista 3D ao estilo Rocksmith (three.js) na Partitura
 
 Pedido: "grafismo 3D, com three.js, para o braço da guitarra … o mais idêntico

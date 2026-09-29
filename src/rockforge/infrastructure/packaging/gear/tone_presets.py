@@ -367,3 +367,21 @@ def rank_tones(
         "lead_candidates": lead_candidates,
         "rhythm_candidates": rhythm_candidates,
     }
+
+
+def rank_role(
+    role: str, gain_level: float, brightness: float, low_end: float
+) -> list[dict[str, Any]]:
+    """One role's library (``"lead"`` or ``"rhythm"``) ranked against a target
+    sound, closest first — what the per-section suggestions pick from."""
+    library = _LEAD_LIBRARY if role == "lead" else _RHYTHM_LIBRARY
+    return _rank_library(library, gain_level, brightness, low_end)
+
+
+def preset_fingerprint(key: str) -> tuple[float, float, float] | None:
+    """The ``(gain, bright, low)`` a preset targets, or None for a key that is
+    not one of the curated presets."""
+    for tone, fp in (*_LEAD_LIBRARY, *_RHYTHM_LIBRARY):
+        if tone["key"] == key:
+            return fp
+    return None

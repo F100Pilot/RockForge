@@ -224,9 +224,19 @@ def test_detect_tones_success_populates_ranked_candidates(db, monkeypatch) -> No
         lambda self, audio, workdir, offset_s=0.0, pad_start_s=0.0: workdir / "normalized.wav",
     )
     monkeypatch.setattr(
-        analyzer_mod, "analyze_guitar_tone",
-        lambda guitar_stem: analyzer_mod.ToneProfile(
-            gain_level=0.35, brightness=0.5, low_end=0.4, dynamic_range=0.3,
+        analyzer_mod, "analyze_guitar_timeline",
+        lambda guitar_stem: (
+            analyzer_mod.ToneProfile(
+                gain_level=0.35, brightness=0.5, low_end=0.4, dynamic_range=0.3,
+            ),
+            [
+                analyzer_mod.WindowProfile(
+                    t=2.0, active=False, gain_level=0.1, brightness=0.4, low_end=0.3,
+                ),
+                analyzer_mod.WindowProfile(
+                    t=3.0, active=True, gain_level=0.6, brightness=0.5, low_end=0.4,
+                ),
+            ],
         ),
     )
     job_id = _job(db)
@@ -238,6 +248,8 @@ def test_detect_tones_success_populates_ranked_candidates(db, monkeypatch) -> No
     detected = job.params["detected_tones"]
     assert detected["category"] == "crunch"  # 0.25 <= gain_level=0.35 < 0.5 -> crunch
     assert detected["lead_candidates"] and detected["rhythm_candidates"]
+    # The tone over time is kept, in the recording's clock, for /tone-suggestions.
+    assert detected["timeline"] == [[2.0, 0.1, 0.4, 0.3, 0], [3.0, 0.6, 0.5, 0.4, 1]]
     assert any("done" in line for line in job.params["tone_detection_log"])
 
 
@@ -361,3 +373,36 @@ def test_a_gp8_file_synced_in_guitar_pro_is_recognised(tmp_path) -> None:
     assert ca._gp_carries_sync(gp(point)) is True
     assert ca._gp_carries_sync(gp("")) is False
     assert ca._gp_carries_sync(tmp_path / "missing.gp") is False
+
+
+def test_each_tracks_own_tones_reach_the_build(db, tmp_path, monkeypatch) -> None:
+    from rockforge.application.gp_pipeline import ArrangementTones, GenerateFromGpUseCase
+
+    seen = []
+
+    class _Recording(GenerateFromGpUseCase):
+        def run(self, spec, *args, **kwargs):  # type: ignore[no-untyped-def]
+            seen.append(spec)
+            return super().run(spec, *args, **kwargs)
+
+    monkeypatch.setattr(
+        ca, "_build_gp_use_case",
+        lambda: _Recording(
+            ingestor=_FakeIngestor(), normalizer=_FakeNormalizer(), packager=_FakePackager()
+        ),
+    )
+    job_id = _job(db, params={
+        "gp_path": str(_make_gp5(tmp_path)), "lead_track": 0, "tone_base": "crunch",
+        "arrangement_tones": {"Lead": {
+            "tone_base": "clean", "tone_names": ["solo"],
+            "tone_changes": [{"time": 1.5, "name": "solo"}],
+        }},
+    })
+    ca.generate_cdlc(job_id)
+    from rockforge.domain.arrangement import ArrangementKind, ToneChange
+
+    spec = seen[0]
+    assert spec.arrangement_tones == {"Lead": ArrangementTones(
+        tone_base="clean", tone_names=["solo"], tone_changes=[ToneChange(1.5, "solo")],
+    )}
+    assert spec.tones_for(ArrangementKind.RHYTHM).tone_base == "crunch"

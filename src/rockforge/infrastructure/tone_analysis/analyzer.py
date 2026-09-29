@@ -61,6 +61,72 @@ _FLAT_LOG_MIN = -2.7  # log10(0.002)
 _FLAT_LOG_MAX = -1.4  # log10(0.04)
 
 
+@dataclass(frozen=True)
+class WindowProfile:
+    """The tone character around one instant of the recording (``t`` = seconds
+    of the analysed file). ``active`` is False where the guitar is not playing."""
+
+    t: float
+    active: bool
+    gain_level: float
+    brightness: float
+    low_end: float
+
+
+def analyze_guitar_timeline(audio: Path) -> tuple[ToneProfile, list[WindowProfile]]:
+    """The song's tone profile and its tone over time, from one read of the audio."""
+    if ml_python.librosa_here():
+        report = _librosa_runner.tone_report(str(audio))
+    else:
+        report = ml_python.run_librosa("tone", audio)
+    features = {k: float(v) for k, v in dict(report["features"]).items()}  # type: ignore[call-overload]
+    windows = [dict(w) for w in report.get("windows", [])]  # type: ignore[attr-defined]
+    return profile_from_features(**features), window_profiles(features, windows)
+
+
+def window_profiles(
+    song_features: dict[str, float], windows: list[dict[str, float]]
+) -> list[WindowProfile]:
+    """Each window's tone, ANCHORED on the whole song's profile. Pure.
+
+    The song-level calibration (profile_from_features) is the one that was
+    tuned; a 4 s window cannot simply be run through it, because its strongest
+    cue, the crest factor, depends on the length measured — a window holds less
+    dynamics than the whole song (on a real recording: ~1.4-1.7 per window
+    against 2.1 for the song), which would read every window as more distorted.
+    So a window's gain is the song's gain moved by how the window DIFFERS: its
+    crest against the mean window crest, and its contrast, flatness and ZCR
+    against the song's (frame averages, which do not depend on the length),
+    with the same slopes and weights as the song mapping. Brightness and low
+    end are frame averages too, so they use the song formulas directly.
+    """
+    song = profile_from_features(**song_features)
+    active = [w for w in windows if w.get("active")]
+    crest_ref = (
+        sum(float(w["crest"]) for w in active) / len(active) if active else song_features["crest"]
+    )
+    flat_song = math.log10(max(song_features["flatness"], 1e-6))
+    out: list[WindowProfile] = []
+    for w in windows:
+        d_comp = (crest_ref - float(w["crest"])) / 2.0
+        d_contrast = (song_features["contrast"] - float(w["contrast"])) / 20.0
+        d_flat = (math.log10(max(float(w["flatness"]), 1e-6)) - flat_song) / (
+            _FLAT_LOG_MAX - _FLAT_LOG_MIN
+        )
+        d_zcr = (float(w["zcr"]) - song_features["zcr"]) / 0.14
+        gain = _clamp01(
+            song.gain_level + 0.34 * d_comp + 0.28 * d_contrast + 0.22 * d_flat + 0.16 * d_zcr
+        )
+        out.append(WindowProfile(
+            t=round(float(w["t"]), 3),
+            active=bool(w.get("active")),
+            gain_level=round(gain, 3),
+            brightness=round(_clamp01((float(w["centroid"]) - 1000.0) / 4000.0), 3),
+            low_end=round(_clamp01(1.0 - (float(w["rolloff"]) - 2000.0) / 8000.0), 3),
+        ))
+    return out
+
+
 def analyze_guitar_tone(audio: Path) -> ToneProfile:
     """Classify the tone character of a guitar audio file.
 
@@ -73,7 +139,7 @@ def analyze_guitar_tone(audio: Path) -> ToneProfile:
     """
     if ml_python.librosa_here():
         features = _librosa_runner.tone_features(str(audio))
-    else:
+    else:  # the runner's "tone" answer carries the windows too; only features are used here
         features = {
             k: float(v)
             for k, v in dict(ml_python.run_librosa("tone", audio)["features"]).items()

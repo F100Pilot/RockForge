@@ -3152,3 +3152,113 @@ def test_synced_lyrics_chosen_in_the_wizard_travel_with_the_new_job(
 
     r = create({"lyrics_lrc": "just words, no timestamps"})
     assert r.status_code == 422 and "tempos" in r.text
+
+
+def _built_two_track_job(client, tmp_path, detected=None):
+    """A GP job set COMPLETED with a Lead (a solo from 12 s) and a Rhythm
+    (chugging throughout) in its bundle, both with Verso/Solo sections."""
+    import rockforge.config as config
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.domain.arrangement import (
+        Arrangement,
+        ArrangementKind,
+        Section,
+        SongMetadata,
+    )
+    from rockforge.domain.music import Beat, TabNote, Technique, TempoMap, Tuning
+    from rockforge.infrastructure.db.models import JobStatus
+    from rockforge.infrastructure.rsxml.writer import write_arrangement_xml
+
+    job = _gp_job(client, tmp_path)
+    bundle = config.settings.work_dir / job["id"] / "bundle"
+    beats = tuple(Beat(time=2.0 + 0.5 * i, measure=(i // 4 + 1) if i % 4 == 0 else -1)
+                  for i in range(49))
+    pm = frozenset({Technique.PALM_MUTE})
+
+    def chug(a, b):
+        return [TabNote(s, 3 + 2 * s, 2.0 + 0.25 * i, 0.2, pm)
+                for i in range(int((a - 2.0) / 0.25), int((b - 2.0) / 0.25)) for s in (0, 1)]
+
+    solo = [TabNote(4, 15, 12.0 + 0.25 * i, 0.2, frozenset({Technique.BEND}))
+            for i in range(48)]
+    sections = [Section("verso", 2.0, 1), Section("solo", 12.0, 1)]
+    for kind, notes in ((ArrangementKind.LEAD, chug(2.0, 12.0) + solo),
+                        (ArrangementKind.RHYTHM, chug(2.0, 26.0))):
+        write_arrangement_xml(Arrangement(
+            kind=kind, metadata=SongMetadata(title="S", artist="A", song_length=27.0),
+            tuning=Tuning(), notes=notes, sections=sections,
+            tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+        ), bundle / f"arrangement_{kind.value.lower()}.xml")
+    with app_module._session_factory() as session:
+        db_job = session.get(app_module.Job, job["id"])
+        db_job.status = JobStatus.COMPLETED
+        db_job.bundle_dir = str(bundle)
+        if detected is not None:
+            db_job.params = {**dict(db_job.params or {}), "detected_tones": detected}
+        session.commit()
+    return job
+
+
+def test_tone_suggestions_need_a_build_and_the_tone_over_time(
+    client: TestClient, tmp_path
+) -> None:
+    job = _gp_job(client, tmp_path)
+    assert client.get(f"/jobs/{job['id']}/tone-suggestions").status_code == 409
+    assert client.get("/jobs/nope/tone-suggestions").status_code == 404
+    # Built, but detected before the tone was measured over time.
+    old = _built_two_track_job(client, tmp_path, detected={"status": "ready", "profile": {}})
+    r = client.get(f"/jobs/{old['id']}/tone-suggestions")
+    assert r.status_code == 409 and "Detetar tom" in r.json()["detail"]
+    assert client.get(f"/jobs/{old['id']}/detected-tones").json()["has_timeline"] is False
+
+
+def test_tone_suggestions_propose_a_tone_per_part_of_each_track(
+    client: TestClient, tmp_path
+) -> None:
+    """Over one distorted sound, the Lead's solo gets a lead tone where the
+    Rhythm keeps its chugging tone throughout; the timeline comes back on the
+    bundle clock (the recording sits MIN_LEAD_S later with offset 0)."""
+    timeline = [[float(t), 0.6, 0.5, 0.5, 1] for t in range(26)]
+    job = _built_two_track_job(client, tmp_path, detected={
+        "status": "ready", "timeline": timeline,
+        "profile": {"gain_level": 0.6, "brightness": 0.5, "low_end": 0.5},
+    })
+    assert client.get(f"/jobs/{job['id']}/detected-tones").json()["has_timeline"] is True
+    r = client.get(f"/jobs/{job['id']}/tone-suggestions")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    lead, rhythm = body["tracks"]
+    assert (lead["kind"], rhythm["kind"]) == ("Lead", "Rhythm")
+    assert [s["role"] for s in lead["segments"]] == ["rhythm", "lead"]
+    assert [s["role"] for s in rhythm["segments"]] == ["rhythm", "rhythm"]
+    assert lead["changes"] == [{"time": 12.0, "name": lead["segments"][1]["tone_key"]}]
+    assert rhythm["changes"] == []
+    assert [t["key"] for t in lead["tones"]] == lead["names"]
+    assert lead["names"][0] == lead["base"]
+    assert body["timeline"][0] == [2.0, 0.6, 1]
+
+
+def test_each_track_can_keep_its_own_tones(client: TestClient, tmp_path) -> None:
+    job = _gp_job(client, tmp_path)
+    rebuilt = client.post(f"/jobs/{job['id']}/rebuild", json={
+        "tone_base": "crunch", "tone_names": ["crunch"],
+        "arrangement_tones": {"Lead": {
+            "tone_base": "clean", "tone_names": ["solo"],
+            "tone_changes": [{"time": 12.0, "name": "solo"}],
+        }},
+    }).json()
+    tones = client.get(f"/jobs/{rebuilt['id']}/tones").json()
+    assert tones["tone_base"] == "crunch"
+    assert tones["arrangement_tones"] == {"Lead": {
+        "tone_base": "clean", "tone_names": ["solo"],
+        "tone_changes": [{"time": 12.0, "name": "solo"}],
+    }}
+    # null leaves them alone; {} brings every track back to the song's tones.
+    kept = client.post(f"/jobs/{rebuilt['id']}/rebuild", json={"offset_s": 1.0}).json()
+    assert client.get(f"/jobs/{kept['id']}/tones").json()["arrangement_tones"] != {}
+    cleared = client.post(f"/jobs/{kept['id']}/rebuild", json={"arrangement_tones": {}}).json()
+    assert client.get(f"/jobs/{cleared['id']}/tones").json()["arrangement_tones"] == {}
+    too_many = client.post(f"/jobs/{job['id']}/rebuild", json={
+        "arrangement_tones": {"Lead": {"tone_names": ["a", "b", "c", "d", "e"]}},
+    })
+    assert too_many.status_code == 422

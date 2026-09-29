@@ -82,6 +82,15 @@ Lead + Rhythm do catálogo de gear do Rocksmith, prontos a usar no jogo:
 4. O utilizador carrega em **"Aplicar tons sugeridos"** para carregar os presets
    no editor de tons, revê/ajusta e grava com **"Aplicar e reconstruir"**.
 
+**Tons por parte de cada pista.** A deteção mede também o som **ao longo da
+música** (onde está limpo, onde distorce mais). O cartão **"Sugestões por
+secção"** lê isso contra o que cada pista toca em cada secção (acordes e palm
+mute → ritmo; notas soltas com bends/ligados ou agudas → solo; acordes a soar
+num trecho limpo → limpo) e propõe um tom para cada parte, com o porquê e a
+confiança. **"Aplicar a esta pista"/"a todas"** põe esses tons e as trocas no
+projeto; com **"Mesmos tons em todas as pistas"** desmarcado, cada pista tem o
+seu tom base, extras e trocas (como no jogo, os tons são por arranjo).
+
 Nota de honestidade: a análise espetral **não identifica** o amp ou pedal real
 usado na gravação — classifica o *caráter* do som e sugere um match plausível do
 catálogo Rocksmith. Precisa do extra `[ml]` (Demucs + librosa). Funciona em

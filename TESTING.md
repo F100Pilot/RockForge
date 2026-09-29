@@ -765,6 +765,22 @@ returns the whole `_LEAD_LIBRARY`/`_RHYTHM_LIBRARY` sorted by match. Guarded by
 `test_rank_tones_returns_ranked_candidate_libraries` /
 `test_rank_tones_clean_profile_ranks_clean_first` (no ML — pure ranking).
 
+### 7d-ter. Tons por secção de cada pista (needs `[ml]` for the detection)
+
+1. On a GP project built with Lead + Rhythm, "Detetar tom" → when it finishes,
+   the "Sugestões por secção" card lists each track: the distortion curve over
+   time, a strip of parts coloured by role (Limpo/Ritmo/Solo/Não toca), and a
+   line per run of parts with its tone, %, confidence and reasons.
+2. Check against the song by ear: a clean intro should read Limpo, a solo on
+   the Lead should read Solo while the Rhythm stays Ritmo there.
+3. "Aplicar a todas as pistas" → "Mesmos tons em todas as pistas" unticks and
+   "A editar os tons de" appears; switching track swaps the base/extras/changes.
+4. "Aplicar e reconstruir" → each `arrangement_*.xml` carries its own
+   `<tonebase>`/`<tonea…>`/`<tones>`; in game each path switches on its own.
+A detection from before this version has no timeline: the card asks to run
+"Detetar tom" again (409). Demucs never ran here — the timeline was calibrated
+on a full mix, so its numbers on a separated stem are unverified.
+
 ### 7d-bis. Testar tom na partitura ("🎸 Testar tom") — sem ML
 
 No editor da partitura, o seletor **"🎸 Testar tom"** aplica o *carácter* de um

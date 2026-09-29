@@ -439,6 +439,11 @@ class RebuildIn(BaseModel):
     tone_names: list[str] | None = None
     tones: list[dict[str, Any]] | None = None
     tone_changes: list[ToneChangeIn] | None = None
+    # Each track's own tone setup, keyed by ArrangementKind.value (the tones
+    # themselves stay song-level in ``tones``). When set, REPLACES
+    # params["arrangement_tones"] — {} brings every track back to the song-level
+    # tone_base/tone_names/tone_changes above; None leaves it untouched.
+    arrangement_tones: dict[str, ArrangementTonesIn] | None = None
     # In-app section-editor overrides (bundle-clock times, placed on the tab
     # viewer, same convention as tone_changes). When set (even to an empty
     # list), replaces the GP-parsed sections for every arrangement; None
@@ -450,6 +455,14 @@ class RebuildIn(BaseModel):
     # ``deleted``. When set (even to {}), REPLACES params["note_overrides"]
     # wholesale; None leaves it untouched.
     note_overrides: dict[str, list[NoteOverrideIn]] | None = None
+
+
+class ArrangementTonesIn(BaseModel):
+    """One track's own tone setup (see ``gp_pipeline.ArrangementTones``)."""
+
+    tone_base: str | None = None
+    tone_names: list[str] = Field(default=[], max_length=4)
+    tone_changes: list[ToneChangeIn] = []
 
 
 class ToneChangeIn(BaseModel):
@@ -616,6 +629,45 @@ class DetectTonesOut(BaseModel):
     rhythm_candidates: list[dict[str, Any]] = []
     profile: dict[str, Any] = {}  # detected spectral profile (gain/brightness/…)
     log: list[str] = []
+    # The detection measured the tone over time too, so /tone-suggestions can
+    # propose a tone per part of each track.
+    has_timeline: bool = False
+
+
+class ToneReasonOut(BaseModel):
+    code: str  # chords, palm_mute, lead, high, ring, gain, no_audio
+    value: float = 0.0
+
+
+class ToneSegmentOut(BaseModel):
+    name: str
+    start: float  # bundle clock, as the score draws it
+    end: float
+    role: str  # clean / rhythm / lead / silent
+    tone_key: str | None = None
+    tone_name: str | None = None
+    match: int = 0
+    confidence: str = "low"  # high / medium / low
+    reasons: list[ToneReasonOut] = []
+    gain: float = 0.0
+    brightness: float = 0.0
+    low_end: float = 0.0
+
+
+class TrackTonePlanOut(BaseModel):
+    kind: str
+    segments: list[ToneSegmentOut]
+    base: str | None = None
+    names: list[str] = []  # slots A-D, base first — what tone_names takes
+    changes: list[ToneChangeIn] = []
+    tones: list[dict[str, Any]] = []
+
+
+class ToneSuggestionsOut(BaseModel):
+    tracks: list[TrackTonePlanOut]
+    # The tone over time moved onto the bundle clock, [t, gain, active], for the
+    # little gain curve drawn above the suggested parts.
+    timeline: list[list[float]] = []
 
 
 class StemsOut(BaseModel):
@@ -1967,6 +2019,7 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
                 payload.tone_changes,
                 payload.tone_base,
                 payload.tone_names,
+                payload.arrangement_tones,
             )
         )
         if touches_tones and original.source_type != "gp":
@@ -1981,6 +2034,10 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
             params["tones"] = payload.tones
         if payload.tone_changes is not None:
             params["tone_changes"] = [c.model_dump() for c in payload.tone_changes]
+        if payload.arrangement_tones is not None:
+            params["arrangement_tones"] = {
+                kind: t.model_dump() for kind, t in payload.arrangement_tones.items()
+            }
         if payload.section_overrides is not None:
             params["section_overrides"] = [s.model_dump() for s in payload.section_overrides]
         if payload.note_overrides is not None:
@@ -2592,7 +2649,101 @@ def get_detected_tones(job_id: str) -> DetectTonesOut:
             rhythm_candidates=list(detected.get("rhythm_candidates", [])),
             profile=dict(detected.get("profile", {})),
             log=[str(line) for line in log],
+            has_timeline=bool(detected.get("timeline")),
         )
+
+
+@app.get("/jobs/{job_id}/tone-suggestions", response_model=ToneSuggestionsOut)
+def get_tone_suggestions(job_id: str) -> ToneSuggestionsOut:
+    """A tone for each part of each track: the recording's tone over time (from
+    "Detetar tom") read against what each track plays there. Computed from the
+    CURRENT build, so its parts and times follow every applied correction. 409
+    until the project is built and the detection has measured the tone over
+    time. See ``tone_analysis/sections.py``."""
+    import xml.etree.ElementTree as ET
+
+    from rockforge.application.gp_pipeline import MIN_LEAD_S
+    from rockforge.infrastructure.rsxml.reader import read_arrangement_xml
+    from rockforge.infrastructure.tone_analysis.analyzer import WindowProfile
+    from rockforge.infrastructure.tone_analysis.sections import TrackChart, plan_tones, segments_for
+
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+        if job.status is not JobStatus.COMPLETED or not job.bundle_dir:
+            raise HTTPException(409, "the project has to be built first")
+        params = dict(job.params or {})
+        bundle = Path(job.bundle_dir)
+    detected = params.get("detected_tones") or {}
+    raw = detected.get("timeline") if isinstance(detected, dict) else None
+    if not raw:
+        raise HTTPException(
+            409, "no tone-over-time analysis yet — run \"Detetar tom\" (again, if it ran "
+            "before this version)",
+        )
+    windows = [
+        WindowProfile(t=float(r[0]), gain_level=float(r[1]), brightness=float(r[2]),
+                      low_end=float(r[3]), active=bool(r[4]))
+        for r in raw if isinstance(r, list) and len(r) >= 5
+    ]
+    profile = detected.get("profile") or {}
+    song = (
+        float(profile.get("gain_level", 0.4)),
+        float(profile.get("brightness", 0.5)),
+        float(profile.get("low_end", 0.5)),
+    )
+
+    def _num(key: str) -> float:
+        v = params.get(key, 0.0)
+        return float(v) if isinstance(v, (int, float, str)) else 0.0
+
+    # The recording sits this much later in the bundle (the build's own pad).
+    pad_s = max(0.0, MIN_LEAD_S - _num("offset_s")) + max(0.0, _num("lead_in_s"))
+    charts: list[TrackChart] = []
+    for xml_path in sorted(bundle.glob("arrangement_*.xml")):
+        try:
+            root = ET.parse(xml_path).getroot()
+            arr = read_arrangement_xml(xml_path)
+        except (ET.ParseError, ValueError, OSError):
+            continue
+        end = max(
+            [n.time + n.sustain for n in arr.notes] + [b.time for b in arr.tempo_map.beats] + [0.0]
+        )
+        charts.append(TrackChart(
+            kind=_built_arrangement_kind(xml_path, root),
+            notes=arr.notes,
+            segments=segments_for(
+                [(sec.name, sec.start_time) for sec in arr.sections],
+                [b.time for b in arr.tempo_map.beats if b.measure > 0],
+                end,
+            ),
+        ))
+    order = [k.value for k in _arrangement_kinds()]
+    charts.sort(key=lambda c: order.index(c.kind) if c.kind in order else len(order))
+    plans = plan_tones(windows, pad_s, song, charts)
+    return ToneSuggestionsOut(
+        tracks=[
+            TrackTonePlanOut(
+                kind=p.kind,
+                segments=[
+                    ToneSegmentOut(
+                        name=g.name, start=g.start, end=g.end, role=g.role,
+                        tone_key=g.tone_key, tone_name=g.tone_name, match=g.match,
+                        confidence=g.confidence,
+                        reasons=[ToneReasonOut(code=r.code, value=r.value) for r in g.reasons],
+                        gain=g.gain, brightness=g.brightness, low_end=g.low_end,
+                    )
+                    for g in p.segments
+                ],
+                base=p.base, names=p.names,
+                changes=[ToneChangeIn(time=t, name=k) for t, k in p.changes],
+                tones=p.tones,
+            )
+            for p in plans
+        ],
+        timeline=[[round(w.t + pad_s, 3), w.gain_level, 1.0 if w.active else 0.0] for w in windows],
+    )
 
 
 @app.post("/jobs/{job_id}/separate-stems", response_model=JobOut, status_code=202)
@@ -2764,11 +2915,14 @@ def get_tones(job_id: str) -> dict[str, Any]:
         names = params.get("tone_names")
         tones = params.get("tones")
         changes = params.get("tone_changes")
+        per_track = params.get("arrangement_tones")
         return {
             "tone_base": params.get("tone_base"),
             "tone_names": list(names) if isinstance(names, list) else [],
             "tones": list(tones) if isinstance(tones, list) else [],
             "tone_changes": list(changes) if isinstance(changes, list) else [],
+            # Tracks with their own setup; the rest use the song-level one above.
+            "arrangement_tones": dict(per_track) if isinstance(per_track, dict) else {},
         }
 
 

@@ -152,6 +152,15 @@
   .tone-prof-fill { display:block; height:100%; background:linear-gradient(90deg,#5b8cff,#c85bff); }
   .tone-prof-val { flex:0 0 2.6rem; text-align:right; }
   .tone-cand { display:flex; align-items:center; gap:.5rem; margin:.15rem 0; font-size:.85rem; }
+  .ts-track { margin:.6rem 0 1rem; }
+  .ts-gain { display:block; width:100%; height:30px; margin-top:.3rem; background:rgba(255,255,255,.03); border-radius:4px 4px 0 0; }
+  .ts-strip { display:flex; height:1.5rem; border-radius:0 0 4px 4px; overflow:hidden; }
+  .ts-seg { min-width:0; overflow:hidden; cursor:pointer; border-right:1px solid #14151a; color:#14151a; font-size:.7rem; font-weight:700; line-height:1.5rem; padding:0 .3rem; white-space:nowrap; }
+  .ts-seg:hover { filter:brightness(1.2); }
+  .ts-rows { margin-top:.4rem; font-size:.85rem; }
+  .ts-row { margin:.25rem 0; }
+  .ts-dot { display:inline-block; width:.6rem; height:.6rem; border-radius:50%; margin-right:.3rem; }
+  .ts-why { margin-left:1rem; font-size:.78rem; }
   .tone-cand-name { flex:1; }
   .tone-cand-match { flex:0 0 3rem; text-align:right; color:var(--muted); font-variant-numeric:tabular-nums; }
   button.tone-cand-use { padding:.15rem .55rem; font-size:.8rem; }
@@ -1070,6 +1079,11 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
               <div id="toneDetectionResult" style="margin-top:.4rem"></div>
             </div>
             <div id="toneChips" class="meta" style="display:flex;flex-wrap:wrap;gap:.35rem;margin:.3rem 0"></div>
+            <div id="toneTrackRow" class="anchor-row" style="flex-wrap:wrap" hidden>
+              <label class="check"><input type="checkbox" id="toneShared" checked> Mesmos tons em todas as pistas</label>
+              <span id="toneTrackLabel" class="meta" hidden>A editar os tons de:</span>
+              <select id="toneTrackSel" hidden aria-label="Pista"></select>
+            </div>
             <div class="anchor-row" style="flex-wrap:wrap">
               <label>Tom base:
                 <select id="toneBaseSel" style="min-width:9rem"><option value="">—</option></select></label>
@@ -1078,6 +1092,14 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
             </div>
             <div id="toneChangesList" class="meta" style="margin-top:.3rem"></div>
           </div>
+        </div>
+        <div id="toneSuggestCard" class="pv-card pv-card-lg" hidden>
+          <div class="pv-row" style="flex-wrap:wrap;gap:.5rem">
+            <h3 style="margin:0">Sugestões por secção</h3>
+            <button class="info-btn" data-info="tone-sections">ⓘ</button>
+            <button type="button" id="toneSuggestApplyAll" class="secondary" hidden>Aplicar a todas as pistas</button>
+          </div>
+          <div id="toneSuggestBody" style="margin-top:.4rem"></div>
         </div>
       </div>
 

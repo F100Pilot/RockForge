@@ -133,6 +133,18 @@ class ArrangementSync:
 
 
 @dataclass(frozen=True)
+class ArrangementTones:
+    """One arrangement's own tone setup: which of the song's tones is its base,
+    which four it can switch to, and where it switches — so a Lead can take a
+    solo tone where the Rhythm keeps its crunch (Rocksmith's tones are per
+    arrangement). The gear definitions (``GpJobSpec.tones``) stay song-level."""
+
+    tone_base: str | None = None
+    tone_names: list[str] = field(default_factory=list)
+    tone_changes: list[ToneChange] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
 class NoteOverride:
     """One in-app note-editor edit: upserts a note at (time, string), or
     deletes the note already there when ``deleted`` is True (the other fields
@@ -249,6 +261,9 @@ class GpJobSpec:
     # ("Lead"/"Rhythm"/"Combined"). An arrangement absent here falls back to the
     # job-level tempo_scale / sync_anchor_stages above.
     arrangement_sync: dict[str, ArrangementSync] = field(default_factory=dict)
+    # Per-arrangement tone setups, keyed like arrangement_sync. An arrangement
+    # absent here uses the song-level tone_base / tone_names / tone_changes.
+    arrangement_tones: dict[str, ArrangementTones] = field(default_factory=dict)
     # Where each bar starts in the recording, from an external source — today
     # Songsterr's human-marked per-measure video timestamps. When set, the
     # parser re-times the score onto them (relative to bar 1, so offset_s keeps
@@ -291,6 +306,16 @@ class GpJobSpec:
     # user always edits the FINAL note set, and a manual edit is never
     # silently stripped by import_mute_techniques=False.
     note_overrides: dict[str, list[NoteOverride]] = field(default_factory=dict)
+
+    def tones_for(self, kind: ArrangementKind) -> ArrangementTones:
+        """This arrangement's tone setup, else the song-level one."""
+        own = self.arrangement_tones.get(kind.value)
+        if own is not None:
+            return own
+        return ArrangementTones(
+            tone_base=self.tone_base, tone_names=list(self.tone_names),
+            tone_changes=list(self.tone_changes),
+        )
 
     def sync_for(self, kind: ArrangementKind) -> ArrangementSync:
         """Resolve the tempo/drift overrides for one arrangement, falling back
@@ -632,9 +657,9 @@ class GenerateFromGpUseCase:
                 notes=p.notes,
                 sections=_sections_for(p),
                 stage_confidence=dict(confidence),
-                tone_base=spec.tone_base,
-                tone_names=list(spec.tone_names),
-                tone_changes=list(spec.tone_changes),
+                tone_base=spec.tones_for(kind).tone_base,
+                tone_names=list(spec.tones_for(kind).tone_names),
+                tone_changes=list(spec.tones_for(kind).tone_changes),
                 tones=list(spec.tones),
             )
             for kind, p in parsed.items()

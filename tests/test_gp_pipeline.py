@@ -826,3 +826,26 @@ def test_bar_times_reach_the_parser_and_retime_the_built_chart(tmp_path: Path) -
             if int(e.get("measure", "-1")) > 0
         ]
         assert downbeats[1] - downbeats[0] == pytest.approx(3.0, abs=1e-3), name
+
+
+def test_a_track_with_its_own_tones_switches_alone(two_track_gp5: Path, tmp_path: Path) -> None:
+    """Rocksmith's tones are per arrangement: the Lead can take a solo tone
+    where the Rhythm keeps the song's, and a track with no setup of its own
+    falls back to the song-level one."""
+    from rockforge.application.gp_pipeline import ArrangementTones
+
+    spec = GpJobSpec(
+        gp_path=two_track_gp5, audio_source="x.wav", lead_track=0, rhythm_track=1,
+        tone_base="crunch", tone_names=[],
+        arrangement_tones={"Lead": ArrangementTones(
+            tone_base="crunch", tone_names=["solo"],
+            tone_changes=[ToneChange(time=2.5, name="solo")],
+        )},
+    )
+    result = make_use_case().run(spec, SongMetadata(title="T", artist="A"), tmp_path / "w")
+    by_name = {p.name: ET.parse(p).getroot() for p in result.packaging.xml_paths}
+    lead, rhythm = by_name["arrangement_lead.xml"], by_name["arrangement_rhythm.xml"]
+    assert lead.findtext("tonebase") == "crunch" and lead.findtext("tonea") == "solo"
+    assert [t.get("name") for t in lead.findall("tones/tone")] == ["solo"]
+    assert rhythm.findtext("tonebase") == "crunch"
+    assert rhythm.findall("tones/tone") == [] and not rhythm.findtext("tonea")

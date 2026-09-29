@@ -2134,6 +2134,93 @@ the recording — it classifies the *character* of the guitar sound and suggests
 a plausible Rocksmith gear match. Detection needs the `[ml]` extra (Demucs +
 librosa).
 
+### Tone over time + a tone for each part of each track (`/tone-suggestions`)
+
+"melhorar a deteção de tons das músicas e com sugestões para atribuir tons a
+partes específicas da música (track)". One tone per role for the whole song
+cannot say that a song has a clean intro, a crunchy verse and a hotter solo,
+nor that over the SAME sound the Lead solos while the Rhythm chugs.
+
+**Measured over time, in the same read.** `_librosa_runner.tone_report` returns
+the whole-song features (what `tone_features` always returned — it is now
+`tone_report(...)["features"]`, one implementation) plus the same seven
+features per **4 s window, 1 s hop**, each flagged `active` when the guitar is
+playing in at least 40 % of its frames. `analyzer.window_profiles` (pure) turns
+them into `WindowProfile`s — and must NOT run a window through the song
+calibration: the crest factor, its strongest cue, depends on the length
+measured (on the user's real mix: ~1.4-1.7 per window against 2.14 for the
+song), so every window read hotter than the song. Each window is instead
+**anchored** on the calibrated song gain and moved by how it DIFFERS — crest
+against the mean ACTIVE window crest (silences do not set it), contrast,
+flatness and ZCR against the song's (frame averages, length-independent) —
+with the song mapping's own slopes and weights; brightness/low end are frame
+averages and use the song formulas directly. On that real mix: song 0.375,
+median window 0.372, intro ~0.30, later ~0.45, outro down to 0.05.
+`detect_tones` stores `detected_tones["timeline"] = [[t, gain, bright, low,
+active], …]` in the RECORDING clock; `/detected-tones` says `has_timeline`.
+
+**Per part, per track (`tone_analysis/sections.py`, pure).** The stem is every
+guitar mixed, so the audio alone cannot tell Lead from Rhythm; the chart can.
+For each part of each chart — its sections, or groups of 8 bars when it has
+fewer than two (`segments_for`) — `play_style` measures what it plays (share of
+notes struck in chords, palm-muted, with lead techniques, at fret ≥ 12, let
+ring/harmonic) and `audio_in` averages the ACTIVE windows there, reading the
+recording `pad_s` later (`max(0, MIN_LEAD_S - offset_s) + lead_in_s`, the
+build's own pad). `choose_role`: **clean** when the recording is quiet there
+(gain < 0.22) or the part lets chords ring without palm mute (gain < 0.45);
+**lead** for single notes (< 25 % chords) with lead techniques (≥ 15 %) or high
+frets (≥ 40 %); else **rhythm**; **silent** with no notes. The preset is the
+closest of that role's library (`rank_role`) to the recording's sound nudged by
+the part (a solo a little hotter/brighter, a chug heavier in the lows), with
+reason codes and a confidence; a part the guitar is barely heard in (< 30 %
+active) uses the song's overall sound and says so (`no_audio`, low). A silent
+part keeps the tone before it, consecutive parts with one tone merge, and a
+track uses **at most four tones** (`MAX_TONES`): Rocksmith only switches to
+slots A-D, and the existing convention puts the base among them so a switch
+can come back to it — the least-used tone is folded into its nearest
+fingerprint (`_fold_tones`). The plan's `names` is exactly what `tone_names`
+takes (base first). `GET /jobs/{id}/tone-suggestions` computes it on request
+from the CURRENT build's XMLs (409 before a build, 409 without a timeline — a
+detection from before this version), so parts and times follow every applied
+correction.
+
+**Tones per arrangement (`arrangement_tones`).** Rocksmith's tones always were
+per arrangement (the writer, `.rs2dlc` and manifest read `arr.tone_base`/
+`tone_names`/`tone_changes`), but RockForge gave every chart the same set.
+`GpJobSpec.arrangement_tones: dict[str, ArrangementTones]` — keyed by
+`ArrangementKind.value`, resolved by `tones_for(kind)` with the song-level set
+as fallback, the `sync_for` pattern; the gear definitions (`tones`) stay
+song-level. `RebuildIn.arrangement_tones` (null = untouched, `{}` = back to
+the song's set, max 4 names each), stored in `params`, returned by `/tones`,
+rebuilt by the worker. UI (Tons page): "Mesmos tons em todas as pistas"; unticked,
+the four tone globals are the set of the chart ON SCREEN, swapped on every tab
+change (`switchToneSet`, called from `showArr` — the `syncAnchorsByKind`
+pattern), each chart seeded from the song's set; `toneSetsForRebuild` sends
+the song set plus the full per-track map; `activeToneKeyAt(t, kind)` gives the
+synthesized source its own chart's tones; deleting a tone removes it from
+every set (`forgetToneKey`). "Sugestões por secção" draws, per track, the
+distortion curve (scaled to the song's peak), a strip of parts coloured by
+role (a click seeks), and one line per run of parts with the same tone, with
+the reasons in words; "Aplicar a esta pista"/"a todas" adds the presets to the
+project and sets the track's own set (with one chart, the song's). Pending
+until "Aplicar e reconstruir", like every tone edit.
+
+Honest limits, said in the ⓘ: the per-track difference comes from the chart,
+not the audio; presets are chosen by character, not the real amp; parts are
+those of the last build. Demucs cannot run here, so the timeline was
+calibrated on the user's full mix, not a separated guitar stem. Guarded by
+`test_tone_sections.py` (anchoring, silences not moving the reference, roles
+and reasons, two tracks over one sound, clean→heavy switch, a rest keeping the
+tone, the bundle clock, no audio, the 4-slot fold, parts from sections/bars),
+`test_detect_tones_success_populates_ranked_candidates` (the stored timeline),
+`test_tone_suggestions_*` and `test_each_track_can_keep_its_own_tones`
+(`test_api.py`), `test_a_track_with_its_own_tones_switches_alone`
+(mutation-checked) and `test_each_tracks_own_tones_reach_the_build`; with
+Playwright on the user's Ocean Eyes built as Lead + Rhythm: suggestions for
+both, "Aplicar a todas" → per-track, switching tracks swaps base/changes, a
+hand edit stays on its track, and a real rebuild wrote different tones into
+`arrangement_lead.xml` and `arrangement_rhythm.xml`.
+
 ### Tone editor: rotary knobs + optional local gear images
 
 Gear knobs (amp/effect Gain/Bass/Mid/…) render as **draggable rotary dials**

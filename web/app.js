@@ -968,7 +968,17 @@ const INFO = {
 <p><strong>Criar:</strong> clica em "+ Criar / editar tons", depois "+ Novo tom". Escolhe o amplificador e a cabine (obrigatórios) e adiciona efeitos opcionais. Cada botão de knob vem com o valor por defeito do catálogo.</p>
 <p><strong>Atribuir:</strong> escolhe o <strong>Tom base</strong> (o que toca no início) e marca até <strong>4</strong> tons "extra" que poderás trocar ao longo da música.</p>
 <p><strong>Trocar a meio:</strong> com o modo "Mudança de tom" ativo, clica numa nota na partitura para colocar lá uma troca para um dos tons extra.</p>
-<p>Os tons são <strong>por arranjo</strong> (Lead/Rhythm/Combined) e só se aplicam a projetos de Guitar Pro. Sem tons definidos, o DLC Builder marca "tone missing" e resolves com a biblioteca dele.</p>`
+<p><strong>Por pista:</strong> no jogo os tons são <strong>por arranjo</strong>. Com "Mesmos tons em todas as pistas" marcado, todas usam o mesmo conjunto; desmarcado, cada pista (a que está aberta na partitura) tem o seu tom base, extras e trocas — o Lead pode ir para um tom de solo enquanto o Rhythm fica no crunch. Os tons criados são partilhados.</p>
+<p>Só se aplicam a projetos de Guitar Pro. Sem tons definidos, o DLC Builder marca "tone missing" e resolves com a biblioteca dele.</p>`
+  },
+  'tone-sections': {
+    title: 'Sugestões de tom por secção',
+    body: `<p>O "Detetar tom" mede o som da guitarra <strong>ao longo da música</strong> (janelas de 4 s): onde está mais limpo, onde distorce mais. Aqui, esse som é lido contra o que <strong>cada pista toca</strong> em cada parte (as secções da música, ou grupos de 8 compassos):</p>
+<ul><li><strong>Limpo</strong> — a gravação está limpa ali, ou a pista deixa soar acordes/arpejos sem palm mute;</li>
+<li><strong>Solo</strong> — notas soltas com bends, vibrato, ligados ou na casa 12 e acima;</li>
+<li><strong>Ritmo</strong> — acordes, palm mute.</li></ul>
+<p>Para cada parte escolhe o tom mais parecido dessa família, e diz porquê e com que confiança. Uma parte onde a pista não toca mantém o tom anterior; partes seguidas com o mesmo tom juntam-se; cada pista fica com <strong>no máximo 4 tons</strong> (os espaços A–D do Rocksmith, com o base incluído para se poder voltar a ele).</p>
+<p><strong>Limites honestos:</strong> a separação dá TODAS as guitarras juntas, por isso a diferença entre pistas vem da partitura, não do áudio. Os tons são escolhidos pelo <em>carácter</em> (distorção, brilho, graves) — não identificam o amplificador real. As partes e tempos são os da última reconstrução.</p>`
   },
 };
 
@@ -1096,6 +1106,15 @@ let jobTones = [];            // [{key,name,volume,descriptors,amp,cabinet,pre,p
 let toneBase = null;
 let toneNames = [];
 let toneChanges = [];
+// Rocksmith's tones are per arrangement. The four globals above are the set
+// being EDITED: the song's, or — once "Mesmos tons em todas as pistas" is
+// unticked — the set of the chart on screen, swapped on every tab change the
+// way syncAnchorsByKind is. The gear definitions (jobTones) stay shared.
+let songToneSet = { tone_base: null, tone_names: [], tone_changes: [] };
+let toneSetByKind = {};       // kind → its own set, only while tonesPerTrack
+let tonesPerTrack = false;
+let toneSetKind = null;       // whose set the globals hold (null = the song's)
+let toneSuggestions = null;   // last GET /tone-suggestions answer
 let editingToneKey = null;    // key of the tone open in the builder form
 let toneLibrary = [];         // cross-project saved tones (GET /tone-library)
 // Section-editor state (GP jobs). Shared across arrangements (like
@@ -1718,6 +1737,7 @@ function retempoedBars(a) {
 function showArr(i) {
   if (i !== currentArr) { loadArrSync(i); stopArrangementPreview(); }  // tab change: swap in that chart's own sync state
   currentArr = i;
+  if (switchToneSet()) renderToneSetUi();  // per-track tones follow the tab too
   renderSyncState(selectedJob);  // the card speaks for the chart on screen
   lyricsFollowSync();  // lyrics timed on the score move with its pending sync
   for (const [idx, btn] of document.querySelectorAll('#arrTabs button').entries())
@@ -2777,6 +2797,7 @@ async function applyAll() {
   lyricsFollowSync();  // the rows sent must carry every pending chart correction
   const midi = [...document.querySelectorAll('#tuningInputs input')].map(i => parseInt(i.value, 10));
   const applyToAll = document.getElementById('applyToAllChk').checked;
+  const toneSets = toneSetsForRebuild();
   const r = await fetch(`/jobs/${selectedJob.id}/rebuild`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -2799,9 +2820,11 @@ async function applyAll() {
       // clearing tones/changes actually persists — null would mean "keep the
       // old value". Non-GP jobs have no tones, so send null to skip the guard.
       tones: isGpJob() ? jobTones : null,
-      tone_base: isGpJob() ? (toneBase || '') : null,
-      tone_names: isGpJob() ? toneNames : null,
-      tone_changes: isGpJob() ? toneChanges : null,
+      tone_base: isGpJob() ? (toneSets.song.tone_base || '') : null,
+      tone_names: isGpJob() ? toneSets.song.tone_names : null,
+      tone_changes: isGpJob() ? toneSets.song.tone_changes : null,
+      // Each chart's own set; {} = every chart uses the song's (the default).
+      arrangement_tones: isGpJob() ? toneSets.perTrack : null,
       // Only sent once the user actually touches the section editor — untouched,
       // null leaves each arrangement's own GP-authored sections alone (unlike
       // tones, which never had a prior non-user-supplied default to lose).
@@ -3025,16 +3048,96 @@ async function loadTones(id) {
   try {
     const t = await getJSON(`/jobs/${id}/tones`);
     jobTones = t.tones || [];
-    toneBase = t.tone_base || null;
-    toneNames = t.tone_names || [];
-    // Kept sorted by time at its two disordering mutation sites (here + the
-    // add-marker push below) so the many read paths — including activeToneKeyAt,
-    // called once per note in the synth render — don't each re-sort a copy.
-    toneChanges = (t.tone_changes || []).slice().sort((a, b) => a.time - b.time);
+    songToneSet = cleanToneSet(t);
+    toneSetByKind = {};
+    for (const [kind, set] of Object.entries(t.arrangement_tones || {})) toneSetByKind[kind] = cleanToneSet(set);
   } catch {
-    jobTones = []; toneBase = null; toneNames = []; toneChanges = [];
+    jobTones = []; songToneSet = cleanToneSet({}); toneSetByKind = {};
   }
+  tonesPerTrack = Object.keys(toneSetByKind).length > 0;
+  toneSetKind = null;
+  toneSetToGlobals(songToneSet);
+  switchToneSet();
   renderTonePanel();
+  loadToneSuggestions(id);
+}
+
+// A tone set as stored ({tone_base, tone_names, tone_changes}), its changes
+// kept sorted by time — the invariant every read path relies on (see
+// activeToneKeyAt, called once per note in the synth render).
+function cleanToneSet(t) {
+  return {
+    tone_base: (t && t.tone_base) || null,
+    tone_names: ((t && t.tone_names) || []).slice(),
+    tone_changes: ((t && t.tone_changes) || []).map(c => ({ time: +c.time, name: c.name }))
+      .sort((a, b) => a.time - b.time),
+  };
+}
+function toneSetFromGlobals() {
+  return { tone_base: toneBase, tone_names: toneNames.slice(), tone_changes: toneChanges.slice() };
+}
+function toneSetToGlobals(set) {
+  const c = cleanToneSet(set);
+  toneBase = c.tone_base; toneNames = c.tone_names; toneChanges = c.tone_changes;
+}
+function stashToneSet() {
+  if (toneSetKind) toneSetByKind[toneSetKind] = toneSetFromGlobals();
+  else songToneSet = toneSetFromGlobals();
+}
+// Put the right set in the globals for the chart on screen. True when it changed.
+function switchToneSet() {
+  const want = tonesPerTrack ? currentKind() : null;
+  if (want === toneSetKind) return false;
+  stashToneSet();
+  toneSetKind = want;
+  toneSetToGlobals(want ? (toneSetByKind[want] || songToneSet) : songToneSet);
+  return true;
+}
+// Any chart's tone set — the live globals for the one being edited.
+function toneSetFor(kind) {
+  if (!tonesPerTrack || !kind || kind === toneSetKind) return toneSetFromGlobals();
+  return toneSetByKind[kind] || songToneSet;
+}
+// Turn per-track tones on (each chart starts from the song's set) or off (every
+// chart takes the set of the one on screen).
+function setTonesPerTrack(on) {
+  if (on === tonesPerTrack) return;
+  stashToneSet();
+  if (on) {
+    for (const a of arrangements) toneSetByKind[a.kind] = cleanToneSet(songToneSet);
+  } else {
+    songToneSet = cleanToneSet(toneSetFor(toneSetKind));
+    toneSetByKind = {};
+  }
+  tonesPerTrack = on;
+  toneSetKind = null;
+  toneSetToGlobals(songToneSet);
+  switchToneSet();
+  renderTonePanel();
+}
+// What "Aplicar e reconstruir" sends: the song-level set plus, per track, its own.
+function toneSetsForRebuild() {
+  stashToneSet();
+  const perTrack = {};
+  if (tonesPerTrack) {
+    for (const a of arrangements) {
+      const set = toneSetByKind[a.kind] || songToneSet;
+      perTrack[a.kind] = { tone_base: set.tone_base || null, tone_names: set.tone_names, tone_changes: set.tone_changes };
+    }
+  }
+  return { song: songToneSet, perTrack };
+}
+// A tone removed from the project leaves every chart's set, not only the one on screen.
+function forgetToneKey(key) {
+  const drop = set => cleanToneSet({
+    tone_base: set.tone_base === key ? null : set.tone_base,
+    tone_names: set.tone_names.filter(k => k !== key),
+    tone_changes: set.tone_changes.filter(c => c.name !== key),
+  });
+  stashToneSet();
+  songToneSet = drop(songToneSet);
+  for (const k of Object.keys(toneSetByKind)) toneSetByKind[k] = drop(toneSetByKind[k]);
+  toneSetToGlobals(toneSetKind ? toneSetByKind[toneSetKind] : songToneSet);
 }
 
 function renderTonePanel() {
@@ -3049,6 +3152,25 @@ function renderTonePanel() {
     ? jobTones.map(t => `<span style="background:#23252e;border:1px solid var(--line);border-radius:999px;padding:.1rem .55rem">${esc(t.name || t.key)}</span>`).join('')
     : '<span class="meta">Nenhum tom definido — clica em "+ Criar / editar tons".</span>';
 
+  renderToneSetUi(false);
+  renderToneChangesList();
+  populatePreviewTones();
+  renderToneSuggestions();
+}
+
+// The controls that show ONE chart's set (base, extras, changes, which track).
+// No redraw of the score unless `redraw` — showArr calls this mid-draw.
+function renderToneSetUi(withChanges = true) {
+  if (!selectedJob) return;
+  const multi = arrangements.length > 1;
+  document.getElementById('toneTrackRow').hidden = !multi;
+  document.getElementById('toneShared').checked = !tonesPerTrack;
+  const trackSel = document.getElementById('toneTrackSel');
+  trackSel.hidden = !tonesPerTrack;
+  document.getElementById('toneTrackLabel').hidden = !tonesPerTrack;
+  trackSel.innerHTML = arrangements.map((a, i) => `<option value="${i}">${esc(arrLabel(a.kind))}</option>`).join('');
+  trackSel.value = String(currentArr);
+
   const baseSel = document.getElementById('toneBaseSel');
   baseSel.innerHTML = '<option value="">—</option>' +
     jobTones.map(t => `<option value="${esc(t.key)}">${esc(t.name || t.key)}</option>`).join('');
@@ -3058,10 +3180,22 @@ function renderTonePanel() {
   extra.innerHTML = jobTones.length
     ? jobTones.map(t => `<label class="check"><input type="checkbox" class="tone-extra" value="${esc(t.key)}" ${toneNames.includes(t.key) ? 'checked' : ''}> ${esc(t.name || t.key)}</label>`).join('')
     : '<span class="meta">—</span>';
-
-  renderToneChangesList();
-  populatePreviewTones();
+  if (withChanges) renderToneChangesList(false);
 }
+
+document.getElementById('toneShared').addEventListener('change', e => {
+  if (e.target.checked && tonesPerTrack) {
+    const kind = currentKind();
+    if (!confirm(`Todas as pistas passam a usar os tons de ${arrLabel(kind)}. Continuar?`)) {
+      e.target.checked = false; return;
+    }
+  }
+  setTonesPerTrack(!e.target.checked);
+  if (arrangements.length) showArr(currentArr);
+});
+document.getElementById('toneTrackSel').addEventListener('change', e => {
+  showArr(parseInt(e.target.value, 10) || 0);
+});
 
 // Keep the "Testar tom" selector in sync with the CREATED tones. Disabled when
 // the user hasn't created any tone (nothing to preview). With tones, it offers
@@ -3115,7 +3249,7 @@ document.getElementById('toneExtraChecks').addEventListener('change', e => {
   if (arrangements.length) showArr(currentArr);
 });
 
-function renderToneChangesList() {
+function renderToneChangesList(redraw = true) {
   const el = document.getElementById('toneChangesList');
   if (!toneChanges.length) {
     el.innerHTML = '<span class="meta">Sem mudanças de tom. Ativa o modo "Mudança de tom" e clica numa nota.</span>';
@@ -3134,7 +3268,7 @@ function renderToneChangesList() {
   }
   // Keep the on-score tone markers (amber 🎸) in sync with the changes list —
   // adding/removing a change (or deleting/renaming a tone) redraws the score.
-  if (arrangements.length) showArr(currentArr);
+  if (redraw && arrangements.length) showArr(currentArr);
 }
 
 function placeToneChange(chartTime) {
@@ -3682,9 +3816,7 @@ document.getElementById('teSave').addEventListener('click', () => {
 document.getElementById('teDelete').addEventListener('click', () => {
   if (!editingToneKey) { document.getElementById('toneEditForm').style.display = 'none'; document.getElementById('toneEditEmpty').style.display = ''; return; }
   jobTones = jobTones.filter(t => t.key !== editingToneKey);
-  if (toneBase === editingToneKey) toneBase = null;
-  toneNames = toneNames.filter(k => k !== editingToneKey);
-  toneChanges = toneChanges.filter(c => c.name !== editingToneKey);
+  forgetToneKey(editingToneKey);
   editingToneKey = null;
   document.getElementById('toneEditForm').style.display = 'none';
   document.getElementById('toneEditEmpty').style.display = '';
@@ -4287,6 +4419,7 @@ function pollToneDetection() {
       clearInterval(_toneDetectionPoll);
       _toneDetectionPoll = null;
       renderToneDetectionResult(d);
+      loadToneSuggestions(selectedJob.id);
     } else if (d.status === 'unavailable') {
       clearInterval(_toneDetectionPoll);
       _toneDetectionPoll = null;
@@ -4383,6 +4516,167 @@ function applyDetectedTones(detected) {
 }
 
 document.getElementById('detectTones').addEventListener('click', detectTones);
+
+// ── Tone suggestions per part of each track (GET /tone-suggestions) ──────────
+// The recording's tone over time read against what each track PLAYS in each
+// part (tone_analysis/sections.py). Computed from the current build.
+
+const TONE_ROLE = {
+  clean: { label: 'Limpo', color: '#5bb8ff' },
+  rhythm: { label: 'Ritmo', color: '#e0a54a' },
+  lead: { label: 'Solo', color: '#ff6b6b' },
+  silent: { label: 'Não toca', color: '#3a3d48' },
+};
+const TONE_CONFIDENCE = { high: 'confiança alta', medium: 'confiança média', low: 'confiança baixa' };
+
+function toneReasonText(r) {
+  const pct = `${Math.round((Number(r.value) || 0) * 100)}%`;
+  switch (r.code) {
+    case 'gain': return `distorção na gravação ${pct}`;
+    case 'chords': return `acordes em ${pct} das notas`;
+    case 'palm_mute': return `palm mute em ${pct}`;
+    case 'lead': return `bends/vibrato/ligados em ${pct}`;
+    case 'high': return `casa 12 ou acima em ${pct}`;
+    case 'ring': return `notas a soar (let ring) em ${pct}`;
+    case 'no_audio': return 'a guitarra quase não se ouve aqui — usei o som geral da música';
+    default: return r.code;
+  }
+}
+
+async function loadToneSuggestions(id) {
+  toneSuggestions = null;
+  const card = document.getElementById('toneSuggestCard');
+  if (!selectedJob || !isGpJob() || selectedJob.status !== 'completed') { card.hidden = true; return; }
+  card.hidden = false;
+  try {
+    const r = await fetch(`/jobs/${id}/tone-suggestions`);
+    if (selectedJob && selectedJob.id !== id) return;
+    toneSuggestions = r.ok ? await r.json() : { error: r.status };
+  } catch {
+    toneSuggestions = { error: 0 };
+  }
+  renderToneSuggestions();
+}
+
+function renderToneSuggestions() {
+  const body = document.getElementById('toneSuggestBody');
+  if (!body) return;
+  const d = toneSuggestions;
+  const top = document.getElementById('toneSuggestApplyAll');
+  top.hidden = !(d && d.tracks && d.tracks.length);
+  if (!d) { body.innerHTML = '<span class="meta">a carregar…</span>'; return; }
+  if (d.error) {
+    body.innerHTML = d.error === 409
+      ? '<span class="meta">Clica em "Detetar tom": além do tom geral, mede o som da guitarra ao longo da música, e aqui aparece uma sugestão de tom para cada parte de cada pista.</span>'
+      : '<span class="meta" style="color:#e88">Não foi possível calcular as sugestões.</span>';
+    return;
+  }
+  body.innerHTML = d.tracks.map((t, ti) => toneTrackHtml(t, ti, d.timeline || [])).join('');
+  body.querySelectorAll('.ts-apply').forEach(btn => btn.addEventListener('click', () => {
+    applyToneSuggestion([d.tracks[parseInt(btn.dataset.i, 10)]]);
+  }));
+  body.querySelectorAll('.ts-seg[data-t]').forEach(el => el.addEventListener('click', () => {
+    audioSeek(Math.max(0, parseFloat(el.dataset.t) - viewOrigin));
+  }));
+}
+
+function toneTrackHtml(t, ti, timeline) {
+  const segs = t.segments || [];
+  const t0 = segs.length ? segs[0].start : 0;
+  const t1 = segs.length ? segs[segs.length - 1].end : 1;
+  const span = Math.max(0.001, t1 - t0);
+  const pct = x => ((x - t0) / span * 100).toFixed(3);
+  // The recording's distortion over the same stretch, one bar per window.
+  const inRange = timeline.filter(w => w[0] >= t0 && w[0] < t1);
+  const bw = inRange.length ? Math.max(0.15, 100 / span * 0.9) : 0;
+  // Scaled to the song's loudest-distortion window, so the rise and fall shows.
+  const top = Math.max(0.3, ...timeline.map(w => Number(w[1]) || 0));
+  const bars = inRange.map(w => {
+    const h = Math.max(1, Math.round((Number(w[1]) || 0) / top * 28));
+    return `<rect x="${pct(w[0])}" y="${30 - h}" width="${bw.toFixed(3)}" height="${h}" fill="${w[2] ? '#c85bff' : '#3a3d48'}"/>`;
+  }).join('');
+  const strip = segs.map(g => {
+    const role = TONE_ROLE[g.role] || TONE_ROLE.silent;
+    const w = ((g.end - g.start) / span * 100).toFixed(3);
+    const tip = `${g.name} · ${fmtClock(g.start - viewOrigin)}–${fmtClock(g.end - viewOrigin)} · ${role.label}${g.tone_name ? ' · ' + g.tone_name : ''}`;
+    return `<div class="ts-seg" data-t="${g.start}" style="width:${w}%;background:${role.color}" title="${esc(tip)}"><span>${esc(g.name)}</span></div>`;
+  }).join('');
+  const rows = toneRuns(segs).map(run => {
+    const g = run[0], last = run[run.length - 1];
+    const role = TONE_ROLE[g.role] || TONE_ROLE.silent;
+    const name = run.length > 1 ? `${g.name}–${last.name}` : g.name;
+    const when = `${fmtClock(g.start - viewOrigin)}–${fmtClock(last.end - viewOrigin)}`;
+    if (g.role === 'silent') {
+      return `<div class="ts-row"><span class="ts-dot" style="background:${role.color}"></span><b>${esc(name)}</b> <span class="meta">${when} · não toca — mantém o tom anterior</span></div>`;
+    }
+    const matches = run.map(x => Math.round(x.match));
+    const lo = Math.min(...matches), hi = Math.max(...matches);
+    const conf = ['low', 'medium', 'high'].find(c => run.some(x => x.confidence === c)) || 'low';
+    const why = runReasons(run).map(toneReasonText).join(' · ');
+    return `<div class="ts-row"><span class="ts-dot" style="background:${role.color}"></span><b>${esc(name)}</b> ` +
+      `<span class="meta">${when} · ${role.label}</span> → <b>${esc(g.tone_name || g.tone_key)}</b> ` +
+      `<span class="meta">${lo === hi ? lo : `${lo}–${hi}`}% · ${TONE_CONFIDENCE[conf]}</span>` +
+      (why ? `<div class="meta ts-why">porquê: ${esc(why)}</div>` : '') + '</div>';
+  }).join('');
+  const switches = (t.changes || []).length;
+  return `<div class="ts-track">
+    <div class="pv-row" style="flex-wrap:wrap;gap:.5rem"><b>${esc(arrLabel(t.kind))}</b>
+      <span class="meta">${(t.names || []).length} tom(ns), ${switches} troca(s)</span>
+      <button type="button" class="secondary ts-apply" data-i="${ti}">Aplicar a esta pista</button></div>
+    <svg class="ts-gain" viewBox="0 0 100 30" preserveAspectRatio="none" aria-label="Distorção ao longo da música">${bars}</svg>
+    <div class="ts-strip">${strip}</div>
+    <div class="ts-rows">${rows}</div>
+  </div>`;
+}
+
+// Consecutive parts with the same role and tone read as one line (the strip
+// above still shows each part); the weakest confidence of the run is the one said.
+function toneRuns(segs) {
+  const runs = [];
+  for (const g of segs) {
+    const prev = runs.length ? runs[runs.length - 1][0] : null;
+    if (prev && prev.role === g.role && prev.tone_key === g.tone_key) runs[runs.length - 1].push(g);
+    else runs.push([g]);
+  }
+  return runs;
+}
+// A run's reasons: each code's value averaged over the parts that gave it.
+function runReasons(run) {
+  const acc = new Map();
+  for (const g of run) for (const r of g.reasons || []) {
+    const e = acc.get(r.code) || { code: r.code, sum: 0, n: 0 };
+    e.sum += Number(r.value) || 0; e.n += 1; acc.set(r.code, e);
+  }
+  return [...acc.values()].map(e => ({ code: e.code, value: e.sum / e.n }));
+}
+
+// Bring a plan's tones into the project and make them the track's own set.
+// With one chart the song-level set IS that chart's, so nothing goes per-track.
+function applyToneSuggestion(plans) {
+  for (const p of plans) {
+    for (const tone of p.tones || []) if (!jobTones.some(t => t.key === tone.key)) jobTones.push(tone);
+  }
+  const setOf = p => cleanToneSet({ tone_base: p.base, tone_names: p.names, tone_changes: p.changes });
+  if (arrangements.length <= 1) {
+    toneSetToGlobals(setOf(plans[0]));
+  } else {
+    setTonesPerTrack(true);
+    stashToneSet();
+    for (const p of plans) toneSetByKind[p.kind] = setOf(p);
+    toneSetKind = null;
+    toneSetToGlobals(songToneSet);
+    switchToneSet();
+  }
+  renderTonePanel();
+  if (arrangements.length) showArr(currentArr);
+  toast(plans.length > 1
+    ? 'Tons sugeridos aplicados a todas as pistas — "Aplicar e reconstruir" para gravar.'
+    : `Tons sugeridos aplicados a ${arrLabel(plans[0].kind)} — "Aplicar e reconstruir" para gravar.`, 'ok');
+}
+
+document.getElementById('toneSuggestApplyAll').addEventListener('click', () => {
+  if (toneSuggestions && toneSuggestions.tracks) applyToneSuggestion(toneSuggestions.tracks);
+});
 
 // ── Stem separation (selectable audio source for fine-tuning) ─────────────────
 
@@ -5709,9 +6003,10 @@ let previewToneTouched = false;  // did the user pick a preview source themselve
 // score: the last tone change at/before that time, else the base tone (or the
 // first extra / first created tone). toneChanges[].time and note.time share the
 // chart timeline, so this compares directly.
-function activeToneKeyAt(chartTime) {
-  let key = toneBase || toneNames[0] || (jobTones[0] && jobTones[0].key) || null;
-  for (const c of toneChanges) {  // already time-sorted (see loadTones)
+function activeToneKeyAt(chartTime, kind) {
+  const set = toneSetFor(kind);  // that chart's own tones (see switchToneSet)
+  let key = set.tone_base || set.tone_names[0] || (jobTones[0] && jobTones[0].key) || null;
+  for (const c of set.tone_changes) {  // already time-sorted (see cleanToneSet)
     if (c.time <= chartTime + 1e-6) key = c.name; else break;
   }
   return key;
@@ -5720,9 +6015,9 @@ function activeToneKeyAt(chartTime) {
 // The character for the note at `chartTime`: none (plain voice), a single forced
 // tone, or — in "follow the score" mode ('__follow__') — the tone marked at that
 // point, so a chart with several tone changes mirrors each of them as it plays.
-function toneCharForNote(chartTime) {
+function toneCharForNote(chartTime, kind) {
   if (!previewToneKey) return null;
-  const key = previewToneKey === '__follow__' ? activeToneKeyAt(chartTime) : previewToneKey;
+  const key = previewToneKey === '__follow__' ? activeToneKeyAt(chartTime, kind) : previewToneKey;
   return key ? toneCharacter(jobTones.find(t => t.key === key)) : null;
 }
 
@@ -5922,7 +6217,7 @@ async function synthesizeArrangement(kind) {
   // marked on the score (per-note) when '__follow__' is selected.
   for (const ev of events)
     voiceNote(octx, octx.destination, midiToHz(ev.midi), ev.t, NOTE_LEN, 0.5,
-      toneCharForNote(ev.chartT));
+      toneCharForNote(ev.chartT, kind));
   return await octx.startRendering();
 }
 
