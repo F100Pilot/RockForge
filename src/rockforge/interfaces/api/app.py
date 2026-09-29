@@ -47,6 +47,8 @@ from rockforge.domain.chords import name_chord
 from rockforge.infrastructure.db.models import Job, JobStatus, make_session_factory
 
 if TYPE_CHECKING:
+    import xml.etree.ElementTree as ET
+
     from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -375,6 +377,8 @@ class JobOut(BaseModel):
     # file carries its own sync points), "songsterr" (human-marked bar times),
     # "adjusted" (corrected here, not yet confirmed) or None.
     sync_source: str | None = None
+    # The charts the user marked as in sync, one by one (their tabs turn green).
+    synced_arrangements: list[str] = []
     # True if the bundle carries lyrics from ANY source — edited/GP-embedded
     # events, an LRC/UltraStar file, or completed WhisperX detection — not just
     # `lyrics_status == "ready"` (which only covers detection).
@@ -513,6 +517,9 @@ class ArrangementOut(BaseModel):
     # open and a rebuild for any unrelated reason (a tuning change, say) then
     # sent {} and silently erased every note edit the user had applied.
     note_overrides: list[NoteOverrideIn] = []
+    # The user marked THIS chart as in sync with the recording (each track is
+    # synchronised on its own; its tab turns green).
+    sync_confirmed: bool = False
 
 
 class TempoCorrectionIn(BaseModel):
@@ -764,6 +771,7 @@ def _to_out(job: Job) -> JobOut:
         sync_edited=_sync_edited(params),
         sync_confirmed=bool(params.get("sync_confirmed")),
         sync_source=_sync_source(params),
+        synced_arrangements=_synced_arrangements(params, job.bundle_dir),
         has_lyrics=has_lyrics,
         rebuilt_from=cast("str | None", params.get("rebuilt_from") or None),
     )
@@ -2149,7 +2157,7 @@ def export_arrangement_gp(job_id: str, arrangement: str) -> ExportArrangementGpO
     from rockforge.infrastructure.gpexport.arrangement_writer import write_arrangement_gp5
     from rockforge.infrastructure.rsxml.reader import read_arrangement_xml
 
-    path = bundle / f"arrangement_{arrangement.lower()}.xml"
+    path = bundle / f"arrangement_{arrangement.lower().replace(' ', '_')}.xml"
     if not path.is_file():
         raise HTTPException(404, f"no built arrangement named {arrangement!r}")
     try:
@@ -2758,6 +2766,48 @@ def get_gp_tracks(job_id: str) -> dict[str, object]:
     }
 
 
+def _arrangement_kinds() -> list[Any]:
+    from rockforge.domain.arrangement import ArrangementKind
+
+    return list(ArrangementKind)
+
+
+def _synced_arrangements(params: dict[str, Any], bundle_dir: str | None) -> list[str]:
+    """The charts marked as in sync. A song confirmed as a whole before charts
+    could be marked one by one counts every chart it built."""
+    raw = params.get("synced_arrangements")
+    if isinstance(raw, list):
+        return [str(k) for k in raw]
+    return _built_kinds(bundle_dir) if params.get("sync_confirmed") else []
+
+
+def _built_kinds(bundle_dir: str | None) -> list[str]:
+    """The arrangements a build produced, by their XML file names."""
+    if not bundle_dir:
+        return []
+    names = {k.name: k.value for k in _arrangement_kinds()}
+    stems = (
+        p.stem.removeprefix("arrangement_").upper()
+        for p in Path(bundle_dir).glob("arrangement_*.xml")
+    )
+    return [names[s] for s in stems if s in names]
+
+
+def _built_arrangement_kind(xml_path: Path, root: ET.Element) -> str:
+    """Which arrangement a built XML is, from its file name (the packager writes
+    ``arrangement_<kind name>.xml``). NOT from its ``<arrangement>`` tag: an
+    alternate chart writes its BASE path there ("Lead"/"Rhythm", as the game
+    needs), so reading the tag gave two tabs called "Lead" that shared every
+    per-arrangement edit — sync corrections, tempo, note edits."""
+    from rockforge.domain.arrangement import ArrangementKind
+
+    name = xml_path.stem.removeprefix("arrangement_").upper()
+    try:
+        return ArrangementKind[name].value
+    except KeyError:
+        return root.findtext("arrangement", "?")
+
+
 @app.get("/jobs/{job_id}/arrangements", response_model=list[ArrangementOut])
 def get_arrangements(job_id: str) -> list[ArrangementOut]:
     """Parsed arrangement data for human review (tab viewer, tuning confirmation)."""
@@ -2798,6 +2848,7 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
             return float(entry.get("tempo_scale", default_scale) or default_scale)
         return default_scale
 
+    synced_kinds = _synced_arrangements(job_params, job.bundle_dir)
     out: list[ArrangementOut] = []
     for xml_path in sorted(Path(job.bundle_dir).glob("arrangement_*.xml")):
         root = ET.parse(xml_path).getroot()
@@ -2850,7 +2901,7 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
                 m.chord_name = cname
             chord_notes.extend(members)
         all_notes = sorted(notes + chord_notes, key=lambda n: (n.time, n.string))
-        kind = root.findtext("arrangement", "?")
+        kind = _built_arrangement_kind(xml_path, root)
         # Bar downbeats for the viewer's measure numbering: ebeats with a real
         # measure number (>0); off-beats carry measure="-1".
         ebeats = root.findall("ebeats/ebeat")
@@ -2893,8 +2944,13 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
                 beats=beats,
                 sections=sections,
                 note_overrides=committed_note_overrides(kind),
+                sync_confirmed=kind in synced_kinds,
             )
         )
+    # The build's own order (Lead, Rhythm, Combined, the alternates), not the
+    # file names' alphabetical one, which put the alternates first.
+    order = [k.value for k in _arrangement_kinds()]
+    out.sort(key=lambda a: order.index(a.kind) if a.kind in order else len(order))
     return out
 
 
@@ -2909,6 +2965,9 @@ def get_job(job_id: str) -> JobOut:
 
 class SyncConfirmedIn(BaseModel):
     confirmed: bool
+    # One chart ("Lead", "Alternate Rhythm"…): each track is synchronised on its
+    # own. None = the whole song (the checklist's button), i.e. every chart.
+    arrangement: str | None = None
 
 
 @app.patch("/jobs/{job_id}/sync-confirmed", response_model=JobOut)
@@ -2923,7 +2982,24 @@ def set_sync_confirmed(job_id: str, payload: SyncConfirmedIn) -> JobOut:
         if job is None:
             raise HTTPException(404, "job not found")
         params = dict(job.params or {})
-        params["sync_confirmed"] = payload.confirmed
+        built = _built_kinds(job.bundle_dir)
+        if payload.arrangement is None:
+            synced = built if payload.confirmed else []
+        else:
+            if built and payload.arrangement not in built:
+                raise HTTPException(422, f"no built arrangement named {payload.arrangement!r}")
+            synced = [
+                k for k in _synced_arrangements(params, job.bundle_dir) if k != payload.arrangement
+            ]
+            if payload.confirmed:
+                synced.append(payload.arrangement)
+        params["synced_arrangements"] = synced
+        # The song is confirmed once every chart is — that is what the card and
+        # the checklist mean by it; marking one track does not speak for others.
+        params["sync_confirmed"] = (
+            payload.confirmed if payload.arrangement is None
+            else bool(built) and all(k in synced for k in built)
+        )
         job.params = params
         session.commit()
         return _to_out(job)

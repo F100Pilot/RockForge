@@ -1235,6 +1235,103 @@ def test_arrangements_excludes_the_noguitar_sentinel_from_sections(
     assert [s["name"] for s in sections] == ["Intro"]
 
 
+def _bundle_with(client: TestClient, kinds: list[str]) -> str:
+    """A completed GP job whose bundle holds one built chart per kind name."""
+    import rockforge.config as config
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.domain.arrangement import Arrangement, ArrangementKind, SongMetadata
+    from rockforge.domain.music import Beat, TabNote, TempoMap, Tuning
+    from rockforge.infrastructure.db.models import JobStatus
+    from rockforge.infrastructure.rsxml.writer import write_arrangement_xml
+
+    job = _create_job(client)
+    bundle = config.settings.work_dir / job["id"] / "bundle"
+    beats = tuple(
+        Beat(time=0.5 * i, measure=(i // 4 + 1) if i % 4 == 0 else -1) for i in range(8)
+    )
+    for n, name in enumerate(kinds):
+        kind = ArrangementKind[name]
+        write_arrangement_xml(Arrangement(
+            kind=kind,
+            metadata=SongMetadata(title="T", artist="A", song_length=4.0),
+            tuning=Tuning(),
+            notes=[TabNote(string=1, fret=3 + n, time=1.0, sustain=0.5)],
+            tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+        ), bundle / f"arrangement_{name.lower()}.xml")
+    with app_module._session_factory() as session:
+        db_job = session.get(app_module.Job, job["id"])
+        db_job.status = JobStatus.COMPLETED
+        db_job.source_type = "gp"
+        db_job.bundle_dir = str(bundle)
+        session.commit()
+    return str(job["id"])
+
+
+def test_an_alternate_chart_is_its_own_arrangement_not_a_second_lead(client: TestClient) -> None:
+    """An alternate chart writes its BASE path ("Lead") in its XML, as the game
+    needs, so reading that tag gave two tabs called "Lead" sharing every edit.
+    Each chart is named by its file, listed in the build's order, and exports."""
+    job_id = _bundle_with(client, ["ALTERNATE_LEAD", "RHYTHM", "LEAD", "ALTERNATE_RHYTHM"])
+    arrs = client.get(f"/jobs/{job_id}/arrangements").json()
+    assert [a["kind"] for a in arrs] == ["Lead", "Rhythm", "Alternate Lead", "Alternate Rhythm"]
+    assert [a["notes"][0]["fret"] for a in arrs] == [5, 4, 3, 6]  # each its own chart
+
+    r = client.post(
+        f"/jobs/{job_id}/export-arrangement-gp", params={"arrangement": "Alternate Lead"}
+    )
+    assert r.status_code == 200, r.text
+
+
+def test_each_chart_is_marked_in_sync_on_its_own(client: TestClient) -> None:
+    """Each track is synchronised on its own and its tab turns green; the song
+    counts as confirmed once every chart is, and the whole-song button marks all."""
+    job_id = _bundle_with(client, ["LEAD", "RHYTHM"])
+
+    def synced() -> dict[str, bool]:
+        arrs = client.get(f"/jobs/{job_id}/arrangements").json()
+        return {a["kind"]: a["sync_confirmed"] for a in arrs}
+
+    def mark(confirmed: bool, arrangement: str | None = None) -> dict:
+        return client.patch(
+            f"/jobs/{job_id}/sync-confirmed",
+            json={"confirmed": confirmed, "arrangement": arrangement},
+        ).json()
+
+    j = mark(True, "Lead")
+    assert synced() == {"Lead": True, "Rhythm": False}
+    assert j["synced_arrangements"] == ["Lead"] and j["sync_confirmed"] is False
+
+    j = mark(True, "Rhythm")
+    assert j["sync_confirmed"] is True and j["sync_source"] == "confirmed"
+
+    j = mark(False, "Lead")
+    assert synced() == {"Lead": False, "Rhythm": True} and j["sync_confirmed"] is False
+
+    mark(True)
+    assert synced() == {"Lead": True, "Rhythm": True}
+    mark(False)
+    assert synced() == {"Lead": False, "Rhythm": False}
+
+    bad = client.patch(
+        f"/jobs/{job_id}/sync-confirmed", json={"confirmed": True, "arrangement": "Bass"}
+    )
+    assert bad.status_code == 422
+
+
+def test_a_song_confirmed_before_charts_were_marked_one_by_one_marks_them_all(
+    client: TestClient,
+) -> None:
+    import rockforge.interfaces.api.app as app_module
+
+    job_id = _bundle_with(client, ["LEAD", "RHYTHM"])
+    with app_module._session_factory() as session:
+        db_job = session.get(app_module.Job, job_id)
+        db_job.params = {**(db_job.params or {}), "sync_confirmed": True}
+        session.commit()
+    arrs = client.get(f"/jobs/{job_id}/arrangements").json()
+    assert all(a["sync_confirmed"] for a in arrs)
+
+
 def test_completeness_fields_reflect_job_state(client: TestClient, tmp_path) -> None:
     """The 'Estado do PSARC' checklist reads has_tones / sync_edited / cover_art
     straight off JobOut — a fresh GP job has none of them; a rebuild that adds

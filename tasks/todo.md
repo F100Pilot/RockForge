@@ -224,3 +224,12 @@ Pedido: "quando corrijo o início das notas, a letra não se está a mover".
 - [x] `gp_synced` no build + preenchido no arranque para projetos antigos
 - [x] `sync_source`; chip "Sincronizada"; cartão "Estado da sincronização"
 - [x] Testes (mutação), Playwright, docs, gates
+
+# Sincronização por pista, com a aba a verde (2026-09-29)
+
+- [x] `synced_arrangements` + `PATCH /sync-confirmed {arrangement}`; canção
+      confirmada quando todas as pistas estão
+- [x] Aba verde (✓), cartão "Estado da sincronização" por pista
+- [x] Bug: as alternativas apareciam como "Lead"/"Rhythm" e partilhavam as
+      correções da pista principal → nome pelo ficheiro, ordem do build, export
+- [x] Testes (mutação), Playwright, docs, gates

@@ -696,9 +696,12 @@ automatically.
    ficheiro: o passo 3 diz qual é o ficheiro a carregar.
 3. Um projeto sincronizado no Guitar Pro 8 mostra "Sincronizada" no cartão e
    "Sincronizada no Guitar Pro" na lista "Antes de usar", sem perguntar.
-4. Partitura → Sincronização → "Estado da sincronização" → "Marcar como
-   sincronizada": o cartão do projeto passa a mostrar "Sincronizada";
-   "Desmarcar" tira-a.
+4. Partitura → Sincronização → "Estado da sincronização" → "Marcar esta pista
+   como sincronizada": a aba dessa pista fica verde (só essa); com todas
+   marcadas, o cartão do projeto mostra "Sincronizada". "Desmarcar esta pista"
+   tira-a.
+5. Um projeto com Lead alternativo / Rhythm alternativo mostra-os com esse nome
+   (não um segundo "Lead"), e corrigir a sincronização de um não mexe no outro.
 
 ### 7c-sexies. Áudio do YouTube só com um ficheiro GP
 

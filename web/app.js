@@ -605,15 +605,38 @@ const COMPLETE_ACTIONS = {
   lyrics: () => { showSection('letras'); },
 };
 
-async function setSyncConfirmed(confirmed) {
+// The alternates' kinds are long English names; the tabs and pickers show these.
+const ARR_LABEL = { 'Alternate Lead': 'Lead alternativo', 'Alternate Rhythm': 'Rhythm alternativo' };
+function arrLabel(kind) { return ARR_LABEL[kind] || kind; }
+// A chart counts as in sync when the user marked it, or when the whole file
+// was timed elsewhere (Guitar Pro 8's own sync points, Songsterr's bar times).
+function arrSynced(a) {
+  return !!a && (a.sync_confirmed || ['gp', 'songsterr'].includes(selectedJob && selectedJob.sync_source));
+}
+function updateArrTabs() {
+  document.querySelectorAll('#arrTabs button').forEach((btn, i) => {
+    const a = arrangements[i];
+    if (!a) return;
+    const synced = arrSynced(a);
+    btn.classList.toggle('synced', synced);
+    btn.title = synced ? 'Pista sincronizada' : '';
+    btn.innerHTML = `${synced ? icon('check') : ''}${esc(arrLabel(a.kind))} (${a.note_count}n/${a.chord_count}c)`;
+  });
+}
+
+// Mark the song (arrangement = null: every chart) or ONE chart as in sync.
+async function setSyncConfirmed(confirmed, arrangement = null) {
   if (!selectedJob) return;
   try {
     const j = await getJSON(`/jobs/${selectedJob.id}/sync-confirmed`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ confirmed }),
+      body: JSON.stringify({ confirmed, arrangement }),
     });
     selectedJob.sync_confirmed = j.sync_confirmed;
     selectedJob.sync_source = j.sync_source;
+    selectedJob.synced_arrangements = j.synced_arrangements;
+    for (const a of arrangements) a.sync_confirmed = (j.synced_arrangements || []).includes(a.kind);
+    updateArrTabs();
     renderCompleteness(selectedJob);  // also re-sets the top bar's status chip
     refreshJobs();  // the project card's badge
   } catch (err) {
@@ -631,18 +654,25 @@ const SYNC_SOURCE_TEXT = {
   adjusted: 'Fizeste correções de início/andamento. Quando as notas baterem com a gravação, marca-a como sincronizada.',
 };
 function isSynced(j) { return ['confirmed', 'gp', 'songsterr'].includes(j && j.sync_source); }
+// Each track is synchronised on its own, so the card speaks for the chart on
+// screen: mark it (its tab turns green), and see how many are done.
 function renderSyncState(j) {
   const card = document.getElementById('syncStateCard');
   if (!card) return;
-  const gp = !!j && j.source_type === 'gp' && j.status === 'completed';
+  const a = arrangements[currentArr];
+  const gp = !!j && j.source_type === 'gp' && j.status === 'completed' && !!a;
   card.hidden = !gp;
   if (!gp) return;
-  const src = j.sync_source;
-  document.getElementById('syncStateText').innerHTML = (isSynced(j) ? `${icon('check')} ` : '') +
-    esc(SYNC_SOURCE_TEXT[src] || 'Ainda não marcada como sincronizada. Quando as notas baterem com a gravação, marca-a.');
+  const label = esc(arrLabel(a.kind));
+  const marked = arrangements.filter(x => x.sync_confirmed).length;
+  const whole = ['gp', 'songsterr'].includes(j.sync_source) ? `<br>${esc(SYNC_SOURCE_TEXT[j.sync_source])}` : '';
+  const count = arrangements.length > 1 ? `<br>${marked} de ${arrangements.length} pistas marcadas.` : '';
+  document.getElementById('syncStateText').innerHTML = (a.sync_confirmed
+    ? `${icon('check')} Pista <b>${label}</b> marcada por ti como sincronizada.`
+    : `Pista <b>${label}</b>: quando as notas baterem com a gravação, marca-a.`) + whole + count;
   const btn = document.getElementById('syncStateBtn');
-  btn.textContent = src === 'confirmed' ? 'Desmarcar' : 'Marcar como sincronizada';
-  btn.onclick = () => setSyncConfirmed(src !== 'confirmed');
+  btn.textContent = a.sync_confirmed ? 'Desmarcar esta pista' : 'Marcar esta pista como sincronizada';
+  btn.onclick = () => setSyncConfirmed(!a.sync_confirmed, a.kind);
 }
 
 function renderCompleteness(j) {
@@ -1188,7 +1218,7 @@ async function openMetaEdit() {
       const ov = (tr.tuning_overrides || {})[a.kind];
       const cur = ov ? _presetFromOffsets(ov.map((m, i) => m - STD_MIDI[i])) :
                        _presetFromOffsets(a.tuning_offsets);
-      return `<div class="field" style="flex:1 1 11rem"><label>Afinação ${esc(a.kind)}</label>
+      return `<div class="field" style="flex:1 1 11rem"><label>Afinação ${esc(arrLabel(a.kind))}</label>
         <select data-kind="${esc(a.kind)}" style="width:100%">${presetOpts}</select></div>`
         .replace(`value="${cur}"`, `value="${cur}" selected`);
     }).join('');
@@ -1483,7 +1513,8 @@ async function loadArrangements(id) {
     `<input type="number" min="20" max="80" value="${std + a0.tuning_offsets[i]}" data-string="${i}">`).join('');
   document.getElementById('detectTuningInfo').textContent = '';
   document.getElementById('arrTabs').innerHTML = arrangements.map((a, i) =>
-    `<button type="button" class="${i ? '' : 'active'}" onclick="showArr(${i})">${a.kind} (${a.note_count}n/${a.chord_count}c)</button>`).join('');
+    `<button type="button" class="${i ? '' : 'active'}" onclick="showArr(${i})"></button>`).join('');
+  updateArrTabs();
   document.getElementById('applyToAllLabel').style.display = arrangements.length > 1 ? '' : 'none';
   document.getElementById('applyToAllChk').checked = false;
   initSync(selectedJob);
@@ -1638,6 +1669,7 @@ function retempoedBars(a) {
 function showArr(i) {
   if (i !== currentArr) { loadArrSync(i); stopArrangementPreview(); }  // tab change: swap in that chart's own sync state
   currentArr = i;
+  renderSyncState(selectedJob);  // the card speaks for the chart on screen
   lyricsFollowSync();  // lyrics timed on the score move with its pending sync
   for (const [idx, btn] of document.querySelectorAll('#arrTabs button').entries())
     btn.classList.toggle('active', idx === i);
@@ -2227,7 +2259,7 @@ function updateBarSyncPanel() {
   document.getElementById('barSyncRefRow').style.display = others.length ? '' : 'none';
   const refSel = document.getElementById('barSyncRefArr');
   const prevRef = refSel.value;
-  refSel.innerHTML = others.map(o => `<option value="${o.i}">${esc(o.a.kind)}</option>`).join('');
+  refSel.innerHTML = others.map(o => `<option value="${o.i}">${esc(arrLabel(o.a.kind))}</option>`).join('');
   if (others.some(o => String(o.i) === prevRef)) refSel.value = prevRef;
 }
 
@@ -3776,7 +3808,7 @@ function updateLyricFollowUi() {
   box.checked = lyricsFollowChart;
   box.disabled = !isGpJob();
   const a = arrangements[lyricRefArr()];
-  document.getElementById('ilFollowRef').textContent = a ? `(pista ${a.kind})` : '';
+  document.getElementById('ilFollowRef').textContent = a ? `(pista ${arrLabel(a.kind)})` : '';
 }
 document.getElementById('ilFollowChart').addEventListener('change', e => setLyricsFollowChart(e.target.checked));
 
@@ -4314,7 +4346,7 @@ function populateAudioSources() {
   for (const a of arrangements) {
     const v = `synth:${a.kind}`;
     values.push(v);
-    html += `<option value="${esc(v)}">${esc(a.kind)} (sintetizada)</option>`;
+    html += `<option value="${esc(v)}">${esc(arrLabel(a.kind))} (sintetizada)</option>`;
   }
   if (vocalLine.notes.length) {
     const v = `synth:${VOICE_SOURCE}`;
@@ -6652,7 +6684,7 @@ function audioSourceStyle() {
       Lead: '#a97bff', Rhythm: '#3fa7ff', Combo: '#ff8a5c',
       Combined: '#ff8a5c', Bass: '#5cc24a', [VOICE_SOURCE]: '#ff5fa2',
     };
-    return { color: palette[kind] || '#a97bff', label: `${kind} (sintetizada)` };
+    return { color: palette[kind] || '#a97bff', label: `${arrLabel(kind)} (sintetizada)` };
   }
   if (n) return { color: '#3fb27f', label: STEM_LABELS[n] || n };
   return { color: '#2a6f97', label: 'Mistura completa' };

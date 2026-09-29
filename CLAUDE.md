@@ -1796,6 +1796,40 @@ jump-button to the right editor (`COMPLETE_ACTIONS`). Rows + alerts:
   `test_projects_synced_in_guitar_pro_before_the_flag_existed_are_marked_on_startup`
   (mutation-checked); the UI with Playwright (mark → card chip → undo), and
   15 real GP8-synced projects read `gp` after one restart.
+  **Each track is marked on its own, and its tab turns green** ("a
+  sincronização é feita por track independente, e o nome da track fica a
+  verde"). `params["synced_arrangements"]` lists the charts marked;
+  `PATCH /sync-confirmed` takes an optional `arrangement` (none = the whole
+  song, every built chart — the checklist's button), and the song's
+  `sync_confirmed` becomes true only when every built chart is marked
+  (`_built_kinds` reads the bundle's XML names). `ArrangementOut.sync_confirmed`
+  drives the tab (`updateArrTabs`: ✓ + green; the active tab green-filled;
+  every tab green when the whole file was timed in Guitar Pro 8 or by
+  Songsterr, `arrSynced`), and the "Estado da sincronização" card now speaks
+  for the chart on screen ("Marcar esta pista como sincronizada", "N de M
+  pistas marcadas"), re-rendered on every tab switch. A song confirmed before
+  charts could be marked one by one counts every chart (`_synced_arrangements`).
+  **This surfaced a real bug: an alternate chart looked like a second Lead.**
+  `/arrangements` named each chart from its XML's `<arrangement>` tag, where an
+  alternate writes its BASE path ("Lead"/"Rhythm", as the game needs), so the
+  user saw two "Lead" and two "Rhythm" tabs — and, since the viewer keys
+  pending anchors, tempo, note edits and the rebuild's `arrangement` by that
+  name, the alternate's corrections landed on the main chart and it could not
+  be synchronised on its own. Charts are now named by their FILE
+  (`_built_arrangement_kind`: `arrangement_alternate_lead.xml` → "Alternate
+  Lead"), listed in the build's order (Lead, Rhythm, Combined, alternates —
+  the file names' alphabetical order put the alternates first), shown as "Lead
+  alternativo"/"Rhythm alternativo" (`arrLabel`), and `/export-arrangement-gp`
+  finds `arrangement_alternate_lead.xml` (it looked for "alternate lead", with
+  a space). Guarded by
+  `test_an_alternate_chart_is_its_own_arrangement_not_a_second_lead`
+  (name, order and export each mutation-checked),
+  `test_each_chart_is_marked_in_sync_on_its_own` and
+  `test_a_song_confirmed_before_charts_were_marked_one_by_one_marks_them_all`;
+  with Playwright on the user's GP5 built as Lead + Lead alternativo: the tabs
+  read both names, marking one turns only it green, an "Início" correction on
+  the alternate lands in its own anchor set, and marking both makes the song
+  confirmed.
 - ⓘ **Letra** ← `has_lyrics` (informational, never an alert). NOTE: read
   `has_lyrics` (new field: edited `lyrics_events` OR `lrc_text` OR
   `lyrics_status == "ready"`), NOT `lyrics_status` alone — GP-embedded / LRC /
