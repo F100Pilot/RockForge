@@ -37,6 +37,7 @@ from rockforge.domain.music import (
     apply_sustain_gap,
     expand_slide_ins,
     expand_trills,
+    extend_through_tie,
     is_composite_bend,
 )
 from rockforge.infrastructure.gpimport.parser import (  # shared model + helpers
@@ -989,10 +990,14 @@ def _merge_ties(
                 break
         if prev is None:
             continue  # orphan tie — keep as a normal note
-        end = notes[idx].time + notes[idx].sustain
-        notes[prev] = dataclasses.replace(
-            notes[prev], sustain=max(notes[prev].sustain, end - notes[prev].time)
+        tie = notes[idx]
+        # The tied note's own bend (held, then bent) carries over, as in the GP5 path.
+        tie_bend = list(tie.bend_points) or (
+            [BendPoint(0.0, tie.bend_semitones), BendPoint(1.0, tie.bend_semitones)]
+            if tie.bend_semitones else []
         )
+        end = tie.time + tie.sustain
+        notes[prev] = extend_through_tie(notes[prev], tie.time, end, tie_bend)
         dropped.add(idx)
     return [
         (notes[i], raw[i][1], raw[i][2]) for i in range(len(raw)) if i not in dropped

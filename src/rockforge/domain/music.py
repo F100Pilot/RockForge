@@ -160,6 +160,48 @@ def is_composite_bend(points: Sequence[BendPoint]) -> bool:
     return len({round(p.step, 3) for p in points}) > 1
 
 
+def extend_through_tie(
+    note: TabNote, tie_start: float, tie_end: float, tie_bend: Sequence[BendPoint] = ()
+) -> TabNote:
+    """``note`` held on through a tied continuation (``tie_start``..``tie_end``).
+
+    Rocksmith has no ties, so a tie chain becomes one sustained note — but the tied
+    note can carry its own bend (a note held, then bent and released: alphaTab and
+    Guitar Pro draw the arrow on the tied note). Its curve joins the held note's,
+    both re-timed onto the new length, instead of being dropped. A tie without a
+    bend after a bent note holds that bend (the tie keeps the origin's pitch).
+    ``note.sustain`` must still be the length it covers so far.
+    """
+    covered = note.sustain
+    total = tie_end - note.time
+    if total <= covered:
+        return note
+    held = list(note.bend_points) or (
+        [BendPoint(0.0, note.bend_semitones), BendPoint(1.0, note.bend_semitones)]
+        if note.bend_semitones else []
+    )
+    if not held and not tie_bend:
+        return replace(note, sustain=total)
+    curve = [(note.time + p.position * covered, p.step) for p in held] or [(note.time, 0.0)]
+    if tie_bend:
+        length = tie_end - tie_start
+        curve += [(tie_start + p.position * length, p.step) for p in tie_bend]
+    elif curve[-1][1] > 0:
+        curve.append((tie_end, curve[-1][1]))
+    points = [
+        BendPoint(position=min(1.0, max(0.0, (t - note.time) / total)), step=step)
+        for t, step in curve
+    ]
+    peak = max(p.step for p in points)
+    return replace(
+        note,
+        sustain=total,
+        bend_semitones=peak,
+        bend_points=tuple(points) if is_composite_bend(points) else (),
+        techniques=note.techniques | {Technique.BEND} if peak > 0 else note.techniques,
+    )
+
+
 @dataclass(frozen=True)
 class Tuning:
     """Per-string MIDI pitches, low to high (Rocksmith string 0..5)."""

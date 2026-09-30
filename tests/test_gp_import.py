@@ -204,6 +204,70 @@ def test_tied_note_extends_previous_not_new_attack(tmp_path: Path) -> None:
     assert parsed.notes[0].sustain == pytest.approx(1.0)  # two quarters held
 
 
+def _add_tie(voice, duration_value: int, string: int, **effects):  # noqa: ANN001
+    beat = gp.Beat(voice)
+    beat.status = gp.BeatStatus.normal
+    beat.duration = gp.Duration(value=duration_value)
+    note = gp.Note(beat)
+    note.string, note.value, note.type = string, 0, gp.NoteType.tie
+    for key, val in effects.items():
+        setattr(note.effect, key, val)
+    beat.notes.append(note)
+    voice.beats.append(beat)
+
+
+def test_bend_and_pull_off_on_a_tied_note_are_kept(tmp_path: Path) -> None:
+    """Held, then bent ½ and released on the TIED note, then pulled off (Daughtry
+    'September', bar 4 — as alphaTab and Guitar Pro draw it). Folding the tie into
+    the held note must keep the bend (re-timed onto the whole note) and the pull-off,
+    not drop them with the tie."""
+    song = gp.Song()
+    song.title, song.artist, song.tempo = "Tie bend", "B", 120
+    v = song.tracks[0].measures[0].voices[0]
+    _add_beat(v, 4, [(3, 3)])  # quarter, G string fret 3 (0.5 s)
+    release = gp.BendEffect(
+        type=gp.BendType.bendRelease,
+        value=50,
+        points=[gp.BendPoint(0, 0), gp.BendPoint(3, 2), gp.BendPoint(6, 2),
+                gp.BendPoint(9, 0), gp.BendPoint(12, 0)],
+    )
+    _add_tie(v, 4, 3, bend=release)  # tied quarter: bend ½ and release
+    _add_tie(v, 8, 3, hammer=True)  # tied eighth, pull-off to the next note
+    _add_beat(v, 8, [(3, 1)])
+    path = tmp_path / "tie_bend.gp5"
+    gp.write(song, str(path))
+
+    held, pulled = parse_gp_track(path, 0).notes
+    assert (held.fret, pulled.fret) == (3, 1)
+    assert Technique.BEND in held.techniques and held.bend_semitones == pytest.approx(1.0)
+    # bend on the second quarter of the 1.25 s note: flat until 0.4, peak 0.5..0.6
+    curve = [(round(p.position, 2), p.step) for p in held.bend_points]
+    assert curve == [(0.0, 0.0), (0.4, 0.0), (0.5, 1.0), (0.6, 1.0), (0.7, 0.0), (0.8, 0.0)]
+    assert Technique.PULL_OFF in pulled.techniques
+
+
+def test_a_tie_after_a_bend_holds_it(tmp_path: Path) -> None:
+    """A bent note tied on without a bend of its own stays bent (the tie keeps the
+    pitch): the rise sits in the first half, then holds."""
+    song = gp.Song()
+    song.title, song.artist, song.tempo = "Tie hold", "B", 120
+    v = song.tracks[0].measures[0].voices[0]
+    rise = gp.BendEffect(
+        type=gp.BendType.bend,
+        value=100,
+        points=[gp.BendPoint(0, 0), gp.BendPoint(6, 4), gp.BendPoint(12, 4)],
+    )
+    _add_beat(v, 4, [(2, 8)], bend=rise)
+    _add_tie(v, 4, 2)
+    path = tmp_path / "tie_hold.gp5"
+    gp.write(song, str(path))
+
+    (note,) = parse_gp_track(path, 0).notes
+    curve = [(round(p.position, 2), p.step) for p in note.bend_points]
+    assert curve == [(0.0, 0.0), (0.25, 2.0), (0.5, 2.0), (1.0, 2.0)]
+    assert note.bend_semitones == pytest.approx(2.0)
+
+
 def test_tempo_change_on_other_track_is_detected(tmp_path: Path) -> None:
     """A mid-song tempo change is GLOBAL but GP5 stores it on ONE track's beat —
     often not the instrument we parse. It must still reach the beat grid, or the

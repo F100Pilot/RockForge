@@ -245,6 +245,28 @@ def test_gp7_tied_note_extends_not_duplicates(tmp_path: Path) -> None:
     assert n.sustain == pytest.approx(1.0)  # two quarters at 120 BPM held together
 
 
+def test_gp7_bend_on_a_tied_note_is_kept(tmp_path: Path) -> None:
+    """Held, then bent a whole step on the tied note: the bend survives the fold,
+    placed on the second half of the held note (as in the GP5 path)."""
+    bend = (
+        '<Property name="Bended"><Enable/></Property>'
+        '<Property name="BendOriginValue"><Float>0</Float></Property>'
+        '<Property name="BendDestinationValue"><Float>100</Float></Property>'
+    )
+    tail = '<Property name="Fret"><Fret>7</Fret></Property></Properties></Note>\n  </Notes>'
+    gpif = TIE_GPIF.replace(tail, tail.replace("</Properties>", f"{bend}</Properties>"))
+    assert gpif != TIE_GPIF
+    path = tmp_path / "tie_bend.gp"
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("VERSION", "7.0")
+        z.writestr("Content/score.gpif", gpif)
+    (n,) = parse_gp_track(path, 0).notes
+    assert n.sustain == pytest.approx(1.0)
+    assert Technique.BEND in n.techniques and n.bend_semitones == pytest.approx(2.0)
+    curve = [(round(p.position, 2), p.step) for p in n.bend_points]
+    assert curve == [(0.0, 0.0), (0.5, 0.0), (1.0, 2.0)]
+
+
 # --- Tempo automation semantics (GPIF) ------------------------------------
 # Two independent details that both used to be read wrong, and which silently
 # corrupt the whole GP timeline (and therefore any sync analysis built on it).

@@ -32,6 +32,7 @@ from rockforge.domain.music import (
     apply_sustain_gap,
     expand_slide_ins,
     expand_trills,
+    extend_through_tie,
     is_composite_bend,
 )
 from rockforge.infrastructure.gpimport.sync_map import (
@@ -41,6 +42,13 @@ from rockforge.infrastructure.gpimport.sync_map import (
 )
 
 QUARTER_TICKS = 960
+
+
+def _bend_curve(eff: Any) -> list[BendPoint]:
+    """A note's bend curve: position 0..12 → fraction; value/2 → half-steps."""
+    if not (eff.isBend and eff.bend is not None and eff.bend.points):
+        return []
+    return [BendPoint(position=p.position / 12.0, step=p.value / 2.0) for p in eff.bend.points]
 
 
 @dataclass(frozen=True)
@@ -376,14 +384,17 @@ def parse_gp_track(
                     # A tie note is a held continuation, not a new attack — extend
                     # the previous note on this string instead of re-articulating
                     # it (the "4 notes shown as 5" bug). pyguitarpro: NoteType.tie.
+                    # Its own bend and hammer/pull (held, then bent / pulled off:
+                    # drawn on the tied note by alphaTab and Guitar Pro) carry over
+                    # to the held note instead of being dropped.
                     if getattr(note.type, "name", "") == "tie":
                         prev = last_on_string.get(string)
                         if prev is not None:
-                            pn = raw[prev][0]
-                            end = start + sustain
+                            pn, hammer = raw[prev]
+                            tie_bend = _bend_curve(note.effect)
                             raw[prev] = (
-                                replace(pn, sustain=max(pn.sustain, end - pn.time)),
-                                raw[prev][1],
+                                extend_through_tie(pn, start, start + sustain, tie_bend),
+                                hammer or bool(note.effect.hammer),
                             )
                         continue
                     fret = int(note.value)
@@ -394,12 +405,8 @@ def parse_gp_track(
                     techs: set[Technique] = set()
                     bend_semitones = 0.0
                     bend_points: tuple[BendPoint, ...] = ()
-                    if eff.isBend and eff.bend is not None and eff.bend.points:
-                        # Full curve: position 0..12 → fraction; value/2 → half-steps.
-                        pts = [
-                            BendPoint(position=p.position / 12.0, step=p.value / 2.0)
-                            for p in eff.bend.points
-                        ]
+                    pts = _bend_curve(eff)
+                    if pts:
                         bend_semitones = max(p.step for p in pts)
                         if bend_semitones:
                             techs.add(Technique.BEND)
