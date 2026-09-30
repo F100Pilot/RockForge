@@ -961,8 +961,12 @@ silence and exits seconds in. If that happens, in DLC Builder pick the bundle's
 `audio.wav` (not `.wem`) and let DLC Builder convert.
 
 **Volume ("Calculate Volumes", native `.psarc`).** The `.bnk` bus volume is now
-computed from the audio's loudness (ffmpeg `ebur128` → offset to -16 LUFS),
-where it shipped a neutral 0. **In-game check:** the song's loudness sits at a
+computed from the audio's loudness (ffmpeg `ebur128` → offset to the target,
+default -12 LUFS), where it shipped a neutral 0. The recording itself only gets
+a linear gain (no `loudnorm` limiter any more), capped at -1 dBTP. **In-game
+check (tone):** the song sounds like the original recording — no pumping, no
+squashed attacks, no crackle on the loud passages — next to the same song built
+by DLC Builder. **In-game check:** the song's loudness sits at a
 sensible level next to official DLC (not obviously quiet/loud), and — the point
 of the feature — the **song-select preview** plays at roughly the same loudness
 as the song itself, instead of a loud chorus clip blasting over the list. If
@@ -1112,12 +1116,12 @@ guitar should sound like that gear — the amp/gain/cabinet you chose — NOT th
 default clean tone. Confirm the tone name shows in the tone selector and that
 switching arrangements (Lead/Rhythm) keeps each one's assigned tone.
 
-**Not yet covered:** mid-song **tone changes** (the SNG's Tones section stays
-empty — `tone_base` applies for the whole song). If a chart marks tone changes,
-in-game the tone will NOT switch mid-song on the native path; the DLC Builder
-bundle still handles tone changes (via the `<tones>` XML). Report if you need
-mid-song switching on the native PSARC and it can be wired (needs the exact
-Sng2014 Tones struct — the reference had none to byte-match).
+**Mid-song tone changes** are now written into the SNG (`{time, slot id}`,
+`sng._build_tones`) — never heard in game from here. **In-game check:** mark a
+change on the score to a second tone, build the native `.psarc`, and confirm the
+tone switches at that point (and back, if marked). A chart with **no** tone of
+its own now plays DLC Builder's default (Lead/Combo: Plexi; Rhythm: Orange
+AD50): confirm it sounds like that, not like a broken/missing tone.
 
 Guarded at unit level by `test_manifest_serializes_custom_tones_into_gearlist`.
 

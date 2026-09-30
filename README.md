@@ -9,7 +9,7 @@ Pipeline Guitar Pro → arranjos Rocksmith 2014 (CDLC), construído sobre invest
 |---|---|---|
 | Ingestão (Guitar Pro) | FastAPI | — |
 | Notas/trastes/técnicas/tempo/secções | parser Guitar Pro (GP3/4/5 via PyGuitarPro; GP7/8 nativo) | **exatos** do ficheiro |
-| Normalização (gravação) | ffmpeg (loudnorm, 44.1 kHz) | determinística |
+| Normalização (gravação) | ffmpeg (ganho linear, 44.1 kHz) | determinística |
 | Stem de guitarra (separação/deteção de tom) | Demucs `htdemucs_6s` (MIT) | "okay" segundo os próprios autores; sem SDR publicado |
 | BPM/onset e afinação (cents) da gravação — só sincronização automática GP | librosa (ISC) | publicada; requer confirmação humana |
 | Letra automática (opcional) | WhisperX sobre o stem vocal isolado (Demucs `htdemucs` 2-stem; `pip install -e ".[lyrics]"`) | **EXPERIMENTAL** — gates anti-alucinação (RMS + confiança/palavra); LRC continua a via preferida; CPU é lento, GPU NVIDIA ≈ ferramentas online; corre num **subprocesso** (evita o deadlock CUDA do faster-whisper no Celery) |

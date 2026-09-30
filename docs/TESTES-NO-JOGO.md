@@ -19,6 +19,9 @@ gerar também pelo DLC Builder, para saber se o problema é do PSARC nativo.
 | 5 | **Início antes do áudio** (acerto negativo) | 31948f4 | Um GP sincronizado cujo compasso 1 começa antes da gravação | As notas batem com a música desde o início | Avisar |
 | 6 | **Grace notes, rasgueado, harmónico pinch (GP5), vibrato ligado** | 8b8407f | Um GP com estas técnicas | A grace note aparece como nota curta antes da principal (com hammer quando o tem); o pinch tem o símbolo de pinch | Avisar, com a técnica |
 | 7 | **Let ring nos `.gp`** | a566e91 | Um `.gp` com let ring ("September.gp") | A nota continua a soar por cima das seguintes | Avisar |
+| 9 | **Som da gravação sem compressão** (sem `loudnorm`, só um ganho fixo) | (este) | Reconstruir uma música que soava com ruído / pouco limpa | Soa como a gravação original: sem "bombear", sem ataques esmagados, sem estalidos nas partes fortes | Avisar; experimentar Volume alvo -16 na ⚙️ |
+| 10 | **Trocas de tom a meio da música** no PSARC nativo | (este) | Marcar na partitura uma troca para um 2.º tom e reconstruir | O tom muda nesse ponto (antes ficava sempre o tom base) | Avisar, com o tempo da troca |
+| 11 | **Pista sem tom próprio** | (este) | Uma música sem nenhum tom criado | Lead/Combo com o tom por defeito do DLC Builder (Plexi), Rhythm com o Orange AD50 — não um som estranho/em falta | Avisar |
 | 8 | **Áudio dentro do `.gp`** criado pelo PDF-to-GP5 (`backing-track.mp3`) | PDF-to-GP5 9f30f59 | Exportar um `.gp` com áudio no PDF-to-GP5 e importá-lo no RockForge | No passo 3 aparece "Usar o áudio que vem dentro do ficheiro GP" | Avisar |
 
 ### Ficheiro de teste dos pre-bends

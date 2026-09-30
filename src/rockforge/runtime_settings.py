@@ -92,7 +92,7 @@ def whisperx_compute_type() -> str:
 
 def loudness_target() -> float:
     """Effective loudness/volume target (LUFS), clamped to a safe window. Both
-    the ffmpeg loudnorm pass and the Wwise volume calibration read this."""
+    the recording's linear gain and the Wwise volume calibration read this."""
     val = load().get("loudness_target")
     try:
         target = DEFAULT_LOUDNESS_TARGET if val in (None, "") else float(val)  # type: ignore[arg-type]

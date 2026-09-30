@@ -15,3 +15,10 @@ reads this file via `gear_catalogue.py`; do not hand-edit knob keys.
 
 `TONE.md` (repo root) is a prose summary of this data for humans; this JSON is
 the machine-readable source of truth.
+
+`default_tones/default_lead.json` / `default_rhythm.json` are DLC Builder's
+default tones, copied verbatim from the same repository
+(`samples/DLCBuilder.Domain/Tones/`, MIT). DLC Builder gives one to every
+arrangement without a tone of its own; `default_tones.py` does the same for the
+native PSARC.
+

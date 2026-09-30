@@ -3173,8 +3173,35 @@ came from that loop). Custom tones the user builds ARE serialized into each
 arrangement's runtime manifest (`Tones` array + `Tone_Base`/`Tone_A`..`Tone_D`,
 via the shared `packaging/tone_dto.py` — the same `ToneDto` the `.rs2dlc` emits,
 verified byte-identical against a DLC Builder build of our own tones), so the
-in-game tone is the user's, not a default; the SNG's Tones section (mid-song
-tone *changes*) stays empty until per-arrangement `tone_changes` are wired.
+in-game tone is the user's, not a default.
+
+**A chart with no tone of its own gets DLC Builder's default tone, not
+nothing** (`gear/default_tones.py`, `default_lead.json`/`default_rhythm.json`
+copied verbatim from Rocksmith2014.NET, MIT). The manifest used to ship an
+empty `Tones` array and a blank `Tone_Base`, so the game fell back to whatever
+it plays for a tone it cannot resolve — part of "mesmo sem os tons … não têm
+uma tonalidade limpa". DLC Builder's `addDefaultTonesIfNeeded` gives such a
+chart the default of its route (Lead and Combo share the Lead route mask →
+Plexi; Rhythm → Orange AD50), keyed by the chart's own `tone_base` when it
+names one; `_tone_fields` now does the same. The pedal `Category` is the
+file's, not our catalogue's (they differ: StudioEQ, ModDelay). Guarded by
+`test_the_default_tone_is_dlc_builders_own_for_the_path` (the serialized gear
+equals the reference file) and `test_build_arrangement_manifest_fields`.
+
+**Mid-song tone changes now reach the game** (`sng._build_tones`). The SNG's
+Tones section was written EMPTY, so from the native PSARC a chart played its
+base tone throughout, whatever was marked on the score ("problemas graves com
+os tons"). Each entry is `{Time: float32, ToneId: int32}` (8 bytes, the size
+`read_sng` already skipped by), and the id is the tone's slot in Tone_A..D
+(Rocksmith2014.NET sets `Id = IndexOf(Tones.Names, name)`; its SngToXml maps
+0..3 back to Tone_A..D). The slot list is ONE function,
+`Arrangement.switch_slots()` — the switchable names that have gear, in order —
+read by both the manifest's `Tone_A..D` and the SNG, so the two cannot
+disagree about which tone id 1 is. The time is the XML writer's
+`_safe_tone_time` (20 ms before a note it would land on); a change to a tone
+with no slot has nothing to switch to and is left out. Guarded by
+`test_tone_changes_reach_the_sng_with_their_slot_and_off_the_note`. Not heard
+in game from here.
 Remaining honest gaps: the Dynamic Difficulty ramps and persists in game
 (confirmed 2026-08-25) but is still a mechanical DENSITY ramp, not a musical
 DDC pass — it picks notes by strongest-beat rank, so it levels correctly
@@ -3203,20 +3230,44 @@ non-loading `audio/<key>.<ext>` path (bundle stays the trustworthy audio route).
 
 **Volume ("Calculate Volumes", `normalize/loudness.py`).** The Sound object's
 Wwise bus volume (dB) is no longer a neutral 0. **One target
-(`runtime_settings.loudness_target()`, default -12 LUFS) drives BOTH the ffmpeg
-`loudnorm` pass AND the volume calibration**, so the `.wem` and the bus volume
-never drift: the audio is normalized to that loudness, then the packer measures
-it with `ebur128` and offsets the bus volume to the same target (`calculate_volume`
-→ `generate_soundbank(volume=…)`) — a normalized song lands near 0 dB, and the
-song-select **preview** (a trimmed clip whose own loudness differs) is measured
-separately and matched so it doesn't blast over the list. **Why -12, not the -16
+(`runtime_settings.loudness_target()`, default -12 LUFS) drives BOTH the
+recording's gain AND the volume calibration**, so the `.wem` and the bus volume
+never drift: the packer measures the normalized audio with `ebur128` and offsets
+the bus volume to the same target (`calculate_volume` →
+`generate_soundbank(volume=…)`), and the song-select **preview** (a trimmed clip
+whose own loudness differs) is measured separately and matched so it doesn't
+blast over the list.
+
+**The recording is NOT dynamics-processed — one linear gain
+(`recording_gain_db`).** It used to go through a single-pass
+`loudnorm=I=-12:TP=-1.5:LRA=11`: a gain that moves with the music plus a
+true-peak limiter, which reshaped every song ("os PSARC criados pelo rockforge
+têm algum ruído e não têm uma tonalidade limpa"). Measured on the user's own
+mp3: plain decode I -9.5 / LRA 5.0 / peak +0.5 dBFS; loudnorm I -10.9 (missing
+its own target) / **LRA 3.1** (squashed) / peak -1.4; now I -12.0 / LRA 5.0 /
+peak -2.0. `FfmpegNormalizer` measures the source once (`measure_levels`:
+integrated loudness + true peak, `ebur128=peak=true`, from `offset_s`) and
+applies `volume=XdB` with X = target − I, capped so the true peak stays under
+`PEAK_CEILING_DBTP` (-1 dBTP) — which also pulls a master mastered OVER 0 dBFS
+(this one is) back under it in ffmpeg's float pipeline, before the 16-bit WAV
+where an over is simply cut off. What the ceiling holds back, the bus volume
+makes up. That is DLC Builder's approach: it never touches the audio and sets
+the volume to `-16 − loudness` (Volume.fs). Unmeasurable (no ffmpeg answer) =
+no gain filter at all. Guarded by `test_the_recording_gets_a_linear_gain_not_loudnorm`,
+`test_the_gain_never_pushes_a_peak_over_the_ceiling`,
+`test_an_unmeasurable_recording_is_passed_through_untouched` and
+`test_the_recording_gain_goes_to_the_target_but_stops_at_the_peak_ceiling`. **Why -12, not the -16
 EBU R128 broadcast reference:** retail Rocksmith ships loud music masters (DLC
 Builder's Calculate Volumes lands ~-3/-4 dB of *attenuation* on such a master),
 so -16 read audibly quiet in-game; -12 is a music-game level. The target is
 **user-editable in the ⚙️ Definições modal** ("Volume alvo (LUFS)", clamped
--20..-6) — push toward -10/-9 if still quiet, back toward -14 if it pumps. Since
-our `.wem` is *normalized* to the target (not just bus-boosted), raising it is
-safe (loudnorm's limiter, not a post-gain that would clip the -1.5 dBTP peaks).
+-20..-6) — push toward -10/-9 if still quiet, back toward -14/-16 if it sounds
+harsh. With no limiter any more, a target the recording's peaks cannot reach by
+gain alone is reached by BUS volume (clamped ±8 dB), i.e. a boost inside the
+game's mix: DLC Builder does the same for a quiet master, but a high target on a
+quiet, peaky song is where clipping in game would come from. -16 (DLC Builder's
+own) is the cleanest choice; -12 stays the default because the user found -16
+too quiet.
 `parse_ebur128_i`/`volume_for_loudness` are pure and unit-tested without ffmpeg;
 a missing ffmpeg degrades to 0 dB, never a crash. The `.rs2dlc` audio `Volume`
 stays neutral (DLC Builder recomputes on import).

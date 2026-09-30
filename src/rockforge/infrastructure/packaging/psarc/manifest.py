@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING
 
 from rockforge.domain.arrangement import Arrangement, ArrangementKind
 from rockforge.domain.music import TabNote, Technique
+from rockforge.infrastructure.packaging.gear.default_tones import default_tone
 from rockforge.infrastructure.packaging.tone_dto import unique_tone_dtos
 
 if TYPE_CHECKING:
@@ -144,23 +145,27 @@ def _tone_fields(arrangement: Arrangement) -> dict[str, object]:
     A DLC Builder build of our own tones serializes these exactly: ``Tones`` is
     the runtime ``ToneDto`` array (the amp/cabinet/pedal chain the game reads to
     build the in-game tone), ``Tone_Base``/``Tone_A``..``Tone_D`` name the base
-    and switchable slots. Only emitted when the arrangement carries full gear
-    definitions (``arrangement.tones``); with bare tone names and no gear, the
-    slots stay empty — the native game has no tone library to resolve a name,
-    so a dangling reference is worse than none (DLC Builder's import path keeps
-    the names via the ``.rs2dlc``)."""
-    empty: dict[str, object] = {
-        "Tone_A": "", "Tone_B": "", "Tone_C": "", "Tone_D": "",
-        "Tone_Base": "", "Tone_Multiplayer": "", "Tones": [],
-    }
+    and switchable slots. The slots name only tones the arrangement defines
+    (``arrangement.tones``) — the native game has no tone library to resolve a
+    bare name, so a dangling reference is worse than none — and an arrangement
+    with no gear at all gets DLC Builder's default for its path (see
+    ``gear/default_tones.py``) as its base."""
     tones = arrangement.tones
     if not tones:
-        return empty
+        # No gear of its own: the path's DLC Builder default (as its
+        # addDefaultTonesIfNeeded does), never an empty tone list — that left
+        # the game nothing to build the player's sound from.
+        default = default_tone(arrangement.kind, arrangement.tone_base or None)
+        return {
+            "Tone_A": "", "Tone_B": "", "Tone_C": "", "Tone_D": "",
+            "Tone_Base": default.key, "Tone_Multiplayer": "",
+            "Tones": unique_tone_dtos([default]),
+        }
     defined = {t.key for t in tones}
     base = arrangement.tone_base if arrangement.tone_base in defined else tones[0].key
-    # Switchable slots a-d: keep only names that have a gear definition.
-    slots = [n for n in arrangement.tone_names if n in defined]
-    padded = (slots + ["", "", "", ""])[:4]
+    # Switchable slots a-d: only names with a gear definition (the SNG's tone
+    # changes index this same list).
+    padded = (arrangement.switch_slots() + ["", "", "", ""])[:4]
     return {
         "Tone_A": padded[0], "Tone_B": padded[1],
         "Tone_C": padded[2], "Tone_D": padded[3],

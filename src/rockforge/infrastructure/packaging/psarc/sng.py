@@ -45,6 +45,7 @@ from rockforge.application.ports import VocalEvent
 from rockforge.domain.arrangement import Arrangement, Section, number_sections
 from rockforge.domain.music import TabNote, Technique, high_density_flags, is_plain_rise
 from rockforge.infrastructure.rsxml.vocals import VOCAL_NOTE
+from rockforge.infrastructure.rsxml.writer import _safe_tone_time
 
 # The vocals SNG's Symbols sections (SymbolsHeader/Texture/Definition) are the
 # lyric font's glyph atlas: without them the game has no glyphs to draw the
@@ -413,6 +414,22 @@ _EVENT_INTRO_HOLD_S = 2.5
 _EVENT_OUTRO_LEAD_S = 9.0
 
 
+def _build_tones(arr: Arrangement) -> list[SngTone]:
+    """The arrangement's tone changes as the game reads them. This section went
+    out EMPTY, so no tone change ever happened in game from the native PSARC —
+    only the base tone played, whatever was marked on the score. The id is the
+    change's slot in ``switch_slots`` (Tone_A..D in the manifest); a change to a
+    tone outside those slots has nothing to switch to and is left out. The time
+    is the XML writer's, nudged off a note (DLC Builder refuses a change on one)."""
+    slots = arr.switch_slots()
+    note_times = sorted(n.time for n in arr.notes)
+    return [
+        SngTone(time=_safe_tone_time(tc.time, note_times), tone_id=slots.index(tc.name))
+        for tc in sorted(arr.tone_changes, key=lambda c: c.time)
+        if tc.name in slots
+    ]
+
+
 def _build_events(
     start_time: float, first_note_time: float, song_length: float
 ) -> list[SngEvent]:
@@ -440,6 +457,14 @@ def _build_events(
 
 
 @dataclass
+class SngTone:
+    """A tone change: at ``time`` switch to slot ``tone_id`` (0-3 = Tone_A..D)."""
+
+    time: float
+    tone_id: int
+
+
+@dataclass
 class SngModel:
     beats: list[SngBeat] = field(default_factory=list)
     phrases: list[SngPhrase] = field(default_factory=list)
@@ -448,6 +473,7 @@ class SngModel:
     vocals: list[SngVocal] = field(default_factory=list)
     phrase_iterations: list[SngPhraseIteration] = field(default_factory=list)
     events: list[SngEvent] = field(default_factory=list)
+    tones: list[SngTone] = field(default_factory=list)
     sections: list[SngSection] = field(default_factory=list)
     arrangements: list[SngArrangementLevel] = field(default_factory=list)
     metadata: SngMetadata = field(default_factory=SngMetadata)
@@ -1552,6 +1578,7 @@ def from_arrangement(
         vocals=sng_vocals,
         phrase_iterations=phrase_iterations,
         events=_build_events(metadata.start_time, metadata.first_note_time, song_length),
+        tones=_build_tones(arrangement),
         sections=sections,
         arrangements=arrangements,
         metadata=metadata,
@@ -1812,9 +1839,13 @@ def write_sng(model: SngModel) -> bytes:
     for ev in model.events:
         out += struct.pack("<f", ev.time) + _pack_str(ev.code, _EVENT_CODE_LEN)
 
-    # 11-12. Empty: Tones, DNAs.
-    for _ in range(2):
-        out += _write_count(0)
+    # 11. Tones (mid-song tone changes) — see _build_tones.
+    out += _write_count(len(model.tones))
+    for tone in model.tones:
+        out += struct.pack("<fi", tone.time, tone.tone_id)
+
+    # 12. Empty: DNAs.
+    out += _write_count(0)
 
     # 13. Sections
     out += _write_count(len(model.sections))
@@ -2094,9 +2125,10 @@ def read_sng(data: bytes) -> SngModel:
     # Events are both 260 bytes, so keying off the size read the Actions
     # section as Events (and left the real ones unread).
     events: list[SngEvent] = []
+    tones: list[SngTone] = []
     for kind, entry_size in (
         ("skip", _PHRASE_EXTRA_SIZE), ("nld", 0), ("skip", _ACTION_SIZE),
-        ("events", _EVENT_SIZE), ("skip", _SNG_TONE_SIZE), ("skip", _DNA_SIZE),
+        ("events", _EVENT_SIZE), ("tones", _SNG_TONE_SIZE), ("skip", _DNA_SIZE),
     ):
         count, pos = _read_count(data, pos)
         if kind == "nld":
@@ -2112,6 +2144,11 @@ def read_sng(data: bytes) -> SngModel:
                     code=_unpack_str(data[pos + 4 : pos + 4 + _EVENT_CODE_LEN]),
                 ))
                 pos += _EVENT_SIZE
+        elif kind == "tones":
+            for _ in range(count):
+                t_time, t_id = struct.unpack_from("<fi", data, pos)
+                tones.append(SngTone(time=t_time, tone_id=t_id))
+                pos += _SNG_TONE_SIZE
         else:
             pos += count * entry_size
 
@@ -2173,6 +2210,6 @@ def read_sng(data: bytes) -> SngModel:
     return SngModel(
         beats=beats, phrases=phrases, chord_templates=chord_templates,
         chord_notes=chord_notes, vocals=vocals,
-        phrase_iterations=phrase_iterations, events=events, sections=sections,
+        phrase_iterations=phrase_iterations, events=events, tones=tones, sections=sections,
         arrangements=arrangements, metadata=metadata,
     )

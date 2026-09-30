@@ -401,14 +401,14 @@ documentados nas mensagens de commit, caso valha a pena ressuscitar alguma.
 
   - [x] **Calibração de volume ("Calculate Volumes")**: **um** alvo
     (`runtime_settings.loudness_target()`, default **-12 LUFS**) comanda o
-    `loudnorm` do ffmpeg **e** a calibração do volume do bus Wwise no `.bnk`, por
+    ganho linear da gravação (sem `loudnorm` desde 2026-09-30) **e** a calibração do volume do bus Wwise no `.bnk`, por
     isso o `.wem` e o volume nunca desalinham (`normalize/loudness.py` +
     `ffmpeg.py` → `generate_soundbank(volume=…)`). Passou de -16 (broadcast, soava
     baixo) para -12 (nível de master de música) porque o retail é alto (o DLC
     Builder atenua ~-3/-4 dB num master alto). **Editável na ⚙️ Definições**
     ("Volume alvo (LUFS)", clamp -20..-6) — sobe para -10/-9 se ficar baixo,
-    desce para -14 se soar comprimido. Como o `.wem` é *normalizado* ao alvo (não
-    só ganho no bus), subir é seguro (limiter do loudnorm, não corta os picos). O
+    desce para -14 se soar comprimido. Sem limitador, o que o teto de -1 dBTP não deixa subir vai
+    para o volume do bus — -16 (o do DLC Builder) é o mais limpo. O
     preview é medido no seu próprio clip. Testado (`test_loudness.py`,
     `test_settings.py`); ffmpeg ausente → 0 dB. O `Volume` do `.rs2dlc` fica
     neutro (o DLC Builder recalcula na importação).

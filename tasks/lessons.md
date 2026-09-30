@@ -97,3 +97,16 @@ message said it. Rule: when a report comes with a screenshot of our UI, read
 every value it prints first; and never decide a file's type by its name alone
 when its bytes are one read away.
 
+
+## Compare the audio path with the reference tool before tuning it (2026-09-30)
+
+"Os PSARC têm algum ruído e não têm uma tonalidade limpa": the loudness work
+had tuned a `loudnorm` target twice (-16 → -12) without ever asking whether the
+audio should be processed at all. DLC Builder never touches the recording — it
+only sets the SoundBank volume — and measuring our output against the source
+showed loudnorm squashing LRA 5.0 → 3.1 and missing its own target. Rule: when a
+reference implementation exists, first check WHICH stages it runs, not only its
+numbers; measure input vs output (ebur128: I, LRA, true peak) before and after
+any audio change. Likewise an empty section written "until it is wired" (the
+SNG Tones) is a silent feature gap — grep for such TODO-empties when a user
+reports "X does not work in game".

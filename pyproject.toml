@@ -89,7 +89,7 @@ where = ["src"]
 "rockforge.infrastructure.packaging" = ["wwise_templates/*.zip", "wwise_templates/README.md"]
 # Tone gear catalogue (from Rocksmith2014.NET, MIT) — the amp/cabinet/pedal
 # database used to build in-game-valid tones for the .rs2dlc project.
-"rockforge.infrastructure.packaging.gear" = ["tone_gear_data.json", "README.md"]
+"rockforge.infrastructure.packaging.gear" = ["tone_gear_data.json", "default_tones/*.json", "README.md"]
 # Constant RSEnumerable flat models (song-independent) the game's xblock
 # references; required for the native PSARC to enumerate the song.
 "rockforge.infrastructure.packaging.psarc" = ["flatmodels/*.flat", "vocals_symbols.bin"]

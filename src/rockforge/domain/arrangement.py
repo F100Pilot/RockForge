@@ -112,6 +112,14 @@ class Arrangement:
     tone_changes: list[ToneChange] = field(default_factory=list)
     tones: list[Tone] = field(default_factory=list)
 
+    def switch_slots(self) -> list[str]:
+        """The tones in slots A-D as the game sees them: the switchable names that
+        have a gear definition, in order. A tone change's id is its index here
+        (Rocksmith2014.NET sets ``Id = IndexOf(Tones.Names, name)``), so the
+        manifest's Tone_A..D and the SNG's tone changes both read this list."""
+        defined = {t.key for t in self.tones}
+        return [n for n in self.tone_names if n in defined][:4]
+
     def validate(self) -> list[str]:
         """Domain-level validation; returns human-readable problems (empty = valid)."""
         problems: list[str] = []

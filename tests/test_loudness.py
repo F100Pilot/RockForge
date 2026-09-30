@@ -65,3 +65,40 @@ def test_calculate_volume_falls_back_to_zero_without_ffmpeg(tmp_path) -> None:
     silent = tmp_path / "x.wav"
     silent.write_bytes(b"")
     assert calculate_volume(silent, ffmpeg="definitely-not-ffmpeg") == 0.0
+
+
+_SUMMARY = """[Parsed_ebur128_0 @ 0x1] Summary:
+
+  Integrated loudness:
+    I:          -9.5 LUFS
+    Threshold: -19.6 LUFS
+
+  Loudness range:
+    LRA:         5.0 LU
+
+  True peak:
+    Peak:        0.5 dBFS
+"""
+
+
+def test_the_true_peak_is_read_from_the_ebur128_summary() -> None:
+    from rockforge.infrastructure.normalize.loudness import parse_ebur128_true_peak
+
+    assert parse_ebur128_true_peak(_SUMMARY) == 0.5
+    assert parse_ebur128_true_peak(_SUMMARY.replace("0.5 dBFS", "-inf dBFS")) == float("-inf")
+    assert parse_ebur128_true_peak("no summary") is None
+
+
+def test_the_recording_gain_goes_to_the_target_but_stops_at_the_peak_ceiling() -> None:
+    from rockforge.infrastructure.normalize.loudness import (
+        PEAK_CEILING_DBTP,
+        recording_gain_db,
+    )
+
+    assert recording_gain_db(-16.0, -6.0, -12.0) == 4.0  # room to spare: all the way
+    assert recording_gain_db(-16.0, -3.0, -12.0) == 2.0  # stops at the ceiling
+    assert recording_gain_db(-9.5, 0.5, -12.0) == -2.5  # an over pulled under it
+    assert recording_gain_db(-9.5, 0.5, -12.0) + 0.5 <= PEAK_CEILING_DBTP
+    assert recording_gain_db(-16.0, None, -12.0) == 4.0
+    assert recording_gain_db(None, -3.0) == 0.0
+    assert recording_gain_db(float("-inf"), float("-inf")) == 0.0

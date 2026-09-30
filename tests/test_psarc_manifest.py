@@ -55,8 +55,10 @@ def test_build_arrangement_manifest_fields() -> None:
     assert attrs["SongLength"] == 120.0
     assert attrs["PersistentID"] == pid
     assert attrs["Tuning"]["string0"] == 0
-    # No gear definitions on the base arrangement → tone slots stay empty.
-    assert attrs["Tone_Base"] == "" and attrs["Tones"] == []
+    # No gear of its own → DLC Builder's default Lead tone, never no tone.
+    assert attrs["Tone_Base"] == "Default_Lead"
+    assert [t["Key"] for t in attrs["Tones"]] == ["Default_Lead"]
+    assert attrs["Tones"][0]["GearList"]["Amp"]["Key"] == "Amp_MarshallPlexi"
 
 
 def test_arrangement_properties_report_the_techniques_actually_played() -> None:

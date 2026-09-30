@@ -1658,3 +1658,37 @@ def test_a_phrase_drops_out_of_levels_above_its_own_ceiling() -> None:
             f"phrase iteration {pi_id} peaks at level {counts.index(max(counts))}, "
             f"not at its ceiling {ceiling}"
         )
+
+
+def test_tone_changes_reach_the_sng_with_their_slot_and_off_the_note() -> None:
+    """The SNG's Tones section used to go out empty, so no tone change happened
+    in game from the native PSARC. Each change is written with its slot in
+    Tone_A..D (the manifest's order) and nudged off a note, like the XML; a
+    change to a tone with no slot has nothing to switch to and is left out."""
+    from dataclasses import replace
+
+    from rockforge.domain.arrangement import ToneChange
+    from rockforge.infrastructure.packaging.gear.default_tones import default_tone
+
+    clean = default_tone(ArrangementKind.LEAD, "Clean")
+    heavy = default_tone(ArrangementKind.RHYTHM, "Heavy")
+    arrangement = replace(
+        _arrangement(),
+        tone_base="Clean",
+        tone_names=["Clean", "Heavy", "Ghost"],  # Ghost has no gear definition
+        tones=[clean, heavy],
+        tone_changes=[
+            ToneChange(time=1.0, name="Heavy"),  # exactly on the second note
+            ToneChange(time=3.0, name="Ghost"),
+            ToneChange(time=6.0, name="Clean"),
+        ],
+    )
+    assert arrangement.switch_slots() == ["Clean", "Heavy"]
+    tones = read_sng(write_sng(from_arrangement(arrangement))).tones
+    assert [t.tone_id for t in tones] == [1, 0]
+    assert abs(tones[0].time - 0.98) < 1e-6  # 20 ms before the note it starts on
+    assert abs(tones[1].time - 6.0) < 1e-6
+
+
+def test_an_arrangement_without_tones_has_no_tone_changes() -> None:
+    assert read_sng(write_sng(from_arrangement(_arrangement()))).tones == []

@@ -1,3 +1,18 @@
+# Ruído / tom pouco limpo nos PSARC do RockForge
+
+Pedido: "Existem problemas graves com os tons e mesmo sem os tons, normalmente
+os PSARC criados pelo rockforge têm algum ruído e não têm uma tonalidade limpa."
+Comparado com o DLC Builder (Rocksmith2014.NET):
+
+- [x] 1. Áudio: sem `loudnorm` dinâmico (limitador + ganho variável sobre a
+      gravação); o áudio fica intacto e o nível vem só do volume do SoundBank
+      (`alvo - loudness`, como o DLC Builder), sem nunca passar os picos de 0 dBFS
+- [x] 2. Pista sem tom: o tom por defeito do DLC Builder para o caminho
+      (Lead/Rhythm), como `addDefaultTonesIfNeeded` — em vez de nenhum tom
+- [x] 3. Trocas de tom no SNG nativo (a secção Tones ia vazia: nenhuma troca
+      acontecia no jogo); id = posição do tom nos espaços A–D
+- [x] 4. Testes, docs, verificação
+
 # Deteção de tons melhorada + sugestões de tons por secção de cada pista
 
 Pedido: "melhorar a deteção de tons das músicas e com sugestões para atribuir
