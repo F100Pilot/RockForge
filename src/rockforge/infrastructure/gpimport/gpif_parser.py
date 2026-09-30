@@ -1017,19 +1017,23 @@ def _bend_prop(props: dict[str, ET.Element], key: str) -> float | None:
 def _bend_curve(props: dict[str, ET.Element]) -> tuple[float, tuple[BendPoint, ...]]:
     """(peak in half-steps, full curve). GPIF bend value 100 == one whole tone
     (2 half-steps); offsets are a 0..100 position along the note. Origin / Middle
-    / Destination give up to three points, so pre-bends and releases survive."""
-    steps = {  # position fraction (0..1) -> value (0..100)
-        "origin": (_bend_prop(props, "BendOriginOffset") or 0.0,
-                   _bend_prop(props, "BendOriginValue")),
-        "middle": (_bend_prop(props, "BendMiddleOffset1")
-                   or _bend_prop(props, "BendMiddleOffset2") or 50.0,
-                   _bend_prop(props, "BendMiddleValue")),
-        "dest": (_bend_prop(props, "BendDestinationOffset") or 100.0,
-                 _bend_prop(props, "BendDestinationValue")),
-    }
+    / Destination give up to four points (two middle offsets sharing one value, as
+    alphaTab's GpifParser reads them), so pre-bends, releases and the hold at the
+    top of a bend-and-release survive."""
+    middle_value = _bend_prop(props, "BendMiddleValue")
+    middle_offsets = [
+        off for off in (_bend_prop(props, "BendMiddleOffset1"),
+                        _bend_prop(props, "BendMiddleOffset2")) if off
+    ]
+    steps = [  # (position 0..100, value 0..100)
+        (_bend_prop(props, "BendOriginOffset") or 0.0, _bend_prop(props, "BendOriginValue")),
+        *[(off, middle_value) for off in dict.fromkeys(middle_offsets or [50.0])],
+        (_bend_prop(props, "BendDestinationOffset") or 100.0,
+         _bend_prop(props, "BendDestinationValue")),
+    ]
     pts = [
         BendPoint(position=min(max(off, 0.0), 100.0) / 100.0, step=val / 50.0)
-        for off, val in steps.values()
+        for off, val in steps
         if val is not None
     ]
     if not pts:
