@@ -1,3 +1,5 @@
+**English:** [README.en.md](README.en.md)
+
 # RockForge
 
 Pipeline Guitar Pro → arranjos Rocksmith 2014 (CDLC), construído sobre investigação verificada e
@@ -27,6 +29,8 @@ sincronização com a gravação, letra (ficheiro **LRC** ou **UltraStar TXT** �
 sílaba/linha sincronizado com a gravação — ou letra embutida no GP, alinhada às notas), e tones
 (tonebase + até 4 slots, com mudanças temporizadas). Fluxo na UI: "Inspecionar pistas" →
 escolher pistas/opções → criar CDLC.
+A interface também pode ser mudada para inglês (seletor PT/EN na página inicial ou
+⚙️ Definições → Idioma · Language).
 
 Limitações honestas: **só GP6 (`.gpx`) não é suportado** (container binário proprietário —
 exporta como GP5 ou GP7 no Guitar Pro/TuxGuitar). GP3/GP4/GP5 são lidos pelo PyGuitarPro;
