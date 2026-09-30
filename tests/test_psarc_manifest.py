@@ -502,8 +502,10 @@ def test_section_numbers_continue_across_arrangements() -> None:
     assert rhythm_riffs[0] == lead_riffs[-1] + 1
     assert lead_riffs + rhythm_riffs == list(range(1, len(lead_riffs) + len(rhythm_riffs) + 1))
     # The closer's own counter continues too, independently of the riffs'.
-    assert [s.number for s in models[0].sections if s.name == "noguitar"] == [1]
-    assert [s.number for s in models[1].sections if s.name == "noguitar"] == [2]
+    lead_ng = [s.number for s in models[0].sections if s.name == "noguitar"]
+    rhythm_ng = [s.number for s in models[1].sections if s.name == "noguitar"]
+    assert lead_ng and rhythm_ng
+    assert lead_ng + rhythm_ng == list(range(1, len(lead_ng) + len(rhythm_ng) + 1))
 
 
 def test_section_ui_name_is_a_localisation_token_when_known() -> None:

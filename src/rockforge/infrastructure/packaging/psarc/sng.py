@@ -175,12 +175,13 @@ _NOTES_PER_DD_LEVEL = 2
 # chorus). DLC Builder's build of that song gives its own one-note phrase SIX
 # identical levels, and every phrase with notes there has a ceiling of 3 or more.
 _DD_MIN_LEVELS = 4
-# Target phrase length (seconds) when auto-segmenting a section-less song, so DD
-# ramps per-phrase as the player progresses instead of over the whole song at once.
-_DEFAULT_PHRASE_S = 13.0
-# Max phrase length before it is subdivided (applies to GP sections too), so DD
-# has many short phrases like a real DDC — roughly doubles a typical GP's sections.
-_PHRASE_TARGET_S = 8.0
+# DLC Builder's phrase generator (Rocksmith2014.XML.Processing/PhraseGenerator.fs),
+# which the native PSARC now follows: a new phrase every 8 measures, never
+# closer than this to the previous one, and a "noguitar" phrase over a gap in
+# the playing at least this long.
+_MIN_PHRASE_SEPARATION_S = 2.0
+_MIN_NOGUITAR_PHRASE_S = 2.5
+_MEASURES_PER_PHRASE = 8
 # Entry sizes of the Sng2014 sections RockForge writes empty but a real file may
 # populate. Needed to SKIP them when reading someone else's SNG (see read_sng).
 _PHRASE_EXTRA_SIZE = 12   # PhraseExtraInfoByLevel
@@ -685,47 +686,6 @@ def _find_phrase_iteration(
     return min(len(phrase_iters) - 1, max(0, bisect.bisect_right(starts, time) - 1))
 
 
-def _default_sections(arrangement: Arrangement, song_length: float) -> list[Section]:
-    """A COUNT / riff… / END timeline when the arrangement has no sections.
-
-    Rocksmith drives playback off phrase iterations and ends the song at the
-    LAST one; an SNG with zero phrases loads the fretboard but shows no notes and
-    then crashes. But a SINGLE body phrase spanning the whole song gives a poor
-    Dynamic Difficulty — the whole song ramps as one unit. A real DDC
-    auto-segments a section-less song into many musical phrases (the DLC Builder
-    made 11 for a 215 s song), so DD ramps as the player progresses. We mirror
-    that: a COUNT phrase, then a new "riff" phrase every ~``_DEFAULT_PHRASE_S``
-    seconds aligned to a measure downbeat, then an END phrase. Times stay strictly
-    increasing so each phrase is real.
-    """
-    beats = arrangement.tempo_map.beats
-    start = beats[0].time if beats else 0.0
-    notes = arrangement.notes
-    first_note = min((n.time for n in notes), default=start)
-    last_note_end = max((n.time + max(n.sustain, 0.0) for n in notes), default=start)
-    last_beat = beats[-1].time if beats else 0.0
-    end_time = last_beat if last_beat > last_note_end else last_note_end + 0.1
-    if song_length > 0:
-        end_time = min(end_time, song_length)
-    body = max(first_note, start)
-
-    secs = [Section(name="COUNT", number=1, start_time=start)]
-    if body > start:
-        secs.append(Section(name="riff", number=1, start_time=body))
-    # Segment the body into ~_DEFAULT_PHRASE_S phrases at measure downbeats,
-    # starting from wherever the last phrase begins (the body, or the count-in
-    # when the first note lands right at the song start).
-    last_cut = secs[-1].start_time
-    for t in (b.time for b in beats if b.measure >= 0):
-        if last_cut < t < end_time and t - last_cut >= _DEFAULT_PHRASE_S \
-                and end_time - t >= _DEFAULT_PHRASE_S / 2:
-            secs.append(Section(name="riff", number=len(secs), start_time=t))
-            last_cut = t
-    if end_time > secs[-1].start_time:
-        secs.append(Section(name="END", number=1, start_time=end_time))
-    return secs
-
-
 def _build_anchors(
     positions: list[tuple[float, float, list[int]]],
     phrase_iterations: list[SngPhraseIteration],
@@ -993,81 +953,111 @@ def _assign_beat_phrase_iterations(
     ]
 
 
-# A note ending this close past a section's start does not make it a played section.
-_END_TOUCH_S = 0.05
+def _good_phrase_time(notes: list[TabNote], t: float) -> tuple[float, float]:
+    """The nearest times before and after ``t`` that are not inside a single
+    note's sustain — PhraseGenerator.fs ``findGoodPhraseTime``. It looks at
+    ``level.Notes`` only (chords are kept whole by their hand shapes, and the XML
+    RockForge hands DLC Builder has none), so chords are not protected here
+    either: the point is to land exactly where its build does."""
+    def find(earlier: bool, time: float) -> float:
+        for _ in range(20):  # the reference's own guard against a loop
+            inside = next((n for n in notes if n.time < time < n.time + n.sustain), None)
+            if inside is None:
+                return time
+            time = inside.time if earlier else inside.time + inside.sustain
+        return time
+    return find(True, t), find(False, t)
 
 
 def _prepare_sections(arrangement: Arrangement, song_length: float) -> list[Section]:
-    """The phrase timeline's source sections: COUNT/END-bracketed and
-    subdivided into ~_PHRASE_TARGET_S chunks so DD ramps in finer steps.
+    """The phrase timeline, generated the way DLC Builder does when it builds a
+    package (``PhraseGenerator.generate``) — the structure of the September
+    build that plays, where ours crashed.
 
-    A song with no section markers still needs a valid phrase timeline, or the
-    game crashes on the note highway (see _default_sections).
-
-    Retail structure brackets the body with a COUNT phrase (the count-in, max
-    difficulty 0) and an END phrase after the last note. Without COUNT, a GP
-    whose first section starts at 0 puts the silent intro inside a high-
-    difficulty phrase (an all-black bar in the Riff Repeater); without END the
-    song has no closing empty phrase. _default_sections already emits both;
-    bracket real GP sections the same way.
+    COUNT from the first beat to the first note (every empty section before it
+    is part of the count-in, not a phrase of its own); then a phrase at the
+    first note and one every 8 measures, moved out of any sustained note and
+    never within 2 s of the previous one; a "noguitar" section over any gap of
+    2.5 s or more, with the next phrase where the playing resumes; END where
+    the XML has it (the last beat, past the last note). Sections are "riff"/"noguitar" — names the
+    game has localisation tokens for. The Guitar Pro section names do not reach
+    the native SNG (DLC Builder's build does not carry them either); the XML
+    for DLC Builder still has them.
     """
-    sections_src = list(
-        arrangement.sections or _default_sections(arrangement, song_length)
-    )
-    if arrangement.sections:
-        first_note = min((n.time for n in arrangement.notes), default=0.0)
-        last_note_end = max(
-            (n.time + max(n.sustain, 0.0) for n in arrangement.notes), default=0.0
-        )
-        # A track that rests through the first sections (a rhythm that enters
-        # at the chorus) must NOT have its first section moved to its first
-        # note: that put "Intro" after "Verse 1", the phrase timeline out of
-        # order, and the game froze on the highway (September's Rhythm, Alt
-        # Lead and Alt Rhythm). The sections before the first note are empty,
-        # so the first of them simply becomes the COUNT; only a first note
-        # INSIDE the first section splits it.
-        second_start = sections_src[1].start_time if len(sections_src) > 1 else song_length
-        if sections_src[0].name != "COUNT" and first_note - sections_src[0].start_time > 1.0:
-            count_start = sections_src[0].start_time
-            if first_note < second_start:
-                sections_src[0] = replace(sections_src[0], start_time=first_note)
-                sections_src.insert(0, Section(name="COUNT", number=1, start_time=count_start))
-            else:
-                sections_src[0] = Section(name="COUNT", number=1, start_time=count_start)
-        # Likewise at the end: a track that stops before the last section
-        # (the section after its last note is empty) closes there with END,
-        # which an END appended after the last section could never do in order.
-        # A last note ending AT the last section's start (within float noise:
-        # September's rhythm ended 3 us past 210.0) leaves that section empty
-        # too; appending END 0.1 s later made a 0.1 s phrase with no notes.
-        if sections_src[-1].name != "END" and song_length - last_note_end > 0.5:
-            end_start = min(last_note_end + 0.1, song_length)
-            last_start = sections_src[-1].start_time
-            if len(sections_src) > 1 and last_note_end <= last_start + _END_TOUCH_S:
-                sections_src[-1] = Section(name="END", number=1, start_time=last_start)
-            elif end_start > last_start:
-                sections_src.append(Section(name="END", number=1, start_time=end_start))
+    notes = sorted(arrangement.notes, key=lambda n: n.time)
+    beats = arrangement.tempo_map.beats
+    if not notes or not beats:
+        start = beats[0].time if beats else 0.0
+        end = max(start + 0.1, min(song_length, beats[-1].time if beats else song_length))
+        return [Section(name="COUNT", number=1, start_time=start),
+                Section(name="END", number=1, start_time=end)]
 
-    # Subdivide long body phrases into ~_PHRASE_TARGET_S chunks at measure
-    # downbeats, so DD ramps in finer steps as the player progresses — a real
-    # DDC splits a song into many short phrases (roughly double the GP sections).
-    # COUNT/END and their surrounding structure stay whole.
-    downbeats = [b.time for b in arrangement.tempo_map.beats if b.measure >= 0]
-    refined: list[Section] = []
-    for idx, sec in enumerate(sections_src):
-        refined.append(sec)
-        if sec.name in ("COUNT", "END"):
+    singles = [g[0] for g in _group_chords(notes) if len(g) == 1]
+    content_start = notes[0].time
+    content_end = max(n.time + max(n.sustain, 0.0) for n in notes)
+    # END where the XML we hand DLC Builder puts it (the last beat, or just past
+    # the last note's tail): its generator keeps an existing END that comes
+    # after the content, and the XML always has one.
+    last_beat = beats[-1].time
+    end_t = last_beat if last_beat > content_end else content_end + 0.1
+    if song_length > 0:
+        # A last beat ON the song's end would make END empty; the reference's
+        # own fallback stops 100 ms short of the end.
+        end_t = min(end_t, song_length - 0.1)
+
+    first_beat = beats[0].time
+    if first_beat >= content_start:
+        # The reference inserts a beat one beat-length earlier for the COUNT.
+        step = beats[1].time - first_beat if len(beats) > 1 else 0.5
+        count_t = max(0.0, first_beat - step)
+    else:
+        count_t = first_beat
+
+    secs = [Section(name="riff", number=1, start_time=content_start)]
+    if count_t < content_start:
+        secs.insert(0, Section(name="COUNT", number=1, start_time=count_t))
+    # else: a chart playing from time 0 has no room for a count-in (DLC Builder
+    # refuses to build one); it starts on its first phrase.
+    counter = 0
+    next_t: float | None = None
+    for beat in beats:
+        if beat.time < content_start:
             continue
-        sec_end = sections_src[idx + 1].start_time if idx + 1 < len(sections_src) else song_length
-        last = sec.start_time
-        for t in downbeats:
-            if t <= last + _PHRASE_TARGET_S:
+        if beat.time >= end_t:
+            break
+        if beat.measure >= 0 and next_t is None:
+            counter += 1
+        if counter > _MEASURES_PER_PHRASE or (next_t is not None and beat.time >= next_t):
+            counter = 1
+            prev = secs[-1].start_time
+            if next_t is None:
+                earlier, later = _good_phrase_time(singles, beat.time)
+                closest = earlier if beat.time - earlier < later - beat.time else later
+                if closest - prev > _MIN_PHRASE_SEPARATION_S:
+                    ok, t = True, closest
+                elif later - prev > _MIN_PHRASE_SEPARATION_S:
+                    ok, t = True, later
+                else:
+                    ok, t = False, later
+            else:
+                ok, t, next_t = True, next_t, None
+            if not ok or t >= end_t:
                 continue
-            if t >= sec_end - _PHRASE_TARGET_S / 2:
-                break
-            refined.append(Section(name=sec.name, number=len(refined), start_time=t))
-            last = t
-    return refined
+            upcoming = next((n.time for n in notes if n.time >= t), None)
+            name = "riff"
+            if upcoming is None:
+                name = "noguitar"
+            elif upcoming - t >= _MIN_NOGUITAR_PHRASE_S:
+                next_t = upcoming
+                name = "noguitar"
+            secs.append(Section(name=name, number=1, start_time=t))
+    secs.append(Section(name="END", number=1, start_time=end_t))
+    # Strictly increasing, whatever the grid did.
+    out = [secs[0]]
+    for sec in secs[1:]:
+        if sec.start_time > out[-1].start_time:
+            out.append(sec)
+    return out
 
 
 # Phrase names are UNIQUE per phrase (p0, p1, …), not the section name repeated.
@@ -1108,7 +1098,16 @@ def _link_phrases(
     _sig_to_id: dict[tuple[tuple[object, ...], ...], int] = {}
     _phrase_names: list[str] = []
     _iter_phrase_id: list[int] = []
+    noguitar_id: int | None = None
     for s, end in zip(sections_src, ends, strict=True):
+        if s.name == "noguitar":
+            # DLC Builder's build: every gap is an iteration of ONE phrase
+            # named NOGUITAR (its section keeps the name "noguitar").
+            if noguitar_id is None:
+                noguitar_id = len(_phrase_names)
+                _phrase_names.append("NOGUITAR")
+            _iter_phrase_id.append(noguitar_id)
+            continue
         sig = _phrase_signature(arrangement.notes, s.start_time, end)
         if sig is not None and sig in _sig_to_id:
             _iter_phrase_id.append(_sig_to_id[sig])

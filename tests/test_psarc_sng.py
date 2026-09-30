@@ -119,6 +119,13 @@ def _arrangement() -> Arrangement:
     )
 
 
+def _bars(n: int) -> tuple[Beat, ...]:
+    """One beat per bar, a bar a second: the native SNG cuts a phrase every 8
+    bars (DLC Builder's PhraseGenerator), so with the first note at 1.0 s the
+    phrases start at 1, 9, 17… s."""
+    return tuple(Beat(time=float(i), measure=i + 1) for i in range(n))
+
+
 def test_from_arrangement_round_trips_through_write_read() -> None:
     arrangement = _arrangement()
     vocals = [VocalEvent(time=1.0, length=0.5, lyric="hi+")]
@@ -170,10 +177,11 @@ def test_technique_bits_alias_matches_technique_to_mask() -> None:
 
 
 def test_section_end_times_use_next_section_or_song_length() -> None:
-    arrangement = _arrangement()
-    model = from_arrangement(arrangement)
-    assert model.sections[0].end_time == 5.0
-    assert model.sections[1].end_time == 10.0
+    model = from_arrangement(_arrangement())
+    secs = model.sections
+    for a, b in zip(secs, secs[1:], strict=False):
+        assert a.end_time == b.start_time
+    assert secs[-1].end_time == model.metadata.song_length
 
 
 def test_metadata_reflects_capo_and_tuning() -> None:
@@ -332,34 +340,29 @@ def test_note_exactly_on_a_phrase_boundary_belongs_to_the_later_iteration() -> N
     the time-sorted note list (a rewrite from a per-phrase O(notes) rescan, for
     speed on a long song) — the boundary semantics must stay EXACTLY the
     original `pi.start_time <= n.time < pi.end_time`: a note landing precisely
-    on the shared instant between two contiguous iterations (section end ==
-    next section's start) belongs to the iteration it STARTS, not the one it
-    ends, and must never be double-counted or dropped."""
+    on the shared instant between two contiguous iterations belongs to the
+    iteration it STARTS, not the one it ends, and must never be double-counted
+    or dropped."""
     arr = Arrangement(
         kind=ArrangementKind.LEAD,
-        metadata=SongMetadata(title="Song", artist="A", song_length=10.0),
+        metadata=SongMetadata(title="Song", artist="A", song_length=20.0),
         tuning=Tuning(),
-        tempo_map=TempoMap(
-            beats=(Beat(time=0.0, measure=1), Beat(time=1.0, measure=-1)), average_bpm=120.0
-        ),
+        tempo_map=TempoMap(beats=_bars(20), average_bpm=60.0),
         notes=[
-            TabNote(string=0, fret=1, time=0.0, sustain=0.2),
-            TabNote(string=0, fret=2, time=4.9, sustain=0.2),
-            TabNote(string=0, fret=3, time=5.0, sustain=0.2),  # exactly the boundary
-            TabNote(string=0, fret=4, time=7.0, sustain=0.2),
-        ],
-        sections=[
-            Section(name="riffA", start_time=0.0),
-            Section(name="riffB", start_time=5.0),
+            TabNote(string=0, fret=1, time=1.0, sustain=0.2),
+            TabNote(string=0, fret=2, time=8.9, sustain=0.05),
+            TabNote(string=0, fret=3, time=9.0, sustain=0.2),  # exactly the boundary
+            TabNote(string=0, fret=4, time=11.0, sustain=0.2),
         ],
     )
     model = from_arrangement(arr)
+    assert [round(pi.start_time, 3) for pi in model.phrase_iterations][1:3] == [1.0, 9.0]
     top = model.arrangements[-1]
     assert len(top.notes) == 4  # nothing dropped or duplicated
     counts = top.notes_in_iteration1
     assert sum(counts) == 4  # every note attributed to exactly one iteration
-    assert counts[0] == 2  # riffA: notes at 0.0 and 4.9
-    assert counts[1] == 2  # riffB: notes at 5.0 (the boundary) and 7.0
+    assert counts[1] == 2  # 1.0 and 8.9
+    assert counts[2] == 2  # 9.0 (the boundary) and 11.0
 
 
 def test_note_linkage_within_phrase() -> None:
@@ -530,37 +533,29 @@ def test_dd_phrase_heights_vary_with_density() -> None:
     # absolute level count — the ceiling counts groups of notes
     # (_NOTES_PER_DD_LEVEL), because a level per single note made the ramp so
     # long the player never left the minimum difficulty in-game.
-    beats = tuple(Beat(time=i * 0.5, measure=i // 8 + 1 if i % 8 == 0 else -1)
-                  for i in range(80))
-    notes = [TabNote(string=0, fret=3, time=0.5 + i * 0.5, sustain=0.2) for i in range(6)]
-    notes += [TabNote(string=i % 6, fret=(i % 10) + 1, time=6.0 + i * 0.4, sustain=0.15)
+    notes = [TabNote(string=0, fret=3, time=1.0 + i, sustain=0.2) for i in range(6)]
+    notes += [TabNote(string=i % 6, fret=(i % 10) + 1, time=9.0 + i * 0.5, sustain=0.15)
               for i in range(15)]
-    notes += [TabNote(string=i % 6, fret=(i % 12) + 1, time=13.0 + i * 0.12, sustain=0.1)
+    notes += [TabNote(string=i % 6, fret=(i % 12) + 1, time=17.0 + i * 0.2, sustain=0.1)
               for i in range(36)]
     arr = Arrangement(
         kind=ArrangementKind.LEAD,
-        metadata=SongMetadata(title="S", artist="A", song_length=20.0),
+        metadata=SongMetadata(title="S", artist="A", song_length=30.0),
         tuning=Tuning(),
-        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+        tempo_map=TempoMap(beats=_bars(30), average_bpm=60.0),
         notes=notes,
-        sections=[
-            Section(name="sparse", start_time=0.0),
-            Section(name="medium", start_time=6.0),
-            Section(name="dense", start_time=13.0),
-        ],
     )
     model = from_arrangement(arr)
-    heights = _phrase_heights_by_section(model, arr.sections)
+    heights = _phrase_heights_by_section(model, [
+        Section(name="sparse", start_time=1.0), Section(name="medium", start_time=9.0),
+        Section(name="dense", start_time=17.0), Section(name="end", start_time=25.0),
+    ])
     # Strictly increasing with density — the bars have their own heights.
     assert heights["sparse"] < heights["medium"] < heights["dense"]
     assert len({p.max_difficulty for p in model.phrases}) >= 3  # not a flat top
     # ...and the ramp is GROUPED: the densest phrase's ceiling is far below its
     # note count, so the player climbs it in a handful of plays, not ~36.
-    dense_notes = max(
-        sum(1 for n in model.arrangements[-1].notes if pi.start_time <= n.time < pi.end_time)
-        for pi in model.phrase_iterations
-    )
-    assert heights["dense"] <= (dense_notes - 1) // 2
+    assert heights["dense"] <= (36 - 1) // 2
 
 
 def test_a_short_phrase_still_gets_levels_to_climb() -> None:
@@ -568,31 +563,23 @@ def test_a_short_phrase_still_gets_levels_to_climb() -> None:
     was a bare (notes-1)//group, so a 3-note phrase got ZERO levels — one level,
     nothing to promote to, permanently stuck at the minimum however well it was
     played. A DLC Builder build of the user's own song gives every phrase that
-    has notes a ceiling of at least 4 (its own 3-note phrase gets exactly 4);
-    ours handed out 0 to four phrases and 1 to three more out of 29, which is the
-    shape of the reported "the difficulty never leaves the minimum". A phrase
-    with NO notes (COUNT/END/a rest) still stays at 0 — there is nothing to
-    ramp."""
-    beats = tuple(Beat(time=i * 0.5, measure=i // 8 + 1 if i % 8 == 0 else -1)
-                  for i in range(80))
-    notes = [TabNote(string=0, fret=3, time=0.5 + i * 0.5, sustain=0.2) for i in range(3)]
-    notes += [TabNote(string=i % 6, fret=(i % 12) + 1, time=13.0 + i * 0.12, sustain=0.1)
+    has notes a ceiling of at least 3 (a one-note phrase six); a phrase with NO
+    notes (a gap, NOGUITAR) still stays at 0 — there is nothing to ramp."""
+    notes = [TabNote(string=0, fret=3, time=1.0 + i * 0.5, sustain=0.2) for i in range(3)]
+    notes += [TabNote(string=i % 6, fret=(i % 12) + 1, time=17.0 + i * 0.12, sustain=0.1)
               for i in range(36)]
     arr = Arrangement(
         kind=ArrangementKind.LEAD,
-        metadata=SongMetadata(title="S", artist="A", song_length=20.0),
+        metadata=SongMetadata(title="S", artist="A", song_length=30.0),
         tuning=Tuning(),
-        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+        tempo_map=TempoMap(beats=_bars(30), average_bpm=60.0),
         notes=notes,
-        sections=[
-            Section(name="tiny", start_time=0.0),
-            Section(name="silent", start_time=6.0),
-            Section(name="dense", start_time=13.0),
-        ],
     )
-    heights = _phrase_heights_by_section(from_arrangement(arr), arr.sections)
-    # 3 notes -> the floor, where the bare (n-1)//group rule gave 0. The
-    # reference's own 3-note phrase gets 4.
+    model = from_arrangement(arr)
+    heights = _phrase_heights_by_section(model, [
+        Section(name="tiny", start_time=1.0), Section(name="silent", start_time=9.0),
+        Section(name="dense", start_time=17.0), Section(name="end", start_time=25.0),
+    ])
     assert heights["tiny"] >= 4, "a phrase with notes must have levels to climb"
     assert heights["silent"] == 0, "a phrase with no notes has nothing to ramp"
     assert heights["dense"] > heights["tiny"]
@@ -603,34 +590,25 @@ def test_identical_riffs_share_one_phrase() -> None:
     iterations (real-DDC phrase linking: learned once, mastered everywhere), not
     a separate re-ramping phrase per repeat. A different riff stays its own
     phrase."""
-    beats = tuple(Beat(time=i * 0.5, measure=i // 4 + 1 if i % 4 == 0 else -1)
-                  for i in range(80))
-    # Same 4-note riff at t=0 and again at t=8 (identical relative to phrase start);
-    # a different riff at t=16.
     riff = [(0, 3), (1, 5), (2, 7), (0, 3)]
     notes = []
-    for base in (0.0, 8.0):
+    for base in (1.0, 9.0):
         notes += [TabNote(string=s, fret=f, time=base + j * 0.5, sustain=0.2)
                   for j, (s, f) in enumerate(riff)]
     other = [(3, 2), (4, 4), (5, 1), (3, 9)]
-    notes += [TabNote(string=s, fret=f, time=16.0 + j * 0.5, sustain=0.2)
+    notes += [TabNote(string=s, fret=f, time=17.0 + j * 0.5, sustain=0.2)
               for j, (s, f) in enumerate(other)]
     arr = Arrangement(
         kind=ArrangementKind.LEAD,
         metadata=SongMetadata(title="S", artist="A", song_length=24.0),
         tuning=Tuning(),
-        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+        tempo_map=TempoMap(beats=_bars(24), average_bpm=60.0),
         notes=notes,
-        sections=[Section(name="A", start_time=0.0),
-                  Section(name="A2", start_time=8.0),
-                  Section(name="B", start_time=16.0)],
     )
     model = from_arrangement(arr)
-    # The two identical A sections share one phrase_id; B is its own.
     ids = {round(pi.start_time): pi.phrase_id for pi in model.phrase_iterations}
-    assert ids[0] == ids[8]      # identical riffs → same phrase
-    assert ids[16] != ids[0]     # different riff → different phrase
-    # Fewer unique phrases than iterations (the repeat was linked, not re-ramped).
+    assert ids[1] == ids[9]      # identical riffs → same phrase
+    assert ids[17] != ids[1]     # different riff → different phrase
     assert len(model.phrases) < len(model.phrase_iterations)
 
 
@@ -1724,9 +1702,9 @@ def test_a_track_that_enters_late_keeps_its_sections_in_order() -> None:
     """September froze in game on every chart but the one that plays from the
     first section: the COUNT split moved "Intro" to the chart's first note, i.e.
     AFTER "Verse", so the section list ran backwards (Intro at the chorus, its
-    phrase range 15→0). The empty first section now becomes the COUNT, every
-    section stays in time order with a sane phrase range, and a chart that stops
-    before the last section still closes with an END phrase."""
+    phrase range 15→0). Phrases now come from DLC Builder's generator: COUNT
+    from the first beat to the first note, every section in time order with a
+    sane phrase range, and an END phrase last."""
     model = read_sng(write_sng(from_arrangement(_resting_track())))
     starts = [s.start_time for s in model.sections]
     assert starts == sorted(starts)
@@ -1736,8 +1714,8 @@ def test_a_track_that_enters_late_keeps_its_sections_in_order() -> None:
     assert pis == sorted(pis)
     names = [model.phrases[pi.phrase_id].name for pi in model.phrase_iterations]
     assert names[0] == "COUNT" and names[-1] == "END"
-    # The chorus, where the notes are, is still a section of its own.
-    assert "Chorus" in [s.name for s in model.sections]
+    # The COUNT runs up to the chart's first note, not into it.
+    assert model.phrase_iterations[1].start_time == pytest.approx(20.0)
 
 
 def _thinning_track() -> Arrangement:
@@ -1790,19 +1768,37 @@ def test_a_notes_anchor_is_the_one_of_its_own_level() -> None:
             assert a.last_note_time == pytest.approx(inside[-1].time + inside[-1].sustain)
 
 
-def test_a_last_note_ending_at_the_last_sections_start_leaves_no_sliver_phrase() -> None:
-    """September's rhythm charts ended 3 microseconds past the Outro's start, so
-    the END went 0.1 s later and the Outro became a 0.1 s phrase with no notes.
-    A section the last note only touches is empty: it becomes the END."""
-    arr = _resting_track()
-    last = arr.notes[-1]
-    notes = [*arr.notes[:-1], replace(last, time=39.8, sustain=40.0000031 - 39.8)]
-    model = read_sng(write_sng(from_arrangement(replace(arr, notes=notes))))
-    durations = [pi.end_time - pi.start_time for pi in model.phrase_iterations]
-    assert min(durations) > 1.0
-    end = model.phrase_iterations[-1]
-    assert model.phrases[end.phrase_id].name == "END"
-    assert end.start_time == pytest.approx(40.0)
+def test_the_phrases_follow_dlc_builders_generator() -> None:
+    """The native SNG's phrases are DLC Builder's (PhraseGenerator.fs), the
+    structure of its September build that plays where ours crashed: COUNT from
+    the first beat to the first note, a phrase every 8 bars moved out of any
+    sustained single note and never within 2 s of the previous one, one
+    NOGUITAR phrase for every gap of 2.5 s or more (its section "noguitar"),
+    END at the last beat; sections "riff"/"noguitar" only. On the user's
+    September the four charts come out identical to that build."""
+    notes = [TabNote(string=0, fret=3, time=2.0 + i, sustain=0.2) for i in range(7)]
+    notes.append(TabNote(string=1, fret=5, time=9.5, sustain=1.0))  # rings over bar 10
+    notes += [TabNote(string=2, fret=2, time=20.0 + i, sustain=0.2) for i in range(6)]
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=40.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=_bars(40), average_bpm=60.0),
+        notes=notes,
+        sections=[Section(name="Verse 1", start_time=0.0), Section(name="Chorus", start_time=5.0)],
+    )
+    model = from_arrangement(arr)
+    got = [(round(pi.start_time, 2), model.phrases[pi.phrase_id].name)
+           for pi in model.phrase_iterations]
+    # 10.0 is inside the 9.5 note's sustain: moved to its end, 10.5. The next
+    # note is 9.5 s later, so that phrase is a gap; the playing resumes at 20.
+    assert got == [(0.0, "COUNT"), (2.0, "p0"), (10.5, "NOGUITAR"), (20.0, "p1"),
+                   (28.0, "NOGUITAR"), (36.0, "NOGUITAR"), (39.0, "END")]
+    assert [s.name for s in model.sections] == [
+        "riff", "noguitar", "riff", "noguitar", "noguitar", "noguitar"]
+    assert model.phrases[model.phrase_iterations[2].phrase_id].max_difficulty == 0
+    assert len({pi.phrase_id for pi in model.phrase_iterations
+                if model.phrases[pi.phrase_id].name == "NOGUITAR"}) == 1
 
 
 def test_a_one_note_phrase_has_levels_and_its_note_on_each() -> None:
@@ -1834,27 +1830,23 @@ def test_riffs_that_differ_by_a_technique_or_a_sustain_are_not_linked() -> None:
     pull-off (or a let-ring sustain) the other lacked: the signature only knew
     time/string/fret. Now each linked phrase's iterations carry the same notes
     at every level."""
-    beats = tuple(Beat(time=i * 0.5, measure=i // 4 + 1 if i % 4 == 0 else -1)
-                  for i in range(80))
     riff = [(0, 3), (1, 5), (2, 7), (0, 3)]
     notes = []
-    for base in (0.0, 8.0, 16.0):
+    for base in (1.0, 9.0, 17.0):
         notes += [TabNote(string=s, fret=f, time=base + j * 0.5, sustain=0.2)
                   for j, (s, f) in enumerate(riff)]
     notes[5] = replace(notes[5], techniques=frozenset({Technique.PULL_OFF}))  # 2nd pass
-    notes[8] = replace(notes[8], sustain=1.5)  # 3rd pass, first note rings
+    notes[8] = replace(notes[8], sustain=0.4)  # 3rd pass, first note rings longer
     arr = Arrangement(
         kind=ArrangementKind.LEAD,
-        metadata=SongMetadata(title="S", artist="A", song_length=24.0),
+        metadata=SongMetadata(title="S", artist="A", song_length=30.0),
         tuning=Tuning(),
-        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+        tempo_map=TempoMap(beats=_bars(30), average_bpm=60.0),
         notes=notes,
-        sections=[Section(name="A", start_time=0.0), Section(name="A2", start_time=8.0),
-                  Section(name="A3", start_time=16.0)],
     )
     model = from_arrangement(arr)
     ids = {round(pi.start_time): pi.phrase_id for pi in model.phrase_iterations}
-    assert len({ids[0], ids[8], ids[16]}) == 3
+    assert len({ids[1], ids[9], ids[17]}) == 3
     by_phrase: dict[int, list[int]] = {}
     for i, pi in enumerate(model.phrase_iterations):
         by_phrase.setdefault(pi.phrase_id, []).append(i)

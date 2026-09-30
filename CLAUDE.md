@@ -2839,6 +2839,34 @@ from F#'s structural `hash` of the note record and a `NoteFlagger` (finding F,
 still not reproduced). Which of the three changes above the game cared about is
 unproven until the user plays it.
 
+**The phrases ARE DLC Builder's now (`_prepare_sections` = a port of
+`PhraseGenerator.generate`, Rocksmith2014.NET).** The user's next test still
+crashed; DLC Builder's build of the same song plays, and its SNG was what the
+Song Creator Toolkit re-pack the user needs for the App ID leaves untouched
+(only `appid.appid` and `toolkit.version` change). DLC Builder generates the
+phrases itself when it builds (`PackageBuilder.setupInstrumental`): COUNT from
+the first beat to the first note (every empty lead-in section is part of it);
+a phrase at the first note and one every 8 measures, moved to the nearest
+time not inside a SINGLE note's sustain (`findGoodPhraseTime`: chords are kept
+whole by hand shapes, and our XML has none — so chords are not protected here
+either) and never within 2 s of the previous one; a "noguitar" section over any
+gap of 2.5 s or more, the next phrase where the playing resumes; END at the XML's
+own END (the last beat), 100 ms short of the song's end at most. Every gap is
+an iteration of ONE phrase named NOGUITAR (`_link_phrases`), sections are only
+"riff"/"noguitar" (names the game has tokens for — DLC Builder refuses any
+name outside its table, `AttributesCreation.getSectionUIName`), and a chart
+that plays from time 0 has no COUNT (DLC Builder refuses to build one). Ours
+used to cut at every Guitar Pro section and again every ~8 s, with raw names
+("Verse 1", no token) and boundaries inside sustained notes. On the user's
+September all four charts now come out with DLC Builder's exact phrase times,
+names and sections. **The Guitar Pro section names no longer reach the native
+SNG** (nor did they reach DLC Builder's build); the XML keeps them, and so do
+RockForge's own editor and viewer. The DD ceilings still come from our own
+ramp, not DLC Builder's DD generator, so their VALUES differ. Guarded by
+`test_the_phrases_follow_dlc_builders_generator` and the late-entering test
+(both fail on the old code). This supersedes the COUNT/END bracketing and the
+~8 s subdivision described above. Not played in game from here.
+
 Anchors never span a phrase-iteration boundary: the game re-anchors at each
 phrase start, so a phrase whose opening notes are covered only by the previous
 phrase's anchor finds none of its own and crashes on entry (seen exactly at a
