@@ -414,7 +414,9 @@ def test_empty_arrangement_produces_valid_sng() -> None:
     model = from_arrangement(arr)
     data = write_sng(model)
     restored = read_sng(data)
-    assert len(restored.arrangements) == 1
+    # One note still gets levels to climb (the DD floor), its note on each.
+    assert len(restored.arrangements) == restored.metadata.max_difficulty + 1
+    assert all(len(lv.notes) == 1 for lv in restored.arrangements)
     assert restored.metadata.song_length == 5.0
     # A song with no section markers must STILL get a phrase timeline, or the
     # game loads the fretboard, shows no notes and crashes. The last phrase
@@ -589,11 +591,9 @@ def test_a_short_phrase_still_gets_levels_to_climb() -> None:
         ],
     )
     heights = _phrase_heights_by_section(from_arrangement(arr), arr.sections)
-    # 3 notes -> at least one level per note it has to reveal (2), where the bare
-    # (n-1)//group rule gave 0. The reference's own 3-note phrase gets 4; the
-    # floor is bounded by the note count so a ONE-note phrase does not get five
-    # identical levels, which would be no ramp either.
-    assert heights["tiny"] >= 2, "a phrase with notes must have levels to climb"
+    # 3 notes -> the floor, where the bare (n-1)//group rule gave 0. The
+    # reference's own 3-note phrase gets 4.
+    assert heights["tiny"] >= 4, "a phrase with notes must have levels to climb"
     assert heights["silent"] == 0, "a phrase with no notes has nothing to ramp"
     assert heights["dense"] > heights["tiny"]
 
@@ -981,7 +981,7 @@ def test_pinch_tremolo_finger_and_pickdir_in_sng() -> None:
                     techniques=frozenset({Technique.PINCH_HARMONIC})),
             TabNote(string=1, fret=7, time=2.0, sustain=0.4,
                     techniques=frozenset({Technique.TREMOLO})),
-            TabNote(string=2, fret=3, time=3.0, sustain=0.4, left_hand=2, pick_direction=1),
+            TabNote(string=2, fret=3, time=3.0, sustain=0.4, left_hand=2, pick_direction=2),
         ],
     )
     top = from_arrangement(arr).arrangements[-1]
@@ -1803,3 +1803,80 @@ def test_a_last_note_ending_at_the_last_sections_start_leaves_no_sliver_phrase()
     end = model.phrase_iterations[-1]
     assert model.phrases[end.phrase_id].name == "END"
     assert end.start_time == pytest.approx(40.0)
+
+
+def test_a_one_note_phrase_has_levels_and_its_note_on_each() -> None:
+    """September crashed the moment the difficulty was raised on a phrase that
+    held one note (the Lead's at 43.6 s, the Alternate Rhythm's pickup before
+    the chorus): its ceiling was 0 — a phrase with notes and no level to climb,
+    which DLC Builder never writes. Its build of the same song gives a one-note
+    phrase six identical levels, and every phrase with notes a ceiling of 3 or
+    more. Every phrase with notes now gets the floor, its notes at every level
+    up to it (never an empty level below the ceiling)."""
+    arr = _resting_track()
+    lone = TabNote(string=2, fret=3, time=12.0, sustain=0.5)  # alone in "Verse"
+    model = from_arrangement(replace(arr, notes=[lone, *arr.notes]))
+    for i, pi in enumerate(model.phrase_iterations):
+        counts = [sum(1 for n in lv.notes if n.phrase_iteration_id == i)
+                  for lv in model.arrangements]
+        ceiling = model.phrases[pi.phrase_id].max_difficulty
+        if any(counts):
+            assert ceiling >= 4, f"a phrase with notes at {pi.start_time} has ceiling {ceiling}"
+            assert all(c > 0 for c in counts[: ceiling + 1])
+    verse = next(i for i, pi in enumerate(model.phrase_iterations)
+                 if pi.start_time <= 12.0 < pi.end_time)
+    assert model.phrases[model.phrase_iterations[verse].phrase_id].max_difficulty >= 4
+
+
+def test_riffs_that_differ_by_a_technique_or_a_sustain_are_not_linked() -> None:
+    """Linked iterations are ONE phrase to the game, so they must be equal at
+    every level. September shipped "identical" passages where one had a
+    pull-off (or a let-ring sustain) the other lacked: the signature only knew
+    time/string/fret. Now each linked phrase's iterations carry the same notes
+    at every level."""
+    beats = tuple(Beat(time=i * 0.5, measure=i // 4 + 1 if i % 4 == 0 else -1)
+                  for i in range(80))
+    riff = [(0, 3), (1, 5), (2, 7), (0, 3)]
+    notes = []
+    for base in (0.0, 8.0, 16.0):
+        notes += [TabNote(string=s, fret=f, time=base + j * 0.5, sustain=0.2)
+                  for j, (s, f) in enumerate(riff)]
+    notes[5] = replace(notes[5], techniques=frozenset({Technique.PULL_OFF}))  # 2nd pass
+    notes[8] = replace(notes[8], sustain=1.5)  # 3rd pass, first note rings
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=24.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+        notes=notes,
+        sections=[Section(name="A", start_time=0.0), Section(name="A2", start_time=8.0),
+                  Section(name="A3", start_time=16.0)],
+    )
+    model = from_arrangement(arr)
+    ids = {round(pi.start_time): pi.phrase_id for pi in model.phrase_iterations}
+    assert len({ids[0], ids[8], ids[16]}) == 3
+    by_phrase: dict[int, list[int]] = {}
+    for i, pi in enumerate(model.phrase_iterations):
+        by_phrase.setdefault(pi.phrase_id, []).append(i)
+    for its in by_phrase.values():
+        for lv in model.arrangements:
+            shapes = [
+                [(round(n.time - model.phrase_iterations[i].start_time, 3), n.string,
+                  n.fret, n.mask, round(n.sustain, 3))
+                 for n in lv.notes if n.phrase_iteration_id == i]
+                for i in its
+            ]
+            assert all(sh == shapes[0] for sh in shapes)
+
+
+def test_note_bytes_that_a_note_does_not_use_are_minus_one() -> None:
+    """DLC Builder writes -1 (none) in Tap/Slap/Pluck of every note, and in
+    LeftHand/PickDirection of every chord; we wrote 0, a real value for each."""
+    arr = _resting_track()
+    chord = [TabNote(string=s, fret=2, time=30.25, sustain=0.2) for s in (0, 1, 2)]
+    model = read_sng(write_sng(from_arrangement(replace(arr, notes=[*arr.notes, *chord]))))
+    notes = [n for lv in model.arrangements for n in lv.notes]
+    assert all((n.tap, n.slap, n.pluck) == (-1, -1, -1) for n in notes)
+    chords = [n for n in notes if n.chord_id >= 0]
+    assert chords and all((n.left_hand, n.pick_direction) == (-1, -1) for n in chords)
+    assert all(n.pick_direction == 0 for n in notes if n.chord_id < 0)

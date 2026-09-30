@@ -138,7 +138,9 @@ def _note_attrs(n: TabNote) -> dict[str, str]:
         "slideUnpitchTo": str(n.slide_unpitch_to) if n.slide_unpitch_to is not None else "-1",
         "mute": "1" if has(Technique.FRET_MUTE) else "0",
         "leftHand": str(n.left_hand) if n.left_hand >= 0 else "-1",
-        "pickDirection": str(n.pick_direction),
+        # A single bit, set for an upstroke: DLC Builder reads it with
+        # ParseBinary(v) << 10, so our "2" (= up) landed on bit 11, SLAP.
+        "pickDirection": "1" if n.pick_direction == 2 else "0",
     }
     return _drop_defaults(attrs, {"time", "string", "fret", "sustain"})
 

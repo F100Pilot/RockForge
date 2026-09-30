@@ -138,7 +138,7 @@ def test_pinch_tremolo_finger_and_pick_direction(tmp_path: Path) -> None:
                     techniques=frozenset({Technique.PINCH_HARMONIC})),
             TabNote(string=1, fret=7, time=2.0, sustain=0.4,
                     techniques=frozenset({Technique.TREMOLO})),
-            TabNote(string=2, fret=3, time=3.0, sustain=0.4, left_hand=2, pick_direction=1),
+            TabNote(string=2, fret=3, time=3.0, sustain=0.4, left_hand=2, pick_direction=2),
         ],
     )
     root = ET.parse(write_arrangement_xml(arr, tmp_path / "lead.xml")).getroot()

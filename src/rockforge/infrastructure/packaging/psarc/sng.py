@@ -167,9 +167,13 @@ _NOTES_PER_DD_LEVEL = 2
 # file, not against the game — it removes phrases that provably cannot level up
 # and brings the ramp's shape into the reference's range, but whether it is the
 # whole of the reported "DD never leaves the minimum" is unverified in-game.
-# ...bounded by how many notes the phrase actually has to reveal, so a one-note
-# phrase still gets a single level (five identical levels would be no ramp at
-# all) while a 3-note phrase ramps one note per level.
+# NOT bounded by the note count: a one-note phrase gets the floor too, its note
+# shown at every level up to it. It used to get ceiling 0 ("five identical levels
+# would be no ramp") and a phrase with a note but no level to climb crashed the
+# game the moment its difficulty was raised in Riff Repeater (September: the
+# Lead's one-note phrase at 43.6 s, the Alternate Rhythm's pickup before the
+# chorus). DLC Builder's build of that song gives its own one-note phrase SIX
+# identical levels, and every phrase with notes there has a ceiling of 3 or more.
 _DD_MIN_LEVELS = 4
 # Target phrase length (seconds) when auto-segmenting a section-less song, so DD
 # ramps per-phrase as the player progresses instead of over the whole song at once.
@@ -330,11 +334,14 @@ class SngNote:
     parent_prev_note: int = -1
     slide_to: int = -1          # -1 = no slide (a signed byte, 0xFF on disk)
     slide_unpitch_to: int = -1  # -1 = no unpitched slide
-    left_hand: int = 0
-    tap: int = 0
-    pick_direction: int = 0
-    slap: int = 0
-    pluck: int = 0
+    # -1 = none, as DLC Builder writes them (XmlToSngNote.fs): we wrote 0,
+    # which is a real value for each (finger 0, and a byte the game reads as a
+    # tap/slap/pluck index) — found byte-diffing its September build.
+    left_hand: int = -1
+    tap: int = -1
+    pick_direction: int = -1
+    slap: int = -1
+    pluck: int = -1
     vibrato: int = 0
     bend_data: list[SngBendData32] = field(default_factory=list)
 
@@ -536,19 +543,27 @@ def _spread_order(n: int) -> list[int]:
 
 def _phrase_signature(
     notes: list[TabNote], start: float, end: float
-) -> tuple[tuple[int, int, int], ...] | None:
+) -> tuple[tuple[object, ...], ...] | None:
     """A hashable fingerprint of the notes in ``[start, end)``, relative to
     ``start``, so two iterations of the SAME riff match and can share one phrase.
 
     Returns ``None`` for a span with no notes — a COUNT/END/no-guitar gap stays a
     distinct phrase rather than collapsing all silences onto one. Relative times
     are quantised to 10 ms (identical riffs at the same tempo line up; a tempo
-    change shifts them and correctly keeps them separate)."""
+    change shifts them and correctly keeps them separate). Sustain, techniques,
+    slide and bend count too: a linked phrase is ONE phrase to the game, and
+    September's shipped two "identical" passages where one had a pull-off (or a
+    let-ring sustain) the other did not — a DLC Builder build links only equals."""
     span = [n for n in notes if start <= n.time < end]
     if not span:
         return None
     return tuple(sorted(
-        (round((n.time - start) * 100), n.string, n.fret) for n in span
+        (
+            round((n.time - start) * 100), n.string, n.fret, round(n.sustain * 100),
+            tuple(sorted(t.value for t in n.techniques)),
+            n.slide_to_fret, n.slide_unpitch_to, round(n.bend_semitones * 100),
+        )
+        for n in span
     ))
 
 
@@ -1090,7 +1105,7 @@ def _link_phrases(
     linking via shared phrase_id — NOT the finer NLinkedDifficulty section,
     which stays empty.
     """
-    _sig_to_id: dict[tuple[tuple[int, int, int], ...], int] = {}
+    _sig_to_id: dict[tuple[tuple[object, ...], ...], int] = {}
     _phrase_names: list[str] = []
     _iter_phrase_id: list[int] = []
     for s, end in zip(sections_src, ends, strict=True):
@@ -1282,10 +1297,12 @@ def _build_sng_notes(
             slide_to=sn.slide_to_fret if sn.slide_to_fret is not None else -1,
             slide_unpitch_to=sn.slide_unpitch_to if sn.slide_unpitch_to is not None else -1,
             left_hand=sn.left_hand,
-            pick_direction=sn.pick_direction,
-            slap=1 if Technique.SLAP in sn.techniques else 0,
-            pluck=1 if Technique.POP in sn.techniques else 0,
-            tap=1 if Technique.TAP in sn.techniques else 0,
+            # DLC Builder: 1 for an upstroke, else 0 (a single note always
+            # carries one of the two; our 2 = up is not a value it writes).
+            pick_direction=1 if sn.pick_direction == 2 else 0,
+            slap=1 if Technique.SLAP in sn.techniques else -1,
+            pluck=1 if Technique.POP in sn.techniques else -1,
+            tap=1 if Technique.TAP in sn.techniques else -1,
             vibrato=80 if Technique.VIBRATO in sn.techniques else 0,
             bend_data=_bend_points(sn),
         ))
@@ -1492,7 +1509,7 @@ def _build_difficulty_levels(
     for pi_id, pi in enumerate(phrase_iterations):
         busiest[pi.phrase_id] = max(busiest[pi.phrase_id], len(per_iter_notes[pi_id]))
     phrase_max = [
-        min(_DD_LEVEL_CAP, max(min(_DD_MIN_LEVELS, b - 1), (b - 1) // _NOTES_PER_DD_LEVEL))
+        min(_DD_LEVEL_CAP, max(_DD_MIN_LEVELS, (b - 1) // _NOTES_PER_DD_LEVEL))
         if b
         else 0
         for b in busiest
@@ -1527,7 +1544,9 @@ def _build_difficulty_levels(
             if d > pm:
                 continue
             # d <= pm here, so d == pm yields the phrase's full content.
-            shown = m if pm <= 0 else max(0, min(m, round((d + 1) / (pm + 1) * m)))
+            # At least one note at every level up to the ceiling: a phrase
+            # with notes is never empty below it (DLC Builder's never is).
+            shown = m if pm <= 0 else max(1, min(m, round((d + 1) / (pm + 1) * m)))
             keep.update(lst[:shown])
         return [sngn for i, sngn in enumerate(sng_notes) if i in keep]
 
@@ -1698,7 +1717,9 @@ _VOCAL_FMT = f"<fif{_LYRIC_LEN}s"
 # "none". Writing 0 (unsigned) told the game every note slides to fret 0 — a
 # slide streak on every note — and forced a fretting finger on notes that have
 # none. tap/pickDirection/slap/pluck stay unsigned (0..4).
-_NOTE_FIXED_FMT = "<IIIfBBBBiiiihhhhh" "bbbBBBBhff"
+# LeftHand, Tap, PickDirection, Slap, Pluck are SIGNED: -1 is "none", the value
+# DLC Builder writes for each when a note does not use it.
+_NOTE_FIXED_FMT = "<IIIfBBBBiiiihhhhh" "bbbbbbbhff"
 
 _BEAT_SIZE = struct.calcsize(_BEAT_FMT)
 _PHRASE_SIZE = struct.calcsize(_PHRASE_FMT)

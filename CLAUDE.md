@@ -2799,7 +2799,45 @@ and DLC Builder's uninitialised pair (`ANCHOR_NO_NOTE_FIRST/LAST`) for an
 anchor with none — XmlToSng.fs `convertAnchor`. Guarded by
 `test_a_notes_anchor_is_the_one_of_its_own_level` (fails on the old code); the
 user's September rebuilt with zero mismatches on all four charts. Not played in
-game from here.
+game from here — and the user's next test STILL crashed, so it was not (only)
+this; the byte-diff against DLC Builder's own September build below came next.
+
+**Byte-diffing DLC Builder's September (2026-09-30) — what it never does and we
+did.** The user sent both `.psarc`s of the same song; with the
+`XmlToSng.fs`/`XmlToSngNote.fs` source beside them:
+- **A phrase with notes always has levels to climb.** Every phrase with notes
+  there has a ceiling of 3 or more — its one-note phrase gets SIX identical
+  levels. Ours bounded the `_DD_MIN_LEVELS` floor by `busiest - 1`, so a
+  one-note phrase got ceiling 0: a phrase with a note and no level. That is
+  exactly the crashes' shape — the Lead's "5th rectangle, small, after a magenta
+  one" is its one-note phrase at 43.6 s, and the Alternate Rhythm's raised
+  range held the single pickup note before the chorus ("a dificuldade estava a
+  zero e eu só tentei aumentar, e crashou logo"). The floor now applies to every
+  phrase with notes, and `_level_notes` shows at least one note at every level
+  up to the ceiling. Guarded by
+  `test_a_one_note_phrase_has_levels_and_its_note_on_each`.
+- **Linked phrases are equal.** `_phrase_signature` only knew
+  time/string/fret, so September linked passages where one had a pull-off or a
+  let-ring sustain the other lacked — one phrase to the game with two different
+  contents. It now includes sustain, techniques, slide and bend. Guarded by
+  `test_riffs_that_differ_by_a_technique_or_a_sustain_are_not_linked`.
+- **"None" is -1 in the note bytes.** DLC Builder writes -1 in Tap/Slap/Pluck
+  of every note and in LeftHand/PickDirection of every chord (PickDirection of a
+  single note is 1 for an upstroke, else 0); we wrote 0 — a real value for each.
+  Those five are now signed bytes defaulting to -1. Guarded by
+  `test_note_bytes_that_a_note_does_not_use_are_minus_one`.
+- Found on the way: the XML's `pickDirection` is ONE bit (DLC Builder:
+  `ParseBinary(v) << 10`), so our "2" for an upstroke landed on bit 11 — SLAP —
+  on the DLC Builder path. The writer now emits "1" for an upstroke only, and
+  the reader maps it back to our 2.
+Still different and NOT changed (no mechanism tying them to a crash): DLC
+Builder's DDC makes its own phrases (~25 s each, COUNT spanning everything
+before the first note, no empty phrases in the lead-in), its anchors are the
+DDC's (they DO cross phrase boundaries at higher levels, starting at each
+phrase that has notes at that level), and its note `Hash`/`NoteFlags` come
+from F#'s structural `hash` of the note record and a `NoteFlagger` (finding F,
+still not reproduced). Which of the three changes above the game cared about is
+unproven until the user plays it.
 
 Anchors never span a phrase-iteration boundary: the game re-anchors at each
 phrase start, so a phrase whose opening notes are covered only by the previous
@@ -2882,7 +2920,8 @@ defects):
   song** (both `.psarc`s decoded and byte-diffed — see the debugging-method note
   above). Two defects showed up directly in that diff and drove the reported "DD
   never leaves the minimum, even set to maximum":
-  - `_DD_MIN_LEVELS = 4` (new). The ceiling was a bare `(busiest-1)//group`, so a
+  - `_DD_MIN_LEVELS = 4` (new; since 2026-09-30 no longer bounded by the note
+    count — see the September byte-diff above). The ceiling was a bare `(busiest-1)//group`, so a
     SHORT phrase got **zero** levels — one level, nothing to be promoted to,
     permanently pinned at the minimum however well it was played. The reference
     gives every phrase that has notes a ceiling of at least 4 (its own 3-note
