@@ -388,3 +388,74 @@ def test_an_overfull_last_bar_still_ends_inside_the_grid() -> None:
     beats = [Beat(0.0, 1), Beat(0.5, -1), Beat(1.0, -1), Beat(1.5, -1)]
     close_beat_grid(beats, bar_end=2.0, last_note=2.7)
     assert [(b.time, b.measure) for b in beats[4:]] == [(2.0, 2), (2.5, -1), (3.0, -1)]
+
+
+def test_harmonic_types_map_like_the_gpif_path(tmp_path: Path) -> None:
+    """PyGuitarPro harmonic types: artificial (2) and pinch (4) are the pinch
+    glyph, natural (1) and tapped (3) the plain harmonic — as for .gp files."""
+    song = gp.Song()
+    song.title, song.artist, song.tempo = "Harmonics", "B", 120
+    v = song.tracks[0].measures[0].voices[0]
+    kinds = (gp.NaturalHarmonic(), gp.ArtificialHarmonic(), gp.TappedHarmonic(fret=17),
+             gp.PinchHarmonic())
+    for kind in kinds:
+        _add_beat(v, 4, [(3, 5)], harmonic=kind)
+    path = tmp_path / "harm.gp5"
+    gp.write(song, str(path))
+    got = [
+        Technique.PINCH_HARMONIC in n.techniques
+        for n in sorted(parse_gp_track(path, 0).notes, key=lambda n: n.time)
+    ]
+    assert got == [False, True, False, True]
+
+
+def test_a_brush_stroke_gives_the_pick_direction(tmp_path: Path) -> None:
+    """A strum / arpeggio arrow (GP5 beat stroke) is the chord's direction, as the
+    GPIF path reads <Brush>: down → 1, up → 2."""
+    song = gp.Song()
+    song.title, song.artist, song.tempo = "Strum", "B", 120
+    v = song.tracks[0].measures[0].voices[0]
+    for direction in (gp.BeatStrokeDirection.down, gp.BeatStrokeDirection.up):
+        beat = _add_beat(v, 2, [(6, 0), (5, 2), (4, 2)])
+        beat.effect.stroke = gp.BeatStroke(direction, gp.Duration.thirtySecond)
+    path = tmp_path / "strum.gp5"
+    gp.write(song, str(path))
+    notes = parse_gp_track(path, 0).notes
+    assert {n.pick_direction for n in notes if n.time < 0.5} == {1}
+    assert {n.pick_direction for n in notes if n.time >= 0.5} == {2}
+
+
+def test_vibrato_on_a_tied_note_is_kept(tmp_path: Path) -> None:
+    song = gp.Song()
+    song.title, song.artist, song.tempo = "Tie vibrato", "B", 120
+    v = song.tracks[0].measures[0].voices[0]
+    _add_beat(v, 4, [(2, 10)])
+    _add_tie(v, 2, 2, vibrato=True)  # held, vibrato on the tied part
+    path = tmp_path / "tie_vib.gp5"
+    gp.write(song, str(path))
+    (note,) = parse_gp_track(path, 0).notes
+    assert Technique.VIBRATO in note.techniques
+    assert note.sustain == pytest.approx(1.5)
+
+
+@pytest.mark.parametrize(
+    ("on_beat", "grace_at", "main_at"), [(False, 0.4375, 0.5), (True, 0.5, 0.5625)]
+)
+def test_grace_notes_are_short_notes_of_their_own(
+    tmp_path: Path, on_beat: bool, grace_at: float, main_at: float
+) -> None:
+    """A GP5 grace note (a 32nd, hammered into the note) becomes its own note, as
+    alphaTab plays it: before the beat, or on it (delaying the main note)."""
+    song = gp.Song()
+    song.title, song.artist, song.tempo = "Grace", "B", 120
+    v = song.tracks[0].measures[0].voices[0]
+    _add_beat(v, 4, [(6, 3)])
+    grace = gp.GraceEffect(fret=5, duration=32, isOnBeat=on_beat,
+                           transition=gp.GraceEffectTransition.hammer)
+    _add_beat(v, 4, [(3, 7)], grace=grace)
+    path = tmp_path / "grace.gp5"
+    gp.write(song, str(path))
+    notes = {n.fret: n for n in parse_gp_track(path, 0).notes}
+    assert notes[5].time == pytest.approx(grace_at)
+    assert notes[7].time == pytest.approx(main_at)
+    assert Technique.HAMMER_ON in notes[7].techniques

@@ -621,13 +621,43 @@ def parse_gpif_track(
             if voice is None:
                 continue
             tick = bar_start
+            graces: list[tuple[ET.Element, int, bool]] = []  # (beat, ticks, on the beat)
             for bid in _text(voice.find("Beats")).split():
                 beat = beats.get(bid)
                 if beat is None:
                     continue
                 rhythm = rhythms.get(_ref(beat.find("Rhythm")))
                 dur = _rhythm_ticks(rhythm)
-                start = t(tick)
+                grace = _text(beat.find("GraceNotes"))
+                if grace:
+                    # Grace beats take no time of the bar (alphaTab/GP): they are
+                    # placed with the beat they lead into.
+                    graces.append((beat, dur, grace == "OnBeat"))
+                    continue
+                main = tick
+                if graces:
+                    # Before the beat: back to back, ending on it (the previous
+                    # note's time); on the beat: from it, delaying this beat.
+                    g_tick = tick - sum(d for _, d, on in graces if not on)
+                    for g_beat, g_dur, on in graces:
+                        if on:
+                            continue
+                        dropped_out_of_range += _emit_beat_notes(
+                            g_beat, notes_map, tuning_midi, t(g_tick),
+                            max(0.0, t(g_tick + g_dur) - t(g_tick)), raw,
+                        )
+                        g_tick += g_dur
+                    for g_beat, g_dur, on in graces:
+                        if not on:
+                            continue
+                        g_dur = min(g_dur, tick + dur - main)
+                        dropped_out_of_range += _emit_beat_notes(
+                            g_beat, notes_map, tuning_midi, t(main),
+                            max(0.0, t(main + g_dur) - t(main)), raw,
+                        )
+                        main += g_dur
+                    graces = []
+                start = t(main)
                 sustain = max(0.0, t(tick + dur) - start)
                 dropped_out_of_range += _emit_beat_notes(
                     beat, notes_map, tuning_midi, start, sustain, raw
@@ -730,7 +760,7 @@ def _lyric_notes(
         tick = bar_start_ticks[mb_index]
         for bid in _text(voice.find("Beats")).split():
             beat = beats.get(bid)
-            if beat is None:
+            if beat is None or _text(beat.find("GraceNotes")):  # graces take no time
                 continue
             length = _rhythm_ticks(rhythms.get(_ref(beat.find("Rhythm"))))
             note_ids = _text(beat.find("Notes")).split()
@@ -998,6 +1028,10 @@ def _merge_ties(
         )
         end = tie.time + tie.sustain
         notes[prev] = extend_through_tie(notes[prev], tie.time, end, tie_bend)
+        if Technique.VIBRATO in tie.techniques:  # vibrato on the held part
+            notes[prev] = dataclasses.replace(
+                notes[prev], techniques=notes[prev].techniques | {Technique.VIBRATO}
+            )
         dropped.add(idx)
     return [
         (notes[i], raw[i][1], raw[i][2]) for i in range(len(raw)) if i not in dropped

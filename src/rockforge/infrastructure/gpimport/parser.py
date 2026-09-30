@@ -259,9 +259,15 @@ def _finger_value(finger: object) -> int:
 
 
 def _pick_direction(beat_effect: object) -> int:
-    """0 = unspecified, 1 = down, 2 = up, from a GP beat's pick stroke."""
-    stroke = getattr(beat_effect, "pickStroke", None)
-    v = int(getattr(stroke, "value", stroke) or 0)
+    """0 = unspecified, 1 = down, 2 = up, from a GP beat's brush (strum / arpeggio)
+    or pick stroke — the brush first, as the GPIF path reads them."""
+    v = 0
+    for name in ("stroke", "pickStroke"):
+        stroke = getattr(beat_effect, name, None)
+        stroke = getattr(stroke, "direction", stroke)  # BeatStroke → its direction
+        v = int(getattr(stroke, "value", stroke) or 0)
+        if v:
+            break
     # PyGuitarPro BeatStrokeDirection: 1 = up, 2 = down → RS 1 = down, 2 = up.
     if v == 2:
         return 1
@@ -392,10 +398,12 @@ def parse_gp_track(
                         if prev is not None:
                             pn, hammer = raw[prev]
                             tie_bend = _bend_curve(note.effect)
-                            raw[prev] = (
-                                extend_through_tie(pn, start, start + sustain, tie_bend),
-                                hammer or bool(note.effect.hammer),
-                            )
+                            held = extend_through_tie(pn, start, start + sustain, tie_bend)
+                            if note.effect.vibrato:  # vibrato on the held part
+                                held = replace(
+                                    held, techniques=held.techniques | {Technique.VIBRATO}
+                                )
+                            raw[prev] = (held, hammer or bool(note.effect.hammer))
                         continue
                     fret = int(note.value)
                     if not 0 <= fret <= 24:
@@ -420,7 +428,9 @@ def parse_gp_track(
                         # Artificial/pinch harmonics get the distinct pinch glyph;
                         # natural/tapped/semi map to the plain harmonic.
                         htype = getattr(getattr(eff, "harmonic", None), "type", 1)
-                        techs.add(Technique.PINCH_HARMONIC if htype in (2, 3)
+                        # PyGuitarPro HarmonicType: 1 natural, 2 artificial, 3 tapped,
+                        # 4 pinch, 5 semi (as the GPIF path: artificial/pinch → pinch).
+                        techs.add(Technique.PINCH_HARMONIC if htype in (2, 4)
                                   else Technique.HARMONIC)
                     if eff.vibrato:
                         techs.add(Technique.VIBRATO)
@@ -453,14 +463,39 @@ def parse_gp_track(
                         techs.add(Technique.SLAP)
                     elif slap == 3:
                         techs.add(Technique.POP)
+                    note_start, note_sustain = start, sustain
+                    grace = eff.grace
+                    if grace is not None and 0 <= int(grace.fret) <= 24:
+                        # A grace note is a short note of its own, as alphaTab plays
+                        # it: before the beat it takes the end of the previous
+                        # note's time; on the beat it delays this note.
+                        g_ticks = grace.durationTime
+                        if grace.isOnBeat:
+                            g_start = start
+                            g_len = min(sustain, max(0.0, t(tick + g_ticks) - start))
+                            note_start, note_sustain = start + g_len, sustain - g_len
+                        else:
+                            g_start = t(max(origin, tick - g_ticks))
+                            g_len = max(0.0, start - g_start)
+                        transition = int(getattr(grace.transition, "value", 0) or 0)
+                        g_techs: set[Technique] = set()
+                        if transition == 1:  # slide into the note
+                            g_techs.add(Technique.SLIDE)
+                        if grace.isDead:
+                            g_techs.add(Technique.FRET_MUTE)
+                        raw.append((
+                            TabNote(string=string, fret=int(grace.fret), time=g_start,
+                                    sustain=g_len, techniques=frozenset(g_techs)),
+                            transition == 3,  # hammer/pull into the note
+                        ))
                     last_on_string[string] = len(raw)
                     raw.append(
                         (
                             TabNote(
                                 string=string,
                                 fret=fret,
-                                time=start,
-                                sustain=sustain,
+                                time=note_start,
+                                sustain=note_sustain,
                                 techniques=frozenset(techs),
                                 bend_semitones=bend_semitones,
                                 slide_unpitch_to=slide_unpitch,

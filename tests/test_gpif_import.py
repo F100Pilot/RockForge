@@ -776,3 +776,60 @@ def test_an_extensionless_member_that_is_not_audio_is_not_taken_for_one(tmp_path
         z.writestr(member, b"just some text")
     info = backing_track(gp)
     assert info.audio is None and info.external_path is None
+
+
+GRACE_GPIF = """<?xml version="1.0" encoding="utf-8"?>
+<GPIF>
+  <Score><Title>T</Title><Artist>A</Artist><Album>B</Album></Score>
+  <MasterTrack><Automations><Automation><Type>Tempo</Type><Bar>0</Bar>
+    <Position>0</Position><Value>120 2</Value></Automation></Automations></MasterTrack>
+  <Tracks><Track id="0"><Name>Guitar</Name>
+    <InstrumentSet><Type>electricGuitar</Type></InstrumentSet>
+    <Staves><Staff><Properties>
+      <Property name="Tuning"><Pitches>40 45 50 55 59 64</Pitches></Property>
+    </Properties></Staff></Staves></Track></Tracks>
+  <MasterBars><MasterBar><Time>2/4</Time><Bars>0</Bars></MasterBar></MasterBars>
+  <Bars><Bar id="0"><Voices>0 -1 -1 -1</Voices></Bar></Bars>
+  <Voices><Voice id="0"><Beats>0 1 2</Beats></Voice></Voices>
+  <Beats>
+    <Beat id="0"><Rhythm ref="0"/><Notes>0</Notes></Beat>
+    <Beat id="1"><GraceNotes>{kind}</GraceNotes><Rhythm ref="1"/><Notes>1</Notes></Beat>
+    <Beat id="2"><Rhythm ref="0"/><Notes>2</Notes></Beat>
+  </Beats>
+  <Notes>
+    <Note id="0"><Properties>
+      <Property name="String"><String>0</String></Property>
+      <Property name="Fret"><Fret>3</Fret></Property></Properties></Note>
+    <Note id="1"><Properties>
+      <Property name="String"><String>1</String></Property>
+      <Property name="Fret"><Fret>5</Fret></Property></Properties></Note>
+    <Note id="2"><Properties>
+      <Property name="String"><String>1</String></Property>
+      <Property name="Fret"><Fret>7</Fret></Property></Properties></Note>
+  </Notes>
+  <Rhythms>
+    <Rhythm id="0"><NoteValue>Quarter</NoteValue></Rhythm>
+    <Rhythm id="1"><NoteValue>32nd</NoteValue></Rhythm>
+  </Rhythms>
+</GPIF>
+"""
+
+
+@pytest.mark.parametrize(("kind", "grace_at", "main_at"), [
+    ("BeforeBeat", 0.5 - 0.0625, 0.5),  # takes the end of the previous beat
+    ("OnBeat", 0.5, 0.5 + 0.0625),  # delays the beat it belongs to
+])
+def test_gp7_grace_notes_take_no_time_of_the_bar(
+    tmp_path: Path, kind: str, grace_at: float, main_at: float
+) -> None:
+    """A grace beat is not part of the bar's rhythm (alphaTab/GP): counting it
+    shifted every later note by the grace's length. It is a short note of its own."""
+    path = tmp_path / "grace.gp"
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("VERSION", "7.0")
+        z.writestr("Content/score.gpif", GRACE_GPIF.format(kind=kind))
+    parsed = parse_gp_track(path, 0)
+    times = {n.fret: n.time for n in parsed.notes}
+    assert times[3] == pytest.approx(0.0)
+    assert times[5] == pytest.approx(grace_at)
+    assert times[7] == pytest.approx(main_at)
