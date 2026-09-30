@@ -110,3 +110,12 @@ numbers; measure input vs output (ebur128: I, LRA, true peak) before and after
 any audio change. Likewise an empty section written "until it is wired" (the
 SNG Tones) is a silent feature gap — grep for such TODO-empties when a user
 reports "X does not work in game".
+
+## A coverage test must see everything it claims to check (2026-09-30)
+
+The first `test_i18n.py` lexer skipped quoted strings inside a template's
+`${…}`, so every `` `<b>${T('…')}</b>` `` key was invisible to it — the
+parallel translators found it, not the test. Rule: when writing a scanner that
+gates coverage, feed it the tricky shapes the codebase actually uses (nested
+templates, strings in expressions) and assert it finds a known key in each,
+before trusting a green run.

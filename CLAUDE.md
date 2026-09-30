@@ -2237,7 +2237,7 @@ can view their own unpublished tabs."}`, while `/api/meta/84` answered 200
 and the reference tool worked on a DIFFERENT, published tab (5993626). The
 old message ("o Songsterr respondeu 403") and then a guessed "may be
 blocking automated requests" sent the diagnosis the wrong way twice.
-`_REFUSAL_CODES` maps the one code actually seen to a Portuguese sentence;
+`_refusal_code()` maps the one code actually seen to a Portuguese sentence;
 any other JSON `reason`/`error` is shown verbatim; a non-JSON refusal keeps
 the plain status. The status is still carried, so a 403 from a part CDN
 still means "try the next distribution". Guarded by
