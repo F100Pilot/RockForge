@@ -8,6 +8,18 @@ data e a música). O detalhe técnico de cada ponto está em `TESTING.md` §7.
 Em cada teste: gerar o PSARC nativo (`psarc_mode=native`). Se algo correr mal,
 gerar também pelo DLC Builder, para saber se o problema é do PSARC nativo.
 
+## ⚠️ Problema aberto: crash no "September"
+
+| | |
+|---|---|
+| **Desde** | 2026-09-30 |
+| **Música** | Daughtry "September" (`.gp` do PDF-to-GP5, com áudio e início a −2,15 s) |
+| **Sintoma** | O jogo fecha depois de começar a tocar, **em todas as pistas** (Lead e Rhythm/Acoustic). Ainda não se sabe em que compasso |
+| **Já verificado aqui** (chart gerado com o mesmo `.gp`, PSARC nativo) | Tempos das batidas, notas e letra por ordem e sem negativos; curvas dos bends dentro das notas e por ordem; nenhuma nota sobreposta na mesma corda; `phrase_id` válidos; sem trocas de tom no SNG. A pista Rhythm (Acoustic) não tem bends, portanto os bends não explicam um crash em todas as pistas |
+| **Alterações do dia a suspeitar** | 2cf1749 (outra sessão): áudio com ganho linear, tom por defeito do DLC Builder em cada pista, secção de trocas de tom no SNG. a566e91: let ring nos `.gp` (344 notas na Acoustic). Letra da pista "Letra (voz)", partilhada por todas as pistas |
+| **Causa provável encontrada** | 4ec2d04 (outra sessão): numa pista que só entra a meio, a 1.ª secção passava para a 1.ª nota e ficava depois de outra ("Intro" depois de "Verse 1"); o jogo bloqueava. No "September" afeta Rhythm, Lead alternativo e Rhythm alternativo — ver o ponto 12 abaixo. **Por confirmar** se resolve também a pista Lead |
+| **Se continuar a fechar, para isolar** | 1) Em que compasso/segundo fecha (é sempre no mesmo?). 2) O mesmo projeto pelo DLC Builder (bundle): se não fechar, o problema está no SNG/manifest do PSARC nativo. 3) Outra música que funcionava, reconstruída com o RockForge atual: se também fechar, é uma alteração de hoje e não o "September". 4) Com a dificuldade dinâmica desligada |
+
 ## Por testar — alterações recentes
 
 | # | O quê | Commit | Como testar | O que deve acontecer | Se falhar |
@@ -23,7 +35,6 @@ gerar também pelo DLC Builder, para saber se o problema é do PSARC nativo.
 | 9 | **Som da gravação sem compressão** (sem `loudnorm`, só um ganho fixo) | (este) | Reconstruir uma música que soava com ruído / pouco limpa | Soa como a gravação original: sem "bombear", sem ataques esmagados, sem estalidos nas partes fortes | Avisar; experimentar Volume alvo -16 na ⚙️ |
 | 10 | **Trocas de tom a meio da música** no PSARC nativo | (este) | Marcar na partitura uma troca para um 2.º tom e reconstruir | O tom muda nesse ponto (antes ficava sempre o tom base) | Avisar, com o tempo da troca |
 | 11 | **Pista sem tom próprio** | (este) | Uma música sem nenhum tom criado | Lead/Combo com o tom por defeito do DLC Builder (Plexi), Rhythm com o Orange AD50 — não um som estranho/em falta | Avisar |
-| 8 | **Áudio dentro do `.gp`** criado pelo PDF-to-GP5 (`backing-track.mp3`) | PDF-to-GP5 9f30f59 | Exportar um `.gp` com áudio no PDF-to-GP5 e importá-lo no RockForge | No passo 3 aparece "Usar o áudio que vem dentro do ficheiro GP" | Avisar |
 
 ### Ficheiro de teste dos pre-bends
 
@@ -71,3 +82,4 @@ nome do caso como marcador:
 | Tocar notas e acordes sem crash (secção das oitavas) | Beartooth "Free" | Com a dificuldade dinâmica ligada e desligada |
 | Slide para fora (cauda sem altura) e slide para dentro | — | `TESTING.md` §7f-bis |
 | Letra a passar no ecrã, cartão com o nome da música e luzes do palco | Várias músicas | |
+| Áudio dentro do `.gp` do PDF-to-GP5 (`backing-track.mp3`) detetado e usado, com o início antes da gravação (−2,15 s) a bater na página de sincronização | Daughtry "September" (2026-09-30) | Precisou de 8b61bf0. Ainda não confirmado no jogo: ver o problema aberto acima |
