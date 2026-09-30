@@ -847,3 +847,17 @@ def test_gp7_grace_notes_take_no_time_of_the_bar(
     assert times[3] == pytest.approx(0.0)
     assert times[5] == pytest.approx(grace_at)
     assert times[7] == pytest.approx(main_at)
+
+
+def test_let_ring_as_a_child_of_the_note_is_read(tmp_path: Path) -> None:
+    """Guitar Pro 8 and alphaTab write let ring as <LetRing/> inside the <Note>,
+    not as a Property; it was missed (344 notes of one track in a real file)."""
+    first = '<Property name="Fret"><Fret>7</Fret></Property></Properties></Note>\n    <Note id="1">'
+    gpif = TIE_GPIF.replace(first, first.replace("</Properties>", "</Properties><LetRing/>"))
+    assert gpif != TIE_GPIF
+    path = tmp_path / "let_ring.gp"
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("VERSION", "7.0")
+        z.writestr("Content/score.gpif", gpif)
+    (note,) = parse_gp_track(path, 0).notes
+    assert Technique.LET_RING in note.techniques

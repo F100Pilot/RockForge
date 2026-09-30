@@ -986,7 +986,8 @@ def _emit_beat_notes(
                      if "HarmonicType" in props else "").lower()
             techs.add(Technique.PINCH_HARMONIC if htype in ("artificial", "pinch")
                       else Technique.HARMONIC)
-        if "LetRing" in props:
+        # A <LetRing/> child of the note (Guitar Pro 7/8, alphaTab) or a Property.
+        if "LetRing" in props or note.find("LetRing") is not None:
             techs.add(Technique.LET_RING)
         if note.find("Vibrato") is not None:  # direct child, not a Property
             techs.add(Technique.VIBRATO)
