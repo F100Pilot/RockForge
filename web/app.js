@@ -2759,8 +2759,8 @@ function updateNoteEditsInfo() {
   if (!el || !one || !all) return;
   const { mine, total, kind } = noteEditCounts();
   el.textContent = total
-    ? `${mine} nesta pista (${kind}), ${total} no total`
-    : 'nenhuma';
+    ? T('{mine} nesta pista ({kind}), {total} no total', { mine, kind, total })
+    : T('nenhuma');
   one.disabled = !mine;
   all.disabled = !total;
 }
@@ -2769,19 +2769,16 @@ async function clearNoteEdits(everyArrangement) {
   const { mine, total, kind } = noteEditCounts();
   const n = everyArrangement ? total : mine;
   if (!n) return;
-  const where = everyArrangement ? 'de todas as pistas' : `da pista ${kind}`;
+  const where = everyArrangement ? T('de todas as pistas') : T('da pista {kind}', { kind });
   if (!await confirmModal(
-    `Descartar ${n} edição(ões) de notas ${where}?\n\n` +
-    'Inclui as que já foram aplicadas em reconstruções anteriores. ' +
-    'As notas voltam ao que está no ficheiro Guitar Pro assim que fizeres ' +
-    '"Aplicar e reconstruir".')) return;
+    T('Descartar {n} edição(ões) de notas {where}?\n\nInclui as que já foram aplicadas em reconstruções anteriores. As notas voltam ao que está no ficheiro Guitar Pro assim que fizeres "Aplicar e reconstruir".', { n, where }))) return;
   if (everyArrangement) noteOverridesByKind = {};
   else delete noteOverridesByKind[kind];
   noteDeleteUndo = null;  // nothing left for it to restore on top of
   updateNoteEditsInfo();
   updatePendingChangesInfo();
   showArr(currentArr);
-  toast(`${n} edição(ões) descartada(s) — pendente até "Aplicar e reconstruir".`, 'ok');
+  toast(T('{n} edição(ões) descartada(s) — pendente até "Aplicar e reconstruir".', { n }), 'ok');
 }
 
 document.getElementById('clearNoteEdits').addEventListener('click', () => clearNoteEdits(false));
@@ -2805,7 +2802,7 @@ function openNoteEditPopup(chartTime, string, clientX, clientY) {
   const base = pending || existing;
   neContext = { time: chartTime, string };
 
-  document.getElementById('nePopupTitle').textContent = base ? 'Editar nota' : 'Nova nota';
+  document.getElementById('nePopupTitle').textContent = base ? T('Editar nota') : T('Nova nota');
   const stringSel = document.getElementById('neString');
   stringSel.innerHTML = [0, 1, 2, 3, 4, 5]
     .map(i => `<option value="${i}">${esc(stringLabel(i, a.tuning_offsets))}</option>`).join('');
@@ -2849,7 +2846,7 @@ function upsertNoteOverride(ov) {
     if (!neContext) return;
     const string = parseInt(document.getElementById('neString').value, 10);
     const fret = parseInt(document.getElementById('neFret').value, 10);
-    if (isNaN(fret) || fret < 0 || fret > 24) { toast('traste inválido (0-24)', 'err'); return; }
+    if (isNaN(fret) || fret < 0 || fret > 24) { toast(T('traste inválido (0-24)'), 'err'); return; }
     const sustain = Math.max(0, parseFloat(document.getElementById('neSustain').value) || 0);
     const techniques = TECH_CHECK_IDS.filter(([id]) => document.getElementById(id).checked).map(([, v]) => v);
     const bend_semitones = Math.max(0, parseFloat(document.getElementById('neBend').value) || 0);
@@ -2869,7 +2866,7 @@ function upsertNoteOverride(ov) {
     });
     closeNoteEditPopup();
     showArr(currentArr);
-    toast('Nota guardada — pendente até "Aplicar e reconstruir".', 'ok');
+    toast(T('Nota guardada — pendente até "Aplicar e reconstruir".'), 'ok');
   });
   document.getElementById('neDelete').addEventListener('click', () => {
     if (!neContext) return;
@@ -2879,7 +2876,7 @@ function upsertNoteOverride(ov) {
     });
     closeNoteEditPopup();
     showArr(currentArr);
-    toast('Nota removida — pendente até "Aplicar e reconstruir".', 'ok');
+    toast(T('Nota removida — pendente até "Aplicar e reconstruir".'), 'ok');
   });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeNoteEditPopup(); });
   document.addEventListener('pointerdown', e => {
@@ -2899,13 +2896,13 @@ function renderAnchorsList() {
   el.innerHTML = syncAnchors.map(([o, n], i) => {
     const crosses = i > 0 && n <= syncAnchors[i - 1][1];
     const warn = crosses
-      ? ` <span style="color:#e6483c" title="Esta correção manda um ponto MAIS À FRENTE da partitura para um instante ANTERIOR ao da correção acima — impossível de aplicar. Corrige o valor ou remove uma delas.">⚠ cruza a anterior</span>`
+      ? ` <span style="color:#e6483c" title="${T('Esta correção manda um ponto MAIS À FRENTE da partitura para um instante ANTERIOR ao da correção acima — impossível de aplicar. Corrige o valor ou remove uma delas.')}">${T('⚠ cruza a anterior')}</span>`
       : '';
-    return `<div class="anchor-row"${crosses ? ' style="border-left:3px solid #e6483c;padding-left:.4rem"' : ''}>Correção ${i+1}: ${o.toFixed(2)}s →
+    return `<div class="anchor-row"${crosses ? ' style="border-left:3px solid #e6483c;padding-left:.4rem"' : ''}>${T('Correção {i}:', { i: i + 1 })} ${o.toFixed(2)}s →
      <input type="number" step="0.01" value="${n.toFixed(2)}" data-i="${i}" class="anchor-edit" style="width:6rem">s
-     <button type="button" data-i="${i}" class="anchor-remove">remover</button>${warn}</div>`;
+     <button type="button" data-i="${i}" class="anchor-remove">${T('remover')}</button>${warn}</div>`;
   }).join('') + `<div class="anchor-row">
-     <button type="button" id="clearAnchors" class="secondary">Limpar correções pendentes</button></div>`;
+     <button type="button" id="clearAnchors" class="secondary">${T('Limpar correções pendentes')}</button></div>`;
   el.querySelectorAll('.anchor-edit').forEach(inp => inp.addEventListener('change', () => {
     const i = parseInt(inp.dataset.i, 10);
     const v = parseFloat(inp.value);
@@ -2979,7 +2976,7 @@ async function applyAll() {
   });
   const b = await r.json();
   if (r.ok) {
-    toast('A reconstruir…', 'ok');
+    toast(T('A reconstruir…'), 'ok');
     // Every chart's pending sync was sent (other_sync), so all of it is built.
     for (const list of Object.values(syncAnchorsByKind)) list.length = 0;
     syncAnchors.length = 0;
@@ -2993,7 +2990,7 @@ async function applyAll() {
     selectJob(b.id, { force: true });
     offerDropPrevious(b.id);
   }
-  else toast(b.detail || 'erro');
+  else toast(b.detail || T('erro'));
 }
 document.getElementById('applyAll').addEventListener('click', applyAll);
 
@@ -3014,8 +3011,7 @@ function setDropPrev(id, on) {
   } catch { /* no storage: the old version simply stays */ }
 }
 async function offerDropPrevious(newId) {
-  if (!(await confirmModal('Apagar a versão anterior deste projeto (e o PSARC dela) assim que a nova ficar pronta? ' +
-    'Se a reconstrução falhar, a anterior fica.'))) return;
+  if (!(await confirmModal(T('Apagar a versão anterior deste projeto (e o PSARC dela) assim que a nova ficar pronta? Se a reconstrução falhar, a anterior fica.')))) return;
   setDropPrev(newId, true);
   try { maybeDropPrevious(await getJSON(`/jobs/${newId}`)); } catch { /* the poll tries again */ }
 }
@@ -3024,7 +3020,7 @@ async function maybeDropPrevious(j) {
   if (!j || !dropPrevPending()[j.id] || droppingPrev.has(j.id)) return;
   if (j.status === 'failed') {
     setDropPrev(j.id, false);
-    toast('A reconstrução falhou — a versão anterior foi mantida.');
+    toast(T('A reconstrução falhou — a versão anterior foi mantida.'));
     return;
   }
   if (j.status !== 'completed') return;
@@ -3034,10 +3030,10 @@ async function maybeDropPrevious(j) {
   try {
     const out = await getJSON(`/jobs/${j.id}/drop-previous`, { method: 'POST' });
     if (selectedJob && selectedJob.id === out.id) { selectedJob = out; renderDetailHead(out); }
-    toast('Versão anterior apagada.', 'ok');
+    toast(T('Versão anterior apagada.'), 'ok');
     refreshJobs();
   } catch (err) {
-    toast(`não foi possível apagar a versão anterior: ${err.message}`);
+    toast(T('não foi possível apagar a versão anterior: {msg}', { msg: err.message }));
   } finally {
     droppingPrev.delete(j.id);
   }
@@ -3053,7 +3049,7 @@ reloadGpInput.addEventListener('change', async () => {
   if (!file || !selectedJob) return;
   const info = document.getElementById('reloadGpInfo');
   const prev = info.textContent;
-  info.textContent = 'A recarregar…';
+  info.textContent = T('A recarregar…');
   reloadGpBtn.disabled = true;
   try {
     const fd = new FormData();
@@ -3066,12 +3062,12 @@ reloadGpInput.addEventListener('change', async () => {
     const b = await r.json();
     if (r.ok) {
       toast(b.recording_from_gp && !wasFromGp
-        ? 'GP recarregado com o áudio que vem dentro dele (o início passou para o do ficheiro) — a reconstruir…'
-        : b.recording_from_gp ? 'GP recarregado, com o áudio dele — a reconstruir…' : 'GP recarregado — a reconstruir…', 'ok');
+        ? T('GP recarregado com o áudio que vem dentro dele (o início passou para o do ficheiro) — a reconstruir…')
+        : b.recording_from_gp ? T('GP recarregado, com o áudio dele — a reconstruir…') : T('GP recarregado — a reconstruir…'), 'ok');
       selectJob(b.id, { force: true });
       offerDropPrevious(b.id);
     }
-    else toast(b.detail || 'erro ao recarregar o GP');
+    else toast(b.detail || T('erro ao recarregar o GP'));
   } finally {
     reloadGpInput.value = '';  // allow re-selecting the same filename
     reloadGpBtn.disabled = false;
@@ -3097,26 +3093,26 @@ reloadGpInput.addEventListener('change', async () => {
 document.getElementById('exportArrGpBtn').addEventListener('click', async () => {
   if (!selectedJob) return;
   const a = arrangements[currentArr];
-  if (!a) { toast('abre um arranjo primeiro'); return; }
+  if (!a) { toast(T('abre um arranjo primeiro')); return; }
   const btn = document.getElementById('exportArrGpBtn');
   btn.disabled = true;
   try {
     const b = await getJSON(
       `/jobs/${selectedJob.id}/export-arrangement-gp?arrangement=${encodeURIComponent(a.kind)}`,
       { method: 'POST' });
-    const notes = [`<b>${b.notes_written} nota(s)</b> em ${b.measures} compasso(s)`];
-    if (b.quantized) notes.push(`${b.quantized} ajustada(s) à grelha (máx ${b.max_shift_ms} ms)`);
-    if (b.notes_dropped) notes.push(`${b.notes_dropped} fora dos compassos, não escrita(s)`);
+    const notes = [T('<b>{n} nota(s)</b> em {m} compasso(s)', { n: b.notes_written, m: b.measures })];
+    if (b.quantized) notes.push(T('{n} ajustada(s) à grelha (máx {ms} ms)', { n: b.quantized, ms: b.max_shift_ms }));
+    if (b.notes_dropped) notes.push(T('{n} fora dos compassos, não escrita(s)', { n: b.notes_dropped }));
     document.getElementById('exportGpInfo').innerHTML =
-      `${notes.join(' — ')} em <code>${esc(b.filename)}</code>. ` +
+      T('{notes} em <code>{file}</code>.', { notes: notes.join(' — '), file: esc(b.filename) }) + ' ' +
       esc(b.warnings.join(' '));
     const link = document.createElement('a');
     link.href = `/jobs/${selectedJob.id}/corrected-gp`;
     link.download = b.filename;
     link.click();
-    toast(`GP gerado: ${b.notes_written} nota(s).`, 'ok');
+    toast(T('GP gerado: {n} nota(s).', { n: b.notes_written }), 'ok');
   } catch (err) {
-    toast(`falha ao gerar o GP: ${err.message}`);
+    toast(T('falha ao gerar o GP: {msg}', { msg: err.message }));
   } finally {
     btn.disabled = false;
   }
@@ -3125,10 +3121,10 @@ document.getElementById('exportArrGpBtn').addEventListener('click', async () => 
 document.getElementById('exportGpBtn').addEventListener('click', async () => {
   if (!selectedJob) return;
   const a = arrangements[currentArr];
-  if (!a) { toast('abre um arranjo primeiro'); return; }
+  if (!a) { toast(T('abre um arranjo primeiro')); return; }
   const bars = retempoedBars(a);
   if (!bars.length) {
-    toast('nenhum compasso mudou de andamento — não há nada para escrever no ficheiro GP');
+    toast(T('nenhum compasso mudou de andamento — não há nada para escrever no ficheiro GP'));
     return;
   }
   // The endpoint bounds BPM to (10, 400); a wild warp can push a bar outside it.
@@ -3136,7 +3132,7 @@ document.getElementById('exportGpBtn').addEventListener('click', async () => {
   const writable = bars.filter(b => b.bpm > GP_EXPORT_MIN_BPM && b.bpm < GP_EXPORT_MAX_BPM);
   const dropped = bars.length - writable.length;
   if (!writable.length) {
-    toast('os andamentos corrigidos estão fora do intervalo que o Guitar Pro aceita (10-400 BPM)');
+    toast(T('os andamentos corrigidos estão fora do intervalo que o Guitar Pro aceita (10-400 BPM)'));
     return;
   }
   const btn = document.getElementById('exportGpBtn');
@@ -3148,21 +3144,21 @@ document.getElementById('exportGpBtn').addEventListener('click', async () => {
     });
     const rounded = b.applied.filter(x => x.rounded).length;
     const notes = [];
-    if (dropped) notes.push(`${dropped} compasso(s) fora de 10-400 BPM ignorado(s)`);
-    if (rounded) notes.push(`${rounded} arredondado(s) — este formato guarda o tempo como inteiro`);
+    if (dropped) notes.push(T('{n} compasso(s) fora de 10-400 BPM ignorado(s)', { n: dropped }));
+    if (rounded) notes.push(T('{n} arredondado(s) — este formato guarda o tempo como inteiro', { n: rounded }));
     document.getElementById('exportGpInfo').innerHTML =
-      `<b>${b.applied.length} compasso(s)</b> escritos em <code>${esc(b.filename)}</code>` +
+      T('<b>{n} compasso(s)</b> escritos em <code>{file}</code>', { n: b.applied.length, file: esc(b.filename) }) +
       (notes.length ? ` — ${esc(notes.join('; '))}` : '') +
-      '. Só o <b>tempo</b> é exportável: um desfasamento constante continua a ser uma correção só do RockForge.';
+      T('. Só o <b>tempo</b> é exportável: um desfasamento constante continua a ser uma correção só do RockForge.');
     // Download the copy. Same-origin navigation, so the Basic-auth credentials
     // (when ROCKFORGE_API_TOKEN is set) ride along as on any other link.
     const link = document.createElement('a');
     link.href = `/jobs/${selectedJob.id}/corrected-gp`;
     link.download = b.filename;
     link.click();
-    toast(`GP corrigido: ${b.applied.length} compasso(s).`, 'ok');
+    toast(T('GP corrigido: {n} compasso(s).', { n: b.applied.length }), 'ok');
   } catch (err) {
-    toast(`falha ao exportar o GP: ${err.message}`);
+    toast(T('falha ao exportar o GP: {msg}', { msg: err.message }));
   } finally {
     btn.disabled = false;
   }
@@ -3173,7 +3169,7 @@ document.getElementById('exportSyncBtn').addEventListener('click', async () => {
   try {
     const r = await fetch(`/jobs/${selectedJob.id}/sync-state`);
     const b = await r.json();
-    if (!r.ok) { toast(b.detail || 'erro ao exportar sync'); return; }
+    if (!r.ok) { toast(b.detail || T('erro ao exportar sync')); return; }
     const name = (b.song || selectedJob.id).replace(/[^\w.-]+/g, '_');
     const blob = new Blob([JSON.stringify(b, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
@@ -3181,8 +3177,8 @@ document.getElementById('exportSyncBtn').addEventListener('click', async () => {
     a.download = `${name}.sync.json`;
     a.click();
     URL.revokeObjectURL(a.href);
-    toast('Sync exportado.', 'ok');
-  } catch { toast('erro ao exportar sync'); }
+    toast(T('Sync exportado.'), 'ok');
+  } catch { toast(T('erro ao exportar sync')); }
 });
 
 const importSyncInput = document.getElementById('importSyncInput');
@@ -3195,15 +3191,15 @@ importSyncInput.addEventListener('change', async () => {
   try {
     const payload = JSON.parse(await file.text());
     if (!payload || typeof payload.sync !== 'object')
-      { toast('ficheiro de sync inválido'); return; }
+      { toast(T('ficheiro de sync inválido')); return; }
     const r = await fetch(`/jobs/${selectedJob.id}/import-sync`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
     const b = await r.json();
-    if (r.ok) { toast('Sync importado — a reconstruir…', 'ok'); selectJob(b.id, { force: true }); }
-    else toast(b.detail || 'erro ao importar sync');
-  } catch { toast('erro ao ler o ficheiro de sync'); }
+    if (r.ok) { toast(T('Sync importado — a reconstruir…'), 'ok'); selectJob(b.id, { force: true }); }
+    else toast(b.detail || T('erro ao importar sync'));
+  } catch { toast(T('erro ao ler o ficheiro de sync')); }
   finally { importSyncInput.value = ''; }
 });
 
@@ -3337,7 +3333,7 @@ function renderTonePanel() {
   const chips = document.getElementById('toneChips');
   chips.innerHTML = jobTones.length
     ? jobTones.map(t => `<span style="background:#23252e;border:1px solid var(--line);border-radius:999px;padding:.1rem .55rem">${esc(t.name || t.key)}</span>`).join('')
-    : '<span class="meta">Nenhum tom definido — clica em "+ Criar / editar tons".</span>';
+    : `<span class="meta">${T('Nenhum tom definido — clica em "+ Criar / editar tons".')}</span>`;
 
   renderToneSetUi(false);
   renderToneChangesList();
@@ -3373,7 +3369,7 @@ function renderToneSetUi(withChanges = true) {
 document.getElementById('toneShared').addEventListener('change', e => {
   if (e.target.checked && tonesPerTrack) {
     const kind = currentKind();
-    if (!confirm(`Todas as pistas passam a usar os tons de ${arrLabel(kind)}. Continuar?`)) {
+    if (!confirm(T('Todas as pistas passam a usar os tons de {track}. Continuar?', { track: arrLabel(kind) }))) {
       e.target.checked = false; return;
     }
   }
@@ -3394,14 +3390,14 @@ function populatePreviewTones() {
   if (!sel) return;
   const prev = sel.value;
   const hasTones = jobTones.length > 0;
-  let html = '<option value="">Voz simples (sem tom)</option>';
+  let html = `<option value="">${T('Voz simples (sem tom)')}</option>`;
   if (hasTones) {
-    html += '<option value="__follow__">Seguir partitura (tons marcados)</option>' +
+    html += `<option value="__follow__">${T('Seguir partitura (tons marcados)')}</option>` +
       jobTones.map(t => `<option value="${esc(t.key)}">${esc(t.name || t.key)}</option>`).join('');
   }
   sel.innerHTML = html;
   sel.disabled = !hasTones;
-  sel.title = hasTones ? '' : 'Cria um tom primeiro ("+ Criar / editar tons")';
+  sel.title = hasTones ? '' : T('Cria um tom primeiro ("+ Criar / editar tons")');
   const valid = ['', '__follow__', ...jobTones.map(t => t.key)];
   if (previewToneTouched && valid.includes(prev)) {
     sel.value = prev;  // respect the user's explicit choice across tone edits
@@ -3431,7 +3427,7 @@ document.getElementById('toneBaseSel').addEventListener('change', e => {
 document.getElementById('toneExtraChecks').addEventListener('change', e => {
   if (!e.target.classList.contains('tone-extra')) return;
   const checked = [...document.querySelectorAll('.tone-extra:checked')].map(c => c.value);
-  if (checked.length > 4) { e.target.checked = false; toast('Máximo de 4 tons extra.'); return; }
+  if (checked.length > 4) { e.target.checked = false; toast(T('Máximo de 4 tons extra.')); return; }
   toneNames = checked;
   if (arrangements.length) showArr(currentArr);
 });
@@ -3439,13 +3435,13 @@ document.getElementById('toneExtraChecks').addEventListener('change', e => {
 function renderToneChangesList(redraw = true) {
   const el = document.getElementById('toneChangesList');
   if (!toneChanges.length) {
-    el.innerHTML = '<span class="meta">Sem mudanças de tom. Ativa o modo "Mudança de tom" e clica numa nota.</span>';
+    el.innerHTML = `<span class="meta">${T('Sem mudanças de tom. Ativa o modo "Mudança de tom" e clica numa nota.')}</span>`;
   } else {
     const sorted = toneChanges;  // already time-sorted (see loadTones)
     el.innerHTML = sorted.map((c, i) => {
       const name = (jobTones.find(t => t.key === c.name) || {}).name || c.name;
       return `<div class="anchor-row">↪ ${c.time.toFixed(2)}s → <b>${esc(name)}</b>
-        <button type="button" class="tone-change-rm" data-i="${i}">remover</button></div>`;
+        <button type="button" class="tone-change-rm" data-i="${i}">${T('remover')}</button></div>`;
     }).join('');
     el.querySelectorAll('.tone-change-rm').forEach(b => b.addEventListener('click', () => {
       const target = sorted[parseInt(b.dataset.i, 10)];
@@ -3459,19 +3455,19 @@ function renderToneChangesList(redraw = true) {
 }
 
 function placeToneChange(chartTime) {
-  if (!toneNames.length) { toast('Marca primeiro tons "extra" para poder trocar.'); return; }
+  if (!toneNames.length) { toast(T('Marca primeiro tons "extra" para poder trocar.')); return; }
   const opts = toneNames.map((k, i) => {
     const n = (jobTones.find(t => t.key === k) || {}).name || k;
     return `${i + 1}) ${n}`;
   }).join('\n');
-  const pick = prompt(`Trocar para qual tom?\n${opts}`, '1');
+  const pick = prompt(T('Trocar para qual tom?\n{opts}', { opts }), '1');
   if (pick === null) return;
   const idx = parseInt(pick, 10) - 1;
-  if (isNaN(idx) || idx < 0 || idx >= toneNames.length) { toast('Escolha inválida.'); return; }
+  if (isNaN(idx) || idx < 0 || idx >= toneNames.length) { toast(T('Escolha inválida.')); return; }
   toneChanges.push({ time: chartTime, name: toneNames[idx] });
   toneChanges.sort((a, b) => a.time - b.time);  // keep the sorted invariant (see loadTones)
   renderToneChangesList();
-  toast('Mudança de tom adicionada.', 'ok');
+  toast(T('Mudança de tom adicionada.'), 'ok');
 }
 
 // ---- Section editor (song structure markers: intro/verso/refrão…) ----
@@ -3481,12 +3477,12 @@ function renderSectionsList() {
   const el = document.getElementById('sectionsList');
   if (!el) return;
   if (!songSections.length) {
-    el.innerHTML = '<span class="meta">Sem secções. Usa "+ Adicionar no cursor" ou o modo "Secção" (clica numa nota).</span>';
+    el.innerHTML = `<span class="meta">${T('Sem secções. Usa "+ Adicionar no cursor" ou o modo "Secção" (clica numa nota).')}</span>`;
   } else {
     el.innerHTML = songSections.map((s, i) => `<div class="anchor-row">
       <input type="number" step="0.01" value="${s.time.toFixed(2)}" data-section-time="${i}" style="width:6rem">s
       <input type="text" value="${esc(s.name)}" data-section-name="${i}" style="width:10rem">
-      <button type="button" class="section-rm" data-i="${i}">remover</button></div>`).join('');
+      <button type="button" class="section-rm" data-i="${i}">${T('remover')}</button></div>`).join('');
     el.querySelectorAll('[data-section-time]').forEach(inp => inp.addEventListener('change', () => {
       const i = parseInt(inp.dataset.sectionTime, 10);
       const v = parseFloat(inp.value);
@@ -3497,7 +3493,7 @@ function renderSectionsList() {
     }));
     el.querySelectorAll('[data-section-name]').forEach(inp => inp.addEventListener('change', () => {
       const i = parseInt(inp.dataset.sectionName, 10);
-      songSections[i].name = inp.value.trim() || 'Secção';
+      songSections[i].name = inp.value.trim() || T('Secção');
       sectionsTouched = true;
       renderSectionsList();
     }));
@@ -3513,18 +3509,18 @@ function renderSectionsList() {
 }
 
 function placeSectionMarker(chartTime) {
-  const name = prompt('Nome da secção:', 'Nova secção');
+  const name = prompt(T('Nome da secção:'), T('Nova secção'));
   if (name === null) return;
-  songSections.push({ time: chartTime, name: name.trim() || 'Secção' });
+  songSections.push({ time: chartTime, name: name.trim() || T('Secção') });
   songSections.sort((a, b) => a.time - b.time);
   sectionsTouched = true;
   renderSectionsList();
-  toast('Secção adicionada.', 'ok');
+  toast(T('Secção adicionada.'), 'ok');
 }
 
 document.getElementById('addSectionAtCursor')?.addEventListener('click', () => {
   if (!arrangements.length) return;
-  songSections.push({ time: currentPlayheadT + viewOrigin, name: 'Nova secção' });
+  songSections.push({ time: currentPlayheadT + viewOrigin, name: T('Nova secção') });
   songSections.sort((a, b) => a.time - b.time);
   sectionsTouched = true;
   renderSectionsList();
@@ -3532,7 +3528,7 @@ document.getElementById('addSectionAtCursor')?.addEventListener('click', () => {
 
 // ---- Tone builder modal ----
 function openToneBuilder() {
-  if (!selectedJob || selectedJob.source_type !== 'gp') { toast('Tons só se aplicam a projetos Guitar Pro.'); return; }
+  if (!selectedJob || selectedJob.source_type !== 'gp') { toast(T('Tons só se aplicam a projetos Guitar Pro.')); return; }
   loadGearCatalogue().then(() => {
     renderToneListEditor();
     loadToneLibrary();
@@ -3553,7 +3549,7 @@ function renderToneListEditor() {
   const el = document.getElementById('toneListEditor');
   el.innerHTML = jobTones.length
     ? jobTones.map(t => `<button type="button" class="secondary tone-pick ${t.key === editingToneKey ? 'active-mode' : ''}" data-key="${esc(t.key)}" style="text-align:left">${esc(t.name || t.key)}</button>`).join('')
-    : '<span class="meta">Ainda sem tons.</span>';
+    : `<span class="meta">${T('Ainda sem tons.')}</span>`;
   el.querySelectorAll('.tone-pick').forEach(b =>
     b.addEventListener('click', () => editToneInForm(b.dataset.key)));
 }
@@ -3576,7 +3572,7 @@ function populateToneLibSelect() {
 document.getElementById('toneLibLoad').addEventListener('click', () => {
   const key = document.getElementById('toneLibSelect').value;
   const src = toneLibrary.find(t => t.key === key);
-  if (!src) { toast('Escolhe um tom da biblioteca.'); return; }
+  if (!src) { toast(T('Escolhe um tom da biblioteca.')); return; }
   // Copy into this project. If the key already exists here, suffix it so the
   // load never silently overwrites a tone the user already dialled.
   const tone = JSON.parse(JSON.stringify(src));
@@ -3589,27 +3585,27 @@ document.getElementById('toneLibLoad').addEventListener('click', () => {
   editToneInForm(tone.key);
   renderToneListEditor();
   renderTonePanel();
-  toast('Tom carregado da biblioteca.', 'ok');
+  toast(T('Tom carregado da biblioteca.'), 'ok');
 });
 document.getElementById('toneLibDelete').addEventListener('click', async () => {
   const key = document.getElementById('toneLibSelect').value;
-  if (!key) { toast('Escolhe um tom da biblioteca.'); return; }
+  if (!key) { toast(T('Escolhe um tom da biblioteca.')); return; }
   const r = await fetch(`/tone-library/${encodeURIComponent(key)}`, { method: 'DELETE' });
-  if (!r.ok) { toast('Não foi possível remover.'); return; }
+  if (!r.ok) { toast(T('Não foi possível remover.')); return; }
   toneLibrary = (await r.json()).tones || [];
   populateToneLibSelect();
-  toast('Removido da biblioteca.', 'ok');
+  toast(T('Removido da biblioteca.'), 'ok');
 });
 document.getElementById('teSaveLibrary').addEventListener('click', async () => {
   const tone = jobTones.find(t => t.key === editingToneKey);
-  if (!tone) { toast('Guarda o tom primeiro (Guardar tom).'); return; }
+  if (!tone) { toast(T('Guarda o tom primeiro (Guardar tom).')); return; }
   const r = await fetch('/tone-library', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(tone),
   });
-  if (!r.ok) { toast('Não foi possível guardar na biblioteca.'); return; }
+  if (!r.ok) { toast(T('Não foi possível guardar na biblioteca.')); return; }
   toneLibrary = (await r.json()).tones || [];
   populateToneLibSelect();
-  toast('Guardado na biblioteca.', 'ok');
+  toast(T('Guardado na biblioteca.'), 'ok');
 });
 
 function populateGearSelect(sel, items, selectedKey, placeholder, filter) {
@@ -3630,7 +3626,7 @@ function populateGearSelect(sel, items, selectedKey, placeholder, filter) {
   sel.innerHTML = (placeholder ? `<option value="">${placeholder}</option>` : '') +
     list.map(g => `<option value="${esc(g.key)}">${esc(label(g))}</option>`).join('');
   if (selectedKey) sel.value = selectedKey;
-  if (q && !list.length) sel.innerHTML = '<option value="">— sem resultados —</option>';
+  if (q && !list.length) sel.innerHTML = `<option value="">${T('— sem resultados —')}</option>`;
 }
 
 // Map a knob value to the dial's rotation: min -> -135°, max -> +135° (270° sweep).
@@ -3645,7 +3641,7 @@ function renderKnobs(container, gearItem, values) {
   container.style.display = '';
   container.innerHTML = gearItem.knobs.map(k => {
     const v = (values && k.key in values) ? values[k.key] : k.default;
-    return `<div class="knob" data-min="${k.min}" data-max="${k.max}" data-step="${k.step}" data-default="${k.default}" title="${esc(k.name)} — arrasta para rodar, ou escreve o valor; duplo-clique repõe">
+    return `<div class="knob" data-min="${k.min}" data-max="${k.max}" data-step="${k.step}" data-default="${k.default}" title="${esc(T('{name} — arrasta para rodar, ou escreve o valor; duplo-clique repõe', { name: k.name }))}">
       <div class="knob-dial" style="transform:rotate(${knobAngle(v, k.min, k.max).toFixed(1)}deg)"></div>
       <span class="knob-name">${esc(k.name)}</span>
       <input type="number" class="knob-val" data-knob="${esc(k.key)}" min="${k.min}" max="${k.max}" step="${k.step}" value="${v}">
@@ -3760,7 +3756,7 @@ function renderAlignedEffect(panel, gearItem, layout, values) {
   matched.forEach((kn, i) => {
     const g = byName[kn.name];
     const v = (values && g.key in values) ? values[g.key] : g.default;
-    ov += `<div class="oknob" data-i="${i}" title="${esc(kn.name)} — arrasta ou escreve o valor"
+    ov += `<div class="oknob" data-i="${i}" title="${esc(T('{name} — arrasta ou escreve o valor', { name: kn.name }))}"
       style="left:${(kn.x / W * 100).toFixed(3)}%;top:${(kn.y / H * 100).toFixed(3)}%;width:${(2 * kn.r / W * 100).toFixed(3)}%">
       <div class="hit"></div><div class="ptr"></div></div>`;
     vr += `<div class="vcell" style="left:${(kn.x / W * 100).toFixed(3)}%">
@@ -3794,13 +3790,13 @@ function addEffectRow(category, gearKey, values) {
   row.innerHTML = `
     <div class="anchor-row" style="flex-wrap:wrap">
       <select class="te-eff-cat">
-        <option value="pre">Pré-pedal</option>
-        <option value="post">Pós-pedal</option>
+        <option value="pre">${T('Pré-pedal')}</option>
+        <option value="post">${T('Pós-pedal')}</option>
         <option value="rack">Rack</option>
       </select>
-      <input type="text" class="te-eff-search" placeholder="procurar…" style="min-width:8rem;font-size:.8rem;padding:.22rem .45rem">
+      <input type="text" class="te-eff-search" placeholder="${T('procurar…')}" style="min-width:8rem;font-size:.8rem;padding:.22rem .45rem">
       <select class="te-eff-gear" style="min-width:11rem"></select>
-      <button type="button" class="icon te-eff-rm">remover</button>
+      <button type="button" class="icon te-eff-rm">${T('remover')}</button>
     </div>
     <div class="te-eff-panel"></div>`;
   wrap.appendChild(row);
@@ -3961,10 +3957,10 @@ function slugify(s) {
 
 document.getElementById('teSave').addEventListener('click', () => {
   const name = document.getElementById('teName').value.trim();
-  if (!name) { toast('Dá um nome ao tom.'); return; }
+  if (!name) { toast(T('Dá um nome ao tom.')); return; }
   const ampKey = document.getElementById('teAmp').value;
   const cabKey = document.getElementById('teCab').value;
-  if (!ampKey || !cabKey) { toast('Escolhe amplificador e cabine.'); return; }
+  if (!ampKey || !cabKey) { toast(T('Escolhe amplificador e cabine.')); return; }
 
   const descriptors = document.getElementById('teDescriptors').value
     .split(',').map(s => s.trim()).filter(Boolean)
@@ -3998,7 +3994,7 @@ document.getElementById('teSave').addEventListener('click', () => {
   editingToneKey = key;
   renderToneListEditor();
   renderTonePanel();
-  toast('Tom guardado.', 'ok');
+  toast(T('Tom guardado.'), 'ok');
 });
 
 document.getElementById('teDelete').addEventListener('click', () => {
