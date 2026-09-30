@@ -8,6 +8,18 @@ data e a música). O detalhe técnico de cada ponto está em `TESTING.md` §7.
 Em cada teste: gerar o PSARC nativo (`psarc_mode=native`). Se algo correr mal,
 gerar também pelo DLC Builder, para saber se o problema é do PSARC nativo.
 
+**Versões atuais: RockForge 0.9.0.0** (`main` 764d38e, 2026-09-30) e
+**PDF-to-GP5 0.7.0** (de onde vêm os `.gp`/`.gp5` de teste). O que está "Por
+testar" é para testar nestas versões: atualizar com o `start.bat`, que faz o
+`git pull`, e gerar de novo o PSARC — um PSARC feito antes não tem as correções.
+
+### Verificado aqui (sem o jogo), nestas versões
+
+| O quê | Data | Resultado |
+|---|---|---|
+| Testes do RockForge (`pytest`) | 2026-09-30 | Todos passam |
+| RockForge igual ao alphaTab (skill `rockforge-alphatab-check` do PDF-to-GP5), nos 12 PDFs convertidos pelo PDF-to-GP5 0.7.0, no `September.gp` (6 pistas, com áudio) e no `teste-prebend.gp5` | 2026-09-30 | Tudo igual, incluindo a forma dos bends |
+
 ## ✅ Resolvido: crash no "September" (2026-09-30)
 
 O jogo fechava no Daughtry "September" (primeiro ao tocar, depois no Riff
