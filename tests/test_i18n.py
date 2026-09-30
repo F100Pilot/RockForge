@@ -163,7 +163,9 @@ def js_strings(src: str) -> list[tuple[int, str, str, bool]]:
         while i < n:
             c = src[i]
             if c in "'\"":
-                i = read_quoted(i)[0]
+                start = i
+                i, body = read_quoted(i)
+                out.append((src.count("\n", 0, start) + 1, _unescape(body), before(start), False))
             elif c == "`":
                 start = i
                 i, text, has_expr = read_template(i)
