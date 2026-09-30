@@ -1692,3 +1692,45 @@ def test_tone_changes_reach_the_sng_with_their_slot_and_off_the_note() -> None:
 
 def test_an_arrangement_without_tones_has_no_tone_changes() -> None:
     assert read_sng(write_sng(from_arrangement(_arrangement()))).tones == []
+
+
+def _resting_track() -> Arrangement:
+    """A track that only plays in the chorus: silent through the intro and verse,
+    stopping before the outro — the shape of a rhythm that enters late."""
+    beats = tuple(
+        Beat(time=i * 0.5, measure=(i // 4 + 1) if i % 4 == 0 else -1) for i in range(101)
+    )
+    notes = [TabNote(string=1, fret=2, time=20.0 + i * 0.5, sustain=0.2) for i in range(20)]
+    return Arrangement(
+        kind=ArrangementKind.RHYTHM,
+        metadata=SongMetadata(title="Song", artist="Artist", song_length=50.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+        notes=notes,
+        sections=[
+            Section(name="Intro", start_time=0.0),
+            Section(name="Verse", start_time=10.0),
+            Section(name="Chorus", start_time=20.0),
+            Section(name="Outro", start_time=40.0),
+        ],
+    )
+
+
+def test_a_track_that_enters_late_keeps_its_sections_in_order() -> None:
+    """September froze in game on every chart but the one that plays from the
+    first section: the COUNT split moved "Intro" to the chart's first note, i.e.
+    AFTER "Verse", so the section list ran backwards (Intro at the chorus, its
+    phrase range 15→0). The empty first section now becomes the COUNT, every
+    section stays in time order with a sane phrase range, and a chart that stops
+    before the last section still closes with an END phrase."""
+    model = read_sng(write_sng(from_arrangement(_resting_track())))
+    starts = [s.start_time for s in model.sections]
+    assert starts == sorted(starts)
+    for s in model.sections:
+        assert s.start_phrase_iteration_id <= s.end_phrase_iteration_id
+    pis = [pi.start_time for pi in model.phrase_iterations]
+    assert pis == sorted(pis)
+    names = [model.phrases[pi.phrase_id].name for pi in model.phrase_iterations]
+    assert names[0] == "COUNT" and names[-1] == "END"
+    # The chorus, where the notes are, is still a section of its own.
+    assert "Chorus" in [s.name for s in model.sections]

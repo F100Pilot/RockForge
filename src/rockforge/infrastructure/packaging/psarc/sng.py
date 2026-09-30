@@ -952,14 +952,32 @@ def _prepare_sections(arrangement: Arrangement, song_length: float) -> list[Sect
         last_note_end = max(
             (n.time + max(n.sustain, 0.0) for n in arrangement.notes), default=0.0
         )
+        # A track that rests through the first sections (a rhythm that enters
+        # at the chorus) must NOT have its first section moved to its first
+        # note: that put "Intro" after "Verse 1", the phrase timeline out of
+        # order, and the game froze on the highway (September's Rhythm, Alt
+        # Lead and Alt Rhythm). The sections before the first note are empty,
+        # so the first of them simply becomes the COUNT; only a first note
+        # INSIDE the first section splits it.
+        second_start = sections_src[1].start_time if len(sections_src) > 1 else song_length
         if sections_src[0].name != "COUNT" and first_note - sections_src[0].start_time > 1.0:
             count_start = sections_src[0].start_time
-            sections_src[0] = replace(sections_src[0], start_time=first_note)
-            sections_src.insert(0, Section(name="COUNT", number=1, start_time=count_start))
+            if first_note < second_start:
+                sections_src[0] = replace(sections_src[0], start_time=first_note)
+                sections_src.insert(0, Section(name="COUNT", number=1, start_time=count_start))
+            else:
+                sections_src[0] = Section(name="COUNT", number=1, start_time=count_start)
+        # Likewise at the end: a track that stops before the last section
+        # (the section after its last note is empty) closes there with END,
+        # which an END appended after the last section could never do in order.
         if sections_src[-1].name != "END" and song_length - last_note_end > 0.5:
             end_start = min(last_note_end + 0.1, song_length)
             if end_start > sections_src[-1].start_time:
                 sections_src.append(Section(name="END", number=1, start_time=end_start))
+            elif len(sections_src) > 1 and sections_src[-1].start_time >= last_note_end:
+                sections_src[-1] = Section(
+                    name="END", number=1, start_time=sections_src[-1].start_time
+                )
 
     # Subdivide long body phrases into ~_PHRASE_TARGET_S chunks at measure
     # downbeats, so DD ramps in finer steps as the player progresses — a real

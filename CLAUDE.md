@@ -2758,6 +2758,23 @@ gone on the native PSARC. Guarded by
 > Reach for this before speculating whenever a native-only rendering glitch
 > resists static analysis.
 
+**A chart that rests through the first sections keeps them in order.** The
+COUNT bracket used to move the FIRST section to the chart's first note — right
+for a count-in inside the intro, wrong for a rhythm that enters at the chorus:
+"Intro" landed after "Verse 1", the section list ran backwards (Intro at 104 s
+with phrase range 15→0) and the game froze on the highway ("está a bloquear …
+é mais que uma pista": September's Rhythm, Alternate Lead and Alternate Rhythm;
+only the Lead, which plays from the intro, was spared). `_prepare_sections` now
+splits the first section only when the first note falls INSIDE it; otherwise
+that empty section simply becomes the COUNT. Symmetrically, a chart that stops
+before the last section turns that empty last section into the END (an END
+appended after it could never be in order, so such charts shipped with no END
+phrase at all). The XML path (DLC Builder) never had this — its phrases are
+COUNT/default/END independent of the sections. Guarded by
+`test_a_track_that_enters_late_keeps_its_sections_in_order` (fails on the old
+code); the user's September rebuilt with all four charts in order, each ending
+in END. Not played in game from here.
+
 Anchors never span a phrase-iteration boundary: the game re-anchors at each
 phrase start, so a phrase whose opening notes are covered only by the previous
 phrase's anchor finds none of its own and crashes on entry (seen exactly at a
