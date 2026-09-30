@@ -35,6 +35,7 @@ from typing import TYPE_CHECKING, Any
 
 from rockforge.domain.errors import IngestionError
 from rockforge.domain.music import Technique
+from rockforge.i18n import tr
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from rockforge.domain.arrangement import Arrangement
@@ -413,18 +414,24 @@ def write_arrangement_gp5(
         report.notes_dropped += len(by_time[t])
 
     if report.notes_dropped:
-        report.warnings.append(
-            f"{report.notes_dropped} nota(s) fora dos compassos da música não foram escritas"
-        )
+        report.warnings.append(tr(
+            f"{report.notes_dropped} nota(s) fora dos compassos da música não foram escritas",
+            f"{report.notes_dropped} note(s) outside the song's bars were not written",
+        ))
     if report.quantized:
-        report.warnings.append(
+        shift_ms = f"{report.max_shift_s * 1000:.0f}"
+        report.warnings.append(tr(
             f"{report.quantized} nota(s) ajustada(s) à grelha rítmica "
-            f"(desvio máximo {report.max_shift_s * 1000:.0f} ms)"
-        )
-    report.warnings.append(
+            f"(desvio máximo {shift_ms} ms)",
+            f"{report.quantized} note(s) snapped to the rhythmic grid "
+            f"(largest shift {shift_ms} ms)",
+        ))
+    report.warnings.append(tr(
         "o ficheiro tem só esta pista — outras pistas, formatação e letra do "
-        "ficheiro original não são incluídas"
-    )
+        "ficheiro original não são incluídas",
+        "the file holds only this track — other tracks, formatting and lyrics "
+        "of the original file are not included",
+    ))
 
     dst.parent.mkdir(parents=True, exist_ok=True)
     with open(dst, "wb") as fh:

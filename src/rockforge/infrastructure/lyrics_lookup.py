@@ -30,6 +30,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from rockforge.domain.errors import IngestionError
+from rockforge.i18n import tr
 from rockforge.infrastructure._https import network_error_message, ssl_context
 from rockforge.infrastructure.album_lookup import _same, primary_artist, search_title
 
@@ -65,11 +66,15 @@ def _http_get_json(url: str) -> Any:
         with urllib.request.urlopen(request, timeout=TIMEOUT_S, context=ssl_context()) as response:
             return json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
-        raise LyricsLookupError(f"o LRCLIB respondeu {exc.code}") from exc
+        raise LyricsLookupError(
+            tr(f"o LRCLIB respondeu {exc.code}", f"LRCLIB answered {exc.code}")
+        ) from exc
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         raise LyricsLookupError(network_error_message(exc, "LRCLIB")) from exc
     except ValueError as exc:
-        raise LyricsLookupError("resposta ilegível do LRCLIB") from exc
+        raise LyricsLookupError(
+            tr("resposta ilegível do LRCLIB", "unreadable answer from LRCLIB")
+        ) from exc
 
 
 def _text(value: Any) -> str | None:
@@ -78,7 +83,10 @@ def _text(value: Any) -> str | None:
 
 def _candidates(data: Any, title: str, artist: str) -> list[LyricsCandidate]:
     if not isinstance(data, list):
-        raise LyricsLookupError("o LRCLIB respondeu num formato desconhecido")
+        raise LyricsLookupError(tr(
+            "o LRCLIB respondeu num formato desconhecido",
+            "LRCLIB answered in an unknown format",
+        ))
     out: list[LyricsCandidate] = []
     for r in data:
         if not isinstance(r, dict) or not isinstance(r.get("id"), int):
@@ -119,7 +127,10 @@ def search_lyrics(
     get_json = get_json or _http_get_json
     title, artist = search_title(title), primary_artist(artist)
     if not title or not artist:
-        raise LyricsLookupError("preciso do título e da banda para procurar")
+        raise LyricsLookupError(tr(
+            "preciso do título e da banda para procurar",
+            "I need the title and the band to search",
+        ))
     query = urllib.parse.urlencode({"track_name": title, "artist_name": artist})
     found = _candidates(get_json(f"{LRCLIB_URL}?{query}"), title, artist)
     if not found:

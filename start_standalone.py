@@ -46,11 +46,21 @@ READY_POLL_S = 0.1
 # and with it `inprocess.shutdown()`), short enough not to hang on exit.
 SERVER_STOP_TIMEOUT_S = 10.0
 
-_BUSY_MESSAGE = (
-    "RockForge ainda está a trabalhar (a construir ou a separar áudio).\n\n"
-    "Se sair agora, esse trabalho é perdido e o job fica por terminar.\n\n"
-    "Sair mesmo assim?"
-)
+
+def busy_message() -> str:
+    """The close-confirmation text, in the language saved in the settings.
+    Imported at call time: nothing may import ``rockforge.config`` before
+    ``configure_environment`` has run."""
+    from rockforge.i18n import tr
+
+    return tr(
+        "RockForge ainda está a trabalhar (a construir ou a separar áudio).\n\n"
+        "Se sair agora, esse trabalho é perdido e o job fica por terminar.\n\n"
+        "Sair mesmo assim?",
+        "RockForge is still working (building or separating audio).\n\n"
+        "If you quit now, that work is lost and the job is left unfinished.\n\n"
+        "Quit anyway?",
+    )
 
 
 def bundle_dir() -> Path:
@@ -165,7 +175,7 @@ def should_close_now(busy: bool, confirm: Callable[[str, str], bool]) -> bool:
     """
     if not busy:
         return True
-    return bool(confirm(WINDOW_TITLE, _BUSY_MESSAGE))
+    return bool(confirm(WINDOW_TITLE, busy_message()))
 
 
 def _serve_in_background(host: str, port_: int) -> tuple[Any, threading.Thread]:

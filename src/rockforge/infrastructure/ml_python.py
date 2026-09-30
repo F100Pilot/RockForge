@@ -37,6 +37,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from rockforge.i18n import tr
+
 #: A probe only imports a few packages; a ceiling so a wedged interpreter (or
 #: one on a sleeping network drive) cannot hang the settings page.
 PROBE_TIMEOUT_S = 60.0
@@ -76,13 +78,20 @@ def resolve() -> str | None:
 def missing_message(feature: str) -> str:
     """Why ``feature`` is unavailable, phrased as the thing to go and do."""
     if frozen():
-        return (
+        return tr(
             f"{feature} precisa do Python 3.11 com os extras [ml,lyrics]. "
             "O .exe tem o seu próprio Python e não os pode instalar — indica "
             "em ⚙️ Definições o caminho para um python.exe que os tenha "
-            "(ROCKFORGE_ML_PYTHON)."
+            "(ROCKFORGE_ML_PYTHON).",
+            f"{feature} needs Python 3.11 with the [ml,lyrics] extras. "
+            "The .exe has its own Python and cannot install them — set the "
+            "path to a python.exe that has them in ⚙️ Settings "
+            "(ROCKFORGE_ML_PYTHON).",
         )
-    return f"{feature} precisa dos extras de ML (pip install -e \".[ml,lyrics]\")."
+    return tr(
+        f"{feature} precisa dos extras de ML (pip install -e \".[ml,lyrics]\").",
+        f"{feature} needs the ML extras (pip install -e \".[ml,lyrics]\").",
+    )
 
 
 def runner_path(package_dir: Path, name: str) -> Path:
@@ -208,7 +217,7 @@ def run_json(
     """
     py = resolve()
     if not py:
-        raise RuntimeError(missing_message("Esta análise"))
+        raise RuntimeError(missing_message(tr("Esta análise", "This analysis")))
     try:
         proc = subprocess.run(
             [py, str(runner), *args],
@@ -218,15 +227,26 @@ def run_json(
             stdin=subprocess.DEVNULL,
         )
     except FileNotFoundError as exc:
-        raise RuntimeError(f"não consegui executar {py}: {exc}") from exc
+        raise RuntimeError(
+            tr(f"não consegui executar {py}: {exc}", f"could not run {py}: {exc}")
+        ) from exc
     except subprocess.TimeoutExpired as exc:
-        raise RuntimeError(f"a análise excedeu {timeout_s:.0f}s") from exc
+        raise RuntimeError(
+            tr(f"a análise excedeu {timeout_s:.0f}s", f"the analysis took over {timeout_s:.0f}s")
+        ) from exc
     if proc.returncode != 0:
-        raise RuntimeError((proc.stderr or "").strip()[-2000:] or "a análise falhou")
+        raise RuntimeError(
+            (proc.stderr or "").strip()[-2000:] or tr("a análise falhou", "the analysis failed")
+        )
     try:
         return dict(json.loads(proc.stdout.strip().splitlines()[-1]))
     except (ValueError, IndexError) as exc:
-        raise RuntimeError(f"resposta ilegível da análise: {proc.stdout[:200]}") from exc
+        raise RuntimeError(
+            tr(
+                f"resposta ilegível da análise: {proc.stdout[:200]}",
+                f"unreadable answer from the analysis: {proc.stdout[:200]}",
+            )
+        ) from exc
 
 
 def librosa_here() -> bool:

@@ -27,6 +27,8 @@ import ssl
 import urllib.error
 from functools import cache
 
+from rockforge.i18n import tr
+
 
 @cache
 def ssl_context() -> ssl.SSLContext:
@@ -52,11 +54,16 @@ def is_certificate_error(exc: BaseException) -> bool:
 def network_error_message(exc: BaseException, service: str) -> str:
     """A user-facing sentence for a request that never got an answer."""
     if is_certificate_error(exc):
-        return (
+        return tr(
             f"a ligação segura ao {service} foi recusada: o certificado não foi "
             "aceite. Confirma que a data e a hora do computador estão certas e "
             "que o antivírus não está a inspecionar ligações HTTPS; se continuar, "
             "atualiza os certificados com pip install --upgrade certifi "
-            f"({exc})"
+            f"({exc})",
+            f"the secure connection to {service} was refused: its certificate was "
+            "not accepted. Check that the computer's date and time are right and "
+            "that the antivirus is not inspecting HTTPS connections; if it goes on, "
+            "update the certificates with pip install --upgrade certifi "
+            f"({exc})",
         )
-    return f"não consegui contactar o {service} ({exc})"
+    return tr(f"não consegui contactar o {service} ({exc})", f"could not reach {service} ({exc})")

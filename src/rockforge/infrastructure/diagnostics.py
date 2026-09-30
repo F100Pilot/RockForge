@@ -44,6 +44,7 @@ import subprocess
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from rockforge.i18n import tr
 from rockforge.infrastructure.ml_python import frozen
 
 if TYPE_CHECKING:
@@ -87,12 +88,20 @@ def _extras_install(pip_command: str, feature: str) -> str:
     """
     if not frozen():
         return pip_command
-    return (
+    return tr(
         f"O .exe tem o seu próprio Python e não instala pacotes. Para ter "
         f"{feature}: instala o Python 3.11, corre lá  {pip_command} , e indica "
         f"esse python.exe em ⚙️ Definições → «Python para o ML» "
-        f"(ROCKFORGE_ML_PYTHON)."
+        f"(ROCKFORGE_ML_PYTHON).",
+        f"The .exe has its own Python and does not install packages. To get "
+        f"{feature}: install Python 3.11, run  {pip_command}  there, and point "
+        f"⚙️ Settings → «Python for ML» at that python.exe "
+        f"(ROCKFORGE_ML_PYTHON).",
     )
+
+
+def _installed(ok: bool) -> str:
+    return tr("instalado", "installed") if ok else tr("em falta", "missing")
 
 
 def _has(*modules: str) -> bool:
@@ -109,7 +118,7 @@ def _has(*modules: str) -> bool:
 
 def _ffmpeg() -> Requirement:
     path = shutil.which("ffmpeg")
-    detail = "não encontrado no PATH"
+    detail = tr("não encontrado no PATH", "not found on PATH")
     if path:
         detail = path
         try:
@@ -124,16 +133,28 @@ def _ffmpeg() -> Requirement:
             if first:
                 detail = f"{first[0].strip()}  ({path})"
         except (OSError, subprocess.SubprocessError):
-            detail = f"{path} (encontrado, mas não respondeu a -version)"
+            detail = tr(
+                f"{path} (encontrado, mas não respondeu a -version)",
+                f"{path} (found, but did not answer -version)",
+            )
     return Requirement(
         key="ffmpeg",
         name="ffmpeg",
         found=bool(path),
         detail=detail,
         required=True,
-        unlocks="Normalizar e converter a gravação — todo o pipeline passa por aqui.",
-        without_it="Nenhum job chega ao fim: falha na fase de normalização.",
-        install="winget install ffmpeg  (ou pôr o ffmpeg.exe no PATH)",
+        unlocks=tr(
+            "Normalizar e converter a gravação — todo o pipeline passa por aqui.",
+            "Normalizing and converting the recording — the whole pipeline goes through it.",
+        ),
+        without_it=tr(
+            "Nenhum job chega ao fim: falha na fase de normalização.",
+            "No job finishes: it fails at the normalization stage.",
+        ),
+        install=tr(
+            "winget install ffmpeg  (ou pôr o ffmpeg.exe no PATH)",
+            "winget install ffmpeg  (or put ffmpeg.exe on the PATH)",
+        ),
     )
 
 
@@ -145,24 +166,38 @@ def _wwise(settings: Settings) -> Requirement:
     if console is not None:
         detail = str(console)
     elif root is not None:
-        detail = f"{root} — não contém Authoring/x64/Release/bin/WwiseConsole"
+        detail = tr(
+            f"{root} — não contém Authoring/x64/Release/bin/WwiseConsole",
+            f"{root} — does not contain Authoring/x64/Release/bin/WwiseConsole",
+        )
     else:
-        detail = "ROCKFORGE_WWISE_ROOT (ou WWISEROOT) não está definido"
+        detail = tr(
+            "ROCKFORGE_WWISE_ROOT (ou WWISEROOT) não está definido",
+            "ROCKFORGE_WWISE_ROOT (or WWISEROOT) is not set",
+        )
     return Requirement(
         key="wwise",
         name="Audiokinetic Wwise (2019/2021/2022/2023)",
         found=console is not None,
         detail=detail,
         required=False,
-        unlocks="Converte o áudio para .wem, o que torna o .psarc JOGÁVEL.",
-        without_it=(
-            "O bundle para o DLC Builder continua a ser produzido, mas o .psarc "
-            "nativo fica sem áudio e o jogo não o toca."
+        unlocks=tr(
+            "Converte o áudio para .wem, o que torna o .psarc JOGÁVEL.",
+            "Converts the audio to .wem, which makes the .psarc PLAYABLE.",
         ),
-        install=(
+        without_it=tr(
+            "O bundle para o DLC Builder continua a ser produzido, mas o .psarc "
+            "nativo fica sem áudio e o jogo não o toca.",
+            "The DLC Builder bundle is still produced, but the native .psarc "
+            "has no audio and the game does not play it.",
+        ),
+        install=tr(
             "Instalar o Wwise (Audiokinetic Launcher) e apontar "
             "ROCKFORGE_WWISE_ROOT à raiz da instalação. Não pode ser "
-            "distribuído com a app — a licença não o permite."
+            "distribuído com a app — a licença não o permite.",
+            "Install Wwise (Audiokinetic Launcher) and point "
+            "ROCKFORGE_WWISE_ROOT at the installation's root. It cannot be "
+            "distributed with the app — its license does not allow it.",
         ),
     )
 
@@ -171,13 +206,24 @@ def _psarc() -> Requirement:
     ok = _has("cryptography", "PIL")
     return Requirement(
         key="psarc",
-        name="Encriptação do PSARC + capa (cryptography, Pillow)",
+        name=tr(
+            "Encriptação do PSARC + capa (cryptography, Pillow)",
+            "PSARC encryption + cover (cryptography, Pillow)",
+        ),
         found=ok,
-        detail="instalado" if ok else "em falta",
+        detail=_installed(ok),
         required=False,
-        unlocks="Escrever o .psarc nativo (SNG encriptado) e a capa em DDS.",
-        without_it="Só sai o bundle do DLC Builder; o .psarc é omitido, sem crash.",
-        install=_extras_install('pip install -e ".[psarc]"', "o .psarc nativo"),
+        unlocks=tr(
+            "Escrever o .psarc nativo (SNG encriptado) e a capa em DDS.",
+            "Writing the native .psarc (encrypted SNG) and the cover as DDS.",
+        ),
+        without_it=tr(
+            "Só sai o bundle do DLC Builder; o .psarc é omitido, sem crash.",
+            "Only the DLC Builder bundle comes out; the .psarc is left out, no crash.",
+        ),
+        install=_extras_install(
+            'pip install -e ".[psarc]"', tr("o .psarc nativo", "the native .psarc"),
+        ),
         extras=["psarc"],
     )
 
@@ -226,10 +272,16 @@ def _where(av: _MlAvailability) -> str:
     if not av.external:
         return ""
     if not av.interpreter:
-        return " — falta indicar o Python para o ML em ⚙️ Definições"
+        return tr(
+            " — falta indicar o Python para o ML em ⚙️ Definições",
+            " — the Python for ML has not been set in ⚙️ Settings",
+        )
     if not av.reachable:
-        return f" — {av.interpreter} não arrancou (não é um Python?)"
-    return f" em {av.interpreter}"
+        return tr(
+            f" — {av.interpreter} não arrancou (não é um Python?)",
+            f" — {av.interpreter} did not start (is it not a Python?)",
+        )
+    return tr(f" em {av.interpreter}", f" in {av.interpreter}")
 
 
 def _ml_interpreter(av: _MlAvailability) -> Requirement:
@@ -237,36 +289,51 @@ def _ml_interpreter(av: _MlAvailability) -> Requirement:
     having any ML at all, and invisible until it is named."""
     if not av.external:
         found: bool | None = True
-        detail = f"o próprio Python do RockForge ({av.interpreter})"
+        detail = tr(
+            f"o próprio Python do RockForge ({av.interpreter})",
+            f"RockForge's own Python ({av.interpreter})",
+        )
     elif not av.interpreter:
         found = False
-        detail = "não está definido"
+        detail = tr("não está definido", "not set")
     elif not av.reachable:
         found = False
-        detail = f"{av.interpreter} — não arrancou (o caminho aponta para um Python 3.11?)"
+        detail = tr(
+            f"{av.interpreter} — não arrancou (o caminho aponta para um Python 3.11?)",
+            f"{av.interpreter} — did not start (does the path point at a Python 3.11?)",
+        )
     else:
         have = [n for n, ok in (("ml", av.demucs and av.librosa), ("lyrics", av.whisperx)) if ok]
-        detail = f"{av.interpreter} — extras: {', '.join(have) if have else 'nenhum'}"
+        listed = ", ".join(have) if have else tr("nenhum", "none")
+        detail = f"{av.interpreter} — extras: {listed}"
         found = True
     return Requirement(
         key="ml_python",
-        name="Python 3.11 para o ML",
+        name=tr("Python 3.11 para o ML", "Python 3.11 for ML"),
         found=found,
         detail=detail,
         required=False,
-        unlocks=(
+        unlocks=tr(
             "É o interpretador onde correm o Demucs, o WhisperX e o librosa. "
             "Todos já corriam em subprocesso, por isso não precisam de estar "
-            "dentro da app — só de existir um Python que os tenha."
+            "dentro da app — só de existir um Python que os tenha.",
+            "It is the interpreter Demucs, WhisperX and librosa run on. "
+            "They all already ran as subprocesses, so they do not need to be "
+            "inside the app — only a Python that has them needs to exist.",
         ),
-        without_it=(
+        without_it=tr(
             "No .exe, separação de stems, deteção de tom e de letra e «Corrigir "
             "daqui» respondem 503. A partir do Python 3.11 (start.bat) usa-se o "
-            "próprio e isto não é preciso."
+            "próprio e isto não é preciso.",
+            "In the .exe, stem separation, tone and lyric detection and «Fix "
+            "from here» answer 503. From Python 3.11 (start.bat) its own "
+            "Python is used and this is not needed.",
         ),
-        install=(
+        install=tr(
             "Instalar o Python 3.11, correr lá  pip install "
-            'rockforge[ml,lyrics]  e indicar esse python.exe em ⚙️ Definições.'
+            'rockforge[ml,lyrics]  e indicar esse python.exe em ⚙️ Definições.',
+            "Install Python 3.11, run  pip install "
+            'rockforge[ml,lyrics]  there and point ⚙️ Settings at that python.exe.',
         ),
     )
 
@@ -275,16 +342,27 @@ def _ml(av: _MlAvailability) -> Requirement:
     ok = av.demucs and av.librosa
     return Requirement(
         key="ml",
-        name="Separação de stems e deteção de tom (Demucs, librosa)",
-        found=ok,
-        detail=("instalado" if ok else "em falta") + _where(av),
-        required=False,
-        unlocks=(
-            "Separar instrumentos, detetar o tom da guitarra e medir o "
-            "andamento a partir de um ponto (Corrigir daqui)."
+        name=tr(
+            "Separação de stems e deteção de tom (Demucs, librosa)",
+            "Stem separation and tone detection (Demucs, librosa)",
         ),
-        without_it="Esses botões respondem 503 a dizer que falta o extra; o resto funciona.",
-        install=_extras_install('pip install -e ".[ml]"', "separação e deteção de tom"),
+        found=ok,
+        detail=_installed(ok) + _where(av),
+        required=False,
+        unlocks=tr(
+            "Separar instrumentos, detetar o tom da guitarra e medir o "
+            "andamento a partir de um ponto (Corrigir daqui).",
+            "Separating instruments, detecting the guitar's tone and measuring "
+            "the tempo from a point on (Fix from here).",
+        ),
+        without_it=tr(
+            "Esses botões respondem 503 a dizer que falta o extra; o resto funciona.",
+            "Those buttons answer 503 saying the extra is missing; the rest works.",
+        ),
+        install=_extras_install(
+            'pip install -e ".[ml]"',
+            tr("separação e deteção de tom", "separation and tone detection"),
+        ),
         extras=["ml"],
     )
 
@@ -293,18 +371,29 @@ def _lyrics(av: _MlAvailability) -> Requirement:
     ok = av.whisperx
     return Requirement(
         key="lyrics",
-        name="Deteção automática de letra (WhisperX)",
+        name=tr(
+            "Deteção automática de letra (WhisperX)",
+            "Automatic lyric detection (WhisperX)",
+        ),
         found=ok,
-        detail=("instalado" if ok else "em falta") + _where(av),
+        detail=_installed(ok) + _where(av),
         required=False,
-        unlocks="Transcrever a letra da gravação e alinhá-la palavra a palavra.",
-        without_it=(
+        unlocks=tr(
+            "Transcrever a letra da gravação e alinhá-la palavra a palavra.",
+            "Transcribing the lyrics from the recording and aligning them word by word.",
+        ),
+        without_it=tr(
             "A letra continua a poder vir do ficheiro GP, de um LRC/UltraStar, "
-            "ou ser escrita à mão no editor."
+            "ou ser escrita à mão no editor.",
+            "The lyrics can still come from the GP file, from an LRC/UltraStar "
+            "file, or be typed by hand in the editor.",
         ),
         install=_extras_install(
-            'pip install -e ".[ml,lyrics]"  (precisa também do [ml])',
-            "deteção de letra",
+            tr(
+                'pip install -e ".[ml,lyrics]"  (precisa também do [ml])',
+                'pip install -e ".[ml,lyrics]"  (it needs [ml] too)',
+            ),
+            tr("deteção de letra", "lyric detection"),
         ),
         extras=["ml", "lyrics"],
     )
@@ -313,17 +402,22 @@ def _lyrics(av: _MlAvailability) -> Requirement:
 def _gpu(gpu_broken: bool, av: _MlAvailability | None = None) -> Requirement:
     installed = av.torch if av is not None else _has("torch")
     if not installed:
-        detail = "PyTorch não está instalado"
+        detail = tr("PyTorch não está instalado", "PyTorch is not installed")
     elif gpu_broken:
-        detail = (
+        detail = tr(
             "PyTorch instalado, mas a GPU está marcada como avariada depois de "
-            "um crash — tudo corre em CPU até carregares em «Reativar GPU»"
+            "um crash — tudo corre em CPU até carregares em «Reativar GPU»",
+            "PyTorch installed, but the GPU is marked as broken after a "
+            "crash — everything runs on the CPU until you press «Re-enable GPU»",
         )
     else:
-        detail = (
+        detail = tr(
             "PyTorch instalado. Se é a build CUDA ou a CPU não é verificável "
             "aqui (importar o torch no processo da API é proibido) — o log de "
-            "deteção escreve «device: cuda (GPU)» quando a GPU está a ser usada"
+            "deteção escreve «device: cuda (GPU)» quando a GPU está a ser usada",
+            "PyTorch installed. Whether it is the CUDA or the CPU build cannot "
+            "be checked here (importing torch in the API process is forbidden) — "
+            "the detection log writes «device: cuda (GPU)» when the GPU is in use",
         )
     # Installed-but-unverifiable is genuinely UNKNOWN, not "yes": claiming the
     # GPU works when we only know torch is importable would be the kind of
@@ -331,17 +425,28 @@ def _gpu(gpu_broken: bool, av: _MlAvailability | None = None) -> Requirement:
     found: bool | None = False if (not installed or gpu_broken) else None
     return Requirement(
         key="gpu",
-        name="Aceleração por GPU (PyTorch CUDA)",
+        name=tr("Aceleração por GPU (PyTorch CUDA)", "GPU acceleration (PyTorch CUDA)"),
         found=found,
         detail=detail,
         required=False,
-        unlocks="Separação e transcrição em minutos em vez de dezenas de minutos.",
-        without_it="Tudo funciona na mesma, em CPU — só demora muito mais.",
+        unlocks=tr(
+            "Separação e transcrição em minutos em vez de dezenas de minutos.",
+            "Separation and transcription in minutes instead of tens of minutes.",
+        ),
+        without_it=tr(
+            "Tudo funciona na mesma, em CPU — só demora muito mais.",
+            "Everything still works, on the CPU — it just takes much longer.",
+        ),
         install=_extras_install(
-            "pip install torch==2.4.1 torchaudio==2.4.1 --index-url "
-            "https://download.pytorch.org/whl/cu121   (o pip install torch "
-            "normal no Windows é só-CPU)",
-            "aceleração por GPU",
+            tr(
+                "pip install torch==2.4.1 torchaudio==2.4.1 --index-url "
+                "https://download.pytorch.org/whl/cu121   (o pip install torch "
+                "normal no Windows é só-CPU)",
+                "pip install torch==2.4.1 torchaudio==2.4.1 --index-url "
+                "https://download.pytorch.org/whl/cu121   (the plain pip install "
+                "torch on Windows is CPU-only)",
+            ),
+            tr("aceleração por GPU", "GPU acceleration"),
         ),
     )
 
@@ -349,18 +454,31 @@ def _gpu(gpu_broken: bool, av: _MlAvailability | None = None) -> Requirement:
 def _loader_patch() -> Requirement:
     return Requirement(
         key="cdlc_patch",
-        name="Patch de CDLC do Rocksmith (D3DX9_42.dll)",
-        found=None,
-        detail="não é detetável daqui — não sabemos onde tens o jogo instalado",
-        required=False,
-        unlocks="Sem ele o Rocksmith recusa qualquer CDLC, venha de onde vier.",
-        without_it=(
-            "A música nunca aparece na lista do jogo, por mais correto que o "
-            ".psarc esteja. É a causa nº1 de «não aparece»."
+        name=tr(
+            "Patch de CDLC do Rocksmith (D3DX9_42.dll)",
+            "Rocksmith CDLC patch (D3DX9_42.dll)",
         ),
-        install=(
+        found=None,
+        detail=tr(
+            "não é detetável daqui — não sabemos onde tens o jogo instalado",
+            "cannot be detected from here — we do not know where your game is installed",
+        ),
+        required=False,
+        unlocks=tr(
+            "Sem ele o Rocksmith recusa qualquer CDLC, venha de onde vier.",
+            "Without it Rocksmith refuses any CDLC, wherever it comes from.",
+        ),
+        without_it=tr(
+            "A música nunca aparece na lista do jogo, por mais correto que o "
+            ".psarc esteja. É a causa nº1 de «não aparece».",
+            "The song never shows up in the game's list, however correct the "
+            ".psarc is. It is the no. 1 cause of «it does not show up».",
+        ),
+        install=tr(
             "Instalar o patch na pasta do Rocksmith 2014 (CustomsForge). "
-            "Confirma também que tens o DLC cujo appid o .psarc reutiliza."
+            "Confirma também que tens o DLC cujo appid o .psarc reutiliza.",
+            "Install the patch in the Rocksmith 2014 folder (CustomsForge). "
+            "Also make sure you own the DLC whose appid the .psarc reuses.",
         ),
     )
 
@@ -379,30 +497,45 @@ def _ytdlp() -> Requirement:
     solver = _has("yt_dlp_ejs") if in_process else None
     found: bool | None
     if cmd is None:
-        found, detail = False, "em falta"
+        found, detail = False, tr("em falta", "missing")
     elif not runtimes:
-        found, detail = False, "yt-dlp encontrado, mas sem motor JavaScript (Deno)"
+        found, detail = False, tr(
+            "yt-dlp encontrado, mas sem motor JavaScript (Deno)",
+            "yt-dlp found, but no JavaScript runtime (Deno)",
+        )
     elif solver is False:
-        found, detail = False, "yt-dlp sem o solucionador do YouTube (yt-dlp-ejs)"
+        found, detail = False, tr(
+            "yt-dlp sem o solucionador do YouTube (yt-dlp-ejs)",
+            "yt-dlp without the YouTube challenge solver (yt-dlp-ejs)",
+        )
     else:
         found = True if solver else None
-        detail = f"{' '.join(cmd)} · motor JS: {', '.join(runtimes)}"
+        detail = tr(
+            f"{' '.join(cmd)} · motor JS: {', '.join(runtimes)}",
+            f"{' '.join(cmd)} · JS runtime: {', '.join(runtimes)}",
+        )
     return Requirement(
         key="ytdlp",
-        name="yt-dlp (áudio do YouTube)",
+        name=tr("yt-dlp (áudio do YouTube)", "yt-dlp (YouTube audio)"),
         found=found,
         detail=detail,
         required=False,
-        unlocks=(
+        unlocks=tr(
             "Descarregar o áudio do vídeo do YouTube em que o Songsterr marcou os "
-            "tempos por compasso, para usar como gravação."
+            "tempos por compasso, para usar como gravação.",
+            "Downloading the audio of the YouTube video Songsterr marked the "
+            "per-bar times on, to use as the recording.",
         ),
-        without_it=(
+        without_it=tr(
             "Tens de carregar tu o MP3 convertido desse vídeo. Sem o motor "
-            "JavaScript o YouTube recusa o download mesmo com o yt-dlp instalado."
+            "JavaScript o YouTube recusa o download mesmo com o yt-dlp instalado.",
+            "You have to upload the MP3 converted from that video yourself. Without "
+            "the JavaScript runtime YouTube refuses the download even with yt-dlp "
+            "installed.",
         ),
-        install=(
-            'pip install -U "yt-dlp[default]"  +  o Deno: winget install DenoLand.Deno'
+        install=tr(
+            'pip install -U "yt-dlp[default]"  +  o Deno: winget install DenoLand.Deno',
+            'pip install -U "yt-dlp[default]"  +  Deno: winget install DenoLand.Deno',
         ),
     )
 

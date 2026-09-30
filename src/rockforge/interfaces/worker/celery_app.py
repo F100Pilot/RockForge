@@ -11,6 +11,7 @@ from typing import Any, cast
 from celery import Celery
 
 from rockforge.config import settings
+from rockforge.i18n import tr
 from rockforge.infrastructure.db.models import Job, JobStatus, make_session_factory
 
 celery_app = Celery(
@@ -181,7 +182,7 @@ def _build_stem_separator() -> tuple[Any, str, str]:  # heavy imports deferred t
                 batch_size=settings.banquet_batch_size,
             ),
             device,
-            "banquet (separação fina, EM TESTES)",
+            tr("banquet (separação fina, EM TESTES)", "banquet (fine separation, IN TESTING)"),
         )
     device = _resolve_device(settings.demucs_device)
     return _make_demucs(device), device, "demucs htdemucs_6s"
@@ -538,7 +539,7 @@ def detect_lyrics(job_id: str) -> None:
                 "whisperx ready" if whisperx_ok
                 else f"whisperx NOT available: {whisperx_check.stderr[:200]}"
                 if whisperx_check is not None
-                else _mlpy.missing_message("A deteção de letra"),
+                else _mlpy.missing_message(tr("A deteção de letra", "Lyric detection")),
             )
             _commit_params()
 
@@ -547,7 +548,7 @@ def detect_lyrics(job_id: str) -> None:
                     "lyric detection requested but whisperx is not installed "
                     "(pip install 'rockforge[lyrics]')"
                     if whisperx_check is not None
-                    else _mlpy.missing_message("A deteção de letra")
+                    else _mlpy.missing_message(tr("A deteção de letra", "Lyric detection"))
                 )
                 params["lyrics_status"] = "unavailable"
                 _log_lyrics_stage(params, "whisperx is not installed — aborting")

@@ -37,6 +37,7 @@ from typing import Any
 import requests
 
 from rockforge.domain.errors import IngestionError
+from rockforge.i18n import tr
 from rockforge.infrastructure._https import network_error_message
 
 BASE_URL = "https://www.songsterr.com"
@@ -84,21 +85,28 @@ def parse_song_id(text: str) -> int:
     found = re.findall(r"-s(\d+)", text)
     if found:
         return int(found[-1])
-    raise SongsterrError(
+    raise SongsterrError(tr(
         "não percebi o link do Songsterr — cola o endereço da música "
-        "(termina em -s<número>, ex. …-tab-s23063) ou só o número"
-    )
+        "(termina em -s<número>, ex. …-tab-s23063) ou só o número",
+        "could not read the Songsterr link — paste the song's address "
+        "(it ends in -s<number>, e.g. …-tab-s23063) or just the number",
+    ))
 
 
 # What Songsterr's API says when it refuses a song, in the user's language.
 # It answers JSON with a ``code`` (seen: ERR_UNPUBLISHED on a 403 for a tab
 # only its author may view); anything else is shown with its own ``reason``.
-_REFUSAL_CODES = {
-    "ERR_UNPUBLISHED": (
-        "esta tab do Songsterr não está publicada — só o autor a pode ver. "
-        "Usa o link de uma tab publicada da mesma música"
-    ),
-}
+# A function, not a table built at import, so it reads the language of the
+# request asking.
+def _refusal_code(code: str) -> str | None:
+    if code == "ERR_UNPUBLISHED":
+        return tr(
+            "esta tab do Songsterr não está publicada — só o autor a pode ver. "
+            "Usa o link de uma tab publicada da mesma música",
+            "this Songsterr tab is not published — only its author can see it. "
+            "Use the link of a published tab of the same song",
+        )
+    return None
 
 
 def _refusal(response: Any, url: str) -> str:
@@ -107,13 +115,34 @@ def _refusal(response: Any, url: str) -> str:
     except ValueError:
         body = None
     if isinstance(body, dict):
-        known = _REFUSAL_CODES.get(str(body.get("code") or ""))
+        known = _refusal_code(str(body.get("code") or ""))
         if known:
             return known
         reason = body.get("reason") or body.get("error")
         if isinstance(reason, str) and reason.strip():
-            return f"o Songsterr recusou ({response.status_code}): {reason.strip()}"
-    return f"o Songsterr respondeu {response.status_code} a {url}"
+            return tr(
+                f"o Songsterr recusou ({response.status_code}): {reason.strip()}",
+                f"Songsterr refused ({response.status_code}): {reason.strip()}",
+            )
+    return tr(
+        f"o Songsterr respondeu {response.status_code} a {url}",
+        f"Songsterr answered {response.status_code} to {url}",
+    )
+
+
+def _revision(meta: Any) -> int:
+    if not isinstance(meta, dict) or "revisionId" not in meta:
+        raise SongsterrError(tr(
+            "o Songsterr não devolveu a revisão da música (a API mudou?)",
+            "Songsterr did not return the song's revision (did the API change?)",
+        ))
+    try:
+        return int(meta["revisionId"])
+    except (TypeError, ValueError) as exc:
+        raise SongsterrError(tr(
+            "revisão da música ilegível (a API mudou?)",
+            "unreadable song revision (did the API change?)",
+        )) from exc
 
 
 def _http_get_json(url: str) -> Any:
@@ -129,7 +158,10 @@ def _http_get_json(url: str) -> Any:
     try:
         return response.json()
     except ValueError as exc:
-        raise SongsterrError(f"resposta do Songsterr ilegível em {url}") from exc
+        raise SongsterrError(tr(
+            f"resposta do Songsterr ilegível em {url}",
+            f"unreadable answer from Songsterr at {url}",
+        )) from exc
 
 
 def _points(raw: Any) -> tuple[float, ...]:
@@ -170,15 +202,13 @@ def fetch_song(
     """Look a song up and return its videos with per-measure timestamps."""
     song_id = parse_song_id(song)
     meta = get_json(f"{BASE_URL}/api/meta/{song_id}")
-    if not isinstance(meta, dict) or "revisionId" not in meta:
-        raise SongsterrError("o Songsterr não devolveu a revisão da música (a API mudou?)")
-    try:
-        revision_id = int(meta["revisionId"])
-    except (TypeError, ValueError) as exc:
-        raise SongsterrError("revisão da música ilegível (a API mudou?)") from exc
+    revision_id = _revision(meta)
     entries = get_json(f"{BASE_URL}/api/video-points/{song_id}/{revision_id}/list")
     if not isinstance(entries, list):
-        raise SongsterrError("o Songsterr não devolveu a lista de vídeos (a API mudou?)")
+        raise SongsterrError(tr(
+            "o Songsterr não devolveu a lista de vídeos (a API mudou?)",
+            "Songsterr did not return the list of videos (did the API change?)",
+        ))
 
     videos: list[SongsterrVideo] = []
     seen: set[tuple[str, str | None]] = set()
@@ -192,9 +222,10 @@ def fetch_song(
         seen.add(key)
         videos.append(SongsterrVideo(video_id=video_id, feature=key[1], points=points))
     if not videos:
-        raise SongsterrError(
-            "esta música não tem tempos por compasso no Songsterr (nenhum vídeo sincronizado)"
-        )
+        raise SongsterrError(tr(
+            "esta música não tem tempos por compasso no Songsterr (nenhum vídeo sincronizado)",
+            "this song has no per-bar times on Songsterr (no synced video)",
+        ))
     return SongsterrSong(
         song_id=song_id,
         revision_id=revision_id,
@@ -243,22 +274,21 @@ def fetch_tab(
     """The tab of a Songsterr song — every track's part, for writing a GP file."""
     song_id = parse_song_id(song)
     meta = get_json(f"{BASE_URL}/api/meta/{song_id}")
-    if not isinstance(meta, dict) or "revisionId" not in meta:
-        raise SongsterrError("o Songsterr não devolveu a revisão da música (a API mudou?)")
-    try:
-        revision_id = int(meta["revisionId"])
-    except (TypeError, ValueError) as exc:
-        raise SongsterrError("revisão da música ilegível (a API mudou?)") from exc
+    revision_id = _revision(meta)
     tracks = meta.get("tracks")
     if not isinstance(tracks, list) or not tracks:
-        raise SongsterrError("o Songsterr não devolveu as pistas da música (a API mudou?)")
+        raise SongsterrError(tr(
+            "o Songsterr não devolveu as pistas da música (a API mudou?)",
+            "Songsterr did not return the song's tracks (did the API change?)",
+        ))
     image = meta.get("image") if isinstance(meta.get("image"), str) else None
 
     parts: list[dict[str, Any]] = []
     missing: list[str] = []
     for index, info in enumerate(tracks):
-        name = str(info.get("name") or info.get("instrument") or f"Pista {index + 1}") \
-            if isinstance(info, dict) else f"Pista {index + 1}"
+        fallback = tr(f"Pista {index + 1}", f"Track {index + 1}")
+        name = str(info.get("name") or info.get("instrument") or fallback) \
+            if isinstance(info, dict) else fallback
         part: dict[str, Any] | None = None
         for url in part_urls(song_id, revision_id, image, index):
             try:
@@ -280,10 +310,12 @@ def fetch_tab(
                     part.setdefault(key, info[key])
         parts.append(part)
     if not parts:
-        raise SongsterrError(
+        raise SongsterrError(tr(
             "não consegui descarregar nenhuma pista desta tab — o Songsterr pode ter "
-            "mudado onde as guarda"
-        )
+            "mudado onde as guarda",
+            "could not download any track of this tab — Songsterr may have "
+            "changed where it keeps them",
+        ))
     return SongsterrTab(
         song_id=song_id,
         revision_id=revision_id,

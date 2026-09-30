@@ -1139,8 +1139,12 @@ def youtube_audio(payload: YouTubeAudioIn) -> YouTubeAudioOut:
     except YtDlpMissingError as exc:
         raise HTTPException(503, str(exc)) from exc
     except YouTubeAudioError as exc:
-        hint = (" — o YouTube pediu uma sessão iniciada: escolhe um browser onde "
-                "tenhas o YouTube aberto e tenta de novo") if exc.needs_cookies else ""
+        hint = i18n.tr(
+            " — o YouTube pediu uma sessão iniciada: escolhe um browser onde "
+            "tenhas o YouTube aberto e tenta de novo",
+            " — YouTube asked for a signed-in session: choose a browser where "
+            "you have YouTube open and try again",
+        ) if exc.needs_cookies else ""
         raise HTTPException(502, f"{exc}{hint}") from exc
     return YouTubeAudioOut(audio_token=path.name, name=path.name, size_bytes=path.stat().st_size)
 
@@ -1181,7 +1185,10 @@ def songsterr_import(payload: SongsterrImportIn) -> GpInspectOut:
     out = _inspect_stored_gp(dest)
     warnings = list(report.warnings)
     if tab.missing:
-        warnings.insert(0, "não consegui descarregar: " + ", ".join(tab.missing))
+        warnings.insert(
+            0, i18n.tr("não consegui descarregar: ", "could not download: ")
+            + ", ".join(tab.missing),
+        )
     out.songsterr_song = str(tab.song_id)
     out.import_warnings = warnings
     return out
@@ -1405,7 +1412,10 @@ def create_gp_job(
         # Refused here, not at build time: an unreadable text would only
         # surface later as a build that silently has no lyrics.
         if not parse_lyrics(lyrics_lrc):
-            raise HTTPException(422, "a letra escolhida não tem tempos que se possam ler (LRC)")
+            raise HTTPException(422, i18n.tr(
+                "a letra escolhida não tem tempos que se possam ler (LRC)",
+                "the chosen lyrics have no timestamps that can be read (LRC)",
+            ))
         lrc_text = lyrics_lrc
 
     # Multipart form floats bypass the ``Finite`` models above (they arrive as
@@ -2845,10 +2855,12 @@ def get_tone_suggestions(job_id: str) -> ToneSuggestionsOut:
     detected = params.get("detected_tones") or {}
     raw = detected.get("timeline") if isinstance(detected, dict) else None
     if not raw:
-        raise HTTPException(
-            409, "no tone-over-time analysis yet — run \"Detetar tom\" (again, if it ran "
+        raise HTTPException(409, i18n.tr(
+            "ainda não há análise do tom ao longo da música — corre «Detetar tom» "
+            "(de novo, se correu antes desta versão)",
+            "no tone-over-time analysis yet — run «Detect tone» (again, if it ran "
             "before this version)",
-        )
+        ))
     windows = [
         WindowProfile(t=float(r[0]), gain_level=float(r[1]), brightness=float(r[2]),
                       low_end=float(r[3]), active=bool(r[4]))

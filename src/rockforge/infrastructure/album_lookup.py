@@ -37,6 +37,7 @@ from dataclasses import dataclass
 from typing import IO, Any
 
 from rockforge.domain.errors import IngestionError
+from rockforge.i18n import tr
 from rockforge.infrastructure._https import (
     is_certificate_error,
     network_error_message,
@@ -86,11 +87,17 @@ def _http_get_json(url: str) -> Any:
         with urllib.request.urlopen(request, timeout=TIMEOUT_S, context=ssl_context()) as response:
             return json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
-        raise AlbumLookupError(f"o serviço respondeu {exc.code}") from exc
+        raise AlbumLookupError(
+            tr(f"o serviço respondeu {exc.code}", f"the service answered {exc.code}")
+        ) from exc
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
-        raise AlbumLookupError(network_error_message(exc, "serviço")) from exc
+        raise AlbumLookupError(
+            network_error_message(exc, tr("serviço", "the service"))
+        ) from exc
     except ValueError as exc:
-        raise AlbumLookupError("resposta ilegível do serviço") from exc
+        raise AlbumLookupError(
+            tr("resposta ilegível do serviço", "unreadable answer from the service")
+        ) from exc
 
 
 def _year(date: Any) -> int | None:
@@ -137,7 +144,10 @@ def _itunes(title: str, artist: str, get_json: Callable[[str], Any]) -> list[Alb
     data = get_json(f"{ITUNES_URL}?{query}")
     results = data.get("results") if isinstance(data, dict) else None
     if not isinstance(results, list):
-        raise AlbumLookupError("o iTunes respondeu num formato desconhecido")
+        raise AlbumLookupError(tr(
+            "o iTunes respondeu num formato desconhecido",
+            "iTunes answered in an unknown format",
+        ))
     out: list[AlbumCandidate] = []
     for r in results:
         if not isinstance(r, dict) or r.get("kind") != "song":
@@ -173,7 +183,10 @@ def _musicbrainz(
     data = get_json(f"{MUSICBRAINZ_URL}?{query}")
     recordings = data.get("recordings") if isinstance(data, dict) else None
     if not isinstance(recordings, list):
-        raise AlbumLookupError("o MusicBrainz respondeu num formato desconhecido")
+        raise AlbumLookupError(tr(
+            "o MusicBrainz respondeu num formato desconhecido",
+            "MusicBrainz answered in an unknown format",
+        ))
     out: list[AlbumCandidate] = []
     for rec in recordings:
         if not isinstance(rec, dict):
@@ -227,7 +240,10 @@ def search_albums(
     get_json = get_json or _http_get_json
     title, artist = search_title(title), primary_artist(artist)
     if not title or not artist:
-        raise AlbumLookupError("preciso do título e da banda para procurar")
+        raise AlbumLookupError(tr(
+            "preciso do título e da banda para procurar",
+            "I need the title and the band to search",
+        ))
     found: list[AlbumCandidate] = []
     errors: list[str] = []
     for name, source in (("iTunes", _itunes), ("MusicBrainz", _musicbrainz)):
@@ -263,14 +279,19 @@ def cover_url_allowed(url: str) -> bool:
 class _AllowlistRedirects(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):  # type: ignore[no-untyped-def]  # noqa: ANN001, ANN201, PLR0913
         if not cover_url_allowed(newurl):
-            raise AlbumLookupError("a capa redirecionou para um endereço não permitido")
+            raise AlbumLookupError(tr(
+                "a capa redirecionou para um endereço não permitido",
+                "the cover redirected to an address that is not allowed",
+            ))
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
 def read_capped(stream: IO[bytes], limit: int = MAX_COVER_BYTES) -> bytes:
     data = stream.read(limit + 1)
     if len(data) > limit:
-        raise AlbumLookupError("a imagem da capa é demasiado grande")
+        raise AlbumLookupError(tr(
+            "a imagem da capa é demasiado grande", "the cover image is too large",
+        ))
     return data
 
 
@@ -283,11 +304,19 @@ def _open_url(url: str) -> bytes:
         with opener.open(request, timeout=TIMEOUT_S) as response:
             return read_capped(response)
     except urllib.error.HTTPError as exc:
-        raise AlbumLookupError(f"a capa não está disponível ({exc.code})") from exc
+        raise AlbumLookupError(tr(
+            f"a capa não está disponível ({exc.code})",
+            f"the cover is not available ({exc.code})",
+        )) from exc
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         if is_certificate_error(exc):
-            raise AlbumLookupError(network_error_message(exc, "serviço da capa")) from exc
-        raise AlbumLookupError(f"não consegui descarregar a capa ({exc})") from exc
+            raise AlbumLookupError(
+                network_error_message(exc, tr("serviço da capa", "the cover service"))
+            ) from exc
+        raise AlbumLookupError(tr(
+            f"não consegui descarregar a capa ({exc})",
+            f"could not download the cover ({exc})",
+        )) from exc
 
 
 def image_suffix(data: bytes) -> str | None:
@@ -304,11 +333,17 @@ def fetch_cover(
 ) -> tuple[bytes, str]:
     """Download a chosen cover: its bytes and ``.jpg``/``.png`` suffix."""
     if not cover_url_allowed(url):
-        raise AlbumLookupError("esse endereço de capa não é de um serviço conhecido")
+        raise AlbumLookupError(tr(
+            "esse endereço de capa não é de um serviço conhecido",
+            "that cover address is not from a known service",
+        ))
     # Resolved at call time (not as a default argument) so the one network
     # function can be replaced as a whole.
     data = (open_url or _open_url)(url)
     suffix = image_suffix(data)
     if suffix is None:
-        raise AlbumLookupError("o endereço não devolveu uma imagem JPEG ou PNG")
+        raise AlbumLookupError(tr(
+            "o endereço não devolveu uma imagem JPEG ou PNG",
+            "the address did not return a JPEG or PNG image",
+        ))
     return data, suffix

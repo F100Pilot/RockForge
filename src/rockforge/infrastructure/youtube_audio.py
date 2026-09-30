@@ -50,6 +50,7 @@ from pathlib import Path
 from typing import Any
 
 from rockforge.domain.errors import IngestionError
+from rockforge.i18n import tr
 
 VIDEO_ID = re.compile(r"^[A-Za-z0-9_-]{11}$")
 COOKIE_BROWSERS = ("chrome", "firefox", "edge", "brave", "safari", "opera", "vivaldi", "chromium")
@@ -118,7 +119,9 @@ def build_args(
 ) -> list[str]:
     """The full yt-dlp command line for one video's audio."""
     if not VIDEO_ID.match(video_id):
-        raise YouTubeAudioError("identificador de vídeo do YouTube inválido")
+        raise YouTubeAudioError(tr(
+            "identificador de vídeo do YouTube inválido", "invalid YouTube video id",
+        ))
     args = [
         *base,
         "--no-playlist", "--no-progress",
@@ -130,7 +133,10 @@ def build_args(
     ]
     if cookies_browser:
         if cookies_browser not in COOKIE_BROWSERS:
-            raise YouTubeAudioError(f"browser desconhecido: {cookies_browser}")
+            raise YouTubeAudioError(tr(
+                f"browser desconhecido: {cookies_browser}",
+                f"unknown browser: {cookies_browser}",
+            ))
         args += [
             "--cookies-from-browser", cookies_browser,
             # The reference tool's upstream workaround for authenticated
@@ -148,17 +154,31 @@ _NO_JS_HINTS = ("no supported javascript runtime", "challenge solving failed",
 # yt-dlp cannot read a Chromium browser's cookies on Windows (yt-dlp#10927).
 _COOKIE_READ_HINTS = ("failed to decrypt with dpapi", "could not copy chrome cookie database")
 
-NO_JS_MESSAGE = (
-    "o yt-dlp não tem um motor JavaScript para resolver o desafio do YouTube, e "
-    "sem ele o YouTube recusa o áudio. Instala o Deno (winget install "
-    "DenoLand.Deno) e o solucionador (pip install -U \"yt-dlp[default]\"), "
-    "reinicia o RockForge e tenta de novo"
-)
-COOKIE_READ_MESSAGE = (
-    "o yt-dlp não consegue ler a sessão deste browser no Windows (o Chrome, o "
-    "Edge e os outros baseados no Chromium encriptam os cookies de uma forma "
-    "que ele não abre). Escolhe o Firefox, ou tenta sem sessão"
-)
+
+# Functions, not constants built at import, so they read the language of the
+# request asking.
+def no_js_message() -> str:
+    return tr(
+        "o yt-dlp não tem um motor JavaScript para resolver o desafio do YouTube, e "
+        "sem ele o YouTube recusa o áudio. Instala o Deno (winget install "
+        "DenoLand.Deno) e o solucionador (pip install -U \"yt-dlp[default]\"), "
+        "reinicia o RockForge e tenta de novo",
+        "yt-dlp has no JavaScript runtime to solve YouTube's challenge, and "
+        "without it YouTube refuses the audio. Install Deno (winget install "
+        "DenoLand.Deno) and the solver (pip install -U \"yt-dlp[default]\"), "
+        "restart RockForge and try again",
+    )
+
+
+def cookie_read_message() -> str:
+    return tr(
+        "o yt-dlp não consegue ler a sessão deste browser no Windows (o Chrome, o "
+        "Edge e os outros baseados no Chromium encriptam os cookies de uma forma "
+        "que ele não abre). Escolhe o Firefox, ou tenta sem sessão",
+        "yt-dlp cannot read this browser's session on Windows (Chrome, Edge and "
+        "the other Chromium-based browsers encrypt their cookies in a way it "
+        "cannot open). Choose Firefox, or try without a session",
+    )
 
 
 def classify_failure(stderr: str, returncode: int) -> YouTubeAudioError:
@@ -167,12 +187,15 @@ def classify_failure(stderr: str, returncode: int) -> YouTubeAudioError:
     # The runtime first: without it YouTube refuses in a way that also reads
     # as "log in", and a browser session would not help.
     if any(h in text for h in _NO_JS_HINTS):
-        return YouTubeAudioError(NO_JS_MESSAGE)
+        return YouTubeAudioError(no_js_message())
     if any(h in text for h in _COOKIE_READ_HINTS):
-        return YouTubeAudioError(COOKIE_READ_MESSAGE)
+        return YouTubeAudioError(cookie_read_message())
     errors = [ln.strip() for ln in stderr.splitlines() if ln.strip().startswith("ERROR")]
     tail = list(dict.fromkeys(errors))[-2:] or stderr.strip().splitlines()[-3:]
-    message = " / ".join(tail) or f"o yt-dlp terminou com o código {returncode}"
+    message = " / ".join(tail) or tr(
+        f"o yt-dlp terminou com o código {returncode}",
+        f"yt-dlp exited with code {returncode}",
+    )
     return YouTubeAudioError(
         message, needs_cookies=any(h in message.lower() for h in _LOGIN_HINTS)
     )
@@ -189,10 +212,12 @@ def download_audio(
     """Fetch a video's audio into ``dest_dir``; returns the stored file."""
     base = command if command is not None else ytdlp_command()
     if base is None:
-        raise YtDlpMissingError(
+        raise YtDlpMissingError(tr(
             "o yt-dlp não está instalado — instala com pip install -U "
-            "\"yt-dlp[default]\" (ou pip install -e \".[youtube]\") e tenta de novo"
-        )
+            "\"yt-dlp[default]\" (ou pip install -e \".[youtube]\") e tenta de novo",
+            "yt-dlp is not installed — install it with pip install -U "
+            "\"yt-dlp[default]\" (or pip install -e \".[youtube]\") and try again",
+        ))
     dest_dir.mkdir(parents=True, exist_ok=True)
     stem = f"{FILE_PREFIX}{uuid.uuid4()}"
     args = build_args(base, video_id, dest_dir / f"{stem}.%(ext)s", cookies_browser)
@@ -200,9 +225,13 @@ def download_audio(
         proc = run(args, capture_output=True, text=True, stdin=subprocess.DEVNULL,
                    timeout=DOWNLOAD_TIMEOUT_S)
     except subprocess.TimeoutExpired as exc:
-        raise YouTubeAudioError("o download do áudio demorou demasiado") from exc
+        raise YouTubeAudioError(tr(
+            "o download do áudio demorou demasiado", "the audio download took too long",
+        )) from exc
     except OSError as exc:
-        raise YtDlpMissingError(f"não consegui executar o yt-dlp ({exc})") from exc
+        raise YtDlpMissingError(tr(
+            f"não consegui executar o yt-dlp ({exc})", f"could not run yt-dlp ({exc})",
+        )) from exc
     if proc.returncode != 0:
         raise classify_failure(proc.stderr or "", proc.returncode)
     # The file it reports, but only if it really is ours, in dest_dir.
@@ -211,4 +240,7 @@ def download_audio(
     for c in candidates:
         if c.is_file() and c.parent.resolve() == dest_dir.resolve() and c.name.startswith(stem):
             return c
-    raise YouTubeAudioError("o yt-dlp terminou mas não encontrei o ficheiro de áudio")
+    raise YouTubeAudioError(tr(
+        "o yt-dlp terminou mas não encontrei o ficheiro de áudio",
+        "yt-dlp finished but the audio file could not be found",
+    ))

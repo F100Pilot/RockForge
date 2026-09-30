@@ -51,6 +51,7 @@ from pathlib import Path
 from typing import Any
 
 from rockforge.domain.errors import IngestionError
+from rockforge.i18n import tr
 
 QUARTER_TICKS = 960  # PyGuitarPro's Duration.quarterTime; bar 1 starts here
 _DURATIONS = {1, 2, 4, 8, 16, 32, 64}
@@ -102,20 +103,24 @@ def _lyrics(
         if index is None:
             index = 0
             name = str(part.get("name") or part.get("instrument") or "?")
-            report.warnings.append(
+            report.warnings.append(tr(
                 f"a letra está numa pista que não foi incluída ({name}): as sílabas "
-                "seguem as notas da primeira pista"
-            )
+                "seguem as notas da primeira pista",
+                f"the lyrics are on a track that was not included ({name}): the "
+                "syllables follow the notes of the first track",
+            ))
         lyrics.trackChoice = index + 1  # GP5 counts tracks from 1; 0 = none
         for slot, line in zip(lyrics.lines, lines, strict=False):
             slot.startingMeasure = max(0, _int(line.get("offset"), 0)) + 1
             slot.lyrics = _gp5_text(str(line["text"]))
         report.lyric_lines = min(len(lines), guitarpro.Lyrics.maxLineCount)
         if len(lines) > guitarpro.Lyrics.maxLineCount:
-            report.warnings.append(
-                f"{len(lines) - guitarpro.Lyrics.maxLineCount} linha(s) de letra a mais "
-                f"não incluídas (o GP5 guarda {guitarpro.Lyrics.maxLineCount})"
-            )
+            cap = guitarpro.Lyrics.maxLineCount
+            extra = len(lines) - cap
+            report.warnings.append(tr(
+                f"{extra} linha(s) de letra a mais não incluídas (o GP5 guarda {cap})",
+                f"{extra} extra lyric line(s) not included (GP5 holds {cap})",
+            ))
         return lyrics
     return None
 
@@ -242,15 +247,19 @@ def write_songsterr_gp5(
     report = SongsterrGpReport()
     kept = []
     for i, part in enumerate(parts):
-        name = str(part.get("name") or part.get("instrument") or f"Pista {i + 1}")
+        name = str(part.get("name") or part.get("instrument")
+                   or tr(f"Pista {i + 1}", f"Track {i + 1}"))
         if is_percussion(part):
-            report.skipped_tracks.append(f"{name} (percussão)")
+            report.skipped_tracks.append(tr(f"{name} (percussão)", f"{name} (percussion)"))
         elif not isinstance(part.get("measures"), list) or not part["measures"]:
-            report.skipped_tracks.append(f"{name} (sem compassos)")
+            report.skipped_tracks.append(tr(f"{name} (sem compassos)", f"{name} (no bars)"))
         else:
             kept.append((name, part))
     if not kept:
-        raise IngestionError("esta tab do Songsterr não tem nenhuma pista com cordas")
+        raise IngestionError(tr(
+            "esta tab do Songsterr não tem nenhuma pista com cordas",
+            "this Songsterr tab has no stringed track",
+        ))
 
     song = guitarpro.Song()
     song.title, song.artist = _gp5_text(title), _gp5_text(artist)
@@ -324,14 +333,22 @@ def write_songsterr_gp5(
         song.lyrics = lyrics
 
     if report.skipped_tracks:
-        report.warnings.append("pistas não incluídas: " + ", ".join(report.skipped_tracks))
-    if report.grace_dropped:
-        report.warnings.append(f"{report.grace_dropped} nota(s) de ornamento (grace) não incluídas")
-    if report.tempo_moved:
         report.warnings.append(
-            f"{report.tempo_moved} mudança(s) de andamento a meio do compasso "
-            "passadas para o início dele"
+            tr("pistas não incluídas: ", "tracks not included: ")
+            + ", ".join(report.skipped_tracks)
         )
+    if report.grace_dropped:
+        report.warnings.append(tr(
+            f"{report.grace_dropped} nota(s) de ornamento (grace) não incluídas",
+            f"{report.grace_dropped} ornament (grace) note(s) not included",
+        ))
+    if report.tempo_moved:
+        report.warnings.append(tr(
+            f"{report.tempo_moved} mudança(s) de andamento a meio do compasso "
+            "passadas para o início dele",
+            f"{report.tempo_moved} mid-bar tempo change(s) moved to the start "
+            "of their bar",
+        ))
     dst.parent.mkdir(parents=True, exist_ok=True)
     with open(dst, "wb") as fh:
         guitarpro.write(song, fh, version=(5, 1, 0))

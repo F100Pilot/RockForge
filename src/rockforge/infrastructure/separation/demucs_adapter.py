@@ -15,6 +15,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from rockforge.domain.errors import SeparationError
+from rockforge.i18n import tr
 from rockforge.infrastructure import ml_python
 from rockforge.infrastructure._subprocess import HARDENED_RUN_KWARGS
 
@@ -65,7 +66,9 @@ class DemucsSeparator:
         # sys.executable everywhere else. See infrastructure/ml_python.py.
         python = ml_python.resolve()
         if not python:
-            raise SeparationError(ml_python.missing_message("A separação de áudio"))
+            raise SeparationError(ml_python.missing_message(
+                tr("A separação de áudio", "Audio separation")
+            ))
 
         def build(dev: str) -> list[str]:
             return [

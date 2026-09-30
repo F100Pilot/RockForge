@@ -30,6 +30,7 @@ import subprocess
 from pathlib import Path
 
 from rockforge.domain.errors import SeparationError
+from rockforge.i18n import tr
 from rockforge.infrastructure import ml_python
 from rockforge.infrastructure._subprocess import HARDENED_RUN_KWARGS, map_external_errors
 
@@ -78,7 +79,9 @@ class BanquetSeparator:
         """
         python = ml_python.resolve()
         if not python:
-            raise SeparationError(ml_python.missing_message("A separação Banquet"))
+            raise SeparationError(ml_python.missing_message(
+                tr("A separação Banquet", "Banquet separation")
+            ))
         return python
 
     def _run_query(self, audio: Path, query: Path, target: Path) -> None:
