@@ -2865,7 +2865,13 @@ RockForge's own editor and viewer. The DD ceilings still come from our own
 ramp, not DLC Builder's DD generator, so their VALUES differ. Guarded by
 `test_the_phrases_follow_dlc_builders_generator` and the late-entering test
 (both fail on the old code). This supersedes the COUNT/END bracketing and the
-~8 s subdivision described above. Not played in game from here.
+~8 s subdivision described above. **CONFIRMED IN GAME (2026-09-30)** by the
+user on September, every chart, playing and raising the difficulty in Riff
+Repeater: "Está perfeito". Which of the four September fixes (sections in
+order, a note's anchor from its own level, levels for every phrase with notes +
+-1 note bytes + strict linking, and these generated phrases) the game actually
+needed is NOT isolated — they shipped one after another and only the last
+round was tested clean, so keep all four; do not "simplify" any away.
 
 Anchors never span a phrase-iteration boundary: the game re-anchors at each
 phrase start, so a phrase whose opening notes are covered only by the previous

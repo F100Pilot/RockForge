@@ -8,18 +8,14 @@ data e a música). O detalhe técnico de cada ponto está em `TESTING.md` §7.
 Em cada teste: gerar o PSARC nativo (`psarc_mode=native`). Se algo correr mal,
 gerar também pelo DLC Builder, para saber se o problema é do PSARC nativo.
 
-## ⚠️ Problema aberto: crash no "September"
+## ✅ Resolvido: crash no "September" (2026-09-30)
 
-| | |
-|---|---|
-| **Desde** | 2026-09-30 |
-| **Música** | Daughtry "September" (`.gp` do PDF-to-GP5, com áudio e início a −2,15 s) |
-| **Sintoma** | O jogo fecha depois de começar a tocar, **em todas as pistas** (Lead e Rhythm/Acoustic). Ainda não se sabe em que compasso |
-| **Já verificado aqui** (chart gerado com o mesmo `.gp`, PSARC nativo) | Tempos das batidas, notas e letra por ordem e sem negativos; curvas dos bends dentro das notas e por ordem; nenhuma nota sobreposta na mesma corda; `phrase_id` válidos; sem trocas de tom no SNG. A pista Rhythm (Acoustic) não tem bends, portanto os bends não explicam um crash em todas as pistas |
-| **Alterações do dia a suspeitar** | 2cf1749 (outra sessão): áudio com ganho linear, tom por defeito do DLC Builder em cada pista, secção de trocas de tom no SNG. a566e91: let ring nos `.gp` (344 notas na Acoustic). Letra da pista "Letra (voz)", partilhada por todas as pistas |
-| **Causa provável encontrada** | 4ec2d04 (outra sessão): numa pista que só entra a meio, a 1.ª secção passava para a 1.ª nota e ficava depois de outra ("Intro" depois de "Verse 1"); o jogo bloqueava. No "September" afeta Rhythm, Lead alternativo e Rhythm alternativo — ver o ponto 12 abaixo. **Por confirmar** se resolve também a pista Lead |
-| **Depois de 4ec2d04** | Já toca, mas fecha no Riff Repeater ao subir a dificuldade (Rhythm alternativo: dificuldade a 0 → subir → fecha, 0xc0000005; Lead: 5.º retângulo). Causa encontrada: as notas levavam a posição da mão da pista inteira e não a do seu nível (Rhythm alternativo: traste 1 nas notas, traste 2 no nível a partir do 17). Corrigido em 2d95db9 (ponto 13), mas **continuou a fechar**. Comparado byte a byte com o build do DLC Builder do mesmo September: lá, todas as fases com notas têm pelo menos 3 níveis (a de uma nota tem 6); cá, uma fase de uma nota tinha 0 — é exatamente o 5.º retângulo da Lead e a anacrusa do Rhythm alternativo. Corrigido, com mais duas diferenças (ponto 14), e **continuou a fechar**. A seguir, as fases passaram a ser geradas exatamente como o DLC Builder as gera ao construir o pacote (ponto 15): nas quatro pistas ficam iguais às do build dele. **Por confirmar no jogo** |
-| **Se continuar a fechar, para isolar** | 1) Em que compasso/segundo fecha (é sempre no mesmo?). 2) O mesmo projeto pelo DLC Builder (bundle): se não fechar, o problema está no SNG/manifest do PSARC nativo. 3) Outra música que funcionava, reconstruída com o RockForge atual: se também fechar, é uma alteração de hoje e não o "September". 4) Com a dificuldade dinâmica desligada |
+O jogo fechava no Daughtry "September" (primeiro ao tocar, depois no Riff
+Repeater ao subir a dificuldade). Foram quatro correções seguidas, a última
+decisiva: as fases do PSARC nativo passaram a ser geradas **exatamente como o
+DLC Builder as gera** ao construir o pacote (ponto 15 abaixo, em "Confirmado").
+**Testado no jogo pelo utilizador e confirmado: perfeito.** Qual das quatro
+correções (pontos 12–15) o jogo exigia não está isolado — ficam todas.
 
 ## Por testar — alterações recentes
 
@@ -32,10 +28,6 @@ gerar também pelo DLC Builder, para saber se o problema é do PSARC nativo.
 | 5 | **Início antes do áudio** (acerto negativo), também na página de sincronização | 31948f4, 8b61bf0 | Um GP sincronizado cujo compasso 1 começa antes da gravação | As notas batem com a música desde o início | Avisar |
 | 6 | **Grace notes, rasgueado, harmónico pinch (GP5), vibrato ligado** | 8b8407f | Um GP com estas técnicas | A grace note aparece como nota curta antes da principal (com hammer quando o tem); o pinch tem o símbolo de pinch | Avisar, com a técnica |
 | 7 | **Let ring nos `.gp`** | a566e91 | Um `.gp` com let ring ("September.gp") | A nota continua a soar por cima das seguintes | Avisar |
-| 12 | **Pista que só entra a meio da música** (secções fora de ordem → bloqueava) | (este) | Daughtry "September" com Rhythm, Lead alternativo e Rhythm alternativo | Todas as pistas tocam até ao fim, sem bloquear; no Riff Repeater as secções aparecem pela ordem da música | Avisar, com a pista e o tempo onde bloqueia |
-| 15 | **Fases geradas como o DLC Builder** (COUNT até à 1.ª nota, uma fase a cada 8 compassos fora das notas sustentadas, NOGUITAR nas pausas) | (este) | Daughtry "September", todas as pistas: tocar do início ao fim e, no Riff Repeater, subir a dificuldade de 0 ao máximo em todas as fases | Sem crash. No Riff Repeater as fases têm as posições das do DLC Builder e as secções chamam-se "Riff"/"No Guitar" (os nomes do Guitar Pro já não vão para o PSARC nativo) | Avisar, com a pista, a fase e o nível |
-| 14 | **Fases com uma só nota têm níveis**, fases ligadas iguais, bytes das notas como no DLC Builder | (este) | Daughtry "September", todas as pistas: no Riff Repeater, dificuldade a 0 e subir até ao máximo em todas as secções | Sobe sem crash; a nota solitária (Lead aos 43,6 s, anacrusa do Rhythm alternativo antes do refrão) aparece em todos os níveis | Avisar, com a pista, a secção e o nível |
-| 13 | **Aumentar a dificuldade no Riff Repeater** (a posição da mão das notas não era a do nível → crash) | (este) | Daughtry "September", Rhythm alternativo e Lead: no Riff Repeater, escolher as secções do meio com a dificuldade a 0 e subi-la até ao máximo | A dificuldade sobe sem crash e as notas aparecem na posição certa do braço | Avisar, com a pista, a secção e o nível |
 | 9 | **Som da gravação sem compressão** (sem `loudnorm`, só um ganho fixo) | (este) | Reconstruir uma música que soava com ruído / pouco limpa | Soa como a gravação original: sem "bombear", sem ataques esmagados, sem estalidos nas partes fortes | Avisar; experimentar Volume alvo -16 na ⚙️ |
 | 10 | **Trocas de tom a meio da música** no PSARC nativo | (este) | Marcar na partitura uma troca para um 2.º tom e reconstruir | O tom muda nesse ponto (antes ficava sempre o tom base) | Avisar, com o tempo da troca |
 | 11 | **Pista sem tom próprio** | (este) | Uma música sem nenhum tom criado | Lead/Combo com o tom por defeito do DLC Builder (Plexi), Rhythm com o Orange AD50 — não um som estranho/em falta | Avisar |
@@ -86,4 +78,7 @@ nome do caso como marcador:
 | Tocar notas e acordes sem crash (secção das oitavas) | Beartooth "Free" | Com a dificuldade dinâmica ligada e desligada |
 | Slide para fora (cauda sem altura) e slide para dentro | — | `TESTING.md` §7f-bis |
 | Letra a passar no ecrã, cartão com o nome da música e luzes do palco | Várias músicas | |
-| Áudio dentro do `.gp` do PDF-to-GP5 (`backing-track.mp3`) detetado e usado, com o início antes da gravação (−2,15 s) a bater na página de sincronização | Daughtry "September" (2026-09-30) | Precisou de 8b61bf0. Ainda não confirmado no jogo: ver o problema aberto acima |
+| Áudio dentro do `.gp` do PDF-to-GP5 (`backing-track.mp3`) detetado e usado, com o início antes da gravação (−2,15 s) a bater na página de sincronização | Daughtry "September" (2026-09-30) | Precisou de 8b61bf0. Também no jogo, depois das correções abaixo |
+| Pista que só entra a meio da música (secções por ordem, sem bloquear) | Daughtry "September" (2026-09-30) | Rhythm, Lead alternativo e Rhythm alternativo — 4ec2d04 |
+| Subir a dificuldade no Riff Repeater sem crash (posição da mão do nível, fases de uma nota com níveis, bytes das notas como no DLC Builder) | Daughtry "September" (2026-09-30) | 2d95db9, d0e6c11 |
+| Fases geradas como o DLC Builder (COUNT até à 1.ª nota, uma fase a cada 8 compassos, NOGUITAR nas pausas, secções "Riff"/"No Guitar") | Daughtry "September" (2026-09-30) | 75f3571 — "Está perfeito". Todas as pistas, a tocar e no Riff Repeater |
