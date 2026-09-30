@@ -22,6 +22,7 @@ import logging
 import math
 import mimetypes
 import os
+import re
 import secrets
 import shutil
 import signal
@@ -3003,8 +3004,8 @@ def set_ui_language(body: UiLanguageIn) -> dict[str, str]:
     keeps its own copy and sends it with every request."""
     from rockforge import runtime_settings
 
-    if body.lang not in i18n.LANGUAGES:
-        raise HTTPException(422, "lang must be 'pt' or 'en'")
+    if not i18n.valid(body.lang):
+        raise HTTPException(422, "lang must be a language code such as 'pt' or 'en'")
     runtime_settings.save({**runtime_settings.load(), "ui_language": body.lang})
     return {"lang": body.lang}
 
@@ -3749,13 +3750,16 @@ def index() -> str:
                             f'src="/{name}"', f'src="/{name}?v={int(js.stat().st_mtime)}"'
                         )
                         break
+            dicts = _i18n_dictionaries()
+            stamp = max((int(d.stat().st_mtime) for d in dicts), default=0)
+            html = html.replace('src="/i18n-dicts.js"', f'src="/i18n-dicts.js?v={stamp}"')
             return html
     return "<h1>RockForge</h1><p>UI not bundled; see /docs for the API.</p>"
 
 
 # The web UI's own scripts, served by name (never a client path): app.js (the UI)
 # and highway3d.js (the 3D note highway, which loads three.js on first use).
-WEB_SCRIPTS = ("i18n.js", "i18n-en.js", "app.js", "highway3d.js")
+WEB_SCRIPTS = ("i18n.js", "app.js", "highway3d.js")
 # three.js, vendored so the app works offline: the module and the core it imports.
 THREE_FILES = ("three.module.js", "three.core.js")
 
@@ -3786,10 +3790,25 @@ def i18n_js() -> FileResponse:
     return _serve_web_js("i18n.js")
 
 
-@app.get("/i18n-en.js", include_in_schema=False)
-def i18n_en_js() -> FileResponse:
-    """The English text of the UI, keyed by its Portuguese original."""
-    return _serve_web_js("i18n-en.js")
+def _i18n_dictionaries() -> list[Path]:
+    """Every language the UI has besides Portuguese: one ``web/i18n-<code>.js``
+    each, from the first web dir that has any (the same resolution as the
+    other bundled files). Adding a language is adding that file."""
+    for d in _web_dirs():
+        found = sorted(p for p in d.glob("i18n-*.js") if re.fullmatch(r"i18n-[a-z]{2,3}\.js", p.name))
+        if found:
+            return found
+    return []
+
+
+@app.get("/i18n-dicts.js", include_in_schema=False)
+def i18n_dicts_js() -> Response:
+    """All the UI's dictionaries in one script (each registers itself in
+    ``I18N_DICTS``), so a new ``web/i18n-<code>.js`` needs no markup change."""
+    body = "\n".join(p.read_text(encoding="utf-8") for p in _i18n_dictionaries())
+    return Response(
+        body, media_type="text/javascript", headers={"Cache-Control": "no-cache"}
+    )
 
 
 @app.get("/highway3d.js", include_in_schema=False)

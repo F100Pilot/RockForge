@@ -78,15 +78,14 @@ def _eff(key: str, env_default: Any) -> Any:
     return val if val not in (None, "") else env_default
 
 
-UI_LANGUAGES = ("pt", "en")
-
-
 def ui_language() -> str:
     """The language the user picked for the app ("pt" by default). The browser
     sends its own with every request (``X-RockForge-Lang``); this is what the
     worker and the desktop window use, where there is no request to read."""
+    from rockforge import i18n
+
     val = load().get("ui_language")
-    return val if val in UI_LANGUAGES else "pt"
+    return val if i18n.valid(val) else i18n.DEFAULT
 
 
 def stem_separator() -> str:
