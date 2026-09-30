@@ -53,15 +53,15 @@ function setWizardStep(n) {
 function validateWizardStep() {
   if (wizardStep === 1) {
     if (!document.querySelector('#gpInspectForm input[name=file]').files.length && !songsterrImported) {
-      toast('Escolhe um ficheiro Guitar Pro ou importa a tab do Songsterr.'); return false;
+      toast(T('Escolhe um ficheiro Guitar Pro ou importa a tab do Songsterr.')); return false;
     }
   } else if (wizardStep === 2) {
     const anyTrack = ['lead_track', 'rhythm_track', 'combo_track', 'alt_lead_track', 'alt_rhythm_track']
       .some(n => document.querySelector(`#gpJobForm select[name=${n}]`).value !== '');
-    if (!anyTrack) { toast('Atribui pelo menos uma pista.'); return false; }
+    if (!anyTrack) { toast(T('Atribui pelo menos uma pista.')); return false; }
   } else if (wizardStep === 3) {
     if (!usingEmbeddedAudio() && !ytAudio && !document.querySelector('#gpJobForm input[name=audio]').files.length) {
-      toast('Escolhe a gravação (áudio) da música ou descarrega a do vídeo.'); return false;
+      toast(T('Escolhe a gravação (áudio) da música ou descarrega a do vídeo.')); return false;
     }
   }
   return true;
@@ -94,7 +94,7 @@ document.getElementById('useEmbeddedAudio').addEventListener('change', applyEmbe
 let songsterrSong = null;
 let songsterrPoints = null;
 const SONGSTERR_FEATURES = {
-  alternative: 'vídeo alternativo', backing: 'backing track', solo: 'solo', playthrough: 'playthrough',
+  alternative: T('vídeo alternativo'), backing: 'backing track', solo: 'solo', playthrough: 'playthrough',
 };
 function resetSongsterr() {
   songsterrSong = null; songsterrPoints = null;
@@ -153,16 +153,16 @@ function applySongsterrVideo() {
     document.getElementById('ytAudioInfo').textContent = '';
     applyEmbeddedAudioChoice();
   }
-  if (!v) { info.textContent = 'Tempos do Songsterr não usados.'; return; }
+  if (!v) { info.textContent = T('Tempos do Songsterr não usados.'); return; }
   const start = v.points[0];
   // Bar 1's instant in THAT video — right as the start when the MP3 is the
   // whole video; a trimmed copy starts earlier, and the user adjusts.
   document.querySelector('#gpJobForm input[name=offset_s]').value = start.toFixed(3);
-  info.innerHTML = `${icon('check')} ${v.points.length} compassos com tempo marcado. Os tempos são do vídeo ` +
-    `<a href="${esc(v.url)}" target="_blank" rel="noopener">${esc(v.url)}</a> — a gravação tem de ser o áudio desse vídeo ` +
-    '(descarrega-o em "Não tens o áudio?", acima, ou carrega um MP3 convertido dele; o áudio do próprio Songsterr é outro e não bate). ' +
-    `O compasso 1 começa em <b>${start.toFixed(3)} s</b> desse vídeo; já pus esse valor em "Início da música". ` +
-    'Se o teu MP3 foi cortado no início, ajusta-o.';
+  info.innerHTML = `${icon('check')} ` + T('{n} compassos com tempo marcado.', { n: v.points.length }) + ' ' +
+    T('Os tempos são do vídeo {link} — a gravação tem de ser o áudio desse vídeo (descarrega-o em "Não tens o áudio?", acima, ou carrega um MP3 convertido dele; o áudio do próprio Songsterr é outro e não bate).',
+      { link: `<a href="${esc(v.url)}" target="_blank" rel="noopener">${esc(v.url)}</a>` }) + ' ' +
+    T('O compasso 1 começa em <b>{s} s</b> desse vídeo; já pus esse valor em "Início da música".', { s: start.toFixed(3) }) + ' ' +
+    T('Se o teu MP3 foi cortado no início, ajusta-o.');
 }
 document.getElementById('songsterrVideo').addEventListener('change', applySongsterrVideo);
 document.getElementById('songsterrFetch').addEventListener('click', () => fetchSongsterrVideos());
@@ -170,19 +170,19 @@ async function fetchSongsterrVideos() {
   const link = document.getElementById('songsterrLink').value.trim();
   const info = document.getElementById('songsterrInfo');
   const sel = document.getElementById('songsterrVideo');
-  if (!link) { toast('Cola o link da música no Songsterr.'); return; }
-  info.textContent = 'a procurar no Songsterr…';
+  if (!link) { toast(T('Cola o link da música no Songsterr.')); return; }
+  info.textContent = T('a procurar no Songsterr…');
   try {
     songsterrSong = await getJSON(`/songsterr?song=${encodeURIComponent(link)}`);
   } catch (err) {
     songsterrSong = null; songsterrPoints = null; sel.hidden = true;
-    info.textContent = `Erro: ${err.message || err}`;
+    info.textContent = T('Erro: {m}', { m: err.message || err });
     return;
   }
-  sel.innerHTML = '<option value="">— não usar os tempos do Songsterr —</option>' +
+  sel.innerHTML = `<option value="">${T('— não usar os tempos do Songsterr —')}</option>` +
     songsterrSong.videos.map((v, i) =>
-      `<option value="${i}">${esc(v.feature ? (SONGSTERR_FEATURES[v.feature] || v.feature) : 'Vídeo principal')}` +
-      ` · ${v.points.length} compassos · ${esc(v.url)}</option>`).join('');
+      `<option value="${i}">${esc(v.feature ? (SONGSTERR_FEATURES[v.feature] || v.feature) : T('Vídeo principal'))}` +
+      ` · ${T('{n} compassos', { n: v.points.length })} · ${esc(v.url)}</option>`).join('');
   sel.value = '0';
   sel.hidden = false;
   applySongsterrVideo();
@@ -193,14 +193,14 @@ async function downloadYtAudio() {
   const info = document.getElementById('ytAudioInfo');
   const videoId = youtubeVideoId(document.getElementById('ytLink').value);
   if (!videoId) {
-    info.textContent = 'Cola o link de um vídeo do YouTube (youtube.com/watch?v=… ou youtu.be/…).';
+    info.textContent = T('Cola o link de um vídeo do YouTube (youtube.com/watch?v=… ou youtu.be/…).');
     return;
   }
   const url = `https://youtu.be/${videoId}`;
   const btn = document.getElementById('ytAudioBtn');
   const browser = document.getElementById('ytCookies').value;
   btn.disabled = true;
-  info.textContent = `A descarregar o áudio de ${url}… (pode demorar um minuto)`;
+  info.textContent = T('A descarregar o áudio de {url}… (pode demorar um minuto)', { url });
   try {
     const b = await getJSON('/youtube/audio', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -208,16 +208,17 @@ async function downloadYtAudio() {
     });
     ytAudio = { token: b.audio_token, videoId, name: b.name, size: b.size_bytes };
     const sv = songsterrChosenVideo();
-    info.innerHTML = `${icon('check')} Áudio do vídeo descarregado (${(b.size_bytes / 1048576).toFixed(1)} MB) — ` +
-      'vai ser usado como gravação; não precisas de carregar nenhum ficheiro.' +
+    info.innerHTML = `${icon('check')} ` +
+      T('Áudio do vídeo descarregado ({mb} MB) — vai ser usado como gravação; não precisas de carregar nenhum ficheiro.',
+        { mb: (b.size_bytes / 1048576).toFixed(1) }) +
       (sv && sv.video_id !== videoId
-        ? ' <b>Atenção:</b> não é o vídeo dos tempos do Songsterr escolhidos, e esses tempos não vão bater com ele.'
+        ? ' ' + T('<b>Atenção:</b> não é o vídeo dos tempos do Songsterr escolhidos, e esses tempos não vão bater com ele.')
         : '');
   } catch (err) {
     ytAudio = null;
     // The server's message already says what to do (install the JS runtime,
     // pick another browser, log in); only the always-true fallback is added.
-    info.textContent = `Não consegui descarregar: ${err.message}. Também podes carregar um MP3 do vídeo.`;
+    info.textContent = T('Não consegui descarregar: {m}. Também podes carregar um MP3 do vídeo.', { m: err.message });
   } finally {
     btn.disabled = false;
     applyEmbeddedAudioChoice();
@@ -333,7 +334,7 @@ function renderBatchPairs() {
   const el = document.getElementById('batchPairsList');
   const submitBtn = document.getElementById('batchSubmit');
   if (!batchPairs.length) {
-    el.innerHTML = '<span class="meta">Escolhe os ficheiros GP e as gravações acima.</span>';
+    el.innerHTML = `<span class="meta">${T('Escolhe os ficheiros GP e as gravações acima.')}</span>`;
     submitBtn.disabled = true;
     return;
   }
@@ -341,12 +342,12 @@ function renderBatchPairs() {
   const reading = batchPairs.some(p => !batchInspected.has(p.gp));
   el.innerHTML = batchPairs.map(p => {
     const ins = batchInspected.get(p.gp);
-    const target = !ins ? '<span class="meta">a ler o ficheiro…</span>'
-      : ins.error ? `<span style="color:#e88">não consegui ler o ficheiro (${esc(ins.error)})</span>`
-      : p.own ? `${icon('headphones')} o áudio que vem dentro do ficheiro GP` +
-          (p.ignored ? ` <span class="meta">(${esc(p.ignored.name)} fica de fora)</span>` : '')
+    const target = !ins ? `<span class="meta">${T('a ler o ficheiro…')}</span>`
+      : ins.error ? `<span style="color:#e88">${T('não consegui ler o ficheiro ({e})', { e: esc(ins.error) })}</span>`
+      : p.own ? `${icon('headphones')} ${T('o áudio que vem dentro do ficheiro GP')}` +
+          (p.ignored ? ` <span class="meta">(${T('{name} fica de fora', { name: esc(p.ignored.name) })})</span>` : '')
       : p.audio ? esc(p.audio.name)
-      : '<span style="color:#e88">sem gravação — não vai ser criado</span>';
+      : `<span style="color:#e88">${T('sem gravação — não vai ser criado')}</span>`;
     return `<div class="anchor-row">
     ${STATUS_ICO[p.status] || ''} <b>${esc(p.gp.name)}</b> → ${target}
     ${p.error ? `<span style="color:#e88">(${esc(p.error)})</span>` : ''}
@@ -392,7 +393,7 @@ async function inspectBatchGpFiles() {
       form.append('file', gp);
       batchInspected.set(gp, await getJSON('/gp/inspect', { method: 'POST', body: form }));
     } catch (e) {
-      batchInspected.set(gp, { error: (e && e.message) || 'erro' });
+      batchInspected.set(gp, { error: (e && e.message) || T('erro') });
     }
     refreshBatchPairing();
   }
@@ -427,18 +428,19 @@ document.getElementById('batchSubmit').addEventListener('click', async () => {
       // in the normal wizard when nothing is assigned.
       const jobR = await fetch('/jobs/gp', { method: 'POST', body: jobForm });
       const jobBody = await jobR.json();
-      if (!jobR.ok) throw new Error(jobBody.detail || 'falha ao criar o projeto');
+      if (!jobR.ok) throw new Error(jobBody.detail || T('falha ao criar o projeto'));
       p.status = 'done';
       p.jobId = jobBody.id;
       okCount++;
     } catch (e) {
       p.status = 'error';
-      p.error = (e && e.message) || 'erro';
+      p.error = (e && e.message) || T('erro');
       errCount++;
     }
     renderBatchPairs();
   }
-  toast(`Lote concluído: ${okCount} criado(s)${errCount ? `, ${errCount} com erro` : ''}.`, errCount ? 'err' : 'ok');
+  toast(errCount ? T('Lote concluído: {ok} criado(s), {err} com erro.', { ok: okCount, err: errCount })
+    : T('Lote concluído: {ok} criado(s).', { ok: okCount }), errCount ? 'err' : 'ok');
   refreshJobs();
 });
 
@@ -454,7 +456,7 @@ function renderBanquetValidation(b) {
   document.getElementById('sVqueries').innerHTML = b.queries_ok ? ok : bad;
   const names = b.query_names || [];
   document.getElementById('sQueryNames').textContent = names.length
-    ? `Stems detetados: ${names.join(', ')}` : '';
+    ? T('Stems detetados: {names}', { names: names.join(', ') }) : '';
 }
 // Which extras the interpreter that will actually RUN the ML has — asked of
 // IT, in a subprocess, not of the API process (which must never import torch,
@@ -466,17 +468,17 @@ function renderMlPythonInfo(i) {
   if (!i.path) {
     // In the .exe there is no fallback: its own interpreter is the executable.
     el.innerHTML = i.frozen
-      ? '<span style="color:#e0a54a">Por definir — sem isto o .exe não faz stems, tom, letra nem «Corrigir daqui».</span>'
-      : 'Vazio: usa o próprio Python do RockForge.';
+      ? `<span style="color:#e0a54a">${T('Por definir — sem isto o .exe não faz stems, tom, letra nem «Corrigir daqui».')}</span>`
+      : T('Vazio: usa o próprio Python do RockForge.');
     return;
   }
   if (!i.python_ok) {
-    el.innerHTML = `${bad} esse caminho não arrancou como Python — aponta ao <code>python.exe</code> do Python 3.11.`;
+    el.innerHTML = `${bad} ${T('esse caminho não arrancou como Python — aponta ao <code>python.exe</code> do Python 3.11.')}`;
     return;
   }
-  el.innerHTML = `${ok} Python encontrado &nbsp; ` +
-    `${i.ml_ok ? ok : bad} <code>[ml]</code> (stems, tom, «Corrigir daqui») &nbsp; ` +
-    `${i.lyrics_ok ? ok : bad} <code>[lyrics]</code> (letra) &nbsp; ` +
+  el.innerHTML = `${ok} ${T('Python encontrado')} &nbsp; ` +
+    `${i.ml_ok ? ok : bad} <code>[ml]</code> (${T('stems, tom, «Corrigir daqui»')}) &nbsp; ` +
+    `${i.lyrics_ok ? ok : bad} <code>[lyrics]</code> (${T('letra')}) &nbsp; ` +
     `${i.torch_ok ? ok : bad} PyTorch`;
 }
 
@@ -511,10 +513,10 @@ function renderSystemCheck(data) {
     const gap = r.found !== true;
     const why = gap
       ? `<div class="meta" style="margin-left:1.4rem">${esc(r.without_it)}</div>` +
-        `<div class="meta" style="margin-left:1.4rem"><b>Instalar:</b> <code>${esc(r.install)}</code></div>`
+        `<div class="meta" style="margin-left:1.4rem"><b>${T('Instalar:')}</b> <code>${esc(r.install)}</code></div>`
       : '';
     const flag = (r.required && r.found === false)
-      ? ' <b style="color:var(--err,#e05a5a)">OBRIGATÓRIO</b>' : '';
+      ? ` <b style="color:var(--err,#e05a5a)">${T('OBRIGATÓRIO')}</b>` : '';
     return `<div style="margin:.35rem 0">
       <div>${mark} <b>${esc(r.name)}</b>${flag}</div>
       <div class="meta" style="margin-left:1.4rem">${esc(r.detail)}</div>${why}</div>`;
@@ -522,19 +524,19 @@ function renderSystemCheck(data) {
   const missing = data.missing_required || [];
   const banner = missing.length
     ? `<div class="meta" style="color:var(--err,#e05a5a);margin-bottom:.4rem">
-         ${icon('alert')} Falta software <b>obrigatório</b> (${missing.map(esc).join(', ')}) —
-         nenhum job vai chegar ao fim até o instalares.</div>`
+         ${icon('alert')} ${T('Falta software <b>obrigatório</b> ({names}) — nenhum job vai chegar ao fim até o instalares.',
+    { names: missing.map(esc).join(', ') })}</div>`
     : '';
   el.innerHTML = banner + rows.join('');
 }
 
 async function loadSystemCheck() {
   const el = document.getElementById('sysCheck');
-  if (el) el.textContent = 'a verificar…';
+  if (el) el.textContent = T('a verificar…');
   try {
     renderSystemCheck(await getJSON('/system-check'));
   } catch {
-    if (el) el.textContent = 'não foi possível verificar (o servidor não respondeu)';
+    if (el) el.textContent = T('não foi possível verificar (o servidor não respondeu)');
   }
 }
 
@@ -555,10 +557,10 @@ document.getElementById('gpuReset').addEventListener('click', async () => {
   try {
     const r = await fetch('/gpu-reset', { method: 'POST' });
     const b = await r.json();
-    if (!r.ok) { toast(b.detail || 'erro', 'err'); return; }
+    if (!r.ok) { toast(b.detail || T('erro'), 'err'); return; }
     fillSettings(b);
-    toast('GPU reativada — a próxima deteção vai tentar a GPU.', 'ok');
-  } catch { toast('falha ao reativar a GPU', 'err'); }
+    toast(T('GPU reativada — a próxima deteção vai tentar a GPU.'), 'ok');
+  } catch { toast(T('falha ao reativar a GPU'), 'err'); }
 });
 for (const r of document.querySelectorAll('input[name=sepBackend]'))
   r.addEventListener('change', toggleBanquetConfig);
@@ -577,15 +579,15 @@ document.getElementById('settingsSave').addEventListener('click', async () => {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
   });
   const b = await r.json();
-  if (!r.ok) { toast(b.detail || 'erro', 'err'); return; }
+  if (!r.ok) { toast(b.detail || T('erro'), 'err'); return; }
   fillSettings(b);  // re-renders ✓/✗ from the saved values
   loadSystemCheck();  // the ML rows follow the interpreter, so they change too
   const info = document.getElementById('settingsInfo');
   if (backend === 'banquet' && !b.banquet.ready)
-    info.innerHTML = '<span style="color:#e0a54a">Guardado — mas o Banquet ainda não está pronto (verifica os ✗ acima).</span>';
+    info.innerHTML = `<span style="color:#e0a54a">${T('Guardado — mas o Banquet ainda não está pronto (verifica os ✗ acima).')}</span>`;
   else
-    info.textContent = 'Guardado.';
-  toast('Definições guardadas.', 'ok');
+    info.textContent = T('Guardado.');
+  toast(T('Definições guardadas.'), 'ok');
 });
 
 // ── The project's pages (the rail on the left of the project view) ──────────
@@ -646,7 +648,7 @@ const COMPLETE_ACTIONS = {
 };
 
 // The alternates' kinds are long English names; the tabs and pickers show these.
-const ARR_LABEL = { 'Alternate Lead': 'Lead alternativo', 'Alternate Rhythm': 'Rhythm alternativo' };
+const ARR_LABEL = { 'Alternate Lead': T('Lead alternativo'), 'Alternate Rhythm': T('Rhythm alternativo') };
 function arrLabel(kind) { return ARR_LABEL[kind] || kind; }
 // A chart counts as in sync when the user marked it, or when the whole file
 // was timed elsewhere (Guitar Pro 8's own sync points, Songsterr's bar times).
@@ -659,7 +661,7 @@ function updateArrTabs() {
     if (!a) return;
     const synced = arrSynced(a);
     btn.classList.toggle('synced', synced);
-    btn.title = synced ? 'Pista sincronizada' : '';
+    btn.title = synced ? T('Pista sincronizada') : '';
     btn.innerHTML = `${synced ? icon('check') : ''}${esc(arrLabel(a.kind))} (${a.note_count}n/${a.chord_count}c)`;
   });
 }
@@ -680,7 +682,7 @@ async function setSyncConfirmed(confirmed, arrangement = null) {
     renderCompleteness(selectedJob);  // also re-sets the top bar's status chip
     refreshJobs();  // the project card's badge
   } catch (err) {
-    toast(`Não foi possível guardar: ${err.message}`);
+    toast(T('Não foi possível guardar: {m}', { m: err.message }));
   }
 }
 
@@ -688,10 +690,10 @@ async function setSyncConfirmed(confirmed, arrangement = null) {
 // project card, the Sincronização tab and the checklist: the user's own word,
 // the Guitar Pro 8 file's own sync points, or Songsterr's marked bar times.
 const SYNC_SOURCE_TEXT = {
-  confirmed: 'Marcada por ti como sincronizada.',
-  gp: 'Sincronizada no Guitar Pro 8: o ficheiro traz os pontos de sincronização, e as notas seguem o áudio com que foi sincronizado.',
-  songsterr: 'Sincronizada pelos tempos de cada compasso do Songsterr.',
-  adjusted: 'Fizeste correções de início/andamento. Quando as notas baterem com a gravação, marca-a como sincronizada.',
+  confirmed: T('Marcada por ti como sincronizada.'),
+  gp: T('Sincronizada no Guitar Pro 8: o ficheiro traz os pontos de sincronização, e as notas seguem o áudio com que foi sincronizado.'),
+  songsterr: T('Sincronizada pelos tempos de cada compasso do Songsterr.'),
+  adjusted: T('Fizeste correções de início/andamento. Quando as notas baterem com a gravação, marca-a como sincronizada.'),
 };
 function isSynced(j) { return ['confirmed', 'gp', 'songsterr'].includes(j && j.sync_source); }
 // Each track is synchronised on its own, so the card speaks for the chart on
@@ -707,12 +709,13 @@ function renderSyncState(j) {
   const label = esc(arrLabel(a.kind));
   const marked = arrangements.filter(x => x.sync_confirmed).length;
   const whole = ['gp', 'songsterr'].includes(j.sync_source) ? `<br>${esc(SYNC_SOURCE_TEXT[j.sync_source])}` : '';
-  const count = arrangements.length > 1 ? `<br>${marked} de ${arrangements.length} pistas marcadas.` : '';
+  const count = arrangements.length > 1
+    ? `<br>${T('{n} de {m} pistas marcadas.', { n: marked, m: arrangements.length })}` : '';
   document.getElementById('syncStateText').innerHTML = (a.sync_confirmed
-    ? `${icon('check')} Pista <b>${label}</b> marcada por ti como sincronizada.`
-    : `Pista <b>${label}</b>: quando as notas baterem com a gravação, marca-a.`) + whole + count;
+    ? `${icon('check')} ${T('Pista <b>{label}</b> marcada por ti como sincronizada.', { label })}`
+    : T('Pista <b>{label}</b>: quando as notas baterem com a gravação, marca-a.', { label })) + whole + count;
   const btn = document.getElementById('syncStateBtn');
-  btn.textContent = a.sync_confirmed ? 'Desmarcar esta pista' : 'Marcar esta pista como sincronizada';
+  btn.textContent = a.sync_confirmed ? T('Desmarcar esta pista') : T('Marcar esta pista como sincronizada');
   btn.onclick = () => setSyncConfirmed(!a.sync_confirmed, a.kind);
 }
 
@@ -725,56 +728,56 @@ function renderCompleteness(j) {
   const rows = [];
 
   if (j.psarc_available)
-    rows.push({ state: 'ok', ico: 'check', title: 'PSARC jogável gerado', note: '.psarc pronto para o jogo.' });
+    rows.push({ state: 'ok', ico: 'check', title: T('PSARC jogável gerado'), note: T('.psarc pronto para o jogo.') });
   else
-    rows.push({ state: 'err', ico: 'x', title: 'PSARC não gerado', short: 'gerar o PSARC (Wwise)',
-      note: 'Só saiu o bundle (DLC Builder). Falta o Wwise/.wem para produzir o .psarc jogável — vê o README.' });
+    rows.push({ state: 'err', ico: 'x', title: T('PSARC não gerado'), short: T('gerar o PSARC (Wwise)'),
+      note: T('Só saiu o bundle (DLC Builder). Falta o Wwise/.wem para produzir o .psarc jogável — vê o README.') });
 
   if (j.has_tones)
-    rows.push({ state: 'ok', ico: 'check', title: 'Tons definidos', note: 'O som in-game usa os teus tons.' });
+    rows.push({ state: 'ok', ico: 'check', title: T('Tons definidos'), note: T('O som in-game usa os teus tons.') });
   else
-    rows.push({ state: 'warn', ico: 'wave', title: 'Sem tons definidos', short: 'tons', act: 'tones', actLabel: 'Detetar / criar tom',
-      note: 'O DLC Builder vai marcar "tone missing" e o som será um default.' });
+    rows.push({ state: 'warn', ico: 'wave', title: T('Sem tons definidos'), short: T('tons'), act: 'tones', actLabel: T('Detetar / criar tom'),
+      note: T('O DLC Builder vai marcar "tone missing" e o som será um default.') });
 
   if (j.cover_art)
-    rows.push({ state: 'ok', ico: 'check', title: 'Capa do álbum', note: 'Incluída no bundle.' });
+    rows.push({ state: 'ok', ico: 'check', title: T('Capa do álbum'), note: T('Incluída no bundle.') });
   else
-    rows.push({ state: 'warn', ico: 'image', title: 'Sem capa', short: 'capa', act: 'cover', actLabel: 'Carregar capa',
-      note: 'O albumArt fica vazio (sem arte no jogo).' });
+    rows.push({ state: 'warn', ico: 'image', title: T('Sem capa'), short: T('capa'), act: 'cover', actLabel: T('Carregar capa'),
+      note: T('O albumArt fica vazio (sem arte no jogo).') });
 
   if (isGp) {
     if (j.sync_source === 'confirmed')
-      rows.push({ state: 'ok', ico: 'check', title: 'Sincronização confirmada', act: 'syncundo', actLabel: 'Desfazer',
-        note: 'Marcaste que as notas batem com a gravação.' });
+      rows.push({ state: 'ok', ico: 'check', title: T('Sincronização confirmada'), act: 'syncundo', actLabel: T('Desfazer'),
+        note: T('Marcaste que as notas batem com a gravação.') });
     else if (j.sync_source === 'gp' || j.sync_source === 'songsterr')
       rows.push({ state: 'ok', ico: 'check',
-        title: j.sync_source === 'gp' ? 'Sincronizada no Guitar Pro' : 'Sincronizada pelo Songsterr',
+        title: j.sync_source === 'gp' ? T('Sincronizada no Guitar Pro') : T('Sincronizada pelo Songsterr'),
         note: SYNC_SOURCE_TEXT[j.sync_source] });
     else if (j.sync_edited)
-      rows.push({ state: 'ok', ico: 'check', title: 'Sincronização ajustada', act: 'syncok', actLabel: 'Marcar como sincronizada',
-        note: 'Fizeste pelo menos uma correção de início/andamento.' });
+      rows.push({ state: 'ok', ico: 'check', title: T('Sincronização ajustada'), act: 'syncok', actLabel: T('Marcar como sincronizada'),
+        note: T('Fizeste pelo menos uma correção de início/andamento.') });
     else
-      rows.push({ state: 'warn', ico: 'timer', title: 'Confirmaste a sincronização?', short: 'confirmar a sincronização',
-        act: 'syncok', actLabel: 'Está sincronizada', act2: 'sync', act2Label: 'Abrir partitura',
-        note: 'Não há ajustes de início/andamento. Se já ouviste e as notas batem com a gravação (p. ex. vinha sincronizada do Guitar Pro), confirma aqui.' });
+      rows.push({ state: 'warn', ico: 'timer', title: T('Confirmaste a sincronização?'), short: T('confirmar a sincronização'),
+        act: 'syncok', actLabel: T('Está sincronizada'), act2: 'sync', act2Label: T('Abrir partitura'),
+        note: T('Não há ajustes de início/andamento. Se já ouviste e as notas batem com a gravação (p. ex. vinha sincronizada do Guitar Pro), confirma aqui.') });
   }
 
   if (j.has_lyrics)
-    rows.push({ state: 'ok', ico: 'check', title: 'Letra incluída', note: 'A letra vai aparecer no jogo.' });
+    rows.push({ state: 'ok', ico: 'check', title: T('Letra incluída'), note: T('A letra vai aparecer no jogo.') });
   else
-    rows.push({ state: 'info', ico: 'mic', title: 'Letra (opcional)', act: 'lyrics', actLabel: 'Detetar / editar',
-      note: 'Sem letra — o arranjo de vocais não é obrigatório.' });
+    rows.push({ state: 'info', ico: 'mic', title: T('Letra (opcional)'), act: 'lyrics', actLabel: T('Detetar / editar'),
+      note: T('Sem letra — o arranjo de vocais não é obrigatório.') });
 
-  rows.push({ state: 'info', ico: 'key', title: 'AppID / propriedade',
-    note: 'O .psarc usa o AppID de uma DLC específica; o jogador tem de a possuir para a música aparecer na lista. Causa nº1 de "não aparece no jogo".' });
+  rows.push({ state: 'info', ico: 'key', title: T('AppID / propriedade'),
+    note: T('O .psarc usa o AppID de uma DLC específica; o jogador tem de a possuir para a música aparecer na lista. Causa nº1 de "não aparece no jogo".') });
 
   const alerts = rows.filter(r => r.state === 'warn' || r.state === 'err');
-  let html = '<div class="complete-card"><h4>Antes de usar</h4>';
+  let html = `<div class="complete-card"><h4>${T('Antes de usar')}</h4>`;
   const parts = alerts.map(r => r.short || r.title.toLowerCase());
   if (alerts.length)
-    html += `<div class="complete-banner">${icon('alert')} Ainda falta: <b>${esc(parts.join(', '))}</b>. Podes descarregar na mesma, mas o PSARC fica mais pobre.</div>`;
+    html += `<div class="complete-banner">${icon('alert')} ${T('Ainda falta: <b>{parts}</b>. Podes descarregar na mesma, mas o PSARC fica mais pobre.', { parts: esc(parts.join(', ')) })}</div>`;
   setStatusChip(alerts.length ? 'warn' : 'ok',
-    alerts.length ? `Falta: ${parts.join(', ')}` : 'Pronto a usar', alerts.length ? 'alert' : 'check');
+    alerts.length ? T('Falta: {parts}', { parts: parts.join(', ') }) : T('Pronto a usar'), alerts.length ? 'alert' : 'check');
   for (const r of rows) {
     const cls = r.state === 'err' ? ' err' : r.state === 'warn' ? ' warn' : r.state === 'ok' ? ' ok' : '';
     const acts = [[r.act, r.actLabel], [r.act2, r.act2Label]].filter(([a]) => a)
