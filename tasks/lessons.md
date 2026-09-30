@@ -89,3 +89,11 @@ tones "quase não se ouvem". The reference (Rocksmith2014.NET) was one clone
 away. Rule: before choosing numbers for a field of a format we did not design,
 read how the reference tool presents and defaults it, and pin the range in a test.
 
+## Read what the UI already printed before guessing again (2026-09-30)
+Three rounds on "the GP's audio is not detected" were spent widening the
+detection blind; the fix was in the user's screenshot, which quoted the member
+name the file declares ("Content/Assets/backing-track", no extension) — our own
+message said it. Rule: when a report comes with a screenshot of our UI, read
+every value it prints first; and never decide a file's type by its name alone
+when its bytes are one read away.
+

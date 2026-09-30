@@ -678,3 +678,52 @@ def test_gp7_grid_closes_the_last_bar_so_a_late_eighth_fits(tmp_path: Path) -> N
     assert parsed.notes[-1].time == pytest.approx(1.75)  # the "and" of 4
     closing = parsed.tempo_map.beats[-1]
     assert (closing.time, closing.measure) == (pytest.approx(2.0), 2)
+
+
+@pytest.mark.parametrize(
+    ("head", "suffix"),
+    [
+        (b"ID3\x04\x00", ".mp3"),
+        (b"\xff\xfb\x90\x00", ".mp3"),       # an mp3 with no ID3 tag
+        (b"\xff\xf1\x50\x80", ".aac"),       # ADTS AAC
+        (b"OggS\x00\x02", ".ogg"),
+        (b"\x00\x00\x00\x20ftypM4A ", ".m4a"),
+        (b"RIFF\x24\x00\x00\x00WAVEfmt ", ".wav"),
+    ],
+)
+def test_an_embedded_recording_with_no_extension_is_recognised_by_its_bytes(
+    tmp_path: Path, head: bytes, suffix: str,
+) -> None:
+    """The user's GP8 file stores its recording as "Content/Assets/backing-track",
+    no extension, and the name check reported it as a file OUTSIDE the .gp
+    ("continua a não detetar que o GP file tem o mp3 incluído")."""
+    from rockforge.infrastructure.gpimport.gpif_parser import backing_track, extract_embedded_audio
+
+    member = "Content/Assets/backing-track"
+    backing = _BACKING.format(enabled="true", source="Local", member=member)
+    gp = tmp_path / "no_ext.gp"
+    with zipfile.ZipFile(gp, "w") as z:
+        z.writestr("VERSION", "7.0")
+        z.writestr("Content/score.gpif", _synced_gpif(_sync(0, 0.0), backing))
+        z.writestr(member, head + b"audio")
+    info = backing_track(gp)
+    assert info.audio is not None and info.audio.suffix == suffix
+    assert info.external_path is None
+    out = extract_embedded_audio(gp, tmp_path / "out" / "recording")
+    assert out.suffix == suffix and out.read_bytes() == head + b"audio"
+
+
+def test_an_extensionless_member_that_is_not_audio_is_not_taken_for_one(tmp_path: Path) -> None:
+    """Sniffing must not turn anything into a recording, and a path inside the
+    .gp is never named as a file for the user to go and upload."""
+    from rockforge.infrastructure.gpimport.gpif_parser import backing_track
+
+    member = "Content/Assets/backing-track"
+    backing = _BACKING.format(enabled="true", source="Local", member=member)
+    gp = tmp_path / "junk.gp"
+    with zipfile.ZipFile(gp, "w") as z:
+        z.writestr("VERSION", "7.0")
+        z.writestr("Content/score.gpif", _synced_gpif(_sync(0, 0.0), backing))
+        z.writestr(member, b"just some text")
+    info = backing_track(gp)
+    assert info.audio is None and info.external_path is None

@@ -365,6 +365,39 @@ _EMBEDDED_AUDIO_SUFFIXES = frozenset({
     # What a YouTube download keeps when it is embedded as-is (-c copy).
     ".opus", ".webm", ".aac", ".mp4", ".wma",
 })
+# A member with no extension is recognised by its first bytes: the user's file
+# embedded its recording as "Content/Assets/backing-track", and the name check
+# alone reported it as a file OUTSIDE the .gp ("continua a não detetar que o GP
+# file tem o mp3 incluído"). Only extension-less (or generic .bin/.dat) names are
+# sniffed, so a file that names itself something else is still not audio.
+_SNIFFED_SUFFIXES = frozenset({"", ".bin", ".dat"})
+
+
+def audio_suffix_from_bytes(head: bytes) -> str | None:
+    """The audio format a file's first bytes announce, as a suffix ffmpeg
+    reads, or None when they are not a known audio container."""
+    if head.startswith(b"ID3"):
+        return ".mp3"
+    if head[:4] == b"RIFF" and head[8:12] == b"WAVE":
+        return ".wav"
+    if head[:4] == b"OggS":
+        return ".ogg"
+    if head[:4] == b"fLaC":
+        return ".flac"
+    if head[4:8] == b"ftyp":
+        return ".m4a"
+    if head[:4] == b"FORM" and head[8:12] in (b"AIFF", b"AIFC"):
+        return ".aiff"
+    if head[:4] == b"\x1aE\xdf\xa3":
+        return ".webm"
+    if head[:4] == b"0&\xb2u":
+        return ".wma"
+    if len(head) >= 2 and head[0] == 0xFF and head[1] & 0xE0 == 0xE0:
+        # Frame sync: ADTS AAC has layer bits 00, MPEG audio (mp3) does not.
+        return ".aac" if head[1] & 0x06 == 0 else ".mp3"
+    return None
+
+
 #: Same ceiling as any uploaded recording; checked on the declared size before
 #: decompressing, like _MAX_GPIF_BYTES.
 MAX_EMBEDDED_AUDIO_BYTES = 500 * 1024 * 1024
@@ -416,8 +449,16 @@ def backing_track(path: Path) -> BackingTrackInfo:
 
     def audio_member(name: str) -> EmbeddedAudio | None:
         info = infos.get(name.replace("\\", "/").lstrip("/").lower()) if name else None
-        suffix = Path(name).suffix.lower()
-        if info is None or suffix not in _EMBEDDED_AUDIO_SUFFIXES or info.file_size <= 0:
+        if info is None or info.file_size <= 0:
+            return None
+        suffix: str | None = Path(info.filename).suffix.lower()
+        if suffix in _SNIFFED_SUFFIXES:
+            try:
+                with zipfile.ZipFile(path) as z, z.open(info) as fh:
+                    suffix = audio_suffix_from_bytes(fh.read(16))
+            except (zipfile.BadZipFile, OSError, RuntimeError):
+                suffix = None
+        if suffix is None or suffix not in _EMBEDDED_AUDIO_SUFFIXES:
             return None
         return EmbeddedAudio(member=info.filename, suffix=suffix, size_bytes=info.file_size)
 
@@ -441,7 +482,12 @@ def backing_track(path: Path) -> BackingTrackInfo:
         found = audio_member(declared)
         if found is not None:
             return BackingTrackInfo(audio=found, disabled=disabled)
-        external = external or _text(asset.find("OriginalFilePath")) or declared or None
+        # A path inside the .gp ("Content/…") is not somewhere the user can find
+        # a file to upload; only a real outside path is worth naming.
+        inside = declared.replace("\\", "/").lstrip("/").lower().startswith("content/")
+        external = external or _text(asset.find("OriginalFilePath")) or (
+            None if inside else declared or None
+        )
     loose = [
         audio for name, info in infos.items()
         if name.startswith("content/assets/") and (audio := audio_member(info.filename))

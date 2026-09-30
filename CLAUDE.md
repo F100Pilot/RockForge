@@ -141,7 +141,22 @@ re-inverting the dependency.
    elsewhere on disk is `backing_external_path`, named in step 3 so the user
    knows which file to upload. The actual file was never seen here (the user
    did not attach it), so this covers every way the old check could miss one,
-   not a reproduction. Guarded by `test_the_audio_embedded_in_a_gp8_file_is_*`,
+   not a reproduction. **A member with no extension is recognised by its
+   bytes** (`audio_suffix_from_bytes`: ID3/MPEG sync, ADTS, OggS, ftyp, RIFF
+   WAVE, fLaC, AIFF, EBML, ASF): the user's screenshot finally showed the
+   member — "Content/Assets/backing-track", no extension — which the name
+   check skipped and then offered as a file OUTSIDE the .gp to go and upload
+   ("continua a não detetar que o GP file tem o mp3 incluído"). Only
+   extension-less or `.bin`/`.dat` names are sniffed (a file that names itself
+   something else is still not audio), the extracted copy takes the sniffed
+   suffix, and a `Content/…` path is never reported as `external_path`.
+   Guarded by `test_an_embedded_recording_with_no_extension_is_recognised_by_its_bytes`
+   (six formats, mutation-checked) and
+   `test_an_extensionless_member_that_is_not_audio_is_not_taken_for_one`; the
+   user's Ocean Eyes GP8 re-packed with its MP3 renamed `backing-track` goes
+   through `/gp/inspect` (embedded_audio found) and `/jobs/gp` with
+   `use_embedded_audio=true`, and ffmpeg decodes the extracted 3:16.
+   Guarded by `test_the_audio_embedded_in_a_gp8_file_is_*`,
    `test_no_usable_embedded_audio_is_none_never_an_error`,
    `test_the_embedded_audio_is_found_despite_details_that_used_to_hide_it`
    (disabled / .opus + case + slash / an undeclared single asset —
