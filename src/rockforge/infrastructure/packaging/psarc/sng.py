@@ -43,7 +43,7 @@ from pathlib import Path
 
 from rockforge.application.ports import VocalEvent
 from rockforge.domain.arrangement import Arrangement, Section, number_sections
-from rockforge.domain.music import TabNote, Technique, high_density_flags
+from rockforge.domain.music import TabNote, Technique, high_density_flags, is_plain_rise
 from rockforge.infrastructure.rsxml.vocals import VOCAL_NOTE
 
 # The vocals SNG's Symbols sections (SymbolsHeader/Texture/Definition) are the
@@ -597,9 +597,10 @@ def _bend_points(n: TabNote) -> list[SngBendData32]:
     if n.bend_semitones <= 0:
         return []
     dur = n.sustain if n.sustain > 0.03 else 0.1
-    if n.bend_points:
+    if n.bend_points and not is_plain_rise(n.bend_points):
         # Full curve (pre-bend / release / multi-step): fractional positions
-        # scaled onto the note's duration.
+        # scaled onto the note's duration. A plain rise across the note is the
+        # single point at the end.
         return [SngBendData32(time=n.time + p.position * dur, step=p.step)
                 for p in n.bend_points]
     return [SngBendData32(time=n.time + dur, step=n.bend_semitones)]

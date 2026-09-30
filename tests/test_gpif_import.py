@@ -294,6 +294,32 @@ def test_gp7_bend_release_keeps_both_middle_points(tmp_path: Path) -> None:
     assert curve == [(0.0, 0.0), (0.125, 1.0), (0.25, 1.0), (0.375, 0.0)]
 
 
+def test_gp7_bend_up_and_held_is_a_rise_across_the_note(tmp_path: Path) -> None:
+    """A ½ bend as alphaTab's .gp export writes it (the middle at 50 %, halfway
+    up): three points, read as alphaTab plays them — a straight rise across the
+    bent note, then held on the tie."""
+    bend = (
+        '<Property name="Bended"><Enable/></Property>'
+        '<Property name="BendOriginOffset"><Float>0</Float></Property>'
+        '<Property name="BendOriginValue"><Float>0</Float></Property>'
+        '<Property name="BendMiddleOffset1"><Float>50</Float></Property>'
+        '<Property name="BendMiddleOffset2"><Float>50</Float></Property>'
+        '<Property name="BendMiddleValue"><Float>50</Float></Property>'
+        '<Property name="BendDestinationOffset"><Float>100</Float></Property>'
+        '<Property name="BendDestinationValue"><Float>50</Float></Property>'
+    )
+    head = '<Property name="Fret"><Fret>7</Fret></Property></Properties></Note>\n    <Note id="1">'
+    gpif = TIE_GPIF.replace(head, head.replace("</Properties>", f"{bend}</Properties>"))
+    assert gpif != TIE_GPIF
+    path = tmp_path / "bend_held.gp"
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("VERSION", "7.0")
+        z.writestr("Content/score.gpif", gpif)
+    (n,) = parse_gp_track(path, 0).notes  # the bent quarter, tied on
+    curve = [(round(p.position, 3), p.step) for p in n.bend_points]
+    assert curve == [(0.0, 0.0), (0.5, 1.0), (1.0, 1.0)]
+
+
 # --- Tempo automation semantics (GPIF) ------------------------------------
 # Two independent details that both used to be read wrong, and which silently
 # corrupt the whole GP timeline (and therefore any sync analysis built on it).

@@ -30,6 +30,7 @@ from rockforge.domain.music import (
     Technique,
     TempoMap,
     Tuning,
+    alphatab_bend,
     apply_sustain_gap,
     expand_slide_ins,
     expand_trills,
@@ -47,10 +48,13 @@ QUARTER_TICKS = 960
 
 
 def _bend_curve(eff: Any) -> list[BendPoint]:
-    """A note's bend curve: position 0..12 → fraction; value/2 → half-steps."""
+    """A note's bend curve as alphaTab plays it: position 0..12 → fraction;
+    value/2 → half-steps."""
     if not (eff.isBend and eff.bend is not None and eff.bend.points):
         return []
-    return [BendPoint(position=p.position / 12.0, step=p.value / 2.0) for p in eff.bend.points]
+    return list(alphatab_bend(
+        [BendPoint(position=p.position / 12.0, step=p.value / 2.0) for p in eff.bend.points]
+    ))
 
 
 @dataclass(frozen=True)

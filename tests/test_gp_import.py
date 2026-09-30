@@ -250,7 +250,9 @@ def test_bend_and_pull_off_on_a_tied_note_are_kept(tmp_path: Path) -> None:
 
 def test_a_tie_after_a_bend_holds_it(tmp_path: Path) -> None:
     """A bent note tied on without a bend of its own stays bent (the tie keeps the
-    pitch): the rise sits in the first half, then holds."""
+    pitch): the rise sits in the first half, then holds. The rise is alphaTab's:
+    "up by the middle of the note, then held" (three points) is a straight rise
+    across the whole bent note."""
     song = gp.Song()
     song.title, song.artist, song.tempo = "Tie hold", "B", 120
     v = song.tracks[0].measures[0].voices[0]
@@ -266,7 +268,7 @@ def test_a_tie_after_a_bend_holds_it(tmp_path: Path) -> None:
 
     (note,) = parse_gp_track(path, 0).notes
     curve = [(round(p.position, 2), p.step) for p in note.bend_points]
-    assert curve == [(0.0, 0.0), (0.25, 2.0), (0.5, 2.0), (1.0, 2.0)]
+    assert curve == [(0.0, 0.0), (0.5, 2.0), (1.0, 2.0)]
     assert note.bend_semitones == pytest.approx(2.0)
 
 

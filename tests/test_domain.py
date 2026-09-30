@@ -8,10 +8,12 @@ from rockforge.domain.music import (
     Technique,
     TempoMap,
     Tuning,
+    alphatab_bend,
     apply_sustain_gap,
     expand_slide_ins,
     expand_trills,
     is_composite_bend,
+    is_plain_rise,
 )
 
 
@@ -189,6 +191,41 @@ def test_is_composite_bend_only_for_varying_strength() -> None:
     assert is_composite_bend(  # bend-and-release
         [BendPoint(0.0, 0.0), BendPoint(0.5, 1.0), BendPoint(1.0, 0.0)]
     )
+
+
+def _curve(*pts: tuple[float, float]) -> tuple[BendPoint, ...]:
+    return tuple(BendPoint(pos, step) for pos, step in pts)
+
+
+@pytest.mark.parametrize(
+    ("points", "played"),
+    [
+        # Up by the middle, then held: a rise across the whole note.
+        (((0, 0), (0.5, 1), (1, 1)), ((0, 0), (1, 1))),
+        # Pre-bend, held, released: a release across the whole note.
+        (((0, 1), (0.5, 1), (1, 0)), ((0, 1), (1, 0))),
+        # A middle below the destination, or a hold: dropped too.
+        (((0, 0), (0.5, 0.5), (1, 1)), ((0, 0), (1, 1))),
+        (((0, 1), (0.5, 1), (1, 1)), ((0, 1), (1, 1))),
+        (((0, 0.5), (0.5, 1), (1, 0)), ((0, 0.5), (1, 0))),  # not higher than both ends
+        # A peak in the middle is a bend-and-release: kept.
+        (((0, 0), (0.5, 1), (1, 0)), ((0, 0), (0.5, 1), (1, 0))),
+        (((0, 0), (0.5, 2), (1, 1)), ((0, 0), (0.5, 2), (1, 1))),
+        # Other point counts are not touched.
+        (((0, 0), (0.25, 1), (0.5, 1), (1, 1)), ((0, 0), (0.25, 1), (0.5, 1), (1, 1))),
+        (((0, 0), (1, 1)), ((0, 0), (1, 1))),
+    ],
+)
+def test_alphatab_bend_reads_three_points_as_alphatab(points, played) -> None:  # noqa: ANN001
+    assert alphatab_bend(_curve(*points)) == _curve(*played)
+
+
+def test_is_plain_rise() -> None:
+    assert is_plain_rise(_curve((0, 0), (1, 1)))
+    assert not is_plain_rise(_curve((0, 0), (0.75, 1)))  # peak before the end
+    assert not is_plain_rise(_curve((0, 0.5), (1, 1)))  # pre-bent at the attack
+    assert not is_plain_rise(_curve((0, 1), (1, 0)))  # a release
+    assert not is_plain_rise(_curve((0, 0), (0.5, 1), (1, 1)))
 
 
 def test_number_sections_counts_per_name_not_by_position() -> None:

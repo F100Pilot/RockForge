@@ -890,6 +890,28 @@ def test_bend_point_reaches_peak_at_note_end_like_dlc_builder() -> None:
     assert cn.bend_data[1][0].step == 1.0 and cn.bend_data[1][0].time == 6.6
 
 
+def test_a_plain_rise_is_the_single_point_at_the_note_end() -> None:
+    """A straight rise from the attack to the end (alphaTab's reading of "bend up
+    and hold") is the same bend as the single peak at the end: one point, none at
+    the attack. Same in the XML."""
+    from rockforge.domain.music import BendPoint
+    from rockforge.infrastructure.rsxml.writer import _bend_curve
+
+    beats = tuple(Beat(time=i * 0.5, measure=1 if i == 0 else -1) for i in range(20))
+    note = TabNote(string=0, fret=5, time=3.0, sustain=0.6, bend_semitones=1.0,
+                   bend_points=(BendPoint(0.0, 0.0), BendPoint(1.0, 1.0)))
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=10.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+        notes=[note],
+    )
+    (single,) = from_arrangement(arr).arrangements[-1].notes
+    assert [(b.time, b.step) for b in single.bend_data] == [(3.6, 1.0)]
+    assert _bend_curve(note) == [(3.6, 1.0)]
+
+
 def test_fret_mute_slide_unpitch_and_composite_bend_in_sng() -> None:
     from rockforge.domain.music import BendPoint
 

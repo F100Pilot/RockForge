@@ -34,6 +34,7 @@ from rockforge.domain.music import (
     Technique,
     TempoMap,
     Tuning,
+    alphatab_bend,
     apply_sustain_gap,
     expand_slide_ins,
     expand_trills,
@@ -1124,7 +1125,8 @@ def _bend_curve(props: dict[str, ET.Element]) -> tuple[float, tuple[BendPoint, .
     (2 half-steps); offsets are a 0..100 position along the note. Origin / Middle
     / Destination give up to four points (two middle offsets sharing one value, as
     alphaTab's GpifParser reads them), so pre-bends, releases and the hold at the
-    top of a bend-and-release survive."""
+    top of a bend-and-release survive. A three-point curve is read as alphaTab
+    plays it (:func:`alphatab_bend`)."""
     middle_value = _bend_prop(props, "BendMiddleValue")
     middle_offsets = [
         off for off in (_bend_prop(props, "BendMiddleOffset1"),
@@ -1144,6 +1146,7 @@ def _bend_curve(props: dict[str, ET.Element]) -> tuple[float, tuple[BendPoint, .
     if not pts:
         return 0.0, ()
     pts.sort(key=lambda p: p.position)
+    pts = list(alphatab_bend(pts))
     peak = max(p.step for p in pts)
     return peak, (tuple(pts) if is_composite_bend(pts) else ())
 

@@ -119,6 +119,20 @@ re-inverting the dependency.
    untouched. Guarded by `test_gp_playback.py` (orders checked against alphaTab
    1.8.4's MidiFileGenerator, and its `directions.gp5`/`.gp` test files).
 
+   **Three-point bends are read as alphaTab plays them** (`alphatab_bend`,
+   alphaTab 1.8's `Note.finish`, in both parsers): the middle point stays only
+   when it is a peak (a bend-and-release); otherwise the bend is a straight line
+   from origin to destination — "up by the middle of the note, then held" rises
+   across the whole note, and the same for a pre-bend released. Other point
+   counts are untouched. A plain rise from unbent at the attack to the peak at
+   the end (`is_plain_rise`) is written to the XML/SNG as the single point at the
+   note's end, the DLC Builder shape the game already ramps across the note — no
+   bend point at the attack. A flat pre-bend is still the single point at the
+   end (a rise), unlike alphaTab. Guarded by
+   `test_alphatab_bend_reads_three_points_as_alphatab`,
+   `test_gp7_bend_up_and_held_is_a_rise_across_the_note` and
+   `test_a_plain_rise_is_the_single_point_at_the_note_end`.
+
    **The recording INSIDE the `.gp` is the one to use.** A GP8 file with an
    audio track carries its own copy (`<BackingTrack>` Enabled + Source=Local →
    `<Assets><Asset id=AssetId><EmbeddedFilePath>`), and the sync points

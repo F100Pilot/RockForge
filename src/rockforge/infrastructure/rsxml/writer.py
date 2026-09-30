@@ -13,7 +13,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from rockforge.domain.arrangement import Arrangement, ArrangementKind, Section, number_sections
-from rockforge.domain.music import TabNote, Technique, high_density_flags
+from rockforge.domain.music import TabNote, Technique, high_density_flags, is_plain_rise
 
 CHORD_EPSILON_S = 0.03  # notes starting within 30 ms form a chord (matches fret mapper)
 
@@ -158,9 +158,10 @@ def _bend_curve(n: TabNote) -> list[tuple[float, float]]:
     A full ``bend_points`` curve (pre-bend / release / multi-step) is emitted as
     given, its fractional positions scaled onto the note's duration. Otherwise a
     single peak reached at the note's END (the DLC Builder shape — a visible
-    bend-up rather than an already-bent prebend)."""
+    bend-up rather than an already-bent prebend), which is also how a plain rise
+    across the note is written."""
     dur = n.sustain if n.sustain > 0.03 else 0.1
-    if n.bend_points:
+    if n.bend_points and not is_plain_rise(n.bend_points):
         return [(n.time + p.position * dur, p.step) for p in n.bend_points]
     return [(_bend_time(n), n.bend_semitones)]
 
