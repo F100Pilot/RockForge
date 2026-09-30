@@ -240,9 +240,11 @@ def test_bend_and_pull_off_on_a_tied_note_are_kept(tmp_path: Path) -> None:
     held, pulled = parse_gp_track(path, 0).notes
     assert (held.fret, pulled.fret) == (3, 1)
     assert Technique.BEND in held.techniques and held.bend_semitones == pytest.approx(1.0)
-    # bend on the second quarter of the 1.25 s note: flat until 0.4, peak 0.5..0.6
-    curve = [(round(p.position, 2), p.step) for p in held.bend_points]
-    assert curve == [(0.0, 0.0), (0.4, 0.0), (0.5, 1.0), (0.6, 1.0), (0.7, 0.0), (0.8, 0.0)]
+    # the bend is on the second quarter (0.5..1.0 s into the held note): flat until
+    # 0.5 s, up by 0.625 s, held to 0.75 s, back by 0.875 s — at those moments even
+    # after the sustain is trimmed before the next note
+    curve = [(round(p.position * held.sustain, 3), p.step) for p in held.bend_points]
+    assert curve == [(0.0, 0.0), (0.5, 0.0), (0.625, 1.0), (0.75, 1.0), (0.875, 0.0), (1.0, 0.0)]
     assert Technique.PULL_OFF in pulled.techniques
 
 

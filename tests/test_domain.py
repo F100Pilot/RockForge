@@ -113,7 +113,10 @@ def test_sustain_gap_preserves_slide_unpitch_and_bend_points() -> None:
     ]
     out = apply_sustain_gap(notes)
     assert out[0].sustain < 1.0  # trimmed
-    assert out[0].slide_unpitch_to == 4 and out[0].bend_points == pts  # kept
+    assert out[0].slide_unpitch_to == 4
+    # The curve is kept, at the same moments: a trimmed note must not bend earlier.
+    kept = [(round(p.position * out[0].sustain, 6), p.step) for p in out[0].bend_points]
+    assert kept == [(0.0, 0.0), (0.5, 1.0), (round(out[0].sustain, 6), 0.0)]
 
 
 def test_sustain_gap_skips_let_ring_notes() -> None:

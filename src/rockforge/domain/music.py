@@ -370,5 +370,21 @@ def apply_sustain_gap(
             g = min(gap, interval * 0.15)
             new_sustain = min(na.sustain, interval - g)
             if new_sustain < na.sustain:
-                result[a] = replace(na, sustain=max(0.0, new_sustain))
+                trimmed = max(0.0, new_sustain)
+                result[a] = replace(
+                    na, sustain=trimmed,
+                    bend_points=_bend_on_shorter_note(na.bend_points, na.sustain, trimmed),
+                )
     return result
+
+
+def _bend_on_shorter_note(
+    points: tuple[BendPoint, ...], old: float, new: float
+) -> tuple[BendPoint, ...]:
+    """A bend curve (positions are fractions of the sustain) kept at the same
+    moments when the sustain is shortened: the bend-and-release of a note trimmed
+    for the gap must not happen earlier. A point past the new end lands on it."""
+    if not points or new <= 0 or old <= 0:
+        return points
+    scale = old / new
+    return tuple(BendPoint(min(1.0, p.position * scale), p.step) for p in points)

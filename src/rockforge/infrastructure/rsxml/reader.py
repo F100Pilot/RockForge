@@ -17,7 +17,15 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from rockforge.domain.arrangement import Arrangement, ArrangementKind, Section, SongMetadata
-from rockforge.domain.music import Beat, TabNote, Technique, TempoMap, Tuning
+from rockforge.domain.music import (
+    Beat,
+    BendPoint,
+    TabNote,
+    Technique,
+    TempoMap,
+    Tuning,
+    is_composite_bend,
+)
 
 # The writer's attribute name per technique (see writer._note_attrs). Only the
 # flags a note carries; BEND/SLIDE ride their own numeric attributes below.
@@ -58,13 +66,33 @@ def _note_from_el(el: ET.Element) -> TabNote:
     if slide_to >= 0:
         techniques.add(Technique.SLIDE)
     unpitched = _int(el, "slideUnpitchTo", -1)
+    time = float(el.get("time", "0") or 0)
+    sustain = float(el.get("sustain", "0") or 0)
+    # The <bendValues> curve (absolute times) back to fractions of the sustain: a
+    # bend-and-release or a late bend is a shape, not just its peak. The writer
+    # emits a plain rise as one point at the end, which stays a peak here too.
+    curve = [
+        (float(b.get("time", "0") or 0), float(b.get("step", "0") or 0))
+        for b in el.iter("bendValue")
+    ]
+    bend_points: tuple[BendPoint, ...] = ()
+    if curve and sustain > 0:
+        points = [
+            BendPoint(min(1.0, max(0.0, (t - time) / sustain)), step) for t, step in curve
+        ]
+        bend = max(bend, max(p.step for p in points))
+        if is_composite_bend(points):
+            bend_points = tuple(points)
+        if bend:
+            techniques.add(Technique.BEND)
     return TabNote(
         string=_int(el, "string"),
         fret=_int(el, "fret"),
-        time=float(el.get("time", "0") or 0),
-        sustain=float(el.get("sustain", "0") or 0),
+        time=time,
+        sustain=sustain,
         techniques=frozenset(techniques),
         bend_semitones=bend,
+        bend_points=bend_points,
         slide_to_fret=slide_to if slide_to >= 0 else None,
         slide_unpitch_to=unpitched if unpitched >= 0 else None,
         left_hand=_int(el, "leftHand", -1),

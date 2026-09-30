@@ -204,8 +204,10 @@ def test_a_bend_keeps_its_size_and_curve(tmp_path: Path) -> None:
     assert got.bend_semitones == pytest.approx(1.0)
     assert Technique.BEND in got.techniques
     assert [p.step for p in got.bend_points] == [0.0, 1.0, 1.0, 0.0]
-    # re-timed onto the written quarter (0.5 s): 0.1 s, 0.2 s, 0.3 s into it
-    assert [round(p.position * 12) for p in got.bend_points] == [0, 2, 5, 7]
+    # re-timed onto the written quarter (0.5 s, positions in twelfths): about 0.1 s,
+    # 0.2 s and 0.3 s into the note — the same moments after the re-import
+    moments = [p.position * got.sustain for p in got.bend_points]
+    assert moments == pytest.approx([0.0, 2 / 24, 5 / 24, 7 / 24], abs=1e-6)
 
 
 def test_a_long_curve_is_cut_to_four_points_with_the_same_shape(tmp_path: Path) -> None:
