@@ -4010,7 +4010,7 @@ document.getElementById('teDelete').addEventListener('click', () => {
   document.getElementById('toneEditEmpty').style.display = '';
   renderToneListEditor();
   renderTonePanel();
-  toast('Tom removido.', 'ok');
+  toast(T('Tom removido.'), 'ok');
 });
 
 // ---- Lyrics editor ----
@@ -4023,7 +4023,7 @@ function renderLyricsRows() {
       <td><input type="text" value="${esc(e.lyric)}" class="ly-text" style="width:100%"></td>
       <td style="text-align:center"><input type="checkbox" class="ly-break" ${e.lineBreak ? 'checked' : ''}></td>
       <td><input type="number" step="0.01" min="0.1" value="${e.length.toFixed(2)}" class="ly-length" style="width:5rem"></td>
-      <td><button type="button" class="icon ly-remove" title="Remover" aria-label="Remover">${icon('x')}</button></td>
+      <td><button type="button" class="icon ly-remove" title="${T('Remover')}" aria-label="${T('Remover')}">${icon('x')}</button></td>
     </tr>`).join('');
   tb.querySelectorAll('tr').forEach(tr => {
     const i = parseInt(tr.dataset.i, 10);
@@ -4053,12 +4053,12 @@ function serializeLyrics() {
 }
 
 const LYRICS_STATUS_LABEL = {
-  none: '', detecting: 'a iniciar (a carregar modelos ML)…', normalizing: 'a normalizar áudio…',
-  separating: 'a isolar a voz (Demucs) — pode demorar vários minutos…',
-  transcribing: 'a transcrever (WhisperX)…',
-  aligning: 'a sincronizar a letra com a gravação (WhisperX)…',
-  ready: 'deteção concluída', empty: 'nenhuma letra detetada',
-  unavailable: 'deteção indisponível (extra "lyrics" não instalado)',
+  none: '', detecting: T('a iniciar (a carregar modelos ML)…'), normalizing: T('a normalizar áudio…'),
+  separating: T('a isolar a voz (Demucs) — pode demorar vários minutos…'),
+  transcribing: T('a transcrever (WhisperX)…'),
+  aligning: T('a sincronizar a letra com a gravação (WhisperX)…'),
+  ready: T('deteção concluída'), empty: T('nenhuma letra detetada'),
+  unavailable: T('deteção indisponível (extra "lyrics" não instalado)'),
 };
 // Stage start/end percentages and expected duration (ms) for smooth interpolation.
 const LYRICS_STAGES = {
@@ -4106,7 +4106,7 @@ function updateLyricsProgress(status, log, forceStuck) {
     logEl.textContent = log.join('\n');
     logEl.scrollTop = logEl.scrollHeight;
   } else if (status === 'detecting') {
-    logEl.textContent = 'a aguardar o worker…';
+    logEl.textContent = T('a aguardar o worker…');
   } else {
     logEl.textContent = '';
   }
@@ -4188,7 +4188,7 @@ function updateLyricFollowUi() {
   box.checked = lyricsFollowChart;
   box.disabled = !isGpJob();
   const a = arrangements[lyricRefArr()];
-  document.getElementById('ilFollowRef').textContent = a ? `(pista ${arrLabel(a.kind)})` : '';
+  document.getElementById('ilFollowRef').textContent = a ? T('(pista {track})', { track: arrLabel(a.kind) }) : '';
 }
 document.getElementById('ilFollowChart').addEventListener('change', e => setLyricsFollowChart(e.target.checked));
 
@@ -4197,8 +4197,7 @@ document.getElementById('ilFollowChart').addEventListener('change', e => setLyri
 // score's own phrasing back after the rows replaced it.
 let lyricsBackToScore = false;
 document.getElementById('lyricsFromScore').addEventListener('click', async () => {
-  if (!(await confirmModal('Descartar a letra do editor e voltar a lê-la do ficheiro Guitar Pro? ' +
-    'Acontece em "Aplicar e reconstruir"; as edições feitas aqui perdem-se.'))) return;
+  if (!(await confirmModal(T('Descartar a letra do editor e voltar a lê-la do ficheiro Guitar Pro? Acontece em "Aplicar e reconstruir"; as edições feitas aqui perdem-se.')))) return;
   lyricsEvents = [];
   lyricSelected = null;
   lyricsBackToScore = true;
@@ -4206,7 +4205,7 @@ document.getElementById('lyricsFromScore').addEventListener('click', async () =>
   renderLyricsRows();
   updatePendingChangesInfo();
   document.getElementById('lyricsInfo').textContent =
-    'A letra da pauta volta a ser lida em "Aplicar e reconstruir".';
+    T('A letra da pauta volta a ser lida em "Aplicar e reconstruir".');
 });
 
 async function loadLyrics(id) {
@@ -4235,9 +4234,9 @@ async function loadLyrics(id) {
       const stuckMs = LYRICS_STUCK_MS[b.status] || 8*60*1000;
       const isStuck = LYRICS_DETECTING_STATUSES.has(b.status) && elapsed > stuckMs;
       if (b.status === 'detecting' && !b.log.length && Date.now() - startedAt > 30000)
-        label += ' — sem resposta do worker há mais de 30s; verifica logs/worker.log';
+        label += T(' — sem resposta do worker há mais de 30s; verifica logs/worker.log');
       if (isStuck)
-        label += ` — sem progresso há ${Math.round(elapsed/60000)} min; verifica logs/worker.log`;
+        label += T(' — sem progresso há {min} min; verifica logs/worker.log', { min: Math.round(elapsed/60000) });
       document.getElementById('lyricsInfo').textContent = label;
       updateLyricsProgress(b.status, b.log, isStuck);
       if (!LYRICS_DETECTING_STATUSES.has(b.status)) {
@@ -4247,7 +4246,7 @@ async function loadLyrics(id) {
         // may exist only in the editor (loaded from LRCLIB, not yet rebuilt).
         if (lyricsBeforeAlign && b.status !== 'ready') {
           lyricsEvents = lyricsBeforeAlign;
-          toast('A sincronização não correu — a letra ficou como estava. Vê o registo acima.');
+          toast(T('A sincronização não correu — a letra ficou como estava. Vê o registo acima.'));
         } else {
           setLyricsFollowChart(b.follow_chart);  // detected/aligned: timed to the recording
         }
@@ -4263,8 +4262,8 @@ async function detectLyrics() {
   if (!selectedJob) return;
   const r = await fetch(`/jobs/${selectedJob.id}/detect-lyrics`, { method: 'POST' });
   const b = await r.json();
-  if (!r.ok) { toast(b.detail || 'erro'); return; }
-  toast('A detetar letra… (pode demorar)', 'ok');
+  if (!r.ok) { toast(b.detail || T('erro')); return; }
+  toast(T('A detetar letra… (pode demorar)'), 'ok');
   await loadLyrics(selectedJob.id);
 }
 document.getElementById('detectLyrics').addEventListener('click', detectLyrics);
@@ -4312,14 +4311,14 @@ function lyricsCardBody(c, recordingS) {
   meta.className = 'lyr-meta';
   const badge = document.createElement('span');
   badge.className = 'lyr-badge ' + (c.synced ? 'synced' : 'plain');
-  badge.textContent = c.instrumental ? 'instrumental' : c.synced ? 'sincronizada' : 'só texto';
+  badge.textContent = c.instrumental ? T('instrumental') : c.synced ? T('sincronizada') : T('só texto');
   let len = '';
   if (c.duration) {
     len = fmtMinSec(c.duration);
     if (recordingS) {
       const gap = recordingS - c.duration;
-      len += Math.abs(gap) < 2 ? ' (igual à tua gravação)'
-        : ` (a tua gravação: ${fmtMinSec(recordingS)}, ${gap > 0 ? '+' : '−'}${Math.round(Math.abs(gap))} s)`;
+      len += Math.abs(gap) < 2 ? T(' (igual à tua gravação)')
+        : T(' (a tua gravação: {len}, {gap} s)', { len: fmtMinSec(recordingS), gap: `${gap > 0 ? '+' : '−'}${Math.round(Math.abs(gap))}` });
     }
   }
   meta.append(badge, [c.album, len].filter(Boolean).join(' · '));
@@ -4345,8 +4344,8 @@ function renderLyricsCandidates() {
       b.addEventListener('click', fn);
       acts.append(b);
     };
-    if (c.synced) btn('Usar', () => useLyricsCandidate(c));
-    else if (c.plain) btn('Sincronizar com a gravação', () => alignLyrics(plainLines(c.plain), 'só texto'));
+    if (c.synced) btn(T('Usar'), () => useLyricsCandidate(c));
+    else if (c.plain) btn(T('Sincronizar com a gravação'), () => alignLyrics(plainLines(c.plain), 'plain'));
     card.append(body, acts);
     el.append(card);
   }
@@ -4357,19 +4356,19 @@ document.getElementById('lyricsSearch').addEventListener('click', async () => {
   const info = document.getElementById('lyricsSearchInfo');
   const btn = document.getElementById('lyricsSearch');
   btn.disabled = true;
-  info.textContent = 'A procurar…';
+  info.textContent = T('A procurar…');
   try {
     const q = `title=${encodeURIComponent(selectedJob.title || '')}&artist=${encodeURIComponent(selectedJob.artist || '')}`
       + (waveDuration ? `&duration=${waveDuration.toFixed(1)}` : '');
     const r = await getJSON(`/lyrics-lookup?${q}`);
     lyricsCandidates = r.candidates || [];
     info.textContent = lyricsCandidates.length
-      ? `${lyricsCandidates.length} resultado(s) no LRCLIB — escolhe a versão da tua gravação.`
-      : `Nada encontrado no LRCLIB para "${r.searched_title}" de ${r.searched_artist}. `
-        + 'Remixes de fãs e músicas feitas por IA raramente lá estão — usa "Detetar letra" ou escreve-a no editor.';
+      ? T('{n} resultado(s) no LRCLIB — escolhe a versão da tua gravação.', { n: lyricsCandidates.length })
+      : T('Nada encontrado no LRCLIB para "{title}" de {artist}. Remixes de fãs e músicas feitas por IA raramente lá estão — usa "Detetar letra" ou escreve-a no editor.',
+        { title: r.searched_title, artist: r.searched_artist });
   } catch (err) {
     lyricsCandidates = [];
-    info.textContent = `Não consegui procurar agora (${err.message}).`;
+    info.textContent = T('Não consegui procurar agora ({err}).', { err: err.message });
   } finally {
     btn.disabled = false;
   }
@@ -4377,7 +4376,7 @@ document.getElementById('lyricsSearch').addEventListener('click', async () => {
 });
 
 async function useLyricsCandidate(c) {
-  if (lyricsEvents.length && !(await confirmModal('Substituir a letra que está no editor por esta?'))) return;
+  if (lyricsEvents.length && !(await confirmModal(T('Substituir a letra que está no editor por esta?')))) return;
   try {
     const r = await getJSON('/lyrics/parse', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -4386,15 +4385,14 @@ async function useLyricsCandidate(c) {
     lyricsEvents = eventsToRows(r.events);
     setLyricsFollowChart(false);  // an LRC is timed to a recording, not to the score
   } catch (err) {
-    toast(`Não foi possível usar esta letra: ${err.message}`);
+    toast(T('Não foi possível usar esta letra: {err}', { err: err.message }));
     return;
   }
   renderLyricsRows();
   redrawScore();
   document.getElementById('lyricsSearchInfo').textContent =
-    'Letra carregada com os tempos do LRCLIB. Ouve-a na partitura: se estiver adiantada ou atrasada, '
-    + 'usa "1ª palavra = cursor"; se sair do tempo a meio, "Sincronizar com a gravação".';
-  toast('Letra carregada — "Aplicar e reconstruir" para a incluir.', 'ok');
+    T('Letra carregada com os tempos do LRCLIB. Ouve-a na partitura: se estiver adiantada ou atrasada, usa "1ª palavra = cursor"; se sair do tempo a meio, "Sincronizar com a gravação".');
+  toast(T('Letra carregada — "Aplicar e reconstruir" para a incluir.'), 'ok');
 }
 
 function shiftLyrics(delta) {
@@ -4462,7 +4460,7 @@ function renderInspLyrics() {
   updateLyricFollowUi();
   if (lyricSelected && !lyricsEvents.includes(lyricSelected)) lyricSelected = null;
   const words = lyricsEvents.filter(e => e.lyric.trim()).length;
-  document.getElementById('ilCount').textContent = words ? `${words} palavra(s)` : '';
+  document.getElementById('ilCount').textContent = words ? T('{n} palavra(s)', { n: words }) : '';
   document.getElementById('ilEmpty').hidden = lyricsEvents.length > 0;
   document.getElementById('ilAllTools').hidden = !lyricsEvents.length;
   const e = lyricSelected;
@@ -4482,7 +4480,7 @@ function renderInspLyrics() {
   document.getElementById('ilPrev').disabled = i <= 0;
   document.getElementById('ilNext').disabled = i >= order.length - 1;
   document.getElementById('ilSelInfo').textContent =
-    `palavra ${i + 1} de ${order.length} · ${order.length - i - 1} depois dela`;
+    T('palavra {i} de {n} · {after} depois dela', { i: i + 1, n: order.length, after: order.length - i - 1 });
 }
 
 document.getElementById('ilOpenPage').addEventListener('click', ev => {
@@ -4499,7 +4497,7 @@ document.getElementById('ilFromHere').addEventListener('click', () => {
   const e = lyricSelected;
   if (!e) return;
   if (shiftLyricsFrom(e, lyricCursorTime() - e.time)) {
-    toast('A palavra não pode passar para antes da anterior — ficou logo a seguir a ela.');
+    toast(T('A palavra não pode passar para antes da anterior — ficou logo a seguir a ela.'));
   }
   lyricsEdited();
 });
@@ -4561,9 +4559,9 @@ document.getElementById('ilAddAtCursor').addEventListener('click', () => {
 
 async function alignLyrics(lines, what) {
   if (!selectedJob || !lines.length) return;
-  const msg = what === 'só texto'
-    ? 'Esta letra não tem tempos: o WhisperX vai procurar cada palavra na voz da música inteira (alguns minutos, precisa dos extras ML). Continuar?'
-    : 'O WhisperX vai medir na gravação o tempo de cada palavra desta letra (alguns minutos, precisa dos extras ML). Substitui os tempos atuais. Continuar?';
+  const msg = what === 'plain'
+    ? T('Esta letra não tem tempos: o WhisperX vai procurar cada palavra na voz da música inteira (alguns minutos, precisa dos extras ML). Continuar?')
+    : T('O WhisperX vai medir na gravação o tempo de cada palavra desta letra (alguns minutos, precisa dos extras ML). Substitui os tempos atuais. Continuar?');
   if (!(await confirmModal(msg))) return;
   try {
     await getJSON(`/jobs/${selectedJob.id}/detect-lyrics`, {
@@ -4571,10 +4569,10 @@ async function alignLyrics(lines, what) {
       body: JSON.stringify({ align_lines: lines }),
     });
   } catch (err) {
-    toast(`Não foi possível sincronizar: ${err.message}`);
+    toast(T('Não foi possível sincronizar: {err}', { err: err.message }));
     return;
   }
-  toast('A sincronizar a letra com a gravação… (pode demorar)', 'ok');
+  toast(T('A sincronizar a letra com a gravação… (pode demorar)'), 'ok');
   lyricsBeforeAlign = lyricsEvents.map(e => ({ ...e }));
   await loadLyrics(selectedJob.id);
 }
@@ -4586,10 +4584,10 @@ async function detectTones() {
   if (!selectedJob) return;
   const r = await fetch(`/jobs/${selectedJob.id}/detect-tones`, { method: 'POST' });
   const b = await r.json();
-  if (!r.ok) { toast(b.detail || 'erro'); return; }
-  toast('A detetar tom… (pode demorar)', 'ok');
+  if (!r.ok) { toast(b.detail || T('erro')); return; }
+  toast(T('A detetar tom… (pode demorar)'), 'ok');
   document.getElementById('toneDetectionWrap').style.display = '';
-  document.getElementById('toneDetectionLog').textContent = 'a iniciar…';
+  document.getElementById('toneDetectionLog').textContent = T('a iniciar…');
   document.getElementById('toneDetectionResult').innerHTML = '';
   pollToneDetection();
 }
@@ -4612,7 +4610,7 @@ function pollToneDetection() {
       clearInterval(_toneDetectionPoll);
       _toneDetectionPoll = null;
       document.getElementById('toneDetectionResult').innerHTML =
-        '<span class="meta" style="color:#e88">Deteção falhou — vê o log acima.</span>';
+        `<span class="meta" style="color:#e88">${T('Deteção falhou — vê o log acima.')}</span>`;
     }
   }, 3000);
 }
@@ -4633,34 +4631,34 @@ function _candidateList(role, candidates) {
   const rows = candidates.map(c => {
     const m = Math.round(Number(c.match) || 0);
     return `<div class="tone-cand"><span class="tone-cand-name">${esc(c.name || c.key)}</span>` +
-      `<span class="tone-cand-match" title="Semelhança estimada com o gravado">${m}%</span>` +
-      `<button type="button" class="secondary tone-cand-use" data-role="${esc(role)}" data-key="${esc(c.key)}">usar</button></div>`;
+      `<span class="tone-cand-match" title="${T('Semelhança estimada com o gravado')}">${m}%</span>` +
+      `<button type="button" class="secondary tone-cand-use" data-role="${esc(role)}" data-key="${esc(c.key)}">${T('usar')}</button></div>`;
   }).join('');
-  const title = role === 'lead' ? 'Lead — tons semelhantes' : 'Rhythm — tons semelhantes';
+  const title = role === 'lead' ? T('Lead — tons semelhantes') : T('Rhythm — tons semelhantes');
   return `<div class="tone-cand-group"><div class="meta" style="margin:.4rem 0 .2rem">${esc(title)} ` +
-    `<span class="meta">(ordenados por semelhança)</span></div>${rows}</div>`;
+    `<span class="meta">${T('(ordenados por semelhança)')}</span></div>${rows}</div>`;
 }
 
 function renderToneDetectionResult(d) {
   _lastToneDetection = d;
   const cat = d.category || '?';
-  const catLabel = { clean: 'Limpo (Clean)', crunch: 'Crunch', high_gain: 'Distorcido (High Gain)' }[cat] || cat;
+  const catLabel = { clean: T('Limpo (Clean)'), crunch: 'Crunch', high_gain: T('Distorcido (High Gain)') }[cat] || cat;
   const p = d.profile || {};
   let profileHtml = '';
   if (p && (p.gain_level !== undefined)) {
     profileHtml = `<div class="tone-prof" style="margin-top:.4rem">` +
-      _profileBar('Ganho/distorção', p.gain_level) +
-      _profileBar('Brilho', p.brightness) +
-      _profileBar('Graves', p.low_end) +
+      _profileBar(T('Ganho/distorção'), p.gain_level) +
+      _profileBar(T('Brilho'), p.brightness) +
+      _profileBar(T('Graves'), p.low_end) +
       `</div>`;
   }
   const el = document.getElementById('toneDetectionResult');
   el.innerHTML =
-    `<div style="margin-top:.3rem"><strong>Categoria detetada:</strong> ${esc(catLabel)}</div>` +
+    `<div style="margin-top:.3rem"><strong>${T('Categoria detetada:')}</strong> ${esc(catLabel)}</div>` +
     profileHtml +
     `<div class="anchor-row" style="margin-top:.4rem">` +
-    `<button type="button" id="applyDetectedTones" class="secondary">Aplicar melhores (Lead + Rhythm)</button></div>` +
-    `<div class="meta" style="margin-top:.3rem">Não encontraste o tom certo? Experimenta os semelhantes abaixo — cada um dá a sua % de semelhança com o gravado.</div>` +
+    `<button type="button" id="applyDetectedTones" class="secondary">${T('Aplicar melhores (Lead + Rhythm)')}</button></div>` +
+    `<div class="meta" style="margin-top:.3rem">${T('Não encontraste o tom certo? Experimenta os semelhantes abaixo — cada um dá a sua % de semelhança com o gravado.')}</div>` +
     _candidateList('lead', d.lead_candidates) +
     _candidateList('rhythm', d.rhythm_candidates);
   document.getElementById('applyDetectedTones').addEventListener('click', () => applyDetectedTones(d));
@@ -4680,18 +4678,18 @@ function _findCandidate(role, key) {
 function applyOneTone(role, key) {
   if (!_lastToneDetection) return;
   const tone = _findCandidate(role, key);
-  if (!tone) { toast('Tom não encontrado.'); return; }
+  if (!tone) { toast(T('Tom não encontrado.')); return; }
   const prefix = role === 'lead' ? 'RFLead_' : 'RFRhythm_';
   jobTones = jobTones.filter(t => !t.key.startsWith(prefix));
   jobTones.push(tone);
   if (role === 'lead') toneBase = tone.key;
   toneNames = jobTones.map(t => t.key);
   renderTonePanel();
-  toast(`Tom "${tone.name || tone.key}" aplicado — "Aplicar e reconstruir" para gravar.`, 'ok');
+  toast(T('Tom "{name}" aplicado — "Aplicar e reconstruir" para gravar.', { name: tone.name || tone.key }), 'ok');
 }
 
 function applyDetectedTones(detected) {
-  if (!detected.lead || !detected.rhythm) { toast('Sem tons detetados.'); return; }
+  if (!detected.lead || !detected.rhythm) { toast(T('Sem tons detetados.')); return; }
   const lead = detected.lead;
   const rhythm = detected.rhythm;
   // Merge into current tones, replacing any existing RF-detected ones.
@@ -4700,7 +4698,7 @@ function applyDetectedTones(detected) {
   toneBase = lead.key;
   toneNames = [lead.key, rhythm.key];
   renderTonePanel();
-  toast('Tons sugeridos aplicados — "Aplicar e reconstruir" para gravar.', 'ok');
+  toast(T('Tons sugeridos aplicados — "Aplicar e reconstruir" para gravar.'), 'ok');
 }
 
 document.getElementById('detectTones').addEventListener('click', detectTones);
@@ -4710,23 +4708,23 @@ document.getElementById('detectTones').addEventListener('click', detectTones);
 // part (tone_analysis/sections.py). Computed from the current build.
 
 const TONE_ROLE = {
-  clean: { label: 'Limpo', color: '#5bb8ff' },
-  rhythm: { label: 'Ritmo', color: '#e0a54a' },
-  lead: { label: 'Solo', color: '#ff6b6b' },
-  silent: { label: 'Não toca', color: '#3a3d48' },
+  clean: { label: T('Limpo'), color: '#5bb8ff' },
+  rhythm: { label: T('Ritmo'), color: '#e0a54a' },
+  lead: { label: T('Solo'), color: '#ff6b6b' },
+  silent: { label: T('Não toca'), color: '#3a3d48' },
 };
-const TONE_CONFIDENCE = { high: 'confiança alta', medium: 'confiança média', low: 'confiança baixa' };
+const TONE_CONFIDENCE = { high: T('confiança alta'), medium: T('confiança média'), low: T('confiança baixa') };
 
 function toneReasonText(r) {
   const pct = `${Math.round((Number(r.value) || 0) * 100)}%`;
   switch (r.code) {
-    case 'gain': return `distorção na gravação ${pct}`;
-    case 'chords': return `acordes em ${pct} das notas`;
-    case 'palm_mute': return `palm mute em ${pct}`;
-    case 'lead': return `bends/vibrato/ligados em ${pct}`;
-    case 'high': return `casa 12 ou acima em ${pct}`;
-    case 'ring': return `notas a soar (let ring) em ${pct}`;
-    case 'no_audio': return 'a guitarra quase não se ouve aqui — usei o som geral da música';
+    case 'gain': return T('distorção na gravação {pct}', { pct });
+    case 'chords': return T('acordes em {pct} das notas', { pct });
+    case 'palm_mute': return T('palm mute em {pct}', { pct });
+    case 'lead': return T('bends/vibrato/ligados em {pct}', { pct });
+    case 'high': return T('casa 12 ou acima em {pct}', { pct });
+    case 'ring': return T('notas a soar (let ring) em {pct}', { pct });
+    case 'no_audio': return T('a guitarra quase não se ouve aqui — usei o som geral da música');
     default: return r.code;
   }
 }
@@ -4752,11 +4750,11 @@ function renderToneSuggestions() {
   const d = toneSuggestions;
   const top = document.getElementById('toneSuggestApplyAll');
   top.hidden = !(d && d.tracks && d.tracks.length);
-  if (!d) { body.innerHTML = '<span class="meta">a carregar…</span>'; return; }
+  if (!d) { body.innerHTML = `<span class="meta">${T('a carregar…')}</span>`; return; }
   if (d.error) {
     body.innerHTML = d.error === 409
-      ? '<span class="meta">Clica em "Detetar tom": além do tom geral, mede o som da guitarra ao longo da música, e aqui aparece uma sugestão de tom para cada parte de cada pista.</span>'
-      : '<span class="meta" style="color:#e88">Não foi possível calcular as sugestões.</span>';
+      ? `<span class="meta">${T('Clica em "Detetar tom": além do tom geral, mede o som da guitarra ao longo da música, e aqui aparece uma sugestão de tom para cada parte de cada pista.')}</span>`
+      : `<span class="meta" style="color:#e88">${T('Não foi possível calcular as sugestões.')}</span>`;
     return;
   }
   body.innerHTML = d.tracks.map((t, ti) => toneTrackHtml(t, ti, d.timeline || [])).join('');
@@ -4795,7 +4793,7 @@ function toneTrackHtml(t, ti, timeline) {
     const name = run.length > 1 ? `${g.name}–${last.name}` : g.name;
     const when = `${fmtClock(g.start - viewOrigin)}–${fmtClock(last.end - viewOrigin)}`;
     if (g.role === 'silent') {
-      return `<div class="ts-row"><span class="ts-dot" style="background:${role.color}"></span><b>${esc(name)}</b> <span class="meta">${when} · não toca — mantém o tom anterior</span></div>`;
+      return `<div class="ts-row"><span class="ts-dot" style="background:${role.color}"></span><b>${esc(name)}</b> <span class="meta">${when} · ${T('não toca — mantém o tom anterior')}</span></div>`;
     }
     const matches = run.map(x => Math.round(x.match));
     const lo = Math.min(...matches), hi = Math.max(...matches);
@@ -4804,14 +4802,14 @@ function toneTrackHtml(t, ti, timeline) {
     return `<div class="ts-row"><span class="ts-dot" style="background:${role.color}"></span><b>${esc(name)}</b> ` +
       `<span class="meta">${when} · ${role.label}</span> → <b>${esc(g.tone_name || g.tone_key)}</b> ` +
       `<span class="meta">${lo === hi ? lo : `${lo}–${hi}`}% · ${TONE_CONFIDENCE[conf]}</span>` +
-      (why ? `<div class="meta ts-why">porquê: ${esc(why)}</div>` : '') + '</div>';
+      (why ? `<div class="meta ts-why">${T('porquê:')} ${esc(why)}</div>` : '') + '</div>';
   }).join('');
   const switches = (t.changes || []).length;
   return `<div class="ts-track">
     <div class="pv-row" style="flex-wrap:wrap;gap:.5rem"><b>${esc(arrLabel(t.kind))}</b>
-      <span class="meta">${(t.names || []).length} tom(ns), ${switches} troca(s)</span>
-      <button type="button" class="secondary ts-apply" data-i="${ti}">Aplicar a esta pista</button></div>
-    <svg class="ts-gain" viewBox="0 0 100 30" preserveAspectRatio="none" aria-label="Distorção ao longo da música">${bars}</svg>
+      <span class="meta">${T('{n} tom(ns), {m} troca(s)', { n: (t.names || []).length, m: switches })}</span>
+      <button type="button" class="secondary ts-apply" data-i="${ti}">${T('Aplicar a esta pista')}</button></div>
+    <svg class="ts-gain" viewBox="0 0 100 30" preserveAspectRatio="none" aria-label="${T('Distorção ao longo da música')}">${bars}</svg>
     <div class="ts-strip">${strip}</div>
     <div class="ts-rows">${rows}</div>
   </div>`;
@@ -4858,8 +4856,8 @@ function applyToneSuggestion(plans) {
   renderTonePanel();
   if (arrangements.length) showArr(currentArr);
   toast(plans.length > 1
-    ? 'Tons sugeridos aplicados a todas as pistas — "Aplicar e reconstruir" para gravar.'
-    : `Tons sugeridos aplicados a ${arrLabel(plans[0].kind)} — "Aplicar e reconstruir" para gravar.`, 'ok');
+    ? T('Tons sugeridos aplicados a todas as pistas — "Aplicar e reconstruir" para gravar.')
+    : T('Tons sugeridos aplicados a {track} — "Aplicar e reconstruir" para gravar.', { track: arrLabel(plans[0].kind) }), 'ok');
 }
 
 document.getElementById('toneSuggestApplyAll').addEventListener('click', () => {
@@ -4869,8 +4867,8 @@ document.getElementById('toneSuggestApplyAll').addEventListener('click', () => {
 // ── Stem separation (selectable audio source for fine-tuning) ─────────────────
 
 const STEM_LABELS = {
-  guitar: 'Guitarra', bass: 'Baixo',
-  vocals: 'Voz', piano: 'Piano', other: 'Outros',
+  guitar: T('Guitarra'), bass: T('Baixo'),
+  vocals: T('Voz'), piano: T('Piano'), other: T('Outros'),
 };
 
 let availableStems = [];  // Demucs stem names present on disk (drums excluded)
@@ -4884,16 +4882,16 @@ function populateAudioSources() {
   if (!sel) return;
   const prev = sel.value;
   const values = [''];
-  let html = '<option value="">Mistura completa</option>';
+  let html = `<option value="">${T('Mistura completa')}</option>`;
   for (const a of arrangements) {
     const v = `synth:${a.kind}`;
     values.push(v);
-    html += `<option value="${esc(v)}">${esc(arrLabel(a.kind))} (sintetizada)</option>`;
+    html += `<option value="${esc(v)}">${T('{track} (sintetizada)', { track: esc(arrLabel(a.kind)) })}</option>`;
   }
   if (vocalLine.notes.length) {
     const v = `synth:${VOICE_SOURCE}`;
     values.push(v);
-    html += `<option value="${v}">Voz (sintetizada)</option>`;
+    html += `<option value="${v}">${T('Voz (sintetizada)')}</option>`;
   }
   for (const name of availableStems) {
     values.push(name);
@@ -4908,9 +4906,9 @@ async function separateStems() {
   if (!selectedJob) return;
   const r = await fetch(`/jobs/${selectedJob.id}/separate-stems`, { method: 'POST' });
   const b = await r.json();
-  if (!r.ok) { toast(b.detail || 'erro'); return; }
-  toast('A separar instrumentos… (pode demorar minutos)', 'ok');
-  document.getElementById('stemsStatus').textContent = 'a iniciar…';
+  if (!r.ok) { toast(b.detail || T('erro')); return; }
+  toast(T('A separar instrumentos… (pode demorar minutos)'), 'ok');
+  document.getElementById('stemsStatus').textContent = T('a iniciar…');
   pollStems();
 }
 
@@ -4927,14 +4925,14 @@ function pollStems() {
       clearInterval(_stemsPoll); _stemsPoll = null;
       availableStems = d.stems || [];
       populateAudioSources();
-      st.textContent = `${availableStems.length} stems prontos (a guitarra é todas as guitarras juntas)`;
+      st.textContent = T('{n} stems prontos (a guitarra é todas as guitarras juntas)', { n: availableStems.length });
     } else if (d.status === 'unavailable') {
       clearInterval(_stemsPoll); _stemsPoll = null;
-      st.textContent = 'separação falhou — precisa do extra [ml] (Demucs).';
+      st.textContent = T('separação falhou — precisa do extra [ml] (Demucs).');
       st.style.color = '#e88';
     } else if (d.status && d.status !== 'none') {
-      const label = { detecting: 'a iniciar', normalizing: 'a normalizar áudio',
-        separating: 'a separar (Demucs)…' }[d.status] || d.status;
+      const label = { detecting: T('a iniciar'), normalizing: T('a normalizar áudio'),
+        separating: T('a separar (Demucs)…') }[d.status] || d.status;
       st.textContent = label + '…';
     }
   }, 3000);
@@ -4954,7 +4952,7 @@ async function loadStems(id) {
     if (!r.ok) return;
     const d = await r.json();
     if (d.status === 'separating' || d.status === 'normalizing' || d.status === 'detecting') {
-      document.getElementById('stemsStatus').textContent = 'separação em curso…';
+      document.getElementById('stemsStatus').textContent = T('separação em curso…');
       pollStems();
     } else if ((d.stems || []).length) {
       availableStems = d.stems;
@@ -4988,11 +4986,11 @@ function loadCoverArt(j) {
   if (j.cover_art) {
     img.src = `/jobs/${j.id}/cover?t=${Date.now()}`;
     img.hidden = false;
-    info.textContent = 'capa carregada — substitui o ficheiro para alterar.';
+    info.textContent = T('capa carregada — substitui o ficheiro para alterar.');
   } else {
     img.hidden = true;
     img.src = '';
-    info.textContent = 'sem capa.';
+    info.textContent = T('sem capa.');
   }
 }
 
@@ -5004,10 +5002,10 @@ document.getElementById('coverArtFile').addEventListener('change', async ev => {
   fd.append('file', file);
   const r = await fetch(`/jobs/${selectedJob.id}/cover`, { method: 'POST', body: fd });
   const b = await r.json();
-  if (!r.ok) { toast(b.detail || 'erro'); return; }
+  if (!r.ok) { toast(b.detail || T('erro')); return; }
   selectedJob.cover_art = b.cover_art;
   loadCoverArt(selectedJob);
-  toast('Capa carregada — "Aplicar e reconstruir" para a incluir no bundle.', 'ok');
+  toast(T('Capa carregada — "Aplicar e reconstruir" para a incluir no bundle.'), 'ok');
   ev.target.value = '';
 });
 
@@ -5016,7 +5014,7 @@ document.getElementById('coverArtFile').addEventListener('change', async ev => {
 // and returns candidates; the USER picks one — nothing is filled from a guess
 // they cannot see. Each card shows the matched track and the source, so a
 // wrong match (a cover version, a compilation) is visible before it is used.
-const ALBUM_KIND = { album: 'álbum', ep: 'EP', single: 'single', compilation: 'compilação' };
+const ALBUM_KIND = { album: T('álbum'), ep: 'EP', single: 'single', compilation: T('compilação') };
 const ALBUM_SOURCE = { itunes: 'iTunes', musicbrainz: 'MusicBrainz' };
 
 async function lookupAlbums(title, artist) {
@@ -5032,12 +5030,11 @@ let lastAlbumLookup = null;
 // fan remix, a cover or an AI-made song is simply not in these catalogues.
 function albumNothingFound() {
   const r = lastAlbumLookup || {};
-  const what = r.searched_title ? `"${r.searched_title}" de ${r.searched_artist}` : 'este título e banda';
+  const what = r.searched_title ? T('"{title}" de {artist}', { title: r.searched_title, artist: r.searched_artist }) : T('este título e banda');
   const down = (r.failures || []).length
-    ? ` (não consegui perguntar a ${r.failures.map(f => f.split(':')[0]).join(', ')}.)` : '';
-  return `Nada encontrado para ${what} no iTunes nem no MusicBrainz${down}. ` +
-    'Remixes de fãs, versões e músicas feitas por IA não estão nestes catálogos — ' +
-    'corrige o título/banda e procura de novo, ou carrega a capa à mão.';
+    ? T(' (não consegui perguntar a {services}.)', { services: r.failures.map(f => f.split(':')[0]).join(', ') }) : '';
+  return T('Nada encontrado para {what} no iTunes nem no MusicBrainz{down}. Remixes de fãs, versões e músicas feitas por IA não estão nestes catálogos — corrige o título/banda e procura de novo, ou carrega a capa à mão.',
+    { what, down });
 }
 
 // Build the grid with DOM calls, not innerHTML: the URLs and names come from
