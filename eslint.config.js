@@ -5,7 +5,7 @@
 // to inline event-handler attributes and to each other in load order.
 module.exports = [
   {
-    files: ["web/app.js", "web/highway3d.js"],
+    files: ["web/app.js", "web/highway3d.js", "web/i18n.js", "web/i18n-en.js"],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "script",
@@ -43,6 +43,16 @@ module.exports = [
         performance: "readonly",
         structuredClone: "readonly",
         ResizeObserver: "readonly",
+        Headers: "readonly",
+        Request: "readonly",
+        Node: "readonly",
+        NodeFilter: "readonly",
+        // web/i18n.js, loaded before app.js
+        LANG: "readonly",
+        I18N_EN: "readonly",
+        T: "readonly",
+        setLang: "readonly",
+        translateDom: "readonly",
       },
     },
     rules: {
@@ -63,5 +73,10 @@ module.exports = [
       "use-isnan": "error",
       "valid-typeof": "error",
     },
+  },
+  {
+    // The files that DEFINE the i18n globals the others read.
+    files: ["web/i18n.js", "web/i18n-en.js"],
+    rules: { "no-redeclare": ["error", { builtinGlobals: false }] },
   },
 ];

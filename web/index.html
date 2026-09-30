@@ -477,6 +477,8 @@ button.pv-btn { display:inline-flex; align-items:center; gap:.5rem; height:2.75r
   border:1px solid #33363f; background:#1f2129; color:var(--text); font-weight:600; font-size:.92rem; white-space:nowrap; }
 button.pv-btn:hover { background:#262833; filter:none; }
 button.pv-btn .ic { width:1.3rem; height:1.3rem; margin:0; }
+select.lang-select { height:2.75rem; border-radius:10px; border:1px solid #33363f; background:#1f2129;
+  color:var(--text); font-weight:600; padding:0 .5rem; }
 button.pv-icon-btn { width:2.75rem; padding:0; justify-content:center; }
 button.pv-icon-btn .ic { width:1.5rem; height:1.5rem; }
 button.pv-primary { background:var(--accent); border-color:var(--accent); color:#1a1208; }
@@ -692,6 +694,9 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
     <span class="pv-spacer"></span>
     <button type="button" id="openBatchModal" class="pv-btn" title="Vários ficheiros Guitar Pro + gravações de uma vez — um álbum inteiro"><svg class="ic" aria-hidden="true"><use href="#i-package"/></svg>Lote (álbum)</button>
     <button type="button" class="pv-btn pv-primary" data-new="gp"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>Novo projeto</button>
+    <select id="langSelectTop" class="lang-select" data-lang-select translate="no" title="Idioma · Language" aria-label="Idioma · Language">
+      <option value="pt">PT</option><option value="en">EN</option>
+    </select>
     <button type="button" id="openSettings" class="pv-btn pv-icon-btn" title="Definições" aria-label="Definições"><svg class="ic" aria-hidden="true"><use href="#i-settings"/></svg></button>
   </header>
 
@@ -1240,6 +1245,13 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
     <button type="button" class="modal-close" id="settingsClose">×</button>
     <h2>Definições</h2>
 
+    <div class="syncctrls" style="margin:.2rem 0 .6rem">
+      <label style="font-weight:600" for="langSelectSettings">Idioma · Language</label>
+      <select id="langSelectSettings" data-lang-select translate="no">
+        <option value="pt">Português</option><option value="en">English</option>
+      </select>
+    </div>
+
     <!-- Software externo. First, because it explains most "isto não funciona":
          RockForge ships almost none of its dependencies (Wwise cannot legally
          be redistributed, the ML stack is gigabytes), and every absence shows
@@ -1660,6 +1672,8 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
 
 <div class="toast-container" id="toasts"></div>
 
+<script src="/i18n-en.js"></script>
+<script src="/i18n.js"></script>
 <script src="/highway3d.js"></script>
 <script src="/app.js"></script>
 </body>

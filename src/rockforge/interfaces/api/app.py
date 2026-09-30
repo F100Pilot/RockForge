@@ -41,7 +41,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel, Field, ValidationError
 
-from rockforge import __version__
+from rockforge import __version__, i18n
 from rockforge.config import settings
 from rockforge.domain.chords import name_chord
 from rockforge.infrastructure.db.models import Job, JobStatus, make_session_factory
@@ -235,6 +235,18 @@ def _verify_same_origin(request: Request) -> None:
         raise HTTPException(403, "cross-origin request rejected")
 
 
+async def _ui_language(request: Request) -> AsyncIterator[None]:
+    """The language the browser reads (``X-RockForge-Lang``, sent by
+    ``web/i18n.js`` on every request), for the text the server writes back —
+    see ``rockforge.i18n``. Async, so it runs in the request's own context and
+    the endpoint (even a sync one, run in a copied context) sees it."""
+    token = i18n.use(request.headers.get("x-rockforge-lang"))
+    try:
+        yield
+    finally:
+        i18n.reset(token)
+
+
 app = FastAPI(
     title="RockForge",
     description=(
@@ -244,7 +256,9 @@ app = FastAPI(
     ),
     version=__version__,
     lifespan=_lifespan,
-    dependencies=[Depends(_verify_api_auth), Depends(_verify_same_origin)],
+    dependencies=[
+        Depends(_verify_api_auth), Depends(_verify_same_origin), Depends(_ui_language),
+    ],
 )
 
 
@@ -2978,6 +2992,23 @@ def _settings_out() -> SettingsOut:
     )
 
 
+class UiLanguageIn(BaseModel):
+    lang: str
+
+
+@app.put("/ui-language")
+def set_ui_language(body: UiLanguageIn) -> dict[str, str]:
+    """Remember the app's language (Português / English) for what runs outside a
+    request — the worker's logs, the desktop window's close dialog. The browser
+    keeps its own copy and sends it with every request."""
+    from rockforge import runtime_settings
+
+    if body.lang not in i18n.LANGUAGES:
+        raise HTTPException(422, "lang must be 'pt' or 'en'")
+    runtime_settings.save({**runtime_settings.load(), "ui_language": body.lang})
+    return {"lang": body.lang}
+
+
 @app.get("/settings", response_model=SettingsOut)
 def get_settings() -> SettingsOut:
     """App settings editable from the UI (stem-separator backend + Banquet paths).
@@ -3724,7 +3755,7 @@ def index() -> str:
 
 # The web UI's own scripts, served by name (never a client path): app.js (the UI)
 # and highway3d.js (the 3D note highway, which loads three.js on first use).
-WEB_SCRIPTS = ("app.js", "highway3d.js")
+WEB_SCRIPTS = ("i18n.js", "i18n-en.js", "app.js", "highway3d.js")
 # three.js, vendored so the app works offline: the module and the core it imports.
 THREE_FILES = ("three.module.js", "three.core.js")
 
@@ -3747,6 +3778,18 @@ def app_js() -> FileResponse:
     """The web UI's JS, extracted out of index.html's inline <script> so it can
     be linted (ESLint has no way to check an inline block on its own)."""
     return _serve_web_js("app.js")
+
+
+@app.get("/i18n.js", include_in_schema=False)
+def i18n_js() -> FileResponse:
+    """The UI's language switch and ``t()`` (loaded before app.js)."""
+    return _serve_web_js("i18n.js")
+
+
+@app.get("/i18n-en.js", include_in_schema=False)
+def i18n_en_js() -> FileResponse:
+    """The English text of the UI, keyed by its Portuguese original."""
+    return _serve_web_js("i18n-en.js")
 
 
 @app.get("/highway3d.js", include_in_schema=False)

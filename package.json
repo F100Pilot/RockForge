@@ -3,7 +3,7 @@
   "private": true,
   "description": "Lint tooling for web/app.js (the RockForge web UI's client-side script). No build step — the browser loads web/app.js directly.",
   "scripts": {
-    "lint": "eslint web/app.js web/highway3d.js"
+    "lint": "eslint web/app.js web/highway3d.js web/i18n.js web/i18n-en.js"
   },
   "devDependencies": {
     "eslint": "10.1.0"

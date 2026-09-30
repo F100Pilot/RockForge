@@ -21,7 +21,7 @@ from rockforge.config import settings
 
 _KEYS = (
     "stem_separator", "banquet_repo", "banquet_ckpt", "banquet_queries",
-    "loudness_target", "whisperx_compute_type", "ml_python",
+    "loudness_target", "whisperx_compute_type", "ml_python", "ui_language",
 )
 
 # The loudness (LUFS) the audio is normalized to AND the target the Wwise bus
@@ -76,6 +76,17 @@ def save(overrides: dict[str, Any]) -> dict[str, Any]:
 def _eff(key: str, env_default: Any) -> Any:
     val = load().get(key)
     return val if val not in (None, "") else env_default
+
+
+UI_LANGUAGES = ("pt", "en")
+
+
+def ui_language() -> str:
+    """The language the user picked for the app ("pt" by default). The browser
+    sends its own with every request (``X-RockForge-Lang``); this is what the
+    worker and the desktop window use, where there is no request to read."""
+    val = load().get("ui_language")
+    return val if val in UI_LANGUAGES else "pt"
 
 
 def stem_separator() -> str:

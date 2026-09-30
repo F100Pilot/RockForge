@@ -1,3 +1,18 @@
+# Português / English em toda a aplicação
+
+Pedido: "cria a tradução de tudo o que está no rockforge para inglês. Fica opção
+de Português e Inglês."
+
+- [x] 1. Base: `web/i18n.js` (`T()`, `translateDom`, cabeçalho `X-RockForge-Lang`,
+      seletor de idioma), `web/i18n-en.js`, `rockforge/i18n.py` (`tr(pt, en)`),
+      `PUT /ui-language`, `tests/test_i18n.py`
+- [ ] 2. index.html: inglês para cada texto/atributo
+- [ ] 3. app.js (6 partes) + highway3d.js: textos por `T()`
+- [ ] 4. Servidor: mensagens em português → `tr(pt, en)` (diagnóstico, Songsterr,
+      YouTube, pesquisa de capa/letra, HTTPS, ML, API, worker, janela do .exe)
+- [ ] 5. README.en.md
+- [ ] 6. Juntar, testes, Playwright nas duas línguas, docs
+
 # Ruído / tom pouco limpo nos PSARC do RockForge
 
 Pedido: "Existem problemas graves com os tons e mesmo sem os tons, normalmente
