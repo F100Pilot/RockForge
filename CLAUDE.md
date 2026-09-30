@@ -93,7 +93,10 @@ re-inverting the dependency.
    bar 1 comes before the audio starts — alphaTab/PDF-to-GP5 save such a start
    as a positive `<FramePadding>`; `offset_s` accepts down to `MIN_OFFSET_S`
    = -60 s and the lead-in pad grows by it, so the chart keeps its place;
-   clamping it to 0 had put every note that much late), returned by
+   clamping it to 0 had put every note that much late — the sync view in
+   `web/app.js` must not clamp it either: `setOffsetLive` did, so the preview
+   padded the audio by 2 s instead of 4.15 s and a rebuild sent offset_s 0;
+   guarded by `test_the_web_sync_view_keeps_a_negative_offset`), returned by
    `/gp/inspect` and pre-filled into the wizard's offset field, exact when the
    uploaded recording IS the audio GP was synced to. A point's
    `<BarIndex>`/`<BarOccurrence>` names the pass of a written bar, which the

@@ -1005,8 +1005,11 @@ document.addEventListener('click', e => {
 const STD = [40, 45, 50, 55, 59, 64];
 let selectedJob = null, arrangements = [], currentArr = 0, pollTimer = null;
 let arrangementsLoadedFor = null;  // job id whose chart+audio are already loaded (avoids re-decoding on every poll)
-// Visual sync (GP): MIN_LEAD must match gp_pipeline.MIN_LEAD_S.
+// Visual sync (GP): MIN_LEAD must match gp_pipeline.MIN_LEAD_S and MIN_OFFSET
+// gp_pipeline.MIN_OFFSET_S (a GP whose bar 1 comes before the recording starts
+// has a negative offset_s; the build pads the audio by that much more).
 const MIN_LEAD = 2.0;
+const MIN_OFFSET = -60.0;
 let tabPx = 80, tabH = 280, scoreShift = 0, offsetLive = 0;
 // Tempo (BPM) live-preview: builtScale is the tempo_scale baked into the
 // arrangement currently loaded; tempoScaleLive is the value being previewed;
@@ -6994,9 +6997,13 @@ function requestShowArr() {
 }
 
 function setOffsetLive(v) {
-  offsetLive = Math.max(0, v || 0);
+  // Not clamped at 0: the job's offset_s may be negative (the GP's bar 1 before
+  // the recording). Clamping it made the preview pad the audio by 2 s instead of
+  // the built MIN_LEAD - offset_s, so the music ran ahead of the notes, and
+  // "Aplicar e reconstruir" sent offset_s 0, losing the file's sync.
+  offsetLive = Math.max(MIN_OFFSET, v || 0);
   document.getElementById('syncOffset').value = offsetLive.toFixed(2);
-  document.getElementById('syncOffsetRange').value = offsetLive;
+  document.getElementById('syncOffsetRange').value = Math.max(0, offsetLive);
   syncResetPointer();
   if (arrangements.length) showArr(currentArr);
   updatePendingChangesInfo();

@@ -485,6 +485,23 @@ def test_an_offset_below_a_minute_before_the_recording_is_refused(
         make_use_case().run(spec, SongMetadata(title="T", artist="A"), tmp_path / "w")
 
 
+def test_the_web_sync_view_keeps_a_negative_offset() -> None:
+    """The sync view (web/app.js) mirrors the build's lead-in: its MIN_LEAD /
+    MIN_OFFSET must be the pipeline's, and the job's offset_s must not be clamped
+    at 0 there. Clamped, a GP whose bar 1 is before the recording (offset -2.15)
+    showed its notes 2.15 s late against the audio, its first note at 3.20 s
+    instead of 1.05 s, and "Aplicar e reconstruir" sent offset_s 0."""
+    import re
+
+    from rockforge.application.gp_pipeline import MIN_LEAD_S, MIN_OFFSET_S
+
+    js = (Path(__file__).resolve().parents[1] / "web" / "app.js").read_text(encoding="utf-8")
+    assert float(re.search(r"const MIN_LEAD = (-?[\d.]+);", js).group(1)) == MIN_LEAD_S
+    assert float(re.search(r"const MIN_OFFSET = (-?[\d.]+);", js).group(1)) == MIN_OFFSET_S
+    assert "offsetLive = Math.max(MIN_OFFSET, v || 0);" in js
+    assert "offsetLive = Math.max(0, v" not in js
+
+
 def test_gp_pipeline_auto_track_selection(two_track_gp5: Path, tmp_path: Path) -> None:
     spec = GpJobSpec(gp_path=two_track_gp5, audio_source="x.wav")
     result = make_use_case().run(spec, SongMetadata(title="T", artist="A"), tmp_path / "w")
