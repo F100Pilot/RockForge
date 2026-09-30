@@ -203,6 +203,49 @@ def _write_gpif(
     return [AppliedCorrection(c.measure, c.bpm, round(c.bpm, 3)) for c in corrections]
 
 
+def _played_bars(src: Path) -> list[int]:
+    """The written bar (0-based) of each bar as played — the numbering the user
+    sees, since the chart unrolls repeats, voltas and jumps (``gpimport.playback``)."""
+    from rockforge.infrastructure.gpimport.playback import playback_order
+
+    if src.suffix.lower() == ".gp":
+        from rockforge.infrastructure.gpimport.gpif_parser import _bar_flow, _load_gpif
+
+        root = _load_gpif(src)
+        return playback_order([_bar_flow(mb) for mb in root.find("MasterBars") or []])
+    import guitarpro
+
+    from rockforge.infrastructure.gpimport.parser import _bar_flows
+
+    return playback_order(_bar_flows(guitarpro.parse(str(src))))
+
+
+def _to_written_bars(
+    src: Path, corrections: list[TempoCorrection]
+) -> tuple[list[TempoCorrection], dict[int, int]]:
+    """Corrections moved from played bars to the written bars that hold them, and
+    the written bar of each requested measure. A written bar played several times
+    holds ONE tempo: different tempos for its passes cannot be written."""
+    played = _played_bars(src)
+    if played == list(range(len(played))):
+        return corrections, {c.measure: c.measure for c in corrections}
+    written: dict[int, TempoCorrection] = {}
+    measure_of: dict[int, int] = {}
+    for c in corrections:
+        bar = played[c.measure - 1] + 1 if c.measure <= len(played) else c.measure
+        measure_of[c.measure] = bar
+        other = written.get(bar)
+        if other is not None and abs(other.bpm - c.bpm) > 1e-6:
+            passes = sorted(m for m, b in measure_of.items() if b == bar)
+            raise IngestionError(
+                f"measures {', '.join(map(str, passes))} are passes of the same written "
+                f"measure {bar} (a repeat) with different tempos; a Guitar Pro file "
+                "holds one tempo per written measure"
+            )
+        written[bar] = TempoCorrection(bar, c.bpm)
+    return [written[b] for b in sorted(written)], measure_of
+
+
 def write_tempo_corrections(
     src: Path, dst: Path, corrections: list[TempoCorrection]
 ) -> list[AppliedCorrection]:
@@ -221,15 +264,21 @@ def write_tempo_corrections(
             "GP6 (.gpx) files cannot be written — no tool writes that format. "
             "Export the song as GP5 or GP7 (.gp) from Guitar Pro and try again."
         )
+    if suffix not in {".gp", ".gp3", ".gp4", ".gp5"}:
+        raise IngestionError(f"unsupported Guitar Pro format: {suffix or '(none)'}")
+    # The measures are numbered as played (repeats unrolled); the file is written.
+    written, measure_of = _to_written_bars(src, ordered)
     tmp = dst.with_name(dst.name + ".part")
     try:
         if suffix == ".gp":
-            applied = _write_gpif(src, tmp, ordered)
-        elif suffix in {".gp3", ".gp4", ".gp5"}:
-            applied = _write_binary_gp(src, tmp, ordered)
+            applied = _write_gpif(src, tmp, written)
         else:
-            raise IngestionError(f"unsupported Guitar Pro format: {suffix or '(none)'}")
+            applied = _write_binary_gp(src, tmp, written)
         shutil.move(str(tmp), str(dst))
-        return applied
+        by_bar = {a.measure: a for a in applied}
+        return [
+            AppliedCorrection(c.measure, c.bpm, by_bar[measure_of[c.measure]].written_bpm)
+            for c in ordered
+        ]
     finally:
         tmp.unlink(missing_ok=True)

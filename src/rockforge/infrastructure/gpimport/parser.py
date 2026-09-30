@@ -16,6 +16,7 @@ Verified library facts (inspected in pyguitarpro 0.11 source):
 
 from __future__ import annotations
 
+import copy
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, replace
 from pathlib import Path
@@ -35,6 +36,7 @@ from rockforge.domain.music import (
     extend_through_tie,
     is_composite_bend,
 )
+from rockforge.infrastructure.gpimport.playback import GP5_DIRECTIONS, BarFlow, playback_order
 from rockforge.infrastructure.gpimport.sync_map import (
     bar_time_points,
     bar_times_warnings,
@@ -153,6 +155,65 @@ def _load(path: Path) -> Any:  # guitarpro.models.Song (untyped library)
         return guitarpro.parse(str(path))
     except Exception as exc:
         raise IngestionError(f"could not parse Guitar Pro file: {exc}") from exc
+
+
+def _bar_flows(song: Any) -> list[BarFlow]:
+    """Repeats, voltas and jumps of each bar, in alphaTab's terms.
+
+    PyGuitarPro's ``repeatClose`` is the number of repeats (plays - 1, -1 = no
+    repeat end) and ``repeatAlternative`` already the voltas bitmask (it converts
+    the GP3/GP4 volta number the way alphaTab does)."""
+    flows = []
+    for h in song.measureHeaders:
+        names = {getattr(d, "name", "") for d in (h.direction, h.fromDirection) if d is not None}
+        flows.append(BarFlow(
+            repeat_start=bool(h.isRepeatOpen),
+            repeat_count=h.repeatClose + 1 if h.repeatClose >= 0 else 0,
+            alternate_endings=int(h.repeatAlternative or 0),
+            directions=frozenset(GP5_DIRECTIONS[n] for n in names if n in GP5_DIRECTIONS),
+        ))
+    return flows
+
+
+def _as_played(song: Any) -> Any:
+    """``song`` with its bars in the order they are played (repeats, voltas and
+    D.C./D.S./Coda/Fine unrolled, as alphaTab plays them — see ``playback``).
+
+    Bar N of the result is the N-th bar HEARD, so the chart, its beat grid, its
+    sections and per-bar times (Songsterr's are per played bar too) follow the
+    recording. A lyric line starts again on every pass of the bar it starts on
+    (the syllables belong to the written beats, as in alphaTab). A score without
+    repeats comes back unchanged."""
+    order = playback_order(_bar_flows(song))
+    if order == list(range(len(song.measureHeaders))):
+        return song
+    headers = []
+    start = song.measureHeaders[0].start
+    for number, index in enumerate(order, start=1):
+        header = copy.copy(song.measureHeaders[index])
+        header.number, header.start = number, start
+        header.isRepeatOpen, header.repeatClose, header.repeatAlternative = False, -1, 0
+        header.direction = header.fromDirection = None
+        headers.append(header)
+        start += header.length
+    for track in song.tracks:
+        measures = []
+        for header, index in zip(headers, order, strict=True):
+            measure = copy.copy(track.measures[index])
+            measure.header = header
+            measures.append(measure)
+        track.measures = measures
+    song.measureHeaders = headers
+    lines = []
+    for line in song.lyrics.lines:
+        first = max(1, line.startingMeasure) - 1
+        for number, index in enumerate(order, start=1):
+            if index == first:
+                replayed = copy.copy(line)
+                replayed.startingMeasure = number
+                lines.append(replayed)
+    song.lyrics.lines = lines
+    return song
 
 
 def _track_info(index: int, track: Any) -> GpTrackInfo:
@@ -338,7 +399,7 @@ def parse_gp_track(
 
     if _is_gpif(path):
         return parse_gpif_track(path, track_index, offset_s, tempo_scale, bar_times)
-    song = _load(path)
+    song = _as_played(_load(path))
     if not 0 <= track_index < len(song.tracks):
         raise IngestionError(f"track index {track_index} out of range")
     track = song.tracks[track_index]

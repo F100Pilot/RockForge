@@ -91,15 +91,29 @@ re-inverting the dependency.
    of its own). The result is **relative to bar 1**, so `offset_s` keeps its one
    meaning; the absolute bar-1 position is `sync_start_s(path)`, returned by
    `/gp/inspect` and pre-filled into the wizard's offset field, exact when the
-   uploaded recording IS the audio GP was synced to. Only a bar's FIRST
-   occurrence can be used (repeats are not expanded), and a point earlier in the
-   audio than its predecessor is dropped — both counted in the warnings. The
+   uploaded recording IS the audio GP was synced to. A point's
+   `<BarIndex>`/`<BarOccurrence>` names the pass of a written bar, which the
+   unrolled bars below resolve; a pass never played, and a point earlier in the
+   audio than its predecessor, are dropped — both counted in the warnings. The
    synced file's `average_bpm` is what actually plays, not the header. **Gradual
    tempo ramps are NOT modelled** (GPIF `<Linear>true`, GP5's MixTableChange
    duration): alphaTab reads the flag but its timing ignores it, so there is no
    citable reference for how Guitar Pro interpolates, and they are read as steps.
    Guarded by `test_gp8_sync_points_*` and
    `test_gp_inspect_reports_where_a_gp8_synced_file_starts`.
+
+   **Repeats, voltas and jumps are unrolled, in alphaTab's order.** Both parsers
+   lay the bars out as PLAYED (`gpimport/playback.py`, a port of alphaTab's
+   repeat groups and `MidiPlaybackController`: `|: :|` with counts, nested
+   repeats and multiple closings, voltas as a bitmask of passes, D.C./D.S./al
+   Coda/al Fine/Da Coda). Bar N of the chart — beat grid, sections, per-bar
+   times (Songsterr's are per played bar), tempo corrections — is the N-th bar
+   HEARD; a tempo automation applies on every pass of its written bar; a lyric
+   line starts again on every pass of the bar it starts on. `tempo_writer` maps
+   a played bar back to its written bar and refuses different tempos for passes
+   of the same written bar (the file holds one). A score without repeats is
+   untouched. Guarded by `test_gp_playback.py` (orders checked against alphaTab
+   1.8.4's MidiFileGenerator, and its `directions.gp5`/`.gp` test files).
 
    **The recording INSIDE the `.gp` is the one to use.** A GP8 file with an
    audio track carries its own copy (`<BackingTrack>` Enabled + Source=Local →

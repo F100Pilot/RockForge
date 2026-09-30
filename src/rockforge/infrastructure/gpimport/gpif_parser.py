@@ -51,6 +51,12 @@ from rockforge.infrastructure.gpimport.parser import (  # shared model + helpers
     _make_ticks_to_seconds,
     close_beat_grid,
 )
+from rockforge.infrastructure.gpimport.playback import (
+    GPIF_JUMPS,
+    GPIF_TARGETS,
+    BarFlow,
+    playback_order,
+)
 from rockforge.infrastructure.gpimport.sync_map import (
     audio_clock,
     bar_time_points,
@@ -231,12 +237,54 @@ def _tempo_bpm(value: list[str]) -> float:
     return bpm * _TEMPO_REFERENCES[ref]
 
 
+def _bar_flow(mb: ET.Element) -> BarFlow:
+    """Repeats, voltas and jumps of a master bar, as alphaTab's GpifParser reads
+    them (<Repeat start end count>, <AlternateEndings>1 2</…>, <Directions>)."""
+    repeat = mb.find("Repeat")
+    start = repeat is not None and repeat.attrib.get("start", "").lower() == "true"
+    count = 0
+    if repeat is not None and repeat.attrib.get("end", "").lower() == "true":
+        try:
+            count = int(repeat.attrib.get("count", "") or "0")
+        except ValueError:
+            count = 1
+    endings = 0
+    for number in _text(mb.find("AlternateEndings")).split():
+        if number.isdigit() and 1 <= int(number) <= 31:
+            endings |= 1 << (int(number) - 1)
+    directions: set[str] = set()
+    for el in mb.find("Directions") or []:
+        names = GPIF_TARGETS if el.tag == "Target" else GPIF_JUMPS if el.tag == "Jump" else {}
+        if _text(el) in names:
+            directions.add(names[_text(el)])
+    return BarFlow(start, count, endings, frozenset(directions))
+
+
+def _occurrences(played: Sequence[int]) -> dict[tuple[int, int], int]:
+    """(file bar, pass) → position in the played order."""
+    seen: dict[int, int] = {}
+    out: dict[tuple[int, int], int] = {}
+    for pos, bar in enumerate(played):
+        out[(bar, seen.get(bar, 0))] = pos
+        seen[bar] = seen.get(bar, 0) + 1
+    return out
+
+
 def _tempo_events(
     root: ET.Element,
     bar_start_ticks: list[int],
     bar_durations: list[int] | None = None,
+    played: Sequence[int] | None = None,
 ) -> list[tuple[int, float]]:
-    """(tick, bpm) change points; defaults to 120 at tick 0 if none authored."""
+    """(tick, bpm) change points; defaults to 120 at tick 0 if none authored.
+
+    ``played``: the file bar of each position of ``bar_start_ticks`` (repeats
+    unrolled). An automation belongs to a written bar and takes effect on every
+    pass of it, as alphaTab plays it; the tempo then holds until the next one
+    played. ``bar_durations`` is by file bar."""
+    positions: dict[int, list[int]] = {}
+    for pos, bar in enumerate(played if played is not None else range(len(bar_start_ticks))):
+        positions.setdefault(bar, []).append(pos)
     events: list[tuple[int, float]] = []
     master = root.find("MasterTrack")
     autos = master.find("Automations") if master is not None else None
@@ -250,7 +298,12 @@ def _tempo_events(
             bpm = _tempo_bpm(value)
             bar = int(_text(auto.find("Bar"), "0") or "0")
             ratio = float(_text(auto.find("Position"), "0") or "0")
-            base = bar_start_ticks[bar] if 0 <= bar < len(bar_start_ticks) else 0
+            if bar in positions:
+                bases = [bar_start_ticks[pos] for pos in positions[bar]]
+            elif bar_durations is not None and 0 <= bar < len(bar_durations):
+                continue  # a written bar that is never played
+            else:
+                bases = [0]
             # <Position> is a fraction of the BAR's own duration (alphaTab
             # MidiFileGenerator: barStartTick + ratioPosition * barDuration), not
             # a count of quarter notes — the two only coincide at Position 0 in
@@ -261,7 +314,7 @@ def _tempo_events(
                 if bar_durations is not None and 0 <= bar < len(bar_durations)
                 else 4 * QUARTER_TICKS
             )
-            events.append((base + int(ratio * span), bpm))
+            events.extend((base + int(ratio * span), bpm) for base in bases)
     if not any(tick == 0 for tick, _ in events):
         events.insert(0, (0, events[0][1] if events else 120.0))
     events.sort(key=lambda e: e[0])
@@ -285,14 +338,17 @@ def _sync_points(
     root: ET.Element,
     bar_start_ticks: list[int],
     bar_durations: list[int],
+    played: Sequence[int] | None = None,
 ) -> tuple[list[tuple[int, float]], int]:
     """(tick, audio seconds) sync points, ordered, plus how many were skipped.
 
-    Only a bar's FIRST occurrence can be used: the parser lays bars out once, in
-    order, without expanding repeats, so a point for a repeated pass has no tick
-    to attach to. Points that would run the audio backwards are dropped too —
-    they would fold the timeline back on itself.
+    A point names a written bar and its pass (<BarIndex>, <BarOccurrence>);
+    ``played`` (the file bar of each position of ``bar_start_ticks``, repeats
+    unrolled) says which played bar that is. A pass that is never played, and
+    points that would run the audio backwards (folding the timeline back on
+    itself), are skipped. ``bar_durations`` is by file bar.
     """
+    where = _occurrences(played if played is not None else range(len(bar_start_ticks)))
     backing = root.find("BackingTrack")
     padding_s = 0.0
     if backing is not None:
@@ -312,11 +368,12 @@ def _sync_points(
         bar = int(_float(_text(value.find("BarIndex"), _text(auto.find("Bar"), "0"))))
         occurrence = int(_float(_text(value.find("BarOccurrence"), "0")))
         frame = value.find("FrameOffset")
-        if occurrence != 0 or frame is None or not 0 <= bar < len(bar_start_ticks):
+        pos = where.get((bar, occurrence))
+        if frame is None or pos is None or not 0 <= bar < len(bar_durations):
             skipped += 1
             continue
         ratio = _float(_text(auto.find("Position"), "0"))
-        tick = bar_start_ticks[bar] + int(ratio * bar_durations[bar])
+        tick = bar_start_ticks[pos] + int(ratio * bar_durations[bar])
         audio_s = _float(_text(frame, "0")) / _GP_AUDIO_SAMPLE_RATE - padding_s
         raw.append((tick, audio_s))
 
@@ -347,10 +404,13 @@ def sync_start_s(path: Path) -> float | None:
     if not _is_gpif(path):
         return None
     root = _load_gpif(path)
-    durations = _master_bar_durations(list(root.find("MasterBars") or []))
-    starts = list(itertools.accumulate([0, *durations[:-1]])) if durations else []
-    points, _ = _sync_points(root, starts, durations)
-    base = _make_ticks_to_seconds(_tempo_events(root, starts, durations))
+    master_bars = list(root.find("MasterBars") or [])
+    durations = _master_bar_durations(master_bars)
+    played = playback_order([_bar_flow(mb) for mb in master_bars])
+    lengths = [durations[b] for b in played]
+    starts = list(itertools.accumulate([0, *lengths[:-1]])) if lengths else []
+    points, _ = _sync_points(root, starts, durations, played)
+    base = _make_ticks_to_seconds(_tempo_events(root, starts, durations, played))
     clock = audio_clock(base, points)
     return None if clock is None else max(0.0, clock(0))
 
@@ -568,21 +628,28 @@ def parse_gpif_track(
     notes_map = {n.attrib["id"]: n for n in (root.find("Notes") or [])}
     rhythms = {r.attrib["id"]: r for r in (root.find("Rhythms") or [])}
 
-    master_bars = list(root.find("MasterBars") or [])
-    durations = _master_bar_durations(master_bars)
+    written_bars = list(root.find("MasterBars") or [])
+    written_durations = _master_bar_durations(written_bars)
+    # The bars as PLAYED (repeats, voltas, D.C./D.S./Coda/Fine unrolled, in
+    # alphaTab's order): from here on, bar N is the N-th bar heard.
+    played = playback_order([_bar_flow(mb) for mb in written_bars])
+    master_bars = [written_bars[b] for b in played]
+    durations = [written_durations[b] for b in played]
     bar_start_ticks: list[int] = []
     acc = 0
     for d in durations:
         bar_start_ticks.append(acc)
         acc += d
 
-    to_seconds = _make_ticks_to_seconds(_tempo_events(root, bar_start_ticks, durations))
+    to_seconds = _make_ticks_to_seconds(
+        _tempo_events(root, bar_start_ticks, written_durations, played)
+    )
     if bar_times:
         # Externally supplied per-bar times (Songsterr) win over GP8's own sync
         # points: the user chose them for THIS recording.
         sync, sync_skipped = bar_time_points(bar_start_ticks, bar_times)
     else:
-        sync, sync_skipped = _sync_points(root, bar_start_ticks, durations)
+        sync, sync_skipped = _sync_points(root, bar_start_ticks, written_durations, played)
     to_seconds = relative_to_bar_one(to_seconds, sync)
 
     def t(tick: int) -> float:
@@ -680,7 +747,7 @@ def parse_gpif_track(
             notes[-1].time if notes else None,
         )
 
-    tempo_events = _tempo_events(root, bar_start_ticks, durations)
+    tempo_events = _tempo_events(root, bar_start_ticks, written_durations, played)
     base_bpm = tempo_events[0][1] if tempo_events else 120.0
     total_ticks = sum(durations)
     if sync and total_ticks > 0 and to_seconds(total_ticks) > 0:
@@ -698,7 +765,7 @@ def parse_gpif_track(
     lyrics: list[GpLyricLine] = []
     lyric_notes: tuple[LyricNote, ...] | None = None
     for cand_index, cand in enumerate(tracks):
-        lyrics = _track_lyrics(cand, bar_start_ticks, t)
+        lyrics = _track_lyrics(cand, bar_start_ticks, t, played)
         if lyrics:
             lyric_notes = _lyric_notes(
                 cand_index, _track_tuning(cand), master_bars, bar_start_ticks,
@@ -717,8 +784,8 @@ def parse_gpif_track(
         )
     if sync_skipped and not bar_times:
         warnings.append(
-            f"{sync_skipped} Guitar Pro sync point(s) ignored: on a repeated pass of "
-            "a bar (repeats are not expanded) or running the audio backwards"
+            f"{sync_skipped} Guitar Pro sync point(s) ignored: on a pass of a bar "
+            "that is never played, or running the audio backwards"
         )
     if dropped_out_of_range:
         warnings.append(
@@ -1108,17 +1175,24 @@ def _resolve_techniques(
 
 
 def _track_lyrics(
-    track: ET.Element, bar_start_ticks: list[int], t: Callable[[int], float]
+    track: ET.Element,
+    bar_start_ticks: list[int],
+    t: Callable[[int], float],
+    played: Sequence[int] | None = None,
 ) -> list[GpLyricLine]:
+    """A track's lyric lines. A line starts at a written bar (<Offset>) and starts
+    again on every pass of it (``played``: the file bar of each position)."""
     lyrics_el = track.find("Lyrics")
     if lyrics_el is None:
         return []
+    order = list(played) if played is not None else list(range(len(bar_start_ticks)))
     out: list[GpLyricLine] = []
     for line in lyrics_el.findall("Line"):
         text = _text(line.find("Text"))
         if not text:
             continue
         bar = int(_text(line.find("Offset"), "0") or "0")
-        tick = bar_start_ticks[bar] if 0 <= bar < len(bar_start_ticks) else 0
-        out.append(GpLyricLine(time=t(tick), text=text))
+        ticks = [bar_start_ticks[pos] for pos, b in enumerate(order) if b == bar] or [0]
+        out.extend(GpLyricLine(time=t(tick), text=text) for tick in ticks)
+    out.sort(key=lambda line: line.time)
     return out
