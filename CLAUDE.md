@@ -127,8 +127,11 @@ re-inverting the dependency.
    counts are untouched. A plain rise from unbent at the attack to the peak at
    the end (`is_plain_rise`) is written to the XML/SNG as the single point at the
    note's end, the DLC Builder shape the game already ramps across the note — no
-   bend point at the attack. A flat pre-bend is still the single point at the
-   end (a rise), unlike alphaTab. Guarded by
+   bend point at the attack. A flat pre-bend keeps its curve (`is_composite_bend`
+   is true for a curve bent at the attack): charted bent from the attack to the
+   end, as alphaTab plays it, not a rise. Guarded by
+   `test_a_pre_bend_is_bent_from_the_attack`,
+   `test_a_pre_bend_is_bent_at_the_attack_in_sng_and_xml`,
    `test_alphatab_bend_reads_three_points_as_alphatab`,
    `test_gp7_bend_up_and_held_is_a_rise_across_the_note` and
    `test_a_plain_rise_is_the_single_point_at_the_note_end`.

@@ -912,6 +912,31 @@ def test_a_plain_rise_is_the_single_point_at_the_note_end() -> None:
     assert _bend_curve(note) == [(3.6, 1.0)]
 
 
+def test_a_pre_bend_is_bent_at_the_attack_in_sng_and_xml(tmp_path) -> None:  # noqa: ANN001
+    """A flat pre-bend: bent from the attack to the end, in the SNG and the XML,
+    and read back from the XML as the same curve."""
+    from rockforge.domain.music import BendPoint
+    from rockforge.infrastructure.rsxml.reader import read_arrangement_xml
+    from rockforge.infrastructure.rsxml.writer import write_arrangement_xml
+
+    beats = tuple(Beat(time=i * 0.5, measure=1 if i == 0 else -1) for i in range(20))
+    note = TabNote(string=0, fret=5, time=3.0, sustain=0.6, bend_semitones=1.0,
+                   techniques=frozenset({Technique.BEND}),
+                   bend_points=(BendPoint(0.0, 1.0), BendPoint(1.0, 1.0)))
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=10.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+        notes=[note],
+    )
+    (single,) = from_arrangement(arr).arrangements[-1].notes
+    assert [(b.time, b.step) for b in single.bend_data] == [(3.0, 1.0), (3.6, 1.0)]
+    back = read_arrangement_xml(write_arrangement_xml(arr, tmp_path / "lead.xml"))
+    (read,) = [n for n in back.notes if n.bend_semitones]
+    assert [(p.position, p.step) for p in read.bend_points] == [(0.0, 1.0), (1.0, 1.0)]
+
+
 def test_fret_mute_slide_unpitch_and_composite_bend_in_sng() -> None:
     from rockforge.domain.music import BendPoint
 

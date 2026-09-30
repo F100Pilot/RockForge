@@ -248,6 +248,23 @@ def test_bend_and_pull_off_on_a_tied_note_are_kept(tmp_path: Path) -> None:
     assert Technique.PULL_OFF in pulled.techniques
 
 
+def test_a_pre_bend_is_bent_from_the_attack(tmp_path: Path) -> None:
+    """A pre-bend held at one value keeps its curve: bent from the attack, as
+    alphaTab plays it, not a rise across the note."""
+    song = gp.Song()
+    song.title, song.artist, song.tempo = "Pre-bend", "B", 120
+    pre = gp.BendEffect(
+        type=gp.BendType.prebend, value=50, points=[gp.BendPoint(0, 2), gp.BendPoint(12, 2)]
+    )
+    _add_beat(song.tracks[0].measures[0].voices[0], 4, [(3, 7)], bend=pre)
+    path = tmp_path / "pre_bend.gp5"
+    gp.write(song, str(path))
+
+    (note,) = parse_gp_track(path, 0).notes
+    assert note.bend_semitones == pytest.approx(1.0)
+    assert [(p.position, p.step) for p in note.bend_points] == [(0.0, 1.0), (1.0, 1.0)]
+
+
 def test_a_tie_after_a_bend_holds_it(tmp_path: Path) -> None:
     """A bent note tied on without a bend of its own stays bent (the tie keeps the
     pitch): the rise sits in the first half, then holds. The rise is alphaTab's:

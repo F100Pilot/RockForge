@@ -182,11 +182,12 @@ def test_note_without_trill_is_unchanged() -> None:
     assert expand_trills([n]) == [n]
 
 
-def test_is_composite_bend_only_for_varying_strength() -> None:
-    # A flat hold (even a pre-bend held at one value) is simple; only a real
-    # release / multi-step curve is composite.
+def test_is_composite_bend_for_varying_strength_or_a_pre_bend() -> None:
+    # A single point is simple; a release / multi-step curve is composite, and so
+    # is a flat pre-bend (bent from the attack, as alphaTab plays it).
     assert not is_composite_bend([BendPoint(1.0, 1.0)])  # single point
-    assert not is_composite_bend([BendPoint(0.0, 1.0), BendPoint(1.0, 1.0)])  # flat hold
+    assert not is_composite_bend([BendPoint(0.5, 1.0), BendPoint(1.0, 1.0)])  # bent later
+    assert is_composite_bend([BendPoint(0.0, 1.0), BendPoint(1.0, 1.0)])  # flat pre-bend
     assert is_composite_bend([BendPoint(0.0, 0.0), BendPoint(1.0, 1.0)])  # a rise
     assert is_composite_bend(  # bend-and-release
         [BendPoint(0.0, 0.0), BendPoint(0.5, 1.0), BendPoint(1.0, 0.0)]

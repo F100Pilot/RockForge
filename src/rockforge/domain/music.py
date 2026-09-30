@@ -147,17 +147,19 @@ def expand_trills(notes: Sequence[TabNote], *, period: float = 0.06) -> list[Tab
 
 
 def is_composite_bend(points: Sequence[BendPoint]) -> bool:
-    """True when a bend curve's strength actually CHANGES along the note.
+    """True when a bend curve needs its points: its strength CHANGES along the
+    note, or the note is already bent at the attack (a pre-bend).
 
-    A curve whose step is constant — a plain hold, including a flat pre-bend held
-    at one value — carries no extra shape: it is emitted as a single point at the
-    note's end (a visible bend-up to the peak), the shape a decoded DLC Builder
-    SNG uses and the one verified safe in game. Only a genuine bend-and-release or
-    multi-step curve (two or more distinct strengths) needs the full multi-point
-    curve. Keeping flat bends single-point also avoids a bend point at the note's
-    exact attack, which is the fragile case.
+    Any other curve — a single point, or a flat one that is not bent at the
+    attack — is emitted as a single point at the note's end (a visible bend-up to
+    the peak), the shape a decoded DLC Builder SNG uses. A flat pre-bend keeps its
+    points so it is charted bent from the attack, as alphaTab plays it, instead
+    of rising across the note.
     """
-    return len({round(p.step, 3) for p in points}) > 1
+    eps = 1e-3
+    return len({round(p.step, 3) for p in points}) > 1 or (
+        bool(points) and points[0].position <= eps and points[0].step > 0
+    )
 
 
 def alphatab_bend(points: Sequence[BendPoint]) -> tuple[BendPoint, ...]:
