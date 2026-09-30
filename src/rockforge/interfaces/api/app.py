@@ -1960,7 +1960,7 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
             raise HTTPException(404, "job not found")
         if original.source_type in {"upload", "gp"} and not Path(original.source).exists():
             raise HTTPException(409, "original upload no longer exists on the work volume")
-        from rockforge.application.gp_pipeline import MIN_LEAD_S
+        from rockforge.application.gp_pipeline import MIN_LEAD_S, MIN_OFFSET_S
 
         params: dict[str, object] = dict(original.params or {})
         # Snapshot the PRE-EDIT timeline parameters before anything below mutates
@@ -1981,8 +1981,8 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
             params["tuning_midi"] = payload.tuning_midi
             params["cent_offset"] = payload.cent_offset
         if payload.offset_s is not None:
-            if payload.offset_s < 0.0:
-                raise HTTPException(422, "offset_s must be >= 0")
+            if payload.offset_s < MIN_OFFSET_S:
+                raise HTTPException(422, f"offset_s must be >= {MIN_OFFSET_S:g}")
             params["offset_s"] = payload.offset_s
         if payload.lead_in_s is not None:
             if payload.lead_in_s < 0.0:

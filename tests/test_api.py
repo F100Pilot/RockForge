@@ -354,9 +354,10 @@ def test_rebuild_tempo_scale_rejected_for_non_gp(client: TestClient) -> None:
     assert r.status_code == 422
 
 
-def test_rebuild_rejects_negative_offset(client: TestClient) -> None:
+def test_rebuild_rejects_an_offset_below_the_limit(client: TestClient) -> None:
+    """Bar 1 may start before the recording (a negative offset), up to a minute."""
     original = _create_job(client)
-    r = client.post(f"/jobs/{original['id']}/rebuild", json={"offset_s": -1.0})
+    r = client.post(f"/jobs/{original['id']}/rebuild", json={"offset_s": -61.0})
     assert r.status_code == 422
 
 

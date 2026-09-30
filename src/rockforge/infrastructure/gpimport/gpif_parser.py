@@ -400,6 +400,9 @@ def sync_start_s(path: Path) -> float | None:
 
     When the recording given to RockForge is that same audio file, this is the
     exact ``offset_s``, so the wizard offers it instead of asking for a guess.
+    Negative when bar 1 comes before the audio starts (a score with count-in bars
+    the recording does not have, e.g. saved by alphaTab with a negative start):
+    clamping it to 0 put every note that much late.
     """
     if not _is_gpif(path):
         return None
@@ -412,7 +415,7 @@ def sync_start_s(path: Path) -> float | None:
     points, _ = _sync_points(root, starts, durations, played)
     base = _make_ticks_to_seconds(_tempo_events(root, starts, durations, played))
     clock = audio_clock(base, points)
-    return None if clock is None else max(0.0, clock(0))
+    return None if clock is None else clock(0)
 
 
 # The recording Guitar Pro 8 carries INSIDE the .gp (its "audio track"). The

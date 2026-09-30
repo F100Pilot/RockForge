@@ -452,6 +452,39 @@ def test_lead_in_pushes_song_later(two_track_gp5: Path, tmp_path: Path) -> None:
     assert first is not None and float(first.get("time", "0")) == pytest.approx(3.0)
 
 
+def test_bar_1_before_the_recording_keeps_its_place(two_track_gp5: Path, tmp_path: Path) -> None:
+    """A negative offset (bar 1 comes 2.1 s before the recording starts, as
+    PDF-to-GP5 / alphaTab save it) grows the silence pad by that much: the chart
+    keeps its place against the audio instead of being refused or clamped."""
+    pads: list[float] = []
+
+    class RecordingNormalizer(FakeNormalizer):
+        def normalize(
+            self, audio: Path, workdir: Path, offset_s: float = 0.0, pad_start_s: float = 0.0
+        ) -> Path:
+            pads.append(pad_start_s)
+            return audio
+
+    use_case = make_use_case()
+    use_case.normalizer = RecordingNormalizer()
+    spec = GpJobSpec(gp_path=two_track_gp5, audio_source="x.wav", lead_track=0, offset_s=-2.1)
+    result = use_case.run(spec, SongMetadata(title="T", artist="A"), tmp_path / "w")
+    xml = next(p for p in result.packaging.xml_paths if "vocals" not in p.name)
+    first = ET.parse(xml).getroot().find("levels/level/notes/note")
+    assert first is not None and float(first.get("time", "0")) == pytest.approx(2.0)
+    assert pads == [pytest.approx(4.1)]  # the recording starts 2.1 s after bar 1
+
+
+def test_an_offset_below_a_minute_before_the_recording_is_refused(
+    two_track_gp5: Path, tmp_path: Path
+) -> None:
+    from rockforge.domain.errors import IngestionError
+
+    spec = GpJobSpec(gp_path=two_track_gp5, audio_source="x.wav", lead_track=0, offset_s=-61.0)
+    with pytest.raises(IngestionError, match="sync offset"):
+        make_use_case().run(spec, SongMetadata(title="T", artist="A"), tmp_path / "w")
+
+
 def test_gp_pipeline_auto_track_selection(two_track_gp5: Path, tmp_path: Path) -> None:
     spec = GpJobSpec(gp_path=two_track_gp5, audio_source="x.wav")
     result = make_use_case().run(spec, SongMetadata(title="T", artist="A"), tmp_path / "w")

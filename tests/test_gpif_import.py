@@ -478,12 +478,26 @@ def test_gp8_sync_points_respect_the_backing_track_padding(tmp_path: Path) -> No
     assert parsed.notes[1].time - parsed.notes[0].time == pytest.approx(2.5)
 
 
+def test_bar_1_before_the_audio_starts_is_a_negative_start(tmp_path: Path) -> None:
+    """alphaTab saves a start of -2.1 s (bar 1 before the recording, e.g. the
+    PDF-to-GP5 player's "Início") as <FramePadding> +2.1 s and one point at bar 1
+    with frame 0. Clamping it to 0 put every note 2.1 s late in RockForge."""
+    backing = (
+        "<BackingTrack><Enabled>true</Enabled><Source>Local</Source>"
+        "<FramePadding>92610</FramePadding></BackingTrack>"
+    )
+    gp = _gp_with(tmp_path, _synced_gpif(_sync(0, 0.0), backing))
+    from rockforge.infrastructure.gpimport.gpif_parser import sync_start_s
+
+    assert sync_start_s(gp) == pytest.approx(-2.1)
+
+
 def test_gp8_sync_points_on_repeats_or_running_backwards_are_skipped(
     tmp_path: Path,
 ) -> None:
-    """Repeats are not expanded, so a point for a bar's SECOND pass has no tick
-    to attach to; and a point earlier in the audio than its predecessor would
-    fold the timeline back. Both are dropped and COUNTED, never silently."""
+    """A point for a bar's SECOND pass in a score without repeats names a pass
+    that is never played; and a point earlier in the audio than its predecessor
+    would fold the timeline back. Both are dropped and COUNTED, never silently."""
     gp = _gp_with(tmp_path, _synced_gpif(
         _sync(0, 1.0) + _sync(1, 3.5) + _sync(1, 9.0, occurrence=1) + _sync(2, 2.0)
     ))

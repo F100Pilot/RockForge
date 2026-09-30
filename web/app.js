@@ -7391,7 +7391,10 @@ function applyInspectResult(b) {
         : '';
   if (b.sync_start_s != null) {
     form.querySelector('input[name=offset_s]').value = b.sync_start_s.toFixed(3);
-    syncHint.textContent = `Este ficheiro foi sincronizado com o áudio no Guitar Pro 8 — o compasso 1 começa em ${b.sync_start_s.toFixed(3)} s desse áudio. ` +
+    const bar1 = b.sync_start_s >= 0
+      ? `começa em ${b.sync_start_s.toFixed(3)} s desse áudio`
+      : `começa ${(-b.sync_start_s).toFixed(3)} s antes de esse áudio começar`;
+    syncHint.textContent = `Este ficheiro foi sincronizado com o áudio no Guitar Pro 8 — o compasso 1 ${bar1}. ` +
       (b.embedded_audio
         ? 'Com o áudio do ficheiro GP (acima) o valor já está certo e as notas seguem o tempo variável do GP.'
         : 'Se a gravação que carregas é esse mesmo ficheiro de áudio, o valor já está certo e as notas seguem o tempo variável do GP.') +

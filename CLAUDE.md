@@ -89,7 +89,11 @@ re-inverting the dependency.
    alphaTab's `GpifParser.ts`/`MidiFileGenerator.ts`; alphaTab holds a constant
    BPM after each point instead — identical whenever a span has no tempo change
    of its own). The result is **relative to bar 1**, so `offset_s` keeps its one
-   meaning; the absolute bar-1 position is `sync_start_s(path)`, returned by
+   meaning; the absolute bar-1 position is `sync_start_s(path)` (NEGATIVE when
+   bar 1 comes before the audio starts — alphaTab/PDF-to-GP5 save such a start
+   as a positive `<FramePadding>`; `offset_s` accepts down to `MIN_OFFSET_S`
+   = -60 s and the lead-in pad grows by it, so the chart keeps its place;
+   clamping it to 0 had put every note that much late), returned by
    `/gp/inspect` and pre-filled into the wizard's offset field, exact when the
    uploaded recording IS the audio GP was synced to. A point's
    `<BarIndex>`/`<BarOccurrence>` names the pass of a written bar, which the

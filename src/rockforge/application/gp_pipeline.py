@@ -4,7 +4,8 @@ Notes/frets/techniques/tempo/sections come exactly from a GP3/GP4/GP5 file;
 the recording is only normalized and packaged. Synchronization is the one thing
 the GP file cannot know, so it is a single user-supplied number: offset_s = the
 moment (seconds) at which the song's first note is actually heard in the
-recording. The score (note/beat/section times) and the GP's measure-anchored
+recording (negative when bar 1 comes before the recording starts, see
+MIN_OFFSET_S). The score (note/beat/section times) and the GP's measure-anchored
 lyrics are shifted forward to land there, so note 0 lines up with where the
 music starts; the recording itself is left untouched (its own intro provides the
 lead-in). Crucially we do NOT pad the audio by offset_s as well — doing so would
@@ -78,6 +79,11 @@ class PipelineResult:
 # EOF likewise advises a few seconds of silence at the start. When the user's
 # sync point is below this, the shortfall is added as silence.
 MIN_LEAD_S = 2.0
+# Bar 1 may start BEFORE the recording (count-in bars the recording does not
+# have): a negative offset_s. The lead-in pad then grows by that much, so the
+# chart keeps its place against the audio (score_shift - pad_start_s == offset_s).
+# Bounded like PDF-to-GP5's "Início" field.
+MIN_OFFSET_S = -60.0
 
 
 # Metrical ratios a beat tracker confuses the true pulse with — not just the
@@ -494,10 +500,10 @@ class GenerateFromGpUseCase:
             if on_stage is not None:
                 on_stage(name)
 
-        if spec.offset_s < 0.0:
+        if spec.offset_s < MIN_OFFSET_S:
             raise IngestionError(
-                "sync offset must be >= 0 — it is the second in the recording where the "
-                "song starts, never a negative time"
+                f"sync offset must be >= {MIN_OFFSET_S:g} s — it is the second in the "
+                "recording where bar 1 starts (negative: before the recording starts)"
             )
 
         warnings: list[str] = []
