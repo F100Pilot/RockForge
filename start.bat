@@ -1,15 +1,35 @@
 @echo off
 REM Launches RockForge locally (no Docker) in a single window.
-REM Redis and the Celery worker run in the background (logs in .\logs\);
-REM the API runs in the foreground here. Ctrl+C stops the API; the
-REM background processes are then stopped too.
-REM Requires: pip install -e ".[dev,ml,lyrics]" and a Redis server. On Windows the
-REM simplest is Memurai (https://www.memurai.com/) — installed as a service it
-REM is auto-detected here; otherwise any 'redis-server' on PATH works.
+REM Steps: git pull, install/update the dependencies when pyproject.toml changed,
+REM Redis + the Celery worker in the background (logs in .\logs\), the API in
+REM the foreground here, and the page opened in Chrome. Ctrl+C (or closing the
+REM tab) stops the API; the background processes are then stopped too.
+REM Requires: Python 3.11 and a Redis server. On Windows the simplest is
+REM Memurai (https://www.memurai.com/) — installed as a service it is
+REM auto-detected here; otherwise any 'redis-server' on PATH works.
 
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
 if not exist logs mkdir logs
+set "PORT=8000"
+
+if /i "%~1"=="--atualizado" goto :prepare
+echo A atualizar o codigo (git pull)...
+where git >nul 2>&1
+if errorlevel 1 (
+  echo AVISO: git nao encontrado. Vai ser usada a versao local.
+  goto :prepare
+)
+git pull --ff-only
+if errorlevel 1 (
+  echo AVISO: git pull falhou. Vai ser usada a versao local.
+  goto :prepare
+)
+REM cmd reads this file while running it: restart with the version just pulled.
+call "%~f0" --atualizado
+exit /b
+
+:prepare
 
 REM Use the project's virtualenv when present (children inherit the PATH).
 if exist .venv\Scripts\activate.bat call .venv\Scripts\activate.bat
@@ -20,6 +40,37 @@ REM version (no virtualenv needed).
 set "PY=python"
 py -3.11 -c "" >nul 2>&1
 if not errorlevel 1 set "PY=py -3.11"
+%PY% --version >nul 2>&1
+if errorlevel 1 (
+  echo ERRO: Python nao encontrado. Instala o Python 3.11 ^(python.org^).
+  pause
+  endlocal
+  exit /b 1
+)
+
+REM --- Dependencies: only when pyproject.toml changed since the last install ---
+REM (a full check of the ML stack takes a while; a copy of the installed
+REM pyproject.toml in logs\ says whether anything changed).
+fc /b pyproject.toml logs\pyproject.installed >nul 2>&1
+if errorlevel 1 (
+  echo A instalar/atualizar as dependencias ^(pode demorar na primeira vez^)...
+  %PY% -m pip install --disable-pip-version-check --no-warn-script-location -q -e ".[ml,lyrics,psarc,youtube]"
+  if errorlevel 1 (
+    echo ERRO: nao foi possivel instalar as dependencias - ve as mensagens acima.
+    pause
+    endlocal
+    exit /b 1
+  )
+  copy /y pyproject.toml logs\pyproject.installed >nul
+)
+
+netstat -an | find ":%PORT% " | find "LISTENING" >nul
+if not errorlevel 1 (
+  echo ERRO: a porta %PORT% ja esta em uso - o RockForge ja esta a correr noutra janela?
+  pause
+  endlocal
+  exit /b 1
+)
 
 REM --- Redis: reuse a running instance, else launch a found server binary ---
 REM Memurai usually installs as a Windows service already listening on 6379;
@@ -69,10 +120,16 @@ echo Redis e Worker a correr minimizados. A iniciar a API...
 echo O browser abre automaticamente; fechar o separador para tudo (apos alguns segundos).
 echo.
 
-REM Open the browser automatically once the API is accepting connections.
-REM Polls port 8000 (up to ~30s) in the background, then launches the default
-REM browser at the RockForge page; runs hidden and exits on its own.
-start "" /b powershell -NoProfile -WindowStyle Hidden -Command "for($i=0;$i -lt 60;$i++){try{(New-Object Net.Sockets.TcpClient('localhost',8000)).Close();Start-Process 'http://localhost:8000';break}catch{Start-Sleep -Milliseconds 500}}"
+REM Open the page once the API is accepting connections: polls the port (up to
+REM ~30s) in the background, hidden, and exits on its own. In Chrome when it is
+REM installed (as the PDF-to-GP5 launcher does), else the default browser.
+set "BROWSER="
+if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" set "BROWSER=%ProgramFiles%\Google\Chrome\Application\chrome.exe"
+if not defined BROWSER if exist "%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe" set "BROWSER=%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe"
+if not defined BROWSER if exist "%LocalAppData%\Google\Chrome\Application\chrome.exe" set "BROWSER=%LocalAppData%\Google\Chrome\Application\chrome.exe"
+set "OPEN=Start-Process 'http://localhost:%PORT%'"
+if defined BROWSER set "OPEN=Start-Process '!BROWSER!' 'http://localhost:%PORT%'"
+start "" /b powershell -NoProfile -WindowStyle Hidden -Command "for($i=0;$i -lt 60;$i++){try{(New-Object Net.Sockets.TcpClient('localhost',%PORT%)).Close();!OPEN!;break}catch{Start-Sleep -Milliseconds 500}}"
 
 REM The web UI pings /heartbeat while its tab is open; once those pings stop
 REM (tab closed) for this many seconds the API exits, and the cleanup below
@@ -83,7 +140,7 @@ set "ROCKFORGE_IDLE_SHUTDOWN_S=15"
 REM No --reload: this is the user-facing launcher, and --reload's parent/child
 REM reloader would fight the idle-shutdown SIGTERM (the tab-close auto-stop).
 REM A single uvicorn process exits cleanly, so the cleanup below always runs.
-%PY% -m uvicorn rockforge.interfaces.api.app:app
+%PY% -m uvicorn rockforge.interfaces.api.app:app --port %PORT%
 
 echo.
 echo A parar Redis e o worker...

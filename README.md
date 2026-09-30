@@ -275,8 +275,14 @@ de letra, o device escolhido aparece no log do painel "Letras"
 .\start.bat
 ```
 
-Abre **http://localhost:8000**. O `start.bat` lança Redis + worker em segundo
-plano (logs em `logs\`) e a API na janela atual; Ctrl+C para tudo.
+O `start.bat`:
+1. atualiza o código (`git pull`; sem Git ou sem rede, usa a versão local);
+2. instala/atualiza as dependências (`[ml,lyrics,psarc,youtube]`) quando o
+   `pyproject.toml` mudou desde a última vez — na primeira vez demora;
+3. recusa arrancar se a porta 8000 já estiver ocupada (o RockForge já a correr);
+4. lança Redis + worker em segundo plano (logs em `logs\`) e a API na janela atual;
+5. abre **http://localhost:8000** no Chrome (ou no browser predefinido, se não
+   houver Chrome). Ctrl+C, ou fechar o separador, para tudo.
 
 Notas:
 - O primeiro job descarrega os modelos ML (~2 GB extra, só uma vez)
@@ -284,8 +290,8 @@ Notas:
 - Na lista de **Jobs** cada linha tem um botão 🗑 para remover o job (apaga
   também o bundle gerado e o ficheiro carregado, se nenhum outro job o usar);
   jobs em execução têm de terminar primeiro
-- Para updates: `git pull` dentro da pasta (e `pip install -e ".[dev,ml,lyrics]"`
-  se o `pyproject.toml` tiver mudado)
+- Updates: o `start.bat` faz o `git pull` e reinstala as dependências quando
+  o `pyproject.toml` muda; para forçar a reinstalação, apaga `logs\pyproject.installed`
 
 ### Configuração (variáveis de ambiente)
 

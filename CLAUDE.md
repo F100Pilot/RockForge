@@ -3815,6 +3815,13 @@ green before committing.
 `start.bat` launches Redis (Memurai) + Celery worker (background) + the API
 (foreground) from a single window; it auto-selects `py -3.11`. Requires ffmpeg
 (`winget install ffmpeg`) and a running Redis. See README for the full guide.
+Before that it runs `git pull --ff-only` and restarts itself (`--atualizado`:
+cmd reads a .bat while running it, so the pulled version must be re-read),
+`pip install -e ".[ml,lyrics,psarc,youtube]"` only when `pyproject.toml`
+differs from `logs\pyproject.installed` (the ML resolve is slow), refuses a
+busy port 8000, and opens the page in Chrome when installed (same as
+PDF-to-GP5's `start-casa.bat`). `.gitattributes` keeps `*.bat` CRLF: cmd
+mis-reads labels/`goto` in LF files.
 
 ### Shutdown on tab close (`ROCKFORGE_IDLE_SHUTDOWN_S`)
 
