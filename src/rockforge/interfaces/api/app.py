@@ -168,6 +168,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     _sweep_orphan_gp_uploads()
     _sweep_orphan_youtube_audio()
     _backfill_gp_synced()
+    _backfill_preset_tone_volumes()
     task: asyncio.Task[None] | None = None
     if settings.idle_shutdown_s > 0:
         task = asyncio.create_task(_idle_shutdown_watchdog())
@@ -372,6 +373,9 @@ class JobOut(BaseModel):
     # simply right from the start — has nothing for `sync_edited` to see, so
     # without this the reminder could never be cleared.
     sync_confirmed: bool = False
+    # The chart whose sync corrections the viewer carries onto the others
+    # ("Pista principal"); None = each chart on its own.
+    sync_main: str | None = None
     # Why the chart counts as in sync, for the badge on the project card and the
     # score: "confirmed" (the user said so), "gp" (synced in Guitar Pro 8 — the
     # file carries its own sync points), "songsterr" (human-marked bar times),
@@ -392,6 +396,11 @@ class JobOut(BaseModel):
     rebuilt_from: str | None = None
 
 
+class OtherSyncIn(BaseModel):
+    tempo_scale: Finite | None = None
+    sync_anchors: list[tuple[Finite, Finite]] = []
+
+
 class RebuildIn(BaseModel):
     """Human-review overrides: confirmed tuning and whether to attempt the experimental split."""
 
@@ -410,6 +419,11 @@ class RebuildIn(BaseModel):
     # When True (with arrangement set), tempo_scale and sync_anchors are applied
     # to every arrangement that has notes, not just the specified one.
     apply_to_all: bool = False
+    # The OTHER charts' pending sync, committed in the same rebuild (keyed like
+    # arrangement). Before it only the chart on screen was sent, so another
+    # tab's pending corrections — and what the "Pista principal" carries onto
+    # the others — were lost. Ignored with apply_to_all.
+    other_sync: dict[str, OtherSyncIn] | None = None
     # GP: when False, palm mute / slap / pop / tap are stripped (plain notes).
     import_mutes: bool | None = None
     # When False, the native PSARC's SNG is a single full-chart level (no DD).
@@ -828,6 +842,7 @@ def _to_out(job: Job) -> JobOut:
         has_tones=has_tones,
         sync_edited=_sync_edited(params),
         sync_confirmed=bool(params.get("sync_confirmed")),
+        sync_main=cast("str | None", params.get("sync_main") or None),
         sync_source=_sync_source(params),
         synced_arrangements=_synced_arrangements(params, job.bundle_dir),
         recording_from_gp=bool(params.get("recording_from_gp")),
@@ -1673,6 +1688,60 @@ def _backfill_gp_synced() -> int:
     return marked
 
 
+def _raise_preset_volumes(tones: object) -> list[dict[str, Any]] | None:
+    """``tones`` with every curated preset still at the volume it first shipped
+    with moved to its current one, or None when nothing needed it. A volume the
+    user changed is theirs and is left alone."""
+    from rockforge.infrastructure.packaging.gear.tone_presets import (
+        PRESET_VOLUMES_BEFORE,
+        preset_volume,
+    )
+
+    if not isinstance(tones, list):
+        return None
+    out: list[dict[str, Any]] = []
+    changed = False
+    for tone in tones:
+        if isinstance(tone, dict):
+            key = str(tone.get("key", ""))
+            old, new = PRESET_VOLUMES_BEFORE.get(key), preset_volume(key)
+            vol = tone.get("volume")
+            if old is not None and new is not None and isinstance(vol, (int, float)) \
+                    and abs(float(vol) - old) < 1e-9:
+                tone = {**tone, "volume": new}
+                changed = True
+        out.append(tone)
+    return out if changed else None
+
+
+def _backfill_preset_tone_volumes() -> int:
+    """The first curated presets were too quiet in game (see
+    ``tone_presets.PRESET_VOLUMES_BEFORE``). Projects and the tone library
+    that still carry one at its original volume get the current value, so the
+    next rebuild is audible without re-applying the suggestion. Returns how many
+    projects changed; never raises — housekeeping must not block startup."""
+    from sqlalchemy import select
+
+    from rockforge import tone_library
+
+    changed = 0
+    try:
+        with _session_factory() as session:
+            for job in session.execute(select(Job)).scalars():
+                params = dict(job.params or {})
+                tones = _raise_preset_volumes(params.get("tones"))
+                if tones is not None:
+                    job.params = {**params, "tones": tones}
+                    changed += 1
+            session.commit()
+        library = _raise_preset_volumes(tone_library.load())
+        for tone in library or []:
+            tone_library.save_tone(tone)
+    except Exception:  # noqa: BLE001 — housekeeping must never block startup
+        logger.warning("preset tone volume backfill failed", exc_info=True)
+    return changed
+
+
 def _sweep_orphan_youtube_audio() -> int:
     """Delete fetched YouTube audio (``uploads/yt-*``) no job uses, past the age
     limit — ``/youtube/audio`` runs in the wizard, before the job exists, so an
@@ -1712,34 +1781,99 @@ def delete_job(job_id: str, force: bool = False) -> Response:
 
     The uploaded source file is removed only when no other job (e.g. a rebuild)
     still references it."""
-    from sqlalchemy import func, select
-
     with _session_factory() as session:
         job = session.get(Job, job_id)
         if job is None:
             raise HTTPException(404, "job not found")
         if job.status is JobStatus.RUNNING and not force:
             raise HTTPException(409, "job is running — wait for it to finish before deleting")
-
-        shutil.rmtree(settings.work_dir / job.id, ignore_errors=True)
-
-        others = session.scalar(
-            select(func.count()).select_from(Job).where(Job.source == job.source, Job.id != job.id)
-        )
-        if not others and job.source_type in {"upload", "gp"}:
-            Path(job.source).unlink(missing_ok=True)
-
-        # The uploaded Guitar Pro file too — it lives outside the job's work dir
-        # (work_dir/gp/<uuid>.gp*) and was previously left behind forever, so a
-        # deleted job still cost its GP file on disk. Reference-counted like the
-        # recording above, because a rebuild/reload-gp fork shares the path.
-        gp_path = (job.params or {}).get("gp_path")
-        if isinstance(gp_path, str) and gp_path and not _gp_path_in_use(session, gp_path, job.id):
-            Path(gp_path).unlink(missing_ok=True)
-
-        session.delete(job)
+        _delete_job_files_and_row(session, job)
         session.commit()
     return Response(status_code=204)
+
+
+def _delete_job_files_and_row(session: Any, job: Job) -> None:
+    """Remove a job's work dir, its recording and GP file when no other job
+    uses them, and its row (the caller commits)."""
+    from sqlalchemy import func, select
+
+    shutil.rmtree(settings.work_dir / job.id, ignore_errors=True)
+
+    others = session.scalar(
+        select(func.count()).select_from(Job).where(Job.source == job.source, Job.id != job.id)
+    )
+    if not others and job.source_type in {"upload", "gp"}:
+        Path(job.source).unlink(missing_ok=True)
+
+    # The uploaded Guitar Pro file too — it lives outside the job's work dir
+    # (work_dir/gp/<uuid>.gp*) and was previously left behind forever, so a
+    # deleted job still cost its GP file on disk. Reference-counted like the
+    # recording above, because a rebuild/reload-gp fork shares the path.
+    gp_path = (job.params or {}).get("gp_path")
+    if isinstance(gp_path, str) and gp_path and not _gp_path_in_use(session, gp_path, job.id):
+        Path(gp_path).unlink(missing_ok=True)
+
+    session.delete(job)
+
+
+# Work-dir subfolders a later version keeps using: params["stems"] is inherited
+# by every rebuild with absolute paths into the version that ran the
+# separation, and detect_tones/separate_stems reuse the guitar stem cached there.
+_CARRIED_WORK_DIRS = ("demucs_stems", "stem_separation")
+
+
+@app.post("/jobs/{job_id}/drop-previous", response_model=JobOut)
+def drop_previous_version(job_id: str) -> JobOut:
+    """Delete the version this one was rebuilt from ("Aplicar e reconstruir"
+    asks whether to). Only once THIS version is built — a failed rebuild keeps
+    the old one. What the new version still uses from the old one is moved
+    over first (the separated stems), and any other version rebuilt from the
+    old one then points at the version before it."""
+    from sqlalchemy import select
+
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+        if job.status is not JobStatus.COMPLETED:
+            raise HTTPException(409, "the new version has to finish building first")
+        params = dict(job.params or {})
+        prev_id = params.get("rebuilt_from")
+        prev = session.get(Job, prev_id) if isinstance(prev_id, str) and prev_id else None
+        if prev is None:
+            raise HTTPException(404, "this version has no previous version to delete")
+        if prev.status is JobStatus.RUNNING:
+            raise HTTPException(409, "the previous version is still building")
+
+        old_dir, new_dir = settings.work_dir / prev.id, settings.work_dir / job.id
+        for sub in _CARRIED_WORK_DIRS:
+            if (old_dir / sub).is_dir() and not (new_dir / sub).exists():
+                new_dir.mkdir(parents=True, exist_ok=True)
+                shutil.move(str(old_dir / sub), str(new_dir / sub))
+        stems = params.get("stems")
+        if isinstance(stems, dict):
+            params["stems"] = {
+                name: str(new_dir / Path(path).relative_to(old_dir))
+                if isinstance(path, str) and Path(path).is_relative_to(old_dir) else path
+                for name, path in stems.items()
+            }
+
+        grand = cast("dict[str, Any]", prev.params or {}).get("rebuilt_from")
+        grand = grand if isinstance(grand, str) and session.get(Job, grand) else None
+        for other in session.execute(select(Job).where(Job.id != prev.id)).scalars():
+            other_params = params if other.id == job.id else dict(other.params or {})
+            if other_params.get("rebuilt_from") != prev.id:
+                continue
+            if grand:
+                other_params["rebuilt_from"] = grand
+            else:
+                other_params.pop("rebuilt_from", None)
+            if other.id != job.id:
+                other.params = other_params
+        job.params = {**params}
+        _delete_job_files_and_row(session, prev)
+        session.commit()
+        return _to_out(job)
 
 
 # The manually-tuned "sync state": every param a user builds by hand in the tab
@@ -1931,6 +2065,17 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
             for target in _sync_targets():
                 target["tempo_scale"] = payload.tempo_scale
 
+        other_sync = (
+            {}
+            if original.source_type != "gp" or payload.apply_to_all or payload.arrangement is None
+            else {k: v for k, v in (payload.other_sync or {}).items() if k != payload.arrangement}
+        )
+        for kind, pending in other_sync.items():
+            if pending.tempo_scale is not None:
+                if pending.tempo_scale <= 0.0:
+                    raise HTTPException(422, "tempo_scale must be > 0")
+                _arr_entry(kind)["tempo_scale"] = pending.tempo_scale
+
         def _remap_committed_anchors() -> None:
             """Re-express already-committed anchor stages in the NEW timeline.
 
@@ -2003,6 +2148,13 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
                     ]
                     stages.append([list(a) for a in payload.sync_anchors])
                     target["sync_anchor_stages"] = stages
+        for kind, pending in other_sync.items():
+            if pending.sync_anchors:
+                entry = _arr_entry(kind)
+                done = cast("list[list[object]]", entry.get("sync_anchor_stages", []))
+                entry["sync_anchor_stages"] = [
+                    *[list(s) for s in done], [list(a) for a in pending.sync_anchors],
+                ]
         if payload.import_mutes is not None:
             params["import_mute_techniques"] = payload.import_mutes
         if payload.dynamic_difficulty is not None:
@@ -3196,6 +3348,32 @@ def set_sync_confirmed(job_id: str, payload: SyncConfirmedIn) -> JobOut:
             payload.confirmed if payload.arrangement is None
             else bool(built) and all(k in synced for k in built)
         )
+        job.params = params
+        session.commit()
+        return _to_out(job)
+
+
+class SyncMainIn(BaseModel):
+    arrangement: str | None = None  # None = no main chart
+
+
+@app.patch("/jobs/{job_id}/sync-main", response_model=JobOut)
+def set_sync_main(job_id: str, payload: SyncMainIn) -> JobOut:
+    """Choose the chart whose sync corrections the viewer carries onto the
+    others ("Pista principal"). Nothing is rebuilt; it lives in `params`, so a
+    fork inherits it."""
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+        built = _built_kinds(job.bundle_dir)
+        if payload.arrangement is not None and built and payload.arrangement not in built:
+            raise HTTPException(422, f"no built arrangement named {payload.arrangement!r}")
+        params = dict(job.params or {})
+        if payload.arrangement:
+            params["sync_main"] = payload.arrangement
+        else:
+            params.pop("sync_main", None)
         job.params = params
         session.commit()
         return _to_out(job)

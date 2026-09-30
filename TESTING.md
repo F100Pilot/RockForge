@@ -781,6 +781,13 @@ A detection from before this version has no timeline: the card asks to run
 "Detetar tom" again (409). Demucs never ran here — the timeline was calibrated
 on a full mix, so its numbers on a separated stem are unverified.
 
+### 7d-quater. Volume dos tons no jogo
+
+Apply a suggested tone, rebuild, and play the song in Rocksmith: the guitar
+should sit at the level of a DLC Builder default tone. If it is still quiet or
+too loud, the tone editor's Volume (0.1–36, higher = louder, like DLC
+Builder's) is the knob; the reference's defaults are 18–19.5.
+
 ### 7d-bis. Testar tom na partitura ("🎸 Testar tom") — sem ML
 
 No editor da partitura, o seletor **"🎸 Testar tom"** aplica o *carácter* de um

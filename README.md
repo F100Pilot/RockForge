@@ -82,6 +82,9 @@ Lead + Rhythm do catálogo de gear do Rocksmith, prontos a usar no jogo:
 4. O utilizador carrega em **"Aplicar tons sugeridos"** para carregar os presets
    no editor de tons, revê/ajusta e grava com **"Aplicar e reconstruir"**.
 
+**Volume do tom:** como no DLC Builder, 0.1–36 e **maior = mais alto** (os tons
+do jogo andam por 18–20). Os tons sugeridos já vêm nesse nível.
+
 **Tons por parte de cada pista.** A deteção mede também o som **ao longo da
 música** (onde está limpo, onde distorce mais). O cartão **"Sugestões por
 secção"** lê isso contra o que cada pista toca em cada secção (acordes e palm

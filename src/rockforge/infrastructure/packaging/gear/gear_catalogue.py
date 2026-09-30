@@ -60,7 +60,7 @@ TONE_DESCRIPTORS: dict[str, str] = {
     "Vocal": "$[35718]VOCAL",
 }
 
-_DEFAULT_VOLUME = -15.0
+_DEFAULT_VOLUME = -18.0  # DLC Builder's new-tone default (ToneGear.fs); more negative = louder
 
 
 @lru_cache(maxsize=1)

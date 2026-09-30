@@ -25,6 +25,21 @@ from rockforge.infrastructure.packaging.gear.gear_catalogue import (
     tone_from_dict,
 )
 
+# A tone's Volume gets LOUDER as it gets more negative: DLC Builder's editor
+# shows ``-Volume`` on a 0.1..36 slider with the loud icon at 36
+# (Rocksmith2014.NET ``ToneDetails.fs``/``EditFunctions.SetVolume``), its own
+# default tones sit at -18.6/-19.5 and a new tone at -18 (``ToneGear.fs``). The
+# first presets used -13..-16, quieter than any of those, and in game they could
+# hardly be heard. These are the values they shipped with, so a project still
+# carrying one untouched can be brought up (``app._backfill_preset_tone_volumes``).
+PRESET_VOLUMES_BEFORE: dict[str, float] = {
+    "RFLead_Clean": -15.0, "RFLead_CleanBright": -15.0, "RFLead_Crunch": -14.0,
+    "RFLead_Plexi": -14.0, "RFLead_Overdrive": -13.0, "RFLead_HighGain": -13.0,
+    "RFLead_Metal": -13.0, "RFRhythm_Clean": -16.0, "RFRhythm_Crunch": -15.0,
+    "RFRhythm_Plexi": -15.0, "RFRhythm_Orange": -14.0, "RFRhythm_HighGain": -14.0,
+    "RFRhythm_Metal": -14.0,
+}
+
 # ---------------------------------------------------------------------------
 # Lead presets
 # ---------------------------------------------------------------------------
@@ -32,7 +47,7 @@ from rockforge.infrastructure.packaging.gear.gear_catalogue import (
 LEAD_CLEAN: dict[str, Any] = {
     "key": "RFLead_Clean",
     "name": "Lead – Clean",
-    "volume": -15.0,
+    "volume": -21.0,
     "descriptors": [TONE_DESCRIPTORS["Clean"], TONE_DESCRIPTORS["Lead"]],
     "amp": {"key": "Amp_CS100", "knobs": {"Amp_CS100_Gain": 20}},
     "cabinet": {"key": "Cab_Marshall1960a_57_Cone"},
@@ -42,7 +57,7 @@ LEAD_CLEAN: dict[str, Any] = {
 LEAD_CRUNCH: dict[str, Any] = {
     "key": "RFLead_Crunch",
     "name": "Lead – Crunch",
-    "volume": -14.0,
+    "volume": -20.0,
     "descriptors": [TONE_DESCRIPTORS["Crunch"], TONE_DESCRIPTORS["Lead"]],
     "amp": {
         "key": "Amp_MarshallJCM800",
@@ -60,7 +75,7 @@ LEAD_CRUNCH: dict[str, Any] = {
 LEAD_HIGH_GAIN: dict[str, Any] = {
     "key": "RFLead_HighGain",
     "name": "Lead – High Gain",
-    "volume": -13.0,
+    "volume": -19.5,
     "descriptors": [TONE_DESCRIPTORS["High Gain"], TONE_DESCRIPTORS["Lead"]],
     "amp": {
         "key": "Amp_CA100",
@@ -83,7 +98,7 @@ LEAD_HIGH_GAIN: dict[str, Any] = {
 RHYTHM_CLEAN: dict[str, Any] = {
     "key": "RFRhythm_Clean",
     "name": "Rhythm – Clean",
-    "volume": -16.0,
+    "volume": -21.0,
     "descriptors": [TONE_DESCRIPTORS["Clean"]],
     "amp": {
         "key": "Amp_TW22",
@@ -100,7 +115,7 @@ RHYTHM_CLEAN: dict[str, Any] = {
 RHYTHM_CRUNCH: dict[str, Any] = {
     "key": "RFRhythm_Crunch",
     "name": "Rhythm – Crunch",
-    "volume": -15.0,
+    "volume": -20.0,
     "descriptors": [TONE_DESCRIPTORS["Crunch"]],
     "amp": {
         "key": "Amp_MarshallJCM800",
@@ -118,7 +133,7 @@ RHYTHM_CRUNCH: dict[str, Any] = {
 RHYTHM_HIGH_GAIN: dict[str, Any] = {
     "key": "RFRhythm_HighGain",
     "name": "Rhythm – High Gain",
-    "volume": -14.0,
+    "volume": -19.5,
     "descriptors": [TONE_DESCRIPTORS["High Gain"], TONE_DESCRIPTORS["Distortion"]],
     "amp": {
         "key": "Amp_HG100",
@@ -186,7 +201,7 @@ def suggest_tones(
 LEAD_CLEAN_BRIGHT: dict[str, Any] = {
     "key": "RFLead_CleanBright",
     "name": "Lead – Clean brilhante",
-    "volume": -15.0,
+    "volume": -21.0,
     "descriptors": [TONE_DESCRIPTORS["Clean"], TONE_DESCRIPTORS["Lead"]],
     "amp": {
         "key": "Amp_TW26",
@@ -199,12 +214,12 @@ LEAD_CLEAN_BRIGHT: dict[str, Any] = {
 LEAD_PLEXI: dict[str, Any] = {
     "key": "RFLead_Plexi",
     "name": "Lead – Plexi (rock clássico)",
-    "volume": -14.0,
+    "volume": -20.0,
     "descriptors": [TONE_DESCRIPTORS["Crunch"], TONE_DESCRIPTORS["Lead"]],
     "amp": {
         "key": "Amp_MarshallPlexi",
         "knobs": {
-            "Amp_MarshallPlexi_Gain": 72,
+            "Amp_MarshallPlexi_Loudness1": 72,
             "Amp_MarshallPlexi_Treble": 74,
             "Amp_MarshallPlexi_Pres": 55,
         },
@@ -215,7 +230,7 @@ LEAD_PLEXI: dict[str, Any] = {
 LEAD_OVERDRIVE: dict[str, Any] = {
     "key": "RFLead_Overdrive",
     "name": "Lead – Overdrive quente",
-    "volume": -13.0,
+    "volume": -19.5,
     "descriptors": [TONE_DESCRIPTORS["Overdrive"], TONE_DESCRIPTORS["Lead"]],
     "amp": {
         "key": "Amp_Marshall1962Bluesbreaker",
@@ -228,7 +243,7 @@ LEAD_OVERDRIVE: dict[str, Any] = {
 LEAD_METAL: dict[str, Any] = {
     "key": "RFLead_Metal",
     "name": "Lead – Metal (escuro/apertado)",
-    "volume": -13.0,
+    "volume": -19.5,
     "descriptors": [TONE_DESCRIPTORS["High Gain"], TONE_DESCRIPTORS["Lead"]],
     "amp": {
         "key": "Amp_HG100",
@@ -246,12 +261,12 @@ LEAD_METAL: dict[str, Any] = {
 RHYTHM_PLEXI: dict[str, Any] = {
     "key": "RFRhythm_Plexi",
     "name": "Rhythm – Plexi (rock clássico)",
-    "volume": -15.0,
+    "volume": -20.0,
     "descriptors": [TONE_DESCRIPTORS["Crunch"]],
     "amp": {
         "key": "Amp_MarshallPlexi",
         "knobs": {
-            "Amp_MarshallPlexi_Gain": 58,
+            "Amp_MarshallPlexi_Loudness1": 58,
             "Amp_MarshallPlexi_Treble": 62,
             "Amp_MarshallPlexi_Bass": 66,
         },
@@ -262,7 +277,7 @@ RHYTHM_PLEXI: dict[str, Any] = {
 RHYTHM_ORANGE: dict[str, Any] = {
     "key": "RFRhythm_Orange",
     "name": "Rhythm – Crunch encorpado",
-    "volume": -14.0,
+    "volume": -20.0,
     "descriptors": [TONE_DESCRIPTORS["Crunch"], TONE_DESCRIPTORS["Distortion"]],
     "amp": {
         "key": "Amp_OrangeRockerverb",
@@ -278,7 +293,7 @@ RHYTHM_ORANGE: dict[str, Any] = {
 RHYTHM_METAL: dict[str, Any] = {
     "key": "RFRhythm_Metal",
     "name": "Rhythm – Metal (djent/apertado)",
-    "volume": -14.0,
+    "volume": -19.5,
     "descriptors": [TONE_DESCRIPTORS["High Gain"], TONE_DESCRIPTORS["Distortion"]],
     "amp": {
         "key": "Amp_CA100",
@@ -384,4 +399,12 @@ def preset_fingerprint(key: str) -> tuple[float, float, float] | None:
     for tone, fp in (*_LEAD_LIBRARY, *_RHYTHM_LIBRARY):
         if tone["key"] == key:
             return fp
+    return None
+
+
+def preset_volume(key: str) -> float | None:
+    """The volume a curated preset ships with now, or None for any other key."""
+    for tone, _fp in (*_LEAD_LIBRARY, *_RHYTHM_LIBRARY):
+        if tone["key"] == key:
+            return float(tone["volume"])
     return None

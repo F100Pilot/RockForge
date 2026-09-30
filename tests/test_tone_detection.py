@@ -162,3 +162,31 @@ def test_features_are_clamped_and_never_escape_zero_to_one() -> None:
         for field in (p.gain_level, p.brightness, p.low_end, p.dynamic_range,
                       p.flatness, p.compression):
             assert 0.0 <= field <= 1.0, f"{field} out of range for {extreme}"
+
+
+def test_presets_are_as_loud_as_the_games_own_tones() -> None:
+    """A tone's Volume gets LOUDER as it gets more negative (DLC Builder shows
+    -Volume, loudest at 36); its default tones sit at -18.6/-19.5. The first
+    presets used -13..-16 and could hardly be heard in game."""
+    from rockforge.infrastructure.packaging.gear import tone_presets as tp
+
+    for tone, _fp in (*tp._LEAD_LIBRARY, *tp._RHYTHM_LIBRARY):
+        assert -22.0 <= tone["volume"] <= -18.0, tone["key"]
+        assert tp.preset_volume(tone["key"]) == tone["volume"]
+        assert tone["key"] in tp.PRESET_VOLUMES_BEFORE
+    assert tp.preset_volume("not-a-preset") is None
+
+
+def test_every_preset_knob_is_a_real_knob_of_its_gear() -> None:
+    """tone_from_dict drops a knob its gear does not have without a word — the
+    Plexi's "Gain" (it has Loudness1/2) was silently ignored."""
+    from rockforge.infrastructure.packaging.gear import tone_presets as tp
+    from rockforge.infrastructure.packaging.gear.gear_catalogue import knob_defaults
+
+    for tone, _fp in (*tp._LEAD_LIBRARY, *tp._RHYTHM_LIBRARY):
+        for slot in ("amp", "cabinet", "pre", "post", "racks"):
+            items = tone.get(slot) or []
+            for item in [items] if isinstance(items, dict) else items:
+                assert set(item.get("knobs") or {}) <= set(knob_defaults(item["key"])), (
+                    tone["key"], item["key"],
+                )

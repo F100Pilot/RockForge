@@ -697,6 +697,7 @@ function isSynced(j) { return ['confirmed', 'gp', 'songsterr'].includes(j && j.s
 // Each track is synchronised on its own, so the card speaks for the chart on
 // screen: mark it (its tab turns green), and see how many are done.
 function renderSyncState(j) {
+  renderSyncMain(j);
   const card = document.getElementById('syncStateCard');
   if (!card) return;
   const a = arrangements[currentArr];
@@ -1337,6 +1338,7 @@ document.getElementById('metaSave').onclick = async () => {
     closeMeta();
     toast('Arranjos/afinação aplicados — a reconstruir.', 'ok');
     refreshJobs(); selectJob(nj.id);
+    offerDropPrevious(nj.id);
     return;
   }
   closeMeta();
@@ -1461,6 +1463,7 @@ async function selectJob(id, { poll = false, force = false } = {}) {
     return;
   }
   selectedJob = j;
+  maybeDropPrevious(j);
   document.getElementById('detailOverlay').hidden = false;
   renderDetailHead(j);
 
@@ -1738,6 +1741,7 @@ function showArr(i) {
   if (i !== currentArr) { loadArrSync(i); stopArrangementPreview(); }  // tab change: swap in that chart's own sync state
   currentArr = i;
   if (switchToneSet()) renderToneSetUi();  // per-track tones follow the tab too
+  mainSyncFollow();  // the other charts take what changed on the main one
   renderSyncState(selectedJob);  // the card speaks for the chart on screen
   lyricsFollowSync();  // lyrics timed on the score move with its pending sync
   for (const [idx, btn] of document.querySelectorAll('#arrTabs button').entries())
@@ -2288,6 +2292,140 @@ function updateSyncOffsetDisplay() {
 // tempo (live pending, else built) and pending anchors, regardless of which
 // tab is on screen — needed to compute "where does the reference track's bar
 // N currently sit" without switching tabs.
+// ── Pista principal (the main chart for sync) ────────────────────────────────
+// What the user changes on the main chart's sync (its "Início", tempo, any
+// correction) reaches every other chart as the SAME change of time: main at
+// 0 s → 1 s moves a chart whose first note is at 30 s to 31 s. The change is
+// the map D (built time → where the main chart shows it now) before and after
+// the edit; each other chart's display map G becomes (D_new ∘ D_old⁻¹) ∘ G,
+// written back as that chart's own PENDING anchors — so it previews on its
+// tab, can still be corrected there, and is committed by the rebuild
+// (other_sync). Undoing on the main chart takes the others back.
+let syncMain = null;          // kind of the main chart, or null
+let mainFollowState = null;   // the main chart's pending sync as last carried
+function mainSyncState() {
+  const a = syncMain && arrangements.find(x => x.kind === syncMain);
+  if (!a || !isGpJob()) return null;
+  const built = a.tempo_scale || 1;
+  const ratio = ((a.kind in tempoScaleByKind) ? tempoScaleByKind[a.kind] : built) / built;
+  const anchors = (syncAnchorsByKind[a.kind] || []).map(p => p.slice());
+  return { ratio, anchors, sig: JSON.stringify([ratio, anchors]) };
+}
+function mainSyncFn(st) {
+  const warp = buildTimeWarp(st.anchors);
+  const pad = Math.max(offsetLive, MIN_LEAD) + leadInBuilt;
+  return x => warp((x - scoreShift) * st.ratio + pad);
+}
+// Built times where D bends (its anchors, taken back through the tempo preview).
+function mainSyncKinks(st) {
+  const pad = Math.max(offsetLive, MIN_LEAD) + leadInBuilt;
+  return st.anchors.map(([o]) => (o - pad) / st.ratio + scoreShift);
+}
+function resetMainFollow() { mainFollowState = mainSyncState(); }
+// The span of chart `idx` in its own preview coordinates (what anchors use).
+function chartSpan(idx) {
+  const a = arrangements[idx];
+  const times = [...(a.beats || []), ...(a.bars || []).map(b => b.time), ...a.notes.map(n => n.time + (n.sustain || 0))];
+  if (!times.length) return null;
+  return [arrangementPreviewScale(idx, Math.min(...times)), arrangementPreviewScale(idx, Math.max(...times)) + 1];
+}
+// The anchors that make chart `idx`'s display map `delta ∘ G`. A uniform shift
+// on a chart with at most one anchor stays ONE anchor on its first note (what
+// its "Início" field edits); anything else pins both ends of the chart so the
+// multi-anchor warp (identity outside its range) covers every note, plus every
+// point where G or delta bends.
+function followAnchors(idx, list, delta, kinks, shift) {
+  const a = arrangements[idx];
+  if (shift != null && list.length <= 1) {
+    if (list.length === 1) {
+      const [o, t] = list[0];
+      return Math.abs(t + shift - o) < 1e-9 ? [] : [[o, t + shift]];
+    }
+    if (!a.notes.length || Math.abs(shift) < 1e-9) return [];
+    const p = arrangementPreviewScale(idx, Math.min(...a.notes.map(n => n.time)));
+    return [[p, p + shift]];
+  }
+  const span = chartSpan(idx);
+  if (!span) return list;
+  const G = buildTimeWarp(list);
+  const pts = new Set(span);
+  for (const [o] of list) if (o > span[0] && o < span[1]) pts.add(o);
+  for (const y of kinks) {
+    const p = invertIncreasing(G, y);
+    if (p > span[0] && p < span[1]) pts.add(p);
+  }
+  const out = [...pts].sort((x, y) => x - y).map(p => [p, delta(G(p))]);
+  return out.every(([o, t]) => Math.abs(t - o) < 1e-6) ? [] : out;
+}
+function mainSyncFollow() {
+  if (!syncMain) { mainFollowState = null; return; }
+  const now = mainSyncState();
+  if (!now) return;
+  const prev = mainFollowState;
+  mainFollowState = now;
+  if (!prev || prev.sig === now.sig) return;
+  const dOld = mainSyncFn(prev), dNew = mainSyncFn(now);
+  const uniform = prev.anchors.length <= 1 && now.anchors.length <= 1 && Math.abs(prev.ratio - now.ratio) < 1e-12;
+  const shift = uniform ? dNew(scoreShift) - dOld(scoreShift) : null;
+  const delta = uniform ? (y => y + shift) : (y => dNew(invertIncreasing(dOld, y)));
+  const kinks = uniform ? [] : [...mainSyncKinks(prev), ...mainSyncKinks(now)].map(dOld);
+  for (let i = 0; i < arrangements.length; i++) {
+    const kind = arrangements[i].kind;
+    if (kind === syncMain) continue;
+    const list = syncAnchorsByKind[kind] || (syncAnchorsByKind[kind] = []);
+    const next = followAnchors(i, list, delta, kinks, shift);
+    list.splice(0, list.length, ...next);  // in place: syncAnchors may BE this array
+  }
+  renderAnchorsList();
+  updatePendingChangesInfo();
+}
+// Every chart but the one on screen that has pending sync, for other_sync.
+function otherPendingSync() {
+  const out = {};
+  for (const a of arrangements) {
+    if (a.kind === currentKind()) continue;
+    const anchors = syncAnchorsByKind[a.kind] || [];
+    const scale = tempoScaleByKind[a.kind];
+    const tempoChanged = scale != null && Math.abs(scale - (a.tempo_scale || 1)) > 1e-4;
+    if (anchors.length || tempoChanged)
+      out[a.kind] = { tempo_scale: tempoChanged ? scale : null, sync_anchors: anchors.map(p => p.slice()) };
+  }
+  return out;
+}
+function renderSyncMain(j) {
+  const card = document.getElementById('syncMainCard');
+  if (!card) return;
+  const show = !!j && j.source_type === 'gp' && j.status === 'completed' && arrangements.length > 1;
+  card.hidden = !show;
+  if (!show) return;
+  const sel = document.getElementById('syncMainSel');
+  sel.innerHTML = '<option value="">— nenhuma (cada pista à parte) —</option>' +
+    arrangements.map(a => `<option value="${esc(a.kind)}">${esc(arrLabel(a.kind))}</option>`).join('');
+  sel.value = syncMain || '';
+  const kind = currentKind();
+  document.getElementById('syncMainNote').textContent = !syncMain ? ''
+    : kind === syncMain ? 'Esta é a pista principal: o que mudares aqui passa para as outras.'
+      : `Esta pista segue a ${arrLabel(syncMain)}: o que mudares lá chega aqui. Podes também acertá-la à parte.`;
+}
+document.getElementById('syncMainSel').addEventListener('change', async e => {
+  if (!selectedJob) return;
+  const pick = e.target.value || null;
+  try {
+    const out = await getJSON(`/jobs/${selectedJob.id}/sync-main`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ arrangement: pick }),
+    });
+    selectedJob.sync_main = out.sync_main;
+    syncMain = out.sync_main || null;
+    resetMainFollow();  // only what changes from now on is carried
+    renderSyncMain(selectedJob);
+    toast(syncMain ? `Pista principal: ${arrLabel(syncMain)}.` : 'Sem pista principal.', 'ok');
+  } catch (err) {
+    e.target.value = syncMain || '';
+    toast(`não foi possível guardar: ${err.message}`);
+  }
+});
+
 function arrangementPreviewScale(idx, t) {
   if (!isGpJob()) return t;
   const a = arrangements[idx];
@@ -2794,6 +2932,7 @@ function renderAnchorsList() {
 // keep their own already-committed sync untouched.
 async function applyAll() {
   if (!selectedJob) return;
+  mainSyncFollow();  // what the main chart changed must reach the others first
   lyricsFollowSync();  // the rows sent must carry every pending chart correction
   const midi = [...document.querySelectorAll('#tuningInputs input')].map(i => parseInt(i.value, 10));
   const applyToAll = document.getElementById('applyToAllChk').checked;
@@ -2810,6 +2949,9 @@ async function applyAll() {
       tempo_scale: tempoScaleLive,
       sync_anchors: syncAnchors.length ? syncAnchors : null,
       apply_to_all: applyToAll,
+      // Every OTHER chart's pending sync too — before, only the chart on screen
+      // was committed and the rest was lost at the rebuild.
+      other_sync: applyToAll ? null : otherPendingSync(),
       import_mutes: document.getElementById('muteChk').checked,
       dynamic_difficulty: document.getElementById('ddChk').checked,
       // null keeps the stored rows; [] drops them, so the build reads the GP
@@ -2838,24 +2980,68 @@ async function applyAll() {
   const b = await r.json();
   if (r.ok) {
     toast('A reconstruir…', 'ok');
-    if (applyToAll) {
-      syncAnchorsByKind = {};
-      tempoScaleByKind = {};
-    } else {
-      syncAnchors.length = 0;
-      const kind = currentKind();
-      if (kind) delete tempoScaleByKind[kind];
-    }
+    // Every chart's pending sync was sent (other_sync), so all of it is built.
+    for (const list of Object.values(syncAnchorsByKind)) list.length = 0;
+    syncAnchors.length = 0;
+    tempoScaleByKind = {};
+    resetMainFollow();
     // The rows just sent already carry the corrections; clearing the pending
     // sync must not carry them back before the new build's rows load.
     resetLyricFollow();
     noteOverridesByKind = {};  // baked into the new build regardless of applyToAll
     noteOverridesBuilt = '{}';
     selectJob(b.id, { force: true });
+    offerDropPrevious(b.id);
   }
   else toast(b.detail || 'erro');
 }
 document.getElementById('applyAll').addEventListener('click', applyAll);
+
+// Every rebuild makes a new version and keeps the old one. "Aplicar e
+// reconstruir" asks whether the old one can go; the answer waits, per new
+// version and in localStorage so it survives closing the app, until that
+// version is BUILT — a failed rebuild keeps the old one
+// (POST /jobs/{id}/drop-previous, which also moves the stems the new one uses).
+const DROP_PREV_KEY = 'rf-drop-previous';
+function dropPrevPending() {
+  try { return JSON.parse(localStorage.getItem(DROP_PREV_KEY) || '{}') || {}; } catch { return {}; }
+}
+function setDropPrev(id, on) {
+  try {
+    const pending = dropPrevPending();
+    if (on) pending[id] = 1; else delete pending[id];
+    localStorage.setItem(DROP_PREV_KEY, JSON.stringify(pending));
+  } catch { /* no storage: the old version simply stays */ }
+}
+async function offerDropPrevious(newId) {
+  if (!(await confirmModal('Apagar a versão anterior deste projeto (e o PSARC dela) assim que a nova ficar pronta? ' +
+    'Se a reconstrução falhar, a anterior fica.'))) return;
+  setDropPrev(newId, true);
+  try { maybeDropPrevious(await getJSON(`/jobs/${newId}`)); } catch { /* the poll tries again */ }
+}
+const droppingPrev = new Set();
+async function maybeDropPrevious(j) {
+  if (!j || !dropPrevPending()[j.id] || droppingPrev.has(j.id)) return;
+  if (j.status === 'failed') {
+    setDropPrev(j.id, false);
+    toast('A reconstrução falhou — a versão anterior foi mantida.');
+    return;
+  }
+  if (j.status !== 'completed') return;
+  setDropPrev(j.id, false);
+  if (!j.rebuilt_from) return;
+  droppingPrev.add(j.id);
+  try {
+    const out = await getJSON(`/jobs/${j.id}/drop-previous`, { method: 'POST' });
+    if (selectedJob && selectedJob.id === out.id) { selectedJob = out; renderDetailHead(out); }
+    toast('Versão anterior apagada.', 'ok');
+    refreshJobs();
+  } catch (err) {
+    toast(`não foi possível apagar a versão anterior: ${err.message}`);
+  } finally {
+    droppingPrev.delete(j.id);
+  }
+}
 
 // Reload the GP file into the current job (keeping all sync/tone/lyric/tuning
 // overrides). Forks a new job on the backend, same as a rebuild.
@@ -2883,6 +3069,7 @@ reloadGpInput.addEventListener('change', async () => {
         ? 'GP recarregado com o áudio que vem dentro dele (o início passou para o do ficheiro) — a reconstruir…'
         : b.recording_from_gp ? 'GP recarregado, com o áudio dele — a reconstruir…' : 'GP recarregado — a reconstruir…', 'ok');
       selectJob(b.id, { force: true });
+      offerDropPrevious(b.id);
     }
     else toast(b.detail || 'erro ao recarregar o GP');
   } finally {
@@ -3637,7 +3824,7 @@ function addEffectRow(category, gearKey, values) {
 
 function blankFormDefaults() {
   document.getElementById('teName').value = '';
-  document.getElementById('teVolume').value = '-15';
+  document.getElementById('teVolume').value = '18';
   document.getElementById('teDescriptors').value = '';
   document.getElementById('teAmpSearch').value = '';
   document.getElementById('teCabSearch').value = '';
@@ -3667,7 +3854,8 @@ function editToneInForm(key) {
   if (!t) return;
   editingToneKey = key;
   document.getElementById('teName').value = t.name || '';
-  document.getElementById('teVolume').value = t.volume != null ? t.volume : -15;
+  // Shown like DLC Builder does, positive and louder upwards; stored negative.
+  document.getElementById('teVolume').value = t.volume != null ? -t.volume : 18;
   document.getElementById('teDescriptors').value = (t.descriptors || []).map(descriptorCodeToName).join(', ');
   document.getElementById('teAmpSearch').value = '';
   document.getElementById('teCabSearch').value = '';
@@ -3799,7 +3987,7 @@ document.getElementById('teSave').addEventListener('click', () => {
   }
   const tone = {
     key, name,
-    volume: parseFloat(document.getElementById('teVolume').value) || -15,
+    volume: -Math.min(36, Math.max(0.1, parseFloat(document.getElementById('teVolume').value) || 18)),
     descriptors,
     amp: { key: ampKey, knobs: readKnobs(document.getElementById('teAmpKnobs')) },
     cabinet: { key: cabKey, knobs: {} },
@@ -6867,6 +7055,8 @@ function initSync(j) {
   audioSourceName = '';
   const audioSourceSel = document.getElementById('audioSource');
   if (audioSourceSel) audioSourceSel.value = '';
+  syncMain = (j.sync_main && arrangements.some(a => a.kind === j.sync_main)) ? j.sync_main : null;
+  resetMainFollow();
   decodeWaveform(j.id);
   loadStems(j.id);
   loadVocalLine(j.id);

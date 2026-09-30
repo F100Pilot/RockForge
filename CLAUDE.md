@@ -834,6 +834,43 @@ a point already on the current warp curve, so everything up to it is unchanged
 and only `[clicked, last]` shifts. (`'newbeat'` never had the bug because its
 pivot anchor already pins the click to its unchanged position.)
 
+### The main chart for sync ("Pista principal", `sync_main`)
+
+"quando eu ajusto uma das tracks (… defino qual é a principal para sincronia),
+as outras também se sincronizam com o tempo equivalente que foi alterado: se na
+principal passo de 0 para 1 segundo, uma que esteja a 30 passa para 31". The
+Sincronização tab's **Pista principal** card (`#syncMainCard`, only with ≥ 2
+charts) picks one chart; `PATCH /jobs/{id}/sync-main` stores it in
+`params["sync_main"]` (`JobOut.sync_main`, inherited by forks, no rebuild).
+Whatever changes on the main chart's pending sync — its "Início", its tempo,
+any correction — reaches every other chart as the **same change of time**:
+`mainSyncFollow` (top of `showArr` and of `applyAll`, the `lyricsFollowSync`
+pattern) takes D = built time → where the main chart shows it now, before and
+after the edit, and sets each other chart's display map to
+`(D_new ∘ D_old⁻¹) ∘ G`, written back as that chart's own PENDING anchors
+(`followAnchors`). So it previews on the other tab, can still be corrected
+there, undoing on the main takes the others back, and the rebuild commits it.
+A uniform shift on a chart with ≤ 1 anchor stays ONE anchor on its first note
+(what its "Início" field edits — 30 → 31 in that field); anything else pins
+both ends of the chart (the multi-anchor warp is identity outside its range)
+plus every point where either map bends (`invertIncreasing`). Only edits made
+ON the main chart travel; editing another chart is that chart's alone.
+
+**The rebuild now commits every chart's pending sync** (`RebuildIn.other_sync`,
+`otherPendingSync`): before, only the chart on screen was sent and any other
+tab's pending corrections silently disappeared — which the main chart's
+propagation would have hit on every rebuild. Other charts' tempo goes in
+before `_remap_committed_anchors` (so their committed stages are re-expressed
+with their own ratio), their anchors after, like the chart on screen; ignored
+with `apply_to_all`, which already speaks for every chart (and still REPLACES
+their tempo — the main chart is the composing alternative). Guarded by
+`test_a_rebuild_commits_every_charts_pending_sync_not_only_the_one_on_screen`
+and `test_the_main_chart_for_sync_is_remembered`; the viewer with Playwright on
+the user's Ocean Eyes built as Lead + Rhythm: Lead "Início" 1.575 → 2.575 moved
+the Rhythm's 8.400 → 9.400 (its own field reads 9.40), undoing cleared it, a
+×1.05 tempo on the Lead put four Rhythm notes exactly where the map says, and
+a real rebuild moved all 1374 Lead and 1470 Rhythm notes by exactly 1.000 s.
+
 ### Sync by bar number (`barSyncPanel`)
 
 For a track whose real content only starts several measures in — e.g. Rhythm
@@ -1783,6 +1820,28 @@ handler finds the first `:invalid` control, jumps to its step and calls
 with Playwright: 4.583 now creates the job, and a genuinely invalid value takes
 the user back to step 3 with the field focused.
 
+### Deleting the previous version after a rebuild (`/drop-previous`)
+
+"Quando reconstruo um novo psarc, pergunta sempre se pode apagar o anterior."
+Every rebuild (and "Recarregar ficheiro GP", and a track re-map in "Editar
+info") forks a new job and keeps the old one. Each of those now asks
+(`offerDropPrevious`) whether the old one can go, and the answer waits —
+per new version, in `localStorage` `rf-drop-previous` so closing the app does
+not lose it — until that version is **built**; a failed rebuild keeps the old
+one and says so (`maybeDropPrevious`, run on every `selectJob`). Then
+`POST /jobs/{id}/drop-previous` deletes the version it was rebuilt from
+(`_delete_job_files_and_row`, shared with `DELETE /jobs/{id}`, so the recording
+and GP file stay while another version uses them). **What the new version
+still uses from the old one is moved over first**: `params["stems"]` is
+inherited with absolute paths into the version that ran the separation, and the
+Demucs guitar-stem cache lives there too (`_CARRIED_WORK_DIRS`); deleting
+without moving would have left the new version with stems that 404. Anything
+rebuilt from the deleted version then points at the version before it
+("Versão anterior" keeps working). Guarded by
+`test_the_previous_version_can_be_dropped_once_the_new_one_is_built`; with
+Playwright on a real rebuild: asked, answered yes, the build finished, the old
+job and its folder were gone and the new one pointed at the version before.
+
 ### Batch processing ("Lote (álbum)")
 
 For an entire album: the home page's "Lote (álbum)" button opens a batch modal
@@ -2220,6 +2279,30 @@ Playwright on the user's Ocean Eyes built as Lead + Rhythm: suggestions for
 both, "Aplicar a todas" → per-track, switching tracks swaps base/changes, a
 hand edit stays on its track, and a real rebuild wrote different tones into
 `arrangement_lead.xml` and `arrangement_rhythm.xml`.
+
+### Tone volume: MORE NEGATIVE IS LOUDER
+
+"os tons detetados e aplicados estão a ficar com o som muito baixo, e quase não
+se ouvem no rocksmith". A tone's `Volume` is a level in dB where **-20 is louder
+than -13**: DLC Builder shows `-Volume` on a 0.1..36 slider with the loud icon
+at 36 (`ToneDetails.fs`, `EditFunctions.SetVolume`), its own default tones sit
+at -18.6/-19.5 and a new tone at -18 (`ToneGear.fs`, all Rocksmith2014.NET). The
+curated presets shipped at -13..-16 — quieter than every reference — and the
+UI's new-tone default was -15. Now: presets -19.5 (high gain) / -20 (crunch) /
+-21 (clean), the default -18 everywhere (`domain/tone.py`, `gear_catalogue`),
+and the tone editor's field works like DLC Builder's (0.1-36, higher = louder,
+stored negated). `_backfill_preset_tone_volumes` (startup) moves a preset still
+at the exact volume it first shipped with (`PRESET_VOLUMES_BEFORE`) to the new
+one, in every project and the tone library — a volume the user changed is
+left alone — so the next rebuild is audible without re-applying suggestions.
+Also found on the way: the two Plexi presets set `Amp_MarshallPlexi_Gain`,
+which that amp does not have (it has `Loudness1/2`), and `tone_from_dict` drops
+an unknown knob without a word, so the setting never reached the tone.
+Guarded by `test_presets_are_as_loud_as_the_games_own_tones`,
+`test_every_preset_knob_is_a_real_knob_of_its_gear` and
+`test_presets_still_at_their_first_quiet_volume_are_raised_on_startup`. Not
+heard in game from here; the scale is the reference's, the exact loudness the
+user's ears.
 
 ### Tone editor: rotary knobs + optional local gear images
 

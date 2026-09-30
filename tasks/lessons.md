@@ -80,3 +80,12 @@ fix is reported as not working, first run the user's own file (it was in the
 session uploads) through the real flow; and when adding a capability, grep for
 EVERY entry point that does the same job (here: everything that sets
 `Job.source`) and cover each.
+
+## Check a format field's direction in the reference before picking values (2026-09-30)
+The curated tone presets shipped at Volume -13..-16 on the assumption that
+closer to 0 is louder; in Rocksmith it is the opposite (DLC Builder shows
+-Volume, loudest at 36; its defaults sit at -18/-19.5), and the user found the
+tones "quase não se ouvem". The reference (Rocksmith2014.NET) was one clone
+away. Rule: before choosing numbers for a field of a format we did not design,
+read how the reference tool presents and defaults it, and pin the range in a test.
+

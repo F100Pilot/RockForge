@@ -907,6 +907,13 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                 <div id="syncStateText" class="pv-card-desc"></div>
                 <button type="button" id="syncStateBtn" class="secondary pv-wide"></button>
               </div>
+              <div class="pv-card" id="syncMainCard" hidden>
+                <div class="pv-card-head">Pista principal
+                  <button class="info-btn" data-info="sync-main">ⓘ</button></div>
+                <div class="pv-card-desc">O que acertares na pista principal passa para as outras com a mesma diferença de tempo.</div>
+                <select id="syncMainSel" aria-label="Pista principal"></select>
+                <div id="syncMainNote" class="meta"></div>
+              </div>
               <div class="pv-card">
                 <div class="pv-card-head"><span class="sync-step-num">1</span> Início da música <span id="syncOffsetKind" class="meta"></span>
                   <button class="info-btn" data-info="sync-offset">ⓘ</button></div>
@@ -1558,8 +1565,9 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
           <div class="field" style="margin-bottom:.5rem"><label>Nome do tom</label>
             <input type="text" id="teName" placeholder="ex.: JCM800 Lead"></div>
           <div class="anchor-row" style="flex-wrap:wrap">
-            <label>Volume (dB):
-              <input type="number" id="teVolume" value="-15" step="0.5" style="width:5rem"></label>
+            <label title="Como no DLC Builder: quanto maior, mais alto. Os tons do jogo andam por 18–20.">Volume:
+              <input type="number" id="teVolume" value="18" min="0.1" max="36" step="0.5" style="width:5rem"></label>
+            <span class="meta">(0.1–36, maior = mais alto)</span>
             <label>Descritores:
               <input type="text" id="teDescriptors" placeholder="Lead, Distortion" style="min-width:10rem"></label>
           </div>

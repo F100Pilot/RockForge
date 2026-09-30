@@ -54,15 +54,16 @@ class Tone:
 
     ``key`` is the identifier referenced by ``Arrangement.tone_base`` /
     ``tone_names`` / ``ToneChange.name``. ``descriptors`` are the Rocksmith tone
-    descriptor strings (``$[id]NAME``); ``volume`` is the tone's output volume in
-    dB (DLC Builder's "Calculate Volumes" recomputes it if left at a default).
+    descriptor strings (``$[id]NAME``); ``volume`` is the tone's level in dB and
+    gets LOUDER as it gets more negative (DLC Builder shows ``-volume`` on a
+    0.1..36 slider, loudest at 36; its default tones sit around -18/-19.5).
     """
 
     key: str
     name: str
     gear: Gear
     descriptors: tuple[str, ...] = ()
-    volume: float = -15.0
+    volume: float = -18.0
 
     def gear_keys(self) -> list[str]:
         """All catalogue gear keys used by this tone (for validation/UI)."""

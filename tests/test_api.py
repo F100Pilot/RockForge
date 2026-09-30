@@ -3262,3 +3262,137 @@ def test_each_track_can_keep_its_own_tones(client: TestClient, tmp_path) -> None
         "arrangement_tones": {"Lead": {"tone_names": ["a", "b", "c", "d", "e"]}},
     })
     assert too_many.status_code == 422
+
+
+def test_presets_still_at_their_first_quiet_volume_are_raised_on_startup(
+    tmp_path, monkeypatch
+) -> None:
+    """Projects built with the first (too quiet) presets get the current volume,
+    so the next rebuild is audible — but a volume the user set stays theirs."""
+    import importlib
+
+    monkeypatch.setenv("ROCKFORGE_DATABASE_URL", f"sqlite:///{tmp_path}/v.db")
+    monkeypatch.setenv("ROCKFORGE_WORK_DIR", str(tmp_path / "work"))
+    import rockforge.config as config
+    importlib.reload(config)
+    import rockforge.interfaces.api.app as app_module
+    importlib.reload(app_module)
+    from rockforge import tone_library
+    from rockforge.infrastructure.packaging.gear.tone_presets import preset_volume
+
+    with TestClient(app_module.app):
+        pass
+    tone_library.save_tone({"key": "RFRhythm_Plexi", "name": "P", "volume": -15.0})
+    with app_module._session_factory() as session:
+        job = app_module.Job(source="x", source_type="gp", title="T", artist="A", params={
+            "tones": [
+                {"key": "RFLead_Crunch", "volume": -14.0},
+                {"key": "RFRhythm_Clean", "volume": -17.5},  # the user's own
+                {"key": "mine", "volume": -14.0},
+            ],
+        })
+        session.add(job)
+        session.commit()
+        job_id = job.id
+    with TestClient(app_module.app):  # the lifespan runs the backfill
+        pass
+    with app_module._session_factory() as session:
+        tones = session.get(app_module.Job, job_id).params["tones"]
+    assert [t["volume"] for t in tones] == [preset_volume("RFLead_Crunch"), -17.5, -14.0]
+    assert tone_library.load()[0]["volume"] == preset_volume("RFRhythm_Plexi")
+
+
+def test_the_previous_version_can_be_dropped_once_the_new_one_is_built(
+    client: TestClient, tmp_path
+) -> None:
+    """"Aplicar e reconstruir" asks whether to delete the version it came from.
+    Only after the new one is built; the stems the new version inherited (by
+    absolute path into the old one) move over, and the shared recording and GP
+    file stay."""
+    from pathlib import Path
+
+    import rockforge.config as config
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.infrastructure.db.models import JobStatus
+
+    first = _gp_job(client, tmp_path)
+    old_dir = config.settings.work_dir / first["id"]
+    (old_dir / "demucs_stems").mkdir(parents=True)
+    (old_dir / "demucs_stems" / "guitar.wav").write_bytes(b"RIFF")
+    with app_module._session_factory() as session:
+        job = session.get(app_module.Job, first["id"])
+        job.params = {**job.params, "stems": {"guitar": str(old_dir / "demucs_stems/guitar.wav")}}
+        session.commit()
+        recording, gp_path = job.source, job.params["gp_path"]
+    second = client.post(f"/jobs/{first['id']}/rebuild", json={"offset_s": 1.0}).json()
+    third = client.post(f"/jobs/{second['id']}/rebuild", json={"offset_s": 2.0}).json()
+
+    assert client.post(f"/jobs/{third['id']}/drop-previous").status_code == 409  # not built
+    with app_module._session_factory() as session:
+        session.get(app_module.Job, third["id"]).status = JobStatus.COMPLETED
+        session.commit()
+    r = client.post(f"/jobs/{third['id']}/drop-previous")
+    assert r.status_code == 200, r.text
+    assert r.json()["rebuilt_from"] == first["id"]  # the version before the dropped one
+    assert client.get(f"/jobs/{second['id']}").status_code == 404
+    assert Path(recording).exists() and Path(gp_path).exists()
+
+    with app_module._session_factory() as session:
+        session.get(app_module.Job, first["id"]).status = JobStatus.COMPLETED
+        session.commit()
+    # Dropping the first one too: its stems move to the newest version.
+    r = client.post(f"/jobs/{third['id']}/drop-previous")
+    assert r.status_code == 200 and r.json()["rebuilt_from"] is None
+    moved = config.settings.work_dir / third["id"] / "demucs_stems" / "guitar.wav"
+    assert moved.exists() and not old_dir.exists()
+    with app_module._session_factory() as session:
+        stems = session.get(app_module.Job, third["id"]).params["stems"]
+    assert stems == {"guitar": str(moved)}
+    assert client.post(f"/jobs/{third['id']}/drop-previous").status_code == 404
+
+
+def test_a_rebuild_commits_every_charts_pending_sync_not_only_the_one_on_screen(
+    client: TestClient, tmp_path
+) -> None:
+    """What the "Pista principal" carries onto the other charts rides the same
+    rebuild (other_sync); before, only the chart on screen was committed."""
+    import rockforge.interfaces.api.app as app_module
+
+    job = _gp_job(client, tmp_path)
+    rebuilt = client.post(f"/jobs/{job['id']}/rebuild", json={
+        "arrangement": "Lead", "sync_anchors": [[2.0, 3.0]],
+        "other_sync": {
+            "Rhythm": {"sync_anchors": [[32.0, 33.0]], "tempo_scale": 1.1},
+            "Lead": {"sync_anchors": [[9.0, 9.5]]},  # the chart on screen is not doubled
+        },
+    })
+    assert rebuilt.status_code == 202, rebuilt.text
+    with app_module._session_factory() as session:
+        store = session.get(app_module.Job, rebuilt.json()["id"]).params["arrangement_sync"]
+    assert store["Lead"]["sync_anchor_stages"] == [[[2.0, 3.0]]]
+    assert store["Rhythm"]["sync_anchor_stages"] == [[[32.0, 33.0]]]
+    assert store["Rhythm"]["tempo_scale"] == 1.1
+
+    # With apply_to_all the chart on screen already speaks for every chart.
+    again = client.post(f"/jobs/{job['id']}/rebuild", json={
+        "arrangement": "Lead", "sync_anchors": [[2.0, 3.0]], "apply_to_all": True,
+        "other_sync": {"Rhythm": {"sync_anchors": [[32.0, 40.0]]}},
+    }).json()
+    with app_module._session_factory() as session:
+        params = session.get(app_module.Job, again["id"]).params
+    assert "Rhythm" not in params.get("arrangement_sync", {})
+    bad = client.post(f"/jobs/{job['id']}/rebuild", json={
+        "arrangement": "Lead", "other_sync": {"Rhythm": {"tempo_scale": 0}},
+    })
+    assert bad.status_code == 422
+
+
+def test_the_main_chart_for_sync_is_remembered(client: TestClient, tmp_path) -> None:
+    job = _gp_job(client, tmp_path)
+    assert job["sync_main"] is None
+    r = client.patch(f"/jobs/{job['id']}/sync-main", json={"arrangement": "Lead"})
+    assert r.status_code == 200 and r.json()["sync_main"] == "Lead"
+    fork = client.post(f"/jobs/{job['id']}/rebuild", json={}).json()
+    assert fork["sync_main"] == "Lead"  # a rebuild keeps it
+    assert client.patch(f"/jobs/{job['id']}/sync-main", json={}).json()["sync_main"] is None
+    assert client.patch("/jobs/nope/sync-main", json={}).status_code == 404
