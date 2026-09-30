@@ -1147,7 +1147,7 @@ function toast(message, kind = 'err') {
 // a silent console error, so a failed action is never invisible to the user.
 window.addEventListener('unhandledrejection', ev => {
   const msg = (ev.reason && ev.reason.message) || String(ev.reason || '');
-  if (msg) toast(`erro: ${msg}`, 'err');
+  if (msg) toast(T('erro: {msg}', { msg }), 'err');
 });
 
 // ---- Server reachability ----------------------------------------------------
@@ -1170,8 +1170,7 @@ function setServerOffline(down) {
       el.setAttribute('role', 'status');
       el.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:999;padding:.5rem 1rem;' +
         'background:#7a2520;color:#fff;font-size:.85rem;text-align:center';
-      el.textContent = 'Sem ligação ao RockForge — a app terminou ou perdeu-se a rede. ' +
-        'Reinicia o start.bat e recarrega esta página.';
+      el.textContent = T('Sem ligação ao RockForge — a app terminou ou perdeu-se a rede. Reinicia o start.bat e recarrega esta página.');
       document.body.appendChild(el);
     }
   } else if (el) {
@@ -1274,9 +1273,9 @@ async function openMetaEdit() {
       .filter(t => !t.is_percussion && t.string_count === 6)
       .map(t => `<option value="${t.index}">${t.index}: ${esc(t.name)}</option>`).join('');
     const SLOTS = [['lead', 'Lead'], ['rhythm', 'Rhythm'], ['combo', 'Combo'],
-                   ['alt_lead', 'Lead alternativo'], ['alt_rhythm', 'Rhythm alternativo']];
+                   ['alt_lead', T('Lead alternativo')], ['alt_rhythm', T('Rhythm alternativo')]];
     document.getElementById('metaTracks').innerHTML = SLOTS.map(([slot, label]) =>
-      `<div class="field" style="flex:1 1 11rem"><label>Pista ${label}</label>
+      `<div class="field" style="flex:1 1 11rem"><label>${T('Pista {label}', { label })}</label>
         <select data-slot="${slot}" style="width:100%">${opts}</select></div>`).join('');
     for (const [slot] of SLOTS) {
       const v = tr.assignment[slot];
@@ -1284,12 +1283,12 @@ async function openMetaEdit() {
         document.querySelector(`#metaTracks select[data-slot="${slot}"]`).value = String(v);
     }
     const presetOpts = Object.keys(TUNING_PRESETS)
-      .map(n => `<option value="${n}">${n}</option>`).join('');
+      .map(n => `<option value="${n}">${n === 'Manter' ? T('Manter') : n}</option>`).join('');
     document.getElementById('metaTunings').innerHTML = arrs.map(a => {
       const ov = (tr.tuning_overrides || {})[a.kind];
       const cur = ov ? _presetFromOffsets(ov.map((m, i) => m - STD_MIDI[i])) :
                        _presetFromOffsets(a.tuning_offsets);
-      return `<div class="field" style="flex:1 1 11rem"><label>Afinação ${esc(arrLabel(a.kind))}</label>
+      return `<div class="field" style="flex:1 1 11rem"><label>${T('Afinação {arr}', { arr: esc(arrLabel(a.kind)) })}</label>
         <select data-kind="${esc(a.kind)}" style="width:100%">${presetOpts}</select></div>`
         .replace(`value="${cur}"`, `value="${cur}" selected`);
     }).join('');
@@ -1308,7 +1307,7 @@ document.getElementById('metaSave').onclick = async () => {
   if (!selectedJob) return;
   const title = document.getElementById('metaTitle').value.trim();
   const artist = document.getElementById('metaArtist').value.trim();
-  if (!title || !artist) { alert('Título e artista são obrigatórios.'); return; }
+  if (!title || !artist) { alert(T('Título e artista são obrigatórios.')); return; }
   const yearRaw = document.getElementById('metaYear').value.trim();
   const body = {
     title, artist,
@@ -1318,7 +1317,7 @@ document.getElementById('metaSave').onclick = async () => {
   const r = await fetch(`/jobs/${selectedJob.id}/metadata`, {
     method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
   });
-  if (!r.ok) { alert('Erro ao guardar a informação.'); return; }
+  if (!r.ok) { alert(T('Erro ao guardar a informação.')); return; }
   selectedJob = await r.json();
   // GP: if the arrangements/tuning section is shown, a change there needs a full
   // rebuild (re-parse) — fork a new job with the new track map + tunings.
@@ -1336,10 +1335,10 @@ document.getElementById('metaSave').onclick = async () => {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ tracks, tuning_overrides }),
     });
-    if (!rr.ok) { const e = await rr.json(); alert(e.detail || 'Erro ao reconstruir.'); return; }
+    if (!rr.ok) { const e = await rr.json(); alert(e.detail || T('Erro ao reconstruir.')); return; }
     const nj = await rr.json();
     closeMeta();
-    toast('Arranjos/afinação aplicados — a reconstruir.', 'ok');
+    toast(T('Arranjos/afinação aplicados — a reconstruir.'), 'ok');
     refreshJobs(); selectJob(nj.id);
     offerDropPrevious(nj.id);
     return;
@@ -1361,15 +1360,15 @@ const JOB_FILTERS = {
 };
 // What a card says about its project: the same gaps the Exportar page lists.
 function jobCardStatus(j) {
-  if (j.status === 'failed') return ['err', 'Falhou', 'x'];
-  if (j.status === 'pending') return ['run', 'Na fila…', 'clock'];
-  if (j.status === 'running') return ['run', 'A construir…', 'clock'];
-  if (!j.bundle_available) return ['warn', 'Sem ficheiros', 'alert'];
+  if (j.status === 'failed') return ['err', T('Falhou'), 'x'];
+  if (j.status === 'pending') return ['run', T('Na fila…'), 'clock'];
+  if (j.status === 'running') return ['run', T('A construir…'), 'clock'];
+  if (!j.bundle_available) return ['warn', T('Sem ficheiros'), 'alert'];
   const gaps = [];
   if (!j.psarc_available) gaps.push('PSARC');
-  if (!j.has_tones) gaps.push('tons');
-  if (!j.cover_art) gaps.push('capa');
-  return gaps.length ? ['warn', `Falta: ${gaps.join(', ')}`, 'alert'] : ['ok', 'Pronto a jogar', 'check'];
+  if (!j.has_tones) gaps.push(T('tons'));
+  if (!j.cover_art) gaps.push(T('capa'));
+  return gaps.length ? ['warn', T('Falta: {list}', { list: gaps.join(', ') }), 'alert'] : ['ok', T('Pronto a jogar'), 'check'];
 }
 function renderJobCards() {
   const grid = document.getElementById('jobsGrid');
@@ -1378,36 +1377,36 @@ function renderJobCards() {
   const shown = jobsCache.filter(JOB_FILTERS[jobFilter])
     .filter(j => !q || `${j.title} ${j.artist}`.toLowerCase().includes(q));
   if (jobsCache.length && !shown.length) {
-    grid.insertAdjacentHTML('beforeend', '<p class="home-empty">Nenhum projeto corresponde a este filtro.</p>');
+    grid.insertAdjacentHTML('beforeend', '<p class="home-empty">' + T('Nenhum projeto corresponde a este filtro.') + '</p>');
   }
   for (const j of shown) {
     const [kind, text, ico] = jobCardStatus(j);
     const card = document.createElement('article');
     card.className = 'proj-card';
     card.innerHTML = `
-      <button type="button" class="proj-open" aria-label="Abrir ${esc(j.title)}">
+      <button type="button" class="proj-open" aria-label="${T('Abrir {title}', { title: esc(j.title) })}">
         <div class="proj-cover">${j.cover_art ? `<img src="/jobs/${j.id}/cover" alt="" loading="lazy">` : icon('music')}</div>
         <div class="proj-meta">
           <div class="proj-title">${esc(j.title)}</div>
           <div class="proj-artist">${esc(j.artist)}</div>
           <span class="pv-chip ${kind}">${icon(ico)}${esc(text)}</span>
-          ${isSynced(j) ? `<span class="pv-chip ok" title="${esc(SYNC_SOURCE_TEXT[j.sync_source])}">${icon('timer')}Sincronizada</span>` : ''}
+          ${isSynced(j) ? `<span class="pv-chip ok" title="${esc(SYNC_SOURCE_TEXT[j.sync_source])}">${icon('timer')}${T('Sincronizada')}</span>` : ''}
         </div>
       </button>
-      <button type="button" class="proj-del" title="Remover projeto" aria-label="Remover ${esc(j.title)}">${icon('trash')}</button>`;
+      <button type="button" class="proj-del" title="${T('Remover projeto')}" aria-label="${T('Remover {title}', { title: esc(j.title) })}">${icon('trash')}</button>`;
     card.querySelector('.proj-open').onclick = () => selectJob(j.id);
     const img = card.querySelector('.proj-cover img');
     if (img) img.onerror = () => { img.replaceWith(document.createRange().createContextualFragment(icon('music'))); };
     card.querySelector('.proj-del').onclick = async () => {
       const running = j.status === 'running';
       const msg = running
-        ? `O projeto "${j.title}" ainda está a correr. Forçar a remoção? Só o deves fazer se estiver encravado (o worker morreu ou pendurou) — apaga também o bundle gerado.`
-        : `Remover o projeto "${j.title}"? Isto apaga também o bundle gerado.`;
+        ? T('O projeto "{title}" ainda está a correr. Forçar a remoção? Só o deves fazer se estiver encravado (o worker morreu ou pendurou) — apaga também o bundle gerado.', { title: j.title })
+        : T('Remover o projeto "{title}"? Isto apaga também o bundle gerado.', { title: j.title });
       const ok = await confirmModal(msg);
       if (!ok) return;
       const url = running ? `/jobs/${j.id}?force=true` : `/jobs/${j.id}`;
       const r = await fetch(url, { method: 'DELETE' });
-      if (!r.ok && r.status !== 204) { toast((await r.json()).detail || 'erro'); return; }
+      if (!r.ok && r.status !== 204) { toast((await r.json()).detail || T('erro')); return; }
       if (selectedJob && selectedJob.id === j.id) closeDetail();
       refreshJobs();
     };
@@ -1437,8 +1436,8 @@ function renderDetailHead(j) {
   document.getElementById('detailHead').innerHTML =
     `<div class="pv-title">${esc(j.title)}</div>
      <div class="pv-sub"><span>${bits}</span>
-       <button type="button" onclick="openMetaEdit()" title="Editar título, artista, álbum, ano">${icon('edit')}Editar info</button>
-       ${j.rebuilt_from ? `<button type="button" onclick="selectJob('${j.rebuilt_from}')" title="Abrir a versão de onde esta foi reconstruída — a anterior nunca é apagada">${icon('undo')}Versão anterior</button>` : ''}
+       <button type="button" onclick="openMetaEdit()" title="${T('Editar título, artista, álbum, ano')}">${icon('edit')}${T('Editar info')}</button>
+       ${j.rebuilt_from ? `<button type="button" onclick="selectJob('${j.rebuilt_from}')" title="${T('Abrir a versão de onde esta foi reconstruída — a anterior nunca é apagada')}">${icon('undo')}${T('Versão anterior')}</button>` : ''}
      </div>`;
 }
 // The chip beside the title: what the project still needs, at a glance.
@@ -1462,7 +1461,7 @@ async function selectJob(id, { poll = false, force = false } = {}) {
     // unreachable, and dropping the timer here would leave a job that finished
     // meanwhile stuck showing "running" until the user clicks something.
     if (poll) { clearTimeout(pollTimer); pollTimer = setTimeout(() => selectJob(id, { poll }), 2500); }
-    else toast(`não foi possível abrir o projeto: ${err.message}`, 'err');
+    else toast(T('não foi possível abrir o projeto: {msg}', { msg: err.message }), 'err');
     return;
   }
   selectedJob = j;
@@ -1485,28 +1484,28 @@ async function selectJob(id, { poll = false, force = false } = {}) {
   document.getElementById('warnings').innerHTML =
     (j.error ? `<div class="errbox">${icon('x')} ${esc(j.error)}</div>` : '') +
     (warns.length
-      ? `<details class="pv-warn"><summary>${warns.length} ${warns.length === 1 ? 'aviso técnico' : 'avisos técnicos'}</summary>` +
+      ? `<details class="pv-warn"><summary>${warns.length === 1 ? T('1 aviso técnico') : T('{n} avisos técnicos', { n: warns.length })}</summary>` +
         warns.map(w => `<div class="warnbox">${esc(w)}</div>`).join('') + '</details>'
       : '');
 
   if (j.status === 'completed' && j.bundle_available) renderCompleteness(j);
   else {
     renderCompleteness(j);
-    if (j.status === 'failed') setStatusChip('err', 'Falhou', 'x');
-    else if (j.status === 'completed') setStatusChip('warn', 'Concluído sem ficheiros', 'alert');
-    else setStatusChip('run', j.status === 'pending' ? 'Na fila…' : `A construir…${j.stage ? ` ${j.stage}` : ''}`, 'clock');
+    if (j.status === 'failed') setStatusChip('err', T('Falhou'), 'x');
+    else if (j.status === 'completed') setStatusChip('warn', T('Concluído sem ficheiros'), 'alert');
+    else setStatusChip('run', j.status === 'pending' ? T('Na fila…') : `${T('A construir…')}${j.stage ? ` ${j.stage}` : ''}`, 'clock');
   }
 
   const dl = document.getElementById('downloads');
   dl.innerHTML = '';
   if (j.psarc_available)
-    dl.innerHTML += `<a class="dl-card" href="/jobs/${j.id}/psarc">${icon('gamepad')}<b>PSARC para o jogo</b><span>pronto a copiar para a pasta dlc do Rocksmith</span></a>`;
+    dl.innerHTML += `<a class="dl-card" href="/jobs/${j.id}/psarc">${icon('gamepad')}<b>${T('PSARC para o jogo')}</b><span>${T('pronto a copiar para a pasta dlc do Rocksmith')}</span></a>`;
   if (j.bundle_available)
-    dl.innerHTML += `<a class="dl-card" href="/jobs/${j.id}/bundle">${icon('package')}<b>Bundle DLC Builder</b><span>XML, áudio e projeto .rs2dlc para abrir no DLC Builder</span></a>`;
-  if (j.bundle_available && !j.psarc_available) dl.innerHTML += `<span class="meta">PSARC requer Wwise — ver README</span>`;
-  if (!j.bundle_available) dl.innerHTML = '<span class="meta">Os ficheiros aparecem aqui quando a construção terminar.</span>';
+    dl.innerHTML += `<a class="dl-card" href="/jobs/${j.id}/bundle">${icon('package')}<b>${T('Bundle DLC Builder')}</b><span>${T('XML, áudio e projeto .rs2dlc para abrir no DLC Builder')}</span></a>`;
+  if (j.bundle_available && !j.psarc_available) dl.innerHTML += `<span class="meta">${T('PSARC requer Wwise — ver README')}</span>`;
+  if (!j.bundle_available) dl.innerHTML = '<span class="meta">' + T('Os ficheiros aparecem aqui quando a construção terminar.') + '</span>';
   document.getElementById('noteCountsInfo').textContent =
-    `Notas por pista: ${Object.entries(j.note_counts || {}).map(([k, v]) => `${k} ${v}`).join(' · ') || '—'}`;
+    T('Notas por pista: {list}', { list: Object.entries(j.note_counts || {}).map(([k, v]) => `${k} ${v}`).join(' · ') || '—' });
 
   // A job that is still building (or failed) only has its Exportar page.
   const ready = j.status === 'completed' && j.bundle_available;
@@ -1529,7 +1528,7 @@ async function selectJob(id, { poll = false, force = false } = {}) {
         await loadArrangements(id);
       } catch (e) {
         arrangementsLoadedFor = null;  // allow a retry on the next click
-        toast('erro a carregar arranjos: ' + (e && e.message || e));
+        toast(T('erro a carregar arranjos: {msg}', { msg: (e && e.message) || e }));
       }
     }
   } else {
@@ -1581,7 +1580,7 @@ async function loadArrangements(id) {
   songSections = (a0.sections || []).map(s => ({ time: s.time, name: s.name }));
   sectionsTouched = false;
   document.getElementById('tuningInfo').innerHTML =
-    `<p class="meta">offsets: [${a0.tuning_offsets.join(', ')}] · desvio: <span id="centOffsetVal">${a0.cent_offset.toFixed(1)}</span> cents · BPM médio: ${a0.average_bpm.toFixed(1)}</p>`;
+    `<p class="meta">${T('offsets: [{offsets}] · desvio: <span id="centOffsetVal">{cents}</span> cents · BPM médio: {bpm}', { offsets: a0.tuning_offsets.join(', '), cents: a0.cent_offset.toFixed(1), bpm: a0.average_bpm.toFixed(1) })}</p>`;
   document.getElementById('tuningInputs').innerHTML = STD.map((std, i) =>
     `<input type="number" min="20" max="80" value="${std + a0.tuning_offsets[i]}" data-string="${i}">`).join('');
   document.getElementById('detectTuningInfo').textContent = '';
@@ -2022,7 +2021,7 @@ function showArr(i) {
   if (firstNoteFlow === 'note') {
     const mx = 30 + firstNoteAudioT * tabPx;
     s += `<line x1="${mx}" y1="0" x2="${mx}" y2="${H}" stroke="#3fdc8a" stroke-width="2" stroke-dasharray="5,3"/>`;
-    s += `<text x="${mx+4}" y="52" fill="#3fdc8a" font-size="11" font-weight="700">1ª nota</text>`;
+    s += `<text x="${mx+4}" y="52" fill="#3fdc8a" font-size="11" font-weight="700">${T('1ª nota')}</text>`;
   }
   svg.innerHTML = s;
   invalidateLyricWords();  // the nodes the playhead frame highlights were just replaced
@@ -2122,7 +2121,7 @@ function updateClipboardInfo() {
   const el = document.getElementById('clipboardInfo');
   const btn = document.getElementById('pasteNotes');
   if (!el || !btn) return;
-  el.textContent = noteClipboard.length ? `${noteClipboard.length} nota(s) copiada(s)` : '';
+  el.textContent = noteClipboard.length ? T('{n} nota(s) copiada(s)', { n: noteClipboard.length }) : '';
   btn.disabled = !noteClipboard.length;
 }
 
@@ -2132,28 +2131,28 @@ function updateClipboardInfo() {
 // relative offsets from the earliest copied note so paste can re-anchor them
 // anywhere.
 function copySelectedNotes() {
-  if (!selectedTimes.size) { toast('seleciona notas primeiro (Shift+clique ou modo Excerto)', 'err'); return; }
+  if (!selectedTimes.size) { toast(T('seleciona notas primeiro (Shift+clique ou modo Excerto)'), 'err'); return; }
   const a = arrangements[currentArr];
   if (!a) return;
   const pendingOv = noteOverridesByKind[a.kind] || [];
   const merged = pendingOv.length ? mergeNoteOverrides(a.notes, pendingOv) : a.notes;
   const times = [...selectedTimes];
   const picked = merged.filter(n => times.some(t => Math.abs(t - n.time) < 0.03));
-  if (!picked.length) { toast('nada selecionado para copiar', 'err'); return; }
+  if (!picked.length) { toast(T('nada selecionado para copiar'), 'err'); return; }
   const minTime = Math.min(...picked.map(n => n.time));
   noteClipboard = picked.map(n => ({
     dTime: n.time - minTime, string: n.string, fret: n.fret, sustain: n.sustain,
     techniques: (n.techniques || []).slice(), bend_semitones: n.bend_semitones || 0,
   }));
   updateClipboardInfo();
-  toast(`${noteClipboard.length} nota(s) copiada(s).`, 'ok');
+  toast(T('{n} nota(s) copiada(s).', { n: noteClipboard.length }), 'ok');
 }
 
 // Pastes the clipboard at the current playhead, snapped to the sync grid
 // (nearestGridChartTime) — only the anchor note snaps; the rest keep their
 // original relative spacing, so a copied riff's own rhythm is preserved.
 function pasteNotesAtCursor() {
-  if (!noteClipboard.length) { toast('nada copiado ainda', 'err'); return; }
+  if (!noteClipboard.length) { toast(T('nada copiado ainda'), 'err'); return; }
   if (!arrangements[currentArr]) return;
   const anchor = nearestGridChartTime(timeToX(currentPlayheadT + viewOrigin));
   for (const c of noteClipboard) {
@@ -2164,7 +2163,7 @@ function pasteNotesAtCursor() {
     });
   }
   showArr(currentArr);
-  toast(`${noteClipboard.length} nota(s) colada(s) — pendente até "Aplicar e reconstruir".`, 'ok');
+  toast(T('{n} nota(s) colada(s) — pendente até "Aplicar e reconstruir".', { n: noteClipboard.length }), 'ok');
 }
 
 // ---- Deleting notes: every selected note (Ctrl/Shift+click, Excerto) of this
@@ -2210,14 +2209,14 @@ function updateDeleteNotesUi() {
 }
 
 function deleteSelectedNotes() {
-  if (!selectedTimes.size) { toast('seleciona notas primeiro (Ctrl+clique, Shift+clique ou modo Excerto)', 'err'); return; }
+  if (!selectedTimes.size) { toast(T('seleciona notas primeiro (Ctrl+clique, Shift+clique ou modo Excerto)'), 'err'); return; }
   const a = arrangements[currentArr];
   if (!a) return;
   const pendingOv = noteOverridesByKind[a.kind] || [];
   const merged = pendingOv.length ? mergeNoteOverrides(a.notes, pendingOv) : a.notes;
   const times = [...selectedTimes];
   const picked = merged.filter(n => times.some(t => Math.abs(t - n.time) < 0.03));
-  if (!picked.length) { toast('nada selecionado para apagar', 'err'); return; }
+  if (!picked.length) { toast(T('nada selecionado para apagar'), 'err'); return; }
   const slot = n => pendingOv.find(o => o.string === n.string && Math.abs(o.time - n.time) < 0.03);
   noteDeleteUndo = {
     kind: a.kind,
@@ -2228,13 +2227,13 @@ function deleteSelectedNotes() {
   updateSelectionInfo();
   updatePendingChangesInfo();
   showArr(currentArr);
-  toast(`${picked.length} nota(s) apagada(s) — Ctrl+Z desfaz; pendente até "Aplicar e reconstruir".`, 'ok');
+  toast(T('{n} nota(s) apagada(s) — Ctrl+Z desfaz; pendente até "Aplicar e reconstruir".', { n: picked.length }), 'ok');
 }
 
 function undoNoteDelete() {
   const u = noteDeleteUndo;
-  if (!u) { toast('nada apagado para desfazer', 'err'); return; }
-  if (u.kind !== currentKind()) { toast(`o último apagar foi na pista ${u.kind} — muda para ela para desfazer`, 'err'); return; }
+  if (!u) { toast(T('nada apagado para desfazer'), 'err'); return; }
+  if (u.kind !== currentKind()) { toast(T('o último apagar foi na pista {kind} — muda para ela para desfazer', { kind: arrLabel(u.kind) }), 'err'); return; }
   const list = noteOverridesByKind[u.kind] || [];
   for (const p of u.prior) {
     const i = list.findIndex(o => o.string === p.string && Math.abs(o.time - p.time) < 0.03);
@@ -2246,7 +2245,7 @@ function undoNoteDelete() {
   noteDeleteUndo = null;
   updatePendingChangesInfo();
   showArr(currentArr);
-  toast('Notas repostas.', 'ok');
+  toast(T('Notas repostas.'), 'ok');
 }
 
 document.getElementById('deleteNotes')?.addEventListener('click', deleteSelectedNotes);
@@ -2402,13 +2401,13 @@ function renderSyncMain(j) {
   card.hidden = !show;
   if (!show) return;
   const sel = document.getElementById('syncMainSel');
-  sel.innerHTML = '<option value="">— nenhuma (cada pista à parte) —</option>' +
+  sel.innerHTML = '<option value="">' + T('— nenhuma (cada pista à parte) —') + '</option>' +
     arrangements.map(a => `<option value="${esc(a.kind)}">${esc(arrLabel(a.kind))}</option>`).join('');
   sel.value = syncMain || '';
   const kind = currentKind();
   document.getElementById('syncMainNote').textContent = !syncMain ? ''
-    : kind === syncMain ? 'Esta é a pista principal: o que mudares aqui passa para as outras.'
-      : `Esta pista segue a ${arrLabel(syncMain)}: o que mudares lá chega aqui. Podes também acertá-la à parte.`;
+    : kind === syncMain ? T('Esta é a pista principal: o que mudares aqui passa para as outras.')
+      : T('Esta pista segue a {main}: o que mudares lá chega aqui. Podes também acertá-la à parte.', { main: arrLabel(syncMain) });
 }
 document.getElementById('syncMainSel').addEventListener('change', async e => {
   if (!selectedJob) return;
@@ -2422,10 +2421,10 @@ document.getElementById('syncMainSel').addEventListener('change', async e => {
     syncMain = out.sync_main || null;
     resetMainFollow();  // only what changes from now on is carried
     renderSyncMain(selectedJob);
-    toast(syncMain ? `Pista principal: ${arrLabel(syncMain)}.` : 'Sem pista principal.', 'ok');
+    toast(syncMain ? T('Pista principal: {main}.', { main: arrLabel(syncMain) }) : T('Sem pista principal.'), 'ok');
   } catch (err) {
     e.target.value = syncMain || '';
-    toast(`não foi possível guardar: ${err.message}`);
+    toast(T('não foi possível guardar: {msg}', { msg: err.message }));
   }
 });
 
@@ -2459,7 +2458,7 @@ function updateBarSyncPanel() {
   const bars = arrangements[currentArr].bars || [];
   const barSel = document.getElementById('barSyncBar');
   const prevBar = barSel.value;
-  barSel.innerHTML = bars.map(b => `<option value="${b.measure}">Compasso ${b.measure}</option>`).join('');
+  barSel.innerHTML = bars.map(b => `<option value="${b.measure}">${T('Compasso {n}', { n: b.measure })}</option>`).join('');
   if (bars.some(b => String(b.measure) === prevBar)) barSel.value = prevBar;
   const bpmInput = document.getElementById('barBpm');
   // Leave a value the user is typing alone; a redraw happens on every edit.
@@ -2575,12 +2574,12 @@ const BAR_BPM_MIN = 10, BAR_BPM_MAX = 400;  // the Guitar Pro export's own bound
 
 function setBarsTempo(fromM, toM, bpm) {
   const a = arrangements[currentArr];
-  if (!a || !isGpJob()) return { ok: false, why: 'sem partitura' };
+  if (!a || !isGpJob()) return { ok: false, why: T('sem partitura') };
   if (!(bpm >= BAR_BPM_MIN && bpm <= BAR_BPM_MAX)) {
-    return { ok: false, why: `o BPM tem de estar entre ${BAR_BPM_MIN} e ${BAR_BPM_MAX}` };
+    return { ok: false, why: T('o BPM tem de estar entre {min} e {max}', { min: BAR_BPM_MIN, max: BAR_BPM_MAX }) };
   }
   const span = barSpan(a, fromM, toM);
-  if (!span) return { ok: false, why: 'esses compassos não têm tempos que se possam mudar' };
+  if (!span) return { ok: false, why: T('esses compassos não têm tempos que se possam mudar') };
   const firstBar = (a.bars || [])[0];
   const plan = planBarRetempo(syncAnchors, buildTimeWarp(syncAnchors), {
     startO: previewScale(span.startT), endO: previewScale(span.endT), beats: span.beats, bpm,
@@ -2596,9 +2595,10 @@ function setBarsTempo(fromM, toM, bpm) {
 }
 
 function barTempoMessage(fromM, toM, bpm, delta) {
-  const which = fromM === toM ? `Compasso ${fromM}` : `Compassos ${fromM}–${toM}`;
-  const shift = Math.abs(delta) < 0.0005 ? 'o resto não se mexe'
-    : `o resto da música ${delta > 0 ? 'atrasa' : 'adianta'} ${Math.abs(delta).toFixed(3)} s`;
+  const which = fromM === toM ? T('Compasso {n}', { n: fromM }) : T('Compassos {from}–{to}', { from: fromM, to: toM });
+  const shift = Math.abs(delta) < 0.0005 ? T('o resto não se mexe')
+    : delta > 0 ? T('o resto da música atrasa {s} s', { s: Math.abs(delta).toFixed(3) })
+      : T('o resto da música adianta {s} s', { s: Math.abs(delta).toFixed(3) });
   return `${which}: ♩ = ${Number(bpm.toFixed(1))} BPM (${shift}).`;
 }
 
@@ -2625,23 +2625,23 @@ function fillBarTempoControls(fromM, toSel, bpmInput) {
   fromCursor.addEventListener('click', () => {
     if (!isGpJob()) return;
     const measure = parseInt(barSel.value, 10);
-    if (!alignBarTo(measure, currentPlayheadT + viewOrigin)) { toast('compasso não encontrado', 'err'); return; }
-    info.textContent = `Compasso ${measure} alinhado com o cursor (${currentPlayheadT.toFixed(2)}s).`;
-    toast(`Compasso ${measure} alinhado com o cursor`, 'ok');
+    if (!alignBarTo(measure, currentPlayheadT + viewOrigin)) { toast(T('compasso não encontrado'), 'err'); return; }
+    info.textContent = T('Compasso {n} alinhado com o cursor ({s}s).', { n: measure, s: currentPlayheadT.toFixed(2) });
+    toast(T('Compasso {n} alinhado com o cursor', { n: measure }), 'ok');
   });
 
   fromRef.addEventListener('click', () => {
     if (!isGpJob()) return;
     const measure = parseInt(barSel.value, 10);
     const refIdx = parseInt(refSel.value, 10);
-    if (isNaN(refIdx) || !arrangements[refIdx]) { toast('escolhe uma pista de referência', 'err'); return; }
+    if (isNaN(refIdx) || !arrangements[refIdx]) { toast(T('escolhe uma pista de referência'), 'err'); return; }
     const target = refBarTarget(refIdx, measure);
     if (target == null || !alignBarTo(measure, target)) {
-      toast(`compasso ${measure} não existe nas duas pistas`, 'err'); return;
+      toast(T('compasso {n} não existe nas duas pistas', { n: measure }), 'err'); return;
     }
     const refKind = arrangements[refIdx].kind;
-    info.textContent = `Compasso ${measure} alinhado com o compasso ${measure} de ${refKind} (${(target - viewOrigin).toFixed(2)}s).`;
-    toast(`Compasso ${measure} sincronizado com ${refKind}`, 'ok');
+    info.textContent = T('Compasso {n} alinhado com o compasso {n} de {ref} ({s}s).', { n: measure, ref: arrLabel(refKind), s: (target - viewOrigin).toFixed(2) });
+    toast(T('Compasso {n} sincronizado com {ref}', { n: measure, ref: arrLabel(refKind) }), 'ok');
   });
 
   const bpmInput = document.getElementById('barBpm');
@@ -2665,10 +2665,10 @@ function fillBarTempoControls(fromM, toSel, bpmInput) {
 // cursor / the reference track, dragging the following notes into place.
 function openBarAlignPopup(chartT, clientX, clientY) {
   const a = arrangements[currentArr];
-  if (!a || !(a.bars && a.bars.length)) { toast('sem compassos nesta pista', 'err'); return; }
+  if (!a || !(a.bars && a.bars.length)) { toast(T('sem compassos nesta pista'), 'err'); return; }
   const pop = document.getElementById('barAlignPopup');
   const barSel = document.getElementById('baBar');
-  barSel.innerHTML = a.bars.map(b => `<option value="${b.measure}">Compasso ${b.measure}</option>`).join('');
+  barSel.innerHTML = a.bars.map(b => `<option value="${b.measure}">${T('Compasso {n}', { n: b.measure })}</option>`).join('');
   const containing = [...a.bars].filter(b => b.time <= chartT + 1e-6).pop();
   if (containing) barSel.value = String(containing.measure);
   fillBarTempoControls(parseInt(barSel.value, 10), document.getElementById('baBarTo'),
@@ -2709,7 +2709,7 @@ function closeBarAlignPopup() { document.getElementById('barAlignPopup').hidden 
   document.getElementById('baToCursor').addEventListener('click', () => {
     const m = parseInt(document.getElementById('baBar').value, 10);
     if (alignBarTo(m, currentPlayheadT + viewOrigin)) {
-      toast(`Compasso ${m} alinhado ao cursor`, 'ok');
+      toast(T('Compasso {n} alinhado ao cursor', { n: m }), 'ok');
       closeBarAlignPopup();
     }
   });
@@ -2717,9 +2717,9 @@ function closeBarAlignPopup() { document.getElementById('barAlignPopup').hidden 
     const m = parseInt(document.getElementById('baBar').value, 10);
     const refIdx = parseInt(document.getElementById('baRefArr').value, 10);
     const target = refBarTarget(refIdx, m);
-    if (target == null) { toast(`compasso ${m} não existe nessa pista`, 'err'); return; }
+    if (target == null) { toast(T('compasso {n} não existe nessa pista', { n: m }), 'err'); return; }
     if (alignBarTo(m, target)) {
-      toast(`Compasso ${m} alinhado a ${arrangements[refIdx].kind}`, 'ok');
+      toast(T('Compasso {n} alinhado a {ref}', { n: m, ref: arrLabel(arrangements[refIdx].kind) }), 'ok');
       closeBarAlignPopup();
     }
   });
