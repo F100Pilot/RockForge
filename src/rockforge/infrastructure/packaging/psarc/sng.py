@@ -782,6 +782,41 @@ def _build_anchors(
     return split_anchors
 
 
+# What DLC Builder writes for an anchor with no note in it (XmlToSng.fs's
+# UninitFirstNote/UninitLastNote: float32 max and the smallest normal float32).
+ANCHOR_NO_NOTE_FIRST = 3.4028234663852886e38
+ANCHOR_NO_NOTE_LAST = 1.1754943508222875e-38
+
+
+def _anchor_note_times(anchors: list[SngAnchor], notes: list[SngNote]) -> list[SngAnchor]:
+    """Each anchor's first/last note time, over the notes INSIDE it
+    (``start <= t < end``), as DLC Builder's ``convertAnchor`` computes them.
+
+    ``_build_anchors`` carried the times of the whole greedy window into every
+    per-phrase piece it was split into, so a piece could claim a last note a
+    minute past its own end, or a first note after its last. The last note's
+    sustain counts unless it slides (DLC Builder's rule); an anchor with no
+    note gets DLC Builder's uninitialised pair, not a made-up time.
+    """
+    times = [n.time for n in notes]
+    out: list[SngAnchor] = []
+    for a in anchors:
+        lo = bisect.bisect_left(times, a.start_time)
+        hi = bisect.bisect_left(times, a.end_time)
+        if lo >= hi:
+            out.append(replace(
+                a, first_note_time=ANCHOR_NO_NOTE_FIRST, last_note_time=ANCHOR_NO_NOTE_LAST,
+            ))
+            continue
+        last = notes[hi - 1]
+        slides = last.mask & (NOTE_MASK_SLIDE | NOTE_MASK_PARENT)
+        out.append(replace(
+            a, first_note_time=notes[lo].time,
+            last_note_time=last.time if slides else last.time + last.sustain,
+        ))
+    return out
+
+
 def _level_positions(
     notes: list[SngNote], chord_templates: list[SngChordTemplate], song_length: float
 ) -> list[tuple[float, float, list[int]]]:
@@ -867,9 +902,22 @@ def _build_level(
         )
     anchor_extensions.sort(key=lambda ae: ae.beat_time)
 
-    anchors = _build_anchors(
+    anchors = _anchor_note_times(_build_anchors(
         _level_positions(linked, chord_templates, song_length), phrase_iterations, song_length
-    )
+    ), linked)
+
+    # A note's anchor is the one of ITS level that it falls in (DLC Builder's
+    # XmlToSngNote: `findAnchor timeCode level.Anchors`), not the full chart's:
+    # a thinned level frames its notes differently (September's Alternate
+    # Rhythm: fret 2 from level 17 up, while every note still said fret 1), and
+    # the game crashed the moment the difficulty was raised into such a level.
+    anchor_starts = [a.start_time for a in anchors]
+    for gi, n in enumerate(linked):
+        if not anchors:
+            break
+        a = anchors[max(0, bisect.bisect_right(anchor_starts, n.time) - 1)]
+        if (n.anchor_fret, n.anchor_width) != (a.fret, a.width):
+            linked[gi] = replace(n, anchor_fret=a.fret, anchor_width=a.width)
 
     return SngArrangementLevel(
         difficulty=difficulty,
@@ -930,6 +978,10 @@ def _assign_beat_phrase_iterations(
     ]
 
 
+# A note ending this close past a section's start does not make it a played section.
+_END_TOUCH_S = 0.05
+
+
 def _prepare_sections(arrangement: Arrangement, song_length: float) -> list[Section]:
     """The phrase timeline's source sections: COUNT/END-bracketed and
     subdivided into ~_PHRASE_TARGET_S chunks so DD ramps in finer steps.
@@ -970,14 +1022,16 @@ def _prepare_sections(arrangement: Arrangement, song_length: float) -> list[Sect
         # Likewise at the end: a track that stops before the last section
         # (the section after its last note is empty) closes there with END,
         # which an END appended after the last section could never do in order.
+        # A last note ending AT the last section's start (within float noise:
+        # September's rhythm ended 3 us past 210.0) leaves that section empty
+        # too; appending END 0.1 s later made a 0.1 s phrase with no notes.
         if sections_src[-1].name != "END" and song_length - last_note_end > 0.5:
             end_start = min(last_note_end + 0.1, song_length)
-            if end_start > sections_src[-1].start_time:
+            last_start = sections_src[-1].start_time
+            if len(sections_src) > 1 and last_note_end <= last_start + _END_TOUCH_S:
+                sections_src[-1] = Section(name="END", number=1, start_time=last_start)
+            elif end_start > last_start:
                 sections_src.append(Section(name="END", number=1, start_time=end_start))
-            elif len(sections_src) > 1 and sections_src[-1].start_time >= last_note_end:
-                sections_src[-1] = Section(
-                    name="END", number=1, start_time=sections_src[-1].start_time
-                )
 
     # Subdivide long body phrases into ~_PHRASE_TARGET_S chunks at measure
     # downbeats, so DD ramps in finer steps as the player progresses — a real
@@ -1182,9 +1236,9 @@ def _build_sng_notes(
 ) -> list[SngNote]:
     """Single-note and chord SngNotes, time-sorted.
 
-    ``anchor_fret``/``anchor_width`` on each note are only a display hint from
-    the full-chart ``anchors``; the per-LEVEL anchor arrays the game actually
-    uses are rebuilt from each level's own notes inside ``_build_level``.
+    ``anchor_fret``/``anchor_width`` here come from the full-chart ``anchors``
+    and are provisional: ``_build_level`` rebuilds each level's anchors from its
+    own notes and re-points every note at the anchor of ITS level.
 
     (Anchor extensions — the slide re-anchors — are built per difficulty level
     inside ``_build_level``, from each level's own notes. Fingerprints/hand

@@ -1,4 +1,8 @@
+import bisect
 import struct
+from dataclasses import replace
+
+import pytest
 
 from rockforge.domain.arrangement import Arrangement, ArrangementKind, Section, SongMetadata
 from rockforge.domain.music import Beat, TabNote, Technique, TempoMap, Tuning
@@ -1734,3 +1738,68 @@ def test_a_track_that_enters_late_keeps_its_sections_in_order() -> None:
     assert names[0] == "COUNT" and names[-1] == "END"
     # The chorus, where the notes are, is still a section of its own.
     assert "Chorus" in [s.name for s in model.sections]
+
+
+def _thinning_track() -> Arrangement:
+    """A short fret-1 phrase, then a long fret-2/4 one: the full chart frames
+    them in one fret-1 window, while the levels above the short phrase's
+    ceiling hold only the long one — framed from fret 2."""
+    beats = tuple(
+        Beat(time=i * 0.5, measure=(i // 4 + 1) if i % 4 == 0 else -1) for i in range(101)
+    )
+    short = [TabNote(string=1, fret=1, time=10.0 + i, sustain=0.2) for i in range(4)]
+    long = [
+        TabNote(string=2, fret=2 if i % 2 else 4, time=20.0 + i * 0.5, sustain=0.2)
+        for i in range(30)
+    ]
+    return Arrangement(
+        kind=ArrangementKind.RHYTHM,
+        metadata=SongMetadata(title="Song", artist="Artist", song_length=50.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+        notes=short + long,
+        sections=[
+            Section(name="Intro", start_time=0.0),
+            Section(name="Verse", start_time=10.0),
+            Section(name="Chorus", start_time=20.0),
+            Section(name="Outro", start_time=40.0),
+        ],
+    )
+
+
+def test_a_notes_anchor_is_the_one_of_its_own_level() -> None:
+    """September's Alternate Rhythm crashed the game the moment its difficulty
+    was raised: from level 17 up its levels were framed from fret 2, but every
+    note still carried the full chart's fret-1 anchor. DLC Builder takes a
+    note's anchor from ITS level (XmlToSngNote's `findAnchor ... level.Anchors`)
+    and each anchor's first/last note time from the notes inside it."""
+    model = read_sng(write_sng(from_arrangement(_thinning_track())))
+    frets = {a.fret for lv in model.arrangements for a in lv.anchors}
+    assert frets == {1, 2}  # the shape that used to disagree is really there
+    for lv in model.arrangements:
+        starts = [a.start_time for a in lv.anchors]
+        for n in lv.notes:
+            a = lv.anchors[max(0, bisect.bisect_right(starts, n.time) - 1)]
+            assert (n.anchor_fret, n.anchor_width) == (a.fret, a.width)
+        for a in lv.anchors:
+            inside = [n for n in lv.notes if a.start_time <= n.time < a.end_time]
+            if not inside:
+                assert a.first_note_time == pytest.approx(3.4028234663852886e38, rel=1e-6)
+                continue
+            assert a.first_note_time == pytest.approx(inside[0].time)
+            assert a.last_note_time == pytest.approx(inside[-1].time + inside[-1].sustain)
+
+
+def test_a_last_note_ending_at_the_last_sections_start_leaves_no_sliver_phrase() -> None:
+    """September's rhythm charts ended 3 microseconds past the Outro's start, so
+    the END went 0.1 s later and the Outro became a 0.1 s phrase with no notes.
+    A section the last note only touches is empty: it becomes the END."""
+    arr = _resting_track()
+    last = arr.notes[-1]
+    notes = [*arr.notes[:-1], replace(last, time=39.8, sustain=40.0000031 - 39.8)]
+    model = read_sng(write_sng(from_arrangement(replace(arr, notes=notes))))
+    durations = [pi.end_time - pi.start_time for pi in model.phrase_iterations]
+    assert min(durations) > 1.0
+    end = model.phrase_iterations[-1]
+    assert model.phrases[end.phrase_id].name == "END"
+    assert end.start_time == pytest.approx(40.0)

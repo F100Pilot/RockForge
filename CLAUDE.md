@@ -2773,7 +2773,33 @@ phrase at all). The XML path (DLC Builder) never had this — its phrases are
 COUNT/default/END independent of the sections. Guarded by
 `test_a_track_that_enters_late_keeps_its_sections_in_order` (fails on the old
 code); the user's September rebuilt with all four charts in order, each ending
-in END. Not played in game from here.
+in END. Not played in game from here. A last note that ends AT the last
+section's start (September's rhythms: 3 µs past it, float noise) counts as
+ending before it (`_END_TOUCH_S`, 50 ms) — otherwise END went 0.1 s later and
+left a 0.1 s note-less "Outro" phrase. Guarded by
+`test_a_last_note_ending_at_the_last_sections_start_leaves_no_sliver_phrase`.
+
+**A note's anchor is the one of ITS level, not the full chart's.** Each DD
+level's anchors are rebuilt from that level's own notes (`_build_level`), but
+every note kept the `anchor_fret`/`anchor_width` of the FULL chart's anchor
+(`_build_sng_notes._find_anchor`). They agree while a level holds the notes
+that set the window; once a phrase drops out, the level can be framed
+differently — September's Alternate Rhythm was fret 2 from level 17 up while
+its notes all said fret 1 — and the game crashed (0xc0000005) the moment the
+difficulty was raised in Riff Repeater ("a dificuldade estava a zero e eu só
+tentei aumentar, e crashou logo"); the Lead had the same mismatch in the
+phrases the user reported. `_build_level` now re-points every note at the
+anchor of its level that it falls in, as DLC Builder's XmlToSngNote does
+(`findAnchor timeCode level.Anchors`). The anchors' own
+`first_note_time`/`last_note_time` were also carried from the unsplit greedy
+window into every per-phrase piece (a 13.2–18 s piece claiming a last note at
+102.8 s, some with first > last); `_anchor_note_times` now computes them over
+the notes inside each anchor, last note's sustain included unless it slides,
+and DLC Builder's uninitialised pair (`ANCHOR_NO_NOTE_FIRST/LAST`) for an
+anchor with none — XmlToSng.fs `convertAnchor`. Guarded by
+`test_a_notes_anchor_is_the_one_of_its_own_level` (fails on the old code); the
+user's September rebuilt with zero mismatches on all four charts. Not played in
+game from here.
 
 Anchors never span a phrase-iteration boundary: the game re-anchors at each
 phrase start, so a phrase whose opening notes are covered only by the previous
