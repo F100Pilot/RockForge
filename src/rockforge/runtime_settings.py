@@ -85,7 +85,7 @@ def ui_language() -> str:
     from rockforge import i18n
 
     val = load().get("ui_language")
-    return val if i18n.valid(val) else i18n.DEFAULT
+    return val if isinstance(val, str) and i18n.valid(val) else i18n.DEFAULT
 
 
 def stem_separator() -> str:

@@ -44,7 +44,9 @@ def key(s: str) -> str:
     return re.sub(r"\s+", " ", s).strip()
 
 
-_DICT = re.compile(r"\(self\.I18N_DICTS = self\.I18N_DICTS \|\| \{\}\)\.([a-z]{2,3}) = (\{.*\});\s*$", re.S)
+_DICT = re.compile(
+    r"\(self\.I18N_DICTS = self\.I18N_DICTS \|\| \{\}\)\.([a-z]{2,3}) = (\{.*\});\s*$", re.S
+)
 
 
 def dictionaries() -> dict[str, dict[str, str]]:
@@ -169,7 +171,8 @@ def js_strings(src: str) -> list[tuple[int, str, str, bool]]:
             elif c == "`":
                 start = i
                 i, text, has_expr = read_template(i)
-                out.append((src.count("\n", 0, start) + 1, _unescape(text), before(start), has_expr))
+                line = src.count("\n", 0, start) + 1
+                out.append((line, _unescape(text), before(start), has_expr))
             elif c == "{":
                 depth += 1
                 i += 1
@@ -306,3 +309,17 @@ def test_no_portuguese_is_left_outside_T(name: str) -> None:
         if _looks_portuguese(text):
             left.append((line, text[:70]))
     assert not left, f"{len(left)} Portuguese strings outside T() in {name}: {left[:15]}"
+
+
+def test_tone_preset_names_follow_the_language() -> None:
+    from rockforge import i18n
+    from rockforge.infrastructure.packaging.gear.tone_presets import rank_role
+
+    names = lambda: {t["name"] for t in rank_role("rhythm", 0.5, 0.5, 0.5)}  # noqa: E731
+    assert "Rhythm – Plexi (rock clássico)" in names()
+    token = i18n.use("en")
+    try:
+        assert "Rhythm – Plexi (classic rock)" in names()
+        assert not any(_PT_ACCENT.search(n) for n in names())
+    finally:
+        i18n.reset(token)

@@ -183,8 +183,8 @@ def suggest_tones(
         raise ValueError(f"failed to build preset tones for category '{category}'")
 
     return {
-        "lead": lead_dict,
-        "rhythm": rhythm_dict,
+        "lead": _named(lead_dict),
+        "rhythm": _named(rhythm_dict),
         "lead_tone": lead,
         "rhythm_tone": rhythm,
         "category": category,
@@ -336,6 +336,27 @@ _W_GAIN, _W_BRIGHT, _W_LOW = 2.2, 1.0, 0.9
 _MAX_DIST = (_W_GAIN + _W_BRIGHT + _W_LOW) ** 0.5
 
 
+# The presets' names in English (the Portuguese is written in the presets
+# above); applied when a preset is handed out, so a suggestion reads in the
+# user's language — once applied it is the project's tone, named as it was.
+_NAMES_EN = {
+    "Lead – Clean brilhante": "Lead – Bright clean",
+    "Lead – Plexi (rock clássico)": "Lead – Plexi (classic rock)",
+    "Lead – Overdrive quente": "Lead – Warm overdrive",
+    "Lead – Metal (escuro/apertado)": "Lead – Metal (dark/tight)",
+    "Rhythm – Plexi (rock clássico)": "Rhythm – Plexi (classic rock)",
+    "Rhythm – Crunch encorpado": "Rhythm – Full-bodied crunch",
+    "Rhythm – Metal (djent/apertado)": "Rhythm – Metal (djent/tight)",
+}
+
+
+def _named(tone_dict: dict[str, Any]) -> dict[str, Any]:
+    from rockforge.i18n import tr
+
+    name = tone_dict.get("name", "")
+    return {**tone_dict, "name": tr(name, _NAMES_EN.get(name, name))}
+
+
 def _rank_library(
     library: list[tuple[dict[str, Any], tuple[float, float, float]]],
     gain: float,
@@ -354,7 +375,7 @@ def _rank_library(
             + _W_LOW * (low - fl) ** 2
         ) ** 0.5
         match = round(100.0 * (1.0 - min(1.0, dist / _MAX_DIST)))
-        scored.append((dist, {**tone_dict, "match": match}))
+        scored.append((dist, {**_named(tone_dict), "match": match}))
     scored.sort(key=lambda s: s[0])
     return [tone for _, tone in scored]
 

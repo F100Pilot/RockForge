@@ -11,6 +11,7 @@ module.exports = [
       sourceType: "script",
       globals: {
         window: "readonly",
+        self: "writable",
         document: "readonly",
         console: "readonly",
         fetch: "readonly",

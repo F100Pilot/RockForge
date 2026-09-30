@@ -70,7 +70,7 @@
  "Desvio detetado: {cents} cents. Aplica-se em \"Aplicar e reconstruir\". A afinação das cordas (drop/open) não é detetada — vem do ficheiro GP.": "Detected offset: {cents} cents. It is applied on \"Apply and rebuild\". The string tuning (drop/open) is not detected — it comes from the GP file.",
  "Afinação proposta — revê e aplica": "Tuning proposed — review and apply",
  "falha na análise": "analysis failed",
- "Voz (sintetizada)": "Voice (synthesized)",
+ "Voz (sintetizada)": "Vocals (synthesized)",
  "{name} (sintetizada)": "{name} (synthesized)",
  "Mistura completa": "Full mix",
  "{title} — {artist} · {tempo} BPM · letra no GP: {lyrics}": "{title} — {artist} · {tempo} BPM · lyrics in the GP: {lyrics}",

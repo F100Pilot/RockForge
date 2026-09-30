@@ -3795,7 +3795,9 @@ def _i18n_dictionaries() -> list[Path]:
     each, from the first web dir that has any (the same resolution as the
     other bundled files). Adding a language is adding that file."""
     for d in _web_dirs():
-        found = sorted(p for p in d.glob("i18n-*.js") if re.fullmatch(r"i18n-[a-z]{2,3}\.js", p.name))
+        found = sorted(
+            p for p in d.glob("i18n-*.js") if re.fullmatch(r"i18n-[a-z]{2,3}\.js", p.name)
+        )
         if found:
             return found
     return []
