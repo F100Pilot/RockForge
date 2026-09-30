@@ -793,112 +793,112 @@ function renderCompleteness(j) {
 // ── ⓘ info modal ─────────────────────────────────────────────────────────────
 const INFO = {
   'stems': {
-    title: 'Fonte de áudio (stems + sintetizada)',
-    body: '<p>O dropdown "Fonte de áudio" tem três tipos de fonte:</p>' +
-      '<p><strong>Mistura completa</strong> — a gravação original.</p>' +
-      '<p><strong>… (sintetizada)</strong> — uma referência limpa das notas de cada arranjo (Lead/Rhythm), gerada a partir do próprio ficheiro. É uma guitarra <em>isolada</em> e limpa dessa faixa, útil para conferir o sync de cada arranjo por ouvido. Não precisa do Demucs e está sempre disponível. Reflete a sincronização pendente no momento em que a escolhes — volta a escolhê-la para atualizar depois de mais edições.</p>' +
-      '<p><strong>Stems separados</strong> (botão "Separar instrumentos") — usa o Demucs para separar a gravação real por instrumento (guitarra, baixo, voz, piano, outros; a bateria é descartada). Sola a <strong>guitarra</strong> para ouvir melhor as notas reais. <em>Limite honesto:</em> o Demucs separa por <em>tipo</em> de instrumento — a faixa "guitarra" é <strong>todas as guitarras misturadas</strong>; não é possível separar a Lead da Rhythm a partir da gravação. Requer o extra <code>[ml]</code> e demora alguns minutos.</p>'
+    title: T('Fonte de áudio (stems + sintetizada)'),
+    body: T('<p>O dropdown "Fonte de áudio" tem três tipos de fonte:</p>') +
+      T('<p><strong>Mistura completa</strong> — a gravação original.</p>') +
+      T('<p><strong>… (sintetizada)</strong> — uma referência limpa das notas de cada arranjo (Lead/Rhythm), gerada a partir do próprio ficheiro. É uma guitarra <em>isolada</em> e limpa dessa faixa, útil para conferir o sync de cada arranjo por ouvido. Não precisa do Demucs e está sempre disponível. Reflete a sincronização pendente no momento em que a escolhes — volta a escolhê-la para atualizar depois de mais edições.</p>') +
+      T('<p><strong>Stems separados</strong> (botão "Separar instrumentos") — usa o Demucs para separar a gravação real por instrumento (guitarra, baixo, voz, piano, outros; a bateria é descartada). Sola a <strong>guitarra</strong> para ouvir melhor as notas reais. <em>Limite honesto:</em> o Demucs separa por <em>tipo</em> de instrumento — a faixa "guitarra" é <strong>todas as guitarras misturadas</strong>; não é possível separar a Lead da Rhythm a partir da gravação. Requer o extra <code>[ml]</code> e demora alguns minutos.</p>')
   },
   'tone-preview': {
-    title: 'Testar tom na partitura',
-    body: '<p>Ouve os <strong>tons que criaste</strong> aplicados às notas (no tique por nota e na fonte "sintetizada"), para comparares o <em>carácter</em> — limpo, crunch, distorcido — sem teres de entrar no Rocksmith de cada vez que ajustas uma definição.</p>' +
-      '<p><strong>Voz simples (sem tom)</strong> = só o tique seco da nota, sem coloração. Ao escolher um tom, as notas passam por uma <strong>simulação de guitarra</strong>: corda dedilhada (Karplus-Strong) + distorção (conforme o ganho do tom) + cabine (EQ de corpo e corte de agudos).</p>' +
-      '<p><strong>Seguir partitura</strong>: se marcaste mudanças de tom na música, esta opção troca automaticamente de tom em cada ponto, tal como o criaste — e o <strong>tom atual aparece na partitura</strong> (etiqueta âmbar 🎸 em cada mudança + junto ao BPM). Ou escolhe um tom específico para o ouvir sozinho em toda a música. O seletor fica desativado até criares o primeiro tom.</p>' +
-      '<p>Nota: dois tons só soam <em>diferentes</em> se o gear diferir (ganho, EQ do amp, pedais). Dois tons com as <strong>mesmas definições</strong> soam iguais — é esperado. Em "Seguir partitura", se não marcaste nenhuma mudança, toca sempre o tom base.</p>' +
-      '<p><strong>Limite honesto:</strong> o RockForge <em>não</em> modela amplificadores. Isto é uma <strong>aproximação do carácter</strong> (ganho/distorção + brilho), calculada a partir dos descritores do tom, do knob de Gain do amp e dos pedais de drive — <strong>não é o som real</strong> do amp/cabine. O som verdadeiro só existe no jogo / DLC Builder, que gera o áudio a partir do gear que gravamos no bundle.</p>'
+    title: T('Testar tom na partitura'),
+    body: T('<p>Ouve os <strong>tons que criaste</strong> aplicados às notas (no tique por nota e na fonte "sintetizada"), para comparares o <em>carácter</em> — limpo, crunch, distorcido — sem teres de entrar no Rocksmith de cada vez que ajustas uma definição.</p>') +
+      T('<p><strong>Voz simples (sem tom)</strong> = só o tique seco da nota, sem coloração. Ao escolher um tom, as notas passam por uma <strong>simulação de guitarra</strong>: corda dedilhada (Karplus-Strong) + distorção (conforme o ganho do tom) + cabine (EQ de corpo e corte de agudos).</p>') +
+      T('<p><strong>Seguir partitura</strong>: se marcaste mudanças de tom na música, esta opção troca automaticamente de tom em cada ponto, tal como o criaste — e o <strong>tom atual aparece na partitura</strong> (etiqueta âmbar 🎸 em cada mudança + junto ao BPM). Ou escolhe um tom específico para o ouvir sozinho em toda a música. O seletor fica desativado até criares o primeiro tom.</p>') +
+      T('<p>Nota: dois tons só soam <em>diferentes</em> se o gear diferir (ganho, EQ do amp, pedais). Dois tons com as <strong>mesmas definições</strong> soam iguais — é esperado. Em "Seguir partitura", se não marcaste nenhuma mudança, toca sempre o tom base.</p>') +
+      T('<p><strong>Limite honesto:</strong> o RockForge <em>não</em> modela amplificadores. Isto é uma <strong>aproximação do carácter</strong> (ganho/distorção + brilho), calculada a partir dos descritores do tom, do knob de Gain do amp e dos pedais de drive — <strong>não é o som real</strong> do amp/cabine. O som verdadeiro só existe no jogo / DLC Builder, que gera o áudio a partir do gear que gravamos no bundle.</p>')
   },
   'tone-library': {
-    title: 'Biblioteca de tons',
-    body: '<p>Guarda um tom que afinaste (amp + cabine + efeitos) na <strong>biblioteca</strong> para o reutilizares noutros projetos, sem teres de o reconstruir a cada música — tal como a biblioteca de tons do DLC Builder.</p>' +
-      '<p><strong>★ Guardar na biblioteca</strong> guarda o tom em edição; <strong>⬇ Carregar</strong> adiciona o tom escolhido a este projeto (fica editável, e uma cópia — não afeta o original na biblioteca); 🗑 remove-o da biblioteca.</p>' +
-      '<p>A biblioteca é partilhada por todos os projetos (guardada em <code>work_dir/tone_library.json</code>). Guardar um tom com uma chave já existente substitui o anterior.</p>'
+    title: T('Biblioteca de tons'),
+    body: T('<p>Guarda um tom que afinaste (amp + cabine + efeitos) na <strong>biblioteca</strong> para o reutilizares noutros projetos, sem teres de o reconstruir a cada música — tal como a biblioteca de tons do DLC Builder.</p>') +
+      T('<p><strong>★ Guardar na biblioteca</strong> guarda o tom em edição; <strong>⬇ Carregar</strong> adiciona o tom escolhido a este projeto (fica editável, e uma cópia — não afeta o original na biblioteca); 🗑 remove-o da biblioteca.</p>') +
+      T('<p>A biblioteca é partilhada por todos os projetos (guardada em <code>work_dir/tone_library.json</code>). Guardar um tom com uma chave já existente substitui o anterior.</p>')
   },
   'new-job': {
-    title: 'Criar um novo projeto',
-    body: `<p><strong>A partir de Guitar Pro</strong>: notas, trastes, técnicas e secções vêm <b>exatas</b> do ficheiro GP3/GP4/GP5/GP7. Assistente de 4 passos: <b>Ficheiro</b> (escolhe o GP e inspeciona as pistas) → <b>Pistas</b> (atribui Lead/Rhythm/Combo) → <b>Gravação</b> (o áudio + o início aproximado) → <b>Detalhes</b> (título/banda, opcionais).</p>
-<p>Os <b>tons</b>, a <b>capa</b> e a <b>sincronização fina</b> fazem-se depois de criar. O projeto mostra um checklist <b>"Estado do PSARC"</b> com o que ainda falta.</p>`
+    title: T('Criar um novo projeto'),
+    body: T(`<p><strong>A partir de Guitar Pro</strong>: notas, trastes, técnicas e secções vêm <b>exatas</b> do ficheiro GP3/GP4/GP5/GP7. Assistente de 4 passos: <b>Ficheiro</b> (escolhe o GP e inspeciona as pistas) → <b>Pistas</b> (atribui Lead/Rhythm/Combo) → <b>Gravação</b> (o áudio + o início aproximado) → <b>Detalhes</b> (título/banda, opcionais).</p>
+<p>Os <b>tons</b>, a <b>capa</b> e a <b>sincronização fina</b> fazem-se depois de criar. O projeto mostra um checklist <b>"Estado do PSARC"</b> com o que ainda falta.</p>`)
   },
   'batch': {
-    title: 'Processamento em lote',
-    body: '<p>Cria vários projetos de uma vez a partir de vários ficheiros Guitar Pro + as gravações correspondentes — útil para converter um álbum inteiro sem repetir o assistente música a música.</p>' +
-      '<p><strong>Emparelhamento:</strong> cada ficheiro GP é associado à gravação com o <strong>mesmo nome</strong> (sem extensão) — ex. <code>faixa1.gp5</code> com <code>faixa1.mp3</code>. Quando não há correspondência pelo nome, o RockForge empareha pela <strong>ordem</strong> em que escolheste os ficheiros. Confirma a lista de pares antes de criar.</p>' +
-      '<p><strong>Pistas Lead/Rhythm:</strong> cada projeto usa a mesma heurística automática do assistente normal (escolhe as pistas de 6 cordas pelo nome — "lead"/"rhythm") em vez de perguntares música a música. Se uma escolha ficar errada, corrige depois em "Editar info" desse projeto (não precisas de recriar o lote todo).</p>' +
-      '<p>Banda/álbum/ano ficam <strong>partilhados</strong> por todos os pares; título/artista específicos vêm do próprio ficheiro GP ou das tags do áudio, como no assistente normal.</p>' +
-      '<p>Os projetos são criados um a um (mesmo caminho que criar um único projeto, repetido); acompanha o progresso na lista de pares e depois na lista de projetos.</p>'
+    title: T('Processamento em lote'),
+    body: T('<p>Cria vários projetos de uma vez a partir de vários ficheiros Guitar Pro + as gravações correspondentes — útil para converter um álbum inteiro sem repetir o assistente música a música.</p>') +
+      T('<p><strong>Emparelhamento:</strong> cada ficheiro GP é associado à gravação com o <strong>mesmo nome</strong> (sem extensão) — ex. <code>faixa1.gp5</code> com <code>faixa1.mp3</code>. Quando não há correspondência pelo nome, o RockForge empareha pela <strong>ordem</strong> em que escolheste os ficheiros. Confirma a lista de pares antes de criar.</p>') +
+      T('<p><strong>Pistas Lead/Rhythm:</strong> cada projeto usa a mesma heurística automática do assistente normal (escolhe as pistas de 6 cordas pelo nome — "lead"/"rhythm") em vez de perguntares música a música. Se uma escolha ficar errada, corrige depois em "Editar info" desse projeto (não precisas de recriar o lote todo).</p>') +
+      T('<p>Banda/álbum/ano ficam <strong>partilhados</strong> por todos os pares; título/artista específicos vêm do próprio ficheiro GP ou das tags do áudio, como no assistente normal.</p>') +
+      T('<p>Os projetos são criados um a um (mesmo caminho que criar um único projeto, repetido); acompanha o progresso na lista de pares e depois na lista de projetos.</p>')
   },
   'gp-format': {
-    title: 'Formatos Guitar Pro suportados',
-    body: '<p>Suportados: <strong>GP3, GP4, GP5</strong> (via PyGuitarPro) e <strong>GP7/GP8 (.gp)</strong> (parser GPIF nativo).<br><strong>Só GP6 (.gpx) não é suportado</strong> — exporta como GP5 ou GP7 no Guitar Pro ou TuxGuitar antes de importar.</p>'
+    title: T('Formatos Guitar Pro suportados'),
+    body: T('<p>Suportados: <strong>GP3, GP4, GP5</strong> (via PyGuitarPro) e <strong>GP7/GP8 (.gp)</strong> (parser GPIF nativo).<br><strong>Só GP6 (.gpx) não é suportado</strong> — exporta como GP5 ou GP7 no Guitar Pro ou TuxGuitar antes de importar.</p>')
   },
   'gp-offset': {
-    title: 'Início da música na gravação (s)',
-    body: '<p>O segundo em que a primeira nota é ouvida na tua gravação. A partitura e a letra são deslocadas para esse instante (a gravação fica intacta — o teu intro serve de lead-in).<br>Ouve a gravação, anota a que segundo entra a música e escreve esse valor. Se a partitura e o áudio ainda estiverem dessincronizados, ajusta o valor e reconstrói.<br>Mínimo de 2s de lead-in (exigido pelo DLC Builder); se puseres menos, o silêncio em falta é acrescentado automaticamente.</p>'
+    title: T('Início da música na gravação (s)'),
+    body: T('<p>O segundo em que a primeira nota é ouvida na tua gravação. A partitura e a letra são deslocadas para esse instante (a gravação fica intacta — o teu intro serve de lead-in).<br>Ouve a gravação, anota a que segundo entra a música e escreve esse valor. Se a partitura e o áudio ainda estiverem dessincronizados, ajusta o valor e reconstrói.<br>Mínimo de 2s de lead-in (exigido pelo DLC Builder); se puseres menos, o silêncio em falta é acrescentado automaticamente.</p>')
   },
   'lead-in': {
-    title: 'Silêncio inicial (s)',
-    body: '<p>Silêncio extra acrescentado mesmo no início, <strong>por cima</strong> do lead-in automático de 2s. Empurra a música inteira (áudio + notas + letra) para a frente em conjunto — útil para teres uns segundos de silêncio antes da música começar no jogo.<br>0 = nenhum. Podes alterar depois no painel de sincronização e reconstruir.</p>'
+    title: T('Silêncio inicial (s)'),
+    body: T('<p>Silêncio extra acrescentado mesmo no início, <strong>por cima</strong> do lead-in automático de 2s. Empurra a música inteira (áudio + notas + letra) para a frente em conjunto — útil para teres uns segundos de silêncio antes da música começar no jogo.<br>0 = nenhum. Podes alterar depois no painel de sincronização e reconstruir.</p>')
   },
   'lrc': {
-    title: 'Letra sincronizada (LRC / UltraStar)',
-    body: '<p>Para timing exato de letra usa um ficheiro <strong>LRC</strong> (<code>[mm:ss.xx]texto</code>) ou um <strong>.txt do UltraStar Creator</strong> (timing por sílaba, convertido automaticamente a partir do BPM/GAP do ficheiro).<br>A letra embutida no GP só tem tempo ao nível da linha; usa o painel "Letras" após a criação para afinar o timing por palavra.</p>'
+    title: T('Letra sincronizada (LRC / UltraStar)'),
+    body: T('<p>Para timing exato de letra usa um ficheiro <strong>LRC</strong> (<code>[mm:ss.xx]texto</code>) ou um <strong>.txt do UltraStar Creator</strong> (timing por sílaba, convertido automaticamente a partir do BPM/GAP do ficheiro).<br>A letra embutida no GP só tem tempo ao nível da linha; usa o painel "Letras" após a criação para afinar o timing por palavra.</p>')
   },
   'tuning': {
-    title: 'Afinação e BPM',
-    body: '<p>Offsets em relação ao E standard por corda (grave→agudo). A estimativa automática de afinações drop/open é apenas heurística — verifica e corrige se necessário antes de reconstruir.<br>"Detetar afinação" usa librosa para medir o desvio em cents; os valores MIDI são calculados a partir desse desvio.</p>'
+    title: T('Afinação e BPM'),
+    body: T('<p>Offsets em relação ao E standard por corda (grave→agudo). A estimativa automática de afinações drop/open é apenas heurística — verifica e corrige se necessário antes de reconstruir.<br>"Detetar afinação" usa librosa para medir o desvio em cents; os valores MIDI são calculados a partir desse desvio.</p>')
   },
   'sync-offset': {
-    title: 'Sincronização — início e tique',
-    body: '<p>Dá play à gravação: o cursor percorre as notas e ouves um <strong>tique</strong> em cada nota. Ajusta o slider "Início da música" até os tiques baterem certo com a gravação.<br><strong>Este valor é por pista</strong> — muda de separador (Lead/Rhythm/Combined) e o campo passa a mostrar e corrigir o início dessa pista, sem mexer nas outras. Útil quando o Lead e o Rhythm foram tabulados com um pickup/compasso de entrada diferente. A afinação continua partilhada por todos.<br>"Início = cursor" trava o valor na posição do leitor; "Detetar 1ª nota" é o mesmo fluxo guiado de 3 cliques. A correção fica pendente e grava com o botão normal "Aplicar e reconstruir".</p>'
+    title: T('Sincronização — início e tique'),
+    body: T('<p>Dá play à gravação: o cursor percorre as notas e ouves um <strong>tique</strong> em cada nota. Ajusta o slider "Início da música" até os tiques baterem certo com a gravação.<br><strong>Este valor é por pista</strong> — muda de separador (Lead/Rhythm/Combined) e o campo passa a mostrar e corrigir o início dessa pista, sem mexer nas outras. Útil quando o Lead e o Rhythm foram tabulados com um pickup/compasso de entrada diferente. A afinação continua partilhada por todos.<br>"Início = cursor" trava o valor na posição do leitor; "Detetar 1ª nota" é o mesmo fluxo guiado de 3 cliques. A correção fica pendente e grava com o botão normal "Aplicar e reconstruir".</p>')
   },
   'bar-sync': {
-    title: 'Sincronizar por compasso',
-    body: `<p>Útil quando uma pista só entra a tocar mais tarde na música — por exemplo, o Rhythm tem compassos de silêncio no início e a primeira nota real coincide com o <b>compasso 7</b>. "Início desta pista" só alinha a 1ª nota; este painel deixa-te alinhar <b>qualquer compasso</b>, escolhido pelo número.</p>
+    title: T('Sincronizar por compasso'),
+    body: T(`<p>Útil quando uma pista só entra a tocar mais tarde na música — por exemplo, o Rhythm tem compassos de silêncio no início e a primeira nota real coincide com o <b>compasso 7</b>. "Início desta pista" só alinha a 1ª nota; este painel deixa-te alinhar <b>qualquer compasso</b>, escolhido pelo número.</p>
 <p><b>= cursor:</b> escolhe o compasso, dá play/pausa exatamente onde ele deve soar, e clica — o compasso escolhido (e tudo depois dele) alinha com o cursor.</p>
 <p><b>Sincronizar com outra pista:</b> como o número do compasso é o mesmo em todas as pistas do ficheiro Guitar Pro (vêm da mesma partitura), se já tiveres o Lead bem sincronizado podes alinhar o compasso 7 do Rhythm diretamente com o compasso 7 do Lead — sem teres de ouvir/procurar à mão.</p>
 <p><b>Andamento (BPM do compasso):</b> escreve o BPM que o compasso deve ter (vem preenchido com o atual) e, se quiseres, até que compasso aplicar — todos passam a esse BPM. O que vem depois <b>não muda de andamento</b>: só se desloca pela diferença, por isso cada compasso seguinte continua com o seu. O compasso fica marcado a âmbar na partitura, e "Guitar Pro com os andamentos corrigidos" (Exportar) grava-o no ficheiro.</p>
-<p>Como as outras ferramentas de sincronização, cria uma correção pendente por pista — grava com "Aplicar e reconstruir".</p>`
+<p>Como as outras ferramentas de sincronização, cria uma correção pendente por pista — grava com "Aplicar e reconstruir".</p>`)
   },
   'sync-tempo': {
-    title: 'Sincronização — andamento',
-    body: '<p>Se a tabulatura e a gravação se vão afastando ao longo da música (o GP foi escrito num andamento ligeiramente diferente do que foi gravado), ajusta o <strong>andamento</strong>: estica/comprime a música toda de uma vez. As notas movem-se sobre a forma de onda para confirmares o alinhamento.</p>'
+    title: T('Sincronização — andamento'),
+    body: T('<p>Se a tabulatura e a gravação se vão afastando ao longo da música (o GP foi escrito num andamento ligeiramente diferente do que foi gravado), ajusta o <strong>andamento</strong>: estica/comprime a música toda de uma vez. As notas movem-se sobre a forma de onda para confirmares o alinhamento.</p>')
   },
   'auto-sync': {
-    title: 'Sincronização automática',
-    body: '<p>Deteta o andamento e o início da gravação (como o CDLC.AI) e propõe um ajuste. Os valores ficam em pré-visualização — confirma na partitura e clica em "Aplicar e reconstruir".<br><b>Dica importante:</b> se já tiveres corrido <b>"Separar instrumentos"</b>, a deteção do andamento passa a ser feita na <b>bateria isolada</b> — muito mais fiável em música rápida e densa (na mistura completa, o detetor de batidas engana-se no nível métrico). Separa primeiro para um resultado bem melhor.<br>Requer o extra <code>ml</code> (librosa). Refina depois com os modos manuais.</p>'
+    title: T('Sincronização automática'),
+    body: T('<p>Deteta o andamento e o início da gravação (como o CDLC.AI) e propõe um ajuste. Os valores ficam em pré-visualização — confirma na partitura e clica em "Aplicar e reconstruir".<br><b>Dica importante:</b> se já tiveres corrido <b>"Separar instrumentos"</b>, a deteção do andamento passa a ser feita na <b>bateria isolada</b> — muito mais fiável em música rápida e densa (na mistura completa, o detetor de batidas engana-se no nível métrico). Separa primeiro para um resultado bem melhor.<br>Requer o extra <code>ml</code> (librosa). Refina depois com os modos manuais.</p>')
   },
   'auto-sync-dynamic': {
-    title: 'Sincronização dinâmica (segue o andamento real)',
-    body: '<p>A sincronização automática acima aplica UM andamento médio — não chega quando o tempo da gravação varia (o problema típico das tabs de IA). Esta segue a <b>curva de andamento real</b>: usa a grelha de batidas para o tempo local, e afina cada âncora encaixando as notas da própria tab nos ataques do áudio.<br><b>Corre "Separar instrumentos" primeiro:</b> a grelha de batidas passa a vir da <b>bateria isolada</b> e os ataques da <b>guitarra isolada</b> — muito mais fiável que a mistura completa (onde o detetor de batidas se engana no andamento). Sem separação, usa a mistura e avisa-te.<br><b>Começa na primeira nota:</b> define primeiro o início no Passo 1 (ou com "🎯 Detetar 1ª nota") — a primeira âncora é exatamente esse ponto e o alinhamento aplica-se daí para a frente.<br>Substitui as correções pendentes da pista atual por esta proposta; fica em pré-visualização — vê o <b>♩BPM por compasso</b> na partitura (âmbar = alterado pelas âncoras) e confirma com "Aplicar e reconstruir".<br><b>Limite honesto:</b> secções onde as notas da tab não batem com o áudio são assinaladas com ⚠ — aí o problema é o conteúdo da tab (notas/compassos errados), que nenhuma sincronização corrige; ajusta essas partes no Guitar Pro. Requer o extra <code>ml</code> (librosa).</p>'
+    title: T('Sincronização dinâmica (segue o andamento real)'),
+    body: T('<p>A sincronização automática acima aplica UM andamento médio — não chega quando o tempo da gravação varia (o problema típico das tabs de IA). Esta segue a <b>curva de andamento real</b>: usa a grelha de batidas para o tempo local, e afina cada âncora encaixando as notas da própria tab nos ataques do áudio.<br><b>Corre "Separar instrumentos" primeiro:</b> a grelha de batidas passa a vir da <b>bateria isolada</b> e os ataques da <b>guitarra isolada</b> — muito mais fiável que a mistura completa (onde o detetor de batidas se engana no andamento). Sem separação, usa a mistura e avisa-te.<br><b>Começa na primeira nota:</b> define primeiro o início no Passo 1 (ou com "🎯 Detetar 1ª nota") — a primeira âncora é exatamente esse ponto e o alinhamento aplica-se daí para a frente.<br>Substitui as correções pendentes da pista atual por esta proposta; fica em pré-visualização — vê o <b>♩BPM por compasso</b> na partitura (âmbar = alterado pelas âncoras) e confirma com "Aplicar e reconstruir".<br><b>Limite honesto:</b> secções onde as notas da tab não batem com o áudio são assinaladas com ⚠ — aí o problema é o conteúdo da tab (notas/compassos errados), que nenhuma sincronização corrige; ajusta essas partes no Guitar Pro. Requer o extra <code>ml</code> (librosa).</p>')
   },
   'export-gp': {
-    title: 'Exportar Guitar Pro corrigido',
-    body: '<p>Escreve as correções de <b>andamento</b> que aceitaste numa <b>cópia</b> do teu ficheiro Guitar Pro, para a correção ficar permanente no próprio Guitar Pro e não só no RockForge. <b>O teu ficheiro original nunca é alterado.</b><br>Tudo o resto é preservado: notas, técnicas, afinação, faixas, secções, letra — e as mudanças de andamento que tu próprio tenhas escrito também sobrevivem.<br><b>Formatos:</b> <code>.gp3</code>/<code>.gp4</code>/<code>.gp5</code> e <code>.gp</code> (GP7/8). O <code>.gpx</code> (GP6) <b>não é escrito por ferramenta nenhuma</b> — nem o Guitar Pro o exporta para si próprio; exporta como GP5 ou GP7 primeiro.<br><b>Limite honesto:</b> os formatos binários (gp3/4/5) guardam o andamento como número <b>inteiro</b>, por isso 119,085 fica 119 — dizemos-te sempre o que foi mesmo escrito. O <code>.gp</code> mantém as casas decimais.<br><b>Só andamento:</b> um <b>salto</b> não é exprimível como mudança de BPM (seria preciso inserir/remover um compasso), por isso não vai no ficheiro — corrige esse no Guitar Pro.</p>'
+    title: T('Exportar Guitar Pro corrigido'),
+    body: T('<p>Escreve as correções de <b>andamento</b> que aceitaste numa <b>cópia</b> do teu ficheiro Guitar Pro, para a correção ficar permanente no próprio Guitar Pro e não só no RockForge. <b>O teu ficheiro original nunca é alterado.</b><br>Tudo o resto é preservado: notas, técnicas, afinação, faixas, secções, letra — e as mudanças de andamento que tu próprio tenhas escrito também sobrevivem.<br><b>Formatos:</b> <code>.gp3</code>/<code>.gp4</code>/<code>.gp5</code> e <code>.gp</code> (GP7/8). O <code>.gpx</code> (GP6) <b>não é escrito por ferramenta nenhuma</b> — nem o Guitar Pro o exporta para si próprio; exporta como GP5 ou GP7 primeiro.<br><b>Limite honesto:</b> os formatos binários (gp3/4/5) guardam o andamento como número <b>inteiro</b>, por isso 119,085 fica 119 — dizemos-te sempre o que foi mesmo escrito. O <code>.gp</code> mantém as casas decimais.<br><b>Só andamento:</b> um <b>salto</b> não é exprimível como mudança de BPM (seria preciso inserir/remover um compasso), por isso não vai no ficheiro — corrige esse no Guitar Pro.</p>')
   },
   'analyse-sync': {
-    title: 'Analisar sincronização',
-    body: '<p>Não corrige nada — <b>diagnostica</b>. Todas as outras ferramentas respondem "onde deve ficar cada nota"; esta responde <b>"que tipo de problema é este"</b>, que é o que decide a correção certa.<br>Encaixa as notas da tab nos ataques reais da gravação e analisa a curva de desvio:<br>• <b>Desvio progressivo</b> — a diferença cresce a um ritmo constante: o andamento da tab não é bem o da gravação. Corrige-se com um <b>BPM novo, só naquele troço</b>.<br>• <b>Salto</b> — a diferença dá um degrau: compasso a mais/menos, pausa em falta, repetição. <b>Nunca</b> se corrige com BPM — isso espalharia um erro local por música que estava correta.<br>• <b>Diferença estrutural</b> — as notas da tab não correspondem ao áudio ali; nenhuma correção temporal resolve, é o conteúdo que está errado.<br><b>Separa os instrumentos primeiro:</b> as notas são encaixadas nos ataques da <b>guitarra isolada</b>, bem mais fiável que a mistura.<br>Cada conclusão é aceite ou rejeitada individualmente e só entra em pré-visualização — o "Aplicar e reconstruir" continua a ser quem grava.<br><b>Limite honesto:</b> num trecho de ritmo muito regular, um compasso a mais/menos pode ser matematicamente indistinguível de notas em falta — aí verás "sincronizado" e notas sem par, não um salto.</p>'
+    title: T('Analisar sincronização'),
+    body: T('<p>Não corrige nada — <b>diagnostica</b>. Todas as outras ferramentas respondem "onde deve ficar cada nota"; esta responde <b>"que tipo de problema é este"</b>, que é o que decide a correção certa.<br>Encaixa as notas da tab nos ataques reais da gravação e analisa a curva de desvio:<br>• <b>Desvio progressivo</b> — a diferença cresce a um ritmo constante: o andamento da tab não é bem o da gravação. Corrige-se com um <b>BPM novo, só naquele troço</b>.<br>• <b>Salto</b> — a diferença dá um degrau: compasso a mais/menos, pausa em falta, repetição. <b>Nunca</b> se corrige com BPM — isso espalharia um erro local por música que estava correta.<br>• <b>Diferença estrutural</b> — as notas da tab não correspondem ao áudio ali; nenhuma correção temporal resolve, é o conteúdo que está errado.<br><b>Separa os instrumentos primeiro:</b> as notas são encaixadas nos ataques da <b>guitarra isolada</b>, bem mais fiável que a mistura.<br>Cada conclusão é aceite ou rejeitada individualmente e só entra em pré-visualização — o "Aplicar e reconstruir" continua a ser quem grava.<br><b>Limite honesto:</b> num trecho de ritmo muito regular, um compasso a mais/menos pode ser matematicamente indistinguível de notas em falta — aí verás "sincronizado" e notas sem par, não um salto.</p>')
   },
   'sync-from-stem': {
-    title: 'Sincronizar pela bateria (IA)',
-    body: '<p>O equivalente ao MIDI do RIPX, mas <b>feito dentro do RockForge</b> — sem exportares nada de um DAW. Corre um detetor de batidas <b>neural</b> (muito mais fiável que o automático normal em música rápida e densa, onde o detetor clássico se engana no nível métrico) sobre a gravação, deteta o <b>início de cada compasso</b> e alinha cada compasso da tab a esse tempo real — a mesma âncora-por-compasso do mapa de tempo MIDI.<br><b>Corre "Separar instrumentos" primeiro:</b> a deteção passa a ser feita na <b>bateria isolada</b> (o sinal de batida mais limpo); sem separação usa a mistura completa e avisa-te.<br>Respeita o <b>Passo 1</b> (fixa a 1.ª nota, o alinhamento cresce daí) e fica em pré-visualização — revê o <b>♩BPM por compasso</b> na partitura e confirma com "Aplicar e reconstruir".<br><b>Limite honesto:</b> é uma <b>estimativa neural</b>, forte mas não é verdade absoluta como um MIDI do RIPX conferido à mão — se falhar em material invulgar, importa o MIDI. Requer o extra <code>beatthis</code> (Beat This! + torch); pode demorar algum tempo.</p>'
+    title: T('Sincronizar pela bateria (IA)'),
+    body: T('<p>O equivalente ao MIDI do RIPX, mas <b>feito dentro do RockForge</b> — sem exportares nada de um DAW. Corre um detetor de batidas <b>neural</b> (muito mais fiável que o automático normal em música rápida e densa, onde o detetor clássico se engana no nível métrico) sobre a gravação, deteta o <b>início de cada compasso</b> e alinha cada compasso da tab a esse tempo real — a mesma âncora-por-compasso do mapa de tempo MIDI.<br><b>Corre "Separar instrumentos" primeiro:</b> a deteção passa a ser feita na <b>bateria isolada</b> (o sinal de batida mais limpo); sem separação usa a mistura completa e avisa-te.<br>Respeita o <b>Passo 1</b> (fixa a 1.ª nota, o alinhamento cresce daí) e fica em pré-visualização — revê o <b>♩BPM por compasso</b> na partitura e confirma com "Aplicar e reconstruir".<br><b>Limite honesto:</b> é uma <b>estimativa neural</b>, forte mas não é verdade absoluta como um MIDI do RIPX conferido à mão — se falhar em material invulgar, importa o MIDI. Requer o extra <code>beatthis</code> (Beat This! + torch); pode demorar algum tempo.</p>')
   },
   'sync-from-midi': {
-    title: 'Importar mapa de tempo (MIDI)',
-    body: '<p>Quando a sincronização automática não fica perfeita, dá-lhe a <b>verdade em vez de uma estimativa</b>: um MIDI com o andamento por compasso (exportado do RIPX ou de qualquer DAW a partir da mesma gravação). Em vez de adivinhar o tempo pelo áudio, o RockForge lê o mapa de tempo do MIDI e alinha <b>cada compasso da tab ao seu tempo real</b> — uma âncora por compasso, o "BPM por compasso".<br>Continua a respeitar o <b>Passo 1</b>: fixa a 1.ª nota e o alinhamento cresce daí. Fica em pré-visualização — revê na partitura e confirma com "Aplicar e reconstruir".<br><b>Para resultar:</b> o MIDI tem de começar no 1.º compasso da tab (corta um intro que a tab não tenha) e ter a mesma estrutura de compassos. A precisão é a da deteção do RIPX. Só formato PPQ (o normal).</p>'
+    title: T('Importar mapa de tempo (MIDI)'),
+    body: T('<p>Quando a sincronização automática não fica perfeita, dá-lhe a <b>verdade em vez de uma estimativa</b>: um MIDI com o andamento por compasso (exportado do RIPX ou de qualquer DAW a partir da mesma gravação). Em vez de adivinhar o tempo pelo áudio, o RockForge lê o mapa de tempo do MIDI e alinha <b>cada compasso da tab ao seu tempo real</b> — uma âncora por compasso, o "BPM por compasso".<br>Continua a respeitar o <b>Passo 1</b>: fixa a 1.ª nota e o alinhamento cresce daí. Fica em pré-visualização — revê na partitura e confirma com "Aplicar e reconstruir".<br><b>Para resultar:</b> o MIDI tem de começar no 1.º compasso da tab (corta um intro que a tab não tenha) e ter a mesma estrutura de compassos. A precisão é a da deteção do RIPX. Só formato PPQ (o normal).</p>')
   },
   'highway-3d': {
-    title: 'Pista 3D',
-    body: '<p>As notas da pista escolhida a descer para as cordas, como no Rocksmith: cada corda na sua cor (Mi grave vermelho em cima), o traste na face da nota e uma linha até ao traste onde se toca. Quando a nota chega à corda, a corda brilha e a nota fica pousada nela, com o número, enquanto soa.</p>' +
-      '<p>A afinação está escrita na pestana do headstock. Acordes têm moldura e nome; uma corda solta é uma barra ao longo da zona da mão (a faixa azul), que a câmara segue. Por cima da nota aparece a técnica (H hammer-on, P pull-off, PM palm mute, ↑ bend, / \\ slide, ~ vibrato…).</p>' +
-      '<p>Segue a gravação e as correções de sincronização <strong>ainda por aplicar</strong>, tal como a partitura por baixo — serve para confirmar a sincronização a ver as notas chegar. Precisa de WebGL (aceleração gráfica) no browser.</p>'
+    title: T('Pista 3D'),
+    body: T('<p>As notas da pista escolhida a descer para as cordas, como no Rocksmith: cada corda na sua cor (Mi grave vermelho em cima), o traste na face da nota e uma linha até ao traste onde se toca. Quando a nota chega à corda, a corda brilha e a nota fica pousada nela, com o número, enquanto soa.</p>') +
+      T('<p>A afinação está escrita na pestana do headstock. Acordes têm moldura e nome; uma corda solta é uma barra ao longo da zona da mão (a faixa azul), que a câmara segue. Por cima da nota aparece a técnica (H hammer-on, P pull-off, PM palm mute, ↑ bend, / \\ slide, ~ vibrato…).</p>') +
+      T('<p>Segue a gravação e as correções de sincronização <strong>ainda por aplicar</strong>, tal como a partitura por baixo — serve para confirmar a sincronização a ver as notas chegar. Precisa de WebGL (aceleração gráfica) no browser.</p>')
   },
   'tab-viewer': {
-    title: 'Partitura — legenda',
-    body: '<p>● nota · ▮ nota de acorde (ligadas por barra vertical) · sigla sobreposta = técnica:<br>B bend · H hammer-on · P pull-off · S slide · HA harmónico · PM palm mute · V vibrato · T tapping · SL slap · PO pop · A acento<br>Passa o cursor sobre a nota para ver a lista completa.<br>Cor = corda (igual ao Rocksmith): <span style="color:#e6483c">E</span> <span style="color:#f5dc3c">A</span> <span style="color:#3f9bdc">D</span> <span style="color:#f0973c">G</span> <span style="color:#5cc24a">B</span> <span style="color:#b56cdc">e</span> (grave→agudo). Eixo X em segundos.</p>'
+    title: T('Partitura — legenda'),
+    body: T('<p>● nota · ▮ nota de acorde (ligadas por barra vertical) · sigla sobreposta = técnica:<br>B bend · H hammer-on · P pull-off · S slide · HA harmónico · PM palm mute · V vibrato · T tapping · SL slap · PO pop · A acento<br>Passa o cursor sobre a nota para ver a lista completa.<br>Cor = corda (igual ao Rocksmith): <span style="color:#e6483c">E</span> <span style="color:#f5dc3c">A</span> <span style="color:#3f9bdc">D</span> <span style="color:#f0973c">G</span> <span style="color:#5cc24a">B</span> <span style="color:#b56cdc">e</span> (grave→agudo). Eixo X em segundos.</p>')
   },
   'sync-modes': {
-    title: 'Modos de correção da partitura',
-    body: `<p><strong>Arrastar nota:</strong> arrasta uma nota horizontalmente para o instante correto — cria um ponto de correção; as notas entre pontos são esticadas/comprimidas.</p>
+    title: T('Modos de correção da partitura'),
+    body: T(`<p><strong>Arrastar nota:</strong> arrasta uma nota horizontalmente para o instante correto — cria um ponto de correção; as notas entre pontos são esticadas/comprimidas.</p>
 <p><strong>Encaixar nos tempos (beats):</strong> com o encaixe ligado, a nota salta de beat em beat (a grelha da partitura, mostrada com marcas no fundo) em vez de deslizar de forma contínua. Mantém <strong>Alt</strong> premido durante o arrasto para colocar livremente (afinação sub-beat). Escolhe <strong>"Cursor de reprodução"</strong> na grelha para arrastar a nota diretamente para a posição atual do leitor (em vez do beat mais próximo) — a forma mais fiável de alinhar com o cursor.</p>
 <p><strong>Marcar no cursor:</strong> clica numa nota para a ancorar na posição atual do cursor de reprodução — útil para alinhar enquanto o áudio toca.</p>
 <p><strong>Selecionar excerto:</strong> arrasta uma caixa sobre as notas e depois arrasta uma delas — o excerto move-se em bloco (também com encaixe nos beats).</p>
@@ -906,80 +906,80 @@ const INFO = {
 <p><strong>Novo beat (detetar):</strong> clica numa nota onde o andamento muda — o RockForge mede o andamento da gravação a partir desse instante e re-espaça as notas seguintes.</p>
 <p><strong>Alinhar compasso:</strong> pausa a gravação onde um compasso deve soar e clica numa nota — abre um popup com o número do compasso (o da nota, já escolhido). Confirma com "= cursor" e esse compasso alinha-se ao cursor, arrastando as notas seguintes; ou "= pista" para o alinhar ao mesmo compasso de outra pista já sincronizada. Feito várias vezes ao longo da música, corrige o desvio compasso a compasso.</p>
 <p><strong>Secção:</strong> clica numa nota para nomear onde começa uma secção (intro/verso/refrão…) — nada a ver com sincronização, é só estrutura da música. Ver o painel "🏷️ Secções" abaixo.</p>
-<p><strong>Editar notas:</strong> clica numa nota existente para a editar (traste, sustain, técnicas, bend, slide) ou removê-la; <strong>duplo-clique</strong> no pentagrama vazio insere uma nota nova, encaixada na grelha de sincronização (um clique simples no vazio move o cursor, como nos outros modos). Muda o <em>conteúdo</em> da partitura — as notas deixam de vir só do ficheiro Guitar Pro — e fica pendente (contorno tracejado verde-água) até "Aplicar e reconstruir".</p>`
+<p><strong>Editar notas:</strong> clica numa nota existente para a editar (traste, sustain, técnicas, bend, slide) ou removê-la; <strong>duplo-clique</strong> no pentagrama vazio insere uma nota nova, encaixada na grelha de sincronização (um clique simples no vazio move o cursor, como nos outros modos). Muda o <em>conteúdo</em> da partitura — as notas deixam de vir só do ficheiro Guitar Pro — e fica pendente (contorno tracejado verde-água) até "Aplicar e reconstruir".</p>`)
   },
   'sections': {
-    title: 'Secções da música',
-    body: '<p>Marca e nomeia a estrutura da música (intro/verso/refrão/solo…) diretamente na partitura — útil para navegar e para o <strong>Riff Repeater</strong> no jogo, sem teres de voltar ao Guitar Pro.</p>' +
-      '<p><strong>Adicionar:</strong> ativa o modo "Secção" e clica numa nota para a nomear, ou usa "+ Adicionar no cursor" para marcar a posição atual do leitor sem precisares de acertar numa nota.</p>' +
-      '<p><strong>Editar:</strong> a lista abaixo tem o tempo e o nome de cada secção editáveis diretamente — muda o número para reposicionar, o texto para renomear, ou remove-a.</p>' +
-      '<p>As secções são <strong>partilhadas por todos os arranjos</strong> (Lead/Rhythm/Combined) — tal como as mudanças de tom, marcadas uma vez e aplicadas a todos. Ficam em pré-visualização (etiqueta 🏷️ verde-água na partitura) até confirmares com "Aplicar e reconstruir"; sem qualquer edição, a música mantém as secções que já vinham do ficheiro Guitar Pro.</p>'
+    title: T('Secções da música'),
+    body: T('<p>Marca e nomeia a estrutura da música (intro/verso/refrão/solo…) diretamente na partitura — útil para navegar e para o <strong>Riff Repeater</strong> no jogo, sem teres de voltar ao Guitar Pro.</p>') +
+      T('<p><strong>Adicionar:</strong> ativa o modo "Secção" e clica numa nota para a nomear, ou usa "+ Adicionar no cursor" para marcar a posição atual do leitor sem precisares de acertar numa nota.</p>') +
+      T('<p><strong>Editar:</strong> a lista abaixo tem o tempo e o nome de cada secção editáveis diretamente — muda o número para reposicionar, o texto para renomear, ou remove-a.</p>') +
+      T('<p>As secções são <strong>partilhadas por todos os arranjos</strong> (Lead/Rhythm/Combined) — tal como as mudanças de tom, marcadas uma vez e aplicadas a todos. Ficam em pré-visualização (etiqueta 🏷️ verde-água na partitura) até confirmares com "Aplicar e reconstruir"; sem qualquer edição, a música mantém as secções que já vinham do ficheiro Guitar Pro.</p>')
   },
   'lyrics': {
-    title: 'Deteção automática de letra',
-    body: '<p>Isola a voz com o Demucs e transcreve com o WhisperX — pode demorar alguns minutos (Demucs na CPU é lento).<br>Requer <code>pip install -e ".[lyrics]"</code>.<br>Depois podes editar palavras e tempos à mão, ou criar tudo manualmente sem detetar.</p>'
+    title: T('Deteção automática de letra'),
+    body: T('<p>Isola a voz com o Demucs e transcreve com o WhisperX — pode demorar alguns minutos (Demucs na CPU é lento).<br>Requer <code>pip install -e ".[lyrics]"</code>.<br>Depois podes editar palavras e tempos à mão, ou criar tudo manualmente sem detetar.</p>')
   },
   'album-lookup': {
-    title: 'Álbum, ano e capa automáticos',
-    body: '<p>Procura a música pelo <strong>título e banda</strong> no iTunes e no MusicBrainz (capas do Cover Art Archive) e mostra os álbuns onde ela aparece. <strong>Escolhes tu</strong> o certo: o clique preenche o álbum e o ano e usa essa capa.</p>' +
-      '<p>A pesquisa é por texto, por isso pode trazer versões de outros artistas, compilações ou reedições — cada cartão mostra a faixa encontrada e a fonte para o veres. "Sem capa" não usa imagem nenhuma. Precisa de internet; sem ela, preenche à mão como antes.</p>' +
-      '<p>A capa escolhida é descarregada quando o projeto é criado. Num projeto que já existe, usa "Procurar capa online" na página Capa.</p>'
+    title: T('Álbum, ano e capa automáticos'),
+    body: T('<p>Procura a música pelo <strong>título e banda</strong> no iTunes e no MusicBrainz (capas do Cover Art Archive) e mostra os álbuns onde ela aparece. <strong>Escolhes tu</strong> o certo: o clique preenche o álbum e o ano e usa essa capa.</p>') +
+      T('<p>A pesquisa é por texto, por isso pode trazer versões de outros artistas, compilações ou reedições — cada cartão mostra a faixa encontrada e a fonte para o veres. "Sem capa" não usa imagem nenhuma. Precisa de internet; sem ela, preenche à mão como antes.</p>') +
+      T('<p>A capa escolhida é descarregada quando o projeto é criado. Num projeto que já existe, usa "Procurar capa online" na página Capa.</p>')
   },
   'wz-lyrics': {
-    title: 'Letra sincronizada (ao criar)',
-    body: '<p>Procura a letra da música no <b>LRCLIB</b> (base aberta, sem conta) pelo título e pela banda — corre sozinha quando chegas a este passo. A melhor versão <b>com tempos</b> fica escolhida e entra logo no primeiro build; clica noutra para mudar, ou em "Escolhida ✓" para não usar nenhuma.</p>' +
-      '<p>Os tempos são os da gravação original. Se a tua versão tiver outra introdução, ajusta-os depois na página <b>Letra</b> ("1ª palavra = cursor", −/+, ou "Sincronizar com a gravação"). Se o ficheiro GP já trouxer letra, nada fica escolhido sozinho — uma letra daqui substituiria a do GP. Um ficheiro LRC carregado abaixo tem sempre prioridade.</p>' +
-      '<p>Remixes de fãs e músicas feitas por IA raramente estão no LRCLIB.</p>'
+    title: T('Letra sincronizada (ao criar)'),
+    body: T('<p>Procura a letra da música no <b>LRCLIB</b> (base aberta, sem conta) pelo título e pela banda — corre sozinha quando chegas a este passo. A melhor versão <b>com tempos</b> fica escolhida e entra logo no primeiro build; clica noutra para mudar, ou em "Escolhida ✓" para não usar nenhuma.</p>') +
+      T('<p>Os tempos são os da gravação original. Se a tua versão tiver outra introdução, ajusta-os depois na página <b>Letra</b> ("1ª palavra = cursor", −/+, ou "Sincronizar com a gravação"). Se o ficheiro GP já trouxer letra, nada fica escolhido sozinho — uma letra daqui substituiria a do GP. Um ficheiro LRC carregado abaixo tem sempre prioridade.</p>') +
+      T('<p>Remixes de fãs e músicas feitas por IA raramente estão no LRCLIB.</p>')
   },
   'insp-lyrics': {
-    title: 'Acertar a letra na partitura',
-    body: '<p>As mesmas edições da página <b>Letra</b>, ao lado das notas onde a ouves. Clica numa palavra na partitura para a escolher (arrastá-la também a move).</p>' +
-      '<p><b>Daqui em diante = cursor</b> — põe o cursor onde a palavra devia soar: ela vai para lá e todas as seguintes acompanham-na, as anteriores ficam onde estão. É a forma rápida de corrigir uma letra que sai do tempo a meio: vai de palavra em palavra onde começa a desviar. <b>Só esta = cursor</b> move apenas essa palavra; −/+ movem-na com as seguintes pelo passo indicado em cima.</p>' +
-      '<p><b>1ª palavra = cursor</b> e −/+ em "Letra toda" movem a letra inteira (adiantada ou atrasada por igual). Tudo fica pendente até "Aplicar e reconstruir".</p>' +
-      '<p><b>Acompanha as correções de sincronização da partitura</b> — quando a letra vem da própria pauta, está presa às notas: se corriges o início, o andamento ou arrastas notas, as palavras mudam com elas. Segue a pista indicada (a primeira: Lead, senão Rhythm, senão Combo). Vem desligado para uma letra do LRCLIB ou detetada na gravação, que está presa à gravação e não às notas.</p>'
+    title: T('Acertar a letra na partitura'),
+    body: T('<p>As mesmas edições da página <b>Letra</b>, ao lado das notas onde a ouves. Clica numa palavra na partitura para a escolher (arrastá-la também a move).</p>') +
+      T('<p><b>Daqui em diante = cursor</b> — põe o cursor onde a palavra devia soar: ela vai para lá e todas as seguintes acompanham-na, as anteriores ficam onde estão. É a forma rápida de corrigir uma letra que sai do tempo a meio: vai de palavra em palavra onde começa a desviar. <b>Só esta = cursor</b> move apenas essa palavra; −/+ movem-na com as seguintes pelo passo indicado em cima.</p>') +
+      T('<p><b>1ª palavra = cursor</b> e −/+ em "Letra toda" movem a letra inteira (adiantada ou atrasada por igual). Tudo fica pendente até "Aplicar e reconstruir".</p>') +
+      T('<p><b>Acompanha as correções de sincronização da partitura</b> — quando a letra vem da própria pauta, está presa às notas: se corriges o início, o andamento ou arrastas notas, as palavras mudam com elas. Segue a pista indicada (a primeira: Lead, senão Rhythm, senão Combo). Vem desligado para uma letra do LRCLIB ou detetada na gravação, que está presa à gravação e não às notas.</p>')
   },
   'lyrics-lookup': {
-    title: 'Procurar a letra e sincronizá-la',
-    body: '<p>Procura a letra no <strong>LRCLIB</strong> (base de dados aberta de letras) pelo título e banda do projeto. Muitas letras vêm <strong>sincronizadas</strong> por linha; outras são <strong>só texto</strong>.</p>' +
-      '<p><strong>Usar</strong> carrega a letra sincronizada no editor com os tempos da versão em que foi feita (normalmente a oficial). Se a tua gravação é essa versão, já bate certo; se tem uma introdução diferente, <strong>1ª palavra = cursor</strong> (põe o cursor onde começa a voz) ou os botões −/+ deslocam a letra toda.</p>' +
-      '<p><strong>Sincronizar com a gravação</strong> usa o WhisperX para medir na voz da <em>tua</em> gravação o tempo de <em>cada palavra</em> da letra que está no editor — as palavras ficam as certas, só os tempos são medidos. Numa letra só texto procura na música inteira (menos fiável). Precisa dos extras <code>[ml,lyrics]</code> e demora alguns minutos.</p>' +
-      '<p>A letra fica pendente até "Aplicar e reconstruir". Remixes de fãs e músicas feitas por IA raramente estão no LRCLIB — aí usa "Detetar letra" ou escreve-a no editor.</p>'
+    title: T('Procurar a letra e sincronizá-la'),
+    body: T('<p>Procura a letra no <strong>LRCLIB</strong> (base de dados aberta de letras) pelo título e banda do projeto. Muitas letras vêm <strong>sincronizadas</strong> por linha; outras são <strong>só texto</strong>.</p>') +
+      T('<p><strong>Usar</strong> carrega a letra sincronizada no editor com os tempos da versão em que foi feita (normalmente a oficial). Se a tua gravação é essa versão, já bate certo; se tem uma introdução diferente, <strong>1ª palavra = cursor</strong> (põe o cursor onde começa a voz) ou os botões −/+ deslocam a letra toda.</p>') +
+      T('<p><strong>Sincronizar com a gravação</strong> usa o WhisperX para medir na voz da <em>tua</em> gravação o tempo de <em>cada palavra</em> da letra que está no editor — as palavras ficam as certas, só os tempos são medidos. Numa letra só texto procura na música inteira (menos fiável). Precisa dos extras <code>[ml,lyrics]</code> e demora alguns minutos.</p>') +
+      T('<p>A letra fica pendente até "Aplicar e reconstruir". Remixes de fãs e músicas feitas por IA raramente estão no LRCLIB — aí usa "Detetar letra" ou escreve-a no editor.</p>')
   },
   'songsterr-import': {
-    title: 'Importar a tab do Songsterr',
-    body: '<p>Em vez de um ficheiro Guitar Pro, cola o link da música no <strong>Songsterr</strong>. O RockForge descarrega as pistas da tab e cria com elas um ficheiro Guitar Pro 5, que segue o caminho normal (escolhes as pistas no passo 2).</p>' +
-      '<p>No passo 3 aparecem os <strong>vídeos do YouTube</strong> dessa música com o tempo de cada compasso marcado por pessoas, e o áudio do vídeo escolhido é descarregado para ser a gravação (ou carregas um MP3 convertido dele). Com isso, as notas seguem a gravação compasso a compasso, sem acertos manuais.</p>' +
-      '<p>Limites: a API do Songsterr não é pública e pode mudar; as pistas de bateria ficam de fora; notas de ornamento (grace) não são incluídas. A letra vem quando a tab a tem, com cada sílaba na nota da pista em que está escrita (normalmente a da voz); se não tiver, procura-a no passo 4 ou na página Letra. O ficheiro criado pode ser exportado e aberto no Guitar Pro.</p>'
+    title: T('Importar a tab do Songsterr'),
+    body: T('<p>Em vez de um ficheiro Guitar Pro, cola o link da música no <strong>Songsterr</strong>. O RockForge descarrega as pistas da tab e cria com elas um ficheiro Guitar Pro 5, que segue o caminho normal (escolhes as pistas no passo 2).</p>') +
+      T('<p>No passo 3 aparecem os <strong>vídeos do YouTube</strong> dessa música com o tempo de cada compasso marcado por pessoas, e o áudio do vídeo escolhido é descarregado para ser a gravação (ou carregas um MP3 convertido dele). Com isso, as notas seguem a gravação compasso a compasso, sem acertos manuais.</p>') +
+      T('<p>Limites: a API do Songsterr não é pública e pode mudar; as pistas de bateria ficam de fora; notas de ornamento (grace) não são incluídas. A letra vem quando a tab a tem, com cada sílaba na nota da pista em que está escrita (normalmente a da voz); se não tiver, procura-a no passo 4 ou na página Letra. O ficheiro criado pode ser exportado e aberto no Guitar Pro.</p>')
   },
   'youtube-audio': {
-    title: 'Áudio do vídeo do YouTube',
-    body: '<p>Cola o link de um vídeo do YouTube com a música: o RockForge descarrega o áudio com o <strong>yt-dlp</strong> e usa-o como gravação do projeto — já não precisas de o converter à mão. Serve para qualquer ficheiro GP, também um feito por ti. A sincronização acerta-se depois na partitura.</p>' +
-      '<p>Com os <strong>tempos por compasso do Songsterr</strong> tem de ser o vídeo em que esses tempos foram marcados — ao escolheres o vídeo lá, o link aparece aqui sozinho.</p>' +
-      '<p><strong>Precisa de duas coisas instaladas:</strong> o yt-dlp com o solucionador do YouTube (<code>pip install -U "yt-dlp[default]"</code>) e um <strong>motor JavaScript</strong>, o Deno (<code>winget install DenoLand.Deno</code>; o Node também serve). O YouTube só entrega o áudio a quem resolver um desafio em JavaScript — sem o motor recusa, mesmo sem pedir login. Depois de instalar, reinicia o RockForge. ⚙️ Definições → Software externo mostra o que falta.</p>' +
-      '<p><strong>Se o YouTube pedir uma sessão</strong> ("confirma que não és um robô"), escolhe em "Sessão do browser" um browser onde tenhas o YouTube aberto. No Windows usa o <strong>Firefox</strong>: o yt-dlp não consegue ler a sessão do Chrome, do Edge nem dos outros baseados no Chromium.</p>' +
-      '<p>Se o YouTube mudar e os downloads falharem, atualizar o yt-dlp costuma resolver. Descarregar do YouTube vai contra os termos do YouTube fora das funções que ele oferece — usa só para uso pessoal, com música a que tens direito.</p>'
+    title: T('Áudio do vídeo do YouTube'),
+    body: T('<p>Cola o link de um vídeo do YouTube com a música: o RockForge descarrega o áudio com o <strong>yt-dlp</strong> e usa-o como gravação do projeto — já não precisas de o converter à mão. Serve para qualquer ficheiro GP, também um feito por ti. A sincronização acerta-se depois na partitura.</p>') +
+      T('<p>Com os <strong>tempos por compasso do Songsterr</strong> tem de ser o vídeo em que esses tempos foram marcados — ao escolheres o vídeo lá, o link aparece aqui sozinho.</p>') +
+      T('<p><strong>Precisa de duas coisas instaladas:</strong> o yt-dlp com o solucionador do YouTube (<code>pip install -U "yt-dlp[default]"</code>) e um <strong>motor JavaScript</strong>, o Deno (<code>winget install DenoLand.Deno</code>; o Node também serve). O YouTube só entrega o áudio a quem resolver um desafio em JavaScript — sem o motor recusa, mesmo sem pedir login. Depois de instalar, reinicia o RockForge. ⚙️ Definições → Software externo mostra o que falta.</p>') +
+      T('<p><strong>Se o YouTube pedir uma sessão</strong> ("confirma que não és um robô"), escolhe em "Sessão do browser" um browser onde tenhas o YouTube aberto. No Windows usa o <strong>Firefox</strong>: o yt-dlp não consegue ler a sessão do Chrome, do Edge nem dos outros baseados no Chromium.</p>') +
+      T('<p>Se o YouTube mudar e os downloads falharem, atualizar o yt-dlp costuma resolver. Descarregar do YouTube vai contra os termos do YouTube fora das funções que ele oferece — usa só para uso pessoal, com música a que tens direito.</p>')
   },
   'cover-art': {
-    title: 'Capa do álbum',
-    body: '<p>Imagem JPG ou PNG incluída no bundle como <code>cover.*</code> e referenciada no <code>rockforge.rs2dlc</code> — usa-a como capa ao abrir o projeto no DLC Builder (que gera as texturas DDS do jogo).<br>O upload não reconstrói o bundle — clica em "Aplicar e reconstruir" na tab Partitura para incluir a capa.</p>'
+    title: T('Capa do álbum'),
+    body: T('<p>Imagem JPG ou PNG incluída no bundle como <code>cover.*</code> e referenciada no <code>rockforge.rs2dlc</code> — usa-a como capa ao abrir o projeto no DLC Builder (que gera as texturas DDS do jogo).<br>O upload não reconstrói o bundle — clica em "Aplicar e reconstruir" na tab Partitura para incluir a capa.</p>')
   },
   'tones': {
-    title: 'Tons (amp, cabine, efeitos)',
-    body: `<p>Define os tons da CDLC com <strong>gear real</strong> (amplificador, cabine e pedais/racks da biblioteca do Rocksmith). São gravados no <code>rockforge.rs2dlc</code> e no <code>.psarc</code>, por isso funcionam no jogo sem teres de os recriar no DLC Builder.</p>
+    title: T('Tons (amp, cabine, efeitos)'),
+    body: T(`<p>Define os tons da CDLC com <strong>gear real</strong> (amplificador, cabine e pedais/racks da biblioteca do Rocksmith). São gravados no <code>rockforge.rs2dlc</code> e no <code>.psarc</code>, por isso funcionam no jogo sem teres de os recriar no DLC Builder.</p>
 <p><strong>Criar:</strong> clica em "+ Criar / editar tons", depois "+ Novo tom". Escolhe o amplificador e a cabine (obrigatórios) e adiciona efeitos opcionais. Cada botão de knob vem com o valor por defeito do catálogo.</p>
 <p><strong>Atribuir:</strong> escolhe o <strong>Tom base</strong> (o que toca no início) e marca até <strong>4</strong> tons "extra" que poderás trocar ao longo da música.</p>
 <p><strong>Trocar a meio:</strong> com o modo "Mudança de tom" ativo, clica numa nota na partitura para colocar lá uma troca para um dos tons extra.</p>
 <p><strong>Por pista:</strong> no jogo os tons são <strong>por arranjo</strong>. Com "Mesmos tons em todas as pistas" marcado, todas usam o mesmo conjunto; desmarcado, cada pista (a que está aberta na partitura) tem o seu tom base, extras e trocas — o Lead pode ir para um tom de solo enquanto o Rhythm fica no crunch. Os tons criados são partilhados.</p>
-<p>Só se aplicam a projetos de Guitar Pro. Sem tons definidos, o DLC Builder marca "tone missing" e resolves com a biblioteca dele.</p>`
+<p>Só se aplicam a projetos de Guitar Pro. Sem tons definidos, o DLC Builder marca "tone missing" e resolves com a biblioteca dele.</p>`)
   },
   'tone-sections': {
-    title: 'Sugestões de tom por secção',
-    body: `<p>O "Detetar tom" mede o som da guitarra <strong>ao longo da música</strong> (janelas de 4 s): onde está mais limpo, onde distorce mais. Aqui, esse som é lido contra o que <strong>cada pista toca</strong> em cada parte (as secções da música, ou grupos de 8 compassos):</p>
+    title: T('Sugestões de tom por secção'),
+    body: T(`<p>O "Detetar tom" mede o som da guitarra <strong>ao longo da música</strong> (janelas de 4 s): onde está mais limpo, onde distorce mais. Aqui, esse som é lido contra o que <strong>cada pista toca</strong> em cada parte (as secções da música, ou grupos de 8 compassos):</p>
 <ul><li><strong>Limpo</strong> — a gravação está limpa ali, ou a pista deixa soar acordes/arpejos sem palm mute;</li>
 <li><strong>Solo</strong> — notas soltas com bends, vibrato, ligados ou na casa 12 e acima;</li>
 <li><strong>Ritmo</strong> — acordes, palm mute.</li></ul>
 <p>Para cada parte escolhe o tom mais parecido dessa família, e diz porquê e com que confiança. Uma parte onde a pista não toca mantém o tom anterior; partes seguidas com o mesmo tom juntam-se; cada pista fica com <strong>no máximo 4 tons</strong> (os espaços A–D do Rocksmith, com o base incluído para se poder voltar a ele).</p>
-<p><strong>Limites honestos:</strong> a separação dá TODAS as guitarras juntas, por isso a diferença entre pistas vem da partitura, não do áudio. Os tons são escolhidos pelo <em>carácter</em> (distorção, brilho, graves) — não identificam o amplificador real. As partes e tempos são os da última reconstrução.</p>`
+<p><strong>Limites honestos:</strong> a separação dá TODAS as guitarras juntas, por isso a diferença entre pistas vem da partitura, não do áudio. Os tons são escolhidos pelo <em>carácter</em> (distorção, brilho, graves) — não identificam o amplificador real. As partes e tempos são os da última reconstrução.</p>`)
   },
 };
 
