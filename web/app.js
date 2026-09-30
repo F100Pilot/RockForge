@@ -5083,7 +5083,7 @@ function renderAlbumGrid(el, candidates, selected, onPick, { withNone = false } 
     card(i, art, c.album, [meta, `"${c.track}" · ${ALBUM_SOURCE[c.source] || c.source}`]);
   });
   if (withNone && candidates.length)
-    card(-1, placeholder('x'), 'Sem capa', ['não usar nenhuma imagem']);
+    card(-1, placeholder('x'), T('Sem capa'), [T('não usar nenhuma imagem')]);
 }
 
 // Wizard step 4: searched once automatically on arrival (title and band are
@@ -5121,15 +5121,15 @@ async function searchWizardAlbum() {
   const title = form.querySelector('input[name=title]').value.trim();
   const artist = form.querySelector('input[name=artist]').value.trim();
   const info = document.getElementById('wzAlbumInfo');
-  if (!title || !artist) { info.textContent = 'Preenche o título e a banda para procurar.'; return; }
+  if (!title || !artist) { info.textContent = T('Preenche o título e a banda para procurar.'); return; }
   const btn = document.getElementById('wzAlbumSearch');
   btn.disabled = true;
-  info.textContent = 'A procurar…';
+  info.textContent = T('A procurar…');
   try {
     wzAlbumCandidates = await lookupAlbums(title, artist);
   } catch (err) {
     wzAlbumCandidates = [];
-    info.textContent = `Não consegui procurar agora (${err.message}). Podes preencher à mão.`;
+    info.textContent = T('Não consegui procurar agora ({msg}). Podes preencher à mão.', { msg: err.message });
     document.getElementById('wzAlbumResults').replaceChildren();
     return;
   } finally {
@@ -5141,7 +5141,7 @@ async function searchWizardAlbum() {
     document.getElementById('wzCoverUrl').value = '';
     return;
   }
-  info.textContent = `${wzAlbumCandidates.length} resultado(s) — escolhe o álbum e a capa certos.`;
+  info.textContent = T('{n} resultado(s) — escolhe o álbum e a capa certos.', { n: wzAlbumCandidates.length });
   // Preselect the best guess but never overwrite what the user (or the GP
   // file) already typed; clicking a card is an explicit choice and does.
   pickWizardAlbum(0, { fillEmptyOnly: true });
@@ -5192,13 +5192,13 @@ function renderWizardLyrics() {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = i === wzLyricsPick ? '' : 'secondary';
-      b.textContent = i === wzLyricsPick ? 'Escolhida ✓' : 'Usar';
+      b.textContent = i === wzLyricsPick ? T('Escolhida ✓') : T('Usar');
       b.addEventListener('click', () => pickWizardLyrics(i === wzLyricsPick ? -1 : i));
       acts.append(b);
     } else {
       const note = document.createElement('span');
       note.className = 'meta';
-      note.textContent = c.plain ? 'sem tempos — sincroniza-a depois na página Letra' : '';
+      note.textContent = c.plain ? T('sem tempos — sincroniza-a depois na página Letra') : '';
       acts.append(note);
     }
     card.append(lyricsCardBody(c, wzRecordingS), acts);
@@ -5211,10 +5211,10 @@ function pickWizardLyrics(idx) {
   wzLyricsPick = c && c.synced ? idx : -1;
   document.getElementById('wzLyricsLrc').value = wzLyricsPick >= 0 ? c.synced : '';
   const info = document.getElementById('wzLyricsInfo');
-  if (wzLyricsPick < 0) info.textContent = 'Sem letra do LRCLIB — podes procurá-la depois na página Letra.';
-  else if (wizardLrcFileChosen()) info.textContent = 'Escolheste também um ficheiro LRC: é esse que vai ser usado.';
-  else info.textContent = `Vai ser usada a letra de "${c.track}" (${c.album || 'LRCLIB'}). `
-    + 'Os tempos são os da gravação original: ajusta-os depois na página Letra se a tua versão tiver outra introdução.';
+  if (wzLyricsPick < 0) info.textContent = T('Sem letra do LRCLIB — podes procurá-la depois na página Letra.');
+  else if (wizardLrcFileChosen()) info.textContent = T('Escolheste também um ficheiro LRC: é esse que vai ser usado.');
+  else info.textContent = T('Vai ser usada a letra de "{track}" ({album}). Os tempos são os da gravação original: ajusta-os depois na página Letra se a tua versão tiver outra introdução.',
+    { track: c.track, album: c.album || 'LRCLIB' });
   renderWizardLyrics();
 }
 
@@ -5238,10 +5238,10 @@ async function searchWizardLyrics() {
   const title = form.querySelector('input[name=title]').value.trim();
   const artist = form.querySelector('input[name=artist]').value.trim();
   const info = document.getElementById('wzLyricsInfo');
-  if (!title || !artist) { info.textContent = 'Preenche o título e a banda para procurar.'; return; }
+  if (!title || !artist) { info.textContent = T('Preenche o título e a banda para procurar.'); return; }
   const btn = document.getElementById('wzLyricsSearch');
   btn.disabled = true;
-  info.textContent = 'A procurar…';
+  info.textContent = T('A procurar…');
   const audio = form.querySelector('input[name=audio]');
   wzRecordingS = await audioFileDuration(audio && audio.files && audio.files[0]);
   try {
@@ -5251,13 +5251,13 @@ async function searchWizardLyrics() {
     wzLyricsCandidates = r.candidates || [];
     if (!wzLyricsCandidates.length) {
       pickWizardLyrics(-1);
-      info.textContent = `Nada encontrado no LRCLIB para "${r.searched_title}" de ${r.searched_artist}. `
-        + 'Podes carregar um LRC abaixo, ou tratar da letra depois de criar.';
+      info.textContent = T('Nada encontrado no LRCLIB para "{title}" de {artist}. Podes carregar um LRC abaixo, ou tratar da letra depois de criar.',
+        { title: r.searched_title, artist: r.searched_artist });
       return;
     }
   } catch (err) {
     wzLyricsCandidates = [];
-    info.textContent = `Não consegui procurar agora (${err.message}). Podes tratar da letra depois de criar.`;
+    info.textContent = T('Não consegui procurar agora ({msg}). Podes tratar da letra depois de criar.', { msg: err.message });
     renderWizardLyrics();
     return;
   } finally {
@@ -5269,9 +5269,9 @@ async function searchWizardLyrics() {
   } else {
     wzLyricsPick = -1;
     document.getElementById('wzLyricsLrc').value = '';
-    info.textContent = `${wzLyricsCandidates.length} resultado(s) no LRCLIB. `
-      + (wzGpHasLyrics ? 'A pauta já traz letra — escolhe uma daqui só se a quiseres substituir por esta, com tempos.'
-        : best < 0 ? 'Nenhuma tem tempos — sincroniza-a depois na página Letra.' : 'Escolhe a versão da tua gravação.');
+    info.textContent = T('{n} resultado(s) no LRCLIB.', { n: wzLyricsCandidates.length }) + ' '
+      + (wzGpHasLyrics ? T('A pauta já traz letra — escolhe uma daqui só se a quiseres substituir por esta, com tempos.')
+        : best < 0 ? T('Nenhuma tem tempos — sincroniza-a depois na página Letra.') : T('Escolhe a versão da tua gravação.'));
     renderWizardLyrics();
   }
 }
@@ -5298,14 +5298,14 @@ async function applyCapaCandidate(idx) {
   const done = [];
   try {
     if (c.cover_url && !c.cover_broken) {
-      info.textContent = 'A descarregar a capa…';
+      info.textContent = T('A descarregar a capa…');
       const b = await getJSON(`/jobs/${selectedJob.id}/cover-from-url`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: c.cover_url }),
       });
       selectedJob.cover_art = b.cover_art;
       loadCoverArt(selectedJob);
-      done.push('capa');
+      done.push(T('capa'));
     }
     if (document.getElementById('capaFillMeta').checked) {
       const j = await getJSON(`/jobs/${selectedJob.id}/metadata`, {
@@ -5318,15 +5318,15 @@ async function applyCapaCandidate(idx) {
       Object.assign(selectedJob, { album: j.album, year: j.year });
       renderDetailHead(selectedJob);
       refreshJobs();
-      done.push('álbum e ano');
+      done.push(T('álbum e ano'));
     }
   } catch (err) {
-    info.textContent = `Não foi possível: ${err.message}`;
-    toast(`Não foi possível aplicar: ${err.message}`);
+    info.textContent = T('Não foi possível: {msg}', { msg: err.message });
+    toast(T('Não foi possível aplicar: {msg}', { msg: err.message }));
     return;
   }
-  info.textContent = done.length ? `Aplicado: ${done.join(' + ')}.` : 'Esse resultado não tem capa.';
-  if (done.length) toast('Aplicado — "Aplicar e reconstruir" para o incluir no bundle.', 'ok');
+  info.textContent = done.length ? T('Aplicado: {what}.', { what: done.join(' + ') }) : T('Esse resultado não tem capa.');
+  if (done.length) toast(T('Aplicado — "Aplicar e reconstruir" para o incluir no bundle.'), 'ok');
 }
 
 document.getElementById('capaSearch').addEventListener('click', async () => {
@@ -5335,19 +5335,19 @@ document.getElementById('capaSearch').addEventListener('click', async () => {
   const grid = document.getElementById('capaResults');
   const btn = document.getElementById('capaSearch');
   btn.disabled = true;
-  info.textContent = 'A procurar…';
+  info.textContent = T('A procurar…');
   try {
     capaCandidates = await lookupAlbums(selectedJob.title || '', selectedJob.artist || '');
   } catch (err) {
     capaCandidates = [];
     grid.replaceChildren();
-    info.textContent = `Não consegui procurar agora (${err.message}).`;
+    info.textContent = T('Não consegui procurar agora ({msg}).', { msg: err.message });
     return;
   } finally {
     btn.disabled = false;
   }
   info.textContent = capaCandidates.length
-    ? `${capaCandidates.length} resultado(s) — clica no certo para o aplicar.`
+    ? T('{n} resultado(s) — clica no certo para o aplicar.', { n: capaCandidates.length })
     : albumNothingFound();
   renderAlbumGrid(grid, capaCandidates, null, applyCapaCandidate);
 });
@@ -5367,7 +5367,7 @@ document.getElementById('sortLyrics').addEventListener('click', () => {
 });
 
 document.getElementById('exportLrc').addEventListener('click', () => {
-  if (!lyricsEvents.length) { toast('Sem letras para exportar.'); return; }
+  if (!lyricsEvents.length) { toast(T('Sem letras para exportar.')); return; }
   const sorted = [...lyricsEvents].sort((a, b) => a.time - b.time);
   let lines = [];
   let currentLine = [];
@@ -5400,7 +5400,7 @@ document.getElementById('exportLrc').addEventListener('click', () => {
   a.download = `${title}.lrc`;
   a.click();
   URL.revokeObjectURL(a.href);
-  toast('LRC exportado.', 'ok');
+  toast(T('LRC exportado.'), 'ok');
 });
 
 function updatePendingChangesInfo() {
@@ -5408,12 +5408,12 @@ function updatePendingChangesInfo() {
   if (!el) return;
   const parts = [];
   const builtOffset = selectedJob ? (selectedJob.offset_s || 0) : 0;
-  if (Math.abs(offsetLive - builtOffset) > 0.01) parts.push('offset');
-  if (Math.abs(tempoScaleLive - builtScale) > 0.001) parts.push('andamento');
-  if (syncAnchors.length) parts.push(`${syncAnchors.length} ponto(s) de correção`);
-  if (JSON.stringify(noteOverridesByKind) !== noteOverridesBuilt) parts.push('edições de notas');
-  if (JSON.stringify(serializeLyrics()) !== lyricsBuilt) parts.push('letra');
-  el.textContent = parts.length ? `Pendente: ${parts.join(', ')}` : '';
+  if (Math.abs(offsetLive - builtOffset) > 0.01) parts.push(T('offset'));
+  if (Math.abs(tempoScaleLive - builtScale) > 0.001) parts.push(T('andamento'));
+  if (syncAnchors.length) parts.push(T('{n} ponto(s) de correção', { n: syncAnchors.length }));
+  if (JSON.stringify(noteOverridesByKind) !== noteOverridesBuilt) parts.push(T('edições de notas'));
+  if (JSON.stringify(serializeLyrics()) !== lyricsBuilt) parts.push(T('letra'));
+  el.textContent = parts.length ? T('Pendente: {changes}', { changes: parts.join(', ') }) : '';
 }
 
 // Piecewise-linear remap from (chartTime, correctedTime) anchors — JS port of
@@ -5516,11 +5516,11 @@ function startFirstNoteFlow() {
   if (!isGpJob()) return;
   if (firstNoteFlow) { cancelFirstNoteFlow(); return; }  // clicking again cancels
   firstNoteFlow = 'audio';
-  firstNoteStatus('1) Clica na forma de onda onde COMEÇA o som da 1ª nota (clica de novo para ajustar).');
+  firstNoteStatus(T('1) Clica na forma de onda onde COMEÇA o som da 1ª nota (clica de novo para ajustar).'));
 }
 function cancelFirstNoteFlow() {
   firstNoteFlow = null;
-  firstNoteStatus('Deteção cancelada.');
+  firstNoteStatus(T('Deteção cancelada.'));
   if (arrangements.length) showArr(currentArr);
 }
 // Handle a click during the flow. Returns true if it consumed the click.
@@ -5539,8 +5539,8 @@ function firstNoteFlowClick(e, svg) {
     setAnchor(origT, firstNoteAudioT + viewOrigin);
     renderAnchorsList();
     updatePendingChangesInfo();
-    firstNoteStatus(`Início desta pista fixado em ${firstNoteAudioT.toFixed(2)}s — "Aplicar e reconstruir" para gravar.`);
-    toast('Início atualizado', 'ok');
+    firstNoteStatus(T('Início desta pista fixado em {s}s — "Aplicar e reconstruir" para gravar.', { s: firstNoteAudioT.toFixed(2) }));
+    toast(T('Início atualizado'), 'ok');
     showArr(currentArr);
     return true;
   }
@@ -5549,7 +5549,7 @@ function firstNoteFlowClick(e, svg) {
   firstNoteAudioT = Math.max(0, (e.clientX - rect.left - 30) / tabPx);
   audioSeek(firstNoteAudioT);  // move the playhead there to confirm by ear
   firstNoteFlow = 'note';
-  firstNoteStatus(`2) Som marcado em ${firstNoteAudioT.toFixed(2)}s — clica na 1ª NOTA para a alinhar aí (ou clica noutro ponto para ajustar).`);
+  firstNoteStatus(T('2) Som marcado em {s}s — clica na 1ª NOTA para a alinhar aí (ou clica noutro ponto para ajustar).', { s: firstNoteAudioT.toFixed(2) }));
   showArr(currentArr);
   return true;
 }
@@ -5591,7 +5591,7 @@ async function reTempoFromHere(grp) {
   const lastChartT = notes.length ? Math.max(...notes.map(n => n.time)) : chartT;
   const origLast = previewScale(lastChartT);
   const dispLast = warp(origLast);
-  if (dispLast <= dispT + 0.01) { toast('é a última nota — nada para re-espaçar', 'err'); return; }
+  if (dispLast <= dispT + 0.01) { toast(T('é a última nota — nada para re-espaçar'), 'err'); return; }
   const fromS = Math.max(0, dispT - viewOrigin);  // click's time in the recording
   // The chart's tempo as it plays RIGHT NOW at the click (authored spacing ×
   // tempo_scale × pending anchors). The factor is applied below as a relative
@@ -5600,30 +5600,30 @@ async function reTempoFromHere(grp) {
   // which otherwise defaults to 120 and reads a slow song at double time.
   const info = liveInfoAtTime(dispT, warp);
   const chartBpm = info && info.bpm ? info.bpm : null;
-  toast('A detetar andamento…', 'ok');
+  toast(T('A detetar andamento…'), 'ok');
   try {
     const r = await fetch(`/jobs/${selectedJob.id}/detect-tempo`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ from_s: fromS, chart_bpm: chartBpm }),
     });
     const b = await r.json();
-    if (!r.ok) { toast(b.detail || 'erro', 'err'); return; }
+    if (!r.ok) { toast(b.detail || T('erro'), 'err'); return; }
     const factor = b.suggested_factor;
     setAnchor(origT, dispT);                                     // fixed pivot at the click
     setAnchor(origLast, dispT + (dispLast - dispT) * factor);   // stretch the tail to the local BPM
     renderAnchorsList();
     updatePendingChangesInfo();
     showArr(currentArr);
-    const ref = b.reference_bpm ? ` (partitura ${b.reference_bpm.toFixed(1)})` : '';
-    toast(`Andamento: ${b.detected_bpm.toFixed(1)} BPM${ref} → ×${factor.toFixed(3)}`, 'ok');
-  } catch { toast('falha na deteção', 'err'); }
+    const ref = b.reference_bpm ? ' ' + T('(partitura {bpm})', { bpm: b.reference_bpm.toFixed(1) }) : '';
+    toast(T('Andamento: {bpm} BPM{ref} → ×{factor}', { bpm: b.detected_bpm.toFixed(1), ref, factor: factor.toFixed(3) }), 'ok');
+  } catch { toast(T('falha na deteção'), 'err'); }
 }
 
 function updateSelectionInfo() {
   const info = document.getElementById('selectionInfo');
   const clearBtn = document.getElementById('clearSelection');
   const n = selectedTimes.size;
-  info.textContent = n ? `${n} nota(s) selecionada(s) — arrasta uma para mover todas em bloco` : '';
+  info.textContent = n ? T('{n} nota(s) selecionada(s) — arrasta uma para mover todas em bloco', { n }) : '';
   clearBtn.hidden = n === 0;
   const copyBtn = document.getElementById('copyNotes');
   if (copyBtn) copyBtn.disabled = n === 0;
@@ -5752,7 +5752,7 @@ function updateSelectionInfo() {
       const origLast = previewScale(lastRaw);
       const dispLast = warp(origLast);
       if (dispLast <= dispClicked + 0.01) {
-        toast('é a última nota — usa "Arrastar nota"', 'err');
+        toast(T('é a última nota — usa "Arrastar nota"'), 'err');
         return;
       }
       const delta = (currentPlayheadT + viewOrigin) - dispClicked;  // brings clicked note to cursor
@@ -6016,16 +6016,16 @@ const SYNC_MODE_BUTTONS = [
   ['modeEditNotes', 'editnotes'],
 ];
 const MODE_HELP = {
-  drag: '<b>Arrastar:</b> arrasta uma nota para o instante da gravação onde ela deve tocar (encaixa no beat). As notas entre duas correções esticam/comprimem para acompanhar. Ideal para acertar um ponto que escorregou.',
-  tap: '<b>Marcar no cursor:</b> dá play, e quando ouvires uma nota na gravação, clica nessa nota na partitura — ela ancora na posição do cursor. Alinhar a tocar.',
-  excerpt: '<b>Excerto:</b> arrasta uma caixa por cima de várias notas e depois arrasta uma delas — movem-se todas em bloco. (Alternativa: Shift+clique numa nota e noutra para selecionar o intervalo.)',
-  movefrom: '<b>Mover seguintes:</b> pausa a gravação no instante certo e clica na 1ª nota desalinhada — essa nota e TODAS as seguintes deslocam-se em bloco para o cursor. Para um trecho inteiro que entrou tarde/cedo.',
-  newbeat: '<b>Corrigir daqui (detetar andamento) — o modo recomendado:</b> ouve até ao ponto onde a partitura começa a fugir da gravação e clica nessa nota. Mede o BPM real da gravação daí em diante e re-espaça só as notas seguintes. <b>Nada antes do clique se mexe</b>, por isso o que já estava bem fica intacto. Repete sempre que voltar a fugir — cada correção parte de onde a anterior deixou.',
-  baralign: '<b>Alinhar por compasso:</b> pausa a gravação no instante certo e clica numa nota — ou na <b>linha/número do compasso</b>, para o alinhar pelo seu início mesmo sem notas — abre um popup com esse compasso já escolhido. Confirma com "= cursor" e esse compasso alinha-se ao cursor (ou "= pista" para o mesmo compasso de outra pista). Faz-se várias vezes ao longo da música; cada correção arrasta as notas seguintes. No mesmo popup, <b>Andamento</b> muda o BPM desse compasso (ou de vários seguidos) e o resto da música acompanha, cada compasso com o seu próprio andamento.',
-  tonechange: '<b>Mudança de tom:</b> clica numa nota para trocar para um dos tons extra a partir daí.',
-  section: '<b>Secção:</b> clica numa nota para nomear onde começa uma secção (intro/verso/refrão…). Nada a ver com sincronização — é para navegação e o Riff Repeater.',
-  editnotes: '<b>Editar notas:</b> clica numa nota para a editar (traste, sustain, técnicas, bend/slide) ou remover; <b>duplo-clique</b> no pentagrama vazio insere uma nota nova, encaixada na grelha. Um clique simples no vazio move o cursor, como nos outros modos. Muda o CONTEÚDO da partitura — fica pendente até "Aplicar e reconstruir".',
-  null: 'Nenhum modo ativo. Clica num modo acima. <b>Dica:</b> para um desvio uniforme em todo o trecho, usa antes o <b>Andamento (BPM)</b> — não precisa de âncoras.',
+  drag: T('<b>Arrastar:</b> arrasta uma nota para o instante da gravação onde ela deve tocar (encaixa no beat). As notas entre duas correções esticam/comprimem para acompanhar. Ideal para acertar um ponto que escorregou.'),
+  tap: T('<b>Marcar no cursor:</b> dá play, e quando ouvires uma nota na gravação, clica nessa nota na partitura — ela ancora na posição do cursor. Alinhar a tocar.'),
+  excerpt: T('<b>Excerto:</b> arrasta uma caixa por cima de várias notas e depois arrasta uma delas — movem-se todas em bloco. (Alternativa: Shift+clique numa nota e noutra para selecionar o intervalo.)'),
+  movefrom: T('<b>Mover seguintes:</b> pausa a gravação no instante certo e clica na 1ª nota desalinhada — essa nota e TODAS as seguintes deslocam-se em bloco para o cursor. Para um trecho inteiro que entrou tarde/cedo.'),
+  newbeat: T('<b>Corrigir daqui (detetar andamento) — o modo recomendado:</b> ouve até ao ponto onde a partitura começa a fugir da gravação e clica nessa nota. Mede o BPM real da gravação daí em diante e re-espaça só as notas seguintes. <b>Nada antes do clique se mexe</b>, por isso o que já estava bem fica intacto. Repete sempre que voltar a fugir — cada correção parte de onde a anterior deixou.'),
+  baralign: T('<b>Alinhar por compasso:</b> pausa a gravação no instante certo e clica numa nota — ou na <b>linha/número do compasso</b>, para o alinhar pelo seu início mesmo sem notas — abre um popup com esse compasso já escolhido. Confirma com "= cursor" e esse compasso alinha-se ao cursor (ou "= pista" para o mesmo compasso de outra pista). Faz-se várias vezes ao longo da música; cada correção arrasta as notas seguintes. No mesmo popup, <b>Andamento</b> muda o BPM desse compasso (ou de vários seguidos) e o resto da música acompanha, cada compasso com o seu próprio andamento.'),
+  tonechange: T('<b>Mudança de tom:</b> clica numa nota para trocar para um dos tons extra a partir daí.'),
+  section: T('<b>Secção:</b> clica numa nota para nomear onde começa uma secção (intro/verso/refrão…). Nada a ver com sincronização — é para navegação e o Riff Repeater.'),
+  editnotes: T('<b>Editar notas:</b> clica numa nota para a editar (traste, sustain, técnicas, bend/slide) ou remover; <b>duplo-clique</b> no pentagrama vazio insere uma nota nova, encaixada na grelha. Um clique simples no vazio move o cursor, como nos outros modos. Muda o CONTEÚDO da partitura — fica pendente até "Aplicar e reconstruir".'),
+  null: T('Nenhum modo ativo. Clica num modo acima. <b>Dica:</b> para um desvio uniforme em todo o trecho, usa antes o <b>Andamento (BPM)</b> — não precisa de âncoras.'),
 };
 function setSyncMode(mode) {
   syncMode = mode;  // null = neutral: no mode highlighted, note-drag disabled
@@ -6041,7 +6041,7 @@ function setSyncMode(mode) {
   const ico = document.getElementById('modeMenuIco');
   const lbl = document.getElementById('modeMenuLbl');
   if (ico) ico.innerHTML = icon(src ? src.dataset.ico : 'mouse', 'dd-ico');
-  if (lbl) lbl.textContent = src ? src.dataset.name : 'Nenhum modo';
+  if (lbl) lbl.textContent = src ? src.dataset.name : T('Nenhum modo');
   document.getElementById('modeMenuBtn')?.classList.toggle('has-mode', !!src);
   document.getElementById('tabsvg')?.classList.toggle('mode-baralign', syncMode === 'baralign');
   const help = document.getElementById('modeHelp');
@@ -6526,7 +6526,7 @@ async function setHw3d(on) {
   } catch (err) {
     msg.textContent = err && err.message && err.message.includes('WebGL')
       ? err.message
-      : `Não consegui abrir a pista 3D: ${(err && err.message) || err}`;
+      : T('Não consegui abrir a pista 3D: {msg}', { msg: (err && err.message) || err });
     msg.hidden = false;
   }
 }
@@ -6559,7 +6559,7 @@ function updateLiveBpm(vtDisp, warp) {
   const el = document.getElementById('liveBpm');
   if (!el) return;
   const info = liveInfoAtTime(vtDisp, warp);
-  el.textContent = info && info.bpm ? `♩ = ${Math.round(info.bpm)}${info.measure ? ` · c.${info.measure}` : ''}` : '';
+  el.textContent = info && info.bpm ? `♩ = ${Math.round(info.bpm)}${info.measure ? ` · ${T('c.{n}', { n: info.measure })}` : ''}` : '';
   updateLiveTone(vtDisp, warp);
 }
 
@@ -6601,7 +6601,7 @@ function stopArrangementPreview() {
   previewOscillators = [];
   if (previewStopTimer) { clearTimeout(previewStopTimer); previewStopTimer = null; }
   const btn = document.getElementById('previewArr');
-  if (btn) btn.textContent = '▶ Pré-visualizar este arranjo';
+  if (btn) btn.textContent = T('▶ Pré-visualizar este arranjo');
 }
 
 function playArrangementPreview() {
@@ -6627,7 +6627,7 @@ function playArrangementPreview() {
     previewOscillators.push(osc);
   }
   const totalMs = (Math.max(...a.notes.map(n => n.time + (n.sustain || 0))) + 0.6) * 1000;
-  document.getElementById('previewArr').textContent = '■ Parar pré-visualização';
+  document.getElementById('previewArr').textContent = T('■ Parar pré-visualização');
   previewStopTimer = setTimeout(stopArrangementPreview, totalMs);
 }
 document.getElementById('previewArr').addEventListener('click', playArrangementPreview);
@@ -7087,7 +7087,7 @@ function updateTempoControls() {
     rangeEl.value = bpm;
   }
   // % of the GP's authored tempo (100% = unchanged; <100% = slower/stretched)
-  pctEl.textContent = `${Math.round(100 / tempoScaleLive)}% do andamento do GP`;
+  pctEl.textContent = T('{pct}% do andamento do GP', { pct: Math.round(100 / tempoScaleLive) });
 }
 
 // Set the previewed tempo scale for the CURRENT arrangement and redraw.
@@ -7146,8 +7146,8 @@ function setTrackStart(v) {
     if (!isGpJob()) return;
     const t = audioTime();
     setTrackStart(t);
-    info.textContent = `Início desta pista fixado na posição do cursor: ${t.toFixed(2)}s.`;
-    toast('Início = posição do cursor', 'ok');
+    info.textContent = T('Início desta pista fixado na posição do cursor: {s}s.', { s: t.toFixed(2) });
+    toast(T('Início = posição do cursor'), 'ok');
   });
   // (Fine ±0.01 nudges removed — the "Segundo" number field already steps by 0.01.)
 
@@ -7163,22 +7163,21 @@ function setTrackStart(v) {
   btn.addEventListener('click', async () => {
     if (!selectedJob) return;
     btn.disabled = true;
-    info.textContent = 'A analisar a gravação…';
+    info.textContent = T('A analisar a gravação…');
     try {
       const r = await fetch(`/jobs/${selectedJob.id}/detect-tuning`, { method: 'POST' });
       const b = await r.json();
-      if (!r.ok) { info.textContent = ''; toast(b.detail || 'erro', 'err'); return; }
+      if (!r.ok) { info.textContent = ''; toast(b.detail || T('erro'), 'err'); return; }
       centOffsetLive = b.suggested_cent_offset;
       const el = document.getElementById('centOffsetVal');
       if (el) el.textContent = centOffsetLive.toFixed(1);
       info.textContent =
-        `Desvio detetado: ${b.suggested_cent_offset.toFixed(1)} cents. ` +
-        `Aplica-se em "Aplicar e reconstruir". A afinação das cordas (drop/open) ` +
-        `não é detetada — vem do ficheiro GP.`;
-      toast('Afinação proposta — revê e aplica', 'ok');
+        T('Desvio detetado: {cents} cents. Aplica-se em "Aplicar e reconstruir". A afinação das cordas (drop/open) não é detetada — vem do ficheiro GP.',
+          { cents: b.suggested_cent_offset.toFixed(1) });
+      toast(T('Afinação proposta — revê e aplica'), 'ok');
     } catch {
       info.textContent = '';
-      toast('falha na análise', 'err');
+      toast(T('falha na análise'), 'err');
     } finally {
       btn.disabled = false;
     }
@@ -7287,10 +7286,11 @@ function audioSourceStyle() {
       Lead: '#a97bff', Rhythm: '#3fa7ff', Combo: '#ff8a5c',
       Combined: '#ff8a5c', Bass: '#5cc24a', [VOICE_SOURCE]: '#ff5fa2',
     };
-    return { color: palette[kind] || '#a97bff', label: `${arrLabel(kind)} (sintetizada)` };
+    const label = kind === VOICE_SOURCE ? T('Voz (sintetizada)') : T('{name} (sintetizada)', { name: arrLabel(kind) });
+    return { color: palette[kind] || '#a97bff', label };
   }
   if (n) return { color: '#3fb27f', label: STEM_LABELS[n] || n };
-  return { color: '#2a6f97', label: 'Mistura completa' };
+  return { color: '#2a6f97', label: T('Mistura completa') };
 }
 
 function waveformSvg(W, H, px) {
@@ -7337,7 +7337,7 @@ document.getElementById('gpInspectForm').addEventListener('submit', async e => {
   e.preventDefault();
   const r = await fetch('/gp/inspect', { method: 'POST', body: new FormData(e.target) });
   const b = await r.json();
-  if (!r.ok) return toast(b.detail || 'erro');
+  if (!r.ok) return toast(b.detail || T('erro'));
   songsterrImported = false;
   applyInspectResult(b);
 });
@@ -7349,7 +7349,10 @@ function applyInspectResult(b) {
   wzGpHasLyrics = !!b.has_lyrics;
   const form = document.getElementById('gpJobForm');
   document.getElementById('gpMeta').textContent =
-    `${b.title || '(sem título)'} — ${b.artist || '(sem banda)'} · ${b.tempo} BPM · letra no GP: ${b.has_lyrics ? 'sim' : 'não'}`;
+    T('{title} — {artist} · {tempo} BPM · letra no GP: {lyrics}', {
+      title: b.title || T('(sem título)'), artist: b.artist || T('(sem banda)'),
+      tempo: b.tempo, lyrics: b.has_lyrics ? T('sim') : T('não'),
+    });
   for (const name of ['lead_track', 'rhythm_track', 'combo_track', 'alt_lead_track', 'alt_rhythm_track']) {
     const sel = form.querySelector(`select[name=${name}]`);
     sel.innerHTML = '<option value="">—</option>' + b.tracks
@@ -7379,21 +7382,21 @@ function applyInspectResult(b) {
   }
   const syncHint = document.getElementById('gpSyncHint');
   const where = b.embedded_audio
-    ? (b.backing_disabled ? ' A faixa de áudio está desligada no Guitar Pro, mas é o áudio com que o ficheiro foi sincronizado, por isso é usado.' : '')
+    ? (b.backing_disabled ? ' ' + T('A faixa de áudio está desligada no Guitar Pro, mas é o áudio com que o ficheiro foi sincronizado, por isso é usado.') : '')
     : b.backing_youtube_url
-      ? ` No Guitar Pro o áudio é o deste vídeo do YouTube (${b.backing_youtube_url}) — estou a descarregá-lo em "Não tens o áudio?".`
+      ? ' ' + T('No Guitar Pro o áudio é o deste vídeo do YouTube ({url}) — estou a descarregá-lo em "Não tens o áudio?".', { url: b.backing_youtube_url })
       : b.backing_external_path
-        ? ` O áudio não vem dentro do ficheiro: o Guitar Pro usa «${b.backing_external_path}». Carrega esse ficheiro abaixo.`
+        ? ' ' + T('O áudio não vem dentro do ficheiro: o Guitar Pro usa «{path}». Carrega esse ficheiro abaixo.', { path: b.backing_external_path })
         : '';
   if (b.sync_start_s != null) {
     form.querySelector('input[name=offset_s]').value = b.sync_start_s.toFixed(3);
     const bar1 = b.sync_start_s >= 0
-      ? `começa em ${b.sync_start_s.toFixed(3)} s desse áudio`
-      : `começa ${(-b.sync_start_s).toFixed(3)} s antes de esse áudio começar`;
-    syncHint.textContent = `Este ficheiro foi sincronizado com o áudio no Guitar Pro 8 — o compasso 1 ${bar1}. ` +
+      ? T('começa em {s} s desse áudio', { s: b.sync_start_s.toFixed(3) })
+      : T('começa {s} s antes de esse áudio começar', { s: (-b.sync_start_s).toFixed(3) });
+    syncHint.textContent = T('Este ficheiro foi sincronizado com o áudio no Guitar Pro 8 — o compasso 1 {bar1}.', { bar1 }) + ' ' +
       (b.embedded_audio
-        ? 'Com o áudio do ficheiro GP (acima) o valor já está certo e as notas seguem o tempo variável do GP.'
-        : 'Se a gravação que carregas é esse mesmo ficheiro de áudio, o valor já está certo e as notas seguem o tempo variável do GP.') +
+        ? T('Com o áudio do ficheiro GP (acima) o valor já está certo e as notas seguem o tempo variável do GP.')
+        : T('Se a gravação que carregas é esse mesmo ficheiro de áudio, o valor já está certo e as notas seguem o tempo variável do GP.')) +
       where;
     syncHint.hidden = false;
   } else {
@@ -7412,9 +7415,9 @@ async function importSongsterrTab() {
   const link = document.getElementById('songsterrImportLink').value.trim();
   const info = document.getElementById('songsterrImportInfo');
   const btn = document.getElementById('songsterrImportBtn');
-  if (!link) { toast('Cola o link da música no Songsterr.'); return; }
+  if (!link) { toast(T('Cola o link da música no Songsterr.')); return; }
   btn.disabled = true;
-  info.textContent = 'A descarregar a tab do Songsterr e a criar o ficheiro Guitar Pro…';
+  info.textContent = T('A descarregar a tab do Songsterr e a criar o ficheiro Guitar Pro…');
   let b;
   try {
     b = await getJSON('/songsterr/import', {
@@ -7422,13 +7425,13 @@ async function importSongsterrTab() {
       body: JSON.stringify({ song: link }),
     });
   } catch (err) {
-    info.textContent = `Não consegui importar: ${err.message}`;
+    info.textContent = T('Não consegui importar: {msg}', { msg: err.message });
     return;
   } finally {
     btn.disabled = false;
   }
   info.textContent = b.import_warnings && b.import_warnings.length
-    ? `Importada, com avisos: ${b.import_warnings.join('; ')}.` : 'Tab importada.';
+    ? T('Importada, com avisos: {warnings}.', { warnings: b.import_warnings.join('; ') }) : T('Tab importada.');
   songsterrImported = true;
   applyInspectResult(b);
   // Step 3: the same song's per-measure times, ready to pick a video.
@@ -7480,12 +7483,12 @@ document.getElementById('gpJobForm').addEventListener('submit', async e => {
   if (picked && picked.cover_broken) f.delete('cover_url');
   const r = await fetch('/jobs/gp', { method: 'POST', body: f });
   const b = await r.json();
-  if (!r.ok) { toast(b.detail || 'erro'); return; }
+  if (!r.ok) { toast(b.detail || T('erro')); return; }
   // The cover is downloaded while the job is created; a failure there must
   // not lose the project, so it is reported here instead.
   if (f.get('cover_url') && !b.cover_art)
-    toast('Projeto criado, mas não consegui descarregar a capa — escolhe outra na página Capa.');
-  else toast('Projeto criado.', 'ok');
+    toast(T('Projeto criado, mas não consegui descarregar a capa — escolhe outra na página Capa.'));
+  else toast(T('Projeto criado.'), 'ok');
   closeNewJobModal();
   selectJob(b.id);
 });

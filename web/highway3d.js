@@ -173,7 +173,7 @@
     try {
       renderer = new THREE.WebGLRenderer({ antialias: true });
     } catch {
-      throw new Error("Este browser não tem WebGL (aceleração gráfica) ativo: a pista 3D não está disponível.");
+      throw new Error(T("Este browser não tem WebGL (aceleração gráfica) ativo: a pista 3D não está disponível."));
     }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.localClippingEnabled = true;
