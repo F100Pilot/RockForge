@@ -98,6 +98,7 @@ Per-file counts below reflect the suite at the time of writing; run
 
 | File | Tests | Guards |
 |---|---:|---|
+| `test_i18n.py` | 6 | Português / English: every index.html text and every `T()` literal has an English entry (`web/i18n-en.js`), `T()` takes a fixed literal, placeholders survive, and no Portuguese string is left outside `T()` in the scripts (a small JS lexer) |
 | `test_domain.py` | 18 | pure music model: `Tuning`, `TabNote`, `TempoMap`, `Arrangement` invariants, sustain gap, high-density flags |
 | `test_chords.py` | 10 | `domain/chords.py` `name_chord`: triads, power chords, inversions, chord naming |
 | `test_gp_import.py` | 15 | PyGuitarPro (GP3/4/5) parsing: notes/frets/techniques/sections/tempo; per-bar times from outside (Songsterr) re-timing the chart relative to bar 1, and a bar-count mismatch reported |
@@ -725,6 +726,19 @@ automatically.
 4. "Traste na nota", "Câmara" e "Ecrã inteiro" funcionam; fechar e reabrir o
    projeto volta a abrir a pista; desmarcar esconde-a e fica lembrado.
 5. Num PC real, confirmar que corre fluido (aqui só com WebGL por software).
+
+### 7c-octies. Português / English (browser-only, sem rede)
+
+`tests/test_i18n.py` only proves every text HAS an English entry; that the
+English reads well where it lands is a look at the screen. Pick **EN** on the
+home top bar (or ⚙️ Definições → Idioma · Language): the page reloads in English.
+Walk: home (filters, drop card), the wizard's four steps, a project's every page
+(Partitura with the Modo/Notas menus and the three inspector tabs, Tons, Letra,
+Capa, Exportar), ⚙️ Definições (the 🩺 rows come from the SERVER — they must be
+English too), a couple of ⓘ boxes, a confirm dialog. Anything still Portuguese:
+a string the lexer missed (add `T()`), or a server message still without
+`tr()`. Switch back to **PT** and check nothing moved. With a pending edit open,
+switching must ask first.
 
 ### 7c-quater. Apagar notas (browser-only, sem rede)
 

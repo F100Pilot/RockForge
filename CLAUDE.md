@@ -1718,6 +1718,49 @@ that DOM wiring (e.g. `openNewJobModal`'s modal toggle) still works after the
 split, plus two new API tests (`test_index_page_references_the_extracted_app_js`,
 `test_app_js_is_served_with_a_javascript_content_type`).
 
+### Two languages: Português / English (`web/i18n.js`, `rockforge/i18n.py`)
+
+"cria a tradução de tudo o que está no rockforge para inglês. Fica opção de
+Português e Inglês." The UI is WRITTEN in Portuguese and stays so: **the
+Portuguese text is the key** (`web/i18n-en.js`, `const I18N_EN = {pt: en}`, plain
+JSON inside the braces), so a string with no English entry still shows — in
+Portuguese — and nothing needs an invented key name.
+
+- **Script text** goes through `T('texto', {vars})` (global, `web/i18n.js`, loaded
+  before `app.js`); variable parts are `{placeholders}`, never `${}` inside the
+  key. `T`, not `t`: `t` is the time variable all over `app.js`. Plurals are two
+  keys.
+- **index.html** is not annotated: `translateDom(document.body)` runs once at load
+  and translates every text node and the `title`/`aria-label`/`placeholder`/
+  `alt`/`data-name` attributes whose text, whitespace collapsed, is a key (the
+  whitespace around it is kept — it separates inline elements). A sentence cut
+  by `<b>`/`<code>` is translated fragment by fragment, so the fragments were
+  written to read in English in the same order. `translate="no"` skips an
+  element (the PT/EN pickers).
+- **Switching reloads the page** (`setLang`): tables built at load (`SYS_MARK`,
+  the ⓘ texts, the mode menu) are simply built again. Pending edits in an open
+  project would be lost, so it asks first (`#pendingChangesInfo` non-empty).
+  Pickers: PT/EN on the home top bar (`#langSelectTop`) and "Idioma · Language"
+  at the top of ⚙️ Definições. Default: `localStorage` `rf-lang`, else the
+  browser's language (pt* → Português, anything else → English).
+- **The server answers in the same language.** `i18n.js` wraps `fetch` so every
+  same-origin request carries `X-RockForge-Lang`; the `_ui_language` dependency
+  (async, so the endpoint — even a sync one run in a copied context — sees it)
+  sets `rockforge.i18n`'s context variable. Server text is written once, in both
+  languages, where it is produced: `tr("não encontrado", "not found")` — no
+  table to keep in step. Outside a request (the worker's logs, the desktop
+  window's close dialog) `i18n.current()` reads `runtime_settings.ui_language()`,
+  which `PUT /ui-language` stores whenever the user switches. Messages the server
+  always wrote in English stay English in both (they were already shown so).
+- **The gate is `tests/test_i18n.py`**: every index.html text/attribute with a
+  letter and every `T()` literal has an English entry; `T()` gets a fixed
+  literal; placeholders match; and a small JS lexer finds any Portuguese string
+  literal (an accent, or a common unaccented PT word) left OUTSIDE `T()` in
+  `app.js`/`highway3d.js` — a string that is not shown (compared with
+  Portuguese data, a slug fallback) is marked `// i18n-skip` on its line. A
+  missing translation breaks nothing, which is exactly why it has to fail here:
+  nobody would notice.
+
 ### The 3D note highway ("Pista 3D", `web/highway3d.js`)
 
 "grafismo 3D, com three.js, para o braço da guitarra … o mais idêntico

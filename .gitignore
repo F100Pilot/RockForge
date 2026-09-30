@@ -17,3 +17,4 @@ dist/
 *.whl
 # Runtime logs from start.bat (Redis/Celery) — per-machine, never useful in git.
 logs/
+.claude/worktrees/
