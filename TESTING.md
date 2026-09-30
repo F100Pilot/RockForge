@@ -973,6 +973,9 @@ behaviour), no crash.
 
 ### 7f. Final PSARC + in-game
 
+The checklist of what is still to test in the game, and what is confirmed, is
+`docs/TESTES-NO-JOGO.md` (in Portuguese, for the user); update it after each test.
+
 Import the bundle into DLC Builder, or rely on the native `.psarc` (`psarc_mode
 = native`, default). The native SNG layout is round-trip-tested but **NOT**
 byte-validated against a retail SNG — the only true validation is loading the
