@@ -15,7 +15,7 @@ import pytest
 
 from rockforge.domain.arrangement import Arrangement, ArrangementKind, Section, SongMetadata
 from rockforge.domain.errors import IngestionError
-from rockforge.domain.music import Beat, TabNote, Technique, TempoMap, Tuning
+from rockforge.domain.music import Beat, BendPoint, TabNote, Technique, TempoMap, Tuning
 from rockforge.infrastructure.gpexport.arrangement_writer import write_arrangement_gp5
 from rockforge.infrastructure.gpimport.parser import inspect_gp, parse_gp_track
 
@@ -178,3 +178,46 @@ def test_the_closing_bar_line_ends_the_last_bar_instead_of_adding_one(tmp_path: 
     write_arrangement_gp5(_arrangement(notes), dst)  # _steady: 4 bars + the closing line
     assert len(guitarpro.parse(str(dst)).measureHeaders) == 4
     assert parse_gp_track(dst, 0).notes[0].time == pytest.approx(7.75, abs=1e-3)
+
+
+def _bent(
+    points: list[tuple[float, float]], sustain: float = 0.4, semitones: float = 1.0
+) -> TabNote:
+    return TabNote(
+        string=3, fret=8, time=0.0, sustain=sustain,
+        techniques=frozenset({Technique.BEND}), bend_semitones=semitones,
+        bend_points=tuple(BendPoint(position=p, step=s) for p, s in points),
+    )
+
+
+def _bend_back(tmp_path: Path, note: TabNote) -> TabNote:
+    dst = tmp_path / "bend.gp5"
+    after = TabNote(string=3, fret=9, time=0.5, sustain=0.4)
+    write_arrangement_gp5(_arrangement([note, after]), dst)
+    return next(n for n in parse_gp_track(dst, 0).notes if n.fret == 8)
+
+
+def test_a_bend_keeps_its_size_and_curve(tmp_path: Path) -> None:
+    """A ½ bend-and-release comes back as ½ (not 50× bigger) with its hold at the
+    top, in at most 4 points — what the .gp format and alphaTab's export keep."""
+    got = _bend_back(tmp_path, _bent([(0.0, 0.0), (0.25, 1.0), (0.5, 1.0), (0.75, 0.0)]))
+    assert got.bend_semitones == pytest.approx(1.0)
+    assert Technique.BEND in got.techniques
+    assert [p.step for p in got.bend_points] == [0.0, 1.0, 1.0, 0.0]
+    # re-timed onto the written quarter (0.5 s): 0.1 s, 0.2 s, 0.3 s into it
+    assert [round(p.position * 12) for p in got.bend_points] == [0, 2, 5, 7]
+
+
+def test_a_long_curve_is_cut_to_four_points_with_the_same_shape(tmp_path: Path) -> None:
+    """Held, then bent and released (a tie folded into one note): six points with
+    flat ends become four — the bend still starts late and returns to 0."""
+    held_then_bent = [(0.0, 0.0), (0.6, 0.0), (0.68, 1.0), (0.75, 1.0), (0.83, 0.0), (0.9, 0.0)]
+    got = _bend_back(tmp_path, _bent(held_then_bent, sustain=0.5))
+    assert len(got.bend_points) <= 4
+    assert [p.step for p in got.bend_points] == [0.0, 1.0, 1.0, 0.0]
+    assert got.bend_points[0].position > 0.5  # the bend starts after the hold
+
+
+def test_a_plain_bend_is_a_rise_to_its_peak(tmp_path: Path) -> None:
+    got = _bend_back(tmp_path, _bent([], semitones=2.0))
+    assert got.bend_semitones == pytest.approx(2.0)

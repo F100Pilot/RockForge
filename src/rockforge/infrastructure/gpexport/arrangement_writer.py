@@ -153,8 +153,11 @@ def _quantize(offset_s: float, measure_s: float, measure_ticks: int) -> int:
     return int(round(raw / _MIN_TICKS)) * _MIN_TICKS
 
 
-def _apply_note_effects(gp_note: Any, note: TabNote, guitarpro: Any) -> None:
-    """Map our techniques onto a PyGuitarPro note, mirroring the importer."""
+def _apply_note_effects(gp_note: Any, note: TabNote, guitarpro: Any, beat_s: float) -> None:
+    """Map our techniques onto a PyGuitarPro note, mirroring the importer.
+
+    ``beat_s``: how long the figure written for the note lasts (its bend's scale).
+    """
     effect = gp_note.effect
     for tech, flag in _NOTE_EFFECT_FLAGS.items():
         if tech in note.techniques and hasattr(effect, flag):
@@ -168,18 +171,75 @@ def _apply_note_effects(gp_note: Any, note: TabNote, guitarpro: Any) -> None:
     if note.slide_to_fret is not None or Technique.SLIDE in note.techniques:
         effect.slides = [guitarpro.SlideType.shiftSlideTo]
     if note.bend_semitones:
-        # A single rise to the peak — our domain's simple case. bend_points
-        # carries the full curve for the RS side; GP's Bend wants 0..12 quarter
-        # tones per semitone in its own 0..100 position scale.
-        peak = int(round(note.bend_semitones * 100))
-        effect.bend = guitarpro.BendEffect(
-            type=guitarpro.BendType.bend,
-            value=peak,
-            points=[
-                guitarpro.BendPoint(position=0, value=0),
-                guitarpro.BendPoint(position=12, value=peak),
-            ],
+        points = _bend_shape(note, beat_s)
+        values = [v for _, v in points]
+        peak = max(values)
+        if peak > 0:
+            if values[0] > 0:
+                kind = (guitarpro.BendType.prebendRelease if values[-1] < values[0]
+                        else guitarpro.BendType.prebend)
+            else:
+                kind = (guitarpro.BendType.bendRelease if values[-1] < peak
+                        else guitarpro.BendType.bend)
+            effect.bend = guitarpro.BendEffect(
+                type=kind,
+                value=peak * 25,  # GP: 100 = a whole tone (4 quarter tones)
+                points=[guitarpro.BendPoint(position=pos, value=v) for pos, v in points],
+            )
+
+
+# The .gp (GP7/8) format stores a bend as origin, two middle points and
+# destination, and alphaTab's .gp export drops a bend with more points: keep the
+# curve to this many so the file survives being saved as .gp.
+MAX_BEND_POINTS = 4
+
+
+def _bend_shape(note: TabNote, beat_s: float) -> list[tuple[int, int]]:
+    """The note's bend over its written figure: (position 0..12, quarter tones).
+
+    ``bend_points`` positions are fractions of the note's sustain; the figure
+    written for it lasts ``beat_s``, so they are re-timed onto that (a part past
+    the figure is cut, at its interpolated value). A note without a curve is the
+    domain's single-peak bend: a rise to the peak across the note.
+    """
+    if note.bend_points:
+        span = note.sustain if note.sustain > 0 else beat_s
+        curve = [(p.position * span, p.step) for p in note.bend_points]
+    else:
+        curve = [(0.0, 0.0), (beat_s, note.bend_semitones)]
+    if beat_s > 0 and curve[-1][0] > beat_s:
+        inside = [c for c in curve if c[0] <= beat_s]
+        (t0, v0), (t1, v1) = next(
+            (curve[i - 1], curve[i]) for i in range(1, len(curve)) if curve[i][0] > beat_s
         )
+        cut = v0 + (v1 - v0) * (beat_s - t0) / (t1 - t0) if t1 > t0 else v1
+        curve = [*inside, (beat_s, cut)]
+    points = [
+        (round(min(max(t / beat_s, 0.0), 1.0) * 12) if beat_s > 0 else 0, round(v * 2))
+        for t, v in curve
+    ]
+    return _fewer_bend_points(points)
+
+
+def _fewer_bend_points(points: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    """At most MAX_BEND_POINTS, same shape: flat stretches keep only their ends,
+    and a flat start or end begins/ends the curve at its last/first point."""
+    if len(points) <= MAX_BEND_POINTS:
+        return points
+    out = [
+        p for i, p in enumerate(points)
+        if i in (0, len(points) - 1) or not points[i - 1][1] == p[1] == points[i + 1][1]
+    ]
+    while len(out) > MAX_BEND_POINTS and out[0][1] == out[1][1]:
+        out.pop(0)
+    while len(out) > MAX_BEND_POINTS and out[-1][1] == out[-2][1]:
+        out.pop()
+    if len(out) > MAX_BEND_POINTS:
+        # Still too many (several distinct steps): start, the top held, end.
+        peak = max(v for _, v in out)
+        tops = [p for p in out if p[1] == peak]
+        out = list(dict.fromkeys([out[0], tops[0], tops[-1], out[-1]]))
+    return out
 
 
 def write_arrangement_gp5(
@@ -317,6 +377,7 @@ def write_arrangement_gp5(
                 first_beat_of_measure = False
             span = _split_ticks(max(_MIN_TICKS, nxt - tick))
             beat.duration = guitarpro.Duration.fromTime(span[0])
+            beat_s = span[0] / measure_ticks * measure_s
             beat.status = guitarpro.BeatStatus.normal
             for n in group:
                 if not 0 <= n.string < n_strings:
@@ -325,7 +386,7 @@ def write_arrangement_gp5(
                 gp_note = guitarpro.Note(beat)
                 gp_note.string = n_strings - n.string  # inverse of the importer
                 gp_note.value = n.fret
-                _apply_note_effects(gp_note, n, guitarpro)
+                _apply_note_effects(gp_note, n, guitarpro, beat_s)
                 beat.notes.append(gp_note)
                 report.notes_written += 1
             if beat.notes:
