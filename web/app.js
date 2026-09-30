@@ -650,11 +650,11 @@ const COMPLETE_ACTIONS = {
 // The alternates' kinds are long English names; the tabs and pickers show these.
 const ARR_LABEL = { 'Alternate Lead': T('Lead alternativo'), 'Alternate Rhythm': T('Rhythm alternativo') };
 function arrLabel(kind) { return ARR_LABEL[kind] || kind; }
-// A chart counts as in sync when the user marked it, or when the whole file
-// was timed elsewhere (Guitar Pro 8's own sync points, Songsterr's bar times).
-function arrSynced(a) {
-  return !!a && (a.sync_confirmed || ['gp', 'songsterr'].includes(selectedJob && selectedJob.sync_source));
-}
+// A chart counts as in sync only when the user marked it. A file timed
+// elsewhere (Guitar Pro 8's sync points, Songsterr's bar times) is a hint that
+// it probably is, never the user's word: "está a verde, mas ainda não
+// sincronizei nenhuma das pistas".
+function arrSynced(a) { return !!a && !!a.sync_confirmed; }
 function updateArrTabs() {
   document.querySelectorAll('#arrTabs button').forEach((btn, i) => {
     const a = arrangements[i];
@@ -686,16 +686,16 @@ async function setSyncConfirmed(confirmed, arrangement = null) {
   }
 }
 
-// Why a chart counts as in sync (JobOut.sync_source), for the badge on the
-// project card, the Sincronização tab and the checklist: the user's own word,
-// the Guitar Pro 8 file's own sync points, or Songsterr's marked bar times.
+// What is known about the sync (JobOut.sync_source), for the badge on the
+// project card, the Sincronização tab and the checklist. Only 'confirmed' is
+// "synced"; 'gp'/'songsterr' say where the timing came from, as a hint.
 const SYNC_SOURCE_TEXT = {
   confirmed: T('Marcada por ti como sincronizada.'),
-  gp: T('Sincronizada no Guitar Pro 8: o ficheiro traz os pontos de sincronização, e as notas seguem o áudio com que foi sincronizado.'),
-  songsterr: T('Sincronizada pelos tempos de cada compasso do Songsterr.'),
+  gp: T('O ficheiro traz os pontos de sincronização do Guitar Pro 8, por isso as notas devem seguir o áudio com que foi sincronizado. Ouve e, quando baterem, marca cada pista.'),
+  songsterr: T('Temporizada pelos tempos de cada compasso do Songsterr. Ouve e, quando as notas baterem, marca cada pista.'),
   adjusted: T('Fizeste correções de início/andamento. Quando as notas baterem com a gravação, marca-a como sincronizada.'),
 };
-function isSynced(j) { return ['confirmed', 'gp', 'songsterr'].includes(j && j.sync_source); }
+function isSynced(j) { return !!j && j.sync_source === 'confirmed'; }
 // Each track is synchronised on its own, so the card speaks for the chart on
 // screen: mark it (its tab turns green), and see how many are done.
 function renderSyncState(j) {
@@ -750,8 +750,9 @@ function renderCompleteness(j) {
       rows.push({ state: 'ok', ico: 'check', title: T('Sincronização confirmada'), act: 'syncundo', actLabel: T('Desfazer'),
         note: T('Marcaste que as notas batem com a gravação.') });
     else if (j.sync_source === 'gp' || j.sync_source === 'songsterr')
-      rows.push({ state: 'ok', ico: 'check',
-        title: j.sync_source === 'gp' ? T('Sincronizada no Guitar Pro') : T('Sincronizada pelo Songsterr'),
+      rows.push({ state: 'warn', ico: 'timer', short: T('confirmar a sincronização'),
+        title: j.sync_source === 'gp' ? T('Temporizada no Guitar Pro — confirma') : T('Temporizada pelo Songsterr — confirma'),
+        act: 'syncok', actLabel: T('Está sincronizada'), act2: 'sync', act2Label: T('Abrir partitura'),
         note: SYNC_SOURCE_TEXT[j.sync_source] });
     else if (j.sync_edited)
       rows.push({ state: 'ok', ico: 'check', title: T('Sincronização ajustada'), act: 'syncok', actLabel: T('Marcar como sincronizada'),

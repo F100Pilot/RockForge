@@ -2044,6 +2044,18 @@ jump-button to the right editor (`COMPLETE_ACTIONS`). Rows + alerts:
   `test_projects_synced_in_guitar_pro_before_the_flag_existed_are_marked_on_startup`
   (mutation-checked); the UI with Playwright (mark → card chip → undo), and
   15 real GP8-synced projects read `gp` after one restart.
+  **Reversed in the UI (2026-09-30): only the user's marking is "synced".**
+  "O estado da sincronização está a verde, mas ainda não sincronizei nenhuma
+  das pistas": a GP8 file with SyncPoints turned every tab green and the card
+  said "Sincronizada no Guitar Pro 8" with 0 of 5 tracks marked. The backend
+  is unchanged (`sync_source` still reports `gp`/`songsterr`, which is useful
+  to know), but the viewer no longer reads them as synced: `arrSynced` is
+  `a.sync_confirmed` alone, `isSynced` (the card chip) is `confirmed` alone,
+  the card shows the GP8/Songsterr text as a hint ("… Ouve e, quando
+  baterem, marca cada pista"), and the checklist row for them is a warning
+  ("Temporizada no Guitar Pro — confirma") with "Está sincronizada". Where
+  this section says a GP8/Songsterr chart "counts" or turns tabs green, read
+  "is hinted". Browser-only, no pytest coverage.
   **Each track is marked on its own, and its tab turns green** ("a
   sincronização é feita por track independente, e o nome da track fica a
   verde"). `params["synced_arrangements"]` lists the charts marked;
@@ -2052,8 +2064,7 @@ jump-button to the right editor (`COMPLETE_ACTIONS`). Rows + alerts:
   `sync_confirmed` becomes true only when every built chart is marked
   (`_built_kinds` reads the bundle's XML names). `ArrangementOut.sync_confirmed`
   drives the tab (`updateArrTabs`: ✓ + green; the active tab green-filled;
-  every tab green when the whole file was timed in Guitar Pro 8 or by
-  Songsterr, `arrSynced`), and the "Estado da sincronização" card now speaks
+  only charts the user marked — `arrSynced`, see the reversal above), and the "Estado da sincronização" card now speaks
   for the chart on screen ("Marcar esta pista como sincronizada", "N de M
   pistas marcadas"), re-rendered on every tab switch. A song confirmed before
   charts could be marked one by one counts every chart (`_synced_arrangements`).
