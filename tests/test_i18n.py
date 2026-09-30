@@ -1,7 +1,8 @@
-"""Português / English: every text the UI shows has an English entry.
+"""Every text the UI shows is in every language it offers.
 
-The web UI is written in Portuguese and translated by ``web/i18n.js`` with
-``web/i18n-en.js`` (English keyed by the Portuguese). Two ways in:
+The web UI is written in Portuguese and translated by ``web/i18n.js`` with one
+dictionary per language, ``web/i18n-<code>.js`` (keyed by the Portuguese; see
+``.claude/skills/rockforge-i18n/SKILL.md``). Two ways in:
 
 - index.html: every text node and title/aria-label/placeholder/alt/data-name
   attribute with a letter in it, whitespace collapsed (what ``translateDom``
@@ -43,12 +44,23 @@ def key(s: str) -> str:
     return re.sub(r"\s+", " ", s).strip()
 
 
-def dictionary() -> dict[str, str]:
-    src = (WEB / "i18n-en.js").read_text(encoding="utf-8")
-    body = src[src.index("= {") + 2 : src.rindex("}") + 1]
-    data = json.loads(body)
-    assert isinstance(data, dict)
-    return data
+_DICT = re.compile(r"\(self\.I18N_DICTS = self\.I18N_DICTS \|\| \{\}\)\.([a-z]{2,3}) = (\{.*\});\s*$", re.S)
+
+
+def dictionaries() -> dict[str, dict[str, str]]:
+    """Every language besides Portuguese: ``web/i18n-<code>.js`` → its entries."""
+    out = {}
+    for f in sorted(WEB.glob("i18n-*.js")):
+        m = _DICT.search(f.read_text(encoding="utf-8"))
+        assert m, f"{f.name} must be (self.I18N_DICTS = self.I18N_DICTS || {{}}).<code> = {{JSON}};"
+        assert f.name == f"i18n-{m.group(1)}.js", f"{f.name} registers '{m.group(1)}'"
+        data = json.loads(m.group(2))
+        assert isinstance(data, dict)
+        out[m.group(1)] = data
+    return out
+
+
+LANGS = sorted(dictionaries())
 
 
 class _Html(HTMLParser):
@@ -228,33 +240,41 @@ def t_keys() -> list[tuple[str, int, str, bool]]:
     return keys
 
 
-def test_the_dictionary_is_plain_json_with_english_text() -> None:
-    d = dictionary()
-    assert d, "web/i18n-en.js has no entries"
+def test_english_is_one_of_the_languages() -> None:
+    assert "en" in LANGS
+
+
+@pytest.mark.parametrize("lang", LANGS)
+def test_a_dictionary_is_plain_json_with_text(lang: str) -> None:
+    d = dictionaries()[lang]
+    assert d, f"web/i18n-{lang}.js has no entries"
     bad = [k for k, v in d.items() if not isinstance(v, str) or not v.strip()]
-    assert not bad, f"empty English for: {bad[:10]}"
+    assert not bad, f"empty {lang} text for: {bad[:10]}"
 
 
-def test_every_text_in_the_page_has_an_english_entry() -> None:
-    d = dictionary()
+@pytest.mark.parametrize("lang", LANGS)
+def test_every_text_in_the_page_is_in_every_language(lang: str) -> None:
+    d = dictionaries()[lang]
     missing = [s for s in html_texts() if s not in d]
-    assert not missing, f"{len(missing)} index.html texts with no English: {missing[:20]}"
+    assert not missing, f"{len(missing)} index.html texts with no {lang}: {missing[:20]}"
 
 
-def test_every_translated_script_string_has_an_english_entry() -> None:
-    d = dictionary()
+@pytest.mark.parametrize("lang", LANGS)
+def test_every_translated_script_string_is_in_every_language(lang: str) -> None:
+    d = dictionaries()[lang]
     keys = t_keys()
     assert keys, "no T('...') calls found"
     dynamic = [(f, ln) for f, ln, _s, has_expr in keys if has_expr]
     assert not dynamic, f"T() takes a fixed text with {{placeholders}}, not ${{…}}: {dynamic[:10]}"
     missing = [(f, ln, s) for f, ln, s, _e in keys if s not in d and key(s) not in d]
-    assert not missing, f"{len(missing)} T() texts with no English: {missing[:15]}"
+    assert not missing, f"{len(missing)} T() texts with no {lang}: {missing[:15]}"
 
 
-def test_placeholders_survive_translation() -> None:
-    """``{n}`` in the Portuguese must be in the English too, or the value is lost."""
+@pytest.mark.parametrize("lang", LANGS)
+def test_placeholders_survive_translation(lang: str) -> None:
+    """``{n}`` in the Portuguese must be in the translation too, or the value is lost."""
     bad = []
-    for pt, en in dictionary().items():
+    for pt, en in dictionaries()[lang].items():
         if set(re.findall(r"\{(\w+)\}", pt)) != set(re.findall(r"\{(\w+)\}", en)):
             bad.append(pt)
     assert not bad, f"placeholders differ: {bad[:10]}"
