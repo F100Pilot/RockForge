@@ -148,6 +148,138 @@ documentados nas mensagens de commit, caso valha a pena ressuscitar alguma.
   texto da licença dessa build (normalmente GPL-3.0 no Windows) e um link para
   o código-fonte correspondente.
 
+## Anúncio (rascunhos para a CustomsForge e o Reddit)
+
+Os dois fóruns são em inglês, por isso os textos também. Antes de publicar:
+
+- [ ] Tornar o repositório público e criar uma *Release* no GitHub com o
+  instalador / zip portátil (`py -3.11 build_exe.py --zip --installer`) — o
+  `LICENSE`, `THIRD_PARTY_NOTICES.md` e `LEGAL.md` já vão dentro. Se o
+  `ffmpeg.exe` for incluído, ver o ponto do ffmpeg acima.
+- [ ] Instalar a Release num PC limpo (sem Python) e criar um CDLC de ponta a
+  ponta, para o anúncio não prometer o que não arranca.
+- [ ] 3-4 capturas de ecrã: página inicial, Partitura com a sincronização,
+  Pista 3D, página Tons. Sem capas nem nomes de músicas comerciais em destaque
+  (uma música tua ou do domínio público, ou desfocar).
+- [ ] Reler as regras do fórum de ferramentas da CustomsForge e as do
+  r/rocksmith (autopromoção, *flair*) no dia em que publicares.
+- [ ] Substituir `<REPO_URL>` e `<RELEASE_URL>` nos textos.
+- [ ] Nunca pôr links para CDLC com música comercial nas respostas — só para a
+  ferramenta.
+
+### CustomsForge (fórum, secção de ferramentas)
+
+Título: `RockForge — free, open-source Guitar Pro → Rocksmith 2014 CDLC builder (native PSARC + DLC Builder project)`
+
+```markdown
+Hi all,
+
+I've been building **RockForge**, a free and open-source (MIT) tool that turns a
+**Guitar Pro file + a recording** into a Rocksmith 2014 CDLC. It started as a
+personal project and I'd like to share it with the community and get feedback.
+
+**What it does**
+- Reads **GP3/GP4/GP5 and GP7/GP8 (.gp)**: notes, frets, techniques (bends,
+  HO/PO, slides, palm mute, harmonics, vibrato, ties), tempo changes, sections,
+  repeats/voltas/D.S.-D.C. unrolled the way they are played.
+- Outputs **both** a playable **native .psarc** and a **DLC Builder project**
+  (.rs2dlc + Song2014 XMLs + audio + cover), so you can always finish or
+  tweak it in DLC Builder.
+- **Lead, Rhythm, Combo and alternate arrangements**, each synced on its own.
+- **Sync tools you can check by ear**: song start, BPM stretch, "fix from
+  here" (pin a note, measure the tempo from that point on), drag notes / whole
+  passages, align by bar number. Guitar Pro 8 audio sync points and the audio
+  embedded in a .gp file are used directly.
+- **Songsterr link import** (optional): the tab, the per-measure video
+  timestamps people marked on Songsterr, and the audio of that same video —
+  one link gives tab, sync and recording.
+- **Lyrics**: from the GP file (timed on the vocal line), LRC / UltraStar,
+  a search on LRCLIB, or experimental automatic detection (WhisperX).
+- **Tones**: a full gear editor with the real Rocksmith catalogue (amps,
+  cabs, pedals, racks), a tone library across projects, timed tone changes,
+  and experimental suggestions from the recording (clean / crunch / high gain,
+  per section and per track). With no tones chosen, DLC Builder's default
+  tones are used.
+- Generated **Dynamic Difficulty**, phrases like DLC Builder's, showlights,
+  album art (with an online cover/album lookup), a note/section editor,
+  a 3D note highway preview, batch creation for whole albums, PT/EN interface.
+
+**What it does NOT do (honest limits)**
+- No audio-to-tab transcription: you need a Guitar Pro file (or a Songsterr
+  tab). An earlier audio-transcription path was removed because it was not
+  good enough on real distorted guitar.
+- No bass arrangements yet; GP6 (.gpx) is not supported (export as GP5/GP7).
+- Dynamic Difficulty is a density ramp, not a full DDC pass — if you want
+  DLC Builder's DDC, open the bundled project there.
+- Tone suggestions classify the sound's character; they don't identify the
+  real amp.
+- Tested in game on my own songs; treat it as beta and please report what
+  breaks.
+
+**Requirements**
+- Windows (installer / portable .exe, or Python 3.11 + start.bat; Docker also
+  works).
+- ffmpeg.
+- **Wwise 2019/2021/2022/2023** for the playable .psarc audio (not bundled —
+  Audiokinetic's licence doesn't allow it). Without Wwise you still get the
+  DLC Builder project.
+- The CDLC enabler, as for any custom.
+- Optional: Demucs/librosa/WhisperX for stems, tone and lyric detection;
+  yt-dlp + Deno for the Songsterr video audio.
+
+**Download / source:** <RELEASE_URL> · <REPO_URL>
+
+**Credits**: huge thanks to iminashi's **Rocksmith2014.NET / DLC Builder**
+(MIT) — the SNG/PSARC format work, Wwise templates, gear catalogue and phrase
+generator RockForge follows; **alphaTab** (playback order and GP8 sync
+semantics); **teaqu/guitar-pro-youtube-sync** (the idea of using Songsterr's
+video timestamps); and this community's documentation over the years. Full
+list in THIRD_PARTY_NOTICES.md.
+
+**Please note**: RockForge is not affiliated with Ubisoft and contains no
+songs. Use it with material you own or are allowed to use; Songsterr tabs and
+YouTube audio are for personal use only — please don't redistribute imported
+tabs or CDLCs with copyrighted recordings. Details in LEGAL.md.
+
+Feedback, bug reports and feature requests are very welcome (GitHub issues or
+here).
+```
+
+### Reddit (r/rocksmith)
+
+Título: `I made a free, open-source tool that turns Guitar Pro files into Rocksmith 2014 CDLC (native PSARC, sync tools, 3D preview)`
+
+```markdown
+Hey everyone! I've been working on **RockForge**, a free, open-source (MIT)
+app that builds Rocksmith 2014 customs from a **Guitar Pro file + a
+recording**.
+
+**Highlights**
+- GP3/4/5 and GP7/8 → a playable **.psarc** *and* a **DLC Builder project**
+- Lead / Rhythm / Combo / alternate arrangements
+- Sync you can check by ear: song start, BPM, "fix from here", drag notes,
+  align bars — plus Guitar Pro 8 sync points and embedded audio
+- Optional **Songsterr link** import: tab + human-marked bar timings + that
+  video's audio
+- Lyrics from the GP file, LRC, LRCLIB or (experimental) auto-detection
+- Real Rocksmith gear tone editor, tone library, tone suggestions
+- Dynamic Difficulty, album art lookup, 3D highway preview, batch mode,
+  Portuguese/English UI
+
+**Limits**: no audio-to-tab transcription (you need a GP file or a Songsterr
+tab), no bass yet, no .gpx. Needs Wwise (free from Audiokinetic, not bundled)
+for the playable PSARC audio, plus the usual CDLC enabler. It's beta — tested
+in game on my own songs.
+
+Download / source: <RELEASE_URL> · <REPO_URL>
+
+Built on the shoulders of DLC Builder / Rocksmith2014.NET (iminashi) and
+alphaTab — thank you! Not affiliated with Ubisoft, no songs included; please
+only use material you own or are allowed to use.
+
+Feedback and bug reports very welcome!
+```
+
 ## Ideias futuras (não implementadas)
 
 - [ ] **Pré-visualizar o *note highway* em 3D (three.js)**: desenhar a
