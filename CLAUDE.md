@@ -2457,7 +2457,7 @@ curated presets shipped at -13..-16 — quieter than every reference — and the
 UI's new-tone default was -15. Now: presets -19.5 (high gain) / -20 (crunch) /
 -21 (clean), the default -18 everywhere (`domain/tone.py`, `gear_catalogue`),
 and the tone editor's field works like DLC Builder's (0.1-36, higher = louder,
-stored negated). `_backfill_preset_tone_volumes` (startup) moves a preset still
+stored negated). `_backfill_preset_tones` (startup) moves a preset still
 at the exact volume it first shipped with (`PRESET_VOLUMES_BEFORE`) to the new
 one, in every project and the tone library — a volume the user changed is
 left alone — so the next rebuild is audible without re-applying suggestions.
@@ -2469,6 +2469,29 @@ Guarded by `test_presets_are_as_loud_as_the_games_own_tones`,
 `test_presets_still_at_their_first_quiet_volume_are_raised_on_startup`. Not
 heard in game from here; the scale is the reference's, the exact loudness the
 user's ears.
+
+**Every preset with drive opens with a noise gate** (2026-10-01: "os tons
+standard acho que estão com um volume bom, os detetados ainda ficam com um
+pouco de ruído no final"). Gain amplifies whatever the player's guitar feeds
+in when it is NOT playing — pickup hum, string noise — so the crunch and
+high-gain presets (CA100 at 90-98 with a drive pedal stacked in front, HG100,
+JCM800) left a hiss under the end of each note and after the last one; DLC
+Builder's defaults (a Plexi with one drive pedal, an Orange AD50 at gain 25)
+are tamer. The catalogue's own `Pedal_NoiseGate` (Threshold -90..-40 dB,
+default -55) is now the FIRST pre-pedal of every preset whose fingerprint gain
+is ≥ 0.35 — gating the input before the drive, where the game's own metal
+tones put it: -55 (the game's default) for high gain, a gentler -65 for crunch
+so a note's natural decay is not chopped; the clean presets have none.
+`_refresh_presets` (the same startup pass as the volumes) adds it to a
+project's or the library's copy only while that copy's pre-pedals are still
+the ones the preset shipped with (`tone_presets.with_preset_gate`) — a chain
+the user rebuilt, or a full one, is left alone. Guarded by
+`test_every_preset_with_drive_opens_with_a_noise_gate`,
+`test_a_projects_untouched_preset_gets_the_gate_but_a_rebuilt_chain_does_not`
+and the gate assertions in
+`test_presets_still_at_their_first_quiet_volume_are_raised_on_startup`
+(mutation-checked). Not heard in game from here: the threshold is the game's
+default, how much hiss the user's own guitar brings is their rig's.
 
 ### Tone editor: rotary knobs + optional local gear images
 

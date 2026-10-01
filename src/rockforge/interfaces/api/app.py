@@ -169,7 +169,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     _sweep_orphan_gp_uploads()
     _sweep_orphan_youtube_audio()
     _backfill_gp_synced()
-    _backfill_preset_tone_volumes()
+    _backfill_preset_tones()
     task: asyncio.Task[None] | None = None
     if settings.idle_shutdown_s > 0:
         task = asyncio.create_task(_idle_shutdown_watchdog())
@@ -1713,13 +1713,16 @@ def _backfill_gp_synced() -> int:
     return marked
 
 
-def _raise_preset_volumes(tones: object) -> list[dict[str, Any]] | None:
-    """``tones`` with every curated preset still at the volume it first shipped
-    with moved to its current one, or None when nothing needed it. A volume the
-    user changed is theirs and is left alone."""
+def _refresh_presets(tones: object) -> list[dict[str, Any]] | None:
+    """``tones`` with every curated preset brought up to date where the user
+    left it as it shipped, or None when nothing needed it: a volume still at
+    the first, too quiet value moves to the current one, and a pre-pedal chain
+    still the preset's own gets the noise gate the preset now opens with
+    (``tone_presets.with_preset_gate``). What the user changed is theirs."""
     from rockforge.infrastructure.packaging.gear.tone_presets import (
         PRESET_VOLUMES_BEFORE,
         preset_volume,
+        with_preset_gate,
     )
 
     if not isinstance(tones, list):
@@ -1735,15 +1738,19 @@ def _raise_preset_volumes(tones: object) -> list[dict[str, Any]] | None:
                     and abs(float(vol) - old) < 1e-9:
                 tone = {**tone, "volume": new}
                 changed = True
+            gated = with_preset_gate(tone)
+            if gated is not None:
+                tone = gated
+                changed = True
         out.append(tone)
     return out if changed else None
 
 
-def _backfill_preset_tone_volumes() -> int:
-    """The first curated presets were too quiet in game (see
-    ``tone_presets.PRESET_VOLUMES_BEFORE``). Projects and the tone library
-    that still carry one at its original volume get the current value, so the
-    next rebuild is audible without re-applying the suggestion. Returns how many
+def _backfill_preset_tones() -> int:
+    """Projects and the tone library carrying a curated preset as it first
+    shipped get what the preset has learnt since (``_refresh_presets``: the
+    volume, too quiet in game, and the noise gate against the hiss), so the
+    next rebuild has it without re-applying the suggestion. Returns how many
     projects changed; never raises — housekeeping must not block startup."""
     from sqlalchemy import select
 
@@ -1754,16 +1761,16 @@ def _backfill_preset_tone_volumes() -> int:
         with _session_factory() as session:
             for job in session.execute(select(Job)).scalars():
                 params = dict(job.params or {})
-                tones = _raise_preset_volumes(params.get("tones"))
+                tones = _refresh_presets(params.get("tones"))
                 if tones is not None:
                     job.params = {**params, "tones": tones}
                     changed += 1
             session.commit()
-        library = _raise_preset_volumes(tone_library.load())
+        library = _refresh_presets(tone_library.load())
         for tone in library or []:
             tone_library.save_tone(tone)
     except Exception:  # noqa: BLE001 — housekeeping must never block startup
-        logger.warning("preset tone volume backfill failed", exc_info=True)
+        logger.warning("preset tone backfill failed", exc_info=True)
     return changed
 
 

@@ -31,7 +31,7 @@ from rockforge.infrastructure.packaging.gear.gear_catalogue import (
 # default tones sit at -18.6/-19.5 and a new tone at -18 (``ToneGear.fs``). The
 # first presets used -13..-16, quieter than any of those, and in game they could
 # hardly be heard. These are the values they shipped with, so a project still
-# carrying one untouched can be brought up (``app._backfill_preset_tone_volumes``).
+# carrying one untouched can be brought up (``app._backfill_preset_tones``).
 PRESET_VOLUMES_BEFORE: dict[str, float] = {
     "RFLead_Clean": -15.0, "RFLead_CleanBright": -15.0, "RFLead_Crunch": -14.0,
     "RFLead_Plexi": -14.0, "RFLead_Overdrive": -13.0, "RFLead_HighGain": -13.0,
@@ -39,6 +39,27 @@ PRESET_VOLUMES_BEFORE: dict[str, float] = {
     "RFRhythm_Plexi": -15.0, "RFRhythm_Orange": -14.0, "RFRhythm_HighGain": -14.0,
     "RFRhythm_Metal": -14.0,
 }
+
+# A noise gate opens every preset with drive. Gain amplifies whatever the
+# player's guitar feeds in when it is NOT playing — pickup hum, string noise —
+# so a crunch/high-gain tone left a hiss under the end of every note and after
+# the last one ("os detetados ainda ficam com um pouco de ruído no final"),
+# while DLC Builder's default tones (a Plexi + drive pedal, an Orange at gain
+# 25) were quiet enough without one. ``Pedal_NoiseGate`` is the catalogue's own
+# (Threshold -90..-40 dB, default -55; Rate default 81), first in the chain so
+# it gates the input before the drive, as the game's own metal tones place it.
+# A higher threshold cuts more: high gain gets the game's default, crunch a
+# gentler one so a note's natural decay is not chopped.
+GATE_KEY = "Pedal_NoiseGate"
+_GATE_CRUNCH = -65.0
+_GATE_HIGH_GAIN = -55.0
+
+
+def _gate(threshold: float) -> dict[str, Any]:
+    return {
+        "key": GATE_KEY,
+        "knobs": {"Pedal_NoiseGate_Thresh": threshold, "Pedal_NoiseGate_Rate": 81},
+    }
 
 # ---------------------------------------------------------------------------
 # Lead presets
@@ -70,6 +91,7 @@ LEAD_CRUNCH: dict[str, Any] = {
         },
     },
     "cabinet": {"key": "Cab_Marshall1960a_57_Cone"},
+    "pre": [_gate(_GATE_CRUNCH)],
 }
 
 LEAD_HIGH_GAIN: dict[str, Any] = {
@@ -88,7 +110,10 @@ LEAD_HIGH_GAIN: dict[str, Any] = {
         },
     },
     "cabinet": {"key": "Cab_GB412CMKIII_57_Cone"},
-    "pre": [{"key": "Pedal_GermaniumDrive", "knobs": {"Pedal_GermaniumDrive_Gain": 60}}],
+    "pre": [
+        _gate(_GATE_HIGH_GAIN),
+        {"key": "Pedal_GermaniumDrive", "knobs": {"Pedal_GermaniumDrive_Gain": 60}},
+    ],
 }
 
 # ---------------------------------------------------------------------------
@@ -128,6 +153,7 @@ RHYTHM_CRUNCH: dict[str, Any] = {
         },
     },
     "cabinet": {"key": "Cab_Marshall1960a_57_Cone"},
+    "pre": [_gate(_GATE_CRUNCH)],
 }
 
 RHYTHM_HIGH_GAIN: dict[str, Any] = {
@@ -145,6 +171,7 @@ RHYTHM_HIGH_GAIN: dict[str, Any] = {
         },
     },
     "cabinet": {"key": "Cab_GB412CMKII_57_Cone"},
+    "pre": [_gate(_GATE_HIGH_GAIN)],
 }
 
 # ---------------------------------------------------------------------------
@@ -225,6 +252,7 @@ LEAD_PLEXI: dict[str, Any] = {
         },
     },
     "cabinet": {"key": "Cab_Marshall1960a_57_Cone"},
+    "pre": [_gate(_GATE_CRUNCH)],
 }
 
 LEAD_OVERDRIVE: dict[str, Any] = {
@@ -237,7 +265,10 @@ LEAD_OVERDRIVE: dict[str, Any] = {
         "knobs": {"Amp_Marshall1962Bluesbreaker_Gain": 60},
     },
     "cabinet": {"key": "Cab_Marshall1960a_57_Cone"},
-    "pre": [{"key": "Pedal_SuperDrive", "knobs": {"Pedal_SuperDrive_Gain": 55}}],
+    "pre": [
+        _gate(_GATE_CRUNCH),
+        {"key": "Pedal_SuperDrive", "knobs": {"Pedal_SuperDrive_Gain": 55}},
+    ],
 }
 
 LEAD_METAL: dict[str, Any] = {
@@ -255,7 +286,10 @@ LEAD_METAL: dict[str, Any] = {
         },
     },
     "cabinet": {"key": "Cab_GB412CMKIII_57_Cone"},
-    "pre": [{"key": "Pedal_MetalDistortion", "knobs": {"Pedal_MetalDistortion_Gain": 50}}],
+    "pre": [
+        _gate(_GATE_HIGH_GAIN),
+        {"key": "Pedal_MetalDistortion", "knobs": {"Pedal_MetalDistortion_Gain": 50}},
+    ],
 }
 
 RHYTHM_PLEXI: dict[str, Any] = {
@@ -272,6 +306,7 @@ RHYTHM_PLEXI: dict[str, Any] = {
         },
     },
     "cabinet": {"key": "Cab_Marshall1960a_57_Cone"},
+    "pre": [_gate(_GATE_CRUNCH)],
 }
 
 RHYTHM_ORANGE: dict[str, Any] = {
@@ -288,6 +323,7 @@ RHYTHM_ORANGE: dict[str, Any] = {
         },
     },
     "cabinet": {"key": "Cab_OrangePPC412_57_Cone"},
+    "pre": [_gate(_GATE_CRUNCH)],
 }
 
 RHYTHM_METAL: dict[str, Any] = {
@@ -306,7 +342,10 @@ RHYTHM_METAL: dict[str, Any] = {
         },
     },
     "cabinet": {"key": "Cab_GB412CMKII_57_Cone"},
-    "pre": [{"key": "Pedal_MetalDistortion", "knobs": {"Pedal_MetalDistortion_Gain": 45}}],
+    "pre": [
+        _gate(_GATE_HIGH_GAIN),
+        {"key": "Pedal_MetalDistortion", "knobs": {"Pedal_MetalDistortion_Gain": 45}},
+    ],
 }
 
 # (tone_dict, (gain, bright, low)) — fingerprints describe the target sound.
@@ -425,7 +464,40 @@ def preset_fingerprint(key: str) -> tuple[float, float, float] | None:
 
 def preset_volume(key: str) -> float | None:
     """The volume a curated preset ships with now, or None for any other key."""
+    preset = _preset(key)
+    return None if preset is None else float(preset["volume"])
+
+
+def _preset(key: str) -> dict[str, Any] | None:
     for tone, _fp in (*_LEAD_LIBRARY, *_RHYTHM_LIBRARY):
         if tone["key"] == key:
-            return float(tone["volume"])
+            return tone
     return None
+
+
+def _pedal_keys(items: object) -> list[str]:
+    if not isinstance(items, list):
+        return []
+    return [str(it.get("key")) for it in items if isinstance(it, dict) and it.get("key")]
+
+
+def with_preset_gate(tone: dict[str, Any]) -> dict[str, Any] | None:
+    """A project's copy of a curated preset with the noise gate the preset now
+    opens with, or None when it needs nothing. Only a copy whose pre-pedals are
+    still the ones the preset shipped with gets it: a chain the user rebuilt is
+    theirs, and a full one (four pedals) has no slot to give."""
+    preset = _preset(str(tone.get("key", "")))
+    if preset is None:
+        return None
+    wanted = list(preset.get("pre") or [])
+    if not wanted or wanted[0].get("key") != GATE_KEY:
+        return None
+    pre = list(tone.get("pre") or [])
+    if GATE_KEY in _pedal_keys(pre) or _pedal_keys(pre) != _pedal_keys(wanted[1:]):
+        return None
+    pre = [dict(wanted[0], knobs=dict(wanted[0]["knobs"])), *pre]
+    while len(pre) > 4 and pre[-1] is None:
+        pre.pop()
+    if len(pre) > 4:
+        return None
+    return {**tone, "pre": pre}

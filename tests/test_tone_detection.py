@@ -190,3 +190,45 @@ def test_every_preset_knob_is_a_real_knob_of_its_gear() -> None:
                 assert set(item.get("knobs") or {}) <= set(knob_defaults(item["key"])), (
                     tone["key"], item["key"],
                 )
+
+
+def test_every_preset_with_drive_opens_with_a_noise_gate() -> None:
+    """Gain amplifies what the guitar feeds in between notes, so the driven
+    presets left a hiss at the end of each note; the clean ones need no gate."""
+    from rockforge.infrastructure.packaging.gear import tone_presets as tp
+    from rockforge.infrastructure.packaging.gear.gear_catalogue import tone_from_dict
+
+    for tone, (gain, _b, _l) in (*tp._LEAD_LIBRARY, *tp._RHYTHM_LIBRARY):
+        built = tone_from_dict(tone)
+        assert built is not None
+        first = built.gear.pre_pedals[0]
+        if gain >= 0.35:
+            assert first is not None and first.key == tp.GATE_KEY, tone["key"]
+            thresh = first.knob_values["Pedal_NoiseGate_Thresh"]
+            assert -90 <= thresh <= -40
+            if gain >= 0.8:  # high gain gates harder than crunch
+                assert thresh == tp._GATE_HIGH_GAIN
+            else:
+                assert thresh == tp._GATE_CRUNCH
+        else:
+            assert all(p is None or p.key != tp.GATE_KEY for p in built.gear.pre_pedals)
+
+
+def test_a_projects_untouched_preset_gets_the_gate_but_a_rebuilt_chain_does_not() -> None:
+    from rockforge.infrastructure.packaging.gear import tone_presets as tp
+
+    old = {"key": "RFLead_Metal", "pre": [
+        {"key": "Pedal_MetalDistortion", "knobs": {"Pedal_MetalDistortion_Gain": 50}},
+        None, None, None,
+    ]}
+    gated = tp.with_preset_gate(old)
+    assert gated is not None
+    assert [p and p["key"] for p in gated["pre"]] == [
+        tp.GATE_KEY, "Pedal_MetalDistortion", None, None,
+    ]
+    assert tp.with_preset_gate(gated) is None  # already there
+    assert tp.with_preset_gate({"key": "RFLead_Crunch"})["pre"][0]["key"] == tp.GATE_KEY
+    # the user's own chain, a clean preset, a tone that is not a preset
+    assert tp.with_preset_gate({"key": "RFLead_Metal", "pre": [{"key": "Pedal_Chorus"}]}) is None
+    assert tp.with_preset_gate({"key": "RFLead_Clean", "pre": [{"key": "Pedal_Chorus"}]}) is None
+    assert tp.with_preset_gate({"key": "mine"}) is None

@@ -3290,6 +3290,7 @@ def test_presets_still_at_their_first_quiet_volume_are_raised_on_startup(
                 {"key": "RFLead_Crunch", "volume": -14.0},
                 {"key": "RFRhythm_Clean", "volume": -17.5},  # the user's own
                 {"key": "mine", "volume": -14.0},
+                {"key": "RFRhythm_HighGain", "volume": -18.0},
             ],
         })
         session.add(job)
@@ -3299,8 +3300,14 @@ def test_presets_still_at_their_first_quiet_volume_are_raised_on_startup(
         pass
     with app_module._session_factory() as session:
         tones = session.get(app_module.Job, job_id).params["tones"]
-    assert [t["volume"] for t in tones] == [preset_volume("RFLead_Crunch"), -17.5, -14.0]
+    assert [t["volume"] for t in tones] == [
+        preset_volume("RFLead_Crunch"), -17.5, -14.0, -18.0,
+    ]
+    # the noise gate the driven presets now open with reaches the copies too
+    gate = "Pedal_NoiseGate"
+    assert [(t.get("pre") or [{}])[0].get("key") for t in tones] == [gate, None, None, gate]
     assert tone_library.load()[0]["volume"] == preset_volume("RFRhythm_Plexi")
+    assert tone_library.load()[0]["pre"][0]["key"] == gate
 
 
 def test_the_previous_version_can_be_dropped_once_the_new_one_is_built(
