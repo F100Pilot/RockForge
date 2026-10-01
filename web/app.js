@@ -41,7 +41,12 @@ function setWizardStep(n) {
     const s = Number(d.dataset.s);
     d.classList.toggle('active', s === wizardStep);
     d.classList.toggle('done', s < wizardStep);
+    d.classList.toggle('later', s > wizardStep);
   });
+  const name = document.querySelector(`#wizardSteps .wz-dot[data-s="${wizardStep}"] .wz-lbl`)?.textContent || '';
+  document.getElementById('wizardStepLabel').textContent =
+    T('Passo {n} de {m} · {name}', { n: wizardStep, m: WIZARD_MAX, name });
+  document.querySelector('#newJobOverlay .pv-scroll').scrollTop = 0;
   // Step 1 has no data yet → hide "Anterior"; last step swaps "Seguinte" for "Criar".
   document.getElementById('wizardPrev').style.visibility = wizardStep > 1 ? '' : 'hidden';
   document.getElementById('wizardNext').style.display = wizardStep < WIZARD_MAX ? '' : 'none';
@@ -246,7 +251,22 @@ function openNewJobModal() {
   gpToken = null;
   setWizardStep(1);
 }
-function closeNewJobModal() { document.getElementById('newJobOverlay').hidden = true; }
+// Anything chosen or typed would be lost, so leaving asks first (the page is
+// full-screen now: "Voltar" is one click from throwing a half-made project away).
+function wizardStarted() {
+  return wizardStep > 1 || !!document.querySelector('#gpInspectForm input[name=file]').files.length
+    || songsterrImported || !!document.getElementById('songsterrImportLink').value.trim();
+}
+async function closeNewJobModal() {
+  if (wizardStarted() && !await confirmModal(T('Sair do novo projeto? O que escolheste e preencheste perde-se.'))) return;
+  document.getElementById('newJobOverlay').hidden = true;
+}
+// The rail: a done step goes back to it; the next one is "Seguinte".
+document.querySelectorAll('#wizardSteps .wz-dot').forEach(d => d.addEventListener('click', () => {
+  const s = Number(d.dataset.s);
+  if (s < wizardStep) setWizardStep(s);
+  else if (s === wizardStep + 1) document.getElementById('wizardNext').click();
+}));
 document.getElementById('newJobClose').addEventListener('click', closeNewJobModal);
 document.getElementById('wizardPrev').addEventListener('click', () => setWizardStep(wizardStep - 1));
 document.getElementById('wizardNext').addEventListener('click', () => {
@@ -7571,7 +7591,7 @@ document.getElementById('gpJobForm').addEventListener('submit', async e => {
   if (f.get('cover_url') && !b.cover_art)
     toast(T('Projeto criado, mas não consegui descarregar a capa — escolhe outra na página Capa.'));
   else toast(T('Projeto criado.'), 'ok');
-  closeNewJobModal();
+  document.getElementById('newJobOverlay').hidden = true;  // created: nothing to lose
   selectJob(b.id);
 });
 

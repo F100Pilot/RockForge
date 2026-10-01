@@ -997,5 +997,11 @@
  "Copiado.": "Copied.",
  "Não foi possível copiar.": "Could not copy.",
  "Há alterações por guardar nas definições. Sair sem guardar?": "There are unsaved changes in the settings. Leave without saving?",
- "Guardado — mas o Banquet ainda não está pronto (verifica os ✗ em Stems).": "Saved — but Banquet is not ready yet (check the ✗ under Stems)."
+ "Guardado — mas o Banquet ainda não está pronto (verifica os ✗ em Stems).": "Saved — but Banquet is not ready yet (check the ✗ under Stems).",
+ "Anterior": "Back",
+ "Arranjos alternativos": "Alternate arrangements",
+ "Início": "Start",
+ "Passo {n} de {m} · {name}": "Step {n} of {m} · {name}",
+ "Passos do novo projeto": "New project steps",
+ "Sair do novo projeto? O que escolheste e preencheste perde-se.": "Leave the new project? What you chose and filled in will be lost."
 };

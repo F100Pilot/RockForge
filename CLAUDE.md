@@ -1905,7 +1905,21 @@ Browser-only, no pytest coverage; verified with Playwright (every section,
 dirty chip, leave-confirm, preset ↔ slider ↔ number, save, remembered
 section, English, a 760px viewport, no page errors).
 
-**Modals with typed input never close from the backdrop.** The wizard, batch,
+**"Novo projeto" is a page too** (2026-10-01, "faz o mesmo com este banner"
+after the Definições page). `#newJobOverlay` is a `.project-view.settings-view
+.wizard-view`: top bar (← back = `#newJobClose`, "Passo N de 4 · <nome>" in
+`#wizardStepLabel`, `#wizardNav` with Anterior/Seguinte/Criar CDLC), the four
+steps as the rail (`#wizardSteps .wz-dot`, now buttons: a done step shows a
+tick and goes back on click, the next one acts as "Seguinte" — validation
+included), and each step a page of cards. Every id survived; `setWizardStep`
+also writes the label and scrolls to the top. Leaving asks first once
+anything was chosen (`wizardStarted`), and a successful create hides the page
+directly (no question). Browser-only; verified with Playwright (empty
+"Seguinte" refused, a real GP5 inspected into step 2, rail back/next, a real
+create opening the project, leave-confirm only when started, a 760px
+viewport, no page errors).
+
+**Modals with typed input never close from the backdrop.** The batch,
 "Editar info" and tone builder close only from their own
 ✕/Cancelar. A press that starts inside a field (selecting text, a trackpad tap
 that drifts) and is released outside the box is dispatched by the browser as a

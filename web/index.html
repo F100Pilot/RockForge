@@ -338,18 +338,24 @@
   #noteEditPopup .ba-title { font-weight:700; margin-bottom:.45rem; color:var(--accent); }
   #noteEditPopup .ba-row { display:flex; align-items:center; gap:.4rem; flex-wrap:wrap; }
   /* Creation wizard stepper */
-  .wizard-steps { display:flex; align-items:center; gap:.3rem; margin:.9rem 0 .2rem; }
-  .wz-dot { display:flex; flex-direction:column; align-items:center; gap:.15rem; opacity:.45; transition:opacity .15s; }
-  .wz-dot .wz-ico { display:flex; color:var(--muted); transition:color .15s; }
-  .wz-dot .wz-ico .ic { width:1.9rem; height:1.9rem; margin:0; }
-  .wz-dot .wz-lbl { font-size:.72rem; color:var(--muted); }
-  .wz-dot.active { opacity:1; }
-  .wz-dot.active .wz-ico { color:var(--accent); }
-  .wz-dot.active .wz-lbl { color:var(--accent); font-weight:600; }
-  .wz-dot.done { opacity:.85; }
-  .wz-dot.done .wz-ico { color:var(--text); }
-  .wz-sep { flex:1; height:2px; background:var(--line); border-radius:2px; }
+  /* The wizard's steps are a rail (the .pv-rail look); a done step shows a
+     tick and can be clicked to go back. */
+  .wizard-steps .wz-dot { position:relative; }
+  .wizard-steps .wz-dot .wz-done { display:none; position:absolute; top:.35rem; right:.7rem; width:1.05rem; height:1.05rem;
+    border-radius:50%; background:#16331f; color:#5fd68a; align-items:center; justify-content:center; }
+  .wizard-steps .wz-dot .wz-done .ic { width:.7rem; height:.7rem; }
+  .wizard-steps .wz-dot.done .wz-done { display:flex; }
+  .wizard-steps .wz-dot.active { background:#2a211c; color:var(--accent); }
+  .wizard-steps .wz-dot.later { opacity:.55; }
   .wizard-pane[hidden] { display:none; }
+  .wz-pane { display:flex; flex-direction:column; gap:1rem; }
+  .wz-pane .pv-card .field { font-size:.85rem; }
+  .wz-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:.8rem 1rem; }
+  .wz-grid input, .wz-grid select { width:100%; }
+  .wz-nav { display:flex; gap:.5rem; }
+  details.pv-card > summary { list-style:none; }
+  details.pv-card > summary::-webkit-details-marker { display:none; }
+  @media (max-width: 800px) { .wz-grid { grid-template-columns:minmax(0, 1fr); } .pv-top .wz-nav .pv-btn { padding:0 .7rem; } }
 
   /* toasts */
   .toast-container { position:fixed; bottom:1rem; right:1rem; display:flex; flex-direction:column; gap:.5rem; z-index:100; }
@@ -1437,88 +1443,127 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
   </div>
 </div>
 
-<!-- ══════════ "Novo job" modal ══════════ -->
-<div class="modal-overlay" id="newJobOverlay" hidden>
-  <div class="modal" style="max-width:640px">
-    <button type="button" class="modal-close" id="newJobClose">×</button>
-    <h2>Novo projeto <button class="info-btn" data-info="new-job">ⓘ</button></h2>
-
-    <!-- Guitar Pro wizard (stepper + forms + nav) -->
-    <div id="gpCreate">
-    <!-- Stepper -->
-    <div class="wizard-steps" id="wizardSteps">
-      <div class="wz-dot" data-s="1"><span class="wz-ico"><svg class="ic" aria-hidden="true"><use href="#i-guitar"/></svg></span><span class="wz-lbl">Ficheiro</span></div>
-      <div class="wz-sep"></div>
-      <div class="wz-dot" data-s="2"><span class="wz-ico"><svg class="ic" aria-hidden="true"><use href="#i-sliders"/></svg></span><span class="wz-lbl">Pistas</span></div>
-      <div class="wz-sep"></div>
-      <div class="wz-dot" data-s="3"><span class="wz-ico"><svg class="ic" aria-hidden="true"><use href="#i-headphones"/></svg></span><span class="wz-lbl">Gravação</span></div>
-      <div class="wz-sep"></div>
-      <div class="wz-dot" data-s="4"><span class="wz-ico"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg></span><span class="wz-lbl">Detalhes</span></div>
+<!-- ══════════ "Novo projeto" — ecrã inteiro, como Definições ══════════
+     The four steps are the rail; the current one is the page. Every id the
+     script reaches is the one the old modal had. -->
+<div class="project-view settings-view wizard-view" id="newJobOverlay" hidden>
+  <header class="pv-top">
+    <button type="button" class="pv-btn pv-icon-btn" id="newJobClose" title="Voltar" aria-label="Voltar"><svg class="ic" aria-hidden="true"><use href="#i-back"/></svg></button>
+    <div class="pv-head">
+      <div class="pv-title">Novo projeto <button type="button" class="info-btn" data-info="new-job">ⓘ</button></div>
+      <div class="pv-sub"><span id="wizardStepLabel"></span></div>
     </div>
+    <span class="pv-spacer"></span>
+    <div id="wizardNav" class="wz-nav">
+      <button type="button" class="pv-btn" id="wizardPrev"><svg class="ic" aria-hidden="true"><use href="#i-back"/></svg>Anterior</button>
+      <button type="button" class="pv-btn pv-primary" id="wizardNext">Seguinte <svg class="ic" aria-hidden="true"><use href="#i-forward"/></svg></button>
+      <button type="submit" form="gpJobForm" class="pv-btn pv-primary" id="wizardCreate" style="display:none"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>Criar CDLC</button>
+    </div>
+  </header>
+  <div class="pv-body" id="gpCreate">
+    <nav class="pv-rail wizard-steps" id="wizardSteps" aria-label="Passos do novo projeto">
+      <button type="button" class="wz-dot" data-s="1"><svg class="ic" aria-hidden="true"><use href="#i-guitar"/></svg><span class="wz-lbl">Ficheiro</span><span class="wz-done" aria-hidden="true"><svg class="ic"><use href="#i-check"/></svg></span></button>
+      <button type="button" class="wz-dot" data-s="2"><svg class="ic" aria-hidden="true"><use href="#i-sliders"/></svg><span class="wz-lbl">Pistas</span><span class="wz-done" aria-hidden="true"><svg class="ic"><use href="#i-check"/></svg></span></button>
+      <button type="button" class="wz-dot" data-s="3"><svg class="ic" aria-hidden="true"><use href="#i-headphones"/></svg><span class="wz-lbl">Gravação</span><span class="wz-done" aria-hidden="true"><svg class="ic"><use href="#i-check"/></svg></span></button>
+      <button type="button" class="wz-dot" data-s="4"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg><span class="wz-lbl">Detalhes</span><span class="wz-done" aria-hidden="true"><svg class="ic"><use href="#i-check"/></svg></span></button>
+    </nav>
+    <div class="pv-scroll">
+    <div class="pv-page set-page">
 
     <!-- Step 1: GP file (its own form — submit = inspect) -->
-    <form id="gpInspectForm" class="grid wizard-pane" data-step="1" style="margin-top:.75rem">
-      <div class="field" style="flex-basis:100%"><label>Ficheiro Guitar Pro (GP3/GP4/GP5/GP7) <button class="info-btn" data-info="gp-format">ⓘ</button></label>
-        <div class="file-drop"><div class="file-drop-icon"><svg class="ic" aria-hidden="true"><use href="#i-file"/></svg></div><span class="file-drop-text">Arrasta ou clica para escolher</span><span class="file-drop-btn">Procurar</span>
-        <input type="file" name="file" accept=".gp3,.gp4,.gp5,.gp" required></div></div>
-      <p class="meta" style="flex-basis:100%">Escolhe o ficheiro Guitar Pro e clica em <b>Seguinte</b> para ver as pistas.</p>
-      <div class="field" style="flex-basis:100%;margin-top:.4rem"><label>… ou importa a tab do Songsterr <button class="info-btn" data-info="songsterr-import">ⓘ</button></label>
-        <div class="syncctrls">
-          <input type="text" id="songsterrImportLink" placeholder="https://www.songsterr.com/a/wsa/…-tab-s23063" style="flex:1;min-width:14rem">
-          <button type="button" id="songsterrImportBtn" class="secondary"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg> Importar</button>
+    <form id="gpInspectForm" class="wizard-pane wz-pane" data-step="1">
+      <div>
+        <h1 class="pv-page-title">Ficheiro</h1>
+        <p class="set-desc">Escolhe o ficheiro Guitar Pro e clica em <b>Seguinte</b> para ver as pistas.</p>
+      </div>
+      <div class="pv-card pv-card-lg">
+        <div class="field"><label>Ficheiro Guitar Pro (GP3/GP4/GP5/GP7) <button class="info-btn" data-info="gp-format">ⓘ</button></label>
+          <div class="file-drop"><div class="file-drop-icon"><svg class="ic" aria-hidden="true"><use href="#i-file"/></svg></div><span class="file-drop-text">Arrasta ou clica para escolher</span><span class="file-drop-btn">Procurar</span>
+          <input type="file" name="file" accept=".gp3,.gp4,.gp5,.gp" required></div></div>
+      </div>
+      <div class="pv-card pv-card-lg">
+        <div class="field"><label>… ou importa a tab do Songsterr <button class="info-btn" data-info="songsterr-import">ⓘ</button></label>
+          <div class="syncctrls">
+            <input type="text" id="songsterrImportLink" placeholder="https://www.songsterr.com/a/wsa/…-tab-s23063" style="flex:1;min-width:14rem">
+            <button type="button" id="songsterrImportBtn" class="secondary"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg> Importar</button>
+          </div>
+          <p class="meta" id="songsterrImportInfo" style="margin:.35rem 0 0"></p>
         </div>
-        <p class="meta" id="songsterrImportInfo" style="margin:.35rem 0 0"></p>
       </div>
     </form>
 
     <!-- Steps 2-4 share one form (submit = create) -->
     <form id="gpJobForm" novalidate>
-      <div class="grid wizard-pane" data-step="2" style="margin-top:.75rem">
-        <div id="gpMeta" class="meta" style="flex-basis:100%"></div>
-        <div class="meta" style="flex-basis:100%; opacity:.75">
-          Atribui uma pista a cada arranjo (precisas de pelo menos um). Deixa vazios os que a música não tem.</div>
-        <div class="field"><label>Pista Lead</label>
-          <select name="lead_track"><option value="">—</option></select></div>
-        <div class="field"><label>Pista Rhythm</label>
-          <select name="rhythm_track"><option value="">—</option></select></div>
-        <div class="field"><label>Pista Combo</label>
-          <select name="combo_track"><option value="">—</option></select></div>
-        <div class="field"><label>Pista Lead alternativo</label>
-          <select name="alt_lead_track"><option value="">—</option></select></div>
-        <div class="field"><label>Pista Rhythm alternativo</label>
-          <select name="alt_rhythm_track"><option value="">—</option></select></div>
+      <div class="wizard-pane wz-pane" data-step="2">
+        <div>
+          <h1 class="pv-page-title">Pistas</h1>
+          <p class="set-desc">Atribui uma pista a cada arranjo (precisas de pelo menos um). Deixa vazios os que a música não tem.</p>
+        </div>
+        <div id="gpMeta" class="meta"></div>
+        <div class="pv-card pv-card-lg">
+          <div class="wz-grid">
+            <div class="field"><label>Pista Lead</label>
+              <select name="lead_track"><option value="">—</option></select></div>
+            <div class="field"><label>Pista Rhythm</label>
+              <select name="rhythm_track"><option value="">—</option></select></div>
+            <div class="field"><label>Pista Combo</label>
+              <select name="combo_track"><option value="">—</option></select></div>
+          </div>
+        </div>
+        <div class="pv-card pv-card-lg">
+          <div class="pv-card-head">Arranjos alternativos</div>
+          <div class="wz-grid">
+            <div class="field"><label>Pista Lead alternativo</label>
+              <select name="alt_lead_track"><option value="">—</option></select></div>
+            <div class="field"><label>Pista Rhythm alternativo</label>
+              <select name="alt_rhythm_track"><option value="">—</option></select></div>
+          </div>
+        </div>
       </div>
 
-      <div class="grid wizard-pane" data-step="3" style="margin-top:.75rem">
-        <div class="field" id="gpEmbeddedAudioRow" style="flex-basis:100%" hidden>
-          <label><input type="checkbox" name="use_embedded_audio" id="useEmbeddedAudio" checked>
-            <svg class="ic" aria-hidden="true"><use href="#i-headphones"/></svg> Usar o áudio que vem dentro do ficheiro GP <span class="meta" id="gpEmbeddedAudioInfo"></span></label>
-          <p class="meta" style="margin:.2rem 0 0">É exatamente o áudio com que o Guitar Pro foi sincronizado — a opção mais precisa.
-            Desliga só se quiseres usar outra gravação (que tem de começar no mesmo sítio).</p></div>
-        <div class="field" id="gpAudioUploadField" style="flex-basis:100%"><label>Gravação (áudio da música)</label>
-          <div class="file-drop"><div class="file-drop-icon"><svg class="ic" aria-hidden="true"><use href="#i-headphones"/></svg></div><span class="file-drop-text">Arrasta ou clica para escolher</span><span class="file-drop-btn">Procurar</span>
-          <input type="file" name="audio" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" required></div></div>
-        <details class="field" id="ytBlock" style="flex-basis:100%">
-          <summary style="cursor:pointer"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg> <b>Não tens o áudio?</b> — descarregá-lo de um vídeo do YouTube</summary>
-          <p class="meta" style="margin:.4rem 0 .35rem">Cola o link do vídeo com a música: o áudio passa a ser a gravação do
-            projeto, sem converteres nada à mão. A sincronização acerta-se depois na partitura (ou pelos tempos do Songsterr, abaixo).</p>
-          <div class="syncctrls" style="flex-wrap:wrap">
-            <input type="text" id="ytLink" placeholder="https://www.youtube.com/watch?v=…" style="flex:1;min-width:14rem">
-            <button type="button" id="ytAudioBtn" class="secondary"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg> Descarregar o áudio</button>
-            <label class="meta" style="display:flex;align-items:center;gap:.35rem">Sessão do browser
-              <select id="ytCookies" title="Se o YouTube recusar o download, usa a sessão de um browser onde tenhas o YouTube aberto">
-                <option value="">nenhuma</option><option>chrome</option><option>firefox</option><option>edge</option>
-                <option>brave</option><option>opera</option><option>vivaldi</option><option>safari</option><option>chromium</option>
-              </select></label>
-            <button class="info-btn" type="button" data-info="youtube-audio">ⓘ</button>
+      <div class="wizard-pane wz-pane" data-step="3">
+        <div>
+          <h1 class="pv-page-title">Gravação</h1>
+          <p class="set-desc">Um valor aproximado chega — a <b>sincronização fina</b> (início por pista, andamento, arrastar notas) faz-se depois, na partitura.</p>
+        </div>
+        <div class="pv-card pv-card-lg">
+          <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-headphones"/></svg>Gravação (áudio da música)</div>
+          <div class="field" id="gpEmbeddedAudioRow" hidden>
+            <label><input type="checkbox" name="use_embedded_audio" id="useEmbeddedAudio" checked>
+              <svg class="ic" aria-hidden="true"><use href="#i-headphones"/></svg> Usar o áudio que vem dentro do ficheiro GP <span class="meta" id="gpEmbeddedAudioInfo"></span></label>
+            <p class="meta" style="margin:.2rem 0 0">É exatamente o áudio com que o Guitar Pro foi sincronizado — a opção mais precisa.
+              Desliga só se quiseres usar outra gravação (que tem de começar no mesmo sítio).</p></div>
+          <div class="field" id="gpAudioUploadField">
+            <div class="file-drop"><div class="file-drop-icon"><svg class="ic" aria-hidden="true"><use href="#i-headphones"/></svg></div><span class="file-drop-text">Arrasta ou clica para escolher</span><span class="file-drop-btn">Procurar</span>
+            <input type="file" name="audio" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" required></div></div>
+          <details class="field" id="ytBlock">
+            <summary style="cursor:pointer"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg> <b>Não tens o áudio?</b> — descarregá-lo de um vídeo do YouTube</summary>
+            <p class="meta" style="margin:.4rem 0 .35rem">Cola o link do vídeo com a música: o áudio passa a ser a gravação do
+              projeto, sem converteres nada à mão. A sincronização acerta-se depois na partitura (ou pelos tempos do Songsterr, abaixo).</p>
+            <div class="syncctrls" style="flex-wrap:wrap">
+              <input type="text" id="ytLink" placeholder="https://www.youtube.com/watch?v=…" style="flex:1;min-width:14rem">
+              <button type="button" id="ytAudioBtn" class="secondary"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg> Descarregar o áudio</button>
+              <label class="meta" style="display:flex;align-items:center;gap:.35rem">Sessão do browser
+                <select id="ytCookies" title="Se o YouTube recusar o download, usa a sessão de um browser onde tenhas o YouTube aberto">
+                  <option value="">nenhuma</option><option>chrome</option><option>firefox</option><option>edge</option>
+                  <option>brave</option><option>opera</option><option>vivaldi</option><option>safari</option><option>chromium</option>
+                </select></label>
+              <button class="info-btn" type="button" data-info="youtube-audio">ⓘ</button>
+            </div>
+            <p class="meta" id="ytAudioInfo" style="margin:.35rem 0 0"></p>
+          </details>
+        </div>
+        <div class="pv-card pv-card-lg">
+          <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-timer"/></svg>Início</div>
+          <div class="wz-grid">
+            <div class="field"><label>Início da música na gravação (s) <button class="info-btn" data-info="gp-offset">ⓘ</button></label>
+              <input type="number" name="offset_s" value="0" step="any" min="-60"></div>
+            <div class="field"><label>Silêncio inicial (s) <button class="info-btn" data-info="lead-in">ⓘ</button></label>
+              <input type="number" name="lead_in_s" value="0" step="any" min="0"></div>
           </div>
-          <p class="meta" id="ytAudioInfo" style="margin:.35rem 0 0"></p>
-        </details>
-        <div class="field"><label>Início da música na gravação (s) <button class="info-btn" data-info="gp-offset">ⓘ</button></label>
-          <input type="number" name="offset_s" value="0" step="any" min="-60" style="width:6rem"></div>
-        <div class="field"><label>Silêncio inicial (s) <button class="info-btn" data-info="lead-in">ⓘ</button></label>
-          <input type="number" name="lead_in_s" value="0" step="any" min="0" style="width:6rem"></div>
-        <details class="field" id="songsterrBlock" style="flex-basis:100%">
+          <p class="meta" id="gpSyncHint" style="color:#3fdc8a;margin:0" hidden></p>
+        </div>
+        <details class="pv-card pv-card-lg" id="songsterrBlock">
           <summary style="cursor:pointer"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg> <b>Extra</b> — sincronizar pelos tempos do Songsterr (opcional)</summary>
           <p class="meta" style="margin:.4rem 0 .35rem">O Songsterr guarda o instante de <b>cada compasso</b> num vídeo do
             YouTube, marcado por pessoas. Cola o link da música: o RockForge vai buscar só esses tempos. A gravação tem de ser
@@ -1532,21 +1577,27 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
           <select id="songsterrVideo" style="margin-top:.4rem;width:100%" hidden></select>
           <p class="meta" id="songsterrInfo" style="margin:.35rem 0 0"></p>
         </details>
-        <p class="meta" id="gpSyncHint" style="flex-basis:100%;color:#3fdc8a" hidden></p>
-        <p class="meta" style="flex-basis:100%">Um valor aproximado chega — a <b>sincronização fina</b> (início por pista, andamento, arrastar notas) faz-se depois, na partitura.</p>
       </div>
 
-      <div class="grid wizard-pane" data-step="4" style="margin-top:.75rem">
-        <div class="field"><label>Título</label>
-          <input type="text" name="title" placeholder="auto do GP/tags"></div>
-        <div class="field"><label>Banda</label>
-          <input type="text" name="artist" placeholder="auto do GP/tags"></div>
-        <div class="field"><label>Álbum</label>
-          <input type="text" name="album" placeholder="auto"></div>
-        <div class="field"><label>Ano</label>
-          <input type="number" name="year" min="1900" max="2100" style="width:5.5rem"></div>
-        <div class="field" style="flex-basis:100%">
-          <label>Álbum, ano e capa <button class="info-btn" data-info="album-lookup">ⓘ</button></label>
+      <div class="wizard-pane wz-pane" data-step="4">
+        <div>
+          <h1 class="pv-page-title">Detalhes</h1>
+          <p class="set-desc">Os <b>tons</b> e a <b>capa</b> definem-se depois de criar — o projeto mostra um checklist "Estado do PSARC" a avisar-te do que falta.</p>
+        </div>
+        <div class="pv-card pv-card-lg">
+          <div class="wz-grid">
+            <div class="field"><label>Título</label>
+              <input type="text" name="title" placeholder="auto do GP/tags"></div>
+            <div class="field"><label>Banda</label>
+              <input type="text" name="artist" placeholder="auto do GP/tags"></div>
+            <div class="field"><label>Álbum</label>
+              <input type="text" name="album" placeholder="auto"></div>
+            <div class="field"><label>Ano</label>
+              <input type="number" name="year" min="1900" max="2100"></div>
+          </div>
+        </div>
+        <div class="pv-card pv-card-lg">
+          <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-image"/></svg>Álbum, ano e capa <button class="info-btn" data-info="album-lookup">ⓘ</button></div>
           <div class="pv-row">
             <button type="button" id="wzAlbumSearch" class="secondary"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg> Procurar online</button>
             <span id="wzAlbumInfo" class="meta"></span>
@@ -1554,31 +1605,27 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
           <div id="wzAlbumResults" class="album-grid"></div>
           <input type="hidden" name="cover_url" id="wzCoverUrl">
         </div>
-        <div class="field" style="flex-basis:100%">
-          <label>Letra sincronizada <button class="info-btn" data-info="wz-lyrics">ⓘ</button></label>
+        <div class="pv-card pv-card-lg">
+          <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-mic"/></svg>Letra sincronizada <button class="info-btn" data-info="wz-lyrics">ⓘ</button></div>
           <div class="pv-row">
             <button type="button" id="wzLyricsSearch" class="secondary"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg> Procurar letra online</button>
             <span id="wzLyricsInfo" class="meta"></span>
           </div>
           <div id="wzLyricsResults" class="lyr-results"></div>
           <input type="hidden" name="lyrics_lrc" id="wzLyricsLrc">
+          <div class="field"><label>Letra (LRC ou UltraStar TXT, opcional) <button class="info-btn" data-info="lrc">ⓘ</button></label>
+            <div class="file-drop"><div class="file-drop-icon"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg></div><span class="file-drop-text">Arrasta ou clica (opcional)</span><span class="file-drop-btn">Procurar</span>
+            <input type="file" name="lrc" accept=".lrc,.txt"></div></div>
         </div>
-        <div class="field" style="flex-basis:100%">
+        <div class="pv-card pv-card-lg">
           <label class="check"><input type="checkbox" name="import_mutes" value="true" checked>
-          Importar palm mute / slap / pop / tap</label></div>
-        <div class="field" style="flex-basis:100%"><label>Letra (LRC ou UltraStar TXT, opcional) <button class="info-btn" data-info="lrc">ⓘ</button></label>
-          <div class="file-drop"><div class="file-drop-icon"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg></div><span class="file-drop-text">Arrasta ou clica (opcional)</span><span class="file-drop-btn">Procurar</span>
-          <input type="file" name="lrc" accept=".lrc,.txt"></div></div>
-        <p class="meta" style="flex-basis:100%">Os <b>tons</b> e a <b>capa</b> definem-se depois de criar — o projeto mostra um checklist "Estado do PSARC" a avisar-te do que falta.</p>
+          Importar palm mute / slap / pop / tap</label>
+        </div>
       </div>
     </form>
 
-    <div class="modal-actions" id="wizardNav">
-      <button type="button" class="secondary" id="wizardPrev">← Anterior</button>
-      <button type="button" id="wizardNext">Seguinte →</button>
-      <button type="submit" form="gpJobForm" id="wizardCreate" style="display:none"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Criar CDLC</button>
     </div>
-    </div><!-- /#gpCreate -->
+    </div>
   </div>
 </div>
 
