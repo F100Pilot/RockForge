@@ -111,7 +111,8 @@ qualquer job que tenha uma gravação.
 **Tons das tuas músicas.** Como no DLC Builder: no editor de tons, **"Procurar
 nos teus PSARC"** lê a pasta `dlc` do Rocksmith (oficiais e CDLC; a pasta do
 jogo inclui também `songs.psarc`) e lista os tons de cada música com o gear
-exato. Pesquisa por música, artista, tom ou equipamento; **"Usar neste
+exato. Pesquisa por música, artista, tom ou equipamento, ou escolhe um artista
+na lista (ou clica no nome dele num tom) para ver só os tons das músicas dele; **"Usar neste
 projeto"** copia o tom, **★** guarda-o na biblioteca. Os ficheiros só são lidos
 (apenas os manifestos), e voltar a ler a pasta só abre os novos. Precisa do
 extra `[psarc]`.

@@ -677,6 +677,8 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
 .lyr-results:empty { display:none; }
 .tc-list { display:flex; flex-direction:column; gap:.45rem; max-height:55vh; overflow:auto; margin-top:.4rem; }
 .tc-list .lyr-card button { flex:none; }
+.tc-artist { background:none; border:0; padding:0; color:inherit; font:inherit; text-decoration:underline dotted; cursor:pointer; }
+.tc-artist:hover { color:var(--text); }
 .lyr-card { display:flex; gap:.8rem; align-items:flex-start; padding:.6rem .75rem; border:1px solid #262831; border-radius:12px; background:#16171d; }
 .lyr-card .lyr-body { flex:1; min-width:0; display:flex; flex-direction:column; gap:.2rem; }
 .lyr-card b { font-size:.9rem; }
@@ -1813,7 +1815,10 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
       </div>
     </div>
     <div id="tcStatus" class="meta"></div>
-    <input type="search" id="tcSearch" placeholder="Procurar por música, artista, tom ou equipamento…" style="width:100%;margin:.6rem 0 .3rem">
+    <div class="anchor-row" style="gap:.4rem;flex-wrap:nowrap;margin:.6rem 0 .3rem">
+      <select id="tcArtist" aria-label="Artista" style="max-width:40%"><option value="">Todos os artistas</option></select>
+      <input type="search" id="tcSearch" placeholder="Procurar por música, artista, tom ou equipamento…" style="flex:1;min-width:0">
+    </div>
     <div id="tcCount" class="meta"></div>
     <div id="tcList" class="tc-list"></div>
   </div>

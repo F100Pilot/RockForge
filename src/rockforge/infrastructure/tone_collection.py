@@ -278,12 +278,40 @@ def rows(data: dict[str, Any] | None = None) -> list[dict[str, Any]]:
     return out
 
 
-def search(query: str, data: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+def artists(data: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    """Every artist in the collection with how many songs and tones it has,
+    sorted by name. Spellings that differ only in case or accents ("Motörhead",
+    "MOTORHEAD") are one artist, shown as its most common spelling."""
+    groups: dict[str, dict[str, Any]] = {}
+    for row in rows(data):
+        name = str(row.get("artist", "")).strip()
+        if not name:
+            continue
+        group = groups.setdefault(_fold(name), {"spellings": {}, "songs": set(), "tones": 0})
+        group["spellings"][name] = group["spellings"].get(name, 0) + 1
+        group["songs"].add(_fold(str(row.get("song", ""))))
+        group["tones"] += 1
+    return [
+        {"name": max(g["spellings"], key=g["spellings"].get), "songs": len(g["songs"]),
+         "tones": g["tones"]}
+        for _, g in sorted(groups.items())
+    ]
+
+
+def search(
+    query: str, data: dict[str, Any] | None = None, artist: str = "",
+) -> list[dict[str, Any]]:
     """The rows whose song, artist, album, tone name or gear contain every word
-    of ``query`` (case and accents ignored)."""
+    of ``query`` (case and accents ignored), and — when ``artist`` is given —
+    that are that artist's (the whole name, case and accents ignored)."""
     words = _fold(query).split()
+    wanted = _fold(artist.strip())
+    found = [
+        r for r in rows(data)
+        if not wanted or _fold(str(r.get("artist", "")).strip()) == wanted
+    ]
     if not words:
-        return rows(data)
+        return found
 
     def haystack(row: dict[str, Any]) -> str:
         tone = row.get("tone") or {}
@@ -294,4 +322,4 @@ def search(query: str, data: dict[str, Any] | None = None) -> list[dict[str, Any
                  *(str(g.get("key", "")) for g in gear if isinstance(g, dict))]
         return _fold(" ".join(parts))
 
-    return [r for r in rows(data) if all(w in haystack(r) for w in words)]
+    return [r for r in found if all(w in haystack(r) for w in words)]

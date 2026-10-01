@@ -1051,5 +1051,9 @@
  "Guardar na biblioteca": "Save to the library",
  "Não foi possível ler a coleção: {msg}": "Could not read the collection: {msg}",
  "ex.: C:\\Program Files (x86)\\Steam\\steamapps\\common\\Rocksmith2014\\dlc": "e.g.: C:\\Program Files (x86)\\Steam\\steamapps\\common\\Rocksmith2014\\dlc",
- "Procurar por música, artista, tom ou equipamento…": "Search by song, artist, tone or gear…"
+ "Procurar por música, artista, tom ou equipamento…": "Search by song, artist, tone or gear…",
+ "Artista": "Artist",
+ "Todos os artistas": "All artists",
+ "Todos os artistas ({n})": "All artists ({n})",
+ "Ver só os tons deste artista": "Show only this artist's tones"
 };

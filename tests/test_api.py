@@ -3452,6 +3452,11 @@ def test_the_tones_of_the_songs_in_the_dlc_folder_are_listed_and_handed_out(
     assert row["amp"] == "Marshall Plexi"  # the game's names, not the gear keys
     assert row["effects"] == ["Super Drive"] and row["arrangements"] == ["Lead", "Rhythm"]
 
+    assert [a["name"] for a in body["artists"]] == ["AC/DC"]
+    one = client.get("/tone-collection", params={"artist": "ac/dc", "q": "alpha"}).json()
+    assert one["matched"] == 2 and {e["song"] for e in one["entries"]} == {"Alpha"}
+    assert one["artists"] == body["artists"]  # the picker lists every artist, filtered or not
+    assert client.get("/tone-collection", params={"artist": "Nobody"}).json()["matched"] == 0
     found = client.get("/tone-collection", params={"q": "beta clean"}).json()
     assert found["matched"] == 1 and found["entries"][0]["song"] == "Beta"
     assert client.get("/tone-collection", params={"limit": 1}).json()["matched"] == 4

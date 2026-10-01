@@ -3812,9 +3812,10 @@ function closeToneCollection() {
 }
 async function refreshToneCollection(fillFolder) {
   const q = document.getElementById('tcSearch').value;
+  const artist = document.getElementById('tcArtist').value;
   let data;
   try {
-    data = await getJSON(`/tone-collection?q=${encodeURIComponent(q)}`);
+    data = await getJSON(`/tone-collection?q=${encodeURIComponent(q)}&artist=${encodeURIComponent(artist)}`);
   } catch (e) {
     document.getElementById('tcStatus').textContent = T('Não foi possível ler a coleção: {msg}', { msg: e.message });
     return;
@@ -3822,6 +3823,7 @@ async function refreshToneCollection(fillFolder) {
   const folderEl = document.getElementById('tcFolder');
   if (fillFolder && !folderEl.value) folderEl.value = data.folder || data.suggested_folder || '';
   renderToneCollStatus(data);
+  renderToneCollArtists(data.artists || []);
   renderToneCollList(data);
   clearTimeout(toneCollTimer);
   if (data.status.state === 'scanning' && !document.getElementById('toneCollOverlay').hidden)
@@ -3848,6 +3850,27 @@ function renderToneCollStatus(data) {
       : T('Indica a pasta dlc do Rocksmith e carrega em "Ler a pasta".');
   }
 }
+function renderToneCollArtists(artists) {
+  const sel = document.getElementById('tcArtist');
+  const keep = sel.value;
+  const option = (label, value) => {
+    const o = document.createElement('option');
+    o.textContent = label;
+    o.value = value;
+    return o;
+  };
+  sel.replaceChildren(option(T('Todos os artistas ({n})', { n: artists.length }), ''));
+  for (const a of artists) sel.append(option(`${a.name} (${a.tones})`, a.name));
+  sel.value = artists.some(a => a.name === keep) ? keep : '';
+}
+// A card's artist filters the list by that artist (same as picking it above).
+function filterToneCollArtist(name) {
+  const sel = document.getElementById('tcArtist');
+  const opt = [...sel.options].find(o => o.value && o.value.localeCompare(name, undefined, { sensitivity: 'base' }) === 0);
+  if (!opt) return;
+  sel.value = opt.value;
+  refreshToneCollection(false);
+}
 function renderToneCollList(data) {
   const list = document.getElementById('tcList');
   const count = document.getElementById('tcCount');
@@ -3867,8 +3890,17 @@ function renderToneCollList(data) {
     title.textContent = e.name;
     const song = document.createElement('div');
     song.className = 'lyr-meta';
-    song.textContent = [e.song, e.artist].filter(Boolean).join(' — ') +
-      (e.arrangements.length ? ` · ${e.arrangements.join(', ')}` : '');
+    song.append(e.song || '');
+    if (e.artist) {
+      const who = document.createElement('button');
+      who.type = 'button';
+      who.className = 'tc-artist';
+      who.textContent = e.artist;
+      who.title = T('Ver só os tons deste artista');
+      who.addEventListener('click', () => filterToneCollArtist(e.artist));
+      song.append(e.song ? ' — ' : '', who);
+    }
+    if (e.arrangements.length) song.append(` · ${e.arrangements.join(', ')}`);
     const gear = document.createElement('div');
     gear.className = 'lyr-preview';
     gear.textContent = [e.amp, e.cabinet, ...e.effects].filter(Boolean).join(' · ');
@@ -3917,6 +3949,7 @@ document.getElementById('tcScan').addEventListener('click', async () => {
   } catch (e) { toast(e.message); return; }
   refreshToneCollection(false);
 });
+document.getElementById('tcArtist').addEventListener('change', () => refreshToneCollection(false));
 document.getElementById('tcSearch').addEventListener('input', () => {
   clearTimeout(toneCollSearchTimer);
   toneCollSearchTimer = setTimeout(() => refreshToneCollection(false), 250);

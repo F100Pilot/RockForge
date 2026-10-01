@@ -589,7 +589,8 @@ Feedback and bug reports very welcome!
 - [x] **Tons das tuas músicas (como o DLC Builder)**: lê os `.psarc` da pasta
   `dlc` do Rocksmith (oficiais e CDLC; a pasta do jogo inclui `songs.psarc`) e
   lista os tons de cada música com o gear exato, pesquisáveis por música,
-  artista, tom ou equipamento. "Usar neste projeto" copia o tom; ★ guarda-o na
+  artista, tom ou equipamento, e filtráveis por artista (lista de artistas; o
+  artista de cada tom é um atalho). "Usar neste projeto" copia o tom; ★ guarda-o na
   biblioteca. Só lê os manifestos (`container.read_entries`), nunca o áudio, e
   guarda o resultado (`work_dir/tone_collection.json`): reler só abre ficheiros
   novos ou alterados. `GET /tone-collection`, `GET /tone-collection/tone`,

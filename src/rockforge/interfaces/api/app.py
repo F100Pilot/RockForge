@@ -3141,18 +3141,21 @@ def _tone_collection_status() -> dict[str, Any]:
 
 
 @app.get("/tone-collection")
-def get_tone_collection(q: str = "", offset: int = 0, limit: int = 200) -> dict[str, Any]:
+def get_tone_collection(
+    q: str = "", artist: str = "", offset: int = 0, limit: int = 200,
+) -> dict[str, Any]:
     """The tones of every song in the player's Rocksmith dlc folder, as the last
-    scan found them (``tone_collection``), filtered by ``q`` and paged — a large
-    library has thousands. Each row is light (names only); the full tone is
-    ``/tone-collection/tone``."""
+    scan found them (``tone_collection``), filtered by ``q`` and/or one
+    ``artist`` and paged — a large library has thousands. Each row is light
+    (names only); the full tone is ``/tone-collection/tone``. ``artists`` lists
+    every artist of the whole collection, whatever the filter, for the picker."""
     from rockforge.infrastructure import tone_collection
 
     data = tone_collection.load()
     folder = _tone_collection_folder()
     if folder is not None and data.get("folder") not in (None, str(folder)):
         data = {}  # the cache belongs to another folder: nothing scanned here yet
-    matched = tone_collection.search(q, data)
+    matched = tone_collection.search(q, data, artist)
     files = data.get("files") or {}
     page = []
     for row in matched[max(0, offset): max(0, offset) + max(1, min(limit, 500))]:
@@ -3186,6 +3189,7 @@ def get_tone_collection(q: str = "", offset: int = 0, limit: int = 200) -> dict[
         "unreadable": sum(1 for f in files.values() if isinstance(f, dict) and f.get("error")),
         "tones_total": sum(len((f or {}).get("tones") or []) for f in files.values()),
         "matched": len(matched),
+        "artists": tone_collection.artists(data),
         "entries": page,
     }
 

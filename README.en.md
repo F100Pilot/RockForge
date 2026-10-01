@@ -111,7 +111,8 @@ a recording.
 
 **Tones from your songs.** As in DLC Builder: in the tone editor, **"Search your PSARCs"** reads
 the Rocksmith `dlc` folder (official and CDLC; the game folder also includes `songs.psarc`) and
-lists every song's tones with their exact gear. Search by song, artist, tone or gear; **"Use in
+lists every song's tones with their exact gear. Search by song, artist, tone or gear, or pick
+an artist from the list (or click their name on a tone) to see only their songs' tones; **"Use in
 this project"** copies the tone, **★** saves it to the library. The files are only read (just
 their manifests), and reading the folder again only opens new ones. It needs the `[psarc]`
 extra.

@@ -22,8 +22,10 @@ def _tone(key: str, name: str, amp: str = "Amp_MarshallPlexi", **extra: object) 
             "Volume": "-19.5", "Key": key, "Name": name}
 
 
-def _manifest(arrangement: str, tones: list | None, song: str = "Highway to Hell") -> bytes:
-    attrs: dict = {"SongName": song, "ArtistName": "AC/DC", "AlbumName": "Highway",
+def _manifest(
+    arrangement: str, tones: list | None, song: str = "Highway to Hell", artist: str = "AC/DC",
+) -> bytes:
+    attrs: dict = {"SongName": song, "ArtistName": artist, "AlbumName": "Highway",
                    "ArrangementName": arrangement}
     if tones is not None:
         attrs["Tones"] = tones
@@ -31,7 +33,9 @@ def _manifest(arrangement: str, tones: list | None, song: str = "Highway to Hell
                        "InsertRoot": "Static.Songs.Entries"}).encode()
 
 
-def _song_psarc(path: Path, song: str = "Highway to Hell", encrypt: bool = False) -> Path:
+def _song_psarc(
+    path: Path, song: str = "Highway to Hell", encrypt: bool = False, artist: str = "AC/DC",
+) -> Path:
     drive = {"Type": "Pedals", "KnobValues": {"Pedal_SuperDrive_Gain": 61},
              "PedalKey": "Pedal_SuperDrive"}  # older tools wrote PedalKey
     lead = [
@@ -41,11 +45,11 @@ def _song_psarc(path: Path, song: str = "Highway to Hell", encrypt: bool = False
     ]
     files = {
         "audio/windows/123.wem": os.urandom(200_000),  # several blocks to skip over
-        "manifests/songs_dlc_hth/hth_lead.json": _manifest("Lead", lead, song),
+        "manifests/songs_dlc_hth/hth_lead.json": _manifest("Lead", lead, song, artist),
         "manifests/songs_dlc_hth/hth_rhythm.json": _manifest(
-            "Rhythm", [_tone("HTH_Lead", "Lead")], song,
+            "Rhythm", [_tone("HTH_Lead", "Lead")], song, artist,
         ),
-        "manifests/songs_dlc_hth/hth_vocals.json": _manifest("Vocals", None, song),
+        "manifests/songs_dlc_hth/hth_vocals.json": _manifest("Vocals", None, song, artist),
         "manifests/songs_dlc_hth/songs_dlc_hth.hsan": b"{}",
     }
     path.write_bytes(pack_entries(files, encrypt=encrypt))
@@ -145,6 +149,33 @@ def test_the_collection_is_searched_by_song_artist_tone_and_gear(
     assert tc.search("nothing like it") == []
     ids = {r["id"] for r in tc.rows()}
     assert len(ids) == 2 and all(len(i) == 16 for i in ids)
+
+
+def test_the_collection_can_be_narrowed_to_one_artist(tmp_path: Path, monkeypatch) -> None:
+    """A picker of every artist (songs and tones counted), and a filter on the
+    whole name — "AC" must not bring in AC/DC, and spelling variants of one
+    artist are one."""
+    monkeypatch.setattr(tc.config.settings, "work_dir", tmp_path / "work")
+    dlc = tmp_path / "dlc"
+    dlc.mkdir()
+    _song_psarc(dlc / "a_p.psarc", "Highway to Hell")
+    _song_psarc(dlc / "b_p.psarc", "Thunderstruck")
+    _song_psarc(dlc / "c_p.psarc", "Ace of Spades", artist="Motörhead")
+    _song_psarc(dlc / "d_p.psarc", "Overkill", artist="MOTORHEAD ")
+    _song_psarc(dlc / "e_p.psarc", "Something", artist="AC")
+    tc.scan(dlc)
+    assert tc.artists() == [
+        {"name": "AC", "songs": 1, "tones": 2},
+        {"name": "AC/DC", "songs": 2, "tones": 4},
+        {"name": "Motörhead", "songs": 2, "tones": 4},  # one artist, two spellings
+    ]
+    acdc = {r["song"] for r in tc.search("", artist="ac/dc")}
+    assert acdc == {"Highway to Hell", "Thunderstruck"}
+    assert {r["song"] for r in tc.search("", artist="motorhead")} == {"Ace of Spades", "Overkill"}
+    assert {r["song"] for r in tc.search("", artist="AC")} == {"Something"}
+    # the words still apply inside the artist
+    assert [r["song"] for r in tc.search("thunder clean", artist="AC/DC")] == ["Thunderstruck"]
+    assert tc.search("", artist="Nobody") == []
 
 
 def test_steams_default_dlc_folder_is_suggested_when_it_exists(tmp_path: Path, monkeypatch) -> None:

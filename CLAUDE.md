@@ -2743,7 +2743,12 @@ into the editor's tone dict (`tone_from_dto`: `Key` or older tools'
 `PedalKey`, `Volume` string or number, a pedal kept in its slot, and a tone
 whose amp/cabinet the catalogue does not know dropped and counted), and list
 them by song, artist, arrangements and gear, searchable (case/accent-blind, every
-word). "Usar neste projeto" copies one into the project (`addToneToProject`,
+word). **And by artist** ("possibilidade de pesquisar por artista"): an artist
+picker (`#tcArtist`, every artist of the whole collection with its tone count —
+`tone_collection.artists`, spellings that differ only in case/accents/edge
+spaces are one artist under its most common spelling) and `?artist=` on
+`/tone-collection`, which matches the WHOLE name ("AC" is not AC/DC) and
+combines with the words; the artist on a card is a link that picks it. "Usar neste projeto" copies one into the project (`addToneToProject`,
 shared with the library's ⬇, so a clashing key is suffixed), ★ saves it to the
 library.
 
@@ -2768,7 +2773,8 @@ hands one out whole (id = sha1 of path + key). Needs `[psarc]` (the TOC is
 AES-encrypted); without it the scan ends in a clear error. UI: the tone
 builder's "Tons das tuas músicas" block → `#toneCollOverlay`. Guarded by
 `test_tone_collection.py` (each piece mutation-checked: PedalKey, the
-size/mtime reuse, merging arrangements, the catalogue check, the block table)
+size/mtime reuse, merging arrangements, the catalogue check, the block table;
+`test_the_collection_can_be_narrowed_to_one_artist`)
 and `test_the_tones_of_the_songs_in_the_dlc_folder_are_listed_and_handed_out`;
 the modal with Playwright on two encrypted archives (scan, list, search, use,
 ★, PT/EN, no page errors). **Never run against a real dlc folder from here** —
