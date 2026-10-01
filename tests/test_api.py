@@ -3239,6 +3239,43 @@ def test_tone_suggestions_propose_a_tone_per_part_of_each_track(
     assert body["timeline"][0] == [2.0, 0.6, 1]
 
 
+def test_the_tones_chosen_in_place_of_the_suggested_ones_are_kept_with_the_project(
+    client: TestClient, tmp_path
+) -> None:
+    """The stand-ins picked for suggested tones live in the project: they come
+    back with the suggestions after leaving it, survive a rebuild fork, and a
+    tone with no real amp/cabinet is refused."""
+    timeline = [[float(t), 0.6, 0.5, 0.5, 1] for t in range(26)]
+    job = _built_two_track_job(client, tmp_path, detected={
+        "status": "ready", "timeline": timeline,
+        "profile": {"gain_level": 0.6, "brightness": 0.5, "low_end": 0.5},
+    })
+    url = f"/jobs/{job['id']}"
+    assert client.get(f"{url}/tone-suggestions").json()["swaps"] == {}
+    suggested = client.get(f"{url}/tone-suggestions").json()["tracks"][0]["base"]
+    mine = {"key": "HTH_Lead", "name": "Lead", "volume": -19.5,
+            "amp": {"key": "Amp_MarshallPlexi"}, "cabinet": {"key": "Cab_Marshall1960a_57_Cone"}}
+    swaps = {suggested: {"tone": mine, "source": "collection",
+                         "label": "Lead · Highway to Hell — AC/DC"}}
+    r = client.patch(f"{url}/tone-swaps", json={"swaps": swaps})
+    assert r.status_code == 200, r.text
+    back = client.get(f"{url}/tone-suggestions").json()["swaps"]
+    assert back == {suggested: {**swaps[suggested]}}
+    fork = client.post(f"{url}/rebuild", json={"offset_s": 1.0}).json()
+    assert client.get(f"/jobs/{fork['id']}").json()  # a fork carries them in its params
+    from rockforge.interfaces.api import app as app_module
+    with app_module._session_factory() as session:
+        assert session.get(app_module.Job, fork["id"]).params["tone_swaps"] == back
+    nonsense = {"key": "x", "amp": {"key": "Amp_Nope"}, "cabinet": {"key": "Cab_No"}}
+    bad = {suggested: {"tone": nonsense, "source": "library"}}
+    assert client.patch(f"{url}/tone-swaps", json={"swaps": bad}).status_code == 422
+    assert client.patch(f"{url}/tone-swaps", json={"swaps": {suggested: {
+        "tone": mine, "source": "elsewhere"}}}).status_code == 422
+    assert client.patch(f"{url}/tone-swaps", json={"swaps": {}}).status_code == 200
+    assert client.get(f"{url}/tone-suggestions").json()["swaps"] == {}
+    assert client.patch("/jobs/nope/tone-swaps", json={"swaps": {}}).status_code == 404
+
+
 def test_each_track_can_keep_its_own_tones(client: TestClient, tmp_path) -> None:
     job = _gp_job(client, tmp_path)
     rebuilt = client.post(f"/jobs/{job['id']}/rebuild", json={

@@ -2438,8 +2438,17 @@ picker: the suggested one, a project tone, a library tone, or "Dos teus
 PSARC…", which opens the tone collection in PICK mode (`openToneCollection({
 label, onPick, onClose})`: the card's button reads "Escolher este", picks and
 closes; closing without a pick re-renders and the picker falls back). The
-choice is one map for every track (`toneSwaps`, per job, in memory until
-applied — the same preset is usually suggested on several charts), the rows
+choice is one map for every track (`toneSwaps` — the same preset is usually
+suggested on several charts), **kept with the project** ("guarda as trocas
+escolhidas para não se perderem ao mudar de projeto"): every change is sent to
+`PATCH /jobs/{id}/tone-swaps` (the whole map, `params["tone_swaps"]`, each
+stand-in validated as a real tone, ≤ 32, source project/library/collection; no
+rebuild, a fork inherits it) and comes back as `ToneSuggestionsOut.swaps`; a
+stand-in no longer in the lists (a project tone deleted, a library tone
+removed) keeps its own option and is copied back in on "Aplicar" rather than
+silently dropped. Guarded by
+`test_the_tones_chosen_in_place_of_the_suggested_ones_are_kept_with_the_project`
+(stored, read back, inherited by a fork, nonsense refused, cleared). The rows
 say "Meu tom (em vez de Crunch encorpado)", and "Aplicar" copies a library or
 PSARC stand-in into the project once (`swapToneKey`, a different tone under
 the same key gets a suffix) and maps the plan through it (`swapPlan`, pure:

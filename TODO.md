@@ -590,7 +590,8 @@ Feedback and bug reports very welcome!
   "Sugestões por secção", cada tom sugerido pode ser trocado por um tom do
   projeto, da biblioteca ou dos teus PSARC; "Aplicar" mantém os tempos das
   trocas detetados e usa os tons escolhidos (dois sugeridos trocados pelo mesmo
-  juntam-se). Só frontend (`swapPlan`, `toneSwaps`).
+  juntam-se). As escolhas ficam guardadas no projeto (`PATCH /jobs/{id}/tone-swaps`),
+  por isso sobrevivem a mudar de projeto e a reconstruir.
 
 - [x] **Tons das tuas músicas (como o DLC Builder)**: lê os `.psarc` da pasta
   `dlc` do Rocksmith (oficiais e CDLC; a pasta do jogo inclui `songs.psarc`) e

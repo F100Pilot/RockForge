@@ -5089,11 +5089,22 @@ function toneReasonText(r) {
   }
 }
 
-// The user's stand-ins for suggested tones: {suggested key: {tone, from}}. The
-// switch points stay the app's; only which tone plays at them changes. One map
-// for every track, since the same preset is usually suggested on several.
+// The user's stand-ins for suggested tones: {suggested key: {tone, source,
+// label}}. The switch points stay the app's; only which tone plays at them
+// changes. One map for every track, since the same preset is usually suggested
+// on several. Kept with the project (PATCH /tone-swaps, read back with the
+// suggestions), so leaving it does not lose them.
 let toneSwaps = {};
 let toneSwapsJob = null;
+async function saveToneSwaps() {
+  if (!selectedJob) return;
+  try {
+    await getJSON(`/jobs/${selectedJob.id}/tone-swaps`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ swaps: toneSwaps }),
+    });
+  } catch (e) { toast(T('Não foi possível guardar as trocas de tom: {msg}', { msg: e.message })); }
+}
 
 // A plan with its tone keys mapped through keyMap: names deduplicated, and a
 // change to the tone already playing (two suggestions swapped for one tone)
@@ -5125,8 +5136,10 @@ function toneSwapsHtml(tracks) {
   const opts = (items, prefix) => items.map(t => `<option value="${prefix}${esc(t.key)}">${esc(t.name || t.key)}</option>`).join('');
   const rows = suggestedTones(tracks).map(s => {
     const sw = toneSwaps[s.key];
-    const picked = sw && sw.from === 'collection'
-      ? `<option value="c:" selected>${esc(sw.label)}</option>` : '';
+    const listed = sw && ((sw.source === 'project' && jobTones.some(t => t.key === sw.tone.key)) ||
+      (sw.source === 'library' && toneLibrary.some(t => t.key === sw.tone.key)));
+    const picked = sw && !listed
+      ? `<option value="c:" selected>${esc(sw.label || sw.tone.name || sw.tone.key)}</option>` : '';
     const sel = `<select class="ts-swap" data-key="${esc(s.key)}" aria-label="${esc(T('Trocar por'))}">
       <option value="">${T('o sugerido')}</option>${picked}
       ${jobTones.length ? `<optgroup label="${esc(T('Tons do projeto'))}">${opts(jobTones, 'p:')}</optgroup>` : ''}
@@ -5141,11 +5154,10 @@ function wireToneSwaps(body) {
   body.querySelectorAll('.ts-swap').forEach(sel => {
     const key = sel.dataset.key;
     const sw = toneSwaps[key];
-    if (sw && sw.from === 'project') sel.value = `p:${sw.tone.key}`;
-    else if (sw && sw.from === 'library') sel.value = `l:${sw.tone.key}`;
-    else if (sw && sw.from === 'collection') sel.value = 'c:';
+    if (sw && sw.source === 'project') sel.value = `p:${sw.tone.key}`;
+    else if (sw && sw.source === 'library') sel.value = `l:${sw.tone.key}`;
     else sel.value = '';
-    if (sw && sel.value === '') delete toneSwaps[key];  // a stand-in that is gone
+    if (sw && !sel.value) sel.value = 'c:';  // its own option (a PSARC tone, or one no longer listed)
     sel.addEventListener('change', () => {
       const v = sel.value;
       if (v === '__coll__') {
@@ -5153,16 +5165,19 @@ function wireToneSwaps(body) {
         openToneCollection({
           label,
           onPick: (tone, row) => {
-            toneSwaps[key] = { tone, from: 'collection', label: `${tone.name || tone.key} · ${row.song || ''}${row.artist ? ' — ' + row.artist : ''}` };
+            toneSwaps[key] = { tone, source: 'collection', label: `${tone.name || tone.key} · ${row.song || ''}${row.artist ? ' — ' + row.artist : ''}` };
+            saveToneSwaps();
           },
           onClose: renderToneSuggestions,
         });
         return;
       }
+      if (v === 'c:') return;  // re-picking what is already chosen
       if (!v) delete toneSwaps[key];
-      else if (v.startsWith('p:')) toneSwaps[key] = { tone: jobTones.find(t => t.key === v.slice(2)), from: 'project' };
-      else if (v.startsWith('l:')) toneSwaps[key] = { tone: toneLibrary.find(t => t.key === v.slice(2)), from: 'library' };
+      else if (v.startsWith('p:')) toneSwaps[key] = { tone: jobTones.find(t => t.key === v.slice(2)), source: 'project' };
+      else if (v.startsWith('l:')) toneSwaps[key] = { tone: toneLibrary.find(t => t.key === v.slice(2)), source: 'library' };
       if (toneSwaps[key] && !toneSwaps[key].tone) delete toneSwaps[key];
+      saveToneSwaps();
       renderToneSuggestions();
     });
   });
@@ -5179,6 +5194,7 @@ async function loadToneSuggestions(id) {
     const r = await fetch(`/jobs/${id}/tone-suggestions`);
     if (selectedJob && selectedJob.id !== id) return;
     toneSuggestions = r.ok ? await r.json() : { error: r.status };
+    if (toneSuggestions.swaps) toneSwaps = toneSuggestions.swaps;
   } catch {
     toneSuggestions = { error: 0 };
   }
@@ -5287,7 +5303,7 @@ function runReasons(run) {
 // A stand-in from the library or a PSARC is copied into the project (once; a
 // different tone under the same key gets a suffixed copy). Returns its key.
 function swapToneKey(sw) {
-  if (sw.from === 'project') return sw.tone.key;
+  if (sw.source === 'project' && jobTones.some(t => t.key === sw.tone.key)) return sw.tone.key;
   const same = jobTones.find(t => t.key === sw.tone.key);
   if (same && JSON.stringify(same) === JSON.stringify(sw.tone)) return same.key;
   const tone = JSON.parse(JSON.stringify(sw.tone));
@@ -5296,12 +5312,13 @@ function swapToneKey(sw) {
   while (jobTones.some(t => t.key === tone.key)) tone.key = `${base}_${++n}`;
   jobTones.push(tone);
   sw.tone = tone;
-  sw.from = 'project';
+  sw.source = 'project';
   return tone.key;
 }
 function applyToneSuggestion(plans) {
   const keyMap = {};
   for (const [key, sw] of Object.entries(toneSwaps)) keyMap[key] = swapToneKey(sw);
+  if (Object.keys(keyMap).length) saveToneSwaps();  // they now point at the project's copies
   for (const p of plans) {
     for (const tone of p.tones || []) {
       if (!keyMap[tone.key] && !jobTones.some(t => t.key === tone.key)) jobTones.push(tone);

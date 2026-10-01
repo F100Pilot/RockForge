@@ -32,7 +32,7 @@ import uuid
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any, cast
+from typing import TYPE_CHECKING, Annotated, Any, Literal, cast
 from urllib.parse import urlparse
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
@@ -692,8 +692,21 @@ class TrackTonePlanOut(BaseModel):
     tones: list[dict[str, Any]] = []
 
 
+class ToneSwapIn(BaseModel):
+    """The user's stand-in for one suggested tone: the whole tone, where it came
+    from ("project" / "library" / "collection") and, for a PSARC tone, the song
+    it came from."""
+
+    tone: dict[str, Any]
+    source: Literal["project", "library", "collection"]
+    label: str | None = Field(default=None, max_length=300)
+
+
 class ToneSuggestionsOut(BaseModel):
     tracks: list[TrackTonePlanOut]
+    # The stand-ins the user chose for suggested tones, by suggested key — kept
+    # with the project (PATCH /jobs/{id}/tone-swaps) so they survive leaving it.
+    swaps: dict[str, ToneSwapIn] = {}
     # The tone over time moved onto the bundle clock, [t, gain, active], for the
     # little gain curve drawn above the suggested parts.
     timeline: list[list[float]] = []
@@ -2932,7 +2945,63 @@ def get_tone_suggestions(job_id: str) -> ToneSuggestionsOut:
             for p in plans
         ],
         timeline=[[round(w.t + pad_s, 3), w.gain_level, 1.0 if w.active else 0.0] for w in windows],
+        swaps=_stored_tone_swaps(params),
     )
+
+
+_MAX_TONE_SWAPS = 32
+
+
+def _stored_tone_swaps(params: dict[str, Any]) -> dict[str, ToneSwapIn]:
+    """The project's stored stand-ins, skipping any entry that no longer reads."""
+    out: dict[str, ToneSwapIn] = {}
+    raw = params.get("tone_swaps")
+    for key, value in (raw.items() if isinstance(raw, dict) else []):
+        try:
+            out[str(key)] = ToneSwapIn.model_validate(value)
+        except ValidationError:
+            continue
+    return out
+
+
+class ToneSwapsIn(BaseModel):
+    swaps: dict[str, ToneSwapIn] = {}
+
+
+@app.patch("/jobs/{job_id}/tone-swaps")
+def set_tone_swaps(job_id: str, payload: ToneSwapsIn) -> dict[str, Any]:
+    """Keep the tones the user picked to stand in for the suggested ones (the
+    whole map, replaced), so leaving the project does not lose them. Nothing is
+    rebuilt; it lives in `params`, so a fork inherits it. Each stand-in must be
+    a real tone (an amp and cabinet the catalogue knows)."""
+    from rockforge.infrastructure.packaging.gear.gear_catalogue import tone_from_dict
+
+    if len(payload.swaps) > _MAX_TONE_SWAPS:
+        raise HTTPException(422, f"at most {_MAX_TONE_SWAPS} tone swaps")
+    for key, swap in payload.swaps.items():
+        if not key or len(key) > 200:
+            raise HTTPException(422, "a suggested tone key must be 1-200 characters")
+        try:
+            valid = tone_from_dict(swap.tone) is not None
+        except (KeyError, TypeError, ValueError):
+            valid = False
+        if not valid:
+            raise HTTPException(422, i18n.tr(
+                f"o tom escolhido para «{key}» não tem amplificador e coluna válidos",
+                f"the tone chosen for “{key}” has no valid amp and cabinet",
+            ))
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+        params = dict(job.params or {})
+        if payload.swaps:
+            params["tone_swaps"] = {k: v.model_dump() for k, v in payload.swaps.items()}
+        else:
+            params.pop("tone_swaps", None)
+        job.params = params
+        session.commit()
+    return {"swaps": {k: v.model_dump() for k, v in payload.swaps.items()}}
 
 
 @app.post("/jobs/{job_id}/separate-stems", response_model=JobOut, status_code=202)
