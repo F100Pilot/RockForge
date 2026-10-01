@@ -109,6 +109,13 @@ recording — it classifies the sound's *character* and suggests a plausible mat
 Rocksmith catalogue. It needs the `[ml]` extra (Demucs + librosa). It works on any job that has
 a recording.
 
+**Tones from your songs.** As in DLC Builder: in the tone editor, **"Search your PSARCs"** reads
+the Rocksmith `dlc` folder (official and CDLC; the game folder also includes `songs.psarc`) and
+lists every song's tones with their exact gear. Search by song, artist, tone or gear; **"Use in
+this project"** copies the tone, **★** saves it to the library. The files are only read (just
+their manifests), and reading the folder again only opens new ones. It needs the `[psarc]`
+extra.
+
 Required reading: [`docs/RELATORIO-TECNICO.md`](docs/RELATORIO-TECNICO.md) (feasibility,
 architecture, risks) and the research reports with sources in [`docs/research/`](docs/research/).
 

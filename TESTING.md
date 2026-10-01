@@ -111,6 +111,7 @@ Per-file counts below reflect the suite at the time of writing; run
 | `test_tone_gear.py` | 11 | `domain/tone.py` gear model + `tone_from_dict`/`tones_from_dicts` |
 | `test_tone_detection.py` | 11 | spectral `analyze_guitar_tone` → category → `suggest_tones` + ranked `rank_tones` candidates |
 | `test_tone_library.py` | 5 | cross-project tone library (`/tone-library`): save/read-back, key overwrite, validation |
+| `test_tone_collection.py` | 6 | the tones of a Rocksmith dlc folder: selective PSARC read (`read_entries` = `unpack`), ToneDto → tone dict (PedalKey, slots, unknown gear skipped), incremental rescan (size/mtime, gone files, `_m` beside `_p`), search |
 | `test_rs2dlc.py` | 6 | `.rs2dlc` `DLCProject.Dto` shape, Name/RouteMask per kind, vocals case, **`.phrase-levels`** companion |
 | `test_gamedata.py` | 11 | native-PSARC enumeration assets: flatmodels, solid DDS, xblock, aggregategraph, showlights, **real-cover DXT1 conversion** (needs Pillow, from `[psarc]`) |
 | `test_psarc_container.py` | 5 | PSARC v1.4 pack/unpack round-trip |
@@ -801,6 +802,19 @@ Apply a suggested tone, rebuild, and play the song in Rocksmith: the guitar
 should sit at the level of a DLC Builder default tone. If it is still quiet or
 too loud, the tone editor's Volume (0.1–36, higher = louder, like DLC
 Builder's) is the knob; the reference's defaults are 18–19.5.
+
+### 7d-quater-bis. Tons das tuas músicas (a pasta dlc real)
+
+Open a project → Tons → the tone builder → "Procurar nos teus PSARC". The
+folder field is pre-filled when Steam's default `…\Rocksmith2014\dlc`
+exists; otherwise paste it. "Ler a pasta" should count the files as it goes
+and end with every song's tones (official DLC and CDLC). Check: a known song's
+tone shows its amp/cabinet/effects as DLC Builder's tone collection does;
+"Usar neste projeto" puts it in the project's tones with the same knobs; ★ puts
+it in the library; a second "Ler a pasta" is near-instant (only new/changed
+files are opened); pointing at the game folder adds the on-disc songs
+(`songs.psarc`). Never run against a real dlc folder from here — the tests use
+archives packed by `pack_entries` with retail-shaped manifests.
 
 ### 7d-bis. Testar tom na partitura ("🎸 Testar tom") — sem ML
 

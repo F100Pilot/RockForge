@@ -2730,6 +2730,51 @@ removes. The tone builder's "Biblioteca" block loads (⬇) / deletes (🗑) and
 library original, and the project's own tone edits never write back to the
 library unless explicitly saved. Guarded by `test_tone_library.py`.
 
+### The tones of the player's own songs (`tone_collection.py` + `/tone-collection`)
+
+"O DLC Builder tem uma função muito interessante, que faz scan à minha
+diretoria dlc do rocksmith e cria uma lista dos tons de todas as músicas.
+Implementa." Every song's per-arrangement manifest inside its `.psarc`
+(`manifests/<…>/<key>_<arr>.json`) carries its `Tones` as `ToneDto`s — the
+shape `tone_dto.py` writes — so the tone collection is: read those manifests
+from every `.psarc` under the folder (recursive; official DLC, CDLC, and the
+on-disc `songs.psarc` when the GAME folder is given), turn each `ToneDto` back
+into the editor's tone dict (`tone_from_dto`: `Key` or older tools'
+`PedalKey`, `Volume` string or number, a pedal kept in its slot, and a tone
+whose amp/cabinet the catalogue does not know dropped and counted), and list
+them by song, artist, arrangements and gear, searchable (case/accent-blind, every
+word). "Usar neste projeto" copies one into the project (`addToneToProject`,
+shared with the library's ⬇, so a clashing key is suffixed), ★ saves it to the
+library.
+
+**Only the manifests are read, never the audio** —
+`container.read_entries(path, wanted)` reads the header, the TOC, the name
+block and the wanted entries' blocks by seeking (an official `songs.psarc` is
+hundreds of MB); it sizes the block table from the TOC length, as retail
+archives require. It equals `unpack` on everything (tested). The archives are
+only ever opened for reading. The result is cached in
+`work_dir/tone_collection.json` by relative path + size + mtime (written every
+25 files too, so a cut-short scan keeps its work): a rescan opens only new or
+changed files, drops the ones that are gone, and a different folder starts from
+nothing. A Mac copy (`_m.psarc`) beside its PC copy (`_p`) is skipped. The scan
+is plain file I/O on a background thread in the API process
+(`tone_collection.start_scan`, one at a time — 409 otherwise), polled through
+`GET /tone-collection` (`status`: scanning/done/error, done/total/current);
+the folder is remembered (`runtime_settings` `rocksmith_dlc_dir`) and Steam's
+default location is suggested when it exists (`suggested_folder`). The list is
+paged (`limit` ≤ 500, the UI shows 200 and says to type more), rows are light
+(names via `gear_catalogue.gear_name`), and `GET /tone-collection/tone?id=`
+hands one out whole (id = sha1 of path + key). Needs `[psarc]` (the TOC is
+AES-encrypted); without it the scan ends in a clear error. UI: the tone
+builder's "Tons das tuas músicas" block → `#toneCollOverlay`. Guarded by
+`test_tone_collection.py` (each piece mutation-checked: PedalKey, the
+size/mtime reuse, merging arrangements, the catalogue check, the block table)
+and `test_the_tones_of_the_songs_in_the_dlc_folder_are_listed_and_handed_out`;
+the modal with Playwright on two encrypted archives (scan, list, search, use,
+★, PT/EN, no page errors). **Never run against a real dlc folder from here** —
+the archives in the tests are packed by `pack_entries` with retail-shaped
+manifests (TESTING.md §7d-quater-bis).
+
 ### DLC Builder project file (`rockforge.rs2dlc`)
 
 `rockforge_project.json` is RockForge's *own* descriptor — DLC Builder can't

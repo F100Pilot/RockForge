@@ -933,6 +933,12 @@ const INFO = {
       T('<p><strong>★ Guardar na biblioteca</strong> guarda o tom em edição; <strong>⬇ Carregar</strong> adiciona o tom escolhido a este projeto (fica editável, e uma cópia — não afeta o original na biblioteca); 🗑 remove-o da biblioteca.</p>') +
       T('<p>A biblioteca é partilhada por todos os projetos (guardada em <code>work_dir/tone_library.json</code>). Guardar um tom com uma chave já existente substitui o anterior.</p>')
   },
+  'tone-collection': {
+    title: T('Tons das tuas músicas'),
+    body: T('<p>Como no DLC Builder: o RockForge lê os ficheiros <code>.psarc</code> da tua pasta <code>dlc</code> do Rocksmith (oficiais e CDLC) e lista os tons de cada música — amplificador, cabine e efeitos com os valores exatos. <strong>Usar neste projeto</strong> copia o tom para este projeto (fica editável); <strong>★</strong> guarda-o na biblioteca.</p>') +
+      T('<p>Os ficheiros só são <strong>lidos</strong>, nunca alterados, e só os manifestos (alguns KB), não o áudio. O resultado fica guardado: voltar a ler a pasta só abre os ficheiros novos ou alterados. Para incluir as músicas do disco (<code>songs.psarc</code>), indica a pasta do jogo em vez da pasta <code>dlc</code>.</p>') +
+      T('<p>A pasta costuma ser <code>Steam\\steamapps\\common\\Rocksmith2014\\dlc</code>. Precisa do extra <code>[psarc]</code>, o mesmo que cria os PSARC.</p>')
+  },
   'new-job': {
     title: T('Criar um novo projeto'),
     body: T(`<p><strong>A partir de Guitar Pro</strong>: notas, trastes, técnicas e secções vêm <b>exatas</b> do ficheiro GP3/GP4/GP5/GP7. Assistente de 4 passos: <b>Ficheiro</b> (escolhe o GP e inspeciona as pistas) → <b>Pistas</b> (atribui Lead/Rhythm/Combo) → <b>Gravação</b> (o áudio + o início aproximado) → <b>Detalhes</b> (título/banda, opcionais).</p>
@@ -3751,8 +3757,12 @@ document.getElementById('toneLibLoad').addEventListener('click', () => {
   const key = document.getElementById('toneLibSelect').value;
   const src = toneLibrary.find(t => t.key === key);
   if (!src) { toast(T('Escolhe um tom da biblioteca.')); return; }
-  // Copy into this project. If the key already exists here, suffix it so the
-  // load never silently overwrites a tone the user already dialled.
+  addToneToProject(src);
+  toast(T('Tom carregado da biblioteca.'), 'ok');
+});
+// Copy a tone into this project. If the key already exists here, suffix it so
+// the load never silently overwrites a tone the user already dialled.
+function addToneToProject(src) {
   const tone = JSON.parse(JSON.stringify(src));
   if (jobTones.some(t => t.key === tone.key)) {
     let n = 1, base = tone.key;
@@ -3763,8 +3773,8 @@ document.getElementById('toneLibLoad').addEventListener('click', () => {
   editToneInForm(tone.key);
   renderToneListEditor();
   renderTonePanel();
-  toast(T('Tom carregado da biblioteca.'), 'ok');
-});
+  return tone;
+}
 document.getElementById('toneLibDelete').addEventListener('click', async () => {
   const key = document.getElementById('toneLibSelect').value;
   if (!key) { toast(T('Escolhe um tom da biblioteca.')); return; }
@@ -3784,6 +3794,132 @@ document.getElementById('teSaveLibrary').addEventListener('click', async () => {
   toneLibrary = (await r.json()).tones || [];
   populateToneLibSelect();
   toast(T('Guardado na biblioteca.'), 'ok');
+});
+
+// ── The tones of the songs in the player's Rocksmith dlc folder ──
+// (GET /tone-collection, DLC Builder's tone collection). The scan runs on the
+// server; while it does, the list is polled and grows.
+let toneCollTimer = null;
+let toneCollSearchTimer = null;
+function openToneCollection() {
+  document.getElementById('toneCollOverlay').hidden = false;
+  refreshToneCollection(true);
+}
+function closeToneCollection() {
+  document.getElementById('toneCollOverlay').hidden = true;
+  clearTimeout(toneCollTimer);
+  toneCollTimer = null;
+}
+async function refreshToneCollection(fillFolder) {
+  const q = document.getElementById('tcSearch').value;
+  let data;
+  try {
+    data = await getJSON(`/tone-collection?q=${encodeURIComponent(q)}`);
+  } catch (e) {
+    document.getElementById('tcStatus').textContent = T('Não foi possível ler a coleção: {msg}', { msg: e.message });
+    return;
+  }
+  const folderEl = document.getElementById('tcFolder');
+  if (fillFolder && !folderEl.value) folderEl.value = data.folder || data.suggested_folder || '';
+  renderToneCollStatus(data);
+  renderToneCollList(data);
+  clearTimeout(toneCollTimer);
+  if (data.status.state === 'scanning' && !document.getElementById('toneCollOverlay').hidden)
+    toneCollTimer = setTimeout(() => refreshToneCollection(false), 800);
+}
+function renderToneCollStatus(data) {
+  const st = data.status || {};
+  const el = document.getElementById('tcStatus');
+  document.getElementById('tcScan').disabled = st.state === 'scanning';
+  if (st.state === 'scanning') {
+    el.textContent = st.total
+      ? T('A ler {done} de {total} ficheiros… {name}', { done: st.done, total: st.total, name: st.current || '' })
+      : T('A procurar ficheiros .psarc…');
+  } else if (st.state === 'error') {
+    el.textContent = T('A leitura falhou: {msg}', { msg: st.error || '' });
+  } else if (data.scanned_at) {
+    const when = new Date(data.scanned_at * 1000).toLocaleString();
+    el.textContent = (data.unreadable
+      ? T('{files} ficheiros lidos ({bad} sem leitura possível), {tones} tons · {when}', { files: data.files, bad: data.unreadable, tones: data.tones_total, when })
+      : T('{files} ficheiros lidos, {tones} tons · {when}', { files: data.files, tones: data.tones_total, when }));
+  } else {
+    el.textContent = data.suggested_folder || data.folder
+      ? T('Carrega em "Ler a pasta" para listar os tons das tuas músicas.')
+      : T('Indica a pasta dlc do Rocksmith e carrega em "Ler a pasta".');
+  }
+}
+function renderToneCollList(data) {
+  const list = document.getElementById('tcList');
+  const count = document.getElementById('tcCount');
+  list.replaceChildren();
+  const shown = data.entries.length;
+  count.textContent = !data.tones_total ? ''
+    : shown < data.matched
+      ? T('{n} tons encontrados — a mostrar {shown}; escreve mais para afinar.', { n: data.matched, shown })
+      : (data.matched === 1 ? T('1 tom encontrado.') : T('{n} tons encontrados.', { n: data.matched }));
+  for (const e of data.entries) {
+    // Built with DOM calls: names come from other people's files.
+    const card = document.createElement('div');
+    card.className = 'lyr-card';
+    const body = document.createElement('div');
+    body.className = 'lyr-body';
+    const title = document.createElement('b');
+    title.textContent = e.name;
+    const song = document.createElement('div');
+    song.className = 'lyr-meta';
+    song.textContent = [e.song, e.artist].filter(Boolean).join(' — ') +
+      (e.arrangements.length ? ` · ${e.arrangements.join(', ')}` : '');
+    const gear = document.createElement('div');
+    gear.className = 'lyr-preview';
+    gear.textContent = [e.amp, e.cabinet, ...e.effects].filter(Boolean).join(' · ');
+    body.append(title, song, gear);
+    const use = document.createElement('button');
+    use.type = 'button';
+    use.textContent = T('Usar neste projeto');
+    use.addEventListener('click', () => takeCollectionTone(e.id, 'project'));
+    const lib = document.createElement('button');
+    lib.type = 'button';
+    lib.className = 'secondary';
+    lib.title = T('Guardar na biblioteca');
+    lib.setAttribute('aria-label', T('Guardar na biblioteca'));
+    lib.innerHTML = icon('star');
+    lib.addEventListener('click', () => takeCollectionTone(e.id, 'library'));
+    card.append(body, use, lib);
+    list.append(card);
+  }
+}
+async function takeCollectionTone(id, where) {
+  let tone;
+  try {
+    tone = (await getJSON(`/tone-collection/tone?id=${encodeURIComponent(id)}`)).tone;
+  } catch (e) { toast(e.message); return; }
+  if (where === 'project') {
+    addToneToProject(tone);
+    toast(T('Tom adicionado ao projeto — fica pendente até "Aplicar e reconstruir".'), 'ok');
+    return;
+  }
+  try {
+    toneLibrary = (await getJSON('/tone-library', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(tone),
+    })).tones || [];
+  } catch (e) { toast(e.message); return; }
+  populateToneLibSelect();
+  toast(T('Guardado na biblioteca.'), 'ok');
+}
+document.getElementById('toneCollOpen').addEventListener('click', openToneCollection);
+document.getElementById('toneCollClose').addEventListener('click', closeToneCollection);
+document.getElementById('tcScan').addEventListener('click', async () => {
+  const folder = document.getElementById('tcFolder').value.trim();
+  try {
+    await getJSON('/tone-collection/scan', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ folder }),
+    });
+  } catch (e) { toast(e.message); return; }
+  refreshToneCollection(false);
+});
+document.getElementById('tcSearch').addEventListener('input', () => {
+  clearTimeout(toneCollSearchTimer);
+  toneCollSearchTimer = setTimeout(() => refreshToneCollection(false), 250);
 });
 
 function populateGearSelect(sel, items, selectedKey, placeholder, filter) {

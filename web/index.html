@@ -675,6 +675,8 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
    whether it carries timing. */
 .lyr-results { display:flex; flex-direction:column; gap:.5rem; margin:.6rem 0; }
 .lyr-results:empty { display:none; }
+.tc-list { display:flex; flex-direction:column; gap:.45rem; max-height:55vh; overflow:auto; margin-top:.4rem; }
+.tc-list .lyr-card button { flex:none; }
 .lyr-card { display:flex; gap:.8rem; align-items:flex-start; padding:.6rem .75rem; border:1px solid #262831; border-radius:12px; background:#16171d; }
 .lyr-card .lyr-body { flex:1; min-width:0; display:flex; flex-direction:column; gap:.2rem; }
 .lyr-card b { font-size:.9rem; }
@@ -1757,6 +1759,10 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
             <button type="button" id="toneLibDelete" class="secondary" title="Remover da biblioteca" aria-label="Remover da biblioteca"><svg class="ic" aria-hidden="true"><use href="#i-trash"/></svg></button>
           </div>
         </div>
+        <div style="margin-top:.75rem;border-top:1px solid var(--line);padding-top:.55rem">
+          <div class="meta" style="margin-bottom:.3rem">Tons das tuas músicas <button class="info-btn" data-info="tone-collection">ⓘ</button></div>
+          <button type="button" id="toneCollOpen" class="secondary" style="width:100%"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg> Procurar nos teus PSARC</button>
+        </div>
       </div>
       <div style="flex:2 1 420px;min-width:340px;border-left:1px solid var(--line);padding-left:1rem">
         <div id="toneEditForm" style="display:none">
@@ -1792,6 +1798,24 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
         <div id="toneEditEmpty" class="meta">Seleciona ou cria um tom para editar o gear (amp, cabine, efeitos).</div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ══════════ Tone collection: the tones of the songs in the dlc folder ══════════ -->
+<div class="modal-overlay" id="toneCollOverlay" hidden>
+  <div class="modal" style="max-width:860px">
+    <button type="button" class="modal-close" id="toneCollClose">×</button>
+    <h2>Tons das tuas músicas <button class="info-btn" data-info="tone-collection">ⓘ</button></h2>
+    <div class="field"><label for="tcFolder">Pasta dlc do Rocksmith</label>
+      <div class="anchor-row" style="gap:.4rem;flex-wrap:nowrap">
+        <input type="text" id="tcFolder" style="flex:1;min-width:0" placeholder="ex.: C:\Program Files (x86)\Steam\steamapps\common\Rocksmith2014\dlc">
+        <button type="button" id="tcScan"><svg class="ic" aria-hidden="true"><use href="#i-refresh"/></svg> Ler a pasta</button>
+      </div>
+    </div>
+    <div id="tcStatus" class="meta"></div>
+    <input type="search" id="tcSearch" placeholder="Procurar por música, artista, tom ou equipamento…" style="width:100%;margin:.6rem 0 .3rem">
+    <div id="tcCount" class="meta"></div>
+    <div id="tcList" class="tc-list"></div>
   </div>
 </div>
 

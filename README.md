@@ -108,6 +108,14 @@ usado na gravação — classifica o *caráter* do som e sugere um match plausí
 catálogo Rocksmith. Precisa do extra `[ml]` (Demucs + librosa). Funciona em
 qualquer job que tenha uma gravação.
 
+**Tons das tuas músicas.** Como no DLC Builder: no editor de tons, **"Procurar
+nos teus PSARC"** lê a pasta `dlc` do Rocksmith (oficiais e CDLC; a pasta do
+jogo inclui também `songs.psarc`) e lista os tons de cada música com o gear
+exato. Pesquisa por música, artista, tom ou equipamento; **"Usar neste
+projeto"** copia o tom, **★** guarda-o na biblioteca. Os ficheiros só são lidos
+(apenas os manifestos), e voltar a ler a pasta só abre os novos. Precisa do
+extra `[psarc]`.
+
 Leitura obrigatória: [`docs/RELATORIO-TECNICO.md`](docs/RELATORIO-TECNICO.md) (viabilidade,
 arquitetura, riscos) e os relatórios de investigação com fontes em [`docs/research/`](docs/research/).
 

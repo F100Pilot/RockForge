@@ -3417,3 +3417,49 @@ def test_the_main_chart_for_sync_is_remembered(client: TestClient, tmp_path) -> 
     assert fork["sync_main"] == "Lead"  # a rebuild keeps it
     assert client.patch(f"/jobs/{job['id']}/sync-main", json={}).json()["sync_main"] is None
     assert client.patch("/jobs/nope/sync-main", json={}).status_code == 404
+
+
+def test_the_tones_of_the_songs_in_the_dlc_folder_are_listed_and_handed_out(
+    client: TestClient, tmp_path
+) -> None:
+    """DLC Builder's tone collection: scan the Rocksmith dlc folder, list every
+    song's tones, hand one out whole for a project or the library."""
+    import time
+
+    import rockforge.runtime_settings as rs
+    from test_tone_collection import _song_psarc
+
+    importlib.reload(rs)  # the folder is stored in THIS test's work dir
+    assert client.post("/tone-collection/scan", json={}).status_code == 422  # no folder yet
+    r = client.post("/tone-collection/scan", json={"folder": str(tmp_path / "nope")})
+    assert r.status_code == 422
+    dlc = tmp_path / "dlc"
+    dlc.mkdir()
+    _song_psarc(dlc / "a_p.psarc", "Alpha")
+    _song_psarc(dlc / "b_p.psarc", "Beta")
+    (dlc / "broken_p.psarc").write_bytes(b"PSAR")
+    r = client.post("/tone-collection/scan", json={"folder": f'"{dlc}"'})  # pasted with quotes
+    assert r.status_code == 202, r.text
+    for _ in range(200):
+        body = client.get("/tone-collection").json()
+        if body["status"]["state"] != "scanning":
+            break
+        time.sleep(0.02)
+    assert body["status"]["state"] == "done", body["status"]
+    assert body["folder"] == str(dlc)
+    assert (body["files"], body["unreadable"], body["tones_total"]) == (3, 1, 4)
+    row = next(e for e in body["entries"] if e["song"] == "Alpha" and e["key"] == "HTH_Lead")
+    assert row["amp"] == "Marshall Plexi"  # the game's names, not the gear keys
+    assert row["effects"] == ["Super Drive"] and row["arrangements"] == ["Lead", "Rhythm"]
+
+    found = client.get("/tone-collection", params={"q": "beta clean"}).json()
+    assert found["matched"] == 1 and found["entries"][0]["song"] == "Beta"
+    assert client.get("/tone-collection", params={"limit": 1}).json()["matched"] == 4
+    assert len(client.get("/tone-collection", params={"limit": 1}).json()["entries"]) == 1
+
+    tone = client.get("/tone-collection/tone", params={"id": row["id"]}).json()["tone"]
+    assert tone["key"] == "HTH_Lead" and tone["pre"][1]["key"] == "Pedal_SuperDrive"
+    assert client.post("/tone-library", json=tone).status_code == 200  # library takes it
+    assert client.get("/tone-collection/tone", params={"id": "0" * 16}).status_code == 404
+    # the folder is remembered: a rescan needs none
+    assert client.post("/tone-collection/scan", json={}).status_code == 202

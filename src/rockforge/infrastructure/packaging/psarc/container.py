@@ -29,6 +29,8 @@ from __future__ import annotations
 import hashlib
 import struct
 import zlib
+from collections.abc import Callable
+from pathlib import Path
 
 MAGIC = b"PSAR"
 VERSION = (1, 4)
@@ -213,3 +215,68 @@ def unpack(data: bytes) -> dict[str, bytes]:
     name_block = contents[0].decode("utf-8")
     paths = [line for line in name_block.split("\n") if line]
     return dict(zip(paths, contents[1:], strict=True))
+
+
+def read_entries(path: Path, wanted: Callable[[str], bool]) -> dict[str, bytes]:
+    """The entries of the PSARC at ``path`` whose archive path ``wanted`` accepts,
+    reading only the header, the TOC, the name block and those entries' blocks —
+    not the whole file. Scanning a Rocksmith ``dlc`` folder for its tones needs a
+    few small manifests out of archives that are mostly audio (an official
+    ``songs.psarc`` is hundreds of MB), so :func:`unpack` would read everything
+    for nothing.
+
+    Unlike :func:`unpack` the block table's length comes from the TOC length, so
+    a retail archive whose last entry ends on a block boundary reads the same."""
+    with path.open("rb") as fh:
+        header = fh.read(HEADER_SIZE)
+        if len(header) < HEADER_SIZE or header[:4] != MAGIC:
+            raise ValueError("not a PSARC container (bad magic)")
+        if header[8:12] != COMPRESSION:
+            raise ValueError(f"unsupported compression {header[8:12]!r}")
+        toc_length, toc_entry_size, num_entries, block_size = struct.unpack_from(
+            ">IIII", header, 12
+        )
+        if toc_entry_size != TOC_ENTRY_SIZE:
+            raise ValueError(f"unsupported TOC entry size {toc_entry_size}")
+        (archive_flags,) = struct.unpack_from(">I", header, 28)
+        toc_bytes = fh.read(toc_length - HEADER_SIZE)
+        if archive_flags & 4:
+            from rockforge.infrastructure.packaging.psarc.crypto import decrypt_psarc_toc
+
+            toc_bytes = decrypt_psarc_toc(toc_bytes)[: toc_length - HEADER_SIZE]
+
+        rows: list[tuple[int, int, int]] = []
+        for i in range(num_entries):
+            pos = i * TOC_ENTRY_SIZE
+            rows.append((
+                struct.unpack_from(">I", toc_bytes, pos + 16)[0],
+                _from_uint40(toc_bytes[pos + 20 : pos + 25]),
+                _from_uint40(toc_bytes[pos + 25 : pos + 30]),
+            ))
+        table = num_entries * TOC_ENTRY_SIZE
+        num_blocks = (toc_length - HEADER_SIZE - table) // 2
+        zlengths = struct.unpack_from(f">{num_blocks}H", toc_bytes, table)
+
+        def entry(zindex: int, length: int, offset: int) -> bytes:
+            out = bytearray()
+            fh.seek(offset)
+            while len(out) < length:
+                zlength = zlengths[zindex]
+                raw_size = min(block_size, length - len(out))
+                segment = fh.read(zlength or raw_size)
+                if zlength == 0:
+                    out += segment
+                else:
+                    try:
+                        out += zlib.decompress(segment)
+                    except zlib.error:
+                        out += segment
+                zindex += 1
+            return bytes(out[:length])
+
+        names = entry(*rows[0]).decode("utf-8").split("\n") if rows else []
+        return {
+            name: entry(*row)
+            for name, row in zip(names, rows[1:], strict=False)
+            if name and wanted(name)
+        }

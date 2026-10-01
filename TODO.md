@@ -586,6 +586,15 @@ Feedback and bug reports very welcome!
   botão "★ Biblioteca" para guardar o tom em edição. Carregar copia para o
   projeto (não altera o original). Complementa a barra de pesquisa de gear.
 
+- [x] **Tons das tuas músicas (como o DLC Builder)**: lê os `.psarc` da pasta
+  `dlc` do Rocksmith (oficiais e CDLC; a pasta do jogo inclui `songs.psarc`) e
+  lista os tons de cada música com o gear exato, pesquisáveis por música,
+  artista, tom ou equipamento. "Usar neste projeto" copia o tom; ★ guarda-o na
+  biblioteca. Só lê os manifestos (`container.read_entries`), nunca o áudio, e
+  guarda o resultado (`work_dir/tone_collection.json`): reler só abre ficheiros
+  novos ou alterados. `GET /tone-collection`, `GET /tone-collection/tone`,
+  `POST /tone-collection/scan`. Nunca corrido contra uma pasta dlc real daqui.
+
 - [x] **Processamento em lote** (`📦 Processamento em lote`): cria vários
   projetos GP de uma vez a partir de vários ficheiros Guitar Pro + gravações,
   em vez de repetir o assistente música a música — para quem tem um álbum

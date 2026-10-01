@@ -3109,6 +3109,129 @@ def delete_tone_from_library(key: str) -> dict[str, Any]:
     return {"tones": tone_library.delete_tone(key)}
 
 
+class ToneCollectionScanIn(BaseModel):
+    folder: str | None = None
+
+
+def _tone_collection_folder() -> Path | None:
+    from rockforge import runtime_settings
+
+    stored = runtime_settings.load().get("rocksmith_dlc_dir")
+    return Path(stored) if stored else None
+
+
+def _gear_name(gear: object) -> str:
+    from rockforge.infrastructure.packaging.gear.gear_catalogue import gear_name
+
+    return gear_name(str(gear.get("key", ""))) if isinstance(gear, dict) else ""
+
+
+def _tone_collection_status() -> dict[str, Any]:
+    from rockforge.i18n import tr
+    from rockforge.infrastructure import tone_collection
+
+    status = tone_collection.status()
+    if status.get("error") == "psarc":
+        status["error"] = tr(
+            "Ler os ficheiros .psarc precisa do extra [psarc] "
+            "(pip install -e \".[psarc]\").",
+            "Reading .psarc files needs the [psarc] extra (pip install -e \".[psarc]\").",
+        )
+    return status
+
+
+@app.get("/tone-collection")
+def get_tone_collection(q: str = "", offset: int = 0, limit: int = 200) -> dict[str, Any]:
+    """The tones of every song in the player's Rocksmith dlc folder, as the last
+    scan found them (``tone_collection``), filtered by ``q`` and paged — a large
+    library has thousands. Each row is light (names only); the full tone is
+    ``/tone-collection/tone``."""
+    from rockforge.infrastructure import tone_collection
+
+    data = tone_collection.load()
+    folder = _tone_collection_folder()
+    if folder is not None and data.get("folder") not in (None, str(folder)):
+        data = {}  # the cache belongs to another folder: nothing scanned here yet
+    matched = tone_collection.search(q, data)
+    files = data.get("files") or {}
+    page = []
+    for row in matched[max(0, offset): max(0, offset) + max(1, min(limit, 500))]:
+        tone = row["tone"]
+        effects = [
+            _gear_name(g)
+            for slot in ("pre", "post", "racks")
+            for g in tone.get(slot) or []
+            if isinstance(g, dict)
+        ]
+        page.append({
+            "id": row["id"],
+            "name": tone.get("name") or tone.get("key"),
+            "key": tone.get("key"),
+            "song": row.get("song", ""),
+            "artist": row.get("artist", ""),
+            "album": row.get("album", ""),
+            "arrangements": row.get("arrangements", []),
+            "amp": _gear_name(tone.get("amp")),
+            "cabinet": _gear_name(tone.get("cabinet")),
+            "effects": effects,
+            "file": row["file"],
+        })
+    suggested = tone_collection.suggested_folder()
+    return {
+        "folder": str(folder) if folder else None,
+        "suggested_folder": str(suggested) if suggested else None,
+        "status": _tone_collection_status(),
+        "scanned_at": data.get("scanned_at"),
+        "files": len(files),
+        "unreadable": sum(1 for f in files.values() if isinstance(f, dict) and f.get("error")),
+        "tones_total": sum(len((f or {}).get("tones") or []) for f in files.values()),
+        "matched": len(matched),
+        "entries": page,
+    }
+
+
+@app.get("/tone-collection/tone")
+def get_tone_collection_tone(id: str) -> dict[str, Any]:
+    """One tone of the collection, whole, ready to add to a project or the library."""
+    from rockforge.i18n import tr
+    from rockforge.infrastructure import tone_collection
+
+    for row in tone_collection.rows():
+        if row["id"] == id:
+            return {"tone": row["tone"], "song": row.get("song", ""),
+                    "artist": row.get("artist", "")}
+    raise HTTPException(404, tr(
+        "tom não encontrado na coleção", "tone not found in the collection",
+    ))
+
+
+@app.post("/tone-collection/scan", status_code=202)
+def scan_tone_collection(body: ToneCollectionScanIn) -> dict[str, Any]:
+    """Read the tones of every ``.psarc`` under ``folder`` (or the folder stored
+    last time) on a background thread; poll ``GET /tone-collection``. The folder
+    is remembered. The archives are only read."""
+    from rockforge import runtime_settings
+    from rockforge.i18n import tr
+    from rockforge.infrastructure import tone_collection
+
+    raw = (body.folder or "").strip().strip('"')
+    folder = Path(raw).expanduser() if raw else _tone_collection_folder()
+    if folder is None:
+        raise HTTPException(422, tr(
+            "Indica a pasta dlc do Rocksmith.", "Give the Rocksmith dlc folder.",
+        ))
+    if not folder.is_dir():
+        raise HTTPException(422, tr(
+            f"A pasta não existe: {folder}", f"The folder does not exist: {folder}",
+        ))
+    runtime_settings.save({**runtime_settings.load(), "rocksmith_dlc_dir": str(folder)})
+    if not tone_collection.start_scan(folder):
+        raise HTTPException(409, tr(
+            "Já está a decorrer uma leitura da pasta.", "A scan of the folder is already running.",
+        ))
+    return {"folder": str(folder), "status": _tone_collection_status()}
+
+
 @app.get("/jobs/{job_id}/tones")
 def get_tones(job_id: str) -> dict[str, Any]:
     """The job's current tone setup (full gear definitions, the base/extra tone

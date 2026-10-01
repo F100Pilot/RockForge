@@ -22,6 +22,7 @@ from rockforge.config import settings
 _KEYS = (
     "stem_separator", "banquet_repo", "banquet_ckpt", "banquet_queries",
     "loudness_target", "whisperx_compute_type", "ml_python", "ui_language",
+    "rocksmith_dlc_dir",
 )
 
 # The loudness (LUFS) the audio is normalized to AND the target the Wwise bus
