@@ -18,3 +18,8 @@ dist/
 # Runtime logs from start.bat (Redis/Celery) — per-machine, never useful in git.
 logs/
 .claude/worktrees/
+# Standalone build inputs/outputs: build_exe.py copies ffmpeg.exe here (a
+# GPL/LGPL binary that must not slip into the repo) and Inno Setup writes the
+# installer to Output/.
+ffmpeg/
+Output/
