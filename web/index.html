@@ -590,6 +590,49 @@ button.pv-wide { display:flex; align-items:center; justify-content:center; gap:.
 .downloads a.dl-card span { color:var(--muted); }
 .downloads .meta { grid-column:1 / -1; }
 details.pv-warn > summary { cursor:pointer; font-size:.88rem; color:var(--muted); padding:.3rem 0; }
+/* Definições: the project view's frame (top bar + rail), one section at a
+   time. Above the project view (z 40), under the modals (z 50). */
+.settings-view { z-index:45; }
+.settings-view .pv-rail button { position:relative; }
+.rail-dot { position:absolute; top:.45rem; right:1rem; width:.6rem; height:.6rem; border-radius:50%; background:var(--err); }
+.set-page { max-width:56rem; }
+.set-head { display:flex; align-items:flex-end; gap:1rem; }
+.set-head > div { flex:1; }
+.set-desc { margin:.35rem 0 0; color:var(--muted); font-size:.92rem; line-height:1.5; max-width:46rem; }
+.set-chips { display:flex; flex-wrap:wrap; gap:.5rem; }
+.set-reqs { display:flex; flex-direction:column; gap:.6rem; color:var(--muted); }
+.set-req { display:grid; grid-template-columns:2.5rem minmax(0, 1fr) auto; gap:1rem; align-items:start; padding:1rem 1.1rem;
+  background:#16171d; border:1px solid #262831; border-radius:14px; color:var(--text); }
+.set-req.missing { border-color:#5a2a2a; }
+.set-req-ico { width:2.5rem; height:2.5rem; border-radius:10px; display:flex; align-items:center; justify-content:center; }
+.set-req-ico .ic { margin:0; width:1.25rem; height:1.25rem; }
+.set-req-ico.ok { background:#16331f; color:#5fd68a; }
+.set-req-ico.err { background:#3a1616; color:#f08a8a; }
+.set-req-ico.unk { background:#23252e; color:#b4b7c2; }
+.set-req-name { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; font-weight:700; }
+.set-req-text { font-size:.85rem; color:var(--muted); margin-top:.25rem; }
+.set-req-text b { color:var(--text); }
+.set-code { display:inline-flex; align-items:center; gap:.5rem; margin-top:.55rem; padding:.3rem .35rem .3rem .65rem; background:#0f1014;
+  border:1px solid #2e313c; border-radius:8px; font:.82rem/1.3 Consolas, 'Cascadia Mono', monospace; color:#d6d7dd; max-width:100%; }
+.set-code code { white-space:pre-wrap; word-break:break-word; background:none; padding:0; }
+.set-code button { flex-shrink:0; padding:.2rem .4rem; background:transparent; color:var(--muted); border:0; }
+.set-code button:hover { color:var(--text); filter:none; }
+.set-code .ic { margin:0; width:1rem; height:1rem; }
+.pv-chip.unk { background:#23252e; color:#b4b7c2; }
+.set-mini-chip { height:1.4rem; font-size:.7rem; padding:0 .5rem; margin-left:.35rem; vertical-align:middle; }
+.set-field { display:flex; flex-direction:column; gap:.4rem; font-size:.88rem; color:var(--muted); }
+.set-field input, .set-select { width:100%; height:2.6rem; }
+.set-options { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:.75rem; }
+.set-option { display:flex; gap:.7rem; align-items:flex-start; padding:1rem 1.1rem; border:1px solid #262831; border-radius:14px;
+  background:#16171d; cursor:pointer; }
+.set-option:has(input:checked) { border-color:var(--accent); background:#221d1a; }
+.set-option input { margin-top:.25rem; accent-color:var(--accent); }
+.set-option > span { display:flex; flex-direction:column; gap:.25rem; }
+.set-status { display:flex; align-items:center; gap:.8rem; }
+button.set-pill { height:2.2rem; padding:0 .9rem; border-radius:999px; border:1px solid #33363f; background:#1f2129; color:var(--text); font-weight:600; font-size:.85rem; }
+button.set-pill:hover { filter:none; border-color:var(--muted); }
+button.set-pill.active { border-color:var(--accent); color:var(--accent); background:#2a211c; }
+@media (max-width: 800px) { .set-options { grid-template-columns:minmax(0, 1fr); } .set-head { flex-direction:column; align-items:stretch; } }
 @media (max-width: 1000px) {
   .pv-partitura { flex-direction:column; height:auto; }
   .pv-center, .pv-inspector { overflow:visible; }
@@ -677,6 +720,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
   <symbol id="i-terminal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M13 15h4"/></symbol>
   <symbol id="i-activity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></symbol>
   <symbol id="i-layers" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/></symbol>
   <symbol id="i-mouse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3" width="10" height="18" rx="5"/><path d="M12 7v4"/></symbol>
   <symbol id="i-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M14.5 8.5l2 2"/></symbol>
   <symbol id="i-gamepad" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="12" rx="4"/><path d="M7 13h4M9 11v4M15 12h.5M17.5 14h.5"/></symbol>
@@ -1240,105 +1284,155 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
 </div><!-- /#detailOverlay -->
 
 <!-- ══════════ "Definições" modal ══════════ -->
-<div class="modal-overlay" id="settingsOverlay" hidden>
-  <div class="modal" style="max-width:640px">
-    <button type="button" class="modal-close" id="settingsClose">×</button>
-    <h2>Definições</h2>
-
-    <div class="syncctrls" style="margin:.2rem 0 .6rem">
-      <label style="font-weight:600" for="langSelectSettings">Idioma · Language</label>
-      <select id="langSelectSettings" data-lang-select translate="no">
-        <option value="pt">Português</option>
-      </select>
+<!-- ══════════ Definições — ecrã inteiro, como a vista de projeto ══════════
+     A rail of sections, one shown at a time (sketch "A", chosen by the user).
+     Every id the script reaches is the one the old modal had. -->
+<div class="project-view settings-view" id="settingsOverlay" hidden>
+  <header class="pv-top">
+    <button type="button" class="pv-btn pv-icon-btn" id="settingsClose" title="Voltar" aria-label="Voltar"><svg class="ic" aria-hidden="true"><use href="#i-back"/></svg></button>
+    <div class="pv-head">
+      <div class="pv-title">Definições</div>
+      <div class="pv-sub"><span>Valem para todos os projetos desta máquina</span></div>
     </div>
+    <span class="pv-spacer"></span>
+    <span id="settingsInfo" class="meta"></span>
+    <span id="settingsDirty" class="pv-chip warn" hidden></span>
+    <button type="button" id="settingsSave" class="pv-btn pv-primary"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>Guardar</button>
+  </header>
+  <div class="pv-body">
+    <nav class="pv-rail" aria-label="Secções das definições">
+      <button type="button" data-settings-tab="geral" class="active"><svg class="ic" aria-hidden="true"><use href="#i-globe"/></svg><span>Geral</span></button>
+      <button type="button" data-settings-tab="software"><svg class="ic" aria-hidden="true"><use href="#i-activity"/></svg><span>Software</span><span class="rail-dot" id="sysRailDot" hidden></span></button>
+      <button type="button" data-settings-tab="ml"><svg class="ic" aria-hidden="true"><use href="#i-terminal"/></svg><span>Python ML</span></button>
+      <button type="button" data-settings-tab="stems"><svg class="ic" aria-hidden="true"><use href="#i-layers"/></svg><span>Stems</span></button>
+      <button type="button" data-settings-tab="volume"><svg class="ic" aria-hidden="true"><use href="#i-volume"/></svg><span>Volume</span></button>
+      <button type="button" data-settings-tab="gpu"><svg class="ic" aria-hidden="true"><use href="#i-cpu"/></svg><span>GPU</span></button>
+    </nav>
+    <div class="pv-scroll">
 
-    <!-- Software externo. First, because it explains most "isto não funciona":
-         RockForge ships almost none of its dependencies (Wwise cannot legally
-         be redistributed, the ML stack is gigabytes), and every absence shows
-         up downstream as something that looks like a bug. -->
-    <div style="margin-top:.5rem;border-bottom:1px solid #262830;padding-bottom:.9rem">
-      <label style="font-weight:600"><svg class="ic" aria-hidden="true"><use href="#i-activity"/></svg> Software externo</label>
-      <p class="meta" style="margin:.25rem 0 .5rem">O RockForge não distribui as ferramentas de que depende
-        — umas por licença (Wwise), outras por tamanho (o stack de ML). Aqui vês o que está instalado
-        nesta máquina e <b>o que perdes</b> com cada uma que falte.</p>
-      <div id="sysCheck" class="meta">a verificar…</div>
-      <div class="syncctrls" style="margin-top:.5rem">
-        <button type="button" id="sysCheckRefresh" class="secondary">Verificar de novo</button>
-        <span class="meta">corre outra vez depois de instalares alguma coisa</span>
-      </div>
-    </div>
+      <section class="pv-page set-page" data-settings-page="geral">
+        <div>
+          <h1 class="pv-page-title">Geral</h1>
+          <p class="set-desc">A língua da interface e das mensagens do servidor.</p>
+        </div>
+        <div class="pv-card pv-card-lg">
+          <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-globe"/></svg>Idioma · Language</div>
+          <select id="langSelectSettings" class="set-select" data-lang-select translate="no" aria-label="Idioma · Language">
+            <option value="pt">Português</option>
+          </select>
+          <div class="pv-card-desc">Mudar de idioma recarrega a página.</div>
+        </div>
+      </section>
 
-    <div style="margin-top:.9rem;border-bottom:1px solid #262830;padding-bottom:.9rem">
-      <label style="font-weight:600"><svg class="ic" aria-hidden="true"><use href="#i-terminal"/></svg> Python para o ML</label>
-      <p class="meta" style="margin:.25rem 0 .5rem">O Demucs, o WhisperX e o librosa correm todos em
-        <b>subprocesso</b>, por isso não têm de estar dentro da aplicação — basta existir um Python 3.11
-        que os tenha. É assim que o <b>.exe</b> consegue separar stems, detetar tom e letra e usar o
-        «Corrigir daqui»: o próprio .exe não os pode instalar (tem o seu Python), mas pode entregar-lhes
-        o trabalho. A correr a partir do <code>start.bat</code> deixa vazio — usa o próprio.</p>
-      <label style="display:block">Caminho do <code>python.exe</code>
-        <input type="text" id="sMlPython" placeholder="C:\Python311\python.exe" style="width:100%"></label>
-      <div class="meta" id="sMlPythonInfo" style="margin-top:.4rem"></div>
-      <p class="meta" style="margin:.35rem 0 0">Instala lá:
-        <code>pip install "rockforge[ml,lyrics]"</code></p>
-    </div>
+      <!-- Software externo. It explains most "isto não funciona": RockForge
+           ships almost none of its dependencies (Wwise cannot legally be
+           redistributed, the ML stack is gigabytes), and every absence shows
+           up downstream as something that looks like a bug. -->
+      <section class="pv-page set-page" data-settings-page="software" hidden>
+        <div class="set-head">
+          <div>
+            <h1 class="pv-page-title">Software externo</h1>
+            <p class="set-desc">O RockForge não distribui as ferramentas de que depende
+              — umas por licença (Wwise), outras por tamanho (o stack de ML). Aqui vês o que está instalado
+              nesta máquina e <b>o que perdes</b> com cada uma que falte.</p>
+          </div>
+          <button type="button" id="sysCheckRefresh" class="pv-btn"><svg class="ic" aria-hidden="true"><use href="#i-refresh"/></svg>Verificar de novo</button>
+        </div>
+        <div id="sysSummary" class="set-chips"></div>
+        <div id="sysCheck" class="set-reqs">a verificar…</div>
+      </section>
 
-    <div style="margin-top:.9rem">
-      <label style="font-weight:600">Separação de instrumentos (stems)</label>
-      <div class="syncctrls" style="margin-top:.4rem">
-        <label class="check"><input type="radio" name="sepBackend" value="demucs"> Demucs (por defeito) — 1 faixa "guitarra"</label>
-      </div>
-      <div class="syncctrls">
-        <label class="check"><input type="radio" name="sepBackend" value="banquet"> Banquet — separação fina (elétrica/acústica) <b style="color:#e0a54a"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg> EM TESTES</b></label>
-      </div>
-    </div>
+      <section class="pv-page set-page" data-settings-page="ml" hidden>
+        <div>
+          <h1 class="pv-page-title">Python para o ML</h1>
+          <p class="set-desc">O Demucs, o WhisperX e o librosa correm todos em
+            <b>subprocesso</b>, por isso não têm de estar dentro da aplicação — basta existir um Python 3.11
+            que os tenha. É assim que o <b>.exe</b> consegue separar stems, detetar tom e letra e usar o
+            «Corrigir daqui»: o próprio .exe não os pode instalar (tem o seu Python), mas pode entregar-lhes
+            o trabalho. A correr a partir do <code>start.bat</code> deixa vazio — usa o próprio.</p>
+        </div>
+        <div class="pv-card pv-card-lg">
+          <label class="set-field"><span>Caminho do <code>python.exe</code></span>
+            <input type="text" id="sMlPython" placeholder="C:\Python311\python.exe"></label>
+          <div class="meta" id="sMlPythonInfo"></div>
+          <div class="pv-card-desc">Instala lá: <code>pip install "rockforge[ml,lyrics]"</code></div>
+        </div>
+      </section>
 
-    <div id="banquetConfig" style="display:none;margin-top:.6rem;border-left:3px solid #e0a54a;padding:.2rem 0 .2rem .7rem">
-      <p class="meta" style="margin:0 0 .5rem">O Banquet precisa do repositório <code>query-bandit</code>, dos pesos, e de clips de referência (um <code>&lt;classe&gt;.wav</code> por stem). Ver <b>TESTING.md §7g</b>. Precisa de PyTorch (GPU recomendada).</p>
-      <div class="field"><label>Pasta do repositório query-bandit <span id="sVrepo"></span></label>
-        <input type="text" id="sBanquetRepo" placeholder="/caminho/query-bandit"></div>
-      <div class="field"><label>Ficheiro do checkpoint (.ckpt) <span id="sVckpt"></span></label>
-        <input type="text" id="sBanquetCkpt" placeholder="/caminho/ev-pre-aug.ckpt"></div>
-      <div class="field"><label>Pasta dos clips de referência <span id="sVqueries"></span></label>
-        <input type="text" id="sBanquetQueries" placeholder="/caminho/queries"></div>
-      <div id="sQueryNames" class="meta" style="margin-top:.2rem"></div>
-    </div>
+      <section class="pv-page set-page" data-settings-page="stems" hidden>
+        <div>
+          <h1 class="pv-page-title">Separação de instrumentos (stems)</h1>
+          <p class="set-desc">O motor usado por «Separar stems».</p>
+        </div>
+        <div class="set-options">
+          <label class="set-option"><input type="radio" name="sepBackend" value="demucs">
+            <span><b>Demucs</b><span class="meta">Demucs (por defeito) — 1 faixa "guitarra"</span></span></label>
+          <label class="set-option"><input type="radio" name="sepBackend" value="banquet">
+            <span><b>Banquet <span class="pv-chip warn set-mini-chip"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>EM TESTES</span></b><span class="meta">Banquet — separação fina (elétrica/acústica)</span></span></label>
+        </div>
+        <div id="banquetConfig" class="pv-card pv-card-lg" style="display:none">
+          <p class="pv-card-desc" style="margin:0">O Banquet precisa do repositório <code>query-bandit</code>, dos pesos, e de clips de referência (um <code>&lt;classe&gt;.wav</code> por stem). Ver <b>TESTING.md §7g</b>. Precisa de PyTorch (GPU recomendada).</p>
+          <label class="set-field"><span>Pasta do repositório query-bandit <span id="sVrepo"></span></span>
+            <input type="text" id="sBanquetRepo" placeholder="/caminho/query-bandit"></label>
+          <label class="set-field"><span>Ficheiro do checkpoint (.ckpt) <span id="sVckpt"></span></span>
+            <input type="text" id="sBanquetCkpt" placeholder="/caminho/ev-pre-aug.ckpt"></label>
+          <label class="set-field"><span>Pasta dos clips de referência <span id="sVqueries"></span></span>
+            <input type="text" id="sBanquetQueries" placeholder="/caminho/queries"></label>
+          <div id="sQueryNames" class="meta"></div>
+        </div>
+      </section>
 
-    <div style="margin-top:1rem;border-top:1px solid #262830;padding-top:.8rem">
-      <label style="font-weight:600">Volume / sonoridade</label>
-      <div class="syncctrls" style="margin-top:.4rem">
-        <label>Volume alvo (LUFS):
-          <input type="number" id="sLoudness" step="0.5" min="-20" max="-6" style="width:6rem"></label>
-        <span class="meta">mais alto = mais perto de 0 (ex.: <b>-12</b> por defeito; <b>-10/-9</b> se ficar baixo ao lado do DLC oficial; <b>-16</b>, o do DLC Builder, é o mais limpo: a gravação nunca é comprimida, e o que ela não consegue subir sem passar os picos é compensado pelo volume dentro do jogo). Aplica-se ao reconstruir.</span>
-      </div>
-    </div>
+      <section class="pv-page set-page" data-settings-page="volume" hidden>
+        <div>
+          <h1 class="pv-page-title">Volume / sonoridade</h1>
+          <p class="set-desc">O volume da música no jogo. Aplica-se ao reconstruir.</p>
+        </div>
+        <div class="pv-card pv-card-lg">
+          <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-volume"/></svg>Volume alvo (LUFS)</div>
+          <div class="pv-row">
+            <input type="range" id="sLoudnessRange" min="-20" max="-6" step="0.5" aria-label="Volume alvo (LUFS)" style="flex:1;accent-color:var(--accent)">
+            <input type="number" id="sLoudness" step="0.5" min="-20" max="-6" aria-label="Volume alvo (LUFS)">
+          </div>
+          <div class="set-chips">
+            <button type="button" class="set-pill" data-loudness="-16">-16 · mais limpo</button>
+            <button type="button" class="set-pill" data-loudness="-12">-12 · padrão</button>
+            <button type="button" class="set-pill" data-loudness="-9">-9 · mais alto</button>
+          </div>
+          <div class="pv-card-desc">mais alto = mais perto de 0 (ex.: <b>-12</b> por defeito; <b>-10/-9</b> se ficar baixo ao lado do DLC oficial; <b>-16</b>, o do DLC Builder, é o mais limpo: a gravação nunca é comprimida, e o que ela não consegue subir sem passar os picos é compensado pelo volume dentro do jogo). Aplica-se ao reconstruir.</div>
+        </div>
+      </section>
 
-    <div style="margin-top:1rem;border-top:1px solid #262830;padding-top:.8rem">
-      <label style="font-weight:600">GPU acelerada (CUDA)</label>
-      <div id="gpuOk" class="syncctrls" style="margin-top:.4rem">
-        <span class="meta"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> A GPU está ativa (ou não houve nenhum crash). A deteção de letra/tom e a separação usam a GPU quando disponível.</span>
-      </div>
-      <div id="gpuBroken" class="syncctrls" style="margin-top:.4rem;display:none">
-        <span class="meta" style="color:var(--warn)"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg> A GPU foi marcada como avariada (houve um crash CUDA) — o RockForge está a usar a <b>CPU</b> para tudo. Depois de corrigires os drivers/cuDNN, reativa aqui.</span>
-      </div>
-      <div class="syncctrls" style="margin-top:.4rem">
-        <button type="button" id="gpuReset" class="secondary">Reativar GPU</button>
-        <span class="meta">Se a GPU voltar a crashar, volta a desligar-se sozinha (uma vez por sessão, não a cada música).</span>
-      </div>
-      <div class="syncctrls" style="margin-top:.6rem">
-        <label>Tipo de cálculo WhisperX (compute type):
-          <select id="sWhisperxCompute" style="width:auto">
-            <option value="">Automático (por defeito)</option>
-            <option value="int8_float16">int8_float16 — RTX 20xx (Turing)</option>
-            <option value="float16">float16</option>
-            <option value="int8">int8</option>
-          </select></label>
-        <span class="meta">O RockForge tenta isto automaticamente antes de desistir da GPU e guarda aqui o que funcionar — só precisas de mexer se quiseres forçar um valor ou limpar o que foi guardado (equivale a <code>ROCKFORGE_WHISPERX_COMPUTE_TYPE</code>).</span>
-      </div>
-    </div>
+      <section class="pv-page set-page" data-settings-page="gpu" hidden>
+        <div>
+          <h1 class="pv-page-title">GPU acelerada (CUDA)</h1>
+          <p class="set-desc">A deteção de letra/tom e a separação usam a GPU quando disponível.</p>
+        </div>
+        <div class="pv-card pv-card-lg">
+          <div id="gpuOk" class="set-status">
+            <span class="pv-chip ok"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>Ativa</span>
+            <span class="pv-card-desc">A GPU está ativa (ou não houve nenhum crash). A deteção de letra/tom e a separação usam a GPU quando disponível.</span>
+          </div>
+          <div id="gpuBroken" class="set-status" style="display:none">
+            <span class="pv-chip err"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>Desligada</span>
+            <span class="pv-card-desc">A GPU foi marcada como avariada (houve um crash CUDA) — o RockForge está a usar a <b>CPU</b> para tudo. Depois de corrigires os drivers/cuDNN, reativa aqui.</span>
+          </div>
+          <div class="pv-row">
+            <button type="button" id="gpuReset" class="pv-btn"><svg class="ic" aria-hidden="true"><use href="#i-refresh"/></svg>Reativar GPU</button>
+            <span class="pv-card-desc">Se a GPU voltar a crashar, volta a desligar-se sozinha (uma vez por sessão, não a cada música).</span>
+          </div>
+        </div>
+        <div class="pv-card pv-card-lg">
+          <label class="set-field"><span>Tipo de cálculo WhisperX (compute type):</span>
+            <select id="sWhisperxCompute" class="set-select">
+              <option value="">Automático (por defeito)</option>
+              <option value="int8_float16">int8_float16 — RTX 20xx (Turing)</option>
+              <option value="float16">float16</option>
+              <option value="int8">int8</option>
+            </select></label>
+          <div class="pv-card-desc">O RockForge tenta isto automaticamente antes de desistir da GPU e guarda aqui o que funcionar — só precisas de mexer se quiseres forçar um valor ou limpar o que foi guardado (equivale a <code>ROCKFORGE_WHISPERX_COMPUTE_TYPE</code>).</div>
+        </div>
+      </section>
 
-    <div class="anchor-row" style="margin-top:.9rem">
-      <button type="button" id="settingsSave">Guardar</button>
-      <span id="settingsInfo" class="meta"></span>
     </div>
   </div>
 </div>

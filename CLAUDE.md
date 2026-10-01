@@ -1887,8 +1887,26 @@ tones, sections and the exports — which is what made it confusing.
   Partitura, a 1000px viewport), no pytest coverage — same category as the
   other browser-only sections in `TESTING.md`.
 
+**Definições is a page, not a modal** (2026-10-01, sketch "A" the user picked
+over a single page of cards: "a página das definições está num texto
+corrido"). `#settingsOverlay` is now a `.project-view.settings-view` (z 45:
+over the project view, under the modals): the same top bar (← back =
+`#settingsClose`, "Guardar" = `#settingsSave`) and a rail of sections —
+Geral (idioma), Software (the system check as one card per requirement, a
+summary of installed/missing/unknown, a copy button on each install command,
+a red dot on the rail when something REQUIRED is missing), Python ML, Stems,
+Volume (slider + number + -16/-12/-9 presets, one value), GPU — one section
+at a time (`showSettingsPage`, remembered in `localStorage`
+`rf-settings-page`). Every id the script reached survived, so `fillSettings`/
+the save are unchanged except that the payload is one function,
+`settingsPayload`, compared against what was last loaded/saved to show "N
+alterações por guardar" and to ask before leaving with unsaved changes.
+Browser-only, no pytest coverage; verified with Playwright (every section,
+dirty chip, leave-confirm, preset ↔ slider ↔ number, save, remembered
+section, English, a 760px viewport, no page errors).
+
 **Modals with typed input never close from the backdrop.** The wizard, batch,
-"Editar info", tone builder and ⚙️ Definições close only from their own
+"Editar info" and tone builder close only from their own
 ✕/Cancelar. A press that starts inside a field (selecting text, a trackpad tap
 that drifts) and is released outside the box is dispatched by the browser as a
 click on the OVERLAY — the common ancestor — so `e.target === overlay`

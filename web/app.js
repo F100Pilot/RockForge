@@ -444,7 +444,59 @@ document.getElementById('batchSubmit').addEventListener('click', async () => {
   refreshJobs();
 });
 
-// ── "Definições" modal (stem-separator backend + Banquet paths) ───────────────
+// ── Definições: a full-screen page, one section of the rail at a time ────────
+const SETTINGS_PAGES = ['geral', 'software', 'ml', 'stems', 'volume', 'gpu'];
+function showSettingsPage(name) {
+  if (!SETTINGS_PAGES.includes(name)) name = 'geral';
+  for (const el of document.querySelectorAll('[data-settings-page]')) el.hidden = el.dataset.settingsPage !== name;
+  for (const b of document.querySelectorAll('[data-settings-tab]')) b.classList.toggle('active', b.dataset.settingsTab === name);
+  try { localStorage.setItem('rf-settings-page', name); } catch { /* storage blocked */ }
+}
+for (const b of document.querySelectorAll('[data-settings-tab]'))
+  b.addEventListener('click', () => showSettingsPage(b.dataset.settingsTab));
+
+// What "Guardar" would send, and the same as last loaded/saved: the top bar
+// counts the fields that differ, so leaving the page can warn about them.
+function settingsPayload() {
+  return {
+    stem_separator: document.querySelector('input[name=sepBackend]:checked')?.value || 'demucs',
+    banquet_repo: document.getElementById('sBanquetRepo').value.trim(),
+    banquet_ckpt: document.getElementById('sBanquetCkpt').value.trim(),
+    banquet_queries: document.getElementById('sBanquetQueries').value.trim(),
+    loudness_target: parseFloat(document.getElementById('sLoudness').value),
+    whisperx_compute_type: document.getElementById('sWhisperxCompute').value,
+    ml_python: document.getElementById('sMlPython').value.trim(),
+  };
+}
+let settingsSaved = null;
+function settingsChangeCount() {
+  if (!settingsSaved) return 0;
+  const now = settingsPayload();
+  return Object.keys(now).filter(k => String(now[k]) !== String(settingsSaved[k])).length;
+}
+function updateSettingsDirty() {
+  const n = settingsChangeCount();
+  const chip = document.getElementById('settingsDirty');
+  chip.hidden = !n;
+  chip.textContent = n === 1 ? T('1 alteração por guardar') : T('{n} alterações por guardar', { n });
+  if (n) document.getElementById('settingsInfo').textContent = '';
+}
+document.getElementById('settingsOverlay').addEventListener('input', updateSettingsDirty);
+document.getElementById('settingsOverlay').addEventListener('change', updateSettingsDirty);
+
+// The loudness target: a slider, the exact number and three presets, one value.
+function setLoudnessField(v, from) {
+  const n = document.getElementById('sLoudness'), r = document.getElementById('sLoudnessRange');
+  if (from !== n) n.value = v;
+  if (from !== r) r.value = v;
+  for (const b of document.querySelectorAll('[data-loudness]'))
+    b.classList.toggle('active', parseFloat(b.dataset.loudness) === parseFloat(v));
+}
+document.getElementById('sLoudness').addEventListener('input', e => setLoudnessField(e.target.value, e.target));
+document.getElementById('sLoudnessRange').addEventListener('input', e => setLoudnessField(e.target.value, e.target));
+for (const b of document.querySelectorAll('[data-loudness]'))
+  b.addEventListener('click', () => { setLoudnessField(b.dataset.loudness); updateSettingsDirty(); });
+
 function toggleBanquetConfig() {
   const on = document.querySelector('input[name=sepBackend]:checked')?.value === 'banquet';
   document.getElementById('banquetConfig').style.display = on ? '' : 'none';
@@ -488,7 +540,7 @@ function fillSettings(s) {
   document.getElementById('sBanquetRepo').value = s.banquet_repo || '';
   document.getElementById('sBanquetCkpt').value = s.banquet_ckpt || '';
   document.getElementById('sBanquetQueries').value = s.banquet_queries || '';
-  document.getElementById('sLoudness').value = s.loudness_target ?? -12;
+  setLoudnessField(s.loudness_target ?? -12);
   document.getElementById('gpuOk').style.display = s.gpu_broken ? 'none' : '';
   document.getElementById('gpuBroken').style.display = s.gpu_broken ? '' : 'none';
   document.getElementById('sWhisperxCompute').value = s.whisperx_compute_type || '';
@@ -496,43 +548,67 @@ function fillSettings(s) {
   renderMlPythonInfo(s.ml_python_info || {});
   toggleBanquetConfig();
   renderBanquetValidation(s.banquet || {});
+  settingsSaved = settingsPayload();
+  updateSettingsDirty();
 }
 // The external-software report. `found` is a TRI-STATE: null means "cannot be
 // checked from here" (the CDLC loader patch — we don't know where the game is;
 // a CUDA build of torch — only importing it would tell), which is a different
 // and more honest answer than "missing", so it gets its own marker.
-const SYS_MARK = { true: icon('check'), false: icon('x'), null: icon('info') };
+const SYS_STATE = {
+  true: { cls: 'ok', ico: 'check', label: () => T('Instalado') },
+  false: { cls: 'err', ico: 'x', label: () => T('Em falta') },
+  null: { cls: 'unk', ico: 'info', label: () => T('Por confirmar') },
+};
 
 function renderSystemCheck(data) {
   const el = document.getElementById('sysCheck');
   if (!el) return;
-  const rows = (data.requirements || []).map(r => {
-    const mark = SYS_MARK[String(r.found)] || icon('info');
+  const reqs = data.requirements || [];
+  const rows = reqs.map(r => {
+    const st = SYS_STATE[String(r.found)] || SYS_STATE.null;
     // Only spell out the cost and the fix for what is actually missing or
     // unknown — a wall of install commands next to every ✅ is noise.
     const gap = r.found !== true;
     const why = gap
-      ? `<div class="meta" style="margin-left:1.4rem">${esc(r.without_it)}</div>` +
-        `<div class="meta" style="margin-left:1.4rem"><b>${T('Instalar:')}</b> <code>${esc(r.install)}</code></div>`
+      ? `<div class="set-req-text"><b>${T('Sem ele:')}</b> ${esc(r.without_it)}</div>` +
+        `<div class="set-code"><code>${esc(r.install)}</code>` +
+        `<button type="button" data-copy="${esc(r.install)}" title="${T('Copiar')}" aria-label="${T('Copiar')}">${icon('copy')}</button></div>`
       : '';
-    const flag = (r.required && r.found === false)
-      ? ` <b style="color:var(--err,#e05a5a)">${T('OBRIGATÓRIO')}</b>` : '';
-    return `<div style="margin:.35rem 0">
-      <div>${mark} <b>${esc(r.name)}</b>${flag}</div>
-      <div class="meta" style="margin-left:1.4rem">${esc(r.detail)}</div>${why}</div>`;
+    const flag = r.required ? `<span class="meta">${T('obrigatório')}</span>` : '';
+    return `<div class="set-req${r.found === false ? ' missing' : ''}">
+      <div class="set-req-ico ${st.cls}">${icon(st.ico)}</div>
+      <div><div class="set-req-name">${esc(r.name)}${flag}</div>
+        <div class="set-req-text">${esc(r.detail)}</div>${why}</div>
+      <span class="pv-chip ${st.cls}">${st.label()}</span></div>`;
   });
   const missing = data.missing_required || [];
   const banner = missing.length
-    ? `<div class="meta" style="color:var(--err,#e05a5a);margin-bottom:.4rem">
+    ? `<div class="pv-hint" style="border-left-color:var(--err)">
          ${icon('alert')} ${T('Falta software <b>obrigatório</b> ({names}) — nenhum job vai chegar ao fim até o instalares.',
     { names: missing.map(esc).join(', ') })}</div>`
     : '';
   el.innerHTML = banner + rows.join('');
+  const count = v => reqs.filter(r => r.found === v).length;
+  const chip = (cls, ico, text) => `<span class="pv-chip ${cls}">${icon(ico)}${text}</span>`;
+  const summary = [];
+  if (count(true)) summary.push(chip('ok', 'check', T('{n} instaladas', { n: count(true) })));
+  if (count(false)) summary.push(chip('err', 'x', T('{n} em falta', { n: count(false) })));
+  if (count(null)) summary.push(chip('unk', 'info', T('{n} por confirmar', { n: count(null) })));
+  document.getElementById('sysSummary').innerHTML = summary.join('');
+  document.getElementById('sysRailDot').hidden = !missing.length;
 }
+document.getElementById('sysCheck').addEventListener('click', async e => {
+  const b = e.target.closest('[data-copy]');
+  if (!b) return;
+  try { await navigator.clipboard.writeText(b.dataset.copy); toast(T('Copiado.'), 'ok'); }
+  catch { toast(T('Não foi possível copiar.'), 'err'); }
+});
 
 async function loadSystemCheck() {
   const el = document.getElementById('sysCheck');
   if (el) el.textContent = T('a verificar…');
+  document.getElementById('sysSummary').innerHTML = '';
   try {
     renderSystemCheck(await getJSON('/system-check'));
   } catch {
@@ -545,11 +621,17 @@ async function openSettings() {
   try {
     fillSettings(await getJSON('/settings'));
   } catch { /* keep defaults */ }
+  let page = 'geral';
+  try { page = localStorage.getItem('rf-settings-page') || page; } catch { /* storage blocked */ }
+  showSettingsPage(page);
   document.getElementById('settingsOverlay').hidden = false;
   loadSystemCheck();
 }
 document.getElementById('sysCheckRefresh').addEventListener('click', loadSystemCheck);
-function closeSettings() { document.getElementById('settingsOverlay').hidden = true; }
+async function closeSettings() {
+  if (settingsChangeCount() && !await confirmModal(T('Há alterações por guardar nas definições. Sair sem guardar?'))) return;
+  document.getElementById('settingsOverlay').hidden = true;
+}
 document.getElementById('openSettings').addEventListener('click', openSettings);
 document.querySelectorAll('[data-open-settings]').forEach(b => b.addEventListener('click', openSettings));
 document.getElementById('settingsClose').addEventListener('click', closeSettings);
@@ -565,16 +647,8 @@ document.getElementById('gpuReset').addEventListener('click', async () => {
 for (const r of document.querySelectorAll('input[name=sepBackend]'))
   r.addEventListener('change', toggleBanquetConfig);
 document.getElementById('settingsSave').addEventListener('click', async () => {
-  const backend = document.querySelector('input[name=sepBackend]:checked')?.value || 'demucs';
-  const payload = {
-    stem_separator: backend,
-    banquet_repo: document.getElementById('sBanquetRepo').value.trim(),
-    banquet_ckpt: document.getElementById('sBanquetCkpt').value.trim(),
-    banquet_queries: document.getElementById('sBanquetQueries').value.trim(),
-    loudness_target: parseFloat(document.getElementById('sLoudness').value),
-    whisperx_compute_type: document.getElementById('sWhisperxCompute').value,
-    ml_python: document.getElementById('sMlPython').value.trim(),
-  };
+  const payload = settingsPayload();
+  const backend = payload.stem_separator;
   const r = await fetch('/settings', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
   });
@@ -584,7 +658,7 @@ document.getElementById('settingsSave').addEventListener('click', async () => {
   loadSystemCheck();  // the ML rows follow the interpreter, so they change too
   const info = document.getElementById('settingsInfo');
   if (backend === 'banquet' && !b.banquet.ready)
-    info.innerHTML = `<span style="color:#e0a54a">${T('Guardado — mas o Banquet ainda não está pronto (verifica os ✗ acima).')}</span>`;
+    info.innerHTML = `<span style="color:#e0a54a">${T('Guardado — mas o Banquet ainda não está pronto (verifica os ✗ em Stems).')}</span>`;
   else
     info.textContent = T('Guardado.');
   toast(T('Definições guardadas.'), 'ok');
