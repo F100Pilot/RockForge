@@ -1919,8 +1919,20 @@ directly (no question). Browser-only; verified with Playwright (empty
 create opening the project, leave-confirm only when started, a 760px
 viewport, no page errors).
 
-**Modals with typed input never close from the backdrop.** The batch,
-"Editar info" and tone builder close only from their own
+**"Editar info" is a page as well** (2026-10-01, "faz o mesmo com o Editar
+info"). `#metaOverlay` is a `.project-view.settings-view`: top bar (← back =
+`#metaClose`, the song in `#metaHeadSub`, "N alterações por guardar",
+`#metaSave`), a "Música" card and the GP "Arranjos e afinação" card
+(`#metaGp`). `metaValues` splits what needs only the PATCH (title, artist,
+album, year) from what needs a rebuild (track map, tunings); the save button
+reads "Guardar e reconstruir" only when the latter changed, and **a save that
+changed no track or tuning no longer forks a rebuild** — it used to fork one
+on every save of a GP job, since the section was merely shown. Leaving with
+changes asks first. Browser-only; verified with Playwright (album-only save:
+PATCH, no new job; a track change: a new rebuilt job).
+
+**Modals with typed input never close from the backdrop.** The tone builder
+closes only from its own
 ✕/Cancelar. A press that starts inside a field (selecting text, a trackpad tap
 that drifts) and is released outside the box is dispatched by the browser as a
 click on the OVERLAY — the common ancestor — so `e.target === overlay`

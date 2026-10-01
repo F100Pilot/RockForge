@@ -1379,6 +1379,10 @@ async function openMetaEdit() {
   document.getElementById('metaYear').value = selectedJob.year ?? '';
   const gp = document.getElementById('metaGp');
   gp.style.display = 'none';
+  document.getElementById('metaHeadSub').textContent =
+    [selectedJob.title, selectedJob.artist].filter(Boolean).join(' — ');
+  metaSaved = metaValues();
+  updateMetaDirty();
   document.getElementById('metaOverlay').hidden = false;
   document.getElementById('metaTitle').focus();
   // GP jobs: load the track list + current arrangements so the user can re-map
@@ -1413,6 +1417,8 @@ async function openMetaEdit() {
         .replace(`value="${cur}"`, `value="${cur}" selected`);
     }).join('');
     gp.style.display = '';
+    metaSaved = metaValues();  // the loaded track map + tunings are the baseline
+    updateMetaDirty();
   } catch { /* leave the GP section hidden on any error */ }
 }
 // Reached from onclick="openMetaEdit()" inside the job-row template strings,
@@ -1420,9 +1426,43 @@ async function openMetaEdit() {
 // say so explicitly instead of leaving it looking unused.
 window.openMetaEdit = openMetaEdit;
 
+// What the page holds now, split into what only needs a PATCH (the song's
+// info) and what needs a rebuild (track map + tunings, GP jobs). Compared with
+// what was loaded: the top bar counts the changes, the save button says when
+// it will rebuild, and a save that touched no track/tuning no longer forks a
+// rebuild just because the section was shown.
+let metaSaved = null;
+function metaValues() {
+  const v = id => document.getElementById(id).value.trim();
+  const info = { title: v('metaTitle'), artist: v('metaArtist'), album: v('metaAlbum'), year: v('metaYear') };
+  const gp = {};
+  if (document.getElementById('metaGp').style.display !== 'none') {
+    for (const sel of document.querySelectorAll('#metaTracks select[data-slot]')) gp['t:' + sel.dataset.slot] = sel.value;
+    for (const sel of document.querySelectorAll('#metaTunings select[data-kind]')) gp['u:' + sel.dataset.kind] = sel.value;
+  }
+  return { info, gp };
+}
+function metaChanges() {
+  if (!metaSaved) return { info: 0, gp: 0 };
+  const now = metaValues();
+  const diff = (a, b) => Object.keys(a).filter(k => a[k] !== b[k]).length;
+  return { info: diff(now.info, metaSaved.info), gp: diff(now.gp, metaSaved.gp) };
+}
+function updateMetaDirty() {
+  const c = metaChanges(), n = c.info + c.gp;
+  const chip = document.getElementById('metaDirty');
+  chip.hidden = !n;
+  chip.textContent = n === 1 ? T('1 alteração por guardar') : T('{n} alterações por guardar', { n });
+  document.getElementById('metaSaveLabel').textContent = c.gp ? T('Guardar e reconstruir') : T('Guardar');
+}
+document.getElementById('metaOverlay').addEventListener('input', updateMetaDirty);
+document.getElementById('metaOverlay').addEventListener('change', updateMetaDirty);
 function closeMeta() { document.getElementById('metaOverlay').hidden = true; }
-document.getElementById('metaClose').onclick = closeMeta;
-document.getElementById('metaCancel').onclick = closeMeta;
+document.getElementById('metaClose').onclick = async () => {
+  const c = metaChanges();
+  if ((c.info || c.gp) && !await confirmModal(T('Sair sem guardar as alterações à informação da música?'))) return;
+  closeMeta();
+};
 document.getElementById('metaSave').onclick = async () => {
   if (!selectedJob) return;
   const title = document.getElementById('metaTitle').value.trim();
@@ -1442,7 +1482,7 @@ document.getElementById('metaSave').onclick = async () => {
   // GP: if the arrangements/tuning section is shown, a change there needs a full
   // rebuild (re-parse) — fork a new job with the new track map + tunings.
   const gp = document.getElementById('metaGp');
-  if (gp.style.display !== 'none') {
+  if (gp.style.display !== 'none' && metaChanges().gp) {
     const tracks = {};
     for (const sel of document.querySelectorAll('#metaTracks select[data-slot]'))
       tracks[sel.dataset.slot] = sel.value === '' ? null : parseInt(sel.value, 10);

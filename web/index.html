@@ -1687,30 +1687,45 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
   </div>
 </div>
 
-<!-- ══════════ Edit song info modal ══════════ -->
-<div class="modal-overlay" id="metaOverlay" hidden>
-  <div class="modal" style="max-width:900px">
-    <button type="button" class="modal-close" id="metaClose">×</button>
-    <h2>Editar informação da música</h2>
-    <form id="metaForm" class="grid" style="margin-top:.5rem">
-      <div class="field" style="flex:1 1 16rem"><label>Título</label>
-        <input type="text" id="metaTitle" required></div>
-      <div class="field" style="flex:1 1 16rem"><label>Artista / Banda</label>
-        <input type="text" id="metaArtist" required></div>
-      <div class="field" style="flex:1 1 12rem"><label>Álbum</label>
-        <input type="text" id="metaAlbum"></div>
-      <div class="field"><label>Ano</label>
-        <input type="number" id="metaYear" min="1900" max="2100" style="width:6rem"></div>
-      <div id="metaGp" style="flex-basis:100%; display:none; border-top:1px solid var(--border); margin-top:.5rem; padding-top:.5rem">
-        <div class="meta" style="opacity:.8; margin-bottom:.4rem">Arranjos & afinação (Guitar Pro) — alterar reconstrói o projeto.</div>
-        <div id="metaTracks" class="grid"></div>
-        <div id="metaTunings" class="grid" style="margin-top:.4rem"></div>
+<!-- ══════════ Editar info — ecrã inteiro, como as outras páginas ══════════ -->
+<div class="project-view settings-view" id="metaOverlay" hidden>
+  <header class="pv-top">
+    <button type="button" class="pv-btn pv-icon-btn" id="metaClose" title="Voltar" aria-label="Voltar"><svg class="ic" aria-hidden="true"><use href="#i-back"/></svg></button>
+    <div class="pv-head">
+      <div class="pv-title">Editar informação da música</div>
+      <div class="pv-sub"><span id="metaHeadSub"></span></div>
+    </div>
+    <span class="pv-spacer"></span>
+    <span id="metaDirty" class="pv-chip warn" hidden></span>
+    <button type="button" id="metaSave" class="pv-btn pv-primary"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span id="metaSaveLabel">Guardar</span></button>
+  </header>
+  <div class="pv-body">
+    <div class="pv-scroll">
+    <form id="metaForm" class="pv-page set-page" novalidate>
+      <div>
+        <h1 class="pv-page-title">Editar info</h1>
+        <p class="set-desc">Aplica-se ao bundle/PSARC na próxima reconstrução.</p>
+      </div>
+      <div class="pv-card pv-card-lg">
+        <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg>Música</div>
+        <div class="wz-grid">
+          <div class="field"><label>Título</label>
+            <input type="text" id="metaTitle" required></div>
+          <div class="field"><label>Artista / Banda</label>
+            <input type="text" id="metaArtist" required></div>
+          <div class="field"><label>Álbum</label>
+            <input type="text" id="metaAlbum"></div>
+          <div class="field"><label>Ano</label>
+            <input type="number" id="metaYear" min="1900" max="2100"></div>
+        </div>
+      </div>
+      <div id="metaGp" class="pv-card pv-card-lg" style="display:none">
+        <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-sliders"/></svg>Arranjos e afinação (Guitar Pro)</div>
+        <div class="pv-card-desc">Arranjos & afinação (Guitar Pro) — alterar reconstrói o projeto.</div>
+        <div id="metaTracks" class="wz-grid"></div>
+        <div id="metaTunings" class="wz-grid"></div>
       </div>
     </form>
-    <p class="meta" style="margin:.6rem 0 0">Aplica-se ao bundle/PSARC na próxima reconstrução.</p>
-    <div class="modal-actions">
-      <button type="button" class="secondary" id="metaCancel">Cancelar</button>
-      <button type="button" id="metaSave">Guardar</button>
     </div>
   </div>
 </div>

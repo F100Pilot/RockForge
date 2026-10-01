@@ -1025,5 +1025,8 @@
  "{n} criados": "{n} created",
  "{n} por criar": "{n} to create",
  "1 criado": "1 created",
- "{n} ficheiros ({first}, …)": "{n} files ({first}, …)"
+ "{n} ficheiros ({first}, …)": "{n} files ({first}, …)",
+ "Arranjos e afinação (Guitar Pro)": "Arrangements and tuning (Guitar Pro)",
+ "Guardar e reconstruir": "Save and rebuild",
+ "Sair sem guardar as alterações à informação da música?": "Leave without saving the changes to the song info?"
 };
