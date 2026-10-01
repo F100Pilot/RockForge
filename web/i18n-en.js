@@ -1055,5 +1055,14 @@
  "Artista": "Artist",
  "Todos os artistas": "All artists",
  "Todos os artistas ({n})": "All artists ({n})",
- "Ver só os tons deste artista": "Show only this artist's tones"
+ "Ver só os tons deste artista": "Show only this artist's tones",
+ "Dos teus PSARC…": "From your PSARCs…",
+ "Tons do projeto": "Project tones",
+ "Escolhe o tom que entra no lugar de «{name}».": "Pick the tone that takes the place of “{name}”.",
+ "Trocar por": "Replace with",
+ "o sugerido": "the suggested one",
+ "em vez de {name}": "instead of {name}",
+ "Escolher este": "Pick this one",
+ "Trocar os tons sugeridos — as trocas ficam nos mesmos pontos, com os tons que escolheres:": "Replace the suggested tones — the switches stay at the same points, with the tones you choose:",
+ "<p><strong>Trocar os tons sugeridos:</strong> fica com os pontos onde a app troca de tom, mas com os tons que tu queres. Para cada tom sugerido escolhe outro — dos tons do projeto, da biblioteca ou dos teus PSARC (a lista de tons das tuas músicas) — e depois \"Aplicar\". Escolher o mesmo tom para dois sugeridos junta-os, e a troca entre eles desaparece.</p>": "<p><strong>Replace the suggested tones:</strong> keep the points where the app switches tone, but with the tones you want. For each suggested tone pick another — from the project's tones, the library or your PSARCs (the list of your songs' tones) — then \"Apply\". Picking the same tone for two suggested ones merges them, and the switch between them goes away.</p>"
 };

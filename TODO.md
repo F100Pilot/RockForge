@@ -586,6 +586,12 @@ Feedback and bug reports very welcome!
   botão "★ Biblioteca" para guardar o tom em edição. Carregar copia para o
   projeto (não altera o original). Complementa a barra de pesquisa de gear.
 
+- [x] **Trocar os tons sugeridos, mantendo os pontos de troca**: nas
+  "Sugestões por secção", cada tom sugerido pode ser trocado por um tom do
+  projeto, da biblioteca ou dos teus PSARC; "Aplicar" mantém os tempos das
+  trocas detetados e usa os tons escolhidos (dois sugeridos trocados pelo mesmo
+  juntam-se). Só frontend (`swapPlan`, `toneSwaps`).
+
 - [x] **Tons das tuas músicas (como o DLC Builder)**: lê os `.psarc` da pasta
   `dlc` do Rocksmith (oficiais e CDLC; a pasta do jogo inclui `songs.psarc`) e
   lista os tons de cada música com o gear exato, pesquisáveis por música,

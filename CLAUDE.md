@@ -2430,6 +2430,27 @@ the reasons in words; "Aplicar a esta pista"/"a todas" adds the presets to the
 project and sets the track's own set (with one chart, the song's). Pending
 until "Aplicar e reconstruir", like every tone edit.
 
+**The switch points with the user's own tones** ("usar a atribuição dos pontos
+em que entram os tons (detetado pela app), e substituir os tons por aqueles que
+eu quero, incluindo de psarc que já existe"). Above the tracks, "Trocar os tons
+sugeridos" lists every distinct suggested tone (`suggestedTones`) with a
+picker: the suggested one, a project tone, a library tone, or "Dos teus
+PSARC…", which opens the tone collection in PICK mode (`openToneCollection({
+label, onPick, onClose})`: the card's button reads "Escolher este", picks and
+closes; closing without a pick re-renders and the picker falls back). The
+choice is one map for every track (`toneSwaps`, per job, in memory until
+applied — the same preset is usually suggested on several charts), the rows
+say "Meu tom (em vez de Crunch encorpado)", and "Aplicar" copies a library or
+PSARC stand-in into the project once (`swapToneKey`, a different tone under
+the same key gets a suffix) and maps the plan through it (`swapPlan`, pure:
+names deduplicated, and a switch to the tone already playing dropped — two
+suggestions swapped for one tone merge, and the switch between them goes).
+The switch TIMES are the plan's, untouched. Frontend only; `swapPlan` checked
+with Node (identity, partial swap, two merged into one, all into one) and the
+flow with Playwright (suggestions faked: a project tone and a PSARC tone in,
+switches at 20/40/60 s kept, the PSARC tone copied into the project, cancel
+restores the picker, no page errors).
+
 Honest limits, said in the ⓘ: the per-track difference comes from the chart,
 not the audio; presets are chosen by character, not the real amp; parts are
 those of the last build. Demucs cannot run here, so the timeline was

@@ -102,6 +102,9 @@ num trecho limpo → limpo) e propõe um tom para cada parte, com o porquê e a
 confiança. **"Aplicar a esta pista"/"a todas"** põe esses tons e as trocas no
 projeto; com **"Mesmos tons em todas as pistas"** desmarcado, cada pista tem o
 seu tom base, extras e trocas (como no jogo, os tons são por arranjo).
+Em **"Trocar os tons sugeridos"** podes ficar com os pontos de troca que a app
+detetou mas pôr os tons que queres: cada tom sugerido troca-se por um tom do
+projeto, da biblioteca ou de um PSARC que já tens.
 
 Nota de honestidade: a análise espetral **não identifica** o amp ou pedal real
 usado na gravação — classifica o *caráter* do som e sugere um match plausível do

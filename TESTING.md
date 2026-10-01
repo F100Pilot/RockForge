@@ -796,6 +796,13 @@ A detection from before this version has no timeline: the card asks to run
 "Detetar tom" again (409). Demucs never ran here — the timeline was calibrated
 on a full mix, so its numbers on a separated stem are unverified.
 
+### 7d-ter-bis. Trocar os tons sugeridos (browser; real suggestions need `[ml]`)
+
+After "Detetar tom", in "Sugestões por secção" swap one suggested tone for a
+project tone and another for one "Dos teus PSARC…", press "Aplicar a esta
+pista", rebuild, and check in game (or in the XML's `<tones>`) that the
+switches happen at the same times as the suggestion with the chosen tones.
+
 ### 7d-quater. Volume dos tons no jogo
 
 Apply a suggested tone, rebuild, and play the song in Rocksmith: the guitar

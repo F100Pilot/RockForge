@@ -1105,7 +1105,8 @@ const INFO = {
 <li><strong>Solo</strong> — notas soltas com bends, vibrato, ligados ou na casa 12 e acima;</li>
 <li><strong>Ritmo</strong> — acordes, palm mute.</li></ul>
 <p>Para cada parte escolhe o tom mais parecido dessa família, e diz porquê e com que confiança. Uma parte onde a pista não toca mantém o tom anterior; partes seguidas com o mesmo tom juntam-se; cada pista fica com <strong>no máximo 4 tons</strong> (os espaços A–D do Rocksmith, com o base incluído para se poder voltar a ele).</p>
-<p><strong>Limites honestos:</strong> a separação dá TODAS as guitarras juntas, por isso a diferença entre pistas vem da partitura, não do áudio. Os tons são escolhidos pelo <em>carácter</em> (distorção, brilho, graves) — não identificam o amplificador real. As partes e tempos são os da última reconstrução.</p>`)
+<p><strong>Limites honestos:</strong> a separação dá TODAS as guitarras juntas, por isso a diferença entre pistas vem da partitura, não do áudio. Os tons são escolhidos pelo <em>carácter</em> (distorção, brilho, graves) — não identificam o amplificador real. As partes e tempos são os da última reconstrução.</p>`) +
+      T('<p><strong>Trocar os tons sugeridos:</strong> fica com os pontos onde a app troca de tom, mas com os tons que tu queres. Para cada tom sugerido escolhe outro — dos tons do projeto, da biblioteca ou dos teus PSARC (a lista de tons das tuas músicas) — e depois "Aplicar". Escolher o mesmo tom para dois sugeridos junta-os, e a troca entre eles desaparece.</p>')
   },
 };
 
@@ -3506,6 +3507,7 @@ function standardTonesText() {
 }
 
 function renderTonePanel() {
+  if (toneSuggestions && toneSuggestions.tracks) renderToneSuggestions();
   const isGp = selectedJob && selectedJob.source_type === 'gp';
   document.getElementById('tonePanel').style.display = selectedJob ? '' : 'none';
   document.getElementById('detectTones').style.display = selectedJob ? '' : 'none';
@@ -3801,7 +3803,14 @@ document.getElementById('teSaveLibrary').addEventListener('click', async () => {
 // server; while it does, the list is polled and grows.
 let toneCollTimer = null;
 let toneCollSearchTimer = null;
-function openToneCollection() {
+// Opened to PICK one tone (a stand-in for a suggested tone) instead of adding
+// tones to the project: the card's button picks it and the list closes.
+let toneCollPick = null;
+function openToneCollection(pick) {
+  toneCollPick = pick && typeof pick.onPick === 'function' ? pick : null;
+  const hint = document.getElementById('tcPickHint');
+  hint.hidden = !toneCollPick;
+  hint.textContent = toneCollPick ? T('Escolhe o tom que entra no lugar de «{name}».', { name: toneCollPick.label }) : '';
   document.getElementById('toneCollOverlay').hidden = false;
   refreshToneCollection(true);
 }
@@ -3809,6 +3818,9 @@ function closeToneCollection() {
   document.getElementById('toneCollOverlay').hidden = true;
   clearTimeout(toneCollTimer);
   toneCollTimer = null;
+  const pick = toneCollPick;
+  toneCollPick = null;
+  if (pick && pick.onClose) pick.onClose();
 }
 async function refreshToneCollection(fillFolder) {
   const q = document.getElementById('tcSearch').value;
@@ -3907,8 +3919,8 @@ function renderToneCollList(data) {
     body.append(title, song, gear);
     const use = document.createElement('button');
     use.type = 'button';
-    use.textContent = T('Usar neste projeto');
-    use.addEventListener('click', () => takeCollectionTone(e.id, 'project'));
+    use.textContent = toneCollPick ? T('Escolher este') : T('Usar neste projeto');
+    use.addEventListener('click', () => takeCollectionTone(e.id, toneCollPick ? 'pick' : 'project', e));
     const lib = document.createElement('button');
     lib.type = 'button';
     lib.className = 'secondary';
@@ -3920,11 +3932,16 @@ function renderToneCollList(data) {
     list.append(card);
   }
 }
-async function takeCollectionTone(id, where) {
+async function takeCollectionTone(id, where, row) {
   let tone;
   try {
     tone = (await getJSON(`/tone-collection/tone?id=${encodeURIComponent(id)}`)).tone;
   } catch (e) { toast(e.message); return; }
+  if (where === 'pick' && toneCollPick) {
+    toneCollPick.onPick(tone, row);
+    closeToneCollection();
+    return;
+  }
   if (where === 'project') {
     addToneToProject(tone);
     toast(T('Tom adicionado ao projeto — fica pendente até "Aplicar e reconstruir".'), 'ok');
@@ -5072,8 +5089,89 @@ function toneReasonText(r) {
   }
 }
 
+// The user's stand-ins for suggested tones: {suggested key: {tone, from}}. The
+// switch points stay the app's; only which tone plays at them changes. One map
+// for every track, since the same preset is usually suggested on several.
+let toneSwaps = {};
+let toneSwapsJob = null;
+
+// A plan with its tone keys mapped through keyMap: names deduplicated, and a
+// change to the tone already playing (two suggestions swapped for one tone)
+// dropped. Pure.
+function swapPlan(plan, keyMap) {
+  const k = key => keyMap[key] || key;
+  const names = [];
+  for (const n of plan.names || []) { const m = k(n); if (!names.includes(m)) names.push(m); }
+  const base = plan.base ? k(plan.base) : null;
+  const changes = [];
+  let current = base;
+  for (const c of (plan.changes || []).slice().sort((x, y) => x.time - y.time)) {
+    const m = k(c.name);
+    if (m === current) continue;
+    changes.push({ time: +c.time, name: m });
+    current = m;
+  }
+  return { tone_base: base, tone_names: names, tone_changes: changes };
+}
+
+// Every distinct tone the plans suggest, in first-seen order.
+function suggestedTones(tracks) {
+  const seen = new Map();
+  for (const t of tracks || []) for (const tone of t.tones || []) if (!seen.has(tone.key)) seen.set(tone.key, tone);
+  return [...seen.values()];
+}
+
+function toneSwapsHtml(tracks) {
+  const opts = (items, prefix) => items.map(t => `<option value="${prefix}${esc(t.key)}">${esc(t.name || t.key)}</option>`).join('');
+  const rows = suggestedTones(tracks).map(s => {
+    const sw = toneSwaps[s.key];
+    const picked = sw && sw.from === 'collection'
+      ? `<option value="c:" selected>${esc(sw.label)}</option>` : '';
+    const sel = `<select class="ts-swap" data-key="${esc(s.key)}" aria-label="${esc(T('Trocar por'))}">
+      <option value="">${T('o sugerido')}</option>${picked}
+      ${jobTones.length ? `<optgroup label="${esc(T('Tons do projeto'))}">${opts(jobTones, 'p:')}</optgroup>` : ''}
+      ${toneLibrary.length ? `<optgroup label="${esc(T('Biblioteca'))}">${opts(toneLibrary, 'l:')}</optgroup>` : ''}
+      <option value="__coll__">${T('Dos teus PSARC…')}</option></select>`;
+    return `<div class="ts-swap-row"><b>${esc(s.name || s.key)}</b> <span class="meta">→</span> ${sel}</div>`;
+  }).join('');
+  return `<div class="ts-swaps"><div class="meta">${T('Trocar os tons sugeridos — as trocas ficam nos mesmos pontos, com os tons que escolheres:')}</div>${rows}</div>`;
+}
+
+function wireToneSwaps(body) {
+  body.querySelectorAll('.ts-swap').forEach(sel => {
+    const key = sel.dataset.key;
+    const sw = toneSwaps[key];
+    if (sw && sw.from === 'project') sel.value = `p:${sw.tone.key}`;
+    else if (sw && sw.from === 'library') sel.value = `l:${sw.tone.key}`;
+    else if (sw && sw.from === 'collection') sel.value = 'c:';
+    else sel.value = '';
+    if (sw && sel.value === '') delete toneSwaps[key];  // a stand-in that is gone
+    sel.addEventListener('change', () => {
+      const v = sel.value;
+      if (v === '__coll__') {
+        const label = sel.closest('.ts-swap-row').querySelector('b').textContent;
+        openToneCollection({
+          label,
+          onPick: (tone, row) => {
+            toneSwaps[key] = { tone, from: 'collection', label: `${tone.name || tone.key} · ${row.song || ''}${row.artist ? ' — ' + row.artist : ''}` };
+          },
+          onClose: renderToneSuggestions,
+        });
+        return;
+      }
+      if (!v) delete toneSwaps[key];
+      else if (v.startsWith('p:')) toneSwaps[key] = { tone: jobTones.find(t => t.key === v.slice(2)), from: 'project' };
+      else if (v.startsWith('l:')) toneSwaps[key] = { tone: toneLibrary.find(t => t.key === v.slice(2)), from: 'library' };
+      if (toneSwaps[key] && !toneSwaps[key].tone) delete toneSwaps[key];
+      renderToneSuggestions();
+    });
+  });
+}
+
 async function loadToneSuggestions(id) {
   toneSuggestions = null;
+  if (toneSwapsJob !== id) { toneSwaps = {}; toneSwapsJob = id; }
+  loadToneLibrary().then(() => { if (toneSuggestions) renderToneSuggestions(); });
   const card = document.getElementById('toneSuggestCard');
   if (!selectedJob || !isGpJob() || selectedJob.status !== 'completed') { card.hidden = true; return; }
   card.hidden = false;
@@ -5100,7 +5198,8 @@ function renderToneSuggestions() {
       : `<span class="meta" style="color:#e88">${T('Não foi possível calcular as sugestões.')}</span>`;
     return;
   }
-  body.innerHTML = d.tracks.map((t, ti) => toneTrackHtml(t, ti, d.timeline || [])).join('');
+  body.innerHTML = toneSwapsHtml(d.tracks) + d.tracks.map((t, ti) => toneTrackHtml(t, ti, d.timeline || [])).join('');
+  wireToneSwaps(body);
   body.querySelectorAll('.ts-apply').forEach(btn => btn.addEventListener('click', () => {
     applyToneSuggestion([d.tracks[parseInt(btn.dataset.i, 10)]]);
   }));
@@ -5142,8 +5241,12 @@ function toneTrackHtml(t, ti, timeline) {
     const lo = Math.min(...matches), hi = Math.max(...matches);
     const conf = ['low', 'medium', 'high'].find(c => run.some(x => x.confidence === c)) || 'low';
     const why = runReasons(run).map(toneReasonText).join(' · ');
+    const sw = toneSwaps[g.tone_key];
+    const toneLabel = sw
+      ? `<b>${esc(sw.tone.name || sw.tone.key)}</b> <span class="meta">(${T('em vez de {name}', { name: esc(g.tone_name || g.tone_key) })})</span>`
+      : `<b>${esc(g.tone_name || g.tone_key)}</b>`;
     return `<div class="ts-row"><span class="ts-dot" style="background:${role.color}"></span><b>${esc(name)}</b> ` +
-      `<span class="meta">${when} · ${role.label}</span> → <b>${esc(g.tone_name || g.tone_key)}</b> ` +
+      `<span class="meta">${when} · ${role.label}</span> → ${toneLabel} ` +
       `<span class="meta">${lo === hi ? lo : `${lo}–${hi}`}% · ${TONE_CONFIDENCE[conf]}</span>` +
       (why ? `<div class="meta ts-why">${T('porquê:')} ${esc(why)}</div>` : '') + '</div>';
   }).join('');
@@ -5181,11 +5284,30 @@ function runReasons(run) {
 
 // Bring a plan's tones into the project and make them the track's own set.
 // With one chart the song-level set IS that chart's, so nothing goes per-track.
+// A stand-in from the library or a PSARC is copied into the project (once; a
+// different tone under the same key gets a suffixed copy). Returns its key.
+function swapToneKey(sw) {
+  if (sw.from === 'project') return sw.tone.key;
+  const same = jobTones.find(t => t.key === sw.tone.key);
+  if (same && JSON.stringify(same) === JSON.stringify(sw.tone)) return same.key;
+  const tone = JSON.parse(JSON.stringify(sw.tone));
+  let n = 1;
+  const base = tone.key;
+  while (jobTones.some(t => t.key === tone.key)) tone.key = `${base}_${++n}`;
+  jobTones.push(tone);
+  sw.tone = tone;
+  sw.from = 'project';
+  return tone.key;
+}
 function applyToneSuggestion(plans) {
+  const keyMap = {};
+  for (const [key, sw] of Object.entries(toneSwaps)) keyMap[key] = swapToneKey(sw);
   for (const p of plans) {
-    for (const tone of p.tones || []) if (!jobTones.some(t => t.key === tone.key)) jobTones.push(tone);
+    for (const tone of p.tones || []) {
+      if (!keyMap[tone.key] && !jobTones.some(t => t.key === tone.key)) jobTones.push(tone);
+    }
   }
-  const setOf = p => cleanToneSet({ tone_base: p.base, tone_names: p.names, tone_changes: p.changes });
+  const setOf = p => cleanToneSet(swapPlan(p, keyMap));
   if (arrangements.length <= 1) {
     toneSetToGlobals(setOf(plans[0]));
   } else {

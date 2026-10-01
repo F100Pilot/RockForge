@@ -161,6 +161,9 @@
   .ts-row { margin:.25rem 0; }
   .ts-dot { display:inline-block; width:.6rem; height:.6rem; border-radius:50%; margin-right:.3rem; }
   .ts-why { margin-left:1rem; font-size:.78rem; }
+  .ts-swaps { margin:.3rem 0 .8rem; padding:.55rem .7rem; border:1px solid var(--line); border-radius:10px; }
+  .ts-swap-row { display:flex; align-items:center; gap:.45rem; margin-top:.4rem; flex-wrap:wrap; font-size:.85rem; }
+  .ts-swap { max-width:22rem; }
   .tone-cand-name { flex:1; }
   .tone-cand-match { flex:0 0 3rem; text-align:right; color:var(--muted); font-variant-numeric:tabular-nums; }
   button.tone-cand-use { padding:.15rem .55rem; font-size:.8rem; }
@@ -1808,6 +1811,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
   <div class="modal" style="max-width:860px">
     <button type="button" class="modal-close" id="toneCollClose">×</button>
     <h2>Tons das tuas músicas <button class="info-btn" data-info="tone-collection">ⓘ</button></h2>
+    <div id="tcPickHint" class="meta" style="color:var(--text);margin:-.3rem 0 .6rem" hidden></div>
     <div class="field"><label for="tcFolder">Pasta dlc do Rocksmith</label>
       <div class="anchor-row" style="gap:.4rem;flex-wrap:nowrap">
         <input type="text" id="tcFolder" style="flex:1;min-width:0" placeholder="ex.: C:\Program Files (x86)\Steam\steamapps\common\Rocksmith2014\dlc">

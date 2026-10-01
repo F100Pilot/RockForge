@@ -103,6 +103,9 @@ clean) and proposes a tone for each part, with the reason and the confidence. **
 track"/"to all"** puts those tones and the switches into the project; with **"Same tones on
 all tracks"** unticked, each track has its own base tone, extras and switches (as in the game,
 tones are per arrangement).
+In **"Replace the suggested tones"** you can keep the switch points the app detected but use the
+tones you want: each suggested tone can be replaced by a project tone, a library tone or one from
+a PSARC you already have.
 
 Honesty note: spectral analysis **does not identify** the actual amp or pedal used on the
 recording — it classifies the sound's *character* and suggests a plausible match from the
