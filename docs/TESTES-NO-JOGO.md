@@ -8,7 +8,7 @@ data e a música). O detalhe técnico de cada ponto está em `TESTING.md` §7.
 Em cada teste: gerar o PSARC nativo (`psarc_mode=native`). Se algo correr mal,
 gerar também pelo DLC Builder, para saber se o problema é do PSARC nativo.
 
-**Versões atuais: RockForge 0.9.0.0** (`main` 764d38e, 2026-09-30) e
+**Versões atuais: RockForge 0.9.0.0** (`main` fb37c18, 2026-09-30) e
 **PDF-to-GP5 0.7.0** (de onde vêm os `.gp`/`.gp5` de teste). O que está "Por
 testar" é para testar nestas versões: atualizar com o `start.bat`, que faz o
 `git pull`, e gerar de novo o PSARC — um PSARC feito antes não tem as correções.
@@ -33,13 +33,13 @@ correções (pontos 12–15) o jogo exigia não está isolado — ficam todas.
 
 | # | O quê | Commit | Como testar | O que deve acontecer | Se falhar |
 |---|---|---|---|---|---|
-| 1 | **Pre-bend simples** dobrado desde o início da nota | a2f1c0a | `teste-prebend.gp5` + `teste-prebend.mp3`, acerto 0 (ver abaixo) | Compassos 2, 3, 6 e 8: notas já dobradas desde o início. 5: só a corda Sol dobrada. 4: começa dobrada e desce. 7: dobrada durante a nota toda. Sem crash | Reverter a2f1c0a (volta a subida) |
-| 2 | **Bend de 3 pontos** como subida ao longo da nota | def07fd | Compasso 1 do mesmo teste | Sobe durante a nota (um ponto no fim da nota, a forma já confirmada no Beartooth) | Avisar |
-| 3 | **Bend + release no tempo certo**, também numa nota ligada | cdbdd97, 7f6d106 | Daughtry "September", compasso 4 (nota aos 13,2 s) | A nota fica, sobe ½ perto do fim, volta, e o pull-off vem a seguir | Avisar, com o compasso |
-| 4 | **Repetições, voltas e saltos** (D.C., D.S., Coda) tocados pela ordem do alphaTab | 565ed05 | Um GP com `|: :|`, 1ª/2ª volta ou D.S. | O chart segue a música em todas as passagens, sem compassos a mais ou a menos | Avisar, com a música |
-| 5 | **Início antes do áudio** (acerto negativo), também na página de sincronização | 31948f4, 8b61bf0 | Um GP sincronizado cujo compasso 1 começa antes da gravação | As notas batem com a música desde o início | Avisar |
-| 6 | **Grace notes, rasgueado, harmónico pinch (GP5), vibrato ligado** | 8b8407f | Um GP com estas técnicas | A grace note aparece como nota curta antes da principal (com hammer quando o tem); o pinch tem o símbolo de pinch | Avisar, com a técnica |
-| 7 | **Let ring nos `.gp`** | a566e91 | Um `.gp` com let ring ("September.gp") | A nota continua a soar por cima das seguintes | Avisar |
+| 1 | **Pre-bend simples** dobrado desde o início da nota | 513d653 | `teste-prebend.gp5` + `teste-prebend.mp3`, acerto 0 (ver abaixo) | Compassos 2, 3, 6 e 8: notas já dobradas desde o início. 5: só a corda Sol dobrada. 4: começa dobrada e desce. 7: dobrada durante a nota toda. Sem crash | Reverter 513d653 (volta a subida) |
+| 2 | **Bend de 3 pontos** como subida ao longo da nota | ae9dab0 | Compasso 1 do mesmo teste | Sobe durante a nota (um ponto no fim da nota, a forma já confirmada no Beartooth) | Avisar |
+| 3 | **Bend + release no tempo certo**, também numa nota ligada | 8cda047, 028d004 | Daughtry "September", compasso 4 (nota aos 13,2 s) | A nota fica, sobe ½ perto do fim, volta, e o pull-off vem a seguir | Avisar, com o compasso |
+| 4 | **Repetições, voltas e saltos** (D.C., D.S., Coda) tocados pela ordem do alphaTab | 48b47e1 | Um GP com `|: :|`, 1ª/2ª volta ou D.S. | O chart segue a música em todas as passagens, sem compassos a mais ou a menos | Avisar, com a música |
+| 5 | **Início antes do áudio** (acerto negativo), também na página de sincronização | 9fff993, 39a5aa4 | Um GP sincronizado cujo compasso 1 começa antes da gravação | As notas batem com a música desde o início | Avisar |
+| 6 | **Grace notes, rasgueado, harmónico pinch (GP5), vibrato ligado** | f8f1537 | Um GP com estas técnicas | A grace note aparece como nota curta antes da principal (com hammer quando o tem); o pinch tem o símbolo de pinch | Avisar, com a técnica |
+| 7 | **Let ring nos `.gp`** | f5fa599 | Um `.gp` com let ring ("September.gp") | A nota continua a soar por cima das seguintes | Avisar |
 | 9 | **Som da gravação sem compressão** (sem `loudnorm`, só um ganho fixo) | (este) | Reconstruir uma música que soava com ruído / pouco limpa | Soa como a gravação original: sem "bombear", sem ataques esmagados, sem estalidos nas partes fortes | Avisar; experimentar Volume alvo -16 na ⚙️ |
 | 10 | **Trocas de tom a meio da música** no PSARC nativo | (este) | Marcar na partitura uma troca para um 2.º tom e reconstruir | O tom muda nesse ponto (antes ficava sempre o tom base) | Avisar, com o tempo da troca |
 | 11 | **Pista sem tom próprio** | (este) | Uma música sem nenhum tom criado | Lead/Combo com o tom por defeito do DLC Builder (Plexi), Rhythm com o Orange AD50 — não um som estranho/em falta | Avisar |
@@ -90,7 +90,7 @@ nome do caso como marcador:
 | Tocar notas e acordes sem crash (secção das oitavas) | Beartooth "Free" | Com a dificuldade dinâmica ligada e desligada |
 | Slide para fora (cauda sem altura) e slide para dentro | — | `TESTING.md` §7f-bis |
 | Letra a passar no ecrã, cartão com o nome da música e luzes do palco | Várias músicas | |
-| Áudio dentro do `.gp` do PDF-to-GP5 (`backing-track.mp3`) detetado e usado, com o início antes da gravação (−2,15 s) a bater na página de sincronização | Daughtry "September" (2026-09-30) | Precisou de 8b61bf0. Também no jogo, depois das correções abaixo |
-| Pista que só entra a meio da música (secções por ordem, sem bloquear) | Daughtry "September" (2026-09-30) | Rhythm, Lead alternativo e Rhythm alternativo — 4ec2d04 |
-| Subir a dificuldade no Riff Repeater sem crash (posição da mão do nível, fases de uma nota com níveis, bytes das notas como no DLC Builder) | Daughtry "September" (2026-09-30) | 2d95db9, d0e6c11 |
-| Fases geradas como o DLC Builder (COUNT até à 1.ª nota, uma fase a cada 8 compassos, NOGUITAR nas pausas, secções "Riff"/"No Guitar") | Daughtry "September" (2026-09-30) | 75f3571 — "Está perfeito". Todas as pistas, a tocar e no Riff Repeater |
+| Áudio dentro do `.gp` do PDF-to-GP5 (`backing-track.mp3`) detetado e usado, com o início antes da gravação (−2,15 s) a bater na página de sincronização | Daughtry "September" (2026-09-30) | Precisou de 39a5aa4. Também no jogo, depois das correções abaixo |
+| Pista que só entra a meio da música (secções por ordem, sem bloquear) | Daughtry "September" (2026-09-30) | Rhythm, Lead alternativo e Rhythm alternativo — 075da13 |
+| Subir a dificuldade no Riff Repeater sem crash (posição da mão do nível, fases de uma nota com níveis, bytes das notas como no DLC Builder) | Daughtry "September" (2026-09-30) | 44f5338, 649ae72 |
+| Fases geradas como o DLC Builder (COUNT até à 1.ª nota, uma fase a cada 8 compassos, NOGUITAR nas pausas, secções "Riff"/"No Guitar") | Daughtry "September" (2026-09-30) | 33da4d3 — "Está perfeito". Todas as pistas, a tocar e no Riff Repeater |

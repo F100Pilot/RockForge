@@ -744,7 +744,7 @@ factor > 1) scales every note's warped sustain by that same factor
 (`sustain = warp(time+sustain) - warp(time)`). This can re-inflate — or make
 notes overlap outright — a sustain `apply_sustain_gap` already trimmed to a
 small gap at parse time (first fixed, on the un-warped timeline, in commit
-`4147d89`): on the highway, fused/overlapping sustain trails render as "tall
+`ef36b61`): on the highway, fused/overlapping sustain trails render as "tall
 pillars" or a solid wall instead of separate note shapes. `_warp_parsed_track`
 re-applies `apply_sustain_gap` to the warped notes so the gap invariant holds
 regardless of what a sync correction did to the local tempo. Guarded by
@@ -3076,14 +3076,14 @@ defects):
 
   **The per-phrase ceiling is NOT the variable — established by elimination, so
   do not tune it again hoping to fix DD.** Git bisect over a fixed synthetic
-  arrangement shows the DD output byte-identical from `5b975a7` (2026-07-11)
-  through `aa09665` (2026-07-17) — the July 13 refactor batch (`from_arrangement`
+  arrangement shows the DD output byte-identical from `fb8f118` (2026-07-11)
+  through `b8113a3` (2026-07-17) — the July 13 refactor batch (`from_arrangement`
   decomposition, the phrase-iteration bisect, the de-quadratic linking, the
   build-the-model-once packer change) altered nothing — and there are NO commits
   at all between 2026-07-17 and 2026-08-21. The ramp has now been shipped at
   three settings and the symptom appeared under all three: one level per note
-  (cap 20, the July build), one per three notes (`0182312`), and one per two with
-  a floor of 4 (`3c596f9`). Whatever pins the in-game difficulty is not the
+  (cap 20, the July build), one per three notes (`7591358`), and one per two with
+  a floor of 4 (`912ae9e`). Whatever pins the in-game difficulty is not the
   ceiling arithmetic.
 
   **The ceiling recalibration did NOT fix it.** A REBUILT PSARC was decoded and
