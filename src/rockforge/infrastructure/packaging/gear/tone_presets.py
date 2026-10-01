@@ -31,14 +31,18 @@ from rockforge.infrastructure.packaging.gear.gear_catalogue import (
 # (Rocksmith2014.NET ``ToneDetails.fs``/``EditFunctions.SetVolume``), its own
 # default tones sit at -18.6/-19.5 and a new tone at -18 (``ToneGear.fs``). The
 # first presets used -13..-16, quieter than any of those, and in game they could
-# hardly be heard. These are the values they shipped with, so a project still
-# carrying one untouched can be brought up (``app._backfill_preset_tones``).
-PRESET_VOLUMES_BEFORE: dict[str, float] = {
-    "RFLead_Clean": -15.0, "RFLead_CleanBright": -15.0, "RFLead_Crunch": -14.0,
-    "RFLead_Plexi": -14.0, "RFLead_Overdrive": -13.0, "RFLead_HighGain": -13.0,
-    "RFLead_Metal": -13.0, "RFRhythm_Clean": -16.0, "RFRhythm_Crunch": -15.0,
-    "RFRhythm_Plexi": -15.0, "RFRhythm_Orange": -14.0, "RFRhythm_HighGain": -14.0,
-    "RFRhythm_Metal": -14.0,
+# hardly be heard. Each preset maps to every volume it has shipped with before,
+# oldest first, so a project still carrying one untouched can be brought up
+# (``app._backfill_preset_tones``). The Orange crunch and the Overdrive were
+# raised again after the user heard them in game (2026-10-01: the crunch "muito
+# baixo", the overdrive "só um pouco baixo").
+PRESET_VOLUMES_BEFORE: dict[str, tuple[float, ...]] = {
+    "RFLead_Clean": (-15.0,), "RFLead_CleanBright": (-15.0,), "RFLead_Crunch": (-14.0,),
+    "RFLead_Plexi": (-14.0,), "RFLead_Overdrive": (-13.0, -19.5),
+    "RFLead_HighGain": (-13.0,), "RFLead_Metal": (-13.0,), "RFRhythm_Clean": (-16.0,),
+    "RFRhythm_Crunch": (-15.0,), "RFRhythm_Plexi": (-15.0,),
+    "RFRhythm_Orange": (-14.0, -20.0), "RFRhythm_HighGain": (-14.0,),
+    "RFRhythm_Metal": (-14.0,),
 }
 
 # A noise gate opens every preset with drive. Gain amplifies whatever the
@@ -259,7 +263,7 @@ LEAD_PLEXI: dict[str, Any] = {
 LEAD_OVERDRIVE: dict[str, Any] = {
     "key": "RFLead_Overdrive",
     "name": "Lead – Overdrive quente",
-    "volume": -19.5,
+    "volume": -21.0,
     "descriptors": [TONE_DESCRIPTORS["Overdrive"], TONE_DESCRIPTORS["Lead"]],
     "amp": {
         "key": "Amp_Marshall1962Bluesbreaker",
@@ -314,9 +318,12 @@ RHYTHM_PLEXI: dict[str, Any] = {
 # already high-gain territory with a crunch-level gate behind it: the one
 # preset that set the user's September apart from Jet Lag, which shipped the
 # same two presets but never switched to this one ("os detetados ainda ficam
-# com ruído" on the first, "bastante bom" on the second). Less gain, less bass
-# (where hum sits) and the high-gain gate; the earlier chains are in
-# PRESET_CHAINS_BEFORE so projects still carrying one are brought up.
+# com ruído" on the first, "bastante bom" on the second). Gain 55 with the
+# high-gain gate was still too much distortion and too quiet in game ("muito
+# baixo, e mesmo assim está com ruído (distorção em demasia)"), so it is now a
+# real crunch — gain 42, less bass where hum sits — played louder. The earlier
+# chains are in PRESET_CHAINS_BEFORE so projects still carrying one are
+# brought up.
 _ORANGE_AMP_FIRST: dict[str, Any] = {
     "key": "Amp_OrangeRockerverb",
     "knobs": {
@@ -325,17 +332,25 @@ _ORANGE_AMP_FIRST: dict[str, Any] = {
         "Amp_OrangeRockerverb_Treble": 55,
     },
 }
+_ORANGE_AMP_SECOND: dict[str, Any] = {
+    "key": "Amp_OrangeRockerverb",
+    "knobs": {
+        "Amp_OrangeRockerverb_Gain": 55,
+        "Amp_OrangeRockerverb_Bass": 66,
+        "Amp_OrangeRockerverb_Treble": 55,
+    },
+}
 
 RHYTHM_ORANGE: dict[str, Any] = {
     "key": "RFRhythm_Orange",
     "name": "Rhythm – Crunch encorpado",
-    "volume": -20.0,
+    "volume": -23.5,
     "descriptors": [TONE_DESCRIPTORS["Crunch"], TONE_DESCRIPTORS["Distortion"]],
     "amp": {
         "key": "Amp_OrangeRockerverb",
         "knobs": {
-            "Amp_OrangeRockerverb_Gain": 55,
-            "Amp_OrangeRockerverb_Bass": 66,
+            "Amp_OrangeRockerverb_Gain": 42,
+            "Amp_OrangeRockerverb_Bass": 60,
             "Amp_OrangeRockerverb_Treble": 55,
         },
     },
@@ -350,6 +365,7 @@ PRESET_CHAINS_BEFORE: dict[str, list[dict[str, Any]]] = {
     "RFRhythm_Orange": [
         {"amp": _ORANGE_AMP_FIRST, "pre": []},
         {"amp": _ORANGE_AMP_FIRST, "pre": [_gate(_GATE_CRUNCH)]},
+        {"amp": _ORANGE_AMP_SECOND, "pre": [_gate(_GATE_HIGH_GAIN)]},
     ],
 }
 
@@ -390,7 +406,7 @@ _RHYTHM_LIBRARY: list[tuple[dict[str, Any], tuple[float, float, float]]] = [
     (RHYTHM_CLEAN, (0.10, 0.50, 0.45)),
     (RHYTHM_CRUNCH, (0.40, 0.55, 0.45)),
     (RHYTHM_PLEXI, (0.44, 0.66, 0.38)),
-    (RHYTHM_ORANGE, (0.58, 0.44, 0.62)),
+    (RHYTHM_ORANGE, (0.50, 0.44, 0.62)),
     (RHYTHM_HIGH_GAIN, (0.82, 0.55, 0.58)),
     (RHYTHM_METAL, (0.92, 0.50, 0.75)),
 ]

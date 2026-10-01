@@ -1716,7 +1716,7 @@ def _backfill_gp_synced() -> int:
 def _refresh_presets(tones: object) -> list[dict[str, Any]] | None:
     """``tones`` with every curated preset brought up to date where the user
     left it as it shipped, or None when nothing needed it: a volume still at
-    the first, too quiet value moves to the current one, and a pre-pedal chain
+    a value the preset shipped with before moves to the current one, a pre-pedal chain
     still the preset's own gets the noise gate the preset now opens with
     (``tone_presets.with_preset_gate``), and a chain still exactly an earlier
     version of its preset gets the current one (``upgrade_preset_chain``).
@@ -1735,10 +1735,10 @@ def _refresh_presets(tones: object) -> list[dict[str, Any]] | None:
     for tone in tones:
         if isinstance(tone, dict):
             key = str(tone.get("key", ""))
-            old, new = PRESET_VOLUMES_BEFORE.get(key), preset_volume(key)
+            before, new = PRESET_VOLUMES_BEFORE.get(key, ()), preset_volume(key)
             vol = tone.get("volume")
-            if old is not None and new is not None and isinstance(vol, (int, float)) \
-                    and abs(float(vol) - old) < 1e-9:
+            if new is not None and isinstance(vol, (int, float)) \
+                    and any(abs(float(vol) - old) < 1e-9 for old in before):
                 tone = {**tone, "volume": new}
                 changed = True
             upgraded = upgrade_preset_chain(tone) or with_preset_gate(tone)

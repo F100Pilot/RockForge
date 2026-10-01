@@ -3297,6 +3297,7 @@ def test_presets_still_at_their_first_quiet_volume_are_raised_on_startup(
                 {"key": "RFRhythm_HighGain", "volume": -18.0},
                 {"key": "RFRhythm_Orange", "volume": -20.0,
                  **PRESET_CHAINS_BEFORE["RFRhythm_Orange"][1]},
+                {"key": "RFLead_Overdrive", "volume": -19.5},  # raised again
             ],
         })
         session.add(job)
@@ -3307,12 +3308,13 @@ def test_presets_still_at_their_first_quiet_volume_are_raised_on_startup(
     with app_module._session_factory() as session:
         tones = session.get(app_module.Job, job_id).params["tones"]
     assert [t["volume"] for t in tones] == [
-        preset_volume("RFLead_Crunch"), -17.5, -14.0, -18.0, -20.0,
+        preset_volume("RFLead_Crunch"), -17.5, -14.0, -18.0,
+        preset_volume("RFRhythm_Orange"), preset_volume("RFLead_Overdrive"),
     ]
     # the noise gate the driven presets now open with reaches the copies too
     gate = "Pedal_NoiseGate"
     assert [(t.get("pre") or [{}])[0].get("key") for t in tones] == [
-        gate, None, None, gate, gate,
+        gate, None, None, gate, gate, None,
     ]
     # and a copy still on an earlier chain of its preset gets the current one
     assert tones[4]["amp"] == RHYTHM_ORANGE["amp"]

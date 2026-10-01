@@ -2518,6 +2518,22 @@ tone and nothing to switch to, and Jet Lag none at all — the slot ids match
 decoded to compare against, so whether the game shows a switch on screen is
 unverified.
 
+**Heard in game, then tuned again** (2026-10-01: "realmente está a fazer as
+trocas de tons. O tom de crunch encorpado está muito baixo, e mesmo assim está
+com ruído (distorção em demasia). O overdrive está só um pouco baixo"). The
+tone changes are confirmed working in game. `RFRhythm_Orange` is now gain 42,
+bass 60 (a real crunch; fingerprint gain 0.58 → 0.50 to match) at volume
+-23.5, and `RFLead_Overdrive` -21 (was -19.5). `PRESET_VOLUMES_BEFORE` maps
+each preset to EVERY volume it shipped with (a tuple, oldest first), so a copy
+untouched at -20/-19.5 follows too, and the gain-55 chain joins
+`PRESET_CHAINS_BEFORE`. Everything stays editable per project in the tone
+editor (Volume: higher = louder; the amp's Gain; the gate's Threshold — closer
+to -40 cuts more). Guarded by the Overdrive copy and the third Orange chain in
+`test_presets_still_at_their_first_quiet_volume_are_raised_on_startup` /
+`test_a_copy_still_on_an_earlier_version_of_a_preset_gets_the_current_chain`.
+The PSARC the user tested still had the gain-68 Orange (built before the first
+retune); the new values are not heard in game from here.
+
 ### Tone editor: rotary knobs + optional local gear images
 
 Gear knobs (amp/effect Gain/Bass/Mid/…) render as **draggable rotary dials**

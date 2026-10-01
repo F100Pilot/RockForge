@@ -171,9 +171,11 @@ def test_presets_are_as_loud_as_the_games_own_tones() -> None:
     from rockforge.infrastructure.packaging.gear import tone_presets as tp
 
     for tone, _fp in (*tp._LEAD_LIBRARY, *tp._RHYTHM_LIBRARY):
-        assert -22.0 <= tone["volume"] <= -18.0, tone["key"]
+        assert -24.0 <= tone["volume"] <= -18.0, tone["key"]
         assert tp.preset_volume(tone["key"]) == tone["volume"]
-        assert tone["key"] in tp.PRESET_VOLUMES_BEFORE
+        # every earlier volume is listed, and none is the current one
+        before = tp.PRESET_VOLUMES_BEFORE[tone["key"]]
+        assert before and tone["volume"] not in before, tone["key"]
     assert tp.preset_volume("not-a-preset") is None
 
 
@@ -237,18 +239,20 @@ def test_a_projects_untouched_preset_gets_the_gate_but_a_rebuilt_chain_does_not(
 
 def test_a_copy_still_on_an_earlier_version_of_a_preset_gets_the_current_chain() -> None:
     """The Orange crunch was the one preset that left the user's September noisy
-    (Jet Lag, with the same presets, never switched to it): it now has less gain
-    and bass and the high-gain gate, and copies still on either earlier chain
-    move to it — whether stored sparse or filled in by the tone editor."""
+    (Jet Lag, with the same presets, never switched to it), and its first retune
+    was still too distorted: it now has less gain and bass and the high-gain
+    gate, and copies still on any earlier chain move to it — whether stored
+    sparse or filled in by the tone editor."""
     from rockforge.infrastructure.packaging.gear import tone_presets as tp
     from rockforge.infrastructure.packaging.gear.gear_catalogue import knob_defaults
 
-    first, second = tp.PRESET_CHAINS_BEFORE["RFRhythm_Orange"]
+    first, second, third = tp.PRESET_CHAINS_BEFORE["RFRhythm_Orange"]
     full_amp = {"key": first["amp"]["key"],
                 "knobs": {**knob_defaults(first["amp"]["key"]), **first["amp"]["knobs"]}}
     for old in (
         {"key": "RFRhythm_Orange", "volume": -20.0, **first},
         {"key": "RFRhythm_Orange", "volume": -17.0, "amp": full_amp, "pre": second["pre"]},
+        {"key": "RFRhythm_Orange", "volume": -20.0, **third},
     ):
         new = tp.upgrade_preset_chain(old)
         assert new is not None
