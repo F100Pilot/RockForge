@@ -1982,8 +1982,12 @@ job and its folder were gone and the new one pointed at the version before.
 
 ### Batch processing ("Lote (álbum)")
 
-For an entire album: the home page's "Lote (álbum)" button opens a batch modal
-(`#batchOverlay`) that creates several GP jobs without repeating the wizard
+For an entire album: the home page's "Lote (álbum)" button opens the batch
+page (`#batchOverlay`, full-screen like Definições/Novo projeto since
+2026-10-01: top bar with back, a live summary in `#batchSummary` — "N por
+criar · N criados" — and "Criar projetos"; cards for the files, the shared
+fields and one row per project with a status chip; leaving asks first while
+something creatable is still pending) that creates several GP jobs without repeating the wizard
 per song. **Frontend-only — no new backend endpoint.** Each pair is created by
 looping the exact same two calls the single-project wizard makes
 (`POST /gp/inspect` → `POST /jobs/gp`), with the track fields left blank so
@@ -2041,8 +2045,9 @@ beside the downloads; its gaps also feed the top bar's status chip) reads comple
 `JobOut` and surfaces what would leave the bundle incomplete/poor, each with a
 jump-button to the right editor (`COMPLETE_ACTIONS`). Rows + alerts:
 - ✅/❌ **PSARC jogável** ← `psarc_available` (❌ = no Wwise/.wem).
-- ✅/⚠️ **Tons definidos** ← `has_tones` (new `JobOut` field = `params["tones"]`/
-  `tone_base`/`tone_names` non-empty; else DLC Builder flags "tone missing").
+- ✅/ⓘ **Tons definidos** ← `has_tones` (`JobOut` field = `params["tones"]`/
+  `tone_base`/`tone_names` non-empty); without it the row is the informational
+  "Tons standard" (DLC Builder's default per path, see the SNG section).
 - ✅/⚠️ **Capa** ← `cover_art` (else `albumArt` empty).
 - ✅/⚠️ **Sincronização** ← `sync_edited` (new field; `_sync_edited(params)`:
   offset moved off 0, tempo scaled, or any drift anchor job-level/per-arrangement)
@@ -3402,6 +3407,17 @@ names one; `_tone_fields` now does the same. The pedal `Category` is the
 file's, not our catalogue's (they differ: StudioEQ, ModDelay). Guarded by
 `test_the_default_tone_is_dlc_builders_own_for_the_path` (the serialized gear
 equals the reference file) and `test_build_arrangement_manifest_fields`.
+**And the app says so** (2026-10-01, "na aplicação deve ser visível que estão
+escolhidos os tons standard"): a project with no tones of its own
+(`jobTones` empty / `has_tones` false — the build only falls back when the
+project defines NO gear, since every chart gets the project's tones) shows
+"Tons standard" on the Tons page with each chart's default
+(`standardToneFor`: Rhythm/Alternate Rhythm → Orange AD50, else Marshall
+Plexi), "Tom standard: …" as the empty base option and in the score's live
+tone label, a neutral "Tons standard" chip on the project card, and an
+informational (not warning) checklist row with "Criar tons próprios". Missing
+tones are therefore no longer a gap in `jobCardStatus` ("Falta: tons" is
+gone). Browser-only; checked with Playwright.
 
 **Mid-song tone changes now reach the game** (`sng._build_tones`). The SNG's
 Tones section was written EMPTY, so from the native PSARC a chart played its

@@ -355,6 +355,15 @@
   .wz-nav { display:flex; gap:.5rem; }
   details.pv-card > summary { list-style:none; }
   details.pv-card > summary::-webkit-details-marker { display:none; }
+  .batch-rows { display:flex; flex-direction:column; gap:.5rem; }
+  .batch-row { display:grid; grid-template-columns:auto minmax(0, 1fr) auto minmax(0, 1fr); gap:.75rem; align-items:center;
+    padding:.6rem .8rem; border:1px solid #262831; border-radius:12px; background:#121318; font-size:.9rem; }
+  .batch-row .batch-name { font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .batch-row .batch-arrow { color:var(--muted); }
+  .batch-row .batch-arrow .ic { margin:0; }
+  .batch-row .batch-target { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); }
+  .batch-row .batch-err { grid-column:2 / -1; color:#f08a8a; font-size:.82rem; }
+  .batch-row .pv-chip { height:1.7rem; font-size:.75rem; }
   @media (max-width: 800px) { .wz-grid { grid-template-columns:minmax(0, 1fr); } .pv-top .wz-nav .pv-btn { padding:0 .7rem; } }
 
   /* toasts */
@@ -1629,30 +1638,51 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
   </div>
 </div>
 
-<!-- ══════════ Batch processing modal ══════════ -->
-<div class="modal-overlay" id="batchOverlay" hidden>
-  <div class="modal" style="max-width:720px">
-    <button type="button" class="modal-close" id="batchClose">×</button>
-    <h2>Processamento em lote <button class="info-btn" data-info="batch">ⓘ</button></h2>
-    <div class="grid" style="margin-top:.5rem">
-      <div class="field" style="flex-basis:100%"><label>Ficheiros Guitar Pro (vários)</label>
-        <div class="file-drop"><div class="file-drop-icon"><svg class="ic" aria-hidden="true"><use href="#i-file"/></svg></div><span class="file-drop-text">Arrasta ou clica para escolher (vários)</span><span class="file-drop-btn">Procurar</span>
-        <input type="file" id="batchGpFiles" accept=".gp3,.gp4,.gp5,.gp" multiple></div></div>
-      <div class="field" style="flex-basis:100%"><label>Gravações (várias, nomeadas como os ficheiros GP — não precisas das que já vêm dentro do ficheiro GP)</label>
-        <div class="file-drop"><div class="file-drop-icon"><svg class="ic" aria-hidden="true"><use href="#i-headphones"/></svg></div><span class="file-drop-text">Arrasta ou clica para escolher (várias)</span><span class="file-drop-btn">Procurar</span>
-        <input type="file" id="batchAudioFiles" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" multiple></div></div>
-      <div class="field"><label>Banda (partilhado)</label>
-        <input type="text" id="batchArtist" placeholder="auto do GP/tags se vazio"></div>
-      <div class="field"><label>Álbum (partilhado)</label>
-        <input type="text" id="batchAlbum"></div>
-      <div class="field"><label>Ano (partilhado)</label>
-        <input type="number" id="batchYear" min="1900" max="2100" style="width:5.5rem"></div>
+<!-- ══════════ Lote (álbum) — ecrã inteiro, como Definições/Novo projeto ══════════ -->
+<div class="project-view settings-view" id="batchOverlay" hidden>
+  <header class="pv-top">
+    <button type="button" class="pv-btn pv-icon-btn" id="batchClose" title="Voltar" aria-label="Voltar"><svg class="ic" aria-hidden="true"><use href="#i-back"/></svg></button>
+    <div class="pv-head">
+      <div class="pv-title">Processamento em lote <button type="button" class="info-btn" data-info="batch">ⓘ</button></div>
+      <div class="pv-sub"><span id="batchSummary"></span></div>
     </div>
-    <p class="meta" style="margin-top:.4rem">Cada par (ficheiro GP + gravação) cria um projeto próprio, emparelhados pelo nome do ficheiro (sem extensão) — ex. <code>faixa1.gp5</code> com <code>faixa1.mp3</code> — ou pela ordem quando o nome não bate certo. Um ficheiro GP que traz o próprio áudio (Guitar Pro 8) usa esse áudio e não precisa de gravação. As pistas Lead/Rhythm são escolhidas automaticamente (heurística pelo nome); confirma/corrige depois em "Editar info" de cada projeto.</p>
-    <div id="batchPairsList" style="margin-top:.5rem"></div>
-    <div class="modal-actions">
-      <button type="button" class="secondary" id="batchClose2">Cancelar</button>
-      <button type="button" id="batchSubmit" disabled>Criar projetos</button>
+    <span class="pv-spacer"></span>
+    <button type="button" id="batchSubmit" class="pv-btn pv-primary" disabled><svg class="ic" aria-hidden="true"><use href="#i-package"/></svg>Criar projetos</button>
+  </header>
+  <div class="pv-body">
+    <div class="pv-scroll">
+    <div class="pv-page set-page">
+      <div>
+        <h1 class="pv-page-title">Lote (álbum)</h1>
+        <p class="set-desc">Cada par (ficheiro GP + gravação) cria um projeto próprio, emparelhados pelo nome do ficheiro (sem extensão) — ex. <code>faixa1.gp5</code> com <code>faixa1.mp3</code> — ou pela ordem quando o nome não bate certo. Um ficheiro GP que traz o próprio áudio (Guitar Pro 8) usa esse áudio e não precisa de gravação. As pistas Lead/Rhythm são escolhidas automaticamente (heurística pelo nome); confirma/corrige depois em "Editar info" de cada projeto.</p>
+      </div>
+      <div class="pv-card pv-card-lg">
+        <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-file"/></svg>Ficheiros</div>
+        <div class="wz-grid">
+          <div class="field"><label>Ficheiros Guitar Pro (vários)</label>
+            <div class="file-drop"><div class="file-drop-icon"><svg class="ic" aria-hidden="true"><use href="#i-file"/></svg></div><span class="file-drop-text">Arrasta ou clica para escolher (vários)</span><span class="file-drop-btn">Procurar</span>
+            <input type="file" id="batchGpFiles" accept=".gp3,.gp4,.gp5,.gp" multiple></div></div>
+          <div class="field"><label>Gravações (várias, nomeadas como os ficheiros GP — não precisas das que já vêm dentro do ficheiro GP)</label>
+            <div class="file-drop"><div class="file-drop-icon"><svg class="ic" aria-hidden="true"><use href="#i-headphones"/></svg></div><span class="file-drop-text">Arrasta ou clica para escolher (várias)</span><span class="file-drop-btn">Procurar</span>
+            <input type="file" id="batchAudioFiles" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" multiple></div></div>
+        </div>
+      </div>
+      <div class="pv-card pv-card-lg">
+        <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg>Partilhado por todos</div>
+        <div class="wz-grid">
+          <div class="field"><label>Banda (partilhado)</label>
+            <input type="text" id="batchArtist" placeholder="auto do GP/tags se vazio"></div>
+          <div class="field"><label>Álbum (partilhado)</label>
+            <input type="text" id="batchAlbum"></div>
+          <div class="field"><label>Ano (partilhado)</label>
+            <input type="number" id="batchYear" min="1900" max="2100"></div>
+        </div>
+      </div>
+      <div class="pv-card pv-card-lg">
+        <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg>Projetos</div>
+        <div id="batchPairsList" class="batch-rows"></div>
+      </div>
+    </div>
     </div>
   </div>
 </div>

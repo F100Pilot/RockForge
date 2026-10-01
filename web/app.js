@@ -12,7 +12,8 @@ document.querySelectorAll('.file-drop').forEach(drop => {
   txt.dataset.default = placeholder;  // so the wizard reset can restore it
   inp.addEventListener('change', () => {
     if (inp.files.length) {
-      txt.textContent = inp.files[0].name;
+      txt.textContent = inp.files.length > 1
+        ? T('{n} ficheiros ({first}, …)', { n: inp.files.length, first: inp.files[0].name }) : inp.files[0].name;
       drop.classList.add('has-file');
     } else {
       txt.textContent = placeholder;
@@ -350,30 +351,47 @@ function pairBatchFiles(gpFiles, audioFiles, ownAudio = () => false) {
   return pairs;
 }
 
+const BATCH_STATUS = {
+  pending: ['unk', 'clock', () => T('Por criar')],
+  working: ['run', 'clock', () => T('A criar…')],
+  done: ['ok', 'check', () => T('Criado')],
+  error: ['err', 'x', () => T('Erro')],
+};
 function renderBatchPairs() {
   const el = document.getElementById('batchPairsList');
   const submitBtn = document.getElementById('batchSubmit');
+  const summary = document.getElementById('batchSummary');
   if (!batchPairs.length) {
     el.innerHTML = `<span class="meta">${T('Escolhe os ficheiros GP e as gravações acima.')}</span>`;
     submitBtn.disabled = true;
+    summary.textContent = T('Escolhe os ficheiros GP e as gravações acima.');
     return;
   }
-  const STATUS_ICO = { pending: icon('clock'), working: icon('clock'), done: icon('check'), error: icon('x') };
   const reading = batchPairs.some(p => !batchInspected.has(p.gp));
   el.innerHTML = batchPairs.map(p => {
     const ins = batchInspected.get(p.gp);
-    const target = !ins ? `<span class="meta">${T('a ler o ficheiro…')}</span>`
-      : ins.error ? `<span style="color:#e88">${T('não consegui ler o ficheiro ({e})', { e: esc(ins.error) })}</span>`
+    const target = !ins ? T('a ler o ficheiro…')
+      : ins.error ? `<span style="color:#f08a8a">${T('não consegui ler o ficheiro ({e})', { e: esc(ins.error) })}</span>`
       : p.own ? `${icon('headphones')} ${T('o áudio que vem dentro do ficheiro GP')}` +
-          (p.ignored ? ` <span class="meta">(${T('{name} fica de fora', { name: esc(p.ignored.name) })})</span>` : '')
+          (p.ignored ? ` (${T('{name} fica de fora', { name: esc(p.ignored.name) })})` : '')
       : p.audio ? esc(p.audio.name)
-      : `<span style="color:#e88">${T('sem gravação — não vai ser criado')}</span>`;
-    return `<div class="anchor-row">
-    ${STATUS_ICO[p.status] || ''} <b>${esc(p.gp.name)}</b> → ${target}
-    ${p.error ? `<span style="color:#e88">(${esc(p.error)})</span>` : ''}
-  </div>`;
+      : `<span style="color:#f08a8a">${T('sem gravação — não vai ser criado')}</span>`;
+    const [cls, ico, label] = (!batchCreatable(p) && p.status === 'pending')
+      ? ['warn', 'alert', () => T('Não vai ser criado')] : BATCH_STATUS[p.status] || BATCH_STATUS.pending;
+    return `<div class="batch-row">
+      <span class="pv-chip ${cls}">${icon(ico)}${label()}</span>
+      <span class="batch-name" title="${esc(p.gp.name)}">${esc(p.gp.name)}</span>
+      <span class="batch-arrow">${icon('forward')}</span>
+      <span class="batch-target">${target}</span>
+      ${p.error ? `<span class="batch-err">${esc(p.error)}</span>` : ''}
+    </div>`;
   }).join('');
-  submitBtn.disabled = reading || !batchPairs.some(p => batchCreatable(p) && p.status === 'pending');
+  const ready = batchPairs.filter(p => batchCreatable(p) && p.status === 'pending').length;
+  const done = batchPairs.filter(p => p.status === 'done').length;
+  summary.textContent = reading ? T('a ler os ficheiros…')
+    : [ready ? T('{n} por criar', { n: ready }) : '', done ? (done === 1 ? T('1 criado') : T('{n} criados', { n: done })) : '']
+      .filter(Boolean).join(' · ') || T('Nada para criar');
+  submitBtn.disabled = reading || !ready;
 }
 function batchCreatable(p) {
   const ins = batchInspected.get(p.gp);
@@ -391,10 +409,14 @@ function openBatchModal() {
   renderBatchPairs();
   document.getElementById('batchOverlay').hidden = false;
 }
-function closeBatchModal() { document.getElementById('batchOverlay').hidden = true; }
+// Files chosen and not yet created would have to be picked again: ask first.
+async function closeBatchModal() {
+  const pending = batchPairs.some(p => (p.status === 'pending' && batchCreatable(p)) || p.status === 'working');
+  if (pending && !await confirmModal(T('Sair do lote? Os projetos que ainda não foram criados perdem-se.'))) return;
+  document.getElementById('batchOverlay').hidden = true;
+}
 document.getElementById('openBatchModal').addEventListener('click', openBatchModal);
 document.getElementById('batchClose').addEventListener('click', closeBatchModal);
-document.getElementById('batchClose2').addEventListener('click', closeBatchModal);
 function refreshBatchPairing() {
   const gpFiles = [...document.getElementById('batchGpFiles').files];
   const audioFiles = [...document.getElementById('batchAudioFiles').files];
@@ -830,8 +852,8 @@ function renderCompleteness(j) {
   if (j.has_tones)
     rows.push({ state: 'ok', ico: 'check', title: T('Tons definidos'), note: T('O som in-game usa os teus tons.') });
   else
-    rows.push({ state: 'warn', ico: 'wave', title: T('Sem tons definidos'), short: T('tons'), act: 'tones', actLabel: T('Detetar / criar tom'),
-      note: T('O DLC Builder vai marcar "tone missing" e o som será um default.') });
+    rows.push({ state: 'info', ico: 'wave', title: T('Tons standard'), act: 'tones', actLabel: T('Criar tons próprios'),
+      note: T('Não criaste tons: cada pista usa o tom por defeito do DLC Builder — Lead e Combo: Marshall Plexi; Rhythm: Orange AD50.') });
 
   if (j.cover_art)
     rows.push({ state: 'ok', ico: 'check', title: T('Capa do álbum'), note: T('Incluída no bundle.') });
@@ -1464,7 +1486,6 @@ function jobCardStatus(j) {
   if (!j.bundle_available) return ['warn', T('Sem ficheiros'), 'alert'];
   const gaps = [];
   if (!j.psarc_available) gaps.push('PSARC');
-  if (!j.has_tones) gaps.push(T('tons'));
   if (!j.cover_art) gaps.push(T('capa'));
   return gaps.length ? ['warn', T('Falta: {list}', { list: gaps.join(', ') }), 'alert'] : ['ok', T('Pronto a jogar'), 'check'];
 }
@@ -1489,6 +1510,7 @@ function renderJobCards() {
           <div class="proj-artist">${esc(j.artist)}</div>
           <span class="pv-chip ${kind}">${icon(ico)}${esc(text)}</span>
           ${isSynced(j) ? `<span class="pv-chip ok" title="${esc(SYNC_SOURCE_TEXT[j.sync_source])}">${icon('timer')}${T('Sincronizada')}</span>` : ''}
+          ${j.status === 'completed' && !j.has_tones ? `<span class="pv-chip unk" title="${esc(T('Sem tons teus: o tom por defeito do DLC Builder (Lead/Combo: Marshall Plexi; Rhythm: Orange AD50).'))}">${icon('wave')}${T('Tons standard')}</span>` : ''}
         </div>
       </button>
       <button type="button" class="proj-del" title="${T('Remover projeto')}" aria-label="${T('Remover {title}', { title: esc(j.title) })}">${icon('trash')}</button>`;
@@ -3424,6 +3446,19 @@ function forgetToneKey(key) {
   toneSetToGlobals(toneSetKind ? toneSetByKind[toneSetKind] : songToneSet);
 }
 
+// A project with no tone of its own: the build gives every chart DLC Builder's
+// default for its path (gear/default_tones.py — Lead/Combo the lead route,
+// Rhythm the rhythm one). Said wherever tones are shown, so "no tones" never
+// reads as "no sound".
+function standardToneFor(kind) {
+  return /rhythm/i.test(kind || '') ? T('Rhythm (Orange AD50)') : T('Lead (Marshall Plexi)');
+}
+function standardTonesText() {
+  const kinds = arrangements.length ? arrangements.map(a => a.kind) : ['Lead', 'Rhythm'];
+  return kinds.map(k => `${arrangements.length ? esc(arrLabel(k)) + ': ' : ''}${standardToneFor(k)}`)
+    .filter((v, i, all) => all.indexOf(v) === i).join(' · ');
+}
+
 function renderTonePanel() {
   const isGp = selectedJob && selectedJob.source_type === 'gp';
   document.getElementById('tonePanel').style.display = selectedJob ? '' : 'none';
@@ -3434,7 +3469,9 @@ function renderTonePanel() {
   const chips = document.getElementById('toneChips');
   chips.innerHTML = jobTones.length
     ? jobTones.map(t => `<span style="background:#23252e;border:1px solid var(--line);border-radius:999px;padding:.1rem .55rem">${esc(t.name || t.key)}</span>`).join('')
-    : `<span class="meta">${T('Nenhum tom definido — clica em "+ Criar / editar tons".')}</span>`;
+    : `<span class="pv-chip unk">${icon('wave')}${T('Tons standard')}</span>
+       <span class="meta">${T('Sem tons teus, cada pista usa o tom por defeito do DLC Builder — {list}. Cria os teus em "+ Criar / editar tons".',
+    { list: standardTonesText() })}</span>`;
 
   renderToneSetUi(false);
   renderToneChangesList();
@@ -3456,7 +3493,7 @@ function renderToneSetUi(withChanges = true) {
   trackSel.value = String(currentArr);
 
   const baseSel = document.getElementById('toneBaseSel');
-  baseSel.innerHTML = '<option value="">—</option>' +
+  baseSel.innerHTML = `<option value="">${jobTones.length ? '—' : esc(T('Tom standard: {tone}', { tone: standardToneFor(currentKind()) }))}</option>` +
     jobTones.map(t => `<option value="${esc(t.key)}">${esc(t.name || t.key)}</option>`).join('');
   baseSel.value = toneBase || '';
 
@@ -6677,7 +6714,11 @@ function activeToneKeyAtDisplay(vtDisp, warp) {
 function updateLiveTone(vtDisp, warp) {
   const el = document.getElementById('liveTone');
   if (!el) return;
-  if (!jobTones.length || !(toneBase || toneChanges.length)) { el.textContent = ''; return; }
+  if (!jobTones.length) {
+    el.innerHTML = `${icon('wave')}${esc(T('Tom standard: {tone}', { tone: standardToneFor(currentKind()) }))}`;
+    return;
+  }
+  if (!(toneBase || toneChanges.length)) { el.textContent = ''; return; }
   const key = activeToneKeyAtDisplay(vtDisp, warp);
   const name = key ? ((jobTones.find(t => t.key === key) || {}).name || key) : null;
   el.innerHTML = name ? `${icon('wave')}${esc(name)}` : '';
