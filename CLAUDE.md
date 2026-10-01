@@ -4001,6 +4001,8 @@ background" feature:
   language) and how to add a language.
 - **`CLAUDE.md`** (this file) — architecture, every feature's design, hard
   constraints. The single source of truth for *why* the code is shaped as it is.
+- **`LICENSE`**, **`THIRD_PARTY_NOTICES.md`**, **`LEGAL.md`** — the MIT licence,
+  the origin and licence of everything third-party, and the legal notice (PT/EN).
 - **`README.md`** — user-facing: install, run, use, distribute. Start here to
   set up a machine.
 - **`TESTING.md`** — how to run/extend the test suite, the coverage map, and the
@@ -4094,6 +4096,31 @@ split would fight the SIGTERM (the child gets restarted instead of exiting), so
 a single uvicorn process is used for a clean tab-close shutdown. It also opens
 the browser automatically — a background PowerShell one-liner polls port 8000
 and launches `http://localhost:8000` once the API accepts connections.
+
+## Licence, third-party notices and the legal notice
+
+RockForge is MIT (`LICENSE`). Everything taken from another project is listed
+in **`THIRD_PARTY_NOTICES.md`** with where it came from and its licence:
+vendored files (the Wwise templates, gear catalogue, default tones, `.flat`
+schema and lyric glyph table from Rocksmith2014.NET; three.js), code ported
+from Rocksmith2014.NET / the Custom Song Toolkit / alphaTab (MPL-2.0 — see the
+note there), the Python dependencies (PyGuitarPro is LGPL-3.0, certifi
+MPL-2.0) and the external programs and online services. **`LEGAL.md`** (PT/EN)
+is the user-facing notice: not affiliated with Ubisoft, no songs or Ubisoft
+content inside, copyright of what users create is theirs, the terms of
+Songsterr/YouTube/LRCLIB/covers apply to whoever presses the button, no
+warranty, and a good-faith takedown contact. Both READMEs summarise it in
+"Avisos legais"/"Legal notices" and "Licença"/"Licence".
+
+**When you vendor a file or port code from another project, add it to
+`THIRD_PARTY_NOTICES.md` in the same commit** (and to `VENDORED` in
+`tests/test_legal_files.py` for a file): the MIT notices of what we copy must
+travel with every copy. `build_exe.copy_legal_files` puts `LICENSE`,
+`THIRD_PARTY_NOTICES.md` and `LEGAL.md` beside `rockforge.exe`, so the portable
+zip and the Inno Setup installer (which also shows `LICENSE` before installing)
+carry them. Guarded by `tests/test_legal_files.py`. Open points (alphaTab's
+MPL, the toolkit's unconfirmed licence, ffmpeg inside an installer) are in
+`TODO.md` under "Antes de publicar".
 
 ## Conventions
 

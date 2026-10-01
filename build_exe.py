@@ -24,6 +24,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 
+# Shipped next to rockforge.exe: the MIT licence and the third-party
+# attributions it and the vendored code (Rocksmith2014.NET, three.js, …) require
+# to travel with every copy, plus the legal notice (THIRD_PARTY_NOTICES.md).
+LEGAL_FILES = ("LICENSE", "THIRD_PARTY_NOTICES.md", "LEGAL.md")
+
 
 def check_ffmpeg() -> None:
     ffmpeg_dir = ROOT / "ffmpeg"
@@ -67,9 +72,18 @@ def build() -> None:
     print(f"Running: {' '.join(cmd)}")
     subprocess.run(cmd, check=True, cwd=str(ROOT))
     dist = ROOT / "dist" / "rockforge"
+    copy_legal_files(dist)
     print(f"\nBuild complete: {dist}")
     print(f"  Launch: {dist / 'rockforge.exe'}")
     return dist
+
+
+def copy_legal_files(dist: Path, root: Path = ROOT) -> None:
+    """Put the licence, the third-party notices and the legal notice beside the
+    .exe, so the portable zip and the installer (both built from ``dist``)
+    carry them."""
+    for name in LEGAL_FILES:
+        shutil.copy2(root / name, dist / name)
 
 
 def make_zip(dist: Path) -> None:

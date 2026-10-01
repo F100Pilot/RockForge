@@ -129,6 +129,25 @@ documentados nas mensagens de commit, caso valha a pena ressuscitar alguma.
 - **Não corre no GitHub Pages** (precisa de backend Python + Redis + ML); é uma
   app desktop/servidor local por design.
 
+## Antes de publicar (licenças — ver `THIRD_PARTY_NOTICES.md`)
+
+- [x] `LICENSE` (MIT), `THIRD_PARTY_NOTICES.md` (origem e licença de tudo o que
+  vem de terceiros, com o texto MIT do Rocksmith2014.NET), `LEGAL.md` (aviso
+  legal PT/EN: Ubisoft, direitos de autor, serviços online, sem garantia),
+  secções "Avisos legais"/"Licença" nos dois README; o `.exe`, o zip portátil e
+  o instalador levam os três ficheiros (`build_exe.copy_legal_files`,
+  `LicenseFile` no `installer.iss`). Guardado por `tests/test_legal_files.py`.
+- [ ] **alphaTab é MPL-2.0.** `gpimport/playback.py`, `domain/music.py`
+  (`alphatab_bend`) e a leitura dos SyncPoints seguem de perto a lógica do
+  alphaTab. Está creditado; falta decidir se esses ficheiros passam a declarar
+  também MPL-2.0 no cabeçalho (o MPL permite-o dentro de um projeto MIT).
+- [ ] **Licença do Rocksmith Custom Song Toolkit por confirmar.** O
+  `soundbank.py` segue o `SoundBankGenerator2014`; as notas dizem MIT, mas o
+  repositório do toolkit não mostra um ficheiro de licença.
+- [ ] **ffmpeg dentro do instalador.** Se o `ffmpeg.exe` for incluído, juntar o
+  texto da licença dessa build (normalmente GPL-3.0 no Windows) e um link para
+  o código-fonte correspondente.
+
 ## Ideias futuras (não implementadas)
 
 - [ ] **Pré-visualizar o *note highway* em 3D (three.js)**: desenhar a

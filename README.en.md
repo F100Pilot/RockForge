@@ -5,6 +5,11 @@
 A Guitar Pro → Rocksmith 2014 arrangements (CDLC) pipeline, built on verified research and
 **honest about the limits** of current technology.
 
+> An independent, free project, **not affiliated with Ubisoft**. It contains no songs: you bring
+> the Guitar Pro file and the recording, and the rights over them are your responsibility — see
+> [Legal notices](#legal-notices) and [`LEGAL.md`](LEGAL.md). MIT licence ([`LICENSE`](LICENSE));
+> third-party components in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+
 The app's interface is available in Portuguese and English: switch it with the PT/EN picker on
 the home page or in ⚙️ Settings → "Idioma · Language". The UI labels quoted below are the
 English ones.
@@ -481,11 +486,35 @@ suite stays green without ever having run them.
 
 ## Legal notices
 
-- There is no official Ubisoft statement on CDLC; generating CDLC from copyrighted recordings
-  and distributing it is unauthorized distribution. Use only with your own or authorized
-  material.
-- Final packaging requires Wwise (Audiokinetic EULA, not redistributable): RockForge
-  delivers a bundle ready to import into [DLC Builder](https://github.com/iminashi/Rocksmith2014.NET).
+The full text is in [`LEGAL.md`](LEGAL.md). In short:
+
+- **Not affiliated with Ubisoft.** "Rocksmith" is a trademark of Ubisoft Entertainment, used here
+  only to say which game the files work with. There is no official Ubisoft statement on CDLC.
+- **No songs and no Ubisoft content.** Of the game's format, RockForge carries only what the
+  community's public tools have published for years (PSARC/SNG keys, the `.flat` schema, the
+  glyph table, the gear catalogue), so that the files it writes can be read by the game. Where
+  each piece comes from is in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+- **The rights over what you create are your responsibility.** Generating CDLC from copyrighted
+  recordings and distributing it is unauthorized distribution. Use only your own, free or
+  authorized material.
+- **Online services.** They are contacted only when you press the button, and each one's terms
+  apply to you:
+  - **Songsterr**: undocumented API; the tabs are licensed, for personal use; do not
+    redistribute imported tabs or the GP5 written from them.
+  - **YouTube** (yt-dlp, optional extra): its terms do not allow downloading; personal use.
+  - **LRCLIB / iTunes / MusicBrainz**: lyrics and covers belong to their rights holders.
+- **Wwise.** Final packaging requires Wwise (Audiokinetic EULA, not redistributable): each user
+  installs it. RockForge also delivers a bundle ready to import into
+  [DLC Builder](https://github.com/iminashi/Rocksmith2014.NET).
+- **No warranty** (MIT licence).
+
+## Licence
+
+RockForge is released under the MIT licence — see [`LICENSE`](LICENSE). Third-party code and data
+keep their own licences (Rocksmith2014.NET and three.js: MIT; logic adapted from alphaTab: MPL-2.0;
+PyGuitarPro: LGPL-3.0; …), all listed in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+Whoever distributes the `.exe` or the installer must include that file and `LICENSE`, and, if
+`ffmpeg.exe` is put in it, comply with that ffmpeg build's licence.
 
 ## Next steps
 
@@ -503,6 +532,7 @@ If you lose context and need to rebuild everything, read in this order:
 | **[`TODO.md`](TODO.md)** | what is done `[x]`, what is missing `[ ]`, and the current known limitations |
 | **[`TONE.md`](TONE.md)** | the tone (gear) model and the serialization of `Tones` in the `.rs2dlc` |
 | **`docs/RELATORIO-TECNICO.md`** + **`docs/research/`** | the sourced grounding behind each technical decision |
+| **[`LEGAL.md`](LEGAL.md)** · **[`LICENSE`](LICENSE)** · **[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)** | legal notice (Ubisoft, copyright, online services), the MIT licence, and the origin/licence of everything third-party — update the last one whenever you include or adapt code or data from another project |
 
 > **Critical constraint** (it already cost a multi-session debug): the `Job.params` JSON
 > column has no mutation tracking — writing the **same** dict object

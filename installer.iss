@@ -33,6 +33,9 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 SetupIconFile=
 UninstallDisplayIcon={app}\{#MyAppExeName}
+; MIT licence shown before installing; LICENSE, THIRD_PARTY_NOTICES.md and
+; LEGAL.md are also copied into {app} by build_exe.py (they are in dist\rockforge).
+LicenseFile=LICENSE
 
 [Languages]
 Name: "portuguese"; MessagesFile: "compiler:Languages\Portuguese.isl"

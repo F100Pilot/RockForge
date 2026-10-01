@@ -5,6 +5,11 @@
 Pipeline Guitar Pro → arranjos Rocksmith 2014 (CDLC), construído sobre investigação verificada e
 **honesto quanto aos limites** da tecnologia atual.
 
+> Projeto independente e gratuito, **sem qualquer ligação à Ubisoft**. Não contém músicas: és tu
+> que trazes o ficheiro Guitar Pro e a gravação, e os direitos sobre eles são da tua conta — ver
+> [Avisos legais](#avisos-legais) e [`LEGAL.md`](LEGAL.md). Licença MIT ([`LICENSE`](LICENSE));
+> componentes de terceiros em [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+
 ## O que faz (e o que não promete)
 
 | Etapa | Tecnologia | Confiança |
@@ -496,11 +501,37 @@ silêncio e a suíte fica verde sem nunca os ter corrido.
 
 ## Avisos legais
 
-- Não existe declaração oficial da Ubisoft sobre CDLC; gerar CDLC a partir de gravações
-  protegidas e distribuí-las é distribuição não autorizada. Use apenas com material próprio
-  ou autorizado.
-- O empacotamento final exige o Wwise (EULA Audiokinetic, não redistribuível): o RockForge
-  entrega um bundle pronto a importar no [DLC Builder](https://github.com/iminashi/Rocksmith2014.NET).
+O texto completo está em [`LEGAL.md`](LEGAL.md). Em resumo:
+
+- **Sem ligação à Ubisoft.** "Rocksmith" é marca da Ubisoft Entertainment e é usada aqui só para
+  dizer com que jogo os ficheiros funcionam. Não existe declaração oficial da Ubisoft sobre CDLC.
+- **Não contém músicas nem conteúdo da Ubisoft.** Do formato do jogo, o RockForge traz apenas o
+  que as ferramentas públicas da comunidade publicam há anos (chaves do PSARC/SNG, esquema
+  `.flat`, tabela de glifos, catálogo de equipamento), para os ficheiros que escreve serem
+  legíveis pelo jogo. A origem de cada peça está em
+  [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+- **Os direitos sobre o que crias são da tua conta.** Gerar CDLC a partir de gravações protegidas
+  e distribuí-los é distribuição não autorizada. Usa apenas material próprio, livre ou
+  autorizado.
+- **Serviços online.** São contactados só quando carregas no botão, e os termos de cada um
+  aplicam-se a ti:
+  - **Songsterr**: API não documentada; as tablaturas são licenciadas, para uso pessoal; não
+    redistribuas as tablaturas importadas nem o GP5 gerado a partir delas.
+  - **YouTube** (yt-dlp, extra opcional): os termos não permitem descarregar; uso pessoal.
+  - **LRCLIB / iTunes / MusicBrainz**: letras e capas pertencem aos detentores dos direitos.
+- **Wwise.** O empacotamento final exige o Wwise (EULA Audiokinetic, não redistribuível): cada
+  utilizador instala-o. O RockForge também entrega um bundle pronto a importar no
+  [DLC Builder](https://github.com/iminashi/Rocksmith2014.NET).
+- **Sem garantia** (licença MIT).
+
+## Licença
+
+O RockForge é distribuído sob a licença MIT — ver [`LICENSE`](LICENSE). Código e dados de
+terceiros mantêm as suas licenças (Rocksmith2014.NET e three.js: MIT; lógica adaptada do alphaTab:
+MPL-2.0; PyGuitarPro: LGPL-3.0; …), todos listados em
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md). Quem distribuir o `.exe` ou o instalador tem de
+incluir esse ficheiro e o `LICENSE`, e, se lá puser o `ffmpeg.exe`, cumprir a licença dessa build
+do ffmpeg.
 
 ## Próximos passos
 
@@ -518,6 +549,7 @@ Se perderes o contexto e precisares de reconstruir tudo, lê por esta ordem:
 | **[`TODO.md`](TODO.md)** | o que está feito `[x]`, o que falta `[ ]`, e as limitações conhecidas atuais |
 | **[`TONE.md`](TONE.md)** | o modelo de tom (gear) e a serialização dos `Tones` no `.rs2dlc` |
 | **`docs/RELATORIO-TECNICO.md`** + **`docs/research/`** | a fundamentação com fontes por trás de cada decisão técnica |
+| **[`LEGAL.md`](LEGAL.md)** · **[`LICENSE`](LICENSE)** · **[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)** | aviso legal (Ubisoft, direitos de autor, serviços online), a licença MIT e a origem/licença de tudo o que vem de terceiros — atualiza o último sempre que incluíres ou adaptares código ou dados de outro projeto |
 
 > **Restrição crítica** (já custou um debug de várias sessões): a coluna JSON
 > `Job.params` não tem tracking de mutação — escrever o **mesmo** objeto dict
