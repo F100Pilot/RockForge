@@ -22,6 +22,7 @@ from typing import Any
 
 from rockforge.infrastructure.packaging.gear.gear_catalogue import (
     TONE_DESCRIPTORS,
+    knob_defaults,
     tone_from_dict,
 )
 
@@ -309,6 +310,22 @@ RHYTHM_PLEXI: dict[str, Any] = {
     "pre": [_gate(_GATE_CRUNCH)],
 }
 
+# The Rockerverb is a hot amp (its catalogue default gain is 88), so 68 was
+# already high-gain territory with a crunch-level gate behind it: the one
+# preset that set the user's September apart from Jet Lag, which shipped the
+# same two presets but never switched to this one ("os detetados ainda ficam
+# com ruído" on the first, "bastante bom" on the second). Less gain, less bass
+# (where hum sits) and the high-gain gate; the earlier chains are in
+# PRESET_CHAINS_BEFORE so projects still carrying one are brought up.
+_ORANGE_AMP_FIRST: dict[str, Any] = {
+    "key": "Amp_OrangeRockerverb",
+    "knobs": {
+        "Amp_OrangeRockerverb_Gain": 68,
+        "Amp_OrangeRockerverb_Bass": 74,
+        "Amp_OrangeRockerverb_Treble": 55,
+    },
+}
+
 RHYTHM_ORANGE: dict[str, Any] = {
     "key": "RFRhythm_Orange",
     "name": "Rhythm – Crunch encorpado",
@@ -317,13 +334,23 @@ RHYTHM_ORANGE: dict[str, Any] = {
     "amp": {
         "key": "Amp_OrangeRockerverb",
         "knobs": {
-            "Amp_OrangeRockerverb_Gain": 68,
-            "Amp_OrangeRockerverb_Bass": 74,
+            "Amp_OrangeRockerverb_Gain": 55,
+            "Amp_OrangeRockerverb_Bass": 66,
             "Amp_OrangeRockerverb_Treble": 55,
         },
     },
     "cabinet": {"key": "Cab_OrangePPC412_57_Cone"},
-    "pre": [_gate(_GATE_CRUNCH)],
+    "pre": [_gate(_GATE_HIGH_GAIN)],
+}
+
+# Chains (amp + pre-pedals) a preset shipped with before, oldest first. A
+# project's or the library's copy still exactly on one of them is moved to the
+# current chain by ``upgrade_preset_chain`` — a chain the user touched is not.
+PRESET_CHAINS_BEFORE: dict[str, list[dict[str, Any]]] = {
+    "RFRhythm_Orange": [
+        {"amp": _ORANGE_AMP_FIRST, "pre": []},
+        {"amp": _ORANGE_AMP_FIRST, "pre": [_gate(_GATE_CRUNCH)]},
+    ],
 }
 
 RHYTHM_METAL: dict[str, Any] = {
@@ -501,3 +528,44 @@ def with_preset_gate(tone: dict[str, Any]) -> dict[str, Any] | None:
     if len(pre) > 4:
         return None
     return {**tone, "pre": pre}
+
+
+def _chain_piece(item: object) -> tuple[str, tuple[tuple[str, float], ...]] | None:
+    """A gear piece as (key, every knob) — the catalogue default where the dict
+    leaves a knob out, so a copy the tone editor filled in compares equal to the
+    preset it came from."""
+    if not isinstance(item, dict) or not item.get("key"):
+        return None
+    key = str(item["key"])
+    knobs = knob_defaults(key)
+    for k, v in (item.get("knobs") or {}).items():
+        if k in knobs and isinstance(v, (int, float)):
+            knobs[k] = float(v)
+    return key, tuple(sorted(knobs.items()))
+
+
+def _chain(tone: dict[str, Any]) -> tuple[object, ...]:
+    pre = tone.get("pre") if isinstance(tone.get("pre"), list) else []
+    return (
+        _chain_piece(tone.get("amp")),
+        tuple(p for p in map(_chain_piece, pre or []) if p is not None),
+    )
+
+
+def upgrade_preset_chain(tone: dict[str, Any]) -> dict[str, Any] | None:
+    """A copy of a curated preset whose amp and pre-pedals are still exactly an
+    earlier version of that preset (``PRESET_CHAINS_BEFORE``), moved to the
+    current amp and pre-pedals; None when it is not one. Cabinet, post-pedals,
+    racks, volume and name are left as they are."""
+    key = str(tone.get("key", ""))
+    preset = _preset(key)
+    if preset is None or not isinstance(tone.get("amp"), dict):
+        return None
+    if _chain(tone) not in [_chain(old) for old in PRESET_CHAINS_BEFORE.get(key, [])]:
+        return None
+    amp = preset["amp"]
+    return {
+        **tone,
+        "amp": {"key": amp["key"], "knobs": dict(amp.get("knobs") or {})},
+        "pre": [dict(p, knobs=dict(p.get("knobs") or {})) for p in preset.get("pre") or []],
+    }

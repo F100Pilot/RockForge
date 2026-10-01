@@ -3279,7 +3279,11 @@ def test_presets_still_at_their_first_quiet_volume_are_raised_on_startup(
     import rockforge.interfaces.api.app as app_module
     importlib.reload(app_module)
     from rockforge import tone_library
-    from rockforge.infrastructure.packaging.gear.tone_presets import preset_volume
+    from rockforge.infrastructure.packaging.gear.tone_presets import (
+        PRESET_CHAINS_BEFORE,
+        RHYTHM_ORANGE,
+        preset_volume,
+    )
 
     with TestClient(app_module.app):
         pass
@@ -3291,6 +3295,8 @@ def test_presets_still_at_their_first_quiet_volume_are_raised_on_startup(
                 {"key": "RFRhythm_Clean", "volume": -17.5},  # the user's own
                 {"key": "mine", "volume": -14.0},
                 {"key": "RFRhythm_HighGain", "volume": -18.0},
+                {"key": "RFRhythm_Orange", "volume": -20.0,
+                 **PRESET_CHAINS_BEFORE["RFRhythm_Orange"][1]},
             ],
         })
         session.add(job)
@@ -3301,11 +3307,16 @@ def test_presets_still_at_their_first_quiet_volume_are_raised_on_startup(
     with app_module._session_factory() as session:
         tones = session.get(app_module.Job, job_id).params["tones"]
     assert [t["volume"] for t in tones] == [
-        preset_volume("RFLead_Crunch"), -17.5, -14.0, -18.0,
+        preset_volume("RFLead_Crunch"), -17.5, -14.0, -18.0, -20.0,
     ]
     # the noise gate the driven presets now open with reaches the copies too
     gate = "Pedal_NoiseGate"
-    assert [(t.get("pre") or [{}])[0].get("key") for t in tones] == [gate, None, None, gate]
+    assert [(t.get("pre") or [{}])[0].get("key") for t in tones] == [
+        gate, None, None, gate, gate,
+    ]
+    # and a copy still on an earlier chain of its preset gets the current one
+    assert tones[4]["amp"] == RHYTHM_ORANGE["amp"]
+    assert tones[4]["pre"] == RHYTHM_ORANGE["pre"]
     assert tone_library.load()[0]["volume"] == preset_volume("RFRhythm_Plexi")
     assert tone_library.load()[0]["pre"][0]["key"] == gate
 

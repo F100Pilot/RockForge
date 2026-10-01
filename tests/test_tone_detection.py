@@ -206,7 +206,8 @@ def test_every_preset_with_drive_opens_with_a_noise_gate() -> None:
             assert first is not None and first.key == tp.GATE_KEY, tone["key"]
             thresh = first.knob_values["Pedal_NoiseGate_Thresh"]
             assert -90 <= thresh <= -40
-            if gain >= 0.8:  # high gain gates harder than crunch
+            # high gain gates harder; the hot Rockerverb crunch does too
+            if gain >= 0.8 or tone["key"] == "RFRhythm_Orange":
                 assert thresh == tp._GATE_HIGH_GAIN
             else:
                 assert thresh == tp._GATE_CRUNCH
@@ -232,3 +233,32 @@ def test_a_projects_untouched_preset_gets_the_gate_but_a_rebuilt_chain_does_not(
     assert tp.with_preset_gate({"key": "RFLead_Metal", "pre": [{"key": "Pedal_Chorus"}]}) is None
     assert tp.with_preset_gate({"key": "RFLead_Clean", "pre": [{"key": "Pedal_Chorus"}]}) is None
     assert tp.with_preset_gate({"key": "mine"}) is None
+
+
+def test_a_copy_still_on_an_earlier_version_of_a_preset_gets_the_current_chain() -> None:
+    """The Orange crunch was the one preset that left the user's September noisy
+    (Jet Lag, with the same presets, never switched to it): it now has less gain
+    and bass and the high-gain gate, and copies still on either earlier chain
+    move to it — whether stored sparse or filled in by the tone editor."""
+    from rockforge.infrastructure.packaging.gear import tone_presets as tp
+    from rockforge.infrastructure.packaging.gear.gear_catalogue import knob_defaults
+
+    first, second = tp.PRESET_CHAINS_BEFORE["RFRhythm_Orange"]
+    full_amp = {"key": first["amp"]["key"],
+                "knobs": {**knob_defaults(first["amp"]["key"]), **first["amp"]["knobs"]}}
+    for old in (
+        {"key": "RFRhythm_Orange", "volume": -20.0, **first},
+        {"key": "RFRhythm_Orange", "volume": -17.0, "amp": full_amp, "pre": second["pre"]},
+    ):
+        new = tp.upgrade_preset_chain(old)
+        assert new is not None
+        assert new["amp"] == tp.RHYTHM_ORANGE["amp"]
+        assert new["pre"] == tp.RHYTHM_ORANGE["pre"]
+        assert new["volume"] == old["volume"]  # the rest of the copy is the user's
+        assert tp.upgrade_preset_chain(new) is None
+    # a chain the user changed, another preset, a tone that is not a preset
+    touched = {"key": "RFRhythm_Orange", "amp": {"key": first["amp"]["key"],
+               "knobs": {**first["amp"]["knobs"], "Amp_OrangeRockerverb_Gain": 70}}, "pre": []}
+    assert tp.upgrade_preset_chain(touched) is None
+    assert tp.upgrade_preset_chain({"key": "RFLead_Crunch", **tp.LEAD_CRUNCH}) is None
+    assert tp.upgrade_preset_chain({"key": "mine", **first}) is None

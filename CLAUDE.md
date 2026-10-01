@@ -2493,6 +2493,31 @@ and the gate assertions in
 (mutation-checked). Not heard in game from here: the threshold is the game's
 default, how much hiss the user's own guitar brings is their rig's.
 
+**The Orange crunch was retuned, and earlier preset chains are upgraded**
+(2026-10-01, two PSARCs from the user: September "com ruído", Jet Lag
+"bastante bom"). Decoding both showed the SAME two presets in each
+(`RFLead_Overdrive` + `RFRhythm_Orange`, gates already in) — the difference
+is which one plays: Jet Lag's charts are on the Overdrive and never switch,
+while September's Rhythm/Combo/alternates sit on `RFRhythm_Orange`, a
+Rockerverb at gain 68 (its catalogue default is 88: a hot amp) with bass 74
+and only the gentle crunch gate. It is now gain 55, bass 66 and the high-gain
+gate (-55). `PRESET_CHAINS_BEFORE` lists the chains a preset shipped with
+before; `upgrade_preset_chain` (run first in `_refresh_presets`, the startup
+pass) moves a copy still EXACTLY on one of them — amp and pre-pedals compared
+knob by knob with catalogue defaults filled in, so a copy the tone editor
+filled in still matches — to the current chain, keeping its cabinet, post
+pedals, racks, volume and name. Guarded by
+`test_a_copy_still_on_an_earlier_version_of_a_preset_gets_the_current_chain`
+and the Orange copy in
+`test_presets_still_at_their_first_quiet_volume_are_raised_on_startup`
+(mutation-checked). Not heard in game from here. The same PSARCs carry tone
+CHANGES only where the plan put them: September's Lead (46.6/85/110.6/213 s)
+and Lead alternate (155.4 s); its Rhythm, Combo and Rhythm alternate have one
+tone and nothing to switch to, and Jet Lag none at all — the slot ids match
+`Tone_A..D` (id 1 = `Tone_B`). No DLC Builder build with tone changes has been
+decoded to compare against, so whether the game shows a switch on screen is
+unverified.
+
 ### Tone editor: rotary knobs + optional local gear images
 
 Gear knobs (amp/effect Gain/Bass/Mid/…) render as **draggable rotary dials**
