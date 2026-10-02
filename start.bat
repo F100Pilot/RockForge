@@ -55,7 +55,8 @@ if errorlevel 1 (
 )
 REM Without the py launcher's 3.11 the default python may be 3.12/3.13, which
 REM pip refuses with a bare "requires a different Python": say what to do.
-%PY% -c "import sys; sys.exit(sys.version_info[:2] != (3, 11))" >nul 2>&1
+REM No "!" in this line: delayed expansion is on and cmd would eat it.
+%PY% -c "import sys; sys.exit(0 if sys.version_info[:2] == (3, 11) else 1)" >nul 2>&1
 if errorlevel 1 (
   echo ERRO: o RockForge precisa do Python 3.11, e o Python encontrado e outro:
   %PY% --version
