@@ -4150,7 +4150,12 @@ green before committing.
 ## Running locally (Windows, native, no Docker)
 
 `start.bat` launches Redis (Memurai) + Celery worker (background) + the API
-(foreground) from a single window; it auto-selects `py -3.11`. Requires ffmpeg
+(foreground) from a single window; it auto-selects `py -3.11` (or a 3.11 in
+its python.org/winget install folder, and says so plainly when only another
+version exists). **No Redis is not an error**: it sets
+`ROCKFORGE_WORKER_MODE=inprocess` and runs the tasks inside the API, as the
+`.exe` does — Memurai needs admin rights to install, which a work laptop may
+refuse. The file runs with delayed expansion: no `!` in a command line. Requires ffmpeg
 (`winget install ffmpeg`) and a running Redis. See README for the full guide.
 Before that it runs `git pull --ff-only` and restarts itself (`--atualizado`:
 cmd reads a .bat while running it, so the pulled version must be re-read),

@@ -224,7 +224,7 @@ alinhar a partitura — sem acertos à mão, mesmo com o andamento a variar.
 | Git | https://git-scm.com/download/win | clonar o repositório |
 | Python **3.11** (exatamente — 3.12+ não funciona: o stack ML/letra `torch<2.5`/demucs/whisperx só tem wheels até 3.11) | https://www.python.org/downloads/ — ⚠️ marca **"Add Python to PATH"** | correr a app |
 | ffmpeg | `winget install ffmpeg` | normalização de áudio |
-| Redis | [Memurai](https://www.memurai.com/) (Developer, grátis; corre como serviço) | fila de jobs |
+| Redis (opcional) | [Memurai](https://www.memurai.com/) (Developer, grátis; corre como serviço — a instalação pede administrador) | worker separado; sem Redis, o `start.bat` corre as tarefas dentro da API |
 | GPU NVIDIA (opcional, muito recomendado) | driver NVIDIA atualizado + build CUDA do PyTorch (ver **2b**) | acelera ML (separação de stems/deteção de tom/letra) ~10–20× |
 | Wwise (opcional) | Audiokinetic Launcher | gerar `.wem` automaticamente |
 | DLC Builder (opcional) | [releases](https://github.com/iminashi/Rocksmith2014.NET/releases) | empacotar o PSARC final |
@@ -299,6 +299,9 @@ O `start.bat`:
    `pyproject.toml` mudou desde a última vez — na primeira vez demora;
 3. recusa arrancar se a porta 8000 já estiver ocupada (o RockForge já a correr);
 4. lança Redis + worker em segundo plano (logs em `logs\`) e a API na janela atual;
+   sem Redis instalado (ex.: um portátil do trabalho sem permissões de
+   administrador), as tarefas correm dentro da própria API, uma de cada vez, e
+   fechar o separador espera que acabem;
 5. abre **http://localhost:8000** no Chrome (ou no browser predefinido, se não
    houver Chrome). Ctrl+C, ou fechar o separador, para tudo.
 

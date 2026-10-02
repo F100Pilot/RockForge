@@ -221,7 +221,7 @@ tempo.
 | Git | https://git-scm.com/download/win | cloning the repository |
 | Python **3.11** (exactly — 3.12+ does not work: the ML/lyrics stack `torch<2.5`/demucs/whisperx only has wheels up to 3.11) | https://www.python.org/downloads/ — ⚠️ tick **"Add Python to PATH"** | running the app |
 | ffmpeg | `winget install ffmpeg` | audio normalization |
-| Redis | [Memurai](https://www.memurai.com/) (Developer, free; runs as a service) | job queue |
+| Redis (optional) | [Memurai](https://www.memurai.com/) (Developer, free; runs as a service — installing it needs admin rights) | separate worker; without Redis, `start.bat` runs the tasks inside the API |
 | NVIDIA GPU (optional, highly recommended) | up-to-date NVIDIA driver + the CUDA build of PyTorch (see **2b**) | speeds up ML (stem separation/tone detection/lyrics) ~10–20× |
 | Wwise (optional) | Audiokinetic Launcher | generating the `.wem` automatically |
 | DLC Builder (optional) | [releases](https://github.com/iminashi/Rocksmith2014.NET/releases) | packaging the final PSARC |
@@ -289,6 +289,8 @@ used.
 
 Open **http://localhost:8000**. `start.bat` launches Redis + the worker in the background
 (logs in `logs\`) and the API in the current window; Ctrl+C stops everything.
+With no Redis installed (e.g. a work laptop without admin rights) the tasks run
+inside the API itself, one at a time, and closing the tab waits for them.
 
 Notes:
 - The first job downloads the ML models (~2 GB extra, only once)

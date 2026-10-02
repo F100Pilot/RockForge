@@ -4,9 +4,10 @@ REM Steps: git pull, install/update the dependencies when pyproject.toml changed
 REM Redis + the Celery worker in the background (logs in .\logs\), the API in
 REM the foreground here, and the page opened in Chrome. Ctrl+C (or closing the
 REM tab) stops the API; the background processes are then stopped too.
-REM Requires: Python 3.11 and a Redis server. On Windows the simplest is
-REM Memurai (https://www.memurai.com/) — installed as a service it is
-REM auto-detected here; otherwise any 'redis-server' on PATH works.
+REM Requires: Python 3.11. Redis is optional: with Memurai
+REM (https://www.memurai.com/) installed as a service, or a 'redis-server' on
+REM PATH, the tasks run in a separate Celery worker; without it they run
+REM inside the API process (ROCKFORGE_WORKER_MODE=inprocess).
 
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
@@ -115,28 +116,23 @@ if defined REDIS_RUNNING (
   echo A iniciar Redis ^(!REDIS_CMD!^) em segundo plano ^(logs\redis.log^)...
   start "RockForge-Redis" /min cmd /c "!REDIS_CMD! > logs\redis.log 2>&1"
 ) else (
-  echo.
-  echo ============================================================
-  echo  ERRO: nenhum servidor Redis encontrado.
-  echo.
-  echo  Instala o Memurai ^(Redis para Windows^):
-  echo      https://www.memurai.com/get-memurai
-  echo  ou garante que 'redis-server' esta no PATH.
-  echo.
-  echo  Sem Redis, a detecao de letras e a geracao de CDLC
-  echo  ficam presas em "a aguardar o worker".
-  echo ============================================================
-  echo.
-  pause
-  endlocal
-  exit /b 1
+  REM No Redis - Memurai needs admin rights to install, often refused on a work
+  REM machine: run the tasks inside the API process, as the standalone .exe
+  REM does. Same task code, one at a time, and closing the tab waits for them.
+  set "ROCKFORGE_WORKER_MODE=inprocess"
+  echo Redis nao encontrado - as tarefas correm dentro da propria API ^(sem worker^).
+  echo ^(Opcional: o Memurai, https://www.memurai.com/, volta a usar o worker separado.^)
 )
 
-echo A iniciar o worker Celery em segundo plano (logs\worker.log)...
-start "RockForge-Worker" /min cmd /c "%PY% -m celery -A rockforge.interfaces.worker.celery_app:celery_app worker --pool=solo --loglevel=info > logs\worker.log 2>&1"
-
-echo.
-echo Redis e Worker a correr minimizados. A iniciar a API...
+if /i "%ROCKFORGE_WORKER_MODE%"=="inprocess" (
+  echo.
+  echo A iniciar a API...
+) else (
+  echo A iniciar o worker Celery em segundo plano ^(logs\worker.log^)...
+  start "RockForge-Worker" /min cmd /c "%PY% -m celery -A rockforge.interfaces.worker.celery_app:celery_app worker --pool=solo --loglevel=info > logs\worker.log 2>&1"
+  echo.
+  echo Redis e Worker a correr minimizados. A iniciar a API...
+)
 echo O browser abre automaticamente; fechar o separador para tudo (apos alguns segundos).
 echo.
 
