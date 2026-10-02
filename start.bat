@@ -47,6 +47,19 @@ if errorlevel 1 (
   endlocal
   exit /b 1
 )
+REM Without the py launcher's 3.11 the default python may be 3.12/3.13, which
+REM pip refuses with a bare "requires a different Python": say what to do.
+%PY% -c "import sys; sys.exit(sys.version_info[:2] != (3, 11))" >nul 2>&1
+if errorlevel 1 (
+  echo ERRO: o RockForge precisa do Python 3.11, e o Python encontrado e outro:
+  %PY% --version
+  echo Instala o Python 3.11 ^(pode ficar ao lado do que ja tens^):
+  echo     winget install Python.Python.3.11
+  echo ou descarrega-o de python.org. Depois fecha esta janela e corre o start.bat de novo.
+  pause
+  endlocal
+  exit /b 1
+)
 
 REM --- Dependencies: only when pyproject.toml changed since the last install ---
 REM (a full check of the ML stack takes a while; a copy of the installed
