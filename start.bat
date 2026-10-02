@@ -40,6 +40,12 @@ REM version (no virtualenv needed).
 set "PY=python"
 py -3.11 -c "" >nul 2>&1
 if not errorlevel 1 set "PY=py -3.11"
+REM No py launcher (or it does not list 3.11): try where python.org and winget
+REM put a 3.11, per user and for all users.
+set "PY311="
+if exist "%ProgramFiles%\Python311\python.exe" set "PY311=%ProgramFiles%\Python311\python.exe"
+if exist "%LOCALAPPDATA%\Programs\Python\Python311\python.exe" set "PY311=%LOCALAPPDATA%\Programs\Python\Python311\python.exe"
+if "%PY%"=="python" if defined PY311 set PY="%PY311%"
 %PY% --version >nul 2>&1
 if errorlevel 1 (
   echo ERRO: Python nao encontrado. Instala o Python 3.11 ^(python.org^).
