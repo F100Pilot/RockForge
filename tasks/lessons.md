@@ -119,3 +119,13 @@ parallel translators found it, not the test. Rule: when writing a scanner that
 gates coverage, feed it the tricky shapes the codebase actually uses (nested
 templates, strings in expressions) and assert it finds a known key in each,
 before trusting a green run.
+
+## `start.bat` runs with delayed expansion: never put a `!` in a command line
+
+A Python version check written as `sys.exit(sys.version_info[:2] != (3, 11))`
+refused Python 3.11 itself on the user's machine: `start.bat` has
+`setlocal enabledelayedexpansion`, so cmd removed the lone `!` and Python got
+`... = (3, 11)`, a syntax error, exit 1 — on every version. It could not be
+caught here (no cmd). Rule: before adding a line to a `.bat`, check its
+`setlocal` mode; with delayed expansion, write the command without `!`
+(`==` with an explicit `0 if … else 1`), and grep the file for `!` afterwards.
