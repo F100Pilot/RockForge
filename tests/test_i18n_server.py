@@ -40,12 +40,17 @@ def test_portuguese_is_the_default_and_english_is_there_when_asked() -> None:
     assert i18n.tr("não encontrado", "not found") == "não encontrado"
 
 
-def test_a_diagnostics_row_is_in_english(english: None) -> None:
-    from rockforge.infrastructure import diagnostics
+def test_a_diagnostics_row_is_in_english(
+    english: None, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from rockforge import config
+    from rockforge.infrastructure import diagnostics, tone_collection
 
+    monkeypatch.setattr(config.settings, "work_dir", tmp_path)
+    monkeypatch.setattr(tone_collection, "rocksmith_game_folders", lambda: [])
     row = diagnostics._loader_patch()
     assert row.name == "Rocksmith CDLC patch (D3DX9_42.dll)"
-    assert "cannot be detected from here" in row.detail
+    assert "was not found on this computer" in row.detail
     assert "never shows up" in row.without_it
     assert diagnostics._installed(False) == "missing"
 

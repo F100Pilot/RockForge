@@ -22,6 +22,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import tempfile
 import threading
 import time
@@ -46,21 +47,60 @@ def _file() -> Path:
     return config.settings.work_dir / "tone_collection.json"
 
 
-def suggested_folder() -> Path | None:
-    """Where Steam installs Rocksmith 2014's ``dlc`` folder by default, when it
-    exists on this machine (a library on another drive is not searched)."""
+def _steam_roots() -> list[Path]:
     home = Path.home()
-    roots = [
+    return [
         Path(os.environ.get("PROGRAMFILES(X86)", r"C:\Program Files (x86)")) / "Steam",
         Path(os.environ.get("PROGRAMFILES", r"C:\Program Files")) / "Steam",
         home / "Library" / "Application Support" / "Steam",
         home / ".steam" / "steam",
         home / ".local" / "share" / "Steam",
     ]
-    for root in roots:
-        candidate = root / "steamapps" / "common" / "Rocksmith2014" / "dlc"
-        if candidate.is_dir():
-            return candidate
+
+
+def _steam_libraries(root: Path) -> list[Path]:
+    """The Steam root and every extra library its ``libraryfolders.vdf`` lists
+    (a game installed on another drive lives in one of those)."""
+    libraries = [root]
+    for vdf in (root / "steamapps" / "libraryfolders.vdf", root / "config" / "libraryfolders.vdf"):
+        try:
+            text = vdf.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for raw in re.findall(r'"path"\s+"([^"]+)"', text):
+            path = Path(raw.replace("\\\\", "\\"))
+            if path not in libraries:
+                libraries.append(path)
+    return libraries
+
+
+def rocksmith_game_folders() -> list[Path]:
+    """Every Rocksmith 2014 installation Steam knows about on this machine."""
+    found: list[Path] = []
+    for root in _steam_roots():
+        for library in _steam_libraries(root):
+            candidate = library / "steamapps" / "common" / "Rocksmith2014"
+            if candidate.is_dir() and candidate not in found:
+                found.append(candidate)
+    return found
+
+
+def configured_game_folder() -> Path | None:
+    """The Rocksmith 2014 folder the user set in Definições, if any."""
+    from rockforge import runtime_settings
+
+    raw = runtime_settings.load().get("rocksmith_dir")
+    return Path(str(raw)) if raw else None
+
+
+def suggested_folder() -> Path | None:
+    """Rocksmith 2014's ``dlc`` folder: in the game folder set in Definições,
+    else in a Steam library on this machine."""
+    configured = configured_game_folder()
+    games = ([configured] if configured else []) + rocksmith_game_folders()
+    for game in games:
+        if (game / "dlc").is_dir():
+            return game / "dlc"
     return None
 
 

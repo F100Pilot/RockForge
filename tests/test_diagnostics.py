@@ -17,6 +17,7 @@ from typing import Any
 
 import pytest
 
+from rockforge import config
 from rockforge.config import Settings
 from rockforge.infrastructure import diagnostics
 
@@ -61,15 +62,77 @@ def test_probing_never_imports_the_heavy_stack(monkeypatch: pytest.MonkeyPatch) 
     assert imported == [], f"the probe imported {imported}"
 
 
-def test_what_cannot_be_checked_reports_unknown_not_missing() -> None:
+def test_what_cannot_be_checked_reports_unknown_not_missing(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     """`found is None` is a real third answer. The CDLC loader patch is the
-    clearest case: it is the single most common reason a song never appears in
-    game, and we have no idea where the user installed Rocksmith — calling that
-    "missing" would be a confident guess about someone else's machine."""
+    clearest case: with no Rocksmith on this machine (RockForge may run on a
+    laptop without the game) calling it "missing" would be a confident guess
+    about someone else's machine."""
+    from rockforge.infrastructure import tone_collection
+
+    monkeypatch.setattr(config.settings, "work_dir", tmp_path)
+    monkeypatch.setattr(tone_collection, "rocksmith_game_folders", lambda: [])
     reqs = _by_key(diagnostics.check_requirements(Settings()))
     patch = reqs["cdlc_patch"]
     assert patch.found is None
-    assert "detet" in patch.detail.lower(), "it must say WHY it is unknown"
+    assert "não foi encontrado" in patch.detail, "it must say WHY it is unknown"
+
+
+def test_the_cdlc_patch_is_looked_for_in_the_game_folder(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """With the game in a Steam library here, the patch is simply checked: the
+    row used to say "por confirmar" even on the machine that has the game."""
+    from rockforge.infrastructure import tone_collection
+
+    monkeypatch.setattr(config.settings, "work_dir", tmp_path / "work")
+    game = tmp_path / "Rocksmith2014"
+    game.mkdir()
+    monkeypatch.setattr(tone_collection, "rocksmith_game_folders", lambda: [game])
+    missing = diagnostics._loader_patch()
+    assert missing.found is False and str(game) in missing.detail
+    (game / "d3dx9_42.dll").write_bytes(b"x")  # any case: Proton/Wine folders
+    present = diagnostics._loader_patch()
+    assert present.found is True and present.detail.endswith("D3DX9_42.dll")
+
+
+def test_the_game_folder_the_tone_collection_was_pointed_at_wins(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A library Steam does not list (or a copy elsewhere) is still found
+    through the dlc folder the user gave the tone collection."""
+    from rockforge import runtime_settings
+    from rockforge.infrastructure import tone_collection
+
+    monkeypatch.setattr(config.settings, "work_dir", tmp_path / "work")
+    game = tmp_path / "Games" / "Rocksmith2014"
+    (game / "dlc").mkdir(parents=True)
+    (game / "Rocksmith2014.exe").write_bytes(b"x")
+    (game / "D3DX9_42.dll").write_bytes(b"x")
+    monkeypatch.setattr(tone_collection, "rocksmith_game_folders", lambda: [])
+    runtime_settings.save({"rocksmith_dlc_dir": str(game / "dlc")})
+    assert diagnostics._loader_patch().found is True
+
+
+def test_steam_libraries_on_other_drives_are_searched(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from rockforge.infrastructure import tone_collection
+
+    steam = tmp_path / "Steam"
+    (steam / "steamapps").mkdir(parents=True)
+    other = tmp_path / "D" / "SteamLibrary"
+    (other / "steamapps" / "common" / "Rocksmith2014" / "dlc").mkdir(parents=True)
+    escaped = str(other).replace("\\", "\\\\")
+    (steam / "steamapps" / "libraryfolders.vdf").write_text(
+        f'"libraryfolders"\n{{\n\t"0"\n\t{{\n\t\t"path"\t\t"{steam}"\n\t}}\n'
+        f'\t"1"\n\t{{\n\t\t"path"\t\t"{escaped}"\n\t}}\n}}\n'
+    )
+    monkeypatch.setattr(tone_collection, "_steam_roots", lambda: [steam])
+    game = other / "steamapps" / "common" / "Rocksmith2014"
+    assert tone_collection.rocksmith_game_folders() == [game]
+    assert tone_collection.suggested_folder() == game / "dlc"
 
 
 def test_torch_installed_is_unknown_not_a_working_gpu(
@@ -304,3 +367,38 @@ def test_ytdlp_without_a_js_runtime_is_reported_missing(monkeypatch) -> None:  #
     row = diagnostics._ytdlp()
     # A yt-dlp program cannot be asked whether it has the solver: unknown.
     assert row.found is None and "deno" in row.detail
+
+
+def test_the_rocksmith_folder_set_in_settings_is_where_the_patch_is_looked_for(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The user can name the game folder ("Mas eu posso colocar a diretoria onde
+    está o rocksmith"): it wins over the Steam libraries, a folder that does not
+    exist says so instead of passing for "patch missing", and the tone
+    collection then suggests its dlc folder."""
+    from rockforge import runtime_settings
+    from rockforge.infrastructure import tone_collection
+
+    monkeypatch.setattr(config.settings, "work_dir", tmp_path / "work")
+    steam_game = tmp_path / "Steam" / "Rocksmith2014"
+    steam_game.mkdir(parents=True)
+    monkeypatch.setattr(tone_collection, "rocksmith_game_folders", lambda: [steam_game])
+    mine = tmp_path / "Jogos" / "Rocksmith2014"
+    (mine / "dlc").mkdir(parents=True)
+    (mine / "D3DX9_42.dll").write_bytes(b"x")
+    runtime_settings.save({"rocksmith_dir": str(mine)})
+    assert diagnostics._loader_patch().found is True
+    assert tone_collection.suggested_folder() == mine / "dlc"
+    runtime_settings.save({"rocksmith_dir": str(tmp_path / "nowhere")})
+    gone = diagnostics._loader_patch()
+    assert gone.found is None and "não existe" in gone.detail
+
+
+def test_a_windows_library_path_is_unescaped(tmp_path: Path) -> None:
+    from rockforge.infrastructure import tone_collection
+
+    (tmp_path / "steamapps").mkdir()
+    (tmp_path / "steamapps" / "libraryfolders.vdf").write_text(
+        '"libraryfolders"\n{\n\t"1"\n\t{\n\t\t"path"\t\t"D:\\\\SteamLibrary"\n\t}\n}\n'
+    )
+    assert tone_collection._steam_libraries(tmp_path) == [tmp_path, Path("D:\\SteamLibrary")]

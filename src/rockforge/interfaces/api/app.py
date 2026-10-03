@@ -751,6 +751,11 @@ class SettingsOut(BaseModel):
     # process never imports torch.
     ml_python: str = ""
     ml_python_info: dict[str, Any] = {}
+    # The Rocksmith 2014 folder the user set ("" = found by looking in the Steam
+    # libraries, which is `rocksmith_dir_detected`). The CDLC patch is looked for
+    # there and the tone collection suggests its dlc folder.
+    rocksmith_dir: str = ""
+    rocksmith_dir_detected: str = ""
 
 
 class SettingsIn(BaseModel):
@@ -764,6 +769,8 @@ class SettingsIn(BaseModel):
     whisperx_compute_type: str | None = None
     # "" clears the override (falls back to ROCKFORGE_ML_PYTHON / this process).
     ml_python: str | None = None
+    # "" clears it (back to looking in the Steam libraries).
+    rocksmith_dir: str | None = None
 
 
 class LyricsOut(BaseModel):
@@ -3067,6 +3074,7 @@ def get_stem_audio(job_id: str, name: str) -> FileResponse:
 
 def _settings_out() -> SettingsOut:
     from rockforge import runtime_settings
+    from rockforge.infrastructure.diagnostics import detected_rocksmith_folder
     from rockforge.interfaces.worker.celery_app import _cuda_known_broken
 
     repo, ckpt, queries = runtime_settings.banquet_paths()
@@ -3081,6 +3089,8 @@ def _settings_out() -> SettingsOut:
         whisperx_compute_type=runtime_settings.whisperx_compute_type(),
         ml_python=str(runtime_settings.ml_python() or ""),
         ml_python_info=runtime_settings.ml_python_validation(),
+        rocksmith_dir=str(runtime_settings.load().get("rocksmith_dir") or ""),
+        rocksmith_dir_detected=str(detected_rocksmith_folder() or ""),
     )
 
 
@@ -3121,7 +3131,7 @@ def update_settings(body: SettingsIn) -> SettingsOut:
     updates = dict(runtime_settings.load())
     for key in (
         "stem_separator", "banquet_repo", "banquet_ckpt", "banquet_queries",
-        "whisperx_compute_type", "ml_python",
+        "whisperx_compute_type", "ml_python", "rocksmith_dir",
     ):
         val = getattr(body, key)
         if val is not None:

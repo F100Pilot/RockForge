@@ -21,7 +21,8 @@ absence cost me?* — in one place, honestly:
 - **`found` is a tri-state.** `None` means "cannot be checked from here", which
   is a different and more useful answer than `False`. The Rocksmith CDLC loader
   patch is the clearest case: it is the single most common reason a song never
-  appears in game, and we have no idea where the user's game is installed.
+  appears in game, and it is only checkable when the game is in a Steam library
+  on THIS machine (RockForge may run on another one).
 - **Inside the `.exe`, a bare `pip install` instruction would be a lie.** A
   frozen PyInstaller app has its OWN Python: its `sys.path` is just the
   bundle's `_internal`, so the system's site-packages are never importable
@@ -42,6 +43,7 @@ import importlib.util
 import shutil
 import subprocess
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from rockforge.i18n import tr
@@ -451,18 +453,70 @@ def _gpu(gpu_broken: bool, av: _MlAvailability | None = None) -> Requirement:
     )
 
 
+PATCH_DLL = "D3DX9_42.dll"
+
+
+def detected_rocksmith_folder() -> Path | None:
+    """The game folder found without asking: the parent of the dlc folder the
+    tone collection was pointed at (it may be in a Steam library we would not
+    guess), else the one Steam knows about."""
+    from rockforge import runtime_settings
+    from rockforge.infrastructure.tone_collection import rocksmith_game_folders
+
+    stored = runtime_settings.load().get("rocksmith_dlc_dir")
+    if stored:
+        parent = Path(str(stored)).parent
+        if (parent / "Rocksmith2014.exe").is_file():
+            return parent
+    games = rocksmith_game_folders()
+    return games[0] if games else None
+
+
+def _has_file(folder: Path, name: str) -> bool:
+    try:
+        return any(p.name.lower() == name.lower() for p in folder.iterdir())
+    except OSError:
+        return False
+
+
 def _loader_patch() -> Requirement:
+    from rockforge.infrastructure.tone_collection import configured_game_folder
+
+    configured = configured_game_folder()
+    game = configured or detected_rocksmith_folder()
+    found: bool | None
+    if configured is not None and not configured.is_dir():
+        found = None
+        detail = tr(
+            "a pasta do Rocksmith indicada nas Definições não existe: {path}",
+            "the Rocksmith folder set in Settings does not exist: {path}",
+        ).format(path=configured)
+    elif game is None:
+        found = None
+        detail = tr(
+            "o Rocksmith 2014 não foi encontrado neste computador (procurei nas "
+            "bibliotecas do Steam) — indica a pasta em Definições → Geral; se o "
+            "jogo está noutro computador, é lá que o patch tem de estar",
+            "Rocksmith 2014 was not found on this computer (Steam libraries "
+            "searched) — set its folder in Settings → General; if the game is on "
+            "another computer, that is where the patch has to be",
+        )
+    elif _has_file(game, PATCH_DLL):
+        found, detail = True, str(game / PATCH_DLL)
+    else:
+        found = False
+        detail = tr(
+            "não está na pasta do jogo: {path}",
+            "not in the game folder: {path}",
+        ).format(path=game)
     return Requirement(
         key="cdlc_patch",
         name=tr(
             "Patch de CDLC do Rocksmith (D3DX9_42.dll)",
             "Rocksmith CDLC patch (D3DX9_42.dll)",
         ),
-        found=None,
-        detail=tr(
-            "não é detetável daqui — não sabemos onde tens o jogo instalado",
-            "cannot be detected from here — we do not know where your game is installed",
-        ),
+        found=found,
+        detail=detail,
         required=False,
         unlocks=tr(
             "Sem ele o Rocksmith recusa qualquer CDLC, venha de onde vier.",
@@ -475,10 +529,14 @@ def _loader_patch() -> Requirement:
             ".psarc is. It is the no. 1 cause of «it does not show up».",
         ),
         install=tr(
-            "Instalar o patch na pasta do Rocksmith 2014 (CustomsForge). "
+            "Descarrega o «CDLC Enabler» do CustomsForge (customsforge.com) e "
+            "copia o D3DX9_42.dll para a pasta do Rocksmith 2014 (no Steam: "
+            "botão direito no jogo → Gerir → Procurar ficheiros locais). "
             "Confirma também que tens o DLC cujo appid o .psarc reutiliza.",
-            "Install the patch in the Rocksmith 2014 folder (CustomsForge). "
-            "Also make sure you own the DLC whose appid the .psarc reuses.",
+            "Download the «CDLC Enabler» from CustomsForge (customsforge.com) "
+            "and copy D3DX9_42.dll into the Rocksmith 2014 folder (in Steam: "
+            "right-click the game → Manage → Browse local files). Also make "
+            "sure you own the DLC whose appid the .psarc reuses.",
         ),
     )
 

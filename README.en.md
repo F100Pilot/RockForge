@@ -154,10 +154,11 @@ costs you, and the command to install it.
 | **PyTorch CUDA** | GPU: minutes instead of tens of minutes | everything runs on CPU | see §2b |
 | **CDLC patch** (`D3DX9_42.dll`) | Rocksmith accepting *any* CDLC | the song **never appears** in the list | CustomsForge, in the game folder |
 
-Only **ffmpeg** is required. Two honest notes about the table: the app cannot check the CDLC
-patch (it doesn't know where you have the game), nor whether the installed PyTorch is the CUDA
-or the CPU build — knowing that would require importing torch in the API process, which is
-forbidden on purpose. In those two cases the panel says **ⓘ unknown**, not ✅ or ❌.
+Only **ffmpeg** is required. Two honest notes about the table: the CDLC patch is only checked
+when the app finds the game — in this computer's Steam libraries, or in the folder you set in
+⚙️ Settings → General → «Rocksmith 2014 folder»; and whether the installed PyTorch is the CUDA
+or the CPU build is not known — that would require importing torch in the API process, which is
+forbidden on purpose. In those cases the panel says **ⓘ unknown**, not ✅ or ❌.
 
 ### ML in the `.exe`: point it at a Python 3.11
 

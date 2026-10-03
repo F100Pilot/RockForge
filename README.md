@@ -154,11 +154,12 @@ o que cada falta te custa, e o comando para instalar.
 | **PyTorch CUDA** | GPU: minutos em vez de dezenas de minutos | corre tudo em CPU | ver §2b |
 | **Patch de CDLC** (`D3DX9_42.dll`) | o Rocksmith aceitar *qualquer* CDLC | a música **nunca aparece** na lista | CustomsForge, na pasta do jogo |
 
-Só o **ffmpeg** é obrigatório. Duas notas honestas sobre a tabela: a app não
-consegue verificar o patch de CDLC (não sabe onde tens o jogo), e se o PyTorch
-instalado é a build CUDA ou a de CPU também não — sabê-lo exigia importar o
-torch no processo da API, o que é proibido de propósito. Nesses dois casos o
-painel diz **ⓘ desconhecido**, não ✅ nem ❌.
+Só o **ffmpeg** é obrigatório. Duas notas honestas sobre a tabela: o patch de
+CDLC só é verificado quando a app encontra o jogo — nas bibliotecas do Steam
+deste computador, ou na pasta que indicares em ⚙️ Definições → Geral → «Pasta do
+Rocksmith 2014»; e se o PyTorch instalado é a build CUDA ou a de CPU não se sabe
+— exigia importar o torch no processo da API, o que é proibido de propósito.
+Nesses casos o painel diz **ⓘ desconhecido**, não ✅ nem ❌.
 
 ### ML no `.exe`: indica-lhe um Python 3.11
 

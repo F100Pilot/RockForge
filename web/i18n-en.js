@@ -1065,5 +1065,14 @@
  "Escolher este": "Pick this one",
  "Trocar os tons sugeridos — as trocas ficam nos mesmos pontos, com os tons que escolheres:": "Replace the suggested tones — the switches stay at the same points, with the tones you choose:",
  "<p><strong>Trocar os tons sugeridos:</strong> fica com os pontos onde a app troca de tom, mas com os tons que tu queres. Para cada tom sugerido escolhe outro — dos tons do projeto, da biblioteca ou dos teus PSARC (a lista de tons das tuas músicas) — e depois \"Aplicar\". Escolher o mesmo tom para dois sugeridos junta-os, e a troca entre eles desaparece.</p>": "<p><strong>Replace the suggested tones:</strong> keep the points where the app switches tone, but with the tones you want. For each suggested tone pick another — from the project's tones, the library or your PSARCs (the list of your songs' tones) — then \"Apply\". Picking the same tone for two suggested ones merges them, and the switch between them goes away.</p>",
- "Não foi possível guardar as trocas de tom: {msg}": "Could not save the tone swaps: {msg}"
+ "Não foi possível guardar as trocas de tom: {msg}": "Could not save the tone swaps: {msg}",
+ "Pasta do Rocksmith 2014": "Rocksmith 2014 folder",
+ "Onde o jogo está instalado (a pasta com o": "Where the game is installed (the folder with",
+ "Rocksmith2014.exe": "Rocksmith2014.exe",
+ "É lá que o patch de CDLC (": "That is where the CDLC patch (",
+ "D3DX9_42.dll": "D3DX9_42.dll",
+ ") é procurado, e a coleção de tons sugere a sua pasta": ") is looked for, and the tone collection suggests its",
+ "dlc": "dlc",
+ ". Vazio = procurar nas bibliotecas do Steam. No Steam: botão direito no jogo → Gerir → Procurar ficheiros locais, e copia o caminho da barra de endereço.": " folder. Empty = look in the Steam libraries. In Steam: right-click the game → Manage → Browse local files, and copy the path from the address bar.",
+ "encontrada: {path}": "found: {path}"
 };

@@ -508,6 +508,7 @@ function settingsPayload() {
     loudness_target: parseFloat(document.getElementById('sLoudness').value),
     whisperx_compute_type: document.getElementById('sWhisperxCompute').value,
     ml_python: document.getElementById('sMlPython').value.trim(),
+    rocksmith_dir: document.getElementById('sRocksmithDir').value.trim(),
   };
 }
 let settingsSaved = null;
@@ -588,6 +589,10 @@ function fillSettings(s) {
   document.getElementById('sWhisperxCompute').value = s.whisperx_compute_type || '';
   document.getElementById('sMlPython').value = s.ml_python || '';
   renderMlPythonInfo(s.ml_python_info || {});
+  document.getElementById('sRocksmithDir').value = s.rocksmith_dir || '';
+  document.getElementById('sRocksmithDir').placeholder = s.rocksmith_dir_detected
+    ? T('encontrada: {path}', { path: s.rocksmith_dir_detected })
+    : 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Rocksmith2014';
   toggleBanquetConfig();
   renderBanquetValidation(s.banquet || {});
   settingsSaved = settingsPayload();

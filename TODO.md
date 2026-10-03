@@ -603,6 +603,13 @@ Feedback and bug reports very welcome!
   novos ou alterados. `GET /tone-collection`, `GET /tone-collection/tone`,
   `POST /tone-collection/scan`. Nunca corrido contra uma pasta dlc real daqui.
 
+- [x] **Pasta do Rocksmith 2014 nas Definições** (Geral): o patch de CDLC
+  (`D3DX9_42.dll`) passa a ser procurado nessa pasta e, sem ela, em todas as
+  bibliotecas do Steam (`libraryfolders.vdf`, outros discos incluídos) — a
+  linha "Patch de CDLC" deixa de dizer "por confirmar" no computador que tem o
+  jogo. Sem jogo neste computador continua "desconhecido", e diz porquê. A
+  coleção de tons sugere a pasta `dlc` dessa pasta.
+
 - [x] **Processamento em lote** (`📦 Processamento em lote`): cria vários
   projetos GP de uma vez a partir de vários ficheiros Guitar Pro + gravações,
   em vez de repetir o assistente música a música — para quem tem um álbum

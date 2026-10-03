@@ -2796,7 +2796,8 @@ is plain file I/O on a background thread in the API process
 (`tone_collection.start_scan`, one at a time — 409 otherwise), polled through
 `GET /tone-collection` (`status`: scanning/done/error, done/total/current);
 the folder is remembered (`runtime_settings` `rocksmith_dlc_dir`) and Steam's
-default location is suggested when it exists (`suggested_folder`). The list is
+default location is suggested when it exists (`suggested_folder`: the game
+folder set in Definições first, then every Steam library). The list is
 paged (`limit` ≤ 500, the UI shows 200 and says to type more), rows are light
 (names via `gear_catalogue.gear_name`), and `GET /tone-collection/tone?id=`
 hands one out whole (id = sha1 of path + key). Needs `[psarc]` (the TOC is
@@ -3679,9 +3680,19 @@ happens when absent — the honest cost, not a scare) and `install`.
 checked from this process", which is a different and more useful answer than
 `False`:
 - the **Rocksmith CDLC loader patch** is the single most common reason a song
-  never appears in game, and we have no idea where the user installed
-  Rocksmith — calling it "missing" would be a confident guess about someone
-  else's machine;
+  never appears in game, and it is only knowable where the GAME is. It is
+  looked for (`D3DX9_42.dll`, any case) in the folder set in ⚙️ Definições →
+  Geral → "Pasta do Rocksmith 2014" (`runtime_settings` `rocksmith_dir`, the
+  user's word wins — "Mas eu posso colocar a diretoria onde está o
+  rocksmith"), else the parent of the tone collection's dlc folder when it
+  holds `Rocksmith2014.exe`, else every Steam library
+  (`tone_collection.rocksmith_game_folders`, which reads `libraryfolders.vdf`
+  so a game on another drive is found). With no game here — RockForge may run
+  on a work laptop without it — the answer stays `None`, saying so, never
+  "missing"; a set folder that does not exist says that. Guarded by
+  `test_the_cdlc_patch_is_looked_for_in_the_game_folder`,
+  `test_the_rocksmith_folder_set_in_settings_is_where_the_patch_is_looked_for`
+  and `test_steam_libraries_on_other_drives_are_searched`;
 - **PyTorch installed** tells us nothing about whether it is the CUDA build;
   only importing it would, and the API process must never import torch (the
   layering rule above). Installed-and-unverifiable is `None`; marked broken
