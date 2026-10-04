@@ -1082,6 +1082,11 @@ in-game note-highway glyph/behaviour matches Guitar Pro:
   trimmed).
 - **Pick direction** (up/down) and **left-hand fingering** (0-4) — mostly
   cosmetic; confirm they don't corrupt anything.
+- **Chord fingers + hand shapes** (2026-10-04) — the chord shows its finger
+  numbers and name, as official songs do; play a chord-heavy passage AND raise
+  the difficulty in Riff Repeater over it. Hand shapes were once removed over a
+  crash later traced to chord-template MIDI 0, so a crash on chords points here
+  first (CLAUDE.md, "Chords carry fingers, a name and a hand shape").
 - **Trill** — expands to an alternating hammer-on/pull-off run between the two
   frets. Confirm it reads as a trill, not a spurious note storm. (Ozzy rhythm
   track has 2.)

@@ -201,7 +201,11 @@ def test_anchors_generated_from_notes() -> None:
     assert level.anchors[0].width >= 4
 
 
-def test_chords_produce_templates_and_no_fingerprints() -> None:
+def test_chords_produce_templates_with_fingers_and_a_hand_shape() -> None:
+    """The game draws a chord's fingers from a hand shape (fingerprint) over it
+    and the fingers of its template — both were empty, so Rocksmith showed no
+    finger positions on our charts while its own songs and hand-made CDLC
+    carry them (two Daughtry CDLC: every chord inside a hand shape)."""
     arr = Arrangement(
         kind=ArrangementKind.LEAD,
         metadata=SongMetadata(title="Song", artist="A", song_length=5.0),
@@ -210,22 +214,26 @@ def test_chords_produce_templates_and_no_fingerprints() -> None:
             beats=(Beat(time=0.0, measure=1), Beat(time=0.5, measure=-1)), average_bpm=120.0
         ),
         notes=[
-            TabNote(string=0, fret=2, time=0.0, sustain=0.5),
-            TabNote(string=1, fret=2, time=0.0, sustain=0.5),
-            TabNote(string=2, fret=2, time=0.0, sustain=0.5),
+            TabNote(string=0, fret=3, time=0.0, sustain=0.5),
+            TabNote(string=1, fret=5, time=0.0, sustain=0.5),
+            TabNote(string=2, fret=5, time=0.0, sustain=0.5),
         ],
         sections=[Section(name="riff", start_time=0.0)],
     )
     model = from_arrangement(arr)
     assert len(model.chord_templates) == 1
-    assert model.chord_templates[0].frets[:3] == (2, 2, 2)
+    template = model.chord_templates[0]
+    assert template.frets[:3] == (3, 5, 5)
+    assert template.fingers == (1, 3, 4, -1, -1, -1)
+    assert template.name == "G5"
 
     level = model.arrangements[-1]
-    # No handshapes: both working references (a real CDLC SNG and a DLC Builder
-    # build of our XML) ship zero fingerprints; our per-chord ones crashed the
-    # game at a dense octave riff. Chords render via template + CHORD/STRUM.
-    assert level.fingerprints1 == []
-    assert level.notes[0].fingerprint_id == (-1, -1)
+    assert len(level.fingerprints1) == 1 and level.fingerprints2 == []
+    fp = level.fingerprints1[0]
+    assert (fp.chord_id, fp.start_time, fp.first_note_time) == (0, 0.0, 0.0)
+    assert fp.end_time == pytest.approx(0.501)
+    assert fp.last_note_time == pytest.approx(0.5)  # convertHandshape: last + sustain
+    assert level.notes[0].fingerprint_id == (0, -1)
 
     # The note entry should be a chord
     chord_note = level.notes[0]
@@ -708,12 +716,10 @@ def test_dd_hero_triples_and_density_graduated_ceilings() -> None:
     )
 
 
-def test_dd_levels_have_no_handshapes_and_per_level_slide_extensions() -> None:
-    # Fingerprints (handshapes) are not emitted at all — both working references
-    # (a real CDLC SNG and a DLC Builder build of our XML) ship zero on every
-    # level, and our per-chord handshapes crashed the game at a dense octave
-    # riff. Slide anchor-extensions ARE per level: an extension pointing at a
-    # note the level dropped crashes the game on the first pass.
+def test_dd_levels_have_their_own_hand_shapes_and_slide_extensions() -> None:
+    # Hand shapes and slide anchor-extensions are both built per level from
+    # that level's own notes: an extension (or a hand shape) over a note the
+    # level dropped points the game at nothing.
     beats = [Beat(time=i * 0.5, measure=i // 4 + 1 if i % 4 == 0 else -1) for i in range(64)]
     notes = []
     # A dense double-stop riff (chords on every 8th) + a sliding single note.
@@ -734,8 +740,21 @@ def test_dd_levels_have_no_handshapes_and_per_level_slide_extensions() -> None:
     top = model.arrangements[-1]
     assert len(top.anchor_extensions) == 1  # the slide
     for lvl in model.arrangements:
-        assert lvl.fingerprints1 == [] and lvl.fingerprints2 == []
-        assert all(n.fingerprint_id == (-1, -1) for n in lvl.notes)
+        assert lvl.fingerprints2 == []
+        # Every chord sits inside its own level's hand shape of that chord; no
+        # single note does, and the shapes run in order without overlapping.
+        fps = lvl.fingerprints1
+        for n in lvl.notes:
+            if n.chord_id >= 0:
+                fp = fps[n.fingerprint_id[0]]
+                assert fp.chord_id == n.chord_id
+                assert fp.start_time <= n.time < fp.end_time
+            else:
+                assert n.fingerprint_id == (-1, -1)
+        assert all(a.end_time <= b.start_time for a, b in zip(fps, fps[1:], strict=False))
+        assert all(
+            any(fp.start_time <= n.time < fp.end_time for n in lvl.notes) for fp in fps
+        )
         # Every extension matches a sliding note present in THIS level.
         slide_ends = {
             round(n.time + n.sustain, 4)
@@ -1799,6 +1818,29 @@ def test_the_phrases_follow_dlc_builders_generator() -> None:
     assert model.phrases[model.phrase_iterations[2].phrase_id].max_difficulty == 0
     assert len({pi.phrase_id for pi in model.phrase_iterations
                 if model.phrases[pi.phrase_id].name == "NOGUITAR"}) == 1
+
+
+def test_a_phrase_is_not_cut_through_a_hand_shape() -> None:
+    """DLC Builder's generator moves a phrase out of a hand shape as well as a
+    sustain (``findGoodPhraseTime``); with hand shapes in our XML its build
+    would, so the native SNG does too. The phrase due at 10 s falls inside a
+    run of one chord (8.0-10.5 s) and moves to the run's end."""
+    notes = [TabNote(string=0, fret=3, time=2.0 + i, sustain=0.2) for i in range(6)]
+    for i in range(6):
+        t = 8.0 + i * 0.5
+        notes += [TabNote(string=0, fret=3, time=t, sustain=0.0),
+                  TabNote(string=1, fret=5, time=t, sustain=0.0)]
+    notes += [TabNote(string=2, fret=2, time=12.0 + i, sustain=0.2) for i in range(10)]
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="S", artist="A", song_length=30.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=_bars(30), average_bpm=60.0),
+        notes=notes,
+    )
+    model = from_arrangement(arr)
+    starts = [round(pi.start_time, 3) for pi in model.phrase_iterations]
+    assert starts[:3] == [0.0, 2.0, 10.501]
 
 
 def test_a_one_note_phrase_has_levels_and_its_note_on_each() -> None:

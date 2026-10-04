@@ -13,6 +13,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from rockforge.domain.arrangement import Arrangement, ArrangementKind, Section, number_sections
+from rockforge.domain.chords import chord_display, hand_shape_spans
 from rockforge.domain.music import TabNote, Technique, high_density_flags, is_plain_rise
 
 CHORD_EPSILON_S = 0.03  # notes starting within 30 ms form a chord (matches fret mapper)
@@ -305,24 +306,27 @@ def render_arrangement(arr: Arrangement, album_art_urn: str | None = None) -> ET
     ET.SubElement(song, "phraseProperties", count="0")
 
     # Chord handling: simultaneous notes become <chord> entries referencing a
-    # chordTemplate (documented in Song2014.cs / Rocksmith2014.XML). Finger
-    # assignments are unknown from audio — emitted as -1, to be refined in EOF.
+    # chordTemplate (documented in Song2014.cs / Rocksmith2014.XML), with the
+    # fingers and the name the game shows (chord_display — the same as the SNG).
     groups = _group_chords(arr.notes)
     single_notes = [g[0] for g in groups if len(g) == 1]
     chord_groups = [g for g in groups if len(g) > 1]
 
     template_ids: dict[tuple[int, ...], int] = {}
+    first_group: dict[tuple[int, ...], list[TabNote]] = {}
     for g in chord_groups:
         key = _chord_template_key(g)
         if key not in template_ids:
             template_ids[key] = len(template_ids)
+            first_group[key] = g
 
     templates_el = ET.SubElement(song, "chordTemplates", count=str(len(template_ids)))
     for key, _tid in sorted(template_ids.items(), key=lambda kv: kv[1]):
-        attrs = {"chordName": "", "displayName": ""}
+        fingers, name = chord_display(key, first_group[key], arr.tuning.midi)
+        attrs = {"chordName": name, "displayName": name}
         for i in range(6):
             attrs[f"fret{i}"] = str(key[i])
-            attrs[f"finger{i}"] = "-1"
+            attrs[f"finger{i}"] = str(fingers[i])
         ET.SubElement(templates_el, "chordTemplate", attrs)
 
     ET.SubElement(song, "fretHandMuteTemplates", count="0")
@@ -410,7 +414,20 @@ def render_arrangement(arr: Arrangement, album_art_urn: str | None = None) -> ET
     anchors = ET.SubElement(level, "anchors", count=str(len(anchor_list)))
     for time, fret, width in anchor_list:
         ET.SubElement(anchors, "anchor", time=_fmt(time), fret=str(fret), width=_fmt(float(width)))
-    ET.SubElement(level, "handShapes", count="0")
+    # One hand shape per run of identical chords — what the game draws the
+    # chord's fingers from (hand_shape_spans, the same as the native SNG).
+    shape_groups = [
+        (g[0].time, max(n.sustain for n in g),
+         template_ids[_chord_template_key(g)] if len(g) > 1 else -1)
+        for g in groups
+    ]
+    spans = hand_shape_spans(shape_groups)
+    shapes_el = ET.SubElement(level, "handShapes", count=str(len(spans)))
+    for chord_id, first, _last, end in spans:
+        ET.SubElement(
+            shapes_el, "handShape", chordId=str(chord_id),
+            startTime=_fmt(shape_groups[first][0]), endTime=_fmt(end),
+        )
     return song
 
 

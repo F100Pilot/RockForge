@@ -2939,15 +2939,56 @@ its 5/7 octave template is `[-1, 50, -1, 62, -1, -1]` where ours was
 `[0, 50, 0, 62, 0, 0]` — the only difference on that chord. Guarded by
 `test_chord_template_notes_are_real_midi`.
 
-**Fingerprints (handshapes) are deliberately NOT emitted** (empty on every
-level). Both working references ship zero — a real CDLC SNG (decoded: 0
-fingerprints across all 23 levels) and a DLC Builder build of our own XML (which
-carries `handShapes count="0"`) — while our one-fingerprint-per-chord emission
-(dozens of back-to-back handshapes, including gapped octave shapes) crashed the
-game at the entry of a dense 5-7 octave riff. Chords render via their chord
-template + CHORD/STRUM masks; notes carry `fingerprint_id = (-1, -1)`. Guarded by
-`test_chords_produce_templates_and_no_fingerprints` /
-`test_dd_levels_have_no_handshapes_and_per_level_slide_extensions`.
+**Chords carry fingers, a name and a hand shape — what makes the game draw the
+finger positions** (2026-10-04: "nas músicas originais do rocksmith, mostra a
+posição dos dedos e acho que nas nossas não mostra"). Every chord template went
+out with fingers -1 and an empty name, and no hand shapes (fingerprints) at
+all, so the game had nothing to draw. Two community CDLC the user sent
+(Daughtry "Crazy"/"It's Not Over", CSC builds) decoded: every chord template
+fingered and named, and EVERY chord inside a hand shape (5293 of them over
+both songs' levels; single notes never start one). Now:
+- **Fingers** (`domain/chords.py` `chord_display` → `group_fingering`): the
+  Guitar Pro file's own left-hand fingering when it fingers every fretted note,
+  else `chord_fingering` — a part of an open chord (E, Am, A, C, G; two
+  fretted notes at least) as in that chord, a root-less power chord 2-3, else
+  finger 1 on the lowest fret, a barre only where one is needed (more than
+  four fretted notes, or the top strings all on that fret), the rest by fret
+  then string, never a fifth finger (left unfingered instead). 79 of the 100
+  fully fingered shapes in those two CDLC come out identical; the rest are
+  single notes of an open chord and wide stretches where hand-made charts
+  disagree among themselves. **Name** = `name_chord` of the sounding pitches
+  ("" when it has none). Both in the SNG template and the XML's
+  `chordName`/`displayName`/`finger0..5`.
+- **Hand shapes** (`hand_shape_spans`, shared by `sng._build_fingerprints` and
+  the XML writer, so the two cannot disagree): one per run of consecutive
+  identical chords (any other note, or more than `HAND_SHAPE_BREAK_S` = 1 s of
+  rest, starts a new one), from the first chord to 1 ms past the last one's
+  sustain (the references' shape), never past the next note. In the SNG they
+  are built PER LEVEL from that level's own notes (like the anchors), each
+  chord's `fingerprint_id` = its shape's index (`findFingerPrintId`), and
+  `FirstNoteTime`/`LastNoteTime` follow DLC Builder's `convertHandshape`
+  (last note + sustain, -1 when that reaches the end). The XML carries them as
+  `<handShape chordId startTime endTime>` for DLC Builder (its DD keeps them
+  where their notes are). Arpeggio shapes (`Fingerprints2`) stay empty — the
+  domain has no arpeggio marking.
+- **Phrases avoid them**: DLC Builder's `findGoodPhraseTime` moves a phrase out
+  of a hand shape as well as a sustain, so our port (`_good_phrase_time`, over
+  `_chart_hand_shapes`) does too — the native phrases stay exactly those of its
+  build of our XML.
+
+**History, so the risk is clear:** hand shapes were removed once, after a
+one-per-chord emission "crashed the game at the entry of a dense 5-7 octave
+riff". That crash was later traced to the chord templates' unused strings
+carrying MIDI 0 instead of -1 (the paragraph above — the same riff), fixed
+since; no working reference ever lacked hand shapes once fingered charts were
+compared (the "zero fingerprints" references were DLC Builder builds of OUR
+XML, which had none to convert). **Not played in game from here** — if a chart
+crashes on a chord passage again, this is the first suspect. Guarded by
+`test_chords_produce_templates_with_fingers_and_a_hand_shape`,
+`test_dd_levels_have_their_own_hand_shapes_and_slide_extensions`,
+`test_a_phrase_is_not_cut_through_a_hand_shape` (both mutation-checked),
+`test_chords_carry_fingers_a_name_and_a_hand_shape` (XML) and the fingering /
+span tests in `test_chords.py`.
 
 **Repeated chords are marked HIGH DENSITY (condensed rendering).** A fast
 repeated identical chord — an 8th-note power-chord chug, say — must carry
@@ -3089,9 +3130,9 @@ Song Creator Toolkit re-pack the user needs for the App ID leaves untouched
 phrases itself when it builds (`PackageBuilder.setupInstrumental`): COUNT from
 the first beat to the first note (every empty lead-in section is part of it);
 a phrase at the first note and one every 8 measures, moved to the nearest
-time not inside a SINGLE note's sustain (`findGoodPhraseTime`: chords are kept
-whole by hand shapes, and our XML has none — so chords are not protected here
-either) and never within 2 s of the previous one; a "noguitar" section over any
+time not inside a SINGLE note's sustain or a hand shape (`findGoodPhraseTime`;
+chords are kept whole by their hand shapes — see the finger-positions note
+above) and never within 2 s of the previous one; a "noguitar" section over any
 gap of 2.5 s or more, the next phrase where the playing resumes; END at the XML's
 own END (the last beat), 100 ms short of the song's end at most. Every gap is
 an iteration of ONE phrase named NOGUITAR (`_link_phrases`), sections are only
@@ -3438,9 +3479,9 @@ defects):
   levels (fret-hand windows are valid at any density), but **slide
   anchor-extensions are rebuilt per level from that level's own notes**
   (`_build_level`): an extension pointing at a note the level dropped crashes
-  the game on the first low-difficulty pass through the section. (Handshapes are
-  not emitted at all — see the fingerprints note above.) Guarded by
-  `test_dd_levels_have_no_handshapes_and_per_level_slide_extensions`. The manifest reports
+  the game on the first low-difficulty pass through the section. Hand shapes are
+  rebuilt per level the same way (see the finger-positions note above). Guarded by
+  `test_dd_levels_have_their_own_hand_shapes_and_slide_extensions`. The manifest reports
   `MaxPhraseDifficulty` + `NotesEasy/Medium/Hard` from the levels.
   **Phrase linking:** musically-identical iterations are collapsed onto ONE
   shared phrase (`_phrase_signature` fingerprints each section's notes relative

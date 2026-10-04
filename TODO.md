@@ -4,6 +4,11 @@ Estado do projeto + lista de funcionalidades (concluídas `[x]` e propostas
 `[ ]`). Para *como* cada coisa funciona, ver `CLAUDE.md`. Para *como testar*,
 ver `TESTING.md`.
 
+- [x] **Posição dos dedos nos acordes.** Cada acorde leva os dedos (os do
+  ficheiro GP quando os tem, senão a regra das CDLC feitas à mão — 79 de 100
+  formas iguais às duas dos Daughtry), o nome e uma "hand shape" por sequência
+  do mesmo acorde, no SNG nativo e no XML do DLC Builder. Por confirmar no
+  jogo: `docs/TESTES-NO-JOGO.md` #12.
 - [x] **Importar a tab do Songsterr (sem ficheiro GP).** No passo 1 cola-se o
   link do Songsterr: as pistas são descarregadas e escritas num GP5, e o passo 3
   já mostra os vídeos com os tempos por compasso da mesma música, e o áudio

@@ -355,3 +355,30 @@ def test_album_art_urn_is_written_when_the_caller_knows_the_song_key() -> None:
     assert render_arrangement(arr).findtext("albumArt") == ""
     urn = "urn:image:dds:album_artistsong"
     assert render_arrangement(arr, urn).findtext("albumArt") == urn
+
+
+def test_chords_carry_fingers_a_name_and_a_hand_shape() -> None:
+    """DLC Builder turns <handShape> into the SNG fingerprints the game draws
+    a chord's fingers from; the template carries the fingers and the name."""
+    beats = tuple(Beat(time=0.5 * i, measure=(i // 4 + 1) if i % 4 == 0 else -1) for i in range(20))
+    power = [(0, 3), (1, 5), (2, 5)]
+    notes = [
+        TabNote(string=s, fret=f, time=t, sustain=0.0)
+        for t in (1.0, 1.5, 2.0) for s, f in power
+    ] + [TabNote(string=3, fret=7, time=3.0, sustain=0.2)]
+    arr = Arrangement(
+        kind=ArrangementKind.RHYTHM,
+        metadata=SongMetadata(title="T", artist="A", song_length=10.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+        notes=notes,
+    )
+    song = render_arrangement(arr)
+    template = song.find("chordTemplates/chordTemplate")
+    assert template is not None
+    assert template.get("chordName") == "G5" == template.get("displayName")
+    assert [template.get(f"finger{i}") for i in range(6)] == ["1", "3", "4", "-1", "-1", "-1"]
+    shapes = song.findall("levels/level/handShapes/handShape")
+    assert len(shapes) == 1  # three identical chords, one hand shape
+    assert shapes[0].attrib == {"chordId": "0", "startTime": "1.000", "endTime": "2.001"}
+    assert song.find("levels/level/handShapes").get("count") == "1"

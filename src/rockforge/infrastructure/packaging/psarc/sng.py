@@ -43,6 +43,7 @@ from pathlib import Path
 
 from rockforge.application.ports import VocalEvent
 from rockforge.domain.arrangement import Arrangement, Section, number_sections
+from rockforge.domain.chords import chord_display, hand_shape_spans
 from rockforge.domain.music import TabNote, Technique, high_density_flags, is_plain_rise
 from rockforge.infrastructure.rsxml.vocals import VOCAL_NOTE
 from rockforge.infrastructure.rsxml.writer import _safe_tone_time
@@ -809,6 +810,27 @@ def _level_positions(
     return out
 
 
+def _build_fingerprints(notes: list[SngNote]) -> list[SngFingerprint]:
+    """The level's hand shapes, stamping each note inside one with its index
+    (``notes`` is mutated in place: DLC Builder's ``findFingerPrintId`` gives
+    every note in ``[start, end)`` that shape's index)."""
+    spans = hand_shape_spans([(n.time, n.sustain, n.chord_id) for n in notes])
+    fingerprints: list[SngFingerprint] = []
+    for k, (chord_id, first, last, end) in enumerate(spans):
+        start = notes[first].time
+        last_end = notes[last].time + notes[last].sustain
+        fingerprints.append(SngFingerprint(
+            chord_id=chord_id,
+            start_time=start,
+            end_time=end,
+            first_note_time=start,
+            last_note_time=last_end if last_end < end else -1.0,
+        ))
+        for i in range(first, last + 1):
+            notes[i] = replace(notes[i], fingerprint_id=(k, notes[i].fingerprint_id[1]))
+    return fingerprints
+
+
 def _build_level(
     difficulty: int,
     notes: list[SngNote],
@@ -823,13 +845,11 @@ def _build_level(
     Anchors AND slide anchor-extensions are rebuilt from THIS level's own notes
     (a real DDC sizes them to each level; sharing the full-chart set on a thinned
     low level ships anchors/extensions framing notes that don't exist there,
-    crashing the game on phrase entry). Fingerprints (handshapes)
-    are NOT emitted at all: both working references — a real CDLC SNG and a DLC
-    Builder build of our own XML (which carries ``handShapes count="0"``) — ship
-    zero fingerprints on every level, while our one-fingerprint-per-chord run
-    (dozens of back-to-back handshapes, including gapped octave shapes) crashed
-    the game at the first octave riff. Chords still render via their chord
-    template + CHORD/STRUM masks.
+    crashing the game on phrase entry). So are the hand shapes (fingerprints):
+    one per run of identical chords among THIS level's notes
+    (``hand_shape_spans``), each chord pointing at its own — the shape the game
+    draws the chord's fingers from. Their first/last note times follow DLC
+    Builder's ``convertHandshape`` (XmlToSng.fs).
     """
     linked = list(notes)
     # `linked` is time-sorted (guaranteed by the sng_notes.sort() upstream in
@@ -894,11 +914,13 @@ def _build_level(
         if (n.anchor_fret, n.anchor_width) != (a.fret, a.width):
             linked[gi] = replace(n, anchor_fret=a.fret, anchor_width=a.width)
 
+    fingerprints = _build_fingerprints(linked)
+
     return SngArrangementLevel(
         difficulty=difficulty,
         anchors=anchors,
         anchor_extensions=anchor_extensions,
-        fingerprints1=[],
+        fingerprints1=fingerprints,
         fingerprints2=[],
         notes=linked,
         phrase_count=phrase_count,
@@ -953,18 +975,35 @@ def _assign_beat_phrase_iterations(
     ]
 
 
-def _good_phrase_time(notes: list[TabNote], t: float) -> tuple[float, float]:
-    """The nearest times before and after ``t`` that are not inside a single
-    note's sustain — PhraseGenerator.fs ``findGoodPhraseTime``. It looks at
-    ``level.Notes`` only (chords are kept whole by their hand shapes, and the XML
-    RockForge hands DLC Builder has none), so chords are not protected here
-    either: the point is to land exactly where its build does."""
+def _chart_hand_shapes(groups: list[list[TabNote]]) -> list[tuple[float, float]]:
+    """``(start, end)`` of the full chart's hand shapes — the ones the XML hands
+    DLC Builder (same ``hand_shape_spans``), which its phrase generator avoids."""
+    keys: dict[tuple[int, ...], int] = {}
+    rows = []
+    for g in groups:
+        cid = keys.setdefault(_chord_template_key(g), len(keys)) if len(g) > 1 else -1
+        rows.append((g[0].time, max(n.sustain for n in g), cid))
+    return [(rows[a][0], end) for _, a, _, end in hand_shape_spans(rows)]
+
+
+def _good_phrase_time(
+    notes: list[TabNote], t: float, shapes: Sequence[tuple[float, float]] = ()
+) -> tuple[float, float]:
+    """The nearest times before and after ``t`` that are inside neither a
+    single note's sustain nor a hand shape — PhraseGenerator.fs
+    ``findGoodPhraseTime``, over ``level.Notes`` (the single notes: a chord is
+    kept whole by its hand shape) and ``level.HandShapes``. The point is to
+    land exactly where its build of our XML does."""
     def find(earlier: bool, time: float) -> float:
         for _ in range(20):  # the reference's own guard against a loop
             inside = next((n for n in notes if n.time < time < n.time + n.sustain), None)
-            if inside is None:
+            if inside is not None:
+                time = inside.time if earlier else inside.time + inside.sustain
+                continue
+            shape = next((hs for hs in shapes if hs[0] < time < hs[1]), None)
+            if shape is None:
                 return time
-            time = inside.time if earlier else inside.time + inside.sustain
+            time = shape[0] if earlier else shape[1]
         return time
     return find(True, t), find(False, t)
 
@@ -992,7 +1031,9 @@ def _prepare_sections(arrangement: Arrangement, song_length: float) -> list[Sect
         return [Section(name="COUNT", number=1, start_time=start),
                 Section(name="END", number=1, start_time=end)]
 
-    singles = [g[0] for g in _group_chords(notes) if len(g) == 1]
+    chart_groups = _group_chords(notes)
+    singles = [g[0] for g in chart_groups if len(g) == 1]
+    shapes = _chart_hand_shapes(chart_groups)
     content_start = notes[0].time
     content_end = max(n.time + max(n.sustain, 0.0) for n in notes)
     # END where the XML we hand DLC Builder puts it (the last beat, or just past
@@ -1031,7 +1072,7 @@ def _prepare_sections(arrangement: Arrangement, song_length: float) -> list[Sect
             counter = 1
             prev = secs[-1].start_time
             if next_t is None:
-                earlier, later = _good_phrase_time(singles, beat.time)
+                earlier, later = _good_phrase_time(singles, beat.time, shapes)
                 closest = earlier if beat.time - earlier < later - beat.time else later
                 if closest - prev > _MIN_PHRASE_SEPARATION_S:
                     ok, t = True, closest
@@ -1166,12 +1207,15 @@ def _build_chord_data(
             notes_midi = tuple(
                 open_midi[i] + f if f >= 0 else -1 for i, f in enumerate(key)
             )
+            # The fingers and the name Rocksmith shows on the chord (they were
+            # -1 and "": the game had nothing to show) — chords.py.
+            fingers, name = chord_display(key, g, open_midi)
             chord_templates.append(SngChordTemplate(
                 mask=0,
                 frets=frets_bytes,
-                fingers=tuple([-1] * 6),
+                fingers=fingers,
                 notes=notes_midi,
-                name="",
+                name=name,
             ))
 
     # Identical entries are deduplicated by content, as retail does (a decoded
@@ -1255,10 +1299,8 @@ def _build_sng_notes(
     own notes and re-points every note at the anchor of ITS level.
 
     (Anchor extensions — the slide re-anchors — are built per difficulty level
-    inside ``_build_level``, from each level's own notes. Fingerprints/hand
-    shapes are deliberately NOT emitted — see ``_build_level``'s docstring:
-    both working references ship zero, and our per-chord handshapes crashed
-    the game at a dense octave riff.)
+    inside ``_build_level``, from each level's own notes, and so are the hand
+    shapes and each note's ``fingerprint_id``.)
     """
     sng_notes: list[SngNote] = []
     # Precomputed once so the per-note lookups below are O(log n), not O(n):

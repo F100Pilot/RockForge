@@ -43,6 +43,7 @@ correções (pontos 12–15) o jogo exigia não está isolado — ficam todas.
 | 9 | **Som da gravação sem compressão** (sem `loudnorm`, só um ganho fixo) | (este) | Reconstruir uma música que soava com ruído / pouco limpa | Soa como a gravação original: sem "bombear", sem ataques esmagados, sem estalidos nas partes fortes | Avisar; experimentar Volume alvo -16 na ⚙️ |
 | 10 | **Trocas de tom a meio da música** no PSARC nativo | (este) | Marcar na partitura uma troca para um 2.º tom e reconstruir | O tom muda nesse ponto (antes ficava sempre o tom base) | Avisar, com o tempo da troca |
 | 11 | **Pista sem tom próprio** | (este) | Uma música sem nenhum tom criado | Lead/Combo com o tom por defeito do DLC Builder (Plexi), Rhythm com o Orange AD50 — não um som estranho/em falta | Avisar |
+| 12 | **Posição dos dedos nos acordes** (dedos, nome do acorde e "hand shapes") | (este) | Reconstruir uma música com acordes e tocá-la; subir a dificuldade no Riff Repeater numa parte com acordes | Nos acordes aparecem os números dos dedos e o nome (como nas músicas oficiais). Sem crash | Avisar com o tempo/compasso do acorde: as hand shapes foram retiradas uma vez por um crash que depois se viu ser outra coisa — são o primeiro suspeito |
 
 ### Ficheiro de teste dos pre-bends
 

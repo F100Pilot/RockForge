@@ -10,6 +10,8 @@ name (the honesty principle — never label what we cannot identify).
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 NOTE_NAMES = ("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
 
 # Interval sets (semitones from the root, pitch-class) → quality suffix, in
@@ -73,3 +75,160 @@ def name_chord(pitches: list[int]) -> str | None:
     if root != bass_pc:
         name += "/" + NOTE_NAMES[bass_pc]
     return name
+
+
+# The open chords guitarists learn first, (frets, fingers) low string first. A
+# shape in the first frets that is part of one of them is fingered as in it —
+# how the hand-made charts finger an E or A power chord (2-3, not 1-2) and a
+# C fragment (3-2): the hand is already in that chord. Two fretted notes at
+# least — a single one belongs to too many chords to say which.
+_OPEN_CHORDS: tuple[tuple[tuple[int, ...], tuple[int, ...]], ...] = (
+    ((0, 2, 2, 1, 0, 0), (-1, 2, 3, 1, -1, -1)),   # E
+    ((-1, 0, 2, 2, 1, 0), (-1, -1, 2, 3, 1, -1)),  # Am
+    ((-1, 0, 2, 2, 2, 0), (-1, -1, 1, 2, 3, -1)),  # A
+    ((-1, 3, 2, 0, 1, 0), (-1, 3, 2, -1, 1, -1)),  # C
+    ((3, 2, 0, 0, 0, 3), (2, 1, -1, -1, -1, 3)),   # G
+)
+
+
+def _open_chord_fingering(frets: Sequence[int]) -> tuple[int, ...] | None:
+    fretted = [(s, f) for s, f in enumerate(frets) if f > 0]
+    if len(fretted) < 2 or len(frets) != 6 or max(f for _, f in fretted) > 3:
+        return None
+    for shape, fingers in _OPEN_CHORDS:
+        if all(shape[s] == f for s, f in fretted):
+            return tuple(fingers[s] if frets[s] > 0 else -1 for s in range(6))
+    return None
+
+
+def chord_fingering(frets: Sequence[int]) -> tuple[int, ...]:
+    """The fretting fingers (1 index .. 4 pinky, -1 none) for a chord shape.
+
+    ``frets`` is one fret per string, lowest string first (-1 not played, 0
+    open). Rocksmith shows these numbers on the chord, and its own songs and
+    hand-made CDLC carry them; RockForge wrote -1 everywhere. The rule is the
+    one those charts follow (79 of the 100 fully fingered shapes in two
+    community CDLC the user sent come out identical; the rest are single notes
+    of an open chord and wide stretches, where hand-made charts disagree among
+    themselves): a part of an open chord (``_OPEN_CHORDS``) as in that chord,
+    a root-less power chord 2-3, otherwise finger 1 on the lowest fret, a barre only
+    where one is needed — more than four fretted notes, or the top strings all
+    on that fret — and the remaining notes by fret, then string, each finger
+    at least one above the last and at least as far up as its fret. A shape
+    that would need a fifth finger is left unfingered (all -1) rather than
+    guessed.
+    """
+    open_chord = _open_chord_fingering(frets)
+    if open_chord is not None:
+        return open_chord
+    fretted = [(s, f) for s, f in enumerate(frets) if f > 0]
+    out = [-1] * len(frets)
+    if not fretted:
+        return tuple(out)
+    if (
+        len(fretted) == 2
+        and fretted[0][1] == fretted[1][1]
+        and fretted[1][0] == fretted[0][0] + 1
+        and fretted[0][0] >= 1
+    ):
+        # A power chord without its root (fifth + octave on the next string
+        # up): fingered 2-3, finger 1 kept for the root below — as the charts do.
+        out[fretted[0][0]], out[fretted[1][0]] = 2, 3
+        return tuple(out)
+    low = min(f for _, f in fretted)
+    at_low = [s for s, f in fretted if f == low]
+    run = sorted(at_low)
+    contiguous = run == list(range(run[0], run[-1] + 1))
+    highest = max(s for s, _ in fretted)
+    barre = 2 <= len(at_low) < len(fretted) and (
+        len(fretted) > 4 or (contiguous and run[-1] == highest)
+    )
+    if barre:
+        for s in at_low:
+            out[s] = 1
+        rest = sorted((f, s) for s, f in fretted if f != low)
+    else:
+        out[at_low[0]] = 1
+        rest = sorted((f, s) for s, f in fretted if s != at_low[0])
+    prev = 1
+    for f, s in rest:
+        finger = max(prev + 1, 1 + f - low)
+        if finger > 4:
+            return tuple([-1] * len(frets))
+        out[s] = finger
+        prev = finger
+    return tuple(out)
+
+
+def group_fingering(
+    frets: Sequence[int], left_hands: Sequence[int]
+) -> tuple[int, ...]:
+    """The chord's fingers: the Guitar Pro file's own (``left_hands``, one per
+    string, -1 where unknown) when it fingers every fretted note, else
+    :func:`chord_fingering`."""
+    fretted = [s for s, f in enumerate(frets) if f > 0]
+    if fretted and all(0 <= left_hands[s] <= 4 for s in fretted):
+        return tuple(left_hands[s] if s in fretted else -1 for s in range(len(frets)))
+    return chord_fingering(frets)
+
+
+def chord_display(
+    frets: Sequence[int], notes: Sequence[object], open_midi: Sequence[int]
+) -> tuple[tuple[int, ...], str]:
+    """``(fingers, name)`` of a chord template — what the game shows on the
+    chord. ``notes`` are the chord's notes (anything with ``string`` and
+    ``left_hand``), read for the Guitar Pro file's own fingering; the name is
+    :func:`name_chord` of the sounding pitches, "" when it has none."""
+    left = [-1] * len(frets)
+    for n in notes:
+        string, hand = getattr(n, "string", -1), getattr(n, "left_hand", -1)
+        if 0 <= string < len(left):
+            left[string] = hand
+    pitches = [open_midi[s] + f for s, f in enumerate(frets) if f >= 0]
+    return group_fingering(frets, left), name_chord(pitches) or ""
+
+
+# Two identical chords further apart than this (from the end of one to the
+# start of the next) get a hand shape each: the hand has had time to leave.
+HAND_SHAPE_BREAK_S = 1.0
+# A hand shape ends this long after its last chord's sustain (DLC Builder's
+# millisecond resolution; the community references end 1 ms after it).
+HAND_SHAPE_TAIL_S = 0.001
+
+
+def hand_shape_spans(
+    groups: Sequence[tuple[float, float, int]],
+) -> list[tuple[int, int, int, float]]:
+    """The hand shapes over a time-sorted run of note groups.
+
+    ``groups`` is ``(time, sustain, chord_id)`` per note or chord, ``chord_id``
+    -1 for a single note. Returns ``(chord_id, first, last, end_time)``: one
+    hand shape per run of consecutive identical chords (indices into
+    ``groups``), ending just after the last one's sustain and never past the
+    next note. That is how the hand-made CDLC the user sent carry them — every
+    chord inside one, no single note starting one — and a hand shape is what
+    makes the game draw the chord's fingers on the fretboard: the chord
+    template alone only names the shape.
+    """
+    spans: list[tuple[int, int, int, float]] = []
+    run: list[int] | None = None  # [chord_id, first, last]
+
+    def close(r: list[int]) -> None:
+        t, sus, _ = groups[r[2]]
+        end = t + sus + HAND_SHAPE_TAIL_S
+        if r[2] + 1 < len(groups):
+            end = min(end, groups[r[2] + 1][0])
+        spans.append((r[0], r[1], r[2], max(end, t + HAND_SHAPE_TAIL_S)))
+
+    for i, (t, _sus, cid) in enumerate(groups):
+        if run is not None and cid >= 0 and cid == run[0]:
+            pt, psus, _ = groups[run[2]]
+            if t - (pt + psus) <= HAND_SHAPE_BREAK_S:
+                run[2] = i
+                continue
+        if run is not None:
+            close(run)
+        run = [cid, i, i] if cid >= 0 else None
+    if run is not None:
+        close(run)
+    return spans
