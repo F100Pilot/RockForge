@@ -3316,25 +3316,34 @@ def test_presets_still_at_their_first_quiet_volume_are_raised_on_startup(
     import rockforge.interfaces.api.app as app_module
     importlib.reload(app_module)
     from rockforge import tone_library
+    from rockforge.infrastructure.packaging.gear import tone_preset_history as past
     from rockforge.infrastructure.packaging.gear.tone_presets import (
         PRESET_CHAINS_BEFORE,
         RHYTHM_ORANGE,
+        _chain,
+        _preset,
+        _without_gate,
         preset_volume,
     )
 
     with TestClient(app_module.app):
         pass
-    tone_library.save_tone({"key": "RFRhythm_Plexi", "name": "P", "volume": -15.0})
+    tone_library.save_tone({"key": "RFRhythm_Plexi", "name": "P", "volume": -15.0,
+                            **_without_gate(past.V1["RFRhythm_Plexi"])})
     with app_module._session_factory() as session:
         job = app_module.Job(source="x", source_type="gp", title="T", artist="A", params={
             "tones": [
-                {"key": "RFLead_Crunch", "volume": -14.0},
-                {"key": "RFRhythm_Clean", "volume": -17.5},  # the user's own
+                # as each first shipped: quiet, no gate
+                {"key": "RFLead_Crunch", "volume": -14.0,
+                 **_without_gate(past.V1["RFLead_Crunch"])},
+                {"key": "RFRhythm_Clean", "volume": -17.5, "amp": {"key": "Amp_TW22"},
+                 "cabinet": {"key": "Cab_TW112C_57_Cone"}},  # the user's own
                 {"key": "mine", "volume": -14.0},
-                {"key": "RFRhythm_HighGain", "volume": -18.0},
-                {"key": "RFRhythm_Orange", "volume": -20.0,
-                 **PRESET_CHAINS_BEFORE["RFRhythm_Orange"][1]},
-                {"key": "RFLead_Overdrive", "volume": -19.5},  # raised again
+                {"key": "RFRhythm_HighGain", "volume": -18.0, **past.V1["RFRhythm_HighGain"]},
+                {"key": "RFRhythm_Orange", "volume": -20.0, **past.V1["RFRhythm_Orange"],
+                 **PRESET_CHAINS_BEFORE["RFRhythm_Orange"][3]},
+                {"key": "RFLead_Overdrive", "volume": -19.5,  # raised again
+                 **past.V1["RFLead_Overdrive"]},
             ],
         })
         session.add(job)
@@ -3348,16 +3357,15 @@ def test_presets_still_at_their_first_quiet_volume_are_raised_on_startup(
         preset_volume("RFLead_Crunch"), -17.5, -14.0, -18.0,
         preset_volume("RFRhythm_Orange"), preset_volume("RFLead_Overdrive"),
     ]
-    # the noise gate the driven presets now open with reaches the copies too
-    gate = "Pedal_NoiseGate"
-    assert [(t.get("pre") or [{}])[0].get("key") for t in tones] == [
-        gate, None, None, gate, gate, None,
-    ]
-    # and a copy still on an earlier chain of its preset gets the current one
+    # every copy still on an earlier chain of its preset gets the current one —
+    # gate, pre-amp EQ, racks — and the user's own and other tones are untouched
+    for i in (0, 3, 4, 5):
+        assert _chain(tones[i]) == _chain(_preset(tones[i]["key"])), tones[i]["key"]
     assert tones[4]["amp"] == RHYTHM_ORANGE["amp"]
-    assert tones[4]["pre"] == RHYTHM_ORANGE["pre"]
-    assert tone_library.load()[0]["volume"] == preset_volume("RFRhythm_Plexi")
-    assert tone_library.load()[0]["pre"][0]["key"] == gate
+    assert tones[1].get("pre") is None and tones[2].get("pre") is None
+    library = tone_library.load()[0]
+    assert library["volume"] == preset_volume("RFRhythm_Plexi")
+    assert _chain(library) == _chain(_preset("RFRhythm_Plexi"))
 
 
 def test_the_previous_version_can_be_dropped_once_the_new_one_is_built(

@@ -220,17 +220,12 @@ def test_every_preset_with_drive_opens_with_a_noise_gate() -> None:
 def test_a_projects_untouched_preset_gets_the_gate_but_a_rebuilt_chain_does_not() -> None:
     from rockforge.infrastructure.packaging.gear import tone_presets as tp
 
-    old = {"key": "RFLead_Metal", "pre": [
-        {"key": "Pedal_MetalDistortion", "knobs": {"Pedal_MetalDistortion_Gain": 50}},
-        None, None, None,
-    ]}
+    eq = tp._drive_eq()
+    old = {"key": "RFLead_Metal", "pre": [eq, None, None, None]}
     gated = tp.with_preset_gate(old)
     assert gated is not None
-    assert [p and p["key"] for p in gated["pre"]] == [
-        tp.GATE_KEY, "Pedal_MetalDistortion", None, None,
-    ]
+    assert [p and p["key"] for p in gated["pre"]] == [tp.GATE_KEY, "Pedal_EQ5", None, None]
     assert tp.with_preset_gate(gated) is None  # already there
-    assert tp.with_preset_gate({"key": "RFLead_Crunch"})["pre"][0]["key"] == tp.GATE_KEY
     # the user's own chain, a clean preset, a tone that is not a preset
     assert tp.with_preset_gate({"key": "RFLead_Metal", "pre": [{"key": "Pedal_Chorus"}]}) is None
     assert tp.with_preset_gate({"key": "RFLead_Clean", "pre": [{"key": "Pedal_Chorus"}]}) is None
@@ -238,31 +233,74 @@ def test_a_projects_untouched_preset_gets_the_gate_but_a_rebuilt_chain_does_not(
 
 
 def test_a_copy_still_on_an_earlier_version_of_a_preset_gets_the_current_chain() -> None:
-    """The Orange crunch was the one preset that left the user's September noisy
-    (Jet Lag, with the same presets, never switched to it), and its first retune
-    was still too distorted: it now has less gain and bass and the high-gain
-    gate, and copies still on any earlier chain move to it — whether stored
-    sparse or filled in by the tone editor."""
+    """Every preset, from every chain it shipped with before — with or without
+    the gate, stored sparse or filled in by the tone editor, without a cabinet —
+    moves to the current one; a chain the user changed does not. The current
+    chains are the 2026-10-04 rebuild (pre-amp EQ against the hiss band, studio
+    EQ, reverb, compressor on the cleans, no drive stacked into a hot amp)."""
     from rockforge.infrastructure.packaging.gear import tone_presets as tp
     from rockforge.infrastructure.packaging.gear.gear_catalogue import knob_defaults
 
-    first, second, third = tp.PRESET_CHAINS_BEFORE["RFRhythm_Orange"]
-    full_amp = {"key": first["amp"]["key"],
-                "knobs": {**knob_defaults(first["amp"]["key"]), **first["amp"]["knobs"]}}
-    for old in (
-        {"key": "RFRhythm_Orange", "volume": -20.0, **first},
-        {"key": "RFRhythm_Orange", "volume": -17.0, "amp": full_amp, "pre": second["pre"]},
-        {"key": "RFRhythm_Orange", "volume": -20.0, **third},
-    ):
-        new = tp.upgrade_preset_chain(old)
-        assert new is not None
-        assert new["amp"] == tp.RHYTHM_ORANGE["amp"]
-        assert new["pre"] == tp.RHYTHM_ORANGE["pre"]
-        assert new["volume"] == old["volume"]  # the rest of the copy is the user's
-        assert tp.upgrade_preset_chain(new) is None
+    def filled(piece: dict) -> dict:
+        return {"key": piece["key"], "knobs": {**knob_defaults(piece["key"]),
+                                                **(piece.get("knobs") or {})}}
+
+    checked = 0
+    for key, olds in tp.PRESET_CHAINS_BEFORE.items():
+        current = tp._preset(key)
+        for old in olds:
+            no_cab = {k: v for k, v in old.items() if k != "cabinet"}
+            for copy in (
+                {"key": key, "volume": -20.0, **old},
+                {"key": key, "volume": -17.0, **old, "amp": filled(old["amp"]),
+                 "pre": [filled(p) for p in old["pre"]]},
+                {"key": key, "volume": -20.0, **no_cab},
+            ):
+                new = tp.upgrade_preset_chain(copy)
+                assert new is not None, (key, old)
+                assert tp._chain(new) == tp._chain(current), key
+                assert new["volume"] == copy["volume"]  # the volume has its own pass
+                assert tp.upgrade_preset_chain(new) is None
+                checked += 1
+    assert checked >= 3 * 13
     # a chain the user changed, another preset, a tone that is not a preset
-    touched = {"key": "RFRhythm_Orange", "amp": {"key": first["amp"]["key"],
-               "knobs": {**first["amp"]["knobs"], "Amp_OrangeRockerverb_Gain": 70}}, "pre": []}
+    last = tp.PRESET_CHAINS_BEFORE["RFRhythm_Orange"][-1]
+    touched = {"key": "RFRhythm_Orange", **last, "amp": {"key": last["amp"]["key"],
+               "knobs": {**last["amp"]["knobs"], "Amp_OrangeRockerverb_Gain": 70}}}
     assert tp.upgrade_preset_chain(touched) is None
     assert tp.upgrade_preset_chain({"key": "RFLead_Crunch", **tp.LEAD_CRUNCH}) is None
-    assert tp.upgrade_preset_chain({"key": "mine", **first}) is None
+    assert tp.upgrade_preset_chain({"key": "mine", **last}) is None
+    # the upgraded copy never shares a dict with the module's presets
+    new = tp.upgrade_preset_chain({"key": "RFLead_Crunch",
+                                   **tp.PRESET_CHAINS_BEFORE["RFLead_Crunch"][0]})
+    assert new is not None and new["pre"][1] == tp.LEAD_CRUNCH["pre"][1]
+    assert new["pre"][1] is not tp.LEAD_CRUNCH["pre"][1]
+
+
+def test_driven_presets_cut_the_hiss_band_before_the_amp_and_stack_no_drive() -> None:
+    """What the clean-sounding reference tones do: a 5-band EQ before the amp
+    cutting 63 Hz and 5.7 kHz, a studio EQ after it, no drive pedal into an amp
+    near full gain; the cleans compressed, EQ'd and with a little reverb. Every
+    knob of those is written out (the EQ5's catalogue defaults boost 750 Hz by
+    10 dB), and the Plexis set their second channel too (88 by default)."""
+    from rockforge.infrastructure.packaging.gear import tone_presets as tp
+    from rockforge.infrastructure.packaging.gear.gear_catalogue import knob_defaults
+
+    drives = {"Pedal_SuperDrive", "Pedal_GermaniumDrive", "Pedal_MetalDistortion"}
+    written_out = ("Pedal_EQ5", "Rack_StudioEQ", "Rack_StudioPlate", "Pedal_Compression")
+    for tone, (gain, _b, _l) in (*tp._LEAD_LIBRARY, *tp._RHYTHM_LIBRARY):
+        pre = [p["key"] for p in tone.get("pre") or []]
+        racks = [r["key"] for r in tone.get("racks") or []]
+        for item in [*tone.get("pre", []), *tone.get("post", []), *tone.get("racks", [])]:
+            if item["key"] in written_out:
+                assert set(item["knobs"]) == set(knob_defaults(item["key"])), tone["key"]
+        if gain >= 0.35:
+            eq = next(p for p in tone["pre"] if p["key"] == "Pedal_EQ5")
+            assert eq["knobs"]["Pedal_EQ5_5700"] < 0 and eq["knobs"]["Pedal_EQ5_63"] < 0
+            assert "Rack_StudioEQ" in racks, tone["key"]
+            if gain >= 0.8:
+                assert not drives & set(pre), tone["key"]
+        else:
+            assert pre[0] == "Pedal_Compression" and "Rack_StudioPlate" in racks
+        if tone["amp"]["key"] == "Amp_MarshallPlexi":
+            assert "Amp_MarshallPlexi_Loudness2" in tone["amp"]["knobs"], tone["key"]

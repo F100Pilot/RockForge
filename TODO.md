@@ -79,6 +79,13 @@ documentados nas mensagens de commit, caso valha a pena ressuscitar alguma.
   Demucs `htdemucs_6s` + análise espectral classifica `clean`/`crunch`/
   `high_gain` e sugere presets de gear (amp/cabine/pedais) reais. Honesto: NÃO
   identifica o amp real, classifica o *carácter* do som.
+- [x] **Presets refeitos contra o hiss** (2026-10-04): a partir de dois tons
+  CDLC que o utilizador acha limpos (Daughtry, "Crazy" e "It's Not Over" — não
+  são da Ubisoft) — EQ de 5 bandas antes do amplificador a cortar 63 Hz e
+  5,7 kHz, EQ de estúdio depois, compressor + EQ + reverb nos cleans, nada de
+  pedal de distorção empilhado num amp quase no máximo; o `Loudness2` dos
+  Plexi (88 de origem) passa a estar definido. Cópias por mexer atualizam-se
+  pela cadeia inteira (`tone_preset_history.py`). Por ouvir em jogo.
 - [x] **Modelo de tom (gear) + construtor na UI**: `domain/tone.py` + catálogo
   vendido; tons custom serializados no `.rs2dlc` `Tones` e no PSARC. Ver
   `TONE.md`.

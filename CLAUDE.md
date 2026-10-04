@@ -2564,6 +2564,42 @@ to -40 cuts more). Guarded by the Overdrive copy and the third Orange chain in
 The PSARC the user tested still had the gain-68 Orange (built before the first
 retune); the new values are not heard in game from here.
 
+**Rebuilt on two hand-made tones that sound clean** (2026-10-04: "o problema
+continua a ser o hiss ou ruído. E os sons não são tão limpos, mesmo comparando
+com originais, clean, distortion e overdrive"). The user sent two COMMUNITY
+CDLC (Daughtry "Crazy" and "It's Not Over" — Custom Song Toolkit / CFSM builds,
+not Ubisoft's, same appid as ours) whose tones they find clean; read with the
+tone collection's own `read_entries`, they do four things our presets did not:
+a **5-band EQ BEFORE the amp** cutting 63 Hz and 5.7 kHz (the rumble and the
+hiss/fizz band — less of both for the amp to amplify), a **studio parametric
+EQ after it** scooping the low-mids (240 Hz) and high-mids (~1 kHz), on the
+cleans a **compressor**, a gentle EQ and a little **plate reverb**, and **no
+drive pedal stacked into an amp already near full gain** (their high gain is an
+HG-500 at 92 with only the EQ in front). None uses a noise gate; ours keep
+theirs (harmless). Every preset now follows that, with the references' own
+knob values (`_drive_eq`, `_drive_racks`, `_clean_comp`, `_clean_post`,
+`_clean_racks`); the three high-gain presets lost their stacked drive (and 5-6
+gain). Two inherited defaults were found on the way: **a knob a preset leaves
+out takes the CATALOGUE default, and those are hot** — the Plexis' `Loudness2`
+was never set and sat at 88, and the EQ5 defaults boost 750 Hz by 10 dB — so
+every knob of the new pieces is written out and the Plexis set `Loudness2`.
+Volumes unchanged. **Copies upgrade by their WHOLE chain now**:
+`tone_preset_history.py` holds every earlier version verbatim (`V1` = all
+presets until this change, `ORANGE_EARLY`), `PRESET_CHAINS_BEFORE` is built
+from it (with and without the gate, only chains that differ from today's), and
+`upgrade_preset_chain` compares amp + cabinet + pedals + racks (knobs filled
+with catalogue defaults; a copy stored without a cabinet compares on the rest)
+and replaces all five slots with deep copies — a copy the user changed
+anywhere is left alone. **When a preset's chain changes, add its old version
+to `tone_preset_history.py` verbatim first.** Guarded by
+`test_a_copy_still_on_an_earlier_version_of_a_preset_gets_the_current_chain`
+(every preset × every old chain × sparse/filled/no-cabinet),
+`test_driven_presets_cut_the_hiss_band_before_the_amp_and_stack_no_drive` and
+`test_presets_still_at_their_first_quiet_volume_are_raised_on_startup`. Two
+songs by two authors are a small sample and none of it is heard in game from
+here; the user's `tone_collection.json` (every tone of their library) would
+let this be checked against many more.
+
 ### Tone editor: rotary knobs + optional local gear images
 
 Gear knobs (amp/effect Gain/Bass/Mid/…) render as **draggable rotary dials**

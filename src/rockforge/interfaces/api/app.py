@@ -1738,8 +1738,9 @@ def _refresh_presets(tones: object) -> list[dict[str, Any]] | None:
     left it as it shipped, or None when nothing needed it: a volume still at
     a value the preset shipped with before moves to the current one, a pre-pedal chain
     still the preset's own gets the noise gate the preset now opens with
-    (``tone_presets.with_preset_gate``), and a chain still exactly an earlier
-    version of its preset gets the current one (``upgrade_preset_chain``).
+    (``tone_presets.with_preset_gate``), and a whole chain — amp, cabinet,
+    pedals, racks — still exactly an earlier version of its preset gets the
+    current one (``upgrade_preset_chain``).
     What the user changed is theirs."""
     from rockforge.infrastructure.packaging.gear.tone_presets import (
         PRESET_VOLUMES_BEFORE,

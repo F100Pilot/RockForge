@@ -66,6 +66,65 @@ def _gate(threshold: float) -> dict[str, Any]:
         "knobs": {"Pedal_NoiseGate_Thresh": threshold, "Pedal_NoiseGate_Rate": 81},
     }
 
+
+# What hand-made tones that sound clean in game do and these presets did not
+# (2026-10-04, read off two community CDLC the user sent — "Crazy" and "It's
+# Not Over", Daughtry — whose tones they find clean next to ours): the driven
+# tones put a 5-band EQ BEFORE the amp that cuts 63 Hz and 5.7 kHz — the low
+# rumble and the hiss/fizz band, so the amp has less of both to amplify — and
+# a studio EQ after it that scoops the boxy low-mids and harsh high-mids; the
+# clean ones go through a compressor, a gentle EQ and a little reverb; and none
+# stacks a drive pedal into an amp already near full gain. The values are
+# theirs. Every knob is written out: one left out takes the CATALOGUE default,
+# and those are hot (the EQ5 boosts 750 Hz by 10 dB, the Plexi's Loudness2 is
+# 88).
+def _eq5(b63: float, b250: float, b750: float, b2200: float, b5700: float) -> dict[str, Any]:
+    return {"key": "Pedal_EQ5", "knobs": {
+        "Pedal_EQ5_63": b63, "Pedal_EQ5_250": b250, "Pedal_EQ5_750": b750,
+        "Pedal_EQ5_2200": b2200, "Pedal_EQ5_5700": b5700,
+    }}
+
+
+def _studio_eq(lo_mid: float, hi_mid: float, hi_mid_freq: float) -> dict[str, Any]:
+    return {"key": "Rack_StudioEQ", "knobs": {
+        "Rack_StudioEQ_Bass": 1.5, "Rack_StudioEQ_BassFreq": 345,
+        "Rack_StudioEQ_LoMid": lo_mid, "Rack_StudioEQ_LoMidFreq": 240,
+        "Rack_StudioEQ_LoMidQ": 1, "Rack_StudioEQ_HiMid": hi_mid,
+        "Rack_StudioEQ_HiMidFreq": hi_mid_freq, "Rack_StudioEQ_HiMidQ": 0,
+        "Rack_StudioEQ_Treble": 1.5, "Rack_StudioEQ_TrebleFreq": 2.2,
+    }}
+
+
+def _plate(mix: float) -> dict[str, Any]:
+    return {"key": "Rack_StudioPlate", "knobs": {
+        "Rack_StudioPlate_Time": 52, "Rack_StudioPlate_Depth": 80,
+        "Rack_StudioPlate_Mix": mix, "Rack_StudioPlate_Tone": 48,
+    }}
+
+
+# Driven tones: before the amp, cut the rumble and the hiss band.
+def _drive_eq() -> dict[str, Any]:
+    return _eq5(-6, -2, 2, 3, -5)
+
+
+def _drive_racks(reverb: float = 0.0) -> list[dict[str, Any]]:
+    return [_studio_eq(-2.5, -2.5, 1.1), *([_plate(reverb)] if reverb else [])]
+
+
+def _clean_comp() -> dict[str, Any]:
+    return {"key": "Pedal_Compression", "knobs": {
+        "Pedal_Compression_Comp": 54, "Pedal_Compression_Attack": 29,
+        "Pedal_Compression_Release": 80,
+    }}
+
+
+def _clean_post() -> list[dict[str, Any]]:
+    return [_eq5(-1, -2, -1, 2, 1)]
+
+
+def _clean_racks() -> list[dict[str, Any]]:
+    return [_studio_eq(-1.5, -1.0, 0.9), _plate(18)]
+
 # ---------------------------------------------------------------------------
 # Lead presets
 # ---------------------------------------------------------------------------
@@ -77,7 +136,9 @@ LEAD_CLEAN: dict[str, Any] = {
     "descriptors": [TONE_DESCRIPTORS["Clean"], TONE_DESCRIPTORS["Lead"]],
     "amp": {"key": "Amp_CS100", "knobs": {"Amp_CS100_Gain": 20}},
     "cabinet": {"key": "Cab_Marshall1960a_57_Cone"},
-    "pre": [{"key": "Pedal_Chorus"}],
+    "pre": [_clean_comp(), {"key": "Pedal_Chorus", "knobs": {"Pedal_Chorus_Mix": 40}}],
+    "post": _clean_post(),
+    "racks": _clean_racks(),
 }
 
 LEAD_CRUNCH: dict[str, Any] = {
@@ -96,7 +157,8 @@ LEAD_CRUNCH: dict[str, Any] = {
         },
     },
     "cabinet": {"key": "Cab_Marshall1960a_57_Cone"},
-    "pre": [_gate(_GATE_CRUNCH)],
+    "pre": [_gate(_GATE_CRUNCH), _drive_eq()],
+    "racks": _drive_racks(reverb=14),
 }
 
 LEAD_HIGH_GAIN: dict[str, Any] = {
@@ -107,7 +169,7 @@ LEAD_HIGH_GAIN: dict[str, Any] = {
     "amp": {
         "key": "Amp_CA100",
         "knobs": {
-            "Amp_CA100_Gain": 90,
+            "Amp_CA100_Gain": 85,
             "Amp_CA100_Bass": 60,
             "Amp_CA100_Mid": 75,
             "Amp_CA100_Treble": 80,
@@ -115,10 +177,8 @@ LEAD_HIGH_GAIN: dict[str, Any] = {
         },
     },
     "cabinet": {"key": "Cab_GB412CMKIII_57_Cone"},
-    "pre": [
-        _gate(_GATE_HIGH_GAIN),
-        {"key": "Pedal_GermaniumDrive", "knobs": {"Pedal_GermaniumDrive_Gain": 60}},
-    ],
+    "pre": [_gate(_GATE_HIGH_GAIN), _drive_eq()],
+    "racks": _drive_racks(reverb=14),
 }
 
 # ---------------------------------------------------------------------------
@@ -140,6 +200,9 @@ RHYTHM_CLEAN: dict[str, Any] = {
         },
     },
     "cabinet": {"key": "Cab_TW112C_57_Cone"},
+    "pre": [_clean_comp()],
+    "post": _clean_post(),
+    "racks": _clean_racks(),
 }
 
 RHYTHM_CRUNCH: dict[str, Any] = {
@@ -158,7 +221,8 @@ RHYTHM_CRUNCH: dict[str, Any] = {
         },
     },
     "cabinet": {"key": "Cab_Marshall1960a_57_Cone"},
-    "pre": [_gate(_GATE_CRUNCH)],
+    "pre": [_gate(_GATE_CRUNCH), _drive_eq()],
+    "racks": _drive_racks(),
 }
 
 RHYTHM_HIGH_GAIN: dict[str, Any] = {
@@ -176,7 +240,8 @@ RHYTHM_HIGH_GAIN: dict[str, Any] = {
         },
     },
     "cabinet": {"key": "Cab_GB412CMKII_57_Cone"},
-    "pre": [_gate(_GATE_HIGH_GAIN)],
+    "pre": [_gate(_GATE_HIGH_GAIN), _drive_eq()],
+    "racks": _drive_racks(),
 }
 
 # ---------------------------------------------------------------------------
@@ -237,10 +302,15 @@ LEAD_CLEAN_BRIGHT: dict[str, Any] = {
     "descriptors": [TONE_DESCRIPTORS["Clean"], TONE_DESCRIPTORS["Lead"]],
     "amp": {
         "key": "Amp_TW26",
-        "knobs": {"Amp_TW26_Gain": 22, "Amp_TW26_Treble": 78, "Amp_TW26_Bass": 40},
+        "knobs": {
+            "Amp_TW26_Gain": 22, "Amp_TW26_Treble": 78, "Amp_TW26_Bass": 40,
+            "Amp_TW26_Pres": 50,
+        },
     },
     "cabinet": {"key": "Cab_TW112C_57_Cone"},
-    "pre": [{"key": "Pedal_VintageChorus"}],
+    "pre": [_clean_comp(), {"key": "Pedal_VintageChorus"}],
+    "post": _clean_post(),
+    "racks": _clean_racks(),
 }
 
 LEAD_PLEXI: dict[str, Any] = {
@@ -252,12 +322,14 @@ LEAD_PLEXI: dict[str, Any] = {
         "key": "Amp_MarshallPlexi",
         "knobs": {
             "Amp_MarshallPlexi_Loudness1": 72,
+            "Amp_MarshallPlexi_Loudness2": 72,
             "Amp_MarshallPlexi_Treble": 74,
             "Amp_MarshallPlexi_Pres": 55,
         },
     },
     "cabinet": {"key": "Cab_Marshall1960a_57_Cone"},
-    "pre": [_gate(_GATE_CRUNCH)],
+    "pre": [_gate(_GATE_CRUNCH), _drive_eq()],
+    "racks": _drive_racks(reverb=14),
 }
 
 LEAD_OVERDRIVE: dict[str, Any] = {
@@ -272,8 +344,10 @@ LEAD_OVERDRIVE: dict[str, Any] = {
     "cabinet": {"key": "Cab_Marshall1960a_57_Cone"},
     "pre": [
         _gate(_GATE_CRUNCH),
+        _drive_eq(),
         {"key": "Pedal_SuperDrive", "knobs": {"Pedal_SuperDrive_Gain": 55}},
     ],
+    "racks": _drive_racks(reverb=14),
 }
 
 LEAD_METAL: dict[str, Any] = {
@@ -284,17 +358,15 @@ LEAD_METAL: dict[str, Any] = {
     "amp": {
         "key": "Amp_HG100",
         "knobs": {
-            "Amp_HG100_Gain": 95,
+            "Amp_HG100_Gain": 90,
             "Amp_HG100_Bass": 78,
             "Amp_HG100_Mid": 55,
             "Amp_HG100_Treble": 62,
         },
     },
     "cabinet": {"key": "Cab_GB412CMKIII_57_Cone"},
-    "pre": [
-        _gate(_GATE_HIGH_GAIN),
-        {"key": "Pedal_MetalDistortion", "knobs": {"Pedal_MetalDistortion_Gain": 50}},
-    ],
+    "pre": [_gate(_GATE_HIGH_GAIN), _drive_eq()],
+    "racks": _drive_racks(reverb=14),
 }
 
 RHYTHM_PLEXI: dict[str, Any] = {
@@ -306,12 +378,14 @@ RHYTHM_PLEXI: dict[str, Any] = {
         "key": "Amp_MarshallPlexi",
         "knobs": {
             "Amp_MarshallPlexi_Loudness1": 58,
+            "Amp_MarshallPlexi_Loudness2": 58,
             "Amp_MarshallPlexi_Treble": 62,
             "Amp_MarshallPlexi_Bass": 66,
         },
     },
     "cabinet": {"key": "Cab_Marshall1960a_57_Cone"},
-    "pre": [_gate(_GATE_CRUNCH)],
+    "pre": [_gate(_GATE_CRUNCH), _drive_eq()],
+    "racks": _drive_racks(),
 }
 
 # The Rockerverb is a hot amp (its catalogue default gain is 88), so 68 was
@@ -321,26 +395,9 @@ RHYTHM_PLEXI: dict[str, Any] = {
 # com ruído" on the first, "bastante bom" on the second). Gain 55 with the
 # high-gain gate was still too much distortion and too quiet in game ("muito
 # baixo, e mesmo assim está com ruído (distorção em demasia)"), so it is now a
-# real crunch — gain 42, less bass where hum sits — played louder. The earlier
-# chains are in PRESET_CHAINS_BEFORE so projects still carrying one are
+# real crunch — gain 42, less bass where hum sits — played louder. Its earlier
+# chains are in ``tone_preset_history`` so projects still carrying one are
 # brought up.
-_ORANGE_AMP_FIRST: dict[str, Any] = {
-    "key": "Amp_OrangeRockerverb",
-    "knobs": {
-        "Amp_OrangeRockerverb_Gain": 68,
-        "Amp_OrangeRockerverb_Bass": 74,
-        "Amp_OrangeRockerverb_Treble": 55,
-    },
-}
-_ORANGE_AMP_SECOND: dict[str, Any] = {
-    "key": "Amp_OrangeRockerverb",
-    "knobs": {
-        "Amp_OrangeRockerverb_Gain": 55,
-        "Amp_OrangeRockerverb_Bass": 66,
-        "Amp_OrangeRockerverb_Treble": 55,
-    },
-}
-
 RHYTHM_ORANGE: dict[str, Any] = {
     "key": "RFRhythm_Orange",
     "name": "Rhythm – Crunch encorpado",
@@ -355,18 +412,8 @@ RHYTHM_ORANGE: dict[str, Any] = {
         },
     },
     "cabinet": {"key": "Cab_OrangePPC412_57_Cone"},
-    "pre": [_gate(_GATE_HIGH_GAIN)],
-}
-
-# Chains (amp + pre-pedals) a preset shipped with before, oldest first. A
-# project's or the library's copy still exactly on one of them is moved to the
-# current chain by ``upgrade_preset_chain`` — a chain the user touched is not.
-PRESET_CHAINS_BEFORE: dict[str, list[dict[str, Any]]] = {
-    "RFRhythm_Orange": [
-        {"amp": _ORANGE_AMP_FIRST, "pre": []},
-        {"amp": _ORANGE_AMP_FIRST, "pre": [_gate(_GATE_CRUNCH)]},
-        {"amp": _ORANGE_AMP_SECOND, "pre": [_gate(_GATE_HIGH_GAIN)]},
-    ],
+    "pre": [_gate(_GATE_HIGH_GAIN), _drive_eq()],
+    "racks": _drive_racks(),
 }
 
 RHYTHM_METAL: dict[str, Any] = {
@@ -377,7 +424,7 @@ RHYTHM_METAL: dict[str, Any] = {
     "amp": {
         "key": "Amp_CA100",
         "knobs": {
-            "Amp_CA100_Gain": 98,
+            "Amp_CA100_Gain": 92,
             "Amp_CA100_Bass": 80,
             "Amp_CA100_Mid": 45,
             "Amp_CA100_Treble": 70,
@@ -385,10 +432,8 @@ RHYTHM_METAL: dict[str, Any] = {
         },
     },
     "cabinet": {"key": "Cab_GB412CMKII_57_Cone"},
-    "pre": [
-        _gate(_GATE_HIGH_GAIN),
-        {"key": "Pedal_MetalDistortion", "knobs": {"Pedal_MetalDistortion_Gain": 45}},
-    ],
+    "pre": [_gate(_GATE_HIGH_GAIN), _drive_eq()],
+    "racks": _drive_racks(),
 }
 
 # (tone_dict, (gain, bright, low)) — fingerprints describe the target sound.
@@ -560,28 +605,83 @@ def _chain_piece(item: object) -> tuple[str, tuple[tuple[str, float], ...]] | No
     return key, tuple(sorted(knobs.items()))
 
 
+_SLOTS = ("amp", "cabinet", "pre", "post", "racks")
+
+
 def _chain(tone: dict[str, Any]) -> tuple[object, ...]:
-    pre = tone.get("pre") if isinstance(tone.get("pre"), list) else []
+    """The whole signal chain, every knob filled in: amp, cabinet, and the
+    pedals and racks in order (an empty slot is skipped)."""
+    def pieces(items: object) -> tuple[object, ...]:
+        if not isinstance(items, list):
+            return ()
+        return tuple(p for p in map(_chain_piece, items) if p is not None)
+
     return (
         _chain_piece(tone.get("amp")),
-        tuple(p for p in map(_chain_piece, pre or []) if p is not None),
+        _chain_piece(tone.get("cabinet")),
+        pieces(tone.get("pre")),
+        pieces(tone.get("post")),
+        pieces(tone.get("racks")),
     )
 
 
+def _without_gate(chain: dict[str, Any]) -> dict[str, Any]:
+    pre = chain.get("pre") or []
+    kept = [p for p in pre if not (isinstance(p, dict) and p.get("key") == GATE_KEY)]
+    return {**chain, "pre": kept}
+
+
+def _history() -> dict[str, list[dict[str, Any]]]:
+    """Every full chain each preset shipped with before its current one —
+    with and without the noise gate (copies made before the gate existed) —
+    that differs from today's."""
+    from rockforge.infrastructure.packaging.gear import tone_preset_history as past
+
+    out: dict[str, list[dict[str, Any]]] = {}
+    for key, v1 in past.V1.items():
+        current = _preset(key)
+        if current is None:
+            continue
+        olds = [v1, _without_gate(v1)]
+        if key == "RFRhythm_Orange":
+            olds += [{**v1, **early} for early in past.ORANGE_EARLY]
+        now = _chain(current)
+        seen: list[tuple[object, ...]] = []
+        for old in olds:
+            c = _chain(old)
+            if c != now and c not in seen:
+                seen.append(c)
+                out.setdefault(key, []).append(old)
+    return out
+
+
+# Chains a preset shipped with before, which ``upgrade_preset_chain`` moves an
+# untouched copy off.
+PRESET_CHAINS_BEFORE: dict[str, list[dict[str, Any]]] = _history()
+
+
 def upgrade_preset_chain(tone: dict[str, Any]) -> dict[str, Any] | None:
-    """A copy of a curated preset whose amp and pre-pedals are still exactly an
-    earlier version of that preset (``PRESET_CHAINS_BEFORE``), moved to the
-    current amp and pre-pedals; None when it is not one. Cabinet, post-pedals,
-    racks, volume and name are left as they are."""
+    """A copy of a curated preset whose whole chain — amp, cabinet, pedals and
+    racks — is still exactly an earlier version of that preset
+    (``PRESET_CHAINS_BEFORE``), moved to the current chain; None when it is not
+    one. Volume and name are the copy's (the volume has its own pass). A copy
+    stored without a cabinet compares on the rest."""
     key = str(tone.get("key", ""))
     preset = _preset(key)
     if preset is None or not isinstance(tone.get("amp"), dict):
         return None
-    if _chain(tone) not in [_chain(old) for old in PRESET_CHAINS_BEFORE.get(key, [])]:
-        return None
-    amp = preset["amp"]
-    return {
-        **tone,
-        "amp": {"key": amp["key"], "knobs": dict(amp.get("knobs") or {})},
-        "pre": [dict(p, knobs=dict(p.get("knobs") or {})) for p in preset.get("pre") or []],
-    }
+    for old in PRESET_CHAINS_BEFORE.get(key, []):
+        copy = tone if "cabinet" in tone else {**tone, "cabinet": old.get("cabinet")}
+        if _chain(copy) == _chain(old):
+            return {**tone, **{slot: copy_gear(preset.get(slot)) for slot in _SLOTS}}
+    return None
+
+
+def copy_gear(value: object) -> Any:
+    """A deep copy of a preset's slot, so a project never shares a dict with
+    the module's presets."""
+    if isinstance(value, dict):
+        return {k: copy_gear(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [copy_gear(v) for v in value]
+    return value
