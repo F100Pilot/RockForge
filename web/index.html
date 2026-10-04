@@ -152,18 +152,97 @@
   .tone-prof-fill { display:block; height:100%; background:linear-gradient(90deg,#5b8cff,#c85bff); }
   .tone-prof-val { flex:0 0 2.6rem; text-align:right; }
   .tone-cand { display:flex; align-items:center; gap:.5rem; margin:.15rem 0; font-size:.85rem; }
-  .ts-track { margin:.6rem 0 1rem; }
-  .ts-gain { display:block; width:100%; height:30px; margin-top:.3rem; background:rgba(255,255,255,.03); border-radius:4px 4px 0 0; }
-  .ts-strip { display:flex; height:1.5rem; border-radius:0 0 4px 4px; overflow:hidden; }
-  .ts-seg { min-width:0; overflow:hidden; cursor:pointer; border-right:1px solid #14151a; color:#14151a; font-size:.7rem; font-weight:700; line-height:1.5rem; padding:0 .3rem; white-space:nowrap; }
+  /* Tons page — the larger scale the user approved (sketch "Proposta — tudo maior") */
+  .tn-page { max-width:74rem; gap:1.6rem; font-size:1rem; }
+  .tn-head { display:flex; align-items:flex-end; gap:1rem; flex-wrap:wrap; }
+  .tn-head .pv-page-title { font-size:2.1rem; }
+  .tn-head-text { display:flex; flex-direction:column; gap:.35rem; }
+  .tn-sub { margin:0; font-size:1.05rem; color:#a9acb6; }
+  .tn-head-acts { margin-left:auto; display:flex; align-items:center; gap:.75rem; flex-wrap:wrap; }
+  .tn-stack { display:flex; flex-direction:column; gap:1.6rem; }
+  .tn-btn { height:2.75rem; padding:0 1.1rem; border-radius:10px; font-size:1rem; display:inline-flex; align-items:center; gap:.5rem; }
+  .tn-btn .ic { width:1.2rem; height:1.2rem; }
+  .tn-push { margin-left:auto; }
+  .tn-card { padding:1.5rem 1.75rem; gap:1.3rem; }
+  .tn-card-head { display:flex; align-items:center; gap:1rem; flex-wrap:wrap; }
+  .tn-card-title { margin:0; font-size:1.4rem; }
+  .tn-shared { margin-left:auto; }
+  .tn-check { display:inline-flex; align-items:center; gap:.6rem; min-height:2.75rem; font-size:1rem; cursor:pointer; }
+  .tn-check input { width:1.35rem; height:1.35rem; accent-color:var(--accent); }
+  .tn-log { margin:0; max-height:9rem; overflow-y:auto; background:#14151a; border:1px solid #262830; border-radius:8px; padding:.6rem .8rem; font-size:.9rem; color:#a9acb6; white-space:pre-wrap; }
+  .tn-tones { display:grid; grid-template-columns:repeat(auto-fill, minmax(17.5rem, 1fr)); gap:1rem; }
+  .tn-tone { background:#1d1f27; border:1px solid var(--line); border-radius:14px; padding:1.1rem 1.25rem; display:flex; flex-direction:column; gap:.6rem; }
+  .tn-tone-name { display:flex; align-items:center; gap:.6rem; font-size:1.2rem; font-weight:700; }
+  .tn-dot { flex:0 0 .9rem; width:.9rem; height:.9rem; border-radius:50%; }
+  .tn-tone-gear { font-size:.95rem; color:#a9acb6; }
+  .tn-tags { display:flex; gap:.5rem; flex-wrap:wrap; }
+  .tn-tag { font-size:.9rem; padding:.3rem .75rem; border-radius:999px; background:#262831; color:#d6d8de; }
+  .tn-standard { display:flex; flex-direction:column; gap:.6rem; font-size:1rem; color:#c4c6cd; }
+  .tn-standard .pv-chip { align-self:flex-start; font-size:.95rem; height:2.2rem; }
+  .tn-tabs { display:flex; gap:.5rem; flex-wrap:wrap; }
+  .tn-tabs[hidden] { display:none; }
+  .tn-tab { height:2.75rem; padding:0 1.1rem; border-radius:10px; font-size:1rem; background:#2a2c35; color:#e8e8ec; border:1px solid transparent; }
+  .tn-tab[aria-selected="true"] { background:var(--accent-soft); color:var(--accent); border-color:var(--accent); }
+  .tn-grid2 { display:grid; grid-template-columns:repeat(auto-fit, minmax(19rem, 1fr)); gap:1.5rem; }
+  .tn-field { display:flex; flex-direction:column; gap:.6rem; }
+  .tn-label { font-size:1rem; font-weight:600; }
+  .tn-label-sub { font-weight:400; color:var(--muted); }
+  .tn-hint { font-size:.9rem; color:var(--muted); }
+  .tn-select { height:3rem; padding:0 .9rem; border-radius:10px; font-size:1rem; }
+  .tn-pills { display:flex; gap:.6rem; flex-wrap:wrap; }
+  .tn-pill { display:inline-flex; align-items:center; gap:.5rem; min-height:2.75rem; padding:0 1rem; border-radius:999px; border:1px solid #3a3d48; font-size:1rem; cursor:pointer; color:var(--text); }
+  .tn-pill input { width:1.15rem; height:1.15rem; accent-color:var(--accent); }
+  .tn-pill:has(input:checked) { border-color:var(--accent); background:var(--accent-soft); }
+  .tn-changes { display:flex; flex-direction:column; gap:.6rem; }
+  .tn-change { display:flex; align-items:center; gap:1rem; padding:.6rem 1rem; border-radius:12px; background:#1d1f27; flex-wrap:wrap; }
+  .tn-change-time { font-size:1.25rem; font-weight:700; font-variant-numeric:tabular-nums; min-width:5.3rem; }
+  .tn-change .ic { width:1.2rem; height:1.2rem; color:var(--muted); }
+  .tn-change-tone { font-size:1.05rem; font-weight:600; }
+  .tn-change button { margin-left:auto; height:2.5rem; padding:0 1rem; font-size:.95rem; }
+  .tn-empty { font-size:1rem; color:var(--muted); }
+  #sectionTons .tone-prof-row, #sectionTons .tone-cand { font-size:1rem; }
+  #sectionTons .tone-prof-row > span:first-child { flex-basis:11rem; }
+  #sectionTons .tone-prof-track { height:.7rem; }
+  #sectionTons button.tone-cand-use { padding:.4rem .9rem; font-size:.95rem; }
+  .ts-track { border:1px solid var(--line); border-radius:14px; padding:1rem 1.25rem; }
+  .ts-track > summary { list-style:none; display:flex; align-items:center; gap:.9rem; flex-wrap:wrap; cursor:pointer; min-height:2.75rem; }
+  .ts-track > summary::-webkit-details-marker { display:none; }
+  .ts-track > summary .ic { width:1.25rem; height:1.25rem; color:var(--muted); transform:rotate(-90deg); transition:transform .15s; }
+  .ts-track[open] > summary .ic { transform:none; }
+  .ts-track-name { font-size:1.3rem; font-weight:700; }
+  .ts-track-meta { font-size:1rem; color:var(--muted); }
+  .ts-body { display:flex; flex-direction:column; gap:.9rem; margin-top:1rem; }
+  .ts-gain { display:block; width:100%; height:80px; background:#1a1c23; border-radius:10px 10px 0 0; }
+  .ts-strip { display:flex; height:3rem; border-radius:0 0 10px 10px; overflow:hidden; }
+  .ts-seg { min-width:0; overflow:hidden; cursor:pointer; border-right:2px solid #14151a; color:#14151a; font-size:.95rem; font-weight:700; line-height:3rem; padding:0 .5rem; white-space:nowrap; text-overflow:ellipsis; }
   .ts-seg:hover { filter:brightness(1.2); }
-  .ts-rows { margin-top:.4rem; font-size:.85rem; }
-  .ts-row { margin:.25rem 0; }
-  .ts-dot { display:inline-block; width:.6rem; height:.6rem; border-radius:50%; margin-right:.3rem; }
-  .ts-why { margin-left:1rem; font-size:.78rem; }
-  .ts-swaps { margin:.3rem 0 .8rem; padding:.55rem .7rem; border:1px solid var(--line); border-radius:10px; }
-  .ts-swap-row { display:flex; align-items:center; gap:.45rem; margin-top:.4rem; flex-wrap:wrap; font-size:.85rem; }
-  .ts-swap { max-width:22rem; }
+  .ts-legend { display:flex; gap:1.25rem; flex-wrap:wrap; font-size:.95rem; color:#c4c6cd; }
+  .ts-legend span { display:inline-flex; align-items:center; gap:.5rem; }
+  .ts-legend i { width:.9rem; height:.9rem; border-radius:4px; display:inline-block; }
+  .ts-table { border:1px solid var(--line); border-radius:14px; overflow:hidden; }
+  .ts-cols { display:grid; grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,.9fr) minmax(0,1.8fr) minmax(0,1fr); gap:1rem; align-items:center; }
+  .ts-thead { padding:.75rem 1.25rem; background:#1d1f27; font-size:.85rem; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+  .ts-row { padding:.9rem 1.25rem; border-top:1px solid #262831; display:flex; flex-direction:column; gap:.4rem; }
+  .ts-row .ts-cols { font-size:1.05rem; }
+  .ts-part { font-weight:700; }
+  .ts-when { font-variant-numeric:tabular-nums; color:#c4c6cd; }
+  .ts-role { display:inline-flex; align-items:center; gap:.5rem; font-size:.95rem; padding:.25rem .75rem; border-radius:999px; background:#262831; }
+  .ts-dot { display:inline-block; flex:0 0 .75rem; width:.75rem; height:.75rem; border-radius:50%; }
+  .ts-tone { font-weight:600; }
+  .ts-tone .meta { font-weight:400; font-size:.9rem; }
+  .ts-match { display:flex; flex-direction:column; gap:.1rem; font-weight:700; }
+  .ts-match .meta { font-weight:400; font-size:.9rem; }
+  .ts-why { font-size:.95rem; color:#a9acb6; }
+  .ts-swaps { padding:1.1rem 1.25rem; border:1px solid var(--line); border-radius:14px; display:flex; flex-direction:column; gap:.9rem; }
+  .ts-swaps-intro { font-size:1rem; color:#c4c6cd; }
+  .ts-swap-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(20rem, 1fr)); gap:.9rem 1.5rem; }
+  .ts-swap-row { display:flex; flex-direction:column; gap:.4rem; }
+  .ts-swap-row b { font-size:1rem; }
+  .ts-swap { height:3rem; padding:0 .9rem; border-radius:10px; font-size:1rem; width:100%; }
+  @media (max-width: 760px) {
+    .ts-cols { grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+    .ts-thead { display:none; }
+  }
   .tone-cand-name { flex:1; }
   .tone-cand-match { flex:0 0 3rem; text-align:right; color:var(--muted); font-variant-numeric:tabular-nums; }
   button.tone-cand-use { padding:.15rem .55rem; font-size:.8rem; }
@@ -1142,43 +1221,61 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
       </div>
 
       <!-- PÁGINA: Tons -->
-      <div id="sectionTons" class="pv-page" hidden>
-        <h2 class="pv-page-title">Tons</h2>
-        <div class="pv-card pv-card-lg">
-          <!-- Tones: full gear definitions + base/extra slots + timed changes -->
-          <div id="tonePanel">
-            <div class="anchor-row">
-              <button type="button" id="openToneBuilder" class="secondary">+ Criar / editar tons</button>
-              <button type="button" id="detectTones" class="secondary">Detetar tom</button>
-              <button class="info-btn" data-info="tones">ⓘ</button>
-            </div>
-            <div id="toneDetectionWrap" style="display:none;margin:.3rem 0">
-              <pre id="toneDetectionLog" style="margin:0;min-height:1.2rem;max-height:6rem;overflow-y:auto;background:#14151a;border:1px solid #262830;border-radius:4px;padding:.4rem .6rem;font-size:.75rem;color:#9aa0ad;white-space:pre-wrap"></pre>
-              <div id="toneDetectionResult" style="margin-top:.4rem"></div>
-            </div>
-            <div id="toneChips" class="meta" style="display:flex;flex-wrap:wrap;gap:.35rem;margin:.3rem 0"></div>
-            <div id="toneTrackRow" class="anchor-row" style="flex-wrap:wrap" hidden>
-              <label class="check"><input type="checkbox" id="toneShared" checked> Mesmos tons em todas as pistas</label>
-              <span id="toneTrackLabel" class="meta" hidden>A editar os tons de:</span>
-              <select id="toneTrackSel" hidden aria-label="Pista"></select>
-            </div>
-            <div class="anchor-row" style="flex-wrap:wrap">
-              <label>Tom base:
-                <select id="toneBaseSel" style="min-width:9rem"><option value="">—</option></select></label>
-              <span class="meta">Extra (máx. 4):</span>
-              <span id="toneExtraChecks" style="display:flex;flex-wrap:wrap;gap:.5rem"></span>
-            </div>
-            <div id="toneChangesList" class="meta" style="margin-top:.3rem"></div>
+      <div id="sectionTons" class="pv-page tn-page" hidden>
+        <div class="tn-head">
+          <div class="tn-head-text">
+            <h2 class="pv-page-title">Tons</h2>
+            <p class="tn-sub">Os tons do projeto, quais cada pista usa e onde trocam.</p>
+          </div>
+          <div class="tn-head-acts">
+            <button type="button" id="openToneBuilder" class="secondary tn-btn"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>Criar / editar tons</button>
+            <button type="button" id="detectTones" class="tn-btn"><svg class="ic" aria-hidden="true"><use href="#i-wave"/></svg>Detetar tom</button>
+            <button class="info-btn" data-info="tones">ⓘ</button>
           </div>
         </div>
-        <div id="toneSuggestCard" class="pv-card pv-card-lg" hidden>
-          <div class="pv-row" style="flex-wrap:wrap;gap:.5rem">
-            <h3 style="margin:0">Sugestões por secção</h3>
+        <!-- Tones: full gear definitions + base/extra slots + timed changes -->
+        <div id="tonePanel" class="tn-stack">
+          <div id="toneDetectionWrap" class="pv-card pv-card-lg" style="display:none">
+            <pre id="toneDetectionLog" class="tn-log"></pre>
+            <div id="toneDetectionResult"></div>
+          </div>
+          <section class="pv-card pv-card-lg tn-card" aria-labelledby="tnProjTitle">
+            <h3 id="tnProjTitle" class="tn-card-title">Tons do projeto</h3>
+            <div id="toneChips" class="tn-tones"></div>
+          </section>
+          <section class="pv-card pv-card-lg tn-card" aria-labelledby="tnTrackTitle">
+            <div class="tn-card-head">
+              <h3 id="tnTrackTitle" class="tn-card-title">Tons de cada pista</h3>
+              <div id="toneTrackRow" class="tn-shared" hidden>
+                <label class="tn-check"><input type="checkbox" id="toneShared" checked> Mesmos tons em todas as pistas</label>
+              </div>
+            </div>
+            <div id="toneTrackTabs" class="tn-tabs" role="tablist" aria-label="Pista" hidden></div>
+            <div class="tn-grid2">
+              <div class="tn-field">
+                <label for="toneBaseSel" class="tn-label">Tom base</label>
+                <select id="toneBaseSel" class="tn-select"><option value="">—</option></select>
+                <span class="tn-hint">O tom com que a pista começa.</span>
+              </div>
+              <div class="tn-field">
+                <span class="tn-label">Tons para onde pode trocar <span class="tn-label-sub">(máx. 4)</span></span>
+                <div id="toneExtraChecks" class="tn-pills"></div>
+              </div>
+            </div>
+            <div class="tn-field">
+              <span class="tn-label">Mudanças de tom</span>
+              <div id="toneChangesList" class="tn-changes"></div>
+            </div>
+          </section>
+        </div>
+        <section id="toneSuggestCard" class="pv-card pv-card-lg tn-card" aria-labelledby="tnSugTitle" hidden>
+          <div class="tn-card-head">
+            <h3 id="tnSugTitle" class="tn-card-title">Sugestões por secção</h3>
             <button class="info-btn" data-info="tone-sections">ⓘ</button>
-            <button type="button" id="toneSuggestApplyAll" class="secondary" hidden>Aplicar a todas as pistas</button>
+            <button type="button" id="toneSuggestApplyAll" class="tn-btn tn-push" hidden>Aplicar a todas as pistas</button>
           </div>
-          <div id="toneSuggestBody" style="margin-top:.4rem"></div>
-        </div>
+          <div id="toneSuggestBody" class="tn-stack"></div>
+        </section>
       </div>
 
       <!-- PÁGINA: Letra -->

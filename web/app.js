@@ -3511,6 +3511,34 @@ function standardTonesText() {
     .filter((v, i, all) => all.indexOf(v) === i).join(' · ');
 }
 
+// One card per project tone: its name, the gear it is built from and its
+// character (the same drive estimate the preview voice uses), and its volume
+// the way the tone editor shows it (higher = louder).
+function toneCardHtml(t) {
+  const cat = gearCatalogue || {};
+  const gearName = (list, g) => g && g.key ? ((gearByKey(list, g.key) || {}).name || g.key) : '';
+  const effects = [...(t.pre || []), ...(t.post || []), ...(t.racks || [])].filter(g => g && g.key)
+    .map(g => gearName([...(cat.pedals || []), ...(cat.racks || [])], g));
+  const gear = [gearName(cat.amps, t.amp), ...effects.slice(0, 2)].filter(Boolean).join(' · ');
+  const ch = toneCharacter(t) || { drive: 0 };
+  const kind = ch.drive < 0.3 ? { label: T('Limpo'), color: '#5bb8ff' }
+    : ch.drive < 0.6 ? { label: T('Crunch'), color: '#e0a54a' }
+      : { label: T('Distorção'), color: '#ff6b6b' };
+  const vol = t.volume != null ? Math.round(-t.volume * 10) / 10 : null;
+  return `<div class="tn-tone">
+    <div class="tn-tone-name"><span class="tn-dot" style="background:${kind.color}"></span>${esc(t.name || t.key)}</div>
+    ${gear ? `<div class="tn-tone-gear">${esc(gear)}</div>` : ''}
+    <div class="tn-tags"><span class="tn-tag">${kind.label}</span>${vol != null ? `<span class="tn-tag">${T('Volume {v}', { v: vol })}</span>` : ''}</div>
+  </div>`;
+}
+
+// A bundle-clock time as the recording's m:ss.t, the clock the score shows.
+function fmtClockTenths(s) {
+  if (!isFinite(s) || s < 0) s = 0;
+  const m = Math.floor(s / 60), sec = s - m * 60;
+  return `${m}:${sec < 10 ? '0' : ''}${sec.toFixed(1)}`;
+}
+
 function renderTonePanel() {
   if (toneSuggestions && toneSuggestions.tracks) renderToneSuggestions();
   const isGp = selectedJob && selectedJob.source_type === 'gp';
@@ -3521,10 +3549,10 @@ function renderTonePanel() {
 
   const chips = document.getElementById('toneChips');
   chips.innerHTML = jobTones.length
-    ? jobTones.map(t => `<span style="background:#23252e;border:1px solid var(--line);border-radius:999px;padding:.1rem .55rem">${esc(t.name || t.key)}</span>`).join('')
-    : `<span class="pv-chip unk">${icon('wave')}${T('Tons standard')}</span>
-       <span class="meta">${T('Sem tons teus, cada pista usa o tom por defeito do DLC Builder — {list}. Cria os teus em "+ Criar / editar tons".',
-    { list: standardTonesText() })}</span>`;
+    ? jobTones.map(toneCardHtml).join('')
+    : `<div class="tn-standard"><span class="pv-chip unk">${icon('wave')}${T('Tons standard')}</span>
+       <span>${T('Sem tons teus, cada pista usa o tom por defeito do DLC Builder — {list}. Cria os teus em "+ Criar / editar tons".',
+    { list: standardTonesText() })}</span></div>`;
 
   renderToneSetUi(false);
   renderToneChangesList();
@@ -3539,11 +3567,10 @@ function renderToneSetUi(withChanges = true) {
   const multi = arrangements.length > 1;
   document.getElementById('toneTrackRow').hidden = !multi;
   document.getElementById('toneShared').checked = !tonesPerTrack;
-  const trackSel = document.getElementById('toneTrackSel');
-  trackSel.hidden = !tonesPerTrack;
-  document.getElementById('toneTrackLabel').hidden = !tonesPerTrack;
-  trackSel.innerHTML = arrangements.map((a, i) => `<option value="${i}">${esc(arrLabel(a.kind))}</option>`).join('');
-  trackSel.value = String(currentArr);
+  const tabs = document.getElementById('toneTrackTabs');
+  tabs.hidden = !(multi && tonesPerTrack);
+  tabs.innerHTML = arrangements.map((a, i) =>
+    `<button type="button" role="tab" class="tn-tab" data-i="${i}" aria-selected="${i === currentArr}">${esc(arrLabel(a.kind))}</button>`).join('');
 
   const baseSel = document.getElementById('toneBaseSel');
   baseSel.innerHTML = `<option value="">${jobTones.length ? '—' : esc(T('Tom standard: {tone}', { tone: standardToneFor(currentKind()) }))}</option>` +
@@ -3552,8 +3579,8 @@ function renderToneSetUi(withChanges = true) {
 
   const extra = document.getElementById('toneExtraChecks');
   extra.innerHTML = jobTones.length
-    ? jobTones.map(t => `<label class="check"><input type="checkbox" class="tone-extra" value="${esc(t.key)}" ${toneNames.includes(t.key) ? 'checked' : ''}> ${esc(t.name || t.key)}</label>`).join('')
-    : '<span class="meta">—</span>';
+    ? jobTones.map(t => `<label class="tn-pill"><input type="checkbox" class="tone-extra" value="${esc(t.key)}" ${toneNames.includes(t.key) ? 'checked' : ''}> ${esc(t.name || t.key)}</label>`).join('')
+    : `<span class="tn-empty">${T('Cria tons primeiro.')}</span>`;
   if (withChanges) renderToneChangesList(false);
 }
 
@@ -3567,8 +3594,9 @@ document.getElementById('toneShared').addEventListener('change', e => {
   setTonesPerTrack(!e.target.checked);
   if (arrangements.length) showArr(currentArr);
 });
-document.getElementById('toneTrackSel').addEventListener('change', e => {
-  showArr(parseInt(e.target.value, 10) || 0);
+document.getElementById('toneTrackTabs').addEventListener('click', e => {
+  const tab = e.target.closest('.tn-tab');
+  if (tab) showArr(parseInt(tab.dataset.i, 10) || 0);
 });
 
 // Keep the "Testar tom" selector in sync with the CREATED tones. Disabled when
@@ -3626,13 +3654,14 @@ document.getElementById('toneExtraChecks').addEventListener('change', e => {
 function renderToneChangesList(redraw = true) {
   const el = document.getElementById('toneChangesList');
   if (!toneChanges.length) {
-    el.innerHTML = `<span class="meta">${T('Sem mudanças de tom. Ativa o modo "Mudança de tom" e clica numa nota.')}</span>`;
+    el.innerHTML = `<span class="tn-empty">${T('Sem mudanças de tom. Ativa o modo "Mudança de tom" e clica numa nota.')}</span>`;
   } else {
     const sorted = toneChanges;  // already time-sorted (see loadTones)
     el.innerHTML = sorted.map((c, i) => {
       const name = (jobTones.find(t => t.key === c.name) || {}).name || c.name;
-      return `<div class="anchor-row">↪ ${c.time.toFixed(2)}s → <b>${esc(name)}</b>
-        <button type="button" class="tone-change-rm" data-i="${i}">${T('remover')}</button></div>`;
+      return `<div class="tn-change"><span class="tn-change-time" title="${c.time.toFixed(2)} s">${fmtClockTenths(c.time - viewOrigin)}</span>
+        ${icon('forward')}<span class="tn-change-tone">${esc(name)}</span>
+        <button type="button" class="secondary tone-change-rm" data-i="${i}">${T('Remover')}</button></div>`;
     }).join('');
     el.querySelectorAll('.tone-change-rm').forEach(b => b.addEventListener('click', () => {
       const target = sorted[parseInt(b.dataset.i, 10)];
@@ -5072,6 +5101,7 @@ document.getElementById('detectTones').addEventListener('click', detectTones);
 // The recording's tone over time read against what each track PLAYS in each
 // part (tone_analysis/sections.py). Computed from the current build.
 
+const toneTrackOpen = {};  // kind → whether its suggestion card is unfolded (kept across re-renders)
 const TONE_ROLE = {
   clean: { label: T('Limpo'), color: '#5bb8ff' },
   rhythm: { label: T('Ritmo'), color: '#e0a54a' },
@@ -5150,9 +5180,9 @@ function toneSwapsHtml(tracks) {
       ${jobTones.length ? `<optgroup label="${esc(T('Tons do projeto'))}">${opts(jobTones, 'p:')}</optgroup>` : ''}
       ${toneLibrary.length ? `<optgroup label="${esc(T('Biblioteca'))}">${opts(toneLibrary, 'l:')}</optgroup>` : ''}
       <option value="__coll__">${T('Dos teus PSARC…')}</option></select>`;
-    return `<div class="ts-swap-row"><b>${esc(s.name || s.key)}</b> <span class="meta">→</span> ${sel}</div>`;
+    return `<div class="ts-swap-row"><b>${esc(s.name || s.key)}</b>${sel}</div>`;
   }).join('');
-  return `<div class="ts-swaps"><div class="meta">${T('Trocar os tons sugeridos — as trocas ficam nos mesmos pontos, com os tons que escolheres:')}</div>${rows}</div>`;
+  return `<div class="ts-swaps"><div class="ts-swaps-intro">${T('Trocar os tons sugeridos — as trocas ficam nos mesmos pontos, com os tons que escolheres:')}</div><div class="ts-swap-grid">${rows}</div></div>`;
 }
 
 function wireToneSwaps(body) {
@@ -5212,17 +5242,21 @@ function renderToneSuggestions() {
   const d = toneSuggestions;
   const top = document.getElementById('toneSuggestApplyAll');
   top.hidden = !(d && d.tracks && d.tracks.length);
-  if (!d) { body.innerHTML = `<span class="meta">${T('a carregar…')}</span>`; return; }
+  if (!d) { body.innerHTML = `<span class="tn-empty">${T('a carregar…')}</span>`; return; }
   if (d.error) {
     body.innerHTML = d.error === 409
-      ? `<span class="meta">${T('Clica em "Detetar tom": além do tom geral, mede o som da guitarra ao longo da música, e aqui aparece uma sugestão de tom para cada parte de cada pista.')}</span>`
-      : `<span class="meta" style="color:#e88">${T('Não foi possível calcular as sugestões.')}</span>`;
+      ? `<span class="tn-empty">${T('Clica em "Detetar tom": além do tom geral, mede o som da guitarra ao longo da música, e aqui aparece uma sugestão de tom para cada parte de cada pista.')}</span>`
+      : `<span class="tn-empty" style="color:#e88">${T('Não foi possível calcular as sugestões.')}</span>`;
     return;
   }
   body.innerHTML = toneSwapsHtml(d.tracks) + d.tracks.map((t, ti) => toneTrackHtml(t, ti, d.timeline || [])).join('');
   wireToneSwaps(body);
-  body.querySelectorAll('.ts-apply').forEach(btn => btn.addEventListener('click', () => {
+  body.querySelectorAll('.ts-apply').forEach(btn => btn.addEventListener('click', e => {
+    e.preventDefault();  // inside the <summary>: do not also fold the track
     applyToneSuggestion([d.tracks[parseInt(btn.dataset.i, 10)]]);
+  }));
+  body.querySelectorAll('details.ts-track').forEach(el => el.addEventListener('toggle', () => {
+    toneTrackOpen[el.dataset.kind] = el.open;
   }));
   body.querySelectorAll('.ts-seg[data-t]').forEach(el => el.addEventListener('click', () => {
     audioSeek(Math.max(0, parseFloat(el.dataset.t) - viewOrigin));
@@ -5255,8 +5289,12 @@ function toneTrackHtml(t, ti, timeline) {
     const role = TONE_ROLE[g.role] || TONE_ROLE.silent;
     const name = run.length > 1 ? `${g.name}–${last.name}` : g.name;
     const when = `${fmtClock(g.start - viewOrigin)}–${fmtClock(last.end - viewOrigin)}`;
+    const roleCell = `<span class="ts-role"><span class="ts-dot" style="background:${role.color}"></span>${role.label}</span>`;
     if (g.role === 'silent') {
-      return `<div class="ts-row"><span class="ts-dot" style="background:${role.color}"></span><b>${esc(name)}</b> <span class="meta">${when} · ${T('não toca — mantém o tom anterior')}</span></div>`;
+      return `<div class="ts-row" role="row"><div class="ts-cols"><span class="ts-part" role="cell">${esc(name)}</span>` +
+        `<span class="ts-when" role="cell">${when}</span><span role="cell">${roleCell}</span>` +
+        `<span class="ts-tone" role="cell">—</span><span role="cell"></span></div>` +
+        `<div class="ts-why">${T('não toca — mantém o tom anterior')}</div></div>`;
     }
     const matches = run.map(x => Math.round(x.match));
     const lo = Math.min(...matches), hi = Math.max(...matches);
@@ -5264,22 +5302,35 @@ function toneTrackHtml(t, ti, timeline) {
     const why = runReasons(run).map(toneReasonText).join(' · ');
     const sw = toneSwaps[g.tone_key];
     const toneLabel = sw
-      ? `<b>${esc(sw.tone.name || sw.tone.key)}</b> <span class="meta">(${T('em vez de {name}', { name: esc(g.tone_name || g.tone_key) })})</span>`
-      : `<b>${esc(g.tone_name || g.tone_key)}</b>`;
-    return `<div class="ts-row"><span class="ts-dot" style="background:${role.color}"></span><b>${esc(name)}</b> ` +
-      `<span class="meta">${when} · ${role.label}</span> → ${toneLabel} ` +
-      `<span class="meta">${lo === hi ? lo : `${lo}–${hi}`}% · ${TONE_CONFIDENCE[conf]}</span>` +
-      (why ? `<div class="meta ts-why">${T('porquê:')} ${esc(why)}</div>` : '') + '</div>';
+      ? `${esc(sw.tone.name || sw.tone.key)} <span class="meta">(${T('em vez de {name}', { name: esc(g.tone_name || g.tone_key) })})</span>`
+      : esc(g.tone_name || g.tone_key);
+    return `<div class="ts-row" role="row"><div class="ts-cols"><span class="ts-part" role="cell">${esc(name)}</span>` +
+      `<span class="ts-when" role="cell">${when}</span><span role="cell">${roleCell}</span>` +
+      `<span class="ts-tone" role="cell">${toneLabel}</span>` +
+      `<span class="ts-match" role="cell">${lo === hi ? lo : `${lo}–${hi}`}%<span class="meta">${TONE_CONFIDENCE[conf]}</span></span></div>` +
+      (why ? `<div class="ts-why">${T('porquê:')} ${esc(why)}</div>` : '') + '</div>';
   }).join('');
   const switches = (t.changes || []).length;
-  return `<div class="ts-track">
-    <div class="pv-row" style="flex-wrap:wrap;gap:.5rem"><b>${esc(arrLabel(t.kind))}</b>
-      <span class="meta">${T('{n} tom(ns), {m} troca(s)', { n: (t.names || []).length, m: switches })}</span>
-      <button type="button" class="secondary ts-apply" data-i="${ti}">${T('Aplicar a esta pista')}</button></div>
-    <svg class="ts-gain" viewBox="0 0 100 30" preserveAspectRatio="none" aria-label="${T('Distorção ao longo da música')}">${bars}</svg>
-    <div class="ts-strip">${strip}</div>
-    <div class="ts-rows">${rows}</div>
-  </div>`;
+  const open = t.kind in toneTrackOpen ? toneTrackOpen[t.kind] : ti === 0;
+  const legend = Object.values(TONE_ROLE).map(r => `<span><i style="background:${r.color}"></i>${r.label}</span>`).join('') +
+    `<span><i style="background:#c85bff"></i>${T('Distorção da gravação')}</span>`;
+  return `<details class="ts-track" data-kind="${esc(t.kind)}"${open ? ' open' : ''}>
+    <summary>${icon('chev-down')}<span class="ts-track-name">${esc(arrLabel(t.kind))}</span>
+      <span class="ts-track-meta">${T('{n} tom(ns), {m} troca(s)', { n: (t.names || []).length, m: switches })}</span>
+      <button type="button" class="secondary tn-btn tn-push ts-apply" data-i="${ti}">${T('Aplicar a esta pista')}</button></summary>
+    <div class="ts-body">
+      <div>
+        <svg class="ts-gain" viewBox="0 0 100 30" preserveAspectRatio="none" aria-label="${T('Distorção ao longo da música')}">${bars}</svg>
+        <div class="ts-strip">${strip}</div>
+      </div>
+      <div class="ts-legend">${legend}</div>
+      <div class="ts-table" role="table" aria-label="${T('Tom sugerido por parte')}">
+        <div class="ts-cols ts-thead" role="row"><span role="columnheader">${T('Parte')}</span><span role="columnheader">${T('Quando')}</span>` +
+        `<span role="columnheader">${T('Papel')}</span><span role="columnheader">${T('Tom sugerido')}</span><span role="columnheader">${T('Acerto')}</span></div>
+        ${rows}
+      </div>
+    </div>
+  </details>`;
 }
 
 // Consecutive parts with the same role and tone read as one line (the strip

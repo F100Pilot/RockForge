@@ -1931,6 +1931,25 @@ on every save of a GP job, since the section was merely shown. Leaving with
 changes asks first. Browser-only; verified with Playwright (album-only save:
 PATCH, no new job; a track change: a new rebuilt job).
 
+**The Tons page is drawn at a larger scale** (2026-10-04, "aumenta o tamanho
+da informação na página dos tons … está tudo muito pequeno", from a sketch the
+user approved). Text 16-17 px instead of 13-14, buttons/selects 44-48 px,
+page-scoped `.tn-*` classes (and the `.ts-*` of the suggestions, used nowhere
+else). The page head carries "Criar / editar tons" and "Detetar tom"; "Tons do
+projeto" is one card per tone (`toneCardHtml`: gear from the catalogue, a
+character from `toneCharacter`, the volume the way the editor shows it);
+"Tons de cada pista" picks the chart with tabs (`#toneTrackTabs`, replacing
+the old select, shown only with per-track tones), the extras are pills and each
+tone change is a row with its time as m:ss.t on the recording clock
+(`fmtClockTenths`); the suggestions put the swaps in a grid, each track in a
+`<details>` (the first open; `toneTrackOpen` keeps what the user folded across
+re-renders, and "Aplicar a esta pista" in the summary does not fold it), an
+80 px distortion curve, a 48 px strip, a legend and a table (Parte · Quando ·
+Papel · Tom sugerido · Acerto) with the reasons under each row. Every id the
+script reached survived except `toneTrackSel`/`toneTrackLabel`. Browser-only;
+verified with Playwright on a built two-track project (1440 and 760 px, PT and
+EN, tabs/pills/fold/apply, no page errors).
+
 **Modals with typed input never close from the backdrop.** The tone builder
 closes only from its own
 ✕/Cancelar. A press that starts inside a field (selecting text, a trackpad tap
