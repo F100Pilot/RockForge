@@ -1950,6 +1950,17 @@ script reached survived except `toneTrackSel`/`toneTrackLabel`. Browser-only;
 verified with Playwright on a built two-track project (1440 and 760 px, PT and
 EN, tabs/pills/fold/apply, no page errors).
 
+**The Letra page follows the same scale** (2026-10-05, "faz o mesmo para a
+página da letra"): three cards — "Encontrar a letra" (search online, detect in
+the recording, their status lines, the progress and the LRCLIB results, whose
+`.lyr-card` is enlarged only under `#sectionLetras` because the wizard and the
+tone collection share it), "Acertar à gravação" (`#lyricsSyncRow`, now the
+card itself) and "Palavras" (count, add/sort/export/"Voltar à letra da pauta",
+an empty-state line, and a sticky-header table capped at 70vh whose rows show
+the recording-clock m:ss.t beside the seconds and a heavier rule under each
+line end). Every id survived. Browser-only; verified with Playwright (PT/EN,
+1440/760 px, a faked LRCLIB answer, edit/line-end/add/remove, no page errors).
+
 **Modals with typed input never close from the backdrop.** The tone builder
 closes only from its own
 ✕/Cancelar. A press that starts inside a field (selecting text, a trackpad tap
@@ -3001,8 +3012,20 @@ riff". That crash was later traced to the chord templates' unused strings
 carrying MIDI 0 instead of -1 (the paragraph above — the same riff), fixed
 since; no working reference ever lacked hand shapes once fingered charts were
 compared (the "zero fingerprints" references were DLC Builder builds of OUR
-XML, which had none to convert). **Not played in game from here** — if a chart
-crashes on a chord passage again, this is the first suspect. Guarded by
+XML, which had none to convert). **The fingers SHOW in game (confirmed by the
+user, 2026-10-05)**; whether any chord passage crashes is being tested now — if
+one does, this is the first suspect. `tests/test_hand_shape_fuzz.py` builds 150
+random charts (chords, single notes, slides, long sustains, rests) with and
+without DD and checks every level, before and after a write/read: each shape
+points at a real template, covers notes of ITS level only of its own chord,
+never overlaps the next, its first/last note times follow `convertHandshape`,
+every chord is inside one and no single note is, and each note's
+`fingerprint_id` is what `findFingerPrintId` finds; the XML's shapes equal the
+native full-chart level's. It found one real slip: a last chord whose sustain
+ends exactly at the next note gave `LastNoteTime` == the shape's end once
+written as float32 (DLC Builder, in whole ms, writes -1 there) — now compared
+at millisecond resolution. 4000 more seeds run by hand: 0 failures over 33 159
+levels and 492 362 shapes. Guarded by
 `test_chords_produce_templates_with_fingers_and_a_hand_shape`,
 `test_dd_levels_have_their_own_hand_shapes_and_slide_extensions`,
 `test_a_phrase_is_not_cut_through_a_hand_shape` (both mutation-checked),

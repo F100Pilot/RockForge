@@ -4410,23 +4410,34 @@ document.getElementById('teDelete').addEventListener('click', () => {
 // ---- Lyrics editor ----
 function renderLyricsRows() {
   document.getElementById('lyricsSyncRow').hidden = !lyricsEvents.length;
+  document.getElementById('lyricsEmpty').hidden = lyricsEvents.length > 0;
+  document.getElementById('lyricsCount').textContent = lyricsEvents.length
+    ? T('{n} palavras', { n: lyricsEvents.length }) : '';
   const tb = document.getElementById('lyricsRows');
   tb.innerHTML = lyricsEvents.map((e, i) => `
-    <tr data-i="${i}">
-      <td><input type="number" step="0.01" min="0" value="${e.time.toFixed(2)}" class="ly-time" style="width:5.5rem"></td>
-      <td><input type="text" value="${esc(e.lyric)}" class="ly-text" style="width:100%"></td>
-      <td style="text-align:center"><input type="checkbox" class="ly-break" ${e.lineBreak ? 'checked' : ''}></td>
-      <td><input type="number" step="0.01" min="0.1" value="${e.length.toFixed(2)}" class="ly-length" style="width:5rem"></td>
+    <tr data-i="${i}"${e.lineBreak ? ' class="ly-line-end"' : ''}>
+      <td><input type="number" step="0.01" min="0" value="${e.time.toFixed(2)}" class="ly-time" aria-label="${T('Tempo (s)')}"><span class="ly-clock">${fmtClockTenths(e.time)}</span></td>
+      <td><input type="text" value="${esc(e.lyric)}" class="ly-text" aria-label="${T('Palavra')}"></td>
+      <td><input type="checkbox" class="ly-break" ${e.lineBreak ? 'checked' : ''} aria-label="${T('Fim de linha')}"></td>
+      <td><input type="number" step="0.01" min="0.1" value="${e.length.toFixed(2)}" class="ly-length" aria-label="${T('Duração (s)')}"></td>
       <td><button type="button" class="icon ly-remove" title="${T('Remover')}" aria-label="${T('Remover')}">${icon('x')}</button></td>
     </tr>`).join('');
   tb.querySelectorAll('tr').forEach(tr => {
     const i = parseInt(tr.dataset.i, 10);
     const redraw = () => { if (arrangements.length) showArr(currentArr); updatePendingChangesInfo(); };
-    tr.querySelector('.ly-time').addEventListener('change', e => { lyricsEvents[i].time = parseFloat(e.target.value) || 0; redraw(); });
+    tr.querySelector('.ly-time').addEventListener('change', e => {
+      lyricsEvents[i].time = parseFloat(e.target.value) || 0;
+      tr.querySelector('.ly-clock').textContent = fmtClockTenths(lyricsEvents[i].time);
+      redraw();
+    });
     // 'change' only (fires on blur/Enter) — an 'input' handler here rebuilt the
     // WHOLE score SVG on every keystroke, which froze typing on a long song.
     tr.querySelector('.ly-text').addEventListener('change', e => { lyricsEvents[i].lyric = e.target.value; redraw(); });
-    tr.querySelector('.ly-break').addEventListener('change', e => { lyricsEvents[i].lineBreak = e.target.checked; redraw(); });
+    tr.querySelector('.ly-break').addEventListener('change', e => {
+      lyricsEvents[i].lineBreak = e.target.checked;
+      tr.classList.toggle('ly-line-end', e.target.checked);
+      redraw();
+    });
     tr.querySelector('.ly-length').addEventListener('change', e => { lyricsEvents[i].length = Math.max(0.1, parseFloat(e.target.value) || 0.1); redraw(); });
     tr.querySelector('.ly-remove').addEventListener('click', () => { lyricsEvents.splice(i, 1); renderLyricsRows(); redraw(); });
   });

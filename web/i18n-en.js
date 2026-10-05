@@ -1093,5 +1093,18 @@
  "Quando": "When",
  "Papel": "Role",
  "Tom sugerido": "Suggested tone",
- "Acerto": "Match"
+ "Acerto": "Match",
+ "A letra que aparece no jogo, palavra a palavra.": "The lyrics that show in the game, word by word.",
+ "Encontrar a letra": "Find the lyrics",
+ "Detetar letra na gravação": "Detect lyrics in the recording",
+ "Acertar à gravação": "Line up with the recording",
+ "A letra toda": "All the lyrics",
+ "Cada palavra pela voz": "Each word by the voice",
+ "Mede na gravação o tempo de cada palavra (WhisperX).": "Measures each word's time in the recording (WhisperX).",
+ "Palavras": "Words",
+ "Ordenar por tempo": "Sort by time",
+ "Ainda não há letra. Procura-a online, deteta-a na gravação ou acrescenta palavras.": "No lyrics yet. Look them up online, detect them in the recording or add words.",
+ "Tempo": "Time",
+ "Duração": "Length",
+ "{n} palavras": "{n} words"
 };

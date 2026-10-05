@@ -3231,6 +3231,10 @@ def get_tone_collection(
     every artist of the whole collection, whatever the filter, for the picker."""
     from rockforge.infrastructure import tone_collection
 
+    # The status BEFORE the list: a scan finishing between the two reads would
+    # otherwise answer "done" with the list from before it (the next poll
+    # would fix it, but a "done" must mean the list is complete).
+    status = _tone_collection_status()
     data = tone_collection.load()
     folder = _tone_collection_folder()
     if folder is not None and data.get("folder") not in (None, str(folder)):
@@ -3263,7 +3267,7 @@ def get_tone_collection(
     return {
         "folder": str(folder) if folder else None,
         "suggested_folder": str(suggested) if suggested else None,
-        "status": _tone_collection_status(),
+        "status": status,
         "scanned_at": data.get("scanned_at"),
         "files": len(files),
         "unreadable": sum(1 for f in files.values() if isinstance(f, dict) and f.get("error")),

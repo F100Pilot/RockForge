@@ -824,7 +824,10 @@ def _build_fingerprints(notes: list[SngNote]) -> list[SngFingerprint]:
             start_time=start,
             end_time=end,
             first_note_time=start,
-            last_note_time=last_end if last_end < end else -1.0,
+            # DLC Builder compares whole milliseconds (convertHandshape: -1 when
+            # last + sustain >= end); a float hair under the end would be equal
+            # once written as float32, so compare at that resolution too.
+            last_note_time=last_end if last_end < end - 0.0005 else -1.0,
         ))
         for i in range(first, last + 1):
             notes[i] = replace(notes[i], fingerprint_id=(k, notes[i].fingerprint_id[1]))

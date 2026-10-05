@@ -243,6 +243,42 @@
     .ts-cols { grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
     .ts-thead { display:none; }
   }
+  /* Letra page — the same larger scale as the Tons page */
+  .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+  .ly-find { display:flex; flex-direction:column; gap:.8rem; }
+  .ly-find-row { display:flex; align-items:center; gap:.75rem; flex-wrap:wrap; }
+  .ly-status { font-size:1rem; color:#c4c6cd; }
+  .ly-progress { display:flex; flex-direction:column; gap:.5rem; }
+  .ly-progress-row { display:flex; align-items:center; gap:.75rem; }
+  .ly-progress-track { flex:1; height:.7rem; background:#262830; border-radius:6px; overflow:hidden; }
+  .ly-progress-pct { font-size:.95rem; color:var(--muted); min-width:3rem; text-align:right; }
+  .ly-sync-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(19rem, 1fr)); gap:1.5rem; }
+  .ly-sync-row { display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; }
+  .ly-step { width:2.75rem; justify-content:center; padding:0; font-size:1.3rem; }
+  .ly-num { width:5.5rem; height:2.75rem; padding:0 .7rem; border-radius:10px; font-size:1rem; }
+  .ly-word-acts { margin-left:auto; display:flex; gap:.6rem; flex-wrap:wrap; }
+  .ly-table-wrap { max-height:70vh; overflow:auto; border:1px solid var(--line); border-radius:14px; }
+  .ly-table-wrap:has(#lyricsRows:empty) { display:none; }
+  .ly-table { width:100%; border-collapse:collapse; font-size:1rem; }
+  .ly-table thead th { position:sticky; top:0; z-index:1; background:#1d1f27; text-align:left; padding:.75rem 1rem; font-size:.85rem; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+  .ly-table td { padding:.45rem 1rem; border-top:1px solid #262831; vertical-align:middle; }
+  .ly-table tr.ly-line-end td { border-bottom:2px solid #34374a; }
+  .ly-table input[type=number], .ly-table input[type=text] { height:2.6rem; padding:0 .7rem; border-radius:8px; font-size:1rem; }
+  .ly-table .ly-time { width:6.5rem; }
+  .ly-table .ly-length { width:5.5rem; }
+  .ly-table .ly-text { width:100%; min-width:8rem; }
+  .ly-table .ly-break { width:1.3rem; height:1.3rem; accent-color:var(--accent); }
+  .ly-clock { margin-left:.5rem; font-size:.9rem; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .ly-table .ly-remove { width:2.6rem; height:2.6rem; }
+  .ly-table .ly-remove .ic { width:1.2rem; height:1.2rem; }
+  #sectionLetras .lyr-results { gap:.8rem; margin:0; }
+  #sectionLetras .lyr-card { padding:1rem 1.2rem; gap:1rem; }
+  #sectionLetras .lyr-card b { font-size:1.1rem; }
+  #sectionLetras .lyr-card .lyr-meta { font-size:.95rem; }
+  #sectionLetras .lyr-card .lyr-preview { font-size:.95rem; }
+  #sectionLetras .lyr-card .lyr-badge { font-size:.85rem; padding:.1rem .6rem; }
+  #sectionLetras .lyr-card .lyr-acts .meta { font-size:.9rem; max-width:14rem; }
+  #sectionLetras .lyr-card .lyr-acts button { height:2.75rem; padding:0 1.1rem; font-size:1rem; }
   .tone-cand-name { flex:1; }
   .tone-cand-match { flex:0 0 3rem; text-align:right; color:var(--muted); font-variant-numeric:tabular-nums; }
   button.tone-cand-use { padding:.15rem .55rem; font-size:.8rem; }
@@ -1279,52 +1315,84 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
       </div>
 
       <!-- PÁGINA: Letra -->
-      <div id="sectionLetras" class="pv-page" hidden>
-        <h2 class="pv-page-title">Letra</h2>
-        <div class="pv-card pv-card-lg">
-
-          <div>
-            <div class="pv-row" style="flex-wrap:wrap">
-              <button type="button" id="lyricsSearch" class="secondary"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg> Procurar letra online</button>
-              <span id="lyricsSearchInfo" class="meta"></span>
-              <button class="info-btn" data-info="lyrics-lookup">ⓘ</button>
-            </div>
-            <div id="lyricsResults" class="lyr-results"></div>
-            <div id="lyricsSyncRow" class="pv-row lyr-sync" hidden>
-              <span class="meta">Acertar à gravação:</span>
-              <button type="button" id="lyricsFirstToCursor" class="secondary" title="Desloca a letra toda para a 1ª palavra ficar onde está o cursor"><svg class="ic" aria-hidden="true"><use href="#i-crosshair"/></svg> 1ª palavra = cursor</button>
-              <button type="button" id="lyricsShiftBack" class="secondary" title="Mais cedo">−</button>
-              <input type="number" id="lyricsShift" value="0.5" min="0.01" step="0.1" style="width:4.5rem" aria-label="Deslocar (s)">
-              <button type="button" id="lyricsShiftFwd" class="secondary" title="Mais tarde">+</button>
-              <span class="meta">s</span>
-              <button type="button" id="lyricsAlign" class="secondary" title="Mede na gravação o tempo de cada palavra (WhisperX)"><svg class="ic" aria-hidden="true"><use href="#i-wand"/></svg> Sincronizar com a gravação</button>
-            </div>
-            <div class="anchor-row">
-              <button type="button" id="detectLyrics" class="secondary">Detetar letra</button>
-              <button type="button" id="lyricsFromScore" class="secondary" title="Descarta estas linhas e volta a ler a letra do ficheiro Guitar Pro na próxima reconstrução" hidden><svg class="ic" aria-hidden="true"><use href="#i-undo"/></svg> Voltar à letra da pauta</button>
-              <span id="lyricsInfo" class="meta"></span>
-              <button class="info-btn" data-info="lyrics">ⓘ</button>
-            </div>
-            <div id="lyricsProgressWrap" style="display:none;margin:.4rem 0">
-              <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.25rem">
-                <div style="flex:1;background:#262830;border-radius:4px;height:8px;overflow:hidden">
-                  <div id="lyricsProgressBar"></div>
-                </div>
-                <span id="lyricsProgressPct" style="font-size:.78rem;color:var(--muted);min-width:2.5rem;text-align:right"></span>
-              </div>
-              <pre id="lyricsLog" style="margin:.4rem 0 0;min-height:1.6rem;max-height:8rem;overflow-y:auto;background:#14151a;border:1px solid #262830;border-radius:4px;padding:.4rem .6rem;font-size:.75rem;color:#9aa0ad;white-space:pre-wrap"></pre>
-            </div>
-            <table id="lyricsTable" style="width:100%">
-              <thead><tr><th>Tempo (s)</th><th>Palavra</th><th>Fim de linha</th><th>Duração (s)</th><th></th></tr></thead>
-              <tbody id="lyricsRows"></tbody>
-            </table>
-            <div class="anchor-row" style="margin-top:.4rem">
-              <button type="button" id="addLyricRow" class="secondary">+ palavra</button>
-              <button type="button" id="sortLyrics" class="secondary">ordenar por tempo</button>
-              <button type="button" id="exportLrc" class="secondary">Exportar LRC</button>
-            </div>
+      <div id="sectionLetras" class="pv-page tn-page ly-page" hidden>
+        <div class="tn-head">
+          <div class="tn-head-text">
+            <h2 class="pv-page-title">Letra</h2>
+            <p class="tn-sub">A letra que aparece no jogo, palavra a palavra.</p>
           </div>
         </div>
+
+        <section class="pv-card pv-card-lg tn-card" aria-labelledby="lyFindTitle">
+          <div class="tn-card-head">
+            <h3 id="lyFindTitle" class="tn-card-title">Encontrar a letra</h3>
+          </div>
+          <div class="ly-find">
+            <div class="ly-find-row">
+              <button type="button" id="lyricsSearch" class="tn-btn"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>Procurar letra online</button>
+              <button class="info-btn" data-info="lyrics-lookup">ⓘ</button>
+              <span id="lyricsSearchInfo" class="ly-status"></span>
+            </div>
+            <div class="ly-find-row">
+              <button type="button" id="detectLyrics" class="secondary tn-btn"><svg class="ic" aria-hidden="true"><use href="#i-mic"/></svg>Detetar letra na gravação</button>
+              <button class="info-btn" data-info="lyrics">ⓘ</button>
+              <span id="lyricsInfo" class="ly-status"></span>
+            </div>
+          </div>
+          <div id="lyricsProgressWrap" class="ly-progress" style="display:none">
+            <div class="ly-progress-row">
+              <div class="ly-progress-track"><div id="lyricsProgressBar"></div></div>
+              <span id="lyricsProgressPct" class="ly-progress-pct"></span>
+            </div>
+            <pre id="lyricsLog" class="tn-log"></pre>
+          </div>
+          <div id="lyricsResults" class="lyr-results"></div>
+        </section>
+
+        <section id="lyricsSyncRow" class="pv-card pv-card-lg tn-card" aria-labelledby="lySyncTitle" hidden>
+          <h3 id="lySyncTitle" class="tn-card-title">Acertar à gravação</h3>
+          <div class="ly-sync-grid">
+            <div class="tn-field">
+              <span class="tn-label">A letra toda</span>
+              <div class="ly-sync-row">
+                <button type="button" id="lyricsFirstToCursor" class="secondary tn-btn" title="Desloca a letra toda para a 1ª palavra ficar onde está o cursor"><svg class="ic" aria-hidden="true"><use href="#i-crosshair"/></svg>1ª palavra = cursor</button>
+              </div>
+              <div class="ly-sync-row">
+                <button type="button" id="lyricsShiftBack" class="secondary tn-btn ly-step" title="Mais cedo" aria-label="Mais cedo">−</button>
+                <input type="number" id="lyricsShift" class="ly-num" value="0.5" min="0.01" step="0.1" aria-label="Deslocar (s)">
+                <span class="tn-hint">s</span>
+                <button type="button" id="lyricsShiftFwd" class="secondary tn-btn ly-step" title="Mais tarde" aria-label="Mais tarde">+</button>
+              </div>
+            </div>
+            <div class="tn-field">
+              <span class="tn-label">Cada palavra pela voz</span>
+              <div class="ly-sync-row">
+                <button type="button" id="lyricsAlign" class="secondary tn-btn" title="Mede na gravação o tempo de cada palavra (WhisperX)"><svg class="ic" aria-hidden="true"><use href="#i-wand"/></svg>Sincronizar com a gravação</button>
+              </div>
+              <span class="tn-hint">Mede na gravação o tempo de cada palavra (WhisperX).</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="pv-card pv-card-lg tn-card" aria-labelledby="lyWordsTitle">
+          <div class="tn-card-head">
+            <h3 id="lyWordsTitle" class="tn-card-title">Palavras</h3>
+            <span id="lyricsCount" class="ts-track-meta"></span>
+            <div class="ly-word-acts">
+              <button type="button" id="addLyricRow" class="secondary tn-btn"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>Palavra</button>
+              <button type="button" id="sortLyrics" class="secondary tn-btn">Ordenar por tempo</button>
+              <button type="button" id="exportLrc" class="secondary tn-btn"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg>Exportar LRC</button>
+              <button type="button" id="lyricsFromScore" class="secondary tn-btn" title="Descarta estas linhas e volta a ler a letra do ficheiro Guitar Pro na próxima reconstrução" hidden><svg class="ic" aria-hidden="true"><use href="#i-undo"/></svg>Voltar à letra da pauta</button>
+            </div>
+          </div>
+          <p id="lyricsEmpty" class="tn-empty" hidden>Ainda não há letra. Procura-a online, deteta-a na gravação ou acrescenta palavras.</p>
+          <div class="ly-table-wrap">
+            <table id="lyricsTable" class="ly-table">
+              <thead><tr><th>Tempo</th><th>Palavra</th><th>Fim de linha</th><th>Duração</th><th><span class="sr-only">Remover</span></th></tr></thead>
+              <tbody id="lyricsRows"></tbody>
+            </table>
+          </div>
+        </section>
       </div>
 
       <!-- PÁGINA: Capa -->
