@@ -6,7 +6,9 @@ points at a chord template that does not exist, covers no note, overlaps the
 next one or disagrees with its notes is the kind of thing that crashes in Riff
 Repeater rather than at load. These are the invariants DLC Builder's own
 conversion produces (XmlToSng.fs ``convertHandshape``, Utils.fs
-``findFingerPrintId``) and the two hand-made CDLC the user sent obey, checked
+``findFingerPrintId``) and the two hand-made CDLC the user sent obey — held in
+``psarc/verify.py``'s ``check_sng``, the checker the app runs on the user's own
+file, together with every other rule a chart must keep — checked
 level by level on random charts mixing chords, single notes, slides, long
 sustains and rests, and again after a write/read round trip.
 """
@@ -19,6 +21,7 @@ import pytest
 from rockforge.domain.arrangement import Arrangement, ArrangementKind, Section, SongMetadata
 from rockforge.domain.music import Beat, TabNote, Technique, TempoMap, Tuning
 from rockforge.infrastructure.packaging.psarc.sng import from_arrangement, read_sng, write_sng
+from rockforge.infrastructure.packaging.psarc.verify import check_sng
 from rockforge.infrastructure.rsxml.writer import render_arrangement
 
 SHAPES = [
@@ -70,41 +73,12 @@ def _random_chart(seed: int) -> Arrangement:
     )
 
 
-def _find_fingerprint(time: float, fps) -> int:
-    """Utils.fs ``findFingerPrintId``: the first shape with start <= t < end."""
-    for i, fp in enumerate(fps):
-        if fp.start_time > time:
-            return -1
-        if fp.start_time <= time < fp.end_time:
-            return i
-    return -1
-
-
 def _check_levels(model) -> None:
-    n_templates = len(model.chord_templates)
+    # The rules live in ONE place, the checker "Verificar PSARC" runs on the
+    # user's file — so the builder and the checker are tested against each other.
+    assert check_sng(model) == []
     for lvl in model.arrangements:
-        fps, notes = lvl.fingerprints1, lvl.notes
         assert lvl.fingerprints2 == []
-        for a, b in zip(fps, fps[1:], strict=False):
-            assert a.start_time <= b.start_time and a.end_time <= b.start_time + 1e-6
-        for fp in fps:
-            assert 0 <= fp.chord_id < n_templates
-            assert fp.end_time > fp.start_time
-            inside = [n for n in notes if fp.start_time <= n.time < fp.end_time]
-            assert inside, "a hand shape over no note of its level"
-            assert all(n.chord_id == fp.chord_id for n in inside)
-            assert abs(fp.first_note_time - inside[0].time) < 1e-5
-            last = inside[-1]
-            assert fp.last_note_time == -1 or (
-                abs(fp.last_note_time - (last.time + last.sustain)) < 1e-5
-                and fp.last_note_time < fp.end_time)
-        for n in notes:
-            assert n.fingerprint_id[1] == -1
-            assert n.fingerprint_id[0] == _find_fingerprint(n.time, fps)
-            if n.chord_id >= 0:
-                assert n.fingerprint_id[0] >= 0, "a chord outside every hand shape"
-            else:
-                assert n.fingerprint_id[0] == -1, "a single note inside a hand shape"
     for ct in model.chord_templates:
         # -1 on disk is the byte 0xFF, which read_sng hands back unsigned.
         assert all(f in (-1, 255) or 1 <= f <= 4 for f in ct.fingers)

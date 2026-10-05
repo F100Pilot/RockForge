@@ -3737,6 +3737,67 @@ without phrasing the way a real DDC would; and the SNG binary is round-tripped
 but not byte-diffed against retail. The DLC Builder bundle remains the route to
 a real DDC pass if that phrasing matters for a given song.
 
+### Checking the PSARC and installing it in the game
+
+"Verificar PSARC" and "Instalar no jogo" (2026-10-05, the two the user picked
+from a list of suggestions) shorten the rebuild → copy → play loop, which is
+how every native-SNG crash was found.
+
+**`psarc/verify.py` — the rules in ONE place.** `check_sng(model)` holds every
+invariant whose breaking crashed the game before or that DLC Builder's own
+conversion keeps: phrase/iteration/section ranges and order, a phrase with
+notes and a ceiling of 0 (September), notes in their own phrase iteration
+with an in-range phrase id, each note's anchor the one of ITS level, anchors
+that never cross a phrase start, anchor extensions that belong to a slide,
+templates whose unused strings carry MIDI -1, tap/slap/pluck at -1, tone
+slots 0-3, vocal notes 254, and the hand-shape rules (`findFingerPrintId`,
+`convertHandshape`). `tests/test_hand_shape_fuzz.py` now asserts
+`check_sng(model) == []` on its hundreds of random charts instead of keeping
+its own copy, so the builder and the checker are tested against each other.
+`verify_psarc(path)` reads the archive the user is about to copy
+(`container.read_entries`, only the manifests and SNGs, not the audio) and
+adds the container rules that silently keep a song out of the list: a
+numeric `appid.appid`, a numeric `toolkit.version`, every manifest's SNG
+present, every SNG decodable. Anything unreadable is a finding, never an
+exception. `GET /jobs/{id}/psarc-check` runs it on request (never stored, so
+it always describes the file on disk; `describe(code)` words each rule in
+the user's language) and groups the problems by chart and rule with a count
+and where they first happen. The Exportar page's "Antes de usar" shows it as
+a row (`psarcCheckRow`, fetched once per version): "PSARC verificado", or
+"O PSARC tem falhas conhecidas" listing them (an error row, so it reaches the
+status chip). **Honest limit, said in the row:** it is our reading of the
+file — it would not have caught `VOCAL_NOTE = 254` or the partial-block
+`zlength`, which are the game reading the file differently, so it never
+replaces playing the song. Guarded by `test_psarc_verify.py`: a chart and a
+packed PSARC (Lead + Lead alternativo + vocals) pass clean, every rule fires
+on its planted fault (mutation-proof), a broken archive is reported not
+raised, a broken chart is named, every rule has its words; and
+`test_the_built_psarc_is_checked_before_it_goes_to_the_game`.
+
+**`infrastructure/game_install.py` — "Instalar no jogo".** `dlc_folder()` is
+the game folder set in Definições (its `dlc`), else the tone collection's dlc
+folder, else a Steam library's. `install()` writes into **`dlc/RockForge/`**
+— Rocksmith loads sub-folders of `dlc` (CustomsForge Song Manager organises
+libraries that way; not tried in game from here) and a folder of our own is
+what makes it safe to delete: only a `.psarc` in that folder is ever removed,
+namely the copy an earlier version of the song installed under another name
+(the title changed, so the key did). The copy goes to a hidden `.part` file
+renamed over the target, so the game never sees half a file. A copy of the
+same file elsewhere in `dlc` (put there by hand) is reported, not touched —
+the game would list the song twice. `POST /jobs/{id}/install` records
+`params["installed_psarc"]`/`["installed_from"]` (a fork inherits them),
+`JobOut.in_game` is "this" / "older" / None (the file gone = None), and
+`GET /game-dlc` gives the target for the UI. A copy that fails (the game open
+and holding the file) is a 409 saying to close the game. UI: the "Instalar no
+jogo" row under the downloads (`renderInstallRow`): the target, "Esta versão
+está no jogo", "No jogo está uma versão anterior", or "Abrir Definições" when
+no game folder is found (re-asked when Definições closes). Guarded by
+`test_the_psarc_goes_into_our_own_folder_and_replaces_the_earlier_copy`,
+`test_a_file_rockforge_did_not_put_there_is_never_deleted` and
+`test_install_copies_the_psarc_into_the_games_dlc_folder`; the page with
+Playwright (install, reinstall label, older/none states, a broken PSARC's
+row, the missing-folder button opening Definições, PT/EN, no page errors).
+
 ### Wwise SoundBank (`infrastructure/packaging/psarc/soundbank.py`)
 
 Rocksmith reads a song's audio through a Wwise SoundBank: `song_<key>.bnk`

@@ -29,7 +29,7 @@ import signal
 import sys
 import time
 import uuid
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator, Iterator, Mapping
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, Literal, cast
@@ -409,6 +409,11 @@ class JobOut(BaseModel):
     # UI offer "previous version" so an iterative sync can be walked back — the older
     # job (and its bundle) is never deleted on a rebuild.
     rebuilt_from: str | None = None
+    # Is this song in the game's dlc folder ("Instalar no jogo")? "this" = this
+    # version's PSARC, "older" = a copy installed from an earlier version (a
+    # rebuild inherits the record), None = not installed or since deleted.
+    in_game: str | None = None
+    in_game_path: str | None = None
 
 
 class OtherSyncIn(BaseModel):
@@ -886,7 +891,20 @@ def _to_out(job: Job) -> JobOut:
         recording_from_gp=bool(params.get("recording_from_gp")),
         has_lyrics=has_lyrics,
         rebuilt_from=cast("str | None", params.get("rebuilt_from") or None),
+        in_game=_in_game(job.id, params),
+        in_game_path=_in_game_path(params),
     )
+
+
+def _in_game_path(params: Mapping[str, object]) -> str | None:
+    raw = params.get("installed_psarc")
+    return raw if isinstance(raw, str) and Path(raw).is_file() else None
+
+
+def _in_game(job_id: str, params: Mapping[str, object]) -> str | None:
+    if _in_game_path(params) is None:
+        return None
+    return "this" if params.get("installed_from") == job_id else "older"
 
 
 def _enqueue(job: Job) -> None:
@@ -3727,6 +3745,128 @@ def download_psarc(job_id: str) -> FileResponse:
                 "download the bundle instead",
             )
         return FileResponse(job.psarc_path, filename=Path(job.psarc_path).name)
+
+
+class PsarcProblemOut(BaseModel):
+    code: str
+    text: str
+    arrangement: str
+    count: int
+    level: int | None = None  # where it first happens
+    time: float | None = None
+    detail: str = ""
+
+
+class PsarcCheckOut(BaseModel):
+    ok: bool
+    charts: list[str]
+    problems: list[PsarcProblemOut]
+
+
+@app.get("/jobs/{job_id}/psarc-check", response_model=PsarcCheckOut)
+def check_psarc(job_id: str) -> PsarcCheckOut:
+    """Read the built .psarc back and check every chart in it against the rules
+    whose breaking crashed the game before (``psarc/verify.py``). Run on
+    request, never stored, so it always describes the file on disk."""
+    from rockforge.infrastructure.packaging.psarc.verify import describe, verify_psarc
+
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+        psarc = job.psarc_path
+    if not psarc or not Path(psarc).is_file():
+        raise HTTPException(409, i18n.tr("este projeto não tem PSARC", "this project has no PSARC"))
+    report = verify_psarc(Path(psarc))
+    groups: dict[tuple[str, str], PsarcProblemOut] = {}
+    for p in report.problems:
+        key = (p.arrangement, p.code)
+        if key in groups:
+            groups[key].count += 1
+            continue
+        groups[key] = PsarcProblemOut(
+            code=p.code, text=describe(p.code), arrangement=p.arrangement, count=1,
+            level=p.level, time=None if p.time is None else round(p.time, 3), detail=p.detail,
+        )
+    return PsarcCheckOut(ok=report.ok, charts=report.charts, problems=list(groups.values()))
+
+
+class GameDlcOut(BaseModel):
+    dlc_dir: str | None
+    folder: str  # the sub-folder RockForge installs into
+    target: str | None  # dlc_dir/folder, written by the server's own path rules
+
+
+@app.get("/game-dlc", response_model=GameDlcOut)
+def get_game_dlc() -> GameDlcOut:
+    from rockforge.infrastructure import game_install
+
+    dlc = game_install.dlc_folder()
+    return GameDlcOut(
+        dlc_dir=str(dlc) if dlc else None,
+        folder=game_install.SUBFOLDER,
+        target=str(dlc / game_install.SUBFOLDER) if dlc else None,
+    )
+
+
+class InstallOut(BaseModel):
+    path: str
+    removed: str | None
+    duplicates: list[str]
+    job: JobOut
+
+
+@app.post("/jobs/{job_id}/install", response_model=InstallOut)
+def install_in_game(job_id: str) -> InstallOut:
+    """Copy this version's .psarc into the game's dlc folder (``dlc/RockForge``),
+    replacing the copy an earlier version of the song installed."""
+    from rockforge.infrastructure import game_install
+
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+        psarc = job.psarc_path
+        params = dict(job.params or {})
+    if not psarc or not Path(psarc).is_file():
+        raise HTTPException(409, i18n.tr("este projeto não tem PSARC", "this project has no PSARC"))
+    dlc = game_install.dlc_folder()
+    if dlc is None:
+        raise HTTPException(404, i18n.tr(
+            "não encontrei a pasta dlc do Rocksmith 2014 — indica a pasta do jogo em "
+            "Definições → Geral",
+            "Rocksmith 2014's dlc folder was not found — set the game folder in "
+            "Settings → General",
+        ))
+    previous = params.get("installed_psarc")
+    try:
+        result = game_install.install(
+            Path(psarc), dlc, Path(previous) if isinstance(previous, str) else None
+        )
+    except OSError as exc:
+        raise HTTPException(409, i18n.tr(
+            "não foi possível copiar para {dir} ({error}) — se o jogo está aberto, fecha-o "
+            "e tenta outra vez",
+            "could not copy into {dir} ({error}) — if the game is open, close it and try "
+            "again",
+        ).format(dir=dlc, error=exc)) from exc
+    with _session_factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+        job.params = {
+            **dict(job.params or {}),
+            "installed_psarc": str(result.path),
+            "installed_from": job_id,
+        }
+        session.commit()
+        out = _to_out(job)
+    return InstallOut(
+        path=str(result.path),
+        removed=str(result.removed) if result.removed else None,
+        duplicates=[str(p) for p in result.duplicates],
+        job=out,
+    )
 
 
 _COVER_ART_SUFFIXES = {".jpg", ".jpeg", ".png"}

@@ -4,6 +4,11 @@ Estado do projeto + lista de funcionalidades (concluídas `[x]` e propostas
 `[ ]`). Para *como* cada coisa funciona, ver `CLAUDE.md`. Para *como testar*,
 ver `TESTING.md`.
 
+- [x] **Instalar no jogo e verificar o PSARC.** Na página Exportar, "Instalar
+  no jogo" copia o `.psarc` para `dlc/RockForge/` (substitui a cópia de uma
+  versão anterior; avisa se houver outra cópia posta à mão) e "Antes de usar"
+  verifica o ficheiro construído contra as regras que já fizeram o jogo
+  crashar. Falta confirmar no jogo que a subpasta `dlc/RockForge` é lida.
 - [x] **Pistas com o nome do jogo.** As abas e listas mostram "LEAD 1",
   "LEAD 2", "RHYTHM", "COMBO" (numeradas só quando há duas no mesmo caminho),
   e o PSARC passa a dizer ao jogo que a Lead alternativa é a 2.ª Lead

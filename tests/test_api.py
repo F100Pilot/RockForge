@@ -3519,3 +3519,94 @@ def test_the_tones_of_the_songs_in_the_dlc_folder_are_listed_and_handed_out(
     assert client.get("/tone-collection/tone", params={"id": "0" * 16}).status_code == 404
     # the folder is remembered: a rescan needs none
     assert client.post("/tone-collection/scan", json={}).status_code == 202
+
+
+def _job_with_psarc(client: TestClient, tmp_path) -> tuple[str, Path]:
+    """A completed job whose .psarc is a real one, packed by the native packer."""
+    pytest.importorskip("cryptography")
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.domain.arrangement import Arrangement, ArrangementKind, SongMetadata
+    from rockforge.domain.music import Beat, TabNote, TempoMap, Tuning
+    from rockforge.infrastructure.packaging.psarc.packer import NativePsarcPacker
+
+    job_id = _bundle_with(client, ["LEAD"])
+    audio = tmp_path / "a.wav"
+    audio.write_bytes(b"RIFF....WAVEfmt ")
+    beats = tuple(Beat(time=0.5 * i, measure=(i // 4 + 1) if i % 4 == 0 else -1)
+                  for i in range(16))
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD, metadata=SongMetadata(title="Song", artist="Artist",
+                                                         song_length=8.0),
+        tuning=Tuning(), tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+        notes=[TabNote(string=1, fret=3, time=1.0 + i, sustain=0.3) for i in range(5)],
+    )
+    psarc = NativePsarcPacker().package([arr], audio, tmp_path / "packed").psarc_path
+    assert psarc is not None
+    with app_module._session_factory() as session:
+        session.get(app_module.Job, job_id).psarc_path = str(psarc)
+        session.commit()
+    return job_id, psarc
+
+
+def test_the_built_psarc_is_checked_before_it_goes_to_the_game(
+    client: TestClient, tmp_path
+) -> None:
+    job_id, psarc = _job_with_psarc(client, tmp_path)
+    r = client.get(f"/jobs/{job_id}/psarc-check")
+    assert r.status_code == 200, r.text
+    assert r.json() == {"ok": True, "charts": ["artistsong_lead"], "problems": []}
+
+    from rockforge.infrastructure.packaging.psarc import container
+
+    entries = container.unpack(psarc.read_bytes())
+    del entries["appid.appid"]
+    psarc.write_bytes(container.pack_entries(entries, encrypt=True))
+    body = client.get(f"/jobs/{job_id}/psarc-check", headers={"X-RockForge-Lang": "pt"}).json()
+    assert body["ok"] is False
+    assert [(p["code"], p["count"]) for p in body["problems"]] == [("no_appid", 1)]
+    assert "appid" in body["problems"][0]["text"]
+
+    no_psarc = _bundle_with(client, ["LEAD"])
+    assert client.get(f"/jobs/{no_psarc}/psarc-check").status_code == 409
+
+
+def test_install_copies_the_psarc_into_the_games_dlc_folder(client: TestClient, tmp_path) -> None:
+    import rockforge.runtime_settings as runtime_settings
+
+    importlib.reload(runtime_settings)  # the game folder is stored in THIS test's work dir
+    job_id, psarc = _job_with_psarc(client, tmp_path)
+    assert client.get("/game-dlc").json()["folder"] == "RockForge"
+
+    game = tmp_path / "Rocksmith2014"
+    runtime_settings.save({"rocksmith_dir": str(game)})
+    try:
+        _install_into(client, job_id, psarc, game)
+    finally:
+        runtime_settings.save({})  # later tests read the same settings file
+
+
+def _install_into(client: TestClient, job_id: str, psarc: Path, game: Path) -> None:
+    assert client.post(f"/jobs/{job_id}/install").status_code == 404  # no dlc folder there
+    (game / "dlc").mkdir(parents=True)
+    assert client.get("/game-dlc").json()["dlc_dir"] == str(game / "dlc")
+
+    r = client.post(f"/jobs/{job_id}/install")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    dest = game / "dlc" / "RockForge" / psarc.name
+    assert body["path"] == str(dest) and dest.read_bytes() == psarc.read_bytes()
+    assert body["job"]["in_game"] == "this" and body["job"]["in_game_path"] == str(dest)
+
+    # A rebuild inherits the record: its card says an older copy is in the game.
+    import rockforge.interfaces.api.app as app_module
+
+    fork = _bundle_with(client, ["LEAD"])
+    with app_module._session_factory() as session:
+        db = session.get(app_module.Job, job_id)
+        params = dict(db.params or {})
+        session.get(app_module.Job, fork).params = params
+        session.commit()
+    assert client.get(f"/jobs/{fork}").json()["in_game"] == "older"
+
+    dest.unlink()  # deleted by hand: no longer claimed
+    assert client.get(f"/jobs/{job_id}").json()["in_game"] is None

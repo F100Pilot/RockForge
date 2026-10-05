@@ -1022,6 +1022,22 @@ Import the bundle into DLC Builder, or rely on the native `.psarc` (`psarc_mode
 byte-validated against a retail SNG — the only true validation is loading the
 CDLC in Rocksmith 2014.
 
+### 7f-quater. Instalar no jogo + verificar o PSARC (a máquina com o jogo)
+
+1. Definições → Geral → "Pasta do Rocksmith 2014" (ou deixar vazio, se o jogo
+   está numa biblioteca do Steam). Projeto construído → Exportar: a linha
+   "Instalar no jogo" mostra `…\dlc\RockForge`.
+2. "Instalar no jogo" → o ficheiro aparece em `dlc\RockForge`; a linha diz
+   "Esta versão está no jogo". Abrir o jogo: a música está na lista (é isto que
+   confirma que o jogo lê a subpasta).
+3. Reconstruir, abrir a nova versão: "No jogo está uma versão anterior". Instalar
+   → o ficheiro é substituído (mudar o título antes: a cópia antiga é apagada).
+4. Copiar o mesmo `.psarc` à mão para `dlc\` e instalar outra vez → aviso de
+   cópia duplicada; o ficheiro posto à mão NÃO é apagado.
+5. Com o jogo aberto, instalar → mensagem a pedir para fechar o jogo.
+6. "Antes de usar" → "PSARC verificado". (Uma falha só aparece num ficheiro
+   estragado; os testes automáticos plantam cada uma.)
+
 ### 7f-bis. Techniques + variable-height DD — in-game validation status
 
 Everything below was implemented, unit-tested at the domain/XML/SNG boundary,

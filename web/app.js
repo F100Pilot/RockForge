@@ -678,6 +678,8 @@ document.getElementById('sysCheckRefresh').addEventListener('click', loadSystemC
 async function closeSettings() {
   if (settingsChangeCount() && !await confirmModal(T('Há alterações por guardar nas definições. Sair sem guardar?'))) return;
   document.getElementById('settingsOverlay').hidden = true;
+  gameDlc = null;  // the game folder may have just been set
+  if (selectedJob) renderInstallRow(selectedJob);
 }
 document.getElementById('openSettings').addEventListener('click', openSettings);
 document.querySelectorAll('[data-open-settings]').forEach(b => b.addEventListener('click', openSettings));
@@ -845,6 +847,81 @@ function renderSyncState(j) {
   btn.onclick = () => setSyncConfirmed(!a.sync_confirmed, a.kind);
 }
 
+// "Instalar no jogo": the game's dlc folder is asked once (and again after
+// Definições closes — the game folder may have just been set there).
+let gameDlc = null;
+async function renderInstallRow(j) {
+  const row = document.getElementById('installRow');
+  if (!row) return;
+  row.hidden = !j.psarc_available;
+  if (!j.psarc_available) return;
+  if (gameDlc === null) {
+    try { gameDlc = await getJSON('/game-dlc'); } catch { gameDlc = { dlc_dir: null, target: null }; }
+  }
+  if (!selectedJob || selectedJob.id !== j.id) return;
+  const info = document.getElementById('installInfo');
+  const label = document.getElementById('installBtnLabel');
+  row.classList.toggle('in-game', j.in_game === 'this');
+  if (!gameDlc.target) {
+    info.textContent = T('Não encontrei a pasta do Rocksmith 2014 — indica-a em Definições → Geral.');
+    label.textContent = T('Abrir Definições');
+  } else if (j.in_game === 'this') {
+    info.textContent = T('Esta versão está no jogo: {path}', { path: j.in_game_path });
+    label.textContent = T('Reinstalar');
+  } else if (j.in_game === 'older') {
+    info.textContent = T('No jogo está uma versão anterior desta música ({path}) — instala esta para a substituir.', { path: j.in_game_path });
+    label.textContent = T('Instalar esta versão');
+  } else {
+    info.textContent = T('Copia o PSARC para {dir} (fecha o jogo antes; para a música aparecer, reinicia-o).', { dir: gameDlc.target });
+    label.textContent = T('Instalar no jogo');
+  }
+}
+document.getElementById('installBtn').addEventListener('click', async () => {
+  if (!selectedJob) return;
+  if (gameDlc && !gameDlc.target) { showSettingsPage('geral'); openSettings(); return; }
+  const btn = document.getElementById('installBtn');
+  btn.disabled = true;
+  try {
+    const r = await getJSON(`/jobs/${selectedJob.id}/install`, { method: 'POST' });
+    selectedJob = r.job;
+    toast(r.removed ? T('Instalado em {path} (a cópia anterior, {old}, foi apagada).', { path: r.path, old: r.removed })
+      : T('Instalado em {path}.', { path: r.path }), 'ok');
+    for (const dup of r.duplicates)
+      toast(T('Há outra cópia desta música em {path} — apaga-a, senão o jogo mostra-a duas vezes.', { path: dup }), 'err');
+    renderInstallRow(selectedJob);
+  } catch (e) {
+    toast(e.message, 'err');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// "Verificar PSARC": the built file is read back and checked once per version
+// (psarc/verify.py); the result is a row of "Antes de usar".
+let psarcCheck = { id: null, data: null };
+function psarcCheckRow(j) {
+  if (psarcCheck.id !== j.id) {
+    psarcCheck = { id: j.id, data: null };
+    getJSON(`/jobs/${j.id}/psarc-check`)
+      .then(d => { if (psarcCheck.id === j.id) psarcCheck.data = d; })
+      .catch(e => { if (psarcCheck.id === j.id) psarcCheck.data = { failed: e.message }; })
+      .finally(() => { if (selectedJob && selectedJob.id === j.id) renderCompleteness(selectedJob); });
+  }
+  const d = psarcCheck.data;
+  if (!d) return { state: 'info', ico: 'clock', title: T('A verificar o PSARC…'), note: T('A ler o ficheiro construído e a confirmar as regras que já fizeram o jogo crashar.') };
+  if (d.failed) return { state: 'info', ico: 'alert', title: T('PSARC não verificado'), note: d.failed };
+  if (d.ok) return { state: 'ok', ico: 'check', title: T('PSARC verificado'),
+    note: T('{n} pista(s) lida(s) do ficheiro, sem nenhuma das falhas conhecidas. Não substitui tocar no jogo.', { n: d.charts.length }) };
+  const lines = d.problems.slice(0, 6).map(p => {
+    const where = [p.arrangement, p.level != null ? T('nível {n}', { n: p.level }) : '', p.time != null ? `${p.time.toFixed(2)} s` : '']
+      .filter(Boolean).join(' · ');
+    return `${p.text}${p.count > 1 ? ` (×${p.count})` : ''}${where ? ` — ${where}` : ''}`;
+  });
+  if (d.problems.length > 6) lines.push(T('… e mais {n}', { n: d.problems.length - 6 }));
+  return { state: 'err', ico: 'x', title: T('O PSARC tem falhas conhecidas'), short: T('falhas no PSARC'),
+    note: lines.join(' · ') };
+}
+
 function renderCompleteness(j) {
   renderSyncState(j);
   const el = document.getElementById('completeness');
@@ -853,9 +930,10 @@ function renderCompleteness(j) {
   const isGp = j.source_type === 'gp';
   const rows = [];
 
-  if (j.psarc_available)
+  if (j.psarc_available) {
     rows.push({ state: 'ok', ico: 'check', title: T('PSARC jogável gerado'), note: T('.psarc pronto para o jogo.') });
-  else
+    rows.push(psarcCheckRow(j));
+  } else
     rows.push({ state: 'err', ico: 'x', title: T('PSARC não gerado'), short: T('gerar o PSARC (Wwise)'),
       note: T('Só saiu o bundle (DLC Builder). Falta o Wwise/.wem para produzir o .psarc jogável — vê o README.') });
 
@@ -1681,6 +1759,7 @@ async function selectJob(id, { poll = false, force = false } = {}) {
     dl.innerHTML += `<a class="dl-card" href="/jobs/${j.id}/bundle">${icon('package')}<b>${T('Bundle DLC Builder')}</b><span>${T('XML, áudio e projeto .rs2dlc para abrir no DLC Builder')}</span></a>`;
   if (j.bundle_available && !j.psarc_available) dl.innerHTML += `<span class="meta">${T('PSARC requer Wwise — ver README')}</span>`;
   if (!j.bundle_available) dl.innerHTML = '<span class="meta">' + T('Os ficheiros aparecem aqui quando a construção terminar.') + '</span>';
+  renderInstallRow(j);
   document.getElementById('noteCountsInfo').textContent =
     T('Notas por pista: {list}', { list: Object.entries(j.note_counts || {}).map(([k, v]) => `${k} ${v}`).join(' · ') || '—' });
 

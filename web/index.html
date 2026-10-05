@@ -714,6 +714,9 @@ button.pv-wide { display:flex; align-items:center; justify-content:center; gap:.
 .pv-export-row { display:flex; align-items:center; gap:.8rem; padding:.55rem 0; }
 .pv-export-row > div { flex:1; display:flex; flex-direction:column; gap:.1rem; font-size:.9rem; }
 .pv-export-row button { display:inline-flex; align-items:center; gap:.4rem; white-space:nowrap; }
+.install-row { margin-top:.75rem; padding:.8rem 1rem; border:1px solid #33363f; border-radius:14px; background:#1b1c23; }
+.install-row .meta { overflow-wrap:anywhere; }
+.install-row.in-game { border-color:#2f6b4f; }
 .downloads { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:.75rem; margin:0; }
 .downloads a.dl-card { display:flex; flex-direction:column; align-items:flex-start; gap:.4rem; padding:1rem 1.1rem;
   border-radius:14px; border:1px solid #33363f; background:#1b1c23; color:var(--text); font-weight:400; font-size:.85rem; }
@@ -1431,6 +1434,10 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
           <section class="pv-card pv-card-lg">
             <h3 class="pv-card-title">Descarregar</h3>
             <div class="downloads" id="downloads"></div>
+            <div class="pv-export-row install-row" id="installRow" hidden>
+              <div><b>Instalar no jogo</b><span class="meta" id="installInfo"></span></div>
+              <button type="button" id="installBtn"><svg class="ic" aria-hidden="true"><use href="#i-gamepad"/></svg><span id="installBtnLabel">Instalar no jogo</span></button>
+            </div>
             <div class="needs-review pv-export-gp" hidden>
               <div class="pv-export-row">
                 <div><b>Guitar Pro com os andamentos corrigidos</b><span class="meta">cópia do teu ficheiro, só muda o tempo (o original nunca é tocado)</span></div>
