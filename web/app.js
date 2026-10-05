@@ -768,9 +768,14 @@ const COMPLETE_ACTIONS = {
   lyrics: () => { showSection('letras'); },
 };
 
-// The alternates' kinds are long English names; the tabs and pickers show these.
-const ARR_LABEL = { 'Alternate Lead': T('Lead alternativo'), 'Alternate Rhythm': T('Rhythm alternativo') };
-function arrLabel(kind) { return ARR_LABEL[kind] || kind; }
+// Each chart is named as Rocksmith names it in game ("LEAD 1", "LEAD 2",
+// "RHYTHM", "COMBO"): /arrangements' game_name, numbered the way the PSARC's
+// SongPartition is. The game's own words, so the same in every language.
+const GAME_PATH = { Lead: 'LEAD', Rhythm: 'RHYTHM', Combined: 'COMBO', 'Alternate Lead': 'LEAD', 'Alternate Rhythm': 'RHYTHM' };
+function arrLabel(kind) {
+  const a = arrangements.find(x => x.kind === kind);
+  return (a && a.game_name) || GAME_PATH[kind] || kind;
+}
 // A chart counts as in sync only when the user marked it. A file timed
 // elsewhere (Guitar Pro 8's sync points, Songsterr's bar times) is a hint that
 // it probably is, never the user's word: "está a verde, mas ainda não
@@ -1409,7 +1414,7 @@ async function openMetaEdit() {
       .filter(t => !t.is_percussion && t.string_count === 6)
       .map(t => `<option value="${t.index}">${t.index}: ${esc(t.name)}</option>`).join('');
     const SLOTS = [['lead', 'Lead'], ['rhythm', 'Rhythm'], ['combo', 'Combo'],
-                   ['alt_lead', T('Lead alternativo')], ['alt_rhythm', T('Rhythm alternativo')]];
+                   ['alt_lead', T('Lead alternativo (no jogo: LEAD 2)')], ['alt_rhythm', T('Rhythm alternativo (no jogo: RHYTHM 2)')]];
     document.getElementById('metaTracks').innerHTML = SLOTS.map(([slot, label]) =>
       `<div class="field" style="flex:1 1 11rem"><label>${T('Pista {label}', { label })}</label>
         <select data-slot="${slot}" style="width:100%">${opts}</select></div>`).join('');
@@ -1922,7 +1927,7 @@ function showArr(i) {
     btn.classList.toggle('active', idx === i);
   const a = arrangements[i];
   const applyKindEl = document.getElementById('applyKind');
-  if (applyKindEl) applyKindEl.textContent = a.kind;
+  if (applyKindEl) applyKindEl.textContent = arrLabel(a.kind);
   const svg = document.getElementById('tabsvg');
   viewOrigin = isGpJob() ? Math.max(0, MIN_LEAD - offsetLive) : 0;  // bundle time at the left edge (0s)
   // Size the chart to the FULL song, not just the last NOTE: a track that rests
@@ -2446,7 +2451,7 @@ function currentArrFirstNoteTime() {
 function updateSyncOffsetDisplay() {
   const kindEl = document.getElementById('syncOffsetKind');
   if (!kindEl || !isGpJob() || !arrangements.length) return;
-  kindEl.textContent = `(${currentKind() || ''})`;
+  kindEl.textContent = `(${arrLabel(currentKind()) || ''})`;
   const chartT = currentArrFirstNoteTime();
   const v = chartT == null ? 0 : buildTimeWarp(syncAnchors)(previewScale(chartT)) - viewOrigin;
   document.getElementById('syncOffset').value = v.toFixed(2);
@@ -2934,7 +2939,7 @@ function updateNoteEditsInfo() {
   if (!el || !one || !all) return;
   const { mine, total, kind } = noteEditCounts();
   el.textContent = total
-    ? T('{mine} nesta pista ({kind}), {total} no total', { mine, kind, total })
+    ? T('{mine} nesta pista ({kind}), {total} no total', { mine, kind: arrLabel(kind), total })
     : T('nenhuma');
   one.disabled = !mine;
   all.disabled = !total;
@@ -2944,7 +2949,7 @@ async function clearNoteEdits(everyArrangement) {
   const { mine, total, kind } = noteEditCounts();
   const n = everyArrangement ? total : mine;
   if (!n) return;
-  const where = everyArrangement ? T('de todas as pistas') : T('da pista {kind}', { kind });
+  const where = everyArrangement ? T('de todas as pistas') : T('da pista {kind}', { kind: arrLabel(kind) });
   if (!await confirmModal(
     T('Descartar {n} edição(ões) de notas {where}?\n\nInclui as que já foram aplicadas em reconstruções anteriores. As notas voltam ao que está no ficheiro Guitar Pro assim que fizeres "Aplicar e reconstruir".', { n, where }))) return;
   if (everyArrangement) noteOverridesByKind = {};

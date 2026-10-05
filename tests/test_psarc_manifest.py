@@ -292,6 +292,39 @@ def test_build_manifest_files_emits_distinct_lead_and_alternate() -> None:
     assert len(hsan["Entries"]) == 2  # both leads listed, distinct persistent IDs
 
 
+def test_each_chart_carries_its_number_on_its_path() -> None:
+    """SongPartition is the chart's number among the charts of its path (DLC
+    Builder's Partitioner: the alternate Lead is 2) — it was 1 on every chart.
+    The main chart is 1 whatever order the list is in."""
+    def partitions(kinds: list[ArrangementKind]) -> dict[str, int]:
+        files = build_manifest_files(
+            [(_arrangement(k), arrangement_asset_name("MySong", k)) for k in kinds], "MySong",
+        )
+        out = {}
+        for k in kinds:
+            name = arrangement_asset_name("MySong", k)
+            doc = json.loads(files[f"manifests/songs_dlc_mysong/{name}.json"])
+            out[name] = next(iter(doc["Entries"].values()))["Attributes"]["SongPartition"]
+        return out
+
+    assert partitions([
+        ArrangementKind.ALTERNATE_LEAD, ArrangementKind.RHYTHM,
+        ArrangementKind.LEAD, ArrangementKind.COMBINED,
+    ]) == {"mysong_lead2": 2, "mysong_rhythm": 1, "mysong_lead": 1, "mysong_combo": 1}
+    assert partitions([ArrangementKind.RHYTHM, ArrangementKind.ALTERNATE_RHYTHM]) == {
+        "mysong_rhythm": 1, "mysong_rhythm2": 2,
+    }
+
+
+def test_game_names_number_only_a_path_with_two_charts() -> None:
+    from rockforge.domain.arrangement import game_names
+
+    k = ArrangementKind
+    assert game_names([k.LEAD, k.RHYTHM, k.COMBINED]) == ["LEAD", "RHYTHM", "COMBO"]
+    assert game_names([k.ALTERNATE_LEAD, k.LEAD, k.RHYTHM]) == ["LEAD 2", "LEAD 1", "RHYTHM"]
+    assert game_names([k.ALTERNATE_RHYTHM]) == ["RHYTHM"]
+
+
 def test_include_vocals_adds_vocals_manifest() -> None:
     files = build_manifest_files(
         [(_arrangement(ArrangementKind.COMBINED), "Combined")],

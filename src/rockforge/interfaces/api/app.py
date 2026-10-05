@@ -568,6 +568,9 @@ class ArrangementOut(BaseModel):
     # The user marked THIS chart as in sync with the recording (each track is
     # synchronised on its own; its tab turns green).
     sync_confirmed: bool = False
+    # How Rocksmith names this chart in game ("LEAD 1", "LEAD 2", "RHYTHM",
+    # "COMBO") — numbered only when the song has two on the same path.
+    game_name: str = ""
 
 
 class TempoCorrectionIn(BaseModel):
@@ -3564,6 +3567,13 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
     # file names' alphabetical one, which put the alternates first.
     order = [k.value for k in _arrangement_kinds()]
     out.sort(key=lambda a: order.index(a.kind) if a.kind in order else len(order))
+    # What the game calls each chart ("LEAD 1", "LEAD 2", "RHYTHM") — the same
+    # numbering the PSARC's SongPartition carries, so the tabs read as in game.
+    from rockforge.domain.arrangement import ArrangementKind, game_names
+
+    known = [a for a in out if a.kind in order]
+    for a, name in zip(known, game_names([ArrangementKind(a.kind) for a in known]), strict=True):
+        a.game_name = name
     return out
 
 

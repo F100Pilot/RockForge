@@ -2156,8 +2156,8 @@ jump-button to the right editor (`COMPLETE_ACTIONS`). Rows + alerts:
   be synchronised on its own. Charts are now named by their FILE
   (`_built_arrangement_kind`: `arrangement_alternate_lead.xml` → "Alternate
   Lead"), listed in the build's order (Lead, Rhythm, Combined, alternates —
-  the file names' alphabetical order put the alternates first), shown as "Lead
-  alternativo"/"Rhythm alternativo" (`arrLabel`), and `/export-arrangement-gp`
+  the file names' alphabetical order put the alternates first), shown by the
+  name the game gives them (below), and `/export-arrangement-gp`
   finds `arrangement_alternate_lead.xml` (it looked for "alternate lead", with
   a space). Guarded by
   `test_an_alternate_chart_is_its_own_arrangement_not_a_second_lead`
@@ -2168,6 +2168,25 @@ jump-button to the right editor (`COMPLETE_ACTIONS`). Rows + alerts:
   read both names, marking one turns only it green, an "Início" correction on
   the alternate lands in its own anchor set, and marking both makes the song
   confirmed.
+  **Every chart is named as Rocksmith names it** ("a representação das pistas
+  … exatamente como aparece no rocksmith, para ser mais fácil distinguir"):
+  `domain.arrangement.game_names` — the path in capitals (LEAD/RHYTHM/COMBO,
+  the game's ArrangementName; our Combined is its Combo), numbered only when
+  the song has two charts on that path ("LEAD 1", "LEAD 2", "RHYTHM"). The
+  number is `song_partitions`, DLC Builder's `Partitioner` (the main chart 1,
+  its alternate 2), and it is ALSO what the manifest's `SongPartition` now
+  carries — it was 1 on every chart, so a Lead and its alternate both claimed
+  to be the first Lead. One function for both, so the tab and the game cannot
+  disagree. `ArrangementOut.game_name` carries it; `arrLabel` shows it on the
+  tabs, the Tons track tabs, the suggestions, the sync card, "Início da
+  música (…)", the note-edit counts and the audio-source list; the game's own
+  words, so not translated. The track pickers say which alternate becomes
+  "LEAD 2"/"RHYTHM 2" in game. The numbering is the user's description of the
+  game (and DLC Builder's partition); the exact in-game rendering of a
+  numbered path was not seen from here. Guarded by
+  `test_each_chart_carries_its_number_on_its_path` (mutation-checked),
+  `test_game_names_number_only_a_path_with_two_charts` and the game names in
+  `test_an_alternate_chart_is_its_own_arrangement_not_a_second_lead`.
 - ⓘ **Letra** ← `has_lyrics` (informational, never an alert). NOTE: read
   `has_lyrics` (new field: edited `lyrics_events` OR `lrc_text` OR
   `lyrics_status == "ready"`), NOT `lyrics_status` alone — GP-embedded / LRC /
@@ -3644,7 +3663,8 @@ emitted so the native PSARC matches the retail layout file-for-file:
   rather than being guessed. `SongOffset` (the recording's lead-in, which the
   game shifts its clock by) was 0 where the reference writes `-startTime`, and
   `TargetScore` (the score counting as full mastery) was 0 where it writes
-  100000; `SongPartition` 0 → 1. The manifest `Techniques` map stays `{}` — see
+  100000; `SongPartition` 0 → the chart's number on its path (1, an
+  alternate 2 — see the per-chart sync section). The manifest `Techniques` map stays `{}` — see
   the DD note above;
 - **every TOC entry carries a 16-byte name hash = `md5(archive_path)`**
   (`container.py`). Rocksmith resolves every asset (SNG/manifest/xblock/…)

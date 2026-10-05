@@ -35,6 +35,45 @@ class ArrangementKind(Enum):
         }.get(self, self)
 
 
+# The path name the game shows for each base kind (Rocksmith2014.NET
+# ArrangementName: Lead / Rhythm / Combo — our COMBINED is the game's Combo).
+GAME_PATH_NAMES = {
+    ArrangementKind.LEAD: "Lead",
+    ArrangementKind.RHYTHM: "Rhythm",
+    ArrangementKind.COMBINED: "Combo",
+}
+
+
+def song_partitions(kinds: Sequence[ArrangementKind]) -> list[int]:
+    """Each chart's ``SongPartition``: its number among the charts of the same
+    path, 1-based — DLC Builder's ``Partitioner`` (Lead 1, Lead 2, …). The
+    representative chart comes first, then the alternate, whatever order the
+    list is in, so the main Lead is always 1."""
+    order = sorted(range(len(kinds)), key=lambda i: (kinds[i].is_alternate, i))
+    seen: dict[ArrangementKind, int] = {}
+    parts = [1] * len(kinds)
+    for i in order:
+        base = kinds[i].base_kind
+        seen[base] = seen.get(base, 0) + 1
+        parts[i] = seen[base]
+    return parts
+
+
+def game_names(kinds: Sequence[ArrangementKind]) -> list[str]:
+    """What the game calls each chart: the path name in capitals, numbered
+    only when the song has more than one chart on that path ("LEAD 1",
+    "LEAD 2", "RHYTHM")."""
+    parts = song_partitions(kinds)
+    totals: dict[ArrangementKind, int] = {}
+    for k in kinds:
+        totals[k.base_kind] = totals.get(k.base_kind, 0) + 1
+    return [
+        GAME_PATH_NAMES[k.base_kind].upper()
+        + (f" {part}" if totals[k.base_kind] > 1 else "")
+        for k, part in zip(kinds, parts, strict=True)
+    ]
+
+
 class ConfidenceLabel(Enum):
     """Per-stage confidence labelling surfaced to the user (docs/RELATORIO-TECNICO.md)."""
 

@@ -702,8 +702,10 @@ automatically.
    como sincronizada": a aba dessa pista fica verde (só essa); com todas
    marcadas, o cartão do projeto mostra "Sincronizada". "Desmarcar esta pista"
    tira-a.
-5. Um projeto com Lead alternativo / Rhythm alternativo mostra-os com esse nome
-   (não um segundo "Lead"), e corrigir a sincronização de um não mexe no outro.
+5. Um projeto com Lead alternativo / Rhythm alternativo mostra as pistas como o
+   jogo as chama — "LEAD 1"/"LEAD 2", "RHYTHM" (só numeradas quando há duas no
+   mesmo caminho) — e corrigir a sincronização de uma não mexe na outra. No
+   jogo, a Lead alternativa deve aparecer como a 2.ª Lead.
 
 ### 7c-sexies. Áudio do YouTube só com um ficheiro GP
 

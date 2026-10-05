@@ -4,6 +4,10 @@ Estado do projeto + lista de funcionalidades (concluídas `[x]` e propostas
 `[ ]`). Para *como* cada coisa funciona, ver `CLAUDE.md`. Para *como testar*,
 ver `TESTING.md`.
 
+- [x] **Pistas com o nome do jogo.** As abas e listas mostram "LEAD 1",
+  "LEAD 2", "RHYTHM", "COMBO" (numeradas só quando há duas no mesmo caminho),
+  e o PSARC passa a dizer ao jogo que a Lead alternativa é a 2.ª Lead
+  (`SongPartition`, antes 1 em todas). Falta confirmar no jogo como aparece.
 - [x] **Posição dos dedos nos acordes.** Cada acorde leva os dedos (os do
   ficheiro GP quando os tem, senão a regra das CDLC feitas à mão — 79 de 100
   formas iguais às duas dos Daughtry), o nome e uma "hand shape" por sequência

@@ -44,6 +44,7 @@ correções (pontos 12–15) o jogo exigia não está isolado — ficam todas.
 | 10 | **Trocas de tom a meio da música** no PSARC nativo | (este) | Marcar na partitura uma troca para um 2.º tom e reconstruir | O tom muda nesse ponto (antes ficava sempre o tom base) | Avisar, com o tempo da troca |
 | 11 | **Pista sem tom próprio** | (este) | Uma música sem nenhum tom criado | Lead/Combo com o tom por defeito do DLC Builder (Plexi), Rhythm com o Orange AD50 — não um som estranho/em falta | Avisar |
 | 12 | **Posição dos dedos nos acordes** (dedos, nome do acorde e "hand shapes") — **os dedos já aparecem (confirmado 2026-10-05)**; falta ver se crasha | (este) | Tocar várias músicas com acordes e, no Riff Repeater, subir a dificuldade em partes com acordes. Insistir em: acordes repetidos rápidos, acordes longos (sustain) seguidos de outro acorde, mudanças de acorde a meio de uma frase, oitavas com cordas saltadas (5/7), acordes logo no início da música e uma música com Lead e Rhythm alternativos | Nenhum crash, a tocar ou a mudar de dificuldade | Avisar com a música, a pista, o tempo/compasso e o nível de dificuldade: as hand shapes são o primeiro suspeito |
+| 13 | **Número de cada pista** (`SongPartition`: a Lead alternativa é a 2.ª Lead) | (este) | Reconstruir uma música com Lead e Lead alternativo (ou Rhythm e Rhythm alternativo) | No jogo, a alternativa aparece como a 2.ª Lead/Rhythm, com o mesmo nome que a aplicação mostra nas abas ("LEAD 2") | Avisar com o que o jogo mostra (uma foto ajuda) |
 
 ### Ficheiro de teste dos pre-bends
 

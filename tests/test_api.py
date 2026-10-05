@@ -1335,6 +1335,12 @@ def test_an_alternate_chart_is_its_own_arrangement_not_a_second_lead(client: Tes
     arrs = client.get(f"/jobs/{job_id}/arrangements").json()
     assert [a["kind"] for a in arrs] == ["Lead", "Rhythm", "Alternate Lead", "Alternate Rhythm"]
     assert [a["notes"][0]["fret"] for a in arrs] == [5, 4, 3, 6]  # each its own chart
+    # Named as the game names them: numbered only on a path with two charts.
+    assert [a["game_name"] for a in arrs] == ["LEAD 1", "RHYTHM 1", "LEAD 2", "RHYTHM 2"]
+    one = _bundle_with(client, ["LEAD", "ALTERNATE_LEAD", "RHYTHM", "COMBINED"])
+    assert [a["game_name"] for a in client.get(f"/jobs/{one}/arrangements").json()] == [
+        "LEAD 1", "RHYTHM", "COMBO", "LEAD 2",
+    ]
 
     r = client.post(
         f"/jobs/{job_id}/export-arrangement-gp", params={"arrangement": "Alternate Lead"}

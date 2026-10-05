@@ -24,7 +24,7 @@ import uuid
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-from rockforge.domain.arrangement import Arrangement, ArrangementKind
+from rockforge.domain.arrangement import Arrangement, ArrangementKind, song_partitions
 from rockforge.domain.music import TabNote, Technique
 from rockforge.infrastructure.packaging.gear.default_tones import default_tone
 from rockforge.infrastructure.packaging.tone_dto import unique_tone_dtos
@@ -460,8 +460,11 @@ def build_arrangement_manifest(
     *,
     has_album_art: bool = False,
     stats: dict[str, object] | None = None,
+    partition: int = 1,
 ) -> dict[str, object]:
-    """Build the full ``Entries`` manifest for a single instrumental arrangement."""
+    """Build the full ``Entries`` manifest for a single instrumental arrangement.
+
+    ``partition`` is the chart's number on its path (``song_partitions``)."""
     meta = arrangement.metadata
     pid = persistent_id(song_key, arrangement_name)
     key_lower = song_key.lower()
@@ -538,7 +541,10 @@ def build_arrangement_manifest(
         "SongOffset": -round(
             arrangement.tempo_map.beats[0].time if arrangement.tempo_map.beats else 0.0, 3
         ),
-        "SongPartition": 1,
+        # Its number among the song's charts on the same path (DLC Builder's
+        # Partitioner: the alternate Lead is 2). It was 1 on every chart, so a
+        # Lead and its alternate both claimed to be the first Lead.
+        "SongPartition": partition,
         "SongXml": f"urn:application:xml:{asset}",
         "SongYear": meta.year,
         # The score that counts as full mastery. 0 was a placeholder; DLC Builder
@@ -692,11 +698,13 @@ def build_manifest_files(
     key_lower = song_key.lower()
     files: dict[str, bytes] = {}
     headers: list[tuple[str, dict[str, object]]] = []
+    partitions = song_partitions([arrangement.kind for arrangement, _ in arrangements])
     for i, (arrangement, name) in enumerate(arrangements):
         model = models[i] if models is not None else None
         stats = arrangement_stats(arrangement, dynamic_difficulty=dynamic_difficulty, model=model)
         manifest = build_arrangement_manifest(
-            arrangement, song_key, name, has_album_art=has_album_art, stats=stats
+            arrangement, song_key, name, has_album_art=has_album_art, stats=stats,
+            partition=partitions[i],
         )
         headers.append(_header_entry(
             arrangement, song_key, name, has_album_art=has_album_art, stats=stats
