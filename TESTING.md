@@ -1038,6 +1038,14 @@ CDLC in Rocksmith 2014.
 6. "Antes de usar" → "PSARC verificado". (Uma falha só aparece num ficheiro
    estragado; os testes automáticos plantam cada uma.)
 
+### 7f-quinquies. Banco de ensaio da transcrição (EXPERIMENTAL, a máquina com GPU)
+
+Segue `docs/experimental/transcricao-fase0.md`: `bench_transcricao.bat
+instalar`, `list`, `run`. Confirmar que cada modelo escreve o seu `.mid`, que
+o `truth.mid` de uma música sincronizada bate com a gravação num DAW, e
+guardar o `report.md` — é ele que decide se há fase 1. Os modelos nunca
+correram no sandbox (o Hugging Face está bloqueado).
+
 ### 7f-bis. Techniques + variable-height DD — in-game validation status
 
 Everything below was implemented, unit-tested at the domain/XML/SNG boundary,

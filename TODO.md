@@ -4,6 +4,12 @@ Estado do projeto + lista de funcionalidades (concluídas `[x]` e propostas
 `[ ]`). Para *como* cada coisa funciona, ver `CLAUDE.md`. Para *como testar*,
 ver `TESTING.md`.
 
+- [ ] **Deteção de notas a partir da gravação (EXPERIMENTAL).** Fase 0 feita:
+  banco de ensaio que mede transcritores (GAPS, YourMT3+, MR-MT3, Basic Pitch,
+  ou uma tab de outra ferramenta) contra as tuas pistas já sincronizadas —
+  `bench_transcricao.bat`, guia em `docs/experimental/transcricao-fase0.md`.
+  Falta correr no teu PC e decidir, com os números, se há fase 1 (traste por
+  programação dinâmica, separar Lead/Rhythm por compasso, escrever um GP5).
 - [x] **Instalar no jogo e verificar o PSARC.** Na página Exportar, "Instalar
   no jogo" copia o `.psarc` para `dlc/RockForge/` (substitui a cópia de uma
   versão anterior; avisa se houver outra cópia posta à mão) e "Antes de usar"

@@ -3798,6 +3798,58 @@ no game folder is found (re-asked when Definições closes). Guarded by
 Playwright (install, reinstall label, older/none states, a broken PSARC's
 row, the missing-folder button opening Definições, PT/EN, no page errors).
 
+### Experimental: audio → guitar notes, phase 0 = measure first (`rockforge/experimental/transcription/`)
+
+"Quero implementar a deteção de notas de uma música (Lead e Rhythm) … É
+totalmente experimental … Nunca mexas em código que está bom." Audio
+transcription was removed once (Basic Pitch on a distorted mix was never
+trustworthy — see the top of this file), so nothing is built into the app
+until it is measured on the user's real material. Research (2026-10-09,
+sources in the user's conversation): no open model is reported good on
+distorted guitar in a full mix (MT3 onset F1 .29 on GOAT, per the Harmonica
+paper); the best published end-to-end tab F1 is ~54% (TART, clean datasets,
+no code); Songsterr's AI tabs and CDLC.ai exist but are closed and their
+lead/rhythm split is unverified; no open model separates two electric
+guitars by role (only Moises, paid) — role must come from the notes
+(Régnier et al., ISMIR 2021) with the stereo image as a hint.
+
+**Phase 0 is a bench, not a feature.** `python -m rockforge.experimental.transcription`
+(`bench_transcricao.bat` on Windows, which also installs the candidates with
+`torch<2.5`/`torchvision<0.20`/`numpy<2` pinned — mt3-infer's unpinned
+torchvision would otherwise upgrade torch and break Demucs/WhisperX):
+`list` the built Guitar Pro projects (✓ = chart marked in sync), `run` the
+candidate transcribers on each recording (`mix`) or its Demucs guitar stem
+(`stem`, `DemucsSeparator.separate_guitar`, read-only reuse) and score them,
+`score` a MIDI/GP made elsewhere (Songsterr AI, Klangio). **The right
+answer is the user's own built charts** (`truth.py`): the XML note times on
+the bundle clock minus `pad_start_s` (recomputed from `offset_s`/`lead_in_s`
+exactly as `gp_pipeline` does) are the recording's clock; pitch = tuning +
+fret; the song's guitar part is every MAIN chart's note once (alternates are
+another take of a path). Candidates (`runners.py`, each a subprocess of the
+ML Python, never imported): `gaps` (Riley et al., `hf_midi_transcription`,
+MIT, notes only), `yourmt3`/`mr_mt3` (`mt3-infer`, MIT; YourMT3 Apache),
+`basic_pitch` (the old baseline), `--cmd` for any tool. Scoring (`score.py`):
+onset-only note F1 (±50 ms, exact pitch — mir_eval's measure; per pitch a
+greedy walk of the two sorted lists is a maximum matching, so no
+dependency), plus octave-free F1, tab F1 when the prediction has strings,
+per-chart recall, and a searched constant shift (±0.25 s for a model's
+latency, ±60 s for a file). `midi.py` is a small SMF reader/writer (tempo
+maps, running status, programs; the guitar part = GM programs 24-31, else
+every non-drum note) — mido/pretty_midi are not dependencies. Output in
+`work_dir/transcription_bench/`: `report.md`, `results.csv`, per song
+`truth.mid` and each model's `.mid`. **Nothing outside
+`rockforge/experimental/` imports it, and it touches no existing module.**
+User guide: `docs/experimental/transcricao-fase0.md`. Guarded by
+`test_transcription_bench.py` (MIDI read/write incl. tempo change and
+running status, the matching and shift search, the right answer's clock /
+pitch / sync flags / dedup, a runner's missing-package hint, a `--cmd` tool,
+and an end-to-end `list`/`run` on a real database). **The candidates
+themselves were never run here** (Hugging Face is blocked in the sandbox):
+their numbers have to come from the user's machine. Next phases, only if
+the numbers justify it: a fret-assignment DP, per-bar role split
+(Lead/Rhythm), and writing a GP5 that enters the normal wizard like the
+Songsterr import.
+
 ### Wwise SoundBank (`infrastructure/packaging/psarc/soundbank.py`)
 
 Rocksmith reads a song's audio through a Wwise SoundBank: `song_<key>.bnk`
