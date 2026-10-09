@@ -45,7 +45,6 @@ correções (pontos 12–15) o jogo exigia não está isolado — ficam todas.
 | 11 | **Pista sem tom próprio** | (este) | Uma música sem nenhum tom criado | Lead/Combo com o tom por defeito do DLC Builder (Plexi), Rhythm com o Orange AD50 — não um som estranho/em falta | Avisar |
 | 12 | **Posição dos dedos nos acordes** (dedos, nome do acorde e "hand shapes") — **os dedos já aparecem (confirmado 2026-10-05)**; falta ver se crasha | (este) | Tocar várias músicas com acordes e, no Riff Repeater, subir a dificuldade em partes com acordes. Insistir em: acordes repetidos rápidos, acordes longos (sustain) seguidos de outro acorde, mudanças de acorde a meio de uma frase, oitavas com cordas saltadas (5/7), acordes logo no início da música e uma música com Lead e Rhythm alternativos | Nenhum crash, a tocar ou a mudar de dificuldade | Avisar com a música, a pista, o tempo/compasso e o nível de dificuldade: as hand shapes são o primeiro suspeito |
 | 13 | **Número de cada pista** (`SongPartition`: a Lead alternativa é a 2.ª Lead) | (este) | Reconstruir uma música com Lead e Lead alternativo (ou Rhythm e Rhythm alternativo) | No jogo, a alternativa aparece como a 2.ª Lead/Rhythm, com o mesmo nome que a aplicação mostra nas abas ("LEAD 2") | Avisar com o que o jogo mostra (uma foto ajuda) |
-| 14 | **"Instalar no jogo"** (copia para `dlc\RockForge`) | (este) | Página Exportar → "Instalar no jogo", depois abrir o jogo | A música aparece na lista (a subpasta `RockForge` é lida). Reinstalar uma versão nova substitui a anterior | Avisar: se não aparecer, a subpasta não é lida e passa a copiar para `dlc` diretamente |
 
 ### Ficheiro de teste dos pre-bends
 
@@ -86,6 +85,7 @@ nome do caso como marcador:
 
 | O quê | Onde | Notas |
 |---|---|---|
+| "Instalar no jogo": a subpasta `dlc\RockForge` é lida pelo jogo | (2026-10-09) | Confirmado pelo utilizador |
 | A música aparece na lista e carrega (PSARC nativo) | Beartooth "Free" | |
 | Bends de ½ com o tamanho certo (sobem, não aparecem já dobrados) e sem crash na parte C | Beartooth "Free" | |
 | Slides, notas abafadas (fret-mute) e o intervalo entre notas | Beartooth "Free" | |

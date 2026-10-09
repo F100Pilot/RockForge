@@ -3778,7 +3778,7 @@ raised, a broken chart is named, every rule has its words; and
 the game folder set in Definições (its `dlc`), else the tone collection's dlc
 folder, else a Steam library's. `install()` writes into **`dlc/RockForge/`**
 — Rocksmith loads sub-folders of `dlc` (CustomsForge Song Manager organises
-libraries that way; not tried in game from here) and a folder of our own is
+libraries that way; **confirmed in game by the user, 2026-10-09**) and a folder of our own is
 what makes it safe to delete: only a `.psarc` in that folder is ever removed,
 namely the copy an earlier version of the song installed under another name
 (the title changed, so the key did). The copy goes to a hidden `.part` file

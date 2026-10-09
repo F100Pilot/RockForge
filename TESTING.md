@@ -1029,7 +1029,7 @@ CDLC in Rocksmith 2014.
    "Instalar no jogo" mostra `…\dlc\RockForge`.
 2. "Instalar no jogo" → o ficheiro aparece em `dlc\RockForge`; a linha diz
    "Esta versão está no jogo". Abrir o jogo: a música está na lista (é isto que
-   confirma que o jogo lê a subpasta).
+   confirma que o jogo lê a subpasta — confirmado 2026-10-09).
 3. Reconstruir, abrir a nova versão: "No jogo está uma versão anterior". Instalar
    → o ficheiro é substituído (mudar o título antes: a cópia antiga é apagada).
 4. Copiar o mesmo `.psarc` à mão para `dlc\` e instalar outra vez → aviso de
