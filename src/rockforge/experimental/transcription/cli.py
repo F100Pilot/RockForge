@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -198,6 +199,14 @@ def cmd_run(args: argparse.Namespace) -> int:
     if not songs:
         print(tr("Nenhum projeto com gravação e pistas para avaliar.",
                  "No project with a recording and charts to score."))
+        if args.only_synced:
+            print(tr("Na aplicação, abre uma música cujas notas batem com a gravação e, em "
+                     "Partitura → Sincronização → \"Estado da sincronização\", carrega em "
+                     "\"Marcar esta pista como sincronizada\" em cada pista. Depois corre isto "
+                     "outra vez.",
+                     "In the app, open a song whose notes match the recording and, in Score → "
+                     "Sync → \"Sync state\", press \"Mark this track as in sync\" on each "
+                     "track. Then run this again."))
         return 1
     rows: list[Row] = []
     for song in songs:
@@ -233,7 +242,10 @@ def cmd_run(args: argparse.Namespace) -> int:
     print()
     print_rows(rows)
     write_report(rows, out_root)
-    print(tr("\nRelatório: {path}", "\nReport: {path}").format(path=out_root / "report.md"))
+    report = out_root / "report.md"
+    print(tr("\nRelatório: {path}", "\nReport: {path}").format(path=report))
+    if args.open and sys.platform == "win32":
+        os.startfile(report)  # type: ignore[attr-defined]  # noqa: S606 — opens our own report
     return 0
 
 
@@ -271,6 +283,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--out")
     p.add_argument("--force", action="store_true")
     p.add_argument("--cmd", help='"my-tool {audio} {midi}"')
+    p.add_argument("--open", action="store_true", help=tr("abre o relatório no fim",
+                                                          "open the report at the end"))
     p.set_defaults(func=cmd_run)
     p = sub.add_parser("score", help=tr("mede um MIDI/GP feito por outra ferramenta",
                                          "score a MIDI/GP made by another tool"))

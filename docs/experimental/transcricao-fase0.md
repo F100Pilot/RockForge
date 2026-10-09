@@ -7,7 +7,20 @@ no RockForge (as notas do Guitar Pro, com todas as correções de
 sincronização). Não mexe em nada da aplicação: só lê os projetos e escreve
 na sua própria pasta.
 
-## Passos (Windows, na pasta do RockForge)
+## O jeito simples (duplo clique)
+
+1. Fecha o RockForge e abre-o uma vez com o `start.bat` (traz os ficheiros
+   novos), depois fecha-o outra vez.
+2. Na aplicação, em pelo menos uma música cujas notas batem com a gravação:
+   Partitura → Sincronização → "Estado da sincronização" → **"Marcar esta
+   pista como sincronizada"** em cada pista.
+3. Na pasta do RockForge, **duplo clique em `bench_transcricao.bat`**. Na
+   primeira vez instala os transcritores (minutos; precisa do `git`), depois
+   corre nas músicas marcadas e abre o `report.md` sozinho.
+4. Manda-me o `report.md` e o `results.csv` (a mesma pasta), ou, se der erro,
+   as últimas linhas da janela.
+
+## Na linha de comandos (opcional)
 
 1. **Instalar os transcritores** (uma vez; precisa do `git`):
 
@@ -27,11 +40,11 @@ na sua própria pasta.
 
        bench_transcricao.bat run
        bench_transcricao.bat run --input stem,mix --models gaps,yourmt3,mr_mt3
-       bench_transcricao.bat run --projects ID1 ID2 --only-synced
+       bench_transcricao.bat run --projects ID1 ID2 --only-synced --open
 
    Por omissão separa a guitarra com o Demucs (`stem`) e corre `gaps` e
    `yourmt3`. Os resultados ficam em cache: correr outra vez só faz o que
-   falta (`--force` refaz).
+   falta (`--force` refaz). `--open` abre o relatório no fim.
 
 4. **Medir uma tab feita por outra ferramenta** (Songsterr AI, Klangio, …),
    exportada em MIDI ou Guitar Pro:
@@ -54,7 +67,7 @@ na sua própria pasta.
   encontrada (o transcritor ouve as guitarras todas juntas).
 - **desvio** — o atraso que foi descontado (latência do modelo).
 
-O relatório fica em `<pasta de trabalho>\transcription_bench\report.md` e
+O relatório fica em `<pasta de trabalho>\transcription_bench\report.md` (por omissão `Downloads\RockForge\transcription_bench`) e
 `results.csv`; em cada música, `truth.mid` é a resposta certa (para ouvir num
 DAW) e `<fonte>\<modelo>.mid` o que cada modelo ouviu.
 

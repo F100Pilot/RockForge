@@ -3814,7 +3814,8 @@ guitars by role (only Moises, paid) — role must come from the notes
 (Régnier et al., ISMIR 2021) with the stereo image as a hint.
 
 **Phase 0 is a bench, not a feature.** `python -m rockforge.experimental.transcription`
-(`bench_transcricao.bat` on Windows, which also installs the candidates with
+(`bench_transcricao.bat` on Windows — a double-click installs once, runs
+`run --only-synced --open` and opens the report — which installs the candidates with
 `torch<2.5`/`torchvision<0.20`/`numpy<2` pinned — mt3-infer's unpinned
 torchvision would otherwise upgrade torch and break Demucs/WhisperX):
 `list` the built Guitar Pro projects (✓ = chart marked in sync), `run` the
