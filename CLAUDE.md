@@ -3861,10 +3861,10 @@ Rhythm 86 % recall, a constant +0.20 s shift — against 42.7/46.0 % for the
 open models on the same song. Its `.gp` already enters the normal wizard, so
 the route is "generate in Songsterr AI → export → Novo projeto", not a
 transcriber of our own; still one song, the easiest one for the open models
-too, so September / You're the Bullet are the check. Next phases, only if
-the numbers justify it: a fret-assignment DP, per-bar role split
-(Lead/Rhythm), and writing a GP5 that enters the normal wizard like the
-Songsterr import.
+too, so September / You're the Bullet are the check. **The feature was
+ABANDONED at the user's request (2026-10-10)** — no phase 1 (fret DP, role
+split, GP5 writer). The bench stays, isolated and unused by the app, as the
+record of why; do not restart audio transcription without new evidence.
 
 ### Wwise SoundBank (`infrastructure/packaging/psarc/soundbank.py`)
 

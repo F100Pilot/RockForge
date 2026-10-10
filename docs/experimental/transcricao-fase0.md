@@ -98,3 +98,8 @@ A tab gerada pelo Songsterr AI para o Jet Lag, exportada em `.gp` e medida com
 corda e traste), Lead 79% e Rhythm 86% das notas encontradas, com um desvio
 constante de 0,20 s. Os modelos abertos ficaram em 42,7% e 46,0% na mesma
 música. Falta confirmar em September e em You're the Bullet.
+
+## Decisão (2026-10-10)
+
+A funcionalidade foi abandonada. Este banco de ensaio fica no projeto só como
+registo do que foi medido; a aplicação não o usa.
