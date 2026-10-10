@@ -76,3 +76,17 @@ DAW) e `<fonte>\<modelo>.mid` o que cada modelo ouviu.
 Manda-me o `report.md` (e o `results.csv`). Com os números decide-se se vale
 a pena a fase 1 e com que modelo — e, se forem maus, fica-se por aqui sem
 ter tocado na aplicação.
+
+## Primeiros resultados (2026-10-10)
+
+Três músicas com todas as pistas marcadas como sincronizadas, guitarra
+separada pelo Demucs:
+
+| modelo | F1 | precisão | recall | F1 sem oitava |
+|---|---|---|---|---|
+| GAPS | 32.7% | 39.6% | 28.0% | 39.0% |
+| YourMT3+ | 29.8% | 32.8% | 28.3% | 35.7% |
+
+Cerca de uma nota certa em cada três: igual ao que a literatura reporta, e
+pouco para gerar uma tab automática. A fase 1 fica parada até se medir uma
+ferramenta comercial (Songsterr AI, Klangio) com `score`.

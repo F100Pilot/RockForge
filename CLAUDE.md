@@ -3846,7 +3846,15 @@ running status, the matching and shift search, the right answer's clock /
 pitch / sync flags / dedup, a runner's missing-package hint, a `--cmd` tool,
 and an end-to-end `list`/`run` on a real database). **The candidates
 themselves were never run here** (Hugging Face is blocked in the sandbox):
-their numbers have to come from the user's machine. Next phases, only if
+their numbers have to come from the user's machine. **First numbers
+(2026-10-10, the user's PC, Demucs stem, 3 songs with every chart marked in
+sync):** note F1 GAPS 32.7 % (P 39.6 / R 28.0), YourMT3+ 29.8 %; best song
+Jet Lag 42.7 / 46.0 %, worst "You're the Bullet" 20.1 / 15.4 %; octave-free
+only ~6 points higher, so octave errors are not the main loss; single-note
+Lead does best (September's Lead 63 % recall with GAPS). In line with the
+literature (MT3 .29 on GOAT): about one note in three right — not enough for
+an automatic tab, so phase 1 was NOT started; the open question is whether a
+commercial tool (Songsterr AI, Klangio) does better, measured with `score`. Next phases, only if
 the numbers justify it: a fret-assignment DP, per-bar role split
 (Lead/Rhythm), and writing a GP5 that enters the normal wizard like the
 Songsterr import.
