@@ -86,11 +86,19 @@ def run_command(template: str, audio: Path, out: Path) -> None:
     _execute(cmd, out, "")
 
 
+def _utf8_env() -> dict[str, str]:
+    """Run the tools in UTF-8: on Windows a captured stdout is cp1252, and a
+    package that prints a "✓" (hf_midi_transcription does, while downloading
+    its model) dies on it — reported as "could not download"."""
+    return {**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"}
+
+
 def _execute(cmd: list[str], out: Path, install: str) -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     try:
         proc = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True,
-                              text=True, timeout=TIMEOUT_S, check=False)
+                              text=True, encoding="utf-8", errors="replace",
+                              env=_utf8_env(), timeout=TIMEOUT_S, check=False)
     except FileNotFoundError as exc:
         raise RunnerError(str(exc)) from exc
     except subprocess.TimeoutExpired as exc:
@@ -106,7 +114,8 @@ def cuda_available(python: str) -> bool:
     try:
         proc = subprocess.run(
             [python, "-c", "import torch; print(torch.cuda.is_available())"],
-            stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=120, check=False)
+            stdin=subprocess.DEVNULL, capture_output=True, text=True, encoding="utf-8",
+            errors="replace", env=_utf8_env(), timeout=120, check=False)
     except (OSError, subprocess.TimeoutExpired):
         return False
     return proc.stdout.strip().endswith("True")

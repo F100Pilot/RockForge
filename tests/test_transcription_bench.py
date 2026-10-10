@@ -169,6 +169,22 @@ def test_any_tool_can_be_run_as_a_command(tmp_path: Path) -> None:
                     tmp_path / "none.mid")
 
 
+def test_tools_run_in_utf8_so_a_printed_tick_cannot_kill_them(tmp_path: Path) -> None:
+    # hf_midi_transcription prints "✓" while downloading; on Windows a captured
+    # stdout is cp1252 and that print raised, failing the model download.
+    script = tmp_path / "tool.py"
+    script.write_text(
+        "import sys\n"
+        "assert sys.flags.utf8_mode == 1 and sys.stdout.encoding.lower() == 'utf-8'\n"
+        "print('\\u2713 downloaded')\n"
+        "from rockforge.experimental.transcription.midi import MidiNote, write_midi\n"
+        "from pathlib import Path\n"
+        "write_midi([('g', [MidiNote(0.5, 1.0, 40)])], Path(sys.argv[2]))\n")
+    out = tmp_path / "o.mid"
+    run_command(f'"{sys.executable}" "{script}" {{audio}} {{midi}}', tmp_path / "a.wav", out)
+    assert [n.pitch for n in read_midi(out)] == [40]
+
+
 def test_the_bench_runs_end_to_end_on_a_project(tmp_path: Path, monkeypatch, capsys) -> None:
     import rockforge.config as config
     from rockforge.infrastructure.db.models import Job, JobStatus, make_session_factory
