@@ -3798,73 +3798,17 @@ no game folder is found (re-asked when Definições closes). Guarded by
 Playwright (install, reinstall label, older/none states, a broken PSARC's
 row, the missing-folder button opening Definições, PT/EN, no page errors).
 
-### Experimental: audio → guitar notes, phase 0 = measure first (`rockforge/experimental/transcription/`)
+### Audio → guitar notes: measured, then dropped (2026-10-10)
 
-"Quero implementar a deteção de notas de uma música (Lead e Rhythm) … É
-totalmente experimental … Nunca mexas em código que está bom." Audio
-transcription was removed once (Basic Pitch on a distorted mix was never
-trustworthy — see the top of this file), so nothing is built into the app
-until it is measured on the user's real material. Research (2026-10-09,
-sources in the user's conversation): no open model is reported good on
-distorted guitar in a full mix (MT3 onset F1 .29 on GOAT, per the Harmonica
-paper); the best published end-to-end tab F1 is ~54% (TART, clean datasets,
-no code); Songsterr's AI tabs and CDLC.ai exist but are closed and their
-lead/rhythm split is unverified; no open model separates two electric
-guitars by role (only Moises, paid) — role must come from the notes
-(Régnier et al., ISMIR 2021) with the stereo image as a hint.
-
-**Phase 0 is a bench, not a feature.** `python -m rockforge.experimental.transcription`
-(`bench_transcricao.bat` on Windows — a double-click installs once, runs
-`run --only-synced --open` and opens the report — which installs the candidates with
-`torch<2.5`/`torchvision<0.20`/`numpy<2` pinned — mt3-infer's unpinned
-torchvision would otherwise upgrade torch and break Demucs/WhisperX):
-`list` the built Guitar Pro projects (✓ = chart marked in sync), `run` the
-candidate transcribers on each recording (`mix`) or its Demucs guitar stem
-(`stem`, `DemucsSeparator.separate_guitar`, read-only reuse) and score them,
-`score` a MIDI/GP made elsewhere (Songsterr AI, Klangio). **The right
-answer is the user's own built charts** (`truth.py`): the XML note times on
-the bundle clock minus `pad_start_s` (recomputed from `offset_s`/`lead_in_s`
-exactly as `gp_pipeline` does) are the recording's clock; pitch = tuning +
-fret; the song's guitar part is every MAIN chart's note once (alternates are
-another take of a path). Candidates (`runners.py`, each a subprocess of the
-ML Python, never imported): `gaps` (Riley et al., `hf_midi_transcription`,
-MIT, notes only), `yourmt3`/`mr_mt3` (`mt3-infer`, MIT; YourMT3 Apache),
-`basic_pitch` (the old baseline), `--cmd` for any tool. Scoring (`score.py`):
-onset-only note F1 (±50 ms, exact pitch — mir_eval's measure; per pitch a
-greedy walk of the two sorted lists is a maximum matching, so no
-dependency), plus octave-free F1, tab F1 when the prediction has strings,
-per-chart recall, and a searched constant shift (±0.25 s for a model's
-latency, ±60 s for a file). `midi.py` is a small SMF reader/writer (tempo
-maps, running status, programs; the guitar part = GM programs 24-31, else
-every non-drum note) — mido/pretty_midi are not dependencies. Output in
-`work_dir/transcription_bench/`: `report.md`, `results.csv`, per song
-`truth.mid` and each model's `.mid`. **Nothing outside
-`rockforge/experimental/` imports it, and it touches no existing module.**
-User guide: `docs/experimental/transcricao-fase0.md`. Guarded by
-`test_transcription_bench.py` (MIDI read/write incl. tempo change and
-running status, the matching and shift search, the right answer's clock /
-pitch / sync flags / dedup, a runner's missing-package hint, a `--cmd` tool,
-and an end-to-end `list`/`run` on a real database). **The candidates
-themselves were never run here** (Hugging Face is blocked in the sandbox):
-their numbers have to come from the user's machine. **First numbers
-(2026-10-10, the user's PC, Demucs stem, 3 songs with every chart marked in
-sync):** note F1 GAPS 32.7 % (P 39.6 / R 28.0), YourMT3+ 29.8 %; best song
-Jet Lag 42.7 / 46.0 %, worst "You're the Bullet" 20.1 / 15.4 %; octave-free
-only ~6 points higher, so octave errors are not the main loss; single-note
-Lead does best (September's Lead 63 % recall with GAPS). In line with the
-literature (MT3 .29 on GOAT): about one note in three right — not enough for
-an automatic tab, so phase 1 was NOT started; the open question is whether a
-commercial tool (Songsterr AI, Klangio) does better, measured with `score`.
-**Songsterr AI on Jet Lag (2026-10-10, its exported `.gp` through `score`):**
-F1 73.4 % (P 65.0 / R 84.3), tab F1 69.5 % (same string AND fret), Lead 79 /
-Rhythm 86 % recall, a constant +0.20 s shift — against 42.7/46.0 % for the
-open models on the same song. Its `.gp` already enters the normal wizard, so
-the route is "generate in Songsterr AI → export → Novo projeto", not a
-transcriber of our own; still one song, the easiest one for the open models
-too, so September / You're the Bullet are the check. **The feature was
-ABANDONED at the user's request (2026-10-10)** — no phase 1 (fret DP, role
-split, GP5 writer). The bench stays, isolated and unused by the app, as the
-record of why; do not restart audio transcription without new evidence.
+A second attempt at transcription ("deteção de notas … Lead e Rhythm",
+experimental) was measured before anything was built, on the user's PC
+against their own charts marked in sync (onset F1, ±50 ms, exact pitch, guitar
+stem): GAPS 32.7 %, YourMT3+ 29.8 % — one note in three, in line with the
+literature (MT3 .29 on GOAT). Songsterr AI reached 73.4 % (tab F1 69.5 %) on
+the same song, and its exported `.gp` already enters "Novo projeto". The user
+then dropped the feature and the measuring bench was DELETED; it lives in git
+history (`git log -- src/rockforge/experimental`). Do not restart audio
+transcription without new evidence.
 
 ### Wwise SoundBank (`infrastructure/packaging/psarc/soundbank.py`)
 

@@ -5,11 +5,9 @@ Estado do projeto + lista de funcionalidades (concluídas `[x]` e propostas
 ver `TESTING.md`.
 
 - [x] ~~**Deteção de notas a partir da gravação (EXPERIMENTAL).**~~ **Abandonada
-  (2026-10-10), a pedido.** A fase 0 mediu: os modelos abertos acertam cerca de
-  uma nota em cada três (GAPS 32,7%, YourMT3+ 29,8%); o Songsterr AI chegou aos
-  73% no Jet Lag, e o `.gp` que ele exporta já entra no "Novo projeto". O banco
-  de ensaio fica em `rockforge/experimental/transcription/` (isolado, nada da
-  aplicação o usa) e os números em `docs/experimental/transcricao-fase0.md`.
+  (2026-10-10), a pedido**, e o banco de ensaio apagado. Os modelos abertos
+  acertaram cerca de uma nota em cada três; o Songsterr AI chegou aos 73% e o
+  `.gp` que ele exporta já entra no "Novo projeto".
 - [x] **Instalar no jogo e verificar o PSARC.** Na página Exportar, "Instalar
   no jogo" copia o `.psarc` para `dlc/RockForge/` (substitui a cópia de uma
   versão anterior; avisa se houver outra cópia posta à mão) e "Antes de usar"
