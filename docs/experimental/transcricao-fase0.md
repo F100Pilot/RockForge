@@ -90,3 +90,11 @@ separada pelo Demucs:
 Cerca de uma nota certa em cada três: igual ao que a literatura reporta, e
 pouco para gerar uma tab automática. A fase 1 fica parada até se medir uma
 ferramenta comercial (Songsterr AI, Klangio) com `score`.
+
+### Songsterr AI (2026-10-10)
+
+A tab gerada pelo Songsterr AI para o Jet Lag, exportada em `.gp` e medida com
+`score`: **F1 73,4%** (precisão 65,0%, recall 84,3%), **F1 tab 69,5%** (mesma
+corda e traste), Lead 79% e Rhythm 86% das notas encontradas, com um desvio
+constante de 0,20 s. Os modelos abertos ficaram em 42,7% e 46,0% na mesma
+música. Falta confirmar em September e em You're the Bullet.

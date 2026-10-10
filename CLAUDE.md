@@ -3854,7 +3854,14 @@ only ~6 points higher, so octave errors are not the main loss; single-note
 Lead does best (September's Lead 63 % recall with GAPS). In line with the
 literature (MT3 .29 on GOAT): about one note in three right — not enough for
 an automatic tab, so phase 1 was NOT started; the open question is whether a
-commercial tool (Songsterr AI, Klangio) does better, measured with `score`. Next phases, only if
+commercial tool (Songsterr AI, Klangio) does better, measured with `score`.
+**Songsterr AI on Jet Lag (2026-10-10, its exported `.gp` through `score`):**
+F1 73.4 % (P 65.0 / R 84.3), tab F1 69.5 % (same string AND fret), Lead 79 /
+Rhythm 86 % recall, a constant +0.20 s shift — against 42.7/46.0 % for the
+open models on the same song. Its `.gp` already enters the normal wizard, so
+the route is "generate in Songsterr AI → export → Novo projeto", not a
+transcriber of our own; still one song, the easiest one for the open models
+too, so September / You're the Bullet are the check. Next phases, only if
 the numbers justify it: a fret-assignment DP, per-bar role split
 (Lead/Rhythm), and writing a GP5 that enters the normal wizard like the
 Songsterr import.
