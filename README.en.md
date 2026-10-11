@@ -42,8 +42,9 @@ choose tracks/options → create the CDLC.
 **No Guitar Pro file?** Step 1 also takes the **PDF** of the tab or a **picture** of it
 (PNG/JPEG/WebP; several files = one track each): RockForge turns it into a GP5 with the
 [PDF-to-GP5](https://github.com/F100Pilot/PDF-to-GP5) converter (the `[pdf]` extra) and the
-wizard carries on as with a Guitar Pro file. Reading pictures (OCR) is experimental and does
-not read techniques; check the notes and the rhythm on the score.
+wizard carries on as with a Guitar Pro file. Reading pictures (OCR) is experimental: it reads
+the techniques written as words (H/P, P.M., let ring, harmonics) but not the drawn ones (bends,
+slides, vibrato, ties); check the notes and the rhythm on the score.
 
 Honest limitations: **only GP6 (`.gpx`) is unsupported** (a proprietary binary container —
 export it as GP5 or GP7 in Guitar Pro/TuxGuitar). GP3/GP4/GP5 are read by PyGuitarPro;
