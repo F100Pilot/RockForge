@@ -83,6 +83,17 @@ if errorlevel 1 (
     exit /b 1
   )
   copy /y pyproject.toml logs\pyproject.installed >nul
+  set "NEED_PDF=1"
+)
+
+REM --- The PDF/picture converter (PDF-to-GP5, the [pdf] extra) in a step of its
+REM own: it comes from GitHub, and failing to fetch it must not stop the rest of
+REM RockForge from starting. Retried on every start until it is there.
+%PY% -c "import pdf_to_gp5" >nul 2>&1 || set "NEED_PDF=1"
+if defined NEED_PDF (
+  echo A instalar o conversor de PDF ^(PDF-to-GP5^)...
+  %PY% -m pip install --disable-pip-version-check --no-warn-script-location -q -e ".[pdf]"
+  if errorlevel 1 echo AVISO: o conversor de PDF nao foi instalado ^(precisa de internet e do git^). O resto do RockForge funciona.
 )
 
 netstat -an | find ":%PORT% " | find "LISTENING" >nul

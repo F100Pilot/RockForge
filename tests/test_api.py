@@ -965,6 +965,60 @@ def test_a_songsterr_tab_becomes_a_gp_file_the_wizard_can_use(
     assert r.status_code == 502 and "Songsterr" in r.text
 
 
+def test_a_pdf_of_the_tab_becomes_a_gp_file_the_wizard_can_use(
+    client: TestClient, monkeypatch
+) -> None:
+    """/pdf/import answers like /gp/inspect, with the converted GP5 stored behind
+    the token, the files it came from and the converter's warnings."""
+    import guitarpro
+
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.infrastructure.gpimport import pdf_import
+
+    song = guitarpro.Song()
+    song.title, song.artist, song.tempo = "Tema", "Banda", 90
+    song.tracks[0].name = "Guitarra"
+    buffer = __import__("io").BytesIO()
+    guitarpro.write(song, buffer, version=(5, 1, 0))
+    seen: list[list[str]] = []
+
+    def fake(files):  # noqa: ANN001, ANN202
+        seen.append([name for name, _ in files])
+        return pdf_import.PdfImport(gp5=buffer.getvalue(), title="Tema", artist="Banda",
+                                    warnings=["Guitarra: confira o ritmo"])
+
+    monkeypatch.setattr(pdf_import, "available", lambda: True)
+    monkeypatch.setattr(pdf_import, "convert", fake)
+    pdf = b"%PDF-1.4\n%fake"
+    png = b"\x89PNG\r\n\x1a\nfake"
+    r = client.post("/pdf/import", files=[("files", ("solo.pdf", pdf, "application/pdf")),
+                                          ("files", ("ritmo.png", png, "image/png"))])
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert seen == [["solo.pdf", "ritmo.png"]]  # one file per track, in order
+    assert (body["title"], body["artist"], body["tempo"]) == ("Tema", "Banda", 90)
+    assert [t["name"] for t in body["tracks"]] == ["Guitarra"]
+    assert body["pdf_files"] == ["solo.pdf", "ritmo.png"]
+    assert body["import_warnings"] == ["Guitarra: confira o ritmo"]
+    assert (app_module.settings.work_dir / "gp" / body["gp_token"]).is_file()
+
+    junk = client.post("/pdf/import", files=[("files", ("tab.pdf", b"PK\x03\x04", "x/y"))])
+    assert junk.status_code == 415
+    many = [("files", (f"{i}.pdf", pdf, "application/pdf")) for i in range(8)]
+    assert client.post("/pdf/import", files=many).status_code == 422
+
+    def refused(files):  # noqa: ANN001, ANN202
+        raise pdf_import.PdfImportError("Nenhuma tablatura encontrada no PDF.")
+
+    monkeypatch.setattr(pdf_import, "convert", refused)
+    r = client.post("/pdf/import", files=[("files", ("x.pdf", pdf, "application/pdf"))])
+    assert r.status_code == 422 and "tablatura" in r.json()["detail"]
+
+    monkeypatch.setattr(pdf_import, "available", lambda: False)
+    r = client.post("/pdf/import", files=[("files", ("x.pdf", pdf, "application/pdf"))])
+    assert r.status_code == 503 and ".[pdf]" in r.json()["detail"]
+
+
 def test_a_songsterr_tab_with_lyrics_is_imported_with_them(
     client: TestClient, monkeypatch
 ) -> None:

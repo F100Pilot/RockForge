@@ -95,6 +95,7 @@ to that distribution.
 | `[ml]` (never bundled) | Demucs, librosa, soundfile, NumPy, SciPy | MIT, ISC, BSD-3-Clause, BSD-3-Clause, BSD-3-Clause |
 | `[lyrics]` (never bundled) | WhisperX (and faster-whisper, pyannote.audio), PyTorch, torchaudio | BSD-2-Clause (MIT, MIT), BSD-3-Clause, BSD-2-Clause |
 | `[youtube]` (never bundled) | yt-dlp, yt-dlp-ejs | Unlicense (see each package) |
+| `[pdf]` (not bundled by default) | **PDF-to-GP5** (the converter; same author as RockForge, installed from <https://github.com/F100Pilot/PDF-to-GP5>), pdfplumber, pdfminer.six, pypdfium2; for pictures RapidOCR (PP-OCR models), ONNX Runtime, OpenCV, Shapely, pyclipper | no licence file yet (see `TODO.md`); MIT, MIT, Apache-2.0 OR BSD-3-Clause; Apache-2.0, MIT, Apache-2.0, BSD-3-Clause, MIT |
 | `[postgres]` | psycopg | LGPL-3.0 |
 | Banquet backend (optional, user-installed) | query-bandit | MIT |
 

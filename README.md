@@ -37,6 +37,12 @@ escolher pistas/opções → criar CDLC.
 A interface também pode ser mudada para inglês (seletor PT/EN na página inicial ou
 ⚙️ Definições → Idioma · Language).
 
+**Sem ficheiro Guitar Pro?** O passo 1 também aceita o **PDF** da tablatura ou uma **imagem**
+dela (PNG/JPEG/WebP; vários ficheiros = uma pista cada): o RockForge converte-a num GP5 com o
+conversor do [PDF-to-GP5](https://github.com/F100Pilot/PDF-to-GP5) (o extra `[pdf]`) e o
+assistente continua como com um ficheiro Guitar Pro. A leitura de imagens (OCR) é experimental
+e não lê técnicas; confere as notas e o ritmo na partitura.
+
 Limitações honestas: **só GP6 (`.gpx`) não é suportado** (container binário proprietário —
 exporta como GP5 ou GP7 no Guitar Pro/TuxGuitar). GP3/GP4/GP5 são lidos pelo PyGuitarPro;
 GP7/GP8 (`.gp`) têm um parser GPIF/XML nativo. A sincronização é manual — indicas o segundo em
@@ -151,6 +157,7 @@ o que cada falta te custa, e o comando para instalar.
 | **`[ml]`** (Demucs, librosa) | separar stems, detetar tom, "Corrigir daqui" | esses botões respondem 503 a dizer o que falta | `pip install -e ".[ml]"` |
 | **`[lyrics]`** (WhisperX) | transcrever a letra da gravação | a letra continua a vir do GP, de um LRC, ou do editor | `pip install -e ".[ml,lyrics]"` |
 | **`[youtube]`** (yt-dlp) + **Deno** | descarregar o áudio do vídeo do YouTube em que o Songsterr marcou os tempos (o YouTube exige resolver um desafio em JavaScript: o solucionador vem no `yt-dlp[default]`, o motor é o Deno) | carregas tu o MP3 desse vídeo | `pip install -U "yt-dlp[default]"` e `winget install DenoLand.Deno` |
+| **`[pdf]`** (PDF-to-GP5, com OCR) | criar o projeto a partir de um PDF ou de uma imagem da tab | o PDF/imagem é recusado a dizer o que instalar; GP e Songsterr funcionam | `pip install -e ".[pdf]"` (precisa do git; o `start.bat` instala-o à parte) |
 | **PyTorch CUDA** | GPU: minutos em vez de dezenas de minutos | corre tudo em CPU | ver §2b |
 | **Patch de CDLC** (`D3DX9_42.dll`) | o Rocksmith aceitar *qualquer* CDLC | a música **nunca aparece** na lista | CustomsForge, na pasta do jogo |
 

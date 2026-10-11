@@ -297,6 +297,57 @@ re-inverting the dependency.
    Playwright end to end (Songsterr answers faked): import → tracks → step 3
    with the video's times → a real build whose bars sit on those times.
 
+   **Or a PDF or a picture of the tab (`/pdf/import`) — the user's own
+   PDF-to-GP5 converter, installed as a package.** "Quero introduzir o
+   programa PDF-to-GP5 no RockForge": only the CONVERTER came in (its player,
+   library and YouTube duplicate RockForge's), and PDF-to-GP5 stays the one
+   place it is developed. That repository's `pyproject.toml` describes a
+   package that installs its `app/` folder under the name `pdf_to_gp5` (the
+   converter imports its own modules relatively, so it works under any name —
+   its `tests/test_packaging.py` keeps every subpackage listed and `app/` free
+   of absolute self-imports); nothing about running PDF-to-GP5 changed. Here
+   it is the `[pdf]` extra, `pdf-to-gp5[ocr] @ git+…@<commit>` — **pinned to a
+   commit**: to take PDF-to-GP5's improvements, move the commit (start.bat
+   reinstalls when `pyproject.toml` changes). `gpimport/pdf_import.py` calls
+   it exactly as PDF-to-GP5 calls itself: `sandbox.run_isolated` parses each
+   file in a child process with a hard timeout and a memory limit (a crafted
+   PDF is untrusted input) and answers in JSON, never pickle; the child writes
+   its warnings and errors in RockForge's language (`pdf_to_gp5.i18n.use`
+   with `i18n.current()`). Files: PDF or PNG/JPEG/WebP by their BYTES, never
+   the name, one per track in order, ≤ 7, 10 MB each / 40 MB total
+   (PDF-to-GP5's own limits). The GP5 lands in `work_dir/gp/` like an upload
+   and the answer is `/gp/inspect`'s shape (`_inspect_stored_gp`) plus
+   `pdf_files` and `import_warnings` — the Songsterr import's pattern, so the
+   wizard, the job and every later tool see an ordinary GP file. Repeats are
+   left as written (RockForge unrolls them, `playback.py`). 503 without the
+   extra (naming the install), 413/415 for a file it would not take, 422 with
+   the converter's own message. UI: step 1's file drop takes `.pdf/.png/.jpg/
+   .webp` too (`multiple`; several GP files are refused), `importPdfTab` shows
+   the progress in `#pdfImportInfo`, and step 2's `#gpImportNote` says where
+   the file came from and the conversion's warnings (Songsterr's too — step 1
+   is out of sight once the wizard advances). ⚙️ Software externo has a
+   "Conversor de PDF (PDF-to-GP5)" row (with/without OCR). **start.bat
+   installs `[pdf]` in a step of its own** that only warns on failure — it
+   comes from GitHub and needs git, and a failed fetch must not stop the rest
+   of RockForge from starting; it is retried on every start until
+   `import pdf_to_gp5` works. **`multiprocessing.freeze_support()` is the
+   first line under `__main__` in `start_standalone.py`**: frozen, the
+   converter's child process is the `.exe` itself, which without it would
+   open a second RockForge (guarded by
+   `test_a_frozen_child_process_runs_its_work_instead_of_a_second_app`); the
+   converter inside the `.exe` was NOT verified (OCR certainly is not there:
+   the spec excludes numpy). CI installs `[pdf]` and checks the import, so the
+   real conversion tests never skip silently. PyGuitarPro: PDF-to-GP5 pins
+   0.9.3 for its app; its converter tests (258) pass on RockForge's 0.11.
+   Guarded by `test_pdf_import.py` (the kind of file from its bytes, the
+   missing extra, a hand-written text-tab PDF converted for real into a GP5
+   whose notes `parse_gp_track` reads back, and the user's language reaching
+   the child — mutation-checked) and
+   `test_a_pdf_of_the_tab_becomes_a_gp_file_the_wizard_can_use`; with
+   Playwright on a live server: a bad PDF refused with the converter's
+   message, an invented riff's PDF → step 2 (its track, the note) → a real
+   build whose 12 notes are the riff's.
+
    **The chosen video's audio, fetched (`/youtube/audio`, `youtube_audio.py`).**
    Without it the Songsterr import still needed one manual step — convert the
    video to MP3 by hand — and the user judged the feature not worth having
@@ -4139,6 +4190,7 @@ Guarded by `test_bundled_web_files_are_found_in_the_pyinstaller_bundle`.
 pip install -e ".[dev,psarc]"       # core + tests + cryptography/Pillow, no ML
 pip install -e ".[dev,ml]"          # adds Demucs/librosa (stem separation, tone detection, per-point tempo/tuning)
 pip install -e ".[dev,ml,lyrics]"   # + WhisperX (automatic lyric detection)
+pip install -e ".[pdf]"             # PDF-to-GP5's converter (PDF/picture -> GP5), from GitHub
 pytest                           # full suite (ML stages are faked in tests)
 ruff check src tests start_standalone.py build_exe.py   # lint — must pass
                                  # (the root scripts are shipped code; rockforge.spec
@@ -4383,7 +4435,8 @@ refuse. The file runs with delayed expansion: no `!` in a command line. Requires
 Before that it runs `git pull --ff-only` and restarts itself (`--atualizado`:
 cmd reads a .bat while running it, so the pulled version must be re-read),
 `pip install -e ".[ml,lyrics,psarc,youtube]"` only when `pyproject.toml`
-differs from `logs\pyproject.installed` (the ML resolve is slow), refuses a
+differs from `logs\pyproject.installed` (the ML resolve is slow), then the
+`[pdf]` extra in a step of its own that only warns (see the PDF import), refuses a
 busy port 8000, and opens the page in Chrome when installed (same as
 PDF-to-GP5's `start-casa.bat`). `.gitattributes` keeps `*.bat` CRLF: cmd
 mis-reads labels/`goto` in LF files.

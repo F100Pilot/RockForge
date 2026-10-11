@@ -136,6 +136,7 @@ Per-file counts below reflect the suite at the time of writing; run
 | `test_architecture.py` | 2 | Clean Architecture layering: `application/ports.py` imports zero `infrastructure/`; other `application/` files only the explicitly-accepted exceptions |
 | `test_standalone_spec.py` | 4 | the PyInstaller spec bundles EVERY file under `web/` (executes `rockforge.spec` with stubbed builders and inspects the real `datas`), puts them where the server looks, index.html references nothing that isn't bundled, and every ML runner (`_*_runner.py`/`_demucs_patcher.py`) ships as a real file at its package path — another interpreter has to be able to EXECUTE it |
 | `test_songsterr.py` | 12 | Songsterr's per-measure timestamps, against a FAKE `get_json` (the API is undocumented and unreachable from CI and the sandbox): the song id from a link or a number (the LAST `-s<digits>`), videos ordered like guitar-pro-youtube-sync picks them (default → worldwide alternative → alternatives → the rest; not-done, point-less and duplicate entries dropped), the revision taken from `meta` and used for the points, and every changed shape or unreachable host as a clear `SongsterrError` |
+| `test_pdf_import.py` | 4 | PDF/picture → GP5 through PDF-to-GP5's converter (the `[pdf]` extra; the real tests skip without it — CI installs it): the kind of file from its bytes, the missing extra naming the install, a hand-written text-tab PDF converted for real (in the converter's sandboxed child) into a GP5 whose notes `parse_gp_track` reads back, and the user's language reaching the child |
 | `test_ml_python.py` | 16 | which interpreter the heavy ML stages run on: a Python install resolves to itself (the old path, byte for byte), a frozen build to None rather than to the `.exe` (running it would relaunch RockForge), a configured path wins over both; the per-extra probe and its failure modes (not a Python / non-zero / non-JSON / missing — every one a False, never an exception); the real subprocess transport, driven against `_librosa_runner.py` with a stub librosa; that a missing librosa fails loudly instead of printing a fabricated tempo; that the librosa measurements have ONE implementation (neither adapter may grow its own `import librosa`); and — by PARSING the call sites, since they now explain in comments why it is gone — that none of them passes `sys.executable` |
 | `test_standalone_launcher.py` | 18 | the standalone launcher's decisions, with no GUI: the worker-mode/idle-shutdown defaults (and that an explicit setting still wins), the close-confirmation logic, the readiness poll, the ffmpeg PATH order, the log fallback, and — against a fake `webview` — that the window opens on the local API, that its close handler is wired to `work_in_flight`, and that both failure paths release the port |
 
@@ -961,6 +962,19 @@ against a fake. On a real machine:
    see that tab — use a published one of the same song). Any other refusal
    shows Songsterr's `reason` text. Confirm by comparing with
    `requests.get('https://www.songsterr.com/api/meta/84').status_code` (200).
+
+### 7d-septies. PDF / picture of the tab → project (the `[pdf]` extra)
+
+1. `start.bat` once (it installs the converter in its own step; without git or
+   internet it only warns). ⚙️ Definições → Software externo → "Conversor de
+   PDF (PDF-to-GP5)" should read "instalado, com OCR".
+2. Novo projeto → step 1 → choose a tab PDF (text, or exported from Guitar
+   Pro/MuseScore) → Seguinte: step 2 lists its track(s) and says it was
+   converted, with the converter's warnings.
+3. Several PDFs at once (one per track) → one track each, in the order chosen.
+4. A screenshot (PNG) of a tab → converted by OCR (slower; numbers only, no
+   techniques).
+5. Create the project with the recording and check the notes on the score.
 
 ### 7d-sexies. Album, year and cover lookup against the REAL services
 

@@ -4,6 +4,11 @@ Estado do projeto + lista de funcionalidades (concluídas `[x]` e propostas
 `[ ]`). Para *como* cada coisa funciona, ver `CLAUDE.md`. Para *como testar*,
 ver `TESTING.md`.
 
+- [x] **Criar o projeto a partir de um PDF ou de uma imagem da tab.** O passo 1
+  do "Novo projeto" aceita PDFs e imagens (PNG/JPEG/WebP, um por pista); o
+  conversor é o do PDF-to-GP5, instalado como pacote (extra `[pdf]`, fixo a um
+  commit desse repositório, que continua a ser onde o conversor evolui). Para
+  trazer melhorias do PDF-to-GP5, muda-se o commit no `pyproject.toml`.
 - [x] ~~**Deteção de notas a partir da gravação (EXPERIMENTAL).**~~ **Abandonada
   (2026-10-10), a pedido**, e o banco de ensaio apagado. Os modelos abertos
   acertaram cerca de uma nota em cada três; o Songsterr AI chegou aos 73% e o
@@ -166,6 +171,9 @@ documentados nas mensagens de commit, caso valha a pena ressuscitar alguma.
   (`alphatab_bend`) e a leitura dos SyncPoints seguem de perto a lógica do
   alphaTab. Está creditado; falta decidir se esses ficheiros passam a declarar
   também MPL-2.0 no cabeçalho (o MPL permite-o dentro de um projeto MIT).
+- [ ] **PDF-to-GP5 não tem ficheiro de licença.** É do mesmo autor e o RockForge
+  instala-o como dependência (`[pdf]`); antes de publicar, pôr uma licença no
+  PDF-to-GP5 (o MIT, como aqui, seria o natural).
 - [ ] **Licença do Rocksmith Custom Song Toolkit por confirmar.** O
   `soundbank.py` segue o `SoundBankGenerator2014`; as notas dizem MIT, mas o
   repositório do toolkit não mostra um ficheiro de licença.

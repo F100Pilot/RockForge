@@ -19,12 +19,14 @@ jobs:
         # and test_psarc_crypto importorskip themselves out entirely and CI goes
         # green having never run the native PSARC container/SNG code — the most
         # delicate output in the project, and the hardest to verify by hand.
-        run: pip install -e ".[dev,psarc]"
+        # [pdf] (PDF-to-GP5's converter, from GitHub) for the same reason: without
+        # it the real PDF -> GP5 conversion tests skip themselves.
+        run: pip install -e ".[dev,psarc,pdf]"
       - name: Verify the optional test dependencies really installed
         # A silent skip is worse than a failure: it looks like coverage. If the
         # install line above ever loses [psarc] again, fail here and say so
         # instead of quietly dropping 17 tests.
-        run: python -c "import cryptography, PIL"
+        run: python -c "import cryptography, PIL, pdf_to_gp5"
       - name: Lint
         run: ruff check src tests start_standalone.py build_exe.py
       - name: Type-check

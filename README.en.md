@@ -39,6 +39,12 @@ timing synced to the recording — or lyrics embedded in the GP, aligned to the 
 (tonebase + up to 4 slots, with timed changes). UI flow: "Inspect tracks" →
 choose tracks/options → create the CDLC.
 
+**No Guitar Pro file?** Step 1 also takes the **PDF** of the tab or a **picture** of it
+(PNG/JPEG/WebP; several files = one track each): RockForge turns it into a GP5 with the
+[PDF-to-GP5](https://github.com/F100Pilot/PDF-to-GP5) converter (the `[pdf]` extra) and the
+wizard carries on as with a Guitar Pro file. Reading pictures (OCR) is experimental and does
+not read techniques; check the notes and the rhythm on the score.
+
 Honest limitations: **only GP6 (`.gpx`) is unsupported** (a proprietary binary container —
 export it as GP5 or GP7 in Guitar Pro/TuxGuitar). GP3/GP4/GP5 are read by PyGuitarPro;
 GP7/GP8 (`.gp`) have a native GPIF/XML parser. Sync is manual — you give the second at which
@@ -151,6 +157,7 @@ costs you, and the command to install it.
 | **`[ml]`** (Demucs, librosa) | separating stems, detecting tone, "Fix from here" | those buttons answer 503 saying what is missing | `pip install -e ".[ml]"` |
 | **`[lyrics]`** (WhisperX) | transcribing the lyrics from the recording | lyrics still come from the GP, an LRC, or the editor | `pip install -e ".[ml,lyrics]"` |
 | **`[youtube]`** (yt-dlp) + **Deno** | downloading the audio of the YouTube video Songsterr marked the times on (YouTube requires solving a JavaScript challenge: the solver comes with `yt-dlp[default]`, the engine is Deno) | you upload that video's MP3 yourself | `pip install -U "yt-dlp[default]"` and `winget install DenoLand.Deno` |
+| **`[pdf]`** (PDF-to-GP5, with OCR) | making the project from a PDF or a picture of the tab | the PDF/picture is refused, saying what to install; GP and Songsterr still work | `pip install -e ".[pdf]"` (needs git; `start.bat` installs it in a step of its own) |
 | **PyTorch CUDA** | GPU: minutes instead of tens of minutes | everything runs on CPU | see §2b |
 | **CDLC patch** (`D3DX9_42.dll`) | Rocksmith accepting *any* CDLC | the song **never appears** in the list | CustomsForge, in the game folder |
 

@@ -59,7 +59,7 @@ function setWizardStep(n) {
 function validateWizardStep() {
   if (wizardStep === 1) {
     if (!document.querySelector('#gpInspectForm input[name=file]').files.length && !songsterrImported) {
-      toast(T('Escolhe um ficheiro Guitar Pro ou importa a tab do Songsterr.')); return false;
+      toast(T('Escolhe um ficheiro Guitar Pro, um PDF ou uma imagem da tab, ou importa a tab do Songsterr.')); return false;
     }
   } else if (wizardStep === 2) {
     const anyTrack = ['lead_track', 'rhythm_track', 'combo_track', 'alt_lead_track', 'alt_rhythm_track']
@@ -244,6 +244,7 @@ function openNewJobModal() {
   resetWizardLyrics();
   songsterrImported = false;
   document.getElementById('songsterrImportInfo').textContent = '';
+  document.getElementById('pdfImportInfo').textContent = '';
   document.querySelectorAll('#newJobOverlay .file-drop').forEach(d => {
     d.classList.remove('has-file');
     const t = d.querySelector('.file-drop-text');
@@ -1164,6 +1165,12 @@ const INFO = {
     body: T('<p>Em vez de um ficheiro Guitar Pro, cola o link da música no <strong>Songsterr</strong>. O RockForge descarrega as pistas da tab e cria com elas um ficheiro Guitar Pro 5, que segue o caminho normal (escolhes as pistas no passo 2).</p>') +
       T('<p>No passo 3 aparecem os <strong>vídeos do YouTube</strong> dessa música com o tempo de cada compasso marcado por pessoas, e o áudio do vídeo escolhido é descarregado para ser a gravação (ou carregas um MP3 convertido dele). Com isso, as notas seguem a gravação compasso a compasso, sem acertos manuais.</p>') +
       T('<p>Limites: a API do Songsterr não é pública e pode mudar; as pistas de bateria ficam de fora; notas de ornamento (grace) não são incluídas. A letra vem quando a tab a tem, com cada sílaba na nota da pista em que está escrita (normalmente a da voz); se não tiver, procura-a no passo 4 ou na página Letra. O ficheiro criado pode ser exportado e aberto no Guitar Pro.</p>')
+  },
+  'pdf-import': {
+    title: T('Converter um PDF ou uma imagem da tab'),
+    body: T('<p>Em vez de um ficheiro Guitar Pro, escolhe o <strong>PDF</strong> da tablatura (uma tab em texto, ou exportada do Guitar Pro, MuseScore ou TuxGuitar) ou uma <strong>imagem</strong> dela (PNG, JPEG ou WebP). O RockForge converte-a num ficheiro Guitar Pro 5 com o conversor do <strong>PDF-to-GP5</strong>, e o assistente continua como com um ficheiro Guitar Pro.</p>') +
+      T('<p>Várias pistas: escolhe vários ficheiros de uma vez, <strong>um por pista</strong>, pela ordem das pistas (até 7).</p>') +
+      T('<p>Limites: a leitura de imagens (OCR) é experimental — lê os números, as linhas das cordas e as barras de compasso, mas não as técnicas; numa tab sem notação rítmica o ritmo é estimado pelo espaçamento. Confere sempre as notas na partitura depois de criar o projeto. Precisa do conversor instalado (⚙️ Definições → Software externo).</p>')
   },
   'youtube-audio': {
     title: T('Áudio do vídeo do YouTube'),
@@ -7975,8 +7982,17 @@ document.getElementById('rebuildForm').addEventListener('submit', e => e.prevent
 
 let gpToken = null;
 
+// A PDF or a picture of the tab (one per track, in order) goes to PDF-to-GP5's
+// converter on the server, which answers like /gp/inspect.
+const PDF_IMPORT_EXT = /\.(pdf|png|jpe?g|webp)$/i;
 document.getElementById('gpInspectForm').addEventListener('submit', async e => {
   e.preventDefault();
+  const files = [...e.target.querySelector('input[name=file]').files];
+  if (files.length && files.every(f => PDF_IMPORT_EXT.test(f.name))) { importPdfTab(files); return; }
+  if (files.length > 1) {
+    toast(T('Escolhe só um ficheiro Guitar Pro. Vários ficheiros só para PDFs ou imagens da tab (um por pista).'));
+    return;
+  }
   const r = await fetch('/gp/inspect', { method: 'POST', body: new FormData(e.target) });
   const b = await r.json();
   if (!r.ok) return toast(b.detail || T('erro'));
@@ -8007,6 +8023,18 @@ function applyInspectResult(b) {
   if (b.title) form.querySelector('input[name=title]').value = b.title;
   if (b.artist) form.querySelector('input[name=artist]').value = b.artist;
   if (b.album) form.querySelector('input[name=album]').value = b.album;
+  // Where the file came from when RockForge made it, and what that could not carry.
+  const note = document.getElementById('gpImportNote');
+  const noteParts = [];
+  if (b.pdf_files && b.pdf_files.length) {
+    noteParts.push(T('Convertido para Guitar Pro a partir de: {files}. Confere as notas e o ritmo na partitura.',
+      { files: b.pdf_files.join(', ') }));
+  }
+  if (b.import_warnings && b.import_warnings.length) {
+    noteParts.push(T('Avisos da conversão: {warnings}', { warnings: b.import_warnings.join('; ') }));
+  }
+  note.textContent = noteParts.join(' ');
+  note.hidden = !noteParts.length;
   // Synced to an audio track in Guitar Pro 8: the file itself says where bar 1
   // is in that audio, so offer the exact value instead of asking for a guess.
   const embeddedRow = document.getElementById('gpEmbeddedAudioRow');
@@ -8083,6 +8111,27 @@ async function importSongsterrTab() {
   if (await fetchSongsterrVideos()) downloadYtAudio();
 }
 document.getElementById('songsterrImportBtn').addEventListener('click', importSongsterrTab);
+
+async function importPdfTab(files) {
+  const info = document.getElementById('pdfImportInfo');
+  const next = document.getElementById('wizardNext');
+  info.textContent = T('A converter em Guitar Pro (pode demorar, sobretudo com imagens)…');
+  next.disabled = true;
+  const body = new FormData();
+  files.forEach(f => body.append('files', f));
+  let b;
+  try {
+    b = await getJSON('/pdf/import', { method: 'POST', body });
+  } catch (err) {
+    info.textContent = T('Não consegui converter: {msg}', { msg: err.message });
+    return;
+  } finally {
+    next.disabled = false;
+  }
+  info.textContent = T('Convertido.');
+  songsterrImported = false;
+  applyInspectResult(b);
+}
 document.getElementById('songsterrImportLink').addEventListener('keydown', e => {
   // Inside step 1's form, Enter would submit the file inspect instead.
   if (e.key === 'Enter') { e.preventDefault(); importSongsterrTab(); }

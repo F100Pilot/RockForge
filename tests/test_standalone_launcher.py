@@ -21,6 +21,20 @@ sys.path.insert(0, str(REPO_ROOT))
 import start_standalone as launcher  # noqa: E402
 
 
+def test_a_frozen_child_process_runs_its_work_instead_of_a_second_app() -> None:
+    """The PDF converter runs in a child process; frozen, that child is the .exe
+    itself, so freeze_support() has to come before main() or every PDF opens
+    another RockForge window."""
+    import ast
+
+    tree = ast.parse((REPO_ROOT / "start_standalone.py").read_text(encoding="utf-8"))
+    guard = next(n for n in tree.body if isinstance(n, ast.If)
+                 and "__main__" in ast.unparse(n.test))
+    calls = [ast.unparse(n.value.func) for n in guard.body
+             if isinstance(n, ast.Expr) and isinstance(n.value, ast.Call)]
+    assert calls[:2] == ["multiprocessing.freeze_support", "main"]
+
+
 def test_importing_the_launcher_touches_nothing() -> None:
     """The environment is configured in a FUNCTION, not at import: it has to be
     set before anything imports `rockforge.config` (pydantic-settings reads the

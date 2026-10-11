@@ -276,4 +276,11 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    # The PDF converter (PDF-to-GP5) parses each file in a child process. In a
+    # frozen build that child is this same .exe started again with special
+    # arguments; freeze_support() recognises them and runs the child's work
+    # instead of opening a second RockForge. It must be the first thing here.
+    import multiprocessing
+
+    multiprocessing.freeze_support()
     main()

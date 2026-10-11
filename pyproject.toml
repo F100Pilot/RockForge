@@ -71,6 +71,14 @@ desktop = ["pywebview>=5.0"]
 # runtime — Deno — installed separately); the floor is what the reference tool
 # (teaqu/guitar-pro-youtube-sync) requires.
 youtube = ["yt-dlp[default]>=2026.8.19"]
+# Tablature in a PDF or a picture -> GP5 in the New project wizard: the user's own
+# PDF-to-GP5 converter (infrastructure/gpimport/pdf_import.py), with its OCR for
+# pictures. Pinned to a commit of that repository — it stays where the converter is
+# developed; to take its improvements, move the commit here (start.bat reinstalls
+# when this file changes). Needs git on the machine that installs it.
+pdf = [
+    "pdf-to-gp5[ocr] @ git+https://github.com/F100Pilot/PDF-to-GP5@6535b94767c0105696c2c614ae8588271ba9f1bf",
+]
 dev = [
     "pytest>=8.0",
     "pytest-cov>=5.0",

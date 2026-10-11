@@ -986,6 +986,9 @@ class GpInspectOut(BaseModel):
     # conversion could not carry over.
     songsterr_song: str | None = None
     import_warnings: list[str] = []
+    # Set when the file was converted from a PDF or a picture of the tab
+    # (/pdf/import, PDF-to-GP5's converter): the names of those files.
+    pdf_files: list[str] = []
 
 
 GP_SUFFIXES = {".gp3", ".gp4", ".gp5", ".gp"}  # .gp = GP7/GP8 (native GPIF parser)
@@ -1232,6 +1235,64 @@ def songsterr_import(payload: SongsterrImportIn) -> GpInspectOut:
         )
     out.songsterr_song = str(tab.song_id)
     out.import_warnings = warnings
+    return out
+
+
+@app.post("/pdf/import", response_model=GpInspectOut)
+def pdf_import(files: list[UploadFile] = File(...)) -> GpInspectOut:
+    """Build a Guitar Pro file from a PDF or a picture of the tab, in place of
+    uploading one — PDF-to-GP5's converter (the ``[pdf]`` extra), one file per
+    track in order. The GP5 lands in ``work_dir/gp`` like an upload and the
+    answer is ``/gp/inspect``'s, plus what the conversion warns about. 503
+    without the extra, 413/415 for a file it would not take, 422 for one the
+    converter refused (its own message, in the user's language).
+    """
+    from rockforge.infrastructure.gpimport import pdf_import as converter
+
+    if not converter.available():
+        raise HTTPException(503, converter.missing_message())
+    if not files:
+        raise HTTPException(422, i18n.tr("Nenhum ficheiro enviado.", "No file uploaded."))
+    if len(files) > converter.MAX_FILES:
+        raise HTTPException(
+            422,
+            i18n.tr(
+                f"No máximo {converter.MAX_FILES} ficheiros (um por pista).",
+                f"At most {converter.MAX_FILES} files (one per track).",
+            ),
+        )
+    read: list[tuple[str, bytes]] = []
+    total = 0
+    for upload in files:
+        name = Path(upload.filename or "").name
+        data = upload.file.read(converter.MAX_FILE_BYTES + 1)
+        total += len(data)
+        if len(data) > converter.MAX_FILE_BYTES or total > converter.MAX_TOTAL_BYTES:
+            raise HTTPException(
+                413, i18n.tr(f"Ficheiro demasiado grande: {name}.", f"File too large: {name}.")
+            )
+        if converter.file_kind(data) is None:
+            raise HTTPException(
+                415,
+                i18n.tr(
+                    f"Não é um PDF nem uma imagem PNG, JPEG ou WebP: {name}.",
+                    f"Not a PDF or a PNG, JPEG or WebP picture: {name}.",
+                ),
+            )
+        read.append((name, data))
+    try:
+        result = converter.convert(read)
+    except converter.PdfConverterMissingError as exc:
+        raise HTTPException(503, str(exc)) from exc
+    except converter.PdfImportError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    gp_dir = settings.work_dir / "gp"
+    gp_dir.mkdir(parents=True, exist_ok=True)
+    dest = gp_dir / f"{uuid.uuid4()}.gp5"
+    dest.write_bytes(result.gp5)
+    out = _inspect_stored_gp(dest)
+    out.pdf_files = [name for name, _ in read]
+    out.import_warnings = result.warnings
     return out
 
 

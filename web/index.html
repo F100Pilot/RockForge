@@ -1668,12 +1668,13 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
     <form id="gpInspectForm" class="wizard-pane wz-pane" data-step="1">
       <div>
         <h1 class="pv-page-title">Ficheiro</h1>
-        <p class="set-desc">Escolhe o ficheiro Guitar Pro e clica em <b>Seguinte</b> para ver as pistas.</p>
+        <p class="set-desc">Escolhe o ficheiro Guitar Pro — ou o PDF ou a imagem da tablatura — e clica em <b>Seguinte</b> para ver as pistas.</p>
       </div>
       <div class="pv-card pv-card-lg">
-        <div class="field"><label>Ficheiro Guitar Pro (GP3/GP4/GP5/GP7) <button class="info-btn" data-info="gp-format">ⓘ</button></label>
+        <div class="field"><label>Ficheiro Guitar Pro (GP3/GP4/GP5/GP7), PDF ou imagem da tab <button class="info-btn" data-info="gp-format">ⓘ</button> <button class="info-btn" data-info="pdf-import">ⓘ</button></label>
           <div class="file-drop"><div class="file-drop-icon"><svg class="ic" aria-hidden="true"><use href="#i-file"/></svg></div><span class="file-drop-text">Arrasta ou clica para escolher</span><span class="file-drop-btn">Procurar</span>
-          <input type="file" name="file" accept=".gp3,.gp4,.gp5,.gp" required></div></div>
+          <input type="file" name="file" accept=".gp3,.gp4,.gp5,.gp,.pdf,.png,.jpg,.jpeg,.webp" multiple required></div>
+          <p class="meta" id="pdfImportInfo" style="margin:.35rem 0 0"></p></div>
       </div>
       <div class="pv-card pv-card-lg">
         <div class="field"><label>… ou importa a tab do Songsterr <button class="info-btn" data-info="songsterr-import">ⓘ</button></label>
@@ -1694,6 +1695,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
           <p class="set-desc">Atribui uma pista a cada arranjo (precisas de pelo menos um). Deixa vazios os que a música não tem.</p>
         </div>
         <div id="gpMeta" class="meta"></div>
+        <div id="gpImportNote" class="meta" hidden></div>
         <div class="pv-card pv-card-lg">
           <div class="wz-grid">
             <div class="field"><label>Pista Lead</label>

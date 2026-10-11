@@ -230,6 +230,50 @@ def _psarc() -> Requirement:
     )
 
 
+def _pdf_converter() -> Requirement:
+    from rockforge.infrastructure.gpimport import pdf_import
+
+    ok = pdf_import.available()
+    ocr = ok and pdf_import.ocr_available()
+    if not ok:
+        detail = _installed(False)
+    elif ocr:
+        detail = tr("instalado, com OCR", "installed, with OCR")
+    else:
+        detail = tr("instalado, sem OCR (só PDFs com texto)", "installed, no OCR (text PDFs only)")
+    # It runs in THIS process (not through «Python para o ML»), so in the .exe
+    # it is there only when the build included it.
+    install = (
+        tr(
+            "Este .exe foi construído sem o conversor de PDF.",
+            "This .exe was built without the PDF converter.",
+        )
+        if frozen()
+        else 'pip install -e ".[pdf]"'
+    )
+    return Requirement(
+        key="pdf",
+        name=tr("Conversor de PDF (PDF-to-GP5)", "PDF converter (PDF-to-GP5)"),
+        found=ok,
+        detail=detail,
+        required=False,
+        unlocks=tr(
+            "No «Novo projeto», criar o ficheiro Guitar Pro a partir de um PDF ou de "
+            "uma imagem da tablatura; com OCR, também imagens e PDFs só com imagens.",
+            "In «New project», making the Guitar Pro file from a PDF or a picture of "
+            "the tab; with OCR, pictures and image-only PDFs too.",
+        ),
+        without_it=tr(
+            "Um PDF ou uma imagem é recusado com a indicação do que instalar; os "
+            "ficheiros Guitar Pro e o Songsterr continuam a funcionar.",
+            "A PDF or a picture is refused, saying what to install; Guitar Pro files "
+            "and Songsterr still work.",
+        ),
+        install=install,
+        extras=["pdf"],
+    )
+
+
 @dataclass(frozen=True)
 class _MlAvailability:
     """What the interpreter that will RUN the ML stages has.
@@ -610,6 +654,7 @@ def check_requirements(settings: Settings, *, gpu_broken: bool = False) -> list[
         _lyrics(av),
         _gpu(gpu_broken, av),
         _ytdlp(),
+        _pdf_converter(),
         _loader_patch(),
     ]
 
