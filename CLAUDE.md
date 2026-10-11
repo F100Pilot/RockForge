@@ -2548,8 +2548,17 @@ stand-in no longer in the lists (a project tone deleted, a library tone
 removed) keeps its own option and is copied back in on "Aplicar" rather than
 silently dropped. Guarded by
 `test_the_tones_chosen_in_place_of_the_suggested_ones_are_kept_with_the_project`
-(stored, read back, inherited by a fork, nonsense refused, cleared). The rows
-say "Meu tom (em vez de Crunch encorpado)", and "Aplicar" copies a library or
+(stored, read back, inherited by a fork, nonsense refused, cleared). **The same
+picker sits in every part's row** ("Diz que está a distortion … não consigo tirar":
+the rows only SHOWED "Meu tom (em vez de Crunch encorpado)", and the picker sat
+above the first track, out of sight, so a swap could not be undone where it was
+seen): `toneSwapSelect(key, name)` builds both, its first option "<tone> (o
+sugerido)" drops the swap, and a note under the card's title says the suggestions
+change nothing until "Aplicar a esta pista" and that what a track plays is "Tons
+de cada pista" — the user had already changed that by hand and read the table as
+the track's state. Browser-only; verified with Playwright (suggestions faked: the
+row shows the swap, "o sugerido" sends `swaps: {}`, PT/EN, 1440/760 px, no page
+errors). "Aplicar" copies a library or
 PSARC stand-in into the project once (`swapToneKey`, a different tone under
 the same key gets a suffix) and maps the plan through it (`swapPlan`, pure:
 names deduplicated, and a switch to the tone already playing dropped — two

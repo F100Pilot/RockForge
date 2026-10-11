@@ -220,7 +220,7 @@
   .ts-legend span { display:inline-flex; align-items:center; gap:.5rem; }
   .ts-legend i { width:.9rem; height:.9rem; border-radius:4px; display:inline-block; }
   .ts-table { border:1px solid var(--line); border-radius:14px; overflow:hidden; }
-  .ts-cols { display:grid; grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,.9fr) minmax(0,1.8fr) minmax(0,1fr); gap:1rem; align-items:center; }
+  .ts-cols { display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr) minmax(0,.9fr) minmax(0,2.3fr) minmax(0,.9fr); gap:1rem; align-items:center; }
   .ts-thead { padding:.75rem 1.25rem; background:#1d1f27; font-size:.85rem; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
   .ts-row { padding:.9rem 1.25rem; border-top:1px solid #262831; display:flex; flex-direction:column; gap:.4rem; }
   .ts-row .ts-cols { font-size:1.05rem; }
@@ -230,6 +230,8 @@
   .ts-dot { display:inline-block; flex:0 0 .75rem; width:.75rem; height:.75rem; border-radius:50%; }
   .ts-tone { font-weight:600; }
   .ts-tone .meta { font-weight:400; font-size:.9rem; }
+  .ts-tone .ts-swap { height:2.6rem; font-weight:600; }
+  .ts-note { margin:.25rem 0 .75rem; font-size:1rem; }
   .ts-match { display:flex; flex-direction:column; gap:.1rem; font-weight:700; }
   .ts-match .meta { font-weight:400; font-size:.9rem; }
   .ts-why { font-size:.95rem; color:#a9acb6; }
@@ -1313,6 +1315,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
             <button class="info-btn" data-info="tone-sections">ⓘ</button>
             <button type="button" id="toneSuggestApplyAll" class="tn-btn tn-push" hidden>Aplicar a todas as pistas</button>
           </div>
+          <p class="tn-hint ts-note">Isto é só uma sugestão: não muda nada até carregares em "Aplicar a esta pista". O que cada pista toca é o que está em "Tons de cada pista", acima — aí podes sempre mudar à mão. Trocar um tom sugerido troca-o em todas as partes e pistas onde é sugerido.</p>
           <div id="toneSuggestBody" class="tn-stack"></div>
         </section>
       </div>

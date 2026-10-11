@@ -5269,21 +5269,25 @@ function suggestedTones(tracks) {
   return [...seen.values()];
 }
 
-function toneSwapsHtml(tracks) {
+// The picker of what plays in place of the suggested tone ``key`` (named ``name``):
+// the same one map, whether it is picked above the tracks or in a part's row.
+function toneSwapSelect(key, name) {
   const opts = (items, prefix) => items.map(t => `<option value="${prefix}${esc(t.key)}">${esc(t.name || t.key)}</option>`).join('');
-  const rows = suggestedTones(tracks).map(s => {
-    const sw = toneSwaps[s.key];
-    const listed = sw && ((sw.source === 'project' && jobTones.some(t => t.key === sw.tone.key)) ||
-      (sw.source === 'library' && toneLibrary.some(t => t.key === sw.tone.key)));
-    const picked = sw && !listed
-      ? `<option value="c:" selected>${esc(sw.label || sw.tone.name || sw.tone.key)}</option>` : '';
-    const sel = `<select class="ts-swap" data-key="${esc(s.key)}" aria-label="${esc(T('Trocar por'))}">
-      <option value="">${T('o sugerido')}</option>${picked}
+  const sw = toneSwaps[key];
+  const listed = sw && ((sw.source === 'project' && jobTones.some(t => t.key === sw.tone.key)) ||
+    (sw.source === 'library' && toneLibrary.some(t => t.key === sw.tone.key)));
+  const picked = sw && !listed
+    ? `<option value="c:" selected>${esc(sw.label || sw.tone.name || sw.tone.key)}</option>` : '';
+  return `<select class="ts-swap" data-key="${esc(key)}" data-label="${esc(name)}" aria-label="${esc(T('Trocar {name} por', { name }))}">
+      <option value="">${esc(T('{name} (o sugerido)', { name }))}</option>${picked}
       ${jobTones.length ? `<optgroup label="${esc(T('Tons do projeto'))}">${opts(jobTones, 'p:')}</optgroup>` : ''}
       ${toneLibrary.length ? `<optgroup label="${esc(T('Biblioteca'))}">${opts(toneLibrary, 'l:')}</optgroup>` : ''}
       <option value="__coll__">${T('Dos teus PSARC…')}</option></select>`;
-    return `<div class="ts-swap-row"><b>${esc(s.name || s.key)}</b>${sel}</div>`;
-  }).join('');
+}
+
+function toneSwapsHtml(tracks) {
+  const rows = suggestedTones(tracks).map(s =>
+    `<div class="ts-swap-row"><b>${esc(s.name || s.key)}</b>${toneSwapSelect(s.key, s.name || s.key)}</div>`).join('');
   return `<div class="ts-swaps"><div class="ts-swaps-intro">${T('Trocar os tons sugeridos — as trocas ficam nos mesmos pontos, com os tons que escolheres:')}</div><div class="ts-swap-grid">${rows}</div></div>`;
 }
 
@@ -5298,7 +5302,7 @@ function wireToneSwaps(body) {
     sel.addEventListener('change', () => {
       const v = sel.value;
       if (v === '__coll__') {
-        const label = sel.closest('.ts-swap-row').querySelector('b').textContent;
+        const label = sel.dataset.label;
         openToneCollection({
           label,
           onPick: (tone, row) => {
@@ -5402,13 +5406,11 @@ function toneTrackHtml(t, ti, timeline) {
     const lo = Math.min(...matches), hi = Math.max(...matches);
     const conf = ['low', 'medium', 'high'].find(c => run.some(x => x.confidence === c)) || 'low';
     const why = runReasons(run).map(toneReasonText).join(' · ');
-    const sw = toneSwaps[g.tone_key];
-    const toneLabel = sw
-      ? `${esc(sw.tone.name || sw.tone.key)} <span class="meta">(${T('em vez de {name}', { name: esc(g.tone_name || g.tone_key) })})</span>`
-      : esc(g.tone_name || g.tone_key);
+    // the suggested tone can be swapped right here: the same choice as above the tracks
+    const suggested = g.tone_name || g.tone_key;
     return `<div class="ts-row" role="row"><div class="ts-cols"><span class="ts-part" role="cell">${esc(name)}</span>` +
       `<span class="ts-when" role="cell">${when}</span><span role="cell">${roleCell}</span>` +
-      `<span class="ts-tone" role="cell">${toneLabel}</span>` +
+      `<span class="ts-tone" role="cell">${toneSwapSelect(g.tone_key, suggested)}</span>` +
       `<span class="ts-match" role="cell">${lo === hi ? lo : `${lo}–${hi}`}%<span class="meta">${TONE_CONFIDENCE[conf]}</span></span></div>` +
       (why ? `<div class="ts-why">${T('porquê:')} ${esc(why)}</div>` : '') + '</div>';
   }).join('');
