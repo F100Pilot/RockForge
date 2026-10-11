@@ -88,7 +88,8 @@ def _record_failure(task: str, job_id: str, exc: BaseException) -> None:
                 status_key, log_key = keys
                 params = dict(job.params or {})  # a NEW dict, or the write is lost
                 params[status_key] = "unavailable"
-                previous = list(params.get(log_key) or [])
+                logged = params.get(log_key)
+                previous = list(logged) if isinstance(logged, list) else []
                 params[log_key] = [*previous, f"failed before it started: {reason}"][-50:]
                 job.params = params
             session.commit()

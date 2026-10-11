@@ -1800,7 +1800,8 @@ def _backfill_gp_synced() -> int:
             for job in session.execute(select(Job)).scalars():
                 params = dict(job.params or {})
                 gp_path = params.get("gp_path")
-                if job.source_type != "gp" or "gp_synced" in params or not gp_path:
+                if (job.source_type != "gp" or "gp_synced" in params
+                        or not isinstance(gp_path, str) or not gp_path):
                     continue
                 if gp_path not in known:
                     try:
@@ -1996,8 +1997,10 @@ def drop_previous_version(job_id: str) -> JobOut:
                 for name, path in stems.items()
             }
 
-        grand = cast("dict[str, Any]", prev.params or {}).get("rebuilt_from")
-        grand = grand if isinstance(grand, str) and session.get(Job, grand) else None
+        rebuilt_from = cast("dict[str, Any]", prev.params or {}).get("rebuilt_from")
+        grand: str | None = None
+        if isinstance(rebuilt_from, str) and session.get(Job, rebuilt_from) is not None:
+            grand = rebuilt_from
         for other in session.execute(select(Job).where(Job.id != prev.id)).scalars():
             other_params = params if other.id == job.id else dict(other.params or {})
             if other_params.get("rebuilt_from") != prev.id:
@@ -2979,7 +2982,8 @@ def get_tone_suggestions(job_id: str) -> ToneSuggestionsOut:
                       low_end=float(r[3]), active=bool(r[4]))
         for r in raw if isinstance(r, list) and len(r) >= 5
     ]
-    profile = detected.get("profile") or {}
+    profile_raw = detected.get("profile") if isinstance(detected, dict) else None
+    profile = profile_raw if isinstance(profile_raw, dict) else {}
     song = (
         float(profile.get("gain_level", 0.4)),
         float(profile.get("brightness", 0.5)),
