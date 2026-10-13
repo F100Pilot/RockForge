@@ -1170,7 +1170,7 @@ const INFO = {
     title: T('Converter um PDF ou uma imagem da tab'),
     body: T('<p>Em vez de um ficheiro Guitar Pro, escolhe o <strong>PDF</strong> da tablatura (uma tab em texto, ou exportada do Guitar Pro, MuseScore ou TuxGuitar) ou uma <strong>imagem</strong> dela (PNG, JPEG ou WebP). O RockForge converte-a num ficheiro Guitar Pro 5 com o conversor do <strong>PDF-to-GP5</strong>, e o assistente continua como com um ficheiro Guitar Pro.</p>') +
       T('<p>Várias pistas: escolhe vários ficheiros de uma vez, <strong>um por pista</strong>, pela ordem das pistas (até 7).</p>') +
-      T('<p>Limites: a leitura de imagens (OCR) é experimental — lê os números, as linhas das cordas e as barras de compasso, mas não as técnicas; numa tab sem notação rítmica o ritmo é estimado pelo espaçamento. Confere sempre as notas na partitura depois de criar o projeto. Precisa do conversor instalado (⚙️ Definições → Software externo).</p>')
+      T('<p>Limites: a leitura de imagens (OCR) é experimental — lê os números, as linhas das cordas, as barras de compasso e as técnicas escritas (H/P, P.M., let ring, harmónicos), os slides, o vibrato, as ligaduras e os bends; numa tab sem notação rítmica o ritmo é estimado pelo espaçamento. Confere sempre as notas na partitura depois de criar o projeto. Precisa do conversor instalado (⚙️ Definições → Software externo).</p>')
   },
   'youtube-audio': {
     title: T('Áudio do vídeo do YouTube'),

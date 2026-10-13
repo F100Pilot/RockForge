@@ -10,6 +10,10 @@ Pipeline Guitar Pro → arranjos Rocksmith 2014 (CDLC), construído sobre invest
 > [Avisos legais](#avisos-legais) e [`LEGAL.md`](LEGAL.md). Licença MIT ([`LICENSE`](LICENSE));
 > componentes de terceiros em [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
+**Como usar:** o [Guia do utilizador](docs/GUIA.md) explica o programa passo a passo — criar um
+projeto, sincronizar, editar notas, tons, letra, capa, exportar e instalar no jogo, e os
+problemas mais comuns. Este README trata de instalar e correr.
+
 ## O que faz (e o que não promete)
 
 | Etapa | Tecnologia | Confiança |
@@ -32,8 +36,9 @@ a gravação: notas, trastes, técnicas (bend/HO/PO/palm mute/harmónicos/vibrat
 compassos e secções vêm **exatos** do ficheiro. Inclui: seleção de pistas Lead/Rhythm, offset de
 sincronização com a gravação, letra (ficheiro **LRC** ou **UltraStar TXT** — timing por
 sílaba/linha sincronizado com a gravação — ou letra embutida no GP, alinhada às notas), e tones
-(tonebase + até 4 slots, com mudanças temporizadas). Fluxo na UI: "Inspecionar pistas" →
-escolher pistas/opções → criar CDLC.
+(tonebase + até 4 slots, com mudanças temporizadas). Fluxo na UI: "Novo projeto" →
+ficheiro → pistas → gravação → detalhes → "Criar CDLC" (passo a passo no
+[Guia do utilizador](docs/GUIA.md#4-criar-um-projeto-novo-projeto)).
 A interface também pode ser mudada para inglês (seletor PT/EN na página inicial ou
 ⚙️ Definições → Idioma · Language).
 
@@ -51,28 +56,15 @@ que a música começa na gravação e a partitura/letra são deslocadas para ess
 gravação fica intacta, pois já tem o seu intro); há um lead-in mínimo de 2s para o count-in
 do DLC Builder; pistas de baixo (4/5 cordas) ainda não são suportadas.
 
-Para afinar a sincronização há uma **ferramenta de sincronização visual** no detalhe do job
-(jobs GP): dá play à gravação, o cursor percorre as notas e ouves um *tique* em cada uma —
-arrasta o "Início da música" até os tiques baterem certo com a música e carrega em "Aplicar e
-reconstruir".
-
-Se a tablatura e a gravação se vão **afastando ao longo da música** (o GP foi escrito num
-andamento ligeiramente diferente do gravado), ajusta o **andamento (BPM)** no painel de
-sincronização: estica/comprime a música toda de uma vez. As notas movem-se sobre a forma de
-onda em tempo real para confirmares o alinhamento; depois "Aplicar e reconstruir". Isto corrige
-a parte linear da deriva num só passo — faz isto **antes** das correções nota-a-nota abaixo.
-
-Se a deriva (drift) entre a partitura e o áudio aumentar ao longo da música (em vez de um
-offset constante), corrige nota a nota na tablatura: **arrasta uma nota** horizontalmente para
-o instante onde ela deveria tocar — fica um ponto de correção, e as notas entre pontos
-consecutivos são esticadas/comprimidas proporcionalmente. Para corrigir um trecho inteiro de
-uma vez, ativa "Selecionar excerto", arrasta uma caixa sobre as notas desse trecho e depois
-arrasta uma delas — o excerto move-se em bloco. As notas ficam na posição corrigida no
-visualizador (com grelha temporal a cada 0.25s para ajuste fino) para testares com o áudio
-antes de gravares. Cada "Aplicar correções e reconstruir" soma uma nova ronda de correções às
-anteriores — **abre o job mais tarde (mesmo depois de saíres e voltares) e continua a
-ajustar**: as correções já aplicadas ficam no arranjo carregado e as novas somam-se a elas, em
-vez de partir sempre do GP em bruto.
+Para afinar a sincronização, a página **Partitura** toca a gravação com as notas por cima (e um
+*tique* em cada nota): acerta o **início da música**, depois o **andamento (BPM)** se a
+partitura se afasta por igual, e por fim corrige onde ainda foge — o modo recomendado é
+**"Corrigir daqui"**: clicas na nota onde a partitura começa a fugir e o RockForge mede o
+andamento da gravação daí em diante. Há também arrastar notas, mover um excerto, alinhar um
+compasso ao cursor ou a outra pista, e uma pista principal cujas correções passam para as
+outras. Tudo fica pendente até "Aplicar e reconstruir", e as correções somam-se de
+reconstrução em reconstrução. Passo a passo no
+[Guia do utilizador](docs/GUIA.md#6-sincronizar-as-notas-com-a-gravação).
 
 ### Pista 3D (como no Rocksmith)
 
@@ -506,7 +498,7 @@ silêncio e a suíte fica verde sem nunca os ter corrido.
 2. **Arrancar a stack**: `docker compose up --build`. Abre `http://localhost:8000`.
    A deteção opcional de stems/tom/letra descarrega os modelos (Demucs ~2 GB) na primeira
    utilização; em CPU, uma música de 4 min demora vários minutos na etapa `separate`.
-3. **Smoke test honesto**: usa "Inspecionar pistas" num **GP3/GP4/GP5 ou GP7/GP8** + a
+3. **Smoke test honesto**: em "Novo projeto", usa um **GP3/GP4/GP5 ou GP7/GP8** + a
    gravação, escolhe as pistas Lead/Rhythm e cria o CDLC. Abre o job, afina a sincronização
    no visualizador (início da música, BPM, arrastar notas) e usa "Aplicar e reconstruir".
 4. **Validar o XML**: descarrega o bundle e abre os `arrangement_*.xml` no EOF ou importa no
@@ -569,6 +561,7 @@ Se perderes o contexto e precisares de reconstruir tudo, lê por esta ordem:
 | Documento | Para quê |
 |---|---|
 | **[`README.md`](README.md)** (este) | instalar, correr, usar, distribuir — começa aqui para preparar uma máquina |
+| **[`docs/GUIA.md`](docs/GUIA.md)** (inglês: [`docs/GUIDE.en.md`](docs/GUIDE.en.md)) | o guia do utilizador: como trabalhar com a aplicação, página a página |
 | **[`CLAUDE.md`](CLAUDE.md)** | arquitetura (Clean Architecture), o desenho de cada funcionalidade, e as **restrições rígidas** que já custaram caro — a fonte de verdade sobre *porquê* o código está como está |
 | **[`TESTING.md`](TESTING.md)** | correr/estender a suíte de testes, mapa de cobertura, e a checklist manual fim-a-fim (ML, Wwise, DLC Builder, in-game) que o CI não cobre |
 | **[`TODO.md`](TODO.md)** | o que está feito `[x]`, o que falta `[ ]`, e as limitações conhecidas atuais |

@@ -10,6 +10,10 @@ A Guitar Pro → Rocksmith 2014 arrangements (CDLC) pipeline, built on verified 
 > [Legal notices](#legal-notices) and [`LEGAL.md`](LEGAL.md). MIT licence ([`LICENSE`](LICENSE));
 > third-party components in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
+**How to use it:** the [User guide](docs/GUIDE.en.md) walks through the program step by step —
+creating a project, syncing, editing notes, tones, lyrics, cover, exporting and installing in
+the game, and the most common problems. This README covers installing and running.
+
 The app's interface is available in Portuguese and English: switch it with the PT/EN picker on
 the home page or in ⚙️ Settings → "Idioma · Language". The UI labels quoted below are the
 English ones.
@@ -36,8 +40,9 @@ the recording: notes, frets, techniques (bend/HO/PO/palm mute/harmonics/vibrato/
 bars and sections come **exact** from the file. Includes: Lead/Rhythm track selection, a sync
 offset against the recording, lyrics (an **LRC** or **UltraStar TXT** file — per-syllable/line
 timing synced to the recording — or lyrics embedded in the GP, aligned to the notes), and tones
-(tonebase + up to 4 slots, with timed changes). UI flow: "Inspect tracks" →
-choose tracks/options → create the CDLC.
+(tonebase + up to 4 slots, with timed changes). UI flow: "New project" →
+file → tracks → recording → details → "Create CDLC" (step by step in the
+[User guide](docs/GUIDE.en.md#4-creating-a-project-new-project)).
 
 **No Guitar Pro file?** Step 1 also takes the **PDF** of the tab or a **picture** of it
 (PNG/JPEG/WebP; several files = one track each): RockForge turns it into a GP5 with the
@@ -53,28 +58,15 @@ the song starts in the recording and the score/lyrics are shifted to that instan
 recording stays intact, since it already has its own intro); there is a minimum 2 s lead-in
 for DLC Builder's count-in; bass tracks (4/5 strings) are not supported yet.
 
-To fine-tune the sync there is a **visual sync tool** in the job detail view
-(GP jobs): play the recording, the cursor runs over the notes and you hear a *tick* on each
-one — drag the "Song start" until the ticks line up with the music and click "Apply and
-rebuild".
-
-If the tab and the recording **drift apart over the course of the song** (the GP was written
-at a slightly different tempo from the recording), adjust the **tempo (BPM)** in the sync
-panel: it stretches/compresses the whole song in one go. The notes move over the waveform in
-real time so you can confirm the alignment; then "Apply and rebuild". This fixes the linear
-part of the drift in a single step — do it **before** the note-by-note corrections below.
-
-If the drift between the score and the audio grows over the song (instead of being a constant
-offset), correct it note by note on the tab: **drag a note** horizontally to the instant where
-it should play — that leaves a correction point, and the notes between consecutive points are
-stretched/compressed proportionally. To fix a whole passage at once, turn on "Select excerpt",
-drag a box over that passage's notes and then drag one of them — the excerpt moves as a block.
-The notes stay at their corrected position in the viewer (with a time grid every 0.25 s for
-fine adjustment) so you can test them against the audio before saving. Each "Apply
-corrections and rebuild" adds a new round of corrections on top of the previous ones — **open
-the job later (even after leaving and coming back) and keep adjusting**: corrections already
-applied stay in the loaded arrangement and new ones add to them, instead of always starting
-from the raw GP.
+To fine-tune the sync, the **Score** page plays the recording with the notes on top (and a
+*tick* on each note): set the **song start**, then the **tempo (BPM)** if the score drifts
+away evenly, and finally fix wherever it still drifts — the recommended mode is **"Fix from
+here"**: you click the note where the score starts to drift and RockForge measures the
+recording's tempo from there on. There is also dragging notes, moving an excerpt, aligning a
+bar with the cursor or another track, and a main track whose corrections reach the others.
+Everything stays pending until "Apply and rebuild", and corrections add up from rebuild to
+rebuild. Step by step in the
+[User guide](docs/GUIDE.en.md#6-syncing-the-notes-to-the-recording).
 
 ### 3D highway (like in Rocksmith)
 
@@ -487,7 +479,7 @@ suite stays green without ever having run them.
 2. **Start the stack**: `docker compose up --build`. Open `http://localhost:8000`.
    The optional stem/tone/lyric detection downloads the models (Demucs ~2 GB) on first use;
    on CPU, a 4-minute song takes several minutes in the `separate` stage.
-3. **Honest smoke test**: use "Inspect tracks" on a **GP3/GP4/GP5 or GP7/GP8** + the
+3. **Honest smoke test**: in "New project", use a **GP3/GP4/GP5 or GP7/GP8** + the
    recording, choose the Lead/Rhythm tracks and create the CDLC. Open the job, fine-tune the
    sync in the viewer (song start, BPM, dragging notes) and use "Apply and rebuild".
 4. **Validate the XML**: download the bundle and open the `arrangement_*.xml` files in EOF or
@@ -549,6 +541,7 @@ If you lose context and need to rebuild everything, read in this order:
 | Document | What for |
 |---|---|
 | **[`README.md`](README.md)** (this one, in Portuguese; English: [`README.en.md`](README.en.md)) | installing, running, using, distributing — start here to set up a machine |
+| **[`docs/GUIDE.en.md`](docs/GUIDE.en.md)** (Portuguese: [`docs/GUIA.md`](docs/GUIA.md)) | the user guide: how to work with the app, page by page |
 | **[`CLAUDE.md`](CLAUDE.md)** | architecture (Clean Architecture), the design of each feature, and the **hard constraints** that have already cost us dearly — the source of truth for *why* the code is the way it is |
 | **[`TESTING.md`](TESTING.md)** | running/extending the test suite, the coverage map, and the manual end-to-end checklist (ML, Wwise, DLC Builder, in-game) that CI doesn't cover |
 | **[`TODO.md`](TODO.md)** | what is done `[x]`, what is missing `[ ]`, and the current known limitations |

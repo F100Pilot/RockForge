@@ -4411,6 +4411,11 @@ background" feature:
   the origin and licence of everything third-party, and the legal notice (PT/EN).
 - **`README.md`** — user-facing: install, run, use, distribute. Start here to
   set up a machine.
+- **`docs/GUIA.md`** + **`docs/GUIDE.en.md`** — the user guide: how to work
+  with the app page by page, in the UI's own words (each language quotes the
+  labels of its own interface — check them against `web/i18n-en.js`), plus
+  common problems. When a visible workflow changes (a page, a button's name, a
+  new step), update both in the same change.
 - **`TESTING.md`** — how to run/extend the test suite, the coverage map, and the
   manual end-to-end checks CI cannot do (ML, Wwise, DLC Builder, in-game).
 - **`TODO.md`** — done (`[x]`) and proposed (`[ ]`) features + current known
