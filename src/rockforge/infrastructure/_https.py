@@ -23,9 +23,12 @@ install) it is the system default, as before.
 
 from __future__ import annotations
 
+import json
 import ssl
 import urllib.error
+import urllib.request
 from functools import cache
+from typing import Any
 
 from rockforge.i18n import tr
 
@@ -67,3 +70,27 @@ def network_error_message(exc: BaseException, service: str) -> str:
             f"({exc})",
         )
     return tr(f"não consegui contactar o {service} ({exc})", f"could not reach {service} ({exc})")
+
+
+def get_json(
+    url: str,
+    *,
+    user_agent: str,
+    timeout: float,
+    error: type[Exception],
+    service: tuple[str, str],
+) -> Any:
+    """GET ``url`` and decode its JSON, every failure raised as ``error`` with a
+    sentence naming ``service`` — (Portuguese, English), read after "o"/"do" in
+    Portuguese, so a common noun goes in bare ("serviço", "the service")."""
+    pt, en = service
+    request = urllib.request.Request(url, headers={"User-Agent": user_agent})
+    try:
+        with urllib.request.urlopen(request, timeout=timeout, context=ssl_context()) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        raise error(tr(f"o {pt} respondeu {exc.code}", f"{en} answered {exc.code}")) from exc
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        raise error(network_error_message(exc, tr(pt, en))) from exc
+    except ValueError as exc:
+        raise error(tr(f"resposta ilegível do {pt}", f"unreadable answer from {en}")) from exc

@@ -20,7 +20,6 @@ tests use recorded-shape fakes. stdlib ``urllib``, no new dependency.
 
 from __future__ import annotations
 
-import json
 import re
 import urllib.error
 import urllib.parse
@@ -31,7 +30,7 @@ from typing import Any
 
 from rockforge.domain.errors import IngestionError
 from rockforge.i18n import tr
-from rockforge.infrastructure._https import network_error_message, ssl_context
+from rockforge.infrastructure._https import get_json as https_get_json
 from rockforge.infrastructure.album_lookup import _same, primary_artist, search_title
 
 LRCLIB_URL = "https://lrclib.net/api/search"
@@ -61,20 +60,10 @@ class LyricsCandidate:
 
 
 def _http_get_json(url: str) -> Any:
-    request = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})
-    try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT_S, context=ssl_context()) as response:
-            return json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        raise LyricsLookupError(
-            tr(f"o LRCLIB respondeu {exc.code}", f"LRCLIB answered {exc.code}")
-        ) from exc
-    except (urllib.error.URLError, TimeoutError, OSError) as exc:
-        raise LyricsLookupError(network_error_message(exc, "LRCLIB")) from exc
-    except ValueError as exc:
-        raise LyricsLookupError(
-            tr("resposta ilegível do LRCLIB", "unreadable answer from LRCLIB")
-        ) from exc
+    return https_get_json(
+        url, user_agent=_USER_AGENT, timeout=TIMEOUT_S,
+        error=LyricsLookupError, service=("LRCLIB", "LRCLIB"),
+    )
 
 
 def _text(value: Any) -> str | None:

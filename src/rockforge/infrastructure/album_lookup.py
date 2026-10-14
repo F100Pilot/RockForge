@@ -26,7 +26,6 @@ URLs on these services' own image hosts.
 
 from __future__ import annotations
 
-import json
 import re
 import unicodedata
 import urllib.error
@@ -38,6 +37,7 @@ from typing import IO, Any
 
 from rockforge.domain.errors import IngestionError
 from rockforge.i18n import tr
+from rockforge.infrastructure._https import get_json as https_get_json
 from rockforge.infrastructure._https import (
     is_certificate_error,
     network_error_message,
@@ -82,22 +82,10 @@ class AlbumCandidate:
 
 
 def _http_get_json(url: str) -> Any:
-    request = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})
-    try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT_S, context=ssl_context()) as response:
-            return json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        raise AlbumLookupError(
-            tr(f"o serviço respondeu {exc.code}", f"the service answered {exc.code}")
-        ) from exc
-    except (urllib.error.URLError, TimeoutError, OSError) as exc:
-        raise AlbumLookupError(
-            network_error_message(exc, tr("serviço", "the service"))
-        ) from exc
-    except ValueError as exc:
-        raise AlbumLookupError(
-            tr("resposta ilegível do serviço", "unreadable answer from the service")
-        ) from exc
+    return https_get_json(
+        url, user_agent=_USER_AGENT, timeout=TIMEOUT_S,
+        error=AlbumLookupError, service=("serviço", "the service"),
+    )
 
 
 def _year(date: Any) -> int | None:
