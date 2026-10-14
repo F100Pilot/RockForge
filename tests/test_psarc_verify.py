@@ -159,7 +159,7 @@ def test_every_rule_has_its_words() -> None:
 
     from rockforge.infrastructure.packaging.psarc import verify
 
-    codes = set(__import__("re").findall(r'(?:Problem\(|add\()\s*"([a-z_0-9]+)"',
+    codes = set(__import__("re").findall(r'(?:Problem\(|add\(|append\(\()\s*"([a-z_0-9]+)"',
                                          inspect.getsource(verify)))
     assert codes and all(describe(c) != c for c in codes)
 

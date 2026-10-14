@@ -23,6 +23,7 @@ from rockforge.infrastructure.packaging.psarc.sng_model import (
     _NOTES_PER_DD_LEVEL,
     NO_CAPO,
     NOTE_MASK_BEND,
+    NOTE_MASK_CHILD,
     NOTE_MASK_CHORD,
     NOTE_MASK_CHORDNOTES,
     NOTE_MASK_DOUBLESTOP,
@@ -195,6 +196,7 @@ def _phrase_signature(
             round((n.time - start) * 100), n.string, n.fret, round(n.sustain * 100),
             tuple(sorted(t.value for t in n.techniques)),
             n.slide_to_fret, n.slide_unpitch_to, round(n.bend_semitones * 100),
+            n.link_next,
         )
         for n in span
     ))
@@ -249,6 +251,8 @@ def _note_mask(n: TabNote, is_chord: bool = False, is_double_stop: bool = False)
         mask |= NOTE_MASK_SUSTAIN
     if n.fret == 0:
         mask |= NOTE_MASK_OPEN
+    if n.link_next:  # runs on into the next note on its string (Parent)
+        mask |= NOTE_MASK_PARENT
     if is_chord:
         mask |= NOTE_MASK_CHORD
     else:
@@ -467,6 +471,52 @@ def _build_fingerprints(notes: list[SngNote]) -> list[SngFingerprint]:
     return fingerprints
 
 
+def _time_key(t: float) -> int:
+    return round(t * 10_000)
+
+
+def _link_children(notes: Sequence[TabNote]) -> frozenset[tuple[int, int]]:
+    """``(string, time key)`` of every note a linked note runs into — the next
+    note on its string, which ``resolve_links`` has already checked."""
+    by_string: dict[int, list[TabNote]] = {}
+    for n in notes:
+        by_string.setdefault(n.string, []).append(n)
+    out: set[tuple[int, int]] = set()
+    for lst in by_string.values():
+        lst.sort(key=lambda n: n.time)
+        for a, b in zip(lst, lst[1:], strict=False):
+            if a.link_next:
+                out.add((b.string, _time_key(b.time)))
+    return frozenset(out)
+
+
+def _link_pairs(
+    notes: Sequence[SngNote],
+    chord_notes_list: Sequence[SngChordNotes],
+    children: frozenset[tuple[int, int]],
+) -> list[tuple[int, int]]:
+    """``(parent, child)`` indices into the time-sorted ``notes``, the way
+    XmlToSngNote pairs them: a pending parent per string — a single note marked
+    Parent, or a chord whose ChordNotes mark that string Parent — taken by the
+    next SINGLE note on the string (chords never take one), and dropped by it
+    whether or not it is the child."""
+    pending: dict[int, int] = {}
+    pairs: list[tuple[int, int]] = []
+    for i, n in enumerate(notes):
+        if n.chord_id < 0:
+            parent = pending.pop(n.string, None)
+            if parent is not None and (n.string, _time_key(n.time)) in children:
+                pairs.append((parent, i))
+            if n.mask & NOTE_MASK_PARENT:
+                pending[n.string] = i
+        elif n.chord_notes_id >= 0:
+            masks = chord_notes_list[n.chord_notes_id].note_mask
+            for s in range(6):
+                if masks[s] & NOTE_MASK_PARENT:
+                    pending[s] = i
+    return pairs
+
+
 def _build_level(
     difficulty: int,
     notes: list[SngNote],
@@ -475,6 +525,7 @@ def _build_level(
     chord_templates: list[SngChordTemplate],
     song_length: float,
     chord_notes_list: list[SngChordNotes],
+    link_children: frozenset[tuple[int, int]] = frozenset(),
 ) -> SngArrangementLevel:
     """One difficulty level over the given note subset.
 
@@ -552,6 +603,13 @@ def _build_level(
 
     fingerprints = _build_fingerprints(linked)
 
+    # Linked notes: the note a linked note runs into is its Child and points
+    # back at it by its index in THIS level (XmlToSngNote's ParentPrevNote).
+    for parent, child in _link_pairs(linked, chord_notes_list, link_children):
+        linked[child] = replace(
+            linked[child], mask=linked[child].mask | NOTE_MASK_CHILD, parent_prev_note=parent
+        )
+
     return SngArrangementLevel(
         difficulty=difficulty,
         anchors=anchors,
@@ -623,18 +681,45 @@ def _chart_hand_shapes(groups: list[list[TabNote]]) -> list[tuple[float, float]]
 
 
 def _good_phrase_time(
-    notes: list[TabNote], t: float, shapes: Sequence[tuple[float, float]] = ()
+    notes: list[TabNote],
+    t: float,
+    shapes: Sequence[tuple[float, float]] = (),
+    chords: Sequence[Sequence[TabNote]] = (),
 ) -> tuple[float, float]:
     """The nearest times before and after ``t`` that are inside neither a
-    single note's sustain nor a hand shape — PhraseGenerator.fs
-    ``findGoodPhraseTime``, over ``level.Notes`` (the single notes: a chord is
-    kept whole by its hand shape) and ``level.HandShapes``. The point is to
-    land exactly where its build of our XML does."""
+    single note's sustain nor a hand shape, and not ON a note a linked note
+    runs into — PhraseGenerator.fs ``findGoodPhraseTime``, over ``level.Notes``
+    (the single notes: a chord is kept whole by its hand shape), its chords
+    for the linkNext rule, and ``level.HandShapes``. The point is to land
+    exactly where its build of our XML does (and DLC Builder's checker refuses
+    a phrase on a linked note's sustain, PhraseChangeOnLinkNextNote)."""
+    def link_target(time: float) -> tuple[float, TabNote] | None:
+        at = next((n for n in notes if abs(n.time - time) < 0.0005), None)
+        if at is None:
+            return None
+        prev = max((n for n in notes if n.string == at.string and n.time < at.time),
+                   key=lambda n: n.time, default=None)
+        if prev is not None and prev.link_next:
+            return prev.time, at
+        chord = max((g for g in chords if g[0].time < at.time
+                     and any(m.string == at.string for m in g)),
+                    key=lambda g: g[0].time, default=None)
+        if chord is not None and any(m.string == at.string and m.link_next for m in chord):
+            return chord[0].time, at
+        return None
+
     def find(earlier: bool, time: float) -> float:
         for _ in range(20):  # the reference's own guard against a loop
             inside = next((n for n in notes if n.time < time < n.time + n.sustain), None)
             if inside is not None:
                 time = inside.time if earlier else inside.time + inside.sustain
+                continue
+            linked = link_target(time)
+            if linked is not None:
+                # Earlier: where the linked note starts; later: past the note
+                # it runs into (100 ms when it has no sustain, as the reference).
+                parent_time, at = linked
+                time = parent_time if earlier else at.time + (at.sustain if at.sustain > 0 else 0.1)
                 continue
             shape = next((hs for hs in shapes if hs[0] < time < hs[1]), None)
             if shape is None:
@@ -669,6 +754,7 @@ def _prepare_sections(arrangement: Arrangement, song_length: float) -> list[Sect
 
     chart_groups = _group_chords(notes)
     singles = [g[0] for g in chart_groups if len(g) == 1]
+    chart_chords = [g for g in chart_groups if len(g) > 1]
     shapes = _chart_hand_shapes(chart_groups)
     content_start = notes[0].time
     content_end = max(n.time + max(n.sustain, 0.0) for n in notes)
@@ -708,7 +794,7 @@ def _prepare_sections(arrangement: Arrangement, song_length: float) -> list[Sect
             counter = 1
             prev = secs[-1].start_time
             if next_t is None:
-                earlier, later = _good_phrase_time(singles, beat.time, shapes)
+                earlier, later = _good_phrase_time(singles, beat.time, shapes, chart_chords)
                 closest = earlier if beat.time - earlier < later - beat.time else later
                 if closest - prev > _MIN_PHRASE_SEPARATION_S:
                     ok, t = True, closest
@@ -1002,6 +1088,8 @@ def _build_sng_notes(
                 mask |= TECHNIQUE_TO_MASK.get(tech, 0)
         if any(n.sustain > 0 for n in g):
             mask |= NOTE_MASK_SUSTAIN
+        if any(n.link_next for n in g):  # XmlToSngNote: chord.IsLinkNext -> Parent
+            mask |= NOTE_MASK_PARENT
         # A repeated identical chord renders condensed; without this the full
         # chord boxes of a fast chug stack into a corrupt highway sprite.
         if hd_flags[gi]:
@@ -1147,6 +1235,7 @@ def _build_difficulty_levels(
     chord_notes_list: list[SngChordNotes],
     song_length: float,
     dynamic_difficulty: bool,
+    link_children: frozenset[tuple[int, int]] = frozenset(),
 ) -> tuple[list[SngPhrase], list[SngPhraseIteration], list[SngArrangementLevel], int]:
     """DDC-style graduated levels: notes ramp in per phrase over several
     difficulty levels. A real Rocksmith DD ramps each note in over many
@@ -1200,6 +1289,23 @@ def _build_difficulty_levels(
         phrase_max = [0] * len(phrases)
     song_max = max(phrase_max, default=0)
 
+    # A linked note and the note it runs into are shown together or not at all:
+    # a Parent whose Child a level dropped, or a Child without its Parent, is a
+    # link the level would ship broken.
+    partners: dict[int, list[int]] = {}
+    for a, b in _link_pairs(sng_notes, chord_notes_list, link_children):
+        partners.setdefault(a, []).append(b)
+        partners.setdefault(b, []).append(a)
+
+    def _with_partners(keep: set[int]) -> set[int]:
+        todo = [i for i in keep if i in partners]
+        while todo:
+            for j in partners[todo.pop()]:
+                if j not in keep:
+                    keep.add(j)
+                    todo.append(j)
+        return keep
+
     def _level_notes(d: int) -> list[SngNote]:
         """The notes visible at difficulty ``d``: each iteration shows the
         strongest-beat prefix scaled by ``d`` against its phrase's ceiling, and
@@ -1229,6 +1335,7 @@ def _build_difficulty_levels(
             # with notes is never empty below it (DLC Builder's never is).
             shown = m if pm <= 0 else max(1, min(m, round((d + 1) / (pm + 1) * m)))
             keep.update(lst[:shown])
+        keep = _with_partners(keep)
         return [sngn for i, sngn in enumerate(sng_notes) if i in keep]
 
     phrases = [replace(p, max_difficulty=phrase_max[i]) for i, p in enumerate(phrases)]
@@ -1244,7 +1351,7 @@ def _build_difficulty_levels(
     levels = [
         _build_level(
             d, _level_notes(d), phrase_iterations, len(phrases),
-            chord_templates, song_length, chord_notes_list,
+            chord_templates, song_length, chord_notes_list, link_children,
         )
         for d in range(song_max + 1)
     ]
@@ -1330,6 +1437,7 @@ def from_arrangement(
     phrases, phrase_iterations, arrangements, song_max = _build_difficulty_levels(
         sng_notes, beats, phrases, phrase_iterations,
         chord_templates, chord_notes_list, song_length, dynamic_difficulty,
+        _link_children(arrangement.notes),
     )
     # Per-difficulty string usage per section — needs the levels, so it runs after
     # them (see _apply_section_string_masks: blank masks tell the game no string

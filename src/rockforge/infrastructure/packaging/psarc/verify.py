@@ -27,9 +27,12 @@ from pathlib import Path
 
 from rockforge.i18n import tr
 from rockforge.infrastructure.packaging.psarc.sng import (
+    NOTE_MASK_CHILD,
+    NOTE_MASK_PARENT,
     SngArrangementLevel,
     SngFingerprint,
     SngModel,
+    SngNote,
 )
 from rockforge.infrastructure.rsxml.vocals import VOCAL_NOTE
 
@@ -206,6 +209,52 @@ def _check_level(lv: SngArrangementLevel, model: SngModel, bounds: list[float]) 
             add("chord_outside_handshape", n.time)
         elif n.chord_id < 0 and expected >= 0:
             add("single_note_in_handshape", n.time)
+
+    out.extend(Problem(code, level=d, time=t) for code, t in _check_links(lv, model, bounds))
+    return out
+
+
+def _parent_strings(n: SngNote, model: SngModel) -> set[int]:
+    """The strings a note hands a link on from: a single note's own string,
+    a chord's strings whose ChordNotes mark Parent."""
+    if not n.mask & NOTE_MASK_PARENT:
+        return set()
+    if n.chord_id < 0:
+        return {n.string}
+    if not 0 <= n.chord_notes_id < len(model.chord_notes):
+        return set()
+    masks = model.chord_notes[n.chord_notes_id].note_mask
+    return {s for s in range(6) if masks[s] & NOTE_MASK_PARENT}
+
+
+def _check_links(
+    lv: SngArrangementLevel, model: SngModel, bounds: list[float]
+) -> list[tuple[str, float]]:
+    """Linked notes, as XmlToSngNote writes them and InstrumentalChecker allows
+    them: a Child points back (ParentPrevNote) at an earlier Parent on its
+    string whose end it starts at; every Parent hands on to a Child at this
+    level; nothing else carries a ParentPrevNote; no phrase starts on a Child."""
+    out: list[tuple[str, float]] = []
+    notes = lv.notes
+    taken: set[tuple[int, int]] = set()
+    for i, n in enumerate(notes):
+        if not n.mask & NOTE_MASK_CHILD:
+            if n.parent_prev_note != -1:
+                out.append(("link_stray_parent_index", n.time))
+            continue
+        p = n.parent_prev_note
+        if n.chord_id >= 0 or not 0 <= p < i or n.string not in _parent_strings(notes[p], model):
+            out.append(("link_child_without_parent", n.time))
+            continue
+        parent = notes[p]
+        if parent.chord_id < 0 and abs(parent.time + parent.sustain - n.time) > 0.002 + _EPS:
+            out.append(("link_gap", n.time))
+        if any(abs(b - n.time) < _EPS for b in bounds):
+            out.append(("phrase_on_link", n.time))
+        taken.add((p, n.string))
+    for i, n in enumerate(notes):
+        if any((i, s) not in taken for s in _parent_strings(n, model)):
+            out.append(("link_parent_without_child", n.time))
     return out
 
 
@@ -328,6 +377,17 @@ def describe(code: str) -> str:
                                     "a chord outside every hand shape"),
         "single_note_in_handshape": ("nota solta dentro de uma hand shape",
                                      "a single note inside a hand shape"),
+        "link_child_without_parent": (
+            "nota ligada sem a nota de onde vem (na mesma corda, antes dela)",
+            "a linked note without the note it comes from (on its string, before it)"),
+        "link_gap": ("nota ligada que não começa onde a anterior acaba",
+                     "a linked note that does not start where the previous one ends"),
+        "link_parent_without_child": ("nota com ligação sem a nota seguinte neste nível",
+                                      "a note linked on with no next note at this level"),
+        "link_stray_parent_index": ("nota não ligada que aponta para uma nota anterior",
+                                    "an unlinked note pointing at an earlier note"),
+        "phrase_on_link": ("frase que começa numa nota ligada",
+                           "a phrase that starts on a linked note"),
     }
     pt, en = texts.get(code, (code, code))
     return tr(pt, en)

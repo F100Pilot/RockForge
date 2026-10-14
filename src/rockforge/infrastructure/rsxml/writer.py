@@ -120,7 +120,11 @@ def _note_attrs(n: TabNote) -> dict[str, str]:
         "time": _fmt(n.time),
         "string": str(n.string),
         "fret": str(n.fret),
-        "sustain": _fmt(n.sustain),
+        # A linked note ends exactly where its next note starts (resolve_links);
+        # written in milliseconds, so the end is rounded the same way the next
+        # note's time is — DLC Builder's checker allows 1 ms.
+        "sustain": _fmt(round(n.time + n.sustain, 3) - round(n.time, 3))
+        if n.link_next else _fmt(n.sustain),
         "bend": str(int(round(n.bend_semitones))) if has(Technique.BEND) else "0",
         "hammerOn": "1" if has(Technique.HAMMER_ON) else "0",
         "pullOff": "1" if has(Technique.PULL_OFF) else "0",
@@ -132,7 +136,7 @@ def _note_attrs(n: TabNote) -> dict[str, str]:
         "tap": "1" if has(Technique.TAP) else "0",
         "slap": "1" if has(Technique.SLAP) else "0",
         "pluck": "1" if has(Technique.POP) else "0",
-        "linkNext": "0",
+        "linkNext": "1" if n.link_next else "0",
         "accent": "1" if has(Technique.ACCENT) else "0",
         "hopo": "1" if has(Technique.HAMMER_ON) or has(Technique.PULL_OFF) else "0",
         "slideTo": str(n.slide_to_fret) if n.slide_to_fret is not None else "-1",
@@ -394,7 +398,9 @@ def render_arrangement(arr: Arrangement, album_art_urn: str | None = None) -> ET
         chord_attrs = {
             "time": _fmt(g[0].time),
             "chordId": str(chord_id),
-            "linkNext": "0",
+            # Set when any of its strings runs on into the next note there
+            # (Rocksmith2014.NET's checker reads the chordNotes either way).
+            "linkNext": "1" if any(n.link_next for n in g) else "0",
             "accent": "1" if chord_accent else "0",
             "fretHandMute": "0",
             # Repeated identical chords in a fast run render condensed; emitting

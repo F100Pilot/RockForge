@@ -10,7 +10,9 @@ conversion produces (XmlToSng.fs ``convertHandshape``, Utils.fs
 ``psarc/verify.py``'s ``check_sng``, the checker the app runs on the user's own
 file, together with every other rule a chart must keep — checked
 level by level on random charts mixing chords, single notes, slides, long
-sustains and rests, and again after a write/read round trip.
+sustains, rests and linked notes (a note held or slid into the next on its
+string, from a single note or from a chord), and again after a write/read round
+trip.
 """
 
 import random
@@ -19,7 +21,7 @@ import xml.etree.ElementTree as ET
 import pytest
 
 from rockforge.domain.arrangement import Arrangement, ArrangementKind, Section, SongMetadata
-from rockforge.domain.music import Beat, TabNote, Technique, TempoMap, Tuning
+from rockforge.domain.music import Beat, TabNote, Technique, TempoMap, Tuning, resolve_links
 from rockforge.infrastructure.packaging.psarc.sng import from_arrangement, read_sng, write_sng
 from rockforge.infrastructure.packaging.psarc.verify import check_sng
 from rockforge.infrastructure.rsxml.writer import render_arrangement
@@ -52,9 +54,26 @@ def _random_chart(seed: int) -> Arrangement:
         if roll < 0.75:  # a chord (repeated runs are common: shape is sticky)
             tech: frozenset[Technique] = rnd.choice(
                 [frozenset(), frozenset(), frozenset({Technique.PALM_MUTE})])
+            link = rnd.choice([s for s, f in enumerate(shape) if f >= 0]) \
+                if rnd.random() < 0.08 else None
+            held = rnd.choice([0.25, 0.5])
             for s, f in enumerate(shape):
                 if f >= 0:
-                    notes.append(TabNote(s, f, round(t, 4), sustain, tech))
+                    notes.append(TabNote(s, f, round(t, 4), held if s == link else sustain,
+                                         tech, link_next=s == link))
+            if link is not None:  # held on into a single note on that string
+                t = round(t + held, 4)
+                notes.append(TabNote(link, shape[link], t, rnd.choice([0.0, 0.3])))
+        elif rnd.random() < 0.3:  # a single note held or slid into the next
+            s, f = rnd.randrange(6), rnd.randrange(3, 15)
+            held = rnd.choice([0.25, 0.5, 0.75])
+            to = f + rnd.choice([2, -2]) if rnd.random() < 0.5 else None
+            notes.append(TabNote(s, f, round(t, 4), held,
+                                 frozenset({Technique.SLIDE}) if to else frozenset(),
+                                 slide_to_fret=to, link_next=True))
+            t = round(t + held, 4)
+            notes.append(TabNote(s, to if to else f, t, rnd.choice([0.0, 0.2, 0.5]),
+                                 link_next=rnd.random() < 0.3))
         else:  # a single note, maybe sliding
             s, f = rnd.randrange(6), rnd.randrange(0, 15)
             slide = f + rnd.choice([2, -2]) if rnd.random() < 0.2 and f > 2 else None
@@ -68,7 +87,7 @@ def _random_chart(seed: int) -> Arrangement:
     return Arrangement(
         kind=rnd.choice([ArrangementKind.LEAD, ArrangementKind.RHYTHM]),
         metadata=SongMetadata(title="F", artist="Z", song_length=length + 2),
-        tuning=Tuning(), notes=notes, sections=sections,
+        tuning=Tuning(), notes=resolve_links(notes), sections=sections,
         tempo_map=TempoMap(beats=beats, average_bpm=60 / step),
     )
 

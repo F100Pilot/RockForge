@@ -97,6 +97,7 @@ def _note_from_el(el: ET.Element) -> TabNote:
         slide_unpitch_to=unpitched if unpitched >= 0 else None,
         left_hand=_int(el, "leftHand", -1),
         pick_direction=2 if _int(el, "pickDirection") == 1 else 0,  # "1" = upstroke
+        link_next=_flag(el, "linkNext"),
     )
 
 
