@@ -546,11 +546,12 @@ function toggleBanquetConfig() {
   const on = document.querySelector('input[name=sepBackend]:checked')?.value === 'banquet';
   document.getElementById('banquetConfig').style.display = on ? '' : 'none';
 }
+// The settings page's ready / missing marks.
+const OK_MARK = '<span style="color:#3fdc8a">✓</span>', BAD_MARK = '<span style="color:#e88">✗</span>';
 function renderBanquetValidation(b) {
-  const ok = '<span style="color:#3fdc8a">✓</span>', bad = '<span style="color:#e88">✗</span>';
-  document.getElementById('sVrepo').innerHTML = b.repo_ok ? ok : bad;
-  document.getElementById('sVckpt').innerHTML = b.ckpt_ok ? ok : bad;
-  document.getElementById('sVqueries').innerHTML = b.queries_ok ? ok : bad;
+  document.getElementById('sVrepo').innerHTML = b.repo_ok ? OK_MARK : BAD_MARK;
+  document.getElementById('sVckpt').innerHTML = b.ckpt_ok ? OK_MARK : BAD_MARK;
+  document.getElementById('sVqueries').innerHTML = b.queries_ok ? OK_MARK : BAD_MARK;
   const names = b.query_names || [];
   document.getElementById('sQueryNames').textContent = names.length
     ? T('Stems detetados: {names}', { names: names.join(', ') }) : '';
@@ -561,7 +562,6 @@ function renderBanquetValidation(b) {
 function renderMlPythonInfo(i) {
   const el = document.getElementById('sMlPythonInfo');
   if (!el) return;
-  const ok = '<span style="color:#3fdc8a">✓</span>', bad = '<span style="color:#e88">✗</span>';
   if (!i.path) {
     // In the .exe there is no fallback: its own interpreter is the executable.
     el.innerHTML = i.frozen
@@ -570,13 +570,13 @@ function renderMlPythonInfo(i) {
     return;
   }
   if (!i.python_ok) {
-    el.innerHTML = `${bad} ${T('esse caminho não arrancou como Python — aponta ao <code>python.exe</code> do Python 3.11.')}`;
+    el.innerHTML = `${BAD_MARK} ${T('esse caminho não arrancou como Python — aponta ao <code>python.exe</code> do Python 3.11.')}`;
     return;
   }
-  el.innerHTML = `${ok} ${T('Python encontrado')} &nbsp; ` +
-    `${i.ml_ok ? ok : bad} <code>[ml]</code> (${T('stems, tom, «Corrigir daqui»')}) &nbsp; ` +
-    `${i.lyrics_ok ? ok : bad} <code>[lyrics]</code> (${T('letra')}) &nbsp; ` +
-    `${i.torch_ok ? ok : bad} PyTorch`;
+  el.innerHTML = `${OK_MARK} ${T('Python encontrado')} &nbsp; ` +
+    `${i.ml_ok ? OK_MARK : BAD_MARK} <code>[ml]</code> (${T('stems, tom, «Corrigir daqui»')}) &nbsp; ` +
+    `${i.lyrics_ok ? OK_MARK : BAD_MARK} <code>[lyrics]</code> (${T('letra')}) &nbsp; ` +
+    `${i.torch_ok ? OK_MARK : BAD_MARK} PyTorch`;
 }
 
 function fillSettings(s) {
