@@ -507,9 +507,9 @@ def detected_rocksmith_folder() -> Path | None:
     from rockforge import runtime_settings
     from rockforge.infrastructure.tone_collection import rocksmith_game_folders
 
-    stored = runtime_settings.load().get("rocksmith_dlc_dir")
+    stored = runtime_settings.rocksmith_dlc_dir()
     if stored:
-        parent = Path(str(stored)).parent
+        parent = stored.parent
         if (parent / "Rocksmith2014.exe").is_file():
             return parent
     games = rocksmith_game_folders()

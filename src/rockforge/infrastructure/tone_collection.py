@@ -89,8 +89,7 @@ def configured_game_folder() -> Path | None:
     """The Rocksmith 2014 folder the user set in Definições, if any."""
     from rockforge import runtime_settings
 
-    raw = runtime_settings.load().get("rocksmith_dir")
-    return Path(str(raw)) if raw else None
+    return runtime_settings.rocksmith_dir()
 
 
 def suggested_folder() -> Path | None:

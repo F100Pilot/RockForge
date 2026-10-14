@@ -34,9 +34,9 @@ def dlc_folder() -> Path | None:
     configured = configured_game_folder()
     if configured is not None:
         return configured / "dlc" if (configured / "dlc").is_dir() else None
-    stored = runtime_settings.load().get("rocksmith_dlc_dir")
-    if stored and Path(str(stored)).is_dir() and Path(str(stored)).name.lower() == "dlc":
-        return Path(str(stored))
+    stored = runtime_settings.rocksmith_dlc_dir()
+    if stored and stored.is_dir() and stored.name.lower() == "dlc":
+        return stored
     return suggested_folder()
 
 

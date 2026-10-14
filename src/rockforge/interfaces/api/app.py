@@ -3359,8 +3359,7 @@ class ToneCollectionScanIn(BaseModel):
 def _tone_collection_folder() -> Path | None:
     from rockforge import runtime_settings
 
-    stored = runtime_settings.load().get("rocksmith_dlc_dir")
-    return Path(stored) if stored else None
+    return runtime_settings.rocksmith_dlc_dir()
 
 
 def _gear_name(gear: object) -> str:

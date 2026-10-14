@@ -131,6 +131,16 @@ def banquet_validation() -> dict[str, Any]:
     }
 
 
+def rocksmith_dir() -> Path | None:
+    """The Rocksmith 2014 folder set in Definições, if any."""
+    return _path("rocksmith_dir", None)
+
+
+def rocksmith_dlc_dir() -> Path | None:
+    """The folder the tone collection last scanned, if any."""
+    return _path("rocksmith_dlc_dir", None)
+
+
 def ml_python() -> Path | None:
     """The interpreter the heavy ML stages run on, or None for "this one".
 
