@@ -325,6 +325,14 @@ async def _validation_error(_request: Request, exc: RequestValidationError) -> J
 _session_factory = make_session_factory(settings.database_url)
 
 
+def _job_or_404(session: Session, job_id: str) -> Job:
+    """The job, or the 404 every per-job endpoint answers for an unknown id."""
+    job = session.get(Job, job_id)
+    if job is None:
+        raise HTTPException(404, "job not found")
+    return job
+
+
 PIPELINE_STAGES = [
     "ingest", "normalize", "parse_gp", "build_arrangements", "lyrics", "package",
 ]
@@ -1733,9 +1741,7 @@ def reload_gp(
     from rockforge.infrastructure.gpimport.parser import inspect_gp
 
     with _session_factory() as session:
-        original = session.get(Job, job_id)
-        if original is None:
-            raise HTTPException(404, "job not found")
+        original = _job_or_404(session, job_id)
         if original.source_type != "gp":
             raise HTTPException(422, "reload-gp only applies to Guitar Pro jobs")
         params: dict[str, object] = dict(original.params or {})
@@ -2036,9 +2042,7 @@ def delete_job(job_id: str, force: bool = False) -> Response:
     The uploaded source file is removed only when no other job (e.g. a rebuild)
     still references it."""
     with _session_factory() as session:
-        job = session.get(Job, job_id)
-        if job is None:
-            raise HTTPException(404, "job not found")
+        job = _job_or_404(session, job_id)
         if job.status is JobStatus.RUNNING and not force:
             raise HTTPException(409, "job is running — wait for it to finish before deleting")
         _delete_job_files_and_row(session, job)
@@ -2086,9 +2090,7 @@ def drop_previous_version(job_id: str) -> JobOut:
     from sqlalchemy import select
 
     with _session_factory() as session:
-        job = session.get(Job, job_id)
-        if job is None:
-            raise HTTPException(404, "job not found")
+        job = _job_or_404(session, job_id)
         if job.status is not JobStatus.COMPLETED:
             raise HTTPException(409, "the new version has to finish building first")
         params = dict(job.params or {})
@@ -2211,9 +2213,7 @@ def _iter_floats(value: object) -> Iterator[float]:
 def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
     """Re-run the pipeline on the same source with human-confirmed overrides."""
     with _session_factory() as session:
-        original = session.get(Job, job_id)
-        if original is None:
-            raise HTTPException(404, "job not found")
+        original = _job_or_404(session, job_id)
         if original.source_type in {"upload", "gp"} and not Path(original.source).exists():
             raise HTTPException(409, "original upload no longer exists on the work volume")
         from rockforge.application.gp_pipeline import MIN_OFFSET_S
@@ -2494,9 +2494,7 @@ def get_sync_state(job_id: str) -> SyncStateOut:
     as a portable JSON blob, so it can be re-imported into another job for the
     same song instead of redoing every manual correction."""
     with _session_factory() as session:
-        job = session.get(Job, job_id)
-        if job is None:
-            raise HTTPException(404, "job not found")
+        job = _job_or_404(session, job_id)
         song = " - ".join(p for p in (job.artist, job.title) if p)
         return SyncStateOut(
             version=1, song=song, sync=_extract_sync_state(dict(job.params or {}))
@@ -2509,9 +2507,7 @@ def import_sync_state(job_id: str, payload: SyncStateIn) -> JobOut:
     so hand-tuned drift/tempo/offset/lyrics/tracks survive re-creating a job."""
     clean = _sanitize_sync_state(payload.sync)
     with _session_factory() as session:
-        original = session.get(Job, job_id)
-        if original is None:
-            raise HTTPException(404, "job not found")
+        original = _job_or_404(session, job_id)
         if original.source_type in {"upload", "gp"} and not Path(original.source).exists():
             raise HTTPException(409, "original upload no longer exists on the work volume")
         if original.source_type != "gp":
@@ -2581,9 +2577,7 @@ def export_gp(job_id: str, payload: ExportGpIn) -> ExportGpOut:
     user is told rather than quietly handed a different tempo. Fetch the file
     from ``GET /jobs/{id}/corrected-gp``."""
     with _session_factory() as session:
-        job = session.get(Job, job_id)
-        if job is None:
-            raise HTTPException(404, "job not found")
+        job = _job_or_404(session, job_id)
         if job.source_type != "gp":
             raise HTTPException(422, "Guitar Pro export only applies to Guitar Pro jobs")
         params = dict(job.params or {})
@@ -2618,9 +2612,9 @@ def export_gp(job_id: str, payload: ExportGpIn) -> ExportGpOut:
             "recommended values were rounded — export as .gp (GP7/8) to keep the decimals"
         )
     with _session_factory() as session:
-        job = session.get(Job, job_id)
-        if job is not None:
-            job.params = {**dict(job.params or {}), "corrected_gp": dst.name}
+        stored = session.get(Job, job_id)
+        if stored is not None:
+            stored.params = {**dict(stored.params or {}), "corrected_gp": dst.name}
             session.commit()
     return ExportGpOut(
         filename=dst.name,
@@ -2693,9 +2687,7 @@ def get_corrected_gp(job_id: str) -> FileResponse:
     ``/export-arrangement-gp`` (a new file carrying one built arrangement).
     Both record their own filename, so the most recent export is served."""
     with _session_factory() as session:
-        job = session.get(Job, job_id)
-        if job is None:
-            raise HTTPException(404, "job not found")
+        job = _job_or_404(session, job_id)
         name = str((job.params or {}).get("corrected_gp") or "")
         title = job.title or "song"
     if not name:
@@ -2715,9 +2707,7 @@ def detect_tempo(job_id: str, payload: DetectTempoIn) -> DetectTempoOut:
     factor to re-tempo the chart's following notes to it. This is a
     proposal the user previews in the tab viewer before rebuilding."""
     with _session_factory() as session:
-        job = session.get(Job, job_id)
-        if job is None:
-            raise HTTPException(404, "job not found")
+        job = _job_or_404(session, job_id)
         if job.source_type != "gp":
             raise HTTPException(422, "tempo detection only applies to Guitar Pro jobs")
         gp_path = Path(str((job.params or {}).get("gp_path", "")))
@@ -2768,9 +2758,7 @@ def detect_tuning(job_id: str) -> DetectTuningOut:
     librosa_adapter). This is a proposal: the suggested cent_offset fills the
     "Desvio da afinação" field and is applied by the normal rebuild."""
     with _session_factory() as session:
-        job = session.get(Job, job_id)
-        if job is None:
-            raise HTTPException(404, "job not found")
+        job = _job_or_404(session, job_id)
         if job.source_type != "gp":
             raise HTTPException(422, "tuning detection only applies to Guitar Pro jobs")
         src = Path(job.source)
@@ -2814,9 +2802,7 @@ def detect_lyrics_endpoint(job_id: str, payload: DetectLyricsIn | None = None) -
     same task ALIGNS those words to the vocals instead of transcribing — the
     text is right by construction, only the timing is measured."""
     with _session_factory() as session:
-        job = session.get(Job, job_id)
-        if job is None:
-            raise HTTPException(404, "job not found")
+        job = _job_or_404(session, job_id)
         # Detection is source-type-agnostic (operates on job.source, the
         # recording). "gp" is the only type the app creates today; the
         # long-removed "youtube" URL-ingestion type is gone from the set.
@@ -2922,9 +2908,7 @@ def get_lyrics(job_id: str) -> LyricsOut:
     """Current lyric-detection status and events (raw, before pad_start_s shift
     for GP jobs). Used by the in-app lyrics editor."""
     with _session_factory() as session:
-        job = session.get(Job, job_id)
-        if job is None:
-            raise HTTPException(404, "job not found")
+        job = _job_or_404(session, job_id)
         params = job.params or {}
         status = str(params.get("lyrics_status", "none"))
         rows = cast("list[dict[str, object]]", params.get("lyrics_events") or [])
@@ -2991,9 +2975,7 @@ def get_vocal_line(job_id: str) -> VocalLineOut:
     (sintetizada)" to hear where the words should fall. Empty when the file
     names no such track (or the job was never built)."""
     with _session_factory() as session:
-        job = session.get(Job, job_id)
-        if job is None:
-            raise HTTPException(404, "job not found")
+        job = _job_or_404(session, job_id)
         params = job.params or {}
         rows = cast("list[dict[str, Any]]", params.get("vocal_melody") or [])
         notes = []
@@ -3016,9 +2998,7 @@ def detect_tones_endpoint(job_id: str) -> JobOut:
     GET /jobs/{job_id}/detected-tones for the result.  Progress is tracked via
     params["tone_detection_status"]; never overwrites a completed build's status."""
     with _session_factory() as session:
-        job = session.get(Job, job_id)
-        if job is None:
-            raise HTTPException(404, "job not found")
+        job = _job_or_404(session, job_id)
         if job.source_type not in {"gp", "upload"}:
             raise HTTPException(422, "tone detection is not supported for this job's source")
         if not Path(job.source).exists():
@@ -3035,9 +3015,7 @@ def detect_tones_endpoint(job_id: str) -> JobOut:
 def get_detected_tones(job_id: str) -> DetectTonesOut:
     """Current tone-detection status and suggested presets."""
     with _session_factory() as session:
-        job = session.get(Job, job_id)
-        if job is None:
-            raise HTTPException(404, "job not found")
+        job = _job_or_404(session, job_id)
         params = job.params or {}
         status = str(params.get("tone_detection_status", "none"))
         log = cast("list[str]", params.get("tone_detection_log") or [])
@@ -3070,9 +3048,7 @@ def get_tone_suggestions(job_id: str) -> ToneSuggestionsOut:
     from rockforge.infrastructure.tone_analysis.sections import TrackChart, plan_tones, segments_for
 
     with _session_factory() as session:
-        job = session.get(Job, job_id)
-        if job is None:
-            raise HTTPException(404, "job not found")
+        job = _job_or_404(session, job_id)
         if job.status is not JobStatus.COMPLETED or not job.bundle_dir:
             raise HTTPException(409, "the project has to be built first")
         params = dict(job.params or {})
@@ -3194,9 +3170,7 @@ def set_tone_swaps(job_id: str, payload: ToneSwapsIn) -> dict[str, Any]:
                 f"the tone chosen for “{key}” has no valid amp and cabinet",
             ))
     with _session_factory() as session:
-        job = session.get(Job, job_id)
-        if job is None:
-            raise HTTPException(404, "job not found")
+        job = _job_or_404(session, job_id)
         params = dict(job.params or {})
         if payload.swaps:
             params["tone_swaps"] = {k: v.model_dump() for k, v in payload.swaps.items()}
@@ -3217,9 +3191,7 @@ def separate_stems_endpoint(job_id: str) -> JobOut:
     Honest limit: Demucs splits by instrument type, so the guitar stem is ALL
     guitars mixed — Lead vs Rhythm cannot be separated from the recording."""
     with _session_factory() as session:
-        job = session.get(Job, job_id)
-        if job is None:
-            raise HTTPException(404, "job not found")
+        job = _job_or_404(session, job_id)
         if job.source_type not in {"gp", "upload"}:
             raise HTTPException(422, "stem separation is not supported for this job's source")
         if not Path(job.source).exists():
@@ -3236,9 +3208,7 @@ def separate_stems_endpoint(job_id: str) -> JobOut:
 def get_stems(job_id: str) -> StemsOut:
     """Current stem-separation status and the names of the available stems."""
     with _session_factory() as session:
-        job = session.get(Job, job_id)
-        if job is None:
-            raise HTTPException(404, "job not found")
+        job = _job_or_404(session, job_id)
         params = job.params or {}
         status = str(params.get("stems_status", "none"))
         log = cast("list[str]", params.get("stems_log") or [])
@@ -3254,9 +3224,7 @@ def get_stem_audio(job_id: str, name: str) -> FileResponse:
     for the viewer's audio-source selector. The stems share the normalized
     recording's clock, so the notes still line up when a stem is soloed."""
     with _session_factory() as session:
-        job = session.get(Job, job_id)
-        if job is None:
-            raise HTTPException(404, "job not found")
+        job = _job_or_404(session, job_id)
         stems = cast("dict[str, Any]", (job.params or {}).get("stems") or {})
         raw = stems.get(name)
         if raw is None:
@@ -3520,9 +3488,7 @@ def get_tones(job_id: str) -> dict[str, Any]:
     """The job's current tone setup (full gear definitions, the base/extra tone
     keys, and the timed changes placed on the partitura). Backs the tone editor."""
     with _session_factory() as session:
-        job = session.get(Job, job_id)
-        if job is None:
-            raise HTTPException(404, "job not found")
+        job = _job_or_404(session, job_id)
         params = job.params or {}
         names = params.get("tone_names")
         tones = params.get("tones")
@@ -3545,9 +3511,7 @@ def get_gp_tracks(job_id: str) -> dict[str, object]:
     from rockforge.infrastructure.gpimport.parser import inspect_gp
 
     with _session_factory() as session:
-        job = session.get(Job, job_id)
-        if job is None:
-            raise HTTPException(404, "job not found")
+        job = _job_or_404(session, job_id)
         if job.source_type != "gp":
             raise HTTPException(422, "not a Guitar Pro job")
         params = dict(job.params or {})
@@ -3803,9 +3767,7 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
 @app.get("/jobs/{job_id}", response_model=JobOut)
 def get_job(job_id: str) -> JobOut:
     with _session_factory() as session:
-        job = session.get(Job, job_id)
-        if job is None:
-            raise HTTPException(404, "job not found")
+        job = _job_or_404(session, job_id)
         return _to_out(job)
 
 
@@ -3824,9 +3786,7 @@ def set_sync_confirmed(job_id: str, payload: SyncConfirmedIn) -> JobOut:
     rebuild. It lives in `params`, so a rebuild/reload fork inherits it.
     """
     with _session_factory() as session:
-        job = session.get(Job, job_id)
-        if job is None:
-            raise HTTPException(404, "job not found")
+        job = _job_or_404(session, job_id)
         params = dict(job.params or {})
         built = _built_kinds(job.bundle_dir)
         if payload.arrangement is None:
@@ -3861,9 +3821,7 @@ def set_sync_main(job_id: str, payload: SyncMainIn) -> JobOut:
     others ("Pista principal"). Nothing is rebuilt; it lives in `params`, so a
     fork inherits it."""
     with _session_factory() as session:
-        job = session.get(Job, job_id)
-        if job is None:
-            raise HTTPException(404, "job not found")
+        job = _job_or_404(session, job_id)
         built = _built_kinds(job.bundle_dir)
         if payload.arrangement is not None and built and payload.arrangement not in built:
             raise HTTPException(422, f"no built arrangement named {payload.arrangement!r}")
@@ -3890,9 +3848,7 @@ def update_metadata(job_id: str, payload: MetadataIn) -> JobOut:
     if not title or not artist:
         raise HTTPException(422, "title and artist are required")
     with _session_factory() as session:
-        job = session.get(Job, job_id)
-        if job is None:
-            raise HTTPException(404, "job not found")
+        job = _job_or_404(session, job_id)
         job.title = title
         job.artist = artist
         job.album = payload.album.strip()
@@ -3911,9 +3867,7 @@ def get_source_audio(job_id: str) -> FileResponse:
     change timing, so the notes still line up).
     """
     with _session_factory() as session:
-        job = session.get(Job, job_id)
-        if job is None:
-            raise HTTPException(404, "job not found")
+        job = _job_or_404(session, job_id)
         workdir = settings.work_dir / job.id
         candidates: list[Path] = []
         src = Path(job.source)
@@ -3975,9 +3929,7 @@ def check_psarc(job_id: str) -> PsarcCheckOut:
     from rockforge.infrastructure.packaging.psarc.verify import describe, verify_psarc
 
     with _session_factory() as session:
-        job = session.get(Job, job_id)
-        if job is None:
-            raise HTTPException(404, "job not found")
+        job = _job_or_404(session, job_id)
         psarc = job.psarc_path
     if not psarc or not Path(psarc).is_file():
         raise HTTPException(409, i18n.tr("este projeto não tem PSARC", "this project has no PSARC"))
@@ -4027,9 +3979,7 @@ def install_in_game(job_id: str) -> InstallOut:
     from rockforge.infrastructure import game_install
 
     with _session_factory() as session:
-        job = session.get(Job, job_id)
-        if job is None:
-            raise HTTPException(404, "job not found")
+        job = _job_or_404(session, job_id)
         psarc = job.psarc_path
         params = dict(job.params or {})
     if not psarc or not Path(psarc).is_file():
@@ -4055,9 +4005,7 @@ def install_in_game(job_id: str) -> InstallOut:
             "again",
         ).format(dir=dlc, error=exc)) from exc
     with _session_factory() as session:
-        job = session.get(Job, job_id)
-        if job is None:
-            raise HTTPException(404, "job not found")
+        job = _job_or_404(session, job_id)
         job.params = {
             **dict(job.params or {}),
             "installed_psarc": str(result.path),
@@ -4085,9 +4033,7 @@ def upload_cover_art(job_id: str, file: UploadFile = File(...)) -> JobOut:
     cover_art=...)``. Does not trigger a rebuild — call ``/rebuild`` after.
     """
     with _session_factory() as session:
-        job = session.get(Job, job_id)
-        if job is None:
-            raise HTTPException(404, "job not found")
+        job = _job_or_404(session, job_id)
 
         suffix = Path(file.filename or "cover").suffix.lower()
         if suffix not in _COVER_ART_SUFFIXES:
@@ -4137,9 +4083,7 @@ def cover_from_url(job_id: str, payload: CoverFromUrlIn) -> JobOut:
     if not cover_url_allowed(payload.url):
         raise HTTPException(422, "url is not from a known cover service")
     with _session_factory() as session:
-        job = session.get(Job, job_id)
-        if job is None:
-            raise HTTPException(404, "job not found")
+        job = _job_or_404(session, job_id)
         try:
             data, suffix = fetch_cover(payload.url)
         except AlbumLookupError as exc:
