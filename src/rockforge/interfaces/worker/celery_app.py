@@ -188,15 +188,11 @@ def _build_stem_separator() -> tuple[Any, str, str]:  # heavy imports deferred t
     return _make_demucs(device), device, "demucs htdemucs_6s"
 
 
-def _build_detection(device: str) -> tuple[Any, Any, Any]:  # heavy imports deferred to worker
-    from rockforge.infrastructure.lyrics.whisperx_adapter import WhisperXLyricTranscriber
+def _build_detection(device: str) -> tuple[Any, Any]:  # heavy imports deferred to worker
+    # WhisperX itself runs in a subprocess (_whisperx_runner.py), not from here.
     from rockforge.infrastructure.normalize.ffmpeg import FfmpegNormalizer
 
-    return (
-        FfmpegNormalizer(),
-        _make_demucs(device),
-        WhisperXLyricTranscriber,
-    )
+    return FfmpegNormalizer(), _make_demucs(device)
 
 
 def _build_gp_use_case():  # noqa: ANN202
@@ -508,7 +504,7 @@ def detect_lyrics(job_id: str) -> None:
             _log_lyrics_stage(params, "importing demucs…")
             _commit_params()
             t0 = _time.monotonic()
-            normalizer, separator, _transcriber_cls = _build_detection(device)
+            normalizer, separator = _build_detection(device)
             _log_lyrics_stage(
                 params, f"demucs ready ({_time.monotonic() - t0:.1f}s)"
             )

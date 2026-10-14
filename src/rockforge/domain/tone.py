@@ -64,11 +64,3 @@ class Tone:
     gear: Gear
     descriptors: tuple[str, ...] = ()
     volume: float = -18.0
-
-    def gear_keys(self) -> list[str]:
-        """All catalogue gear keys used by this tone (for validation/UI)."""
-        pedals = [self.gear.amp, self.gear.cabinet]
-        for slot in (*self.gear.racks, *self.gear.pre_pedals, *self.gear.post_pedals):
-            if slot is not None:
-                pedals.append(slot)
-        return [p.key for p in pedals]

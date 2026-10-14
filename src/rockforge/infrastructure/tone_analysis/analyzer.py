@@ -127,26 +127,6 @@ def window_profiles(
     return out
 
 
-def analyze_guitar_tone(audio: Path) -> ToneProfile:
-    """Classify the tone character of a guitar audio file.
-
-    The librosa MEASUREMENT lives in ``_librosa_runner.tone_features`` (one
-    implementation, callable in-process or run by the configured ML
-    interpreter — see ``infrastructure/ml_python.py``, which is what lets the
-    standalone `.exe` do this at all); mapping the features to a
-    :class:`ToneProfile` stays here, pure, so CI can test the calibration
-    without an ML stack.
-    """
-    if ml_python.librosa_here():
-        features = _librosa_runner.tone_features(str(audio))
-    else:  # the runner's "tone" answer carries the windows too; only features are used here
-        features = {
-            k: float(v)
-            for k, v in dict(ml_python.run_librosa("tone", audio)["features"]).items()
-        }
-    return profile_from_features(**features)
-
-
 def profile_from_features(
     *,
     zcr: float,
@@ -159,7 +139,7 @@ def profile_from_features(
 ) -> ToneProfile:
     """Map the measured features to a :class:`ToneProfile`. Pure — no librosa.
 
-    Split out of :func:`analyze_guitar_tone` so the weights, thresholds and
+    Kept apart from the librosa measurement so the weights, thresholds and
     category boundaries can be unit-tested in CI, which has no ML stack: the
     whole calibration used to sit inline in a librosa-importing function and was
     therefore covered by nothing. Same split ``normalize/loudness.py`` already

@@ -3,7 +3,6 @@ import pytest
 from rockforge.domain.music import (
     Beat,
     BendPoint,
-    NoteEvent,
     TabNote,
     Technique,
     TempoMap,
@@ -28,7 +27,7 @@ def test_drop_d_offsets() -> None:
 
 def test_tuning_rejects_an_impossible_pitch_at_construction() -> None:
     """Tuning was the one pitch-carrying domain type with no invariant, while
-    NoteEvent/TabNote/Beat/TempoMap all check theirs. An out-of-range value
+    TabNote/Beat/TempoMap all check theirs. An out-of-range value
     therefore travelled all the way to the SNG writer, where the semitone offset
     is packed as an int16, and died there as a cryptic struct.error with nothing
     pointing back at the tuning that caused it."""
@@ -45,21 +44,6 @@ def test_tuning_rejects_an_impossible_pitch_at_construction() -> None:
     drop = Tuning(midi=(37, 44, 49, 54, 58, 63))  # low string -3, the rest -1
     assert drop.offsets_from_standard() == (-3, -1, -1, -1, -1, -1)
     assert Tuning(midi=(34, 41, 46, 51, 55, 60)).midi[0] == 34  # Drop B territory
-
-
-def test_candidate_positions_open_e() -> None:
-    # E2 (40) is playable only as open string 0 in standard tuning
-    assert Tuning().candidate_positions(40) == [(0, 0)]
-
-
-def test_candidate_positions_middle_pitch_has_multiple_strings() -> None:
-    positions = Tuning().candidate_positions(64)  # E4
-    assert (5, 0) in positions and (4, 5) in positions and (3, 9) in positions
-
-
-def test_note_event_rejects_bad_pitch() -> None:
-    with pytest.raises(ValueError):
-        NoteEvent(pitch=200, start=0.0, duration=1.0)
 
 
 def test_tab_note_rejects_bad_fret() -> None:

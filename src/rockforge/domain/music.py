@@ -249,7 +249,7 @@ class Tuning:
 
     def __post_init__(self) -> None:
         # Tuning was the one pitch-carrying type here with no invariant, while
-        # NoteEvent/TabNote/Beat/TempoMap all check theirs. An out-of-range value
+        # TabNote/Beat/TempoMap all check theirs. An out-of-range value
         # therefore travelled all the way to the SNG writer, where the semitone
         # offset is packed as an int16 and a nonsense pitch died as a cryptic
         # `struct.error` with nothing pointing back at the tuning.
@@ -264,32 +264,6 @@ class Tuning:
     def offsets_from_standard(self) -> tuple[int, ...]:
         """Semitone offsets per string relative to E standard (Song2014 <tuning> format)."""
         return tuple(m - s for m, s in zip(self.midi, STANDARD_E_MIDI, strict=True))
-
-    def candidate_positions(self, pitch: int) -> list[tuple[int, int]]:
-        """All playable (string, fret) pairs for a MIDI pitch."""
-        out: list[tuple[int, int]] = []
-        for string, open_pitch in enumerate(self.midi):
-            fret = pitch - open_pitch
-            if 0 <= fret <= MAX_FRET:
-                out.append((string, fret))
-        return out
-
-
-@dataclass(frozen=True)
-class NoteEvent:
-    """A transcribed note, before string/fret assignment."""
-
-    pitch: int  # MIDI
-    start: float  # seconds
-    duration: float  # seconds
-    confidence: float = 1.0
-    bend_semitones: float = 0.0
-
-    def __post_init__(self) -> None:
-        if not 0 <= self.pitch <= 127:
-            raise ValueError(f"MIDI pitch out of range: {self.pitch}")
-        if self.duration < 0 or self.start < 0:
-            raise ValueError("start/duration must be non-negative")
 
 
 @dataclass(frozen=True)

@@ -79,7 +79,6 @@ class ConfidenceLabel(Enum):
 
     MEASURED = "measured"  # backed by published benchmarks for comparable material
     HEURISTIC = "heuristic"  # deterministic rule, no published accuracy
-    EXPERIMENTAL = "experimental"  # no published method exists for this task
 
 
 @dataclass(frozen=True)

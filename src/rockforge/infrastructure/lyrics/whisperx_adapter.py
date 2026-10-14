@@ -214,7 +214,7 @@ class WhisperXLyricTranscriber:
 
         `import whisperx` pulls pyannote/speechbrain into the worker process,
         and speechbrain 1.0's lazy `integrations.k2_fsa` loader then fails later
-        (e.g. during Basic Pitch's transcribe in the SAME process) with an
+        (e.g. during another heavy import in the SAME process) with an
         ImportError. `find_spec` only locates the package, so nothing heavy is
         imported; the actual whisperx import happens in the isolated subprocess
         (`_whisperx_runner.py`)."""

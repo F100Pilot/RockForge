@@ -1,4 +1,4 @@
-"""GenerateFromGpUseCase — the high-fidelity alternative to the audio-ML path.
+"""GenerateFromGpUseCase — builds the arrangements from a Guitar Pro file.
 
 Notes/frets/techniques/tempo/sections come exactly from a GP3/GP4/GP5 file;
 the recording is only normalized and packaged. Synchronization is the one thing
@@ -103,7 +103,7 @@ def suggest_tempo_scale(gp_bpm: float, detected_bpm: float) -> float:
     pulse). Since the GP file and the recording are the same song, the true ratio
     is near 1, so we pick the metrical multiple of ``detected_bpm``
     (``_TEMPO_METRICAL_FACTORS``) whose resulting scale sits closest to 1.0 —
-    fixing the "auto-sync jumps the BPM ~50%" case where only ½/1/2 were tried
+    fixing the "the BPM jumps ~50%" case where only ½/1/2 were tried
     and a 3/2 detection had no nearby octave to snap to. "Closest to 1.0" is
     measured in LOG space: ``abs(scale - 1)`` is asymmetric (a candidate an
     octave high scores 0.5, one an octave low scores 1.0), so on a genuinely

@@ -111,7 +111,7 @@ def test_preset_tone_dicts_have_required_fields() -> None:
 
 # ---- The gain heuristic itself -------------------------------------------
 # The weights, thresholds and category boundaries used to sit inline inside
-# analyze_guitar_tone(), which imports librosa, so CI (no ML stack) covered none
+# the librosa-importing analyzer, so CI (no ML stack) covered none
 # of the calibration. profile_from_features() is the pure half; these pin its
 # behaviour the way test_loudness.py pins the ffmpeg-free loudness maths.
 

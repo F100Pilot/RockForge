@@ -7,9 +7,7 @@ from rockforge.infrastructure.packaging.psarc.crypto import (  # noqa: E402
     ARC_KEY,
     SNG_PC_KEY,
     decrypt_psarc_toc,
-    decrypt_sng,
     encrypt_psarc_toc,
-    encrypt_sng,
     pack_sng,
     unpack_sng,
 )
@@ -26,13 +24,6 @@ def test_psarc_toc_round_trip() -> None:
     assert len(encrypted) % 16 == 0
     decrypted = decrypt_psarc_toc(encrypted)
     assert decrypted[: len(data)] == data
-
-
-def test_sng_round_trip_with_random_iv() -> None:
-    payload = b"compiled sng payload bytes" * 10
-    encrypted = encrypt_sng(payload)
-    assert encrypted[:16] != encrypt_sng(payload)[:16]  # fresh IV each time
-    assert decrypt_sng(encrypted) == payload
 
 
 def test_pack_sng_produces_a_loadable_sng_file() -> None:

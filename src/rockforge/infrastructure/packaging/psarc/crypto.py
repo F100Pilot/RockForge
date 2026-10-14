@@ -15,7 +15,7 @@ Legal/honesty note (CLAUDE.md): these keys are published widely in MIT-licensed
 CDLC tooling and are required to produce/read Rocksmith-compatible archives;
 they are not a circumvention of any RockForge-specific protection. RockForge
 does not bundle or redistribute Ubisoft's copyrighted audio/note data — see
-the operator gates documented for YouTube ingestion and Wwise.
+the Wwise notes in docs/TECHNICAL.md.
 
 ``cryptography`` is imported lazily (new ``[psarc]`` extra) so importing this
 module does not require it unless these functions are called.
@@ -23,13 +23,11 @@ module does not require it unless these functions are called.
 :func:`pack_sng`/:func:`unpack_sng` implement the full retail ``.sng`` file
 format (8-byte header + zero IV + AES-256-CTR of a zlib-compressed,
 size-prefixed payload), verified byte-for-byte against a real DLC Builder SNG
-header — this is what the packer writes. :func:`encrypt_sng`/:func:`decrypt_sng`
-remain the bare AES-256-CTR primitive (random IV) used by earlier tests.
+header — this is what the packer writes.
 """
 
 from __future__ import annotations
 
-import os
 import struct
 import zlib
 from typing import Any
@@ -85,26 +83,6 @@ def decrypt_psarc_toc(data: bytes) -> bytes:
     cipher = Cipher(algorithms.AES(ARC_KEY), _cfb_mode(b"\x00" * 16))
     decryptor = cipher.decryptor()
     return bytes(decryptor.update(data) + decryptor.finalize())
-
-
-def encrypt_sng(payload: bytes) -> bytes:
-    """AES-256-CTR encrypt ``payload``, prefixing a fresh random 16-byte IV."""
-    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-
-    iv = os.urandom(16)
-    cipher = Cipher(algorithms.AES(SNG_PC_KEY), modes.CTR(iv))
-    encryptor = cipher.encryptor()
-    return iv + bytes(encryptor.update(payload) + encryptor.finalize())
-
-
-def decrypt_sng(data: bytes) -> bytes:
-    """Inverse of :func:`encrypt_sng`: ``data`` is ``iv (16 bytes) + ciphertext``."""
-    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-
-    iv, ciphertext = data[:16], data[16:]
-    cipher = Cipher(algorithms.AES(SNG_PC_KEY), modes.CTR(iv))
-    decryptor = cipher.decryptor()
-    return bytes(decryptor.update(ciphertext) + decryptor.finalize())
 
 
 def pack_sng(raw: bytes) -> bytes:

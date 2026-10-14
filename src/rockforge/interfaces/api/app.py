@@ -2548,7 +2548,7 @@ def import_sync_state(job_id: str, payload: SyncStateIn) -> JobOut:
 
 
 # --- Isolated-drum beat detection ---------------------------------------------
-# librosa's beat/tempo tracker (used by every auto-sync endpoint below) is
+# librosa's beat/tempo tracker (used by /detect-tempo below) is
 # unreliable on a full mix of fast, dense music — it locks onto the wrong
 # metrical level (observed: 123 BPM read on a genuine ~180 BPM metal song),
 # which derails both the single-tempo and the dynamic sync. Isolated DRUMS are
@@ -2716,7 +2716,7 @@ def get_corrected_gp(job_id: str) -> FileResponse:
 @app.post("/jobs/{job_id}/detect-tempo", response_model=DetectTempoOut)
 def detect_tempo(job_id: str, payload: DetectTempoIn) -> DetectTempoOut:
     """Measure the recording's tempo from ``from_s`` onward (librosa) and return a
-    factor to re-tempo the chart's following notes to it. Like /auto-sync this is a
+    factor to re-tempo the chart's following notes to it. This is a
     proposal the user previews in the tab viewer before rebuilding."""
     with _session_factory() as session:
         job = session.get(Job, job_id)
@@ -2769,8 +2769,8 @@ def detect_tuning(job_id: str) -> DetectTuningOut:
     """Estimate the recording's fine-tuning deviation from A440 (librosa) for
     GP jobs. String/drop tuning is taken from the GP file and is NOT detected
     here (no production-grade solution from polyphonic audio — see
-    librosa_adapter). Like /auto-sync this is a proposal: the suggested
-    cent_offset is previewed and applied via the normal rebuild."""
+    librosa_adapter). This is a proposal: the suggested cent_offset fills the
+    "Desvio da afinação" field and is applied by the normal rebuild."""
     with _session_factory() as session:
         job = session.get(Job, job_id)
         if job is None:
@@ -3909,10 +3909,9 @@ def update_metadata(job_id: str, payload: MetadataIn) -> JobOut:
 def get_source_audio(job_id: str) -> FileResponse:
     """The recording, served for the in-app viewer (playback + waveform).
 
-    Prefers the original file (upload/gp, where `job.source` is a real path);
-    for YouTube (`job.source` is a URL) or a moved file, falls back to the
-    ingested/normalized audio in the job's work dir so audio-ML jobs are still
-    playable and reviewable against the transcribed notes (normalization doesn't
+    Prefers the original file (`job.source`, a real path); for a file that has
+    moved, or an old row whose source is not a path, falls back to the
+    ingested/normalized audio in the job's work dir (normalization doesn't
     change timing, so the notes still line up).
     """
     with _session_factory() as session:

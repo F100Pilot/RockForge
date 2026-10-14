@@ -50,7 +50,6 @@ module.exports = [
         NodeFilter: "readonly",
         // web/i18n.js, loaded before app.js
         LANG: "readonly",
-        I18N_EN: "readonly",
         T: "readonly",
         setLang: "readonly",
         translateDom: "readonly",

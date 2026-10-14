@@ -4321,7 +4321,7 @@ that cannot read the dialect just yields nothing). Guarded by
 ### `Tuning` validates its own pitches (and the API range-checks them)
 
 `Tuning` was the one pitch-carrying domain type with **no** `__post_init__`,
-while `NoteEvent` (0-127), `TabNote` (string/fret) and `TempoMap` all check
+while `TabNote` (string/fret), `Beat` and `TempoMap` all check
 theirs. Only the LENGTH of `tuning_midi` was validated at the API, so an absurd
 pitch 202'd, was persisted into `params`, and only died much later inside
 `struct.pack("<h", ...)` in the SNG writer — a `struct.error` with nothing

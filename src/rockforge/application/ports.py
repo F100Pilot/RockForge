@@ -30,7 +30,7 @@ class PackagingResult:
 
 class AudioIngestor(Protocol):
     def fetch(self, source: str, workdir: Path) -> Path:
-        """Resolve a source (upload path or URL) into a local audio file."""
+        """Resolve a source (a local upload path) into a local audio file in the work dir."""
         ...
 
 
@@ -42,7 +42,7 @@ class AudioNormalizer(Protocol):
 
         When *offset_s* > 0 the audio is trimmed from that second before
         normalization — the remainder of the pipeline operates on the trimmed
-        audio, so transcribed notes stay naturally synchronised.
+        audio, so the chart's times stay synchronised with it.
 
         When *pad_start_s* > 0, that many seconds of silence are prepended —
         used by the GP path to insert a lead-in while shifting the score and
