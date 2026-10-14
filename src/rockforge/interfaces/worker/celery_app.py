@@ -417,12 +417,16 @@ def generate_cdlc(job_id: str) -> None:
         session.commit()
 
 
-def _log_lyrics_stage(params: dict[str, Any], message: str) -> None:
-    """Append a timestamped line to params["lyrics_log"], capped to the most
-    recent 50 entries so the job row doesn't grow unbounded."""
-    log = cast("list[str]", params.get("lyrics_log") or [])
+def _append_log(params: dict[str, Any], key: str, message: str) -> None:
+    """Append a timestamped line to the progress log ``params[key]``, capped to
+    the most recent 50 entries so the job row doesn't grow unbounded."""
+    log = cast("list[str]", params.get(key) or [])
     stamp = datetime.now(UTC).strftime("%H:%M:%S")
-    params["lyrics_log"] = [*log, f"[{stamp}] {message}"][-50:]
+    params[key] = [*log, f"[{stamp}] {message}"][-50:]
+
+
+def _log_lyrics_stage(params: dict[str, Any], message: str) -> None:
+    _append_log(params, "lyrics_log", message)
 
 
 def _whisperx_command(
@@ -701,10 +705,7 @@ def detect_lyrics(job_id: str) -> None:
 
 
 def _log_tone_stage(params: dict[str, Any], message: str) -> None:
-    """Append a timestamped line to params["tone_detection_log"]."""
-    log = cast("list[str]", params.get("tone_detection_log") or [])
-    stamp = datetime.now(UTC).strftime("%H:%M:%S")
-    params["tone_detection_log"] = [*log, f"[{stamp}] {message}"][-50:]
+    _append_log(params, "tone_detection_log", message)
 
 
 @celery_app.task(name="rockforge.detect_tones", time_limit=3600)
@@ -820,10 +821,7 @@ def detect_tones(job_id: str) -> None:
 
 
 def _log_stems_stage(params: dict[str, Any], message: str) -> None:
-    """Append a timestamped line to params["stems_log"]."""
-    log = cast("list[str]", params.get("stems_log") or [])
-    stamp = datetime.now(UTC).strftime("%H:%M:%S")
-    params["stems_log"] = [*log, f"[{stamp}] {message}"][-50:]
+    _append_log(params, "stems_log", message)
 
 
 @celery_app.task(name="rockforge.separate_stems", time_limit=3600)
