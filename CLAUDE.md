@@ -24,6 +24,24 @@ interfaces/     api/ (FastAPI) and worker/ (Celery) — the boundary; wiring liv
 Rules:
 - `domain/` and `application/` must not import frameworks or `infrastructure/`.
   Each ML stage is a swappable `Protocol` in `application/ports.py`.
+- **The API is `interfaces/api/app.py` + `schemas.py` + `routers/`.** `app.py`
+  holds what the endpoints share (`settings`, `_session_factory`, the
+  `_enqueue*` dispatchers, the heartbeat/idle-shutdown state, the common
+  helpers, the middleware) and the two lifecycle endpoints; each group of
+  endpoints is a `routers/<group>.py` (`imports`, `jobs`, `sync`, `charts`,
+  `lyrics`, `tones`, `stems`, `analysis`, `gp_export`, `delivery`, `settings`,
+  `web`) whose code reads app.py's names as **`api.<name>`** (`from
+  rockforge.interfaces.api import app as api`), looked up when a request runs.
+  Never `from …api.app import X` or `from rockforge.config import settings` in
+  a router: the API tests reload app.py and `monkeypatch.setattr(app_module,
+  …)` its state, and a router holding its own reference silently keeps the
+  original — a patch that misses does not fail, the test just runs real code.
+  `tests/test_api_routers.py` enforces it (and that every router is
+  included). The pydantic models live in `schemas.py`, which nothing reloads:
+  a model defined in app.py would be re-created on each reload and a model
+  elsewhere naming it in a field would then refuse its instances (found the
+  hard way, `TrackTonePlanOut.changes`). A new endpoint goes in its group's
+  router; a helper two groups share stays in app.py.
 - Heavy imports (torch, demucs, whisperx) are deferred into the Celery worker's
   builders (`_build_gp_use_case()`, `_build_detection()`, `_build_stem_separator()`)
   — never import them at module top level in the API path, or the web process
@@ -1782,7 +1800,7 @@ The web UI's client-side script lives in **`web/app.js`**, not inline in
 meant no linter could ever check it (ESLint parses files, not markup) and
 every past JS change was verified only by `node --check` (syntax only) or by
 hand. `index.html` now loads it via `<script src="/app.js"></script>`; the
-FastAPI route `app_js()` (`interfaces/api/app.py`, alongside `index()`, both
+FastAPI route `app_js()` (`interfaces/api/routers/web.py`, alongside `index()`, both
 now sharing `_web_file_candidates(name)`) serves it with a real
 `text/javascript` content type, resolved the same repo-checkout-vs-installed
 two-path lookup `_gear_image_dirs()` already used for gear images.
@@ -4353,7 +4371,7 @@ How the game's tuner treats a large offset was not seen from here.
 
 ### API input validation: every client float is `Finite`
 
-`Finite = Annotated[float, Field(allow_inf_nan=False)]` (`interfaces/api/app.py`)
+`Finite = Annotated[float, Field(allow_inf_nan=False)]` (`interfaces/api/schemas.py`)
 is what EVERY float a client can send is typed as — never a bare `float`. JSON
 carries the literals `NaN`/`Infinity`, Pydantic accepts them in a float by
 default, and `NaN <= 0` is False, so the `tempo_scale <= 0` guard waved NaN

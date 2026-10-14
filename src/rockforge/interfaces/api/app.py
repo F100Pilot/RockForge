@@ -2,8 +2,9 @@
 download the bundle + PSARC.
 
 This module holds what the endpoints share — ``settings``, ``_session_factory``,
-the ``_enqueue*`` dispatchers, the heartbeat/idle-shutdown state and the common
-helpers — plus the endpoints not yet moved out. Groups of endpoints live in
+the ``_enqueue*`` dispatchers, the heartbeat/idle-shutdown state, the common
+helpers and the middleware — plus the two lifecycle endpoints (/heartbeat,
+/closing), whose state the tests set directly. The endpoints live in groups in
 ``routers/``, each reading this module's names as ``api.<name>`` when a request
 runs, never binding them at import: the API tests reload this module and patch
 those names (``monkeypatch.setattr(app_module, …)``), and a router holding its
@@ -949,43 +950,29 @@ def _web_file_candidates(name: str) -> tuple[Path, ...]:
     return tuple(d / name for d in _web_dirs())
 
 
-# ── Endpoint groups (each reads this module's names as api.<name>) ──
-from rockforge.interfaces.api.routers import tones as _tones  # noqa: E402
+# ── Endpoint groups ──────────────────────────────────────────────────────────
+# Imported last: each router reads this module's names as api.<name> when a
+# request runs, and this is where those names exist. The order is the order
+# they had in this file; no two groups answer the same URL.
+from rockforge.interfaces.api.routers import (  # noqa: E402
+    analysis,
+    charts,
+    delivery,
+    gp_export,
+    imports,
+    jobs,
+    lyrics,
+    stems,
+    sync,
+    tones,
+    web,
+)
 
-app.include_router(_tones.router)
+# Aliased: app.py's own `settings` is the configuration.
+from rockforge.interfaces.api.routers import settings as settings_routes  # noqa: E402
 
-
-# ── Endpoint groups (each reads app.py's shared state as api.<name>) ──
-from rockforge.interfaces.api.routers import lyrics as _lyrics  # noqa: E402
-
-app.include_router(_lyrics.router)
-from rockforge.interfaces.api.routers import stems as _stems  # noqa: E402
-
-app.include_router(_stems.router)
-from rockforge.interfaces.api.routers import settings as _settings  # noqa: E402
-
-app.include_router(_settings.router)
-from rockforge.interfaces.api.routers import analysis as _analysis  # noqa: E402
-
-app.include_router(_analysis.router)
-from rockforge.interfaces.api.routers import gp_export as _gp_export  # noqa: E402
-
-app.include_router(_gp_export.router)
-from rockforge.interfaces.api.routers import imports as _imports  # noqa: E402
-
-app.include_router(_imports.router)
-from rockforge.interfaces.api.routers import charts as _charts  # noqa: E402
-
-app.include_router(_charts.router)
-from rockforge.interfaces.api.routers import delivery as _delivery  # noqa: E402
-
-app.include_router(_delivery.router)
-from rockforge.interfaces.api.routers import web as _web  # noqa: E402
-
-app.include_router(_web.router)
-from rockforge.interfaces.api.routers import sync as _sync  # noqa: E402
-
-app.include_router(_sync.router)
-from rockforge.interfaces.api.routers import jobs as _jobs  # noqa: E402
-
-app.include_router(_jobs.router)
+for _group in (
+    imports, jobs, sync, gp_export, analysis, lyrics, tones, stems,
+    settings_routes, charts, delivery, web,
+):
+    app.include_router(_group.router)
