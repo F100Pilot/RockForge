@@ -170,7 +170,10 @@ def _apply_note_effects(gp_note: Any, note: TabNote, guitarpro: Any, beat_s: flo
     elif Technique.PINCH_HARMONIC in note.techniques:
         effect.harmonic = guitarpro.ArtificialHarmonic()
     if note.slide_to_fret is not None or Technique.SLIDE in note.techniques:
-        effect.slides = [guitarpro.SlideType.shiftSlideTo]
+        # A slide that runs on into its landing note without a new pick is
+        # Guitar Pro's legato slide — what the importer reads as link_next.
+        effect.slides = [guitarpro.SlideType.legatoSlideTo if note.link_next
+                         else guitarpro.SlideType.shiftSlideTo]
     if note.bend_semitones:
         points = _bend_shape(note, beat_s)
         values = [v for _, v in points]

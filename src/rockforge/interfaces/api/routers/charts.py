@@ -13,6 +13,7 @@ from rockforge.domain.music import STANDARD_E_MIDI
 from rockforge.infrastructure.db.models import Job, JobStatus
 from rockforge.interfaces.api import app as api
 from rockforge.interfaces.api.schemas import (
+    ArpeggioOut,
     ArrangementNoteOut,
     ArrangementOut,
     BarOut,
@@ -165,6 +166,7 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
                 techniques=techs,
                 bend_semitones=bend_semitones,
                 slide_to=slide_to,
+                link_next=el.get("linkNext") == "1",
             )
 
         notes = [parse_note(el, False) for el in root.findall("levels/level/notes/note")]
@@ -209,6 +211,15 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
             for el in root.findall("sections/section")
             if el.get("name") != "noguitar"
         ]
+        # Arpeggios: the hand shapes over an "-arp" chord template.
+        templates = root.findall("chordTemplates/chordTemplate")
+        arpeggios = [
+            ArpeggioOut(start=float(hs.get("startTime", "0")), end=float(hs.get("endTime", "0")),
+                        name=templates[cid].get("chordName", "") or "")
+            for hs in root.findall("levels/level/handShapes/handShape")
+            if 0 <= (cid := int(hs.get("chordId", "-1"))) < len(templates)
+            and (templates[cid].get("displayName", "") or "").endswith("-arp")
+        ]
         out.append(
             ArrangementOut(
                 kind=kind,
@@ -225,6 +236,7 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
                 note_overrides=committed_note_overrides(kind),
                 sync_confirmed=kind in synced_kinds,
                 estimated_bars=estimated_bars_for(kind),
+                arpeggios=arpeggios,
             )
         )
     # The build's own order (Lead, Rhythm, Combined, the alternates), not the

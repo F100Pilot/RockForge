@@ -2345,6 +2345,10 @@ function showArr(i) {
         s += `<path d="${sustainWave(x, y, Math.max(susW, 24))}" fill="none" stroke="${color}" stroke-width="2.5" opacity=".8"/>`;
       else if (susW > 0)
         s += `<rect x="${x}" y="${y-3}" width="${susW}" height="6" fill="${color}" opacity=".4" rx="3"/>`;
+      if (n.link_next) {  // runs on into the next note on the string: a tie-like arc over the held time
+        const xe = x + Math.max(susW, 18);
+        s += `<path d="M${x + R * 0.6},${y - R + 2} Q${(x + xe) / 2},${y - R - 12} ${xe},${y - R + 2}" fill="none" stroke="${color}" stroke-width="2"><title>${esc(T('Ligada à nota seguinte (sem nova palhetada)'))}</title></path>`;
+      }
       const shape = n.chord
         ? `<rect class="note-shape" x="${x-R}" y="${y-R}" width="${R*2}" height="${R*2}" rx="4" fill="${color}"${tech ? ' stroke="#fff" stroke-width="2.5" stroke-dasharray="3,3"' : ''}/>`
         : `<circle class="note-shape" cx="${x}" cy="${y}" r="${R}" fill="${color}"${tech ? ' stroke="#fff" stroke-width="2.5" stroke-dasharray="3,3"' : ''}/>`;
@@ -2367,6 +2371,15 @@ function showArr(i) {
       s += `</g>`;
     }
     s += `</g>`;
+  }
+  // Arpeggios: the run of single notes the game draws as one chord shape — a
+  // bracket in the chord-name row (chords end an arpeggio, so the two never
+  // share it), with the chord it spells.
+  for (const ap of (a.arpeggios || [])) {
+    const x1 = timeToX(warp(previewScale(ap.start))), x2 = timeToX(warp(previewScale(ap.end)));
+    if (x2 < 24 || x1 > W - 4) continue;
+    s += `<path d="M${x1},${H - 24} L${x1},${H - 30} L${x2},${H - 30} L${x2},${H - 24}" fill="none" stroke="#ffd479" stroke-width="1.5" opacity=".8"/>`;
+    s += `<text x="${x1 + 3}" y="${H - 12}" fill="#ffd479" font-size="12" font-style="italic">${esc(ap.name ? T('arpejo {nome}', { nome: ap.name }) : T('arpejo'))}<title>${esc(T('Arpejo: notas soltas deixadas a soar sobre a forma de um acorde — o jogo mostra a forma por cima delas.'))}</title></text>`;
   }
   // Sync anchors (drift corrections). Drawn in a distinct teal — NOT the
   // playhead's orange — with a numbered pin below the staff, so they read as

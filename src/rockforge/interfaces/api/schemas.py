@@ -236,6 +236,18 @@ class ArrangementNoteOut(BaseModel):
     # The fret a slide ends on (pitched, else unpitched slide-out), -1 if none —
     # the 3D highway draws the trail running to it.
     slide_to: int = -1
+    # The note runs on into the next note on its string without a new pick
+    # (Rocksmith's linkNext: a legato slide, a note held on).
+    link_next: bool = False
+
+
+class ArpeggioOut(BaseModel):
+    """A run of single notes the game draws as one chord shape (an "-arp"
+    hand shape), bundle-clock, with the chord it spells ("" if unnamed)."""
+
+    start: float
+    end: float
+    name: str = ""
 
 
 class BarOut(BaseModel):
@@ -273,6 +285,7 @@ class ArrangementOut(BaseModel):
     # Bars (as ``bars`` numbers them) whose rhythm PDF-to-GP5 estimated from the
     # note spacing when it converted this track: the ones to check first.
     estimated_bars: list[int] = []
+    arpeggios: list[ArpeggioOut] = []
 
 
 class TempoCorrectionIn(BaseModel):

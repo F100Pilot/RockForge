@@ -18,6 +18,16 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
   With the speed, it lets you hear a bit slowly until the sync is right.
 - **Keyboard shortcuts in sight:** **?** (or the key button) lists them all; **1–9** pick the
   score's mode, with the number beside each one in the Mode ▾ menu.
+- **Linked notes:** a Guitar Pro legato slide (the landing note not picked again) reaches the game
+  as Rocksmith has it — the note runs on into the next without a new attack, in the DLC Builder
+  XMLs and in the PSARC. On the score, an arc over the note. The "Guitar Pro with the edited
+  notes" export writes it back as a legato slide.
+- **Arpeggios:** single notes let ring over one chord shape (at least three, on three strings,
+  in one hand position) now show in game with the chord's shape above them, like the arpeggios of
+  the original songs. Guitar Pro does not mark arpeggios, so they are worked out; on the score
+  they get an "arpeggio C" bracket underneath.
+- The PSARC check ("Before you use it", on the Export page) also checks the links and the
+  arpeggios.
 - The project's top bar no longer draws the status over "Edit info"/"Previous version" on narrow
   screens: the status and "Pending" shrink and "Download" keeps only its icon.
 

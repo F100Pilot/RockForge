@@ -74,7 +74,12 @@ Uma de três origens:
 
 - **Ficheiro Guitar Pro**: GP3, GP4, GP5 ou GP7/GP8 (`.gp`). As notas, trastes, técnicas,
   tempo, compassos e secções vêm exatamente do ficheiro. Só o GP6 (`.gpx`) não é lido —
-  exporta-o como GP5 ou GP7 no Guitar Pro/TuxGuitar.
+  exporta-o como GP5 ou GP7 no Guitar Pro/TuxGuitar. Duas coisas que o Guitar Pro não diz
+  como o Rocksmith e que o RockForge traduz: um **slide legato** fica uma nota ligada à
+  seguinte (sem nova palhetada; um arco na partitura), e notas soltas em **let ring** sobre a
+  forma de um acorde (três ou mais, em cordas diferentes, numa só posição) ficam um **arpejo**
+  (o jogo mostra a forma por cima; uma chaveta "arpejo …" na partitura). Para não ter um
+  arpejo, tira o let ring dessas notas no Guitar Pro.
 - **PDF ou imagem da tablatura** (PNG, JPEG, WebP): é convertida num GP5 pelo conversor do
   PDF-to-GP5. Vários ficheiros = uma pista cada, pela ordem (até 7). A leitura de imagens (OCR)
   é experimental: confere as notas e o ritmo na partitura depois de criar — os avisos indicam os

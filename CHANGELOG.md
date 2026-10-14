@@ -19,6 +19,16 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
   para ouvir um passo devagar até a sincronização bater.
 - **Atalhos de teclado à vista:** **?** (ou o botão da tecla) mostra-os todos; **1–9** escolhem o
   modo da partitura, com o número ao lado de cada um no menu Modo ▾.
+- **Notas ligadas:** um slide legato do Guitar Pro (a nota de chegada sem nova palhetada) chega ao
+  jogo como em Rocksmith — a nota corre até à seguinte sem ataque novo, nos XML do DLC Builder e
+  no PSARC. Na partitura, um arco por cima da nota. A exportação "Guitar Pro com as notas
+  editadas" volta a escrevê-lo como slide legato.
+- **Arpejos:** notas soltas em let ring sobre a forma de um acorde (pelo menos três, em três
+  cordas, numa só posição da mão) passam a aparecer no jogo com a forma do acorde por cima, como
+  nos arpejos das músicas originais. O Guitar Pro não marca arpejos, por isso são deduzidos; na
+  partitura ficam com uma chaveta "arpejo C" por baixo.
+- A verificação do PSARC ("Antes de usar", na página Exportar) confere também as ligações e os
+  arpejos.
 - A barra de cima do projeto já não sobrepõe o estado aos botões "Editar info"/"Versão anterior"
   em ecrãs estreitos: o estado e o "Pendente" encolhem e "Descarregar" fica só com o ícone.
 

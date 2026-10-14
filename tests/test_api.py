@@ -641,6 +641,42 @@ def test_arrangements_say_where_a_slide_ends(client: TestClient) -> None:
     assert [(n["fret"], n["slide_to"]) for n in notes] == [(5, 7), (5, -1)]
 
 
+def test_arrangements_show_linked_notes_and_arpeggios(client: TestClient) -> None:
+    """The score marks a note linked into the next and an arpeggio's span."""
+    import rockforge.config as config
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.domain.arrangement import Arrangement, ArrangementKind, SongMetadata
+    from rockforge.domain.music import Beat, TabNote, Technique, TempoMap, Tuning
+    from rockforge.infrastructure.db.models import JobStatus
+    from rockforge.infrastructure.rsxml.writer import write_arrangement_xml
+
+    job = _create_job(client)
+    bundle = config.settings.work_dir / job["id"] / "bundle"
+    beats = tuple(Beat(time=0.5 * i, measure=(i // 4 + 1) if i % 4 == 0 else -1) for i in range(12))
+    ring = frozenset({Technique.LET_RING})
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="Links", artist="T", song_length=6.0),
+        tuning=Tuning(),
+        notes=[
+            TabNote(2, 5, 0.5, 0.5, link_next=True), TabNote(2, 5, 1.0, 0.2),
+            *[TabNote(s, f, 2.0 + 0.25 * k, 0.5, ring)
+              for k, (s, f) in enumerate(((1, 3), (2, 2), (3, 0), (4, 1)))],
+        ],
+        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+    )
+    write_arrangement_xml(arr, bundle / "arrangement_lead.xml")
+    with app_module._session_factory() as session:
+        db_job = session.get(app_module.Job, job["id"])
+        db_job.status = JobStatus.COMPLETED
+        db_job.bundle_dir = str(bundle)
+        session.commit()
+
+    out = client.get(f"/jobs/{job['id']}/arrangements").json()[0]
+    assert [n["link_next"] for n in out["notes"]][:2] == [True, False]
+    assert out["arpeggios"] == [{"start": 2.0, "end": 3.251, "name": "C"}]
+
+
 def _make_gp5_bytes(tmp_path) -> bytes:
     import guitarpro as gp
 

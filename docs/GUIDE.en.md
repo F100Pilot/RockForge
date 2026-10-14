@@ -75,7 +75,12 @@ One of three sources:
 
 - **A Guitar Pro file**: GP3, GP4, GP5 or GP7/GP8 (`.gp`). Notes, frets, techniques, tempo,
   bars and sections come exactly from the file. Only GP6 (`.gpx`) cannot be read — export it as
-  GP5 or GP7 in Guitar Pro/TuxGuitar.
+  GP5 or GP7 in Guitar Pro/TuxGuitar. Two things Guitar Pro does not say the way Rocksmith does,
+  which RockForge translates: a **legato slide** becomes a note linked into the next (no new
+  pick; an arc on the score), and single notes **let ring** over one chord shape (three or
+  more, on different strings, in one hand position) become an **arpeggio** (the game shows the
+  shape above them; an "arpeggio …" bracket on the score). To avoid an arpeggio, take the let
+  ring off those notes in Guitar Pro.
 - **A PDF or picture of the tab** (PNG, JPEG, WebP): converted into a GP5 by PDF-to-GP5's
   converter. Several files = one track each, in order (up to 7). Reading pictures (OCR) is
   experimental: check the notes and rhythm on the score after creating the project — the

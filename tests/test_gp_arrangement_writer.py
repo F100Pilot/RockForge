@@ -223,3 +223,16 @@ def test_a_long_curve_is_cut_to_four_points_with_the_same_shape(tmp_path: Path) 
 def test_a_plain_bend_is_a_rise_to_its_peak(tmp_path: Path) -> None:
     got = _bend_back(tmp_path, _bent([], semitones=2.0))
     assert got.bend_semitones == pytest.approx(2.0)
+
+
+def test_a_linked_slide_is_written_as_guitar_pros_legato_slide(tmp_path: Path) -> None:
+    notes = [
+        TabNote(2, 5, 0.0, 0.5, frozenset({Technique.SLIDE}), slide_to_fret=7, link_next=True),
+        TabNote(2, 7, 0.5, 0.5),
+        TabNote(2, 5, 1.0, 0.5, frozenset({Technique.SLIDE}), slide_to_fret=7),
+        TabNote(2, 7, 1.5, 0.5),
+    ]
+    dst = tmp_path / "legato.gp5"
+    write_arrangement_gp5(_arrangement(notes), dst)
+    got = sorted(parse_gp_track(dst, 0).notes, key=lambda n: n.time)
+    assert [n.link_next for n in got] == [True, False, False, False]

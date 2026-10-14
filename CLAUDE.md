@@ -3219,8 +3219,8 @@ both songs' levels; single notes never start one). Now:
   `FirstNoteTime`/`LastNoteTime` follow DLC Builder's `convertHandshape`
   (last note + sustain, -1 when that reaches the end). The XML carries them as
   `<handShape chordId startTime endTime>` for DLC Builder (its DD keeps them
-  where their notes are). Arpeggio shapes (`Fingerprints2`) stay empty — the
-  domain has no arpeggio marking.
+  where their notes are). Arpeggio shapes (`Fingerprints2`) are the next
+  section's.
 - **Phrases avoid them**: DLC Builder's `findGoodPhraseTime` moves a phrase out
   of a hand shape as well as a sustain, so our port (`_good_phrase_time`, over
   `_chart_hand_shapes`) does too — the native phrases stay exactly those of its
@@ -3251,6 +3251,74 @@ levels and 492 362 shapes. Guarded by
 `test_a_phrase_is_not_cut_through_a_hand_shape` (both mutation-checked),
 `test_chords_carry_fingers_a_name_and_a_hand_shape` (XML) and the fingering /
 span tests in `test_chords.py`.
+
+**Linked notes and arpeggios** (2026-10-14, "avança com as notas ligadas e os
+arpejos" — the two Rocksmith techniques the Ubisoft Workshop pages describe
+that RockForge did not produce). Both follow Rocksmith2014.NET's conversion
+(XmlToSngNote/XmlToSngLevel/XmlToSng/PhraseGenerator, checker rules from
+InstrumentalChecker); neither has been byte-diffed against a DLC Builder
+build that contains them, nor played in game.
+- **Linked notes (`TabNote.link_next`)** come from a Guitar Pro **legato slide**
+  (GP5 `SlideType.legatoSlideTo` = 2, GPIF `<Slide><Flags>` bit 2, also on a
+  slide carried by a tie — both parsers); a shift slide stays a re-picked
+  note. `music.resolve_links` (run in `gp_pipeline` on every parsed track,
+  before building) keeps a link only where DLC Builder's checker would: the
+  next note on that string is a SINGLE note starting within
+  `LINK_TOLERANCE_S` (5 ms) of the end, on the note's fret or its slide's
+  landing fret, with a bend that carries on and no unpitched slide — then
+  snaps the sustain to end exactly on it; otherwise the flag is cleared.
+  `apply_sustain_gap` leaves a linked note alone. XML: `linkNext="1"` on the
+  note / chordNote / chord, the sustain written as the difference of the two
+  ROUNDED times (DLC Builder links within 2 ms of the end), read back by
+  `reader.py`. SNG: Parent on the note (a chord: on the chord and per string
+  in its ChordNotes), Child + `ParentPrevNote` = the parent's index IN THAT
+  LEVEL on the next single note of the string (`_link_pairs`: a pending
+  parent per string, taken — or dropped — by the next single note; chords
+  never take one); a DD level shows a linked pair together or not at all
+  (`_with_partners`); `_phrase_signature` includes the flag; the phrase
+  generator keeps a phrase off the note a link runs into (findGoodPhraseTime's
+  linkNext rule: earlier → the parent's time, later → that note's end, or
+  +100 ms without sustain). The GP5 export writes a linked slide back as a
+  legato slide. A held link on the same fret (no slide) has no Guitar Pro
+  source today (a GP tie is folded into one note), so it only arises from a
+  built XML.
+- **Arpeggios** are DERIVED (`chords.arpeggio_spans`): Guitar Pro's "arpeggio"
+  is a strum of one chord, not this. A run of ≥ `ARPEGGIO_MIN_NOTES` (3)
+  single notes, each LET_RING, on as many distinct strings, one fret per
+  string, fretted span ≤ `ARPEGGIO_MAX_FRET_SPAN` (3, four frets), no slide,
+  no rest over `HAND_SHAPE_BREAK_S`; a chord or a note breaking any of these
+  ends it. The shape ends like a hand shape (last note's end + 1 ms, never past
+  the next note). XML: an extra chord template per shape, `displayName` =
+  name + "-arp" (what makes DLC Builder's `ChordTemplate.IsArpeggio` true),
+  after the chords' templates, and a `<handShape>` over it in the same list.
+  SNG (`_arpeggio_templates`, `_build_arpeggio_prints`): templates with
+  `CHORD_MASK_ARPEGGIO` (1), one Fingerprints2 entry per shape still holding a
+  note at that level (from its first note there), each note inside with
+  `fingerprint_id[1]` = the shape and `NOTE_MASK_ARPEGGIO`. **The hand window
+  never moves inside one** (`_hold_through_arpeggios` in the SNG, the merged
+  anchor groups in the writer): an arpeggio's positions count as one, from
+  the arpeggio's start — open strings that begin it place no anchor of their
+  own, which otherwise delayed the move into the middle of it (DLC Builder
+  flags AnchorInsideHandShape). Phrases avoid arpeggios like any hand shape
+  (`_chart_hand_shapes`). The one exception left: DLC Builder's END phrase,
+  placed by its own rule near the song's end, can land inside one — as for
+  chord shapes.
+- **Viewer/API**: `ArrangementNoteOut.link_next` (an arc over the held time)
+  and `ArrangementOut.arpeggios` `{start, end, name}` (a bracket "arpejo C" in
+  the chord-name row — chords end an arpeggio, so the two never share it).
+- **Checker** (`verify.py`): `_check_links` (a Child points back at an earlier
+  Parent on its string whose end it starts at, every Parent hands on to a Child
+  at its level, no stray ParentPrevNote, no phrase starting on a Child) and
+  `_check_shapes`, the hand-shape rules written once for both Fingerprints1
+  and Fingerprints2 (an arpeggio shape on an Arpeggio template over single
+  notes, its notes carrying the mask exactly when inside). The random-chart
+  fuzz plays held/slid links from notes and chords and arpeggios, and each
+  piece was mutation-checked there or in `test_linked_notes.py` /
+  `test_arpeggios.py`. A real build of an invented GP5 (a legato slide, a C
+  arpeggio let ring) went through `/gp/inspect` → `/jobs/gp` → a clean
+  `/psarc-check`, the packed SNG carrying Parent/Child (ParentPrevNote → the
+  right index) and the "C" arpeggio template + Fingerprints2, and the score
+  drew both (Playwright, PT/EN, no page errors).
 
 **Repeated chords are marked HIGH DENSITY (condensed rendering).** A fast
 repeated identical chord — an 8th-note power-chord chug, say — must carry
@@ -3772,9 +3840,6 @@ defects):
   toggleable per song** (`GpJobSpec.dynamic_difficulty` / `RebuildIn`, the "DD"
   checkbox): off ⇒ a single full-chart level (`from_arrangement(...,
   dynamic_difficulty=False)`), a safety valve when DD misbehaves on a song.
-- **Fingerprints2 (arpeggio) empty**: the domain has no arpeggio marking.
-- **ParentPrevNote / linkNext absent**: the domain has no note-link concept (the
-  XML writer hard-codes `linkNext="0"`), so this is correctly `-1`.
 - **Note Hash = 0**: a deliberate choice — the two reference tools
   (Rocksmith2014.NET vs toolkit) compute mutually different, non-validated hash
   values, so 0 is safe and source-consistent. It was later brute-forced against

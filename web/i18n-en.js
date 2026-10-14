@@ -1167,5 +1167,9 @@
  "refaz": "redo",
  "esta lista": "this list",
  "fecha um menu, popup ou esta janela": "closes a menu, popup or this window",
- "Fora dos campos de texto. Os de reprodução, partitura e edição de notas valem na página Partitura.": "Outside text fields. The playback, score and note-editing ones work on the Score page."
+ "Fora dos campos de texto. Os de reprodução, partitura e edição de notas valem na página Partitura.": "Outside text fields. The playback, score and note-editing ones work on the Score page.",
+ "Ligada à nota seguinte (sem nova palhetada)": "Linked to the next note (no new pick)",
+ "arpejo {nome}": "arpeggio {nome}",
+ "arpejo": "arpeggio",
+ "Arpejo: notas soltas deixadas a soar sobre a forma de um acorde — o jogo mostra a forma por cima delas.": "Arpeggio: single notes let ring over one chord shape — the game shows the shape above them."
 };

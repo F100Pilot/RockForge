@@ -55,7 +55,7 @@ here. Paths are relative to `src/rockforge/infrastructure/` unless written in fu
 
 | RockForge code | Follows | Licence of the original |
 |---|---|---|
-| `packaging/psarc/container.py`, `crypto.py`, `sng.py` (with `sng_model.py`, `sng_build.py`, `sng_io.py`), `manifest.py`, `gamedata.py`, `packaging/gear/default_tones.py` (PSARC container, Sng2014 binary layout, manifests, xblock, the phrase generator `_prepare_sections` = `PhraseGenerator.generate`, anchors as `XmlToSng`/`XmlToSngNote`, default tones as `addDefaultTonesIfNeeded`) | [Rocksmith2014.NET](https://github.com/iminashi/Rocksmith2014.NET) | MIT, © 2020 Tapio Malmberg |
+| `packaging/psarc/container.py`, `crypto.py`, `sng.py` (with `sng_model.py`, `sng_build.py`, `sng_io.py`), `manifest.py`, `gamedata.py`, `packaging/gear/default_tones.py` (PSARC container, Sng2014 binary layout, manifests, xblock, the phrase generator `_prepare_sections` = `PhraseGenerator.generate`, anchors as `XmlToSng`/`XmlToSngNote`, linked notes and arpeggio shapes as `XmlToSngNote`/`XmlToSngLevel`, default tones as `addDefaultTonesIfNeeded`) | [Rocksmith2014.NET](https://github.com/iminashi/Rocksmith2014.NET) | MIT, © 2020 Tapio Malmberg |
 | `packaging/rs2dlc.py` (the `.rs2dlc` DLC Builder project format) | Rocksmith2014.NET `DLCProject.Dto` | MIT, © 2020 Tapio Malmberg |
 | `normalize/loudness.py` (volume as DLC Builder's `Volume.fs`) | Rocksmith2014.NET | MIT, © 2020 Tapio Malmberg |
 | `packaging/psarc/soundbank.py` (Wwise `.bnk` layout) | `SoundBankGenerator2014` of the [Rocksmith Custom Song Toolkit](https://github.com/rscustom/rocksmith-custom-song-toolkit) | Recorded as MIT in RockForge's notes; the toolkit's repository shows no licence file we could find (to confirm) |
