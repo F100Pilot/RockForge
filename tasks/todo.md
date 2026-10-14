@@ -318,3 +318,18 @@ Pedido: "quando corrijo o início das notas, a letra não se está a mover".
 - [x] Bug: as alternativas apareciam como "Lead"/"Rhythm" e partilhavam as
       correções da pista principal → nome pelo ficheiro, ordem do build, export
 - [x] Testes (mutação), Playwright, docs, gates
+
+# Compassos com ritmo estimado, clicáveis na partitura
+
+Pedido: "Faz a 1, os compassos clicáveis no RockForge" (os compassos que o
+PDF-to-GP5 estimou pelo espaçamento, como links para a partitura).
+
+- [x] 1. `pdf_import.estimated_bars_as_played`: compassos escritos → tocados
+      (`parser.bars_as_played`), só em pistas com ritmo impresso
+- [x] 2. `/pdf/import` → `estimated_bars`; assistente → `/jobs/gp`
+      (`_parse_estimated_bars`) → `params["estimated_bars"]`; `/reload-gp` limpa
+- [x] 3. `/jobs/{id}/arrangements` → `estimated_bars` por pista (`_track_of_kind`,
+      Lead sozinho = Combined)
+- [x] 4. UI: `#barEstimatedRow` por cima da partitura, `goToBar`
+- [x] 5. Testes, `runtime_settings` lê `config.settings` (fuga entre testes),
+      Playwright, CLAUDE.md, guia PT/EN

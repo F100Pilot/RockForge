@@ -576,6 +576,9 @@ class ArrangementOut(BaseModel):
     # How Rocksmith names this chart in game ("LEAD 1", "LEAD 2", "RHYTHM",
     # "COMBO") — numbered only when the song has two on the same path.
     game_name: str = ""
+    # Bars (as ``bars`` numbers them) whose rhythm PDF-to-GP5 estimated from the
+    # note spacing when it converted this track: the ones to check first.
+    estimated_bars: list[int] = []
 
 
 class TempoCorrectionIn(BaseModel):
@@ -989,6 +992,10 @@ class GpInspectOut(BaseModel):
     # Set when the file was converted from a PDF or a picture of the tab
     # (/pdf/import, PDF-to-GP5's converter): the names of those files.
     pdf_files: list[str] = []
+    # …and, per track index, the bars whose rhythm the converter estimated from
+    # the note spacing, numbered as the chart plays them. The wizard hands them
+    # back to /jobs/gp so the viewer can offer them for review.
+    estimated_bars: dict[int, list[int]] = {}
 
 
 GP_SUFFIXES = {".gp3", ".gp4", ".gp5", ".gp"}  # .gp = GP7/GP8 (native GPIF parser)
@@ -1293,6 +1300,7 @@ def pdf_import(files: list[UploadFile] = File(...)) -> GpInspectOut:
     out = _inspect_stored_gp(dest)
     out.pdf_files = [name for name, _ in read]
     out.import_warnings = result.warnings
+    out.estimated_bars = result.estimated_bars
     return out
 
 
@@ -1408,6 +1416,37 @@ def _parse_bar_times(raw: str) -> list[float]:
     return floats
 
 
+MAX_ESTIMATED_BARS_CHARS = 200_000
+_MAX_TRACKS = 64
+
+
+def _parse_estimated_bars(raw: str) -> dict[str, list[int]]:
+    """``estimated_bars`` (/pdf/import's, handed back by the wizard) as a JSON object
+    of track index → bar numbers; checked here like ``bar_times``. Stored with the
+    track index as a string key, the way JSON keeps it in ``params``."""
+    if not raw.strip():
+        return {}
+    message = "estimated_bars must map track indexes to lists of bar numbers"
+    try:
+        values = json.loads(raw)
+    except ValueError as exc:
+        raise HTTPException(422, message) from exc
+    if not isinstance(values, dict) or len(values) > _MAX_TRACKS:
+        raise HTTPException(422, message)
+    out: dict[str, list[int]] = {}
+    for key, bars in values.items():
+        if not (isinstance(key, str) and key.isdigit() and int(key) < _MAX_TRACKS):
+            raise HTTPException(422, message)
+        if not isinstance(bars, list) or len(bars) > _MAX_BAR_TIMES or not all(
+            isinstance(b, int) and not isinstance(b, bool) and 1 <= b <= _MAX_BAR_TIMES
+            for b in bars
+        ):
+            raise HTTPException(422, message)
+        if bars:
+            out[str(int(key))] = sorted(set(bars))
+    return out
+
+
 @app.post("/jobs/gp", response_model=JobOut, status_code=202)
 def create_gp_job(
     gp_token: str = Form(...),
@@ -1443,6 +1482,8 @@ def create_gp_job(
     # A cover the user chose from /album-lookup, downloaded before the job is
     # queued so the very first build carries it.
     cover_url: str = Form(""),
+    # /pdf/import's estimated_bars (JSON), kept for the viewer's review links.
+    estimated_bars: str = Form("", max_length=MAX_ESTIMATED_BARS_CHARS),
 ) -> JobOut:
     """Create a CDLC job from a previously inspected GP file + the recording."""
     gp_path = settings.work_dir / "gp" / Path(gp_token).name
@@ -1528,6 +1569,7 @@ def create_gp_job(
         raise HTTPException(422, "tempo_scale must be > 0")
 
     parsed_bar_times = _parse_bar_times(bar_times)
+    parsed_estimated_bars = _parse_estimated_bars(estimated_bars)
     cover_url = cover_url.strip()
     if cover_url:
         from rockforge.infrastructure.album_lookup import cover_url_allowed
@@ -1548,6 +1590,8 @@ def create_gp_job(
         "import_mute_techniques": import_mutes,
         "recording_from_gp": use_embedded_audio,
     }
+    if parsed_estimated_bars:
+        params["estimated_bars"] = parsed_estimated_bars
     if lead_track.strip().isdigit():
         params["lead_track"] = int(lead_track)
     if rhythm_track.strip().isdigit():
@@ -1682,6 +1726,8 @@ def reload_gp(
             raise HTTPException(409, "original recording no longer exists on the work volume")
 
         params["gp_path"] = str(gp_dest)
+        # The converter's estimated bars described the old file, not this one.
+        params.pop("estimated_bars", None)
         params["rebuilt_from"] = original.id
         title, artist, album, year = meta
         job = Job(
@@ -3503,6 +3549,28 @@ def _built_arrangement_kind(xml_path: Path, root: ET.Element) -> str:
         return root.findtext("arrangement", "?")
 
 
+# The GP track each arrangement is built from, as /jobs/gp stores the choice.
+_TRACK_PARAM_OF_KIND = {
+    "Lead": "lead_track",
+    "Rhythm": "rhythm_track",
+    "Combined": "combo_track",
+    "Alternate Lead": "alt_lead_track",
+    "Alternate Rhythm": "alt_rhythm_track",
+}
+
+
+def _track_of_kind(params: dict[str, object], kind: str) -> int | None:
+    """The GP track arrangement ``kind`` was built from, as ``gp_pipeline`` assigns
+    them: a lone Lead is built as Combined. None when the tracks were auto-picked."""
+    assigned = {
+        k: v for k, p in _TRACK_PARAM_OF_KIND.items()
+        if isinstance(v := params.get(p), int) and not isinstance(v, bool)
+    }
+    if kind == "Combined" and list(assigned) == ["Lead"]:
+        return assigned["Lead"]
+    return assigned.get(kind)
+
+
 @app.get("/jobs/{job_id}/arrangements", response_model=list[ArrangementOut])
 def get_arrangements(job_id: str) -> list[ArrangementOut]:
     """Parsed arrangement data for human review (tab viewer, tuning confirmation)."""
@@ -3542,6 +3610,14 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
         if isinstance(entry, dict):
             return float(entry.get("tempo_scale", default_scale) or default_scale)
         return default_scale
+
+    raw_estimated = job_params.get("estimated_bars")
+    estimated = raw_estimated if isinstance(raw_estimated, dict) else {}
+
+    def estimated_bars_for(kind: str) -> list[int]:
+        track = _track_of_kind(job_params, kind)
+        bars = estimated.get(str(track)) if track is not None else None
+        return [b for b in bars if isinstance(b, int)] if isinstance(bars, list) else []
 
     synced_kinds = _synced_arrangements(job_params, job.bundle_dir)
     out: list[ArrangementOut] = []
@@ -3644,6 +3720,7 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
                 sections=sections,
                 note_overrides=committed_note_overrides(kind),
                 sync_confirmed=kind in synced_kinds,
+                estimated_bars=estimated_bars_for(kind),
             )
         )
     # The build's own order (Lead, Rhythm, Combined, the alternates), not the

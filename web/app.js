@@ -2295,6 +2295,7 @@ function showArr(i) {
   renderAnchorsList();
   updateSyncOffsetDisplay();
   updateBarSyncPanel();
+  renderEstimatedBars();
   updateNoteEditsInfo();
   updateDeleteNotesUi();
   drawFretboard();  // redraw the neck (tuning labels) + refresh the active notes
@@ -2712,6 +2713,57 @@ function barChartTime(idx, measure) {
   const a = arrangements[idx];
   const b = a && (a.bars || []).find(x => x.measure === measure);
   return b ? b.time : null;
+}
+
+// [3, 4, 5, 9] → [[3, 5], [9, 9]]
+function barRanges(numbers) {
+  const ranges = [];
+  for (const n of numbers) {
+    const last = ranges[ranges.length - 1];
+    if (last && n === last[1] + 1) last[1] = n;
+    else ranges.push([n, n]);
+  }
+  return ranges;
+}
+
+// Put the cursor on bar `measure` of the current arrangement (where it sits
+// now, with the live sync) and bring it into view; the bar-sync selector
+// follows, so "= cursor" works on it straight away.
+function goToBar(measure) {
+  const chartT = barChartTime(currentArr, measure);
+  if (chartT == null) return;
+  const displayT = arrangementDisplayTime(currentArr, chartT);
+  audioSeek(Math.max(0, displayT - viewOrigin));
+  const wrap = document.getElementById('tabwrap');
+  wrap.scrollLeft = Math.max(0, timeToX(displayT) - wrap.clientWidth / 2);
+  const barSel = document.getElementById('barSyncBar');
+  if ([...barSel.options].some(o => o.value === String(measure))) {
+    barSel.value = String(measure);
+    barSel.dispatchEvent(new Event('change'));  // the bar-tempo controls follow it
+  }
+}
+
+// The bars whose rhythm PDF-to-GP5 estimated from the note spacing when it
+// converted this track (a part that prints rhythm elsewhere): one button per
+// run of bars, each putting the cursor on its first bar — the ones to check
+// before trusting the chart. Each pass of a repeated bar is a bar of its own.
+function renderEstimatedBars() {
+  const row = document.getElementById('barEstimatedRow');
+  const list = document.getElementById('barEstimatedList');
+  const bars = (arrangements[currentArr] && arrangements[currentArr].estimated_bars) || [];
+  row.style.display = bars.length ? '' : 'none';
+  const MAX_SHOWN = 40;
+  const ranges = barRanges(bars);
+  list.replaceChildren(...ranges.slice(0, MAX_SHOWN).map(([first, last]) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'secondary';
+    btn.textContent = first === last ? String(first) : `${first}–${last}`;
+    btn.title = T('Pôr o cursor no compasso {n}', { n: first });
+    btn.addEventListener('click', () => goToBar(first));
+    return btn;
+  }));
+  if (ranges.length > MAX_SHOWN) list.append('…');
 }
 
 // Refresh the bar-sync panel's selectors for the current tab: every bar of
@@ -5812,6 +5864,9 @@ let wzLyricsCandidates = [];
 let wzLyricsPick = -1;           // index into wzLyricsCandidates, -1 = none
 let wzLyricsAutoDone = false;
 let wzGpHasLyrics = false;       // set from /gp/inspect
+// /pdf/import's estimated_bars (track index → bars whose rhythm the converter
+// estimated), handed to /jobs/gp so the viewer can offer them for review.
+let wzEstimatedBars = {};
 let wzRecordingS = null;         // the chosen audio file's length, when known
 
 function resetWizardLyrics() {
@@ -8018,6 +8073,7 @@ document.getElementById('gpInspectForm').addEventListener('submit', async e => {
 function applyInspectResult(b) {
   gpToken = b.gp_token;
   wzGpHasLyrics = !!b.has_lyrics;
+  wzEstimatedBars = b.estimated_bars || {};
   const form = document.getElementById('gpJobForm');
   document.getElementById('gpMeta').textContent =
     T('{title} — {artist} · {tempo} BPM · letra no GP: {lyrics}', {
@@ -8182,6 +8238,7 @@ document.getElementById('gpJobForm').addEventListener('submit', async e => {
   }
   // Unchecked checkboxes are not sent; set the value explicitly so "off" sticks.
   f.set('import_mutes', e.target.querySelector('input[name=import_mutes]').checked);
+  if (Object.keys(wzEstimatedBars).length) f.set('estimated_bars', JSON.stringify(wzEstimatedBars));
   // The picked card's image never loaded: its cover is not there to download.
   const picked = wzAlbumCandidates[wzAlbumPick];
   if (picked && picked.cover_broken) f.delete('cover_url');

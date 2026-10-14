@@ -62,6 +62,9 @@
   label.check input { width:auto; }
 
   .hint { font-size:.8rem; color:var(--muted); margin:.6rem 0 0; }
+  .est-bars { display:flex; flex-wrap:wrap; align-items:center; gap:.35rem; margin:.2rem 0 .5rem; font-size:.85rem; color:var(--warn); }
+  .est-bars #barEstimatedList { display:flex; flex-wrap:wrap; gap:.35rem; }
+  .est-bars button { height:1.8rem; padding:0 .65rem; }
   .hint code { background:#0f1013; padding:.05rem .3rem; border-radius:4px; }
 
   /* tab nav for "novo job" */
@@ -1048,6 +1051,11 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
               <button class="info-btn" type="button" data-info="highway-3d">ⓘ</button>
             </div>
             <p id="hw3dMsg" class="hw3d-msg" hidden></p>
+          </div>
+          <!-- Bars whose rhythm PDF-to-GP5 estimated from the note spacing (renderEstimatedBars) -->
+          <div class="est-bars" id="barEstimatedRow" style="display:none">
+            <span>Ritmo estimado pelo espaçamento (confere estes compassos primeiro):</span>
+            <span id="barEstimatedList"></span>
           </div>
           <div id="tabwrap"><svg id="tabsvg" height="280"></svg></div>
           <!-- Fretboard: lights up the (string, fret) of each note as it plays -->

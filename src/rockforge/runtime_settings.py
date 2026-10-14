@@ -17,7 +17,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from rockforge.config import settings
+from rockforge import config
 
 _KEYS = (
     "stem_separator", "banquet_repo", "banquet_ckpt", "banquet_queries",
@@ -37,7 +37,7 @@ _LOUDNESS_MIN, _LOUDNESS_MAX = -20.0, -6.0
 
 
 def _file() -> Path:
-    return settings.work_dir / "settings.json"
+    return config.settings.work_dir / "settings.json"
 
 
 def load() -> dict[str, Any]:
@@ -90,7 +90,7 @@ def ui_language() -> str:
 
 
 def stem_separator() -> str:
-    return str(_eff("stem_separator", settings.stem_separator))
+    return str(_eff("stem_separator", config.settings.stem_separator))
 
 
 def whisperx_compute_type() -> str:
@@ -98,7 +98,7 @@ def whisperx_compute_type() -> str:
     A runtime override (persisted automatically when the GPU escalation finds a
     working compute type, e.g. int8_float16 on a Turing GPU) wins over the env
     ``ROCKFORGE_WHISPERX_COMPUTE_TYPE``."""
-    return str(_eff("whisperx_compute_type", settings.whisperx_compute_type or ""))
+    return str(_eff("whisperx_compute_type", config.settings.whisperx_compute_type or ""))
 
 
 def loudness_target() -> float:
@@ -120,9 +120,9 @@ def _path(key: str, env_default: Path | None) -> Path | None:
 def banquet_paths() -> tuple[Path | None, Path | None, Path | None]:
     """Effective (repo, ckpt, queries) — runtime override, else env, else None."""
     return (
-        _path("banquet_repo", settings.banquet_repo),
-        _path("banquet_ckpt", settings.banquet_ckpt),
-        _path("banquet_queries", settings.banquet_queries),
+        _path("banquet_repo", config.settings.banquet_repo),
+        _path("banquet_ckpt", config.settings.banquet_ckpt),
+        _path("banquet_queries", config.settings.banquet_queries),
     )
 
 
@@ -153,7 +153,7 @@ def ml_python() -> Path | None:
     an ML install: its own interpreter is the executable. See
     ``infrastructure/ml_python.py`` for why every stage can run out-of-process.
     """
-    return _path("ml_python", settings.ml_python)
+    return _path("ml_python", config.settings.ml_python)
 
 
 def ml_python_validation() -> dict[str, Any]:

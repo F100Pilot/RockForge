@@ -179,6 +179,12 @@ def _bar_flows(song: Any) -> list[BarFlow]:
     return flows
 
 
+def bars_as_played(song: Any) -> list[int]:
+    """The written bar (0-based) heard at each played position: ``order[n - 1]`` is the
+    written bar that the chart's bar ``n`` comes from (the order ``_as_played`` lays out)."""
+    return playback_order(_bar_flows(song))
+
+
 def _as_played(song: Any) -> Any:
     """``song`` with its bars in the order they are played (repeats, voltas and
     D.C./D.S./Coda/Fine unrolled, as alphaTab plays them — see ``playback``).
@@ -188,7 +194,7 @@ def _as_played(song: Any) -> Any:
     recording. A lyric line starts again on every pass of the bar it starts on
     (the syllables belong to the written beats, as in alphaTab). A score without
     repeats comes back unchanged."""
-    order = playback_order(_bar_flows(song))
+    order = bars_as_played(song)
     if order == list(range(len(song.measureHeaders))):
         return song
     headers = []

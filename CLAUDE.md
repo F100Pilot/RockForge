@@ -348,6 +348,44 @@ re-inverting the dependency.
    message, an invented riff's PDF → step 2 (its track, the note) → a real
    build whose 12 notes are the riff's.
 
+   **Bars whose rhythm the converter ESTIMATED become links on the score.** In
+   a part that prints rhythm, a bar where PDF-to-GP5 could not read it falls
+   back to the note spacing; its report names those bars per track
+   (`rhythm_estimated_bars`, from PDF-to-GP5 01d9e79). They are the ones to
+   check before trusting the chart, so `pdf_import.estimated_bars_as_played`
+   turns them into chart bars: the converter numbers WRITTEN bars and the
+   chart PLAYED ones (repeats unrolled, `parser._as_played`), so
+   `parser.bars_as_played` (the same `playback_order`) maps each to every
+   pass — a repeated estimated bar is one link per pass, each opening that
+   exact pass. Only for a track with printed rhythm (a text tab is estimated
+   throughout: nothing stands out), and a file that will not read back gives
+   no hint rather than failing the import. `/pdf/import` answers them as
+   `estimated_bars` (track index → bars); the wizard keeps them
+   (`wzEstimatedBars`) and hands them to `/jobs/gp` as a JSON form field,
+   checked like `bar_times` (`_parse_estimated_bars`: digit keys < 64, bars
+   1…10000) and stored as `params["estimated_bars"]` (string keys, as JSON
+   keeps them). `/jobs/{id}/arrangements` answers each arrangement's own list
+   (`ArrangementOut.estimated_bars`) through `_track_of_kind`, which mirrors
+   `gp_pipeline`'s slots — **a lone Lead is built as Combined**, so Combined
+   falls back to `lead_track` when it is the only slot. `/reload-gp` drops
+   them (they described the old file); a rebuild keeps them. UI:
+   `renderEstimatedBars` (called from `showArr`) fills `#barEstimatedRow`,
+   right above the score — not in "Sincronizar por compasso", which sits
+   folded in "Mais opções" — one button per run of bars; `goToBar` puts the
+   cursor on the bar's downbeat as it sits now (`arrangementDisplayTime`, live
+   sync included), centres it and selects it in the bar-sync selector.
+   Guarded by `test_estimated_bars_are_renumbered_as_the_chart_plays_them`,
+   `test_no_estimated_bars_when_there_is_nothing_to_point_at` and
+   `test_the_bars_with_an_estimated_rhythm_reach_the_viewer`; with Playwright
+   on a live server, the "5–6" link put the cursor on bar 5 (c.5).
+
+   **`runtime_settings` reads `config.settings` at call time**, never a
+   `settings` bound at import: the API tests `importlib.reload(config)`, so a
+   module holding the import-time object reads another test's `work_dir` —
+   adding one API test that imported it first made
+   `test_a_diagnostics_row_is_in_english` read the "nowhere" folder
+   `test_diagnostics` had saved.
+
    **The chosen video's audio, fetched (`/youtube/audio`, `youtube_audio.py`).**
    Without it the Songsterr import still needed one manual step — convert the
    video to MP3 by hand — and the user judged the feature not worth having

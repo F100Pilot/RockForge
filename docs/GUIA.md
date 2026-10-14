@@ -78,7 +78,10 @@ Uma de três origens:
 - **PDF ou imagem da tablatura** (PNG, JPEG, WebP): é convertida num GP5 pelo conversor do
   PDF-to-GP5. Vários ficheiros = uma pista cada, pela ordem (até 7). A leitura de imagens (OCR)
   é experimental: confere as notas e o ritmo na partitura depois de criar — os avisos indicam os
-  compassos com o ritmo estimado pelo espaçamento, que são os primeiros a conferir.
+  compassos com o ritmo estimado pelo espaçamento, que são os primeiros a conferir. Depois de
+  criar, esses compassos aparecem por cima da partitura de cada pista ("Ritmo estimado pelo
+  espaçamento"), e um clique leva o cursor a esse compasso; um compasso repetido aparece uma vez
+  por cada vez que toca.
 - **Link do Songsterr** ("… ou importa a tab do Songsterr"): descarrega a tab e cria um GP5 com
   ela, letra incluída quando a tab a tem. As pistas de bateria e as notas de ornamento ficam de
   fora (a aplicação diz quantas). Só tabs publicadas.

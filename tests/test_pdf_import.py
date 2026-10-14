@@ -102,3 +102,41 @@ def test_the_converter_answers_in_the_users_language() -> None:
     finally:
         i18n.reset(token)
     assert str(english.value) != str(portuguese.value)
+
+
+def _gp5_with_a_repeat() -> bytes:
+    """Bar 1 played twice (a repeat), then bar 2: the chart plays bars 1, 1, 2."""
+    import io
+
+    import guitarpro
+
+    song = guitarpro.Song()
+    song.addMeasureHeader(guitarpro.MeasureHeader())
+    track = song.tracks[0]
+    track.measures.append(guitarpro.Measure(track, song.measureHeaders[1]))
+    song.measureHeaders[0].isRepeatOpen = True
+    song.measureHeaders[0].repeatClose = 1  # one repeat: played twice
+    out = io.BytesIO()
+    guitarpro.write(song, out, version=(5, 1, 0))
+    return out.getvalue()
+
+
+def test_estimated_bars_are_renumbered_as_the_chart_plays_them() -> None:
+    """The converter numbers its written bars; the chart unrolls the repeats, so a
+    flagged bar that is repeated becomes one entry per pass."""
+    gp5 = _gp5_with_a_repeat()
+    report = {"tracks": [{"rhythm_from_notation": 1, "rhythm_estimated_bars": [1]},
+                         {"rhythm_from_notation": 2, "rhythm_estimated_bars": [2]}]}
+    assert pdf_import.estimated_bars_as_played(gp5, report) == {0: [1, 2], 1: [3]}
+
+
+def test_no_estimated_bars_when_there_is_nothing_to_point_at() -> None:
+    gp5 = _gp5_with_a_repeat()
+    # A text tab prints no rhythm: every bar is estimated, none stands out.
+    text_tab = {"tracks": [{"rhythm_from_notation": 0, "rhythm_estimated_bars": [1, 2]}]}
+    assert pdf_import.estimated_bars_as_played(gp5, text_tab) == {}
+    # An older converter does not report them.
+    assert pdf_import.estimated_bars_as_played(gp5, {"tracks": [{"rhythm_from_notation": 3}]}) == {}
+    # A file that will not read back gives no hint, and the import still stands.
+    flagged = {"tracks": [{"rhythm_from_notation": 1, "rhythm_estimated_bars": [1]}]}
+    assert pdf_import.estimated_bars_as_played(b"not a gp5", flagged) == {}

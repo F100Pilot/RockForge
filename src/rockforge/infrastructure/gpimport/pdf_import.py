@@ -15,6 +15,7 @@ Repeats are left as written: RockForge unrolls them itself (``playback.py``).
 from __future__ import annotations
 
 import importlib.util
+import io
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -46,6 +47,9 @@ class PdfImport:
     artist: str
     warnings: list[str] = field(default_factory=list)
     report: dict[str, Any] = field(default_factory=dict)
+    # Per track (its index in the GP5), the bars whose rhythm the converter
+    # estimated from the note spacing, numbered as the chart plays them.
+    estimated_bars: dict[int, list[int]] = field(default_factory=dict)
 
 
 def available() -> bool:
@@ -122,4 +126,38 @@ def convert(files: list[tuple[str, bytes]]) -> PdfImport:
         artist=str(report.get("artist") or ""),
         warnings=[str(w) for w in report.get("warnings") or []],
         report=report,
+        estimated_bars=estimated_bars_as_played(result.gp5, report),
     )
+
+
+def estimated_bars_as_played(gp5: bytes, report: dict[str, Any]) -> dict[int, list[int]]:
+    """Per track, the bars whose rhythm the converter estimated from the note spacing,
+    renumbered as the chart plays them (repeats unrolled: one entry per pass).
+
+    Only for a track that prints rhythm elsewhere: there a bar estimated from the
+    spacing is the one to check before trusting the chart; a text tab with no
+    rhythm at all is estimated throughout. The converter numbers its WRITTEN
+    bars (``rhythm_estimated_bars``, PDF-to-GP5 >= 01d9e79; absent before), the
+    chart its PLAYED ones (``parser._as_played``). A hint for the viewer only:
+    a file that will not read back gives none rather than failing the import."""
+    written: dict[int, set[int]] = {}
+    for index, track in enumerate(report.get("tracks") or []):
+        if not isinstance(track, dict) or not track.get("rhythm_from_notation"):
+            continue
+        bars = {b for b in track.get("rhythm_estimated_bars") or [] if isinstance(b, int)}
+        if bars:
+            written[index] = bars
+    if not written:
+        return {}
+    import guitarpro
+
+    from rockforge.infrastructure.gpimport.parser import bars_as_played
+
+    try:
+        order = bars_as_played(guitarpro.parse(io.BytesIO(gp5)))
+    except Exception:  # noqa: BLE001 — any unreadable file: no hint, the import stands
+        return {}
+    return {
+        index: [played for played, bar in enumerate(order, start=1) if bar + 1 in bars]
+        for index, bars in written.items()
+    }

@@ -80,6 +80,9 @@ One of three sources:
   converter. Several files = one track each, in order (up to 7). Reading pictures (OCR) is
   experimental: check the notes and rhythm on the score after creating the project — the
   warnings name the bars whose rhythm was estimated from the spacing, the first ones to check.
+  Once the project is created, those bars show above each track's score ("Rhythm estimated
+  from the spacing"), and a click puts the cursor on that bar; a repeated bar shows once for
+  each time it plays.
 - **A Songsterr link** ("… or import the tab from Songsterr"): downloads the tab and writes a
   GP5 from it, lyrics included when the tab has them. Drum tracks and grace notes are left out
   (the app says how many). Published tabs only.

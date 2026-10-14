@@ -3664,3 +3664,56 @@ def _install_into(client: TestClient, job_id: str, psarc: Path, game: Path) -> N
 
     dest.unlink()  # deleted by hand: no longer claimed
     assert client.get(f"/jobs/{job_id}").json()["in_game"] is None
+
+
+def test_the_bars_with_an_estimated_rhythm_reach_the_viewer(
+    client: TestClient, tmp_path, monkeypatch
+) -> None:
+    """/pdf/import's estimated bars travel with the wizard into the job and come
+    back on the arrangement built from that track (a lone Lead is built as
+    Combined); a new GP file drops them, since they described the old one."""
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.domain.arrangement import Arrangement, ArrangementKind, SongMetadata
+    from rockforge.domain.music import Beat, TabNote, TempoMap, Tuning
+    from rockforge.infrastructure.db.models import JobStatus
+    from rockforge.infrastructure.gpimport import pdf_import
+    from rockforge.infrastructure.rsxml.writer import write_arrangement_xml
+
+    gp = _gp8_with_embedded_audio(b"ID3x")
+    monkeypatch.setattr(pdf_import, "available", lambda: True)
+    monkeypatch.setattr(pdf_import, "convert", lambda files: pdf_import.PdfImport(
+        gp5=_make_gp5_bytes(tmp_path), title="Tema", artist="Banda", estimated_bars={0: [2, 5, 6]}))
+    imported = client.post(
+        "/pdf/import", files=[("files", ("tab.pdf", b"%PDF-1.4\n%x", "application/pdf"))]).json()
+    assert imported["estimated_bars"] == {"0": [2, 5, 6]}
+
+    body = client.post("/gp/inspect", files={"file": ("s.gp", gp, "x")}).json()
+    data = {"gp_token": body["gp_token"], "lead_track": "0", "use_embedded_audio": "true"}
+    for bad in ('{"0": [0]}', '{"x": [1]}', '{"0": "2"}', '[2]', '{"0": [true]}', "nope"):
+        assert client.post("/jobs/gp", data={**data, "estimated_bars": bad}).status_code == 422, bad
+    r = client.post("/jobs/gp", data={**data, "estimated_bars": '{"0": [6, 2, 5, 2]}'})
+    assert r.status_code == 202, r.text
+    job = r.json()
+    _, params = _job_row(job["id"])
+    assert params["estimated_bars"] == {"0": [2, 5, 6]}
+
+    bundle = app_module.settings.work_dir / job["id"] / "bundle"
+    beats = tuple(Beat(time=0.5 * i, measure=(i // 4 + 1) if i % 4 == 0 else -1) for i in range(8))
+    write_arrangement_xml(Arrangement(
+        kind=ArrangementKind.COMBINED,
+        metadata=SongMetadata(title="Tema", artist="Banda", song_length=4.0),
+        tuning=Tuning(),
+        notes=[TabNote(string=0, fret=3, time=1.0, sustain=0.5)],
+        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+    ), bundle / "arrangement_combined.xml")
+    with app_module._session_factory() as session:
+        db_job = session.get(app_module.Job, job["id"])
+        db_job.status = JobStatus.COMPLETED
+        db_job.bundle_dir = str(bundle)
+        session.commit()
+    arrs = client.get(f"/jobs/{job['id']}/arrangements").json()
+    assert [(a["kind"], a["estimated_bars"]) for a in arrs] == [("Combined", [2, 5, 6])]
+
+    reloaded = client.post(f"/jobs/{job['id']}/reload-gp", files={"gp": ("s.gp", gp, "x")})
+    assert reloaded.status_code == 202, reloaded.text
+    assert "estimated_bars" not in _job_row(reloaded.json()["id"])[1]
