@@ -12,12 +12,11 @@ so a worker reading mid-write never sees a truncated file.
 from __future__ import annotations
 
 import json
-import os
-import tempfile
 from pathlib import Path
 from typing import Any
 
 from rockforge import config
+from rockforge._atomic import write_text_atomic
 
 _KEYS = (
     "stem_separator", "banquet_repo", "banquet_ckpt", "banquet_queries",
@@ -56,21 +55,7 @@ def save(overrides: dict[str, Any]) -> dict[str, Any]:
         for k in _KEYS
         if k in overrides and overrides[k] not in (None, "")
     }
-    f = _file()
-    f.parent.mkdir(parents=True, exist_ok=True)
-    # A UNIQUE temp name, not a fixed "<file>.tmp": the API and the worker both
-    # write here, and with a shared name two concurrent writers interleave —
-    # A creates it, B overwrites it, A renames it into place and publishes B's
-    # content. os.replace is still what makes the swap atomic for readers.
-    fd, tmp_name = tempfile.mkstemp(dir=f.parent, prefix=f.name + ".", suffix=".tmp")
-    tmp = Path(tmp_name)
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as fh:
-            fh.write(json.dumps(data, indent=2))
-        os.replace(tmp, f)
-    except BaseException:
-        tmp.unlink(missing_ok=True)
-        raise
+    write_text_atomic(_file(), json.dumps(data, indent=2))
     return data
 
 

@@ -23,7 +23,6 @@ import json
 import logging
 import os
 import re
-import tempfile
 import threading
 import time
 import unicodedata
@@ -32,6 +31,7 @@ from pathlib import Path
 from typing import Any
 
 from rockforge import config
+from rockforge._atomic import write_text_atomic
 
 logger = logging.getLogger(__name__)
 
@@ -216,17 +216,7 @@ def load() -> dict[str, Any]:
 
 
 def _write(data: dict[str, Any]) -> None:
-    f = _file()
-    f.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp_name = tempfile.mkstemp(dir=f.parent, prefix=f.name + ".", suffix=".tmp")
-    tmp = Path(tmp_name)
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as fh:
-            fh.write(json.dumps(data, ensure_ascii=False))
-        os.replace(tmp, f)
-    except BaseException:
-        tmp.unlink(missing_ok=True)
-        raise
+    write_text_atomic(_file(), json.dumps(data, ensure_ascii=False))
 
 
 def scan(folder: Path, progress: Callable[[int, int, str], None] | None = None) -> dict[str, Any]:
