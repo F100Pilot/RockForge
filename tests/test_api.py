@@ -3075,13 +3075,25 @@ def test_upload_endpoints_are_plain_def_not_async(client: TestClient) -> None:
 
     import rockforge.interfaces.api.app as app_module
 
+    def endpoints(routes: list) -> dict[str, object]:
+        # An endpoint lives in app.py or in a router it includes (routers/).
+        out: dict[str, object] = {}
+        for r in routes:
+            inner = getattr(r, "original_router", None)
+            if inner is not None:
+                out |= endpoints(inner.routes)
+            elif hasattr(r, "endpoint"):
+                out[r.endpoint.__name__] = r.endpoint
+        return out
+
+    served = endpoints(app_module.app.routes)
     for name in (
         "inspect_gp_file",
         "create_gp_job",
         "reload_gp",
         "upload_cover_art",
     ):
-        fn = getattr(app_module, name)
+        fn = served[name]
         assert not inspect.iscoroutinefunction(fn), (
             f"{name} must be a plain `def` (blocking upload work belongs in "
             "Starlette's thread pool, not the event loop)"

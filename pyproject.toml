@@ -116,6 +116,7 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 [tool.ruff.lint.per-file-ignores]
 # B008: FastAPI's File()/Form() defaults are the framework's DI idiom
 "src/rockforge/interfaces/api/app.py" = ["B008"]
+"src/rockforge/interfaces/api/routers/*.py" = ["B008"]
 
 [tool.mypy]
 python_version = "3.11"
