@@ -654,6 +654,11 @@ button.pv-wide { display:flex; align-items:center; justify-content:center; gap:.
 .pv-live-bpm { font-weight:700; color:#b58cff; white-space:nowrap; }
 .pv-live-tone { font-weight:700; color:#e0a54a; white-space:nowrap; display:inline-flex; align-items:center; gap:.3rem; }
 #playbackSpeed { height:2.9rem; }
+.pv-loop { display:inline-flex; gap:.3rem; }
+button.pv-loop-btn { height:2.9rem; min-width:2.6rem; padding:0 .65rem; display:inline-flex; align-items:center; justify-content:center; font-weight:700; }
+button.pv-loop-btn .ic { width:1.2rem; height:1.2rem; margin:0; }
+button.pv-loop-btn.set { color:#c9b3ff; border-color:#7c5cff; }
+button.pv-loop-btn[aria-pressed="true"] { background:#2d2350; color:#e2d6ff; border-color:#7c5cff; }
 .pv-field { display:flex; align-items:center; gap:.6rem; font-size:.85rem; color:var(--muted); }
 .pv-field input[type=range] { flex:1; accent-color:#a97bff; }
 .pv-tools { display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; }
@@ -936,6 +941,12 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                 <option value="0.3">30%</option>
                 <option value="0.25">25%</option>
               </select>
+              <div class="pv-loop" role="group" aria-label="Repetir um trecho (A–B)">
+                <button type="button" id="loopA" class="pv-loop-btn" title="Início do trecho a repetir = cursor ([)"><span translate="no">A</span></button>
+                <button type="button" id="loopB" class="pv-loop-btn" title="Fim do trecho a repetir = cursor (])"><span translate="no">B</span></button>
+                <button type="button" id="loopToggle" class="pv-loop-btn" aria-pressed="false" title="Repetir o trecho A–B (L)" aria-label="Repetir o trecho A–B"><svg class="ic" aria-hidden="true"><use href="#i-refresh"/></svg></button>
+                <button type="button" id="loopClear" class="pv-loop-btn" title="Tirar o trecho A–B" aria-label="Tirar o trecho A–B" hidden><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+              </div>
               <div class="dd">
                 <button type="button" id="audioMenuBtn" class="dd-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="audioMenu"><svg class="ic dd-ico" aria-hidden="true"><use href="#i-volume"/></svg><span>Áudio</span><svg class="ic dd-chev" aria-hidden="true"><use href="#i-chev-down"/></svg></button>
                 <div class="dd-menu dd-panel right" id="audioMenu" hidden>

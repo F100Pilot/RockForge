@@ -13,6 +13,9 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 - **Changes not yet applied are saved automatically** in this browser: closing the app before
   "Apply and rebuild" no longer loses them, and reopening the project asks whether to recover
   them.
+- **Repeat a passage (A–B)** in the transport: mark A and B at the cursor (or [ and ]) and
+  playback stays in that passage until you turn it off (L); the passage shows on the score.
+  With the speed, it lets you hear a bit slowly until the sync is right.
 
 ### Security
 - A title, tone name, section or lyric from outside (a GP file, Songsterr, LRCLIB, other

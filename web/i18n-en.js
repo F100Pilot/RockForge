@@ -1131,5 +1131,15 @@
  "Refazer": "Redo",
  "Este projeto tem alterações por aplicar, guardadas automaticamente em {when}. Recuperá-las?": "This project has changes not yet applied, saved automatically on {when}. Recover them?",
  "Não foi possível recuperar as alterações guardadas.": "Could not recover the saved changes.",
- "Alterações recuperadas — \"Aplicar e reconstruir\" para as guardar no projeto.": "Changes recovered — \"Apply and rebuild\" to keep them in the project."
+ "Alterações recuperadas — \"Aplicar e reconstruir\" para as guardar no projeto.": "Changes recovered — \"Apply and rebuild\" to keep them in the project.",
+ "Repetir um trecho (A–B)": "Repeat a passage (A–B)",
+ "Início do trecho a repetir = cursor ([)": "Start of the passage to repeat = cursor ([)",
+ "Fim do trecho a repetir = cursor (])": "End of the passage to repeat = cursor (])",
+ "Repetir o trecho A–B (L)": "Repeat the A–B passage (L)",
+ "Repetir o trecho A–B": "Repeat the A–B passage",
+ "Tirar o trecho A–B": "Remove the A–B passage",
+ "A e B têm de estar pelo menos 0,2 s afastados.": "A and B have to be at least 0.2 s apart.",
+ "Marca primeiro o início (A) e o fim (B) do trecho, no cursor.": "First mark the start (A) and the end (B) of the passage, at the cursor.",
+ "Início do trecho: {t} — clica para o mover para o cursor ([)": "Start of the passage: {t} — click to move it to the cursor ([)",
+ "Fim do trecho: {t} — clica para o mover para o cursor (])": "End of the passage: {t} — click to move it to the cursor (])"
 };

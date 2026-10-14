@@ -1470,6 +1470,7 @@ function confirmModal(text) {
 
 function closeDetail() {
   stopPendingHistory();
+  clearLoop(false);
   window.Highway3D?.close();  // nothing to draw once the project is closed
   hw3dLastSong = null;
   selectedJob = null;
@@ -1862,7 +1863,8 @@ async function selectJob(id, { poll = false, force = false } = {}) {
 }
 
 async function loadArrangements(id) {
-  stopPendingHistory();  // the previous version's steps do not apply to this one
+  stopPendingHistory();
+  clearLoop(false);  // a loop belongs to the recording it was set on  // the previous version's steps do not apply to this one
   arrangements = await getJSON(`/jobs/${id}/arrangements`);
   syncAnchorsByKind = {};  // fresh pending corrections per arrangement
   tempoScaleByKind = {};
@@ -2331,6 +2333,7 @@ function showArr(i) {
   }
   s += `<defs><marker id="anchorArrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
           <path d="M0,0 L6,3 L0,6 z" fill="${ANCHOR}"/></marker></defs>`;
+  s += loopBandSvg(H);
   const phX = 30 + currentPlayheadT * tabPx;
   s += `<line id="playhead" x1="${phX}" y1="0" x2="${phX}" y2="${H}" stroke="#ff7a45" stroke-width="2" opacity=".9"/>`;
   // "Detect first note" marker: the recording point where the 1st note sounds.
@@ -7735,6 +7738,14 @@ function stopMusicSource() {
 }
 
 function audioPlay() {
+  // With the loop on, playing from outside it starts at A.
+  if (loopOn && loopA != null && loopB != null) {
+    const t = audioTime();
+    if (t < loopA || t >= loopB) {
+      if (playBuffer) pausedAt = loopA;
+      else { const au = document.getElementById('syncAudio'); if (au) au.currentTime = loopA; }
+    }
+  }
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   audioCtx.resume();
   if (!playGain) {
@@ -7810,6 +7821,12 @@ document.addEventListener('keydown', e => {
     e.preventDefault(); audioSeek(Math.max(0, currentPlayheadT - (e.shiftKey ? 5 : 1)));
   } else if (e.key === 'Home') {
     e.preventDefault(); audioSeek(0);
+  } else if (e.key === '[' && !e.ctrlKey && !e.metaKey) {
+    e.preventDefault(); setLoopPoint('a');
+  } else if (e.key === ']' && !e.ctrlKey && !e.metaKey) {
+    e.preventDefault(); setLoopPoint('b');
+  } else if ((e.key === 'l' || e.key === 'L') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    e.preventDefault(); toggleLoop();
   } else if (e.key === '+' || e.key === '=') {
     e.preventDefault(); setZoom(zoomLevel * 1.5);
   } else if (e.key === '-' || e.key === '_') {
@@ -7822,6 +7839,80 @@ document.addEventListener('keydown', e => {
     e.preventDefault(); deleteSelectedNotes();
   }
 });
+
+// ── A–B loop ─────────────────────────────────────────────────────────────────
+// Practising or checking a passage: A and B are set at the cursor (recording
+// time, the playhead's own clock), and while the loop is on playback stays
+// inside them — reaching B goes back to A, and playing from outside starts at
+// A. Paused, the cursor still moves freely. Belongs to the project open now.
+let loopA = null, loopB = null, loopOn = false;
+function setLoopPoint(which) {
+  const t = Math.max(0, currentPlayheadT);
+  const prev = which === 'a' ? loopA : loopB;
+  if (which === 'a') loopA = t; else loopB = t;
+  if (loopA != null && loopB != null) {
+    if (loopB < loopA) [loopA, loopB] = [loopB, loopA];
+    if (loopB - loopA < 0.2) {
+      if (which === 'a') loopA = prev; else loopB = prev;
+      toast(T('A e B têm de estar pelo menos 0,2 s afastados.'));
+    } else if (prev == null) {
+      loopOn = true;  // the second point placed: repeat it straight away
+    }
+  }
+  updateLoopUi();
+  redrawScore();
+}
+function toggleLoop() {
+  if (loopA == null || loopB == null) { toast(T('Marca primeiro o início (A) e o fim (B) do trecho, no cursor.')); return; }
+  loopOn = !loopOn;
+  if (loopOn && audioIsPlaying()) keepInsideLoop();
+  updateLoopUi();
+  redrawScore();
+}
+function clearLoop(redraw = true) {
+  loopA = loopB = null;
+  loopOn = false;
+  updateLoopUi();
+  if (redraw) redrawScore();
+}
+// While the loop is on: back to A from outside it. True when it moved.
+function keepInsideLoop() {
+  if (!loopOn || loopA == null || loopB == null) return false;
+  const t = audioTime();
+  if (t >= loopA && t < loopB) return false;
+  audioSeek(loopA);
+  return true;
+}
+function updateLoopUi() {
+  const a = document.getElementById('loopA'), b = document.getElementById('loopB');
+  if (!a) return;
+  a.classList.toggle('set', loopA != null);
+  b.classList.toggle('set', loopB != null);
+  a.title = loopA != null ? T('Início do trecho: {t} — clica para o mover para o cursor ([)', { t: fmtClockTenths(loopA) })
+    : T('Início do trecho a repetir = cursor ([)');
+  b.title = loopB != null ? T('Fim do trecho: {t} — clica para o mover para o cursor (])', { t: fmtClockTenths(loopB) })
+    : T('Fim do trecho a repetir = cursor (])');
+  document.getElementById('loopToggle').setAttribute('aria-pressed', loopOn ? 'true' : 'false');
+  document.getElementById('loopClear').hidden = loopA == null && loopB == null;
+}
+// The loop on the score: a band from A to B, brighter while it repeats.
+function loopBandSvg(H) {
+  if (loopA == null && loopB == null) return '';
+  const x = t => 30 + t * tabPx;
+  let s = '';
+  if (loopA != null && loopB != null)
+    s += `<rect x="${x(loopA)}" y="0" width="${(loopB - loopA) * tabPx}" height="${H}" fill="#7c5cff" opacity="${loopOn ? 0.16 : 0.07}" pointer-events="none"/>`;
+  for (const [t, label] of [[loopA, 'A'], [loopB, 'B']]) {
+    if (t == null) continue;
+    s += `<line x1="${x(t)}" y1="0" x2="${x(t)}" y2="${H}" stroke="#a98bff" stroke-width="1.5" stroke-dasharray="4,3" pointer-events="none"/>`;
+    s += `<text x="${x(t) + 4}" y="14" fill="#c9b3ff" font-size="12" font-weight="700" pointer-events="none">${label}</text>`;
+  }
+  return s;
+}
+document.getElementById('loopA').addEventListener('click', () => setLoopPoint('a'));
+document.getElementById('loopB').addEventListener('click', () => setLoopPoint('b'));
+document.getElementById('loopToggle').addEventListener('click', toggleLoop);
+document.getElementById('loopClear').addEventListener('click', () => clearLoop());
 
 // Hard stop used on job switch / detail close — no UI resume implied.
 function stopPlayback() {
@@ -7911,6 +8002,7 @@ function syncResetPointer() {
 function syncFrame() {
   const ph = document.getElementById('playhead');
   if (!ph) { syncRaf = null; return; }
+  if (loopOn && audioIsPlaying() && loopB != null && audioTime() >= loopB) keepInsideLoop();
   // Playhead tracks the audio (and thus the waveform). It stays in audio
   // coordinates; tempo preview moves the notes over it, not the other way.
   const vtDisp = playheadDisplay(audioTime());  // bundle time (for tick compare)

@@ -154,7 +154,14 @@ They stay pending as before; Undo goes back to the built version.
 
 ### The Score page
 
-- **Transport:** play/pause (or Space), time, speed (25–100 %) and **Audio ▾**:
+- **Transport:** play/pause (or Space), time, speed (25–100 %), **repeat a passage** and
+  **Audio ▾**:
+  - **A** and **B** mark the start and end of the passage at the cursor (or the keys **[** and
+    **]**); with both marked the passage repeats by itself, and the button beside them (or
+    **L**) turns the repeat on and off. While it repeats, playback stays between A and B
+    (playing from outside starts at A); paused, the cursor moves freely. The passage shows in
+    purple on the score; **×** removes it. Good for hearing a bit slowly (with the speed) until
+    the sync is right;
   - music and note volumes, **Tick per note**;
   - **Audio source**: the full mix; **«track» (synthesized)**, that track's notes played alone
     and clean, good for checking each track's sync; **Vocals (synthesized)**, the melody the GP
@@ -411,6 +418,7 @@ On the score, outside text fields:
 | Space | play / pause |
 | ← / → (Shift = bigger step) | back / forward |
 | Home | go to the start |
+| [ · ] · L | mark A · mark B (at the cursor) · turn the passage repeat on/off |
 | + / − | zoom |
 | Shift+click · Ctrl+click | select a range · add or remove a note |
 | Delete | delete the selection |

@@ -154,7 +154,13 @@ queres recuperar. Ficam pendentes como antes; Desfazer volta à versão constru�
 
 ### A página Partitura
 
-- **Transporte:** play/pausa (ou Espaço), tempo, velocidade (25–100 %) e **Áudio ▾**:
+- **Transporte:** play/pausa (ou Espaço), tempo, velocidade (25–100 %), **repetir um trecho**
+  e **Áudio ▾**:
+  - **A** e **B** marcam no cursor o início e o fim do trecho (ou as teclas **[** e **]**); com
+    os dois marcados o trecho repete-se sozinho, e o botão ao lado (ou **L**) liga e desliga a
+    repetição. Enquanto repete, a reprodução fica entre A e B (dar play de fora começa em A);
+    parado, o cursor anda livremente. O trecho aparece a roxo na partitura; o **×** tira-o.
+    Bom para ouvir um passo devagar (com a velocidade) até a sincronização bater;
   - volumes da música e das notas, **Tique por nota**;
   - **Fonte de áudio**: a mistura completa; **«pista» (sintetizada)**, as notas dessa pista
     tocadas sozinhas e limpas, boas para conferir a sincronização de cada pista;
@@ -410,6 +416,7 @@ Na partitura, fora de campos de texto:
 | Espaço | play / pausa |
 | ← / → (Shift = passo maior) | recua / avança |
 | Home | vai ao início |
+| [ · ] · L | marca A · marca B (no cursor) · liga/desliga a repetição do trecho |
 | + / − | zoom |
 | Shift+clique · Ctrl+clique | seleciona um intervalo · junta ou tira uma nota |
 | Delete | apaga a seleção |

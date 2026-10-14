@@ -749,6 +749,21 @@ a lyric word and the cent offset recovered after reloading the page, undone
 to the build (draft gone), redone (draft back), declined (gone for good), and
 dropped by a real rebuild.
 
+### Repeating a passage (A–B loop, the transport)
+
+`loopA`/`loopB` are recording time (the playhead's clock, `currentPlayheadT`),
+set at the cursor by the A/B buttons or `[`/`]`; placing the second point
+turns the loop on (`loopOn`, toggled by the ↻ button or `L`), B before A is
+swapped, closer than 0.2 s is refused. While on, playback stays inside:
+`syncFrame` sends a playhead at or past B back to A (`keepInsideLoop` →
+`audioSeek`), and `audioPlay` starts at A when the position is outside — so a
+seek outside while playing lands on A too (a seek is a stop + play); paused,
+the cursor moves freely. `loopBandSvg` draws the band in `showArr`. Cleared on
+every load and close (it belongs to that recording). Not part of the pending
+edits (it changes nothing in the build). Browser-only; verified with
+Playwright: 4 s of playback from outside started at A and stayed in [2, 3.43]
+for A=2/B=3.5, `L` off then ran past B, too-close refused, B-before-A swapped.
+
 ### Clearing note edits ("Notas ▾" → Limpar)
 
 The companion to the seeding fix in the note-editor section: once committed

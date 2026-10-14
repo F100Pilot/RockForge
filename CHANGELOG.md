@@ -14,6 +14,9 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 - **As alterações por aplicar ficam guardadas automaticamente** neste browser: fechar a
   aplicação antes de "Aplicar e reconstruir" já não as perde, e ao reabrir o projeto pergunta
   se as queres recuperar.
+- **Repetir um trecho (A–B)** no transporte: marca A e B no cursor (ou [ e ]) e a reprodução
+  fica nesse trecho até desligares (L); o trecho aparece na partitura. Com a velocidade, serve
+  para ouvir um passo devagar até a sincronização bater.
 
 ### Segurança
 - Um título, nome de tom, secção ou letra vindos de fora (ficheiro GP, Songsterr, LRCLIB, CDLC
