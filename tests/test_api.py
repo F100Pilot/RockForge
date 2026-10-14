@@ -301,7 +301,7 @@ def test_rebuild_creates_new_job_with_overrides(client: TestClient) -> None:
     original = _create_job(client)
     r = client.post(
         f"/jobs/{original['id']}/rebuild",
-        json={"tuning_midi": [38, 45, 50, 55, 59, 64], "split_lead_rhythm": False},
+        json={"tuning_midi": [38, 45, 50, 55, 59, 64]},
     )
     assert r.status_code == 202
     assert r.json()["id"] != original["id"]
@@ -2446,6 +2446,34 @@ def test_non_finite_floats_are_rejected_at_the_boundary(
         headers={"Content-Type": "application/json"},
     )
     assert ok.status_code == 202, ok.text
+
+
+def test_a_negative_intro_silence_is_refused_and_the_shift_matches_the_build(
+    client: TestClient, tmp_path
+) -> None:
+    """/rebuild refused a negative lead_in_s but /jobs/gp stored one, and the
+    anchor re-expression then used it unclamped while the build clamps it to 0
+    — a tempo change would have moved every note by the difference."""
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.application.gp_pipeline import MIN_LEAD_S
+
+    data = _make_gp5_bytes(tmp_path)
+    token = client.post(
+        "/gp/inspect", files={"file": ("song.gp5", data, "application/octet-stream")}
+    ).json()["gp_token"]
+    r = client.post(
+        "/jobs/gp",
+        data={"gp_token": token, "lead_track": "0", "lead_in_s": "-2"},
+        files={"audio": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
+    )
+    assert r.status_code == 422
+    assert "lead_in_s" in r.json()["detail"]
+    # A value that reached params anyway (an older job, an imported file) is
+    # clamped exactly as gp_pipeline clamps it.
+    for offset, lead_in in ((0.0, -2.0), (5.0, 1.5), (-3.0, 0.0), (1.0, 0.25)):
+        build = max(0.0, MIN_LEAD_S - offset) + max(0.0, lead_in) + offset
+        params = {"offset_s": offset, "lead_in_s": lead_in}
+        assert app_module._score_shift(params) == pytest.approx(build)
 
 
 def test_non_finite_form_fields_and_imported_sync_are_rejected(

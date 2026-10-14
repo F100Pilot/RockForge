@@ -63,3 +63,15 @@ def test_every_allowed_suffix_is_accepted(tmp_path: Path) -> None:
         src.write_bytes(b"x")
         dest = LocalFileIngestor().fetch(str(src), tmp_path / f"work{i}")
         assert dest.name == f"input{suffix}"
+
+
+def test_every_recording_the_gp8_detection_finds_can_be_built() -> None:
+    """The GP8 embedded-audio detection, the upload and the build read ONE list:
+    an embedded .opus used to be found, then refused by the build."""
+    from rockforge.infrastructure.gpimport import gpif_parser
+
+    assert gpif_parser._EMBEDDED_AUDIO_SUFFIXES <= ALLOWED_SUFFIXES
+    for sniffed in (b"OggS", b"\x1aE\xdf\xa3", b"ID3", b"fLaC", b"RIFF\0\0\0\0WAVE"):
+        suffix = gpif_parser.audio_suffix_from_bytes(sniffed + b"\0" * 12)
+        assert suffix is None or suffix in ALLOWED_SUFFIXES, suffix
+    assert {".opus", ".webm", ".aac"} <= ALLOWED_SUFFIXES

@@ -1446,8 +1446,11 @@ function closeDetail() {
   hw3dLastSong = null;
   selectedJob = null;
   arrangementsLoadedFor = null;
+  openJobId = null;
   clearTimeout(pollTimer);
   clearInterval(lyricsPollTimer);
+  clearInterval(_toneDetectionPoll); _toneDetectionPoll = null;
+  clearInterval(_stemsPoll); _stemsPoll = null;
   stopArrangementPreview();
   stopPlayback();
   playBuffer = null; playGain = null; pausedAt = 0; playing = false;
@@ -1722,11 +1725,19 @@ function setStatusChip(kind, text, ico) {
 document.getElementById('pvStatusChip').addEventListener('click', () => showSection('exportar'));
 let sectionShownFor = null;  // the job whose first "ready" view opened Partitura
 
+// The project the user asked to see. A poll (or a slow first load) for another
+// one that answers after the user moved on, or closed the project, must not
+// reopen it, take over selectedJob or re-arm its own poll.
+let openJobId = null;
+
 async function selectJob(id, { poll = false, force = false } = {}) {
+  if (!poll) openJobId = id;
+  else if (openJobId !== id) return;
   let j;
   try {
     j = await getJSON(`/jobs/${id}`);
   } catch (err) {
+    if (openJobId !== id) return;
     // Keep the poll alive across a blip: the banner already says the server is
     // unreachable, and dropping the timer here would leave a job that finished
     // meanwhile stuck showing "running" until the user clicks something.
@@ -1734,6 +1745,7 @@ async function selectJob(id, { poll = false, force = false } = {}) {
     else toast(T('não foi possível abrir o projeto: {msg}', { msg: err.message }), 'err');
     return;
   }
+  if (openJobId !== id) return;
   selectedJob = j;
   maybeDropPrevious(j);
   document.getElementById('detailOverlay').hidden = false;
@@ -1812,6 +1824,7 @@ async function selectJob(id, { poll = false, force = false } = {}) {
 
   // Re-arm with setTimeout (not setInterval): the next poll is scheduled only
   // after this one finishes, so a slow render can't stack overlapping calls.
+  if (openJobId !== id) return;
   clearTimeout(pollTimer);
   if (j.status === 'pending' || j.status === 'running')
     pollTimer = setTimeout(() => selectJob(id, { poll: true }), 2500);
@@ -3253,70 +3266,86 @@ function renderAnchorsList() {
 // + the CURRENT arrangement's tempo and pending drift anchors (which include
 // any "Início da música" edit for this tab) in one rebuild. Other arrangements
 // keep their own already-committed sync untouched.
+// One rebuild per click: a double-click used to fork two new versions.
+let applyingAll = false;
+
 async function applyAll() {
-  if (!selectedJob) return;
+  if (!selectedJob || applyingAll) return;
+  applyingAll = true;
+  const applyBtn = document.getElementById('applyAll');
+  applyBtn.disabled = true;
+  try {
+    await applyAllNow();
+  } finally {
+    applyingAll = false;
+    applyBtn.disabled = false;
+  }
+}
+
+async function applyAllNow() {
   mainSyncFollow();  // what the main chart changed must reach the others first
   lyricsFollowSync();  // the rows sent must carry every pending chart correction
   const midi = [...document.querySelectorAll('#tuningInputs input')].map(i => parseInt(i.value, 10));
   const applyToAll = document.getElementById('applyToAllChk').checked;
   const toneSets = toneSetsForRebuild();
-  const r = await fetch(`/jobs/${selectedJob.id}/rebuild`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      tuning_midi: midi.some(isNaN) ? null : midi,
-      cent_offset: centOffsetLive,
-      split_lead_rhythm: document.getElementById('splitChk').checked,
-      offset_s: offsetLive,
-      lead_in_s: Math.max(0, parseFloat(document.getElementById('leadInS').value) || 0),
-      arrangement: currentKind(),
-      tempo_scale: tempoScaleLive,
-      sync_anchors: syncAnchors.length ? syncAnchors : null,
-      apply_to_all: applyToAll,
-      // Every OTHER chart's pending sync too — before, only the chart on screen
-      // was committed and the rest was lost at the rebuild.
-      other_sync: applyToAll ? null : otherPendingSync(),
-      import_mutes: document.getElementById('muteChk').checked,
-      dynamic_difficulty: document.getElementById('ddChk').checked,
-      // null keeps the stored rows; [] drops them, so the build reads the GP
-      // file's own lyrics again ("Voltar à letra da pauta").
-      lyrics_events: lyricsEvents.length ? serializeLyrics() : (lyricsBackToScore ? [] : null),
-      lyrics_follow_chart: isGpJob() ? lyricsFollowChart : null,
-      // Send the FULL current tone state for GP jobs (even when empty) so that
-      // clearing tones/changes actually persists — null would mean "keep the
-      // old value". Non-GP jobs have no tones, so send null to skip the guard.
-      tones: isGpJob() ? jobTones : null,
-      tone_base: isGpJob() ? (toneSets.song.tone_base || '') : null,
-      tone_names: isGpJob() ? toneSets.song.tone_names : null,
-      tone_changes: isGpJob() ? toneSets.song.tone_changes : null,
-      // Each chart's own set; {} = every chart uses the song's (the default).
-      arrangement_tones: isGpJob() ? toneSets.perTrack : null,
-      // Only sent once the user actually touches the section editor — untouched,
-      // null leaves each arrangement's own GP-authored sections alone (unlike
-      // tones, which never had a prior non-user-supplied default to lose).
-      section_overrides: (isGpJob() && sectionsTouched) ? songSections : null,
-      // Genuinely per-arrangement (unlike tone_changes/sections) — sent as
-      // one dict covering every tab's pending edits from this session, same
-      // no-prior-default reasoning as tone_changes (an untouched job sends {}).
-      note_overrides: isGpJob() ? noteOverridesByKind : null,
-    }),
-  });
-  const b = await r.json();
-  if (r.ok) {
-    toast(T('A reconstruir…'), 'ok');
-    // Every chart's pending sync was sent (other_sync), so all of it is built.
-    for (const list of Object.values(syncAnchorsByKind)) list.length = 0;
-    syncAnchors.length = 0;
-    tempoScaleByKind = {};
-    resetMainFollow();
-    // The rows just sent already carry the corrections; clearing the pending
-    // sync must not carry them back before the new build's rows load.
-    resetLyricFollow();
-    noteOverridesByKind = {};  // baked into the new build regardless of applyToAll
-    noteOverridesBuilt = '{}';
-    selectJob(b.id, { force: true });
-    offerDropPrevious(b.id);
+  let b;
+  try {
+    b = await getJSON(`/jobs/${selectedJob.id}/rebuild`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tuning_midi: midi.some(isNaN) ? null : midi,
+        cent_offset: centOffsetLive,
+        offset_s: offsetLive,
+        lead_in_s: Math.max(0, parseFloat(document.getElementById('leadInS').value) || 0),
+        arrangement: currentKind(),
+        tempo_scale: tempoScaleLive,
+        sync_anchors: syncAnchors.length ? syncAnchors : null,
+        apply_to_all: applyToAll,
+        // Every OTHER chart's pending sync too — before, only the chart on screen
+        // was committed and the rest was lost at the rebuild.
+        other_sync: applyToAll ? null : otherPendingSync(),
+        import_mutes: document.getElementById('muteChk').checked,
+        dynamic_difficulty: document.getElementById('ddChk').checked,
+        // null keeps the stored rows; [] drops them, so the build reads the GP
+        // file's own lyrics again ("Voltar à letra da pauta").
+        lyrics_events: lyricsEvents.length ? serializeLyrics() : (lyricsBackToScore ? [] : null),
+        lyrics_follow_chart: isGpJob() ? lyricsFollowChart : null,
+        // Send the FULL current tone state for GP jobs (even when empty) so that
+        // clearing tones/changes actually persists — null would mean "keep the
+        // old value". Non-GP jobs have no tones, so send null to skip the guard.
+        tones: isGpJob() ? jobTones : null,
+        tone_base: isGpJob() ? (toneSets.song.tone_base || '') : null,
+        tone_names: isGpJob() ? toneSets.song.tone_names : null,
+        tone_changes: isGpJob() ? toneSets.song.tone_changes : null,
+        // Each chart's own set; {} = every chart uses the song's (the default).
+        arrangement_tones: isGpJob() ? toneSets.perTrack : null,
+        // Only sent once the user actually touches the section editor — untouched,
+        // null leaves each arrangement's own GP-authored sections alone (unlike
+        // tones, which never had a prior non-user-supplied default to lose).
+        section_overrides: (isGpJob() && sectionsTouched) ? songSections : null,
+        // Genuinely per-arrangement (unlike tone_changes/sections) — sent as
+        // one dict covering every tab's pending edits from this session, same
+        // no-prior-default reasoning as tone_changes (an untouched job sends {}).
+        note_overrides: isGpJob() ? noteOverridesByKind : null,
+      }),
+    });
+  } catch (err) {
+    toast(err.message || T('erro'));
+    return;
   }
-  else toast(b.detail || T('erro'));
+  toast(T('A reconstruir…'), 'ok');
+  // Every chart's pending sync was sent (other_sync), so all of it is built.
+  for (const list of Object.values(syncAnchorsByKind)) list.length = 0;
+  syncAnchors.length = 0;
+  tempoScaleByKind = {};
+  resetMainFollow();
+  // The rows just sent already carry the corrections; clearing the pending
+  // sync must not carry them back before the new build's rows load.
+  resetLyricFollow();
+  noteOverridesByKind = {};  // baked into the new build regardless of applyToAll
+  noteOverridesBuilt = '{}';
+  selectJob(b.id, { force: true });
+  offerDropPrevious(b.id);
 }
 document.getElementById('applyAll').addEventListener('click', applyAll);
 
@@ -4783,16 +4812,17 @@ async function loadLyrics(id) {
   clearInterval(lyricsPollTimer);
   if (LYRICS_DETECTING_STATUSES.has(body.status)) {
     const startedAt = Date.now();
+    const jobId = selectedJob?.id;  // see pollToneDetection
     lyricsPollTimer = setInterval(async () => {
-      if (!selectedJob) { clearInterval(lyricsPollTimer); return; }
-      const rr = await fetch(`/jobs/${selectedJob.id}/lyrics`);
-      if (!rr.ok) return;
-      const b = await rr.json();
+      if (!selectedJob || selectedJob.id !== jobId) { clearInterval(lyricsPollTimer); return; }
+      let b;
+      try { b = await getJSON(`/jobs/${jobId}/lyrics`); } catch { return; }
+      if (!selectedJob || selectedJob.id !== jobId) return;
       let label = LYRICS_STATUS_LABEL[b.status] || '';
       const elapsed = Date.now() - _lyricsStatusSince;
       const stuckMs = LYRICS_STUCK_MS[b.status] || 8*60*1000;
       const isStuck = LYRICS_DETECTING_STATUSES.has(b.status) && elapsed > stuckMs;
-      if (b.status === 'detecting' && !b.log.length && Date.now() - startedAt > 30000)
+      if (b.status === 'detecting' && !(b.log || []).length && Date.now() - startedAt > 30000)
         label += T(' — sem resposta do worker há mais de 30s; verifica logs/worker.log');
       if (isStuck)
         label += T(' — sem progresso há {min} min; verifica logs/worker.log', { min: Math.round(elapsed/60000) });
@@ -4836,7 +4866,19 @@ let lyricsCandidates = [];
 let lyricsBeforeAlign = null;  // the editor's rows while an alignment runs
 const redrawScore = () => { if (arrangements.length) showArr(currentArr); };
 
-const fmtMinSec = s => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
+// Rounded to the second BEFORE splitting, or 119.6 s reads "1:60".
+const fmtMinSec = s => {
+  const whole = Math.round(s);
+  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`;
+};
+
+// An LRC time tag, [mm:ss.xx], rounded to the hundredth before splitting so
+// 59.997 s is [01:00.00], not [00:60.00].
+const lrcTag = t => {
+  const cs = Math.round(Math.max(0, t) * 100);
+  const m = Math.floor(cs / 6000);
+  return `[${String(m).padStart(2, '0')}:${((cs - m * 6000) / 100).toFixed(2).padStart(5, '0')}]`;
+};
 
 // Plain lyrics (no timing) as alignment lines.
 const plainLines = text => text.split(/\r?\n/).map(t => t.trim()).filter(Boolean)
@@ -5154,17 +5196,22 @@ async function detectTones() {
 let _toneDetectionPoll = null;
 function pollToneDetection() {
   if (_toneDetectionPoll) clearInterval(_toneDetectionPoll);
+  // Bound to the project it was started for: opening another one (or closing
+  // this one) stops it, instead of polling — and drawing — the new project.
+  const jobId = selectedJob?.id;
   _toneDetectionPoll = setInterval(async () => {
-    if (!selectedJob) return;
-    const r = await fetch(`/jobs/${selectedJob.id}/detected-tones`);
-    if (!r.ok) return;
-    const d = await r.json();
+    if (!selectedJob || selectedJob.id !== jobId) {
+      clearInterval(_toneDetectionPoll); _toneDetectionPoll = null; return;
+    }
+    let d;
+    try { d = await getJSON(`/jobs/${jobId}/detected-tones`); } catch { return; }  // offline: the banner says so
+    if (!selectedJob || selectedJob.id !== jobId) return;
     document.getElementById('toneDetectionLog').textContent = (d.log || []).join('\n');
     if (d.status === 'ready') {
       clearInterval(_toneDetectionPoll);
       _toneDetectionPoll = null;
       renderToneDetectionResult(d);
-      loadToneSuggestions(selectedJob.id);
+      loadToneSuggestions(jobId);
     } else if (d.status === 'unavailable') {
       clearInterval(_toneDetectionPoll);
       _toneDetectionPoll = null;
@@ -5620,11 +5667,14 @@ async function separateStems() {
 let _stemsPoll = null;
 function pollStems() {
   if (_stemsPoll) clearInterval(_stemsPoll);
+  const jobId = selectedJob?.id;  // see pollToneDetection
   _stemsPoll = setInterval(async () => {
-    if (!selectedJob) return;
-    const r = await fetch(`/jobs/${selectedJob.id}/stems`);
-    if (!r.ok) return;
-    const d = await r.json();
+    if (!selectedJob || selectedJob.id !== jobId) {
+      clearInterval(_stemsPoll); _stemsPoll = null; return;
+    }
+    let d;
+    try { d = await getJSON(`/jobs/${jobId}/stems`); } catch { return; }
+    if (!selectedJob || selectedJob.id !== jobId) return;
     const st = document.getElementById('stemsStatus');
     if (d.status === 'ready') {
       clearInterval(_stemsPoll); _stemsPoll = null;
@@ -5952,8 +6002,10 @@ async function searchWizardLyrics() {
   btn.disabled = true;
   info.textContent = T('A procurar…');
   const audio = form.querySelector('input[name=audio]');
-  wzRecordingS = await audioFileDuration(audio && audio.files && audio.files[0]);
   try {
+    // Inside the try: a recording the browser cannot read must not leave the
+    // button disabled for good (the finally re-enables it).
+    wzRecordingS = await audioFileDuration(audio && audio.files && audio.files[0]);
     const q = `title=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`
       + (wzRecordingS ? `&duration=${wzRecordingS.toFixed(1)}` : '');
     const r = await getJSON(`/lyrics-lookup?${q}`);
@@ -6086,20 +6138,14 @@ document.getElementById('exportLrc').addEventListener('click', () => {
     if (!currentLine.length) currentLine = [e];
     else currentLine.push(e);
     if (e.lineBreak) {
-      const first = currentLine[0];
-      const m = Math.floor(first.time / 60);
-      const s = (first.time - m * 60).toFixed(2).padStart(5, '0');
       const text = currentLine.map(w => w.lyric.trim()).join(' ');
-      lines.push(`[${String(m).padStart(2,'0')}:${s}]${text}`);
+      lines.push(`${lrcTag(currentLine[0].time)}${text}`);
       currentLine = [];
     }
   }
   if (currentLine.length) {
-    const first = currentLine[0];
-    const m = Math.floor(first.time / 60);
-    const s = (first.time - m * 60).toFixed(2).padStart(5, '0');
     const text = currentLine.map(w => w.lyric.trim()).join(' ');
-    lines.push(`[${String(m).padStart(2,'0')}:${s}]${text}`);
+    lines.push(`${lrcTag(currentLine[0].time)}${text}`);
   }
   const lrc = lines.join('\n') + '\n';
   const blob = new Blob([lrc], { type: 'text/plain' });

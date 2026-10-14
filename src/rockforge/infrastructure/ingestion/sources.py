@@ -10,7 +10,15 @@ from pathlib import Path
 
 from rockforge.domain.errors import IngestionError
 
-ALLOWED_SUFFIXES = {".mp3", ".flac", ".wav", ".ogg", ".m4a", ".aiff"}
+# The ONE list of recording formats: an upload, the audio a GP8 file carries
+# inside it (gpif_parser) and a YouTube download all end up here, and ffmpeg
+# decodes every one. Three lists used to drift: the GP8 detection accepted an
+# embedded .opus/.webm that the build then refused.
+ALLOWED_SUFFIXES = frozenset({
+    ".mp3", ".flac", ".wav", ".ogg", ".m4a", ".aiff", ".aif",
+    # What a YouTube download keeps when it is stored or embedded as-is.
+    ".opus", ".webm", ".aac", ".mp4", ".wma",
+})
 
 
 class LocalFileIngestor:

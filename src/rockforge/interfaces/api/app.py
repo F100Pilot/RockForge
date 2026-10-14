@@ -470,15 +470,26 @@ class OtherSyncIn(BaseModel):
     sync_anchors: list[tuple[Finite, Finite]] = []
 
 
+def _score_shift(params: dict[str, object]) -> float:
+    """Where bar 1's score time lands in the bundle: ``max(offset_s, MIN_LEAD_S)
+    + lead_in_s`` — the same formula as ``gp_pipeline``'s ``score_shift`` (and
+    ``scoreShift`` in web/app.js). The anchor re-expression must use the build's
+    value exactly, or a tempo change shifts every note by the difference."""
+    from rockforge.application.gp_pipeline import MIN_LEAD_S
+
+    offset = float(cast(float, params.get("offset_s", 0.0) or 0.0))
+    lead_in = float(cast(float, params.get("lead_in_s", 0.0) or 0.0))
+    return max(offset, MIN_LEAD_S) + max(0.0, lead_in)
+
+
 class RebuildIn(BaseModel):
-    """Human-review overrides: confirmed tuning and whether to attempt the experimental split."""
+    """Human-review overrides for a rebuild (sync, tuning, tones, lyrics, note edits)."""
 
     tuning_midi: list[MidiPitch] | None = None  # 6 MIDI pitches, low to high
     cent_offset: Finite = 0.0
     offset_s: Finite | None = None  # GP sync: second in the recording where the song starts
     lead_in_s: Finite | None = None  # GP: extra intro silence prepended (pushes the song later)
     tempo_scale: Finite | None = None  # GP sync: stretch/compress the whole chart timeline
-    split_lead_rhythm: bool = True
     # Manual drift-correction points: (chart_time_s, corrected_time_s) pairs, in the
     # chart's already-shifted timeline (as shown in the tab viewer).
     sync_anchors: list[tuple[Finite, Finite]] | None = None
@@ -1564,7 +1575,9 @@ def create_gp_job(
                 422, "a recording is required (or use_embedded_audio for a GP8 file that has one)"
             )
         suffix = Path(audio.filename).suffix.lower()
-        if suffix not in {".mp3", ".flac", ".wav", ".ogg", ".m4a", ".aiff"}:
+        from rockforge.infrastructure.ingestion.sources import ALLOWED_SUFFIXES
+
+        if suffix not in ALLOWED_SUFFIXES:
             raise HTTPException(415, f"unsupported audio format: {suffix or '(none)'}")
         audio_dest = upload_dir / f"{uuid.uuid4()}{suffix}"
         _copy_upload_capped(audio, audio_dest)
@@ -1616,6 +1629,8 @@ def create_gp_job(
     _reject_non_finite(offset_s=offset_s, lead_in_s=lead_in_s, tempo_scale=tempo_scale)
     if tempo_scale <= 0:
         raise HTTPException(422, "tempo_scale must be > 0")
+    if lead_in_s < 0.0:
+        raise HTTPException(422, "lead_in_s must be >= 0")
 
     parsed_bar_times = _parse_bar_times(bar_times)
     parsed_estimated_bars = _parse_estimated_bars(estimated_bars)
@@ -2196,23 +2211,20 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
             raise HTTPException(404, "job not found")
         if original.source_type in {"upload", "gp"} and not Path(original.source).exists():
             raise HTTPException(409, "original upload no longer exists on the work volume")
-        from rockforge.application.gp_pipeline import MIN_LEAD_S, MIN_OFFSET_S
+        from rockforge.application.gp_pipeline import MIN_OFFSET_S
 
         params: dict[str, object] = dict(original.params or {})
         # Snapshot the PRE-EDIT timeline parameters before anything below mutates
         # them (dict() is shallow, so nested entries are shared). They are needed
         # to conjugate already-committed anchor stages — see _remap_committed_anchors.
         _old_scale = float(cast(float, params.get("tempo_scale", 1.0) or 1.0))
-        _old_shift = max(
-            float(cast(float, params.get("offset_s", 0.0) or 0.0)), MIN_LEAD_S
-        ) + float(cast(float, params.get("lead_in_s", 0.0) or 0.0))
+        _old_shift = _score_shift(params)
         _old_arr_scales: dict[str, float] = {
             k: float(cast(float, (v or {}).get("tempo_scale", _old_scale) or _old_scale))
             for k, v in cast(
                 "dict[str, dict[str, object]]", params.get("arrangement_sync", {}) or {}
             ).items()
         }
-        params["split_lead_rhythm"] = payload.split_lead_rhythm
         if payload.tuning_midi is not None:
             params["tuning_midi"] = payload.tuning_midi
             params["cent_offset"] = payload.cent_offset
@@ -2334,9 +2346,7 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
             (tempo_scale is per-arrangement) but the shared job-level shift.
             """
             new_scale = float(cast(float, params.get("tempo_scale", 1.0) or 1.0))
-            new_shift = max(
-                float(cast(float, params.get("offset_s", 0.0) or 0.0)), MIN_LEAD_S
-            ) + float(cast(float, params.get("lead_in_s", 0.0) or 0.0))
+            new_shift = _score_shift(params)
             store = cast(
                 "dict[str, dict[str, object]]", params.get("arrangement_sync", {}) or {}
             )

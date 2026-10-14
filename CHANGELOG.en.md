@@ -16,6 +16,18 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
   site.
 - Docker: the image now makes the `.psarc` (the `[psarc]` extra was missing).
 
+### Fixed
+- A GP8 file's audio in `.opus`, `.webm`, `.aac`, `.mp4` or `.wma` (and a YouTube download in
+  those formats) was found but then refused by the build. There is now one list of formats, and
+  they can be uploaded too.
+- A double click on "Apply and rebuild" created two versions.
+- A late answer for a project you had closed (or left for another one) reopened it; and tone/stem
+  detection kept polling the new project after you switched.
+- `1:60` in the length of lyrics found online and `[00:60.00]` in the exported LRC.
+- A negative intro silence was accepted when creating a project and put the corrections out of
+  line after a tempo change.
+- The "Lead/Rhythm (exp.)" checkbox, which no longer did anything, is gone.
+
 ## [0.10.0 beta 1] — 2026-10-14
 
 First public version, in beta: ready to use, but waiting for more testing in the game and on

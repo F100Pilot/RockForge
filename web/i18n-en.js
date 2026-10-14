@@ -229,7 +229,6 @@
  "Opções da construção": "Build options",
  "Afinação (MIDI):": "Tuning (MIDI):",
  "Detetar afinação": "Detect tuning",
- "Lead/Rhythm (exp.)": "Lead/Rhythm (exp.)",
  "Palm mute / slap / tap": "Palm mute / slap / tap",
  "Desliga a dificuldade dinâmica no PSARC nativo — uma única dificuldade com todas as notas. Útil se o DD estiver a dar problemas.": "Turns off dynamic difficulty in the native PSARC — a single difficulty with all the notes. Useful if DD is causing problems.",
  "Dificuldade dinâmica": "Dynamic difficulty",

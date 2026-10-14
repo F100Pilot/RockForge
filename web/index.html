@@ -1476,7 +1476,6 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
               <button class="info-btn" data-info="tuning">ⓘ</button>
             </div>
           <div class="pv-row" style="flex-wrap:wrap;gap:1.2rem">
-            <label class="check"><input type="checkbox" id="splitChk" form="rebuildForm" checked> Lead/Rhythm (exp.)</label>
             <label class="check"><input type="checkbox" id="muteChk" form="rebuildForm" checked> Palm mute / slap / tap</label>
             <label class="check" title="Desliga a dificuldade dinâmica no PSARC nativo — uma única dificuldade com todas as notas. Útil se o DD estiver a dar problemas."><input type="checkbox" id="ddChk" form="rebuildForm" checked> Dificuldade dinâmica</label>
           </div>
@@ -1742,7 +1741,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
               Desliga só se quiseres usar outra gravação (que tem de começar no mesmo sítio).</p></div>
           <div class="field" id="gpAudioUploadField">
             <div class="file-drop"><div class="file-drop-icon"><svg class="ic" aria-hidden="true"><use href="#i-headphones"/></svg></div><span class="file-drop-text">Arrasta ou clica para escolher</span><span class="file-drop-btn">Procurar</span>
-            <input type="file" name="audio" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" required></div></div>
+            <input type="file" name="audio" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff,.aif,.opus,.webm,.aac,.mp4,.wma" required></div></div>
           <details class="field" id="ytBlock">
             <summary style="cursor:pointer"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg> <b>Não tens o áudio?</b> — descarregá-lo de um vídeo do YouTube</summary>
             <p class="meta" style="margin:.4rem 0 .35rem">Cola o link do vídeo com a música: o áudio passa a ser a gravação do
@@ -1862,7 +1861,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
             <input type="file" id="batchGpFiles" accept=".gp3,.gp4,.gp5,.gp" multiple></div></div>
           <div class="field"><label>Gravações (várias, nomeadas como os ficheiros GP — não precisas das que já vêm dentro do ficheiro GP)</label>
             <div class="file-drop"><div class="file-drop-icon"><svg class="ic" aria-hidden="true"><use href="#i-headphones"/></svg></div><span class="file-drop-text">Arrasta ou clica para escolher (várias)</span><span class="file-drop-btn">Procurar</span>
-            <input type="file" id="batchAudioFiles" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff" multiple></div></div>
+            <input type="file" id="batchAudioFiles" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff,.aif,.opus,.webm,.aac,.mp4,.wma" multiple></div></div>
         </div>
       </div>
       <div class="pv-card pv-card-lg">

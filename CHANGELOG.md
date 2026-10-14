@@ -17,6 +17,18 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
   de outro site.
 - Docker: a imagem passa a gerar o `.psarc` (faltava o `[psarc]`).
 
+### Corrigido
+- O áudio de um ficheiro GP8 em `.opus`, `.webm`, `.aac`, `.mp4` ou `.wma` (e um download do
+  YouTube nesses formatos) era encontrado mas a construção recusava-o. Agora há uma só lista de
+  formatos, e também se podem carregar.
+- "Aplicar e reconstruir" com duplo clique criava duas versões.
+- Uma resposta atrasada de um projeto que já fechaste (ou de outro que abriste a seguir) reabria-o;
+  e a deteção de tom/stems continuava a consultar o projeto novo depois de mudares.
+- `1:60` na duração das letras encontradas e `[00:60.00]` no LRC exportado.
+- Um silêncio inicial negativo era aceite ao criar o projeto e desalinhava as correções depois de
+  mudar o andamento.
+- Saiu a caixa "Lead/Rhythm (exp.)", que já não fazia nada.
+
 ## [0.10.0 beta 1] — 2026-10-14
 
 Primeira versão pública, em beta: pronta a usar, mas à espera de mais testes no jogo e

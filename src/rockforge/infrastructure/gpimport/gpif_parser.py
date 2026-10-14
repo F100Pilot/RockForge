@@ -64,6 +64,7 @@ from rockforge.infrastructure.gpimport.sync_map import (
     bar_times_warnings,
     relative_to_bar_one,
 )
+from rockforge.infrastructure.ingestion.sources import ALLOWED_SUFFIXES
 
 # NoteValue name -> ticks (quarter = 960).
 _NOTE_VALUE_TICKS = {
@@ -425,11 +426,9 @@ def sync_start_s(path: Path) -> float | None:
 # before embedding it, and GP itself stores its own copy. Uploading the original
 # recording instead left the chart off by exactly that trimmed intro (one bar on
 # the user's song), so when the file has one, it is the recording to use.
-_EMBEDDED_AUDIO_SUFFIXES = frozenset({
-    ".mp3", ".wav", ".ogg", ".flac", ".m4a", ".aiff", ".aif",
-    # What a YouTube download keeps when it is embedded as-is (-c copy).
-    ".opus", ".webm", ".aac", ".mp4", ".wma",
-})
+# The formats the build can read (a YouTube download embedded as-is, -c copy,
+# included): anything else in the archive is not taken for the recording.
+_EMBEDDED_AUDIO_SUFFIXES = ALLOWED_SUFFIXES
 # A member with no extension is recognised by its first bytes: the user's file
 # embedded its recording as "Content/Assets/backing-track", and the name check
 # alone reported it as a file OUTSIDE the .gp ("continua a não detetar que o GP
