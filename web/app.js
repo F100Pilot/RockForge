@@ -1469,6 +1469,7 @@ function confirmModal(text) {
 }
 
 function closeDetail() {
+  stopPendingHistory();
   window.Highway3D?.close();  // nothing to draw once the project is closed
   hw3dLastSong = null;
   selectedJob = null;
@@ -1861,6 +1862,7 @@ async function selectJob(id, { poll = false, force = false } = {}) {
 }
 
 async function loadArrangements(id) {
+  stopPendingHistory();  // the previous version's steps do not apply to this one
   arrangements = await getJSON(`/jobs/${id}/arrangements`);
   syncAnchorsByKind = {};  // fresh pending corrections per arrangement
   tempoScaleByKind = {};
@@ -1911,6 +1913,7 @@ async function loadArrangements(id) {
   updateSelectionInfo();
   await loadLyrics(id);
   await loadTones(id);
+  if (selectedJob && selectedJob.id === id) startPendingHistory();
   // Resume polling if tone detection is in progress.
   if (selectedJob && selectedJob.tone_detection_status === 'detecting') {
     document.getElementById('toneDetectionWrap').style.display = '';
@@ -2052,6 +2055,7 @@ function retempoedBars(a) {
 }
 
 function showArr(i) {
+  notePendingChange();
   if (i !== currentArr) { loadArrSync(i); stopArrangementPreview(); }  // tab change: swap in that chart's own sync state
   currentArr = i;
   if (switchToneSet()) renderToneSetUi();  // per-track tones follow the tab too
@@ -3746,6 +3750,7 @@ function fmtClockTenths(s) {
 }
 
 function renderTonePanel() {
+  notePendingChange();
   if (toneSuggestions && toneSuggestions.tracks) renderToneSuggestions();
   const isGp = selectedJob && selectedJob.source_type === 'gp';
   document.getElementById('tonePanel').style.display = selectedJob ? '' : 'none';
@@ -3900,6 +3905,7 @@ function placeToneChange(chartTime) {
 // songSections is shared across every arrangement (like toneChanges) — see
 // the state declaration above for why sectionsTouched gates the rebuild send.
 function renderSectionsList() {
+  notePendingChange();
   const el = document.getElementById('sectionsList');
   if (!el) return;
   if (!songSections.length) {
@@ -4615,6 +4621,7 @@ document.getElementById('teDelete').addEventListener('click', () => {
 
 // ---- Lyrics editor ----
 function renderLyricsRows() {
+  notePendingChange();
   document.getElementById('lyricsSyncRow').hidden = !lyricsEvents.length;
   document.getElementById('lyricsEmpty').hidden = lyricsEvents.length > 0;
   document.getElementById('lyricsCount').textContent = lyricsEvents.length
@@ -6166,7 +6173,173 @@ function updatePendingChangesInfo() {
   if (JSON.stringify(noteOverridesByKind) !== noteOverridesBuilt) parts.push(T('edições de notas'));
   if (JSON.stringify(serializeLyrics()) !== lyricsBuilt) parts.push(T('letra'));
   el.textContent = parts.length ? T('Pendente: {changes}', { changes: parts.join(', ') }) : '';
+  notePendingChange();
 }
+
+// ── Undo / redo of the pending edits ─────────────────────────────────────────
+// One snapshot holds everything "Aplicar e reconstruir" would send — every
+// chart's tempo and corrections, the note edits, the lyric rows, the sections,
+// the tones, the build options — as plain data. An edit anywhere ends up
+// calling notePendingChange (updatePendingChangesInfo, showArr and the tone,
+// section and lyric panels' render do); 400 ms after the last one the state is
+// compared with the newest snapshot and, when it differs, becomes a new step.
+// Undo/redo restore a whole snapshot, so a step is whatever the user did
+// between two pauses — a drag, a tempo change, a word typed — on any page.
+const HIST_MAX = 100;
+let pendingHist = [];        // JSON snapshots, oldest first
+let pendingHistAt = -1;      // the one on screen
+let pendingHistJob = null;   // the project version they belong to
+let pendingTimer = null;
+let restoringPending = false;
+
+function pendingSnapshot() {
+  stashToneSet();  // the chart on screen's tone set back in its place
+  const tempo = {};
+  for (const a of arrangements) {
+    const live = a.kind === currentKind() ? tempoScaleLive : tempoScaleByKind[a.kind];
+    if (live != null && Math.abs(live - (a.tempo_scale || 1)) > 1e-4) tempo[a.kind] = live;
+  }
+  const anchors = {};
+  for (const [kind, list] of Object.entries(syncAnchorsByKind)) {
+    if (list.length) anchors[kind] = list.map(pt => pt.slice());
+  }
+  return {
+    offset: offsetLive,
+    cents: centOffsetLive,
+    leadIn: document.getElementById('leadInS').value,
+    mutes: document.getElementById('muteChk').checked,
+    dd: document.getElementById('ddChk').checked,
+    tempo, anchors,
+    notes: JSON.parse(JSON.stringify(noteOverridesByKind)),
+    lyrics: lyricsEvents.map(r => ({ time: r.time, length: r.length, lyric: r.lyric, lineBreak: !!r.lineBreak })),
+    lyricsBackToScore, lyricsFollowChart,
+    sections: songSections.map(x => ({ time: x.time, name: x.name })),
+    sectionsTouched,
+    tones: JSON.parse(JSON.stringify({ jobTones, songToneSet, toneSetByKind, tonesPerTrack })),
+  };
+}
+
+function restorePending(snap) {
+  restoringPending = true;
+  try {
+    offsetLive = snap.offset;
+    setCentOffsetLive(snap.cents);
+    document.getElementById('leadInS').value = snap.leadIn;
+    document.getElementById('muteChk').checked = snap.mutes;
+    document.getElementById('ddChk').checked = snap.dd;
+    tempoScaleByKind = { ...snap.tempo };
+    syncAnchorsByKind = {};
+    for (const [kind, list] of Object.entries(snap.anchors)) syncAnchorsByKind[kind] = list.map(pt => pt.slice());
+    const a = arrangements[currentArr];
+    if (a) {
+      tempoScaleLive = (a.kind in tempoScaleByKind) ? tempoScaleByKind[a.kind] : builtScale;
+      syncAnchors = syncAnchorsByKind[a.kind] || (syncAnchorsByKind[a.kind] = []);
+      updateTempoControls();
+    }
+    noteOverridesByKind = JSON.parse(JSON.stringify(snap.notes));
+    noteDeleteUndo = null;  // its record describes a state that is no longer on screen
+    lyricsEvents = snap.lyrics.map(r => ({ ...r }));
+    lyricSelected = null;
+    lyricsBackToScore = snap.lyricsBackToScore;
+    setLyricsFollowChart(snap.lyricsFollowChart);
+    songSections = snap.sections.map(x => ({ ...x }));
+    sectionsTouched = snap.sectionsTouched;
+    const t = JSON.parse(JSON.stringify(snap.tones));
+    jobTones = t.jobTones; songToneSet = t.songToneSet; toneSetByKind = t.toneSetByKind;
+    tonesPerTrack = t.tonesPerTrack;
+    toneSetKind = null;
+    toneSetToGlobals(songToneSet);
+    switchToneSet();
+    // The rows and the other charts already carry what the snapshot's sync
+    // did to them: nothing may carry them again.
+    resetMainFollow();
+    resetLyricFollow();
+    renderTonePanel();
+    renderSectionsList();
+    renderLyricsRows();
+    renderAnchorsList();
+    if (arrangements.length) showArr(currentArr);
+    updatePendingChangesInfo();
+  } finally {
+    restoringPending = false;
+  }
+}
+
+function notePendingChange() {
+  if (restoringPending || !selectedJob || pendingHistJob !== selectedJob.id) return;
+  clearTimeout(pendingTimer);
+  pendingTimer = setTimeout(recordPending, 400);
+}
+
+function recordPending() {
+  clearTimeout(pendingTimer);
+  pendingTimer = null;
+  if (restoringPending || !selectedJob || pendingHistJob !== selectedJob.id) return;
+  const snap = JSON.stringify(pendingSnapshot());
+  if (snap === pendingHist[pendingHistAt]) return;
+  pendingHist = pendingHist.slice(0, pendingHistAt + 1);
+  pendingHist.push(snap);
+  if (pendingHist.length > HIST_MAX) pendingHist.shift();
+  pendingHistAt = pendingHist.length - 1;
+  updateUndoButtons();
+}
+
+// Called once a project version's charts, lyrics and tones are all loaded:
+// what is on screen then is the first step, the one undo stops at.
+function startPendingHistory() {
+  clearTimeout(pendingTimer);
+  pendingTimer = null;
+  pendingHistJob = selectedJob ? selectedJob.id : null;
+  pendingHist = pendingHistJob ? [JSON.stringify(pendingSnapshot())] : [];
+  pendingHistAt = pendingHist.length - 1;
+  updateUndoButtons();
+}
+function stopPendingHistory() {
+  clearTimeout(pendingTimer);
+  pendingTimer = null;
+  pendingHistJob = null;
+  pendingHist = [];
+  pendingHistAt = -1;
+  updateUndoButtons();
+}
+
+function undoPending() {
+  if (pendingTimer) recordPending();  // an edit not yet recorded is the step to undo
+  if (pendingHistAt <= 0) return;
+  pendingHistAt--;
+  restorePending(JSON.parse(pendingHist[pendingHistAt]));
+  updateUndoButtons();
+}
+function redoPending() {
+  if (pendingTimer) recordPending();
+  if (pendingHistAt >= pendingHist.length - 1) return;
+  pendingHistAt++;
+  restorePending(JSON.parse(pendingHist[pendingHistAt]));
+  updateUndoButtons();
+}
+function updateUndoButtons() {
+  const u = document.getElementById('undoBtn'), r = document.getElementById('redoBtn');
+  if (u) u.disabled = pendingHistAt <= 0;
+  if (r) r.disabled = pendingHistAt < 0 || pendingHistAt >= pendingHist.length - 1;
+}
+document.getElementById('undoBtn').addEventListener('click', undoPending);
+document.getElementById('redoBtn').addEventListener('click', redoPending);
+for (const id of ['leadInS', 'muteChk', 'ddChk'])
+  document.getElementById(id).addEventListener('change', notePendingChange);
+// Ctrl+Z / Ctrl+Shift+Z (or Ctrl+Y) on every page of an open project. Inside a
+// text field they stay the field's own undo; a dialog on top keeps them too.
+document.addEventListener('keydown', e => {
+  if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+  const key = e.key.toLowerCase();
+  if (key !== 'z' && key !== 'y') return;
+  const el = document.activeElement;
+  const tag = el && el.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (el && el.isContentEditable)) return;
+  if (!selectedJob || document.getElementById('detailOverlay').hidden) return;
+  if (document.querySelector('.modal-overlay:not([hidden]), .settings-view:not([hidden])')) return;
+  e.preventDefault();
+  if (key === 'y' || e.shiftKey) redoPending(); else undoPending();
+});
 
 // Piecewise-linear remap from (chartTime, correctedTime) anchors — JS port of
 // gp_pipeline._build_time_warp. A single anchor is a uniform shift applied
@@ -7586,8 +7759,6 @@ document.addEventListener('keydown', e => {
     e.preventDefault(); pasteNotesAtCursor();
   } else if ((e.key === 'Delete' || e.key === 'Backspace') && isGpJob() && selectedTimes.size) {
     e.preventDefault(); deleteSelectedNotes();
-  } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z') && isGpJob() && noteDeleteUndo) {
-    e.preventDefault(); undoNoteDelete();
   }
 });
 

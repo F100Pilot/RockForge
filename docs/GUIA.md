@@ -127,8 +127,8 @@ um. Deixa vazios os que a música não tem. Pistas de baixo ainda não são supo
 ## 5. A página do projeto
 
 - **Barra de cima:** ← volta à página inicial; o título com **Editar info** e, depois de uma
-  reconstrução, **Versão anterior**; o estado (clica para ir a Exportar); o número de
-  alterações pendentes; **Aplicar e reconstruir**; **Descarregar**.
+  reconstrução, **Versão anterior**; o estado (clica para ir a Exportar); **Desfazer** e
+  **Refazer**; o número de alterações pendentes; **Aplicar e reconstruir**; **Descarregar**.
 - **Barra da esquerda:** as páginas **Partitura**, **Tons**, **Letra**, **Capa**, **Exportar**,
   e **Definições** em baixo.
 - Enquanto a construção corre, vês o progresso em Exportar; quando acaba, a Partitura abre
@@ -140,6 +140,13 @@ Tudo o que mudas (sincronização, notas, secções, tons, letra, afinação) fi
 e ouves o resultado na partitura, mas o PSARC só muda quando carregas em **Aplicar e
 reconstruir**. Cada reconstrução cria uma **versão nova** do projeto e pergunta se pode apagar
 a anterior quando a nova ficar pronta. Se a reconstrução falhar, a anterior fica.
+
+**Desfazer / Refazer** (as setas na barra de cima, **Ctrl+Z** e **Ctrl+Shift+Z** ou **Ctrl+Y**)
+andam para trás e para a frente nessas alterações pendentes, em qualquer página: uma correção
+de sincronização, um andamento, uma nota editada ou apagada, uma palavra da letra, uma secção,
+um tom. Cada passo é o que fizeste entre duas pausas (um arrastar inteiro conta como um).
+Dentro de um campo de texto, Ctrl+Z desfaz o que escreveste no campo. Desfazer não volta
+para trás de uma reconstrução: começa sempre na versão aberta.
 
 ### A página Partitura
 
@@ -243,7 +250,8 @@ clique no fundo = limpa a seleção. O modo **Excerto** seleciona com uma caixa.
 ### Apagar, copiar, colar
 
 - **Delete** (ou **Apagar** / Notas ▾ → **Apagar seleção**) apaga as notas selecionadas.
-  **Ctrl+Z** desfaz o último apagar.
+  **Ctrl+Z** desfaz o apagar (como qualquer outra alteração); **Desfazer apagar** repõe só o
+  último apagar, mesmo depois de outras edições.
 - **Ctrl+C / Ctrl+V** (ou Notas ▾): copia a seleção e cola-a no cursor, nesta pista ou noutra.
 - Notas ▾ → **Limpar esta pista / Limpar em todas** descarta as edições de notas.
 
@@ -401,7 +409,7 @@ Na partitura, fora de campos de texto:
 | + / − | zoom |
 | Shift+clique · Ctrl+clique | seleciona um intervalo · junta ou tira uma nota |
 | Delete | apaga a seleção |
-| Ctrl+Z | desfaz o último apagar |
+| Ctrl+Z · Ctrl+Shift+Z (ou Ctrl+Y) | desfaz · refaz (em qualquer página do projeto) |
 | Ctrl+C · Ctrl+V | copia a seleção · cola no cursor |
 | Alt (a arrastar) | sem encaixe |
 | Esc | fecha um menu ou popup |

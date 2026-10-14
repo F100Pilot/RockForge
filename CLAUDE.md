@@ -707,6 +707,35 @@ and clears it; an inserted note deleted leaves `{}`; edit-then-delete-then-undo
 keeps fret 9; a real rebuild goes 1374→1372 notes with none left at those
 times).
 
+### Undo / redo of everything pending (`pendingSnapshot`)
+
+"desfazer/refazer em geral": the only undo was the last note delete. Now one
+snapshot (`pendingSnapshot`, plain data) holds everything "Aplicar e
+reconstruir" would send — every chart's tempo (only where it differs from the
+build) and anchors, `offsetLive`, the cent offset, lead-in/mute/DD, the note
+overrides, the lyric ROWS (with their line ends and the follow/back-to-score
+flags), the sections, and the tones (`jobTones`, the song's and each chart's
+set — `stashToneSet` first, so the set on screen is in its place). Every edit
+path ends in `notePendingChange` (from `updatePendingChangesInfo`, `showArr`,
+`renderTonePanel`, `renderSectionsList`, `renderLyricsRows`, and the build
+option inputs); 400 ms after the last call the state is compared with the
+newest snapshot and a different one becomes a step (`recordPending`, ≤ 100
+steps), so a drag or a typed word is one step and a tab switch is none.
+`restorePending` puts a snapshot back and re-renders, then `resetMainFollow`
+and `resetLyricFollow` — the restored rows and other charts already carry
+their sync, and nothing may carry them again. Undo flushes an unrecorded edit
+first (or Ctrl+Z right after an edit would skip it). The history starts once a
+version's charts, lyrics AND tones are loaded (`startPendingHistory` at the end
+of `loadArrangements`), so loading is never a step, and stops on close and on
+the next load: a rebuild is a new version with a new history. Ctrl+Z /
+Ctrl+Shift+Z / Ctrl+Y on any project page, not in a text field (native undo)
+or under a dialog; buttons `#undoBtn`/`#redoBtn` in the top bar. "Desfazer
+apagar" stays as the delete-only restore. Browser-only, no pytest coverage;
+verified with Playwright (tempo, anchor, section, lyric word and note delete
+undone one by one across pages and redone; a new edit drops the redo branch;
+Ctrl+Z in a visible field stays the field's; with two charts a tab switch is no
+step and redo puts each chart's tempo/anchors back; a tone and its change).
+
 ### Clearing note edits ("Notas ▾" → Limpar)
 
 The companion to the seeding fix in the note-editor section: once committed

@@ -1125,5 +1125,8 @@
  "O PSARC tem falhas conhecidas": "The PSARC has known faults",
  "falhas no PSARC": "faults in the PSARC",
  "Ritmo estimado pelo espaçamento (confere estes compassos primeiro):": "Rhythm estimated from the spacing (check these bars first):",
- "Pôr o cursor no compasso {n}": "Put the cursor on bar {n}"
+ "Pôr o cursor no compasso {n}": "Put the cursor on bar {n}",
+ "Desfazer (Ctrl+Z)": "Undo (Ctrl+Z)",
+ "Refazer (Ctrl+Shift+Z)": "Redo (Ctrl+Shift+Z)",
+ "Refazer": "Redo"
 };

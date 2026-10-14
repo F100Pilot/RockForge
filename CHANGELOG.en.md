@@ -6,6 +6,11 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### Added
+- **Undo / Redo** for everything pending: sync corrections, tempo, notes, lyrics, sections,
+  tones and the build options, on any page of the project (buttons in the top bar, Ctrl+Z,
+  Ctrl+Shift+Z or Ctrl+Y). Before, only the last note delete could be undone.
+
 ### Security
 - A title, tone name, section or lyric from outside (a GP file, Songsterr, LRCLIB, other
   people's CDLC) can no longer run code in the page: text is now escaped inside attributes too.

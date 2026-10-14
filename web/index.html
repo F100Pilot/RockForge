@@ -826,6 +826,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
   <symbol id="i-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></symbol>
   <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0 1 14-5l2 2M20 12a8 8 0 0 1-14 5l-2-2M20 4v5h-5M4 20v-5h5"/></symbol>
   <symbol id="i-undo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></symbol>
+  <symbol id="i-redo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></symbol>
   <symbol id="i-guitar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3l5 5M18.5 5.5L13 11"/><path d="M11.5 9.5a3.5 3.5 0 0 0-4.5.5L4 13a4 4 0 0 0 7 7l3-3a3.5 3.5 0 0 0 .5-4.5"/><circle cx="9.5" cy="14.5" r="1.3"/></symbol>
   <symbol id="i-sliders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></symbol>
   <symbol id="i-headphones" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4.5" height="6.5" rx="1.5"/><rect x="16.5" y="14" width="4.5" height="6.5" rx="1.5"/></symbol>
@@ -890,6 +891,8 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
     <div id="detailHead" class="pv-head"></div>
     <button type="button" id="pvStatusChip" class="pv-chip" hidden></button>
     <span class="pv-spacer"></span>
+    <button type="button" id="undoBtn" class="pv-btn pv-icon-btn" title="Desfazer (Ctrl+Z)" aria-label="Desfazer" disabled><svg class="ic" aria-hidden="true"><use href="#i-undo"/></svg></button>
+    <button type="button" id="redoBtn" class="pv-btn pv-icon-btn" title="Refazer (Ctrl+Shift+Z)" aria-label="Refazer" disabled><svg class="ic" aria-hidden="true"><use href="#i-redo"/></svg></button>
     <span id="pendingChangesInfo" class="pv-pending"></span>
     <button type="button" id="applyAll" class="pv-btn pv-primary"><svg class="ic" aria-hidden="true"><use href="#i-refresh"/></svg>Aplicar e reconstruir</button>
     <button type="button" class="pv-btn" data-goto="exportar"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg>Descarregar</button>

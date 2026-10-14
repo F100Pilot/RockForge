@@ -6,6 +6,12 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Novo
+- **Desfazer / Refazer** em tudo o que está pendente: correções de sincronização, andamento,
+  notas, letra, secções, tons e opções da construção, em qualquer página do projeto (botões na
+  barra de cima, Ctrl+Z, Ctrl+Shift+Z ou Ctrl+Y). Antes só se podia desfazer o último apagar
+  de notas.
+
 ### Segurança
 - Um título, nome de tom, secção ou letra vindos de fora (ficheiro GP, Songsterr, LRCLIB, CDLC
   de outras pessoas) já não conseguem correr código na página: o texto passou a ser escapado

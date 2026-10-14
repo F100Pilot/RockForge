@@ -129,8 +129,8 @@ Leave empty the ones the song does not have. Bass tracks are not supported yet.
 ## 5. The project page
 
 - **Top bar:** ← back to the home page; the title with **Edit info** and, after a rebuild,
-  **Previous version**; the status (click to go to Export); the number of pending changes;
-  **Apply and rebuild**; **Download**.
+  **Previous version**; the status (click to go to Export); **Undo** and **Redo**; the number
+  of pending changes; **Apply and rebuild**; **Download**.
 - **Left bar:** the pages **Score**, **Tones**, **Lyrics**, **Cover**, **Export**, and
   **Settings** at the bottom.
 - While the build runs, Export shows its progress; when it is done, the Score opens by itself.
@@ -141,6 +141,12 @@ Everything you change (sync, notes, sections, tones, lyrics, tuning) is **pendin
 and hear the result on the score, but the PSARC changes only when you press **Apply and
 rebuild**. Each rebuild creates a **new version** of the project and asks whether the previous
 one can be deleted once the new one is ready. If the rebuild fails, the previous one stays.
+
+**Undo / Redo** (the arrows in the top bar, **Ctrl+Z** and **Ctrl+Shift+Z** or **Ctrl+Y**) step
+back and forward through those pending changes, on any page: a sync correction, a tempo, a note
+edited or deleted, a lyric word, a section, a tone. Each step is what you did between two pauses
+(a whole drag counts as one). Inside a text field, Ctrl+Z undoes what you typed in it. Undo does
+not go back past a rebuild: it always starts at the version that is open.
 
 ### The Score page
 
@@ -243,7 +249,8 @@ background = clear the selection. **Excerpt** mode selects with a box.
 ### Delete, copy, paste
 
 - **Delete** (or **Delete** / Notes ▾ → **Delete selection**) removes the selected notes.
-  **Ctrl+Z** undoes the last delete.
+  **Ctrl+Z** undoes the delete (like any other change); **Undo delete** restores only the last
+  delete, even after other edits.
 - **Ctrl+C / Ctrl+V** (or Notes ▾): copy the selection and paste it at the cursor, on this
   track or another.
 - Notes ▾ → **Clear this track / Clear on all** discards note edits.
@@ -403,7 +410,7 @@ On the score, outside text fields:
 | + / − | zoom |
 | Shift+click · Ctrl+click | select a range · add or remove a note |
 | Delete | delete the selection |
-| Ctrl+Z | undo the last delete |
+| Ctrl+Z · Ctrl+Shift+Z (or Ctrl+Y) | undo · redo (on any page of the project) |
 | Ctrl+C · Ctrl+V | copy the selection · paste at the cursor |
 | Alt (while dragging) | no snap |
 | Esc | close a menu or popup |
