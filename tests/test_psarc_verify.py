@@ -161,6 +161,10 @@ def test_every_rule_has_its_words() -> None:
 
     codes = set(__import__("re").findall(r'(?:Problem\(|add\(|append\(\()\s*"([a-z_0-9]+)"',
                                          inspect.getsource(verify)))
+    # The shape rules are written once for both kinds (f"{p}_…").
+    codes |= {f"{p}_{x}" for p in ("handshape", "arpeggio")
+              for x in ("overlap", "bad_chord", "empty", "wrong_notes", "times")}
+    codes |= {"note_handshape_mismatch", "note_arpeggio_mismatch"}
     assert codes and all(describe(c) != c for c in codes)
 
 

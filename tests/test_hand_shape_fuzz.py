@@ -10,7 +10,8 @@ conversion produces (XmlToSng.fs ``convertHandshape``, Utils.fs
 ``psarc/verify.py``'s ``check_sng``, the checker the app runs on the user's own
 file, together with every other rule a chart must keep — checked
 level by level on random charts mixing chords, single notes, slides, long
-sustains, rests and linked notes (a note held or slid into the next on its
+sustains, rests, arpeggios (single notes let ring across a chord shape) and
+linked notes (a note held or slid into the next on its
 string, from a single note or from a chord), and again after a write/read round
 trip.
 """
@@ -64,6 +65,16 @@ def _random_chart(seed: int) -> Arrangement:
             if link is not None:  # held on into a single note on that string
                 t = round(t + held, 4)
                 notes.append(TabNote(link, shape[link], t, rnd.choice([0.0, 0.3])))
+        elif rnd.random() < 0.15:  # an arpeggio: the chord a string at a time, let ring
+            ring = frozenset({Technique.LET_RING})
+            strings = [s for s, f in enumerate(shape) if f >= 0]
+            for k in range(rnd.randint(2, 7)):
+                s = strings[k % len(strings)] if rnd.random() < 0.9 else rnd.randrange(6)
+                f = shape[s] if shape[s] >= 0 else rnd.randrange(0, 15)
+                notes.append(TabNote(s, f, round(t, 4), rnd.choice([0.0, 0.3, 1.0]),
+                                     ring if rnd.random() < 0.9 else frozenset()))
+                t += rnd.choice([0.15, 0.25, 0.5])
+            continue
         elif rnd.random() < 0.3:  # a single note held or slid into the next
             s, f = rnd.randrange(6), rnd.randrange(3, 15)
             held = rnd.choice([0.25, 0.5, 0.75])
@@ -96,8 +107,6 @@ def _check_levels(model) -> None:
     # The rules live in ONE place, the checker "Verificar PSARC" runs on the
     # user's file — so the builder and the checker are tested against each other.
     assert check_sng(model) == []
-    for lvl in model.arrangements:
-        assert lvl.fingerprints2 == []
     for ct in model.chord_templates:
         # -1 on disk is the byte 0xFF, which read_sng hands back unsigned.
         assert all(f in (-1, 255) or 1 <= f <= 4 for f in ct.fingers)
@@ -134,7 +143,12 @@ def test_the_xml_hand_shapes_are_the_full_charts_own() -> None:
             assert a[2] <= b[1] + 1e-6
         for t in chords:
             assert any(s <= t + 1e-6 and t < e for _, s, e in xml_shapes), "a chord with no shape"
-        full = from_arrangement(arr, dynamic_difficulty=False).arrangements[0].fingerprints1
+        level = from_arrangement(arr, dynamic_difficulty=False).arrangements[0]
+        full = sorted(level.fingerprints1 + level.fingerprints2, key=lambda f: f.start_time)
         assert [(round(s, 3), round(e, 3)) for _, s, e in xml_shapes] == [
             (round(f.start_time, 3), round(f.end_time, 3)) for f in full]
+        # An "-arp" template is exactly what the SNG puts in Fingerprints2.
+        names = [t.get("displayName") for t in song.findall("chordTemplates/chordTemplate")]
+        assert sorted(round(s, 3) for c, s, _ in xml_shapes if names[c].endswith("-arp")) == [
+            round(f.start_time, 3) for f in level.fingerprints2]
         assert ET.tostring(song)  # serialises

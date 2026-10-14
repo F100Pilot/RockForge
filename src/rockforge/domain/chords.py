@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from rockforge.domain.music import TabNote, Technique
+
 NOTE_NAMES = ("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
 
 # Interval sets (semitones from the root, pitch-class) → quality suffix, in
@@ -231,4 +233,72 @@ def hand_shape_spans(
         run = [cid, i, i] if cid >= 0 else None
     if run is not None:
         close(run)
+    return spans
+
+
+# An arpeggio: single notes let ring one after another across several strings,
+# one fret per string, inside one hand position — a chord played a string at a
+# time. Rocksmith draws it as a shape over those notes (an "-arp" chord
+# template in a hand shape, the SNG's Fingerprints2). At least this many notes,
+# on as many different strings:
+ARPEGGIO_MIN_NOTES = 3
+# Lowest to highest fretted note at most this far apart: four frets, one hand.
+ARPEGGIO_MAX_FRET_SPAN = 3
+
+
+def arpeggio_spans(
+    groups: Sequence[Sequence[TabNote]],
+) -> list[tuple[int, int, tuple[int, ...], float]]:
+    """The arpeggios over a time-sorted run of note groups.
+
+    ``groups`` are the notes at each instant; a group of more than one note is
+    a chord. Returns ``(first, last, frets, end_time)``: indices into
+    ``groups``, one fret per string (-1 unused), and where the shape ends —
+    just after the last note's sustain and never past the next note, like
+    :func:`hand_shape_spans`.
+
+    Guitar Pro has no arpeggio marking a chart can be read from (its
+    "arpeggio" is a strum of one chord), so it is derived: a run of single
+    notes each let ring (the shape stays held — what makes it a chord rather
+    than a melody), no slide (the hand moves), no rest longer than
+    ``HAND_SHAPE_BREAK_S``, each string on one fret, inside
+    ``ARPEGGIO_MAX_FRET_SPAN``, at least ``ARPEGGIO_MIN_NOTES`` notes on as many
+    strings. A chord, or a note that breaks any of these, ends it.
+    """
+    def single(g: Sequence[TabNote]) -> TabNote | None:
+        if len(g) != 1:
+            return None
+        n = g[0]
+        if (Technique.LET_RING not in n.techniques or n.slide_to_fret is not None
+                or n.slide_unpitch_to is not None):
+            return None
+        return n
+
+    spans: list[tuple[int, int, tuple[int, ...], float]] = []
+    run: list[int] = []
+    frets: dict[int, int] = {}
+
+    def close() -> None:
+        if len(run) >= ARPEGGIO_MIN_NOTES and len(frets) >= ARPEGGIO_MIN_NOTES:
+            last = groups[run[-1]][0]
+            end = last.time + last.sustain + HAND_SHAPE_TAIL_S
+            if run[-1] + 1 < len(groups):
+                end = min(end, groups[run[-1] + 1][0].time)
+            shape = tuple(frets.get(s, -1) for s in range(6))
+            spans.append((run[0], run[-1], shape, max(end, last.time + HAND_SHAPE_TAIL_S)))
+
+    for i, g in enumerate(groups):
+        n = single(g)
+        if n is not None and run:
+            prev = groups[run[-1]][0]
+            fretted = [x for x in (*frets.values(), n.fret) if x > 0]
+            if (n.time - (prev.time + prev.sustain) <= HAND_SHAPE_BREAK_S
+                    and frets.get(n.string, n.fret) == n.fret
+                    and (not fretted or max(fretted) - min(fretted) <= ARPEGGIO_MAX_FRET_SPAN)):
+                run.append(i)
+                frets[n.string] = n.fret
+                continue
+        close()
+        run, frets = ([i], {n.string: n.fret}) if n is not None else ([], {})
+    close()
     return spans

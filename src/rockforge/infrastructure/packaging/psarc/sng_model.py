@@ -94,6 +94,10 @@ NOTE_MASK_ARPEGGIO = 0x20000000
 
 NOTE_MASK_STRUM = 0x80000000
 
+# A chord template's own mask (Rocksmith2014.NET ChordMask): an arpeggio's
+# shape (an "-arp" template in the XML).
+CHORD_MASK_ARPEGGIO = 1
+
 
 TECHNIQUE_TO_MASK: dict[Technique, int] = {
     Technique.HAMMER_ON: NOTE_MASK_HAMMERON,

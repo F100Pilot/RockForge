@@ -13,7 +13,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from rockforge.domain.arrangement import Arrangement, ArrangementKind, Section, number_sections
-from rockforge.domain.chords import chord_display, hand_shape_spans
+from rockforge.domain.chords import arpeggio_spans, chord_display, hand_shape_spans
 from rockforge.domain.music import TabNote, Technique, high_density_flags, is_plain_rise
 
 CHORD_EPSILON_S = 0.03  # notes starting within 30 ms form a chord (matches fret mapper)
@@ -324,14 +324,27 @@ def render_arrangement(arr: Arrangement, album_art_urn: str | None = None) -> ET
             template_ids[key] = len(template_ids)
             first_group[key] = g
 
-    templates_el = ET.SubElement(song, "chordTemplates", count=str(len(template_ids)))
-    for key, _tid in sorted(template_ids.items(), key=lambda kv: kv[1]):
-        fingers, name = chord_display(key, first_group[key], arr.tuning.midi)
-        attrs = {"chordName": name, "displayName": name}
-        for i in range(6):
-            attrs[f"fret{i}"] = str(key[i])
-            attrs[f"finger{i}"] = str(fingers[i])
-        ET.SubElement(templates_el, "chordTemplate", attrs)
+    # Arpeggios get templates of their own after the chords' — an "-arp"
+    # displayName is what makes DLC Builder read one as an arpeggio
+    # (ChordTemplate.IsArpeggio), even with the frets of a chord in the song.
+    arpeggios = arpeggio_spans(groups)
+    arp_ids: dict[tuple[int, ...], int] = {}
+    arp_group: dict[tuple[int, ...], list[TabNote]] = {}
+    for first, last, key, _end in arpeggios:
+        if key not in arp_ids:
+            arp_ids[key] = len(template_ids) + len(arp_ids)
+            arp_group[key] = [g[0] for g in groups[first:last + 1]]
+
+    templates_el = ET.SubElement(
+        song, "chordTemplates", count=str(len(template_ids) + len(arp_ids)))
+    for suffix, ids, notes_of in (("", template_ids, first_group), ("-arp", arp_ids, arp_group)):
+        for key, _tid in sorted(ids.items(), key=lambda kv: kv[1]):
+            fingers, name = chord_display(key, notes_of[key], arr.tuning.midi)
+            attrs = {"chordName": name, "displayName": name + suffix}
+            for i in range(6):
+                attrs[f"fret{i}"] = str(key[i])
+                attrs[f"finger{i}"] = str(fingers[i])
+            ET.SubElement(templates_el, "chordTemplate", attrs)
 
     ET.SubElement(song, "fretHandMuteTemplates", count="0")
 
@@ -416,7 +429,16 @@ def render_arrangement(arr: Arrangement, album_art_urn: str | None = None) -> ET
         )
         for n in g:  # chordNote children preserve per-string technique data
             _append_note_el(chord_el, "chordNote", n)
-    anchor_list = _build_anchors(groups)
+    # An arpeggio is one hand position: its notes count as one group, so the
+    # anchor never moves inside it (DLC Builder: AnchorInsideHandShape).
+    anchor_groups: list[list[TabNote]] = []
+    for i, g in enumerate(groups):
+        inside = next((a for a in arpeggios if a[0] < i <= a[1]), None)
+        if inside is not None and anchor_groups:
+            anchor_groups[-1] = anchor_groups[-1] + g
+        else:
+            anchor_groups.append(g)
+    anchor_list = _build_anchors(anchor_groups)
     anchors = ET.SubElement(level, "anchors", count=str(len(anchor_list)))
     for time, fret, width in anchor_list:
         ET.SubElement(anchors, "anchor", time=_fmt(time), fret=str(fret), width=_fmt(float(width)))
@@ -427,12 +449,15 @@ def render_arrangement(arr: Arrangement, album_art_urn: str | None = None) -> ET
          template_ids[_chord_template_key(g)] if len(g) > 1 else -1)
         for g in groups
     ]
-    spans = hand_shape_spans(shape_groups)
+    spans = [(shape_groups[first][0], chord_id, end)
+             for chord_id, first, _last, end in hand_shape_spans(shape_groups)]
+    spans += [(groups[first][0].time, arp_ids[key], end) for first, _l, key, end in arpeggios]
+    spans.sort()
     shapes_el = ET.SubElement(level, "handShapes", count=str(len(spans)))
-    for chord_id, first, _last, end in spans:
+    for start, chord_id, end in spans:
         ET.SubElement(
             shapes_el, "handShape", chordId=str(chord_id),
-            startTime=_fmt(shape_groups[first][0]), endTime=_fmt(end),
+            startTime=_fmt(start), endTime=_fmt(end),
         )
     return song
 

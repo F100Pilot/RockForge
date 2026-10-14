@@ -27,6 +27,8 @@ from pathlib import Path
 
 from rockforge.i18n import tr
 from rockforge.infrastructure.packaging.psarc.sng import (
+    CHORD_MASK_ARPEGGIO,
+    NOTE_MASK_ARPEGGIO,
     NOTE_MASK_CHILD,
     NOTE_MASK_PARENT,
     SngArrangementLevel,
@@ -181,36 +183,59 @@ def _check_level(lv: SngArrangementLevel, model: SngModel, bounds: list[float]) 
         if not any(abs(ext.beat_time - e) < 1e-3 for e in slide_ends):
             add("extension_without_note", ext.beat_time)
 
-    fps, notes = lv.fingerprints1, lv.notes
+    for code, t in _check_shapes(lv.fingerprints1, lv.notes, model, arpeggio=False):
+        add(code, t)
+    for code, t in _check_shapes(lv.fingerprints2, lv.notes, model, arpeggio=True):
+        add(code, t)
+
+    out.extend(Problem(code, level=d, time=t) for code, t in _check_links(lv, model, bounds))
+    return out
+
+
+def _check_shapes(
+    fps: list[SngFingerprint], notes: list[SngNote], model: SngModel, *, arpeggio: bool
+) -> list[tuple[str, float]]:
+    """Hand shapes (Fingerprints1) or arpeggio shapes (Fingerprints2), as DLC
+    Builder converts them: in order, apart, each over notes of its own (chords
+    of its own template for a hand shape, single notes for an arpeggio, whose
+    template is marked Arpeggio), first/last note times as ``convertHandshape``,
+    and every note pointing at the shape ``findFingerPrintId`` finds — for an
+    arpeggio also carrying the Arpeggio mask exactly when inside one."""
+    out: list[tuple[str, float]] = []
+    p = "arpeggio" if arpeggio else "handshape"
+    slot = 1 if arpeggio else 0
     for prev, nxt in zip(fps, fps[1:], strict=False):
         if nxt.start_time < prev.start_time or prev.end_time > nxt.start_time + 1e-6:
-            add("handshape_overlap", nxt.start_time)
+            out.append((f"{p}_overlap", nxt.start_time))
+    templates = model.chord_templates
     for fp in fps:
-        if not 0 <= fp.chord_id < len(model.chord_templates):
-            add("handshape_bad_chord", fp.start_time, str(fp.chord_id))
+        if not 0 <= fp.chord_id < len(templates) or (
+                bool(templates[fp.chord_id].mask & CHORD_MASK_ARPEGGIO) != arpeggio):
+            out.append((f"{p}_bad_chord", fp.start_time))
             continue
         inside = [n for n in notes if fp.start_time <= n.time < fp.end_time]
         if fp.end_time <= fp.start_time or not inside:
-            add("handshape_empty", fp.start_time)
+            out.append((f"{p}_empty", fp.start_time))
             continue
-        if any(n.chord_id != fp.chord_id for n in inside):
-            add("handshape_wrong_notes", fp.start_time)
+        if any((n.chord_id >= 0) if arpeggio else (n.chord_id != fp.chord_id) for n in inside):
+            out.append((f"{p}_wrong_notes", fp.start_time))
         last = inside[-1]
         if abs(fp.first_note_time - inside[0].time) > _EPS or not (
             fp.last_note_time == -1 or (
                 abs(fp.last_note_time - (last.time + last.sustain)) < _EPS
                 and fp.last_note_time < fp.end_time)):
-            add("handshape_times", fp.start_time)
+            out.append((f"{p}_times", fp.start_time))
     for n in notes:
         expected = _find_fingerprint(n.time, fps)
-        if n.fingerprint_id[0] != expected:
-            add("note_handshape_mismatch", n.time)
+        if n.fingerprint_id[slot] != expected:
+            out.append((f"note_{p}_mismatch", n.time))
+        elif arpeggio:
+            if bool(n.mask & NOTE_MASK_ARPEGGIO) != (expected >= 0):
+                out.append(("note_arpeggio_mask", n.time))
         elif n.chord_id >= 0 and expected < 0:
-            add("chord_outside_handshape", n.time)
+            out.append(("chord_outside_handshape", n.time))
         elif n.chord_id < 0 and expected >= 0:
-            add("single_note_in_handshape", n.time)
-
-    out.extend(Problem(code, level=d, time=t) for code, t in _check_links(lv, model, bounds))
+            out.append(("single_note_in_handshape", n.time))
     return out
 
 
@@ -377,6 +402,17 @@ def describe(code: str) -> str:
                                     "a chord outside every hand shape"),
         "single_note_in_handshape": ("nota solta dentro de uma hand shape",
                                      "a single note inside a hand shape"),
+        "arpeggio_overlap": ("arpejos sobrepostos", "overlapping arpeggios"),
+        "arpeggio_bad_chord": ("arpejo aponta para uma forma que não é de arpejo",
+                               "an arpeggio points at a shape that is not an arpeggio's"),
+        "arpeggio_empty": ("arpejo sem notas", "an arpeggio over no note"),
+        "arpeggio_wrong_notes": ("arpejo sobre um acorde", "an arpeggio over a chord"),
+        "arpeggio_times": ("arpejo com tempos de 1.ª/última nota errados",
+                           "an arpeggio with wrong first/last note times"),
+        "note_arpeggio_mismatch": ("nota aponta para o arpejo errado",
+                                   "a note points at the wrong arpeggio"),
+        "note_arpeggio_mask": ("nota de arpejo sem a marca de arpejo (ou ao contrário)",
+                               "an arpeggio note without the arpeggio mark (or the other way)"),
         "link_child_without_parent": (
             "nota ligada sem a nota de onde vem (na mesma corda, antes dela)",
             "a linked note without the note it comes from (on its string, before it)"),

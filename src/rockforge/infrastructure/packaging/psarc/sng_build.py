@@ -10,7 +10,7 @@ from dataclasses import replace
 
 from rockforge.application.ports import VocalEvent
 from rockforge.domain.arrangement import Arrangement, Section, number_sections
-from rockforge.domain.chords import chord_display, hand_shape_spans
+from rockforge.domain.chords import arpeggio_spans, chord_display, hand_shape_spans
 from rockforge.domain.music import TabNote, Technique, high_density_flags, is_plain_rise
 from rockforge.infrastructure.packaging.psarc.sng_model import (
     _CHORD_EPSILON_S,
@@ -21,7 +21,9 @@ from rockforge.infrastructure.packaging.psarc.sng_model import (
     _MIN_NOGUITAR_PHRASE_S,
     _MIN_PHRASE_SEPARATION_S,
     _NOTES_PER_DD_LEVEL,
+    CHORD_MASK_ARPEGGIO,
     NO_CAPO,
+    NOTE_MASK_ARPEGGIO,
     NOTE_MASK_BEND,
     NOTE_MASK_CHILD,
     NOTE_MASK_CHORD,
@@ -471,6 +473,88 @@ def _build_fingerprints(notes: list[SngNote]) -> list[SngFingerprint]:
     return fingerprints
 
 
+def _build_arpeggio_prints(
+    notes: list[SngNote], arpeggios: Sequence[tuple[int, float, float]]
+) -> list[SngFingerprint]:
+    """The level's arpeggio shapes (Fingerprints2): each full-chart arpeggio
+    ``(template, start, end)`` that still has a note at this level, from the
+    first of them (like the level's hand shapes), as DLC Builder converts the
+    XML's "-arp" hand shapes (``convertHandshape``, then partitioned by
+    ``IsArpeggio``). Every note inside gets the shape's index
+    as its second fingerprint id and the Arpeggio mask (XmlToSngNote:
+    ``isArpeggio = fingerPrintIds[1] <> -1``); ``notes`` is mutated in place."""
+    prints: list[SngFingerprint] = []
+    for chord_id, start, end in arpeggios:
+        inside = [i for i, n in enumerate(notes) if start <= n.time < end]
+        if not inside:
+            continue
+        k = len(prints)
+        last = notes[inside[-1]]
+        last_end = last.time + last.sustain
+        prints.append(SngFingerprint(
+            chord_id=chord_id, start_time=notes[inside[0]].time, end_time=end,
+            first_note_time=notes[inside[0]].time,
+            last_note_time=last_end if last_end < end - 0.0005 else -1.0,
+        ))
+        for i in inside:
+            n = notes[i]
+            notes[i] = replace(n, fingerprint_id=(n.fingerprint_id[0], k),
+                               mask=n.mask | NOTE_MASK_ARPEGGIO)
+    return prints
+
+
+def _hold_through_arpeggios(
+    positions: list[tuple[float, float, list[int]]],
+    arpeggios: Sequence[tuple[int, float, float]],
+) -> list[tuple[float, float, list[int]]]:
+    """The positions inside one arpeggio merged into one, so the anchor (the
+    hand's window) never moves in the middle of it: DLC Builder's checker
+    flags an anchor inside a hand shape (AnchorInsideHandShape), and an
+    arpeggio is one hand position by construction (``ARPEGGIO_MAX_FRET_SPAN``
+    fits the window). Only fretted positions place an anchor, so ``positions``
+    may start inside an arpeggio after its open strings."""
+    if not arpeggios:
+        return positions
+    out: list[tuple[float, float, list[int]]] = []
+    span_of: tuple[float, float] | None = None
+    for t, lt, frets in positions:
+        span = next(((a, b) for _, a, b in arpeggios if a <= t < b), None)
+        if span is not None and span == span_of and out:
+            ft, _, fr = out[-1]
+            out[-1] = (ft, lt, fr + frets)
+        else:
+            # From where the arpeggio starts: its first notes may be open
+            # strings (no anchor of their own) or not at this level.
+            out.append((span[0] if span else t, lt, list(frets)))
+        span_of = span
+    return out
+
+
+def _arpeggio_templates(
+    arrangement: Arrangement, groups: list[list[TabNote]], first_id: int
+) -> tuple[list[SngChordTemplate], list[tuple[int, float, float]]]:
+    """Templates for the chart's arpeggios (``arpeggio_spans``, the same the
+    XML writes as "-arp"), numbered after the chords', and the shapes
+    ``(template, start, end)`` over them."""
+    open_midi = arrangement.tuning.midi
+    ids: dict[tuple[int, ...], int] = {}
+    templates: list[SngChordTemplate] = []
+    shapes: list[tuple[int, float, float]] = []
+    for first, last, key, end in arpeggio_spans(groups):
+        if key not in ids:
+            ids[key] = first_id + len(ids)
+            fingers, name = chord_display(key, [g[0] for g in groups[first:last + 1]], open_midi)
+            templates.append(SngChordTemplate(
+                mask=CHORD_MASK_ARPEGGIO,
+                frets=tuple(f if f >= 0 else 255 for f in key),
+                fingers=fingers,
+                notes=tuple(open_midi[i] + f if f >= 0 else -1 for i, f in enumerate(key)),
+                name=name,
+            ))
+        shapes.append((ids[key], groups[first][0].time, end))
+    return templates, shapes
+
+
 def _time_key(t: float) -> int:
     return round(t * 10_000)
 
@@ -526,6 +610,7 @@ def _build_level(
     song_length: float,
     chord_notes_list: list[SngChordNotes],
     link_children: frozenset[tuple[int, int]] = frozenset(),
+    arpeggios: Sequence[tuple[int, float, float]] = (),
 ) -> SngArrangementLevel:
     """One difficulty level over the given note subset.
 
@@ -585,7 +670,9 @@ def _build_level(
     anchor_extensions.sort(key=lambda ae: ae.beat_time)
 
     anchors = _anchor_note_times(_build_anchors(
-        _level_positions(linked, chord_templates, song_length), phrase_iterations, song_length
+        _hold_through_arpeggios(
+            _level_positions(linked, chord_templates, song_length), arpeggios),
+        phrase_iterations, song_length,
     ), linked)
 
     # A note's anchor is the one of ITS level that it falls in (DLC Builder's
@@ -602,6 +689,7 @@ def _build_level(
             linked[gi] = replace(n, anchor_fret=a.fret, anchor_width=a.width)
 
     fingerprints = _build_fingerprints(linked)
+    arpeggio_prints = _build_arpeggio_prints(linked, arpeggios)
 
     # Linked notes: the note a linked note runs into is its Child and points
     # back at it by its index in THIS level (XmlToSngNote's ParentPrevNote).
@@ -615,7 +703,7 @@ def _build_level(
         anchors=anchors,
         anchor_extensions=anchor_extensions,
         fingerprints1=fingerprints,
-        fingerprints2=[],
+        fingerprints2=arpeggio_prints,
         notes=linked,
         phrase_count=phrase_count,
         avg_notes_per_iteration=avg_per_iter,
@@ -670,14 +758,17 @@ def _assign_beat_phrase_iterations(
 
 
 def _chart_hand_shapes(groups: list[list[TabNote]]) -> list[tuple[float, float]]:
-    """``(start, end)`` of the full chart's hand shapes — the ones the XML hands
-    DLC Builder (same ``hand_shape_spans``), which its phrase generator avoids."""
+    """``(start, end)`` of the full chart's hand shapes, arpeggios included —
+    the ones the XML hands DLC Builder (same ``hand_shape_spans`` and
+    ``arpeggio_spans``), which its phrase generator avoids."""
     keys: dict[tuple[int, ...], int] = {}
     rows = []
     for g in groups:
         cid = keys.setdefault(_chord_template_key(g), len(keys)) if len(g) > 1 else -1
         rows.append((g[0].time, max(n.sustain for n in g), cid))
-    return [(rows[a][0], end) for _, a, _, end in hand_shape_spans(rows)]
+    shapes = [(rows[a][0], end) for _, a, _, end in hand_shape_spans(rows)]
+    shapes += [(groups[a][0].time, end) for a, _, _, end in arpeggio_spans(groups)]
+    return sorted(shapes)
 
 
 def _good_phrase_time(
@@ -1236,6 +1327,7 @@ def _build_difficulty_levels(
     song_length: float,
     dynamic_difficulty: bool,
     link_children: frozenset[tuple[int, int]] = frozenset(),
+    arpeggios: Sequence[tuple[int, float, float]] = (),
 ) -> tuple[list[SngPhrase], list[SngPhraseIteration], list[SngArrangementLevel], int]:
     """DDC-style graduated levels: notes ramp in per phrase over several
     difficulty levels. A real Rocksmith DD ramps each note in over many
@@ -1351,7 +1443,7 @@ def _build_difficulty_levels(
     levels = [
         _build_level(
             d, _level_notes(d), phrase_iterations, len(phrases),
-            chord_templates, song_length, chord_notes_list, link_children,
+            chord_templates, song_length, chord_notes_list, link_children, arpeggios,
         )
         for d in range(song_max + 1)
     ]
@@ -1417,13 +1509,17 @@ def from_arrangement(
     template_ids, chord_templates, chord_notes_list, chord_notes_map = _build_chord_data(
         arrangement, chord_groups
     )
+    arpeggio_templates, arpeggios = _arpeggio_templates(arrangement, groups, len(chord_templates))
+    chord_templates += arpeggio_templates
 
     # Full-chart anchors, only to stamp each NOTE's anchor_fret/anchor_width
     # hint (via _find_anchor in _build_sng_notes). The per-LEVEL anchor arrays
     # the game actually uses are rebuilt from each level's own notes inside
     # _build_level — see _build_anchors.
     anchors = _build_anchors(
-        [(g[0].time, g[-1].time, [n.fret for n in g if n.fret > 0]) for g in groups],
+        _hold_through_arpeggios(
+            [(g[0].time, g[-1].time, [n.fret for n in g if n.fret > 0]) for g in groups],
+            arpeggios),
         phrase_iterations,
         song_length,
     )
@@ -1437,7 +1533,7 @@ def from_arrangement(
     phrases, phrase_iterations, arrangements, song_max = _build_difficulty_levels(
         sng_notes, beats, phrases, phrase_iterations,
         chord_templates, chord_notes_list, song_length, dynamic_difficulty,
-        _link_children(arrangement.notes),
+        _link_children(arrangement.notes), arpeggios,
     )
     # Per-difficulty string usage per section — needs the levels, so it runs after
     # them (see _apply_section_string_masks: blank masks tell the game no string
