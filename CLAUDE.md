@@ -4069,6 +4069,23 @@ syntax, so `docker compose up` refuses to start without a `.env`-supplied
 secret rather than silently running exposed and unauthenticated. Guarded by
 `test_no_auth_by_default` / `test_api_token_gates_every_route_when_set`.
 
+**Host allowlist (`_verify_host`, `ROCKFORGE_ALLOWED_HOSTS`).** DNS rebinding
+(a foreign page pointing its own domain at 127.0.0.1) is same-origin to the
+browser, so neither CORS nor `_verify_same_origin` — which compares Origin with
+that same Host — can see it; only the Host header still names the attacker's
+domain. Default `localhost,127.0.0.1,::1`; docker-compose sets `*` (its token is
+per-origin). `Origin: null` is a cross-origin POST. Tests send
+`Host: testserver`, which `tests/conftest.py` adds. Every response also carries
+`nosniff` and `frame-ancestors 'none'`/`X-Frame-Options: DENY`
+(`_SECURITY_HEADERS`). **`esc()` in `web/app.js` escapes `"` and `'`**: the old
+text-node version escaped only `& < >`, and ~40 sites put it in a quoted
+attribute, so a GP title closed the attribute and ran a handler on the home page.
+Guarded by `test_only_the_names_the_server_answers_to_are_served`,
+`test_a_null_origin_is_a_cross_origin_post` (both mutation-checked),
+`test_any_name_is_served_when_the_allowlist_says_so` and
+`test_every_response_carries_the_browser_hardening_headers`; `esc` with
+Playwright (a job titled with an attribute payload ran it before, not after).
+
 ### Standalone executable (`build_exe.py` / PyInstaller)
 
 **It opens a NATIVE WINDOW, not a browser tab.** `start_standalone.py` runs

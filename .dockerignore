@@ -1,0 +1,20 @@
+# Only pyproject.toml, README.md, src/ and web/ are copied into the image; this
+# keeps the rest (and anything private) out of the build context.
+.git
+.github
+.env
+*.db
+node_modules
+logs
+dist
+build
+Output
+ffmpeg
+tests
+tasks
+docs
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.mypy_cache
+.ruff_cache

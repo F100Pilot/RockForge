@@ -6,6 +6,16 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### Security
+- A title, tone name, section or lyric from outside (a GP file, Songsterr, LRCLIB, other
+  people's CDLC) can no longer run code in the page: text is now escaped inside attributes too.
+- The server only answers to `localhost`/`127.0.0.1`: a web page that points its own domain at
+  your computer (DNS rebinding) is refused. Other names go in `ROCKFORGE_ALLOWED_HOSTS`. A
+  request with `Origin: null` counts as coming from another site.
+- Every response carries `X-Content-Type-Options: nosniff` and cannot be shown inside another
+  site.
+- Docker: the image now makes the `.psarc` (the `[psarc]` extra was missing).
+
 ## [0.10.0 beta 1] — 2026-10-14
 
 First public version, in beta: ready to use, but waiting for more testing in the game and on

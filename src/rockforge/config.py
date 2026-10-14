@@ -89,6 +89,19 @@ class Settings(BaseSettings):
     # 127.0.0.1. Any deployment that opens a network port (docker-compose) MUST
     # set this — see app._verify_api_auth and docker-compose.yml.
     api_token: str | None = None
+    # The names this server answers to, comma-separated ("*" = any). A web page
+    # on another site can point its own domain at 127.0.0.1 (DNS rebinding) and
+    # then reach this API as if it were same-origin: the browser sends THAT
+    # domain as the Host, so only a Host allowlist tells the two apart — see
+    # app._verify_host. Local setups only ever reach it as localhost/127.0.0.1;
+    # docker-compose, reached by the machine's own name or address, sets "*"
+    # (its required api_token is per-origin, so a rebound page has none).
+    allowed_hosts: str = "localhost,127.0.0.1,::1"
+
+    def allowed_host_names(self) -> frozenset[str]:
+        return frozenset(
+            h.strip().lower().strip("[]") for h in self.allowed_hosts.split(",") if h.strip()
+        )
 
     def resolved_wwise_root(self) -> Path | None:
         if self.wwise_root is not None:

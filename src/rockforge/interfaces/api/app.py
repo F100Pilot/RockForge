@@ -210,6 +210,33 @@ def _verify_api_auth(
         )
 
 
+def _host_name(host: str) -> str:
+    """The name in a Host header, without its port: ``[::1]:8000`` -> ``::1``."""
+    host = host.strip().lower()
+    if host.startswith("["):
+        return host[1:].split("]", 1)[0]
+    if host.count(":") == 1:
+        host = host.split(":", 1)[0]
+    return host.rstrip(".")
+
+
+def _verify_host(request: Request) -> None:
+    """Answer only to the names this server is meant to be reached by.
+
+    DNS rebinding: a page on another site points its own domain at 127.0.0.1
+    and fetches from it. To the browser that is same-origin, so neither CORS nor
+    ``_verify_same_origin`` (which compares Origin with that very Host) can see
+    it — but the Host header still carries the attacker's domain. Without this
+    such a page could read every project and save settings that name a program
+    the server then runs (the ML interpreter, Banquet's ``train.py``).
+    """
+    allowed = settings.allowed_host_names()
+    if "*" in allowed:
+        return
+    if _host_name(request.headers.get("host", "")) not in allowed:
+        raise HTTPException(400, "invalid host header")
+
+
 _MUTATING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
 
@@ -231,6 +258,10 @@ def _verify_same_origin(request: Request) -> None:
     origin = request.headers.get("origin") or request.headers.get("referer")
     if not origin:
         return
+    if origin.strip().lower() == "null":
+        # A sandboxed iframe or a file:// page sends the literal "null", whose
+        # empty netloc would otherwise slip past the comparison below.
+        raise HTTPException(403, "cross-origin request rejected")
     origin_host = urlparse(origin).netloc
     if origin_host and origin_host != request.headers.get("host", ""):
         raise HTTPException(403, "cross-origin request rejected")
@@ -258,10 +289,28 @@ app = FastAPI(
     version=__version__,
     lifespan=_lifespan,
     dependencies=[
-        Depends(_verify_api_auth), Depends(_verify_same_origin), Depends(_ui_language),
+        Depends(_verify_host), Depends(_verify_api_auth), Depends(_verify_same_origin),
+        Depends(_ui_language),
     ],
 )
 
+
+# Sent on every response. nosniff: an uploaded file served back (a cover, a
+# stem) is only ever read as the type we declare. frame-ancestors / DENY: no
+# other site can frame the UI and trick a click into it.
+_SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Content-Security-Policy": "frame-ancestors 'none'",
+}
+
+
+@app.middleware("http")
+async def _security_headers(request: Request, call_next: Any) -> Any:
+    response = await call_next(request)
+    for name, value in _SECURITY_HEADERS.items():
+        response.headers.setdefault(name, value)
+    return response
 
 
 @app.exception_handler(RequestValidationError)

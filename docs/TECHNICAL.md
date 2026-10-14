@@ -451,7 +451,13 @@ docker compose up --build   # API at http://localhost:8000 (UI at /, OpenAPI at 
 
 The browser asks for the credentials natively (any username, the token as the password) on the
 first visit. Without the `.env`, `docker compose up` refuses to start — this is intentional,
-so it never runs exposed without protection.
+so it never runs exposed without protection. The connection is plain HTTP: outside your own
+network, put a TLS proxy in front, or publish the port on `127.0.0.1` only
+(`"127.0.0.1:8000:8000"`).
+
+Outside Docker, RockForge only answers to `localhost`/`127.0.0.1` — a web page that points its
+own domain at your machine is refused. To reach it by another name, list it in
+`ROCKFORGE_ALLOWED_HOSTS` (see `.env.example`); compose sets `*`, and the token guards it.
 
 Note: inside Docker, Wwise is not available — the `.wem` is only generated in a native Windows
 run with Wwise installed.

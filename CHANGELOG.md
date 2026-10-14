@@ -6,6 +6,17 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Segurança
+- Um título, nome de tom, secção ou letra vindos de fora (ficheiro GP, Songsterr, LRCLIB, CDLC
+  de outras pessoas) já não conseguem correr código na página: o texto passou a ser escapado
+  também dentro dos atributos.
+- O servidor só responde a `localhost`/`127.0.0.1`: uma página web que aponte o seu domínio
+  para o teu computador (DNS rebinding) é recusada. Outros nomes juntam-se em
+  `ROCKFORGE_ALLOWED_HOSTS`. Um pedido com `Origin: null` conta como vindo de outro site.
+- Todas as respostas levam `X-Content-Type-Options: nosniff` e não podem ser mostradas dentro
+  de outro site.
+- Docker: a imagem passa a gerar o `.psarc` (faltava o `[psarc]`).
+
 ## [0.10.0 beta 1] — 2026-10-14
 
 Primeira versão pública, em beta: pronta a usar, mas à espera de mais testes no jogo e

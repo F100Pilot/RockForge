@@ -61,7 +61,7 @@ def check_desktop_window() -> None:
         )
 
 
-def build() -> None:
+def build() -> Path:
     check_ffmpeg()
     check_desktop_window()
     spec = ROOT / "rockforge.spec"

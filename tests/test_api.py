@@ -674,6 +674,56 @@ def test_cross_origin_post_is_rejected(client: TestClient) -> None:
     assert same_origin.status_code != 403  # rejected for being .gpx (415), not origin
 
 
+def test_a_null_origin_is_a_cross_origin_post(client: TestClient) -> None:
+    """A sandboxed iframe or a file:// page sends ``Origin: null``; its empty
+    host must not slip past the same-origin comparison."""
+    r = client.post(
+        "/gp/inspect",
+        files={"file": ("song.gpx", b"BCFS", "application/octet-stream")},
+        headers={"Origin": "null"},
+    )
+    assert r.status_code == 403
+
+
+def test_only_the_names_the_server_answers_to_are_served(client: TestClient) -> None:
+    """DNS rebinding: a foreign site's domain pointed at 127.0.0.1 arrives as
+    that domain in Host, and same-origin to the browser — only the Host
+    allowlist refuses it, on reads as well as writes."""
+    assert client.get("/jobs", headers={"Host": "evil.example:8000"}).status_code == 400
+    assert client.get("/jobs", headers={"Host": "evil.example"}).status_code == 400
+    assert client.post(
+        "/gp/inspect",
+        files={"file": ("song.gpx", b"BCFS", "application/octet-stream")},
+        headers={"Host": "evil.example", "Origin": "http://evil.example"},
+    ).status_code == 400
+    for host in ("localhost:8000", "127.0.0.1:8765", "[::1]:8000", "LOCALHOST", "localhost."):
+        assert client.get("/jobs", headers={"Host": host}).status_code == 200, host
+
+
+def test_any_name_is_served_when_the_allowlist_says_so(tmp_path, monkeypatch) -> None:
+    """docker-compose is reached by the machine's own name or address."""
+    monkeypatch.setenv("ROCKFORGE_DATABASE_URL", f"sqlite:///{tmp_path}/test.db")
+    monkeypatch.setenv("ROCKFORGE_WORK_DIR", str(tmp_path / "work"))
+    monkeypatch.setenv("ROCKFORGE_ALLOWED_HOSTS", "*")
+    import rockforge.config as config
+    importlib.reload(config)
+    import rockforge.interfaces.api.app as app_module
+    importlib.reload(app_module)
+    with TestClient(app_module.app) as c:
+        assert c.get("/jobs", headers={"Host": "nas.local:8000"}).status_code == 200
+    monkeypatch.undo()
+    importlib.reload(config)
+    importlib.reload(app_module)
+
+
+def test_every_response_carries_the_browser_hardening_headers(client: TestClient) -> None:
+    for path in ("/", "/app.js", "/jobs", "/no-such-route"):
+        h = client.get(path).headers
+        assert h["x-content-type-options"] == "nosniff", path
+        assert h["x-frame-options"] == "DENY", path
+        assert "frame-ancestors 'none'" in h["content-security-policy"], path
+
+
 def test_upload_over_the_size_cap_is_rejected_and_leaves_no_partial_file(
     client: TestClient, monkeypatch
 ) -> None:

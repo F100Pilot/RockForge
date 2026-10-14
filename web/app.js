@@ -1356,7 +1356,12 @@ let lyricsPollTimer = null;
 // built arrangement and updated by "Detetar afinação" / sent on rebuild.
 let centOffsetLive = 0;
 
-const esc = t => { const d = document.createElement('span'); d.textContent = t ?? ''; return d.innerHTML; };
+// Safe in text AND in a quoted attribute: serialising a text node escapes only
+// & < >, so a title like  x" onanimationstart="…  would close an attribute and
+// add a handler (third-party text — GP files, Songsterr, LRCLIB, other people's
+// CDLC tones — reaches dozens of value="…"/aria-label="…" sites).
+const ESC_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ESC_MAP[c]);
 
 function toast(message, kind = 'err') {
   const el = document.createElement('div');

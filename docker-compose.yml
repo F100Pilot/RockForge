@@ -13,6 +13,9 @@ services:
       # compose file (never commit it); compose fails to start without one
       # rather than silently running the API unauthenticated on the network.
       ROCKFORGE_API_TOKEN: ${ROCKFORGE_API_TOKEN:?set a secret in a .env file next to docker-compose.yml — see docs/TECHNICAL.md}
+      # Reached by this machine's own name or address, so any Host is accepted;
+      # the token above is what guards it (see app._verify_host).
+      ROCKFORGE_ALLOWED_HOSTS: ${ROCKFORGE_ALLOWED_HOSTS:-*}
       # Wwise local (nunca incluído na imagem — EULA Audiokinetic). Em Docker/Linux
       # exigiria Wine + instalação manual; para usar o teu Wwise, corre o worker
       # nativamente no Windows (ver docs/TECNICO.md "Como testar").
