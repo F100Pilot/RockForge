@@ -764,6 +764,26 @@ edits (it changes nothing in the build). Browser-only; verified with
 Playwright: 4 s of playback from outside started at A and stayed in [2, 3.43]
 for A=2/B=3.5, `L` off then ran past B, too-close refused, B-before-A swapped.
 
+### Keyboard shortcuts: the "?" list and 1–9 for the modes
+
+`showShortcuts` fills the read-only ⓘ box (`#infoOverlay`, widened by
+`.modal-keys`) with every shortcut, grouped, built with `T()` at open time —
+the mode names come from the menu items' own `data-name`, so a renamed mode
+follows. It opens with `?` on any project page (not typing, nothing on top) or
+the key button in the top bar (`#shortcutsBtn`, hidden under 1150 px — `?`
+still works). The ⓘ box now also closes with Esc. Digits 1–9 pick the modes in
+`SYNC_MODE_BUTTONS` order (= the Modo ▾ menu's), the active one's own number
+deselects it like a second click; each menu item carries its number
+(`.dd-kbd`, added at load). **When adding a shortcut, add its row to
+`showShortcuts` and to the guides' table.** On the way, the project top bar
+stopped drawing the status chip over the head's buttons on narrow screens
+(pre-existing, made worse by the new buttons): the head keeps
+`min(15.5rem, 28vw)` and barely shrinks, the chip and "Pendente" shrink with
+an ellipsis, "Descarregar" is icon-only under 1100 px and the chip hides under
+860 px. Browser-only; verified with Playwright (`?`/Esc/button, digits incl.
+deselect, `?` and digits ignored in a field; the top bar at 1440/1150/1000/800
+px in PT and EN, nothing overlapping or cut).
+
 ### Clearing note edits ("Notas ▾" → Limpar)
 
 The companion to the seeding fix in the note-editor section: once committed

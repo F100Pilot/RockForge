@@ -127,8 +127,8 @@ um. Deixa vazios os que a música não tem. Pistas de baixo ainda não são supo
 ## 5. A página do projeto
 
 - **Barra de cima:** ← volta à página inicial; o título com **Editar info** e, depois de uma
-  reconstrução, **Versão anterior**; o estado (clica para ir a Exportar); **Desfazer** e
-  **Refazer**; o número de alterações pendentes; **Aplicar e reconstruir**; **Descarregar**.
+  reconstrução, **Versão anterior**; o estado (clica para ir a Exportar); os **atalhos de
+  teclado** (a tecla, ou **?**); **Desfazer** e **Refazer**; o número de alterações pendentes; **Aplicar e reconstruir**; **Descarregar**.
 - **Barra da esquerda:** as páginas **Partitura**, **Tons**, **Letra**, **Capa**, **Exportar**,
   e **Definições** em baixo.
 - Enquanto a construção corre, vês o progresso em Exportar; quando acaba, a Partitura abre
@@ -409,7 +409,8 @@ info** de cada projeto.
 
 ## 14. Atalhos de teclado
 
-Na partitura, fora de campos de texto:
+Na partitura, fora de campos de texto. **?** (ou o botão da tecla na barra de cima) mostra esta
+lista na própria aplicação.
 
 | Tecla | Faz |
 |---|---|
@@ -418,12 +419,14 @@ Na partitura, fora de campos de texto:
 | Home | vai ao início |
 | [ · ] · L | marca A · marca B (no cursor) · liga/desliga a repetição do trecho |
 | + / − | zoom |
+| 1 … 9 | escolhe o modo pela ordem do menu Modo ▾ (o número aparece ao lado de cada um; o mesmo número outra vez tira o modo) |
 | Shift+clique · Ctrl+clique | seleciona um intervalo · junta ou tira uma nota |
 | Delete | apaga a seleção |
 | Ctrl+Z · Ctrl+Shift+Z (ou Ctrl+Y) | desfaz · refaz (em qualquer página do projeto) |
 | Ctrl+C · Ctrl+V | copia a seleção · cola no cursor |
 | Alt (a arrastar) | sem encaixe |
-| Esc | fecha um menu ou popup |
+| ? | mostra os atalhos |
+| Esc | fecha um menu, popup ou a janela dos atalhos |
 
 ## 15. Problemas comuns
 

@@ -485,6 +485,14 @@
 .modal-info { max-width: 480px; }
 .modal-info p, .modal-info li { font-size: .9rem; color: var(--muted); line-height: 1.6; }
 .modal-info strong { color: var(--text); }
+.modal-info.modal-keys { max-width: 640px; }
+.keys-group { margin:.9rem 0 .3rem; font-size:.75rem; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+.keys-table { width:100%; border-collapse:collapse; font-size:.9rem; }
+.keys-table td { padding:.32rem .4rem; border-bottom:1px solid #23252e; vertical-align:top; color:var(--muted); }
+.keys-table td:first-child { white-space:nowrap; width:1%; padding-right:1rem; }
+kbd { display:inline-block; min-width:1.5em; padding:.08em .45em; border:1px solid #3a3d4a; border-bottom-width:2px; border-radius:6px;
+  background:#1b1c23; color:var(--text); font:600 .8rem/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; text-align:center; }
+.dd-kbd { margin-left:auto; align-self:center; }
 .modal-info code { background: #0f1013; padding: .05rem .3rem; border-radius: 4px; }
 
 /* Modern file input */
@@ -572,7 +580,9 @@
 .project-view[hidden] { display:none; }
 .pv-top { flex-shrink:0; display:flex; align-items:center; gap:.75rem; min-height:4.25rem; padding:.5rem 1.1rem;
   border-bottom:1px solid #22242c; background:#121318; }
-.pv-head { display:flex; flex-direction:column; min-width:0; flex:0 1 auto; gap:.1rem; }
+/* The head keeps room for its own buttons (Editar info, Versão anterior): the
+   status chip shrinks first, or it would be drawn over them. */
+.pv-head { display:flex; flex-direction:column; min-width:min(15.5rem, 28vw); flex:0 0.05 auto; gap:.1rem; }
 .pv-title { font-size:1.12rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:34rem; }
 .pv-sub { display:flex; align-items:center; gap:.55rem; font-size:.82rem; color:var(--muted); min-width:0; }
 .pv-sub > span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
@@ -592,8 +602,12 @@ button.pv-icon-btn .ic { width:1.5rem; height:1.5rem; }
 button.pv-primary { background:var(--accent); border-color:var(--accent); color:#1a1208; }
 button.pv-primary:hover { background:var(--accent); filter:brightness(1.08); }
 .pv-chip { display:inline-flex; align-items:center; gap:.4rem; height:2rem; padding:0 .85rem; border-radius:999px; border:0;
-  font-size:.8rem; font-weight:700; white-space:nowrap; max-width:20rem; overflow:hidden; text-overflow:ellipsis; flex-shrink:0; }
-.pv-top > .pv-btn, .pv-top > .pv-pending { flex-shrink:0; }
+  font-size:.8rem; font-weight:700; white-space:nowrap; max-width:20rem; overflow:hidden; text-overflow:ellipsis; flex-shrink:1; min-width:2.6rem; }
+@media (max-width: 1150px) { #shortcutsBtn { display:none; } }
+@media (max-width: 860px) { #pvStatusChip { display:none; } }
+.pv-top > .pv-btn { flex-shrink:0; }
+.pv-top > .pv-pending { flex-shrink:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+@media (max-width: 1100px) { .pv-dl-label { display:none; } }
 .pv-chip .ic { width:1.05rem; height:1.05rem; margin:0; }
 .pv-chip.warn { background:#3a2e12; color:#f2c14e; }
 .pv-chip.ok { background:#16331f; color:#5fd68a; }
@@ -655,7 +669,9 @@ button.pv-wide { display:flex; align-items:center; justify-content:center; gap:.
 .pv-live-tone { font-weight:700; color:#e0a54a; white-space:nowrap; display:inline-flex; align-items:center; gap:.3rem; }
 #playbackSpeed { height:2.9rem; }
 .pv-loop { display:inline-flex; gap:.3rem; }
-button.pv-loop-btn { height:2.9rem; min-width:2.6rem; padding:0 .65rem; display:inline-flex; align-items:center; justify-content:center; font-weight:700; }
+button.pv-loop-btn { height:2.9rem; min-width:2.6rem; padding:0 .65rem; display:inline-flex; align-items:center; justify-content:center; font-weight:700;
+  border:1px solid #33363f; border-radius:10px; background:#1f2129; color:var(--muted); }
+button.pv-loop-btn:hover { background:#262833; color:var(--text); filter:none; }
 button.pv-loop-btn .ic { width:1.2rem; height:1.2rem; margin:0; }
 button.pv-loop-btn.set { color:#c9b3ff; border-color:#7c5cff; }
 button.pv-loop-btn[aria-pressed="true"] { background:#2d2350; color:#e2d6ff; border-color:#7c5cff; }
@@ -896,11 +912,12 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
     <div id="detailHead" class="pv-head"></div>
     <button type="button" id="pvStatusChip" class="pv-chip" hidden></button>
     <span class="pv-spacer"></span>
+    <button type="button" id="shortcutsBtn" class="pv-btn pv-icon-btn" title="Atalhos de teclado (?)" aria-label="Atalhos de teclado"><svg class="ic" aria-hidden="true"><use href="#i-key"/></svg></button>
     <button type="button" id="undoBtn" class="pv-btn pv-icon-btn" title="Desfazer (Ctrl+Z)" aria-label="Desfazer" disabled><svg class="ic" aria-hidden="true"><use href="#i-undo"/></svg></button>
     <button type="button" id="redoBtn" class="pv-btn pv-icon-btn" title="Refazer (Ctrl+Shift+Z)" aria-label="Refazer" disabled><svg class="ic" aria-hidden="true"><use href="#i-redo"/></svg></button>
     <span id="pendingChangesInfo" class="pv-pending"></span>
     <button type="button" id="applyAll" class="pv-btn pv-primary"><svg class="ic" aria-hidden="true"><use href="#i-refresh"/></svg>Aplicar e reconstruir</button>
-    <button type="button" class="pv-btn" data-goto="exportar"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg>Descarregar</button>
+    <button type="button" class="pv-btn" data-goto="exportar" title="Descarregar"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg><span class="pv-dl-label">Descarregar</span></button>
   </header>
   <div class="pv-body">
     <nav class="pv-rail" aria-label="Páginas do projeto">

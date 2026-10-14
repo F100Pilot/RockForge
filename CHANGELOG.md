@@ -17,6 +17,10 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 - **Repetir um trecho (A–B)** no transporte: marca A e B no cursor (ou [ e ]) e a reprodução
   fica nesse trecho até desligares (L); o trecho aparece na partitura. Com a velocidade, serve
   para ouvir um passo devagar até a sincronização bater.
+- **Atalhos de teclado à vista:** **?** (ou o botão da tecla) mostra-os todos; **1–9** escolhem o
+  modo da partitura, com o número ao lado de cada um no menu Modo ▾.
+- A barra de cima do projeto já não sobrepõe o estado aos botões "Editar info"/"Versão anterior"
+  em ecrãs estreitos: o estado e o "Pendente" encolhem e "Descarregar" fica só com o ícone.
 
 ### Segurança
 - Um título, nome de tom, secção ou letra vindos de fora (ficheiro GP, Songsterr, LRCLIB, CDLC

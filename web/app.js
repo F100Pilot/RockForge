@@ -1208,6 +1208,9 @@ const INFO = {
 document.getElementById('infoClose').addEventListener('click', () => {
   document.getElementById('infoOverlay').hidden = true;
 });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.getElementById('infoOverlay').hidden = true;
+});
 document.getElementById('infoOverlay').addEventListener('click', e => {
   if (e.target.id === 'infoOverlay') document.getElementById('infoOverlay').hidden = true;
 });
@@ -1218,7 +1221,60 @@ document.addEventListener('click', e => {
   if (!info) return;
   document.getElementById('infoTitle').textContent = info.title;
   document.getElementById('infoBody').innerHTML = info.body;
+  document.querySelector('#infoOverlay .modal').classList.remove('modal-keys');
   document.getElementById('infoOverlay').hidden = false;
+});
+
+// ── Keyboard shortcuts: the "?" list, and 1–9 for the modes ──────────────────
+function showShortcuts() {
+  const k = (...keys) => keys.map(x => `<kbd>${esc(x)}</kbd>`).join(' ');
+  const modes = SYNC_MODE_BUTTONS.map(([id], i) =>
+    `${k(String(i + 1))} ${esc(document.getElementById(id)?.dataset.name || '')}`).join(' · ');
+  const groups = [
+    [T('Reprodução'), [
+      [k(T('Espaço')), T('play / pausa')],
+      [`${k('←')} ${k('→')}`, T('recua / avança 1 s (com Shift, 5 s)')],
+      [k('Home'), T('vai ao início')],
+      [`${k('[')} ${k(']')}`, T('marca no cursor o início (A) / o fim (B) do trecho a repetir')],
+      [k('L'), T('liga / desliga a repetição do trecho A–B')],
+    ]],
+    [T('Partitura'), [
+      [`${k('1')}…${k('9')}`, `${T('escolhe o modo (o mesmo número outra vez tira-o):')} ${modes}`],
+      [`${k('+')} ${k('−')}`, T('zoom')],
+      [T('Shift+clique'), T('seleciona da nota anterior até esta')],
+      [T('Ctrl+clique'), T('junta ou tira uma nota da seleção')],
+      [T('Alt a arrastar'), T('move sem encaixar na grelha')],
+      [T('Duplo clique'), T('em "Editar notas", insere uma nota no espaço vazio')],
+    ]],
+    [T('Edição'), [
+      [`${k('Delete')}`, T('apaga as notas selecionadas')],
+      [`${k('Ctrl')}+${k('C')} · ${k('Ctrl')}+${k('V')}`, T('copia a seleção · cola no cursor')],
+      [`${k('Ctrl')}+${k('Z')}`, T('desfaz (em qualquer página do projeto)')],
+      [`${k('Ctrl')}+${k('Shift')}+${k('Z')} · ${k('Ctrl')}+${k('Y')}`, T('refaz')],
+    ]],
+    [T('Geral'), [
+      [k('?'), T('esta lista')],
+      [k('Esc'), T('fecha um menu, popup ou esta janela')],
+    ]],
+  ];
+  document.getElementById('infoTitle').textContent = T('Atalhos de teclado');
+  document.getElementById('infoBody').innerHTML =
+    `<p>${T('Fora dos campos de texto. Os de reprodução, partitura e edição de notas valem na página Partitura.')}</p>` +
+    groups.map(([title, rows]) => `<div class="keys-group">${esc(title)}</div><table class="keys-table">` +
+      rows.map(([keys, what]) => `<tr><td>${keys}</td><td>${what}</td></tr>`).join('') + '</table>').join('');
+  document.querySelector('#infoOverlay .modal').classList.add('modal-keys');
+  document.getElementById('infoOverlay').hidden = false;
+}
+document.getElementById('shortcutsBtn').addEventListener('click', showShortcuts);
+document.addEventListener('keydown', e => {
+  if (e.key !== '?' || e.ctrlKey || e.metaKey || e.altKey) return;
+  const el = document.activeElement;
+  const tag = el && el.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (el && el.isContentEditable)) return;
+  if (!selectedJob || document.getElementById('detailOverlay').hidden) return;
+  if (document.querySelector('.modal-overlay:not([hidden]), .settings-view:not([hidden])')) return;
+  e.preventDefault();
+  showShortcuts();
 });
 
 let selectedJob = null, arrangements = [], currentArr = 0, pollTimer = null;
@@ -7091,6 +7147,10 @@ function wireDropdown(triggerId, menuId) {
 wireDropdown('modeMenuBtn', 'modeMenu');
 wireDropdown('notesMenuBtn', 'notesMenu');
 wireDropdown('audioMenuBtn', 'audioMenu');
+SYNC_MODE_BUTTONS.forEach(([id], i) => {
+  const btn = document.getElementById(id);
+  if (btn) btn.insertAdjacentHTML('beforeend', `<kbd class="dd-kbd" aria-hidden="true">${i + 1}</kbd>`);
+});
 SYNC_MODE_BUTTONS.forEach(([id, mode]) => {
   document.getElementById(id)?.addEventListener('click', () => {
     // Clicking the active mode again DESELECTS it → neutral (no mode), rather
@@ -7821,6 +7881,13 @@ document.addEventListener('keydown', e => {
     e.preventDefault(); audioSeek(Math.max(0, currentPlayheadT - (e.shiftKey ? 5 : 1)));
   } else if (e.key === 'Home') {
     e.preventDefault(); audioSeek(0);
+  } else if (e.key >= '1' && e.key <= '9' && !e.ctrlKey && !e.metaKey && !e.altKey && isGpJob()) {
+    const entry = SYNC_MODE_BUTTONS[Number(e.key) - 1];
+    const btn = entry && document.getElementById(entry[0]);
+    if (btn && !btn.disabled && !btn.hidden) {
+      e.preventDefault();
+      setSyncMode(syncMode === entry[1] ? null : entry[1]);
+    }
   } else if (e.key === '[' && !e.ctrlKey && !e.metaKey) {
     e.preventDefault(); setLoopPoint('a');
   } else if (e.key === ']' && !e.ctrlKey && !e.metaKey) {

@@ -129,7 +129,8 @@ Leave empty the ones the song does not have. Bass tracks are not supported yet.
 ## 5. The project page
 
 - **Top bar:** ← back to the home page; the title with **Edit info** and, after a rebuild,
-  **Previous version**; the status (click to go to Export); **Undo** and **Redo**; the number
+  **Previous version**; the status (click to go to Export); the **keyboard shortcuts** (the key,
+  or **?**); **Undo** and **Redo**; the number
   of pending changes; **Apply and rebuild**; **Download**.
 - **Left bar:** the pages **Score**, **Tones**, **Lyrics**, **Cover**, **Export**, and
   **Settings** at the bottom.
@@ -411,7 +412,8 @@ are shared. Lead/Rhythm tracks are picked by name; check them afterwards in each
 
 ## 14. Keyboard shortcuts
 
-On the score, outside text fields:
+On the score, outside text fields. **?** (or the key button in the top bar) shows this list in
+the app itself.
 
 | Key | Does |
 |---|---|
@@ -420,12 +422,14 @@ On the score, outside text fields:
 | Home | go to the start |
 | [ · ] · L | mark A · mark B (at the cursor) · turn the passage repeat on/off |
 | + / − | zoom |
+| 1 … 9 | pick the mode in the order of the Mode ▾ menu (the number shows beside each; the same number again turns the mode off) |
 | Shift+click · Ctrl+click | select a range · add or remove a note |
 | Delete | delete the selection |
 | Ctrl+Z · Ctrl+Shift+Z (or Ctrl+Y) | undo · redo (on any page of the project) |
 | Ctrl+C · Ctrl+V | copy the selection · paste at the cursor |
 | Alt (while dragging) | no snap |
-| Esc | close a menu or popup |
+| ? | show the shortcuts |
+| Esc | close a menu, popup or the shortcuts window |
 
 ## 15. Common problems
 

@@ -16,6 +16,10 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 - **Repeat a passage (A–B)** in the transport: mark A and B at the cursor (or [ and ]) and
   playback stays in that passage until you turn it off (L); the passage shows on the score.
   With the speed, it lets you hear a bit slowly until the sync is right.
+- **Keyboard shortcuts in sight:** **?** (or the key button) lists them all; **1–9** pick the
+  score's mode, with the number beside each one in the Mode ▾ menu.
+- The project's top bar no longer draws the status over "Edit info"/"Previous version" on narrow
+  screens: the status and "Pending" shrink and "Download" keeps only its icon.
 
 ### Security
 - A title, tone name, section or lyric from outside (a GP file, Songsterr, LRCLIB, other
