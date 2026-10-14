@@ -2594,19 +2594,18 @@ let mainFollowState = null;   // the main chart's pending sync as last carried
 function mainSyncState() {
   const a = syncMain && arrangements.find(x => x.kind === syncMain);
   if (!a || !isGpJob()) return null;
-  const built = a.tempo_scale || 1;
-  const ratio = ((a.kind in tempoScaleByKind) ? tempoScaleByKind[a.kind] : built) / built;
+  const ratio = tempoRatioOf(a);
   const anchors = (syncAnchorsByKind[a.kind] || []).map(p => p.slice());
   return { ratio, anchors, sig: JSON.stringify([ratio, anchors]) };
 }
 function mainSyncFn(st) {
   const warp = buildTimeWarp(st.anchors);
-  const pad = Math.max(offsetLive, MIN_LEAD) + leadInBuilt;
+  const pad = livePad();
   return x => warp((x - scoreShift) * st.ratio + pad);
 }
 // Built times where D bends (its anchors, taken back through the tempo preview).
 function mainSyncKinks(st) {
-  const pad = Math.max(offsetLive, MIN_LEAD) + leadInBuilt;
+  const pad = livePad();
   return st.anchors.map(([o]) => (o - pad) / st.ratio + scoreShift);
 }
 function resetMainFollow() { mainFollowState = mainSyncState(); }
@@ -2718,9 +2717,7 @@ function arrangementPreviewScale(idx, t) {
   if (!isGpJob()) return t;
   const a = arrangements[idx];
   if (!a) return t;
-  const built = a.tempo_scale || 1;
-  const live = (a.kind in tempoScaleByKind) ? tempoScaleByKind[a.kind] : built;
-  return (t - scoreShift) * (live / built) + Math.max(offsetLive, MIN_LEAD) + leadInBuilt;
+  return (t - scoreShift) * tempoRatioOf(a) + livePad();
 }
 function arrangementDisplayTime(idx, t) {
   const a = arrangements[idx];
@@ -4718,11 +4715,10 @@ let lyricPadBuilt = 0;
 function lyricSyncMap() {
   const a = arrangements[lyricRefArr()];
   if (!isGpJob() || !a) return t => t;
-  const built = a.tempo_scale || 1;
-  const ratio = ((a.kind in tempoScaleByKind) ? tempoScaleByKind[a.kind] : built) / built;
+  const ratio = tempoRatioOf(a);
   const warp = buildTimeWarp((syncAnchorsByKind[a.kind] || []).map(p => p.slice()));
   const shift = scoreShift, pad = lyricPadBuilt;
-  const lead = Math.max(offsetLive, MIN_LEAD) + leadInBuilt;
+  const lead = livePad();
   const origin = Math.max(0, MIN_LEAD - offsetLive) + leadInBuilt;
   return t => warp((t + pad - shift) * ratio + lead) - origin;
 }
@@ -7133,11 +7129,9 @@ async function synthesizeArrangement(kind) {
   const sr = 44100;
   const gp = isGpJob();
   const offs = a.tuning_offsets || [0, 0, 0, 0, 0, 0];
-  const bScale = a.tempo_scale || 1;
-  const tScale = (kind in tempoScaleByKind) ? tempoScaleByKind[kind] : bScale;
-  const ratio = tScale / bScale;
+  const ratio = tempoRatioOf(a);
   const warp = buildTimeWarp(syncAnchorsByKind[kind] || []);
-  const pad = Math.max(offsetLive, MIN_LEAD) + leadInBuilt;  // previewScale's own shift
+  const pad = livePad();  // previewScale's own shift
   const events = [];
   let maxT = 0;
   for (const n of a.notes) {
@@ -7414,7 +7408,16 @@ function isGpJob() { return !!selectedJob && selectedJob.source_type === 'gp'; }
 function previewScale(t) {
   if (!isGpJob()) return t;  // audio-ML: raw recording-time positions
   const ratio = tempoScaleLive / builtScale;
-  return (t - scoreShift) * ratio + Math.max(offsetLive, MIN_LEAD) + leadInBuilt;
+  return (t - scoreShift) * ratio + livePad();
+}
+// The second half of that mirror: where the build would put the score's start
+// with the live offset (max(offset, MIN_LEAD) + lead_in).
+function livePad() { return Math.max(offsetLive, MIN_LEAD) + leadInBuilt; }
+// Chart `a`'s pending tempo against the tempo it was built with (1 = unchanged),
+// whichever tab is on screen.
+function tempoRatioOf(a) {
+  const built = a.tempo_scale || 1;
+  return ((a.kind in tempoScaleByKind) ? tempoScaleByKind[a.kind] : built) / built;
 }
 
 // Audio→display mapping for the playhead: audio time s appears after the
