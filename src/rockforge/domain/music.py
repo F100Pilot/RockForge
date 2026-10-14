@@ -8,7 +8,7 @@ from dataclasses import dataclass, field, replace
 from enum import Enum
 
 # Rocksmith string convention (Song2014): string 0 = lowest-pitched string.
-STANDARD_E_MIDI: tuple[int, ...] = (40, 45, 50, 55, 59, 64)  # E2 A2 D3 G3 B3 E4
+STANDARD_E_MIDI: tuple[int, int, int, int, int, int] = (40, 45, 50, 55, 59, 64)  # E2 A2 D3 G3 B3 E4
 MAX_FRET = 24
 
 
@@ -244,7 +244,7 @@ def extend_through_tie(
 class Tuning:
     """Per-string MIDI pitches, low to high (Rocksmith string 0..5)."""
 
-    midi: tuple[int, int, int, int, int, int] = (40, 45, 50, 55, 59, 64)
+    midi: tuple[int, int, int, int, int, int] = STANDARD_E_MIDI
     cent_offset: float = 0.0  # deviation from A440 in cents
 
     def __post_init__(self) -> None:

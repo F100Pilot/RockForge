@@ -18,6 +18,7 @@ from pathlib import Path
 
 from rockforge.domain.arrangement import Arrangement, ArrangementKind, Section, SongMetadata
 from rockforge.domain.music import (
+    STANDARD_E_MIDI,
     Beat,
     BendPoint,
     TabNote,
@@ -43,7 +44,6 @@ _TECHNIQUE_ATTRS: dict[str, Technique] = {
     "accent": Technique.ACCENT,
     "mute": Technique.FRET_MUTE,
 }
-_STANDARD_E_MIDI = (40, 45, 50, 55, 59, 64)
 
 
 def _flag(el: ET.Element, name: str) -> bool:
@@ -111,7 +111,7 @@ def read_arrangement_xml(path: Path, kind: ArrangementKind | None = None) -> Arr
     if tuning_el is None:
         tuning_el = ET.Element("tuning")
     offsets = [_int(tuning_el, f"string{i}") for i in range(6)]
-    midi = tuple(base + off for base, off in zip(_STANDARD_E_MIDI, offsets, strict=True))
+    midi = tuple(base + off for base, off in zip(STANDARD_E_MIDI, offsets, strict=True))
 
     beats = tuple(
         Beat(time=float(el.get("time", "0") or 0), measure=_int(el, "measure", -1))

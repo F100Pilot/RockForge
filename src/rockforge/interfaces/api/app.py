@@ -45,6 +45,7 @@ from pydantic import BaseModel, Field, ValidationError
 from rockforge import __version__, i18n
 from rockforge.config import settings
 from rockforge.domain.chords import name_chord
+from rockforge.domain.music import STANDARD_E_MIDI
 from rockforge.infrastructure.db.models import Job, JobStatus, make_session_factory
 
 if TYPE_CHECKING:
@@ -53,11 +54,6 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
-
-# Standard open-string MIDI pitches (low→high, E A D G B e); a chord's pitches
-# are these + the arrangement's tuning offset + fret. Mirrors the viewer's
-# STD_TUNING_MIDI and domain STANDARD_E_MIDI.
-_STD_TUNING_MIDI = (40, 45, 50, 55, 59, 64)
 
 _last_heartbeat = time.monotonic()
 # When the tab fires `pagehide`, the UI beacons /closing which sets a short
@@ -3737,7 +3733,7 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
         chord_notes: list[ArrangementNoteOut] = []
         for chord_el in root.findall("levels/level/chords/chord"):
             members = [parse_note(el, True) for el in chord_el.findall("chordNote")]
-            pitches = [_STD_TUNING_MIDI[m.string] + offsets[m.string] + m.fret for m in members]
+            pitches = [STANDARD_E_MIDI[m.string] + offsets[m.string] + m.fret for m in members]
             cname = name_chord(pitches)
             for m in members:
                 m.chord_name = cname

@@ -27,6 +27,8 @@ import struct
 import zlib
 from importlib import resources
 
+from rockforge.domain.music import STANDARD_E_MIDI
+
 _FLAT_NAMES = ("rsenumerable_root.flat", "rsenumerable_song.flat")
 
 
@@ -306,7 +308,7 @@ def build_showlights(arrangement: object | None = None) -> str:
             if sec.start_time > start:
                 events.append((sec.start_time, _SHOWLIGHT_FOG[fog_i % len(_SHOWLIGHT_FOG)]))
                 fog_i += 1
-        midi = getattr(getattr(arrangement, "tuning", None), "midi", (40, 45, 50, 55, 59, 64))
+        midi = getattr(getattr(arrangement, "tuning", None), "midi", STANDARD_E_MIDI)
         beam_span = _SHOWLIGHT_BEAM_HI - _SHOWLIGHT_BEAM_LO + 1
         last = float("-inf")
         for n in by_time:

@@ -1474,7 +1474,9 @@ const TUNING_PRESETS = {
   'C Standard': [-4, -4, -4, -4, -4, -4],
   'Drop B': [-5, -3, -3, -3, -3, -3],
 };
-const STD_MIDI = [40, 45, 50, 55, 59, 64];
+// Standard tuning (low E to high e) as MIDI: an open string's pitch is this
+// + the arrangement's tuning offset; a note's adds its fret.
+const STD_TUNING_MIDI = [40, 45, 50, 55, 59, 64];
 function _presetFromOffsets(off) {
   for (const [name, o] of Object.entries(TUNING_PRESETS)) {
     if (o && o.every((v, i) => v === off[i])) return name;
@@ -1523,7 +1525,7 @@ async function openMetaEdit() {
       .map(n => `<option value="${n}">${n === 'Manter' ? T('Manter') : n}</option>`).join('');
     document.getElementById('metaTunings').innerHTML = arrs.map(a => {
       const ov = (tr.tuning_overrides || {})[a.kind];
-      const cur = ov ? _presetFromOffsets(ov.map((m, i) => m - STD_MIDI[i])) :
+      const cur = ov ? _presetFromOffsets(ov.map((m, i) => m - STD_TUNING_MIDI[i])) :
                        _presetFromOffsets(a.tuning_offsets);
       return `<div class="field" style="flex:1 1 11rem"><label>${T('Afinação {arr}', { arr: esc(arrLabel(a.kind)) })}</label>
         <select data-kind="${esc(a.kind)}" style="width:100%">${presetOpts}</select></div>`
@@ -1602,7 +1604,7 @@ document.getElementById('metaSave').onclick = async () => {
     const tuning_overrides = {};
     for (const sel of document.querySelectorAll('#metaTunings select[data-kind]')) {
       const off = TUNING_PRESETS[sel.value];
-      if (off) tuning_overrides[sel.dataset.kind] = off.map((v, i) => STD_MIDI[i] + v);
+      if (off) tuning_overrides[sel.dataset.kind] = off.map((v, i) => STD_TUNING_MIDI[i] + v);
     }
     const rr = await fetch(`/jobs/${selectedJob.id}/rebuild`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1891,10 +1893,9 @@ async function loadArrangements(id) {
 
 // String colors low E -> high e: red, yellow, blue, orange, green, purple.
 const STRING_COLORS = ['#e6483c', '#f5dc3c', '#3f9bdc', '#f0973c', '#5cc24a', '#b56cdc'];
-// Standard tuning MIDI (low→high: E A D G B e) and note names, so the staff can
-// label each string with its REAL pitch = standard + the arrangement's tuning
-// offset (e.g. Drop C# shows C# G# C# F# A# D# instead of E A D G B e).
-const STD_TUNING_MIDI = [40, 45, 50, 55, 59, 64];
+// Note names, so the staff can label each string with its REAL pitch =
+// STD_TUNING_MIDI + the arrangement's tuning offset (e.g. Drop C# shows
+// C# G# C# F# A# D# instead of E A D G B e).
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 function stringLabel(str, offsets) {
   const off = (offsets && offsets[str] != null) ? offsets[str] : 0;
@@ -6874,8 +6875,6 @@ document.getElementById('snapDiv')?.addEventListener('change', e => {
 });
 
 // ---- Visual sync tool (GP jobs) ----
-// Standard tuning (low E to high e): MIDI 40, 45, 50, 55, 59, 64
-const STRING_MIDI = [40, 45, 50, 55, 59, 64];
 
 function midiToHz(midi) {
   return 440 * Math.pow(2, (midi - 69) / 12);
@@ -7148,7 +7147,7 @@ async function synthesizeArrangement(kind) {
     // at raw recording time.
     const tRec = gp ? warp((n.time - scoreShift) * ratio + pad) - viewOrigin : n.time;
     if (tRec < 0) continue;
-    events.push({ t: tRec, chartT: n.time, midi: STRING_MIDI[n.string] + (offs[n.string] || 0) + n.fret });
+    events.push({ t: tRec, chartT: n.time, midi: STD_TUNING_MIDI[n.string] + (offs[n.string] || 0) + n.fret });
     if (tRec > maxT) maxT = tRec;
   }
   if (!events.length) return null;
@@ -7376,7 +7375,7 @@ function playArrangementPreview() {
   const t0 = audioCtx.currentTime + 0.1;
   for (const n of a.notes) {
     if (n.string < 0 || n.string > 5 || n.fret < 0) continue;
-    const midi = STRING_MIDI[n.string] + (a.tuning_offsets[n.string] || 0) + n.fret;
+    const midi = STD_TUNING_MIDI[n.string] + (a.tuning_offsets[n.string] || 0) + n.fret;
     const hz = midiToHz(midi);
     const start = t0 + n.time;
     const dur = Math.min(Math.max(n.sustain || 0.12, 0.12), 2);
@@ -7710,7 +7709,7 @@ function syncFrame() {
     if (tickOn && sounded < MAX_TICKS_PER_FRAME) {
       const note = notes[tickIdx];
       if (note.string >= 0 && note.string <= 5 && note.fret >= 0) {
-        playNote(STRING_MIDI[note.string] + (offs[note.string] || 0) + note.fret, note.time);
+        playNote(STD_TUNING_MIDI[note.string] + (offs[note.string] || 0) + note.fret, note.time);
         sounded++;
       }
     }
