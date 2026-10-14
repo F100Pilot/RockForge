@@ -700,11 +700,10 @@ for (const r of document.querySelectorAll('input[name=sepBackend]'))
 document.getElementById('settingsSave').addEventListener('click', async () => {
   const payload = settingsPayload();
   const backend = payload.stem_separator;
-  const r = await fetch('/settings', {
+  const b = await fetchOrToast('/settings', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
   });
-  const b = await r.json();
-  if (!r.ok) { toast(b.detail || T('erro'), 'err'); return; }
+  if (!b) return;
   fillSettings(b);  // re-renders ✓/✗ from the saved values
   loadSystemCheck();  // the ML rows follow the interpreter, so they change too
   const info = document.getElementById('settingsInfo');
@@ -1427,6 +1426,17 @@ async function getJSON(url, opts) {
     throw new Error(detail);
   }
   return r.json();
+}
+
+// getJSON for a button's request: a failure is shown as a toast (the server's
+// own reason when it gave one) and answers null, so the caller just returns.
+async function fetchOrToast(url, opts) {
+  try {
+    return await getJSON(url, opts);
+  } catch (err) {
+    toast(err.message || T('erro'));
+    return null;
+  }
 }
 
 function confirmModal(text) {
@@ -4844,9 +4854,7 @@ async function loadLyrics(id) {
 
 async function detectLyrics() {
   if (!selectedJob) return;
-  const r = await fetch(`/jobs/${selectedJob.id}/detect-lyrics`, { method: 'POST' });
-  const b = await r.json();
-  if (!r.ok) { toast(b.detail || T('erro')); return; }
+  if (!await fetchOrToast(`/jobs/${selectedJob.id}/detect-lyrics`, { method: 'POST' })) return;
   toast(T('A detetar letra… (pode demorar)'), 'ok');
   await loadLyrics(selectedJob.id);
 }
@@ -5178,9 +5186,7 @@ document.getElementById('lyricsAlign').addEventListener('click', () => alignLyri
 
 async function detectTones() {
   if (!selectedJob) return;
-  const r = await fetch(`/jobs/${selectedJob.id}/detect-tones`, { method: 'POST' });
-  const b = await r.json();
-  if (!r.ok) { toast(b.detail || T('erro')); return; }
+  if (!await fetchOrToast(`/jobs/${selectedJob.id}/detect-tones`, { method: 'POST' })) return;
   toast(T('A detetar tom… (pode demorar)'), 'ok');
   document.getElementById('toneDetectionWrap').style.display = '';
   document.getElementById('toneDetectionLog').textContent = T('a iniciar…');
@@ -5651,9 +5657,7 @@ function populateAudioSources() {
 
 async function separateStems() {
   if (!selectedJob) return;
-  const r = await fetch(`/jobs/${selectedJob.id}/separate-stems`, { method: 'POST' });
-  const b = await r.json();
-  if (!r.ok) { toast(b.detail || T('erro')); return; }
+  if (!await fetchOrToast(`/jobs/${selectedJob.id}/separate-stems`, { method: 'POST' })) return;
   toast(T('A separar instrumentos… (pode demorar minutos)'), 'ok');
   document.getElementById('stemsStatus').textContent = T('a iniciar…');
   pollStems();
@@ -5750,9 +5754,8 @@ document.getElementById('coverArtFile').addEventListener('change', async ev => {
   if (!file) return;
   const fd = new FormData();
   fd.append('file', file);
-  const r = await fetch(`/jobs/${selectedJob.id}/cover`, { method: 'POST', body: fd });
-  const b = await r.json();
-  if (!r.ok) { toast(b.detail || T('erro')); return; }
+  const b = await fetchOrToast(`/jobs/${selectedJob.id}/cover`, { method: 'POST', body: fd });
+  if (!b) return;
   selectedJob.cover_art = b.cover_art;
   loadCoverArt(selectedJob);
   toast(T('Capa carregada — "Aplicar e reconstruir" para a incluir no bundle.'), 'ok');
@@ -8122,9 +8125,8 @@ document.getElementById('gpInspectForm').addEventListener('submit', async e => {
     toast(T('Escolhe só um ficheiro Guitar Pro. Vários ficheiros só para PDFs ou imagens da tab (um por pista).'));
     return;
   }
-  const r = await fetch('/gp/inspect', { method: 'POST', body: new FormData(e.target) });
-  const b = await r.json();
-  if (!r.ok) return toast(b.detail || T('erro'));
+  const b = await fetchOrToast('/gp/inspect', { method: 'POST', body: new FormData(e.target) });
+  if (!b) return;
   songsterrImported = false;
   applyInspectResult(b);
 });
@@ -8303,9 +8305,8 @@ document.getElementById('gpJobForm').addEventListener('submit', async e => {
   // The picked card's image never loaded: its cover is not there to download.
   const picked = wzAlbumCandidates[wzAlbumPick];
   if (picked && picked.cover_broken) f.delete('cover_url');
-  const r = await fetch('/jobs/gp', { method: 'POST', body: f });
-  const b = await r.json();
-  if (!r.ok) { toast(b.detail || T('erro')); return; }
+  const b = await fetchOrToast('/jobs/gp', { method: 'POST', body: f });
+  if (!b) return;
   // The cover is downloaded while the job is created; a failure there must
   // not lose the project, so it is reported here instead.
   if (f.get('cover_url') && !b.cover_art)
