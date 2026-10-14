@@ -312,6 +312,8 @@ def _make_ticks_to_seconds(events: list[tuple[int, float]]) -> Callable[[int], f
 _SLIDE_OUT_DOWN = 3
 _SLIDE_OUT_UP = 4
 _SLIDE_SHIFT_TYPES = {1, 2}  # shiftSlideTo / legatoSlideTo — a pitched slide
+# legatoSlideTo: the landing note is not picked again — Rocksmith's linkNext.
+_SLIDE_LEGATO = 2
 
 
 def _finger_value(finger: object) -> int:
@@ -474,6 +476,14 @@ def parse_gp_track(
                                 held = replace(
                                     held, techniques=held.techniques | {Technique.VIBRATO}
                                 )
+                            # A slide drawn on the held part slides out of the
+                            # whole held note (and a legato one links it on).
+                            tie_slides = {int(sl.value) for sl in note.effect.slides}
+                            if tie_slides & _SLIDE_SHIFT_TYPES:
+                                held = replace(
+                                    held, techniques=held.techniques | {Technique.SLIDE},
+                                    link_next=_SLIDE_LEGATO in tie_slides,
+                                )
                             raw[prev] = (held, hammer or bool(note.effect.hammer))
                         continue
                     fret = int(note.value)
@@ -575,6 +585,9 @@ def parse_gp_track(
                                 pick_direction=pick_dir,
                                 slide_in_from=slide_in,
                                 trill_fret=trill_fret,
+                                link_next=any(
+                                    int(sl.value) == _SLIDE_LEGATO for sl in eff.slides
+                                ),
                             ),
                             bool(eff.hammer),
                         )

@@ -305,6 +305,10 @@ class TabNote:
     pick_direction: int = 0  # 0 = unspecified, 1 = down, 2 = up
     slide_in_from: int | None = None  # scoop: fret a slide-into starts from
     trill_fret: int | None = None  # trill: fret to rapidly alternate with
+    # The note runs on into the next note on its string without a new attack
+    # (Rocksmith's linkNext): a legato slide, the next note held on. Only
+    # meaningful once ``resolve_links`` has checked it — see there.
+    link_next: bool = False
 
     def __post_init__(self) -> None:
         if not 0 <= self.string <= 5:
@@ -373,7 +377,7 @@ def apply_sustain_gap(
         idxs.sort(key=lambda i: notes[i].time)
         for a, b in zip(idxs, idxs[1:], strict=False):
             na = result[a]
-            if (na.sustain <= 0 or na.slide_to_fret is not None
+            if (na.sustain <= 0 or na.slide_to_fret is not None or na.link_next
                     or Technique.LET_RING in na.techniques):
                 continue
             interval = notes[b].time - notes[a].time
@@ -400,3 +404,69 @@ def _bend_on_shorter_note(
         return points
     scale = old / new
     return tuple(BendPoint(min(1.0, p.position * scale), p.step) for p in points)
+
+
+# How far the next note on a string may sit from a linked note's end and still
+# be the note it runs into. DLC Builder's own converter accepts 2 ms and its
+# checker 1 ms; the parsers and the sync warp land within float noise of it,
+# so this only bridges rounding before the end is snapped onto the child.
+LINK_TOLERANCE_S = 0.005
+
+
+def _last_bend_step(n: TabNote) -> float:
+    if n.bend_points:
+        return n.bend_points[-1].step
+    return n.bend_semitones if n.bend_semitones > 0 else 0.0
+
+
+def _first_bend_step(n: TabNote) -> float:
+    if n.bend_points and n.bend_points[0].position <= 0.0:
+        return n.bend_points[0].step
+    return 0.0
+
+
+def resolve_links(notes: Sequence[TabNote]) -> list[TabNote]:
+    """Keep each ``link_next`` only where it describes what the game expects,
+    and make the linked note end exactly where the next one starts.
+
+    Rocksmith links a note to the NEXT note on the same string (XmlToSngNote:
+    a pending parent per string), and DLC Builder's checker refuses a link
+    whose next note is part of a chord (NoteLinkedToChord), starts away from
+    the linked note's end (IncorrectLinkNext), sits on another fret than the
+    note — or than its slide's landing fret (LinkNext{Fret,Slide}Mismatch) —,
+    does not take the bend on from where the linked note leaves it
+    (LinkNextBendMismatch), or follows an unpitched slide
+    (UnpitchedSlideWithLinkNext). Any of those clears the link instead of
+    shipping it: an unlinked note is an ordinary attack, a broken link is what
+    the checker exists to catch. A note edit or a sync correction can separate
+    a pair after the parser linked it, which is why this runs last."""
+    out = list(notes)
+    chord_times: dict[float, int] = {}
+    for n in out:
+        key = round(n.time, 4)
+        chord_times[key] = chord_times.get(key, 0) + 1
+    by_string: dict[int, list[int]] = {}
+    for i, n in enumerate(out):
+        by_string.setdefault(n.string, []).append(i)
+    for idxs in by_string.values():
+        idxs.sort(key=lambda i: out[i].time)
+        for pos, a in enumerate(idxs):
+            parent = out[a]
+            if not parent.link_next:
+                continue
+            child = out[idxs[pos + 1]] if pos + 1 < len(idxs) else None
+            target = parent.slide_to_fret if parent.slide_to_fret is not None else parent.fret
+            ok = (
+                child is not None
+                and parent.slide_unpitch_to is None
+                and chord_times.get(round(child.time, 4), 0) == 1
+                and abs(child.time - (parent.time + parent.sustain)) <= LINK_TOLERANCE_S
+                and child.time > parent.time
+                and child.fret == target
+                and abs(_last_bend_step(parent) - _first_bend_step(child)) < 1e-6
+            )
+            if not ok or child is None:
+                out[a] = replace(parent, link_next=False)
+                continue
+            out[a] = replace(parent, sustain=child.time - parent.time)
+    return out

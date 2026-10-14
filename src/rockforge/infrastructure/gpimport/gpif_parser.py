@@ -1009,6 +1009,7 @@ def _emit_beat_notes(
             techs.add(Technique.BEND)
             bend_semitones, bend_points = _bend_curve(props)
         slide_to = False
+        link_next = False
         slide_unpitch: int | None = None
         slide_in: int | None = None
         if "Slide" in props:
@@ -1016,6 +1017,8 @@ def _emit_beat_notes(
             if flags & _SLIDE_TO_BITS:  # 1/2 = pitched shift/legato slide
                 techs.add(Technique.SLIDE)
                 slide_to = True
+            # 2 = legato slide: the landing note is not picked again (linkNext)
+            link_next = bool(flags & 2)
             if flags & 4:     # slide out downwards → unpitched, toward the nut
                 slide_unpitch = max(1, fret - 5)
             elif flags & 8:   # slide out upwards → unpitched, toward the bridge
@@ -1057,6 +1060,7 @@ def _emit_beat_notes(
                     pick_direction=beat_pick,
                     slide_in_from=slide_in,
                     trill_fret=trill_fret,
+                    link_next=link_next,
                 ),
                 hopo_dest,
                 slide_to,
@@ -1080,6 +1084,7 @@ def _merge_ties(
     notes = [r[0] for r in raw]
     order = sorted(range(len(notes)), key=lambda i: (notes[i].string, notes[i].time))
     dropped: set[int] = set()
+    slides_out: set[int] = set()  # notes whose held part carries the slide
     for pos, idx in enumerate(order):
         if not raw[idx][3]:  # not a tie destination
             continue
@@ -1103,9 +1108,16 @@ def _merge_ties(
             notes[prev] = dataclasses.replace(
                 notes[prev], techniques=notes[prev].techniques | {Technique.VIBRATO}
             )
+        if raw[idx][2]:  # a slide drawn on the held part slides out of the whole note
+            notes[prev] = dataclasses.replace(
+                notes[prev], techniques=notes[prev].techniques | {Technique.SLIDE},
+                link_next=tie.link_next,
+            )
+            slides_out.add(prev)
         dropped.add(idx)
     return [
-        (notes[i], raw[i][1], raw[i][2]) for i in range(len(raw)) if i not in dropped
+        (notes[i], raw[i][1], raw[i][2] or i in slides_out)
+        for i in range(len(raw)) if i not in dropped
     ]
 
 

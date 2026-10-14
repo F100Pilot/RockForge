@@ -41,7 +41,7 @@ from rockforge.domain.arrangement import (
     ToneChange,
 )
 from rockforge.domain.errors import IngestionError
-from rockforge.domain.music import TabNote, Technique, Tuning, apply_sustain_gap
+from rockforge.domain.music import TabNote, Technique, Tuning, apply_sustain_gap, resolve_links
 from rockforge.domain.tone import Tone
 from rockforge.infrastructure.gpimport.parser import (
     GpSection,
@@ -607,6 +607,11 @@ class GenerateFromGpUseCase:
             warnings.append(
                 f"{kind_value}: {len(note_ov)} manual note edit(s) from the in-app editor applied"
             )
+
+        # Last, after every move a note can make (sync rounds, edits): a link
+        # whose pair was separated, re-fretted or re-timed is cleared, and a
+        # surviving one ends exactly where its next note starts.
+        parsed = {kind: replace(p, notes=resolve_links(p.notes)) for kind, p in parsed.items()}
 
         stage("build_arrangements")
         first = next(iter(parsed.values()))
