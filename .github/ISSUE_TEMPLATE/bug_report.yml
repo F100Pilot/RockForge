@@ -1,0 +1,72 @@
+name: Bug report · Relatar um erro
+description: Something does not work as expected · Algo não funciona como devia
+labels: [bug]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where · Onde
+      options:
+        - Creating a project (Guitar Pro, Songsterr, PDF, recording) · Criar um projeto (Guitar Pro, Songsterr, PDF, gravação)
+        - Sync on the score · Sincronização na partitura
+        - Editing notes or sections · Editar notas ou secções
+        - Tones · Tons
+        - Lyrics · Letra
+        - The song in Rocksmith (crash, missing, wrong) · A música no Rocksmith (fecha, não aparece, errada)
+        - DLC Builder project · Projeto do DLC Builder
+        - Installing or starting the app · Instalar ou arrancar a aplicação
+        - Something else · Outra coisa
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened? · O que aconteceu?
+      description: What you did and what went wrong. · O que fizeste e o que correu mal.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect? · O que esperavas?
+  - type: dropdown
+    id: dlcbuilder
+    attributes:
+      label: If it is about the game, does the DLC Builder build of the same song work? · Se é sobre o jogo, a versão do DLC Builder da mesma música funciona?
+      description: >-
+        Open the bundle's rockforge.rs2dlc in DLC Builder and build it there. This tells whether the problem is in
+        RockForge's own .psarc. · Abre o rockforge.rs2dlc do bundle no DLC Builder e constrói lá. Isto diz se o problema
+        está no .psarc do próprio RockForge.
+      options:
+        - Not about the game · Não é sobre o jogo
+        - "Yes, it works · Sim, funciona"
+        - "No, it fails the same way · Não, falha da mesma forma"
+        - Did not try · Não experimentei
+  - type: input
+    id: version
+    attributes:
+      label: Version · Versão
+      description: Next to "RockForge" on the home page · Ao lado de "RockForge" na página inicial
+      placeholder: v1.0.0
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: System, how you start it, and browser · Sistema, como arrancas e browser
+      placeholder: Windows 11, start.bat, Chrome 140
+  - type: textarea
+    id: logs
+    attributes:
+      label: Messages or logs · Mensagens ou registos
+      description: >-
+        Text from the start.bat window, logs\worker.log, or the error shown on the Export page. · Texto da janela do
+        start.bat, do logs\worker.log, ou o erro mostrado na página Exportar.
+      render: text
+  - type: textarea
+    id: file
+    attributes:
+      label: The song · A música
+      description: >-
+        Attach a Guitar Pro file, recording or .psarc only if you have the right to share it; otherwise describe it. ·
+        Anexa um ficheiro Guitar Pro, uma gravação ou um .psarc só se tiveres o direito de os partilhar; senão, descreve-os.

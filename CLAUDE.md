@@ -4409,8 +4409,16 @@ background" feature:
   constraints. The single source of truth for *why* the code is shaped as it is.
 - **`LICENSE`**, **`THIRD_PARTY_NOTICES.md`**, **`LEGAL.md`** — the MIT licence,
   the origin and licence of everything third-party, and the legal notice (PT/EN).
-- **`README.md`** — user-facing: install, run, use, distribute. Start here to
-  set up a machine.
+- **`README.md`** (English) + **`README.pt.md`** — the public home page: what
+  it does and does not do, what to install, how to start, the documentation
+  table, the PayPal button. Short on purpose; the detail lives below.
+- **`docs/TECHNICAL.md`** + **`docs/TECNICO.md`** — install, run, configure,
+  build the `.exe`/installer, Docker, external software. (They were the
+  READMEs until the public release.)
+- **`CHANGELOG.md`** + **`CHANGELOG.en.md`** — what changed per version, same
+  entries in both; new entries go under "Por lançar"/"Unreleased".
+- **`CONTRIBUTING.md`**, **`SECURITY.md`**, `.github/ISSUE_TEMPLATE/`,
+  `.github/FUNDING.yml` — bilingual community files (the PDF-to-GP5 pattern).
 - **`docs/GUIA.md`** + **`docs/GUIDE.en.md`** — the user guide: how to work
   with the app page by page, in the UI's own words (each language quotes the
   labels of its own interface — check them against `web/i18n-en.js`), plus
@@ -4445,7 +4453,7 @@ version exists). **No Redis is not an error**: it sets
 `ROCKFORGE_WORKER_MODE=inprocess` and runs the tasks inside the API, as the
 `.exe` does — Memurai needs admin rights to install, which a work laptop may
 refuse. The file runs with delayed expansion: no `!` in a command line. Requires ffmpeg
-(`winget install ffmpeg`) and a running Redis. See README for the full guide.
+(`winget install ffmpeg`) and a running Redis. See `docs/TECHNICAL.md` for the full guide.
 Before that it runs `git pull --ff-only` and restarts itself (`--atualizado`:
 cmd reads a .bat while running it, so the pulled version must be re-read),
 `pip install -e ".[ml,lyrics,psarc,youtube]"` only when `pyproject.toml`
@@ -4526,7 +4534,8 @@ MPL-2.0) and the external programs and online services. **`LEGAL.md`** (PT/EN)
 is the user-facing notice: not affiliated with Ubisoft, no songs or Ubisoft
 content inside, copyright of what users create is theirs, the terms of
 Songsterr/YouTube/LRCLIB/covers apply to whoever presses the button, no
-warranty, and a good-faith takedown contact. Both READMEs summarise it in
+warranty, and a good-faith takedown contact. Both home pages summarise it in
+"Licença e avisos"/"Licence and notices", and the technical docs in
 "Avisos legais"/"Legal notices" and "Licença"/"Licence".
 
 **When you vendor a file or port code from another project, add it to

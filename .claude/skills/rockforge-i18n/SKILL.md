@@ -91,4 +91,4 @@ concepts (and Rocksmith's own terms in that language where they exist).
 3. Server messages: they read the English until a `<code>=` keyword is added
    to their `tr(...)`. Adding it everywhere is a separate, larger pass — say so
    rather than claiming the server is translated.
-4. Update `CLAUDE.md` ("Languages") and the README's language note.
+4. Update `CLAUDE.md` ("Languages") and the language notes in `README.md`/`README.pt.md` and `docs/TECHNICAL.md`/`docs/TECNICO.md`.

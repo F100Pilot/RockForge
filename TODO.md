@@ -129,7 +129,7 @@ documentados nas mensagens de commit, caso valha a pena ressuscitar alguma.
 
 - **Letra/tom precisam de GPU para ser rápido.** Em CPU a separação Demucs
   demora minutos. O `pip install torch` no Windows é só-CPU — é preciso o build
-  CUDA (README §2b). Confirmar no log: `device: cuda (GPU)`.
+  CUDA (docs/TECNICO.md §2b). Confirmar no log: `device: cuda (GPU)`.
 - **Dynamic Difficulty FUNCIONA no jogo (confirmado 2026-08-25)** — sobe e o
   nível é guardado. Chegou lá por byte-diff contra um build do DLC Builder da
   mesma música (ambos os `.psarc` descodificados e comparados campo a campo);
@@ -164,22 +164,35 @@ documentados nas mensagens de commit, caso valha a pena ressuscitar alguma.
 - [x] `LICENSE` (MIT), `THIRD_PARTY_NOTICES.md` (origem e licença de tudo o que
   vem de terceiros, com o texto MIT do Rocksmith2014.NET), `LEGAL.md` (aviso
   legal PT/EN: Ubisoft, direitos de autor, serviços online, sem garantia),
-  secções "Avisos legais"/"Licença" nos dois README; o `.exe`, o zip portátil e
+  secções "Avisos legais"/"Licença" na documentação técnica e "Licença e
+  avisos" nas páginas iniciais; o `.exe`, o zip portátil e
   o instalador levam os três ficheiros (`build_exe.copy_legal_files`,
   `LicenseFile` no `installer.iss`). Guardado por `tests/test_legal_files.py`.
 - [ ] **alphaTab é MPL-2.0.** `gpimport/playback.py`, `domain/music.py`
   (`alphatab_bend`) e a leitura dos SyncPoints seguem de perto a lógica do
   alphaTab. Está creditado; falta decidir se esses ficheiros passam a declarar
   também MPL-2.0 no cabeçalho (o MPL permite-o dentro de um projeto MIT).
-- [ ] **PDF-to-GP5 não tem ficheiro de licença.** É do mesmo autor e o RockForge
-  instala-o como dependência (`[pdf]`); antes de publicar, pôr uma licença no
-  PDF-to-GP5 (o MIT, como aqui, seria o natural).
+- [x] **PDF-to-GP5 tem licença MIT** (desde o seu commit `c30a701`; o commit
+  fixado no `[pdf]` já a inclui).
 - [ ] **Licença do Rocksmith Custom Song Toolkit por confirmar.** O
   `soundbank.py` segue o `SoundBankGenerator2014`; as notas dizem MIT, mas o
   repositório do toolkit não mostra um ficheiro de licença.
 - [ ] **ffmpeg dentro do instalador.** Se o `ffmpeg.exe` for incluído, juntar o
   texto da licença dessa build (normalmente GPL-3.0 no Windows) e um link para
   o código-fonte correspondente.
+
+## Pronto para publicar (2026-10-14, como no PDF-to-GP5)
+
+- [x] Página inicial em inglês (`README.md`) e português (`README.pt.md`), com
+  capturas de ecrã de músicas inventadas (`docs/media/`), emblemas e o botão
+  PayPal; os README antigos passaram a `docs/TECHNICAL.md`/`docs/TECNICO.md`.
+- [x] `CHANGELOG.md`/`CHANGELOG.en.md` (versão 1.0.0), `CONTRIBUTING.md`,
+  `SECURITY.md`, modelos de issues bilingues, `.github/FUNDING.yml`.
+- [x] Mensagens do `start.bat` em português e inglês.
+- [x] Histórico verificado: sem segredos, e-mails pessoais, áudio ou ficheiros
+  de músicas.
+- [ ] Ativar no GitHub: repositório público, *Private vulnerability reporting*
+  (Settings → Code security), e as *Issues*.
 
 ## Anúncio (rascunhos para a CustomsForge e o Reddit)
 
@@ -191,12 +204,11 @@ Os dois fóruns são em inglês, por isso os textos também. Antes de publicar:
   `ffmpeg.exe` for incluído, ver o ponto do ffmpeg acima.
 - [ ] Instalar a Release num PC limpo (sem Python) e criar um CDLC de ponta a
   ponta, para o anúncio não prometer o que não arranca.
-- [ ] 3-4 capturas de ecrã: página inicial, Partitura com a sincronização,
-  Pista 3D, página Tons. Sem capas nem nomes de músicas comerciais em destaque
-  (uma música tua ou do domínio público, ou desfocar).
+- [x] Capturas de ecrã em `docs/media/` (página inicial, Partitura com a
+  sincronização, Pista 3D, Exportar), feitas com músicas e capas inventadas.
 - [ ] Reler as regras do fórum de ferramentas da CustomsForge e as do
   r/rocksmith (autopromoção, *flair*) no dia em que publicares.
-- [ ] Substituir `<REPO_URL>` e `<RELEASE_URL>` nos textos.
+- [ ] Substituir `<RELEASE_URL>` nos textos pelo link da Release.
 - [ ] Nunca pôr links para CDLC com música comercial nas respostas — só para a
   ferramenta.
 
@@ -260,7 +272,7 @@ personal project and I'd like to share it with the community and get feedback.
 - Optional: Demucs/librosa/WhisperX for stems, tone and lyric detection;
   yt-dlp + Deno for the Songsterr video audio.
 
-**Download / source:** <RELEASE_URL> · <REPO_URL>
+**Download / source:** <RELEASE_URL> · https://github.com/F100Pilot/RockForge
 
 **Credits**: huge thanks to iminashi's **Rocksmith2014.NET / DLC Builder**
 (MIT) — the SNG/PSARC format work, Wwise templates, gear catalogue and phrase
@@ -304,7 +316,7 @@ tab), no bass yet, no .gpx. Needs Wwise (free from Audiokinetic, not bundled)
 for the playable PSARC audio, plus the usual CDLC enabler. It's beta — tested
 in game on my own songs.
 
-Download / source: <RELEASE_URL> · <REPO_URL>
+Download / source: <RELEASE_URL> · https://github.com/F100Pilot/RockForge
 
 Built on the shoulders of DLC Builder / Rocksmith2014.NET (iminashi) and
 alphaTab — thank you! Not affiliated with Ubisoft, no songs included; please

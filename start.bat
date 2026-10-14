@@ -15,15 +15,17 @@ if not exist logs mkdir logs
 set "PORT=8000"
 
 if /i "%~1"=="--atualizado" goto :prepare
-echo A atualizar o codigo (git pull)...
+echo A atualizar o codigo / Updating the code (git pull)...
 where git >nul 2>&1
 if errorlevel 1 (
   echo AVISO: git nao encontrado. Vai ser usada a versao local.
+  echo WARNING: git not found. Using the local version.
   goto :prepare
 )
 git pull --ff-only
 if errorlevel 1 (
   echo AVISO: git pull falhou. Vai ser usada a versao local.
+  echo WARNING: git pull failed. Using the local version.
   goto :prepare
 )
 REM cmd reads this file while running it: restart with the version just pulled.
@@ -50,6 +52,7 @@ if "%PY%"=="python" if defined PY311 set PY="%PY311%"
 %PY% --version >nul 2>&1
 if errorlevel 1 (
   echo ERRO: Python nao encontrado. Instala o Python 3.11 ^(python.org^).
+  echo ERROR: Python not found. Install Python 3.11 ^(python.org^).
   pause
   endlocal
   exit /b 1
@@ -60,10 +63,12 @@ REM No "!" in this line: delayed expansion is on and cmd would eat it.
 %PY% -c "import sys; sys.exit(0 if sys.version_info[:2] == (3, 11) else 1)" >nul 2>&1
 if errorlevel 1 (
   echo ERRO: o RockForge precisa do Python 3.11, e o Python encontrado e outro:
+  echo ERROR: RockForge needs Python 3.11, and the Python found is another one:
   %PY% --version
   echo Instala o Python 3.11 ^(pode ficar ao lado do que ja tens^):
   echo     winget install Python.Python.3.11
   echo ou descarrega-o de python.org. Depois fecha esta janela e corre o start.bat de novo.
+  echo Install Python 3.11 ^(it can sit beside the one you have^) with the command above, or from python.org, then close this window and run start.bat again.
   pause
   endlocal
   exit /b 1
@@ -75,9 +80,11 @@ REM pyproject.toml in logs\ says whether anything changed).
 fc /b pyproject.toml logs\pyproject.installed >nul 2>&1
 if errorlevel 1 (
   echo A instalar/atualizar as dependencias ^(pode demorar na primeira vez^)...
+  echo Installing/updating the dependencies ^(the first time takes a while^)...
   %PY% -m pip install --disable-pip-version-check --no-warn-script-location -q -e ".[ml,lyrics,psarc,youtube]"
   if errorlevel 1 (
     echo ERRO: nao foi possivel instalar as dependencias - ve as mensagens acima.
+    echo ERROR: the dependencies could not be installed - see the messages above.
     pause
     endlocal
     exit /b 1
@@ -92,13 +99,16 @@ REM RockForge from starting. Retried on every start until it is there.
 %PY% -c "import pdf_to_gp5" >nul 2>&1 || set "NEED_PDF=1"
 if defined NEED_PDF (
   echo A instalar o conversor de PDF ^(PDF-to-GP5^)...
+  echo Installing the PDF converter ^(PDF-to-GP5^)...
   %PY% -m pip install --disable-pip-version-check --no-warn-script-location -q -e ".[pdf]"
   if errorlevel 1 echo AVISO: o conversor de PDF nao foi instalado ^(precisa de internet e do git^). O resto do RockForge funciona.
+  if errorlevel 1 echo WARNING: the PDF converter was not installed ^(it needs the internet and git^). The rest of RockForge works.
 )
 
 netstat -an | find ":%PORT% " | find "LISTENING" >nul
 if not errorlevel 1 (
   echo ERRO: a porta %PORT% ja esta em uso - o RockForge ja esta a correr noutra janela?
+  echo ERROR: port %PORT% is already in use - is RockForge already running in another window?
   pause
   endlocal
   exit /b 1
@@ -123,8 +133,10 @@ if not defined REDIS_RUNNING (
 
 if defined REDIS_RUNNING (
   echo Redis ja esta a correr na porta 6379 - a reutilizar.
+  echo Redis is already running on port 6379 - reusing it.
 ) else if defined REDIS_CMD (
   echo A iniciar Redis ^(!REDIS_CMD!^) em segundo plano ^(logs\redis.log^)...
+  echo Starting Redis in the background ^(logs\redis.log^)...
   start "RockForge-Redis" /min cmd /c "!REDIS_CMD! > logs\redis.log 2>&1"
 ) else (
   REM No Redis - Memurai needs admin rights to install, often refused on a work
@@ -132,19 +144,25 @@ if defined REDIS_RUNNING (
   REM does. Same task code, one at a time, and closing the tab waits for them.
   set "ROCKFORGE_WORKER_MODE=inprocess"
   echo Redis nao encontrado - as tarefas correm dentro da propria API ^(sem worker^).
+  echo Redis not found - the tasks run inside the API itself ^(no worker^).
   echo ^(Opcional: o Memurai, https://www.memurai.com/, volta a usar o worker separado.^)
+  echo ^(Optional: with Memurai, https://www.memurai.com/, the separate worker is used again.^)
 )
 
 if /i "%ROCKFORGE_WORKER_MODE%"=="inprocess" (
   echo.
   echo A iniciar a API...
+  echo Starting the API...
 ) else (
   echo A iniciar o worker Celery em segundo plano ^(logs\worker.log^)...
+  echo Starting the Celery worker in the background ^(logs\worker.log^)...
   start "RockForge-Worker" /min cmd /c "%PY% -m celery -A rockforge.interfaces.worker.celery_app:celery_app worker --pool=solo --loglevel=info > logs\worker.log 2>&1"
   echo.
   echo Redis e Worker a correr minimizados. A iniciar a API...
+  echo Redis and the worker are running minimised. Starting the API...
 )
 echo O browser abre automaticamente; fechar o separador para tudo (apos alguns segundos).
+echo The browser opens by itself; closing the tab stops everything (after a few seconds).
 echo.
 
 REM Open the page once the API is accepting connections: polls the port (up to
@@ -171,6 +189,7 @@ REM A single uvicorn process exits cleanly, so the cleanup below always runs.
 
 echo.
 echo A parar Redis e o worker...
+echo Stopping Redis and the worker...
 REM Primary: kill the windows we launched (and their process trees, so the
 REM worker's ML subprocesses go too). A reused Memurai service has no such
 REM window and is left running.

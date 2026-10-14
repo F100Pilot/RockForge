@@ -3,7 +3,7 @@ services:
     build: { context: ., dockerfile: docker/Dockerfile, target: api }
     ports: ["8000:8000"]
     environment: &env
-      ROCKFORGE_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-rockforge}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in a .env file next to docker-compose.yml — see README}@db:5432/${POSTGRES_DB:-rockforge}
+      ROCKFORGE_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-rockforge}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in a .env file next to docker-compose.yml — see docs/TECHNICAL.md}@db:5432/${POSTGRES_DB:-rockforge}
       ROCKFORGE_BROKER_URL: redis://redis:6379/0
       ROCKFORGE_RESULT_BACKEND: redis://redis:6379/1
       ROCKFORGE_WORK_DIR: /data
@@ -12,10 +12,10 @@ services:
       # auth unless this is set. Put a real secret in a .env file next to this
       # compose file (never commit it); compose fails to start without one
       # rather than silently running the API unauthenticated on the network.
-      ROCKFORGE_API_TOKEN: ${ROCKFORGE_API_TOKEN:?set a secret in a .env file next to docker-compose.yml — see README}
+      ROCKFORGE_API_TOKEN: ${ROCKFORGE_API_TOKEN:?set a secret in a .env file next to docker-compose.yml — see docs/TECHNICAL.md}
       # Wwise local (nunca incluído na imagem — EULA Audiokinetic). Em Docker/Linux
       # exigiria Wine + instalação manual; para usar o teu Wwise, corre o worker
-      # nativamente no Windows (ver README "Como testar").
+      # nativamente no Windows (ver docs/TECNICO.md "Como testar").
       # ROCKFORGE_WWISE_ROOT: "C:/Program Files (x86)/Audiokinetic/Wwise2023..."
     volumes: ["workdata:/data"]
     depends_on: [db, redis]
@@ -35,7 +35,7 @@ services:
       # old rockforge/rockforge default. Not network-reachable (no published
       # port), so this is defense-in-depth after another container compromise.
       POSTGRES_USER: ${POSTGRES_USER:-rockforge}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in a .env file next to docker-compose.yml — see README}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in a .env file next to docker-compose.yml — see docs/TECHNICAL.md}
       POSTGRES_DB: ${POSTGRES_DB:-rockforge}
     volumes: ["pgdata:/var/lib/postgresql/data"]
 

@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: User guide · Guia do utilizador
+    url: https://github.com/F100Pilot/RockForge/blob/main/docs/GUIDE.en.md
+    about: How to use the app, and the most common problems · Como usar a aplicação, e os problemas mais comuns (PT → docs/GUIA.md)

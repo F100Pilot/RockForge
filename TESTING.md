@@ -637,7 +637,7 @@ traceback. Behaviour to confirm on such a machine:
   `ROCKFORGE_WHISPERX_COMPUTE_TYPE=int8_float16` (lower-VRAM, more cuDNN-tolerant
   than the default `float16`) — passed through to the runner. It only helps the
   transcribe model; an alignment-step cuDNN crash still falls back to CPU. Needs
-  a matching CUDA build of torch/ctranslate2 + cuDNN DLLs on PATH (README §2b);
+  a matching CUDA build of torch/ctranslate2 + cuDNN DLLs on PATH (docs/TECHNICAL.md §2b);
   or `ROCKFORGE_WHISPERX_DEVICE=cpu` / `ROCKFORGE_DEMUCS_DEVICE=cpu` to force CPU.
 
 ### 7c-bis. Lyrics from LRCLIB + synchronising them (network; alignment needs `[ml,lyrics]`)
@@ -859,7 +859,7 @@ Build with `py -3.11 build_exe.py` after installing `.[dev,psarc,desktop]`, then
 
 1. **It opens in its own window** — no browser tab, and no black console box
    behind it. The UI inside must be the full app (a blank window means the
-   spec is not shipping `web/`; §7 of the README covers that check).
+   spec is not shipping `web/`; §7 of docs/TECHNICAL.md covers that check).
 2. **Closing the window exits the process.** Check Task Manager: no
    `rockforge.exe` left behind. The idle-shutdown watchdog is deliberately off
    in windowed mode, so the window IS the only exit signal — if it leaks, the
@@ -1302,7 +1302,7 @@ renders the log.
 2. `loading ML models` with nothing after → the worker process didn't progress;
    check `logs\worker.log` for a traceback.
 3. `torch ready — device: cpu (CPU)` on a GPU machine → torch is the CPU-only
-   build; reinstall the CUDA build (README §2b). Verify:
+   build; reinstall the CUDA build (docs/TECHNICAL.md §2b). Verify:
    `py -3.11 -c "import torch; print(torch.__version__, torch.cuda.is_available())"`
    must print `...+cu121 True`.
 4. `whisperx NOT available: ...` → the `[lyrics]` extra is missing or its import
