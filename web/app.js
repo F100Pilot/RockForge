@@ -1428,6 +1428,23 @@ async function getJSON(url, opts) {
   return r.json();
 }
 
+// Asks /jobs/<the project open now>/<path> every 3 s and hands each answer to
+// onData(answer, jobId) until it returns true (finished). Bound to that
+// project: opening another one, or closing it, stops it instead of polling —
+// and drawing — the new project. A request that fails is skipped (offline: the
+// banner says so). Returns the interval, for clearInterval.
+function pollJob(path, onData) {
+  const jobId = selectedJob?.id;
+  const timer = setInterval(async () => {
+    if (!selectedJob || selectedJob.id !== jobId) { clearInterval(timer); return; }
+    let d;
+    try { d = await getJSON(`/jobs/${jobId}/${path}`); } catch { return; }
+    if (!selectedJob || selectedJob.id !== jobId) return;
+    if (onData(d, jobId)) clearInterval(timer);
+  }, 3000);
+  return timer;
+}
+
 // getJSON for a button's request: a failure is shown as a toast (the server's
 // own reason when it gave one) and answers null, so the caller just returns.
 async function fetchOrToast(url, opts) {
@@ -4817,12 +4834,7 @@ async function loadLyrics(id) {
   clearInterval(lyricsPollTimer);
   if (LYRICS_DETECTING_STATUSES.has(body.status)) {
     const startedAt = Date.now();
-    const jobId = selectedJob?.id;  // see pollToneDetection
-    lyricsPollTimer = setInterval(async () => {
-      if (!selectedJob || selectedJob.id !== jobId) { clearInterval(lyricsPollTimer); return; }
-      let b;
-      try { b = await getJSON(`/jobs/${jobId}/lyrics`); } catch { return; }
-      if (!selectedJob || selectedJob.id !== jobId) return;
+    lyricsPollTimer = pollJob('lyrics', b => {
       let label = LYRICS_STATUS_LABEL[b.status] || '';
       const elapsed = Date.now() - _lyricsStatusSince;
       const stuckMs = LYRICS_STUCK_MS[b.status] || 8*60*1000;
@@ -4833,22 +4845,21 @@ async function loadLyrics(id) {
         label += T(' — sem progresso há {min} min; verifica logs/worker.log', { min: Math.round(elapsed/60000) });
       document.getElementById('lyricsInfo').textContent = label;
       updateLyricsProgress(b.status, b.log, isStuck);
-      if (!LYRICS_DETECTING_STATUSES.has(b.status)) {
-        clearInterval(lyricsPollTimer);
-        lyricsEvents = eventsToRows(b.events);
-        // A failed alignment must not cost the lyrics it was aligning: they
-        // may exist only in the editor (loaded from LRCLIB, not yet rebuilt).
-        if (lyricsBeforeAlign && b.status !== 'ready') {
-          lyricsEvents = lyricsBeforeAlign;
-          toast(T('A sincronização não correu — a letra ficou como estava. Vê o registo acima.'));
-        } else {
-          setLyricsFollowChart(b.follow_chart);  // detected/aligned: timed to the recording
-        }
-        lyricsBeforeAlign = null;
-        resetLyricFollow();
-        renderLyricsRows();
+      if (LYRICS_DETECTING_STATUSES.has(b.status)) return false;
+      lyricsEvents = eventsToRows(b.events);
+      // A failed alignment must not cost the lyrics it was aligning: they
+      // may exist only in the editor (loaded from LRCLIB, not yet rebuilt).
+      if (lyricsBeforeAlign && b.status !== 'ready') {
+        lyricsEvents = lyricsBeforeAlign;
+        toast(T('A sincronização não correu — a letra ficou como estava. Vê o registo acima.'));
+      } else {
+        setLyricsFollowChart(b.follow_chart);  // detected/aligned: timed to the recording
       }
-    }, 3000);
+      lyricsBeforeAlign = null;
+      resetLyricFollow();
+      renderLyricsRows();
+      return true;
+    });
   }
 }
 
@@ -5196,30 +5207,21 @@ async function detectTones() {
 
 let _toneDetectionPoll = null;
 function pollToneDetection() {
-  if (_toneDetectionPoll) clearInterval(_toneDetectionPoll);
-  // Bound to the project it was started for: opening another one (or closing
-  // this one) stops it, instead of polling — and drawing — the new project.
-  const jobId = selectedJob?.id;
-  _toneDetectionPoll = setInterval(async () => {
-    if (!selectedJob || selectedJob.id !== jobId) {
-      clearInterval(_toneDetectionPoll); _toneDetectionPoll = null; return;
-    }
-    let d;
-    try { d = await getJSON(`/jobs/${jobId}/detected-tones`); } catch { return; }  // offline: the banner says so
-    if (!selectedJob || selectedJob.id !== jobId) return;
+  clearInterval(_toneDetectionPoll);
+  _toneDetectionPoll = pollJob('detected-tones', (d, jobId) => {
     document.getElementById('toneDetectionLog').textContent = (d.log || []).join('\n');
     if (d.status === 'ready') {
-      clearInterval(_toneDetectionPoll);
-      _toneDetectionPoll = null;
       renderToneDetectionResult(d);
       loadToneSuggestions(jobId);
-    } else if (d.status === 'unavailable') {
-      clearInterval(_toneDetectionPoll);
-      _toneDetectionPoll = null;
+      return true;
+    }
+    if (d.status === 'unavailable') {
       document.getElementById('toneDetectionResult').innerHTML =
         `<span class="meta" style="color:#e88">${T('Deteção falhou — vê o log acima.')}</span>`;
+      return true;
     }
-  }, 3000);
+    return false;
+  });
 }
 
 // Keeps the last detection payload so per-candidate "usar" buttons can look up
@@ -5665,31 +5667,27 @@ async function separateStems() {
 
 let _stemsPoll = null;
 function pollStems() {
-  if (_stemsPoll) clearInterval(_stemsPoll);
-  const jobId = selectedJob?.id;  // see pollToneDetection
-  _stemsPoll = setInterval(async () => {
-    if (!selectedJob || selectedJob.id !== jobId) {
-      clearInterval(_stemsPoll); _stemsPoll = null; return;
-    }
-    let d;
-    try { d = await getJSON(`/jobs/${jobId}/stems`); } catch { return; }
-    if (!selectedJob || selectedJob.id !== jobId) return;
+  clearInterval(_stemsPoll);
+  _stemsPoll = pollJob('stems', d => {
     const st = document.getElementById('stemsStatus');
     if (d.status === 'ready') {
-      clearInterval(_stemsPoll); _stemsPoll = null;
       availableStems = d.stems || [];
       populateAudioSources();
       st.textContent = T('{n} stems prontos (a guitarra é todas as guitarras juntas)', { n: availableStems.length });
-    } else if (d.status === 'unavailable') {
-      clearInterval(_stemsPoll); _stemsPoll = null;
+      return true;
+    }
+    if (d.status === 'unavailable') {
       st.textContent = T('separação falhou — precisa do extra [ml] (Demucs).');
       st.style.color = '#e88';
-    } else if (d.status && d.status !== 'none') {
+      return true;
+    }
+    if (d.status && d.status !== 'none') {
       const label = { detecting: T('a iniciar'), normalizing: T('a normalizar áudio'),
         separating: T('a separar (Demucs)…') }[d.status] || d.status;
       st.textContent = label + '…';
     }
-  }, 3000);
+    return false;
+  });
 }
 
 // Populate the audio-source selector for a job: the synthesized per-arrangement
