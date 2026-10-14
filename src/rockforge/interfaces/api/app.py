@@ -3100,8 +3100,7 @@ def get_tone_suggestions(job_id: str) -> ToneSuggestionsOut:
                 end,
             ),
         ))
-    order = [k.value for k in _arrangement_kinds()]
-    charts.sort(key=lambda c: order.index(c.kind) if c.kind in order else len(order))
+    charts.sort(key=lambda c: _build_order(c.kind))
     plans = plan_tones(windows, pad_s, song, charts)
     return ToneSuggestionsOut(
         tracks=[
@@ -3539,6 +3538,13 @@ def _arrangement_kinds() -> list[Any]:
     return list(ArrangementKind)
 
 
+def _build_order(kind: str) -> int:
+    """Where a chart comes in the build's slot order (Lead, Rhythm, Combined,
+    alternates…) — the order the viewer lists them in; unknown kinds last."""
+    order = [k.value for k in _arrangement_kinds()]
+    return order.index(kind) if kind in order else len(order)
+
+
 def _synced_arrangements(params: dict[str, Any], bundle_dir: str | None) -> list[str]:
     """The charts marked as in sync. A song confirmed as a whole before charts
     could be marked one by one counts every chart it built."""
@@ -3751,13 +3757,12 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
         )
     # The build's own order (Lead, Rhythm, Combined, the alternates), not the
     # file names' alphabetical one, which put the alternates first.
-    order = [k.value for k in _arrangement_kinds()]
-    out.sort(key=lambda a: order.index(a.kind) if a.kind in order else len(order))
+    out.sort(key=lambda a: _build_order(a.kind))
     # What the game calls each chart ("LEAD 1", "LEAD 2", "RHYTHM") — the same
     # numbering the PSARC's SongPartition carries, so the tabs read as in game.
     from rockforge.domain.arrangement import ArrangementKind, game_names
 
-    known = [a for a in out if a.kind in order]
+    known = [a for a in out if a.kind in {k.value for k in ArrangementKind}]
     for a, name in zip(known, game_names([ArrangementKind(a.kind) for a in known]), strict=True):
         a.game_name = name
     return out
