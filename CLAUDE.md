@@ -3055,6 +3055,14 @@ audio preview is left empty (its "Create Preview Audio" generates it).
 
 ### SNG binary compilation (`infrastructure/packaging/psarc/sng.py`)
 
+`sng.py` is the entry point everything calls (`sng.from_arrangement`,
+`sng.write_sng`…); the code is in `sng_model.py` (the records, mask bits and
+shared limits), `sng_build.py` (`from_arrangement`/`from_vocals` and every
+`_build_*` stage) and `sng_io.py` (`write_sng`/`read_sng`). A pure move,
+checked byte for byte: 258 SNGs (fuzzed charts with and without DD, real
+charts, vocals) hash the same before and after. Keep calling through `sng.`:
+tests replace `sng.from_arrangement`, and the packer and manifest reach it there.
+
 `NativePsarcPacker` compiles each `Arrangement` into a Rocksmith Sng2014 binary
 payload via `sng.from_arrangement` + `sng.write_sng`. The binary layout
 (section ordering, field sizes, struct formats) matches the real Sng2014 format
