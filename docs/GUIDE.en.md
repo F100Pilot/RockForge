@@ -78,7 +78,8 @@ One of three sources:
   GP5 or GP7 in Guitar Pro/TuxGuitar.
 - **A PDF or picture of the tab** (PNG, JPEG, WebP): converted into a GP5 by PDF-to-GP5's
   converter. Several files = one track each, in order (up to 7). Reading pictures (OCR) is
-  experimental: check the notes and rhythm on the score after creating the project.
+  experimental: check the notes and rhythm on the score after creating the project — the
+  warnings name the bars whose rhythm was estimated from the spacing, the first ones to check.
 - **A Songsterr link** ("… or import the tab from Songsterr"): downloads the tab and writes a
   GP5 from it, lyrics included when the tab has them. Drum tracks and grace notes are left out
   (the app says how many). Published tabs only.

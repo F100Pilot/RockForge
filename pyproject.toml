@@ -77,7 +77,7 @@ youtube = ["yt-dlp[default]>=2026.8.19"]
 # developed; to take its improvements, move the commit here (start.bat reinstalls
 # when this file changes). Needs git on the machine that installs it.
 pdf = [
-    "pdf-to-gp5[ocr] @ git+https://github.com/F100Pilot/PDF-to-GP5@3ec4777d2795a0859eb55d77537f8405a007cdbb",
+    "pdf-to-gp5[ocr] @ git+https://github.com/F100Pilot/PDF-to-GP5@01d9e799d938313ce8e4f6320fc6f16b1ee8adfd",
 ]
 dev = [
     "pytest>=8.0",

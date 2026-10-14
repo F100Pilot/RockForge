@@ -47,7 +47,8 @@ dela (PNG/JPEG/WebP; vários ficheiros = uma pista cada): o RockForge converte-a
 conversor do [PDF-to-GP5](https://github.com/F100Pilot/PDF-to-GP5) (o extra `[pdf]`) e o
 assistente continua como com um ficheiro Guitar Pro. A leitura de imagens (OCR) é experimental:
 lê as técnicas escritas (H/P, P.M., let ring, harmónicos), os slides, o vibrato, as
-ligaduras e os bends; confere as notas e o ritmo na partitura.
+ligaduras, os bends e o ritmo impresso (também como nos livros de tabs); os avisos indicam os
+compassos com o ritmo estimado pelo espaçamento. Confere as notas e o ritmo na partitura.
 
 Limitações honestas: **só GP6 (`.gpx`) não é suportado** (container binário proprietário —
 exporta como GP5 ou GP7 no Guitar Pro/TuxGuitar). GP3/GP4/GP5 são lidos pelo PyGuitarPro;
