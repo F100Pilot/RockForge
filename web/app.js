@@ -3361,6 +3361,8 @@ async function applyAllNow() {
     return;
   }
   toast(T('A reconstruir…'), 'ok');
+  dropDraft(selectedJob.id);  // the new version is built with them
+  stopPendingHistory();
   // Every chart's pending sync was sent (other_sync), so all of it is built.
   for (const list of Object.values(syncAnchorsByKind)) list.length = 0;
   syncAnchors.length = 0;
@@ -6191,6 +6193,7 @@ let pendingHistAt = -1;      // the one on screen
 let pendingHistJob = null;   // the project version they belong to
 let pendingTimer = null;
 let restoringPending = false;
+let pendingBase = null;      // the version as built: what a draft is compared with
 
 function pendingSnapshot() {
   stashToneSet();  // the chart on screen's tone set back in its place
@@ -6282,6 +6285,59 @@ function recordPending() {
   if (pendingHist.length > HIST_MAX) pendingHist.shift();
   pendingHistAt = pendingHist.length - 1;
   updateUndoButtons();
+  saveDraft();
+}
+
+// ── Autosave: the pending edits survive closing the app ──────────────────────
+// The snapshot on screen is kept in localStorage per project VERSION (a rebuild
+// is a new version, built with them), so closing the tab, the app or the
+// machine before "Aplicar e reconstruir" does not lose an afternoon of
+// corrections. Reopening that version offers them back. Only this browser
+// keeps them; nothing reaches the server until the rebuild.
+const DRAFT_PREFIX = 'rf-draft:';
+const DRAFT_MAX = 20;
+function saveDraft() {
+  if (!pendingHistJob || pendingHistAt < 0) return;
+  const key = DRAFT_PREFIX + pendingHistJob;
+  const snap = pendingHist[pendingHistAt];
+  try {
+    if (snap === pendingBase) { localStorage.removeItem(key); return; }
+    localStorage.setItem(key, JSON.stringify({ t: Date.now(), snap }));
+    pruneDrafts();
+  } catch { /* no storage, or full: the edits simply are not kept */ }
+}
+function dropDraft(jobId) {
+  try { localStorage.removeItem(DRAFT_PREFIX + jobId); } catch { /* no storage */ }
+}
+function pruneDrafts() {
+  const drafts = [];
+  for (let k = 0; k < localStorage.length; k++) {
+    const key = localStorage.key(k);
+    if (!key || !key.startsWith(DRAFT_PREFIX)) continue;
+    let t = 0;
+    try { t = JSON.parse(localStorage.getItem(key)).t || 0; } catch { /* unreadable: oldest */ }
+    drafts.push([t, key]);
+  }
+  drafts.sort((a, b) => b[0] - a[0]);
+  for (const [, key] of drafts.slice(DRAFT_MAX)) localStorage.removeItem(key);
+}
+async function offerDraft(jobId) {
+  let draft = null;
+  try { draft = JSON.parse(localStorage.getItem(DRAFT_PREFIX + jobId) || 'null'); } catch { /* unreadable */ }
+  if (!draft || !draft.snap || draft.snap === pendingBase) return;
+  const when = new Date(draft.t || Date.now()).toLocaleString(document.documentElement.lang || undefined);
+  const yes = await confirmModal(T('Este projeto tem alterações por aplicar, guardadas automaticamente em {when}. Recuperá-las?', { when }));
+  if (!selectedJob || selectedJob.id !== jobId || pendingHistJob !== jobId) return;
+  if (!yes) { dropDraft(jobId); return; }
+  try {
+    restorePending(JSON.parse(draft.snap));
+  } catch {
+    toast(T('Não foi possível recuperar as alterações guardadas.'));
+    dropDraft(jobId);
+    return;
+  }
+  recordPending();  // a step of its own: undo goes back to the version as built
+  toast(T('Alterações recuperadas — "Aplicar e reconstruir" para as guardar no projeto.'), 'ok');
 }
 
 // Called once a project version's charts, lyrics and tones are all loaded:
@@ -6292,7 +6348,9 @@ function startPendingHistory() {
   pendingHistJob = selectedJob ? selectedJob.id : null;
   pendingHist = pendingHistJob ? [JSON.stringify(pendingSnapshot())] : [];
   pendingHistAt = pendingHist.length - 1;
+  pendingBase = pendingHist[0] || null;
   updateUndoButtons();
+  if (pendingHistJob) offerDraft(pendingHistJob);
 }
 function stopPendingHistory() {
   clearTimeout(pendingTimer);
@@ -6300,6 +6358,7 @@ function stopPendingHistory() {
   pendingHistJob = null;
   pendingHist = [];
   pendingHistAt = -1;
+  pendingBase = null;
   updateUndoButtons();
 }
 
@@ -6309,6 +6368,7 @@ function undoPending() {
   pendingHistAt--;
   restorePending(JSON.parse(pendingHist[pendingHistAt]));
   updateUndoButtons();
+  saveDraft();
 }
 function redoPending() {
   if (pendingTimer) recordPending();
@@ -6316,6 +6376,7 @@ function redoPending() {
   pendingHistAt++;
   restorePending(JSON.parse(pendingHist[pendingHistAt]));
   updateUndoButtons();
+  saveDraft();
 }
 function updateUndoButtons() {
   const u = document.getElementById('undoBtn'), r = document.getElementById('redoBtn');

@@ -10,6 +10,9 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 - **Undo / Redo** for everything pending: sync corrections, tempo, notes, lyrics, sections,
   tones and the build options, on any page of the project (buttons in the top bar, Ctrl+Z,
   Ctrl+Shift+Z or Ctrl+Y). Before, only the last note delete could be undone.
+- **Changes not yet applied are saved automatically** in this browser: closing the app before
+  "Apply and rebuild" no longer loses them, and reopening the project asks whether to recover
+  them.
 
 ### Security
 - A title, tone name, section or lyric from outside (a GP file, Songsterr, LRCLIB, other

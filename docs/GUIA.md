@@ -148,6 +148,10 @@ um tom. Cada passo é o que fizeste entre duas pausas (um arrastar inteiro conta
 Dentro de um campo de texto, Ctrl+Z desfaz o que escreveste no campo. Desfazer não volta
 para trás de uma reconstrução: começa sempre na versão aberta.
 
+As alterações pendentes também ficam **guardadas automaticamente** neste browser. Se fechares a
+aplicação (ou o computador desligar) antes de reconstruir, ao reabrir o projeto pergunta se as
+queres recuperar. Ficam pendentes como antes; Desfazer volta à versão construída.
+
 ### A página Partitura
 
 - **Transporte:** play/pausa (ou Espaço), tempo, velocidade (25–100 %) e **Áudio ▾**:

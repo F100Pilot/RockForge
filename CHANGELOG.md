@@ -11,6 +11,9 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
   notas, letra, secções, tons e opções da construção, em qualquer página do projeto (botões na
   barra de cima, Ctrl+Z, Ctrl+Shift+Z ou Ctrl+Y). Antes só se podia desfazer o último apagar
   de notas.
+- **As alterações por aplicar ficam guardadas automaticamente** neste browser: fechar a
+  aplicação antes de "Aplicar e reconstruir" já não as perde, e ao reabrir o projeto pergunta
+  se as queres recuperar.
 
 ### Segurança
 - Um título, nome de tom, secção ou letra vindos de fora (ficheiro GP, Songsterr, LRCLIB, CDLC

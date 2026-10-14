@@ -736,6 +736,19 @@ undone one by one across pages and redone; a new edit drops the redo branch;
 Ctrl+Z in a visible field stays the field's; with two charts a tab switch is no
 step and redo puts each chart's tempo/anchors back; a tone and its change).
 
+**The same snapshot is the autosave** (`saveDraft`, after every recorded step,
+undo and redo): `localStorage` `rf-draft:<job id>` = `{t, snap}`, removed when
+the state is back to the build (`pendingBase`), kept for the 20 most recent
+versions (`pruneDrafts`). Keyed by VERSION, so a draft always matches the
+build it was made on; "Aplicar e reconstruir" drops it (the new version is
+built with it). When a version finishes loading, `offerDraft` asks whether to
+recover it; yes restores it as a step of its own (undo goes back to the
+build), no deletes it. Browser storage only — never sent anywhere, lost with
+the browser's site data, as the honest limit. Verified with Playwright: tempo,
+a lyric word and the cent offset recovered after reloading the page, undone
+to the build (draft gone), redone (draft back), declined (gone for good), and
+dropped by a real rebuild.
+
 ### Clearing note edits ("Notas ▾" → Limpar)
 
 The companion to the seeding fix in the note-editor section: once committed

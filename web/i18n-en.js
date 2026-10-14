@@ -1128,5 +1128,8 @@
  "Pôr o cursor no compasso {n}": "Put the cursor on bar {n}",
  "Desfazer (Ctrl+Z)": "Undo (Ctrl+Z)",
  "Refazer (Ctrl+Shift+Z)": "Redo (Ctrl+Shift+Z)",
- "Refazer": "Redo"
+ "Refazer": "Redo",
+ "Este projeto tem alterações por aplicar, guardadas automaticamente em {when}. Recuperá-las?": "This project has changes not yet applied, saved automatically on {when}. Recover them?",
+ "Não foi possível recuperar as alterações guardadas.": "Could not recover the saved changes.",
+ "Alterações recuperadas — \"Aplicar e reconstruir\" para as guardar no projeto.": "Changes recovered — \"Apply and rebuild\" to keep them in the project."
 };

@@ -148,6 +148,10 @@ edited or deleted, a lyric word, a section, a tone. Each step is what you did be
 (a whole drag counts as one). Inside a text field, Ctrl+Z undoes what you typed in it. Undo does
 not go back past a rebuild: it always starts at the version that is open.
 
+Pending changes are also **saved automatically** in this browser. If you close the app (or the
+computer shuts down) before rebuilding, reopening the project asks whether to recover them.
+They stay pending as before; Undo goes back to the built version.
+
 ### The Score page
 
 - **Transport:** play/pause (or Space), time, speed (25–100 %) and **Audio ▾**:
