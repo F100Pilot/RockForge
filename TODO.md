@@ -186,7 +186,7 @@ documentados nas mensagens de commit, caso valha a pena ressuscitar alguma.
 - [x] Página inicial em inglês (`README.md`) e português (`README.pt.md`), com
   capturas de ecrã de músicas inventadas (`docs/media/`), emblemas e o botão
   PayPal; os README antigos passaram a `docs/TECHNICAL.md`/`docs/TECNICO.md`.
-- [x] `CHANGELOG.md`/`CHANGELOG.en.md` (versão 1.0.0), `CONTRIBUTING.md`,
+- [x] `CHANGELOG.md`/`CHANGELOG.en.md` (versão 0.10.0 beta 1 — a 1.0.0 fica para depois da beta), `CONTRIBUTING.md`,
   `SECURITY.md`, modelos de issues bilingues, `.github/FUNDING.yml`.
 - [x] Mensagens do `start.bat` em português e inglês.
 - [x] Histórico verificado: sem segredos, e-mails pessoais, áudio ou ficheiros
@@ -198,7 +198,8 @@ documentados nas mensagens de commit, caso valha a pena ressuscitar alguma.
 
 Os dois fóruns são em inglês, por isso os textos também. Antes de publicar:
 
-- [ ] Tornar o repositório público e criar uma *Release* no GitHub com o
+- [ ] Tornar o repositório público e criar a *Release* `v0.10.0-beta.1` no GitHub,
+  marcada como **pre-release** (a 1.0.0 fica para depois da beta), com o
   instalador / zip portátil (`py -3.11 build_exe.py --zip --installer`) — o
   `LICENSE`, `THIRD_PARTY_NOTICES.md` e `LEGAL.md` já vão dentro. Se o
   `ffmpeg.exe` for incluído, ver o ponto do ffmpeg acima.

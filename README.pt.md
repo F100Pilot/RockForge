@@ -4,11 +4,12 @@
 
 Transforma um **ficheiro Guitar Pro** — ou o PDF ou uma imagem de uma tablatura, ou um link do
 Songsterr — e a **gravação** da música numa **música personalizada para o Rocksmith 2014 (CDLC)**:
-um `.psarc` jogável e um projeto do DLC Builder. Acerta as notas à gravação de ouvido, edita notas,
+um `.psarc` jogável e um projeto do DLC Builder. **Beta**: pronto a usar, ainda em testes antes
+da 1.0. Acerta as notas à gravação de ouvido, edita notas,
 tons e letra, e instala a música no jogo com um clique.
 
 [![Licença: MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-blue)](LICENSE)
-[![Última versão](https://img.shields.io/github/v/release/F100Pilot/RockForge)](https://github.com/F100Pilot/RockForge/releases/latest)
+[![Última versão (beta)](https://img.shields.io/github/v/release/F100Pilot/RockForge?include_prereleases)](https://github.com/F100Pilot/RockForge/releases)
 [![CI](https://github.com/F100Pilot/RockForge/actions/workflows/ci.yml/badge.svg)](https://github.com/F100Pilot/RockForge/actions/workflows/ci.yml)
 
 [![Paga-me um café](https://img.shields.io/badge/Paga--me%20um%20caf%C3%A9-PayPal-0070ba?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/F100Pilot)
@@ -76,8 +77,8 @@ tons e letra, e instala a música no jogo com um clique.
 
 **Windows**
 
-1. Descarrega a versão mais recente em
-   [Releases](https://github.com/F100Pilot/RockForge/releases/latest) e extrai-a — ou
+1. Descarrega a versão mais recente (por agora, uma **beta**) em
+   [Releases](https://github.com/F100Pilot/RockForge/releases) e extrai-a — ou
    `git clone https://github.com/F100Pilot/RockForge.git`, para o `start.bat` a poder atualizar.
 2. Faz duplo clique no `start.bat`. A primeira vez instala o necessário (vários GB para a deteção
    de stems, letra e tom) e demora.

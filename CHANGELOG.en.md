@@ -6,9 +6,10 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
-## [1.0.0] — 2026-10-14
+## [0.10.0 beta 1] — 2026-10-14
 
-First public version.
+First public version, in beta: ready to use, but waiting for more testing in the game and on
+a PC without Python before 1.0.0.
 
 ### Creating a project
 - Guitar Pro 3, 4, 5 and 7/8 (`.gp`) files: notes, frets, techniques, tempos, sections and lyrics

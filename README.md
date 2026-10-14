@@ -4,11 +4,12 @@
 
 Turn a **Guitar Pro file** — or a PDF or picture of a tab, or a Songsterr link — and the song's
 **recording** into a **Rocksmith 2014 custom song (CDLC)**: a playable `.psarc` and a DLC Builder
-project. Line the notes up with the recording by ear, edit notes, tones and lyrics, and install the
+project. **Beta**: ready to use, still being tested before 1.0.
+Line the notes up with the recording by ear, edit notes, tones and lyrics, and install the
 song in the game with one click.
 
 [![Licence: MIT](https://img.shields.io/badge/licence-MIT-blue)](LICENSE)
-[![Latest release](https://img.shields.io/github/v/release/F100Pilot/RockForge)](https://github.com/F100Pilot/RockForge/releases/latest)
+[![Latest version (beta)](https://img.shields.io/github/v/release/F100Pilot/RockForge?include_prereleases)](https://github.com/F100Pilot/RockForge/releases)
 [![CI](https://github.com/F100Pilot/RockForge/actions/workflows/ci.yml/badge.svg)](https://github.com/F100Pilot/RockForge/actions/workflows/ci.yml)
 
 [![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-PayPal-0070ba?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/F100Pilot)
@@ -74,8 +75,8 @@ song in the game with one click.
 
 **Windows**
 
-1. Download the latest version from
-   [Releases](https://github.com/F100Pilot/RockForge/releases/latest) and extract it — or
+1. Download the latest version (currently a **beta**) from
+   [Releases](https://github.com/F100Pilot/RockForge/releases) and extract it — or
    `git clone https://github.com/F100Pilot/RockForge.git`, so `start.bat` can update it.
 2. Double-click `start.bat`. The first run installs what is needed (several GB for the
    stem/lyric/tone detection) and takes a while.

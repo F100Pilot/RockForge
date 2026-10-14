@@ -9,7 +9,7 @@
 ; Output: Output/RockForge_Setup.exe
 
 #define MyAppName "RockForge"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "0.10.0-beta.1"
 #define MyAppPublisher "RockForge"
 #define MyAppURL "https://github.com/F100Pilot/RockForge"
 #define MyAppExeName "rockforge.exe"

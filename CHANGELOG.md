@@ -6,9 +6,10 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
-## [1.0.0] — 2026-10-14
+## [0.10.0 beta 1] — 2026-10-14
 
-Primeira versão pública.
+Primeira versão pública, em beta: pronta a usar, mas à espera de mais testes no jogo e
+num PC sem Python antes da 1.0.0.
 
 ### Criar um projeto
 - Ficheiros Guitar Pro 3, 4, 5 e 7/8 (`.gp`): notas, trastes, técnicas, andamentos, secções e

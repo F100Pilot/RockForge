@@ -317,7 +317,8 @@ homeDrop.addEventListener('drop', e => {
   inp.dispatchEvent(new Event('change'));
 });
 fetch('/version').then(r => r.json()).then(d => {
-  document.getElementById('appVersion').textContent = 'v' + d.version;
+  // A pre-release reads "v0.10.0 beta 1", not the bare PEP 440 "0.10.0b1".
+  document.getElementById('appVersion').textContent = 'v' + d.version.replace(/b(\d+)$/, ' beta $1');
 }).catch(() => {});
 
 // ── Batch processing: several (GP, audio) pairs, created one job at a time ───
