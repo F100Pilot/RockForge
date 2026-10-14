@@ -1031,7 +1031,7 @@ const INFO = {
   'new-job': {
     title: T('Criar um novo projeto'),
     body: T(`<p><strong>A partir de Guitar Pro</strong>: notas, trastes, técnicas e secções vêm <b>exatas</b> do ficheiro GP3/GP4/GP5/GP7. Assistente de 4 passos: <b>Ficheiro</b> (escolhe o GP e inspeciona as pistas) → <b>Pistas</b> (atribui Lead/Rhythm/Combo) → <b>Gravação</b> (o áudio + o início aproximado) → <b>Detalhes</b> (título/banda, opcionais).</p>
-<p>Os <b>tons</b>, a <b>capa</b> e a <b>sincronização fina</b> fazem-se depois de criar. O projeto mostra um checklist <b>"Estado do PSARC"</b> com o que ainda falta.</p>`)
+<p>Os <b>tons</b>, a <b>capa</b> e a <b>sincronização fina</b> fazem-se depois de criar. A lista <b>"Antes de usar"</b>, na página Exportar, mostra o que ainda falta.</p>`)
   },
   'batch': {
     title: T('Processamento em lote'),
@@ -1498,10 +1498,12 @@ async function openMetaEdit() {
     const opts = '<option value="">—</option>' + tr.tracks
       .filter(t => !t.is_percussion && t.string_count === 6)
       .map(t => `<option value="${t.index}">${t.index}: ${esc(t.name)}</option>`).join('');
-    const SLOTS = [['lead', 'Lead'], ['rhythm', 'Rhythm'], ['combo', 'Combo'],
-                   ['alt_lead', T('Lead alternativo (no jogo: LEAD 2)')], ['alt_rhythm', T('Rhythm alternativo (no jogo: RHYTHM 2)')]];
+    const SLOTS = [['lead', T('Pista {label}', { label: 'Lead' })], ['rhythm', T('Pista {label}', { label: 'Rhythm' })],
+                   ['combo', T('Pista {label}', { label: 'Combo' })],
+                   ['alt_lead', T('Pista Lead alternativo (no jogo: LEAD 2)')],
+                   ['alt_rhythm', T('Pista Rhythm alternativo (no jogo: RHYTHM 2)')]];
     document.getElementById('metaTracks').innerHTML = SLOTS.map(([slot, label]) =>
-      `<div class="field" style="flex:1 1 11rem"><label>${T('Pista {label}', { label })}</label>
+      `<div class="field" style="flex:1 1 11rem"><label>${label}</label>
         <select data-slot="${slot}" style="width:100%">${opts}</select></div>`).join('');
     for (const [slot] of SLOTS) {
       const v = tr.assignment[slot];
@@ -3626,7 +3628,10 @@ function toneCardHtml(t) {
 // A bundle-clock time as the recording's m:ss.t, the clock the score shows.
 function fmtClockTenths(s) {
   if (!isFinite(s) || s < 0) s = 0;
-  const m = Math.floor(s / 60), sec = s - m * 60;
+  // Round first: 69.96 s must read 1:10.0, not 1:010.0 (9.96 is < 10, its
+  // tenths are not) nor 0:60.0.
+  const tenths = Math.round(s * 10);
+  const m = Math.floor(tenths / 600), sec = (tenths - m * 600) / 10;
   return `${m}:${sec < 10 ? '0' : ''}${sec.toFixed(1)}`;
 }
 
@@ -6735,6 +6740,11 @@ function wireDropdown(triggerId, menuId) {
   });
   document.addEventListener('pointerdown', e => {
     if (!menu.hidden && !menu.contains(e.target) && !trigger.contains(e.target)) close(false);
+  });
+  // A panel with no item to focus (the Áudio sliders) leaves focus outside the
+  // menu, where the menu's own Escape never hears it.
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !menu.hidden && !menu.contains(e.target)) close(true);
   });
 }
 wireDropdown('modeMenuBtn', 'modeMenu');

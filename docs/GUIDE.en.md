@@ -150,13 +150,14 @@ one can be deleted once the new one is ready. If the rebuild fails, the previous
     from the recording;
   - **Preview tone**: hear the notes with the character of one of your tones (an approximation —
     the real sound only exists in the game).
-- **Track tabs:** named as the game names them (LEAD, RHYTHM, COMBO, LEAD 2…). They turn
-  **green** when you mark the track as in sync.
+- **Track tabs:** named as the game names them (LEAD, RHYTHM, COMBO, LEAD 2…), with the number of
+  notes (n) and chords (c). They turn **green** when you mark the track as synced.
 - **Mode ▾**: what clicking a note does (see sections 6 and 7). **Notes ▾**: copy, paste,
   delete, undo, clear edits. **Snap**: the grid dragged notes jump to (bar, beat, ½, ¼,
   triplet, or the cursor).
 - **The score:** the axis is the recording's time. Clicking the background moves the cursor.
   Bars are numbered; an amber bar has its tempo changed by your corrections.
+- **preview** plays only the track's notes, without the recording.
 - **Fretboard** shows the guitar neck; **3D highway** shows the notes coming down as in Rocksmith (it
   follows pending corrections too). **− / + / Reset**: zoom.
 - **Inspector (on the right):** **Sync**, **Sections** and **Lyrics**.
@@ -280,8 +281,8 @@ In **Tones of each track**:
   tabs);
 - **Base tone**: the tone the track starts with;
 - **Tones it can switch to** (max 4 — the game's limit);
-- **Tone changes**: on the score, **Tone change** mode and click the note where the switch
-  should happen.
+- **Tone changes**: first tick the tones the track uses under "Tones it can switch to"; then,
+  on the score, **Tone change** mode and click the note where the switch should happen.
 
 This is what goes into the game, after **Apply and rebuild**.
 
@@ -324,7 +325,8 @@ follow), **Only this = cursor**, ◀ ▶, −/+.
 - **Cover:** drop a JPG/PNG image, or **Search cover online** and pick a result (it can fill in
   album and year too). It goes into the PSARC on the next rebuild.
 - **Edit info** (top bar): title, artist, album, year; and the Guitar Pro tracks and tunings.
-  Changing only text does not rebuild; changing tracks or tuning does.
+  Changing only text does not rebuild straight away (it goes into the PSARC on the next
+  rebuild); changing tracks or tuning does.
 
 ## 11. Export, check and install in the game
 
@@ -335,7 +337,8 @@ A list of what is missing or may go wrong, each row with a button to fix it:
 - **Playable PSARC** (needs Wwise);
 - **PSARC checked**: checks the file against the rules whose breaking has made the game crash
   or hide the song before. It does not replace playing the song;
-- **Tones**, **Cover**, **Sync** (confirm each track, or **It's in sync**), **Lyrics**;
+- **Tones**, **Cover**, **Sync** (mark each track on the Score page, or press **Mark as synced**
+  here for the whole song), **Lyrics**;
 - **AppID / ownership**: the PSARC uses the AppID of a DLC the player must own.
 
 Nothing is blocked: you can download anyway.
@@ -350,8 +353,9 @@ Nothing is blocked: you can download anyway.
 
 **Install in the game** copies the PSARC into `dlc\RockForge\` in the game folder and deletes
 the copy of an earlier version of the same song that RockForge put there. Files you put there
-by hand are never deleted (the app warns if the song would be listed twice). With the game open
-the copy can fail: close it and try again.
+by hand are never deleted (the app warns if the song would be listed twice). Close the game
+before installing and start it again for the song to appear; with the game open the copy can
+fail.
 
 ### Build options
 

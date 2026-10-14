@@ -149,13 +149,14 @@ a anterior quando a nova ficar pronta. Se a reconstrução falhar, a anterior fi
     junta todas as guitarras: Lead e Rhythm não se separam da gravação;
   - **Testar tom**: ouve as notas com o carácter de um tom teu (aproximação — o som real só
     existe no jogo).
-- **Separadores das pistas:** com os nomes que o jogo lhes dá (LEAD, RHYTHM, COMBO, LEAD 2…).
-  Ficam **verdes** quando marcas a pista como sincronizada.
+- **Separadores das pistas:** com os nomes que o jogo lhes dá (LEAD, RHYTHM, COMBO, LEAD 2…) e
+  o número de notas (n) e acordes (c). Ficam **verdes** quando marcas a pista como sincronizada.
 - **Modo ▾**: o que acontece ao clicar numa nota (ver secções 6 e 7). **Notas ▾**: copiar,
   colar, apagar, desfazer, limpar edições. **Encaixar**: a grelha para onde as notas arrastadas
   saltam (compasso, tempo, ½, ¼, tercina, ou o cursor).
 - **A partitura:** o eixo é o tempo da gravação. Clicar no fundo move o cursor. Os compassos
   têm número; um compasso a âmbar tem o andamento alterado pelas tuas correções.
+- **pré-visualizar** toca só as notas da pista, sem a gravação.
 - **Braço** mostra o braço da guitarra; **Pista 3D** mostra as notas a descer como no
   Rocksmith (segue também as correções ainda por aplicar). **− / + / Repor**: zoom.
 - **Inspetor (à direita):** **Sincronização**, **Secções** e **Letra**.
@@ -280,8 +281,8 @@ Em **Tons de cada pista**:
   nos separadores);
 - **Tom base**: o tom com que a pista começa;
 - **Tons para onde pode trocar** (máx. 4 — o limite do jogo);
-- **Mudanças de tom**: na partitura, modo **Mudança de tom** e clica na nota onde a troca deve
-  acontecer.
+- **Mudanças de tom**: marca primeiro em "Tons para onde pode trocar" os tons que a pista usa;
+  depois, na partitura, modo **Mudança de tom** e clica na nota onde a troca deve acontecer.
 
 É isto que vai para o jogo, depois de **Aplicar e reconstruir**.
 
@@ -323,7 +324,8 @@ acompanham), **Só esta = cursor**, ◀ ▶, −/+.
 - **Capa:** arrasta uma imagem JPG/PNG, ou **Procurar capa online** e escolhe um resultado
   (pode também preencher o álbum e o ano). Vai para o PSARC na próxima reconstrução.
 - **Editar info** (barra de cima): título, artista, álbum, ano; e as pistas e afinações do
-  Guitar Pro. Mudar só o texto não reconstrói; mudar pistas ou afinação reconstrói.
+  Guitar Pro. Mudar só o texto não reconstrói logo (entra no PSARC na próxima reconstrução);
+  mudar pistas ou afinação reconstrói.
 
 ## 11. Exportar, verificar e instalar no jogo
 
@@ -334,8 +336,8 @@ Uma lista do que falta ou pode correr mal, cada linha com um botão para o resol
 - **PSARC jogável** (precisa do Wwise);
 - **PSARC verificado**: confere o ficheiro contra as regras cuja falha já fez o jogo fechar ou
   esconder a música. Não substitui tocar a música;
-- **Tons**, **Capa**, **Sincronização** (confirma cada pista, ou **Está sincronizada**),
-  **Letra**;
+- **Tons**, **Capa**, **Sincronização** (marca cada pista na Partitura, ou carrega aqui em
+  **Marcar como sincronizada** para a música toda), **Letra**;
 - **AppID / propriedade**: o PSARC usa o AppID de uma DLC que o jogador tem de possuir.
 
 Nada é bloqueado: podes descarregar na mesma.
@@ -350,8 +352,8 @@ Nada é bloqueado: podes descarregar na mesma.
 
 **Instalar no jogo** copia o PSARC para `dlc\RockForge\` na pasta do jogo e apaga a cópia de
 uma versão anterior da mesma música que o RockForge lá tenha posto. Ficheiros que puseste lá à
-mão nunca são apagados (a aplicação avisa se a música ficaria repetida). Com o jogo aberto a
-cópia pode falhar: fecha-o e tenta de novo.
+mão nunca são apagados (a aplicação avisa se a música ficaria repetida). Fecha o jogo antes de
+instalar e volta a abri-lo para a música aparecer; com o jogo aberto a cópia pode falhar.
 
 ### Opções da construção
 
