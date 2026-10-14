@@ -28,6 +28,11 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 - Um silêncio inicial negativo era aceite ao criar o projeto e desalinhava as correções depois de
   mudar o andamento.
 - Saiu a caixa "Lead/Rhythm (exp.)", que já não fazia nada.
+- **O desvio da afinação chega ao jogo.** "Detetar afinação" media quantos cents a gravação está
+  afastada do Lá 440 Hz, mas o valor nunca chegava ao `.psarc` (saía sempre 0). Agora há um campo
+  "Desvio da afinação (cents)" (−50 a +50) em Exportar → Opções da construção, preenchido pela
+  deteção ou à mão, igual em todas as pistas. Os seis números "Afinação (MIDI)", que também não
+  faziam nada, saíram: a afinação das cordas muda-se em "Editar info".
 
 ## [0.10.0 beta 1] — 2026-10-14
 

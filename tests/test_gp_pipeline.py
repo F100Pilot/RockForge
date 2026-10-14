@@ -556,6 +556,33 @@ def test_gp_pipeline_per_arrangement_tuning_override(
     assert rhythm is not None and rhythm.get("string0") == "0"  # unchanged
 
 
+def test_the_recordings_cent_offset_reaches_every_chart(
+    two_track_gp5: Path, tmp_path: Path
+) -> None:
+    """A Guitar Pro file carries no cent offset, so "Detetar afinação" measured
+    one that never reached the build: every chart said 0. The recording is one,
+    so the value is the same on every chart, re-tuned (Drop D) or not."""
+    def cents(spec: GpJobSpec, name: str) -> float:
+        result = make_use_case().run(spec, SongMetadata(title="T", artist="A"), tmp_path / name)
+        return {
+            p.name: float(ET.parse(p).getroot().findtext("centOffset", "nan"))
+            for p in result.packaging.xml_paths if p.name.startswith("arrangement_")
+        }
+
+    tuned = GpJobSpec(
+        gp_path=two_track_gp5, audio_source="x.wav", lead_track=0, rhythm_track=1,
+        tuning_overrides={"Lead": (38, 45, 50, 55, 59, 64)}, cent_offset=-31.8,
+    )
+    assert cents(tuned, "a") == {
+        "arrangement_lead.xml": pytest.approx(-31.8),
+        "arrangement_rhythm.xml": pytest.approx(-31.8),
+    }
+    untouched = GpJobSpec(
+        gp_path=two_track_gp5, audio_source="x.wav", lead_track=0, rhythm_track=1,
+    )
+    assert set(cents(untouched, "b").values()) == {0.0}
+
+
 def test_gp_pipeline_sync_anchors_shift_notes(two_track_gp5: Path, tmp_path: Path) -> None:
     # offset_s=0 -> score_shift=2.0 (MIN_LEAD_S); notes land at 2.0, 2.5, 3.0.
     # A single anchor (2.5 -> 3.0) is a uniform +0.5s shift applied everywhere.

@@ -360,9 +360,14 @@ instalar e volta a abri-lo para a música aparecer; com o jogo aberto a cópia p
 
 ### Opções da construção
 
-Afinação (com **Detetar afinação** na gravação), importar palm mute / slap / tap, e
-**Dificuldade dinâmica** (desliga para uma única dificuldade com todas as notas, se o DD der
-problemas numa música).
+**Desvio da afinação (cents)**: quanto a gravação está afastada do Lá a 440 Hz (uma banda que
+afina a 432 Hz fica perto de −32). O afinador do jogo usa-o para te pedir a guitarra afinada como
+a gravação; é o mesmo em todas as pistas. **Detetar afinação** mede-o na gravação e preenche o
+campo. A afinação das cordas (Drop D, Eb…) muda-se em cada pista em **Editar info** → **Arranjos
+e afinação**.
+
+Importar palm mute / slap / tap, e **Dificuldade dinâmica** (desliga para uma única dificuldade com
+todas as notas, se o DD der problemas numa música).
 
 ## 12. Um álbum de uma vez (Lote)
 

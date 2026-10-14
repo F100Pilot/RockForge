@@ -1060,7 +1060,7 @@ const INFO = {
   },
   'tuning': {
     title: T('Afinação e BPM'),
-    body: T('<p>Offsets em relação ao E standard por corda (grave→agudo). A estimativa automática de afinações drop/open é apenas heurística — verifica e corrige se necessário antes de reconstruir.<br>"Detetar afinação" usa librosa para medir o desvio em cents; os valores MIDI são calculados a partir desse desvio.</p>')
+    body: T('<p>O <b>desvio</b> é quanto a gravação está afastada do Lá a 440 Hz, em cents (um cent é 1/100 de meio-tom): uma banda que afina a 432 Hz fica perto de −32. O jogo usa-o para o afinador te pedir a guitarra afinada como a gravação. É o mesmo em todas as pistas, porque a gravação é uma só.<br>"Detetar afinação" mede-o na gravação e preenche o campo; aplica-se em "Aplicar e reconstruir". Fica entre −50 e +50: mais do que isso já é outra nota.<br>A afinação das cordas (Drop D, Eb…) vem do ficheiro GP e muda-se em cada pista em "Editar info" → "Arranjos e afinação".</p>')
   },
   'sync-offset': {
     title: T('Sincronização — início e tique'),
@@ -1222,7 +1222,6 @@ document.addEventListener('click', e => {
   document.getElementById('infoOverlay').hidden = false;
 });
 
-const STD = [40, 45, 50, 55, 59, 64];
 let selectedJob = null, arrangements = [], currentArr = 0, pollTimer = null;
 let arrangementsLoadedFor = null;  // job id whose chart+audio are already loaded (avoids re-decoding on every poll)
 // Visual sync (GP): MIN_LEAD must match gp_pipeline.MIN_LEAD_S and MIN_OFFSET
@@ -1355,6 +1354,7 @@ let lyricsPollTimer = null;
 // Current cent_offset (fine-tuning deviation from A440), pre-filled from the
 // built arrangement and updated by "Detetar afinação" / sent on rebuild.
 let centOffsetLive = 0;
+let centOffsetBuilt = 0;  // as the current build has it, for "Pendente"
 
 // Safe in text AND in a quoted attribute: serialising a text node escapes only
 // & < >, so a title like  x" onanimationstart="…  would close an attribute and
@@ -1865,8 +1865,8 @@ async function loadArrangements(id) {
   sectionsTouched = false;
   document.getElementById('tuningInfo').innerHTML =
     `<p class="meta">${T('offsets: [{offsets}] · desvio: <span id="centOffsetVal">{cents}</span> cents · BPM médio: {bpm}', { offsets: a0.tuning_offsets.join(', '), cents: a0.cent_offset.toFixed(1), bpm: a0.average_bpm.toFixed(1) })}</p>`;
-  document.getElementById('tuningInputs').innerHTML = STD.map((std, i) =>
-    `<input type="number" min="20" max="80" value="${std + a0.tuning_offsets[i]}" data-string="${i}">`).join('');
+  centOffsetBuilt = a0.cent_offset;
+  document.getElementById('centOffsetInput').value = a0.cent_offset.toFixed(1);
   document.getElementById('detectTuningInfo').textContent = '';
   document.getElementById('arrTabs').innerHTML = arrangements.map((a, i) =>
     `<button type="button" class="${i ? '' : 'active'}" onclick="showArr(${i})"></button>`).join('');
@@ -3285,7 +3285,6 @@ async function applyAll() {
 async function applyAllNow() {
   mainSyncFollow();  // what the main chart changed must reach the others first
   lyricsFollowSync();  // the rows sent must carry every pending chart correction
-  const midi = [...document.querySelectorAll('#tuningInputs input')].map(i => parseInt(i.value, 10));
   const applyToAll = document.getElementById('applyToAllChk').checked;
   const toneSets = toneSetsForRebuild();
   let b;
@@ -3293,7 +3292,6 @@ async function applyAllNow() {
     b = await getJSON(`/jobs/${selectedJob.id}/rebuild`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        tuning_midi: midi.some(isNaN) ? null : midi,
         cent_offset: centOffsetLive,
         offset_s: offsetLive,
         lead_in_s: Math.max(0, parseFloat(document.getElementById('leadInS').value) || 0),
@@ -6165,6 +6163,7 @@ function updatePendingChangesInfo() {
   const builtOffset = selectedJob ? (selectedJob.offset_s || 0) : 0;
   if (Math.abs(offsetLive - builtOffset) > 0.01) parts.push(T('offset'));
   if (Math.abs(tempoScaleLive - builtScale) > 0.001) parts.push(T('andamento'));
+  if (Math.abs(centOffsetLive - centOffsetBuilt) > 0.05) parts.push(T('desvio da afinação'));
   if (syncAnchors.length) parts.push(T('{n} ponto(s) de correção', { n: syncAnchors.length }));
   if (JSON.stringify(noteOverridesByKind) !== noteOverridesBuilt) parts.push(T('edições de notas'));
   if (JSON.stringify(serializeLyrics()) !== lyricsBuilt) parts.push(T('letra'));
@@ -7924,6 +7923,17 @@ function setTrackStart(v) {
   detect.addEventListener('click', () => startFirstNoteFlow());
 })();
 
+// The recording's deviation from A440, edited in "Opções da construção" or
+// filled by "Detetar afinação"; sent on every rebuild (±50, the API's bound).
+function setCentOffsetLive(cents) {
+  const v = Number.isFinite(cents) ? Math.max(-50, Math.min(50, cents)) : 0;
+  centOffsetLive = Math.round(v * 10) / 10;
+  document.getElementById('centOffsetInput').value = centOffsetLive.toFixed(1);
+  updatePendingChangesInfo();
+}
+document.getElementById('centOffsetInput').addEventListener('change', e =>
+  setCentOffsetLive(parseFloat(e.target.value)));
+
 (function wireDetectTuning() {
   const btn = document.getElementById('detectTuning');
   const info = document.getElementById('detectTuningInfo');
@@ -7936,9 +7946,7 @@ function setTrackStart(v) {
       const r = await fetch(`/jobs/${selectedJob.id}/detect-tuning`, { method: 'POST' });
       const b = await r.json();
       if (!r.ok) { info.textContent = ''; toast(b.detail || T('erro'), 'err'); return; }
-      centOffsetLive = b.suggested_cent_offset;
-      const el = document.getElementById('centOffsetVal');
-      if (el) el.textContent = centOffsetLive.toFixed(1);
+      setCentOffsetLive(b.suggested_cent_offset);
       info.textContent =
         T('Desvio detetado: {cents} cents. Aplica-se em "Aplicar e reconstruir". A afinação das cordas (drop/open) não é detetada — vem do ficheiro GP.',
           { cents: b.suggested_cent_offset.toFixed(1) });

@@ -290,6 +290,10 @@ def generate_cdlc(job_id: str) -> None:
                         for k, v in (params.get("tuning_overrides") or {}).items()
                         if len(v) == 6
                     },
+                    cent_offset=(
+                        float(cast(float, params["cent_offset"]))
+                        if isinstance(params.get("cent_offset"), (int, float)) else None
+                    ),
                     offset_s=float(params.get("offset_s", 0.0)),
                     lead_in_s=float(params.get("lead_in_s", 0.0)),
                     tempo_scale=float(params.get("tempo_scale", 1.0)),

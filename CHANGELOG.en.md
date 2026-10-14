@@ -27,6 +27,11 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 - A negative intro silence was accepted when creating a project and put the corrections out of
   line after a tempo change.
 - The "Lead/Rhythm (exp.)" checkbox, which no longer did anything, is gone.
+- **The tuning deviation reaches the game.** "Detect tuning" measured how many cents the recording
+  is off A440, but the value never reached the `.psarc` (it always said 0). There is now a "Tuning
+  deviation (cents)" field (−50 to +50) in Export → Build options, filled by the detection or by
+  hand, the same on every track. The six "Tuning (MIDI)" numbers, which did nothing either, are
+  gone: the strings' tuning is changed in "Edit info".
 
 ## [0.10.0 beta 1] — 2026-10-14
 

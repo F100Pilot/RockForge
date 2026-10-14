@@ -348,6 +348,13 @@ Finite = Annotated[float, Field(allow_inf_nan=False)]
 # used to reach the SNG writer, where the semitone offset is packed as an int16
 # and died as a `struct.error` pointing at nothing.
 MidiPitch = Annotated[int, Field(ge=0, le=127)]
+# How far the recording sits from A440, in cents. Past ±50 it is closer to the
+# next semitone, which is a TUNING (Editar info), not a deviation; the detector
+# itself answers inside ±50 (librosa's estimate_tuning is in ±0.5 bins).
+MAX_CENT_OFFSET = 50.0
+CentOffset = Annotated[
+    float, Field(ge=-MAX_CENT_OFFSET, le=MAX_CENT_OFFSET, allow_inf_nan=False)
+]
 
 
 def _json_safe(value: object) -> object:
@@ -485,8 +492,10 @@ def _score_shift(params: dict[str, object]) -> float:
 class RebuildIn(BaseModel):
     """Human-review overrides for a rebuild (sync, tuning, tones, lyrics, note edits)."""
 
-    tuning_midi: list[MidiPitch] | None = None  # 6 MIDI pitches, low to high
-    cent_offset: Finite = 0.0
+    # How far the recording is from A440, for every chart (one recording); None
+    # leaves the stored value. The strings' own tuning is per chart, in
+    # tuning_overrides below ("Editar info").
+    cent_offset: CentOffset | None = None
     offset_s: Finite | None = None  # GP sync: second in the recording where the song starts
     lead_in_s: Finite | None = None  # GP: extra intro silence prepended (pushes the song later)
     tempo_scale: Finite | None = None  # GP sync: stretch/compress the whole chart timeline
@@ -2135,7 +2144,7 @@ def drop_previous_version(job_id: str) -> JobOut:
 _SYNC_STATE_KEYS: tuple[str, ...] = (
     "offset_s", "lead_in_s", "tempo_scale",
     "sync_anchor_stages", "arrangement_sync",
-    "tuning_midi", "cent_offset", "tuning_overrides",
+    "cent_offset", "tuning_overrides",
     "lyrics_events",
     "lead_track", "rhythm_track", "combo_track", "alt_lead_track", "alt_rhythm_track",
 )
@@ -2156,11 +2165,13 @@ def _sanitize_sync_state(incoming: dict[str, object]) -> dict[str, object]:
     """Keep only whitelisted keys and validate the shapes that would 422 on a
     rebuild, so a hand-edited or foreign JSON can never corrupt a job."""
     out = {k: incoming[k] for k in _SYNC_STATE_KEYS if k in incoming}
-    tm = out.get("tuning_midi")
-    if tm is not None and (not isinstance(tm, list) or len(tm) != 6):
-        raise HTTPException(422, "tuning_midi must contain exactly 6 MIDI pitches")
-    if isinstance(tm, list):
-        _reject_bad_midi("tuning_midi", tm)
+    cents = out.get("cent_offset")
+    if cents is not None and (
+        not isinstance(cents, (int, float)) or isinstance(cents, bool)
+        or not abs(cents) <= MAX_CENT_OFFSET
+    ):
+        bound = f"{MAX_CENT_OFFSET:g}"
+        raise HTTPException(422, f"cent_offset must be a number between -{bound} and {bound}")
     to = out.get("tuning_overrides")
     if to is not None:
         if not isinstance(to, dict):
@@ -2203,8 +2214,6 @@ def _iter_floats(value: object) -> Iterator[float]:
 @app.post("/jobs/{job_id}/rebuild", response_model=JobOut, status_code=202)
 def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
     """Re-run the pipeline on the same source with human-confirmed overrides."""
-    if payload.tuning_midi is not None and len(payload.tuning_midi) != 6:
-        raise HTTPException(422, "tuning_midi must contain exactly 6 MIDI pitches (low to high)")
     with _session_factory() as session:
         original = session.get(Job, job_id)
         if original is None:
@@ -2225,8 +2234,7 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
                 "dict[str, dict[str, object]]", params.get("arrangement_sync", {}) or {}
             ).items()
         }
-        if payload.tuning_midi is not None:
-            params["tuning_midi"] = payload.tuning_midi
+        if payload.cent_offset is not None:
             params["cent_offset"] = payload.cent_offset
         if payload.offset_s is not None:
             if payload.offset_s < MIN_OFFSET_S:

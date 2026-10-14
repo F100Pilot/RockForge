@@ -4334,6 +4334,23 @@ bypasses the models. Real drop/down tunings are unaffected — the guard is
 against nonsense, and `test_tuning_rejects_an_impossible_pitch_at_construction`
 pins a Drop C# and a Drop B as still-valid alongside the rejections.
 
+**The recording's cent offset is one job-level value that reaches every chart**
+(`GpJobSpec.cent_offset`, `params["cent_offset"]`, `RebuildIn.cent_offset` —
+`None` = untouched, `CentOffset` bounds it to ±50: past that it is the next
+semitone, a tuning). A Guitar Pro file carries no cent offset, so "Detetar
+afinação" (`/detect-tuning`) used to measure one that the build never read —
+the worker passed only `tuning_overrides`, the viewer's six "Afinação (MIDI)"
+inputs fed a `tuning_midi` nothing read either, and every chart shipped
+`CentOffset` 0. `_tuning_for` now applies it with or without a per-chart
+tuning override; the six inputs are gone (the strings' tuning lives in "Editar
+info", per chart) and the field is "Desvio da afinação (cents)" in Exportar's
+"Opções da construção" (`setCentOffsetLive`, counted in "Pendente").
+`tuning_midi` is no longer a rebuild or sync-state key. Guarded by
+`test_the_recordings_cent_offset_reaches_every_chart` (mutation-checked) and
+`test_a_cent_offset_past_half_a_semitone_is_refused`; with Playwright, -31.8
+typed → rebuild → the XML and the `.psarc` manifest carry `CentOffset` -31.8.
+How the game's tuner treats a large offset was not seen from here.
+
 ### API input validation: every client float is `Finite`
 
 `Finite = Annotated[float, Field(allow_inf_nan=False)]` (`interfaces/api/app.py`)

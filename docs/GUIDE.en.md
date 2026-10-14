@@ -362,9 +362,14 @@ fail.
 
 ### Build options
 
-Tuning (with **Detect tuning** from the recording), import palm mute / slap / tap, and
-**Dynamic difficulty** (untick for a single difficulty with every note, if DD misbehaves on a
-song).
+**Tuning deviation (cents)**: how far the recording is from A at 440 Hz (a band that tunes to
+432 Hz sits near −32). The game's tuner uses it to ask for the guitar tuned like the recording;
+it is the same on every track. **Detect tuning** measures it in the recording and fills the
+field. The strings' tuning (Drop D, Eb…) is changed per track in **Edit info** → **Arrangements
+and tuning**.
+
+Import palm mute / slap / tap, and **Dynamic difficulty** (untick for a single difficulty with
+every note, if DD misbehaves on a song).
 
 ## 12. A whole album at once (Batch)
 

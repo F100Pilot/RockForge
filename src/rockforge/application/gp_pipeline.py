@@ -299,6 +299,11 @@ class GpJobSpec:
     tuning_overrides: dict[str, tuple[int, int, int, int, int, int]] = field(
         default_factory=dict
     )
+    # How far the recording sits from A440, in cents — the same for every chart,
+    # since they share one recording. Guitar Pro files carry no such value, so
+    # without this every chart said 0; the game's tuner then asked for A440 on a
+    # recording that is not there. None keeps what the parser read.
+    cent_offset: float | None = None
     # In-app section-editor overrides (bundle-clock times, like tone_changes —
     # no per-arrangement warp applied). When set (even to an empty list),
     # REPLACES the GP-parsed section markers for EVERY arrangement; None keeps
@@ -626,9 +631,9 @@ class GenerateFromGpUseCase:
         }
         def _tuning_for(kind: ArrangementKind, parsed_tuning: Tuning) -> Tuning:
             override = spec.tuning_overrides.get(kind.value)
-            if override is None or len(override) != 6:
-                return parsed_tuning
-            return Tuning(midi=override, cent_offset=parsed_tuning.cent_offset)
+            midi = override if override is not None and len(override) == 6 else parsed_tuning.midi
+            cents = parsed_tuning.cent_offset if spec.cent_offset is None else spec.cent_offset
+            return Tuning(midi=midi, cent_offset=cents)
 
         # Section-editor overrides replace the GP-parsed markers identically for
         # EVERY arrangement (job-level, like tone_changes — no per-arrangement

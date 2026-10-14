@@ -299,12 +299,19 @@ def test_delete_unknown_job_404(client: TestClient) -> None:
 
 def test_rebuild_creates_new_job_with_overrides(client: TestClient) -> None:
     original = _create_job(client)
-    r = client.post(
-        f"/jobs/{original['id']}/rebuild",
-        json={"tuning_midi": [38, 45, 50, 55, 59, 64]},
-    )
+    r = client.post(f"/jobs/{original['id']}/rebuild", json={"cent_offset": -12.5})
     assert r.status_code == 202
     assert r.json()["id"] != original["id"]
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.infrastructure.db.models import Job
+
+    with app_module._session_factory() as session:
+        params = session.get(Job, r.json()["id"]).params
+    assert params["cent_offset"] == -12.5
+    # Not sent = left as it was: an unrelated rebuild keeps the detected cents.
+    again = client.post(f"/jobs/{r.json()['id']}/rebuild", json={}).json()
+    with app_module._session_factory() as session:
+        assert session.get(Job, again["id"]).params["cent_offset"] == -12.5
 
 
 def test_rebuild_stores_dynamic_difficulty_flag(client: TestClient) -> None:
@@ -315,10 +322,16 @@ def test_rebuild_stores_dynamic_difficulty_flag(client: TestClient) -> None:
     assert r.json()["dynamic_difficulty"] is False
 
 
-def test_rebuild_validates_tuning_length(client: TestClient) -> None:
+def test_a_cent_offset_past_half_a_semitone_is_refused(client: TestClient) -> None:
+    """Past ±50 cents a recording is nearer the next semitone — a tuning, set
+    per chart in "Editar info", not a deviation from A440."""
     original = _create_job(client)
-    r = client.post(f"/jobs/{original['id']}/rebuild", json={"tuning_midi": [40, 45]})
-    assert r.status_code == 422
+    for cents in (50.5, -60, 1e9):
+        r = client.post(f"/jobs/{original['id']}/rebuild", json={"cent_offset": cents})
+        assert r.status_code == 422, cents
+    assert client.post(
+        f"/jobs/{original['id']}/rebuild", json={"cent_offset": -50}
+    ).status_code == 202
 
 
 def test_gp_tracks_endpoint_rejects_non_gp_job(client: TestClient) -> None:
@@ -424,7 +437,7 @@ def test_import_sync_drops_gp_only_keys_and_validates(client: TestClient) -> Non
     assert st["offset_s"] == 2.0 and "tuning_overrides" not in st
     # A malformed tuning is rejected, not stored.
     bad = client.post(
-        f"/jobs/{fresh['id']}/import-sync", json={"sync": {"tuning_midi": [40, 45]}}
+        f"/jobs/{fresh['id']}/import-sync", json={"sync": {"cent_offset": 500}}
     )
     assert bad.status_code == 422
 
@@ -2200,7 +2213,7 @@ def test_committed_note_edits_survive_an_unrelated_rebuild(
     # rebuild keeps them.
     kept = client.post(
         f"/jobs/{edited['id']}/rebuild",
-        json={"tuning_midi": [38, 45, 50, 55, 59, 64], "note_overrides": stored},
+        json={"cent_offset": -5.0, "note_overrides": stored},
     ).json()
     with app_module._session_factory() as session:
         after = session.get(Job, kept["id"]).params["note_overrides"]
@@ -2230,8 +2243,8 @@ def test_tuning_pitches_are_range_checked_at_the_api(client: TestClient, tmp_pat
     ).json()
     jid = job["id"]
     for payload in (
-        '{"tuning_midi": [999999, 1, 2, 3, 4, 5]}',
-        '{"tuning_midi": [-1, 45, 50, 55, 59, 64]}',
+        '{"tuning_overrides": {"Lead": [999999, 1, 2, 3, 4, 5]}}',
+        '{"tuning_overrides": {"Lead": [-1, 45, 50, 55, 59, 64]}}',
         '{"tuning_overrides": {"Lead": [999, 1, 2, 3, 4, 5]}}',
     ):
         r = client.post(
@@ -2240,7 +2253,7 @@ def test_tuning_pitches_are_range_checked_at_the_api(client: TestClient, tmp_pat
         assert r.status_code == 422, f"{payload} -> {r.status_code}"
     r = client.post(
         f"/jobs/{jid}/import-sync",
-        content='{"sync": {"tuning_midi": [999999, 1, 2, 3, 4, 5]}}',
+        content='{"sync": {"tuning_overrides": {"Lead": [999999, 1, 2, 3, 4, 5]}}}',
         headers={"Content-Type": "application/json"},
     )
     assert r.status_code == 422, r.text
@@ -2248,7 +2261,7 @@ def test_tuning_pitches_are_range_checked_at_the_api(client: TestClient, tmp_pat
     # the tunings the app exists to handle.
     ok = client.post(
         f"/jobs/{jid}/rebuild",
-        content='{"tuning_midi": [37, 44, 49, 54, 58, 63]}',
+        content='{"tuning_overrides": {"Lead": [37, 44, 49, 54, 58, 63]}}',
         headers={"Content-Type": "application/json"},
     )
     assert ok.status_code == 202, ok.text

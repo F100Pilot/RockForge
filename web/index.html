@@ -1467,8 +1467,8 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
           <h3 class="pv-card-title">Opções da construção</h3>
           <div id="tuningInfo"></div>
           <form id="rebuildForm" class="tuninggrid">
-            <label>Afinação (MIDI):</label>
-            <span id="tuningInputs"></span>
+            <label for="centOffsetInput">Desvio da afinação (cents):</label>
+            <input type="number" id="centOffsetInput" min="-50" max="50" step="0.1" value="0" style="width:5.5rem">
           </form>
           <div class="anchor-row" id="detectTuningRow">
               <button type="button" id="detectTuning" class="secondary"><svg class="ic" aria-hidden="true"><use href="#i-wand"/></svg>Detetar afinação</button>
