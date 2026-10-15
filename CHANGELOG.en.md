@@ -6,6 +6,15 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+## [0.10.0 beta 2] — 2026-10-15
+
+### Distribution
+- **Windows installer and portable zip** on the Releases page, built and tested automatically
+  (the `.exe` starts and makes a project before it is published), with a `SHA256SUMS.txt`. They
+  need no Python and carry ffmpeg (an LGPL build, with its licence and the link to its source).
+- Licences made clear: the code adapted from alphaTab is in two files of its own, under MPL-2.0;
+  everything else is MIT.
+
 ### Added
 - **3D highway with Rocksmith's symbols:** the note no longer carries the fret number — the
   neck's fret number turns amber and glows as a note on that fret comes, and stays lit while it

@@ -168,18 +168,19 @@ documentados nas mensagens de commit, caso valha a pena ressuscitar alguma.
   avisos" nas páginas iniciais; o `.exe`, o zip portátil e
   o instalador levam os três ficheiros (`build_exe.copy_legal_files`,
   `LicenseFile` no `installer.iss`). Guardado por `tests/test_legal_files.py`.
-- [ ] **alphaTab é MPL-2.0.** `gpimport/playback.py`, `domain/music.py`
-  (`alphatab_bend`) e a leitura dos SyncPoints seguem de perto a lógica do
-  alphaTab. Está creditado; falta decidir se esses ficheiros passam a declarar
-  também MPL-2.0 no cabeçalho (o MPL permite-o dentro de um projeto MIT).
+- [x] **alphaTab é MPL-2.0.** O código portado está em dois ficheiros próprios
+  com o cabeçalho MPL-2.0: `gpimport/playback.py` e `domain/alphatab.py`
+  (`alphatab_bend`, que saiu do `music.py`). A leitura dos SyncPoints só segue o
+  formato do ficheiro, com temporização própria — fica MIT.
 - [x] **PDF-to-GP5 tem licença MIT** (desde o seu commit `c30a701`; o commit
   fixado no `[pdf]` já a inclui).
-- [ ] **Licença do Rocksmith Custom Song Toolkit por confirmar.** O
-  `soundbank.py` segue o `SoundBankGenerator2014`; as notas dizem MIT, mas o
-  repositório do toolkit não mostra um ficheiro de licença.
-- [ ] **ffmpeg dentro do instalador.** Se o `ffmpeg.exe` for incluído, juntar o
-  texto da licença dessa build (normalmente GPL-3.0 no Windows) e um link para
-  o código-fonte correspondente.
+- [x] **Toolkit sem licença; o `.bnk` apoia-se no Rocksmith2014.NET (MIT).** O
+  repositório do toolkit não tem ficheiro de licença (confirmado 2026-10-15). O
+  `soundbank.py` tem o mesmo layout, campo a campo, que o `SoundBank.fs` do
+  Rocksmith2014.NET, publicado em MIT — é nessa publicação que assenta.
+- [x] **ffmpeg dentro do instalador.** O workflow de lançamento junta uma build
+  LGPL (BtbN), com o `LICENSE.txt` e um `SOURCE.txt` com o link para o código
+  exato, e recusa uma build GPL.
 
 ## Pronto para publicar (2026-10-14, como no PDF-to-GP5)
 
@@ -198,13 +199,14 @@ documentados nas mensagens de commit, caso valha a pena ressuscitar alguma.
 
 Os dois fóruns são em inglês, por isso os textos também. Antes de publicar:
 
-- [ ] Tornar o repositório público e criar a *Release* `v0.10.0-beta.1` no GitHub,
-  marcada como **pre-release** (a 1.0.0 fica para depois da beta), com o
-  instalador / zip portátil (`py -3.11 build_exe.py --zip --installer`) — o
-  `LICENSE`, `THIRD_PARTY_NOTICES.md` e `LEGAL.md` já vão dentro. Se o
-  `ffmpeg.exe` for incluído, ver o ponto do ffmpeg acima.
-- [ ] Instalar a Release num PC limpo (sem Python) e criar um CDLC de ponta a
-  ponta, para o anúncio não prometer o que não arranca.
+- [ ] Tornar o repositório público e enviar a tag `v0.10.0-beta.2`: o workflow
+  `release.yml` constrói o instalador e o zip no Windows, arranca o `.exe` e
+  cria um projeto com ele, e cria a *Release* (pre-release) com os ficheiros e
+  o `SHA256SUMS.txt`. (A `v0.10.0-beta.1` ficou sem ficheiros e com o
+  repositório privado — ninguém a recebeu.)
+- [ ] Instalar a Release num PC teu (o instalador, sem Python) e criar um CDLC
+  com o Wwise até ao jogo — o teste automático cobre a app, não o Wwise nem o
+  jogo.
 - [x] Capturas de ecrã em `docs/media/` (página inicial, Partitura com a
   sincronização, Pista 3D, Exportar), feitas com músicas e capas inventadas.
 - [ ] Reler as regras do fórum de ferramentas da CustomsForge e as do

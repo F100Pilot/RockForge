@@ -9,9 +9,16 @@ game-ready.
 
 Like DLC Builder / Rocksmith2014.NET, RockForge does NOT ask Wwise to build the
 bank: Wwise only produces the ``.wem`` (``wwise.py``); the ``.bnk`` is generated
-here in code with a matching random ``fileID``. This mirrors
-``SoundBankGenerator2014.GenerateSoundBank`` from the Rocksmith Custom Song
-Toolkit (MIT) — the same lineage as ``sng.py``.
+here in code with a matching random ``fileID``. The layout is the one
+Rocksmith2014.NET publishes under MIT (``src/Rocksmith2014.DLCProject/
+SoundBank/SoundBank.fs``): the same chunks, objects, fields and magic
+constants, compared field by field on 2026-10-15. It was first read from the
+Rocksmith Custom Song Toolkit's ``SoundBankGenerator2014``, whose repository
+carries no licence file; the MIT publication of the identical layout is what
+this file relies on (THIRD_PARTY_NOTICES.md). Two values differ from DLC
+Builder's, both on purpose and both already played in game: the song's own
+sound keeps ``virtualQueueBehavior`` 0 (DLC Builder: 1), and the preview's
+prefetch is the same 51200 bytes as the song's (DLC Builder: 72000).
 
 Layout (PC / little-endian): ``BKHD → DIDX → DATA → HIRC → STID`` chunks, each a
 4-byte ASCII tag + int32 length + body. HIRC holds four objects (Sound,

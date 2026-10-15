@@ -141,6 +141,7 @@ re-inverting the dependency.
    1.8.4's MidiFileGenerator, and its `directions.gp5`/`.gp` test files).
 
    **Three-point bends are read as alphaTab plays them** (`alphatab_bend`,
+   in `domain/alphatab.py` — an MPL-2.0 file, see the licence section,
    alphaTab 1.8's `Note.finish`, in both parsers): the middle point stays only
    when it is a peak (a bend-and-release); otherwise the bend is a straight line
    from origin to destination — "up by the middle of the note, then held" rises
@@ -4784,9 +4785,42 @@ warranty, and a good-faith takedown contact. Both home pages summarise it in
 travel with every copy. `build_exe.copy_legal_files` puts `LICENSE`,
 `THIRD_PARTY_NOTICES.md` and `LEGAL.md` beside `rockforge.exe`, so the portable
 zip and the Inno Setup installer (which also shows `LICENSE` before installing)
-carry them. Guarded by `tests/test_legal_files.py`. Open points (alphaTab's
-MPL, the toolkit's unconfirmed licence, ffmpeg inside an installer) are in
-`TODO.md` under "Antes de publicar".
+carry them. Guarded by `tests/test_legal_files.py`.
+
+**Code ported from alphaTab (MPL-2.0, file-level copyleft) lives in files of
+its own, headed with the MPL notice:** `gpimport/playback.py` and
+`domain/alphatab.py`. Keep it that way — porting more alphaTab logic means a
+new MPL-headed file (or one of these two), never MPL code inside an MIT file;
+reading the GP file FORMAT the way alphaTab does is not porting. The Wwise
+`.bnk` layout (`soundbank.py`) was first read from the Custom Song Toolkit,
+which carries no licence; it is the same layout, field for field, that
+Rocksmith2014.NET publishes under MIT (`SoundBank.fs`, compared 2026-10-15),
+and that publication is what the file relies on.
+
+### Publishing a release (`.github/workflows/release.yml`)
+
+"Quero distribuir pelo público" (2026-10-15). A tag `v*` builds the Windows
+downloads on `windows-latest` — nobody builds them by hand: installs
+`[psarc,desktop]` + PyInstaller, bundles an **LGPL** ffmpeg from
+BtbN/FFmpeg-Builds (release branch, newest; its `LICENSE.txt` and a
+`SOURCE.txt` naming the exact version and source commit go into `ffmpeg/`,
+which `rockforge.spec` bundles whole; a build whose `-version` says
+`enable-gpl` fails the run), Inno Setup via choco if missing,
+`build_exe.py --zip --installer`, then **`.github/scripts/smoke_exe.py` starts
+the FROZEN `rockforge.exe`** (PATH stripped of other ffmpegs) and checks the
+page and `app.js`, that `/system-check` finds the bundled ffmpeg, and makes a
+real project (an invented one-bar GP5 + a sine from that ffmpeg) whose build
+completes and whose `/psarc-check` is clean — the frozen app has failed before
+in ways no test of the source sees. Only then: `RockForge-<v>-Setup.exe`,
+`-portable.zip` and `SHA256SUMS.txt` go to the GitHub Release (created as a
+pre-release for a `-beta.N` tag, text `docs/RELEASE_NOTES.md`). A manual run
+(workflow_dispatch) is a dry build whose files stay as artifacts. The tag must
+equal `installer.iss`'s version, and `tests/test_release_version.py` keeps
+`installer.iss` (`0.10.0-beta.2`), `pyproject.toml`/`__version__` (`0.10.0b2`)
+and both changelogs' `## [0.10.0 beta 2]` in step. `[pdf]` and the ML stack
+are not in the `.exe`; the README says which three extras need the source
+install. The smoke script was checked here against the source server dressed
+as a fake `.exe`; the Windows run itself only happens on GitHub.
 
 ## Conventions
 

@@ -6,6 +6,16 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+## [0.10.0 beta 2] — 2026-10-15
+
+### Distribuição
+- **Instalador e zip portátil para Windows** nas Releases, construídos e testados
+  automaticamente (o `.exe` arranca e cria um projeto antes de ser publicado), com um
+  `SHA256SUMS.txt`. Não precisam de Python e trazem o ffmpeg (uma versão LGPL, com a sua licença
+  e o link para o código-fonte).
+- Licenças esclarecidas: o código adaptado do alphaTab está em dois ficheiros próprios, sob
+  MPL-2.0; o resto é MIT.
+
 ### Novo
 - **Pista 3D com a simbologia do Rocksmith:** a nota deixa de ter o número do traste — o
   número do traste no braço passa a âmbar e brilha à medida que se aproxima uma nota desse

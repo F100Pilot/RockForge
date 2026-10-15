@@ -1,3 +1,12 @@
+# SPDX-License-Identifier: MPL-2.0
+#
+# This Source Code Form is subject to the terms of the Mozilla Public License,
+# v. 2.0. If a copy of the MPL was not distributed with this file, You can
+# obtain one at https://mozilla.org/MPL/2.0/.
+#
+# Ported from alphaTab (https://github.com/CoderLine/alphaTab), Copyright (c)
+# Daniel Kuschny and Contributors, which is MPL-2.0. The MPL is file-level, so
+# this file keeps it while the rest of RockForge is MIT (THIRD_PARTY_NOTICES.md).
 """The order a Guitar Pro score's bars are PLAYED in: repeats, voltas and jumps.
 
 A score is written once but played with its repeats (``|: … :|`` with a count),

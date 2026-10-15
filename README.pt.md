@@ -63,25 +63,37 @@ tons e letra, e instala a música no jogo com um clique.
 
 ## Começar
 
-**O que precisas**
+**Windows — o instalador (o mais simples)**
 
-- **Windows** (onde é usado e testado). No macOS e no Linux a aplicação corre, sem testes.
-- **Python 3.11**, exatamente ([python.org](https://www.python.org/downloads/), com *Add Python to
-  PATH* marcado, ou `winget install Python.Python.3.11`).
-- **ffmpeg** (`winget install ffmpeg`).
+1. Descarrega o `RockForge-<versão>-Setup.exe` (ou o `.zip` portátil) em
+   [Releases](https://github.com/F100Pilot/RockForge/releases) — por agora, uma **beta**.
+2. Executa-o. O instalador não tem assinatura digital, por isso o SmartScreen do Windows pode
+   avisar: *Mais informações* → *Executar mesmo assim*. O `SHA256SUMS.txt` ao lado permite
+   confirmar o ficheiro.
+3. Abre o RockForge no menu Iniciar. Abre numa janela própria; não precisa de Python e o ffmpeg
+   já vem incluído.
+
+A versão instalada cobre todo o caminho Guitar Pro → CDLC. Três extras precisam da instalação
+com Python: importar um **PDF/imagem** da tablatura, as funções de **deteção** (stems, letra, tom,
+*Corrigir daqui*) — ou aponta *Definições → Python ML* para um Python 3.11 que as tenha — e
+descarregar o áudio de um vídeo do **YouTube** (precisa do `yt-dlp` no PATH).
+
+**O que precisas nos dois casos**
+
 - Para um **`.psarc` jogável**: o **Wwise** 2019, 2021, 2022 ou 2023, instalado com o Audiokinetic
   Launcher (não pode ser distribuído com a aplicação). Sem ele sai na mesma o projeto do DLC
   Builder.
 - Para a música **aparecer no jogo**: o patch de CDLC (`D3DX9_42.dll`) na pasta do Rocksmith 2014,
   como para qualquer CDLC.
 
-**Windows**
+**Windows — a partir do código (todas as funções, atualiza-se sozinho)**
 
-1. Descarrega a versão mais recente (por agora, uma **beta**) em
-   [Releases](https://github.com/F100Pilot/RockForge/releases) e extrai-a — ou
-   `git clone https://github.com/F100Pilot/RockForge.git`, para o `start.bat` a poder atualizar.
-2. Faz duplo clique no `start.bat`. A primeira vez instala o necessário (vários GB para a deteção
-   de stems, letra e tom) e demora.
+1. Instala o **Python 3.11**, exatamente ([python.org](https://www.python.org/downloads/), com
+   *Add Python to PATH* marcado, ou `winget install Python.Python.3.11`) e o **ffmpeg**
+   (`winget install ffmpeg`).
+2. `git clone https://github.com/F100Pilot/RockForge.git` (ou descarrega o zip do código) e faz
+   duplo clique no `start.bat`. A primeira vez instala o necessário (vários GB para a deteção de
+   stems, letra e tom) e demora; das outras vezes atualiza-o.
 3. A aplicação abre no browser em `http://localhost:8000`. Fechar o separador desliga-a.
 
 **macOS / Linux**

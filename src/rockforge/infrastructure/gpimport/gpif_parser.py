@@ -26,6 +26,7 @@ import zipfile
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
+from rockforge.domain.alphatab import alphatab_bend
 from rockforge.domain.errors import IngestionError
 from rockforge.domain.music import (
     Beat,
@@ -34,7 +35,6 @@ from rockforge.domain.music import (
     Technique,
     TempoMap,
     Tuning,
-    alphatab_bend,
     apply_sustain_gap,
     expand_slide_ins,
     expand_trills,

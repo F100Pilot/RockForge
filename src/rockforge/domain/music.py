@@ -162,25 +162,6 @@ def is_composite_bend(points: Sequence[BendPoint]) -> bool:
     )
 
 
-def alphatab_bend(points: Sequence[BendPoint]) -> tuple[BendPoint, ...]:
-    """A bend curve as alphaTab plays it (``Note.finish``, alphaTab 1.8).
-
-    alphaTab keeps the middle point of a three-point bend only when it is a peak
-    (a bend-and-release). Otherwise the bend becomes a straight line from its
-    origin to its destination: "up to the middle of the note, then held" plays
-    as a rise across the whole note, and the same for pre-bends and releases.
-    Other point counts are returned unchanged.
-    """
-    if len(points) != 3:
-        return tuple(points)
-    origin, middle, destination = (p.step for p in points)
-    if (destination > origin and middle > destination) or (
-        destination == origin and middle > origin
-    ):
-        return tuple(points)
-    return (points[0], points[2])
-
-
 def is_plain_rise(points: Sequence[BendPoint]) -> bool:
     """True for a straight rise from unbent at the attack to the peak at the end.
 

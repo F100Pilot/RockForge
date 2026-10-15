@@ -58,17 +58,29 @@ here. Paths are relative to `src/rockforge/infrastructure/` unless written in fu
 | `packaging/psarc/container.py`, `crypto.py`, `sng.py` (with `sng_model.py`, `sng_build.py`, `sng_io.py`), `manifest.py`, `gamedata.py`, `packaging/gear/default_tones.py` (PSARC container, Sng2014 binary layout, manifests, xblock, the phrase generator `_prepare_sections` = `PhraseGenerator.generate`, anchors as `XmlToSng`/`XmlToSngNote`, linked notes and arpeggio shapes as `XmlToSngNote`/`XmlToSngLevel`, default tones as `addDefaultTonesIfNeeded`) | [Rocksmith2014.NET](https://github.com/iminashi/Rocksmith2014.NET) | MIT, © 2020 Tapio Malmberg |
 | `packaging/rs2dlc.py` (the `.rs2dlc` DLC Builder project format) | Rocksmith2014.NET `DLCProject.Dto` | MIT, © 2020 Tapio Malmberg |
 | `normalize/loudness.py` (volume as DLC Builder's `Volume.fs`) | Rocksmith2014.NET | MIT, © 2020 Tapio Malmberg |
-| `packaging/psarc/soundbank.py` (Wwise `.bnk` layout) | `SoundBankGenerator2014` of the [Rocksmith Custom Song Toolkit](https://github.com/rscustom/rocksmith-custom-song-toolkit) | Recorded as MIT in RockForge's notes; the toolkit's repository shows no licence file we could find (to confirm) |
-| `gpimport/playback.py` (order of repeats, voltas and jumps), `src/rockforge/domain/music.py` `alphatab_bend`, the GP8 `SyncPoint` reading in `gpimport/gpif_parser.py`/`sync_map.py` | [alphaTab](https://github.com/CoderLine/alphaTab) (`Score._addMasterBarToRepeatGroups`, `MidiPlaybackController`, `Note.finish`, `GpifParser`, `MidiFileGenerator`) | MPL-2.0, © Daniel Kuschny and Contributors ([text](https://www.mozilla.org/MPL/2.0/)) |
+| `packaging/psarc/soundbank.py` (Wwise `.bnk` layout) | Rocksmith2014.NET `src/Rocksmith2014.DLCProject/SoundBank/SoundBank.fs` — the same layout, field by field; first read from `SoundBankGenerator2014` of the [Rocksmith Custom Song Toolkit](https://github.com/rscustom/rocksmith-custom-song-toolkit), whose repository has no licence file | MIT, © 2020 Tapio Malmberg (the toolkit: no licence stated; RockForge relies on the MIT publication of the identical layout) |
+| `gpimport/playback.py` (order of repeats, voltas and jumps) and `domain/alphatab.py` (`alphatab_bend`) — **ported code, MPL-2.0** (the header of each file says so); the GP8 `SyncPoint` reading in `gpimport/gpif_parser.py`/`sync_map.py` follows only alphaTab's reading of the file FORMAT, with its own timing (no code taken) | [alphaTab](https://github.com/CoderLine/alphaTab) (`Score._addMasterBarToRepeatGroups`, `MidiPlaybackController`, `Note.finish`; format: `GpifParser`, `MidiFileGenerator`) | MPL-2.0, © Daniel Kuschny and Contributors ([text](https://www.mozilla.org/MPL/2.0/)) |
 | `infrastructure/songsterr.py` (endpoints and CloudFront hostnames) | Read from [teaqu/guitar-pro-youtube-sync](https://github.com/teaqu/guitar-pro-youtube-sync) | That project carries no licence; **no code was taken from it**, only the facts of which URLs Songsterr's player uses |
 | `infrastructure/youtube_audio.py` (JS-runtime names and priority) | yt-dlp `utils/_jsruntime.py` | Unlicense (public domain) |
 
 **alphaTab is MPL-2.0**, a file-level copyleft licence. The MPL lets
 MPL-covered files live inside a larger work under another licence (here MIT),
-provided those files stay available under the MPL. Whether a re-implementation
-in another language counts as a "Modification" of alphaTab's files is not
-settled; if in doubt, treat the files listed in that row as also available
-under MPL-2.0.
+provided those files stay available under the MPL. RockForge therefore keeps
+what it ported from alphaTab in two files of their own,
+`src/rockforge/infrastructure/gpimport/playback.py` and
+`src/rockforge/domain/alphatab.py`, each headed with the MPL-2.0 notice: those
+two files are MPL-2.0 (changes to them stay MPL-2.0), everything else is MIT.
+
+## ffmpeg in the Windows downloads
+
+The installer and the portable zip carry `ffmpeg.exe` (in `_internal/ffmpeg/`)
+so the app works without installing anything else. It is an **LGPL build**
+(GNU LGPL 2.1 or later) from [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds),
+unmodified; RockForge only runs it as a separate program. Beside it are its
+`LICENSE.txt` and a `SOURCE.txt` naming the exact version and the link to its
+source code. The release workflow (`.github/workflows/release.yml`) refuses a
+GPL build. Running from Python (`start.bat`) uses the ffmpeg you install
+yourself, and none is in this repository.
 
 ## 3. Python dependencies
 
@@ -110,7 +122,7 @@ ESLint and its plugins (`package.json`) are development tools only.
 | Program | Notes |
 |---|---|
 | **Wwise** (Audiokinetic) | Required for the playable `.psarc` audio. Its EULA forbids redistribution, so RockForge never ships it: each user installs it through the Audiokinetic Launcher and accepts that EULA. |
-| **ffmpeg** | Taken from the system. `build_exe.py` can bundle an `ffmpeg/ffmpeg.exe` the builder places there; **whoever distributes an installer with ffmpeg inside must comply with that build's licence** (LGPL-2.1+ or, for most Windows builds, GPL-3.0: include its licence text and offer the corresponding source). |
+| **ffmpeg** | Taken from the system when running from Python. The Windows downloads carry an unmodified LGPL build with its licence and source link — see "ffmpeg in the Windows downloads" above. Anyone building their own installer with `build_exe.py` must do the same for the build they put in `ffmpeg/` (an LGPL build, or comply with the GPL if it is one). |
 | **Deno** (or Node/QuickJS/Bun) | Optional JavaScript runtime yt-dlp uses; installed by the user. Deno is MIT. |
 | **DLC Builder** | Optional, to open the bundle; installed by the user. MIT. |
 | **Redis / Memurai** | Message broker for the Celery worker (`start.bat`); installed by the user. |

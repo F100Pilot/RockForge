@@ -1,0 +1,126 @@
+name: Release
+
+# Builds the Windows downloads — the installer and the portable zip — on a real
+# Windows machine, starts the FROZEN app and makes one project with it, and
+# only then attaches the files to the GitHub Release of the tag. Run it by hand
+# (Actions → Release → Run workflow) for a dry build: the files then stay as
+# this run's artifacts and nothing is published.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    permissions:
+      contents: write  # gh release create/upload, only on a tag
+    env:
+      GH_TOKEN: ${{ github.token }}
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install
+        run: python -m pip install -e ".[psarc,desktop]" pyinstaller
+
+      - name: Version
+        id: version
+        # The installer's version (tests/test_release_version.py keeps it equal to
+        # pyproject's); a tag that disagrees would ship an installer that names
+        # itself something else.
+        run: |
+          $iss = Select-String -Path installer.iss -Pattern '#define MyAppVersion "([^"]+)"'
+          $ver = $iss.Matches[0].Groups[1].Value
+          "version=$ver" >> $env:GITHUB_OUTPUT
+          if ($env:GITHUB_REF_TYPE -eq "tag" -and $env:GITHUB_REF_NAME -ne "v$ver") {
+            throw "tag $env:GITHUB_REF_NAME does not match installer.iss version $ver"
+          }
+
+      - name: Bundle ffmpeg (LGPL build)
+        # An LGPL build (BtbN/FFmpeg-Builds, release branch, static): RockForge
+        # only decodes audio and measures loudness, which needs none of the GPL
+        # parts. Its licence and where its source is go in with it (ffmpeg/),
+        # which rockforge.spec bundles whole.
+        run: |
+          $names = gh release view latest -R BtbN/FFmpeg-Builds --json assets --jq '.assets[].name'
+          $pick = $names | Where-Object { $_ -match '^ffmpeg-n([\d.]+)-latest-win64-lgpl-[\d.]+\.zip$' } |
+            Sort-Object { [version]($_ -replace '^ffmpeg-n([\d.]+)-.*$', '$1') } | Select-Object -Last 1
+          if (-not $pick) { throw "no LGPL win64 release-branch build found in BtbN/FFmpeg-Builds" }
+          gh release download latest -R BtbN/FFmpeg-Builds -p $pick -D ffdl
+          Expand-Archive "ffdl\$pick" -DestinationPath ffx
+          $root = (Get-ChildItem ffx -Directory | Select-Object -First 1).FullName
+          New-Item -ItemType Directory ffmpeg -Force | Out-Null
+          Copy-Item "$root\bin\ffmpeg.exe" ffmpeg\
+          if (-not (Test-Path "$root\LICENSE.txt")) { throw "the ffmpeg build carries no LICENSE.txt" }
+          Copy-Item "$root\LICENSE.txt" ffmpeg\LICENSE.txt
+          $line = (& ffmpeg\ffmpeg.exe -version | Select-Object -First 1)
+          if ($line -match 'enable-gpl') { throw "this ffmpeg is a GPL build" }
+          $src = "https://github.com/FFmpeg/FFmpeg"
+          if ($line -match '-g([0-9a-f]{7,})') { $src = "https://github.com/FFmpeg/FFmpeg/commit/$($Matches[1])" }
+          @(
+            "ffmpeg.exe bundled with RockForge",
+            "",
+            $line,
+            "",
+            "Licence: GNU LGPL 2.1 or later (see LICENSE.txt in this folder).",
+            "Binary: $pick, from https://github.com/BtbN/FFmpeg-Builds (LGPL variant),",
+            "  built by its published scripts, not modified by RockForge.",
+            "Source code of this exact version: $src",
+            "Build scripts: https://github.com/BtbN/FFmpeg-Builds"
+          ) | Set-Content ffmpeg\SOURCE.txt -Encoding utf8
+          Get-Content ffmpeg\SOURCE.txt
+
+      - name: Inno Setup
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup -y --no-progress
+          }
+
+      - name: Build
+        run: |
+          python build_exe.py --zip --installer
+          foreach ($f in "dist\rockforge\rockforge.exe", "dist\RockForge_portable.zip", "Output\RockForge_Setup.exe") {
+            if (-not (Test-Path $f)) { throw "missing $f" }
+          }
+
+      - name: Start the built app and make a project with it
+        timeout-minutes: 10
+        run: python .github/scripts/smoke_exe.py dist\rockforge\rockforge.exe
+
+      - name: Name the downloads
+        run: |
+          $v = "${{ steps.version.outputs.version }}"
+          New-Item -ItemType Directory release -Force | Out-Null
+          Copy-Item Output\RockForge_Setup.exe "release\RockForge-$v-Setup.exe"
+          Copy-Item dist\RockForge_portable.zip "release\RockForge-$v-portable.zip"
+          Get-ChildItem release | ForEach-Object {
+            "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)"
+          } | Set-Content release\SHA256SUMS.txt -Encoding ascii
+          Get-Content release\SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RockForge-${{ steps.version.outputs.version }}-windows
+          path: release/
+
+      - name: Attach to the GitHub Release
+        if: github.ref_type == 'tag'
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -ne 0) {
+            $opts = @("--title", "RockForge $($tag.TrimStart('v'))", "--notes-file", "docs/RELEASE_NOTES.md", "--verify-tag")
+            if ($tag -match '-') { $opts += "--prerelease" }  # a beta is a pre-release
+            gh release create $tag @opts
+          }
+          gh release upload $tag (Get-ChildItem release).FullName --clobber

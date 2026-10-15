@@ -328,13 +328,14 @@ All configuration is through the environment (create a `.env` at the root — se
 An alternative to `start.bat` for anyone who wants to distribute the app to others without
 asking them to install Python, Redis or dependencies: a single executable (`rockforge.exe`)
 that starts everything in one process — API + in-memory worker (no Redis), with ffmpeg
-included. Double-click → it opens the browser at `http://localhost:8000`.
+included. Double-click → it opens in its own window (the default browser if the window cannot
+start).
 
 **What works in the `.exe`:** everything that is Guitar Pro → CDLC, native PSARC, sync,
-tones, manual lyric editing — the complete core pipeline. If the user has the ML stack
-installed in a Python 3.11 on the PATH (`pip install rockforge[ml,lyrics]`), stem/tone/lyric
-detection (Demucs/WhisperX) works too. If not, the app degrades with the same message as
-always — no crash.
+tones, manual lyric editing — the complete core pipeline. Stem/tone/lyric detection
+(Demucs/WhisperX) and *Fix from here* work too once *Settings → ML Python* points at a Python
+3.11 that has `[ml,lyrics]` installed (see "ML in the `.exe`" above). The PDF import is not in the
+`.exe`. Without them, the app says what is missing — no crash.
 
 #### Building the executable
 
@@ -444,6 +445,26 @@ It generates `dist\RockForge_portable.zip` — extract it and run `rockforge.exe
 - For a **distribution with ML included**, the alternative is to package a portable Python
   (`python-build-standalone`) with a pre-installed venv — heavier (~5–10 GB) but it includes
   everything. See `CLAUDE.md` for details.
+
+#### Publishing a release (the downloads on GitHub)
+
+`.github/workflows/release.yml` builds the Windows downloads on a GitHub Windows machine, so no
+one has to build them by hand. To publish version X.Y.Z (a beta is `X.Y.Z-beta.N`):
+
+1. Put the version in `pyproject.toml` (in PEP 440 form, e.g. `0.10.0b2`),
+   `src/rockforge/__init__.py` and `installer.iss` (`0.10.0-beta.2`), and give both changelogs a
+   `## [X.Y.Z beta N]` section — `tests/test_release_version.py` fails if any of them disagree.
+2. Push a tag `vX.Y.Z-beta.N` (`git tag v0.10.0-beta.2 && git push origin v0.10.0-beta.2`).
+
+The workflow installs the app, bundles an **LGPL** ffmpeg (with its `LICENSE.txt` and a
+`SOURCE.txt` pointing at its exact source; it refuses a GPL build), compiles the installer,
+**starts the frozen `rockforge.exe` and makes a project with it** (an invented GP5 and a tone,
+checked by the app's own PSARC check), and only then creates the GitHub Release — a
+pre-release for a beta, with `docs/RELEASE_NOTES.md` as its text — and attaches
+`RockForge-<version>-Setup.exe`, `RockForge-<version>-portable.zip` and `SHA256SUMS.txt`. Run
+it by hand (*Actions → Release → Run workflow*) for a dry build: the files stay as that run's
+artifacts and nothing is published. The files are not code-signed, so SmartScreen warns on
+first run.
 
 ### With Docker (alternative)
 
