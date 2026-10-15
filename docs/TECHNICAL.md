@@ -73,9 +73,16 @@ rebuild. Step by step in the
 
 On the Score page, tick **3D highway** (next to "Fretboard"): the notes of the chosen track
 come down onto the strings as in Rocksmith, with the headstock and the tuning written on the
-nut, the fret on the face of each note, a glow when the note reaches the string (and the note
-rests on it while it sounds), chords with their name, and the camera following the part of the
-neck in play. It follows the recording and the not-yet-applied sync corrections, just like the
+nut, a glow when the note reaches the string (and the note rests on it while it sounds), chords
+with their name, and the camera following the part of the neck in play. As in Rocksmith, the
+note has no number: the neck's fret number turns from white to amber, with a halo, as a note on
+that fret comes (2 s before), fully when it strikes, and stays lit while it sounds, without moving
+or changing size ("Fret on the note" puts the number back on the note). Techniques have
+Rocksmith's symbols: ▼ hammer-on and ▲ pull-off on the note's face (also while it rests on the
+string); above it, a bow tie (palm mute), a ring with a dot (harmonic), an eye (pinch), a wide V
+(tapping), a block with a notch / with a peak (slap / pop) and ˄ chevrons for the bend's
+strength; a glowing double frame (accent); a wavy trail (vibrato) and a zigzag one (tremolo
+picking). It follows the recording and the not-yet-applied sync corrections, just like the
 score. It uses three.js, bundled with the app (works offline); it needs WebGL in the browser.
 
 ### Automatic tone detection (Lead / Rhythm)

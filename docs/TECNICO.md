@@ -71,9 +71,17 @@ reconstrução em reconstrução. Passo a passo no
 
 Na página Partitura, marca **Pista 3D** (ao lado de "Braço"): as notas da pista
 escolhida descem para as cordas como no Rocksmith, com o headstock e a afinação
-escrita na pestana, o traste na face de cada nota, brilho quando a nota chega à
-corda (e a nota fica pousada nela enquanto soa), acordes com o nome, e a câmara a
-seguir a zona do braço. Segue a gravação e as correções de sincronização ainda por
+escrita na pestana, brilho quando a nota chega à corda (e a nota fica pousada nela
+enquanto soa), acordes com o nome, e a câmara a seguir a zona do braço. Como no
+Rocksmith, a nota não tem número: o número do traste no braço passa de branco a
+âmbar, com halo, à medida que se aproxima uma nota desse traste (2 s antes), no
+máximo no ataque, e fica aceso enquanto ela soa, sem mudar de sítio nem de tamanho
+("Traste na nota" volta a pôr o número na nota). As técnicas têm os símbolos do
+Rocksmith: ▼ hammer-on e ▲ pull-off na face da nota (também quando ela fica na
+corda); por cima, laço (palm mute), anel com ponto (harmónico), olho (pinch), V largo
+(tapping), bloco com entalhe / com bico (slap / pop) e chevrons ˄ para a força do
+bend; moldura dupla a brilhar (acento); rasto ondulado (vibrato) e em zigue-zague
+(tremolo picking). Segue a gravação e as correções de sincronização ainda por
 aplicar, tal como a partitura. Usa o three.js, incluído na aplicação (funciona sem
 internet); precisa de WebGL no browser.
 

@@ -40,17 +40,47 @@
   const pegX = (s) => -1.25 - (5 - s) * 0.34; // staggered like a 6-in-line head
   const hex = (c) => `#${c.toString(16).padStart(6, "0")}`;
 
-  // Short marks drawn above a note for its technique (the score's letters).
-  const TECH_MARKS = [
-    ["hammerOn", "H"], ["pullOff", "P"], ["tap", "T"], ["slap", "S"], ["pluck", "P"],
-    ["palmMute", "PM"], ["harmonic", "◇"], ["pinchHarmonic", "PH"], ["vibrato", "~"],
-    ["tremolo", "≋"], ["accent", ">"], ["letRing", "LR"],
-  ];
+  // Rocksmith's notehead symbols (its "Notehead and tail guide"), drawn on a 128 px canvas:
+  // hammer-on ▼ and pull-off ▲ (on the note's face), and above the note palm mute (a bow tie),
+  // harmonic (a ring with a dot), pinch harmonic (an eye), tap (a wide V), slap (a block with a
+  // notch), pop (a block with a peak) and a bend's strength as stacked chevrons.
+  const ring = (ctx, radius) => { ctx.moveTo(64 + radius, 64); ctx.arc(64, 64, radius, 0, 2 * Math.PI); };
+  const ICONS = {
+    hammerOn: (ctx) => { ctx.moveTo(24, 34); ctx.lineTo(104, 34); ctx.lineTo(64, 100); ctx.closePath(); },
+    pullOff: (ctx) => { ctx.moveTo(24, 96); ctx.lineTo(104, 96); ctx.lineTo(64, 30); ctx.closePath(); },
+    palmMute: (ctx) => {
+      ctx.moveTo(18, 34); ctx.lineTo(64, 64); ctx.lineTo(18, 94); ctx.closePath();
+      ctx.moveTo(110, 34); ctx.lineTo(64, 64); ctx.lineTo(110, 94); ctx.closePath();
+    },
+    harmonic: (ctx) => { ring(ctx, 42); ring(ctx, 30); ring(ctx, 12); },
+    pinchHarmonic: (ctx) => {
+      ctx.moveTo(10, 64); ctx.quadraticCurveTo(64, 6, 118, 64); ctx.quadraticCurveTo(64, 122, 10, 64); ctx.closePath();
+      ring(ctx, 22); ring(ctx, 11);
+    },
+    tap: (ctx) => { ctx.moveTo(14, 36); ctx.lineTo(64, 100); ctx.lineTo(114, 36); ctx.lineTo(90, 36); ctx.lineTo(64, 70); ctx.lineTo(38, 36); ctx.closePath(); },
+    slap: (ctx) => { ctx.moveTo(10, 44); ctx.lineTo(64, 74); ctx.lineTo(118, 44); ctx.lineTo(118, 96); ctx.lineTo(10, 96); ctx.closePath(); },
+    pluck: (ctx) => { ctx.moveTo(10, 72); ctx.lineTo(64, 36); ctx.lineTo(118, 72); ctx.lineTo(118, 96); ctx.lineTo(10, 96); ctx.closePath(); },
+  };
+  // `count` chevrons stacked upwards, 16 px thick: a bend of a half step, a whole step, more.
+  const chevrons = (count) => (ctx) => {
+    const start = 104 - (3 - count) * 14; // centre the stack
+    for (let i = 0; i < count; i += 1) {
+      const arms = start - i * 28, tip = arms - 30;
+      ctx.moveTo(24, arms); ctx.lineTo(64, tip); ctx.lineTo(104, arms);
+      ctx.lineTo(104, arms + 16); ctx.lineTo(64, tip + 16); ctx.lineTo(24, arms + 16);
+      ctx.closePath();
+    }
+  };
+  // Symbols above the note, in this order (side by side when there are several).
+  const ABOVE = ["tap", "harmonic", "pinchHarmonic", "palmMute", "slap", "pluck"];
+  const LEGATO = ["hammerOn", "pullOff"];
+  const FRET_RAMP = 2; // seconds before its note in which a fret number of the neck lights up
+  const AMBER = 0xffb43a;
 
   let stage = null; // renderer, scene, camera and everything static
   let song = null; // the current notes and their live meshes
   let getNow = () => ({ t: 0, playing: false });
-  let options = { numbers: true, tilt: 0.45 };
+  let options = { numbers: false, tilt: 0.45 };
   let raf = 0;
   let lastNow = null;
   let lastFrame = 0;
@@ -93,6 +123,20 @@
       ctx.fillText(text, w / 2, h / 2 + 4);
     });
   }
+  // A notehead symbol: white (or `color`) with a dark outline, filled even-odd (rings, the eye).
+  function iconTexture(key) {
+    const [name, color] = key.split("|");
+    return canvasTexture(128, 128, (ctx) => {
+      ctx.beginPath();
+      (name.startsWith("bend") ? chevrons(Number(name.slice(4))) : ICONS[name])(ctx);
+      ctx.lineJoin = "round";
+      ctx.lineWidth = 8;
+      ctx.strokeStyle = "#000000";
+      ctx.stroke();
+      ctx.fillStyle = color || "#ffffff";
+      ctx.fill("evenodd");
+    });
+  }
   function roundedRect(w, h, r) {
     const s = new THREE.Shape();
     const x = -w / 2, y = -h / 2;
@@ -129,8 +173,28 @@
       barMat: new THREE.MeshBasicMaterial({ color: 0xaab6e0, transparent: true, opacity: 0.85, depthWrite: false }),
       beatMat: new THREE.MeshBasicMaterial({ color: 0x4a5a85, transparent: true, opacity: 0.6, depthWrite: false }),
       faceMat: cache((text) => new THREE.MeshBasicMaterial({ map: textTexture(text, "#ffffff", { size: 92, outline: 16 }), transparent: true, depthWrite: false, clippingPlanes: clip })),
-      faceTex: cache((text) => textTexture(text, "#ffffff", { size: 92, outline: 16 })),
       markMat: cache((text) => new THREE.MeshBasicMaterial({ map: textTexture(text, "#ffffff", { width: 256, size: 84 }), transparent: true, depthWrite: false, clippingPlanes: clip })),
+      iconMat: cache((key) => new THREE.MeshBasicMaterial({ map: iconTexture(key), transparent: true, depthWrite: false, clippingPlanes: clip })),
+      // Accent: a glowing double frame around the note (Rocksmith's).
+      accentMat: new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, clippingPlanes: clip, map: canvasTexture(256, 128, (ctx) => {
+        ctx.strokeStyle = "#ffffff";
+        ctx.shadowColor = "#ffd54f";
+        ctx.shadowBlur = 10;
+        ctx.lineWidth = 7;
+        ctx.beginPath(); ctx.roundRect(8, 8, 240, 112, 18); ctx.stroke();
+        ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.roundRect(22, 22, 212, 84, 12); ctx.stroke();
+      }) }),
+      // Amber halo behind a lit fret number of the neck.
+      fretGlowTex: cache((text) => canvasTexture(128, 128, (ctx, w, h) => {
+        ctx.font = `700 96px "Barlow Condensed", "Arial Narrow", system-ui, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.shadowColor = "#ff9d00";
+        ctx.shadowBlur = 30;
+        ctx.fillStyle = "#ffb43a";
+        for (let pass = 0; pass < 4; pass += 1) ctx.fillText(text, w / 2, h / 2 + 4); // stacked: a stronger halo
+      })),
       labelMat: cache((key) => {
         const [color, text] = key.split("|");
         return new THREE.MeshBasicMaterial({ map: textTexture(text, color, { width: 512, size: 80 }), transparent: true, depthWrite: false });
@@ -236,14 +300,19 @@
         scene.add(dot);
       }
     }
+    // Fret numbers: as in Rocksmith they light up (amber, with a halo; same place and size) as a
+    // note on their fret comes — see lightFrets.
     const fretLabels = [];
     for (let f = 1; f <= FRETS; f += 1) {
       const material = new THREE.SpriteMaterial({ map: textTexture(String(f)), transparent: true, depthWrite: false, opacity: 0.55 });
       const sprite = new THREE.Sprite(material);
       sprite.scale.set(0.5, 0.5, 1);
       sprite.position.set(fretX(f), 0.2, NECK_NEAR + 0.35);
-      scene.add(sprite);
-      fretLabels[f] = { sprite, glow: 0 };
+      const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: r.fretGlowTex(String(f)), transparent: true, depthWrite: false, opacity: 0 }));
+      halo.scale.set(0.6, 0.6, 1);
+      halo.position.set(fretX(f), 0.2, NECK_NEAR + 0.34);
+      scene.add(halo, sprite);
+      fretLabels[f] = { sprite, halo, lit: -1 };
     }
 
     // The anchor: the frets the hand is in, lit along the highway.
@@ -385,12 +454,102 @@
     lastNow = null;
   }
 
-  function techMark(n) {
-    const marks = [];
-    if (n.bend > 0) marks.push(`↑${{ 1: "½", 2: "1", 3: "1½", 4: "2" }[n.bend] || ""}`);
-    if (n.slideTo >= 0 && n.fret > 0) marks.push(n.slideTo > n.fret ? "/" : "\\");
-    for (const [tech, mark] of TECH_MARKS) if (n.techniques.includes(tech)) marks.push(mark);
-    return marks.join(" ");
+  // The note's face: the fret number (only with "Fret on the note"; Rocksmith lights the neck's
+  // fret number instead), X for a fret-hand mute, the hammer-on / pull-off arrow beside the number
+  // — on the face, so it reads while the note strikes the string however fast the passage — and
+  // the accent's double frame around the note.
+  function addFace(group, n, width, materials = null) {
+    const r = resources();
+    const own = (material) => {
+      if (!materials) return material;
+      const copy = material.clone(); // a held note fades its own copy
+      copy.clippingPlanes = null;
+      materials.push(copy);
+      return copy;
+    };
+    const muted = n.techniques.includes("mute");
+    if (n.fret > 0) {
+      const decal = new THREE.Mesh(r.square, own(r.faceMat(muted ? "X" : String(n.fret))));
+      decal.scale.set(0.34, 0.34, 1);
+      decal.position.z = 0.125;
+      decal.userData.number = !muted; // X always shows
+      decal.visible = muted || options.numbers;
+      group.add(decal);
+    }
+    const legato = LEGATO.find((tech) => n.techniques.includes(tech));
+    if (legato) {
+      const arrow = new THREE.Mesh(r.square, own(r.iconMat(legato)));
+      arrow.scale.set(0.24, 0.24, 1);
+      arrow.position.z = 0.126;
+      arrow.userData.arrow = true;
+      group.add(arrow);
+    }
+    if (n.techniques.includes("accent")) {
+      const frame = new THREE.Mesh(r.square, own(r.accentMat));
+      frame.scale.set(n.fret > 0 ? 1.1 : width + 0.35, 0.6, 1);
+      frame.position.z = 0.124;
+      group.add(frame);
+    }
+    layoutFace(group);
+  }
+  // The arrow sits beside a shown number, or in the middle of the face.
+  function layoutFace(group) {
+    const shown = group.children.some((o) => o.userData.number && o.visible) ||
+      group.children.some((o) => o.userData.number === false); // an X
+    for (const o of group.children) {
+      if (o.userData.arrow) o.position.x = shown ? 0.2 : 0;
+      else if (o.userData.number !== undefined) o.position.x = group.children.some((c) => c.userData.arrow) ? -0.09 : 0;
+    }
+  }
+
+  // Symbols above the note (side by side) and a bend's chevrons above them.
+  function addMarks(group, n) {
+    const r = resources();
+    const kinds = ABOVE.filter((tech) => n.techniques.includes(tech));
+    kinds.forEach((kind, k) => {
+      const icon = new THREE.Mesh(r.square, r.iconMat(kind));
+      icon.scale.set(0.34, 0.34, 1);
+      icon.position.set((k - (kinds.length - 1) / 2) * 0.38, 0.38, 0);
+      group.add(icon);
+    });
+    let y = kinds.length ? 0.74 : 0.38;
+    if (n.bend > 0) {
+      const icon = new THREE.Mesh(r.square, r.iconMat(`bend${n.bend <= 1 ? 1 : n.bend <= 2 ? 2 : 3}|#ffd54f`));
+      icon.scale.set(0.34, 0.34, 1);
+      icon.position.set(0, y, 0);
+      group.add(icon);
+      y += 0.36;
+    }
+    if (n.techniques.includes("letRing")) {
+      const label = new THREE.Mesh(r.square, r.markMat("LR"));
+      label.scale.set(0.8, 0.4, 1);
+      label.position.set(0, y, 0);
+      group.add(label);
+    }
+  }
+
+  // A sustain trail lying on the string's plane, one unit long (scaled to the sustain): flat, wavy
+  // with vibrato, a zigzag with tremolo picking; a slide runs it to the fret it ends on.
+  function trailGeometry(n, length, dx) {
+    const tremolo = n.techniques.includes("tremolo");
+    const vibrato = !tremolo && n.techniques.includes("vibrato");
+    const hw = tremolo || vibrato ? 0.08 : 0.12;
+    const steps = tremolo ? Math.max(2, Math.round(length / 0.3)) : vibrato ? Math.max(2, Math.round(length / 0.06)) : 1;
+    const positions = [], index = [];
+    for (let k = 0; k <= steps; k += 1) {
+      const u = k / steps;
+      let side = 0;
+      if (tremolo && k > 0) side = k % 2 ? 0.16 : -0.16;
+      if (vibrato) side = 0.12 * Math.sin(u * length * 4);
+      const x = dx * u + side;
+      positions.push(x - hw, 0, -u, x + hw, 0, -u);
+      if (k) index.push(2 * k - 2, 2 * k, 2 * k - 1, 2 * k - 1, 2 * k, 2 * k + 1);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+    g.setIndex(index);
+    g.computeVertexNormals();
+    return g;
   }
 
   function makeNote(n) {
@@ -411,12 +570,6 @@
       rim.scale.set(0.62, 0.05, 1);
       rim.position.set(0, 0.1, 0.13);
       group.add(rim);
-      const decal = new THREE.Mesh(r.square, r.faceMat(muted ? "X" : String(n.fret)));
-      decal.scale.set(0.34, 0.34, 1);
-      decal.position.z = 0.125;
-      decal.visible = options.numbers;
-      decal.userData.number = true;
-      group.add(decal);
       // Drop line to the highway, under the fret it is played on.
       const h = stringY(s) - 0.15;
       const stem = new THREE.Mesh(r.square, r.stemMats[s]);
@@ -424,28 +577,21 @@
       stem.position.set(0, -0.15 - h / 2, -0.02);
       group.add(stem);
     }
-    const mark = techMark(n);
-    if (mark) {
-      const label = new THREE.Mesh(r.square, r.markMat(mark));
-      label.scale.set(0.8, 0.4, 1);
-      label.position.set(0, 0.36, 0);
-      group.add(label);
-    }
+    addFace(group, n, width);
+    addMarks(group, n);
     let trail = null;
-    if (n.sustain > 0.05) {
-      // Sustain trail lying on the string's plane; a slide runs it to the fret it ends on.
+    // A short note with vibrato or tremolo picking still gets a trail, to show it.
+    const wavy = n.techniques.includes("vibrato") || n.techniques.includes("tremolo");
+    const trailLength = Math.max(n.sustain || 0, wavy ? 0.4 : 0) * SPEED;
+    if (trailLength > 0.05 * SPEED) {
       const dx = n.slideTo >= 0 && n.fret > 0 ? fretX(n.slideTo) - x : 0;
-      const g = new THREE.BufferGeometry();
-      const hw = 0.12;
-      g.setAttribute("position", new THREE.Float32BufferAttribute([-hw, 0, 0, hw, 0, 0, dx - hw, 0, -1, dx + hw, 0, -1], 3));
-      g.setIndex([0, 2, 1, 1, 2, 3]);
-      g.computeVertexNormals();
+      const g = trailGeometry(n, trailLength, dx);
       song.owned.push(g);
       trail = new THREE.Mesh(g, r.trailMats[s]);
       group.add(trail);
     }
     stage.lane.add(group);
-    return { group, trail, x, width, note: n };
+    return { group, trail, trailLength, x, width, note: n };
   }
 
   function makeChordFrame(c) {
@@ -516,15 +662,8 @@
       group.add(new THREE.Mesh(r.openBar(Math.round((obj.width - 0.25) * 4) / 4), gemMat));
     } else {
       group.add(new THREE.Mesh(r.gem, gemMat));
-      const decalMat = new THREE.MeshBasicMaterial({ map: r.faceTex(n.techniques.includes("mute") ? "X" : String(n.fret)), transparent: true, depthWrite: false });
-      const decal = new THREE.Mesh(r.square, decalMat);
-      decal.scale.set(0.34, 0.34, 1);
-      decal.position.z = 0.125;
-      decal.visible = options.numbers;
-      decal.userData.number = true;
-      group.add(decal);
-      materials.push(decalMat);
     }
+    addFace(group, n, obj.width, materials);
     group.position.set(obj.x, stringY(n.string), 0.02);
     stage.scene.add(group);
     return { group, materials };
@@ -534,7 +673,6 @@
     const r = resources();
     const n = obj.note, s = n.string, color = STRING_COLORS[s];
     stage.strings[s].glow = 1;
-    if (n.fret > 0 && stage.fretLabels[n.fret]) stage.fretLabels[n.fret].glow = 1;
     const flash = new THREE.Sprite(new THREE.SpriteMaterial({ map: r.glowTex, color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
     const core = new THREE.Sprite(new THREE.SpriteMaterial({ map: r.glowTex, color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
     flash.position.set(obj.x, stringY(s), 0.08);
@@ -601,12 +739,37 @@
       st.material.emissiveIntensity = 0.35 + 2.2 * st.glow;
       st.glowMat.opacity = 0.85 * st.glow;
     }
+  }
+
+  // A fret number of the neck lights up (amber, with a halo) as a note on that fret comes —
+  // faint FRET_RAMP seconds before, fully when it strikes — stays lit while the note sounds, then
+  // fades. It never moves or changes size.
+  let fretShades = null; // [white, amber], made once three.js is loaded
+  function lightFrets(now) {
+    if (!fretShades) fretShades = [new THREE.Color(0xffffff), new THREE.Color(AMBER)];
+    const light = new Array(FRETS + 1).fill(0);
+    if (song) {
+      const notes = song.notes;
+      for (let i = lowerBound(notes, now - song.back, (n) => n.t); i < notes.length && notes[i].t <= now + FRET_RAMP; i += 1) {
+        const n = notes[i];
+        if (n.fret < 1 || n.fret > FRETS || n.techniques.includes("mute")) continue;
+        let level;
+        if (n.t > now) level = (1 - (n.t - now) / FRET_RAMP) ** 2;
+        else {
+          const end = n.t + Math.max(n.sustain || 0, HOLD_MIN);
+          level = now <= end ? 1 : 1 - (now - end) / FADE;
+        }
+        if (level > light[n.fret]) light[n.fret] = level;
+      }
+    }
     for (let f = 1; f <= FRETS; f += 1) {
       const l = stage.fretLabels[f];
-      l.glow = Math.max(0, l.glow - dt * 1.6);
-      l.sprite.material.opacity = 0.55 + 0.45 * l.glow;
-      const sc = 0.5 + 0.18 * l.glow;
-      l.sprite.scale.set(sc, sc, 1);
+      const level = Math.max(0, Math.min(1, light[f]));
+      if (Math.abs(level - l.lit) < 0.005) continue;
+      l.lit = level;
+      l.sprite.material.opacity = 0.55 + 0.45 * level;
+      l.sprite.material.color.lerpColors(fretShades[0], fretShades[1], level);
+      l.halo.material.opacity = level;
     }
   }
 
@@ -635,7 +798,7 @@
         let obj = song.live.get(key);
         if (!obj) { obj = makeNote(n); song.live.set(key, obj); }
         obj.group.position.set(obj.x, stringY(n.string), -(n.t - now) * SPEED);
-        if (obj.trail) obj.trail.scale.z = n.sustain * SPEED;
+        if (obj.trail) obj.trail.scale.z = obj.trailLength;
         if (!jumped && playing && lastNow < n.t && n.t <= now && now - n.t < 0.25) hit(obj);
       }
       const chords = song.chords;
@@ -675,6 +838,7 @@
     stage.camera.position.set(stage.cameraX, 3.2 + tilt * 6, 11.5 - tilt * 2.5);
     stage.camera.lookAt(stage.cameraX + 0.3, 0.05 + (1 - tilt) * 0.5, -10);
     updateEffects(dt);
+    lightFrets(now);
     stage.renderer.render(stage.scene, stage.camera);
   }
 
@@ -708,7 +872,10 @@
     setOptions(next) {
       options = { ...options, ...next };
       if (!stage) return;
-      const show = (obj) => obj.traverse((o) => { if (o.userData.number) o.visible = options.numbers; });
+      const show = (obj) => {
+        obj.traverse((o) => { if (o.userData.number) o.visible = options.numbers; });
+        layoutFace(obj);
+      };
       stage.lane.children.forEach(show);
       for (const e of stage.effects) show(e.held.group);
     },

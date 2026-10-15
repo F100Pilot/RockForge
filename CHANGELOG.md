@@ -7,6 +7,13 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 ## [Por lançar]
 
 ### Novo
+- **Pista 3D com a simbologia do Rocksmith:** a nota deixa de ter o número do traste — o
+  número do traste no braço passa a âmbar e brilha à medida que se aproxima uma nota desse
+  traste, e fica aceso enquanto ela soa ("Traste na nota" volta a pôr o número na nota). As
+  letras das técnicas dão lugar aos símbolos do jogo: ▼ hammer-on e ▲ pull-off na nota; por
+  cima, laço (palm mute), anel com ponto (harmónico), olho (pinch), V largo (tapping), bloco com
+  entalhe / com bico (slap / pop) e chevrons ˄ para a força do bend; moldura dupla (acento);
+  rasto ondulado (vibrato) e em zigue-zague (tremolo picking).
 - **Desfazer / Refazer** em tudo o que está pendente: correções de sincronização, andamento,
   notas, letra, secções, tons e opções da construção, em qualquer página do projeto (botões na
   barra de cima, Ctrl+Z, Ctrl+Shift+Z ou Ctrl+Y). Antes só se podia desfazer o último apagar

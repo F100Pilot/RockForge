@@ -7,6 +7,13 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 ## [Unreleased]
 
 ### Added
+- **3D highway with Rocksmith's symbols:** the note no longer carries the fret number — the
+  neck's fret number turns amber and glows as a note on that fret comes, and stays lit while it
+  sounds ("Fret on the note" puts the number back on the note). The technique letters give way to
+  the game's symbols: ▼ hammer-on and ▲ pull-off on the note; above it, a bow tie (palm mute), a
+  ring with a dot (harmonic), an eye (pinch), a wide V (tapping), a block with a notch / with a
+  peak (slap / pop) and ˄ chevrons for the bend's strength; a double frame (accent); a wavy trail
+  (vibrato) and a zigzag one (tremolo picking).
 - **Undo / Redo** for everything pending: sync corrections, tempo, notes, lyrics, sections,
   tones and the build options, on any page of the project (buttons in the top bar, Ctrl+Z,
   Ctrl+Shift+Z or Ctrl+Y). Before, only the last note delete could be undone.

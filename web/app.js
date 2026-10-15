@@ -1103,8 +1103,8 @@ const INFO = {
   },
   'highway-3d': {
     title: T('Pista 3D'),
-    body: T('<p>As notas da pista escolhida a descer para as cordas, como no Rocksmith: cada corda na sua cor (Mi grave vermelho em cima), o traste na face da nota e uma linha até ao traste onde se toca. Quando a nota chega à corda, a corda brilha e a nota fica pousada nela, com o número, enquanto soa.</p>') +
-      T('<p>A afinação está escrita na pestana do headstock. Acordes têm moldura e nome; uma corda solta é uma barra ao longo da zona da mão (a faixa azul), que a câmara segue. Por cima da nota aparece a técnica (H hammer-on, P pull-off, PM palm mute, ↑ bend, / \\ slide, ~ vibrato…).</p>') +
+    body: T('<p>As notas da pista escolhida a descer para as cordas, como no Rocksmith: cada corda na sua cor (Mi grave vermelho em cima) e uma linha até ao traste onde se toca. Como no Rocksmith, a nota não tem número: o número do traste no braço passa a âmbar e brilha à medida que se aproxima uma nota desse traste, e fica aceso enquanto ela soa ("Traste na nota" volta a pôr o número na nota). Quando a nota chega à corda, a corda brilha e a nota fica pousada nela enquanto soa.</p>') +
+      T('<p>A afinação está escrita na pestana do headstock. Acordes têm moldura e nome; uma corda solta é uma barra ao longo da zona da mão (a faixa azul), que a câmara segue. As técnicas têm os símbolos do Rocksmith: ▼ hammer-on e ▲ pull-off na nota; por cima, laço = palm mute, anel com ponto = harmónico, olho = harmónico pinch, V largo = tapping, bloco com entalhe = slap, com bico = pop, chevrons ˄ = bend (um = meio tom, dois = um tom, três = mais); moldura dupla = acento; rasto ondulado = vibrato, em zigue-zague = tremolo picking; X = nota abafada.</p>') +
       T('<p>Segue a gravação e as correções de sincronização <strong>ainda por aplicar</strong>, tal como a partitura por baixo — serve para confirmar a sincronização a ver as notas chegar. Precisa de WebGL (aceleração gráfica) no browser.</p>')
   },
   'tab-viewer': {
