@@ -489,7 +489,8 @@ confirmados pela verificação de PSARC da própria app), e só então cria a Re
 uma pre-release, se for beta, com o `docs/RELEASE_NOTES.md` como texto — e anexa
 `RockForge-<versão>-Setup.exe`, `RockForge-<versão>-portable.zip` e `SHA256SUMS.txt`. Corrido à
 mão (*Actions → Release → Run workflow*) é um ensaio: os ficheiros ficam como artefactos dessa
-execução e nada é publicado. Os ficheiros não têm assinatura digital, por isso o SmartScreen
+execução e nada é publicado; com a tag de uma release que já existe (*release_tag*), anexa-lhe
+os ficheiros. Os ficheiros não têm assinatura digital, por isso o SmartScreen
 avisa na primeira vez.
 
 ### Via Docker (alternativa)

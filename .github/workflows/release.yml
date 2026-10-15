@@ -4,12 +4,18 @@ name: Release
 # Windows machine, starts the FROZEN app and makes one project with it, and
 # only then attaches the files to the GitHub Release of the tag. Run it by hand
 # (Actions → Release → Run workflow) for a dry build: the files then stay as
-# this run's artifacts and nothing is published.
+# this run's artifacts and nothing is published — or give it the tag of a
+# release that already exists, and the files are attached to that release.
 on:
   push:
     # "v0.10.0-beta.3" — or "0.10.0-beta.3": GitHub's release page does not add the v.
     tags: ["v*", "[0-9]*"]
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Attach the files to this existing release (its tag). Empty = a dry build."
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -21,6 +27,8 @@ jobs:
       contents: write  # gh release create/upload, only on a tag
     env:
       GH_TOKEN: ${{ github.token }}
+      # The release the files go to: the pushed tag, or the one named by hand.
+      RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.release_tag }}
     defaults:
       run:
         shell: pwsh
@@ -43,8 +51,8 @@ jobs:
           $iss = Select-String -Path installer.iss -Pattern '#define MyAppVersion "([^"]+)"'
           $ver = $iss.Matches[0].Groups[1].Value
           "version=$ver" >> $env:GITHUB_OUTPUT
-          if ($env:GITHUB_REF_TYPE -eq "tag" -and $env:GITHUB_REF_NAME.TrimStart('v') -ne $ver) {
-            throw "tag $env:GITHUB_REF_NAME does not match installer.iss version $ver"
+          if ($env:RELEASE_TAG -and $env:RELEASE_TAG.TrimStart('v') -ne $ver) {
+            throw "tag $env:RELEASE_TAG does not match installer.iss version $ver"
           }
 
       - name: Bundle ffmpeg (LGPL build)
@@ -115,9 +123,9 @@ jobs:
           path: release/
 
       - name: Attach to the GitHub Release
-        if: github.ref_type == 'tag'
+        if: env.RELEASE_TAG != ''
         run: |
-          $tag = $env:GITHUB_REF_NAME
+          $tag = $env:RELEASE_TAG
           gh release view $tag *> $null
           if ($LASTEXITCODE -ne 0) {
             $opts = @("--title", "RockForge $($tag.TrimStart('v'))", "--notes-file", "docs/RELEASE_NOTES.md", "--verify-tag")

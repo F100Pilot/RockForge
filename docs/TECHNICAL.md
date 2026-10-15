@@ -469,7 +469,8 @@ checked by the app's own PSARC check), and only then creates the GitHub Release 
 pre-release for a beta, with `docs/RELEASE_NOTES.md` as its text — and attaches
 `RockForge-<version>-Setup.exe`, `RockForge-<version>-portable.zip` and `SHA256SUMS.txt`. Run
 it by hand (*Actions → Release → Run workflow*) for a dry build: the files stay as that run's
-artifacts and nothing is published. The files are not code-signed, so SmartScreen warns on
+artifacts and nothing is published; given the tag of a release that already exists (*release_tag*),
+it attaches the files to that release. The files are not code-signed, so SmartScreen warns on
 first run.
 
 ### With Docker (alternative)
