@@ -6,6 +6,13 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### New
+- **“Mark by ear”, for tabs that were never synced** (Sync inspector): press play and hit **B** on
+  the first beat of every bar (or on every beat), and the notes snap to your taps as you go.
+  Backspace takes the last tap back, Esc finishes; you can slow the playback down, and the taps
+  are smoothed to remove the shake of the hand. They stay as pending corrections (one Ctrl+Z
+  undoes them all) until “Apply and rebuild”.
+
 ## [0.10.0 beta 5] — 2026-10-15
 
 Includes what was prepared for beta 4, which was never published.

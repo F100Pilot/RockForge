@@ -6,6 +6,13 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Novo
+- **«Marcar a ouvir», para tabs sem sincronização** (inspetor Sincronização): dás play e carregas
+  em **B** no primeiro tempo de cada compasso (ou em cada tempo), e as notas encaixam nos teus
+  toques enquanto tocas. Backspace tira o último toque, Esc termina; podes abrandar a
+  reprodução, e os toques são suavizados para tirar o tremor da mão. Ficam como correções
+  pendentes (um Ctrl+Z desfá-los todos) até «Aplicar e reconstruir».
+
 ## [0.10.0 beta 5] — 2026-10-15
 
 Inclui o que estava preparado para a beta 4, que não chegou a ser publicada.

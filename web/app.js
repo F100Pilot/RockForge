@@ -1240,6 +1240,10 @@ const INFO = {
     title: T('Sincronização — andamento'),
     body: T('<p>Se a tabulatura e a gravação se vão afastando ao longo da música (o GP foi escrito num andamento ligeiramente diferente do que foi gravado), ajusta o <strong>andamento</strong>: estica/comprime a música toda de uma vez. As notas movem-se sobre a forma de onda para confirmares o alinhamento.</p>')
   },
+  'tap-sync': {
+    title: T('Marcar a ouvir'),
+    body: T('<p>Para uma tab que nunca foi sincronizada — escrita à mão num só andamento, por exemplo no Songsterr — o mais fiável é <b>marcar tu</b> quando começa cada compasso, como as pessoas fazem no Songsterr para os vídeos.</p><p>Escolhe o compasso de onde partir (o 1 começa do início da gravação; os outros, do cursor — põe-no um pouco antes) e se tocas <b>em cada compasso</b> (no primeiro tempo) ou <b>em cada tempo</b> (mais toques, mais preciso). Carrega em "Começar a marcar", ouve e carrega em <b>B</b> (ou no botão grande) a tempo. Cada toque leva esse compasso para o instante em que tocaste, e a partitura acompanha enquanto tocas. <b>Backspace</b> tira o último toque; <b>Esc</b> termina. Podes parar a meio: o que vem depois do último toque mantém o seu andamento e só se desloca com ele.</p><p>Dica: abranda a reprodução no seletor de velocidade junto ao play (90%, 75%…) para marcar com calma — os toques ficam no tempo real da gravação. "Suavizar os toques" tira o tremor da mão (alinha cada toque com os vizinhos) sem apagar as mudanças de andamento.</p><p>Tudo fica como correções pendentes (aparecem no Passo 3 e desfazem-se com Ctrl+Z, de uma vez) até "Aplicar e reconstruir". Depois afina o que faltar com "Corrigir daqui" ou arrastando notas.</p>')
+  },
   'auto-sync': {
     title: T('Sincronização automática'),
     body: T('<p>Deteta o andamento e o início da gravação (como o CDLC.AI) e propõe um ajuste. Os valores ficam em pré-visualização — confirma na partitura e clica em "Aplicar e reconstruir".<br><b>Dica importante:</b> se já tiveres corrido <b>"Separar instrumentos"</b>, a deteção do andamento passa a ser feita na <b>bateria isolada</b> — muito mais fiável em música rápida e densa (na mistura completa, o detetor de batidas engana-se no nível métrico). Separa primeiro para um resultado bem melhor.<br>Requer o extra <code>ml</code> (librosa). Refina depois com os modos manuais.</p>')
@@ -1408,6 +1412,7 @@ function showShortcuts() {
       [T('Ctrl+clique'), T('junta ou tira uma nota da seleção')],
       [T('Alt a arrastar'), T('move sem encaixar na grelha')],
       [T('Duplo clique'), T('em "Editar notas", insere uma nota no espaço vazio')],
+      [`${k('B')} · ${k('Backspace')} · ${k('Esc')}`, T('em "Marcar a ouvir": marca o compasso (ou tempo) · tira o último toque · termina')],
     ]],
     [T('Edição'), [
       [`${k('Delete')}`, T('apaga as notas selecionadas')],
@@ -2111,6 +2116,8 @@ async function selectJob(id, { poll = false, force = false } = {}) {
 }
 
 async function loadArrangements(id) {
+  tapState = null;
+  renderTapUi();
   stopPendingHistory();
   clearLoop(false);  // a loop belongs to the recording it was set on  // the previous version's steps do not apply to this one
   arrangements = await getJSON(`/jobs/${id}/arrangements`);
@@ -2311,6 +2318,7 @@ function retempoedBars(a) {
 }
 
 function showArr(i) {
+  if (tapState && i !== currentArr) stopTapSync();  // the taps belong to the chart they were made on
   notePendingChange();
   if (i !== currentArr) { loadArrSync(i); stopArrangementPreview(); }  // tab change: swap in that chart's own sync state
   currentArr = i;
@@ -2630,6 +2638,7 @@ function showArr(i) {
   renderAnchorsList();
   updateSyncOffsetDisplay();
   updateBarSyncPanel();
+  fillTapBars();
   renderEstimatedBars();
   updateNoteEditsInfo();
   updateDeleteNotesUi();
@@ -3405,6 +3414,198 @@ function setBarsTempo(fromM, toM, bpm) {
   showArr(currentArr);
   return { ok: true, delta: plan.delta };
 }
+
+// ── "Marcar a ouvir": tap the bars (or beats) while the recording plays ──────
+// For a tab that was never synced (one tempo for the whole song, written by
+// ear): the human marks WHEN each bar starts, the way Songsterr's per-measure
+// video times are marked — the thing that makes those tabs line up. Each tap
+// becomes an ordinary pending anchor (that grid point's chart time → the
+// instant tapped), so it previews live, rides "Aplicar e reconstruir", undo/
+// redo and the main-chart propagation, with no backend change.
+const TAP_SMOOTH_K = 2;  // neighbours on each side the jitter of a tap is averaged over
+
+// Each tap moved onto the straight line through its neighbours (a local
+// least-squares fit of time against tap number), so a hand's ±30 ms jitter
+// does not shake every bar while a real tempo change, spread over several
+// bars, still comes through.
+function smoothTaps(times, k = TAP_SMOOTH_K) {
+  if (times.length < 3) return times.slice();
+  return times.map((_, i) => {
+    const lo = Math.max(0, i - k), hi = Math.min(times.length - 1, i + k);
+    let n = 0, sx = 0, sy = 0, sxx = 0, sxy = 0;
+    for (let j = lo; j <= hi; j++) { n++; sx += j; sy += times[j]; sxx += j * j; sxy += j * times[j]; }
+    const den = n * sxx - sx * sx;
+    if (!den) return times[i];
+    const b = (n * sxy - sx * sy) / den;
+    return (sy - b * sx) / n + b * i;
+  });
+}
+
+// The anchor list (pure) that puts each tapped grid point `p.points[i] =
+// [origin, tapped]` (warp domain → display) where it was tapped: what comes
+// before the first tap stays where it shows now (the song's start pinned
+// there, as a lone "Início" anchor stops being a uniform shift once others
+// exist), pending anchors inside the tapped span are superseded, and what
+// comes after the last tap keeps its own timing, shifted by that tap's
+// difference (the song's end pinned with it).
+function planTaps(anchors, warp, p) {
+  const EPS = 0.05;
+  const pts = p.points;
+  if (!pts.length) return anchors.map(a => a.slice());
+  const firstO = pts[0][0], lastO = pts[pts.length - 1][0];
+  const delta = pts[pts.length - 1][1] - warp(lastO);
+  const out = [];
+  if (p.songStartO < firstO - EPS && !anchors.some(([o]) => o < firstO - EPS)) {
+    out.push([p.songStartO, warp(p.songStartO)]);
+  }
+  for (const [o, d] of anchors) {
+    if (o < firstO - EPS) out.push([o, d]);
+    else if (o > lastO + EPS) out.push([o, d + delta]);
+  }
+  for (const pt of pts) out.push(pt.slice());
+  if (p.tailO > lastO + EPS && !out.some(([o]) => Math.abs(o - p.tailO) < EPS)) {
+    out.push([p.tailO, warp(p.tailO) + delta]);
+  }
+  out.sort((x, y) => x[0] - y[0]);
+  return out;
+}
+
+let tapState = null;  // {grid: [chart times], taps: [display times], base: [anchors], kind}
+
+// The chart times the taps land on: each bar's downbeat from `fromM`, or
+// every beat from that bar's downbeat.
+function tapGrid(a, fromM, mode) {
+  const bars = (a.bars || []).filter(b => b.measure >= fromM);
+  if (!bars.length) return [];
+  if (mode === 'bars') return bars.map(b => b.time);
+  return (a.beats || []).filter(t => t >= bars[0].time - 1e-6);
+}
+
+// What the output latency hides: the sound at audioTime() reaches the ears
+// that much later, so a tap in time with it lands that much late.
+function tapLatency() {
+  if (!playBuffer || !audioCtx) return 0;
+  return ((audioCtx.outputLatency || 0) + (audioCtx.baseLatency || 0)) * playbackRate;
+}
+
+function applyTaps() {
+  if (!tapState) return;
+  const a = arrangements[currentArr];
+  const smooth = document.getElementById('tapSmooth')?.checked !== false;
+  const times = smooth ? smoothTaps(tapState.taps) : tapState.taps.slice();
+  const warp = buildTimeWarp(tapState.base);
+  const plan = planTaps(tapState.base, warp, {
+    points: times.map((d, i) => [previewScale(tapState.grid[i]), d]),
+    songStartO: previewScale((a.beats || [])[0] ?? tapState.grid[0]),
+    tailO: previewScale(songEndChartTime(a)),
+  });
+  syncAnchors.splice(0, syncAnchors.length, ...plan);
+  renderAnchorsList();
+  updatePendingChangesInfo();
+  showArr(currentArr);
+  renderTapUi();
+}
+
+function startTapSync() {
+  const a = arrangements[currentArr];
+  if (!a || !isGpJob()) return;
+  if (!playBuffer && !document.getElementById('syncAudio')?.src) {
+    toast(T('A gravação ainda não carregou.'), 'err');
+    return;
+  }
+  const fromM = parseInt(document.getElementById('tapFromBar').value, 10) || 1;
+  const mode = document.getElementById('tapMode').value === 'beats' ? 'beats' : 'bars';
+  const grid = tapGrid(a, fromM, mode);
+  if (!grid.length) { toast(T('Esta pista não tem compassos para marcar.'), 'err'); return; }
+  tapState = { grid, taps: [], base: syncAnchors.map(x => x.slice()), kind: a.kind, mode, fromM };
+  const first = (a.bars || [])[0];
+  if (first && fromM <= first.measure) audioSeek(0);  // the song's first bar: from the very start
+  if (!audioIsPlaying()) audioPlay();
+  renderTapUi();
+}
+
+function tapNow() {
+  if (!tapState) return;
+  if (!audioIsPlaying()) { toast(T('Dá play para marcar a ouvir.'), 'err'); return; }
+  const d = playheadDisplay(Math.max(0, audioTime() - tapLatency()));
+  const prev = tapState.taps[tapState.taps.length - 1];
+  if (prev != null && d <= prev + 0.05) return;  // a double press
+  tapState.taps.push(d);
+  applyTaps();
+  if (tapState.taps.length >= tapState.grid.length) stopTapSync();
+}
+
+function undoTap() {
+  if (!tapState || !tapState.taps.length) return;
+  tapState.taps.pop();
+  applyTaps();
+}
+
+function stopTapSync() {
+  if (!tapState) return;
+  const n = tapState.taps.length;
+  tapState = null;
+  renderTapUi();
+  notePendingChange();  // the whole run is one step of undo
+  if (n) toast(T('{n} toque(s) aplicados — pendentes até "Aplicar e reconstruir".', { n }), 'ok');
+}
+
+function renderTapUi() {
+  const card = document.getElementById('tapSyncCard');
+  if (!card) return;
+  const on = !!tapState;
+  card.classList.toggle('tap-armed', on);
+  document.getElementById('tapStart').hidden = on;
+  document.getElementById('tapArmed').hidden = !on;
+  for (const id of ['tapFromBar', 'tapMode']) document.getElementById(id).disabled = on;
+  const st = document.getElementById('tapStatus');
+  if (!on) { st.textContent = ''; return; }
+  const a = arrangements[currentArr];
+  const i = tapState.taps.length;
+  const bar = (t) => {
+    const b = (a.bars || []).filter(x => x.time <= t + 1e-6).pop();
+    return b ? b.measure : '?';
+  };
+  const k = i + 1, n = tapState.grid.length;
+  let txt = i >= n ? ''
+    : tapState.mode === 'bars'
+      ? T('Próximo toque: compasso {bar} ({k} de {n}).', { bar: bar(tapState.grid[i]), k, n })
+      : T('Próximo toque: tempo {k} de {n}, no compasso {bar}.', { bar: bar(tapState.grid[i]), k, n });
+  if (i >= 2) {
+    const beats = (a.beats || []).filter(t => t >= tapState.grid[i - 2] - 1e-6 && t < tapState.grid[i - 1] - 1e-6).length || 1;
+    const dt = tapState.taps[i - 1] - tapState.taps[i - 2];
+    if (dt > 0) txt += ' ' + T('Último: ♩ = {bpm}.', { bpm: (beats * 60 / dt).toFixed(1) });
+  }
+  st.textContent = txt;
+}
+
+function fillTapBars() {
+  const sel = document.getElementById('tapFromBar');
+  if (!sel || tapState) return;
+  const bars = (arrangements[currentArr] || {}).bars || [];
+  const prev = parseInt(sel.value, 10);
+  sel.innerHTML = bars.map(b => `<option value="${b.measure}">${b.measure}</option>`).join('');
+  if (bars.some(b => b.measure === prev)) sel.value = String(prev);
+}
+
+(function wireTapSync() {
+  document.getElementById('tapStart')?.addEventListener('click', startTapSync);
+  // pointerdown, not click: a click fires on release, tens of ms after the press.
+  document.getElementById('tapHit')?.addEventListener('pointerdown', e => { e.preventDefault(); tapNow(); });
+  document.getElementById('tapUndo')?.addEventListener('click', undoTap);
+  document.getElementById('tapStop')?.addEventListener('click', stopTapSync);
+  document.getElementById('tapSmooth')?.addEventListener('change', () => { if (tapState) applyTaps(); });
+  // Capture phase, ahead of the page's own keys: while marking, Backspace
+  // takes the last tap back (not "delete the selected notes") and Esc ends.
+  document.addEventListener('keydown', e => {
+    if (!tapState || e.ctrlKey || e.metaKey || e.altKey) return;
+    const el = e.target;
+    if (el && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && !['checkbox', 'radio', 'range'].includes(el.type)))) return;
+    if (e.key === 'b' || e.key === 'B') { e.preventDefault(); e.stopPropagation(); if (!e.repeat) tapNow(); }
+    else if (e.key === 'Backspace') { e.preventDefault(); e.stopPropagation(); undoTap(); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); stopTapSync(); }
+  }, true);
+})();
 
 function barTempoMessage(fromM, toM, bpm, delta) {
   const which = fromM === toM ? T('Compasso {n}', { n: fromM }) : T('Compassos {from}–{to}', { from: fromM, to: toM });
@@ -6677,6 +6878,8 @@ function pendingSnapshot() {
 }
 
 function restorePending(snap) {
+  tapState = null;  // an undo while marking ends the marking
+  renderTapUi();
   restoringPending = true;
   try {
     offsetLive = snap.offset;
@@ -6734,6 +6937,7 @@ function recordPending() {
   clearTimeout(pendingTimer);
   pendingTimer = null;
   if (restoringPending || !selectedJob || pendingHistJob !== selectedJob.id) return;
+  if (tapState) return;  // a run of taps is recorded once, when it ends
   const snap = JSON.stringify(pendingSnapshot());
   if (snap === pendingHist[pendingHistAt]) return;
   pendingHist = pendingHist.slice(0, pendingHistAt + 1);

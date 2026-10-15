@@ -1018,6 +1018,44 @@ It repeats safely: each application starts from the timeline the previous one
 produced (`dispLast` is read through the current warp), so correcting the same
 song four or five times along its length composes instead of fighting itself.
 
+### Marking the bars by ear (`Marcar a ouvir`, tap-to-sync)
+
+"The syncing tools are pretty bad too and don't work very well with tabs that
+aren't already perfectly synced" (r/rocksmith, 2026-10-15, on a tab its author
+wrote on Songsterr: one tempo, never marked against a recording). Every other
+tool asks the user to find, one by one, where the score drifts. What makes a
+Songsterr tab line up "perfectly" is a person having marked when each measure
+starts; this card lets the user do exactly that while listening. Card
+`#tapSyncCard` in the Sincronização inspector (after Andamento): from bar N
+(bar 1 seeks to the recording's start; any other plays from the cursor), tap
+**on every bar** (downbeats) or **on every beat** (`tapGrid`), "Começar a
+marcar" starts playback, **B** (or the big `#tapHit`, on `pointerdown`) taps,
+**Backspace** takes the last back, **Esc** ends (a capture-phase listener, so
+Backspace is not "delete the selected notes"); it ends by itself after the last
+grid point, on a tab switch, a job load or an undo. Each tap is the playhead
+minus the output latency (`tapLatency`: `outputLatency + baseLatency`, ×
+playback rate — slowing playback down is the recommended way to mark, and the
+taps stay in recording time). `smoothTaps` (on by default) moves each tap onto
+the least-squares line through its ±2 neighbours, so the hand's ±30 ms jitter
+does not shake every bar while a tempo change spread over bars still comes
+through. `planTaps` (pure) turns them into ORDINARY pending anchors: each
+tapped grid point (its `previewScale` origin) → its tap; pending anchors inside
+the tapped span superseded; what follows the last tap keeps its own timing,
+shifted by that tap's difference (anchors after it too, the song's end pinned);
+the song's start pinned where it shows now when no kept anchor precedes the
+taps (a lone "Início" anchor is a uniform shift that stops being one beside
+others — the `planBarRetempo` lesson). So it previews live as the user taps,
+rides "Aplicar e reconstruir", the main-chart propagation and the per-bar BPM
+labels/GP tempo export, with no backend change; `recordPending` is held while
+marking so the whole run is ONE undo step. Browser-only, no pytest coverage:
+`smoothTaps`/`planTaps` checked with Node (jitter, tempo change kept, the
+supersede/shift/pin rules — each mutation-checked); with Playwright on a live
+server and a real build: 110-BPM chart tapped at 100 BPM, five bars landed on
+the taps (±30 ms, the latency compensation), Backspace/Esc, one Ctrl+Z took
+all six anchors back and redo restored them, the rebuild's bars sit on the
+taps, `/psarc-check` clean; beats mode too; PT/EN, no page errors. **Not used
+by a real user on real music from here.**
+
 ### Manual drift correction (`sync_anchor_stages`)
 
 A single `offset_s` only fixes a constant lead-in; if the GP file's tempo map

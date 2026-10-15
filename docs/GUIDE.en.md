@@ -229,6 +229,22 @@ If the score drifts away evenly over the song (the file was written at a slightl
 BPM), change the **BPM**. The notes slide over the waveform live. **Reset to GP** goes back to the
 file's tempo.
 
+### An unsynced tab — Mark by ear
+
+If the tab was never synced (written by hand at one tempo, on Songsterr for instance), the
+quickest and most reliable way is to mark the bars yourself, in the **Mark by ear** card:
+
+1. pick **From bar** (bar 1 starts from the beginning of the recording; any other from the
+   cursor) and whether you tap **on every bar** or **on every beat** (more precise);
+2. **Start marking** and hit **B** (or the big button) on the first beat of every bar while
+   listening. The score follows your taps as you go;
+3. **Backspace** takes the last tap back; **Esc** finishes. You can stop halfway: the rest
+   keeps its own tempo and moves with the last tap.
+
+To mark calmly, slow the playback down with the speed selector next to play. **Smooth the
+taps** removes the shake of the hand. The taps stay as corrections in step 3 (one Ctrl+Z undoes
+them all) until **Apply and rebuild**; then fine-tune the rest with **Fix from here**.
+
 ### Step 3 — Corrections on the score
 
 For what is left, pick a mode in **Mode ▾** and click where the score drifts:
@@ -467,6 +483,7 @@ the app itself.
 | [ · ] · L | mark A · mark B (at the cursor) · turn the passage repeat on/off |
 | + / − | zoom |
 | 1 … 9 · 0 | pick the mode in the order of the Mode ▾ menu (the number shows beside each; 0 is the tenth; the same number again turns the mode off) |
+| B · Backspace · Esc | in “Mark by ear”: mark the bar (or beat) · take the last tap back · finish |
 | Shift+click · Ctrl+click | select a range · add or remove a note |
 | Delete | delete the selection |
 | Ctrl+Z · Ctrl+Shift+Z (or Ctrl+Y) | undo · redo (on any page of the project) |

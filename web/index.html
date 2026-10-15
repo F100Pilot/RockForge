@@ -434,6 +434,9 @@
   #noteEditPopup { position:fixed; z-index:70; background:var(--panel-2); border:1px solid var(--accent);
     border-radius:10px; box-shadow:var(--shadow); padding:.6rem .7rem; min-width:190px; font-size:.85rem; }
   #noteEditPopup[hidden] { display:none; }
+  #tapSyncCard.tap-armed { border-color:var(--accent); }
+  .tap-hit { width:100%; min-height:3.4rem; font-size:1.1rem; font-weight:700; margin:.4rem 0; }
+  .tap-hit:active { transform:scale(.98); }
   #fhpPopup { position:fixed; z-index:70; background:var(--panel-2); border:1px solid var(--accent);
     border-radius:8px; padding:.7rem .8rem; box-shadow:0 8px 24px rgba(0,0,0,.5); font-size:.85rem; }
   #fhpPopup[hidden] { display:none; }
@@ -1170,6 +1173,29 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                 </div>
                 <input type="range" id="tempoRange" min="50" max="200" step="0.5" value="100" aria-label="Andamento">
                 <span id="tempoPct" class="meta"></span>
+              </div>
+              <div class="pv-card" id="tapSyncCard">
+                <div class="pv-card-head">Marcar a ouvir <span class="meta">(tab sem sincronização)</span>
+                  <button class="info-btn" data-info="tap-sync">ⓘ</button></div>
+                <div class="pv-card-desc">Dá play e carrega na tecla <b>B</b> no primeiro tempo de cada compasso: as notas encaixam nos teus toques enquanto tocas.</div>
+                <div class="pv-row">
+                  <span>A partir do compasso</span>
+                  <select id="tapFromBar" style="width:auto" aria-label="A partir do compasso"></select>
+                </div>
+                <select id="tapMode" aria-label="Onde tocas">
+                  <option value="bars">Toco em cada compasso</option>
+                  <option value="beats">Toco em cada tempo (mais preciso)</option>
+                </select>
+                <label class="check"><input type="checkbox" id="tapSmooth" checked> Suavizar os toques</label>
+                <button type="button" id="tapStart" class="pv-wide"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg>Começar a marcar</button>
+                <div id="tapArmed" hidden>
+                  <button type="button" id="tapHit" class="tap-hit">Toque (B)</button>
+                  <div class="pv-row">
+                    <button type="button" id="tapUndo" class="secondary">Desfazer toque (⌫)</button>
+                    <button type="button" id="tapStop" class="secondary">Terminar (Esc)</button>
+                  </div>
+                </div>
+                <span id="tapStatus" class="meta" aria-live="polite"></span>
               </div>
             </div>
 

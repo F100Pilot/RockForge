@@ -226,6 +226,23 @@ Se a partitura se vai afastando por igual ao longo da música (o ficheiro foi es
 ligeiramente diferente), muda o **BPM**. As notas deslizam sobre a onda em tempo real.
 **Repor GP** volta ao andamento do ficheiro.
 
+### Tab sem sincronização — Marcar a ouvir
+
+Se a tab nunca foi sincronizada (escrita à mão num só andamento, por exemplo no Songsterr), o
+mais rápido e fiável é marcares tu os compassos, no cartão **Marcar a ouvir**:
+
+1. escolhe **A partir do compasso** (o 1 começa do início da gravação; outro qualquer, do
+   cursor) e se tocas **em cada compasso** ou **em cada tempo** (mais preciso);
+2. **Começar a marcar** e carrega em **B** (ou no botão grande) no primeiro tempo de cada
+   compasso, a ouvir. A partitura acompanha os teus toques enquanto tocas;
+3. **Backspace** tira o último toque; **Esc** termina. Podes parar a meio: o resto mantém o
+   seu andamento e desloca-se com o último toque.
+
+Para marcar com calma, abranda a reprodução no seletor de velocidade ao lado do play.
+**Suavizar os toques** tira o tremor da mão. Os toques ficam como correções no passo 3 (um
+Ctrl+Z desfá-los todos) até **Aplicar e reconstruir**; depois afina o resto com **Corrigir
+daqui**.
+
 ### Passo 3 — Correções na partitura
 
 Para o que sobra, escolhe um modo em **Modo ▾** e clica onde a partitura foge:
@@ -466,6 +483,7 @@ lista na própria aplicação.
 | [ · ] · L | marca A · marca B (no cursor) · liga/desliga a repetição do trecho |
 | + / − | zoom |
 | 1 … 9 · 0 | escolhe o modo pela ordem do menu Modo ▾ (o número aparece ao lado de cada um; o 0 é o décimo; o mesmo número outra vez tira o modo) |
+| B · Backspace · Esc | em «Marcar a ouvir»: marca o compasso (ou o tempo) · tira o último toque · termina |
 | Shift+clique · Ctrl+clique | seleciona um intervalo · junta ou tira uma nota |
 | Delete | apaga a seleção |
 | Ctrl+Z · Ctrl+Shift+Z (ou Ctrl+Y) | desfaz · refaz (em qualquer página do projeto) |
