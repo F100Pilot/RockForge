@@ -171,3 +171,21 @@ def test_wwise_is_found_where_the_launcher_installs_it(tmp_path) -> None:  # typ
             (folder / "WwiseConsole.exe").write_bytes(b"")
     assert detect_wwise_root([base]) == base / "Wwise2023.1.4.8496"
     assert detect_wwise_root([tmp_path / "nowhere"]) is None
+
+
+def test_wwise_is_found_in_a_folder_of_the_users_choosing(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    """The Launcher installs anywhere ("I:\\Rocksmith\\Wwise_2025.1.11.9262"):
+    a drive is scanned two levels down, skipping the system folders."""
+    from rockforge.infrastructure.packaging.wwise import find_wwise_installs, scan_drive
+
+    for rel in ("Rocksmith/Wwise_2025.1.11.9262", "Rocksmith/Wwise_2023.1.4.8496",
+                "Wwise2022.1.0.0", "Windows/Wwise2023.9", "Games/a/Wwise2021.1"):
+        bin_ = tmp_path / rel / "Authoring" / "x64" / "Release" / "bin"
+        bin_.mkdir(parents=True)
+        (bin_ / "WwiseConsole.exe").write_bytes(b"")
+    found = sorted(p.relative_to(tmp_path).as_posix() for p in scan_drive(tmp_path))
+    assert found == ["Rocksmith/Wwise_2023.1.4.8496", "Rocksmith/Wwise_2025.1.11.9262",
+                     "Wwise2022.1.0.0"]
+    installs = find_wwise_installs([tmp_path / "Rocksmith"])
+    assert [w.version for w in installs] == ["2025.1.11.9262", "2023.1.4.8496"]
+    assert [w.supported for w in installs] == [False, True]

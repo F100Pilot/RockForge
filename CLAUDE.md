@@ -4700,16 +4700,21 @@ in the `.exe` while it is missing, as does the installer's `FinishedLabel`.
 **When none is usable the Wwise row says what IS there** ("tenho o wwise
 instalado mas não está a ser detetado"; it used to read "ROCKFORGE_WWISE_ROOT
 is not set"): `find_wwise_installs` lists every `Wwise <year>…` folder under
-the Audiokinetic folders of Program Files, of every drive root C-J
-(`_search_bases`, Windows only) and the registry's `WWISEROOT`
+the Audiokinetic folders of Program Files and of every drive (`_search_bases`),
+any `Wwise…` folder up to two levels under each drive's root (`scan_drive`,
+"I:\Rocksmith\Wwise_2025.1.11.9262" was the user's; system folders skipped,
+at most 3000 folders listed per drive, remembered 5 min) and the registry's `WWISEROOT`
 (`_registry_wwiseroot` — the installer writes it, a process started earlier
 does not see it), and `diagnostics._wwise_not_found` names a version without
 a template (the Launcher installs the newest, 2024/2025, by default — only
 2019-2023 have one, as in DLC Builder), one installed without its Authoring
 console, or nothing found (then the Definições → Geral → Pasta do Wwise
-field). Whether a 2024/2025 WwiseConsole could convert with a migrated 2023
+field). A folder set by hand or by `WWISEROOT` whose name carries no
+supported version reads as NOT found too (`WwiseWemConverter.version()`): its
+console is there, but the build would fail for want of a template. Whether a 2024/2025 WwiseConsole could convert with a migrated 2023
 template is untested, so they are refused, not guessed. Guarded by
-`test_a_wwise_that_cannot_be_used_is_named_not_reported_as_unset`; the
+`test_a_wwise_that_cannot_be_used_is_named_not_reported_as_unset` and
+`test_wwise_is_found_in_a_folder_of_the_users_choosing`; the
 user's actual install was not seen from here.
 The diagnostics rows' install lines in the `.exe` point at «Instalar
 componentes extra» (`_components_install`). Guarded by `test_components.py`

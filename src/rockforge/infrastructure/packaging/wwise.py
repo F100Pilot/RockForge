@@ -63,20 +63,70 @@ class WwiseInstall:
 
 
 def _search_bases() -> list[Path]:
-    """Where the Audiokinetic Launcher installs (``Program Files (x86)``
-    by default, any drive when the user picked another folder)."""
+    """Where the Audiokinetic Launcher installs by default (``Program Files
+    (x86)/Audiokinetic``) and its ``Audiokinetic`` folder on any drive."""
     roots = [os.environ.get("PROGRAMFILES(X86)"), os.environ.get("PROGRAMFILES")]
-    if os.name == "nt":
-        for letter in "CDEFGHIJ":
-            drive = Path(f"{letter}:/")
-            if drive.exists():
-                roots += [str(drive), str(drive / "Program Files (x86)"),
-                          str(drive / "Program Files")]
+    roots += [str(d) for d in _drives()]
+    roots += [str(d / sub) for d in _drives() for sub in ("Program Files (x86)", "Program Files")]
     out: list[Path] = []
     for r in roots:
         if r and (p := Path(r) / "Audiokinetic") not in out:
             out.append(p)
     return out
+
+
+def _drives() -> list[Path]:
+    if sys.platform != "win32":
+        return []
+    return [d for d in (Path(f"{c}:/") for c in "CDEFGHIJKLMNOPQRSTUVWXYZ") if d.exists()]
+
+
+# Folders at a drive's root that never hold a Wwise the user installed.
+_SKIP_AT_ROOT = {"windows", "$recycle.bin", "system volume information", "programdata",
+                 "recovery", "perflogs", "$windows.~bt", "$windows.~ws", "msocache"}
+_SCAN_BUDGET = 3000  # folders listed per drive, so a huge disk cannot stall the page
+_SCAN_TTL_S = 300.0
+_scan_cache: tuple[float, list[Path]] | None = None
+
+
+def scan_drive(root: Path, budget: int = _SCAN_BUDGET) -> list[Path]:
+    """``Wwise…`` folders at most two levels under ``root`` (``I:/Wwise2023…``,
+    ``I:/Rocksmith/Wwise_2023…``): the Launcher lets the user install anywhere,
+    and that is where people put it."""
+    found: list[Path] = []
+    try:
+        top = [c for c in root.iterdir() if c.is_dir()]
+    except OSError:
+        return found
+    for child in top:
+        name = child.name.lower()
+        if name in _SKIP_AT_ROOT or name.startswith("."):
+            continue
+        if name.startswith("wwise"):
+            found.append(child)
+            continue
+        if budget <= 0:
+            break
+        budget -= 1
+        try:
+            found += [
+                g for g in child.iterdir() if g.name.lower().startswith("wwise") and g.is_dir()
+            ]
+        except OSError:
+            continue
+    return found
+
+
+def _scan_drives() -> list[Path]:
+    """Every drive scanned, remembered for a few minutes (the Settings page
+    and every build ask)."""
+    global _scan_cache
+    import time
+
+    now = time.monotonic()
+    if _scan_cache is None or now - _scan_cache[0] > _SCAN_TTL_S:
+        _scan_cache = (now, [p for d in _drives() for p in scan_drive(d)])
+    return _scan_cache[1]
 
 
 def _registry_wwiseroot() -> Path | None:
@@ -119,6 +169,7 @@ def find_wwise_installs(bases: list[Path] | None = None) -> list[WwiseInstall]:
         reg = _registry_wwiseroot()
         if reg is not None:
             extra.append(reg)
+        extra += _scan_drives()
     candidates: list[Path] = list(extra)
     for base in bases:
         try:
@@ -192,16 +243,22 @@ class WwiseWemConverter:
                 f"{(proc.stderr or proc.stdout)[-2000:]}"
             )
 
-    def _detect_version(self) -> str:
+    def version(self) -> str | None:
+        """The supported major version the folder names, else None — the
+        template is chosen by it, so a 2024/2025 has nothing to convert with."""
         match = re.search(r"20(?:19|21|22|23)", str(self._root))
-        if match is None:
+        return match.group(0) if match else None
+
+    def _detect_version(self) -> str:
+        version = self.version()
+        if version is None:
             raise PackagingError(
                 f"could not determine the Wwise version from '{self._root}' — "
                 f"supported versions: {', '.join(_SUPPORTED_VERSIONS)} (point "
                 "ROCKFORGE_WWISE_ROOT at a folder containing the version, e.g. "
                 "'C:/Program Files (x86)/Audiokinetic/Wwise 2023.1.x')"
             )
-        return match.group(0)
+        return version
 
     def _ensure_template(self, workdir: Path) -> Path:
         """Extract the version-matched template project; returns the .wproj path."""

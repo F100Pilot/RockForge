@@ -218,10 +218,11 @@ def test_wwise_says_which_half_of_the_setup_is_missing(tmp_path: Path) -> None:
     assert wrong.found is False
     assert str(tmp_path) in wrong.detail and "WwiseConsole" in wrong.detail
 
-    console = tmp_path / "Authoring" / "x64" / "Release" / "bin" / "WwiseConsole.exe"
+    root = tmp_path / "Wwise2023.1.4.8496"
+    console = root / "Authoring" / "x64" / "Release" / "bin" / "WwiseConsole.exe"
     console.parent.mkdir(parents=True)
     console.write_text("")
-    ok = _by_key(diagnostics.check_requirements(Settings(wwise_root=tmp_path)))["wwise"]
+    ok = _by_key(diagnostics.check_requirements(Settings(wwise_root=root)))["wwise"]
     assert ok.found is True
     assert str(console) in ok.detail
 
@@ -243,6 +244,10 @@ def test_a_wwise_that_cannot_be_used_is_named_not_reported_as_unset(
     row = _by_key(diagnostics.check_requirements(Settings(wwise_root=None)))["wwise"]
     assert row.found is False
     assert "2025.1.3.9039" in row.detail and "2023" in row.detail
+
+    # The same folder set by hand: its console is there, but no template.
+    row = _by_key(diagnostics.check_requirements(Settings(wwise_root=bin_.parents[3])))["wwise"]
+    assert row.found is False and "2023" in row.detail
 
     (bin_ / "WwiseConsole.exe").unlink()  # installed without its Authoring part
     row = _by_key(diagnostics.check_requirements(Settings(wwise_root=None)))["wwise"]

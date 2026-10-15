@@ -192,11 +192,11 @@ def _wwise_not_found() -> str:
             "and tick the Authoring part.",
         )
     return tr(
-        "Não encontrei o Wwise nas pastas habituais (Program Files, "
-        "Audiokinetic). Se está noutro sítio, indica a pasta em Definições → "
+        "Não encontrei o Wwise (procurei em Program Files e até duas pastas "
+        "abaixo da raiz de cada disco). Se está mais fundo, indica a pasta em Definições → "
         "Geral → Pasta do Wwise.",
-        "Wwise was not found in the usual folders (Program Files, "
-        "Audiokinetic). If it is somewhere else, set the folder in Settings → "
+        "Wwise was not found (searched Program Files and up to two folders "
+        "below the root of every drive). If it is deeper, set the folder in Settings → "
         "General → Wwise folder.",
     )
 
@@ -207,7 +207,21 @@ def _wwise(settings: Settings) -> Requirement:
 
     root = runtime_settings.wwise_root(settings)
     console = WwiseWemConverter(root).console_path() if root else None
-    if console is not None:
+    if console is not None and WwiseWemConverter(root).version() is None:
+        # A folder set by hand (or WWISEROOT) on a 2024/2025: the console is
+        # there, but the build would fail for want of a template.
+        detail = tr(
+            f"{root} não é uma versão suportada: o RockForge (como o DLC Builder) "
+            "só converte com o 2019, 2021, 2022 ou 2023 — o nome da pasta tem de "
+            "dizer qual. Instala também o 2023.1 pelo Audiokinetic Launcher e "
+            "indica essa pasta.",
+            f"{root} is not a supported version: RockForge (like DLC Builder) "
+            "only converts with 2019, 2021, 2022 or 2023 — the folder name has "
+            "to say which. Install 2023.1 too from the Audiokinetic Launcher and "
+            "set that folder.",
+        )
+        console = None
+    elif console is not None:
         detail = str(console)
     elif root is not None:
         detail = tr(

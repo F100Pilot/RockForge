@@ -10,7 +10,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 - **The black screen that flashed when clicking some buttons in the `.exe`**: it was the console
   window of each program the app runs behind the scenes (ffmpeg, the extra components' Python,
   yt-dlp…). They all run without a window now.
-- **Wwise installed but “not detected”**: RockForge now also looks on other drives and at the
+- **Wwise installed but “not detected”**: RockForge now also looks on every drive (up to two folders below the root, like
+  `I:\Rocksmith\Wwise_…`) and at the
   `WWISEROOT` the Wwise installer writes to the registry, and when there is a Wwise it cannot use
   it says which and why — the Audiokinetic Launcher installs the newest version (2024/2025) by
   default, and only 2019–2023 converts the audio (as in DLC Builder). Before, it only said
