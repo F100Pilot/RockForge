@@ -130,9 +130,6 @@ _LYRIC_LEN = 48
 _CHORD_EPSILON_S = 0.03
 
 
-# How far the automatic anchors merge neighbours: domain.hand.AUTO_WINDOW_SPAN.
-
-
 # Dynamic Difficulty ceiling: the most difficulty levels a single phrase can
 # ramp its notes in over (0..CAP). A phrase's ceiling scales with the note count
 # of its busiest iteration, so a dense phrase reaches a higher difficulty than a

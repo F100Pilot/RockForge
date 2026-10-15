@@ -11,7 +11,7 @@ from dataclasses import replace
 from rockforge.application.ports import VocalEvent
 from rockforge.domain.arrangement import Arrangement, Section, number_sections
 from rockforge.domain.chords import arpeggio_spans, chord_display, hand_shape_spans
-from rockforge.domain.hand import HandPosition, auto_windows, fixed_windows
+from rockforge.domain.hand import HandPosition, auto_windows, fixed_windows, position_pin
 from rockforge.domain.music import TabNote, Technique, high_density_flags, is_plain_rise
 from rockforge.infrastructure.packaging.psarc.sng_model import (
     _CHORD_EPSILON_S,
@@ -315,7 +315,7 @@ def _find_phrase_iteration(
 
 
 def _build_anchors(
-    positions: list[tuple[float, float, list[int]]],
+    positions: list[tuple[float, float, list[int], int]],
     phrase_iterations: list[SngPhraseIteration],
     song_length: float,
     hand_positions: Sequence[HandPosition] = (),
@@ -411,22 +411,35 @@ def _anchor_note_times(anchors: list[SngAnchor], notes: list[SngNote]) -> list[S
     return out
 
 
+def _template_pin(template: SngChordTemplate) -> int:
+    """Where the index finger is for a chord template (``position_pin``)."""
+    return position_pin(
+        [f if f < 250 else -1 for f in template.frets],
+        [k if 0 <= k < 128 else -1 for k in template.fingers],
+    )
+
+
 def _level_positions(
     notes: list[SngNote], chord_templates: list[SngChordTemplate], song_length: float
-) -> list[tuple[float, float, list[int]]]:
-    """``(time, time, [fretted frets])`` per note for :func:`_build_anchors`.
+) -> list[tuple[float, float, list[int], int]]:
+    """``(time, time, [fretted frets], index fret)`` per note for
+    :func:`_build_anchors` — the index fret (``position_pin``) from a chord's
+    template fingers or a single note's left hand, -1 when free.
 
     An open-string note stays in with no frets: it places no window, but a
     level made ONLY of open strings (a bass line's roots at a low level) must
     still reach ``_build_anchors``' fallback window, or its notes have no
     anchor at all."""
-    out: list[tuple[float, float, list[int]]] = []
+    out: list[tuple[float, float, list[int], int]] = []
     for n in sorted(notes, key=lambda x: x.time):
         if n.chord_id >= 0:
-            frets = [f for f in chord_templates[n.chord_id].frets if 0 < f < 250]
+            tpl = chord_templates[n.chord_id]
+            frets = [f for f in tpl.frets if 0 < f < 250]
+            pin = _template_pin(tpl)
         else:
             frets = [n.fret] if n.fret > 0 else []
-        out.append((n.time, n.time, frets))
+            pin = position_pin([n.fret], [n.left_hand])
+        out.append((n.time, n.time, frets, pin))
     return out
 
 
@@ -485,9 +498,9 @@ def _build_arpeggio_prints(
 
 
 def _hold_through_arpeggios(
-    positions: list[tuple[float, float, list[int]]],
+    positions: list[tuple[float, float, list[int], int]],
     arpeggios: Sequence[tuple[int, float, float]],
-) -> list[tuple[float, float, list[int]]]:
+) -> list[tuple[float, float, list[int], int]]:
     """The positions inside one arpeggio merged into one, so the anchor (the
     hand's window) never moves in the middle of it: DLC Builder's checker
     flags an anchor inside a hand shape (AnchorInsideHandShape), and an
@@ -496,17 +509,17 @@ def _hold_through_arpeggios(
     may start inside an arpeggio after its open strings."""
     if not arpeggios:
         return positions
-    out: list[tuple[float, float, list[int]]] = []
+    out: list[tuple[float, float, list[int], int]] = []
     span_of: tuple[float, float] | None = None
-    for t, lt, frets in positions:
+    for t, lt, frets, pin in positions:
         span = next(((a, b) for _, a, b in arpeggios if a <= t < b), None)
         if span is not None and span == span_of and out:
-            ft, _, fr = out[-1]
-            out[-1] = (ft, lt, fr + frets)
+            ft, _, fr, _pin = out[-1]
+            out[-1] = (ft, lt, fr + frets, -1)  # single notes: the hand is free
         else:
             # From where the arpeggio starts: its first notes may be open
             # strings (no anchor of their own) or not at this level.
-            out.append((span[0] if span else t, lt, list(frets)))
+            out.append((span[0] if span else t, lt, list(frets), -1 if span else pin))
         span_of = span
     return out
 
@@ -1507,7 +1520,14 @@ def from_arrangement(
     # hint (via _find_anchor in _build_sng_notes). The per-LEVEL anchor arrays
     # the game actually uses are rebuilt from each level's own notes inside
     # _build_level — see _build_anchors.
-    chart_positions = [(g[0].time, g[-1].time, [n.fret for n in g if n.fret > 0]) for g in groups]
+    # The index fret as the levels will see it: a chord's from its template,
+    # a single note's from its left hand (``_level_positions``).
+    chart_positions = [
+        (g[0].time, g[-1].time, [n.fret for n in g if n.fret > 0],
+         _template_pin(chord_templates[template_ids[_chord_template_key(g)]]) if len(g) > 1
+         else position_pin([g[0].fret], [g[0].left_hand]))
+        for g in groups
+    ]
     anchors = _build_anchors(
         chart_positions if arrangement.hand_positions
         else _hold_through_arpeggios(chart_positions, arpeggios),

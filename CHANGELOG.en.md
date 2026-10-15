@@ -14,6 +14,10 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
   to automatic” returns to the computed ones. The 3D highway follows them.
 
 ### Changed
+- **The automatic fret-hand positions were redone** from hand-made charts: a chord puts the hand
+  where its index finger is, other notes leave the hand where it is while a finger reaches them,
+  and the hand only moves at the first note it cannot reach. Against two community CDLC they
+  agree on 98% of the notes (80% before), with the same number of moves.
 - The XML for DLC Builder now carries the same automatic fret-hand positions as the `.psarc`
   (they used to be worked out two different ways).
 

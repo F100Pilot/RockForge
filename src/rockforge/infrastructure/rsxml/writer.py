@@ -15,7 +15,7 @@ from pathlib import Path
 
 from rockforge.domain.arrangement import Arrangement, ArrangementKind, Section, number_sections
 from rockforge.domain.chords import arpeggio_spans, chord_display, hand_shape_spans
-from rockforge.domain.hand import HandPosition, auto_windows
+from rockforge.domain.hand import HandPosition, auto_windows, position_pin
 from rockforge.domain.music import TabNote, Technique, high_density_flags, is_plain_rise
 
 CHORD_EPSILON_S = 0.03  # notes starting within 30 ms form a chord (matches fret mapper)
@@ -60,18 +60,22 @@ def _group_chords(notes: list[TabNote]) -> list[list[TabNote]]:
 
 
 def _build_anchors(
-    groups: list[list[TabNote]], hand_positions: Sequence[HandPosition] = ()
+    groups: list[list[TabNote]], pins: Sequence[int], hand_positions: Sequence[HandPosition] = ()
 ) -> list[tuple[float, int, int]]:
     """``(time, fret, width)`` per anchor: the user's FHPs when the chart has
     them, else the same automatic windows the native SNG places
-    (``auto_windows``), so DLC Builder, the viewer and the game see one set.
+    (``auto_windows``, ``pins`` = each group's index fret), so DLC Builder,
+    the viewer and the game see one set.
 
     Without per-position anchors, Rocksmith keeps the fretboard highlight
     fixed at the song's first position regardless of where notes actually are.
     """
     if hand_positions:
         return [(h.time, h.fret, h.width) for h in sorted(hand_positions)]
-    windows = auto_windows([(g[0].time, g[-1].time, [n.fret for n in g]) for g in groups])
+    windows = auto_windows([
+        (g[0].time, g[-1].time, [n.fret for n in g], pin)
+        for g, pin in zip(groups, pins, strict=True)
+    ])
     anchors = [(t, fret, width) for t, _, fret, width in windows]
     if not anchors and groups:
         anchors.append((groups[0][0].time, 1, 4))
@@ -320,11 +324,14 @@ def render_arrangement(arr: Arrangement, album_art_urn: str | None = None) -> ET
             arp_ids[key] = len(template_ids) + len(arp_ids)
             arp_group[key] = [g[0] for g in groups[first:last + 1]]
 
+    template_pins: dict[tuple[int, ...], int] = {}  # where each chord's index finger is
     templates_el = ET.SubElement(
         song, "chordTemplates", count=str(len(template_ids) + len(arp_ids)))
     for suffix, ids, notes_of in (("", template_ids, first_group), ("-arp", arp_ids, arp_group)):
         for key, _tid in sorted(ids.items(), key=lambda kv: kv[1]):
             fingers, name = chord_display(key, notes_of[key], arr.tuning.midi, arr.capo)
+            if not suffix:
+                template_pins[key] = position_pin(key, fingers)
             attrs = {"chordName": name, "displayName": name + suffix}
             for i in range(6):
                 attrs[f"fret{i}"] = str(key[i])
@@ -417,13 +424,21 @@ def render_arrangement(arr: Arrangement, album_art_urn: str | None = None) -> ET
     # An arpeggio is one hand position: its notes count as one group, so the
     # anchor never moves inside it (DLC Builder: AnchorInsideHandShape).
     anchor_groups: list[list[TabNote]] = []
+    pins: list[int] = []
     for i, g in enumerate(groups):
         inside = next((a for a in arpeggios if a[0] < i <= a[1]), None)
         if inside is not None and anchor_groups:
             anchor_groups[-1] = anchor_groups[-1] + g
+            pins[-1] = -1  # an arpeggio's single notes: the hand is free
         else:
             anchor_groups.append(g)
-    anchor_list = _build_anchors(anchor_groups, arr.hand_positions)
+            starts_arp = any(a[0] == i for a in arpeggios)
+            pins.append(
+                -1 if starts_arp
+                else template_pins[_chord_template_key(g)] if len(g) > 1
+                else position_pin([g[0].fret], [g[0].left_hand])
+            )
+    anchor_list = _build_anchors(anchor_groups, pins, arr.hand_positions)
     anchors = ET.SubElement(level, "anchors", count=str(len(anchor_list)))
     for time, fret, width in anchor_list:
         ET.SubElement(anchors, "anchor", time=_fmt(time), fret=str(fret), width=_fmt(float(width)))

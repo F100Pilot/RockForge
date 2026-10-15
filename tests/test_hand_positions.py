@@ -17,6 +17,7 @@ from rockforge.domain.hand import (
     auto_windows,
     fixed_windows,
     notes_outside,
+    position_pin,
 )
 from rockforge.domain.music import Beat, TabNote, Technique, TempoMap, Tuning
 from rockforge.infrastructure.packaging.psarc.sng import from_arrangement
@@ -123,3 +124,60 @@ def test_a_hand_position_inside_an_arpeggio_is_the_users_call() -> None:
     model = from_arrangement(_chart(notes, hps))
     assert check_sng(model) == []
     assert [(a.fret) for a in model.arrangements[-1].anchors if a.start_time >= 20.0][:2] == [1, 2]
+
+
+# --- The automatic placement, measured against hand-made charts -------------
+
+def _auto(groups: list[tuple[list[int], list[int]]]) -> list[tuple[int, int]]:
+    """(time index, FHP fret) of the automatic windows over chords/notes given
+    as (frets per string, fingers per string); a single note is one string."""
+    positions = [
+        (float(i), float(i), [f for f in frets if f > 0], position_pin(frets, fingers))
+        for i, (frets, fingers) in enumerate(groups)
+    ]
+    return [(int(t), fret) for t, _, fret, _ in auto_windows(positions)]
+
+
+def _note(fret: int) -> tuple[list[int], list[int]]:
+    return [fret], [-1]
+
+
+def test_a_chord_puts_the_hand_on_its_index_finger() -> None:
+    # A note on fret 4 then a power chord 5-7-7 fingered 1-3-4: the hand moves
+    # to 5, where the index is — not left at 4, whose window still reaches 7.
+    power = ([-1, 5, 7, 7, -1, -1], [-1, 1, 3, 4, -1, -1])
+    assert _auto([_note(4), power, _note(6)]) == [(0, 4), (1, 5)]
+    assert _auto([_note(4), ([-1, 5, 7, 7, -1, -1], [-1] * 6)]) == [(0, 4)]  # fingering unknown
+
+
+def test_a_shape_without_the_index_leaves_the_hand_where_it_is() -> None:
+    pair = ([-1, 6, 6, -1, -1, -1], [-1, 2, 3, -1, -1, -1])  # fingers 2 and 3
+    open_and_one = ([-1, -1, 0, 7, -1, -1], [-1, -1, -1, 1, -1, -1])
+    assert position_pin(*pair) == -1 and position_pin(*open_and_one) == -1
+    assert _auto([_note(4), pair, open_and_one, _note(5)]) == [(0, 4)]
+
+
+def test_the_hand_moves_at_the_first_note_it_cannot_reach() -> None:
+    # 2..5 is one position; the 7 cannot be reached from it, so the move is
+    # at the 7 — not earlier, at the first 5, where the new position would fit
+    # — and the index goes on the lowest note of the new run.
+    assert _auto([_note(2), _note(3), _note(5), _note(5), _note(7), _note(5)]) == [(0, 2), (4, 5)]
+
+
+def test_the_xml_and_the_sng_place_the_same_automatic_hand_positions() -> None:
+    power = [TabNote(string=s, fret=f, time=0.0, sustain=0.2) for s, f in ((1, 5), (2, 7), (3, 7))]
+    notes = []
+    for k in range(10):
+        t0 = 2.0 + 2.0 * k
+        notes += [TabNote(string=0, fret=4, time=t0, sustain=0.2)]
+        notes += [TabNote(string=n.string, fret=n.fret, time=t0 + 0.5, sustain=0.2) for n in power]
+        notes += [TabNote(string=2, fret=6, time=t0 + 1.0, sustain=0.2, left_hand=2)]
+    chart = _chart(notes)
+    xml = [(int(a.get("fret", "0")), int(float(a.get("width", "0"))))
+           for a in render_arrangement(chart).iter("anchor")]
+    top = from_arrangement(chart, dynamic_difficulty=False).arrangements[0]
+    sng = []
+    for a in top.anchors:
+        if not sng or sng[-1] != (a.fret, a.width):
+            sng.append((a.fret, a.width))
+    assert xml == sng == [(4, 4), (5, 4)] * 10

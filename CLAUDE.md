@@ -921,8 +921,39 @@ it; an FHP inside an arpeggio honoured; the XML; validation — mutation-checked
 and a real build of an invented two-track GP5 (edit, delete, add from a note,
 the red ring, undo/redo, Rhythm untouched, rebuild: the XML's FHPs equal what
 was sent, `/psarc-check` clean, seeded back with nothing pending, PT/EN, no
-page errors). **Never seen in game from here**; the automatic placement itself
-is unchanged (on that riff it moves the hand three times a bar).
+page errors). **Never seen in game from here.**
+
+**The automatic placement was then rebuilt on hand-made charts** ("Melhora as
+FHPs automáticas também"). The two community CDLC the user sent (Daughtry,
+seven charts: 2 Lead, 3 Rhythm, 2 Bass, 3292 fretted notes at each phrase's
+full difficulty) were read back (`read_sng`) and their FHPs taken as the
+answer. What their authors do: width 4 always, every note inside its FHP; a
+chord whose fingering puts the index on a fret has its FHP exactly there; any
+other note leaves the hand where it is while a finger reaches it, and the hand
+moves at the first note it cannot. `auto_windows` now does exactly that: each
+note allows a range of index frets — `position_pin` (the fret fretted by
+finger 1, from the chord template's fingers or a GP left-hand finger) pins
+it; a single note, a pair fretted with fingers 2-3, or an open string plus one
+fretted note (whose `chord_fingering` "finger 1" the authors did not follow)
+allow the four frets from which a finger reaches it — and a run continues
+while those ranges overlap (fewest moves, each as late as possible), the index
+on the lowest note it allows. Measured: the same FHP fret on **98.0%** of the
+notes (80.1% for the old greedy span-4 windows, which grouped chords into
+windows below their index finger; a Viterbi with a gap-preferring move cost
+and a stretch-to-5 variant were both tried and were WORSE — the authors move
+where a note stops fitting, never stretch the window), 99.2% within one fret,
+344 moves where the authors made 343. Honest limit: one source of hand-made
+charts, so the rules are few and generic on purpose; the files cannot ship in
+the repo, so the tests pin the rules on invented notes. The pins travel as a
+4th element of a position (`PinnedPosition`): `_level_positions` (template
+fingers / `left_hand`), `from_arrangement`'s chart positions (the same, via
+`template_ids`) and the writer (`template_pins`), so the XML and every SNG
+level agree (`test_the_xml_and_the_sng_place_the_same_automatic_hand_positions`);
+inside an arpeggio the merged position is free. Guarded by
+`test_a_chord_puts_the_hand_on_its_index_finger`,
+`test_a_shape_without_the_index_leaves_the_hand_where_it_is` and
+`test_the_hand_moves_at_the_first_note_it_cannot_reach` (each rule
+mutation-checked); a real build's `/psarc-check` is clean.
 
 ### Clearing note edits ("Notas ▾" → Limpar)
 

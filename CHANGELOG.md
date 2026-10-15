@@ -14,6 +14,10 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
   Builder; Notas ▾ → «Repor automáticas» volta às calculadas. A pista 3D segue-as.
 
 ### Alterado
+- **As posições da mão automáticas foram refeitas** com base em gráficos feitos à mão: um acorde
+  põe a mão onde está o indicador, as outras notas deixam a mão onde está enquanto um dedo lá
+  chega, e a mão só muda na primeira nota que já não alcança. Comparadas com dois CDLC da
+  comunidade, coincidem em 98% das notas (antes 80%), com o mesmo número de mudanças.
 - O XML para o DLC Builder passa a levar as mesmas posições da mão automáticas que o `.psarc`
   (antes eram calculadas de duas maneiras diferentes).
 
