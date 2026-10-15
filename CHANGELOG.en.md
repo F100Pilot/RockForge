@@ -6,11 +6,7 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
-### Fixed
-- **In the `.exe`, the installed extra components were not used** when the “Python for ML”
-  setting ended up empty: the card said everything was installed and the rest of the app that
-  it was missing. RockForge now finds the components' Python by itself; a path chosen by hand
-  still wins.
+## [0.10.0 beta 6] — 2026-10-15
 
 ### New
 - **“Mark by ear”, for tabs that were never synced** (Sync inspector): press play and hit **B** on
@@ -18,6 +14,12 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
   Backspace takes the last tap back, Esc finishes; you can slow the playback down, and the taps
   are smoothed to remove the shake of the hand. They stay as pending corrections (one Ctrl+Z
   undoes them all) until “Apply and rebuild”.
+
+### Fixed
+- **In the `.exe`, the installed extra components were not used** when the “Python for ML”
+  setting ended up empty: the card said everything was installed and the rest of the app that
+  it was missing. RockForge now finds the components' Python by itself; a path chosen by hand
+  still wins.
 
 ## [0.10.0 beta 5] — 2026-10-15
 

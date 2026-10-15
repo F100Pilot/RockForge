@@ -6,11 +6,7 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
-### Corrigido
-- **No `.exe`, os componentes extra instalados não eram usados** quando a definição «Python para
-  o ML» ficava vazia: o cartão dizia que estava tudo instalado e o resto da aplicação que
-  faltava. Agora o RockForge encontra sozinho o Python dos componentes; um caminho escolhido à
-  mão continua a ganhar.
+## [0.10.0 beta 6] — 2026-10-15
 
 ### Novo
 - **«Marcar a ouvir», para tabs sem sincronização** (inspetor Sincronização): dás play e carregas
@@ -18,6 +14,12 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
   toques enquanto tocas. Backspace tira o último toque, Esc termina; podes abrandar a
   reprodução, e os toques são suavizados para tirar o tremor da mão. Ficam como correções
   pendentes (um Ctrl+Z desfá-los todos) até «Aplicar e reconstruir».
+
+### Corrigido
+- **No `.exe`, os componentes extra instalados não eram usados** quando a definição «Python para
+  o ML» ficava vazia: o cartão dizia que estava tudo instalado e o resto da aplicação que
+  faltava. Agora o RockForge encontra sozinho o Python dos componentes; um caminho escolhido à
+  mão continua a ganhar.
 
 ## [0.10.0 beta 5] — 2026-10-15
 
