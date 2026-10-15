@@ -10,6 +10,11 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 - **O ecrã preto que piscava ao clicar em alguns botões no `.exe`**: era a janela de consola de
   cada programa que a app corre por trás (ffmpeg, o Python dos componentes extra, yt-dlp…). Passam
   todos a correr sem janela.
+- **O Wwise instalado mas «não detetado»**: o RockForge procura agora também noutros discos e no
+  `WWISEROOT` que o instalador do Wwise grava no registo, e quando há um Wwise que não serve diz
+  qual é e porquê — o Audiokinetic Launcher instala por omissão a versão mais recente (2024/2025),
+  e só o 2019–2023 converte o áudio (como no DLC Builder). Antes dizia só «ROCKFORGE_WWISE_ROOT
+  não está definido».
 
 ## [0.10.0 beta 6] — 2026-10-15
 

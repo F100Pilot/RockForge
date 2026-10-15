@@ -212,7 +212,7 @@ def test_wwise_says_which_half_of_the_setup_is_missing(tmp_path: Path) -> None:
     detail so the fix is obvious."""
     unset = _by_key(diagnostics.check_requirements(Settings(wwise_root=None)))["wwise"]
     assert unset.found is False
-    assert "ROCKFORGE_WWISE_ROOT" in unset.detail
+    assert "Definições" in unset.detail or "Settings" in unset.detail
 
     wrong = _by_key(diagnostics.check_requirements(Settings(wwise_root=tmp_path)))["wwise"]
     assert wrong.found is False
@@ -224,6 +224,29 @@ def test_wwise_says_which_half_of_the_setup_is_missing(tmp_path: Path) -> None:
     ok = _by_key(diagnostics.check_requirements(Settings(wwise_root=tmp_path)))["wwise"]
     assert ok.found is True
     assert str(console) in ok.detail
+
+
+def test_a_wwise_that_cannot_be_used_is_named_not_reported_as_unset(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """"Tenho o wwise instalado mas não está a ser detetado": the Launcher
+    installs the newest Wwise by default, which has no template here, and a
+    plain "not set" sent the user looking for an environment variable."""
+    from rockforge.infrastructure.packaging import wwise
+
+    base = tmp_path / "Audiokinetic"
+    bin_ = base / "Wwise2025.1.3.9039" / "Authoring" / "x64" / "Release" / "bin"
+    bin_.mkdir(parents=True)
+    (bin_ / "WwiseConsole.exe").write_bytes(b"")
+    real = wwise.find_wwise_installs
+    monkeypatch.setattr(wwise, "find_wwise_installs", lambda bases=None: real([base]))
+    row = _by_key(diagnostics.check_requirements(Settings(wwise_root=None)))["wwise"]
+    assert row.found is False
+    assert "2025.1.3.9039" in row.detail and "2023" in row.detail
+
+    (bin_ / "WwiseConsole.exe").unlink()  # installed without its Authoring part
+    row = _by_key(diagnostics.check_requirements(Settings(wwise_root=None)))["wwise"]
+    assert "WwiseConsole" in row.detail and "Authoring" in row.detail
 
 
 def test_a_broken_install_reads_as_absent_not_as_a_crash(

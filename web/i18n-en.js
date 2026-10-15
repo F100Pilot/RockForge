@@ -1218,7 +1218,7 @@
   "Faltam os <b>componentes extra</b>: análise de áudio, deteção de tom e de letra, PDF e YouTube. O RockForge instala-os sozinho, numa pasta só sua.": "The <b>extra components</b> are missing: audio analysis, tone and lyric detection, PDF and YouTube. RockForge installs them by itself, in a folder of its own.",
   "Instalar agora": "Install now",
   "Agora não": "Not now",
-  "O .psarc vai sair <b>sem som</b>: falta o <b>Wwise</b> (gratuito, da Audiokinetic, com conta). A licença não permite incluí-lo — instala-o pelo Audiokinetic Launcher e o RockForge encontra-o sozinho.": "The .psarc will come out <b>without sound</b>: <b>Wwise</b> is missing (free, by Audiokinetic, with an account). Its licence does not allow bundling it — install it with the Audiokinetic Launcher and RockForge finds it by itself.",
+  "O .psarc vai sair <b>sem som</b>: falta o <b>Wwise</b> (gratuito, da Audiokinetic, com conta). A licença não permite incluí-lo — instala o <b>Wwise 2023.1</b> pelo Audiokinetic Launcher (o 2024 e o 2025 não servem) e o RockForge encontra-o sozinho. Em Definições → Software vês o que foi encontrado.": "The .psarc will come out <b>without sound</b>: <b>Wwise</b> is missing (free, by Audiokinetic, with an account). Its licence does not allow bundling it — install <b>Wwise 2023.1</b> with the Audiokinetic Launcher (2024 and 2025 will not do) and RockForge finds it by itself. Settings → Software shows what was found.",
   "Descarregar o Wwise": "Download Wwise",
   "Ocultar": "Hide",
   "Capo {n}": "Capo {n}",

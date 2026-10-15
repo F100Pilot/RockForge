@@ -163,6 +163,44 @@ def _ffmpeg() -> Requirement:
     )
 
 
+def _wwise_not_found() -> str:
+    """Why no usable Wwise was found, from what IS on disk: a version without
+    a template (the Launcher installs the newest by default), one installed
+    without its console, or nothing in the usual folders."""
+    from rockforge.infrastructure.packaging.wwise import find_wwise_installs
+
+    installs = find_wwise_installs()
+    other = next((w for w in installs if w.console is not None), None)
+    if other is not None:
+        return tr(
+            f"Encontrei o Wwise {other.version} em {other.path}, mas o RockForge "
+            "(como o DLC Builder) só converte com o 2019, 2021, 2022 ou 2023. "
+            "Instala também o 2023.1 pelo Audiokinetic Launcher — podem ficar "
+            "os dois.",
+            f"Found Wwise {other.version} at {other.path}, but RockForge (like "
+            "DLC Builder) only converts with 2019, 2021, 2022 or 2023. Install "
+            "2023.1 too from the Audiokinetic Launcher — both can stay.",
+        )
+    if installs:
+        w = installs[0]
+        return tr(
+            f"Encontrei {w.path}, mas sem o WwiseConsole (Authoring/x64/Release/"
+            "bin). No Audiokinetic Launcher, escolhe Modify nessa versão e "
+            "marca a parte Authoring.",
+            f"Found {w.path}, but without WwiseConsole (Authoring/x64/Release/"
+            "bin). In the Audiokinetic Launcher, choose Modify on that version "
+            "and tick the Authoring part.",
+        )
+    return tr(
+        "Não encontrei o Wwise nas pastas habituais (Program Files, "
+        "Audiokinetic). Se está noutro sítio, indica a pasta em Definições → "
+        "Geral → Pasta do Wwise.",
+        "Wwise was not found in the usual folders (Program Files, "
+        "Audiokinetic). If it is somewhere else, set the folder in Settings → "
+        "General → Wwise folder.",
+    )
+
+
 def _wwise(settings: Settings) -> Requirement:
     from rockforge import runtime_settings
     from rockforge.infrastructure.packaging.wwise import WwiseWemConverter
@@ -177,10 +215,7 @@ def _wwise(settings: Settings) -> Requirement:
             f"{root} — does not contain Authoring/x64/Release/bin/WwiseConsole",
         )
     else:
-        detail = tr(
-            "ROCKFORGE_WWISE_ROOT (ou WWISEROOT) não está definido",
-            "ROCKFORGE_WWISE_ROOT (or WWISEROOT) is not set",
-        )
+        detail = _wwise_not_found()
     return Requirement(
         key="wwise",
         name="Audiokinetic Wwise (2019/2021/2022/2023)",
@@ -198,11 +233,13 @@ def _wwise(settings: Settings) -> Requirement:
             "has no audio and the game does not play it.",
         ),
         install=tr(
-            "Instalar o Wwise (Audiokinetic Launcher) e apontar "
-            "ROCKFORGE_WWISE_ROOT à raiz da instalação. Não pode ser "
+            "Instalar o Wwise 2023.1 pelo Audiokinetic Launcher (as versões 2024 "
+            "e 2025 não servem). O RockForge encontra-o sozinho; se não, indica "
+            "a pasta em Definições → Geral → Pasta do Wwise. Não pode ser "
             "distribuído com a app — a licença não o permite.",
-            "Install Wwise (Audiokinetic Launcher) and point "
-            "ROCKFORGE_WWISE_ROOT at the installation's root. It cannot be "
+            "Install Wwise 2023.1 from the Audiokinetic Launcher (versions 2024 "
+            "and 2025 will not do). RockForge finds it by itself; if not, set "
+            "the folder in Settings → General → Wwise folder. It cannot be "
             "distributed with the app — its license does not allow it.",
         ),
     )

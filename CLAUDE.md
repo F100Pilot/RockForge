@@ -4697,6 +4697,20 @@ here but the ML interpreter has it; same timeouts, same error messages.
 `wwise.detect_wwise_root` (newest supported `Wwise*` under Program Files'
 `Audiokinetic` with a console inside) after the env vars; the home page warns
 in the `.exe` while it is missing, as does the installer's `FinishedLabel`.
+**When none is usable the Wwise row says what IS there** ("tenho o wwise
+instalado mas não está a ser detetado"; it used to read "ROCKFORGE_WWISE_ROOT
+is not set"): `find_wwise_installs` lists every `Wwise <year>…` folder under
+the Audiokinetic folders of Program Files, of every drive root C-J
+(`_search_bases`, Windows only) and the registry's `WWISEROOT`
+(`_registry_wwiseroot` — the installer writes it, a process started earlier
+does not see it), and `diagnostics._wwise_not_found` names a version without
+a template (the Launcher installs the newest, 2024/2025, by default — only
+2019-2023 have one, as in DLC Builder), one installed without its Authoring
+console, or nothing found (then the Definições → Geral → Pasta do Wwise
+field). Whether a 2024/2025 WwiseConsole could convert with a migrated 2023
+template is untested, so they are refused, not guessed. Guarded by
+`test_a_wwise_that_cannot_be_used_is_named_not_reported_as_unset`; the
+user's actual install was not seen from here.
 The diagnostics rows' install lines in the `.exe` point at «Instalar
 componentes extra» (`_components_install`). Guarded by `test_components.py`
 (the commands in order, CUDA vs CPU, zip-slip, a repair run, the background

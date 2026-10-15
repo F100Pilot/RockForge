@@ -26,7 +26,9 @@ import re
 import shutil
 import struct
 import subprocess
+import sys
 import zipfile
+from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
 
@@ -41,31 +43,106 @@ _CONSOLE_RELATIVE_CANDIDATES = (
 _SUPPORTED_VERSIONS = ("2019", "2021", "2022", "2023")
 
 
+@dataclass(frozen=True)
+class WwiseInstall:
+    """A Wwise folder found on disk, usable or not — so a failed detection can
+    say WHAT it found (a 2024/2025, or a version without its console) instead
+    of "not set"."""
+
+    path: Path
+    version: str  # "2023.1.4.8496", or just "2023"
+    console: Path | None
+
+    @property
+    def major(self) -> str:
+        return self.version[:4]
+
+    @property
+    def supported(self) -> bool:
+        return self.major in _SUPPORTED_VERSIONS and self.console is not None
+
+
+def _search_bases() -> list[Path]:
+    """Where the Audiokinetic Launcher installs (``Program Files (x86)``
+    by default, any drive when the user picked another folder)."""
+    roots = [os.environ.get("PROGRAMFILES(X86)"), os.environ.get("PROGRAMFILES")]
+    if os.name == "nt":
+        for letter in "CDEFGHIJ":
+            drive = Path(f"{letter}:/")
+            if drive.exists():
+                roots += [str(drive), str(drive / "Program Files (x86)"),
+                          str(drive / "Program Files")]
+    out: list[Path] = []
+    for r in roots:
+        if r and (p := Path(r) / "Audiokinetic") not in out:
+            out.append(p)
+    return out
+
+
+def _registry_wwiseroot() -> Path | None:
+    """``WWISEROOT`` as the Wwise installer wrote it to the registry — a
+    process started before the install (or from a shell that never got the
+    change) does not have it in its environment."""
+    if sys.platform != "win32":
+        return None
+    import winreg
+
+    keys = (
+        (winreg.HKEY_CURRENT_USER, "Environment"),
+        (winreg.HKEY_LOCAL_MACHINE,
+         r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"),
+    )
+    for hive, sub in keys:
+        try:
+            with winreg.OpenKey(hive, sub) as key:
+                value, _ = winreg.QueryValueEx(key, "WWISEROOT")
+        except OSError:
+            continue
+        if value:
+            return Path(os.path.expandvars(str(value)))
+    return None
+
+
+def _console_in(folder: Path) -> Path | None:
+    for rel in _CONSOLE_RELATIVE_CANDIDATES:
+        if (folder / rel).exists():
+            return folder / rel
+    return None
+
+
+def find_wwise_installs(bases: list[Path] | None = None) -> list[WwiseInstall]:
+    """Every ``Wwise <year>…`` folder under the Audiokinetic folders (and the
+    one the registry's ``WWISEROOT`` names), newest first."""
+    extra: list[Path] = []
+    if bases is None:
+        bases = _search_bases()
+        reg = _registry_wwiseroot()
+        if reg is not None:
+            extra.append(reg)
+    candidates: list[Path] = list(extra)
+    for base in bases:
+        try:
+            candidates += [c for c in base.iterdir() if c.is_dir()]
+        except OSError:
+            continue
+    found: list[WwiseInstall] = []
+    seen: set[str] = set()
+    for child in candidates:
+        m = re.search(r"20\d\d(?:\.\d+)*", child.name)
+        if not (m and child.name.lower().startswith("wwise")) or str(child).lower() in seen:
+            continue
+        seen.add(str(child).lower())
+        found.append(WwiseInstall(child, m.group(0), _console_in(child)))
+    return sorted(
+        found, key=lambda w: [int(x) for x in w.version.split(".") if x.isdigit()], reverse=True
+    )
+
+
 def detect_wwise_root(bases: list[Path] | None = None) -> Path | None:
     """A supported Wwise where the Audiokinetic Launcher installs it
     (``Program Files (x86)/Audiokinetic/Wwise <version>``), newest first — so a
     user of the `.exe` does not have to set an environment variable."""
-    if bases is None:
-        bases = [
-            Path(p) / "Audiokinetic"
-            for p in (os.environ.get("PROGRAMFILES(X86)"), os.environ.get("PROGRAMFILES"))
-            if p
-        ]
-    found: list[tuple[str, Path]] = []
-    for base in bases:
-        try:
-            children = list(base.iterdir())
-        except OSError:
-            continue
-        for child in children:
-            m = re.search(r"20(19|21|22|23)[\d.]*", child.name)
-            if not (child.is_dir() and child.name.lower().startswith("wwise") and m):
-                continue
-            if any((child / rel).exists() for rel in _CONSOLE_RELATIVE_CANDIDATES):
-                found.append((m.group(0), child))
-    if not found:
-        return None
-    return max(found, key=lambda f: [int(x) for x in f[0].split(".") if x.isdigit()])[1]
+    return next((w.path for w in find_wwise_installs(bases) if w.supported), None)
 
 
 def _fix_wem_header(wem: Path) -> None:

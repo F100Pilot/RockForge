@@ -797,7 +797,7 @@ function renderHomeNotices() {
       `<button type="button" class="pv-btn" data-notice-act="decline">${T('Agora não')}</button>`]);
   }
   if (c && c.supported && wwiseFound === false && !noticeDismissed('wwise')) {
-    notice('warn', 'alert', T('O .psarc vai sair <b>sem som</b>: falta o <b>Wwise</b> (gratuito, da Audiokinetic, com conta). A licença não permite incluí-lo — instala-o pelo Audiokinetic Launcher e o RockForge encontra-o sozinho.'), [
+    notice('warn', 'alert', T('O .psarc vai sair <b>sem som</b>: falta o <b>Wwise</b> (gratuito, da Audiokinetic, com conta). A licença não permite incluí-lo — instala o <b>Wwise 2023.1</b> pelo Audiokinetic Launcher (o 2024 e o 2025 não servem) e o RockForge encontra-o sozinho. Em Definições → Software vês o que foi encontrado.'), [
       `<a class="pv-btn" href="https://www.audiokinetic.com/download/" target="_blank" rel="noopener">${T('Descarregar o Wwise')}</a>`,
       `<button type="button" class="pv-btn" data-notice-dismiss="wwise">${T('Ocultar')}</button>`]);
   }
