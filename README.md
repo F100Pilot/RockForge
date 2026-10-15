@@ -101,9 +101,10 @@ that touches nothing else. The app also tells you when a new version is out.
 **What you need in both cases**
 
 - For a **playable `.psarc`**: **Wwise** 2019, 2021, 2022 or 2023, installed with the Audiokinetic
-  Launcher (free, with an account; its licence does not allow shipping it with the app). RockForge
-  finds it where the Launcher puts it and warns on the home page while it is missing. Without it
-  you still get the DLC Builder project.
+  Launcher (free, with an account; its licence does not allow shipping it with the app). Pick
+  **2023.1** in the Launcher — the 2024/2025 it offers first will not do. RockForge finds it on any
+  drive and warns on the home page while it is missing. Without it you still get the DLC Builder
+  project.
 - For the song to **appear in the game**: the CDLC patch (`D3DX9_42.dll`) in the Rocksmith 2014
   folder, as for any CDLC.
 

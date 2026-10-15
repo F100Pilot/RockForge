@@ -195,8 +195,11 @@ NVIDIA GPU. The uninstaller deletes `components`. The PDF converter runs through
 `gpimport/_pdf_runner.py` on that Python.
 
 **Wwise cannot come this way** — Audiokinetic's licence forbids redistributing it and its
-Launcher needs an account. RockForge looks for it where the Launcher installs it
-(`Program Files (x86)\Audiokinetic\Wwise <2019|2021|2022|2023>…`, newest first), else in
+Launcher needs an account, and only 2019–2023 have a template (the Launcher offers 2024/2025
+first: pick 2023.1). RockForge looks for it where the Launcher installs it
+(`Program Files (x86)\Audiokinetic\Wwise <2019|2021|2022|2023>…`, newest first), in the
+`Audiokinetic` folder of any drive, in any `Wwise…` folder up to two levels below a drive's root,
+and at the registry's `WWISEROOT`, else in
 ⚙️ Settings → General → «Wwise folder» or `ROCKFORGE_WWISE_ROOT`/`WWISEROOT`; the home page
 warns while it is missing, and so does the installer's last page.
 

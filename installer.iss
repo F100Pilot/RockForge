@@ -9,7 +9,7 @@
 ; Output: Output/RockForge_Setup.exe
 
 #define MyAppName "RockForge"
-#define MyAppVersion "0.10.0-beta.6"
+#define MyAppVersion "0.10.0-beta.7"
 #define MyAppPublisher "RockForge"
 #define MyAppURL "https://github.com/F100Pilot/RockForge"
 #define MyAppExeName "rockforge.exe"
@@ -48,8 +48,8 @@ portuguese.ComponentsTask=Instalá-los no primeiro arranque: análise de áudio,
 english.ComponentsTask=Install them on first start: audio analysis, tone and lyric detection, PDF and YouTube (downloads about 1 GB, or 3 GB with an NVIDIA GPU)
 
 [Messages]
-portuguese.FinishedLabel=O [name] foi instalado.%n%nPara o .psarc ter som no jogo é também preciso o Wwise, da Audiokinetic (gratuito, com conta). A licença não permite incluí-lo: instala-o pelo Audiokinetic Launcher — o RockForge encontra-o sozinho. Em Definições → Software vês o que falta.
-english.FinishedLabel=[name] has been installed.%n%nFor the .psarc to have sound in game you also need Wwise, by Audiokinetic (free, with an account). Its licence does not allow bundling it: install it with the Audiokinetic Launcher — RockForge finds it by itself. Settings → Software shows what is missing.
+portuguese.FinishedLabel=O [name] foi instalado.%n%nPara o .psarc ter som no jogo é também preciso o Wwise, da Audiokinetic (gratuito, com conta). A licença não permite incluí-lo: instala o Wwise 2023.1 pelo Audiokinetic Launcher (o 2024/2025 não serve) — o RockForge encontra-o sozinho. Em Definições → Software vês o que falta.
+english.FinishedLabel=[name] has been installed.%n%nFor the .psarc to have sound in game you also need Wwise, by Audiokinetic (free, with an account). Its licence does not allow bundling it: install Wwise 2023.1 with the Audiokinetic Launcher (2024/2025 will not do) — RockForge finds it by itself. Settings → Software shows what is missing.
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked

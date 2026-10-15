@@ -197,8 +197,11 @@ descarregar, ou 3 GB com uma GPU NVIDIA. O desinstalador apaga `components`. O c
 corre através do `gpimport/_pdf_runner.py` nesse Python.
 
 **O Wwise não pode vir assim** — a licença da Audiokinetic proíbe distribuí-lo e o Launcher
-precisa de conta. O RockForge procura-o onde o Launcher o instala
-(`Program Files (x86)\Audiokinetic\Wwise <2019|2021|2022|2023>…`, o mais recente primeiro),
+precisa de conta, e só o 2019–2023 tem modelo (o Launcher oferece primeiro o 2024/2025: escolhe o
+2023.1). O RockForge procura-o onde o Launcher o instala
+(`Program Files (x86)\Audiokinetic\Wwise <2019|2021|2022|2023>…`, o mais recente primeiro), na
+pasta `Audiokinetic` de qualquer disco, em qualquer pasta `Wwise…` até duas abaixo da raiz de um
+disco e no `WWISEROOT` do registo,
 senão em ⚙️ Definições → Geral → «Pasta do Wwise» ou `ROCKFORGE_WWISE_ROOT`/`WWISEROOT`; a página
 inicial avisa enquanto faltar, e a última página do instalador também.
 

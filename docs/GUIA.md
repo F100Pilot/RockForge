@@ -55,9 +55,10 @@ aviso.
   **Instalar agora** na página inicial, ou em ⚙️ **Definições → Software → Instalar componentes
   extra**. O RockForge descarrega um Python 3.11 só seu com esses pacotes para os dados locais da
   tua conta (cerca de 1 GB, ou 3 GB com uma GPU NVIDIA) e passa a usá-lo sozinho; desinstalar o
-  RockForge apaga-o. O **Wwise** não pode vir assim (a licença não o permite): instala-o pelo
-  Audiokinetic Launcher e o RockForge encontra-o — ou indica-o em ⚙️ **Definições → Geral → Pasta
-  do Wwise**.
+  RockForge apaga-o. O **Wwise** não pode vir assim (a licença não o permite): instala o
+  **2023.1** pelo Audiokinetic Launcher (o 2024/2025 não serve) e o RockForge encontra-o em
+  qualquer disco — ou indica-o em ⚙️ **Definições → Geral → Pasta do Wwise**. Em **Definições →
+  Software** vês que Wwise encontrou e, se não servir, porquê.
 - **Para a música aparecer no jogo:** o Rocksmith precisa do **patch de CDLC**
   (`D3DX9_42.dll` na pasta do jogo). Indica a pasta do jogo em ⚙️ **Definições → Geral →
   Pasta do Rocksmith 2014** para a aplicação o confirmar e para "Instalar no jogo" funcionar.

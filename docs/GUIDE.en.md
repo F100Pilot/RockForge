@@ -57,9 +57,10 @@ Nothing is made up silently: whatever the app does not know or cannot do shows u
   **Install now** on the home page, or ⚙️ **Settings → Software → Install extra components**.
   RockForge downloads a Python 3.11 of its own with those packages into your local app data
   (about 1 GB, or 3 GB with an NVIDIA GPU) and uses it by itself; uninstalling RockForge removes
-  it. **Wwise** cannot come this way (its licence does not allow it): install it with the
-  Audiokinetic Launcher and RockForge finds it — or set ⚙️ **Settings → General → Wwise
-  folder**.
+  it. **Wwise** cannot come this way (its licence does not allow it): install **2023.1** with the
+  Audiokinetic Launcher (2024/2025 will not do) and RockForge finds it on any drive — or set
+  ⚙️ **Settings → General → Wwise folder**. **Settings → Software** shows which Wwise it found
+  and, if it cannot use it, why.
 - **For the song to show in the game:** Rocksmith needs the **CDLC patch** (`D3DX9_42.dll` in
   the game folder). Set the game folder in ⚙️ **Settings → General → Rocksmith 2014 folder**
   so the app can confirm it and "Install in the game" works.
