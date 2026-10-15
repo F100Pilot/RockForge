@@ -47,11 +47,13 @@ _ARRANGEMENT_NAME = {
     ArrangementKind.LEAD: 0,  # Lead
     ArrangementKind.COMBINED: 1,  # Combo
     ArrangementKind.RHYTHM: 2,  # Rhythm
+    ArrangementKind.BASS: 3,  # Bass
 }
 _ROUTE_MASK = {
     ArrangementKind.LEAD: 1,  # RouteMask.Lead
     ArrangementKind.COMBINED: 1,  # combo plays the lead path
     ArrangementKind.RHYTHM: 2,  # RouteMask.Rhythm
+    ArrangementKind.BASS: 4,  # RouteMask.Bass
 }
 
 # Neutral defaults for fields RockForge cannot derive; DLC Builder lets the user

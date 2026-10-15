@@ -6,6 +6,18 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### New
+- **Bass arrangement.** Pick the bass track of the Guitar Pro file in the wizard (or in “Edit
+  info”) and the project gains a BASS arrangement, encoded the way DLC Builder does it. A
+  5-string bass is folded onto the four strings that lose the fewest notes, with a warning; a very
+  low tuning (B standard) is written an octave up at 220 Hz, as DLC Builder does, so the game
+  detects the notes. The score, the fretboard and the 3D highway show four strings. Not played in
+  game yet — tell us how it goes.
+
+### Fixed
+- A difficulty level holding only open strings had no anchor in the `.psarc` (caught by the PSARC
+  check on a bass whose simplest notes are its open roots).
+
 ## [0.10.0 beta 3] — 2026-10-15
 
 ### New

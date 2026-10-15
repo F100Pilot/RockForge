@@ -3,11 +3,12 @@
 DLC Builder never builds a package whose arrangement has no tone definition:
 ``addDefaultTonesIfNeeded`` (Rocksmith2014.NET ``DLCBuilder.Domain/Utils.fs``)
 gives it the path's default tone — ``default_lead.json`` for the lead route
-(which a Combo arrangement also takes), ``default_rhythm.json`` otherwise —
+(which a Combo arrangement also takes), ``default_bass.json`` for the bass
+route, ``default_rhythm.json`` otherwise —
 under the arrangement's own base-tone key. RockForge's native PSARC shipped
 such an arrangement with an EMPTY ``Tones`` and ``Tone_Base``, leaving the game
 nothing to build the player's sound from: "mesmo sem os tons, os PSARC criados
-pelo rockforge têm algum ruído e não têm uma tonalidade limpa". The two JSON
+pelo rockforge têm algum ruído e não têm uma tonalidade limpa". The JSON
 files are copied verbatim from ``samples/DLCBuilder.Domain/Tones/`` (MIT).
 """
 
@@ -36,6 +37,8 @@ def _load(route: str) -> dict[str, Any]:
 def _route(kind: ArrangementKind) -> str:
     # Rocksmith's RouteMask: Lead and Combo play the lead route (rs2dlc.py).
     base = kind.base_kind
+    if base is ArrangementKind.BASS:
+        return "bass"
     return "lead" if base in (ArrangementKind.LEAD, ArrangementKind.COMBINED) else "rhythm"
 
 

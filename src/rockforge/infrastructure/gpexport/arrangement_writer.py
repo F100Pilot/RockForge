@@ -274,7 +274,9 @@ def write_arrangement_gp5(
     track.name = track_name or arrangement.kind.value
     # GP numbers strings 1 = highest pitch; our tuning is low → high, so reverse.
     # This is the exact inverse of the importer's `string = n_strings - note.string`.
-    midi = list(arrangement.tuning.midi)
+    # A bass exports its four strings at the pitch they sound (the low-tuning
+    # fix, an octave up at 220 Hz, is a Rocksmith encoding, not the tuning).
+    midi = list(arrangement.tuning.sounding_midi)
     track.strings = [
         guitarpro.GuitarString(number=i + 1, value=v)
         for i, v in enumerate(reversed(midi))

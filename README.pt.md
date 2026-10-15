@@ -76,8 +76,9 @@ tons e letra, e instala a música no jogo com um clique.
   não é oferecida.
 - **A sincronização é confirmada por ti.** As ferramentas tornam-na rápida, mas cada pista
   confirma-se de ouvido.
-- Arranjos de **baixo** (4/5 cordas) e ficheiros **Guitar Pro 6** (`.gpx`) ainda não são
-  suportados — exporta um `.gpx` como GP5 ou GP7.
+- Ficheiros **Guitar Pro 6** (`.gpx`) não são suportados — exporta-os como GP5 ou GP7. Um baixo
+  de 6 cordas faz-se como guitarra (o baixo do Rocksmith tem quatro cordas; um de 5 é dobrado em
+  quatro).
 - Os tons são escolhidos entre o equipamento do jogo pelo carácter do som; o amplificador real de
   uma gravação não é identificado.
 

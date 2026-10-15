@@ -333,3 +333,28 @@ PDF-to-GP5 estimou pelo espaçamento, como links para a partitura).
 - [x] 4. UI: `#barEstimatedRow` por cima da partitura, `goToBar`
 - [x] 5. Testes, `runtime_settings` lê `config.settings` (fuga entre testes),
       Playwright, CLAUDE.md, guia PT/EN
+
+# Faixa de baixo (Bass)
+
+Pedido: "Implementa a faixa de bass." Referência: Rocksmith2014.NET (DLC Builder)
+— o baixo é o mesmo arranjo instrumental com `ArrangementName` 3, `RouteMask` 4,
+`pathBass`, ficheiros `bass`, MIDI um oitava abaixo, 4 cordas, tom por defeito
+`default_bass.json`, e a correção das afinações graves (220 Hz / +12) abaixo de -4.
+
+- [x] 1. Domínio: `ArrangementKind.BASS`, nome do jogo "BASS"; `Tuning.bass`
+      (offsets em relação a E1 A1 D2 G2, cordas 4-5 = a 3), `Tuning.for_bass`,
+      correção das afinações graves; `Arrangement.validate` recusa cordas ≥ 4
+- [x] 2. Importação GP (GP3-5 e GP7/8): pista de 4 cordas como baixo; 5 cordas
+      dobrada para 4 (sem a corda que não é tocada, ou avisando o que cai);
+      uma pista de guitarra não pode ser baixo nem vice-versa
+- [x] 3. Pipeline/API/worker: `bass_track` (assistente, recarregar GP, editar
+      info, reconstruir, lote/auto-escolha), afinação por pista de 4 valores
+- [x] 4. Formatos: XML (arrangement, pathBass, routeMask 4, tuning), leitor,
+      manifest (nome/tipo/rota/caminho), `.rs2dlc`, tom por defeito do baixo
+      (vendorizado), verificação do PSARC (corda ≥ 4), export GP5 com 4 cordas,
+      luzes de palco a preferir uma guitarra
+- [x] 5. Interface: seletor "Pista Bass", pauta/braço/pista 3D com 4 cordas,
+      síntese uma oitava abaixo, editor de notas 0-3, tom standard do baixo,
+      sugestões de tom sem o baixo, PT/EN
+- [x] 6. Testes, documentação (CLAUDE, guias, README, CHANGELOG, TODO), Playwright,
+      construção real de um GP5 inventado com baixo e `/psarc-check` limpo

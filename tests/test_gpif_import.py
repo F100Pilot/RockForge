@@ -176,9 +176,14 @@ def test_parse_gp7_offset_shifts_all_notes(gp7_file: Path) -> None:
     assert min(n.time for n in parsed.notes) == pytest.approx(2.0)
 
 
-def test_parse_gp7_rejects_four_string_bass(gp7_file: Path) -> None:
-    with pytest.raises(Exception, match="6"):
-        parse_gp_track(gp7_file, 1)
+def test_a_four_string_bass_is_read_as_a_bass_never_as_a_guitar(gp7_file: Path) -> None:
+    with pytest.raises(Exception, match="Bass"):
+        parse_gp_track(gp7_file, 1)  # as a guitar chart: refused, saying what it is
+    parsed = parse_gp_track(gp7_file, 1, bass=True)
+    assert parsed.tuning.bass and parsed.tuning.string_count == 4
+    assert parsed.tuning.offsets_from_standard() == (0, 0, 0, 0, 0, 0)
+    with pytest.raises(Exception, match="Bass"):
+        parse_gp_track(gp7_file, 0, bass=True)  # a 6-string guitar is no bass
 
 
 def test_gp7_lyrics_sourced_from_track(gp7_file: Path) -> None:

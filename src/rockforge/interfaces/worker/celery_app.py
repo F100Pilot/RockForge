@@ -258,7 +258,7 @@ def generate_cdlc(job_id: str) -> None:
                     GpJobSpec,
                     NoteOverride,
                 )
-                from rockforge.domain.arrangement import Section, ToneChange
+                from rockforge.domain.arrangement import ArrangementKind, Section, ToneChange
                 from rockforge.domain.arrangement import SongMetadata as Meta
                 from rockforge.domain.music import Technique
                 from rockforge.infrastructure.packaging.gear.gear_catalogue import (
@@ -280,11 +280,11 @@ def generate_cdlc(job_id: str) -> None:
                     combo_track=params.get("combo_track"),
                     alt_lead_track=params.get("alt_lead_track"),
                     alt_rhythm_track=params.get("alt_rhythm_track"),
+                    bass_track=params.get("bass_track"),
                     tuning_overrides={
-                        k: cast("tuple[int, int, int, int, int, int]",
-                                tuple(int(x) for x in v))
+                        k: tuple(int(x) for x in v)
                         for k, v in (params.get("tuning_overrides") or {}).items()
-                        if len(v) == 6
+                        if len(v) == (4 if k == ArrangementKind.BASS.value else 6)
                     },
                     cent_offset=(
                         float(cast(float, params["cent_offset"]))

@@ -11,7 +11,8 @@ GPIF model is reference-based: ``MasterBars`` point at ``Bars`` (one per track),
 ``Bars`` at ``Voices``, ``Voices`` at ``Beats``, ``Beats`` at ``Notes`` and a
 ``Rhythm``; we resolve those id maps and walk them per track.
 
-Honest limits (mirrors the GP5 parser): 6-string guitar tracks only (no bass);
+Honest limits (mirrors the GP5 parser): 6-string guitar tracks, or 4/5-string
+bass tracks read as a bass chart (``strings.py``);
 techniques covered are hammer-on/pull-off (Hopo), palm mute, slide and bend —
 the same set the GP5 path emits. Melody/rhythm timing is exact from the file.
 """
@@ -34,7 +35,6 @@ from rockforge.domain.music import (
     TabNote,
     Technique,
     TempoMap,
-    Tuning,
     apply_sustain_gap,
     expand_slide_ins,
     expand_trills,
@@ -58,6 +58,7 @@ from rockforge.infrastructure.gpimport.playback import (
     BarFlow,
     playback_order,
 )
+from rockforge.infrastructure.gpimport.strings import check_track_strings, fold_strings
 from rockforge.infrastructure.gpimport.sync_map import (
     audio_clock,
     bar_time_points,
@@ -599,6 +600,8 @@ def parse_gpif_track(
     offset_s: float = 0.0,
     tempo_scale: float = 1.0,
     bar_times: Sequence[float] | None = None,
+    *,
+    bass: bool = False,
 ) -> ParsedGpTrack:
     """Convert one GP7/GP8 track to RockForge domain objects.
 
@@ -618,12 +621,9 @@ def parse_gpif_track(
     if _track_is_percussion(track):
         raise IngestionError(f"track {track_index} ('{_track_name(track)}') is percussion")
     tuning_midi = _track_tuning(track)
-    if len(tuning_midi) != 6:
-        raise IngestionError(
-            f"track {track_index} ('{_track_name(track)}') has {len(tuning_midi)} strings; "
-            "Rocksmith 2014 guitar arrangements require 6 (bass support not implemented)"
-        )
-    tuning = Tuning(midi=tuning_midi)
+    check_track_strings(
+        len(tuning_midi), bass=bass, label=f"{track_index} ('{_track_name(track)}')"
+    )
 
     bars = {b.attrib["id"]: b for b in (root.find("Bars") or [])}
     voices = {v.attrib["id"]: v for v in (root.find("Voices") or [])}
@@ -795,6 +795,8 @@ def parse_gpif_track(
             f"{dropped_out_of_range} note(s) dropped: off the 24-fret neck or on a "
             f"string beyond the tuning — likely an extended-range/bass part on this track"
         )
+    notes, tuning, fold_warnings = fold_strings(notes, tuning_midi, bass=bass)
+    warnings.extend(fold_warnings)
     return ParsedGpTrack(
         notes=notes, tuning=tuning, tempo_map=tempo_map, sections=sections,
         lyrics=lyrics, lyric_notes=lyric_notes, warnings=warnings,

@@ -21,6 +21,12 @@ class ArrangementKind(Enum):
     # asset). They fold onto their base path for every format detail but that flag.
     ALTERNATE_LEAD = "Alternate Lead"
     ALTERNATE_RHYTHM = "Alternate Rhythm"
+    # A 4-string bass (Rocksmith's Bass path: ArrangementName 3, RouteMask 4).
+    BASS = "Bass"
+
+    @property
+    def is_bass(self) -> bool:
+        return self is ArrangementKind.BASS
 
     @property
     def is_alternate(self) -> bool:
@@ -41,6 +47,7 @@ GAME_PATH_NAMES = {
     ArrangementKind.LEAD: "Lead",
     ArrangementKind.RHYTHM: "Rhythm",
     ArrangementKind.COMBINED: "Combo",
+    ArrangementKind.BASS: "Bass",
 }
 
 
@@ -177,6 +184,18 @@ class Arrangement:
             for key in known:
                 if key not in defined:
                     problems.append(f"tone '{key}' is referenced but has no gear definition")
+        if self.kind.is_bass:
+            # DLC Builder's InstrumentalChecker I36: a bass chart uses strings 0-3.
+            if not self.tuning.bass:
+                problems.append("a bass arrangement needs a bass tuning")
+            high = [n for n in self.notes if n.string >= self.tuning.string_count]
+            if high:
+                problems.append(
+                    f"{len(high)} note(s) of the bass arrangement on a string it does not "
+                    f"have (first at {high[0].time:.3f}s)"
+                )
+        elif self.tuning.bass:
+            problems.append("a guitar arrangement cannot have a bass tuning")
         if not self.notes:
             problems.append("arrangement has no notes")
         if self.metadata.song_length <= 0:

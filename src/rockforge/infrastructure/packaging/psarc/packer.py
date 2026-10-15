@@ -275,8 +275,11 @@ class NativePsarcPacker:
             has_album_art=True,
         ).encode("utf-8")
         # Generate the stage-lighting track from the richest chart (most notes),
-        # so every arrangement shares one lit intro/stage instead of a dark one.
-        showlights_src = max(arrangements, key=lambda a: len(a.notes), default=None)
+        # so every arrangement shares one lit intro/stage instead of a dark one —
+        # a guitar chart when there is one (DLC Builder lights from a Lead first;
+        # a bass's beams would sit an octave low in the colour range).
+        guitars = [a for a in arrangements if not a.kind.is_bass] or list(arrangements)
+        showlights_src = max(guitars, key=lambda a: len(a.notes), default=None)
         files[f"songs/arr/{key_lower}_showlights.xml"] = gamedata.build_showlights(
             showlights_src
         ).encode("utf-8")

@@ -9,6 +9,16 @@ from enum import Enum
 
 # Rocksmith string convention (Song2014): string 0 = lowest-pitched string.
 STANDARD_E_MIDI: tuple[int, int, int, int, int, int] = (40, 45, 50, 55, 59, 64)  # E2 A2 D3 G3 B3 E4
+# A bass is E1 A1 D2 G2, an octave below the guitar's four lowest strings. The
+# game still keeps six string slots, and the last two follow the same octave
+# (Rocksmith2014.NET Midi.toMidiNote: the guitar table minus 12 on a bass).
+BASS_STANDARD_MIDI: tuple[int, int, int, int, int, int] = (28, 33, 38, 43, 47, 52)
+BASS_STRINGS = 4
+# DLC Builder's low-tuning fix: below this many semitones the game does not
+# detect a bass's notes, so the tuning is raised an octave and the reference
+# pitch halved to 220 Hz (DLCBuilder.Domain Utils.checkBassTuning, issue I41).
+BASS_LOW_TUNING_LIMIT = -4
+LOW_TUNING_FIX_CENTS = -1200.0
 MAX_FRET = 24
 
 
@@ -223,10 +233,69 @@ def extend_through_tie(
 
 @dataclass(frozen=True)
 class Tuning:
-    """Per-string MIDI pitches, low to high (Rocksmith string 0..5)."""
+    """Per-string MIDI pitches, low to high (Rocksmith string 0..5).
+
+    A bass tuning (``bass``) holds its four strings' real pitches in 0..3 and,
+    in 4..5, the strings it does not have, each moved by string 3's offset —
+    what DLC Builder writes (it copies string 3 into 4 and 5 on load), so a
+    drop or down tuning never reads back as standard on those slots. Its
+    offsets are measured from E1 A1 D2 G2."""
 
     midi: tuple[int, int, int, int, int, int] = STANDARD_E_MIDI
     cent_offset: float = 0.0  # deviation from A440 in cents
+    bass: bool = False
+
+    @classmethod
+    def for_bass(cls, strings: Sequence[int], cent_offset: float = 0.0) -> Tuning:
+        """A bass tuning from its four strings' MIDI pitches, low to high."""
+        if len(strings) != BASS_STRINGS:
+            raise ValueError(f"a bass tuning needs 4 strings, got {len(strings)}")
+        top = strings[3] - BASS_STANDARD_MIDI[3]
+        return cls(
+            midi=(
+                strings[0], strings[1], strings[2], strings[3],
+                BASS_STANDARD_MIDI[4] + top, BASS_STANDARD_MIDI[5] + top,
+            ),
+            cent_offset=cent_offset,
+            bass=True,
+        )
+
+    @property
+    def standard(self) -> tuple[int, int, int, int, int, int]:
+        return BASS_STANDARD_MIDI if self.bass else STANDARD_E_MIDI
+
+    @property
+    def string_count(self) -> int:
+        """The strings the instrument actually has (a bass has 4 of the 6 slots)."""
+        return BASS_STRINGS if self.bass else 6
+
+    @property
+    def low_tuning_fixed(self) -> bool:
+        """Whether DLC Builder's low-tuning fix is applied (see ``with_low_tuning_fix``)."""
+        return self.bass and self.cent_offset <= LOW_TUNING_FIX_CENTS + 100
+
+    @property
+    def sounding_midi(self) -> tuple[int, ...]:
+        """The pitches the strings really sound, with the low-tuning fix undone."""
+        shift = 12 if self.low_tuning_fixed else 0
+        return tuple(m - shift for m in self.midi[: self.string_count])
+
+    def needs_low_tuning_fix(self) -> bool:
+        return (
+            self.bass
+            and not self.low_tuning_fixed
+            and any(o < BASS_LOW_TUNING_LIMIT for o in self.offsets_from_standard())
+        )
+
+    def with_low_tuning_fix(self) -> Tuning:
+        """DLC Builder's ``applyLowTuningFix``: every string an octave up and the
+        reference pitch halved (440 → 220 Hz, -1200 cents) — the same sound,
+        written so the game detects the notes of a very low bass tuning."""
+        return Tuning(
+            midi=tuple(m + 12 for m in self.midi),  # type: ignore[arg-type]
+            cent_offset=self.cent_offset + LOW_TUNING_FIX_CENTS,
+            bass=self.bass,
+        )
 
     def __post_init__(self) -> None:
         # Tuning was the one pitch-carrying type here with no invariant, while
@@ -243,8 +312,9 @@ class Tuning:
             raise ValueError(f"cent_offset must be a finite number: {self.cent_offset}")
 
     def offsets_from_standard(self) -> tuple[int, ...]:
-        """Semitone offsets per string relative to E standard (Song2014 <tuning> format)."""
-        return tuple(m - s for m, s in zip(self.midi, STANDARD_E_MIDI, strict=True))
+        """Semitone offsets per string relative to E standard — the guitar's,
+        or the bass's E1 A1 D2 G2 (Song2014 <tuning> format)."""
+        return tuple(m - s for m, s in zip(self.midi, self.standard, strict=True))
 
 
 @dataclass(frozen=True)

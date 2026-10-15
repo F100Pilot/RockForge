@@ -342,6 +342,7 @@ def _build_anchors(
     the top). Anchors never span a phrase-iteration boundary (the game re-anchors
     at each phrase start), so any crossing anchor is split into per-phrase pieces.
     """
+    first_note = positions[0][0] if positions else None
     positions = [(t, lt, fr) for t, lt, fr in positions if fr]
     pi_starts = [pi.start_time for pi in phrase_iterations]
     raw: list[tuple[float, float, int, int]] = []  # (start, last_note, fret, width)
@@ -374,10 +375,12 @@ def _build_anchors(
             fret=fret, width=width,
             phrase_iteration_id=_find_phrase_iteration(phrase_iterations, t, pi_starts),
         ))
-    if not anchors and positions:
+    if not anchors and first_note is not None:
+        # Only open strings: no fretted position places a window, but every
+        # note still needs one to fall in.
         anchors.append(SngAnchor(
             start_time=0.0, end_time=song_length,
-            first_note_time=positions[0][0], last_note_time=positions[0][0], fret=1, width=4,
+            first_note_time=first_note, last_note_time=first_note, fret=1, width=4,
         ))
 
     boundaries = sorted({pi.start_time for pi in phrase_iterations})
@@ -435,17 +438,19 @@ def _anchor_note_times(anchors: list[SngAnchor], notes: list[SngNote]) -> list[S
 def _level_positions(
     notes: list[SngNote], chord_templates: list[SngChordTemplate], song_length: float
 ) -> list[tuple[float, float, list[int]]]:
-    """``(time, time, [fretted frets])`` per note for :func:`_build_anchors`."""
+    """``(time, time, [fretted frets])`` per note for :func:`_build_anchors`.
+
+    An open-string note stays in with no frets: it places no window, but a
+    level made ONLY of open strings (a bass line's roots at a low level) must
+    still reach ``_build_anchors``' fallback window, or its notes have no
+    anchor at all."""
     out: list[tuple[float, float, list[int]]] = []
     for n in sorted(notes, key=lambda x: x.time):
         if n.chord_id >= 0:
             frets = [f for f in chord_templates[n.chord_id].frets if 0 < f < 250]
-        elif n.fret > 0:
-            frets = [n.fret]
         else:
-            continue
-        if frets:
-            out.append((n.time, n.time, frets))
+            frets = [n.fret] if n.fret > 0 else []
+        out.append((n.time, n.time, frets))
     return out
 
 

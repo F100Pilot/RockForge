@@ -6,6 +6,18 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Novo
+- **Arranjo de baixo (Bass).** Escolhe a pista de baixo do ficheiro Guitar Pro no assistente
+  (ou em «Editar info») e o projeto ganha um arranjo BASS, codificado como o DLC Builder o faz.
+  Um baixo de 5 cordas é dobrado nas quatro cordas que perdem menos notas, com um aviso; uma
+  afinação muito grave (B standard) é escrita uma oitava acima a 220 Hz, como no DLC Builder,
+  para o jogo detetar as notas. A partitura, o braço e a pista 3D mostram quatro cordas. Ainda
+  não foi tocado no jogo — diz-nos como corre.
+
+### Corrigido
+- Um nível de dificuldade só com cordas soltas ficava sem âncora no `.psarc` (apanhado pela
+  verificação do PSARC num baixo cujas notas mais simples são as fundamentais soltas).
+
 ## [0.10.0 beta 3] — 2026-10-15
 
 ### Novo

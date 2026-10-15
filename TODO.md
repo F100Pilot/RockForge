@@ -74,6 +74,12 @@ documentados nas mensagens de commit, caso valha a pena ressuscitar alguma.
 
 ## Concluído recentemente (resumo — detalhe em CLAUDE.md)
 
+- [x] **Arranjo de baixo (Bass)** (2026-10-15): pista Bass de 4/5 cordas no
+  assistente e em "Editar info", codificada como o DLC Builder (ArrangementName
+  3, RouteMask 4, pathBass, afinação a partir de E1 A1 D2 G2, tom por defeito
+  Eden WT550), baixo de 5 cordas dobrado em quatro com aviso, afinação abaixo de
+  -4 escrita uma oitava acima a 220 Hz. **Por testar no jogo.**
+
 - [x] **Recarregar o ficheiro GP** (`/jobs/{id}/reload-gp`): substitui o GP de um
   job existente por uma reexportação (editaste uma nota no Guitar Pro) sem perder
   os ajustes — forka um novo job herdando afinação/sync/tons/letra/capa, só troca
@@ -146,6 +152,8 @@ documentados nas mensagens de commit, caso valha a pena ressuscitar alguma.
   de referência em CI) — só round-trip `read_sng∘write_sng` + validação manual
   no jogo (vários bugs de renderização já isolados e corrigidos por byte-diff
   contra PSARC do DLC Builder — ver `CLAUDE.md`).
+- **Baixo nunca tocado no jogo**: o arranjo Bass segue a codificação do DLC
+  Builder e passa a verificação do PSARC, mas falta confirmá-lo no Rocksmith.
 - **GP6 (`.gpx`) não suportado** (container binário proprietário). GP3/GP4/GP5 e
   GP7/GP8 (`.gp`) são suportados.
 - **Capa de álbum: resolvido.** O PSARC nativo converte a capa real para **DDS

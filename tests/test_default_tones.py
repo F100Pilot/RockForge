@@ -23,6 +23,7 @@ _DIR = Path(default_tones.__file__).parent / "default_tones"
         (ArrangementKind.ALTERNATE_LEAD, "lead"),
         (ArrangementKind.RHYTHM, "rhythm"),
         (ArrangementKind.ALTERNATE_RHYTHM, "rhythm"),
+        (ArrangementKind.BASS, "bass"),
     ],
 )
 def test_the_default_tone_is_dlc_builders_own_for_the_path(

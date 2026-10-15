@@ -41,7 +41,14 @@ from rockforge.domain.arrangement import (
     ToneChange,
 )
 from rockforge.domain.errors import IngestionError
-from rockforge.domain.music import TabNote, Technique, Tuning, apply_sustain_gap, resolve_links
+from rockforge.domain.music import (
+    BASS_LOW_TUNING_LIMIT,
+    TabNote,
+    Technique,
+    Tuning,
+    apply_sustain_gap,
+    resolve_links,
+)
 from rockforge.domain.tone import Tone
 from rockforge.infrastructure.gpimport.parser import (
     GpSection,
@@ -235,6 +242,8 @@ class GpJobSpec:
     # non-representative "Alternate" arrangements the player can pick in game.
     alt_lead_track: int | None = None
     alt_rhythm_track: int | None = None
+    # A 4/5-string bass track → the Bass arrangement (folded onto four strings).
+    bass_track: int | None = None
     offset_s: float = 0.0  # second in the recording where the song's first note is heard
     # Extra silence (seconds) prepended at the very start, on top of the
     # automatic MIN_LEAD_S lead-in — user-controlled "intro silence" that pushes
@@ -293,12 +302,10 @@ class GpJobSpec:
     # (no Dynamic Difficulty) — a safety valve for songs where DD misbehaves.
     dynamic_difficulty: bool = True
     # Per-arrangement tuning override, keyed by ArrangementKind.value → the six
-    # MIDI pitches (low to high). An arrangement absent here keeps the tuning read
-    # from its GP track. Lets the user re-tune an arrangement in the song settings
-    # without touching the GP file.
-    tuning_overrides: dict[str, tuple[int, int, int, int, int, int]] = field(
-        default_factory=dict
-    )
+    # MIDI pitches (low to high; four for the Bass). An arrangement absent here
+    # keeps the tuning read from its GP track. Lets the user re-tune an
+    # arrangement in the song settings without touching the GP file.
+    tuning_overrides: dict[str, tuple[int, ...]] = field(default_factory=dict)
     # How far the recording sits from A440, in cents — the same for every chart,
     # since they share one recording. Guitar Pro files carry no such value, so
     # without this every chart said 0; the game's tuner then asked for A440 on a
@@ -488,6 +495,19 @@ def auto_pick_tracks(gp_path: Path) -> tuple[int | None, int | None]:
     return lead, rhythm
 
 
+def auto_pick_bass(gp_path: Path) -> int | None:
+    """The bass track when the user does not choose: a 4/5-string track named
+    "bass", else the only 4/5-string track (none when there are several)."""
+    eligible = [
+        t for t in inspect_gp(gp_path).tracks
+        if not t.is_percussion and t.string_count in (4, 5)
+    ]
+    named = next((t.index for t in eligible if "bass" in t.name.lower()), None)
+    if named is not None:
+        return named
+    return eligible[0].index if len(eligible) == 1 else None
+
+
 @dataclass
 class GenerateFromGpUseCase:
     ingestor: AudioIngestor
@@ -535,23 +555,31 @@ class GenerateFromGpUseCase:
             (ArrangementKind.COMBINED, spec.combo_track),
             (ArrangementKind.ALTERNATE_LEAD, spec.alt_lead_track),
             (ArrangementKind.ALTERNATE_RHYTHM, spec.alt_rhythm_track),
+            (ArrangementKind.BASS, spec.bass_track),
         ]
         if all(idx is None for _, idx in slots):
             lead_idx, rhythm_idx = auto_pick_tracks(spec.gp_path)
-            if lead_idx is None and rhythm_idx is None:
-                raise IngestionError("no eligible 6-string guitar track found in the GP file")
+            bass_idx = auto_pick_bass(spec.gp_path)
+            if lead_idx is None and rhythm_idx is None and bass_idx is None:
+                raise IngestionError("no eligible guitar or bass track found in the GP file")
             warnings.append(
                 "tracks auto-selected by name heuristic — confirm they are the right ones"
             )
-            slots = [(ArrangementKind.LEAD, lead_idx), (ArrangementKind.RHYTHM, rhythm_idx)]
+            slots = [
+                (ArrangementKind.LEAD, lead_idx),
+                (ArrangementKind.RHYTHM, rhythm_idx),
+                (ArrangementKind.BASS, bass_idx),
+            ]
 
         tracks: list[tuple[ArrangementKind, int]] = [
             (kind, idx) for kind, idx in slots if idx is not None
         ]
-        # A lone Lead (nothing else assigned) is a single all-in-one chart →
-        # Combined, the conventional single-arrangement choice.
-        if len(tracks) == 1 and tracks[0][0] is ArrangementKind.LEAD:
-            tracks = [(ArrangementKind.COMBINED, tracks[0][1])]
+        # A lone Lead (no other guitar chart assigned — a Bass beside it does not
+        # count) is a single all-in-one chart → Combined, the conventional
+        # single-arrangement choice.
+        guitars = [i for i, (kind, _) in enumerate(tracks) if not kind.is_bass]
+        if len(guitars) == 1 and tracks[guitars[0]][0] is ArrangementKind.LEAD:
+            tracks[guitars[0]] = (ArrangementKind.COMBINED, tracks[guitars[0]][1])
         chosen = [idx for _, idx in tracks]
         if len(chosen) != len(set(chosen)):
             raise IngestionError("each arrangement must use a different GP track")
@@ -564,7 +592,8 @@ class GenerateFromGpUseCase:
         for kind, idx in tracks:
             sync = spec.sync_for(kind)
             p = parse_gp_track(
-                spec.gp_path, idx, score_shift, sync.tempo_scale, spec.bar_times or None
+                spec.gp_path, idx, score_shift, sync.tempo_scale, spec.bar_times or None,
+                bass=kind.is_bass,
             )
             warnings.extend(f"{kind.value}: {w}" for w in p.warnings)
             for stage_anchors in sync.sync_anchor_stages:
@@ -614,7 +643,12 @@ class GenerateFromGpUseCase:
         parsed = {kind: replace(p, notes=resolve_links(p.notes)) for kind, p in parsed.items()}
 
         stage("build_arrangements")
-        first = next(iter(parsed.values()))
+        # The chart the GP lyrics fall back to (when the file names no vocal
+        # track): the first guitar chart, the Bass only when it is alone — the
+        # viewer's lyricRefArr follows the same order.
+        first = next(
+            (p for k, p in parsed.items() if not k.is_bass), next(iter(parsed.values()))
+        )
         song_length = (
             max(
                 max((n.time + n.sustain for n in p.notes), default=0.0)
@@ -636,8 +670,23 @@ class GenerateFromGpUseCase:
         }
         def _tuning_for(kind: ArrangementKind, parsed_tuning: Tuning) -> Tuning:
             override = spec.tuning_overrides.get(kind.value)
-            midi = override if override is not None and len(override) == 6 else parsed_tuning.midi
             cents = parsed_tuning.cent_offset if spec.cent_offset is None else spec.cent_offset
+            if kind.is_bass:
+                tuning = (
+                    Tuning.for_bass(override, cents) if override is not None and len(override) == 4
+                    else replace(parsed_tuning, cent_offset=cents)
+                )
+                if tuning.needs_low_tuning_fix():
+                    # DLC Builder's I41: the game does not detect a bass's notes
+                    # in a tuning this low unless written an octave up at 220 Hz.
+                    warnings.append(
+                        f"{kind.value}: tuning below {BASS_LOW_TUNING_LIMIT} semitones — written "
+                        "an octave up at 220 Hz (DLC Builder's low-tuning fix) so the game "
+                        "detects its notes"
+                    )
+                    tuning = tuning.with_low_tuning_fix()
+                return tuning
+            midi = override if override is not None and len(override) == 6 else parsed_tuning.midi
             return Tuning(midi=midi, cent_offset=cents)
 
         # Section-editor overrides replace the GP-parsed markers identically for

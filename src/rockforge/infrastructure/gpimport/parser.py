@@ -38,6 +38,7 @@ from rockforge.domain.music import (
     is_composite_bend,
 )
 from rockforge.infrastructure.gpimport.playback import GP5_DIRECTIONS, BarFlow, playback_order
+from rockforge.infrastructure.gpimport.strings import check_track_strings, fold_strings
 from rockforge.infrastructure.gpimport.sync_map import (
     bar_time_points,
     bar_times_warnings,
@@ -388,8 +389,14 @@ def parse_gp_track(
     offset_s: float = 0.0,
     tempo_scale: float = 1.0,
     bar_times: Sequence[float] | None = None,
+    *,
+    bass: bool = False,
 ) -> ParsedGpTrack:
     """Convert one Guitar Pro track to RockForge domain objects.
+
+    ``bass`` reads it as a bass chart: a 4- or 5-string track, folded onto four
+    strings with a bass tuning (``strings.fold_strings``); otherwise a guitar's
+    six strings.
 
     offset_s shifts everything to align the score with the actual recording
     (manual synchronization; the score has no knowledge of the audio).
@@ -410,22 +417,17 @@ def parse_gp_track(
     from rockforge.infrastructure.gpimport.gpif_parser import _is_gpif, parse_gpif_track
 
     if _is_gpif(path):
-        return parse_gpif_track(path, track_index, offset_s, tempo_scale, bar_times)
+        return parse_gpif_track(path, track_index, offset_s, tempo_scale, bar_times, bass=bass)
     song = _as_played(_load(path))
     if not 0 <= track_index < len(song.tracks):
         raise IngestionError(f"track index {track_index} out of range")
     track = song.tracks[track_index]
     if track.isPercussionTrack:
         raise IngestionError(f"track {track_index} ('{track.name}') is percussion")
-    if len(track.strings) != 6:
-        raise IngestionError(
-            f"track {track_index} ('{track.name}') has {len(track.strings)} strings; "
-            "Rocksmith 2014 guitar arrangements require 6 (bass support not implemented)"
-        )
+    check_track_strings(len(track.strings), bass=bass, label=f"{track_index} ('{track.name}')")
 
     n_strings = len(track.strings)
     tuning_midi = tuple(s.value for s in sorted(track.strings, key=lambda s: -s.number))
-    tuning = Tuning(midi=tuning_midi)
     to_seconds = _make_ticks_to_seconds(_tempo_events(track))
     origin = QUARTER_TICKS  # measure 1 starts at tick 960; song time 0
     bar_ticks = [m.start - origin for m in track.measures]
@@ -661,6 +663,8 @@ def parse_gp_track(
             f"{dropped_out_of_range} note(s) dropped: off the 24-fret neck "
             f"(fret < 0 or > 24) — likely an extended-range/bass part on this track"
         )
+    notes, tuning, fold_warnings = fold_strings(notes, tuning_midi, bass=bass)
+    warnings.extend(fold_warnings)
     return ParsedGpTrack(
         notes=notes, tuning=tuning, tempo_map=tempo_map, sections=sections,
         lyrics=lyrics, lyric_notes=lyric_notes, warnings=warnings,

@@ -57,7 +57,8 @@ export it as GP5 or GP7 in Guitar Pro/TuxGuitar). GP3/GP4/GP5 are read by PyGuit
 GP7/GP8 (`.gp`) have a native GPIF/XML parser. Sync is manual — you give the second at which
 the song starts in the recording and the score/lyrics are shifted to that instant (the
 recording stays intact, since it already has its own intro); there is a minimum 2 s lead-in
-for DLC Builder's count-in; bass tracks (4/5 strings) are not supported yet.
+for DLC Builder's count-in; a 4/5-string bass track becomes the Bass arrangement (a 5-string
+bass is folded onto four strings).
 
 To fine-tune the sync, the **Score** page plays the recording with the notes on top (and a
 *tick* on each note): set the **song start**, then the **tempo (BPM)** if the score drifts

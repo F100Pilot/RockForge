@@ -125,11 +125,16 @@ def get_tone_suggestions(job_id: str) -> ToneSuggestionsOut:
             arr = read_arrangement_xml(xml_path)
         except (ET.ParseError, ValueError, OSError):
             continue
+        kind = api._built_arrangement_kind(xml_path, root)
+        if kind == "Bass":
+            # The timeline was measured on the GUITAR stem, and the presets are
+            # guitar amps: nothing here speaks for the bass.
+            continue
         end = max(
             [n.time + n.sustain for n in arr.notes] + [b.time for b in arr.tempo_map.beats] + [0.0]
         )
         charts.append(TrackChart(
-            kind=api._built_arrangement_kind(xml_path, root),
+            kind=kind,
             notes=arr.notes,
             segments=segments_for(
                 [(sec.name, sec.start_time) for sec in arr.sections],

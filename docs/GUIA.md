@@ -98,7 +98,15 @@ Carrega em **Seguinte** para ver as pistas.
 
 Atribui uma pista do ficheiro a cada arranjo: **Lead**, **Rhythm**, **Combo**, e, se quiseres,
 **Lead alternativo** / **Rhythm alternativo** (no jogo aparecem como LEAD 2 / RHYTHM 2). Basta
-um. Deixa vazios os que a música não tem. Pistas de baixo ainda não são suportadas.
+um. Deixa vazios os que a música não tem.
+
+**Pista Bass** recebe uma pista de baixo de 4 ou 5 cordas do ficheiro (as de guitarra não as
+mostram). O baixo do Rocksmith tem quatro cordas, por isso um baixo de 5 é dobrado nas quatro
+cordas que perdem menos notas — B E A D quando a parte nunca toca o Sol agudo — e os avisos dizem
+que cordas ficaram e quantas notas ficaram de fora. Uma afinação mais de 4 meios-tons abaixo da
+standard (B standard, por exemplo) é escrita uma oitava acima com a referência a 220 Hz, como faz
+o DLC Builder, para o jogo detetar as notas; a partitura e a reprodução do RockForge continuam a
+soar a altura real. Um baixo de 6 cordas faz-se como guitarra.
 
 ### Passo 3 — Gravação
 

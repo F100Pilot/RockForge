@@ -1725,6 +1725,8 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
               <select name="rhythm_track"><option value="">—</option></select></div>
             <div class="field"><label>Pista Combo</label>
               <select name="combo_track"><option value="">—</option></select></div>
+            <div class="field"><label>Pista Bass <span style="color:var(--muted)">(baixo de 4 ou 5 cordas)</span></label>
+              <select name="bass_track"><option value="">—</option></select></div>
           </div>
         </div>
         <div class="pv-card pv-card-lg">
@@ -1862,7 +1864,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
     <div class="pv-page set-page">
       <div>
         <h1 class="pv-page-title">Lote (álbum)</h1>
-        <p class="set-desc">Cada par (ficheiro GP + gravação) cria um projeto próprio, emparelhados pelo nome do ficheiro (sem extensão) — ex. <code>faixa1.gp5</code> com <code>faixa1.mp3</code> — ou pela ordem quando o nome não bate certo. Um ficheiro GP que traz o próprio áudio (Guitar Pro 8) usa esse áudio e não precisa de gravação. As pistas Lead/Rhythm são escolhidas automaticamente (heurística pelo nome); confirma/corrige depois em "Editar info" de cada projeto.</p>
+        <p class="set-desc">Cada par (ficheiro GP + gravação) cria um projeto próprio, emparelhados pelo nome do ficheiro (sem extensão) — ex. <code>faixa1.gp5</code> com <code>faixa1.mp3</code> — ou pela ordem quando o nome não bate certo. Um ficheiro GP que traz o próprio áudio (Guitar Pro 8) usa esse áudio e não precisa de gravação. As pistas Lead/Rhythm e a de baixo são escolhidas automaticamente (heurística pelo nome); confirma/corrige depois em "Editar info" de cada projeto.</p>
       </div>
       <div class="pv-card pv-card-lg">
         <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-file"/></svg>Ficheiros</div>

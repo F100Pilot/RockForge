@@ -44,9 +44,18 @@ _ARR_NAME = {
     ArrangementKind.LEAD: "Lead",
     ArrangementKind.RHYTHM: "Rhythm",
     ArrangementKind.COMBINED: "Combo",
+    ArrangementKind.BASS: "Bass",
 }
-_ARR_TYPE = {ArrangementKind.LEAD: 0, ArrangementKind.COMBINED: 1, ArrangementKind.RHYTHM: 2}
-_ROUTE_MASK = {ArrangementKind.LEAD: 1, ArrangementKind.COMBINED: 1, ArrangementKind.RHYTHM: 2}
+# Bass: ArrangementName 3 / RouteMask 4 (Arrangement.fs); the manifest's
+# ArrangementType is the ArrangementName number (AttributesCreation.fs).
+_ARR_TYPE = {
+    ArrangementKind.LEAD: 0, ArrangementKind.COMBINED: 1, ArrangementKind.RHYTHM: 2,
+    ArrangementKind.BASS: 3,
+}
+_ROUTE_MASK = {
+    ArrangementKind.LEAD: 1, ArrangementKind.COMBINED: 1, ArrangementKind.RHYTHM: 2,
+    ArrangementKind.BASS: 4,
+}
 
 
 def _arr_name(kind: ArrangementKind) -> str:
@@ -201,6 +210,9 @@ def _technique_flags(arrangement: Arrangement) -> dict[str, int]:
     for grp in by_time.values():
         if len(grp) < 2:
             continue
+        if arrangement.kind.is_bass:  # a bass's chords are double stops
+            double = 1
+            continue
         frets = sorted((g.string, g.fret) for g in grp)
         if any(f == 0 for _, f in frets):
             openc = 1
@@ -248,7 +260,7 @@ def _arrangement_properties(arrangement: Arrangement) -> dict[str, int]:
         **_technique_flags(arrangement),
         "pathLead": int(base in (ArrangementKind.LEAD, ArrangementKind.COMBINED)),
         "pathRhythm": int(base is ArrangementKind.RHYTHM),
-        "pathBass": 0,
+        "pathBass": int(base is ArrangementKind.BASS),
         "routeMask": _route_mask(kind),
     }
 

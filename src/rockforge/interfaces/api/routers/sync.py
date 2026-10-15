@@ -32,7 +32,13 @@ router = APIRouter()
 _SYNC_STATE_GP_ONLY: frozenset[str] = frozenset({
     "tuning_overrides",
     "lead_track", "rhythm_track", "combo_track", "alt_lead_track", "alt_rhythm_track",
+    "bass_track",
 })
+
+
+def _tuning_strings(kind: object) -> int:
+    """How many MIDI pitches a chart's tuning override carries (a bass has 4)."""
+    return 4 if kind == "Bass" else 6
 
 
 def _sanitize_sync_state(incoming: dict[str, object]) -> dict[str, object]:
@@ -51,8 +57,9 @@ def _sanitize_sync_state(incoming: dict[str, object]) -> dict[str, object]:
         if not isinstance(to, dict):
             raise HTTPException(422, "tuning_overrides must be an object keyed by arrangement")
         for kind, midi in to.items():
-            if not isinstance(midi, list) or len(midi) != 6:
-                raise HTTPException(422, f"tuning for {kind} must have 6 MIDI pitches")
+            n = _tuning_strings(kind)
+            if not isinstance(midi, list) or len(midi) != n:
+                raise HTTPException(422, f"tuning for {kind} must have {n} MIDI pitches")
             api._reject_bad_midi(f"tuning for {kind}", midi)
     # This path takes a raw JSON blob, so none of the ``Finite`` models apply:
     # a hand-edited or foreign file could otherwise restore a NaN offset/tempo
@@ -122,6 +129,7 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
         _TRACK_SLOTS = {
             "lead": "lead_track", "rhythm": "rhythm_track", "combo": "combo_track",
             "alt_lead": "alt_lead_track", "alt_rhythm": "alt_rhythm_track",
+            "bass": "bass_track",
         }
         if payload.tracks is not None:
             if original.source_type != "gp":
@@ -142,8 +150,9 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
             if original.source_type != "gp":
                 raise HTTPException(422, "tuning overrides only apply to Guitar Pro jobs")
             for kind, midi in payload.tuning_overrides.items():
-                if len(midi) != 6:
-                    raise HTTPException(422, f"tuning for {kind} must have 6 MIDI pitches")
+                n = _tuning_strings(kind)
+                if len(midi) != n:
+                    raise HTTPException(422, f"tuning for {kind} must have {n} MIDI pitches")
             params["tuning_overrides"] = {k: list(v) for k, v in payload.tuning_overrides.items()}
 
         def _arr_entry(kind: str) -> dict[str, object]:

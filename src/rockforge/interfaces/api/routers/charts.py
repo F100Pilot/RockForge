@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import ValidationError
 
 from rockforge.domain.chords import name_chord
-from rockforge.domain.music import STANDARD_E_MIDI
+from rockforge.domain.music import BASS_STANDARD_MIDI, STANDARD_E_MIDI
 from rockforge.infrastructure.db.models import Job, JobStatus
 from rockforge.interfaces.api import app as api
 from rockforge.interfaces.api.schemas import (
@@ -48,7 +48,7 @@ def get_gp_tracks(job_id: str) -> dict[str, object]:
         "assignment": {
             "lead": params.get("lead_track"), "rhythm": params.get("rhythm_track"),
             "combo": params.get("combo_track"), "alt_lead": params.get("alt_lead_track"),
-            "alt_rhythm": params.get("alt_rhythm_track"),
+            "alt_rhythm": params.get("alt_rhythm_track"), "bass": params.get("bass_track"),
         },
         "tuning_overrides": params.get("tuning_overrides") or {},
     }
@@ -61,17 +61,19 @@ _TRACK_PARAM_OF_KIND = {
     "Combined": "combo_track",
     "Alternate Lead": "alt_lead_track",
     "Alternate Rhythm": "alt_rhythm_track",
+    "Bass": "bass_track",
 }
 
 
 def _track_of_kind(params: dict[str, object], kind: str) -> int | None:
     """The GP track arrangement ``kind`` was built from, as ``gp_pipeline`` assigns
-    them: a lone Lead is built as Combined. None when the tracks were auto-picked."""
+    them: a lone Lead (no other guitar chart; a Bass does not count) is built as
+    Combined. None when the tracks were auto-picked."""
     assigned = {
         k: v for k, p in _TRACK_PARAM_OF_KIND.items()
         if isinstance(v := params.get(p), int) and not isinstance(v, bool)
     }
-    if kind == "Combined" and list(assigned) == ["Lead"]:
+    if kind == "Combined" and [k for k in assigned if k != "Bass"] == ["Lead"]:
         return assigned["Lead"]
     return assigned.get(kind)
 
@@ -136,6 +138,9 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
             if tuning_el is not None
             else [0] * 6
         )
+        props = root.find("arrangementProperties")
+        is_bass = props is not None and props.get("pathBass") == "1"
+        open_midi = BASS_STANDARD_MIDI if is_bass else STANDARD_E_MIDI
 
         def parse_note(el: ET.Element, chord: bool) -> ArrangementNoteOut:
             techs = [
@@ -176,7 +181,7 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
         chord_notes: list[ArrangementNoteOut] = []
         for chord_el in root.findall("levels/level/chords/chord"):
             members = [parse_note(el, True) for el in chord_el.findall("chordNote")]
-            pitches = [STANDARD_E_MIDI[m.string] + offsets[m.string] + m.fret for m in members]
+            pitches = [open_midi[m.string] + offsets[m.string] + m.fret for m in members]
             cname = name_chord(pitches)
             for m in members:
                 m.chord_name = cname
@@ -224,6 +229,7 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
             ArrangementOut(
                 kind=kind,
                 tuning_offsets=offsets,
+                string_count=4 if is_bass else 6,
                 cent_offset=float(root.findtext("centOffset", "0")),
                 average_bpm=float(root.findtext("averageTempo", "0")),
                 tempo_scale=scale_for(kind),

@@ -26,7 +26,7 @@ Sections:
 |---|---|---|---|
 | Wwise template projects (Rocksmith-compatible Vorbis conversion settings; XML project files only, no Audiokinetic software) | `src/rockforge/infrastructure/packaging/wwise_templates/*.zip` | [Rocksmith2014.NET](https://github.com/iminashi/Rocksmith2014.NET) `src/Rocksmith2014.Audio/Wwise/` | MIT, © 2020 Tapio Malmberg ([text](#rocksmith2014net--mit)) |
 | Tone gear catalogue (amps, cabinets, pedals, racks, knob ranges) | `src/rockforge/infrastructure/packaging/gear/tone_gear_data.json` | Rocksmith2014.NET `samples/DLCBuilder.Domain/Tones/tone_gear_data.json` | MIT, © 2020 Tapio Malmberg |
-| DLC Builder's default Lead/Rhythm tones | `src/rockforge/infrastructure/packaging/gear/default_tones/*.json` | Rocksmith2014.NET | MIT, © 2020 Tapio Malmberg |
+| DLC Builder's default Lead/Rhythm/Bass tones | `src/rockforge/infrastructure/packaging/gear/default_tones/*.json` | Rocksmith2014.NET | MIT, © 2020 Tapio Malmberg |
 | Song enumeration model schema (`rsenumerable_root.flat`, `rsenumerable_song.flat`) | `src/rockforge/infrastructure/packaging/psarc/flatmodels/` | Rocksmith2014.NET `src/Rocksmith2014.DLCProject/res/` | MIT, © 2020 Tapio Malmberg |
 | Lyric-font glyph table of a vocals SNG (describes the game's own built-in `lyrics.dds`; the texture itself is NOT included) | `src/rockforge/infrastructure/packaging/psarc/vocals_symbols.bin` | Extracted byte-for-byte from vocals SNGs built by DLC Builder (Rocksmith2014.NET) | MIT, © 2020 Tapio Malmberg |
 | three.js 0.186.1 (`three.module.js` + `three.core.js`) | `web/vendor/three/` | [three.js](https://github.com/mrdoob/three.js) | MIT, © 2010-2026 three.js authors (full text in `web/vendor/three/LICENSE`) |

@@ -87,7 +87,8 @@ re-inverting the dependency.
 
 **Guitar Pro** (`gp_pipeline.py`): notes/frets/techniques/sections come exact
    from the GP file; audio sync is a manual offset. High fidelity, preferred
-   when a GP file exists. Two parsers behind one API (`inspect_gp` /
+   when a GP file exists. Guitar charts take 6-string tracks; a 4/5-string bass
+   track becomes the Bass arrangement (below). Two parsers behind one API (`inspect_gp` /
    `parse_gp_track` dispatch on format): **GP3/GP4/GP5** binary via PyGuitarPro
    (`parser.py`), and **GP7/GP8 (`.gp`)** via a native GPIF/XML parser
    (`gpif_parser.py` — the `.gp` is a ZIP whose `Content/score.gpif` is XML, so
@@ -486,6 +487,67 @@ re-inverting the dependency.
    Skipping this makes "4 notes show as 5" and throws the rhythm off — guarded by
    `test_tied_note_extends_previous_not_new_attack` (GP5) and
    `test_gp7_tied_note_extends_not_duplicates` (GP7).
+
+### The Bass arrangement (`ArrangementKind.BASS`)
+
+"Implementa a faixa de bass" (2026-10-15). A fifth slot beside Lead/Rhythm/
+Combo/alternates, encoded the way Rocksmith2014.NET/DLC Builder encode a bass
+(read from its source, nothing guessed):
+- **Names and routes**: ArrangementName 3 (`"Bass"`), ArrangementType 3,
+  RouteMask 4, `pathBass=1` (pathLead/pathRhythm 0) in the XML and the manifest,
+  asset `<key>_bass`, FullName/xblock `<Key>_Bass`, game name `BASS`, `.rs2dlc`
+  Name 3 / RouteMask 4 / `BassPicked` false. `powerChords`/`openChords` are
+  never set on a bass; a bass chord counts as a double stop.
+- **Tuning** (`Tuning(bass=True)`, `Tuning.for_bass`): offsets are measured from
+  E1 A1 D2 G2 (`BASS_STANDARD_MIDI`), and strings 4-5, which a bass does not
+  have, copy string 3's offset — DLC Builder's convention (EOF writes them
+  wrong). `string_count` is 4; `sounding_midi` gives the four real pitches.
+  Chord templates come out an octave below the guitar's (Midi.toMidiNote with
+  isBass). **Below -4 semitones** (B standard on a folded 5-string) DLC
+  Builder's low-tuning fix (its checker's I41) applies: every string written
+  +12 and the reference at 220 Hz (CentOffset -1200), so the game detects the
+  notes; `gp_pipeline._tuning_for` does it and says so in the warnings, and the
+  viewer (`openMidi`) and the GP5 export undo it to sound the real pitch.
+- **Import** (`gpimport/strings.py`, both parsers, `bass=` on
+  `parse_gp_track`): a guitar chart needs 6 strings and a 4/5-string track is
+  refused there with "pick it as the Bass track"; a Bass chart needs 4 or 5
+  strings (a 6-string bass is charted as a guitar — DLC Builder's own advice,
+  its checker refuses a bass note on string 4+, I36). A 5-string bass is
+  **folded** onto the four consecutive strings that lose the fewest notes
+  (tie: the window closest to bass standard) — B E A D for a part that never
+  plays the high G, E A D G for one that never plays the low B — with a warning
+  naming the strings and counting any note dropped.
+- **Picking it**: `GpJobSpec.bass_track` / `/jobs/gp`'s `bass_track` /
+  `params["bass_track"]`, in the reload/rebuild/sync-state keys like the other
+  slots. Auto-pick takes a track named "bass", else the only 4/5-string track.
+  The lone-Lead→Combined rule ignores the Bass (a guitar + a bass is still
+  COMBO + BASS). Per-chart tuning overrides for "Bass" are 4 MIDI pitches.
+- **What skips it**: tone suggestions (the analysis is of the guitar stem),
+  showlights (from the richest non-bass chart), and the chart GP lyrics are
+  timed on when the file names no vocal track. With no tone of its own it gets
+  DLC Builder's `default_bass.json` (Eden WT550, vendored verbatim).
+- **Checker**: `check_sng(model, bass=True)` adds `bass_string` (a note or a
+  template fret on string 4/5); `verify_psarc` knows a chart is a bass from
+  its manifest's `pathBass`.
+- **UI**: wizard step 2 and "Editar info" have a "Pista Bass" picker listing
+  only 4/5-string tracks (the guitar pickers no longer offer them); the score
+  draws four taller rows labelled with the real tuning, the fretboard and the
+  3D highway four strings (`setStringCount`), the note editor four strings, the
+  synthesized source the bass's own pitches.
+- **Found on the way, not bass-only**: a DD level holding only OPEN strings (a
+  bass line's roots at its lowest levels) shipped with no anchor at all —
+  `_level_positions` dropped open notes before `_build_anchors`, whose
+  one-window fallback for exactly that case therefore never ran. Open notes now
+  reach it (they still place no window). Guarded by
+  `test_a_level_of_only_open_strings_still_has_an_anchor` (both halves
+  mutation-checked).
+Guarded by `test_bass_import.py`, `test_bass_arrangement.py` and
+`test_a_four_string_bass_is_read_as_a_bass_never_as_a_guitar`; a real build of
+two invented GP5s (a 4-string bass, a 5-string B-standard one) through
+`/gp/inspect` → `/jobs/gp` → a clean `/psarc-check`, and the viewer with
+Playwright (wizard picker, four-line score B E A D, fretboard, 3D highway,
+Editar info; PT/EN, no page errors). **Never played in game from here** — the
+encoding is DLC Builder's, the result in Rocksmith is the user's to confirm.
 
 ### Reloading the GP file (`/jobs/{id}/reload-gp`)
 

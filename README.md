@@ -75,8 +75,8 @@ song in the game with one click.
   PDF). Automatic transcription was measured at about one note in three on real songs, so it is not
   offered.
 - **Sync is checked by you.** The tools make it quick, but you confirm each track by ear.
-- **Bass** arrangements (4/5 strings) and **Guitar Pro 6** (`.gpx`) files are not supported yet —
-  export a `.gpx` as GP5 or GP7.
+- **Guitar Pro 6** (`.gpx`) files are not supported — export them as GP5 or GP7. A 6-string bass
+  is charted as a guitar (a Rocksmith bass has four strings; a 5-string one is folded onto four).
 - Tones are chosen from the game's gear by character; the real amp of a recording is not
   identified.
 

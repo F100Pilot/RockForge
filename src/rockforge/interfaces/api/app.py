@@ -801,6 +801,7 @@ _SYNC_STATE_KEYS: tuple[str, ...] = (
     "cent_offset", "tuning_overrides",
     "lyrics_events",
     "lead_track", "rhythm_track", "combo_track", "alt_lead_track", "alt_rhythm_track",
+    "bass_track",
 )
 
 def _extract_sync_state(params: dict[str, object]) -> dict[str, object]:

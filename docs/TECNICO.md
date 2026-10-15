@@ -55,7 +55,8 @@ exporta como GP5 ou GP7 no Guitar Pro/TuxGuitar). GP3/GP4/GP5 são lidos pelo Py
 GP7/GP8 (`.gp`) têm um parser GPIF/XML nativo. A sincronização é manual — indicas o segundo em
 que a música começa na gravação e a partitura/letra são deslocadas para esse instante (a
 gravação fica intacta, pois já tem o seu intro); há um lead-in mínimo de 2s para o count-in
-do DLC Builder; pistas de baixo (4/5 cordas) ainda não são suportadas.
+do DLC Builder; uma pista de baixo de 4/5 cordas dá o arranjo Bass (um baixo de 5 cordas é
+dobrado em quatro).
 
 Para afinar a sincronização, a página **Partitura** toca a gravação com as notas por cima (e um
 *tique* em cada nota): acerta o **início da música**, depois o **andamento (BPM)** se a

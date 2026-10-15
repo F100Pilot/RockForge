@@ -18,6 +18,7 @@ from pathlib import Path
 
 from rockforge.domain.arrangement import Arrangement, ArrangementKind, Section, SongMetadata
 from rockforge.domain.music import (
+    BASS_STANDARD_MIDI,
     STANDARD_E_MIDI,
     Beat,
     BendPoint,
@@ -112,7 +113,14 @@ def read_arrangement_xml(path: Path, kind: ArrangementKind | None = None) -> Arr
     if tuning_el is None:
         tuning_el = ET.Element("tuning")
     offsets = [_int(tuning_el, f"string{i}") for i in range(6)]
-    midi = tuple(base + off for base, off in zip(STANDARD_E_MIDI, offsets, strict=True))
+    props = root.find("arrangementProperties")
+    tag = (root.findtext("arrangement", "") or "").strip().lower()
+    bass = (kind is ArrangementKind.BASS if kind is not None else (
+        tag == "bass" or (props is not None and props.get("pathBass") == "1")
+    ))
+    # A bass's offsets are measured from E1 A1 D2 G2 (the game's convention).
+    standard = BASS_STANDARD_MIDI if bass else STANDARD_E_MIDI
+    midi = tuple(base + off for base, off in zip(standard, offsets, strict=True))
 
     beats = tuple(
         Beat(time=float(el.get("time", "0") or 0), measure=_int(el, "measure", -1))
@@ -136,12 +144,11 @@ def read_arrangement_xml(path: Path, kind: ArrangementKind | None = None) -> Arr
     ]
 
     if kind is None:
-        name = (root.findtext("arrangement", "") or "").strip().lower()
-        kind = {
+        kind = ArrangementKind.BASS if bass else {
             "lead": ArrangementKind.LEAD,
             "rhythm": ArrangementKind.RHYTHM,
             "combo": ArrangementKind.COMBINED,
-        }.get(name, ArrangementKind.COMBINED)
+        }.get(tag, ArrangementKind.COMBINED)
 
     return Arrangement(
         kind=kind,
@@ -155,6 +162,7 @@ def read_arrangement_xml(path: Path, kind: ArrangementKind | None = None) -> Arr
         tuning=Tuning(
             midi=(midi[0], midi[1], midi[2], midi[3], midi[4], midi[5]),
             cent_offset=float(root.findtext("centOffset", "0") or 0),
+            bass=bass,
         ),
         tempo_map=TempoMap(
             beats=beats, average_bpm=float(root.findtext("averageTempo", "120") or 120)

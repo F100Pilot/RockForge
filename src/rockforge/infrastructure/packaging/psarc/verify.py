@@ -80,11 +80,23 @@ def _find_fingerprint(time: float, fps: list[SngFingerprint]) -> int:
     return -1
 
 
-def check_sng(model: SngModel) -> list[Problem]:
-    """Every rule a chart must hold, level by level."""
+def check_sng(model: SngModel, *, bass: bool = False) -> list[Problem]:
+    """Every rule a chart must hold, level by level (``bass``: a Bass chart)."""
     out: list[Problem] = []
     add = out.append
     phrases, pis = model.phrases, model.phrase_iterations
+
+    if bass:
+        # DLC Builder's I36: Rocksmith's bass has strings 0-3, chords included.
+        for lv in model.arrangements:
+            for n in lv.notes:
+                tpl = model.chord_templates[n.chord_id] if 0 <= n.chord_id < len(
+                    model.chord_templates) else None
+                high = n.string >= 4 if n.chord_id < 0 else (
+                    tpl is not None and any(_s8(f) >= 0 for f in tpl.frets[4:]))
+                if high:
+                    add(Problem("bass_string", level=lv.difficulty, time=n.time))
+                    break
 
     for v in model.vocals:
         if v.note != VOCAL_NOTE:
@@ -313,6 +325,7 @@ def verify_psarc(
         report.problems.append(Problem("bad_toolkit_version"))
 
     sngs = {n: data for n, data in entries.items() if n.endswith(".sng")}
+    bass_assets: set[str] = set()
     for name, raw in entries.items():
         if not (name.startswith("manifests/") and name.endswith(".json")):
             continue
@@ -320,7 +333,9 @@ def verify_psarc(
             doc = json.loads(raw)
             attrs = next(iter(doc["Entries"].values()))["Attributes"]
             asset = str(attrs["SongAsset"]).rsplit(":", 1)[-1]
-        except (ValueError, KeyError, StopIteration, TypeError):
+            if (attrs.get("ArrangementProperties") or {}).get("pathBass") == 1:
+                bass_assets.add(asset)
+        except (ValueError, KeyError, StopIteration, TypeError, AttributeError):
             report.problems.append(Problem("bad_manifest", arrangement=Path(name).stem))
             continue
         if f"songs/bin/generic/{asset}.sng" not in sngs:
@@ -335,7 +350,8 @@ def verify_psarc(
             report.problems.append(Problem("sng_unreadable", detail=str(exc), arrangement=asset))
             continue
         report.problems.extend(
-            Problem(p.code, p.level, p.time, p.detail, asset) for p in check_sng(model)
+            Problem(p.code, p.level, p.time, p.detail, asset)
+            for p in check_sng(model, bass=asset in bass_assets)
         )
     return report
 
@@ -362,6 +378,8 @@ def describe(code: str) -> str:
         "section_bad_range": ("secção com um intervalo de frases impossível",
                               "a section with an impossible phrase range"),
         "tone_slot": ("troca para um tom fora de A–D", "a tone switch outside A–D"),
+        "bass_string": ("nota de baixo numa 5.ª ou 6.ª corda (o baixo do jogo tem 4)",
+                        "a bass note on a 5th or 6th string (the game's bass has 4)"),
         "template_pitch": (
             "acorde com uma corda não usada com nota (deve ser -1) ou uma nota impossível",
             "a chord whose unused string has a pitch (should be -1), or an impossible pitch"),

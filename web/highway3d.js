@@ -356,12 +356,14 @@
     const pegMat = new THREE.MeshStandardMaterial({ color: 0xd4d8de, metalness: 0.9, roughness: 0.25 });
     const bushing = new THREE.CylinderGeometry(0.13, 0.13, 0.1, 28).rotateX(Math.PI / 2);
     const post = new THREE.CylinderGeometry(0.055, 0.055, 0.3, 16).rotateX(Math.PI / 2);
+    const pegs = [];
     for (let s = 0; s <= 5; s += 1) {
       const b = new THREE.Mesh(bushing, pegMat);
       b.position.set(pegX(s), stringY(s), -0.22);
       const p = new THREE.Mesh(post, pegMat);
       p.position.set(pegX(s), stringY(s), -0.08);
       headstock.add(b, p);
+      pegs.push([b, p]);
     }
 
     // Strings from each tuner to the end of the neck, with a glow band that lights on a hit.
@@ -376,7 +378,7 @@
       const glow = new THREE.Mesh(new THREE.PlaneGeometry(FRETS + 1, 0.42), glowMat);
       glow.position.set((FRETS + 1) / 2 - 0.5, stringY(s), 0.03);
       scene.add(glow);
-      strings.push({ material, glowMat, glow: 0 });
+      strings.push({ material, glowMat, glow: 0, mesh, glowMesh: glow, pegs: pegs[s] });
     }
 
     const lane = new THREE.Group(); // notes, chord frames, bar lines: everything that moves
@@ -387,12 +389,24 @@
     };
   }
 
-  function setTuning(offsets) {
+  // A bass has four strings: the two it does not have (and their tuners) are hidden.
+  function setStringCount(count) {
+    stage.strings.forEach((str, s) => {
+      const on = s < count;
+      str.mesh.visible = on;
+      str.glowMesh.visible = on;
+      for (const m of str.pegs) m.visible = on;
+    });
+  }
+
+  function setTuning(offsets, count = 6) {
     for (const m of stage.nutLabels) { stage.headstock.remove(m); m.material.map.dispose(); m.material.dispose(); }
     stage.nutLabels = [];
+    // Pitch classes only: a bass's E1 A1 D2 G2 name like the guitar's four lowest strings.
     const names = STANDARD.map((midi, s) => NOTE_NAMES[(((midi + (offsets[s] || 0)) % 12) + 12) % 12]);
-    if (names[0] === names[5]) names[5] = names[5].toLowerCase(); // "E … e", as guitarists write it
-    for (let s = 0; s <= 5; s += 1) {
+    if (count === 6 && names[0] === names[5]) names[5] = names[5].toLowerCase(); // "E … e", as guitarists write it
+    setStringCount(count);
+    for (let s = 0; s < count; s += 1) {
       const material = new THREE.MeshBasicMaterial({ map: textTexture(names[s], hex(STRING_COLORS[s]), { size: 104, outline: 16 }), transparent: true, depthWrite: false });
       const label = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.42), material);
       label.position.set(-NUT_W / 2, stringY(s), 0.054);
@@ -434,7 +448,8 @@
 
   function buildSong(data) {
     disposeSong();
-    const notes = (data.notes || []).filter((n) => n.string >= 0 && n.string <= 5 && Number.isFinite(n.t)).slice().sort((a, b) => a.t - b.t || a.string - b.string);
+    const count = data.strings === 4 ? 4 : 6;
+    const notes = (data.notes || []).filter((n) => n.string >= 0 && n.string < count && Number.isFinite(n.t)).slice().sort((a, b) => a.t - b.t || a.string - b.string);
     // Chords: notes struck together (the score's own grouping), with the name it derived.
     const chords = [];
     for (let i = 0; i < notes.length;) {
@@ -450,7 +465,7 @@
     ].filter((l) => Number.isFinite(l.t)).sort((a, b) => a.t - b.t);
     const maxSustain = notes.reduce((m, n) => Math.max(m, n.sustain || 0), 0);
     song = { notes, chords, lines, live: new Map(), liveLines: new Map(), owned: [], back: Math.min(8, maxSustain) + 0.8 };
-    setTuning(data.tuning || [0, 0, 0, 0, 0, 0]);
+    setTuning(data.tuning || [0, 0, 0, 0, 0, 0], count);
     lastNow = null;
   }
 
@@ -864,7 +879,8 @@
       return song ? { notes: song.notes.length, lines: song.lines.length, liveNotes: song.live.size, liveLines: song.liveLines.size } : null;
     },
     // notes: [{t, sustain, string, fret, techniques, bend, slideTo, chordName}] in the display
-    // clock; bars: [{t, measure}]; beats: [t]; sections: [{t, name}]; tuning: 6 offsets.
+    // clock; bars: [{t, measure}]; beats: [t]; sections: [{t, name}]; tuning: 6 offsets;
+    // strings: 6, or 4 for a bass.
     setSong(data) {
       if (!stage) return;
       buildSong(data);

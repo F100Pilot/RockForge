@@ -99,7 +99,15 @@ Press **Next** to see the tracks.
 
 Assign a track of the file to each arrangement: **Lead**, **Rhythm**, **Combo**, and, if you
 want, **Alternate lead track** / **Alternate rhythm track** (in game: LEAD 2 / RHYTHM 2). One is enough.
-Leave empty the ones the song does not have. Bass tracks are not supported yet.
+Leave empty the ones the song does not have.
+
+**Bass track** takes a 4- or 5-string bass track of the file (the guitar pickers do not offer
+those). Rocksmith's bass has four strings, so a 5-string bass is folded onto the four strings that
+lose the fewest notes — B E A D when the part never plays the high G — and the warnings name the
+strings used and count any note left out. A tuning lower than 4 semitones below standard (B
+standard, say) is written an octave up with the reference at 220 Hz, as DLC Builder does, so the
+game detects the notes; RockForge's score and playback still sound the real pitch. A 6-string
+bass is charted as a guitar.
 
 ### Step 3 — Recording
 

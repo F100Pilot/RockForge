@@ -62,7 +62,7 @@ function validateWizardStep() {
       toast(T('Escolhe um ficheiro Guitar Pro, um PDF ou uma imagem da tab, ou importa a tab do Songsterr.')); return false;
     }
   } else if (wizardStep === 2) {
-    const anyTrack = ['lead_track', 'rhythm_track', 'combo_track', 'alt_lead_track', 'alt_rhythm_track']
+    const anyTrack = ['lead_track', 'rhythm_track', 'combo_track', 'alt_lead_track', 'alt_rhythm_track', 'bass_track']
       .some(n => document.querySelector(`#gpJobForm select[name=${n}]`).value !== '');
     if (!anyTrack) { toast(T('Atribui pelo menos uma pista.')); return false; }
   } else if (wizardStep === 3) {
@@ -774,7 +774,7 @@ const COMPLETE_ACTIONS = {
 // Each chart is named as Rocksmith names it in game ("LEAD 1", "LEAD 2",
 // "RHYTHM", "COMBO"): /arrangements' game_name, numbered the way the PSARC's
 // SongPartition is. The game's own words, so the same in every language.
-const GAME_PATH = { Lead: 'LEAD', Rhythm: 'RHYTHM', Combined: 'COMBO', 'Alternate Lead': 'LEAD', 'Alternate Rhythm': 'RHYTHM' };
+const GAME_PATH = { Lead: 'LEAD', Rhythm: 'RHYTHM', Combined: 'COMBO', 'Alternate Lead': 'LEAD', 'Alternate Rhythm': 'RHYTHM', Bass: 'BASS' };
 function arrLabel(kind) {
   const a = arrangements.find(x => x.kind === kind);
   return (a && a.game_name) || GAME_PATH[kind] || kind;
@@ -1037,7 +1037,7 @@ const INFO = {
     title: T('Processamento em lote'),
     body: T('<p>Cria vários projetos de uma vez a partir de vários ficheiros Guitar Pro + as gravações correspondentes — útil para converter um álbum inteiro sem repetir o assistente música a música.</p>') +
       T('<p><strong>Emparelhamento:</strong> cada ficheiro GP é associado à gravação com o <strong>mesmo nome</strong> (sem extensão) — ex. <code>faixa1.gp5</code> com <code>faixa1.mp3</code>. Quando não há correspondência pelo nome, o RockForge empareha pela <strong>ordem</strong> em que escolheste os ficheiros. Confirma a lista de pares antes de criar.</p>') +
-      T('<p><strong>Pistas Lead/Rhythm:</strong> cada projeto usa a mesma heurística automática do assistente normal (escolhe as pistas de 6 cordas pelo nome — "lead"/"rhythm") em vez de perguntares música a música. Se uma escolha ficar errada, corrige depois em "Editar info" desse projeto (não precisas de recriar o lote todo).</p>') +
+      T('<p><strong>Pistas:</strong> cada projeto usa a mesma heurística automática do assistente normal (escolhe as pistas de 6 cordas pelo nome — "lead"/"rhythm" — e a de baixo, de 4 ou 5 cordas, chamada "bass" ou a única) em vez de perguntares música a música. Se uma escolha ficar errada, corrige depois em "Editar info" desse projeto (não precisas de recriar o lote todo).</p>') +
       T('<p>Banda/álbum/ano ficam <strong>partilhados</strong> por todos os pares; título/artista específicos vêm do próprio ficheiro GP ou das tags do áudio, como no assistente normal.</p>') +
       T('<p>Os projetos são criados um a um (mesmo caminho que criar um único projeto, repetido); acompanha o progresso na lista de pares e depois na lista de projetos.</p>')
   },
@@ -1562,6 +1562,23 @@ const TUNING_PRESETS = {
 // Standard tuning (low E to high e) as MIDI: an open string's pitch is this
 // + the arrangement's tuning offset; a note's adds its fret.
 const STD_TUNING_MIDI = [40, 45, 50, 55, 59, 64];
+// A bass (string_count 4) is E1 A1 D2 G2, an octave below — its offsets are
+// measured from there, as the game does.
+const BASS_TUNING_MIDI = [28, 33, 38, 43, 47, 52];
+function isBassArr(a) { return !!a && a.string_count === 4; }
+// A Guitar Pro track a Bass chart can be made from (5 strings fold onto 4).
+function isBassTrackStrings(n) { return n === 4 || n === 5; }
+function stringCount(a) { return isBassArr(a) ? 4 : 6; }
+// The open string's real pitch. A very low bass is written an octave up at
+// 220 Hz (DLC Builder's low-tuning fix, cent offset -1200): undo that here.
+function openMidi(a, str) {
+  const base = (isBassArr(a) ? BASS_TUNING_MIDI : STD_TUNING_MIDI)[str];
+  const off = (a && a.tuning_offsets && a.tuning_offsets[str]) || 0;
+  const fixed = isBassArr(a) && (a.cent_offset || 0) <= -1100 ? 12 : 0;
+  return base + off - fixed;
+}
+// The staff keeps its height; a bass's four lines are spread over it.
+function staffRow(a) { return isBassArr(a) ? STAFF_ROW * 5 / 3 : STAFF_ROW; }
 function _presetFromOffsets(off) {
   for (const [name, o] of Object.entries(TUNING_PRESETS)) {
     if (o && o.every((v, i) => v === off[i])) return name;
@@ -1591,16 +1608,19 @@ async function openMetaEdit() {
       fetch(`/jobs/${selectedJob.id}/arrangements`).then(r => r.ok ? r.json() : []),
     ]);
     if (!tr) return;  // not a GP job (or file gone) — leave the GP section hidden
-    const opts = '<option value="">—</option>' + tr.tracks
-      .filter(t => !t.is_percussion && t.string_count === 6)
+    const optsFor = keep => '<option value="">—</option>' + tr.tracks
+      .filter(t => !t.is_percussion && keep(t.string_count))
       .map(t => `<option value="${t.index}">${t.index}: ${esc(t.name)}</option>`).join('');
+    const opts = optsFor(n => n === 6);
+    const bassOpts = optsFor(isBassTrackStrings);
     const SLOTS = [['lead', T('Pista {label}', { label: 'Lead' })], ['rhythm', T('Pista {label}', { label: 'Rhythm' })],
                    ['combo', T('Pista {label}', { label: 'Combo' })],
                    ['alt_lead', T('Pista Lead alternativo (no jogo: LEAD 2)')],
-                   ['alt_rhythm', T('Pista Rhythm alternativo (no jogo: RHYTHM 2)')]];
+                   ['alt_rhythm', T('Pista Rhythm alternativo (no jogo: RHYTHM 2)')],
+                   ['bass', T('Pista {label}', { label: 'Bass' })]];
     document.getElementById('metaTracks').innerHTML = SLOTS.map(([slot, label]) =>
       `<div class="field" style="flex:1 1 11rem"><label>${label}</label>
-        <select data-slot="${slot}" style="width:100%">${opts}</select></div>`).join('');
+        <select data-slot="${slot}" style="width:100%">${slot === 'bass' ? bassOpts : opts}</select></div>`).join('');
     for (const [slot] of SLOTS) {
       const v = tr.assignment[slot];
       if (v !== null && v !== undefined)
@@ -1610,8 +1630,11 @@ async function openMetaEdit() {
       .map(n => `<option value="${n}">${n === 'Manter' ? T('Manter') : n}</option>`).join('');
     document.getElementById('metaTunings').innerHTML = arrs.map(a => {
       const ov = (tr.tuning_overrides || {})[a.kind];
-      const cur = ov ? _presetFromOffsets(ov.map((m, i) => m - STD_TUNING_MIDI[i])) :
-                       _presetFromOffsets(a.tuning_offsets);
+      const std = isBassArr(a) ? BASS_TUNING_MIDI : STD_TUNING_MIDI;
+      // A bass override is its four strings; the two it does not have follow string 3.
+      const ovOff = ov && ov.map((m, i) => m - std[i]);
+      const cur = ovOff ? _presetFromOffsets(ovOff.length === 4 ? [...ovOff, ovOff[3], ovOff[3]] : ovOff) :
+                          _presetFromOffsets(a.tuning_offsets);
       return `<div class="field" style="flex:1 1 11rem"><label>${T('Afinação {arr}', { arr: esc(arrLabel(a.kind)) })}</label>
         <select data-kind="${esc(a.kind)}" style="width:100%">${presetOpts}</select></div>`
         .replace(`value="${cur}"`, `value="${cur}" selected`);
@@ -1689,7 +1712,9 @@ document.getElementById('metaSave').onclick = async () => {
     const tuning_overrides = {};
     for (const sel of document.querySelectorAll('#metaTunings select[data-kind]')) {
       const off = TUNING_PRESETS[sel.value];
-      if (off) tuning_overrides[sel.dataset.kind] = off.map((v, i) => STD_TUNING_MIDI[i] + v);
+      if (off) tuning_overrides[sel.dataset.kind] = sel.dataset.kind === 'Bass'
+        ? off.slice(0, 4).map((v, i) => BASS_TUNING_MIDI[i] + v)
+        : off.map((v, i) => STD_TUNING_MIDI[i] + v);
     }
     const rr = await fetch(`/jobs/${selectedJob.id}/rebuild`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -2139,14 +2164,14 @@ function showArr(i) {
   const dur = Math.max(lastNote, lastBar, lastBeat, audioEnd, 10);
   // SB = staff bottom (string-0 line). The band between SB and H holds the
   // chord-name row, kept wide enough that names never touch the lowest notes.
-  const px = BASE_PX * zoomLevel, ROW = STAFF_ROW, R = NOTE_R, W = Math.max(900, dur * px + 60);
+  const px = BASE_PX * zoomLevel, ROW = staffRow(a), R = NOTE_R, W = Math.max(900, dur * px + 60);
   const H = STAFF_H, SB = STAFF_SB;
   tabPx = px; tabH = H;
   svg.setAttribute('width', W);
   svg.setAttribute('height', H);  // includes the chord-name band below the staff
   let s = '';
   s += waveformSvg(W, H, px);  // audio reference, drawn behind staff + notes
-  for (let str = 0; str < 6; str++) {
+  for (let str = 0; str < stringCount(a); str++) {
     const y = SB - str * ROW;
     s += `<line x1="30" y1="${y}" x2="${W-10}" y2="${y}" stroke="#3a3c45"/>`;
     s += `<text x="6" y="${y+5}" fill="${STRING_COLORS[str]}" font-size="15" font-weight="700">${stringLabel(str, a.tuning_offsets)}</text>`;
@@ -3244,7 +3269,7 @@ function openNoteEditPopup(chartTime, string, clientX, clientY) {
 
   document.getElementById('nePopupTitle').textContent = base ? T('Editar nota') : T('Nova nota');
   const stringSel = document.getElementById('neString');
-  stringSel.innerHTML = [0, 1, 2, 3, 4, 5]
+  stringSel.innerHTML = [0, 1, 2, 3, 4, 5].slice(0, stringCount(a))
     .map(i => `<option value="${i}">${esc(stringLabel(i, a.tuning_offsets))}</option>`).join('');
   stringSel.value = String(string);
   document.getElementById('neFret').value = base ? base.fret : 0;
@@ -3781,9 +3806,10 @@ function forgetToneKey(key) {
 
 // A project with no tone of its own: the build gives every chart DLC Builder's
 // default for its path (gear/default_tones.py — Lead/Combo the lead route,
-// Rhythm the rhythm one). Said wherever tones are shown, so "no tones" never
-// reads as "no sound".
+// Rhythm the rhythm one, the Bass its own). Said wherever tones are shown, so
+// "no tones" never reads as "no sound".
 function standardToneFor(kind) {
+  if (/bass/i.test(kind || '')) return T('Bass (Eden WT550)');
   return /rhythm/i.test(kind || '') ? T('Rhythm (Orange AD50)') : T('Lead (Marshall Plexi)');
 }
 function standardTonesText() {
@@ -4806,7 +4832,7 @@ function updateLyricsProgress(status, log, forceStuck) {
 
 // Which chart the lyrics follow: the first in the build's own slot order — the
 // same chart the build times the GP file's lyrics on (gp_pipeline's `first`).
-const LYRIC_REF_ORDER = ['Lead', 'Rhythm', 'Combined', 'Alternate Lead', 'Alternate Rhythm'];
+const LYRIC_REF_ORDER = ['Lead', 'Rhythm', 'Combined', 'Alternate Lead', 'Alternate Rhythm', 'Bass'];
 function lyricRefArr() {
   for (const k of LYRIC_REF_ORDER) {
     const i = arrangements.findIndex(a => a.kind === k);
@@ -7056,7 +7082,9 @@ function updateSelectionInfo() {
     if (e.target.closest('.note-single')) return;
     const rect = svg.getBoundingClientRect();
     const clickY = e.clientY - rect.top;
-    const string = Math.min(5, Math.max(0, Math.round((STAFF_SB - clickY) / STAFF_ROW)));
+    const arrNow = arrangements[currentArr];
+    const string = Math.min(stringCount(arrNow) - 1,
+      Math.max(0, Math.round((STAFF_SB - clickY) / staffRow(arrNow))));
     openNoteEditPopup(nearestGridChartTime(e.clientX - rect.left), string, e.clientX, e.clientY);
   });
 })();
@@ -7439,20 +7467,19 @@ async function synthesizeArrangement(kind) {
   if (!a || !a.notes || !a.notes.length) return null;
   const sr = 44100;
   const gp = isGpJob();
-  const offs = a.tuning_offsets || [0, 0, 0, 0, 0, 0];
   const ratio = tempoRatioOf(a);
   const warp = buildTimeWarp(syncAnchorsByKind[kind] || []);
   const pad = livePad();  // previewScale's own shift
   const events = [];
   let maxT = 0;
   for (const n of a.notes) {
-    if (n.string < 0 || n.string > 5 || n.fret < 0) continue;
+    if (n.string < 0 || n.string >= stringCount(a) || n.fret < 0) continue;
     // Same recording-clock position the note is drawn at (see previewScale /
     // timeToX): GP applies tempo/offset/anchor sync; audio-ML notes are already
     // at raw recording time.
     const tRec = gp ? warp((n.time - scoreShift) * ratio + pad) - viewOrigin : n.time;
     if (tRec < 0) continue;
-    events.push({ t: tRec, chartT: n.time, midi: STD_TUNING_MIDI[n.string] + (offs[n.string] || 0) + n.fret });
+    events.push({ t: tRec, chartT: n.time, midi: openMidi(a, n.string) + n.fret });
     if (tRec > maxT) maxT = tRec;
   }
   if (!events.length) return null;
@@ -7474,7 +7501,8 @@ async function synthesizeArrangement(kind) {
 let fretboardOn = true;
 const FB = { frets: 24, fw: 26, sh: 20, x0: 46, y0: 14 };
 function fretXY(string, fret) {
-  const y = FB.y0 + (5 - string) * FB.sh;             // string 5 (high e) on top
+  const top = stringCount(arrangements[currentArr]) - 1;  // the highest string on top
+  const y = FB.y0 + (top - string) * FB.sh;
   const x = fret <= 0 ? FB.x0 - 6 : FB.x0 + (fret - 0.5) * FB.fw;  // open note at the nut
   return { x, y };
 }
@@ -7485,10 +7513,11 @@ function drawFretboard() {
   const wrap = document.getElementById('fretboardWrap');
   if (wrap) wrap.style.display = fretboardOn ? '' : 'none';
   if (!fretboardOn) { svg.innerHTML = ''; return; }
-  const neckH = 5 * FB.sh, top = FB.y0, bottom = FB.y0 + neckH;
+  const a = arrangements[currentArr];
+  const nStr = stringCount(a);
+  const neckH = (nStr - 1) * FB.sh, top = FB.y0, bottom = FB.y0 + neckH;
   const W = FB.x0 + FB.frets * FB.fw + 14, H = bottom + 26;
   svg.setAttribute('width', W); svg.setAttribute('height', H);
-  const a = arrangements[currentArr];
   const offs = (a && a.tuning_offsets) || [0, 0, 0, 0, 0, 0];
   let s = `<rect x="${FB.x0}" y="${top}" width="${FB.frets * FB.fw}" height="${neckH}" fill="#3a2e24"/>`;
   const dot = (f, cy) => `<circle cx="${FB.x0 + (f - 0.5) * FB.fw}" cy="${cy}" r="4" fill="#6b5b4a"/>`;
@@ -7500,9 +7529,9 @@ function drawFretboard() {
     const x = FB.x0 + f * FB.fw;
     s += `<line x1="${x}" y1="${top}" x2="${x}" y2="${bottom}" stroke="${f === 0 ? '#e8e8e8' : '#59606d'}" stroke-width="${f === 0 ? 4 : 1.5}"/>`;
   }
-  for (let i = 0; i < 6; i++) {
-    const y = FB.y0 + (5 - i) * FB.sh;
-    s += `<line x1="${FB.x0}" y1="${y}" x2="${FB.x0 + FB.frets * FB.fw}" y2="${y}" stroke="#9aa1ae" stroke-width="${1 + (5 - i) * 0.35}"/>`;
+  for (let i = 0; i < nStr; i++) {
+    const y = FB.y0 + (nStr - 1 - i) * FB.sh;
+    s += `<line x1="${FB.x0}" y1="${y}" x2="${FB.x0 + FB.frets * FB.fw}" y2="${y}" stroke="#9aa1ae" stroke-width="${1 + (nStr - 1 - i) * 0.35 + (isBassArr(a) ? 0.8 : 0)}"/>`;
     s += `<text x="${FB.x0 - 16}" y="${y + 4}" fill="${STRING_COLORS[i]}" font-size="12" font-weight="700" text-anchor="middle">${stringLabel(i, offs)}</text>`;
   }
   s += `<g id="fretOverlay"></g>`;
@@ -7518,7 +7547,8 @@ function updateFretboard(vtDisp, warp) {
   const ratio = tempoScaleLive / builtScale;
   let s = '';
   for (const n of notes) {
-    if (n.string < 0 || n.string > 5 || n.fret < 0 || n.fret > FB.frets) continue;
+    if (n.string < 0 || n.string >= stringCount(arrangements[currentArr]) || n.fret < 0
+        || n.fret > FB.frets) continue;
     const on = warp(previewScale(n.time));
     const dur = Math.max((n.sustain || 0) * ratio, 0.16);  // light for the note's duration
     if (vtDisp < on - 0.03 || vtDisp > on + dur) continue;
@@ -7561,6 +7591,7 @@ function hw3dRefresh(a, notes) {
     beats: (a.beats || []).map(at),
     sections: songSections.map(sec => ({ t: at(sec.time), name: sec.name })),
     tuning: a.tuning_offsets || [0, 0, 0, 0, 0, 0],
+    strings: stringCount(a),
   };
   // showArr runs on every pending edit; rebuilding the lane only when something changed.
   const key = JSON.stringify(data);
@@ -7679,8 +7710,8 @@ function playArrangementPreview() {
   audioCtx.resume();
   const t0 = audioCtx.currentTime + 0.1;
   for (const n of a.notes) {
-    if (n.string < 0 || n.string > 5 || n.fret < 0) continue;
-    const midi = STD_TUNING_MIDI[n.string] + (a.tuning_offsets[n.string] || 0) + n.fret;
+    if (n.string < 0 || n.string >= stringCount(a) || n.fret < 0) continue;
+    const midi = openMidi(a, n.string) + n.fret;
     const hz = midiToHz(midi);
     const start = t0 + n.time;
     const dur = Math.min(Math.max(n.sustain || 0.12, 0.12), 2);
@@ -8105,7 +8136,6 @@ function syncFrame() {
   // Fire each note's tick when the playhead reaches its *previewed* display
   // position, so live tempo/offset/anchor edits are immediately audible.
   const arrNow = arrangements[currentArr];
-  const offs = (arrNow && arrNow.tuning_offsets) || [0, 0, 0, 0, 0, 0];
   // Cap how many overdue ticks one frame may sound. playNote schedules at
   // audioCtx.currentTime ("now"), so if the main thread stalled (a redraw, GC),
   // draining the whole backlog started every missed note at the SAME sample
@@ -8116,8 +8146,8 @@ function syncFrame() {
   while (tickIdx < notes.length && warp(previewScale(notes[tickIdx].time)) <= vtDisp) {
     if (tickOn && sounded < MAX_TICKS_PER_FRAME) {
       const note = notes[tickIdx];
-      if (note.string >= 0 && note.string <= 5 && note.fret >= 0) {
-        playNote(STD_TUNING_MIDI[note.string] + (offs[note.string] || 0) + note.fret, note.time);
+      if (note.string >= 0 && note.string < stringCount(arrNow) && note.fret >= 0) {
+        playNote(openMidi(arrNow, note.string) + note.fret, note.time);
         sounded++;
       }
     }
@@ -8551,9 +8581,17 @@ function applyInspectResult(b) {
       .filter(t => !t.is_percussion && t.string_count === 6)
       .map(t => `<option value="${t.index}">${t.index}: ${esc(t.name)}</option>`).join('');
   }
-  // Auto-assign the first eligible track to Lead so step 2 has a sensible default.
+  // A Bass chart is made from a 4- or 5-string track (a 5-string folds onto 4).
+  const bassTracks = (b.tracks || []).filter(t => !t.is_percussion && isBassTrackStrings(t.string_count));
+  const bassSel = form.querySelector('select[name=bass_track]');
+  bassSel.innerHTML = '<option value="">—</option>' + bassTracks
+    .map(t => `<option value="${t.index}">${t.index}: ${esc(t.name)}</option>`).join('');
+  // Auto-assign the first eligible track to Lead so step 2 has a sensible default,
+  // and the bass the way the server would pick it (named "bass", else the only one).
   const firstTrack = (b.tracks || []).find(t => !t.is_percussion && t.string_count === 6);
   if (firstTrack) form.querySelector('select[name=lead_track]').value = String(firstTrack.index);
+  const bassPick = bassTracks.find(t => /bass|baixo/i.test(t.name)) || (bassTracks.length === 1 ? bassTracks[0] : null);
+  if (bassPick) bassSel.value = String(bassPick.index);
   if (b.title) form.querySelector('input[name=title]').value = b.title;
   if (b.artist) form.querySelector('input[name=artist]').value = b.artist;
   if (b.album) form.querySelector('input[name=album]').value = b.album;

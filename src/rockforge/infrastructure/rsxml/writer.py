@@ -194,7 +194,7 @@ def _append_note_el(parent: ET.Element, tag: str, n: TabNote) -> ET.Element:
 def render_arrangement(arr: Arrangement, album_art_urn: str | None = None) -> ET.Element:
     song = ET.Element("song", version="8")
     ET.SubElement(song, "title").text = arr.metadata.title
-    # The <arrangement> tag carries the Rocksmith path name (Lead/Rhythm/Combo) —
+    # The <arrangement> tag carries the Rocksmith path name (Lead/Rhythm/Combo/Bass) —
     # an alternate folds onto its base name, not the display "Alternate Lead".
     ET.SubElement(song, "arrangement").text = arr.kind.base_kind.value
     ET.SubElement(song, "part").text = "1"
@@ -238,7 +238,11 @@ def render_arrangement(arr: Arrangement, album_art_urn: str | None = None) -> ET
     has_chords = any(len(g) > 1 for g in groups_preview)
     has_double_stops = any(len(g) == 2 for g in groups_preview)
     is_rhythm = arr.kind.base_kind is ArrangementKind.RHYTHM
+    is_bass = arr.kind.is_bass
     is_alt = arr.kind.is_alternate
+    # A bass's chords are double stops, not the guitar chord types these flags
+    # name (DLC Builder copies them from the XML; EOF leaves them off on a bass).
+    guitar_chords = has_chords and not is_bass
     props = ET.SubElement(song, "arrangementProperties")
     for attr, value in (
         ("represent", "0" if is_alt else "1"),
@@ -246,9 +250,9 @@ def render_arrangement(arr: Arrangement, album_art_urn: str | None = None) -> ET
         ("standardTuning", "1" if all(o == 0 for o in offsets) else "0"),
         ("nonStandardChords", "0"),
         ("barreChords", "0"),
-        ("powerChords", "1" if has_chords else "0"),
+        ("powerChords", "1" if guitar_chords else "0"),
         ("dropDPower", "0"),
-        ("openChords", "1" if has_chords else "0"),
+        ("openChords", "1" if guitar_chords else "0"),
         ("fingerPicking", "0"),
         ("pickDirection", "1" if any(n.pick_direction for n in arr.notes) else "0"),
         ("doubleStops", "1" if has_double_stops else "0"),
@@ -270,10 +274,10 @@ def render_arrangement(arr: Arrangement, album_art_urn: str | None = None) -> ET
         ("syncopation", "0"),
         ("bassPick", "0"),
         ("sustain", "1" if any(n.sustain > 0 for n in arr.notes) else "0"),
-        ("pathLead", "0" if is_rhythm else "1"),
+        ("pathLead", "0" if is_rhythm or is_bass else "1"),
         ("pathRhythm", "1" if is_rhythm else "0"),
-        ("pathBass", "0"),
-        ("routeMask", "2" if is_rhythm else "1"),
+        ("pathBass", "1" if is_bass else "0"),
+        ("routeMask", "4" if is_bass else "2" if is_rhythm else "1"),
         ("Metronome", "0"),
     ):
         props.set(attr, value)
