@@ -7,10 +7,18 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 ## [Unreleased]
 
 ### New
+- **Sync automatically, with a variable tempo — experimental** (Sync inspector): analyses the
+  recording and moves each bar to where its notes sound, letting the tempo change over the song.
+  It keeps the chart's beats (it cannot read the song at double or half speed), stays as pending
+  corrections one Ctrl+Z undoes, and lists the bars to check by ear (those after a rest and those
+  that did not match). It can get it wrong: tested on synthetic recordings, not yet on real songs.
 - **An icon of its own**: an orange guitar pick with an anvil and a spark. It shows on the
   `.exe`, the taskbar, the shortcuts, the installer and the browser tab.
 
 ### Fixed
+- **No mode is selected when a project opens.** “Fix from here” was on by default, and the first
+  click on a note re-timed the song; now a click only selects or moves the cursor until you pick
+  a mode.
 - **The black screen that flashed when clicking some buttons in the `.exe`**: it was the console
   window of each program the app runs behind the scenes (ffmpeg, the extra components' Python,
   yt-dlp…). They all run without a window now.

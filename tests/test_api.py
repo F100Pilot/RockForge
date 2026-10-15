@@ -2082,6 +2082,41 @@ def test_detect_tempo_returns_local_factor(client: TestClient, tmp_path, monkeyp
     assert out["suggested_factor"] == pytest.approx(1.0)
 
 
+def test_automatic_sync_aligns_the_beats_the_viewer_sends(
+    client: TestClient, tmp_path, monkeypatch
+) -> None:
+    """EXPERIMENTAL "Sincronizar automaticamente": the viewer sends the chart's
+    beats and notes as it shows them; the answer is where each beat sits in the
+    recording, plus what to check. Beats out of order are refused before any
+    analysis runs."""
+    import rockforge.infrastructure.rhythm.librosa_adapter as rhythm
+
+    seen: dict[str, object] = {}
+
+    def _fake(src, beats, notes):
+        seen.update(src=src, beats=beats, notes=notes)
+        return {
+            "times": [b * 1.02 for b in beats], "support": [0.9, None, 1.1],
+            "after_gap": [2], "evidence_before": 0.4, "evidence_after": 1.0,
+            "ratio_min": 1.02, "ratio_max": 1.02, "duration": 30.0,
+        }
+
+    monkeypatch.setattr(rhythm, "align_to_recording", _fake)
+    job = _gp_job(client, tmp_path)
+    r = client.post(
+        f"/jobs/{job['id']}/detect-beat-sync",
+        json={"beats": [1.0, 1.5, 2.0], "notes": [1.0, 1.25, 2.0]},
+    )
+    assert r.status_code == 200, r.text
+    out = r.json()
+    assert out["times"] == pytest.approx([1.02, 1.53, 2.04])
+    assert out["support"] == [0.9, None, 1.1] and out["after_gap"] == [2]
+    assert seen["beats"] == [1.0, 1.5, 2.0] and seen["notes"] == [1.0, 1.25, 2.0]
+    seen.clear()
+    bad = client.post(f"/jobs/{job['id']}/detect-beat-sync", json={"beats": [1.0, 0.5]})
+    assert bad.status_code == 422 and not seen
+
+
 def test_detect_tempo_measures_against_the_chart_bpm_not_the_header(
     client: TestClient, tmp_path, monkeypatch
 ) -> None:

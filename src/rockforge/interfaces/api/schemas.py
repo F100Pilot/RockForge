@@ -388,6 +388,26 @@ class DetectTempoOut(BaseModel):
     used_drum_stem: bool = False  # tempo measured on the isolated drum stem?
 
 
+class DetectBeatSyncIn(BaseModel):
+    """EXPERIMENTAL automatic sync with a variable tempo: the chart's beats from
+    the bar the user starts at, and its note onsets, both in seconds of the
+    recording as the viewer shows them NOW (pending corrections included)."""
+
+    beats: list[Finite] = Field(min_length=2, max_length=20000)
+    notes: list[Finite] = Field(default_factory=list, max_length=200000)
+
+
+class DetectBeatSyncOut(BaseModel):
+    times: list[float]  # where each beat sits in the recording
+    support: list[float | None]  # how strongly its notes land on attacks (None: no note)
+    after_gap: list[int]  # beats right after a rest: where a whole subdivision can slip
+    evidence_before: float  # mean attack strength under the notes, as shown now
+    evidence_after: float  # … and once aligned
+    ratio_min: float  # the shortest/longest a beat became, relative to now
+    ratio_max: float
+    duration: float  # the recording's length in seconds
+
+
 class DetectTuningOut(BaseModel):
     """Proposed fine-tuning correction (not applied; the user reviews then
     rebuilds). String/drop tuning is NOT detected — see librosa_adapter."""

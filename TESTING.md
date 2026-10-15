@@ -604,6 +604,22 @@ verify by hand on a fast/dense song where librosa mis-reads the tempo:
    (blast beats, half/double-time feels) — the MIDI tempo-map import
    (`/sync-from-midi`) remains the ground-truth fallback.
 
+### 7b-auto. Sincronizar automaticamente — EXPERIMENTAL (needs `[ml]`)
+
+CI tests the alignment on synthetic envelopes (`tests/test_beat_align.py`) and,
+where librosa is installed, a synthesized recording run through the runner as a
+script; the endpoint with a fake. What only a real song can show:
+
+1. A GP job whose tab drifts from the recording (a tab written at one tempo
+   against a live take). Set the start of bar 1 (Step 1) and the rough BPM.
+2. Sincronização → **Sincronizar automaticamente** → **Detetar e alinhar**.
+   The status says how many bars were aligned and the ♩ range; listen through
+   the song, especially the bars under **Verifica de ouvido**.
+3. Ctrl+Z must take every correction back at once; **Aplicar e reconstruir**
+   must build the chart where the preview showed it.
+4. Note where it went wrong (a slipped beat, a section it could not follow) —
+   that is the evidence for improving it or taking it out again.
+
 ### 7c. Automatic lyric detection (needs `[ml,lyrics]`)
 
 1. Open a completed job → "Letras" → "Detetar letra".

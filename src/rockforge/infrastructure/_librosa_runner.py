@@ -163,21 +163,212 @@ def tone_report(audio: str) -> dict[str, object]:
     return {"features": features, "windows": windows}
 
 
+# ── Variable-tempo alignment (EXPERIMENTAL) ─────────────────────────────────
+# The chart already knows what the recording is supposed to play: how many
+# beats, where each note falls inside its beat. What it does not know is WHEN,
+# once the recording's tempo wanders away from the written one. So instead of
+# asking "where are the beats?" (the open question the removed whole-song
+# estimators answered badly — wrong metrical level, corrections everywhere),
+# this asks the narrow one: keeping the chart's own beats in order, how must
+# each one move so that the notes land on attacks heard in the recording,
+# with a tempo that changes slowly? The number of beats can never change, so
+# the metrical level cannot be misread. A beam search over the beats, in plain
+# Python (no numpy), so CI can test it without the ML stack.
+ALIGN_HOP_S = 0.01           # the onset envelope's frame, in seconds
+ALIGN_RATIO = (0.80, 1.25)   # a beat may last this much less/more than shown now
+ALIGN_SMOOTH = 0.03          # a 3 % tempo change from one beat to the next costs
+                             # as much as one note landing on a full attack
+ALIGN_BEAM = 48              # states kept per beat
+ALIGN_START_S = 0.25         # the first beat is searched this far around where it shows
+ALIGN_GAP_BEATS = 4          # beats without a note before one that is flagged to check
+ALIGN_BEAT_WEIGHT = 0.35     # an attack on a beat with no note of the chart still counts a little
+
+
+def _normalized(env: list[float]) -> list[float]:
+    """The envelope scaled by its 95th percentile (one loud hit cannot flatten
+    the rest), capped, then widened by one frame each side so an attack a frame
+    off still counts."""
+    if not env:
+        return []
+    ranked = sorted(env)
+    ref = ranked[int(0.95 * (len(ranked) - 1))] or max(ranked) or 1.0
+    e = [min(v / ref, 1.5) for v in env]
+    return [max(e[max(0, i - 1):i + 2]) for i in range(len(e))]
+
+
+def align_beats(
+    env: list[float],
+    hop: float,
+    beats: list[float],
+    notes: list[float],
+    *,
+    beam: int = ALIGN_BEAM,
+    start_window: float = ALIGN_START_S,
+) -> dict[str, object]:
+    """Move each chart beat (``beats``, seconds of the recording as the chart
+    shows them now, ascending) to where the recording plays it, given the
+    recording's onset envelope ``env`` (one value per ``hop`` seconds) and the
+    chart's note onsets ``notes`` (same clock). Returns the new beat times,
+    each beat's ``support`` (how strongly the notes after it land on attacks,
+    0..1.5, None for a beat with no note) and the mean note evidence before
+    and after, so the caller can say when nothing improved."""
+    import bisect
+    import math
+
+    n = len(beats)
+    if n < 2:
+        raise ValueError("need at least two beats to align")
+    e = _normalized(env)
+
+    def ev(t: float) -> float:
+        i = int(round(t / hop))
+        return e[i] if 0 <= i < len(e) else 0.0
+
+    # Each note as (beat, fraction of the way to the next beat); one on a beat
+    # counts for that beat.
+    seg: list[list[float]] = [[] for _ in range(n - 1)]
+    on_beat = [0] * n
+    for t in notes:
+        k = bisect.bisect_right(beats, t) - 1
+        if k < 0 or k >= n - 1:
+            if k == n - 1 and abs(t - beats[-1]) < 0.02:
+                on_beat[-1] += 1
+            continue
+        frac = (t - beats[k]) / (beats[k + 1] - beats[k])
+        if frac < 0.02:
+            on_beat[k] += 1
+        elif frac > 0.98:
+            on_beat[k + 1] += 1
+        else:
+            seg[k].append(frac)
+
+    def beat_gain(i: int, t: float) -> float:
+        return ev(t) * (on_beat[i] + ALIGN_BEAT_WEIGHT)
+
+    # A state: (score, time of this beat, stretch of the segment that led here,
+    # index of the parent state in the previous beat's list).
+    frames0 = range(
+        max(0, math.ceil((beats[0] - start_window) / hop)),
+        math.floor((beats[0] + start_window) / hop) + 1,
+    )
+    states = [
+        (beat_gain(0, f * hop) - ((f * hop - beats[0]) / start_window) ** 2, f * hop, 1.0, -1)
+        for f in frames0
+    ] or [(0.0, beats[0], 1.0, -1)]
+    states.sort(key=lambda s: -s[0])
+    states = states[:beam]
+    history = [states]
+    lo_r, hi_r = ALIGN_RATIO
+    for i in range(n - 1):
+        d = beats[i + 1] - beats[i]
+        fracs = seg[i]
+        best: dict[tuple[int, int], tuple[float, float, float, int]] = {}
+        for p, (score, t, s, _) in enumerate(states):
+            f_lo = math.ceil((t + d * lo_r) / hop)
+            f_hi = math.floor((t + d * hi_r) / hop)
+            for f in range(f_lo, f_hi + 1):
+                t2 = f * hop
+                r = (t2 - t) / d
+                sc = score + beat_gain(i + 1, t2) - (math.log(r / s) / ALIGN_SMOOTH) ** 2
+                for frac in fracs:
+                    sc += ev(t + frac * (t2 - t))
+                key = (f, round(math.log(r) / 0.01))
+                old = best.get(key)
+                if old is None or sc > old[0]:
+                    best[key] = (sc, t2, r, p)
+        states = sorted(best.values(), key=lambda s: -s[0])[:beam]
+        history.append(states)
+
+    times = [0.0] * n
+    k = 0
+    for i in range(n - 1, -1, -1):
+        st = history[i][k]
+        times[i] = st[1]
+        k = st[3]
+
+    def note_times(bt: list[float]) -> list[tuple[int, float]]:
+        out = [(i, bt[i]) for i in range(n) for _ in range(on_beat[i])]
+        for i, fr in enumerate(seg):
+            out += [(i, bt[i] + x * (bt[i + 1] - bt[i])) for x in fr]
+        return out
+
+    after = note_times(times)
+    support: list[float | None] = [None] * n
+    per: list[list[float]] = [[] for _ in range(n)]
+    for i, t in after:
+        per[i].append(ev(t))
+    for i, vals in enumerate(per):
+        if vals:
+            support[i] = round(sum(vals) / len(vals), 3)
+    # Where the recording was silent for the chart (a bar of rests or more),
+    # nothing held the tempo, and the first beat with notes again can lock a
+    # whole subdivision off while looking perfectly supported — the one
+    # failure the measurements could not rule out. Those beats are named for
+    # the user to check by ear.
+    after_gap = []
+    last = -1
+    for i in range(n):
+        if per[i]:
+            if last >= 0 and i - last >= ALIGN_GAP_BEATS:
+                after_gap.append(i)
+            last = i
+    before = note_times(list(beats))
+    ratios = [(times[i + 1] - times[i]) / (beats[i + 1] - beats[i]) for i in range(n - 1)]
+    return {
+        "times": [round(t, 4) for t in times],
+        "support": support,
+        "after_gap": after_gap,
+        "evidence_before": round(sum(ev(t) for _, t in before) / max(1, len(before)), 3),
+        "evidence_after": round(sum(ev(t) for _, t in after) / max(1, len(after)), 3),
+        "ratio_min": round(min(ratios), 3),
+        "ratio_max": round(max(ratios), 3),
+    }
+
+
+def onset_envelope(audio: str, hop: float = ALIGN_HOP_S) -> tuple[list[float], float]:
+    """The recording's onset strength, one value per ``hop`` seconds."""
+    import librosa
+    import numpy as np
+
+    y, rate = librosa.load(audio, sr=22050, mono=True)
+    if len(y) == 0:
+        raise ValueError("empty audio file")
+    sr = int(rate)
+    hop_len = max(1, int(round(hop * sr)))
+    env = librosa.onset.onset_strength(y=y, sr=sr, hop_length=hop_len)
+    return [float(v) for v in np.asarray(env)], hop_len / sr
+
+
+def beat_align(audio: str, spec_path: str) -> dict[str, object]:
+    """``align_beats`` on ``audio``, with the beats and notes read from a JSON
+    file (``{"beats": [...], "notes": [...]}``) — too long for a command line."""
+    with open(spec_path, encoding="utf-8") as fh:
+        spec = json.load(fh)
+    env, hop = onset_envelope(audio)
+    result = align_beats(env, hop, [float(x) for x in spec["beats"]],
+                         [float(x) for x in spec.get("notes", [])])
+    result["duration"] = round(len(env) * hop, 3)
+    return result
+
+
 def main(argv: list[str] | None = None) -> int:
     """Print ONE line of JSON on stdout. ``ml_python.run_json`` reads the last
     line, so librosa's own warnings on stderr (or a chatty backend on stdout)
     cannot corrupt the answer."""
     parser = argparse.ArgumentParser(description="librosa measurements for RockForge")
-    parser.add_argument("command", choices=("tempo", "tuning", "tone"))
+    parser.add_argument("command", choices=("tempo", "tuning", "tone", "beatalign"))
     parser.add_argument("--audio", required=True)
     parser.add_argument("--start", type=float, default=0.0)
     parser.add_argument("--expected-bpm", type=float, default=0.0)
+    parser.add_argument("--spec", default="")
     args = parser.parse_args(argv)
 
     if args.command == "tempo":
         result: dict[str, object] = {
             "bpm": tempo_from(args.audio, args.start, args.expected_bpm or None)
         }
+    elif args.command == "beatalign":
+        result = beat_align(args.audio, args.spec)
     elif args.command == "tuning":
         result = {"cents": tuning_cents(args.audio)}
     else:
@@ -187,4 +378,12 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
+    # Run as a script, this file's folder is sys.path[0], and it holds
+    # RockForge's own ``packaging`` package — which then stands in for the pip
+    # ``packaging`` librosa imports (``No module named 'packaging.version'``).
+    # Nothing here is imported from that folder.
+    import os
+
+    here = os.path.dirname(os.path.abspath(__file__))
+    sys.path[:] = [p for p in sys.path if os.path.abspath(p or os.curdir) != here]
     sys.exit(main())

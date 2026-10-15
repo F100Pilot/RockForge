@@ -438,6 +438,9 @@
   #tapSyncCard.tap-armed { border-color:var(--accent); }
   .tap-hit { width:100%; min-height:3.4rem; font-size:1.1rem; font-weight:700; margin:.4rem 0; }
   .tap-hit:active { transform:scale(.98); }
+  .exp-card { border-style:dashed; }
+  .exp-badge { display:inline-block; margin-left:.4rem; padding:.05rem .45rem; border-radius:999px; font-size:.72rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:#1a1208; background:var(--warn); vertical-align:middle; }
+  #autoSyncCheckList { display:flex; flex-wrap:wrap; gap:.35rem; }
   #fhpPopup { position:fixed; z-index:70; background:var(--panel-2); border:1px solid var(--accent);
     border-radius:8px; padding:.7rem .8rem; box-shadow:0 8px 24px rgba(0,0,0,.5); font-size:.85rem; }
   #fhpPopup[hidden] { display:none; }
@@ -1197,6 +1200,18 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                   </div>
                 </div>
                 <span id="tapStatus" class="meta" aria-live="polite"></span>
+              </div>
+              <div class="pv-card exp-card" id="autoSyncCard">
+                <div class="pv-card-head">Sincronizar automaticamente <span class="exp-badge">Experimental</span>
+                  <button class="info-btn" data-info="beat-sync">ⓘ</button></div>
+                <div class="pv-card-desc">Analisa a gravação e encaixa cada compasso nas notas que se ouvem, deixando o andamento mudar ao longo da música. <b>Pode errar.</b> Acerta primeiro o início desse compasso, e ouve sempre o resultado — um Ctrl+Z desfaz tudo.</div>
+                <div class="pv-row">
+                  <span>A partir do compasso</span>
+                  <select id="autoSyncFromBar" style="width:auto" aria-label="A partir do compasso"></select>
+                </div>
+                <button type="button" id="autoSyncRun" class="pv-wide"><svg class="ic" aria-hidden="true"><use href="#i-wave"/></svg>Detetar e alinhar</button>
+                <span id="autoSyncStatus" class="meta" aria-live="polite"></span>
+                <div class="est-bars" id="autoSyncCheckRow" hidden><span>Verifica de ouvido:</span><span id="autoSyncCheckList"></span></div>
               </div>
             </div>
 

@@ -7,10 +7,19 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 ## [Por lançar]
 
 ### Novo
+- **Sincronizar automaticamente, com andamento variável — experimental** (inspetor
+  Sincronização): analisa a gravação e leva cada compasso para onde as suas notas soam, deixando o
+  andamento mudar ao longo da música. Mantém os tempos da partitura (não lê a música ao dobro ou à
+  metade), fica como correções pendentes que se desfazem com um Ctrl+Z, e lista os compassos a
+  verificar de ouvido (os que vêm depois de uma pausa e os que não bateram certo). Pode errar:
+  testado em gravações sintéticas, ainda não em músicas reais.
 - **Ícone próprio**: uma palheta de guitarra laranja com uma bigorna e uma faísca. Aparece no
   `.exe`, na barra de tarefas, nos atalhos, no instalador e no separador do browser.
 
 ### Corrigido
+- **Nenhum modo vem selecionado ao entrar num projeto.** O «Corrigir daqui» estava ligado por
+  omissão, e o primeiro clique numa nota re-temporizava a música; agora um clique só seleciona ou
+  move o cursor até escolheres um modo.
 - **O ecrã preto que piscava ao clicar em alguns botões no `.exe`**: era a janela de consola de
   cada programa que a app corre por trás (ffmpeg, o Python dos componentes extra, yt-dlp…). Passam
   todos a correr sem janela.

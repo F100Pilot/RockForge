@@ -618,6 +618,10 @@ clean up residual non-linear drift.
 
 ### Automatic sync was REMOVED (2026-08) — manual only
 
+> **Since 2026-10-15 one automatic tool is back, EXPERIMENTAL and on the user's
+> request**: "Sincronizar automaticamente" (variable tempo), built so the two
+> failures below cannot recur — see "Automatic sync with a variable tempo" below.
+
 > Every **automatic** synchronisation feature was deleted at the user's explicit
 > request after none of them produced a usable result on their real material:
 > `/auto-sync` (one average tempo), `/auto-sync-dynamic` (onset-correspondence
@@ -649,6 +653,61 @@ clean up residual non-linear drift.
 > if any of it is ever worth reviving — the algorithms are documented in those
 > commit messages, including the measured failure modes.
 
+
+### Automatic sync with a variable tempo — EXPERIMENTAL (2026-10-15)
+
+The user asked for it back, clearly marked experimental ("Quero que avances
+para a sincronização de BPM variável … tem de ficar claramente marcada como
+experimental"), after the question "if guitar-pro-youtube-sync can, we must"
+— that tool does NOT detect anything (it reads Songsterr's human-marked bar
+times, which RockForge already uses); this is the genuinely automatic path.
+It is built to avoid the two measured failures of the removed tools:
+
+- **The metrical level cannot be misread.** It does not ask "where are the
+  beats?" but "how must each of the chart's OWN beats move so its notes land
+  on attacks heard in the recording?" — the number and order of beats is
+  fixed by the chart. `_librosa_runner.align_beats` (plain Python, no numpy,
+  so CI tests it): a beam search (48 states) over the beats, each beat
+  allowed 0.80-1.25× its current length, scored by the onset envelope
+  (librosa `onset_strength`, 10 ms, scaled by its 95th percentile, widened a
+  frame) at every note's position inside its beat, a little at the beat
+  itself (`ALIGN_BEAT_WEIGHT`, a drum hit), minus a smoothness cost on the
+  log-change of tempo from one beat to the next (`ALIGN_SMOOTH` = 3 % per beat
+  costs one full attack); the first beat searched ±0.25 s around where it
+  shows. A trend (second-order) model was tried and was worse.
+- **Corrections cannot scatter.** The answer is turned into ordinary pending
+  anchors exactly like "Marcar a ouvir" taps (`runAutoSync` → `planTaps`, one
+  per bar downbeat), so it previews, is ONE undo step and rides "Aplicar e
+  reconstruir"; bars whose notes landed weakly (`support` < 0.5) are left out
+  (the warp carries them) and listed with the bars after a rest
+  (`after_gap`: ≥ 4 beats with no note — through silence nothing holds the
+  tempo, and the measurements below show that is exactly where a whole
+  subdivision can slip while looking supported) under "Verifica de ouvido".
+  No improvement in mean note evidence = nothing applied.
+
+Plumbing: `POST /jobs/{id}/detect-beat-sync` (`DetectBeatSyncIn`: beats ≥ 2,
+increasing, and note onsets, in seconds of the recording as the viewer shows
+them; the full MIX is analysed — a stem may be trimmed to the song's start),
+`librosa_adapter.align_to_recording` (in-process with librosa, else the ML
+interpreter via `beatalign --spec <json>`), card `#autoSyncCard` in the
+Sincronização inspector after "Marcar a ouvir", with an EXPERIMENTAL badge
+and ⓘ (`beat-sync`). **Found on the way:** run as a script, the runner's own
+folder is `sys.path[0]` and holds RockForge's `packaging` package, which
+then shadows the pip `packaging` librosa imports — every runner command
+failed from a source install with an external ML Python (the frozen bundle
+has no `__init__.py` there, so the pip one won); the `__main__` block now
+drops that folder. Measured (synthetic, `tests/test_beat_align.py`, each
+piece mutation-checked): ±6 % tempo wander + 3 % overall, two-bar riffs with
+rests, missed and spurious attacks, with or without drums → every bar with
+notes within 50 ms (from up to 4.3 s off); a chart already in time stays
+within 20 ms; stress cases (±10 % wander through a silent rest, uniform
+eighths with no accents) slip a beat in 2 of 10 songs, always flagged. End
+to end on an invented GP5 + a synthesized "recording" (librosa, Playwright,
+a real rebuild): 30 of 32 bars aligned, from up to 2.5 s off to ≤ 28 ms
+(the two rest bars 65 ms), a consistent ~+15 ms lag of the onset envelope,
+`/psarc-check` clean. **Never run on a real song from here** — that is the
+user's test; the release smoke test runs it in the frozen `.exe` through the
+components' Python.
 
 ### Exporting a corrected Guitar Pro file (`/export-gp`)
 
@@ -967,7 +1026,10 @@ and disables both buttons when there is nothing to clear.
 
 ### The recommended workflow: "Corrigir daqui" (`newbeat` mode, `/detect-tempo`)
 
-This is the DEFAULT sync mode (`syncMode = 'newbeat'`), and it is the one the
+This is the RECOMMENDED sync mode (it used to be selected on entry; since
+2026-10-15 no mode is — `syncMode = null`, reset by `closeDetail` — because "sempre
+que entro … existe um modo que está selecionado e não devia": the first click
+on a note re-timed the song), and it is the one the
 user found actually holds up on real material — worth recording why, because it
 is the same principle every removed automatic tool was trying and failing to
 apply on its own.

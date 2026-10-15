@@ -245,6 +245,22 @@ To mark calmly, slow the playback down with the speed selector next to play. **S
 taps** removes the shake of the hand. The taps stay as corrections in step 3 (one Ctrl+Z undoes
 them all) until **Apply and rebuild**; then fine-tune the rest with **Fix from here**.
 
+### A tempo that varies — Sync automatically (experimental)
+
+The **Sync automatically** card, marked **Experimental**, does what marking by ear does, on its
+own: it analyses the recording and moves each bar to where its notes sound, letting the tempo
+change over the song. **It can get it wrong** — use it like this:
+
+1. first set the start of the bar you begin from (step 1, or "= cursor") and the approximate
+   tempo;
+2. pick **From bar** and press **Detect and align** (it can take a minute);
+3. listen to the result. The bars under **Check by ear** are the ones after a rest or where the
+   notes did not match what is heard — confirm them and correct them with **Fix from here** or
+   by dragging notes.
+
+It all stays as corrections in step 3 (one Ctrl+Z undoes it all) until **Apply and rebuild**.
+It needs the audio analysis (the ML extra, or the extra components in the `.exe`).
+
 ### Step 3 — Corrections on the score
 
 For what is left, pick a mode in **Mode ▾** and click where the score drifts:

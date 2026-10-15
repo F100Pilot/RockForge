@@ -135,6 +135,15 @@ def components_check(job_id: str, work: Path) -> int:
     if not tempo.get("detected_bpm"):
         print("FAIL: no tempo measured")
         return 1
+    beats = [0.5 * i for i in range(1, 9)]
+    aligned = request("POST", f"/jobs/{job_id}/detect-beat-sync",
+                      json.dumps({"beats": beats, "notes": beats}).encode(),
+                      "application/json", timeout=600)
+    if len(aligned.get("times") or []) != len(beats):
+        print(f"FAIL: the automatic sync answered {aligned}")
+        return 1
+    print("automatic sync (experimental), in the components' Python: aligned",
+          len(aligned["times"]), "beats")
 
     pdf = work / "riff.pdf"
     pdf.write_bytes(tab_pdf([

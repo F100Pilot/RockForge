@@ -1243,6 +1243,10 @@ const INFO = {
     title: T('Sincronização — andamento'),
     body: T('<p>Se a tabulatura e a gravação se vão afastando ao longo da música (o GP foi escrito num andamento ligeiramente diferente do que foi gravado), ajusta o <strong>andamento</strong>: estica/comprime a música toda de uma vez. As notas movem-se sobre a forma de onda para confirmares o alinhamento.</p>')
   },
+  'beat-sync': {
+    title: T('Sincronizar automaticamente (experimental)'),
+    body: T('<p><b>Experimental — pode errar.</b> Para uma tab que não bate certo com a gravação porque o andamento da gravação varia: a gravação é analisada, e cada tempo da partitura é levado para onde as notas desse tempo soam — mantendo os tempos todos, pela ordem, e deixando o andamento mudar devagar. Como a partitura diz quantos tempos há, não pode ler a música ao dobro ou a metade.</p><p><b>Antes:</b> acerta o início do compasso de onde partes (Passo 1, ou "= cursor"), com uns décimos de segundo de folga, e o andamento aproximado. <b>Depois:</b> ouve. Os compassos onde as notas não bateram com o que se ouve ficam de fora (seguem os vizinhos) e aparecem em "Verifica de ouvido", com os primeiros a seguir a uma pausa — sem som, nada segura o andamento, e aí o alinhamento pode escorregar um tempo inteiro.</p><p>Tudo fica como correções pendentes (Passo 3), desfaz-se de uma vez com Ctrl+Z e só vai para o PSARC com "Aplicar e reconstruir". Precisa da análise de áudio (o extra [ml], ou os componentes extra no .exe). Testado em gravações sintéticas, ainda não em músicas reais — diz-nos como correu.</p>')
+  },
   'tap-sync': {
     title: T('Marcar a ouvir'),
     body: T('<p>Para uma tab que nunca foi sincronizada — escrita à mão num só andamento, por exemplo no Songsterr — o mais fiável é <b>marcar tu</b> quando começa cada compasso, como as pessoas fazem no Songsterr para os vídeos.</p><p>Escolhe o compasso de onde partir (o 1 começa do início da gravação; os outros, do cursor — põe-no um pouco antes) e se tocas <b>em cada compasso</b> (no primeiro tempo) ou <b>em cada tempo</b> (mais toques, mais preciso). Carrega em "Começar a marcar", ouve e carrega em <b>B</b> (ou no botão grande) a tempo. Cada toque leva esse compasso para o instante em que tocaste, e a partitura acompanha enquanto tocas. <b>Backspace</b> tira o último toque; <b>Esc</b> termina. Podes parar a meio: o que vem depois do último toque mantém o seu andamento e só se desloca com ele.</p><p>Dica: abranda a reprodução no seletor de velocidade junto ao play (90%, 75%…) para marcar com calma — os toques ficam no tempo real da gravação. "Suavizar os toques" tira o tremor da mão (alinha cada toque com os vizinhos) sem apagar as mudanças de andamento.</p><p>Tudo fica como correções pendentes (aparecem no Passo 3 e desfazem-se com Ctrl+Z, de uma vez) até "Aplicar e reconstruir". Depois afina o que faltar com "Corrigir daqui" ou arrastando notas.</p>')
@@ -1523,12 +1527,11 @@ const AUDIO_FADE_S = 0.006;
 const MAX_TICKS_PER_FRAME = 3;
 let seekDragging = false, seekWasPlaying = false;
 const WAVE_HZ = 100;
-// Default to the re-tempo mode: it is the workflow that actually holds up on
-// real material. The user supplies the one thing every automatic tool got wrong
-// — WHERE the drift starts — and the machine answers the easy, reliable
-// question: what is the recording's tempo from here? It also pins the clicked
-// note where it already is, so nothing before the click can move.
-let syncMode = 'newbeat'; // 'drag' | 'tap' | 'excerpt' | 'newbeat' | ...
+// No mode on entry: a click on the score then just selects or seeks, and a mode
+// is something the user picks ("sempre que entro … existe um modo que está
+// selecionado e não devia" — "Corrigir daqui" used to be on by default, so the
+// first click on a note re-timed the song). Back to none when a project closes.
+let syncMode = null; // null | 'drag' | 'tap' | 'excerpt' | 'newbeat' | ...
 let snapToBeats = true;   // note drag snaps to the beat grid (hold Alt = free drag)
 let snapDiv = 1;          // snap grid: 'bars' | 1 (beat) | 2/3/4 (subdivisions per beat)
 let snapPositions = [];   // grid display-positions cached for the duration of one drag
@@ -1716,6 +1719,7 @@ function closeDetail() {
   if (au) { au.removeAttribute('src'); au.load(); }
   document.getElementById('detailOverlay').hidden = true;
   sectionShownFor = null;
+  setSyncMode(null);
   refreshJobs();
 }
 document.getElementById('detailClose').onclick = closeDetail;
@@ -2642,6 +2646,7 @@ function showArr(i) {
   updateSyncOffsetDisplay();
   updateBarSyncPanel();
   fillTapBars();
+  fillAutoSyncBars();
   renderEstimatedBars();
   updateNoteEditsInfo();
   updateDeleteNotesUi();
@@ -3609,6 +3614,121 @@ function fillTapBars() {
     else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); stopTapSync(); }
   }, true);
 })();
+
+// ── "Sincronizar automaticamente" (EXPERIMENTAL) ─────────────────────────────
+// The server moves each of the chart's beats to where the recording plays them,
+// the tempo allowed to wander slowly (/detect-beat-sync). What comes back is
+// treated exactly like taps: each bar's downbeat → its aligned instant, through
+// planTaps, so it previews, rides "Aplicar e reconstruir" and is ONE undo step.
+// Bars whose notes did not land on attacks are left out (the warp interpolates
+// across them) and listed, with the first bars after a rest, to check by ear.
+const AUTO_SYNC_MIN_SUPPORT = 0.5;  // mean attack strength under a bar's notes to trust it
+let autoSyncBusy = false;
+
+async function runAutoSync() {
+  const a = arrangements[currentArr];
+  if (!a || !isGpJob() || autoSyncBusy || tapState) return;
+  const fromM = parseInt(document.getElementById('autoSyncFromBar').value, 10) || 1;
+  const grid = tapGrid(a, fromM, 'beats');
+  if (grid.length < 2) { toast(T('Esta pista não tem compassos para alinhar.'), 'err'); return; }
+  const status = document.getElementById('autoSyncStatus');
+  const btn = document.getElementById('autoSyncRun');
+  const kind = a.kind;
+  const base = syncAnchors.map(x => x.slice());
+  const warp = buildTimeWarp(base);
+  const off = playheadDisplay(0);  // display → seconds of the recording
+  const rec = t => warp(previewScale(t)) - off;
+  const noteTimes = [...new Set((a.notes || []).map(n => n.time))]
+    .filter(t => t >= grid[0] - 1e-6).sort((x, y) => x - y);
+  autoSyncBusy = true;
+  btn.disabled = true;
+  status.textContent = T('A analisar a gravação… (pode demorar um minuto)');
+  renderAutoSyncCheck([]);
+  let res;
+  try {
+    res = await getJSON(`/jobs/${selectedJob.id}/detect-beat-sync`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ beats: grid.map(rec), notes: noteTimes.map(rec) }),
+    });
+  } catch (e) {
+    status.textContent = T('Não foi possível analisar: {msg}', { msg: e.message });
+    return;
+  } finally {
+    autoSyncBusy = false;
+    btn.disabled = false;
+  }
+  if (arrangements[currentArr]?.kind !== kind) { status.textContent = ''; return; }  // tab switched meanwhile
+  const barAt = new Map((a.bars || []).map(b => [b.time.toFixed(6), b.measure]));
+  const points = [], check = new Set(), bpms = [];
+  // The bar holding each beat that follows a rest, and the bar after it.
+  const downbeats = grid.map((t, i) => [i, barAt.get(t.toFixed(6))]).filter(([, m]) => m != null);
+  for (const g of res.after_gap) {
+    const k = downbeats.findLastIndex(([i]) => i <= g);
+    for (const [, m] of downbeats.slice(Math.max(0, k), k + 2)) check.add(m);
+  }
+  let prev = null;
+  grid.forEach((t, i) => {
+    const m = barAt.get(t.toFixed(6));
+    if (m == null) return;
+    const s = res.support[i];
+    if (res.times[i] >= res.duration) return;
+    if (s == null) return;  // no note on it: the warp carries it
+    if (s < AUTO_SYNC_MIN_SUPPORT) { check.add(m); return; }
+    points.push([previewScale(t), res.times[i] + off]);
+    if (prev) {
+      const beats = grid.slice(prev.i, i).length;
+      const dt = res.times[i] - res.times[prev.i];
+      if (dt > 0) bpms.push(beats * 60 / dt);
+    }
+    prev = { i };
+  });
+  if (!points.length || res.evidence_after <= res.evidence_before * 1.02) {
+    status.textContent = T('Não encontrei um alinhamento melhor do que o atual — nada foi mudado.');
+    return;
+  }
+  const plan = planTaps(base, warp, {
+    points,
+    songStartO: previewScale((a.beats || [])[0] ?? grid[0]),
+    tailO: previewScale(songEndChartTime(a)),
+  });
+  syncAnchors.splice(0, syncAnchors.length, ...plan);
+  renderAnchorsList();
+  updatePendingChangesInfo();
+  showArr(currentArr);
+  notePendingChange();
+  const lo = Math.min(...bpms), hi = Math.max(...bpms);
+  status.textContent = T('{n} compassos alinhados (♩ entre {lo} e {hi}). Ouve o resultado — um Ctrl+Z desfaz tudo; fica pendente até "Aplicar e reconstruir".', {
+    n: points.length, lo: bpms.length ? lo.toFixed(1) : '—', hi: bpms.length ? hi.toFixed(1) : '—',
+  });
+  renderAutoSyncCheck([...check].sort((x, y) => x - y));
+}
+
+function renderAutoSyncCheck(bars) {
+  const row = document.getElementById('autoSyncCheckRow');
+  const list = document.getElementById('autoSyncCheckList');
+  if (!row) return;
+  row.hidden = !bars.length;
+  list.replaceChildren(...barRanges(bars).slice(0, 40).map(([first, last]) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'secondary';
+    b.textContent = first === last ? String(first) : `${first}–${last}`;
+    b.title = T('Pôr o cursor no compasso {n}', { n: first });
+    b.addEventListener('click', () => goToBar(first));
+    return b;
+  }));
+}
+
+function fillAutoSyncBars() {
+  const sel = document.getElementById('autoSyncFromBar');
+  if (!sel) return;
+  const bars = (arrangements[currentArr] || {}).bars || [];
+  const prev = parseInt(sel.value, 10);
+  sel.innerHTML = bars.map(b => `<option value="${b.measure}">${b.measure}</option>`).join('');
+  if (bars.some(b => b.measure === prev)) sel.value = String(prev);
+}
+
+document.getElementById('autoSyncRun')?.addEventListener('click', runAutoSync);
 
 function barTempoMessage(fromM, toM, bpm, delta) {
   const which = fromM === toM ? T('Compasso {n}', { n: fromM }) : T('Compassos {from}–{to}', { from: fromM, to: toM });

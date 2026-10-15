@@ -20,6 +20,9 @@ Limitations stated up front:
 
 from __future__ import annotations
 
+import json
+import os
+import tempfile
 from pathlib import Path
 
 from rockforge.infrastructure import _librosa_runner, ml_python
@@ -45,6 +48,30 @@ def detect_tempo_from(audio: Path, start_s: float, expected_bpm: float | None = 
         "tempo", audio, start=start_s, expected_bpm=expected_bpm or 0.0
     )
     return float(result["bpm"])
+
+
+def align_to_recording(audio: Path, beats: list[float], notes: list[float]) -> dict[str, object]:
+    """EXPERIMENTAL — the chart's beats moved to where the recording plays
+    them (``_librosa_runner.align_beats``), for the viewer's "Sincronizar
+    automaticamente" card. ``beats``/``notes`` are seconds of the recording as
+    the chart shows them now. The envelope needs librosa; the alignment itself
+    is plain Python, and both run wherever librosa is (here, or the configured
+    ML interpreter, given the long lists through a JSON file)."""
+    if ml_python.librosa_here():
+        env, hop = _librosa_runner.onset_envelope(str(audio))
+        result = _librosa_runner.align_beats(env, hop, beats, notes)
+        result["duration"] = round(len(env) * hop, 3)
+        return result
+    fd, spec = tempfile.mkstemp(prefix="rf-beatalign-", suffix=".json")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            json.dump({"beats": beats, "notes": notes}, fh)
+        runner = ml_python.runner_path(
+            Path(_librosa_runner.__file__).resolve().parent, "_librosa_runner.py"
+        )
+        return ml_python.run_json(runner, ["beatalign", "--audio", str(audio), "--spec", spec])
+    finally:
+        Path(spec).unlink(missing_ok=True)
 
 
 def estimate_tuning_cents(audio: Path) -> float:

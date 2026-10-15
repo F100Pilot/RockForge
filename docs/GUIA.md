@@ -243,6 +243,22 @@ Para marcar com calma, abranda a reprodução no seletor de velocidade ao lado d
 Ctrl+Z desfá-los todos) até **Aplicar e reconstruir**; depois afina o resto com **Corrigir
 daqui**.
 
+### Andamento que varia — Sincronizar automaticamente (experimental)
+
+O cartão **Sincronizar automaticamente**, marcado **Experimental**, faz o mesmo que marcar a
+ouvir, mas sozinho: analisa a gravação e leva cada compasso para onde as suas notas soam,
+deixando o andamento mudar ao longo da música. **Pode errar** — usa-o assim:
+
+1. acerta primeiro o início do compasso de onde partes (passo 1, ou "= cursor") e o andamento
+   aproximado;
+2. escolhe **A partir do compasso** e carrega em **Detetar e alinhar** (pode demorar um minuto);
+3. ouve o resultado. Os compassos em **Verifica de ouvido** são os que vêm a seguir a uma pausa
+   ou onde as notas não bateram com o que se ouve — confirma-os e corrige com **Corrigir daqui**
+   ou arrastando notas.
+
+Fica tudo como correções no passo 3 (um Ctrl+Z desfaz tudo) até **Aplicar e reconstruir**.
+Precisa da análise de áudio (o extra de ML, ou os componentes extra no `.exe`).
+
 ### Passo 3 — Correções na partitura
 
 Para o que sobra, escolhe um modo em **Modo ▾** e clica onde a partitura foge:
