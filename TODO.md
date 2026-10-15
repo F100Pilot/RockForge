@@ -230,7 +230,7 @@ I've been building **RockForge**, a free and open-source (MIT) app that turns a
 personal project; it's now at a public beta and I'd like the community's
 feedback.
 
-**Download (Windows):** https://github.com/F100Pilot/RockForge/releases/tag/v0.10.0-beta.2
+**Download (Windows):** https://github.com/F100Pilot/RockForge/releases
 — an installer or a portable zip. No Python needed, ffmpeg included.
 **Tutorial video and source:** https://github.com/F100Pilot/RockForge
 
@@ -316,7 +316,7 @@ app that builds Rocksmith 2014 customs from a **Guitar Pro file + a
 recording**. It just reached a public beta with a Windows installer (no
 Python needed, ffmpeg included).
 
-**Download:** https://github.com/F100Pilot/RockForge/releases/tag/v0.10.0-beta.2
+**Download:** https://github.com/F100Pilot/RockForge/releases
 **Tutorial video + source:** https://github.com/F100Pilot/RockForge
 
 **Highlights**

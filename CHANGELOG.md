@@ -6,6 +6,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+## [0.10.0 beta 3] — 2026-10-15
+
 ### Novo
 - Botão **«Paga-me um café»** (PayPal) na página inicial e um cartão **Apoiar o projeto** em
   Definições → Geral. O RockForge continua gratuito.

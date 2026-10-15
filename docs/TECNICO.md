@@ -475,6 +475,12 @@ GitHub, para ninguém ter de os construir à mão. Para publicar a versão X.Y.Z
    `src/rockforge/__init__.py` e no `installer.iss` (`0.10.0-beta.2`), e dá aos dois changelogs
    uma secção `## [X.Y.Z beta N]` — o `tests/test_release_version.py` falha se não baterem.
 2. Envia uma tag `vX.Y.Z-beta.N` (`git tag v0.10.0-beta.2 && git push origin v0.10.0-beta.2`).
+   Ou, no GitHub: *Releases → Draft a new release*, escreve a tag nova `vX.Y.Z-beta.N` (alvo
+   `main`) e publica; criar a tag arranca o workflow, que anexa os ficheiros a essa release
+   minutos depois.
+
+Uma pre-release nunca aparece no quadro "Releases" da página inicial do repositório — esse quadro
+só mostra a última release definitiva. As pre-releases estão na página Releases.
 
 O workflow instala a app, junta um ffmpeg **LGPL** (com o seu `LICENSE.txt` e um `SOURCE.txt`
 com o link para o código exato; recusa uma versão GPL), compila o instalador, **arranca o

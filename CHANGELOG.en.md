@@ -6,6 +6,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+## [0.10.0 beta 3] — 2026-10-15
+
 ### New
 - A **“Buy me a coffee”** button (PayPal) on the home page and a **Support the project** card in
   Settings → General. RockForge stays free.
