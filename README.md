@@ -14,7 +14,9 @@ song in the game with one click.
 
 [![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-PayPal-0070ba?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/F100Pilot)
 
-![The score over the recording's waveform, with the sync tools on the right](docs/media/score-en.png)
+[![RockForge playing a song: the 3D note highway over the score — click for the full tutorial video](docs/media/demo-en.gif)](docs/media/tutorial-en.mp4)
+
+▶ **[Watch the tutorial](docs/media/tutorial-en.mp4)** (9 min, captions and chapters): every page of the app, from a Guitar Pro file to the song installed in the game.
 
 ## Features
 
@@ -47,7 +49,25 @@ song in the game with one click.
 | | |
 |---|---|
 | ![Projects page](docs/media/home-en.png) | ![3D note highway](docs/media/highway-en.png) |
-| ![Export page with the checklist and Install in the game](docs/media/export-en.png) | |
+| ![Export page with the checklist and Install in the game](docs/media/export-en.png) | ![The score over the recording's waveform, with the sync tools on the right](docs/media/score-en.png) |
+
+### Tutorial video
+
+[tutorial-en.mp4](docs/media/tutorial-en.mp4) — made with an invented song, every step on screen with a caption:
+
+| | |
+|---|---|
+| 0:10 | The home page |
+| 0:26 | New project: file, tracks, recording, details |
+| 1:40 | The Score page: playback, tracks, audio sources, A–B repeat |
+| 2:38 | Syncing the notes: song start, tempo, corrections, marking a track as synced |
+| 4:11 | Editing notes, sections and lyrics on the score |
+| 5:21 | The 3D highway and the fretboard |
+| 6:02 | Tones |
+| 7:03 | Lyrics, cover and song information |
+| 7:23 | Apply and rebuild |
+| 7:43 | Export, check and install in the game |
+| 8:20 | Settings and batch (album) |
 
 ## What it does not do
 
@@ -107,6 +127,7 @@ Docker and every setting — is in the [technical documentation](docs/TECHNICAL.
 | | English | Português |
 |---|---|---|
 | User guide | [GUIDE.en.md](docs/GUIDE.en.md) | [GUIA.md](docs/GUIA.md) |
+| Tutorial video | [tutorial-en.mp4](docs/media/tutorial-en.mp4) | [tutorial-pt.mp4](docs/media/tutorial-pt.mp4) |
 | Technical documentation (install, configuration, build, Docker) | [TECHNICAL.md](docs/TECHNICAL.md) | [TECNICO.md](docs/TECNICO.md) |
 | What's new | [CHANGELOG.en.md](CHANGELOG.en.md) | [CHANGELOG.md](CHANGELOG.md) |
 | Tests and the manual checks CI cannot do | [TESTING.md](TESTING.md) | |

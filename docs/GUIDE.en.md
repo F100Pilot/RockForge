@@ -4,7 +4,8 @@
 
 How to use RockForge, from the song's file to playing it in Rocksmith 2014. To install it, see
 the [home page](../README.md#get-started) (in detail: [TECHNICAL.md](TECHNICAL.md)). Every tool in the app also has an **ⓘ** with its short
-explanation; this guide puts it all together in the order you work.
+explanation; this guide puts it all together in the order you work. To see it done first,
+watch the **[tutorial video](media/tutorial-en.mp4)** (9 min, captions and chapters).
 
 The interface can be in English (PT/EN at the top of the home page, or Settings → General);
 the names below are the English ones.

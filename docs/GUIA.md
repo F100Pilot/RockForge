@@ -4,7 +4,8 @@
 
 Como usar o RockForge, do ficheiro da música até tocá-la no Rocksmith 2014. Para instalar,
 vê a [página inicial](../README.pt.md#começar) (em detalhe: [TECNICO.md](TECNICO.md)). Cada ferramenta da aplicação tem também um **ⓘ** com a sua
-explicação curta; este guia junta tudo pela ordem em que se trabalha.
+explicação curta; este guia junta tudo pela ordem em que se trabalha. Para ver primeiro como
+se faz, vê o **[vídeo tutorial](media/tutorial-pt.mp4)** (10 min, com legendas e capítulos).
 
 **Conteúdo**
 
