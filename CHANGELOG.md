@@ -6,31 +6,22 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+## [0.10.0 beta 5] — 2026-10-15
+
+Inclui o que estava preparado para a beta 4, que não chegou a ser publicada.
+
 ### Novo
 - **Editor de posições da mão (FHP).** Uma faixa por baixo da pauta mostra onde o jogo põe a mão,
   e o novo modo «Posição da mão (FHP)» (tecla 0) deixa pôr, mudar (traste e largura) e apagar
   posições, pista a pista; uma nota fora da sua posição fica com um anel vermelho. As tuas
   posições vão para o `.psarc` (em todos os níveis de dificuldade) e para o projeto do DLC
   Builder; Notas ▾ → «Repor automáticas» volta às calculadas. A pista 3D segue-as.
-
-### Alterado
-- **As posições da mão automáticas foram refeitas** com base em gráficos feitos à mão: um acorde
-  põe a mão onde está o indicador, as outras notas deixam a mão onde está enquanto um dedo lá
-  chega, e a mão só muda na primeira nota que já não alcança. Comparadas com dois CDLC da
-  comunidade, coincidem em 98% das notas (antes 80%), com o mesmo número de mudanças.
-- O XML para o DLC Builder passa a levar as mesmas posições da mão automáticas que o `.psarc`
-  (antes eram calculadas de duas maneiras diferentes).
-
-## [0.10.0 beta 4] — 2026-10-15
-
-### Novo
 - **Arranjo de baixo (Bass).** Escolhe a pista de baixo do ficheiro Guitar Pro no assistente
   (ou em «Editar info») e o projeto ganha um arranjo BASS, codificado como o DLC Builder o faz.
   Um baixo de 5 cordas é dobrado nas quatro cordas que perdem menos notas, com um aviso; uma
   afinação muito grave (B standard) é escrita uma oitava acima a 220 Hz, como no DLC Builder,
   para o jogo detetar as notas. A partitura, o braço e a pista 3D mostram quatro cordas. Ainda
   não foi tocado no jogo — diz-nos como corre.
-
 - **Aviso de versão nova** na página inicial: o RockForge pergunta às Releases do GitHub, no
   máximo uma vez por dia, se há uma versão mais recente (desliga-se em Definições → Geral). Quem
   usa o `start.bat` com o git não o vê, porque se atualiza sozinho.
@@ -42,6 +33,14 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 - **O Wwise é encontrado sozinho** onde o Audiokinetic Launcher o instala, ou indica-se em
   Definições → Geral → «Pasta do Wwise». A página inicial e a última página do instalador avisam
   quando falta (a licença não permite incluí-lo).
+
+### Alterado
+- **As posições da mão automáticas foram refeitas** com base em gráficos feitos à mão: um acorde
+  põe a mão onde está o indicador, as outras notas deixam a mão onde está enquanto um dedo lá
+  chega, e a mão só muda na primeira nota que já não alcança. Comparadas com dois CDLC da
+  comunidade, coincidem em 98% das notas (antes 80%), com o mesmo número de mudanças.
+- O XML para o DLC Builder passa a levar as mesmas posições da mão automáticas que o `.psarc`
+  (antes eram calculadas de duas maneiras diferentes).
 
 ### Corrigido
 - **No `.exe`, os botões «Descarregar» não faziam nada** (nem davam erro): a janela própria

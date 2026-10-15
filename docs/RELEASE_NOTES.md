@@ -17,9 +17,11 @@ be installed later from the home page or Settings → Software. For a playable `
 need **Wwise** (free from Audiokinetic, it cannot be shipped with the app — RockForge finds it
 where the Launcher installs it) and, for the song to appear in the game, the usual CDLC patch.
 
-**New in this beta:** a Bass arrangement, the capo read from the Guitar Pro file, the Download
-buttons working in the app's window, no 30 MB `.psarc` when Wwise is missing, and a notice when a
-newer version is out.
+**New in this beta:** a **fret-hand position (FHP) editor** (a lane under the score; place,
+change or delete where the hand sits, track by track) and **automatic FHPs redone** from
+hand-made charts; a Bass arrangement; the capo read from the Guitar Pro file; the Download
+buttons working in the app's window; no 30 MB `.psarc` when Wwise is missing; and a notice when
+a newer version is out.
 
 What changed: [CHANGELOG.en.md](https://github.com/F100Pilot/RockForge/blob/main/CHANGELOG.en.md).
 User guide: [GUIDE.en.md](https://github.com/F100Pilot/RockForge/blob/main/docs/GUIDE.en.md).
@@ -35,7 +37,8 @@ PDF) e uma gravação num CDLC do Rocksmith 2014. Descarrega o **`…-Setup.exe`
 *Mais informações* → *Executar mesmo assim*. O instalador oferece os **componentes extra**
 (análise de áudio, deteção de tom e letra, stems, PDF, áudio do YouTube), que também se instalam
 depois na página inicial. Para um `.psarc` jogável continua a ser preciso o **Wwise**. Nesta beta:
-arranjo de baixo, o capo do ficheiro GP, os botões «Descarregar» a funcionar na janela da
+um **editor de posições da mão (FHP)** e as FHPs automáticas refeitas a partir de gráficos feitos
+à mão, arranjo de baixo, o capo do ficheiro GP, os botões «Descarregar» a funcionar na janela da
 aplicação, sem `.psarc` de 30 MB quando falta o Wwise, e um aviso de versão nova. É uma **beta**: diz-nos o que falhar nas
 [Issues](https://github.com/F100Pilot/RockForge/issues). Novidades:
 [CHANGELOG.md](https://github.com/F100Pilot/RockForge/blob/main/CHANGELOG.md) · guia:

@@ -6,31 +6,22 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+## [0.10.0 beta 5] — 2026-10-15
+
+Includes what was prepared for beta 4, which was never published.
+
 ### New
 - **Fret-hand position (FHP) editor.** A lane under the staff shows where the game puts the hand,
   and the new “Fret-hand position (FHP)” mode (key 0) lets you add, change (fret and width) and
   delete positions, track by track; a note outside its position gets a red ring. Your positions
   go into the `.psarc` (at every difficulty level) and the DLC Builder project; Notes ▾ → “Back
   to automatic” returns to the computed ones. The 3D highway follows them.
-
-### Changed
-- **The automatic fret-hand positions were redone** from hand-made charts: a chord puts the hand
-  where its index finger is, other notes leave the hand where it is while a finger reaches them,
-  and the hand only moves at the first note it cannot reach. Against two community CDLC they
-  agree on 98% of the notes (80% before), with the same number of moves.
-- The XML for DLC Builder now carries the same automatic fret-hand positions as the `.psarc`
-  (they used to be worked out two different ways).
-
-## [0.10.0 beta 4] — 2026-10-15
-
-### New
 - **Bass arrangement.** Pick the bass track of the Guitar Pro file in the wizard (or in “Edit
   info”) and the project gains a BASS arrangement, encoded the way DLC Builder does it. A
   5-string bass is folded onto the four strings that lose the fewest notes, with a warning; a very
   low tuning (B standard) is written an octave up at 220 Hz, as DLC Builder does, so the game
   detects the notes. The score, the fretboard and the 3D highway show four strings. Not played in
   game yet — tell us how it goes.
-
 - **New version notice** on the home page: RockForge asks GitHub's Releases, at most once a day,
   whether a newer version is out (turned off in Settings → General). Someone using `start.bat`
   with git does not see it, since that updates itself.
@@ -42,6 +33,14 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 - **Wwise is found by itself** where the Audiokinetic Launcher installs it, or set in Settings →
   General → “Wwise folder”. The home page and the installer's last page say when it is missing
   (its licence does not allow bundling it).
+
+### Changed
+- **The automatic fret-hand positions were redone** from hand-made charts: a chord puts the hand
+  where its index finger is, other notes leave the hand where it is while a finger reaches them,
+  and the hand only moves at the first note it cannot reach. Against two community CDLC they
+  agree on 98% of the notes (80% before), with the same number of moves.
+- The XML for DLC Builder now carries the same automatic fret-hand positions as the `.psarc`
+  (they used to be worked out two different ways).
 
 ### Fixed
 - **In the `.exe`, the "Download" buttons did nothing** (and showed no error): the app's own
