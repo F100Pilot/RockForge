@@ -14,7 +14,9 @@ tons e letra, e instala a música no jogo com um clique.
 
 [![Paga-me um café](https://img.shields.io/badge/Paga--me%20um%20caf%C3%A9-PayPal-0070ba?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/F100Pilot)
 
-![A partitura sobre a onda da gravação, com as ferramentas de sincronização à direita](docs/media/score-pt.png)
+[![O RockForge a tocar uma música: a pista 3D por cima da partitura — clica para ver o vídeo tutorial completo](docs/media/demo-pt.gif)](docs/media/tutorial-pt.mp4)
+
+▶ **[Ver o vídeo tutorial](docs/media/tutorial-pt.mp4)** (10 min, com legendas e capítulos): todas as páginas da aplicação, de um ficheiro Guitar Pro até à música instalada no jogo.
 
 ## O que faz
 
@@ -47,7 +49,25 @@ tons e letra, e instala a música no jogo com um clique.
 | | |
 |---|---|
 | ![Página dos projetos](docs/media/home-pt.png) | ![Pista 3D](docs/media/highway-pt.png) |
-| ![Página Exportar com a lista "Antes de usar" e Instalar no jogo](docs/media/export-pt.png) | |
+| ![Página Exportar com a lista "Antes de usar" e Instalar no jogo](docs/media/export-pt.png) | ![A partitura sobre a onda da gravação, com as ferramentas de sincronização à direita](docs/media/score-pt.png) |
+
+### Vídeo tutorial
+
+[tutorial-pt.mp4](docs/media/tutorial-pt.mp4) — feito com uma música inventada, cada passo no ecrã com uma legenda:
+
+| | |
+|---|---|
+| 0:10 | A página inicial |
+| 0:26 | Novo projeto: ficheiro, pistas, gravação, detalhes |
+| 1:40 | A página Partitura: reprodução, pistas, fontes de áudio, repetir um trecho |
+| 2:42 | Sincronizar as notas: início, andamento, correções, marcar a pista como sincronizada |
+| 4:14 | Editar notas, secções e letra na partitura |
+| 5:25 | A pista 3D e o braço da guitarra |
+| 6:08 | Tons |
+| 7:19 | Letra, capa e informação da música |
+| 7:39 | Aplicar e reconstruir |
+| 8:11 | Exportar, verificar e instalar no jogo |
+| 8:52 | Definições e lote (álbum) |
 
 ## O que não faz
 
@@ -111,6 +131,7 @@ Docker e todas as definições — está na [documentação técnica](docs/TECNI
 | | Português | English |
 |---|---|---|
 | Guia do utilizador | [GUIA.md](docs/GUIA.md) | [GUIDE.en.md](docs/GUIDE.en.md) |
+| Vídeo tutorial | [tutorial-pt.mp4](docs/media/tutorial-pt.mp4) | [tutorial-en.mp4](docs/media/tutorial-en.mp4) |
 | Documentação técnica (instalação, configuração, compilação, Docker) | [TECNICO.md](docs/TECNICO.md) | [TECHNICAL.md](docs/TECHNICAL.md) |
 | Novidades | [CHANGELOG.md](CHANGELOG.md) | [CHANGELOG.en.md](CHANGELOG.en.md) |
 | Testes e as verificações manuais que o CI não faz | | [TESTING.md](TESTING.md) |
