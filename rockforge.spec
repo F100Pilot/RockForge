@@ -34,28 +34,15 @@ for f in sorted(web_dir.rglob("*")):
     if f.is_file():
         datas.append((str(f), str(Path("web") / f.relative_to(web_dir).parent)))
 
-# Wwise templates (MIT, from DLC Builder).
-wwise_dir = pkg / "infrastructure" / "packaging" / "wwise_templates"
-if wwise_dir.is_dir():
-    for f in wwise_dir.iterdir():
-        datas.append((str(f), "rockforge/infrastructure/packaging/wwise_templates"))
-
-# Tone gear catalogue.
-gear_file = pkg / "infrastructure" / "packaging" / "gear" / "tone_gear_data.json"
-if gear_file.exists():
-    datas.append((str(gear_file), "rockforge/infrastructure/packaging/gear"))
-
-# Native-PSARC vendored assets (song-independent): the RSEnumerable flat models
-# the xblock references, and the vocals lyric-font symbol atlas.
-psarc_pkg = pkg / "infrastructure" / "packaging" / "psarc"
-flatmodels_dir = psarc_pkg / "flatmodels"
-if flatmodels_dir.is_dir():
-    for f in flatmodels_dir.iterdir():
-        if f.is_file():
-            datas.append((str(f), "rockforge/infrastructure/packaging/psarc/flatmodels"))
-symbols_bin = psarc_pkg / "vocals_symbols.bin"
-if symbols_bin.exists():
-    datas.append((str(symbols_bin), "rockforge/infrastructure/packaging/psarc"))
+# Every data file inside the package (Wwise templates, the gear catalogue,
+# DLC Builder's default tones, the RSEnumerable flat models, the lyric-font
+# atlas, …), at its package path, which is where the code reads it from.
+# Walked, not listed by hand: the list missed default_tones/*.json, and every
+# .psarc of a project without tones of its own failed in the .exe — which only
+# the release workflow's smoke test (a real build with the frozen app) caught.
+for f in sorted(pkg.rglob("*")):
+    if f.is_file() and f.suffix not in (".py", ".pyc") and "__pycache__" not in f.parts:
+        datas.append((str(f), str(Path("rockforge") / f.relative_to(pkg).parent)))
 
 # The standalone ML runners. These are executed as SCRIPTS by another Python
 # (the one ROCKFORGE_ML_PYTHON points at — see infrastructure/ml_python.py), so

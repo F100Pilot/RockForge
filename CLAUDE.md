@@ -4820,7 +4820,15 @@ equal `installer.iss`'s version, and `tests/test_release_version.py` keeps
 and both changelogs' `## [0.10.0 beta 2]` in step. `[pdf]` and the ML stack
 are not in the `.exe`; the README says which three extras need the source
 install. The smoke script was checked here against the source server dressed
-as a fake `.exe`; the Windows run itself only happens on GitHub.
+as a fake `.exe`; the Windows run itself only happens on GitHub. **Its first
+run caught a real defect**: `rockforge.spec` listed the package's data files
+by hand and missed `gear/default_tones/*.json`, so in the `.exe` every project
+without tones of its own built no `.psarc` (`FileNotFoundError` in
+`default_tones._load`, the job still "completed"). The spec now walks every
+non-`.py` file of the package, guarded by
+`test_spec_bundles_every_data_file_of_the_package_at_its_package_path`
+(fails on the old spec), and the smoke test fails with the job's warnings when
+no `.psarc` came out.
 
 ## Conventions
 

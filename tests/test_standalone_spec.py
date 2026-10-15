@@ -142,3 +142,20 @@ def test_spec_bundles_the_modules_celery_imports_by_name() -> None:
     assert by_name, "precondition: Celery still names modules to import"
     missing = sorted(by_name - hidden)
     assert not missing, f"rockforge.spec does not bundle {missing}"
+
+
+def test_spec_bundles_every_data_file_of_the_package_at_its_package_path() -> None:
+    """The code reads its data files (templates, catalogue, default tones, flat
+    models, the lyric atlas) from beside its modules; one left out of the
+    bundle breaks the .exe only, at the moment it is needed. The hand-written
+    list missed default_tones/*.json, and every .psarc of a project without its
+    own tones failed in the .exe."""
+    pkg = REPO_ROOT / "src" / "rockforge"
+    bundled = {(REPO_ROOT / src).resolve(): dest for src, dest in _run_spec()}
+    data = [f for f in pkg.rglob("*")
+            if f.is_file() and f.suffix not in (".py", ".pyc") and "__pycache__" not in f.parts]
+    assert any(f.name == "default_lead.json" for f in data)
+    for f in data:
+        want = str(Path("rockforge") / f.relative_to(pkg).parent)
+        where = f.relative_to(REPO_ROOT)
+        assert bundled.get(f.resolve()) == want, f"{where} is not bundled at {want}"

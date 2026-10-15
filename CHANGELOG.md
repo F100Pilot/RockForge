@@ -15,6 +15,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
   e o link para o código-fonte).
 - Licenças esclarecidas: o código adaptado do alphaTab está em dois ficheiros próprios, sob
   MPL-2.0; o resto é MIT.
+- Corrigido no `.exe`: um projeto sem tons próprios não gerava o `.psarc` (faltavam no pacote os
+  tons por defeito do DLC Builder). Encontrado pelo teste automático do `.exe`.
 
 ### Novo
 - **Pista 3D com a simbologia do Rocksmith:** a nota deixa de ter o número do traste — o

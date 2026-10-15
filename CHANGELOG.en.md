@@ -14,6 +14,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
   need no Python and carry ffmpeg (an LGPL build, with its licence and the link to its source).
 - Licences made clear: the code adapted from alphaTab is in two files of its own, under MPL-2.0;
   everything else is MIT.
+- Fixed in the `.exe`: a project without tones of its own made no `.psarc` (DLC Builder's default
+  tones were missing from the package). Found by the automatic test of the `.exe`.
 
 ### Added
 - **3D highway with Rocksmith's symbols:** the note no longer carries the fret number — the

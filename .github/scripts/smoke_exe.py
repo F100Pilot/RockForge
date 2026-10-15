@@ -134,6 +134,11 @@ def main(exe: Path) -> int:
         if status.get("status") != "completed":
             print(f"FAIL: the build ended {status.get('status')}: {status.get('error')}")
             return 1
+        if not status.get("psarc_available"):
+            print("FAIL: the build made no .psarc. Warnings:")
+            for w in status.get("warnings") or []:
+                print("  -", w)
+            return 1
         report = request("GET", f"/jobs/{job['id']}/psarc-check", timeout=60)
         if not report.get("ok"):
             print("FAIL: the PSARC check found problems:", json.dumps(report)[:2000])
