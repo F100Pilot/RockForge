@@ -102,6 +102,46 @@ def components_flag(argv: list[str]) -> None:
         os.environ["ROCKFORGE_INSTALL_COMPONENTS"] = "1"
 
 
+# Windows process-creation flags (winbase.h). A console program started from
+# this windowless app — ffmpeg, the components' python.exe, nvidia-smi, yt-dlp —
+# gets a console window of its own, which flashed black for a moment on every
+# button that runs one ("aparece durante uma fração de segundo um ecrã preto").
+_CREATE_NO_WINDOW = 0x08000000
+# A child that asks for a console of its own, or none at all, is left as asked
+# (CREATE_NO_WINDOW is ignored with either, and refused with the first).
+_CREATE_NEW_CONSOLE = 0x00000010
+_DETACHED_PROCESS = 0x00000008
+
+
+def hide_child_consoles(popen: Any = None, platform: str | None = None) -> bool:
+    """Start every child process without a console window, on Windows.
+
+    Done once, on ``Popen`` itself, rather than at each of the dozen call
+    sites (ffmpeg, Demucs, WhisperX, librosa, the probes, yt-dlp, Wwise, the
+    components install): a new call site added later is covered too. The
+    child still has its own hidden console, so ITS children (pip, ffmpeg run
+    by the ML Python) inherit that and stay hidden as well."""
+    if (sys.platform if platform is None else platform) != "win32":
+        return False
+    if popen is None:
+        import subprocess
+
+        popen = subprocess.Popen
+    if getattr(popen, "_rockforge_no_window", False):
+        return True
+    original = popen.__init__
+
+    def __init__(self: Any, *args: Any, **kwargs: Any) -> None:
+        flags = kwargs.get("creationflags") or 0
+        if not flags & (_CREATE_NEW_CONSOLE | _DETACHED_PROCESS):
+            kwargs["creationflags"] = flags | _CREATE_NO_WINDOW
+        original(self, *args, **kwargs)
+
+    popen.__init__ = __init__
+    popen._rockforge_no_window = True
+    return True
+
+
 def configure_environment(*, windowed: bool) -> None:
     """Set the defaults the standalone build runs under, before anything imports
     `rockforge.config` (pydantic-settings reads the environment at import).
@@ -298,6 +338,7 @@ def default_log_path() -> Path:
 
 
 def main() -> None:
+    hide_child_consoles()  # before anything can start a child process
     windowed = webview_available()
     configure_environment(windowed=windowed)
     components_flag(sys.argv[1:])

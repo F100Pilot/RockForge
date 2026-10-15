@@ -6,6 +6,11 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### Fixed
+- **The black screen that flashed when clicking some buttons in the `.exe`**: it was the console
+  window of each program the app runs behind the scenes (ffmpeg, the extra components' Python,
+  yt-dlp…). They all run without a window now.
+
 ## [0.10.0 beta 6] — 2026-10-15
 
 ### New

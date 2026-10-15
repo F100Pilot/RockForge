@@ -393,3 +393,27 @@ def test_the_window_is_allowed_to_save_downloads() -> None:
     # An old pywebview without the setting is left alone, not crashed.
     assert launcher.allow_downloads(SimpleNamespace(settings=_Settings())) is False
     assert launcher.allow_downloads(SimpleNamespace()) is False
+
+
+def test_child_processes_start_without_a_console_window_on_windows() -> None:
+    """Every console program the .exe runs flashed a black window: the child
+    gets CREATE_NO_WINDOW unless it asked for a console of its own."""
+    seen: list[int] = []
+
+    class FakePopen:
+        def __init__(self, *args: object, creationflags: int = 0, **kwargs: object) -> None:
+            seen.append(creationflags)
+
+    assert launcher.hide_child_consoles(FakePopen, platform="linux") is False
+    FakePopen(["ffmpeg"])
+    assert seen == [0]
+    assert launcher.hide_child_consoles(FakePopen, platform="win32") is True
+    assert launcher.hide_child_consoles(FakePopen, platform="win32") is True  # once
+    FakePopen(["ffmpeg", "-version"])
+    FakePopen(["python.exe"], creationflags=0x00000200)  # its own flags kept
+    FakePopen(["cmd"], creationflags=launcher._CREATE_NEW_CONSOLE)  # asked for a console
+    assert seen[1:] == [
+        launcher._CREATE_NO_WINDOW,
+        0x00000200 | launcher._CREATE_NO_WINDOW,
+        launcher._CREATE_NEW_CONSOLE,
+    ]

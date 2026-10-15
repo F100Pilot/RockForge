@@ -4499,6 +4499,20 @@ prevents on the browser path. The window's `closing` event (cancellable —
 returning `False` vetoes) asks the user to confirm instead of silently
 discarding the work or refusing to close at all.
 
+**Every child process starts without a console window** (`hide_child_consoles`,
+the first line of `main()`): the `.exe` is a GUI-subsystem program, so each
+console program it runs — ffmpeg, the components' `python.exe`, `nvidia-smi`,
+yt-dlp, WwiseConsole — got a console of its own, a black window flashing for a
+fraction of a second on every button that ran one ("aparece durante uma fração
+de segundo um ecrã preto"). It patches `subprocess.Popen.__init__` once to add
+`CREATE_NO_WINDOW` (unless the call asked for `CREATE_NEW_CONSOLE` or
+`DETACHED_PROCESS`), so a call site added later is covered too; the hidden
+console is inherited by the child's own children (pip, the ML Python's ffmpeg).
+Windows only (a non-zero `creationflags` raises elsewhere), and only in the
+launcher — `start.bat` runs from a console, where there is nothing to hide.
+Guarded by `test_child_processes_start_without_a_console_window_on_windows`;
+not seen on Windows from here.
+
 **`console=False` means the process has NO stdout or stderr** — they are
 `None`, and uvicorn's logging raises on the first line. `main()` redirects both
 to `work_dir/rockforge.log` before anything can write (`redirect_output_to_log`),

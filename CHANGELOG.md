@@ -6,6 +6,11 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Corrigido
+- **O ecrã preto que piscava ao clicar em alguns botões no `.exe`**: era a janela de consola de
+  cada programa que a app corre por trás (ffmpeg, o Python dos componentes extra, yt-dlp…). Passam
+  todos a correr sem janela.
+
 ## [0.10.0 beta 6] — 2026-10-15
 
 ### Novo
