@@ -22,7 +22,10 @@ if errorlevel 1 (
   echo WARNING: git not found. Using the local version.
   goto :prepare
 )
-git pull --ff-only
+REM No automatic git clean-up (gc) at start: on Windows it fails with
+REM "Unlink of file ... failed. Should I try again? y/n" when another program has
+REM the .git files open, and keeps asking.
+git -c gc.auto=0 -c maintenance.auto=false pull --ff-only
 if errorlevel 1 (
   echo AVISO: git pull falhou. Vai ser usada a versao local.
   echo WARNING: git pull failed. Using the local version.
