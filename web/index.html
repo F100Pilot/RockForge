@@ -591,10 +591,13 @@ kbd { display:inline-block; min-width:1.5em; padding:.08em .45em; border:1px sol
 .pv-sub button:hover { color:var(--text); border-color:var(--muted); }
 .pv-spacer { flex:1; }
 .pv-pending { font-size:.85rem; color:var(--warn); font-weight:600; }
-button.pv-btn { display:inline-flex; align-items:center; gap:.5rem; height:2.75rem; padding:0 1rem; border-radius:10px;
+button.pv-btn, a.pv-btn { display:inline-flex; align-items:center; gap:.5rem; height:2.75rem; padding:0 1rem; border-radius:10px;
   border:1px solid #33363f; background:#1f2129; color:var(--text); font-weight:600; font-size:.92rem; white-space:nowrap; }
-button.pv-btn:hover { background:#262833; filter:none; }
-button.pv-btn .ic { width:1.3rem; height:1.3rem; margin:0; }
+button.pv-btn:hover, a.pv-btn:hover { background:#262833; filter:none; }
+a.pv-btn { text-decoration:none; box-sizing:border-box; }
+a.pv-coffee { color:#ffd27a; border-color:#5a4a2a; }
+@media (max-width: 900px) { #coffeeBtn { width:2.75rem; padding:0; justify-content:center; } #coffeeBtn .pv-coffee-lbl { display:none; } }
+button.pv-btn .ic, a.pv-btn .ic { width:1.3rem; height:1.3rem; margin:0; }
 select.lang-select { height:2.75rem; border-radius:10px; border:1px solid #33363f; background:#1f2129;
   color:var(--text); font-weight:600; padding:0 .5rem; }
 button.pv-icon-btn { width:2.75rem; padding:0; justify-content:center; }
@@ -861,6 +864,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
   <symbol id="i-mouse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3" width="10" height="18" rx="5"/><path d="M12 7v4"/></symbol>
   <symbol id="i-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M14.5 8.5l2 2"/></symbol>
   <symbol id="i-gamepad" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="12" rx="4"/><path d="M7 13h4M9 11v4M15 12h.5M17.5 14h.5"/></symbol>
+  <symbol id="i-coffee" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h12v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/><path d="M16 10h1.5a2.5 2.5 0 0 1 0 5H16"/><path d="M8 3c-.6 1 .6 2 0 3M12 3c-.6 1 .6 2 0 3"/></symbol>
   <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
   <symbol id="i-wand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20L15 9"/><path d="M15 3v3M19 7h3M20.5 3.5l-2 2M13 7l4 4"/></symbol>
   <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.5M4.5 12h.5M4.5 18h.5"/></symbol>
@@ -873,6 +877,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
       <span id="appVersion" style="font-size:.75rem;color:var(--muted)"></span>
     </div>
     <span class="pv-spacer"></span>
+    <a id="coffeeBtn" class="pv-btn pv-coffee" href="https://paypal.me/F100Pilot" target="_blank" rel="noopener" title="O RockForge é gratuito. Se te é útil, podes pagar-me um café (PayPal)." aria-label="Paga-me um café"><svg class="ic" aria-hidden="true"><use href="#i-coffee"/></svg><span class="pv-coffee-lbl">Paga-me um café</span></a>
     <button type="button" id="openBatchModal" class="pv-btn" title="Vários ficheiros Guitar Pro + gravações de uma vez — um álbum inteiro"><svg class="ic" aria-hidden="true"><use href="#i-package"/></svg>Lote (álbum)</button>
     <button type="button" class="pv-btn pv-primary" data-new="gp"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>Novo projeto</button>
     <select id="langSelectTop" class="lang-select" data-lang-select="short" translate="no" title="Idioma · Language" aria-label="Idioma · Language">
@@ -1526,6 +1531,11 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
             <option value="pt">Português</option>
           </select>
           <div class="pv-card-desc">Mudar de idioma recarrega a página.</div>
+        </div>
+        <div class="pv-card pv-card-lg">
+          <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-coffee"/></svg>Apoiar o projeto</div>
+          <div class="pv-card-desc">O RockForge é gratuito e de código aberto, feito nos tempos livres. Se te é útil, um café ajuda a continuar.</div>
+          <div><a class="pv-btn pv-coffee" href="https://paypal.me/F100Pilot" target="_blank" rel="noopener"><svg class="ic" aria-hidden="true"><use href="#i-coffee"/></svg>Paga-me um café</a></div>
         </div>
         <div class="pv-card pv-card-lg">
           <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-gamepad"/></svg>Pasta do Rocksmith 2014</div>

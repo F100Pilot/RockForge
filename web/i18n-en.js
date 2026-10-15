@@ -1171,5 +1171,9 @@
  "Ligada à nota seguinte (sem nova palhetada)": "Linked to the next note (no new pick)",
  "arpejo {nome}": "arpeggio {nome}",
  "arpejo": "arpeggio",
- "Arpejo: notas soltas deixadas a soar sobre a forma de um acorde — o jogo mostra a forma por cima delas.": "Arpeggio: single notes let ring over one chord shape — the game shows the shape above them."
+ "Arpejo: notas soltas deixadas a soar sobre a forma de um acorde — o jogo mostra a forma por cima delas.": "Arpeggio: single notes let ring over one chord shape — the game shows the shape above them.",
+  "O RockForge é gratuito. Se te é útil, podes pagar-me um café (PayPal).": "RockForge is free. If it is useful to you, you can buy me a coffee (PayPal).",
+  "Paga-me um café": "Buy me a coffee",
+  "Apoiar o projeto": "Support the project",
+  "O RockForge é gratuito e de código aberto, feito nos tempos livres. Se te é útil, um café ajuda a continuar.": "RockForge is free and open source, made in spare time. If it is useful to you, a coffee helps keep it going."
 };
