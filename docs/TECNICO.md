@@ -474,7 +474,7 @@ GitHub, para ninguém ter de os construir à mão. Para publicar a versão X.Y.Z
 1. Põe a versão no `pyproject.toml` (na forma PEP 440, p. ex. `0.10.0b2`), no
    `src/rockforge/__init__.py` e no `installer.iss` (`0.10.0-beta.2`), e dá aos dois changelogs
    uma secção `## [X.Y.Z beta N]` — o `tests/test_release_version.py` falha se não baterem.
-2. Envia uma tag `vX.Y.Z-beta.N` (`git tag v0.10.0-beta.2 && git push origin v0.10.0-beta.2`).
+2. Envia uma tag `vX.Y.Z-beta.N` (`git tag v0.10.0-beta.2 && git push origin v0.10.0-beta.2`; o `v` é opcional).
    Ou, no GitHub: *Releases → Draft a new release*, escreve a tag nova `vX.Y.Z-beta.N` (alvo
    `main`) e publica; criar a tag arranca o workflow, que anexa os ficheiros a essa release
    minutos depois.

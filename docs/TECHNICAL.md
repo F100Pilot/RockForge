@@ -454,7 +454,7 @@ one has to build them by hand. To publish version X.Y.Z (a beta is `X.Y.Z-beta.N
 1. Put the version in `pyproject.toml` (in PEP 440 form, e.g. `0.10.0b2`),
    `src/rockforge/__init__.py` and `installer.iss` (`0.10.0-beta.2`), and give both changelogs a
    `## [X.Y.Z beta N]` section — `tests/test_release_version.py` fails if any of them disagree.
-2. Push a tag `vX.Y.Z-beta.N` (`git tag v0.10.0-beta.2 && git push origin v0.10.0-beta.2`).
+2. Push a tag `vX.Y.Z-beta.N` (`git tag v0.10.0-beta.2 && git push origin v0.10.0-beta.2`; the `v` may be left out).
    Or, on GitHub: *Releases → Draft a new release*, type the new tag `vX.Y.Z-beta.N` (target
    `main`) and publish; creating the tag starts the workflow, which attaches the files to that
    release a few minutes later.

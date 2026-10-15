@@ -7,7 +7,8 @@ name: Release
 # this run's artifacts and nothing is published.
 on:
   push:
-    tags: ["v*"]
+    # "v0.10.0-beta.3" — or "0.10.0-beta.3": GitHub's release page does not add the v.
+    tags: ["v*", "[0-9]*"]
   workflow_dispatch:
 
 permissions:
@@ -42,7 +43,7 @@ jobs:
           $iss = Select-String -Path installer.iss -Pattern '#define MyAppVersion "([^"]+)"'
           $ver = $iss.Matches[0].Groups[1].Value
           "version=$ver" >> $env:GITHUB_OUTPUT
-          if ($env:GITHUB_REF_TYPE -eq "tag" -and $env:GITHUB_REF_NAME -ne "v$ver") {
+          if ($env:GITHUB_REF_TYPE -eq "tag" -and $env:GITHUB_REF_NAME.TrimStart('v') -ne $ver) {
             throw "tag $env:GITHUB_REF_NAME does not match installer.iss version $ver"
           }
 
