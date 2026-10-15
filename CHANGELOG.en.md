@@ -6,6 +6,12 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### Fixed
+- **In the `.exe`, the installed extra components were not used** when the “Python for ML”
+  setting ended up empty: the card said everything was installed and the rest of the app that
+  it was missing. RockForge now finds the components' Python by itself; a path chosen by hand
+  still wins.
+
 ### New
 - **“Mark by ear”, for tabs that were never synced** (Sync inspector): press play and hit **B** on
   the first beat of every bar (or on every beat), and the notes snap to your taps as you go.

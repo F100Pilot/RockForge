@@ -575,7 +575,10 @@ function renderMlPythonInfo(i) {
     el.innerHTML = `${BAD_MARK} ${T('esse caminho não arrancou como Python — aponta ao <code>python.exe</code> do Python 3.11.')}`;
     return;
   }
-  el.innerHTML = `${OK_MARK} ${T('Python encontrado')} &nbsp; ` +
+  const auto = i.auto
+    ? `<div>${T('Detetado sozinho: o Python dos componentes extra ({path}). Deixa o campo vazio para continuar a usá-lo.', { path: esc(i.path) })}</div>`
+    : '';
+  el.innerHTML = auto + `${OK_MARK} ${T('Python encontrado')} &nbsp; ` +
     `${i.ml_ok ? OK_MARK : BAD_MARK} <code>[ml]</code> (${T('stems, tom, «Corrigir daqui»')}) &nbsp; ` +
     `${i.lyrics_ok ? OK_MARK : BAD_MARK} <code>[lyrics]</code> (${T('letra')}) &nbsp; ` +
     `${i.torch_ok ? OK_MARK : BAD_MARK} PyTorch`;

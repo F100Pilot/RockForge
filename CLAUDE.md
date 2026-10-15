@@ -4653,7 +4653,16 @@ strings — read from `pyproject.toml` by `rockforge.spec` at build time into
 URL rewritten to the commit's GitHub archive (`_github_archive`, no git on the
 user's machine) — and Deno into `components\tools` (`add_tools_to_path` at
 launch, so yt-dlp's `js_runtime_args` finds it). Then `ml_python` is set to
-it, unless the user set another path by hand (`_use`). A background thread in
+it, unless the user set another path by hand (`_use`). **And it is found by
+itself when that setting is empty** (`ml_python.components_python`, read by
+`configured()` — so resolve, availability, the PDF and YouTube routes and the
+diagnostics all see it): the user's first install ended with every component
+in place and the setting empty — likely a Definições page opened before the
+install finished saving its empty field over it — so nothing used them ("fez
+download dos extra components mas não os deteta"). A path set by hand still
+wins; from a Python install nothing changes. The settings page says "Detetado
+sozinho" (`ml_python_validation()["auto"]`). Guarded by
+`test_the_exe_finds_the_extra_components_python_by_itself` (mutation-checked). A background thread in
 the API process like the tone-collection scan (`start_install`, one at a time,
 `busy()` counted by the window-close and idle watchdogs), polled through
 `GET /components`; `POST /components/install` (409 off the Windows `.exe` —

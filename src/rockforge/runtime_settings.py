@@ -185,6 +185,8 @@ def ml_python_validation() -> dict[str, Any]:
     return {
         "path": str(found["interpreter"]) if found["external"] else "",
         "frozen": _mlpy.frozen(),
+        # Nothing set: the extra components' own Python, found by itself.
+        "auto": bool(found["external"]) and ml_python() is None and bool(found["interpreter"]),
         # False for a path that is not a working interpreter at all, which is a
         # different fix from "it runs but has no demucs".
         "python_ok": bool(found["python"]),

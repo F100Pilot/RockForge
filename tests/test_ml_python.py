@@ -25,6 +25,8 @@ import pytest
 
 from rockforge.infrastructure import ml_python
 
+_REAL_CONFIGURED = ml_python.configured
+
 
 @pytest.fixture(autouse=True)
 def _unconfigured(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -49,6 +51,38 @@ def test_the_exe_resolves_to_nothing_rather_than_to_itself(
     monkeypatch.setattr(sys, "frozen", True, raising=False)
     assert ml_python.resolve() is None
     assert "⚙️ Definições" in ml_python.missing_message("A separação")
+
+
+def test_the_exe_finds_the_extra_components_python_by_itself(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """"fez download dos extra components mas não os deteta": the setting the
+    installer writes ended up empty, so the installed components were never
+    used. With nothing set, the `.exe` finds their Python by itself."""
+    from rockforge import runtime_settings
+    from rockforge.infrastructure import components
+
+    monkeypatch.setattr(ml_python, "configured", _REAL_CONFIGURED)
+    py = tmp_path / "components" / "python" / "python.exe"
+    monkeypatch.setattr(components, "python_exe", lambda root=None: py)
+    monkeypatch.setattr(runtime_settings, "ml_python", lambda: None)
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    assert ml_python.resolve() is None  # not installed (yet)
+    py.parent.mkdir(parents=True)
+    py.write_bytes(b"MZ")
+    assert ml_python.resolve() == str(py)
+    every = dict.fromkeys(("python", *ml_python.PACKAGES), True)
+    monkeypatch.setattr(ml_python, "probe", lambda interpreter=None: every)
+    info = runtime_settings.ml_python_validation()
+    assert info["auto"] and info["path"] == str(py) and info["ml_ok"]
+    # A Python chosen by hand always wins over the detected one.
+    monkeypatch.setattr(runtime_settings, "ml_python", lambda: Path("C:/mine/python.exe"))
+    assert ml_python.resolve() == str(Path("C:/mine/python.exe"))
+    assert not runtime_settings.ml_python_validation()["auto"]
+    # From a Python install (start.bat) nothing changes: its own Python.
+    monkeypatch.setattr(runtime_settings, "ml_python", lambda: None)
+    monkeypatch.delattr(sys, "frozen")
+    assert ml_python.resolve() == sys.executable
 
 
 def test_a_configured_interpreter_wins_everywhere(

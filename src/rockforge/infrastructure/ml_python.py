@@ -52,11 +52,28 @@ def frozen() -> bool:
 
 
 def configured() -> Path | None:
-    """The interpreter the user pointed us at, if any (runtime override first,
-    then ``ROCKFORGE_ML_PYTHON``)."""
+    """The interpreter to hand the ML work to: the one the user pointed us at
+    (runtime override first, then ``ROCKFORGE_ML_PYTHON``), else — in the
+    `.exe` — the extra components' own Python once it is installed
+    (``components_python``)."""
     from rockforge import runtime_settings
 
-    return runtime_settings.ml_python()
+    return runtime_settings.ml_python() or components_python()
+
+
+def components_python() -> Path | None:
+    """The Python the `.exe` installed with its extra components, when it is
+    there. Found by itself rather than only through the setting the installer
+    writes: that setting can end up empty (a Definições page opened before the
+    install finished saves its empty field over it), and the components were
+    then installed but not used ("fez download dos extra components mas não os
+    deteta")."""
+    if not frozen():
+        return None
+    from rockforge.infrastructure import components
+
+    py = components.python_exe()
+    return py if py.is_file() else None
 
 
 def resolve() -> str | None:

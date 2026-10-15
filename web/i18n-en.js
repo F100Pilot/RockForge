@@ -1268,5 +1268,6 @@
   "Toco em cada tempo (mais preciso)": "I tap on every beat (more precise)",
   "Próximo toque: compasso {bar} ({k} de {n}).": "Next tap: bar {bar} ({k} of {n}).",
   "Próximo toque: tempo {k} de {n}, no compasso {bar}.": "Next tap: beat {k} of {n}, in bar {bar}.",
-  "em \"Marcar a ouvir\": marca o compasso (ou tempo) · tira o último toque · termina": "in \"Mark by ear\": marks the bar (or beat) · takes the last tap back · finishes"
+  "em \"Marcar a ouvir\": marca o compasso (ou tempo) · tira o último toque · termina": "in \"Mark by ear\": marks the bar (or beat) · takes the last tap back · finishes",
+  "Detetado sozinho: o Python dos componentes extra ({path}). Deixa o campo vazio para continuar a usá-lo.": "Found by itself: the extra components' Python ({path}). Leave the field empty to keep using it."
 };

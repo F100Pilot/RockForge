@@ -6,6 +6,12 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Corrigido
+- **No `.exe`, os componentes extra instalados não eram usados** quando a definição «Python para
+  o ML» ficava vazia: o cartão dizia que estava tudo instalado e o resto da aplicação que
+  faltava. Agora o RockForge encontra sozinho o Python dos componentes; um caminho escolhido à
+  mão continua a ganhar.
+
 ### Novo
 - **«Marcar a ouvir», para tabs sem sincronização** (inspetor Sincronização): dás play e carregas
   em **B** no primeiro tempo de cada compasso (ou em cada tempo), e as notas encaixam nos teus
