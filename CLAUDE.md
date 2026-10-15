@@ -4513,6 +4513,18 @@ launcher — `start.bat` runs from a console, where there is nothing to hide.
 Guarded by `test_child_processes_start_without_a_console_window_on_windows`;
 not seen on Windows from here.
 
+**The icon** is a guitar pick in the app's orange with an anvil and a spark
+("Rock" + "Forge"): `assets/rockforge.svg` (48 px up) and
+`assets/rockforge-small.svg` (16-32 px: no spark, the pick larger — detail is
+noise there). `assets/make_icon.py` renders both through Playwright's Chromium
+into `assets/rockforge.ico` (one hand-picked image per size, 16-256),
+`rockforge-256.png` (the README heading) and `web/favicon.svg` (the browser
+tab, served at `/favicon.svg`); run it after changing an SVG. `rockforge.spec`
+sets `icon=` (window, taskbar and shortcuts take it from the `.exe`) and
+`installer.iss` `SetupIconFile`. Guarded by
+`test_the_exe_and_the_installer_carry_the_rockforge_icon` and
+`test_the_page_carries_the_rockforge_icon`. Our own drawing, no third-party art.
+
 **`console=False` means the process has NO stdout or stderr** — they are
 `None`, and uvicorn's logging raises on the first line. `main()` redirects both
 to `work_dir/rockforge.log` before anything can write (`redirect_output_to_log`),

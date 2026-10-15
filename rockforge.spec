@@ -156,7 +156,9 @@ exe = EXE(
     # stderr, so start_standalone.main() redirects both to a log file before
     # anything can write to them — see redirect_output_to_log.
     console=False,
-    icon=None,
+    # The pick-and-anvil icon (assets/make_icon.py renders it from the SVGs);
+    # the window, the taskbar and the shortcuts all take it from the .exe.
+    icon="assets/rockforge.ico",
 )
 
 coll = COLLECT(

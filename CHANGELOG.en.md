@@ -6,6 +6,10 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### New
+- **An icon of its own**: an orange guitar pick with an anvil and a spark. It shows on the
+  `.exe`, the taskbar, the shortcuts, the installer and the browser tab.
+
 ### Fixed
 - **The black screen that flashed when clicking some buttons in the `.exe`**: it was the console
   window of each program the app runs behind the scenes (ffmpeg, the extra components' Python,

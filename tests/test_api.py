@@ -83,6 +83,15 @@ def test_app_js_is_served_with_a_javascript_content_type(client: TestClient) -> 
     assert "document.querySelectorAll" in r.text
 
 
+def test_the_page_carries_the_rockforge_icon(client: TestClient) -> None:
+    page = client.get("/").text
+    assert '<link rel="icon" type="image/svg+xml" href="/favicon.svg">' in page
+    r = client.get("/favicon.svg")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("image/svg+xml")
+    assert "<svg" in r.text
+
+
 def test_the_3d_highway_and_its_three_js_are_served(client: TestClient) -> None:
     """Partitura → "Pista 3D": highway3d.js loads the vendored three.js on first
     use, so both have to be served (and cache-busted like app.js)."""

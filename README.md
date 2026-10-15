@@ -1,4 +1,4 @@
-# RockForge
+# <img src="assets/rockforge-256.png" alt="" width="44" valign="middle"> RockForge
 
 **English** · [Português](README.pt.md)
 

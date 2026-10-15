@@ -24,7 +24,13 @@ SPEC = REPO_ROOT / "rockforge.spec"
 def _analysis_kwargs() -> dict[str, Any]:
     """Execute rockforge.spec with the PyInstaller builders stubbed out, and
     return the keyword arguments it actually hands to Analysis()."""
+    return _spec_calls()[0]
+
+
+def _spec_calls() -> tuple[dict[str, Any], dict[str, Any]]:
+    """The keyword arguments the spec hands to Analysis() and to EXE()."""
     captured: dict[str, Any] = {}
+    exe: dict[str, Any] = {}
 
     def _analysis(*_args: Any, **kwargs: Any) -> SimpleNamespace:
         captured.update(kwargs)
@@ -34,7 +40,7 @@ def _analysis_kwargs() -> dict[str, Any]:
         "__file__": str(SPEC),
         "Analysis": _analysis,
         "PYZ": lambda *a, **k: None,
-        "EXE": lambda *a, **k: None,
+        "EXE": lambda *a, **k: exe.update(k),
         "COLLECT": lambda *a, **k: None,
     }
     # The spec resolves its paths relative to the repo root (that is where
@@ -47,7 +53,7 @@ def _analysis_kwargs() -> dict[str, Any]:
         exec(compile(SPEC.read_text(encoding="utf-8"), str(SPEC), "exec"), namespace)
     finally:
         os.chdir(cwd)
-    return captured
+    return captured, exe
 
 
 def _run_spec() -> list[tuple[str, str]]:
@@ -174,3 +180,17 @@ def test_spec_bundles_what_the_extra_components_install() -> None:
     assert any(r.startswith("pdf-to-gp5") for r in reqs)
     assert any(dest.replace("\\", "/") == "rockforge/infrastructure/gpimport"
                and src.endswith("_pdf_runner.py") for src, dest in datas)
+
+
+def test_the_exe_and_the_installer_carry_the_rockforge_icon() -> None:
+    """Without it Windows shows PyInstaller's default icon on the window, the
+    taskbar and every shortcut."""
+    from PIL import Image
+
+    icon = _spec_calls()[1]["icon"]
+    assert icon == "assets/rockforge.ico"
+    with Image.open(REPO_ROOT / icon) as ico:
+        sizes = set(ico.info["sizes"])
+    assert {(16, 16), (32, 32), (48, 48), (256, 256)} <= sizes
+    iss = (REPO_ROOT / "installer.iss").read_text(encoding="utf-8")
+    assert "SetupIconFile=assets\\rockforge.ico" in iss

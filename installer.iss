@@ -31,7 +31,7 @@ WizardStyle=modern
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
-SetupIconFile=
+SetupIconFile=assets\rockforge.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 ; MIT licence shown before installing; LICENSE, THIRD_PARTY_NOTICES.md and
 ; LEGAL.md are also copied into {app} by build_exe.py (they are in dist\rockforge).

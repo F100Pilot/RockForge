@@ -1,0 +1,23 @@
+<!-- RockForge icon: a guitar pick (the app's orange) with an anvil and a spark. Source of assets/rockforge.ico (assets/make_icon.py). -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#22242d"/>
+      <stop offset="1" stop-color="#121318"/>
+    </linearGradient>
+    <linearGradient id="pick" x1="0.2" y1="0" x2="0.8" y2="1">
+      <stop offset="0" stop-color="#ffc06a"/>
+      <stop offset="0.45" stop-color="#ff7a45"/>
+      <stop offset="1" stop-color="#d93a22"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.62" r="0.5">
+      <stop offset="0" stop-color="#ff7a45" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#ff7a45" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="8" y="8" width="240" height="240" rx="52" fill="url(#bg)"/>
+  <rect x="8" y="8" width="240" height="240" rx="52" fill="url(#glow)"/>
+  <path d="M128 236 C 116 228, 46 150, 36 100 C 28 58, 66 30, 128 30 C 190 30, 228 58, 220 100 C 210 150, 140 228, 128 236 Z" fill="url(#pick)"/>
+  <path d="M60 88 L188 88 L188 108 C 170 110, 160 118, 156 130 L156 142 L172 158 L84 158 L100 142 L100 130 C 98 120, 90 114, 80 112 C 70 108, 63 100, 60 88 Z" fill="#16171d"/>
+  <path d="M190 40 L196 58 L214 64 L196 70 L190 88 L184 70 L166 64 L184 58 Z" fill="#fff4dc"/>
+</svg>

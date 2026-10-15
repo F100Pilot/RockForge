@@ -96,6 +96,16 @@ def i18n_dicts_js() -> Response:
     )
 
 
+@router.get("/favicon.svg", include_in_schema=False)
+def favicon() -> FileResponse:
+    """The app's icon, for the browser tab (the .exe's window takes it from
+    the executable itself)."""
+    for icon in api._web_file_candidates("favicon.svg"):
+        if icon.exists():
+            return FileResponse(icon, media_type="image/svg+xml")
+    raise HTTPException(status_code=404)
+
+
 @router.get("/highway3d.js", include_in_schema=False)
 def highway3d_js() -> FileResponse:
     """The 3D note highway (Partitura → "Pista 3D")."""
