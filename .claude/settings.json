@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git tag -a 0.10.0-*)",
+      "Bash(git push origin 0.10.0-*)"
+    ]
+  }
+}
