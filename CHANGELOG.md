@@ -6,6 +6,17 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Novo
+- **Editor de posições da mão (FHP).** Uma faixa por baixo da pauta mostra onde o jogo põe a mão,
+  e o novo modo «Posição da mão (FHP)» (tecla 0) deixa pôr, mudar (traste e largura) e apagar
+  posições, pista a pista; uma nota fora da sua posição fica com um anel vermelho. As tuas
+  posições vão para o `.psarc` (em todos os níveis de dificuldade) e para o projeto do DLC
+  Builder; Notas ▾ → «Repor automáticas» volta às calculadas. A pista 3D segue-as.
+
+### Alterado
+- O XML para o DLC Builder passa a levar as mesmas posições da mão automáticas que o `.psarc`
+  (antes eram calculadas de duas maneiras diferentes).
+
 ## [0.10.0 beta 4] — 2026-10-15
 
 ### Novo

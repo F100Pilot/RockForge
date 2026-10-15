@@ -294,6 +294,20 @@ background = clear the selection. **Excerpt** mode selects with a box.
   track or another.
 - Notes ▾ → **Clear this track / Clear on all** discards note edits.
 
+### Fret-hand positions (FHP)
+
+The **FHP** lane under the staff shows where the game puts the hand (the fret highlight and the
+camera), from one position to the next: grey = worked out by RockForge, teal = yours. In the
+**Fret-hand position (FHP)** mode (key **0**):
+
+- click a **note** to move the hand there (the fret comes from its lowest note);
+- click a **bar** of the lane to change its fret and width, or **Delete** it.
+
+The first edit copies the automatic positions, so you only change the ones that are wrong. A
+note its position does not cover gets a **red ring** (still playable, but worth a look). Notes ▾
+→ **Back to automatic** returns to RockForge's on this track. Each track has its own; they are
+pending until **Apply and rebuild** and follow the sync corrections made in the same rebuild.
+
 ### Sections (intro, verse, chorus…)
 
 For navigation and Riff Repeater. In the **Sections** inspector: **+ Add at cursor**, or the
@@ -452,7 +466,7 @@ the app itself.
 | Home | go to the start |
 | [ · ] · L | mark A · mark B (at the cursor) · turn the passage repeat on/off |
 | + / − | zoom |
-| 1 … 9 | pick the mode in the order of the Mode ▾ menu (the number shows beside each; the same number again turns the mode off) |
+| 1 … 9 · 0 | pick the mode in the order of the Mode ▾ menu (the number shows beside each; 0 is the tenth; the same number again turns the mode off) |
 | Shift+click · Ctrl+click | select a range · add or remove a note |
 | Delete | delete the selection |
 | Ctrl+Z · Ctrl+Shift+Z (or Ctrl+Y) | undo · redo (on any page of the project) |

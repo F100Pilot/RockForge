@@ -1392,7 +1392,7 @@ document.addEventListener('click', e => {
 function showShortcuts() {
   const k = (...keys) => keys.map(x => `<kbd>${esc(x)}</kbd>`).join(' ');
   const modes = SYNC_MODE_BUTTONS.map(([id], i) =>
-    `${k(String(i + 1))} ${esc(document.getElementById(id)?.dataset.name || '')}`).join(' · ');
+    `${k(modeKey(i))} ${esc(document.getElementById(id)?.dataset.name || '')}`).join(' · ');
   const groups = [
     [T('Reprodução'), [
       [k(T('Espaço')), T('play / pausa')],
@@ -1402,7 +1402,7 @@ function showShortcuts() {
       [k('L'), T('liga / desliga a repetição do trecho A–B')],
     ]],
     [T('Partitura'), [
-      [`${k('1')}…${k('9')}`, `${T('escolhe o modo (o mesmo número outra vez tira-o):')} ${modes}`],
+      [`${k('1')}…${k('9')} ${k('0')}`, `${T('escolhe o modo (o mesmo número outra vez tira-o):')} ${modes}`],
       [`${k('+')} ${k('−')}`, T('zoom')],
       [T('Shift+clique'), T('seleciona da nota anterior até esta')],
       [T('Ctrl+clique'), T('junta ou tira uma nota da seleção')],
@@ -1461,7 +1461,9 @@ let zoomLevel = 1.25;  // start 25% more zoomed in than the base scale
 // call — they never vary with zoom/song) hoisted here so the note editor's
 // click handler can convert a click's Y position to a string index without
 // duplicating showArr's internals.
-const STAFF_H = 304, STAFF_SB = STAFF_H - 59, STAFF_ROW = 40, NOTE_R = 13;
+// The band under the staff holds, top to bottom: the correction pins, the tone
+// labels, the fret-hand positions (FHP) and the chord names.
+const STAFF_H = 330, STAFF_SB = STAFF_H - 85, STAFF_ROW = 40, NOTE_R = 13;
 
 function setZoom(z) {
   // Keep the currently-centered time in view across the zoom change — tabPx
@@ -2129,6 +2131,12 @@ async function loadArrangements(id) {
   // Snapshot of what is ALREADY built, so "pendente" means changed-since-build
   // rather than "this job has note edits" (which it now legitimately does).
   noteOverridesBuilt = JSON.stringify(noteOverridesByKind);
+  fhpByKind = {};
+  for (const a of arrangements) {
+    if (a.hand_positions_edited) fhpByKind[a.kind] = (a.hand_positions || []).map(h => ({ time: h.time, fret: h.fret, width: h.width }));
+  }
+  fhpBuilt = JSON.stringify(fhpByKind);
+  closeFhpPopup();
   noteClipboard = [];  // avoid pasting a previous song's notes into this one
   noteDeleteUndo = null;
   syncAnchors = [];
@@ -2502,9 +2510,15 @@ function showArr(i) {
   const warp = buildTimeWarp(syncAnchors);
   let lastChordX = -999;
   const lastTechX = [-999, -999, -999, -999, -999, -999];
+  // The user's FHPs are checked against the notes: a note its hand position
+  // does not frame gets a red ring (playable, but worth a look).
+  const fhps = fhpList(a);
+  const checkFhp = fhpEdited(a) && fhps.length > 0;
+  let fk = 0;
   for (const g of groups) {
     const sel = selectedTimes.has(g.time) ? ' selected' : '';
     const dispT = warp(previewScale(g.time));
+    while (checkFhp && fk + 1 < fhps.length && fhps[fk + 1].time <= g.time + FHP_MATCH_S) fk++;
     s += `<g class="note-grp${sel}" data-t="${g.time}">`;
     if (g.notes.length > 1) {
       const x = timeToX(dispT);
@@ -2548,6 +2562,10 @@ function showArr(i) {
         : `<circle class="note-shape" cx="${x}" cy="${y}" r="${R}" fill="${color}"${tech ? ' stroke="#fff" stroke-width="2.5" stroke-dasharray="3,3"' : ''}/>`;
       s += shape;
       if (pending) s += `<circle cx="${x}" cy="${y}" r="${R+3}" fill="none" stroke="#3ddcc4" stroke-width="1.5" stroke-dasharray="2,2"/>`;
+      if (checkFhp && !fhpCovers(fhps[fk], n.fret)) {
+        const h = fhps[fk];
+        s += `<circle cx="${x}" cy="${y}" r="${R+4}" fill="none" stroke="#e6483c" stroke-width="2"><title>${esc(T('Fora da posição da mão (trastes {a}–{b})', { a: h.fret, b: h.fret + h.width - 1 }))}</title></circle>`;
+      }
       s += `<text x="${x}" y="${y+5}" fill="#14151a" font-size="14" font-weight="700" text-anchor="middle">${n.fret}</text>`;
       if (bend) s += bendArrow(x, y, R, bendLabel(n.bend_semitones));  // rising arrow + amount
       if (tech) {
@@ -2575,6 +2593,7 @@ function showArr(i) {
     s += `<path d="M${x1},${H - 24} L${x1},${H - 30} L${x2},${H - 30} L${x2},${H - 24}" fill="none" stroke="#ffd479" stroke-width="1.5" opacity=".8"/>`;
     s += `<text x="${x1 + 3}" y="${H - 12}" fill="#ffd479" font-size="12" font-style="italic">${esc(ap.name ? T('arpejo {nome}', { nome: ap.name }) : T('arpejo'))}<title>${esc(T('Arpejo: notas soltas deixadas a soar sobre a forma de um acorde — o jogo mostra a forma por cima delas.'))}</title></text>`;
   }
+  s += fhpLaneSvg(a, fhps, warp, W, SB + 40);
   // Sync anchors (drift corrections). Drawn in a distinct teal — NOT the
   // playhead's orange — with a numbered pin below the staff, so they read as
   // "correction points" and never blur into the playhead. A faint ghost tick
@@ -2614,6 +2633,7 @@ function showArr(i) {
   renderEstimatedBars();
   updateNoteEditsInfo();
   updateDeleteNotesUi();
+  updateFhpUi();
   drawFretboard();  // redraw the neck (tuning labels) + refresh the active notes
   updateFretboard(playheadDisplay(audioTime()));
   updateLiveBpm(playheadDisplay(audioTime()));
@@ -2699,6 +2719,167 @@ function nearestGridChartTime(displayX) {
 // pending-edit state in this viewer.
 let noteClipboard = [];  // [{dTime, string, fret, sustain, techniques, bend_semitones}, ...]
 let noteOverridesBuilt = '{}';  // JSON of the note edits already baked into the build
+
+// Fret-hand positions (FHPs, the game's "anchors"): where the hand sits, from
+// one FHP to the next. A chart the user never touched gets the automatic ones
+// (a.hand_positions, as built); once edited, fhpByKind[kind] holds ALL of that
+// chart's FHPs, in the BUILT clock like the notes, carried through the pending
+// sync only when sent (fhpForRebuild) — so they follow a correction the same
+// rebuild applies. Always sent whole, seeded from the committed ones on load.
+let fhpByKind = {};
+let fhpBuilt = '{}';
+let fhpContext = null;  // the open popup's {time, k}
+const FHP_MATCH_S = 0.005;
+function fhpList(a) { return (a && (fhpByKind[a.kind] || a.hand_positions)) || []; }
+function fhpEdited(a) { return !!(a && fhpByKind[a.kind]); }
+function fhpCovers(h, fret) { return fret <= 0 || (fret >= h.fret && fret < h.fret + h.width); }
+// Chart `idx`'s time as it shows now (and as the next build places it).
+function chartDisplayTime(idx, t) {
+  return idx === currentArr ? buildTimeWarp(syncAnchors)(previewScale(t)) : arrangementDisplayTime(idx, t);
+}
+function fhpForRebuild() {
+  const out = {};
+  arrangements.forEach((a, idx) => {
+    const list = fhpByKind[a.kind];
+    if (!list || !list.length) return;
+    out[a.kind] = list
+      .map(h => ({ time: Math.max(0, Math.round(chartDisplayTime(idx, h.time) * 1000) / 1000), fret: h.fret, width: h.width }))
+      .sort((x, y) => x.time - y.time);
+  });
+  return out;
+}
+function fhpLaneSvg(a, fhps, warp, W, y) {
+  if (!fhps.length) return '';
+  const edited = fhpEdited(a);
+  const built = JSON.parse(fhpBuilt)[a.kind] || null;
+  const pending = JSON.stringify(fhpByKind[a.kind] || null) !== JSON.stringify(built);
+  const col = edited ? '#3ddcc4' : '#7d8aa5';
+  const tip = edited ? T('Posições da mão (FHP) tuas') : T('Posições da mão (FHP) automáticas');
+  let s = `<text x="2" y="${y + 12}" fill="${col}" font-size="10" font-weight="700">FHP<title>${esc(tip)}</title></text>`;
+  const xs = fhps.map((h, k) => (k === 0 ? 30 : timeToX(warp(previewScale(h.time)))));
+  fhps.forEach((h, k) => {
+    const x1 = Math.max(30, xs[k]);
+    const x2 = k + 1 < fhps.length ? xs[k + 1] : W - 10;
+    if (x2 < 24 || x1 > W - 4) return;
+    const last = h.fret + h.width - 1;
+    const label = x2 - x1 > 38 ? `${h.fret}–${last}` : (x2 - x1 > 14 ? `${h.fret}` : '');
+    s += `<g class="fhp-bar" data-k="${k}"><rect x="${x1 + 1}" y="${y}" width="${Math.max(3, x2 - x1 - 2)}" height="16" rx="3" fill="#1d2129" stroke="${col}" stroke-width="1"${pending ? ' stroke-dasharray="3,2"' : ''} opacity=".95"/>`
+      + `<line x1="${x1 + 1}" y1="${y - 3}" x2="${x1 + 1}" y2="${y + 16}" stroke="${col}" stroke-width="2"/>`
+      + (label ? `<text x="${x1 + 5}" y="${y + 12}" fill="${col}" font-size="11" font-weight="700">${label}</text>` : '')
+      + `<title>${esc(T('Mão nos trastes {a}–{b}', { a: h.fret, b: last }))}</title></g>`;
+  });
+  return s;
+}
+// The chart's FHPs as an editable list (a copy of the automatic ones the first time).
+function fhpEditable(a) {
+  if (!fhpByKind[a.kind]) fhpByKind[a.kind] = (a.hand_positions || []).map(h => ({ time: h.time, fret: h.fret, width: h.width }));
+  return fhpByKind[a.kind];
+}
+function updateFhpUi() {
+  const a = arrangements[currentArr];
+  const btn = document.getElementById('resetFhp');
+  if (btn) btn.disabled = !fhpEdited(a);
+}
+function openFhpPopup(t, clientX, clientY, k = null) {
+  const a = arrangements[currentArr];
+  if (!a) return;
+  const list = fhpList(a);
+  if (k == null) {
+    const at = list.findIndex(h => Math.abs(h.time - t) <= FHP_MATCH_S);
+    if (at >= 0) k = at;
+  }
+  let fret, width;
+  if (k != null && list[k]) {
+    ({ fret, width } = list[k]);
+    t = list[k].time;
+  } else {
+    // A new FHP from this note: the hand where its lowest fretted note is.
+    const frets = a.notes.filter(n => Math.abs(n.time - t) < 0.03 && n.fret > 0).map(n => n.fret);
+    const owner = list.filter(h => h.time <= t + FHP_MATCH_S).pop() || list[0];
+    width = owner ? owner.width : 4;
+    fret = frets.length ? Math.min(Math.min(...frets), 25 - width) : (owner ? owner.fret : 1);
+  }
+  fhpContext = { time: t, k };
+  document.getElementById('fhpPopupTitle').textContent = k != null
+    ? T('Posição da mão a partir de {t}s', { t: (chartDisplayTime(currentArr, t) - viewOrigin).toFixed(2) })
+    : T('Nova posição da mão a partir desta nota');
+  document.getElementById('fhpFret').value = fret;
+  document.getElementById('fhpWidth').value = width;
+  document.getElementById('fhpDelete').style.display = k != null ? '' : 'none';
+  fhpRangeText();
+  const pop = document.getElementById('fhpPopup');
+  pop.hidden = false;
+  const w = pop.offsetWidth, h = pop.offsetHeight;
+  let x = clientX + 10, y = clientY + 10;
+  if (x + w > window.innerWidth - 8) x = clientX - w - 10;
+  if (y + h > window.innerHeight - 8) y = window.innerHeight - h - 8;
+  pop.style.left = Math.max(8, x) + 'px';
+  pop.style.top = Math.max(8, y) + 'px';
+  document.getElementById('fhpFret').focus();
+}
+function fhpRangeText() {
+  const fret = parseInt(document.getElementById('fhpFret').value, 10);
+  const width = parseInt(document.getElementById('fhpWidth').value, 10);
+  const ok = fret >= 1 && width >= 2 && width <= 12 && fret + width - 1 <= 24;
+  document.getElementById('fhpRange').textContent = ok
+    ? T('A mão cobre os trastes {a} a {b}.', { a: fret, b: fret + width - 1 })
+    : T('Traste de 1 a 24, largura de 2 a 12, sem passar do traste 24.');
+}
+function closeFhpPopup() { document.getElementById('fhpPopup').hidden = true; fhpContext = null; }
+(function wireFhpPopup() {
+  const pop = document.getElementById('fhpPopup');
+  if (!pop) return;
+  document.getElementById('fhpFret').addEventListener('input', fhpRangeText);
+  document.getElementById('fhpWidth').addEventListener('input', fhpRangeText);
+  document.getElementById('fhpCancel').addEventListener('click', closeFhpPopup);
+  document.getElementById('fhpSave').addEventListener('click', () => {
+    const a = arrangements[currentArr];
+    if (!fhpContext || !a) return;
+    const fret = parseInt(document.getElementById('fhpFret').value, 10);
+    const width = parseInt(document.getElementById('fhpWidth').value, 10);
+    if (!(fret >= 1 && width >= 2 && width <= 12 && fret + width - 1 <= 24)) {
+      toast(T('Traste de 1 a 24, largura de 2 a 12, sem passar do traste 24.'), 'err');
+      return;
+    }
+    const list = fhpEditable(a);
+    const at = fhpContext.k != null ? fhpContext.k : list.findIndex(h => Math.abs(h.time - fhpContext.time) <= FHP_MATCH_S);
+    const h = { time: fhpContext.time, fret, width };
+    if (at >= 0 && list[at]) list[at] = h; else list.push(h);
+    list.sort((x, y) => x.time - y.time);
+    closeFhpPopup();
+    showArr(currentArr);
+    updatePendingChangesInfo();
+    toast(T('Posição da mão guardada — pendente até "Aplicar e reconstruir".'), 'ok');
+  });
+  document.getElementById('fhpDelete').addEventListener('click', () => {
+    const a = arrangements[currentArr];
+    if (!fhpContext || fhpContext.k == null || !a) return;
+    const list = fhpEditable(a);
+    list.splice(fhpContext.k, 1);
+    // With none left the chart goes back to the automatic ones.
+    if (!list.length) delete fhpByKind[a.kind];
+    closeFhpPopup();
+    showArr(currentArr);
+    updatePendingChangesInfo();
+    toast(list.length ? T('Posição da mão apagada — pendente até "Aplicar e reconstruir".')
+      : T('Sem posições da mão tuas: a pista volta às automáticas.'), 'ok');
+  });
+  pop.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); document.getElementById('fhpSave').click(); }
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFhpPopup(); });
+  document.addEventListener('pointerdown', e => {
+    if (!pop.hidden && !pop.contains(e.target) && !e.target.closest('#tabsvg')) closeFhpPopup();
+  });
+  document.getElementById('resetFhp')?.addEventListener('click', () => {
+    const a = arrangements[currentArr];
+    if (!a || !fhpByKind[a.kind]) return;
+    delete fhpByKind[a.kind];
+    showArr(currentArr);
+    updatePendingChangesInfo();
+    toast(T('Posições da mão desta pista de volta às automáticas — pendente até "Aplicar e reconstruir".'), 'ok');
+  });
+})();
 
 function updateClipboardInfo() {
   const el = document.getElementById('clipboardInfo');
@@ -3620,6 +3801,8 @@ async function applyAllNow() {
         // one dict covering every tab's pending edits from this session, same
         // no-prior-default reasoning as tone_changes (an untouched job sends {}).
         note_overrides: isGpJob() ? noteOverridesByKind : null,
+        // Each chart's own FHPs, carried through its pending sync; {} = all automatic.
+        hand_positions: isGpJob() ? fhpForRebuild() : null,
       }),
     });
   } catch (err) {
@@ -3639,6 +3822,8 @@ async function applyAllNow() {
   resetLyricFollow();
   noteOverridesByKind = {};  // baked into the new build regardless of applyToAll
   noteOverridesBuilt = '{}';
+  fhpByKind = {};
+  fhpBuilt = '{}';
   selectJob(b.id, { force: true });
   offerDropPrevious(b.id);
 }
@@ -6440,6 +6625,7 @@ function updatePendingChangesInfo() {
   if (Math.abs(centOffsetLive - centOffsetBuilt) > 0.05) parts.push(T('desvio da afinação'));
   if (syncAnchors.length) parts.push(T('{n} ponto(s) de correção', { n: syncAnchors.length }));
   if (JSON.stringify(noteOverridesByKind) !== noteOverridesBuilt) parts.push(T('edições de notas'));
+  if (JSON.stringify(fhpByKind) !== fhpBuilt) parts.push(T('posições da mão'));
   if (JSON.stringify(serializeLyrics()) !== lyricsBuilt) parts.push(T('letra'));
   el.textContent = parts.length ? T('Pendente: {changes}', { changes: parts.join(', ') }) : '';
   notePendingChange();
@@ -6481,6 +6667,7 @@ function pendingSnapshot() {
     dd: document.getElementById('ddChk').checked,
     tempo, anchors,
     notes: JSON.parse(JSON.stringify(noteOverridesByKind)),
+    fhp: JSON.parse(JSON.stringify(fhpByKind)),
     lyrics: lyricsEvents.map(r => ({ time: r.time, length: r.length, lyric: r.lyric, lineBreak: !!r.lineBreak })),
     lyricsBackToScore, lyricsFollowChart,
     sections: songSections.map(x => ({ time: x.time, name: x.name })),
@@ -6508,6 +6695,8 @@ function restorePending(snap) {
     }
     noteOverridesByKind = JSON.parse(JSON.stringify(snap.notes));
     noteDeleteUndo = null;  // its record describes a state that is no longer on screen
+    fhpByKind = JSON.parse(JSON.stringify(snap.fhp || {}));
+    closeFhpPopup();
     lyricsEvents = snap.lyrics.map(r => ({ ...r }));
     lyricSelected = null;
     lyricsBackToScore = snap.lyricsBackToScore;
@@ -7040,6 +7229,14 @@ function updateSelectionInfo() {
       openBarAlignPopup(parseFloat(grp.dataset.t), e.clientX, e.clientY);
       return;
     }
+    // Fret-hand position: click a note to start one there (or edit the one that
+    // starts there), or the FHP band under the staff to edit that one.
+    const fhpBar = !grp && e.target.closest('.fhp-bar');
+    if (syncMode === 'fhp' && (grp || fhpBar)) {
+      if (fhpBar) openFhpPopup(0, e.clientX, e.clientY, parseInt(fhpBar.dataset.k, 10));
+      else openFhpPopup(parseFloat(grp.dataset.t), e.clientX, e.clientY);
+      return;
+    }
     // Tone change: click a note to switch to one of the extra tones from there.
     if (syncMode === 'tonechange' && grp) {
       placeToneChange(parseFloat(grp.dataset.t));
@@ -7269,7 +7466,10 @@ const SYNC_MODE_BUTTONS = [
   ['modeTone', 'tonechange'],
   ['modeSection', 'section'],
   ['modeEditNotes', 'editnotes'],
+  ['modeFhp', 'fhp'],
 ];
+// The key that picks mode i: 1…9, then 0 for the tenth.
+const modeKey = i => (i === 9 ? '0' : String(i + 1));
 const MODE_HELP = {
   drag: T('<b>Arrastar:</b> arrasta uma nota para o instante da gravação onde ela deve tocar (encaixa no beat). As notas entre duas correções esticam/comprimem para acompanhar. Ideal para acertar um ponto que escorregou.'),
   tap: T('<b>Marcar no cursor:</b> dá play, e quando ouvires uma nota na gravação, clica nessa nota na partitura — ela ancora na posição do cursor. Alinhar a tocar.'),
@@ -7280,6 +7480,7 @@ const MODE_HELP = {
   tonechange: T('<b>Mudança de tom:</b> clica numa nota para trocar para um dos tons extra a partir daí.'),
   section: T('<b>Secção:</b> clica numa nota para nomear onde começa uma secção (intro/verso/refrão…). Nada a ver com sincronização — é para navegação e o Riff Repeater.'),
   editnotes: T('<b>Editar notas:</b> clica numa nota para a editar (traste, sustain, técnicas, bend/slide) ou remover; <b>duplo-clique</b> no pentagrama vazio insere uma nota nova, encaixada na grelha. Um clique simples no vazio move o cursor, como nos outros modos. Muda o CONTEÚDO da partitura — fica pendente até "Aplicar e reconstruir".'),
+  fhp: T('<b>Posição da mão (FHP):</b> a faixa <b>FHP</b> por baixo da pauta mostra onde a mão fica no jogo, de uma posição até à seguinte (cinzento = automáticas, verde-água = tuas). Clica numa nota para pôr ali uma posição nova (ou mudar a que lá começa), ou clica numa barra da faixa para mudar o traste e a largura, ou apagá-la. A primeira edição copia as automáticas, para só mudares as que estão mal. Uma nota fora da sua posição fica com um anel vermelho. Fica pendente até "Aplicar e reconstruir".'),
   null: T('Nenhum modo ativo. Clica num modo acima. <b>Dica:</b> para um desvio uniforme em todo o trecho, usa antes o <b>Andamento (BPM)</b> — não precisa de âncoras.'),
 };
 function setSyncMode(mode) {
@@ -7359,7 +7560,7 @@ wireDropdown('notesMenuBtn', 'notesMenu');
 wireDropdown('audioMenuBtn', 'audioMenu');
 SYNC_MODE_BUTTONS.forEach(([id], i) => {
   const btn = document.getElementById(id);
-  if (btn) btn.insertAdjacentHTML('beforeend', `<kbd class="dd-kbd" aria-hidden="true">${i + 1}</kbd>`);
+  if (btn) btn.insertAdjacentHTML('beforeend', `<kbd class="dd-kbd" aria-hidden="true">${modeKey(i)}</kbd>`);
 });
 SYNC_MODE_BUTTONS.forEach(([id, mode]) => {
   document.getElementById(id)?.addEventListener('click', () => {
@@ -7759,6 +7960,7 @@ function hw3dRefresh(a, notes) {
     bars: (a.bars || []).map(b => ({ t: at(b.time), measure: b.measure })),
     beats: (a.beats || []).map(at),
     sections: songSections.map(sec => ({ t: at(sec.time), name: sec.name })),
+    fhps: fhpList(a).map(h => ({ t: at(h.time), fret: h.fret, width: h.width })),
     tuning: a.tuning_offsets || [0, 0, 0, 0, 0, 0],
     strings: stringCount(a),
   };
@@ -8094,8 +8296,8 @@ document.addEventListener('keydown', e => {
     e.preventDefault(); audioSeek(Math.max(0, currentPlayheadT - (e.shiftKey ? 5 : 1)));
   } else if (e.key === 'Home') {
     e.preventDefault(); audioSeek(0);
-  } else if (e.key >= '1' && e.key <= '9' && !e.ctrlKey && !e.metaKey && !e.altKey && isGpJob()) {
-    const entry = SYNC_MODE_BUTTONS[Number(e.key) - 1];
+  } else if (e.key >= '0' && e.key <= '9' && !e.ctrlKey && !e.metaKey && !e.altKey && isGpJob()) {
+    const entry = SYNC_MODE_BUTTONS[e.key === '0' ? 9 : Number(e.key) - 1];
     const btn = entry && document.getElementById(entry[0]);
     if (btn && !btn.disabled && !btn.hidden) {
       e.preventDefault();

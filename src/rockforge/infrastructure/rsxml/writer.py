@@ -10,10 +10,12 @@ in EOF / DLC Builder for human review before packaging.
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
+from collections.abc import Sequence
 from pathlib import Path
 
 from rockforge.domain.arrangement import Arrangement, ArrangementKind, Section, number_sections
 from rockforge.domain.chords import arpeggio_spans, chord_display, hand_shape_spans
+from rockforge.domain.hand import HandPosition, auto_windows
 from rockforge.domain.music import TabNote, Technique, high_density_flags, is_plain_rise
 
 CHORD_EPSILON_S = 0.03  # notes starting within 30 ms form a chord (matches fret mapper)
@@ -57,41 +59,20 @@ def _group_chords(notes: list[TabNote]) -> list[list[TabNote]]:
     return groups
 
 
-def _anchor_for_frets(frets: list[int]) -> tuple[int, int]:
-    """Fretboard position (fret, width) covering the given fret positions.
-
-    Open strings (fret 0) don't constrain the anchor position. width is
-    clamped to the 1-24 fret range Rocksmith's fretboard highlight covers.
-    """
-    used = [f for f in frets if f > 0]
-    if not used:
-        return 1, 4
-    lo, hi = min(used), max(used)
-    width = min(max(4, hi - lo + 1), 24)
-    fret = max(1, min(lo, 25 - width))
-    return fret, width
-
-
-def _build_anchors(groups: list[list[TabNote]]) -> list[tuple[float, int, int]]:
-    """One anchor per note group whose frets fall outside the current anchor.
+def _build_anchors(
+    groups: list[list[TabNote]], hand_positions: Sequence[HandPosition] = ()
+) -> list[tuple[float, int, int]]:
+    """``(time, fret, width)`` per anchor: the user's FHPs when the chart has
+    them, else the same automatic windows the native SNG places
+    (``auto_windows``), so DLC Builder, the viewer and the game see one set.
 
     Without per-position anchors, Rocksmith keeps the fretboard highlight
-    fixed at the song's first position regardless of where notes actually
-    are — this is what makes the highlight "follow" the played frets.
+    fixed at the song's first position regardless of where notes actually are.
     """
-    anchors: list[tuple[float, int, int]] = []
-    current: tuple[int, int] | None = None
-    for g in groups:
-        used = [n.fret for n in g if n.fret > 0]
-        if not used:
-            continue
-        if current is not None and all(
-            current[0] <= f <= current[0] + current[1] - 1 for f in used
-        ):
-            continue
-        fret, width = _anchor_for_frets(used)
-        anchors.append((g[0].time, fret, width))
-        current = (fret, width)
+    if hand_positions:
+        return [(h.time, h.fret, h.width) for h in sorted(hand_positions)]
+    windows = auto_windows([(g[0].time, g[-1].time, [n.fret for n in g]) for g in groups])
+    anchors = [(t, fret, width) for t, _, fret, width in windows]
     if not anchors and groups:
         anchors.append((groups[0][0].time, 1, 4))
     return anchors
@@ -442,7 +423,7 @@ def render_arrangement(arr: Arrangement, album_art_urn: str | None = None) -> ET
             anchor_groups[-1] = anchor_groups[-1] + g
         else:
             anchor_groups.append(g)
-    anchor_list = _build_anchors(anchor_groups)
+    anchor_list = _build_anchors(anchor_groups, arr.hand_positions)
     anchors = ET.SubElement(level, "anchors", count=str(len(anchor_list)))
     for time, fret, width in anchor_list:
         ET.SubElement(anchors, "anchor", time=_fmt(time), fret=str(fret), width=_fmt(float(width)))

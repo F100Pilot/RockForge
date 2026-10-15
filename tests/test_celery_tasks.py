@@ -127,6 +127,42 @@ def test_generate_cdlc_gp_job_completes(db, tmp_path, monkeypatch) -> None:
     assert job.error is None
 
 
+def test_the_fhp_editors_hand_positions_reach_the_build(db, tmp_path, monkeypatch) -> None:
+    """params["hand_positions"] (the FHP editor) becomes each chart's own
+    fret-hand positions; a chart absent from it keeps the automatic ones."""
+    from rockforge.application.gp_pipeline import GenerateFromGpUseCase
+
+    seen: list = []
+
+    class _Capture(_FakePackager):
+        def package(self, arrangements, *args, **kwargs):
+            seen.extend(arrangements)
+            return super().package(arrangements, *args, **kwargs)
+
+    gp_path = _make_gp5(tmp_path)
+    monkeypatch.setattr(
+        ca, "_build_gp_use_case",
+        lambda: GenerateFromGpUseCase(
+            ingestor=_FakeIngestor(), normalizer=_FakeNormalizer(), packager=_Capture()
+        ),
+    )
+    job_id = _job(db, params={
+        "gp_path": str(gp_path), "lead_track": 0,
+        # A lone Lead is built as Combined; the Rhythm is not in this song.
+        "hand_positions": {"Combined": [{"time": 0.0, "fret": 5, "width": 5}],
+                           "Rhythm": [{"time": 0.0, "fret": 2}]},
+    })
+
+    ca.generate_cdlc(job_id)
+
+    job = _reload(db, job_id)
+    assert job.status == JobStatus.COMPLETED, job.error
+    (combined,) = seen
+    assert [(h.time, h.fret, h.width) for h in combined.hand_positions] == [(0.0, 5, 5)]
+    # The note (fret 3) sits outside that window: said, not refused.
+    assert any("1 note(s) outside" in w for w in job.warnings), job.warnings
+
+
 def test_a_gp_files_lyrics_reach_the_editor_after_the_build(db, tmp_path, monkeypatch) -> None:
     """The build stores the GP file's own lyrics as the editor's rows. It never
     did in a real run: the task wrote into the very dict the session holds as

@@ -434,6 +434,12 @@
   #noteEditPopup { position:fixed; z-index:70; background:var(--panel-2); border:1px solid var(--accent);
     border-radius:10px; box-shadow:var(--shadow); padding:.6rem .7rem; min-width:190px; font-size:.85rem; }
   #noteEditPopup[hidden] { display:none; }
+  #fhpPopup { position:fixed; z-index:70; background:var(--panel-2); border:1px solid var(--accent);
+    border-radius:8px; padding:.7rem .8rem; box-shadow:0 8px 24px rgba(0,0,0,.5); font-size:.85rem; }
+  #fhpPopup[hidden] { display:none; }
+  #fhpPopup .ba-title { font-weight:700; margin-bottom:.45rem; color:var(--accent); }
+  #fhpPopup .ba-row { display:flex; align-items:center; gap:.4rem; flex-wrap:wrap; }
+  #tabsvg .fhp-bar { cursor:pointer; }
   #noteEditPopup .ba-title { font-weight:700; margin-bottom:.45rem; color:var(--accent); }
   #noteEditPopup .ba-row { display:flex; align-items:center; gap:.4rem; flex-wrap:wrap; }
   /* Creation wizard stepper */
@@ -1033,6 +1039,8 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                   data-ico="tag" data-name="Secção" title="Secção: clica numa nota para nomear onde começa uma secção (intro/verso/refrão…). Nada a ver com sincronização — é para navegação e o Riff Repeater."><svg class="ic dd-ico" aria-hidden="true"><use href="#i-tag"/></svg><span class="dd-txt"><span class="dd-name">Secção</span><span class="dd-desc">Marca onde começa intro, verso, refrão…</span></span></button>
                 <button type="button" id="modeEditNotes" class="mode-btn dd-item" role="menuitemradio" aria-checked="false"
                   data-ico="edit" data-name="Editar notas" title="Editar notas: clica numa nota existente para a editar (traste, técnicas, bend/slide) ou remover; DUPLO-clique no pentagrama vazio insere uma nota nova (encaixa na grelha). Um clique simples no vazio move o cursor. Muda o CONTEÚDO da partitura."><svg class="ic dd-ico" aria-hidden="true"><use href="#i-edit"/></svg><span class="dd-txt"><span class="dd-name">Editar notas</span><span class="dd-desc">Traste, técnicas; duplo-clique insere uma nota</span></span></button>
+                <button type="button" id="modeFhp" class="mode-btn dd-item" role="menuitemradio" aria-checked="false"
+                  data-ico="target" data-name="Posição da mão (FHP)" title="Posição da mão (FHP): clica numa nota para a mão passar para ali, ou numa barra da faixa FHP por baixo da pauta para mudar o traste e a largura, ou apagá-la. Muda onde o jogo põe a mão (o destaque e a câmara)."><svg class="ic dd-ico" aria-hidden="true"><use href="#i-target"/></svg><span class="dd-txt"><span class="dd-name">Posição da mão (FHP)</span><span class="dd-desc">Onde a mão fica no jogo: traste e largura</span></span></button>
                 </div>
               </div>
               <div class="dd">
@@ -1047,6 +1055,8 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                 <div class="dd-cap">Edições de notas</div>
                 <button type="button" id="clearNoteEdits" class="dd-item" role="menuitem" disabled title="Descartar as edições de notas desta pista (só ao Aplicar e reconstruir)"><svg class="ic dd-ico" aria-hidden="true"><use href="#i-eraser"/></svg><span class="dd-txt"><span class="dd-name">Limpar esta pista</span><span class="dd-desc">Descarta as edições desta pista</span></span></button>
                 <button type="button" id="clearNoteEditsAll" class="dd-item" role="menuitem" disabled title="Descartar as edições de notas de TODAS as pistas (só ao Aplicar e reconstruir)"><svg class="ic dd-ico" aria-hidden="true"><use href="#i-eraser"/></svg><span class="dd-txt"><span class="dd-name">Limpar em todas</span><span class="dd-desc">Descarta as edições de todas as pistas</span></span></button>
+                <div class="dd-cap">Posições da mão (FHP)</div>
+                <button type="button" id="resetFhp" class="dd-item" role="menuitem" disabled title="As posições da mão desta pista voltam a ser calculadas pelo RockForge (só ao Aplicar e reconstruir)"><svg class="ic dd-ico" aria-hidden="true"><use href="#i-refresh"/></svg><span class="dd-txt"><span class="dd-name">Repor automáticas</span><span class="dd-desc">Descarta as FHPs que puseste nesta pista</span></span></button>
                 </div>
               </div>
           </div>
@@ -2125,6 +2135,20 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
     <span>
       <button type="button" id="neCancel" class="secondary">Cancelar</button>
       <button type="button" id="neSave">Guardar</button>
+    </span>
+  </div>
+</div>
+
+<div id="fhpPopup" hidden style="max-width:19rem">
+  <div class="ba-title" id="fhpPopupTitle">Posição da mão</div>
+  <div class="ba-row">Traste: <input type="number" id="fhpFret" min="1" max="24" value="1" style="width:3.6rem">
+    Largura: <input type="number" id="fhpWidth" min="2" max="12" value="4" style="width:3.6rem"> trastes</div>
+  <div class="ba-row" id="fhpRange" style="opacity:.75;margin-top:.3rem"></div>
+  <div class="ba-row" style="margin-top:.4rem;justify-content:space-between">
+    <button type="button" id="fhpDelete" class="secondary" style="color:#e88">Apagar</button>
+    <span>
+      <button type="button" id="fhpCancel" class="secondary">Cancelar</button>
+      <button type="button" id="fhpSave">Guardar</button>
     </span>
   </div>
 </div>

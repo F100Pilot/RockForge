@@ -6,6 +6,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from enum import Enum
 
+from rockforge.domain.hand import HandPosition
 from rockforge.domain.music import TabNote, TempoMap, Tuning
 from rockforge.domain.tone import Tone
 
@@ -156,6 +157,9 @@ class Arrangement:
     tone_names: list[str] = field(default_factory=list)
     tone_changes: list[ToneChange] = field(default_factory=list)
     tones: list[Tone] = field(default_factory=list)
+    # The user's fret-hand positions (the tab viewer's FHP editor). Empty: the
+    # FHPs are placed automatically; otherwise these are all of them.
+    hand_positions: list[HandPosition] = field(default_factory=list)
 
     def switch_slots(self) -> list[str]:
         """The tones in slots A-D as the game sees them: the switchable names that

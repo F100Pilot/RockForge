@@ -848,7 +848,7 @@ the mode names come from the menu items' own `data-name`, so a renamed mode
 follows. It opens with `?` on any project page (not typing, nothing on top) or
 the key button in the top bar (`#shortcutsBtn`, hidden under 1150 px — `?`
 still works). The ⓘ box now also closes with Esc. Digits 1–9 pick the modes in
-`SYNC_MODE_BUTTONS` order (= the Modo ▾ menu's), the active one's own number
+`SYNC_MODE_BUTTONS` order (= the Modo ▾ menu's), 0 the tenth (`modeKey`), the active one's own number
 deselects it like a second click; each menu item carries its number
 (`.dd-kbd`, added at load). **When adding a shortcut, add its row to
 `showShortcuts` and to the guides' table.** On the way, the project top bar
@@ -859,6 +859,70 @@ an ellipsis, "Descarregar" is icon-only under 1100 px and the chip hides under
 860 px. Browser-only; verified with Playwright (`?`/Esc/button, digits incl.
 deselect, `?` and digits ignored in a field; the top bar at 1440/1150/1000/800
 px in PT and EN, nothing overlapping or cut).
+
+### Fret-hand positions — the FHP editor (`hand_positions`)
+
+"There's no way to add or edit FHPs. Automatic ones are total shit." (r/rocksmith,
+2026-10-15). An FHP is Rocksmith's anchor: from its time to the next one the
+game highlights `width` frets from `fret` and points the camera there.
+`domain/hand.py` holds the model: `HandPosition(time, fret, width)` (fret 1-24,
+width 2-12, never past fret 24 — `ValueError`), `auto_windows` (the automatic
+placement, moved here from `sng_build._build_anchors` byte for byte:
+consecutive fretted positions folded greedily into one window of at most
+`AUTO_WINDOW_SPAN` = 4 frets) and `fixed_windows` (the user's: every note,
+open strings included, belongs to the FHP at or before it within
+`HAND_POSITION_MATCH_S` = 5 ms — the XML rounds to the millisecond — or the
+first FHP when it comes before all; an FHP with no note at a level is DROPPED
+at that level, the one before carrying on, so a thinned DD level never ships a
+window over notes it does not have — the crash rule of `_build_level`).
+`Arrangement.hand_positions` empty = automatic; non-empty = ALL the chart's
+FHPs. The SNG uses them at every level (`_build_anchors(..., hand_positions)`;
+the phrase-boundary split, `_anchor_note_times` and the note re-pointing are
+unchanged, so `check_sng` holds) and skips `_hold_through_arpeggios` (an FHP
+inside an arpeggio is the user's call); the XML writes them verbatim.
+**The XML's automatic anchors are now `auto_windows` too**: before, the writer
+had its own "new anchor when a group leaves the window" rule, so DLC Builder,
+the viewer (which reads the XML) and the native SNG each showed different FHPs
+— and the editor starts from what the viewer shows.
+
+Plumbing, the `note_overrides` pattern: `GpJobSpec.hand_positions` (keyed by
+`ArrangementKind.value`), `params["hand_positions"]` (an empty chart dropped),
+`RebuildIn.hand_positions` (null = untouched, `{}` = all automatic;
+`HandPositionIn` 422s off the neck), the worker rebuilds them, and
+`/arrangements` answers each chart's FHPs AS BUILT (`HandPositionOut`, read
+from the XML's anchors, unbounded so an automatic wide chord cannot 500) plus
+`hand_positions_edited`. `gp_pipeline` warns with the count and the notes their
+FHP does not frame (`notes_outside`) — playable (the window is a highlight),
+not refused. A lone Lead is built as Combined, so its FHPs are keyed
+"Combined", like every other per-chart edit.
+
+Viewer: the **FHP lane** under the staff (`fhpLaneSvg`, `STAFF_H` grew by 26 px
+with `STAFF_SB` unchanged so only the band under the staff gained room): one
+bar per FHP labelled "5–8", grey automatic, teal the user's, dashed while
+pending; the first bar starts at the song start, as the game applies it. Mode
+**"Posição da mão (FHP)"** (`modeFhp`, key 0): a click on a note opens
+`#fhpPopup` for a new FHP there (fret = its lowest fretted note, width = the
+current FHP's) or the one starting there; a click on a lane bar edits/deletes
+that one; Notas ▾ → **Repor automáticas** (`#resetFhp`) drops the chart's own.
+`fhpByKind[kind]` holds ALL of a chart's FHPs once edited (`fhpEditable`
+copies the automatic ones on the first edit), in the BUILT clock like the
+notes, seeded from `hand_positions_edited` on load and always sent whole
+(`fhpForRebuild`) — through `chartDisplayTime`, the chart's own pending
+tempo/anchors, so FHPs follow a sync correction made in the same rebuild (the
+build applies them after the warp, in its output clock). Deleting the last one
+returns the chart to automatic. A note its user FHP does not frame gets a red
+ring. Part of `pendingSnapshot` (undo/redo, drafts) and "Pendente: posições
+da mão". The 3D highway's `anchorAt` follows the chart's FHPs (`data.fhps`)
+instead of guessing from the next notes. Guarded by `test_hand_positions.py`
+(each level only the user's, in order; a level without an FHP's notes drops
+it; an FHP inside an arpeggio honoured; the XML; validation — mutation-checked),
+`test_the_fhp_editors_hand_positions_reach_the_build` and
+`test_the_fhp_editors_hand_positions_are_stored_and_read_back`; with Playwright
+and a real build of an invented two-track GP5 (edit, delete, add from a note,
+the red ring, undo/redo, Rhythm untouched, rebuild: the XML's FHPs equal what
+was sent, `/psarc-check` clean, seeded back with nothing pending, PT/EN, no
+page errors). **Never seen in game from here**; the automatic placement itself
+is unchanged (on that riff it moves the hand three times a bar).
 
 ### Clearing note edits ("Notas ▾" → Limpar)
 

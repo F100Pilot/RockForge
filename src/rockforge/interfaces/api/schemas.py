@@ -9,7 +9,9 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+from rockforge.domain.hand import MAX_FRET, MAX_WIDTH, MIN_WIDTH
 
 PIPELINE_STAGES = [
     "ingest", "normalize", "parse_gp", "build_arrangements", "lyrics", "package",
@@ -183,6 +185,10 @@ class RebuildIn(BaseModel):
     # ``deleted``. When set (even to {}), REPLACES params["note_overrides"]
     # wholesale; None leaves it untouched.
     note_overrides: dict[str, list[NoteOverrideIn]] | None = None
+    # The FHP editor's fret-hand positions, keyed by ArrangementKind.value: a
+    # chart's list is ALL its FHPs, a chart absent gets the automatic ones.
+    # When set (even to {}), REPLACES params["hand_positions"]; None leaves it.
+    hand_positions: dict[str, list[HandPositionIn]] | None = None
 
 
 class ArrangementTonesIn(BaseModel):
@@ -222,6 +228,33 @@ class NoteOverrideIn(BaseModel):
     bend_semitones: Finite = 0.0
     slide_to_fret: int | None = Field(default=None, ge=0, le=24)
     deleted: bool = False
+
+
+class HandPositionIn(BaseModel):
+    """One fret-hand position (FHP, Rocksmith's anchor) from the FHP editor:
+    from ``time`` on, the hand frames ``width`` frets from ``fret``."""
+
+    time: Finite = Field(ge=0)
+    fret: int = Field(ge=1, le=MAX_FRET)
+    width: int = Field(default=4, ge=MIN_WIDTH, le=MAX_WIDTH)
+
+    @model_validator(mode="after")
+    def _on_the_neck(self) -> HandPositionIn:
+        if self.fret + self.width - 1 > MAX_FRET:
+            raise ValueError(
+                f"a hand position at fret {self.fret} with width {self.width} "
+                f"runs past fret {MAX_FRET}"
+            )
+        return self
+
+
+class HandPositionOut(BaseModel):
+    """A fret-hand position as built (the automatic ones are not bound by the
+    editor's limits: a chord spanning more frets keeps its own width)."""
+
+    time: float
+    fret: int
+    width: int
 
 
 class ArrangementNoteOut(BaseModel):
@@ -281,6 +314,10 @@ class ArrangementOut(BaseModel):
     # open and a rebuild for any unrelated reason (a tuning change, say) then
     # sent {} and silently erased every note edit the user had applied.
     note_overrides: list[NoteOverrideIn] = []
+    # The chart's fret-hand positions as built (the user's, or the automatic
+    # ones), and whether they are the user's (params["hand_positions"]).
+    hand_positions: list[HandPositionOut] = []
+    hand_positions_edited: bool = False
     # The user marked THIS chart as in sync with the recording (each track is
     # synchronised on its own; its tab turns green).
     sync_confirmed: bool = False

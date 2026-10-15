@@ -130,13 +130,7 @@ _LYRIC_LEN = 48
 _CHORD_EPSILON_S = 0.03
 
 
-# Max frets a MERGED anchor spans before a new one is emitted. 4 = the standard
-# Rocksmith fret-hand window; a wider (5) merge let a stray low note (e.g. a
-# lone fret-1) get folded in with a fret 3-5 chord run, so the whole anchor sat
-# a fret or two below the notes actually played (the "anchor shows fret 1 for a
-# 2-5 chord" glitch). A single chord that genuinely spans more than 4 frets still
-# keeps its own full width — this cap only limits merging neighbours together.
-_MAX_ANCHOR_SPAN = 4
+# How far the automatic anchors merge neighbours: domain.hand.AUTO_WINDOW_SPAN.
 
 
 # Dynamic Difficulty ceiling: the most difficulty levels a single phrase can

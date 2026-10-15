@@ -426,8 +426,14 @@
     return lo;
   }
 
-  // The fret window the hand is in around time t: the frets of the notes about to be played.
+  // The fret window the hand is in around time t: the chart's fret-hand position (FHP) there,
+  // as the game shows it — else the frets of the notes about to be played.
   function anchorAt(t) {
+    const fhps = song.fhps;
+    if (fhps.length) {
+      const h = fhps[Math.max(0, lowerBound(fhps, t + 0.005, (x) => x.t) - 1)];
+      return { first: h.fret, width: h.width };
+    }
     const notes = song.notes;
     let first = Infinity, last = -Infinity;
     for (let i = lowerBound(notes, t - 0.1, (n) => n.t); i < notes.length && notes[i].t <= t + ANCHOR_AHEAD; i += 1) {
@@ -464,7 +470,8 @@
       ...(data.sections || []).map((s) => ({ t: s.t, section: s.name })),
     ].filter((l) => Number.isFinite(l.t)).sort((a, b) => a.t - b.t);
     const maxSustain = notes.reduce((m, n) => Math.max(m, n.sustain || 0), 0);
-    song = { notes, chords, lines, live: new Map(), liveLines: new Map(), owned: [], back: Math.min(8, maxSustain) + 0.8 };
+    const fhps = (data.fhps || []).filter((h) => Number.isFinite(h.t)).slice().sort((a, b) => a.t - b.t);
+    song = { notes, chords, lines, fhps, live: new Map(), liveLines: new Map(), owned: [], back: Math.min(8, maxSustain) + 0.8 };
     setTuning(data.tuning || [0, 0, 0, 0, 0, 0], count);
     lastNow = null;
   }

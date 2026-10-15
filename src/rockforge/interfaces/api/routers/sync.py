@@ -332,6 +332,12 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
                 kind: [n.model_dump() for n in notes]
                 for kind, notes in payload.note_overrides.items()
             }
+        if payload.hand_positions is not None:
+            params["hand_positions"] = {
+                kind: [h.model_dump() for h in sorted(rows, key=lambda h: h.time)]
+                for kind, rows in payload.hand_positions.items()
+                if rows
+            }
         params["rebuilt_from"] = original.id
         job = Job(
             source=original.source,

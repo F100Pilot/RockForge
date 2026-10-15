@@ -292,6 +292,21 @@ clique no fundo = limpa a seleção. O modo **Excerto** seleciona com uma caixa.
 - **Ctrl+C / Ctrl+V** (ou Notas ▾): copia a seleção e cola-a no cursor, nesta pista ou noutra.
 - Notas ▾ → **Limpar esta pista / Limpar em todas** descarta as edições de notas.
 
+### Posições da mão (FHP)
+
+A faixa **FHP** por baixo da pauta mostra onde o jogo põe a mão (o destaque dos trastes e a
+câmara), de uma posição até à seguinte: cinzento = calculadas pelo RockForge, verde-água = tuas.
+No modo **Posição da mão (FHP)** (tecla **0**):
+
+- clica numa **nota** para a mão passar para ali (o traste vem da nota mais grave);
+- clica numa **barra** da faixa para mudar o traste e a largura, ou **Apagar**.
+
+A primeira edição copia as posições automáticas, por isso só mudas as que estão mal. Uma nota
+que a sua posição não cobre fica com um **anel vermelho** (joga-se na mesma, mas vale a pena
+ver). Notas ▾ → **Repor automáticas** volta às do RockForge nesta pista. Cada pista tem as
+suas; ficam pendentes até **Aplicar e reconstruir** e acompanham as correções de
+sincronização feitas na mesma reconstrução.
+
 ### Secções (intro, verso, refrão…)
 
 Servem para a navegação e o Riff Repeater. No inspetor **Secções**: **+ Adicionar no cursor**,
@@ -450,7 +465,7 @@ lista na própria aplicação.
 | Home | vai ao início |
 | [ · ] · L | marca A · marca B (no cursor) · liga/desliga a repetição do trecho |
 | + / − | zoom |
-| 1 … 9 | escolhe o modo pela ordem do menu Modo ▾ (o número aparece ao lado de cada um; o mesmo número outra vez tira o modo) |
+| 1 … 9 · 0 | escolhe o modo pela ordem do menu Modo ▾ (o número aparece ao lado de cada um; o 0 é o décimo; o mesmo número outra vez tira o modo) |
 | Shift+clique · Ctrl+clique | seleciona um intervalo · junta ou tira uma nota |
 | Delete | apaga a seleção |
 | Ctrl+Z · Ctrl+Shift+Z (ou Ctrl+Y) | desfaz · refaz (em qualquer página do projeto) |

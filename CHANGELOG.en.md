@@ -6,6 +6,17 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### New
+- **Fret-hand position (FHP) editor.** A lane under the staff shows where the game puts the hand,
+  and the new “Fret-hand position (FHP)” mode (key 0) lets you add, change (fret and width) and
+  delete positions, track by track; a note outside its position gets a red ring. Your positions
+  go into the `.psarc` (at every difficulty level) and the DLC Builder project; Notes ▾ → “Back
+  to automatic” returns to the computed ones. The 3D highway follows them.
+
+### Changed
+- The XML for DLC Builder now carries the same automatic fret-hand positions as the `.psarc`
+  (they used to be worked out two different ways).
+
 ## [0.10.0 beta 4] — 2026-10-15
 
 ### New

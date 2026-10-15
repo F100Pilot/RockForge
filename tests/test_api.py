@@ -2264,6 +2264,67 @@ def test_committed_note_edits_survive_an_unrelated_rebuild(
         assert session.get(Job, cleared["id"]).params["note_overrides"] == {}
 
 
+def test_the_fhp_editors_hand_positions_are_stored_and_read_back(
+    client: TestClient, tmp_path
+) -> None:
+    """A rebuild stores each chart's FHPs (sorted, an empty chart dropped — it
+    gets the automatic ones), refuses one off the neck, and /arrangements
+    answers the chart's FHPs as built with whether they are the user's."""
+    import rockforge.config as config
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.domain.arrangement import Arrangement, ArrangementKind, SongMetadata
+    from rockforge.domain.hand import HandPosition
+    from rockforge.domain.music import Beat, TabNote, TempoMap, Tuning
+    from rockforge.infrastructure.db.models import Job, JobStatus
+    from rockforge.infrastructure.rsxml.writer import write_arrangement_xml
+
+    data = _make_gp5_bytes(tmp_path)
+    body = client.post(
+        "/gp/inspect", files={"file": ("song.gp5", data, "application/octet-stream")}
+    ).json()
+    job = client.post(
+        "/jobs/gp",
+        data={"gp_token": body["gp_token"], "lead_track": "0"},
+        files={"audio": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
+    ).json()
+    off_the_neck = client.post(
+        f"/jobs/{job['id']}/rebuild",
+        json={"hand_positions": {"Lead": [{"time": 1.0, "fret": 22, "width": 4}]}},
+    )
+    assert off_the_neck.status_code == 422
+    edited = client.post(f"/jobs/{job['id']}/rebuild", json={"hand_positions": {
+        "Lead": [{"time": 3.0, "fret": 7}, {"time": 1.0, "fret": 2, "width": 5}],
+        "Rhythm": [],
+    }}).json()
+    with app_module._session_factory() as session:
+        stored = session.get(Job, edited["id"]).params["hand_positions"]
+    assert stored == {"Lead": [{"time": 1.0, "fret": 2, "width": 5},
+                               {"time": 3.0, "fret": 7, "width": 4}]}
+
+    bundle = config.settings.work_dir / edited["id"] / "bundle"
+    beats = tuple(Beat(time=0.5 * i, measure=(i // 4 + 1) if i % 4 == 0 else -1)
+                  for i in range(12))
+    for kind, hps in ((ArrangementKind.LEAD, [HandPosition(1.0, 2, 5), HandPosition(3.0, 7)]),
+                      (ArrangementKind.RHYTHM, [])):
+        write_arrangement_xml(Arrangement(
+            kind=kind, metadata=SongMetadata(title="T", artist="A", song_length=6.0),
+            tuning=Tuning(), tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+            notes=[TabNote(string=1, fret=3, time=1.0, sustain=0.2),
+                   TabNote(string=1, fret=8, time=3.5, sustain=0.2)],
+            hand_positions=hps,
+        ), bundle / f"arrangement_{kind.value.lower()}.xml")
+    with app_module._session_factory() as session:
+        row = session.get(Job, edited["id"])
+        row.status, row.bundle_dir = JobStatus.COMPLETED, str(bundle)
+        session.commit()
+    arrs = {a["kind"]: a for a in client.get(f"/jobs/{edited['id']}/arrangements").json()}
+    assert arrs["Lead"]["hand_positions_edited"] is True
+    assert arrs["Lead"]["hand_positions"] == [{"time": 1.0, "fret": 2, "width": 5},
+                                              {"time": 3.0, "fret": 7, "width": 4}]
+    assert arrs["Rhythm"]["hand_positions_edited"] is False
+    assert [h["fret"] for h in arrs["Rhythm"]["hand_positions"]] == [3, 8]  # automatic
+
+
 def test_tuning_pitches_are_range_checked_at_the_api(client: TestClient, tmp_path) -> None:
     """Only the LENGTH of tuning_midi was checked, so an absurd pitch 202'd, was
     persisted, and only failed at packaging time inside struct.pack. Guards the

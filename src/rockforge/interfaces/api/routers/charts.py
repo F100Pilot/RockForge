@@ -17,6 +17,7 @@ from rockforge.interfaces.api.schemas import (
     ArrangementNoteOut,
     ArrangementOut,
     BarOut,
+    HandPositionOut,
     NoteOverrideIn,
     SectionOut,
 )
@@ -96,6 +97,8 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
     )
     arr_sync = job_params.get("arrangement_sync") or {}
 
+    raw_hand_ov = job_params.get("hand_positions")
+    hand_ov = raw_hand_ov if isinstance(raw_hand_ov, dict) else {}
     raw_note_ov = job_params.get("note_overrides")
     note_ov = raw_note_ov if isinstance(raw_note_ov, dict) else {}
 
@@ -241,6 +244,14 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
                 beats=beats,
                 sections=sections,
                 note_overrides=committed_note_overrides(kind),
+                hand_positions=[
+                    HandPositionOut(
+                        time=float(a.get("time", "0")), fret=int(a.get("fret", "1")),
+                        width=round(float(a.get("width", "4"))),
+                    )
+                    for a in root.findall("levels/level/anchors/anchor")
+                ],
+                hand_positions_edited=bool(hand_ov.get(kind)),
                 sync_confirmed=kind in synced_kinds,
                 estimated_bars=estimated_bars_for(kind),
                 arpeggios=arpeggios,

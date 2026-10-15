@@ -41,6 +41,7 @@ from rockforge.domain.arrangement import (
     ToneChange,
 )
 from rockforge.domain.errors import IngestionError
+from rockforge.domain.hand import HandPosition, notes_outside
 from rockforge.domain.music import (
     BASS_LOW_TUNING_LIMIT,
     TabNote,
@@ -324,6 +325,11 @@ class GpJobSpec:
     # user always edits the FINAL note set, and a manual edit is never
     # silently stripped by import_mute_techniques=False.
     note_overrides: dict[str, list[NoteOverride]] = field(default_factory=dict)
+    # The FHP editor's fret-hand positions, keyed by ArrangementKind.value.
+    # Bundle-clock times, like note_overrides (placed on the built score; the
+    # viewer carries them through any pending sync change before sending). A
+    # chart absent here gets the automatic FHPs; a list is ALL its FHPs.
+    hand_positions: dict[str, list[HandPosition]] = field(default_factory=dict)
 
     def tones_for(self, kind: ArrangementKind) -> ArrangementTones:
         """This arrangement's tone setup, else the song-level one."""
@@ -727,9 +733,20 @@ class GenerateFromGpUseCase:
                 tone_names=list(spec.tones_for(kind).tone_names),
                 tone_changes=list(spec.tones_for(kind).tone_changes),
                 tones=list(spec.tones),
+                hand_positions=sorted(spec.hand_positions.get(kind.value) or []),
             )
             for kind, p in parsed.items()
         ]
+        for arr in arrangements:
+            if not arr.hand_positions:
+                continue
+            outside = notes_outside(arr.hand_positions, [(n.time, n.fret) for n in arr.notes])
+            warnings.append(
+                f"{arr.kind.value}: {len(arr.hand_positions)} fret-hand position(s) from the "
+                "FHP editor"
+                + (f"; {len(outside)} note(s) outside their hand position (first at "
+                   f"{outside[0]:.3f}s)" if outside else "")
+            )
 
         stage("lyrics")
         vocals: list[VocalEvent] = []

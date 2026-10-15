@@ -11,12 +11,12 @@ from dataclasses import replace
 from rockforge.application.ports import VocalEvent
 from rockforge.domain.arrangement import Arrangement, Section, number_sections
 from rockforge.domain.chords import arpeggio_spans, chord_display, hand_shape_spans
+from rockforge.domain.hand import HandPosition, auto_windows, fixed_windows
 from rockforge.domain.music import TabNote, Technique, high_density_flags, is_plain_rise
 from rockforge.infrastructure.packaging.psarc.sng_model import (
     _CHORD_EPSILON_S,
     _DD_LEVEL_CAP,
     _DD_MIN_LEVELS,
-    _MAX_ANCHOR_SPAN,
     _MEASURES_PER_PHRASE,
     _MIN_NOGUITAR_PHRASE_S,
     _MIN_PHRASE_SEPARATION_S,
@@ -145,16 +145,6 @@ def _chord_template_key(group: list[TabNote]) -> tuple[int, ...]:
     for n in group:
         frets[n.string] = n.fret
     return tuple(frets)
-
-
-def _anchor_for_frets(frets: list[int]) -> tuple[int, int]:
-    used = [f for f in frets if f > 0]
-    if not used:
-        return 1, 4
-    lo, hi = min(used), max(used)
-    width = min(max(4, hi - lo + 1), 24)
-    fret = max(1, min(lo, 25 - width))
-    return fret, width
 
 
 def _spread_order(n: int) -> list[int]:
@@ -328,41 +318,27 @@ def _build_anchors(
     positions: list[tuple[float, float, list[int]]],
     phrase_iterations: list[SngPhraseIteration],
     song_length: float,
+    hand_positions: Sequence[HandPosition] = (),
 ) -> list[SngAnchor]:
     """Anchors (fret-hand windows) for a set of note positions. ``positions`` is
     ``(first_time, last_time, [frets])`` per chord/note group, time-sorted.
 
-    An anchor is active from its own time until the next; RockForge can't plan
-    real hand positions, so it greedily groups consecutive positions into one
-    window spanning ≤ _MAX_ANCHOR_SPAN frets (a STABLE window stops the fretboard
-    from thrashing note-to-note). Built PER difficulty level from that level's own
-    notes — sharing the full-chart anchors on a thinned low level ships anchors
-    framing notes that don't exist there, which crashes the game on phrase entry
-    (a real DDC sizes anchors to each level: 34 for level 0's 42 notes, ~89 at
-    the top). Anchors never span a phrase-iteration boundary (the game re-anchors
-    at each phrase start), so any crossing anchor is split into per-phrase pieces.
+    An anchor is active from its own time until the next. With no FHPs of the
+    user's (``hand_positions``) they are placed by ``auto_windows``; with them,
+    they are the user's (``fixed_windows``). Built PER difficulty level from
+    that level's own notes — sharing the full-chart anchors on a thinned low
+    level ships anchors framing notes that don't exist there, which crashes the
+    game on phrase entry (a real DDC sizes anchors to each level: 34 for level
+    0's 42 notes, ~89 at the top). Anchors never span a phrase-iteration
+    boundary (the game re-anchors at each phrase start), so any crossing anchor
+    is split into per-phrase pieces.
     """
     first_note = positions[0][0] if positions else None
-    positions = [(t, lt, fr) for t, lt, fr in positions if fr]
     pi_starts = [pi.start_time for pi in phrase_iterations]
-    raw: list[tuple[float, float, int, int]] = []  # (start, last_note, fret, width)
-    i = 0
-    while i < len(positions):
-        lo = min(positions[i][2])
-        hi = max(positions[i][2])
-        last_note = positions[i][1]
-        j = i + 1
-        while j < len(positions):
-            cand_lo = min(lo, *positions[j][2])
-            cand_hi = max(hi, *positions[j][2])
-            if cand_hi - cand_lo + 1 > _MAX_ANCHOR_SPAN:
-                break
-            lo, hi, last_note = cand_lo, cand_hi, positions[j][1]
-            j += 1
-        width = min(max(4, hi - lo + 1), 24)
-        fret = max(1, min(lo, 25 - width))
-        raw.append((positions[i][0], last_note, fret, width))
-        i = j
+    raw = (
+        fixed_windows(hand_positions, positions) if hand_positions
+        else auto_windows(positions)
+    )
 
     anchors: list[SngAnchor] = []
     for k, (t, last_note, fret, width) in enumerate(raw):
@@ -621,6 +597,7 @@ def _build_level(
     chord_notes_list: list[SngChordNotes],
     link_children: frozenset[tuple[int, int]] = frozenset(),
     arpeggios: Sequence[tuple[int, float, float]] = (),
+    hand_positions: Sequence[HandPosition] = (),
 ) -> SngArrangementLevel:
     """One difficulty level over the given note subset.
 
@@ -679,10 +656,11 @@ def _build_level(
         )
     anchor_extensions.sort(key=lambda ae: ae.beat_time)
 
+    positions = _level_positions(linked, chord_templates, song_length)
     anchors = _anchor_note_times(_build_anchors(
-        _hold_through_arpeggios(
-            _level_positions(linked, chord_templates, song_length), arpeggios),
-        phrase_iterations, song_length,
+        # The user's FHPs say where the hand moves, arpeggios included.
+        positions if hand_positions else _hold_through_arpeggios(positions, arpeggios),
+        phrase_iterations, song_length, hand_positions,
     ), linked)
 
     # A note's anchor is the one of ITS level that it falls in (DLC Builder's
@@ -1339,6 +1317,7 @@ def _build_difficulty_levels(
     dynamic_difficulty: bool,
     link_children: frozenset[tuple[int, int]] = frozenset(),
     arpeggios: Sequence[tuple[int, float, float]] = (),
+    hand_positions: Sequence[HandPosition] = (),
 ) -> tuple[list[SngPhrase], list[SngPhraseIteration], list[SngArrangementLevel], int]:
     """DDC-style graduated levels: notes ramp in per phrase over several
     difficulty levels. A real Rocksmith DD ramps each note in over many
@@ -1455,6 +1434,7 @@ def _build_difficulty_levels(
         _build_level(
             d, _level_notes(d), phrase_iterations, len(phrases),
             chord_templates, song_length, chord_notes_list, link_children, arpeggios,
+            hand_positions,
         )
         for d in range(song_max + 1)
     ]
@@ -1527,12 +1507,13 @@ def from_arrangement(
     # hint (via _find_anchor in _build_sng_notes). The per-LEVEL anchor arrays
     # the game actually uses are rebuilt from each level's own notes inside
     # _build_level — see _build_anchors.
+    chart_positions = [(g[0].time, g[-1].time, [n.fret for n in g if n.fret > 0]) for g in groups]
     anchors = _build_anchors(
-        _hold_through_arpeggios(
-            [(g[0].time, g[-1].time, [n.fret for n in g if n.fret > 0]) for g in groups],
-            arpeggios),
+        chart_positions if arrangement.hand_positions
+        else _hold_through_arpeggios(chart_positions, arpeggios),
         phrase_iterations,
         song_length,
+        arrangement.hand_positions,
     )
 
     sng_notes = _build_sng_notes(
@@ -1544,7 +1525,7 @@ def from_arrangement(
     phrases, phrase_iterations, arrangements, song_max = _build_difficulty_levels(
         sng_notes, beats, phrases, phrase_iterations,
         chord_templates, chord_notes_list, song_length, dynamic_difficulty,
-        _link_children(arrangement.notes), arpeggios,
+        _link_children(arrangement.notes), arpeggios, arrangement.hand_positions,
     )
     # Per-difficulty string usage per section — needs the levels, so it runs after
     # them (see _apply_section_string_masks: blank masks tell the game no string

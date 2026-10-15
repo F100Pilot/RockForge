@@ -261,6 +261,7 @@ def generate_cdlc(job_id: str) -> None:
                 )
                 from rockforge.domain.arrangement import ArrangementKind, Section, ToneChange
                 from rockforge.domain.arrangement import SongMetadata as Meta
+                from rockforge.domain.hand import HandPosition
                 from rockforge.domain.music import Technique
                 from rockforge.infrastructure.packaging.gear.gear_catalogue import (
                     tones_from_dicts,
@@ -353,6 +354,17 @@ def generate_cdlc(job_id: str) -> None:
                             for n in note_list
                         ]
                         for kind, note_list in (params.get("note_overrides") or {}).items()
+                    },
+                    hand_positions={
+                        str(kind): [
+                            HandPosition(
+                                time=float(h["time"]), fret=int(h["fret"]),
+                                width=int(h.get("width", 4)),
+                            )
+                            for h in rows
+                        ]
+                        for kind, rows in (params.get("hand_positions") or {}).items()
+                        if isinstance(rows, list)
                     },
                     lyrics_events=(
                         events_from_dicts(params["lyrics_events"])
