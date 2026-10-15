@@ -102,9 +102,13 @@ jobs:
             if (-not (Test-Path $f)) { throw "missing $f" }
           }
 
-      - name: Start the built app and make a project with it
-        timeout-minutes: 10
-        run: python .github/scripts/smoke_exe.py dist\rockforge\rockforge.exe
+      - name: Start the built app, make a project, install the extra components and use them
+        # The components are what a user's first start installs (a private
+        # Python 3.11 with the ML, lyrics, YouTube and PDF packages, and Deno),
+        # so they are installed for real here and used through the frozen app:
+        # librosa, PDF-to-GP5 and Demucs each have to answer.
+        timeout-minutes: 75
+        run: python .github/scripts/smoke_exe.py dist\rockforge\rockforge.exe --components
 
       - name: Name the downloads
         run: |

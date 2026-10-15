@@ -54,10 +54,12 @@ def busy_message() -> str:
     from rockforge.i18n import tr
 
     return tr(
-        "RockForge ainda está a trabalhar (a construir ou a separar áudio).\n\n"
+        "RockForge ainda está a trabalhar (a construir, a separar áudio ou a "
+        "instalar componentes).\n\n"
         "Se sair agora, esse trabalho é perdido e o job fica por terminar.\n\n"
         "Sair mesmo assim?",
-        "RockForge is still working (building or separating audio).\n\n"
+        "RockForge is still working (building, separating audio or installing "
+        "components).\n\n"
         "If you quit now, that work is lost and the job is left unfinished.\n\n"
         "Quit anyway?",
     )
@@ -77,6 +79,27 @@ def add_bundled_ffmpeg_to_path(base: Path | None = None) -> bool:
         return False
     os.environ["PATH"] = str(ffmpeg_dir) + os.pathsep + os.environ.get("PATH", "")
     return True
+
+
+def add_components_to_path() -> bool:
+    """Put the extra components' tools (Deno, for yt-dlp) on PATH. Imported at
+    call time: ``components`` reads ``rockforge.config`` only for a fallback
+    folder, after ``configure_environment`` has run."""
+    if sys.platform != "win32":
+        return False
+    try:
+        from rockforge.infrastructure import components
+
+        return components.add_tools_to_path()
+    except Exception:
+        return False
+
+
+def components_flag(argv: list[str]) -> None:
+    """The installer's «install the extra components» task starts the app with
+    ``--install-components``; the page then installs them by itself."""
+    if "--install-components" in argv:
+        os.environ["ROCKFORGE_INSTALL_COMPONENTS"] = "1"
 
 
 def configure_environment(*, windowed: bool) -> None:
@@ -156,9 +179,10 @@ def work_in_flight() -> bool:
     """Whether the in-process worker is busy. False on any failure — refusing to
     close a window because a status check broke would be worse than closing."""
     try:
+        from rockforge.infrastructure import components
         from rockforge.interfaces.worker import inprocess
 
-        return bool(inprocess.work_in_flight())
+        return bool(inprocess.work_in_flight() or components.busy())
     except Exception:
         return False
 
@@ -261,6 +285,7 @@ def default_log_path() -> Path:
 def main() -> None:
     windowed = webview_available()
     configure_environment(windowed=windowed)
+    components_flag(sys.argv[1:])
     add_bundled_ffmpeg_to_path()
 
     if sys.stdout is None or sys.stderr is None:
@@ -269,6 +294,7 @@ def main() -> None:
         with contextlib.suppress(OSError):
             redirect_output_to_log(default_log_path())
 
+    add_components_to_path()
     port_ = port()
     if windowed and run_windowed(HOST, port_):
         return

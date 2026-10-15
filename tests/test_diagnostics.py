@@ -253,15 +253,18 @@ def test_inside_the_exe_a_pip_instruction_points_at_the_ml_interpreter(
     Python that does have the packages. The instruction has to say that — where
     to install them, and that the path goes in ⚙️ Definições — instead of the
     earlier flat "not possible in the .exe", which was true only of an
-    in-process import and sent the user away from a setup that works.
+    in-process import and sent the user away from a setup that works. Since the
+    .exe installs that Python itself, the instruction is its one-click
+    «Instalar componentes extra» (components.py), with a Python of the user's
+    own as the alternative.
     """
     monkeypatch.setattr(sys, "frozen", True, raising=False)
     frozen = _by_key(diagnostics.check_requirements(Settings()))
-    for key in ("ml", "lyrics", "gpu"):
+    for key in ("ml", "lyrics", "gpu", "pdf", "ytdlp", "ml_python"):
         install = frozen[key].install
         assert "Python 3.11" in install, key
         assert "Definições" in install, key
-        assert "pip install" in install, key
+        assert "Instalar componentes extra" in install, key
         # The old claim must not come back: it is reachable, just not in-process.
         assert "NÃO é possível" not in install, key
 

@@ -41,8 +41,19 @@ LicenseFile=LICENSE
 Name: "portuguese"; MessagesFile: "compiler:Languages\Portuguese.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
+[CustomMessages]
+portuguese.ComponentsGroup=Componentes extra:
+english.ComponentsGroup=Extra components:
+portuguese.ComponentsTask=Instalá-los no primeiro arranque: análise de áudio, deteção de tom e de letra, PDF e YouTube (descarrega cerca de 1 GB, ou 3 GB com GPU NVIDIA)
+english.ComponentsTask=Install them on first start: audio analysis, tone and lyric detection, PDF and YouTube (downloads about 1 GB, or 3 GB with an NVIDIA GPU)
+
+[Messages]
+portuguese.FinishedLabel=O [name] foi instalado.%n%nPara o .psarc ter som no jogo é também preciso o Wwise, da Audiokinetic (gratuito, com conta). A licença não permite incluí-lo: instala-o pelo Audiokinetic Launcher — o RockForge encontra-o sozinho. Em Definições → Software vês o que falta.
+english.FinishedLabel=[name] has been installed.%n%nFor the .psarc to have sound in game you also need Wwise, by Audiokinetic (free, with an account). Its licence does not allow bundling it: install it with the Audiokinetic Launcher — RockForge finds it by itself. Settings → Software shows what is missing.
+
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+Name: "components"; Description: "{cm:ComponentsTask}"; GroupDescription: "{cm:ComponentsGroup}"
 
 [Files]
 Source: "dist\rockforge\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -52,5 +63,14 @@ Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
+[UninstallDelete]
+; The extra components (a private Python with the ML packages, Deno) are
+; downloaded by the app into the user's local app data — gigabytes that must
+; not outlive the program. The user's projects (Downloads\RockForge) stay.
+Type: filesandordirs; Name: "{localappdata}\RockForge\components"
+
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; Flags: nowait postinstall skipifsilent
+; With the «extra components» task the first start installs them by itself
+; (start_standalone.components_flag → the Settings → Software page).
+Filename: "{app}\{#MyAppExeName}"; Parameters: "--install-components"; Description: "{cm:LaunchProgram,{#MyAppName}}"; Flags: nowait postinstall skipifsilent; Tasks: components
+Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; Flags: nowait postinstall skipifsilent; Tasks: not components

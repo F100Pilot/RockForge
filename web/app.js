@@ -511,6 +511,8 @@ function settingsPayload() {
     whisperx_compute_type: document.getElementById('sWhisperxCompute').value,
     ml_python: document.getElementById('sMlPython').value.trim(),
     rocksmith_dir: document.getElementById('sRocksmithDir').value.trim(),
+    wwise_root: document.getElementById('sWwiseRoot').value.trim(),
+    check_updates: document.getElementById('sCheckUpdates').checked,
   };
 }
 let settingsSaved = null;
@@ -595,6 +597,11 @@ function fillSettings(s) {
   document.getElementById('sRocksmithDir').placeholder = s.rocksmith_dir_detected
     ? T('encontrada: {path}', { path: s.rocksmith_dir_detected })
     : 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Rocksmith2014';
+  document.getElementById('sWwiseRoot').value = s.wwise_root || '';
+  document.getElementById('sWwiseRoot').placeholder = s.wwise_root_detected
+    ? T('encontrada: {path}', { path: s.wwise_root_detected })
+    : 'C:\\Program Files (x86)\\Audiokinetic\\Wwise2023.1.x';
+  document.getElementById('sCheckUpdates').checked = s.check_updates !== false;
   toggleBanquetConfig();
   renderBanquetValidation(s.banquet || {});
   settingsSaved = settingsPayload();
@@ -665,17 +672,173 @@ async function loadSystemCheck() {
   }
 }
 
-async function openSettings() {
+async function openSettings(pageWanted) {
   document.getElementById('settingsInfo').textContent = '';
   try {
     fillSettings(await getJSON('/settings'));
   } catch { /* keep defaults */ }
   let page = 'geral';
   try { page = localStorage.getItem('rf-settings-page') || page; } catch { /* storage blocked */ }
-  showSettingsPage(page);
+  showSettingsPage(typeof pageWanted === 'string' ? pageWanted : page);
   document.getElementById('settingsOverlay').hidden = false;
   loadSystemCheck();
+  pollComponents();
 }
+
+// ── Extra components: the .exe installs its own Python 3.11 with the ML,
+// lyrics, PDF and YouTube packages, and Deno (infrastructure/components.py) ──
+let compState = null;
+let compTimer = null;
+function compNames() {
+  return {
+    python: T('Python 3.11 (só do RockForge)'),
+    ml: T('Análise de áudio (Demucs, librosa)'),
+    lyrics: T('Deteção de letra (WhisperX)'),
+    youtube: T('Áudio do YouTube (yt-dlp)'),
+    pdf: T('Conversor de PDF (PDF-to-GP5)'),
+    deno: T('Deno (para o YouTube)'),
+  };
+}
+function compStepName(step) {
+  return { python: 'Python', torch: 'PyTorch', packages: T('pacotes'), deno: 'Deno' }[step] || step || '…';
+}
+function renderComponents(c) {
+  const card = document.getElementById('compCard');
+  card.hidden = !c.supported;
+  if (!c.supported) return;
+  const running = c.status === 'running';
+  const have = c.installed || {};
+  const names = compNames();
+  document.getElementById('compList').innerHTML = running ? '' : Object.keys(names).map(k =>
+    `<div class="comp-item ${have[k] ? 'ok' : 'no'}">${icon(have[k] ? 'check' : 'x')}${esc(names[k])}</div>`).join('');
+  document.getElementById('compNote').textContent = c.gpu
+    ? T('Tens uma GPU NVIDIA: é instalado o PyTorch com CUDA (descarrega cerca de 3 GB).')
+    : T('Sem GPU NVIDIA: é instalado o PyTorch para CPU (descarrega cerca de 1 GB). A análise funciona, só mais devagar.');
+  document.getElementById('compInstall').disabled = running;
+  document.getElementById('compInstallLbl').textContent = running ? T('A instalar…')
+    : c.complete ? T('Reinstalar') : have.python ? T('Completar a instalação') : T('Instalar componentes extra');
+  document.getElementById('compState').textContent = running
+    ? T('passo: {step}', { step: compStepName(c.step) })
+    : c.status === 'error' ? T('A instalação falhou: {error}', { error: c.error })
+    : c.complete ? T('Tudo instalado.') : '';
+  const log = document.getElementById('compLog');
+  log.hidden = !(c.log && c.log.length);
+  log.textContent = (c.log || []).join('\n');
+  log.scrollTop = log.scrollHeight;
+}
+async function pollComponents() {
+  clearTimeout(compTimer);
+  let c;
+  try { c = await getJSON('/components'); } catch { return; }
+  const was = compState && compState.status;
+  compState = c;
+  renderComponents(c);
+  renderHomeNotices();
+  if (c.status === 'running') { compTimer = setTimeout(pollComponents, 2000); return; }
+  if (was === 'running') {
+    toast(c.status === 'done' ? T('Componentes extra instalados.') : T('A instalação dos componentes falhou.'),
+      c.status === 'done' ? 'ok' : 'err');
+    if (!document.getElementById('settingsOverlay').hidden) loadSystemCheck();
+    loadHomeChecks();
+  }
+}
+async function installComponents() {
+  try {
+    const r = await fetch('/components/install', { method: 'POST' });
+    const b = await r.json();
+    if (!r.ok) { toast(b.detail || T('erro'), 'err'); return; }
+    compState = b;
+    renderComponents(b);
+    renderHomeNotices();
+    compTimer = setTimeout(pollComponents, 1000);
+  } catch { toast(T('O servidor não respondeu.'), 'err'); }
+}
+document.getElementById('compInstall').addEventListener('click', installComponents);
+
+// ── Home notices: a newer version, missing components, no Wwise ─────────────
+let updateInfo = null;
+let wwiseFound = null;
+function noticeDismissed(id) {
+  try { return (JSON.parse(localStorage.getItem('rf-notice-dismissed') || '{}'))[id] === true; } catch { return false; }
+}
+function dismissNotice(id) {
+  try {
+    const all = JSON.parse(localStorage.getItem('rf-notice-dismissed') || '{}');
+    all[id] = true;
+    localStorage.setItem('rf-notice-dismissed', JSON.stringify(all));
+  } catch { /* storage blocked: it comes back next time */ }
+  renderHomeNotices();
+}
+function prettyVersion(v) {
+  return String(v || '').replace(/^v/, '').replace(/[-.]?(?:beta|b)\.?(\d+)$/i, ' beta $1');
+}
+function renderHomeNotices() {
+  const box = document.getElementById('homeNotices');
+  const items = [];
+  const notice = (cls, ico, html, actions) => items.push(
+    `<div class="home-notice ${cls}">${icon(ico)}<div class="grow">${html}</div>${actions.join('')}</div>`);
+  const u = updateInfo;
+  if (u && u.newer && u.kind !== 'git' && !noticeDismissed('update:' + u.latest)) {
+    notice('', 'download', T('Há uma versão nova do RockForge: <b>{latest}</b> (tens a {current}).',
+      { latest: esc(prettyVersion(u.latest)), current: esc(prettyVersion(u.current)) }), [
+      `<a class="pv-btn pv-primary" href="${esc(u.url)}" target="_blank" rel="noopener">${icon('download')}${T('Descarregar')}</a>`,
+      `<button type="button" class="pv-btn" data-notice-dismiss="${esc('update:' + u.latest)}">${T('Mais tarde')}</button>`]);
+  }
+  const c = compState;
+  if (c && c.supported && c.status === 'running') {
+    notice('', 'download', T('A instalar os componentes extra (passo: {step})…', { step: esc(compStepName(c.step)) }),
+      [`<button type="button" class="pv-btn" data-notice-act="components">${T('Ver')}</button>`]);
+  } else if (c && c.supported && !c.complete && !c.declined) {
+    notice('', 'package', T('Faltam os <b>componentes extra</b>: análise de áudio, deteção de tom e de letra, PDF e YouTube. O RockForge instala-os sozinho, numa pasta só sua.'), [
+      `<button type="button" class="pv-btn pv-primary" data-notice-act="install">${T('Instalar agora')}</button>`,
+      `<button type="button" class="pv-btn" data-notice-act="decline">${T('Agora não')}</button>`]);
+  }
+  if (c && c.supported && wwiseFound === false && !noticeDismissed('wwise')) {
+    notice('warn', 'alert', T('O .psarc vai sair <b>sem som</b>: falta o <b>Wwise</b> (gratuito, da Audiokinetic, com conta). A licença não permite incluí-lo — instala-o pelo Audiokinetic Launcher e o RockForge encontra-o sozinho.'), [
+      `<a class="pv-btn" href="https://www.audiokinetic.com/download/" target="_blank" rel="noopener">${T('Descarregar o Wwise')}</a>`,
+      `<button type="button" class="pv-btn" data-notice-dismiss="wwise">${T('Ocultar')}</button>`]);
+  }
+  box.innerHTML = items.join('');
+  box.hidden = !items.length;
+}
+document.getElementById('homeNotices').addEventListener('click', async e => {
+  const dismiss = e.target.closest('[data-notice-dismiss]');
+  if (dismiss) { dismissNotice(dismiss.dataset.noticeDismiss); return; }
+  const act = e.target.closest('[data-notice-act]');
+  if (!act) return;
+  if (act.dataset.noticeAct === 'install') { installComponents(); openSettings('software'); }
+  else if (act.dataset.noticeAct === 'components') openSettings('software');
+  else if (act.dataset.noticeAct === 'decline') {
+    try { compState = await getJSON('/components/decline', { method: 'POST' }); } catch { /* offline */ }
+    renderHomeNotices();
+  }
+});
+async function loadHomeChecks() {
+  if (!(compState && compState.supported)) return;
+  try {
+    const sys = await getJSON('/system-check');
+    const w = (sys.requirements || []).find(r => r.key === 'wwise');
+    wwiseFound = w ? w.found : null;
+  } catch { wwiseFound = null; }
+  renderHomeNotices();
+}
+(async () => {
+  try { updateInfo = await getJSON('/update-check'); } catch { updateInfo = null; }
+  renderHomeNotices();
+})();
+(async () => {
+  try { compState = await getJSON('/components'); } catch { return; }
+  renderHomeNotices();
+  if (!compState.supported) return;
+  loadHomeChecks();
+  // The installer's «install the extra components» task: do it now.
+  if (compState.auto_install && compState.status === 'idle' && !compState.complete) {
+    installComponents();
+    openSettings('software');
+  } else if (compState.status === 'running') {
+    pollComponents();
+  }
+})();
 document.getElementById('sysCheckRefresh').addEventListener('click', loadSystemCheck);
 async function closeSettings() {
   if (settingsChangeCount() && !await confirmModal(T('Há alterações por guardar nas definições. Sair sem guardar?'))) return;

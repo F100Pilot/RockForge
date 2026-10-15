@@ -20,6 +20,7 @@ Linux).
 
 from __future__ import annotations
 
+import os
 import platform
 import re
 import shutil
@@ -38,6 +39,33 @@ _CONSOLE_RELATIVE_CANDIDATES = (
 
 # Template projects exist for these Wwise major versions (same set DLC Builder supports).
 _SUPPORTED_VERSIONS = ("2019", "2021", "2022", "2023")
+
+
+def detect_wwise_root(bases: list[Path] | None = None) -> Path | None:
+    """A supported Wwise where the Audiokinetic Launcher installs it
+    (``Program Files (x86)/Audiokinetic/Wwise <version>``), newest first — so a
+    user of the `.exe` does not have to set an environment variable."""
+    if bases is None:
+        bases = [
+            Path(p) / "Audiokinetic"
+            for p in (os.environ.get("PROGRAMFILES(X86)"), os.environ.get("PROGRAMFILES"))
+            if p
+        ]
+    found: list[tuple[str, Path]] = []
+    for base in bases:
+        try:
+            children = list(base.iterdir())
+        except OSError:
+            continue
+        for child in children:
+            m = re.search(r"20(19|21|22|23)[\d.]*", child.name)
+            if not (child.is_dir() and child.name.lower().startswith("wwise") and m):
+                continue
+            if any((child / rel).exists() for rel in _CONSOLE_RELATIVE_CANDIDATES):
+                found.append((m.group(0), child))
+    if not found:
+        return None
+    return max(found, key=lambda f: [int(x) for x in f[0].split(".") if x.isdigit()])[1]
 
 
 def _fix_wem_header(wem: Path) -> None:

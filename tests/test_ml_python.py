@@ -73,7 +73,8 @@ def test_probe_reports_what_the_other_interpreter_has(
         seen["stdin"] = kwargs.get("stdin")
         return subprocess.CompletedProcess(
             cmd, 0,
-            stdout='{"demucs": true, "librosa": true, "whisperx": false, "torch": true}\n',
+            stdout='{"demucs": true, "librosa": true, "whisperx": false, "torch": true, '
+                   '"yt_dlp": true, "pdf_to_gp5": false, "rapidocr_onnxruntime": false}\n',
             stderr="",
         )
 
@@ -82,6 +83,8 @@ def test_probe_reports_what_the_other_interpreter_has(
     assert found == {
         "python": True, "demucs": True, "librosa": True,
         "whisperx": False, "torch": True,
+        # What the .exe delegates to the same interpreter (components.py).
+        "yt_dlp": True, "pdf_to_gp5": False, "rapidocr_onnxruntime": False,
     }
     assert seen["cmd"][0] == "/opt/py311/python"
     # The anti-hang guard from CLAUDE.md's hard constraints applies here too.
@@ -103,7 +106,7 @@ def test_a_broken_ml_interpreter_probes_false_it_never_raises(
     something is wrong. A page that 500s is worse than one that says "no"."""
     monkeypatch.setattr(subprocess, "run", lambda *_a, **_k: outcome)
     assert ml_python.probe("/opt/py311/python") == dict.fromkeys(
-        ("python", "demucs", "librosa", "whisperx", "torch"), False
+        ("python", *ml_python.PACKAGES), False
     )
 
 

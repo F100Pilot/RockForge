@@ -12,11 +12,13 @@ from fastapi.responses import FileResponse
 from rockforge import i18n
 from rockforge.interfaces.api import app as api
 from rockforge.interfaces.api.schemas import (
+    ComponentsOut,
     RequirementOut,
     SettingsIn,
     SettingsOut,
     SystemCheckOut,
     UiLanguageIn,
+    UpdateCheckOut,
 )
 
 router = APIRouter()
@@ -41,6 +43,9 @@ def _settings_out() -> SettingsOut:
         ml_python_info=runtime_settings.ml_python_validation(),
         rocksmith_dir=str(runtime_settings.load().get("rocksmith_dir") or ""),
         rocksmith_dir_detected=str(detected_rocksmith_folder() or ""),
+        check_updates=runtime_settings.check_updates(),
+        wwise_root=str(runtime_settings.load().get("wwise_root") or ""),
+        wwise_root_detected=str(runtime_settings.wwise_root() or ""),
     )
 
 
@@ -77,13 +82,15 @@ def update_settings(body: SettingsIn) -> SettingsOut:
     updates = dict(runtime_settings.load())
     for key in (
         "stem_separator", "banquet_repo", "banquet_ckpt", "banquet_queries",
-        "whisperx_compute_type", "ml_python", "rocksmith_dir",
+        "whisperx_compute_type", "ml_python", "rocksmith_dir", "wwise_root",
     ):
         val = getattr(body, key)
         if val is not None:
             updates[key] = val.strip() if isinstance(val, str) else val
     if body.loudness_target is not None:
         updates["loudness_target"] = float(body.loudness_target)
+    if body.check_updates is not None:
+        updates["check_updates"] = bool(body.check_updates)
     runtime_settings.save(updates)
     return _settings_out()
 
@@ -102,6 +109,63 @@ def reset_gpu() -> SettingsOut:
 @router.get("/version", include_in_schema=False)
 def version() -> dict[str, str]:
     return {"version": api.app.version}
+
+
+@router.get("/update-check", response_model=UpdateCheckOut)
+def update_check(force: bool = False) -> UpdateCheckOut:
+    """Whether a newer RockForge is on GitHub's Releases page — asked at most
+    once a day, never when the user turned it off, and every failure is just
+    "nothing new" (infrastructure/update_check.py)."""
+    from rockforge import __version__, runtime_settings
+    from rockforge.infrastructure import update_check as uc
+
+    if not runtime_settings.check_updates():
+        return UpdateCheckOut(enabled=False, current=__version__, kind=uc.install_kind())
+    info = uc.check(force=force)
+    return UpdateCheckOut(**{k: v for k, v in uc.as_dict(info).items() if k != "checked_at"})
+
+
+def _components_out() -> ComponentsOut:
+    from rockforge.infrastructure import components
+
+    return ComponentsOut(**{
+        k: v for k, v in components.status().items() if k in ComponentsOut.model_fields
+    })
+
+
+@router.get("/components", response_model=ComponentsOut)
+def components_status() -> ComponentsOut:
+    """What the `.exe`'s extra components have, and how an install is going."""
+    return _components_out()
+
+
+@router.post("/components/install", response_model=ComponentsOut, status_code=202)
+def components_install() -> ComponentsOut:
+    """Download and install the extra components in the background (the
+    Windows `.exe` only: a Python install has start.bat for that)."""
+    from rockforge.infrastructure import components
+
+    if not components.supported():
+        raise HTTPException(409, i18n.tr(
+            "Só o RockForge instalado (.exe) instala os componentes sozinho; a partir do "
+            "código, o start.bat instala-os.",
+            "Only the installed RockForge (.exe) installs the components itself; from the "
+            "source code, start.bat installs them.",
+        ))
+    if not components.start_install():
+        raise HTTPException(409, i18n.tr(
+            "A instalação já está a decorrer.", "The install is already running."
+        ))
+    return _components_out()
+
+
+@router.post("/components/decline", response_model=ComponentsOut)
+def components_decline() -> ComponentsOut:
+    """«Agora não»: stop offering them on the home page (Definições still can)."""
+    from rockforge import runtime_settings
+
+    runtime_settings.save({**runtime_settings.load(), "components_declined": True})
+    return _components_out()
 
 
 @router.get("/system-check", response_model=SystemCheckOut)

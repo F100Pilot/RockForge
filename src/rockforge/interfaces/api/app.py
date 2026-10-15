@@ -111,9 +111,10 @@ def _work_in_flight() -> bool:
     """
     if settings.worker_mode != "inprocess":
         return False
+    from rockforge.infrastructure import components
     from rockforge.interfaces.worker.inprocess import work_in_flight
 
-    return work_in_flight()
+    return work_in_flight() or components.busy()
 
 
 async def _idle_shutdown_watchdog() -> None:

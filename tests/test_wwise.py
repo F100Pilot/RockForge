@@ -150,3 +150,24 @@ def test_env_fallback_resolution(monkeypatch: pytest.MonkeyPatch, wwise_root: Pa
     monkeypatch.setattr(config.settings, "wwise_root", None, raising=False)
     assert config.settings.resolved_wwise_root() == wwise_root
     assert os.environ["WWISEROOT"] == str(wwise_root)
+
+
+def test_wwise_is_found_where_the_launcher_installs_it(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    """A user of the .exe should not need an environment variable: the newest
+    supported Wwise under Program Files' Audiokinetic folder is found."""
+    from rockforge.infrastructure.packaging.wwise import detect_wwise_root
+
+    base = tmp_path / "Audiokinetic"
+    for name, console in (
+        ("Wwise 2019.2.15.7667", True),
+        ("Wwise2023.1.4.8496", True),
+        ("Wwise2024.1.0.8669", True),  # no template for it: not supported
+        ("Wwise2022.1.0.0", False),    # no console inside: an empty leftover
+        ("Launcher", True),
+    ):
+        folder = base / name / "Authoring" / "x64" / "Release" / "bin"
+        folder.mkdir(parents=True)
+        if console:
+            (folder / "WwiseConsole.exe").write_bytes(b"")
+    assert detect_wwise_root([base]) == base / "Wwise2023.1.4.8496"
+    assert detect_wwise_root([tmp_path / "nowhere"]) is None

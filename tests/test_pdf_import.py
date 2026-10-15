@@ -140,3 +140,34 @@ def test_no_estimated_bars_when_there_is_nothing_to_point_at() -> None:
     # A file that will not read back gives no hint, and the import still stands.
     flagged = {"tracks": [{"rhythm_from_notation": 1, "rhythm_estimated_bars": [1]}]}
     assert pdf_import.estimated_bars_as_played(b"not a gp5", flagged) == {}
+
+
+@needs_converter
+def test_the_exe_converts_on_the_components_python_through_the_runner(
+    monkeypatch, tmp_path
+) -> None:
+    """The .exe cannot import the converter, so it runs _pdf_runner.py on the
+    Python the components installer set up: here that is this very interpreter,
+    asked as if it were another (the runner imports nothing from RockForge)."""
+    import sys
+
+    from rockforge.infrastructure import ml_python
+    from rockforge.infrastructure.gpimport.parser import parse_gp_track
+
+    monkeypatch.setattr(pdf_import, "_here", lambda module="pdf_to_gp5": False)
+    monkeypatch.setattr(ml_python, "configured", lambda: __import__("pathlib").Path(sys.executable))
+    calls: list[list[str]] = []
+    real = ml_python.run_json
+    monkeypatch.setattr(ml_python, "run_json", lambda runner, args, **kw: (
+        calls.append([runner.name, *args]), real(runner, args, **kw))[1])
+
+    result = pdf_import.convert([("riff.pdf", tab_pdf(RIFF))])
+    assert calls and calls[0][0] == "_pdf_runner.py"
+    assert result.title == "Invented Riff"
+    dest = tmp_path / "riff.gp5"
+    dest.write_bytes(result.gp5)
+    notes = parse_gp_track(dest, 0).notes
+    assert (notes[0].string, notes[0].fret) == (0, 0)
+    # Its refusal comes back as the converter's own message, not a crash.
+    with pytest.raises(pdf_import.PdfImportError):
+        pdf_import.convert([("empty.pdf", tab_pdf(["no tab here"]))])

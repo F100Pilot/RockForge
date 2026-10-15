@@ -159,3 +159,18 @@ def test_spec_bundles_every_data_file_of_the_package_at_its_package_path() -> No
         want = str(Path("rockforge") / f.relative_to(pkg).parent)
         where = f.relative_to(REPO_ROOT)
         assert bundled.get(f.resolve()) == want, f"{where} is not bundled at {want}"
+
+
+def test_spec_bundles_what_the_extra_components_install() -> None:
+    """The frozen app has no pyproject.toml, so the spec bundles the extras'
+    requirement strings for components.py, at the path it reads them from."""
+    import json
+
+    datas = _run_spec()
+    match = [(src, dest) for src, dest in datas if src.endswith("components_requirements.json")]
+    assert match and match[0][1].replace("\\", "/") == "rockforge/infrastructure"
+    reqs = json.loads((REPO_ROOT / match[0][0]).read_text(encoding="utf-8"))
+    assert any(r.startswith("demucs") for r in reqs)
+    assert any(r.startswith("pdf-to-gp5") for r in reqs)
+    assert any(dest.replace("\\", "/") == "rockforge/infrastructure/gpimport"
+               and src.endswith("_pdf_runner.py") for src, dest in datas)

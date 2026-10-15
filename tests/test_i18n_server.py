@@ -107,7 +107,7 @@ def test_the_ml_interpreter_messages_are_in_english(
         "Audio separation needs the ML extras"
     )
     monkeypatch.setattr(ml_python, "frozen", lambda: True)
-    assert "needs Python 3.11" in ml_python.missing_message("Audio separation")
+    assert "needs the extra components" in ml_python.missing_message("Audio separation")
 
 
 def test_the_gp_writers_warn_in_english(english: None, tmp_path: Path) -> None:

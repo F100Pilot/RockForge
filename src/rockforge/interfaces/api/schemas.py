@@ -477,6 +477,12 @@ class SettingsOut(BaseModel):
     # there and the tone collection suggests its dlc folder.
     rocksmith_dir: str = ""
     rocksmith_dir_detected: str = ""
+    # Ask GitHub once a day for a newer version (infrastructure/update_check.py).
+    check_updates: bool = True
+    # The Wwise folder the user set ("" = ROCKFORGE_WWISE_ROOT/WWISEROOT, else
+    # found where the Audiokinetic Launcher installs it: `wwise_root_detected`).
+    wwise_root: str = ""
+    wwise_root_detected: str = ""
 
 
 class SettingsIn(BaseModel):
@@ -492,6 +498,39 @@ class SettingsIn(BaseModel):
     ml_python: str | None = None
     # "" clears it (back to looking in the Steam libraries).
     rocksmith_dir: str | None = None
+    check_updates: bool | None = None
+    # "" clears it (back to the environment / the Launcher's folder).
+    wwise_root: str | None = None
+
+
+class UpdateCheckOut(BaseModel):
+    """A newer RockForge on GitHub. `kind` is how this copy was installed:
+    "exe", "source" (a folder start.bat cannot update) or "git" (start.bat
+    updates it, so the UI says nothing)."""
+
+    enabled: bool = True
+    current: str
+    latest: str = ""
+    newer: bool = False
+    url: str = ""
+    kind: str = "exe"
+
+
+class ComponentsOut(BaseModel):
+    """The `.exe`'s extra components (infrastructure/components.py): a private
+    Python 3.11 with the ML, lyrics, YouTube and PDF packages, and Deno."""
+
+    supported: bool = False  # only the Windows .exe installs them itself
+    status: str = "idle"  # idle | running | done | error
+    step: str = ""
+    log: list[str] = []
+    error: str = ""
+    installed: dict[str, bool] = {}
+    complete: bool = False
+    gpu: bool = False
+    home: str = ""
+    declined: bool = False
+    auto_install: bool = False
 
 
 class LyricsOut(BaseModel):

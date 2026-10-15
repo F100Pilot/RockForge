@@ -534,6 +534,20 @@ kbd { display:inline-block; min-width:1.5em; padding:.08em .45em; border:1px sol
 .brand { display:flex; align-items:baseline; gap:.6rem; }
 .brand h1 { margin:0; font-size:1.6rem; font-weight:800; letter-spacing:-.01em; color:var(--accent); }
 .home-main { padding:2rem; display:flex; flex-direction:column; gap:1.4rem; }
+.home-notices { display:flex; flex-direction:column; gap:.6rem; }
+.home-notice { display:flex; align-items:center; gap:.8rem; flex-wrap:wrap; padding:.75rem 1rem; border:1px solid #2c3b5a; background:#162033; border-radius:12px; font-size:.92rem; line-height:1.45; }
+.home-notice.warn { border-color:#5a4520; background:#332a14; }
+.home-notice > .ic { flex:none; width:1.25rem; height:1.25rem; }
+.home-notice.warn > .ic { color:var(--warn); }
+.home-notice .grow { flex:1 1 18rem; min-width:0; }
+.home-notice .pv-btn { flex:none; }
+.comp-list { display:grid; grid-template-columns:repeat(auto-fill, minmax(15rem, 1fr)); gap:.45rem .9rem; }
+.comp-item { display:flex; gap:.45rem; align-items:center; }
+.comp-item .ic { flex:none; margin:0; }
+.comp-item.ok .ic { color:#5fd68a; }
+.comp-item.no .ic { color:#f08a8a; }
+.comp-actions { display:flex; gap:.8rem; align-items:center; flex-wrap:wrap; }
+.comp-log { max-height:16rem; overflow:auto; background:#0e0f13; border:1px solid #22242c; border-radius:8px; padding:.6rem .7rem; margin:0; font-size:.78rem; line-height:1.4; white-space:pre-wrap; word-break:break-word; color:#b4b7c2; }
 .home-head { display:flex; align-items:center; gap:.75rem; flex-wrap:wrap; }
 .joblist-title { font-size:1.75rem; font-weight:700; color:var(--text); margin:0; }
 .home-filters { display:flex; gap:.4rem; }
@@ -887,6 +901,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
   </header>
 
   <main class="home-main">
+    <div id="homeNotices" class="home-notices" hidden></div>
     <div class="home-head">
       <h2 class="joblist-title">Projetos</h2>
       <span class="pv-spacer"></span>
@@ -1538,6 +1553,17 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
           <div><a class="pv-btn pv-coffee" href="https://paypal.me/F100Pilot" target="_blank" rel="noopener"><svg class="ic" aria-hidden="true"><use href="#i-coffee"/></svg>Paga-me um café</a></div>
         </div>
         <div class="pv-card pv-card-lg">
+          <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-refresh"/></svg>Versões novas</div>
+          <label class="check"><input type="checkbox" id="sCheckUpdates" checked> Avisar quando houver uma versão nova do RockForge</label>
+          <div class="pv-card-desc">Pergunta às Releases do GitHub, no máximo uma vez por dia, e não envia nada sobre ti nem sobre as tuas músicas. Quem usa o <code>start.bat</code> com o git não precisa: atualiza-se sozinho a cada arranque.</div>
+        </div>
+        <div class="pv-card pv-card-lg">
+          <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-wave"/></svg>Pasta do Wwise</div>
+          <label class="set-field"><span>Onde o Wwise está instalado (a pasta <code>Wwise 2023.1…</code>, com a subpasta <code>Authoring</code> lá dentro)</span>
+            <input type="text" id="sWwiseRoot"></label>
+          <div class="pv-card-desc">É ele que dá som ao .psarc. Vazio = procurar onde o Audiokinetic Launcher o instala (<code>Program Files (x86)\Audiokinetic</code>). Versões 2019, 2021, 2022 ou 2023.</div>
+        </div>
+        <div class="pv-card pv-card-lg">
           <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-gamepad"/></svg>Pasta do Rocksmith 2014</div>
           <label class="set-field"><span>Onde o jogo está instalado (a pasta com o <code>Rocksmith2014.exe</code>)</span>
             <input type="text" id="sRocksmithDir"></label>
@@ -1558,6 +1584,17 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
               nesta máquina e <b>o que perdes</b> com cada uma que falte.</p>
           </div>
           <button type="button" id="sysCheckRefresh" class="pv-btn"><svg class="ic" aria-hidden="true"><use href="#i-refresh"/></svg>Verificar de novo</button>
+        </div>
+        <div class="pv-card pv-card-lg" id="compCard" hidden>
+          <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-package"/></svg>Componentes extra</div>
+          <div class="pv-card-desc">Análise de áudio (separar pistas, detetar o tom, «Corrigir daqui»), deteção de letra, conversão de PDF e áudio do YouTube. O RockForge descarrega e instala tudo numa pasta só sua — um Python 3.11 com os pacotes, e o Deno — sem mexer no resto do computador. O Wwise não pode vir assim: a licença não o permite.</div>
+          <div id="compList" class="comp-list"></div>
+          <div id="compNote" class="pv-card-desc"></div>
+          <div class="comp-actions">
+            <button type="button" id="compInstall" class="pv-btn pv-primary"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg><span id="compInstallLbl">Instalar componentes extra</span></button>
+            <span id="compState" class="meta"></span>
+          </div>
+          <pre id="compLog" class="comp-log" hidden></pre>
         </div>
         <div id="sysSummary" class="set-chips"></div>
         <div id="sysCheck" class="set-reqs">a verificar…</div>

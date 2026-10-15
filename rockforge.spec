@@ -54,6 +54,23 @@ for f in sorted(pkg.rglob("*")):
 for f in sorted(pkg.rglob("_*_runner.py")) + sorted(pkg.rglob("_demucs_patcher.py")):
     datas.append((str(f), str(Path("rockforge") / f.relative_to(pkg).parent)))
 
+# What the extra components install (infrastructure/components.py): the exact
+# requirement strings of the [ml], [lyrics], [youtube] and [pdf] extras, read
+# from pyproject.toml now, because the frozen app has no pyproject to read.
+import json
+import sys
+
+sys.path.insert(0, str(src))
+from rockforge.infrastructure.components import (  # noqa: E402
+    REQUIREMENTS_FILE,
+    requirements_from_pyproject,
+)
+
+_components = Path("build") / REQUIREMENTS_FILE
+_components.parent.mkdir(exist_ok=True)
+_components.write_text(json.dumps(requirements_from_pyproject(Path("pyproject.toml"))))
+datas.append((str(_components), "rockforge/infrastructure"))
+
 # Bundled ffmpeg (place ffmpeg/ffmpeg.exe in the project root before building).
 ffmpeg_dir = Path("ffmpeg")
 if ffmpeg_dir.is_dir():

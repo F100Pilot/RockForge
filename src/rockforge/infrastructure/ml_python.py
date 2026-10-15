@@ -79,14 +79,14 @@ def missing_message(feature: str) -> str:
     """Why ``feature`` is unavailable, phrased as the thing to go and do."""
     if frozen():
         return tr(
-            f"{feature} precisa do Python 3.11 com os extras [ml,lyrics]. "
-            "O .exe tem o seu próprio Python e não os pode instalar — indica "
-            "em ⚙️ Definições o caminho para um python.exe que os tenha "
+            f"{feature} precisa dos componentes extra. Instala-os em ⚙️ Definições → "
+            "Software → «Componentes extra» (um clique; o RockForge descarrega o que "
+            "falta), ou indica lá um python.exe 3.11 que já os tenha "
             "(ROCKFORGE_ML_PYTHON).",
-            f"{feature} needs Python 3.11 with the [ml,lyrics] extras. "
-            "The .exe has its own Python and cannot install them — set the "
-            "path to a python.exe that has them in ⚙️ Settings "
-            "(ROCKFORGE_ML_PYTHON).",
+            f"{feature} needs the extra components. Install them in ⚙️ Settings → "
+            "Software → «Extra components» (one click; RockForge downloads what is "
+            "missing), or point it there at a Python 3.11 python.exe that already "
+            "has them (ROCKFORGE_ML_PYTHON).",
         )
     return tr(
         f"{feature} precisa dos extras de ML (pip install -e \".[ml,lyrics]\").",
@@ -119,8 +119,12 @@ def runner_path(package_dir: Path, name: str) -> Path:
     return candidate
 
 
-#: The packages any ML stage needs, reported per interpreter.
-PACKAGES = ("demucs", "librosa", "whisperx", "torch")
+#: The packages any ML stage needs, reported per interpreter — plus the ones
+#: the `.exe` delegates to the same interpreter (yt-dlp, the PDF converter and
+#: its OCR), which the components installer puts there (``components.py``).
+PACKAGES = (
+    "demucs", "librosa", "whisperx", "torch", "yt_dlp", "pdf_to_gp5", "rapidocr_onnxruntime",
+)
 
 
 def here(module: str) -> bool:

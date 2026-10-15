@@ -30,9 +30,10 @@ WHISPERX_TIMEOUT_S = 1200
 
 
 def _build_packager():  # noqa: ANN202 - heavy imports deferred to worker runtime
+    from rockforge import runtime_settings
     from rockforge.infrastructure.packaging.wwise import WwiseWemConverter
 
-    wem_converter = WwiseWemConverter(wwise_root=settings.resolved_wwise_root())
+    wem_converter = WwiseWemConverter(wwise_root=runtime_settings.wwise_root())
 
     if settings.psarc_mode == "native":
         from rockforge.infrastructure.packaging.psarc.packer import NativePsarcPacker

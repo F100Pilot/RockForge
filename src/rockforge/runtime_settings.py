@@ -21,7 +21,7 @@ from rockforge._atomic import write_text_atomic
 _KEYS = (
     "stem_separator", "banquet_repo", "banquet_ckpt", "banquet_queries",
     "loudness_target", "whisperx_compute_type", "ml_python", "ui_language",
-    "rocksmith_dlc_dir", "rocksmith_dir",
+    "rocksmith_dlc_dir", "rocksmith_dir", "check_updates", "components_declined", "wwise_root",
 )
 
 # The loudness (LUFS) the audio is normalized to AND the target the Wwise bus
@@ -72,6 +72,12 @@ def ui_language() -> str:
 
     val = load().get("ui_language")
     return val if isinstance(val, str) and i18n.valid(val) else i18n.DEFAULT
+
+
+def check_updates() -> bool:
+    """Whether the app may ask GitHub once a day for a newer version (on by
+    default; Definições → Geral turns it off)."""
+    return load().get("check_updates") is not False
 
 
 def stem_separator() -> str:
@@ -139,6 +145,19 @@ def rocksmith_dir() -> Path | None:
 def rocksmith_dlc_dir() -> Path | None:
     """The folder the tone collection last scanned, if any."""
     return _path("rocksmith_dlc_dir", None)
+
+
+def wwise_root(settings: config.Settings | None = None) -> Path | None:
+    """The Wwise installation: the folder set in Definições, else
+    ``ROCKFORGE_WWISE_ROOT``/``WWISEROOT``, else one found where the
+    Audiokinetic Launcher installs it."""
+    env = (settings or config.settings).resolved_wwise_root()
+    chosen = _path("wwise_root", env)
+    if chosen is not None:
+        return chosen
+    from rockforge.infrastructure.packaging.wwise import detect_wwise_root
+
+    return detect_wwise_root()
 
 
 def ml_python() -> Path | None:

@@ -90,15 +90,18 @@ def _extras_install(pip_command: str, feature: str) -> str:
     """
     if not frozen():
         return pip_command
+    return _components_install(feature)
+
+
+def _components_install(feature: str) -> str:
+    """In the `.exe`: the one-click installer of the extra components."""
     return tr(
-        f"O .exe tem o seu próprio Python e não instala pacotes. Para ter "
-        f"{feature}: instala o Python 3.11, corre lá  {pip_command} , e indica "
-        f"esse python.exe em ⚙️ Definições → «Python para o ML» "
-        f"(ROCKFORGE_ML_PYTHON).",
-        f"The .exe has its own Python and does not install packages. To get "
-        f"{feature}: install Python 3.11, run  {pip_command}  there, and point "
-        f"⚙️ Settings → «Python for ML» at that python.exe "
-        f"(ROCKFORGE_ML_PYTHON).",
+        f"Para ter {feature}: ⚙️ Definições → Software → «Instalar componentes extra» "
+        "(o RockForge descarrega um Python 3.11 só seu e os pacotes). Ou indica em "
+        "«Python para o ML» um python.exe 3.11 que já os tenha.",
+        f"To get {feature}: ⚙️ Settings → Software → «Install extra components» "
+        "(RockForge downloads a Python 3.11 of its own and the packages). Or set "
+        "«Python for ML» to a Python 3.11 python.exe that already has them.",
     )
 
 
@@ -161,9 +164,10 @@ def _ffmpeg() -> Requirement:
 
 
 def _wwise(settings: Settings) -> Requirement:
+    from rockforge import runtime_settings
     from rockforge.infrastructure.packaging.wwise import WwiseWemConverter
 
-    root = settings.resolved_wwise_root()
+    root = runtime_settings.wwise_root(settings)
     console = WwiseWemConverter(root).console_path() if root else None
     if console is not None:
         detail = str(console)
@@ -241,13 +245,10 @@ def _pdf_converter() -> Requirement:
         detail = tr("instalado, com OCR", "installed, with OCR")
     else:
         detail = tr("instalado, sem OCR (só PDFs com texto)", "installed, no OCR (text PDFs only)")
-    # It runs in THIS process (not through «Python para o ML»), so in the .exe
-    # it is there only when the build included it.
+    # In the .exe it runs on the ML interpreter (pdf_import._pdf_runner), which
+    # the extra components install.
     install = (
-        tr(
-            "Este .exe foi construído sem o conversor de PDF.",
-            "This .exe was built without the PDF converter.",
-        )
+        _components_install(tr("o conversor de PDF", "the PDF converter"))
         if frozen()
         else 'pip install -e ".[pdf]"'
     )
@@ -375,11 +376,12 @@ def _ml_interpreter(av: _MlAvailability) -> Requirement:
             "from here» answer 503. From Python 3.11 (start.bat) its own "
             "Python is used and this is not needed.",
         ),
-        install=tr(
-            "Instalar o Python 3.11, correr lá  pip install "
-            'rockforge[ml,lyrics]  e indicar esse python.exe em ⚙️ Definições.',
-            "Install Python 3.11, run  pip install "
-            'rockforge[ml,lyrics]  there and point ⚙️ Settings at that python.exe.',
+        install=_components_install(tr("a análise de áudio", "audio analysis"))
+        if frozen() else tr(
+            "Não é preciso com o start.bat (usa o próprio Python). Para outro: "
+            'instalar lá  pip install -e ".[ml,lyrics]"  e indicá-lo em ⚙️ Definições.',
+            "Not needed with start.bat (it uses its own Python). For another one: "
+            'install  pip install -e ".[ml,lyrics]"  there and point ⚙️ Settings at it.',
         ),
     )
 
@@ -592,6 +594,11 @@ def _ytdlp() -> Requirement:
         cmd = ytdlp_command()
     except Exception:  # noqa: BLE001 — a diagnostics page must not 500
         cmd = None
+    if cmd is not None and frozen() and cmd[1:3] == ["-m", "yt_dlp"]:
+        from rockforge.infrastructure import ml_python
+
+        if not ml_python.availability().get("yt_dlp"):
+            cmd = None  # the ML interpreter is set, but has no yt-dlp
     runtimes = [name for name, program in JS_RUNTIMES if shutil.which(program)]
     # The solver can only be looked up when yt-dlp runs in THIS interpreter;
     # for a yt-dlp program or another Python it is unknown, not missing.
@@ -635,7 +642,8 @@ def _ytdlp() -> Requirement:
             "the JavaScript runtime YouTube refuses the download even with yt-dlp "
             "installed.",
         ),
-        install=tr(
+        install=_components_install(tr("o áudio do YouTube", "YouTube audio"))
+        if frozen() else tr(
             'pip install -U "yt-dlp[default]"  +  o Deno: winget install DenoLand.Deno',
             'pip install -U "yt-dlp[default]"  +  Deno: winget install DenoLand.Deno',
         ),

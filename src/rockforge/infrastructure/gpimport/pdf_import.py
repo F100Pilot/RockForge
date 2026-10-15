@@ -52,20 +52,35 @@ class PdfImport:
     estimated_bars: dict[int, list[int]] = field(default_factory=dict)
 
 
-def available() -> bool:
-    """Whether the converter is installed, without importing it."""
+def _here(module: str = "pdf_to_gp5") -> bool:
     try:
-        return importlib.util.find_spec("pdf_to_gp5") is not None
+        return importlib.util.find_spec(module) is not None
     except (ImportError, ValueError):
         return False
+
+
+def _elsewhere(module: str = "pdf_to_gp5") -> bool:
+    """Whether the ML interpreter has it — the `.exe`'s route: it cannot import
+    the converter itself, so it runs ``_pdf_runner.py`` on the Python the
+    components installer set up (``ml_python``), probed in a subprocess."""
+    from rockforge.infrastructure import ml_python
+
+    if ml_python.configured() is None:
+        return False
+    return bool(ml_python.availability().get(module))
+
+
+def available() -> bool:
+    """Whether the converter is installed (here or in the ML interpreter),
+    without importing it."""
+    return _here() or _elsewhere()
 
 
 def ocr_available() -> bool:
     """Whether tab pictures can be read (PDF-to-GP5's ``[ocr]`` extra)."""
-    try:
-        return importlib.util.find_spec("rapidocr_onnxruntime") is not None
-    except (ImportError, ValueError):
-        return False
+    if _here():
+        return _here("rapidocr_onnxruntime")
+    return _elsewhere("rapidocr_onnxruntime")
 
 
 def file_kind(head: bytes) -> str | None:
@@ -78,6 +93,10 @@ def file_kind(head: bytes) -> str | None:
 
 
 def missing_message() -> str:
+    from rockforge.infrastructure import ml_python
+
+    if ml_python.frozen():
+        return ml_python.missing_message(i18n.tr("O conversor de PDF", "The PDF converter"))
     return i18n.tr(
         'O conversor de PDF não está instalado: pip install -e ".[pdf]" (traz o PDF-to-GP5).',
         'The PDF converter is not installed: pip install -e ".[pdf]" (it brings PDF-to-GP5).',
@@ -92,6 +111,8 @@ def convert(files: list[tuple[str, bytes]]) -> PdfImport:
     """
     if not available():
         raise PdfConverterMissingError(missing_message())
+    if not _here():
+        return _convert_elsewhere(files)
     from pdf_to_gp5 import i18n as converter_i18n
     from pdf_to_gp5.converter import ConversionError, ConversionOptions, TrackOptions
     from pdf_to_gp5.sandbox import ConversionTimeout, ConversionUnavailable, run_isolated
@@ -127,6 +148,56 @@ def convert(files: list[tuple[str, bytes]]) -> PdfImport:
         warnings=[str(w) for w in report.get("warnings") or []],
         report=report,
         estimated_bars=estimated_bars_as_played(result.gp5, report),
+    )
+
+
+def _convert_elsewhere(files: list[tuple[str, bytes]]) -> PdfImport:
+    """The same conversion, run by ``_pdf_runner.py`` on the ML interpreter."""
+    import json
+    import tempfile
+    from pathlib import Path
+
+    from rockforge.infrastructure import ml_python
+
+    runner = ml_python.runner_path(Path(__file__).resolve().parent, "_pdf_runner.py")
+    with tempfile.TemporaryDirectory(prefix="rf-pdf-") as tmp:
+        folder = Path(tmp)
+        entries = []
+        for i, (name, data) in enumerate(files):
+            path = folder / f"in{i}"
+            path.write_bytes(data)
+            entries.append({"name": name, "path": str(path)})
+        out = folder / "out.gp5"
+        request = folder / "request.json"
+        request.write_text(json.dumps({
+            "files": entries, "out": str(out), "lang": i18n.current(),
+            "timeout": TIMEOUT_S, "memory": MEMORY_MB, "total": TOTAL_S,
+        }), encoding="utf-8")
+        try:
+            answer = ml_python.run_json(runner, [str(request)], timeout_s=TOTAL_S + 60)
+        except RuntimeError as exc:
+            raise PdfImportError(str(exc)) from exc
+        error = answer.get("error")
+        if error == "timeout":
+            raise PdfImportError(i18n.tr(
+                "A conversão do PDF excedeu o tempo limite.", "Converting the PDF took too long."
+            ))
+        if error == "unavailable":
+            raise PdfImportError(i18n.tr(
+                "Não foi possível iniciar a conversão. Tenta de novo.",
+                "The conversion could not start. Try again.",
+            ))
+        if error:
+            raise PdfImportError(str(answer.get("message") or error))
+        gp5 = out.read_bytes()
+    report = dict(answer.get("report") or {})
+    return PdfImport(
+        gp5=gp5,
+        title=str(report.get("title") or ""),
+        artist=str(report.get("artist") or ""),
+        warnings=[str(w) for w in report.get("warnings") or []],
+        report=report,
+        estimated_bars=estimated_bars_as_played(gp5, report),
     )
 
 

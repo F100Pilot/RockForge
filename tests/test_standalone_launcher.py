@@ -350,3 +350,25 @@ def test_a_server_that_never_comes_up_releases_the_port_too(
     monkeypatch.setattr(launcher, "wait_until_serving", lambda *_a, **_k: False)
     assert launcher.run_windowed("127.0.0.1", 8123) is False
     assert server.should_exit is True
+
+
+def test_the_installers_components_task_reaches_the_app(monkeypatch: pytest.MonkeyPatch) -> None:
+    """installer.iss starts the app with --install-components when the «extra
+    components» task is ticked; the page then installs them by itself."""
+    monkeypatch.delenv("ROCKFORGE_INSTALL_COMPONENTS", raising=False)
+    launcher.components_flag([])
+    import os
+
+    assert "ROCKFORGE_INSTALL_COMPONENTS" not in os.environ
+    launcher.components_flag(["--install-components"])
+    assert os.environ["ROCKFORGE_INSTALL_COMPONENTS"] == "1"
+    iss = (Path(__file__).resolve().parents[1] / "installer.iss").read_text(encoding="utf-8")
+    assert 'Parameters: "--install-components"' in iss and "Tasks: components" in iss
+    assert "Tasks: not components" in iss  # launched once, not twice
+
+
+def test_closing_mid_component_install_counts_as_work(monkeypatch: pytest.MonkeyPatch) -> None:
+    from rockforge.infrastructure import components
+
+    monkeypatch.setattr(components, "busy", lambda: True)
+    assert launcher.work_in_flight() is True
