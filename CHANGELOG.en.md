@@ -6,6 +6,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+## [0.10.0 beta 4] — 2026-10-15
+
 ### New
 - **Bass arrangement.** Pick the bass track of the Guitar Pro file in the wizard (or in “Edit
   info”) and the project gains a BASS arrangement, encoded the way DLC Builder does it. A

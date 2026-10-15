@@ -6,6 +6,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+## [0.10.0 beta 4] — 2026-10-15
+
 ### Novo
 - **Arranjo de baixo (Bass).** Escolhe a pista de baixo do ficheiro Guitar Pro no assistente
   (ou em «Editar info») e o projeto ganha um arranjo BASS, codificado como o DLC Builder o faz.

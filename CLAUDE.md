@@ -4969,8 +4969,8 @@ in ways no test of the source sees. Only then: `RockForge-<v>-Setup.exe`,
 pre-release for a `-beta.N` tag, text `docs/RELEASE_NOTES.md`). A manual run
 (workflow_dispatch) is a dry build whose files stay as artifacts. The tag must
 equal `installer.iss`'s version, and `tests/test_release_version.py` keeps
-`installer.iss` (`0.10.0-beta.3`), `pyproject.toml`/`__version__` (`0.10.0b3`)
-and both changelogs' `## [0.10.0 beta 3]` in step. `[pdf]` and the ML stack
+`installer.iss` (`0.10.0-beta.4`), `pyproject.toml`/`__version__` (`0.10.0b4`)
+and both changelogs' `## [0.10.0 beta 4]` in step. `[pdf]` and the ML stack
 are not in the `.exe`; the README says which three extras need the source
 install. The smoke script was checked here against the source server dressed
 as a fake `.exe`; the Windows run itself only happens on GitHub. **Its first
