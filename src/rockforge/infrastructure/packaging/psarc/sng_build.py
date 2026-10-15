@@ -548,12 +548,17 @@ def _arpeggio_templates(
     for first, last, key, end in arpeggio_spans(groups):
         if key not in ids:
             ids[key] = first_id + len(ids)
-            fingers, name = chord_display(key, [g[0] for g in groups[first:last + 1]], open_midi)
+            fingers, name = chord_display(
+                key, [g[0] for g in groups[first:last + 1]], open_midi, arrangement.capo
+            )
             templates.append(SngChordTemplate(
                 mask=CHORD_MASK_ARPEGGIO,
                 frets=tuple(f if f >= 0 else 255 for f in key),
                 fingers=fingers,
-                notes=tuple(open_midi[i] + f if f >= 0 else -1 for i, f in enumerate(key)),
+                notes=tuple(
+                    open_midi[i] + (f or arrangement.capo) if f >= 0 else -1
+                    for i, f in enumerate(key)
+                ),
                 name=name,
             ))
         shapes.append((ids[key], groups[first][0].time, end))
@@ -1023,11 +1028,12 @@ def _build_chord_data(
             # dereferenced by the note-detection/scoring path, so a spectating
             # run never touched it.
             notes_midi = tuple(
-                open_midi[i] + f if f >= 0 else -1 for i, f in enumerate(key)
+                open_midi[i] + (f or arrangement.capo) if f >= 0 else -1
+                for i, f in enumerate(key)
             )
             # The fingers and the name Rocksmith shows on the chord (they were
             # -1 and "": the game had nothing to show) — chords.py.
-            fingers, name = chord_display(key, g, open_midi)
+            fingers, name = chord_display(key, g, open_midi, arrangement.capo)
             chord_templates.append(SngChordTemplate(
                 mask=0,
                 frets=frets_bytes,

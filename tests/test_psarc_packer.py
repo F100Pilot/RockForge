@@ -191,8 +191,11 @@ def test_package_produces_valid_psarc(tmp_path: Path) -> None:
 
     entries = container.unpack(result.psarc_path.read_bytes())
     assert any(name.endswith(".sng") for name in entries)
-    assert any(name.startswith("audio/") for name in entries)
+    # Without Wwise there is no audio the game could load, so none is packed:
+    # the raw WAV used to make the .psarc ~30 MB and it still played silence.
+    assert not any(name.startswith("audio/") for name in entries)
     assert any(name.endswith(".hsan") for name in entries)
+    assert (tmp_path / "bundle" / "audio.wav").exists()  # the bundle keeps it for DLC Builder
 
 
 def test_vocals_get_a_separate_sng_and_manifest(tmp_path: Path) -> None:

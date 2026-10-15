@@ -343,7 +343,7 @@ def render_arrangement(arr: Arrangement, album_art_urn: str | None = None) -> ET
         song, "chordTemplates", count=str(len(template_ids) + len(arp_ids)))
     for suffix, ids, notes_of in (("", template_ids, first_group), ("-arp", arp_ids, arp_group)):
         for key, _tid in sorted(ids.items(), key=lambda kv: kv[1]):
-            fingers, name = chord_display(key, notes_of[key], arr.tuning.midi)
+            fingers, name = chord_display(key, notes_of[key], arr.tuning.midi, arr.capo)
             attrs = {"chordName": name, "displayName": name + suffix}
             for i in range(6):
                 attrs[f"fret{i}"] = str(key[i])

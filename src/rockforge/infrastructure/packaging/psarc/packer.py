@@ -332,10 +332,11 @@ class NativePsarcPacker:
             )
             files[f"audio/windows/song_{key_lower}_preview.bnk"] = preview_bnk
             files[f"audio/windows/{preview_id}.wem"] = preview_wem_bytes
-        else:
-            # No Wwise: pack the WAV under a path the retail game will not load —
-            # the bundle stays the trustworthy audio path.
-            files[f"audio/{key_lower}{audio_dest.suffix}"] = audio_dest.read_bytes()
+        # No Wwise: no audio inside at all. It used to pack the WAV under a
+        # path the game never loads — a .psarc of ~30 MB per 3 minutes that
+        # still played silence (a user's report: "a 30mb Rocksmith file from
+        # the WAV instead of properly compressing it"). The bundle keeps the
+        # audio for DLC Builder, and the app says Wwise is missing.
 
         psarc_bytes = container.pack_entries(files, encrypt=True)
         # Rocksmith 2014 on PC only loads CDLC whose filename ends in "_p.psarc"

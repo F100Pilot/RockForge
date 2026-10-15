@@ -38,7 +38,11 @@ from rockforge.domain.music import (
     is_composite_bend,
 )
 from rockforge.infrastructure.gpimport.playback import GP5_DIRECTIONS, BarFlow, playback_order
-from rockforge.infrastructure.gpimport.strings import check_track_strings, fold_strings
+from rockforge.infrastructure.gpimport.strings import (
+    apply_capo,
+    check_track_strings,
+    fold_strings,
+)
 from rockforge.infrastructure.gpimport.sync_map import (
     bar_time_points,
     bar_times_warnings,
@@ -118,6 +122,9 @@ class ParsedGpTrack:
     # Non-fatal notices from parsing (e.g. notes dropped for being off the
     # 24-fret neck) — surfaced to the user instead of silently swallowed.
     warnings: list[str] = field(default_factory=list)
+    # The capo fret (0 = none). The notes' frets are already counted from the
+    # nut, as Rocksmith counts them (``strings.apply_capo``).
+    capo: int = 0
 
 
 def close_beat_grid(beats: list[Beat], bar_end: float, last_note: float | None) -> None:
@@ -665,9 +672,12 @@ def parse_gp_track(
         )
     notes, tuning, fold_warnings = fold_strings(notes, tuning_midi, bass=bass)
     warnings.extend(fold_warnings)
+    capo = max(0, int(getattr(track, "offset", 0) or 0))  # PyGuitarPro: Track.offset = capo
+    notes, capo_warnings = apply_capo(notes, capo)
+    warnings.extend(capo_warnings)
     return ParsedGpTrack(
         notes=notes, tuning=tuning, tempo_map=tempo_map, sections=sections,
-        lyrics=lyrics, lyric_notes=lyric_notes, warnings=warnings,
+        lyrics=lyrics, lyric_notes=lyric_notes, warnings=warnings, capo=capo,
     )
 
 

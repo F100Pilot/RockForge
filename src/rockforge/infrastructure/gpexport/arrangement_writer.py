@@ -272,6 +272,7 @@ def write_arrangement_gp5(
 
     track = song.tracks[0]
     track.name = track_name or arrangement.kind.value
+    track.offset = arrangement.capo  # PyGuitarPro: the capo
     # GP numbers strings 1 = highest pitch; our tuning is low → high, so reverse.
     # This is the exact inverse of the importer's `string = n_strings - note.string`.
     # A bass exports its four strings at the pitch they sound (the low-tuning
@@ -391,7 +392,8 @@ def write_arrangement_gp5(
                     continue
                 gp_note = guitarpro.Note(beat)
                 gp_note.string = n_strings - n.string  # inverse of the importer
-                gp_note.value = n.fret
+                # Guitar Pro counts frets from the capo (the importer's apply_capo, inverted).
+                gp_note.value = n.fret - arrangement.capo if n.fret else 0
                 _apply_note_effects(gp_note, n, guitarpro, beat_s)
                 beat.notes.append(gp_note)
                 report.notes_written += 1

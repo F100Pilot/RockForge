@@ -27,6 +27,12 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
   quando falta (a licença não permite incluí-lo).
 
 ### Corrigido
+- **No `.exe`, os botões «Descarregar» não faziam nada** (nem davam erro): a janela própria
+  bloqueava as descargas. Agora abre a janela «Guardar como».
+- **O capo do ficheiro Guitar Pro era ignorado.** Passa a ser lido (GP3-5 e GP7/8): os trastes
+  passam a contar a partir da pestana, como no Rocksmith, e o arranjo leva o capo.
+- **Sem Wwise, o `.psarc` levava o WAV inteiro** (uns 30 MB) num sítio que o jogo não lê. Já não
+  leva: o áudio fica no bundle para o DLC Builder e a aplicação diz que falta o Wwise.
 - Um nível de dificuldade só com cordas soltas ficava sem âncora no `.psarc` (apanhado pela
   verificação do PSARC num baixo cujas notas mais simples são as fundamentais soltas).
 

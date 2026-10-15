@@ -175,7 +175,7 @@ def group_fingering(
 
 
 def chord_display(
-    frets: Sequence[int], notes: Sequence[object], open_midi: Sequence[int]
+    frets: Sequence[int], notes: Sequence[object], open_midi: Sequence[int], capo: int = 0
 ) -> tuple[tuple[int, ...], str]:
     """``(fingers, name)`` of a chord template — what the game shows on the
     chord. ``notes`` are the chord's notes (anything with ``string`` and
@@ -186,7 +186,8 @@ def chord_display(
         string, hand = getattr(n, "string", -1), getattr(n, "left_hand", -1)
         if 0 <= string < len(left):
             left[string] = hand
-    pitches = [open_midi[s] + f for s, f in enumerate(frets) if f >= 0]
+    # An open string under a capo sounds at the capo (it is held there, unfingered).
+    pitches = [open_midi[s] + (f or capo) for s, f in enumerate(frets) if f >= 0]
     return group_fingering(frets, left), name_chord(pitches) or ""
 
 

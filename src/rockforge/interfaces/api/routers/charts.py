@@ -230,6 +230,7 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
                 kind=kind,
                 tuning_offsets=offsets,
                 string_count=4 if is_bass else 6,
+                capo=int(root.findtext("capo", "0") or 0),
                 cent_offset=float(root.findtext("centOffset", "0")),
                 average_bpm=float(root.findtext("averageTempo", "0")),
                 tempo_scale=scale_for(kind),

@@ -271,6 +271,7 @@ def _fake_webview(monkeypatch: pytest.MonkeyPatch, *, start_raises: bool = False
 
     module.create_window = create_window  # type: ignore[attr-defined]
     module.start = start  # type: ignore[attr-defined]
+    module.settings = {"ALLOW_DOWNLOADS": False}  # type: ignore[attr-defined]
     module.windows = made  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "webview", module)
     return module
@@ -304,6 +305,7 @@ def test_the_window_opens_on_the_local_api_and_stops_the_server_on_close(
     window = webview.windows[0]
     assert window.url == "http://127.0.0.1:8123"
     assert window.title == launcher.WINDOW_TITLE
+    assert webview.settings["ALLOW_DOWNLOADS"] is True  # the Download buttons work
     # Graceful, so the lifespan teardown runs and `inprocess.shutdown()` with it.
     assert server.should_exit is True
 
@@ -372,3 +374,22 @@ def test_closing_mid_component_install_counts_as_work(monkeypatch: pytest.Monkey
 
     monkeypatch.setattr(components, "busy", lambda: True)
     assert launcher.work_in_flight() is True
+
+
+def test_the_window_is_allowed_to_save_downloads() -> None:
+    """pywebview cancels every download by default — silently — so the .psarc
+    and bundle buttons did nothing in the .exe (a user's report)."""
+    from types import SimpleNamespace
+
+    class _Settings(dict):  # pywebview's ImmutableDict: existing keys only
+        def __setitem__(self, key: str, value: object) -> None:
+            if key not in self:
+                raise KeyError(key)
+            super().__setitem__(key, value)
+
+    fake = SimpleNamespace(settings=_Settings(ALLOW_DOWNLOADS=False))
+    assert launcher.allow_downloads(fake) is True
+    assert fake.settings["ALLOW_DOWNLOADS"] is True
+    # An old pywebview without the setting is left alone, not crashed.
+    assert launcher.allow_downloads(SimpleNamespace(settings=_Settings())) is False
+    assert launcher.allow_downloads(SimpleNamespace()) is False

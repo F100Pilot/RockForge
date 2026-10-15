@@ -720,6 +720,7 @@ class GenerateFromGpUseCase:
                 tuning=_tuning_for(kind, p.tuning),
                 tempo_map=p.tempo_map,
                 notes=p.notes,
+                capo=p.capo,
                 sections=_sections_for(p),
                 stage_confidence=dict(confidence),
                 tone_base=spec.tones_for(kind).tone_base,

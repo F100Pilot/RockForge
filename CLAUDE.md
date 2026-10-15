@@ -480,6 +480,19 @@ re-inverting the dependency.
    session needed. The sandbox itself still cannot reach YouTube or
    Songsterr, so CI only ever sees the fakes.
 
+   **A capo is read and the frets are counted from the nut** (`strings.apply_capo`,
+   both parsers; "It doesn't understand the capo", r/rocksmith 2026-10-15). Guitar
+   Pro counts a note's fret from the capo (alphaTab: a string's pitch includes
+   `staff.capo`; GP3-5 `Track.offset`, GPIF Staff `CapoFret`); Rocksmith counts
+   from the nut, plays an open string at the capo (Rocksmith2014.NET
+   `Midi.toMidiNote`) and carries the capo fret (`Arrangement.capo` → XML `<capo>`,
+   SNG `CapoFret`, manifest). So every fretted note moves up by the capo, open
+   strings stay 0, a note pushed past fret 24 is dropped and counted; chord
+   templates' MIDI and names sound an open string at the capo (`chord_display(...,
+   capo)`); the GP5 export writes it back; the viewer labels the staff "Capo N" and
+   the synth plays open strings at it (`ArrangementOut.capo`, `noteMidi`). Not seen
+   in game from here. Guarded by `test_capo.py`.
+
    **Tied notes** (GP `(17)` in parentheses — a held continuation, not a
    re-pick) are folded into the note they extend in BOTH parsers, never emitted
    as a second attack: GP5 via `NoteType.tie` (inline, tracking the last note
@@ -4155,8 +4168,12 @@ and adds `SongEvent = Play_<key>`. Layout (PC/little-endian):
 `BKHD → DIDX → DATA → HIRC → STID`; HIRC holds Sound/ActorMixer/Action/Event
 objects. Same honesty caveat as `sng.py`: round-tripped
 (`read_wem_file_id`/`read_bkhd_version`) but **unverified-by-design** — no
-reference bnk in CI. When no Wwise is available the packer falls back to the old
-non-loading `audio/<key>.<ext>` path (bundle stays the trustworthy audio route).
+reference bnk in CI. **When no Wwise is available the `.psarc` carries no audio at
+all** (2026-10-15): it used to pack the WAV under `audio/<key>.<ext>`, a path the
+game never loads, so the file was ~30 MB per 3 minutes and still played silence
+(a user's report on r/rocksmith). The bundle keeps the audio for DLC Builder, the
+checklist's "PSARC jogável" row says ❌ and the `.exe`'s home page names Wwise.
+Guarded by `test_package_produces_valid_psarc`.
 
 **Volume ("Calculate Volumes", `normalize/loudness.py`).** The Sound object's
 Wwise bus volume (dB) is no longer a neutral 0. **One target
@@ -4329,6 +4346,14 @@ rendered completely unchanged. It is the optional `[desktop]` extra: without it
 (or when the GUI backend cannot start — no WebView2 runtime, no display)
 `run_in_browser` restores the old behaviour, serve-and-open-the-default-browser,
 after releasing the port so the fallback can bind it.
+
+**The window must be allowed to save files** (`allow_downloads`): pywebview
+CANCELS every download by default (`webview.settings['ALLOW_DOWNLOADS'] = False`;
+edgechromium's `on_download_starting` sets `args.Cancel`), silently, so in the
+`.exe` the .psarc/bundle "Download" buttons did nothing at all — a user's first
+report after the public release. With it on, WebView2 opens the Save As dialog.
+Guarded by `test_the_window_is_allowed_to_save_downloads` and the fake-webview
+window test.
 
 **A window close is unambiguous, so windowed mode turns the idle-shutdown
 watchdog OFF** (`ROCKFORGE_IDLE_SHUTDOWN_S=0`). That whole mechanism exists only

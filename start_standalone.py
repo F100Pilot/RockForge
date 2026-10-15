@@ -226,11 +226,26 @@ def _stop(server: Any, thread: threading.Thread) -> None:
     thread.join(timeout=SERVER_STOP_TIMEOUT_S)
 
 
+def allow_downloads(webview: Any) -> bool:
+    """Let the window save files. pywebview CANCELS every download by default
+    (``settings['ALLOW_DOWNLOADS'] = False``, edgechromium's
+    ``on_download_starting``: ``args.Cancel = True``) — silently, so the
+    .psarc/bundle "Download" buttons did nothing at all in the .exe (reported
+    by a user). With it on, WebView2 shows the Save As dialog."""
+    settings = getattr(webview, "settings", None)
+    try:
+        settings["ALLOW_DOWNLOADS"] = True  # type: ignore[index]
+    except (KeyError, TypeError):
+        return False
+    return True
+
+
 def run_windowed(host: str, port_: int) -> bool:
     """Serve and show the native window. Returns False if the window could not
     be created — having released the port, so the browser fallback can bind it."""
     import webview
 
+    allow_downloads(webview)
     server, thread = _serve_in_background(host, port_)
     try:
         if not wait_until_serving(host, port_):

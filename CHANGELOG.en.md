@@ -27,6 +27,13 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
   (its licence does not allow bundling it).
 
 ### Fixed
+- **In the `.exe`, the "Download" buttons did nothing** (and showed no error): the app's own
+  window blocked downloads. It now opens the Save As dialog.
+- **The Guitar Pro file's capo was ignored.** It is now read (GP3-5 and GP7/8): frets are counted
+  from the nut, as in Rocksmith, and the arrangement carries the capo.
+- **Without Wwise, the `.psarc` carried the whole WAV** (about 30 MB) where the game never reads
+  it. Not any more: the audio stays in the bundle for DLC Builder and the app says Wwise is
+  missing.
 - A difficulty level holding only open strings had no anchor in the `.psarc` (caught by the PSARC
   check on a bass whose simplest notes are its open roots).
 

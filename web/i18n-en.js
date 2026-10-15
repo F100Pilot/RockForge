@@ -1220,5 +1220,6 @@
   "Agora não": "Not now",
   "O .psarc vai sair <b>sem som</b>: falta o <b>Wwise</b> (gratuito, da Audiokinetic, com conta). A licença não permite incluí-lo — instala-o pelo Audiokinetic Launcher e o RockForge encontra-o sozinho.": "The .psarc will come out <b>without sound</b>: <b>Wwise</b> is missing (free, by Audiokinetic, with an account). Its licence does not allow bundling it — install it with the Audiokinetic Launcher and RockForge finds it by itself.",
   "Descarregar o Wwise": "Download Wwise",
-  "Ocultar": "Hide"
+  "Ocultar": "Hide",
+  "Capo {n}": "Capo {n}"
 };

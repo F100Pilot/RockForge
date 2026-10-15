@@ -1740,6 +1740,8 @@ function openMidi(a, str) {
   const fixed = isBassArr(a) && (a.cent_offset || 0) <= -1100 ? 12 : 0;
   return base + off - fixed;
 }
+// A note's pitch: an open string under a capo sounds at the capo.
+function noteMidi(a, str, fret) { return openMidi(a, str) + (fret || (a && a.capo) || 0); }
 // The staff keeps its height; a bass's four lines are spread over it.
 function staffRow(a) { return isBassArr(a) ? STAFF_ROW * 5 / 3 : STAFF_ROW; }
 function _presetFromOffsets(off) {
@@ -2338,6 +2340,10 @@ function showArr(i) {
     const y = SB - str * ROW;
     s += `<line x1="30" y1="${y}" x2="${W-10}" y2="${y}" stroke="#3a3c45"/>`;
     s += `<text x="6" y="${y+5}" fill="${STRING_COLORS[str]}" font-size="15" font-weight="700">${stringLabel(str, a.tuning_offsets)}</text>`;
+  }
+  if (a.capo) {
+    const topY = SB - (stringCount(a) - 1) * ROW;
+    s += `<text x="4" y="${topY - 12}" fill="#e8b04a" font-size="11" font-weight="700">${esc(T('Capo {n}', { n: a.capo }))}</text>`;
   }
   // Timeline grid: quarter-second ticks for fine drag alignment, whole-second
   // ticks (small label) and 5s major ticks (larger label).
@@ -7642,7 +7648,7 @@ async function synthesizeArrangement(kind) {
     // at raw recording time.
     const tRec = gp ? warp((n.time - scoreShift) * ratio + pad) - viewOrigin : n.time;
     if (tRec < 0) continue;
-    events.push({ t: tRec, chartT: n.time, midi: openMidi(a, n.string) + n.fret });
+    events.push({ t: tRec, chartT: n.time, midi: noteMidi(a, n.string, n.fret) });
     if (tRec > maxT) maxT = tRec;
   }
   if (!events.length) return null;
@@ -7874,7 +7880,7 @@ function playArrangementPreview() {
   const t0 = audioCtx.currentTime + 0.1;
   for (const n of a.notes) {
     if (n.string < 0 || n.string >= stringCount(a) || n.fret < 0) continue;
-    const midi = openMidi(a, n.string) + n.fret;
+    const midi = noteMidi(a, n.string, n.fret);
     const hz = midiToHz(midi);
     const start = t0 + n.time;
     const dur = Math.min(Math.max(n.sustain || 0.12, 0.12), 2);
@@ -8310,7 +8316,7 @@ function syncFrame() {
     if (tickOn && sounded < MAX_TICKS_PER_FRAME) {
       const note = notes[tickIdx];
       if (note.string >= 0 && note.string < stringCount(arrNow) && note.fret >= 0) {
-        playNote(openMidi(arrNow, note.string) + note.fret, note.time);
+        playNote(noteMidi(arrNow, note.string, note.fret), note.time);
         sounded++;
       }
     }

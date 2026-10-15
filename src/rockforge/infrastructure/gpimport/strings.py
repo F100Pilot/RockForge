@@ -18,7 +18,7 @@ from collections.abc import Sequence
 from dataclasses import replace
 
 from rockforge.domain.errors import IngestionError
-from rockforge.domain.music import BASS_STANDARD_MIDI, BASS_STRINGS, TabNote, Tuning
+from rockforge.domain.music import BASS_STANDARD_MIDI, BASS_STRINGS, MAX_FRET, TabNote, Tuning
 from rockforge.i18n import tr
 
 _NOTE_NAMES = ("C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B")
@@ -47,6 +47,44 @@ def check_track_strings(count: int, *, bass: bool, label: str) -> None:
         "precisam de 6",
         f"track {label} has {count} strings; Rocksmith 2014 guitar arrangements require 6",
     ))
+
+
+def apply_capo(notes: Sequence[TabNote], capo: int) -> tuple[list[TabNote], list[str]]:
+    """Guitar Pro frets counted from the capo → Rocksmith's, counted from the nut.
+
+    Guitar Pro writes a note's fret relative to the capo (alphaTab's
+    ``Note.stringTuning`` adds ``staff.capo``); Rocksmith writes the fret the
+    hand presses and plays an open string (fret 0) at the capo (Rocksmith2014.NET
+    ``Midi.toMidiNote``: ``if capo > 0 && fret = 0 then capo``), with the capo
+    fret in the arrangement. So every fretted note moves up by the capo and an
+    open string stays 0; a note pushed past the 24th fret is dropped and counted.
+    """
+    if capo <= 0:
+        return list(notes), []
+
+    def up(fret: int | None) -> int | None:
+        return fret + capo if fret else fret
+
+    out: list[TabNote] = []
+    dropped = 0
+    for n in notes:
+        if n.fret + (capo if n.fret else 0) > MAX_FRET:
+            dropped += 1
+            continue
+        out.append(replace(
+            n, fret=up(n.fret) or 0,
+            slide_to_fret=up(n.slide_to_fret),
+            slide_unpitch_to=up(n.slide_unpitch_to),
+            slide_in_from=up(n.slide_in_from),
+            trill_fret=up(n.trill_fret),
+        ))
+    warnings = []
+    if dropped:
+        warnings.append(tr(
+            f"{dropped} nota(s) deixadas de fora: com o capo na casa {capo} passavam a casa 24",
+            f"{dropped} note(s) left out: with the capo at fret {capo} they went past fret 24",
+        ))
+    return out, warnings
 
 
 def fold_strings(

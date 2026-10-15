@@ -261,6 +261,8 @@ class ArrangementOut(BaseModel):
     # The strings the chart is drawn with: 6, or 4 for a bass (whose offsets are
     # measured from E1 A1 D2 G2, the game's own convention).
     string_count: int = 6
+    # The capo fret (0 = none); the notes' frets are counted from the nut.
+    capo: int = 0
     cent_offset: float
     average_bpm: float
     tempo_scale: float  # this arrangement's own tempo scale (GP sync), 1.0 if none

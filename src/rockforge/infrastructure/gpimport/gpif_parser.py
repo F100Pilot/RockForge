@@ -58,7 +58,11 @@ from rockforge.infrastructure.gpimport.playback import (
     BarFlow,
     playback_order,
 )
-from rockforge.infrastructure.gpimport.strings import check_track_strings, fold_strings
+from rockforge.infrastructure.gpimport.strings import (
+    apply_capo,
+    check_track_strings,
+    fold_strings,
+)
 from rockforge.infrastructure.gpimport.sync_map import (
     audio_clock,
     bar_time_points,
@@ -146,6 +150,19 @@ def _track_tuning(track: ET.Element) -> tuple[int, ...]:
                 if pitches:
                     return tuple(int(x) for x in pitches.split())
     return ()
+
+
+def _track_capo(track: ET.Element) -> int:
+    """The capo fret from the track's Staff ``CapoFret`` property (0 = none),
+    where alphaTab's GpifParser reads it."""
+    for staff in (track.find("Staves") or []):
+        for prop in (staff.find("Properties") or []):
+            if prop.attrib.get("name") == "CapoFret":
+                try:
+                    return max(0, int(_text(prop.find("Fret")) or 0))
+                except ValueError:
+                    return 0
+    return 0
 
 
 def _track_is_percussion(track: ET.Element) -> bool:
@@ -797,9 +814,12 @@ def parse_gpif_track(
         )
     notes, tuning, fold_warnings = fold_strings(notes, tuning_midi, bass=bass)
     warnings.extend(fold_warnings)
+    capo = _track_capo(track)
+    notes, capo_warnings = apply_capo(notes, capo)
+    warnings.extend(capo_warnings)
     return ParsedGpTrack(
         notes=notes, tuning=tuning, tempo_map=tempo_map, sections=sections,
-        lyrics=lyrics, lyric_notes=lyric_notes, warnings=warnings,
+        lyrics=lyrics, lyric_notes=lyric_notes, warnings=warnings, capo=capo,
     )
 
 
