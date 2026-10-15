@@ -94,16 +94,19 @@ tons e letra, e instala a música no jogo com um clique.
 3. Abre o RockForge no menu Iniciar. Abre numa janela própria; não precisa de Python e o ffmpeg
    já vem incluído.
 
-A versão instalada cobre todo o caminho Guitar Pro → CDLC. Três extras precisam da instalação
-com Python: importar um **PDF/imagem** da tablatura, as funções de **deteção** (stems, letra, tom,
-*Corrigir daqui*) — ou aponta *Definições → Python ML* para um Python 3.11 que as tenha — e
-descarregar o áudio de um vídeo do **YouTube** (precisa do `yt-dlp` no PATH).
+A versão instalada cobre todo o caminho Guitar Pro → CDLC. Os **componentes extra** — importar um
+**PDF/imagem** da tablatura, as funções de **deteção** (stems, letra, tom, *Corrigir daqui*) e
+descarregar o áudio de um vídeo do **YouTube** — instala-os a própria aplicação: marca-os no
+instalador (vêm marcados) ou carrega em *Instalar agora* na página inicial. O RockForge descarrega
+um Python 3.11 só seu com esses pacotes (cerca de 1 GB, ou 3 GB com uma GPU NVIDIA) para uma pasta
+que não mexe em mais nada. A aplicação também avisa quando sai uma versão nova.
 
 **O que precisas nos dois casos**
 
 - Para um **`.psarc` jogável**: o **Wwise** 2019, 2021, 2022 ou 2023, instalado com o Audiokinetic
-  Launcher (não pode ser distribuído com a aplicação). Sem ele sai na mesma o projeto do DLC
-  Builder.
+  Launcher (gratuito, com conta; a licença não permite distribuí-lo com a aplicação). O RockForge
+  encontra-o onde o Launcher o põe e avisa na página inicial enquanto faltar. Sem ele sai na
+  mesma o projeto do DLC Builder.
 - Para a música **aparecer no jogo**: o patch de CDLC (`D3DX9_42.dll`) na pasta do Rocksmith 2014,
   como para qualquer CDLC.
 

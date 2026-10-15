@@ -52,6 +52,14 @@ Nothing is made up silently: whatever the app does not know or cannot do shows u
   installed and what you lose without it. Only **ffmpeg** is required. A **playable PSARC**
   needs **Wwise** (without it you get only the DLC Builder bundle); separating instruments,
   detecting tone or lyrics and "Fix from here" need the ML extra.
+- **With `rockforge.exe`:** the **extra components** (audio analysis, tone and lyric detection,
+  PDF and YouTube) are installed by the app: the installer offers them (ticked), or press
+  **Install now** on the home page, or ⚙️ **Settings → Software → Install extra components**.
+  RockForge downloads a Python 3.11 of its own with those packages into your local app data
+  (about 1 GB, or 3 GB with an NVIDIA GPU) and uses it by itself; uninstalling RockForge removes
+  it. **Wwise** cannot come this way (its licence does not allow it): install it with the
+  Audiokinetic Launcher and RockForge finds it — or set ⚙️ **Settings → General → Wwise
+  folder**.
 - **For the song to show in the game:** Rocksmith needs the **CDLC patch** (`D3DX9_42.dll` in
   the game folder). Set the game folder in ⚙️ **Settings → General → Rocksmith 2014 folder**
   so the app can confirm it and "Install in the game" works.
@@ -65,6 +73,11 @@ Nothing is made up silently: whatever the app does not know or cannot do shows u
 - Filters (**All / Ready / In progress / Failed**) and a search box.
 - The first card takes a dropped Guitar Pro file: it opens the wizard with it.
 - At the top: **Batch (album)**, **New project** and ⚙️ **Settings**.
+- Above the projects, when it applies: **a new version** of RockForge is out (**Download** opens
+  its Releases page; **Later** hides it until the next one), the **extra components** are missing
+  (`.exe`; **Install now** / **Not now**), or **Wwise** is missing, so the `.psarc` would have no
+  sound (`.exe`; **Download Wwise** / **Hide**). Someone running `start.bat` with git never sees
+  the version notice: it updates itself on every start.
 
 ## 4. Creating a project (New project)
 
@@ -414,10 +427,13 @@ are shared. Lead/Rhythm tracks are picked by name; check them afterwards in each
 
 ## 13. Settings
 
-- **General**: language; Rocksmith 2014 folder.
-- **Software**: what is installed, what is missing and the command to install it.
-- **ML Python**: `.exe` only — the path of a Python 3.11 with `rockforge[ml,lyrics]`, so the
-  `.exe` can separate instruments and detect tone and lyrics.
+- **General**: language; **New versions** (ask GitHub once a day, on by default); **Wwise
+  folder** (empty = found where the Audiokinetic Launcher installs it); Rocksmith 2014 folder.
+- **Software**: in the `.exe`, the **Extra components** card (what is installed, **Install extra
+  components** / **Reinstall**, the install log); then what is installed, what is missing and how
+  to get it.
+- **ML Python**: set by the extra components by itself; only for using a Python 3.11 of your
+  own that already has `rockforge[ml,lyrics]`.
 - **Stems**: the separation engine (Demucs; Banquet in testing).
 - **Volume**: the song's target loudness in game (LUFS). −12 by default; −10/−9 if it sounds
   quiet beside official DLC; −16 is the cleanest.

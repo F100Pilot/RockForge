@@ -14,6 +14,18 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
   para o jogo detetar as notas. A partitura, o braço e a pista 3D mostram quatro cordas. Ainda
   não foi tocado no jogo — diz-nos como corre.
 
+- **Aviso de versão nova** na página inicial: o RockForge pergunta às Releases do GitHub, no
+  máximo uma vez por dia, se há uma versão mais recente (desliga-se em Definições → Geral). Quem
+  usa o `start.bat` com o git não o vê, porque se atualiza sozinho.
+- **O `.exe` instala sozinho os componentes extra**: análise de áudio, deteção de tom e de letra,
+  conversão de PDF e áudio do YouTube. O instalador oferece-os (marcados) e a página inicial
+  também; o RockForge descarrega um Python 3.11 só seu com os pacotes (o PyTorch com CUDA quando
+  há uma GPU NVIDIA) e o Deno, para os dados locais da conta, e o desinstalador apaga-os. A
+  importação de PDF passa a funcionar no `.exe`.
+- **O Wwise é encontrado sozinho** onde o Audiokinetic Launcher o instala, ou indica-se em
+  Definições → Geral → «Pasta do Wwise». A página inicial e a última página do instalador avisam
+  quando falta (a licença não permite incluí-lo).
+
 ### Corrigido
 - Um nível de dificuldade só com cordas soltas ficava sem âncora no `.psarc` (apanhado pela
   verificação do PSARC num baixo cujas notas mais simples são as fundamentais soltas).

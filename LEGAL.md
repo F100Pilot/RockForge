@@ -63,8 +63,12 @@ Servem apenas a interoperabilidade: escrever ficheiros que o jogo saiba ler.
 
 ### Serviços online
 
-O RockForge só contacta um serviço quando carregas no botão que o faz. Os
-termos de cada serviço aplicam-se a quem faz o pedido.
+O RockForge só contacta um serviço quando carregas no botão que o faz — com uma
+exceção: para saber se há uma versão nova, pergunta às Releases do GitHub no
+máximo uma vez por dia, sem enviar nada sobre ti nem sobre as tuas músicas
+(desliga-se em Definições → Geral). Os componentes extra do `.exe` vêm do NuGet,
+do PyPI, do PyTorch e do GitHub, só quando os instalas. Os termos de cada
+serviço aplicam-se a quem faz o pedido.
 
 - **Songsterr.**
   - A importação de tablaturas e os tempos por compasso usam a API não
@@ -148,8 +152,12 @@ It serves interoperability only: writing files the game can read.
 
 ### Online services
 
-RockForge contacts a service only when you press the button that does it. Each
-service's terms apply to whoever makes the request.
+RockForge contacts a service only when you press the button that does it — with
+one exception: to know whether a new version is out, it asks GitHub's Releases
+at most once a day, sending nothing about you or your songs (turned off in
+Settings → General). The `.exe`'s extra components come from NuGet, PyPI,
+PyTorch and GitHub, only when you install them. Each service's terms apply to
+whoever makes the request.
 
 - **Songsterr.**
   - Tab import and per-measure times use the undocumented API Songsterr's own

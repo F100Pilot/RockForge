@@ -123,14 +123,17 @@ ESLint and its plugins (`package.json`) are development tools only.
 |---|---|
 | **Wwise** (Audiokinetic) | Required for the playable `.psarc` audio. Its EULA forbids redistribution, so RockForge never ships it: each user installs it through the Audiokinetic Launcher and accepts that EULA. |
 | **ffmpeg** | Taken from the system when running from Python. The Windows downloads carry an unmodified LGPL build with its licence and source link — see "ffmpeg in the Windows downloads" above. Anyone building their own installer with `build_exe.py` must do the same for the build they put in `ffmpeg/` (an LGPL build, or comply with the GPL if it is one). |
-| **Deno** (or Node/QuickJS/Bun) | Optional JavaScript runtime yt-dlp uses; installed by the user. Deno is MIT. |
+| **Deno** (or Node/QuickJS/Bun) | Optional JavaScript runtime yt-dlp uses; installed by the user, or downloaded by the `.exe`'s extra components from Deno's GitHub releases. Deno is MIT. |
+| **Python 3.11 and the extra components** (`.exe`) | Downloaded by the app on the user's request (`infrastructure/components.py`), never shipped inside it: the official `python` NuGet package (PSF licence) into the user's local app data, then the packages of the `[ml]`, `[lyrics]`, `[youtube]` and `[pdf]` extras from PyPI (and PyTorch's CUDA build from download.pytorch.org when there is an NVIDIA GPU), each under its own licence (section 3). |
 | **DLC Builder** | Optional, to open the bundle; installed by the user. MIT. |
 | **Redis / Memurai** | Message broker for the Celery worker (`start.bat`); installed by the user. |
 
 ## 5. Online services the app can contact
 
-RockForge only contacts these when the user presses the button that does it.
-Each has its own terms of use, which apply to the user who makes the request.
+RockForge only contacts these when the user presses the button that does it —
+except the version check, which asks GitHub's Releases API at most once a day
+(turned off in Settings → General). Each has its own terms of use, which apply
+to the user who makes the request.
 
 | Service | Used for | Notes |
 |---|---|---|
@@ -139,6 +142,8 @@ Each has its own terms of use, which apply to the user who makes the request.
 | LRCLIB (lrclib.net) | Synced lyrics | Open, no key |
 | iTunes Search API | Album, year, cover | Apple's terms |
 | MusicBrainz + Cover Art Archive | Album, year, cover | MusicBrainz data CC0; cover images belong to their rights holders |
+| GitHub (api.github.com) | Whether a newer RockForge is out | Once a day at most, nothing about the user sent; off in Settings |
+| NuGet, PyPI, download.pytorch.org, GitHub releases | The `.exe`'s extra components | Only when the user installs them |
 
 ## 6. Full licence texts
 

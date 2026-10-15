@@ -4479,6 +4479,72 @@ never chdirs — so a bundled file would 404 even once the spec ships it.
 `_gear_image_dirs()` shares the same list (after the `work_dir` override).
 Guarded by `test_bundled_web_files_are_found_in_the_pyinstaller_bundle`.
 
+### The `.exe` installs its own extra components (`infrastructure/components.py`)
+
+"Implementa o aviso de versão nova. E garante que os utilizadores que usam o
+exe sabem que precisam de instalar outras dependências. Deveria ser
+automaticamente instalado com o exe, excepto o wwise." (2026-10-15). The
+`ml_python` route above already let the `.exe` delegate every heavy stage to
+another Python; what was missing was that Python. The app now installs it:
+the official `python` NuGet package (3.11.9, relocatable, no registry) into
+`%LOCALAPPDATA%\RockForge\components\python`, `ensurepip`, PyTorch's cu121
+pair (`torch==2.4.1`, `torchaudio==2.4.1`) when `nvidia-smi` exists, then ONE
+pip call with the `[ml]`, `[lyrics]`, `[youtube]` and `[pdf]` requirement
+strings — read from `pyproject.toml` by `rockforge.spec` at build time into
+`components_requirements.json` (the frozen app has no pyproject), the `git+`
+URL rewritten to the commit's GitHub archive (`_github_archive`, no git on the
+user's machine) — and Deno into `components\tools` (`add_tools_to_path` at
+launch, so yt-dlp's `js_runtime_args` finds it). Then `ml_python` is set to
+it, unless the user set another path by hand (`_use`). A background thread in
+the API process like the tone-collection scan (`start_install`, one at a time,
+`busy()` counted by the window-close and idle watchdogs), polled through
+`GET /components`; `POST /components/install` (409 off the Windows `.exe` —
+`start.bat` installs the extras itself), `POST /components/decline` («Agora
+não», `components_declined`). Entry points: Inno Setup's ticked task
+`components` → `rockforge.exe --install-components` (`components_flag` →
+`ROCKFORGE_INSTALL_COMPONENTS=1` → `auto_install`, the page starts it), the
+home page notice, and the «Componentes extra» card at the top of Definições →
+Software (list ✓/✗ asked of the private Python via `ml_python.probe`, whose
+`PACKAGES` now also cover `yt_dlp`/`pdf_to_gp5`/`rapidocr_onnxruntime`, the
+log, Instalar/Completar/Reinstalar). `[UninstallDelete]` removes
+`components`. **The PDF converter runs there too** (`gpimport/_pdf_runner.py`,
+imports nothing from RockForge, walked into the bundle with the other
+runners): `pdf_import.convert` uses it when the converter is not importable
+here but the ML interpreter has it; same timeouts, same error messages.
+**Wwise stays out** (its EULA; the Launcher needs an account), so
+`runtime_settings.wwise_root` adds a Settings field (`wwise_root`) and
+`wwise.detect_wwise_root` (newest supported `Wwise*` under Program Files'
+`Audiokinetic` with a console inside) after the env vars; the home page warns
+in the `.exe` while it is missing, as does the installer's `FinishedLabel`.
+The diagnostics rows' install lines in the `.exe` point at «Instalar
+componentes extra» (`_components_install`). Guarded by `test_components.py`
+(the commands in order, CUDA vs CPU, zip-slip, a repair run, the background
+install switching `ml_python`, a hand-set path kept, decline, 409 off the
+.exe — each mutation-checked), `test_the_exe_converts_on_the_components_python_through_the_runner`
+(the real runner on another process), `test_wwise_is_found_where_the_launcher_installs_it`,
+`test_the_installers_components_task_reaches_the_app` and
+`test_spec_bundles_what_the_extra_components_install`; **the release
+workflow's smoke test installs them for real in the frozen `.exe` on Windows
+and uses librosa (`/detect-tempo` on a click track), PDF-to-GP5
+(`/pdf/import`) and Demucs (`/separate-stems`) through it**. The UI with
+Playwright on a server dressed as the `.exe` (fake download/run: notices,
+install with log, card, PT/EN, 760 px).
+
+### «Há uma versão nova» (`infrastructure/update_check.py`)
+
+`GET /update-check` asks GitHub's Releases API (`releases?per_page=20`) at
+most once a day (`work_dir/update_check.json`, a failure backs off an hour and
+is just "nothing new"), skipping drafts and offering pre-releases only to
+someone on a pre-release (`newest_release`, `parse_version` reads PEP 440
+`0.10.0b3` and tags `v0.10.0-beta.4`). `install_kind`: "exe", "git" (a
+checkout `start.bat` pulls — the UI shows nothing) or "source" (a zip with no
+`.git`). Off with Definições → Geral → «Versões novas» (`check_updates`). The
+home page notice links the release page and «Mais tarde» hides that version
+(`rf-notice-dismissed` in localStorage). LEGAL.md and THIRD_PARTY_NOTICES say
+this is the one contact made without a button. Guarded by
+`test_update_check.py` (ordering, the beta rule, the day's cache, the back-off,
+an upgrade not trusting the old cache, git vs zip, the setting).
+
 ## Commands
 
 ```bash

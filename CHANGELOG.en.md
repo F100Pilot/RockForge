@@ -14,6 +14,18 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
   detects the notes. The score, the fretboard and the 3D highway show four strings. Not played in
   game yet — tell us how it goes.
 
+- **New version notice** on the home page: RockForge asks GitHub's Releases, at most once a day,
+  whether a newer version is out (turned off in Settings → General). Someone using `start.bat`
+  with git does not see it, since that updates itself.
+- **The `.exe` installs the extra components by itself**: audio analysis, tone and lyric
+  detection, PDF conversion and YouTube audio. The installer offers them (ticked) and so does the
+  home page; RockForge downloads a Python 3.11 of its own with the packages (PyTorch with CUDA
+  when there is an NVIDIA GPU) and Deno into the account's local app data, and the uninstaller
+  removes them. The PDF import now works in the `.exe`.
+- **Wwise is found by itself** where the Audiokinetic Launcher installs it, or set in Settings →
+  General → “Wwise folder”. The home page and the installer's last page say when it is missing
+  (its licence does not allow bundling it).
+
 ### Fixed
 - A difficulty level holding only open strings had no anchor in the `.psarc` (caught by the PSARC
   check on a bass whose simplest notes are its open roots).

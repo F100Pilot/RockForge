@@ -74,6 +74,14 @@ documentados nas mensagens de commit, caso valha a pena ressuscitar alguma.
 
 ## Concluído recentemente (resumo — detalhe em CLAUDE.md)
 
+- [x] **Aviso de versão nova + componentes extra instalados pelo `.exe`**
+  (2026-10-15): `update_check.py` (GitHub Releases, 1×/dia, não para checkouts
+  git), `components.py` (Python 3.11 do NuGet + extras `[ml,lyrics,youtube,pdf]`
+  + Deno, a partir do instalador, da página inicial ou de Definições →
+  Software), PDF via `_pdf_runner.py`, Wwise detetado na pasta do Launcher.
+  O teste das Releases instala-os no `.exe` congelado e usa librosa, PDF-to-GP5
+  e Demucs.
+
 - [x] **Arranjo de baixo (Bass)** (2026-10-15): pista Bass de 4/5 cordas no
   assistente e em "Editar info", codificada como o DLC Builder (ArrangementName
   3, RouteMask 4, pathBass, afinação a partir de E1 A1 D2 G2, tom por defeito

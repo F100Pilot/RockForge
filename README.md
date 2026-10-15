@@ -91,15 +91,19 @@ song in the game with one click.
 3. Open RockForge from the Start menu. It opens in its own window; no Python, and ffmpeg is
    included.
 
-The installed version covers the whole Guitar Pro → CDLC path. Three extras need a Python
-install instead: importing a **PDF/picture** of the tab, the **detection** features (stems,
-lyrics, tone, *Fix from here*) — or point *Settings → ML Python* at a Python 3.11 that has them —
-and downloading a **YouTube** video's audio (needs `yt-dlp` on the PATH).
+The installed version covers the whole Guitar Pro → CDLC path. The **extra components** —
+importing a **PDF/picture** of the tab, the **detection** features (stems, lyrics, tone, *Fix from
+here*) and downloading a **YouTube** video's audio — are installed by the app itself: tick them in
+the installer (on by default) or click *Install now* on the home page. RockForge downloads a
+Python 3.11 of its own with those packages (about 1 GB, or 3 GB with an NVIDIA GPU) into a folder
+that touches nothing else. The app also tells you when a new version is out.
 
 **What you need in both cases**
 
 - For a **playable `.psarc`**: **Wwise** 2019, 2021, 2022 or 2023, installed with the Audiokinetic
-  Launcher (it cannot be shipped with the app). Without it you still get the DLC Builder project.
+  Launcher (free, with an account; its licence does not allow shipping it with the app). RockForge
+  finds it where the Launcher puts it and warns on the home page while it is missing. Without it
+  you still get the DLC Builder project.
 - For the song to **appear in the game**: the CDLC patch (`D3DX9_42.dll`) in the Rocksmith 2014
   folder, as for any CDLC.
 

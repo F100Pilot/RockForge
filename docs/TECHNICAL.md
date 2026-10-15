@@ -169,36 +169,47 @@ when the app finds the game — in this computer's Steam libraries, or in the fo
 or the CPU build is not known — that would require importing torch in the API process, which is
 forbidden on purpose. In those cases the panel says **ⓘ unknown**, not ✅ or ❌.
 
-### ML in the `.exe`: point it at a Python 3.11
+### The extra components in the `.exe`: installed by the app
 
-The `.exe` carries the core (**GP → PSARC**) and, if you put `ffmpeg.exe` in the `ffmpeg/`
-folder before building, it carries that too. **It has its own Python**: a PyInstaller
-executable only sees the packages it carries inside, never the ones you install in your
-Python — so it cannot *import* Demucs, WhisperX or librosa, and no `pip install` changes that.
+The `.exe` carries the core (**GP → PSARC**) and its own ffmpeg. **It has its own Python**: a
+PyInstaller executable only sees the packages it carries inside, so it cannot *import* Demucs,
+WhisperX, librosa, PDF-to-GP5 or yt-dlp. It does not need to: every one of those stages runs in a
+**subprocess** on another Python. So the app **installs that Python itself**
+(`infrastructure/components.py`):
 
-But **it doesn't need to import them**: all those stages already run in a **subprocess**. All
-it takes is a Python 3.11 that has them, and telling the app where it is — exactly as you
-already do with ffmpeg and Wwise.
+1. **Python 3.11.9** — the official `python` package on NuGet (a complete, relocatable Python by
+   the CPython release team: no installer, no registry), into
+   `%LOCALAPPDATA%\RockForge\components\python`;
+2. **PyTorch** — the CUDA 12.1 build (`torch==2.4.1`) when an NVIDIA driver is present
+   (`nvidia-smi`), otherwise PyPI's CPU build;
+3. the packages of the **`[ml]`, `[lyrics]`, `[youtube]` and `[pdf]`** extras — the exact
+   strings of `pyproject.toml`, bundled at build time; the PDF converter's `git+` URL becomes its
+   GitHub archive, so no git is needed;
+4. **Deno** (yt-dlp's JavaScript runtime) into `components\tools`, put on the PATH at start.
 
-1. Install **Python 3.11** (`winget install Python.Python.3.11`).
-2. In that Python: `py -3.11 -m pip install "rockforge[ml,lyrics]"`
-   (for GPU, install the CUDA torch first — see the ffmpeg/GPU section below).
-3. In the `.exe`: **⚙️ Settings → 🐍 Python for ML** → the path to
-   `python.exe` (e.g. `C:\Users\you\AppData\Local\Programs\Python\Python311\python.exe`).
+Then *ML Python* points at it. It starts from the installer's ticked task «Install them on first
+start» (`rockforge.exe --install-components`), from **Install now** on the home page, or from
+⚙️ **Settings → Software → Install extra components**, with the log on screen; a second run
+repairs (no download again, the packages checked again). About 1 GB to download, or 3 GB with an
+NVIDIA GPU. The uninstaller deletes `components`. The PDF converter runs through
+`gpimport/_pdf_runner.py` on that Python.
 
-The panel shows ✓/✗ per extra — `[ml]` (stems, tone, "Fix from here") and `[lyrics]`
-(lyrics) — and distinguishes "that path is not a Python" from "it is a Python but it lacks
-Demucs", which are fixed in different ways.
+**Wwise cannot come this way** — Audiokinetic's licence forbids redistributing it and its
+Launcher needs an account. RockForge looks for it where the Launcher installs it
+(`Program Files (x86)\Audiokinetic\Wwise <2019|2021|2022|2023>…`, newest first), else in
+⚙️ Settings → General → «Wwise folder» or `ROCKFORGE_WWISE_ROOT`/`WWISEROOT`; the home page
+warns while it is missing, and so does the installer's last page.
+
+A Python of your own still works: put a Python 3.11 with `pip install -e ".[ml,lyrics]"` (from
+a RockForge checkout) in *ML Python*; a path set by hand is never replaced by the components.
 
 | | `.exe` | `start.bat` (Python 3.11) |
 |---|---|---|
 | GP → bundle + `.psarc` | ✅ | ✅ |
-| Wwise / ffmpeg / CDLC patch | ✅ (from the system) | ✅ |
-| stems, tone, lyrics, "Fix from here" | ✅ with the ML Python set | ✅ with `[ml]` / `[ml,lyrics]` |
-
-When running through `start.bat`, leave the field empty: it uses its own Python, and none of
-this is needed. Without the field filled in, the `.exe` answers 503 on those buttons saying
-what is missing — it never fails silently.
+| ffmpeg | ✅ included | from the system |
+| Wwise / CDLC patch | installed by you | installed by you |
+| stems, tone, lyrics, "Fix from here", PDF, YouTube | ✅ after the extra components | ✅ (`start.bat` installs the extras) |
+| updates | the home page says when a new version is out | `git pull` on every start |
 
 ### Extra: syncing with Songsterr's timings
 
@@ -334,9 +345,9 @@ start).
 
 **What works in the `.exe`:** everything that is Guitar Pro → CDLC, native PSARC, sync,
 tones, manual lyric editing — the complete core pipeline. Stem/tone/lyric detection
-(Demucs/WhisperX) and *Fix from here* work too once *Settings → ML Python* points at a Python
-3.11 that has `[ml,lyrics]` installed (see "ML in the `.exe`" above). The PDF import is not in the
-`.exe`. Without them, the app says what is missing — no crash.
+(Demucs/WhisperX), *Fix from here*, the PDF import and the YouTube audio work too once the app
+has installed its extra components (see "The extra components in the `.exe`" above). Without them,
+the app says what is missing — no crash.
 
 #### Building the executable
 

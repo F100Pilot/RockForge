@@ -50,6 +50,14 @@ aviso.
   instalada e o que perdes sem ela. Só o **ffmpeg** é obrigatório. Para um **PSARC jogável** é
   preciso o **Wwise** (sem ele sai só o bundle para o DLC Builder); para separar instrumentos,
   detetar tom ou letra e usar "Corrigir daqui", o extra de ML.
+- **Com o `rockforge.exe`:** os **componentes extra** (análise de áudio, deteção de tom e de
+  letra, PDF e YouTube) instala-os a aplicação: o instalador oferece-os (marcados), ou carrega em
+  **Instalar agora** na página inicial, ou em ⚙️ **Definições → Software → Instalar componentes
+  extra**. O RockForge descarrega um Python 3.11 só seu com esses pacotes para os dados locais da
+  tua conta (cerca de 1 GB, ou 3 GB com uma GPU NVIDIA) e passa a usá-lo sozinho; desinstalar o
+  RockForge apaga-o. O **Wwise** não pode vir assim (a licença não o permite): instala-o pelo
+  Audiokinetic Launcher e o RockForge encontra-o — ou indica-o em ⚙️ **Definições → Geral → Pasta
+  do Wwise**.
 - **Para a música aparecer no jogo:** o Rocksmith precisa do **patch de CDLC**
   (`D3DX9_42.dll` na pasta do jogo). Indica a pasta do jogo em ⚙️ **Definições → Geral →
   Pasta do Rocksmith 2014** para a aplicação o confirmar e para "Instalar no jogo" funcionar.
@@ -64,6 +72,11 @@ aviso.
 - Filtros (**Todos / Prontos / Em curso / Com erro**) e uma caixa de pesquisa.
 - O primeiro cartão aceita um ficheiro Guitar Pro arrastado: abre o assistente já com ele.
 - No topo: **Lote (álbum)**, **Novo projeto** e ⚙️ **Definições**.
+- Por cima dos projetos, quando se aplica: há **uma versão nova** do RockForge (**Descarregar**
+  abre a página da Release; **Mais tarde** esconde o aviso até à seguinte), faltam os
+  **componentes extra** (`.exe`; **Instalar agora** / **Agora não**), ou falta o **Wwise** e o
+  `.psarc` sairia sem som (`.exe`; **Descarregar o Wwise** / **Ocultar**). Quem usa o
+  `start.bat` com o git nunca vê o aviso de versão: atualiza-se sozinho a cada arranque.
 
 ## 4. Criar um projeto (Novo projeto)
 
@@ -411,10 +424,14 @@ info** de cada projeto.
 
 ## 13. Definições
 
-- **Geral**: idioma; pasta do Rocksmith 2014.
-- **Software**: o que está instalado, o que falta e o comando para instalar.
-- **Python ML**: só no `.exe` — o caminho de um Python 3.11 com `rockforge[ml,lyrics]`, para o
-  `.exe` poder separar instrumentos e detetar tom e letra.
+- **Geral**: idioma; **Versões novas** (pergunta ao GitHub uma vez por dia, ligado por defeito);
+  **Pasta do Wwise** (vazio = procurar onde o Audiokinetic Launcher o instala); pasta do
+  Rocksmith 2014.
+- **Software**: no `.exe`, o cartão **Componentes extra** (o que está instalado, **Instalar
+  componentes extra** / **Reinstalar**, o registo da instalação); depois, o que está instalado, o
+  que falta e como o obter.
+- **Python ML**: os componentes extra preenchem-no sozinhos; só serve para usar um Python 3.11
+  teu que já tenha `rockforge[ml,lyrics]`.
 - **Stems**: o motor de separação (Demucs; Banquet em testes).
 - **Volume**: o volume alvo da música no jogo (LUFS). −12 por defeito; −10/−9 se ficar baixo ao
   lado do DLC oficial; −16 é o mais limpo.
