@@ -5409,8 +5409,8 @@ is new and the bugs fixed in that version, English then Portuguese, nothing
 else**: the user's rule for every bump, 2026-10-16). A manual run
 (workflow_dispatch) is a dry build whose files stay as artifacts. The tag must
 equal `installer.iss`'s version, and `tests/test_release_version.py` keeps
-`installer.iss` (`0.10.0-beta.9`), `pyproject.toml`/`__version__` (`0.10.0b9`)
-and both changelogs' `## [0.10.0 beta 9]` in step. `[pdf]` and the ML stack
+`installer.iss` (`0.10.0-beta.10`), `pyproject.toml`/`__version__` (`0.10.0b10`)
+and both changelogs' `## [0.10.0 beta 10]` in step. `[pdf]` and the ML stack
 are not in the `.exe`; the README says which three extras need the source
 install. The smoke script was checked here against the source server dressed
 as a fake `.exe`; the Windows run itself only happens on GitHub. **Its first
