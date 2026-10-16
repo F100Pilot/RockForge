@@ -31,8 +31,9 @@ se faz, vê o **[vídeo tutorial](media/tutorial-pt.mp4)** (10 min, com legendas
 
 1. **Novo projeto**: escolhe o ficheiro da música (Guitar Pro, PDF/imagem da tab, ou um link
    do Songsterr) e a gravação, e atribui as pistas Lead/Rhythm.
-2. **Partitura**: ouve a gravação com as notas por cima e acerta a sincronização. Quando bater
-   certo, marca cada pista como sincronizada.
+2. **Partitura**: ouve a gravação com as notas por cima e acerta a sincronização (o caminho mais
+   rápido está em [A forma mais eficaz](#a-forma-mais-eficaz)). Quando bater certo, marca cada
+   pista como sincronizada.
 3. **Tons**, **Letra**, **Capa**: o que quiseres acrescentar (nada disto é obrigatório).
 4. **Aplicar e reconstruir** sempre que mudares algo — só a reconstrução grava as mudanças no
    PSARC.
@@ -215,7 +216,36 @@ queres recuperar. Ficam pendentes como antes; Desfazer volta à versão constru�
 
 ## 6. Sincronizar as notas com a gravação
 
-Faz por esta ordem, numa pista de cada vez (em cima, no inspetor **Sincronização**):
+### A forma mais eficaz
+
+O que dá menos trabalho e erra menos, por esta ordem:
+
+1. **Começa com uma sincronização feita por pessoas, se existir.** Um Guitar Pro 8 com o áudio
+   lá dentro (deixa marcado "Usar o áudio que vem dentro do ficheiro GP"), ou a tab do Songsterr
+   com os tempos de um vídeo e o áudio **desse** vídeo (no passo 3 do Novo projeto). Já vem
+   compasso a compasso: muitas vezes basta ouvir e marcar como sincronizada.
+2. **Acerta o início** (passo 1) — com **Detetar 1ª nota** ou o cursor em cima da 1ª nota e
+   **= cursor**. Se a partitura se afasta por igual ao longo da música, acerta o **BPM**
+   (passo 2).
+3. **Tab que nunca foi sincronizada** (um só andamento): **Marcar a ouvir**, em cada compasso,
+   com a reprodução abrandada (90% ou 75%) e **Suavizar os toques** ligado. É o método mais
+   fiável para estas tabs: és tu a dizer onde começa cada compasso.
+4. **O que ainda foge:** modo **Corrigir daqui**. Ouve até a partitura começar a fugir, clica
+   nessa nota, e repete ao longo da música. O que está para trás não se mexe.
+5. **Confirma com os Ataques da gravação.** Separa primeiro os instrumentos (**Áudio ▾ →
+   Separar instrumentos**) e mede num só (a guitarra, ou o baixo na pista Bass): os círculos e
+   traços laranja mostram onde a partitura não bate. Corrige-os com **Alinhar compasso** ou
+   arrastando notas.
+6. **Várias pistas:** acerta primeiro a mais fácil de ouvir e põe-na como **Pista principal** —
+   as correções passam para as outras. Com uma pista Bass, o baixo separado é o que dá ataques
+   mais limpos. Depois confirma cada pista.
+7. **Aplicar e reconstruir**, ouve outra vez, e **Marcar esta pista como sincronizada**.
+
+A **Sincronizar automaticamente** (experimental) pode poupar tempo numa tab com o andamento a
+variar, mas só depois de acertares o início, e ouvindo sempre o resultado. Mede na mistura de
+propósito: as batidas da bateria ajudam-na; no baixo separado erra mais.
+
+Os passos seguintes, um a um, numa pista de cada vez (em cima, no inspetor **Sincronização**):
 
 ### Passo 1 — Início da música
 
@@ -537,7 +567,7 @@ lista na própria aplicação.
 |---|---|
 | A música **não aparece** no jogo | O patch de CDLC (`D3DX9_42.dll`) está na pasta do jogo? (Definições → Software.) O AppID usado é de uma DLC que tens? O PSARC está em `dlc` (ou `dlc\RockForge`)? |
 | Só sai o bundle, **sem PSARC jogável** | Falta o Wwise (2019/2021/2022/2023) — Definições → Software. |
-| As notas fogem da música | Secção 6: início, depois BPM, depois "Corrigir daqui". Num ficheiro que não é exatamente a gravação (outra versão, compassos a mais), a correção tem de ser no próprio ficheiro. |
+| As notas fogem da música | Secção 6, [A forma mais eficaz](#a-forma-mais-eficaz): início, BPM, "Marcar a ouvir" numa tab nunca sincronizada, depois "Corrigir daqui". Num ficheiro que não é exatamente a gravação (outra versão, compassos a mais), a correção tem de ser no próprio ficheiro. |
 | O YouTube recusa o download | Instala o solucionador e um motor JavaScript: `pip install -U "yt-dlp[default]"` e `winget install DenoLand.Deno`, e reinicia. Se pedir sessão, escolhe **firefox** em "Sessão do browser" (a do Chrome não se lê no Windows). Ou carrega tu o MP3 do vídeo. |
 | O Songsterr diz que a tab não está publicada | Só tabs publicadas podem ser lidas; escolhe outra tab da mesma música. |
 | Erro de certificado ao procurar letra, capa ou Songsterr | Confirma a data e hora do PC, o antivírus (análise de HTTPS) e `pip install --upgrade certifi`. |

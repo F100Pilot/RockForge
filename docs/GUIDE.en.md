@@ -34,8 +34,9 @@ the names below are the English ones.
 
 1. **New project**: pick the song's file (Guitar Pro, a PDF/picture of the tab, or a Songsterr
    link) and the recording, and assign the Lead/Rhythm tracks.
-2. **Score**: listen to the recording with the notes on top and fix the sync. When it lines
-   up, mark each track as in sync.
+2. **Score**: listen to the recording with the notes on top and fix the sync (the quickest
+   route is in [The most effective way](#the-most-effective-way)). When it lines up, mark each
+   track as in sync.
 3. **Tones**, **Lyrics**, **Cover**: whatever you want to add (none of it is required).
 4. **Apply and rebuild** whenever you change something — only a rebuild writes the changes into
    the PSARC.
@@ -216,7 +217,35 @@ They stay pending as before; Undo goes back to the built version.
 
 ## 6. Syncing the notes to the recording
 
-Work in this order, one track at a time (at the top of the **Sync** inspector):
+### The most effective way
+
+What takes the least work and goes wrong the least, in this order:
+
+1. **Start from a sync made by people, if there is one.** A Guitar Pro 8 file with the audio
+   inside (leave "Use the audio inside the GP file" ticked), or the Songsterr tab with a video's
+   timings and the audio of **that** video (step 3 of New project). It comes bar by bar: often
+   you only need to listen and mark it as synced.
+2. **Set the start** (step 1) — with **Detect 1st note**, or the cursor on the 1st note and
+   **= cursor**. If the score drifts away evenly over the song, set the **BPM** (step 2).
+3. **A tab that was never synced** (one tempo throughout): **Mark by ear**, on every bar, with
+   playback slowed down (90% or 75%) and **Smooth the taps** on. It is the most reliable method
+   for these tabs: you are the one saying where each bar starts.
+4. **Whatever still drifts:** the **Fix from here** mode. Listen until the score starts to
+   drift, click that note, and repeat along the song. What came before does not move.
+5. **Check with the Recording attacks.** Separate the instruments first (**Audio ▾ → Separate
+   instruments**) and measure on one (the guitar, or the bass on the Bass chart): the orange
+   circles and ticks show where the score does not line up. Fix them with **Align bar** or by
+   dragging notes.
+6. **Several tracks:** sync the easiest one to hear first and make it the **Main track** — the
+   corrections reach the others. With a Bass chart, the separated bass gives the cleanest
+   attacks. Then confirm each track.
+7. **Apply and rebuild**, listen again, and **Mark this track as synced**.
+
+**Sync automatically** (experimental) can save time on a tab whose tempo wanders, but only once
+the start is set, and always listening to the result. It measures the mix on purpose: the drum
+hits help it; on the separated bass it goes wrong more often.
+
+The steps one by one, one track at a time (at the top of the **Sync** inspector):
 
 ### Step 1 — Song start
 
@@ -537,7 +566,7 @@ the app itself.
 |---|---|
 | The song **does not show** in the game | Is the CDLC patch (`D3DX9_42.dll`) in the game folder? (Settings → Software.) Is the AppID used that of a DLC you own? Is the PSARC in `dlc` (or `dlc\RockForge`)? |
 | Only the bundle comes out, **no playable PSARC** | Wwise (2019/2021/2022/2023) is missing — Settings → Software. |
-| The notes drift from the music | Section 6: start, then BPM, then "Fix from here". If the file is not exactly the recording (another version, extra bars), the fix belongs in the file itself. |
+| The notes drift from the music | Section 6, [The most effective way](#the-most-effective-way): start, BPM, "Mark by ear" on a tab never synced, then "Fix from here". If the file is not exactly the recording (another version, extra bars), the fix belongs in the file itself. |
 | YouTube refuses the download | Install the solver and a JavaScript runtime: `pip install -U "yt-dlp[default]"` and `winget install DenoLand.Deno`, then restart. If it asks for a session, pick **firefox** under "Browser session" (Chrome's cannot be read on Windows). Or upload the video's MP3 yourself. |
 | Songsterr says the tab is unpublished | Only published tabs can be read; pick another tab of the same song. |
 | Certificate error looking up lyrics, cover or Songsterr | Check the PC's date and time, the antivirus (HTTPS scanning) and `pip install --upgrade certifi`. |
