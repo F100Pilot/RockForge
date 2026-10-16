@@ -8040,6 +8040,26 @@ function toneCharForNote(chartTime, kind) {
 // GC pressure that glitches the audio. Rounding the pitch to 0.1 Hz is far
 // finer than a semitone, so no note changes timbre.
 const _karplusCache = new Map();
+let _karplusCacheSamples = 0;
+
+// How long a previewed note sounds: its sustain as drawn on screen, never
+// shorter than a pick (NOTE_MIN_S, about the length every note had before, so
+// short notes sound as they did) and capped so one held note cannot hold a buffer of
+// minutes. Rounded to 50 ms so held notes still share cached buffers.
+const NOTE_MIN_S = 0.24, NOTE_MAX_S = 6;
+function noteSoundLength(sustain) {
+  if (!(sustain > NOTE_MIN_S)) return NOTE_MIN_S;
+  return Math.min(NOTE_MAX_S, Math.round(sustain * 20) / 20);
+}
+// A held note must still ring at its end: Karplus-Strong loses `damping` once
+// per period, so a fixed 0.99 silenced a high note within a few tenths of a
+// second however long it was held. Pick the per-period loss that leaves about
+// a quarter of the level at the end, never decaying faster than the plucky
+// 0.99 a short note has always used (and still uses, unchanged).
+function karplusDamping(hz, dur) {
+  if (dur <= NOTE_MIN_S) return 0.99;
+  return Math.min(0.9995, Math.max(0.99, Math.pow(0.25, 1 / (Math.max(20, hz) * dur))));
+}
 
 function karplusBuffer(ctx, hz, dur, damping) {
   const sr = ctx.sampleRate;
@@ -8063,8 +8083,10 @@ function karplusBuffer(ctx, hz, dur, damping) {
   const atk = Math.min(total, Math.floor(sr * 0.002)), rel = Math.min(total, Math.floor(sr * 0.008));
   for (let i = 0; i < atk; i++) out[i] *= i / atk;
   for (let i = 0; i < rel; i++) out[total - 1 - i] *= i / rel;
-  if (_karplusCache.size > 256) _karplusCache.clear();  // bounded; a song needs ~50
+  // Bounded by count and by memory (held notes make longer buffers).
+  if (_karplusCache.size > 256 || _karplusCacheSamples > 20e6) { _karplusCache.clear(); _karplusCacheSamples = 0; }
   _karplusCache.set(ck, buf);
+  _karplusCacheSamples += total;
   return buf;
 }
 
@@ -8095,9 +8117,9 @@ function getCabinet(ctx) {
 // approximate the tone's character before the cabinet.
 function voiceNote(ctx, dest, hz, t0, dur, peak, char) {  // dest kept for signature; routed via cabinet
   const src = ctx.createBufferSource();
-  // 0.99: a plucky decay (attack emphasised) rather than a long sustain — reads
-  // as a picked note. Lower strings (larger delay line) naturally ring longer.
-  src.buffer = karplusBuffer(ctx, hz, dur, 0.99);
+  // A short note keeps the plucky 0.99 decay (attack emphasised); a held one
+  // decays slowly enough to ring for its whole length (karplusDamping).
+  src.buffer = karplusBuffer(ctx, hz, dur, karplusDamping(hz, dur));
   const mk = char && char.drive > 0.03 ? 1 + char.drive * 0.8 : 1;  // makeup: distortion compresses
   const lvl = ctx.createGain(); lvl.gain.value = Math.max(0.0001, peak * mk) * 0.9;
   if (char && char.drive > 0.03) {
@@ -8118,10 +8140,12 @@ function voiceNote(ctx, dest, hz, t0, dur, peak, char) {  // dest kept for signa
 // Per-note "tick": a short plucked-string tone AT THE NOTE'S REAL PITCH, shaped
 // by the preview tone active at this note's chart time (if any). Gain follows
 // the Notas slider (0-200%).
-function playNote(midi, chartTime) {
+// `sustain` is the note's held time as drawn (seconds); a held note sounds
+// for that long instead of as a pick.
+function playNote(midi, chartTime, sustain = 0) {
   if (!audioCtx || midi == null) return;
   voiceNote(audioCtx, audioCtx.destination, midiToHz(midi), audioCtx.currentTime,
-    0.24, Math.max(0.0001, tickGain * 0.6), toneCharForNote(chartTime));
+    noteSoundLength(sustain), Math.max(0.0001, tickGain * 0.6), toneCharForNote(chartTime));
 }
 
 // Render one arrangement's notes to a clean AudioBuffer (offline), placing each
@@ -8201,20 +8225,21 @@ async function synthesizeArrangement(kind) {
     // Same recording-clock position the note is drawn at (see previewScale /
     // timeToX): GP applies tempo/offset/anchor sync; audio-ML notes are already
     // at raw recording time.
-    const tRec = gp ? warp((n.time - scoreShift) * ratio + pad) - viewOrigin : n.time;
+    const at = t => (gp ? warp((t - scoreShift) * ratio + pad) - viewOrigin : t);
+    const tRec = at(n.time);
     if (tRec < 0) continue;
-    events.push({ t: tRec, chartT: n.time, midi: noteMidi(a, n.string, n.fret) });
-    if (tRec > maxT) maxT = tRec;
+    const len = noteSoundLength(n.sustain > 0 ? at(n.time + n.sustain) - tRec : 0);
+    events.push({ t: tRec, chartT: n.time, midi: noteMidi(a, n.string, n.fret), len });
+    if (tRec + len > maxT) maxT = tRec + len;
   }
   if (!events.length) return null;
-  const dur = maxT + 1.2;
+  const dur = maxT + 0.5;
   const OACtx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
   const octx = new OACtx(1, Math.ceil(dur * sr), sr);
-  const NOTE_LEN = 0.28;
   // The synthesized source carries the preview tone too, following the tones
   // marked on the score (per-note) when '__follow__' is selected.
   for (const ev of events)
-    voiceNote(octx, octx.destination, midiToHz(ev.midi), ev.t, NOTE_LEN, 0.5,
+    voiceNote(octx, octx.destination, midiToHz(ev.midi), ev.t, ev.len, 0.5,
       toneCharForNote(ev.chartT, kind));
   return await octx.startRendering();
 }
@@ -8872,7 +8897,9 @@ function syncFrame() {
     if (tickOn && sounded < MAX_TICKS_PER_FRAME) {
       const note = notes[tickIdx];
       if (note.string >= 0 && note.string < stringCount(arrNow) && note.fret >= 0) {
-        playNote(noteMidi(arrNow, note.string, note.fret), note.time);
+        const at = warp(previewScale(note.time));
+        const held = note.sustain > 0 ? warp(previewScale(note.time + note.sustain)) - at : 0;
+        playNote(noteMidi(arrNow, note.string, note.fret), note.time, held);
         sounded++;
       }
     }

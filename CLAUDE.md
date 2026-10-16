@@ -3213,6 +3213,21 @@ a chart with several tone changes mirrors each of them. It defaults to following
 the score when tones are marked, unless the user picks otherwise
 (`previewToneTouched`).
 
+**A held note sounds for its sustain** (Liam, 2026-10-16: "sustained notes …
+just play as a single strum"). Both the tick and the synthesized source used a
+fixed length (0.24 / 0.28 s) whatever the note, so a whole note was a pick.
+Now each note lasts its sustain as drawn — through the same `previewScale` +
+warp as its start, so a pending tempo/sync edit is heard — via
+`noteSoundLength` (at least `NOTE_MIN_S` = 0.24 s, at most 6 s, rounded to
+50 ms so held notes still share cached buffers), and `karplusDamping` picks the
+per-period loss that leaves about a quarter of the level at the end (a fixed
+0.99 silenced a high note within tenths of a second); a short note keeps
+exactly the old 0.99 pick. The buffer cache is now also bounded by memory.
+Browser-only, no pytest coverage: checked with Node (short notes unchanged,
+held ones ringing to the end at three pitches) and with Playwright on a built
+invented GP5 (a 2.35 s note still sounds at 1 s and 2 s in the synthesized
+source; the tick receives its 2.35 s), no page errors.
+
 **On-score tone identification.** The active tone is shown on the tab viewer: an
 amber 🎸 label per tone change (plus the base tone at the start,
 `activeToneKeyAtDisplay`) and a live `#liveTone` label next to the BPM

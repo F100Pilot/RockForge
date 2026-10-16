@@ -6,6 +6,11 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Corrigido
+- **As notas longas soam o tempo todo na pré-escuta**: o som das notas no editor (o toque de cada
+  nota e a fonte «sintetizada») tocava todas as notas como uma palhetada curta, mesmo as
+  sustentadas. Agora cada nota dura a sustentação que se vê na pauta; as curtas soam como antes.
+
 ## [0.10.0 beta 8] — 2026-10-16
 
 ### Alterado

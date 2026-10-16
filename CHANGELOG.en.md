@@ -6,6 +6,11 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### Fixed
+- **Long notes ring for their whole length in the preview**: the editor's note sound (each
+  note's tick and the “synthesized” source) played every note as a short pick, even held ones.
+  Each note now lasts the sustain drawn on the score; short notes sound as before.
+
 ## [0.10.0 beta 8] — 2026-10-16
 
 ### Changed

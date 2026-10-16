@@ -24,7 +24,7 @@ tudo de uma vez e um novo bump de versão.
   colidem na mesma corda e instante). Ver se a fusão no parse resolve o caso
   do Songsterr sem a vista dupla.
 
-- [ ] **Bug: as notas sustentadas tocam como um toque curto na pré-escuta**
+- [x] **Bug: as notas sustentadas tocam como um toque curto na pré-escuta** (corrigido 2026-10-16, ver CLAUDE.md "Tone preview")
   (Liam, 2026-10-16: "when playing back sustained notes in editor they just
   play as a single strum rather than sustained"). Causa: o som das notas no
   editor ignora a sustentação — `playNote` toca sempre 0,24 s e
