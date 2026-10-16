@@ -607,7 +607,12 @@ Partitura inspector's "Mais opções" as "Recarregar ficheiro GP".
 **The new file's own audio replaces the recording** when it carries one
 (`use_embedded_audio`, default true — "usar o áudio que vem dentro do
 ficheiro, se trouxer", ticked beside the button): that copy is the one its
-sync points describe, exactly as the wizard decides. It used to keep the old
+sync points describe, exactly as the wizard decides. What was measured on the
+old recording goes with it (`stems*`, `detected_tones`, `tone_detection_*`):
+kept, the separated guitar fed "Ataques da gravação" and the stem audio sources
+from a recording the chart no longer plays against (guarded by
+`test_what_was_measured_on_the_old_recording_is_dropped_with_it`,
+mutation-checked). It used to keep the old
 recording no matter what, so a project could never move onto the GP8 audio
 without being recreated. When the recording was a separate upload until now,
 `offset_s` becomes `sync_start_s` of the new file (another recording's start
@@ -771,7 +776,16 @@ anchors included; `playheadDisplay(0)` turns recording seconds into display
 time): within `ATTACK_MATCH_S` (60 ms) a note and an attack are one strike; a
 note with none gets an orange circle and a dotted line, an attack of strength ≥
 `ATTACK_STRONG` (0.35) with no note an orange tick and a dashed line (weaker
-unmatched ones stay faint and uncounted: bleed, ghost strokes). The status says
+unmatched ones stay faint and uncounted: bleed, ghost strokes). **Seconds of the
+recording FILE become display time through `recordingDisplay`** =
+`playheadDisplay(s + leadInBuilt)`: the decoded buffer starts with the build's
+"Silêncio inicial" (`decodeWaveform` pads it), so `playheadDisplay(0)` alone —
+what this card and the auto-sync used at first — put every attack `lead_in_s`
+late, and notes that were in sync sat between the ticks ("com as bolas no meio
+dos traços, a música estava sincronizada"). With Playwright on the invented riff
+rebuilt with a 0.5 s lead-in: 0 of 16 notes matched before, 15 of 16 after (the
+same as without a lead-in), and the auto-sync no longer "corrects" a chart that
+is in time. The status says
 the source and the counts; "Diferença anterior/seguinte" (`goToAttackDiff`)
 puts the cursor on each difference. Nothing is applied. Honest limits, in the
 ⓘ: when, never which notes or which way the pick goes; the stem holds every

@@ -380,6 +380,11 @@ def reload_gp(
                 if start is not None:
                     params["offset_s"] = round(start, 3)
             params["recording_from_gp"] = True
+            # What was measured on the old recording does not describe this one: its
+            # separated guitar would put the attacks and the stem sources elsewhere.
+            for key in ("stems", "stems_status", "stems_log", "detected_tones",
+                        "tone_detection_status", "tone_detection_log"):
+                params.pop(key, None)
         elif recording_gone:
             gp_dest.unlink(missing_ok=True)
             raise HTTPException(409, "original recording no longer exists on the work volume")

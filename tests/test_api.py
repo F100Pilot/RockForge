@@ -1814,6 +1814,38 @@ def test_reloading_a_gp_file_that_carries_audio_uses_that_audio(
     assert _job_row(again["id"])[1]["offset_s"] == 2.25
 
 
+def test_what_was_measured_on_the_old_recording_is_dropped_with_it(
+    client: TestClient, tmp_path
+) -> None:
+    """A reload that takes the file's own audio leaves the old recording's
+    separated guitar behind: kept, it put the "Ataques da gravação" (and the
+    stem audio sources) on a recording the chart no longer plays against."""
+    import rockforge.interfaces.api.app as app_module
+
+    job = _gp_job(client, tmp_path)
+    measured = {
+        "stems": {"guitar": str(tmp_path / "guitar.wav")}, "stems_status": "ready",
+        "stems_log": ["done"], "detected_tones": {"timeline": []},
+        "tone_detection_status": "ready", "tone_detection_log": ["done"],
+    }
+    with app_module._session_factory() as session:
+        row = session.get(app_module.Job, job["id"])
+        row.params = {**(row.params or {}), **measured}
+        session.commit()
+    synced = _gp8_with_embedded_audio(b"ID3the-files-own-audio")
+
+    kept = client.post(
+        f"/jobs/{job['id']}/reload-gp",
+        files={"gp": ("s.gp", synced, "x")}, data={"use_embedded_audio": "false"},
+    ).json()
+    assert {k: _job_row(kept["id"])[1].get(k) for k in measured} == measured
+
+    used = client.post(f"/jobs/{job['id']}/reload-gp", files={"gp": ("s.gp", synced, "x")})
+    assert used.status_code == 202, used.text
+    params = _job_row(used.json()["id"])[1]
+    assert not any(k in params for k in measured)
+
+
 def test_a_gp_file_with_audio_stands_in_for_a_recording_that_is_gone(
     client: TestClient, tmp_path
 ) -> None:

@@ -11,6 +11,13 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
   pista (0°) até vista de cima (90°); a roda do rato aproxima ou afasta e um duplo clique repõe.
   Os mesmos eixos estão em "Câmara", e a vista fica guardada.
 
+### Corrigido
+- **Ataques da gravação com "Silêncio inicial":** num projeto com silêncio inicial, os ataques
+  apareciam atrasados nesse tempo, e notas sincronizadas ficavam entre os traços. A
+  sincronização automática tinha o mesmo desvio.
+- **Recarregar ficheiro GP com o áudio do ficheiro:** a guitarra separada e a deteção de tons da
+  gravação antiga já não passam para a nova versão (descreviam outra gravação).
+
 ## [0.10.0 beta 9] — 2026-10-16
 
 ### Novo

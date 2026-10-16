@@ -11,6 +11,13 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
   with the highway (0°) to a view from above (90°); the mouse wheel moves closer or further and a
   double-click resets. The same axes are under "Camera", and the view is remembered.
 
+### Fixed
+- **Recording attacks with an intro silence:** in a project with an intro silence the attacks
+  were drawn that much late, and notes in sync sat between the ticks. The automatic sync had
+  the same offset.
+- **Reload GP file with the file's own audio:** the separated guitar and the tone detection of
+  the old recording no longer carry over to the new version (they described another recording).
+
 ## [0.10.0 beta 9] — 2026-10-16
 
 ### New

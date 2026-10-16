@@ -3648,7 +3648,7 @@ async function runAutoSync() {
   const kind = a.kind;
   const base = syncAnchors.map(x => x.slice());
   const warp = buildTimeWarp(base);
-  const off = playheadDisplay(0);  // display → seconds of the recording
+  const off = recordingDisplay(0);  // display → seconds of the recording
   const rec = t => warp(previewScale(t)) - off;
   const noteTimes = [...new Set((a.notes || []).map(n => n.time))]
     .filter(t => t >= grid[0] - 1e-6).sort((x, y) => x - y);
@@ -3771,7 +3771,7 @@ function attacksVisible() {
 
 // The comparison and its drawing, for the note groups showArr is drawing.
 function attacksSvg(groups, warp, W, SB) {
-  const off = playheadDisplay(0);  // seconds of the recording → display time
+  const off = recordingDisplay(0);  // seconds of the recording → display time
   const att = recAttacks.attacks;
   const used = new Array(att.length).fill(false);
   const lonely = [];
@@ -8683,6 +8683,9 @@ function playheadDisplay(s) {
   if (!isGpJob()) return s;  // audio-ML: playhead is straight recording time
   return s + Math.max(0, MIN_LEAD - offsetLive);
 }
+// Display time of second `s` of the recording FILE (what the server measures):
+// the decoded buffer starts with the build's intro silence (decodeWaveform).
+function recordingDisplay(s) { return playheadDisplay(s + leadInBuilt); }
 
 // The x-axis is drawn in *recording* time (0s at the far left), while all the
 // time math (previewScale, anchors, backend) stays in bundle time. viewOrigin
