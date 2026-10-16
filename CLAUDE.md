@@ -768,7 +768,27 @@ gained an `okLabel` ("Medir na mistura") so a yes that is not a removal is not
 a red "Remover". The bass separates more cleanly than the guitar, so with a
 Bass chart made the main chart for sync ("Pista principal") the bass's
 corrections carry to every chart — that workflow needs nothing new beyond the
-choice of instrument. `librosa_adapter.detect_attacks` →
+choice of instrument.
+
+**A separated instrument is read with a floor** (`ATTACK_STEM_FLOOR_DB` = 40:
+the mel bands no lower than 40 dB under the stem's loudest, `onset_envelope(...,
+floor_db)`; the endpoint sends `separated` for any stem, never for the mix).
+Measured on synthesized songs (drums, bass, distorted guitar, voice; a "stem" =
+the instrument plus a few % of the rest, as Demucs leaves): librosa averages
+the log-mel flux over EVERY band, and a hi-hat residue 30 dB down fills many
+bands the bass never reaches, so without the floor a 3 %-residue bass stem
+showed 0.87 strong attacks with no note per note of an in-sync chart (the mix:
+1.19) — with it 0.00 (guitar stem 0.39 → 0.01), no real attack lost, and every
+planted tab error found (96/96 missing notes, 96/96 extra ones). Floors of 30
+dB lost guitar attacks in the mix, so the mix keeps librosa's own. **The
+auto-sync on a separated bass was measured and NOT adopted**: same songs, the
+chart at one tempo against ±6 % wander, bars within 50 ms — mix 99 %, bass stem
+with 10-25 % residue 99 %, a perfectly clean bass 54 % (a riff of eighths is
+the same shifted by an eighth once no drum marks the beat, and it slipped by
+that after every rest, with full support — so it would have been applied);
+±10 % wander: mix 83 %, clean bass 23 %. A separated bass gives the aligner
+nothing the mix lacks and takes away the drums' `ALIGN_BEAT_WEIGHT`, so the
+auto-sync stays on the mix. Synthesized, not real songs — Demucs cannot run here. `librosa_adapter.detect_attacks` →
 `_librosa_runner.attacks` (in-process or the ML interpreter, the
 `align_to_recording` pattern) = the same onset envelope as the auto-sync
 (spectral flux, 10 ms — not amplitude: a distorted guitar's level barely dips

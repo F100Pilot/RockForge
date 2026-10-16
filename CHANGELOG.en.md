@@ -12,7 +12,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
   double-click resets. The same axes are under "Camera", and the view is remembered.
 - **Recording attacks — choose the instrument:** "Measure on" picks a separated instrument (the
   guitar by default, the bass on the Bass chart) or the mix. With nothing separated, it asks
-  before measuring the mix.
+  before measuring the mix. On a separated instrument, the faint leftovers of the others (which
+  the separation leaves behind) no longer show as false attacks.
 
 ### Fixed
 - **Recording attacks with an intro silence:** in a project with an intro silence the attacks

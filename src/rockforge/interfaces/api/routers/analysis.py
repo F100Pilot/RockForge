@@ -180,7 +180,7 @@ def detect_attacks(job_id: str, source: str | None = None) -> DetectAttacksOut:
     from rockforge.infrastructure.rhythm.librosa_adapter import detect_attacks as measure
 
     try:
-        result = measure(stem or src)
+        result = measure(stem or src, separated=stem is not None)
     except ImportError as exc:
         raise api._ml_extra_missing("attack detection", exc) from exc
     except Exception as exc:

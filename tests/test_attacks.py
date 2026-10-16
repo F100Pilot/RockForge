@@ -68,3 +68,32 @@ def test_noise_alone_and_silence_have_no_attacks() -> None:
     assert pick_attacks(_envelope(3.0, 0.05, {}), HOP) == []
     assert pick_attacks([0.0] * 300, HOP) == []
     assert pick_attacks([], HOP) == []
+
+
+def test_a_separated_instrument_is_read_with_the_residue_floor_on_either_path(monkeypatch):
+    """In this process or on the ML interpreter, "separated" reaches the runner,
+    which then floors the bands (ATTACK_STEM_FLOOR_DB); the mix is read as is."""
+    from pathlib import Path
+
+    import rockforge.infrastructure._librosa_runner as runner
+    from rockforge.infrastructure import ml_python
+    from rockforge.infrastructure.rhythm import librosa_adapter
+
+    floors: list[object] = []
+    def _envelope(audio, floor_db=None):
+        floors.append(floor_db)
+        return [], 0.01
+
+    monkeypatch.setattr(runner, "onset_envelope", _envelope)
+    runner.main(["attacks", "--audio", "x.wav"])
+    runner.main(["attacks", "--audio", "x.wav", "--separated", "1.0"])
+    assert floors == [None, runner.ATTACK_STEM_FLOOR_DB]
+
+    sent: list[dict] = []
+    monkeypatch.setattr(ml_python, "librosa_here", lambda: False)
+    monkeypatch.setattr(
+        ml_python, "run_librosa", lambda cmd, audio, **opts: sent.append(opts) or {}
+    )
+    librosa_adapter.detect_attacks(Path("x.wav"), separated=True)
+    librosa_adapter.detect_attacks(Path("x.wav"))
+    assert sent == [{"separated": 1.0}, {"separated": 0.0}]

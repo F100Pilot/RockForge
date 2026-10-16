@@ -12,7 +12,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
   Os mesmos eixos estão em "Câmara", e a vista fica guardada.
 - **Ataques da gravação — escolher o instrumento:** "Medir em" escolhe um instrumento separado
   (por omissão a guitarra, e o baixo na pista Bass) ou a mistura. Sem instrumentos separados,
-  pede confirmação antes de medir na mistura.
+  pede confirmação antes de medir na mistura. Num instrumento separado, os restos baixinhos dos
+  outros (que a separação deixa) já não aparecem como ataques falsos.
 
 ### Corrigido
 - **Ataques da gravação com "Silêncio inicial":** num projeto com silêncio inicial, os ataques

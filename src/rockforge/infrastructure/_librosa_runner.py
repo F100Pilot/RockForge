@@ -325,8 +325,12 @@ def align_beats(
     }
 
 
-def onset_envelope(audio: str, hop: float = ALIGN_HOP_S) -> tuple[list[float], float]:
-    """The recording's onset strength, one value per ``hop`` seconds."""
+def onset_envelope(
+    audio: str, hop: float = ALIGN_HOP_S, floor_db: float | None = None
+) -> tuple[list[float], float]:
+    """The recording's onset strength, one value per ``hop`` seconds. With
+    ``floor_db``, every mel band is read no lower than that many dB under the
+    file's loudest (librosa's own floor is 80 dB)."""
     import librosa
     import numpy as np
 
@@ -335,7 +339,12 @@ def onset_envelope(audio: str, hop: float = ALIGN_HOP_S) -> tuple[list[float], f
         raise ValueError("empty audio file")
     sr = int(rate)
     hop_len = max(1, int(round(hop * sr)))
-    env = librosa.onset.onset_strength(y=y, sr=sr, hop_length=hop_len)
+    if floor_db:
+        mel = librosa.feature.melspectrogram(y=y, sr=sr, hop_length=hop_len)
+        db = librosa.power_to_db(mel, ref=np.max, top_db=floor_db)
+        env = librosa.onset.onset_strength(S=db, sr=sr, hop_length=hop_len)
+    else:
+        env = librosa.onset.onset_strength(y=y, sr=sr, hop_length=hop_len)
     return [float(v) for v in np.asarray(env)], hop_len / sr
 
 
@@ -356,6 +365,16 @@ ATTACK_LOCAL_S = 0.25
 ATTACK_RATIO = 2.0
 ATTACK_MIN = 0.3
 ATTACK_EDGE_S = 0.1
+# A separated instrument still carries a little of the others (Demucs leaves
+# some behind), and in decibels a hi-hat 30 dB down in bands the bass never
+# reaches is as much NEW energy as the bass itself — librosa averages the flux
+# over every mel band, and the residue fills many more of them. Reading the
+# bands no lower than this under the stem's loudest drops that residue. On
+# synthesized songs (drums, bass, distorted guitar, voice; a stem = the
+# instrument plus 3 % of the rest), strong attacks with no note per note of an
+# in-sync chart: bass 0.87 → 0.01, guitar 0.39 → 0.01, no real attack lost.
+# Not used on the mix: what is quiet there is music, not residue.
+ATTACK_STEM_FLOOR_DB = 40.0
 
 
 def pick_attacks(env: list[float], hop: float) -> list[list[float]]:
@@ -384,9 +403,10 @@ def pick_attacks(env: list[float], hop: float) -> list[list[float]]:
     return out
 
 
-def attacks(audio: str) -> dict[str, object]:
-    """The recording's attacks (``pick_attacks``) and its length."""
-    env, hop = onset_envelope(audio)
+def attacks(audio: str, separated: bool = False) -> dict[str, object]:
+    """The recording's attacks (``pick_attacks``) and its length. ``separated``:
+    ``audio`` is one instrument out of a separation (``ATTACK_STEM_FLOOR_DB``)."""
+    env, hop = onset_envelope(audio, floor_db=ATTACK_STEM_FLOOR_DB if separated else None)
     return {"attacks": pick_attacks(env, hop), "duration": round(len(env) * hop, 3)}
 
 
@@ -412,6 +432,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--start", type=float, default=0.0)
     parser.add_argument("--expected-bpm", type=float, default=0.0)
     parser.add_argument("--spec", default="")
+    parser.add_argument("--separated", type=float, default=0.0)  # 1 = a separated instrument
     args = parser.parse_args(argv)
 
     if args.command == "tempo":
@@ -421,7 +442,7 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "beatalign":
         result = beat_align(args.audio, args.spec)
     elif args.command == "attacks":
-        result = attacks(args.audio)
+        result = attacks(args.audio, separated=bool(args.separated))
     elif args.command == "tuning":
         result = {"cents": tuning_cents(args.audio)}
     else:

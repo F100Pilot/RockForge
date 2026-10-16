@@ -74,13 +74,14 @@ def align_to_recording(audio: Path, beats: list[float], notes: list[float]) -> d
         Path(spec).unlink(missing_ok=True)
 
 
-def detect_attacks(audio: Path) -> dict[str, object]:
+def detect_attacks(audio: Path, separated: bool = False) -> dict[str, object]:
     """Where the recording has attacks (``_librosa_runner.attacks``), for the
     score's "Ataques da gravação" lane: ``{"attacks": [[time, strength], …],
-    "duration": seconds}``, in the clock of ``audio``."""
+    "duration": seconds}``, in the clock of ``audio``. ``separated``: ``audio``
+    is one instrument out of a separation, not the whole mix."""
     if ml_python.librosa_here():
-        return _librosa_runner.attacks(str(audio))
-    return ml_python.run_librosa("attacks", audio)
+        return _librosa_runner.attacks(str(audio), separated)
+    return ml_python.run_librosa("attacks", audio, separated=float(separated))
 
 
 def estimate_tuning_cents(audio: Path) -> float:

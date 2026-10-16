@@ -2160,9 +2160,11 @@ def test_the_recordings_attacks_come_from_the_guitar_stem_when_there_is_one(
     import rockforge.interfaces.api.app as app_module
 
     seen: list[Path] = []
+    floored: list[bool] = []
 
-    def _fake(audio):
+    def _fake(audio, separated=False):
         seen.append(Path(audio))
+        floored.append(separated)
         return {"attacks": [[1.0, 0.8], [1.5, 0.4]], "duration": 30.0}
 
     monkeypatch.setattr(rhythm, "detect_attacks", _fake)
@@ -2201,8 +2203,10 @@ def test_the_recordings_attacks_come_from_the_guitar_stem_when_there_is_one(
         assert seen[-1] == Path(session.get(app_module.Job, job["id"]).source)
     for name in ("piano", "drums", "../x"):
         assert client.post(url, params={"source": name}).status_code == 409
+    # A separated instrument is read with the residue floor; the mix never is.
+    assert floored == [False, True, True, True, False]
 
-    def _missing(audio):
+    def _missing(audio, separated=False):
         raise ImportError("No module named 'librosa'")
 
     monkeypatch.setattr(rhythm, "detect_attacks", _missing)
