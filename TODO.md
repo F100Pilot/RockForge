@@ -24,6 +24,25 @@ tudo de uma vez e um novo bump de versão.
   colidem na mesma corda e instante). Ver se a fusão no parse resolve o caso
   do Songsterr sem a vista dupla.
 
+- [ ] **Bug: as notas sustentadas tocam como um toque curto na pré-escuta**
+  (Liam, 2026-10-16: "when playing back sustained notes in editor they just
+  play as a single strum rather than sustained"). Causa: o som das notas no
+  editor ignora a sustentação — `playNote` toca sempre 0,24 s e
+  `synthesizeArrangement` sempre `NOTE_LEN` = 0,28 s, com um Karplus-Strong de
+  decaimento rápido (0,99). Sempre foi assim (não vem da beta 7). Correção:
+  durar a sustentação da nota tal como está no ecrã (pelo mesmo warp do tempo
+  de início), mínimo ~0,24 s, e um decaimento mais lento (ex. 0,998) para as
+  notas longas; `playNote` passa a receber a nota toda.
+- [ ] **Ver na pauta onde a gravação tem ataques** (Liam, 2026-10-16: "beat
+  detection from the audio, the strumming pattern on the left is incorrect
+  compared to the right … more fixing crappy tabbing"). Corrigir o ritmo
+  sozinho é transcrever, e isso foi medido e abandonado (~1 nota em 3).
+  Possível e honesto: marcas finas por baixo da pauta nos ataques que a
+  gravação tem (o mesmo envelope de onsets do "Sincronizar automaticamente",
+  `_librosa_runner`), e realçar as notas sem ataque perto (±40 ms) e os ataques
+  sem nota — o utilizador vê onde a tab mente e corrige no editor de notas.
+  Precisa do librosa (componentes extra), como a sincronização automática.
+
 - [x] **Criar o projeto a partir de um PDF ou de uma imagem da tab.** O passo 1
   do "Novo projeto" aceita PDFs e imagens (PNG/JPEG/WebP, um por pista); o
   conversor é o do PDF-to-GP5, instalado como pacote (extra `[pdf]`, fixo a um
