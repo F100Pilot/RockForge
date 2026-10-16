@@ -1984,7 +1984,15 @@ also crashes and the CPU fallback is the answer. `_whisperx_attempts` guarded by
 `"cuda"` when `torch.cuda.is_available()` and `"cpu"` otherwise; explicit
 `"cpu"`/`"cuda"` pass through — then `_resolve_device` downgrades any resolved
 `"cuda"` to `"cpu"` when the GPU-broken marker is set. Any import/CUDA failure degrades to CPU, so
-`"auto"` is safe even without the ml/lyrics extras. Resolution happens *before*
+`"auto"` is safe even without the ml/lyrics extras. **The question goes to the
+interpreter that RUNS the stages** (`ml_python.cuda_available`, a subprocess
+when it is another Python): in the `.exe` torch is only in the extra
+components' Python, and importing it in the frozen process always failed, so
+every stage ran on the CPU whatever the GPU (found answering a user's "will it
+run on an enterprise GPU?", 2026-10-16). Any GPU torch drives counts
+(GeForce, workstation, data-centre, TCC mode). Guarded by
+`test_the_exe_asks_the_components_python_whether_there_is_a_gpu`
+(mutation-checked). Resolution happens *before*
 the adapters are built (the WhisperX adapter keys `compute_type` off the
 concrete device — `float16` on cuda, `int8` on cpu — so it must never see the
 literal `"auto"`). The resolved device is written to the lyrics log

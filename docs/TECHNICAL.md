@@ -305,6 +305,11 @@ with `ROCKFORGE_DEMUCS_DEVICE=cuda` (or `cpu`). During lyric detection, the chos
 appears in the "Lyrics" panel's log (`device: cuda (GPU)`), so you can confirm the GPU is being
 used.
 
+Any NVIDIA GPU that PyTorch 2.4 (CUDA 12.1) can drive works — GeForce, workstation (RTX
+A/Quadro) or data-centre (T4, A100…), whether or not Task Manager lists it (a card in TCC mode
+does not show there). With several, the first is used; `CUDA_VISIBLE_DEVICES` picks another.
+AMD and Intel GPUs are not used (the CUDA build only).
+
 **3. Start**
 
 ```cmd

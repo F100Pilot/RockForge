@@ -76,14 +76,11 @@ def _detect_device(requested: str) -> str:
     """
     if requested != "auto":
         return requested
-    try:
-        import torch
+    # Asked of the interpreter that runs the stages, not of this process: in the
+    # .exe torch is only in the extra components' Python.
+    from rockforge.infrastructure import ml_python
 
-        if torch.cuda.is_available():
-            return "cuda"
-    except Exception:
-        pass
-    return "cpu"
+    return "cuda" if ml_python.cuda_available() else "cpu"
 
 
 def _cuda_broken_marker() -> Path:

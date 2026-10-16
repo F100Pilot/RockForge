@@ -56,6 +56,35 @@ def test_auto_picks_cpu_when_gpu_absent(monkeypatch: pytest.MonkeyPatch) -> None
     assert _resolve_device("auto") == "cpu"
 
 
+@pytest.mark.parametrize("gpu", [True, False])
+def test_the_exe_asks_the_components_python_whether_there_is_a_gpu(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, gpu: bool
+) -> None:
+    """In the .exe torch is only in the extra components' Python: asking THIS
+    process (which cannot import it) put every stage on the CPU, GPU or not."""
+    from rockforge.infrastructure import ml_python
+
+    fake_site = tmp_path / "site"
+    fake_site.mkdir()
+    (fake_site / "torch.py").write_text(
+        f"class cuda:\n    is_available = staticmethod(lambda: {gpu})\n"
+    )
+    monkeypatch.setenv("PYTHONPATH", str(fake_site))
+    monkeypatch.setitem(sys.modules, "torch", None)  # not importable here
+    monkeypatch.setattr(ml_python, "frozen", lambda: True)
+    monkeypatch.setattr(ml_python, "configured", lambda: Path(sys.executable))
+    assert _resolve_device("auto") == ("cuda" if gpu else "cpu")
+
+
+def test_an_ml_python_that_cannot_answer_means_the_cpu(monkeypatch: pytest.MonkeyPatch) -> None:
+    from rockforge.infrastructure import ml_python
+
+    monkeypatch.setattr(ml_python, "frozen", lambda: True)
+    monkeypatch.setattr(ml_python, "configured", lambda: None)
+    monkeypatch.setattr(ml_python, "resolve", lambda: "/nowhere/python")
+    assert _resolve_device("auto") == "cpu"
+
+
 def test_cuda_broken_marker_round_trips() -> None:
     """After a native GPU crash the marker persists, so later runs can skip the
     doomed CUDA attempt and run on CPU directly."""

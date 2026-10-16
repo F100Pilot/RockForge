@@ -312,6 +312,11 @@ nenhuma. Podes forçar com `ROCKFORGE_DEMUCS_DEVICE=cuda` (ou `cpu`). Na deteç�
 de letra, o device escolhido aparece no log do painel "Letras"
 (`device: cuda (GPU)`), para confirmares que a GPU está a ser usada.
 
+Serve qualquer GPU NVIDIA que o PyTorch 2.4 (CUDA 12.1) consiga usar — GeForce, de
+estação de trabalho (RTX A/Quadro) ou de centro de dados (T4, A100…), apareça ou não
+no Gestor de Tarefas (uma placa em modo TCC não aparece). Com várias, usa a primeira;
+`CUDA_VISIBLE_DEVICES` escolhe outra. GPUs AMD e Intel não servem (só a build CUDA).
+
 **3. Arrancar**
 
 ```cmd

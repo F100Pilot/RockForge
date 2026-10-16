@@ -14,6 +14,10 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 - **Uma capa do teu computador logo ao criar o projeto**: o passo 4 do «Novo projeto» só deixava
   escolher um resultado da pesquisa online ou «Sem capa». Agora também aceita uma imagem JPEG ou
   PNG do computador, que vai na primeira construção (antes, só na página Capa, depois de criar).
+- **No `.exe`, a GPU nunca era usada**: a app perguntava ao próprio `.exe` se havia uma GPU, e
+  o `.exe` não traz o PyTorch (está no Python dos componentes extra) — por isso a separação de
+  stems e a deteção de tons e de letra corriam sempre no CPU, mesmo com uma NVIDIA. Agora a
+  pergunta é feita ao Python dos componentes.
 
 ## [0.10.0 beta 7] — 2026-10-15
 

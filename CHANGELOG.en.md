@@ -14,6 +14,10 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 - **A cover from your computer when creating the project**: step 4 of “New project” only offered
   a result of the online search or “No cover”. It now also takes a JPEG or PNG image from your
   computer, which goes into the first build (before, only on the Cover page, after creating).
+- **The `.exe` never used the GPU**: the app asked the `.exe` itself whether there was a GPU,
+  and the `.exe` carries no PyTorch (it lives in the extra components' Python) — so stem
+  separation and tone and lyric detection always ran on the CPU, even with an NVIDIA card. The
+  question now goes to the components' Python.
 
 ## [0.10.0 beta 7] — 2026-10-15
 

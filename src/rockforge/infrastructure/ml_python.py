@@ -228,6 +228,43 @@ def probe(interpreter: str | None = None) -> dict[str, bool]:
     return {"python": True, **{n: bool(found.get(n)) for n in PACKAGES}}
 
 
+#: CUDA's first initialisation on Windows takes 30-60 s (see CLAUDE.md).
+CUDA_PROBE_TIMEOUT_S = 180.0
+
+
+def cuda_available() -> bool:
+    """Whether the interpreter that RUNS the ML stages sees a CUDA GPU.
+
+    Asked of that interpreter, like ``availability``: in the `.exe` torch lives
+    only in the extra components' Python, so importing it here always failed
+    and every stage ran on the CPU, whatever GPU the machine had. Any GPU torch
+    can drive counts — a GeForce, a workstation or a data-centre card — whether
+    or not Task Manager lists it. Every failure is False (the CPU still works).
+    """
+    if configured() is None and not frozen():
+        try:
+            import torch
+
+            return bool(torch.cuda.is_available())
+        except Exception:
+            return False
+    py = resolve()
+    if not py:
+        return False
+    try:
+        proc = subprocess.run(
+            [py, "-c", "import torch; print(int(torch.cuda.is_available()))"],
+            capture_output=True,
+            text=True,
+            timeout=CUDA_PROBE_TIMEOUT_S,
+            stdin=subprocess.DEVNULL,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    lines = proc.stdout.strip().splitlines()
+    return proc.returncode == 0 and bool(lines) and lines[-1].strip() == "1"
+
+
 def run_json(
     runner: Path, args: list[str], *, timeout_s: float = LIBROSA_TIMEOUT_S
 ) -> dict[str, Any]:
