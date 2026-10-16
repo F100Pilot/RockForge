@@ -6,6 +6,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+## [0.10.0 beta 9] — 2026-10-16
+
 ### Novo
 - **Ataques da gravação** (inspetor Sincronização): marca por cima da pauta onde a gravação tem
   ataques e realça as diferenças com a tab — notas sem ataque perto e ataques fortes sem nota —,

@@ -5329,11 +5329,13 @@ real project (an invented one-bar GP5 + a sine from that ffmpeg) whose build
 completes and whose `/psarc-check` is clean — the frozen app has failed before
 in ways no test of the source sees. Only then: `RockForge-<v>-Setup.exe`,
 `-portable.zip` and `SHA256SUMS.txt` go to the GitHub Release (created as a
-pre-release for a `-beta.N` tag, text `docs/RELEASE_NOTES.md`). A manual run
+pre-release for a `-beta.N` tag, text `docs/RELEASE_NOTES.md` — **only what
+is new and the bugs fixed in that version, English then Portuguese, nothing
+else**: the user's rule for every bump, 2026-10-16). A manual run
 (workflow_dispatch) is a dry build whose files stay as artifacts. The tag must
 equal `installer.iss`'s version, and `tests/test_release_version.py` keeps
-`installer.iss` (`0.10.0-beta.8`), `pyproject.toml`/`__version__` (`0.10.0b8`)
-and both changelogs' `## [0.10.0 beta 8]` in step. `[pdf]` and the ML stack
+`installer.iss` (`0.10.0-beta.9`), `pyproject.toml`/`__version__` (`0.10.0b9`)
+and both changelogs' `## [0.10.0 beta 9]` in step. `[pdf]` and the ML stack
 are not in the `.exe`; the README says which three extras need the source
 install. The smoke script was checked here against the source server dressed
 as a fake `.exe`; the Windows run itself only happens on GitHub. **Its first

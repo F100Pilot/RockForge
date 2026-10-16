@@ -6,6 +6,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+## [0.10.0 beta 9] — 2026-10-16
+
 ### New
 - **Recording attacks** (Sync inspector): marks above the score where the recording has attacks
   and highlights the differences with the tab — notes with no attack nearby and strong attacks
