@@ -8,8 +8,10 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
+from rockforge import i18n
 from rockforge.interfaces.api import app as api
 from rockforge.interfaces.api.schemas import (
+    AttackSourcesOut,
     DetectAttacksOut,
     DetectBeatSyncIn,
     DetectBeatSyncOut,
@@ -122,33 +124,56 @@ def detect_beat_sync(job_id: str, payload: DetectBeatSyncIn) -> DetectBeatSyncOu
     return DetectBeatSyncOut.model_validate(result)
 
 
-def _guitar_stem(job_id: str, params: dict[str, Any]) -> Path | None:
-    """The separated guitar stem, if a Demucs pass already made one: the one
-    "Separar stems" stored, else the one tone detection left in the shared
-    cache (``celery_app._demucs_stems_cache_dir``). Either was separated from
-    the recording untrimmed, so its seconds are the recording's."""
+def _separated_stems(job_id: str, params: dict[str, Any]) -> dict[str, Path]:
+    """The instruments a Demucs pass already separated, by name (drums left out,
+    as "Separar instrumentos" leaves them out): the ones it stored, plus any the
+    tone detection left in the shared cache (``celery_app._demucs_stems_cache_dir``
+    — one htdemucs_6s pass writes every instrument). Both were separated from
+    the recording untrimmed, so their seconds are the recording's."""
+    found: dict[str, Path] = {}
     stems = params.get("stems")
     if isinstance(stems, dict):
-        guitar = stems.get("guitar")
-        if isinstance(guitar, str) and guitar and Path(guitar).exists():
-            return Path(guitar)
+        for name, path in stems.items():
+            if isinstance(path, str) and path and Path(path).is_file():
+                found[str(name)] = Path(path)
     cache = api.settings.work_dir / job_id / "demucs_stems" / "stems"
-    return next(iter(sorted(cache.glob("*/*/guitar.wav"))), None) if cache.is_dir() else None
+    if cache.is_dir():
+        for wav in sorted(cache.glob("*/*/*.wav")):
+            if wav.stem != "drums":
+                found.setdefault(wav.stem, wav)
+    return found
+
+
+@router.get("/jobs/{job_id}/attack-sources", response_model=AttackSourcesOut)
+def attack_sources(job_id: str) -> AttackSourcesOut:
+    """The separated instruments the attacks can be measured on."""
+    with api._session_factory() as session:
+        job = api._job_or_404(session, job_id)
+        stems = _separated_stems(job.id, dict(job.params or {}))
+    return AttackSourcesOut(stems=sorted(stems))
 
 
 @router.post("/jobs/{job_id}/detect-attacks", response_model=DetectAttacksOut)
-def detect_attacks(job_id: str) -> DetectAttacksOut:
+def detect_attacks(job_id: str, source: str | None = None) -> DetectAttacksOut:
     """Where the recording has attacks (onsets), drawn under the score so a tab
-    whose rhythm is wrong shows where it differs from what is heard. Measured on
-    the separated guitar stem when there is one — the drums and the voice add
-    attacks of their own in the mix — else on the mix, and the answer says
-    which. Only WHEN something is struck, never which notes."""
+    whose rhythm is wrong shows where it differs from what is heard. ``source``
+    names a separated instrument (``/attack-sources``) or ``mix``; without it,
+    the separated guitar when there is one — the drums and the voice add attacks
+    of their own in the mix — else the mix. The answer says which. Only WHEN
+    something is struck, never which notes."""
     with api._session_factory() as session:
         job = api._job_or_404(session, job_id)
         if job.source_type != "gp":
             raise HTTPException(422, "attack detection only applies to Guitar Pro jobs")
         src = Path(job.source)
-        stem = _guitar_stem(job.id, dict(job.params or {}))
+        stems = _separated_stems(job.id, dict(job.params or {}))
+    name = source if source is not None else ("guitar" if "guitar" in stems else "mix")
+    if name != "mix" and name not in stems:
+        raise HTTPException(409, i18n.tr(
+            "esse instrumento ainda não foi separado (Áudio ▾ → Separar instrumentos)",
+            "that instrument has not been separated yet (Audio ▾ → Separate instruments)",
+        ))
+    stem = stems.get(name)
     if stem is None and not src.exists():
         raise HTTPException(409, "source audio no longer exists on the work volume")
 
@@ -160,7 +185,7 @@ def detect_attacks(job_id: str) -> DetectAttacksOut:
         raise api._ml_extra_missing("attack detection", exc) from exc
     except Exception as exc:
         raise HTTPException(422, f"could not analyse the recording: {exc}") from exc
-    return DetectAttacksOut.model_validate({**result, "source": "guitar" if stem else "mix"})
+    return DetectAttacksOut.model_validate({**result, "source": name})
 
 
 @router.post("/jobs/{job_id}/detect-tuning", response_model=DetectTuningOut)

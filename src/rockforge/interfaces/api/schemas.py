@@ -412,9 +412,15 @@ class DetectAttacksOut(BaseModel):
     """Where the recording has attacks, for the score's "Ataques da gravação"
     lane — a picture of the recording to compare the tab with, nothing applied."""
 
-    source: Literal["guitar", "mix"]  # the separated guitar stem, or the whole mix
+    source: str  # a separated instrument ("guitar", "bass", …), or "mix" — the whole mix
     attacks: list[list[float]]  # [[seconds of the recording, strength 0-1], …]
     duration: float
+
+
+class AttackSourcesOut(BaseModel):
+    """The separated instruments the attacks can be measured on (drums left out)."""
+
+    stems: list[str]
 
 
 class DetectTuningOut(BaseModel):

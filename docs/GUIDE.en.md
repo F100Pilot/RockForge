@@ -274,8 +274,12 @@ a note with no attack near it, a tick where there is a strong attack with no not
 Next difference** takes the cursor to each one, so you can listen and fix it with **Edit notes**.
 
 - Sync first: the comparison uses the score as it is on screen.
-- If you have already separated the instruments (**Audio ▾ → Separate instruments**), it measures
-  the guitar alone; otherwise the mix, where the drums and the voice give attacks too.
+- Under **Measure on** you choose where: an instrument already separated (**Audio ▾ → Separate
+  instruments**) — the guitar by default, and the bass on the Bass chart — or the mix, where the
+  drums and the voice give attacks too. With nothing separated, it asks before measuring the mix.
+- **Aligning by the bass:** the bass separates better than the guitar. With a Bass chart, make it
+  the **Main track** (Sync inspector), measure the attacks on the bass, correct the bass, and the
+  other charts get the same change of time.
 - It tells **when** something is played, never which notes; with two guitarists you see both
   players' attacks.
 - Nothing in the score changes. It needs the audio analysis, like the card above.

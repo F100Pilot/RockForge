@@ -750,13 +750,25 @@ tabbing" (Liam, 2026-10-16), then "use AI to split down the tracks similarly to
 x-minus … then run the separated track through an FFT to get the amplitude
 peaks". Correcting the rhythm by itself would be transcription (measured and
 dropped, below); showing WHERE the tab disagrees with the recording is not.
-`POST /jobs/{id}/detect-attacks` (`DetectAttacksOut`: `source` "guitar"/"mix",
-`attacks` [[seconds, strength 0-1]…], `duration`) measures the separated
-guitar stem when a Demucs pass made one (`analysis._guitar_stem`: the one
-"Separar instrumentos" stored, else the one tone detection left in
-`demucs_stems/stems/*/*/guitar.wav`) and the mix otherwise — both separations
-run on the recording UNTRIMMED (`normalize` with no offset), so a stem's
-seconds are the recording's. `librosa_adapter.detect_attacks` →
+`POST /jobs/{id}/detect-attacks?source=` (`DetectAttacksOut`: `source` a
+separated instrument or "mix", `attacks` [[seconds, strength 0-1]…],
+`duration`) measures ONE chosen instrument: any a Demucs pass separated
+(`analysis._separated_stems`: the ones "Separar instrumentos" stored, plus every
+`demucs_stems/stems/*/*/*.wav` the tone detection left — drums never; listed by
+`GET /jobs/{id}/attack-sources`), or the mix; without `source`, the guitar when
+there is one, else the mix; an instrument never separated is a 409 (only names
+from that list are ever opened). Both separations run on the recording
+UNTRIMMED (`normalize` with no offset), so a stem's seconds are the
+recording's. The card's **"Medir em"** (`#attacksSource`) picks it: by default
+the separated bass for the Bass chart, the guitar for the others, the mix when
+neither exists (`defaultAttackSource`, re-applied on every tab switch until the
+user picks one). **Nothing separated + "Detetar" asks first** (user request,
+2026-10-16: the mix's drums and voice bury the differences) — `confirmModal`
+gained an `okLabel` ("Medir na mistura") so a yes that is not a removal is not
+a red "Remover". The bass separates more cleanly than the guitar, so with a
+Bass chart made the main chart for sync ("Pista principal") the bass's
+corrections carry to every chart — that workflow needs nothing new beyond the
+choice of instrument. `librosa_adapter.detect_attacks` →
 `_librosa_runner.attacks` (in-process or the ML interpreter, the
 `align_to_recording` pattern) = the same onset envelope as the auto-sync
 (spectral flux, 10 ms — not amplitude: a distorted guitar's level barely dips

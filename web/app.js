@@ -1253,7 +1253,7 @@ const INFO = {
   },
   'attacks': {
     title: T('Ataques da gravação'),
-    body: T('<p>Para uma tab cujo <b>ritmo</b> não bate com a gravação (comum nas tabs feitas à pressa): a gravação é analisada e cada <b>ataque</b> — o instante em que algo é tocado — fica marcado por cima da pauta. Os traços cinzentos são ataques com uma nota da pauta perto; a <b>laranja</b>, as diferenças: um círculo é uma nota sem ataque perto na gravação, um traço é um ataque forte sem nota na pauta. "Diferença anterior/seguinte" leva o cursor a cada uma, para ouvires e corrigires no editor de notas.</p><p>Não usa a amplitude do som, que quase não desce numa guitarra distorcida, mas o <b>fluxo espectral</b> (energia nova em cada 10 ms), que apanha cada palhetada. Se já separaste os instrumentos (Áudio ▾ → Separar instrumentos), mede no <b>stem de guitarra</b>; senão na mistura, onde a bateria e a voz também dão ataques. A comparação segue a sincronização que está no ecrã, por isso sincroniza primeiro.</p><p>Limites: diz <b>quando</b> se toca, nunca que notas nem para que lado é a palhetada; o stem tem todas as guitarras juntas, por isso com dois guitarristas aparecem os ataques dos dois; a tolerância é de 60 ms. Não muda nada na partitura. Precisa da análise de áudio (o extra [ml], ou os componentes extra no .exe).</p>')
+    body: T('<p>Para uma tab cujo <b>ritmo</b> não bate com a gravação (comum nas tabs feitas à pressa): a gravação é analisada e cada <b>ataque</b> — o instante em que algo é tocado — fica marcado por cima da pauta. Os traços azuis são ataques com uma nota da pauta perto; a <b>laranja</b>, as diferenças: um círculo é uma nota sem ataque perto na gravação, um traço é um ataque forte sem nota na pauta. "Diferença anterior/seguinte" leva o cursor a cada uma, para ouvires e corrigires no editor de notas.</p><p>Não usa a amplitude do som, que quase não desce numa guitarra distorcida, mas o <b>fluxo espectral</b> (energia nova em cada 10 ms), que apanha cada palhetada. Em <b>Medir em</b> escolhes onde: num instrumento já separado (Áudio ▾ → Separar instrumentos) — por omissão a guitarra, e o baixo na pista Bass — ou na mistura, onde a bateria e a voz também dão ataques (sem nada separado, pede confirmação antes). A comparação segue a sincronização que está no ecrã, por isso sincroniza primeiro.</p><p>Limites: diz <b>quando</b> se toca, nunca que notas nem para que lado é a palhetada; o stem tem todas as guitarras juntas, por isso com dois guitarristas aparecem os ataques dos dois; a tolerância é de 60 ms. Não muda nada na partitura. Precisa da análise de áudio (o extra [ml], ou os componentes extra no .exe).</p>')
   },
   'tap-sync': {
     title: T('Marcar a ouvir'),
@@ -1697,9 +1697,13 @@ async function fetchOrToast(url, opts) {
   }
 }
 
-function confirmModal(text) {
+// `okLabel` names a yes that is not a removal (the button then is not red).
+function confirmModal(text, okLabel = null) {
   const overlay = document.getElementById('confirmOverlay');
   document.getElementById('confirmText').textContent = text;
+  const ok = document.getElementById('confirmOk');
+  ok.textContent = okLabel || T('Remover');
+  ok.className = okLabel ? '' : 'danger';
   overlay.hidden = false;
   return new Promise(resolve => {
     const cleanup = result => { overlay.hidden = true; resolve(result); };
@@ -3755,13 +3759,45 @@ let recAttacks = null;         // {job, source, attacks: [[seconds, strength], �
 let attacksBusy = false;
 let attackStats = null;        // {notes, matched, lonely, extra}
 let attackDiffs = [];          // display times of the differences, for ◀ ▶
+let attackSources = [];        // the separated instruments the attacks can be measured on
+let attackSourceTouched = false;  // the user picked one: no default per chart any more
 
 function resetAttacks() {
   recAttacks = null;
   attackStats = null;
   attackDiffs = [];
+  attackSourceTouched = false;
   document.getElementById('attacksShow').checked = true;
+  loadAttackSources();
   renderAttacksCard();
+}
+
+async function loadAttackSources() {
+  const job = selectedJob && selectedJob.id;
+  attackSources = [];
+  fillAttackSources();
+  if (!job) return;
+  try {
+    const d = await getJSON(`/jobs/${job}/attack-sources`);
+    if (selectedJob && selectedJob.id === job) { attackSources = d.stems || []; fillAttackSources(); }
+  } catch { /* the card can still measure the mix */ }
+}
+
+// The instrument a chart is compared with unless the user picked one: the
+// separated bass for the Bass chart, the guitar for the others, else the mix.
+function defaultAttackSource() {
+  const a = arrangements[currentArr];
+  const want = a && a.kind === 'Bass' ? 'bass' : 'guitar';
+  return attackSources.includes(want) ? want : 'mix';
+}
+
+function fillAttackSources() {
+  const sel = document.getElementById('attacksSource');
+  if (!sel) return;
+  const keep = attackSourceTouched ? sel.value : defaultAttackSource();
+  const values = ['mix', ...attackSources];
+  sel.innerHTML = values.map(v => `<option value="${esc(v)}">${esc(v === 'mix' ? T('Mistura completa') : (STEM_LABELS[v] || v))}</option>`).join('');
+  sel.value = values.includes(keep) ? keep : 'mix';
 }
 
 function attacksVisible() {
@@ -3821,11 +3857,16 @@ function renderAttacksCard() {
   document.getElementById('attacksShowLbl').hidden = !mine;
   const shown = attacksVisible();
   document.getElementById('attacksNav').hidden = !(shown && attackDiffs.length);
+  const sel = document.getElementById('attacksSource');
+  if (!attackSourceTouched && sel && sel.value !== defaultAttackSource()) sel.value = defaultAttackSource();
   if (attacksBusy) { status.textContent = T('A analisar a gravação… (pode demorar um minuto)'); return; }
   if (!mine) { status.textContent = ''; return; }
-  const where = recAttacks.source === 'guitar'
-    ? T('Medido no stem de guitarra (todas as guitarras juntas).')
-    : T('Medido na mistura completa — a bateria e a voz também contam. Para medir só a guitarra, separa os instrumentos (Áudio ▾ → Separar instrumentos) e deteta outra vez.');
+  const src = recAttacks.source;
+  const where = src === 'mix'
+    ? T('Medido na mistura completa — a bateria e a voz também contam. Para medir um só instrumento, separa os instrumentos (Áudio ▾ → Separar instrumentos) e deteta outra vez.')
+    : src === 'guitar'
+      ? T('Medido no stem de guitarra (todas as guitarras juntas).')
+      : T('Medido no instrumento separado: {name}.', { name: STEM_LABELS[src] || src });
   const st = shown && attackStats ? attackStats : null;
   status.textContent = where + ' ' + (st
     ? T('Ataques: {n} · notas com um ataque perto: {ok} de {total} · notas sem ataque: {lonely} · ataques fortes sem nota: {extra}.', {
@@ -3837,12 +3878,18 @@ function renderAttacksCard() {
 async function runAttacks() {
   if (!selectedJob || !isGpJob() || attacksBusy) return;
   const job = selectedJob.id;
+  const source = document.getElementById('attacksSource').value || 'mix';
+  // Nothing separated yet: the mix is all there is, and its drums and voice
+  // bury the differences — the user decides whether that is worth it.
+  if (source === 'mix' && !attackSources.length && !await confirmModal(T(
+    'Ainda não há instrumentos separados, por isso os ataques vão ser medidos na mistura completa: a bateria e a voz também contam, e as diferenças com a tab ficam pouco claras. Para medir um só instrumento, separa-os primeiro (Áudio ▾ → Separar instrumentos — demora alguns minutos). Medir na mistura mesmo assim?'), T('Medir na mistura'))) return;
+  if (!selectedJob || selectedJob.id !== job || attacksBusy) return;
   attacksBusy = true;
   document.getElementById('attacksRun').disabled = true;
   renderAttacksCard();
   let res;
   try {
-    res = await getJSON(`/jobs/${job}/detect-attacks`, { method: 'POST' });
+    res = await getJSON(`/jobs/${job}/detect-attacks?source=${encodeURIComponent(source)}`, { method: 'POST' });
   } catch (e) {
     attacksBusy = false;
     document.getElementById('attacksRun').disabled = false;
@@ -3872,6 +3919,7 @@ function goToAttackDiff(dir) {
 
 document.getElementById('attacksRun')?.addEventListener('click', runAttacks);
 document.getElementById('attacksShow')?.addEventListener('change', () => showArr(currentArr));
+document.getElementById('attacksSource')?.addEventListener('change', () => { attackSourceTouched = true; });
 document.getElementById('attacksPrev')?.addEventListener('click', () => goToAttackDiff(-1));
 document.getElementById('attacksNext')?.addEventListener('click', () => goToAttackDiff(1));
 
@@ -6143,6 +6191,7 @@ function pollToneDetection() {
     if (d.status === 'ready') {
       renderToneDetectionResult(d);
       loadToneSuggestions(jobId);
+      loadAttackSources();  // the separation it ran left every instrument behind
       return true;
     }
     if (d.status === 'unavailable') {
@@ -6603,6 +6652,7 @@ function pollStems() {
     if (d.status === 'ready') {
       availableStems = d.stems || [];
       populateAudioSources();
+      loadAttackSources();
       st.textContent = T('{n} stems prontos (a guitarra é todas as guitarras juntas)', { n: availableStems.length });
       return true;
     }

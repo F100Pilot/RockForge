@@ -1232,6 +1232,10 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                 <div class="pv-card-head">Ataques da gravação <button class="info-btn" data-info="attacks">ⓘ</button></div>
                 <div class="pv-card-desc">Marca por cima da pauta onde a gravação tem ataques (palhetadas), para veres onde o ritmo da tab não bate com o que se ouve. Não muda nada na partitura.</div>
                 <div class="pv-row">
+                  <span>Medir em</span>
+                  <select id="attacksSource" style="width:auto" aria-label="Medir em"></select>
+                </div>
+                <div class="pv-row">
                   <button type="button" id="attacksRun" class="secondary"><svg class="ic" aria-hidden="true"><use href="#i-wave"/></svg><span id="attacksRunLabel">Detetar ataques</span></button>
                   <label class="check" id="attacksShowLbl" hidden><input type="checkbox" id="attacksShow" checked> Mostrar na partitura</label>
                 </div>

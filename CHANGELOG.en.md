@@ -10,6 +10,9 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 - **3D highway with a free camera:** drag to turn the view up to 120° either way and from level
   with the highway (0°) to a view from above (90°); the mouse wheel moves closer or further and a
   double-click resets. The same axes are under "Camera", and the view is remembered.
+- **Recording attacks — choose the instrument:** "Measure on" picks a separated instrument (the
+  guitar by default, the bass on the Bass chart) or the mix. With nothing separated, it asks
+  before measuring the mix.
 
 ### Fixed
 - **Recording attacks with an intro silence:** in a project with an intro silence the attacks

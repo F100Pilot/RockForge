@@ -10,6 +10,9 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 - **Pista 3D com câmara livre:** arrasta para rodar a vista até 120° para cada lado e de rente à
   pista (0°) até vista de cima (90°); a roda do rato aproxima ou afasta e um duplo clique repõe.
   Os mesmos eixos estão em "Câmara", e a vista fica guardada.
+- **Ataques da gravação — escolher o instrumento:** "Medir em" escolhe um instrumento separado
+  (por omissão a guitarra, e o baixo na pista Bass) ou a mistura. Sem instrumentos separados,
+  pede confirmação antes de medir na mistura.
 
 ### Corrigido
 - **Ataques da gravação com "Silêncio inicial":** num projeto com silêncio inicial, os ataques

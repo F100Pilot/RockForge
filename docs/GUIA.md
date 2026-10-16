@@ -273,8 +273,12 @@ círculo numa nota sem ataque perto, um traço onde há um ataque forte sem nota
 anterior/seguinte** leva o cursor a cada uma, para ouvires e corrigires com **Editar notas**.
 
 - Sincroniza primeiro: a comparação usa a partitura tal como está no ecrã.
-- Se já separaste os instrumentos (**Áudio ▾ → Separar instrumentos**), mede só a guitarra;
-  senão a mistura, onde a bateria e a voz também dão ataques.
+- Em **Medir em** escolhes onde: num instrumento já separado (**Áudio ▾ → Separar
+  instrumentos**) — por omissão a guitarra, e o baixo na pista Bass — ou na mistura, onde a
+  bateria e a voz também dão ataques. Sem nada separado, pergunta antes de medir na mistura.
+- **Alinhar pelo baixo:** o baixo separa-se melhor do que a guitarra. Com uma pista Bass, põe-na
+  como **Pista principal** (inspetor Sincronização), mede os ataques no baixo, corrige o baixo, e
+  as outras pistas recebem a mesma mudança de tempo.
 - Diz **quando** se toca, nunca que notas; com dois guitarristas aparecem os ataques dos dois.
 - Não muda nada na partitura. Precisa da análise de áudio, como o cartão anterior.
 

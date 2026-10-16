@@ -2189,6 +2189,19 @@ def test_the_recordings_attacks_come_from_the_guitar_stem_when_there_is_one(
         session.commit()
     assert client.post(url).json()["source"] == "guitar" and seen[-1] == stored
 
+    # One instrument chosen: any the separation made (the cache's bass too), never
+    # its drums, the mix on request, and an instrument never separated refused.
+    for name in ("bass", "drums"):
+        (cached.parent / f"{name}.wav").write_bytes(b"RIFF")
+    assert client.get(f"/jobs/{job['id']}/attack-sources").json() == {"stems": ["bass", "guitar"]}
+    assert client.post(url, params={"source": "bass"}).json()["source"] == "bass"
+    assert seen[-1] == cached.parent / "bass.wav"
+    assert client.post(url, params={"source": "mix"}).json()["source"] == "mix"
+    with app_module._session_factory() as session:
+        assert seen[-1] == Path(session.get(app_module.Job, job["id"]).source)
+    for name in ("piano", "drums", "../x"):
+        assert client.post(url, params={"source": name}).status_code == 409
+
     def _missing(audio):
         raise ImportError("No module named 'librosa'")
 
