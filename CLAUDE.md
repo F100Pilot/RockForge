@@ -5315,8 +5315,22 @@ and that publication is what the file relies on.
 
 ### Publishing a release (`.github/workflows/release.yml`)
 
-"Quero distribuir pelo público" (2026-10-15). A tag `v*` builds the Windows
-downloads on `windows-latest` — nobody builds them by hand: installs
+"Quero distribuir pelo público" (2026-10-15). **A version bump on `main`
+publishes itself** ("Precisava mesmo que conseguisses fazer os releases e as
+tags, automaticamente", 2026-10-16 — this session's git proxy refuses tag
+pushes and API writes, both tried): the workflow also runs on `workflow_run`
+of CI, and its `decide` job, when CI passed on a push to `main`, reads
+`installer.iss`'s version and, if `v<version>` has no tag yet, has the Windows
+job create the release WITH its tag on that commit (`gh release create
+--target <sha>`; a tag made with GITHUB_TOKEN starts no second run). A commit
+that does not change the version finds the tag and does nothing;
+`concurrency: release` queues a second CI run on the same unreleased version
+until the first has made the tag. **So bumping the version IS publishing —
+only bump when the user asks for a release.** A pushed tag `v*` or a manual
+run still work as before. The `decide` script was run locally for each event
+(new version, existing tag, failed CI, pushed tag, dry run); the GitHub run
+itself is the next bump. The Windows job builds the downloads on
+`windows-latest` — nobody builds them by hand: installs
 `[psarc,desktop]` + PyInstaller, bundles an **LGPL** ffmpeg from
 BtbN/FFmpeg-Builds (release branch, newest; its `LICENSE.txt` and a
 `SOURCE.txt` naming the exact version and source commit go into `ffmpeg/`,

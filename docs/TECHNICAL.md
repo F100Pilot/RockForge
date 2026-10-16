@@ -473,11 +473,16 @@ one has to build them by hand. To publish version X.Y.Z (a beta is `X.Y.Z-beta.N
 
 1. Put the version in `pyproject.toml` (in PEP 440 form, e.g. `0.10.0b2`),
    `src/rockforge/__init__.py` and `installer.iss` (`0.10.0-beta.2`), and give both changelogs a
-   `## [X.Y.Z beta N]` section — `tests/test_release_version.py` fails if any of them disagree.
-2. Push a tag `vX.Y.Z-beta.N` (`git tag v0.10.0-beta.2 && git push origin v0.10.0-beta.2`; the `v` may be left out).
-   Or, on GitHub: *Releases → Draft a new release*, type the new tag `vX.Y.Z-beta.N` (target
-   `main`) and publish; creating the tag starts the workflow, which attaches the files to that
-   release a few minutes later.
+   `## [X.Y.Z beta N]` section — `tests/test_release_version.py` fails if any of them disagree —
+   and write `docs/RELEASE_NOTES.md` (only what is new and the bugs fixed, English then
+   Portuguese).
+2. Push that commit to `main`. **That is all**: when CI passes on `main` and the version in
+   `installer.iss` has no tag yet, the workflow creates the tag `vX.Y.Z-beta.N` and the release
+   (a pre-release for a beta) on that commit, builds and tests the downloads and attaches them —
+   about half an hour later. A commit that does not change the version publishes nothing.
+
+A tag pushed by hand (`git tag v0.10.0-beta.2 && git push origin v0.10.0-beta.2`), or a release
+drafted on GitHub with a new tag, still starts the same workflow.
 
 A pre-release never shows in the "Releases" box on the repository's home page — that box shows
 only the latest full release. Pre-releases are listed on the Releases page.

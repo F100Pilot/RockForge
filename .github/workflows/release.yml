@@ -2,11 +2,20 @@ name: Release
 
 # Builds the Windows downloads — the installer and the portable zip — on a real
 # Windows machine, starts the FROZEN app and makes one project with it, and
-# only then attaches the files to the GitHub Release of the tag. Run it by hand
-# (Actions → Release → Run workflow) for a dry build: the files then stay as
-# this run's artifacts and nothing is published — or give it the tag of a
-# release that already exists, and the files are attached to that release.
+# only then attaches the files to the GitHub Release of the tag.
+#
+# A version bump publishes itself: when CI passes on main and installer.iss
+# names a version that has no tag yet, this creates the tag (v<version>) and
+# the release — a pre-release for a beta — with docs/RELEASE_NOTES.md as its
+# text. Nothing has to be tagged by hand (the session that writes the code
+# cannot push tags). A tag pushed by hand still works, and a manual run
+# (Actions → Release → Run workflow) is a dry build whose files stay as its
+# artifacts — or, given the tag of an existing release, attaches them to it.
 on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
   push:
     # "v0.10.0-beta.3" — or "0.10.0-beta.3": GitHub's release page does not add the v.
     tags: ["v*", "[0-9]*"]
@@ -20,20 +29,78 @@ on:
 permissions:
   contents: read
 
+# One release at a time: a second CI run on the same, still unreleased version
+# waits here and then finds the tag already made.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
+  decide:
+    runs-on: ubuntu-latest
+    outputs:
+      build: ${{ steps.pick.outputs.build }}
+      tag: ${{ steps.pick.outputs.tag }}
+      sha: ${{ steps.pick.outputs.sha }}
+      create: ${{ steps.pick.outputs.create }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - name: Which release, if any
+        id: pick
+        env:
+          EVENT: ${{ github.event_name }}
+          CI_OK: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_repository.full_name == github.repository }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          TAG_REF: ${{ github.ref_type == 'tag' && github.ref_name || inputs.release_tag }}
+        run: |
+          echo "sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+          if [ "$EVENT" != "workflow_run" ]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            echo "tag=$TAG_REF" >> "$GITHUB_OUTPUT"
+            echo "create=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$CI_OK" != "true" ]; then
+            echo "CI did not pass on a push to main: nothing to release."
+            echo "build=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          ver=$(sed -n 's/^#define MyAppVersion "\(.*\)"$/\1/p' installer.iss)
+          if [ -z "$ver" ]; then echo "no version in installer.iss"; exit 1; fi
+          tag="v$ver"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
+            echo "$tag already exists: nothing to release."
+            echo "build=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "New version $ver: building and publishing $tag from $HEAD_SHA."
+          echo "build=true" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "create=true" >> "$GITHUB_OUTPUT"
+
   windows:
+    needs: decide
+    if: needs.decide.outputs.build == 'true'
     runs-on: windows-latest
     permissions:
-      contents: write  # gh release create/upload, only on a tag
+      contents: write  # gh release create/upload, only with a tag
     env:
       GH_TOKEN: ${{ github.token }}
-      # The release the files go to: the pushed tag, or the one named by hand.
-      RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.release_tag }}
+      # The release the files go to: the new version's, the pushed tag, or the
+      # one named by hand; empty for a dry build.
+      RELEASE_TAG: ${{ needs.decide.outputs.tag }}
+      # The tag does not exist yet: the release creates it on this commit.
+      CREATE_TAG: ${{ needs.decide.outputs.create }}
+      TARGET_SHA: ${{ needs.decide.outputs.sha }}
     defaults:
       run:
         shell: pwsh
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.decide.outputs.sha }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -132,7 +199,9 @@ jobs:
           $tag = $env:RELEASE_TAG
           gh release view $tag *> $null
           if ($LASTEXITCODE -ne 0) {
-            $opts = @("--title", "RockForge $($tag.TrimStart('v'))", "--notes-file", "docs/RELEASE_NOTES.md", "--verify-tag")
+            $opts = @("--title", "RockForge $($tag.TrimStart('v'))", "--notes-file", "docs/RELEASE_NOTES.md")
+            # A new version's tag is made here, on the commit CI passed; a pushed tag must exist.
+            if ($env:CREATE_TAG -eq 'true') { $opts += @("--target", $env:TARGET_SHA) } else { $opts += "--verify-tag" }
             if ($tag -match '-') { $opts += "--prerelease" }  # a beta is a pre-release
             gh release create $tag @opts
           }

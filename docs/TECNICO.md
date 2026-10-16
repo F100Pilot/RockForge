@@ -493,11 +493,16 @@ GitHub, para ninguém ter de os construir à mão. Para publicar a versão X.Y.Z
 
 1. Põe a versão no `pyproject.toml` (na forma PEP 440, p. ex. `0.10.0b2`), no
    `src/rockforge/__init__.py` e no `installer.iss` (`0.10.0-beta.2`), e dá aos dois changelogs
-   uma secção `## [X.Y.Z beta N]` — o `tests/test_release_version.py` falha se não baterem.
-2. Envia uma tag `vX.Y.Z-beta.N` (`git tag v0.10.0-beta.2 && git push origin v0.10.0-beta.2`; o `v` é opcional).
-   Ou, no GitHub: *Releases → Draft a new release*, escreve a tag nova `vX.Y.Z-beta.N` (alvo
-   `main`) e publica; criar a tag arranca o workflow, que anexa os ficheiros a essa release
-   minutos depois.
+   uma secção `## [X.Y.Z beta N]` — o `tests/test_release_version.py` falha se não baterem — e
+   escreve o `docs/RELEASE_NOTES.md` (só as novidades e os bugs resolvidos, em inglês e depois em
+   português).
+2. Envia esse commit para o `main`. **Mais nada**: quando o CI passa no `main` e a versão do
+   `installer.iss` ainda não tem tag, o workflow cria a tag `vX.Y.Z-beta.N` e a release (uma
+   pre-release, se for beta) nesse commit, constrói e testa os downloads e anexa-os — cerca de
+   meia hora depois. Um commit que não muda a versão não publica nada.
+
+Uma tag enviada à mão (`git tag v0.10.0-beta.2 && git push origin v0.10.0-beta.2`), ou uma
+release criada no GitHub com uma tag nova, continua a arrancar o mesmo workflow.
 
 Uma pre-release nunca aparece no quadro "Releases" da página inicial do repositório — esse quadro
 só mostra a última release definitiva. As pre-releases estão na página Releases.
