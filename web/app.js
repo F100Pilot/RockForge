@@ -1251,6 +1251,10 @@ const INFO = {
     title: T('Sincronizar automaticamente (experimental)'),
     body: T('<p><b>Experimental — pode errar.</b> Para uma tab que não bate certo com a gravação porque o andamento da gravação varia: a gravação é analisada, e cada tempo da partitura é levado para onde as notas desse tempo soam — mantendo os tempos todos, pela ordem, e deixando o andamento mudar devagar. Como a partitura diz quantos tempos há, não pode ler a música ao dobro ou a metade.</p><p><b>Antes:</b> acerta o início do compasso de onde partes (Passo 1, ou "= cursor"), com uns décimos de segundo de folga, e o andamento aproximado. <b>Depois:</b> ouve. Os compassos onde as notas não bateram com o que se ouve ficam de fora (seguem os vizinhos) e aparecem em "Verifica de ouvido", com os primeiros a seguir a uma pausa — sem som, nada segura o andamento, e aí o alinhamento pode escorregar um tempo inteiro.</p><p>Tudo fica como correções pendentes (Passo 3), desfaz-se de uma vez com Ctrl+Z e só vai para o PSARC com "Aplicar e reconstruir". Precisa da análise de áudio (o extra [ml], ou os componentes extra no .exe). Testado em gravações sintéticas, ainda não em músicas reais — diz-nos como correu.</p>')
   },
+  'attacks': {
+    title: T('Ataques da gravação'),
+    body: T('<p>Para uma tab cujo <b>ritmo</b> não bate com a gravação (comum nas tabs feitas à pressa): a gravação é analisada e cada <b>ataque</b> — o instante em que algo é tocado — fica marcado por cima da pauta. Os traços cinzentos são ataques com uma nota da pauta perto; a <b>laranja</b>, as diferenças: um círculo é uma nota sem ataque perto na gravação, um traço é um ataque forte sem nota na pauta. "Diferença anterior/seguinte" leva o cursor a cada uma, para ouvires e corrigires no editor de notas.</p><p>Não usa a amplitude do som, que quase não desce numa guitarra distorcida, mas o <b>fluxo espectral</b> (energia nova em cada 10 ms), que apanha cada palhetada. Se já separaste os instrumentos (Áudio ▾ → Separar instrumentos), mede no <b>stem de guitarra</b>; senão na mistura, onde a bateria e a voz também dão ataques. A comparação segue a sincronização que está no ecrã, por isso sincroniza primeiro.</p><p>Limites: diz <b>quando</b> se toca, nunca que notas nem para que lado é a palhetada; o stem tem todas as guitarras juntas, por isso com dois guitarristas aparecem os ataques dos dois; a tolerância é de 60 ms. Não muda nada na partitura. Precisa da análise de áudio (o extra [ml], ou os componentes extra no .exe).</p>')
+  },
   'tap-sync': {
     title: T('Marcar a ouvir'),
     body: T('<p>Para uma tab que nunca foi sincronizada — escrita à mão num só andamento, por exemplo no Songsterr — o mais fiável é <b>marcar tu</b> quando começa cada compasso, como as pessoas fazem no Songsterr para os vídeos.</p><p>Escolhe o compasso de onde partir (o 1 começa do início da gravação; os outros, do cursor — põe-no um pouco antes) e se tocas <b>em cada compasso</b> (no primeiro tempo) ou <b>em cada tempo</b> (mais toques, mais preciso). Carrega em "Começar a marcar", ouve e carrega em <b>B</b> (ou no botão grande) a tempo. Cada toque leva esse compasso para o instante em que tocaste, e a partitura acompanha enquanto tocas. <b>Backspace</b> tira o último toque; <b>Esc</b> termina. Podes parar a meio: o que vem depois do último toque mantém o seu andamento e só se desloca com ele.</p><p>Dica: abranda a reprodução no seletor de velocidade junto ao play (90%, 75%…) para marcar com calma — os toques ficam no tempo real da gravação. "Suavizar os toques" tira o tremor da mão (alinha cada toque com os vizinhos) sem apagar as mudanças de andamento.</p><p>Tudo fica como correções pendentes (aparecem no Passo 3 e desfazem-se com Ctrl+Z, de uma vez) até "Aplicar e reconstruir". Depois afina o que faltar com "Corrigir daqui" ou arrastando notas.</p>')
@@ -2156,6 +2160,7 @@ async function loadArrangements(id) {
   fhpBuilt = JSON.stringify(fhpByKind);
   closeFhpPopup();
   noteClipboard = [];  // avoid pasting a previous song's notes into this one
+  resetAttacks();  // they were measured on another project's recording
   noteDeleteUndo = null;
   syncAnchors = [];
   selectedTimes = new Set();
@@ -2612,6 +2617,7 @@ function showArr(i) {
     s += `<path d="M${x1},${H - 24} L${x1},${H - 30} L${x2},${H - 30} L${x2},${H - 24}" fill="none" stroke="#ffd479" stroke-width="1.5" opacity=".8"/>`;
     s += `<text x="${x1 + 3}" y="${H - 12}" fill="#ffd479" font-size="12" font-style="italic">${esc(ap.name ? T('arpejo {nome}', { nome: ap.name }) : T('arpejo'))}<title>${esc(T('Arpejo: notas soltas deixadas a soar sobre a forma de um acorde — o jogo mostra a forma por cima delas.'))}</title></text>`;
   }
+  if (attacksVisible()) s += attacksSvg(groups, warp, W, SB);
   s += fhpLaneSvg(a, fhps, warp, W, SB + 40);
   // Sync anchors (drift corrections). Drawn in a distinct teal — NOT the
   // playhead's orange — with a numbered pin below the staff, so they read as
@@ -2651,6 +2657,7 @@ function showArr(i) {
   updateBarSyncPanel();
   fillTapBars();
   fillAutoSyncBars();
+  renderAttacksCard();
   renderEstimatedBars();
   updateNoteEditsInfo();
   updateDeleteNotesUi();
@@ -3733,6 +3740,139 @@ function fillAutoSyncBars() {
 }
 
 document.getElementById('autoSyncRun')?.addEventListener('click', runAutoSync);
+
+// ── The recording's attacks over the score ("Ataques da gravação") ───────────
+// /detect-attacks says where the recording has attacks (seconds of the
+// recording; measured on the separated guitar stem when there is one, else on
+// the mix). They are drawn in the band above the staff and compared with the
+// notes AS SHOWN NOW (pending edits and sync included), so a tab whose rhythm
+// is wrong shows where: a note with no attack near it, or a strong attack with
+// no note. A picture to check by ear — nothing in the chart changes.
+const ATTACK_MATCH_S = 0.06;   // a note and an attack this close are one strike
+const ATTACK_STRONG = 0.35;    // a weaker attack with no note is drawn but not counted (bleed, ghost strums)
+let recAttacks = null;         // {job, source, attacks: [[seconds, strength], …], duration}
+let attacksBusy = false;
+let attackStats = null;        // {notes, matched, lonely, extra}
+let attackDiffs = [];          // display times of the differences, for ◀ ▶
+
+function resetAttacks() {
+  recAttacks = null;
+  attackStats = null;
+  attackDiffs = [];
+  document.getElementById('attacksShow').checked = true;
+  renderAttacksCard();
+}
+
+function attacksVisible() {
+  return !!(recAttacks && selectedJob && recAttacks.job === selectedJob.id
+    && document.getElementById('attacksShow').checked);
+}
+
+// The comparison and its drawing, for the note groups showArr is drawing.
+function attacksSvg(groups, warp, W, SB) {
+  const off = playheadDisplay(0);  // seconds of the recording → display time
+  const att = recAttacks.attacks;
+  const used = new Array(att.length).fill(false);
+  const lonely = [];
+  let notes = 0, matched = 0, j = 0;
+  const times = groups.map(g => warp(previewScale(g.time))).sort((x, y) => x - y);
+  for (const t of times) {
+    const rec = t - off;
+    if (rec < 0 || rec > recAttacks.duration) continue;
+    notes++;
+    while (j < att.length && att[j][0] < rec - ATTACK_MATCH_S) j++;
+    let hit = false;
+    for (let k = j; k < att.length && att[k][0] <= rec + ATTACK_MATCH_S; k++) { used[k] = true; hit = true; }
+    if (hit) matched++; else lonely.push(t);
+  }
+  const extra = [];
+  let svg = '';
+  const tick = T('Ataque na gravação'), lone = T('Ataque forte na gravação sem nota na partitura');
+  att.forEach(([rec, str], k) => {
+    const t = rec + off, x = timeToX(t);
+    const strong = !used[k] && str >= ATTACK_STRONG;
+    if (strong) extra.push(t);
+    if (x < 24 || x > W - 4) return;
+    const h = 4 + 9 * str;
+    if (strong)
+      svg += `<line x1="${x}" y1="29" x2="${x}" y2="${SB}" stroke="#ff9f43" stroke-width="1" stroke-dasharray="3,4" opacity=".45"/>`
+        + `<line x1="${x}" y1="${29 - h}" x2="${x}" y2="29" stroke="#ff9f43" stroke-width="2.5"><title>${esc(lone)}</title></line>`;
+    else
+      svg += `<line x1="${x}" y1="${29 - h}" x2="${x}" y2="29" stroke="#5ec8f2" stroke-width="2" opacity="${used[k] ? 0.6 + 0.4 * str : 0.35}"><title>${esc(tick)}</title></line>`;
+  });
+  const noAttack = T('Nota sem ataque perto na gravação');
+  for (const t of lonely) {
+    const x = timeToX(t);
+    if (x < 24 || x > W - 4) continue;
+    svg += `<line x1="${x}" y1="29" x2="${x}" y2="${SB}" stroke="#ff9f43" stroke-width="1" stroke-dasharray="1,4" opacity=".55"/>`
+      + `<circle cx="${x}" cy="22" r="4.5" fill="none" stroke="#ff9f43" stroke-width="2"><title>${esc(noAttack)}</title></circle>`;
+  }
+  attackStats = { notes, matched, lonely: lonely.length, extra: extra.length };
+  attackDiffs = [...lonely, ...extra].sort((x, y) => x - y);
+  return svg;
+}
+
+function renderAttacksCard() {
+  const status = document.getElementById('attacksStatus');
+  if (!status) return;
+  const mine = recAttacks && selectedJob && recAttacks.job === selectedJob.id;
+  document.getElementById('attacksRunLabel').textContent = mine ? T('Detetar outra vez') : T('Detetar ataques');
+  document.getElementById('attacksShowLbl').hidden = !mine;
+  const shown = attacksVisible();
+  document.getElementById('attacksNav').hidden = !(shown && attackDiffs.length);
+  if (attacksBusy) { status.textContent = T('A analisar a gravação… (pode demorar um minuto)'); return; }
+  if (!mine) { status.textContent = ''; return; }
+  const where = recAttacks.source === 'guitar'
+    ? T('Medido no stem de guitarra (todas as guitarras juntas).')
+    : T('Medido na mistura completa — a bateria e a voz também contam. Para medir só a guitarra, separa os instrumentos (Áudio ▾ → Separar instrumentos) e deteta outra vez.');
+  const st = shown && attackStats ? attackStats : null;
+  status.textContent = where + ' ' + (st
+    ? T('Ataques: {n} · notas com um ataque perto: {ok} de {total} · notas sem ataque: {lonely} · ataques fortes sem nota: {extra}.', {
+      n: recAttacks.attacks.length, ok: st.matched, total: st.notes, lonely: st.lonely, extra: st.extra,
+    })
+    : T('Ataques: {n}.', { n: recAttacks.attacks.length }));
+}
+
+async function runAttacks() {
+  if (!selectedJob || !isGpJob() || attacksBusy) return;
+  const job = selectedJob.id;
+  attacksBusy = true;
+  document.getElementById('attacksRun').disabled = true;
+  renderAttacksCard();
+  let res;
+  try {
+    res = await getJSON(`/jobs/${job}/detect-attacks`, { method: 'POST' });
+  } catch (e) {
+    attacksBusy = false;
+    document.getElementById('attacksRun').disabled = false;
+    renderAttacksCard();
+    document.getElementById('attacksStatus').textContent = T('Não foi possível analisar: {msg}', { msg: e.message });
+    return;
+  }
+  attacksBusy = false;
+  document.getElementById('attacksRun').disabled = false;
+  if (!selectedJob || selectedJob.id !== job) return;  // another project opened meanwhile
+  recAttacks = { job, ...res };
+  document.getElementById('attacksShow').checked = true;
+  showArr(currentArr);
+}
+
+// The previous/next difference from the cursor: the cursor goes there and the
+// view centres on it.
+function goToAttackDiff(dir) {
+  const now = playheadDisplay(audioTime());
+  const t = dir > 0 ? attackDiffs.find(d => d > now + 0.02)
+    : attackDiffs.findLast(d => d < now - 0.02);
+  if (t == null) { toast(T('Sem diferenças nesse sentido.')); return; }
+  audioSeek(Math.max(0, t - viewOrigin));
+  const wrap = document.getElementById('tabwrap');
+  wrap.scrollLeft = Math.max(0, timeToX(t) - wrap.clientWidth / 2);
+}
+
+document.getElementById('attacksRun')?.addEventListener('click', runAttacks);
+document.getElementById('attacksShow')?.addEventListener('change', () => showArr(currentArr));
+document.getElementById('attacksPrev')?.addEventListener('click', () => goToAttackDiff(-1));
+document.getElementById('attacksNext')?.addEventListener('click', () => goToAttackDiff(1));
 
 function barTempoMessage(fromM, toM, bpm, delta) {
   const which = fromM === toM ? T('Compasso {n}', { n: fromM }) : T('Compassos {from}–{to}', { from: fromM, to: toM });

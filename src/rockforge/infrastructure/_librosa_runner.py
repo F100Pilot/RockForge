@@ -339,6 +339,57 @@ def onset_envelope(audio: str, hop: float = ALIGN_HOP_S) -> tuple[list[float], f
     return [float(v) for v in np.asarray(env)], hop_len / sr
 
 
+# Picking the attacks out of the onset envelope, for the score's "Ataques da
+# gravação" lane. The envelope is librosa's spectral flux (energy that is NEW in
+# a 10 ms frame), not the waveform's amplitude: a distorted guitar is compressed
+# so hard that its level barely dips between strums, while each pick still
+# brings a burst of new spectrum. A frame is an attack when it is the highest
+# within ATTACK_MIN_GAP_S, stands ATTACK_RATIO times above the envelope's
+# MEDIAN around it (ATTACK_LOCAL_S each side — the median, not the mean, so a
+# dense riff's own hits do not raise the floor they are measured against, and
+# steady noise, whose peaks sit close to its median, gives none), and reaches
+# ATTACK_MIN of the envelope's 95th percentile. The first ATTACK_EDGE_S are
+# skipped: librosa pads the start with silence, so the noise floor of a
+# recording that does not open on digital silence reads as an attack there.
+ATTACK_MIN_GAP_S = 0.05
+ATTACK_LOCAL_S = 0.25
+ATTACK_RATIO = 2.0
+ATTACK_MIN = 0.3
+ATTACK_EDGE_S = 0.1
+
+
+def pick_attacks(env: list[float], hop: float) -> list[list[float]]:
+    """``[[time, strength], …]`` — each attack's instant (seconds) and its
+    strength relative to the envelope's 95th percentile, capped at 1."""
+    if not env:
+        return []
+    ranked = sorted(env)
+    ref = ranked[int(0.95 * (len(ranked) - 1))] or max(ranked) or 1.0
+    e = [v / ref for v in env]
+    n = len(e)
+    gap = max(1, int(round(ATTACK_MIN_GAP_S / hop)))
+    local = max(1, int(round(ATTACK_LOCAL_S / hop)))
+    edge = int(round(ATTACK_EDGE_S / hop))
+    out: list[list[float]] = []
+    for i, v in enumerate(e):
+        if v < ATTACK_MIN or i < edge:
+            continue
+        lo, hi = max(0, i - gap), min(n, i + gap + 1)
+        if v < max(e[lo:hi]) or any(e[j] == v for j in range(lo, i)):
+            continue  # not the peak (the first of equal peaks wins)
+        around = sorted(e[max(0, i - local):min(n, i + local + 1)])
+        if v < around[len(around) // 2] * ATTACK_RATIO:
+            continue
+        out.append([round(i * hop, 3), round(min(1.0, v), 3)])
+    return out
+
+
+def attacks(audio: str) -> dict[str, object]:
+    """The recording's attacks (``pick_attacks``) and its length."""
+    env, hop = onset_envelope(audio)
+    return {"attacks": pick_attacks(env, hop), "duration": round(len(env) * hop, 3)}
+
+
 def beat_align(audio: str, spec_path: str) -> dict[str, object]:
     """``align_beats`` on ``audio``, with the beats and notes read from a JSON
     file (``{"beats": [...], "notes": [...]}``) — too long for a command line."""
@@ -356,7 +407,7 @@ def main(argv: list[str] | None = None) -> int:
     line, so librosa's own warnings on stderr (or a chatty backend on stdout)
     cannot corrupt the answer."""
     parser = argparse.ArgumentParser(description="librosa measurements for RockForge")
-    parser.add_argument("command", choices=("tempo", "tuning", "tone", "beatalign"))
+    parser.add_argument("command", choices=("tempo", "tuning", "tone", "beatalign", "attacks"))
     parser.add_argument("--audio", required=True)
     parser.add_argument("--start", type=float, default=0.0)
     parser.add_argument("--expected-bpm", type=float, default=0.0)
@@ -369,6 +420,8 @@ def main(argv: list[str] | None = None) -> int:
         }
     elif args.command == "beatalign":
         result = beat_align(args.audio, args.spec)
+    elif args.command == "attacks":
+        result = attacks(args.audio)
     elif args.command == "tuning":
         result = {"cents": tuning_cents(args.audio)}
     else:

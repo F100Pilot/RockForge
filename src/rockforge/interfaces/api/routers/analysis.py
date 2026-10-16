@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException
 
 from rockforge.interfaces.api import app as api
 from rockforge.interfaces.api.schemas import (
+    DetectAttacksOut,
     DetectBeatSyncIn,
     DetectBeatSyncOut,
     DetectTempoIn,
@@ -119,6 +120,47 @@ def detect_beat_sync(job_id: str, payload: DetectBeatSyncIn) -> DetectBeatSyncOu
     except Exception as exc:
         raise HTTPException(422, f"could not analyse the recording: {exc}") from exc
     return DetectBeatSyncOut.model_validate(result)
+
+
+def _guitar_stem(job_id: str, params: dict[str, Any]) -> Path | None:
+    """The separated guitar stem, if a Demucs pass already made one: the one
+    "Separar stems" stored, else the one tone detection left in the shared
+    cache (``celery_app._demucs_stems_cache_dir``). Either was separated from
+    the recording untrimmed, so its seconds are the recording's."""
+    stems = params.get("stems")
+    if isinstance(stems, dict):
+        guitar = stems.get("guitar")
+        if isinstance(guitar, str) and guitar and Path(guitar).exists():
+            return Path(guitar)
+    cache = api.settings.work_dir / job_id / "demucs_stems" / "stems"
+    return next(iter(sorted(cache.glob("*/*/guitar.wav"))), None) if cache.is_dir() else None
+
+
+@router.post("/jobs/{job_id}/detect-attacks", response_model=DetectAttacksOut)
+def detect_attacks(job_id: str) -> DetectAttacksOut:
+    """Where the recording has attacks (onsets), drawn under the score so a tab
+    whose rhythm is wrong shows where it differs from what is heard. Measured on
+    the separated guitar stem when there is one — the drums and the voice add
+    attacks of their own in the mix — else on the mix, and the answer says
+    which. Only WHEN something is struck, never which notes."""
+    with api._session_factory() as session:
+        job = api._job_or_404(session, job_id)
+        if job.source_type != "gp":
+            raise HTTPException(422, "attack detection only applies to Guitar Pro jobs")
+        src = Path(job.source)
+        stem = _guitar_stem(job.id, dict(job.params or {}))
+    if stem is None and not src.exists():
+        raise HTTPException(409, "source audio no longer exists on the work volume")
+
+    from rockforge.infrastructure.rhythm.librosa_adapter import detect_attacks as measure
+
+    try:
+        result = measure(stem or src)
+    except ImportError as exc:
+        raise api._ml_extra_missing("attack detection", exc) from exc
+    except Exception as exc:
+        raise HTTPException(422, f"could not analyse the recording: {exc}") from exc
+    return DetectAttacksOut.model_validate({**result, "source": "guitar" if stem else "mix"})
 
 
 @router.post("/jobs/{job_id}/detect-tuning", response_model=DetectTuningOut)

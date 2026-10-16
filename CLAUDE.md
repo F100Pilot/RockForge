@@ -737,6 +737,56 @@ a real rebuild): 30 of 32 bars aligned, from up to 2.5 s off to ≤ 28 ms
 user's test; the release smoke test runs it in the frozen `.exe` through the
 components' Python.
 
+### The recording's attacks over the score ("Ataques da gravação")
+
+"It would also be good to have beat detection from the audio, the strumming
+pattern on the left is incorrect compared to the right … more fixing crappy
+tabbing" (Liam, 2026-10-16), then "use AI to split down the tracks similarly to
+x-minus … then run the separated track through an FFT to get the amplitude
+peaks". Correcting the rhythm by itself would be transcription (measured and
+dropped, below); showing WHERE the tab disagrees with the recording is not.
+`POST /jobs/{id}/detect-attacks` (`DetectAttacksOut`: `source` "guitar"/"mix",
+`attacks` [[seconds, strength 0-1]…], `duration`) measures the separated
+guitar stem when a Demucs pass made one (`analysis._guitar_stem`: the one
+"Separar instrumentos" stored, else the one tone detection left in
+`demucs_stems/stems/*/*/guitar.wav`) and the mix otherwise — both separations
+run on the recording UNTRIMMED (`normalize` with no offset), so a stem's
+seconds are the recording's. `librosa_adapter.detect_attacks` →
+`_librosa_runner.attacks` (in-process or the ML interpreter, the
+`align_to_recording` pattern) = the same onset envelope as the auto-sync
+(spectral flux, 10 ms — not amplitude: a distorted guitar's level barely dips
+between strums) through `pick_attacks` (plain Python, CI-tested): a peak within
+50 ms, at least 2× the MEDIAN of the envelope ±0.25 s around it (the mean let a
+riff's accents hide its softer strokes; steady noise peaks sit near their
+median), at least 0.3 of the 95th percentile, and not in the first 0.1 s
+(librosa pads the start with silence). The auto-sync keeps the MIX on purpose:
+its `ALIGN_BEAT_WEIGHT` counts drum hits.
+
+Viewer: card `#attacksCard` after the auto-sync card (ⓘ `attacks`). "Detetar
+ataques" fetches once per version (`recAttacks`, reset in
+`loadArrangements`); while "Mostrar na partitura" is ticked `attacksSvg` (from
+`showArr`) draws each attack as a blue tick in the band above the staff and
+compares it with the note GROUPS as drawn (pending note edits, tempo and
+anchors included; `playheadDisplay(0)` turns recording seconds into display
+time): within `ATTACK_MATCH_S` (60 ms) a note and an attack are one strike; a
+note with none gets an orange circle and a dotted line, an attack of strength ≥
+`ATTACK_STRONG` (0.35) with no note an orange tick and a dashed line (weaker
+unmatched ones stay faint and uncounted: bleed, ghost strokes). The status says
+the source and the counts; "Diferença anterior/seguinte" (`goToAttackDiff`)
+puts the cursor on each difference. Nothing is applied. Honest limits, in the
+ⓘ: when, never which notes or which way the pick goes; the stem holds every
+guitar; a mix adds drum/voice attacks. Guarded by `test_attacks.py` (each rule
+mutation-checked: a strike is one attack, a near double is one, a quiet passage
+keeps its attacks, a raised floor, softer strokes in a dense run — the median —,
+the padded start, noise and silence) and
+`test_the_recordings_attacks_come_from_the_guitar_stem_when_there_is_one`;
+with librosa on a synthesized distorted riff (16 strikes with one tab note
+missing and one extra strike) all 16 found 8–24 ms late, one faint artifact;
+with Playwright on that invented GP5 built for real: 15 of 16 notes matched,
+the missing note (4.0 s) and the extra strike (6.715 s) flagged and reached by
+the buttons, hidden when unticked, PT/EN, no page errors. **Never run on a
+real song from here.**
+
 ### Exporting a corrected Guitar Pro file (`/export-gp`)
 
 `infrastructure/gpexport/tempo_writer.py` writes the accepted tempo corrections

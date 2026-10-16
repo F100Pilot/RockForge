@@ -33,7 +33,7 @@ tudo de uma vez e um novo bump de versão.
   durar a sustentação da nota tal como está no ecrã (pelo mesmo warp do tempo
   de início), mínimo ~0,24 s, e um decaimento mais lento (ex. 0,998) para as
   notas longas; `playNote` passa a receber a nota toda.
-- [ ] **Ver na pauta onde a gravação tem ataques** (Liam, 2026-10-16: "beat
+- [x] **Ver na pauta onde a gravação tem ataques** (feito 2026-10-16, ver CLAUDE.md "The recording's attacks over the score") (Liam, 2026-10-16: "beat
   detection from the audio, the strumming pattern on the left is incorrect
   compared to the right … more fixing crappy tabbing"). Corrigir o ritmo
   sozinho é transcrever, e isso foi medido e abandonado (~1 nota em 3).

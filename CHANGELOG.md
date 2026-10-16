@@ -6,6 +6,13 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Novo
+- **Ataques da gravação** (inspetor Sincronização): marca por cima da pauta onde a gravação tem
+  ataques e realça as diferenças com a tab — notas sem ataque perto e ataques fortes sem nota —,
+  com «Diferença anterior/seguinte» para lá chegar. Para tabs com o ritmo errado. Mede no stem
+  de guitarra quando os instrumentos já foram separados, senão na mistura. Diz quando se toca,
+  não que notas; não muda nada na partitura.
+
 ### Corrigido
 - **As notas longas soam o tempo todo na pré-escuta**: o som das notas no editor (o toque de cada
   nota e a fonte «sintetizada») tocava todas as notas como uma palhetada curta, mesmo as

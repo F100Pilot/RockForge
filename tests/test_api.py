@@ -2117,6 +2117,53 @@ def test_automatic_sync_aligns_the_beats_the_viewer_sends(
     assert bad.status_code == 422 and not seen
 
 
+def test_the_recordings_attacks_come_from_the_guitar_stem_when_there_is_one(
+    client: TestClient, tmp_path, monkeypatch
+) -> None:
+    """The score's "Ataques da gravação": measured on the separated guitar stem
+    when a Demucs pass made one (the drums add attacks of their own to the
+    mix) — the one "Separar stems" stored, else the one tone detection left in
+    the shared cache — and on the mix otherwise; the answer says which."""
+    import rockforge.infrastructure.rhythm.librosa_adapter as rhythm
+    import rockforge.interfaces.api.app as app_module
+
+    seen: list[Path] = []
+
+    def _fake(audio):
+        seen.append(Path(audio))
+        return {"attacks": [[1.0, 0.8], [1.5, 0.4]], "duration": 30.0}
+
+    monkeypatch.setattr(rhythm, "detect_attacks", _fake)
+    job = _gp_job(client, tmp_path)
+    url = f"/jobs/{job['id']}/detect-attacks"
+
+    r = client.post(url)
+    assert r.status_code == 200, r.text
+    assert r.json() == {"source": "mix", "attacks": [[1.0, 0.8], [1.5, 0.4]], "duration": 30.0}
+    with app_module._session_factory() as session:
+        assert seen[-1] == Path(session.get(app_module.Job, job["id"]).source)
+
+    cached = app_module.settings.work_dir / job["id"] / "demucs_stems/stems/htdemucs_6s/x"
+    cached /= "guitar.wav"
+    cached.parent.mkdir(parents=True)
+    cached.write_bytes(b"RIFF")
+    assert client.post(url).json()["source"] == "guitar" and seen[-1] == cached
+
+    stored = tmp_path / "stored_guitar.wav"
+    stored.write_bytes(b"RIFF")
+    with app_module._session_factory() as session:
+        row = session.get(app_module.Job, job["id"])
+        row.params = {**row.params, "stems": {"guitar": str(stored)}}
+        session.commit()
+    assert client.post(url).json()["source"] == "guitar" and seen[-1] == stored
+
+    def _missing(audio):
+        raise ImportError("No module named 'librosa'")
+
+    monkeypatch.setattr(rhythm, "detect_attacks", _missing)
+    assert client.post(url).status_code == 503
+
+
 def test_detect_tempo_measures_against_the_chart_bpm_not_the_header(
     client: TestClient, tmp_path, monkeypatch
 ) -> None:

@@ -1213,6 +1213,19 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                 <span id="autoSyncStatus" class="meta" aria-live="polite"></span>
                 <div class="est-bars" id="autoSyncCheckRow" hidden><span>Verifica de ouvido:</span><span id="autoSyncCheckList"></span></div>
               </div>
+              <div class="pv-card" id="attacksCard">
+                <div class="pv-card-head">Ataques da gravação <button class="info-btn" data-info="attacks">ⓘ</button></div>
+                <div class="pv-card-desc">Marca por cima da pauta onde a gravação tem ataques (palhetadas), para veres onde o ritmo da tab não bate com o que se ouve. Não muda nada na partitura.</div>
+                <div class="pv-row">
+                  <button type="button" id="attacksRun" class="secondary"><svg class="ic" aria-hidden="true"><use href="#i-wave"/></svg><span id="attacksRunLabel">Detetar ataques</span></button>
+                  <label class="check" id="attacksShowLbl" hidden><input type="checkbox" id="attacksShow" checked> Mostrar na partitura</label>
+                </div>
+                <span id="attacksStatus" class="meta" aria-live="polite"></span>
+                <div class="pv-row" id="attacksNav" hidden>
+                  <button type="button" id="attacksPrev" class="secondary">◀ Diferença anterior</button>
+                  <button type="button" id="attacksNext" class="secondary">Diferença seguinte ▶</button>
+                </div>
+              </div>
             </div>
 
             <div class="pv-card">

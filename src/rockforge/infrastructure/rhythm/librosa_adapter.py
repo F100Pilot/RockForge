@@ -74,6 +74,15 @@ def align_to_recording(audio: Path, beats: list[float], notes: list[float]) -> d
         Path(spec).unlink(missing_ok=True)
 
 
+def detect_attacks(audio: Path) -> dict[str, object]:
+    """Where the recording has attacks (``_librosa_runner.attacks``), for the
+    score's "Ataques da gravação" lane: ``{"attacks": [[time, strength], …],
+    "duration": seconds}``, in the clock of ``audio``."""
+    if ml_python.librosa_here():
+        return _librosa_runner.attacks(str(audio))
+    return ml_python.run_librosa("attacks", audio)
+
+
 def estimate_tuning_cents(audio: Path) -> float:
     """Estimate the recording's reference-pitch deviation from A440, in cents.
 

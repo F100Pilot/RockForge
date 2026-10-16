@@ -408,6 +408,15 @@ class DetectBeatSyncOut(BaseModel):
     duration: float  # the recording's length in seconds
 
 
+class DetectAttacksOut(BaseModel):
+    """Where the recording has attacks, for the score's "Ataques da gravação"
+    lane — a picture of the recording to compare the tab with, nothing applied."""
+
+    source: Literal["guitar", "mix"]  # the separated guitar stem, or the whole mix
+    attacks: list[list[float]]  # [[seconds of the recording, strength 0-1], …]
+    duration: float
+
+
 class DetectTuningOut(BaseModel):
     """Proposed fine-tuning correction (not applied; the user reviews then
     rebuilds). String/drop tuning is NOT detected — see librosa_adapter."""

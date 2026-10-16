@@ -6,6 +6,13 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### New
+- **Recording attacks** (Sync inspector): marks above the score where the recording has attacks
+  and highlights the differences with the tab — notes with no attack nearby and strong attacks
+  with no note —, with "Previous/Next difference" to get there. For tabs with the wrong rhythm.
+  It measures the guitar stem when the instruments have been separated, otherwise the mix. It
+  tells when something is played, not which notes; nothing in the score changes.
+
 ### Fixed
 - **Long notes ring for their whole length in the preview**: the editor's note sound (each
   note's tick and the “synthesized” source) played every note as a short pick, even held ones.

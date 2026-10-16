@@ -261,6 +261,20 @@ deixando o andamento mudar ao longo da música. **Pode errar** — usa-o assim:
 Fica tudo como correções no passo 3 (um Ctrl+Z desfaz tudo) até **Aplicar e reconstruir**.
 Precisa da análise de áudio (o extra de ML, ou os componentes extra no `.exe`).
 
+### Ritmo da tab errado — Ataques da gravação
+
+Quando a tab tem o **ritmo** errado (comum nas tabs feitas à pressa), o cartão **Ataques da
+gravação** mostra onde. **Detetar ataques** marca por cima da pauta cada ataque que se ouve na
+gravação: traços azuis onde há uma nota da pauta perto, e a **laranja** as diferenças — um
+círculo numa nota sem ataque perto, um traço onde há um ataque forte sem nota. **Diferença
+anterior/seguinte** leva o cursor a cada uma, para ouvires e corrigires com **Editar notas**.
+
+- Sincroniza primeiro: a comparação usa a partitura tal como está no ecrã.
+- Se já separaste os instrumentos (**Áudio ▾ → Separar instrumentos**), mede só a guitarra;
+  senão a mistura, onde a bateria e a voz também dão ataques.
+- Diz **quando** se toca, nunca que notas; com dois guitarristas aparecem os ataques dos dois.
+- Não muda nada na partitura. Precisa da análise de áudio, como o cartão anterior.
+
 ### Passo 3 — Correções na partitura
 
 Para o que sobra, escolhe um modo em **Modo ▾** e clica onde a partitura foge:

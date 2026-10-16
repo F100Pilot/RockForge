@@ -263,6 +263,21 @@ change over the song. **It can get it wrong** — use it like this:
 It all stays as corrections in step 3 (one Ctrl+Z undoes it all) until **Apply and rebuild**.
 It needs the audio analysis (the ML extra, or the extra components in the `.exe`).
 
+### Wrong rhythm in the tab — Recording attacks
+
+When the tab's **rhythm** is wrong (common in tabs made in a hurry), the **Recording attacks**
+card shows where. **Detect attacks** marks above the score every attack heard in the recording:
+blue ticks where a note of the score is close, and **orange** for the differences — a circle on
+a note with no attack near it, a tick where there is a strong attack with no note. **Previous/
+Next difference** takes the cursor to each one, so you can listen and fix it with **Edit notes**.
+
+- Sync first: the comparison uses the score as it is on screen.
+- If you have already separated the instruments (**Audio ▾ → Separate instruments**), it measures
+  the guitar alone; otherwise the mix, where the drums and the voice give attacks too.
+- It tells **when** something is played, never which notes; with two guitarists you see both
+  players' attacks.
+- Nothing in the score changes. It needs the audio analysis, like the card above.
+
 ### Step 3 — Corrections on the score
 
 For what is left, pick a mode in **Mode ▾** and click where the score drifts:
