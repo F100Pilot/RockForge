@@ -18,15 +18,11 @@ need **Wwise 2019–2023** (free from Audiokinetic — install **2023.1**; the n
 Launcher offers first will not do; it cannot be shipped with the app, and RockForge finds it on any
 drive) and, for the song to appear in the game, the usual CDLC patch.
 
-**New in this beta:** **"Sync automatically" (experimental)** — the recording is analysed and each
-bar moved to where its notes sound, the tempo allowed to change over the song; it stays as pending
-corrections one Ctrl+Z undoes, and lists the bars to check by ear. It can get it wrong: tested on
-synthetic recordings, not yet on real songs — tell us how it goes. Also: an **icon** of its own;
-**no mode selected** when a project opens; **no black flash** of console windows in the `.exe`;
-**Wwise** found wherever it is installed, with a clear word when the version found cannot be
-used; on the return after a D.C./D.S., only the **last ending** is played (no repeats), with a
-warning saying that convention was assumed; and **short notes no longer drag a sustain tail** on the
-highway — only held notes do, as in hand-made charts.
+**New in this beta:** a **cover from your computer** can be chosen in the last step of "New
+project" (before, only an online result or none; the Cover page still works as before); the
+**`.exe` now uses the GPU** — in beta 7 it always fell back to the CPU, so stems and tone and lyric
+detection were much slower than they should be with an NVIDIA card; and the **"new version"
+notice** comes within the hour instead of within the day.
 
 What changed: [CHANGELOG.en.md](https://github.com/F100Pilot/RockForge/blob/main/CHANGELOG.en.md).
 User guide: [GUIDE.en.md](https://github.com/F100Pilot/RockForge/blob/main/docs/GUIDE.en.md).
@@ -42,11 +38,10 @@ PDF) e uma gravação num CDLC do Rocksmith 2014. Descarrega o **`…-Setup.exe`
 *Mais informações* → *Executar mesmo assim*. O instalador oferece os **componentes extra**
 (análise de áudio, deteção de tom e letra, stems, PDF, áudio do YouTube), que também se instalam
 depois na página inicial. Para um `.psarc` jogável continua a ser preciso o **Wwise** (o 2023.1 — o
-2024/2025 não serve). Nesta beta: **«Sincronizar automaticamente» (experimental)**, que analisa a
-gravação e encaixa cada compasso nas notas que se ouvem, com o andamento a variar; ícone próprio;
-nenhum modo selecionado ao abrir um projeto; sem o ecrã preto a piscar no `.exe`; o Wwise
-encontrado em qualquer disco; no regresso de um D.C./D.S., só a última casa (com um aviso a
-dizer que convenção foi assumida); e as notas curtas já não arrastam um rasto de sustentação. É uma **beta**: diz-nos o que falhar nas
+2024/2025 não serve). Nesta beta: a **capa pode vir do teu computador** no último passo de «Novo
+projeto»; o **`.exe` passa a usar a GPU** (na beta 7 caía sempre para o CPU, por isso stems e
+deteção de tom e letra eram muito mais lentos com uma NVIDIA); e o aviso de **versão nova** chega
+dentro de uma hora em vez de um dia. É uma **beta**: diz-nos o que falhar nas
 [Issues](https://github.com/F100Pilot/RockForge/issues). Novidades:
 [CHANGELOG.md](https://github.com/F100Pilot/RockForge/blob/main/CHANGELOG.md) · guia:
 [GUIA.md](https://github.com/F100Pilot/RockForge/blob/main/docs/GUIA.md).
