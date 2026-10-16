@@ -2335,7 +2335,22 @@ the frets about to be played (`anchorAt`); sustains are trails and a slide's
 trail runs to the fret it ends on (`ArrangementNoteOut.slide_to`, new, read from
 `slideTo`/`slideUnpitchTo`); techniques are short marks above the gem; bar and
 beat lines cross the highway, sections are labelled. Controls: "Traste na
-nota", "Câmara" (tilt), "Ecrã inteiro".
+nota", "Câmara", "Ecrã inteiro".
+
+**The camera turns on three axes** ("A pista 3D deve ter mais mobilidade … até
+um máximo de 1220 graus horizontalmente e verticalmente de 0 a 90 graus",
+2026-10-16; read as 120° to either side — `YAW_MAX`, one constant). It orbits
+a point between the strings and the notes about to arrive (`PIVOT_Y`/`PIVOT_Z`,
+x following the hand window as before): yaw ±120°, pitch 0° (level with the
+highway) to 90° (from above, held at 89.9° so `lookAt` keeps an "up"), distance
+6–40. Drag on the canvas turns it, the wheel sets the distance, a double click
+resets (`wireCamera`); "Câmara ▾" holds the same three axes as sliders and
+"Repor câmara". `clampCamera` bounds every way in, the canvas tells app.js
+through `open(..., cameraChanged)` so the sliders follow a drag, and the view
+is remembered in `localStorage` `rf-hw3d-cam`. The default (yaw 0, pitch 15,
+distance 15) reproduces the old fixed view at its default tilt — checked side
+by side. The note faces still face the front, so from far to the side the
+numbers are seen edge-on.
 
 **It knows nothing about sync — it reads the score's own clock.** `hw3dRefresh`
 (called from `showArr`, so on every pending edit) hands it each note at
@@ -2361,7 +2376,7 @@ was under a pixel and simply invisible — hence the 0.3/0.13 widths. Guarded by
 `test_the_3d_highway_and_its_three_js_are_served` and
 `test_arrangements_say_where_a_slide_ends`; the rest is browser-only, verified
 with Playwright on the user's Ocean Eyes build (toggle, playback glow, held
-note, chords, headstock, numbers/tilt, live tempo follow, close/reopen, no page
+note, chords, headstock, numbers/camera, live tempo follow, close/reopen, no page
 errors) — under software WebGL, so real-GPU frame rate is not measured here.
 
 ### The layout: home page, full-screen project view, stroke icons

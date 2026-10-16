@@ -1287,6 +1287,7 @@ const INFO = {
     title: T('Pista 3D'),
     body: T('<p>As notas da pista escolhida a descer para as cordas, como no Rocksmith: cada corda na sua cor (Mi grave vermelho em cima) e uma linha até ao traste onde se toca. Como no Rocksmith, a nota não tem número: o número do traste no braço passa a âmbar e brilha à medida que se aproxima uma nota desse traste, e fica aceso enquanto ela soa ("Traste na nota" volta a pôr o número na nota). Quando a nota chega à corda, a corda brilha e a nota fica pousada nela enquanto soa.</p>') +
       T('<p>A afinação está escrita na pestana do headstock. Acordes têm moldura e nome; uma corda solta é uma barra ao longo da zona da mão (a faixa azul), que a câmara segue. As técnicas têm os símbolos do Rocksmith: ▼ hammer-on e ▲ pull-off na nota; por cima, laço = palm mute, anel com ponto = harmónico, olho = harmónico pinch, V largo = tapping, bloco com entalhe = slap, com bico = pop, chevrons ˄ = bend (um = meio tom, dois = um tom, três = mais); moldura dupla = acento; rasto ondulado = vibrato, em zigue-zague = tremolo picking; X = nota abafada.</p>') +
+      T('<p><strong>Câmara:</strong> arrasta a pista para a rodar — para os lados até 120° de cada lado, e de rente à pista (0°) até vista de cima (90°); a roda do rato aproxima ou afasta, e um duplo clique (ou "Repor câmara") volta à vista inicial. Os mesmos três eixos estão em "Câmara", com controlos deslizantes, e a vista fica guardada para o próximo projeto.</p>') +
       T('<p>Segue a gravação e as correções de sincronização <strong>ainda por aplicar</strong>, tal como a partitura por baixo — serve para confirmar a sincronização a ver as notas chegar. Precisa de WebGL (aceleração gráfica) no browser.</p>')
   },
   'tab-viewer': {
@@ -8462,6 +8463,22 @@ document.getElementById('showFretboard')?.addEventListener('change', e => {
 let hw3dOn = false;
 try { hw3dOn = localStorage.getItem('rf-hw3d') === '1'; } catch { /* storage blocked: off */ }
 let hw3dLastSong = null;
+// The camera (degrees around, degrees up, distance) is remembered for the next project.
+const HW3D_CAMERA = [['yaw', 'hw3dYaw'], ['pitch', 'hw3dPitch'], ['dist', 'hw3dDist']];
+function hw3dCamera() {
+  const cam = {};
+  for (const [k, id] of HW3D_CAMERA) cam[k] = Number(document.getElementById(id).value);
+  return cam;
+}
+function hw3dShowCamera(cam) {
+  for (const [k, id] of HW3D_CAMERA) {
+    const el = document.getElementById(id);
+    if (Number.isFinite(cam[k])) el.value = cam[k];
+    el.title = k === 'dist' ? String(Math.round(Number(el.value) * 10) / 10) : `${Math.round(Number(el.value))}°`;
+  }
+  try { localStorage.setItem('rf-hw3d-cam', JSON.stringify(hw3dCamera())); } catch { /* not remembered */ }
+}
+try { hw3dShowCamera(JSON.parse(localStorage.getItem('rf-hw3d-cam') || '{}') || {}); } catch { /* defaults */ }
 function hw3dNow() { return { t: playheadDisplay(audioTime()), playing: audioIsPlaying() }; }
 function hw3dRefresh(a, notes) {
   if (!hw3dOn || !window.Highway3D || !window.Highway3D.ready || !a) return;
@@ -8500,11 +8517,8 @@ async function setHw3d(on) {
   if (!on) { window.Highway3D.close(); return; }
   msg.hidden = true;
   try {
-    await window.Highway3D.open(wrap, hw3dNow);
-    window.Highway3D.setOptions({
-      numbers: document.getElementById('hw3dNumbers').checked,
-      tilt: Number(document.getElementById('hw3dTilt').value) / 100,
-    });
+    await window.Highway3D.open(wrap, hw3dNow, hw3dShowCamera);
+    window.Highway3D.setOptions({ numbers: document.getElementById('hw3dNumbers').checked, ...hw3dCamera() });
     hw3dLastSong = null;
     if (arrangements.length) showArr(currentArr);
   } catch (err) {
@@ -8516,7 +8530,17 @@ async function setHw3d(on) {
 }
 document.getElementById('show3d').addEventListener('change', e => setHw3d(e.target.checked));
 document.getElementById('hw3dNumbers').addEventListener('change', e => window.Highway3D?.setOptions({ numbers: e.target.checked }));
-document.getElementById('hw3dTilt').addEventListener('input', e => window.Highway3D?.setOptions({ tilt: Number(e.target.value) / 100 }));
+for (const [, id] of HW3D_CAMERA) {
+  document.getElementById(id).addEventListener('input', () => {
+    hw3dShowCamera({});
+    window.Highway3D?.setOptions(hw3dCamera());
+  });
+}
+document.getElementById('hw3dCamReset').addEventListener('click', () => {
+  const cam = window.Highway3D ? window.Highway3D.cameraDefault : { yaw: 0, pitch: 15, dist: 15 };
+  hw3dShowCamera(cam);
+  window.Highway3D?.setOptions(cam);
+});
 document.getElementById('hw3dFull').addEventListener('click', () => window.Highway3D?.fullscreen());
 
 // Live BPM readout: the tempo of the measure under the playhead, measured on the

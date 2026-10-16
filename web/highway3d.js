@@ -80,7 +80,18 @@
   let stage = null; // renderer, scene, camera and everything static
   let song = null; // the current notes and their live meshes
   let getNow = () => ({ t: 0, playing: false });
-  let options = { numbers: false, tilt: 0.45 };
+  // The camera turns around a point between the strings and the notes about to arrive: up to
+  // YAW_MAX degrees to either side, from level with the highway (0) to straight above it (90),
+  // nearer or further. The default is the view from before the camera could turn.
+  const CAMERA_DEFAULT = { yaw: 0, pitch: 15, dist: 15 };
+  const YAW_MAX = 120;
+  const PITCH_MAX = 90;
+  const DIST_MIN = 6;
+  const DIST_MAX = 40;
+  const PIVOT_Y = 2;
+  const PIVOT_Z = -4;
+  let options = { numbers: false, ...CAMERA_DEFAULT };
+  let onCamera = null; // told when the camera is turned on the canvas
   let raf = 0;
   let lastNow = null;
   let lastFrame = 0;
@@ -231,6 +242,43 @@
   }
 
   // --- Stage --------------------------------------------------------------------------------------
+  function clampCamera(o) {
+    const clamp = (v, lo, hi, d) => (Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d);
+    return {
+      yaw: clamp(o.yaw, -YAW_MAX, YAW_MAX, CAMERA_DEFAULT.yaw),
+      pitch: clamp(o.pitch, 0, PITCH_MAX, CAMERA_DEFAULT.pitch),
+      dist: clamp(o.dist, DIST_MIN, DIST_MAX, CAMERA_DEFAULT.dist),
+    };
+  }
+  function turnCamera(next) {
+    options = { ...options, ...clampCamera({ ...options, ...next }) };
+    if (onCamera) onCamera({ yaw: options.yaw, pitch: options.pitch, dist: options.dist });
+  }
+  // Drag to turn (sideways = around, up/down = from above or below), the wheel for the
+  // distance, a double click for the default view.
+  function wireCamera(el) {
+    el.title = T("Arrasta para rodar a câmara · roda do rato: distância · duplo clique: repor");
+    let drag = null;
+    el.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0) return;
+      drag = { x: e.clientX, y: e.clientY, yaw: options.yaw, pitch: options.pitch };
+      el.setPointerCapture(e.pointerId);
+      el.classList.add("turning");
+    });
+    el.addEventListener("pointermove", (e) => {
+      if (!drag) return;
+      turnCamera({ yaw: drag.yaw - (e.clientX - drag.x) * 0.4, pitch: drag.pitch + (e.clientY - drag.y) * 0.3 });
+    });
+    const end = () => { drag = null; el.classList.remove("turning"); };
+    el.addEventListener("pointerup", end);
+    el.addEventListener("pointercancel", end);
+    el.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      turnCamera({ dist: options.dist * Math.exp(e.deltaY * 0.001) });
+    }, { passive: false });
+    el.addEventListener("dblclick", () => turnCamera(CAMERA_DEFAULT));
+  }
+
   function createStage(host) {
     const r = resources();
     let renderer;
@@ -246,6 +294,7 @@
     renderer.toneMappingExposure = 1.05;
     renderer.domElement.className = "hw3d-canvas";
     host.prepend(renderer.domElement);
+    wireCamera(renderer.domElement);
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x06080d);
@@ -856,9 +905,11 @@
       stage.cameraX += (targetX - 0.4 - stage.cameraX) * (jumped ? 1 : Math.min(1, dt * 2.5));
       lastNow = now;
     }
-    const tilt = options.tilt;
-    stage.camera.position.set(stage.cameraX, 3.2 + tilt * 6, 11.5 - tilt * 2.5);
-    stage.camera.lookAt(stage.cameraX + 0.3, 0.05 + (1 - tilt) * 0.5, -10);
+    // Short of 90: straight down, "up" would be undefined and the view would spin.
+    const yaw = (options.yaw * Math.PI) / 180, pitch = (Math.min(options.pitch, 89.9) * Math.PI) / 180;
+    const px = stage.cameraX + 0.2, flat = options.dist * Math.cos(pitch);
+    stage.camera.position.set(px + flat * Math.sin(yaw), PIVOT_Y + options.dist * Math.sin(pitch), PIVOT_Z + flat * Math.cos(yaw));
+    stage.camera.lookAt(px, PIVOT_Y, PIVOT_Z);
     updateEffects(dt);
     lightFrets(now);
     stage.renderer.render(stage.scene, stage.camera);
@@ -866,9 +917,11 @@
 
   // --- Public -------------------------------------------------------------------------------------
   window.Highway3D = {
-    // Show the highway in `host`; getNow() answers {t, playing} in the notes' clock.
-    async open(host, now) {
+    // Show the highway in `host`; getNow() answers {t, playing} in the notes' clock;
+    // cameraChanged({yaw, pitch, dist}) hears when the camera is turned on the canvas.
+    async open(host, now, cameraChanged = null) {
       getNow = now;
+      onCamera = cameraChanged;
       await load();
       if (!stage || stage.host !== host) stage = createStage(host);
       if (!raf) { lastFrame = 0; raf = requestAnimationFrame(frame); }
@@ -892,8 +945,11 @@
       if (!stage) return;
       buildSong(data);
     },
+    get cameraDefault() { return { ...CAMERA_DEFAULT }; },
+    // numbers: the fret on the note; yaw/pitch (degrees) and dist: the camera.
     setOptions(next) {
       options = { ...options, ...next };
+      options = { ...options, ...clampCamera(options) };
       if (!stage) return;
       const show = (obj) => {
         obj.traverse((o) => { if (o.userData.number) o.visible = options.numbers; });

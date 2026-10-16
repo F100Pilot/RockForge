@@ -716,10 +716,16 @@ button.pv-loop-btn[aria-pressed="true"] { background:#2d2350; color:#e2d6ff; bor
 #tabwrap { margin-top:0; border-radius:14px; background:#121318; border-color:#262831; }
 .hw3d { position:relative; height:clamp(260px, 46vh, 560px); background:#06080d; border:1px solid #262831; border-radius:14px; overflow:hidden; margin-bottom:10px; }
 .hw3d:fullscreen { height:100%; border-radius:0; border:0; }
-.hw3d-canvas { display:block; width:100%; height:100%; }
+.hw3d-canvas { display:block; width:100%; height:100%; cursor:grab; touch-action:none; }
+.hw3d-canvas.turning { cursor:grabbing; }
 .hw3d-bar { position:absolute; top:8px; right:8px; display:flex; flex-wrap:wrap; gap:6px 12px; align-items:center; background:rgba(12,16,26,.82); border:1px solid rgba(150,170,210,.18); border-radius:8px; padding:5px 10px; font-size:12px; }
 .hw3d-tilt { display:flex; align-items:center; gap:6px; color:#8d97ad; }
-.hw3d-tilt input { width:90px; }
+.hw3d-tilt { justify-content:space-between; }
+.hw3d-tilt input { width:120px; }
+.hw3d-cam { position:relative; color:#c9d1e3; }
+.hw3d-cam summary { cursor:pointer; user-select:none; }
+.hw3d-cam-body { position:absolute; right:-10px; top:calc(100% + 10px); z-index:2; display:grid; gap:8px; width:230px; background:rgba(12,16,26,.94); border:1px solid rgba(150,170,210,.18); border-radius:8px; padding:10px; }
+.hw3d-cam-hint { margin:0; color:#8d97ad; font-size:11px; line-height:1.35; }
 .hw3d-msg { position:absolute; inset:0; display:grid; place-items:center; margin:0; padding:16px; text-align:center; color:#8d97ad; }
 #fretboardWrap { overflow-x:auto; background:#121318; border:1px solid #262831; border-radius:14px; text-align:center; }
 .pv-status { display:flex; align-items:center; gap:.5rem .9rem; flex-wrap:wrap; font-size:.85rem; color:var(--muted); }
@@ -1084,7 +1090,16 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
           <div id="hw3dWrap" class="hw3d" hidden>
             <div class="hw3d-bar">
               <label class="check"><input type="checkbox" id="hw3dNumbers"> Traste na nota</label>
-              <label class="hw3d-tilt">Câmara <input type="range" id="hw3dTilt" min="0" max="100" value="45"></label>
+              <details class="hw3d-cam">
+                <summary>Câmara</summary>
+                <div class="hw3d-cam-body">
+                  <label class="hw3d-tilt">Horizontal <input type="range" id="hw3dYaw" min="-120" max="120" step="1" value="0"></label>
+                  <label class="hw3d-tilt">Vertical <input type="range" id="hw3dPitch" min="0" max="90" step="1" value="15"></label>
+                  <label class="hw3d-tilt">Distância <input type="range" id="hw3dDist" min="6" max="40" step="0.5" value="15"></label>
+                  <button type="button" id="hw3dCamReset" class="secondary">Repor câmara</button>
+                  <p class="hw3d-cam-hint">Arrasta para rodar a câmara · roda do rato: distância · duplo clique: repor</p>
+                </div>
+              </details>
               <button type="button" id="hw3dFull" class="secondary">Ecrã inteiro</button>
               <button class="info-btn" type="button" data-info="highway-3d">ⓘ</button>
             </div>

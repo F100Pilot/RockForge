@@ -6,6 +6,11 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### New
+- **3D highway with a free camera:** drag to turn the view up to 120° either way and from level
+  with the highway (0°) to a view from above (90°); the mouse wheel moves closer or further and a
+  double-click resets. The same axes are under "Camera", and the view is remembered.
+
 ## [0.10.0 beta 9] — 2026-10-16
 
 ### New

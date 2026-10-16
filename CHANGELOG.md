@@ -6,6 +6,11 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Novo
+- **Pista 3D com câmara livre:** arrasta para rodar a vista até 120° para cada lado e de rente à
+  pista (0°) até vista de cima (90°); a roda do rato aproxima ou afasta e um duplo clique repõe.
+  Os mesmos eixos estão em "Câmara", e a vista fica guardada.
+
 ## [0.10.0 beta 9] — 2026-10-16
 
 ### Novo

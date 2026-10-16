@@ -207,7 +207,10 @@ queres recuperar. Ficam pendentes como antes; Desfazer volta à versão constru�
   têm número; um compasso a âmbar tem o andamento alterado pelas tuas correções.
 - **pré-visualizar** toca só as notas da pista, sem a gravação.
 - **Braço** mostra o braço da guitarra; **Pista 3D** mostra as notas a descer como no
-  Rocksmith (segue também as correções ainda por aplicar). **− / + / Repor**: zoom.
+  Rocksmith (segue também as correções ainda por aplicar). Na pista 3D, arrasta para rodar a
+  câmara (até 120° para cada lado, de rente à pista até vista de cima), a roda do rato aproxima
+  ou afasta e um duplo clique repõe; **Câmara** tem os mesmos eixos em controlos deslizantes.
+  **− / + / Repor**: zoom.
 - **Inspetor (à direita):** **Sincronização**, **Secções** e **Letra**.
 
 ## 6. Sincronizar as notas com a gravação

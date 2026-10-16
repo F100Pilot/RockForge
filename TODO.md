@@ -9,6 +9,10 @@ ver `TESTING.md`.
 Acumula-se aqui o que os utilizadores pedem; quando houver o suficiente, faz-se
 tudo de uma vez e um novo bump de versão.
 
+- [x] **Pista 3D com mais mobilidade** (2026-10-16: "em todos os eixos até um
+  máximo de 1220 graus horizontalmente e verticalmente de 0 a 90 graus" — lido
+  como 120° para cada lado): arrastar roda, roda do rato afasta, duplo clique
+  repõe; "Câmara ▾" com os três eixos; guardada no browser.
 - [ ] **Juntar duas pistas numa só, com as duas linhas de tempo à vista**
   (Facebook, 2026-10-16: "have both lead and rhythm timelines available one on
   top of each other, these songsterr tabs are a bit of a mess and they have

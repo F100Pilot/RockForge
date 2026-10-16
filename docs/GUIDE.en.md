@@ -209,7 +209,9 @@ They stay pending as before; Undo goes back to the built version.
   Bars are numbered; an amber bar has its tempo changed by your corrections.
 - **preview** plays only the track's notes, without the recording.
 - **Fretboard** shows the guitar neck; **3D highway** shows the notes coming down as in Rocksmith (it
-  follows pending corrections too). **− / + / Reset**: zoom.
+  follows pending corrections too). On the 3D highway, drag to turn the camera (up to 120° either
+  way, from level with the highway to a view from above), the mouse wheel moves closer or further
+  and a double-click resets; **Camera** has the same axes as sliders. **− / + / Reset**: zoom.
 - **Inspector (on the right):** **Sync**, **Sections** and **Lyrics**.
 
 ## 6. Syncing the notes to the recording
