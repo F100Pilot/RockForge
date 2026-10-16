@@ -29,6 +29,10 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
   writes to the registry, and when there is a Wwise it cannot use it says which and why — the
   Audiokinetic Launcher installs the newest version (2024/2025) by default, and only 2019–2023
   converts the audio (as in DLC Builder). Before, it only said “ROCKFORGE_WWISE_ROOT is not set”.
+- **Short notes without a sustain tail**: every eighth and sixteenth went out with its Guitar Pro
+  length as a sustain, so the game drew a tail behind every note of a riff. Now, as in hand-made
+  charts, only a note of a beat or longer is sustained, unless the tail is needed (a slide, a
+  linked note, a bend, vibrato, let ring, tremolo, a trill).
 - **Voltas (1st/2nd time) on the return after a D.C./D.S.**: repeats were already not taken on
   that return, but the 1st ending was played again before the 2nd. It now follows the usual
   convention — no repeats, the last ending only — and, since a Guitar Pro file does not say which

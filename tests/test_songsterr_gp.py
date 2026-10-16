@@ -64,7 +64,8 @@ def test_the_tab_reads_back_note_for_note(tmp_path: Path) -> None:
         (2.333, 3, 2), (2.5, 2, 2),
         (4.0, 1, 0),            # bar 3 at 60 BPM starts after 2 bars at 120
     ]
-    assert round(notes[3].sustain, 3) == 0.333
+    # Held over two triplet eighths: still 2/3 of a beat, so charted with no tail.
+    assert notes[3].sustain == 0.0
     assert round(notes[-1].sustain, 3) == 4.0  # a whole note at 60 BPM
     assert report.notes == 8 and report.grace_dropped == 1
 

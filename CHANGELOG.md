@@ -31,6 +31,11 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
   o Audiokinetic Launcher instala por omissão a versão mais recente (2024/2025), e só o 2019–2023
   converte o áudio (como no DLC Builder). Antes dizia só «ROCKFORGE_WWISE_ROOT não está
   definido».
+- **Notas curtas sem rasto de sustentação**: cada colcheia e semicolcheia saía com a duração
+  escrita no Guitar Pro como sustentação, por isso o jogo desenhava um rasto atrás de todas as
+  notas de um riff. Agora, como nos charts feitos à mão, só uma nota de um tempo ou mais tem
+  sustentação, a não ser que o rasto faça falta (slide, nota ligada, bend, vibrato, let ring,
+  tremolo, trilo).
 - **As casas (1.ª/2.ª vez) no regresso de um D.C./D.S.**: as repetições já não se repetiam nesse
   regresso, mas a 1.ª casa tocava outra vez antes da 2.ª. Agora segue a convenção habitual — sem
   repetições e só a última casa — e, como um ficheiro Guitar Pro não diz qual se pretende, o

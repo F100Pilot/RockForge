@@ -32,6 +32,7 @@ from rockforge.domain.music import (
     TempoMap,
     Tuning,
     apply_sustain_gap,
+    drop_short_sustains,
     expand_slide_ins,
     expand_trills,
     extend_through_tie,
@@ -636,6 +637,7 @@ def parse_gp_track(
     # Trim sustains so they end a small gap before the next note on the string,
     # instead of running right into it (done after slideTo is filled so pitched
     # slides keep their reach).
+    notes = drop_short_sustains(notes, [b.time for b in beats_grid])  # a held note only
     notes = apply_sustain_gap(notes)
     notes = expand_trills(notes)  # trills → alternating HO/PO runs (kept tight)
     notes.sort(key=lambda n: (n.time, n.string))

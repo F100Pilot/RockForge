@@ -513,6 +513,22 @@ re-inverting the dependency.
    `test_tied_note_extends_previous_not_new_attack` (GP5) and
    `test_gp7_tied_note_extends_not_duplicates` (GP7).
 
+   **Only a HELD note gets a sustain** (`music.drop_short_sustains`, both
+   parsers, before `apply_sustain_gap`): "every single note looks extended
+   when they aren't" (a user's video, 2026-10-16) — every Guitar Pro note has
+   a length, and writing each sixteenth/eighth's notated length as a sustain
+   drew a tail on every note of a riff. A note shorter than `SUSTAIN_MIN_BEATS`
+   (0.95) of the grid's beat around it is charted with sustain 0, unless its
+   sustain carries something the game draws (`_needs_its_sustain`: a slide or
+   unpitched slide, a link, a trill, a bend, vibrato, let ring, tremolo).
+   Measured on the two hand-made Daughtry CDLC (seven charts, ~3500 notes at
+   full difficulty): notes a sixteenth apart carry a sustain 4 % of the time,
+   an eighth 8 %, a quarter 64 %, longer nearly always. A sustain set in the
+   note editor is applied after, so it still wins. Guarded by
+   `test_short_sustains.py` (each keep rule, the grid's own beat, a GP5 and a
+   GP7 riff — mutation-checked); the user's file ("Behind", Kills Birds) went
+   from every note sustained to 16/24/47 held notes on its three charts.
+
 ### The Bass arrangement (`ArrangementKind.BASS`)
 
 "Implementa a faixa de bass" (2026-10-15). A fifth slot beside Lead/Rhythm/

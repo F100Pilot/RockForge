@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import bisect
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
@@ -402,6 +403,51 @@ def high_density_flags(
         if cur[0].time - prev[0].time <= max_gap and _chord_shape(prev) == _chord_shape(cur):
             flags[i] = True
     return flags
+
+
+# A note shorter than this many beats is charted with no sustain. Measured on
+# hand-made CDLC (two community songs, seven charts, ~3500 notes at full
+# difficulty): notes a sixteenth apart carry a sustain 4 % of the time, an
+# eighth 8 %, a quarter 64 %, anything longer nearly always. Writing every
+# eighth's notated length as a sustain drew a tail on every note of a riff.
+SUSTAIN_MIN_BEATS = 0.95
+
+
+def _needs_its_sustain(n: TabNote) -> bool:
+    """A short note whose sustain carries something the game draws: a slide's
+    reach, a link, a bend curve, vibrato, a ringing note, tremolo or a trill."""
+    return (
+        n.slide_to_fret is not None
+        or n.slide_unpitch_to is not None
+        or n.link_next
+        or n.trill_fret is not None
+        or n.bend_semitones != 0
+        or bool(n.techniques & {Technique.BEND, Technique.VIBRATO,
+                                Technique.LET_RING, Technique.TREMOLO})
+    )
+
+
+def drop_short_sustains(
+    notes: Sequence[TabNote], beat_times: Sequence[float],
+    min_beats: float = SUSTAIN_MIN_BEATS,
+) -> list[TabNote]:
+    """Clear the sustain of every note shorter than ``min_beats`` beats of the
+    grid around it, as hand-made charts do: a Guitar Pro note always has a
+    length, but in Rocksmith a sustain is a held note, drawn as a tail.
+
+    ``notes`` must still carry their NOTATED length (before ``apply_sustain_gap``).
+    Notes that need their sustain (``_needs_its_sustain``) keep it."""
+    times = sorted(beat_times)
+    if len(times) < 2:
+        return list(notes)
+    result = []
+    for n in notes:
+        j = max(0, min(bisect.bisect_right(times, n.time) - 1, len(times) - 2))
+        beat = times[j + 1] - times[j]
+        if 0 < n.sustain < min_beats * beat and not _needs_its_sustain(n):
+            n = replace(n, sustain=0.0)
+        result.append(n)
+    return result
 
 
 def apply_sustain_gap(
