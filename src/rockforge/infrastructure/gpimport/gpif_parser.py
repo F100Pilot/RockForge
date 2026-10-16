@@ -56,6 +56,8 @@ from rockforge.infrastructure.gpimport.playback import (
     GPIF_JUMPS,
     GPIF_TARGETS,
     BarFlow,
+    jump_convention_warning,
+    jump_skips_repeats,
     playback_order,
 )
 from rockforge.infrastructure.gpimport.strings import (
@@ -652,7 +654,8 @@ def parse_gpif_track(
     written_durations = _master_bar_durations(written_bars)
     # The bars as PLAYED (repeats, voltas, D.C./D.S./Coda/Fine unrolled, in
     # alphaTab's order): from here on, bar N is the N-th bar heard.
-    played = playback_order([_bar_flow(mb) for mb in written_bars])
+    written_flows = [_bar_flow(mb) for mb in written_bars]
+    played = playback_order(written_flows)
     master_bars = [written_bars[b] for b in played]
     durations = [written_durations[b] for b in played]
     bar_start_ticks: list[int] = []
@@ -794,6 +797,8 @@ def parse_gpif_track(
             break
 
     warnings: list[str] = []
+    if jump_skips_repeats(written_flows):
+        warnings.append(jump_convention_warning())
     if bar_times:
         warnings.extend(bar_times_warnings(len(bar_start_ticks), len(bar_times), sync_skipped))
     elif sync:

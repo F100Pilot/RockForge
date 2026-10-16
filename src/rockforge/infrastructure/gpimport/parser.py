@@ -37,7 +37,13 @@ from rockforge.domain.music import (
     extend_through_tie,
     is_composite_bend,
 )
-from rockforge.infrastructure.gpimport.playback import GP5_DIRECTIONS, BarFlow, playback_order
+from rockforge.infrastructure.gpimport.playback import (
+    GP5_DIRECTIONS,
+    BarFlow,
+    jump_convention_warning,
+    jump_skips_repeats,
+    playback_order,
+)
 from rockforge.infrastructure.gpimport.strings import (
     apply_capo,
     check_track_strings,
@@ -425,7 +431,9 @@ def parse_gp_track(
 
     if _is_gpif(path):
         return parse_gpif_track(path, track_index, offset_s, tempo_scale, bar_times, bass=bass)
-    song = _as_played(_load(path))
+    written = _load(path)
+    jump_convention = jump_skips_repeats(_bar_flows(written))
+    song = _as_played(written)
     if not 0 <= track_index < len(song.tracks):
         raise IngestionError(f"track index {track_index} out of range")
     track = song.tracks[track_index]
@@ -663,6 +671,8 @@ def parse_gp_track(
     lyric_notes = _lyric_notes(song, t) if lyrics else None
 
     warnings: list[str] = []
+    if jump_convention:
+        warnings.append(jump_convention_warning())
     if bar_times:
         warnings.extend(bar_times_warnings(len(bar_ticks), len(bar_times), bar_skipped))
     if dropped_out_of_range:

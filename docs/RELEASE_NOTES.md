@@ -23,8 +23,9 @@ bar moved to where its notes sound, the tempo allowed to change over the song; i
 corrections one Ctrl+Z undoes, and lists the bars to check by ear. It can get it wrong: tested on
 synthetic recordings, not yet on real songs — tell us how it goes. Also: an **icon** of its own;
 **no mode selected** when a project opens; **no black flash** of console windows in the `.exe`;
-and **Wwise** found wherever it is installed, with a clear word when the version found cannot be
-used.
+**Wwise** found wherever it is installed, with a clear word when the version found cannot be
+used; and on the return after a D.C./D.S., only the **last ending** is played (no repeats), with a
+warning saying that convention was assumed.
 
 What changed: [CHANGELOG.en.md](https://github.com/F100Pilot/RockForge/blob/main/CHANGELOG.en.md).
 User guide: [GUIDE.en.md](https://github.com/F100Pilot/RockForge/blob/main/docs/GUIDE.en.md).
@@ -42,8 +43,9 @@ PDF) e uma gravação num CDLC do Rocksmith 2014. Descarrega o **`…-Setup.exe`
 depois na página inicial. Para um `.psarc` jogável continua a ser preciso o **Wwise** (o 2023.1 — o
 2024/2025 não serve). Nesta beta: **«Sincronizar automaticamente» (experimental)**, que analisa a
 gravação e encaixa cada compasso nas notas que se ouvem, com o andamento a variar; ícone próprio;
-nenhum modo selecionado ao abrir um projeto; sem o ecrã preto a piscar no `.exe`; e o Wwise
-encontrado em qualquer disco. É uma **beta**: diz-nos o que falhar nas
+nenhum modo selecionado ao abrir um projeto; sem o ecrã preto a piscar no `.exe`; o Wwise
+encontrado em qualquer disco; e, no regresso de um D.C./D.S., só a última casa (com um aviso a
+dizer que convenção foi assumida). É uma **beta**: diz-nos o que falhar nas
 [Issues](https://github.com/F100Pilot/RockForge/issues). Novidades:
 [CHANGELOG.md](https://github.com/F100Pilot/RockForge/blob/main/CHANGELOG.md) · guia:
 [GUIA.md](https://github.com/F100Pilot/RockForge/blob/main/docs/GUIA.md).

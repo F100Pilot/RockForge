@@ -20,12 +20,23 @@ This is a port of alphaTab's playback order — ``Score._addMasterBarToRepeatGro
 ``MidiPlaybackController`` (repeats, voltas as a bitmask of passes, and the
 direction jumps) — so a chart plays its bars in the same order alphaTab does.
 Bars are 0-based here.
+
+One departure, on the return after a D.C./D.S.: alphaTab takes no repeats there
+but plays every volta, so a 1st-time bar sounds again before the 2nd-time one.
+The usual convention (Gould, *Behind Bars*) is that on the return the repeats
+are not taken and only the LAST ending is played, and that is what this does.
+Neither Guitar Pro format records a "play repeats after the jump" choice (no
+field for it in GP3-5 nor in GPIF's ``<Directions>``), so nothing in the file
+can say otherwise; ``jump_skips_repeats`` tells the parsers when the convention
+changed what is heard, so they can say which one was assumed.
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+
+from rockforge.i18n import tr
 
 # alphaTab's Direction names (model/Direction.ts).
 TARGET_FINE = "TargetFine"
@@ -80,6 +91,20 @@ GPIF_JUMPS = {
     "DaCoda": "JumpDaCoda",
     "DaDoubleCoda": "JumpDaDoubleCoda",
 }
+
+def jump_convention_warning() -> str:
+    """What the parsers say when ``jump_skips_repeats`` is true."""
+    return tr(
+        "Depois do D.C./D.S., as repetições não voltam a ser tocadas e só se toca a "
+        "última casa (a convenção habitual; o ficheiro Guitar Pro não diz qual se "
+        "pretende). Se a gravação repete a secção nesse regresso, os compassos "
+        "daí em diante ficam desencontrados.",
+        "After the D.C./D.S., repeats are not taken again and only the last ending "
+        "is played (the usual convention; a Guitar Pro file does not say which is "
+        "meant). If the recording repeats the section on that return, the bars "
+        "from there on will not line up.",
+    )
+
 
 # A malformed score must not unroll forever (alphaTab bounds its loops too).
 MAX_PLAYED_PER_BAR = 64
@@ -161,9 +186,28 @@ def _repeat_groups(bars: Sequence[BarFlow]) -> list[_Group]:
 
 
 def playback_order(bars: Sequence[BarFlow]) -> list[int]:
-    """Indexes of ``bars`` in the order they are played (alphaTab's)."""
+    """Indexes of ``bars`` in the order they are played (alphaTab's, but the
+    last ending only on the return after a jump — see the module docstring)."""
+    return _unroll(bars)[0]
+
+
+def jump_skips_repeats(bars: Sequence[BarFlow]) -> bool:
+    """Whether a D.C./D.S. returns through a repeat or a volta, i.e. whether the
+    "no repeats after the jump, last ending only" convention changed the bars
+    heard (the file cannot say which was meant)."""
+    return _unroll(bars)[1]
+
+
+def _unroll(bars: Sequence[BarFlow]) -> tuple[list[int], bool]:
     n = len(bars)
     group_of = _repeat_groups(bars)
+    last_ending: dict[int, int] = {}  # the group's highest volta bit = its last pass
+    for bar, group in zip(bars, group_of, strict=True):
+        if bar.alternate_endings:
+            last_ending[id(group)] = max(last_ending.get(id(group), 0),
+                                         1 << (bar.alternate_endings.bit_length() - 1))
+    convention = False
+    jumped_endings = 0
     stack: list[_Repeat] = []
     on_stack: set[int] = set()
     previous_endings = 0
@@ -195,6 +239,19 @@ def playback_order(bars: Sequence[BarFlow]) -> list[int]:
                 iteration = repeat.iterations[repeat.closing]
                 previous_endings = endings
                 should_play = bool(endings & (1 << iteration))
+        else:
+            # The return after a jump: no repeats (moveNext below) and the last
+            # ending only. A bar after a volta bar without one of its own is
+            # still inside that ending, as in the normal pass.
+            if group.opening == index:
+                jumped_endings = 0
+            endings = bar.alternate_endings or jumped_endings
+            jumped_endings = endings
+            last = last_ending.get(id(group), 0)
+            if bar.repeat_count > 1 or (endings and last):
+                convention = True
+            if endings and last and not endings & last:
+                should_play = False
         if should_play:
             played.append(index)
 
@@ -211,7 +268,7 @@ def playback_order(bars: Sequence[BarFlow]) -> list[int]:
                 index, state = 0, _DA_CAPO[jump]
                 stack.clear()
                 on_stack.clear()
-                previous_endings = 0
+                previous_endings = jumped_endings = 0
                 continue
             jumped = False
             for name, (new_state, segno_name) in _DAL_SEGNO.items():
@@ -222,7 +279,7 @@ def playback_order(bars: Sequence[BarFlow]) -> list[int]:
                     index, state = segno, new_state
                     stack.clear()
                     on_stack.clear()
-                    previous_endings = 0
+                    previous_endings = jumped_endings = 0
                     jumped = True
                     break
             if jumped:
@@ -263,4 +320,4 @@ def playback_order(bars: Sequence[BarFlow]) -> list[int]:
                 index += 1
         else:
             index += 1
-    return played
+    return played, convention

@@ -31,6 +31,10 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
   o Audiokinetic Launcher instala por omissão a versão mais recente (2024/2025), e só o 2019–2023
   converte o áudio (como no DLC Builder). Antes dizia só «ROCKFORGE_WWISE_ROOT não está
   definido».
+- **As casas (1.ª/2.ª vez) no regresso de um D.C./D.S.**: as repetições já não se repetiam nesse
+  regresso, mas a 1.ª casa tocava outra vez antes da 2.ª. Agora segue a convenção habitual — sem
+  repetições e só a última casa — e, como um ficheiro Guitar Pro não diz qual se pretende, o
+  aviso do projeto diz que foi essa a assumida.
 
 ## [0.10.0 beta 6] — 2026-10-15
 

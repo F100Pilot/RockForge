@@ -132,7 +132,19 @@ re-inverting the dependency.
    lay the bars out as PLAYED (`gpimport/playback.py`, a port of alphaTab's
    repeat groups and `MidiPlaybackController`: `|: :|` with counts, nested
    repeats and multiple closings, voltas as a bitmask of passes, D.C./D.S./al
-   Coda/al Fine/Da Coda). Bar N of the chart — beat grid, sections, per-bar
+   Coda/al Fine/Da Coda). **One departure from alphaTab, on the return after a
+   D.C./D.S.**: alphaTab takes no repeats there but plays EVERY volta (a 1st-time
+   bar sounds again before the 2nd); the usual convention (Gould, *Behind Bars*)
+   is no repeats and the LAST ending only, and that is what is played (a bar
+   after a volta bar without one of its own stays in that ending). Neither GP
+   format records a "repeats after the jump" choice (no field in GP3-5, nothing
+   in GPIF's `<Directions>`), so when the convention changes what is heard
+   (`jump_skips_repeats`: the return passes a repeat end or a volta) both parsers
+   add a warning saying which convention was assumed (user feedback, 2026-10-16).
+   Guarded by `test_after_a_jump_no_repeats_and_only_the_last_ending`,
+   `test_a_jump_that_returns_through_no_repeat_needs_no_convention` and
+   `test_gp5/7_says_which_convention_it_assumed_after_a_jump` (mutation-checked).
+   Bar N of the chart — beat grid, sections, per-bar
    times (Songsterr's are per played bar), tempo corrections — is the N-th bar
    HEARD; a tempo automation applies on every pass of its written bar; a lyric
    line starts again on every pass of the bar it starts on. `tempo_writer` maps

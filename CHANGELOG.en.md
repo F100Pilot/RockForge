@@ -29,6 +29,10 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
   writes to the registry, and when there is a Wwise it cannot use it says which and why — the
   Audiokinetic Launcher installs the newest version (2024/2025) by default, and only 2019–2023
   converts the audio (as in DLC Builder). Before, it only said “ROCKFORGE_WWISE_ROOT is not set”.
+- **Voltas (1st/2nd time) on the return after a D.C./D.S.**: repeats were already not taken on
+  that return, but the 1st ending was played again before the 2nd. It now follows the usual
+  convention — no repeats, the last ending only — and, since a Guitar Pro file does not say which
+  is meant, the project's warnings say that this is the one assumed.
 
 ## [0.10.0 beta 6] — 2026-10-15
 

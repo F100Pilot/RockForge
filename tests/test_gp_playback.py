@@ -2,7 +2,9 @@
 
 The expected orders are what alphaTab 1.8.4's MidiFileGenerator plays for the
 same bars (checked against it for every case below, and for alphaTab's own
-test-data/guitarpro5/directions.gp5).
+test-data/guitarpro5/directions.gp5), except on the return after a D.C./D.S.,
+where alphaTab plays every volta and the usual convention — no repeats, the last
+ending only — is followed instead (``test_after_a_jump_*``).
 """
 
 from __future__ import annotations
@@ -16,7 +18,11 @@ import pytest
 from rockforge.domain.errors import IngestionError
 from rockforge.infrastructure.gpexport.tempo_writer import TempoCorrection, write_tempo_corrections
 from rockforge.infrastructure.gpimport.parser import parse_gp_track
-from rockforge.infrastructure.gpimport.playback import BarFlow, playback_order
+from rockforge.infrastructure.gpimport.playback import (
+    BarFlow,
+    jump_skips_repeats,
+    playback_order,
+)
 
 START = BarFlow(repeat_start=True)
 
@@ -45,14 +51,51 @@ A_B_A_C = [(0.0, 0), (2.0, 1), (4.0, 0), (6.0, 2)]  # (time, fret): |: A [1. B :
         ([_flow(), _to("TargetFine"), _to("JumpDaCapoAlFine"), _flow()], [0, 1, 2, 0, 1]),
         ([_flow(), _to("TargetSegno"), _to("JumpDaCoda"), _to("JumpDalSegnoAlCoda"),
           _to("TargetCoda"), _flow(), _flow()], [0, 1, 2, 3, 1, 2, 4, 5, 6]),
-        ([_flow(2, 0, True), _to("JumpDaCapo"), _flow()], [0, 0, 1, 0, 1, 2]),
-        ([_to("TargetSegno", start=True), _flow(2, 1), _flow(0, 2), _to("JumpDalSegno"),
-          _flow(), _flow()], [0, 1, 0, 2, 3, 0, 1, 2, 3, 4, 5]),  # after a jump: no repeats
         ([_flow(), _flow()], [0, 1]),
     ],
 )
 def test_playback_order_is_alphatabs(bars: list[BarFlow], expected: list[int]) -> None:
     assert playback_order(bars) == expected
+    assert not jump_skips_repeats(bars)
+
+
+@pytest.mark.parametrize(
+    ("bars", "expected"),
+    [
+        # |: A [1. B :| [2. C  D.S. — back at A, the 1st ending is skipped (alphaTab
+        # played B there too).
+        ([_to("TargetSegno", start=True), _flow(2, 1), _flow(0, 2), _to("JumpDalSegno"),
+          _flow(), _flow()], [0, 1, 0, 2, 3, 0, 2, 3, 4, 5]),
+        # Two closings: bar 0 is played once on the return.
+        ([_flow(2, 0, True), _to("JumpDaCapo"), _flow()], [0, 0, 1, 0, 1, 2]),
+        # A repeat played three times is played ONCE on the return after a D.C.
+        ([START, _flow(3), _to("JumpDaCapo"), _flow()], [0, 1, 0, 1, 0, 1, 2, 0, 1, 2, 3]),
+        # 1.-2. / 3.: only the 3rd ending on the return.
+        ([START, _flow(3, 3), _flow(0, 4), _to("JumpDaCapo")],
+         [0, 1, 0, 1, 0, 2, 3, 0, 2, 3]),
+        # A two-bar 1st ending marked on its first bar only: both of its bars go.
+        ([START, _flow(0, 1), _flow(2), _flow(0, 2), _to("JumpDaCapo")],
+         [0, 1, 2, 0, 3, 4, 0, 3, 4]),
+        # D.C. al Coda through the voltas, then the coda.
+        ([START, _flow(2, 1), _flow(0, 2, False, "JumpDaCoda"), _to("JumpDaCapoAlCoda"),
+          _to("TargetCoda")], [0, 1, 0, 2, 3, 0, 2, 4]),
+    ],
+)
+def test_after_a_jump_no_repeats_and_only_the_last_ending(
+    bars: list[BarFlow], expected: list[int]
+) -> None:
+    assert playback_order(bars) == expected
+    assert jump_skips_repeats(bars)
+
+
+def test_a_jump_that_returns_through_no_repeat_needs_no_convention() -> None:
+    """A D.C. over plain bars, or one placed before the repeat it never reaches
+    again, plays the same under any convention — nothing to warn about."""
+    assert not jump_skips_repeats([_flow(), _to("JumpDaCapo"), _flow()])
+    fine_before_the_repeat = [_flow(), _to("TargetFine"), START, _flow(2),
+                              _to("JumpDaCapoAlFine")]
+    assert playback_order(fine_before_the_repeat) == [0, 1, 2, 3, 2, 3, 4, 0, 1]
+    assert not jump_skips_repeats(fine_before_the_repeat)
 
 
 def test_a_repeat_forever_is_bounded() -> None:
@@ -101,6 +144,21 @@ def test_gp5_da_capo_al_fine(tmp_path: Path) -> None:
         2: {"fromDirection": gp.DirectionSign("Da Capo al Fine")},
     })
     assert [n.fret for n in parse_gp_track(path, 0).notes] == [0, 1, 2, 0, 1]
+
+
+def test_gp5_says_which_convention_it_assumed_after_a_jump(tmp_path: Path) -> None:
+    """|: A [1. B :| [2. C, then D.C. — the return plays A C D; the warning says so."""
+    path = _gp5(tmp_path, 4, {
+        0: {"isRepeatOpen": True},
+        1: {"repeatAlternative": 1, "repeatClose": 1},
+        2: {"repeatAlternative": 2},
+        3: {"fromDirection": gp.DirectionSign("Da Capo")},
+    })
+    parsed = parse_gp_track(path, 0)
+    assert [n.fret for n in parsed.notes] == [0, 1, 0, 2, 3, 0, 2, 3]
+    assert any("D.C./D.S." in w for w in parsed.warnings)
+    plain = _gp5(tmp_path, 3, {0: {"isRepeatOpen": True}, 1: {"repeatClose": 1}})
+    assert not any("D.C./D.S." in w for w in parse_gp_track(plain, 0).warnings)
 
 
 def test_gp5_a_lyric_line_starts_again_on_every_pass(tmp_path: Path) -> None:
@@ -177,6 +235,22 @@ def _sync_point(bar: int, occurrence: int, seconds: float) -> str:
 def test_gp7_repeats_and_voltas_are_played(tmp_path: Path) -> None:
     parsed = parse_gp_track(_gp7(tmp_path), 0)
     assert [(round(n.time, 3), n.fret) for n in parsed.notes] == A_B_A_C
+
+
+def test_gp7_says_which_convention_it_assumed_after_a_jump(tmp_path: Path) -> None:
+    path = tmp_path / "jump.gp"
+    gpif = _GPIF.format(sync="").replace(
+        "<AlternateEndings>2</AlternateEndings></MasterBar>",
+        "<AlternateEndings>2</AlternateEndings>"
+        "<Directions><Jump>DaCapo</Jump></Directions></MasterBar>",
+    )
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("VERSION", "7.0")
+        z.writestr("Content/score.gpif", gpif)
+    parsed = parse_gp_track(path, 0)
+    assert [n.fret for n in parsed.notes] == [0, 1, 0, 2, 0, 2]
+    assert any("D.C./D.S." in w for w in parsed.warnings)
+    assert not any("D.C./D.S." in w for w in parse_gp_track(_gp7(tmp_path), 0).warnings)
 
 
 def test_gp8_sync_point_on_a_second_pass_is_used(tmp_path: Path) -> None:
