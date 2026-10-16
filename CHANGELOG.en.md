@@ -10,6 +10,11 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 - **The “A new version is out” notice arrives sooner**: the app asks GitHub at most once an hour
   (it was once a day), and a page left open asks again every hour.
 
+### Fixed
+- **A cover from your computer when creating the project**: step 4 of “New project” only offered
+  a result of the online search or “No cover”. It now also takes a JPEG or PNG image from your
+  computer, which goes into the first build (before, only on the Cover page, after creating).
+
 ## [0.10.0 beta 7] — 2026-10-15
 
 ### New

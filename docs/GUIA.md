@@ -145,12 +145,13 @@ soar a altura real. Um baixo de 6 cordas faz-se como guitarra.
 - **Título, Banda, Álbum, Ano.** Vêm do ficheiro ou das etiquetas do áudio quando existem.
 - **Álbum, ano e capa → Procurar online**: lista resultados do iTunes e do MusicBrainz;
   escolhe o certo (ou "Sem capa"). Fan remixes e versões feitas por IA raramente lá estão.
+  Também podes escolher uma imagem do teu computador (JPEG ou PNG), logo por baixo.
 - **Letra sincronizada → Procurar letra online** (LRCLIB): escolhe uma letra com tempos, ou
   nenhuma. Se o ficheiro GP já trouxer letra, nada é escolhido sozinho. Também podes carregar um
   ficheiro **LRC** ou **UltraStar TXT** (tem sempre prioridade).
 - **Importar palm mute / slap / pop / tap**: desliga se não quiseres essas técnicas no chart.
 
-**Criar CDLC** cria o projeto e começa a construção. Os tons e a capa podem ficar para depois.
+**Criar CDLC** cria o projeto e começa a construção. Os tons podem ficar para depois.
 
 ## 5. A página do projeto
 

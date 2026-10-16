@@ -10,6 +10,11 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 - **O aviso «Há uma versão nova» chega mais depressa**: a app pergunta ao GitHub no máximo uma vez
   por hora (era uma vez por dia), e uma página que fica aberta volta a perguntar de hora a hora.
 
+### Corrigido
+- **Uma capa do teu computador logo ao criar o projeto**: o passo 4 do «Novo projeto» só deixava
+  escolher um resultado da pesquisa online ou «Sem capa». Agora também aceita uma imagem JPEG ou
+  PNG do computador, que vai na primeira construção (antes, só na página Capa, depois de criar).
+
 ## [0.10.0 beta 7] — 2026-10-15
 
 ### Novo

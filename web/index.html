@@ -1890,7 +1890,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
       <div class="wizard-pane wz-pane" data-step="4">
         <div>
           <h1 class="pv-page-title">Detalhes</h1>
-          <p class="set-desc">Os <b>tons</b> e a <b>capa</b> definem-se depois de criar — a lista "Antes de usar", na página Exportar, avisa-te do que falta.</p>
+          <p class="set-desc">Os <b>tons</b> definem-se depois de criar — a lista "Antes de usar", na página Exportar, avisa-te do que falta.</p>
         </div>
         <div class="pv-card pv-card-lg">
           <div class="wz-grid">
@@ -1912,6 +1912,9 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
           </div>
           <div id="wzAlbumResults" class="album-grid"></div>
           <input type="hidden" name="cover_url" id="wzCoverUrl">
+          <div class="field"><label>Ou uma imagem do teu computador (JPEG ou PNG)</label>
+            <div class="file-drop"><div class="file-drop-icon"><svg class="ic" aria-hidden="true"><use href="#i-image"/></svg></div><span class="file-drop-text">Arrasta ou clica (opcional)</span><span class="file-drop-btn">Procurar</span>
+            <input type="file" name="cover" id="wzCoverFile" accept="image/png,image/jpeg"></div></div>
         </div>
         <div class="pv-card pv-card-lg">
           <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-mic"/></svg>Letra sincronizada <button class="info-btn" data-info="wz-lyrics">ⓘ</button></div>

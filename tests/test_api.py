@@ -3395,6 +3395,43 @@ def test_the_wizards_chosen_cover_is_in_place_before_the_first_build(
     assert client.get(f"/jobs/{r.json()['id']}/cover").content == _JPEG
 
 
+def test_a_cover_from_the_computer_is_in_place_before_the_first_build(
+    client: TestClient, monkeypatch
+) -> None:
+    """The wizard's own image (not a lookup result): read by its bytes, stored
+    before the job is queued, and it wins over a picked online cover, which is
+    then never fetched. Anything that is not a JPEG/PNG is refused up front."""
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.infrastructure import album_lookup
+
+    def never(url: str) -> bytes:
+        raise AssertionError("the online cover must not be fetched")
+
+    monkeypatch.setattr(album_lookup, "_open_url", never)
+    at_enqueue: list[object] = []
+    monkeypatch.setattr(app_module, "_enqueue",
+                        lambda job: at_enqueue.append((job.params or {}).get("cover_art")))
+    png = b"\x89PNG\r\n\x1a\n" + b"x" * 32
+    body = client.post(
+        "/gp/inspect", files={"file": ("s.gp", _gp8_with_embedded_audio(b"ID3x"), "x")}
+    ).json()
+    data = {"gp_token": body["gp_token"], "lead_track": "0", "use_embedded_audio": "true",
+            "cover_url": _COVER}
+    # Named .jpg, but its bytes say PNG: the bytes decide.
+    r = client.post("/jobs/gp", data=data, files={"cover": ("mine.jpg", png, "image/jpeg")})
+    assert r.status_code == 202, r.text
+    assert at_enqueue == ["cover.png"]
+    assert client.get(f"/jobs/{r.json()['id']}/cover").content == png
+
+    body = client.post(
+        "/gp/inspect", files={"file": ("s.gp", _gp8_with_embedded_audio(b"ID3x"), "x")}
+    ).json()
+    r = client.post("/jobs/gp", data={**data, "gp_token": body["gp_token"]},
+                    files={"cover": ("notes.png", b"not an image", "image/png")})
+    assert r.status_code == 415
+    assert at_enqueue == ["cover.png"]
+
+
 def test_a_wizard_cover_that_fails_still_creates_the_project(
     client: TestClient, monkeypatch
 ) -> None:

@@ -6642,8 +6642,25 @@ function resetWizardAlbum() {
   document.getElementById('wzCoverUrl').value = '';
 }
 
+// A card and an image from the computer are two answers to one question:
+// choosing one drops the other (the server also lets the file win).
+function clearWizardCoverFile() {
+  const inp = document.getElementById('wzCoverFile');
+  if (!inp.files.length) return;
+  inp.value = '';
+  inp.dispatchEvent(new Event('change'));
+}
+document.getElementById('wzCoverFile').addEventListener('change', ev => {
+  if (!ev.target.files.length) return;
+  wzAlbumPick = null;
+  document.getElementById('wzCoverUrl').value = '';
+  renderAlbumGrid(document.getElementById('wzAlbumResults'), wzAlbumCandidates, null,
+    i => pickWizardAlbum(i), { withNone: true });
+});
+
 function pickWizardAlbum(idx, { fillEmptyOnly = false } = {}) {
   const form = document.getElementById('gpJobForm');
+  clearWizardCoverFile();
   wzAlbumPick = idx;
   const c = wzAlbumCandidates[idx];
   document.getElementById('wzCoverUrl').value = c && c.cover_url ? c.cover_url : '';
@@ -6685,6 +6702,12 @@ async function searchWizardAlbum() {
   info.textContent = T('{n} resultado(s) — escolhe o álbum e a capa certos.', { n: wzAlbumCandidates.length });
   // Preselect the best guess but never overwrite what the user (or the GP
   // file) already typed; clicking a card is an explicit choice and does.
+  // An image already chosen from the computer stays the cover.
+  if (document.getElementById('wzCoverFile').files.length) {
+    renderAlbumGrid(document.getElementById('wzAlbumResults'), wzAlbumCandidates, null,
+      i => pickWizardAlbum(i), { withNone: true });
+    return;
+  }
   pickWizardAlbum(0, { fillEmptyOnly: true });
 }
 document.getElementById('wzAlbumSearch').addEventListener('click', searchWizardAlbum);

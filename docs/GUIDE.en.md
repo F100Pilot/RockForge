@@ -145,14 +145,15 @@ bass is charted as a guitar.
 
 - **Title, Band, Album, Year.** Taken from the file or the audio's tags when present.
 - **Album, year and cover → Search online**: lists results from iTunes and MusicBrainz; pick
-  the right one (or "No cover"). Fan remixes and AI-made songs are rarely there.
+  the right one (or "No cover"). Fan remixes and AI-made songs are rarely there. You can also
+  pick an image from your computer (JPEG or PNG), just below.
 - **Synced lyrics → Search lyrics online** (LRCLIB): pick lyrics with timings, or none. If the
   GP file already has lyrics, nothing is picked for you. You can also upload an **LRC** or
   **UltraStar TXT** file (it always wins).
 - **Import palm mute / slap / pop / tap**: untick if you do not want those techniques in the
   chart.
 
-**Create CDLC** creates the project and starts the build. Tones and cover can come later.
+**Create CDLC** creates the project and starts the build. Tones can come later.
 
 ## 5. The project page
 

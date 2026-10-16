@@ -117,6 +117,9 @@ def create_gp_job(
     # A cover the user chose from /album-lookup, downloaded before the job is
     # queued so the very first build carries it.
     cover_url: str = Form(""),
+    # Or an image from the user's own computer (JPEG/PNG, read by its bytes),
+    # which wins over cover_url.
+    cover: UploadFile | None = File(None),
     # /pdf/import's estimated_bars (JSON), kept for the viewer's review links.
     estimated_bars: str = Form("", max_length=MAX_ESTIMATED_BARS_CHARS),
 ) -> JobOut:
@@ -215,6 +218,18 @@ def create_gp_job(
 
         if not cover_url_allowed(cover_url):
             raise HTTPException(422, "cover_url is not from a known cover service")
+    cover_upload: tuple[bytes, str] | None = None
+    if cover is not None and cover.filename:
+        from rockforge.infrastructure.album_lookup import image_suffix
+
+        cover_data = api._read_upload_capped(cover)
+        cover_suffix = image_suffix(cover_data)
+        if cover_suffix is None:
+            raise HTTPException(415, i18n.tr(
+                "a capa tem de ser uma imagem JPEG ou PNG",
+                "the cover must be a JPEG or PNG image",
+            ))
+        cover_upload = (cover_data, cover_suffix)
 
     params: dict[str, object] = {
         "gp_path": str(gp_path),
@@ -256,7 +271,12 @@ def create_gp_job(
         )
         session.add(job)
         session.commit()
-        if cover_url:
+        if cover_upload is not None:
+            dest = api._replace_cover(job, cover_upload[1])
+            dest.write_bytes(cover_upload[0])
+            api._record_cover(job, dest)
+            session.commit()
+        elif cover_url:
             # Best effort: a cover that will not download must not cost the
             # user the project. The response's empty cover_art says so, and the
             # UI tells them to pick another on the Capa page.

@@ -2761,6 +2761,17 @@ committed first, the download is attempted after, and a failure only leaves
 `cover_art` false — the worker overwrites `job.warnings` at the end, so the UI
 reports it from that flag (toast) instead of a warning that would vanish.
 
+**Or the user's own image, in the wizard too** (Facebook feedback, 2026-10-16:
+"it won't let me upload an album cover from my pc" — step 4 only offered the
+lookup's cards and "Sem capa"; a local file was only possible on the Capa page,
+after creating). `/jobs/gp` takes a `cover` upload (`#wzCoverFile`, under the
+cards), checked by its BYTES (`image_suffix`, 415 up front for anything not
+JPEG/PNG, before the job exists) and stored before the job is queued, winning
+over `cover_url`, which is then not fetched; in the UI picking a file
+deselects the cards and picking a card clears the file. Guarded by
+`test_a_cover_from_the_computer_is_in_place_before_the_first_build`; the
+wizard with Playwright (PT/EN: file ↔ card, the created job carries it).
+
 UI: wizard step 4 runs the search once on arrival (`maybeAutoAlbumSearch`),
 preselects the best guess filling Álbum/Ano **only if empty**, a card click
 fills them outright, "Sem capa" opts out, and a card whose thumbnail fails to

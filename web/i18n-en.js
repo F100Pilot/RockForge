@@ -483,6 +483,7 @@
  "Capa do álbum": "Album cover",
  "Incluída no bundle.": "Included in the bundle.",
  "Sem capa": "No cover",
+ "Ou uma imagem do teu computador (JPEG ou PNG)": "Or an image from your computer (JPEG or PNG)",
  "Carregar capa": "Upload cover",
  "O albumArt fica vazio (sem arte no jogo).": "The albumArt stays empty (no art in the game).",
  "Sincronização confirmada": "Sync confirmed",
