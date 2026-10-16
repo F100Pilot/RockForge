@@ -4,6 +4,26 @@ Estado do projeto + lista de funcionalidades (concluídas `[x]` e propostas
 `[ ]`). Para *como* cada coisa funciona, ver `CLAUDE.md`. Para *como testar*,
 ver `TESTING.md`.
 
+## Bolsa para a próxima versão (pedidos e bugs de utilizadores)
+
+Acumula-se aqui o que os utilizadores pedem; quando houver o suficiente, faz-se
+tudo de uma vez e um novo bump de versão.
+
+- [ ] **Juntar duas pistas numa só, com as duas linhas de tempo à vista**
+  (Facebook, 2026-10-16: "have both lead and rhythm timelines available one on
+  top of each other, these songsterr tabs are a bit of a mess and they have
+  split the song into 2 sections when there's only 1 guitarist, i want to
+  combine these into 1 ideally by dragging from one timeline to another").
+  Hoje: Copiar seleção (Ctrl+C) numa pista e Colar no cursor (Ctrl+V) noutra
+  já leva notas de uma para a outra, mas uma de cada vez, sem ver as duas.
+  Ideia: (a) uma vista com duas pautas empilhadas (a pista atual + outra
+  escolhida), arrastar uma seleção da de baixo para a de cima = colar no mesmo
+  instante (as notas viram `note_overrides` da pista de destino, como o colar);
+  (b) talvez também no assistente, "juntar as pistas X e Y" num só arranjo
+  (fundir as notas das duas pistas GP no parse, com aviso das notas que
+  colidem na mesma corda e instante). Ver se a fusão no parse resolve o caso
+  do Songsterr sem a vista dupla.
+
 - [x] **Criar o projeto a partir de um PDF ou de uma imagem da tab.** O passo 1
   do "Novo projeto" aceita PDFs e imagens (PNG/JPEG/WebP, um por pista); o
   conversor é o do PDF-to-GP5, instalado como pacote (extra `[pdf]`, fixo a um
