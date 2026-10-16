@@ -474,7 +474,7 @@ are shared. Lead/Rhythm tracks are picked by name; check them afterwards in each
 
 ## 13. Settings
 
-- **General**: language; **New versions** (ask GitHub once a day, on by default); **Wwise
+- **General**: language; **New versions** (ask GitHub at most once an hour, on by default); **Wwise
   folder** (empty = found where the Audiokinetic Launcher installs it); Rocksmith 2014 folder.
 - **Software**: in the `.exe`, the **Extra components** card (what is installed, **Install extra
   components** / **Reinstall**, the install log); then what is installed, what is missing and how

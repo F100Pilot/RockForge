@@ -5,7 +5,7 @@ install that CANNOT update itself is told about a new version: the `.exe`
 (installer or portable zip) and a source folder downloaded as a zip, which has
 no `.git` for `start.bat` to pull into. A git checkout is never nagged.
 
-One request to the GitHub API at most once a day (cached in
+One request to the GitHub API at most once an hour (cached in
 ``work_dir/update_check.json``), nothing sent but the request itself, and the
 user can turn it off in Definições. Every failure — offline, rate-limited, a
 changed answer — is an empty result, never an error the user sees: an update
@@ -30,7 +30,9 @@ from rockforge import __version__
 REPO = "F100Pilot/RockForge"
 RELEASES_API = f"https://api.github.com/repos/{REPO}/releases?per_page=20"
 RELEASES_PAGE = f"https://github.com/{REPO}/releases"
-CHECK_EVERY_S = 24 * 3600
+# Hourly: a beta can follow another within the hour, and GitHub allows an anonymous
+# address 60 requests an hour, so one an hour per install stays far below it.
+CHECK_EVERY_S = 3600
 RETRY_AFTER_FAILURE_S = 3600  # offline: do not spend a timeout on every page load
 TIMEOUT_S = 8.0
 _USER_AGENT = f"RockForge/{__version__} (update check)"
@@ -117,7 +119,7 @@ def _cache_file() -> Path:
 
 def check(*, fetch: Any = None, now: float | None = None, force: bool = False,
           kind: str | None = None) -> UpdateInfo:
-    """What the UI shows. Cached for a day; a failure keeps the last answer."""
+    """What the UI shows. Cached for an hour; a failure keeps the last answer."""
     current = __version__
     kind = kind or install_kind()
     now = time.time() if now is None else now

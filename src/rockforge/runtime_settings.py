@@ -75,7 +75,7 @@ def ui_language() -> str:
 
 
 def check_updates() -> bool:
-    """Whether the app may ask GitHub once a day for a newer version (on by
+    """Whether the app may ask GitHub at most once an hour for a newer version (on by
     default; Definições → Geral turns it off)."""
     return load().get("check_updates") is not False
 

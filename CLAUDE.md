@@ -4835,8 +4835,10 @@ install with log, card, PT/EN, 760 px).
 ### «Há uma versão nova» (`infrastructure/update_check.py`)
 
 `GET /update-check` asks GitHub's Releases API (`releases?per_page=20`) at
-most once a day (`work_dir/update_check.json`, a failure backs off an hour and
-is just "nothing new"), skipping drafts and offering pre-releases only to
+most once an hour (`CHECK_EVERY_S`, `work_dir/update_check.json`; it was once a
+day until the betas started coming hours apart — GitHub allows an anonymous
+address 60 an hour; a failure backs off an hour and is just "nothing new"),
+and a page left open asks the server again every hour (`loadUpdateInfo`), skipping drafts and offering pre-releases only to
 someone on a pre-release (`newest_release`, `parse_version` reads PEP 440
 `0.10.0b3` and tags `v0.10.0-beta.4`). `install_kind`: "exe", "git" (a
 checkout `start.bat` pulls — the UI shows nothing) or "source" (a zip with no
@@ -4844,7 +4846,7 @@ checkout `start.bat` pulls — the UI shows nothing) or "source" (a zip with no
 home page notice links the release page and «Mais tarde» hides that version
 (`rf-notice-dismissed` in localStorage). LEGAL.md and THIRD_PARTY_NOTICES say
 this is the one contact made without a button. Guarded by
-`test_update_check.py` (ordering, the beta rule, the day's cache, the back-off,
+`test_update_check.py` (ordering, the beta rule, the hour's cache, the back-off,
 an upgrade not trusting the old cache, git vs zip, the setting).
 
 ## Commands

@@ -473,7 +473,7 @@ info** de cada projeto.
 
 ## 13. Definições
 
-- **Geral**: idioma; **Versões novas** (pergunta ao GitHub uma vez por dia, ligado por defeito);
+- **Geral**: idioma; **Versões novas** (pergunta ao GitHub no máximo uma vez por hora, ligado por defeito);
   **Pasta do Wwise** (vazio = procurar onde o Audiokinetic Launcher o instala); pasta do
   Rocksmith 2014.
 - **Software**: no `.exe`, o cartão **Componentes extra** (o que está instalado, **Instalar

@@ -6,6 +6,10 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Alterado
+- **O aviso «Há uma versão nova» chega mais depressa**: a app pergunta ao GitHub no máximo uma vez
+  por hora (era uma vez por dia), e uma página que fica aberta volta a perguntar de hora a hora.
+
 ## [0.10.0 beta 7] — 2026-10-15
 
 ### Novo

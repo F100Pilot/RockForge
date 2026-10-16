@@ -114,7 +114,7 @@ def version() -> dict[str, str]:
 @router.get("/update-check", response_model=UpdateCheckOut)
 def update_check(force: bool = False) -> UpdateCheckOut:
     """Whether a newer RockForge is on GitHub's Releases page — asked at most
-    once a day, never when the user turned it off, and every failure is just
+    once an hour, never when the user turned it off, and every failure is just
     "nothing new" (infrastructure/update_check.py)."""
     from rockforge import __version__, runtime_settings
     from rockforge.infrastructure import update_check as uc

@@ -536,7 +536,7 @@ class SettingsOut(BaseModel):
     # there and the tone collection suggests its dlc folder.
     rocksmith_dir: str = ""
     rocksmith_dir_detected: str = ""
-    # Ask GitHub once a day for a newer version (infrastructure/update_check.py).
+    # Ask GitHub at most once an hour for a newer version (infrastructure/update_check.py).
     check_updates: bool = True
     # The Wwise folder the user set ("" = ROCKFORGE_WWISE_ROOT/WWISEROOT, else
     # found where the Audiokinetic Launcher installs it: `wwise_root_detected`).

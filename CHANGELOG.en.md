@@ -6,6 +6,10 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### Changed
+- **The “A new version is out” notice arrives sooner**: the app asks GitHub at most once an hour
+  (it was once a day), and a page left open asks again every hour.
+
 ## [0.10.0 beta 7] — 2026-10-15
 
 ### New

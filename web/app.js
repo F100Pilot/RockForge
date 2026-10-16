@@ -825,10 +825,14 @@ async function loadHomeChecks() {
   } catch { wwiseFound = null; }
   renderHomeNotices();
 }
-(async () => {
+async function loadUpdateInfo() {
   try { updateInfo = await getJSON('/update-check'); } catch { updateInfo = null; }
   renderHomeNotices();
-})();
+}
+loadUpdateInfo();
+// The server asks GitHub at most once an hour; asking it again keeps a page left open all day
+// up to date (an answer from its cache costs nothing).
+setInterval(loadUpdateInfo, 3600 * 1000);
 (async () => {
   try { compState = await getJSON('/components'); } catch { return; }
   renderHomeNotices();

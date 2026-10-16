@@ -131,7 +131,7 @@ ESLint and its plugins (`package.json`) are development tools only.
 ## 5. Online services the app can contact
 
 RockForge only contacts these when the user presses the button that does it —
-except the version check, which asks GitHub's Releases API at most once a day
+except the version check, which asks GitHub's Releases API at most once an hour
 (turned off in Settings → General). Each has its own terms of use, which apply
 to the user who makes the request.
 
@@ -142,7 +142,7 @@ to the user who makes the request.
 | LRCLIB (lrclib.net) | Synced lyrics | Open, no key |
 | iTunes Search API | Album, year, cover | Apple's terms |
 | MusicBrainz + Cover Art Archive | Album, year, cover | MusicBrainz data CC0; cover images belong to their rights holders |
-| GitHub (api.github.com) | Whether a newer RockForge is out | Once a day at most, nothing about the user sent; off in Settings |
+| GitHub (api.github.com) | Whether a newer RockForge is out | Once an hour at most, nothing about the user sent; off in Settings |
 | NuGet, PyPI, download.pytorch.org, GitHub releases | The `.exe`'s extra components | Only when the user installs them |
 
 ## 6. Full licence texts

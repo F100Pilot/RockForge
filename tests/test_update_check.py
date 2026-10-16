@@ -44,7 +44,7 @@ def work(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return tmp_path
 
 
-def test_a_newer_release_is_reported_and_asked_once_a_day(work: Path) -> None:
+def test_a_newer_release_is_reported_and_asked_at_most_once_an_hour(work: Path) -> None:
     calls: list[int] = []
 
     def fetch() -> list[dict[str, object]]:
@@ -54,8 +54,9 @@ def test_a_newer_release_is_reported_and_asked_once_a_day(work: Path) -> None:
     info = uc.check(fetch=fetch, now=1000.0, kind="exe")
     assert (info.newer, info.latest, info.current) == (True, "0.10.0-beta.4", "0.10.0b3")
     assert info.url.endswith("0.10.0-beta.4")
-    assert uc.check(fetch=fetch, now=1000.0 + 3600, kind="exe").newer
-    assert len(calls) == 1  # the second answer came from the day's cache
+    assert uc.check(fetch=fetch, now=1000.0 + 3599, kind="exe").newer
+    assert len(calls) == 1  # the second answer came from the hour's cache
+    assert uc.CHECK_EVERY_S == 3600
     uc.check(fetch=fetch, now=1000.0 + uc.CHECK_EVERY_S + 1, kind="exe")
     assert len(calls) == 2
 

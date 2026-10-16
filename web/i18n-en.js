@@ -1181,7 +1181,7 @@
   "Bass (Eden WT550)": "Bass (Eden WT550)",
   "Versões novas": "New versions",
   "Avisar quando houver uma versão nova do RockForge": "Tell me when there is a new version of RockForge",
-  "Pergunta às Releases do GitHub, no máximo uma vez por dia, e não envia nada sobre ti nem sobre as tuas músicas. Quem usa o": "It asks GitHub's Releases page at most once a day, and sends nothing about you or your songs. If you use",
+  "Pergunta às Releases do GitHub, no máximo uma vez por hora, e não envia nada sobre ti nem sobre as tuas músicas. Quem usa o": "It asks GitHub's Releases page at most once an hour, and sends nothing about you or your songs. If you use",
   "com o git não precisa: atualiza-se sozinho a cada arranque.": "with git you do not need it: it updates itself on every start.",
   "Pasta do Wwise": "Wwise folder",
   "Onde o Wwise está instalado (a pasta": "Where Wwise is installed (the",
