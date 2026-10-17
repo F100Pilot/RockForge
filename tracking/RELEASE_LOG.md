@@ -4,6 +4,42 @@
 
 Every version, newest first. What a version fixed and the bugs it still carried come from the bug and fix registers. Process: [docs/RELEASE_PROCESS.md](../docs/RELEASE_PROCESS.md).
 
+## 0.10.0-beta.13
+
+| | |
+|---|---|
+| Status | Beta |
+| Created | 2026-10-17 |
+| Published | _pending_ |
+| Commit | _pending_ |
+| Build | GitHub Actions release workflow |
+| Artifacts | — |
+| Tests | CI (ruff, mypy, pytest, ESLint, Docker build) on the release commit, tools/release_check, and the frozen .exe smoke test of the release workflow |
+| Approved by | the maintainer (asked for the release) |
+
+**Goal:** The score legend, About RockForge with a copyable report, a technical log, the versioning and bug registers; fixes for Wwise detection and the 3D highway's mouse wheel.
+
+**New:**
+
+- Score legend
+- About RockForge
+- Technical log
+
+**Improved:**
+
+- Version numbers follow Semantic Versioning
+- The `.exe`'s console output moved to `logs/console.log`, with the three previous runs kept; `start.bat` keeps the previous `logs\worker.log` as `worker.prev.log`
+
+**Bugs fixed:** 
+
+- [BUG-0292](bugs/psarc.md#bug-0292) WWISEROOT pointing at another Wwise version hid a usable 2023.1 ("Wwise not installed")
+- [BUG-0293](bugs/psarc.md#bug-0293) A failed Wwise conversion read "no Wwise found" and the silent .psarc showed as playable
+- [BUG-0294](bugs/viewer.md#bug-0294) The 3D highway grabbed the mouse wheel while the page was scrolled over it
+
+**Known bugs it carried:** —
+
+**Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
+
 ## 0.10.0-beta.12
 
 | | |

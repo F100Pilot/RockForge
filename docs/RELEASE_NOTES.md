@@ -1,34 +1,45 @@
 ### New
 
-- **Edit notes like in a score editor**: in "Edit notes" mode, drag a note to another time or
-  string; ↑/↓ move the last clicked note one fret up or down (Ctrl: an octave), and it sounds;
-  **Shift+drag** duplicates a note or a whole chord and drops the copy where you release it; drag
-  the **end of a note's tail** to change its length (sustain).
+- **Score legend**: the "Legend" switch (beside "Fretboard" and "3D highway") shows what every
+  mark on the score means, drawn as it appears — including the recording's attacks (the orange
+  circles and ticks).
+- **About RockForge** (Settings → General): which version and build you are running, and
+  **"Copy information for a report"** — version, build, system, the software found and the end of
+  the technical log, without passwords, tokens or your user name — to paste into a bug report.
+- **Technical log** in `logs/` inside the work folder, rotated so it never grows past ~12 MB. An
+  unexpected error now shows an id that is also in the log.
 
 ### Fixed
 
-- **A deleted or edited note kept playing until the rebuild**: the note click, the "synthesized"
-  source and the fretboard now play what is on screen, pending edits included.
-- **Inserting a note in a solo made a chord**: the new note snapped to the nearest whole beat,
-  which in a fast solo is the previous note's. It now snaps to sixteenths at most (Alt: free).
-- **"Song start" after the automatic sync** only moved the first stretch of the song. It now
-  shifts the whole chart, keeping the corrections already made.
+- **The 3D highway grabbed the mouse wheel** while you scrolled the page over it. The wheel now
+  moves the camera only after you click the highway; Esc or a click elsewhere lets go.
+- **"Wwise not installed" with Wwise installed**: the `WWISEROOT` variable the Audiokinetic
+  Launcher leaves often points at a 2024/2025 version, and hid the 2023.1 installed beside it.
+- **A failed Wwise conversion read "Wwise not found"**, and a .psarc without sound showed as
+  playable. The conversion's own error is now shown, and "Before you use it" says "PSARC without
+  sound".
 
 ---
 
 ### Novo
 
-- **Editar notas como num editor de partituras**: no modo «Editar notas», arrasta uma nota para
-  outro tempo ou outra corda; ↑/↓ sobem ou descem um traste à última nota clicada (Ctrl: uma
-  oitava), e ela soa; **Shift+arrastar** duplica uma nota ou um acorde inteiro e leva a cópia para
-  onde a largares; arrasta o **fim da cauda** de uma nota para mudar a duração (sustain).
+- **Legenda da partitura**: o interruptor «Legenda» (ao lado de «Braço» e «Pista 3D») mostra o
+  que quer dizer cada marca da partitura, desenhada como aparece — incluindo os ataques da
+  gravação (as bolas e os traços laranja).
+- **Sobre o RockForge** (Definições → Geral): que versão e que build estás a usar, e **«Copiar
+  informação para relatório»** — versão, build, sistema, o software encontrado e o fim do registo
+  técnico, sem palavras-passe, tokens nem o teu nome de utilizador — para colar num relatório de
+  erro.
+- **Registo técnico** em `logs/` dentro da pasta de trabalho, em rotação para nunca passar de
+  ~12 MB. Um erro inesperado mostra agora um id que também está no registo.
 
 ### Corrigido
 
-- **Uma nota apagada ou editada continuava a soar até reconstruir**: o clique das notas, a fonte
-  «sintetizada» e o braço tocam agora o que está no ecrã, com as edições por aplicar.
-- **Inserir uma nota num solo criava um acorde**: a nota nova encaixava no tempo inteiro mais
-  perto, que num solo rápido é o da nota anterior. Agora encaixa no máximo em semicolcheias (Alt:
-  livre).
-- **«Início da música» depois da sincronização automática** só mexia no primeiro troço da música.
-  Agora desloca a pista inteira, com as correções que já lá estavam.
+- **A pista 3D apanhava a roda do rato** ao deslocar a página por cima dela. A roda só mexe na
+  câmara depois de clicares na pista; Esc ou um clique fora largam-na.
+- **«Não tenho o Wwise» com o Wwise instalado**: a variável `WWISEROOT` que o Audiokinetic
+  Launcher deixa aponta muitas vezes para uma versão 2024/2025, e escondia o 2023.1 instalado ao
+  lado.
+- **Uma conversão do Wwise que falhava dizia «Wwise não encontrado»**, e um .psarc sem som
+  aparecia como jogável. Agora mostra o erro da própria conversão, e «Antes de usar» diz «PSARC
+  sem som».

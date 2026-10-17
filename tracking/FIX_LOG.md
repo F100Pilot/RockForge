@@ -297,9 +297,9 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0289](#fix-0289) | BUG-0289 | 0.10.0-beta.12 | not run | manual |
 | [FIX-0290](#fix-0290) | BUG-0290 | 0.10.0-beta.12 | not run | manual |
 | [FIX-0291](#fix-0291) | BUG-0291 | 0.10.0-beta.12 | not run | manual |
-| [FIX-0292](#fix-0292) | BUG-0292 | unreleased | passed | automated |
-| [FIX-0293](#fix-0293) | BUG-0293 | unreleased | passed | automated |
-| [FIX-0294](#fix-0294) | BUG-0294 | unreleased | not run | manual |
+| [FIX-0292](#fix-0292) | BUG-0292 | 0.10.0-beta.13 | passed | automated |
+| [FIX-0293](#fix-0293) | BUG-0293 | 0.10.0-beta.13 | passed | automated |
+| [FIX-0294](#fix-0294) | BUG-0294 | 0.10.0-beta.13 | not run | manual |
 
 ## FIX-0001
 
@@ -6424,7 +6424,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-10-17 |
 | By | Claude (AI coding assistant), on the maintainer's request |
-| Version | unreleased |
+| Version | 0.10.0-beta.13 |
 | Commits | e234c859fe8fb96494842116907ca2155bb05430 |
 | Components | src/rockforge/runtime_settings.py |
 | Tests | tests/test_wwise.py::test_the_launchers_wwiseroot_on_another_version_does_not_hide_a_2023 |
@@ -6445,7 +6445,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-10-17 |
 | By | Claude (AI coding assistant), on the maintainer's request |
-| Version | unreleased |
+| Version | 0.10.0-beta.13 |
 | Commits | e234c859fe8fb96494842116907ca2155bb05430 |
 | Components | src/rockforge/application/ports.py; src/rockforge/infrastructure/packaging/psarc/packer.py; src/rockforge/application/gp_pipeline.py; src/rockforge/interfaces/worker/celery_app.py; src/rockforge/interfaces/api/app.py; src/rockforge/interfaces/api/schemas.py; web/app.js |
 | Tests | tests/test_psarc_packer.py::test_bundle_survives_wwise_failure; tests/test_celery_tasks.py::test_a_psarc_built_without_sound_says_so_and_why |
@@ -6466,7 +6466,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-10-17 |
 | By | Claude (AI coding assistant), on the maintainer's request |
-| Version | unreleased |
+| Version | 0.10.0-beta.13 |
 | Commits | 0381b134e266f31c89534037180bc051bd1aa61a |
 | Components | web/highway3d.js; web/app.js; web/index.html |
 | Tests | — |

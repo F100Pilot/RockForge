@@ -2494,7 +2494,7 @@ The Launcher's WWISEROOT points at the version it set up last (often 2024/2025) 
 
 **Root cause:** runtime_settings.wwise_root returned WWISEROOT without checking it was usable.
 
-**Fixes:** [FIX-0292](../FIX_LOG.md#fix-0292) (unreleased)
+**Fixes:** [FIX-0292](../FIX_LOG.md#fix-0292) (0.10.0-beta.13)
 
 **Verified:** regression test(s) test_the_launchers_wwiseroot_on_another_version_does_not_hide_a_2023 pass (re-run 2026-10-17) (by automated test suite)
 
@@ -2544,7 +2544,7 @@ NativePsarcPacker swallowed a failed convert into a log while gp_pipeline warned
 
 **Root cause:** The conversion error was not propagated (no PackagingResult.wem_error) and the checklist keyed on the .psarc existing.
 
-**Fixes:** [FIX-0293](../FIX_LOG.md#fix-0293) (unreleased)
+**Fixes:** [FIX-0293](../FIX_LOG.md#fix-0293) (0.10.0-beta.13)
 
 **Verified:** regression test(s) test_bundle_survives_wwise_failure, test_a_psarc_built_without_sound_says_so_and_why pass (re-run 2026-10-17) (by automated test suite)
 

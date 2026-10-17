@@ -5586,8 +5586,14 @@ job create the release WITH its tag on that commit (`gh release create
 --target <sha>`; a tag made with GITHUB_TOKEN starts no second run). A commit
 that does not change the version finds the tag and does nothing;
 `concurrency: release` queues a second CI run on the same unreleased version
-until the first has made the tag. **So bumping the version IS publishing —
-only bump when the user asks for a release.** A pushed tag `v*` or a manual
+until the first has made the tag. **So bumping the version IS publishing — and
+deciding the bump is Claude's job after every change** (the user's rule,
+2026-10-17: "Sempre que for alterado alguma coisa, quero que sejas tu a avaliar
+como fazer o bump. É regra. Se for necessário sair da regra, eu serei
+explícita."): once a change is done and verified, weigh it against
+docs/VERSIONING.md (next beta/RC/PATCH/MINOR/MAJOR, the stage's criteria) and
+bump with `tools/bump_version.py` in the same push, saying in the reply which
+number and why — unless the user explicitly says otherwise for that change. A pushed tag `v*` or a manual
 run still work as before. The `decide` script was run locally for each event
 (new version, existing tag, failed CI, pushed tag, dry run); the GitHub run
 itself is the next bump. The Windows job builds the downloads on
@@ -5609,8 +5615,8 @@ is new and the bugs fixed in that version, English then Portuguese, nothing
 else**: the user's rule for every bump, 2026-10-16). A manual run
 (workflow_dispatch) is a dry build whose files stay as artifacts. The tag must
 equal `installer.iss`'s version, and `tests/test_release_version.py` keeps
-`installer.iss` and `__version__` (both `0.10.0-beta.12`, SemVer; pyproject
-reads `__version__`) and both changelogs' `## [0.10.0 beta 12]` in step. Since
+`installer.iss` and `__version__` (both `0.10.0-beta.13`, SemVer; pyproject
+reads `__version__`) and both changelogs' `## [0.10.0 beta 13]` in step. Since
 the versioning rules (below) `decide` also runs `tools/release_check` before
 building and never publishes a `-dev.N` version. `[pdf]` and the ML stack
 are not in the `.exe`; the README says which three extras need the source
@@ -5632,6 +5638,9 @@ no `.psarc` came out.
   `web/i18n-<code>.js`, server text via `tr(pt, en, …)`. Use the
   `rockforge-i18n` skill (`.claude/skills/rockforge-i18n/SKILL.md`);
   `tests/test_i18n.py` enforces it.
+- **After every change, decide the version bump and do it** (the user's rule,
+  see "Publishing a release"): which number, why, and that the stage's
+  criteria are met — the user only steps in to say otherwise.
 - **Every bug goes in the register, every fix gets a `FIX-` record** (the
   section below). Never mark a bug Verified/Closed without the evidence, never
   write a test result that was not seen.

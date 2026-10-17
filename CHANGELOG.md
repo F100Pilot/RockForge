@@ -6,6 +6,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+## [0.10.0 beta 13] — 2026-10-17
+
 ### Novo
 - **Legenda da partitura:** o interruptor "Legenda" (ao lado de "Braço" e "Pista 3D") mostra o que
   quer dizer cada marca da partitura, desenhada como aparece — notas, anéis, caudas, compassos,

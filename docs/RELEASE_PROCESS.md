@@ -40,8 +40,11 @@ whose tests did not run is `"test_result": "not run"`.
 ## 3. A version is cut
 
 On `main`, a new version number is a publication: when CI passes on the commit
-that changes it, the release workflow builds, tests and publishes it. So this is
-done only when a release was asked for.
+that changes it, the release workflow builds, tests and publishes it. The
+maintainer's standing rule: after every change, the one who made it (Claude)
+decides the bump by the rules of VERSIONING.md and does it in the same push,
+saying which number and why; the maintainer says so explicitly when a change
+must not be released.
 
 1. Decide the number (VERSIONING.md): the next beta while testing, an RC when
    nothing more is coming, the stable version after a clean RC.

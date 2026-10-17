@@ -15,7 +15,8 @@ Refuses a number that may not follow the current one (rockforge.versioning
 - renders the logs and runs tools/release_check.
 
 On ``main`` a new version number IS a publication: CI passing on the commit
-starts the release workflow. So this is run only when a release was asked for.
+starts the release workflow. The maintainer's rule: after every change, decide
+the bump by docs/VERSIONING.md and run this in the same push, unless told not to.
 """
 
 from __future__ import annotations

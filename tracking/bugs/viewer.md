@@ -1244,7 +1244,7 @@ With the free camera, the wheel over the 3D highway zoomed the camera and preven
 
 **Root cause:** The wheel handler always called preventDefault and zoomed.
 
-**Fixes:** [FIX-0294](../FIX_LOG.md#fix-0294) (unreleased)
+**Fixes:** [FIX-0294](../FIX_LOG.md#fix-0294) (0.10.0-beta.13)
 
 **Verified:** CLAUDE.md: 'Verified with Playwright: wheel before a click scrolls the page and leaves the distance, after a click zooms, after Esc or a click outside scrolls again' (by the developer (manual check))
 

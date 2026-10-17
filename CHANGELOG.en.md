@@ -6,6 +6,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+## [0.10.0 beta 13] — 2026-10-17
+
 ### New
 - **Score legend:** the "Legend" switch (beside "Fretboard" and "3D highway") shows what each mark
   on the score means, drawn as it appears — notes, rings, tails, bars, sections, tones,
