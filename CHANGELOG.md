@@ -6,7 +6,15 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Novo
+- **Editar notas — arrastar e mudar o traste com as setas:** no modo "Editar notas", arrasta uma
+  nota para outro tempo ou outra corda; ↑/↓ sobem ou descem um traste à última nota clicada (com
+  Ctrl, uma oitava), e ela soa.
+
 ### Corrigido
+- **Inserir uma nota num solo criava um acorde:** a nota nova encaixava no tempo inteiro mais
+  perto, que num solo rápido é o da nota anterior. Agora encaixa no máximo em semicolcheias (com
+  Alt, livre).
 - **"Início da música" depois da sincronização automática:** mudar o início só ajustava o
   primeiro troço da música. Agora desloca a pista inteira, com as correções que já lá estavam.
 

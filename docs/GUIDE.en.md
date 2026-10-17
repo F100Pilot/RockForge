@@ -365,8 +365,13 @@ background = clear the selection. **Excerpt** mode selects with a box.
 
 - Click a note: change string, fret, sustain, techniques (hammer-on, pull-off, harmonic, palm
   mute, vibrato, tapping, slap, pop, accent), bend and slide; **Save** or **Remove note**.
+- **Drag** a note to change its time (it snaps to the grid) or its string (it keeps its fret,
+  so its pitch changes).
+- **↑ / ↓** move the last clicked or dragged note one fret up or down, and it sounds (with Ctrl,
+  an octave) — for example, a 9 that should be 12: click it and press ↑ three times.
 - **Double-click** an empty spot to insert a note (string from the click's height, time on the
-  nearest grid point). Notes can only go inside the bars the file has.
+  nearest grid point, never coarser than sixteenths; with **Alt**, free). Notes can only go
+  inside the bars the file has.
 - A note edited but not yet rebuilt has a dashed ring.
 
 ### Delete, copy, paste
@@ -557,6 +562,7 @@ the app itself.
 | Ctrl+Z · Ctrl+Shift+Z (or Ctrl+Y) | undo · redo (on any page of the project) |
 | Ctrl+C · Ctrl+V | copy the selection · paste at the cursor |
 | Alt (while dragging) | no snap |
+| ↑ / ↓ (Ctrl = octave) | in “Edit notes”: one fret up / down on the last clicked note |
 | ? | show the shortcuts |
 | Esc | close a menu, popup or the shortcuts window |
 

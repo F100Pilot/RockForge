@@ -1809,6 +1809,32 @@ job has note edits". Clearing them is then an explicit action — "Notas ▾" �
 genuinely removes them on the next rebuild. Guarded by
 `test_committed_note_edits_survive_an_unrelated_rebuild`.
 
+**Dragging a note, ↑/↓ for its fret, and an insertion grid of sixteenths**
+(Liam, 2026-10-17: "found how to add a note but it keeps snapping to the
+previous note making a chord … would be nice to drag a note about and change
+the pitch kinda like in Sibelius" — a solo's "10 9 10" that should read
+"10 12 10"). The double-click insert snapped to `snapGridTimes()`, whole beats
+by default, so in a run of sixteenths the nearest point was the beat the
+previous note already held and the new note became a chord with it. Inserts
+and drags now use `noteEditGrid` — the snap grid but never coarser than
+`NOTE_EDIT_MIN_DIV` (4 per beat), a 48-per-beat grid with snap off or Alt
+held (`beatGridTimes`, split out of `snapGridTimes`; paste keeps the snap
+grid). In "Editar notas" a press on a note no longer opens the popup at once:
+released without moving (4 px) it does; dragged (`noteMove`,
+`noteMoveTarget`), the note follows the pointer along the grid (or keeps its
+own time when that is nearer — a vertical drag) and onto the string under it,
+and on release `moveNote` makes the same two pending edits as a delete and
+an insert (fret, sustain and techniques kept; another note already in that
+slot refuses it). ↑/↓ (`stepNoteFret`, Ctrl = 12) step the fret of the last
+note clicked, moved or saved (`neLast`), 0-24, and play it. All ordinary
+pending note overrides: undo/redo, drafts, "Aplicar e reconstruir". Rows in
+`showShortcuts` and both guides. Browser-only, no pytest coverage; verified
+with Playwright on the invented "Deriva" project (PT/EN): a click at 27 % of
+a beat lands on the sixteenth (the old grid: the beat), a drag of half a beat
+and one string moved a fret-5 note 0.25 s to the next string with its
+sustain, ↑×3 made it 8, a plain click still opens the popup, six Ctrl+Z
+cleared every edit, no page errors. Not tried by Liam yet.
+
 **Frontend**: `noteOverridesByKind` (state, per-kind, seeded on job load from the
 committed edits) needs no dirty-flag/None-sentinel gymnastics the way
 `section_overrides` does — like `tone_changes`, there's no prior non-user

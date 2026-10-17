@@ -6,7 +6,15 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### New
+- **Edit notes — drag, and change the fret with the arrows:** in "Edit notes" mode, drag a note to
+  another time or string; ↑/↓ move the last clicked note one fret up or down (with Ctrl, an
+  octave), and it sounds.
+
 ### Fixed
+- **Inserting a note in a solo made a chord:** the new note snapped to the nearest whole beat,
+  which in a fast solo is the previous note's. It now snaps to sixteenths at most (with Alt,
+  free).
 - **"Song start" after the automatic sync:** moving the start only adjusted the first stretch of
   the song. It now shifts the whole chart, keeping the corrections already made.
 
