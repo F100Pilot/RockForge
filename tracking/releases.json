@@ -259,7 +259,7 @@
     },
     {
       "version": "0.10.0-beta.12",
-      "status": "Beta",
+      "status": "Superseded",
       "created": "2026-10-17",
       "published": "2026-10-17",
       "commit": "b0e2145cf6c8231ae18f144f8913e9478342d268",
@@ -283,10 +283,12 @@
       "version": "0.10.0-beta.13",
       "status": "Beta",
       "created": "2026-10-17",
-      "published": "pending",
-      "commit": "pending",
+      "published": "2026-10-17",
+      "commit": "2b7eb07575880a4c125d6f8739b0c4a92d4f75a6",
       "build": "GitHub Actions release workflow",
-      "artifacts": [],
+      "artifacts": [
+        "https://github.com/F100Pilot/RockForge/releases/tag/v0.10.0-beta.13"
+      ],
       "goal": "The score legend, About RockForge with a copyable report, a technical log, the versioning and bug registers; fixes for Wwise detection and the 3D highway's mouse wheel.",
       "features": [
         "Score legend",

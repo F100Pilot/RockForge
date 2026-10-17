@@ -1229,7 +1229,7 @@ The editor's tick and the synthesized source gave every note a fixed 0.24/0.28 s
 | Build / commit | b0e2145cf6c8231ae18f144f8913e9478342d268 |
 | Severity | Low |
 | Priority | P3 |
-| Status | Verified |
+| Status | Closed |
 
 With the free camera, the wheel over the 3D highway zoomed the camera and prevented the page from scrolling, even when the user only meant to scroll the page.
 
@@ -1248,7 +1248,7 @@ With the free camera, the wheel over the 3D highway zoomed the camera and preven
 
 **Verified:** CLAUDE.md: 'Verified with Playwright: wheel before a click scrolls the page and leaves the distance, after a click zooms, after Esc or a click outside scrolls again' (by the developer (manual check))
 
-**Resolved:** 2026-10-17 · **Closed:** _pending_
+**Resolved:** 2026-10-17 · **Closed:** 2026-10-17
 
 **Note:** Recorded retrospectively; severity and priority assigned from the documented impact: An annoyance; moving the mouse off the canvas was a workaround.
 
@@ -1265,3 +1265,4 @@ With the free camera, the wheel over the 3D highway zoomed the camera and preven
 - _pending_ — Open: recorded on 2026-10-17 from the project history (CHANGELOG/CLAUDE.md/git)
 - 2026-10-17 — Fixed: commit 0381b134e2
 - 2026-10-17 — Verified: manual
+- 2026-10-17 — Closed: released in 0.10.0-beta.13

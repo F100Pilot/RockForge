@@ -14592,7 +14592,7 @@
       "observed": "\"It keeps saying that I don't have WWise installed when I do\"",
       "severity": "High",
       "priority": "P2",
-      "status": "Verified",
+      "status": "Closed",
       "root_cause": "runtime_settings.wwise_root returned WWISEROOT without checking it was usable.",
       "fixes": [
         "FIX-0292"
@@ -14608,7 +14608,7 @@
         "CLAUDE.md: 'The user's machine was not seen, so which of the two hit them is their Definições → Software row to tell.'"
       ],
       "resolved": "2026-10-17",
-      "closed": "pending",
+      "closed": "2026-10-17",
       "history": [
         {
           "date": "2026-10-17",
@@ -14624,6 +14624,11 @@
           "date": "2026-10-17",
           "status": "Verified",
           "note": "automated"
+        },
+        {
+          "date": "2026-10-17",
+          "status": "Closed",
+          "note": "released in 0.10.0-beta.13"
         }
       ],
       "note": "Recorded retrospectively; severity and priority assigned from the documented impact: No playable .psarc; setting the folder in Settings was a workaround."
@@ -14645,7 +14650,7 @@
       "observed": "\"no local Wwise installation found\" and \"PSARC jogável gerado\".",
       "severity": "Medium",
       "priority": "P2",
-      "status": "Verified",
+      "status": "Closed",
       "root_cause": "The conversion error was not propagated (no PackagingResult.wem_error) and the checklist keyed on the .psarc existing.",
       "fixes": [
         "FIX-0293"
@@ -14660,7 +14665,7 @@
         "found_in_version pending: which version the reporter ran is not stated"
       ],
       "resolved": "2026-10-17",
-      "closed": "pending",
+      "closed": "2026-10-17",
       "history": [
         {
           "date": "2026-10-17",
@@ -14676,6 +14681,11 @@
           "date": "2026-10-17",
           "status": "Verified",
           "note": "automated"
+        },
+        {
+          "date": "2026-10-17",
+          "status": "Closed",
+          "note": "released in 0.10.0-beta.13"
         }
       ],
       "note": "Recorded retrospectively; severity and priority assigned from the documented impact: Misleading diagnosis and a silent file reported as playable."
@@ -14697,7 +14707,7 @@
       "observed": "\"when im scrolling up and down the page the highway seems to be in focus when i mouse over it\"",
       "severity": "Low",
       "priority": "P3",
-      "status": "Verified",
+      "status": "Closed",
       "root_cause": "The wheel handler always called preventDefault and zoomed.",
       "fixes": [
         "FIX-0294"
@@ -14712,7 +14722,7 @@
         "found_in_version pending: the free camera shipped in beta 10 (7ca604f); the version used and the date are not stated"
       ],
       "resolved": "2026-10-17",
-      "closed": "pending",
+      "closed": "2026-10-17",
       "history": [
         {
           "date": "pending",
@@ -14728,6 +14738,11 @@
           "date": "2026-10-17",
           "status": "Verified",
           "note": "manual"
+        },
+        {
+          "date": "2026-10-17",
+          "status": "Closed",
+          "note": "released in 0.10.0-beta.13"
         }
       ],
       "note": "Recorded retrospectively; severity and priority assigned from the documented impact: An annoyance; moving the mouse off the canvas was a workaround."

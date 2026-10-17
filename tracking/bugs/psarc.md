@@ -2479,7 +2479,7 @@ Detection looked only at the env vars and the Launcher's default folder; a Wwise
 | Build / commit | b0e2145cf6c8231ae18f144f8913e9478342d268 |
 | Severity | High |
 | Priority | P2 |
-| Status | Verified |
+| Status | Closed |
 
 The Launcher's WWISEROOT points at the version it set up last (often 2024/2025) and was taken as final, so a 2023.1 installed beside it was never looked for and the user was told Wwise was missing.
 
@@ -2498,7 +2498,7 @@ The Launcher's WWISEROOT points at the version it set up last (often 2024/2025) 
 
 **Verified:** regression test(s) test_the_launchers_wwiseroot_on_another_version_does_not_hide_a_2023 pass (re-run 2026-10-17) (by automated test suite)
 
-**Resolved:** 2026-10-17 · **Closed:** _pending_
+**Resolved:** 2026-10-17 · **Closed:** 2026-10-17
 
 **Note:** Recorded retrospectively; severity and priority assigned from the documented impact: No playable .psarc; setting the folder in Settings was a workaround.
 
@@ -2516,6 +2516,7 @@ The Launcher's WWISEROOT points at the version it set up last (often 2024/2025) 
 - 2026-10-17 — Open: recorded on 2026-10-17 from the project history (CHANGELOG/CLAUDE.md/git)
 - 2026-10-17 — Fixed: commit e234c859fe
 - 2026-10-17 — Verified: automated
+- 2026-10-17 — Closed: released in 0.10.0-beta.13
 
 ## BUG-0293
 
@@ -2529,7 +2530,7 @@ The Launcher's WWISEROOT points at the version it set up last (often 2024/2025) 
 | Build / commit | b0e2145cf6c8231ae18f144f8913e9478342d268 |
 | Severity | Medium |
 | Priority | P2 |
-| Status | Verified |
+| Status | Closed |
 
 NativePsarcPacker swallowed a failed convert into a log while gp_pipeline warned "no local Wwise installation found", and "Antes de usar" showed "PSARC jogável gerado" for a .psarc built without a .wem (silent in game).
 
@@ -2548,7 +2549,7 @@ NativePsarcPacker swallowed a failed convert into a log while gp_pipeline warned
 
 **Verified:** regression test(s) test_bundle_survives_wwise_failure, test_a_psarc_built_without_sound_says_so_and_why pass (re-run 2026-10-17) (by automated test suite)
 
-**Resolved:** 2026-10-17 · **Closed:** _pending_
+**Resolved:** 2026-10-17 · **Closed:** 2026-10-17
 
 **Note:** Recorded retrospectively; severity and priority assigned from the documented impact: Misleading diagnosis and a silent file reported as playable.
 
@@ -2565,3 +2566,4 @@ NativePsarcPacker swallowed a failed convert into a log while gp_pipeline warned
 - 2026-10-17 — Open: recorded on 2026-10-17 from the project history (CHANGELOG/CLAUDE.md/git)
 - 2026-10-17 — Fixed: commit e234c859fe
 - 2026-10-17 — Verified: automated
+- 2026-10-17 — Closed: released in 0.10.0-beta.13

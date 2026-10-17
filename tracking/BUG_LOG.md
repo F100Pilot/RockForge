@@ -4,9 +4,9 @@
 
 Every bug found in RockForge, with a permanent id; the full record of each is on its module's page in [bugs/](bugs). Rules and states: [docs/VERSIONING.md](../docs/VERSIONING.md#bugs). Fixes: [FIX_LOG.md](FIX_LOG.md). Releases: [RELEASE_LOG.md](RELEASE_LOG.md).
 
-| Fixed | Verified | Closed |
-|---|---|---|
-| 95 | 3 | 196 |
+| Fixed | Closed |
+|---|---|
+| 95 | 199 |
 
 | ID | Title | Module | Severity | Priority | Status | Found in | Fixed in |
 |---|---|---|---|---|---|---|---|
@@ -301,6 +301,6 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0289](bugs/editor.md#bug-0289) | Inserting a note in a solo snapped to the previous note's beat and made a chord | editor | Medium | P3 | Closed | pending | 0.10.0-beta.12 |
 | [BUG-0290](bugs/editor.md#bug-0290) | A deleted or edited note was still heard until the rebuild | editor | Low | P3 | Closed | pending | 0.10.0-beta.12 |
 | [BUG-0291](bugs/sync.md#bug-0291) | "Song start" after an automatic sync moved only the first stretch of the song | sync | Medium | P3 | Closed | pending | 0.10.0-beta.12 |
-| [BUG-0292](bugs/psarc.md#bug-0292) | WWISEROOT pointing at another Wwise version hid a usable 2023.1 ("Wwise not installed") | psarc | High | P2 | Verified | pending | 0.10.0-beta.13 |
-| [BUG-0293](bugs/psarc.md#bug-0293) | A failed Wwise conversion read "no Wwise found" and the silent .psarc showed as playable | psarc | Medium | P2 | Verified | pending | 0.10.0-beta.13 |
-| [BUG-0294](bugs/viewer.md#bug-0294) | The 3D highway grabbed the mouse wheel while the page was scrolled over it | viewer | Low | P3 | Verified | pending | 0.10.0-beta.13 |
+| [BUG-0292](bugs/psarc.md#bug-0292) | WWISEROOT pointing at another Wwise version hid a usable 2023.1 ("Wwise not installed") | psarc | High | P2 | Closed | pending | 0.10.0-beta.13 |
+| [BUG-0293](bugs/psarc.md#bug-0293) | A failed Wwise conversion read "no Wwise found" and the silent .psarc showed as playable | psarc | Medium | P2 | Closed | pending | 0.10.0-beta.13 |
+| [BUG-0294](bugs/viewer.md#bug-0294) | The 3D highway grabbed the mouse wheel while the page was scrolled over it | viewer | Low | P3 | Closed | pending | 0.10.0-beta.13 |
