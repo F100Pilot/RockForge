@@ -6,6 +6,24 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Novo
+- **Novidades depois de cada atualização:** ao abrir uma versão nova, a página inicial lista tudo
+  o que mudou desde a versão que usaste da última vez — as mesmas entradas destas notas — até
+  carregares em "Percebido". Em Definições → Geral → Sobre o RockForge, "Novidades desta versão"
+  mostra-as de novo.
+- **Selecionar do cursor até ao fim** (Notas ▾, ou Shift+End): todas as notas da pista daí até ao
+  fim ficam selecionadas, e no modo "Arrastar" arrastar uma move-as todas. A pedido de um
+  utilizador, para acertar a música do princípio para o fim.
+- **Um só andamento** (Sincronização → Andamento): quando a partitura muda de andamento a meio e
+  a gravação não, põe todos os compassos da pista no mesmo BPM, com o início no sítio.
+- **Guia: sincronizar passo a passo**, numa tab que nunca foi sincronizada (andamento, primeiro
+  compasso, e acertar ao longo da música).
+
+### Corrigido
+- **Arrastar uma seleção esticava as notas antes dela:** com outra correção pendente (por exemplo
+  o "Início"), as notas entre essa correção e a seleção eram arrastadas aos poucos com ela, e as
+  que vinham a seguir à seleção perdiam a correção. Agora só a seleção se move.
+
 ## [0.10.0 beta 15] — 2026-10-17
 
 ### Novo

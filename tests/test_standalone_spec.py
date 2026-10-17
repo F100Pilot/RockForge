@@ -197,6 +197,13 @@ def test_spec_records_which_build_the_exe_is() -> None:
     assert len(info["commit"]) == 40 and info["build_id"] and info["built_at"]
 
 
+def test_spec_bundles_the_changelogs_for_the_whats_new_banner() -> None:
+    """whats_new.py reads both changelogs from the bundle's root (sys._MEIPASS)."""
+    datas = {Path(src).name: dest for src, dest in _run_spec()}
+    for name in ("CHANGELOG.md", "CHANGELOG.en.md"):
+        assert datas.get(name) == ".", f"{name} is not bundled at the root"
+
+
 def test_the_exe_and_the_installer_carry_the_rockforge_icon() -> None:
     """Without it Windows shows PyInstaller's default icon on the window, the
     taskbar and every shortcut."""

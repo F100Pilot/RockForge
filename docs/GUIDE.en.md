@@ -81,6 +81,9 @@ Nothing is made up silently: whatever the app does not know or cannot do shows u
   (`.exe`; **Install now** / **Not now**), or **Wwise** is missing, so the `.psarc` would have no
   sound (`.exe`; **Download Wwise** / **Hide**). Someone running `start.bat` with git never sees
   the version notice: it updates itself on every start.
+- **After an update**, the first notice lists **everything that changed** since the version you
+  last used (the same entries as each version's notes), until you press **Got it**. In Settings →
+  General → About RockForge, **What's new in this version** shows them again.
 - Once you have built your first project (never on the first day), a quiet request for **a star
   on GitHub** shows once, only when there is no other notice: **Give it a star**, **Not now**
   (asks once more, 30 days later) or **Don't ask again**. The choice stays in this browser;
@@ -253,6 +256,28 @@ What takes the least work and goes wrong the least, in this order:
 the start is set, and always listening to the result. It measures the mix on purpose: the drum
 hits help it; on the separated bass it goes wrong more often.
 
+### Step by step, on a tab that was never synced
+
+One example from start to finish, for a first time (the **Sync** inspector, to the right of the
+score):
+
+1. **One right tempo.** The **♩ =** number above the notes shows the tempo at each point. If it
+   changes midway and the recording does not, in **Tempo** type the recording's BPM in **One
+   tempo** and press **Apply to the whole track**: every bar goes to that BPM and the start stays
+   where it is. If the score only drifts away evenly, the **BPM** above is enough.
+2. **The first bar.** In **Song start**, **Detect 1st note** (or the cursor on the 1st note and
+   **= cursor**). Listen to the first bars.
+3. **Along the song.** Play, and when the score starts drifting, pause where a note should be.
+   Two ways to take everything that follows with it:
+   - **Fix from here** mode: click that note — everything before stays put, and the rest is
+     stretched to the recording's tempo;
+   - or **Notes ▾ → From the cursor to the end** (**Shift+End**) selects every note from there
+     to the end, and in **Drag** mode you drag one of them: they all move together, and the
+     ones before do not move.
+   Repeat further on, always from the start towards the end.
+4. **Check** with playback slowed down, or with the **Recording attacks**, and at the end
+   **Apply and rebuild** and **Mark this track as synced**.
+
 The steps one by one, one track at a time (at the top of the **Sync** inspector):
 
 ### Step 1 — Song start
@@ -269,6 +294,10 @@ The second the 1st note **of this track** is heard. Three ways:
 If the score drifts away evenly over the song (the file was written at a slightly different
 BPM), change the **BPM**. The notes slide over the waveform live. **Reset to GP** goes back to the
 file's tempo.
+
+If the score **changes tempo midway** (the **♩ =** above the notes changes) and the recording does
+not, **One tempo** → **Apply to the whole track** puts every bar at the same BPM, the start where it
+is.
 
 ### An unsynced tab — Mark by ear
 
@@ -367,7 +396,10 @@ it, by ear.
 ### Selecting
 
 Click = one note; **Shift+click** = a range; **Ctrl+click** = add or remove a note; click the
-background = clear the selection. **Excerpt** mode selects with a box.
+background = clear the selection. **Excerpt** mode selects with a box. **Notes ▾ → From the
+cursor to the end** (**Shift+End**) selects every note of this track from the cursor to the end. In
+**Drag** mode, dragging a selected note moves the whole selection; the rest of the track stays
+where it is.
 
 ### Editing notes (✏️ Edit notes mode)
 
@@ -563,7 +595,8 @@ are shared. Lead/Rhythm tracks are picked by name; check them afterwards in each
 - **General**: language; **About RockForge** (the version and build you are using; **Copy
   information for a report** puts what a bug report needs on the clipboard — version, build,
   system, the software found and the end of the technical log, without passwords or your user
-  name — and **Report a problem** opens the form on GitHub); **New versions** (ask GitHub at most once an hour, on by default); **Wwise
+  name — **Report a problem** opens the form on GitHub, and **What's new in this version** shows
+  what changed); **New versions** (ask GitHub at most once an hour, on by default); **Wwise
   folder** (empty = found where the Audiokinetic Launcher installs it); Rocksmith 2014 folder.
 - **Software**: in the `.exe`, the **Extra components** card (what is installed, **Install extra
   components** / **Reinstall**, the install log); then what is installed, what is missing and how
@@ -591,6 +624,7 @@ the app itself.
 | 1 … 9 · 0 | pick the mode in the order of the Mode ▾ menu (the number shows beside each; 0 is the tenth; the same number again turns the mode off) |
 | B · Backspace · Esc | in “Mark by ear”: mark the bar (or beat) · take the last tap back · finish |
 | Shift+click · Ctrl+click | select a range · add or remove a note |
+| Shift+End | select every note from the cursor to the end |
 | Delete | delete the selection |
 | Ctrl+Z · Ctrl+Shift+Z (or Ctrl+Y) | undo · redo (on any page of the project) |
 | Ctrl+C · Ctrl+V | copy the selection · paste at the cursor |

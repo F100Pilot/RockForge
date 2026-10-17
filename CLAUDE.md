@@ -1242,6 +1242,40 @@ all six anchors back and redo restored them, the rebuild's bars sit on the
 taps, `/psarc-check` clean; beats mode too; PT/EN, no page errors. **Not used
 by a real user on real music from here.**
 
+### From the cursor to the end, one tempo, and moving a block (a user's sync workflow)
+
+"the main thing, for me, is getting the BPM setting correct, marking the first
+bar, and then going along the song and moving the notes … knowing how to select
+all the notes after the cursor would be cool … the little number with the BPM
+above the notes was different (faster) than the start" (a user, r/rocksmith,
+2026-10-17). Three pieces, browser-only:
+- **Notas ▾ → Do cursor até ao fim / Shift+End** (`selectFromCursor`): every
+  note group of the chart whose displayed time (`warp(previewScale(t))`) is at
+  or after the cursor (`currentPlayheadT + viewOrigin`) becomes the selection;
+  in "Arrastar", dragging one moves them all.
+- **Moving a selection moves only the selection** (`planBlockMove`, pure, used
+  by the group drag): anchors inside the block move with it, the rest stay,
+  the notes just outside it are pinned where they show and both ends of the
+  chart (`chartSpan`) are pinned. The drag used to add only the block's two
+  anchors: with a pending "Início" (a lone anchor, a uniform shift) the notes
+  between it and the block were dragged part of the way (+0.17/+0.33 s for a
+  +0.5 s drag in the Node check) and, with notes after the block, those lost
+  the "Início" (identity past the last anchor) — BUG-0295.
+- **Andamento → Um só andamento** (`#oneBpm`/`#oneBpmApply`): `setBarsTempo`
+  over every bar of the chart (`chartMeasureRange`), the start left where it
+  shows (`planBarRetempo`'s pins); the placeholder is bar 1's tempo as shown
+  (`refreshOneBpm`, from `showArr`). For a tab whose authored tempo changes
+  where the recording's does not — what the user saw as "the ♩ number above the
+  notes got faster".
+The guides gained "Passo a passo, numa tab que nunca foi sincronizada" with
+exactly that workflow. Verified: `planBlockMove` with Node (a lone "Início" +
+a block to the end, a block in the middle, no anchors — the old two-anchor rule
+fails the first); with Playwright on the invented "Deriva" project (PT/EN):
+"Início" +1 s, cursor at the middle, Shift+End selected 139 of 277 notes, a
++0.5 s drag moved those 139 by exactly 0.5 s and the 138 before by 0, "Um só
+andamento" 100 put every bar at 100.00 BPM with the first note unmoved, the
+shortcut in the "?" list, no page errors.
+
 ### Manual drift correction (`sync_anchor_stages`)
 
 A single `offset_s` only fixes a constant lead-in; if the GP file's tempo map
@@ -5220,6 +5254,43 @@ home page notice links the release page and «Mais tarde» hides that version
 this is the one contact made without a button. Guarded by
 `test_update_check.py` (ordering, the beta rule, the hour's cache, the back-off,
 an upgrade not trusting the old cache, git vs zip, the setting).
+
+### «Novidades» after an update (`rockforge/whats_new.py`, `GET /whats-new`)
+
+"É importante que exista um banner à entrada da app com todas as alterações
+feitas nos updates" (2026-10-17, a user's request). The changelogs ARE the
+source — `CHANGELOG.md` for Portuguese, `CHANGELOG.en.md` for any other
+language — so the app never says what the changelog does not.
+`parse_changelog` reads each `## [<version>] — <date>` section (the unreleased
+one and anything that is not a version skipped; the heading's "0.10.0 beta 14"
+read by `versioning.parse_loose` with the spaces taken out), its `###` groups
+and their items, a wrapped item joined onto one line, its Markdown kept.
+`since(seen, current, lang)` returns the sections after `seen` up to the
+running version (≤ `MAX_VERSIONS`, a build part ignored, the old PEP 440
+spellings read), or only `current`'s own with no `seen`; `available` is false
+when no changelog is installed (a plain `pip install`) — nothing is invented.
+They sit at the repo root, and at the bundle's root in the `.exe`
+(`rockforge.spec` ships both, guarded by
+`test_spec_bundles_the_changelogs_for_the_whats_new_banner`).
+
+UI: `checkWhatsNew` (once both `/version` and the first `/jobs` have answered)
+compares the version with `localStorage` `rf-seen-version`: the same = nothing;
+none recorded and no project = a first start, recorded silently; none recorded
+but projects = someone upgrading from before this existed, shown this
+version's entries; an older one = every version since. The first home notice
+(`.home-notice.news`) lists them (`whatsNewHtml`; `mdInline` escapes, then
+**bold** and `code` only), scrollable, until **Percebido** records the
+version. Definições → Geral → Sobre → **Novidades desta versão**
+(`#aboutWhatsNew`) shows this version's in the ⓘ box. Storage blocked = never
+shown. The changelog entries are therefore user-facing text: write them for
+the user. Guarded by `test_whats_new.py` (sections, wrapped items, the
+unreleased one skipped, the range, old spellings, a downgrade, no changelog,
+the real files in both languages) and
+`test_whats_new_lists_the_changelog_entries_after_the_version_last_seen`;
+with Playwright (PT 1440 px / EN 760 px: an upgrade from beta 12 lists 15,
+14 and 13, "Percebido" records it and a reload shows nothing, the About
+button, a browser with projects and no record sees this version's, no
+horizontal scroll, no page errors).
 
 ## Commands
 

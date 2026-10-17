@@ -6,6 +6,24 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### New
+- **What's new after every update:** when you open a new version, the home page lists everything
+  that changed since the version you last used — the same entries as these notes — until you
+  press "Got it". In Settings → General → About RockForge, "What's new in this version" shows
+  them again.
+- **Select from the cursor to the end** (Notes ▾, or Shift+End): every note of the track from
+  there to the end is selected, and in "Drag" mode dragging one moves them all. Asked for by a
+  user, to line a song up from start to end.
+- **One tempo** (Sync → Tempo): when the score changes tempo midway and the recording does not,
+  it puts every bar of the track at the same BPM, the start where it is.
+- **Guide: syncing step by step**, on a tab that was never synced (tempo, first bar, then
+  lining up along the song).
+
+### Fixed
+- **Dragging a selection stretched the notes before it:** with another pending correction (the
+  "Song start", for example), the notes between that correction and the selection were partly
+  dragged along, and those after the selection lost the correction. Now only the selection moves.
+
 ## [0.10.0 beta 15] — 2026-10-17
 
 ### New

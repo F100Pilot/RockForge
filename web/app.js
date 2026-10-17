@@ -324,6 +324,7 @@ fetch('/version').then(r => r.json()).then(d => {
   el.textContent = 'v' + (d.display || prettyVersion(d.version));
   el.title = d.full || d.version;
   renderAboutCard();
+  checkWhatsNew();
 }).catch(() => {});
 
 // Definições → Geral → "Sobre o RockForge": which version AND which build is
@@ -853,11 +854,72 @@ function prettyVersion(v) {
   const stage = { dev: 'dev', alpha: 'alpha', a: 'alpha', beta: 'beta', b: 'beta', rc: 'RC' }[(m[2] || '').toLowerCase()];
   return m[1] + (stage ? ` ${stage} ${m[3]}` : '');
 }
+// ── "What's new": every change since the version this browser last showed ──
+// After an update the home page lists the changelog's entries between the
+// version last seen here (localStorage rf-seen-version) and this one, read by
+// the server from the changelogs themselves (GET /whats-new), until "Percebido".
+// A first start with no project has nothing to tell and just records the
+// version; someone upgrading from before this existed (projects, no record)
+// sees this version's own entries. Storage blocked = never shown.
+let whatsNew = null;        // the /whats-new answer being shown, or null
+let whatsNewChecked = false;
+let jobsLoaded = false;
+function seenVersion() {
+  try { return localStorage.getItem('rf-seen-version'); } catch { return undefined; }
+}
+function setSeenVersion(v) {
+  try { localStorage.setItem('rf-seen-version', v); } catch { /* blocked: nothing to remember */ }
+}
+async function checkWhatsNew() {
+  if (whatsNewChecked || !buildInfo || !jobsLoaded) return;
+  whatsNewChecked = true;
+  const current = buildInfo.version;
+  const seen = seenVersion();
+  if (seen === undefined || seen === current) return;
+  if (seen === null && !jobsCache.length) { setSeenVersion(current); return; }
+  try {
+    const r = await getJSON('/whats-new' + (seen ? `?since=${encodeURIComponent(seen)}` : ''));
+    if (!r.available || !r.releases.length) { setSeenVersion(current); return; }
+    whatsNew = r;
+  } catch { whatsNewChecked = false; return; }
+  renderHomeNotices();
+}
+// A changelog item's Markdown, escaped first: **bold** and `code` only.
+function mdInline(text) {
+  return esc(text).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`([^`]+)`/g, '<code>$1</code>');
+}
+function whatsNewHtml(releases) {
+  return releases.map(r => `<div class="wn-rel"><div class="wn-head">${esc(r.display)}` +
+    (r.date ? ` <span class="wn-date">${esc(r.date)}</span>` : '') + '</div>' +
+    r.groups.map(g => (g.title ? `<div class="wn-group">${esc(g.title)}</div>` : '') +
+      `<ul>${g.items.map(i => `<li>${mdInline(i)}</li>`).join('')}</ul>`).join('') + '</div>').join('');
+}
+document.getElementById('aboutWhatsNew').addEventListener('click', async () => {
+  try {
+    const r = await getJSON('/whats-new');
+    document.getElementById('infoTitle').textContent = T('Novidades desta versão');
+    document.getElementById('infoBody').innerHTML = r.available && r.releases.length
+      ? `<div class="wn-list wn-full">${whatsNewHtml(r.releases)}</div>`
+      : `<p>${T('Esta instalação não traz a lista de alterações — vê o CHANGELOG no GitHub.')}</p>`;
+    document.querySelector('#infoOverlay .modal').classList.remove('modal-keys');
+    document.getElementById('infoOverlay').hidden = false;
+  } catch (e) { toast(T('Não foi possível ler as novidades: {err}', { err: e.message || e })); }
+});
+
 function renderHomeNotices() {
   const box = document.getElementById('homeNotices');
   const items = [];
   const notice = (cls, ico, html, actions) => items.push(
     `<div class="home-notice ${cls}">${icon(ico)}<div class="grow">${html}</div>${actions.join('')}</div>`);
+  if (whatsNew) {
+    const n = whatsNew.releases.length;
+    notice('news', 'info', (n > 1
+      ? T('O RockForge foi atualizado para a <b>{v}</b>. O que mudou desde a {seen}:', {
+        v: esc(prettyVersion(whatsNew.current)), seen: esc(prettyVersion(seenVersion() || '')) })
+      : T('O RockForge foi atualizado para a <b>{v}</b>. O que mudou:', { v: esc(prettyVersion(whatsNew.current)) })) +
+      `<div class="wn-list">${whatsNewHtml(whatsNew.releases)}</div>`,
+    [`<button type="button" class="pv-btn pv-primary" data-notice-act="whats-new-seen">${T('Percebido')}</button>`]);
+  }
   const u = updateInfo;
   if (u && u.newer && u.kind !== 'git' && !noticeDismissed('update:' + u.latest)) {
     notice('', 'download', T('Há uma versão nova do RockForge: <b>{latest}</b> (tens a {current}).',
@@ -893,7 +955,11 @@ document.getElementById('homeNotices').addEventListener('click', async e => {
   if (dismiss) { dismissNotice(dismiss.dataset.noticeDismiss); return; }
   const act = e.target.closest('[data-notice-act]');
   if (!act) return;
-  if (act.dataset.noticeAct === 'star-later') {
+  if (act.dataset.noticeAct === 'whats-new-seen') {
+    setSeenVersion(whatsNew ? whatsNew.current : buildInfo.version);
+    whatsNew = null;
+    renderHomeNotices();
+  } else if (act.dataset.noticeAct === 'star-later') {
     setStarState({ later: Date.now(), asks: (starState().asks || 0) + 1 });
     renderHomeNotices();
   } else if (act.dataset.noticeAct === 'star-never') {
@@ -1534,6 +1600,7 @@ function showShortcuts() {
       [`${k('+')} ${k('−')}`, T('zoom')],
       [T('Shift+clique'), T('seleciona da nota anterior até esta')],
       [T('Ctrl+clique'), T('junta ou tira uma nota da seleção')],
+      [`${k('Shift')}+${k('End')}`, T('seleciona todas as notas do cursor até ao fim (depois, em "Arrastar", arrasta uma para as mover todas)')],
       [T('Alt a arrastar'), T('move sem encaixar na grelha')],
       [T('Duplo clique'), T('em "Editar notas", insere uma nota no espaço vazio')],
       [T('Arrastar uma nota'), T('em "Editar notas", leva-a para outro tempo ou outra corda (o mesmo traste)')],
@@ -2115,8 +2182,10 @@ async function refreshJobs() {
   } catch {
     return;  // the offline banner already says why; don't blank the cards
   }
+  jobsLoaded = true;
   renderJobCards();
   renderHomeNotices();
+  checkWhatsNew();
 }
 
 // The project view's top bar: title, and a line with artist/album/year and
@@ -2885,6 +2954,7 @@ function showArr(i) {
   syncResetPointer();
   renderAnchorsList();
   updateSyncOffsetDisplay();
+  refreshOneBpm();
   updateBarSyncPanel();
   fillTapBars();
   fillAutoSyncBars();
@@ -7944,6 +8014,86 @@ function buildTimeWarp(anchors) {
   };
 }
 
+// The anchor list (pure) that moves a block of notes — chart origins
+// [p.startO, p.endO], the selection's first and last — by p.delta, and nothing
+// else: anchors already inside the block move with it, the rest stay, the
+// notes just outside it (p.prevO / p.nextO, null when the block reaches that
+// end) are pinned where they show now, and both ends of the chart (p.span) are
+// pinned so the multi-anchor warp, identity outside its range, keeps every
+// other note where it is. Without the pins a pending "Início" (a lone anchor:
+// a uniform shift) stopped being one, and the notes between it and the block
+// stretched along with the drag.
+function planBlockMove(anchors, warp, p) {
+  const EPS = 0.05;
+  const out = [];
+  const put = (o, t) => {
+    const i = out.findIndex(([x]) => Math.abs(x - o) < EPS);
+    if (i >= 0) out[i] = [o, t]; else out.push([o, t]);
+  };
+  for (const [o, t] of anchors) {
+    put(o, o >= p.startO - EPS && o <= p.endO + EPS ? t + p.delta : t);
+  }
+  if (p.span) {
+    put(p.span[0], warp(p.span[0]) + (p.prevO == null ? p.delta : 0));
+    put(p.span[1], warp(p.span[1]) + (p.nextO == null ? p.delta : 0));
+  }
+  if (p.prevO != null) put(p.prevO, warp(p.prevO));
+  if (p.nextO != null) put(p.nextO, warp(p.nextO));
+  put(p.startO, warp(p.startO) + p.delta);
+  put(p.endO, warp(p.endO) + p.delta);
+  return out.sort((x, y) => x[0] - y[0]);
+}
+
+// Every note of this chart from the cursor to the end becomes the selection —
+// then, in "Arrastar", dragging any of them moves them all (planBlockMove).
+function selectFromCursor() {
+  if (!isGpJob() || !arrangements.length) return;
+  const warp = buildTimeWarp(syncAnchors);
+  const at = currentPlayheadT + viewOrigin - 0.005;
+  selectedTimes.clear();
+  let first = null;
+  for (const g of document.getElementById('tabsvg').querySelectorAll('.note-grp')) {
+    const gt = parseFloat(g.dataset.t);
+    if (warp(previewScale(gt)) >= at) {
+      selectedTimes.add(gt);
+      if (first === null || gt < first) first = gt;
+    }
+  }
+  selectionAnchor = first;
+  updateSelectionInfo();
+  showArr(currentArr);
+  if (selectedTimes.size) {
+    toast(T('{n} nota(s) selecionada(s), do cursor até ao fim. No modo "Arrastar", arrasta uma delas para as moveres todas.', { n: selectedTimes.size }), 'ok');
+  } else toast(T('Não há notas depois do cursor.'));
+}
+document.getElementById('selectFromCursor').addEventListener('click', selectFromCursor);
+
+// "Um só andamento": every bar of this chart at one BPM (setBarsTempo over
+// them all), the start left where it shows — for a tab whose tempo changes
+// mid-song where the recording does not.
+function chartMeasureRange(a) {
+  const bars = (a && a.bars) || [];
+  return bars.length ? [bars[0].measure, bars[bars.length - 1].measure] : null;
+}
+function refreshOneBpm() {
+  const el = document.getElementById('oneBpm');
+  if (!el || document.activeElement === el) return;
+  const range = chartMeasureRange(arrangements[currentArr]);
+  const bpm = range && barDisplayBpm(range[0]);
+  el.placeholder = bpm ? bpm.toFixed(1) : '';
+}
+document.getElementById('oneBpmApply').addEventListener('click', () => {
+  const el = document.getElementById('oneBpm');
+  const range = chartMeasureRange(arrangements[currentArr]);
+  const info = document.getElementById('oneBpmInfo');
+  if (!range) { info.textContent = T('sem compassos nesta pista'); return; }
+  const bpm = parseFloat(el.value) || parseFloat(el.placeholder);
+  const r = setBarsTempo(range[0], range[1], bpm);
+  info.textContent = r.ok
+    ? T('Todos os compassos a {bpm} BPM. Agora acerta o início (Passo 1) e corrige daí em diante.', { bpm: (+bpm).toFixed(1) })
+    : r.why;
+});
+
 function setAnchor(origT, newT) {
   const i = syncAnchors.findIndex(([o]) => Math.abs(o - origT) < 0.05);
   if (i >= 0) syncAnchors[i] = [origT, newT];
@@ -8547,8 +8697,15 @@ function updateSelectionInfo() {
       const snappedStart = snapDisplay(warp(dStart) + dx / tabPx, e.altKey);
       const snapDelta = snappedStart - warp(dStart);
       if (Math.abs(snapDelta) > 0.003) {
-        setAnchor(dStart, warp(dStart) + snapDelta);
-        if (dEnd !== dStart) setAnchor(dEnd, warp(dEnd) + snapDelta);
+        const lo = Math.min(...groupDrag.times), hi = Math.max(...groupDrag.times);
+        const all = [...svg.querySelectorAll('.note-grp')].map(g => parseFloat(g.dataset.t));
+        const before = all.filter(x => x < lo - 1e-6), after = all.filter(x => x > hi + 1e-6);
+        const plan = planBlockMove(syncAnchors, warp, {
+          startO: dStart, endO: dEnd, delta: snapDelta, span: chartSpan(currentArr),
+          prevO: before.length ? previewScale(Math.max(...before)) : null,
+          nextO: after.length ? previewScale(Math.min(...after)) : null,
+        });
+        syncAnchors.splice(0, syncAnchors.length, ...plan);
         renderAnchorsList();
         updatePendingChangesInfo();
         showArr(currentArr);
@@ -9532,6 +9689,8 @@ document.addEventListener('keydown', e => {
     e.preventDefault(); pasteNotesAtCursor();
   } else if ((e.key === 'Delete' || e.key === 'Backspace') && isGpJob() && selectedTimes.size) {
     e.preventDefault(); deleteSelectedNotes();
+  } else if (e.key === 'End' && e.shiftKey && !e.ctrlKey && !e.metaKey && isGpJob()) {
+    e.preventDefault(); selectFromCursor();
   }
 });
 

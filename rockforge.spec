@@ -44,6 +44,11 @@ for f in sorted(pkg.rglob("*")):
     if f.is_file() and f.suffix not in (".py", ".pyc") and "__pycache__" not in f.parts:
         datas.append((str(f), str(Path("rockforge") / f.relative_to(pkg).parent)))
 
+# The changelogs, at the bundle's root: the "what's new" banner reads them
+# (rockforge/whats_new.py), the same entries the releases are made from.
+for _name in ("CHANGELOG.md", "CHANGELOG.en.md"):
+    datas.append((_name, "."))
+
 # The standalone ML runners. These are executed as SCRIPTS by another Python
 # (the one ROCKFORGE_ML_PYTHON points at — see infrastructure/ml_python.py), so
 # unlike every other module they must exist as real .py FILES on disk: inside

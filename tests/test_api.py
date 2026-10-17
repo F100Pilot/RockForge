@@ -3677,6 +3677,26 @@ def test_tone_suggestions_propose_a_tone_per_part_of_each_track(
     assert body["timeline"][0] == [2.0, 0.6, 1]
 
 
+def test_whats_new_lists_the_changelog_entries_after_the_version_last_seen(
+    client: TestClient,
+) -> None:
+    from rockforge import __version__, versioning
+
+    r = client.get("/whats-new", headers={"X-RockForge-Lang": "en"})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["current"] == __version__ and body["available"] is True
+    assert [x["version"] for x in body["releases"]] == [__version__]
+    assert body["releases"][0]["groups"][0]["items"]
+    older = client.get("/whats-new?since=0.10.0-beta.1").json()["releases"]
+    assert len(older) > 1 and older[0]["version"] == __version__
+    assert all(versioning.parse(x["version"]).key > versioning.parse("0.10.0-beta.1").key
+               for x in older)
+    pt = client.get("/whats-new", headers={"X-RockForge-Lang": "pt"}).json()
+    assert pt["releases"][0]["groups"][0]["title"] != body["releases"][0]["groups"][0]["title"]
+    assert client.get("/whats-new?since=" + "9" * 65).status_code == 422
+
+
 def test_a_tone_plan_pasted_as_text_becomes_tones_and_changes_without_storing_anything(
     client: TestClient, tmp_path
 ) -> None:

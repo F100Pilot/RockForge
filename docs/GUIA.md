@@ -80,6 +80,10 @@ aviso.
   **componentes extra** (`.exe`; **Instalar agora** / **Agora não**), ou falta o **Wwise** e o
   `.psarc` sairia sem som (`.exe`; **Descarregar o Wwise** / **Ocultar**). Quem usa o
   `start.bat` com o git nunca vê o aviso de versão: atualiza-se sozinho a cada arranque.
+- **Depois de uma atualização**, o primeiro aviso lista **tudo o que mudou** desde a versão que
+  usaste da última vez (as mesmas entradas das notas de cada versão), até carregares em
+  **Percebido**. Em Definições → Geral → Sobre o RockForge, **Novidades desta versão** mostra-as
+  de novo.
 - Depois de construíres o primeiro projeto (nunca no primeiro dia), aparece uma vez um pedido
   discreto de **uma estrela no GitHub**, só quando não há outro aviso: **Dar uma estrela**,
   **Agora não** (pergunta mais uma vez, 30 dias depois) ou **Não perguntar mais**. A escolha
@@ -253,6 +257,28 @@ A **Sincronizar automaticamente** (experimental) pode poupar tempo numa tab com 
 variar, mas só depois de acertares o início, e ouvindo sempre o resultado. Mede na mistura de
 propósito: as batidas da bateria ajudam-na; no baixo separado erra mais.
 
+### Passo a passo, numa tab que nunca foi sincronizada
+
+Um exemplo do princípio ao fim, para quem começa (inspetor **Sincronização**, à direita da
+partitura):
+
+1. **Um andamento certo.** O número **♩ =** por cima das notas mostra o andamento em cada sítio.
+   Se ele muda a meio da música e a gravação não, em **Andamento** escreve o BPM da gravação em
+   **Um só andamento** e carrega em **Aplicar à pista toda**: todos os compassos passam a esse
+   BPM e o início fica onde está. Se a partitura só se afasta por igual, basta o **BPM** de cima.
+2. **O primeiro compasso.** Em **Início da música**, **Detetar 1ª nota** (ou o cursor em cima da
+   1ª nota e **= cursor**). Ouve os primeiros compassos.
+3. **Ao longo da música.** Dá play e, quando a partitura começar a fugir, pausa no ponto onde
+   devia estar uma nota. Duas maneiras de levar tudo o que vem a seguir:
+   - modo **Corrigir daqui**: clica nessa nota — fica tudo para trás no sítio, e o resto é
+     esticado ao andamento da gravação;
+   - ou **Notas ▾ → Do cursor até ao fim** (**Shift+End**) seleciona todas as notas daí até ao
+     fim, e no modo **Arrastar** arrastas uma delas: movem-se todas juntas, e as de trás não
+     mexem.
+   Repete mais à frente, sempre do princípio para o fim.
+4. **Confirma** com a reprodução abrandada, ou com os **Ataques da gravação**, e no fim
+   **Aplicar e reconstruir** e **Marcar esta pista como sincronizada**.
+
 Os passos seguintes, um a um, numa pista de cada vez (em cima, no inspetor **Sincronização**):
 
 ### Passo 1 — Início da música
@@ -268,6 +294,10 @@ O segundo em que se ouve a 1ª nota **desta pista**. Três maneiras:
 Se a partitura se vai afastando por igual ao longo da música (o ficheiro foi escrito num BPM
 ligeiramente diferente), muda o **BPM**. As notas deslizam sobre a onda em tempo real.
 **Repor GP** volta ao andamento do ficheiro.
+
+Se a partitura **muda de andamento a meio** (o **♩ =** por cima das notas muda) e a gravação não,
+**Um só andamento** → **Aplicar à pista toda** põe todos os compassos no mesmo BPM, com o início
+no sítio.
 
 ### Tab sem sincronização — Marcar a ouvir
 
@@ -368,7 +398,9 @@ já bater certo, mas só tu o confirmas, a ouvir.
 ### Selecionar
 
 Clique = uma nota; **Shift+clique** = um intervalo; **Ctrl+clique** = junta ou tira uma nota;
-clique no fundo = limpa a seleção. O modo **Excerto** seleciona com uma caixa.
+clique no fundo = limpa a seleção. O modo **Excerto** seleciona com uma caixa. **Notas ▾ → Do
+cursor até ao fim** (**Shift+End**) seleciona todas as notas desta pista do cursor ao fim. No modo
+**Arrastar**, arrastar uma nota selecionada move a seleção toda; o resto da pista fica onde está.
 
 ### Editar notas (modo ✏️ Editar notas)
 
@@ -563,7 +595,8 @@ info** de cada projeto.
 - **Geral**: idioma; **Sobre o RockForge** (a versão e o build que estás a usar; **Copiar
   informação para relatório** põe na área de transferência o que um relatório de erro precisa —
   versão, build, sistema, software encontrado e o fim do registo técnico, sem palavras-passe nem
-  o teu nome de utilizador — e **Relatar um erro** abre o formulário no GitHub); **Versões novas** (pergunta ao GitHub no máximo uma vez por hora, ligado por defeito);
+  o teu nome de utilizador — **Relatar um erro** abre o formulário no GitHub, e **Novidades desta
+  versão** mostra o que mudou); **Versões novas** (pergunta ao GitHub no máximo uma vez por hora, ligado por defeito);
   **Pasta do Wwise** (vazio = procurar onde o Audiokinetic Launcher o instala); pasta do
   Rocksmith 2014.
 - **Software**: no `.exe`, o cartão **Componentes extra** (o que está instalado, **Instalar
@@ -592,6 +625,7 @@ lista na própria aplicação.
 | 1 … 9 · 0 | escolhe o modo pela ordem do menu Modo ▾ (o número aparece ao lado de cada um; o 0 é o décimo; o mesmo número outra vez tira o modo) |
 | B · Backspace · Esc | em «Marcar a ouvir»: marca o compasso (ou o tempo) · tira o último toque · termina |
 | Shift+clique · Ctrl+clique | seleciona um intervalo · junta ou tira uma nota |
+| Shift+End | seleciona todas as notas do cursor até ao fim |
 | Delete | apaga a seleção |
 | Ctrl+Z · Ctrl+Shift+Z (ou Ctrl+Y) | desfaz · refaz (em qualquer página do projeto) |
 | Ctrl+C · Ctrl+V | copia a seleção · cola no cursor |

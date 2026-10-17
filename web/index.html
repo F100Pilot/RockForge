@@ -578,6 +578,16 @@ kbd { display:inline-block; min-width:1.5em; padding:.08em .45em; border:1px sol
 .home-notice > .ic { flex:none; width:1.25rem; height:1.25rem; }
 .home-notice.warn > .ic { color:var(--warn); }
 .home-notice.star > .ic { color:#ffd27a; }
+.home-notice.news { align-items:flex-start; border-color:#2f5a4a; background:#132a24; }
+.home-notice.news > .ic { color:#5fd3a5; margin-top:.15rem; }
+.wn-list { margin-top:.5rem; max-height:22rem; overflow-y:auto; padding-right:.4rem; }
+.wn-list.wn-full { max-height:none; margin-top:0; }
+.wn-rel + .wn-rel { margin-top:.8rem; padding-top:.6rem; border-top:1px solid #2a3a35; }
+.wn-head { font-weight:700; font-size:1rem; }
+.wn-date { font-weight:400; color:var(--muted); font-size:.85rem; }
+.wn-group { margin-top:.4rem; font-size:.8rem; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+.wn-list ul { margin:.25rem 0 0; padding-left:1.2rem; display:flex; flex-direction:column; gap:.3rem; }
+.wn-list code { font-size:.85em; }
 .home-notice .grow { flex:1 1 18rem; min-width:0; }
 .home-notice .pv-btn { flex:none; }
 .comp-list { display:grid; grid-template-columns:repeat(auto-fill, minmax(15rem, 1fr)); gap:.45rem .9rem; }
@@ -1094,6 +1104,8 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
               <div class="dd">
                 <button type="button" id="notesMenuBtn" class="dd-trigger" aria-haspopup="menu" aria-expanded="false" aria-controls="notesMenu"><svg class="ic dd-ico" aria-hidden="true"><use href="#i-copy"/></svg><span>Notas</span><svg class="ic dd-chev" aria-hidden="true"><use href="#i-chev-down"/></svg></button>
                 <div class="dd-menu" id="notesMenu" role="menu" aria-label="Copiar, colar, apagar e limpar notas" hidden>
+                <div class="dd-cap">Selecionar</div>
+                <button type="button" id="selectFromCursor" class="dd-item" role="menuitem" title="Seleciona todas as notas desta pista do cursor até ao fim (Shift+End)"><svg class="ic dd-ico" aria-hidden="true"><use href="#i-select"/></svg><span class="dd-txt"><span class="dd-name">Do cursor até ao fim</span><span class="dd-desc">Shift+End — depois, em "Arrastar", arrasta uma para mover todas</span></span></button>
                 <div class="dd-cap">Copiar / colar</div>
                 <button type="button" id="copyNotes" class="dd-item" role="menuitem" title="Copiar as notas selecionadas (Ctrl+C)"><svg class="ic dd-ico" aria-hidden="true"><use href="#i-copy"/></svg><span class="dd-txt"><span class="dd-name">Copiar seleção</span><span class="dd-desc">Ctrl+C — seleciona antes com Shift+clique</span></span></button>
                 <button type="button" id="pasteNotes" class="dd-item" role="menuitem" disabled title="Colar no cursor (Ctrl+V)"><svg class="ic dd-ico" aria-hidden="true"><use href="#i-paste"/></svg><span class="dd-txt"><span class="dd-name">Colar no cursor</span><span class="dd-desc">Ctrl+V — nesta pista ou noutra</span></span></button>
@@ -1229,6 +1241,14 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                 </div>
                 <input type="range" id="tempoRange" min="50" max="200" step="0.5" value="100" aria-label="Andamento">
                 <span id="tempoPct" class="meta"></span>
+                <div class="pv-card-desc">A partitura muda de andamento a meio e a gravação não? Põe todos os compassos no mesmo BPM — o início fica onde está.</div>
+                <div class="pv-row">
+                  <span>Um só andamento</span>
+                  <input type="number" id="oneBpm" min="10" max="400" step="any" style="width:6rem" aria-label="BPM da pista toda">
+                  <span class="meta">BPM</span>
+                  <button type="button" id="oneBpmApply" class="secondary">Aplicar à pista toda</button>
+                </div>
+                <span id="oneBpmInfo" class="meta"></span>
               </div>
               <div class="pv-card" id="tapSyncCard">
                 <div class="pv-card-head">Marcar a ouvir <span class="meta">(tab sem sincronização)</span>
@@ -1690,6 +1710,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
           <dl id="aboutInfo" class="about-info"></dl>
           <div class="pv-card-desc">Ao relatar um erro, junta esta informação: diz que versão e que build estás a usar, o sistema e as últimas linhas do registo técnico (sem palavras-passe, tokens nem o teu nome de utilizador).</div>
           <div class="about-actions">
+            <button type="button" class="pv-btn" id="aboutWhatsNew"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg>Novidades desta versão</button>
             <button type="button" class="pv-btn" id="copyDiagReport"><svg class="ic" aria-hidden="true"><use href="#i-copy"/></svg>Copiar informação para relatório</button>
             <a class="pv-btn" href="https://github.com/F100Pilot/RockForge/issues/new?template=bug_report.yml" target="_blank" rel="noopener"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>Relatar um erro</a>
           </div>

@@ -19,6 +19,9 @@ from rockforge.interfaces.api.schemas import (
     SystemCheckOut,
     UiLanguageIn,
     UpdateCheckOut,
+    WhatsNewGroupOut,
+    WhatsNewOut,
+    WhatsNewReleaseOut,
 )
 
 router = APIRouter()
@@ -112,6 +115,29 @@ def version() -> dict[str, object]:
     from rockforge.build_info import build_info
 
     return {**build_info(), "version": api.app.version}
+
+
+@router.get("/whats-new", response_model=WhatsNewOut)
+def whats_new(since: str | None = None) -> WhatsNewOut:
+    """The changelog's entries after ``since`` (the version the page last showed)
+    up to this one, for the "what's new" banner; with no ``since``, this
+    version's own. ``available`` is false when the changelogs are not installed."""
+    from rockforge import __version__
+    from rockforge import whats_new as wn
+
+    if since is not None and len(since) > 64:
+        raise HTTPException(422, "since: at most 64 characters")
+    available, releases = wn.since(since, __version__, i18n.current())
+    return WhatsNewOut(
+        current=__version__, available=available,
+        releases=[
+            WhatsNewReleaseOut(
+                version=r.version, display=r.display, date=r.date,
+                groups=[WhatsNewGroupOut(title=g.title, items=g.items) for g in r.groups],
+            )
+            for r in releases
+        ],
+    )
 
 
 @router.get("/update-check", response_model=UpdateCheckOut)

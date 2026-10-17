@@ -511,6 +511,27 @@ class ToneSuggestionsOut(BaseModel):
     timeline: list[list[float]] = []
 
 
+class WhatsNewGroupOut(BaseModel):
+    title: str
+    items: list[str]  # Markdown (bold, code), as the changelog writes them
+
+
+class WhatsNewReleaseOut(BaseModel):
+    version: str
+    display: str
+    date: str
+    groups: list[WhatsNewGroupOut]
+
+
+class WhatsNewOut(BaseModel):
+    """What changed after the version the user last saw, newest first, in the
+    user's language (``rockforge/whats_new.py``)."""
+
+    current: str
+    available: bool
+    releases: list[WhatsNewReleaseOut]
+
+
 class TonePlanIn(BaseModel):
     """Text pasted from a chatbot's answer: the tones and where each comes in."""
 
