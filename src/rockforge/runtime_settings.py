@@ -149,15 +149,25 @@ def rocksmith_dlc_dir() -> Path | None:
 
 def wwise_root(settings: config.Settings | None = None) -> Path | None:
     """The Wwise installation: the folder set in Definições, else
-    ``ROCKFORGE_WWISE_ROOT``/``WWISEROOT``, else one found where the
-    Audiokinetic Launcher installs it."""
-    env = (settings or config.settings).resolved_wwise_root()
-    chosen = _path("wwise_root", env)
+    ``ROCKFORGE_WWISE_ROOT``, else the Launcher's ``WWISEROOT`` when it names a
+    usable version, else one found where the Audiokinetic Launcher installs it.
+
+    ``WWISEROOT`` is NOT the user's choice: the Launcher points it at whichever
+    version it set up last — often the 2024/2025 it offers first — and taking
+    it as final hid a 2023.1 installed beside it ("it keeps saying I don't
+    have Wwise installed when I do")."""
+    s = settings or config.settings
+    chosen = _path("wwise_root", s.wwise_root)
     if chosen is not None:
         return chosen
-    from rockforge.infrastructure.packaging.wwise import detect_wwise_root
+    from rockforge.infrastructure.packaging.wwise import WwiseWemConverter, detect_wwise_root
 
-    return detect_wwise_root()
+    launcher = s.resolved_wwise_root()
+    if launcher is not None:
+        conv = WwiseWemConverter(launcher)
+        if conv.available() and conv.version() is not None:
+            return launcher
+    return detect_wwise_root() or launcher
 
 
 def ml_python() -> Path | None:

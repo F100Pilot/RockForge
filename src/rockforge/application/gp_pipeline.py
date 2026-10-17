@@ -812,10 +812,15 @@ class GenerateFromGpUseCase:
             cover_art=spec.cover_art,
             dynamic_difficulty=spec.dynamic_difficulty,
         )
-        if packaging.wem_path is None:
+        if packaging.wem_path is None and packaging.wem_error:
             warnings.append(
-                "no .wem produced: no local Wwise installation found "
-                "(set ROCKFORGE_WWISE_ROOT or WWISEROOT)"
+                "no .wem produced: Wwise was found but the conversion failed — "
+                f"{packaging.wem_error}"
+            )
+        elif packaging.wem_path is None:
+            warnings.append(
+                "no .wem produced: no usable Wwise installation found "
+                "(Settings → Software says what was found)"
             )
         if packaging.psarc_path is None:
             warnings.append(

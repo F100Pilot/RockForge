@@ -26,6 +26,9 @@ class PackagingResult:
     xml_paths: tuple[Path, ...]
     wem_path: Path | None  # produced only when a local Wwise installation is available
     psarc_path: Path | None  # None => packer unavailable; bundle is the deliverable
+    # Why there is no .wem although a Wwise was found: the conversion's own
+    # error, so it is never reported as "Wwise not installed".
+    wem_error: str | None = None
 
 
 class AudioIngestor(Protocol):

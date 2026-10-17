@@ -12,6 +12,14 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
   secções, tons, correções, posição da mão, separadores das pistas e os ataques da gravação (as
   bolas e os traços laranja). O cartão "Ataques da gravação" mostra os seus quatro.
 
+### Corrigido
+- **"Não tenho o Wwise" com o Wwise instalado:** a variável `WWISEROOT` que o Audiokinetic Launcher
+  deixa no Windows aponta muitas vezes para outra versão (o 2024/2025), e o RockForge tomava-a como
+  definitiva, sem procurar o 2023.1 instalado ao lado. Agora só a pasta escolhida por ti em
+  Definições é definitiva. Uma conversão do Wwise que falha também já não diz "Wwise não
+  encontrado": mostra o erro do próprio Wwise. E um .psarc sem som já não aparece como "PSARC
+  jogável" em "Antes de usar".
+
 ## [0.10.0 beta 12] — 2026-10-17
 
 ### Novo

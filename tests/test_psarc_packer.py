@@ -168,6 +168,8 @@ def test_bundle_survives_wwise_failure(tmp_path: Path) -> None:
         [_arrangement(ArrangementKind.COMBINED)], audio, tmp_path / "bundle"
     )
     assert result.wem_path is None
+    # Wwise WAS found: its own error travels on, so the user is not told it is missing
+    assert result.wem_error == "wwise down"
     assert (tmp_path / "bundle" / "rockforge.rs2dlc").exists()
     assert (tmp_path / "bundle" / "rockforge_project.json").exists()
 

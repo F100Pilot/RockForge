@@ -459,6 +459,10 @@ def _to_out(job: Job) -> JobOut:
         warnings=job.warnings or [],
         note_counts=job.note_counts or {},
         psarc_available=job.psarc_path is not None,
+        psarc_has_audio=(
+            bool(params["psarc_has_audio"]) if "psarc_has_audio" in params else None
+        ),
+        wem_error=str(params["wem_error"]) if params.get("wem_error") else None,
         bundle_available=job.bundle_dir is not None,
         source_type=job.source_type,
         offset_s=offset_s,

@@ -138,14 +138,16 @@ class NativePsarcPacker:
         # bundle's project metadata, but a Wwise failure must NEVER abort the
         # bundle — DLC Builder can (re)build the .wem itself on import.
         wem_path: Path | None = None
+        wem_error: str | None = None
         try:
             if self._wem_converter is not None and self._wem_converter.available():
                 wem = self._wem_converter.convert(audio, out_dir / "wwise_work")
                 wem_path = out_dir / "audio.wem"
                 shutil.copy2(wem, wem_path)
-        except Exception:  # noqa: BLE001 — Wwise is best-effort; keep the bundle
+        except Exception as exc:  # noqa: BLE001 — Wwise is best-effort; keep the bundle
             logger.warning("Wwise .wem conversion failed; bundle built without it", exc_info=True)
             wem_path = None
+            wem_error = str(exc)[-1500:] or type(exc).__name__
 
         # The native .psarc is fully isolated: ANY failure here (missing crypto
         # extra, Wwise/ffmpeg, a packing bug) leaves the DLC Builder bundle — the
@@ -207,6 +209,7 @@ class NativePsarcPacker:
             xml_paths=tuple(xml_paths),
             wem_path=wem_path,
             psarc_path=psarc_path,
+            wem_error=wem_error,
         )
 
     def _build_psarc(

@@ -581,6 +581,7 @@ lista na própria aplicação.
 |---|---|
 | A música **não aparece** no jogo | O patch de CDLC (`D3DX9_42.dll`) está na pasta do jogo? (Definições → Software.) O AppID usado é de uma DLC que tens? O PSARC está em `dlc` (ou `dlc\RockForge`)? |
 | Só sai o bundle, **sem PSARC jogável** | Falta o Wwise (2019/2021/2022/2023) — Definições → Software. |
+| Diz que **falta o Wwise**, mas está instalado | Definições → Software diz o que encontrou: um 2024/2025 (instala também o **2023.1**, podem ficar os dois), um Wwise sem a parte **Authoring** (no Launcher, Modify → Authoring), ou nada (indica a pasta em Definições → Geral → Pasta do Wwise). Em Exportar → "Antes de usar", **PSARC sem som** mostra o erro do Wwise quando o encontrou mas a conversão falhou. |
 | As notas fogem da música | Secção 6, [A forma mais eficaz](#a-forma-mais-eficaz): início, BPM, "Marcar a ouvir" numa tab nunca sincronizada, depois "Corrigir daqui". Num ficheiro que não é exatamente a gravação (outra versão, compassos a mais), a correção tem de ser no próprio ficheiro. |
 | O YouTube recusa o download | Instala o solucionador e um motor JavaScript: `pip install -U "yt-dlp[default]"` e `winget install DenoLand.Deno`, e reinicia. Se pedir sessão, escolhe **firefox** em "Sessão do browser" (a do Chrome não se lê no Windows). Ou carrega tu o MP3 do vídeo. |
 | O Songsterr diz que a tab não está publicada | Só tabs publicadas podem ser lidas; escolhe outra tab da mesma música. |

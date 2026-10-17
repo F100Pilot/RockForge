@@ -127,6 +127,49 @@ def test_generate_cdlc_gp_job_completes(db, tmp_path, monkeypatch) -> None:
     assert job.error is None
 
 
+def test_a_psarc_built_without_sound_says_so_and_why(db, tmp_path, monkeypatch) -> None:
+    """A .psarc with no .wem plays silence: the job records it, and a Wwise that
+    was found but failed to convert keeps its own error — before, both read as
+    "no local Wwise installation found" and a silent .psarc as playable."""
+    from rockforge.application.gp_pipeline import GenerateFromGpUseCase
+    from rockforge.interfaces.api.app import _to_out
+
+    class _Silent(_FakePackager):
+        error: str | None = None
+
+        def package(self, *args, **kwargs):
+            r = super().package(*args, **kwargs)
+            psarc = r.bundle_dir / "song_p.psarc"
+            psarc.write_bytes(b"PSAR")
+            return PackagingResult(r.bundle_dir, r.xml_paths, None, psarc, wem_error=self.error)
+
+    gp_path = _make_gp5(tmp_path)
+    packager = _Silent()
+    monkeypatch.setattr(
+        ca, "_build_gp_use_case",
+        lambda: GenerateFromGpUseCase(
+            ingestor=_FakeIngestor(), normalizer=_FakeNormalizer(), packager=packager
+        ),
+    )
+    packager.error = "WwiseConsole failed (exit 1): project migration failed"
+    job_id = _job(db, params={"gp_path": str(gp_path), "lead_track": 0})
+    ca.generate_cdlc(job_id)
+    job = _reload(db, job_id)
+    out = _to_out(job)
+    assert out.psarc_available and out.psarc_has_audio is False
+    assert out.wem_error == packager.error
+    assert any("conversion failed" in w and "migration failed" in w for w in job.warnings)
+    assert not any("no usable Wwise" in w for w in job.warnings)
+
+    packager.error = None  # no Wwise at all: no error to show, the other warning
+    job_id = _job(db, params={"gp_path": str(gp_path), "lead_track": 0})
+    ca.generate_cdlc(job_id)
+    job = _reload(db, job_id)
+    out = _to_out(job)
+    assert out.psarc_has_audio is False and out.wem_error is None
+    assert any("no usable Wwise" in w for w in job.warnings)
+
+
 def test_the_fhp_editors_hand_positions_reach_the_build(db, tmp_path, monkeypatch) -> None:
     """params["hand_positions"] (the FHP editor) becomes each chart's own
     fret-hand positions; a chart absent from it keeps the automatic ones."""

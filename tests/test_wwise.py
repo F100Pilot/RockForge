@@ -189,3 +189,44 @@ def test_wwise_is_found_in_a_folder_of_the_users_choosing(tmp_path) -> None:  # 
     installs = find_wwise_installs([tmp_path / "Rocksmith"])
     assert [w.version for w in installs] == ["2025.1.11.9262", "2023.1.4.8496"]
     assert [w.supported for w in installs] == [False, True]
+
+
+def _wwise_folder(base: Path, name: str) -> Path:
+    bin_ = base / name / "Authoring" / "x64" / "Release" / "bin"
+    bin_.mkdir(parents=True)
+    (bin_ / "WwiseConsole.exe").write_bytes(b"")
+    return base / name
+
+
+def test_the_launchers_wwiseroot_on_another_version_does_not_hide_a_2023(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """"It keeps saying that I don't have Wwise installed when I do": the
+    Launcher points WWISEROOT at the version it set up last — often the
+    2024/2025 it offers first — and taking it as final hid the 2023.1 beside
+    it. Only the user's own choice (Definições, ROCKFORGE_WWISE_ROOT) is final."""
+    from rockforge import runtime_settings
+    from rockforge.config import Settings
+    from rockforge.infrastructure.packaging import wwise
+
+    base = tmp_path / "Audiokinetic"
+    newest = _wwise_folder(base, "Wwise2025.1.3.9039")
+    good = _wwise_folder(base, "Wwise2023.1.4.8496")
+    monkeypatch.setattr(runtime_settings, "load", lambda: {})
+    real = wwise.detect_wwise_root
+    monkeypatch.setattr(wwise, "detect_wwise_root", lambda bases=None: real([base]))
+
+    monkeypatch.setenv("WWISEROOT", str(newest))
+    assert runtime_settings.wwise_root(Settings(wwise_root=None)) == good
+    # a usable WWISEROOT is still taken as it is
+    monkeypatch.setenv("WWISEROOT", str(good))
+    assert runtime_settings.wwise_root(Settings(wwise_root=None)) == good
+    # nothing usable anywhere: WWISEROOT is kept, so the diagnostics can name it
+    monkeypatch.setenv("WWISEROOT", str(newest))
+    monkeypatch.setattr(wwise, "detect_wwise_root", lambda bases=None: None)
+    assert runtime_settings.wwise_root(Settings(wwise_root=None)) == newest
+    # the user's own folder wins, even an unusable one (the diagnostics say why)
+    assert runtime_settings.wwise_root(Settings(wwise_root=newest)) == newest
+    monkeypatch.setattr(runtime_settings, "load", lambda: {"wwise_root": str(newest)})
+    monkeypatch.setattr(wwise, "detect_wwise_root", lambda bases=None: real([base]))
+    assert runtime_settings.wwise_root(Settings(wwise_root=None)) == newest

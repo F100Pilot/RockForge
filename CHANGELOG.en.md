@@ -12,6 +12,14 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
   corrections, hand position, track tabs and the recording's attacks (the orange circles and
   ticks). The "Recording attacks" card shows its four.
 
+### Fixed
+- **"Wwise not installed" with Wwise installed:** the `WWISEROOT` variable the Audiokinetic Launcher
+  leaves in Windows often points at another version (2024/2025), and RockForge took it as final
+  without looking for the 2023.1 installed beside it. Only the folder you choose in Settings is
+  final now. A Wwise conversion that fails no longer says "Wwise not found" either: it shows
+  Wwise's own error. And a .psarc without sound no longer shows as "Playable PSARC" in "Before you
+  use it".
+
 ## [0.10.0 beta 12] — 2026-10-17
 
 ### New

@@ -939,6 +939,7 @@ const COMPLETE_ACTIONS = {
   syncok:   () => setSyncConfirmed(true),
   syncundo: () => setSyncConfirmed(false),
   lyrics: () => { showSection('letras'); },
+  software: () => openSettings('software'),
 };
 
 // Each chart is named as Rocksmith names it in game ("LEAD 1", "LEAD 2",
@@ -1101,7 +1102,16 @@ function renderCompleteness(j) {
   const isGp = j.source_type === 'gp';
   const rows = [];
 
-  if (j.psarc_available) {
+  if (j.psarc_available && j.psarc_has_audio === false) {
+    // Built, but with no .wem: it would play silence. Say why — a Wwise that
+    // was found but failed to convert is not "Wwise not installed".
+    rows.push({ state: 'err', ico: 'x', title: T('PSARC sem som'), short: T('som do PSARC (Wwise)'),
+      act: 'software', actLabel: T('Ver o Wwise em Definições'),
+      note: j.wem_error
+        ? `${T('O Wwise foi encontrado, mas a conversão do áudio falhou. O erro do Wwise:')} ${j.wem_error.slice(-400)}`
+        : T('Não foi encontrado um Wwise que sirva (2019, 2021, 2022 ou 2023), por isso o .psarc não tem som. Em Definições → Software vês o que foi encontrado e porquê.') });
+    rows.push(psarcCheckRow(j));
+  } else if (j.psarc_available) {
     rows.push({ state: 'ok', ico: 'check', title: T('PSARC jogável gerado'), note: T('.psarc pronto para o jogo.') });
     rows.push(psarcCheckRow(j));
   } else

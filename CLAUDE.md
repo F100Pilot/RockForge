@@ -5065,6 +5065,26 @@ template is untested, so they are refused, not guessed. Guarded by
 `test_a_wwise_that_cannot_be_used_is_named_not_reported_as_unset` and
 `test_wwise_is_found_in_a_folder_of_the_users_choosing`; the
 user's actual install was not seen from here.
+**`WWISEROOT` is not final, and a failed conversion is not "no Wwise"**
+("It keeps saying that I don't have WWise installed when I do", a user,
+2026-10-17). `runtime_settings.wwise_root`: the folder set in Definições or
+`ROCKFORGE_WWISE_ROOT` wins as before; the Launcher's `WWISEROOT` — which it
+points at whichever version it set up last, often the 2024/2025 — is taken
+only when it is usable (console + a supported version in its name), else the
+search runs and `WWISEROOT` is kept only when nothing usable exists (so the
+diagnostics can name it). And `NativePsarcPacker` used to swallow a failed
+`convert` into a log while `gp_pipeline` warned "no local Wwise installation
+found": `PackagingResult.wem_error` now carries the conversion's own error,
+the warning says the conversion failed with it, the worker stores
+`params["psarc_has_audio"]`/`["wem_error"]` (`JobOut.psarc_has_audio`/
+`wem_error`), and "Antes de usar" shows "PSARC sem som" — with Wwise's error,
+or "no usable Wwise" — instead of "PSARC jogável gerado" for a silent `.psarc`,
+with a button to Definições → Software. Guarded by
+`test_the_launchers_wwiseroot_on_another_version_does_not_hide_a_2023`,
+`test_bundle_survives_wwise_failure` (the error kept) and
+`test_a_psarc_built_without_sound_says_so_and_why` (each mutation-checked); the
+row with Playwright on a real rebuild (PT/EN). The user's machine was not seen,
+so which of the two hit them is their Definições → Software row to tell.
 The diagnostics rows' install lines in the `.exe` point at «Instalar
 componentes extra» (`_components_install`). Guarded by `test_components.py`
 (the commands in order, CUDA vs CPU, zip-slip, a repair run, the background

@@ -407,6 +407,10 @@ def generate_cdlc(job_id: str) -> None:
                 else:
                     params.pop("vocal_melody", None)
                 params["gp_has_lyrics"] = result.gp_has_lyrics
+                # Whether the .psarc has sound, and why not: a silent .psarc
+                # must not read as playable, nor a failed conversion as "no Wwise".
+                params["psarc_has_audio"] = result.packaging.wem_path is not None
+                params["wem_error"] = result.packaging.wem_error
                 # Synced to its audio in Guitar Pro 8: the file's own sync points
                 # time the chart, which counts as synchronised (the checklist).
                 params["gp_synced"] = _gp_carries_sync(Path(params["gp_path"]))

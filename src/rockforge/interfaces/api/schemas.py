@@ -60,6 +60,10 @@ class JobOut(BaseModel):
     warnings: list[str]
     note_counts: dict[str, int]
     psarc_available: bool
+    # False = the .psarc was built without sound (no .wem); None = a build from
+    # before this was recorded. wem_error: why, when a Wwise WAS found.
+    psarc_has_audio: bool | None = None
+    wem_error: str | None = None
     bundle_available: bool
     source_type: str
     offset_s: float
