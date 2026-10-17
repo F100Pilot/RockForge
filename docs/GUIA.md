@@ -73,12 +73,17 @@ aviso.
   erro, "Sincronizada" (quando marcaste todas as pistas) ou "Tons standard".
 - Filtros (**Todos / Prontos / Em curso / Com erro**) e uma caixa de pesquisa.
 - O primeiro cartão aceita um ficheiro Guitar Pro arrastado: abre o assistente já com ele.
-- No topo: **Lote (álbum)**, **Novo projeto** e ⚙️ **Definições**.
+- No topo: **Paga-me um café**, **Dar uma estrela** (abre o RockForge no GitHub), **Lote
+  (álbum)**, **Novo projeto** e ⚙️ **Definições**.
 - Por cima dos projetos, quando se aplica: há **uma versão nova** do RockForge (**Descarregar**
   abre a página da Release; **Mais tarde** esconde o aviso até à seguinte), faltam os
   **componentes extra** (`.exe`; **Instalar agora** / **Agora não**), ou falta o **Wwise** e o
   `.psarc` sairia sem som (`.exe`; **Descarregar o Wwise** / **Ocultar**). Quem usa o
   `start.bat` com o git nunca vê o aviso de versão: atualiza-se sozinho a cada arranque.
+- Depois de construíres o primeiro projeto (nunca no primeiro dia), aparece uma vez um pedido
+  discreto de **uma estrela no GitHub**, só quando não há outro aviso: **Dar uma estrela**,
+  **Agora não** (pergunta mais uma vez, 30 dias depois) ou **Não perguntar mais**. A escolha
+  fica neste browser; o RockForge não envia nada nem sabe se deste a estrela.
 
 ## 4. Criar um projeto (Novo projeto)
 

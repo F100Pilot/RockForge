@@ -6,6 +6,14 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+## [0.10.0 beta 14] — 2026-10-17
+
+### Novo
+- **Estrela no GitHub:** um botão "Dar uma estrela" ao lado de "Paga-me um café" (e em
+  Definições → Geral → Apoiar o projeto) abre o RockForge no GitHub. Depois do primeiro projeto
+  construído, a página inicial pergunta uma vez, com discrição, se podes dar uma estrela — com
+  "Agora não" (mais uma vez daqui a 30 dias) e "Não perguntar mais". Nada é enviado.
+
 ## [0.10.0 beta 13] — 2026-10-17
 
 ### Novo

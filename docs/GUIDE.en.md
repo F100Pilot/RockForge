@@ -74,12 +74,17 @@ Nothing is made up silently: whatever the app does not know or cannot do shows u
   failed, "Synced" (once you marked every track) or "Standard tones".
 - Filters (**All / Ready / In progress / Failed**) and a search box.
 - The first card takes a dropped Guitar Pro file: it opens the wizard with it.
-- At the top: **Batch (album)**, **New project** and ⚙️ **Settings**.
+- At the top: **Buy me a coffee**, **Give it a star** (opens RockForge on GitHub), **Batch
+  (album)**, **New project** and ⚙️ **Settings**.
 - Above the projects, when it applies: **a new version** of RockForge is out (**Download** opens
   its Releases page; **Later** hides it until the next one), the **extra components** are missing
   (`.exe`; **Install now** / **Not now**), or **Wwise** is missing, so the `.psarc` would have no
   sound (`.exe`; **Download Wwise** / **Hide**). Someone running `start.bat` with git never sees
   the version notice: it updates itself on every start.
+- Once you have built your first project (never on the first day), a quiet request for **a star
+  on GitHub** shows once, only when there is no other notice: **Give it a star**, **Not now**
+  (asks once more, 30 days later) or **Don't ask again**. The choice stays in this browser;
+  RockForge sends nothing and cannot tell whether you gave the star.
 
 ## 4. Creating a project (New project)
 

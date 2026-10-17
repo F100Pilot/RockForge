@@ -6,6 +6,14 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+## [0.10.0 beta 14] — 2026-10-17
+
+### New
+- **A star on GitHub:** a "Give it a star" button beside "Buy me a coffee" (and in Settings →
+  General → Support the project) opens RockForge on GitHub. Once a first project has been built,
+  the home page asks once, quietly, whether you could give it a star — with "Not now" (once more
+  in 30 days) and "Don't ask again". Nothing is sent.
+
 ## [0.10.0 beta 13] — 2026-10-17
 
 ### New

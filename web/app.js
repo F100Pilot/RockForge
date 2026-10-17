@@ -811,6 +811,41 @@ function dismissNotice(id) {
   } catch { /* storage blocked: it comes back next time */ }
   renderHomeNotices();
 }
+// The GitHub star: a button beside the coffee one, and ONE gentle ask on the home
+// page — only once a project has been built, never on the first day, "Agora não"
+// asks once more 30 days later, and a click on any star link (or "Não perguntar
+// mais") ends it. All in this browser; nothing is sent anywhere, and RockForge
+// cannot know whether a star was given — only that the link was clicked.
+const STAR_REPO = 'https://github.com/F100Pilot/RockForge';
+const STAR_LATER_DAYS = 30;
+function starState() {
+  try { return JSON.parse(localStorage.getItem('rf-star') || '{}') || {}; } catch { return {}; }
+}
+function setStarState(state) {
+  try { localStorage.setItem('rf-star', JSON.stringify({ ...starState(), ...state })); } catch { /* blocked */ }
+}
+function firstSeenDay() {
+  const today = new Date().toISOString().slice(0, 10);
+  try {
+    const seen = localStorage.getItem('rf-first-seen');
+    if (seen) return seen;
+    localStorage.setItem('rf-first-seen', today);
+  } catch { /* storage blocked: never ask, rather than ask every time */ return null; }
+  return today;
+}
+const appFirstSeen = firstSeenDay();
+function shouldAskForStar() {
+  const s = starState();
+  if (s.done || !appFirstSeen) return false;
+  if (appFirstSeen === new Date().toISOString().slice(0, 10)) return false;
+  if (!jobsCache.some(j => j.status === 'completed')) return false;
+  if (s.later) return (s.asks || 0) < 2 && Date.now() - s.later >= STAR_LATER_DAYS * 86400e3;
+  return true;
+}
+document.addEventListener('click', e => {
+  if (e.target.closest('[data-star-link]')) { setStarState({ done: true }); renderHomeNotices(); }
+});
+
 function prettyVersion(v) {
   // "0.10.0-beta.12", "v0.10.0-rc.1", or the older "0.10.0b3" → "0.10.0 beta 12" etc.
   const m = String(v || '').replace(/^v/, '').match(/^(\d+\.\d+\.\d+)(?:[-.]?(dev|alpha|a|beta|b|rc)\.?(\d+))?/i);
@@ -844,6 +879,12 @@ function renderHomeNotices() {
       `<a class="pv-btn" href="https://www.audiokinetic.com/download/" target="_blank" rel="noopener">${T('Descarregar o Wwise')}</a>`,
       `<button type="button" class="pv-btn" data-notice-dismiss="wwise">${T('Ocultar')}</button>`]);
   }
+  if (!items.length && shouldAskForStar()) {
+    notice('star', 'star', T('O RockForge está a ser-te útil? Uma estrela no GitHub ajuda outras pessoas a encontrá-lo.'), [
+      `<a class="pv-btn pv-star" data-star-link href="${STAR_REPO}" target="_blank" rel="noopener">${icon('star')}${T('Dar uma estrela')}</a>`,
+      `<button type="button" class="pv-btn" data-notice-act="star-later">${T('Agora não')}</button>`,
+      `<button type="button" class="pv-btn" data-notice-act="star-never">${T('Não perguntar mais')}</button>`]);
+  }
   box.innerHTML = items.join('');
   box.hidden = !items.length;
 }
@@ -852,7 +893,13 @@ document.getElementById('homeNotices').addEventListener('click', async e => {
   if (dismiss) { dismissNotice(dismiss.dataset.noticeDismiss); return; }
   const act = e.target.closest('[data-notice-act]');
   if (!act) return;
-  if (act.dataset.noticeAct === 'install') { installComponents(); openSettings('software'); }
+  if (act.dataset.noticeAct === 'star-later') {
+    setStarState({ later: Date.now(), asks: (starState().asks || 0) + 1 });
+    renderHomeNotices();
+  } else if (act.dataset.noticeAct === 'star-never') {
+    setStarState({ done: true });
+    renderHomeNotices();
+  } else if (act.dataset.noticeAct === 'install') { installComponents(); openSettings('software'); }
   else if (act.dataset.noticeAct === 'components') openSettings('software');
   else if (act.dataset.noticeAct === 'decline') {
     try { compState = await getJSON('/components/decline', { method: 'POST' }); } catch { /* offline */ }
@@ -2061,6 +2108,7 @@ async function refreshJobs() {
     return;  // the offline banner already says why; don't blank the cards
   }
   renderJobCards();
+  renderHomeNotices();
 }
 
 // The project view's top bar: title, and a line with artist/album/year and

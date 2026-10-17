@@ -1376,5 +1376,11 @@
  "Construído em": "Built on",
  "Instalação": "Installation",
  "Copiado. Cola-o no relatório do erro.": "Copied. Paste it into the bug report.",
- "Não foi possível copiar: {err}": "Could not copy: {err}"
+ "Não foi possível copiar: {err}": "Could not copy: {err}",
+ "O RockForge é gratuito e de código aberto. Uma estrela no GitHub ajuda outras pessoas a encontrá-lo.": "RockForge is free and open source. A star on GitHub helps other people find it.",
+ "Dar uma estrela no GitHub": "Give it a star on GitHub",
+ "Dar uma estrela": "Give it a star",
+ "O RockForge é gratuito e de código aberto, feito nos tempos livres. Se te é útil, um café ajuda a continuar — e uma estrela no GitHub ajuda outras pessoas a encontrá-lo.": "RockForge is free and open source, made in spare time. If it is useful to you, a coffee helps keep it going — and a star on GitHub helps other people find it.",
+ "O RockForge está a ser-te útil? Uma estrela no GitHub ajuda outras pessoas a encontrá-lo.": "Is RockForge useful to you? A star on GitHub helps other people find it.",
+ "Não perguntar mais": "Don't ask again"
 };

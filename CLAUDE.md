@@ -5107,6 +5107,26 @@ and uses librosa (`/detect-tempo` on a click track), PDF-to-GP5
 Playwright on a server dressed as the `.exe` (fake download/run: notices,
 install with log, card, PT/EN, 760 px).
 
+### A star on GitHub (`#starBtn`, `shouldAskForStar`)
+
+"ao lado do buy me a coffee, uma forma de os utilizadores atribuírem uma
+estrela no github … sem ser muito invasivo" (2026-10-17). A "Dar uma estrela"
+link beside the coffee one in the home top bar (icon-only under 900 px, like
+it) and in Definições → Geral → Apoiar o projeto, both `data-star-link` to
+the repository. The ask is a home notice (`renderHomeNotices`), shown only
+when NO other notice is up, only once `jobsCache` holds a completed project
+(the user chose "after the first project"), never on the day of first use
+(`rf-first-seen`, set on the first load — an existing user upgrading is
+"first seen" that day too), and at most twice: "Agora não" stores `later` and
+`asks`, and it comes back once after `STAR_LATER_DAYS` (30); "Não perguntar
+mais" or a click on ANY star link stores `done`. All in `localStorage`
+`rf-star` — nothing is sent, and RockForge cannot know whether a star was
+given, only that the link was clicked. Storage blocked = never asks.
+Browser-only; verified with Playwright (PT/EN: first day none, second day
+shown, "Agora não" → hidden, back after 31 days, gone after a second "Agora
+não", "Não perguntar mais", the top link ending it, no project / only failed
+ones → none, 760 px without horizontal scroll, no page errors).
+
 ### «Há uma versão nova» (`infrastructure/update_check.py`)
 
 `GET /update-check` asks GitHub's Releases API (`releases?per_page=20`) at
@@ -5615,8 +5635,8 @@ is new and the bugs fixed in that version, English then Portuguese, nothing
 else**: the user's rule for every bump, 2026-10-16). A manual run
 (workflow_dispatch) is a dry build whose files stay as artifacts. The tag must
 equal `installer.iss`'s version, and `tests/test_release_version.py` keeps
-`installer.iss` and `__version__` (both `0.10.0-beta.13`, SemVer; pyproject
-reads `__version__`) and both changelogs' `## [0.10.0 beta 13]` in step. Since
+`installer.iss` and `__version__` (both `0.10.0-beta.14`, SemVer; pyproject
+reads `__version__`) and both changelogs' `## [0.10.0 beta 14]` in step. Since
 the versioning rules (below) `decide` also runs `tools/release_check` before
 building and never publishes a `-dev.N` version. `[pdf]` and the ML stack
 are not in the `.exe`; the README says which three extras need the source

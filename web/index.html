@@ -565,6 +565,7 @@ kbd { display:inline-block; min-width:1.5em; padding:.08em .45em; border:1px sol
 .home-notice.warn { border-color:#5a4520; background:#332a14; }
 .home-notice > .ic { flex:none; width:1.25rem; height:1.25rem; }
 .home-notice.warn > .ic { color:var(--warn); }
+.home-notice.star > .ic { color:#ffd27a; }
 .home-notice .grow { flex:1 1 18rem; min-width:0; }
 .home-notice .pv-btn { flex:none; }
 .comp-list { display:grid; grid-template-columns:repeat(auto-fill, minmax(15rem, 1fr)); gap:.45rem .9rem; }
@@ -636,7 +637,9 @@ button.pv-btn, a.pv-btn { display:inline-flex; align-items:center; gap:.5rem; he
 button.pv-btn:hover, a.pv-btn:hover { background:#262833; filter:none; }
 a.pv-btn { text-decoration:none; box-sizing:border-box; }
 a.pv-coffee { color:#ffd27a; border-color:#5a4a2a; }
-@media (max-width: 900px) { #coffeeBtn { width:2.75rem; padding:0; justify-content:center; } #coffeeBtn .pv-coffee-lbl { display:none; } }
+a.pv-star { color:#cfd8ea; }
+a.pv-star .ic { color:#ffd27a; }
+@media (max-width: 900px) { #coffeeBtn, #starBtn { width:2.75rem; padding:0; justify-content:center; } #coffeeBtn .pv-coffee-lbl, #starBtn .pv-star-lbl { display:none; } }
 button.pv-btn .ic, a.pv-btn .ic { width:1.3rem; height:1.3rem; margin:0; }
 select.lang-select { height:2.75rem; border-radius:10px; border:1px solid #33363f; background:#1f2129;
   color:var(--text); font-weight:600; padding:0 .5rem; }
@@ -930,6 +933,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
     </div>
     <span class="pv-spacer"></span>
     <a id="coffeeBtn" class="pv-btn pv-coffee" href="https://paypal.me/F100Pilot" target="_blank" rel="noopener" title="O RockForge é gratuito. Se te é útil, podes pagar-me um café (PayPal)." aria-label="Paga-me um café"><svg class="ic" aria-hidden="true"><use href="#i-coffee"/></svg><span class="pv-coffee-lbl">Paga-me um café</span></a>
+    <a id="starBtn" class="pv-btn pv-star" data-star-link href="https://github.com/F100Pilot/RockForge" target="_blank" rel="noopener" title="O RockForge é gratuito e de código aberto. Uma estrela no GitHub ajuda outras pessoas a encontrá-lo." aria-label="Dar uma estrela no GitHub"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg><span class="pv-star-lbl">Dar uma estrela</span></a>
     <button type="button" id="openBatchModal" class="pv-btn" title="Vários ficheiros Guitar Pro + gravações de uma vez — um álbum inteiro"><svg class="ic" aria-hidden="true"><use href="#i-package"/></svg>Lote (álbum)</button>
     <button type="button" class="pv-btn pv-primary" data-new="gp"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>Novo projeto</button>
     <select id="langSelectTop" class="lang-select" data-lang-select="short" translate="no" title="Idioma · Language" aria-label="Idioma · Language">
@@ -1664,8 +1668,9 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
         </div>
         <div class="pv-card pv-card-lg">
           <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-coffee"/></svg>Apoiar o projeto</div>
-          <div class="pv-card-desc">O RockForge é gratuito e de código aberto, feito nos tempos livres. Se te é útil, um café ajuda a continuar.</div>
-          <div><a class="pv-btn pv-coffee" href="https://paypal.me/F100Pilot" target="_blank" rel="noopener"><svg class="ic" aria-hidden="true"><use href="#i-coffee"/></svg>Paga-me um café</a></div>
+          <div class="pv-card-desc">O RockForge é gratuito e de código aberto, feito nos tempos livres. Se te é útil, um café ajuda a continuar — e uma estrela no GitHub ajuda outras pessoas a encontrá-lo.</div>
+          <div class="about-actions"><a class="pv-btn pv-coffee" href="https://paypal.me/F100Pilot" target="_blank" rel="noopener"><svg class="ic" aria-hidden="true"><use href="#i-coffee"/></svg>Paga-me um café</a>
+            <a class="pv-btn pv-star" data-star-link href="https://github.com/F100Pilot/RockForge" target="_blank" rel="noopener"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg>Dar uma estrela no GitHub</a></div>
         </div>
         <div class="pv-card pv-card-lg">
           <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-refresh"/></svg>Versões novas</div>
