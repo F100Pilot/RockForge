@@ -6,6 +6,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+## [0.10.0 beta 12] — 2026-10-17
+
 ### New
 - **Edit notes — drag, and change the fret with the arrows:** in "Edit notes" mode, drag a note to
   another time or string; ↑/↓ move the last clicked note one fret up or down (with Ctrl, an

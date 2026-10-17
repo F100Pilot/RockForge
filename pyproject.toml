@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rockforge"
-version = "0.10.0b11"
+version = "0.10.0b12"
 description = "Guitar Pro (or a tab PDF/picture, or a Songsterr link) + a recording -> Rocksmith 2014 CDLC: a playable PSARC and a DLC Builder project"
 readme = "README.md"
 # <3.12: the ml/lyrics stack (torch<2.5 / demucs / whisperx) targets 3.11 wheels.

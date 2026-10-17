@@ -6,6 +6,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+## [0.10.0 beta 12] — 2026-10-17
+
 ### Novo
 - **Editar notas — arrastar e mudar o traste com as setas:** no modo "Editar notas", arrasta uma
   nota para outro tempo ou outra corda; ↑/↓ sobem ou descem um traste à última nota clicada (com
