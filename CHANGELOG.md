@@ -6,6 +6,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+## [0.10.0 beta 11] — 2026-10-17
+
 ### Corrigido
 - **Acordes "pintados" de cima a baixo no jogo:** um acorde com cordas soltas e sem sustain (um
   power chord 0-0-0 numa afinação drop, por exemplo) ia sem as notas de acorde que o jogo usa para
