@@ -129,3 +129,11 @@ refused Python 3.11 itself on the user's machine: `start.bat` has
 caught here (no cmd). Rule: before adding a line to a `.bat`, check its
 `setlocal` mode; with delayed expansion, write the command without `!`
 (`==` with an explicit `0 if … else 1`), and grep the file for `!` afterwards.
+
+## `pgrep -f` is `pkill -f` by another name (2026-10-17)
+
+Stopping the test server with `pgrep -f "uvicorn … --port 8771" | xargs kill`
+matched the shell running that very command line (its text contains the
+pattern) and killed it (exit 144). Rule: start a background server with its pid
+recorded (`… & echo $! > server.pid`) and kill that pid; never select processes
+by matching their command line.

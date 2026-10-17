@@ -389,9 +389,11 @@ browser. `build_exe.py` warns if it is missing, so you don't go through that wit
 If you don't put `ffmpeg.exe` inside `ffmpeg/`, the build warns — the app keeps working if the
 user has ffmpeg on the system PATH.
 
-**Where to look for errors:** with no console, the app writes everything to
-`%USERPROFILE%\Downloads\RockForge\rockforge.log`. It is the first place to check if the
-`.exe` won't start.
+**Where to look for errors:** in `%USERPROFILE%\Downloads\RockForge\logs\`:
+`rockforge.log` is the technical log (rotated, see [VERSIONING.md](VERSIONING.md#technical-log)),
+and `console.log` what the windowless `.exe` would have printed (the three previous runs kept as
+`console.log.1`…`.3`). They are the first place to check if the `.exe` won't start. Settings →
+General → About RockForge → "Copy information for a report" gathers their last lines.
 
 #### Checking the build before distributing
 

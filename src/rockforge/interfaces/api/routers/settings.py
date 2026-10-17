@@ -107,8 +107,11 @@ def reset_gpu() -> SettingsOut:
 
 
 @router.get("/version", include_in_schema=False)
-def version() -> dict[str, str]:
-    return {"version": api.app.version}
+def version() -> dict[str, object]:
+    """The version and which build of it this is (rockforge/build_info.py)."""
+    from rockforge.build_info import build_info
+
+    return {**build_info(), "version": api.app.version}
 
 
 @router.get("/update-check", response_model=UpdateCheckOut)
@@ -186,6 +189,40 @@ def system_check() -> SystemCheckOut:
         requirements=[RequirementOut(**vars(r)) for r in reqs],
         missing_required=[r.key for r in diagnostics.missing_required(reqs)],
     )
+
+
+@router.get("/diagnostic-report", include_in_schema=False)
+def diagnostic_report() -> dict[str, str]:
+    """Text to paste into a bug report (Definições → Geral → Sobre o RockForge):
+    which build, which system, what external software was found, and the end
+    of the technical log — redacted (rockforge/app_logging.py): no token, no
+    credentials, no account name. Written in English whatever the UI language,
+    so whoever reads the report can."""
+    import platform
+
+    from rockforge import app_logging
+    from rockforge.build_info import build_info, summary
+    from rockforge.infrastructure import diagnostics
+    from rockforge.interfaces.worker.celery_app import _cuda_known_broken
+
+    b = build_info()
+    lines = ["## RockForge diagnostic report", "", summary(),
+             f"commit: {b['commit'] or 'unknown'}" + (" (local changes)" if b["dirty"] else ""),
+             f"install: {b['source']}", f"Python {platform.python_version()}, "
+             f"{platform.platform()}", f"worker mode: {api.settings.worker_mode}", "",
+             "### External software"]
+    try:
+        reqs = diagnostics.check_requirements(api.settings, gpu_broken=_cuda_known_broken())
+        mark = {True: "found", False: "MISSING", None: "unknown"}
+        lines += [f"- {r.name}: {mark[r.found]} — {r.detail}" for r in reqs]
+    except Exception as exc:  # noqa: BLE001 — the report must come back regardless
+        lines.append(f"- could not be checked: {type(exc).__name__}")
+    logs = app_logging.log_dir(api.settings.work_dir)
+    for name in ("rockforge.log", "rockforge-worker.log", "console.log"):
+        tail = app_logging.tail(logs / name, 60)
+        if tail:
+            lines += ["", f"### Last lines of logs/{name}", "```", *tail, "```"]
+    return {"text": app_logging.redact("\n".join(lines)) + "\n"}
 
 
 @router.get("/gear-catalogue")

@@ -185,7 +185,7 @@ def test_a_windowed_build_always_has_somewhere_to_log(
     is unreportable. The work dir is the normal home for it; if settings cannot
     even load, a temp file still has to come back."""
     written = launcher.default_log_path()
-    assert written.name == "rockforge.log"
+    assert written.name == "console.log" and written.parent.name == "logs"
 
     import builtins
 
@@ -200,7 +200,18 @@ def test_a_windowed_build_always_has_somewhere_to_log(
     monkeypatch.delitem(sys.modules, "rockforge.config", raising=False)
     fallback = launcher.default_log_path()
     monkeypatch.undo()
-    assert fallback.name == "rockforge.log"
+    assert fallback.name == "rockforge-console.log"
+
+
+def test_the_console_log_keeps_three_earlier_runs(tmp_path: Path) -> None:
+    log = tmp_path / "console.log"
+    for run in range(5):
+        launcher.rotate_console_log(log)
+        log.write_text(f"run {run}")
+    assert log.read_text() == "run 4"
+    assert [(tmp_path / f"console.log.{n}").read_text() for n in (1, 2, 3)] == [
+        "run 3", "run 2", "run 1"]
+    assert not (tmp_path / "console.log.4").exists()
 
 
 def test_redirect_sends_both_streams_to_the_file(tmp_path: Path) -> None:

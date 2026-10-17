@@ -140,6 +140,7 @@ if defined REDIS_RUNNING (
 ) else if defined REDIS_CMD (
   echo A iniciar Redis ^(!REDIS_CMD!^) em segundo plano ^(logs\redis.log^)...
   echo Starting Redis in the background ^(logs\redis.log^)...
+  if exist logs\redis.log move /y logs\redis.log logs\redis.prev.log >nul
   start "RockForge-Redis" /min cmd /c "!REDIS_CMD! > logs\redis.log 2>&1"
 ) else (
   REM No Redis - Memurai needs admin rights to install, often refused on a work
@@ -159,6 +160,8 @@ if /i "%ROCKFORGE_WORKER_MODE%"=="inprocess" (
 ) else (
   echo A iniciar o worker Celery em segundo plano ^(logs\worker.log^)...
   echo Starting the Celery worker in the background ^(logs\worker.log^)...
+  REM Keep the previous run's output: it is what a bug report needs after a restart.
+  if exist logs\worker.log move /y logs\worker.log logs\worker.prev.log >nul
   start "RockForge-Worker" /min cmd /c "%PY% -m celery -A rockforge.interfaces.worker.celery_app:celery_app worker --pool=solo --loglevel=info > logs\worker.log 2>&1"
   echo.
   echo Redis e Worker a correr minimizados. A iniciar a API...

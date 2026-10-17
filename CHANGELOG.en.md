@@ -11,6 +11,23 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
   on the score means, drawn as it appears — notes, rings, tails, bars, sections, tones,
   corrections, hand position, track tabs and the recording's attacks (the orange circles and
   ticks). The "Recording attacks" card shows its four.
+- **About RockForge** (Settings → General): the version and which build of it is running (the
+  commit, when it was built, how it was installed), and **"Copy information for a report"**, which
+  puts the build, the system, the external software found and the end of the technical log on the
+  clipboard for a bug report — without passwords, tokens or your user name.
+- **Technical log** in `logs/` inside the work folder (`rockforge.log`, and `rockforge-worker.log`
+  for a separate worker): every line with its time, level and part of the app, rotated so it never
+  grows past ~12 MB. An unexpected error now gives an id you can quote, and the same id is in the
+  log. The level is `ROCKFORGE_LOG_LEVEL`.
+
+### Changed
+- **Version numbers follow Semantic Versioning**, `0.10.0-beta.13` and so on, with dev, beta,
+  release-candidate and stable stages and fixed rules for what comes next (`docs/VERSIONING.md`).
+  Every bug found, every fix and every release is now recorded with a permanent id in
+  `tracking/` (`BUG_LOG.md`, `FIX_LOG.md`, `RELEASE_LOG.md`), the whole history included, and a
+  version is only published when it meets the release criteria (`docs/RELEASE_PROCESS.md`).
+- The `.exe`'s console output moved to `logs/console.log`, with the three previous runs kept;
+  `start.bat` keeps the previous `logs\worker.log` as `worker.prev.log`.
 
 ### Fixed
 - **The 3D highway grabbed the mouse wheel:** scrolling the page with the mouse over the 3D

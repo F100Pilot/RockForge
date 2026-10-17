@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rockforge"
-version = "0.10.0b12"
+dynamic = ["version"]
 description = "Guitar Pro (or a tab PDF/picture, or a Songsterr link) + a recording -> Rocksmith 2014 CDLC: a playable PSARC and a DLC Builder project"
 readme = "README.md"
 # <3.12: the ml/lyrics stack (torch<2.5 / demucs / whisperx) targets 3.11 wheels.
@@ -102,8 +102,14 @@ where = ["src"]
 # references; required for the native PSARC to enumerate the song.
 "rockforge.infrastructure.packaging.psarc" = ["flatmodels/*.flat", "vocals_symbols.bin"]
 
+[tool.setuptools.dynamic]
+# rockforge/__init__.py is the one place the version is written.
+version = {attr = "rockforge.__version__"}
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# The release tools (tools/) are tested from tests/.
+pythonpath = ["."]
 addopts = "-q"
 
 [tool.ruff]

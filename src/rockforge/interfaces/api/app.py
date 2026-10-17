@@ -23,6 +23,7 @@ import secrets
 import signal
 import sys
 import time
+import uuid
 from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -35,7 +36,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
-from rockforge import __version__, i18n
+from rockforge import __version__, app_logging, i18n
 from rockforge.config import settings as settings  # routers read it as api.settings
 from rockforge.infrastructure.db.models import Job, make_session_factory
 from rockforge.interfaces.api.schemas import (
@@ -155,6 +156,11 @@ async def _idle_shutdown_watchdog() -> None:
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     global _last_heartbeat
     _last_heartbeat = time.monotonic()
+    # Here, not at import: uvicorn sets up its own loggers when it starts and
+    # would drop a handler added to them before.
+    app_logging.configure(settings.work_dir, level=settings.log_level)
+    for line in app_logging.startup_lines("RockForge API"):
+        logger.info(line)
     # Housekeeping: GP uploads from abandoned wizard sessions have nothing else
     # to collect them (the file is stored before the job exists).
     _sweep_orphan_gp_uploads()
@@ -173,6 +179,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         from rockforge.interfaces.worker.inprocess import shutdown as _worker_shutdown
 
         _worker_shutdown()
+    logger.info("RockForge API stopping")
 
 
 _basic_auth = HTTPBasic(auto_error=False)
@@ -298,10 +305,40 @@ _SECURITY_HEADERS = {
 
 @app.middleware("http")
 async def _security_headers(request: Request, call_next: Any) -> Any:
-    response = await call_next(request)
+    # One id per request: every log line written while it runs carries it, and
+    # an internal error hands it to the user (X-Request-ID, the error body) so a
+    # report can be matched to its lines in the log.
+    rid = uuid.uuid4().hex[:8]
+    request.state.request_id = rid  # the error handler runs outside this middleware
+    token = app_logging.request_id.set(rid)
+    try:
+        response = await call_next(request)
+    finally:
+        app_logging.request_id.reset(token)
     for name, value in _SECURITY_HEADERS.items():
         response.headers.setdefault(name, value)
+    response.headers.setdefault("X-Request-ID", rid)
     return response
+
+
+@app.exception_handler(Exception)
+async def _internal_error(request: Request, exc: Exception) -> JSONResponse:
+    """An exception no endpoint handled: written to the technical log with its
+    traceback and the request's id, and answered with that id instead of a bare
+    "Internal Server Error" the user cannot report."""
+    rid = getattr(request.state, "request_id", "") or uuid.uuid4().hex[:8]
+    token = app_logging.request_id.set(rid)
+    logger.error("unhandled error in %s %s (error id %s)", request.method, request.url.path, rid,
+               exc_info=exc)
+    app_logging.request_id.reset(token)
+    return JSONResponse(status_code=500, headers={"X-Request-ID": rid}, content={
+        "detail": i18n.tr(
+            f"Erro interno (id {rid}). Ficou no registo técnico; ao relatar o erro, junta "
+            "a informação de Definições → Geral → Sobre o RockForge.",
+            f"Internal error (id {rid}). It is in the technical log; when you report it, "
+            "include the information from Settings → General → About RockForge."),
+        "error_id": rid,
+    })
 
 
 @app.exception_handler(RequestValidationError)

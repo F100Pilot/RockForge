@@ -78,10 +78,24 @@ serializers) need no fakes — they are deterministic and tested directly.
 
 | Gate | Command | Enforces |
 |---|---|---|
-| **Lint** | `ruff check src tests start_standalone.py build_exe.py` | style, unused imports/vars, import order, obvious bugs |
+| **Lint** | `ruff check src tests start_standalone.py build_exe.py .github/scripts tools` | style, unused imports/vars, import order, obvious bugs |
 | **Types** | `mypy` | strict on `domain/`/`application/`/`infrastructure/`; relaxed at framework boundaries (FastAPI/SQLAlchemy/Pydantic) via per-module overrides in `pyproject.toml` |
 | **Tests** | `pytest` | the functional suite (see §4) |
 | **Web lint** | `npm ci && npm run lint` | `web/app.js` (the UI's client script) via ESLint — real-bug rules only (`no-undef`, `no-redeclare`, …), not a style reformat. CI job `web-lint`. |
+| **Registers** | `python -m tools.tracking check` | the bug/fix/release registers (`tracking/`) follow every rule of `docs/VERSIONING.md` — ids, statuses, evidence, versions — every fix's commits are in the version it is said to be in (CI checks out the full history for this), and the generated logs are up to date. Also run by `tests/test_tracking.py`. |
+| **Release gate** | `python -m tools.release_check <version>` | run by the release workflow before it builds anything: the release criteria of `docs/RELEASE_PROCESS.md` (stage rules, blocking bugs, changelogs, notes). |
+
+### When a test is written for a bug
+
+Every bug fixed gets the steps of `docs/RELEASE_PROCESS.md` §2: reproduce it,
+write the regression test that FAILS on the bug (mutation-check it: revert the
+fix, see it fail, restore), fix, run that test and then the whole gate, and
+record the result in the bug's `FIX-` record (`tracking/fixes.json`):
+`test_result` is what actually happened — `passed`, `failed`, `not run`
+(browser-only behaviour checked by hand: say how in `manual_checks`) — never a
+result that was not seen. A skipped test is not a pass. The bug moves to
+Verified only with that evidence, and to Closed only once a published version
+contains the fix.
 
 mypy strictness is deliberate: the `domain` and `application` layers carry the
 music model and orchestration logic and must be fully typed. The
@@ -890,8 +904,9 @@ Build with `py -3.11 build_exe.py` after installing `.[dev,psarc,desktop]`, then
 4. **Without `[desktop]` it still works.** Build once with pywebview NOT
    installed: `build_exe.py` must warn, and the `.exe` must fall back to
    serving and opening the default browser rather than failing.
-5. **The log exists.** `%USERPROFILE%\Downloads\RockForge\rockforge.log`
-   should have uvicorn's startup lines. With `console=False` there is no stdout
+5. **The logs exist.** `%USERPROFILE%\Downloads\RockForge\logs\rockforge.log`
+   should start with "RockForge API starting — RockForge <version>+ci.<run>.<commit>"
+   (the build the bundle recorded), and `logs\console.log` with uvicorn's lines. With `console=False` there is no stdout
    at all, so if this file is missing or empty, any future crash is
    unreportable.
 

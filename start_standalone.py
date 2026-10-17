@@ -178,15 +178,37 @@ def webview_available() -> bool:
     return True
 
 
+CONSOLE_LOGS_KEPT = 3
+
+
+def rotate_console_log(log_path: Path, keep: int = CONSOLE_LOGS_KEPT) -> None:
+    """One file per run: the last run's becomes ``.1``, and so on to ``keep``."""
+    try:
+        if not log_path.exists() or log_path.stat().st_size == 0:
+            return
+        for n in range(keep, 0, -1):
+            older = log_path.with_name(f"{log_path.name}.{n}")
+            newer = log_path if n == 1 else log_path.with_name(f"{log_path.name}.{n - 1}")
+            if newer.exists():
+                newer.replace(older)
+    except OSError:
+        pass  # a log that cannot be rotated is appended to instead
+
+
 def redirect_output_to_log(log_path: Path) -> None:
     """Point stdout/stderr at a log file.
 
     A windowed PyInstaller build (`console=False`) has **no** stdout or stderr —
     they are `None` — and uvicorn's logging writes to them, which raises on the
     first log line. Sending both to a file keeps the app quiet and still leaves
-    something to read when it misbehaves.
+    something to read when it misbehaves. The file of the previous runs is
+    kept as ``.1``…``.3`` and older ones dropped (``rotate_console_log``), so it
+    never grows without bound. The app's own lines go to the technical log
+    beside it (rockforge/app_logging.py); this one catches what nothing else
+    does — a crash before logging is set up, a library printing.
     """
     log_path.parent.mkdir(parents=True, exist_ok=True)
+    rotate_console_log(log_path)
     stream = open(log_path, "a", encoding="utf-8", buffering=1)  # noqa: SIM115
     sys.stdout = stream
     sys.stderr = stream
@@ -330,11 +352,11 @@ def default_log_path() -> Path:
     try:
         from rockforge.config import settings
 
-        return Path(settings.work_dir) / "rockforge.log"
+        return Path(settings.work_dir) / "logs" / "console.log"
     except Exception:
         import tempfile
 
-        return Path(tempfile.gettempdir()) / "rockforge.log"
+        return Path(tempfile.gettempdir()) / "rockforge-console.log"
 
 
 def main() -> None:

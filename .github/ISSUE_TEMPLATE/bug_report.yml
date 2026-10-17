@@ -46,8 +46,10 @@ body:
     id: version
     attributes:
       label: Version · Versão
-      description: Next to "RockForge" on the home page · Ao lado de "RockForge" na página inicial
-      placeholder: v0.10.0 beta 1
+      description: >-
+        Next to "RockForge" on the home page, or Settings → General → About RockForge (the build too) · Ao lado de
+        "RockForge" na página inicial, ou Definições → Geral → Sobre o RockForge (também o build)
+      placeholder: 0.10.0-beta.13+ci.57.0381b134e2
     validations:
       required: true
   - type: input
@@ -60,8 +62,11 @@ body:
     attributes:
       label: Messages or logs · Mensagens ou registos
       description: >-
-        Text from the start.bat window, logs\worker.log, or the error shown on the Export page. · Texto da janela do
-        start.bat, do logs\worker.log, ou o erro mostrado na página Exportar.
+        Best: Settings → General → About RockForge → "Copy information for a report", pasted here (version, build,
+        system and the end of the technical log, without secrets). Also the error id an unexpected error shows, text from
+        the start.bat window, or the error on the Export page. · Melhor: Definições → Geral → Sobre o RockForge →
+        "Copiar informação para relatório", colado aqui (versão, build, sistema e o fim do registo técnico, sem segredos).
+        Também o id que um erro inesperado mostra, texto da janela do start.bat, ou o erro da página Exportar.
       render: text
   - type: textarea
     id: file

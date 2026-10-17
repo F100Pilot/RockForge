@@ -11,6 +11,24 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
   quer dizer cada marca da partitura, desenhada como aparece — notas, anéis, caudas, compassos,
   secções, tons, correções, posição da mão, separadores das pistas e os ataques da gravação (as
   bolas e os traços laranja). O cartão "Ataques da gravação" mostra os seus quatro.
+- **Sobre o RockForge** (Definições → Geral): a versão e que build dela está a correr (o commit,
+  quando foi construída, como foi instalada), e **"Copiar informação para relatório"**, que põe na
+  área de transferência o build, o sistema, o software externo encontrado e o fim do registo
+  técnico, para um relatório de erro — sem palavras-passe, tokens nem o teu nome de utilizador.
+- **Registo técnico** em `logs/` dentro da pasta de trabalho (`rockforge.log`, e
+  `rockforge-worker.log` para um worker separado): cada linha com a hora, o nível e a parte da
+  aplicação, em rotação para nunca passar de ~12 MB. Um erro inesperado passa a dar um id que podes
+  citar, e o mesmo id está no registo. O nível é o `ROCKFORGE_LOG_LEVEL`.
+
+### Alterado
+- **Os números de versão seguem o Semantic Versioning**, `0.10.0-beta.13` e assim por diante, com
+  as fases dev, beta, release candidate e estável e regras fixas para o que vem a seguir
+  (`docs/VERSIONING.md`). Cada bug encontrado, cada correção e cada versão ficam registados com um
+  identificador permanente em `tracking/` (`BUG_LOG.md`, `FIX_LOG.md`, `RELEASE_LOG.md`), com todo o
+  histórico, e uma versão só é publicada se cumprir os critérios de lançamento
+  (`docs/RELEASE_PROCESS.md`).
+- A saída da consola do `.exe` passou para `logs/console.log`, com as três execuções anteriores
+  guardadas; o `start.bat` guarda o `logs\worker.log` anterior como `worker.prev.log`.
 
 ### Corrigido
 - **Pista 3D apanhava a roda do rato:** ao deslocar a página com o rato por cima da pista 3D, a

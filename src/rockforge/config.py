@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     # set "int8_float16" (lower VRAM, more compatible) to try to make the GPU work
     # instead of falling back to CPU. See ROCKFORGE_WHISPERX_COMPUTE_TYPE.
     whisperx_compute_type: str | None = None
+    # The technical log (rockforge/app_logging.py): DEBUG, INFO, WARNING or ERROR.
+    log_level: str = "INFO"
 
     def lyrics_device(self) -> str:
         return self.whisperx_device or self.demucs_device

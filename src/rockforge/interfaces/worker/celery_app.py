@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from celery import Celery
+from celery.signals import after_setup_logger
 
 from rockforge.config import settings
 from rockforge.i18n import tr
@@ -18,6 +19,19 @@ celery_app = Celery(
     "rockforge", broker=settings.broker_url, backend=settings.result_backend
 )
 celery_app.conf.task_track_started = True
+
+
+@after_setup_logger.connect
+def _technical_log(logger: Any, **_kw: Any) -> None:
+    """A Celery worker is a process of its own: its technical log is
+    rockforge-worker.log, beside the API's (rockforge/app_logging.py). Not used
+    by the in-process worker, which logs with the API."""
+    from rockforge import app_logging
+
+    app_logging.configure(settings.work_dir, level=settings.log_level,
+                          file_name="rockforge-worker.log", loggers=("",))
+    for line in app_logging.startup_lines("RockForge worker"):
+        logger.info(line)
 
 # WhisperX runs as a subprocess (avoids faster-whisper CUDA deadlock in Celery).
 # 20 min ceiling: model download on first run + transcription of a long song.

@@ -1,0 +1,283 @@
+{
+  "about": "The releases register. Rules: tools/tracking.py; process: docs/VERSIONING.md. Never delete an entry or reuse an id.",
+  "items": [
+    {
+      "version": "0.10.0-beta.1",
+      "status": "Superseded",
+      "created": "2026-10-14",
+      "published": "2026-10-14",
+      "commit": "cb00653bedba4cd2f9070ceb2acb8e925c883319",
+      "build": "none: a source release, no downloads",
+      "artifacts": [],
+      "goal": "First public version, in beta: ready to use, awaiting more testing in game and on a PC without Python before 1.0.0.",
+      "features": [
+        "Guitar Pro 3, 4, 5 and 7/8 (`.gp`) files: notes, frets, techniques, tempos, sections and lyrics read from the file; repeats, voltas and D.S./D.C",
+        "No Guitar Pro file: the tab imported from a Songsterr link (with the per-bar video timings), or a PDF or picture of the tab converted by PDF-to-GP5",
+        "The recording: an audio file, the audio inside the GP8 file, or the audio of a YouTube video",
+        "A 4-step wizard and a batch mode for whole albums; album, year, cover and synced lyrics looked up online and chosen by you",
+        "Song start, BPM stretch, \"Fix from here\", dragging notes and passages, aligning bars, per-bar tempo, and a main track whose corrections reach the others",
+        "Each track marked as synced on its own",
+        "Note editor (frets, techniques, insert, delete, copy and paste) and section editor on the score",
+        "Rocksmith-style 3D highway",
+        "Tone editor with the game's gear, a tone library, and the tones of the songs in your `dlc` folder",
+        "Per-track tones, tone changes, tone detection and a suggested tone for each part",
+        "Lyrics from the GP file, LRCLIB or the recording (WhisperX), lined up with the voice and editable beside the score",
+        "A native, playable `.psarc` (with Wwise) and a DLC Builder project, always both",
+        "Dynamic difficulty, chord fingering and hand shapes",
+        "`.psarc` check and installation into the game's `dlc` folder",
+        "Export back to Guitar Pro: the corrected tempos in a copy of your file, or the edited notes in a new GP5",
+        "MIT licence, third-party notices and legal notice; home page, user guide and technical documentation in Portuguese and English; `start.bat` messages in both languages"
+      ],
+      "improvements": [],
+      "breaking": [],
+      "tests": "CI (ruff, mypy, pytest, ESLint, Docker build) on the version commit",
+      "approved_by": "the maintainer (asked for the release)",
+      "upgrade": "Source install only (no downloads yet): start.bat pulls the newest code by itself; git checkout of an earlier commit to go back.",
+      "exceptions": [],
+      "note": "A source-only release (start.bat); no tag or GitHub release exists. The commit is the one that set the version."
+    },
+    {
+      "version": "0.10.0-beta.2",
+      "status": "Superseded",
+      "created": "2026-10-15",
+      "published": "2026-10-15",
+      "commit": "9321069994e940bcc999bf2f8481e881be33972d",
+      "build": "GitHub Actions run 38721278055 (https://github.com/F100Pilot/RockForge/actions/runs/38721278055)",
+      "artifacts": [],
+      "goal": "The Windows downloads (installer, portable zip), built and smoke-tested by the release workflow; security hardening; first round of fixes.",
+      "features": [
+        "3D highway with Rocksmith's symbols",
+        "Undo / Redo",
+        "Changes not yet applied are saved automatically",
+        "Repeat a passage (A–B)",
+        "Keyboard shortcuts in sight",
+        "Linked notes",
+        "Arpeggios",
+        "The PSARC check (\"Before you use it\", on the Export page) also checks the links and the arpeggios",
+        "The project's top bar no longer draws the status over \"Edit info\"/\"Previous version\" on narrow screens: the status and \"Pending\" shrink and \"Download\" keeps only its icon"
+      ],
+      "improvements": [
+        "Windows installer and portable zip",
+        "Licences made clear: the code adapted from alphaTab is in two files of its own, under MPL-2.0; everything else is MIT"
+      ],
+      "breaking": [],
+      "tests": "CI (ruff, mypy, pytest, ESLint, Docker build) on the version commit, and the frozen .exe smoke test of the release workflow",
+      "approved_by": "the maintainer (asked for the release)",
+      "upgrade": "Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.",
+      "exceptions": [],
+      "note": "Built and published by the release workflow from the tag v0.10.0-beta.2 on commit 9321069994 (run history of release.yml). The GitHub release and the tag no longer exist; the Releases page starts at beta 10."
+    },
+    {
+      "version": "0.10.0-beta.3",
+      "status": "Superseded",
+      "created": "2026-10-15",
+      "published": "2026-10-15",
+      "commit": "bebcf2b5d6e7d074829b4c01106ada00a7fcdb97",
+      "build": "pending: no tag push run is recorded",
+      "artifacts": [],
+      "goal": "Support button and tutorial video.",
+      "features": [
+        "A **“Buy me a coffee”** button (PayPal) on the home page and a **Support the project** card in Settings → General",
+        "A **tutorial video** (Portuguese and English) and a GIF in the README"
+      ],
+      "improvements": [],
+      "breaking": [],
+      "tests": "CI (ruff, mypy, pytest, ESLint, Docker build) on the version commit, and the frozen .exe smoke test of the release workflow",
+      "approved_by": "the maintainer (asked for the release)",
+      "upgrade": "Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.",
+      "exceptions": [],
+      "note": "Published per the CHANGELOG; no tag push run of the release workflow is recorded for it (a manual run on ed59086 at 12:58 could attach files to an existing release). The commit is the one that set the version: the release was built from it or a later commit."
+    },
+    {
+      "version": "0.10.0-beta.4",
+      "status": "Not published",
+      "created": "2026-10-15",
+      "published": null,
+      "commit": "a89c6a49ccb9e548d7f486008ab165ae74568b1d",
+      "build": "a manual dry run, GitHub Actions run 38800774563; never published",
+      "artifacts": [],
+      "goal": "Prepared but never published; its content went out in 0.10.0-beta.5.",
+      "features": [],
+      "improvements": [],
+      "breaking": [],
+      "tests": "none recorded",
+      "approved_by": "pending",
+      "upgrade": "pending",
+      "exceptions": [],
+      "note": "CHANGELOG (0.10.0 beta 5): \"Includes what was prepared for beta 4, which was never published\". The commit is the one that set the version."
+    },
+    {
+      "version": "0.10.0-beta.5",
+      "status": "Superseded",
+      "created": "2026-10-15",
+      "published": "2026-10-15",
+      "commit": "248e46e787bf3ba0b6acde98e05fec53eb78a3e3",
+      "build": "GitHub Actions run 38807973611 (https://github.com/F100Pilot/RockForge/actions/runs/38807973611)",
+      "artifacts": [],
+      "goal": "Beta for testers: fret-hand position (FHP) editor, bass arrangement, new version notice, and fixes.",
+      "features": [
+        "Fret-hand position (FHP) editor",
+        "Bass arrangement",
+        "New version notice",
+        "The `.exe` installs the extra components by itself",
+        "Wwise is found by itself"
+      ],
+      "improvements": [
+        "The automatic fret-hand positions were redone",
+        "The XML for DLC Builder now carries the same automatic fret-hand positions as the `.psarc` (they used to be worked out two different ways)"
+      ],
+      "breaking": [],
+      "tests": "CI (ruff, mypy, pytest, ESLint, Docker build) on the version commit, and the frozen .exe smoke test of the release workflow",
+      "approved_by": "the maintainer (asked for the release)",
+      "upgrade": "Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.",
+      "exceptions": [],
+      "note": "Built and published by the release workflow from the tag 0.10.0-beta.5 on commit 248e46e787 (run history of release.yml). The GitHub release and the tag no longer exist; the Releases page starts at beta 10."
+    },
+    {
+      "version": "0.10.0-beta.6",
+      "status": "Superseded",
+      "created": "2026-10-15",
+      "published": "2026-10-15",
+      "commit": "8494322e3f34a7427e9ed710687f2001493e9bb4",
+      "build": "GitHub Actions run 38812870334 (https://github.com/F100Pilot/RockForge/actions/runs/38812870334)",
+      "artifacts": [],
+      "goal": "Beta for testers: “Mark by ear”, for tabs that were never synced, and fixes.",
+      "features": [
+        "“Mark by ear”, for tabs that were never synced"
+      ],
+      "improvements": [],
+      "breaking": [],
+      "tests": "CI (ruff, mypy, pytest, ESLint, Docker build) on the version commit, and the frozen .exe smoke test of the release workflow",
+      "approved_by": "the maintainer (asked for the release)",
+      "upgrade": "Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.",
+      "exceptions": [],
+      "note": "Built and published by the release workflow from the tag 0.10.0-beta.6 on commit 8494322e3f (run history of release.yml). The GitHub release and the tag no longer exist; the Releases page starts at beta 10."
+    },
+    {
+      "version": "0.10.0-beta.7",
+      "status": "Superseded",
+      "created": "2026-10-15",
+      "published": "2026-10-16",
+      "commit": "7ca91539fe31adfbfae1c50bb3271dadceff5662",
+      "build": "GitHub Actions run 38888935893 (https://github.com/F100Pilot/RockForge/actions/runs/38888935893)",
+      "artifacts": [],
+      "goal": "Beta for testers: sync automatically, with a variable tempo — experimental, an icon of its own, and fixes.",
+      "features": [
+        "Sync automatically, with a variable tempo — experimental",
+        "An icon of its own"
+      ],
+      "improvements": [],
+      "breaking": [],
+      "tests": "CI (ruff, mypy, pytest, ESLint, Docker build) on the version commit, and the frozen .exe smoke test of the release workflow",
+      "approved_by": "the maintainer (asked for the release)",
+      "upgrade": "Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.",
+      "exceptions": [],
+      "note": "Built and published by the release workflow from the tag v0.10.0-beta.7 on commit 7ca91539fe (run history of release.yml). The GitHub release and the tag no longer exist; the Releases page starts at beta 10. The CHANGELOG dates it 2026-10-15, when its number was set (2d4d4bb); it was published on 2026-10-16 from a later commit, with two more fixes."
+    },
+    {
+      "version": "0.10.0-beta.8",
+      "status": "Superseded",
+      "created": "2026-10-16",
+      "published": "2026-10-16",
+      "commit": "611a82e924631764440ca2a7d417c63c39ba7675",
+      "build": "GitHub Actions run 38959448656 (https://github.com/F100Pilot/RockForge/actions/runs/38959448656)",
+      "artifacts": [],
+      "goal": "Beta for testers: the “A new version is out” notice arrives sooner, and fixes.",
+      "features": [],
+      "improvements": [
+        "The “A new version is out” notice arrives sooner"
+      ],
+      "breaking": [],
+      "tests": "CI (ruff, mypy, pytest, ESLint, Docker build) on the version commit, and the frozen .exe smoke test of the release workflow",
+      "approved_by": "the maintainer (asked for the release)",
+      "upgrade": "Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.",
+      "exceptions": [],
+      "note": "Built and published by the release workflow from the tag v0.10.0-beta.8 on commit 611a82e924 (run history of release.yml). The GitHub release and the tag no longer exist; the Releases page starts at beta 10."
+    },
+    {
+      "version": "0.10.0-beta.9",
+      "status": "Superseded",
+      "created": "2026-10-16",
+      "published": "2026-10-16",
+      "commit": "ba8f5fc7180b87c6d1da0b7f89ea321b6ca593e2",
+      "build": "GitHub Actions run 38969486294 (https://github.com/F100Pilot/RockForge/actions/runs/38969486294)",
+      "artifacts": [],
+      "goal": "Beta for testers: recording attacks, and fixes.",
+      "features": [
+        "Recording attacks"
+      ],
+      "improvements": [],
+      "breaking": [],
+      "tests": "CI (ruff, mypy, pytest, ESLint, Docker build) on the version commit, and the frozen .exe smoke test of the release workflow",
+      "approved_by": "the maintainer (asked for the release)",
+      "upgrade": "Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.",
+      "exceptions": [],
+      "note": "Built and published by the release workflow from the tag v0.10.0-beta.9 on commit ba8f5fc718 (run history of release.yml). The GitHub release and the tag no longer exist; the Releases page starts at beta 10."
+    },
+    {
+      "version": "0.10.0-beta.10",
+      "status": "Superseded",
+      "created": "2026-10-16",
+      "published": "2026-10-16",
+      "commit": "d73ecc0a067ab1fad10738ab5c81d5b86b527e98",
+      "build": "GitHub Actions run 38981804533 (https://github.com/F100Pilot/RockForge/actions/runs/38981804533)",
+      "artifacts": [
+        "https://github.com/F100Pilot/RockForge/releases/tag/v0.10.0-beta.10"
+      ],
+      "goal": "Beta for testers: 3D highway with a free camera, recording attacks — choose the instrument, and fixes.",
+      "features": [
+        "3D highway with a free camera",
+        "Recording attacks — choose the instrument"
+      ],
+      "improvements": [],
+      "breaking": [],
+      "tests": "CI (ruff, mypy, pytest, ESLint, Docker build) on the version commit, and the frozen .exe smoke test of the release workflow",
+      "approved_by": "the maintainer (asked for the release)",
+      "upgrade": "Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.",
+      "exceptions": [],
+      "note": "Published automatically when CI passed on its commit; the tag v0.10.0-beta.10 is that commit."
+    },
+    {
+      "version": "0.10.0-beta.11",
+      "status": "Superseded",
+      "created": "2026-10-17",
+      "published": "2026-10-17",
+      "commit": "8b5b49a54bb03d085716b529abf41e671788c2fa",
+      "build": "GitHub Actions run 39014176593 (https://github.com/F100Pilot/RockForge/actions/runs/39014176593)",
+      "artifacts": [
+        "https://github.com/F100Pilot/RockForge/releases/tag/v0.10.0-beta.11"
+      ],
+      "goal": "One fix: open-string chords drawn as a solid block in game.",
+      "features": [],
+      "improvements": [],
+      "breaking": [],
+      "tests": "CI (ruff, mypy, pytest, ESLint, Docker build) on the version commit, and the frozen .exe smoke test of the release workflow",
+      "approved_by": "the maintainer (asked for the release)",
+      "upgrade": "Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.",
+      "exceptions": [],
+      "note": "Published automatically when CI passed on its commit; the tag v0.10.0-beta.11 is that commit."
+    },
+    {
+      "version": "0.10.0-beta.12",
+      "status": "Beta",
+      "created": "2026-10-17",
+      "published": "2026-10-17",
+      "commit": "b0e2145cf6c8231ae18f144f8913e9478342d268",
+      "build": "GitHub Actions run 39053887931 (https://github.com/F100Pilot/RockForge/actions/runs/39053887931)",
+      "artifacts": [
+        "https://github.com/F100Pilot/RockForge/releases/tag/v0.10.0-beta.12"
+      ],
+      "goal": "Beta for testers: edit notes — drag, and change the fret with the arrows, and fixes.",
+      "features": [
+        "Edit notes — drag, and change the fret with the arrows"
+      ],
+      "improvements": [],
+      "breaking": [],
+      "tests": "CI (ruff, mypy, pytest, ESLint, Docker build) on the version commit, and the frozen .exe smoke test of the release workflow",
+      "approved_by": "the maintainer (asked for the release)",
+      "upgrade": "Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.",
+      "exceptions": [],
+      "note": "Published automatically when CI passed on its commit; the tag v0.10.0-beta.12 is that commit."
+    }
+  ]
+}

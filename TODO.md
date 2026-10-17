@@ -9,6 +9,10 @@ ver `TESTING.md`.
 Acumula-se aqui o que os utilizadores pedem; quando houver o suficiente, faz-se
 tudo de uma vez e um novo bump de versão.
 
+**Os bugs vivem no registo** (`tracking/bugs.json` → `tracking/BUG_LOG.md`, regras em
+`docs/VERSIONING.md`): cada bug relatado ganha um `BUG-xxxx` com `python -m tools.tracking new-bug`
+e cada correção um `FIX-xxxx`. Esta lista fica para os pedidos de funcionalidades.
+
 - [x] **Pista 3D com mais mobilidade** (2026-10-16: "em todos os eixos até um
   máximo de 1220 graus horizontalmente e verticalmente de 0 a 90 graus" — lido
   como 120° para cada lado): arrastar roda, roda do rato afasta, duplo clique

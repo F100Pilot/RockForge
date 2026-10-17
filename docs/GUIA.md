@@ -537,7 +537,10 @@ info** de cada projeto.
 
 ## 13. Definições
 
-- **Geral**: idioma; **Versões novas** (pergunta ao GitHub no máximo uma vez por hora, ligado por defeito);
+- **Geral**: idioma; **Sobre o RockForge** (a versão e o build que estás a usar; **Copiar
+  informação para relatório** põe na área de transferência o que um relatório de erro precisa —
+  versão, build, sistema, software encontrado e o fim do registo técnico, sem palavras-passe nem
+  o teu nome de utilizador — e **Relatar um erro** abre o formulário no GitHub); **Versões novas** (pergunta ao GitHub no máximo uma vez por hora, ligado por defeito);
   **Pasta do Wwise** (vazio = procurar onde o Audiokinetic Launcher o instala); pasta do
   Rocksmith 2014.
 - **Software**: no `.exe`, o cartão **Componentes extra** (o que está instalado, **Instalar
@@ -580,6 +583,7 @@ lista na própria aplicação.
 
 | Problema | O que ver |
 |---|---|
+| Algo correu mal e queres relatar | Definições → Geral → Sobre o RockForge → **Copiar informação para relatório**, e cola-a no relatório (**Relatar um erro**). Um erro inesperado mostra um id: junta-o, que é o mesmo do registo técnico (`logs/rockforge.log` na pasta de trabalho). |
 | A música **não aparece** no jogo | O patch de CDLC (`D3DX9_42.dll`) está na pasta do jogo? (Definições → Software.) O AppID usado é de uma DLC que tens? O PSARC está em `dlc` (ou `dlc\RockForge`)? |
 | Só sai o bundle, **sem PSARC jogável** | Falta o Wwise (2019/2021/2022/2023) — Definições → Software. |
 | Diz que **falta o Wwise**, mas está instalado | Definições → Software diz o que encontrou: um 2024/2025 (instala também o **2023.1**, podem ficar os dois), um Wwise sem a parte **Authoring** (no Launcher, Modify → Authoring), ou nada (indica a pasta em Definições → Geral → Pasta do Wwise). Em Exportar → "Antes de usar", **PSARC sem som** mostra o erro do Wwise quando o encontrou mas a conversão falhou. |

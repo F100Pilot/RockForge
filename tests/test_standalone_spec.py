@@ -182,6 +182,21 @@ def test_spec_bundles_what_the_extra_components_install() -> None:
                and src.endswith("_pdf_runner.py") for src, dest in datas)
 
 
+def test_spec_records_which_build_the_exe_is() -> None:
+    """The frozen app has no git: the spec writes the commit and the CI run it
+    was made from into the bundle, where build_info.py reads it."""
+    import json
+
+    from rockforge import __version__
+    from rockforge.build_info import FILE_NAME
+
+    match = [(src, dest) for src, dest in _run_spec() if src.endswith(FILE_NAME)]
+    assert match and match[0][1].replace("\\", "/") == "rockforge"
+    info = json.loads((REPO_ROOT / match[0][0]).read_text(encoding="utf-8"))
+    assert info["version"] == __version__
+    assert len(info["commit"]) == 40 and info["build_id"] and info["built_at"]
+
+
 def test_the_exe_and_the_installer_carry_the_rockforge_icon() -> None:
     """Without it Windows shows PyInstaller's default icon on the window, the
     taskbar and every shortcut."""

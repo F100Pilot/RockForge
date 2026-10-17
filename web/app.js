@@ -316,10 +316,49 @@ homeDrop.addEventListener('drop', e => {
   inp.files = e.dataTransfer.files;
   inp.dispatchEvent(new Event('change'));
 });
+let buildInfo = null;  // GET /version: the version and which build of it this is
 fetch('/version').then(r => r.json()).then(d => {
-  // A pre-release reads "v0.10.0 beta 1", not the bare PEP 440 "0.10.0b1".
-  document.getElementById('appVersion').textContent = 'v' + d.version.replace(/b(\d+)$/, ' beta $1');
+  buildInfo = d;
+  // A pre-release reads "v0.10.0 beta 1", not "0.10.0-beta.1".
+  const el = document.getElementById('appVersion');
+  el.textContent = 'v' + (d.display || prettyVersion(d.version));
+  el.title = d.full || d.version;
+  renderAboutCard();
 }).catch(() => {});
+
+// Definições → Geral → "Sobre o RockForge": which version AND which build is
+// running (a git checkout moves on after a release; only the commit tells two
+// "beta 12"s apart), and a report to paste into a bug report.
+function renderAboutCard() {
+  const box = document.getElementById('aboutInfo');
+  if (!box || !buildInfo) return;
+  const d = buildInfo;
+  const source = {
+    exe: T('o .exe (instalador ou zip)'), git: T('um clone git (start.bat)'),
+    source: T('uma cópia do código sem git'), bundle: T('um pacote'), unknown: T('desconhecida'),
+  }[d.source] || d.source;
+  const rows = [
+    [T('Versão'), d.display || prettyVersion(d.version)],
+    [T('Build'), d.full || d.version],
+    [T('Commit'), d.commit ? d.commit.slice(0, 10) + (d.dirty ? ' ' + T('(com alterações locais)') : '') : T('desconhecido')],
+    [d.source === 'git' ? T('Data do commit') : T('Construído em'), d.built_at || T('desconhecido')],
+    [T('Instalação'), source],
+  ];
+  box.replaceChildren(...rows.flatMap(([k, v]) => {
+    const dt = document.createElement('dt'); dt.textContent = k;
+    const dd = document.createElement('dd'); dd.textContent = v;
+    return [dt, dd];
+  }));
+}
+document.getElementById('copyDiagReport').addEventListener('click', async () => {
+  try {
+    const r = await getJSON('/diagnostic-report');
+    await navigator.clipboard.writeText(r.text);
+    toast(T('Copiado. Cola-o no relatório do erro.'), 'ok');
+  } catch (e) {
+    toast(T('Não foi possível copiar: {err}', { err: e.message || e }), 'err');
+  }
+});
 
 // ── Batch processing: several (GP, audio) pairs, created one job at a time ───
 // No new backend endpoint — this loops the same /gp/inspect + /jobs/gp calls
@@ -773,7 +812,11 @@ function dismissNotice(id) {
   renderHomeNotices();
 }
 function prettyVersion(v) {
-  return String(v || '').replace(/^v/, '').replace(/[-.]?(?:beta|b)\.?(\d+)$/i, ' beta $1');
+  // "0.10.0-beta.12", "v0.10.0-rc.1", or the older "0.10.0b3" → "0.10.0 beta 12" etc.
+  const m = String(v || '').replace(/^v/, '').match(/^(\d+\.\d+\.\d+)(?:[-.]?(dev|alpha|a|beta|b|rc)\.?(\d+))?/i);
+  if (!m) return String(v || '');
+  const stage = { dev: 'dev', alpha: 'alpha', a: 'alpha', beta: 'beta', b: 'beta', rc: 'RC' }[(m[2] || '').toLowerCase()];
+  return m[1] + (stage ? ` ${stage} ${m[3]}` : '');
 }
 function renderHomeNotices() {
   const box = document.getElementById('homeNotices');

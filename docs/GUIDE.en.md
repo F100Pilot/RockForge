@@ -537,7 +537,10 @@ are shared. Lead/Rhythm tracks are picked by name; check them afterwards in each
 
 ## 13. Settings
 
-- **General**: language; **New versions** (ask GitHub at most once an hour, on by default); **Wwise
+- **General**: language; **About RockForge** (the version and build you are using; **Copy
+  information for a report** puts what a bug report needs on the clipboard — version, build,
+  system, the software found and the end of the technical log, without passwords or your user
+  name — and **Report a problem** opens the form on GitHub); **New versions** (ask GitHub at most once an hour, on by default); **Wwise
   folder** (empty = found where the Audiokinetic Launcher installs it); Rocksmith 2014 folder.
 - **Software**: in the `.exe`, the **Extra components** card (what is installed, **Install extra
   components** / **Reinstall**, the install log); then what is installed, what is missing and how
@@ -579,6 +582,7 @@ the app itself.
 
 | Problem | What to check |
 |---|---|
+| Something went wrong and you want to report it | Settings → General → About RockForge → **Copy information for a report**, and paste it into the report (**Report a problem**). An unexpected error shows an id: include it, it is the same as in the technical log (`logs/rockforge.log` in the work folder). |
 | The song **does not show** in the game | Is the CDLC patch (`D3DX9_42.dll`) in the game folder? (Settings → Software.) Is the AppID used that of a DLC you own? Is the PSARC in `dlc` (or `dlc\RockForge`)? |
 | Only the bundle comes out, **no playable PSARC** | Wwise (2019/2021/2022/2023) is missing — Settings → Software. |
 | It says **Wwise is missing**, but it is installed | Settings → Software says what it found: a 2024/2025 (install **2023.1** too, both can stay), a Wwise without its **Authoring** part (in the Launcher, Modify → Authoring), or nothing (set the folder in Settings → General → Wwise folder). In Export → "Before you use it", **PSARC without sound** shows Wwise's error when it was found but the conversion failed. |

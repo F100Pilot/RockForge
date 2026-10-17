@@ -18,14 +18,13 @@ tester wants the next beta, someone on a final version does not.
 from __future__ import annotations
 
 import json
-import re
 import sys
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-from rockforge import __version__
+from rockforge import __version__, versioning
 
 REPO = "F100Pilot/RockForge"
 RELEASES_API = f"https://api.github.com/repos/{REPO}/releases?per_page=20"
@@ -35,31 +34,20 @@ RELEASES_PAGE = f"https://github.com/{REPO}/releases"
 CHECK_EVERY_S = 3600
 RETRY_AFTER_FAILURE_S = 3600  # offline: do not spend a timeout on every page load
 TIMEOUT_S = 8.0
+_FINAL = versioning.parse("0.0.0").key[3]  # the stage key of a release, not a pre-release
 _USER_AGENT = f"RockForge/{__version__} (update check)"
-
-# "0.10.0b3" (PEP 440, __version__), "v0.10.0-beta.4" / "0.10.0-beta.4" (tags),
-# "1.0.0rc1", "1.0.0".
-_VERSION = re.compile(
-    r"^v?(\d+)\.(\d+)\.(\d+)(?:[-.]?(a|alpha|b|beta|rc)\.?(\d+))?$", re.IGNORECASE
-)
-_STAGE = {"a": 0, "alpha": 0, "b": 1, "beta": 1, "rc": 2}
-
 
 def parse_version(text: str) -> tuple[int, int, int, int, int] | None:
     """A sortable key, or None for anything that is not a version. A final
-    release sorts after every pre-release of the same number."""
-    m = _VERSION.match(text.strip())
-    if not m:
-        return None
-    major, minor, patch = (int(m.group(i)) for i in (1, 2, 3))
-    if m.group(4) is None:
-        return (major, minor, patch, 3, 0)
-    return (major, minor, patch, _STAGE[m.group(4).lower()], int(m.group(5)))
+    release sorts after every pre-release of the same number; the older
+    spellings ("0.10.0b3", "v0.10.0-beta4") read as the same version."""
+    v = versioning.parse_loose(text)
+    return None if v is None else v.key
 
 
 def is_prerelease(text: str) -> bool:
     key = parse_version(text)
-    return key is not None and key[3] < 3
+    return key is not None and key[3] < _FINAL
 
 
 def install_kind(root: Path | None = None) -> str:
@@ -94,7 +82,7 @@ def newest_release(releases: Any, current: str) -> tuple[str, str] | None:
             continue
         tag = str(rel.get("tag_name") or "")
         key = parse_version(tag)
-        if key is None or (key[3] < 3 and not allow_pre):
+        if key is None or (key[3] < _FINAL and not allow_pre):
             continue
         if best is None or key > best[0]:
             url = str(rel.get("html_url") or f"{RELEASES_PAGE}/tag/{tag}")

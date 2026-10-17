@@ -406,9 +406,13 @@ isso sem dar conta.
 Se não colocares o `ffmpeg.exe` dentro de `ffmpeg/`, o build avisa — a app
 continua a funcionar se o utilizador tiver o ffmpeg no PATH do sistema.
 
-**Onde ver os erros:** sem consola, a app escreve tudo para
-`%USERPROFILE%\Downloads\RockForge\rockforge.log`. É o primeiro sítio a
-consultar se o `.exe` não arrancar.
+**Onde ver os erros:** em `%USERPROFILE%\Downloads\RockForge\logs\`: o
+`rockforge.log` é o registo técnico (em rotação, ver
+[VERSIONING.md](VERSIONING.md#technical-log)), e o `console.log` o que o `.exe`
+sem consola teria escrito (as três execuções anteriores ficam como
+`console.log.1`…`.3`). São o primeiro sítio a consultar se o `.exe` não
+arrancar. Definições → Geral → Sobre o RockForge → "Copiar informação para
+relatório" junta as suas últimas linhas.
 
 #### Verificar o build antes de distribuir
 

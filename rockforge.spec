@@ -71,6 +71,14 @@ _components.parent.mkdir(exist_ok=True)
 _components.write_text(json.dumps(requirements_from_pyproject(Path("pyproject.toml"))))
 datas.append((str(_components), "rockforge/infrastructure"))
 
+# Which build this is (rockforge/build_info.py): the commit, the CI run and the
+# time, read at build time because the frozen app has no git to ask.
+from rockforge.build_info import FILE_NAME as BUILD_INFO_FILE, collect as collect_build_info  # noqa: E402
+
+_build_info = Path("build") / BUILD_INFO_FILE
+_build_info.write_text(json.dumps(collect_build_info(Path.cwd())))
+datas.append((str(_build_info), "rockforge"))
+
 # Bundled ffmpeg (place ffmpeg/ffmpeg.exe in the project root before building).
 ffmpeg_dir = Path("ffmpeg")
 if ffmpeg_dir.is_dir():

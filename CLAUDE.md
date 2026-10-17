@@ -5132,10 +5132,11 @@ pip install -e ".[dev,ml]"          # adds Demucs/librosa (stem separation, tone
 pip install -e ".[dev,ml,lyrics]"   # + WhisperX (automatic lyric detection)
 pip install -e ".[pdf]"             # PDF-to-GP5's converter (PDF/picture -> GP5), from GitHub
 pytest                           # full suite (ML stages are faked in tests)
-ruff check src tests start_standalone.py build_exe.py   # lint — must pass
+ruff check src tests start_standalone.py build_exe.py .github/scripts tools   # lint — must pass
                                  # (the root scripts are shipped code; rockforge.spec
                                  #  is excluded — it calls PyInstaller-injected names)
 mypy                             # strict on domain/application/infra; relaxed at boundaries
+python -m tools.tracking check   # the bug/fix/release registers (docs/VERSIONING.md)
 ```
 
 CI runs ruff + mypy + pytest (+ ESLint on `web/app.js`, + a Docker build). All
@@ -5374,6 +5375,8 @@ background" feature:
   new step), update both in the same change.
 - **`TESTING.md`** — how to run/extend the test suite, the coverage map, and the
   manual end-to-end checks CI cannot do (ML, Wwise, DLC Builder, in-game).
+- **`docs/VERSIONING.md`** + **`docs/RELEASE_PROCESS.md`** — version numbers,
+  the bug/fix/release registers in `tracking/` and how a version is published.
 - **`TODO.md`** — done (`[x]`) and proposed (`[ ]`) features + current known
   limitations.
 - **`TONE.md`** — deep dive on the tone-gear model and the `.rs2dlc` `Tones`
@@ -5470,6 +5473,73 @@ a single uvicorn process is used for a clean tab-close shutdown. It also opens
 the browser automatically — a background PowerShell one-liner polls port 8000
 and launches `http://localhost:8000` once the API accepts connections.
 
+## Versions, bugs and releases (`docs/VERSIONING.md`, `docs/RELEASE_PROCESS.md`)
+
+"Implementação de um sistema profissional de versionamento e gestão de bugs"
+(2026-10-17). What exists, so nobody rebuilds it:
+
+- **The version is written once**, `rockforge.__version__`, in Semantic
+  Versioning (`0.10.0-beta.12`; until then it was the PEP 440 `0.10.0b12`).
+  `pyproject.toml` reads it (`dynamic`); `installer.iss` and the changelog
+  headings are copies `tests/test_release_version.py` holds equal.
+  `rockforge/versioning.py` parses, orders (dev < alpha < beta < rc <
+  release), converts to PEP 440 and decides what may come next
+  (`allowed_next`: nothing skipped, nothing back); `update_check` uses it and
+  still reads the old spellings.
+- **The build is not the version**: `rockforge/build_info.py` — the `.exe`
+  reads the `build_info.json` `rockforge.spec` writes (commit, CI run, time), a
+  git checkout asks git, a zip knows only the version. Shown in `/version`
+  (`full` = `0.10.0-beta.12+ci.57.<commit>`), the home page's tooltip,
+  Definições → Geral → **Sobre o RockForge** (`renderAboutCard`), the first lines
+  of every log and the diagnostic report.
+- **Registers, in the repo** (`tracking/bugs.json`, `fixes.json`,
+  `releases.json`; the user chose the repo over GitHub Issues): permanent ids
+  `BUG-0001…`/`FIX-0001…`, every field the spec asked for, `"pending"` for any
+  fact not known. `tools/tracking.py` holds the rules (ids contiguous, allowed
+  status transitions, Fixed needs a fix with commits, Verified needs a passed
+  test or a manual/user check, Closed needs a published release, both sides of
+  a bug↔fix link, found-in before fixed-in) and `check_commits` confirms with
+  git that each fix is an ancestor of its version's commit — CI checks out the
+  full history for it. `BUG_LOG.md` (index), `bugs/<module>.md` (one page per
+  module: a single file was 600 KB), `FIX_LOG.md`, `RELEASE_LOG.md` are
+  generated (`render`) and a stale one fails the check. What a release fixed and
+  carried is DERIVED, never written twice.
+- **The whole history is in it** (the user chose "todo o histórico"): 294 bugs
+  rebuilt from CHANGELOG, CLAUDE.md and every commit since 2026-06, deduplicated
+  by commit; statuses from the evidence — Closed only with a test that passed
+  on re-run (2026-10-17), a documented manual check or the user's confirmation,
+  in a published release; 95 stay Fixed (no verification on record). Release
+  commits come from the release workflow's run history (beta 7 was published
+  on 2026-10-16 from 7ca9153, not from the commit that set its number; betas
+  2-9 have lost their tags and GitHub releases; beta 3's run is not recorded).
+- **The gate**: `tools/release_check.py` (in `decide`, before anything is
+  built): versions and changelogs in step, release notes, registers clean, no
+  fix left unassigned, then by stage — beta: no open Critical; rc: no open
+  Critical/High/P1 and the line's Critical/High fixes verified; stable: follows
+  a published RC with no fix of its own, every fix of the line verified. Only an
+  `exceptions` entry in the version's record lets a bug through.
+  `tools/bump_version.py` writes the number everywhere, closes the changelogs'
+  unreleased sections, assigns unreleased fixes, adds the release and runs the
+  gate; `--published` records the date and tag commit afterwards.
+- **Technical log** (`rockforge/app_logging.py`): `<work>/logs/rockforge.log`
+  (API + in-process worker; configured in the lifespan, because uvicorn
+  resets its own loggers at start) and `rockforge-worker.log` (Celery's
+  `after_setup_logger`), 2 MB × 5, `ROCKFORGE_LOG_LEVEL`, a request id per
+  request (`X-Request-ID`; `request.state` carries it to the error handler, which
+  runs outside the middleware), unhandled errors logged with the traceback and
+  answered `{"detail", "error_id"}`; `redact` strips the API token, credentials,
+  `password=`/`token=` values and the account name in paths. The `.exe`'s
+  console goes to `logs/console.log` (three runs kept); `start.bat` keeps
+  `worker.prev.log`. `GET /diagnostic-report` = build + system + external
+  software + log tails, redacted, in English.
+- **No management UI**: the registers are files a single maintainer edits with
+  `tools.tracking`; a dashboard would be code to keep with nothing it adds.
+
+Guarded by `test_release_version.py`, `test_build_info.py`,
+`test_app_logging.py`, `test_tracking.py` (the real registers + every rule on
+invented ones + the gate + the bump) and `test_spec_records_which_build_the_exe_is`;
+the About card and the copy with Playwright (PT/EN, no page errors).
+
 ## Licence, third-party notices and the legal notice
 
 RockForge is MIT (`LICENSE`). Everything taken from another project is listed
@@ -5539,8 +5609,10 @@ is new and the bugs fixed in that version, English then Portuguese, nothing
 else**: the user's rule for every bump, 2026-10-16). A manual run
 (workflow_dispatch) is a dry build whose files stay as artifacts. The tag must
 equal `installer.iss`'s version, and `tests/test_release_version.py` keeps
-`installer.iss` (`0.10.0-beta.12`), `pyproject.toml`/`__version__` (`0.10.0b12`)
-and both changelogs' `## [0.10.0 beta 12]` in step. `[pdf]` and the ML stack
+`installer.iss` and `__version__` (both `0.10.0-beta.12`, SemVer; pyproject
+reads `__version__`) and both changelogs' `## [0.10.0 beta 12]` in step. Since
+the versioning rules (below) `decide` also runs `tools/release_check` before
+building and never publishes a `-dev.N` version. `[pdf]` and the ML stack
 are not in the `.exe`; the README says which three extras need the source
 install. The smoke script was checked here against the source server dressed
 as a fake `.exe`; the Windows run itself only happens on GitHub. **Its first
@@ -5560,6 +5632,9 @@ no `.psarc` came out.
   `web/i18n-<code>.js`, server text via `tr(pt, en, …)`. Use the
   `rockforge-i18n` skill (`.claude/skills/rockforge-i18n/SKILL.md`);
   `tests/test_i18n.py` enforces it.
+- **Every bug goes in the register, every fix gets a `FIX-` record** (the
+  section below). Never mark a bug Verified/Closed without the evidence, never
+  write a test result that was not seen.
 - Keep the honesty: surface warnings via the pipeline's `warnings` list, never
   invent metadata, label confidence explicitly.
 - Match surrounding code style. The codebase comments only to state non-obvious

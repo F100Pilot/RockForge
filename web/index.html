@@ -690,6 +690,10 @@ button.pv-primary:hover { background:var(--accent); filter:brightness(1.08); }
 .pv-card-head { display:flex; align-items:center; gap:.55rem; font-weight:700; font-size:.95rem; color:var(--text); }
 .pv-card-head .info-btn { margin-left:auto; }
 .pv-card-desc { font-size:.82rem; color:var(--muted); line-height:1.45; }
+.about-info { display:grid; grid-template-columns:max-content 1fr; gap:.25rem .9rem; font-size:.88rem; }
+.about-info dt { color:var(--muted); }
+.about-info dd { margin:0; overflow-wrap:anywhere; }
+.about-actions { display:flex; flex-wrap:wrap; gap:.5rem; }
 .pv-card-title { margin:0; font-size:1.05rem; }
 .pv-card .syncctrls { gap:.5rem; }
 .pv-row { display:flex; align-items:center; gap:.5rem; }
@@ -1648,6 +1652,15 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
             <option value="pt">Português</option>
           </select>
           <div class="pv-card-desc">Mudar de idioma recarrega a página.</div>
+        </div>
+        <div class="pv-card pv-card-lg" id="aboutCard">
+          <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-info"/></svg>Sobre o RockForge</div>
+          <dl id="aboutInfo" class="about-info"></dl>
+          <div class="pv-card-desc">Ao relatar um erro, junta esta informação: diz que versão e que build estás a usar, o sistema e as últimas linhas do registo técnico (sem palavras-passe, tokens nem o teu nome de utilizador).</div>
+          <div class="about-actions">
+            <button type="button" class="pv-btn" id="copyDiagReport"><svg class="ic" aria-hidden="true"><use href="#i-copy"/></svg>Copiar informação para relatório</button>
+            <a class="pv-btn" href="https://github.com/F100Pilot/RockForge/issues/new?template=bug_report.yml" target="_blank" rel="noopener"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>Relatar um erro</a>
+          </div>
         </div>
         <div class="pv-card pv-card-lg">
           <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-coffee"/></svg>Apoiar o projeto</div>
