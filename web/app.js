@@ -7523,7 +7523,7 @@ function firstNoteFlowClick(e, svg) {
     const chartT = parseFloat(grp.dataset.t);
     const origT = previewScale(chartT);
     firstNoteFlow = null;
-    setAnchor(origT, firstNoteAudioT + viewOrigin);
+    shiftTrackStart(origT, firstNoteAudioT + viewOrigin);
     renderAnchorsList();
     updatePendingChangesInfo();
     firstNoteStatus(T('Início desta pista fixado em {s}s — "Aplicar e reconstruir" para gravar.', { s: firstNoteAudioT.toFixed(2) }));
@@ -9293,11 +9293,35 @@ function setTempoLive(scale) {
 // offsetLive — so the start is independent per track. origT is the UNwarped
 // previewScale position (like 'drag' mode, not 'tap' mode) so repeated calls
 // from the slider/number field update the same anchor instead of compounding.
+// With other pending anchors (an auto-sync, taps, a bar alignment) the first
+// note's anchor is only one point of a piecewise warp, so moving it alone
+// stretched just the stretch up to the next anchor — "it only adjusts the
+// first section". The start then moves the WHOLE chart: every anchor shifts by
+// the same amount, with the chart's ends pinned so the warp (identity outside
+// its range) still covers every note.
+function planStartShift(anchors, warp, origT, target, span) {
+  const EPS = 0.05;
+  // None or one (a uniform shift wherever it sits): the start is one anchor.
+  if (anchors.length <= 1) return [[origT, target]];
+  const d = target - warp(origT);
+  const out = anchors.map(([o, n]) => [o, n + d]);
+  if (!out.some(([o]) => Math.abs(o - origT) < EPS)) out.push([origT, target]);
+  if (out.length > 1 && span) {
+    const [startO, endO] = span;
+    if (!out.some(([o]) => o <= startO + EPS)) out.push([startO, warp(startO) + d]);
+    if (!out.some(([o]) => o >= endO - EPS)) out.push([endO, warp(endO) + d]);
+  }
+  out.sort((x, y) => x[0] - y[0]);
+  return out;
+}
+function shiftTrackStart(origT, target) {
+  const plan = planStartShift(syncAnchors, buildTimeWarp(syncAnchors), origT, target, chartSpan(currentArr));
+  syncAnchors.splice(0, syncAnchors.length, ...plan);
+}
 function setTrackStart(v) {
   const chartT = currentArrFirstNoteTime();
   if (chartT == null) return;
-  const origT = previewScale(chartT);
-  setAnchor(origT, Math.max(0, v) + viewOrigin);
+  shiftTrackStart(previewScale(chartT), Math.max(0, v) + viewOrigin);
   renderAnchorsList();
   updatePendingChangesInfo();
   requestShowArr();  // slider-driven: coalesce the redraw to one per frame

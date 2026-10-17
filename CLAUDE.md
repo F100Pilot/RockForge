@@ -1439,6 +1439,23 @@ already uses (`syncAnchorsByKind[currentKind()]`), so they ride the existing
 convention, not `'tap'` mode's `buildTimeWarp`-wrapped one) specifically so
 that repeatedly nudging the slider/re-running the guided flow updates the
 SAME anchor slot instead of compounding into an unintended multi-point warp.
+**With other pending anchors the start moves the WHOLE chart**
+(`planStartShift`, 2026-10-17: "when you do the sync automatically button and
+then want to go back and move the intro it only adjusts the first section"):
+after an auto-sync, taps or a bar alignment the first note's anchor is one
+point of a piecewise warp, so moving it alone stretched only the span up to
+the next anchor. Now, with two or more pending anchors, every one shifts by
+the same amount (the first note's own point added, both ends of the chart
+pinned via `chartSpan` so the identity-outside warp still covers every note);
+with none or one it stays ONE anchor at the first note, as before (a lone
+anchor elsewhere is a uniform shift, replaced rather than joined). The
+guided "Detetar 1ª nota" flow goes through the same `shiftTrackStart`.
+Browser-only, no pytest coverage: `planStartShift` checked with Node (the
+auto-sync shape, none/one anchor, a pair without end pins; the old
+first-anchor-only rule fails it) and with Playwright on the invented
+"Deriva" project with the 31 anchors a real auto-sync left: "Início" +1 s
+moved all 277 notes and 32 bars by the same 1.002 s (the old code: most by
+0), one Ctrl+Z back to the auto-sync result exactly, PT/EN, no page errors.
 
 **All anchor-writing modes use the UNwarped origin (fixed "Mover seguintes"
 moving notes the wrong way).** `'tap'`, `'movefrom'` and `'newbeat'` used to set

@@ -6,6 +6,10 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Corrigido
+- **"Início da música" depois da sincronização automática:** mudar o início só ajustava o
+  primeiro troço da música. Agora desloca a pista inteira, com as correções que já lá estavam.
+
 ## [0.10.0 beta 11] — 2026-10-17
 
 ### Corrigido

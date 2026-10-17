@@ -6,6 +6,10 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### Fixed
+- **"Song start" after the automatic sync:** moving the start only adjusted the first stretch of
+  the song. It now shifts the whole chart, keeping the corrections already made.
+
 ## [0.10.0 beta 11] — 2026-10-17
 
 ### Fixed
