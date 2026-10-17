@@ -13,6 +13,9 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
   bolas e os traços laranja). O cartão "Ataques da gravação" mostra os seus quatro.
 
 ### Corrigido
+- **Pista 3D apanhava a roda do rato:** ao deslocar a página com o rato por cima da pista 3D, a
+  roda passava a fazer zoom na pista. Agora a roda só mexe na câmara depois de clicares na pista;
+  Esc ou um clique fora largam-na.
 - **"Não tenho o Wwise" com o Wwise instalado:** a variável `WWISEROOT` que o Audiokinetic Launcher
   deixa no Windows aponta muitas vezes para outra versão (o 2024/2025), e o RockForge tomava-a como
   definitiva, sem procurar o 2023.1 instalado ao lado. Agora só a pasta escolhida por ti em

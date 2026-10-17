@@ -13,6 +13,9 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
   ticks). The "Recording attacks" card shows its four.
 
 ### Fixed
+- **The 3D highway grabbed the mouse wheel:** scrolling the page with the mouse over the 3D
+  highway zoomed the highway instead. The wheel now moves the camera only after you click the
+  highway; Esc or a click elsewhere lets go of it.
 - **"Wwise not installed" with Wwise installed:** the `WWISEROOT` variable the Audiokinetic Launcher
   leaves in Windows often points at another version (2024/2025), and RockForge took it as final
   without looking for the 2023.1 installed beside it. Only the folder you choose in Settings is

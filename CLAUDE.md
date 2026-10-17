@@ -2455,7 +2455,15 @@ a point between the strings and the notes about to arrive (`PIVOT_Y`/`PIVOT_Z`,
 x following the hand window as before): yaw ±120°, pitch 0° (level with the
 highway) to 90° (from above, held at 89.9° so `lookAt` keeps an "up"), distance
 6–40. Drag on the canvas turns it, the wheel sets the distance, a double click
-resets (`wireCamera`); "Câmara ▾" holds the same three axes as sliders and
+resets (`wireCamera`); **the wheel works only once the canvas has been
+clicked** ("when im scrolling up and down the page the highway seems to be in
+focus when i mouse over it … maybe it should be click to gain focus?", Liam):
+the canvas is focusable (`tabIndex` 0, focused on `pointerdown`), the wheel
+handler returns without `preventDefault` unless it holds the focus, so the
+page scrolls over it, and Esc or a click elsewhere lets go (a blue border
+shows when it holds it). Verified with Playwright: wheel before a click
+scrolls the page and leaves the distance, after a click zooms, after Esc or a
+click outside scrolls again; "Câmara ▾" holds the same three axes as sliders and
 "Repor câmara". `clampCamera` bounds every way in, the canvas tells app.js
 through `open(..., cameraChanged)` so the sliders follow a drag, and the view
 is remembered in `localStorage` `rf-hw3d-cam`. The default (yaw 0, pitch 15,

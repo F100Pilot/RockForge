@@ -211,8 +211,9 @@ They stay pending as before; Undo goes back to the built version.
 - **preview** plays only the track's notes, without the recording.
 - **Fretboard** shows the guitar neck; **3D highway** shows the notes coming down as in Rocksmith (it
   follows pending corrections too). On the 3D highway, drag to turn the camera (up to 120° either
-  way, from level with the highway to a view from above), the mouse wheel moves closer or further
-  and a double-click resets; **Camera** has the same axes as sliders. **− / + / Reset**: zoom.
+  way, from level with the highway to a view from above), once you click the highway the mouse wheel
+  moves closer or further (before that it scrolls the page; Esc or a click elsewhere lets go) and
+  a double-click resets; **Camera** has the same axes as sliders. **− / + / Reset**: zoom.
   **Legend** shows, under the score, what each mark means (rings, tails, lines, the orange circles
   of the attacks, the hand-position lane…), drawn as it appears; the ⓘ beside it shows the same.
 - **Inspector (on the right):** **Sync**, **Sections** and **Lyrics**.

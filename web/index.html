@@ -731,6 +731,8 @@ button.pv-loop-btn[aria-pressed="true"] { background:#2d2350; color:#e2d6ff; bor
 .hw3d:fullscreen { height:100%; border-radius:0; border:0; }
 .hw3d-canvas { display:block; width:100%; height:100%; cursor:grab; touch-action:none; }
 .hw3d-canvas.turning { cursor:grabbing; }
+.hw3d-canvas:focus { outline:none; }
+.hw3d:has(.hw3d-canvas:focus) { border-color:#4a7bd8; box-shadow:0 0 0 1px #4a7bd8 inset; }
 .hw3d-bar { position:absolute; top:8px; right:8px; display:flex; flex-wrap:wrap; gap:6px 12px; align-items:center; background:rgba(12,16,26,.82); border:1px solid rgba(150,170,210,.18); border-radius:8px; padding:5px 10px; font-size:12px; }
 .hw3d-tilt { display:flex; align-items:center; gap:6px; color:#8d97ad; }
 .hw3d-tilt { justify-content:space-between; }
@@ -1110,7 +1112,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                   <label class="hw3d-tilt">Vertical <input type="range" id="hw3dPitch" min="0" max="90" step="1" value="15"></label>
                   <label class="hw3d-tilt">Distância <input type="range" id="hw3dDist" min="6" max="40" step="0.5" value="15"></label>
                   <button type="button" id="hw3dCamReset" class="secondary">Repor câmara</button>
-                  <p class="hw3d-cam-hint">Arrasta para rodar a câmara · roda do rato: distância · duplo clique: repor</p>
+                  <p class="hw3d-cam-hint">Clica na pista para a controlar · arrasta: rodar a câmara · roda do rato: distância · duplo clique: repor · Esc: largar</p>
                 </div>
               </details>
               <button type="button" id="hw3dFull" class="secondary">Ecrã inteiro</button>

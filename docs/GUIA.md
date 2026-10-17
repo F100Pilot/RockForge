@@ -209,8 +209,9 @@ queres recuperar. Ficam pendentes como antes; Desfazer volta à versão constru�
 - **pré-visualizar** toca só as notas da pista, sem a gravação.
 - **Braço** mostra o braço da guitarra; **Pista 3D** mostra as notas a descer como no
   Rocksmith (segue também as correções ainda por aplicar). Na pista 3D, arrasta para rodar a
-  câmara (até 120° para cada lado, de rente à pista até vista de cima), a roda do rato aproxima
-  ou afasta e um duplo clique repõe; **Câmara** tem os mesmos eixos em controlos deslizantes.
+  câmara (até 120° para cada lado, de rente à pista até vista de cima), depois de clicares na
+  pista a roda do rato aproxima ou afasta (antes disso desloca a página; Esc ou um clique fora
+  largam a pista) e um duplo clique repõe; **Câmara** tem os mesmos eixos em controlos deslizantes.
   **− / + / Repor**: zoom. **Legenda** mostra, debaixo da pauta, o que quer dizer cada marca
   (anéis, caudas, linhas, as bolas laranja dos ataques, a faixa da posição da mão…), desenhada
   como aparece; o ⓘ ao lado mostra o mesmo.

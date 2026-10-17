@@ -255,11 +255,15 @@
     if (onCamera) onCamera({ yaw: options.yaw, pitch: options.pitch, dist: options.dist });
   }
   // Drag to turn (sideways = around, up/down = from above or below), the wheel for the
-  // distance, a double click for the default view.
+  // distance, a double click for the default view. The wheel only zooms once the canvas
+  // has been clicked (it holds the focus until a click elsewhere or Esc): scrolling the
+  // page over the highway used to zoom it instead.
   function wireCamera(el) {
-    el.title = T("Arrasta para rodar a câmara · roda do rato: distância · duplo clique: repor");
+    el.title = T("Clica na pista para a controlar · arrasta: rodar a câmara · roda do rato: distância · duplo clique: repor · Esc: largar");
+    el.tabIndex = 0;
     let drag = null;
     el.addEventListener("pointerdown", (e) => {
+      el.focus({ preventScroll: true });
       if (e.button !== 0) return;
       drag = { x: e.clientX, y: e.clientY, yaw: options.yaw, pitch: options.pitch };
       el.setPointerCapture(e.pointerId);
@@ -273,10 +277,12 @@
     el.addEventListener("pointerup", end);
     el.addEventListener("pointercancel", end);
     el.addEventListener("wheel", (e) => {
+      if (document.activeElement !== el) return;  // not clicked yet: the page scrolls
       e.preventDefault();
       turnCamera({ dist: options.dist * Math.exp(e.deltaY * 0.001) });
     }, { passive: false });
     el.addEventListener("dblclick", () => turnCamera(CAMERA_DEFAULT));
+    el.addEventListener("keydown", (e) => { if (e.key === "Escape") el.blur(); });
   }
 
   function createStage(host) {
