@@ -99,6 +99,11 @@ def test_each_rule_catches_the_fault_that_crashed_the_game() -> None:
         0, replace(x.arrangements[-1].anchors[0], end_time=x.phrase_iterations[-1].start_time + 1)))
     assert "handshape_bad_chord" in planted(lambda x: x.arrangements[-1].fingerprints1.__setitem__(
         0, replace(x.arrangements[-1].fingerprints1[0], chord_id=99)))
+    open_chord = from_arrangement(replace(_chart(), notes=[
+        TabNote(s, 0, 2.0, 0.0) for s in range(3)]))
+    open_level = open_chord.arrangements[-1]
+    open_level.notes[0] = replace(open_level.notes[0], chord_notes_id=-1)
+    assert "open_chord_without_chord_notes" in _codes(open_chord)
     assert "vocal_note" in planted(lambda x: x.vocals.append(SngVocal(1.0, 0, 0.5, "la")))
 
 

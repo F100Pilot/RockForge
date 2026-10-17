@@ -1060,14 +1060,11 @@ def _build_chord_data(
         # the highway (visible only while streaming notes in Riff Repeater / when
         # scrubbing). _note_mask already yields SUSTAIN|OPEN|PALMMUTE per string,
         # matching DLC Builder's 0x2000/0x2004/0x2040/0x2044 exactly.
-        needs_chord_notes = any(
-            n.techniques or n.bend_semitones > 0
-            or n.slide_to_fret is not None or n.slide_unpitch_to is not None
-            or n.sustain > 0
-            for n in g
-        )
-        if not needs_chord_notes:
-            continue
+        # The rule is XmlToSngNote's own: an entry unless every string's mask is
+        # empty — and an OPEN string is never empty. Leaving OPEN out of it left
+        # an open-string chord with no sustain (a drop-tuned 0-0-0 power chord,
+        # once short notes lost their sustain) with no entry at all, and the game
+        # drew those chords painted solid from the top string to the bottom.
         cn = SngChordNotes(
             note_mask=[0] * 6,
             bend_data=[[] for _ in range(6)],
@@ -1090,6 +1087,8 @@ def _build_chord_data(
                 cn.slide_unpitch_to[n.string] = n.slide_unpitch_to
             if Technique.VIBRATO in n.techniques:
                 cn.vibrato[n.string] = 80
+        if not any(cn.note_mask):
+            continue
         cn_key = _cn_key(cn)
         if cn_key not in cn_ids:
             cn_ids[cn_key] = len(chord_notes_list)

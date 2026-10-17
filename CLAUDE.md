@@ -3802,6 +3802,23 @@ ChordNotes section directly. **Confirmed fixed in-game** — the corrupt bars ar
 gone on the native PSARC. Guarded by
 `test_sustained_chord_gets_chord_notes_with_per_string_sustain`.
 
+**...and so does every chord with an OPEN string, sustained or not**
+(2026-10-17, "as notas estão pintadas de cima a baixo": a user's screenshot of
+"Behind", Kills Birds — drop C, its C5 is 0-0-0). The rule above was "a
+sustain or a technique", which held while every chord had a sustain; once
+`drop_short_sustains` gave short chords sustain 0, an open-string chord with no
+technique went out with `chord_notes_id = -1` (2312 such chords in that song)
+and the game painted it solid from the top string to the bottom — the same
+family of glitch. DLC Builder's own rule (`XmlToSngNote.createChordNotes`) is
+an entry unless EVERY string's mask is empty, and an open string always carries
+`NoteMask.Open`; `_build_chord_data` now builds the masks first and skips only
+an all-zero set. `check_sng` flags `open_chord_without_chord_notes`, so a PSARC
+built before this shows the fault in "Verificar PSARC". Guarded by
+`test_an_open_string_chord_without_sustain_still_gets_its_chord_notes`
+(mutation-checked) and the planted fault in `test_psarc_verify.py`; the user's
+file rebuilt with every open chord carrying its entry and a clean
+`/psarc-check`. Not seen in game from here.
+
 > **Debugging method that cracked this (reusable).** Several native-SNG highway
 > glitches were mis-diagnosed by reasoning about our data alone (a symptom that
 > *changes as you scrub the score in Riff Repeater, at a fixed DD level*, is the

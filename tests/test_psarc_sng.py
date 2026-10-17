@@ -32,6 +32,7 @@ from rockforge.infrastructure.packaging.psarc.sng import (
     read_sng,
     write_sng,
 )
+from rockforge.infrastructure.packaging.psarc.verify import check_sng
 from rockforge.infrastructure.rsxml.vocals import VocalEvent
 
 
@@ -317,6 +318,41 @@ def test_sustained_chord_gets_chord_notes_with_per_string_sustain() -> None:
     chord_note = model.arrangements[-1].notes[0]
     assert chord_note.chord_notes_id == 0
     assert chord_note.mask & NOTE_MASK_CHORDNOTES
+
+
+def test_an_open_string_chord_without_sustain_still_gets_its_chord_notes() -> None:
+    """DLC Builder (XmlToSngNote.createChordNotes) writes a ChordNotes entry
+    unless every string's mask is empty, and an open string always carries
+    OPEN. A drop-tuned 0-0-0 power chord with no sustain (every short note
+    since `drop_short_sustains`) went out with none, and the game drew those
+    chords painted solid from the top string to the bottom ("Behind",
+    Kills Birds, a user's report). A fully fretted unsustained chord has
+    nothing per string to say and still gets none."""
+    def chord(frets: tuple[int, ...]):
+        arr = Arrangement(
+            kind=ArrangementKind.RHYTHM,
+            metadata=SongMetadata(title="Song", artist="A", song_length=5.0),
+            tuning=Tuning(),
+            tempo_map=TempoMap(beats=(Beat(time=0.0, measure=1),), average_bpm=120.0),
+            notes=[TabNote(string=s, fret=f, time=1.0, sustain=0.0)
+                   for s, f in enumerate(frets)],
+            sections=[Section(name="riff", start_time=0.0)],
+        )
+        model = from_arrangement(arr)
+        return model, next(n for n in model.arrangements[-1].notes if n.chord_id >= 0)
+
+    model, note = chord((0, 0, 0))
+    assert note.chord_notes_id == 0
+    assert note.mask & NOTE_MASK_CHORDNOTES
+    masks = model.chord_notes[0].note_mask
+    assert all(masks[s] & NOTE_MASK_OPEN for s in range(3))
+    assert not any(masks[s] & NOTE_MASK_SUSTAIN for s in range(3))
+    assert masks[3] == masks[4] == masks[5] == 0
+    assert check_sng(model) == []
+
+    model, note = chord((5, 7, 7))
+    assert note.chord_notes_id == -1 and not model.chord_notes
+    assert not note.mask & NOTE_MASK_CHORDNOTES
 
 
 def test_chord_with_techniques_produces_chord_notes() -> None:

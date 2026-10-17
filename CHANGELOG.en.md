@@ -6,6 +6,12 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### Fixed
+- **Chords "painted" top to bottom in game:** a chord with open strings and no sustain (a 0-0-0
+  power chord in a drop tuning, say) went out without the chord notes the game draws it from, and
+  showed as a solid block of colour. It now goes out the way DLC Builder writes it. The PSARC check
+  (Export → "Before you use it") points the fault out in an older PSARC — just rebuild.
+
 ## [0.10.0 beta 10] — 2026-10-16
 
 ### New

@@ -6,6 +6,12 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Corrigido
+- **Acordes "pintados" de cima a baixo no jogo:** um acorde com cordas soltas e sem sustain (um
+  power chord 0-0-0 numa afinação drop, por exemplo) ia sem as notas de acorde que o jogo usa para
+  o desenhar, e aparecia como um bloco de cor sólido. Agora vai como o DLC Builder o escreve.
+  A verificação do PSARC (Exportar → "Antes de usar") aponta o problema num PSARC antigo — basta reconstruir.
+
 ## [0.10.0 beta 10] — 2026-10-16
 
 ### Novo
