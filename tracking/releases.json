@@ -281,7 +281,7 @@
     },
     {
       "version": "0.10.0-beta.13",
-      "status": "Beta",
+      "status": "Superseded",
       "created": "2026-10-17",
       "published": "2026-10-17",
       "commit": "2b7eb07575880a4c125d6f8739b0c4a92d4f75a6",
@@ -309,10 +309,12 @@
       "version": "0.10.0-beta.14",
       "status": "Beta",
       "created": "2026-10-17",
-      "published": "pending",
-      "commit": "pending",
+      "published": "2026-10-17",
+      "commit": "b301ac07482bf49107b94c1634c7278f8f8ae7d0",
       "build": "GitHub Actions release workflow",
-      "artifacts": [],
+      "artifacts": [
+        "https://github.com/F100Pilot/RockForge/releases/tag/v0.10.0-beta.14"
+      ],
       "goal": "A GitHub star button beside the coffee one, and one quiet ask after the first project.",
       "features": [
         "A star on GitHub"
