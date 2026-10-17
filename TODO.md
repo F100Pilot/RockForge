@@ -28,6 +28,28 @@ tudo de uma vez e um novo bump de versão.
   colidem na mesma corda e instante). Ver se a fusão no parse resolve o caso
   do Songsterr sem a vista dupla.
 
+- [ ] **Faixa de ataques marcados à mão, para encaixar as notas**
+  (Liam, 2026-10-17: "have a small attack track you can record by pressing
+  spacebar or something then when you're editing notes you can snap to that …
+  I've been running my tab through chat gpt and it's got a few bits wrong, me
+  tapping is the correct strumming pattern … maybe an expansion on the mark by
+  ear function"). O "Marcar a ouvir" de hoje só marca compassos ou tempos e
+  transforma-os logo em âncoras de sincronização; aqui os toques são o RITMO
+  certo de cada palhetada, e servem de grelha para corrigir as notas.
+  Ideia: (a) no cartão "Marcar a ouvir", um terceiro modo "Ataques" (a mesma
+  captura: tecla B, compensação da latência, Backspace/Esc, velocidade lenta),
+  que não cria âncoras: guarda os toques numa faixa por pista, desenhada na
+  banda dos "Ataques da gravação" com outra cor (os medidos a azul, os
+  marcados a verde); (b) "Encaixar em: ataques marcados" no `#snapDiv`, usado
+  pelo arrastar, Shift+arrastar, a inserção por duplo clique e a cauda do
+  sustain (`noteEditGrid` passa a devolver os toques); (c) os botões
+  "Diferença anterior/seguinte" comparam as notas com os toques como hoje com
+  os ataques medidos; (d) talvez "Encaixar as notas selecionadas nos toques":
+  cada acorde da seleção vai para o toque mais perto, um a um, como uma edição
+  de notas pendente. Os toques ficam no relógio da gravação (como as âncoras e
+  os ataques) e com o projeto (`params`, herdados pelas versões novas), parte do
+  desfazer/rascunho. Não é transcrição: diz QUANDO, não que notas.
+
 - [x] **Bug: as notas sustentadas tocam como um toque curto na pré-escuta** (corrigido 2026-10-16, ver CLAUDE.md "Tone preview")
   (Liam, 2026-10-16: "when playing back sustained notes in editor they just
   play as a single strum rather than sustained"). Causa: o som das notas no
