@@ -1625,3 +1625,48 @@ With several pending anchors (an auto-sync, taps, a bar alignment) the "Início"
 - 2026-10-17 — Fixed: commit d2c156a80e
 - 2026-10-17 — Verified: manual
 - 2026-10-17 — Closed: released in 0.10.0-beta.12
+
+## BUG-0295
+
+**Dragging a selection stretched the notes before it when another correction was pending**
+
+| | |
+|---|---|
+| Detected | 2026-10-17 |
+| Reported by | found while answering a user report (r/rocksmith) |
+| Found in | 0.10.0-beta.15 |
+| Build / commit | c499bc4 |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Verified |
+
+In "Drag" mode, dragging a multi-note selection added only two anchors (the selection's first and last note). With another pending correction — typically the lone "Song start" anchor, a uniform shift — the notes between that correction and the selection were dragged part of the way along, and notes after the selection lost the correction.
+
+**Steps to reproduce:** 
+
+1. Open a project, set "Song start" +1 s (one pending anchor)
+2. Select notes in the middle of the chart (Shift+click)
+3. In "Drag" mode drag one selected note +0.5 s
+
+**Expected:** Only the selected notes move by 0.5 s; every other note stays where it was shown.
+
+**Observed:** Notes between the start and the selection moved +0.17 s and +0.33 s (Node check of the old two-anchor rule); notes after a mid-song selection went back to their unshifted time.
+
+**Root cause:** The multi-anchor warp is piecewise linear and the identity outside its range, so two new anchors next to a lone one interpolated between them and dropped the uniform shift beyond the last one.
+
+**Fixes:** [FIX-0295](../FIX_LOG.md#fix-0295) (unreleased)
+
+**Verified:** Node check of planBlockMove (three cases) and Playwright on an invented project, PT/EN: the selection moved by exactly the drag, every other note by 0 (by the developer (manual check))
+
+**Resolved:** 2026-10-17 · **Closed:** _pending_
+
+**Evidence:**
+
+- user report, r/rocksmith, 2026-10-17: 'knowing how to select all the notes after the cursor would be cool … then being able to move all the notes'
+- Node check of buildTimeWarp with the old rule: [1, 1.167, 1.333, 1.5, …] instead of [1, 1, 1, 1.5, …]
+
+**History:**
+
+- 2026-10-17 — Open: reported
+- 2026-10-17 — Fixed: commit 5a830bde54
+- 2026-10-17 — Verified: manual

@@ -300,6 +300,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0292](#fix-0292) | BUG-0292 | 0.10.0-beta.13 | passed | automated |
 | [FIX-0293](#fix-0293) | BUG-0293 | 0.10.0-beta.13 | passed | automated |
 | [FIX-0294](#fix-0294) | BUG-0294 | 0.10.0-beta.13 | not run | manual |
+| [FIX-0295](#fix-0295) | BUG-0295 | unreleased | not run | manual |
 
 ## FIX-0001
 
@@ -6474,3 +6475,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | not run |
 | Validation | manual |
 | Regression risk | Low: browser-only. |
+
+## FIX-0295
+
+**Bugs:** [BUG-0295](bugs/sync.md#bug-0295)
+
+**Root cause:** The multi-anchor warp is piecewise linear and the identity outside its range, so two new anchors next to a lone one interpolated between them and dropped the uniform shift beyond the last one.
+
+**Solution:** planBlockMove: anchors inside the block move with it, the rest stay, the notes just outside it are pinned where they show and both ends of the chart are pinned; the group drag uses it.
+
+| | |
+|---|---|
+| Date | 2026-10-17 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | unreleased |
+| Commits | 5a830bde54f49f0cf0eb1c3abe7b5daa62126a7d |
+| Components | web/app.js |
+| Tests | — |
+| Manual checks | Node: planBlockMove with a lone start anchor + a block to the end, a block in the middle, no anchors — notes outside the block unmoved, the block moved by the delta; Playwright on an invented project (PT/EN): 'Início' +1 s, Shift+End from the middle, +0.5 s drag: 139 notes moved 0.5 s, the 138 before 0 |
+| Test result | not run |
+| Validation | manual |
+| Regression risk | Low: browser-only; the drag's anchors are ordinary pending anchors (undo, rebuild). |

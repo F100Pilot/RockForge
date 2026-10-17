@@ -25,7 +25,9 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 
 **Bugs fixed:** —
 
-**Known bugs it carried:** —
+**Known bugs it carried:** 
+
+- [BUG-0295](bugs/sync.md#bug-0295) Dragging a selection stretched the notes before it when another correction was pending (Medium, now Verified)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
