@@ -307,7 +307,7 @@
     },
     {
       "version": "0.10.0-beta.14",
-      "status": "Beta",
+      "status": "Superseded",
       "created": "2026-10-17",
       "published": "2026-10-17",
       "commit": "b301ac07482bf49107b94c1634c7278f8f8ae7d0",
@@ -330,10 +330,12 @@
       "version": "0.10.0-beta.15",
       "status": "Beta",
       "created": "2026-10-17",
-      "published": "pending",
-      "commit": "pending",
+      "published": "2026-10-17",
+      "commit": "f9b99838f06eb113086d08ed308d23e7bd78c80a",
       "build": "GitHub Actions release workflow",
-      "artifacts": [],
+      "artifacts": [
+        "https://github.com/F100Pilot/RockForge/releases/tag/v0.10.0-beta.15"
+      ],
       "goal": "Tones from a pasted text: a request for ChatGPT (or any assistant) and its answer read into the project's tones",
       "features": [
         "Import tones from a text"
