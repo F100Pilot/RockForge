@@ -2490,6 +2490,26 @@ with Playwright on the user's Ocean Eyes build (toggle, playback glow, held
 note, chords, headstock, numbers/camera, live tempo follow, close/reopen, no page
 errors) — under software WebGL, so real-GPU frame rate is not measured here.
 
+### The score's legend ("Legenda", `scoreLegendHtml`)
+
+"coloca legenda nestas opções todas e na deteção das batidas (bola laranja,
+tracks, etc)". A "Legenda" switch beside "Braço"/"Pista 3D" (`#showLegend`,
+remembered in `localStorage` `rf-legend`) opens `#scoreLegend` under the score:
+every mark the score draws, each beside a 60×36 SVG swatch drawn with the
+score's own colours and helpers (`legendNote`, `sustainWave`, `bendArrow`), in
+groups — notes (string colours, chord square, technique ring, tail, vibrato,
+link arc, bend, pending ring, outside-FHP ring, the tail handle, arpeggio),
+staff (bar number + ♩, amber re-tempo, authored tempo change, section, tone
+change, lyric word/¶, snap grid, playhead, A–B band), sync anchors, the
+recording's attacks (`attacksLegendItems`: blue tick, faint tick, strong
+orange tick, the orange circle), the FHP lane and the green ✓ tab. The score's
+ⓘ (`INFO['tab-viewer']`, a getter so it is built when opened, after
+`STRING_COLORS` exists) shows the same, and the attacks card shows its four
+items (`#attacksLegend`) while they are on the score. **When the score gains a
+new kind of mark, add it to `scoreLegendHtml`.** Browser-only; verified with
+Playwright (28 items in six groups, the ⓘ, the attacks card, PT/EN, 1440 and
+760 px with no horizontal scroll, no page errors).
+
 ### The layout: home page, full-screen project view, stroke icons
 
 Reworked from sketches the user approved (a Design canvas, "Novo layout"):

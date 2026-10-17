@@ -111,6 +111,14 @@
   #tabsvg { user-select:none; -webkit-user-select:none; -moz-user-select:none; }
   .note-grp { cursor: pointer; }
   .note-ghost { opacity: .6; pointer-events: none; }
+  .score-legend { margin: .5rem 0; padding: .7rem .9rem; background: #16181e; border: 1px solid #2a2e38; border-radius: 8px; }
+  .score-legend-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: .9rem 1.4rem; }
+  .lg-title { font-weight: 700; color: #cfd3dc; margin-bottom: .35rem; font-size: .9rem; }
+  .lg-items { display: flex; flex-direction: column; gap: .3rem; }
+  .lg-item { display: flex; align-items: center; gap: .6rem; font-size: .85rem; color: #aeb3bf; line-height: 1.3; }
+  .lg-sw { flex: none; width: 50px; height: 30px; background: #101115; border-radius: 4px; }
+  .lg-mini { display: flex; flex-direction: column; gap: .3rem; margin: .4rem 0; }
+  #infoBody .score-legend-grid { grid-template-columns: 1fr; }
   #tabsvg .sus-handle { display: none; }
   #tabsvg.mode-editnotes .sus-handle { display: inline; cursor: ew-resize; opacity: .85; }
   #tabsvg.mode-editnotes .sus-handle:hover { opacity: 1; }
@@ -1125,6 +1133,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
             <button type="button" id="previewArr" class="secondary"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg>pré-visualizar</button>
             <label class="check"><input type="checkbox" id="showFretboard" checked> Braço</label>
             <label class="check" title="As notas a descer numa pista 3D, como no Rocksmith"><input type="checkbox" id="show3d"> Pista 3D</label>
+            <label class="check" title="O que quer dizer cada marca da partitura"><input type="checkbox" id="showLegend"> Legenda</label>
             <div class="pv-group pv-zoom">
               <button type="button" id="zoomOut" class="secondary" aria-label="Menos zoom">−</button>
               <span id="zoomLevel" class="meta"></span>
@@ -1140,6 +1149,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
             <span>Edições: <span id="noteEditsInfo">nenhuma</span></span>
             <button class="info-btn" data-info="sync-modes">ⓘ</button>
           </div>
+          <div id="scoreLegend" class="score-legend" hidden></div>
           <div id="modeHelp" class="pv-hint"></div>
           <div class="pv-keys">
             <span><b>Shift+clique</b> seleciona um intervalo</span>
@@ -1245,6 +1255,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                   <label class="check" id="attacksShowLbl" hidden><input type="checkbox" id="attacksShow" checked> Mostrar na partitura</label>
                 </div>
                 <span id="attacksStatus" class="meta" aria-live="polite"></span>
+                <div class="lg-mini" id="attacksLegend" hidden></div>
                 <div class="pv-row" id="attacksNav" hidden>
                   <button type="button" id="attacksPrev" class="secondary">◀ Diferença anterior</button>
                   <button type="button" id="attacksNext" class="secondary">Diferença seguinte ▶</button>

@@ -1292,7 +1292,7 @@ const INFO = {
   },
   'tab-viewer': {
     title: T('Partitura — legenda'),
-    body: T('<p>● nota · ▮ nota de acorde (ligadas por barra vertical) · sigla sobreposta = técnica:<br>B bend · H hammer-on · P pull-off · S slide · HA harmónico · PM palm mute · V vibrato · T tapping · SL slap · PO pop · A acento<br>Passa o cursor sobre a nota para ver a lista completa.<br>Cor = corda (igual ao Rocksmith): <span style="color:#e6483c">E</span> <span style="color:#f5dc3c">A</span> <span style="color:#3f9bdc">D</span> <span style="color:#f0973c">G</span> <span style="color:#5cc24a">B</span> <span style="color:#b56cdc">e</span> (grave→agudo). Eixo X em segundos.</p>')
+    get body() { return scoreLegendHtml(); },
   },
   'sync-modes': {
     title: T('Modos de correção da partitura'),
@@ -2288,6 +2288,107 @@ function bendArrow(x, y, r, label) {
   out += `<path d="M${tipX - 4},${tipY + 6} L${tipX},${tipY} L${tipX + 4},${tipY + 6} Z" fill="#fff"/>`;
   if (label) out += `<text x="${tipX}" y="${tipY - 3}" fill="#fff" font-size="10" font-weight="700" text-anchor="middle">${label}</text>`;
   return out;
+}
+
+// ---- The score's legend: every mark the score draws, drawn the same way ----
+// Each swatch is a small SVG in the score's own units (viewBox 60×36), so it
+// looks like what it explains. Shown by the "Legenda" switch under the score
+// and by the score's ⓘ; the attacks card shows its own four.
+function legendItem(svg, text) {
+  return `<div class="lg-item"><svg class="lg-sw" viewBox="0 0 60 36" aria-hidden="true">${svg}</svg><span>${text}</span></div>`;
+}
+function legendNote(x, y, fret, color, chord = false) {
+  return (chord
+    ? `<rect x="${x - 13}" y="${y - 13}" width="26" height="26" rx="4" fill="${color}"/>`
+    : `<circle cx="${x}" cy="${y}" r="13" fill="${color}"/>`)
+    + `<text x="${x}" y="${y + 5}" fill="#14151a" font-size="14" font-weight="700" text-anchor="middle">${fret}</text>`;
+}
+const LG_BLUE = '#3f9bdc';
+function legendGroup(title, items) {
+  return `<div class="lg-group"><div class="lg-title">${title}</div><div class="lg-items">${items.join('')}</div></div>`;
+}
+function attacksLegendItems() {
+  const note = legendNote(30, 27, 5, LG_BLUE);
+  return [
+    legendItem(`<line x1="30" y1="2" x2="30" y2="13" stroke="#5ec8f2" stroke-width="3"/>${legendNote(30, 27, 5, LG_BLUE)}`,
+      T('Ataque ouvido na gravação que bate com uma nota (mais alto = mais forte)')),
+    legendItem(`<line x1="30" y1="8" x2="30" y2="13" stroke="#5ec8f2" stroke-width="3" opacity=".35"/>`,
+      T('Ataque fraco sem nota (outra guitarra, ruído) — não conta como diferença')),
+    legendItem(`<line x1="30" y1="13" x2="30" y2="36" stroke="#ff9f43" stroke-width="1.5" stroke-dasharray="3,4" opacity=".6"/><line x1="30" y1="0" x2="30" y2="13" stroke="#ff9f43" stroke-width="3.5"/>`,
+      T('Ataque forte na gravação sem nota na partitura: falta uma nota, ou está noutro sítio?')),
+    legendItem(`<line x1="30" y1="13" x2="30" y2="36" stroke="#ff9f43" stroke-width="1.5" stroke-dasharray="1,4" opacity=".7"/><circle cx="30" cy="7" r="5" fill="none" stroke="#ff9f43" stroke-width="2.5"/>${note}`,
+      T('Bola laranja: nota sem ataque perto na gravação — nota a mais, ou fora de tempo?')),
+  ];
+}
+function scoreLegendHtml() {
+  const c = STRING_COLORS;
+  const strings = c.map((col, i) => `<span style="color:${col}">${['E', 'A', 'D', 'G', 'B', 'e'][i]}</span>`).join(' ');
+  const notes = [
+    legendItem(legendNote(30, 18, 5, LG_BLUE), T('Nota. A cor é a corda, como no Rocksmith ({cordas}, do grave para o agudo); o número é o traste.', { cordas: strings })),
+    legendItem(`${legendNote(20, 18, 7, c[2], true)}${legendNote(44, 18, 5, c[1], true)}`, T('Nota de um acorde (quadrada); o nome do acorde aparece por baixo da pauta')),
+    legendItem(`${legendNote(30, 18, 5, LG_BLUE)}<circle cx="30" cy="18" r="13" fill="none" stroke="#fff" stroke-width="2.5" stroke-dasharray="3,3"/><text x="30" y="4" fill="#fff" font-size="9" font-weight="700" text-anchor="middle">PM</text>`,
+      T('Nota com técnica (contorno tracejado branco); a sigla por cima diz qual — passa o cursor sobre a nota para ver todas')),
+    legendItem(`<rect x="12" y="15" width="44" height="6" fill="${LG_BLUE}" opacity=".4" rx="3"/>${legendNote(12, 18, 5, LG_BLUE)}`, T('Cauda: a nota fica a soar (sustain)')),
+    legendItem(`<path d="${sustainWave(12, 18, 44)}" fill="none" stroke="${LG_BLUE}" stroke-width="2.5" opacity=".8"/>${legendNote(12, 18, 5, LG_BLUE)}`, T('Cauda ondulada: vibrato')),
+    legendItem(`<path d="M20,7 Q36,-6 52,7" fill="none" stroke="${LG_BLUE}" stroke-width="2"/>${legendNote(12, 22, 5, LG_BLUE)}`, T('Arco: ligada à nota seguinte, sem nova palhetada')),
+    legendItem(`${legendNote(24, 26, 7, c[3])}${bendArrow(24, 26, 13, '½')}`, T('Seta: bend, com quanto sobe (½ = meio tom, full = um tom)')),
+    legendItem(`${legendNote(30, 18, 5, LG_BLUE)}<circle cx="30" cy="18" r="16" fill="none" stroke="#3ddcc4" stroke-width="1.5" stroke-dasharray="2,2"/>`, T('Anel tracejado verde-água: nota editada, ainda por aplicar ("Aplicar e reconstruir")')),
+    legendItem(`${legendNote(30, 18, 9, LG_BLUE)}<circle cx="30" cy="18" r="17" fill="none" stroke="#e6483c" stroke-width="2"/>`, T('Anel vermelho: fora da posição da mão que escolheste')),
+    legendItem(`${legendNote(20, 18, 5, LG_BLUE)}<rect x="32" y="11" width="6" height="14" rx="2" fill="${LG_BLUE}" stroke="#fff" stroke-width="1.2"/>`, T('Pega (só em "Editar notas"): arrasta-a para mudar a duração da nota')),
+    legendItem(`<path d="M4,30 L4,22 L56,22 L56,30" fill="none" stroke="#ffd479" stroke-width="1.5"/><text x="8" y="16" fill="#ffd479" font-size="11" font-style="italic">arp C</text>`, T('Arpejo: notas deixadas a soar sobre a forma de um acorde')),
+  ];
+  const staff = [
+    legendItem(`<line x1="8" y1="2" x2="8" y2="36" stroke="#5a6a8a" stroke-width="1.5"/><text x="11" y="14" font-size="11" font-weight="700"><tspan fill="#7d8aa5">12</tspan><tspan fill="#b58cff" font-size="10"> &#9833;120</tspan></text>`,
+      T('Compasso: número e andamento (♩ = batidas por minuto)')),
+    legendItem(`<line x1="8" y1="2" x2="8" y2="36" stroke="#5a6a8a" stroke-width="1.5"/><text x="11" y="14" font-size="11" font-weight="700"><tspan fill="#7d8aa5">12</tspan><tspan fill="#f2b84b" font-size="10"> &#9833;112</tspan></text>`,
+      T('Andamento a âmbar: mudado por uma correção ainda por aplicar')),
+    legendItem(`<line x1="30" y1="2" x2="30" y2="36" stroke="#b58cff" stroke-width="2" stroke-dasharray="3,3"/>`, T('Linha roxa tracejada: o andamento muda aqui no ficheiro Guitar Pro')),
+    legendItem(`<line x1="8" y1="2" x2="8" y2="36" stroke="#3ddcc4" stroke-width="2" stroke-dasharray="5,3"/><use href="#i-tag" x="12" y="3" width="12" height="12" style="color:#3ddcc4"/><text x="26" y="13" fill="#3ddcc4" font-size="11" font-weight="700">Riff</text>`,
+      T('Secção da música (intro, verso, refrão…)')),
+    legendItem(`<line x1="8" y1="0" x2="8" y2="36" stroke="#e0a54a" stroke-width="2" stroke-dasharray="4,2"/><use href="#i-wave" x="12" y="20" width="12" height="12" style="color:#e0a54a"/><text x="26" y="30" fill="#e0a54a" font-size="11" font-weight="700">Clean</text>`,
+      T('Mudança de tom (o tom que passa a tocar)')),
+    legendItem(`<text x="16" y="12" fill="#9aa0ad" font-size="13" text-anchor="middle">love</text><line x1="16" y1="16" x2="16" y2="36" stroke="#454852" stroke-dasharray="2,4"/><text x="44" y="12" fill="#9aa0ad" font-size="13" text-anchor="middle">you</text><line x1="44" y1="16" x2="44" y2="36" stroke="#ffb020" stroke-width="2" opacity=".7"/><text x="50" y="30" fill="#ffb020" font-size="12" font-weight="700">¶</text>`,
+      T('Palavra da letra; a linha âmbar com ¶ termina uma linha da letra no jogo')),
+    legendItem(`<line x1="12" y1="24" x2="12" y2="36" stroke="#5b6572" stroke-width="1.5"/><line x1="24" y1="24" x2="24" y2="36" stroke="#5b6572" stroke-width="1.5"/><line x1="36" y1="24" x2="36" y2="36" stroke="#5b6572" stroke-width="1.5"/><line x1="48" y1="24" x2="48" y2="36" stroke="#5b6572" stroke-width="1.5"/>`,
+      T('Marcas curtas em baixo: a grelha onde as notas encaixam ao arrastar')),
+    legendItem(`<line x1="30" y1="0" x2="30" y2="36" stroke="#ff7a45" stroke-width="3"/>`, T('Linha laranja: o cursor de reprodução')),
+    legendItem(`<rect x="10" y="0" width="40" height="36" fill="#7c5cff" opacity=".2"/><line x1="10" y1="0" x2="10" y2="36" stroke="#a98bff" stroke-width="1.5" stroke-dasharray="4,3"/><line x1="50" y1="0" x2="50" y2="36" stroke="#a98bff" stroke-width="1.5" stroke-dasharray="4,3"/><text x="13" y="13" fill="#c9b3ff" font-size="12" font-weight="700">A</text><text x="53" y="13" fill="#c9b3ff" font-size="12" font-weight="700">B</text>`,
+      T('Faixa roxa A–B: o excerto que se repete')),
+  ];
+  const sync = [
+    legendItem(`<line x1="10" y1="0" x2="10" y2="24" stroke="#22c1c3" stroke-width="1.5" stroke-dasharray="2,4" opacity=".6"/><line x1="44" y1="0" x2="44" y2="24" stroke="#22c1c3" stroke-width="2"/><line x1="10" y1="20" x2="38" y2="20" stroke="#22c1c3" stroke-width="2"/><path d="M36,16 L44,20 L36,24 z" fill="#22c1c3"/><circle cx="44" cy="28" r="8" fill="#22c1c3"/><text x="44" y="32" fill="#08343a" font-size="11" font-weight="700" text-anchor="middle">1</text>`,
+      T('Correção de sincronização por aplicar: o número é o da lista; a seta vai de onde a nota estava para onde passa a tocar')),
+  ];
+  const hand = [
+    legendItem(`<rect x="4" y="10" width="52" height="16" rx="3" fill="#1d2129" stroke="#7d8aa5"/><line x1="4" y1="7" x2="4" y2="26" stroke="#7d8aa5" stroke-width="2"/><text x="9" y="22" fill="#7d8aa5" font-size="11" font-weight="700">5–8</text>`,
+      T('Posição da mão (cinzento: automática) — a mão fica nos trastes 5 a 8 até à seguinte')),
+    legendItem(`<rect x="4" y="10" width="52" height="16" rx="3" fill="#1d2129" stroke="#3ddcc4" stroke-dasharray="3,2"/><line x1="4" y1="7" x2="4" y2="26" stroke="#3ddcc4" stroke-width="2"/><text x="9" y="22" fill="#3ddcc4" font-size="11" font-weight="700">7–10</text>`,
+      T('Posição da mão escolhida por ti (verde-água; tracejada enquanto não for aplicada)')),
+  ];
+  const tabs = [
+    legendItem(`<rect x="2" y="7" width="56" height="22" rx="5" fill="#2f9e62"/><text x="30" y="22" fill="#07170d" font-size="11" font-weight="700" text-anchor="middle">✓ LEAD</text>`,
+      T('Separador verde com ✓: pista que marcaste como sincronizada. O nome é o do jogo (LEAD 2 = o segundo arranjo Lead)')),
+  ];
+  return `<div class="score-legend-grid">`
+    + legendGroup(T('Notas'), notes)
+    + legendGroup(T('Pauta'), staff)
+    + legendGroup(T('Sincronização'), sync)
+    + legendGroup(T('Ataques da gravação (com "Mostrar na partitura")'), attacksLegendItems())
+    + legendGroup(T('Posição da mão (faixa por baixo da pauta)'), hand)
+    + legendGroup(T('Pistas'), tabs)
+    + `</div>`;
+}
+let legendOn = false;
+try { legendOn = localStorage.getItem('rf-legend') === '1'; } catch { /* no storage */ }
+function setLegend(on) {
+  legendOn = on;
+  try { localStorage.setItem('rf-legend', on ? '1' : '0'); } catch { /* no storage */ }
+  const box = document.getElementById('scoreLegend');
+  if (!box) return;
+  if (on && !box.innerHTML) box.innerHTML = scoreLegendHtml();
+  box.hidden = !on;
+  const chk = document.getElementById('showLegend');
+  if (chk) chk.checked = on;
 }
 
 // Per-measure tempo of an arrangement: the AUTHORED value from the GP file and
@@ -3889,6 +3990,11 @@ function renderAttacksCard() {
   document.getElementById('attacksShowLbl').hidden = !mine;
   const shown = attacksVisible();
   document.getElementById('attacksNav').hidden = !(shown && attackDiffs.length);
+  const lg = document.getElementById('attacksLegend');
+  if (lg) {
+    if (shown && !lg.innerHTML) lg.innerHTML = attacksLegendItems().join('');
+    lg.hidden = !shown;
+  }
   const sel = document.getElementById('attacksSource');
   if (!attackSourceTouched && sel && sel.value !== defaultAttackSource()) sel.value = defaultAttackSource();
   if (attacksBusy) { status.textContent = T('A analisar a gravação… (pode demorar um minuto)'); return; }
@@ -8859,6 +8965,8 @@ async function setHw3d(on) {
   }
 }
 document.getElementById('show3d').addEventListener('change', e => setHw3d(e.target.checked));
+document.getElementById('showLegend').addEventListener('change', e => setLegend(e.target.checked));
+setLegend(legendOn);
 document.getElementById('hw3dNumbers').addEventListener('change', e => window.Highway3D?.setOptions({ numbers: e.target.checked }));
 for (const [, id] of HW3D_CAMERA) {
   document.getElementById(id).addEventListener('input', () => {

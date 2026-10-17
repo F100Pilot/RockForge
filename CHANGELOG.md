@@ -6,6 +6,12 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Novo
+- **Legenda da partitura:** o interruptor "Legenda" (ao lado de "Braço" e "Pista 3D") mostra o que
+  quer dizer cada marca da partitura, desenhada como aparece — notas, anéis, caudas, compassos,
+  secções, tons, correções, posição da mão, separadores das pistas e os ataques da gravação (as
+  bolas e os traços laranja). O cartão "Ataques da gravação" mostra os seus quatro.
+
 ## [0.10.0 beta 12] — 2026-10-17
 
 ### Novo
