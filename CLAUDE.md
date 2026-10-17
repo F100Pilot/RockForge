@@ -1833,7 +1833,29 @@ with Playwright on the invented "Deriva" project (PT/EN): a click at 27 % of
 a beat lands on the sixteenth (the old grid: the beat), a drag of half a beat
 and one string moved a fret-5 note 0.25 s to the next string with its
 sustain, ↑×3 made it 8, a plain click still opens the popup, six Ctrl+Z
-cleared every edit, no page errors. Not tried by Liam yet.
+cleared every edit, no page errors. Not tried by Liam yet. **Shift+drag duplicates** ("a shift to duplicate and drag a note or chord
+shortcut would be massive", Liam): in "Editar notas" a Shift press on a note
+starts a copy drag of its whole chord (`chordNotesAt`, the notes within 30 ms),
+a ghost of the group follows the pointer, and on release `copyNotes` inserts
+the copies (same frets/sustain/techniques, every note moved by the grabbed
+note's time and string shift, kept on the neck by `noteMoveTarget`; a clash
+refuses all of it). Released without moving it is the old Shift+click range
+select. **The tail's end is a handle** ("a draggable tail on the sustain notes
+to change the length"): `.sus-handle` on every note, shown only under
+`#tabsvg.mode-editnotes`, kept clear of the next note on the string (left out
+where there is no room); dragging it (`susDrag`, `sustainDragTarget`) snaps the
+end to `noteEditGrid` (Alt free), stops at the build's own gap before the next
+note on the string (`apply_sustain_gap`: min(50 ms, 15 %)) and the last beat,
+and back onto the note gives no sustain; `setNoteSustain` makes it a pending
+override. **Pending note edits are now heard, not only drawn** ("when i
+remove a note it still plays in the midi track until its rebuilt"): the tick,
+the synthesized source, the fretboard and "Pré-visualizar" read
+`soundingNotes(a)` (the list `showArr` draws, via `noteSoundChanged`), the
+tick pointer is reset when it changes mid-playback, and a synthesized source of
+the edited chart is rendered again 500 ms after its overrides change
+(`synthNotesSig`). Verified with Playwright: 9 notes deleted, 0 of them ticked
+(the old code ticked all 9), the synth buffer silent there; a tail dragged to
+the 16th grid, clamped 50 ms before the next note, back to 0, undone.
 
 **Frontend**: `noteOverridesByKind` (state, per-kind, seeded on job load from the
 committed edits) needs no dirty-flag/None-sentinel gymnastics the way
@@ -1863,10 +1885,10 @@ machinery.
 (pure, JS) is the client-side mirror of `_apply_note_overrides` — it's spliced
 into `showArr`'s note-drawing loop only (chord grouping recomputed from the
 merged set, so an edit that changes which notes are simultaneous updates the
-chord bracket/shape correctly), while `dur` sizing, drag mechanics, and
-synth/playback still read the untouched `a.notes` until an actual rebuild
-bakes the edit in — a deliberate, low-risk scope: pending note edits are
-visually accurate on the score but don't yet drive other machinery. A note
+chord bracket/shape correctly), while `dur` sizing and the sync drags still
+read the untouched `a.notes` until an actual rebuild bakes the edit in. The
+tick, the synthesized source, the fretboard and the 3D highway DO play the
+merged notes (`soundingNotes`, see "Dragging a note" above). A note
 carrying a pending edit gets a dashed cyan ring (`.note-single[data-string]`,
 added per-note so a specific note within a chord can be targeted precisely)
 so it reads as "not yet rebuilt".

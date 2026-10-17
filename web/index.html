@@ -110,6 +110,11 @@
      text selection over the SVG's <text> labels (techniques, tuning, bars). */
   #tabsvg { user-select:none; -webkit-user-select:none; -moz-user-select:none; }
   .note-grp { cursor: pointer; }
+  .note-ghost { opacity: .6; pointer-events: none; }
+  #tabsvg .sus-handle { display: none; }
+  #tabsvg.mode-editnotes .sus-handle { display: inline; cursor: ew-resize; opacity: .85; }
+  #tabsvg.mode-editnotes .sus-handle:hover { opacity: 1; }
+  .sus-preview { fill: #3ddcc4; opacity: .55; }
   .note-grp.selected .note-shape { stroke: #ffd23f; stroke-width: 3px; }
   .lyric-word { cursor: grab; }
   .lyric-word:hover text { fill: #ff7a45 !important; font-weight: 700 !important; }

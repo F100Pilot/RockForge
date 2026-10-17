@@ -9,9 +9,13 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 ### Novo
 - **Editar notas — arrastar e mudar o traste com as setas:** no modo "Editar notas", arrasta uma
   nota para outro tempo ou outra corda; ↑/↓ sobem ou descem um traste à última nota clicada (com
-  Ctrl, uma oitava), e ela soa.
+  Ctrl, uma oitava), e ela soa. Com Shift, arrastar duplica a nota ou o acorde e leva a cópia. O fim da cauda de uma nota
+  arrasta-se para mudar a duração (sustain).
 
 ### Corrigido
+- **Uma nota apagada continuava a soar até reconstruir:** o clique das notas, a fonte "sintetizada"
+  e o braço tocavam a partitura como foi construída. Agora tocam o que está no ecrã, com as
+  edições por aplicar.
 - **Inserir uma nota num solo criava um acorde:** a nota nova encaixava no tempo inteiro mais
   perto, que num solo rápido é o da nota anterior. Agora encaixa no máximo em semicolcheias (com
   Alt, livre).

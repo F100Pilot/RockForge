@@ -9,9 +9,12 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 ### New
 - **Edit notes — drag, and change the fret with the arrows:** in "Edit notes" mode, drag a note to
   another time or string; ↑/↓ move the last clicked note one fret up or down (with Ctrl, an
-  octave), and it sounds.
+  octave), and it sounds. With Shift, dragging duplicates the note or chord and moves the copy. The end of a note's tail
+  can be dragged to change its length (sustain).
 
 ### Fixed
+- **A deleted note kept playing until the rebuild:** the note click, the "synthesized" source and
+  the fretboard played the chart as built. They now play what is on screen, pending edits included.
 - **Inserting a note in a solo made a chord:** the new note snapped to the nearest whole beat,
   which in a fast solo is the previous note's. It now snaps to sixteenths at most (with Alt,
   free).

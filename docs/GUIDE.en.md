@@ -367,6 +367,10 @@ background = clear the selection. **Excerpt** mode selects with a box.
   mute, vibrato, tapping, slap, pop, accent), bend and slide; **Save** or **Remove note**.
 - **Drag** a note to change its time (it snaps to the grid) or its string (it keeps its fret,
   so its pitch changes).
+- **Shift + drag** a note to duplicate it — in a chord, the whole chord — and drop the copy
+  where you want it (the original stays). Shift+click without dragging still selects.
+- **Drag the end of a note's tail** (the small handle on its right) to change its length; back
+  onto the note, no sustain. It stops before the next note on the same string.
 - **↑ / ↓** move the last clicked or dragged note one fret up or down, and it sounds (with Ctrl,
   an octave) — for example, a 9 that should be 12: click it and press ↑ three times.
 - **Double-click** an empty spot to insert a note (string from the click's height, time on the
@@ -562,6 +566,8 @@ the app itself.
 | Ctrl+Z · Ctrl+Shift+Z (or Ctrl+Y) | undo · redo (on any page of the project) |
 | Ctrl+C · Ctrl+V | copy the selection · paste at the cursor |
 | Alt (while dragging) | no snap |
+| Shift + drag a note | in “Edit notes”: duplicates the note or chord and moves the copy |
+| Drag the end of the tail | in “Edit notes”: changes the note's length (sustain) |
 | ↑ / ↓ (Ctrl = octave) | in “Edit notes”: one fret up / down on the last clicked note |
 | ? | show the shortcuts |
 | Esc | close a menu, popup or the shortcuts window |

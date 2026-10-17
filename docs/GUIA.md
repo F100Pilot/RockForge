@@ -368,6 +368,10 @@ clique no fundo = limpa a seleção. O modo **Excerto** seleciona com uma caixa.
   mute, vibrato, tapping, slap, pop, acento), bend e slide; **Guardar** ou **Remover nota**.
 - **Arrasta** uma nota para a mudar de tempo (encaixa na grelha) ou de corda (fica com o mesmo
   traste, logo muda de altura).
+- **Shift + arrastar** uma nota duplica-a — num acorde, o acorde inteiro — e leva a cópia para
+  onde a largares (o original fica). Shift+clique sem arrastar continua a selecionar.
+- **Arrasta o fim da cauda** de uma nota (a pequena pega à direita) para mudar a duração; de
+  volta até à nota, fica sem sustain. Não passa da nota seguinte na mesma corda.
 - **↑ / ↓** sobem ou descem um traste à última nota clicada ou arrastada, e ela soa (com Ctrl,
   uma oitava) — por exemplo, um 9 que devia ser 12: clica-o e carrega três vezes em ↑.
 - **Duplo-clique** num espaço vazio insere uma nota (corda pela altura do clique, tempo na
@@ -563,6 +567,8 @@ lista na própria aplicação.
 | Ctrl+Z · Ctrl+Shift+Z (ou Ctrl+Y) | desfaz · refaz (em qualquer página do projeto) |
 | Ctrl+C · Ctrl+V | copia a seleção · cola no cursor |
 | Alt (a arrastar) | sem encaixe |
+| Shift + arrastar uma nota | em «Editar notas»: duplica a nota ou o acorde e leva a cópia |
+| Arrastar o fim da cauda | em «Editar notas»: muda a duração (sustain) da nota |
 | ↑ / ↓ (Ctrl = oitava) | em «Editar notas»: sobe / desce um traste à última nota clicada |
 | ? | mostra os atalhos |
 | Esc | fecha um menu, popup ou a janela dos atalhos |

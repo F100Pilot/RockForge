@@ -1429,6 +1429,8 @@ function showShortcuts() {
       [T('Alt a arrastar'), T('move sem encaixar na grelha')],
       [T('Duplo clique'), T('em "Editar notas", insere uma nota no espaço vazio')],
       [T('Arrastar uma nota'), T('em "Editar notas", leva-a para outro tempo ou outra corda (o mesmo traste)')],
+      [T('Shift+arrastar uma nota'), T('em "Editar notas", duplica a nota ou o acorde e leva a cópia')],
+      [T('Arrastar o fim da cauda'), T('em "Editar notas", muda a duração (sustain) da nota')],
       [`${k('↑')} ${k('↓')}`, T('em "Editar notas", sobe ou desce um traste à última nota clicada (com Ctrl, uma oitava)')],
       [`${k('B')} · ${k('Backspace')} · ${k('Esc')}`, T('em "Marcar a ouvir": marca o compasso (ou tempo) · tira o último toque · termina')],
     ]],
@@ -2515,13 +2517,13 @@ function showArr(i) {
     if (brk) s += `<text x="${x + 7}" y="18" fill="#ffb020" font-size="12" font-weight="700">¶</text>`;
     s += `</g>`;
   }
-  // Merge in pending note-editor edits (add/edit/delete) for THIS arrangement
-  // — a purely visual, additive step: everything else in showArr (dur, drag
-  // mechanics, playback/synth) still reads a.notes untouched, so a pending
-  // note edit only affects what's drawn, not sync/playback, until a rebuild
-  // actually bakes it into the built arrangement.
+  // Merge in pending note-editor edits (add/edit/delete) for THIS arrangement.
+  // What is drawn is also what sounds: the tick and the synthesized source
+  // play these notes (soundingNotes), so a deleted note is silent at once.
+  // Sizing and the sync drags still read a.notes until a rebuild.
   const pendingNoteOv = noteOverridesByKind[a.kind] || [];
   const notes = pendingNoteOv.length ? mergeNoteOverrides(a.notes, pendingNoteOv) : a.notes;
+  noteSoundChanged(a, notes, pendingNoteOv);
   hw3dRefresh(a, notes);  // the 3D highway shows the same notes, on the same clock
   const pendingKeys = new Set(pendingNoteOv.map(o => `${o.time.toFixed(6)}:${o.string}`));
   // group simultaneous notes (chords) so they get a connecting bracket
@@ -2530,6 +2532,12 @@ function showArr(i) {
     const last = groups[groups.length - 1];
     if (last && n.chord && Math.abs(n.time - last.time) < 0.03) last.notes.push(n);
     else groups.push({ time: n.time, notes: [n] });
+  }
+  // The next note on each note's string — where a tail's handle has to stop.
+  const nextOnString = new Map(), lastOnString = {};
+  for (let i = notes.length - 1; i >= 0; i--) {
+    nextOnString.set(notes[i], lastOnString[notes[i].string]);
+    lastOnString[notes[i].string] = notes[i];
   }
   // Preview the cumulative effect of the sync anchors set so far: notes are
   // drawn at their warped (corrected) time, while data-t keeps the original
@@ -2598,6 +2606,12 @@ function showArr(i) {
         s += `<circle cx="${x}" cy="${y}" r="${R+4}" fill="none" stroke="#e6483c" stroke-width="2"><title>${esc(T('Fora da posição da mão (trastes {a}–{b})', { a: h.fret, b: h.fret + h.width - 1 }))}</title></circle>`;
       }
       s += `<text x="${x}" y="${y+5}" fill="#14151a" font-size="14" font-weight="700" text-anchor="middle">${n.fret}</text>`;
+      // "Editar notas": the end of the tail is a handle that sets the sustain —
+      // kept clear of the next note on the string, and left out where there is
+      // no room for it (the popup still sets the sustain there).
+      const nextN = nextOnString.get(n);
+      const handleX = Math.min(x + Math.max(susW, R + 2), nextN ? timeToX(warp(previewScale(nextN.time))) - R - 4 : Infinity);
+      if (handleX >= x + R) s += `<rect class="sus-handle" x="${handleX - 3}" y="${y - 7}" width="6" height="14" rx="2" fill="${color}" stroke="#fff" stroke-width="1.2"><title>${esc(T('Arrasta para mudar a duração (sustain)'))}</title></rect>`;
       if (bend) s += bendArrow(x, y, R, bendLabel(n.bend_semitones));  // rising arrow + amount
       if (tech) {
         // bend/vibrato are drawn at the note itself, not as glyphs above it
@@ -4090,6 +4104,7 @@ const TECH_CHECK_IDS = [
 let neContext = null;  // { time, string } of the popup currently open, or null
 let noteMove = null;   // a note being dragged in "Editar notas": {note, el, startX, startY, moved, target}
 let neLast = null;     // the note last clicked, moved or saved in "Editar notas": {time, string}
+let susDrag = null;    // a tail being dragged in "Editar notas": {note, el, x0, hx0, startX, grid, sustain}
 
 // ---- Note-edit bookkeeping --------------------------------------------------
 // The list shown here is BOTH the edits already committed to the job (seeded in
@@ -4225,7 +4240,10 @@ function noteMoveTarget(nm, dx, dy, altKey) {
     if (Math.abs(best[1] - x) < Math.abs(nm.origX - x)) [time, gx] = best;
   }
   const row = staffRow(a);
-  const string = Math.max(0, Math.min(stringCount(a) - 1, Math.round(nm.note.string - dy / row)));
+  const strings = (nm.chord || [nm.note]).map(n => n.string);
+  const lowest = nm.note.string - Math.min(...strings);
+  const highest = stringCount(a) - 1 - (Math.max(...strings) - nm.note.string);
+  const string = Math.max(lowest, Math.min(highest, Math.round(nm.note.string - dy / row)));
   return { time, x: gx, string, row };
 }
 // Moves a note to another time and/or string, keeping its fret, sustain and
@@ -4236,6 +4254,65 @@ function moveNote(n, time, string) {
   if (clash) { toast(T('Já há uma nota nessa corda nesse tempo.'), 'err'); return; }
   deleteNoteAt(n.time, n.string);
   upsertNoteOverride(noteAsOverride(n, time, string, n.fret));
+  neLast = { time, string };
+  showArr(currentArr);
+  updatePendingChangesInfo();
+}
+// Where a dragged tail would end: the nearest point of the note-edit grid
+// after the note (Alt: free), never past the next note on that string nor the
+// end of the chart's beat grid. Dragged back onto the note, no sustain.
+function sustainDragTarget(sd, dx, altKey) {
+  const a = arrangements[currentArr];
+  const n = sd.note;
+  const scale = tabPx * (tempoScaleLive / builtScale);
+  let sustain = Math.max(0, (sd.hx0 + dx - sd.x0) / scale);
+  if (sd.hx0 + dx - sd.x0 <= NOTE_R + 2) sustain = 0;
+  else if (!altKey && snapToBeats) {
+    if (!sd.grid) {
+      const warp = buildTimeWarp(syncAnchors);
+      sd.grid = noteEditGrid(false).filter(t => t > n.time + 0.01).map(t => [t, timeToX(warp(previewScale(t)))]);
+    }
+    const x = sd.hx0 + dx;
+    let best = null;
+    for (const g of sd.grid) if (!best || Math.abs(g[1] - x) < Math.abs(best[1] - x)) best = g;
+    if (best) sustain = best[0] - n.time;
+  }
+  const merged = soundingNotes(a);
+  const next = merged.find(m => m.string === n.string && m.time > n.time + 0.03);
+  // the build's own gap before the next attack (music.apply_sustain_gap)
+  let limit = next ? next.time - n.time - Math.min(0.05, 0.15 * (next.time - n.time)) : Infinity;
+  const beats = a.beats || [];
+  if (beats.length) limit = Math.min(limit, beats[beats.length - 1] - n.time);
+  return Math.max(0, Math.min(sustain, limit));
+}
+function setNoteSustain(n, sustain) {
+  sustain = sustain < 0.05 ? 0 : Math.round(sustain * 1000) / 1000;
+  if (Math.abs(sustain - (n.sustain || 0)) < 0.001) { showArr(currentArr); return; }
+  const ov = noteAsOverride(n, n.time, n.string, n.fret);
+  ov.sustain = sustain;
+  upsertNoteOverride(ov);
+  neLast = { time: n.time, string: n.string };
+  showArr(currentArr);
+  updatePendingChangesInfo();
+}
+// The note and every note struck with it (its chord), as the score shows them.
+function chordNotesAt(n) {
+  const a = arrangements[currentArr];
+  const merged = mergeNoteOverrides(a.notes, noteOverridesByKind[currentKind()] || []);
+  return merged.filter(m => Math.abs(m.time - n.time) < 0.03);
+}
+// Shift+drag: a copy of the note or chord where it was dropped, the original
+// left where it is. Every note keeps its fret, sustain and techniques; the
+// chord moves by the same strings and time as the note that was grabbed.
+function copyNotes(chord, grabbed, time, string) {
+  const dt = time - grabbed.time, ds = string - grabbed.string;
+  if (ds === 0 && Math.abs(dt) < 0.03) return;
+  const copies = chord.map(n => ({ n, time: n.time + dt, string: n.string + ds }));
+  if (copies.some(c => visibleNoteAt(c.time, c.string))) {
+    toast(T('Já há uma nota nessa corda nesse tempo.'), 'err');
+    return;
+  }
+  copies.forEach(c => upsertNoteOverride(noteAsOverride(c.n, c.time, c.string, c.n.fret)));
   neLast = { time, string };
   showArr(currentArr);
   updatePendingChangesInfo();
@@ -7799,9 +7876,41 @@ function updateSelectionInfo() {
       openBarAlignPopup(parseFloat(barHit.dataset.t), e.clientX, e.clientY);
       return;
     }
+    // "Editar notas": the handle at the end of a note's tail sets its sustain.
+    const susHandle = syncMode === 'editnotes' && grp && e.target.closest('.sus-handle');
+    if (susHandle) {
+      const single = susHandle.closest('.note-single');
+      const note = visibleNoteAt(parseFloat(grp.dataset.t), parseInt(single.dataset.string, 10));
+      if (note) {
+        const warp = buildTimeWarp(syncAnchors);
+        susDrag = {
+          note, el: susHandle, startX: e.clientX, sustain: note.sustain || 0,
+          x0: timeToX(warp(previewScale(note.time))),
+        };
+        // the tail's end as drawn (the handle may sit short of it, clear of the next note)
+        susDrag.hx0 = susDrag.x0 + Math.max((note.sustain || 0) * tabPx * (tempoScaleLive / builtScale), NOTE_R + 2);
+        svg.setPointerCapture(e.pointerId);
+      }
+      return;
+    }
     // Multi-select (works in ANY mode — a modifier is unambiguous):
     // Shift+click selects the range from the pivot note to this one; Ctrl/Cmd+
     // click toggles a single note in/out of the selection.
+    if (grp && e.shiftKey && syncMode === 'editnotes' && e.target.closest('.note-single')) {
+      // Shift+drag in "Editar notas" duplicates the note or chord and drags
+      // the copy; released without moving it is the ordinary Shift+click.
+      const single = e.target.closest('.note-single');
+      const t = parseFloat(grp.dataset.t);
+      const note = visibleNoteAt(t, parseInt(single.dataset.string, 10));
+      if (note) {
+        noteMove = {
+          note, el: grp, chord: chordNotesAt(note), copy: true,
+          startX: e.clientX, startY: e.clientY, moved: false, target: null,
+        };
+        svg.setPointerCapture(e.pointerId);
+        return;
+      }
+    }
     if (grp && e.shiftKey) {
       rangeSelect(parseFloat(grp.dataset.t));
       showArr(currentArr);
@@ -7959,13 +8068,36 @@ function updateSelectionInfo() {
   });
   function handlePointerMove(clientX, clientY, altKey) {
     lastClientX = clientX; lastClientY = clientY; lastAltKey = altKey;
+    if (susDrag) {
+      susDrag.sustain = sustainDragTarget(susDrag, clientX - susDrag.startX, altKey);
+      const w = susDrag.sustain * tabPx * (tempoScaleLive / builtScale);
+      const hx = susDrag.x0 + Math.max(w, NOTE_R + 2);
+      susDrag.el.setAttribute('x', hx - 3);
+      let tail = susDrag.tail;
+      if (!tail) {
+        tail = susDrag.tail = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        tail.setAttribute('class', 'sus-preview');
+        tail.setAttribute('y', parseFloat(susDrag.el.getAttribute('y')) + 4);
+        tail.setAttribute('height', '6');
+        tail.setAttribute('x', susDrag.x0);
+        susDrag.el.parentNode.insertBefore(tail, susDrag.el.parentNode.firstChild);
+      }
+      tail.setAttribute('width', Math.max(0, w));
+      return;
+    }
     if (noteMove) {
       const dx = clientX - noteMove.startX, dy = clientY - noteMove.startY;
       if (!noteMove.moved && Math.hypot(dx, dy) <= 4) return;
+      if (!noteMove.moved && noteMove.copy) {
+        noteMove.ghost = noteMove.el.cloneNode(true);
+        noteMove.ghost.classList.add('note-ghost');
+        noteMove.ghost.classList.remove('selected');
+        noteMove.el.parentNode.appendChild(noteMove.ghost);
+      }
       noteMove.moved = true;
       noteMove.target = noteMoveTarget(noteMove, dx, dy, altKey);
       const tg = noteMove.target;
-      noteMove.el.setAttribute('transform', `translate(${tg.x - noteMove.origX},${-(tg.string - noteMove.note.string) * tg.row})`);
+      (noteMove.ghost || noteMove.el).setAttribute('transform', `translate(${tg.x - noteMove.origX},${-(tg.string - noteMove.note.string) * tg.row})`);
       return;
     }
     if (lyricDrag) {
@@ -8000,19 +8132,31 @@ function updateSelectionInfo() {
   }
   svg.addEventListener('pointermove', e => {
     handlePointerMove(e.clientX, e.clientY, e.altKey);
-    if (rubberBand || groupDrag || dragging || lyricDrag || (noteMove && noteMove.moved)) startAutoScrollLoop();
+    if (rubberBand || groupDrag || dragging || lyricDrag || susDrag || (noteMove && noteMove.moved)) startAutoScrollLoop();
   });
   svg.addEventListener('pointerup', e => {
     stopAutoScrollLoop();
+    if (susDrag) {
+      const sd = susDrag;
+      susDrag = null;
+      sd.tail?.remove();
+      setNoteSustain(sd.note, sd.sustain);
+      return;
+    }
     if (noteMove) {
       const nm = noteMove;
       noteMove = null;
       nm.el.removeAttribute('transform');
+      nm.ghost?.remove();
       if (!nm.moved) {
-        openNoteEditPopup(nm.note.time, nm.note.string, e.clientX, e.clientY);
+        if (nm.copy) { rangeSelect(nm.note.time); showArr(currentArr); }
+        else openNoteEditPopup(nm.note.time, nm.note.string, e.clientX, e.clientY);
         return;
       }
-      if (nm.target) moveNote(nm.note, nm.target.time, nm.target.string);
+      if (nm.target) {
+        if (nm.copy) copyNotes(nm.chord, nm.note, nm.target.time, nm.target.string);
+        else moveNote(nm.note, nm.target.time, nm.target.string);
+      }
       return;
     }
     if (lyricDrag) {
@@ -8109,7 +8253,8 @@ function updateSelectionInfo() {
   // pointerup this only resets state — a cancelled gesture must not commit.
   svg.addEventListener('pointercancel', () => {
     stopAutoScrollLoop();
-    if (noteMove) { noteMove.el.removeAttribute('transform'); noteMove = null; }
+    if (noteMove) { noteMove.el.removeAttribute('transform'); noteMove.ghost?.remove(); noteMove = null; }
+    if (susDrag) { susDrag.tail?.remove(); susDrag = null; showArr(currentArr); }
     if (lyricDrag) { lyricDrag.el.removeAttribute('transform'); lyricDrag = null; }
     if (rubberBand) { document.getElementById('selectionBox')?.remove(); rubberBand = null; }
     if (groupDrag) { groupDrag.grps.forEach(g => g.removeAttribute('transform')); groupDrag = null; }
@@ -8155,7 +8300,7 @@ const MODE_HELP = {
   baralign: T('<b>Alinhar por compasso:</b> pausa a gravação no instante certo e clica numa nota — ou na <b>linha/número do compasso</b>, para o alinhar pelo seu início mesmo sem notas — abre um popup com esse compasso já escolhido. Confirma com "= cursor" e esse compasso alinha-se ao cursor (ou "= pista" para o mesmo compasso de outra pista). Faz-se várias vezes ao longo da música; cada correção arrasta as notas seguintes. No mesmo popup, <b>Andamento</b> muda o BPM desse compasso (ou de vários seguidos) e o resto da música acompanha, cada compasso com o seu próprio andamento.'),
   tonechange: T('<b>Mudança de tom:</b> clica numa nota para trocar para um dos tons extra a partir daí.'),
   section: T('<b>Secção:</b> clica numa nota para nomear onde começa uma secção (intro/verso/refrão…). Nada a ver com sincronização — é para navegação e o Riff Repeater.'),
-  editnotes: T('<b>Editar notas:</b> clica numa nota para a editar (traste, sustain, técnicas, bend/slide) ou remover; <b>arrasta-a</b> para outro tempo ou outra corda; <b>↑/↓</b> sobem ou descem um traste à última nota clicada; <b>duplo-clique</b> no pentagrama vazio insere uma nota nova, encaixada na grelha (nunca mais larga do que semicolcheias; com Alt, livre). Um clique simples no vazio move o cursor, como nos outros modos. Muda o CONTEÚDO da partitura — fica pendente até "Aplicar e reconstruir".'),
+  editnotes: T('<b>Editar notas:</b> clica numa nota para a editar (traste, sustain, técnicas, bend/slide) ou remover; <b>arrasta-a</b> para outro tempo ou outra corda (com <b>Shift</b>, arrasta uma cópia da nota ou do acorde); arrasta o <b>fim da cauda</b> para mudar a duração; <b>↑/↓</b> sobem ou descem um traste à última nota clicada; <b>duplo-clique</b> no pentagrama vazio insere uma nota nova, encaixada na grelha (nunca mais larga do que semicolcheias; com Alt, livre). Um clique simples no vazio move o cursor, como nos outros modos. Muda o CONTEÚDO da partitura — fica pendente até "Aplicar e reconstruir".'),
   fhp: T('<b>Posição da mão (FHP):</b> a faixa <b>FHP</b> por baixo da pauta mostra onde a mão fica no jogo, de uma posição até à seguinte (cinzento = automáticas, verde-água = tuas). Clica numa nota para pôr ali uma posição nova (ou mudar a que lá começa), ou clica numa barra da faixa para mudar o traste e a largura, ou apagá-la. A primeira edição copia as automáticas, para só mudares as que estão mal. Uma nota fora da sua posição fica com um anel vermelho. Fica pendente até "Aplicar e reconstruir".'),
   null: T('Nenhum modo ativo. Clica num modo acima. <b>Dica:</b> para um desvio uniforme em todo o trecho, usa antes o <b>Andamento (BPM)</b> — não precisa de âncoras.'),
 };
@@ -8176,6 +8321,7 @@ function setSyncMode(mode) {
   if (lbl) lbl.textContent = src ? src.dataset.name : T('Nenhum modo');
   document.getElementById('modeMenuBtn')?.classList.toggle('has-mode', !!src);
   document.getElementById('tabsvg')?.classList.toggle('mode-baralign', syncMode === 'baralign');
+  document.getElementById('tabsvg')?.classList.toggle('mode-editnotes', syncMode === 'editnotes');
   const help = document.getElementById('modeHelp');
   if (help) help.innerHTML = MODE_HELP[mode] || MODE_HELP.null;
 }
@@ -8534,7 +8680,10 @@ async function synthesizeVoice() {
 async function synthesizeArrangement(kind) {
   if (kind === VOICE_SOURCE) return synthesizeVoice();
   const a = arrangements.find(x => x.kind === kind);
-  if (!a || !a.notes || !a.notes.length) return null;
+  if (!a || !a.notes) return null;
+  synthNotesSig[kind] = JSON.stringify(noteOverridesByKind[kind] || []);
+  const notesNow = soundingNotes(a);
+  if (!notesNow.length) return null;
   const sr = 44100;
   const gp = isGpJob();
   const ratio = tempoRatioOf(a);
@@ -8542,7 +8691,7 @@ async function synthesizeArrangement(kind) {
   const pad = livePad();  // previewScale's own shift
   const events = [];
   let maxT = 0;
-  for (const n of a.notes) {
+  for (const n of notesNow) {
     if (n.string < 0 || n.string >= stringCount(a) || n.fret < 0) continue;
     // Same recording-clock position the note is drawn at (see previewScale /
     // timeToX): GP applies tempo/offset/anchor sync; audio-ML notes are already
@@ -8613,7 +8762,7 @@ function updateFretboard(vtDisp, warp) {
   if (!fretboardOn) return;
   const ov = document.getElementById('fretOverlay');
   if (!ov) return;
-  const notes = arrangements[currentArr] ? arrangements[currentArr].notes : [];
+  const notes = soundingNotes(arrangements[currentArr]);
   warp = warp || buildTimeWarp(syncAnchors);  // reuse the frame's warp when given
   const ratio = tempoScaleLive / builtScale;
   let s = '';
@@ -8800,11 +8949,12 @@ function stopArrangementPreview() {
 function playArrangementPreview() {
   if (previewOscillators.length) { stopArrangementPreview(); return; }
   const a = arrangements[currentArr];
-  if (!a || !a.notes.length) return;
+  const notes = soundingNotes(a);
+  if (!notes.length) return;
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   audioCtx.resume();
   const t0 = audioCtx.currentTime + 0.1;
-  for (const n of a.notes) {
+  for (const n of notes) {
     if (n.string < 0 || n.string >= stringCount(a) || n.fret < 0) continue;
     const midi = noteMidi(a, n.string, n.fret);
     const hz = midiToHz(midi);
@@ -8819,7 +8969,7 @@ function playArrangementPreview() {
     osc.start(start); osc.stop(start + dur + 0.02);
     previewOscillators.push(osc);
   }
-  const totalMs = (Math.max(...a.notes.map(n => n.time + (n.sustain || 0))) + 0.6) * 1000;
+  const totalMs = (Math.max(...notes.map(n => n.time + (n.sustain || 0))) + 0.6) * 1000;
   document.getElementById('previewArr').textContent = T('■ Parar pré-visualização');
   previewStopTimer = setTimeout(stopArrangementPreview, totalMs);
 }
@@ -9198,11 +9348,42 @@ function lyricWordCache() {
   return _lyricWords;
 }
 
+// The notes a chart sounds: as built, with its pending note edits — the same
+// list the score draws.
+let shownNotes = null, shownNotesArr = null;
+const synthNotesSig = {};
+let synthRefreshTimer = null;
+function soundingNotes(a) {
+  if (!a) return [];
+  if (a === shownNotesArr && shownNotes) return shownNotes;
+  const ov = noteOverridesByKind[a.kind] || [];
+  return ov.length ? mergeNoteOverrides(a.notes, ov) : a.notes;
+}
+// Called by showArr with the notes it draws: the tick follows them at once,
+// and a synthesized source of this chart is rendered again when they change.
+function noteSoundChanged(a, notes, ov) {
+  const changed = a !== shownNotesArr || notes !== shownNotes;
+  shownNotes = notes; shownNotesArr = a;
+  if (changed && audioIsPlaying()) syncResetPointer();
+  if (audioSourceName === `synth:${a.kind}` && a.kind in synthNotesSig
+      && JSON.stringify(ov) !== synthNotesSig[a.kind]) {
+    clearTimeout(synthRefreshTimer);
+    synthRefreshTimer = setTimeout(async () => {
+      if (!selectedJob || audioSourceName !== `synth:${a.kind}`) return;
+      const at = currentPlayheadT, wasPlaying = audioIsPlaying();
+      stopPlayback();
+      await decodeWaveform(selectedJob.id);
+      audioSeek(at);
+      if (wasPlaying) audioPlay();
+    }, 500);
+  }
+}
+
 function syncResetPointer() {
   // Compare in display coordinates so the ticks follow the live preview
   // (tempo/offset/anchors), making alignment audible without a rebuild.
   const vt = playheadDisplay(audioTime());
-  const notes = arrangements[currentArr] ? arrangements[currentArr].notes : [];
+  const notes = soundingNotes(arrangements[currentArr]);
   const warp = buildTimeWarp(syncAnchors);
   tickIdx = notes.findIndex(n => warp(previewScale(n.time)) >= vt);
   if (tickIdx < 0) tickIdx = notes.length;
@@ -9228,7 +9409,7 @@ function syncFrame() {
   ph.setAttribute('x1', x); ph.setAttribute('x2', x);
   wrap.scrollLeft = Math.max(0, x - halfView);
   updateTransportUI();
-  const notes = arrangements[currentArr] ? arrangements[currentArr].notes : [];
+  const notes = soundingNotes(arrangements[currentArr]);
   const tickOn = document.getElementById('syncTick').checked;
   const warp = buildTimeWarp(syncAnchors);
   // Fire each note's tick when the playhead reaches its *previewed* display
