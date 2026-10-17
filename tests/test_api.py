@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import json
 import time
 from collections.abc import Iterator
 from pathlib import Path
@@ -3674,6 +3675,51 @@ def test_tone_suggestions_propose_a_tone_per_part_of_each_track(
     assert [t["key"] for t in lead["tones"]] == lead["names"]
     assert lead["names"][0] == lead["base"]
     assert body["timeline"][0] == [2.0, 0.6, 1]
+
+
+def test_a_tone_plan_pasted_as_text_becomes_tones_and_changes_without_storing_anything(
+    client: TestClient, tmp_path
+) -> None:
+    """The request names the built song's sections in the recording's clock; the
+    pasted answer comes back as tones and each chart's changes in the build's
+    clock (the recording sits MIN_LEAD_S = 2 s later with offset 0), nothing is
+    stored, and a text that is not a plan is a 422."""
+    job = _gp_job(client, tmp_path)
+    url = f"/jobs/{job['id']}"
+    assert client.get(f"{url}/tone-plan/prompt").status_code == 409
+    assert client.post(f"{url}/tone-plan/preview", json={"text": "{}"}).status_code == 409
+    assert client.get("/jobs/nope/tone-plan/prompt").status_code == 404
+    job = _built_two_track_job(client, tmp_path)
+    url = f"/jobs/{job['id']}"
+    prompt = client.get(f"{url}/tone-plan/prompt", headers={"X-RockForge-Lang": "en"}).json()
+    assert "- solo — bar 6 — 0:10.0" in prompt["prompt"]
+    assert "- LEAD (bars 1–12)" in prompt["prompt"]
+    plan = {
+        "tones": [{"name": "Chug", "amp": "Amp_MarshallJCM800", "volume": 19},
+                  {"name": "Solo", "amp": {"key": "Amp_CA100", "knobs": {"Gain": 90}},
+                   "cabinet": "Cab_CA412C_57_Cone"}],
+        "changes": [{"track": "all", "at": "start", "tone": "Chug"},
+                    {"track": "LEAD", "at": "solo", "tone": "Solo"},
+                    {"track": "RHYTHM", "at": "0:20", "tone": "Solo"}],
+    }
+    text = "Here you go:\n```json\n" + json.dumps(plan) + "\n```"
+    before = client.get(f"{url}/tones").json()
+    r = client.post(f"{url}/tone-plan/preview", json={"text": text},
+                    headers={"X-RockForge-Lang": "en"})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    chug, solo = (t["key"] for t in body["tones"])
+    assert body["pad_s"] == 2.0
+    lead, rhythm = body["tracks"]
+    assert (lead["game_name"], lead["tone_base"]) == ("LEAD", chug)
+    assert lead["tone_names"] == [chug, solo]
+    assert lead["tone_changes"] == [{"time": 12.0, "name": solo}]
+    assert rhythm["tone_changes"] == [{"time": 22.0, "name": solo}]
+    assert body["tones"][1]["amp"]["knobs"]["Amp_CA100_Gain"] == 90
+    assert any("cabinet chosen for the amp" in w for w in body["warnings"])
+    assert client.get(f"{url}/tones").json() == before          # a preview stores nothing
+    r = client.post(f"{url}/tone-plan/preview", json={"text": "use a Marshall at the solo"})
+    assert r.status_code == 422 and r.json()["detail"]
 
 
 def test_the_tones_chosen_in_place_of_the_suggested_ones_are_kept_with_the_project(

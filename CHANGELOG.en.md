@@ -6,6 +6,17 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+## [0.10.0 beta 15] — 2026-10-17
+
+### New
+- **Import tones from a text** (Tones page): "Copy the request" prepares a request for ChatGPT
+  (or another assistant) with the song, the tracks, the sections with their bars and times and the
+  game's gear; you paste its answer and "Read the answer" shows the tones — amp, cabinet, pedals,
+  racks and their settings — and where each one comes in on each track, given by bar, section or
+  time. Every adaptation is shown (gear read as the closest one, a knob outside its limits, one
+  tone too many on a track); "Apply" changes the tones like an edit of your own, with undo, and
+  "Apply and rebuild" saves them.
+
 ## [0.10.0 beta 14] — 2026-10-17
 
 ### New

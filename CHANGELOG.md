@@ -6,6 +6,17 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+## [0.10.0 beta 15] — 2026-10-17
+
+### Novo
+- **Importar tons de um texto** (página Tons): "Copiar o pedido" prepara um pedido para o
+  ChatGPT (ou outro assistente) com a música, as pistas, as secções com compassos e tempos e o
+  equipamento do jogo; colas a resposta e "Ler a resposta" mostra os tons — amplificador, coluna,
+  pedais, racks e as regulações — e onde entra cada um em cada pista, dito por compasso, secção ou
+  tempo. Cada adaptação fica à vista (um equipamento lido como o mais parecido, um controlo fora
+  dos limites, um tom a mais numa pista); "Aplicar" muda os tons como uma edição tua, com
+  desfazer, e grava-se com "Aplicar e reconstruir".
+
 ## [0.10.0 beta 14] — 2026-10-17
 
 ### Novo

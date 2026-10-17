@@ -511,6 +511,35 @@ class ToneSuggestionsOut(BaseModel):
     timeline: list[list[float]] = []
 
 
+class TonePlanIn(BaseModel):
+    """Text pasted from a chatbot's answer: the tones and where each comes in."""
+
+    text: str = Field(max_length=200_000)
+
+
+class TonePlanTrackOut(BaseModel):
+    """One chart's tones as the plan sets them: base first, at most four."""
+
+    kind: str
+    game_name: str
+    tone_base: str | None = None
+    tone_names: list[str] = []
+    tone_changes: list[ToneChangeIn] = []
+
+
+class TonePlanOut(BaseModel):
+    """What a pasted plan becomes — nothing is stored until the UI applies it.
+    ``tracks`` lists only the charts it mentions; times are the build's clock,
+    ``pad_s`` earlier in the recording."""
+
+    tones: list[dict[str, Any]]
+    tracks: list[TonePlanTrackOut]
+    warnings: list[str] = []
+    notes: dict[str, str] = {}
+    sources: list[str] = []
+    pad_s: float = 0.0
+
+
 class StemsOut(BaseModel):
     """State of per-instrument stem separation. ``stems`` lists the available
     stem names (guitar/bass/drums/vocals/other/piano); each is served via

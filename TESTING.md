@@ -125,6 +125,7 @@ Per-file counts below reflect the suite at the time of writing; run
 | `test_tone_gear.py` | 11 | `domain/tone.py` gear model + `tone_from_dict`/`tones_from_dicts` |
 | `test_tone_detection.py` | 21 | spectral `profile_from_features` → category → `suggest_tones` + ranked `rank_tones` candidates; the presets themselves (volumes, real knobs, gates, the pre-amp EQ against the hiss band, no stacked drive on high gain) and every old copy of every preset upgrading by its whole chain |
 | `test_tone_library.py` | 5 | cross-project tone library (`/tone-library`): save/read-back, key overwrite, validation |
+| `test_tone_plan.py` | 16 | tones pasted as text (`tone_plan.py`): the JSON found in a chatbot answer, refusal, gear/knob/cabinet matching, every adaptation said, bars/sections/times per chart, ≤ 4 tones per chart, the request |
 | `test_tone_collection.py` | 6 | the tones of a Rocksmith dlc folder: selective PSARC read (`read_entries` = `unpack`), ToneDto → tone dict (PedalKey, slots, unknown gear skipped), incremental rescan (size/mtime, gone files, `_m` beside `_p`), search |
 | `test_rs2dlc.py` | 6 | `.rs2dlc` `DLCProject.Dto` shape, Name/RouteMask per kind, vocals case, **`.phrase-levels`** companion |
 | `test_gamedata.py` | 11 | native-PSARC enumeration assets: flatmodels, solid DDS, xblock, aggregategraph, showlights, **real-cover DXT1 conversion** (needs Pillow, from `[psarc]`) |

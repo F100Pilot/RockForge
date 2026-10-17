@@ -45,6 +45,9 @@ e cada correção um `FIX-xxxx`. Esta lista fica para os pedidos de funcionalida
   próprio utilizador, resposta em JSON estruturado, pesquisa web opcional com as fontes à vista e
   a deteção de tom do RockForge como base para os momentos. Nada é aplicado sem pré-visualização;
   a IA pode errar e isso fica dito.
+  **Fase 1 + opção A feitas (2026-10-17)**: "Importar tons de um texto" na página Tons
+  (`infrastructure/tone_plan.py`, `/tone-plan/prompt`, `/tone-plan/preview`). Falta a opção B
+  (pedir à IA diretamente) — fica para quando a A estiver consolidada, a pedido do utilizador.
 
 - [ ] **Faixa de ataques marcados à mão, para encaixar as notas**
   (Liam, 2026-10-17: "have a small attack track you can record by pressing

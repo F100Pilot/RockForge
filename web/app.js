@@ -1476,6 +1476,14 @@ const INFO = {
 <p><strong>Por pista:</strong> no jogo os tons são <strong>por arranjo</strong>. Com "Mesmos tons em todas as pistas" marcado, todas usam o mesmo conjunto; desmarcado, cada pista (a que está aberta na partitura) tem o seu tom base, extras e trocas — o Lead pode ir para um tom de solo enquanto o Rhythm fica no crunch. Os tons criados são partilhados.</p>
 <p>Só se aplicam a projetos de Guitar Pro. Sem tons definidos, o DLC Builder marca "tone missing" e resolves com a biblioteca dele.</p>`)
   },
+  'tone-plan': {
+    title: T('Importar tons de um texto'),
+    body: T(`<p>Para quando sabes — ou queres perguntar — que tons a música usa. <strong>"Copiar o pedido"</strong> põe no clipboard um pedido pronto para o ChatGPT (ou outro assistente): a música e o artista, as pistas, as secções com o compasso e o tempo de cada uma, o formato da resposta e todo o equipamento do jogo com os limites de cada controlo. Cola-o no assistente, copia a resposta toda e cola-a aqui.</p>
+<p><strong>"Ler a resposta"</strong> encontra o bloco JSON no meio do texto e mostra o que vai mudar: os tons, onde entra cada um em cada pista e <strong>cada adaptação</strong> que foi preciso fazer — um nome de equipamento lido como o mais parecido, um controlo fora dos limites, uma coluna escolhida para o amplificador, um tom a mais numa pista (o Rocksmith só troca entre 4 por pista: ficam os que soam mais tempo). Um texto que não traz o bloco é recusado; nada é adivinhado.</p>
+<p>Os momentos podem vir como "start", "bar 33", o nome de uma secção (com #2 para a segunda vez que aparece) ou um tempo da gravação ("1:23.5"). "all" são todas as guitarras; o baixo só quando é nomeado. Uma pista que a resposta não refere fica com os tons que tem.</p>
+<p><strong>"Aplicar"</strong> é como uma edição tua: desfazer/refazer, rascunho, e só fica gravado com "Aplicar e reconstruir".</p>
+<p><strong>Limites honestos:</strong> é a opinião do assistente, não uma medição — pode enganar-se no equipamento, nas regulações ou nos momentos, e só conhece as fontes que diz conhecer. O equipamento é o do jogo, que imita o real. Confere de ouvido.</p>`)
+  },
   'tone-sections': {
     title: T('Sugestões de tom por secção'),
     body: T(`<p>O "Detetar tom" mede o som da guitarra <strong>ao longo da música</strong> (janelas de 4 s): onde está mais limpo, onde distorce mais. Aqui, esse som é lido contra o que <strong>cada pista toca</strong> em cada parte (as secções da música, ou grupos de 8 compassos):</p>
@@ -4978,6 +4986,7 @@ async function loadTones(id) {
   switchToneSet();
   renderTonePanel();
   loadToneSuggestions(id);
+  initTonePlanCard();
 }
 
 // A tone set as stored ({tone_base, tone_names, tone_changes}), its changes
@@ -6980,6 +6989,124 @@ function applyToneSuggestion(plans) {
 document.getElementById('toneSuggestApplyAll').addEventListener('click', () => {
   if (toneSuggestions && toneSuggestions.tracks) applyToneSuggestion(toneSuggestions.tracks);
 });
+
+// ── Tones from a pasted text (tone_plan.py) ───────────────────────────────────
+// "Copiar o pedido" puts a request for ChatGPT (or any assistant) on the
+// clipboard — the song, its charts, sections with bars and times, the answer
+// format, the game's gear; the answer pasted back is read by the server
+// (POST /tone-plan/preview, nothing stored) and shown, and "Aplicar" makes it
+// ordinary pending tone edits, like "Aplicar a esta pista".
+let tonePlan = null;   // the last preview answer, until applied or discarded
+
+function initTonePlanCard() {
+  tonePlan = null;
+  const card = document.getElementById('tonePlanCard');
+  card.hidden = !(selectedJob && isGpJob() && selectedJob.status === 'completed');
+  document.getElementById('tonePlanText').value = '';
+  renderTonePlan();
+}
+
+document.getElementById('tonePlanCopy').addEventListener('click', async () => {
+  if (!selectedJob) return;
+  try {
+    const r = await getJSON(`/jobs/${selectedJob.id}/tone-plan/prompt`);
+    await navigator.clipboard.writeText(r.prompt);
+    toast(T('Pedido copiado. Cola-o no ChatGPT (ou noutro assistente) e depois cola aqui a resposta.'), 'ok');
+  } catch (e) {
+    toast(T('Não foi possível copiar: {err}', { err: e.message || e }), 'err');
+  }
+});
+
+document.getElementById('tonePlanPreview').addEventListener('click', async () => {
+  if (!selectedJob) return;
+  const text = document.getElementById('tonePlanText').value;
+  if (!text.trim()) { toast(T('Cola primeiro a resposta do assistente.')); return; }
+  const id = selectedJob.id;
+  try {
+    const r = await fetch(`/jobs/${id}/tone-plan/preview`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }),
+    });
+    const body = await r.json().catch(() => ({}));
+    if (selectedJob && selectedJob.id !== id) return;
+    if (!r.ok) { tonePlan = { error: body.detail || r.status }; renderTonePlan(); return; }
+    tonePlan = body;
+  } catch (e) {
+    tonePlan = { error: e.message || String(e) };
+  }
+  renderTonePlan();
+});
+
+function renderTonePlan() {
+  const box = document.getElementById('tonePlanResult');
+  const p = tonePlan;
+  box.hidden = !p;
+  if (!p) { box.innerHTML = ''; return; }
+  if (p.error) {
+    box.innerHTML = `<span class="tn-empty" style="color:#e88">${esc(typeof p.error === 'string' ? p.error : T('Não foi possível ler a resposta.'))}</span>`;
+    return;
+  }
+  const nameOf = key => { const t = p.tones.find(x => x.key === key); return t ? (t.name || t.key) : key; };
+  const clock = t => fmtClockTenths(Math.max(0, t - (p.pad_s || 0)));
+  const tones = p.tones.map(t => {
+    const note = p.notes && p.notes[t.key];
+    return toneCardHtml(t).replace(/<\/div>\s*$/, `${note ? `<div class="tp-note">${esc(note)}</div>` : ''}</div>`);
+  }).join('');
+  const tracks = p.tracks.map(tr => {
+    const rows = [`<div class="tn-change"><span class="tn-change-time">${T('início')}</span>${icon('forward')}<b>${esc(nameOf(tr.tone_base))}</b></div>`]
+      .concat((tr.tone_changes || []).map(c =>
+        `<div class="tn-change"><span class="tn-change-time">${clock(c.time)}</span>${icon('forward')}<b>${esc(nameOf(c.name))}</b></div>`));
+    return `<div class="tp-track"><span class="tp-track-name">${esc(arrLabel(tr.kind))}</span><div class="tn-changes">${rows.join('')}</div></div>`;
+  }).join('') || `<span class="tn-empty">${T('A resposta não diz onde entra cada tom: só os tons passam para o projeto.')}</span>`;
+  const warns = (p.warnings || []).length
+    ? `<details class="tp-warn-wrap" open><summary>${T('{n} adaptação(ões) — lê antes de aplicar', { n: p.warnings.length })}</summary><ul class="tp-warn">${p.warnings.map(w => `<li>${esc(w)}</li>`).join('')}</ul></details>`
+    : '';
+  const sources = (p.sources || []).length
+    ? `<div><span class="tn-label">${T('Fontes que o assistente indicou')}</span><ul class="tp-sources">${p.sources.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>`
+    : '';
+  box.innerHTML = `<span class="tn-label">${T('Tons')}</span><div class="tn-tones">${tones}</div>
+    <span class="tn-label">${T('Onde entra cada um')}</span>${tracks}
+    ${warns}${sources}
+    <p class="tn-hint">${T('São a opinião do assistente, não uma medição: confere de ouvido. "Aplicar" muda os tons como uma edição tua — podes desfazer, e só fica gravado com "Aplicar e reconstruir".')}</p>
+    <div class="tp-acts"><button type="button" id="tonePlanApply" class="tn-btn">${T('Aplicar')}</button>
+      <button type="button" id="tonePlanDiscard" class="secondary tn-btn">${T('Descartar')}</button></div>`;
+  document.getElementById('tonePlanApply').addEventListener('click', () => applyTonePlan(p));
+  document.getElementById('tonePlanDiscard').addEventListener('click', () => { tonePlan = null; renderTonePlan(); });
+}
+
+// The plan's tones join the project (a different tone under a key already
+// there gets a suffixed copy; the same tone is reused, so applying twice adds
+// nothing) and each chart it names gets its own set; the others keep theirs.
+function applyTonePlan(p) {
+  const keyMap = {};
+  for (const tone of p.tones) {
+    const same = jobTones.find(t => t.key === tone.key);
+    if (same && JSON.stringify(same) === JSON.stringify(tone)) { keyMap[tone.key] = tone.key; continue; }
+    const copy = JSON.parse(JSON.stringify(tone));
+    let n = 1;
+    while (jobTones.some(t => t.key === copy.key)) copy.key = `${tone.key}_${++n}`;
+    jobTones.push(copy);
+    keyMap[tone.key] = copy.key;
+  }
+  const setOf = t => cleanToneSet(swapPlan({ base: t.tone_base, names: t.tone_names, changes: t.tone_changes }, keyMap));
+  const tracks = (p.tracks || []).filter(t => arrangements.some(a => a.kind === t.kind) || arrangements.length === 0);
+  if (tracks.length && arrangements.length <= 1) {
+    toneSetToGlobals(setOf(tracks[0]));
+  } else if (tracks.length) {
+    setTonesPerTrack(true);
+    stashToneSet();
+    for (const t of tracks) toneSetByKind[t.kind] = setOf(t);
+    toneSetKind = null;
+    toneSetToGlobals(songToneSet);
+    switchToneSet();
+  }
+  tonePlan = null;
+  renderTonePlan();
+  renderTonePanel();
+  if (arrangements.length) showArr(currentArr);
+  toast(tracks.length
+    ? T('Tons importados — "Aplicar e reconstruir" para gravar.')
+    : T('Tons acrescentados ao projeto — "Aplicar e reconstruir" para gravar.'), 'ok');
+}
 
 // ── Stem separation (selectable audio source for fine-tuning) ─────────────────
 

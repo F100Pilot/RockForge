@@ -463,6 +463,24 @@ Em **Tons de cada pista**:
   sugerido por um teu (do projeto, da biblioteca ou dos teus PSARC); escolher "(o sugerido)"
   desfaz a troca.
 
+### Importar tons de um texto (ChatGPT ou outro assistente)
+
+Para quando sabes — ou queres perguntar — que tons a música usa. No cartão **Importar tons de um
+texto** (depois de construir o projeto):
+
+1. **Copiar o pedido** põe na área de transferência um pedido pronto: a música, as pistas, as
+   secções com o compasso e o tempo de cada uma, o formato da resposta e o equipamento do jogo,
+   com os limites de cada controlo. Cola-o no ChatGPT (ou noutro assistente).
+2. Copia a resposta **toda** e cola-a na caixa.
+3. **Ler a resposta** mostra os tons (com o equipamento), onde entra cada um em cada pista e
+   **cada adaptação** que foi preciso fazer — um equipamento lido como o mais parecido, um
+   controlo fora dos limites, uma coluna escolhida para o amplificador, um tom a mais numa pista
+   (o jogo só troca entre 4 por pista). Um texto sem o bloco de tons é recusado.
+4. **Aplicar** muda os tons como uma edição tua (pode desfazer-se); **Aplicar e reconstruir**
+   grava-os. Uma pista que a resposta não refere fica como estava.
+
+É a opinião do assistente, não uma medição: confere de ouvido.
+
 ## 9. Letra
 
 A letra pode vir:

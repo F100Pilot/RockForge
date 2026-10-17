@@ -461,6 +461,24 @@ This is what goes into the game, after **Apply and rebuild**.
   replace the suggested tone with one of yours (from the project, the library or your PSARCs);
   picking "(the suggested one)" undoes it.
 
+### Import tones from a text (ChatGPT or another assistant)
+
+For when you know — or want to ask — which tones the song uses. In the **Import tones from a
+text** card (once the project is built):
+
+1. **Copy the request** puts a ready request on the clipboard: the song, the tracks, the
+   sections with each one's bar and time, the answer format and the game's gear, with each
+   knob's limits. Paste it into ChatGPT (or another assistant).
+2. Copy its **whole** answer and paste it into the box.
+3. **Read the answer** shows the tones (with their gear), where each one comes in on each track
+   and **every adaptation** that was needed — gear read as the closest one, a knob outside its
+   limits, a cabinet chosen for the amp, one tone too many on a track (the game switches between
+   only 4 per track). A text without the tone block is refused.
+4. **Apply** changes the tones like an edit of your own (it can be undone); **Apply and rebuild**
+   saves them. A track the answer does not mention stays as it was.
+
+It is the assistant's opinion, not a measurement: check it by ear.
+
 ## 9. Lyrics
 
 Lyrics can come:

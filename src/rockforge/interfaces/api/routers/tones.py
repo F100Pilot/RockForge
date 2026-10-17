@@ -17,6 +17,9 @@ from rockforge.interfaces.api.schemas import (
     JobOut,
     ToneChangeIn,
     ToneCollectionScanIn,
+    TonePlanIn,
+    TonePlanOut,
+    TonePlanTrackOut,
     ToneReasonOut,
     ToneSegmentOut,
     ToneSuggestionsOut,
@@ -79,7 +82,6 @@ def get_tone_suggestions(job_id: str) -> ToneSuggestionsOut:
     time. See ``tone_analysis/sections.py``."""
     import xml.etree.ElementTree as ET
 
-    from rockforge.application.gp_pipeline import MIN_LEAD_S
     from rockforge.infrastructure.rsxml.reader import read_arrangement_xml
     from rockforge.infrastructure.tone_analysis.analyzer import WindowProfile
     from rockforge.infrastructure.tone_analysis.sections import TrackChart, plan_tones, segments_for
@@ -112,12 +114,7 @@ def get_tone_suggestions(job_id: str) -> ToneSuggestionsOut:
         float(profile.get("low_end", 0.5)),
     )
 
-    def _num(key: str) -> float:
-        v = params.get(key, 0.0)
-        return float(v) if isinstance(v, (int, float, str)) else 0.0
-
-    # The recording sits this much later in the bundle (the build's own pad).
-    pad_s = max(0.0, MIN_LEAD_S - _num("offset_s")) + max(0.0, _num("lead_in_s"))
+    pad_s = _recording_pad(params)
     charts: list[TrackChart] = []
     for xml_path in sorted(bundle.glob("arrangement_*.xml")):
         try:
@@ -166,6 +163,104 @@ def get_tone_suggestions(job_id: str) -> ToneSuggestionsOut:
         ],
         timeline=[[round(w.t + pad_s, 3), w.gain_level, 1.0 if w.active else 0.0] for w in windows],
         swaps=_stored_tone_swaps(params),
+    )
+
+
+def _recording_pad(params: dict[str, Any]) -> float:
+    """How much later than in the recording file the build puts everything —
+    the build's own lead-in pad (``gp_pipeline``)."""
+    from rockforge.application.gp_pipeline import MIN_LEAD_S
+
+    def _num(key: str) -> float:
+        v = params.get(key, 0.0)
+        try:
+            return float(v) if isinstance(v, (int, float, str)) else 0.0
+        except ValueError:
+            return 0.0
+
+    return max(0.0, MIN_LEAD_S - _num("offset_s")) + max(0.0, _num("lead_in_s"))
+
+
+def _tone_plan_context(job_id: str) -> Any:
+    """The built charts (bars, sections, length, first note) of a project, for
+    the tone-plan request and its reading. 409 before a build."""
+    import xml.etree.ElementTree as ET
+
+    from rockforge.domain.arrangement import ArrangementKind, game_names
+    from rockforge.infrastructure.tone_plan import ChartContext, PlanContext
+
+    with api._session_factory() as session:
+        job = api._job_or_404(session, job_id)
+        if job.status is not JobStatus.COMPLETED or not job.bundle_dir:
+            raise HTTPException(409, i18n.tr("o projeto tem de ser construído primeiro",
+                                             "the project has to be built first"))
+        params = dict(job.params or {})
+        bundle = Path(job.bundle_dir)
+        title, artist, album = job.title, job.artist, job.album or ""
+    found: list[tuple[str, list[float], list[tuple[str, float]], float, float | None]] = []
+    for xml_path in bundle.glob("arrangement_*.xml"):
+        try:
+            root = ET.parse(xml_path).getroot()
+        except (ET.ParseError, OSError):
+            continue
+        kind = api._built_arrangement_kind(xml_path, root)
+        if kind not in {k.value for k in ArrangementKind}:
+            continue
+        ebeats = root.findall("ebeats/ebeat")
+        bars = [float(eb.get("time", "0")) for eb in ebeats if int(eb.get("measure", "-1")) > 0]
+        if bars and ebeats and int(ebeats[-1].get("measure", "-1")) > 0:
+            bars.pop()  # the closing bar line, not a bar (see /arrangements)
+        sections = [(el.get("name", "?"), float(el.get("startTime", "0")))
+                    for el in root.findall("sections/section") if el.get("name") != "noguitar"]
+        times = [float(el.get("time", "0")) for el in root.findall("levels/level/notes/note")]
+        times += [float(el.get("time", "0")) for el in root.findall("levels/level/chords/chord")]
+        end = float(ebeats[-1].get("time", "0")) if ebeats else max(times, default=0.0)
+        found.append((kind, bars, sections, end, min(times) if times else None))
+    if not found:
+        raise HTTPException(409, i18n.tr("a versão construída não tem pistas",
+                                         "the built version has no charts"))
+    found.sort(key=lambda f: api._build_order(f[0]))
+    names = game_names([ArrangementKind(f[0]) for f in found])
+    return PlanContext(
+        title=title, artist=artist, album=album, pad_s=_recording_pad(params),
+        charts=[ChartContext(kind=k, game_name=n, bars=b, sections=s, end=e, first_note=fn)
+                for (k, b, s, e, fn), n in zip(found, names, strict=True)],
+    )
+
+
+@router.get("/jobs/{job_id}/tone-plan/prompt")
+def get_tone_plan_prompt(job_id: str) -> dict[str, str]:
+    """The request to paste into ChatGPT (or any assistant) for this song's
+    tones: the song, its charts, sections with bars and times, the answer
+    format and the game's gear. See ``infrastructure/tone_plan.py``."""
+    from rockforge.infrastructure.tone_plan import build_prompt
+
+    return {"prompt": build_prompt(_tone_plan_context(job_id))}
+
+
+@router.post("/jobs/{job_id}/tone-plan/preview", response_model=TonePlanOut)
+def preview_tone_plan(job_id: str, body: TonePlanIn) -> TonePlanOut:
+    """Read a pasted answer into tones and each chart's changes. Nothing is
+    stored: the UI applies it as ordinary pending tone edits. 422 for a text
+    that is not a tone plan."""
+    from rockforge.infrastructure.tone_plan import TonePlanError, read_plan
+
+    ctx = _tone_plan_context(job_id)
+    try:
+        res = read_plan(body.text, ctx)
+    except TonePlanError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    return TonePlanOut(
+        tones=res.tones,
+        tracks=[
+            TonePlanTrackOut(
+                kind=t.kind, game_name=t.game_name, tone_base=t.tone_base,
+                tone_names=t.tone_names,
+                tone_changes=[ToneChangeIn(time=tt, name=k) for tt, k in t.tone_changes],
+            )
+            for t in res.tracks
+        ],
+        warnings=res.warnings, notes=res.notes, sources=res.sources, pad_s=ctx.pad_s,
     )
 
 

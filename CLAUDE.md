@@ -3240,6 +3240,83 @@ both, "Aplicar a todas" → per-track, switching tracks swaps base/changes, a
 hand edit stays on its track, and a real rebuild wrote different tones into
 `arrangement_lead.xml` and `arrangement_rhythm.xml`.
 
+### Tones from a pasted text (`infrastructure/tone_plan.py`, "Importar tons de um texto")
+
+"receber informação escrita, por exemplo de um prompt colado do chatgpt, com os
+tons usados na música e onde cada um começa … O programa iria implementar esta
+informação" (2026-10-17). Phase 1 + option A of the plan in `tasks/todo.md`; the
+option of asking an AI directly (option B, the user's own API key) is
+DEFERRED at the user's request until this one has been used for a while.
+
+- **The request** (`GET /jobs/{id}/tone-plan/prompt`, `build_prompt`): the song,
+  each built chart by its game name with its bar count, the sections as
+  `section_labels` writes them (a repeated name becomes "Verse #2") with their
+  bar and RECORDING time (bundle − `_recording_pad`, the build's own pad, now
+  shared with `/tone-suggestions`), the answer format with an example, the
+  rules (keys from the list, knobs [min–max; default], volume 0.1-36 higher =
+  louder, ≤ 4 tones per track, "all" = every guitar, the bass only when
+  named, do not invent sources) and the game's gear (`gear_list`: amps,
+  cabinet models + mics, pedals by family, racks, every knob; bass gear only
+  when the song has a bass chart) — about 18 KB. The prose is in the user's
+  language; the format and the gear stay English, since the answer must use
+  them verbatim. "Copiar o pedido" puts it on the clipboard.
+- **The answer** (`POST /jobs/{id}/tone-plan/preview`, `read_plan`, nothing
+  stored): `extract_plan` finds the JSON in a ``` fence or in prose, forgives
+  typographic quotes, `//`/`/* */` comments and trailing commas (string-aware,
+  so a URL survives), and accepts PT key aliases (`tons`, `coluna`, `pista`,
+  `em`…); a text without a `tones` object is a 422 pointing at the request —
+  never guessed at. Gear (`match_gear`): exact by key, game name or the key
+  without its prefix ("Marshall JCM800" = `Amp_MarshallJCM800`), else the
+  closest (containment, then difflib ≥ 0.72, the chart's instrument first),
+  said; an unknown amp drops the tone. A cabinet by full key or model + mic
+  (default `57_Cone`); none given → `cabinet_for_amp` (the presets' pairing for
+  that amp, else its family preferring a 1960a/4x12/1x12, else the presets'
+  usual one), said. A pedal named under the wrong slot moves to pedals/racks;
+  more than 4 per slot are cut, said. Knobs by name/key/close spelling,
+  values as numbers, "70%" (of the range, unless the knob IS a %), "7/10" or an
+  enum label; clamped to the range and snapped to the step, said; the rest at
+  the catalogue default. Volume: positive = the DLC Builder scale (stored
+  negated), negative = as stored, clamped to 0.1-36. Descriptors by name.
+  Every tone is checked through `tone_from_dict` before it is returned.
+- **When** (`parse_when`/`_resolve`): "start", "bar N"/"c. N"/"compasso N",
+  `{"bar": N}`, a section label (a plain repeated name takes the first, said),
+  "m:ss.s" or seconds of the RECORDING (+ pad); per chart, with that chart's
+  own bar and section times. A change at or before the chart's first note is
+  its start; a chart given no start plays its first tone from the start, said.
+  Two changes at one moment keep the last; a change to the tone already playing
+  is dropped. **At most four tones per chart**: the base and the three others
+  that sound longest stay, changes to the rest are dropped (the tone before
+  carries on), said. A chart the answer never names is not in `tracks` and
+  keeps its tones; a tone no chart uses is still returned (added to the
+  project), said.
+- **UI** (Tons page, card `#tonePlanCard`, shown for a built GP project,
+  ⓘ `tone-plan`): copy, paste (`#tonePlanText`), "Ler a resposta" → the tones
+  as `toneCardHtml` cards with the assistant's description, each chart's
+  changes in recording time, the adaptations (open), the sources as text;
+  "Aplicar" (`applyTonePlan`) adds the tones to `jobTones` (the same tone
+  reused, a different one under a taken key suffixed) and gives each named
+  chart its set through `swapPlan` + `setTonesPerTrack`, like "Aplicar a esta
+  pista" — so undo/redo, drafts and "Aplicar e reconstruir" carry it.
+  (The top bar's "Pendente" never listed tone edits — a hand-made one neither;
+  left as it was.)
+
+Honest limits, in the ⓘ and the card: the tones are the assistant's opinion,
+not a measurement; the gear is the game's, which imitates the real thing; the
+times are the last build's. Never tried against a real ChatGPT answer from
+here (no network to it): the parsing is tested on invented answers shaped like
+one. Guarded by `test_tone_plan.py` (the text's slips, refusal, gear by
+key/name/real name/closest, every adaptation said, knob value forms, cabinets,
+volume, bars/sections/times per chart, "all" without the bass, a late chart,
+the four-tone limit, two changes at one moment, descriptions/sources/unused
+tones, the request — the pad, the bass filter, the four-tone limit, the
+same-moment rule, the late start, the volume clamp and the chosen cabinet each
+mutation-checked) and
+`test_a_tone_plan_pasted_as_text_becomes_tones_and_changes_without_storing_anything`;
+with Playwright on a built project (PT 1440 px, EN 760 px): the request on the
+clipboard, an empty and a non-plan paste refused, a pasted answer previewed,
+applied (2 tones, base + 2 changes at bundle times) and undone with one Ctrl+Z,
+no horizontal scroll, no page errors.
+
 ### Tone volume: MORE NEGATIVE IS LOUDER
 
 "os tons detetados e aplicados estão a ficar com o som muito baixo, e quase não
@@ -5635,8 +5712,8 @@ is new and the bugs fixed in that version, English then Portuguese, nothing
 else**: the user's rule for every bump, 2026-10-16). A manual run
 (workflow_dispatch) is a dry build whose files stay as artifacts. The tag must
 equal `installer.iss`'s version, and `tests/test_release_version.py` keeps
-`installer.iss` and `__version__` (both `0.10.0-beta.14`, SemVer; pyproject
-reads `__version__`) and both changelogs' `## [0.10.0 beta 14]` in step. Since
+`installer.iss` and `__version__` (both `0.10.0-beta.15`, SemVer; pyproject
+reads `__version__`) and both changelogs' `## [0.10.0 beta 15]` in step. Since
 the versioning rules (below) `decide` also runs `tools/release_check` before
 building and never publishes a `-dev.N` version. `[pdf]` and the ML stack
 are not in the `.exe`; the README says which three extras need the source
