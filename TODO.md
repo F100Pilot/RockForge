@@ -32,6 +32,20 @@ e cada correção um `FIX-xxxx`. Esta lista fica para os pedidos de funcionalida
   colidem na mesma corda e instante). Ver se a fusão no parse resolve o caso
   do Songsterr sem a vista dupla.
 
+- [ ] **Tons a partir de texto (colado do ChatGPT) ou pedidos a uma IA — PROJETO**
+  (2026-10-17: "receber informação escrita, por exemplo de um prompt colado do chatgpt, com os
+  tons usados na música e onde cada um começa … e uma funcionalidade com IA, em que se colocava a
+  pergunta … e a IA trabalharia no resultado e implementava no projeto. As duas opções iriam
+  existir e o utilizador escolhia"). Plano por fases em `tasks/todo.md` ("Tons por texto ou por
+  IA"). Em resumo: um formato de "plano de tons" (tons com amp/coluna/pedais/knobs + mudanças por
+  pista, em compasso, secção ou tempo), um validador que o adapta ao catálogo do Rocksmith e diz
+  tudo o que mudou, uma pré-visualização, e "Aplicar" como edições pendentes (desfazer,
+  reconstruir). (A) "Copiar pedido para o ChatGPT" gera o pedido com a música, a estrutura e o
+  catálogo; o utilizador cola a resposta. (B) "Pedir à IA" chama a API do Claude com a chave do
+  próprio utilizador, resposta em JSON estruturado, pesquisa web opcional com as fontes à vista e
+  a deteção de tom do RockForge como base para os momentos. Nada é aplicado sem pré-visualização;
+  a IA pode errar e isso fica dito.
+
 - [ ] **Faixa de ataques marcados à mão, para encaixar as notas**
   (Liam, 2026-10-17: "have a small attack track you can record by pressing
   spacebar or something then when you're editing notes you can snap to that …

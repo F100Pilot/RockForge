@@ -1,3 +1,53 @@
+# Tons por texto ou por IA (plano — por aprovar)
+
+Pedido (2026-10-17): colar texto (ex.: do ChatGPT) com os tons da música e onde cada um começa,
+com os settings, e o RockForge aplica-os; e, se possível, perguntar a uma IA e ela trabalha o
+resultado e aplica-o. As duas opções coexistem; o utilizador escolhe.
+
+## Fase 1 — base comum (sem IA)
+- [ ] Formato "plano de tons" v1 (JSON): `tones` [{name, descrição, amp {nome, knobs}, coluna,
+      pedais pré/pós, racks, volume}], `changes` [{pista: Lead/Rhythm/…/todas, em: compasso N |
+      secção "Refrão 1" | tempo "1:23.5", tom}], `sources` (opcional).
+- [ ] Validador puro (domínio/aplicação, testado): nomes de equipamento → chaves do catálogo
+      (nome exato, chave, aproximação), knobs por nome com limites, knobs em falta = valor por
+      omissão, coluna escolhida pelo amp se faltar, volume na escala do DLC Builder, no máximo 4
+      tons por pista (espaços A–D, como `_fold_tones`), compassos/secções → tempos da versão
+      construída (como `/tone-suggestions`). Relatório de cada adaptação — nada em silêncio.
+- [ ] `POST /jobs/{id}/tone-plan/preview` (texto → plano validado + avisos), sem gravar.
+- [ ] UI na página Tons: cartão "Importar tons" — pré-visualização (tons com o equipamento,
+      linha do tempo por pista, avisos) e "Aplicar", que vira edições pendentes normais
+      (`jobTones`, tons por pista, mudanças): desfazer/refazer, rascunho, "Aplicar e reconstruir".
+
+## Fase 2 — opção A: colar texto
+- [ ] "Copiar pedido para o ChatGPT": música, artista, pistas, secções com compassos e tempos,
+      duração, o formato pedido e o catálogo resumido (63 amps, 83 pedais, 17 racks com knobs e
+      limites; colunas por família); "responde só com o bloco".
+- [ ] Leitura tolerante: o JSON dentro de ``` ou de texto à volta, vírgulas a mais, aspas
+      tipográficas; "c. 33"/"compasso 33"/"bar 33", "1:23", nomes de secção. Texto que não
+      segue o formato: diz que não o reconhece e aponta para o pedido (não adivinha).
+
+## Fase 3 — opção B: pedir à IA (Claude, chave do utilizador)
+- [ ] Definições → "Assistente de IA": chave da API guardada localmente (nunca em logs —
+      `redact`), modelo (por omissão `claude-opus-5-5`; `claude-sonnet-5-5` mais barato),
+      custo estimado por pedido, consentimento na primeira vez (o que é enviado: título, artista,
+      estrutura, perfil de tom detetado — nunca o áudio).
+- [ ] Tarefa assíncrona (padrão `detect_tones`: estado e registo em `params`), SDK `anthropic`
+      (extra novo, incluído no `.exe`), respostas em JSON estruturado (`output_config.format`)
+      com o mesmo esquema → o mesmo validador e a mesma pré-visualização. Pesquisa web opcional
+      (`web_search_20260209`) para rig rundowns/entrevistas, com as fontes mostradas.
+- [ ] Contexto para os momentos: a linha do tempo da deteção de tom (ganho/brilho por janela)
+      e o estilo de cada parte da pista, se existirem — a IA situa as mudanças no que se ouve,
+      não só de memória.
+- [ ] Testes com um cliente falso (sem rede na CI); recusa/erro/limite → mensagem clara.
+
+## Fase 4 — fecho
+- [ ] PT/EN, guias, LEGAL/THIRD_PARTY (serviço externo, a pedido), CLAUDE.md, changelog, bump.
+
+## Por decidir com o utilizador
+- Fornecedor da opção B (Claude recomendado; a opção A já serve para qualquer IA).
+- Cada utilizador usa a sua chave e paga o uso (uma app local não tem servidor próprio; uma
+  subscrição do ChatGPT/Claude não dá acesso à API).
+
 # Português / English em toda a aplicação
 
 Pedido: "cria a tradução de tudo o que está no rockforge para inglês. Fica opção
