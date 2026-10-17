@@ -14765,7 +14765,7 @@
       "observed": "Notes between the start and the selection moved +0.17 s and +0.33 s (Node check of the old two-anchor rule); notes after a mid-song selection went back to their unshifted time.",
       "severity": "Medium",
       "priority": "P2",
-      "status": "Verified",
+      "status": "Closed",
       "root_cause": "The multi-anchor warp is piecewise linear and the identity outside its range, so two new anchors next to a lone one interpolated between them and dropped the uniform shift beyond the last one.",
       "fixes": [
         "FIX-0295"
@@ -14777,7 +14777,7 @@
         "Node check of buildTimeWarp with the old rule: [1, 1.167, 1.333, 1.5, …] instead of [1, 1, 1, 1.5, …]"
       ],
       "resolved": "2026-10-17",
-      "closed": "pending",
+      "closed": "2026-10-17",
       "history": [
         {
           "date": "2026-10-17",
@@ -14793,6 +14793,11 @@
           "date": "2026-10-17",
           "status": "Verified",
           "note": "manual"
+        },
+        {
+          "date": "2026-10-17",
+          "status": "Closed",
+          "note": "released in 0.10.0-beta.16"
         }
       ]
     }

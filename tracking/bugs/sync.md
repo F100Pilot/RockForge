@@ -1638,7 +1638,7 @@ With several pending anchors (an auto-sync, taps, a bar alignment) the "Início"
 | Build / commit | c499bc4 |
 | Severity | Medium |
 | Priority | P2 |
-| Status | Verified |
+| Status | Closed |
 
 In "Drag" mode, dragging a multi-note selection added only two anchors (the selection's first and last note). With another pending correction — typically the lone "Song start" anchor, a uniform shift — the notes between that correction and the selection were dragged part of the way along, and notes after the selection lost the correction.
 
@@ -1658,7 +1658,7 @@ In "Drag" mode, dragging a multi-note selection added only two anchors (the sele
 
 **Verified:** Node check of planBlockMove (three cases) and Playwright on an invented project, PT/EN: the selection moved by exactly the drag, every other note by 0 (by the developer (manual check))
 
-**Resolved:** 2026-10-17 · **Closed:** _pending_
+**Resolved:** 2026-10-17 · **Closed:** 2026-10-17
 
 **Evidence:**
 
@@ -1670,3 +1670,4 @@ In "Drag" mode, dragging a multi-note selection added only two anchors (the sele
 - 2026-10-17 — Open: reported
 - 2026-10-17 — Fixed: commit 5a830bde54
 - 2026-10-17 — Verified: manual
+- 2026-10-17 — Closed: released in 0.10.0-beta.16

@@ -10,10 +10,10 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 |---|---|
 | Status | Beta |
 | Created | 2026-10-17 |
-| Published | _pending_ |
-| Commit | _pending_ |
+| Published | 2026-10-17 |
+| Commit | b436e88e4b64b5b4a9513e1e9821a054eeadf9cf |
 | Build | GitHub Actions release workflow |
-| Artifacts | — |
+| Artifacts | https://github.com/F100Pilot/RockForge/releases/tag/v0.10.0-beta.16 |
 | Tests | CI (ruff, mypy, pytest, ESLint, Docker build) on the release commit, tools/release_check, and the frozen .exe smoke test of the release workflow |
 | Approved by | the maintainer (asked for the release) |
 
@@ -38,7 +38,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 
 | | |
 |---|---|
-| Status | Beta |
+| Status | Superseded |
 | Created | 2026-10-17 |
 | Published | 2026-10-17 |
 | Commit | f9b99838f06eb113086d08ed308d23e7bd78c80a |
@@ -57,7 +57,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 
 **Known bugs it carried:** 
 
-- [BUG-0295](bugs/sync.md#bug-0295) Dragging a selection stretched the notes before it when another correction was pending (Medium, now Verified)
+- [BUG-0295](bugs/sync.md#bug-0295) Dragging a selection stretched the notes before it when another correction was pending (Medium, now Closed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
