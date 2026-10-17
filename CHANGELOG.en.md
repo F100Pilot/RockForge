@@ -6,6 +6,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+## [0.10.0 beta 16] — 2026-10-17
+
 ### New
 - **What's new after every update:** when you open a new version, the home page lists everything
   that changed since the version you last used — the same entries as these notes — until you

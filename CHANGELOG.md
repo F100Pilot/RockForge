@@ -6,6 +6,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+## [0.10.0 beta 16] — 2026-10-17
+
 ### Novo
 - **Novidades depois de cada atualização:** ao abrir uma versão nova, a página inicial lista tudo
   o que mudou desde a versão que usaste da última vez — as mesmas entradas destas notas — até

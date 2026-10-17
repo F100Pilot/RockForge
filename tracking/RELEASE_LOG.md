@@ -4,6 +4,36 @@
 
 Every version, newest first. What a version fixed and the bugs it still carried come from the bug and fix registers. Process: [docs/RELEASE_PROCESS.md](../docs/RELEASE_PROCESS.md).
 
+## 0.10.0-beta.16
+
+| | |
+|---|---|
+| Status | Beta |
+| Created | 2026-10-17 |
+| Published | _pending_ |
+| Commit | _pending_ |
+| Build | GitHub Actions release workflow |
+| Artifacts | — |
+| Tests | CI (ruff, mypy, pytest, ESLint, Docker build) on the release commit, tools/release_check, and the frozen .exe smoke test of the release workflow |
+| Approved by | the maintainer (asked for the release) |
+
+**Goal:** What's new after every update, selecting from the cursor, one tempo per track, and a dragged selection that moves alone
+
+**New:**
+
+- What's new after every update
+- Select from the cursor to the end
+- One tempo
+- Guide: syncing step by step
+
+**Bugs fixed:** 
+
+- [BUG-0295](bugs/sync.md#bug-0295) Dragging a selection stretched the notes before it when another correction was pending
+
+**Known bugs it carried:** —
+
+**Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
+
 ## 0.10.0-beta.15
 
 | | |

@@ -5783,8 +5783,8 @@ is new and the bugs fixed in that version, English then Portuguese, nothing
 else**: the user's rule for every bump, 2026-10-16). A manual run
 (workflow_dispatch) is a dry build whose files stay as artifacts. The tag must
 equal `installer.iss`'s version, and `tests/test_release_version.py` keeps
-`installer.iss` and `__version__` (both `0.10.0-beta.15`, SemVer; pyproject
-reads `__version__`) and both changelogs' `## [0.10.0 beta 15]` in step. Since
+`installer.iss` and `__version__` (both `0.10.0-beta.16`, SemVer; pyproject
+reads `__version__`) and both changelogs' `## [0.10.0 beta 16]` in step. Since
 the versioning rules (below) `decide` also runs `tools/release_check` before
 building and never publishes a `-dev.N` version. `[pdf]` and the ML stack
 are not in the `.exe`; the README says which three extras need the source

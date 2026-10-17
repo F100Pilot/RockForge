@@ -1,23 +1,34 @@
 ### New
 
-- **Import tones from a text** (Tones page): "Copy the request" prepares a request for ChatGPT
-  (or another assistant) with the song, its tracks, its sections with their bars and times and
-  the game's gear. Paste its answer back and "Read the answer" shows the tones — amp, cabinet,
-  pedals, racks and their settings — and where each one comes in on each track, by bar, section
-  or time. Every adaptation is shown before anything changes (gear read as the closest one, a
-  knob outside its limits, one tone too many on a track); "Apply" works like an edit of your own,
-  with undo, and "Apply and rebuild" saves it. The tones are the assistant's opinion: check them
-  by ear.
+- **What's new after every update**: when you open a new version, the home page lists everything
+  that changed since the version you last used, until you press "Got it". Settings → General →
+  About RockForge → "What's new in this version" shows it again.
+- **Select from the cursor to the end** (Notes ▾, or Shift+End): every note of the track from
+  there to the end is selected; in "Drag" mode, dragging one moves them all.
+- **One tempo** (Sync → Tempo): when the score changes tempo midway and the recording does not,
+  every bar of the track goes to the same BPM, the start where it is.
+- **Guide: syncing step by step** on a tab that was never synced.
+
+### Fixed
+
+- **Dragging a selection stretched the notes before it** when another correction (such as "Song
+  start") was pending, and notes after the selection lost that correction. Now only the selection
+  moves.
 
 ---
 
 ### Novo
 
-- **Importar tons de um texto** (página Tons): «Copiar o pedido» prepara um pedido para o
-  ChatGPT (ou outro assistente) com a música, as pistas, as secções com os compassos e os tempos
-  e o equipamento do jogo. Cola a resposta e «Ler a resposta» mostra os tons — amplificador,
-  coluna, pedais, racks e as regulações — e onde entra cada um em cada pista, por compasso,
-  secção ou tempo. Cada adaptação fica à vista antes de mudar seja o que for (um equipamento lido
-  como o mais parecido, um controlo fora dos limites, um tom a mais numa pista); «Aplicar» é como
-  uma edição tua, com desfazer, e «Aplicar e reconstruir» grava. Os tons são a opinião do
-  assistente: confere de ouvido.
+- **Novidades depois de cada atualização**: ao abrir uma versão nova, a página inicial lista tudo
+  o que mudou desde a versão que usaste da última vez, até carregares em «Percebido». Definições →
+  Geral → Sobre o RockForge → «Novidades desta versão» mostra-as de novo.
+- **Selecionar do cursor até ao fim** (Notas ▾, ou Shift+End): todas as notas da pista daí até ao
+  fim ficam selecionadas; no modo «Arrastar», arrastar uma move-as todas.
+- **Um só andamento** (Sincronização → Andamento): quando a partitura muda de andamento a meio e a
+  gravação não, todos os compassos da pista passam ao mesmo BPM, com o início no sítio.
+- **Guia: sincronizar passo a passo** numa tab que nunca foi sincronizada.
+
+### Corrigido
+
+- **Arrastar uma seleção esticava as notas antes dela** quando havia outra correção pendente (como
+  o «Início»), e as notas depois da seleção perdiam essa correção. Agora só a seleção se move.

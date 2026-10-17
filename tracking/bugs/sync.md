@@ -1654,7 +1654,7 @@ In "Drag" mode, dragging a multi-note selection added only two anchors (the sele
 
 **Root cause:** The multi-anchor warp is piecewise linear and the identity outside its range, so two new anchors next to a lone one interpolated between them and dropped the uniform shift beyond the last one.
 
-**Fixes:** [FIX-0295](../FIX_LOG.md#fix-0295) (unreleased)
+**Fixes:** [FIX-0295](../FIX_LOG.md#fix-0295) (0.10.0-beta.16)
 
 **Verified:** Node check of planBlockMove (three cases) and Playwright on an invented project, PT/EN: the selection moved by exactly the drag, every other note by 0 (by the developer (manual check))
 

@@ -7398,7 +7398,7 @@
       "commits": [
         "5a830bde54f49f0cf0eb1c3abe7b5daa62126a7d"
       ],
-      "version": "unreleased",
+      "version": "0.10.0-beta.16",
       "tests": [],
       "manual_checks": [
         "Node: planBlockMove with a lone start anchor + a block to the end, a block in the middle, no anchors — notes outside the block unmoved, the block moved by the delta",
