@@ -516,7 +516,7 @@ def _whisperx_command(
     return cmd
 
 
-@celery_app.task(name="rockforge.detect_lyrics", time_limit=3600)
+@celery_app.task(name="rockforge.detect_lyrics", time_limit=3600, soft_time_limit=3540)
 def detect_lyrics(job_id: str) -> None:
     """Detect lyrics from a job's source recording (Demucs vocals + WhisperX).
 
@@ -525,7 +525,10 @@ def detect_lyrics(job_id: str) -> None:
     Human-readable progress is appended to params["lyrics_log"].
 
     time_limit=3600: Hard timeout at 60 minutes. If the task runs longer,
-    Celery/worker will force-kill it. In inprocess mode, this is advisory only.
+    Celery/worker will force-kill it — which skips the task's own except, so
+    soft_time_limit=3540 raises SoftTimeLimitExceeded a minute earlier, inside
+    the task, and the status ends "unavailable" instead of polling forever. In
+    inprocess mode both are advisory only.
     """
     session_factory = make_session_factory(settings.database_url)
     with session_factory() as session:
@@ -763,7 +766,7 @@ def _log_tone_stage(params: dict[str, Any], message: str) -> None:
     _append_log(params, "tone_detection_log", message)
 
 
-@celery_app.task(name="rockforge.detect_tones", time_limit=3600)
+@celery_app.task(name="rockforge.detect_tones", time_limit=3600, soft_time_limit=3540)
 def detect_tones(job_id: str) -> None:
     """Detect guitar tone character from the recording (Demucs guitar separation
     + spectral analysis → preset suggestion).
@@ -878,7 +881,7 @@ def _log_stems_stage(params: dict[str, Any], message: str) -> None:
     _append_log(params, "stems_log", message)
 
 
-@celery_app.task(name="rockforge.separate_stems", time_limit=3600)
+@celery_app.task(name="rockforge.separate_stems", time_limit=3600, soft_time_limit=3540)
 def separate_stems(job_id: str) -> None:
     """Split the recording into per-instrument stems (Demucs htdemucs_6s) so the
     sync viewer can solo the guitar (or mute drums/vocals) while the user

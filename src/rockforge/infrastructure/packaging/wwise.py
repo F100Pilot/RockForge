@@ -234,7 +234,9 @@ class WwiseWemConverter:
             )
         cmd = ([str(console)] if not self._use_wine else ["wine", str(console)]) + args
         try:
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+            proc = subprocess.run(  # never the console's stdin (it would wait on it)
+                cmd, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                stdin=subprocess.DEVNULL, timeout=600)
         except FileNotFoundError as exc:  # wine missing on Linux, etc.
             raise PackagingError(f"could not execute Wwise console: {exc}") from exc
         if proc.returncode != 0:

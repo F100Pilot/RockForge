@@ -86,6 +86,8 @@ def measure_levels(
             ],
             capture_output=True,
             text=True,
+            encoding="utf-8",  # ffmpeg's UTF-8, not the Windows locale codec
+            errors="replace",
             stdin=subprocess.DEVNULL,
             timeout=LOUDNESS_TIMEOUT_S,
         )
@@ -127,6 +129,8 @@ def measure_loudness_lufs(audio: Path, ffmpeg: str = "ffmpeg") -> float | None:
             [ffmpeg, "-nostdin", "-i", str(audio), "-af", "ebur128", "-f", "null", "-"],
             capture_output=True,
             text=True,
+            encoding="utf-8",  # ffmpeg's UTF-8, not the Windows locale codec
+            errors="replace",
             stdin=subprocess.DEVNULL,
             timeout=LOUDNESS_TIMEOUT_S,
         )

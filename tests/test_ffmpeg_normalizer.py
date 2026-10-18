@@ -117,3 +117,19 @@ def test_an_unmeasurable_recording_is_passed_through_untouched(monkeypatch, tmp_
     audio.write_bytes(b"")
     FfmpegNormalizer().normalize(audio, tmp_path)
     assert "-af" not in captured["cmd"]
+
+
+def test_external_tools_output_is_read_as_utf8_on_every_system() -> None:
+    """text=True alone decodes with the locale codec — cp1252 on Windows, which
+    raised on a Japanese or Cyrillic tag in ffmpeg's output."""
+    import inspect
+
+    from rockforge.infrastructure import _subprocess
+    from rockforge.infrastructure.normalize import loudness
+    from rockforge.infrastructure.packaging import wwise
+
+    assert _subprocess.HARDENED_RUN_KWARGS["encoding"] == "utf-8"
+    for module in (loudness, wwise):
+        src = inspect.getsource(module)
+        assert src.count('encoding="utf-8"') >= src.count("subprocess.run(")
+    assert "stdin=subprocess.DEVNULL" in inspect.getsource(wwise)

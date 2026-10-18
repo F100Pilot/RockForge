@@ -154,7 +154,29 @@ def configure_environment(*, windowed: bool) -> None:
     # backgrounded browser tab stops sending — a whole guard exists for that. A
     # window close is unambiguous, so windowed mode turns the watchdog off and
     # lets the window drive shutdown instead of racing it.
-    os.environ.setdefault("ROCKFORGE_IDLE_SHUTDOWN_S", "0" if windowed else "30")
+    global _idle_chosen_here
+    if "ROCKFORGE_IDLE_SHUTDOWN_S" not in os.environ:
+        os.environ["ROCKFORGE_IDLE_SHUTDOWN_S"] = "0" if windowed else BROWSER_IDLE_S
+        _idle_chosen_here = True
+
+
+BROWSER_IDLE_S = "30"
+_idle_chosen_here = False  # the idle value is ours, not the user's
+
+
+def restore_browser_idle_shutdown() -> None:
+    """The window could not open after all (no WebView2 runtime): in the browser
+    the tab-close watchdog is what stops the app, so it gets back the value the
+    browser path always had — the window path had switched it off, and closing
+    the tab left an invisible process holding the port. A value the user set
+    is left alone."""
+    if not _idle_chosen_here:
+        return
+    os.environ["ROCKFORGE_IDLE_SHUTDOWN_S"] = BROWSER_IDLE_S
+    with contextlib.suppress(Exception):  # settings may not be loaded yet: env then
+        from rockforge.config import settings
+
+        settings.idle_shutdown_s = float(BROWSER_IDLE_S)
 
 
 def port() -> int:
@@ -376,6 +398,8 @@ def main() -> None:
     port_ = port()
     if windowed and run_windowed(HOST, port_):
         return
+    if windowed:
+        restore_browser_idle_shutdown()
     run_in_browser(HOST, port_)
 
 

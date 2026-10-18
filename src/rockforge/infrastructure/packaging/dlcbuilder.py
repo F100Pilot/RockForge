@@ -178,7 +178,8 @@ class DlcBuilderPackager:
         if self._packer_cmd:
             argv = _build_packer_argv(self._packer_cmd, str(out_dir))
             try:
-                subprocess.run(argv, check=True, capture_output=True, text=True)
+                subprocess.run(argv, check=True, capture_output=True, text=True,
+                               encoding="utf-8", errors="replace", stdin=subprocess.DEVNULL)
             except subprocess.CalledProcessError as exc:
                 raise PackagingError(f"external PSARC packer failed: {exc.stderr[-2000:]}") from exc
             candidates = sorted(out_dir.glob("*.psarc"))

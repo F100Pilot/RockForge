@@ -76,8 +76,8 @@ def _extract_preview_clip(audio: Path, out: Path, start_s: float, length_s: floa
     ]
     try:
         subprocess.run(
-            cmd, check=True, capture_output=True, text=True,
-            stdin=subprocess.DEVNULL, timeout=300,
+            cmd, check=True, capture_output=True, text=True, encoding="utf-8",
+            errors="replace", stdin=subprocess.DEVNULL, timeout=300,
         )
     except (FileNotFoundError, subprocess.SubprocessError):
         return None

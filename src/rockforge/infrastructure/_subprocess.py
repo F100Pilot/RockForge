@@ -30,6 +30,10 @@ HARDENED_RUN_KWARGS: dict[str, Any] = {
     "check": True,
     "capture_output": True,
     "text": True,
+    # ffmpeg writes UTF-8 (paths, tags); text=True alone decodes with the locale
+    # codec — cp1252 on Windows, which raised on a Japanese or Cyrillic tag
+    "encoding": "utf-8",
+    "errors": "replace",
     "stdin": subprocess.DEVNULL,
 }
 

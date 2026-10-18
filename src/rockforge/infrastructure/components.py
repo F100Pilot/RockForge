@@ -199,15 +199,28 @@ def run(cmd: list[str], log: Log, *, timeout_s: float = STEP_TIMEOUT_S) -> None:
         cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
         text=True, encoding="utf-8", errors="replace", env=env, creationflags=flags,
     )
-    deadline = time.monotonic() + timeout_s
+    # The limit is enforced by a timer, not checked between lines: a pip or
+    # torch download that stalls without printing blocked on readline forever
+    # (and kept the window-close and idle watchdogs waiting with it).
+    timed_out = threading.Event()
+
+    def stop() -> None:
+        timed_out.set()
+        proc.kill()
+
+    timer = threading.Timer(timeout_s, stop)
+    timer.daemon = True
+    timer.start()
     assert proc.stdout is not None
-    for line in proc.stdout:
-        if line.strip():
-            log("  " + line.rstrip())
-        if time.monotonic() > deadline:
-            proc.kill()
-            raise RuntimeError(tr("o passo excedeu o tempo limite", "the step took too long"))
-    code = proc.wait()
+    try:
+        for line in proc.stdout:
+            if line.strip():
+                log("  " + line.rstrip())
+        code = proc.wait()
+    finally:
+        timer.cancel()
+    if timed_out.is_set():
+        raise RuntimeError(tr("o passo excedeu o tempo limite", "the step took too long"))
     if code != 0:
         raise RuntimeError(tr(f"terminou com o código {code}", f"ended with code {code}"))
 

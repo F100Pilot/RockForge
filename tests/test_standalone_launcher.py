@@ -428,3 +428,29 @@ def test_child_processes_start_without_a_console_window_on_windows() -> None:
         0x00000200 | launcher._CREATE_NO_WINDOW,
         launcher._CREATE_NEW_CONSOLE,
     ]
+
+
+def test_when_the_window_fails_the_browser_gets_its_tab_close_watchdog_back(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The window path switched the idle watchdog off; when the window then could
+    not open (no WebView2), the browser fallback served with it off and closing
+    the tab left an invisible process holding the port."""
+    import os
+
+    from rockforge import config
+
+    monkeypatch.delenv("ROCKFORGE_IDLE_SHUTDOWN_S", raising=False)
+    monkeypatch.setattr(launcher, "_idle_chosen_here", False)
+    monkeypatch.setattr(config.settings, "idle_shutdown_s", 0.0)
+    launcher.configure_environment(windowed=True)
+    assert os.environ["ROCKFORGE_IDLE_SHUTDOWN_S"] == "0"
+    launcher.restore_browser_idle_shutdown()
+    assert os.environ["ROCKFORGE_IDLE_SHUTDOWN_S"] == "30"
+    assert config.settings.idle_shutdown_s == 30.0
+    # a value the user set stays theirs
+    monkeypatch.setenv("ROCKFORGE_IDLE_SHUTDOWN_S", "0")
+    monkeypatch.setattr(launcher, "_idle_chosen_here", False)
+    launcher.configure_environment(windowed=True)
+    launcher.restore_browser_idle_shutdown()
+    assert os.environ["ROCKFORGE_IDLE_SHUTDOWN_S"] == "0"

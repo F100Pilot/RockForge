@@ -174,3 +174,18 @@ def test_not_now_stops_the_home_page_offering_them(
     monkeypatch.setattr(components, "installed", lambda root=None: {"python": False})
     assert client.get("/components").json()["declined"] is False
     assert client.post("/components/decline").json()["declined"] is True
+
+
+def test_a_step_that_stalls_without_printing_is_stopped_at_its_limit() -> None:
+    """The limit was only checked between output lines: a download that
+    stalled silently blocked on readline for ever."""
+    import sys
+    import time
+
+    from rockforge.infrastructure import components
+
+    started = time.monotonic()
+    with pytest.raises(RuntimeError):
+        components.run([sys.executable, "-c", "import time; time.sleep(30)"], lambda _m: None,
+                       timeout_s=0.5)
+    assert time.monotonic() - started < 10
