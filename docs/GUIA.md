@@ -124,6 +124,13 @@ Atribui uma pista do ficheiro a cada arranjo: **Lead**, **Rhythm**, **Combo**, e
 **Lead alternativo** / **Rhythm alternativo** (no jogo aparecem como LEAD 2 / RHYTHM 2). Basta
 um. Deixa vazios os que a música não tem.
 
+**Juntar duas pistas num só arranjo**: quando o ficheiro dividiu uma parte em duas pistas (o
+Songsterr faz isto muitas vezes com um só guitarrista), escolhe a segunda em **Juntar a pista** e o
+arranjo onde ela entra em **ao arranjo** — as notas das duas ficam num só gráfico. As duas pistas
+têm de ter a mesma afinação e o mesmo capo (senão a mesma casa soaria outra nota, e a junção não
+é feita, com um aviso a dizê-lo); onde as duas tocam a mesma corda ao mesmo tempo, fica a nota do
+arranjo, e o aviso conta quantas ficaram de fora.
+
 **Pista Bass** recebe uma pista de baixo de 4 ou 5 cordas do ficheiro (as de guitarra não as
 mostram). O baixo do Rocksmith tem quatro cordas, por isso um baixo de 5 é dobrado nas quatro
 cordas que perdem menos notas — B E A D quando a parte nunca toca o Sol agudo — e os avisos dizem
@@ -238,6 +245,12 @@ queres recuperar. Ficam pendentes como antes; Desfazer volta à versão constru�
   pergunta se queres separar os instrumentos agora (uma vez por projeto); até lá mostra o volume
   da mistura, e **Cancelar** fica por aí, sem separar nem analisar nada. Quando a separação
   acaba, as barras passam sozinhas para o instrumento da pista. Clicar nas barras move o cursor.
+  **Para ver se estão alinhadas**: com o rato por cima das barras ou da partitura, uma linha
+  desce pelas duas faixas e pela pauta, e as barras dizem quanto a nota mais próxima está antes
+  ou depois do ataque mais próximo dela ("Nota 20 ms antes do ataque"; verde até 15 ms), com as
+  duas marcas ligadas por um traço. **Ctrl + roda do rato** faz zoom onde está o rato. Funciona
+  para os últimos acertos: uma nota fora por mais de metade da distância à nota seguinte fica
+  ligada ao ataque da vizinha — acerta antes o início e o andamento.
 - **Inspetor (à direita):** **Sincronização**, **Secções** e **Letra**.
 
 ## 6. Sincronizar as notas com a gravação
@@ -557,8 +570,8 @@ acompanham), **Só esta = cursor**, ◀ ▶, −/+.
 
 - **Capa:** arrasta uma imagem JPG/PNG, ou **Procurar capa online** e escolhe um resultado
   (pode também preencher o álbum e o ano). Vai para o PSARC na próxima reconstrução.
-- **Editar info** (barra de cima): título, artista, álbum, ano; e as pistas e afinações do
-  Guitar Pro. Mudar só o texto não reconstrói logo (entra no PSARC na próxima reconstrução);
+- **Editar info** (barra de cima): título, artista, álbum, ano; e as pistas, a pista juntada a um
+  arranjo e as afinações do Guitar Pro. Mudar só o texto não reconstrói logo (entra no PSARC na próxima reconstrução);
   mudar pistas ou afinação reconstrói.
 
 ## 11. Exportar, verificar e instalar no jogo
@@ -658,6 +671,7 @@ lista na própria aplicação.
 | Home | vai ao início |
 | [ · ] · L | marca A · marca B (no cursor) · liga/desliga a repetição do trecho |
 | + / − | zoom |
+| Ctrl + roda do rato | zoom onde está o rato |
 | 1 … 9 · 0 | escolhe o modo pela ordem do menu Modo ▾ (o número aparece ao lado de cada um; o 0 é o décimo; o mesmo número outra vez tira o modo) |
 | B · Backspace · Esc | em «Marcar a ouvir»: marca o compasso (ou o tempo) · tira o último toque · termina |
 | Shift+clique · Ctrl+clique | seleciona um intervalo · junta ou tira uma nota |

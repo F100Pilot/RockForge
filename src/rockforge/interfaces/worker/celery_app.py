@@ -294,6 +294,10 @@ def generate_cdlc(job_id: str) -> None:
                     alt_lead_track=params.get("alt_lead_track"),
                     alt_rhythm_track=params.get("alt_rhythm_track"),
                     bass_track=params.get("bass_track"),
+                    merge_tracks={
+                        str(k): v for k, v in (params.get("merge_tracks") or {}).items()
+                        if isinstance(v, int) and not isinstance(v, bool)
+                    },
                     tuning_overrides={
                         k: tuple(int(x) for x in v)
                         for k, v in (params.get("tuning_overrides") or {}).items()

@@ -52,6 +52,7 @@ def get_gp_tracks(job_id: str) -> dict[str, object]:
             "alt_rhythm": params.get("alt_rhythm_track"), "bass": params.get("bass_track"),
         },
         "tuning_overrides": params.get("tuning_overrides") or {},
+        "merge_tracks": params.get("merge_tracks") or {},
     }
 
 

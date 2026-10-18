@@ -17,7 +17,7 @@ e cada correção um `FIX-xxxx`. Esta lista fica para os pedidos de funcionalida
   máximo de 1220 graus horizontalmente e verticalmente de 0 a 90 graus" — lido
   como 120° para cada lado): arrastar roda, roda do rato afasta, duplo clique
   repõe; "Câmara ▾" com os três eixos; guardada no browser.
-- [ ] **Juntar duas pistas numa só, com as duas linhas de tempo à vista**
+- [x] **Juntar duas pistas numa só, com as duas linhas de tempo à vista**
   (Facebook, 2026-10-16: "have both lead and rhythm timelines available one on
   top of each other, these songsterr tabs are a bit of a mess and they have
   split the song into 2 sections when there's only 1 guitarist, i want to
@@ -31,6 +31,9 @@ e cada correção um `FIX-xxxx`. Esta lista fica para os pedidos de funcionalida
   (fundir as notas das duas pistas GP no parse, com aviso das notas que
   colidem na mesma corda e instante). Ver se a fusão no parse resolve o caso
   do Songsterr sem a vista dupla.
+  **(b) feita (2026-10-18)**: "Juntar duas pistas num só arranjo" no assistente e em
+  "Editar info" (`merge_tracks`). A vista com duas pautas (a) fica por fazer, se ainda
+  fizer falta depois da fusão.
 
 - [ ] **Tons a partir de texto (colado do ChatGPT) ou pedidos a uma IA — PROJETO**
   (2026-10-17: "receber informação escrita, por exemplo de um prompt colado do chatgpt, com os

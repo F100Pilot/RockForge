@@ -6,6 +6,17 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### New
+
+- **Merge two tracks into one arrangement** (New project → Tracks, and Edit info): for a part the
+  file split into two tracks — Songsterr often does this with a single guitarist — the notes of
+  the second track go into the chosen arrangement. Both must have the same tuning and capo; where
+  both play the same string at the same moment, the arrangement's note stays.
+- **Audio bars: a line to see whether they line up.** With the mouse over the bars or the score,
+  a line runs down both lanes and the bars say how far the nearest note is before or after the
+  attack ("Note 20 ms before the attack", green when it hits). **Ctrl + mouse wheel** zooms where
+  the mouse is.
+
 ## [0.11.0 beta 1] — 2026-10-18
 
 ### New

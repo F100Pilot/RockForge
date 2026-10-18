@@ -124,6 +124,13 @@ Assign a track of the file to each arrangement: **Lead**, **Rhythm**, **Combo**,
 want, **Alternate lead track** / **Alternate rhythm track** (in game: LEAD 2 / RHYTHM 2). One is enough.
 Leave empty the ones the song does not have.
 
+**Merge two tracks into one arrangement**: when the file split one part into two tracks
+(Songsterr often does this with a single guitarist), pick the second in **Merge the track** and
+the arrangement it goes into in **into the arrangement** — the notes of both end up in one chart.
+Both tracks must have the same tuning and capo (otherwise the same fret would sound another note,
+and the merge is not made, with a warning saying so); where both play the same string at the same
+moment, the arrangement's note stays, and the warning counts how many were left out.
+
 **Bass track** takes a 4- or 5-string bass track of the file (the guitar pickers do not offer
 those). Rocksmith's bass has four strings, so a 5-string bass is folded onto the four strings that
 lose the fewest notes — B E A D when the part never plays the high G — and the warnings name the
@@ -238,6 +245,12 @@ They stay pending as before; Undo goes back to the built version.
   whether to separate the instruments now (once per project); until then it shows the mix's
   volume, and **Cancel** leaves it at that, separating and analysing nothing. When the separation
   finishes, the bars move to the track's instrument by themselves. Clicking the bars moves the cursor.
+  **To see whether they line up**: with the mouse over the bars or the score, a line runs down
+  both lanes and the staff, and the bars say how far the nearest note is before or after the
+  attack nearest to it ("Note 20 ms before the attack"; green up to 15 ms), the two marks joined
+  by a dash. **Ctrl + mouse wheel** zooms where the mouse is. It is for the last adjustments: a
+  note off by more than half the distance to the next note is paired with its neighbour's
+  attack — fix the start and the tempo first.
 - **Inspector (on the right):** **Sync**, **Sections** and **Lyrics**.
 
 ## 6. Syncing the notes to the recording
@@ -556,7 +569,8 @@ follow), **Only this = cursor**, ◀ ▶, −/+.
 
 - **Cover:** drop a JPG/PNG image, or **Search cover online** and pick a result (it can fill in
   album and year too). It goes into the PSARC on the next rebuild.
-- **Edit info** (top bar): title, artist, album, year; and the Guitar Pro tracks and tunings.
+- **Edit info** (top bar): title, artist, album, year; and the Guitar Pro tracks, the track merged
+  into an arrangement and the tunings.
   Changing only text does not rebuild straight away (it goes into the PSARC on the next
   rebuild); changing tracks or tuning does.
 
@@ -656,6 +670,7 @@ the app itself.
 | Home | go to the start |
 | [ · ] · L | mark A · mark B (at the cursor) · turn the passage repeat on/off |
 | + / − | zoom |
+| Ctrl + mouse wheel | zoom where the mouse is |
 | 1 … 9 · 0 | pick the mode in the order of the Mode ▾ menu (the number shows beside each; 0 is the tenth; the same number again turns the mode off) |
 | B · Backspace · Esc | in “Mark by ear”: mark the bar (or beat) · take the last tap back · finish |
 | Shift+click · Ctrl+click | select a range · add or remove a note |

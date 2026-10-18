@@ -1472,5 +1472,22 @@
  "Não": "No",
  "Contar esta instalação": "Count this install",
  "Contar esta instalação, para se saber quantas pessoas usam o RockForge": "Count this install, so it is known how many people use RockForge",
- "Desligado até dizeres que sim. Uma vez por versão, envia um número ao acaso criado por esta instalação, a versão, o tipo de instalação (exe, git ou pasta) e o sistema (Windows, macOS ou Linux) — o endereço IP não é guardado. Ao desligar, o número é esquecido e o que foi enviado é apagado. Guarda-se logo, sem «Guardar».": "Off until you say yes. Once per version, it sends a random number this install made up, the version, the kind of install (exe, git or folder) and the system (Windows, macOS or Linux) — the IP address is not kept. Turning it off forgets the number and deletes what was sent. Saved at once, no \"Save\" needed."
+ "Desligado até dizeres que sim. Uma vez por versão, envia um número ao acaso criado por esta instalação, a versão, o tipo de instalação (exe, git ou pasta) e o sistema (Windows, macOS ou Linux) — o endereço IP não é guardado. Ao desligar, o número é esquecido e o que foi enviado é apagado. Guarda-se logo, sem «Guardar».": "Off until you say yes. Once per version, it sends a random number this install made up, the version, the kind of install (exe, git or folder) and the system (Windows, macOS or Linux) — the IP address is not kept. Turning it off forgets the number and deletes what was sent. Saved at once, no \"Save\" needed.",
+ "Juntar duas pistas num só arranjo": "Merge two tracks into one arrangement",
+ "Para uma parte que o ficheiro dividiu em duas pistas (o Songsterr faz isto muitas vezes com um só guitarrista): as notas da segunda pista entram no arranjo escolhido. As duas têm de ter a mesma afinação e o mesmo capo; onde as duas tocam a mesma corda ao mesmo tempo, fica a nota do arranjo.": "For a part the file split into two tracks (Songsterr often does this with a single guitarist): the notes of the second track go into the chosen arrangement. Both must have the same tuning and capo; where both play the same string at the same moment, the arrangement's note stays.",
+ "Juntar duas pistas num só arranjo: as notas da segunda pista entram no arranjo escolhido (mesma afinação e capo).": "Merge two tracks into one arrangement: the notes of the second track go into the chosen arrangement (same tuning and capo).",
+ "Juntar a pista": "Merge the track",
+ "— nenhuma —": "— none —",
+ "ao arranjo": "into the arrangement",
+ "Lead alternativo": "Alternate Lead",
+ "Rhythm alternativo": "Alternate Rhythm",
+ "Para juntar, escolhe primeiro a pista do arranjo {arr}.": "To merge, first choose the track of the {arr} arrangement.",
+ "A pista a juntar já é a do arranjo {arr}.": "The track to merge is already the {arr} arrangement's own.",
+ "Sem nota perto": "No note nearby",
+ "Sem ataque forte perto desta nota": "No strong attack near this note",
+ "Alinhada com o ataque ({ms} ms)": "In line with the attack ({ms} ms)",
+ "Nota {ms} ms depois do ataque": "Note {ms} ms after the attack",
+ "Nota {ms} ms antes do ataque": "Note {ms} ms before the attack",
+ "roda do rato": "mouse wheel",
+ "zoom onde está o rato": "zoom where the mouse is"
 };

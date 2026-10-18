@@ -55,6 +55,9 @@ function setWizardStep(n) {
   if (wizardStep === WIZARD_MAX) { maybeAutoAlbumSearch(); maybeAutoLyricsSearch(); }
 }
 
+function wizardSlotTrack(slot) {
+  return document.querySelector(`#gpJobForm select[name=${slot}_track]`).value;
+}
 // Validate the current step before advancing. Returns true if OK.
 function validateWizardStep() {
   if (wizardStep === 1) {
@@ -65,6 +68,8 @@ function validateWizardStep() {
     const anyTrack = ['lead_track', 'rhythm_track', 'combo_track', 'alt_lead_track', 'alt_rhythm_track', 'bass_track']
       .some(n => document.querySelector(`#gpJobForm select[name=${n}]`).value !== '');
     if (!anyTrack) { toast(T('Atribui pelo menos uma pista.')); return false; }
+    const merge = readMergePickers(document.getElementById('wzMerge'), wizardSlotTrack);
+    if (typeof merge === 'string') { toast(merge); return false; }
   } else if (wizardStep === 3) {
     if (!usingEmbeddedAudio() && !ytAudio && !document.querySelector('#gpJobForm input[name=audio]').files.length) {
       toast(T('Escolhe a gravação (áudio) da música ou descarrega a do vídeo.')); return false;
@@ -1708,6 +1713,7 @@ function showShortcuts() {
     [T('Partitura'), [
       [`${k('1')}…${k('9')} ${k('0')}`, `${T('escolhe o modo (o mesmo número outra vez tira-o):')} ${modes}`],
       [`${k('+')} ${k('−')}`, T('zoom')],
+      [`${k('Ctrl')} + ${T('roda do rato')}`, T('zoom onde está o rato')],
       [T('Shift+clique'), T('seleciona da nota anterior até esta')],
       [T('Ctrl+clique'), T('junta ou tira uma nota da seleção')],
       [`${k('Shift')}+${k('End')}`, T('seleciona todas as notas do cursor até ao fim (depois, em "Arrastar", arrasta uma para as mover todas)')],
@@ -1775,18 +1781,20 @@ let zoomLevel = 1.25;  // start 25% more zoomed in than the base scale
 // labels, the fret-hand positions (FHP) and the chord names.
 const STAFF_H = 330, STAFF_SB = STAFF_H - 85, STAFF_ROW = 40, NOTE_R = 13;
 
-function setZoom(z) {
+function setZoom(z, clientX) {
   // Keep the currently-centered time in view across the zoom change — tabPx
   // (px/second) changes but #tabwrap's scrollLeft doesn't, so without this the
   // same pixel offset silently jumps to a different part of the song, making
-  // zoom useless for framing one fast passage precisely.
+  // zoom useless for framing one fast passage precisely. With the pointer's
+  // x (Ctrl + wheel), the time under the pointer stays under it instead.
   const wrap = document.getElementById('tabwrap');
-  const centerT = arrangements.length ? xToTime(wrap.scrollLeft + wrap.clientWidth / 2) : 0;
+  const at = clientX === undefined ? wrap.clientWidth / 2 : clientX - wrap.getBoundingClientRect().left - wrap.clientLeft;
+  const centerT = arrangements.length ? xToTime(wrap.scrollLeft + at) : 0;
   zoomLevel = Math.min(8, Math.max(0.25, z));
   document.getElementById('zoomLevel').textContent = `${Math.round(zoomLevel * 100)}%`;
   if (arrangements.length) {
     showArr(currentArr);
-    wrap.scrollLeft = Math.max(0, timeToX(centerT) - wrap.clientWidth / 2);
+    wrap.scrollLeft = Math.max(0, timeToX(centerT) - at);
   }
 }
 document.getElementById('zoomIn').addEventListener('click', () => setZoom(zoomLevel * 1.5));
@@ -2107,6 +2115,7 @@ async function openMetaEdit() {
       if (v !== null && v !== undefined)
         document.querySelector(`#metaTracks select[data-slot="${slot}"]`).value = String(v);
     }
+    renderMergePickers(document.getElementById('metaMerge'), tr.tracks, tr.merge_tracks);
     const presetOpts = Object.keys(TUNING_PRESETS)
       .map(n => `<option value="${n}">${n === 'Manter' ? T('Manter') : n}</option>`).join('');
     document.getElementById('metaTunings').innerHTML = arrs.map(a => {
@@ -2142,6 +2151,7 @@ function metaValues() {
   const gp = {};
   if (document.getElementById('metaGp').style.display !== 'none') {
     for (const sel of document.querySelectorAll('#metaTracks select[data-slot]')) gp['t:' + sel.dataset.slot] = sel.value;
+    for (const sel of document.querySelectorAll('#metaMerge select[data-merge]')) gp['m:' + sel.dataset.merge] = sel.value;
     for (const sel of document.querySelectorAll('#metaTunings select[data-kind]')) gp['u:' + sel.dataset.kind] = sel.value;
   }
   return { info, gp };
@@ -2172,6 +2182,10 @@ document.getElementById('metaSave').onclick = async () => {
   const title = document.getElementById('metaTitle').value.trim();
   const artist = document.getElementById('metaArtist').value.trim();
   if (!title || !artist) { alert(T('Título e artista são obrigatórios.')); return; }
+  const metaMergeSlot = slot => document.querySelector(`#metaTracks select[data-slot="${slot}"]`).value;
+  const mergeCheck = document.getElementById('metaGp').style.display !== 'none'
+    ? readMergePickers(document.getElementById('metaMerge'), metaMergeSlot) : {};
+  if (typeof mergeCheck === 'string') { toast(mergeCheck); return; }
   const yearRaw = document.getElementById('metaYear').value.trim();
   const body = {
     title, artist,
@@ -2187,6 +2201,7 @@ document.getElementById('metaSave').onclick = async () => {
   // rebuild (re-parse) — fork a new job with the new track map + tunings.
   const gp = document.getElementById('metaGp');
   if (gp.style.display !== 'none' && metaChanges().gp) {
+    const merge_tracks = mergeCheck;
     const tracks = {};
     for (const sel of document.querySelectorAll('#metaTracks select[data-slot]'))
       tracks[sel.dataset.slot] = sel.value === '' ? null : parseInt(sel.value, 10);
@@ -2199,7 +2214,7 @@ document.getElementById('metaSave').onclick = async () => {
     }
     const rr = await fetch(`/jobs/${selectedJob.id}/rebuild`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tracks, tuning_overrides }),
+      body: JSON.stringify({ tracks, tuning_overrides, merge_tracks }),
     });
     if (!rr.ok) { const e = await rr.json(); alert(e.detail || T('Erro ao reconstruir.')); return; }
     const nj = await rr.json();
@@ -9616,6 +9631,18 @@ document.getElementById('levelsSource').addEventListener('change', e => {
   levelsSource = e.target.value;
   if (arrangements.length) showArr(currentArr);
 });
+// The alignment line follows the pointer over the bars and the score while the
+// bars are on; Ctrl + wheel zooms there, keeping the time under the pointer.
+document.getElementById('tabwrap').addEventListener('pointermove', e => {
+  if (levelsOn && e.pointerType !== 'touch') showAlignAt(e.clientX); else hideAlign();
+});
+document.getElementById('tabwrap').addEventListener('pointerleave', hideAlign);
+document.getElementById('tabwrap').addEventListener('wheel', e => {
+  if (!e.ctrlKey || !arrangements.length) return;
+  e.preventDefault();  // not the browser's page zoom
+  setZoom(zoomLevel * (e.deltaY < 0 ? 1.25 : 0.8), e.clientX);
+  if (levelsOn) showAlignAt(e.clientX);
+}, { passive: false });
 // A click on the bars moves the cursor there, like a click on empty staff.
 document.getElementById('levelsSvg').addEventListener('pointerdown', e => {
   const rect = e.currentTarget.getBoundingClientRect();
@@ -10773,8 +10800,15 @@ function renderLevels(a, W, px, warp) {
   const onset = levelsOnsetData();
   const src = onset ? null : levelsPeaks();
   const top1 = LEVELS_PAD, top2 = LEVELS_PAD * 2 + LEVELS_LANE_H;
-  let audioPath = '';
+  let audioPath = '', audioBin = null;
   if (onset && onset.values) {
+    const per0 = 1 / (WAVE_HZ * onset.hop), shift0 = onset.offset * WAVE_HZ, vals = onset.values;
+    audioBin = b => {
+      const i0 = Math.floor((b - shift0) * per0), i1 = Math.max(i0 + 1, Math.floor((b + 1 - shift0) * per0));
+      let m = 0;
+      for (let i = Math.max(0, i0); i < i1 && i < vals.length; i++) if (vals[i] > m) m = vals[i];
+      return m / 100;
+    };
     const key = ['onset', W, px, viewOrigin, onset.offset, onset.label].join('|');
     if (levelsCache.audio && levelsCache.audio.key === key && levelsCache.audio.peaks === onset.values) audioPath = levelsCache.audio.path;
     else {
@@ -10789,6 +10823,8 @@ function renderLevels(a, W, px, warp) {
       levelsCache.audio = { key, peaks: onset.values, path: audioPath };
     }
   } else if (src && src.peaks) {
+    const shift0 = Math.round(src.offset * WAVE_HZ), pks = src.peaks;
+    audioBin = b => { const p = pks[b - shift0] || 0; return p > 0 ? Math.max(0, 1 + 20 * Math.log10(p) / LEVELS_DB) : 0; };
     const key = [W, px, viewOrigin, src.offset, src.label].join('|');
     if (levelsCache.audio && levelsCache.audio.key === key && levelsCache.audio.peaks === src.peaks) audioPath = levelsCache.audio.path;
     else {
@@ -10815,9 +10851,100 @@ function renderLevels(a, W, px, warp) {
     : src ? (src.peaks ? T('Volume · {source}', { source: src.label }) : T('Volume · {source} (a ler…)', { source: src.label })) : T('Áudio · sem gravação');
   const laneColor = onset ? onset.color : src ? src.color : LEVELS_AUDIO_COLOR[''];
   const phX = timeToX(currentPlayheadT + viewOrigin);
+  levelsHover = {
+    audioBin, onset: !!onset, top1, top2, H,
+    notes: [...new Set(notes.filter(n => n.string >= 0 && n.fret >= 0)
+      .map(n => Math.round(warp(previewScale(n.time)) * 1000)))].sort((x, y) => x - y).map(ms => ms / 1000),
+  };
   svg.innerHTML = levelsLane(top1, audioPath, laneColor, audioLabel)
     + levelsLane(top2, notesPath, LEVELS_NOTES_COLOR, T('Notas · {track}', { track: arrLabel(a.kind) }))
-    + `<line id="levelsPlayhead" x1="${phX}" y1="0" x2="${phX}" y2="${H}" stroke="#ff7a45" stroke-width="2" opacity=".9"/>`;
+    + `<line id="levelsPlayhead" x1="${phX}" y1="0" x2="${phX}" y2="${H}" stroke="#ff7a45" stroke-width="2" opacity=".9"/>`
+    + `<g id="levelsHover" visibility="hidden" pointer-events="none">
+        <line id="lhAttack" y1="${top1}" y2="${top1 + LEVELS_LANE_H}" stroke="#ffffff" stroke-width="2"/>
+        <line id="lhNote" y1="${top2}" y2="${top2 + LEVELS_LANE_H}" stroke="#ffffff" stroke-width="2"/>
+        <line id="lhJoin" y1="${top1 + LEVELS_LANE_H}" y2="${top2}" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="3 2"/>
+        <rect id="lhBox" y="${top2 + 3}" height="18" rx="4" fill="#0d0e12" stroke="#3a3d48"/>
+        <text id="lhText" y="${top2 + 16}" fill="#f2f3f6" font-size="11.5" font-weight="600"></text>
+      </g>`;
+}
+
+// The alignment aid ("Barras de áudio"): with the pointer over the bars or the
+// score, a line runs down both lanes and the score at the pointer, and the bars
+// say how far the nearest note is from the strongest attack near it — the
+// question the two lanes are there to answer, which by eye was hard at a few
+// pixels apart. Measured on what is drawn: the attack lane's own values and the
+// notes as shown (pending edits, tempo and anchors included).
+let levelsHover = null;
+const ALIGN_SEARCH_S = 0.15, ALIGN_OK_MS = 15;
+function levelsAlignAt(t) {
+  const h = levelsHover;
+  if (!h) return null;
+  let note = null;
+  for (const n of h.notes) if (Math.abs(n - t) <= ALIGN_SEARCH_S && (note === null || Math.abs(n - t) < Math.abs(note - t))) note = n;
+  let attack = null;
+  if (h.audioBin) {
+    // Around the note when there is one: of the clear attack peaks there (local
+    // maxima at least half the strongest), the one NEAREST the note — in a fast
+    // riff the strongest peak in the window is often the next note's.
+    const c = (note ?? t) - viewOrigin;
+    // A peak must also rise clear of the 50 ms before it, so the ripple of a
+    // ringing note on the Volume view is not taken for a strike.
+    const PRE = 5, b0 = Math.max(PRE, Math.floor((c - ALIGN_SEARCH_S) * WAVE_HZ));
+    const b1 = Math.ceil((c + ALIGN_SEARCH_S) * WAVE_HZ);
+    const v = [];
+    for (let b = b0 - PRE; b <= b1 + 1; b++) v.push(h.audioBin(b));
+    const top = Math.max(...v.slice(PRE));
+    if (top >= 0.2) {
+      let bestD = Infinity;
+      for (let i = PRE; i < v.length - 1; i++) {
+        if (v[i] < top * 0.5 || v[i] < v[i - 1] || v[i] < v[i + 1]) continue;
+        if (v[i] - Math.min(...v.slice(i - PRE, i)) < top * 0.3) continue;
+        const at = (b0 - PRE + i + 0.5) / WAVE_HZ + viewOrigin, d = Math.abs(at - (note ?? t));
+        if (d < bestD) { bestD = d; attack = at; }
+      }
+    }
+  }
+  return { note, attack };
+}
+function alignText(r) {
+  if (r.note === null) return T('Sem nota perto');
+  if (r.attack === null) return T('Sem ataque forte perto desta nota');
+  const ms = Math.round((r.note - r.attack) * 1000);
+  if (Math.abs(ms) <= ALIGN_OK_MS) return T('Alinhada com o ataque ({ms} ms)', { ms: (ms > 0 ? '+' : '') + ms });
+  return ms > 0 ? T('Nota {ms} ms depois do ataque', { ms }) : T('Nota {ms} ms antes do ataque', { ms: -ms });
+}
+function showAlignAt(clientX) {
+  const wrap = document.getElementById('tabwrap'), line = document.getElementById('alignLine');
+  const g = document.getElementById('levelsHover');
+  if (!levelsOn || !g || !line) return;
+  const x = clientX - wrap.getBoundingClientRect().left + wrap.scrollLeft - wrap.clientLeft;
+  const r = levelsAlignAt(xToTime(x));
+  line.style.left = `${x}px`;
+  line.hidden = false;
+  if (!r) return;
+  const set = (id, attrs) => { const el = document.getElementById(id); for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v); };
+  const ax = r.attack !== null ? timeToX(r.attack) : null, nx = r.note !== null ? timeToX(r.note) : null;
+  const ok = ax !== null && nx !== null && Math.abs(r.note - r.attack) * 1000 <= ALIGN_OK_MS;
+  const col = ax === null || nx === null ? '#9aa0ad' : ok ? '#5fd38d' : '#ffb454';
+  document.getElementById('lhAttack').setAttribute('visibility', ax === null ? 'hidden' : 'visible');
+  document.getElementById('lhNote').setAttribute('visibility', nx === null ? 'hidden' : 'visible');
+  document.getElementById('lhJoin').setAttribute('visibility', ax === null || nx === null ? 'hidden' : 'visible');
+  if (ax !== null) set('lhAttack', { x1: ax, x2: ax, stroke: col });
+  if (nx !== null) set('lhNote', { x1: nx, x2: nx, stroke: col });
+  if (ax !== null && nx !== null) set('lhJoin', { x1: ax, x2: nx, stroke: col });
+  const text = document.getElementById('lhText');
+  text.textContent = alignText(r);
+  // beside the line, on whichever side keeps it on screen
+  const w = text.textContent.length * 6.6 + 14, right = wrap.scrollLeft + wrap.clientWidth;
+  const bx = x + 10 + w <= right - 4 ? x + 10 : Math.max(wrap.scrollLeft + 34, x - 10 - w);
+  set('lhBox', { x: bx, width: w.toFixed(0), stroke: col });
+  set('lhText', { x: bx + 7 });
+  g.setAttribute('visibility', 'visible');
+}
+function hideAlign() {
+  const line = document.getElementById('alignLine'), g = document.getElementById('levelsHover');
+  if (line) line.hidden = true;
+  if (g) g.setAttribute('visibility', 'hidden');
 }
 
 function moveLevelsPlayhead(x) {
@@ -10919,6 +11046,41 @@ document.getElementById('gpInspectForm').addEventListener('submit', async e => {
   applyInspectResult(b);
 });
 
+// "Juntar duas pistas num só arranjo": a GP track whose notes are folded into
+// one of the charts (GpJobSpec.merge_tracks, keyed by the chart's name). The
+// wizard and "Editar info" build the same two pickers; `slotTrack(slot)` says
+// which track a slot holds, so a track cannot be merged into its own chart.
+const MERGE_SLOTS = [['lead', 'Lead'], ['rhythm', 'Rhythm'], ['combo', 'Combined'],
+  ['alt_lead', 'Alternate Lead'], ['alt_rhythm', 'Alternate Rhythm'], ['bass', 'Bass']];
+function mergeSlotLabel(slot) {
+  return { lead: 'Lead', rhythm: 'Rhythm', combo: 'Combo', bass: 'Bass',
+    alt_lead: T('Lead alternativo'), alt_rhythm: T('Rhythm alternativo') }[slot];
+}
+function renderMergePickers(box, tracks, current) {
+  const usable = (tracks || []).filter(t => !t.is_percussion);
+  const [kind, idx] = Object.entries(current || {})[0] || ['Lead', null];
+  box.innerHTML = `<div class="field"><label>${T('Juntar a pista')}</label>
+      <select data-merge="track"><option value="">${T('— nenhuma —')}</option>${usable
+        .map(t => `<option value="${t.index}">${t.index}: ${esc(t.name)}</option>`).join('')}</select></div>
+    <div class="field"><label>${T('ao arranjo')}</label>
+      <select data-merge="into">${MERGE_SLOTS.map(([slot, k]) =>
+        `<option value="${k}">${esc(mergeSlotLabel(slot))}</option>`).join('')}</select></div>`;
+  box.querySelector('[data-merge=into]').value = kind;
+  if (idx !== null && idx !== undefined) box.querySelector('[data-merge=track]').value = String(idx);
+}
+// {chart: track} from the pickers, {} for none — or a sentence when the choice
+// cannot work (no track in that chart yet, or the chart's own track).
+function readMergePickers(box, slotTrack) {
+  const t = box.querySelector('[data-merge=track]');
+  if (!t || t.value === '') return {};
+  const kind = box.querySelector('[data-merge=into]').value;
+  const slot = MERGE_SLOTS.find(([, k]) => k === kind)[0];
+  const own = slotTrack(slot);
+  if (own === '') return T('Para juntar, escolhe primeiro a pista do arranjo {arr}.', { arr: mergeSlotLabel(slot) });
+  if (own === t.value) return T('A pista a juntar já é a do arranjo {arr}.', { arr: mergeSlotLabel(slot) });
+  return { [kind]: parseInt(t.value, 10) };
+}
+
 // Step 1's answer — from an uploaded file (/gp/inspect) or a tab built from
 // Songsterr (/songsterr/import), which answers in the same shape.
 function applyInspectResult(b) {
@@ -10948,6 +11110,7 @@ function applyInspectResult(b) {
   if (firstTrack) form.querySelector('select[name=lead_track]').value = String(firstTrack.index);
   const bassPick = bassTracks.find(t => /bass|baixo/i.test(t.name)) || (bassTracks.length === 1 ? bassTracks[0] : null);
   if (bassPick) bassSel.value = String(bassPick.index);
+  renderMergePickers(document.getElementById('wzMerge'), b.tracks, {});
   if (b.title) form.querySelector('input[name=title]').value = b.title;
   if (b.artist) form.querySelector('input[name=artist]').value = b.artist;
   if (b.album) form.querySelector('input[name=album]').value = b.album;
@@ -11098,6 +11261,9 @@ document.getElementById('gpJobForm').addEventListener('submit', async e => {
   // Unchecked checkboxes are not sent; set the value explicitly so "off" sticks.
   f.set('import_mutes', e.target.querySelector('input[name=import_mutes]').checked);
   if (Object.keys(wzEstimatedBars).length) f.set('estimated_bars', JSON.stringify(wzEstimatedBars));
+  const merge = readMergePickers(document.getElementById('wzMerge'), wizardSlotTrack);
+  if (typeof merge === 'string') { setWizardStep(2); toast(merge); return; }
+  if (Object.keys(merge).length) f.set('merge_tracks', JSON.stringify(merge));
   // The picked card's image never loaded: its cover is not there to download.
   const picked = wzAlbumCandidates[wzAlbumPick];
   if (picked && picked.cover_broken) f.delete('cover_url');

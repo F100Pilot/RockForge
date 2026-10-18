@@ -106,6 +106,8 @@
   .syncctrls { display:flex; gap:.8rem; align-items:center; flex-wrap:wrap; font-size:.85rem; color:var(--muted); }
   #playhead { pointer-events:none; }
   #levelsSvg { display:block; cursor:pointer; }
+  #tabwrap { position:relative; }
+  #alignLine { position:absolute; top:0; bottom:0; width:0; border-left:1px dashed rgba(255,255,255,.55); pointer-events:none; }
   .levels-source { max-width:15rem; }
   #tabwrap { overflow-x:auto; background:#0f1013; border:1px solid var(--line); border-radius:8px; margin-top:.5rem; }
   /* Shift+click / drag-select on the score must not trigger the browser's own
@@ -1167,7 +1169,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
             <span>Ritmo estimado pelo espaçamento (confere estes compassos primeiro):</span>
             <span id="barEstimatedList"></span>
           </div>
-          <div id="tabwrap"><svg id="levelsSvg" hidden></svg><svg id="tabsvg" height="280"></svg></div>
+          <div id="tabwrap"><svg id="levelsSvg" hidden></svg><svg id="tabsvg" height="280"></svg><div id="alignLine" hidden></div></div>
           <!-- Fretboard: lights up the (string, fret) of each note as it plays -->
           <div id="fretboardWrap">
             <svg id="fretboard" height="150" style="display:inline-block"></svg>
@@ -1968,6 +1970,11 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
               <select name="alt_rhythm_track"><option value="">—</option></select></div>
           </div>
         </div>
+        <div class="pv-card pv-card-lg">
+          <div class="pv-card-head">Juntar duas pistas num só arranjo</div>
+          <div class="pv-card-desc">Para uma parte que o ficheiro dividiu em duas pistas (o Songsterr faz isto muitas vezes com um só guitarrista): as notas da segunda pista entram no arranjo escolhido. As duas têm de ter a mesma afinação e o mesmo capo; onde as duas tocam a mesma corda ao mesmo tempo, fica a nota do arranjo.</div>
+          <div class="wz-grid" id="wzMerge"></div>
+        </div>
       </div>
 
       <div class="wizard-pane wz-pane" data-step="3">
@@ -2166,6 +2173,8 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
         <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-sliders"/></svg>Arranjos e afinação (Guitar Pro)</div>
         <div class="pv-card-desc">Arranjos & afinação (Guitar Pro) — alterar reconstrói o projeto.</div>
         <div id="metaTracks" class="wz-grid"></div>
+        <div class="pv-card-desc">Juntar duas pistas num só arranjo: as notas da segunda pista entram no arranjo escolhido (mesma afinação e capo).</div>
+        <div id="metaMerge" class="wz-grid"></div>
         <div id="metaTunings" class="wz-grid"></div>
       </div>
     </form>

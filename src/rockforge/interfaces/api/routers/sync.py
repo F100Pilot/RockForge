@@ -32,7 +32,7 @@ router = APIRouter()
 _SYNC_STATE_GP_ONLY: frozenset[str] = frozenset({
     "tuning_overrides",
     "lead_track", "rhythm_track", "combo_track", "alt_lead_track", "alt_rhythm_track",
-    "bass_track",
+    "bass_track", "merge_tracks",
 })
 
 
@@ -52,6 +52,8 @@ def _sanitize_sync_state(incoming: dict[str, object]) -> dict[str, object]:
     ):
         bound = f"{MAX_CENT_OFFSET:g}"
         raise HTTPException(422, f"cent_offset must be a number between -{bound} and {bound}")
+    if "merge_tracks" in out:
+        out["merge_tracks"] = api._clean_merge_tracks(out["merge_tracks"])
     to = out.get("tuning_overrides")
     if to is not None:
         if not isinstance(to, dict):
@@ -146,6 +148,14 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
                     params.pop(key, None)
                 else:
                     params[key] = int(idx)
+        if payload.merge_tracks is not None:
+            if original.source_type != "gp":
+                raise HTTPException(422, "merging tracks only applies to Guitar Pro jobs")
+            merge = api._clean_merge_tracks(payload.merge_tracks)
+            if merge:
+                params["merge_tracks"] = merge
+            else:
+                params.pop("merge_tracks", None)
         if payload.tuning_overrides is not None:
             if original.source_type != "gp":
                 raise HTTPException(422, "tuning overrides only apply to Guitar Pro jobs")

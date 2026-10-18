@@ -102,6 +102,8 @@ def create_gp_job(
     alt_lead_track: str = Form(""),
     alt_rhythm_track: str = Form(""),
     bass_track: str = Form(""),
+    # A second GP track folded into a chart: JSON {"Lead": 2, …}.
+    merge_tracks: str = Form(""),
     offset_s: float = Form(0.0),
     lead_in_s: float = Form(0.0),
     tempo_scale: float = Form(1.0),
@@ -214,6 +216,11 @@ def create_gp_job(
 
     parsed_bar_times = _parse_bar_times(bar_times)
     parsed_estimated_bars = _parse_estimated_bars(estimated_bars)
+    try:
+        merge_raw = json.loads(merge_tracks) if merge_tracks.strip() else None
+    except ValueError as exc:
+        raise HTTPException(422, "merge_tracks must be a JSON object") from exc
+    parsed_merge = api._clean_merge_tracks(merge_raw)
     cover_url = cover_url.strip()
     if cover_url:
         from rockforge.infrastructure.album_lookup import cover_url_allowed
@@ -260,6 +267,8 @@ def create_gp_job(
         params["alt_rhythm_track"] = int(alt_rhythm_track)
     if bass_track.strip().isdigit():
         params["bass_track"] = int(bass_track)
+    if parsed_merge:
+        params["merge_tracks"] = parsed_merge
 
     with api._session_factory() as session:
         job = Job(
@@ -349,9 +358,11 @@ def reload_gp(
         # the track layout, but a restructured file may not — fail loudly rather
         # than silently building the wrong track.
         valid = {t.index for t in info.tracks}
-        for key in ("lead_track", "rhythm_track", "combo_track",
-                    "alt_lead_track", "alt_rhythm_track", "bass_track"):
-            idx = params.get(key)
+        merged = cast("dict[str, int]", params.get("merge_tracks") or {})
+        for key, idx in [*((k, params.get(k)) for k in (
+                "lead_track", "rhythm_track", "combo_track",
+                "alt_lead_track", "alt_rhythm_track", "bass_track")),
+                *((f"merge_tracks[{k}]", v) for k, v in merged.items())]:
             if isinstance(idx, int) and idx not in valid:
                 gp_dest.unlink(missing_ok=True)
                 raise HTTPException(

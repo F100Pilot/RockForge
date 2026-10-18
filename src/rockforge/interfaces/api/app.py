@@ -855,8 +855,31 @@ _SYNC_STATE_KEYS: tuple[str, ...] = (
     "cent_offset", "tuning_overrides",
     "lyrics_events",
     "lead_track", "rhythm_track", "combo_track", "alt_lead_track", "alt_rhythm_track",
-    "bass_track",
+    "bass_track", "merge_tracks",
 )
+
+# The charts a second GP track can be merged into (GpJobSpec.merge_tracks).
+_MERGE_KINDS = ("Lead", "Rhythm", "Combined", "Alternate Lead", "Alternate Rhythm", "Bass")
+
+
+def _clean_merge_tracks(value: object) -> dict[str, int]:
+    """``merge_tracks`` as a client sent it — chart name → GP track index —
+    checked: known charts only, plain track indexes (422 otherwise)."""
+    message = "merge_tracks must map a chart (Lead, Rhythm, …) to a GP track index"
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise HTTPException(422, message)
+    out: dict[str, int] = {}
+    for kind, idx in value.items():
+        if idx is None:
+            continue
+        if kind not in _MERGE_KINDS or not isinstance(idx, int) or isinstance(idx, bool) \
+                or not 0 <= idx < 64:
+            raise HTTPException(422, message)
+        out[kind] = idx
+    return out
+
 
 def _extract_sync_state(params: dict[str, object]) -> dict[str, object]:
     """The whitelisted sync-relevant subset of a job's params (only keys present)."""

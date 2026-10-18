@@ -6,6 +6,17 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Novidades
+
+- **Juntar duas pistas num só arranjo** (Novo projeto → Pistas, e Editar info): para uma parte que
+  o ficheiro dividiu em duas pistas — o Songsterr faz isto muitas vezes com um só guitarrista — as
+  notas da segunda pista entram no arranjo escolhido. Têm de ter a mesma afinação e o mesmo capo;
+  onde as duas tocam a mesma corda ao mesmo tempo, fica a nota do arranjo.
+- **Barras de áudio: uma linha para ver se estão alinhadas.** Com o rato por cima das barras ou
+  da partitura, uma linha desce pelas duas faixas e as barras dizem quanto a nota mais próxima está
+  antes ou depois do ataque ("Nota 20 ms antes do ataque", verde quando bate). **Ctrl + roda do
+  rato** faz zoom onde está o rato.
+
 ## [0.11.0 beta 1] — 2026-10-18
 
 ### Novidades

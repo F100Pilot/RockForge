@@ -590,6 +590,39 @@ Playwright (wizard picker, four-line score B E A D, fretboard, 3D highway,
 Editar info; PT/EN, no page errors). **Never played in game from here** — the
 encoding is DLC Builder's, the result in Rocksmith is the user's to confirm.
 
+### Two GP tracks charted as one (`merge_tracks`)
+
+"have both lead and rhythm timelines … these songsterr tabs … have split the
+song into 2 sections when there's only 1 guitarist, i want to combine these
+into 1" (Facebook, 2026-10-16; "Avança com o pedido de juntar as duas pistas",
+2026-10-18). Option (b) of the TODO entry — fusion at parse time, no second
+staff: `GpJobSpec.merge_tracks` (chart name → a second GP track index) makes
+`_merge_into` parse that track with the SAME arguments (shift, the chart's own
+`tempo_scale`, `bar_times`, `bass=`) and fold its notes in with
+`merge_parsed_tracks` (pure): a note on a string the chart already plays at
+that instant (`NOTE_OVERRIDE_MATCH_S`) is dropped and counted, sustains are
+re-trimmed (`apply_sustain_gap` — a note of one track can ring into the other
+track's next note on that string), the longer beat grid kept. Before the sync
+rounds, note edits and `resolve_links`, so everything after sees one chart. A
+track in another tuning or capo (the same fret would be another pitch), or one
+that will not parse for that chart (a guitar into the Bass), is NOT merged and
+says so in the warnings. A lone Lead is built as Combined, so `"Lead"` also
+reaches the Combined slot when no Combo track was set. Plumbing like the track
+slots: `/jobs/gp` form `merge_tracks` (JSON), `RebuildIn.merge_tracks` (null =
+untouched, `{}` = none), both through `api._clean_merge_tracks` (known charts,
+indexes 0-63, 422 otherwise); `params["merge_tracks"]` (portable in `.rfproj`,
+a sync-state key, checked by `/reload-gp` against the new file's tracks),
+`/gp-tracks` answers it. UI: a "Juntar duas pistas num só arranjo" card in the
+wizard's step 2 (`#wzMerge`) and in "Editar info" (`#metaMerge`), both built by
+`renderMergePickers` (one merge from the UI; the backend takes one per chart),
+`readMergePickers` refuses merging into a chart with no track or the chart's
+own track. Guarded by `test_merge_tracks.py` (the shared note kept once and the
+sustain re-trimmed, a split part built as one Combined chart, another tuning
+refused, the wizard/rebuild round trip — the four rules mutation-checked); with
+Playwright and a real build of an invented split GP5 (PT 1440 / EN 760 px):
+own track refused, 2 + 2 notes → 4 (one shared note left out, said), "Editar
+info" shows the merge and removing it rebuilds to 2, no page errors.
+
 ### Reloading the GP file (`/jobs/{id}/reload-gp`)
 
 `POST /jobs/{id}/reload-gp` (multipart `gp`, GP jobs only) swaps the Guitar Pro
@@ -925,6 +958,30 @@ verified with Playwright: Cancel → no request at all after it, "Volume ·
 Mistura completa"; Yes (separation faked) → only `separate-stems` while it
 runs, then "Ataques · Guitarra"; a project already separated is never asked;
 no page errors.
+
+**Are they lined up? The alignment line** ("é difícil perceber se estão
+alinhados", 2026-10-18, a screenshot of the two lanes a few pixels apart).
+With the bars on, the pointer over `#tabwrap` draws `#alignLine` (a dashed line
+through both lanes AND the staff — an absolutely positioned div in `#tabwrap`,
+now `position:relative`) and `#levelsHover` in the bars: `levelsAlignAt(t)`
+takes the nearest note onset as drawn (`levelsHover.notes`, the score's own
+warp) and, within `ALIGN_SEARCH_S` (0.15 s) of it, the clear attack peaks of
+the audio lane (`levelsHover.audioBin`, the same values the lane draws: local
+maxima ≥ half the strongest, rising ≥ 0.3 of it above the 50 ms before — a
+ringing note's ripple on the Volume view is not a strike) and pairs it with the
+NEAREST one (the strongest is often the next note's in a fast riff). The box
+says "Nota 20 ms antes/depois do ataque", green within `ALIGN_OK_MS` (15), and
+the two marks are joined. Honest limit, in the guides: a note off by more than
+half the gap to its neighbour pairs with the neighbour's attack — it is for the
+last adjustments, after the start and the tempo. **Ctrl + wheel** zooms at the
+pointer (`setZoom(z, clientX)` keeps the time under it; non-passive listener,
+so not the page zoom); row in the "?" list and the guides. Browser-only;
+verified with Playwright: attack values planted within ±40 ms of each chart
+note of the invented "Deriva" project → 40 of 40 readings within 10 ms of the
+planted offset (PT 1440 / EN 760 px); on its deliberately drifted recording
+(85-175 ms off on sixteenths) most pair with the neighbour, as said; zoom kept
+the pointer's time (3.500 → 3.504 s), the line goes when the pointer leaves, no
+page errors. Not on a real song from here.
 
 ### Exporting a corrected Guitar Pro file (`/export-gp`)
 
