@@ -1422,5 +1422,6 @@
  "A partitura muda de andamento a meio e a gravação não? Põe todos os compassos no mesmo BPM — o início fica onde está.": "Does the score change tempo midway and the recording not? Put every bar at the same BPM — the start stays where it is.",
  "Um só andamento": "One tempo",
  "BPM da pista toda": "BPM of the whole track",
- "Aplicar à pista toda": "Apply to the whole track"
+ "Aplicar à pista toda": "Apply to the whole track",
+ "Com \"Detetar tom\", aparece também por cima a distorção da gravação, para comparares com estes tons.": "With \"Detect tone\", the recording's distortion also shows above, to compare with these tones."
 };

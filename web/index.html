@@ -244,6 +244,10 @@
   .tp-warn { margin:0; padding-left:1.25rem; font-size:.95rem; color:#e0c48a; display:flex; flex-direction:column; gap:.3rem; }
   .tp-warn-wrap > summary { cursor:pointer; font-size:1.05rem; font-weight:600; color:#e0c48a; min-height:2.5rem; display:flex; align-items:center; }
   .tp-sources { margin:0; padding-left:1.25rem; font-size:.95rem; color:#a9acb6; overflow-wrap:anywhere; }
+  .tp-chart { display:flex; flex-direction:column; gap:.6rem; }
+  .tp-strip-only .ts-strip { border-radius:10px; }
+  .tp-secs { position:relative; height:1.6rem; border-left:1px solid var(--line); }
+  .tp-sec { position:absolute; top:0; box-sizing:border-box; padding-left:.3rem; border-left:1px solid #5a5d68; font-size:.85rem; line-height:1.6rem; color:#a9acb6; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .tp-acts { display:flex; gap:.75rem; flex-wrap:wrap; align-items:center; }
   .ts-match { display:flex; flex-direction:column; gap:.1rem; font-weight:700; }
   .ts-match .meta { font-weight:400; font-size:.9rem; }
@@ -1474,6 +1478,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                 <div id="toneExtraChecks" class="tn-pills"></div>
               </div>
             </div>
+            <div id="toneTimeline" hidden></div>
             <div class="tn-field">
               <span class="tn-label">Mudanças de tom</span>
               <div id="toneChangesList" class="tn-changes"></div>

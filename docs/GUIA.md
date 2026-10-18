@@ -504,12 +504,16 @@ texto** (depois de construir o projeto):
    secções com o compasso e o tempo de cada uma, o formato da resposta e o equipamento do jogo,
    com os limites de cada controlo. Cola-o no ChatGPT (ou noutro assistente).
 2. Copia a resposta **toda** e cola-a na caixa.
-3. **Ler a resposta** mostra os tons (com o equipamento), onde entra cada um em cada pista e
+3. **Ler a resposta** mostra os tons (com o equipamento), onde entra cada um em cada pista — num
+   gráfico por pista, como o das sugestões: uma faixa com o tom que soa em cada momento, as
+   secções por baixo e, se já usaste **Detetar tom**, a distorção da gravação por cima — e
    **cada adaptação** que foi preciso fazer — um equipamento lido como o mais parecido, um
    controlo fora dos limites, uma coluna escolhida para o amplificador, um tom a mais numa pista
    (o jogo só troca entre 4 por pista). Um texto sem o bloco de tons é recusado.
 4. **Aplicar** muda os tons como uma edição tua (pode desfazer-se); **Aplicar e reconstruir**
-   grava-os. Uma pista que a resposta não refere fica como estava.
+   grava-os. Uma pista que a resposta não refere fica como estava. O mesmo gráfico fica em
+   **Tons de cada pista**, com os tons da pista no ecrã (também os que marcas à mão); clicar numa
+   parte leva o cursor para lá.
 
 É a opinião do assistente, não uma medição: confere de ouvido.
 

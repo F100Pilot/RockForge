@@ -3331,6 +3331,21 @@ DEFERRED at the user's request until this one has been used for a while.
   reused, a different one under a taken key suffixed) and gives each named
   chart its set through `swapPlan` + `setTonesPerTrack`, like "Aplicar a esta
   pista" — so undo/redo, drafts and "Aplicar e reconstruir" carry it.
+  **Drawn like the suggestions** ("ficava bom se depois de introduzir os tons,
+  cria-se o gráfico como quando deteta os tons", 2026-10-18):
+  `toneTimelineChart` draws, per chart, a strip of the tone sounding at each
+  moment (from its first to its last beat, a part click seeks), the chart's
+  sections under it, and — when `/tone-suggestions` carries a timeline — the
+  recording's distortion above it (`gainBars`, the same bars "Sugestões por
+  secção" draws, now one helper for both). Each tone keeps one colour on every
+  chart (`toneColor`: its place in the plan, or in `jobTones` for the panel;
+  eight hues checked for colour-blind separation on the dark surface, a ninth
+  grey). Used in the preview and in "Tons de cada pista" (`#toneTimeline`,
+  `renderToneTimeline`, the set on screen — so what was applied stays drawn,
+  and hand-made changes are drawn too). Browser-only; verified with Playwright
+  (PT 1440 / EN 760 px: segments and their times, the curve once a timeline
+  exists, a click seeks, the panel after "Aplicar" and gone after Ctrl+Z, no
+  horizontal scroll, no page errors).
   (The top bar's "Pendente" never listed tone edits — a hand-made one neither;
   left as it was.)
 
@@ -5783,8 +5798,8 @@ is new and the bugs fixed in that version, English then Portuguese, nothing
 else**: the user's rule for every bump, 2026-10-16). A manual run
 (workflow_dispatch) is a dry build whose files stay as artifacts. The tag must
 equal `installer.iss`'s version, and `tests/test_release_version.py` keeps
-`installer.iss` and `__version__` (both `0.10.0-beta.16`, SemVer; pyproject
-reads `__version__`) and both changelogs' `## [0.10.0 beta 16]` in step. Since
+`installer.iss` and `__version__` (both `0.10.0-beta.17`, SemVer; pyproject
+reads `__version__`) and both changelogs' `## [0.10.0 beta 17]` in step. Since
 the versioning rules (below) `decide` also runs `tools/release_check` before
 building and never publishes a `-dev.N` version. `[pdf]` and the ML stack
 are not in the `.exe`; the README says which three extras need the source

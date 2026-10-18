@@ -6,6 +6,16 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+## [0.10.0 beta 17] — 2026-10-18
+
+### New
+
+- **Tones imported from a text show in a chart**, like the per-section suggestions' one: on each
+  track, a strip with the tone that sounds at each moment, the sections under it and, after
+  **Detect tone**, the recording's distortion above it, to compare. It shows when the answer is
+  read and stays in **Tones of each track** once applied (also with the tones you mark by hand);
+  clicking a part takes the cursor there.
+
 ## [0.10.0 beta 16] — 2026-10-17
 
 ### New

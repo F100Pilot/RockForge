@@ -5285,6 +5285,7 @@ document.getElementById('previewTone').addEventListener('change', async e => {
 
 document.getElementById('toneBaseSel').addEventListener('change', e => {
   toneBase = e.target.value || null;
+  renderToneTimeline();
   if (arrangements.length) showArr(currentArr);  // refresh the on-score tone markers
 });
 document.getElementById('toneExtraChecks').addEventListener('change', e => {
@@ -5313,9 +5314,30 @@ function renderToneChangesList(redraw = true) {
       renderToneChangesList();
     }));
   }
+  renderToneTimeline();
   // Keep the on-score tone markers (amber 🎸) in sync with the changes list —
   // adding/removing a change (or deleting/renaming a tone) redraws the score.
   if (redraw && arrangements.length) showArr(currentArr);
+}
+
+// The chart on screen's tones over time (its base, then each change), as the
+// pasted plan's preview draws them; nothing to draw without a tone or a change.
+function renderToneTimeline() {
+  const el = document.getElementById('toneTimeline');
+  if (!el) return;
+  const kind = currentKind();
+  el.hidden = !(kind && (toneBase || toneChanges.length));
+  if (el.hidden) { el.innerHTML = ''; return; }
+  const nameOf = key => key ? ((jobTones.find(t => t.key === key) || {}).name || key)
+    : T('Tom standard: {tone}', { tone: standardToneFor(kind) });
+  el.innerHTML = toneTimelineChart({
+    kind, base: toneBase, changes: toneChanges, nameOf,
+    clock: t => fmtClockTenths(Math.max(0, t - viewOrigin)),
+    colorOf: key => toneColor(jobTones, key),
+  });
+  el.querySelectorAll('.ts-seg[data-t]').forEach(seg => seg.addEventListener('click', () => {
+    audioSeek(Math.max(0, parseFloat(seg.dataset.t) - viewOrigin));
+  }));
 }
 
 function placeToneChange(chartTime) {
@@ -6894,6 +6916,8 @@ async function loadToneSuggestions(id) {
     toneSuggestions = { error: 0 };
   }
   renderToneSuggestions();
+  if (tonePlan) renderTonePlan();  // its chart draws the distortion measured there
+  renderToneTimeline();
 }
 
 function renderToneSuggestions() {
@@ -6928,16 +6952,7 @@ function toneTrackHtml(t, ti, timeline) {
   const t0 = segs.length ? segs[0].start : 0;
   const t1 = segs.length ? segs[segs.length - 1].end : 1;
   const span = Math.max(0.001, t1 - t0);
-  const pct = x => ((x - t0) / span * 100).toFixed(3);
-  // The recording's distortion over the same stretch, one bar per window.
-  const inRange = timeline.filter(w => w[0] >= t0 && w[0] < t1);
-  const bw = inRange.length ? Math.max(0.15, 100 / span * 0.9) : 0;
-  // Scaled to the song's loudest-distortion window, so the rise and fall shows.
-  const top = Math.max(0.3, ...timeline.map(w => Number(w[1]) || 0));
-  const bars = inRange.map(w => {
-    const h = Math.max(1, Math.round((Number(w[1]) || 0) / top * 28));
-    return `<rect x="${pct(w[0])}" y="${30 - h}" width="${bw.toFixed(3)}" height="${h}" fill="${w[2] ? '#c85bff' : '#3a3d48'}"/>`;
-  }).join('');
+  const bars = gainBars(timeline, t0, t1);
   const strip = segs.map(g => {
     const role = TONE_ROLE[g.role] || TONE_ROLE.silent;
     const w = ((g.end - g.start) / span * 100).toFixed(3);
@@ -6989,6 +7004,21 @@ function toneTrackHtml(t, ti, timeline) {
       </div>
     </div>
   </details>`;
+}
+
+// The recording's distortion over [t0, t1] (bundle clock), one bar per window
+// of a 100×30 viewBox, scaled to the song's loudest-distortion window so the
+// rise and fall shows; windows where the guitar is not playing are grey.
+function gainBars(timeline, t0, t1) {
+  const span = Math.max(0.001, t1 - t0);
+  const inRange = timeline.filter(w => w[0] >= t0 && w[0] < t1);
+  const bw = inRange.length ? Math.max(0.15, 100 / span * 0.9) : 0;
+  const top = Math.max(0.3, ...timeline.map(w => Number(w[1]) || 0));
+  return inRange.map(w => {
+    const h = Math.max(1, Math.round((Number(w[1]) || 0) / top * 28));
+    const x = ((w[0] - t0) / span * 100).toFixed(3);
+    return `<rect x="${x}" y="${30 - h}" width="${bw.toFixed(3)}" height="${h}" fill="${w[2] ? '#c85bff' : '#3a3d48'}"/>`;
+  }).join('');
 }
 
 // Consecutive parts with the same role and tone read as one line (the strip
@@ -7125,7 +7155,7 @@ function renderTonePlan() {
     const rows = [`<div class="tn-change"><span class="tn-change-time">${T('início')}</span>${icon('forward')}<b>${esc(nameOf(tr.tone_base))}</b></div>`]
       .concat((tr.tone_changes || []).map(c =>
         `<div class="tn-change"><span class="tn-change-time">${clock(c.time)}</span>${icon('forward')}<b>${esc(nameOf(c.name))}</b></div>`));
-    return `<div class="tp-track"><span class="tp-track-name">${esc(arrLabel(tr.kind))}</span><div class="tn-changes">${rows.join('')}</div></div>`;
+    return `<div class="tp-track"><span class="tp-track-name">${esc(arrLabel(tr.kind))}</span>${toneTimelineChart({ kind: tr.kind, base: tr.tone_base, changes: tr.tone_changes, nameOf, clock, colorOf: key => toneColor(p.tones, key) })}<div class="tn-changes">${rows.join('')}</div></div>`;
   }).join('') || `<span class="tn-empty">${T('A resposta não diz onde entra cada tom: só os tons passam para o projeto.')}</span>`;
   const warns = (p.warnings || []).length
     ? `<details class="tp-warn-wrap" open><summary>${T('{n} adaptação(ões) — lê antes de aplicar', { n: p.warnings.length })}</summary><ul class="tp-warn">${p.warnings.map(w => `<li>${esc(w)}</li>`).join('')}</ul></details>`
@@ -7139,8 +7169,63 @@ function renderTonePlan() {
     <p class="tn-hint">${T('São a opinião do assistente, não uma medição: confere de ouvido. "Aplicar" muda os tons como uma edição tua — podes desfazer, e só fica gravado com "Aplicar e reconstruir".')}</p>
     <div class="tp-acts"><button type="button" id="tonePlanApply" class="tn-btn">${T('Aplicar')}</button>
       <button type="button" id="tonePlanDiscard" class="secondary tn-btn">${T('Descartar')}</button></div>`;
+  box.querySelectorAll('.ts-seg[data-t]').forEach(el => el.addEventListener('click', () => {
+    audioSeek(Math.max(0, parseFloat(el.dataset.t) - viewOrigin));
+  }));
   document.getElementById('tonePlanApply').addEventListener('click', () => applyTonePlan(p));
   document.getElementById('tonePlanDiscard').addEventListener('click', () => { tonePlan = null; renderTonePlan(); });
+}
+
+// A tone's colour follows the tone (its place in the plan), never its rank in
+// a track, so one tone reads the same on every chart. Eight hues checked for
+// colour-blind separation on the page's dark surface; a ninth tone is grey.
+const TONE_PLAN_COLORS = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767'];
+function toneColor(tones, key) {
+  return TONE_PLAN_COLORS[tones.findIndex(t => t.key === key)] || '#6b6e78';
+}
+
+// The tone a chart plays at each moment, drawn like "Sugestões por secção": the
+// recording's distortion over it (once "Detetar tom" has measured it), a strip
+// with the tone that sounds at each moment, and the chart's sections under it.
+// Used by the pasted plan's preview and by "Tons de cada pista" (the set as it
+// is now, so what was applied stays drawn). Times are the build's clock.
+function toneTimelineChart({ kind, base, changes: list, colorOf, nameOf, clock }) {
+  const a = arrangements.find(x => x.kind === kind);
+  const beats = (a && a.beats) || [];
+  const changes = (list || []).slice().sort((x, y) => x.time - y.time);
+  const t0 = beats.length ? beats[0] : 0;
+  const t1 = Math.max(beats.length ? beats[beats.length - 1] : 0, ...changes.map(c => c.time + 1), t0 + 1);
+  const span = t1 - t0;
+  const runs = [{ key: base, start: t0 }];
+  for (const c of changes) {
+    if (c.time <= t0) runs[0].key = c.name;
+    else if (c.time < t1) runs.push({ key: c.name, start: c.time });
+  }
+  const strip = runs.map((r, i) => {
+    const end = i + 1 < runs.length ? runs[i + 1].start : t1;
+    const w = ((end - r.start) / span * 100).toFixed(3);
+    const name = nameOf(r.key);
+    const tip = `${name} · ${clock(r.start)}–${clock(end)}`;
+    return `<div class="ts-seg" data-t="${r.start}" style="width:${w}%;background:${colorOf(r.key)}" title="${esc(tip)}"><span>${esc(name)}</span></div>`;
+  }).join('');
+  // each section's name gets the room up to the next one (cut short, never on top of it)
+  const inside = ((a && a.sections) || []).filter(x => x.time >= t0 && x.time < t1);
+  const secs = inside.map((x, i) => {
+    const left = (x.time - t0) / span * 100;
+    const next = i + 1 < inside.length ? (inside[i + 1].time - t0) / span * 100 : 100;
+    return `<span class="tp-sec" style="left:${left.toFixed(3)}%;width:${(next - left).toFixed(3)}%" title="${esc(`${x.name} · ${clock(x.time)}`)}">${esc(x.name)}</span>`;
+  }).join('');
+  const timeline = (toneSuggestions && toneSuggestions.timeline) || [];
+  const curve = timeline.length
+    ? `<svg class="ts-gain" viewBox="0 0 100 30" preserveAspectRatio="none" aria-label="${T('Distorção ao longo da música')}">${gainBars(timeline, t0, t1)}</svg>`
+    : '';
+  const used = [...new Set(runs.map(r => r.key))];
+  const legend = used.map(k => `<span><i style="background:${colorOf(k)}"></i>${esc(nameOf(k))}</span>`).join('') +
+    (curve ? `<span><i style="background:#c85bff"></i>${T('Distorção da gravação')}</span>` : '');
+  return `<div class="tp-chart"><div class="${curve ? '' : 'tp-strip-only'}">${curve}<div class="ts-strip">${strip}</div></div>
+    ${secs ? `<div class="tp-secs">${secs}</div>` : ''}
+    <div class="ts-legend">${legend}</div>
+    ${curve ? '' : `<span class="tn-hint">${T('Com "Detetar tom", aparece também por cima a distorção da gravação, para comparares com estes tons.')}</span>`}</div>`;
 }
 
 // The plan's tones join the project (a different tone under a key already

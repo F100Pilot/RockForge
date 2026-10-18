@@ -6,6 +6,16 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+## [0.10.0 beta 17] — 2026-10-18
+
+### Novidades
+
+- **Os tons importados de um texto aparecem num gráfico**, como o das sugestões por secção: em
+  cada pista, uma faixa com o tom que soa em cada momento, as secções por baixo e, depois de
+  **Detetar tom**, a distorção da gravação por cima, para comparares. Aparece ao ler a resposta e
+  fica em **Tons de cada pista** depois de aplicar (também com os tons que marcas à mão); clicar
+  numa parte leva o cursor para lá.
+
 ## [0.10.0 beta 16] — 2026-10-17
 
 ### Novo

@@ -502,12 +502,16 @@ text** card (once the project is built):
    sections with each one's bar and time, the answer format and the game's gear, with each
    knob's limits. Paste it into ChatGPT (or another assistant).
 2. Copy its **whole** answer and paste it into the box.
-3. **Read the answer** shows the tones (with their gear), where each one comes in on each track
-   and **every adaptation** that was needed — gear read as the closest one, a knob outside its
+3. **Read the answer** shows the tones (with their gear), where each one comes in on each track —
+   in a chart per track, like the suggestions' one: a strip with the tone that sounds at each
+   moment, the sections under it and, once you have used **Detect tone**, the recording's
+   distortion above it — and **every adaptation** that was needed — gear read as the closest one, a knob outside its
    limits, a cabinet chosen for the amp, one tone too many on a track (the game switches between
    only 4 per track). A text without the tone block is refused.
 4. **Apply** changes the tones like an edit of your own (it can be undone); **Apply and rebuild**
-   saves them. A track the answer does not mention stays as it was.
+   saves them. A track the answer does not mention stays as it was. The same chart stays in
+   **Tones of each track**, with the tones of the track on screen (also the ones you mark by
+   hand); clicking a part takes the cursor there.
 
 It is the assistant's opinion, not a measurement: check it by ear.
 
