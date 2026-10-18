@@ -4,7 +4,7 @@
 
 Every version, newest first. What a version fixed and the bugs it still carried come from the bug and fix registers. Process: [docs/RELEASE_PROCESS.md](../docs/RELEASE_PROCESS.md).
 
-## 0.11.0-beta.3
+## 0.11.0-beta.4
 
 | | |
 |---|---|
@@ -14,6 +14,58 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 | Commit | _pending_ |
 | Build | GitHub Actions release workflow |
 | Artifacts | — |
+| Tests | CI (ruff, mypy, pytest, ESLint, Docker build) on the release commit, tools/release_check, and the frozen .exe smoke test of the release workflow |
+| Approved by | the maintainer (asked for the release) |
+
+**Goal:** Batches 2 and 3 of the code review: 28 medium/low fixes (GP export, stems after a reload, Windows UTF-8, .exe shutdown, lyrics formats, editor state between tracks/projects)
+
+**Bugs fixed:** 
+
+- [BUG-0309](bugs/import.md#bug-0309) Auto-pick put a "Lead/Rhythm" track in both slots and the build failed
+- [BUG-0310](bugs/import.md#bug-0310) A scoop from its own fret turned a note seconds earlier into a long slide
+- [BUG-0311](bugs/import.md#bug-0311) A trilled note lost its fingering, pick direction, slide and link
+- [BUG-0312](bugs/import.md#bug-0312) A capo pushed slide and trill targets past fret 24
+- [BUG-0313](bugs/export.md#bug-0313) The GP5 export of edited notes could write an unreadable file
+- [BUG-0314](bugs/export.md#bug-0314) The GP5 export drifted with whole-BPM rounding and lost the tempo of bars without notes
+- [BUG-0315](bugs/export.md#bug-0315) A tempo correction in the GP5 export lost to a tempo left on another track
+- [BUG-0316](bugs/import.md#bug-0316) A locked .gp file gave a 500 and left its upload
+- [BUG-0317](bugs/lyrics.md#bug-0317) A GP7 lyric line on a bar never played appeared at the start
+- [BUG-0318](bugs/dlc-builder.md#bug-0318) A half-step bend lost its value in the XML
+- [BUG-0319](bugs/dlc-builder.md#bug-0319) A chord with every string fret-hand muted was not marked muted in the XML
+- [BUG-0320](bugs/lyrics.md#bug-0320) UltraStar syllables of one word were shown as separate words
+- [BUG-0321](bugs/lyrics.md#bug-0321) An LRC line with several times put a time into the lyric
+- [BUG-0322](bugs/app.md#bug-0322) After a reload with other audio, dropping the old version reused its stems
+- [BUG-0323](bugs/app.md#bug-0323) Dropping a version left sibling versions with stems in a deleted folder
+- [BUG-0324](bugs/app.md#bug-0324) A project could be deleted while a detection ran on it
+- [BUG-0325](bugs/app.md#bug-0325) A refused new project left its recording in uploads, and "²" gave a 500
+- [BUG-0326](bugs/app.md#bug-0326) Two bundle downloads at once could corrupt the zip
+- [BUG-0327](bugs/tones.md#bug-0327) A tone with a bad value was accepted and failed the build later
+- [BUG-0328](bugs/audio.md#bug-0328) On Windows, a tag or path in Japanese or Cyrillic broke reading ffmpeg's output
+- [BUG-0329](bugs/psarc.md#bug-0329) WwiseConsole inherited the console's stdin
+- [BUG-0330](bugs/exe.md#bug-0330) A components install step that stalled silently never timed out
+- [BUG-0331](bugs/exe.md#bug-0331) Without WebView2 the .exe never shut down when the browser tab closed
+- [BUG-0332](bugs/app.md#bug-0332) Celery's hard time limit could leave a detection status stuck
+- [BUG-0333](bugs/editor.md#bug-0333) A note selection and the ↑/↓ note carried over to the other track
+- [BUG-0334](bugs/viewer.md#bug-0334) Opening another project quickly could show the previous one's charts or recording
+- [BUG-0335](bugs/editor.md#bug-0335) The merge bar grid piled up listeners each time Editar info opened
+- [BUG-0336](bugs/viewer.md#bug-0336) The 3D highway could start drawing after being closed while loading
+
+**Known bugs it carried:** 
+
+- [BUG-0337](bugs/psarc.md#bug-0337) Two songs whose names share the first 30 letters get the same song key (Low, now Deferred)
+
+**Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
+
+## 0.11.0-beta.3
+
+| | |
+|---|---|
+| Status | Beta |
+| Created | 2026-10-18 |
+| Published | 2026-10-18 |
+| Commit | 493ba6d1213a0861361146f508426865672cf9f0 |
+| Build | GitHub Actions release workflow |
+| Artifacts | https://github.com/F100Pilot/RockForge/releases/tag/v0.11.0-beta.3 |
 | Tests | CI (ruff, mypy, pytest, ESLint, Docker build) on the release commit, tools/release_check, and the frozen .exe smoke test of the release workflow |
 | Approved by | the maintainer (asked for the release) |
 
@@ -38,7 +90,37 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0307](bugs/import.md#bug-0307) A wrong value in an imported project broke the home page
 - [BUG-0308](bugs/import.md#bug-0308) A GP7/8 file with a two-staff track before the guitar charted the wrong bars
 
-**Known bugs it carried:** —
+**Known bugs it carried:** 
+
+- [BUG-0309](bugs/import.md#bug-0309) Auto-pick put a "Lead/Rhythm" track in both slots and the build failed (Medium, now Verified)
+- [BUG-0310](bugs/import.md#bug-0310) A scoop from its own fret turned a note seconds earlier into a long slide (Medium, now Verified)
+- [BUG-0311](bugs/import.md#bug-0311) A trilled note lost its fingering, pick direction, slide and link (Low, now Verified)
+- [BUG-0312](bugs/import.md#bug-0312) A capo pushed slide and trill targets past fret 24 (Low, now Verified)
+- [BUG-0313](bugs/export.md#bug-0313) The GP5 export of edited notes could write an unreadable file (Medium, now Verified)
+- [BUG-0314](bugs/export.md#bug-0314) The GP5 export drifted with whole-BPM rounding and lost the tempo of bars without notes (Medium, now Verified)
+- [BUG-0315](bugs/export.md#bug-0315) A tempo correction in the GP5 export lost to a tempo left on another track (Medium, now Verified)
+- [BUG-0316](bugs/import.md#bug-0316) A locked .gp file gave a 500 and left its upload (Medium, now Verified)
+- [BUG-0317](bugs/lyrics.md#bug-0317) A GP7 lyric line on a bar never played appeared at the start (Low, now Verified)
+- [BUG-0318](bugs/dlc-builder.md#bug-0318) A half-step bend lost its value in the XML (Medium, now Verified)
+- [BUG-0319](bugs/dlc-builder.md#bug-0319) A chord with every string fret-hand muted was not marked muted in the XML (Low, now Verified)
+- [BUG-0320](bugs/lyrics.md#bug-0320) UltraStar syllables of one word were shown as separate words (Medium, now Verified)
+- [BUG-0321](bugs/lyrics.md#bug-0321) An LRC line with several times put a time into the lyric (Medium, now Verified)
+- [BUG-0322](bugs/app.md#bug-0322) After a reload with other audio, dropping the old version reused its stems (Medium, now Verified)
+- [BUG-0323](bugs/app.md#bug-0323) Dropping a version left sibling versions with stems in a deleted folder (Medium, now Verified)
+- [BUG-0324](bugs/app.md#bug-0324) A project could be deleted while a detection ran on it (Medium, now Verified)
+- [BUG-0325](bugs/app.md#bug-0325) A refused new project left its recording in uploads, and "²" gave a 500 (Medium, now Verified)
+- [BUG-0326](bugs/app.md#bug-0326) Two bundle downloads at once could corrupt the zip (Low, now Verified)
+- [BUG-0327](bugs/tones.md#bug-0327) A tone with a bad value was accepted and failed the build later (Medium, now Verified)
+- [BUG-0328](bugs/audio.md#bug-0328) On Windows, a tag or path in Japanese or Cyrillic broke reading ffmpeg's output (Medium, now Verified)
+- [BUG-0329](bugs/psarc.md#bug-0329) WwiseConsole inherited the console's stdin (Low, now Verified)
+- [BUG-0330](bugs/exe.md#bug-0330) A components install step that stalled silently never timed out (Low, now Verified)
+- [BUG-0331](bugs/exe.md#bug-0331) Without WebView2 the .exe never shut down when the browser tab closed (Medium, now Verified)
+- [BUG-0332](bugs/app.md#bug-0332) Celery's hard time limit could leave a detection status stuck (Low, now Fixed)
+- [BUG-0333](bugs/editor.md#bug-0333) A note selection and the ↑/↓ note carried over to the other track (Medium, now Verified)
+- [BUG-0334](bugs/viewer.md#bug-0334) Opening another project quickly could show the previous one's charts or recording (Medium, now Fixed)
+- [BUG-0335](bugs/editor.md#bug-0335) The merge bar grid piled up listeners each time Editar info opened (Low, now Verified)
+- [BUG-0336](bugs/viewer.md#bug-0336) The 3D highway could start drawing after being closed while loading (Low, now Verified)
+- [BUG-0337](bugs/psarc.md#bug-0337) Two songs whose names share the first 30 letters get the same song key (Low, now Deferred)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -46,7 +128,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 
 | | |
 |---|---|
-| Status | Beta |
+| Status | Superseded |
 | Created | 2026-10-18 |
 | Published | 2026-10-18 |
 | Commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
@@ -78,6 +160,35 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0306](bugs/app.md#bug-0306) A refused cover upload deleted the cover the project had (Medium, now Verified)
 - [BUG-0307](bugs/import.md#bug-0307) A wrong value in an imported project broke the home page (High, now Verified)
 - [BUG-0308](bugs/import.md#bug-0308) A GP7/8 file with a two-staff track before the guitar charted the wrong bars (High, now Verified)
+- [BUG-0309](bugs/import.md#bug-0309) Auto-pick put a "Lead/Rhythm" track in both slots and the build failed (Medium, now Verified)
+- [BUG-0310](bugs/import.md#bug-0310) A scoop from its own fret turned a note seconds earlier into a long slide (Medium, now Verified)
+- [BUG-0311](bugs/import.md#bug-0311) A trilled note lost its fingering, pick direction, slide and link (Low, now Verified)
+- [BUG-0312](bugs/import.md#bug-0312) A capo pushed slide and trill targets past fret 24 (Low, now Verified)
+- [BUG-0313](bugs/export.md#bug-0313) The GP5 export of edited notes could write an unreadable file (Medium, now Verified)
+- [BUG-0314](bugs/export.md#bug-0314) The GP5 export drifted with whole-BPM rounding and lost the tempo of bars without notes (Medium, now Verified)
+- [BUG-0315](bugs/export.md#bug-0315) A tempo correction in the GP5 export lost to a tempo left on another track (Medium, now Verified)
+- [BUG-0316](bugs/import.md#bug-0316) A locked .gp file gave a 500 and left its upload (Medium, now Verified)
+- [BUG-0317](bugs/lyrics.md#bug-0317) A GP7 lyric line on a bar never played appeared at the start (Low, now Verified)
+- [BUG-0318](bugs/dlc-builder.md#bug-0318) A half-step bend lost its value in the XML (Medium, now Verified)
+- [BUG-0319](bugs/dlc-builder.md#bug-0319) A chord with every string fret-hand muted was not marked muted in the XML (Low, now Verified)
+- [BUG-0320](bugs/lyrics.md#bug-0320) UltraStar syllables of one word were shown as separate words (Medium, now Verified)
+- [BUG-0321](bugs/lyrics.md#bug-0321) An LRC line with several times put a time into the lyric (Medium, now Verified)
+- [BUG-0322](bugs/app.md#bug-0322) After a reload with other audio, dropping the old version reused its stems (Medium, now Verified)
+- [BUG-0323](bugs/app.md#bug-0323) Dropping a version left sibling versions with stems in a deleted folder (Medium, now Verified)
+- [BUG-0324](bugs/app.md#bug-0324) A project could be deleted while a detection ran on it (Medium, now Verified)
+- [BUG-0325](bugs/app.md#bug-0325) A refused new project left its recording in uploads, and "²" gave a 500 (Medium, now Verified)
+- [BUG-0326](bugs/app.md#bug-0326) Two bundle downloads at once could corrupt the zip (Low, now Verified)
+- [BUG-0327](bugs/tones.md#bug-0327) A tone with a bad value was accepted and failed the build later (Medium, now Verified)
+- [BUG-0328](bugs/audio.md#bug-0328) On Windows, a tag or path in Japanese or Cyrillic broke reading ffmpeg's output (Medium, now Verified)
+- [BUG-0329](bugs/psarc.md#bug-0329) WwiseConsole inherited the console's stdin (Low, now Verified)
+- [BUG-0330](bugs/exe.md#bug-0330) A components install step that stalled silently never timed out (Low, now Verified)
+- [BUG-0331](bugs/exe.md#bug-0331) Without WebView2 the .exe never shut down when the browser tab closed (Medium, now Verified)
+- [BUG-0332](bugs/app.md#bug-0332) Celery's hard time limit could leave a detection status stuck (Low, now Fixed)
+- [BUG-0333](bugs/editor.md#bug-0333) A note selection and the ↑/↓ note carried over to the other track (Medium, now Verified)
+- [BUG-0334](bugs/viewer.md#bug-0334) Opening another project quickly could show the previous one's charts or recording (Medium, now Fixed)
+- [BUG-0335](bugs/editor.md#bug-0335) The merge bar grid piled up listeners each time Editar info opened (Low, now Verified)
+- [BUG-0336](bugs/viewer.md#bug-0336) The 3D highway could start drawing after being closed while loading (Low, now Verified)
+- [BUG-0337](bugs/psarc.md#bug-0337) Two songs whose names share the first 30 letters get the same song key (Low, now Deferred)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 

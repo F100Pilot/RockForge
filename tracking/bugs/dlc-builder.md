@@ -486,3 +486,87 @@ The XML writer had its own "new anchor when a group leaves the window" rule whil
 - 2026-10-15 — Fixed: commit c2b203891b, 4e145389ab
 - 2026-10-15 — Verified: automated
 - 2026-10-15 — Closed: released in 0.10.0-beta.5
+
+## BUG-0318
+
+**A half-step bend lost its value in the XML**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | Medium |
+| Priority | P3 |
+| Status | Verified |
+
+bend was int(round(x)): 0.5 became 0 and was dropped, 1.5 became 2.
+
+**Steps to reproduce:** 
+
+1. See the description (found by reading the code)
+
+**Expected:** As described in the solution.
+
+**Observed:** bend was int(round(x)): 0.5 became 0 and was dropped, 1.5 became 2.
+
+**Root cause:** Integer rounding in the writer.
+
+**Fixes:** [FIX-0318](../FIX_LOG.md#fix-0318) (0.11.0-beta.4)
+
+**Verified:** tests/test_rsxml_writer.py::test_a_half_step_bend_and_a_muted_chord_say_so_in_the_xml passed, and fails with the fix reverted (by pytest (the test fails on the old code))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit 0b354c27fe
+- 2026-10-18 — Verified: its test passes and fails on the old code
+
+## BUG-0319
+
+**A chord with every string fret-hand muted was not marked muted in the XML**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | Low |
+| Priority | P3 |
+| Status | Verified |
+
+fretHandMute was hard-coded 0 on <chord>.
+
+**Steps to reproduce:** 
+
+1. See the description (found by reading the code)
+
+**Expected:** As described in the solution.
+
+**Observed:** fretHandMute was hard-coded 0 on <chord>.
+
+**Root cause:** Not mirrored from the notes like palm mute.
+
+**Fixes:** [FIX-0319](../FIX_LOG.md#fix-0319) (0.11.0-beta.4)
+
+**Verified:** tests/test_rsxml_writer.py::test_a_half_step_bend_and_a_muted_chord_say_so_in_the_xml passed, and fails with the fix reverted (by pytest (the test fails on the old code))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit 0b354c27fe
+- 2026-10-18 — Verified: its test passes and fails on the old code

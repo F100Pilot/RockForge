@@ -314,6 +314,34 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0306](#fix-0306) | BUG-0306 | 0.11.0-beta.3 | passed | automated |
 | [FIX-0307](#fix-0307) | BUG-0307 | 0.11.0-beta.3 | passed | automated |
 | [FIX-0308](#fix-0308) | BUG-0308 | 0.11.0-beta.3 | passed | automated |
+| [FIX-0309](#fix-0309) | BUG-0309 | 0.11.0-beta.4 | passed | automated |
+| [FIX-0310](#fix-0310) | BUG-0310 | 0.11.0-beta.4 | passed | automated |
+| [FIX-0311](#fix-0311) | BUG-0311 | 0.11.0-beta.4 | passed | automated |
+| [FIX-0312](#fix-0312) | BUG-0312 | 0.11.0-beta.4 | passed | automated |
+| [FIX-0313](#fix-0313) | BUG-0313 | 0.11.0-beta.4 | passed | automated |
+| [FIX-0314](#fix-0314) | BUG-0314 | 0.11.0-beta.4 | passed | automated |
+| [FIX-0315](#fix-0315) | BUG-0315 | 0.11.0-beta.4 | passed | automated |
+| [FIX-0316](#fix-0316) | BUG-0316 | 0.11.0-beta.4 | passed | automated |
+| [FIX-0317](#fix-0317) | BUG-0317 | 0.11.0-beta.4 | passed | automated |
+| [FIX-0318](#fix-0318) | BUG-0318 | 0.11.0-beta.4 | passed | automated |
+| [FIX-0319](#fix-0319) | BUG-0319 | 0.11.0-beta.4 | passed | automated |
+| [FIX-0320](#fix-0320) | BUG-0320 | 0.11.0-beta.4 | passed | automated |
+| [FIX-0321](#fix-0321) | BUG-0321 | 0.11.0-beta.4 | passed | automated |
+| [FIX-0322](#fix-0322) | BUG-0322 | 0.11.0-beta.4 | passed | automated |
+| [FIX-0323](#fix-0323) | BUG-0323 | 0.11.0-beta.4 | passed | automated |
+| [FIX-0324](#fix-0324) | BUG-0324 | 0.11.0-beta.4 | passed | automated |
+| [FIX-0325](#fix-0325) | BUG-0325 | 0.11.0-beta.4 | passed | automated |
+| [FIX-0326](#fix-0326) | BUG-0326 | 0.11.0-beta.4 | passed | automated |
+| [FIX-0327](#fix-0327) | BUG-0327 | 0.11.0-beta.4 | passed | automated |
+| [FIX-0328](#fix-0328) | BUG-0328 | 0.11.0-beta.4 | passed | automated |
+| [FIX-0329](#fix-0329) | BUG-0329 | 0.11.0-beta.4 | passed | automated |
+| [FIX-0330](#fix-0330) | BUG-0330 | 0.11.0-beta.4 | passed | automated |
+| [FIX-0331](#fix-0331) | BUG-0331 | 0.11.0-beta.4 | passed | automated |
+| [FIX-0332](#fix-0332) | BUG-0332 | 0.11.0-beta.4 | not run | pending |
+| [FIX-0333](#fix-0333) | BUG-0333 | 0.11.0-beta.4 | not run | manual |
+| [FIX-0334](#fix-0334) | BUG-0334 | 0.11.0-beta.4 | not run | pending |
+| [FIX-0335](#fix-0335) | BUG-0335 | 0.11.0-beta.4 | not run | manual |
+| [FIX-0336](#fix-0336) | BUG-0336 | 0.11.0-beta.4 | not run | manual |
 
 ## FIX-0001
 
@@ -6782,3 +6810,591 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | passed |
 | Validation | automated |
 | Regression risk | Low: covered by the suite (pytest, ruff, mypy, ESLint all green). |
+
+## FIX-0309
+
+**Bugs:** [BUG-0309](bugs/import.md#bug-0309)
+
+**Root cause:** auto_pick_tracks scanned for "lead" and "rhythm" independently.
+
+**Solution:** Rhythm never takes the Lead's track.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.4 |
+| Commits | d9ad9d0d24b6aac63d7bae8a5d92ef9250ff3cd2 |
+| Components | src/rockforge/application/gp_pipeline.py |
+| Tests | tests/test_merge_tracks.py::test_a_track_named_lead_and_rhythm_is_picked_once |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: the suite (pytest, ruff, mypy, ESLint) is green. |
+
+## FIX-0310
+
+**Bugs:** [BUG-0310](bugs/import.md#bug-0310)
+
+**Root cause:** expand_slide_ins took the previous-note branch without checking the room.
+
+**Solution:** Only a note that crowds the attack slides into it.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.4 |
+| Commits | d9ad9d0d24b6aac63d7bae8a5d92ef9250ff3cd2 |
+| Components | src/rockforge/domain/music.py |
+| Tests | tests/test_domain.py::test_a_scoop_from_its_own_fret_never_turns_an_earlier_note_into_a_slide |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: the suite (pytest, ruff, mypy, ESLint) is green. |
+
+## FIX-0311
+
+**Bugs:** [BUG-0311](bugs/import.md#bug-0311)
+
+**Root cause:** expand_trills built fresh notes.
+
+**Solution:** Steps are built with replace(); the slide/link go to the last step.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.4 |
+| Commits | d9ad9d0d24b6aac63d7bae8a5d92ef9250ff3cd2 |
+| Components | src/rockforge/domain/music.py |
+| Tests | tests/test_domain.py::test_a_trill_keeps_the_notes_fingering_and_ends_with_its_slide |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: the suite (pytest, ruff, mypy, ESLint) is green. |
+
+## FIX-0312
+
+**Bugs:** [BUG-0312](bugs/import.md#bug-0312)
+
+**Root cause:** apply_capo added the capo to targets without a bound.
+
+**Solution:** Slide targets are kept at 24 at most; a trill target past it is dropped.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.4 |
+| Commits | d9ad9d0d24b6aac63d7bae8a5d92ef9250ff3cd2 |
+| Components | src/rockforge/infrastructure/gpimport/strings.py |
+| Tests | tests/test_domain.py::test_the_capo_keeps_slide_and_trill_targets_on_the_neck |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: the suite (pytest, ruff, mypy, ESLint) is green. |
+
+## FIX-0313
+
+**Bugs:** [BUG-0313](bugs/export.md#bug-0313)
+
+**Root cause:** Notes of one snapped tick were merged without checking strings.
+
+**Solution:** One note per string per beat; the others are counted and said.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.4 |
+| Commits | 9fff3a38378271fc3c2f9c3e4863a9f9f42974c7 |
+| Components | src/rockforge/infrastructure/gpexport/arrangement_writer.py |
+| Tests | tests/test_gp_arrangement_writer.py::test_fast_notes_snapped_onto_one_string_still_give_a_readable_file |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: the suite (pytest, ruff, mypy, ESLint) is green. |
+
+## FIX-0314
+
+**Bugs:** [BUG-0314](bugs/export.md#bug-0314)
+
+**Root cause:** Rounding without carrying the error; the MixTableChange attached to the first note beat.
+
+**Solution:** The rounding error is carried bar to bar and reported; the tempo change goes on the bar's first beat, rest or note.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.4 |
+| Commits | 9fff3a38378271fc3c2f9c3e4863a9f9f42974c7 |
+| Components | src/rockforge/infrastructure/gpexport/arrangement_writer.py |
+| Tests | tests/test_gp_arrangement_writer.py::test_the_rounding_of_each_bars_tempo_does_not_add_up |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: the suite (pytest, ruff, mypy, ESLint) is green. |
+
+## FIX-0315
+
+**Bugs:** [BUG-0315](bugs/export.md#bug-0315)
+
+**Root cause:** Only track 0's first beat was set.
+
+**Solution:** Every tempo change on the corrected bar's first beat, on any track, is updated.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.4 |
+| Commits | 9fff3a38378271fc3c2f9c3e4863a9f9f42974c7 |
+| Components | src/rockforge/infrastructure/gpexport/tempo_writer.py |
+| Tests | tests/test_gp_tempo_writer.py::test_a_correction_wins_over_a_tempo_left_on_another_track |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: the suite (pytest, ruff, mypy, ESLint) is green. |
+
+## FIX-0316
+
+**Bugs:** [BUG-0316](bugs/import.md#bug-0316)
+
+**Root cause:** _load_gpif caught only zip/OS errors.
+
+**Solution:** It is refused in words (IngestionError).
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.4 |
+| Commits | 9fff3a38378271fc3c2f9c3e4863a9f9f42974c7 |
+| Components | src/rockforge/infrastructure/gpimport/gpif_parser.py |
+| Tests | tests/test_gpif_import.py::test_a_locked_gp_file_is_refused_in_words_not_a_crash |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: the suite (pytest, ruff, mypy, ESLint) is green. |
+
+## FIX-0317
+
+**Bugs:** [BUG-0317](bugs/lyrics.md#bug-0317)
+
+**Root cause:** An `or [0]` fallback.
+
+**Solution:** Such a line has no place and is left out.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.4 |
+| Commits | 9fff3a38378271fc3c2f9c3e4863a9f9f42974c7 |
+| Components | src/rockforge/infrastructure/gpimport/gpif_parser.py |
+| Tests | tests/test_gpif_import.py::test_a_lyric_line_on_a_bar_never_played_is_not_put_at_the_start |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: the suite (pytest, ruff, mypy, ESLint) is green. |
+
+## FIX-0318
+
+**Bugs:** [BUG-0318](bugs/dlc-builder.md#bug-0318)
+
+**Root cause:** Integer rounding in the writer.
+
+**Solution:** The bend is written as it is.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.4 |
+| Commits | 0b354c27fe11fcef0850b5bcd8494007e5e26229 |
+| Components | src/rockforge/infrastructure/rsxml/writer.py |
+| Tests | tests/test_rsxml_writer.py::test_a_half_step_bend_and_a_muted_chord_say_so_in_the_xml |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: the suite (pytest, ruff, mypy, ESLint) is green. |
+
+## FIX-0319
+
+**Bugs:** [BUG-0319](bugs/dlc-builder.md#bug-0319)
+
+**Root cause:** Not mirrored from the notes like palm mute.
+
+**Solution:** Set when every note of the chord is muted.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.4 |
+| Commits | 0b354c27fe11fcef0850b5bcd8494007e5e26229 |
+| Components | src/rockforge/infrastructure/rsxml/writer.py |
+| Tests | tests/test_rsxml_writer.py::test_a_half_step_bend_and_a_muted_chord_say_so_in_the_xml |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: the suite (pytest, ruff, mypy, ESLint) is green. |
+
+## FIX-0320
+
+**Bugs:** [BUG-0320](bugs/lyrics.md#bug-0320)
+
+**Root cause:** The leading/trailing spaces were stripped before deciding.
+
+**Solution:** A syllable joined to the previous one gets the "-" join.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.4 |
+| Commits | 0b354c27fe11fcef0850b5bcd8494007e5e26229 |
+| Components | src/rockforge/infrastructure/rsxml/vocals.py |
+| Tests | tests/test_vocals.py::test_ultrastar_syllables_of_one_word_are_joined_and_words_are_not |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: the suite (pytest, ruff, mypy, ESLint) is green. |
+
+## FIX-0321
+
+**Bugs:** [BUG-0321](bugs/lyrics.md#bug-0321)
+
+**Root cause:** Only the first tag was parsed.
+
+**Solution:** Every leading time gives a stamp of the text.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.4 |
+| Commits | 0b354c27fe11fcef0850b5bcd8494007e5e26229 |
+| Components | src/rockforge/infrastructure/rsxml/vocals.py |
+| Tests | tests/test_vocals.py::test_an_lrc_line_with_several_times_is_sung_at_each_of_them |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: the suite (pytest, ruff, mypy, ESLint) is green. |
+
+## FIX-0322
+
+**Bugs:** [BUG-0322](bugs/app.md#bug-0322)
+
+**Root cause:** The carry ignored which recording the stems belong to.
+
+**Solution:** Stems go only to a version with the same recording.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.4 |
+| Commits | c322940e566be612aff14fcf37825c73d3d59e2c |
+| Components | src/rockforge/interfaces/api/routers/jobs.py |
+| Tests | tests/test_api.py::test_dropping_a_version_gives_its_stems_only_to_one_that_plays_the_same_recording |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: the suite (pytest, ruff, mypy, ESLint) is green. |
+
+## FIX-0323
+
+**Bugs:** [BUG-0323](bugs/app.md#bug-0323)
+
+**Root cause:** Other forks were not updated.
+
+**Solution:** Every version's stem paths follow the move.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.4 |
+| Commits | c322940e566be612aff14fcf37825c73d3d59e2c |
+| Components | src/rockforge/interfaces/api/routers/jobs.py |
+| Tests | tests/test_api.py::test_dropping_a_version_gives_its_stems_only_to_one_that_plays_the_same_recording |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: the suite (pytest, ruff, mypy, ESLint) is green. |
+
+## FIX-0324
+
+**Bugs:** [BUG-0324](bugs/app.md#bug-0324)
+
+**Root cause:** Detection statuses were not checked.
+
+**Solution:** 409 while a detection or separation runs, unless forced.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.4 |
+| Commits | c322940e566be612aff14fcf37825c73d3d59e2c |
+| Components | src/rockforge/interfaces/api/routers/jobs.py |
+| Tests | tests/test_api.py::test_a_project_is_not_deleted_while_a_detection_runs_on_it |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: the suite (pytest, ruff, mypy, ESLint) is green. |
+
+## FIX-0325
+
+**Bugs:** [BUG-0325](bugs/app.md#bug-0325)
+
+**Root cause:** No cleanup after the copy; isdigit.
+
+**Solution:** The copied recording is removed on any refusal; isdecimal; gp_token must name a file.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.4 |
+| Commits | c322940e566be612aff14fcf37825c73d3d59e2c |
+| Components | src/rockforge/interfaces/api/routers/jobs.py |
+| Tests | tests/test_api.py::test_a_refused_new_project_leaves_no_recording_behind |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: the suite (pytest, ruff, mypy, ESLint) is green. |
+
+## FIX-0326
+
+**Bugs:** [BUG-0326](bugs/app.md#bug-0326)
+
+**Root cause:** make_archive to a fixed name.
+
+**Solution:** Each download builds its own zip, removed once sent.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.4 |
+| Commits | c322940e566be612aff14fcf37825c73d3d59e2c |
+| Components | src/rockforge/interfaces/api/routers/delivery.py |
+| Tests | tests/test_api.py::test_each_bundle_download_is_its_own_zip |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: the suite (pytest, ruff, mypy, ESLint) is green. |
+
+## FIX-0327
+
+**Bugs:** [BUG-0327](bugs/tones.md#bug-0327)
+
+**Root cause:** Tones were stored unchecked.
+
+**Solution:** Tones are checked when they arrive (rebuild, library, project files).
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.4 |
+| Commits | c322940e566be612aff14fcf37825c73d3d59e2c |
+| Components | src/rockforge/interfaces/api/app.py; src/rockforge/interfaces/api/routers/sync.py; src/rockforge/interfaces/api/routers/tones.py |
+| Tests | tests/test_api.py::test_a_tone_that_cannot_be_built_is_refused_up_front |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: the suite (pytest, ruff, mypy, ESLint) is green. |
+
+## FIX-0328
+
+**Bugs:** [BUG-0328](bugs/audio.md#bug-0328)
+
+**Root cause:** No encoding on the subprocess calls.
+
+**Solution:** UTF-8 with replacement on every external tool's output.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.4 |
+| Commits | 76c44a8bcd99c40bbb5dec680d6702fb63f077ae |
+| Components | src/rockforge/infrastructure/_subprocess.py; src/rockforge/infrastructure/normalize/loudness.py; src/rockforge/infrastructure/packaging/wwise.py; src/rockforge/infrastructure/packaging/psarc/packer.py |
+| Tests | tests/test_ffmpeg_normalizer.py::test_external_tools_output_is_read_as_utf8_on_every_system |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: the suite (pytest, ruff, mypy, ESLint) is green. |
+
+## FIX-0329
+
+**Bugs:** [BUG-0329](bugs/psarc.md#bug-0329)
+
+**Root cause:** stdin not set.
+
+**Solution:** stdin=DEVNULL.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.4 |
+| Commits | 76c44a8bcd99c40bbb5dec680d6702fb63f077ae |
+| Components | src/rockforge/infrastructure/packaging/wwise.py |
+| Tests | tests/test_ffmpeg_normalizer.py::test_external_tools_output_is_read_as_utf8_on_every_system |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: the suite (pytest, ruff, mypy, ESLint) is green. |
+
+## FIX-0330
+
+**Bugs:** [BUG-0330](bugs/exe.md#bug-0330)
+
+**Root cause:** readline blocked.
+
+**Solution:** A timer kills the step at its limit.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.4 |
+| Commits | 76c44a8bcd99c40bbb5dec680d6702fb63f077ae |
+| Components | src/rockforge/infrastructure/components.py |
+| Tests | tests/test_components.py::test_a_step_that_stalls_without_printing_is_stopped_at_its_limit |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: the suite (pytest, ruff, mypy, ESLint) is green. |
+
+## FIX-0331
+
+**Bugs:** [BUG-0331](bugs/exe.md#bug-0331)
+
+**Root cause:** The idle value was chosen before knowing the window would open.
+
+**Solution:** The browser fallback restores the browser's value (a value the user set is kept).
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.4 |
+| Commits | 76c44a8bcd99c40bbb5dec680d6702fb63f077ae |
+| Components | start_standalone.py |
+| Tests | tests/test_standalone_launcher.py::test_when_the_window_fails_the_browser_gets_its_tab_close_watchdog_back |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: the suite (pytest, ruff, mypy, ESLint) is green. |
+
+## FIX-0332
+
+**Bugs:** [BUG-0332](bugs/app.md#bug-0332)
+
+**Root cause:** No soft limit.
+
+**Solution:** soft_time_limit a minute before the hard one: the task records the failure.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.4 |
+| Commits | 76c44a8bcd99c40bbb5dec680d6702fb63f077ae |
+| Components | src/rockforge/interfaces/worker/celery_app.py |
+| Tests | — |
+| Manual checks | — |
+| Test result | not run |
+| Validation | _pending_ |
+| Regression risk | Low: the suite (pytest, ruff, mypy, ESLint) is green. |
+
+## FIX-0333
+
+**Bugs:** [BUG-0333](bugs/editor.md#bug-0333)
+
+**Root cause:** Not reset on a tab change.
+
+**Solution:** Cleared on every tab change.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.4 |
+| Commits | e0e939b8ce89d45515eb943713868c86fcd56fdc |
+| Components | web/app.js |
+| Tests | — |
+| Manual checks | Playwright: selection 0 and neLast null after switching from Lead to Rhythm |
+| Test result | not run |
+| Validation | manual |
+| Regression risk | Low: the suite (pytest, ruff, mypy, ESLint) is green. |
+
+## FIX-0334
+
+**Bugs:** [BUG-0334](bugs/viewer.md#bug-0334)
+
+**Root cause:** No check after each await.
+
+**Solution:** Each load checks it is still for the project on screen; a newer decode wins.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.4 |
+| Commits | e0e939b8ce89d45515eb943713868c86fcd56fdc |
+| Components | web/app.js |
+| Tests | — |
+| Manual checks | — |
+| Test result | not run |
+| Validation | _pending_ |
+| Regression risk | Low: the suite (pytest, ruff, mypy, ESLint) is green. |
+
+## FIX-0335
+
+**Bugs:** [BUG-0335](bugs/editor.md#bug-0335)
+
+**Root cause:** Wired on every render.
+
+**Solution:** Wired once on the card, by delegation.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.4 |
+| Commits | e0e939b8ce89d45515eb943713868c86fcd56fdc |
+| Components | web/app.js |
+| Tests | — |
+| Manual checks | Playwright: after opening Editar info four times, one click toggles a bar once |
+| Test result | not run |
+| Validation | manual |
+| Regression risk | Low: the suite (pytest, ruff, mypy, ESLint) is green. |
+
+## FIX-0336
+
+**Bugs:** [BUG-0336](bugs/viewer.md#bug-0336)
+
+**Root cause:** No generation check.
+
+**Solution:** An open that finds it was closed meanwhile gives up.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.4 |
+| Commits | e0e939b8ce89d45515eb943713868c86fcd56fdc |
+| Components | web/highway3d.js |
+| Tests | — |
+| Manual checks | Playwright: open then close before three.js loads → Highway3D.ready stays false |
+| Test result | not run |
+| Validation | manual |
+| Regression risk | Low: the suite (pytest, ruff, mypy, ESLint) is green. |

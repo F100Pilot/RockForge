@@ -6,6 +6,40 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+## [0.11.0 beta 4] — 2026-10-18
+
+### Correções
+
+- **Projetos e ficheiros:**
+  - Uma pista chamada "Lead/Rhythm" já não vai para os dois arranjos (a construção falhava).
+  - Um ficheiro .gp bloqueado no Guitar Pro é recusado com uma mensagem, em vez de um erro interno.
+  - Um projeto novo recusado já não deixa a gravação esquecida no disco.
+  - Não se apaga um projeto enquanto corre uma deteção ou separação nele.
+- **Partitura importada:**
+  - Um slide de entrada no traste 1 já não transforma uma nota anterior num slide de segundos.
+  - Os trilos guardam a dedilhação e o slide final.
+  - O capo já não leva alvos de slide para lá do traste 24.
+  - Uma linha de letra GP7 num compasso que nunca toca já não aparece no início.
+- **Exportar para Guitar Pro:**
+  - Notas muito rápidas na mesma corda já não estragam o ficheiro.
+  - O arredondamento do BPM já não acumula desvio, e o andamento de compassos sem notas já não se perde.
+  - Uma correção de andamento ganha a um andamento deixado noutra pista.
+- **Letras:**
+  - As sílabas UltraStar da mesma palavra ficam ligadas.
+  - Uma linha LRC com vários tempos é cantada em cada um.
+- **DLC Builder:** o bend de meio tom e o acorde todo abafado passam a ser escritos no XML.
+- **Versões:** ao apagar a versão anterior, os instrumentos separados só passam para uma versão que usa a mesma gravação, e as versões irmãs continuam a encontrá-los.
+- **Transferências:** duas transferências do pacote ao mesmo tempo já não o estragam.
+- **Tons:** um tom com valores inválidos é recusado logo, em vez de fazer falhar a construção.
+- **Windows:** etiquetas ou caminhos em japonês ou cirílico já não fazem falhar a construção.
+- **.exe:**
+  - Sem WebView2, volta a desligar-se quando se fecha o separador do browser.
+  - A instalação dos componentes já não fica parada para sempre num download que encrava.
+- **Editor:**
+  - A seleção de notas e o ↑/↓ já não passam para a outra pista.
+  - Abrir outro projeto depressa já não mostra a partitura ou a gravação do anterior.
+  - A pista 3D fechada enquanto carrega já não arranca.
+
 ## [0.11.0 beta 3] — 2026-10-18
 
 ### Novidades

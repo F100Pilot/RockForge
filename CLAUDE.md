@@ -5850,7 +5850,27 @@ code) found these; the rules they leave behind:
   ASCII); the XML reader reads `<capo>` as an element; `note_unused_byte` allows
   1; a cover upload is checked by its bytes before the old one goes; the snap
   select keeps `'cursor'`.
-Lots 2 and 3 (medium/low) are listed in the review's report, not yet done.
+Lots 2 and 3 (BUG-0309…0337), the rules they leave:
+- **Stems belong to the recording**: "drop the previous version" carries
+  `demucs_stems` only to a version with the same `source`, and rewrites the
+  stem paths of EVERY version pointing into the moved folder.
+- **A project with a detection running is not deleted** (`_detection_running`,
+  unless `force`); `/jobs/gp` removes the recording it copied on any refusal.
+- **Each bundle download is its own zip**, removed once sent.
+- **Tones are checked on arrival** (`api._check_tones`: rebuild, library, rfproj).
+- **External tools' output is read as UTF-8** (`HARDENED_RUN_KWARGS`, loudness,
+  Wwise — which also gets `stdin=DEVNULL`); the components step limit is a timer.
+- **The .exe's browser fallback restores the idle watchdog**
+  (`restore_browser_idle_shutdown`) when the window could not open.
+- **GP5 export**: one note per string per beat (`string_clashes`), the whole-BPM
+  rounding carried bar to bar (`tempo_drift_s`), and a bar's tempo change on its
+  first beat even when it is a rest (it used to need a note). `tempo_writer`
+  updates every tempo change on the corrected bar's first beat on every track.
+- **The viewer drops late responses of another project** (`staleFor`, a
+  `waveToken` for decodes), clears the selection and `neLast` on a tab change,
+  and wires the merge grid once (by delegation on the card).
+- Deferred on purpose (BUG-0337): the 30-character song key can collide; a
+  hashed key would reset the progress of every long-titled song — decide first.
 
 ## Async detection tasks (the `detect_lyrics` / `detect_tones` pattern)
 

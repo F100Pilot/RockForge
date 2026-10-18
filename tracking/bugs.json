@@ -15401,6 +15401,1327 @@
           "note": "its test passes and fails on the old code"
         }
       ]
+    },
+    {
+      "id": "BUG-0309",
+      "title": "Auto-pick put a \"Lead/Rhythm\" track in both slots and the build failed",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "import",
+      "description": "Without a chosen track, a lone track named \"Lead/Rhythm Guitar\" was picked for Lead and for Rhythm, and the build refused two charts on one track.",
+      "steps": [
+        "See the description (found by reading the code)"
+      ],
+      "expected": "As described in the solution.",
+      "observed": "Without a chosen track, a lone track named \"Lead/Rhythm Guitar\" was picked for Lead and for Rhythm, and the build refused two charts on one track.",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Verified",
+      "root_cause": "auto_pick_tracks scanned for \"lead\" and \"rhythm\" independently.",
+      "fixes": [
+        "FIX-0309"
+      ],
+      "verified_by": "pytest (the test fails on the old code)",
+      "verification": "tests/test_merge_tracks.py::test_a_track_named_lead_and_rhythm_is_picked_once passed, and fails with the fix reverted",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit d9ad9d0d24"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "its test passes and fails on the old code"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0310",
+      "title": "A scoop from its own fret turned a note seconds earlier into a long slide",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "import",
+      "description": "A slide into fret 1 from below (source max(1, fret-3) = 1) with room before it fell through to \"the previous note slides into it\", whatever the gap, making a note 8 s earlier an 8 s slide.",
+      "steps": [
+        "See the description (found by reading the code)"
+      ],
+      "expected": "As described in the solution.",
+      "observed": "A slide into fret 1 from below (source max(1, fret-3) = 1) with room before it fell through to \"the previous note slides into it\", whatever the gap, making a note 8 s earlier an 8 s slide.",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Verified",
+      "root_cause": "expand_slide_ins took the previous-note branch without checking the room.",
+      "fixes": [
+        "FIX-0310"
+      ],
+      "verified_by": "pytest (the test fails on the old code)",
+      "verification": "tests/test_domain.py::test_a_scoop_from_its_own_fret_never_turns_an_earlier_note_into_a_slide passed, and fails with the fix reverted",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit d9ad9d0d24"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "its test passes and fails on the old code"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0311",
+      "title": "A trilled note lost its fingering, pick direction, slide and link",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "import",
+      "description": "Each trill step was a bare TabNote; the first step kept SLIDE with no target and the last step had no slide or link.",
+      "steps": [
+        "See the description (found by reading the code)"
+      ],
+      "expected": "As described in the solution.",
+      "observed": "Each trill step was a bare TabNote; the first step kept SLIDE with no target and the last step had no slide or link.",
+      "severity": "Low",
+      "priority": "P3",
+      "status": "Verified",
+      "root_cause": "expand_trills built fresh notes.",
+      "fixes": [
+        "FIX-0311"
+      ],
+      "verified_by": "pytest (the test fails on the old code)",
+      "verification": "tests/test_domain.py::test_a_trill_keeps_the_notes_fingering_and_ends_with_its_slide passed, and fails with the fix reverted",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit d9ad9d0d24"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "its test passes and fails on the old code"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0312",
+      "title": "A capo pushed slide and trill targets past fret 24",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "import",
+      "description": "Only the note's own fret was checked against 24; an unpitched slide-out capped at 22 became 27 with capo 5.",
+      "steps": [
+        "See the description (found by reading the code)"
+      ],
+      "expected": "As described in the solution.",
+      "observed": "Only the note's own fret was checked against 24; an unpitched slide-out capped at 22 became 27 with capo 5.",
+      "severity": "Low",
+      "priority": "P3",
+      "status": "Verified",
+      "root_cause": "apply_capo added the capo to targets without a bound.",
+      "fixes": [
+        "FIX-0312"
+      ],
+      "verified_by": "pytest (the test fails on the old code)",
+      "verification": "tests/test_domain.py::test_the_capo_keeps_slide_and_trill_targets_on_the_neck passed, and fails with the fix reverted",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit d9ad9d0d24"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "its test passes and fails on the old code"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0313",
+      "title": "The GP5 export of edited notes could write an unreadable file",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "export",
+      "description": "Two onsets snapped onto one tick on one string became two notes on one string in one beat, which the GP5 reader refuses (fast triplets, 32nd runs).",
+      "steps": [
+        "See the description (found by reading the code)"
+      ],
+      "expected": "As described in the solution.",
+      "observed": "Two onsets snapped onto one tick on one string became two notes on one string in one beat, which the GP5 reader refuses (fast triplets, 32nd runs).",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Verified",
+      "root_cause": "Notes of one snapped tick were merged without checking strings.",
+      "fixes": [
+        "FIX-0313"
+      ],
+      "verified_by": "pytest (the test fails on the old code)",
+      "verification": "tests/test_gp_arrangement_writer.py::test_fast_notes_snapped_onto_one_string_still_give_a_readable_file passed, and fails with the fix reverted",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit 9fff3a3837"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "its test passes and fails on the old code"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0314",
+      "title": "The GP5 export drifted with whole-BPM rounding and lost the tempo of bars without notes",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "export",
+      "description": "Each bar's tempo was rounded on its own (90 bars at 119.52 BPM came back 0.67 s off), and a bar's tempo change rode its first NOTE, so a bar with none lost it.",
+      "steps": [
+        "See the description (found by reading the code)"
+      ],
+      "expected": "As described in the solution.",
+      "observed": "Each bar's tempo was rounded on its own (90 bars at 119.52 BPM came back 0.67 s off), and a bar's tempo change rode its first NOTE, so a bar with none lost it.",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Verified",
+      "root_cause": "Rounding without carrying the error; the MixTableChange attached to the first note beat.",
+      "fixes": [
+        "FIX-0314"
+      ],
+      "verified_by": "pytest (the test fails on the old code)",
+      "verification": "tests/test_gp_arrangement_writer.py::test_the_rounding_of_each_bars_tempo_does_not_add_up passed, and fails with the fix reverted",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit 9fff3a3837"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "its test passes and fails on the old code"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0315",
+      "title": "A tempo correction in the GP5 export lost to a tempo left on another track",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "export",
+      "description": "The corrected file kept a tempo change authored on another track (or on bar 1's first beat), which the importer reads after the correction.",
+      "steps": [
+        "See the description (found by reading the code)"
+      ],
+      "expected": "As described in the solution.",
+      "observed": "The corrected file kept a tempo change authored on another track (or on bar 1's first beat), which the importer reads after the correction.",
+      "severity": "Medium",
+      "priority": "P3",
+      "status": "Verified",
+      "root_cause": "Only track 0's first beat was set.",
+      "fixes": [
+        "FIX-0315"
+      ],
+      "verified_by": "pytest (the test fails on the old code)",
+      "verification": "tests/test_gp_tempo_writer.py::test_a_correction_wins_over_a_tempo_left_on_another_track passed, and fails with the fix reverted",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit 9fff3a3837"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "its test passes and fails on the old code"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0316",
+      "title": "A locked .gp file gave a 500 and left its upload",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "import",
+      "description": "A score.gpif that is not text (locked in Guitar Pro) raised UnicodeDecodeError, not IngestionError.",
+      "steps": [
+        "See the description (found by reading the code)"
+      ],
+      "expected": "As described in the solution.",
+      "observed": "A score.gpif that is not text (locked in Guitar Pro) raised UnicodeDecodeError, not IngestionError.",
+      "severity": "Medium",
+      "priority": "P3",
+      "status": "Verified",
+      "root_cause": "_load_gpif caught only zip/OS errors.",
+      "fixes": [
+        "FIX-0316"
+      ],
+      "verified_by": "pytest (the test fails on the old code)",
+      "verification": "tests/test_gpif_import.py::test_a_locked_gp_file_is_refused_in_words_not_a_crash passed, and fails with the fix reverted",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit 9fff3a3837"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "its test passes and fails on the old code"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0317",
+      "title": "A GP7 lyric line on a bar never played appeared at the start",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "lyrics",
+      "description": "A line on a bar after Fine or in an ending not taken fell back to tick 0, on top of the first line.",
+      "steps": [
+        "See the description (found by reading the code)"
+      ],
+      "expected": "As described in the solution.",
+      "observed": "A line on a bar after Fine or in an ending not taken fell back to tick 0, on top of the first line.",
+      "severity": "Low",
+      "priority": "P3",
+      "status": "Verified",
+      "root_cause": "An `or [0]` fallback.",
+      "fixes": [
+        "FIX-0317"
+      ],
+      "verified_by": "pytest (the test fails on the old code)",
+      "verification": "tests/test_gpif_import.py::test_a_lyric_line_on_a_bar_never_played_is_not_put_at_the_start passed, and fails with the fix reverted",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit 9fff3a3837"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "its test passes and fails on the old code"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0318",
+      "title": "A half-step bend lost its value in the XML",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "dlc-builder",
+      "description": "bend was int(round(x)): 0.5 became 0 and was dropped, 1.5 became 2.",
+      "steps": [
+        "See the description (found by reading the code)"
+      ],
+      "expected": "As described in the solution.",
+      "observed": "bend was int(round(x)): 0.5 became 0 and was dropped, 1.5 became 2.",
+      "severity": "Medium",
+      "priority": "P3",
+      "status": "Verified",
+      "root_cause": "Integer rounding in the writer.",
+      "fixes": [
+        "FIX-0318"
+      ],
+      "verified_by": "pytest (the test fails on the old code)",
+      "verification": "tests/test_rsxml_writer.py::test_a_half_step_bend_and_a_muted_chord_say_so_in_the_xml passed, and fails with the fix reverted",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit 0b354c27fe"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "its test passes and fails on the old code"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0319",
+      "title": "A chord with every string fret-hand muted was not marked muted in the XML",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "dlc-builder",
+      "description": "fretHandMute was hard-coded 0 on <chord>.",
+      "steps": [
+        "See the description (found by reading the code)"
+      ],
+      "expected": "As described in the solution.",
+      "observed": "fretHandMute was hard-coded 0 on <chord>.",
+      "severity": "Low",
+      "priority": "P3",
+      "status": "Verified",
+      "root_cause": "Not mirrored from the notes like palm mute.",
+      "fixes": [
+        "FIX-0319"
+      ],
+      "verified_by": "pytest (the test fails on the old code)",
+      "verification": "tests/test_rsxml_writer.py::test_a_half_step_bend_and_a_muted_chord_say_so_in_the_xml passed, and fails with the fix reverted",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit 0b354c27fe"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "its test passes and fails on the old code"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0320",
+      "title": "UltraStar syllables of one word were shown as separate words",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "lyrics",
+      "description": "A syllable with no space before it continues the word in UltraStar; it was written without the Rocksmith \"-\" join, so \"Hel\" \"lo\" showed \"Hel lo\".",
+      "steps": [
+        "See the description (found by reading the code)"
+      ],
+      "expected": "As described in the solution.",
+      "observed": "A syllable with no space before it continues the word in UltraStar; it was written without the Rocksmith \"-\" join, so \"Hel\" \"lo\" showed \"Hel lo\".",
+      "severity": "Medium",
+      "priority": "P3",
+      "status": "Verified",
+      "root_cause": "The leading/trailing spaces were stripped before deciding.",
+      "fixes": [
+        "FIX-0320"
+      ],
+      "verified_by": "pytest (the test fails on the old code)",
+      "verification": "tests/test_vocals.py::test_ultrastar_syllables_of_one_word_are_joined_and_words_are_not passed, and fails with the fix reverted",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit 0b354c27fe"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "its test passes and fails on the old code"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0321",
+      "title": "An LRC line with several times put a time into the lyric",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "lyrics",
+      "description": "\"[00:12.00][01:10.00]Hello\" kept \"[01:10.00]Hello\" as text and never placed the second time.",
+      "steps": [
+        "See the description (found by reading the code)"
+      ],
+      "expected": "As described in the solution.",
+      "observed": "\"[00:12.00][01:10.00]Hello\" kept \"[01:10.00]Hello\" as text and never placed the second time.",
+      "severity": "Medium",
+      "priority": "P3",
+      "status": "Verified",
+      "root_cause": "Only the first tag was parsed.",
+      "fixes": [
+        "FIX-0321"
+      ],
+      "verified_by": "pytest (the test fails on the old code)",
+      "verification": "tests/test_vocals.py::test_an_lrc_line_with_several_times_is_sung_at_each_of_them passed, and fails with the fix reverted",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit 0b354c27fe"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "its test passes and fails on the old code"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0322",
+      "title": "After a reload with other audio, dropping the old version reused its stems",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "app",
+      "description": "\"Drop the previous version\" moved the old recording's Demucs stems to a version that plays another recording, which then reused them.",
+      "steps": [
+        "See the description (found by reading the code)"
+      ],
+      "expected": "As described in the solution.",
+      "observed": "\"Drop the previous version\" moved the old recording's Demucs stems to a version that plays another recording, which then reused them.",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Verified",
+      "root_cause": "The carry ignored which recording the stems belong to.",
+      "fixes": [
+        "FIX-0322"
+      ],
+      "verified_by": "pytest (the test fails on the old code)",
+      "verification": "tests/test_api.py::test_dropping_a_version_gives_its_stems_only_to_one_that_plays_the_same_recording passed, and fails with the fix reverted",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit c322940e56"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "its test passes and fails on the old code"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0323",
+      "title": "Dropping a version left sibling versions with stems in a deleted folder",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "app",
+      "description": "Only the version asking had its stem paths rewritten.",
+      "steps": [
+        "See the description (found by reading the code)"
+      ],
+      "expected": "As described in the solution.",
+      "observed": "Only the version asking had its stem paths rewritten.",
+      "severity": "Medium",
+      "priority": "P3",
+      "status": "Verified",
+      "root_cause": "Other forks were not updated.",
+      "fixes": [
+        "FIX-0323"
+      ],
+      "verified_by": "pytest (the test fails on the old code)",
+      "verification": "tests/test_api.py::test_dropping_a_version_gives_its_stems_only_to_one_that_plays_the_same_recording passed, and fails with the fix reverted",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit c322940e56"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "its test passes and fails on the old code"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0324",
+      "title": "A project could be deleted while a detection ran on it",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "app",
+      "description": "Only RUNNING blocked a delete; a detection runs with the job COMPLETED, and Demucs then recreated its output in the deleted folder.",
+      "steps": [
+        "See the description (found by reading the code)"
+      ],
+      "expected": "As described in the solution.",
+      "observed": "Only RUNNING blocked a delete; a detection runs with the job COMPLETED, and Demucs then recreated its output in the deleted folder.",
+      "severity": "Medium",
+      "priority": "P3",
+      "status": "Verified",
+      "root_cause": "Detection statuses were not checked.",
+      "fixes": [
+        "FIX-0324"
+      ],
+      "verified_by": "pytest (the test fails on the old code)",
+      "verification": "tests/test_api.py::test_a_project_is_not_deleted_while_a_detection_runs_on_it passed, and fails with the fix reverted",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit c322940e56"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "its test passes and fails on the old code"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0325",
+      "title": "A refused new project left its recording in uploads, and \"²\" gave a 500",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "app",
+      "description": "The recording was copied before the other checks; every later refusal left it. \"²\".isdigit() is true but int() fails.",
+      "steps": [
+        "See the description (found by reading the code)"
+      ],
+      "expected": "As described in the solution.",
+      "observed": "The recording was copied before the other checks; every later refusal left it. \"²\".isdigit() is true but int() fails.",
+      "severity": "Medium",
+      "priority": "P3",
+      "status": "Verified",
+      "root_cause": "No cleanup after the copy; isdigit.",
+      "fixes": [
+        "FIX-0325"
+      ],
+      "verified_by": "pytest (the test fails on the old code)",
+      "verification": "tests/test_api.py::test_a_refused_new_project_leaves_no_recording_behind passed, and fails with the fix reverted",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit c322940e56"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "its test passes and fails on the old code"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0326",
+      "title": "Two bundle downloads at once could corrupt the zip",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "app",
+      "description": "Every download rewrote one shared <bundle>.zip while another was still streaming it.",
+      "steps": [
+        "See the description (found by reading the code)"
+      ],
+      "expected": "As described in the solution.",
+      "observed": "Every download rewrote one shared <bundle>.zip while another was still streaming it.",
+      "severity": "Low",
+      "priority": "P3",
+      "status": "Verified",
+      "root_cause": "make_archive to a fixed name.",
+      "fixes": [
+        "FIX-0326"
+      ],
+      "verified_by": "pytest (the test fails on the old code)",
+      "verification": "tests/test_api.py::test_each_bundle_download_is_its_own_zip passed, and fails with the fix reverted",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit c322940e56"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "its test passes and fails on the old code"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0327",
+      "title": "A tone with a bad value was accepted and failed the build later",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "tones",
+      "description": "A volume such as \"loud\" or NaN was stored by a rebuild or the library and only failed at build time.",
+      "steps": [
+        "See the description (found by reading the code)"
+      ],
+      "expected": "As described in the solution.",
+      "observed": "A volume such as \"loud\" or NaN was stored by a rebuild or the library and only failed at build time.",
+      "severity": "Medium",
+      "priority": "P3",
+      "status": "Verified",
+      "root_cause": "Tones were stored unchecked.",
+      "fixes": [
+        "FIX-0327"
+      ],
+      "verified_by": "pytest (the test fails on the old code)",
+      "verification": "tests/test_api.py::test_a_tone_that_cannot_be_built_is_refused_up_front passed, and fails with the fix reverted",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit c322940e56"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "its test passes and fails on the old code"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0328",
+      "title": "On Windows, a tag or path in Japanese or Cyrillic broke reading ffmpeg's output",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "audio",
+      "description": "text=True decodes with the locale codec (cp1252 on Windows); ffmpeg writes UTF-8.",
+      "steps": [
+        "See the description (found by reading the code)"
+      ],
+      "expected": "As described in the solution.",
+      "observed": "text=True decodes with the locale codec (cp1252 on Windows); ffmpeg writes UTF-8.",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Verified",
+      "root_cause": "No encoding on the subprocess calls.",
+      "fixes": [
+        "FIX-0328"
+      ],
+      "verified_by": "pytest (the test fails on the old code)",
+      "verification": "tests/test_ffmpeg_normalizer.py::test_external_tools_output_is_read_as_utf8_on_every_system passed, and fails with the fix reverted",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit 76c44a8bcd"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "its test passes and fails on the old code"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0329",
+      "title": "WwiseConsole inherited the console's stdin",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "psarc",
+      "description": "The hard rule for console tools was not applied to WwiseConsole.",
+      "steps": [
+        "See the description (found by reading the code)"
+      ],
+      "expected": "As described in the solution.",
+      "observed": "The hard rule for console tools was not applied to WwiseConsole.",
+      "severity": "Low",
+      "priority": "P3",
+      "status": "Verified",
+      "root_cause": "stdin not set.",
+      "fixes": [
+        "FIX-0329"
+      ],
+      "verified_by": "pytest (the test fails on the old code)",
+      "verification": "tests/test_ffmpeg_normalizer.py::test_external_tools_output_is_read_as_utf8_on_every_system passed, and fails with the fix reverted",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit 76c44a8bcd"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "its test passes and fails on the old code"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0330",
+      "title": "A components install step that stalled silently never timed out",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "exe",
+      "description": "The limit was checked only between output lines.",
+      "steps": [
+        "See the description (found by reading the code)"
+      ],
+      "expected": "As described in the solution.",
+      "observed": "The limit was checked only between output lines.",
+      "severity": "Low",
+      "priority": "P3",
+      "status": "Verified",
+      "root_cause": "readline blocked.",
+      "fixes": [
+        "FIX-0330"
+      ],
+      "verified_by": "pytest (the test fails on the old code)",
+      "verification": "tests/test_components.py::test_a_step_that_stalls_without_printing_is_stopped_at_its_limit passed, and fails with the fix reverted",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit 76c44a8bcd"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "its test passes and fails on the old code"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0331",
+      "title": "Without WebView2 the .exe never shut down when the browser tab closed",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "exe",
+      "description": "The window path set the idle watchdog off before the window failed; the browser fallback then served without it.",
+      "steps": [
+        "See the description (found by reading the code)"
+      ],
+      "expected": "As described in the solution.",
+      "observed": "The window path set the idle watchdog off before the window failed; the browser fallback then served without it.",
+      "severity": "Medium",
+      "priority": "P3",
+      "status": "Verified",
+      "root_cause": "The idle value was chosen before knowing the window would open.",
+      "fixes": [
+        "FIX-0331"
+      ],
+      "verified_by": "pytest (the test fails on the old code)",
+      "verification": "tests/test_standalone_launcher.py::test_when_the_window_fails_the_browser_gets_its_tab_close_watchdog_back passed, and fails with the fix reverted",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit 76c44a8bcd"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "its test passes and fails on the old code"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0332",
+      "title": "Celery's hard time limit could leave a detection status stuck",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "app",
+      "description": "A hard kill skips the task's except, so the status stayed \"separating\" and the UI polled forever.",
+      "steps": [
+        "See the description (found by reading the code)"
+      ],
+      "expected": "As described in the solution.",
+      "observed": "A hard kill skips the task's except, so the status stayed \"separating\" and the UI polled forever.",
+      "severity": "Low",
+      "priority": "P4",
+      "status": "Fixed",
+      "root_cause": "No soft limit.",
+      "fixes": [
+        "FIX-0332"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit 76c44a8bcd"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0333",
+      "title": "A note selection and the ↑/↓ note carried over to the other track",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "editor",
+      "description": "Switching tabs kept selectedTimes and neLast; Delete, Ctrl+C or ↑/↓ then acted on the other chart's notes at those times.",
+      "steps": [
+        "See the description (found by reading the code)"
+      ],
+      "expected": "As described in the solution.",
+      "observed": "Switching tabs kept selectedTimes and neLast; Delete, Ctrl+C or ↑/↓ then acted on the other chart's notes at those times.",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Verified",
+      "root_cause": "Not reset on a tab change.",
+      "fixes": [
+        "FIX-0333"
+      ],
+      "verified_by": "the developer (Playwright)",
+      "verification": "Playwright: selection 0 and neLast null after switching from Lead to Rhythm",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code",
+        "Playwright: selection 0 and neLast null after switching from Lead to Rhythm"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit e0e939b8ce"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "checked in the browser"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0334",
+      "title": "Opening another project quickly could show the previous one's charts or recording",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "viewer",
+      "description": "Late responses of the previous project (arrangements, lyrics, tones, stems, the decoded recording) were applied to the new one.",
+      "steps": [
+        "See the description (found by reading the code)"
+      ],
+      "expected": "As described in the solution.",
+      "observed": "Late responses of the previous project (arrangements, lyrics, tones, stems, the decoded recording) were applied to the new one.",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Fixed",
+      "root_cause": "No check after each await.",
+      "fixes": [
+        "FIX-0334"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit e0e939b8ce"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0335",
+      "title": "The merge bar grid piled up listeners each time Editar info opened",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "editor",
+      "description": "Each render added change and pointer listeners to the persistent card.",
+      "steps": [
+        "See the description (found by reading the code)"
+      ],
+      "expected": "As described in the solution.",
+      "observed": "Each render added change and pointer listeners to the persistent card.",
+      "severity": "Low",
+      "priority": "P3",
+      "status": "Verified",
+      "root_cause": "Wired on every render.",
+      "fixes": [
+        "FIX-0335"
+      ],
+      "verified_by": "the developer (Playwright)",
+      "verification": "Playwright: after opening Editar info four times, one click toggles a bar once",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code",
+        "Playwright: after opening Editar info four times, one click toggles a bar once"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit e0e939b8ce"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "checked in the browser"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0336",
+      "title": "The 3D highway could start drawing after being closed while loading",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "viewer",
+      "description": "close() during the first load was undone when load() returned.",
+      "steps": [
+        "See the description (found by reading the code)"
+      ],
+      "expected": "As described in the solution.",
+      "observed": "close() during the first load was undone when load() returned.",
+      "severity": "Low",
+      "priority": "P4",
+      "status": "Verified",
+      "root_cause": "No generation check.",
+      "fixes": [
+        "FIX-0336"
+      ],
+      "verified_by": "the developer (Playwright)",
+      "verification": "Playwright: open then close before three.js loads → Highway3D.ready stays false",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code",
+        "Playwright: open then close before three.js loads → Highway3D.ready stays false"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit e0e939b8ce"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "checked in the browser"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0337",
+      "title": "Two songs whose names share the first 30 letters get the same song key",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "psarc",
+      "description": "song_key_from_title keeps the first 30 letters of artist+title, so two live versions of one song (\"... (Live 1992)\" / \"(Live 2013)\") get the same key: the same PersistentIDs and the same .psarc name, one replacing the other in game.",
+      "steps": [
+        "Build two songs whose artist+title share the first 30 letters"
+      ],
+      "expected": "Two songs in game.",
+      "observed": "Same key (code reading).",
+      "severity": "Low",
+      "priority": "P4",
+      "status": "Deferred",
+      "root_cause": "A plain 30-character cut.",
+      "fixes": [],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [
+        "code review of the whole codebase, confirmed by reading the code"
+      ],
+      "resolved": "pending",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Deferred",
+          "note": "changing every long key would reset progress; decide first"
+        }
+      ],
+      "note": "Not changed on purpose: a key with a hash for long names would give EVERY long-titled song a new key, and with it new persistent IDs — the player's progress on those songs would start over. Two songs sharing 30 letters is rare; to be decided with the maintainer before changing it."
     }
   ]
 }

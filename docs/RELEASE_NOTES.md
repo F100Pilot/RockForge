@@ -1,74 +1,65 @@
-### New
-
-- **Merge two tracks: choose the bars** (New project → Tracks, and Edit info). A grid of the
-  song's bars says which go into the arrangement; by default only the bars where the arrangement
-  has no notes — so a LEAD with few notes takes the RHYTHM's parts only where it is silent. Click,
-  drag or Shift+click to choose. Experimental.
-
 ### Bugs fixed
 
-- **Moving notes and chords without spoiling the tempo.** Notes were moved with the "Drag" mode,
-  which is a sync tool: each drag stretches the timing around it, changes the bars' BPM and does
-  not let a note pass another. Now, in **Edit notes**, dragging a box on empty staff (or
-  Ctrl+click) selects a chord or several notes, and dragging one of them moves them all — they can
-  pass other notes and the tempo does not change. "Drag" says what it does and warns when a note
-  tries to pass its neighbour.
-- **What you change during a detection is no longer lost.** While "Detect lyrics", "Detect tone"
-  or "Separate instruments" ran, an uploaded cover, "Mark as synced", the main chart, swapped tones
-  or "Install in game" were undone by the next progress line.
-- **Lyric detection works in the .exe.** It always failed, after minutes of separation.
-- **A title or artist with an accent ("Canção", "Beyoncé") gets its .psarc** when Wwise is
-  installed. The song's internal name is now unaccented letters only (songs with accents get a new
-  internal name; install them in the game again).
-- **Editing a note no longer removes its slide**, nor its bend curve, its link to the next note or
-  its fingering. Pasting notes keeps the slide too.
-- **The sync tools no longer fold the score** when used after setting the "Song start": "Drag",
-  "Mark", "Move following", "Correct from here" and "Mark while listening" pin the start and end of
-  the song. The notes after used to lose the correction and the rebuild could fail with "beats must
-  be in chronological order"; now, if a correction folds the timing, the message says where.
-- **The "Cursor" snap works** (it took notes to the song's last beat).
-- **"Guitar Pro with the edited notes" keeps the capo.**
-- **"Check PSARC" no longer reports a fault** for a song with slap, pop or tap.
-- **A refused cover (too big, or not an image) no longer deletes the cover that was there.**
-- **A project (.rfproj) or sync file with a wrong value is refused** naming it, instead of taking
-  the home page down.
-- **GP7/8 files with a piano (two staves) before the guitar** read the right track.
+- **Projects and files:**
+  - A track named "Lead/Rhythm" no longer goes into both arrangements (the build failed).
+  - A .gp file locked in Guitar Pro is refused with a message instead of an internal error.
+  - A refused new project no longer leaves its recording behind on disk.
+  - A project can no longer be deleted while a detection or separation runs on it.
+- **Imported score:**
+  - A slide in at fret 1 no longer turns an earlier note into a slide lasting seconds.
+  - Trills keep their fingering and their final slide.
+  - The capo no longer pushes slide targets past fret 24.
+  - A GP7 lyric line on a bar that is never played no longer appears at the start.
+- **Export to Guitar Pro:**
+  - Very fast notes on the same string no longer break the file.
+  - Rounding the BPM no longer builds up drift, and the tempo of bars without notes is no longer lost.
+  - A tempo correction wins over a tempo left on another track.
+- **Lyrics:**
+  - UltraStar syllables of one word are joined.
+  - An LRC line with several times is sung at each of them.
+- **DLC Builder:** a half-step bend and a fully muted chord are now written in the XML.
+- **Versions:** when dropping the previous version, the separated instruments go only to a version that uses the same recording, and sibling versions still find them.
+- **Downloads:** two bundle downloads at once no longer break it.
+- **Tones:** a tone with invalid values is refused straight away, instead of failing the build.
+- **Windows:** Japanese or Cyrillic tags or paths no longer make the build fail.
+- **.exe:**
+  - Without WebView2, it shuts down again when the browser tab is closed.
+  - Installing the components no longer hangs forever on a stalled download.
+- **Editor:**
+  - The note selection and ↑/↓ no longer carry over to the other track.
+  - Opening another project quickly no longer shows the previous one's score or recording.
+  - The 3D highway closed while loading no longer starts.
 
 ---
 
-### Novo
-
-- **Juntar duas pistas: escolhe os compassos** (Novo projeto → Pistas, e Editar info). Uma grelha
-  com os compassos da música diz quais entram no arranjo; por defeito, só os compassos em que o
-  arranjo não tem notas — assim um LEAD com poucas notas recebe as partes do RHYTHM só onde está
-  calado. Clica, arrasta ou Shift+clique para escolher. Experimental.
-
 ### Bugs corrigidos
 
-- **Mover notas e acordes sem estragar o andamento.** Para mudar notas de sítio usava-se o modo
-  "Arrastar", que é uma ferramenta de sincronização: cada arrasto estica o tempo à volta, muda o
-  BPM dos compassos e não deixa uma nota passar a outra. Agora, em **Editar notas**, arrastar uma
-  caixa no espaço vazio (ou Ctrl+clique) seleciona um acorde ou várias notas, e arrastar uma delas
-  move-as todas — podem passar por outras notas e o andamento não muda. O "Arrastar" diz o que
-  faz e avisa quando uma nota tenta passar a vizinha.
-- **O que mudavas durante uma deteção já não se perde.** Enquanto corria "Detetar letra",
-  "Detetar tom" ou "Separar instrumentos", uma capa carregada, "Marcar como sincronizada", a pista
-  principal, os tons trocados ou "Instalar no jogo" eram desfeitos pela linha de progresso seguinte.
-- **No .exe, a deteção de letra funciona.** Falhava sempre, ao fim de minutos de separação.
-- **Um título ou artista com acento ("Canção", "Beyoncé") já tem .psarc** quando o Wwise está
-  instalado. O nome interno da música passa a ser só letras sem acento (as músicas com acento
-  ganham um novo nome interno; reinstala-as no jogo).
-- **Editar uma nota já não lhe tira o slide**, nem a curva do bend, a ligação à nota seguinte ou a
-  dedilhação. Colar notas também mantém o slide.
-- **As ferramentas de sincronização já não dobram a partitura** quando usadas depois de acertar o
-  "Início": "Arrastar", "Marcar", "Mover seguintes", "Corrigir daqui" e "Marcar a ouvir" fixam o
-  início e o fim da música. Antes, as notas a seguir perdiam o acerto e a reconstrução podia falhar
-  com "beats must be in chronological order"; agora, se uma correção dobrar o tempo, a mensagem diz
-  em que ponto.
-- **O encaixe "Cursor" funciona** (levava as notas para o último tempo da música).
-- **"Guitar Pro com as notas editadas" mantém o capo.**
-- **"Verificar PSARC" já não acusa falha** numa música com slap, pop ou tap.
-- **Uma capa recusada (grande demais ou que não é imagem) já não apaga a capa que havia.**
-- **Um projeto (.rfproj) ou ficheiro de sincronização com um valor errado é recusado** a dizer qual,
-  em vez de deitar abaixo a página inicial.
-- **Ficheiros GP7/8 com um piano (duas pautas) antes da guitarra** já leem a pista certa.
+- **Projetos e ficheiros:**
+  - Uma pista chamada "Lead/Rhythm" já não vai para os dois arranjos (a construção falhava).
+  - Um ficheiro .gp bloqueado no Guitar Pro é recusado com uma mensagem, em vez de um erro interno.
+  - Um projeto novo recusado já não deixa a gravação esquecida no disco.
+  - Não se apaga um projeto enquanto corre uma deteção ou separação nele.
+- **Partitura importada:**
+  - Um slide de entrada no traste 1 já não transforma uma nota anterior num slide de segundos.
+  - Os trilos guardam a dedilhação e o slide final.
+  - O capo já não leva alvos de slide para lá do traste 24.
+  - Uma linha de letra GP7 num compasso que nunca toca já não aparece no início.
+- **Exportar para Guitar Pro:**
+  - Notas muito rápidas na mesma corda já não estragam o ficheiro.
+  - O arredondamento do BPM já não acumula desvio, e o andamento de compassos sem notas já não se perde.
+  - Uma correção de andamento ganha a um andamento deixado noutra pista.
+- **Letras:**
+  - As sílabas UltraStar da mesma palavra ficam ligadas.
+  - Uma linha LRC com vários tempos é cantada em cada um.
+- **DLC Builder:** o bend de meio tom e o acorde todo abafado passam a ser escritos no XML.
+- **Versões:** ao apagar a versão anterior, os instrumentos separados só passam para uma versão que usa a mesma gravação, e as versões irmãs continuam a encontrá-los.
+- **Transferências:** duas transferências do pacote ao mesmo tempo já não o estragam.
+- **Tons:** um tom com valores inválidos é recusado logo, em vez de fazer falhar a construção.
+- **Windows:** etiquetas ou caminhos em japonês ou cirílico já não fazem falhar a construção.
+- **.exe:**
+  - Sem WebView2, volta a desligar-se quando se fecha o separador do browser.
+  - A instalação dos componentes já não fica parada para sempre num download que encrava.
+- **Editor:**
+  - A seleção de notas e o ↑/↓ já não passam para a outra pista.
+  - Abrir outro projeto depressa já não mostra a partitura ou a gravação do anterior.
+  - A pista 3D fechada enquanto carrega já não arranca.

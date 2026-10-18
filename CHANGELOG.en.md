@@ -6,6 +6,40 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+## [0.11.0 beta 4] — 2026-10-18
+
+### Fixes
+
+- **Projects and files:**
+  - A track named "Lead/Rhythm" no longer goes into both arrangements (the build failed).
+  - A .gp file locked in Guitar Pro is refused with a message instead of an internal error.
+  - A refused new project no longer leaves its recording behind on disk.
+  - A project can no longer be deleted while a detection or separation runs on it.
+- **Imported score:**
+  - A slide in at fret 1 no longer turns an earlier note into a slide lasting seconds.
+  - Trills keep their fingering and their final slide.
+  - The capo no longer pushes slide targets past fret 24.
+  - A GP7 lyric line on a bar that is never played no longer appears at the start.
+- **Export to Guitar Pro:**
+  - Very fast notes on the same string no longer break the file.
+  - Rounding the BPM no longer builds up drift, and the tempo of bars without notes is no longer lost.
+  - A tempo correction wins over a tempo left on another track.
+- **Lyrics:**
+  - UltraStar syllables of one word are joined.
+  - An LRC line with several times is sung at each of them.
+- **DLC Builder:** a half-step bend and a fully muted chord are now written in the XML.
+- **Versions:** when dropping the previous version, the separated instruments go only to a version that uses the same recording, and sibling versions still find them.
+- **Downloads:** two bundle downloads at once no longer break it.
+- **Tones:** a tone with invalid values is refused straight away, instead of failing the build.
+- **Windows:** Japanese or Cyrillic tags or paths no longer make the build fail.
+- **.exe:**
+  - Without WebView2, it shuts down again when the browser tab is closed.
+  - Installing the components no longer hangs forever on a stalled download.
+- **Editor:**
+  - The note selection and ↑/↓ no longer carry over to the other track.
+  - Opening another project quickly no longer shows the previous one's score or recording.
+  - The 3D highway closed while loading no longer starts.
+
 ## [0.11.0 beta 3] — 2026-10-18
 
 ### New

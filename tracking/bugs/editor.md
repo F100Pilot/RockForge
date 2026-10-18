@@ -338,3 +338,89 @@ The note popup read slide_to_fret, but built notes carry slide_to, so saving any
 - 2026-10-18 — Open: reported
 - 2026-10-18 — Fixed: commit f907982d0f
 - 2026-10-18 — Verified: its test passes and fails on the old code
+
+## BUG-0333
+
+**A note selection and the ↑/↓ note carried over to the other track**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Verified |
+
+Switching tabs kept selectedTimes and neLast; Delete, Ctrl+C or ↑/↓ then acted on the other chart's notes at those times.
+
+**Steps to reproduce:** 
+
+1. See the description (found by reading the code)
+
+**Expected:** As described in the solution.
+
+**Observed:** Switching tabs kept selectedTimes and neLast; Delete, Ctrl+C or ↑/↓ then acted on the other chart's notes at those times.
+
+**Root cause:** Not reset on a tab change.
+
+**Fixes:** [FIX-0333](../FIX_LOG.md#fix-0333) (0.11.0-beta.4)
+
+**Verified:** Playwright: selection 0 and neLast null after switching from Lead to Rhythm (by the developer (Playwright))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+- Playwright: selection 0 and neLast null after switching from Lead to Rhythm
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit e0e939b8ce
+- 2026-10-18 — Verified: checked in the browser
+
+## BUG-0335
+
+**The merge bar grid piled up listeners each time Editar info opened**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | Low |
+| Priority | P3 |
+| Status | Verified |
+
+Each render added change and pointer listeners to the persistent card.
+
+**Steps to reproduce:** 
+
+1. See the description (found by reading the code)
+
+**Expected:** As described in the solution.
+
+**Observed:** Each render added change and pointer listeners to the persistent card.
+
+**Root cause:** Wired on every render.
+
+**Fixes:** [FIX-0335](../FIX_LOG.md#fix-0335) (0.11.0-beta.4)
+
+**Verified:** Playwright: after opening Editar info four times, one click toggles a bar once (by the developer (Playwright))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+- Playwright: after opening Editar info four times, one click toggles a bar once
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit e0e939b8ce
+- 2026-10-18 — Verified: checked in the browser

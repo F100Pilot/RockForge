@@ -2653,3 +2653,88 @@ The note_unused_byte rule wanted tap/slap/pluck all -1, but the builder writes 1
 - 2026-10-18 — Open: reported
 - 2026-10-18 — Fixed: commit f907982d0f
 - 2026-10-18 — Verified: its test passes and fails on the old code
+
+## BUG-0329
+
+**WwiseConsole inherited the console's stdin**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | Low |
+| Priority | P3 |
+| Status | Verified |
+
+The hard rule for console tools was not applied to WwiseConsole.
+
+**Steps to reproduce:** 
+
+1. See the description (found by reading the code)
+
+**Expected:** As described in the solution.
+
+**Observed:** The hard rule for console tools was not applied to WwiseConsole.
+
+**Root cause:** stdin not set.
+
+**Fixes:** [FIX-0329](../FIX_LOG.md#fix-0329) (0.11.0-beta.4)
+
+**Verified:** tests/test_ffmpeg_normalizer.py::test_external_tools_output_is_read_as_utf8_on_every_system passed, and fails with the fix reverted (by pytest (the test fails on the old code))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit 76c44a8bcd
+- 2026-10-18 — Verified: its test passes and fails on the old code
+
+## BUG-0337
+
+**Two songs whose names share the first 30 letters get the same song key**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | Low |
+| Priority | P4 |
+| Status | Deferred |
+
+song_key_from_title keeps the first 30 letters of artist+title, so two live versions of one song ("... (Live 1992)" / "(Live 2013)") get the same key: the same PersistentIDs and the same .psarc name, one replacing the other in game.
+
+**Steps to reproduce:** 
+
+1. Build two songs whose artist+title share the first 30 letters
+
+**Expected:** Two songs in game.
+
+**Observed:** Same key (code reading).
+
+**Root cause:** A plain 30-character cut.
+
+**Fixes:** —
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** _pending_ · **Closed:** _pending_
+
+**Note:** Not changed on purpose: a key with a hash for long names would give EVERY long-titled song a new key, and with it new persistent IDs — the player's progress on those songs would start over. Two songs sharing 30 letters is rare; to be decided with the maintainer before changing it.
+
+**Evidence:**
+
+- code review of the whole codebase, confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Deferred: changing every long key would reset progress; decide first

@@ -2131,3 +2131,213 @@ MasterBar/<Bars> lists one bar per staff, track after track; the parser indexed 
 - 2026-10-18 — Open: reported
 - 2026-10-18 — Fixed: commit f05b120399
 - 2026-10-18 — Verified: its test passes and fails on the old code
+
+## BUG-0309
+
+**Auto-pick put a "Lead/Rhythm" track in both slots and the build failed**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Verified |
+
+Without a chosen track, a lone track named "Lead/Rhythm Guitar" was picked for Lead and for Rhythm, and the build refused two charts on one track.
+
+**Steps to reproduce:** 
+
+1. See the description (found by reading the code)
+
+**Expected:** As described in the solution.
+
+**Observed:** Without a chosen track, a lone track named "Lead/Rhythm Guitar" was picked for Lead and for Rhythm, and the build refused two charts on one track.
+
+**Root cause:** auto_pick_tracks scanned for "lead" and "rhythm" independently.
+
+**Fixes:** [FIX-0309](../FIX_LOG.md#fix-0309) (0.11.0-beta.4)
+
+**Verified:** tests/test_merge_tracks.py::test_a_track_named_lead_and_rhythm_is_picked_once passed, and fails with the fix reverted (by pytest (the test fails on the old code))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit d9ad9d0d24
+- 2026-10-18 — Verified: its test passes and fails on the old code
+
+## BUG-0310
+
+**A scoop from its own fret turned a note seconds earlier into a long slide**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Verified |
+
+A slide into fret 1 from below (source max(1, fret-3) = 1) with room before it fell through to "the previous note slides into it", whatever the gap, making a note 8 s earlier an 8 s slide.
+
+**Steps to reproduce:** 
+
+1. See the description (found by reading the code)
+
+**Expected:** As described in the solution.
+
+**Observed:** A slide into fret 1 from below (source max(1, fret-3) = 1) with room before it fell through to "the previous note slides into it", whatever the gap, making a note 8 s earlier an 8 s slide.
+
+**Root cause:** expand_slide_ins took the previous-note branch without checking the room.
+
+**Fixes:** [FIX-0310](../FIX_LOG.md#fix-0310) (0.11.0-beta.4)
+
+**Verified:** tests/test_domain.py::test_a_scoop_from_its_own_fret_never_turns_an_earlier_note_into_a_slide passed, and fails with the fix reverted (by pytest (the test fails on the old code))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit d9ad9d0d24
+- 2026-10-18 — Verified: its test passes and fails on the old code
+
+## BUG-0311
+
+**A trilled note lost its fingering, pick direction, slide and link**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | Low |
+| Priority | P3 |
+| Status | Verified |
+
+Each trill step was a bare TabNote; the first step kept SLIDE with no target and the last step had no slide or link.
+
+**Steps to reproduce:** 
+
+1. See the description (found by reading the code)
+
+**Expected:** As described in the solution.
+
+**Observed:** Each trill step was a bare TabNote; the first step kept SLIDE with no target and the last step had no slide or link.
+
+**Root cause:** expand_trills built fresh notes.
+
+**Fixes:** [FIX-0311](../FIX_LOG.md#fix-0311) (0.11.0-beta.4)
+
+**Verified:** tests/test_domain.py::test_a_trill_keeps_the_notes_fingering_and_ends_with_its_slide passed, and fails with the fix reverted (by pytest (the test fails on the old code))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit d9ad9d0d24
+- 2026-10-18 — Verified: its test passes and fails on the old code
+
+## BUG-0312
+
+**A capo pushed slide and trill targets past fret 24**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | Low |
+| Priority | P3 |
+| Status | Verified |
+
+Only the note's own fret was checked against 24; an unpitched slide-out capped at 22 became 27 with capo 5.
+
+**Steps to reproduce:** 
+
+1. See the description (found by reading the code)
+
+**Expected:** As described in the solution.
+
+**Observed:** Only the note's own fret was checked against 24; an unpitched slide-out capped at 22 became 27 with capo 5.
+
+**Root cause:** apply_capo added the capo to targets without a bound.
+
+**Fixes:** [FIX-0312](../FIX_LOG.md#fix-0312) (0.11.0-beta.4)
+
+**Verified:** tests/test_domain.py::test_the_capo_keeps_slide_and_trill_targets_on_the_neck passed, and fails with the fix reverted (by pytest (the test fails on the old code))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit d9ad9d0d24
+- 2026-10-18 — Verified: its test passes and fails on the old code
+
+## BUG-0316
+
+**A locked .gp file gave a 500 and left its upload**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | Medium |
+| Priority | P3 |
+| Status | Verified |
+
+A score.gpif that is not text (locked in Guitar Pro) raised UnicodeDecodeError, not IngestionError.
+
+**Steps to reproduce:** 
+
+1. See the description (found by reading the code)
+
+**Expected:** As described in the solution.
+
+**Observed:** A score.gpif that is not text (locked in Guitar Pro) raised UnicodeDecodeError, not IngestionError.
+
+**Root cause:** _load_gpif caught only zip/OS errors.
+
+**Fixes:** [FIX-0316](../FIX_LOG.md#fix-0316) (0.11.0-beta.4)
+
+**Verified:** tests/test_gpif_import.py::test_a_locked_gp_file_is_refused_in_words_not_a_crash passed, and fails with the fix reverted (by pytest (the test fails on the old code))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit 9fff3a3837
+- 2026-10-18 — Verified: its test passes and fails on the old code

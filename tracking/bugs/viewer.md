@@ -1310,3 +1310,87 @@ Turning "Audio bars" on with nothing separated asks whether to separate the inst
 
 - 2026-10-18 — Open: reported
 - 2026-10-18 — Fixed: commit b2efa19bbf
+
+## BUG-0334
+
+**Opening another project quickly could show the previous one's charts or recording**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Fixed |
+
+Late responses of the previous project (arrangements, lyrics, tones, stems, the decoded recording) were applied to the new one.
+
+**Steps to reproduce:** 
+
+1. See the description (found by reading the code)
+
+**Expected:** As described in the solution.
+
+**Observed:** Late responses of the previous project (arrangements, lyrics, tones, stems, the decoded recording) were applied to the new one.
+
+**Root cause:** No check after each await.
+
+**Fixes:** [FIX-0334](../FIX_LOG.md#fix-0334) (0.11.0-beta.4)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit e0e939b8ce
+
+## BUG-0336
+
+**The 3D highway could start drawing after being closed while loading**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | Low |
+| Priority | P4 |
+| Status | Verified |
+
+close() during the first load was undone when load() returned.
+
+**Steps to reproduce:** 
+
+1. See the description (found by reading the code)
+
+**Expected:** As described in the solution.
+
+**Observed:** close() during the first load was undone when load() returned.
+
+**Root cause:** No generation check.
+
+**Fixes:** [FIX-0336](../FIX_LOG.md#fix-0336) (0.11.0-beta.4)
+
+**Verified:** Playwright: open then close before three.js loads → Highway3D.ready stays false (by the developer (Playwright))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+- Playwright: open then close before three.js loads → Highway3D.ready stays false
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit e0e939b8ce
+- 2026-10-18 — Verified: checked in the browser

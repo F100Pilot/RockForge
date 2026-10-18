@@ -455,3 +455,45 @@ librosa averages the log-mel flux over every band, and the faint residue a separ
 - 2026-10-16 — Fixed: commit e84a40c132
 - 2026-10-16 — Verified: automated
 - 2026-10-16 — Closed: released in 0.10.0-beta.10
+
+## BUG-0328
+
+**On Windows, a tag or path in Japanese or Cyrillic broke reading ffmpeg's output**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Verified |
+
+text=True decodes with the locale codec (cp1252 on Windows); ffmpeg writes UTF-8.
+
+**Steps to reproduce:** 
+
+1. See the description (found by reading the code)
+
+**Expected:** As described in the solution.
+
+**Observed:** text=True decodes with the locale codec (cp1252 on Windows); ffmpeg writes UTF-8.
+
+**Root cause:** No encoding on the subprocess calls.
+
+**Fixes:** [FIX-0328](../FIX_LOG.md#fix-0328) (0.11.0-beta.4)
+
+**Verified:** tests/test_ffmpeg_normalizer.py::test_external_tools_output_is_read_as_utf8_on_every_system passed, and fails with the fix reverted (by pytest (the test fails on the old code))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit 76c44a8bcd
+- 2026-10-18 — Verified: its test passes and fails on the old code

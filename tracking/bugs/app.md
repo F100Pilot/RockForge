@@ -1960,3 +1960,254 @@ The old cover was removed before the new upload was read, so an oversized (413) 
 - 2026-10-18 — Open: reported
 - 2026-10-18 — Fixed: commit f907982d0f
 - 2026-10-18 — Verified: its test passes and fails on the old code
+
+## BUG-0322
+
+**After a reload with other audio, dropping the old version reused its stems**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Verified |
+
+"Drop the previous version" moved the old recording's Demucs stems to a version that plays another recording, which then reused them.
+
+**Steps to reproduce:** 
+
+1. See the description (found by reading the code)
+
+**Expected:** As described in the solution.
+
+**Observed:** "Drop the previous version" moved the old recording's Demucs stems to a version that plays another recording, which then reused them.
+
+**Root cause:** The carry ignored which recording the stems belong to.
+
+**Fixes:** [FIX-0322](../FIX_LOG.md#fix-0322) (0.11.0-beta.4)
+
+**Verified:** tests/test_api.py::test_dropping_a_version_gives_its_stems_only_to_one_that_plays_the_same_recording passed, and fails with the fix reverted (by pytest (the test fails on the old code))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit c322940e56
+- 2026-10-18 — Verified: its test passes and fails on the old code
+
+## BUG-0323
+
+**Dropping a version left sibling versions with stems in a deleted folder**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | Medium |
+| Priority | P3 |
+| Status | Verified |
+
+Only the version asking had its stem paths rewritten.
+
+**Steps to reproduce:** 
+
+1. See the description (found by reading the code)
+
+**Expected:** As described in the solution.
+
+**Observed:** Only the version asking had its stem paths rewritten.
+
+**Root cause:** Other forks were not updated.
+
+**Fixes:** [FIX-0323](../FIX_LOG.md#fix-0323) (0.11.0-beta.4)
+
+**Verified:** tests/test_api.py::test_dropping_a_version_gives_its_stems_only_to_one_that_plays_the_same_recording passed, and fails with the fix reverted (by pytest (the test fails on the old code))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit c322940e56
+- 2026-10-18 — Verified: its test passes and fails on the old code
+
+## BUG-0324
+
+**A project could be deleted while a detection ran on it**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | Medium |
+| Priority | P3 |
+| Status | Verified |
+
+Only RUNNING blocked a delete; a detection runs with the job COMPLETED, and Demucs then recreated its output in the deleted folder.
+
+**Steps to reproduce:** 
+
+1. See the description (found by reading the code)
+
+**Expected:** As described in the solution.
+
+**Observed:** Only RUNNING blocked a delete; a detection runs with the job COMPLETED, and Demucs then recreated its output in the deleted folder.
+
+**Root cause:** Detection statuses were not checked.
+
+**Fixes:** [FIX-0324](../FIX_LOG.md#fix-0324) (0.11.0-beta.4)
+
+**Verified:** tests/test_api.py::test_a_project_is_not_deleted_while_a_detection_runs_on_it passed, and fails with the fix reverted (by pytest (the test fails on the old code))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit c322940e56
+- 2026-10-18 — Verified: its test passes and fails on the old code
+
+## BUG-0325
+
+**A refused new project left its recording in uploads, and "²" gave a 500**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | Medium |
+| Priority | P3 |
+| Status | Verified |
+
+The recording was copied before the other checks; every later refusal left it. "²".isdigit() is true but int() fails.
+
+**Steps to reproduce:** 
+
+1. See the description (found by reading the code)
+
+**Expected:** As described in the solution.
+
+**Observed:** The recording was copied before the other checks; every later refusal left it. "²".isdigit() is true but int() fails.
+
+**Root cause:** No cleanup after the copy; isdigit.
+
+**Fixes:** [FIX-0325](../FIX_LOG.md#fix-0325) (0.11.0-beta.4)
+
+**Verified:** tests/test_api.py::test_a_refused_new_project_leaves_no_recording_behind passed, and fails with the fix reverted (by pytest (the test fails on the old code))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit c322940e56
+- 2026-10-18 — Verified: its test passes and fails on the old code
+
+## BUG-0326
+
+**Two bundle downloads at once could corrupt the zip**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | Low |
+| Priority | P3 |
+| Status | Verified |
+
+Every download rewrote one shared <bundle>.zip while another was still streaming it.
+
+**Steps to reproduce:** 
+
+1. See the description (found by reading the code)
+
+**Expected:** As described in the solution.
+
+**Observed:** Every download rewrote one shared <bundle>.zip while another was still streaming it.
+
+**Root cause:** make_archive to a fixed name.
+
+**Fixes:** [FIX-0326](../FIX_LOG.md#fix-0326) (0.11.0-beta.4)
+
+**Verified:** tests/test_api.py::test_each_bundle_download_is_its_own_zip passed, and fails with the fix reverted (by pytest (the test fails on the old code))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit c322940e56
+- 2026-10-18 — Verified: its test passes and fails on the old code
+
+## BUG-0332
+
+**Celery's hard time limit could leave a detection status stuck**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | Low |
+| Priority | P4 |
+| Status | Fixed |
+
+A hard kill skips the task's except, so the status stayed "separating" and the UI polled forever.
+
+**Steps to reproduce:** 
+
+1. See the description (found by reading the code)
+
+**Expected:** As described in the solution.
+
+**Observed:** A hard kill skips the task's except, so the status stayed "separating" and the UI polled forever.
+
+**Root cause:** No soft limit.
+
+**Fixes:** [FIX-0332](../FIX_LOG.md#fix-0332) (0.11.0-beta.4)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit 76c44a8bcd

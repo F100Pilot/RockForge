@@ -939,3 +939,129 @@ fmtClockTenths rounded the tenths after deciding the leading zero, so 69.96 s re
 - 2026-10-14 — Fixed: commit 74130132ec
 - 2026-10-14 — Verified: manual
 - 2026-10-14 — Closed: released in 0.10.0-beta.1
+
+## BUG-0317
+
+**A GP7 lyric line on a bar never played appeared at the start**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | Low |
+| Priority | P3 |
+| Status | Verified |
+
+A line on a bar after Fine or in an ending not taken fell back to tick 0, on top of the first line.
+
+**Steps to reproduce:** 
+
+1. See the description (found by reading the code)
+
+**Expected:** As described in the solution.
+
+**Observed:** A line on a bar after Fine or in an ending not taken fell back to tick 0, on top of the first line.
+
+**Root cause:** An `or [0]` fallback.
+
+**Fixes:** [FIX-0317](../FIX_LOG.md#fix-0317) (0.11.0-beta.4)
+
+**Verified:** tests/test_gpif_import.py::test_a_lyric_line_on_a_bar_never_played_is_not_put_at_the_start passed, and fails with the fix reverted (by pytest (the test fails on the old code))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit 9fff3a3837
+- 2026-10-18 — Verified: its test passes and fails on the old code
+
+## BUG-0320
+
+**UltraStar syllables of one word were shown as separate words**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | Medium |
+| Priority | P3 |
+| Status | Verified |
+
+A syllable with no space before it continues the word in UltraStar; it was written without the Rocksmith "-" join, so "Hel" "lo" showed "Hel lo".
+
+**Steps to reproduce:** 
+
+1. See the description (found by reading the code)
+
+**Expected:** As described in the solution.
+
+**Observed:** A syllable with no space before it continues the word in UltraStar; it was written without the Rocksmith "-" join, so "Hel" "lo" showed "Hel lo".
+
+**Root cause:** The leading/trailing spaces were stripped before deciding.
+
+**Fixes:** [FIX-0320](../FIX_LOG.md#fix-0320) (0.11.0-beta.4)
+
+**Verified:** tests/test_vocals.py::test_ultrastar_syllables_of_one_word_are_joined_and_words_are_not passed, and fails with the fix reverted (by pytest (the test fails on the old code))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit 0b354c27fe
+- 2026-10-18 — Verified: its test passes and fails on the old code
+
+## BUG-0321
+
+**An LRC line with several times put a time into the lyric**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | Medium |
+| Priority | P3 |
+| Status | Verified |
+
+"[00:12.00][01:10.00]Hello" kept "[01:10.00]Hello" as text and never placed the second time.
+
+**Steps to reproduce:** 
+
+1. See the description (found by reading the code)
+
+**Expected:** As described in the solution.
+
+**Observed:** "[00:12.00][01:10.00]Hello" kept "[01:10.00]Hello" as text and never placed the second time.
+
+**Root cause:** Only the first tag was parsed.
+
+**Fixes:** [FIX-0321](../FIX_LOG.md#fix-0321) (0.11.0-beta.4)
+
+**Verified:** tests/test_vocals.py::test_an_lrc_line_with_several_times_is_sung_at_each_of_them passed, and fails with the fix reverted (by pytest (the test fails on the old code))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit 0b354c27fe
+- 2026-10-18 — Verified: its test passes and fails on the old code

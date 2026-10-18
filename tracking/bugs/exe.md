@@ -483,3 +483,87 @@ The WhisperX runner imported rockforge's adapter; in the .exe it is run by the e
 - 2026-10-18 — Open: reported
 - 2026-10-18 — Fixed: commit 2ae21cd533
 - 2026-10-18 — Verified: its test passes and fails on the old code
+
+## BUG-0330
+
+**A components install step that stalled silently never timed out**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | Low |
+| Priority | P3 |
+| Status | Verified |
+
+The limit was checked only between output lines.
+
+**Steps to reproduce:** 
+
+1. See the description (found by reading the code)
+
+**Expected:** As described in the solution.
+
+**Observed:** The limit was checked only between output lines.
+
+**Root cause:** readline blocked.
+
+**Fixes:** [FIX-0330](../FIX_LOG.md#fix-0330) (0.11.0-beta.4)
+
+**Verified:** tests/test_components.py::test_a_step_that_stalls_without_printing_is_stopped_at_its_limit passed, and fails with the fix reverted (by pytest (the test fails on the old code))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit 76c44a8bcd
+- 2026-10-18 — Verified: its test passes and fails on the old code
+
+## BUG-0331
+
+**Without WebView2 the .exe never shut down when the browser tab closed**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | Medium |
+| Priority | P3 |
+| Status | Verified |
+
+The window path set the idle watchdog off before the window failed; the browser fallback then served without it.
+
+**Steps to reproduce:** 
+
+1. See the description (found by reading the code)
+
+**Expected:** As described in the solution.
+
+**Observed:** The window path set the idle watchdog off before the window failed; the browser fallback then served without it.
+
+**Root cause:** The idle value was chosen before knowing the window would open.
+
+**Fixes:** [FIX-0331](../FIX_LOG.md#fix-0331) (0.11.0-beta.4)
+
+**Verified:** tests/test_standalone_launcher.py::test_when_the_window_fails_the_browser_gets_its_tab_close_watchdog_back passed, and fails with the fix reverted (by pytest (the test fails on the old code))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit 76c44a8bcd
+- 2026-10-18 — Verified: its test passes and fails on the old code

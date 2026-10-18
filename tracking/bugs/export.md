@@ -176,3 +176,129 @@ The XML reader looked for the capo as an attribute of <song>, but the writer emi
 - 2026-10-18 — Open: reported
 - 2026-10-18 — Fixed: commit f907982d0f
 - 2026-10-18 — Verified: its test passes and fails on the old code
+
+## BUG-0313
+
+**The GP5 export of edited notes could write an unreadable file**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Verified |
+
+Two onsets snapped onto one tick on one string became two notes on one string in one beat, which the GP5 reader refuses (fast triplets, 32nd runs).
+
+**Steps to reproduce:** 
+
+1. See the description (found by reading the code)
+
+**Expected:** As described in the solution.
+
+**Observed:** Two onsets snapped onto one tick on one string became two notes on one string in one beat, which the GP5 reader refuses (fast triplets, 32nd runs).
+
+**Root cause:** Notes of one snapped tick were merged without checking strings.
+
+**Fixes:** [FIX-0313](../FIX_LOG.md#fix-0313) (0.11.0-beta.4)
+
+**Verified:** tests/test_gp_arrangement_writer.py::test_fast_notes_snapped_onto_one_string_still_give_a_readable_file passed, and fails with the fix reverted (by pytest (the test fails on the old code))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit 9fff3a3837
+- 2026-10-18 — Verified: its test passes and fails on the old code
+
+## BUG-0314
+
+**The GP5 export drifted with whole-BPM rounding and lost the tempo of bars without notes**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Verified |
+
+Each bar's tempo was rounded on its own (90 bars at 119.52 BPM came back 0.67 s off), and a bar's tempo change rode its first NOTE, so a bar with none lost it.
+
+**Steps to reproduce:** 
+
+1. See the description (found by reading the code)
+
+**Expected:** As described in the solution.
+
+**Observed:** Each bar's tempo was rounded on its own (90 bars at 119.52 BPM came back 0.67 s off), and a bar's tempo change rode its first NOTE, so a bar with none lost it.
+
+**Root cause:** Rounding without carrying the error; the MixTableChange attached to the first note beat.
+
+**Fixes:** [FIX-0314](../FIX_LOG.md#fix-0314) (0.11.0-beta.4)
+
+**Verified:** tests/test_gp_arrangement_writer.py::test_the_rounding_of_each_bars_tempo_does_not_add_up passed, and fails with the fix reverted (by pytest (the test fails on the old code))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit 9fff3a3837
+- 2026-10-18 — Verified: its test passes and fails on the old code
+
+## BUG-0315
+
+**A tempo correction in the GP5 export lost to a tempo left on another track**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | Medium |
+| Priority | P3 |
+| Status | Verified |
+
+The corrected file kept a tempo change authored on another track (or on bar 1's first beat), which the importer reads after the correction.
+
+**Steps to reproduce:** 
+
+1. See the description (found by reading the code)
+
+**Expected:** As described in the solution.
+
+**Observed:** The corrected file kept a tempo change authored on another track (or on bar 1's first beat), which the importer reads after the correction.
+
+**Root cause:** Only track 0's first beat was set.
+
+**Fixes:** [FIX-0315](../FIX_LOG.md#fix-0315) (0.11.0-beta.4)
+
+**Verified:** tests/test_gp_tempo_writer.py::test_a_correction_wins_over_a_tempo_left_on_another_track passed, and fails with the fix reverted (by pytest (the test fails on the old code))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit 9fff3a3837
+- 2026-10-18 — Verified: its test passes and fails on the old code

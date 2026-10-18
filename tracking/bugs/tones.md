@@ -714,3 +714,45 @@ The suggestion table showed 'Distortion (em vez de ...)' for a swap chosen in 'T
 - 2026-10-11 — Fixed: commit 2bda715ed4
 - 2026-10-11 — Verified: manual
 - 2026-10-14 — Closed: released in 0.10.0-beta.1
+
+## BUG-0327
+
+**A tone with a bad value was accepted and failed the build later**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | Medium |
+| Priority | P3 |
+| Status | Verified |
+
+A volume such as "loud" or NaN was stored by a rebuild or the library and only failed at build time.
+
+**Steps to reproduce:** 
+
+1. See the description (found by reading the code)
+
+**Expected:** As described in the solution.
+
+**Observed:** A volume such as "loud" or NaN was stored by a rebuild or the library and only failed at build time.
+
+**Root cause:** Tones were stored unchecked.
+
+**Fixes:** [FIX-0327](../FIX_LOG.md#fix-0327) (0.11.0-beta.4)
+
+**Verified:** tests/test_api.py::test_a_tone_that_cannot_be_built_is_refused_up_front passed, and fails with the fix reverted (by pytest (the test fails on the old code))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit c322940e56
+- 2026-10-18 — Verified: its test passes and fails on the old code

@@ -4,9 +4,9 @@
 
 Every bug found in RockForge, with a permanent id; the full record of each is on its module's page in [bugs/](bugs). Rules and states: [docs/VERSIONING.md](../docs/VERSIONING.md#bugs). Fixes: [FIX_LOG.md](FIX_LOG.md). Releases: [RELEASE_LOG.md](RELEASE_LOG.md).
 
-| Fixed | Verified | Closed |
-|---|---|---|
-| 98 | 10 | 200 |
+| Fixed | Verified | Closed | Deferred |
+|---|---|---|---|
+| 100 | 36 | 200 | 1 |
 
 | ID | Title | Module | Severity | Priority | Status | Found in | Fixed in |
 |---|---|---|---|---|---|---|---|
@@ -318,3 +318,32 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0306](bugs/app.md#bug-0306) | A refused cover upload deleted the cover the project had | app | Medium | P2 | Verified | 0.11.0-beta.2 | 0.11.0-beta.3 |
 | [BUG-0307](bugs/import.md#bug-0307) | A wrong value in an imported project broke the home page | import | High | P2 | Verified | 0.11.0-beta.2 | 0.11.0-beta.3 |
 | [BUG-0308](bugs/import.md#bug-0308) | A GP7/8 file with a two-staff track before the guitar charted the wrong bars | import | High | P2 | Verified | 0.11.0-beta.2 | 0.11.0-beta.3 |
+| [BUG-0309](bugs/import.md#bug-0309) | Auto-pick put a "Lead/Rhythm" track in both slots and the build failed | import | Medium | P2 | Verified | 0.11.0-beta.2 | 0.11.0-beta.4 |
+| [BUG-0310](bugs/import.md#bug-0310) | A scoop from its own fret turned a note seconds earlier into a long slide | import | Medium | P2 | Verified | 0.11.0-beta.2 | 0.11.0-beta.4 |
+| [BUG-0311](bugs/import.md#bug-0311) | A trilled note lost its fingering, pick direction, slide and link | import | Low | P3 | Verified | 0.11.0-beta.2 | 0.11.0-beta.4 |
+| [BUG-0312](bugs/import.md#bug-0312) | A capo pushed slide and trill targets past fret 24 | import | Low | P3 | Verified | 0.11.0-beta.2 | 0.11.0-beta.4 |
+| [BUG-0313](bugs/export.md#bug-0313) | The GP5 export of edited notes could write an unreadable file | export | Medium | P2 | Verified | 0.11.0-beta.2 | 0.11.0-beta.4 |
+| [BUG-0314](bugs/export.md#bug-0314) | The GP5 export drifted with whole-BPM rounding and lost the tempo of bars without notes | export | Medium | P2 | Verified | 0.11.0-beta.2 | 0.11.0-beta.4 |
+| [BUG-0315](bugs/export.md#bug-0315) | A tempo correction in the GP5 export lost to a tempo left on another track | export | Medium | P3 | Verified | 0.11.0-beta.2 | 0.11.0-beta.4 |
+| [BUG-0316](bugs/import.md#bug-0316) | A locked .gp file gave a 500 and left its upload | import | Medium | P3 | Verified | 0.11.0-beta.2 | 0.11.0-beta.4 |
+| [BUG-0317](bugs/lyrics.md#bug-0317) | A GP7 lyric line on a bar never played appeared at the start | lyrics | Low | P3 | Verified | 0.11.0-beta.2 | 0.11.0-beta.4 |
+| [BUG-0318](bugs/dlc-builder.md#bug-0318) | A half-step bend lost its value in the XML | dlc-builder | Medium | P3 | Verified | 0.11.0-beta.2 | 0.11.0-beta.4 |
+| [BUG-0319](bugs/dlc-builder.md#bug-0319) | A chord with every string fret-hand muted was not marked muted in the XML | dlc-builder | Low | P3 | Verified | 0.11.0-beta.2 | 0.11.0-beta.4 |
+| [BUG-0320](bugs/lyrics.md#bug-0320) | UltraStar syllables of one word were shown as separate words | lyrics | Medium | P3 | Verified | 0.11.0-beta.2 | 0.11.0-beta.4 |
+| [BUG-0321](bugs/lyrics.md#bug-0321) | An LRC line with several times put a time into the lyric | lyrics | Medium | P3 | Verified | 0.11.0-beta.2 | 0.11.0-beta.4 |
+| [BUG-0322](bugs/app.md#bug-0322) | After a reload with other audio, dropping the old version reused its stems | app | Medium | P2 | Verified | 0.11.0-beta.2 | 0.11.0-beta.4 |
+| [BUG-0323](bugs/app.md#bug-0323) | Dropping a version left sibling versions with stems in a deleted folder | app | Medium | P3 | Verified | 0.11.0-beta.2 | 0.11.0-beta.4 |
+| [BUG-0324](bugs/app.md#bug-0324) | A project could be deleted while a detection ran on it | app | Medium | P3 | Verified | 0.11.0-beta.2 | 0.11.0-beta.4 |
+| [BUG-0325](bugs/app.md#bug-0325) | A refused new project left its recording in uploads, and "²" gave a 500 | app | Medium | P3 | Verified | 0.11.0-beta.2 | 0.11.0-beta.4 |
+| [BUG-0326](bugs/app.md#bug-0326) | Two bundle downloads at once could corrupt the zip | app | Low | P3 | Verified | 0.11.0-beta.2 | 0.11.0-beta.4 |
+| [BUG-0327](bugs/tones.md#bug-0327) | A tone with a bad value was accepted and failed the build later | tones | Medium | P3 | Verified | 0.11.0-beta.2 | 0.11.0-beta.4 |
+| [BUG-0328](bugs/audio.md#bug-0328) | On Windows, a tag or path in Japanese or Cyrillic broke reading ffmpeg's output | audio | Medium | P2 | Verified | 0.11.0-beta.2 | 0.11.0-beta.4 |
+| [BUG-0329](bugs/psarc.md#bug-0329) | WwiseConsole inherited the console's stdin | psarc | Low | P3 | Verified | 0.11.0-beta.2 | 0.11.0-beta.4 |
+| [BUG-0330](bugs/exe.md#bug-0330) | A components install step that stalled silently never timed out | exe | Low | P3 | Verified | 0.11.0-beta.2 | 0.11.0-beta.4 |
+| [BUG-0331](bugs/exe.md#bug-0331) | Without WebView2 the .exe never shut down when the browser tab closed | exe | Medium | P3 | Verified | 0.11.0-beta.2 | 0.11.0-beta.4 |
+| [BUG-0332](bugs/app.md#bug-0332) | Celery's hard time limit could leave a detection status stuck | app | Low | P4 | Fixed | 0.11.0-beta.2 | 0.11.0-beta.4 |
+| [BUG-0333](bugs/editor.md#bug-0333) | A note selection and the ↑/↓ note carried over to the other track | editor | Medium | P2 | Verified | 0.11.0-beta.2 | 0.11.0-beta.4 |
+| [BUG-0334](bugs/viewer.md#bug-0334) | Opening another project quickly could show the previous one's charts or recording | viewer | Medium | P2 | Fixed | 0.11.0-beta.2 | 0.11.0-beta.4 |
+| [BUG-0335](bugs/editor.md#bug-0335) | The merge bar grid piled up listeners each time Editar info opened | editor | Low | P3 | Verified | 0.11.0-beta.2 | 0.11.0-beta.4 |
+| [BUG-0336](bugs/viewer.md#bug-0336) | The 3D highway could start drawing after being closed while loading | viewer | Low | P4 | Verified | 0.11.0-beta.2 | 0.11.0-beta.4 |
+| [BUG-0337](bugs/psarc.md#bug-0337) | Two songs whose names share the first 30 letters get the same song key | psarc | Low | P4 | Deferred | 0.11.0-beta.2 | — |
