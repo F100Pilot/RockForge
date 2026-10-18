@@ -110,7 +110,9 @@ def _note_attrs(n: TabNote) -> dict[str, str]:
         # note's time is — DLC Builder's checker allows 1 ms.
         "sustain": _fmt(round(n.time + n.sustain, 3) - round(n.time, 3))
         if n.link_next else _fmt(n.sustain),
-        "bend": str(int(round(n.bend_semitones))) if has(Technique.BEND) else "0",
+        # the bend in half steps as it is (int(round()) made a half-step bend 0,
+        # which then dropped the attribute, and 1.5 into 2)
+        "bend": f"{n.bend_semitones:g}" if has(Technique.BEND) else "0",
         "hammerOn": "1" if has(Technique.HAMMER_ON) else "0",
         "pullOff": "1" if has(Technique.PULL_OFF) else "0",
         "harmonic": "1" if has(Technique.HARMONIC) else "0",
@@ -396,6 +398,7 @@ def render_arrangement(arr: Arrangement, album_art_urn: str | None = None) -> ET
         # the chord with a corrupt highway sprite. Mirror the per-note technique
         # onto the chord when every note in it carries that technique.
         chord_pm = all(Technique.PALM_MUTE in n.techniques for n in g)
+        chord_muted = all(Technique.FRET_MUTE in n.techniques for n in g)
         chord_accent = all(Technique.ACCENT in n.techniques for n in g)
         chord_hopo = all(
             {Technique.HAMMER_ON, Technique.PULL_OFF} & n.techniques for n in g
@@ -407,7 +410,7 @@ def render_arrangement(arr: Arrangement, album_art_urn: str | None = None) -> ET
             # (Rocksmith2014.NET's checker reads the chordNotes either way).
             "linkNext": "1" if any(n.link_next for n in g) else "0",
             "accent": "1" if chord_accent else "0",
-            "fretHandMute": "0",
+            "fretHandMute": "1" if chord_muted else "0",
             # Repeated identical chords in a fast run render condensed; emitting
             # them all as full boxes stacks the sprites into a corrupt blur.
             "highDensity": "1" if hd_flags[gi] else "0",

@@ -186,7 +186,7 @@ E
 def test_parse_ultrastar_txt_converts_beats_to_seconds() -> None:
     events = parse_ultrastar_txt(ULTRASTAR_TXT)
     # sec_per_beat = 15 / 120 = 0.125; gap = 1.0s
-    assert [e.lyric for e in events] == ["Hel", "lo+", "world"]
+    assert [e.lyric for e in events] == ["Hel-", "lo+", "world"]
     assert events[0].time == pytest.approx(1.0)
     assert events[0].length == pytest.approx(0.5)
     assert events[1].time == pytest.approx(1.5)
@@ -201,7 +201,7 @@ def test_parse_ultrastar_txt_offset() -> None:
 
 def test_parse_lyrics_detects_ultrastar() -> None:
     events = parse_lyrics(ULTRASTAR_TXT)
-    assert [e.lyric for e in events] == ["Hel", "lo+", "world"]
+    assert [e.lyric for e in events] == ["Hel-", "lo+", "world"]
 
 
 def test_events_from_dicts_basic_mapping() -> None:
@@ -322,3 +322,16 @@ def test_a_syllable_lasts_as_long_as_its_note_not_until_the_next_one() -> None:
     # Without the note ends it is still the gap to the next note, as before.
     events = distribute_syllables([(0.0, "long short")], [0.0, 3.0])
     assert events[0].length == 3.0
+
+
+def test_an_lrc_line_with_several_times_is_sung_at_each_of_them() -> None:
+    """A chorus written once with every time it is sung in front of it kept the
+    second time inside the lyric ("[01:10.00]Hello") and was never placed there."""
+    events = parse_lrc("[00:12.00][01:10.00]Hello world\n[00:20.00]Next")
+    assert [(round(e.time, 2), e.lyric) for e in events] == [
+        (12.0, "Hello world"), (20.0, "Next"), (70.0, "Hello world")]
+
+
+def test_ultrastar_syllables_of_one_word_are_joined_and_words_are_not() -> None:
+    txt = "#BPM:120\n#GAP:0\n: 0 2 60 Hel\n: 2 2 60 lo \n: 4 2 60 big\n: 6 2 60  world\nE\n"
+    assert [e.lyric for e in parse_ultrastar_txt(txt)] == ["Hel-", "lo", "big", "world"]

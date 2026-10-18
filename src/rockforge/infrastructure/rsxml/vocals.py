@@ -47,13 +47,15 @@ def parse_lrc(text: str, offset_s: float = 0.0) -> list[VocalEvent]:
     """
     stamps: list[tuple[float, str]] = []
     for line in text.splitlines():
-        m = _LRC_LINE.match(line.strip())
-        if not m:
-            continue
-        t = int(m.group(1)) * 60 + float(m.group(2)) + offset_s
-        lyric = m.group(3).strip()
-        if lyric:
-            stamps.append((t, lyric))
+        rest = line.strip()
+        times: list[float] = []
+        # a line sung several times carries every time in front of it
+        # ("[00:12.00][01:10.00]chorus"): one stamp per time, the text without them
+        while (m := _LRC_LINE.match(rest)) is not None:
+            times.append(int(m.group(1)) * 60 + float(m.group(2)) + offset_s)
+            rest = m.group(3).strip()
+        if rest:
+            stamps.extend((t, rest) for t in times)
     stamps.sort(key=lambda s: s[0])
 
     events: list[VocalEvent] = []
@@ -362,16 +364,26 @@ def parse_ultrastar_txt(text: str, offset_s: float = 0.0) -> list[VocalEvent]:
 
     # [time, length, lyric] rows; lyric is mutated in place to append "+" on line breaks.
     syllables: list[list[float | str]] = []
+    prev_spaced = True
     for raw in text.splitlines():
         line = raw.rstrip("\r\n")
         if not line or _USTAR_HEADER.match(line):
             continue
         m = _USTAR_NOTE.match(line)
         if m:
-            _kind, start, length, _pitch, lyric = m.groups()
-            lyric = lyric.strip()
+            _kind, start, length, _pitch, raw_lyric = m.groups()
+            lyric = raw_lyric.strip()
             if not lyric:
                 continue
+            # UltraStar marks a word boundary with a space at the end of one
+            # syllable or the start of the next; without one the syllable goes
+            # on the same word, which Rocksmith writes as a trailing "-"
+            # ("Hel-" "lo"), or the game shows "Hel lo"
+            if syllables and not prev_spaced and not raw_lyric[:1].isspace():
+                prev = str(syllables[-1][2])
+                if not prev.endswith(("+", "-")):
+                    syllables[-1][2] = prev + "-"
+            prev_spaced = raw_lyric[-1:].isspace()
             time = gap_s + int(start) * sec_per_beat + offset_s
             syllables.append([time, max(0.1, float(length) * sec_per_beat), lyric])
         elif line.startswith("-"):

@@ -382,3 +382,22 @@ def test_chords_carry_fingers_a_name_and_a_hand_shape() -> None:
     assert len(shapes) == 1  # three identical chords, one hand shape
     assert shapes[0].attrib == {"chordId": "0", "startTime": "1.000", "endTime": "2.001"}
     assert song.find("levels/level/handShapes").get("count") == "1"
+
+
+def test_a_half_step_bend_and_a_muted_chord_say_so_in_the_xml() -> None:
+    """int(round(0.5)) made a half-step bend "0", which dropped the attribute;
+    a chord whose every string is fret-hand muted said fretHandMute="0"."""
+    beats = tuple(Beat(time=0.5 * i, measure=(i // 4 + 1) if i % 4 == 0 else -1) for i in range(20))
+    mute = frozenset({Technique.FRET_MUTE})
+    notes = [TabNote(string=2, fret=7, time=1.0, sustain=0.4, bend_semitones=0.5,
+                     techniques=frozenset({Technique.BEND})),
+             *(TabNote(string=s, fret=0, time=2.0, sustain=0.0, techniques=mute)
+               for s in (0, 1, 2))]
+    song = render_arrangement(Arrangement(
+        kind=ArrangementKind.RHYTHM,
+        metadata=SongMetadata(title="T", artist="A", song_length=10.0),
+        tuning=Tuning(), tempo_map=TempoMap(beats=beats, average_bpm=120.0), notes=notes))
+    note = song.find("levels/level/notes/note")
+    assert note is not None and note.get("bend") == "0.5"
+    chord = song.find("levels/level/chords/chord")
+    assert chord is not None and chord.get("fretHandMute") == "1"
