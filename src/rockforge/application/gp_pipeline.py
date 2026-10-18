@@ -21,6 +21,7 @@ shortfall as silence so there is always room — see MIN_LEAD_S.
 from __future__ import annotations
 
 import math
+from bisect import bisect_right
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from pathlib import Path
@@ -46,6 +47,7 @@ from rockforge.domain.music import (
     BASS_LOW_TUNING_LIMIT,
     TabNote,
     Technique,
+    TempoMap,
     Tuning,
     apply_sustain_gap,
     resolve_links,
@@ -228,21 +230,75 @@ def _apply_note_overrides(
     return sorted(merged, key=lambda n: (n.time, n.string))
 
 
+@dataclass(frozen=True)
+class TrackMerge:
+    """A second GP track folded into a chart (``GpJobSpec.merge_tracks``).
+    ``bars``: the chart bars (1-based, as played) whose notes are taken, None =
+    every bar; ``only_empty``: only bars where the chart itself plays no note —
+    to fill a sparse Lead with parts of the Rhythm without touching what the
+    Lead already plays."""
+
+    track: int
+    bars: frozenset[int] | None = None
+    only_empty: bool = False
+
+
+def track_merges(stored: object) -> dict[str, TrackMerge]:
+    """``params["merge_tracks"]`` as the API stores it — chart → {track, bars,
+    only_empty} — or as it was first stored, chart → track index (every bar).
+    Anything else is skipped: the API already refused it on the way in."""
+    out: dict[str, TrackMerge] = {}
+    for kind, value in (stored.items() if isinstance(stored, dict) else ()):
+        if isinstance(value, int) and not isinstance(value, bool):
+            out[str(kind)] = TrackMerge(track=value)
+        elif isinstance(value, dict) and isinstance(value.get("track"), int):
+            bars = value.get("bars")
+            out[str(kind)] = TrackMerge(
+                track=int(value["track"]),
+                bars=frozenset(int(b) for b in bars) if isinstance(bars, list) else None,
+                only_empty=bool(value.get("only_empty")),
+            )
+    return out
+
+
+def bar_starts(tempo_map: TempoMap) -> list[tuple[float, int]]:
+    """(time, bar number) of every bar of a parsed track, as played. The grid's
+    last downbeat is the closing bar line (``close_beat_grid``), not a bar."""
+    downbeats = [(b.time, b.measure) for b in tempo_map.beats if b.measure > 0]
+    return downbeats[:-1] if len(downbeats) > 1 else downbeats
+
+
+def bar_of(starts: list[tuple[float, int]], t: float) -> int:
+    """The bar a note starting at ``t`` belongs to (the first bar for one before
+    it, the last for one past the grid — an overfull last bar)."""
+    i = bisect_right([s for s, _ in starts], t + 1e-6) - 1
+    return starts[max(0, i)][1] if starts else 1
+
+
 def merge_parsed_tracks(
-    primary: ParsedGpTrack, extra: ParsedGpTrack
-) -> tuple[ParsedGpTrack, int]:
-    """The notes of ``extra`` folded into ``primary``'s chart. A note on a
-    string the primary already plays at that instant (within
-    ``NOTE_OVERRIDE_MATCH_S``) is dropped — the primary's wins — and counted;
+    primary: ParsedGpTrack, extra: ParsedGpTrack, merge: TrackMerge | None = None,
+) -> tuple[ParsedGpTrack, int, int]:
+    """The notes of ``extra`` folded into ``primary``'s chart, with how many
+    were dropped because they collide and how many were left out by the bar
+    choice. A note on a string the primary already plays at that instant
+    (within ``NOTE_OVERRIDE_MATCH_S``) is dropped — the primary's wins;
     sustains are trimmed again, since a note of one track can now ring into
     the next note of the other on the same string. Both come from one file,
     so they share the bars: the longer beat grid is kept (an overfull last
     bar may reach further on one track)."""
+    starts = bar_starts(primary.tempo_map if primary.tempo_map.beats else extra.tempo_map)
+    played = {bar_of(starts, n.time) for n in primary.notes}
+    wanted = merge.bars if merge is not None else None
+    only_empty = merge is not None and merge.only_empty
     by_string: dict[int, list[float]] = {}
     for n in primary.notes:
         by_string.setdefault(n.string, []).append(n.time)
-    kept, dropped = [], 0
+    kept, dropped, outside = [], 0, 0
     for n in extra.notes:
+        bar = bar_of(starts, n.time)
+        if (wanted is not None and bar not in wanted) or (only_empty and bar in played):
+            outside += 1
+            continue
         if any(abs(t - n.time) <= NOTE_OVERRIDE_MATCH_S for t in by_string.get(n.string, ())):
             dropped += 1
             continue
@@ -250,7 +306,7 @@ def merge_parsed_tracks(
     notes = apply_sustain_gap(sorted([*primary.notes, *kept], key=lambda n: (n.time, n.string)))
     grid = max((primary.tempo_map, extra.tempo_map),
                key=lambda m: m.beats[-1].time if m.beats else 0.0)
-    return replace(primary, notes=notes, tempo_map=grid), dropped
+    return replace(primary, notes=notes, tempo_map=grid), dropped, outside
 
 
 @dataclass(frozen=True)
@@ -356,9 +412,10 @@ class GpJobSpec:
     # chart absent here gets the automatic FHPs; a list is ALL its FHPs.
     hand_positions: dict[str, list[HandPosition]] = field(default_factory=dict)
     # A second GP track whose notes are folded into a chart, keyed by
-    # ArrangementKind.value → the track index: for a part split across two
-    # tracks (Songsterr often splits one guitarist into "Lead" and "Rhythm").
-    merge_tracks: dict[str, int] = field(default_factory=dict)
+    # ArrangementKind.value → which track and which of its bars: for a part
+    # split across two tracks (Songsterr often splits one guitarist into "Lead"
+    # and "Rhythm"), or to fill a chart's empty bars with another track's.
+    merge_tracks: dict[str, TrackMerge] = field(default_factory=dict)
 
     def tones_for(self, kind: ArrangementKind) -> ArrangementTones:
         """This arrangement's tone setup, else the song-level one."""
@@ -551,12 +608,13 @@ class GenerateFromGpUseCase:
 
     @staticmethod
     def _merge_into(
-        spec: GpJobSpec, kind: ArrangementKind, p: ParsedGpTrack, extra_idx: int,
+        spec: GpJobSpec, kind: ArrangementKind, p: ParsedGpTrack, merge: TrackMerge,
         score_shift: float, tempo_scale: float, warnings: list[str],
     ) -> ParsedGpTrack:
-        """``p`` with the notes of GP track ``extra_idx`` folded in, or ``p`` as it
-        was — saying why — when that track cannot share its frets (another
-        tuning, capo or instrument)."""
+        """``p`` with the notes of GP track ``merge.track`` folded in (only in the
+        bars chosen), or ``p`` as it was — saying why — when that track cannot
+        share its frets (another tuning, capo or instrument)."""
+        extra_idx = merge.track
         try:
             extra = parse_gp_track(
                 spec.gp_path, extra_idx, score_shift, tempo_scale, spec.bar_times or None,
@@ -571,9 +629,14 @@ class GenerateFromGpUseCase:
                 "differs, so the same fret would sound another note"
             )
             return p
-        merged, dropped = merge_parsed_tracks(p, extra)
+        merged, dropped, outside = merge_parsed_tracks(p, extra, merge)
         added = len(merged.notes) - len(p.notes)
         msg = f"{kind.value}: {added} note(s) of track {extra_idx + 1} merged into the chart"
+        if merge.bars is not None or merge.only_empty:
+            where = "the chosen bars" if merge.bars is not None else "the bars it leaves empty"
+            if merge.bars is not None and merge.only_empty:
+                where = "the chosen bars it leaves empty"
+            msg += f", from {where} ({outside} of its notes elsewhere left out)"
         if dropped:
             msg += (f"; {dropped} left out where this chart already plays that string "
                     "at the same moment")
@@ -662,11 +725,11 @@ class GenerateFromGpUseCase:
                 bass=kind.is_bass,
             )
             warnings.extend(f"{kind.value}: {w}" for w in p.warnings)
-            extra_idx = spec.merge_tracks.get(kind.value)
-            if extra_idx is None and kind is ArrangementKind.COMBINED and spec.combo_track is None:
-                extra_idx = spec.merge_tracks.get(ArrangementKind.LEAD.value)  # a lone Lead
-            if extra_idx is not None and extra_idx != idx:
-                p = self._merge_into(spec, kind, p, extra_idx, score_shift, sync.tempo_scale,
+            merge = spec.merge_tracks.get(kind.value)
+            if merge is None and kind is ArrangementKind.COMBINED and spec.combo_track is None:
+                merge = spec.merge_tracks.get(ArrangementKind.LEAD.value)  # a lone Lead
+            if merge is not None and merge.track != idx:
+                p = self._merge_into(spec, kind, p, merge, score_shift, sync.tempo_scale,
                                      warnings)
             for stage_anchors in sync.sync_anchor_stages:
                 if not stage_anchors:

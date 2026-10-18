@@ -153,9 +153,11 @@ class RebuildIn(BaseModel):
     # or null to clear that slot. When set (even to {}), it REPLACES the whole
     # track assignment. None leaves it unchanged.
     tracks: dict[str, int | None] | None = None
-    # GP: a second track folded into a chart, chart name ("Lead", …) → track
-    # index. When set (even to {}), replaces params["merge_tracks"].
-    merge_tracks: dict[str, int | None] | None = None
+    # GP: a second track folded into a chart, chart name ("Lead", …) → a track
+    # index or {track, bars, only_empty} (checked by _clean_merge_tracks, which
+    # /jobs/gp's form field also goes through). When set (even to {}), replaces
+    # params["merge_tracks"].
+    merge_tracks: dict[str, Any] | None = None
     # GP: per-arrangement tuning override, keyed by ArrangementKind value
     # ("Lead"/"Rhythm"/…) → the six MIDI pitches (low to high). When set (even to
     # {}), replaces params["tuning_overrides"]; None leaves it untouched.

@@ -15,7 +15,9 @@ from fastapi.testclient import TestClient
 from rockforge.application.gp_pipeline import (
     GenerateFromGpUseCase,
     GpJobSpec,
+    TrackMerge,
     merge_parsed_tracks,
+    track_merges,
 )
 from rockforge.domain.arrangement import SongMetadata
 from rockforge.domain.music import Beat, TabNote, TempoMap, Tuning
@@ -98,8 +100,8 @@ def test_merged_notes_join_the_chart_and_a_note_both_play_is_kept_once() -> None
     extra = _track([TabNote(time=1.002, string=4, fret=7, sustain=0.0),  # the same note, 2 ms off
                     TabNote(time=0.5, string=4, fret=9, sustain=0.0),
                     TabNote(time=2.0, string=3, fret=7, sustain=0.0)])
-    merged, dropped = merge_parsed_tracks(primary, extra)
-    assert dropped == 1
+    merged, dropped, outside = merge_parsed_tracks(primary, extra)
+    assert (dropped, outside) == (1, 0)
     assert [(n.time, n.string, n.fret) for n in merged.notes] == [
         (0.0, 4, 5), (0.5, 4, 9), (1.0, 4, 7), (2.0, 3, 7)]
     # the first note no longer rings into the other track's note on its string
@@ -110,7 +112,7 @@ def test_a_part_split_over_two_tracks_is_built_as_one_chart(tmp_path: Path) -> N
     gp_path = _split_part(tmp_path / "split.gp5")
     alone = _run(gp_path, tmp_path / "a", lead_track=0)
     assert alone.note_counts == {"Combined": 2}
-    result = _run(gp_path, tmp_path / "b", lead_track=0, merge_tracks={"Lead": 1})
+    result = _run(gp_path, tmp_path / "b", lead_track=0, merge_tracks={"Lead": TrackMerge(track=1)})
     # a lone Lead is built as Combined; the shared beat-2 note counts once
     assert result.note_counts == {"Combined": 4}
     said = " ".join(result.warnings)
@@ -119,7 +121,7 @@ def test_a_part_split_over_two_tracks_is_built_as_one_chart(tmp_path: Path) -> N
 
 def test_a_track_in_another_tuning_is_not_merged_and_says_why(tmp_path: Path) -> None:
     gp_path = _split_part(tmp_path / "split.gp5", second_tuning=[62, 57, 53, 48, 43, 38])
-    result = _run(gp_path, tmp_path / "b", lead_track=0, merge_tracks={"Lead": 1})
+    result = _run(gp_path, tmp_path / "b", lead_track=0, merge_tracks={"Lead": TrackMerge(track=1)})
     assert result.note_counts == {"Combined": 2}
     assert any("not merged" in w and "tuning" in w for w in result.warnings)
 
@@ -153,11 +155,93 @@ def test_the_merge_is_chosen_in_the_wizard_and_changed_in_editar_info(
         assert r.status_code == 422, bad
     job = client.post("/jobs/gp", data={**form, "merge_tracks": '{"Lead": 1}'},
                       files=audio).json()
-    assert client.get(f"/jobs/{job['id']}/gp-tracks").json()["merge_tracks"] == {"Lead": 1}
+    every_bar = {"Lead": {"track": 1, "bars": None, "only_empty": False}}
+    assert client.get(f"/jobs/{job['id']}/gp-tracks").json()["merge_tracks"] == every_bar
     # "Editar info" can take it away again (a rebuild with {}), and a fork keeps it
     kept = client.post(f"/jobs/{job['id']}/rebuild", json={"offset_s": 1.0}).json()
-    assert client.get(f"/jobs/{kept['id']}/gp-tracks").json()["merge_tracks"] == {"Lead": 1}
+    assert client.get(f"/jobs/{kept['id']}/gp-tracks").json()["merge_tracks"] == every_bar
     cleared = client.post(f"/jobs/{kept['id']}/rebuild", json={"merge_tracks": {}}).json()
     assert client.get(f"/jobs/{cleared['id']}/gp-tracks").json()["merge_tracks"] == {}
     assert client.post(f"/jobs/{kept['id']}/rebuild",
                        json={"merge_tracks": {"Lead": -1}}).status_code == 422
+
+
+def _sparse_lead(path: Path) -> Path:
+    """A Lead that plays bar 1 only, over a Rhythm that plays all three bars."""
+    song = gp.Song()
+    song.title, song.artist, song.tempo = "Sparse", "Band", 120
+    for _ in range(2):
+        header = gp.MeasureHeader()
+        header.number = len(song.measureHeaders) + 1
+        header.start = song.measureHeaders[-1].start + song.measureHeaders[-1].length
+        song.addMeasureHeader(header)
+    lead = song.tracks[0]
+    lead.name = "Lead"
+    rhythm = gp.Track(song)
+    rhythm.name, rhythm.number = "Rhythm", 2
+    song.tracks.append(rhythm)
+    for track in (lead, rhythm):
+        while len(track.measures) < len(song.measureHeaders):
+            track.measures.append(gp.Measure(track, song.measureHeaders[len(track.measures)]))
+    for bar in range(3):
+        v = lead.measures[bar].voices[0]
+        if bar == 0:
+            _beat(v, 1, [(1, 12)])
+        else:
+            _beat(v, 1, [])
+            v.beats[-1].status = gp.BeatStatus.rest
+        r = rhythm.measures[bar].voices[0]
+        for fret in (3, 5):
+            _beat(r, 2, [(5, fret + bar)])
+    gp.write(song, str(path))
+    return path
+
+
+def test_only_the_bars_the_chart_leaves_empty_take_the_other_tracks_notes(
+    tmp_path: Path,
+) -> None:
+    gp_path = _sparse_lead(tmp_path / "sparse.gp5")
+    every = _run(gp_path, tmp_path / "a", lead_track=0, merge_tracks={"Lead": TrackMerge(1)})
+    assert every.note_counts == {"Combined": 7}  # 1 + all six rhythm notes
+    empty = _run(gp_path, tmp_path / "b", lead_track=0,
+                 merge_tracks={"Lead": TrackMerge(1, only_empty=True)})
+    assert empty.note_counts == {"Combined": 5}  # bar 1 stays the Lead's alone
+    said = " ".join(empty.warnings)
+    assert "the bars it leaves empty" in said and "2 of its notes elsewhere left out" in said
+    chosen = _run(gp_path, tmp_path / "c", lead_track=0,
+                  merge_tracks={"Lead": TrackMerge(1, bars=frozenset({3}))})
+    assert chosen.note_counts == {"Combined": 3}
+    both = _run(gp_path, tmp_path / "d", lead_track=0,
+                merge_tracks={"Lead": TrackMerge(1, bars=frozenset({1, 3}), only_empty=True)})
+    assert both.note_counts == {"Combined": 3}  # bar 1 is the Lead's: only bar 3 comes in
+
+
+def test_a_merge_stored_before_bars_existed_still_takes_every_bar() -> None:
+    assert track_merges({"Lead": 1}) == {"Lead": TrackMerge(track=1)}
+    assert track_merges({"Bass": {"track": 2, "bars": [4, 5], "only_empty": True}}) == {
+        "Bass": TrackMerge(track=2, bars=frozenset({4, 5}), only_empty=True)}
+
+
+def test_the_bars_are_chosen_from_a_map_of_each_tracks_notes(
+    client: TestClient, tmp_path: Path
+) -> None:
+    data = _sparse_lead(tmp_path / "sparse.gp5").read_bytes()
+    token = client.post(
+        "/gp/inspect", files={"file": ("sparse.gp5", data, "application/octet-stream")}
+    ).json()["gp_token"]
+    assert client.get("/gp/bars", params={"gp_token": token}).json() == {
+        "bars": 3, "tracks": {"0": [1, 0, 0], "1": [2, 2, 2]}}
+    assert client.get("/gp/bars", params={"gp_token": "nope.gp5"}).status_code == 404
+    form = {"gp_token": token, "lead_track": "0"}
+    audio = {"audio": ("a.wav", b"RIFF0000WAVE", "audio/wav")}
+    for bad in ('{"Lead": {"track": 1, "bars": [0]}}', '{"Lead": {"track": 1, "bars": "1-3"}}',
+                '{"Lead": {"track": 1, "only_empty": "yes"}}', '{"Lead": {"bars": [2]}}',
+                '{"Lead": {"track": 1, "colour": "red"}}'):
+        r = client.post("/jobs/gp", data={**form, "merge_tracks": bad}, files=audio)
+        assert r.status_code == 422, bad
+    job = client.post("/jobs/gp", files=audio, data={
+        **form, "merge_tracks": '{"Lead": {"track": 1, "bars": [3, 2, 3], "only_empty": true}}'}
+    ).json()
+    assert client.get(f"/jobs/{job['id']}/gp-tracks").json()["merge_tracks"] == {
+        "Lead": {"track": 1, "bars": [2, 3], "only_empty": True}}
+    assert client.get(f"/jobs/{job['id']}/gp-bars").json()["bars"] == 3

@@ -862,23 +862,75 @@ _SYNC_STATE_KEYS: tuple[str, ...] = (
 _MERGE_KINDS = ("Lead", "Rhythm", "Combined", "Alternate Lead", "Alternate Rhythm", "Bass")
 
 
-def _clean_merge_tracks(value: object) -> dict[str, int]:
-    """``merge_tracks`` as a client sent it — chart name → GP track index —
-    checked: known charts only, plain track indexes (422 otherwise)."""
-    message = "merge_tracks must map a chart (Lead, Rhythm, …) to a GP track index"
+MAX_MERGE_BAR = 10000
+
+
+def _clean_merge_tracks(value: object) -> dict[str, dict[str, Any]]:
+    """``merge_tracks`` as a client sent it — chart name → a GP track index, or
+    ``{track, bars, only_empty}`` (``bars``: the chart bars whose notes are
+    taken, null = all) — checked and always answered in the second shape:
+    known charts only, plain track indexes and bar numbers (422 otherwise)."""
+    message = ("merge_tracks must map a chart (Lead, Rhythm, …) to a GP track index "
+               "or to {track, bars, only_empty}")
     if value is None:
         return {}
     if not isinstance(value, dict):
         raise HTTPException(422, message)
-    out: dict[str, int] = {}
-    for kind, idx in value.items():
-        if idx is None:
+
+    def plain_int(v: object, low: int, high: int) -> bool:
+        return isinstance(v, int) and not isinstance(v, bool) and low <= v <= high
+
+    out: dict[str, dict[str, Any]] = {}
+    for kind, entry in value.items():
+        if entry is None:
             continue
-        if kind not in _MERGE_KINDS or not isinstance(idx, int) or isinstance(idx, bool) \
-                or not 0 <= idx < 64:
+        if not isinstance(entry, dict):
+            entry = {"track": entry}
+        idx, bars = entry.get("track"), entry.get("bars")
+        only_empty = entry.get("only_empty", False)
+        if kind not in _MERGE_KINDS or not plain_int(idx, 0, 63) \
+                or not isinstance(only_empty, bool) \
+                or set(entry) - {"track", "bars", "only_empty"}:
             raise HTTPException(422, message)
-        out[kind] = idx
+        if bars is not None:
+            if not isinstance(bars, list) or len(bars) > MAX_MERGE_BAR \
+                    or not all(plain_int(b, 1, MAX_MERGE_BAR) for b in bars):
+                raise HTTPException(422, f"merge_tracks[{kind}].bars must be bar numbers "
+                                         f"1-{MAX_MERGE_BAR}")
+            bars = sorted(set(bars))
+        out[kind] = {"track": idx, "bars": bars, "only_empty": only_empty}
     return out
+
+
+def _gp_bar_map(gp_path: Path) -> dict[str, Any]:
+    """How many notes each track of a GP file starts in each bar, as played —
+    what the merge picker draws. A track that cannot be charted (drums, an
+    unusual string count) is null."""
+    from rockforge.application.gp_pipeline import bar_of, bar_starts
+    from rockforge.infrastructure.gpimport.parser import inspect_gp, parse_gp_track
+
+    info = inspect_gp(gp_path)
+    tracks: dict[str, list[int] | None] = {}
+    bar_count = 0
+    for t in info.tracks:
+        if t.is_percussion:
+            tracks[str(t.index)] = None
+            continue
+        try:
+            parsed = parse_gp_track(gp_path, t.index, 0.0, 1.0, None,
+                                    bass=t.string_count in (4, 5))
+        except Exception:
+            tracks[str(t.index)] = None
+            continue
+        starts = bar_starts(parsed.tempo_map)
+        bar_count = max(bar_count, max((b for _, b in starts), default=0))
+        counts = [0] * max((b for _, b in starts), default=0)
+        for n in parsed.notes:
+            i = bar_of(starts, n.time) - 1
+            if 0 <= i < len(counts):
+                counts[i] += 1
+        tracks[str(t.index)] = counts
+    return {"bars": bar_count, "tracks": tracks}
 
 
 def _extract_sync_state(params: dict[str, object]) -> dict[str, object]:

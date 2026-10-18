@@ -623,6 +623,34 @@ Playwright and a real build of an invented split GP5 (PT 1440 / EN 760 px):
 own track refused, 2 + 2 notes → 4 (one shared note left out, said), "Editar
 info" shows the merge and removing it rebuilds to 2, no page errors.
 
+**Choosing the bars** ("quero que seja possível escolher os compassos … a pista
+que escolho como principal só recebe as notas de outra pista nos compassos que
+estão vazios na principal", 2026-10-18). Each merge is a `TrackMerge(track,
+bars, only_empty)`: `bars` = the chart bars (1-based, as PLAYED, the score's
+numbers) whose notes come in, None = all; `only_empty` = only bars where the
+chart itself starts no note. A note's bar is `bar_of(bar_starts(tempo_map), t)`
+(the grid's last downbeat is the closing bar line, `close_beat_grid`, not a
+bar); notes left out by the choice are counted in the warning. Stored as
+`params["merge_tracks"][chart] = {track, bars, only_empty}` —
+`_clean_merge_tracks` takes the old bare index too and always answers the new
+shape; the worker reads either through `track_merges`. `GET /gp/bars?gp_token=`
+(before the job) and `GET /jobs/{id}/gp-bars` answer `api._gp_bar_map`: notes
+per bar of every chartable track (`{bars, tracks: {index: [counts] | null}}`).
+UI: `renderMergePickers(box, tracks, current, {barsUrl, slotTrack})` adds
+"Só nos compassos onde o arranjo não tem notas" (ticked by default) and a grid
+of bars (`mergeBarStates`: sel / out / own — the chart plays there, locked
+while the box is ticked / off — nothing to bring); click, drag-paint,
+Shift+click for a range, Todos/Nenhum; `bars` stays null until the user edits
+it; "Editar info" counts it as an unsaved change (`mergeStateKey`), and no bar
+left is refused. Experimental. Guarded by
+`test_only_the_bars_the_chart_leaves_empty_take_the_other_tracks_notes`,
+`test_a_merge_stored_before_bars_existed_still_takes_every_bar` and
+`test_the_bars_are_chosen_from_a_map_of_each_tracks_notes` (the only-empty
+rule, the bar choice and the closing-line rule mutation-checked); with
+Playwright (PT 1440 / EN 760 px): bar 1 locked where the Lead plays, a click,
+a drag over three bars, Shift+click, "Nenhum" refused, a real build taking
+only bar 3, "Editar info" showing it and counting a change, no page errors.
+
 ### Reloading the GP file (`/jobs/{id}/reload-gp`)
 
 `POST /jobs/{id}/reload-gp` (multipart `gp`, GP jobs only) swaps the Guitar Pro

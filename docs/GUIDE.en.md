@@ -131,6 +131,15 @@ Both tracks must have the same tuning and capo (otherwise the same fret would so
 and the merge is not made, with a warning saying so); where both play the same string at the same
 moment, the arrangement's note stays, and the warning counts how many were left out.
 
+Below it a grid shows the song's bars: **choose the bars** whose notes come in. With **Only in
+the bars where the arrangement has no notes** (on by default), the arrangement only receives notes
+where it is silent — for example, a LEAD with few notes gets the RHYTHM's parts in the bars where
+the LEAD does not play, and what the LEAD already plays does not change. Click a bar to include or
+leave it out, drag over several, or Shift+click for a range; **All** and **None** do the obvious.
+Green goes in; a green outline means the other track has notes but they are left out; hatched
+means the arrangement already plays there; faded means the other track has no notes. It is
+experimental: check the result on the score. Change it later in **Edit info**.
+
 **Bass track** takes a 4- or 5-string bass track of the file (the guitar pickers do not offer
 those). Rocksmith's bass has four strings, so a 5-string bass is folded onto the four strings that
 lose the fewest notes — B E A D when the part never plays the high G — and the warnings name the

@@ -509,6 +509,25 @@
   .batch-row .batch-target { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); }
   .batch-row .batch-err { grid-column:2 / -1; color:#f08a8a; font-size:.82rem; }
   .batch-row .pv-chip { height:1.7rem; font-size:.75rem; }
+  /* "Juntar duas pistas": the bars whose notes come in (renderMergePickers). */
+  .merge-bars { grid-column:1 / -1; display:flex; flex-direction:column; gap:.5rem; }
+  .mb-head { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; font-weight:600; }
+  .mb-head button.pv-btn { height:2rem; padding:0 .8rem; font-size:.85rem; }
+  .mb-sum { color:var(--muted); font-weight:400; font-size:.9rem; }
+  .mb-grid { display:flex; flex-wrap:wrap; gap:3px; max-height:13rem; overflow:auto; padding:2px;
+    user-select:none; touch-action:none; }
+  .mb-cell { width:2.1rem; height:1.7rem; padding:0; border-radius:5px; font:600 .72rem/1 system-ui, sans-serif;
+    background:var(--panel-2); color:var(--muted); border:1px solid var(--line); display:inline-flex;
+    align-items:center; justify-content:center; cursor:pointer; }
+  .mb-cell.sel { background:var(--ok); border-color:var(--ok); color:#0d1a10; }
+  .mb-cell.out { border-color:var(--ok); color:var(--text); background:transparent; }
+  .mb-cell.own { cursor:not-allowed; color:var(--muted);
+    background:repeating-linear-gradient(135deg, var(--panel-2) 0 4px, var(--line) 4px 6px); }
+  .mb-cell.off { cursor:default; opacity:.35; }
+  .mb-legend { display:flex; flex-wrap:wrap; gap:.4rem 1rem; color:var(--muted); font-size:.82rem; }
+  .mb-legend span { display:inline-flex; align-items:center; gap:.35rem; }
+  .mb-legend .mb-cell { width:1rem; height:.8rem; cursor:default; }
+  .mb-hint { color:var(--muted); font-size:.82rem; }
   @media (max-width: 800px) { .wz-grid { grid-template-columns:minmax(0, 1fr); } .pv-top .wz-nav .pv-btn { padding:0 .7rem; } }
 
   /* toasts */
@@ -1972,7 +1991,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
         </div>
         <div class="pv-card pv-card-lg">
           <div class="pv-card-head">Juntar duas pistas num só arranjo</div>
-          <div class="pv-card-desc">Para uma parte que o ficheiro dividiu em duas pistas (o Songsterr faz isto muitas vezes com um só guitarrista): as notas da segunda pista entram no arranjo escolhido. As duas têm de ter a mesma afinação e o mesmo capo; onde as duas tocam a mesma corda ao mesmo tempo, fica a nota do arranjo.</div>
+          <div class="pv-card-desc">Para uma parte que o ficheiro dividiu em duas pistas (o Songsterr faz isto muitas vezes com um só guitarrista), ou para encher um arranjo com partes de outra pista: as notas da segunda pista entram no arranjo escolhido, nos compassos que escolheres. As duas têm de ter a mesma afinação e o mesmo capo; onde as duas tocam a mesma corda ao mesmo tempo, fica a nota do arranjo. Experimental.</div>
           <div class="wz-grid" id="wzMerge"></div>
         </div>
       </div>
@@ -2173,7 +2192,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
         <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-sliders"/></svg>Arranjos e afinação (Guitar Pro)</div>
         <div class="pv-card-desc">Arranjos & afinação (Guitar Pro) — alterar reconstrói o projeto.</div>
         <div id="metaTracks" class="wz-grid"></div>
-        <div class="pv-card-desc">Juntar duas pistas num só arranjo: as notas da segunda pista entram no arranjo escolhido (mesma afinação e capo).</div>
+        <div class="pv-card-desc">Juntar duas pistas num só arranjo: as notas da segunda pista entram no arranjo escolhido, nos compassos que escolheres (mesma afinação e capo). Experimental.</div>
         <div id="metaMerge" class="wz-grid"></div>
         <div id="metaTunings" class="wz-grid"></div>
       </div>

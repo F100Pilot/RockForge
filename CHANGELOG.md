@@ -6,6 +6,13 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Novidades
+
+- **Juntar duas pistas: escolhe os compassos** (Novo projeto → Pistas, e Editar info). Uma grelha
+  com os compassos da música diz quais entram no arranjo; por defeito, só os compassos em que o
+  arranjo não tem notas — assim um LEAD com poucas notas recebe as partes do RHYTHM só onde está
+  calado. Clica, arrasta ou Shift+clique para escolher. Experimental.
+
 ## [0.11.0 beta 2] — 2026-10-18
 
 ### Novidades

@@ -52,8 +52,27 @@ def get_gp_tracks(job_id: str) -> dict[str, object]:
             "alt_rhythm": params.get("alt_rhythm_track"), "bass": params.get("bass_track"),
         },
         "tuning_overrides": params.get("tuning_overrides") or {},
-        "merge_tracks": params.get("merge_tracks") or {},
+        "merge_tracks": api._clean_merge_tracks(params.get("merge_tracks")),
     }
+
+
+@router.get("/jobs/{job_id}/gp-bars")
+def get_gp_bars(job_id: str) -> dict[str, object]:
+    """Notes per bar of every track of the job's GP file (the merge picker)."""
+    from rockforge.domain.errors import IngestionError
+
+    with api._session_factory() as session:
+        job = api._job_or_404(session, job_id)
+        if job.source_type != "gp":
+            raise HTTPException(422, "not a Guitar Pro job")
+        params = dict(job.params or {})
+    gp_path = Path(str(params.get("gp_path", "")))
+    if not gp_path.is_file():
+        raise HTTPException(409, "the Guitar Pro file is no longer on the work volume")
+    try:
+        return api._gp_bar_map(gp_path)
+    except IngestionError as exc:
+        raise HTTPException(422, str(exc)) from exc
 
 
 # The GP track each arrangement is built from, as /jobs/gp stores the choice.

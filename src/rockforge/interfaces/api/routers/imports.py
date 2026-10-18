@@ -46,6 +46,25 @@ def inspect_gp_file(file: UploadFile = File(...)) -> GpInspectOut:
     return _inspect_stored_gp(dest)
 
 
+@router.get("/gp/bars")
+def gp_bars(gp_token: str) -> dict[str, object]:
+    """Notes per bar of every track of an inspected GP file — for the merge
+    picker, before the job exists."""
+    gp_path = api.settings.work_dir / "gp" / Path(gp_token).name
+    if not gp_path.is_file():
+        raise HTTPException(404, "gp_token not found — upload the GP file via /gp/inspect first")
+    return _bar_map_or_422(gp_path)
+
+
+def _bar_map_or_422(gp_path: Path) -> dict[str, object]:
+    from rockforge.domain.errors import IngestionError
+
+    try:
+        return api._gp_bar_map(gp_path)
+    except IngestionError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
 def _inspect_stored_gp(dest: Path) -> GpInspectOut:
     """The wizard's track list for a GP file already stored under work_dir/gp."""
     from rockforge.domain.errors import IngestionError

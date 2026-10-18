@@ -358,7 +358,8 @@ def reload_gp(
         # the track layout, but a restructured file may not — fail loudly rather
         # than silently building the wrong track.
         valid = {t.index for t in info.tracks}
-        merged = cast("dict[str, int]", params.get("merge_tracks") or {})
+        merged = {k: v["track"] for k, v in
+                  api._clean_merge_tracks(params.get("merge_tracks")).items()}
         for key, idx in [*((k, params.get(k)) for k in (
                 "lead_track", "rhythm_track", "combo_track",
                 "alt_lead_track", "alt_rhythm_track", "bass_track")),

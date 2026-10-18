@@ -131,6 +131,15 @@ têm de ter a mesma afinação e o mesmo capo (senão a mesma casa soaria outra 
 é feita, com um aviso a dizê-lo); onde as duas tocam a mesma corda ao mesmo tempo, fica a nota do
 arranjo, e o aviso conta quantas ficaram de fora.
 
+Por baixo aparece uma grelha com os compassos da música: **escolhe os compassos** cujas notas
+entram. Com **Só nos compassos onde o arranjo não tem notas** (ligado por defeito), o arranjo só
+recebe notas onde está calado — por exemplo, um LEAD com poucas notas fica com as partes do RHYTHM
+nos compassos em que o LEAD não toca, e o que o LEAD já toca não muda. Clica num compasso para o
+incluir ou tirar, arrasta por cima de vários, ou Shift+clique para um intervalo; **Todos** e
+**Nenhum** fazem o óbvio. Verde entra; contorno verde a outra pista tem notas mas não entra;
+riscado o arranjo já toca ali; apagado a outra pista não tem notas. É experimental: confere o
+resultado na partitura. Muda-se depois em **Editar info**.
+
 **Pista Bass** recebe uma pista de baixo de 4 ou 5 cordas do ficheiro (as de guitarra não as
 mostram). O baixo do Rocksmith tem quatro cordas, por isso um baixo de 5 é dobrado nas quatro
 cordas que perdem menos notas — B E A D quando a parte nunca toca o Sol agudo — e os avisos dizem

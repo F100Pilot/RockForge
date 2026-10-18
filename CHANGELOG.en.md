@@ -6,6 +6,13 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### New
+
+- **Merge two tracks: choose the bars** (New project → Tracks, and Edit info). A grid of the
+  song's bars says which go into the arrangement; by default only the bars where the arrangement
+  has no notes — so a LEAD with few notes takes the RHYTHM's parts only where it is silent. Click,
+  drag or Shift+click to choose. Experimental.
+
 ## [0.11.0 beta 2] — 2026-10-18
 
 ### New

@@ -2115,7 +2115,10 @@ async function openMetaEdit() {
       if (v !== null && v !== undefined)
         document.querySelector(`#metaTracks select[data-slot="${slot}"]`).value = String(v);
     }
-    renderMergePickers(document.getElementById('metaMerge'), tr.tracks, tr.merge_tracks);
+    renderMergePickers(document.getElementById('metaMerge'), tr.tracks, tr.merge_tracks, {
+      barsUrl: `/jobs/${selectedJob.id}/gp-bars`,
+      slotTrack: slot => document.querySelector(`#metaTracks select[data-slot="${slot}"]`).value,
+    });
     const presetOpts = Object.keys(TUNING_PRESETS)
       .map(n => `<option value="${n}">${n === 'Manter' ? T('Manter') : n}</option>`).join('');
     document.getElementById('metaTunings').innerHTML = arrs.map(a => {
@@ -2152,6 +2155,7 @@ function metaValues() {
   if (document.getElementById('metaGp').style.display !== 'none') {
     for (const sel of document.querySelectorAll('#metaTracks select[data-slot]')) gp['t:' + sel.dataset.slot] = sel.value;
     for (const sel of document.querySelectorAll('#metaMerge select[data-merge]')) gp['m:' + sel.dataset.merge] = sel.value;
+    gp['m:bars'] = mergeStateKey(document.getElementById('metaMerge'));
     for (const sel of document.querySelectorAll('#metaTunings select[data-kind]')) gp['u:' + sel.dataset.kind] = sel.value;
   }
   return { info, gp };
@@ -11056,20 +11060,142 @@ function mergeSlotLabel(slot) {
   return { lead: 'Lead', rhythm: 'Rhythm', combo: 'Combo', bass: 'Bass',
     alt_lead: T('Lead alternativo'), alt_rhythm: T('Rhythm alternativo') }[slot];
 }
-function renderMergePickers(box, tracks, current) {
+// `opts.barsUrl` answers the notes of every track per bar (/gp/bars,
+// /jobs/{id}/gp-bars): the strip under the pickers lets the user pick the bars
+// whose notes come in, and by default only those the chart leaves empty.
+function renderMergePickers(box, tracks, current, opts = {}) {
   const usable = (tracks || []).filter(t => !t.is_percussion);
-  const [kind, idx] = Object.entries(current || {})[0] || ['Lead', null];
+  const [kind, entry] = Object.entries(current || {})[0] || ['Lead', null];
+  const idx = entry !== null && typeof entry === 'object' ? entry.track : entry;
   box.innerHTML = `<div class="field"><label>${T('Juntar a pista')}</label>
       <select data-merge="track"><option value="">${T('— nenhuma —')}</option>${usable
         .map(t => `<option value="${t.index}">${t.index}: ${esc(t.name)}</option>`).join('')}</select></div>
     <div class="field"><label>${T('ao arranjo')}</label>
       <select data-merge="into">${MERGE_SLOTS.map(([slot, k]) =>
-        `<option value="${k}">${esc(mergeSlotLabel(slot))}</option>`).join('')}</select></div>`;
+        `<option value="${k}">${esc(mergeSlotLabel(slot))}</option>`).join('')}</select></div>
+    <div class="merge-bars" hidden>
+      <label class="check"><input type="checkbox" data-merge="empty"> ${T('Só nos compassos onde o arranjo não tem notas')}</label>
+      <div class="mb-head"><span>${T('Compassos a juntar')}</span>
+        <button type="button" class="pv-btn pv-btn-sm" data-mb="all">${T('Todos')}</button>
+        <button type="button" class="pv-btn pv-btn-sm" data-mb="none">${T('Nenhum')}</button>
+        <span class="mb-sum" aria-live="polite"></span></div>
+      <div class="mb-grid" role="group"></div>
+      <div class="mb-legend"><span><i class="mb-cell sel"></i>${T('entra no arranjo')}</span>
+        <span><i class="mb-cell out"></i>${T('a outra pista tem notas, não entra')}</span>
+        <span><i class="mb-cell own"></i>${T('o arranjo já toca aqui')}</span>
+        <span><i class="mb-cell off"></i>${T('a outra pista não tem notas')}</span></div>
+      <div class="mb-hint">${T('Clica num compasso para o incluir ou tirar; arrasta para vários, Shift+clique para um intervalo.')}</div>
+    </div>`;
   box.querySelector('[data-merge=into]').value = kind;
   if (idx !== null && idx !== undefined) box.querySelector('[data-merge=track]').value = String(idx);
+  box.querySelector('[data-merge=empty]').checked = entry && typeof entry === 'object' ? !!entry.only_empty : true;
+  box._merge = { map: null, url: opts.barsUrl || null, slotTrack: opts.slotTrack || null,
+    bars: entry && typeof entry === 'object' && Array.isArray(entry.bars) ? new Set(entry.bars) : null,
+    last: null };
+  const scope = box.closest('form') || document;
+  if (!scope._mergeWired) {
+    scope._mergeWired = true;
+    scope.addEventListener('change', e => {
+      const b = scope.querySelector('[data-merge-box]');
+      if (b && e.target.matches('select[name$=_track], select[data-slot]')) drawMergeBars(b);
+    });
+  }
+  box.dataset.mergeBox = '1';
+  box.addEventListener('change', e => { if (e.target.matches('[data-merge]')) drawMergeBars(box); });
+  box.querySelector('[data-mb=all]').onclick = () => setMergeBars(box, true);
+  box.querySelector('[data-mb=none]').onclick = () => setMergeBars(box, false);
+  wireMergeGrid(box);
+  drawMergeBars(box);
 }
-// {chart: track} from the pickers, {} for none — or a sentence when the choice
-// cannot work (no track in that chart yet, or the chart's own track).
+// The chosen bars as the strip shows them: those the other track has notes
+// in, not locked by "only empty bars", and in the user's set (all, untouched).
+function mergeBarStates(box) {
+  const m = box._merge, sel = box.querySelector('[data-merge=track]').value;
+  if (!m.map || sel === '') return null;
+  const kind = box.querySelector('[data-merge=into]').value;
+  const slot = MERGE_SLOTS.find(([, k]) => k === kind)[0];
+  const own = m.slotTrack ? m.slotTrack(slot) : '';
+  const extra = m.map.tracks[sel] || [];
+  const mine = (own !== '' && m.map.tracks[own]) || [];
+  const onlyEmpty = box.querySelector('[data-merge=empty]').checked;
+  const out = [];
+  for (let b = 1; b <= m.map.bars; b++) {
+    const e = extra[b - 1] || 0, p = mine[b - 1] || 0;
+    const state = !e ? 'off' : (onlyEmpty && p ? 'own' : (m.bars === null || m.bars.has(b) ? 'sel' : 'out'));
+    out.push({ bar: b, state, notes: e, own: p });
+  }
+  return out;
+}
+async function drawMergeBars(box) {
+  const m = box._merge, wrap = box.querySelector('.merge-bars');
+  const chosen = box.querySelector('[data-merge=track]').value !== '';
+  wrap.hidden = !chosen || !m.url;
+  if (wrap.hidden) return;
+  if (!m.map) {
+    try { m.map = await getJSON(m.url); } catch { wrap.hidden = true; return; }
+  }
+  const states = mergeBarStates(box) || [];
+  box.querySelector('.mb-grid').innerHTML = states.map(s =>
+    `<button type="button" class="mb-cell ${s.state}" data-bar="${s.bar}" ${s.state === 'off' || s.state === 'own' ? 'disabled' : ''}
+      title="${esc(T('Compasso {bar}: {n} notas na outra pista, {own} no arranjo', { bar: s.bar, n: s.notes, own: s.own }))}">${s.bar}</button>`).join('');
+  const sel = states.filter(s => s.state === 'sel');
+  const notes = sel.reduce((a, s) => a + s.notes, 0);
+  box.querySelector('.mb-sum').textContent = sel.length === 1
+    ? T('1 compasso, {notes} notas', { notes }) : T('{bars} compassos, {notes} notas', { bars: sel.length, notes });
+}
+function setMergeBars(box, on) {
+  box._merge.bars = on ? null : new Set();
+  drawMergeBars(box);
+  box.dispatchEvent(new Event('change', { bubbles: true }));
+}
+function wireMergeGrid(box) {
+  const grid = box.querySelector('.mb-grid');
+  let paint = null;
+  const apply = (bar, on) => {
+    const m = box._merge;
+    if (m.bars === null) m.bars = new Set((mergeBarStates(box) || []).filter(s => s.state === 'sel').map(s => s.bar));
+    if (on) m.bars.add(bar); else m.bars.delete(bar);
+  };
+  const cellOf = e => e.target.closest('.mb-cell[data-bar]:not([disabled])');
+  grid.addEventListener('pointerdown', e => {
+    const c = cellOf(e);
+    if (!c) return;
+    e.preventDefault();
+    const bar = +c.dataset.bar, on = !c.classList.contains('sel'), m = box._merge;
+    if (e.shiftKey && m.last !== null) {
+      const [a, b] = [Math.min(m.last, bar), Math.max(m.last, bar)];
+      for (const s of mergeBarStates(box) || []) if (s.bar >= a && s.bar <= b && s.state !== 'off' && s.state !== 'own') apply(s.bar, on);
+    } else {
+      apply(bar, on);
+      paint = on;
+    }
+    m.last = bar;
+    drawMergeBars(box);
+  });
+  grid.addEventListener('pointerover', e => {
+    if (paint === null || !(e.buttons & 1)) return;
+    const c = cellOf(e);
+    if (!c || c.classList.contains('sel') === paint) return;
+    apply(+c.dataset.bar, paint);
+    drawMergeBars(box);
+  });
+  const end = () => {
+    if (paint === null) return;
+    paint = null;
+    box.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+  document.addEventListener('pointerup', end);
+  grid.addEventListener('pointerup', () => { if (paint === null) box.dispatchEvent(new Event('change', { bubbles: true })); });
+}
+// What the merge card holds, as a string — for "Editar info"'s unsaved-changes count.
+function mergeStateKey(box) {
+  const m = box._merge;
+  return JSON.stringify([box.querySelector('[data-merge=empty]')?.checked,
+    m && m.bars ? [...m.bars].sort((a, b) => a - b) : null]);
+}
+// {chart: {track, bars, only_empty}} from the pickers, {} for none — or a
+// sentence when the choice cannot work (no track in that chart yet, or the
+// chart's own track, or no bar left to take).
 function readMergePickers(box, slotTrack) {
   const t = box.querySelector('[data-merge=track]');
   if (!t || t.value === '') return {};
@@ -11078,7 +11204,13 @@ function readMergePickers(box, slotTrack) {
   const own = slotTrack(slot);
   if (own === '') return T('Para juntar, escolhe primeiro a pista do arranjo {arr}.', { arr: mergeSlotLabel(slot) });
   if (own === t.value) return T('A pista a juntar já é a do arranjo {arr}.', { arr: mergeSlotLabel(slot) });
-  return { [kind]: parseInt(t.value, 10) };
+  const m = box._merge || { bars: null };
+  const states = mergeBarStates(box);
+  if (states && !states.some(s => s.state === 'sel'))
+    return T('Nenhum compasso escolhido para juntar ao arranjo {arr}.', { arr: mergeSlotLabel(slot) });
+  return { [kind]: { track: parseInt(t.value, 10),
+    bars: m.bars === null ? null : [...m.bars].sort((a, b) => a - b),
+    only_empty: !!box.querySelector('[data-merge=empty]')?.checked } };
 }
 
 // Step 1's answer — from an uploaded file (/gp/inspect) or a tab built from
@@ -11110,7 +11242,8 @@ function applyInspectResult(b) {
   if (firstTrack) form.querySelector('select[name=lead_track]').value = String(firstTrack.index);
   const bassPick = bassTracks.find(t => /bass|baixo/i.test(t.name)) || (bassTracks.length === 1 ? bassTracks[0] : null);
   if (bassPick) bassSel.value = String(bassPick.index);
-  renderMergePickers(document.getElementById('wzMerge'), b.tracks, {});
+  renderMergePickers(document.getElementById('wzMerge'), b.tracks, {},
+    { barsUrl: `/gp/bars?gp_token=${encodeURIComponent(b.gp_token)}`, slotTrack: wizardSlotTrack });
   if (b.title) form.querySelector('input[name=title]').value = b.title;
   if (b.artist) form.querySelector('input[name=artist]').value = b.artist;
   if (b.album) form.querySelector('input[name=album]').value = b.album;
