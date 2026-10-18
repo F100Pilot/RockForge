@@ -7424,7 +7424,7 @@
       "commits": [
         "b2efa19bbf3b0a4cf144d361a7496596299a5a12"
       ],
-      "version": "unreleased",
+      "version": "0.11.0-beta.1",
       "tests": [],
       "manual_checks": [
         "Playwright: Cancel → no request after it, 'Volume · Mistura completa'",

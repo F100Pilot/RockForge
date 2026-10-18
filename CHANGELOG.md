@@ -6,6 +6,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+## [0.11.0 beta 1] — 2026-10-18
+
 ### Novidades
 
 - **Contar as instalações, só se disseres que sim**: a página inicial pergunta uma vez se a

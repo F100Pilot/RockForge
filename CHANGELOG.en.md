@@ -6,6 +6,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+## [0.11.0 beta 1] — 2026-10-18
+
 ### New
 
 - **Counting installs, only if you say yes**: the home page asks once whether the install may

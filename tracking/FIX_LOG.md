@@ -301,7 +301,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0293](#fix-0293) | BUG-0293 | 0.10.0-beta.13 | passed | automated |
 | [FIX-0294](#fix-0294) | BUG-0294 | 0.10.0-beta.13 | not run | manual |
 | [FIX-0295](#fix-0295) | BUG-0295 | 0.10.0-beta.16 | not run | manual |
-| [FIX-0296](#fix-0296) | BUG-0296 | unreleased | not run | manual |
+| [FIX-0296](#fix-0296) | BUG-0296 | 0.11.0-beta.1 | not run | manual |
 
 ## FIX-0001
 
@@ -6510,7 +6510,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-10-18 |
 | By | Claude (AI coding assistant), on the maintainer's request |
-| Version | unreleased |
+| Version | 0.11.0-beta.1 |
 | Commits | b2efa19bbf3b0a4cf144d361a7496596299a5a12 |
 | Components | web/app.js; web/i18n-en.js |
 | Tests | — |

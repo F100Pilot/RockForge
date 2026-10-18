@@ -1295,7 +1295,7 @@ Turning "Audio bars" on with nothing separated asks whether to separate the inst
 
 **Root cause:** The change handler called setLevels(true) and then asked; drawing in "Attacks" fetches /onset-levels on the server whatever the answer.
 
-**Fixes:** [FIX-0296](../FIX_LOG.md#fix-0296) (unreleased)
+**Fixes:** [FIX-0296](../FIX_LOG.md#fix-0296) (0.11.0-beta.1)
 
 **Verified:** _pending_ (by _pending_)
 
