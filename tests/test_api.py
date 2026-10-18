@@ -2196,7 +2196,9 @@ def test_the_recordings_attacks_come_from_the_guitar_stem_when_there_is_one(
     # its drums, the mix on request, and an instrument never separated refused.
     for name in ("bass", "drums"):
         (cached.parent / f"{name}.wav").write_bytes(b"RIFF")
-    assert client.get(f"/jobs/{job['id']}/attack-sources").json() == {"stems": ["bass", "guitar"]}
+    assert client.get(f"/jobs/{job['id']}/attack-sources").json() == {
+        "stems": ["bass", "guitar"], "level_stems": ["bass", "drums", "guitar"]
+    }
     assert client.post(url, params={"source": "bass"}).json()["source"] == "bass"
     assert seen[-1] == cached.parent / "bass.wav"
     assert client.post(url, params={"source": "mix"}).json()["source"] == "mix"
@@ -2212,6 +2214,58 @@ def test_the_recordings_attacks_come_from_the_guitar_stem_when_there_is_one(
 
     monkeypatch.setattr(rhythm, "detect_attacks", _missing)
     assert client.post(url).status_code == 503
+
+
+def test_the_audio_bars_can_show_the_attack_strength_of_the_mix_or_any_separated_part(
+    client: TestClient, tmp_path, monkeypatch
+) -> None:
+    """The "Barras de áudio" in their "Ataques" mode: the onset envelope of the
+    mix, or of a separated instrument — the drums included, the clearest beat to
+    check bar lines against, though not a playback source — read with the
+    residue floor; an instrument never separated is refused."""
+    import rockforge.infrastructure.rhythm.librosa_adapter as rhythm
+    import rockforge.interfaces.api.app as app_module
+
+    seen: list[tuple[Path, bool]] = []
+
+    def _fake(audio, separated=False):
+        seen.append((Path(audio), separated))
+        return {"values": [0, 40, 100], "hop": 0.01, "duration": 0.03}
+
+    monkeypatch.setattr(rhythm, "onset_levels", _fake)
+    job = _gp_job(client, tmp_path)
+    url = f"/jobs/{job['id']}/onset-levels"
+
+    r = client.get(url)
+    assert r.status_code == 200, r.text
+    assert r.json() == {"source": "mix", "values": [0, 40, 100], "hop": 0.01, "duration": 0.03}
+    with app_module._session_factory() as session:
+        assert seen[-1] == (Path(session.get(app_module.Job, job["id"]).source), False)
+    assert client.get(url, params={"source": "drums"}).status_code == 409
+
+    # The drums a "Separar instrumentos" pass left beside its guitar stem.
+    stored = tmp_path / "sep" / "guitar.wav"
+    stored.parent.mkdir()
+    stored.write_bytes(b"RIFF")
+    (stored.parent / "drums.wav").write_bytes(b"RIFF")
+    with app_module._session_factory() as session:
+        row = session.get(app_module.Job, job["id"])
+        row.params = {**row.params, "stems": {"guitar": str(stored)}}
+        session.commit()
+    sources = client.get(f"/jobs/{job['id']}/attack-sources").json()
+    assert sources == {"stems": ["guitar"], "level_stems": ["drums", "guitar"]}
+    assert client.get(url, params={"source": "drums"}).json()["source"] == "drums"
+    assert seen[-1] == (stored.parent / "drums.wav", True)
+    assert client.get(url, params={"source": "guitar"}).status_code == 200
+    assert seen[-1] == (stored, True)
+    for name in ("piano", "../x"):
+        assert client.get(url, params={"source": name}).status_code == 409
+
+    def _missing(audio, separated=False):
+        raise ImportError("No module named 'librosa'")
+
+    monkeypatch.setattr(rhythm, "onset_levels", _missing)
+    assert client.get(url).status_code == 503
 
 
 def test_detect_tempo_measures_against_the_chart_bpm_not_the_header(

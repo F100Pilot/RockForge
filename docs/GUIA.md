@@ -226,11 +226,15 @@ queres recuperar. Ficam pendentes como antes; Desfazer volta à versão constru�
   (anéis, caudas, linhas, as bolas laranja dos ataques, a faixa da posição da mão…), desenhada
   como aparece; o ⓘ ao lado mostra o mesmo.
 - **Barras de áudio** põe duas faixas de barras por cima da partitura, no mesmo eixo do tempo:
-  em cima o nível da gravação, em baixo o som das notas da pista onde estão desenhadas (com as
+  em cima a gravação, em baixo o som das notas da pista onde estão desenhadas (com as
   correções ainda por aplicar). Onde os picos das duas faixas não caem juntos, a partitura está
-  fora de tempo. Ao lado escolhes o áudio das barras: o que está a tocar, a mistura completa ou
-  um instrumento já separado (em **Áudio ▾ → Separar instrumentos**) — por exemplo, ouvir a
-  mistura e ver as barras só da guitarra. Clicar nas barras move o cursor.
+  fora de tempo. Ao lado escolhes o que as barras da gravação mostram: **Ataques** (de origem)
+  marca cada batida com um pico estreito, mesmo numa guitarra distorcida, cujo volume quase não
+  desce entre palhetadas; **Volume** mostra o nível do som (e é o que aparece se a análise de
+  áudio não estiver instalada). E escolhes o áudio: o que está a tocar, a mistura completa ou um
+  instrumento já separado (em **Áudio ▾ → Separar instrumentos**) — por exemplo, ouvir a mistura
+  e ver as barras só da guitarra. Nos ataques podes escolher também a **bateria**, o melhor
+  metrónomo para conferir as linhas de compasso. Clicar nas barras move o cursor.
 - **Inspetor (à direita):** **Sincronização**, **Secções** e **Letra**.
 
 ## 6. Sincronizar as notas com a gravação

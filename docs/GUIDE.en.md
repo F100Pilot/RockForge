@@ -226,11 +226,15 @@ They stay pending as before; Undo goes back to the built version.
   **Legend** shows, under the score, what each mark means (rings, tails, lines, the orange circles
   of the attacks, the hand-position lane…), drawn as it appears; the ⓘ beside it shows the same.
 - **Audio bars** puts two lanes of bars above the score, on the same time axis: on top the
-  recording's level, below the sound of the track's notes where they are drawn (pending
-  corrections included). Where the peaks of the two lanes do not fall together, the score is out
-  of time. Beside it you pick the bars' audio: what is playing, the full mix or an instrument
-  already separated (in **Audio ▾ → Separate instruments**) — for example, listen to the mix and
-  see the bars of the guitar only. Clicking the bars moves the cursor.
+  recording, below the sound of the track's notes where they are drawn (pending corrections
+  included). Where the peaks of the two lanes do not fall together, the score is out of time.
+  Beside it you pick what the recording's bars show: **Attacks** (the default) marks each strike
+  with a narrow peak, even on a distorted guitar whose volume barely dips between pick strokes;
+  **Volume** shows the sound's level (and is what you see when the audio analysis is not
+  installed). And you pick the audio: what is playing, the full mix or an instrument already
+  separated (in **Audio ▾ → Separate instruments**) — for example, listen to the mix and see the
+  bars of the guitar only. For the attacks you can also pick the **drums**, the best metronome to
+  check the bar lines against. Clicking the bars moves the cursor.
 - **Inspector (on the right):** **Sync**, **Sections** and **Lyrics**.
 
 ## 6. Syncing the notes to the recording

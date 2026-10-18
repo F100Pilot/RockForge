@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import random
 
-from rockforge.infrastructure._librosa_runner import pick_attacks
+from rockforge.infrastructure._librosa_runner import level_values, pick_attacks
 
 HOP = 0.01
 
@@ -97,3 +97,16 @@ def test_a_separated_instrument_is_read_with_the_residue_floor_on_either_path(mo
     librosa_adapter.detect_attacks(Path("x.wav"), separated=True)
     librosa_adapter.detect_attacks(Path("x.wav"))
     assert sent == [{"separated": 1.0}, {"separated": 0.0}]
+
+
+def test_the_bars_keep_every_frame_scaled_to_the_99th_percentile() -> None:
+    """The "Ataques" bars: one value per frame, whole percents of the
+    envelope's 99th percentile, the strikes above it capped at 100 — so a
+    single loud strike does not flatten every other bar — and nothing in the
+    padded start, where librosa reads the noise floor as an attack."""
+    env = [0.1] * 980 + [1.0] * 19 + [50.0]
+    env[3] = 50.0
+    values = level_values(env, HOP)
+    assert len(values) == len(env)
+    assert values[3] == 0 and values[10] == 10 and values[990] == 100 and values[-1] == 100
+    assert level_values([], HOP) == [] and level_values([0.0] * 20, HOP) == [0] * 20

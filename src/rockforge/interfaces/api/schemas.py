@@ -422,9 +422,21 @@ class DetectAttacksOut(BaseModel):
 
 
 class AttackSourcesOut(BaseModel):
-    """The separated instruments the attacks can be measured on (drums left out)."""
+    """The separated instruments the attacks can be measured on (drums left out),
+    and those the "Barras de áudio" can show (the drums too)."""
 
     stems: list[str]
+    level_stems: list[str] = []
+
+
+class OnsetLevelsOut(BaseModel):
+    """The recording's attack strength over time, for the "Barras de áudio"
+    lane — a picture to compare the notes with, nothing applied."""
+
+    source: str  # "mix" or a separated instrument ("drums" included)
+    values: list[int]  # one per frame, 0-100 (100 = the 99th percentile or more)
+    hop: float  # seconds per frame
+    duration: float
 
 
 class DetectTuningOut(BaseModel):

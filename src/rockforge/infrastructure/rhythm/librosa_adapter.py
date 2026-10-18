@@ -84,6 +84,16 @@ def detect_attacks(audio: Path, separated: bool = False) -> dict[str, object]:
     return ml_python.run_librosa("attacks", audio, separated=float(separated))
 
 
+def onset_levels(audio: Path, separated: bool = False) -> dict[str, object]:
+    """The recording's onset envelope as 0-100 per frame
+    (``_librosa_runner.onset_levels``), for the "Barras de áudio" lane:
+    ``{"values": [...], "hop": seconds, "duration": seconds}`` in the clock of
+    ``audio``. ``separated`` as in ``detect_attacks``."""
+    if ml_python.librosa_here():
+        return _librosa_runner.onset_levels(str(audio), separated)
+    return ml_python.run_librosa("levels", audio, separated=float(separated))
+
+
 def estimate_tuning_cents(audio: Path) -> float:
     """Estimate the recording's reference-pitch deviation from A440, in cents.
 

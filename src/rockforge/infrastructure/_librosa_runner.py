@@ -410,6 +410,35 @@ def attacks(audio: str, separated: bool = False) -> dict[str, object]:
     return {"attacks": pick_attacks(env, hop), "duration": round(len(env) * hop, 3)}
 
 
+# The score's "Barras de áudio" in their "Ataques" mode: the same envelope the
+# attacks are picked from, every frame kept, so a strike stands up as a narrow
+# bar even in a distorted guitar whose LEVEL barely dips between strums. Scaled
+# to the envelope's 99th percentile (an onset envelope is spiky: its loudest
+# frames are single strikes, the 99th still leaves the soft ones visible) and
+# sent as whole percents — a song's 24 000 frames as a small answer.
+LEVEL_REF_PCT = 0.99
+
+
+def level_values(env: list[float], hop: float) -> list[int]:
+    """Each frame of ``env`` as 0-100, 100 = the envelope's 99th percentile or
+    more; the first ``ATTACK_EDGE_S`` are 0 (librosa's padded start, as in
+    ``pick_attacks``)."""
+    if not env:
+        return []
+    edge = min(len(env), int(round(ATTACK_EDGE_S / hop)))
+    env = [0.0] * edge + list(env[edge:])
+    ranked = sorted(env)
+    ref = ranked[int(LEVEL_REF_PCT * (len(ranked) - 1))] or ranked[-1] or 1.0
+    return [max(0, min(100, int(round(100 * v / ref)))) for v in env]
+
+
+def onset_levels(audio: str, separated: bool = False) -> dict[str, object]:
+    """``level_values`` of ``audio``'s onset envelope, its frame length and the
+    file's length. ``separated`` as in ``attacks``."""
+    env, hop = onset_envelope(audio, floor_db=ATTACK_STEM_FLOOR_DB if separated else None)
+    return {"values": level_values(env, hop), "hop": hop, "duration": round(len(env) * hop, 3)}
+
+
 def beat_align(audio: str, spec_path: str) -> dict[str, object]:
     """``align_beats`` on ``audio``, with the beats and notes read from a JSON
     file (``{"beats": [...], "notes": [...]}``) — too long for a command line."""
@@ -427,7 +456,9 @@ def main(argv: list[str] | None = None) -> int:
     line, so librosa's own warnings on stderr (or a chatty backend on stdout)
     cannot corrupt the answer."""
     parser = argparse.ArgumentParser(description="librosa measurements for RockForge")
-    parser.add_argument("command", choices=("tempo", "tuning", "tone", "beatalign", "attacks"))
+    parser.add_argument(
+        "command", choices=("tempo", "tuning", "tone", "beatalign", "attacks", "levels")
+    )
     parser.add_argument("--audio", required=True)
     parser.add_argument("--start", type=float, default=0.0)
     parser.add_argument("--expected-bpm", type=float, default=0.0)
@@ -443,6 +474,8 @@ def main(argv: list[str] | None = None) -> int:
         result = beat_align(args.audio, args.spec)
     elif args.command == "attacks":
         result = attacks(args.audio, separated=bool(args.separated))
+    elif args.command == "levels":
+        result = onset_levels(args.audio, separated=bool(args.separated))
     elif args.command == "tuning":
         result = {"cents": tuning_cents(args.audio)}
     else:

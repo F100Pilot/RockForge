@@ -2545,7 +2545,7 @@ function scoreLegendHtml() {
   ];
   const levels = [
     legendItem(`<rect x="0" y="4" width="60" height="30" fill="#16181e"/><path d="M6 32h3v-6h-3zM12 32h3v-20h-3zM18 32h3v-12h-3zM24 32h3v-8h-3zM36 32h3v-24h-3zM42 32h3v-14h-3zM48 32h3v-9h-3z" fill="${LEVELS_AUDIO_COLOR['']}"/>`,
-      T('Barras azuis (verdes para um instrumento separado): o nível da gravação. Um pico é uma batida que se ouve')),
+      T('Barras azuis (verdes para um instrumento separado): os ataques da gravação, cada batida um pico estreito (ou, em "Volume", o nível)')),
     legendItem(`<rect x="0" y="4" width="60" height="30" fill="#16181e"/><path d="M12 32h3v-22h-3zM18 32h3v-15h-3zM24 32h3v-10h-3zM36 32h3v-22h-3zM42 32h3v-15h-3zM48 32h3v-10h-3z" fill="${LEVELS_NOTES_COLOR}"/>`,
       T('Barras âmbar: o som das notas da pista, onde estão desenhadas. Os picos das duas faixas devem cair juntos')),
   ];
@@ -2569,8 +2569,15 @@ const LEVELS_AUDIO_COLOR = { '': '#4c9ed9', stem: '#3fb27f' }, LEVELS_NOTES_COLO
 let levelsOn = false;
 try { levelsOn = localStorage.getItem('rf-levels') === '1'; } catch { /* no storage */ }
 let levelsSource = '';      // '' = what is playing, 'mix', or 'stem:<name>'
+let levelsKind = 'onset';   // 'onset' = the attacks' strength, 'volume' = the level's peaks
+try { if (localStorage.getItem('rf-levels-kind') === 'volume') levelsKind = 'volume'; } catch { /* no storage */ }
 let levelsAudio = null;     // a source decoded only for the bars: {key, peaks}
 let levelsLoading = '';
+let levelStems = [];        // the separated instruments the attack bars can show (the drums too)
+let levelsOnset = null;     // the attack strength of one source: {key, values, hop}
+let levelsOnsetLoading = '';
+let levelsOnsetFailed = {}; // key → true: measured once and failed, the bars show the volume
+let levelsOnsetMissing = false;  // no audio analysis installed: every source falls back to the volume
 let levelsCache = { audio: null, notes: null };  // the lanes' paths, by what they were drawn from
 let legendOn = false;
 try { legendOn = localStorage.getItem('rf-legend') === '1'; } catch { /* no storage */ }
@@ -4104,11 +4111,18 @@ function resetAttacks() {
 async function loadAttackSources() {
   const job = selectedJob && selectedJob.id;
   attackSources = [];
+  levelStems = [];
+  levelsOnsetFailed = {};
   fillAttackSources();
   if (!job) return;
   try {
     const d = await getJSON(`/jobs/${job}/attack-sources`);
-    if (selectedJob && selectedJob.id === job) { attackSources = d.stems || []; fillAttackSources(); }
+    if (selectedJob && selectedJob.id === job) {
+      attackSources = d.stems || [];
+      levelStems = d.level_stems || [];
+      fillAttackSources();
+      populateLevelsSources();
+    }
   } catch { /* the card can still measure the mix */ }
 }
 
@@ -7283,7 +7297,7 @@ function applyTonePlan(p) {
 // ── Stem separation (selectable audio source for fine-tuning) ─────────────────
 
 const STEM_LABELS = {
-  guitar: T('Guitarra'), bass: T('Baixo'),
+  guitar: T('Guitarra'), bass: T('Baixo'), drums: T('Bateria'),
   vocals: T('Voz'), piano: T('Piano'), other: T('Outros'),
 };
 
@@ -9456,6 +9470,7 @@ document.getElementById('show3d').addEventListener('change', e => setHw3d(e.targ
 document.getElementById('showLegend').addEventListener('change', e => setLegend(e.target.checked));
 setLegend(legendOn);
 document.getElementById('showLevels').addEventListener('change', e => setLevels(e.target.checked));
+document.getElementById('levelsKind').addEventListener('change', e => setLevelsKind(e.target.value));
 document.getElementById('levelsSource').addEventListener('change', e => {
   levelsSource = e.target.value;
   if (arrangements.length) showArr(currentArr);
@@ -10405,18 +10420,31 @@ function setLevels(on) {
   if (chk) chk.checked = on;
   const sel = document.getElementById('levelsSource');
   if (sel) sel.hidden = !on;
+  const kind = document.getElementById('levelsKind');
+  if (kind) { kind.hidden = !on; kind.value = levelsKind; }
   if (arrangements.length) showArr(currentArr);
   else renderLevels(null);
 }
 
-// The sources the audio lane can show: what is playing, the mix, each stem.
+function setLevelsKind(kind) {
+  levelsKind = kind === 'volume' ? 'volume' : 'onset';
+  try { localStorage.setItem('rf-levels-kind', levelsKind); } catch { /* no storage */ }
+  populateLevelsSources();
+  if (arrangements.length) showArr(currentArr);
+}
+
+// The sources the audio lane can show: what is playing, the mix, each stem —
+// for the attack bars every instrument a separation left, the drums included
+// (the clearest beat to check bar lines against; no playback source).
 function populateLevelsSources() {
   const sel = document.getElementById('levelsSource');
   if (!sel) return;
-  const values = ['', 'mix', ...availableStems.map(n => `stem:${n}`)];
+  const stems = levelsKind === 'onset' && !levelsOnsetMissing
+    ? [...new Set([...availableStems, ...levelStems])].sort() : availableStems;
+  const values = ['', 'mix', ...stems.map(n => `stem:${n}`)];
   sel.innerHTML = `<option value="">${T('Barras: o que está a tocar')}</option>`
     + `<option value="mix">${T('Barras: mistura completa')}</option>`
-    + availableStems.map(n => `<option value="${esc(`stem:${n}`)}">${esc(T('Barras: {stem}', { stem: STEM_LABELS[n] || n }))}</option>`).join('');
+    + stems.map(n => `<option value="${esc(`stem:${n}`)}">${esc(T('Barras: {stem}', { stem: STEM_LABELS[n] || n }))}</option>`).join('');
   if (!values.includes(levelsSource)) levelsSource = '';
   sel.value = levelsSource;
   sel.hidden = !levelsOn;
@@ -10438,6 +10466,57 @@ function levelsPeaks() {
   if (levelsAudio && levelsAudio.key === key) return { peaks: levelsAudio.peaks, offset: leadInBuilt, label, color };
   if (levelsLoading !== key && selectedJob) loadLevelsAudio(key, want);
   return { peaks: null, offset: 0, label, color };
+}
+
+// The attack strength the audio lane reads (onset mode), as levelsPeaks'
+// answer plus {values, hop}: the source's onset envelope from the server, in the
+// recording's clock (so it starts leadInBuilt into the display clock, like a
+// source decoded here). Null when the attack bars cannot show this source —
+// a synthesized one is drawn from its notes, so its volume says the same — or
+// could not be measured: the caller then shows the volume.
+function levelsOnsetData() {
+  if (levelsKind !== 'onset' || levelsOnsetMissing || !selectedJob) return null;
+  const playing = audioSourceName;
+  let name;
+  if (levelsSource === 'mix') name = 'mix';
+  else if (levelsSource.startsWith('stem:')) name = levelsSource.slice(5);
+  else if (playing.startsWith('synth:')) return null;
+  else name = playing || 'mix';
+  const key = `${selectedJob.id}:${name}`;
+  if (levelsOnsetFailed[key]) return null;
+  const label = name === 'mix' ? T('Mistura completa') : (STEM_LABELS[name] || name);
+  const color = name === 'mix' ? LEVELS_AUDIO_COLOR[''] : LEVELS_AUDIO_COLOR.stem;
+  if (levelsOnset && levelsOnset.key === key) return { values: levelsOnset.values, hop: levelsOnset.hop, offset: leadInBuilt, label, color };
+  if (levelsOnsetLoading !== key) loadLevelsOnset(key, name);
+  return { values: null, hop: 0, offset: 0, label, color };
+}
+
+async function loadLevelsOnset(key, name) {
+  levelsOnsetLoading = key;
+  const job = selectedJob.id;
+  try {
+    const r = await fetch(`/jobs/${job}/onset-levels?source=${encodeURIComponent(name)}`);
+    if (r.status === 503) {
+      levelsOnsetMissing = true;
+      toast(T('Os ataques precisam da análise de áudio (componentes extra) — as barras mostram o volume.'), 'err');
+      populateLevelsSources();
+    } else if (!r.ok) {
+      throw new Error(String(r.status));
+    } else {
+      const d = await r.json();
+      if (levelsOnsetLoading === key) levelsOnset = { key, values: d.values || [], hop: d.hop || 0.01 };
+    }
+  } catch {
+    levelsOnsetFailed[key] = true;
+    if (levelsOnsetLoading === key) toast(T('Não foi possível medir os ataques desse áudio — as barras mostram o volume.'), 'err');
+    if (name !== 'mix' && !availableStems.includes(name)) {  // no volume to fall back to
+      levelsSource = '';
+      populateLevelsSources();
+    }
+  } finally {
+    if (levelsOnsetLoading === key) levelsOnsetLoading = '';
+  }
+  if (arrangements.length && selectedJob && selectedJob.id === job) showArr(currentArr);
 }
 
 async function loadLevelsAudio(key, stem) {
@@ -10521,10 +10600,25 @@ function renderLevels(a, W, px, warp) {
   const H = LEVELS_PAD * 3 + LEVELS_LANE_H * 2;
   svg.setAttribute('width', W);
   svg.setAttribute('height', H);
-  const src = levelsPeaks();
+  const onset = levelsOnsetData();
+  const src = onset ? null : levelsPeaks();
   const top1 = LEVELS_PAD, top2 = LEVELS_PAD * 2 + LEVELS_LANE_H;
   let audioPath = '';
-  if (src && src.peaks) {
+  if (onset && onset.values) {
+    const key = ['onset', W, px, viewOrigin, onset.offset, onset.label].join('|');
+    if (levelsCache.audio && levelsCache.audio.key === key && levelsCache.audio.peaks === onset.values) audioPath = levelsCache.audio.path;
+    else {
+      const per = 1 / (WAVE_HZ * onset.hop);
+      const shift = onset.offset * WAVE_HZ;
+      audioPath = levelBarsPath(onset.values, W, px, top1, (v, b) => {
+        const i0 = Math.floor((b - shift) * per), i1 = Math.max(i0 + 1, Math.floor((b + 1 - shift) * per));
+        let m = 0;
+        for (let i = Math.max(0, i0); i < i1 && i < v.length; i++) if (v[i] > m) m = v[i];
+        return m / 100;
+      });
+      levelsCache.audio = { key, peaks: onset.values, path: audioPath };
+    }
+  } else if (src && src.peaks) {
     const key = [W, px, viewOrigin, src.offset, src.label].join('|');
     if (levelsCache.audio && levelsCache.audio.key === key && levelsCache.audio.peaks === src.peaks) audioPath = levelsCache.audio.path;
     else {
@@ -10546,9 +10640,12 @@ function renderLevels(a, W, px, warp) {
     notesPath = levelBarsPath(env, W, px, top2, (e, b) => 1 - Math.exp(-1.2 * (e[b] || 0)));
     levelsCache.notes = { key: nkey, notes, path: notesPath };
   }
-  const audioLabel = src ? (src.peaks ? T('Áudio · {source}', { source: src.label }) : T('Áudio · {source} (a ler…)', { source: src.label })) : T('Áudio · sem gravação');
+  const audioLabel = onset
+    ? (onset.values ? T('Ataques · {source}', { source: onset.label }) : T('Ataques · {source} (a medir…)', { source: onset.label }))
+    : src ? (src.peaks ? T('Volume · {source}', { source: src.label }) : T('Volume · {source} (a ler…)', { source: src.label })) : T('Áudio · sem gravação');
+  const laneColor = onset ? onset.color : src ? src.color : LEVELS_AUDIO_COLOR[''];
   const phX = timeToX(currentPlayheadT + viewOrigin);
-  svg.innerHTML = levelsLane(top1, audioPath, src ? src.color : LEVELS_AUDIO_COLOR[''], audioLabel)
+  svg.innerHTML = levelsLane(top1, audioPath, laneColor, audioLabel)
     + levelsLane(top2, notesPath, LEVELS_NOTES_COLOR, T('Notas · {track}', { track: arrLabel(a.kind) }))
     + `<line id="levelsPlayhead" x1="${phX}" y1="0" x2="${phX}" y2="${H}" stroke="#ff7a45" stroke-width="2" opacity=".9"/>`;
 }

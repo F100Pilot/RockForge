@@ -18,6 +18,7 @@ from rockforge.interfaces.api.schemas import (
     DetectTempoIn,
     DetectTempoOut,
     DetectTuningOut,
+    OnsetLevelsOut,
 )
 
 router = APIRouter()
@@ -124,12 +125,15 @@ def detect_beat_sync(job_id: str, payload: DetectBeatSyncIn) -> DetectBeatSyncOu
     return DetectBeatSyncOut.model_validate(result)
 
 
-def _separated_stems(job_id: str, params: dict[str, Any]) -> dict[str, Path]:
+def _separated_stems(
+    job_id: str, params: dict[str, Any], drums: bool = False
+) -> dict[str, Path]:
     """The instruments a Demucs pass already separated, by name (drums left out,
-    as "Separar instrumentos" leaves them out): the ones it stored, plus any the
-    tone detection left in the shared cache (``celery_app._demucs_stems_cache_dir``
-    — one htdemucs_6s pass writes every instrument). Both were separated from
-    the recording untrimmed, so their seconds are the recording's."""
+    as "Separar instrumentos" leaves them out, unless ``drums``): the ones it
+    stored, plus any the tone detection left in the shared cache
+    (``celery_app._demucs_stems_cache_dir`` — one htdemucs_6s pass writes every
+    instrument). Both were separated from the recording untrimmed, so their
+    seconds are the recording's."""
     found: dict[str, Path] = {}
     stems = params.get("stems")
     if isinstance(stems, dict):
@@ -139,8 +143,12 @@ def _separated_stems(job_id: str, params: dict[str, Any]) -> dict[str, Path]:
     cache = api.settings.work_dir / job_id / "demucs_stems" / "stems"
     if cache.is_dir():
         for wav in sorted(cache.glob("*/*/*.wav")):
-            if wav.stem != "drums":
+            if drums or wav.stem != "drums":
                 found.setdefault(wav.stem, wav)
+    if drums and "drums" not in found:
+        beside = _drum_stem(params)
+        if beside is not None:
+            found["drums"] = beside
     return found
 
 
@@ -150,7 +158,8 @@ def attack_sources(job_id: str) -> AttackSourcesOut:
     with api._session_factory() as session:
         job = api._job_or_404(session, job_id)
         stems = _separated_stems(job.id, dict(job.params or {}))
-    return AttackSourcesOut(stems=sorted(stems))
+        with_drums = _separated_stems(job.id, dict(job.params or {}), drums=True)
+    return AttackSourcesOut(stems=sorted(stems), level_stems=sorted(with_drums))
 
 
 @router.post("/jobs/{job_id}/detect-attacks", response_model=DetectAttacksOut)
@@ -186,6 +195,40 @@ def detect_attacks(job_id: str, source: str | None = None) -> DetectAttacksOut:
     except Exception as exc:
         raise HTTPException(422, f"could not analyse the recording: {exc}") from exc
     return DetectAttacksOut.model_validate({**result, "source": name})
+
+
+@router.get("/jobs/{job_id}/onset-levels", response_model=OnsetLevelsOut)
+def onset_levels(job_id: str, source: str = "mix") -> OnsetLevelsOut:
+    """The recording's attack strength over time — the envelope "Ataques da
+    gravação" picks its attacks from, every frame kept — for the "Barras de
+    áudio" lane over the score. ``source`` is ``mix`` or a separated
+    instrument, the drums included: a drum track is the clearest beat there
+    is to check bar lines against, though it is no playback source. Nothing is
+    stored; the viewer keeps it per version."""
+    with api._session_factory() as session:
+        job = api._job_or_404(session, job_id)
+        if job.source_type != "gp":
+            raise HTTPException(422, "the audio bars only apply to Guitar Pro jobs")
+        src = Path(job.source)
+        stems = _separated_stems(job.id, dict(job.params or {}), drums=True)
+    if source != "mix" and source not in stems:
+        raise HTTPException(409, i18n.tr(
+            "esse instrumento ainda não foi separado (Áudio ▾ → Separar instrumentos)",
+            "that instrument has not been separated yet (Audio ▾ → Separate instruments)",
+        ))
+    stem = stems.get(source)
+    if stem is None and not src.exists():
+        raise HTTPException(409, "source audio no longer exists on the work volume")
+
+    from rockforge.infrastructure.rhythm.librosa_adapter import onset_levels as measure
+
+    try:
+        result = measure(stem or src, separated=stem is not None)
+    except ImportError as exc:
+        raise api._ml_extra_missing("the attack bars", exc) from exc
+    except Exception as exc:
+        raise HTTPException(422, f"could not analyse the recording: {exc}") from exc
+    return OnsetLevelsOut.model_validate({**result, "source": source})
 
 
 @router.post("/jobs/{job_id}/detect-tuning", response_model=DetectTuningOut)

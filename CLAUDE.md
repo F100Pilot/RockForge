@@ -865,6 +865,43 @@ a stem) drawn green, the mix, following a synthesized source, the click seek
 and both playheads, starting with the bars and the legend already on, no page
 errors.
 
+**The audio lane shows the ATTACKS by default, the level on request**
+(`#levelsKind`, `rf-levels-kind`; "Avança" on the suggestion that a level is a
+poor beat signal). Volume was the first version, and it answers the wrong
+question on the material this is for: measured on the synthesized distorted riff
+of "Ataques da gravação", the volume bars sat at full height 90 % of the time
+(median 1.00, 10th percentile 0.99) while the attack bars' median was 0.04 with
+each strike standing up alone. `GET /jobs/{id}/onset-levels?source=`
+(`OnsetLevelsOut`: `values` 0-100 per frame, `hop`, `duration`) is the same
+onset envelope the attacks are picked from (`_librosa_runner.onset_levels` →
+`level_values`: every frame, scaled to the 99th percentile — the 95th the
+attacks use flattened every strike to the top —, the first `ATTACK_EDGE_S`
+zeroed for librosa's padded start, which otherwise drew a full bar at 0.05 s;
+a separated instrument read with `ATTACK_STEM_FLOOR_DB`), reached through
+`librosa_adapter.onset_levels` in-process or on the ML interpreter (runner
+command `levels`). **The drums are a source here, and only here**: "Separar
+instrumentos" keeps them out of the playback list (the user's request), but a
+drum track is the clearest beat to check bar lines against, and the pass wrote
+`drums.wav` anyway — `_separated_stems(..., drums=True)` finds it in the shared
+cache or beside the stored guitar stem (`_drum_stem`), and
+`/attack-sources` answers it as `level_stems`. Viewer: `levelsOnsetData`
+resolves the source (what is playing → mix or that stem; a SYNTHESIZED source
+falls back to its volume, which already says the same), `loadLevelsOnset`
+fetches it once per version and source; a 503 (no audio analysis) sets
+`levelsOnsetMissing`, says so once and every source shows the volume; any other
+failure shows the volume for that source (or drops a source that has none, like
+the drums). Values are in the recording's clock, so they start `leadInBuilt`
+into the display clock, like a source decoded for the bars. Labels "Ataques ·
+…"/"Volume · …". Guarded by
+`test_the_bars_keep_every_frame_scaled_to_the_99th_percentile` (the percentile
+and the edge, mutation-checked) and
+`test_the_audio_bars_can_show_the_attack_strength_of_the_mix_or_any_separated_part`;
+with librosa and Playwright (PT 1440 / EN 760 px) on the invented "Deriva"
+project: the first strong attack bar at the first note bar's x (129 px — before
+the edge fix, a bar at 33 px), the drums offered and drawn green in Ataques and
+not offered in Volume, the kind remembered, a faked 503 → volume + one toast,
+no page errors. Synthesized, not a real song.
+
 ### Exporting a corrected Guitar Pro file (`/export-gp`)
 
 `infrastructure/gpexport/tempo_writer.py` writes the accepted tempo corrections

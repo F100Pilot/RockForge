@@ -8,11 +8,12 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ### New
 
-- **Audio bars above the score** (Score → **Audio bars**): one lane with the recording's level
-  and one with the sound of the track's notes, on the same time axis. Where their peaks do not
-  fall together, the score is out of time. The recording's bars can be of what is playing, the
-  full mix or a separated instrument (the guitar, the bass…), and the notes' bars follow pending
-  corrections.
+- **Audio bars above the score** (Score → **Audio bars**): one lane with the recording and one
+  with the sound of the track's notes, on the same time axis. Where their peaks do not fall
+  together, the score is out of time. The recording's bars show the **attacks** — each strike a
+  narrow peak, even on a distorted guitar — or the **volume**, of what is playing, the full mix or
+  a separated instrument (the guitar, the bass… and, for the attacks, the drums); the notes' bars
+  follow pending corrections.
 - **3D highway: the hand's frets light up when a note strikes the strings**, as in Rocksmith — a
   glowing rectangle around the frets the hand is in (2–5, for example), lit while the note sounds.
 

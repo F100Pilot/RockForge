@@ -1174,7 +1174,8 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
             <label class="check"><input type="checkbox" id="showFretboard" checked> Braço</label>
             <label class="check" title="As notas a descer numa pista 3D, como no Rocksmith"><input type="checkbox" id="show3d"> Pista 3D</label>
             <label class="check" title="O que quer dizer cada marca da partitura"><input type="checkbox" id="showLegend"> Legenda</label>
-            <label class="check" title="Barras do nível da gravação e do som das notas, por cima da partitura: onde não coincidem, está fora de tempo"><input type="checkbox" id="showLevels"> Barras de áudio</label>
+            <label class="check" title="Barras dos ataques (ou do volume) da gravação e do som das notas, por cima da partitura: onde não coincidem, está fora de tempo"><input type="checkbox" id="showLevels"> Barras de áudio</label>
+            <select id="levelsKind" aria-label="Tipo de barras" title="Ataques: a força de cada batida, um pico estreito por palhetada, mesmo numa guitarra distorcida. Volume: o nível do som" hidden><option value="onset">Ataques</option><option value="volume">Volume</option></select>
             <select id="levelsSource" class="levels-source" aria-label="Áudio das barras" hidden></select>
             <div class="pv-group pv-zoom">
               <button type="button" id="zoomOut" class="secondary" aria-label="Menos zoom">−</button>
