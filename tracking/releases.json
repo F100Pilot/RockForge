@@ -349,7 +349,7 @@
     },
     {
       "version": "0.10.0-beta.16",
-      "status": "Beta",
+      "status": "Superseded",
       "created": "2026-10-17",
       "published": "2026-10-17",
       "commit": "b436e88e4b64b5b4a9513e1e9821a054eeadf9cf",
@@ -375,10 +375,12 @@
       "version": "0.10.0-beta.17",
       "status": "Beta",
       "created": "2026-10-18",
-      "published": "pending",
+      "published": "2026-10-18",
       "commit": "pending",
       "build": "GitHub Actions release workflow",
-      "artifacts": [],
+      "artifacts": [
+        "https://github.com/F100Pilot/RockForge/releases/tag/v0.10.0-beta.17"
+      ],
       "goal": "Tone plan drawn as a chart, like the per-section suggestions",
       "features": [
         "Tones imported from a text show in a chart"
