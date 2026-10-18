@@ -293,3 +293,23 @@ def test_the_runner_fails_loudly_rather_than_printing_a_wrong_number(
     assert proc.returncode != 0
     assert "librosa" in proc.stderr
     assert proc.stdout.strip() == ""
+
+
+def test_no_runner_imports_rockforge() -> None:
+    """In the .exe every runner is run by the extra components' Python, which has
+    the ML packages but not the rockforge package: one rockforge import and the
+    whole stage fails there (the WhisperX runner did, so lyric detection in the
+    .exe failed after minutes of separation)."""
+    import ast
+
+    root = Path(__file__).resolve().parents[1] / "src" / "rockforge"
+    runners = [*root.rglob("_*_runner.py"), *root.rglob("_demucs_patcher.py")]
+    assert len(runners) >= 4
+    offenders = []
+    for path in runners:
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            names = ([a.name for a in node.names] if isinstance(node, ast.Import)
+                     else [node.module or ""] if isinstance(node, ast.ImportFrom) else [])
+            if any(n == "rockforge" or n.startswith("rockforge.") for n in names):
+                offenders.append(f"{path.name}:{node.lineno}")
+    assert offenders == []

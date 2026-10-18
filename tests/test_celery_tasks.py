@@ -376,6 +376,36 @@ def test_separate_stems_success_drops_drums(db, monkeypatch) -> None:
     assert set(job.params["stems"]) == {"guitar", "bass", "vocals"}
 
 
+def test_what_the_user_changes_while_a_task_runs_is_not_undone(db, monkeypatch) -> None:
+    """A task copies the params once and runs for minutes; writing that copy back
+    on every progress line erased what the user did meanwhile (a cover, "synced",
+    another detection's status). Only the task's own keys are written now."""
+    from rockforge.infrastructure.normalize.ffmpeg import FfmpegNormalizer
+
+    job_id = _job(db, params={"offset_s": 1.0, "tone_swaps": {"a": 1}})
+
+    def user_edits_meanwhile(self, audio, workdir, offset_s=0.0, pad_start_s=0.0):
+        with db() as other:  # the API, in its own session, mid-separation
+            job = other.get(Job, job_id)
+            job.params = {**job.params, "cover_art": "cover.png", "sync_confirmed": True,
+                          "tone_detection_status": "detecting"}
+            other.commit()
+        return workdir / "normalized.wav"
+
+    monkeypatch.setattr(
+        ca, "_build_stem_separator", lambda: (_FakeStemSeparator(), "cpu", "demucs htdemucs_6s")
+    )
+    monkeypatch.setattr(FfmpegNormalizer, "normalize", user_edits_meanwhile)
+
+    ca.separate_stems(job_id)
+
+    params = _reload(db, job_id).params
+    assert params["stems_status"] == "ready"
+    assert (params["cover_art"], params["sync_confirmed"], params["tone_detection_status"]) == (
+        "cover.png", True, "detecting")
+    assert (params["offset_s"], params["tone_swaps"]) == (1.0, {"a": 1})
+
+
 def test_separate_stems_failure_sets_unavailable(db, monkeypatch) -> None:
     def _boom():
         raise RuntimeError("demucs is not installed")

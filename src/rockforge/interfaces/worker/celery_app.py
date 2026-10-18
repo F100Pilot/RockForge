@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import copy
 from datetime import UTC, datetime
 from functools import cache
 from pathlib import Path
@@ -230,6 +231,35 @@ def _gp_carries_sync(gp_path: Path) -> bool:
         return False
 
 
+class _ParamsWriter:
+    """Writes a long task's changes to ``Job.params`` without undoing what the
+    API wrote meanwhile.
+
+    A task copies the params once and runs for minutes; writing that whole copy
+    back on every progress line erased anything the user did in between — a
+    cover uploaded, "Marcar como sincronizada", the main chart, tone swaps,
+    "Instalar no jogo", another detection's status. Each commit re-reads the
+    row's params and applies only the keys THIS task changed since its last
+    commit (a fresh dict, as the JSON column needs)."""
+
+    def __init__(self, session: Any, job: Job) -> None:
+        self.session, self.job = session, job
+        self.base: dict[str, Any] = copy.deepcopy(dict(job.params or {}))
+
+    def commit(self, params: dict[str, Any]) -> None:
+        self.session.refresh(self.job, attribute_names=["params"])
+        current = dict(self.job.params or {})
+        for key in set(self.base) | set(params):
+            if key not in params:
+                if key in self.base:
+                    current.pop(key, None)
+            elif key not in self.base or params[key] != self.base[key]:
+                current[key] = copy.deepcopy(params[key])
+        self.job.params = current
+        self.session.commit()
+        self.base = copy.deepcopy(params)
+
+
 @celery_app.task(name="rockforge.generate_cdlc")
 def generate_cdlc(job_id: str) -> None:
     session_factory = make_session_factory(settings.database_url)
@@ -251,6 +281,7 @@ def generate_cdlc(job_id: str) -> None:
             # stored" and never reach the database — the GP file's lyrics were
             # built into the bundle but never shown in the editor.
             params = dict(cast(dict[str, Any], job.params or {}))
+            writer = _ParamsWriter(session, job)
 
             def on_stage(name: str) -> None:
                 job.stage = name
@@ -430,8 +461,7 @@ def generate_cdlc(job_id: str) -> None:
                 # Synced to its audio in Guitar Pro 8: the file's own sync points
                 # time the chart, which counts as synchronised (the checklist).
                 params["gp_synced"] = _gp_carries_sync(Path(params["gp_path"]))
-                job.params = {**params}  # JSON column needs a fresh dict object
-                session.commit()
+                writer.commit(params)
                 return
 
             # Audio→note transcription was removed; only Guitar Pro jobs build an
@@ -503,20 +533,16 @@ def detect_lyrics(job_id: str) -> None:
         if job is None:  # deleted while queued — nothing to do
             return
         job.stage = "lyrics"
+        writer = _ParamsWriter(session, job)
         params = dict(job.params or {})
         warnings = list(job.warnings or [])
         params["lyrics_log"] = []
         _log_lyrics_stage(params, "lyric detection started")
 
         def _commit_params() -> None:
-            """Force SQLAlchemy to see the change by assigning a new dict.
-
-            The JSON column has no MutableDict tracking — reassigning the
-            same dict object is a silent no-op (identity check). Copying
-            on every commit ensures every log/status update reaches the DB.
-            """
-            job.params = {**params}
-            session.commit()
+            """Every log/status update reaches the DB (a fresh dict — the JSON
+            column has no mutation tracking), merged over what the API wrote."""
+            writer.commit(params)
 
         try:
             _log_lyrics_stage(params, "loading ML models (can take 30–60s on first run)…")
@@ -729,9 +755,8 @@ def detect_lyrics(job_id: str) -> None:
             _log_lyrics_stage(params, f"failed: {type(exc).__name__}: {exc}")
         # One request, one run: a later plain "Detetar letra" must transcribe.
         params.pop("lyrics_align", None)
-        job.params = {**params}
         job.warnings = list(warnings)
-        session.commit()
+        writer.commit(params)
 
 
 def _log_tone_stage(params: dict[str, Any], message: str) -> None:
@@ -752,14 +777,14 @@ def detect_tones(job_id: str) -> None:
         job = session.get(Job, job_id)
         if job is None:
             return
+        writer = _ParamsWriter(session, job)
         params = dict(job.params or {})
         warnings = list(job.warnings or [])
         params["tone_detection_log"] = []
         _log_tone_stage(params, "tone detection started")
 
         def _commit_params() -> None:
-            job.params = {**params}
-            session.commit()
+            writer.commit(params)
 
         try:
             _log_tone_stage(params, "importing ML models…")
@@ -845,9 +870,8 @@ def detect_tones(job_id: str) -> None:
             params["tone_detection_status"] = "unavailable"
             warnings.append(f"tone detection failed: {type(exc).__name__}: {exc}")
             _log_tone_stage(params, f"failed: {type(exc).__name__}: {exc}")
-        job.params = {**params}
         job.warnings = list(warnings)
-        session.commit()
+        writer.commit(params)
 
 
 def _log_stems_stage(params: dict[str, Any], message: str) -> None:
@@ -872,14 +896,14 @@ def separate_stems(job_id: str) -> None:
         job = session.get(Job, job_id)
         if job is None:
             return
+        writer = _ParamsWriter(session, job)
         params = dict(job.params or {})
         warnings = list(job.warnings or [])
         params["stems_log"] = []
         _log_stems_stage(params, "stem separation started")
 
         def _commit_params() -> None:
-            job.params = {**params}
-            session.commit()
+            writer.commit(params)
 
         try:
             _log_stems_stage(params, "importing ML models…")
@@ -941,6 +965,5 @@ def separate_stems(job_id: str) -> None:
             params["stems_status"] = "unavailable"
             warnings.append(f"stem separation failed: {type(exc).__name__}: {exc}")
             _log_stems_stage(params, f"failed: {type(exc).__name__}: {exc}")
-        job.params = {**params}
         job.warnings = list(warnings)
-        session.commit()
+        writer.commit(params)
