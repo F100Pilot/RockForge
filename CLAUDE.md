@@ -833,6 +833,38 @@ the missing note (4.0 s) and the extra strike (6.715 s) flagged and reached by
 the buttons, hidden when unticked, PT/EN, no page errors. **Never run on a
 real song from here.**
 
+### Audio and note bars over the score ("Barras de áudio", `renderLevels`)
+
+"Para ajudar a sincronizar as músicas, pretendo que faças um gráfico de barras
+áudio, para a música (até para os stems separados) e outro para o barulho das
+notas" (2026-10-18). A "Barras de áudio" switch (`#showLevels`, `rf-levels`)
+shows `#levelsSvg`, a second SVG inside `#tabwrap` ABOVE `#tabsvg` (so it scrolls
+with the score and the score's own y layout is untouched), redrawn from the end
+of `showArr` with its `W`, `px` and warp. Two lanes on the score's x-axis
+(recording time): **audio** — peaks per bar (`peakBins`, the helper
+`decodeWaveform` now shares) on a 36 dB scale under the loudest peak, of the
+source chosen in `#levelsSource`: what is playing (`wavePeaks`, colour of its
+kind), the full mix or a separated stem (`stem:<name>`, decoded for the bars
+alone by `loadLevelsAudio` when it is not the one playing; its peaks start
+`leadInBuilt` later, since only the playing buffer is padded); **notes** —
+`notesEnvelope`, the chart's `soundingNotes` at their drawn time (pending
+edits, tempo, anchors), each ringing for `noteSoundLength` of its drawn sustain
+with a quarter left at the end like the preview's Karplus voice, a chord the
+sum of its strings, shown as `1 − e^(−1.2·sum)`. One path per lane, a bar every
+max(3 px, one 10 ms bin); both cached by what they were drawn from
+(`levelsCache`). Its own playhead (`moveLevelsPlayhead`, from `syncFrame` and
+`seekPreview`), a click seeks. **An `<svg>` has no `.hidden` property** —
+`toggleAttribute('hidden')`, or the `[hidden]` rule never applies. The state sits
+beside `legendOn`, near the top: the legend draws its colours, and
+`setLegend(legendOn)` runs at load before the rest of the file (a `let` further
+down was a TDZ crash at start-up). Legend group "Barras de áudio". Browser-only;
+verified with Playwright (PT 1440 / EN 760 px): first strong audio bar and
+first note bar at the same x, "Início" +1 s moved the note bars exactly 1 s
+and left the audio path unchanged, a stem source (a filtered copy injected as
+a stem) drawn green, the mix, following a synthesized source, the click seek
+and both playheads, starting with the bars and the legend already on, no page
+errors.
+
 ### Exporting a corrected Guitar Pro file (`/export-gp`)
 
 `infrastructure/gpexport/tempo_writer.py` writes the accepted tempo corrections
@@ -2504,6 +2536,17 @@ is remembered in `localStorage` `rf-hw3d-cam`. The default (yaw 0, pitch 15,
 distance 15) reproduces the old fixed view at its default tilt — checked side
 by side. The note faces still face the front, so from far to the side the
 numbers are seen edge-on.
+
+**The hand window lights up on every hit** ("quando uma nota (ou acorde) bate
+nas cordas … um retângulo à volta da área onde estão as notas (1-4, 2-5) … com
+brilho", 2026-10-18): `flashWindow` (from `hit`) places a frame at the strings —
+the frets of `anchorAt(note time)` (the chart's FHP, else the frets played),
+every string the chart has (`stage.stringCount`) — four thin additive cores over
+`lineGlowTex` halos and a faint fill; `glow` jumps to 1, decays like the strings'
+(1.8/s), is held at 0.45-0.6 while a struck note still rings, and goes with
+`clearEffects` on a jump. `stats().window` reports it. Verified with Playwright
+under software WebGL: glow 0 → 0.91 at the first hit, held while the notes rang,
+the frame on frets 2–5 where the FHP lane says 2–5.
 
 **It knows nothing about sync — it reads the score's own clock.** `hw3dRefresh`
 (called from `showArr`, so on every pending edit) hands it each note at

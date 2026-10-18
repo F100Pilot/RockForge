@@ -217,13 +217,20 @@ queres recuperar. Ficam pendentes como antes; Desfazer volta à versão constru�
   têm número; um compasso a âmbar tem o andamento alterado pelas tuas correções.
 - **pré-visualizar** toca só as notas da pista, sem a gravação.
 - **Braço** mostra o braço da guitarra; **Pista 3D** mostra as notas a descer como no
-  Rocksmith (segue também as correções ainda por aplicar). Na pista 3D, arrasta para rodar a
+  Rocksmith (segue também as correções ainda por aplicar); quando uma nota ou acorde chega às
+  cordas, um retângulo acende à volta dos trastes onde está a mão (2–5, por exemplo). Na pista 3D, arrasta para rodar a
   câmara (até 120° para cada lado, de rente à pista até vista de cima), depois de clicares na
   pista a roda do rato aproxima ou afasta (antes disso desloca a página; Esc ou um clique fora
   largam a pista) e um duplo clique repõe; **Câmara** tem os mesmos eixos em controlos deslizantes.
   **− / + / Repor**: zoom. **Legenda** mostra, debaixo da pauta, o que quer dizer cada marca
   (anéis, caudas, linhas, as bolas laranja dos ataques, a faixa da posição da mão…), desenhada
   como aparece; o ⓘ ao lado mostra o mesmo.
+- **Barras de áudio** põe duas faixas de barras por cima da partitura, no mesmo eixo do tempo:
+  em cima o nível da gravação, em baixo o som das notas da pista onde estão desenhadas (com as
+  correções ainda por aplicar). Onde os picos das duas faixas não caem juntos, a partitura está
+  fora de tempo. Ao lado escolhes o áudio das barras: o que está a tocar, a mistura completa ou
+  um instrumento já separado (em **Áudio ▾ → Separar instrumentos**) — por exemplo, ouvir a
+  mistura e ver as barras só da guitarra. Clicar nas barras move o cursor.
 - **Inspetor (à direita):** **Sincronização**, **Secções** e **Letra**.
 
 ## 6. Sincronizar as notas com a gravação

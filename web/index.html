@@ -105,6 +105,8 @@
 
   .syncctrls { display:flex; gap:.8rem; align-items:center; flex-wrap:wrap; font-size:.85rem; color:var(--muted); }
   #playhead { pointer-events:none; }
+  #levelsSvg { display:block; cursor:pointer; }
+  .levels-source { max-width:15rem; }
   #tabwrap { overflow-x:auto; background:#0f1013; border:1px solid var(--line); border-radius:8px; margin-top:.5rem; }
   /* Shift+click / drag-select on the score must not trigger the browser's own
      text selection over the SVG's <text> labels (techniques, tuning, bars). */
@@ -1161,7 +1163,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
             <span>Ritmo estimado pelo espaçamento (confere estes compassos primeiro):</span>
             <span id="barEstimatedList"></span>
           </div>
-          <div id="tabwrap"><svg id="tabsvg" height="280"></svg></div>
+          <div id="tabwrap"><svg id="levelsSvg" hidden></svg><svg id="tabsvg" height="280"></svg></div>
           <!-- Fretboard: lights up the (string, fret) of each note as it plays -->
           <div id="fretboardWrap">
             <svg id="fretboard" height="150" style="display:inline-block"></svg>
@@ -1172,6 +1174,8 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
             <label class="check"><input type="checkbox" id="showFretboard" checked> Braço</label>
             <label class="check" title="As notas a descer numa pista 3D, como no Rocksmith"><input type="checkbox" id="show3d"> Pista 3D</label>
             <label class="check" title="O que quer dizer cada marca da partitura"><input type="checkbox" id="showLegend"> Legenda</label>
+            <label class="check" title="Barras do nível da gravação e do som das notas, por cima da partitura: onde não coincidem, está fora de tempo"><input type="checkbox" id="showLevels"> Barras de áudio</label>
+            <select id="levelsSource" class="levels-source" aria-label="Áudio das barras" hidden></select>
             <div class="pv-group pv-zoom">
               <button type="button" id="zoomOut" class="secondary" aria-label="Menos zoom">−</button>
               <span id="zoomLevel" class="meta"></span>

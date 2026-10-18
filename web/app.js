@@ -1451,7 +1451,7 @@ const INFO = {
   },
   'highway-3d': {
     title: T('Pista 3D'),
-    body: T('<p>As notas da pista escolhida a descer para as cordas, como no Rocksmith: cada corda na sua cor (Mi grave vermelho em cima) e uma linha até ao traste onde se toca. Como no Rocksmith, a nota não tem número: o número do traste no braço passa a âmbar e brilha à medida que se aproxima uma nota desse traste, e fica aceso enquanto ela soa ("Traste na nota" volta a pôr o número na nota). Quando a nota chega à corda, a corda brilha e a nota fica pousada nela enquanto soa.</p>') +
+    body: T('<p>As notas da pista escolhida a descer para as cordas, como no Rocksmith: cada corda na sua cor (Mi grave vermelho em cima) e uma linha até ao traste onde se toca. Como no Rocksmith, a nota não tem número: o número do traste no braço passa a âmbar e brilha à medida que se aproxima uma nota desse traste, e fica aceso enquanto ela soa ("Traste na nota" volta a pôr o número na nota). Quando a nota chega à corda, a corda brilha, um retângulo acende à volta dos trastes onde está a mão (por exemplo 2–5), como no Rocksmith, e a nota fica pousada na corda enquanto soa.</p>') +
       T('<p>A afinação está escrita na pestana do headstock. Acordes têm moldura e nome; uma corda solta é uma barra ao longo da zona da mão (a faixa azul), que a câmara segue. As técnicas têm os símbolos do Rocksmith: ▼ hammer-on e ▲ pull-off na nota; por cima, laço = palm mute, anel com ponto = harmónico, olho = harmónico pinch, V largo = tapping, bloco com entalhe = slap, com bico = pop, chevrons ˄ = bend (um = meio tom, dois = um tom, três = mais); moldura dupla = acento; rasto ondulado = vibrato, em zigue-zague = tremolo picking; X = nota abafada.</p>') +
       T('<p><strong>Câmara:</strong> arrasta a pista para a rodar — para os lados até 120° de cada lado, e de rente à pista (0°) até vista de cima (90°); depois de clicares na pista, a roda do rato aproxima ou afasta (antes disso a roda desloca a página; Esc ou um clique fora largam a pista), e um duplo clique (ou "Repor câmara") volta à vista inicial. Os mesmos três eixos estão em "Câmara", com controlos deslizantes, e a vista fica guardada para o próximo projeto.</p>') +
       T('<p>Segue a gravação e as correções de sincronização <strong>ainda por aplicar</strong>, tal como a partitura por baixo — serve para confirmar a sincronização a ver as notas chegar. Precisa de WebGL (aceleração gráfica) no browser.</p>')
@@ -2543,6 +2543,12 @@ function scoreLegendHtml() {
     legendItem(`<rect x="4" y="10" width="52" height="16" rx="3" fill="#1d2129" stroke="#3ddcc4" stroke-dasharray="3,2"/><line x1="4" y1="7" x2="4" y2="26" stroke="#3ddcc4" stroke-width="2"/><text x="9" y="22" fill="#3ddcc4" font-size="11" font-weight="700">7–10</text>`,
       T('Posição da mão escolhida por ti (verde-água; tracejada enquanto não for aplicada)')),
   ];
+  const levels = [
+    legendItem(`<rect x="0" y="4" width="60" height="30" fill="#16181e"/><path d="M6 32h3v-6h-3zM12 32h3v-20h-3zM18 32h3v-12h-3zM24 32h3v-8h-3zM36 32h3v-24h-3zM42 32h3v-14h-3zM48 32h3v-9h-3z" fill="${LEVELS_AUDIO_COLOR['']}"/>`,
+      T('Barras azuis (verdes para um instrumento separado): o nível da gravação. Um pico é uma batida que se ouve')),
+    legendItem(`<rect x="0" y="4" width="60" height="30" fill="#16181e"/><path d="M12 32h3v-22h-3zM18 32h3v-15h-3zM24 32h3v-10h-3zM36 32h3v-22h-3zM42 32h3v-15h-3zM48 32h3v-10h-3z" fill="${LEVELS_NOTES_COLOR}"/>`,
+      T('Barras âmbar: o som das notas da pista, onde estão desenhadas. Os picos das duas faixas devem cair juntos')),
+  ];
   const tabs = [
     legendItem(`<rect x="2" y="7" width="56" height="22" rx="5" fill="#2f9e62"/><text x="30" y="22" fill="#07170d" font-size="11" font-weight="700" text-anchor="middle">✓ LEAD</text>`,
       T('Separador verde com ✓: pista que marcaste como sincronizada. O nome é o do jogo (LEAD 2 = o segundo arranjo Lead)')),
@@ -2553,9 +2559,19 @@ function scoreLegendHtml() {
     + legendGroup(T('Sincronização'), sync)
     + legendGroup(T('Ataques da gravação (com "Mostrar na partitura")'), attacksLegendItems())
     + legendGroup(T('Posição da mão (faixa por baixo da pauta)'), hand)
+    + legendGroup(T('Barras de áudio (por cima da pauta)'), levels)
     + legendGroup(T('Pistas'), tabs)
     + `</div>`;
 }
+// "Barras de áudio" (see renderLevels)
+const LEVELS_LANE_H = 46, LEVELS_PAD = 5, LEVELS_DB = 36;  // dB shown below the loudest peak
+const LEVELS_AUDIO_COLOR = { '': '#4c9ed9', stem: '#3fb27f' }, LEVELS_NOTES_COLOR = '#e0a54a';
+let levelsOn = false;
+try { levelsOn = localStorage.getItem('rf-levels') === '1'; } catch { /* no storage */ }
+let levelsSource = '';      // '' = what is playing, 'mix', or 'stem:<name>'
+let levelsAudio = null;     // a source decoded only for the bars: {key, peaks}
+let levelsLoading = '';
+let levelsCache = { audio: null, notes: null };  // the lanes' paths, by what they were drawn from
 let legendOn = false;
 try { legendOn = localStorage.getItem('rf-legend') === '1'; } catch { /* no storage */ }
 function setLegend(on) {
@@ -2950,6 +2966,7 @@ function showArr(i) {
     s += `<text x="${mx+4}" y="52" fill="#3fdc8a" font-size="11" font-weight="700">${T('1ª nota')}</text>`;
   }
   svg.innerHTML = s;
+  renderLevels(a, W, px, barWarp);
   invalidateLyricWords();  // the nodes the playhead frame highlights were just replaced
   syncResetPointer();
   renderAnchorsList();
@@ -7299,6 +7316,7 @@ function populateAudioSources() {
   sel.innerHTML = html;
   sel.value = values.includes(prev) ? prev : '';
   audioSourceName = sel.value;
+  populateLevelsSources();
 }
 
 async function separateStems() {
@@ -9437,6 +9455,18 @@ async function setHw3d(on) {
 document.getElementById('show3d').addEventListener('change', e => setHw3d(e.target.checked));
 document.getElementById('showLegend').addEventListener('change', e => setLegend(e.target.checked));
 setLegend(legendOn);
+document.getElementById('showLevels').addEventListener('change', e => setLevels(e.target.checked));
+document.getElementById('levelsSource').addEventListener('change', e => {
+  levelsSource = e.target.value;
+  if (arrangements.length) showArr(currentArr);
+});
+// A click on the bars moves the cursor there, like a click on empty staff.
+document.getElementById('levelsSvg').addEventListener('pointerdown', e => {
+  const rect = e.currentTarget.getBoundingClientRect();
+  audioSeek(Math.max(0, (e.clientX - rect.left - 30) / tabPx));
+});
+populateLevelsSources();
+setLevels(levelsOn);
 document.getElementById('hw3dNumbers').addEventListener('change', e => window.Highway3D?.setOptions({ numbers: e.target.checked }));
 for (const [, id] of HW3D_CAMERA) {
   document.getElementById(id).addEventListener('input', () => {
@@ -9885,7 +9915,7 @@ function seekPreview(t) {
   const vt = playheadDisplay(t);
   currentPlayheadT = vt - viewOrigin;
   const ph = document.getElementById('playhead');
-  if (ph) { const x = timeToX(vt); ph.setAttribute('x1', x); ph.setAttribute('x2', x); }
+  if (ph) { const x = timeToX(vt); ph.setAttribute('x1', x); ph.setAttribute('x2', x); moveLevelsPlayhead(x); }
   updateFretboard(vt);  // scrubbing/pausing lights the neck at the cursor too
   updateLiveBpm(vt);
 }
@@ -9987,6 +10017,7 @@ function syncFrame() {
   const wrap = document.getElementById('tabwrap');
   const halfView = wrap.clientWidth / 2;
   ph.setAttribute('x1', x); ph.setAttribute('x2', x);
+  moveLevelsPlayhead(x);
   wrap.scrollLeft = Math.max(0, x - halfView);
   updateTransportUI();
   const notes = soundingNotes(arrangements[currentArr]);
@@ -10282,8 +10313,27 @@ document.getElementById('centOffsetInput').addEventListener('change', e =>
   });
 })();
 
-// Fetch + decode the recording into peak bins (max |amplitude| per 1/WAVE_HZ s)
-// so the tab viewer can draw a waveform under the notes for visual alignment.
+// Peak bins of decoded audio: max |amplitude| per 1/WAVE_HZ s, normalized to the
+// loudest peak so quiet recordings are still visible.
+function peakBins(audio) {
+  const ch = audio.getChannelData(0);
+  const bins = Math.ceil(audio.duration * WAVE_HZ);
+  const peaks = new Float32Array(bins);
+  const per = audio.sampleRate / WAVE_HZ;
+  for (let b = 0; b < bins; b++) {
+    const start = Math.floor(b * per), end = Math.min(ch.length, Math.floor((b + 1) * per));
+    let max = 0;
+    for (let i = start; i < end; i++) { const v = Math.abs(ch[i]); if (v > max) max = v; }
+    peaks[b] = max;
+  }
+  let gmax = 0;
+  for (const p of peaks) if (p > gmax) gmax = p;
+  if (gmax > 0) for (let b = 0; b < bins; b++) peaks[b] /= gmax;
+  return peaks;
+}
+
+// Fetch + decode the recording into peak bins so the tab viewer can draw a
+// waveform under the notes for visual alignment.
 async function decodeWaveform(id) {
   try {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -10319,21 +10369,7 @@ async function decodeWaveform(id) {
         audio = padded;
       }
     }
-    const ch = audio.getChannelData(0);
-    const bins = Math.ceil(audio.duration * WAVE_HZ);
-    const peaks = new Float32Array(bins);
-    const per = audio.sampleRate / WAVE_HZ;
-    for (let b = 0; b < bins; b++) {
-      const start = Math.floor(b * per), end = Math.min(ch.length, Math.floor((b + 1) * per));
-      let max = 0;
-      for (let i = start; i < end; i++) { const v = Math.abs(ch[i]); if (v > max) max = v; }
-      peaks[b] = max;
-    }
-    // normalize to the loudest peak so quiet recordings are still visible
-    let gmax = 0;
-    for (const p of peaks) if (p > gmax) gmax = p;
-    if (gmax > 0) for (let b = 0; b < bins; b++) peaks[b] /= gmax;
-    wavePeaks = peaks; waveDuration = audio.duration;
+    wavePeaks = peakBins(audio); waveDuration = audio.duration;
     playBuffer = audio;  // reuse the decoded buffer for sample-accurate playback
     updateTransportUI();
     if (arrangements.length) showArr(currentArr);
@@ -10352,6 +10388,174 @@ async function decodeWaveform(id) {
       au.onloadedmetadata = updateTransportUI;
     }
   }
+}
+
+// ── "Barras de áudio": the recording's level and the notes' sound as bars ──
+// Two lanes over the score, on its own time axis (they scroll with it): the
+// level of an audio source — what is playing, the full mix or a separated
+// instrument — and the sound the chart's notes make, as drawn (pending edits,
+// tempo and anchors included). Where an attack in the recording has no bar of
+// notes under it, or the other way round, the score is out of sync there.
+// (state and colours: next to the legend's, near the top — the legend draws them)
+
+function setLevels(on) {
+  levelsOn = on;
+  try { localStorage.setItem('rf-levels', on ? '1' : '0'); } catch { /* no storage */ }
+  const chk = document.getElementById('showLevels');
+  if (chk) chk.checked = on;
+  const sel = document.getElementById('levelsSource');
+  if (sel) sel.hidden = !on;
+  if (arrangements.length) showArr(currentArr);
+  else renderLevels(null);
+}
+
+// The sources the audio lane can show: what is playing, the mix, each stem.
+function populateLevelsSources() {
+  const sel = document.getElementById('levelsSource');
+  if (!sel) return;
+  const values = ['', 'mix', ...availableStems.map(n => `stem:${n}`)];
+  sel.innerHTML = `<option value="">${T('Barras: o que está a tocar')}</option>`
+    + `<option value="mix">${T('Barras: mistura completa')}</option>`
+    + availableStems.map(n => `<option value="${esc(`stem:${n}`)}">${esc(T('Barras: {stem}', { stem: STEM_LABELS[n] || n }))}</option>`).join('');
+  if (!values.includes(levelsSource)) levelsSource = '';
+  sel.value = levelsSource;
+  sel.hidden = !levelsOn;
+}
+
+// The peaks the audio lane reads, and how far into the display clock they
+// start: the playing buffer already carries the build's lead-in, a source
+// decoded here does not. Null while that source is still being decoded.
+function levelsPeaks() {
+  const playing = audioSourceName;
+  const want = levelsSource === 'mix' ? '' : levelsSource.startsWith('stem:') ? levelsSource.slice(5) : null;
+  if (want === null || want === playing) {
+    const style = audioSourceStyle();
+    return wavePeaks ? { peaks: wavePeaks, offset: 0, label: style.label, color: playing && !playing.startsWith('synth:') ? LEVELS_AUDIO_COLOR.stem : playing ? style.color : LEVELS_AUDIO_COLOR[''] } : null;
+  }
+  const key = `${selectedJob ? selectedJob.id : ''}:${want}`;
+  const label = want ? (STEM_LABELS[want] || want) : T('Mistura completa');
+  const color = want ? LEVELS_AUDIO_COLOR.stem : LEVELS_AUDIO_COLOR[''];
+  if (levelsAudio && levelsAudio.key === key) return { peaks: levelsAudio.peaks, offset: leadInBuilt, label, color };
+  if (levelsLoading !== key && selectedJob) loadLevelsAudio(key, want);
+  return { peaks: null, offset: 0, label, color };
+}
+
+async function loadLevelsAudio(key, stem) {
+  levelsLoading = key;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const url = stem ? `/jobs/${selectedJob.id}/stem/${encodeURIComponent(stem)}` : `/jobs/${selectedJob.id}/source-audio`;
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(String(r.status));
+    const audio = await audioCtx.decodeAudioData(await r.arrayBuffer());
+    if (levelsLoading !== key) return;
+    levelsAudio = { key, peaks: peakBins(audio) };
+  } catch {
+    if (levelsLoading === key) toast(T('Não foi possível ler esse áudio para as barras.'), 'err');
+    levelsSource = '';
+    populateLevelsSources();
+  } finally {
+    if (levelsLoading === key) levelsLoading = '';
+  }
+  if (arrangements.length) showArr(currentArr);
+}
+
+// The sound the chart's notes make, at WAVE_HZ on the display clock (index =
+// seconds from the left edge): each note struck at its drawn time and ringing
+// for its drawn sustain, the way the preview plays it (noteSoundLength; about a
+// quarter of the level left at the end), a chord the sum of its strings.
+function notesEnvelope(a, warp, seconds) {
+  const env = new Float32Array(Math.max(1, Math.ceil(seconds * WAVE_HZ) + 1));
+  for (const n of soundingNotes(a)) {
+    if (n.string < 0 || n.string >= stringCount(a) || n.fret < 0) continue;
+    const at = warp(previewScale(n.time));
+    const held = n.sustain > 0 ? warp(previewScale(n.time + n.sustain)) - at : 0;
+    const len = noteSoundLength(held), tau = len / Math.log(4);
+    const peak = (n.techniques || []).includes('mute') ? 0.5 : 1;
+    const t0 = at - viewOrigin, b0 = Math.max(0, Math.floor(t0 * WAVE_HZ));
+    const b1 = Math.min(env.length - 1, Math.ceil((t0 + len + 0.12) * WAVE_HZ));
+    for (let b = b0; b <= b1; b++) {
+      const dt = b / WAVE_HZ - t0;
+      if (dt < 0) continue;
+      let v = peak * Math.exp(-dt / tau);
+      if (dt > len) v *= Math.exp(-(dt - len) / 0.03);  // released
+      env[b] += v;
+    }
+  }
+  return env;
+}
+
+// One lane of bars as a single path: a bar every `pitch` px, each the loudest
+// value under it (0-1), standing on the lane's baseline.
+function levelBarsPath(values, W, px, top, valueAt) {
+  const base = top + LEVELS_LANE_H - 3, room = LEVELS_LANE_H - 8;
+  const pitch = Math.max(3, px / WAVE_HZ), bar = Math.max(2, pitch - 1);
+  let d = '';
+  for (let x = 30; x < W - 10; x += pitch) {
+    const b0 = Math.floor((x - 30) / px * WAVE_HZ), b1 = Math.max(b0 + 1, Math.floor((x + pitch - 30) / px * WAVE_HZ));
+    let v = 0;
+    for (let b = b0; b < b1; b++) { const u = valueAt(values, b); if (u > v) v = u; }
+    const h = Math.round(v * room);
+    if (h > 0) d += `M${x.toFixed(1)} ${base}h${bar}v${-h}h${-bar}z`;
+  }
+  return d;
+}
+
+function levelsLane(top, path, color, label) {
+  const lw = label.length * 6.5 + 22;
+  return `<rect x="30" y="${top}" width="100%" height="${LEVELS_LANE_H}" fill="#16181e"/>`
+    + `<path d="${path}" fill="${color}" opacity=".85"/>`
+    + `<rect x="34" y="${top + 3}" width="${lw.toFixed(0)}" height="16" rx="4" fill="#14151a" opacity=".8"/>`
+    + `<circle cx="43" cy="${top + 11}" r="4" fill="${color}"/>`
+    + `<text x="51" y="${top + 15}" fill="#c4c6cd" font-size="11" font-weight="600">${esc(label)}</text>`;
+}
+
+// Draws the two lanes into #levelsSvg (or hides it). Called from showArr with
+// its width, scale and warp, so the bars sit exactly under the score's notes.
+function renderLevels(a, W, px, warp) {
+  const svg = document.getElementById('levelsSvg');
+  if (!svg) return;
+  // an <svg> has no .hidden property: the attribute is what [hidden] styles
+  svg.toggleAttribute('hidden', !levelsOn || !a);
+  if (!levelsOn || !a) { svg.innerHTML = ''; return; }
+  const H = LEVELS_PAD * 3 + LEVELS_LANE_H * 2;
+  svg.setAttribute('width', W);
+  svg.setAttribute('height', H);
+  const src = levelsPeaks();
+  const top1 = LEVELS_PAD, top2 = LEVELS_PAD * 2 + LEVELS_LANE_H;
+  let audioPath = '';
+  if (src && src.peaks) {
+    const key = [W, px, viewOrigin, src.offset, src.label].join('|');
+    if (levelsCache.audio && levelsCache.audio.key === key && levelsCache.audio.peaks === src.peaks) audioPath = levelsCache.audio.path;
+    else {
+      const shift = Math.round(src.offset * WAVE_HZ);
+      audioPath = levelBarsPath(src.peaks, W, px, top1, (pk, b) => {
+        const p = pk[b - shift] || 0;
+        return p > 0 ? Math.max(0, 1 + 20 * Math.log10(p) / LEVELS_DB) : 0;
+      });
+      levelsCache.audio = { key, peaks: src.peaks, path: audioPath };
+    }
+  }
+  const seconds = (W - 30) / px;
+  const notes = soundingNotes(a);
+  const nkey = [a.kind, W, px, viewOrigin, JSON.stringify(syncAnchors), tempoScaleLive, leadInBuilt].join('|');
+  let notesPath;
+  if (levelsCache.notes && levelsCache.notes.key === nkey && levelsCache.notes.notes === notes) notesPath = levelsCache.notes.path;
+  else {
+    const env = notesEnvelope(a, warp, seconds);
+    notesPath = levelBarsPath(env, W, px, top2, (e, b) => 1 - Math.exp(-1.2 * (e[b] || 0)));
+    levelsCache.notes = { key: nkey, notes, path: notesPath };
+  }
+  const audioLabel = src ? (src.peaks ? T('Áudio · {source}', { source: src.label }) : T('Áudio · {source} (a ler…)', { source: src.label })) : T('Áudio · sem gravação');
+  const phX = timeToX(currentPlayheadT + viewOrigin);
+  svg.innerHTML = levelsLane(top1, audioPath, src ? src.color : LEVELS_AUDIO_COLOR[''], audioLabel)
+    + levelsLane(top2, notesPath, LEVELS_NOTES_COLOR, T('Notas · {track}', { track: arrLabel(a.kind) }))
+    + `<line id="levelsPlayhead" x1="${phX}" y1="0" x2="${phX}" y2="${H}" stroke="#ff7a45" stroke-width="2" opacity=".9"/>`;
+}
+
+function moveLevelsPlayhead(x) {
+  const ph = document.getElementById('levelsPlayhead');
+  if (ph) { ph.setAttribute('x1', x); ph.setAttribute('x2', x); }
 }
 
 // Build the waveform path data. The x-axis is recording time (0s at the left),

@@ -385,6 +385,26 @@
       return edge;
     });
 
+    // The hand window at the strings: a frame that lights up when a note strikes (Rocksmith's
+    // "hit box"), around the frets of the hand window and every string — see flashWindow.
+    const windowFrame = new THREE.Group();
+    windowFrame.position.z = 0.07;
+    const windowFill = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: 0x5f7cff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+    const windowCore = new THREE.MeshBasicMaterial({ color: 0xdfe6ff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+    const windowHalo = new THREE.MeshBasicMaterial({ map: r.lineGlowTex, color: 0x7c98ff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+    // Four sides, each a thin bright core over a soft halo; unit-sized, placed by placeWindow.
+    const windowSides = [0, 1, 2, 3].map((i) => {
+      const vertical = i >= 2;
+      const core = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), windowCore);
+      const halo = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), windowHalo);
+      if (vertical) halo.rotation.z = Math.PI / 2;
+      windowFrame.add(halo, core);
+      return { core, halo, vertical };
+    });
+    windowFrame.add(windowFill);
+    windowFrame.visible = false;
+    scene.add(windowFrame);
+
     // Headstock: wooden six-in-line head, bone nut with the tuning written on it, a tuner per string.
     const headstock = new THREE.Group();
     scene.add(headstock);
@@ -440,12 +460,14 @@
     scene.add(lane);
     return {
       host, renderer, scene, camera, observer, anchor, edges, headstock, strings, fretLabels, lane,
-      nutLabels: [], effects: [], cameraX: 2.5, anchorFirst: 1, anchorWidth: 4,
+      nutLabels: [], effects: [], cameraX: 2.5, anchorFirst: 1, anchorWidth: 4, stringCount: 6,
+      window: { group: windowFrame, fill: windowFill, core: windowCore, halo: windowHalo, sides: windowSides, glow: 0, first: 1, width: 4 },
     };
   }
 
   // A bass has four strings: the two it does not have (and their tuners) are hidden.
   function setStringCount(count) {
+    stage.stringCount = count;
     stage.strings.forEach((str, s) => {
       const on = s < count;
       str.mesh.visible = on;
@@ -746,10 +768,46 @@
     return { group, materials };
   }
 
+  // The frame around the hand window lights up as a note (or chord) strikes: the window of that
+  // moment — the chart's FHP there, else the frets being played — over every string.
+  function flashWindow(t) {
+    const w = stage.window;
+    const a = anchorAt(t) || { first: stage.anchorFirst, width: stage.anchorWidth };
+    w.first = a.first;
+    w.width = a.width;
+    w.glow = 1;
+    placeWindow();
+  }
+  function placeWindow() {
+    const w = stage.window;
+    const top = stringY(0) + 0.3, bottom = stringY(stage.stringCount - 1) - 0.3;
+    const left = w.first - 1, right = w.first - 1 + w.width;
+    const cx = (left + right) / 2, cy = (top + bottom) / 2, wd = right - left, ht = top - bottom;
+    const CORE = 0.05, HALO = 0.42;
+    w.fill.position.set(cx, cy, -0.01);
+    w.fill.scale.set(wd, ht, 1);
+    w.sides.forEach((side, i) => {
+      if (side.vertical) {
+        const x = i === 2 ? left : right;
+        side.core.position.set(x, cy, 0);
+        side.core.scale.set(CORE, ht + CORE, 1);
+        side.halo.position.set(x, cy, -0.005);
+        side.halo.scale.set(ht + HALO, HALO, 1); // rotated a quarter turn: x is its height
+      } else {
+        const y = i === 0 ? top : bottom;
+        side.core.position.set(cx, y, 0);
+        side.core.scale.set(wd + CORE, CORE, 1);
+        side.halo.position.set(cx, y, -0.005);
+        side.halo.scale.set(wd + HALO, HALO, 1);
+      }
+    });
+  }
+
   function hit(obj) {
     const r = resources();
     const n = obj.note, s = n.string, color = STRING_COLORS[s];
     stage.strings[s].glow = 1;
+    flashWindow(n.t);
     const flash = new THREE.Sprite(new THREE.SpriteMaterial({ map: r.glowTex, color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
     const core = new THREE.Sprite(new THREE.SpriteMaterial({ map: r.glowTex, color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
     flash.position.set(obj.x, stringY(s), 0.08);
@@ -773,6 +831,8 @@
   function clearEffects() {
     for (const e of stage.effects) removeEffect(e);
     stage.effects = [];
+    stage.window.glow = 0;
+    stage.window.group.visible = false;
   }
   function removeEffect(e) {
     stage.scene.remove(e.flash, e.core, e.sparks, e.held.group);
@@ -792,7 +852,10 @@
       e.flash.material.opacity = holding ? 0.55 * pulse : 0.9 * (1 - k);
       e.core.scale.set(0.45 * e.width + 0.2, 0.45, 1);
       e.core.material.opacity = holding ? 0.8 * pulse : 1 - k;
-      if (holding) stage.strings[e.string].glow = Math.max(stage.strings[e.string].glow, 0.55 + 0.2 * pulse);
+      if (holding) {
+        stage.strings[e.string].glow = Math.max(stage.strings[e.string].glow, 0.55 + 0.2 * pulse);
+        stage.window.glow = Math.max(stage.window.glow, 0.45 + 0.15 * pulse);
+      }
       const pos = e.sparks.geometry.attributes.position;
       for (let j = 0; j < e.velocities.length; j += 1) {
         const v = e.velocities[j];
@@ -816,6 +879,12 @@
       st.material.emissiveIntensity = 0.35 + 2.2 * st.glow;
       st.glowMat.opacity = 0.85 * st.glow;
     }
+    const w = stage.window;
+    w.glow = Math.max(0, w.glow - dt * 1.8);
+    w.group.visible = w.glow > 0.01;
+    w.core.opacity = 0.95 * w.glow;
+    w.halo.opacity = 0.9 * w.glow;
+    w.fill.material.opacity = 0.14 * w.glow;
   }
 
   // A fret number of the neck lights up (amber, with a halo) as a note on that fret comes —
@@ -942,7 +1011,7 @@
     get ready() { return !!stage; },
     // What is on the highway right now (for checking it from the console).
     stats() {
-      return song ? { notes: song.notes.length, lines: song.lines.length, liveNotes: song.live.size, liveLines: song.liveLines.size } : null;
+      return song ? { notes: song.notes.length, lines: song.lines.length, liveNotes: song.live.size, liveLines: song.liveLines.size, window: { glow: stage.window.glow, first: stage.window.first, width: stage.window.width } } : null;
     },
     // notes: [{t, sustain, string, fret, techniques, bend, slideTo, chordName}] in the display
     // clock; bars: [{t, measure}]; beats: [t]; sections: [{t, name}]; tuning: 6 offsets;

@@ -218,12 +218,19 @@ They stay pending as before; Undo goes back to the built version.
   Bars are numbered; an amber bar has its tempo changed by your corrections.
 - **preview** plays only the track's notes, without the recording.
 - **Fretboard** shows the guitar neck; **3D highway** shows the notes coming down as in Rocksmith (it
-  follows pending corrections too). On the 3D highway, drag to turn the camera (up to 120° either
+  follows pending corrections too); when a note or chord reaches the strings, a rectangle lights
+  up around the frets the hand is in (2–5, for example). On the 3D highway, drag to turn the camera (up to 120° either
   way, from level with the highway to a view from above), once you click the highway the mouse wheel
   moves closer or further (before that it scrolls the page; Esc or a click elsewhere lets go) and
   a double-click resets; **Camera** has the same axes as sliders. **− / + / Reset**: zoom.
   **Legend** shows, under the score, what each mark means (rings, tails, lines, the orange circles
   of the attacks, the hand-position lane…), drawn as it appears; the ⓘ beside it shows the same.
+- **Audio bars** puts two lanes of bars above the score, on the same time axis: on top the
+  recording's level, below the sound of the track's notes where they are drawn (pending
+  corrections included). Where the peaks of the two lanes do not fall together, the score is out
+  of time. Beside it you pick the bars' audio: what is playing, the full mix or an instrument
+  already separated (in **Audio ▾ → Separate instruments**) — for example, listen to the mix and
+  see the bars of the guitar only. Clicking the bars moves the cursor.
 - **Inspector (on the right):** **Sync**, **Sections** and **Lyrics**.
 
 ## 6. Syncing the notes to the recording
