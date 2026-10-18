@@ -6,6 +6,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+## [0.11.0 beta 2] — 2026-10-18
+
 ### New
 
 - **Merge two tracks into one arrangement** (New project → Tracks, and Edit info): for a part the

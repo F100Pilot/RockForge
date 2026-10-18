@@ -6,6 +6,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+## [0.11.0 beta 2] — 2026-10-18
+
 ### Novidades
 
 - **Juntar duas pistas num só arranjo** (Novo projeto → Pistas, e Editar info): para uma parte que
