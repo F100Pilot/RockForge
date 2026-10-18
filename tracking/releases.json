@@ -394,7 +394,7 @@
     },
     {
       "version": "0.11.0-beta.1",
-      "status": "Beta",
+      "status": "Superseded",
       "created": "2026-10-18",
       "published": "2026-10-18",
       "commit": "c6f56adb4b21f63a21dd0d388e355de46380532c",
@@ -420,10 +420,12 @@
       "version": "0.11.0-beta.2",
       "status": "Beta",
       "created": "2026-10-18",
-      "published": "pending",
-      "commit": "pending",
+      "published": "2026-10-18",
+      "commit": "f64c45e8e176c44bd87c7c7866f741330b443011",
       "build": "GitHub Actions release workflow",
-      "artifacts": [],
+      "artifacts": [
+        "https://github.com/F100Pilot/RockForge/releases/tag/v0.11.0-beta.2"
+      ],
       "goal": "Merge two GP tracks into one arrangement; an alignment line and Ctrl+wheel zoom on the audio bars",
       "features": [
         "Merge two tracks into one arrangement",
