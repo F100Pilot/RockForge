@@ -2447,12 +2447,19 @@ async function selectJob(id, { poll = false, force = false } = {}) {
   refreshJobs();
 }
 
+// A response that arrives after the user opened another project belongs to the
+// old one: applied, it put project A's charts, lyrics, tones or recording into
+// project B (and B's "Aplicar e reconstruir" then sent A's).
+function staleFor(id) { return !selectedJob || selectedJob.id !== id; }
+
 async function loadArrangements(id) {
   tapState = null;
   renderTapUi();
   stopPendingHistory();
   clearLoop(false);  // a loop belongs to the recording it was set on  // the previous version's steps do not apply to this one
-  arrangements = await getJSON(`/jobs/${id}/arrangements`);
+  const fetched = await getJSON(`/jobs/${id}/arrangements`);
+  if (staleFor(id)) return;
+  arrangements = fetched;
   syncAnchorsByKind = {};  // fresh pending corrections per arrangement
   tempoScaleByKind = {};
   resetLyricFollow();
@@ -2509,7 +2516,8 @@ async function loadArrangements(id) {
   updateSelectionInfo();
   await loadLyrics(id);
   await loadTones(id);
-  if (selectedJob && selectedJob.id === id) startPendingHistory();
+  if (staleFor(id)) return;
+  startPendingHistory();
   // Resume polling if tone detection is in progress.
   if (selectedJob && selectedJob.tone_detection_status === 'detecting') {
     document.getElementById('toneDetectionWrap').style.display = '';
@@ -2780,7 +2788,13 @@ function retempoedBars(a) {
 function showArr(i) {
   if (tapState && i !== currentArr) stopTapSync();  // the taps belong to the chart they were made on
   notePendingChange();
-  if (i !== currentArr) { loadArrSync(i); stopArrangementPreview(); }  // tab change: swap in that chart's own sync state
+  if (i !== currentArr) {  // tab change: swap in that chart's own sync state
+    loadArrSync(i); stopArrangementPreview();
+    // a selection, and the note ↑/↓ steps, belong to the chart they were made on:
+    // kept, Delete/Ctrl+C/a drag acted on the other chart's notes at those times
+    if (selectedTimes.size) { selectedTimes.clear(); selectionAnchor = null; updateSelectionInfo(); }
+    neLast = null;
+  }
   currentArr = i;
   if (switchToneSet()) renderToneSetUi();  // per-track tones follow the tab too
   mainSyncFollow();  // the other charts take what changed on the main one
@@ -5257,6 +5271,7 @@ async function loadTones(id) {
   previewToneTouched = false;  // new project: let the preview default to the score's tones
   try {
     const t = await getJSON(`/jobs/${id}/tones`);
+    if (staleFor(id)) return;
     jobTones = t.tones || [];
     songToneSet = cleanToneSet(t);
     toneSetByKind = {};
@@ -6498,6 +6513,7 @@ async function loadLyrics(id) {
   const r = await fetch(`/jobs/${id}/lyrics`);
   if (!r.ok) return;
   const body = await r.json();
+  if (staleFor(id)) return;
   lyricsBackToScore = false;
   lyricsEvents = eventsToRows(body.events);
   lyricsBuilt = JSON.stringify(serializeLyrics());
@@ -7584,6 +7600,7 @@ async function loadStems(id) {
     const r = await fetch(`/jobs/${id}/stems`);
     if (!r.ok) return;
     const d = await r.json();
+    if (staleFor(id)) return;
     if (d.status === 'separating' || d.status === 'normalizing' || d.status === 'detecting') {
       document.getElementById('stemsStatus').textContent = T('separação em curso…');
       stemsBusy = true;
@@ -10639,7 +10656,10 @@ function peakBins(audio) {
 
 // Fetch + decode the recording into peak bins so the tab viewer can draw a
 // waveform under the notes for visual alignment.
+let waveToken = 0;  // the newest decode: a slow stem must not land over a later pick
 async function decodeWaveform(id) {
+  const token = ++waveToken;
+  const outdated = () => token !== waveToken || staleFor(id);
   try {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     let audio;
@@ -10648,6 +10668,7 @@ async function decodeWaveform(id) {
       // rendered at the notes' current on-screen positions — no recording, so
       // no lead-in padding (the lead-in is already baked into the note times).
       audio = await synthesizeArrangement(audioSourceName.slice(6));
+      if (outdated()) return;
       if (!audio) {
         wavePeaks = null; playBuffer = null; waveDuration = 0;
         updateTransportUI();
@@ -10662,7 +10683,9 @@ async function decodeWaveform(id) {
         ? `/jobs/${id}/stem/${encodeURIComponent(audioSourceName)}`
         : `/jobs/${id}/source-audio`;
       const buf = await (await fetch(url)).arrayBuffer();
+      if (outdated()) return;
       audio = await audioCtx.decodeAudioData(buf);
+      if (outdated()) return;
       // Reflect the user's intro silence (lead_in_s) the bundle was built with:
       // prepend that much silence to the decoded buffer so the waveform shows it,
       // the notes sit after it, and playback runs through the silence first.
@@ -11219,10 +11242,13 @@ function renderMergePickers(box, tracks, current, opts = {}) {
     });
   }
   box.dataset.mergeBox = '1';
-  box.addEventListener('change', e => { if (e.target.matches('[data-merge]')) drawMergeBars(box); });
   box.querySelector('[data-mb=all]').onclick = () => setMergeBars(box, true);
   box.querySelector('[data-mb=none]').onclick = () => setMergeBars(box, false);
-  wireMergeGrid(box);
+  if (!box._mergeWired) {  // the box stays, its content is redrawn: wire it once
+    box._mergeWired = true;
+    box.addEventListener('change', e => { if (e.target.matches('[data-merge]')) drawMergeBars(box); });
+    wireMergeGrid(box);
+  }
   drawMergeBars(box);
 }
 // The chosen bars as the strip shows them: those the other track has notes
@@ -11266,8 +11292,9 @@ function setMergeBars(box, on) {
   drawMergeBars(box);
   box.dispatchEvent(new Event('change', { bubbles: true }));
 }
+// Wired once on the BOX (its grid is redrawn with the rest of the card), by
+// delegation from the bar cells.
 function wireMergeGrid(box) {
-  const grid = box.querySelector('.mb-grid');
   let paint = null;
   const apply = (bar, on) => {
     const m = box._merge;
@@ -11275,7 +11302,7 @@ function wireMergeGrid(box) {
     if (on) m.bars.add(bar); else m.bars.delete(bar);
   };
   const cellOf = e => e.target.closest('.mb-cell[data-bar]:not([disabled])');
-  grid.addEventListener('pointerdown', e => {
+  box.addEventListener('pointerdown', e => {
     const c = cellOf(e);
     if (!c) return;
     e.preventDefault();
@@ -11290,7 +11317,7 @@ function wireMergeGrid(box) {
     m.last = bar;
     drawMergeBars(box);
   });
-  grid.addEventListener('pointerover', e => {
+  box.addEventListener('pointerover', e => {
     if (paint === null || !(e.buttons & 1)) return;
     const c = cellOf(e);
     if (!c || c.classList.contains('sel') === paint) return;
@@ -11303,7 +11330,9 @@ function wireMergeGrid(box) {
     box.dispatchEvent(new Event('change', { bubbles: true }));
   };
   document.addEventListener('pointerup', end);
-  grid.addEventListener('pointerup', () => { if (paint === null) box.dispatchEvent(new Event('change', { bubbles: true })); });
+  box.addEventListener('pointerup', e => {
+    if (paint === null && cellOf(e)) box.dispatchEvent(new Event('change', { bubbles: true }));
+  });
 }
 // What the merge card holds, as a string — for "Editar info"'s unsaved-changes count.
 function mergeStateKey(box) {

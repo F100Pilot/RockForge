@@ -990,6 +990,8 @@
     stage.renderer.render(stage.scene, stage.camera);
   }
 
+  let openGen = 0;  // each open/close; an open that finds it moved on gives up
+
   // --- Public -------------------------------------------------------------------------------------
   window.Highway3D = {
     // Show the highway in `host`; getNow() answers {t, playing} in the notes' clock;
@@ -997,12 +999,17 @@
     async open(host, now, cameraChanged = null) {
       getNow = now;
       onCamera = cameraChanged;
+      const opening = ++openGen;
       await load();
+      // closed while three.js was still loading (toggled off, project left):
+      // starting now would draw on a hidden panel for good
+      if (opening !== openGen) return;
       if (!stage || stage.host !== host) stage = createStage(host);
       if (!raf) { lastFrame = 0; raf = requestAnimationFrame(frame); }
     },
     // Stop drawing (the panel was hidden); the scene is kept for a quick reopen.
     close() {
+      openGen++;
       if (raf) cancelAnimationFrame(raf);
       raf = 0;
       if (stage) clearEffects();
