@@ -84,6 +84,9 @@ def test_each_rule_catches_the_fault_that_crashed_the_game() -> None:
     assert "note_anchor_mismatch" in planted(lambda x: note(
         x, single_at, anchor_fret=x.arrangements[-1].notes[single_at].anchor_fret + 3))
     assert "note_unused_byte" in planted(lambda x: note(x, single_at, tap=0))
+    # 1 is what the builder writes for a tapped/slapped/popped note: not a fault
+    for kw in ({"tap": 1}, {"slap": 1}, {"pluck": 1}):
+        assert "note_unused_byte" not in planted(lambda x, kw=kw: note(x, single_at, **kw))
     assert "note_handshape_mismatch" in planted(
         lambda x: note(x, chord_at, fingerprint_id=(-1, -1)))
     assert "template_pitch" in planted(lambda x: x.chord_templates.__setitem__(

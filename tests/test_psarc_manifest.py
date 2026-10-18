@@ -554,3 +554,13 @@ def test_section_ui_name_is_a_localisation_token_when_known() -> None:
     assert by_name["riff"] == "$[34298] Riff [1]"
     assert by_name["noguitar"] == "$[6091] No Guitar [1]"
     assert manifest._section_ui_name("Chorus") == "Chorus", "unknown names fall back"
+
+
+def test_a_song_key_is_ascii_even_for_an_accented_title() -> None:
+    """The key names archive paths and the SoundBank (ASCII only): "Canção"
+    kept its ç and the .psarc build died encoding it."""
+    from rockforge.infrastructure.packaging.psarc.soundbank import generate_soundbank
+
+    assert song_key_from_title("Beyoncé", "Canção") == "BeyonceCancao"
+    assert song_key_from_title("Сплин", "Выхода нет") == "RockForgeSong"
+    generate_soundbank(song_key_from_title("Sigur Rós", "Hoppípolla"), b"\x00" * 64)

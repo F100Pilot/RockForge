@@ -172,12 +172,20 @@ def upload_cover_art(job_id: str, file: UploadFile = File(...)) -> JobOut:
     with api._session_factory() as session:
         job = api._job_or_404(session, job_id)
 
-        suffix = Path(file.filename or "cover").suffix.lower()
-        if suffix not in api._COVER_ART_SUFFIXES:
-            raise HTTPException(415, f"unsupported image format: {suffix or '(none)'}")
+        from rockforge.infrastructure.album_lookup import image_suffix
 
+        # Read and check it BEFORE the old cover goes: a refused or oversized
+        # upload used to delete the cover the project had (by its BYTES, not
+        # its name — anything called .png was taken).
+        data = api._read_upload_capped(file)
+        suffix = image_suffix(data)
+        if suffix is None:
+            raise HTTPException(415, i18n.tr(
+                "a capa tem de ser uma imagem JPEG ou PNG",
+                "the cover must be a JPEG or PNG image",
+            ))
         dest = api._replace_cover(job, suffix)
-        api._copy_upload_capped(file, dest)
+        dest.write_bytes(data)
         api._record_cover(job, dest)
         session.commit()
         return api._to_out(job)

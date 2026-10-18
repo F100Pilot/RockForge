@@ -169,5 +169,5 @@ def read_arrangement_xml(path: Path, kind: ArrangementKind | None = None) -> Arr
         ),
         notes=notes,
         sections=sections,
-        capo=_int(root, "capo") if root.get("capo") else 0,
+        capo=int(root.findtext("capo", "0") or 0),  # the writer emits <capo>N</capo>
     )

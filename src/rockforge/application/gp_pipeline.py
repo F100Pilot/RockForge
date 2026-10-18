@@ -214,19 +214,28 @@ def _apply_note_overrides(
             if hit is not None:
                 del merged[hit]
             continue
-        note = TabNote(
-            string=ov.string,
-            fret=ov.fret,
-            time=merged[hit].time if hit is not None else ov.time,
-            sustain=ov.sustain,
-            techniques=ov.techniques,
-            bend_semitones=ov.bend_semitones,
-            slide_to_fret=ov.slide_to_fret,
-        )
         if hit is None:
-            merged.append(note)
-        else:
-            merged[hit] = note
+            merged.append(TabNote(
+                string=ov.string, fret=ov.fret, time=ov.time, sustain=ov.sustain,
+                techniques=ov.techniques, bend_semitones=ov.bend_semitones,
+                slide_to_fret=ov.slide_to_fret,
+            ))
+            continue
+        # An edit patches the note it hits — replace(), never a fresh TabNote,
+        # which dropped every field the editor does not show (a bend's curve,
+        # the link to the next note, the fingering, the pick direction): a
+        # sustain dragged on a bend-and-release made it a plain bend.
+        old = merged[hit]
+        merged[hit] = replace(
+            old, string=ov.string, fret=ov.fret, sustain=ov.sustain,
+            techniques=ov.techniques, bend_semitones=ov.bend_semitones,
+            slide_to_fret=ov.slide_to_fret,
+            # what described the old pitch or bend no longer does
+            bend_points=old.bend_points if ov.bend_semitones == old.bend_semitones else (),
+            left_hand=old.left_hand if ov.fret == old.fret else -1,
+            link_next=old.link_next and ov.fret == old.fret
+            and ov.slide_to_fret == old.slide_to_fret,
+        )
     return sorted(merged, key=lambda n: (n.time, n.string))
 
 

@@ -284,6 +284,26 @@ def test_note_overrides_find_notes_whose_time_the_xml_rounded() -> None:
     ]
 
 
+def test_an_edit_keeps_the_note_fields_the_editor_does_not_show() -> None:
+    """A note edit replaces the fields it carries and nothing else: dragging the
+    tail of a bend-and-release used to rebuild the note from scratch and leave
+    a plain bend, the link to the next note and the fingering gone."""
+    from rockforge.domain.music import BendPoint
+
+    curve = (BendPoint(0.0, 0.0), BendPoint(0.5, 2.0), BendPoint(1.0, 0.0))
+    note = TabNote(string=2, fret=7, time=1.0, sustain=0.5, bend_semitones=2.0,
+                   bend_points=curve, left_hand=2, pick_direction=2, link_next=True)
+    (kept,) = _apply_note_overrides([note], [
+        NoteOverride(time=1.0, string=2, fret=7, sustain=0.9, bend_semitones=2.0)])
+    assert (kept.sustain, kept.bend_points, kept.left_hand, kept.pick_direction,
+            kept.link_next) == (0.9, curve, 2, 2, True)
+    (moved,) = _apply_note_overrides([note], [
+        NoteOverride(time=1.0, string=2, fret=9, sustain=0.5, bend_semitones=1.0)])
+    # another fret and another bend: what described the old ones goes
+    assert (moved.fret, moved.bend_points, moved.left_hand, moved.link_next,
+            moved.pick_direction) == (9, (), -1, False, 2)
+
+
 def test_note_overrides_empty_or_absent_kind_leaves_notes_untouched(
     two_track_gp5: Path, tmp_path: Path
 ) -> None:

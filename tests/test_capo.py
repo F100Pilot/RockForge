@@ -133,3 +133,15 @@ def test_the_gp5_export_writes_the_capo_back(tmp_path: Path) -> None:
     back = parse_gp_track(dest, 0)
     assert back.capo == 2
     assert [n.fret for n in back.notes] == [0, 5]
+
+
+def test_the_capo_survives_the_built_xml_read_back(tmp_path: Path) -> None:
+    """The GP5 export (and the tones router) read the BUILT XML, where the
+    capo is a <capo> element — the reader used to look for an attribute and
+    every export came out with no capo, open strings a capo too low."""
+    from rockforge.infrastructure.rsxml.reader import read_arrangement_xml
+    from rockforge.infrastructure.rsxml.writer import write_arrangement_xml
+
+    arr = _arr([TabNote(string=1, fret=0, time=1.0, sustain=0.4)], 2)
+    back = read_arrangement_xml(write_arrangement_xml(arr, tmp_path / "a.xml"))
+    assert back.capo == 2

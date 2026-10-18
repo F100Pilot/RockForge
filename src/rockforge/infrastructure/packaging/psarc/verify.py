@@ -179,7 +179,8 @@ def _check_level(lv: SngArrangementLevel, model: SngModel, bounds: list[float]) 
             # DLC Builder always carries an open string's OPEN bit in the chord's
             # notes; without them the game paints the chord solid.
             add("open_chord_without_chord_notes", t, model.chord_templates[n.chord_id].name)
-        if (n.tap, n.slap, n.pluck) != (-1, -1, -1):
+        # -1 = unused, 1 = the note is tapped/slapped/popped (sng_build), never 0
+        if any(v not in (-1, 1) for v in (n.tap, n.slap, n.pluck)):
             add("note_unused_byte", t)
         if not anchors:
             add("note_without_anchor", t)
@@ -409,8 +410,8 @@ def describe(code: str) -> str:
         "open_chord_without_chord_notes": (
             "acorde com cordas soltas sem notas de acorde (o jogo pinta-o de cima a baixo)",
             "a chord with open strings and no chord notes (the game paints it top to bottom)"),
-        "note_unused_byte": ("nota com tap/slap/pluck diferente de -1",
-                             "a note with tap/slap/pluck other than -1"),
+        "note_unused_byte": ("nota com tap/slap/pluck que não é -1 nem 1",
+                             "a note with tap/slap/pluck other than -1 or 1"),
         "note_without_anchor": ("nota sem âncora", "a note with no anchor"),
         "note_anchor_mismatch": ("nota com a âncora errada para o seu nível",
                                  "a note with the wrong anchor for its level"),

@@ -3139,6 +3139,29 @@ def test_cover_art_rejects_unsupported_format(client: TestClient) -> None:
     assert r.status_code == 415
 
 
+def test_a_refused_cover_upload_keeps_the_cover_the_project_had(
+    client: TestClient, monkeypatch
+) -> None:
+    """The old cover used to be deleted before the new upload was read, so an
+    oversized (413) or non-image one left the project with no cover at all."""
+    import rockforge.interfaces.api.app as app_module
+
+    job = _create_job(client)
+    png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 16
+    assert client.post(f"/jobs/{job['id']}/cover",
+                       files={"file": ("cover.png", png, "image/png")}).status_code == 202
+    # named .jpg but not a picture: refused by its bytes
+    r = client.post(f"/jobs/{job['id']}/cover",
+                    files={"file": ("cover.jpg", b"hello", "image/jpeg")})
+    assert r.status_code == 415
+    monkeypatch.setattr(app_module, "_MAX_UPLOAD_BYTES", 8)
+    r = client.post(f"/jobs/{job['id']}/cover",
+                    files={"file": ("cover.jpg", b"\xff\xd8\xff" + b"\x00" * 64, "image/jpeg")})
+    assert r.status_code == 413
+    assert client.get(f"/jobs/{job['id']}/cover").content == png
+    assert client.get(f"/jobs/{job['id']}").json()["cover_art"] is True
+
+
 def test_cover_art_unknown_job_404(client: TestClient) -> None:
     r = client.post(
         "/jobs/nope/cover", files={"file": ("cover.png", b"\x89PNG", "image/png")}

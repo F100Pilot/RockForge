@@ -20,6 +20,7 @@ Two manifest layers, matched to a real DLC Builder PSARC:
 from __future__ import annotations
 
 import json
+import unicodedata
 import uuid
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
@@ -135,8 +136,12 @@ def arrangement_display_name(kind: ArrangementKind) -> str:
 
 
 def song_key_from_title(artist: str, title: str) -> str:
-    """A short alphanumeric song key, as Rocksmith expects (no spaces/punctuation)."""
-    cleaned = "".join(c for c in f"{artist}{title}" if c.isalnum())
+    """A short alphanumeric song key, as Rocksmith expects (no spaces/punctuation).
+    ASCII only: it names archive paths and the SoundBank, whose STID chunk is
+    ASCII — "Canção" kept its ç and the .psarc build died on the encode. Accents
+    are folded ("Cancao"), anything else non-ASCII is dropped."""
+    folded = unicodedata.normalize("NFKD", f"{artist}{title}")
+    cleaned = "".join(c for c in folded if c.isascii() and c.isalnum())
     return cleaned[:30] or "RockForgeSong"
 
 

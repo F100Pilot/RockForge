@@ -3219,7 +3219,7 @@ function noteEditGrid(bypass) {
 // into Rhythm) without re-entering it note by note. The clipboard is plain
 // in-memory JS state (not the OS clipboard) — session-only, like every other
 // pending-edit state in this viewer.
-let noteClipboard = [];  // [{dTime, string, fret, sustain, techniques, bend_semitones}, ...]
+let noteClipboard = [];  // [{dTime, string, fret, sustain, techniques, bend_semitones, slide_to}, ...]
 let noteOverridesBuilt = '{}';  // JSON of the note edits already baked into the build
 
 // Fret-hand positions (FHPs, the game's "anchors"): where the hand sits, from
@@ -3409,6 +3409,7 @@ function copySelectedNotes() {
   noteClipboard = picked.map(n => ({
     dTime: n.time - minTime, string: n.string, fret: n.fret, sustain: n.sustain,
     techniques: (n.techniques || []).slice(), bend_semitones: n.bend_semitones || 0,
+    slide_to: n.slide_to >= 0 ? n.slide_to : null,
   }));
   updateClipboardInfo();
   toast(T('{n} nota(s) copiada(s).', { n: noteClipboard.length }), 'ok');
@@ -3425,7 +3426,7 @@ function pasteNotesAtCursor() {
     upsertNoteOverride({
       time: anchor + c.dTime, string: c.string, fret: c.fret, sustain: c.sustain,
       techniques: c.techniques.slice(), bend_semitones: c.bend_semitones,
-      slide_to_fret: null, deleted: false,
+      slide_to_fret: c.slide_to ?? null, deleted: false,
     });
   }
   showArr(currentArr);
@@ -4631,7 +4632,7 @@ function openNoteEditPopup(chartTime, string, clientX, clientY) {
   const techs = base ? (base.techniques || []) : [];
   for (const [id, val] of TECH_CHECK_IDS) document.getElementById(id).checked = techs.includes(val);
   document.getElementById('neBend').value = base ? (base.bend_semitones || 0) : 0;
-  const slideTo = base ? (base.slide_to_fret ?? null) : null;
+  const slideTo = base ? (base.slide_to_fret ?? (base.slide_to >= 0 ? base.slide_to : null)) : null;
   document.getElementById('neSlideTo').value = slideTo == null ? '' : slideTo;
   document.getElementById('neDelete').style.display = base ? '' : 'none';
 
@@ -9250,7 +9251,8 @@ document.getElementById('snapBeats')?.addEventListener('change', e => {
   if (arrangements.length) showArr(currentArr);  // show/hide the grid
 });
 document.getElementById('snapDiv')?.addEventListener('change', e => {
-  snapDiv = e.target.value === 'bars' ? 'bars' : Number(e.target.value);
+  const v = e.target.value;
+  snapDiv = v === 'bars' || v === 'cursor' ? v : Number(v);
   if (arrangements.length) showArr(currentArr);  // redraw the grid at the new resolution
 });
 
