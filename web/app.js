@@ -7441,6 +7441,10 @@ function pollStems() {
         const want = a && a.kind === 'Bass' ? 'bass' : 'guitar';
         if (availableStems.includes(want)) {
           levelsSource = `stem:${want}`;
+          levelsKind = 'onset';
+          try { if (localStorage.getItem('rf-levels-kind') === 'volume') levelsKind = 'volume'; } catch { /* no storage */ }
+          const kindSel = document.getElementById('levelsKind');
+          if (kindSel) kindSel.value = levelsKind;
           toast(T('Instrumentos separados — as barras mostram agora: {stem}. A bateria também está na lista das barras.', { stem: STEM_LABELS[want] }), 'ok');
         }
       }
@@ -9572,8 +9576,8 @@ document.getElementById('show3d').addEventListener('change', e => setHw3d(e.targ
 document.getElementById('showLegend').addEventListener('change', e => setLegend(e.target.checked));
 setLegend(legendOn);
 document.getElementById('showLevels').addEventListener('change', e => {
+  if (e.target.checked && needsStemsQuestion()) { turnOnLevelsAsking(); return; }
   setLevels(e.target.checked);
-  if (e.target.checked) offerStemsForLevels();
 });
 document.getElementById('levelsKind').addEventListener('change', e => setLevelsKind(e.target.value));
 document.getElementById('levelsSource').addEventListener('change', e => {
@@ -10534,17 +10538,30 @@ function setLevels(on) {
 // Turned on with nothing separated yet: the bars can only show the full mix,
 // where the drums and the voice stand up as much as the guitar — so the user
 // is asked whether to separate now (once per project), never left to find out.
-async function offerStemsForLevels() {
+function needsStemsQuestion() {
   const job = selectedJob && selectedJob.id;
-  if (!job || !isGpJob() || stemsBusy || levelStemsFor !== job || levelsStemsAsked.has(job)) return;
-  if (availableStems.length || levelStems.length) return;
+  return !!job && isGpJob() && !stemsBusy && levelStemsFor === job && !levelsStemsAsked.has(job)
+    && !availableStems.length && !levelStems.length;
+}
+
+// Asked BEFORE the bars are drawn: drawing them in "Ataques" measures the mix
+// on the server, which then ran behind the question and on after "Cancelar" —
+// work the user had just declined ("mesmo que o cancele, extrai na mesma").
+// Either answer shows the mix's VOLUME, read from the audio already in the
+// browser, until the separation is done; "Ataques" stays one pick away.
+async function turnOnLevelsAsking() {
+  const job = selectedJob.id;
   levelsStemsAsked.add(job);
-  if (!await confirmModal(T(
-    'Ainda não há instrumentos separados, por isso as barras mostram a mistura completa: a bateria e a voz aparecem tanto como a guitarra. Separar os instrumentos agora? Demora alguns minutos e só se faz uma vez; depois as barras passam para o instrumento da pista e podes escolher também a bateria. "Cancelar" fica com a mistura.'),
-  T('Separar instrumentos'))) return;
-  if (!selectedJob || selectedJob.id !== job || stemsBusy) return;
-  levelsWantStems = job;
-  separateStems();
+  const separate = await confirmModal(T(
+    'Ainda não há instrumentos separados, por isso as barras mostram a mistura completa: a bateria e a voz aparecem tanto como a guitarra. Separar os instrumentos agora? Demora alguns minutos e só se faz uma vez; depois as barras passam para o instrumento da pista e podes escolher também a bateria. "Cancelar" mostra o volume da mistura, sem separar nem analisar nada.'),
+  T('Separar instrumentos'));
+  if (!selectedJob || selectedJob.id !== job) return;
+  levelsKind = 'volume';  // for now, not remembered: the user's own choice stays theirs
+  setLevels(true);
+  if (separate && !stemsBusy) {
+    levelsWantStems = job;
+    separateStems();
+  }
 }
 
 function setLevelsKind(kind) {

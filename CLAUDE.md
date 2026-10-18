@@ -905,19 +905,26 @@ no page errors. Synthesized, not a real song.
 **Turned on with nothing separated, the bars ASK** ("se eu não tiver feito a
 separação … tem de aparecer um aviso para fazer a separação"): the drums and
 the attacks per instrument both need a separation, and finding that out from
-a lane full of drum hits is the wrong way round. `offerStemsForLevels` (from
-the `#showLevels` change only — never at load) asks through `confirmModal`
-("Separar instrumentos" / Cancelar = keep the mix) when the project's
-`/attack-sources` has been read (`levelStemsFor`), lists no instrument, no
-separation is running (`stemsBusy`, set by `separateStems`/`loadStems`,
-cleared when `pollStems` ends) and this project was not asked before in this
-page (`levelsStemsAsked`). Yes runs the ordinary `separateStems`; when that
-poll ends `ready`, `levelsWantStems` moves the bars onto the chart's own
-instrument (bass for the Bass chart, else guitar) with a toast naming it and
-the drums. Browser-only; verified with Playwright (PT 1440 / EN 760 px): asked
-with the right buttons, Cancel keeps the mix and sends nothing and is not asked
-again, Yes (separation faked) → "Ataques · Guitarra" + the toast, a project
-already separated is never asked, no page errors.
+a lane full of drum hits is the wrong way round. The `#showLevels` change
+(never at load) asks through `confirmModal` ("Separar instrumentos" /
+Cancelar) when `needsStemsQuestion()`: the project's `/attack-sources` has been
+read (`levelStemsFor`), lists no instrument, no separation is running
+(`stemsBusy`, set by `separateStems`/`loadStems`, cleared when `pollStems`
+ends) and this project was not asked before in this page
+(`levelsStemsAsked`). **The question comes BEFORE the bars are drawn**
+(`turnOnLevelsAsking`): drawing them in "Ataques" fetches `/onset-levels` of
+the mix, which used to run behind the dialog and on after "Cancelar" — the
+user saw it as "mesmo que o cancele, extrai na mesma" (BUG-0296). Either
+answer turns the bars on in **Volume** (`levelsKind = 'volume'`, not stored),
+read from the audio already in the browser, so Cancel sends nothing to the
+server. Yes runs the ordinary `separateStems`; when that poll ends `ready`,
+`levelsWantStems` moves the bars onto the chart's own instrument (bass for the
+Bass chart, else guitar) and back to the kind the user keeps (`rf-levels-kind`,
+"Ataques" by default), with a toast naming it and the drums. Browser-only;
+verified with Playwright: Cancel → no request at all after it, "Volume ·
+Mistura completa"; Yes (separation faked) → only `separate-stems` while it
+runs, then "Ataques · Guitarra"; a project already separated is never asked;
+no page errors.
 
 ### Exporting a corrected Guitar Pro file (`/export-gp`)
 

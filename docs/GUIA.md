@@ -235,7 +235,8 @@ queres recuperar. Ficam pendentes como antes; Desfazer volta à versão constru�
   instrumento já separado (em **Áudio ▾ → Separar instrumentos**) — por exemplo, ouvir a mistura
   e ver as barras só da guitarra. Nos ataques podes escolher também a **bateria**, o melhor
   metrónomo para conferir as linhas de compasso. Se ligares as barras sem nada separado, a app
-  pergunta se queres separar os instrumentos agora (uma vez por projeto); quando a separação
+  pergunta se queres separar os instrumentos agora (uma vez por projeto); até lá mostra o volume
+  da mistura, e **Cancelar** fica por aí, sem separar nem analisar nada. Quando a separação
   acaba, as barras passam sozinhas para o instrumento da pista. Clicar nas barras move o cursor.
 - **Inspetor (à direita):** **Sincronização**, **Secções** e **Letra**.
 

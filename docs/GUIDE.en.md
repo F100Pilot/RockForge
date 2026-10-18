@@ -235,8 +235,9 @@ They stay pending as before; Undo goes back to the built version.
   separated (in **Audio ▾ → Separate instruments**) — for example, listen to the mix and see the
   bars of the guitar only. For the attacks you can also pick the **drums**, the best metronome to
   check the bar lines against. If you turn the bars on with nothing separated, the app asks
-  whether to separate the instruments now (once per project); when the separation finishes, the
-  bars move to the track's instrument by themselves. Clicking the bars moves the cursor.
+  whether to separate the instruments now (once per project); until then it shows the mix's
+  volume, and **Cancel** leaves it at that, separating and analysing nothing. When the separation
+  finishes, the bars move to the track's instrument by themselves. Clicking the bars moves the cursor.
 - **Inspector (on the right):** **Sync**, **Sections** and **Lyrics**.
 
 ## 6. Syncing the notes to the recording

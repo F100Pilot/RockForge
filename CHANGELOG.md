@@ -19,7 +19,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
   — cada batida um pico estreito, mesmo numa guitarra distorcida — ou o **volume**, do que está
   a tocar, da mistura completa ou de um instrumento separado (a guitarra, o baixo… e, para os
   ataques, a bateria); as das notas seguem as correções ainda por aplicar. Ligadas sem nada
-  separado, perguntam se queres separar os instrumentos e, no fim, passam para o da pista.
+  separado, perguntam primeiro se queres separar os instrumentos (no fim passam para o da pista);
+  **Cancelar** mostra o volume da mistura sem separar nem analisar nada.
 - **Pista 3D: a zona da mão acende quando uma nota bate nas cordas**, como no Rocksmith — um
   retângulo com brilho à volta dos trastes onde está a mão (2–5, por exemplo), que fica aceso
   enquanto a nota soa.
