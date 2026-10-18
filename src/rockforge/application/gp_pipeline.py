@@ -513,10 +513,10 @@ def _check_anchor_order(anchors: list[tuple[float, float]]) -> None:
                     "these corrections (check the pending anchors list)."
                 )
             continue
-        if y1 < y0:
+        if y1 <= y0:  # equal too: everything between would collapse onto one instant
             raise IngestionError(
                 "sync corrections conflict: the point at "
-                f"{x1:.2f}s (chart time) is anchored to {y1:.2f}s, which is BEFORE "
+                f"{x1:.2f}s (chart time) is anchored to {y1:.2f}s, which is not AFTER "
                 f"the point at {x0:.2f}s anchored to {y0:.2f}s — later chart time "
                 "cannot land earlier in the recording. Remove or adjust one of "
                 "these corrections (check the pending anchors list)."
@@ -558,6 +558,18 @@ def _warp_parsed_track(p: ParsedGpTrack, warp: Callable[[float], float]) -> Pars
         for n in p.notes
     ])
     beats = tuple(Beat(time=warp(b.time), measure=b.measure) for b in p.tempo_map.beats)
+    # The warp is identity outside its anchors, so anchors with no point at the
+    # chart's ends can push the grid back across the unmoved part — say which
+    # bar instead of TempoMap's bare "beats must be in chronological order".
+    for i in range(1, len(beats)):
+        if beats[i].time <= beats[i - 1].time:
+            raise IngestionError(
+                f"a sync correction moves the beat at {p.tempo_map.beats[i].time:.2f}s "
+                f"(chart time) to {beats[i].time:.2f}s, not after the one before it "
+                f"({beats[i - 1].time:.2f}s): the chart would run backwards there. "
+                "Remove or adjust the correction near that point (check the pending "
+                "anchors list)."
+            )
     sections = [GpSection(name=s.name, start_time=warp(s.start_time)) for s in p.sections]
     lyrics = [type(line)(time=warp(line.time), text=line.text) for line in p.lyrics]
     lyric_notes = (

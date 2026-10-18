@@ -709,6 +709,37 @@ def test_check_anchor_order_accepts_valid_and_rejects_crossing() -> None:
         _check_anchor_order([(2.0, 5.0), (3.0, 4.0)])  # later chart time, earlier target
 
 
+def test_corrections_that_collapse_or_fold_the_chart_are_refused_by_name() -> None:
+    """Two corrections taking two notes to the SAME instant used to pass and
+    stack everything between them on one moment; anchors with no point at the
+    chart's ends could push the grid back over the part the warp leaves alone,
+    and the build died in TempoMap ("beats must be in chronological order")."""
+    from rockforge.application.gp_pipeline import (
+        _build_time_warp,
+        _check_anchor_order,
+        _warp_parsed_track,
+    )
+    from rockforge.domain.errors import IngestionError
+    from rockforge.domain.music import Beat, TempoMap
+    from rockforge.infrastructure.gpimport.parser import ParsedGpTrack
+
+    with pytest.raises(IngestionError, match="sync corrections conflict"):
+        _check_anchor_order([(10.0, 20.0), (12.0, 20.0)])
+    track = ParsedGpTrack(
+        notes=[TabNote(string=1, fret=5, time=10.0, sustain=0.2)],
+        tuning=Tuning(midi=(40, 45, 50, 55, 59, 64)),
+        tempo_map=TempoMap(beats=tuple(Beat(time=float(t), measure=t - 7 if t % 4 == 0 else -1)
+                                       for t in range(8, 24)), average_bpm=60.0),
+        sections=[],
+    )
+    anchors = [(10.0, 5.0), (20.0, 15.0)]  # 5 s earlier, nothing pinned at the ends
+    _check_anchor_order(anchors)
+    with pytest.raises(IngestionError, match=r"beat at 10\.00s .*not after"):
+        _warp_parsed_track(track, _build_time_warp(anchors))
+    pinned = [(8.0, 3.0), *anchors, (23.0, 18.0)]  # the viewer pins the ends now
+    assert _warp_parsed_track(track, _build_time_warp(pinned)).notes[0].time == 5.0
+
+
 def test_check_anchor_order_rejects_same_chart_time_different_targets() -> None:
     """Two anchors at the IDENTICAL chart time with different targets used to
     slip past validation entirely: the strict `x1 > x0` comparison skipped a

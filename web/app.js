@@ -3949,7 +3949,11 @@ function planTaps(anchors, warp, p) {
   const firstO = pts[0][0], lastO = pts[pts.length - 1][0];
   const delta = pts[pts.length - 1][1] - warp(lastO);
   const out = [];
-  if (p.songStartO < firstO - EPS && !anchors.some(([o]) => o < firstO - EPS)) {
+  // The song's start where it shows now — also when the only anchor before the
+  // taps is a lone "Início", a uniform shift that stops being one beside them.
+  const before = anchors.filter(([o]) => o < firstO - EPS);
+  if (p.songStartO < firstO - EPS && (!before.length || anchors.length === 1)
+      && !anchors.some(([o]) => Math.abs(o - p.songStartO) < EPS)) {
     out.push([p.songStartO, warp(p.songStartO)]);
   }
   for (const [o, d] of anchors) {
@@ -8425,6 +8429,24 @@ function setAnchor(origT, newT) {
   syncAnchors.sort((a, b) => a[0] - b[0]);
 }
 
+// A tool that adds an anchor beside others must pin both ends of the chart:
+// the multi-anchor warp is identity outside its range, so without the pins a
+// lone "Início" (a uniform shift) stopped being one the moment a second anchor
+// appeared — the notes after the new one lost the shift, the bars before the
+// first note folded back, and the rebuild failed with "beats must be in
+// chronological order" (BUG-0295's family). The start is pinned where it shows
+// now; the end there too, or at `endTarget` when the tool moves the tail.
+function pinChartEnds(warp, endTarget = null) {
+  const span = chartSpan(currentArr);
+  if (!span) return;
+  const [startO, endO] = span;
+  const EPS = 0.05;
+  if (!syncAnchors.some(([o]) => o <= startO + EPS)) setAnchor(startO, warp(startO));
+  if (endTarget != null || !syncAnchors.some(([o]) => o >= endO - EPS)) {
+    setAnchor(endO, endTarget != null ? endTarget : warp(endO));
+  }
+}
+
 // Chart-time positions of the current snap grid: measure downbeats ('bars'),
 // whole beats (1), or beats subdivided into 2/3/4 (interpolated between real
 // ebeats, so tempo changes are respected). Feeds both the drawn grid and snap.
@@ -8578,6 +8600,8 @@ async function reTempoFromHere(grp) {
     const b = await r.json();
     if (!r.ok) { toast(b.detail || T('erro'), 'err'); return; }
     const factor = b.suggested_factor;
+    const span = chartSpan(currentArr);
+    pinChartEnds(warp, span ? dispT + (warp(span[1]) - dispT) * factor : null);
     setAnchor(origT, dispT);                                     // fixed pivot at the click
     setAnchor(origLast, dispT + (dispLast - dispT) * factor);   // stretch the tail to the local BPM
     renderAnchorsList();
@@ -8734,6 +8758,7 @@ function updateSelectionInfo() {
     // corrupts the map (e.g. after a Step-1 "Início" anchor).
     if (syncMode === 'tap' && grp) {
       const origT = previewScale(parseFloat(grp.dataset.t));
+      if (syncAnchors.length) pinChartEnds(buildTimeWarp(syncAnchors));
       setAnchor(origT, currentPlayheadT + viewOrigin);  // move this note to the playhead
       renderAnchorsList();
       updatePendingChangesInfo();
@@ -8758,6 +8783,8 @@ function updateSelectionInfo() {
         return;
       }
       const delta = (currentPlayheadT + viewOrigin) - dispClicked;  // brings clicked note to cursor
+      const span = chartSpan(currentArr);
+      pinChartEnds(warp, span ? warp(span[1]) + delta : null);  // the tail after the last note too
       // Pin the note immediately BEFORE the click at its current display, so the
       // region before the click stays put. Without this, when a prior anchor
       // (e.g. Step-1 "Início") already exists, adding only the clicked+last
@@ -9088,6 +9115,7 @@ function updateSelectionInfo() {
     // A real drag that actually changes the position becomes an anchor; a tiny
     // move that snaps back to the same beat leaves notes untouched.
     if (Math.abs(target - origDisp) > 0.003) {
+      if (syncAnchors.length) pinChartEnds(buildTimeWarp(syncAnchors));
       setAnchor(chart, target);
       renderAnchorsList();
       updatePendingChangesInfo();
