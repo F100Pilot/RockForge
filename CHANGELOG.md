@@ -13,7 +13,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
   não caem juntos, a partitura está fora de tempo. As barras da gravação mostram os **ataques**
   — cada batida um pico estreito, mesmo numa guitarra distorcida — ou o **volume**, do que está
   a tocar, da mistura completa ou de um instrumento separado (a guitarra, o baixo… e, para os
-  ataques, a bateria); as das notas seguem as correções ainda por aplicar.
+  ataques, a bateria); as das notas seguem as correções ainda por aplicar. Ligadas sem nada
+  separado, perguntam se queres separar os instrumentos e, no fim, passam para o da pista.
 - **Pista 3D: a zona da mão acende quando uma nota bate nas cordas**, como no Rocksmith — um
   retângulo com brilho à volta dos trastes onde está a mão (2–5, por exemplo), que fica aceso
   enquanto a nota soa.

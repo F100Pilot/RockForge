@@ -1445,5 +1445,7 @@
  "Barras dos ataques (ou do volume) da gravação e do som das notas, por cima da partitura: onde não coincidem, está fora de tempo": "Bars of the recording's attacks (or volume) and of the notes' sound, above the score: where they do not line up, it is out of time",
  "Ataques: a força de cada batida, um pico estreito por palhetada, mesmo numa guitarra distorcida. Volume: o nível do som": "Attacks: the strength of each strike, one narrow peak per pick stroke, even on a distorted guitar. Volume: the sound's level",
  "Tipo de barras": "Kind of bars",
- "Ataques": "Attacks"
+ "Ataques": "Attacks",
+ "Ainda não há instrumentos separados, por isso as barras mostram a mistura completa: a bateria e a voz aparecem tanto como a guitarra. Separar os instrumentos agora? Demora alguns minutos e só se faz uma vez; depois as barras passam para o instrumento da pista e podes escolher também a bateria. \"Cancelar\" fica com a mistura.": "No instruments have been separated yet, so the bars show the full mix: the drums and the voice stand out as much as the guitar. Separate the instruments now? It takes a few minutes and is done only once; then the bars move to the track's instrument and you can also pick the drums. \"Cancel\" keeps the mix.",
+ "Instrumentos separados — as barras mostram agora: {stem}. A bateria também está na lista das barras.": "Instruments separated — the bars now show: {stem}. The drums are in the bars' list too."
 };

@@ -234,7 +234,9 @@ queres recuperar. Ficam pendentes como antes; Desfazer volta à versão constru�
   áudio não estiver instalada). E escolhes o áudio: o que está a tocar, a mistura completa ou um
   instrumento já separado (em **Áudio ▾ → Separar instrumentos**) — por exemplo, ouvir a mistura
   e ver as barras só da guitarra. Nos ataques podes escolher também a **bateria**, o melhor
-  metrónomo para conferir as linhas de compasso. Clicar nas barras move o cursor.
+  metrónomo para conferir as linhas de compasso. Se ligares as barras sem nada separado, a app
+  pergunta se queres separar os instrumentos agora (uma vez por projeto); quando a separação
+  acaba, as barras passam sozinhas para o instrumento da pista. Clicar nas barras move o cursor.
 - **Inspetor (à direita):** **Sincronização**, **Secções** e **Letra**.
 
 ## 6. Sincronizar as notas com a gravação

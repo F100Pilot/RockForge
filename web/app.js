@@ -2574,6 +2574,9 @@ try { if (localStorage.getItem('rf-levels-kind') === 'volume') levelsKind = 'vol
 let levelsAudio = null;     // a source decoded only for the bars: {key, peaks}
 let levelsLoading = '';
 let levelStems = [];        // the separated instruments the attack bars can show (the drums too)
+let levelStemsFor = null;   // the project levelStems was read for (null while it loads)
+let levelsStemsAsked = new Set();  // projects already asked whether to separate for the bars
+let levelsWantStems = null; // the project whose separation the bars asked for
 let levelsOnset = null;     // the attack strength of one source: {key, values, hop}
 let levelsOnsetLoading = '';
 let levelsOnsetFailed = {}; // key → true: measured once and failed, the bars show the volume
@@ -4112,6 +4115,7 @@ async function loadAttackSources() {
   const job = selectedJob && selectedJob.id;
   attackSources = [];
   levelStems = [];
+  levelStemsFor = null;
   levelsOnsetFailed = {};
   fillAttackSources();
   if (!job) return;
@@ -4120,6 +4124,7 @@ async function loadAttackSources() {
     if (selectedJob && selectedJob.id === job) {
       attackSources = d.stems || [];
       levelStems = d.level_stems || [];
+      levelStemsFor = job;
       fillAttackSources();
       populateLevelsSources();
     }
@@ -7333,9 +7338,11 @@ function populateAudioSources() {
   populateLevelsSources();
 }
 
+let stemsBusy = false;  // a separation of the open project is running
 async function separateStems() {
   if (!selectedJob) return;
-  if (!await fetchOrToast(`/jobs/${selectedJob.id}/separate-stems`, { method: 'POST' })) return;
+  if (!await fetchOrToast(`/jobs/${selectedJob.id}/separate-stems`, { method: 'POST' })) { levelsWantStems = null; return; }
+  stemsBusy = true;
   toast(T('A separar instrumentos… (pode demorar minutos)'), 'ok');
   document.getElementById('stemsStatus').textContent = T('a iniciar…');
   pollStems();
@@ -7347,13 +7354,27 @@ function pollStems() {
   _stemsPoll = pollJob('stems', d => {
     const st = document.getElementById('stemsStatus');
     if (d.status === 'ready') {
+      stemsBusy = false;
       availableStems = d.stems || [];
+      // Asked for by the bars: they move onto the chart's own instrument.
+      if (levelsWantStems && selectedJob && levelsWantStems === selectedJob.id) {
+        const a = arrangements[currentArr];
+        const want = a && a.kind === 'Bass' ? 'bass' : 'guitar';
+        if (availableStems.includes(want)) {
+          levelsSource = `stem:${want}`;
+          toast(T('Instrumentos separados — as barras mostram agora: {stem}. A bateria também está na lista das barras.', { stem: STEM_LABELS[want] }), 'ok');
+        }
+      }
+      levelsWantStems = null;
       populateAudioSources();
       loadAttackSources();
+      if (arrangements.length) showArr(currentArr);
       st.textContent = T('{n} stems prontos (a guitarra é todas as guitarras juntas)', { n: availableStems.length });
       return true;
     }
     if (d.status === 'unavailable') {
+      stemsBusy = false;
+      levelsWantStems = null;
       st.textContent = T('separação falhou — precisa do extra [ml] (Demucs).');
       st.style.color = '#e88';
       return true;
@@ -7372,6 +7393,7 @@ function pollStems() {
 // job already has them (so reopening doesn't re-run Demucs).
 async function loadStems(id) {
   availableStems = [];
+  stemsBusy = false;
   audioSourceName = '';
   document.getElementById('stemsStatus').textContent = '';
   document.getElementById('stemsStatus').style.color = '';
@@ -7382,6 +7404,7 @@ async function loadStems(id) {
     const d = await r.json();
     if (d.status === 'separating' || d.status === 'normalizing' || d.status === 'detecting') {
       document.getElementById('stemsStatus').textContent = T('separação em curso…');
+      stemsBusy = true;
       pollStems();
     } else if ((d.stems || []).length) {
       availableStems = d.stems;
@@ -9469,7 +9492,10 @@ async function setHw3d(on) {
 document.getElementById('show3d').addEventListener('change', e => setHw3d(e.target.checked));
 document.getElementById('showLegend').addEventListener('change', e => setLegend(e.target.checked));
 setLegend(legendOn);
-document.getElementById('showLevels').addEventListener('change', e => setLevels(e.target.checked));
+document.getElementById('showLevels').addEventListener('change', e => {
+  setLevels(e.target.checked);
+  if (e.target.checked) offerStemsForLevels();
+});
 document.getElementById('levelsKind').addEventListener('change', e => setLevelsKind(e.target.value));
 document.getElementById('levelsSource').addEventListener('change', e => {
   levelsSource = e.target.value;
@@ -10424,6 +10450,22 @@ function setLevels(on) {
   if (kind) { kind.hidden = !on; kind.value = levelsKind; }
   if (arrangements.length) showArr(currentArr);
   else renderLevels(null);
+}
+
+// Turned on with nothing separated yet: the bars can only show the full mix,
+// where the drums and the voice stand up as much as the guitar — so the user
+// is asked whether to separate now (once per project), never left to find out.
+async function offerStemsForLevels() {
+  const job = selectedJob && selectedJob.id;
+  if (!job || !isGpJob() || stemsBusy || levelStemsFor !== job || levelsStemsAsked.has(job)) return;
+  if (availableStems.length || levelStems.length) return;
+  levelsStemsAsked.add(job);
+  if (!await confirmModal(T(
+    'Ainda não há instrumentos separados, por isso as barras mostram a mistura completa: a bateria e a voz aparecem tanto como a guitarra. Separar os instrumentos agora? Demora alguns minutos e só se faz uma vez; depois as barras passam para o instrumento da pista e podes escolher também a bateria. "Cancelar" fica com a mistura.'),
+  T('Separar instrumentos'))) return;
+  if (!selectedJob || selectedJob.id !== job || stemsBusy) return;
+  levelsWantStems = job;
+  separateStems();
 }
 
 function setLevelsKind(kind) {
