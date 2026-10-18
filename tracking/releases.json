@@ -373,7 +373,7 @@
     },
     {
       "version": "0.10.0-beta.17",
-      "status": "Beta",
+      "status": "Superseded",
       "created": "2026-10-18",
       "published": "2026-10-18",
       "commit": "pending",
@@ -396,10 +396,12 @@
       "version": "0.11.0-beta.1",
       "status": "Beta",
       "created": "2026-10-18",
-      "published": "pending",
+      "published": "2026-10-18",
       "commit": "pending",
       "build": "GitHub Actions release workflow",
-      "artifacts": [],
+      "artifacts": [
+        "https://github.com/F100Pilot/RockForge/releases/tag/v0.11.0-beta.1"
+      ],
       "goal": "New features: audio bars over the score, project export/import, 3D hand-window glow, opt-in install counter",
       "features": [
         "Counting installs, only if you say yes",
