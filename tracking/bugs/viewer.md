@@ -1266,3 +1266,47 @@ With the free camera, the wheel over the 3D highway zoomed the camera and preven
 - 2026-10-17 — Fixed: commit 0381b134e2
 - 2026-10-17 — Verified: manual
 - 2026-10-17 — Closed: released in 0.10.0-beta.13
+
+## BUG-0296
+
+**Cancelling the separation question of the audio bars still analysed the recording**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | the maintainer (manual test) |
+| Found in | unreleased |
+| Build / commit | c870e573150125f4c32f8f31bb0cb5d3c17ecba5 |
+| Severity | Low |
+| Priority | P3 |
+| Status | Fixed |
+
+Turning "Audio bars" on with nothing separated asks whether to separate the instruments. The bars were drawn before the question, in "Attacks", which asks the server for the mix's onset analysis; that ran behind the dialog and went on after "Cancel", so the user saw work being done that they had just declined.
+
+**Steps to reproduce:** 
+
+1. Open a built project with no separated instruments
+2. Tick "Audio bars"
+3. Press "Cancel" in the question
+
+**Expected:** Nothing is separated or analysed; the bars show the mix.
+
+**Observed:** GET /jobs/<id>/onset-levels?source=mix was requested as the bars turned on and ran after Cancel (Playwright request log).
+
+**Root cause:** The change handler called setLevels(true) and then asked; drawing in "Attacks" fetches /onset-levels on the server whatever the answer.
+
+**Fixes:** [FIX-0296](../FIX_LOG.md#fix-0296) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- user report, 2026-10-18: 'o aviso de criação de stems quando clico em barras de áudio, mesmo que o cancele, extrai na mesma'
+- Playwright request log before the fix: onset-levels?source=mix after Cancel
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit b2efa19bbf

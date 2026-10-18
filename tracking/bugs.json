@@ -14800,6 +14800,50 @@
           "note": "released in 0.10.0-beta.16"
         }
       ]
+    },
+    {
+      "id": "BUG-0296",
+      "title": "Cancelling the separation question of the audio bars still analysed the recording",
+      "detected": "2026-10-18",
+      "reported_by": "the maintainer (manual test)",
+      "found_in_version": "unreleased",
+      "found_in_build": "c870e573150125f4c32f8f31bb0cb5d3c17ecba5",
+      "module": "viewer",
+      "description": "Turning \"Audio bars\" on with nothing separated asks whether to separate the instruments. The bars were drawn before the question, in \"Attacks\", which asks the server for the mix's onset analysis; that ran behind the dialog and went on after \"Cancel\", so the user saw work being done that they had just declined.",
+      "steps": [
+        "Open a built project with no separated instruments",
+        "Tick \"Audio bars\"",
+        "Press \"Cancel\" in the question"
+      ],
+      "expected": "Nothing is separated or analysed; the bars show the mix.",
+      "observed": "GET /jobs/<id>/onset-levels?source=mix was requested as the bars turned on and ran after Cancel (Playwright request log).",
+      "severity": "Low",
+      "priority": "P3",
+      "status": "Fixed",
+      "root_cause": "The change handler called setLevels(true) and then asked; drawing in \"Attacks\" fetches /onset-levels on the server whatever the answer.",
+      "fixes": [
+        "FIX-0296"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [
+        "user report, 2026-10-18: 'o aviso de criação de stems quando clico em barras de áudio, mesmo que o cancele, extrai na mesma'",
+        "Playwright request log before the fix: onset-levels?source=mix after Cancel"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit b2efa19bbf"
+        }
+      ]
     }
   ]
 }

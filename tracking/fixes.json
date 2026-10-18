@@ -7407,6 +7407,32 @@
       "test_result": "not run",
       "regression_risk": "Low: browser-only; the drag's anchors are ordinary pending anchors (undo, rebuild).",
       "validation": "manual"
+    },
+    {
+      "id": "FIX-0296",
+      "bugs": [
+        "BUG-0296"
+      ],
+      "date": "2026-10-18",
+      "author": "Claude (AI coding assistant), on the maintainer's request",
+      "root_cause": "The change handler called setLevels(true) and then asked; drawing in \"Attacks\" fetches /onset-levels on the server whatever the answer.",
+      "solution": "needsStemsQuestion/turnOnLevelsAsking: the question comes before the bars are drawn; either answer turns them on in Volume (read from the audio already in the browser, not stored); when a separation asked for there ends, the bars go back to the kind the user keeps on the track's instrument.",
+      "components": [
+        "web/app.js",
+        "web/i18n-en.js"
+      ],
+      "commits": [
+        "b2efa19bbf3b0a4cf144d361a7496596299a5a12"
+      ],
+      "version": "unreleased",
+      "tests": [],
+      "manual_checks": [
+        "Playwright: Cancel → no request after it, 'Volume · Mistura completa'",
+        "Playwright with the separation faked: Yes → only separate-stems while it runs, then 'Ataques · Guitarra'; no page errors"
+      ],
+      "test_result": "not run",
+      "regression_risk": "Low: browser-only; the separation itself is unchanged.",
+      "validation": "manual"
     }
   ]
 }
