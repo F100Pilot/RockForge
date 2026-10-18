@@ -252,3 +252,37 @@ The tick, the synthesized source, the fretboard and "Pré-visualizar" read the b
 - 2026-10-17 — Fixed: commit cd842cbc9c
 - 2026-10-17 — Verified: manual
 - 2026-10-17 — Closed: released in 0.10.0-beta.12
+
+## BUG-0297
+
+**Moving notes in the score changed the tempo and other notes, and a chord could not be moved**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | a user (Liam, Facebook) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Open |
+
+Moving notes in the score changed the tempo and other notes, and a chord could not be moved
+
+**Steps to reproduce:** _pending_
+
+**Expected:** _pending_
+
+**Observed:** _pending_
+
+**Root cause:** _pending_
+
+**Fixes:** —
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** _pending_ · **Closed:** _pending_
+
+**History:**
+
+- 2026-10-18 — Open: reported

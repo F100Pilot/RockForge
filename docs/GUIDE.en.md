@@ -393,9 +393,9 @@ For what is left, pick a mode in **Mode ▾** and click where the score drifts:
 | Mode | What it does |
 |---|---|
 | **Fix from here** (recommended) | Listen until the score starts to drift and click that note. Everything before it stays put; RockForge measures the recording's tempo from there on and stretches only the rest. Repeat along the song. |
-| **Drag** | Drag a note to where it should play. With several notes selected, they move as a block. Alt while dragging = no snap. |
+| **Drag** | Drag a note to where you hear it in the recording. It corrects the **timing**, not the note: the notes around it stretch or shrink, the bars' BPM changes and a note cannot pass the neighbouring correction. With several notes selected, they move as a block. Alt while dragging = no snap. To move a note or a chord to another place, use **Edit notes**. |
 | **Mark** | Press play and click the note the moment you hear it: it moves to the cursor. |
-| **Excerpt** | Draw a box over a passage and move it as a block. |
+| **Excerpt** | Draw a box over a passage and correct its timing as a block. |
 | **Move following** | This note and all the following ones go to the cursor; earlier ones stay. |
 | **Align bar** | Click a note or a bar line: line that bar up with the cursor (**= cursor**), with the same bar of another track (**= track**), or change that bar's BPM up to another bar (**Tempo**). |
 
@@ -443,6 +443,10 @@ where it is.
   mute, vibrato, tapping, slap, pop, accent), bend and slide; **Save** or **Remove note**.
 - **Drag** a note to change its time (it snaps to the grid) or its string (it keeps its fret,
   so its pitch changes).
+- To move **a chord or several notes**: drag a box on an empty spot of the staff around them (or
+  Ctrl+click each one) and drag one of the selected notes — they all move together, can pass
+  over other notes and the tempo does not change. A single click on empty space still moves the
+  cursor.
 - **Shift + drag** a note to duplicate it — in a chord, the whole chord — and drop the copy
   where you want it (the original stays). Shift+click without dragging still selects.
 - **Drag the end of a note's tail** (the small handle on its right) to change its length; back

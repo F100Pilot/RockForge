@@ -13,6 +13,15 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
   arranjo não tem notas — assim um LEAD com poucas notas recebe as partes do RHYTHM só onde está
   calado. Clica, arrasta ou Shift+clique para escolher. Experimental.
 
+### Correções
+
+- **Mover notas e acordes sem estragar o andamento.** Para mudar notas de sítio usava-se o modo
+  "Arrastar", que é uma ferramenta de sincronização: cada arrasto estica o tempo à volta, muda o
+  BPM dos compassos e não deixa uma nota passar a outra. Agora, em **Editar notas**, arrastar uma
+  caixa no espaço vazio (ou Ctrl+clique) seleciona um acorde ou várias notas, e arrastar uma delas
+  move-as todas — podem passar por outras notas e o andamento não muda. O "Arrastar" diz o que
+  faz e avisa quando uma nota tenta passar a vizinha.
+
 ## [0.11.0 beta 2] — 2026-10-18
 
 ### Novidades

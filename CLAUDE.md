@@ -2069,6 +2069,29 @@ the edited chart is rendered again 500 ms after its overrides change
 (the old code ticked all 9), the synth buffer silent there; a tail dragged to
 the 16th grid, clamped 50 ms before the next note, back to 0, undone.
 
+**Moving a chord or a passage, and why "Arrastar" is not for that** (Liam,
+2026-10-18: "when you're moving notes around it can mess up the bpm and other
+notes … you cant drag a note past another note … you have to keep clicking back
+… to select a chord"). The user moved notes with "Arrastar", the SYNC drag:
+each drag is a time-warp anchor, so the notes around stretch, the bars' BPM
+labels change and a note cannot pass the neighbouring anchor (a crossing is what
+`_check_anchor_order` refuses) — while "Editar notas" could only move one note.
+Now in "Editar notas" a drag on empty staff draws a selection box (`editBox` →
+the ordinary `rubberBand`; a press released without moving is still the seek, on
+pointerup), and dragging a SELECTED note moves the whole selection
+(`selectedChordNotes` → `moveNotes`): the same time (grid-snapped on the grabbed
+note) and string shift for every note, as delete + insert note overrides — the
+timeline is untouched, notes may pass others; a clash with a note left behind or
+a note pushed outside the beat grid refuses it all; the selection follows. In
+"Arrastar"/"Excerto" the names, descriptions and hints say they correct the
+TIMING, and `warnIfAnchorsCross` toasts when a drag crosses the neighbouring
+correction, pointing at "Editar notas". Browser-only, no pytest coverage;
+verified with Playwright on an invented GP5 built for real: a box selected two
+notes, dragging one moved both 2.4 s later past two others and one string down
+(no anchor, "Pendente: edições de notas"), a click on empty staff still seeked,
+Ctrl+Z restored, and an "Arrastar" drag past the neighbouring correction toasted
+the warning, no page errors. BUG-0297.
+
 **Frontend**: `noteOverridesByKind` (state, per-kind, seeded on job load from the
 committed edits) needs no dirty-flag/None-sentinel gymnastics the way
 `section_overrides` does — like `tone_changes`, there's no prior non-user

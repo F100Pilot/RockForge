@@ -4768,6 +4768,49 @@ function copyNotes(chord, grabbed, time, string) {
   showArr(currentArr);
   updatePendingChangesInfo();
 }
+// Dragging a selected note in "Editar notas" moves every selected note — its
+// chord, a riff — by the same time and strings as the grabbed one: the CONTENT
+// moves (delete + insert edits), the timeline does not, so no tempo changes and
+// a note can go past others. A clash with a note left behind refuses it all.
+function selectedChordNotes() {
+  const a = arrangements[currentArr];
+  const merged = mergeNoteOverrides(a.notes, noteOverridesByKind[currentKind()] || []);
+  return merged.filter(m => [...selectedTimes].some(t => Math.abs(m.time - t) < 0.03));
+}
+function moveNotes(notes, grabbed, time, string) {
+  const dt = time - grabbed.time, ds = string - grabbed.string;
+  if (ds === 0 && Math.abs(dt) < 0.03) return;
+  const a = arrangements[currentArr];
+  const merged = mergeNoteOverrides(a.notes, noteOverridesByKind[currentKind()] || []);
+  const isMoving = m => notes.some(n => n.string === m.string && Math.abs(n.time - m.time) < 0.001);
+  const moved = notes.map(n => ({ n, time: n.time + dt, string: n.string + ds }));
+  const beats = a.beats || [];
+  if (moved.some(c => c.time < 0 || (beats.length && c.time > beats[beats.length - 1]))) {
+    toast(T('As notas sairiam da música — a partitura só vai até ao último compasso.'), 'err');
+    return;
+  }
+  if (merged.some(m => !isMoving(m) && moved.some(c => c.string === m.string && Math.abs(c.time - m.time) < 0.03))) {
+    toast(T('Já há uma nota nessa corda nesse tempo.'), 'err');
+    return;
+  }
+  notes.forEach(n => deleteNoteAt(n.time, n.string));
+  moved.forEach(c => upsertNoteOverride(noteAsOverride(c.n, c.time, c.string, c.n.fret)));
+  const times = [...selectedTimes].map(t => t + dt);
+  selectedTimes.clear();
+  times.forEach(t => selectedTimes.add(t));
+  if (selectionAnchor !== null) selectionAnchor += dt;
+  neLast = { time, string };
+  updateSelectionInfo();
+  showArr(currentArr);
+  updatePendingChangesInfo();
+}
+// "Arrastar" is a SYNC tool: each drag is a correction of the timeline, which
+// cannot fold back on itself. Said when a drag tried, so the user knows the
+// note's place is changed in "Editar notas" instead.
+function warnIfAnchorsCross() {
+  if (syncAnchors.some((p, i) => i && p[1] <= syncAnchors[i - 1][1]))
+    toast(T('Em "Arrastar" a nota acerta o tempo da música e não pode passar a correção vizinha. Para mudar uma nota ou um acorde de sítio, usa "Editar notas".'), 'err');
+}
 // ↑/↓ in "Editar notas": the last note clicked or moved one fret up or down
 // (Ctrl: an octave), and it sounds — how Sibelius changes a note's pitch.
 function stepNoteFret(d) {
@@ -8559,6 +8602,7 @@ function updateSelectionInfo() {
   let dragging = null; // single note: { grps, startX, origT }
   let groupDrag = null; // selection drag: { startX, times }
   let rubberBand = null; // { startX }
+  let editBox = null; // "Editar notas": a press on empty staff — a box once it moves, else a seek
   let lyricDrag = null; // lyric word drag: { el, startX, index }
   const svg = document.getElementById('tabsvg');
   const wrap = document.getElementById('tabwrap');
@@ -8777,11 +8821,24 @@ function updateSelectionInfo() {
         const note = visibleNoteAt(parseFloat(grp.dataset.t), string);
         if (note) {
           noteMove = { note, el: single, startX: e.clientX, startY: e.clientY, moved: false, target: null };
+          // A selected note carries the whole selection (its chord, a riff).
+          if (selectedTimes.has(parseFloat(grp.dataset.t))) {
+            noteMove.chord = selectedChordNotes();
+            noteMove.els = [...svg.querySelectorAll('.note-grp.selected')];
+            noteMove.group = true;
+          }
           svg.setPointerCapture(e.pointerId);
         }
         return;
       }
-      // empty space → fall through to the click-to-seek branch below
+      // Empty space: a drag draws a box that selects the notes in it (to move
+      // a chord or a passage); a plain click still moves the cursor (on release).
+      if (!grp && !e.target.closest('.lyric-word, .fhp-bar, .sus-handle')) {
+        const rect = svg.getBoundingClientRect();
+        editBox = { x0: e.clientX, startX: e.clientX - rect.left, add: e.ctrlKey || e.metaKey };
+        svg.setPointerCapture(e.pointerId);
+        return;
+      }
     }
     if (syncMode === 'excerpt' && !(grp && selectedTimes.has(parseFloat(grp.dataset.t)))) {
       // start a rubber-band selection (also when starting on an unselected note)
@@ -8855,8 +8912,22 @@ function updateSelectionInfo() {
       noteMove.moved = true;
       noteMove.target = noteMoveTarget(noteMove, dx, dy, altKey);
       const tg = noteMove.target;
-      (noteMove.ghost || noteMove.el).setAttribute('transform', `translate(${tg.x - noteMove.origX},${-(tg.string - noteMove.note.string) * tg.row})`);
+      const shift = `translate(${tg.x - noteMove.origX},${-(tg.string - noteMove.note.string) * tg.row})`;
+      if (noteMove.els && !noteMove.copy) noteMove.els.forEach(g => g.setAttribute('transform', shift));
+      else (noteMove.ghost || noteMove.el).setAttribute('transform', shift);
       return;
+    }
+    if (editBox && !rubberBand) {
+      if (Math.abs(clientX - editBox.x0) <= 4) return;
+      if (!editBox.add) { selectedTimes.clear(); svg.querySelectorAll('.note-grp.selected').forEach(g => g.classList.remove('selected')); }
+      rubberBand = { startX: editBox.startX };
+      const box = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      box.id = 'selectionBox';
+      box.setAttribute('x', editBox.startX);
+      box.setAttribute('y', '0');
+      box.setAttribute('width', '0');
+      box.setAttribute('height', String(tabH));
+      svg.appendChild(box);
     }
     if (lyricDrag) {
       const dx = clientX - lyricDrag.startX;
@@ -8905,6 +8976,7 @@ function updateSelectionInfo() {
       const nm = noteMove;
       noteMove = null;
       nm.el.removeAttribute('transform');
+      nm.els?.forEach(g => g.removeAttribute('transform'));
       nm.ghost?.remove();
       if (!nm.moved) {
         if (nm.copy) { rangeSelect(nm.note.time); showArr(currentArr); }
@@ -8913,6 +8985,7 @@ function updateSelectionInfo() {
       }
       if (nm.target) {
         if (nm.copy) copyNotes(nm.chord, nm.note, nm.target.time, nm.target.string);
+        else if (nm.group) moveNotes(nm.chord, nm.note, nm.target.time, nm.target.string);
         else moveNote(nm.note, nm.target.time, nm.target.string);
       }
       return;
@@ -8931,6 +9004,15 @@ function updateSelectionInfo() {
       updatePendingChangesInfo();
       lyricDrag = null;
       return;
+    }
+    if (editBox) {
+      editBox = null;
+      if (!rubberBand) {  // a plain click on empty staff: the ordinary seek
+        if (selectedTimes.size) { selectedTimes.clear(); selectionAnchor = null; updateSelectionInfo(); showArr(currentArr); }
+        const rect = svg.getBoundingClientRect();
+        audioSeek(Math.max(0, (e.clientX - rect.left - 30) / tabPx));
+        return;
+      }
     }
     if (rubberBand) {
       const rect = svg.getBoundingClientRect();
@@ -8983,6 +9065,7 @@ function updateSelectionInfo() {
         renderAnchorsList();
         updatePendingChangesInfo();
         showArr(currentArr);
+        warnIfAnchorsCross();
       }
       groupDrag = null;
       return;
@@ -9008,6 +9091,7 @@ function updateSelectionInfo() {
       renderAnchorsList();
       updatePendingChangesInfo();
       showArr(currentArr);
+      warnIfAnchorsCross();
     }
     dragging = null;
   });
@@ -9018,7 +9102,11 @@ function updateSelectionInfo() {
   // pointerup this only resets state — a cancelled gesture must not commit.
   svg.addEventListener('pointercancel', () => {
     stopAutoScrollLoop();
-    if (noteMove) { noteMove.el.removeAttribute('transform'); noteMove.ghost?.remove(); noteMove = null; }
+    if (noteMove) {
+      noteMove.el.removeAttribute('transform'); noteMove.els?.forEach(g => g.removeAttribute('transform'));
+      noteMove.ghost?.remove(); noteMove = null;
+    }
+    editBox = null;
     if (susDrag) { susDrag.tail?.remove(); susDrag = null; showArr(currentArr); }
     if (lyricDrag) { lyricDrag.el.removeAttribute('transform'); lyricDrag = null; }
     if (rubberBand) { document.getElementById('selectionBox')?.remove(); rubberBand = null; }
@@ -9057,15 +9145,15 @@ const SYNC_MODE_BUTTONS = [
 // The key that picks mode i: 1…9, then 0 for the tenth.
 const modeKey = i => (i === 9 ? '0' : String(i + 1));
 const MODE_HELP = {
-  drag: T('<b>Arrastar:</b> arrasta uma nota para o instante da gravação onde ela deve tocar (encaixa no beat). As notas entre duas correções esticam/comprimem para acompanhar. Ideal para acertar um ponto que escorregou.'),
+  drag: T('<b>Arrastar (sincronização):</b> arrasta uma nota para o instante da gravação onde ela deve tocar (encaixa no beat). Muda o <b>tempo</b>, não a nota: as notas entre duas correções esticam ou encolhem, o BPM dos compassos muda, e uma nota não passa a correção vizinha. Para mudar uma nota ou um acorde de sítio, usa <b>Editar notas</b>.'),
   tap: T('<b>Marcar no cursor:</b> dá play, e quando ouvires uma nota na gravação, clica nessa nota na partitura — ela ancora na posição do cursor. Alinhar a tocar.'),
-  excerpt: T('<b>Excerto:</b> arrasta uma caixa por cima de várias notas e depois arrasta uma delas — movem-se todas em bloco. (Alternativa: Shift+clique numa nota e noutra para selecionar o intervalo.)'),
+  excerpt: T('<b>Excerto (sincronização):</b> arrasta uma caixa por cima de várias notas e depois arrasta uma delas — o tempo desse trecho move-se em bloco. (Alternativa: Shift+clique numa nota e noutra para selecionar o intervalo.) Para mudar notas de sítio, usa <b>Editar notas</b>.'),
   movefrom: T('<b>Mover seguintes:</b> pausa a gravação no instante certo e clica na 1ª nota desalinhada — essa nota e TODAS as seguintes deslocam-se em bloco para o cursor. Para um trecho inteiro que entrou tarde/cedo.'),
   newbeat: T('<b>Corrigir daqui (detetar andamento) — o modo recomendado:</b> ouve até ao ponto onde a partitura começa a fugir da gravação e clica nessa nota. Mede o BPM real da gravação daí em diante e re-espaça só as notas seguintes. <b>Nada antes do clique se mexe</b>, por isso o que já estava bem fica intacto. Repete sempre que voltar a fugir — cada correção parte de onde a anterior deixou.'),
   baralign: T('<b>Alinhar por compasso:</b> pausa a gravação no instante certo e clica numa nota — ou na <b>linha/número do compasso</b>, para o alinhar pelo seu início mesmo sem notas — abre um popup com esse compasso já escolhido. Confirma com "= cursor" e esse compasso alinha-se ao cursor (ou "= pista" para o mesmo compasso de outra pista). Faz-se várias vezes ao longo da música; cada correção arrasta as notas seguintes. No mesmo popup, <b>Andamento</b> muda o BPM desse compasso (ou de vários seguidos) e o resto da música acompanha, cada compasso com o seu próprio andamento.'),
   tonechange: T('<b>Mudança de tom:</b> clica numa nota para trocar para um dos tons extra a partir daí.'),
   section: T('<b>Secção:</b> clica numa nota para nomear onde começa uma secção (intro/verso/refrão…). Nada a ver com sincronização — é para navegação e o Riff Repeater.'),
-  editnotes: T('<b>Editar notas:</b> clica numa nota para a editar (traste, sustain, técnicas, bend/slide) ou remover; <b>arrasta-a</b> para outro tempo ou outra corda (com <b>Shift</b>, arrasta uma cópia da nota ou do acorde); arrasta o <b>fim da cauda</b> para mudar a duração; <b>↑/↓</b> sobem ou descem um traste à última nota clicada; <b>duplo-clique</b> no pentagrama vazio insere uma nota nova, encaixada na grelha (nunca mais larga do que semicolcheias; com Alt, livre). Um clique simples no vazio move o cursor, como nos outros modos. Muda o CONTEÚDO da partitura — fica pendente até "Aplicar e reconstruir".'),
+  editnotes: T('<b>Editar notas:</b> clica numa nota para a editar (traste, sustain, técnicas, bend/slide) ou remover; <b>arrasta-a</b> para outro tempo ou outra corda (com <b>Shift</b>, arrasta uma cópia da nota ou do acorde); para mover um <b>acorde ou várias notas</b>, arrasta uma caixa no pentagrama vazio (ou Ctrl+clique) e arrasta uma das notas selecionadas — movem-se todas, e podem passar por outras notas; arrasta o <b>fim da cauda</b> para mudar a duração; <b>↑/↓</b> sobem ou descem um traste à última nota clicada; <b>duplo-clique</b> no pentagrama vazio insere uma nota nova, encaixada na grelha (nunca mais larga do que semicolcheias; com Alt, livre). Um clique simples no vazio move o cursor, como nos outros modos. Muda o CONTEÚDO da partitura, não o tempo — fica pendente até "Aplicar e reconstruir".'),
   fhp: T('<b>Posição da mão (FHP):</b> a faixa <b>FHP</b> por baixo da pauta mostra onde a mão fica no jogo, de uma posição até à seguinte (cinzento = automáticas, verde-água = tuas). Clica numa nota para pôr ali uma posição nova (ou mudar a que lá começa), ou clica numa barra da faixa para mudar o traste e a largura, ou apagá-la. A primeira edição copia as automáticas, para só mudares as que estão mal. Uma nota fora da sua posição fica com um anel vermelho. Fica pendente até "Aplicar e reconstruir".'),
   null: T('Nenhum modo ativo. Clica num modo acima. <b>Dica:</b> para um desvio uniforme em todo o trecho, usa antes o <b>Andamento (BPM)</b> — não precisa de âncoras.'),
 };

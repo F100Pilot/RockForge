@@ -393,9 +393,9 @@ Para o que sobra, escolhe um modo em **Modo ▾** e clica onde a partitura foge:
 | Modo | O que faz |
 |---|---|
 | **Corrigir daqui** (recomendado) | Ouve até a partitura começar a fugir e clica nessa nota. Fica tudo o que está antes no sítio, e o RockForge mede o andamento da gravação daí em diante e estica só o resto. Repete ao longo da música. |
-| **Arrastar** | Arrasta uma nota para onde deve tocar. Com várias notas selecionadas, movem-se em bloco. Alt ao arrastar = sem encaixe. |
+| **Arrastar** | Arrasta uma nota para onde a ouves na gravação. Acerta o **tempo**, não a nota: as notas à volta esticam ou encolhem, o BPM dos compassos muda e uma nota não passa a correção vizinha. Com várias notas selecionadas, movem-se em bloco. Alt ao arrastar = sem encaixe. Para mudar uma nota ou um acorde de sítio, usa **Editar notas**. |
 | **Marcar** | Dá play e clica na nota no momento em que a ouves: ela vai para o cursor. |
-| **Excerto** | Desenha uma caixa sobre um trecho e move-o em bloco. |
+| **Excerto** | Desenha uma caixa sobre um trecho e acerta o tempo dele em bloco. |
 | **Mover seguintes** | Esta nota e todas as seguintes vão para o cursor; as anteriores ficam. |
 | **Alinhar compasso** | Clica numa nota ou na linha de um compasso: encosta esse compasso ao cursor (**= cursor**), ao mesmo compasso de outra pista (**= pista**), ou muda o BPM desse compasso até outro (**Andamento**). |
 
@@ -444,6 +444,10 @@ cursor até ao fim** (**Shift+End**) seleciona todas as notas desta pista do cur
   mute, vibrato, tapping, slap, pop, acento), bend e slide; **Guardar** ou **Remover nota**.
 - **Arrasta** uma nota para a mudar de tempo (encaixa na grelha) ou de corda (fica com o mesmo
   traste, logo muda de altura).
+- Para mover **um acorde ou várias notas**: arrasta uma caixa num espaço vazio da pauta à volta
+  delas (ou Ctrl+clique em cada uma) e arrasta uma das notas selecionadas — movem-se todas juntas,
+  podem passar por cima de outras notas e o andamento não muda. Um clique simples no vazio
+  continua a mover o cursor.
 - **Shift + arrastar** uma nota duplica-a — num acorde, o acorde inteiro — e leva a cópia para
   onde a largares (o original fica). Shift+clique sem arrastar continua a selecionar.
 - **Arrasta o fim da cauda** de uma nota (a pequena pega à direita) para mudar a duração; de

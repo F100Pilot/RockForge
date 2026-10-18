@@ -13,6 +13,15 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
   has no notes — so a LEAD with few notes takes the RHYTHM's parts only where it is silent. Click,
   drag or Shift+click to choose. Experimental.
 
+### Fixes
+
+- **Moving notes and chords without spoiling the tempo.** Notes were moved with the "Drag" mode,
+  which is a sync tool: each drag stretches the timing around it, changes the bars' BPM and does
+  not let a note pass another. Now, in **Edit notes**, dragging a box on empty staff (or
+  Ctrl+click) selects a chord or several notes, and dragging one of them moves them all — they can
+  pass other notes and the tempo does not change. "Drag" says what it does and warns when a note
+  tries to pass its neighbour.
+
 ## [0.11.0 beta 2] — 2026-10-18
 
 ### New

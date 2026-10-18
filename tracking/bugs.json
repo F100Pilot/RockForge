@@ -14844,6 +14844,36 @@
           "note": "commit b2efa19bbf"
         }
       ]
+    },
+    {
+      "id": "BUG-0297",
+      "title": "Moving notes in the score changed the tempo and other notes, and a chord could not be moved",
+      "detected": "2026-10-18",
+      "reported_by": "a user (Liam, Facebook)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "pending",
+      "module": "editor",
+      "description": "Moving notes in the score changed the tempo and other notes, and a chord could not be moved",
+      "steps": "pending",
+      "expected": "pending",
+      "observed": "pending",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Open",
+      "root_cause": "pending",
+      "fixes": [],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "pending",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        }
+      ]
     }
   ]
 }
