@@ -420,6 +420,73 @@ def _reject_bad_midi(field: str, pitches: list[object]) -> None:
         raise HTTPException(422, f"{field}: MIDI pitch out of range (0-127): {bad}")
 
 
+def _check_imported_params(params: dict[str, object]) -> None:
+    """The shapes of params that arrive as raw JSON — ``/import-sync`` and a
+    ``.rfproj``'s project.json — bypass every model, so a string where a number
+    belongs (``"offset_s": "abc"``) was stored and then broke GET /jobs, i.e.
+    the whole home page, until that project was deleted. 422 naming the key."""
+    from rockforge.application.gp_pipeline import MIN_OFFSET_S
+
+    def bad(key: str, what: str) -> HTTPException:
+        return HTTPException(422, i18n.tr(f"{key}: tem de ser {what}", f"{key}: must be {what}"))
+
+    def number(v: object) -> bool:
+        return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+
+    def anchors_ok(stages: object) -> bool:
+        return isinstance(stages, list) and all(
+            isinstance(stage, list) and all(
+                isinstance(pt, list) and len(pt) == 2 and all(number(x) for x in pt)
+                for pt in stage)
+            for stage in stages)
+
+    bounds = {"offset_s": (MIN_OFFSET_S, None), "lead_in_s": (0.0, None),
+              "tempo_scale": (1e-6, None), "cent_offset": (-50.0, 50.0)}
+    for key, (low, high) in bounds.items():
+        if key in params:
+            v = params[key]
+            if not number(v) or v < low or (high is not None and v > high):  # type: ignore[operator]
+                raise bad(key, "um número válido" if not number(v) else f"≥ {low:g}")
+    for key in ("lead_track", "rhythm_track", "combo_track", "alt_lead_track",
+                "alt_rhythm_track", "bass_track"):
+        v = params.get(key)
+        if v is not None and (not isinstance(v, int) or isinstance(v, bool) or not 0 <= v < 64):
+            raise bad(key, "o número de uma pista")
+    for key in ("sync_main", "bar_times_source", "tone_base", "lrc_text"):
+        if params.get(key) is not None and not isinstance(params[key], str):
+            raise bad(key, "texto")
+    for key in ("sync_confirmed", "gp_synced", "import_mute_techniques", "recording_from_gp",
+                "lyrics_follow_chart", "gp_has_lyrics", "dynamic_difficulty"):
+        if params.get(key) is not None and not isinstance(params[key], bool):
+            raise bad(key, "verdadeiro ou falso")
+    for key in ("synced_arrangements", "tone_names", "bar_times", "tone_changes", "tones",
+                "vocal_melody", "section_overrides"):
+        if params.get(key) is not None and not isinstance(params[key], list):
+            raise bad(key, "uma lista")
+    for key in ("arrangement_sync", "estimated_bars", "tuning_overrides", "arrangement_tones",
+                "tone_swaps", "detected_tones", "note_overrides", "hand_positions"):
+        if params.get(key) is not None and not isinstance(params[key], dict):
+            raise bad(key, "um objeto")
+    if "sync_anchor_stages" in params and not anchors_ok(params["sync_anchor_stages"]):
+        raise bad("sync_anchor_stages", "rondas de pares [tempo, tempo]")
+    per_chart = params.get("arrangement_sync")
+    for kind, own in (per_chart.items() if isinstance(per_chart, dict) else ()):
+        scale = own.get("tempo_scale", 1.0) if isinstance(own, dict) else None
+        if not isinstance(own, dict) or not (number(scale) and scale > 0) or (  # type: ignore[operator]
+            "sync_anchor_stages" in own and not anchors_ok(own["sync_anchor_stages"])
+        ):
+            raise bad(f"arrangement_sync[{kind}]",
+                      "um andamento > 0 e rondas de pares [tempo, tempo]")
+    events = params.get("lyrics_events")
+    if events is not None and not (isinstance(events, list) and all(
+        isinstance(e, dict) and number(e.get("time")) and number(e.get("length"))
+        and isinstance(e.get("lyric"), str) for e in events
+    )):
+        raise bad("lyrics_events", "linhas {time, length, lyric}")
+    if params.get("merge_tracks") is not None:
+        _clean_merge_tracks(params["merge_tracks"])
+
+
 def _reject_non_finite(**values: float) -> None:
     """Boundary guard for floats that do NOT pass through a ``Finite`` model —
     multipart form fields and hand-written JSON restored via /import-sync."""
@@ -447,10 +514,8 @@ def _sync_edited(params: dict[str, Any]) -> bool:
     sincronização?" completeness reminder."""
     if params.get("bar_times") or params.get("gp_synced"):
         return True
-    raw_offset = params.get("offset_s")
-    offset = float(raw_offset) if isinstance(raw_offset, (int, float, str)) else 0.0
-    raw_scale = params.get("tempo_scale")
-    scale = float(raw_scale) if isinstance(raw_scale, (int, float, str)) else 1.0
+    offset = _param_number(params.get("offset_s"), 0.0)
+    scale = _param_number(params.get("tempo_scale"), 1.0)
     if abs(offset) > 0.001 or abs(scale - 1.0) > 0.001:
         return True
     if any(params.get("sync_anchor_stages") or []):
@@ -480,14 +545,25 @@ def _sync_source(params: dict[str, Any]) -> str | None:
     return "adjusted" if _sync_edited(params) else None
 
 
+def _param_number(value: object, default: float) -> float:
+    """A stored number as a float — never an exception: one bad value in one
+    project's params must not take GET /jobs (the home page) down with it."""
+    try:
+        out = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return default
+    return out if math.isfinite(out) else default
+
+
+def _param_text(value: object) -> str | None:
+    return value if isinstance(value, str) and value else None
+
+
 def _to_out(job: Job) -> JobOut:
     params = job.params or {}
-    raw_offset = params.get("offset_s")
-    offset_s = float(raw_offset) if isinstance(raw_offset, (int, float, str)) else 0.0
-    raw_lead = params.get("lead_in_s")
-    lead_in_s = float(raw_lead) if isinstance(raw_lead, (int, float, str)) else 0.0
-    raw_scale = params.get("tempo_scale")
-    tempo_scale = float(raw_scale) if isinstance(raw_scale, (int, float, str)) else 1.0
+    offset_s = _param_number(params.get("offset_s"), 0.0)
+    lead_in_s = _param_number(params.get("lead_in_s"), 0.0)
+    tempo_scale = _param_number(params.get("tempo_scale"), 1.0)
     has_tones = bool(
         params.get("tones") or params.get("tone_base") or params.get("tone_names")
     )
@@ -528,7 +604,7 @@ def _to_out(job: Job) -> JobOut:
         has_tones=has_tones,
         sync_edited=_sync_edited(params),
         sync_confirmed=bool(params.get("sync_confirmed")),
-        sync_main=cast("str | None", params.get("sync_main") or None),
+        sync_main=_param_text(params.get("sync_main")),
         sync_source=_sync_source(params),
         synced_arrangements=_synced_arrangements(params, job.bundle_dir),
         recording_from_gp=bool(params.get("recording_from_gp")),

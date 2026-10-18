@@ -708,6 +708,9 @@ def import_project(file: UploadFile = File(...)) -> JobOut:
             )) from exc
 
         params: dict[str, object] = {**project.params, "gp_path": str(score)}
+        api._check_imported_params(params)  # project.json is untrusted JSON
+        if params.get("merge_tracks") is not None:
+            params["merge_tracks"] = api._clean_merge_tracks(params["merge_tracks"])
         with api._session_factory() as session:
             job = Job(
                 source=str(recording), source_type="gp",

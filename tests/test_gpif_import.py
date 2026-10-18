@@ -892,3 +892,37 @@ def test_let_ring_as_a_child_of_the_note_is_read(tmp_path: Path) -> None:
         z.writestr("Content/score.gpif", gpif)
     (note,) = parse_gp_track(path, 0).notes
     assert Technique.LET_RING in note.techniques
+
+
+def test_bars_are_found_by_staff_so_a_two_staff_piano_before_the_guitar_changes_nothing(
+    tmp_path: Path,
+) -> None:
+    """MasterBar/<Bars> lists one bar per STAFF, track after track; reading it by
+    track index made every track after a piano's grand staff chart the wrong bars
+    (the guitar came out empty)."""
+    piano = """<Track id="9">
+      <Name>Piano</Name>
+      <InstrumentSet><Type>acousticPiano</Type></InstrumentSet>
+      <Staves><Staff><Properties/></Staff><Staff><Properties/></Staff></Staves>
+    </Track>
+    <Track id="0">"""
+    gpif = (GPIF.replace('<Track id="0">', piano, 1)
+            .replace("<Bars>0 2</Bars>", "<Bars>4 5 0 2</Bars>")
+            .replace("<Bars>1 3</Bars>", "<Bars>6 7 1 3</Bars>")
+            .replace('<Bar id="3"><Voices>-1 -1 -1 -1</Voices></Bar>',
+                     '<Bar id="3"><Voices>-1 -1 -1 -1</Voices></Bar>' + "".join(
+                         f'<Bar id="{i}"><Voices>-1 -1 -1 -1</Voices></Bar>' for i in range(4, 8))))
+    path = _gp_with(tmp_path, gpif)
+    plain = parse_gp_track(gp7_file_path(tmp_path), 0)
+    guitar = parse_gp_track(path, 1)
+    assert [(n.string, n.fret) for n in guitar.notes] == [(n.string, n.fret) for n in plain.notes]
+    assert len(guitar.notes) == 4
+    assert parse_gp_track(path, 1).lyric_notes  # the lyrics' line is found by staff too
+
+
+def gp7_file_path(tmp_path: Path) -> Path:
+    path = tmp_path / "plain.gp"
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("VERSION", "7.0")
+        z.writestr("Content/score.gpif", GPIF)
+    return path

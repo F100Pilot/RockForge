@@ -4339,6 +4339,49 @@ def test_a_project_whose_files_are_gone_or_a_bad_file_is_refused_cleanly(
     assert after <= before  # nothing left behind
 
 
+def test_imported_params_of_the_wrong_type_are_refused_and_never_break_the_home_page(
+    client: TestClient, tmp_path
+) -> None:
+    """/import-sync and a .rfproj's project.json are raw JSON: "offset_s": "abc"
+    was stored and then every GET /jobs answered 500 — the home page gone until
+    that project was deleted by id."""
+    import io
+    import json
+    import zipfile
+
+    import rockforge.interfaces.api.app as app_module
+
+    job = _gp_job(client, tmp_path)
+    for bad in ({"offset_s": "abc"}, {"tempo_scale": "fast"}, {"tempo_scale": -1},
+                {"sync_anchor_stages": [[["a", "b"]]]},
+                {"arrangement_sync": {"Lead": {"tempo_scale": "x"}}},
+                {"lyrics_events": "la la"}):
+        r = client.post(f"/jobs/{job['id']}/import-sync", json={"sync": bad})
+        assert r.status_code == 422, bad
+    work = app_module.settings.work_dir
+    before = {p for p in work.rglob("*") if p.is_file() and p.suffix != ".db"}
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr("project.json", json.dumps({
+            "format": "rockforge-project", "version": 1,
+            "job": {"title": "Deriva", "artist": "Banda Inventada", "source_type": "gp"},
+            "params": {"offset_s": "1e", "sync_main": 3},
+        }))
+        zf.writestr("files/recording.wav", b"RIFF0000WAVE")
+        zf.writestr("files/score.gp5", _make_gp5_bytes(tmp_path))
+    r = client.post("/projects/import",
+                    files={"file": ("p.rfproj", buf.getvalue(), "application/zip")})
+    assert r.status_code == 422 and "offset_s" in r.json()["detail"]
+    assert {p for p in work.rglob("*") if p.is_file() and p.suffix != ".db"} <= before
+    # and a bad value already in a project (an older version let it in) is shown, not a 500
+    with app_module._session_factory() as session:
+        row = session.get(app_module.Job, job["id"])
+        row.params = {**row.params, "offset_s": "abc", "sync_main": 7}
+        session.commit()
+    assert client.get("/jobs").status_code == 200
+    assert client.get(f"/jobs/{job['id']}").json()["offset_s"] == 0.0
+
+
 def test_an_imported_project_cannot_point_the_server_at_a_path(
     client: TestClient, tmp_path
 ) -> None:

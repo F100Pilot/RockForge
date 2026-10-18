@@ -77,6 +77,7 @@ def _sanitize_sync_state(incoming: dict[str, object]) -> dict[str, object]:
         for value in _iter_floats(out.get(key)):
             if not math.isfinite(value):
                 raise HTTPException(422, f"{key} contains a non-finite time")
+    api._check_imported_params(out)
     return out
 
 

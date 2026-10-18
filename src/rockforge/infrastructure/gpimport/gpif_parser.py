@@ -138,6 +138,18 @@ def _text(el: ET.Element | None, default: str = "") -> str:
     return el.text.strip()
 
 
+def _staff_slot(tracks: list[ET.Element], track_index: int) -> int:
+    """Where a track's bar sits in each ``MasterBar/<Bars>``: that list holds one
+    bar per STAFF, track after track (alphaTab's GpifParser.buildModel walks it
+    by staff), so a piano's two staves before the guitar shift the guitar's bar
+    by one — reading it by track index charted the wrong track's bars."""
+    def staves(track: ET.Element) -> int:
+        el = track.find("Staves")
+        return max(1, len(el.findall("Staff")) if el is not None else 0)
+
+    return sum(staves(t) for t in tracks[:track_index])
+
+
 def _track_tuning(track: ET.Element) -> tuple[int, ...]:
     """The six MIDI pitches (low→high) from the track's Staff Tuning property."""
     staves = track.find("Staves")
@@ -640,6 +652,7 @@ def parse_gpif_track(
     track = tracks[track_index]
     if _track_is_percussion(track):
         raise IngestionError(f"track {track_index} ('{_track_name(track)}') is percussion")
+    slot = _staff_slot(tracks, track_index)
     tuning_midi = _track_tuning(track)
     check_track_strings(
         len(tuning_midi), bass=bass, label=f"{track_index} ('{_track_name(track)}')"
@@ -699,9 +712,9 @@ def parse_gpif_track(
                 sections.append(GpSection(name=name, start_time=t(bar_start)))
 
         bar_ids = _text(mb.find("Bars")).split()
-        if track_index >= len(bar_ids):
+        if slot >= len(bar_ids):
             continue
-        bar = bars.get(bar_ids[track_index])
+        bar = bars.get(bar_ids[slot])
         if bar is None:
             continue
         voice_ids = _text(bar.find("Voices")).split()
@@ -793,7 +806,7 @@ def parse_gpif_track(
         lyrics = _track_lyrics(cand, bar_start_ticks, t, played)
         if lyrics:
             lyric_notes = _lyric_notes(
-                cand_index, _track_tuning(cand), master_bars, bar_start_ticks,
+                _staff_slot(tracks, cand_index), _track_tuning(cand), master_bars, bar_start_ticks,
                 bars, voices, beats, notes_map, rhythms, t,
             )
             break
@@ -831,7 +844,7 @@ def parse_gpif_track(
 
 
 def _lyric_notes(
-    track_index: int,
+    slot: int,
     tuning: tuple[int, ...],
     master_bars: list[ET.Element],
     bar_start_ticks: list[int],
@@ -849,7 +862,7 @@ def _lyric_notes(
     rest = False
     for mb_index, mb in enumerate(master_bars):
         bar_ids = _text(mb.find("Bars")).split()
-        bar = bars.get(bar_ids[track_index]) if track_index < len(bar_ids) else None
+        bar = bars.get(bar_ids[slot]) if slot < len(bar_ids) else None
         if bar is None:
             continue
         voice_ids = [v for v in _text(bar.find("Voices")).split() if v != "-1"]

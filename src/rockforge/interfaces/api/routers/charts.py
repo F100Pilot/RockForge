@@ -111,10 +111,7 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
         job_params = dict(job.params or {})
 
     # Per-arrangement tempo scale, falling back to the job-level default.
-    raw_default_scale = job_params.get("tempo_scale", 1.0) or 1.0
-    default_scale = (
-        float(raw_default_scale) if isinstance(raw_default_scale, (int, float, str)) else 1.0
-    )
+    default_scale = api._param_number(job_params.get("tempo_scale", 1.0) or 1.0, 1.0)
     arr_sync = job_params.get("arrangement_sync") or {}
 
     raw_hand_ov = job_params.get("hand_positions")
