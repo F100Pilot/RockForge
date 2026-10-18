@@ -6,6 +6,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+## [0.11.0 beta 3] — 2026-10-18
+
 ### Novidades
 
 - **Juntar duas pistas: escolhe os compassos** (Novo projeto → Pistas, e Editar info). Uma grelha
@@ -21,6 +23,27 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
   caixa no espaço vazio (ou Ctrl+clique) seleciona um acorde ou várias notas, e arrastar uma delas
   move-as todas — podem passar por outras notas e o andamento não muda. O "Arrastar" diz o que
   faz e avisa quando uma nota tenta passar a vizinha.
+- **O que mudavas durante uma deteção já não se perde.** Enquanto corria "Detetar letra",
+  "Detetar tom" ou "Separar instrumentos", uma capa carregada, "Marcar como sincronizada", a pista
+  principal, os tons trocados ou "Instalar no jogo" eram desfeitos pela linha de progresso seguinte.
+- **No .exe, a deteção de letra funciona.** Falhava sempre, ao fim de minutos de separação.
+- **Um título ou artista com acento ("Canção", "Beyoncé") já tem .psarc** quando o Wwise está
+  instalado. O nome interno da música passa a ser só letras sem acento (as músicas com acento
+  ganham um novo nome interno; reinstala-as no jogo).
+- **Editar uma nota já não lhe tira o slide**, nem a curva do bend, a ligação à nota seguinte ou a
+  dedilhação. Colar notas também mantém o slide.
+- **As ferramentas de sincronização já não dobram a partitura** quando usadas depois de acertar o
+  "Início": "Arrastar", "Marcar", "Mover seguintes", "Corrigir daqui" e "Marcar a ouvir" fixam o
+  início e o fim da música. Antes, as notas a seguir perdiam o acerto e a reconstrução podia falhar
+  com "beats must be in chronological order"; agora, se uma correção dobrar o tempo, a mensagem diz
+  em que ponto.
+- **O encaixe "Cursor" funciona** (levava as notas para o último tempo da música).
+- **"Guitar Pro com as notas editadas" mantém o capo.**
+- **"Verificar PSARC" já não acusa falha** numa música com slap, pop ou tap.
+- **Uma capa recusada (grande demais ou que não é imagem) já não apaga a capa que havia.**
+- **Um projeto (.rfproj) ou ficheiro de sincronização com um valor errado é recusado** a dizer qual,
+  em vez de deitar abaixo a página inicial.
+- **Ficheiros GP7/8 com um piano (duas pautas) antes da guitarra** já leem a pista certa.
 
 ## [0.11.0 beta 2] — 2026-10-18
 

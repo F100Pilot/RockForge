@@ -133,3 +133,46 @@ read_arrangement_xml dropped <bendValues>, so the viewer and corrected-GP export
 - 2026-09-30 — Fixed: commit 8cda047d1c
 - 2026-09-30 — Verified: automated
 - 2026-10-14 — Closed: released in 0.10.0-beta.1
+
+## BUG-0304
+
+**The Guitar Pro export of the edited notes lost the capo**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Verified |
+
+The XML reader looked for the capo as an attribute of <song>, but the writer emits a <capo> element, so the export wrote no capo and open strings came out a capo too low.
+
+**Steps to reproduce:** 
+
+1. Build a chart with a capo
+2. Export "Guitar Pro with the edited notes"
+
+**Expected:** The exported file has the capo.
+
+**Observed:** capo 2 read back as 0.
+
+**Root cause:** reader.py read root.get('capo').
+
+**Fixes:** [FIX-0304](../FIX_LOG.md#fix-0304) (0.11.0-beta.3)
+
+**Verified:** tests/test_capo.py::test_the_capo_survives_the_built_xml_read_back passed, and fails with the fix reverted (by pytest (the test fails on the old code))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit f907982d0f
+- 2026-10-18 — Verified: its test passes and fails on the old code

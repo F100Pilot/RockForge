@@ -14887,6 +14887,520 @@
           "note": "commit 21d5ffd276"
         }
       ]
+    },
+    {
+      "id": "BUG-0298",
+      "title": "A background task undid what the user changed while it ran",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "app",
+      "description": "Detect lyrics/tones and Separate instruments copied Job.params once and wrote that whole copy back on every progress line, for minutes. A cover uploaded, \"Mark as synced\", the main chart, tone swaps, \"Install in game\" or another detection's status, done meanwhile, was erased by the next progress line.",
+      "steps": [
+        "Start \"Separate instruments\"",
+        "While it runs, upload a cover or mark the song as synced",
+        "Wait for the separation to finish"
+      ],
+      "expected": "The cover and the mark stay.",
+      "observed": "cover_art and sync_confirmed went back to what they were when the task started (SQLite repro).",
+      "severity": "High",
+      "priority": "P1",
+      "status": "Verified",
+      "root_cause": "Each task kept its own copy of params and assigned it whole on every commit; with expire_on_commit off the row was never re-read.",
+      "fixes": [
+        "FIX-0298"
+      ],
+      "verified_by": "pytest (the test fails on the old code)",
+      "verification": "tests/test_celery_tasks.py::test_what_the_user_changes_while_a_task_runs_is_not_undone passed, and fails with the fix reverted",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit 2ae21cd533"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "its test passes and fails on the old code"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0299",
+      "title": "Lyric detection always failed in the .exe",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "exe",
+      "description": "The WhisperX runner imported rockforge's adapter; in the .exe it is run by the extra components' Python, which has whisperx but not the rockforge package, so every lyric detection failed after minutes of separation.",
+      "steps": [
+        "In the .exe with the extra components installed, open a project",
+        "Press \"Detect lyrics\""
+      ],
+      "expected": "Lyrics are detected.",
+      "observed": "python -I -S _whisperx_runner.py gives ModuleNotFoundError: No module named 'rockforge'; the job ends unavailable.",
+      "severity": "High",
+      "priority": "P1",
+      "status": "Verified",
+      "root_cause": "_whisperx_runner.py imported rockforge.infrastructure.lyrics.whisperx_adapter (which imports application.ports); the other runners import nothing from rockforge.",
+      "fixes": [
+        "FIX-0299"
+      ],
+      "verified_by": "pytest (the test fails on the old code)",
+      "verification": "tests/test_ml_python.py::test_no_runner_imports_rockforge; tests/test_lyrics_transcribe.py passed, and fails with the fix reverted",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit 2ae21cd533"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "its test passes and fails on the old code"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0300",
+      "title": "A title or artist with an accent left the project without a .psarc",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "psarc",
+      "description": "The song key kept non-ASCII letters (Canção, Beyoncé); with Wwise installed the SoundBank's ASCII STID chunk raised UnicodeEncodeError and the build produced only the bundle.",
+      "steps": [
+        "Create a project titled \"Canção\" on a machine with Wwise",
+        "Build it"
+      ],
+      "expected": "A .psarc is produced.",
+      "observed": "generate_soundbank raised UnicodeEncodeError for 'SigurRósCanção'.",
+      "severity": "High",
+      "priority": "P1",
+      "status": "Verified",
+      "root_cause": "song_key_from_title kept every str.isalnum() character, including non-ASCII letters.",
+      "fixes": [
+        "FIX-0300"
+      ],
+      "verified_by": "pytest (the test fails on the old code)",
+      "verification": "tests/test_psarc_manifest.py::test_a_song_key_is_ascii_even_for_an_accented_title passed, and fails with the fix reverted",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit f907982d0f"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "its test passes and fails on the old code"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0301",
+      "title": "The \"Cursor\" snap option snapped every drag to the song's last beat",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "sync",
+      "description": "Choosing \"Cursor\" in the snap list set snapDiv to NaN, so the grid was the last beat only and every drag landed there.",
+      "steps": [
+        "Pick \"Cursor\" in the snap list",
+        "Drag a note in \"Drag\""
+      ],
+      "expected": "The note lands on the playhead.",
+      "observed": "snapDiv was NaN; beatGridTimes returned only the last beat.",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Fixed",
+      "root_cause": "The handler kept only 'bars' as a non-number value.",
+      "fixes": [
+        "FIX-0301"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code; Playwright: picking Cursor sets snapDiv to 'cursor'"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit f907982d0f"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0302",
+      "title": "Editing a note lost its slide and the fields the editor does not show",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "editor",
+      "description": "The note popup read slide_to_fret, but built notes carry slide_to, so saving any edit sent no slide; paste dropped slides too. On the server an edit rebuilt the note from scratch, dropping its bend curve, link, fingering and pick direction (a sustain drag on a bend-and-release made it a plain bend).",
+      "steps": [
+        "Open Edit notes and click a note with a slide",
+        "Change its fret and save, then rebuild"
+      ],
+      "expected": "The slide and the rest of the note stay.",
+      "observed": "The popup showed an empty slide-to; _apply_note_overrides built a fresh TabNote.",
+      "severity": "High",
+      "priority": "P1",
+      "status": "Verified",
+      "root_cause": "Wrong field name in the popup and the clipboard; a fresh TabNote instead of replace() on the server.",
+      "fixes": [
+        "FIX-0302"
+      ],
+      "verified_by": "pytest (the test fails on the old code)",
+      "verification": "tests/test_gp_pipeline.py::test_an_edit_keeps_the_note_fields_the_editor_does_not_show passed, and fails with the fix reverted",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code; Playwright: the popup of a slide note shows slide to 9"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit f907982d0f"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "its test passes and fails on the old code"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0303",
+      "title": "A sync tool used beside a lone \"Song start\" folded the chart and failed the rebuild",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "sync",
+      "description": "Drag, Mark at cursor, Move following, Correct from here and taps added anchors without pinning the chart's ends; the multi-anchor warp is identity outside its range, so the notes after lost the start shift and the bars before the first note ran backwards, and the rebuild failed with \"beats must be in chronological order\". The server also accepted two corrections taking two notes to the same instant.",
+      "steps": [
+        "Move the song start by -1.5 s",
+        "Pick \"Drag\" and drag a later note",
+        "Apply and rebuild"
+      ],
+      "expected": "Only the dragged region changes; the rebuild completes.",
+      "observed": "Playwright on the old code: the last note lost the shift, one beat folded, the rebuild failed.",
+      "severity": "High",
+      "priority": "P1",
+      "status": "Verified",
+      "root_cause": "The tools added one or two anchors with no end pins (only planBarRetempo/planStartShift/the group drag pinned them); _check_anchor_order allowed equal targets.",
+      "fixes": [
+        "FIX-0303"
+      ],
+      "verified_by": "pytest (the test fails on the old code)",
+      "verification": "tests/test_gp_pipeline.py::test_corrections_that_collapse_or_fold_the_chart_are_refused_by_name passed, and fails with the fix reverted",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code; Playwright on an invented GP5 built for real: start -1.5 s, a drag and Move following leave every beat in order and the rebuild completes (the old code failed it)"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit 9ef6aadeff"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "its test passes and fails on the old code"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0304",
+      "title": "The Guitar Pro export of the edited notes lost the capo",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "export",
+      "description": "The XML reader looked for the capo as an attribute of <song>, but the writer emits a <capo> element, so the export wrote no capo and open strings came out a capo too low.",
+      "steps": [
+        "Build a chart with a capo",
+        "Export \"Guitar Pro with the edited notes\""
+      ],
+      "expected": "The exported file has the capo.",
+      "observed": "capo 2 read back as 0.",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Verified",
+      "root_cause": "reader.py read root.get('capo').",
+      "fixes": [
+        "FIX-0304"
+      ],
+      "verified_by": "pytest (the test fails on the old code)",
+      "verification": "tests/test_capo.py::test_the_capo_survives_the_built_xml_read_back passed, and fails with the fix reverted",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit f907982d0f"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "its test passes and fails on the old code"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0305",
+      "title": "\"Check PSARC\" reported a fault for every slap, pop or tap",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "psarc",
+      "description": "The note_unused_byte rule wanted tap/slap/pluck all -1, but the builder writes 1 for a note that uses the technique.",
+      "steps": [
+        "Build a chart with a slapped note",
+        "Look at Check PSARC"
+      ],
+      "expected": "No fault.",
+      "observed": "note_unused_byte for a valid file.",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Verified",
+      "root_cause": "The rule did not allow the value the builder writes.",
+      "fixes": [
+        "FIX-0305"
+      ],
+      "verified_by": "pytest (the test fails on the old code)",
+      "verification": "tests/test_psarc_verify.py::test_each_rule_catches_the_fault_that_crashed_the_game passed, and fails with the fix reverted",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit f907982d0f"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "its test passes and fails on the old code"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0306",
+      "title": "A refused cover upload deleted the cover the project had",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "app",
+      "description": "The old cover was removed before the new upload was read, so an oversized (413) or non-image upload left the project with no cover while it still said it had one. The upload was also checked by its name, not its bytes.",
+      "steps": [
+        "Upload a cover",
+        "Upload an oversized image"
+      ],
+      "expected": "The first cover stays.",
+      "observed": "GET /cover 404 after the 413.",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Verified",
+      "root_cause": "_replace_cover ran before the upload was read and checked.",
+      "fixes": [
+        "FIX-0306"
+      ],
+      "verified_by": "pytest (the test fails on the old code)",
+      "verification": "tests/test_api.py::test_a_refused_cover_upload_keeps_the_cover_the_project_had passed, and fails with the fix reverted",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit f907982d0f"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "its test passes and fails on the old code"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0307",
+      "title": "A wrong value in an imported project broke the home page",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "import",
+      "description": "/import-sync and a .rfproj's project.json are raw JSON and only numbers were checked for finiteness; a string such as \"offset_s\": \"abc\" was stored and every GET /jobs answered 500 until that project was deleted.",
+      "steps": [
+        "Import a .rfproj whose project.json has \"offset_s\": \"1e\"",
+        "Open the home page"
+      ],
+      "expected": "The import is refused with the key named; the home page works.",
+      "observed": "500 on the import and on every GET /jobs.",
+      "severity": "High",
+      "priority": "P2",
+      "status": "Verified",
+      "root_cause": "No type check on imported params; _to_out converted with float() unguarded.",
+      "fixes": [
+        "FIX-0307"
+      ],
+      "verified_by": "pytest (the test fails on the old code)",
+      "verification": "tests/test_api.py::test_imported_params_of_the_wrong_type_are_refused_and_never_break_the_home_page passed, and fails with the fix reverted",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit f05b120399"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "its test passes and fails on the old code"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0308",
+      "title": "A GP7/8 file with a two-staff track before the guitar charted the wrong bars",
+      "detected": "2026-10-18",
+      "reported_by": "code review (Claude, on the maintainer's request)",
+      "found_in_version": "0.11.0-beta.2",
+      "found_in_build": "f64c45e8e176c44bd87c7c7866f741330b443011",
+      "module": "import",
+      "description": "MasterBar/<Bars> lists one bar per staff, track after track; the parser indexed it by track, so after a piano's grand staff every track read the bars of the staff before it (the guitar came out empty).",
+      "steps": [
+        "Import a .gp whose first track is a piano (two staves)",
+        "Pick the guitar track"
+      ],
+      "expected": "The guitar's notes.",
+      "observed": "An empty chart (test fixture).",
+      "severity": "High",
+      "priority": "P2",
+      "status": "Verified",
+      "root_cause": "bar_ids[track_index] instead of the track's first staff slot.",
+      "fixes": [
+        "FIX-0308"
+      ],
+      "verified_by": "pytest (the test fails on the old code)",
+      "verification": "tests/test_gpif_import.py::test_bars_are_found_by_staff_so_a_two_staff_piano_before_the_guitar_changes_nothing passed, and fails with the fix reverted",
+      "evidence": [
+        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+      ],
+      "resolved": "2026-10-18",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Fixed",
+          "note": "commit f05b120399"
+        },
+        {
+          "date": "2026-10-18",
+          "status": "Verified",
+          "note": "its test passes and fails on the old code"
+        }
+      ]
     }
   ]
 }

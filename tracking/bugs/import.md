@@ -2045,3 +2045,89 @@ In a picture, a small 9/6/3 grace note stands taller than a small 1/4, so the co
 
 - _pending_ — Open: recorded on 2026-10-17 from the project history (CHANGELOG/CLAUDE.md/git)
 - 2026-10-16 — Fixed: commit 3914f5530f
+
+## BUG-0307
+
+**A wrong value in an imported project broke the home page**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | High |
+| Priority | P2 |
+| Status | Verified |
+
+/import-sync and a .rfproj's project.json are raw JSON and only numbers were checked for finiteness; a string such as "offset_s": "abc" was stored and every GET /jobs answered 500 until that project was deleted.
+
+**Steps to reproduce:** 
+
+1. Import a .rfproj whose project.json has "offset_s": "1e"
+2. Open the home page
+
+**Expected:** The import is refused with the key named; the home page works.
+
+**Observed:** 500 on the import and on every GET /jobs.
+
+**Root cause:** No type check on imported params; _to_out converted with float() unguarded.
+
+**Fixes:** [FIX-0307](../FIX_LOG.md#fix-0307) (0.11.0-beta.3)
+
+**Verified:** tests/test_api.py::test_imported_params_of_the_wrong_type_are_refused_and_never_break_the_home_page passed, and fails with the fix reverted (by pytest (the test fails on the old code))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit f05b120399
+- 2026-10-18 — Verified: its test passes and fails on the old code
+
+## BUG-0308
+
+**A GP7/8 file with a two-staff track before the guitar charted the wrong bars**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | High |
+| Priority | P2 |
+| Status | Verified |
+
+MasterBar/<Bars> lists one bar per staff, track after track; the parser indexed it by track, so after a piano's grand staff every track read the bars of the staff before it (the guitar came out empty).
+
+**Steps to reproduce:** 
+
+1. Import a .gp whose first track is a piano (two staves)
+2. Pick the guitar track
+
+**Expected:** The guitar's notes.
+
+**Observed:** An empty chart (test fixture).
+
+**Root cause:** bar_ids[track_index] instead of the track's first staff slot.
+
+**Fixes:** [FIX-0308](../FIX_LOG.md#fix-0308) (0.11.0-beta.3)
+
+**Verified:** tests/test_gpif_import.py::test_bars_are_found_by_staff_so_a_two_staff_piano_before_the_guitar_changes_nothing passed, and fails with the fix reverted (by pytest (the test fails on the old code))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit f05b120399
+- 2026-10-18 — Verified: its test passes and fails on the old code

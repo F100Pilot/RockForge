@@ -1873,3 +1873,90 @@ Step 4 of "Novo projeto" offered only the online lookup's cards and "Sem capa"; 
 - 2026-10-16 — Fixed: commit 790038258e
 - 2026-10-16 — Verified: automated
 - 2026-10-16 — Closed: released in 0.10.0-beta.8
+
+## BUG-0298
+
+**A background task undid what the user changed while it ran**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | High |
+| Priority | P1 |
+| Status | Verified |
+
+Detect lyrics/tones and Separate instruments copied Job.params once and wrote that whole copy back on every progress line, for minutes. A cover uploaded, "Mark as synced", the main chart, tone swaps, "Install in game" or another detection's status, done meanwhile, was erased by the next progress line.
+
+**Steps to reproduce:** 
+
+1. Start "Separate instruments"
+2. While it runs, upload a cover or mark the song as synced
+3. Wait for the separation to finish
+
+**Expected:** The cover and the mark stay.
+
+**Observed:** cover_art and sync_confirmed went back to what they were when the task started (SQLite repro).
+
+**Root cause:** Each task kept its own copy of params and assigned it whole on every commit; with expire_on_commit off the row was never re-read.
+
+**Fixes:** [FIX-0298](../FIX_LOG.md#fix-0298) (0.11.0-beta.3)
+
+**Verified:** tests/test_celery_tasks.py::test_what_the_user_changes_while_a_task_runs_is_not_undone passed, and fails with the fix reverted (by pytest (the test fails on the old code))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit 2ae21cd533
+- 2026-10-18 — Verified: its test passes and fails on the old code
+
+## BUG-0306
+
+**A refused cover upload deleted the cover the project had**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Verified |
+
+The old cover was removed before the new upload was read, so an oversized (413) or non-image upload left the project with no cover while it still said it had one. The upload was also checked by its name, not its bytes.
+
+**Steps to reproduce:** 
+
+1. Upload a cover
+2. Upload an oversized image
+
+**Expected:** The first cover stays.
+
+**Observed:** GET /cover 404 after the 413.
+
+**Root cause:** _replace_cover ran before the upload was read and checked.
+
+**Fixes:** [FIX-0306](../FIX_LOG.md#fix-0306) (0.11.0-beta.3)
+
+**Verified:** tests/test_api.py::test_a_refused_cover_upload_keeps_the_cover_the_project_had passed, and fails with the fix reverted (by pytest (the test fails on the old code))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit f907982d0f
+- 2026-10-18 — Verified: its test passes and fails on the old code

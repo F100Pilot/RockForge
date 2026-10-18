@@ -4,6 +4,44 @@
 
 Every version, newest first. What a version fixed and the bugs it still carried come from the bug and fix registers. Process: [docs/RELEASE_PROCESS.md](../docs/RELEASE_PROCESS.md).
 
+## 0.11.0-beta.3
+
+| | |
+|---|---|
+| Status | Beta |
+| Created | 2026-10-18 |
+| Published | _pending_ |
+| Commit | _pending_ |
+| Build | GitHub Actions release workflow |
+| Artifacts | — |
+| Tests | CI (ruff, mypy, pytest, ESLint, Docker build) on the release commit, tools/release_check, and the frozen .exe smoke test of the release workflow |
+| Approved by | the maintainer (asked for the release) |
+
+**Goal:** Batch 1 of the code review: eleven high-severity fixes (lost edits during detections, lyric detection in the .exe, accented titles without .psarc, note edits losing fields, sync tools folding the chart, imports breaking the home page, GP7 multi-staff tracks)
+
+**New:**
+
+- Merge two tracks: choose the bars
+
+**Bugs fixed:** 
+
+- [BUG-0297](bugs/editor.md#bug-0297) Moving notes in the score changed the tempo and other notes, and a chord could not be moved
+- [BUG-0298](bugs/app.md#bug-0298) A background task undid what the user changed while it ran
+- [BUG-0299](bugs/exe.md#bug-0299) Lyric detection always failed in the .exe
+- [BUG-0300](bugs/psarc.md#bug-0300) A title or artist with an accent left the project without a .psarc
+- [BUG-0301](bugs/sync.md#bug-0301) The "Cursor" snap option snapped every drag to the song's last beat
+- [BUG-0302](bugs/editor.md#bug-0302) Editing a note lost its slide and the fields the editor does not show
+- [BUG-0303](bugs/sync.md#bug-0303) A sync tool used beside a lone "Song start" folded the chart and failed the rebuild
+- [BUG-0304](bugs/export.md#bug-0304) The Guitar Pro export of the edited notes lost the capo
+- [BUG-0305](bugs/psarc.md#bug-0305) "Check PSARC" reported a fault for every slap, pop or tap
+- [BUG-0306](bugs/app.md#bug-0306) A refused cover upload deleted the cover the project had
+- [BUG-0307](bugs/import.md#bug-0307) A wrong value in an imported project broke the home page
+- [BUG-0308](bugs/import.md#bug-0308) A GP7/8 file with a two-staff track before the guitar charted the wrong bars
+
+**Known bugs it carried:** —
+
+**Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
+
 ## 0.11.0-beta.2
 
 | | |
@@ -29,6 +67,17 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 **Known bugs it carried:** 
 
 - [BUG-0297](bugs/editor.md#bug-0297) Moving notes in the score changed the tempo and other notes, and a chord could not be moved (Medium, now Fixed)
+- [BUG-0298](bugs/app.md#bug-0298) A background task undid what the user changed while it ran (High, now Verified)
+- [BUG-0299](bugs/exe.md#bug-0299) Lyric detection always failed in the .exe (High, now Verified)
+- [BUG-0300](bugs/psarc.md#bug-0300) A title or artist with an accent left the project without a .psarc (High, now Verified)
+- [BUG-0301](bugs/sync.md#bug-0301) The "Cursor" snap option snapped every drag to the song's last beat (Medium, now Fixed)
+- [BUG-0302](bugs/editor.md#bug-0302) Editing a note lost its slide and the fields the editor does not show (High, now Verified)
+- [BUG-0303](bugs/sync.md#bug-0303) A sync tool used beside a lone "Song start" folded the chart and failed the rebuild (High, now Verified)
+- [BUG-0304](bugs/export.md#bug-0304) The Guitar Pro export of the edited notes lost the capo (Medium, now Verified)
+- [BUG-0305](bugs/psarc.md#bug-0305) "Check PSARC" reported a fault for every slap, pop or tap (Medium, now Verified)
+- [BUG-0306](bugs/app.md#bug-0306) A refused cover upload deleted the cover the project had (Medium, now Verified)
+- [BUG-0307](bugs/import.md#bug-0307) A wrong value in an imported project broke the home page (High, now Verified)
+- [BUG-0308](bugs/import.md#bug-0308) A GP7/8 file with a two-staff track before the guitar charted the wrong bars (High, now Verified)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 

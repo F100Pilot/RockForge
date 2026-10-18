@@ -302,7 +302,18 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0294](#fix-0294) | BUG-0294 | 0.10.0-beta.13 | not run | manual |
 | [FIX-0295](#fix-0295) | BUG-0295 | 0.10.0-beta.16 | not run | manual |
 | [FIX-0296](#fix-0296) | BUG-0296 | 0.11.0-beta.1 | not run | manual |
-| [FIX-0297](#fix-0297) | BUG-0297 | unreleased | not run | manual |
+| [FIX-0297](#fix-0297) | BUG-0297 | 0.11.0-beta.3 | not run | manual |
+| [FIX-0298](#fix-0298) | BUG-0298 | 0.11.0-beta.3 | passed | automated |
+| [FIX-0299](#fix-0299) | BUG-0299 | 0.11.0-beta.3 | passed | automated |
+| [FIX-0300](#fix-0300) | BUG-0300 | 0.11.0-beta.3 | passed | automated |
+| [FIX-0301](#fix-0301) | BUG-0301 | 0.11.0-beta.3 | not run | manual |
+| [FIX-0302](#fix-0302) | BUG-0302 | 0.11.0-beta.3 | passed | automated |
+| [FIX-0303](#fix-0303) | BUG-0303 | 0.11.0-beta.3 | passed | automated |
+| [FIX-0304](#fix-0304) | BUG-0304 | 0.11.0-beta.3 | passed | automated |
+| [FIX-0305](#fix-0305) | BUG-0305 | 0.11.0-beta.3 | passed | automated |
+| [FIX-0306](#fix-0306) | BUG-0306 | 0.11.0-beta.3 | passed | automated |
+| [FIX-0307](#fix-0307) | BUG-0307 | 0.11.0-beta.3 | passed | automated |
+| [FIX-0308](#fix-0308) | BUG-0308 | 0.11.0-beta.3 | passed | automated |
 
 ## FIX-0001
 
@@ -6532,7 +6543,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-10-18 |
 | By | Claude (AI coding assistant), on the maintainer's request |
-| Version | unreleased |
+| Version | 0.11.0-beta.3 |
 | Commits | 21d5ffd27676c33379d1d1d25dcaadeaaf4025ca |
 | Components | web/app.js; web/index.html; web/i18n-en.js; docs/GUIA.md; docs/GUIDE.en.md |
 | Tests | — |
@@ -6540,3 +6551,234 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | not run |
 | Validation | manual |
 | Regression risk | Low: browser-only; single-note drag, Shift+drag copy and the popup are unchanged. |
+
+## FIX-0298
+
+**Bugs:** [BUG-0298](bugs/app.md#bug-0298)
+
+**Root cause:** Each task kept its own copy of params and assigned it whole on every commit; with expire_on_commit off the row was never re-read.
+
+**Solution:** _ParamsWriter: each commit re-reads the row's params and applies only the keys the task changed since its last commit (a fresh dict).
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.3 |
+| Commits | 2ae21cd5332939a6350665de6c94b4864d506654 |
+| Components | src/rockforge/interfaces/worker/celery_app.py |
+| Tests | tests/test_celery_tasks.py::test_what_the_user_changes_while_a_task_runs_is_not_undone |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: covered by the suite (pytest, ruff, mypy, ESLint all green). |
+
+## FIX-0299
+
+**Bugs:** [BUG-0299](bugs/exe.md#bug-0299)
+
+**Root cause:** _whisperx_runner.py imported rockforge.infrastructure.lyrics.whisperx_adapter (which imports application.ports); the other runners import nothing from rockforge.
+
+**Solution:** The transcription/alignment code lives in the runner on plain dicts; whisperx_adapter wraps it. A test parses every runner and fails on any rockforge import.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.3 |
+| Commits | 2ae21cd5332939a6350665de6c94b4864d506654 |
+| Components | src/rockforge/infrastructure/lyrics/_whisperx_runner.py; src/rockforge/infrastructure/lyrics/whisperx_adapter.py |
+| Tests | tests/test_ml_python.py::test_no_runner_imports_rockforge; tests/test_lyrics_transcribe.py |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: covered by the suite (pytest, ruff, mypy, ESLint all green). |
+
+## FIX-0300
+
+**Bugs:** [BUG-0300](bugs/psarc.md#bug-0300)
+
+**Root cause:** song_key_from_title kept every str.isalnum() character, including non-ASCII letters.
+
+**Solution:** Accents are folded (NFKD) and only ASCII letters and digits are kept.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.3 |
+| Commits | f907982d0f1e2d7578fa2b6b27bba293b7070b0a |
+| Components | src/rockforge/infrastructure/packaging/psarc/manifest.py |
+| Tests | tests/test_psarc_manifest.py::test_a_song_key_is_ascii_even_for_an_accented_title |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: covered by the suite (pytest, ruff, mypy, ESLint all green). |
+
+## FIX-0301
+
+**Bugs:** [BUG-0301](bugs/sync.md#bug-0301)
+
+**Root cause:** The handler kept only 'bars' as a non-number value.
+
+**Solution:** 'cursor' is kept as such.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.3 |
+| Commits | f907982d0f1e2d7578fa2b6b27bba293b7070b0a |
+| Components | web/app.js |
+| Tests | — |
+| Manual checks | Playwright: picking Cursor sets snapDiv to 'cursor' |
+| Test result | not run |
+| Validation | manual |
+| Regression risk | Low: covered by the suite (pytest, ruff, mypy, ESLint all green). |
+
+## FIX-0302
+
+**Bugs:** [BUG-0302](bugs/editor.md#bug-0302)
+
+**Root cause:** Wrong field name in the popup and the clipboard; a fresh TabNote instead of replace() on the server.
+
+**Solution:** The popup and the clipboard read slide_to; _apply_note_overrides patches the hit note with replace(), clearing the bend curve, fingering and link only when the bend or fret changed.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.3 |
+| Commits | f907982d0f1e2d7578fa2b6b27bba293b7070b0a |
+| Components | web/app.js; src/rockforge/application/gp_pipeline.py |
+| Tests | tests/test_gp_pipeline.py::test_an_edit_keeps_the_note_fields_the_editor_does_not_show |
+| Manual checks | Playwright: the popup of a slide note shows slide to 9 |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: covered by the suite (pytest, ruff, mypy, ESLint all green). |
+
+## FIX-0303
+
+**Bugs:** [BUG-0303](bugs/sync.md#bug-0303)
+
+**Root cause:** The tools added one or two anchors with no end pins (only planBarRetempo/planStartShift/the group drag pinned them); _check_anchor_order allowed equal targets.
+
+**Solution:** pinChartEnds pins the chart's start where it shows and its end there or where the tool moves the tail; planTaps pins the start beside a lone anchor; the server refuses equal targets and names the beat a correction would fold.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.3 |
+| Commits | 9ef6aadeffa40d8ecf9f4d42fdb8c26a7a419659 |
+| Components | web/app.js; src/rockforge/application/gp_pipeline.py |
+| Tests | tests/test_gp_pipeline.py::test_corrections_that_collapse_or_fold_the_chart_are_refused_by_name |
+| Manual checks | Playwright on an invented GP5 built for real: start -1.5 s, a drag and Move following leave every beat in order and the rebuild completes (the old code failed it) |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: covered by the suite (pytest, ruff, mypy, ESLint all green). |
+
+## FIX-0304
+
+**Bugs:** [BUG-0304](bugs/export.md#bug-0304)
+
+**Root cause:** reader.py read root.get('capo').
+
+**Solution:** It reads the <capo> element.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.3 |
+| Commits | f907982d0f1e2d7578fa2b6b27bba293b7070b0a |
+| Components | src/rockforge/infrastructure/rsxml/reader.py |
+| Tests | tests/test_capo.py::test_the_capo_survives_the_built_xml_read_back |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: covered by the suite (pytest, ruff, mypy, ESLint all green). |
+
+## FIX-0305
+
+**Bugs:** [BUG-0305](bugs/psarc.md#bug-0305)
+
+**Root cause:** The rule did not allow the value the builder writes.
+
+**Solution:** Values other than -1 and 1 are faults.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.3 |
+| Commits | f907982d0f1e2d7578fa2b6b27bba293b7070b0a |
+| Components | src/rockforge/infrastructure/packaging/psarc/verify.py |
+| Tests | tests/test_psarc_verify.py::test_each_rule_catches_the_fault_that_crashed_the_game |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: covered by the suite (pytest, ruff, mypy, ESLint all green). |
+
+## FIX-0306
+
+**Bugs:** [BUG-0306](bugs/app.md#bug-0306)
+
+**Root cause:** _replace_cover ran before the upload was read and checked.
+
+**Solution:** The upload is read, checked by its bytes, then the old cover is replaced.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.3 |
+| Commits | f907982d0f1e2d7578fa2b6b27bba293b7070b0a |
+| Components | src/rockforge/interfaces/api/routers/delivery.py |
+| Tests | tests/test_api.py::test_a_refused_cover_upload_keeps_the_cover_the_project_had |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: covered by the suite (pytest, ruff, mypy, ESLint all green). |
+
+## FIX-0307
+
+**Bugs:** [BUG-0307](bugs/import.md#bug-0307)
+
+**Root cause:** No type check on imported params; _to_out converted with float() unguarded.
+
+**Solution:** _check_imported_params refuses wrong types and ranges naming the key (both importers); _to_out and the sync helpers read numbers tolerantly.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.3 |
+| Commits | f05b1203999403811547f1d849f6c9160ca4156b |
+| Components | src/rockforge/interfaces/api/app.py; src/rockforge/interfaces/api/routers/sync.py; src/rockforge/interfaces/api/routers/jobs.py; src/rockforge/interfaces/api/routers/charts.py |
+| Tests | tests/test_api.py::test_imported_params_of_the_wrong_type_are_refused_and_never_break_the_home_page |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: covered by the suite (pytest, ruff, mypy, ESLint all green). |
+
+## FIX-0308
+
+**Bugs:** [BUG-0308](bugs/import.md#bug-0308)
+
+**Root cause:** bar_ids[track_index] instead of the track's first staff slot.
+
+**Solution:** _staff_slot sums the staves of the earlier tracks; the chart and the lyric line use it.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.0-beta.3 |
+| Commits | f05b1203999403811547f1d849f6c9160ca4156b |
+| Components | src/rockforge/infrastructure/gpimport/gpif_parser.py |
+| Tests | tests/test_gpif_import.py::test_bars_are_found_by_staff_so_a_two_staff_piano_before_the_guitar_changes_nothing |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: covered by the suite (pytest, ruff, mypy, ESLint all green). |

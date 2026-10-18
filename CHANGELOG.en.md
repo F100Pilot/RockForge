@@ -6,6 +6,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+## [0.11.0 beta 3] — 2026-10-18
+
 ### New
 
 - **Merge two tracks: choose the bars** (New project → Tracks, and Edit info). A grid of the
@@ -21,6 +23,26 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
   Ctrl+click) selects a chord or several notes, and dragging one of them moves them all — they can
   pass other notes and the tempo does not change. "Drag" says what it does and warns when a note
   tries to pass its neighbour.
+- **What you change during a detection is no longer lost.** While "Detect lyrics", "Detect tone"
+  or "Separate instruments" ran, an uploaded cover, "Mark as synced", the main chart, swapped tones
+  or "Install in game" were undone by the next progress line.
+- **Lyric detection works in the .exe.** It always failed, after minutes of separation.
+- **A title or artist with an accent ("Canção", "Beyoncé") gets its .psarc** when Wwise is
+  installed. The song's internal name is now unaccented letters only (songs with accents get a new
+  internal name; install them in the game again).
+- **Editing a note no longer removes its slide**, nor its bend curve, its link to the next note or
+  its fingering. Pasting notes keeps the slide too.
+- **The sync tools no longer fold the score** when used after setting the "Song start": "Drag",
+  "Mark", "Move following", "Correct from here" and "Mark while listening" pin the start and end of
+  the song. The notes after used to lose the correction and the rebuild could fail with "beats must
+  be in chronological order"; now, if a correction folds the timing, the message says where.
+- **The "Cursor" snap works** (it took notes to the song's last beat).
+- **"Guitar Pro with the edited notes" keeps the capo.**
+- **"Check PSARC" no longer reports a fault** for a song with slap, pop or tap.
+- **A refused cover (too big, or not an image) no longer deletes the cover that was there.**
+- **A project (.rfproj) or sync file with a wrong value is refused** naming it, instead of taking
+  the home page down.
+- **GP7/8 files with a piano (two staves) before the guitar** read the right track.
 
 ## [0.11.0 beta 2] — 2026-10-18
 

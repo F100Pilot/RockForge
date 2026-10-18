@@ -437,6 +437,25 @@
       "approved_by": "the maintainer (asked for the release)",
       "upgrade": "Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.",
       "exceptions": []
+    },
+    {
+      "version": "0.11.0-beta.3",
+      "status": "Beta",
+      "created": "2026-10-18",
+      "published": "pending",
+      "commit": "pending",
+      "build": "GitHub Actions release workflow",
+      "artifacts": [],
+      "goal": "Batch 1 of the code review: eleven high-severity fixes (lost edits during detections, lyric detection in the .exe, accented titles without .psarc, note edits losing fields, sync tools folding the chart, imports breaking the home page, GP7 multi-staff tracks)",
+      "features": [
+        "Merge two tracks: choose the bars"
+      ],
+      "improvements": [],
+      "breaking": [],
+      "tests": "CI (ruff, mypy, pytest, ESLint, Docker build) on the release commit, tools/release_check, and the frozen .exe smoke test of the release workflow",
+      "approved_by": "the maintainer (asked for the release)",
+      "upgrade": "Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.",
+      "exceptions": []
     }
   ]
 }

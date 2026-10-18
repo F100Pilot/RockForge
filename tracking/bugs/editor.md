@@ -281,7 +281,7 @@ To move notes, the user dragged them in "Drag" mode, which is a sync tool: every
 
 **Root cause:** "Drag" is a sync tool (each drag is an anchor of the time warp), named and described like a note mover; "Edit notes" had no way to select and move several notes.
 
-**Fixes:** [FIX-0297](../FIX_LOG.md#fix-0297) (unreleased)
+**Fixes:** [FIX-0297](../FIX_LOG.md#fix-0297) (0.11.0-beta.3)
 
 **Verified:** _pending_ (by _pending_)
 
@@ -295,3 +295,46 @@ To move notes, the user dragged them in "Drag" mode, which is a sync tool: every
 
 - 2026-10-18 — Open: reported
 - 2026-10-18 — Fixed: commit 21d5ffd276
+
+## BUG-0302
+
+**Editing a note lost its slide and the fields the editor does not show**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | High |
+| Priority | P1 |
+| Status | Verified |
+
+The note popup read slide_to_fret, but built notes carry slide_to, so saving any edit sent no slide; paste dropped slides too. On the server an edit rebuilt the note from scratch, dropping its bend curve, link, fingering and pick direction (a sustain drag on a bend-and-release made it a plain bend).
+
+**Steps to reproduce:** 
+
+1. Open Edit notes and click a note with a slide
+2. Change its fret and save, then rebuild
+
+**Expected:** The slide and the rest of the note stay.
+
+**Observed:** The popup showed an empty slide-to; _apply_note_overrides built a fresh TabNote.
+
+**Root cause:** Wrong field name in the popup and the clipboard; a fresh TabNote instead of replace() on the server.
+
+**Fixes:** [FIX-0302](../FIX_LOG.md#fix-0302) (0.11.0-beta.3)
+
+**Verified:** tests/test_gp_pipeline.py::test_an_edit_keeps_the_note_fields_the_editor_does_not_show passed, and fails with the fix reverted (by pytest (the test fails on the old code))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code; Playwright: the popup of a slide note shows slide to 9
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit f907982d0f
+- 2026-10-18 — Verified: its test passes and fails on the old code

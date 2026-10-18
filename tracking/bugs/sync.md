@@ -1671,3 +1671,89 @@ In "Drag" mode, dragging a multi-note selection added only two anchors (the sele
 - 2026-10-17 — Fixed: commit 5a830bde54
 - 2026-10-17 — Verified: manual
 - 2026-10-17 — Closed: released in 0.10.0-beta.16
+
+## BUG-0301
+
+**The "Cursor" snap option snapped every drag to the song's last beat**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Fixed |
+
+Choosing "Cursor" in the snap list set snapDiv to NaN, so the grid was the last beat only and every drag landed there.
+
+**Steps to reproduce:** 
+
+1. Pick "Cursor" in the snap list
+2. Drag a note in "Drag"
+
+**Expected:** The note lands on the playhead.
+
+**Observed:** snapDiv was NaN; beatGridTimes returned only the last beat.
+
+**Root cause:** The handler kept only 'bars' as a non-number value.
+
+**Fixes:** [FIX-0301](../FIX_LOG.md#fix-0301) (0.11.0-beta.3)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code; Playwright: picking Cursor sets snapDiv to 'cursor'
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit f907982d0f
+
+## BUG-0303
+
+**A sync tool used beside a lone "Song start" folded the chart and failed the rebuild**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | High |
+| Priority | P1 |
+| Status | Verified |
+
+Drag, Mark at cursor, Move following, Correct from here and taps added anchors without pinning the chart's ends; the multi-anchor warp is identity outside its range, so the notes after lost the start shift and the bars before the first note ran backwards, and the rebuild failed with "beats must be in chronological order". The server also accepted two corrections taking two notes to the same instant.
+
+**Steps to reproduce:** 
+
+1. Move the song start by -1.5 s
+2. Pick "Drag" and drag a later note
+3. Apply and rebuild
+
+**Expected:** Only the dragged region changes; the rebuild completes.
+
+**Observed:** Playwright on the old code: the last note lost the shift, one beat folded, the rebuild failed.
+
+**Root cause:** The tools added one or two anchors with no end pins (only planBarRetempo/planStartShift/the group drag pinned them); _check_anchor_order allowed equal targets.
+
+**Fixes:** [FIX-0303](../FIX_LOG.md#fix-0303) (0.11.0-beta.3)
+
+**Verified:** tests/test_gp_pipeline.py::test_corrections_that_collapse_or_fold_the_chart_are_refused_by_name passed, and fails with the fix reverted (by pytest (the test fails on the old code))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code; Playwright on an invented GP5 built for real: start -1.5 s, a drag and Move following leave every beat in order and the rebuild completes (the old code failed it)
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit 9ef6aadeff
+- 2026-10-18 — Verified: its test passes and fails on the old code

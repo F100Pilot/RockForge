@@ -4,9 +4,9 @@
 
 Every bug found in RockForge, with a permanent id; the full record of each is on its module's page in [bugs/](bugs). Rules and states: [docs/VERSIONING.md](../docs/VERSIONING.md#bugs). Fixes: [FIX_LOG.md](FIX_LOG.md). Releases: [RELEASE_LOG.md](RELEASE_LOG.md).
 
-| Fixed | Closed |
-|---|---|
-| 97 | 200 |
+| Fixed | Verified | Closed |
+|---|---|---|
+| 98 | 10 | 200 |
 
 | ID | Title | Module | Severity | Priority | Status | Found in | Fixed in |
 |---|---|---|---|---|---|---|---|
@@ -306,4 +306,15 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0294](bugs/viewer.md#bug-0294) | The 3D highway grabbed the mouse wheel while the page was scrolled over it | viewer | Low | P3 | Closed | pending | 0.10.0-beta.13 |
 | [BUG-0295](bugs/sync.md#bug-0295) | Dragging a selection stretched the notes before it when another correction was pending | sync | Medium | P2 | Closed | 0.10.0-beta.15 | 0.10.0-beta.16 |
 | [BUG-0296](bugs/viewer.md#bug-0296) | Cancelling the separation question of the audio bars still analysed the recording | viewer | Low | P3 | Fixed | unreleased | 0.11.0-beta.1 |
-| [BUG-0297](bugs/editor.md#bug-0297) | Moving notes in the score changed the tempo and other notes, and a chord could not be moved | editor | Medium | P2 | Fixed | 0.11.0-beta.2 | — |
+| [BUG-0297](bugs/editor.md#bug-0297) | Moving notes in the score changed the tempo and other notes, and a chord could not be moved | editor | Medium | P2 | Fixed | 0.11.0-beta.2 | 0.11.0-beta.3 |
+| [BUG-0298](bugs/app.md#bug-0298) | A background task undid what the user changed while it ran | app | High | P1 | Verified | 0.11.0-beta.2 | 0.11.0-beta.3 |
+| [BUG-0299](bugs/exe.md#bug-0299) | Lyric detection always failed in the .exe | exe | High | P1 | Verified | 0.11.0-beta.2 | 0.11.0-beta.3 |
+| [BUG-0300](bugs/psarc.md#bug-0300) | A title or artist with an accent left the project without a .psarc | psarc | High | P1 | Verified | 0.11.0-beta.2 | 0.11.0-beta.3 |
+| [BUG-0301](bugs/sync.md#bug-0301) | The "Cursor" snap option snapped every drag to the song's last beat | sync | Medium | P2 | Fixed | 0.11.0-beta.2 | 0.11.0-beta.3 |
+| [BUG-0302](bugs/editor.md#bug-0302) | Editing a note lost its slide and the fields the editor does not show | editor | High | P1 | Verified | 0.11.0-beta.2 | 0.11.0-beta.3 |
+| [BUG-0303](bugs/sync.md#bug-0303) | A sync tool used beside a lone "Song start" folded the chart and failed the rebuild | sync | High | P1 | Verified | 0.11.0-beta.2 | 0.11.0-beta.3 |
+| [BUG-0304](bugs/export.md#bug-0304) | The Guitar Pro export of the edited notes lost the capo | export | Medium | P2 | Verified | 0.11.0-beta.2 | 0.11.0-beta.3 |
+| [BUG-0305](bugs/psarc.md#bug-0305) | "Check PSARC" reported a fault for every slap, pop or tap | psarc | Medium | P2 | Verified | 0.11.0-beta.2 | 0.11.0-beta.3 |
+| [BUG-0306](bugs/app.md#bug-0306) | A refused cover upload deleted the cover the project had | app | Medium | P2 | Verified | 0.11.0-beta.2 | 0.11.0-beta.3 |
+| [BUG-0307](bugs/import.md#bug-0307) | A wrong value in an imported project broke the home page | import | High | P2 | Verified | 0.11.0-beta.2 | 0.11.0-beta.3 |
+| [BUG-0308](bugs/import.md#bug-0308) | A GP7/8 file with a two-staff track before the guitar charted the wrong bars | import | High | P2 | Verified | 0.11.0-beta.2 | 0.11.0-beta.3 |

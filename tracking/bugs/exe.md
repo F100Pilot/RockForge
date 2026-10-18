@@ -440,3 +440,46 @@ Device auto-detection imported torch in the frozen .exe, which carries no PyTorc
 - 2026-10-16 — Fixed: commit b40f200f48
 - 2026-10-16 — Verified: automated
 - 2026-10-16 — Closed: released in 0.10.0-beta.8
+
+## BUG-0299
+
+**Lyric detection always failed in the .exe**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | High |
+| Priority | P1 |
+| Status | Verified |
+
+The WhisperX runner imported rockforge's adapter; in the .exe it is run by the extra components' Python, which has whisperx but not the rockforge package, so every lyric detection failed after minutes of separation.
+
+**Steps to reproduce:** 
+
+1. In the .exe with the extra components installed, open a project
+2. Press "Detect lyrics"
+
+**Expected:** Lyrics are detected.
+
+**Observed:** python -I -S _whisperx_runner.py gives ModuleNotFoundError: No module named 'rockforge'; the job ends unavailable.
+
+**Root cause:** _whisperx_runner.py imported rockforge.infrastructure.lyrics.whisperx_adapter (which imports application.ports); the other runners import nothing from rockforge.
+
+**Fixes:** [FIX-0299](../FIX_LOG.md#fix-0299) (0.11.0-beta.3)
+
+**Verified:** tests/test_ml_python.py::test_no_runner_imports_rockforge; tests/test_lyrics_transcribe.py passed, and fails with the fix reverted (by pytest (the test fails on the old code))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit 2ae21cd533
+- 2026-10-18 — Verified: its test passes and fails on the old code

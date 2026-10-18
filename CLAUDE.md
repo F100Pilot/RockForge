@@ -5818,6 +5818,40 @@ guaranteed to be dead here.
   written. Take `dict(job.params or {})` first (every detection task does; the
   build task did not, and lost the GP file's lyrics that way).
 
+## The code review of 2026-10-18, lot 1 (BUG-0298…0308)
+
+A review of the whole codebase (six reviewers, each finding confirmed in the
+code) found these; the rules they leave behind:
+- **A long task writes params through `_ParamsWriter`** (`celery_app.py`): each
+  commit re-reads the row and applies only the keys the task changed since its
+  last commit. Writing the task's own copy back whole erased what the API wrote
+  meanwhile (a cover, "synced", tone swaps, another detection's status) — the
+  JSON column rule above is necessary, not sufficient. Guarded by
+  `test_what_the_user_changes_while_a_task_runs_is_not_undone`.
+- **No runner imports `rockforge`**, now enforced by
+  `test_no_runner_imports_rockforge` (it parses every `_*_runner.py`): the
+  WhisperX runner imported the adapter, so lyric detection failed in every
+  `.exe`. Its implementation lives in the runner on plain dicts;
+  `whisperx_adapter` wraps it.
+- **A note edit patches the note** (`_apply_note_overrides` uses `replace()`):
+  the bend curve, link, fingering and pick direction stay unless the bend or
+  fret changed. The popup and the clipboard read the built note's `slide_to`.
+- **A sync tool that adds an anchor beside others pins the chart's ends**
+  (`pinChartEnds`, used by Arrastar, Marcar, Mover seguintes, Corrigir daqui;
+  `planTaps` pins the start beside a lone "Início"). The server refuses two
+  corrections with the same target and names the beat a correction would fold
+  (`_warp_parsed_track`), instead of TempoMap's bare error.
+- **Imported params are type-checked** (`_check_imported_params`, for
+  `/import-sync` and `.rfproj`), and `_to_out`/`_sync_edited` read numbers with
+  `_param_number`: one bad value must never take GET /jobs down.
+- **GPIF bars are found by staff** (`gpif_parser._staff_slot`): `MasterBar/<Bars>`
+  holds one bar per staff, track after track (alphaTab's buildModel).
+- Smaller ones: the song key is ASCII (accents folded — the SoundBank's STID is
+  ASCII); the XML reader reads `<capo>` as an element; `note_unused_byte` allows
+  1; a cover upload is checked by its bytes before the old one goes; the snap
+  select keeps `'cursor'`.
+Lots 2 and 3 (medium/low) are listed in the review's report, not yet done.
+
 ## Async detection tasks (the `detect_lyrics` / `detect_tones` pattern)
 
 Both lyric and tone detection are slow (minutes) Celery tasks that follow one

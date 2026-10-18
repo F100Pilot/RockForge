@@ -2567,3 +2567,89 @@ NativePsarcPacker swallowed a failed convert into a log while gp_pipeline warned
 - 2026-10-17 — Fixed: commit e234c859fe
 - 2026-10-17 — Verified: automated
 - 2026-10-17 — Closed: released in 0.10.0-beta.13
+
+## BUG-0300
+
+**A title or artist with an accent left the project without a .psarc**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | High |
+| Priority | P1 |
+| Status | Verified |
+
+The song key kept non-ASCII letters (Canção, Beyoncé); with Wwise installed the SoundBank's ASCII STID chunk raised UnicodeEncodeError and the build produced only the bundle.
+
+**Steps to reproduce:** 
+
+1. Create a project titled "Canção" on a machine with Wwise
+2. Build it
+
+**Expected:** A .psarc is produced.
+
+**Observed:** generate_soundbank raised UnicodeEncodeError for 'SigurRósCanção'.
+
+**Root cause:** song_key_from_title kept every str.isalnum() character, including non-ASCII letters.
+
+**Fixes:** [FIX-0300](../FIX_LOG.md#fix-0300) (0.11.0-beta.3)
+
+**Verified:** tests/test_psarc_manifest.py::test_a_song_key_is_ascii_even_for_an_accented_title passed, and fails with the fix reverted (by pytest (the test fails on the old code))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit f907982d0f
+- 2026-10-18 — Verified: its test passes and fails on the old code
+
+## BUG-0305
+
+**"Check PSARC" reported a fault for every slap, pop or tap**
+
+| | |
+|---|---|
+| Detected | 2026-10-18 |
+| Reported by | code review (Claude, on the maintainer's request) |
+| Found in | 0.11.0-beta.2 |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Verified |
+
+The note_unused_byte rule wanted tap/slap/pluck all -1, but the builder writes 1 for a note that uses the technique.
+
+**Steps to reproduce:** 
+
+1. Build a chart with a slapped note
+2. Look at Check PSARC
+
+**Expected:** No fault.
+
+**Observed:** note_unused_byte for a valid file.
+
+**Root cause:** The rule did not allow the value the builder writes.
+
+**Fixes:** [FIX-0305](../FIX_LOG.md#fix-0305) (0.11.0-beta.3)
+
+**Verified:** tests/test_psarc_verify.py::test_each_rule_catches_the_fault_that_crashed_the_game passed, and fails with the fix reverted (by pytest (the test fails on the old code))
+
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- code review of the whole codebase (six reviewers), confirmed by reading the code
+
+**History:**
+
+- 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit f907982d0f
+- 2026-10-18 — Verified: its test passes and fails on the old code
