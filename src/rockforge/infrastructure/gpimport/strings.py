@@ -65,6 +65,12 @@ def apply_capo(notes: Sequence[TabNote], capo: int) -> tuple[list[TabNote], list
     def up(fret: int | None) -> int | None:
         return fret + capo if fret else fret
 
+    def target(fret: int | None) -> int | None:
+        """A slide's end moved by the capo, kept on the neck (an unpitched
+        slide-out was capped at 22 before the capo moved it)."""
+        moved = up(fret)
+        return min(moved, MAX_FRET) if moved is not None else None
+
     out: list[TabNote] = []
     dropped = 0
     for n in notes:
@@ -73,10 +79,10 @@ def apply_capo(notes: Sequence[TabNote], capo: int) -> tuple[list[TabNote], list
             continue
         out.append(replace(
             n, fret=up(n.fret) or 0,
-            slide_to_fret=up(n.slide_to_fret),
-            slide_unpitch_to=up(n.slide_unpitch_to),
-            slide_in_from=up(n.slide_in_from),
-            trill_fret=up(n.trill_fret),
+            slide_to_fret=target(n.slide_to_fret),
+            slide_unpitch_to=target(n.slide_unpitch_to),
+            slide_in_from=target(n.slide_in_from),
+            trill_fret=t if (t := up(n.trill_fret)) is None or t <= MAX_FRET else None,
         ))
     warnings = []
     if dropped:

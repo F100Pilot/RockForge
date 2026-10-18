@@ -602,7 +602,10 @@ def auto_pick_tracks(gp_path: Path) -> tuple[int | None, int | None]:
     if not eligible:
         return None, None
     lead = next((t.index for t in eligible if "lead" in t.name.lower()), None)
-    rhythm = next((t.index for t in eligible if "rhythm" in t.name.lower()), None)
+    # never the Lead's track again: "Lead/Rhythm Guitar" would fill both slots
+    # and the build refuses two charts on one track
+    rhythm = next((t.index for t in eligible
+                   if "rhythm" in t.name.lower() and t.index != lead), None)
     if lead is None and rhythm is None:
         return eligible[0].index, None
     return lead, rhythm

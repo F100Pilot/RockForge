@@ -245,3 +245,16 @@ def test_the_bars_are_chosen_from_a_map_of_each_tracks_notes(
     assert client.get(f"/jobs/{job['id']}/gp-tracks").json()["merge_tracks"] == {
         "Lead": {"track": 1, "bars": [2, 3], "only_empty": True}}
     assert client.get(f"/jobs/{job['id']}/gp-bars").json()["bars"] == 3
+
+
+def test_a_track_named_lead_and_rhythm_is_picked_once(tmp_path: Path) -> None:
+    """Auto-pick scanned for "lead" and "rhythm" separately, so a lone
+    "Lead/Rhythm Guitar" filled both slots and the build refused it."""
+    from rockforge.application.gp_pipeline import auto_pick_tracks
+
+    song = gp.Song()
+    song.tracks[0].name = "Lead/Rhythm Guitar"
+    _beat(song.tracks[0].measures[0].voices[0], 1, [(2, 5)])
+    path = tmp_path / "one.gp5"
+    gp.write(song, str(path))
+    assert auto_pick_tracks(path) == (0, None)

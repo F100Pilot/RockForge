@@ -111,7 +111,10 @@ def expand_slide_ins(
                     string=n.string, fret=source, time=n.time - dt, sustain=dt,
                     techniques=frozenset({Technique.SLIDE}), slide_to_fret=n.fret,
                 ))
-            elif prev_i is not None:
+            elif prev_i is not None and room <= min_room:
+                # only a note that crowds the attack slides into it: a scoop
+                # whose source is its own fret (into fret 1 from below) used to
+                # turn a note seconds earlier into a seconds-long slide
                 p = result[prev_i]
                 if (p.slide_to_fret is None and p.slide_unpitch_to is None
                         and p.fret != n.fret and abs(p.fret - n.fret) <= max_scoop_frets):
@@ -142,6 +145,7 @@ def expand_trills(notes: Sequence[TabNote], *, period: float = 0.06) -> list[Tab
             continue
         steps = max(2, min(24, round(n.sustain / period)))
         dt = n.sustain / steps
+        ends = (n.slide_to_fret, n.slide_unpitch_to, n.link_next)
         for k in range(steps):
             fret = n.fret if k % 2 == 0 else n.trill_fret
             if k == 0:
@@ -149,9 +153,18 @@ def expand_trills(notes: Sequence[TabNote], *, period: float = 0.06) -> list[Tab
             else:
                 prev = n.fret if (k - 1) % 2 == 0 else n.trill_fret
                 techs = frozenset({Technique.HAMMER_ON if fret > prev else Technique.PULL_OFF})
-            out.append(TabNote(
-                string=n.string, fret=fret, time=n.time + k * dt, sustain=dt,
-                techniques=techs,
+            last = k == steps - 1
+            # the fingering and pick stay on every step; what happens at the
+            # END of the note (a slide out, a link on) goes to the last step
+            techs = techs - {Technique.SLIDE, Technique.BEND}
+            if last and ends[0] is not None:
+                techs = techs | {Technique.SLIDE}
+            out.append(replace(
+                n, fret=fret, time=n.time + k * dt, sustain=dt, techniques=frozenset(techs),
+                trill_fret=None, bend_semitones=0.0, bend_points=(),
+                slide_to_fret=ends[0] if last else None,
+                slide_unpitch_to=ends[1] if last else None,
+                link_next=ends[2] if last else False,
             ))
     out.sort(key=lambda x: (x.time, x.string))
     return out

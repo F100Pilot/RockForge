@@ -248,3 +248,38 @@ def test_number_sections_counts_per_name_not_by_position() -> None:
     )
     assert [s.number for s in mixed] == [1, 2]
     assert number_sections([]) == ([], {})
+
+
+def test_a_scoop_from_its_own_fret_never_turns_an_earlier_note_into_a_slide() -> None:
+    """A slide into fret 1 from below has source 1 (max(1, fret-3)); with room
+    before it the code fell through to "the previous note slides into it" and a
+    note 8 s earlier became an 8 s slide."""
+    notes = [TabNote(string=2, fret=3, time=1.0, sustain=0.2),
+             TabNote(string=2, fret=1, time=9.0, sustain=0.2, slide_in_from=1)]
+    out = expand_slide_ins(notes)
+    assert [(n.fret, n.sustain, n.slide_to_fret) for n in out] == [(3, 0.2, None), (1, 0.2, None)]
+
+
+def test_a_trill_keeps_the_notes_fingering_and_ends_with_its_slide() -> None:
+    """Each step used to be a bare TabNote: the fingering and pick went, and a
+    trill that slides out kept SLIDE on its first step with no target."""
+    n = TabNote(string=1, fret=7, time=1.0, sustain=0.48, trill_fret=9, left_hand=1,
+                pick_direction=1, slide_to_fret=10, link_next=True,
+                techniques=frozenset({Technique.SLIDE}))
+    steps = expand_trills([n])
+    assert len(steps) == 8 and all(s.left_hand == 1 and s.pick_direction == 1 for s in steps)
+    assert all(Technique.SLIDE not in s.techniques and s.slide_to_fret is None
+               and not s.link_next for s in steps[:-1])
+    last = steps[-1]
+    assert (last.slide_to_fret, last.link_next) == (10, True)
+    assert Technique.SLIDE in last.techniques
+
+
+def test_the_capo_keeps_slide_and_trill_targets_on_the_neck() -> None:
+    from rockforge.infrastructure.gpimport.strings import apply_capo
+
+    notes = [TabNote(string=1, fret=19, time=1.0, sustain=0.5, slide_unpitch_to=22),
+             TabNote(string=1, fret=18, time=2.0, sustain=0.5, trill_fret=21)]
+    (a, b), _ = apply_capo(notes, 5)
+    assert (a.fret, a.slide_unpitch_to) == (24, 24)
+    assert (b.fret, b.trill_fret) == (23, None)
