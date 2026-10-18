@@ -28,7 +28,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 
 **Known bugs it carried:** 
 
-- [BUG-0297](bugs/editor.md#bug-0297) Moving notes in the score changed the tempo and other notes, and a chord could not be moved (Medium, now Open)
+- [BUG-0297](bugs/editor.md#bug-0297) Moving notes in the score changed the tempo and other notes, and a chord could not be moved (Medium, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 

@@ -262,27 +262,36 @@ The tick, the synthesized source, the fretboard and "Pré-visualizar" read the b
 | Detected | 2026-10-18 |
 | Reported by | a user (Liam, Facebook) |
 | Found in | 0.11.0-beta.2 |
-| Build / commit | _pending_ |
+| Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
 | Severity | Medium |
 | Priority | P2 |
-| Status | Open |
+| Status | Fixed |
 
-Moving notes in the score changed the tempo and other notes, and a chord could not be moved
+To move notes, the user dragged them in "Drag" mode, which is a sync tool: every drag is a time-warp correction, so the notes around it stretched, the bars' BPM labels changed, and a note could not be dragged past another (a crossing correction). "Edit notes" moved one note at a time, so a chord had to be selected outside it.
 
-**Steps to reproduce:** _pending_
+**Steps to reproduce:** 
 
-**Expected:** _pending_
+1. Open a built project's score
+2. Pick "Drag" and drag a note past the next one
+3. Pick "Edit notes" and try to move a whole chord
 
-**Observed:** _pending_
+**Expected:** A note or a chord moves to another place without changing the tempo of anything else, past other notes if needed.
 
-**Root cause:** _pending_
+**Observed:** The drag became a sync correction: neighbouring notes and the BPM changed, a note could not pass another; in Edit notes only one note of a chord moved.
 
-**Fixes:** —
+**Root cause:** "Drag" is a sync tool (each drag is an anchor of the time warp), named and described like a note mover; "Edit notes" had no way to select and move several notes.
+
+**Fixes:** [FIX-0297](../FIX_LOG.md#fix-0297) (unreleased)
 
 **Verified:** _pending_ (by _pending_)
 
-**Resolved:** _pending_ · **Closed:** _pending_
+**Resolved:** 2026-10-18 · **Closed:** _pending_
+
+**Evidence:**
+
+- user report (Liam, Facebook), 2026-10-18: 'when you're moving notes around it can mess up the bps and other notes, also each note seems to need to be in a particular order so you cant drag a note past another note, when you click edit note you have to keep clicking back on slide to select a chord as well'
 
 **History:**
 
 - 2026-10-18 — Open: reported
+- 2026-10-18 — Fixed: commit 21d5ffd276

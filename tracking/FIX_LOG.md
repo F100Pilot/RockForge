@@ -302,6 +302,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0294](#fix-0294) | BUG-0294 | 0.10.0-beta.13 | not run | manual |
 | [FIX-0295](#fix-0295) | BUG-0295 | 0.10.0-beta.16 | not run | manual |
 | [FIX-0296](#fix-0296) | BUG-0296 | 0.11.0-beta.1 | not run | manual |
+| [FIX-0297](#fix-0297) | BUG-0297 | unreleased | not run | manual |
 
 ## FIX-0001
 
@@ -6518,3 +6519,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | not run |
 | Validation | manual |
 | Regression risk | Low: browser-only; the separation itself is unchanged. |
+
+## FIX-0297
+
+**Bugs:** [BUG-0297](bugs/editor.md#bug-0297)
+
+**Root cause:** "Drag" is a sync tool (each drag is an anchor of the time warp), named and described like a note mover; "Edit notes" had no way to select and move several notes.
+
+**Solution:** In Edit notes a drag on empty staff draws a selection box (a click still seeks) and dragging a selected note moves the whole selection as delete + insert note overrides (moveNotes): same time and string shift, may pass other notes, no sync anchor; a clash or a note outside the beat grid refuses it. Drag/Excerpt say they correct the timing, and a drag crossing the neighbouring correction warns and points at Edit notes.
+
+| | |
+|---|---|
+| Date | 2026-10-18 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | unreleased |
+| Commits | 21d5ffd27676c33379d1d1d25dcaadeaaf4025ca |
+| Components | web/app.js; web/index.html; web/i18n-en.js; docs/GUIA.md; docs/GUIDE.en.md |
+| Tests | — |
+| Manual checks | Playwright on an invented GP5 built for real: a box selected two notes; dragging one moved both 2.4 s later past two others and one string down, no sync anchor, pending note edits; a click on empty staff still seeked; Ctrl+Z restored; a Drag past the neighbouring correction showed the warning; no page errors |
+| Test result | not run |
+| Validation | manual |
+| Regression risk | Low: browser-only; single-note drag, Shift+drag copy and the popup are unchanged. |
