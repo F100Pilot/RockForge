@@ -41,10 +41,12 @@ whose tests did not run is `"test_result": "not run"`.
 
 On `main`, a new version number is a publication: when CI passes on the commit
 that changes it, the release workflow builds, tests and publishes it. The
-maintainer's standing rule: after every change, the one who made it (Claude)
-decides the bump by the rules of VERSIONING.md and does it in the same push,
-saying which number and why; the maintainer says so explicitly when a change
-must not be released.
+maintainer's standing rule: a version is cut right away only for an important
+fix (a bug that breaks or misleads the user); other changes wait under
+"Por lançar"/"Unreleased" and are released together with later ones — when an
+important fix ships or the maintainer asks. The one who made the change
+(Claude) decides which case it is, picks the number by the rules of
+VERSIONING.md and says so.
 
 1. Decide the number (VERSIONING.md): the next beta while testing, an RC when
    nothing more is coming, the stable version after a clean RC.

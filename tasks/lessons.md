@@ -137,3 +137,10 @@ matched the shell running that very command line (its text contains the
 pattern) and killed it (exit 144). Rule: start a background server with its pid
 recorded (`… & echo $! > server.pid`) and kill that pid; never select processes
 by matching their command line.
+
+Bumping the version after every change published a beta for each small
+improvement (beta 17 was only a chart). The user: "Não faças sempre bump. Se
+não for uma alteração importante para corrigir alguma coisa, prefiro juntar
+mais alterações e depois fazer bump." Rule: bump only for an important fix;
+everything else goes under "Por lançar"/"Unreleased" and ships with the next
+version.

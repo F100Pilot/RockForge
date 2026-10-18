@@ -5770,13 +5770,18 @@ job create the release WITH its tag on that commit (`gh release create
 that does not change the version finds the tag and does nothing;
 `concurrency: release` queues a second CI run on the same unreleased version
 until the first has made the tag. **So bumping the version IS publishing — and
-deciding the bump is Claude's job after every change** (the user's rule,
-2026-10-17: "Sempre que for alterado alguma coisa, quero que sejas tu a avaliar
-como fazer o bump. É regra. Se for necessário sair da regra, eu serei
-explícita."): once a change is done and verified, weigh it against
-docs/VERSIONING.md (next beta/RC/PATCH/MINOR/MAJOR, the stage's criteria) and
-bump with `tools/bump_version.py` in the same push, saying in the reply which
-number and why — unless the user explicitly says otherwise for that change. A pushed tag `v*` or a manual
+deciding WHEN to bump is Claude's job** (the user's rule, 2026-10-17, refined
+2026-10-18: "Não faças sempre bump. Se não for uma alteração importante para
+corrigir alguma coisa, prefiro juntar mais alterações e depois fazer bump."):
+bump right away only for an important FIX (a bug that breaks or misleads the
+user — a crash, a wrong build, a feature that does nothing); anything else (a
+new feature, an improvement, a small fix, docs) goes to `main` under the
+changelogs' "Por lançar"/"Unreleased" with its fix records unassigned, and is
+released together with later changes — when an important fix ships, or when
+the user asks. Each reply says whether it bumped and why, or that the change
+waits for the next version. The number follows docs/VERSIONING.md
+(next beta/RC/PATCH/MINOR/MAJOR, the stage's criteria), written with
+`tools/bump_version.py`. A pushed tag `v*` or a manual
 run still work as before. The `decide` script was run locally for each event
 (new version, existing tag, failed CI, pushed tag, dry run); the GitHub run
 itself is the next bump. The Windows job builds the downloads on
@@ -5821,9 +5826,10 @@ no `.psarc` came out.
   `web/i18n-<code>.js`, server text via `tr(pt, en, …)`. Use the
   `rockforge-i18n` skill (`.claude/skills/rockforge-i18n/SKILL.md`);
   `tests/test_i18n.py` enforces it.
-- **After every change, decide the version bump and do it** (the user's rule,
-  see "Publishing a release"): which number, why, and that the stage's
-  criteria are met — the user only steps in to say otherwise.
+- **Bump only for an important fix; otherwise gather changes** (the user's
+  rule, see "Publishing a release"): a non-urgent change goes under
+  "Por lançar"/"Unreleased" and waits for the next version; say in the reply
+  which it was.
 - **Every bug goes in the register, every fix gets a `FIX-` record** (the
   section below). Never mark a bug Verified/Closed without the evidence, never
   write a test result that was not seen.
