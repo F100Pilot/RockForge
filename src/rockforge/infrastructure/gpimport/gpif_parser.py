@@ -121,6 +121,11 @@ def _load_gpif(path: Path) -> ET.Element:
             xml = z.read(info).decode("utf-8")
     except (zipfile.BadZipFile, KeyError, OSError) as exc:
         raise IngestionError(f"could not read GP7 file: {exc}") from exc
+    except UnicodeDecodeError as exc:  # a locked/encrypted GP8 file: not markup at all
+        raise IngestionError(
+            "the score inside this .gp file cannot be read (it may be locked or "
+            "encrypted in Guitar Pro) — export it again without protection"
+        ) from exc
     # A GPIF score has no legitimate DOCTYPE/internal-entity declaration; reject
     # either outright rather than let the stdlib parser expand an entity bomb
     # ("billion laughs") — xml.etree.ElementTree has no built-in guard for this.
@@ -1252,7 +1257,9 @@ def _track_lyrics(
         if not text:
             continue
         bar = int(_text(line.find("Offset"), "0") or "0")
-        ticks = [bar_start_ticks[pos] for pos, b in enumerate(order) if b == bar] or [0]
+        # a line on a bar that is never played (after Fine, an ending not taken)
+        # has no place in the song — it used to land on top of the first line
+        ticks = [bar_start_ticks[pos] for pos, b in enumerate(order) if b == bar]
         out.extend(GpLyricLine(time=t(tick), text=text) for tick in ticks)
     out.sort(key=lambda line: line.time)
     return out

@@ -59,6 +59,10 @@ class ExportedArrangement:
     notes_dropped: int = 0  # onsets past the last measure, or on a missing string
     quantized: int = 0  # onsets that had to move to reach the rhythmic grid
     max_shift_s: float = 0.0
+    # notes snapped onto a string already sounding at that tick (one dropped each)
+    string_clashes: int = 0
+    # how far the bars drifted from the chart's own times (integer BPM, the 10-400 clamp)
+    tempo_drift_s: float = 0.0
     warnings: list[str] = field(default_factory=list)
 
 
@@ -302,6 +306,7 @@ def write_arrangement_gp5(
     song.measureHeaders = []
     track.measures = []
     cursor = 0  # index into `onsets`
+    written_at = grid[0][0] if grid else 0.0  # where the written bars have reached, in seconds
 
     for m, (start, end, beat_count) in enumerate(grid):
         measure_s = end - start
@@ -344,9 +349,14 @@ def write_arrangement_gp5(
             placed.setdefault(max(0, tick), []).extend(by_time[t])
             cursor += 1
 
-        # The bar's own tempo, rounded (these formats store tempo as an integer).
-        bpm = int(round(beat_count * 60.0 / measure_s)) if measure_s > 0 else song.tempo
+        # The bar's own tempo, rounded (these formats store tempo as an integer)
+        # with the rounding error CARRIED: each bar aims at where the chart's
+        # bar really ends, so 90 bars at 119.52 BPM do not come back 0.67 s late.
+        aim = end - written_at
+        bpm = int(round(beat_count * 60.0 / aim)) if aim > 0 else song.tempo
         bpm = max(10, min(400, bpm))
+        written_at += beat_count * 60.0 / bpm
+        report.tempo_drift_s = max(report.tempo_drift_s, abs(written_at - end))
         measure_bpm: int | None = None
         if m == 0:
             song.tempo = bpm
@@ -354,7 +364,6 @@ def write_arrangement_gp5(
         elif bpm != running_bpm:
             measure_bpm = bpm
             running_bpm = bpm
-        first_beat_of_measure = True
 
         # Beats fill the bar in order; a gap becomes a rest so the measure adds up.
         at = 0
@@ -369,27 +378,22 @@ def write_arrangement_gp5(
             group = placed[tick]
             nxt = min((k for k in placed if k > tick), default=measure_ticks)
             beat = guitarpro.Beat(voice)
-            if first_beat_of_measure and measure_bpm is not None:
-                # These formats have NO tempo field in the measure header (see
-                # tempo_writer): measure 1 is the song header's tempo and every
-                # later change is a MixTableChange on a beat. This is what makes
-                # the user's sync corrections permanent in Guitar Pro.
-                mtc = guitarpro.MixTableChange()
-                mtc.wah = guitarpro.WahEffect.none
-                mtc.hideTempo = False
-                mtc.tempo = guitarpro.MixTableItem(
-                    value=measure_bpm, duration=0, allTracks=False
-                )
-                beat.effect.mixTableChange = mtc
-                first_beat_of_measure = False
             span = _split_ticks(max(_MIN_TICKS, nxt - tick))
             beat.duration = guitarpro.Duration.fromTime(span[0])
             beat_s = span[0] / measure_ticks * measure_s
             beat.status = guitarpro.BeatStatus.normal
+            used: set[int] = set()
             for n in group:
                 if not 0 <= n.string < n_strings:
                     report.notes_dropped += 1
                     continue
+                if n.string in used:
+                    # two onsets snapped onto one tick on one string: a GP5 beat
+                    # holds ONE note per string — a second one made the file
+                    # unreadable — so the first is kept
+                    report.string_clashes += 1
+                    continue
+                used.add(n.string)
                 gp_note = guitarpro.Note(beat)
                 gp_note.string = n_strings - n.string  # inverse of the importer
                 # Guitar Pro counts frets from the capo (the importer's apply_capo, inverted).
@@ -413,6 +417,17 @@ def write_arrangement_gp5(
                 rest.duration = guitarpro.Duration.fromTime(chunk)
                 rest.status = guitarpro.BeatStatus.rest
                 voice.beats.append(rest)
+        if measure_bpm is not None and voice.beats:
+            # These formats have NO tempo field in the measure header (see
+            # tempo_writer): measure 1 is the song header's tempo and every later
+            # change is a MixTableChange on a beat — the bar's FIRST beat, a rest
+            # too (it used to ride the first NOTE, so a bar with no notes lost its
+            # tempo). This is what makes the user's sync corrections permanent.
+            mtc = guitarpro.MixTableChange()
+            mtc.wah = guitarpro.WahEffect.none
+            mtc.hideTempo = False
+            mtc.tempo = guitarpro.MixTableItem(value=measure_bpm, duration=0, allTracks=False)
+            voice.beats[0].effect.mixTableChange = mtc
         track.measures.append(measure)
 
     # Onsets past the final measure cannot be notated — say so rather than
@@ -432,6 +447,21 @@ def write_arrangement_gp5(
             f"(desvio máximo {shift_ms} ms)",
             f"{report.quantized} note(s) snapped to the rhythmic grid "
             f"(largest shift {shift_ms} ms)",
+        ))
+    if report.string_clashes:
+        report.warnings.append(tr(
+            f"{report.string_clashes} nota(s) caíram na mesma corda e no mesmo tempo de outra "
+            "depois do ajuste à grelha e não foram escritas (notas muito rápidas)",
+            f"{report.string_clashes} note(s) landed on the same string and tick as another "
+            "after snapping to the grid and were not written (very fast notes)",
+        ))
+    if report.tempo_drift_s > 0.02:
+        drift_ms = f"{report.tempo_drift_s * 1000:.0f}"
+        report.warnings.append(tr(
+            f"o andamento é guardado em BPM inteiros: os compassos afastam-se até {drift_ms} ms "
+            "dos tempos da partitura",
+            f"tempo is stored as whole BPM: the bars move up to {drift_ms} ms from the "
+            "score's times",
         ))
     report.warnings.append(tr(
         "o ficheiro tem só esta pista — outras pistas, formatação e letra do "

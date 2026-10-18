@@ -209,3 +209,30 @@ def test_bad_corrections_are_rejected(tmp_path: Path) -> None:
     with pytest.raises(IngestionError, match="no beat"):
         write_tempo_corrections(src, dst, [TempoCorrection(500, 120.0)])
     assert not dst.exists()  # nothing half-written is left behind
+
+
+def test_a_correction_wins_over_a_tempo_left_on_another_track(tmp_path: Path) -> None:
+    """The importer reads every track's tempo changes, the last track winning: a
+    correction written on track 1 lost to the 132 BPM authored on the bass track
+    at that bar, and bar 1's correction to a tempo change on bar 1's first beat."""
+    import guitarpro as gp
+
+    from rockforge.infrastructure.gpimport.parser import _load, _tempo_events
+
+    src, dst = tmp_path / "o.gp5", tmp_path / "c.gp5"
+    _make_gp5(src)
+    song = gp.parse(str(src))
+    lead, bass = song.tracks
+    mtc = lead.measures[59].voices[0].beats[0].effect.mixTableChange
+    lead.measures[59].voices[0].beats[0].effect.mixTableChange = None
+    bass.measures[59].voices[0].beats[0].effect.mixTableChange = mtc
+    first = gp.MixTableChange()
+    first.wah, first.hideTempo = gp.WahEffect.none, False
+    first.tempo = gp.MixTableItem(value=125, duration=0, allTracks=False)
+    bass.measures[0].voices[0].beats[0].effect.mixTableChange = first
+    gp.write(song, str(src), version=(5, 1, 0))
+
+    write_tempo_corrections(src, dst, [TempoCorrection(1, 118.0), TempoCorrection(60, 100.0)])
+    events = dict(_tempo_events(_load(dst).tracks[0]))
+    assert events[0] == 118.0
+    assert 132.0 not in events.values() and 100.0 in events.values()

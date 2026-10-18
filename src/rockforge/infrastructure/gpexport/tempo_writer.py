@@ -31,6 +31,7 @@ import shutil
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 from xml.etree import ElementTree as ET
 
 from rockforge.domain.errors import IngestionError
@@ -88,12 +89,32 @@ def _write_binary_gp(
     song = guitarpro.parse(str(src))
     version = song.versionTuple
     applied: list[AppliedCorrection] = []
+    def tempos_at_bar_start(idx: int) -> list[Any]:
+        """Every tempo change already sitting on the first beat of written bar
+        ``idx``, on ANY track: the importer reads them all (tracks in order, the
+        last wins), so one left behind on a tempo track overrode the correction."""
+        found = []
+        for track in song.tracks:
+            if idx >= len(track.measures):
+                continue
+            for voice in track.measures[idx].voices:
+                mtc = voice.beats[0].effect.mixTableChange if voice.beats else None
+                if mtc is not None and mtc.tempo is not None:
+                    found.append(mtc)
+        return found
+
     for c in corrections:
         applied.append(AppliedCorrection(c.measure, c.bpm, float(round(c.bpm))))
         idx = c.measure - 1
+        existing = tempos_at_bar_start(idx)
+        for mtc in existing:
+            mtc.tempo = guitarpro.MixTableItem(
+                value=int(round(c.bpm)), duration=0, allTracks=mtc.tempo.allTracks)
         if c.measure == 1:
             # Measure 1 is the song's initial tempo, not a mid-song change.
             song.tempo = int(round(c.bpm))
+            continue
+        if existing:
             continue
         # A tempo change is global, so it only needs to exist on one track — but
         # it must land on a beat that actually exists.

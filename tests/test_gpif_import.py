@@ -926,3 +926,21 @@ def gp7_file_path(tmp_path: Path) -> Path:
         z.writestr("VERSION", "7.0")
         z.writestr("Content/score.gpif", GPIF)
     return path
+
+
+def test_a_locked_gp_file_is_refused_in_words_not_a_crash(tmp_path: Path) -> None:
+    """A .gp whose score is not text (locked/encrypted in Guitar Pro) raised
+    UnicodeDecodeError — a 500 that also left the upload behind."""
+    from rockforge.domain.errors import IngestionError
+    from rockforge.infrastructure.gpimport.parser import inspect_gp
+
+    path = _gp_with(tmp_path, "")
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("Content/score.gpif", bytes(range(128, 256)) * 8)
+    with pytest.raises(IngestionError, match="locked or"):
+        inspect_gp(path)
+
+
+def test_a_lyric_line_on_a_bar_never_played_is_not_put_at_the_start(tmp_path: Path) -> None:
+    gpif = GPIF.replace("<Offset>0</Offset>", "<Offset>7</Offset>")
+    assert parse_gp_track(_gp_with(tmp_path, gpif), 0).lyrics == []

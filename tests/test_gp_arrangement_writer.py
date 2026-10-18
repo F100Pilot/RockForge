@@ -236,3 +236,32 @@ def test_a_linked_slide_is_written_as_guitar_pros_legato_slide(tmp_path: Path) -
     write_arrangement_gp5(_arrangement(notes), dst)
     got = sorted(parse_gp_track(dst, 0).notes, key=lambda n: n.time)
     assert [n.link_next for n in got] == [True, False, False, False]
+
+
+def test_fast_notes_snapped_onto_one_string_still_give_a_readable_file(tmp_path: Path) -> None:
+    """Sixteenth triplets on one string snap two onsets onto one tick: a GP5 beat
+    with two notes on one string could not be read back at all."""
+    step = 0.5 / 6  # sixteenth-note triplets at 120 BPM
+    notes = [TabNote(string=4, fret=5 + i % 3, time=0.5 + i * step, sustain=0.05)
+             for i in range(12)]
+    out = tmp_path / "fast.gp5"
+    report = write_arrangement_gp5(_arrangement(notes), out)
+    assert report.string_clashes > 0
+    assert any(str(report.string_clashes) in w for w in report.warnings)
+    back = parse_gp_track(out, 0)
+    assert len(back.notes) == report.notes_written
+
+
+def test_the_rounding_of_each_bars_tempo_does_not_add_up(tmp_path: Path) -> None:
+    """Each bar's tempo is written as a whole BPM; rounding every bar the same way
+    put the last note of a 90-bar song at 119.52 BPM 0.67 s early."""
+    bpm = 119.52
+    beats = _steady(bars=90, bpm=bpm)
+    last = beats[-5].time
+    out = tmp_path / "long.gp5"
+    report = write_arrangement_gp5(_arrangement(
+        [TabNote(string=1, fret=3, time=0.0, sustain=0.2),
+         TabNote(string=1, fret=5, time=last, sustain=0.2)], beats=beats), out)
+    back = parse_gp_track(out, 0)
+    assert abs(back.notes[-1].time - back.notes[0].time - last) < 0.02
+    assert report.tempo_drift_s < 0.02
