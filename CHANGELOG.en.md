@@ -8,6 +8,10 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ### New
 
+- **Export and import the project** (Export → **RockForge project (.rfproj)**; home page →
+  **Import project**): the whole project in one file — the recording, the Guitar Pro file, the
+  cover, every correction and, if you want, the separated instruments — to open it on another
+  computer, keep a copy or send it to someone. Importing makes a new project, built again.
 - **Audio bars above the score** (Score → **Audio bars**): one lane with the recording and one
   with the sound of the track's notes, on the same time axis. Where their peaks do not fall
   together, the score is out of time. The recording's bars show the **attacks** — each strike a

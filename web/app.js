@@ -311,6 +311,8 @@ homeDrop.addEventListener('drop', e => {
   e.preventDefault();
   homeDrop.classList.remove('drag-over');
   if (!e.dataTransfer || !e.dataTransfer.files.length) return;
+  // A project exported from RockForge opens as a project, not in the wizard.
+  if (/\.rfproj$/i.test(e.dataTransfer.files[0].name)) { importProject(e.dataTransfer.files[0]); return; }
   openNewJobModal('gp');
   const inp = document.querySelector('#gpInspectForm input[type=file]');
   inp.files = e.dataTransfer.files;
@@ -1204,6 +1206,82 @@ async function renderInstallRow(j) {
     label.textContent = T('Instalar no jogo');
   }
 }
+// "Projeto RockForge (.rfproj)": the whole project in one file. What it holds
+// and its size come from /project-info, read once per version.
+let projectInfo = null;  // {job, ready, missing, cover, stems, base_bytes, stems_bytes}
+const sizeMB = bytes => (bytes < 1048576 ? '<1' : String(Math.round(bytes / 1048576)));
+async function renderProjectExport(j) {
+  const row = document.getElementById('projectExportRow');
+  if (!row) return;
+  row.hidden = j.source_type !== 'gp';
+  if (row.hidden) return;
+  if (!projectInfo || projectInfo.job !== j.id) {
+    try {
+      projectInfo = { job: j.id, ...await getJSON(`/jobs/${j.id}/project-info`) };
+    } catch { projectInfo = null; return; }
+  }
+  if (!selectedJob || selectedJob.id !== j.id) return;
+  const p = projectInfo;
+  const info = document.getElementById('projectExportInfo');
+  const missing = p.missing.map(m => (m === 'recording' ? T('a gravação') : T('o ficheiro Guitar Pro')));
+  info.textContent = p.ready
+    ? T('Tamanho: cerca de {mb} MB.', { mb: sizeMB(p.base_bytes) })
+    : T('Não se pode exportar: {what} já não existe neste computador.', { what: missing.join(', ') });
+  document.getElementById('projectExportBtn').disabled = !p.ready;
+  const lbl = document.getElementById('projectExportStemsLbl');
+  lbl.hidden = !p.ready || !p.stems.length;
+  document.getElementById('projectExportStemsText').textContent =
+    T('Incluir os instrumentos separados ({names}, +{mb} MB) — quem abrir não precisa de os separar outra vez',
+      { names: p.stems.map(n => STEM_LABELS[n] || n).join(', '), mb: sizeMB(p.stems_bytes) });
+}
+document.getElementById('projectExportBtn').addEventListener('click', async () => {
+  if (!selectedJob) return;
+  const job = selectedJob.id;
+  const pending = document.getElementById('pendingChangesInfo').textContent.trim();
+  if (pending && !await confirmModal(T(
+    'Há alterações por aplicar ({changes}). O ficheiro leva o projeto tal como foi construído pela última vez — para as incluir, carrega primeiro em "Aplicar e reconstruir". Exportar mesmo assim?',
+    { changes: pending }), T('Exportar'))) return;
+  if (!selectedJob || selectedJob.id !== job) return;
+  const stems = !document.getElementById('projectExportStemsLbl').hidden
+    && document.getElementById('projectExportStems').checked;
+  const a = document.createElement('a');
+  a.href = `/jobs/${job}/export-project${stems ? '?stems=true' : ''}`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  toast(T('A preparar o ficheiro do projeto…'), 'ok');
+});
+
+// "Importar projeto": a .rfproj becomes a new project, built again.
+async function importProject(file) {
+  if (!file) return;
+  if (!/\.(rfproj|zip)$/i.test(file.name)) {
+    toast(T('Escolhe um ficheiro de projeto do RockForge (.rfproj).'), 'err');
+    return;
+  }
+  const btn = document.getElementById('importProjectBtn');
+  btn.disabled = true;
+  toast(T('A importar {name}…', { name: file.name }), 'ok');
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    const job = await getJSON('/projects/import', { method: 'POST', body: fd });
+    toast(T('Projeto importado: {title} — a construir.', { title: job.title }), 'ok');
+    await refreshJobs();
+    selectJob(job.id);
+  } catch (e) {
+    toast(T('Não foi possível importar: {error}', { error: e.message }), 'err');
+  } finally {
+    btn.disabled = false;
+  }
+}
+document.getElementById('importProjectBtn').addEventListener('click', () => document.getElementById('importProjectFile').click());
+document.getElementById('importProjectFile').addEventListener('change', e => {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';
+  importProject(file);
+});
+
 document.getElementById('installBtn').addEventListener('click', async () => {
   if (!selectedJob) return;
   if (gameDlc && !gameDlc.target) { showSettingsPage('geral'); openSettings(); return; }
@@ -2273,6 +2351,7 @@ async function selectJob(id, { poll = false, force = false } = {}) {
   if (j.bundle_available && !j.psarc_available) dl.innerHTML += `<span class="meta">${T('PSARC requer Wwise — ver README')}</span>`;
   if (!j.bundle_available) dl.innerHTML = '<span class="meta">' + T('Os ficheiros aparecem aqui quando a construção terminar.') + '</span>';
   renderInstallRow(j);
+  renderProjectExport(j);
   document.getElementById('noteCountsInfo').textContent =
     T('Notas por pista: {list}', { list: Object.entries(j.note_counts || {}).map(([k, v]) => `${k} ${v}`).join(' · ') || '—' });
 

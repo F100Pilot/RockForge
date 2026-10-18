@@ -8,6 +8,11 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ### Novidades
 
+- **Exportar e importar o projeto** (Exportar → **Projeto RockForge (.rfproj)**; página inicial →
+  **Importar projeto**): o projeto inteiro num ficheiro — a gravação, o ficheiro Guitar Pro, a
+  capa, todas as correções e, se quiseres, os instrumentos separados — para o abrir noutro
+  computador, guardar uma cópia ou enviá-lo a alguém. Ao importar fica um projeto novo, que é
+  construído outra vez.
 - **Barras de áudio por cima da partitura** (Partitura → **Barras de áudio**): uma faixa com a
   gravação e outra com o som das notas da pista, no mesmo eixo do tempo. Onde os picos das duas
   não caem juntos, a partitura está fora de tempo. As barras da gravação mostram os **ataques**

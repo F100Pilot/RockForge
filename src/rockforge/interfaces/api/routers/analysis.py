@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
@@ -22,30 +21,6 @@ from rockforge.interfaces.api.schemas import (
 )
 
 router = APIRouter()
-
-
-# librosa's beat/tempo tracker (used by /detect-tempo below) is
-# unreliable on a full mix of fast, dense music — it locks onto the wrong
-# metrical level (observed: 123 BPM read on a genuine ~180 BPM metal song),
-# which derails both the single-tempo and the dynamic sync. Isolated DRUMS are
-# by far the cleanest beat signal, so when the user has already run "Separar
-# instrumentos" (Demucs htdemucs_6s), the tempo-critical detection runs on the
-# drum stem instead of the mix. The 6-stem pass already produces drums.wav (a
-# sibling of the guitar stem we keep in params["stems"]); it's just omitted from
-# the playback list, so we can locate and reuse it with no extra separation.
-def _drum_stem(params: dict[str, Any]) -> Path | None:
-    """The isolated drum stem for beat/tempo detection, if a Demucs separation
-    already produced one for this job — else None (fall back to the full mix).
-    Derived as the sibling drums.wav of the stored guitar stem (one htdemucs_6s
-    pass writes both), so no separate bookkeeping is needed."""
-    stems = params.get("stems")
-    if not isinstance(stems, dict):
-        return None
-    guitar = stems.get("guitar")
-    if not isinstance(guitar, str) or not guitar:
-        return None
-    drums = Path(guitar).with_name("drums.wav")
-    return drums if drums.exists() else None
 
 
 @router.post("/jobs/{job_id}/detect-tempo", response_model=DetectTempoOut)
@@ -81,7 +56,7 @@ def detect_tempo(job_id: str, payload: DetectTempoIn) -> DetectTempoOut:
     reference_bpm = (
         float(payload.chart_bpm) if payload.chart_bpm and payload.chart_bpm > 0 else gp_bpm
     )
-    drums = _drum_stem(params)
+    drums = api._drum_stem(params)
     try:
         detected_bpm = detect_tempo_from(drums or src, payload.from_s, reference_bpm)
     except ImportError as exc:
@@ -125,40 +100,13 @@ def detect_beat_sync(job_id: str, payload: DetectBeatSyncIn) -> DetectBeatSyncOu
     return DetectBeatSyncOut.model_validate(result)
 
 
-def _separated_stems(
-    job_id: str, params: dict[str, Any], drums: bool = False
-) -> dict[str, Path]:
-    """The instruments a Demucs pass already separated, by name (drums left out,
-    as "Separar instrumentos" leaves them out, unless ``drums``): the ones it
-    stored, plus any the tone detection left in the shared cache
-    (``celery_app._demucs_stems_cache_dir`` — one htdemucs_6s pass writes every
-    instrument). Both were separated from the recording untrimmed, so their
-    seconds are the recording's."""
-    found: dict[str, Path] = {}
-    stems = params.get("stems")
-    if isinstance(stems, dict):
-        for name, path in stems.items():
-            if isinstance(path, str) and path and Path(path).is_file():
-                found[str(name)] = Path(path)
-    cache = api.settings.work_dir / job_id / "demucs_stems" / "stems"
-    if cache.is_dir():
-        for wav in sorted(cache.glob("*/*/*.wav")):
-            if drums or wav.stem != "drums":
-                found.setdefault(wav.stem, wav)
-    if drums and "drums" not in found:
-        beside = _drum_stem(params)
-        if beside is not None:
-            found["drums"] = beside
-    return found
-
-
 @router.get("/jobs/{job_id}/attack-sources", response_model=AttackSourcesOut)
 def attack_sources(job_id: str) -> AttackSourcesOut:
     """The separated instruments the attacks can be measured on."""
     with api._session_factory() as session:
         job = api._job_or_404(session, job_id)
-        stems = _separated_stems(job.id, dict(job.params or {}))
-        with_drums = _separated_stems(job.id, dict(job.params or {}), drums=True)
+        stems = api._separated_stems(job.id, dict(job.params or {}))
+        with_drums = api._separated_stems(job.id, dict(job.params or {}), drums=True)
     return AttackSourcesOut(stems=sorted(stems), level_stems=sorted(with_drums))
 
 
@@ -175,7 +123,7 @@ def detect_attacks(job_id: str, source: str | None = None) -> DetectAttacksOut:
         if job.source_type != "gp":
             raise HTTPException(422, "attack detection only applies to Guitar Pro jobs")
         src = Path(job.source)
-        stems = _separated_stems(job.id, dict(job.params or {}))
+        stems = api._separated_stems(job.id, dict(job.params or {}))
     name = source if source is not None else ("guitar" if "guitar" in stems else "mix")
     if name != "mix" and name not in stems:
         raise HTTPException(409, i18n.tr(
@@ -210,7 +158,7 @@ def onset_levels(job_id: str, source: str = "mix") -> OnsetLevelsOut:
         if job.source_type != "gp":
             raise HTTPException(422, "the audio bars only apply to Guitar Pro jobs")
         src = Path(job.source)
-        stems = _separated_stems(job.id, dict(job.params or {}), drums=True)
+        stems = api._separated_stems(job.id, dict(job.params or {}), drums=True)
     if source != "mix" and source not in stems:
         raise HTTPException(409, i18n.tr(
             "esse instrumento ainda não foi separado (Áudio ▾ → Separar instrumentos)",

@@ -429,6 +429,17 @@ class AttackSourcesOut(BaseModel):
     level_stems: list[str] = []
 
 
+class ProjectInfoOut(BaseModel):
+    """What "Exportar projeto" would put in the file, and how big it is."""
+
+    ready: bool  # the recording and the Guitar Pro file are both still on disk
+    missing: list[str]  # "recording" / "score" when one is gone
+    cover: bool
+    stems: list[str]  # separated instruments that can go in too (the drums included)
+    base_bytes: int  # recording + Guitar Pro file + cover
+    stems_bytes: int
+
+
 class OnsetLevelsOut(BaseModel):
     """The recording's attack strength over time, for the "Barras de áudio"
     lane — a picture to compare the notes with, nothing applied."""

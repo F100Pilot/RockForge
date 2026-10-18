@@ -588,6 +588,21 @@ by hand are never deleted (the app warns if the song would be listed twice). Clo
 before installing and start it again for the song to appear; with the game open the copy can
 fail.
 
+### Export and import the project
+
+**RockForge project (.rfproj)** → **Export project** saves the whole project in one file: the
+recording, the Guitar Pro file, the cover and every correction (sync, edited notes, hand
+positions, sections, tones, lyrics). Use it to take the project to another computer, keep a copy
+before changing a lot, or send it to someone. If you have separated the instruments, you can
+include them (the file is bigger, but whoever opens it need not separate them again). The file
+holds the project as it was last built: if there are changes not yet applied, the app asks
+first — press **Apply and rebuild** first to include them.
+
+To open one, press **Import project** on the home page (or drop the `.rfproj` on the "Drag a
+Guitar Pro file here" card). It becomes a new project, built again with everything the file carries.
+What only made sense on the computer it came from (the copy installed in the game, the earlier
+versions) does not come along.
+
 ### Build options
 
 **Tuning deviation (cents)**: how far the recording is from A at 440 Hz (a band that tunes to

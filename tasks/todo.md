@@ -1,3 +1,21 @@
+# Exportar e importar o projeto (2026-10-18)
+
+Pedido: "implementes o exportar e importar o projeto". Um ficheiro `.rfproj` (ZIP) com tudo o
+que é preciso para recriar o projeto noutro computador ou depois de reinstalar.
+
+- [x] `infrastructure/project_archive.py`: `project.json` (formato, versão, versão da app, dados
+      da música, `params` portáteis) + `files/recording.*`, `files/score.*`, `files/cover.*`,
+      `files/stems/*.wav` (opcional). Só chaves de `params` numa lista de portáteis; caminhos
+      (gp_path, cover_art, stems, installed_*, corrected_gp, rebuilt_from) e estados de tarefas
+      reescritos ou largados. Leitura defensiva: só nomes conhecidos, extensões permitidas,
+      tamanhos limitados, NaN recusado, versão mais nova recusada.
+- [x] `GET /jobs/{id}/project-info` (instrumentos e tamanhos), `GET /jobs/{id}/export-project?stems=`,
+      `POST /projects/import` (novo projeto + construção). `_separated_stems` passa para app.py.
+- [x] UI: cartão "Projeto RockForge" no Exportar (incluir instrumentos separados, aviso de
+      alterações pendentes); "Importar projeto" na página inicial + largar um `.rfproj` no cartão.
+- [x] Testes (ida e volta, saneamento, recusas, meta-teste das chaves), i18n, guias, changelog,
+      CLAUDE.md; Playwright PT/EN.
+
 # Tons por texto ou por IA (fase 1 + opção A feitas; opção B adiada)
 
 Pedido (2026-10-17): colar texto (ex.: do ChatGPT) com os tons da música e onde cada um começa,

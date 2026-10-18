@@ -588,6 +588,21 @@ uma versão anterior da mesma música que o RockForge lá tenha posto. Ficheiros
 mão nunca são apagados (a aplicação avisa se a música ficaria repetida). Fecha o jogo antes de
 instalar e volta a abri-lo para a música aparecer; com o jogo aberto a cópia pode falhar.
 
+### Exportar e importar o projeto
+
+**Projeto RockForge (.rfproj)** → **Exportar projeto** guarda o projeto inteiro num ficheiro: a
+gravação, o ficheiro Guitar Pro, a capa e todas as correções (sincronização, notas editadas,
+posições da mão, secções, tons, letra). Serve para o levar para outro computador, guardar uma
+cópia antes de mexer muito ou enviá-lo a alguém. Se já separaste os instrumentos, podes
+incluí-los (o ficheiro fica maior, mas quem o abre não precisa de os separar outra vez). O
+ficheiro leva o projeto tal como foi construído pela última vez: se houver alterações por
+aplicar, a app pergunta antes — carrega primeiro em **Aplicar e reconstruir** para as incluir.
+
+Para abrir um, na página inicial carrega em **Importar projeto** (ou larga o `.rfproj` no cartão
+"Arrasta um ficheiro Guitar Pro"). Fica um projeto novo, que é construído outra vez com tudo o
+que o ficheiro traz. O que só fazia sentido no computador de origem (a cópia instalada no jogo,
+as versões anteriores) não vem.
+
 ### Opções da construção
 
 **Desvio da afinação (cents)**: quanto a gravação está afastada do Lá a 440 Hz (uma banda que

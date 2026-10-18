@@ -903,6 +903,57 @@ def _built_arrangement_kind(xml_path: Path, root: ET.Element) -> str:
 _COVER_ART_SUFFIXES = {".jpg", ".jpeg", ".png"}
 
 
+# librosa's beat/tempo tracker (used by /detect-tempo) is
+# unreliable on a full mix of fast, dense music — it locks onto the wrong
+# metrical level (observed: 123 BPM read on a genuine ~180 BPM metal song),
+# which derails both the single-tempo and the dynamic sync. Isolated DRUMS are
+# by far the cleanest beat signal, so when the user has already run "Separar
+# instrumentos" (Demucs htdemucs_6s), the tempo-critical detection runs on the
+# drum stem instead of the mix. The 6-stem pass already produces drums.wav (a
+# sibling of the guitar stem we keep in params["stems"]); it's just omitted from
+# the playback list, so we can locate and reuse it with no extra separation.
+def _drum_stem(params: dict[str, Any]) -> Path | None:
+    """The isolated drum stem for beat/tempo detection, if a Demucs separation
+    already produced one for this job — else None (fall back to the full mix).
+    Derived as the sibling drums.wav of the stored guitar stem (one htdemucs_6s
+    pass writes both), so no separate bookkeeping is needed."""
+    stems = params.get("stems")
+    if not isinstance(stems, dict):
+        return None
+    guitar = stems.get("guitar")
+    if not isinstance(guitar, str) or not guitar:
+        return None
+    drums = Path(guitar).with_name("drums.wav")
+    return drums if drums.exists() else None
+
+
+def _separated_stems(
+    job_id: str, params: dict[str, Any], drums: bool = False
+) -> dict[str, Path]:
+    """The instruments a Demucs pass already separated, by name (drums left out,
+    as "Separar instrumentos" leaves them out, unless ``drums``): the ones it
+    stored, plus any the tone detection left in the shared cache
+    (``celery_app._demucs_stems_cache_dir`` — one htdemucs_6s pass writes every
+    instrument). Both were separated from the recording untrimmed, so their
+    seconds are the recording's."""
+    found: dict[str, Path] = {}
+    stems = params.get("stems")
+    if isinstance(stems, dict):
+        for name, path in stems.items():
+            if isinstance(path, str) and path and Path(path).is_file():
+                found[str(name)] = Path(path)
+    cache = settings.work_dir / job_id / "demucs_stems" / "stems"
+    if cache.is_dir():
+        for wav in sorted(cache.glob("*/*/*.wav")):
+            if drums or wav.stem != "drums":
+                found.setdefault(wav.stem, wav)
+    if drums and "drums" not in found:
+        beside = _drum_stem(params)
+        if beside is not None:
+            found["drums"] = beside
+    return found
+
+
 def _replace_cover(job: Job, suffix: str) -> Path:
     """Where the job's cover goes, with any previous cover (of any extension)
     removed so only one is ever picked up by the build."""

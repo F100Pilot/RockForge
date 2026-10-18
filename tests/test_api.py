@@ -4214,3 +4214,139 @@ def test_the_bars_with_an_estimated_rhythm_reach_the_viewer(
     reloaded = client.post(f"/jobs/{job['id']}/reload-gp", files={"gp": ("s.gp", gp, "x")})
     assert reloaded.status_code == 202, reloaded.text
     assert "estimated_bars" not in _job_row(reloaded.json()["id"])[1]
+
+
+def test_a_project_exported_and_imported_comes_back_with_everything(
+    client: TestClient, tmp_path, monkeypatch
+) -> None:
+    """"Exportar projeto" → "Importar projeto": a new project with the same
+    song, recording, Guitar Pro file, cover, corrections and (when asked) the
+    separated instruments — and nothing of the machine it came from."""
+    import io
+    import zipfile
+
+    import rockforge.interfaces.api.app as app_module
+
+    job = _gp_job(client, tmp_path)
+    png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 16
+    assert client.post(f"/jobs/{job['id']}/cover",
+                       files={"file": ("c.png", png, "image/png")}).status_code == 202
+    sep = tmp_path / "sep"
+    sep.mkdir()
+    (sep / "guitar.wav").write_bytes(b"RIFF0000WAVEguitar")
+    (sep / "drums.wav").write_bytes(b"RIFF0000WAVEdrums")
+    with app_module._session_factory() as session:
+        row = session.get(app_module.Job, job["id"])
+        row.params = {
+            **row.params, "offset_s": 2.5, "lyrics_events": [{"time": 1.0, "length": 0.5,
+                                                               "lyric": "olá+"}],
+            "note_overrides": {"Combined": [{"time": 2.0, "string": 1, "fret": 5}]},
+            "stems": {"guitar": str(sep / "guitar.wav")}, "stems_status": "ready",
+            "installed_psarc": "C:/Games/Rocksmith2014/dlc/RockForge/x_p.psarc",
+            "rebuilt_from": "an-older-version", "lyrics_status": "detecting",
+        }
+        session.commit()
+        recording = Path(row.source).read_bytes()
+        gp_bytes = Path(row.params["gp_path"]).read_bytes()
+
+    info = client.get(f"/jobs/{job['id']}/project-info").json()
+    assert info["ready"] and info["cover"] and info["stems"] == ["drums", "guitar"]
+    assert info["stems_bytes"] == len(b"RIFF0000WAVEguitar") + len(b"RIFF0000WAVEdrums")
+
+    plain = client.get(f"/jobs/{job['id']}/export-project")
+    assert plain.status_code == 200
+    assert ".rfproj" in plain.headers["content-disposition"]
+    assert not [n for n in zipfile.ZipFile(io.BytesIO(plain.content)).namelist()
+                if n.startswith("files/stems/")]
+    full = client.get(f"/jobs/{job['id']}/export-project", params={"stems": "true"})
+    names = zipfile.ZipFile(io.BytesIO(full.content)).namelist()
+    assert {"files/stems/guitar.wav", "files/stems/drums.wav"} <= set(names)
+    assert not list((app_module.settings.work_dir / "exports").glob("*"))  # sent, then removed
+
+    queued: list[str] = []
+    monkeypatch.setattr(app_module, "_enqueue", lambda j: queued.append(j.id))
+    r = client.post("/projects/import",
+                    files={"file": ("song.rfproj", full.content, "application/zip")})
+    assert r.status_code == 202, r.text
+    new = r.json()
+    assert new["id"] != job["id"] and queued == [new["id"]]
+    assert (new["title"], new["artist"]) == (job["title"], job["artist"])
+    assert new["cover_art"] is True
+    assert client.get(f"/jobs/{new['id']}/cover").content == png
+    with app_module._session_factory() as session:
+        row = session.get(app_module.Job, new["id"])
+        params = dict(row.params)
+        work = app_module.settings.work_dir
+        assert Path(row.source).parent == work / "uploads"
+        assert Path(row.source).read_bytes() == recording
+        assert Path(params["gp_path"]).parent == work / "gp"
+        assert Path(params["gp_path"]).read_bytes() == gp_bytes
+    assert params["offset_s"] == 2.5
+    assert params["lyrics_events"][0]["lyric"] == "olá+"
+    assert params["note_overrides"] == {"Combined": [{"time": 2.0, "string": 1, "fret": 5}]}
+    for gone in ("installed_psarc", "rebuilt_from", "lyrics_status"):
+        assert gone not in params
+    stored = Path(params["stems"]["guitar"])
+    assert stored.is_relative_to(work / new["id"])
+    assert stored.read_bytes() == b"RIFF0000WAVEguitar"
+    assert params["stems_status"] == "ready"
+    sources = client.get(f"/jobs/{new['id']}/attack-sources").json()
+    assert sources["level_stems"] == ["drums", "guitar"]  # the drums came along too
+
+
+def test_a_project_whose_files_are_gone_or_a_bad_file_is_refused_cleanly(
+    client: TestClient, tmp_path
+) -> None:
+    import rockforge.interfaces.api.app as app_module
+
+    job = _gp_job(client, tmp_path)
+    with app_module._session_factory() as session:
+        Path(session.get(app_module.Job, job["id"]).source).unlink()
+    info = client.get(f"/jobs/{job['id']}/project-info").json()
+    assert not info["ready"] and info["missing"] == ["recording"]
+    assert client.get(f"/jobs/{job['id']}/export-project").status_code == 409
+
+    work = app_module.settings.work_dir
+    before = {p for p in work.rglob("*") if p.is_file()}
+    r = client.post("/projects/import",
+                    files={"file": ("x.rfproj", b"not a zip", "application/zip")},
+                    headers={"X-RockForge-Lang": "en"})
+    assert r.status_code == 422 and "not a RockForge project" in r.json()["detail"]
+    after = {p for p in work.rglob("*") if p.is_file() and p.suffix != ".db"}
+    assert after <= before  # nothing left behind
+
+
+def test_an_imported_project_cannot_point_the_server_at_a_path(
+    client: TestClient, tmp_path
+) -> None:
+    """A project file made by hand to name files of the importing machine: the
+    paths are not taken, the server puts the files where it puts its own."""
+    import io
+    import json
+    import zipfile
+
+    import rockforge.interfaces.api.app as app_module
+
+    secret = tmp_path / "secret.wav"
+    secret.write_bytes(b"RIFF0000WAVEsecret")
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr("project.json", json.dumps({
+            "format": "rockforge-project", "version": 1,
+            "job": {"title": "Deriva", "artist": "Banda Inventada", "source_type": "gp"},
+            "params": {"offset_s": 1.0, "gp_path": str(secret), "cover_art": "../../secret.wav",
+                       "stems": {"guitar": str(secret)}, "corrected_gp": "../../secret.wav"},
+        }))
+        zf.writestr("files/recording.wav", b"RIFF0000WAVE")
+        zf.writestr("files/score.gp5", _make_gp5_bytes(tmp_path))
+    r = client.post("/projects/import",
+                    files={"file": ("p.rfproj", buf.getvalue(), "application/zip")})
+    assert r.status_code == 202, r.text
+    with app_module._session_factory() as session:
+        params = dict(session.get(app_module.Job, r.json()["id"]).params)
+    assert params["offset_s"] == 1.0
+    assert Path(params["gp_path"]).parent == app_module.settings.work_dir / "gp"
+    for gone in ("stems", "cover_art", "corrected_gp"):
+        assert gone not in params
+    assert r.json()["cover_art"] is False
+    assert client.get(f"/jobs/{r.json()['id']}/stem/guitar").status_code == 404

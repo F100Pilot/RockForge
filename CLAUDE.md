@@ -2848,6 +2848,51 @@ rebuilt from the deleted version then points at the version before it
 Playwright on a real rebuild: asked, answered yes, the build finished, the old
 job and its folder were gone and the new one pointed at the version before.
 
+### The whole project in one file (`.rfproj`, `infrastructure/project_archive.py`)
+
+"implementes o exportar e importar o projeto" (2026-10-18). A ZIP: `project.json`
+(`format` "rockforge-project", `version` 1, the app version, the song, the job's
+params) + `files/recording.<ext>`, `files/score.<ext>`, optional
+`files/cover.<ext>` and `files/stems/<name>.wav`. The built bundle is NOT
+inside — an imported project is built again from the same params (small file,
+never an older build). `GET /jobs/{id}/project-info` (what would go in, sizes,
+`missing`), `GET /jobs/{id}/export-project?stems=` (written to
+`work_dir/exports/` and deleted once sent, `Artist - Title.rfproj`; stems =
+every separated instrument `api._separated_stems(..., drums=True)` finds —
+moved to app.py from analysis.py, now shared) and `POST /projects/import`
+(a new job, enqueued). **Reading one is reading untrusted input** — projects
+are made to be passed around: only the known member names are read and an
+output path is never built from a member name (a stem's name must match
+`STEM_NAME`); `params` keep only `PORTABLE_KEYS` — every key naming a file of
+the exporting machine (`gp_path`, `cover_art`, `stems`, `installed_*`,
+`corrected_gp`) or a version chain/build outcome/task log is dropped and the
+importer sets its own (`HANDLED_KEYS`; statuses only when finished,
+`FINISHED_STATUSES`), so a hand-made project cannot point `/stem/{name}` or the
+build at a path; NaN refused at parse, encrypted members refused, sizes capped
+as declared and as read (`MAX_MEMBER_BYTES`, `MAX_TOTAL_BYTES`), a newer
+`version` refused in words; the GP file must parse, the cover is checked by its
+bytes, a stem by its RIFF/WAVE header. Imported stems go to
+`demucs_stems/stems/htdemucs_6s/imported/` (where every stem reader looks and
+"drop the previous version" carries), the non-drum ones into `params["stems"]`.
+**When the code writes a new params key, classify it** in `PORTABLE_KEYS` or
+`HANDLED_KEYS`: `test_every_key_the_code_writes_into_params_is_classified`
+scans the source and fails otherwise. UI: Exportar → "Projeto RockForge
+(.rfproj)" (`renderProjectExport`, size from `/project-info`, the stems
+checkbox only when there are any, a confirm when "Pendente" is not empty —
+pending edits are the browser's, not in the file); home → "Importar projeto"
+(`importProject`, hidden `#importProjectFile`) and a `.rfproj` dropped on
+`#homeDrop` (not the wizard). Guarded by `test_project_archive.py` (what
+travels, the classification scan, read-back, every refusal in words, member
+names never becoming paths, the read cap) and in `test_api.py`
+`test_a_project_exported_and_imported_comes_back_with_everything`,
+`test_a_project_whose_files_are_gone_or_a_bad_file_is_refused_cleanly` and
+`test_an_imported_project_cannot_point_the_server_at_a_path` (fails when the
+params filter is dropped); with Playwright on a live server (PT 1440 / EN 760
+px): the row and its sizes, the pending confirm, a download with both stems,
+imported from the home page and built for real (`/psarc-check` clean, guitar
+offered, drums in the bars), a dropped `.rfproj` opening as a project, a bad
+file refused in words, no page errors.
+
 ### Batch processing ("Lote (álbum)")
 
 For an entire album: the home page's "Lote (álbum)" button opens the batch

@@ -668,6 +668,8 @@ a.pv-coffee { color:#ffd27a; border-color:#5a4a2a; }
 a.pv-star { color:#cfd8ea; }
 a.pv-star .ic { color:#ffd27a; }
 @media (max-width: 900px) { #coffeeBtn, #starBtn { width:2.75rem; padding:0; justify-content:center; } #coffeeBtn .pv-coffee-lbl, #starBtn .pv-star-lbl { display:none; } }
+@media (max-width: 1100px) { #importProjectBtn { width:2.75rem; padding:0; justify-content:center; } #importProjectBtn .pv-import-lbl { display:none; } }
+.project-export-row .check { display:flex; margin-top:.4rem; }
 button.pv-btn .ic, a.pv-btn .ic { width:1.3rem; height:1.3rem; margin:0; }
 select.lang-select { height:2.75rem; border-radius:10px; border:1px solid #33363f; background:#1f2129;
   color:var(--text); font-weight:600; padding:0 .5rem; }
@@ -963,6 +965,8 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
     <a id="coffeeBtn" class="pv-btn pv-coffee" href="https://paypal.me/F100Pilot" target="_blank" rel="noopener" title="O RockForge é gratuito. Se te é útil, podes pagar-me um café (PayPal)." aria-label="Paga-me um café"><svg class="ic" aria-hidden="true"><use href="#i-coffee"/></svg><span class="pv-coffee-lbl">Paga-me um café</span></a>
     <a id="starBtn" class="pv-btn pv-star" data-star-link href="https://github.com/F100Pilot/RockForge" target="_blank" rel="noopener" title="O RockForge é gratuito e de código aberto. Uma estrela no GitHub ajuda outras pessoas a encontrá-lo." aria-label="Dar uma estrela no GitHub"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg><span class="pv-star-lbl">Dar uma estrela</span></a>
     <button type="button" id="openBatchModal" class="pv-btn" title="Vários ficheiros Guitar Pro + gravações de uma vez — um álbum inteiro"><svg class="ic" aria-hidden="true"><use href="#i-package"/></svg>Lote (álbum)</button>
+    <button type="button" id="importProjectBtn" class="pv-btn" title="Abre um projeto exportado do RockForge (.rfproj) — de outro computador ou de uma cópia" aria-label="Importar projeto"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg><span class="pv-import-lbl">Importar projeto</span></button>
+    <input type="file" id="importProjectFile" accept=".rfproj,.zip" hidden>
     <button type="button" class="pv-btn pv-primary" data-new="gp"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>Novo projeto</button>
     <select id="langSelectTop" class="lang-select" data-lang-select="short" translate="no" title="Idioma · Language" aria-label="Idioma · Language">
       <option value="pt">PT</option>
@@ -987,7 +991,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
       <button type="button" class="home-drop" id="homeDrop" data-new="gp">
         <svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg>
         <b>Arrasta um ficheiro Guitar Pro</b>
-        <span>ou clica para escolher · GP3, GP4, GP5, GP7 e GP8</span>
+        <span>ou clica para escolher · GP3, GP4, GP5, GP7 e GP8 · ou larga aqui um projeto .rfproj</span>
       </button>
     </div>
   </main>
@@ -1637,6 +1641,11 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
             <div class="pv-export-row install-row" id="installRow" hidden>
               <div><b>Instalar no jogo</b><span class="meta" id="installInfo"></span></div>
               <button type="button" id="installBtn"><svg class="ic" aria-hidden="true"><use href="#i-gamepad"/></svg><span id="installBtnLabel">Instalar no jogo</span></button>
+            </div>
+            <div class="pv-export-row project-export-row" id="projectExportRow" hidden>
+              <div><b>Projeto RockForge (.rfproj)</b><span class="meta">tudo num ficheiro — a gravação, o ficheiro Guitar Pro, a capa e todas as correções — para abrir noutro computador ou guardar uma cópia</span><span class="meta" id="projectExportInfo"></span>
+                <label class="check" id="projectExportStemsLbl" hidden><input type="checkbox" id="projectExportStems"> <span id="projectExportStemsText"></span></label></div>
+              <button type="button" id="projectExportBtn" class="secondary"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg>Exportar projeto</button>
             </div>
             <div class="needs-review pv-export-gp" hidden>
               <div class="pv-export-row">

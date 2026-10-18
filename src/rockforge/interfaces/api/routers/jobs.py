@@ -7,17 +7,19 @@ from __future__ import annotations
 import json
 import math
 import shutil
+import time
 import uuid
 from pathlib import Path
 from typing import Any, cast
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
-from fastapi.responses import Response
+from fastapi.responses import FileResponse, Response
+from starlette.background import BackgroundTask
 
 from rockforge import i18n
 from rockforge.infrastructure.db.models import Job, JobStatus
 from rockforge.interfaces.api import app as api
-from rockforge.interfaces.api.schemas import JobOut, MetadataIn
+from rockforge.interfaces.api.schemas import JobOut, MetadataIn, ProjectInfoOut
 
 router = APIRouter()
 
@@ -559,3 +561,189 @@ def update_metadata(job_id: str, payload: MetadataIn) -> JobOut:
         job.year = payload.year
         session.commit()
         return api._to_out(job)
+
+
+# ── The whole project in one file (infrastructure/project_archive.py) ──────────
+
+
+def _project_files(job: Job) -> tuple[Path | None, Path | None, Path | None]:
+    """The recording, the Guitar Pro file and the cover, each None when gone."""
+    params = cast("dict[str, Any]", job.params or {})
+    recording = Path(job.source) if job.source and Path(job.source).is_file() else None
+    raw_gp = params.get("gp_path")
+    score = Path(raw_gp) if isinstance(raw_gp, str) and Path(raw_gp).is_file() else None
+    cover: Path | None = None
+    name = params.get("cover_art")
+    if isinstance(name, str) and name:
+        candidate = api.settings.work_dir / job.id / Path(name).name
+        cover = candidate if candidate.is_file() else None
+    return recording, score, cover
+
+
+@router.get("/jobs/{job_id}/project-info", response_model=ProjectInfoOut)
+def project_info(job_id: str) -> ProjectInfoOut:
+    """What "Exportar projeto" would carry, for the Exportar page to describe."""
+    with api._session_factory() as session:
+        job = api._job_or_404(session, job_id)
+        recording, score, cover = _project_files(job)
+        stems = api._separated_stems(job.id, dict(job.params or {}), drums=True)
+    missing = [n for n, f in (("recording", recording), ("score", score)) if f is None]
+    return ProjectInfoOut(
+        ready=not missing,
+        missing=missing,
+        cover=cover is not None,
+        stems=sorted(stems),
+        base_bytes=sum(f.stat().st_size for f in (recording, score, cover) if f is not None),
+        stems_bytes=sum(p.stat().st_size for p in stems.values()),
+    )
+
+
+@router.get("/jobs/{job_id}/export-project")
+def export_project(job_id: str, stems: bool = False) -> FileResponse:
+    """The project as one ``.rfproj`` file: the recording, the Guitar Pro file,
+    the cover and every correction, and the separated instruments when
+    ``stems``. What it saves is the project as last built or edited on the
+    server — edits still pending in the browser are not in it."""
+    from rockforge.infrastructure import project_archive
+
+    with api._session_factory() as session:
+        job = api._job_or_404(session, job_id)
+        if job.source_type != "gp":
+            raise HTTPException(422, "only Guitar Pro projects can be exported")
+        recording, score, cover = _project_files(job)
+        params = dict(job.params or {})
+        separated = api._separated_stems(job.id, params, drums=True) if stems else {}
+        meta = {"title": job.title, "artist": job.artist, "album": job.album,
+                "year": job.year, "source_type": job.source_type}
+    if recording is None or score is None:
+        raise HTTPException(409, i18n.tr(
+            "a gravação ou o ficheiro Guitar Pro deste projeto já não existe,"
+            " por isso não se pode exportar",
+            "this project's recording or Guitar Pro file no longer exists,"
+            " so it cannot be exported",
+        ))
+    out_dir = api.settings.work_dir / "exports"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    # A download the browser abandoned never reaches the clean-up below.
+    for old in out_dir.glob(f"*{project_archive.SUFFIX}"):
+        if time.time() - old.stat().st_mtime > 3600:
+            old.unlink(missing_ok=True)
+    dest = out_dir / f"{uuid.uuid4()}{project_archive.SUFFIX}"
+    project_archive.write_project(
+        dest, job=meta, params=params,
+        files=project_archive.ProjectFiles(recording, score, cover, separated),
+    )
+    return FileResponse(
+        dest,
+        media_type="application/zip",
+        filename=project_archive.file_name(str(meta["artist"]), str(meta["title"])),
+        background=BackgroundTask(dest.unlink, missing_ok=True),
+    )
+
+
+def _copy_capped(src: UploadFile, dest: Path, cap: int) -> None:
+    total = 0
+    try:
+        with dest.open("wb") as fh:
+            while chunk := src.file.read(1024 * 1024):
+                total += len(chunk)
+                if total > cap:
+                    raise HTTPException(413, f"file too large (max {cap // (1024 * 1024)} MB)")
+                fh.write(chunk)
+    except HTTPException:
+        dest.unlink(missing_ok=True)
+        raise
+
+
+@router.post("/projects/import", response_model=JobOut, status_code=202)
+def import_project(file: UploadFile = File(...)) -> JobOut:
+    """A ``.rfproj`` file becomes a new project, built again from what it
+    carries. Nothing in it is trusted as a path: the files go where this server
+    puts its own, and only the portable params come along
+    (``project_archive.PORTABLE_KEYS``)."""
+    from rockforge.domain.errors import IngestionError
+    from rockforge.infrastructure import project_archive
+    from rockforge.infrastructure.album_lookup import image_suffix
+    from rockforge.infrastructure.gpimport.parser import inspect_gp
+
+    uploads = api.settings.work_dir / "uploads"
+    uploads.mkdir(parents=True, exist_ok=True)
+    archive = uploads / f"import-{uuid.uuid4()}{project_archive.SUFFIX}"
+    _copy_capped(file, archive, project_archive.MAX_TOTAL_BYTES)
+    written: list[Path] = []
+    try:
+        try:
+            project = project_archive.read_project(archive)
+        except project_archive.ProjectArchiveError as exc:
+            raise HTTPException(422, str(exc)) from exc
+
+        recording = project.extract(
+            project.recording, uploads / f"{uuid.uuid4()}{Path(project.recording).suffix.lower()}"
+        )
+        written.append(recording)
+        gp_dir = api.settings.work_dir / "gp"
+        gp_dir.mkdir(parents=True, exist_ok=True)
+        score = project.extract(
+            project.score, gp_dir / f"{uuid.uuid4()}{Path(project.score).suffix.lower()}"
+        )
+        written.append(score)
+        try:
+            inspect_gp(score)
+        except IngestionError as exc:
+            raise HTTPException(422, i18n.tr(
+                f"o ficheiro Guitar Pro do projeto não se consegue ler: {exc}",
+                f"the project's Guitar Pro file cannot be read: {exc}",
+            )) from exc
+
+        params: dict[str, object] = {**project.params, "gp_path": str(score)}
+        with api._session_factory() as session:
+            job = Job(
+                source=str(recording), source_type="gp",
+                title=project.job["title"], artist=project.job["artist"],
+                album=project.job["album"], year=project.job["year"], params=params,
+            )
+            session.add(job)
+            session.commit()
+            job_dir = api.settings.work_dir / job.id
+            try:
+                if project.cover is not None:
+                    tmp = project.extract(project.cover, job_dir.with_name(f"{job.id}.cover"))
+                    data = tmp.read_bytes()
+                    tmp.unlink(missing_ok=True)
+                    suffix = image_suffix(data)
+                    if suffix is not None:
+                        dest = api._replace_cover(job, suffix)
+                        dest.write_bytes(data)
+                        api._record_cover(job, dest)
+                if project.stems:
+                    # Where a separation of this project would have left them
+                    # (the shared Demucs cache): found by every stem reader,
+                    # moved along by "drop the previous version".
+                    stem_dir = job_dir / "demucs_stems" / "stems" / "htdemucs_6s" / "imported"
+                    stem_dir.mkdir(parents=True, exist_ok=True)
+                    stored: dict[str, str] = {}
+                    for name, member in project.stems.items():
+                        path = project.extract(member, stem_dir / f"{name}.wav")
+                        head = path.read_bytes()[:12]
+                        if head[:4] != b"RIFF" or head[8:12] != b"WAVE":
+                            path.unlink(missing_ok=True)
+                            continue
+                        if name != "drums":
+                            stored[name] = str(path)
+                    if stored:
+                        job.params = {**dict(job.params or {}), "stems": stored,
+                                      "stems_status": "ready"}
+                session.commit()
+            except Exception:
+                session.delete(job)
+                session.commit()
+                shutil.rmtree(job_dir, ignore_errors=True)
+                raise
+            api._enqueue(job)
+            return api._to_out(job)
+    except BaseException:
+        for path in written:
+            path.unlink(missing_ok=True)
+        raise
+    finally:
+        archive.unlink(missing_ok=True)
