@@ -129,7 +129,7 @@ def create_gp_job(
 ) -> JobOut:
     """Create a CDLC job from a previously inspected GP file + the recording."""
     gp_path = api.settings.work_dir / "gp" / Path(gp_token).name
-    if not gp_path.exists():
+    if not gp_path.is_file():  # ".." names the folder itself
         raise HTTPException(404, "gp_token not found — upload the GP file via /gp/inspect first")
 
     from rockforge.domain.errors import IngestionError
@@ -164,146 +164,156 @@ def create_gp_job(
         audio_dest = upload_dir / f"{uuid.uuid4()}{suffix}"
         api._copy_upload_capped(audio, audio_dest)
 
-    from rockforge.infrastructure.gpimport.parser import inspect_gp
-    from rockforge.infrastructure.ingestion.tags import read_tags
-
+    # A recording copied (or extracted) for this request is ours to remove if
+    # the request is refused after it: every later 422/415 used to leave it in
+    # uploads/, where nothing collects it (a fetched YouTube file is swept).
+    fresh_audio = use_embedded_audio or not audio_token.strip()
+    created = False
     try:
-        info = inspect_gp(gp_path)
-    except IngestionError as exc:
-        raise HTTPException(422, str(exc)) from exc
-    tags = read_tags(audio_dest)
+        from rockforge.infrastructure.gpimport.parser import inspect_gp
+        from rockforge.infrastructure.ingestion.tags import read_tags
 
-    final_title = title.strip() or info.title or tags.title
-    final_artist = artist.strip() or info.artist or tags.artist
-    final_album = album.strip() or info.album or tags.album or ""
-    final_year: int | None = int(year) if year.strip().isdigit() else tags.year
-    missing = [n for n, v in (("title", final_title), ("artist", final_artist)) if not v]
-    if missing:
-        audio_dest.unlink(missing_ok=True)
-        raise HTTPException(
-            422,
-            f"neither the GP file, the audio tags nor the form provide: {missing}",
-        )
-    assert final_title is not None and final_artist is not None
+        try:
+            info = inspect_gp(gp_path)
+        except IngestionError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        tags = read_tags(audio_dest)
 
-    tones = [t.strip() for t in tone_names.split(",") if t.strip()]
-    if len(tones) > 4:
-        raise HTTPException(422, "Rocksmith supports at most 4 switchable tones")
+        final_title = title.strip() or info.title or tags.title
+        final_artist = artist.strip() or info.artist or tags.artist
+        final_album = album.strip() or info.album or tags.album or ""
+        final_year: int | None = int(year) if year.strip().isdecimal() else tags.year
+        missing = [n for n, v in (("title", final_title), ("artist", final_artist)) if not v]
+        if missing:
+            raise HTTPException(
+                422,
+                f"neither the GP file, the audio tags nor the form provide: {missing}",
+            )
+        assert final_title is not None and final_artist is not None
 
-    lrc_text: str | None = None
-    if lrc is not None and lrc.filename:
-        lrc_text = api._read_upload_capped(lrc).decode("utf-8", errors="replace")
-    elif lyrics_lrc.strip():
-        from rockforge.infrastructure.rsxml.vocals import parse_lyrics
+        tones = [t.strip() for t in tone_names.split(",") if t.strip()]
+        if len(tones) > 4:
+            raise HTTPException(422, "Rocksmith supports at most 4 switchable tones")
 
-        # Refused here, not at build time: an unreadable text would only
-        # surface later as a build that silently has no lyrics.
-        if not parse_lyrics(lyrics_lrc):
-            raise HTTPException(422, i18n.tr(
-                "a letra escolhida não tem tempos que se possam ler (LRC)",
-                "the chosen lyrics have no timestamps that can be read (LRC)",
-            ))
-        lrc_text = lyrics_lrc
+        lrc_text: str | None = None
+        if lrc is not None and lrc.filename:
+            lrc_text = api._read_upload_capped(lrc).decode("utf-8", errors="replace")
+        elif lyrics_lrc.strip():
+            from rockforge.infrastructure.rsxml.vocals import parse_lyrics
 
-    # Multipart form floats bypass the ``Finite`` models above (they arrive as
-    # strings and coerce), and NaN would slip past the ``<= 0`` guard below
-    # because ``NaN <= 0`` is False.
-    api._reject_non_finite(offset_s=offset_s, lead_in_s=lead_in_s, tempo_scale=tempo_scale)
-    if tempo_scale <= 0:
-        raise HTTPException(422, "tempo_scale must be > 0")
-    if lead_in_s < 0.0:
-        raise HTTPException(422, "lead_in_s must be >= 0")
+            # Refused here, not at build time: an unreadable text would only
+            # surface later as a build that silently has no lyrics.
+            if not parse_lyrics(lyrics_lrc):
+                raise HTTPException(422, i18n.tr(
+                    "a letra escolhida não tem tempos que se possam ler (LRC)",
+                    "the chosen lyrics have no timestamps that can be read (LRC)",
+                ))
+            lrc_text = lyrics_lrc
 
-    parsed_bar_times = _parse_bar_times(bar_times)
-    parsed_estimated_bars = _parse_estimated_bars(estimated_bars)
-    try:
-        merge_raw = json.loads(merge_tracks) if merge_tracks.strip() else None
-    except ValueError as exc:
-        raise HTTPException(422, "merge_tracks must be a JSON object") from exc
-    parsed_merge = api._clean_merge_tracks(merge_raw)
-    cover_url = cover_url.strip()
-    if cover_url:
-        from rockforge.infrastructure.album_lookup import cover_url_allowed
+        # Multipart form floats bypass the ``Finite`` models above (they arrive as
+        # strings and coerce), and NaN would slip past the ``<= 0`` guard below
+        # because ``NaN <= 0`` is False.
+        api._reject_non_finite(offset_s=offset_s, lead_in_s=lead_in_s, tempo_scale=tempo_scale)
+        if tempo_scale <= 0:
+            raise HTTPException(422, "tempo_scale must be > 0")
+        if lead_in_s < 0.0:
+            raise HTTPException(422, "lead_in_s must be >= 0")
 
-        if not cover_url_allowed(cover_url):
-            raise HTTPException(422, "cover_url is not from a known cover service")
-    cover_upload: tuple[bytes, str] | None = None
-    if cover is not None and cover.filename:
-        from rockforge.infrastructure.album_lookup import image_suffix
+        parsed_bar_times = _parse_bar_times(bar_times)
+        parsed_estimated_bars = _parse_estimated_bars(estimated_bars)
+        try:
+            merge_raw = json.loads(merge_tracks) if merge_tracks.strip() else None
+        except ValueError as exc:
+            raise HTTPException(422, "merge_tracks must be a JSON object") from exc
+        parsed_merge = api._clean_merge_tracks(merge_raw)
+        cover_url = cover_url.strip()
+        if cover_url:
+            from rockforge.infrastructure.album_lookup import cover_url_allowed
 
-        cover_data = api._read_upload_capped(cover)
-        cover_suffix = image_suffix(cover_data)
-        if cover_suffix is None:
-            raise HTTPException(415, i18n.tr(
-                "a capa tem de ser uma imagem JPEG ou PNG",
-                "the cover must be a JPEG or PNG image",
-            ))
-        cover_upload = (cover_data, cover_suffix)
+            if not cover_url_allowed(cover_url):
+                raise HTTPException(422, "cover_url is not from a known cover service")
+        cover_upload: tuple[bytes, str] | None = None
+        if cover is not None and cover.filename:
+            from rockforge.infrastructure.album_lookup import image_suffix
 
-    params: dict[str, object] = {
-        "gp_path": str(gp_path),
-        "bar_times": parsed_bar_times,
-        "bar_times_source": bar_times_source.strip()[:200] if parsed_bar_times else "",
-        "offset_s": offset_s,
-        "lead_in_s": lead_in_s,
-        "tempo_scale": tempo_scale,
-        "tone_base": tone_base.strip() or None,
-        "tone_names": tones,
-        "lrc_text": lrc_text,
-        "import_mute_techniques": import_mutes,
-        "recording_from_gp": use_embedded_audio,
-    }
-    if parsed_estimated_bars:
-        params["estimated_bars"] = parsed_estimated_bars
-    if lead_track.strip().isdigit():
-        params["lead_track"] = int(lead_track)
-    if rhythm_track.strip().isdigit():
-        params["rhythm_track"] = int(rhythm_track)
-    if combo_track.strip().isdigit():
-        params["combo_track"] = int(combo_track)
-    if alt_lead_track.strip().isdigit():
-        params["alt_lead_track"] = int(alt_lead_track)
-    if alt_rhythm_track.strip().isdigit():
-        params["alt_rhythm_track"] = int(alt_rhythm_track)
-    if bass_track.strip().isdigit():
-        params["bass_track"] = int(bass_track)
-    if parsed_merge:
-        params["merge_tracks"] = parsed_merge
+            cover_data = api._read_upload_capped(cover)
+            cover_suffix = image_suffix(cover_data)
+            if cover_suffix is None:
+                raise HTTPException(415, i18n.tr(
+                    "a capa tem de ser uma imagem JPEG ou PNG",
+                    "the cover must be a JPEG or PNG image",
+                ))
+            cover_upload = (cover_data, cover_suffix)
 
-    with api._session_factory() as session:
-        job = Job(
-            source=str(audio_dest),
-            source_type="gp",
-            title=final_title,
-            artist=final_artist,
-            album=final_album,
-            year=final_year,
-            params=params,
-        )
-        session.add(job)
-        session.commit()
-        if cover_upload is not None:
-            dest = api._replace_cover(job, cover_upload[1])
-            dest.write_bytes(cover_upload[0])
-            api._record_cover(job, dest)
+        params: dict[str, object] = {
+            "gp_path": str(gp_path),
+            "bar_times": parsed_bar_times,
+            "bar_times_source": bar_times_source.strip()[:200] if parsed_bar_times else "",
+            "offset_s": offset_s,
+            "lead_in_s": lead_in_s,
+            "tempo_scale": tempo_scale,
+            "tone_base": tone_base.strip() or None,
+            "tone_names": tones,
+            "lrc_text": lrc_text,
+            "import_mute_techniques": import_mutes,
+            "recording_from_gp": use_embedded_audio,
+        }
+        if parsed_estimated_bars:
+            params["estimated_bars"] = parsed_estimated_bars
+        if lead_track.strip().isdecimal():
+            params["lead_track"] = int(lead_track)
+        if rhythm_track.strip().isdecimal():
+            params["rhythm_track"] = int(rhythm_track)
+        if combo_track.strip().isdecimal():
+            params["combo_track"] = int(combo_track)
+        if alt_lead_track.strip().isdecimal():
+            params["alt_lead_track"] = int(alt_lead_track)
+        if alt_rhythm_track.strip().isdecimal():
+            params["alt_rhythm_track"] = int(alt_rhythm_track)
+        if bass_track.strip().isdecimal():
+            params["bass_track"] = int(bass_track)
+        if parsed_merge:
+            params["merge_tracks"] = parsed_merge
+
+        with api._session_factory() as session:
+            job = Job(
+                source=str(audio_dest),
+                source_type="gp",
+                title=final_title,
+                artist=final_artist,
+                album=final_album,
+                year=final_year,
+                params=params,
+            )
+            session.add(job)
             session.commit()
-        elif cover_url:
-            # Best effort: a cover that will not download must not cost the
-            # user the project. The response's empty cover_art says so, and the
-            # UI tells them to pick another on the Capa page.
-            from rockforge.infrastructure.album_lookup import AlbumLookupError, fetch_cover
-
-            try:
-                data, suffix = fetch_cover(cover_url)
-            except AlbumLookupError:
-                pass
-            else:
-                dest = api._replace_cover(job, suffix)
-                dest.write_bytes(data)
+            created = True
+            if cover_upload is not None:
+                dest = api._replace_cover(job, cover_upload[1])
+                dest.write_bytes(cover_upload[0])
                 api._record_cover(job, dest)
                 session.commit()
-        api._enqueue(job)
-        return api._to_out(job)
+            elif cover_url:
+                # Best effort: a cover that will not download must not cost the
+                # user the project. The response's empty cover_art says so, and the
+                # UI tells them to pick another on the Capa page.
+                from rockforge.infrastructure.album_lookup import AlbumLookupError, fetch_cover
+
+                try:
+                    data, suffix = fetch_cover(cover_url)
+                except AlbumLookupError:
+                    pass
+                else:
+                    dest = api._replace_cover(job, suffix)
+                    dest.write_bytes(data)
+                    api._record_cover(job, dest)
+                    session.commit()
+            api._enqueue(job)
+            return api._to_out(job)
+    except BaseException:
+        if fresh_audio and not created:
+            audio_dest.unlink(missing_ok=True)
+        raise
 
 
 @router.post("/jobs/{job_id}/reload-gp", response_model=JobOut, status_code=202)
@@ -457,9 +467,26 @@ def delete_job(job_id: str, force: bool = False) -> Response:
         job = api._job_or_404(session, job_id)
         if job.status is JobStatus.RUNNING and not force:
             raise HTTPException(409, "job is running — wait for it to finish before deleting")
+        if _detection_running(job) and not force:
+            raise HTTPException(409, i18n.tr(
+                "está a correr uma deteção ou separação neste projeto — espera que acabe",
+                "a detection or separation is running on this project — wait for it to finish",
+            ))
         _delete_job_files_and_row(session, job)
         session.commit()
     return Response(status_code=204)
+
+
+# A detection runs with the job COMPLETED (its progress lives in params), so
+# RUNNING alone let a project be deleted mid-separation: rmtree under Demucs,
+# whose output then recreated gigabytes of WAVs that nothing would collect.
+_DETECTION_STATUSES = ("stems_status", "lyrics_status", "tone_detection_status")
+_DETECTION_DONE = frozenset({"", "none", "ready", "empty", "unavailable"})
+
+
+def _detection_running(job: Job) -> bool:
+    params = job.params or {}
+    return any(str(params.get(k) or "") not in _DETECTION_DONE for k in _DETECTION_STATUSES)
 
 
 def _delete_job_files_and_row(session: Any, job: Job) -> None:
@@ -510,21 +537,40 @@ def drop_previous_version(job_id: str) -> JobOut:
         prev = session.get(Job, prev_id) if isinstance(prev_id, str) and prev_id else None
         if prev is None:
             raise HTTPException(404, "this version has no previous version to delete")
-        if prev.status is JobStatus.RUNNING:
-            raise HTTPException(409, "the previous version is still building")
+        if prev.status is JobStatus.RUNNING or _detection_running(prev):
+            raise HTTPException(409, "the previous version is still building or detecting")
 
-        old_dir, new_dir = api.settings.work_dir / prev.id, api.settings.work_dir / job.id
-        for sub in _CARRIED_WORK_DIRS:
-            if (old_dir / sub).is_dir() and not (new_dir / sub).exists():
-                new_dir.mkdir(parents=True, exist_ok=True)
-                shutil.move(str(old_dir / sub), str(new_dir / sub))
-        stems = params.get("stems")
-        if isinstance(stems, dict):
-            params["stems"] = {
-                name: str(new_dir / Path(path).relative_to(old_dir))
-                if isinstance(path, str) and Path(path).is_relative_to(old_dir) else path
-                for name, path in stems.items()
-            }
+        # The separated stems (and the Demucs cache) belong to the RECORDING: they
+        # go to a version that still plays it — this one, or another version
+        # rebuilt from the old one — never to one that moved to another recording
+        # ("Recarregar ficheiro GP" with a file that brings its own audio), which
+        # would otherwise reuse the old recording's stems as its own.
+        others = [o for o in session.execute(select(Job).where(Job.id != prev.id)).scalars()]
+        heir = job if job.source == prev.source else next(
+            (o for o in others if o.source == prev.source
+             and cast("dict[str, Any]", o.params or {}).get("rebuilt_from") == prev.id), None)
+        old_dir = api.settings.work_dir / prev.id
+        if heir is not None:
+            new_dir = api.settings.work_dir / heir.id
+            for sub in _CARRIED_WORK_DIRS:
+                if (old_dir / sub).is_dir() and not (new_dir / sub).exists():
+                    new_dir.mkdir(parents=True, exist_ok=True)
+                    shutil.move(str(old_dir / sub), str(new_dir / sub))
+            # every version whose stems point into the old folder: they moved
+            for other in others:
+                other_params = params if other.id == job.id else dict(other.params or {})
+                stems = other_params.get("stems")
+                if not isinstance(stems, dict):
+                    continue
+                moved = {
+                    name: str(new_dir / Path(path).relative_to(old_dir))
+                    if isinstance(path, str) and Path(path).is_relative_to(old_dir) else path
+                    for name, path in stems.items()
+                }
+                if moved != stems:
+                    other_params["stems"] = moved
+                    if other.id != job.id:
+                        other.params = other_params
 
         rebuilt_from = cast("dict[str, Any]", prev.params or {}).get("rebuilt_from")
         grand: str | None = None

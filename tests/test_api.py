@@ -3997,6 +3997,108 @@ def test_the_previous_version_can_be_dropped_once_the_new_one_is_built(
     assert client.post(f"/jobs/{third['id']}/drop-previous").status_code == 404
 
 
+def test_dropping_a_version_gives_its_stems_only_to_one_that_plays_the_same_recording(
+    client: TestClient, tmp_path
+) -> None:
+    """The stems belong to the recording: a version reloaded with the GP file's
+    own audio used to inherit the old recording's separation; and a sibling
+    version kept stems pointing into the deleted folder."""
+    import rockforge.config as config
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.infrastructure.db.models import JobStatus
+
+    first = _gp_job(client, tmp_path)
+    old_dir = config.settings.work_dir / first["id"]
+    (old_dir / "demucs_stems").mkdir(parents=True)
+    (old_dir / "demucs_stems" / "guitar.wav").write_bytes(b"RIFF")
+    stem = str(old_dir / "demucs_stems/guitar.wav")
+    with app_module._session_factory() as session:
+        job = session.get(app_module.Job, first["id"])
+        job.params = {**job.params, "stems": {"guitar": stem}}
+        session.commit()
+    sibling = client.post(f"/jobs/{first['id']}/rebuild", json={"offset_s": 1.0}).json()
+    other_audio = client.post(f"/jobs/{first['id']}/rebuild", json={"offset_s": 2.0}).json()
+    with app_module._session_factory() as session:
+        moved_on = session.get(app_module.Job, other_audio["id"])
+        moved_on.source = str(tmp_path / "another-recording.wav")
+        moved_on.status = JobStatus.COMPLETED
+        moved_on.params = {k: v for k, v in moved_on.params.items() if k != "stems"}
+        session.commit()
+    assert client.post(f"/jobs/{other_audio['id']}/drop-previous").status_code == 200
+    assert not (config.settings.work_dir / other_audio["id"] / "demucs_stems").exists()
+    heir = config.settings.work_dir / sibling["id"] / "demucs_stems" / "guitar.wav"
+    assert heir.exists()
+    with app_module._session_factory() as session:
+        assert session.get(app_module.Job, sibling["id"]).params["stems"] == {"guitar": str(heir)}
+
+
+def test_a_project_is_not_deleted_while_a_detection_runs_on_it(
+    client: TestClient, tmp_path
+) -> None:
+    import rockforge.interfaces.api.app as app_module
+
+    job = _gp_job(client, tmp_path)
+    with app_module._session_factory() as session:
+        row = session.get(app_module.Job, job["id"])
+        row.params = {**row.params, "stems_status": "separating"}
+        session.commit()
+    assert client.delete(f"/jobs/{job['id']}").status_code == 409
+    assert client.delete(f"/jobs/{job['id']}?force=true").status_code == 204
+
+
+def test_a_refused_new_project_leaves_no_recording_behind(client: TestClient, tmp_path) -> None:
+    """The recording was copied before the other checks; every later refusal
+    left it in uploads/ for good. And "²" passed isdigit() but not int()."""
+    import rockforge.interfaces.api.app as app_module
+
+    token = client.post("/gp/inspect", files={
+        "file": ("song.gp5", _make_gp5_bytes(tmp_path), "application/octet-stream")
+    }).json()["gp_token"]
+    uploads = app_module.settings.work_dir / "uploads"
+    before = set(uploads.glob("*")) if uploads.exists() else set()
+    for bad in ({"tempo_scale": "nan"}, {"merge_tracks": "[1]"}, {"tone_names": "a,b,c,d,e"}):
+        r = client.post("/jobs/gp", data={"gp_token": token, "lead_track": "0", **bad},
+                        files={"audio": ("song.wav", b"RIFF0000WAVE", "audio/wav")})
+        assert r.status_code == 422, bad
+    assert set(uploads.glob("*")) == before
+    r = client.post("/jobs/gp", data={"gp_token": token, "lead_track": "²", "year": "²"},
+                    files={"audio": ("song.wav", b"RIFF0000WAVE", "audio/wav")})
+    assert r.status_code == 202, r.text
+    assert client.post("/jobs/gp", data={"gp_token": ".."},
+                       files={"audio": ("s.wav", b"RIFF", "audio/wav")}).status_code == 404
+
+
+def test_each_bundle_download_is_its_own_zip(client: TestClient, tmp_path) -> None:
+    import zipfile
+
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.infrastructure.db.models import JobStatus
+
+    job = _gp_job(client, tmp_path)
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+    (bundle / "a.xml").write_text("<song/>")
+    with app_module._session_factory() as session:
+        row = session.get(app_module.Job, job["id"])
+        row.status, row.bundle_dir = JobStatus.COMPLETED, str(bundle)
+        session.commit()
+    for _ in range(2):
+        r = client.get(f"/jobs/{job['id']}/bundle")
+        assert r.status_code == 200
+        with zipfile.ZipFile(__import__("io").BytesIO(r.content)) as z:
+            assert z.namelist() == ["a.xml"]
+    assert list(tmp_path.glob("bundle*.zip")) == []  # each removed once sent
+
+
+def test_a_tone_that_cannot_be_built_is_refused_up_front(client: TestClient, tmp_path) -> None:
+    job = _gp_job(client, tmp_path)
+    bad = {"key": "t", "name": "t", "volume": "loud",
+           "amp": {"key": "Amp_CS100", "knobs": {}},
+           "cabinet": {"key": "Cab_Marshall1960a_57_Cone"}}
+    assert client.post(f"/jobs/{job['id']}/rebuild", json={"tones": [bad]}).status_code == 422
+    assert client.post("/tone-library", json=bad).status_code == 422
+
+
 def test_a_rebuild_commits_every_charts_pending_sync_not_only_the_one_on_screen(
     client: TestClient, tmp_path
 ) -> None:

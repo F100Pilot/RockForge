@@ -331,6 +331,7 @@ def save_tone_to_library(tone: dict[str, Any]) -> dict[str, Any]:
     from rockforge import tone_library
     from rockforge.infrastructure.packaging.gear.gear_catalogue import tone_from_dict
 
+    api._check_tones([tone])
     if tone_from_dict(tone) is None:
         raise HTTPException(422, "a saved tone needs a valid amp and cabinet")
     try:

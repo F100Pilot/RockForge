@@ -420,6 +420,27 @@ def _reject_bad_midi(field: str, pitches: list[object]) -> None:
         raise HTTPException(422, f"{field}: MIDI pitch out of range (0-127): {bad}")
 
 
+def _check_tones(tones: object) -> None:
+    """Tone dicts a client sends (a rebuild, the library, a project file) are
+    stored as they are and turned into gear only at build time — a volume of
+    "loud" or NaN then failed the build with an error pointing nowhere. A tone
+    with no amp/cabinet is still allowed: the build skips it, as before."""
+    from rockforge.infrastructure.packaging.gear.gear_catalogue import tone_from_dict
+
+    if not isinstance(tones, list):
+        raise HTTPException(422, "tones must be a list")
+    for i, tone in enumerate(tones):
+        try:
+            if not isinstance(tone, dict):
+                raise TypeError("not an object")
+            built = tone_from_dict(tone)
+            if built is not None and not math.isfinite(built.volume):
+                raise ValueError("volume is not a number")
+        except (KeyError, TypeError, ValueError, AttributeError) as exc:
+            raise HTTPException(422, i18n.tr(f"o tom {i + 1} não é válido: {exc}",
+                                             f"tone {i + 1} is not valid: {exc}")) from exc
+
+
 def _check_imported_params(params: dict[str, object]) -> None:
     """The shapes of params that arrive as raw JSON — ``/import-sync`` and a
     ``.rfproj``'s project.json — bypass every model, so a string where a number
@@ -485,6 +506,8 @@ def _check_imported_params(params: dict[str, object]) -> None:
         raise bad("lyrics_events", "linhas {time, length, lyric}")
     if params.get("merge_tracks") is not None:
         _clean_merge_tracks(params["merge_tracks"])
+    if params.get("tones") is not None:
+        _check_tones(params["tones"])
 
 
 def _reject_non_finite(**values: float) -> None:

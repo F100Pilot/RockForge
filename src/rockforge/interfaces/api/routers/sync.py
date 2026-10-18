@@ -329,6 +329,7 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
                 raise HTTPException(422, "Rocksmith supports at most 4 switchable tones")
             params["tone_names"] = payload.tone_names
         if payload.tones is not None:
+            api._check_tones(payload.tones)
             params["tones"] = payload.tones
         if payload.tone_changes is not None:
             params["tone_changes"] = [c.model_dump() for c in payload.tone_changes]

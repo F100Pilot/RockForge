@@ -5,11 +5,13 @@ from __future__ import annotations
 
 import mimetypes
 import shutil
+import uuid
 from pathlib import Path
 from typing import cast
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
+from starlette.background import BackgroundTask
 
 from rockforge import i18n
 from rockforge.infrastructure.db.models import Job, JobStatus
@@ -57,8 +59,13 @@ def download_bundle(job_id: str) -> FileResponse:
         job = session.get(Job, job_id)
         if job is None or job.status is not JobStatus.COMPLETED or not job.bundle_dir:
             raise HTTPException(404, "bundle not available")
-        archive = shutil.make_archive(job.bundle_dir, "zip", job.bundle_dir)
-        return FileResponse(archive, filename=f"{job.title}-rockforge-bundle.zip")
+        # Each download its own zip, removed once sent: rewriting one shared
+        # <bundle>.zip on every GET truncated it under a download still
+        # streaming it (a double click, a browser retry) — a corrupt bundle.
+        base = Path(job.bundle_dir).with_name(f"{Path(job.bundle_dir).name}-{uuid.uuid4().hex}")
+        archive = shutil.make_archive(str(base), "zip", job.bundle_dir)
+        return FileResponse(archive, filename=f"{job.title}-rockforge-bundle.zip",
+                            background=BackgroundTask(Path(archive).unlink, missing_ok=True))
 
 
 @router.get("/jobs/{job_id}/psarc")
