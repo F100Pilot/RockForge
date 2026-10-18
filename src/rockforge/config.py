@@ -91,6 +91,10 @@ class Settings(BaseSettings):
     # 127.0.0.1. Any deployment that opens a network port (docker-compose) MUST
     # set this — see app._verify_api_auth and docker-compose.yml.
     api_token: str | None = None
+    # RockForge's opt-in install counter (infrastructure/install_counter.py):
+    # nothing is ever sent unless the user agrees. Empty = the counter is off
+    # and the app does not even ask.
+    install_counter_url: str = "https://fvyqytrtmctsdepyrnlm.supabase.co/functions/v1/install-ping"
     # The names this server answers to, comma-separated ("*" = any). A web page
     # on another site can point its own domain at 127.0.0.1 (DNS rebinding) and
     # then reach this API as if it were same-origin: the browser sends THAT

@@ -1745,6 +1745,11 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
           <label class="check"><input type="checkbox" id="sCheckUpdates" checked> Avisar quando houver uma versão nova do RockForge</label>
           <div class="pv-card-desc">Pergunta às Releases do GitHub, no máximo uma vez por hora, e não envia nada sobre ti nem sobre as tuas músicas. Quem usa o <code>start.bat</code> com o git não precisa: atualiza-se sozinho a cada arranque.</div>
         </div>
+        <div class="pv-card pv-card-lg" id="installCountCard" hidden>
+          <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-info"/></svg>Contar esta instalação</div>
+          <label class="check"><input type="checkbox" id="sInstallCount"> Contar esta instalação, para se saber quantas pessoas usam o RockForge</label>
+          <div class="pv-card-desc">Desligado até dizeres que sim. Uma vez por versão, envia um número ao acaso criado por esta instalação, a versão, o tipo de instalação (exe, git ou pasta) e o sistema (Windows, macOS ou Linux) — o endereço IP não é guardado. Ao desligar, o número é esquecido e o que foi enviado é apagado. Guarda-se logo, sem «Guardar».</div>
+        </div>
         <div class="pv-card pv-card-lg">
           <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-wave"/></svg>Pasta do Wwise</div>
           <label class="set-field"><span>Onde o Wwise está instalado (a pasta <code>Wwise 2023.1…</code>, com a subpasta <code>Authoring</code> lá dentro)</span>

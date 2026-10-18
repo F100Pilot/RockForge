@@ -803,6 +803,30 @@ document.getElementById('compInstall').addEventListener('click', installComponen
 // ── Home notices: a newer version, missing components, no Wwise ─────────────
 let updateInfo = null;
 let wwiseFound = null;
+// The opt-in install counter (infrastructure/install_counter.py): the answer is
+// the server's, so it is asked once per install, not once per browser.
+let installCount = null;
+async function loadInstallCount() {
+  try { installCount = await getJSON('/install-count'); } catch { installCount = null; }
+  renderInstallCount();
+  renderHomeNotices();
+}
+async function setInstallCount(enabled) {
+  try {
+    installCount = await getJSON('/install-count', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled }) });
+    toast(enabled ? T('Obrigado! Esta instalação passa a contar.') : T('Não conta. O que já tinha sido enviado é apagado.'), 'ok');
+  } catch (err) { toast(T('Não foi possível guardar: {err}', { err: err.message }), 'err'); }
+  renderInstallCount();
+  renderHomeNotices();
+}
+function renderInstallCount() {
+  const card = document.getElementById('installCountCard');
+  if (!card) return;
+  card.hidden = !(installCount && installCount.available);
+  document.getElementById('sInstallCount').checked = !!(installCount && installCount.enabled);
+}
+document.getElementById('sInstallCount').addEventListener('change', e => setInstallCount(e.target.checked));
 function noticeDismissed(id) {
   try { return (JSON.parse(localStorage.getItem('rf-notice-dismissed') || '{}'))[id] === true; } catch { return false; }
 }
@@ -943,6 +967,11 @@ function renderHomeNotices() {
       `<a class="pv-btn" href="https://www.audiokinetic.com/download/" target="_blank" rel="noopener">${T('Descarregar o Wwise')}</a>`,
       `<button type="button" class="pv-btn" data-notice-dismiss="wwise">${T('Ocultar')}</button>`]);
   }
+  if (!items.length && installCount && installCount.available && installCount.enabled === null) {
+    notice('', 'info', T('Posso contar esta instalação? Ajuda a saber quantas pessoas usam o RockForge. Envia só um número ao acaso, a versão, o tipo de instalação e o sistema (Windows/macOS/Linux) — nada sobre ti nem sobre as tuas músicas — e podes desligar em Definições → Geral.'), [
+      `<button type="button" class="pv-btn pv-primary" data-notice-act="count-yes">${T('Sim, contar')}</button>`,
+      `<button type="button" class="pv-btn" data-notice-act="count-no">${T('Não')}</button>`]);
+  }
   if (!items.length && shouldAskForStar()) {
     notice('star', 'star', T('O RockForge está a ser-te útil? Uma estrela no GitHub ajuda outras pessoas a encontrá-lo.'), [
       `<a class="pv-btn pv-star" data-star-link href="${STAR_REPO}" target="_blank" rel="noopener">${icon('star')}${T('Dar uma estrela')}</a>`,
@@ -961,6 +990,8 @@ document.getElementById('homeNotices').addEventListener('click', async e => {
     setSeenVersion(whatsNew ? whatsNew.current : buildInfo.version);
     whatsNew = null;
     renderHomeNotices();
+  } else if (act.dataset.noticeAct === 'count-yes' || act.dataset.noticeAct === 'count-no') {
+    setInstallCount(act.dataset.noticeAct === 'count-yes');
   } else if (act.dataset.noticeAct === 'star-later') {
     setStarState({ later: Date.now(), asks: (starState().asks || 0) + 1 });
     renderHomeNotices();
@@ -988,6 +1019,7 @@ async function loadUpdateInfo() {
   renderHomeNotices();
 }
 loadUpdateInfo();
+loadInstallCount();
 // The server asks GitHub at most once an hour; asking it again keeps a page left open all day
 // up to date (an answer from its cache costs nothing).
 setInterval(loadUpdateInfo, 3600 * 1000);

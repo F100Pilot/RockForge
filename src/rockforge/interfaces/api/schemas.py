@@ -654,6 +654,18 @@ class SettingsIn(BaseModel):
     wwise_root: str | None = None
 
 
+class InstallCountOut(BaseModel):
+    """The opt-in install counter: whether it exists here, and the user's
+    answer (None = not asked yet)."""
+
+    available: bool
+    enabled: bool | None = None
+
+
+class InstallCountIn(BaseModel):
+    enabled: bool
+
+
 class UpdateCheckOut(BaseModel):
     """A newer RockForge on GitHub. `kind` is how this copy was installed:
     "exe", "source" (a folder start.bat cannot update) or "git" (start.bat

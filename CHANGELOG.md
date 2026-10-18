@@ -8,6 +8,11 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ### Novidades
 
+- **Contar as instalações, só se disseres que sim**: a página inicial pergunta uma vez se a
+  instalação pode contar, para se saber quantas pessoas usam o RockForge (o GitHub só mostra
+  downloads). Envia, uma vez por versão, um número ao acaso, a versão, o tipo de instalação e o
+  sistema — nada sobre ti nem sobre as tuas músicas, e o endereço IP não é guardado. Desliga-se
+  em Definições → Geral → **Contar esta instalação**, e o que foi enviado é apagado.
 - **Exportar e importar o projeto** (Exportar → **Projeto RockForge (.rfproj)**; página inicial →
   **Importar projeto**): o projeto inteiro num ficheiro — a gravação, o ficheiro Guitar Pro, a
   capa, todas as correções e, se quiseres, os instrumentos separados — para o abrir noutro

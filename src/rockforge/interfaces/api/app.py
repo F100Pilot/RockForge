@@ -152,6 +152,17 @@ async def _idle_shutdown_watchdog() -> None:
             return
 
 
+def _send_install_count() -> None:
+    """This version, once, to the opt-in install counter — only if the user
+    agreed; never raises (a counter must not stop the API from starting)."""
+    try:
+        from rockforge.infrastructure import install_counter
+
+        install_counter.send_in_background()
+    except Exception:  # noqa: BLE001
+        logger.debug("install counter skipped", exc_info=True)
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     global _last_heartbeat
@@ -167,6 +178,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     _sweep_orphan_youtube_audio()
     _backfill_gp_synced()
     _backfill_preset_tones()
+    _send_install_count()
     task: asyncio.Task[None] | None = None
     if settings.idle_shutdown_s > 0:
         task = asyncio.create_task(_idle_shutdown_watchdog())

@@ -66,7 +66,11 @@ Servem apenas a interoperabilidade: escrever ficheiros que o jogo saiba ler.
 O RockForge só contacta um serviço quando carregas no botão que o faz — com uma
 exceção: para saber se há uma versão nova, pergunta às Releases do GitHub no
 máximo uma vez por hora, sem enviar nada sobre ti nem sobre as tuas músicas
-(desliga-se em Definições → Geral). Os componentes extra do `.exe` vêm do NuGet,
+(desliga-se em Definições → Geral). E, **só se disseres que sim**, conta a
+instalação: uma vez por versão envia um número ao acaso criado pela instalação, a
+versão, o tipo de instalação e o sistema (Windows/macOS/Linux) a um servidor do
+projeto (Supabase), que não guarda o endereço IP; ao desligar em Definições →
+Geral, o número é esquecido e o que foi enviado é apagado. Os componentes extra do `.exe` vêm do NuGet,
 do PyPI, do PyTorch e do GitHub, só quando os instalas. Os termos de cada
 serviço aplicam-se a quem faz o pedido.
 
@@ -155,7 +159,11 @@ It serves interoperability only: writing files the game can read.
 RockForge contacts a service only when you press the button that does it — with
 one exception: to know whether a new version is out, it asks GitHub's Releases
 at most once an hour, sending nothing about you or your songs (turned off in
-Settings → General). The `.exe`'s extra components come from NuGet, PyPI,
+Settings → General). And, **only if you say yes**, it counts the install: once
+per version it sends a random number the install made up, the version, the kind
+of install and the system (Windows/macOS/Linux) to a server of the project
+(Supabase), which does not keep the IP address; turning it off in Settings →
+General forgets the number and deletes what was sent. The `.exe`'s extra components come from NuGet, PyPI,
 PyTorch and GitHub, only when you install them. Each service's terms apply to
 whoever makes the request.
 

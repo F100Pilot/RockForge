@@ -630,6 +630,9 @@ info** de cada projeto.
   versão, build, sistema, software encontrado e o fim do registo técnico, sem palavras-passe nem
   o teu nome de utilizador — **Relatar um erro** abre o formulário no GitHub, e **Novidades desta
   versão** mostra o que mudou); **Versões novas** (pergunta ao GitHub no máximo uma vez por hora, ligado por defeito);
+  **Contar esta instalação** (desligado até dizeres que sim — a página inicial pergunta uma vez;
+  envia, uma vez por versão, um número ao acaso, a versão, o tipo de instalação e o sistema, e
+  ao desligar apaga o que foi enviado);
   **Pasta do Wwise** (vazio = procurar onde o Audiokinetic Launcher o instala); pasta do
   Rocksmith 2014.
 - **Software**: no `.exe`, o cartão **Componentes extra** (o que está instalado, **Instalar

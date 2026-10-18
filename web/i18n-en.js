@@ -1463,5 +1463,14 @@
  "Escolhe um ficheiro de projeto do RockForge (.rfproj).": "Choose a RockForge project file (.rfproj).",
  "A importar {name}…": "Importing {name}…",
  "Projeto importado: {title} — a construir.": "Project imported: {title} — building.",
- "Não foi possível importar: {error}": "Could not import: {error}"
+ "Não foi possível importar: {error}": "Could not import: {error}",
+ "Obrigado! Esta instalação passa a contar.": "Thank you! This install now counts.",
+ "Não conta. O que já tinha sido enviado é apagado.": "Not counted. What had been sent is deleted.",
+ "Não foi possível guardar: {err}": "Could not save: {err}",
+ "Posso contar esta instalação? Ajuda a saber quantas pessoas usam o RockForge. Envia só um número ao acaso, a versão, o tipo de instalação e o sistema (Windows/macOS/Linux) — nada sobre ti nem sobre as tuas músicas — e podes desligar em Definições → Geral.": "May I count this install? It helps to know how many people use RockForge. It sends only a random number, the version, the kind of install and the system (Windows/macOS/Linux) — nothing about you or your songs — and you can turn it off in Settings → General.",
+ "Sim, contar": "Yes, count it",
+ "Não": "No",
+ "Contar esta instalação": "Count this install",
+ "Contar esta instalação, para se saber quantas pessoas usam o RockForge": "Count this install, so it is known how many people use RockForge",
+ "Desligado até dizeres que sim. Uma vez por versão, envia um número ao acaso criado por esta instalação, a versão, o tipo de instalação (exe, git ou pasta) e o sistema (Windows, macOS ou Linux) — o endereço IP não é guardado. Ao desligar, o número é esquecido e o que foi enviado é apagado. Guarda-se logo, sem «Guardar».": "Off until you say yes. Once per version, it sends a random number this install made up, the version, the kind of install (exe, git or folder) and the system (Windows, macOS or Linux) — the IP address is not kept. Turning it off forgets the number and deletes what was sent. Saved at once, no \"Save\" needed."
 };

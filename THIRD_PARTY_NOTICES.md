@@ -132,7 +132,8 @@ ESLint and its plugins (`package.json`) are development tools only.
 
 RockForge only contacts these when the user presses the button that does it —
 except the version check, which asks GitHub's Releases API at most once an hour
-(turned off in Settings → General). Each has its own terms of use, which apply
+(turned off in Settings → General), and the install counter, which sends
+nothing until the user agrees. Each has its own terms of use, which apply
 to the user who makes the request.
 
 | Service | Used for | Notes |
@@ -143,6 +144,7 @@ to the user who makes the request.
 | iTunes Search API | Album, year, cover | Apple's terms |
 | MusicBrainz + Cover Art Archive | Album, year, cover | MusicBrainz data CC0; cover images belong to their rights holders |
 | GitHub (api.github.com) | Whether a newer RockForge is out | Once an hour at most, nothing about the user sent; off in Settings |
+| RockForge's install counter (Supabase, `supabase/functions/install-ping`) | How many installs use each version | Off until the user says yes; a random id, the version, the kind of install and the OS family, no IP kept; turning it off deletes what was sent |
 | NuGet, PyPI, download.pytorch.org, GitHub releases | The `.exe`'s extra components | Only when the user installs them |
 
 ## 6. Full licence texts

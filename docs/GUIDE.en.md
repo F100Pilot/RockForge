@@ -629,8 +629,10 @@ are shared. Lead/Rhythm tracks are picked by name; check them afterwards in each
   information for a report** puts what a bug report needs on the clipboard — version, build,
   system, the software found and the end of the technical log, without passwords or your user
   name — **Report a problem** opens the form on GitHub, and **What's new in this version** shows
-  what changed); **New versions** (ask GitHub at most once an hour, on by default); **Wwise
-  folder** (empty = found where the Audiokinetic Launcher installs it); Rocksmith 2014 folder.
+  what changed); **New versions** (ask GitHub at most once an hour, on by default); **Count this install**
+  (off until you say yes — the home page asks once; once per version it sends a random number,
+  the version, the kind of install and the system, and turning it off deletes what was sent);
+  **Wwise folder** (empty = found where the Audiokinetic Launcher installs it); Rocksmith 2014 folder.
 - **Software**: in the `.exe`, the **Extra components** card (what is installed, **Install extra
   components** / **Reinstall**, the install log); then what is installed, what is missing and how
   to get it.

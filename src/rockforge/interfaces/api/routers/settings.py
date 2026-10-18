@@ -13,6 +13,8 @@ from rockforge import i18n
 from rockforge.interfaces.api import app as api
 from rockforge.interfaces.api.schemas import (
     ComponentsOut,
+    InstallCountIn,
+    InstallCountOut,
     RequirementOut,
     SettingsIn,
     SettingsOut,
@@ -152,6 +154,27 @@ def update_check(force: bool = False) -> UpdateCheckOut:
         return UpdateCheckOut(enabled=False, current=__version__, kind=uc.install_kind())
     info = uc.check(force=force)
     return UpdateCheckOut(**{k: v for k, v in uc.as_dict(info).items() if k != "checked_at"})
+
+
+@router.get("/install-count", response_model=InstallCountOut)
+def install_count() -> InstallCountOut:
+    """The opt-in install counter's state (infrastructure/install_counter.py)."""
+    from rockforge.infrastructure import install_counter
+
+    return InstallCountOut(**install_counter.status())
+
+
+@router.put("/install-count", response_model=InstallCountOut)
+def set_install_count(body: InstallCountIn) -> InstallCountOut:
+    """The user's answer: yes sends this version once (in the background), no
+    forgets this install's id and asks the server to delete what it sent."""
+    from rockforge.infrastructure import install_counter
+
+    if not install_counter.url():
+        raise HTTPException(404, i18n.tr(
+            "o contador de instalações está desligado nesta instalação",
+            "the install counter is off in this install"))
+    return InstallCountOut(**install_counter.set_enabled(body.enabled))
 
 
 def _components_out() -> ComponentsOut:

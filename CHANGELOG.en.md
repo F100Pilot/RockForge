@@ -8,6 +8,11 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ### New
 
+- **Counting installs, only if you say yes**: the home page asks once whether the install may
+  count, so it is known how many people use RockForge (GitHub only shows downloads). Once per
+  version it sends a random number, the version, the kind of install and the system — nothing
+  about you or your songs, and the IP address is not kept. Turn it off in Settings → General →
+  **Count this install**, and what was sent is deleted.
 - **Export and import the project** (Export → **RockForge project (.rfproj)**; home page →
   **Import project**): the whole project in one file — the recording, the Guitar Pro file, the
   cover, every correction and, if you want, the separated instruments — to open it on another

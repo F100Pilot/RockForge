@@ -9,4 +9,6 @@ environment.
 
 import os
 
+# Tests never reach the install counter's server; the ones about it set a URL.
+os.environ.setdefault("ROCKFORGE_INSTALL_COUNTER_URL", "")
 os.environ.setdefault("ROCKFORGE_ALLOWED_HOSTS", "localhost,127.0.0.1,::1,testserver")

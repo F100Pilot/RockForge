@@ -5415,9 +5415,58 @@ checkout `start.bat` pulls — the UI shows nothing) or "source" (a zip with no
 `.git`). Off with Definições → Geral → «Versões novas» (`check_updates`). The
 home page notice links the release page and «Mais tarde» hides that version
 (`rf-notice-dismissed` in localStorage). LEGAL.md and THIRD_PARTY_NOTICES say
-this is the one contact made without a button. Guarded by
+this is the one contact made without a button (the install counter below only
+after a yes). Guarded by
 `test_update_check.py` (ordering, the beta rule, the hour's cache, the back-off,
 an upgrade not trusting the old cache, git vs zip, the setting).
+
+### Counting installs, only after a yes (`infrastructure/install_counter.py`)
+
+"Existe alguma forma de eu saber quantos utilizadores instalaram a aplicação?"
+→ "Implementa o contador opcional de instalações" (2026-10-18). GitHub shows
+downloads (a re-download or a `git clone` counts like a new user) and its
+traffic API needs push rights, so the app counts itself — **opt-in**: nothing is
+sent before the user answers yes. The home page asks once (`renderHomeNotices`,
+only when no other notice is up, before the star ask; "Sim, contar" / "Não"),
+and Definições → Geral → **Contar esta instalação** (`#installCountCard`,
+`#sInstallCount`, saved on change, not part of `settingsPayload`) switches it.
+The answer is the SERVER's (`work_dir/install_counter.json` — not
+`settings.json`, which the Definições save rewrites whole): asked once per
+install, not per browser. Yes → a random `uuid4` (never derived from the
+machine) and, once per version, `POST {install_id, version, kind, os}` (kind =
+`update_check.install_kind`, os = windows/macos/linux/other) in a background
+thread, at the answer and at startup (`_send_install_count` in the lifespan →
+`send_in_background`); a failure is silent and retried on the next start
+(`sent_version` only moves on a 2xx). No → the id is forgotten and
+`{action: "forget", install_id}` asks the server to delete its rows. API:
+`GET/PUT /install-count` (`InstallCountOut`: `available`, `enabled` null until
+answered; PUT 404s when the counter is off). `config.install_counter_url`
+(`ROCKFORGE_INSTALL_COUNTER_URL`, empty = off and never asked; `tests/conftest.py`
+empties it, so no test can reach the network).
+
+**The server** is its own free Supabase project "rockforge-counter"
+(`fvyqytrtmctsdepyrnlm`, eu-central-1, org "Dream Teams") — not the user's other
+projects. Source in the repo: `supabase/migrations/20261018000000_install_counter.sql`
+(table `install_versions`, PK `(install_id, version)`, CHECKs on every field,
+RLS on with NO policies and `anon`/`authenticated` revoked, so the Data API
+reads nothing; `install_counts()` executable by `service_role` only) and
+`supabase/functions/install-ping/index.ts` (deployed with `verify_jwt` off —
+the app has no key — so it validates the body itself: a v4 UUID, a SemVer
+version, the four kinds/OSes, ≤ 1 KB; service-role upsert, `ignoreDuplicates`).
+`GET` on the function answers the totals `{installs, by_version, by_kind,
+by_os}` — that is how the maintainer reads them (or SQL in the dashboard). No IP
+is stored (Supabase's own request logs are the platform's, kept a few days).
+Honest limits: anyone can post a made-up id (it is a counter, not an audit);
+only installs that said yes are counted. Changing the function: edit the file
+and redeploy it with the same settings. Exercised for real from the project's
+own database (pg_net, which is left installed — it would not drop): record 204,
+a bad id 400, a repeat one row, totals, forget → 0 rows. Guarded by
+`test_install_counter.py` (nothing before a yes, only the four fields, once per
+version, a new version again with the same id, a failed send retried, no =
+forget + a new id next time, no URL = off, the API); with Playwright against a
+local fake server (PT 1440 / EN 760 px: the question, yes → one ping, untick →
+forget, no → nothing sent and not asked again; the startup ping after an update
+sent once and not on the next start), no page errors.
 
 ### «Novidades» after an update (`rockforge/whats_new.py`, `GET /whats-new`)
 
