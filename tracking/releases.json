@@ -440,7 +440,7 @@
     },
     {
       "version": "0.11.0-beta.3",
-      "status": "Beta",
+      "status": "Superseded",
       "created": "2026-10-18",
       "published": "2026-10-18",
       "commit": "493ba6d1213a0861361146f508426865672cf9f0",
@@ -463,10 +463,12 @@
       "version": "0.11.0-beta.4",
       "status": "Beta",
       "created": "2026-10-18",
-      "published": "pending",
-      "commit": "pending",
+      "published": "2026-10-19",
+      "commit": "b3720eaf73a765e0ab340a6b19749f30e67f8089",
       "build": "GitHub Actions release workflow",
-      "artifacts": [],
+      "artifacts": [
+        "https://github.com/F100Pilot/RockForge/releases/tag/v0.11.0-beta.4"
+      ],
       "goal": "Batches 2 and 3 of the code review: 28 medium/low fixes (GP export, stems after a reload, Windows UTF-8, .exe shutdown, lyrics formats, editor state between tracks/projects)",
       "features": [],
       "improvements": [],
