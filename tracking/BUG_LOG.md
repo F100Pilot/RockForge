@@ -4,9 +4,9 @@
 
 Every bug found in RockForge, with a permanent id; the full record of each is on its module's page in [bugs/](bugs). Rules and states: [docs/VERSIONING.md](../docs/VERSIONING.md#bugs). Fixes: [FIX_LOG.md](FIX_LOG.md). Releases: [RELEASE_LOG.md](RELEASE_LOG.md).
 
-| Open | Fixed | Verified | Closed |
-|---|---|---|---|
-| 1 | 100 | 38 | 200 |
+| Fixed | Verified | Closed |
+|---|---|---|
+| 100 | 39 | 200 |
 
 | ID | Title | Module | Severity | Priority | Status | Found in | Fixed in |
 |---|---|---|---|---|---|---|---|
@@ -348,4 +348,4 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0336](bugs/viewer.md#bug-0336) | The 3D highway could start drawing after being closed while loading | viewer | Low | P4 | Verified | 0.11.0-beta.2 | 0.11.0-beta.4 |
 | [BUG-0337](bugs/psarc.md#bug-0337) | Two songs whose names share the first 30 letters get the same song key | psarc | Low | P4 | Verified | 0.11.0-beta.2 | — |
 | [BUG-0338](bugs/tones.md#bug-0338) | A tone change does not follow a sync correction made in the same rebuild | tones | Medium | P3 | Verified | 0.11.0-beta.4 | — |
-| [BUG-0339](bugs/sync.md#bug-0339) | A section marker does not follow a sync correction made in the same rebuild | sync | Medium | P3 | Open | 0.11.0-beta.4 | — |
+| [BUG-0339](bugs/sync.md#bug-0339) | A section marker does not follow a sync correction made in the same rebuild | sync | Medium | P3 | Verified | 0.11.0-beta.4 | — |

@@ -1770,7 +1770,7 @@ Drag, Mark at cursor, Move following, Correct from here and taps added anchors w
 | Build / commit | _pending_ |
 | Severity | Medium |
 | Priority | P3 |
-| Status | Open |
+| Status | Verified |
 
 Section markers (section_overrides) are stored in the chart's clock and sent as stored, while the score draws them through the pending tempo/anchors and the notes move with them at the rebuild — the same gap as BUG-0338.
 
@@ -1784,13 +1784,13 @@ Section markers (section_overrides) are stored in the chart's clock and sent as 
 
 **Observed:** First note 3.0 s, section still 10.0 s (Playwright on an invented project, 2026-10-19).
 
-**Root cause:** applyAll sends songSections raw; gp_pipeline uses section_overrides without the per-chart warp.
+**Root cause:** section_overrides are sent in the stored chart clock; gp_pipeline uses them without the per-chart warp, and stored overrides were never re-sent after a later correction.
 
-**Fixes:** —
+**Fixes:** [FIX-0339](../FIX_LOG.md#fix-0339) (unreleased)
 
-**Verified:** _pending_ (by _pending_)
+**Verified:** Playwright, invented GP5 + real rebuilds: a +1 s pending correction moved the first note 2.0 → 3.0 s and the edited section 10 → 11 s; a second +1 s with the sections untouched moved it to 12 s; "+ Adicionar no cursor" drawn exactly on the cursor; untouched GP sections still sent as null (by the developer (Playwright))
 
-**Resolved:** _pending_ · **Closed:** _pending_
+**Resolved:** 2026-10-19 · **Closed:** _pending_
 
 **Evidence:**
 
@@ -1799,3 +1799,6 @@ Section markers (section_overrides) are stored in the chart's clock and sent as 
 **History:**
 
 - 2026-10-19 — Open: reported
+- 2026-10-19 — In Progress: the maintainer asked for the fix
+- 2026-10-19 — Fixed: commit f99ff718dd
+- 2026-10-19 — Verified: checked in the browser with real rebuilds

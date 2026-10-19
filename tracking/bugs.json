@@ -16813,21 +16813,38 @@
       "observed": "First note 3.0 s, section still 10.0 s (Playwright on an invented project, 2026-10-19).",
       "severity": "Medium",
       "priority": "P3",
-      "status": "Open",
-      "root_cause": "applyAll sends songSections raw; gp_pipeline uses section_overrides without the per-chart warp.",
-      "fixes": [],
-      "verified_by": "pending",
-      "verification": "pending",
+      "status": "Verified",
+      "root_cause": "section_overrides are sent in the stored chart clock; gp_pipeline uses them without the per-chart warp, and stored overrides were never re-sent after a later correction.",
+      "fixes": [
+        "FIX-0339"
+      ],
+      "verified_by": "the developer (Playwright)",
+      "verification": "Playwright, invented GP5 + real rebuilds: a +1 s pending correction moved the first note 2.0 → 3.0 s and the edited section 10 → 11 s; a second +1 s with the sections untouched moved it to 12 s; \"+ Adicionar no cursor\" drawn exactly on the cursor; untouched GP sections still sent as null",
       "evidence": [
         "Playwright, invented GP5: drawn at 11.0 before the rebuild, built at 10.0 with notes moved +1.0 s"
       ],
-      "resolved": "pending",
+      "resolved": "2026-10-19",
       "closed": "pending",
       "history": [
         {
           "date": "2026-10-19",
           "status": "Open",
           "note": "reported"
+        },
+        {
+          "date": "2026-10-19",
+          "status": "In Progress",
+          "note": "the maintainer asked for the fix"
+        },
+        {
+          "date": "2026-10-19",
+          "status": "Fixed",
+          "note": "commit f99ff718dd"
+        },
+        {
+          "date": "2026-10-19",
+          "status": "Verified",
+          "note": "checked in the browser with real rebuilds"
         }
       ]
     }

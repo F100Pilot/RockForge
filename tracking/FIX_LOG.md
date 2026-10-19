@@ -344,6 +344,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0336](#fix-0336) | BUG-0336 | 0.11.0-beta.4 | not run | manual |
 | [FIX-0337](#fix-0337) | BUG-0337 | unreleased | passed | automated |
 | [FIX-0338](#fix-0338) | BUG-0338 | unreleased | not run | manual |
+| [FIX-0339](#fix-0339) | BUG-0339 | unreleased | passed | manual |
 
 ## FIX-0001
 
@@ -7442,3 +7443,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | not run |
 | Validation | manual |
 | Regression risk | Low: only the times sent at a rebuild change, and only when a sync correction is pending; the suite (pytest, ruff, mypy, ESLint) is green. |
+
+## FIX-0339
+
+**Bugs:** [BUG-0339](bugs/sync.md#bug-0339)
+
+**Root cause:** section_overrides are sent in the stored chart clock; gp_pipeline uses them without the per-chart warp, and stored overrides were never re-sent after a later correction.
+
+**Solution:** Edited sections are sent where the score shows them (the chart on screen's pending tempo/anchors), also on later rebuilds of a job that already has them (ArrangementOut.sections_edited); "+ Adicionar no cursor" stores the cursor through the inverse map. Untouched GP sections are still not sent.
+
+| | |
+|---|---|
+| Date | 2026-10-19 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | unreleased |
+| Commits | f99ff718ddc653b98a6f09042a0fbc3a1aba8149 |
+| Components | web/app.js; src/rockforge/interfaces/api/routers/charts.py; src/rockforge/interfaces/api/schemas.py |
+| Tests | tests/test_api.py::test_arrangements_excludes_the_noguitar_sentinel_from_sections |
+| Manual checks | Playwright + real rebuilds: section 10 → 11 s with a +1 s correction, → 12 s on a second untouched rebuild, cursor add on the cursor, untouched GP sections null |
+| Test result | passed |
+| Validation | manual |
+| Regression risk | Low: only the section times sent at a rebuild change, and only for sections the editor owns; the suite (pytest, ruff, mypy, ESLint) is green. |
