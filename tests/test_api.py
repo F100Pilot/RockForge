@@ -1265,8 +1265,11 @@ def test_a_gp_job_stores_the_bar_times_it_was_created_with(client: TestClient, t
         assert job.params["bar_times_source"] == "songsterr:42:7"
 
 
+# "[-1, 2]" left out on purpose: negative times are now ACCEPTED — Songsterr
+# markers can begin before the video's first second (a count-in at t<0), and
+# bar_time_points skips those anchors without shifting the bar alignment.
 @pytest.mark.parametrize(
-    "bad", ["not json", '{"a": 1}', '[1, "x"]', "[1, NaN]", "[-1, 2]", "[true, 2]"]
+    "bad", ["not json", '{"a": 1}', '[1, "x"]', "[1, NaN]", "[true, 2]"]
 )
 def test_bad_bar_times_are_rejected_before_anything_is_stored(client: TestClient, bad: str) -> None:
     body = client.post(
