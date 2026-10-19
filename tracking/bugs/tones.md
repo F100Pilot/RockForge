@@ -769,7 +769,7 @@ A volume such as "loud" or NaN was stored by a rebuild or the library and only f
 | Build / commit | _pending_ |
 | Severity | Medium |
 | Priority | P3 |
-| Status | Open |
+| Status | Verified |
 
 Tone change times are stored in the chart's clock and used by the build verbatim, while the notes move with the pending tempo/anchor corrections. The score draws the change moved with its notes (warp(previewScale(t))), so the preview and the rebuild disagree.
 
@@ -785,16 +785,20 @@ Tone change times are stored in the chart's clock and used by the build verbatim
 
 **Root cause:** toneSetsForRebuild sends the stored chart times; gp_pipeline uses tone_changes without the per-chart warp.
 
-**Fixes:** —
+**Fixes:** [FIX-0338](../FIX_LOG.md#fix-0338) (unreleased)
 
-**Verified:** _pending_ (by _pending_)
+**Verified:** Playwright, invented GP5 + real rebuilds: a +1 s pending correction moved the first note 2.0 → 3.0 s and the tone change 6.0 → 7.0 s (XML 6.980); per-track, the Bass with no correction kept 6.0 s (by the developer (Playwright))
 
-**Resolved:** _pending_ · **Closed:** _pending_
+**Resolved:** 2026-10-19 · **Closed:** _pending_
 
 **Evidence:**
 
 - Playwright, invented GP5: drawn at 7.0 before the rebuild, built at 6.0 with notes moved +1.0 s
+- Playwright, invented GP5 + real rebuilds: a +1 s pending correction moved the first note 2.0 → 3.0 s and the tone change 6.0 → 7.0 s (XML 6.980); per-track, the Bass with no correction kept 6.0 s
 
 **History:**
 
 - 2026-10-19 — Open: reported
+- 2026-10-19 — In Progress: the maintainer asked for the fix
+- 2026-10-19 — Fixed: commit a9ba28fe24
+- 2026-10-19 — Verified: checked in the browser with real rebuilds

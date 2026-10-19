@@ -1757,3 +1757,45 @@ Drag, Mark at cursor, Move following, Correct from here and taps added anchors w
 - 2026-10-18 — Open: reported
 - 2026-10-18 — Fixed: commit 9ef6aadeff
 - 2026-10-18 — Verified: its test passes and fails on the old code
+
+## BUG-0339
+
+**A section marker does not follow a sync correction made in the same rebuild**
+
+| | |
+|---|---|
+| Detected | 2026-10-19 |
+| Reported by | Claude, while fixing BUG-0338 |
+| Found in | 0.11.0-beta.4 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P3 |
+| Status | Open |
+
+Section markers (section_overrides) are stored in the chart's clock and sent as stored, while the score draws them through the pending tempo/anchors and the notes move with them at the rebuild — the same gap as BUG-0338.
+
+**Steps to reproduce:** 
+
+1. A section at 10 s, first note at 2 s
+2. Pending sync: first note +1 s
+3. Apply and rebuild
+
+**Expected:** The section at 11 s, as the score showed it.
+
+**Observed:** First note 3.0 s, section still 10.0 s (Playwright on an invented project, 2026-10-19).
+
+**Root cause:** applyAll sends songSections raw; gp_pipeline uses section_overrides without the per-chart warp.
+
+**Fixes:** —
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** _pending_ · **Closed:** _pending_
+
+**Evidence:**
+
+- Playwright, invented GP5: drawn at 11.0 before the rebuild, built at 10.0 with notes moved +1.0 s
+
+**History:**
+
+- 2026-10-19 — Open: reported

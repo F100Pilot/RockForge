@@ -8434,6 +8434,30 @@
       "test_result": "passed",
       "regression_risk": "Medium for the player: long-titled and non-Latin songs get a new key when rebuilt, so the game sees them as new songs (progress starts over). Short names are unchanged.",
       "validation": "automated"
+    },
+    {
+      "id": "FIX-0338",
+      "bugs": [
+        "BUG-0338"
+      ],
+      "date": "2026-10-19",
+      "author": "Claude (AI coding assistant), on the maintainer's request",
+      "root_cause": "toneSetsForRebuild sent the stored chart times; the build uses tone changes without the per-chart warp.",
+      "solution": "Tone changes are sent where the score shows them: each chart's own set through that chart's pending tempo/anchors, the song's set (and everything under \"Aplicar sync a todos\") through the chart on screen's.",
+      "components": [
+        "web/app.js"
+      ],
+      "commits": [
+        "a9ba28fe2441935f538cac72ee25efc10a92ae84"
+      ],
+      "version": "unreleased",
+      "tests": [],
+      "manual_checks": [
+        "Playwright + real rebuilds: +1 s correction moved the change 6.0 → 7.0 s with its notes; a chart with no correction kept 6.0 s"
+      ],
+      "test_result": "not run",
+      "regression_risk": "Low: only the times sent at a rebuild change, and only when a sync correction is pending; the suite (pytest, ruff, mypy, ESLint) is green.",
+      "validation": "manual"
     }
   ]
 }

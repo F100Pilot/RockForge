@@ -343,6 +343,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0335](#fix-0335) | BUG-0335 | 0.11.0-beta.4 | not run | manual |
 | [FIX-0336](#fix-0336) | BUG-0336 | 0.11.0-beta.4 | not run | manual |
 | [FIX-0337](#fix-0337) | BUG-0337 | unreleased | passed | automated |
+| [FIX-0338](#fix-0338) | BUG-0338 | unreleased | not run | manual |
 
 ## FIX-0001
 
@@ -7420,3 +7421,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | passed |
 | Validation | automated |
 | Regression risk | Medium for the player: long-titled and non-Latin songs get a new key when rebuilt, so the game sees them as new songs (progress starts over). Short names are unchanged. |
+
+## FIX-0338
+
+**Bugs:** [BUG-0338](bugs/tones.md#bug-0338)
+
+**Root cause:** toneSetsForRebuild sent the stored chart times; the build uses tone changes without the per-chart warp.
+
+**Solution:** Tone changes are sent where the score shows them: each chart's own set through that chart's pending tempo/anchors, the song's set (and everything under "Aplicar sync a todos") through the chart on screen's.
+
+| | |
+|---|---|
+| Date | 2026-10-19 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | unreleased |
+| Commits | a9ba28fe2441935f538cac72ee25efc10a92ae84 |
+| Components | web/app.js |
+| Tests | — |
+| Manual checks | Playwright + real rebuilds: +1 s correction moved the change 6.0 → 7.0 s with its notes; a chart with no correction kept 6.0 s |
+| Test result | not run |
+| Validation | manual |
+| Regression risk | Low: only the times sent at a rebuild change, and only when a sync correction is pending; the suite (pytest, ruff, mypy, ESLint) is green. |

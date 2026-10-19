@@ -16759,13 +16759,67 @@
       "observed": "Built first note 3.0 s, tone change still 6.0 s (Playwright on an invented project, 2026-10-19).",
       "severity": "Medium",
       "priority": "P3",
-      "status": "Open",
+      "status": "Verified",
       "root_cause": "toneSetsForRebuild sends the stored chart times; gp_pipeline uses tone_changes without the per-chart warp.",
+      "fixes": [
+        "FIX-0338"
+      ],
+      "verified_by": "the developer (Playwright)",
+      "verification": "Playwright, invented GP5 + real rebuilds: a +1 s pending correction moved the first note 2.0 → 3.0 s and the tone change 6.0 → 7.0 s (XML 6.980); per-track, the Bass with no correction kept 6.0 s",
+      "evidence": [
+        "Playwright, invented GP5: drawn at 7.0 before the rebuild, built at 6.0 with notes moved +1.0 s",
+        "Playwright, invented GP5 + real rebuilds: a +1 s pending correction moved the first note 2.0 → 3.0 s and the tone change 6.0 → 7.0 s (XML 6.980); per-track, the Bass with no correction kept 6.0 s"
+      ],
+      "resolved": "2026-10-19",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-19",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-19",
+          "status": "In Progress",
+          "note": "the maintainer asked for the fix"
+        },
+        {
+          "date": "2026-10-19",
+          "status": "Fixed",
+          "note": "commit a9ba28fe24"
+        },
+        {
+          "date": "2026-10-19",
+          "status": "Verified",
+          "note": "checked in the browser with real rebuilds"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0339",
+      "title": "A section marker does not follow a sync correction made in the same rebuild",
+      "detected": "2026-10-19",
+      "reported_by": "Claude, while fixing BUG-0338",
+      "found_in_version": "0.11.0-beta.4",
+      "found_in_build": "pending",
+      "module": "sync",
+      "description": "Section markers (section_overrides) are stored in the chart's clock and sent as stored, while the score draws them through the pending tempo/anchors and the notes move with them at the rebuild — the same gap as BUG-0338.",
+      "steps": [
+        "A section at 10 s, first note at 2 s",
+        "Pending sync: first note +1 s",
+        "Apply and rebuild"
+      ],
+      "expected": "The section at 11 s, as the score showed it.",
+      "observed": "First note 3.0 s, section still 10.0 s (Playwright on an invented project, 2026-10-19).",
+      "severity": "Medium",
+      "priority": "P3",
+      "status": "Open",
+      "root_cause": "applyAll sends songSections raw; gp_pipeline uses section_overrides without the per-chart warp.",
       "fixes": [],
       "verified_by": "pending",
       "verification": "pending",
       "evidence": [
-        "Playwright, invented GP5: drawn at 7.0 before the rebuild, built at 6.0 with notes moved +1.0 s"
+        "Playwright, invented GP5: drawn at 11.0 before the rebuild, built at 10.0 with notes moved +1.0 s"
       ],
       "resolved": "pending",
       "closed": "pending",
