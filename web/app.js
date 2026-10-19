@@ -4975,7 +4975,7 @@ async function applyAllNow() {
   mainSyncFollow();  // what the main chart changed must reach the others first
   lyricsFollowSync();  // the rows sent must carry every pending chart correction
   const applyToAll = document.getElementById('applyToAllChk').checked;
-  const toneSets = toneSetsForRebuild();
+  const toneSets = toneSetsForRebuild(applyToAll);
   let b;
   try {
     b = await getJSON(`/jobs/${selectedJob.id}/rebuild`, {
@@ -5349,16 +5349,31 @@ function setTonesPerTrack(on) {
   renderTonePanel();
 }
 // What "Aplicar e reconstruir" sends: the song-level set plus, per track, its own.
-function toneSetsForRebuild() {
+// A tone change is kept in the built clock and drawn through its chart's
+// pending tempo/anchors, like a note; the build keeps the time it is given, so
+// it is sent where it is SHOWN, or a sync correction made in the same rebuild
+// would move the notes away from it (BUG-0338). Each chart's own set through
+// that chart's map; the song's set — and everything with "Aplicar sync a
+// todos" — through the chart on screen's, the one it is drawn on.
+function toneChangesShown(changes, idx) {
+  if (idx < 0) return changes;
+  return changes
+    .map(c => ({ ...c, time: Math.max(0, Math.round(chartDisplayTime(idx, c.time) * 1000) / 1000) }))
+    .sort((x, y) => x.time - y.time);
+}
+function toneSetsForRebuild(applyToAll = false) {
   stashToneSet();
   const perTrack = {};
   if (tonesPerTrack) {
-    for (const a of arrangements) {
+    arrangements.forEach((a, idx) => {
       const set = toneSetByKind[a.kind] || songToneSet;
-      perTrack[a.kind] = { tone_base: set.tone_base || null, tone_names: set.tone_names, tone_changes: set.tone_changes };
-    }
+      perTrack[a.kind] = {
+        tone_base: set.tone_base || null, tone_names: set.tone_names,
+        tone_changes: toneChangesShown(set.tone_changes, applyToAll ? currentArr : idx),
+      };
+    });
   }
-  return { song: songToneSet, perTrack };
+  return { song: { ...songToneSet, tone_changes: toneChangesShown(songToneSet.tone_changes, currentArr) }, perTrack };
 }
 // A tone removed from the project leaves every chart's set, not only the one on screen.
 function forgetToneKey(key) {

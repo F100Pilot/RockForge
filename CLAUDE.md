@@ -3550,9 +3550,17 @@ drafts, "Aplicar e reconstruir"; the writer still keeps a change off a note
 (`_safe_tone_time`). Browser-only; verified with Playwright on an invented
 project (typed 5.25 s → shown 0:05.3, "= cursor", a 1.5 s drag, Ctrl+Z / redo,
 a real rebuild writing `<tone time="9.500">`, PT 1440 / EN 760 px, no page
-errors). **Open, BUG-0338:** a tone change does not follow a sync correction
-made in the same rebuild — the score draws it moved with its notes, the build
-keeps its stored time.
+errors). **It is sent where it is shown** (BUG-0338, `toneChangesShown` in
+`toneSetsForRebuild`): the build keeps a tone change's time as given while the
+notes move with the pending tempo/anchors, so a correction made in the same
+rebuild left the change behind its note. Each chart's own set goes through
+`chartDisplayTime` with that chart's map (the `fhpForRebuild` pattern), the
+song's set — and every set under "Aplicar sync a todos" — through the chart on
+screen's, rounded to the millisecond. Verified with Playwright and real
+rebuilds: a +1 s correction moved the first note 2 → 3 s and the change 6 → 7 s
+(written 6.980, `_safe_tone_time`), a Bass with no correction kept its 6.0 s.
+**Open, BUG-0339:** section markers have the same gap (drawn at 11 s, built at
+10 s in the same test).
 
 ### Tones from a pasted text (`infrastructure/tone_plan.py`, "Importar tons de um texto")
 

@@ -12,6 +12,7 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ### Fixes
 
+- **Tones:** a tone change now follows a sync correction made before the same rebuild. Before, the notes moved and the switch stayed at the old time.
 - **Rocksmith:** two songs whose names start with the same 30 letters (two live versions, say) no longer replace each other in game, and neither do titles with no Latin letters (Cyrillic, Japanese…). Note: these songs get a new identifier when rebuilt, and the game starts their progress over. Songs with short names do not change.
 
 ## [0.11.0 beta 4] — 2026-10-18
