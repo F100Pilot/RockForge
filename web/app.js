@@ -1890,6 +1890,10 @@ let toneLibrary = [];         // cross-project saved tones (GET /tone-library)
 // untouched job never overwrites GP-authored sections with their own mirror.
 let songSections = [];
 let sectionsTouched = false;
+// The sections came from the editor (params["section_overrides"]): the build
+// keeps their times as given, so they are sent where they are shown — see
+// sectionsForRebuild.
+let sectionsEdited = false;
 let lyricsPollTimer = null;
 // Current cent_offset (fine-tuning deviation from A440), pre-filled from the
 // built arrangement and updated by "Detetar afinação" / sent on rebuild.
@@ -2500,6 +2504,7 @@ async function loadArrangements(id) {
   centOffsetLive = a0.cent_offset;
   songSections = (a0.sections || []).map(s => ({ time: s.time, name: s.name }));
   sectionsTouched = false;
+  sectionsEdited = !!a0.sections_edited;
   document.getElementById('tuningInfo').innerHTML =
     `<p class="meta">${T('offsets: [{offsets}] · desvio: <span id="centOffsetVal">{cents}</span> cents · BPM médio: {bpm}', { offsets: a0.tuning_offsets.join(', '), cents: a0.cent_offset.toFixed(1), bpm: a0.average_bpm.toFixed(1) })}</p>`;
   centOffsetBuilt = a0.cent_offset;
@@ -5009,7 +5014,7 @@ async function applyAllNow() {
         // Only sent once the user actually touches the section editor — untouched,
         // null leaves each arrangement's own GP-authored sections alone (unlike
         // tones, which never had a prior non-user-supplied default to lose).
-        section_overrides: (isGpJob() && sectionsTouched) ? songSections : null,
+        section_overrides: isGpJob() ? sectionsForRebuild() : null,
         // Genuinely per-arrangement (unlike tone_changes/sections) — sent as
         // one dict covering every tab's pending edits from this session, same
         // no-prior-default reasoning as tone_changes (an untouched job sends {}).
@@ -5683,6 +5688,18 @@ function renderSectionsList() {
   if (arrangements.length) showArr(currentArr);
 }
 
+// Sent where the score draws them (the chart on screen's pending tempo/anchors,
+// like the song's tone set): the build applies a sync correction to the notes
+// and keeps a section's time as given, so a correction made in the same
+// rebuild left the section behind (BUG-0339). The GP file's own sections are
+// warped by the build itself, so untouched they are not sent (null).
+function sectionsForRebuild() {
+  if (!sectionsTouched && !sectionsEdited) return null;
+  return songSections
+    .map(s => ({ ...s, time: Math.max(0, Math.round(chartDisplayTime(currentArr, s.time) * 1000) / 1000) }))
+    .sort((x, y) => x.time - y.time);
+}
+
 function placeSectionMarker(chartTime) {
   const name = prompt(T('Nome da secção:'), T('Nova secção'));
   if (name === null) return;
@@ -5695,7 +5712,8 @@ function placeSectionMarker(chartTime) {
 
 document.getElementById('addSectionAtCursor')?.addEventListener('click', () => {
   if (!arrangements.length) return;
-  songSections.push({ time: currentPlayheadT + viewOrigin, name: T('Nova secção') });
+  // The cursor is display time; stored in the chart clock, like every section.
+  songSections.push({ time: toneChangeChartTime(currentPlayheadT + viewOrigin), name: T('Nova secção') });
   songSections.sort((a, b) => a.time - b.time);
   sectionsTouched = true;
   renderSectionsList();

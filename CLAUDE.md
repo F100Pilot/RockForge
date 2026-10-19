@@ -1932,6 +1932,21 @@ Adding a marker: either the "Secção" sync mode (click a note, prompts for a
 name) or "+ Adicionar no cursor" (places one at the current playhead without
 needing to land exactly on a note); the list panel's time/name fields are
 directly editable (like the sync-anchors list), each edit re-sorting by time.
+**Edited sections are sent where the score draws them** (BUG-0339,
+`sectionsForRebuild`): the build keeps `section_overrides` as given while the
+notes move with the pending tempo/anchors, so a correction made in the same
+rebuild left a section behind (drawn at 11 s, built at 10 s). They go through
+the chart on screen's `chartDisplayTime`, rounded to the millisecond — and not
+only after an edit in this session: `ArrangementOut.sections_edited` (the job
+HAS stored overrides) makes the viewer send them on every rebuild, since a
+later correction would otherwise leave the stored ones behind too. The GP
+file's own sections are warped by the build, so untouched they still send
+`null`. "+ Adicionar no cursor" stores the cursor through the inverse map
+(`toneChangeChartTime`), so it lands where the cursor shows. Guarded by
+`sections_edited` in `test_arrangements_excludes_the_noguitar_sentinel_from_sections`;
+with Playwright and real rebuilds: +1 s → the section 10 → 11 s with its
+notes, a second +1 s with the sections untouched → 12 s, the cursor add drawn
+exactly on the cursor, untouched GP sections → `null`, no page errors.
 On the score, section markers span the **full staff height** (distinct from
 the tone-change markers, which live in a band below the staff) in teal, with
 a `🏷️` label, so the song structure is visible at a glance while scrolling.
@@ -3559,8 +3574,8 @@ song's set — and every set under "Aplicar sync a todos" — through the chart 
 screen's, rounded to the millisecond. Verified with Playwright and real
 rebuilds: a +1 s correction moved the first note 2 → 3 s and the change 6 → 7 s
 (written 6.980, `_safe_tone_time`), a Bass with no correction kept its 6.0 s.
-**Open, BUG-0339:** section markers have the same gap (drawn at 11 s, built at
-10 s in the same test).
+Section markers had the same gap (BUG-0339, fixed the same way — see the
+section editor).
 
 ### Tones from a pasted text (`infrastructure/tone_plan.py`, "Importar tons de um texto")
 

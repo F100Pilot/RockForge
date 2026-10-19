@@ -1454,8 +1454,18 @@ def test_arrangements_excludes_the_noguitar_sentinel_from_sections(
         db_job.bundle_dir = str(bundle)
         session.commit()
 
-    sections = client.get(f"/jobs/{job['id']}/arrangements").json()[0]["sections"]
-    assert [s["name"] for s in sections] == ["Intro"]
+    first = client.get(f"/jobs/{job['id']}/arrangements").json()[0]
+    assert [s["name"] for s in first["sections"]] == ["Intro"]
+    # The GP file's own sections, not the editor's: the build warps those itself.
+    assert first["sections_edited"] is False
+    with app_module._session_factory() as session:
+        db_job = session.get(app_module.Job, job["id"])
+        db_job.params = {**(db_job.params or {}),
+                         "section_overrides": [{"time": 0.0, "name": "Intro"}]}
+        session.commit()
+    # The editor's are kept as given, so the viewer carries them through a
+    # pending sync change before sending them (BUG-0339).
+    assert client.get(f"/jobs/{job['id']}/arrangements").json()[0]["sections_edited"] is True
 
 
 def _bundle_with(client: TestClient, kinds: list[str]) -> str:

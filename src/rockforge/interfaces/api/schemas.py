@@ -327,6 +327,10 @@ class ArrangementOut(BaseModel):
     # ones), and whether they are the user's (params["hand_positions"]).
     hand_positions: list[HandPositionOut] = []
     hand_positions_edited: bool = False
+    # The song's sections are the editor's (params["section_overrides"]), not
+    # the GP file's: the build keeps those times as given, so the viewer sends
+    # them where it shows them whenever a sync change is pending.
+    sections_edited: bool = False
     # The user marked THIS chart as in sync with the recording (each track is
     # synchronised on its own; its tab turns green).
     sync_confirmed: bool = False

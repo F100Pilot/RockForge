@@ -116,6 +116,7 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
 
     raw_hand_ov = job_params.get("hand_positions")
     hand_ov = raw_hand_ov if isinstance(raw_hand_ov, dict) else {}
+    sections_edited = isinstance(job_params.get("section_overrides"), list)
     raw_note_ov = job_params.get("note_overrides")
     note_ov = raw_note_ov if isinstance(raw_note_ov, dict) else {}
 
@@ -269,6 +270,7 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
                     for a in root.findall("levels/level/anchors/anchor")
                 ],
                 hand_positions_edited=bool(hand_ov.get(kind)),
+                sections_edited=sections_edited,
                 sync_confirmed=kind in synced_kinds,
                 estimated_bars=estimated_bars_for(kind),
                 arpeggios=arpeggios,

@@ -12,6 +12,7 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ### Correções
 
+- **Secções:** as secções que editaste passam a acompanhar uma correção de sincronização feita antes da mesma reconstrução, como as mudanças de tom. Antes, as notas mudavam de sítio e a secção ficava no tempo antigo. "+ Adicionar no cursor" põe a secção exatamente onde o cursor está, mesmo com uma correção pendente.
 - **Tons:** uma mudança de tom passa a acompanhar uma correção de sincronização feita antes da mesma reconstrução. Antes, as notas mudavam de sítio e a troca ficava no tempo antigo.
 - **Rocksmith:** duas músicas cujos nomes começam pelas mesmas 30 letras (por exemplo, duas versões ao vivo) já não se substituem uma à outra no jogo, e o mesmo para títulos sem letras latinas (cirílico, japonês…). Atenção: estas músicas mudam de identificador ao serem reconstruídas e o jogo começa o progresso delas do zero. As músicas de nome curto não mudam.
 
