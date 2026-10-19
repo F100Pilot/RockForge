@@ -16740,6 +16740,42 @@
         }
       ],
       "note": "Fixed on the maintainer's decision (2026-10-19): songs whose name fits keep their key; long-titled and non-Latin ones get a new key, so their in-game progress starts over."
+    },
+    {
+      "id": "BUG-0338",
+      "title": "A tone change does not follow a sync correction made in the same rebuild",
+      "detected": "2026-10-19",
+      "reported_by": "Claude, while adding tone-change time editing",
+      "found_in_version": "0.11.0-beta.4",
+      "found_in_build": "pending",
+      "module": "tones",
+      "description": "Tone change times are stored in the chart's clock and used by the build verbatim, while the notes move with the pending tempo/anchor corrections. The score draws the change moved with its notes (warp(previewScale(t))), so the preview and the rebuild disagree.",
+      "steps": [
+        "Project with a tone change at 6.0 s and first note at 2.0 s",
+        "Pending sync: first note +1 s (one anchor)",
+        "Apply and rebuild"
+      ],
+      "expected": "The tone change at 7.0 s, still on its note, as the score showed it.",
+      "observed": "Built first note 3.0 s, tone change still 6.0 s (Playwright on an invented project, 2026-10-19).",
+      "severity": "Medium",
+      "priority": "P3",
+      "status": "Open",
+      "root_cause": "toneSetsForRebuild sends the stored chart times; gp_pipeline uses tone_changes without the per-chart warp.",
+      "fixes": [],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [
+        "Playwright, invented GP5: drawn at 7.0 before the rebuild, built at 6.0 with notes moved +1.0 s"
+      ],
+      "resolved": "pending",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-19",
+          "status": "Open",
+          "note": "reported"
+        }
+      ]
     }
   ]
 }

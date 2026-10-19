@@ -6,6 +6,10 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Novidades
+
+- **Tons:** já podes mudar o tempo em que um tom entra. Arrasta a marca laranja da mudança na partitura, escreve os segundos na lista "Tons de cada pista", ou põe o cursor no sítio e carrega em "= cursor".
+
 ### Correções
 
 - **Rocksmith:** duas músicas cujos nomes começam pelas mesmas 30 letras (por exemplo, duas versões ao vivo) já não se substituem uma à outra no jogo, e o mesmo para títulos sem letras latinas (cirílico, japonês…). Atenção: estas músicas mudam de identificador ao serem reconstruídas e o jogo começa o progresso delas do zero. As músicas de nome curto não mudam.

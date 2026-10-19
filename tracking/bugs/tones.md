@@ -756,3 +756,45 @@ A volume such as "loud" or NaN was stored by a rebuild or the library and only f
 - 2026-10-18 — Open: reported
 - 2026-10-18 — Fixed: commit c322940e56
 - 2026-10-18 — Verified: its test passes and fails on the old code
+
+## BUG-0338
+
+**A tone change does not follow a sync correction made in the same rebuild**
+
+| | |
+|---|---|
+| Detected | 2026-10-19 |
+| Reported by | Claude, while adding tone-change time editing |
+| Found in | 0.11.0-beta.4 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P3 |
+| Status | Open |
+
+Tone change times are stored in the chart's clock and used by the build verbatim, while the notes move with the pending tempo/anchor corrections. The score draws the change moved with its notes (warp(previewScale(t))), so the preview and the rebuild disagree.
+
+**Steps to reproduce:** 
+
+1. Project with a tone change at 6.0 s and first note at 2.0 s
+2. Pending sync: first note +1 s (one anchor)
+3. Apply and rebuild
+
+**Expected:** The tone change at 7.0 s, still on its note, as the score showed it.
+
+**Observed:** Built first note 3.0 s, tone change still 6.0 s (Playwright on an invented project, 2026-10-19).
+
+**Root cause:** toneSetsForRebuild sends the stored chart times; gp_pipeline uses tone_changes without the per-chart warp.
+
+**Fixes:** —
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** _pending_ · **Closed:** _pending_
+
+**Evidence:**
+
+- Playwright, invented GP5: drawn at 7.0 before the rebuild, built at 6.0 with notes moved +1.0 s
+
+**History:**
+
+- 2026-10-19 — Open: reported

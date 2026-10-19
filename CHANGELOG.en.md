@@ -6,6 +6,10 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### New
+
+- **Tones:** you can now change when a tone comes in. Drag the change's orange mark on the score, type the seconds in the "Tones of each track" list, or put the cursor in place and press "= cursor".
+
 ### Fixes
 
 - **Rocksmith:** two songs whose names start with the same 30 letters (two live versions, say) no longer replace each other in game, and neither do titles with no Latin letters (Cyrillic, Japanese…). Note: these songs get a new identifier when rebuilt, and the game starts their progress over. Songs with short names do not change.

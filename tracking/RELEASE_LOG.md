@@ -53,6 +53,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 **Known bugs it carried:** 
 
 - [BUG-0337](bugs/psarc.md#bug-0337) Two songs whose names share the first 30 letters get the same song key (Low, now Verified)
+- [BUG-0338](bugs/tones.md#bug-0338) A tone change does not follow a sync correction made in the same rebuild (Medium, now Open)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 

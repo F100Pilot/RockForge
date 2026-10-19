@@ -519,6 +519,9 @@ In **Tones of each track**:
 - **Tones it can switch to** (max 4 — the game's limit);
 - **Tone changes**: first tick the tones the track uses under "Tones it can switch to"; then,
   on the score, **Tone change** mode and click the note where the switch should happen.
+  To change when a tone comes in: drag its orange mark (under the staff) along the score, type
+  the seconds in the field beside the change, or put the cursor in the right place and press
+  **= cursor**. A click on the mark puts the cursor where the switch starts.
 
 This is what goes into the game, after **Apply and rebuild**.
 

@@ -521,6 +521,9 @@ Em **Tons de cada pista**:
 - **Tons para onde pode trocar** (máx. 4 — o limite do jogo);
 - **Mudanças de tom**: marca primeiro em "Tons para onde pode trocar" os tons que a pista usa;
   depois, na partitura, modo **Mudança de tom** e clica na nota onde a troca deve acontecer.
+  Para mudar o tempo em que um tom entra: arrasta a sua marca laranja (por baixo da pauta) ao
+  longo da partitura, escreve os segundos no campo ao lado da mudança, ou põe o cursor no sítio
+  certo e carrega em **= cursor**. Um clique na marca põe o cursor onde a troca começa.
 
 É isto que vai para o jogo, depois de **Aplicar e reconstruir**.
 

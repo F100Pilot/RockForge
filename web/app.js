@@ -1093,6 +1093,9 @@ function showSection(name) {
   const view = document.getElementById('detail');
   view.dataset.page = name;
   view.scrollTop = 0;
+  // The tone changes' times are shown as the score draws them, so a sync edit
+  // made on the score since they were listed must reach the list.
+  if (name === 'tons' && arrangements.length) renderToneChangesList(false);
 }
 document.querySelectorAll('.pv-rail [data-section]').forEach(b =>
   b.addEventListener('click', () => showSection(b.dataset.section)));
@@ -1653,7 +1656,7 @@ const INFO = {
     body: T(`<p>Define os tons da CDLC com <strong>gear real</strong> (amplificador, cabine e pedais/racks da biblioteca do Rocksmith). São gravados no <code>rockforge.rs2dlc</code> e no <code>.psarc</code>, por isso funcionam no jogo sem teres de os recriar no DLC Builder.</p>
 <p><strong>Criar:</strong> clica em "+ Criar / editar tons", depois "+ Novo tom". Escolhe o amplificador e a cabine (obrigatórios) e adiciona efeitos opcionais. Cada botão de knob vem com o valor por defeito do catálogo.</p>
 <p><strong>Atribuir:</strong> escolhe o <strong>Tom base</strong> (o que toca no início) e marca até <strong>4</strong> tons "extra" que poderás trocar ao longo da música.</p>
-<p><strong>Trocar a meio:</strong> com o modo "Mudança de tom" ativo, clica numa nota na partitura para colocar lá uma troca para um dos tons extra.</p>
+<p><strong>Trocar a meio:</strong> com o modo "Mudança de tom" ativo, clica numa nota na partitura para colocar lá uma troca para um dos tons extra. Para mudar o tempo em que entra, arrasta a marca laranja na partitura, ou escreve o tempo (ou carrega em "= cursor") na lista "Tons de cada pista".</p>
 <p><strong>Por pista:</strong> no jogo os tons são <strong>por arranjo</strong>. Com "Mesmos tons em todas as pistas" marcado, todas usam o mesmo conjunto; desmarcado, cada pista (a que está aberta na partitura) tem o seu tom base, extras e trocas — o Lead pode ir para um tom de solo enquanto o Rhythm fica no crunch. Os tons criados são partilhados.</p>
 <p>Só se aplicam a projetos de Guitar Pro. Sem tons definidos, o DLC Builder marca "tone missing" e resolves com a biblioteca dele.</p>`)
   },
@@ -2662,7 +2665,7 @@ function scoreLegendHtml() {
     legendItem(`<line x1="8" y1="2" x2="8" y2="36" stroke="#3ddcc4" stroke-width="2" stroke-dasharray="5,3"/><use href="#i-tag" x="12" y="3" width="12" height="12" style="color:#3ddcc4"/><text x="26" y="13" fill="#3ddcc4" font-size="11" font-weight="700">Riff</text>`,
       T('Secção da música (intro, verso, refrão…)')),
     legendItem(`<line x1="8" y1="0" x2="8" y2="36" stroke="#e0a54a" stroke-width="2" stroke-dasharray="4,2"/><use href="#i-wave" x="12" y="20" width="12" height="12" style="color:#e0a54a"/><text x="26" y="30" fill="#e0a54a" font-size="11" font-weight="700">Clean</text>`,
-      T('Mudança de tom (o tom que passa a tocar)')),
+      T('Mudança de tom (o tom que passa a tocar); arrasta-a para mudar quando entra')),
     legendItem(`<text x="16" y="12" fill="#9aa0ad" font-size="13" text-anchor="middle">love</text><line x1="16" y1="16" x2="16" y2="36" stroke="#454852" stroke-dasharray="2,4"/><text x="44" y="12" fill="#9aa0ad" font-size="13" text-anchor="middle">you</text><line x1="44" y1="16" x2="44" y2="36" stroke="#ffb020" stroke-width="2" opacity=".7"/><text x="50" y="30" fill="#ffb020" font-size="12" font-weight="700">¶</text>`,
       T('Palavra da letra; a linha âmbar com ¶ termina uma linha da letra no jogo')),
     legendItem(`<line x1="12" y1="24" x2="12" y2="36" stroke="#5b6572" stroke-width="1.5"/><line x1="24" y1="24" x2="24" y2="36" stroke="#5b6572" stroke-width="1.5"/><line x1="36" y1="24" x2="36" y2="36" stroke="#5b6572" stroke-width="1.5"/><line x1="48" y1="24" x2="48" y2="36" stroke="#5b6572" stroke-width="1.5"/>`,
@@ -2923,15 +2926,19 @@ function showArr(i) {
   if (jobTones.length && (toneBase || toneChanges.length)) {
     const tName = k => (jobTones.find(t => t.key === k) || {}).name || k;
     const marks = toneChanges  // already time-sorted (see loadTones)
-      .map(c => ({ x: timeToX(barWarp(previewScale(c.time))), name: tName(c.name) }));
-    if (toneBase) marks.unshift({ x: 32, name: tName(toneBase) });
+      .map((c, i) => ({ x: timeToX(barWarp(previewScale(c.time))), name: tName(c.name), i }));
+    if (toneBase) marks.unshift({ x: 32, name: tName(toneBase), i: -1 });
     for (const m of marks) {
       if (m.x < 24 || m.x > W - 4) continue;
+      // A change (not the base, which is the start) is dragged along the score
+      // to move where it starts; the wide transparent line is its grip.
+      if (m.i >= 0) s += `<g class="tone-mark" data-ti="${m.i}"><title>${esc(T('Arrasta para mudar o tempo em que o tom entra'))}</title><line x1="${m.x}" y1="44" x2="${m.x}" y2="${SB + 20}" stroke="transparent" stroke-width="10"/>`;
       if (m.x > 34) s += `<line x1="${m.x}" y1="44" x2="${m.x}" y2="${SB}" stroke="#e0a54a" stroke-width="1.5" stroke-dasharray="4,2" opacity=".7"/>`;
       const lw = m.name.length * 6.4 + 20;
       s += `<rect x="${m.x + 1}" y="${SB + 20}" width="${lw.toFixed(0)}" height="16" rx="4" fill="#14151a" opacity=".8"/>`;
       s += `<use href="#i-wave" x="${m.x + 4}" y="${SB + 22}" width="12" height="12" style="color:#e0a54a"/>`;
       s += `<text x="${m.x + 19}" y="${SB + 32}" fill="#e0a54a" font-size="11" font-weight="700">${esc(m.name)}</text>`;
+      if (m.i >= 0) s += '</g>';
     }
   }
   // Section markers (song structure — intro/verso/refrão…): a labeled marker
@@ -5525,7 +5532,15 @@ document.getElementById('toneExtraChecks').addEventListener('change', e => {
   if (arrangements.length) showArr(currentArr);
 });
 
+// Replacing the list removes a time field that still has the focus, and its
+// blur fires that field's change again in the middle of the replacement.
+let renderingToneChanges = false;
 function renderToneChangesList(redraw = true) {
+  if (renderingToneChanges) return;
+  renderingToneChanges = true;
+  try { renderToneChangesListNow(redraw); } finally { renderingToneChanges = false; }
+}
+function renderToneChangesListNow(redraw) {
   const el = document.getElementById('toneChangesList');
   if (!toneChanges.length) {
     el.innerHTML = `<span class="tn-empty">${T('Sem mudanças de tom. Ativa o modo "Mudança de tom" e clica numa nota.')}</span>`;
@@ -5533,10 +5548,22 @@ function renderToneChangesList(redraw = true) {
     const sorted = toneChanges;  // already time-sorted (see loadTones)
     el.innerHTML = sorted.map((c, i) => {
       const name = (jobTones.find(t => t.key === c.name) || {}).name || c.name;
-      return `<div class="tn-change"><span class="tn-change-time" title="${c.time.toFixed(2)} s">${fmtClockTenths(c.time - viewOrigin)}</span>
+      const shown = Math.max(0, toneChangeDisplay(c.time) - viewOrigin);
+      return `<div class="tn-change"><span class="tn-change-time">${fmtClockTenths(shown)}</span>
+        <input type="number" step="0.01" min="0" value="${shown.toFixed(2)}" class="tn-change-input" data-i="${i}"
+          aria-label="${T('Tempo (s)')}" title="${T('Segundos da gravação em que este tom começa a tocar')}">
         ${icon('forward')}<span class="tn-change-tone">${esc(name)}</span>
+        <button type="button" class="secondary tone-change-cursor" data-i="${i}" title="${T('Põe esta mudança onde está o cursor')}">${T('= cursor')}</button>
         <button type="button" class="secondary tone-change-rm" data-i="${i}">${T('Remover')}</button></div>`;
     }).join('');
+    el.querySelectorAll('.tn-change-input').forEach(inp => inp.addEventListener('change', () => {
+      const v = parseFloat(inp.value);
+      if (Number.isFinite(v)) setToneChangeTime(sorted[parseInt(inp.dataset.i, 10)], toneChangeChartTime(Math.max(0, v) + viewOrigin));
+      else renderToneChangesList(false);
+    }));
+    el.querySelectorAll('.tone-change-cursor').forEach(b => b.addEventListener('click', () => {
+      setToneChangeTime(sorted[parseInt(b.dataset.i, 10)], toneChangeChartTime(currentPlayheadT + viewOrigin));
+    }));
     el.querySelectorAll('.tone-change-rm').forEach(b => b.addEventListener('click', () => {
       const target = sorted[parseInt(b.dataset.i, 10)];
       toneChanges = toneChanges.filter(c => c !== target);
@@ -5567,6 +5594,23 @@ function renderToneTimeline() {
   el.querySelectorAll('.ts-seg[data-t]').forEach(seg => seg.addEventListener('click', () => {
     audioSeek(Math.max(0, parseFloat(seg.dataset.t) - viewOrigin));
   }));
+}
+
+// A tone change is stored in the chart's clock and drawn like a note, through
+// the pending tempo/anchors; the list, "= cursor" and the drag work in the
+// time it is SHOWN at, so these convert both ways.
+function toneChangeDisplay(chartTime) { return buildTimeWarp(syncAnchors)(previewScale(chartTime)); }
+function toneChangeChartTime(display) {
+  const warp = buildTimeWarp(syncAnchors);
+  return Math.max(0, invertIncreasing(t => warp(previewScale(t)), display));
+}
+// A new object, never the old one changed in place: the stashed per-track set
+// shares the objects with the list on screen.
+function setToneChangeTime(change, chartTime) {
+  if (!change || !Number.isFinite(chartTime)) return;
+  toneChanges = toneChanges.map(c => (c === change ? { ...c, time: chartTime } : c))
+    .sort((a, b) => a.time - b.time);
+  renderToneChangesList();
 }
 
 function placeToneChange(chartTime) {
@@ -8646,6 +8690,7 @@ function updateSelectionInfo() {
   let rubberBand = null; // { startX }
   let editBox = null; // "Editar notas": a press on empty staff — a box once it moves, else a seek
   let lyricDrag = null; // lyric word drag: { el, startX, index }
+  let toneDrag = null; // tone-change marker drag: { el, startX, scroll, change, moved }
   const svg = document.getElementById('tabsvg');
   const wrap = document.getElementById('tabwrap');
 
@@ -8660,7 +8705,7 @@ function updateSelectionInfo() {
   let autoScrollRAF = null;
   let lastClientX = 0, lastClientY = 0, lastAltKey = false;
 
-  function activeGesture() { return rubberBand || groupDrag || dragging || lyricDrag; }
+  function activeGesture() { return rubberBand || groupDrag || dragging || lyricDrag || toneDrag; }
 
   function autoScrollStep() {
     if (!activeGesture()) { autoScrollRAF = null; return; }
@@ -8704,6 +8749,16 @@ function updateSelectionInfo() {
     e.preventDefault();
     // Guided "detect first note" flow intercepts all clicks while armed.
     if (firstNoteFlowClick(e, svg)) return;
+    // Tone-change marker: drag it to move where the tone starts.
+    const tm = e.target.closest('.tone-mark');
+    if (tm) {
+      const change = toneChanges[parseInt(tm.dataset.ti, 10)];
+      if (change) {
+        toneDrag = { el: tm, startX: e.clientX, scroll: wrap.scrollLeft, change, moved: false };
+        tm.setPointerCapture(e.pointerId);
+        return;
+      }
+    }
     // Lyric word drag: grab a word on the tab to reposition it in time.
     const lw = e.target.closest('.lyric-word');
     if (lw) {
@@ -8974,6 +9029,13 @@ function updateSelectionInfo() {
       box.setAttribute('height', String(tabH));
       svg.appendChild(box);
     }
+    if (toneDrag) {
+      // The score scrolls under a pointer held at the edge: count that too.
+      const dx = clientX - toneDrag.startX + wrap.scrollLeft - toneDrag.scroll;
+      if (Math.abs(dx) > 3) toneDrag.moved = true;
+      toneDrag.el.setAttribute('transform', `translate(${dx},0)`);
+      return;
+    }
     if (lyricDrag) {
       const dx = clientX - lyricDrag.startX;
       lyricDrag.el.setAttribute('transform', `translate(${dx},0)`);
@@ -9006,7 +9068,7 @@ function updateSelectionInfo() {
   }
   svg.addEventListener('pointermove', e => {
     handlePointerMove(e.clientX, e.clientY, e.altKey);
-    if (rubberBand || groupDrag || dragging || lyricDrag || susDrag || (noteMove && noteMove.moved)) startAutoScrollLoop();
+    if (rubberBand || groupDrag || dragging || lyricDrag || toneDrag || susDrag || (noteMove && noteMove.moved)) startAutoScrollLoop();
   });
   svg.addEventListener('pointerup', e => {
     stopAutoScrollLoop();
@@ -9032,6 +9094,19 @@ function updateSelectionInfo() {
         if (nm.copy) copyNotes(nm.chord, nm.note, nm.target.time, nm.target.string);
         else if (nm.group) moveNotes(nm.chord, nm.note, nm.target.time, nm.target.string);
         else moveNote(nm.note, nm.target.time, nm.target.string);
+      }
+      return;
+    }
+    if (toneDrag) {
+      const td = toneDrag;
+      toneDrag = null;
+      td.el.removeAttribute('transform');
+      const shown = toneChangeDisplay(td.change.time);
+      if (td.moved) {
+        const dx = e.clientX - td.startX + wrap.scrollLeft - td.scroll;
+        setToneChangeTime(td.change, toneChangeChartTime(Math.max(viewOrigin, shown + dx / tabPx)));
+      } else {
+        audioSeek(Math.max(0, shown - viewOrigin));  // a click: the cursor to where it starts
       }
       return;
     }
@@ -9155,6 +9230,7 @@ function updateSelectionInfo() {
     editBox = null;
     if (susDrag) { susDrag.tail?.remove(); susDrag = null; showArr(currentArr); }
     if (lyricDrag) { lyricDrag.el.removeAttribute('transform'); lyricDrag = null; }
+    if (toneDrag) { toneDrag.el.removeAttribute('transform'); toneDrag = null; }
     if (rubberBand) { document.getElementById('selectionBox')?.remove(); rubberBand = null; }
     if (groupDrag) { groupDrag.grps.forEach(g => g.removeAttribute('transform')); groupDrag = null; }
     if (dragging) { dragging.grp.removeAttribute('transform'); dragging = null; }
@@ -9197,7 +9273,7 @@ const MODE_HELP = {
   movefrom: T('<b>Mover seguintes:</b> pausa a gravação no instante certo e clica na 1ª nota desalinhada — essa nota e TODAS as seguintes deslocam-se em bloco para o cursor. Para um trecho inteiro que entrou tarde/cedo.'),
   newbeat: T('<b>Corrigir daqui (detetar andamento) — o modo recomendado:</b> ouve até ao ponto onde a partitura começa a fugir da gravação e clica nessa nota. Mede o BPM real da gravação daí em diante e re-espaça só as notas seguintes. <b>Nada antes do clique se mexe</b>, por isso o que já estava bem fica intacto. Repete sempre que voltar a fugir — cada correção parte de onde a anterior deixou.'),
   baralign: T('<b>Alinhar por compasso:</b> pausa a gravação no instante certo e clica numa nota — ou na <b>linha/número do compasso</b>, para o alinhar pelo seu início mesmo sem notas — abre um popup com esse compasso já escolhido. Confirma com "= cursor" e esse compasso alinha-se ao cursor (ou "= pista" para o mesmo compasso de outra pista). Faz-se várias vezes ao longo da música; cada correção arrasta as notas seguintes. No mesmo popup, <b>Andamento</b> muda o BPM desse compasso (ou de vários seguidos) e o resto da música acompanha, cada compasso com o seu próprio andamento.'),
-  tonechange: T('<b>Mudança de tom:</b> clica numa nota para trocar para um dos tons extra a partir daí.'),
+  tonechange: T('<b>Mudança de tom:</b> clica numa nota para trocar para um dos tons extra a partir daí. Para mudar o tempo em que entra, arrasta a sua marca laranja.'),
   section: T('<b>Secção:</b> clica numa nota para nomear onde começa uma secção (intro/verso/refrão…). Nada a ver com sincronização — é para navegação e o Riff Repeater.'),
   editnotes: T('<b>Editar notas:</b> clica numa nota para a editar (traste, sustain, técnicas, bend/slide) ou remover; <b>arrasta-a</b> para outro tempo ou outra corda (com <b>Shift</b>, arrasta uma cópia da nota ou do acorde); para mover um <b>acorde ou várias notas</b>, arrasta uma caixa no pentagrama vazio (ou Ctrl+clique) e arrasta uma das notas selecionadas — movem-se todas, e podem passar por outras notas; arrasta o <b>fim da cauda</b> para mudar a duração; <b>↑/↓</b> sobem ou descem um traste à última nota clicada; <b>duplo-clique</b> no pentagrama vazio insere uma nota nova, encaixada na grelha (nunca mais larga do que semicolcheias; com Alt, livre). Um clique simples no vazio move o cursor, como nos outros modos. Muda o CONTEÚDO da partitura, não o tempo — fica pendente até "Aplicar e reconstruir".'),
   fhp: T('<b>Posição da mão (FHP):</b> a faixa <b>FHP</b> por baixo da pauta mostra onde a mão fica no jogo, de uma posição até à seguinte (cinzento = automáticas, verde-água = tuas). Clica numa nota para pôr ali uma posição nova (ou mudar a que lá começa), ou clica numa barra da faixa para mudar o traste e a largura, ou apagá-la. A primeira edição copia as automáticas, para só mudares as que estão mal. Uma nota fora da sua posição fica com um anel vermelho. Fica pendente até "Aplicar e reconstruir".'),

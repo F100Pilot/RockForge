@@ -3531,6 +3531,29 @@ both, "Aplicar a todas" → per-track, switching tracks swaps base/changes, a
 hand edit stays on its track, and a real rebuild wrote different tones into
 `arrangement_lead.xml` and `arrangement_rhythm.xml`.
 
+### Moving a tone change (the list's time, "= cursor", the drag)
+
+"Já consigo ajustar o tempo em que entra um tom?" → "Com as três" (2026-10-19).
+A change could only be placed on a note ("Mudança de tom") or removed. Now, in
+"Tons de cada pista", each change has a seconds field and "= cursor"
+(`setToneChangeTime`), and on the score each change's amber mark is a
+`.tone-mark` group dragged sideways (`toneDrag`, auto-scroll counted; a press
+without moving puts the cursor where it starts). All three work in the time the
+change is SHOWN at — `toneChangeDisplay` (the chart time through the pending
+tempo/anchors, as the score draws it) and `toneChangeChartTime` (back, by
+`invertIncreasing`) — and the list is refreshed when the Tons page opens
+(`showSection`), so a sync edit made on the score shows there. A moved change is
+a NEW object (the stashed per-track set shares the objects with the globals);
+the list render is guarded against re-entry (`renderingToneChanges`: replacing
+a focused field fires its change again). Ordinary tone edits: undo/redo,
+drafts, "Aplicar e reconstruir"; the writer still keeps a change off a note
+(`_safe_tone_time`). Browser-only; verified with Playwright on an invented
+project (typed 5.25 s → shown 0:05.3, "= cursor", a 1.5 s drag, Ctrl+Z / redo,
+a real rebuild writing `<tone time="9.500">`, PT 1440 / EN 760 px, no page
+errors). **Open, BUG-0338:** a tone change does not follow a sync correction
+made in the same rebuild — the score draws it moved with its notes, the build
+keeps its stored time.
+
 ### Tones from a pasted text (`infrastructure/tone_plan.py`, "Importar tons de um texto")
 
 "receber informação escrita, por exemplo de um prompt colado do chatgpt, com os
