@@ -6,6 +6,10 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### Fixes
+
+- **Rocksmith:** two songs whose names start with the same 30 letters (two live versions, say) no longer replace each other in game, and neither do titles with no Latin letters (Cyrillic, Japanese…). Note: these songs get a new identifier when rebuilt, and the game starts their progress over. Songs with short names do not change.
+
 ## [0.11.0 beta 4] — 2026-10-18
 
 ### Fixes

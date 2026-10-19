@@ -562,5 +562,28 @@ def test_a_song_key_is_ascii_even_for_an_accented_title() -> None:
     from rockforge.infrastructure.packaging.psarc.soundbank import generate_soundbank
 
     assert song_key_from_title("Beyoncé", "Canção") == "BeyonceCancao"
-    assert song_key_from_title("Сплин", "Выхода нет") == "RockForgeSong"
+    cyrillic = song_key_from_title("Сплин", "Выхода нет")
+    assert cyrillic.isascii() and cyrillic.isalnum() and cyrillic.startswith("RockForge")
     generate_soundbank(song_key_from_title("Sigur Rós", "Hoppípolla"), b"\x00" * 64)
+    generate_soundbank(cyrillic, b"\x00" * 64)
+
+
+def test_songs_whose_names_share_their_first_letters_get_different_keys() -> None:
+    """A plain 30-letter cut gave both live versions one key (one .psarc name,
+    the same persistent IDs — one replaced the other in game), and every title
+    with no ASCII letter the same "RockForgeSong"."""
+    live_92 = song_key_from_title("Red Hot Chili Peppers", "Under the Bridge (Live 1992)")
+    live_13 = song_key_from_title("Red Hot Chili Peppers", "Under the Bridge (Live 2013)")
+    assert live_92 != live_13
+    for key in (live_92, live_13):
+        assert len(key) == 30 and key.isascii() and key.isalnum()
+        assert key.startswith("RedHotChiliPeppersUnder")
+    assert live_92 == song_key_from_title("Red Hot Chili Peppers", "Under the Bridge (Live 1992)")
+    assert song_key_from_title("Сплин", "Выхода нет") != song_key_from_title("Кино", "Группа крови")
+
+
+def test_a_name_that_fits_keeps_the_key_it_always_had() -> None:
+    """Progress in game hangs on the key: every song that fitted keeps it."""
+    assert song_key_from_title("AC/DC", "T.N.T.") == "ACDCTNT"
+    exactly_30 = "A" * 10 + "B" * 20
+    assert song_key_from_title("A" * 10, "B" * 20) == exactly_30

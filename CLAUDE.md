@@ -5869,8 +5869,16 @@ Lots 2 and 3 (BUG-0309…0337), the rules they leave:
 - **The viewer drops late responses of another project** (`staleFor`, a
   `waveToken` for decodes), clears the selection and `neLast` on a tab change,
   and wires the merge grid once (by delegation on the card).
-- Deferred on purpose (BUG-0337): the 30-character song key can collide; a
-  hashed key would reset the progress of every long-titled song — decide first.
+- **The song key is unique** (BUG-0337, decided with the maintainer
+  2026-10-19): a name of ≤ `SONG_KEY_MAX` (30) ASCII letters is its own key,
+  as always; a longer one keeps its first 24 and ends in 6 hex of a SHA-1 of
+  the whole cleaned name, and one with no ASCII letter is "RockForge" + that
+  hash (it was "RockForgeSong" for every Cyrillic title). Only those songs got
+  a new key — new persistent IDs, so their in-game progress starts over, and
+  a new `.psarc` name ("Instalar no jogo" removes the copy it installed
+  before). Guarded by
+  `test_songs_whose_names_share_their_first_letters_get_different_keys` and
+  `test_a_name_that_fits_keeps_the_key_it_always_had`.
 
 ## Async detection tasks (the `detect_lyrics` / `detect_tones` pattern)
 

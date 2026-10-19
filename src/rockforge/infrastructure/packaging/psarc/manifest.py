@@ -19,6 +19,7 @@ Two manifest layers, matched to a real DLC Builder PSARC:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import unicodedata
 import uuid
@@ -135,14 +136,30 @@ def arrangement_display_name(kind: ArrangementKind) -> str:
     return _arr_name(kind)
 
 
+SONG_KEY_MAX = 30
+_KEY_HASH_LEN = 6
+
+
 def song_key_from_title(artist: str, title: str) -> str:
     """A short alphanumeric song key, as Rocksmith expects (no spaces/punctuation).
     ASCII only: it names archive paths and the SoundBank, whose STID chunk is
     ASCII — "Canção" kept its ç and the .psarc build died on the encode. Accents
-    are folded ("Cancao"), anything else non-ASCII is dropped."""
+    are folded ("Cancao"), anything else non-ASCII is dropped.
+
+    At most ``SONG_KEY_MAX`` characters. A name that fits is its own key, so
+    every song that fitted keeps its key (and its in-game progress, which hangs
+    on the persistent IDs derived from it). A longer one, or one with no ASCII
+    letter at all, ends in a hash of the whole name: a plain cut gave "… (Live
+    1992)" and "… (Live 2013)" one key, and every Cyrillic title the same
+    "RockForgeSong" — one replacing the other in game."""
     folded = unicodedata.normalize("NFKD", f"{artist}{title}")
     cleaned = "".join(c for c in folded if c.isascii() and c.isalnum())
-    return cleaned[:30] or "RockForgeSong"
+    if cleaned and len(cleaned) <= SONG_KEY_MAX:
+        return cleaned
+    named = cleaned or folded.strip()
+    digest = hashlib.sha1(named.encode("utf-8")).hexdigest()[:_KEY_HASH_LEN].upper()
+    head = cleaned or "RockForge"
+    return head[: SONG_KEY_MAX - _KEY_HASH_LEN] + digest
 
 
 def _tuning(arrangement: Arrangement) -> dict[str, int]:
