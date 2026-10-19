@@ -2708,7 +2708,7 @@ The hard rule for console tools was not applied to WwiseConsole.
 | Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
 | Severity | Low |
 | Priority | P4 |
-| Status | Deferred |
+| Status | Verified |
 
 song_key_from_title keeps the first 30 letters of artist+title, so two live versions of one song ("... (Live 1992)" / "(Live 2013)") get the same key: the same PersistentIDs and the same .psarc name, one replacing the other in game.
 
@@ -2720,21 +2720,25 @@ song_key_from_title keeps the first 30 letters of artist+title, so two live vers
 
 **Observed:** Same key (code reading).
 
-**Root cause:** A plain 30-character cut.
+**Root cause:** A plain 30-character cut, and one fallback key for every title with no ASCII letter.
 
-**Fixes:** —
+**Fixes:** [FIX-0337](../FIX_LOG.md#fix-0337) (unreleased)
 
-**Verified:** _pending_ (by _pending_)
+**Verified:** pytest: the two live versions get different 30-character keys, two Cyrillic titles differ, a name that fits keeps its key; the new test fails on the old code (by the developer (automated tests))
 
-**Resolved:** _pending_ · **Closed:** _pending_
+**Resolved:** 2026-10-19 · **Closed:** _pending_
 
-**Note:** Not changed on purpose: a key with a hash for long names would give EVERY long-titled song a new key, and with it new persistent IDs — the player's progress on those songs would start over. Two songs sharing 30 letters is rare; to be decided with the maintainer before changing it.
+**Note:** Fixed on the maintainer's decision (2026-10-19): songs whose name fits keep their key; long-titled and non-Latin ones get a new key, so their in-game progress starts over.
 
 **Evidence:**
 
 - code review of the whole codebase, confirmed by reading the code
+- pytest: the two live versions get different 30-character keys, two Cyrillic titles differ, a name that fits keeps its key; the new test fails on the old code
 
 **History:**
 
 - 2026-10-18 — Open: reported
 - 2026-10-18 — Deferred: changing every long key would reset progress; decide first
+- 2026-10-19 — In Progress: the maintainer chose to fix it, accepting the progress reset of long-titled songs
+- 2026-10-19 — Fixed: commit 17012e7d9d
+- 2026-10-19 — Verified: tests passed

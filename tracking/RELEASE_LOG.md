@@ -52,7 +52,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 
 **Known bugs it carried:** 
 
-- [BUG-0337](bugs/psarc.md#bug-0337) Two songs whose names share the first 30 letters get the same song key (Low, now Deferred)
+- [BUG-0337](bugs/psarc.md#bug-0337) Two songs whose names share the first 30 letters get the same song key (Low, now Verified)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -120,7 +120,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0334](bugs/viewer.md#bug-0334) Opening another project quickly could show the previous one's charts or recording (Medium, now Fixed)
 - [BUG-0335](bugs/editor.md#bug-0335) The merge bar grid piled up listeners each time Editar info opened (Low, now Verified)
 - [BUG-0336](bugs/viewer.md#bug-0336) The 3D highway could start drawing after being closed while loading (Low, now Verified)
-- [BUG-0337](bugs/psarc.md#bug-0337) Two songs whose names share the first 30 letters get the same song key (Low, now Deferred)
+- [BUG-0337](bugs/psarc.md#bug-0337) Two songs whose names share the first 30 letters get the same song key (Low, now Verified)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -188,7 +188,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0334](bugs/viewer.md#bug-0334) Opening another project quickly could show the previous one's charts or recording (Medium, now Fixed)
 - [BUG-0335](bugs/editor.md#bug-0335) The merge bar grid piled up listeners each time Editar info opened (Low, now Verified)
 - [BUG-0336](bugs/viewer.md#bug-0336) The 3D highway could start drawing after being closed while loading (Low, now Verified)
-- [BUG-0337](bugs/psarc.md#bug-0337) Two songs whose names share the first 30 letters get the same song key (Low, now Deferred)
+- [BUG-0337](bugs/psarc.md#bug-0337) Two songs whose names share the first 30 letters get the same song key (Low, now Verified)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 

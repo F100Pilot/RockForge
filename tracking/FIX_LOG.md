@@ -342,6 +342,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0334](#fix-0334) | BUG-0334 | 0.11.0-beta.4 | not run | pending |
 | [FIX-0335](#fix-0335) | BUG-0335 | 0.11.0-beta.4 | not run | manual |
 | [FIX-0336](#fix-0336) | BUG-0336 | 0.11.0-beta.4 | not run | manual |
+| [FIX-0337](#fix-0337) | BUG-0337 | unreleased | passed | automated |
 
 ## FIX-0001
 
@@ -7398,3 +7399,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | not run |
 | Validation | manual |
 | Regression risk | Low: the suite (pytest, ruff, mypy, ESLint) is green. |
+
+## FIX-0337
+
+**Bugs:** [BUG-0337](bugs/psarc.md#bug-0337)
+
+**Root cause:** A plain 30-character cut, and one fallback key for every title with no ASCII letter.
+
+**Solution:** A name of at most 30 ASCII letters is still its own key; a longer one keeps 24 and ends in 6 hex of a SHA-1 of the whole name, and a name with no ASCII letter is "RockForge" + that hash.
+
+| | |
+|---|---|
+| Date | 2026-10-19 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | unreleased |
+| Commits | 17012e7d9dcc30ed7ecc567b4eed6f37f61c3965 |
+| Components | src/rockforge/infrastructure/packaging/psarc/manifest.py |
+| Tests | tests/test_psarc_manifest.py::test_songs_whose_names_share_their_first_letters_get_different_keys; tests/test_psarc_manifest.py::test_a_name_that_fits_keeps_the_key_it_always_had |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Medium for the player: long-titled and non-Latin songs get a new key when rebuilt, so the game sees them as new songs (progress starts over). Short names are unchanged. |

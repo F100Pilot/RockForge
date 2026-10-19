@@ -4,9 +4,9 @@
 
 Every bug found in RockForge, with a permanent id; the full record of each is on its module's page in [bugs/](bugs). Rules and states: [docs/VERSIONING.md](../docs/VERSIONING.md#bugs). Fixes: [FIX_LOG.md](FIX_LOG.md). Releases: [RELEASE_LOG.md](RELEASE_LOG.md).
 
-| Fixed | Verified | Closed | Deferred |
-|---|---|---|---|
-| 100 | 36 | 200 | 1 |
+| Fixed | Verified | Closed |
+|---|---|---|
+| 100 | 37 | 200 |
 
 | ID | Title | Module | Severity | Priority | Status | Found in | Fixed in |
 |---|---|---|---|---|---|---|---|
@@ -346,4 +346,4 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0334](bugs/viewer.md#bug-0334) | Opening another project quickly could show the previous one's charts or recording | viewer | Medium | P2 | Fixed | 0.11.0-beta.2 | 0.11.0-beta.4 |
 | [BUG-0335](bugs/editor.md#bug-0335) | The merge bar grid piled up listeners each time Editar info opened | editor | Low | P3 | Verified | 0.11.0-beta.2 | 0.11.0-beta.4 |
 | [BUG-0336](bugs/viewer.md#bug-0336) | The 3D highway could start drawing after being closed while loading | viewer | Low | P4 | Verified | 0.11.0-beta.2 | 0.11.0-beta.4 |
-| [BUG-0337](bugs/psarc.md#bug-0337) | Two songs whose names share the first 30 letters get the same song key | psarc | Low | P4 | Deferred | 0.11.0-beta.2 | — |
+| [BUG-0337](bugs/psarc.md#bug-0337) | Two songs whose names share the first 30 letters get the same song key | psarc | Low | P4 | Verified | 0.11.0-beta.2 | — |
