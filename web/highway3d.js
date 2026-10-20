@@ -76,6 +76,12 @@
   const LEGATO = ["hammerOn", "pullOff"];
   const FRET_RAMP = 2; // seconds before its note in which a fret number of the neck lights up
   const AMBER = 0xffb43a;
+  // A bend in teal: its trail rises along the bend's curve and, on the string, the note rises as
+  // it is bent, into a frame at the height it has to reach. BEND_Y per semitone, so a full step
+  // rises one string gap (as far as a finger pushes the string), at most BEND_MAX semitones.
+  const TEAL = 0x3ddcc4;
+  const BEND_Y = GAP / 2;
+  const BEND_MAX = 3;
 
   let stage = null; // renderer, scene, camera and everything static
   let song = null; // the current notes and their live meshes
@@ -179,6 +185,16 @@
       mutedMat: new THREE.MeshStandardMaterial({ color: 0x5b6070, emissive: 0x202430, roughness: 0.5, clippingPlanes: clip }),
       rimMat: new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.22, depthWrite: false, clippingPlanes: clip }),
       stemMats: STRING_COLORS.map((c) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.5, depthWrite: false, clippingPlanes: clip })),
+      bendTrailMat: new THREE.MeshStandardMaterial({ color: TEAL, emissive: TEAL, emissiveIntensity: 0.75, transparent: true, opacity: 0.7, depthWrite: false, side: THREE.DoubleSide, clippingPlanes: clip }),
+      // The frame a bent note rises into on the string: the height its bend reaches.
+      bendTargetTex: canvasTexture(256, 128, (ctx) => {
+        ctx.strokeStyle = "#3ddcc4";
+        ctx.shadowColor = "#3ddcc4";
+        ctx.shadowBlur = 12;
+        ctx.lineWidth = 8;
+        ctx.setLineDash([22, 12]);
+        ctx.beginPath(); ctx.roundRect(10, 10, 236, 108, 20); ctx.stroke();
+      }),
       trailMats: STRING_COLORS.map((c) => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.6, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide, clippingPlanes: clip })),
       frameMat: new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6, depthWrite: false, clippingPlanes: clip }),
       barMat: new THREE.MeshBasicMaterial({ color: 0xaab6e0, transparent: true, opacity: 0.85, depthWrite: false }),
@@ -521,6 +537,32 @@
     return { first, width: Math.max(4, last - first + 1) };
   }
 
+  // A bend's curve as [seconds after the attack, semitones], starting from the attack: a curve
+  // whose first point comes later starts unbent (a plain bend is one point at the note's end).
+  function bendPoints(n) {
+    if (!(n.bend > 0)) return [];
+    let curve = (Array.isArray(n.bendCurve) ? n.bendCurve : [])
+      .filter((p) => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1]))
+      .map((p) => [Math.max(0, p[0]), Math.max(0, Math.min(BEND_MAX, p[1]))])
+      .sort((a, b) => a[0] - b[0]);
+    if (!curve.length) curve = [[Math.max(n.sustain || 0, 0.1), Math.min(BEND_MAX, n.bend)]];
+    if (curve[0][0] > 0.005) curve.unshift([0, 0]);
+    return curve;
+  }
+  // Semitones bent `dt` seconds after the attack: straight between the points, held after the last.
+  function bendAt(curve, dt) {
+    if (!curve.length) return 0;
+    if (dt <= curve[0][0]) return curve[0][1];
+    for (let i = 1; i < curve.length; i += 1) {
+      const [t1, v1] = curve[i];
+      if (dt <= t1) {
+        const [t0, v0] = curve[i - 1];
+        return t1 > t0 ? v0 + ((v1 - v0) * (dt - t0)) / (t1 - t0) : v1;
+      }
+    }
+    return curve[curve.length - 1][1];
+  }
+
   function disposeSong() {
     if (!song) return;
     for (const obj of song.live.values()) stage.lane.remove(obj.group);
@@ -532,7 +574,9 @@
   function buildSong(data) {
     disposeSong();
     const count = data.strings === 4 ? 4 : 6;
-    const notes = (data.notes || []).filter((n) => n.string >= 0 && n.string < count && Number.isFinite(n.t)).slice().sort((a, b) => a.t - b.t || a.string - b.string);
+    const notes = (data.notes || []).filter((n) => n.string >= 0 && n.string < count && Number.isFinite(n.t))
+      .map((n) => ({ ...n, bendCurve: bendPoints(n) }))
+      .sort((a, b) => a.t - b.t || a.string - b.string);
     // Chords: notes struck together (the score's own grouping), with the name it derived.
     const chords = [];
     for (let i = 0; i < notes.length;) {
@@ -613,7 +657,7 @@
     });
     let y = kinds.length ? 0.74 : 0.38;
     if (n.bend > 0) {
-      const icon = new THREE.Mesh(r.square, r.iconMat(`bend${n.bend <= 1 ? 1 : n.bend <= 2 ? 2 : 3}|#ffd54f`));
+      const icon = new THREE.Mesh(r.square, r.iconMat(`bend${n.bend <= 1 ? 1 : n.bend <= 2 ? 2 : 3}|#3ddcc4`));
       icon.scale.set(0.34, 0.34, 1);
       icon.position.set(0, y, 0);
       group.add(icon);
@@ -628,12 +672,15 @@
   }
 
   // A sustain trail lying on the string's plane, one unit long (scaled to the sustain): flat, wavy
-  // with vibrato, a zigzag with tremolo picking; a slide runs it to the fret it ends on.
-  function trailGeometry(n, length, dx) {
+  // with vibrato, a zigzag with tremolo picking; a slide runs it to the fret it ends on; a bend
+  // lifts it along the bend's curve over its `span` seconds.
+  function trailGeometry(n, length, dx, span = 0) {
     const tremolo = n.techniques.includes("tremolo");
     const vibrato = !tremolo && n.techniques.includes("vibrato");
+    const bent = n.bendCurve && n.bendCurve.length > 0;
     const hw = tremolo || vibrato ? 0.08 : 0.12;
-    const steps = tremolo ? Math.max(2, Math.round(length / 0.3)) : vibrato ? Math.max(2, Math.round(length / 0.06)) : 1;
+    let steps = tremolo ? Math.max(2, Math.round(length / 0.3)) : vibrato ? Math.max(2, Math.round(length / 0.06)) : 1;
+    if (bent) steps = Math.max(steps, 32);
     const positions = [], index = [];
     for (let k = 0; k <= steps; k += 1) {
       const u = k / steps;
@@ -641,7 +688,8 @@
       if (tremolo && k > 0) side = k % 2 ? 0.16 : -0.16;
       if (vibrato) side = 0.12 * Math.sin(u * length * 4);
       const x = dx * u + side;
-      positions.push(x - hw, 0, -u, x + hw, 0, -u);
+      const y = bent ? BEND_Y * bendAt(n.bendCurve, u * span) : 0;
+      positions.push(x - hw, y, -u, x + hw, y, -u);
       if (k) index.push(2 * k - 2, 2 * k, 2 * k - 1, 2 * k - 1, 2 * k, 2 * k + 1);
     }
     const g = new THREE.BufferGeometry();
@@ -679,14 +727,17 @@
     addFace(group, n, width);
     addMarks(group, n);
     let trail = null;
-    // A short note with vibrato or tremolo picking still gets a trail, to show it.
+    // A short note with vibrato, tremolo picking or a bend still gets a trail, to show it; a
+    // bend's runs as long as its curve.
     const wavy = n.techniques.includes("vibrato") || n.techniques.includes("tremolo");
-    const trailLength = Math.max(n.sustain || 0, wavy ? 0.4 : 0) * SPEED;
+    const bent = n.bendCurve.length > 0;
+    const span = Math.max(n.sustain || 0, wavy ? 0.4 : 0, bent ? n.bendCurve[n.bendCurve.length - 1][0] : 0);
+    const trailLength = span * SPEED;
     if (trailLength > 0.05 * SPEED) {
       const dx = n.slideTo >= 0 && n.fret > 0 ? fretX(n.slideTo) - x : 0;
-      const g = trailGeometry(n, trailLength, dx);
+      const g = trailGeometry(n, trailLength, dx, span);
       song.owned.push(g);
-      trail = new THREE.Mesh(g, r.trailMats[s]);
+      trail = new THREE.Mesh(g, bent ? r.bendTrailMat : r.trailMats[s]);
       group.add(trail);
     }
     stage.lane.add(group);
@@ -765,7 +816,22 @@
     addFace(group, n, obj.width, materials);
     group.position.set(obj.x, stringY(n.string), 0.02);
     stage.scene.add(group);
-    return { group, materials };
+    let bend = null;
+    if (n.bendCurve.length) {
+      // A bend: a teal line from the string to the note as it rises, and the frame it rises into.
+      const peak = Math.max(...n.bendCurve.map((p) => p[1]));
+      const pushMat = new THREE.MeshBasicMaterial({ map: r.lineGlowTex, color: TEAL, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+      const push = new THREE.Mesh(r.square, pushMat);
+      push.rotation.z = Math.PI / 2; // the glow runs across the texture's height: along the line
+      const targetMat = new THREE.MeshBasicMaterial({ map: r.bendTargetTex, transparent: true, opacity: 0.9, depthWrite: false });
+      const target = new THREE.Mesh(r.square, targetMat);
+      target.scale.set(Math.max(0.95, obj.width + 0.2), 0.5, 1);
+      target.position.set(obj.x, stringY(n.string) + BEND_Y * peak, 0.01);
+      stage.scene.add(push, target);
+      materials.push(pushMat, targetMat);
+      bend = { push, pushMat, target, curve: n.bendCurve, t0: n.t, dy: 0 };
+    }
+    return { group, materials, bend };
   }
 
   // The frame around the hand window lights up as a note (or chord) strikes: the window of that
@@ -836,11 +902,12 @@
   }
   function removeEffect(e) {
     stage.scene.remove(e.flash, e.core, e.sparks, e.held.group);
+    if (e.held.bend) stage.scene.remove(e.held.bend.push, e.held.bend.target);
     e.flash.material.dispose(); e.core.material.dispose(); e.sparks.material.dispose(); e.sparks.geometry.dispose();
     for (const m of e.held.materials) m.dispose();
   }
 
-  function updateEffects(dt) {
+  function updateEffects(dt, now) {
     const effects = stage.effects;
     for (let i = effects.length - 1; i >= 0; i -= 1) {
       const e = effects[i];
@@ -869,6 +936,21 @@
       const fade = e.age <= e.keep ? 1 : Math.max(0, 1 - (e.age - e.keep) / FADE);
       for (const m of e.held.materials) m.opacity = fade;
       e.held.materials[0].emissiveIntensity = holding ? 0.7 + 0.3 * pulse : 0.9 * fade;
+      const b = e.held.bend;
+      if (b) {
+        // The note rises on the string as it is bent, in the song's own clock (a pause holds it).
+        const dy = BEND_Y * bendAt(b.curve, Math.max(0, now - b.t0));
+        b.dy = dy;
+        const y = stringY(e.string);
+        e.held.group.position.y = y + dy;
+        e.flash.position.y = y + dy;
+        e.core.position.y = y + dy;
+        b.push.visible = dy > 0.01;
+        b.push.scale.set(Math.max(dy, 0.01), 0.28, 1);
+        b.push.position.set(e.held.group.position.x, y + dy / 2, 0.015);
+        b.pushMat.opacity = 0.95 * fade;
+        b.target.material.opacity = 0.9 * fade;
+      }
       if (!holding && e.age >= Math.max(0.6, e.keep + FADE)) {
         removeEffect(e);
         effects.splice(i, 1);
@@ -985,7 +1067,7 @@
     const px = stage.cameraX + 0.2, flat = options.dist * Math.cos(pitch);
     stage.camera.position.set(px + flat * Math.sin(yaw), PIVOT_Y + options.dist * Math.sin(pitch), PIVOT_Z + flat * Math.cos(yaw));
     stage.camera.lookAt(px, PIVOT_Y, PIVOT_Z);
-    updateEffects(dt);
+    updateEffects(dt, now);
     lightFrets(now);
     stage.renderer.render(stage.scene, stage.camera);
   }
@@ -1018,10 +1100,14 @@
     get ready() { return !!stage; },
     // What is on the highway right now (for checking it from the console).
     stats() {
-      return song ? { notes: song.notes.length, lines: song.lines.length, liveNotes: song.live.size, liveLines: song.liveLines.size, window: { glow: stage.window.glow, first: stage.window.first, width: stage.window.width } } : null;
+      return song ? {
+        notes: song.notes.length, lines: song.lines.length, liveNotes: song.live.size, liveLines: song.liveLines.size,
+        window: { glow: stage.window.glow, first: stage.window.first, width: stage.window.width },
+        bends: stage.effects.filter((e) => e.held.bend).map((e) => ({ string: e.string, rise: e.held.bend.dy / BEND_Y })),
+      } : null;
     },
-    // notes: [{t, sustain, string, fret, techniques, bend, slideTo, chordName}] in the display
-    // clock; bars: [{t, measure}]; beats: [t]; sections: [{t, name}]; tuning: 6 offsets;
+    // notes: [{t, sustain, string, fret, techniques, bend, bendCurve, slideTo, chordName}] in the
+    // display clock (bendCurve: [[seconds after the attack, semitones]…], optional); bars: [{t, measure}]; beats: [t]; sections: [{t, name}]; tuning: 6 offsets;
     // strings: 6, or 4 for a bass.
     setSong(data) {
       if (!stage) return;

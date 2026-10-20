@@ -2756,6 +2756,24 @@ every string the chart has (`stage.stringCount`) — four thin additive cores ov
 under software WebGL: glow 0 → 0.91 at the first hit, held while the notes rang,
 the frame on frets 2–5 where the FHP lane says 2–5.
 
+**Bends move, in teal** ("implementes na fretboard em 3D, o movimento teal dos
+bends", 2026-10-20): `/arrangements` answers each note's `<bendValues>` as
+`bend_curve` ([seconds after the attack, semitones], `ArrangementNoteOut`), and
+`hw3dBendCurve` hands it over in the display clock (a note whose bend was edited
+and not rebuilt sends none: the highway then draws a plain bend, rising to its
+peak at the note's end — `bendPoints`). The trail of a bent note is teal
+(`bendTrailMat`) and rises along the curve (`trailGeometry`'s `span`, `bendAt`);
+on the string the held note rises by `BEND_Y` (half a string gap) per semitone,
+capped at `BEND_MAX` (3), read from the song's clock (`now - t`, so a pause holds
+it), with a teal line from the string and a dashed teal frame at the peak
+(`heldNote().bend`); the bend chevrons are teal too. `stats().bends` reports
+each held bend's rise. Guarded by
+`test_arrangements_carry_the_bend_curve_for_the_3d_highway`; with Playwright
+under software WebGL on an invented GP5 (a bend up, a bend-and-release, a
+pre-bend released): the rise went 0 → 2 → 0 and 2 → 0 semitones as the notes
+played, held while paused, PT 1440 / EN 760 px, no page errors. Never seen on a
+real GPU from here.
+
 **It knows nothing about sync — it reads the score's own clock.** `hw3dRefresh`
 (called from `showArr`, so on every pending edit) hands it each note at
 `warp(previewScale(t))` — the score's merged notes, pending note edits

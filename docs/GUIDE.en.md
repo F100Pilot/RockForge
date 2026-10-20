@@ -241,7 +241,10 @@ They stay pending as before; Undo goes back to the built version.
   octave (A2)**, and whether to show all notes, only those matching the picked one or only naturals
   (no #). **3D highway** shows the notes coming down as in Rocksmith (it
   follows pending corrections too); when a note or chord reaches the strings, a rectangle lights
-  up around the frets the hand is in (2–5, for example). On the 3D highway, drag to turn the camera (up to 120° either
+  up around the frets the hand is in (2–5, for example). A bend is teal: the note's trail rises with
+  the bend and, on the string, the note rises as it is bent, up to the dashed frame at the height
+  the bend reaches (a whole step = one string gap), and comes down when the bend is released. On
+  the 3D highway, drag to turn the camera (up to 120° either
   way, from level with the highway to a view from above), once you click the highway the mouse wheel
   moves closer or further (before that it scrolls the page; Esc or a click elsewhere lets go) and
   a double-click resets; **Camera** has the same axes as sliders. **− / + / Reset**: zoom.

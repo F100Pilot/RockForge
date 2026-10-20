@@ -651,6 +651,45 @@ def test_arrangements_say_where_a_slide_ends(client: TestClient) -> None:
     assert [(n["fret"], n["slide_to"]) for n in notes] == [(5, 7), (5, -1)]
 
 
+def test_arrangements_carry_the_bend_curve_for_the_3d_highway(client: TestClient) -> None:
+    """The 3D highway draws a bend rising along its <bendValues>: the curve comes
+    back relative to the note's attack, and a plain bend's single point too."""
+    import rockforge.config as config
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.domain.arrangement import Arrangement, ArrangementKind, SongMetadata
+    from rockforge.domain.music import Beat, BendPoint, TabNote, Technique, TempoMap, Tuning
+    from rockforge.infrastructure.db.models import JobStatus
+    from rockforge.infrastructure.rsxml.writer import write_arrangement_xml
+
+    job = _create_job(client)
+    bundle = config.settings.work_dir / job["id"] / "bundle"
+    beats = tuple(Beat(time=0.5 * i, measure=(i // 4 + 1) if i % 4 == 0 else -1) for i in range(8))
+    bend = frozenset({Technique.BEND})
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="Bends", artist="T", song_length=4.0),
+        tuning=Tuning(),
+        notes=[
+            TabNote(string=3, fret=7, time=1.0, sustain=0.4, techniques=bend, bend_semitones=2),
+            TabNote(string=3, fret=7, time=2.0, sustain=0.8, techniques=bend, bend_semitones=2,
+                    bend_points=(BendPoint(0.0, 0.0), BendPoint(0.5, 2.0), BendPoint(1.0, 0.0))),
+            TabNote(string=1, fret=5, time=3.0, sustain=0.2),
+        ],
+        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+    )
+    write_arrangement_xml(arr, bundle / "arrangement_lead.xml")
+    with app_module._session_factory() as session:
+        db_job = session.get(app_module.Job, job["id"])
+        db_job.status = JobStatus.COMPLETED
+        db_job.bundle_dir = str(bundle)
+        session.commit()
+
+    notes = client.get(f"/jobs/{job['id']}/arrangements").json()[0]["notes"]
+    assert notes[0]["bend_curve"] == [[0.4, 2.0]]
+    assert notes[1]["bend_curve"] == [[0.0, 0.0], [0.4, 2.0], [0.8, 0.0]]
+    assert notes[2]["bend_curve"] == []
+
+
 def test_arrangements_show_linked_notes_and_arpeggios(client: TestClient) -> None:
     """The score marks a note linked into the next and an arpeggio's span."""
     import rockforge.config as config

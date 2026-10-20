@@ -6,6 +6,10 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Novidades
+
+- **Pista 3D — bends:** um bend passa a ver-se em verde-água. O rasto da nota sobe seguindo o bend (subir, segurar, soltar, pré-bend) e, quando a nota chega às cordas, sobe na corda à medida que é dobrada, até uma moldura tracejada na altura que o bend tem de alcançar — um tom sobe um espaço de corda.
+
 ## [0.11.1 beta 1] — 2026-10-20
 
 ### Novidades

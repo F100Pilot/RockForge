@@ -274,6 +274,9 @@ class ArrangementNoteOut(BaseModel):
     chord: bool
     techniques: list[str]
     bend_semitones: int = 0  # bend magnitude (1=half, 2=full, 3=1½…); 0 if no bend
+    # The bend's <bendValues> as [seconds after the attack, semitones], in order —
+    # the 3D highway draws the trail rising along it; empty without a bend.
+    bend_curve: list[list[float]] = []
     chord_name: str | None = None  # derived name for the chord this note belongs to
     # The fret a slide ends on (pitched, else unpitched slide-out), -1 if none —
     # the 3D highway draws the trail running to it.

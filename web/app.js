@@ -1570,7 +1570,7 @@ const INFO = {
   'highway-3d': {
     title: T('Pista 3D'),
     body: T('<p>As notas da pista escolhida a descer para as cordas, como no Rocksmith: cada corda na sua cor (Mi grave vermelho em cima) e uma linha até ao traste onde se toca. Como no Rocksmith, a nota não tem número: o número do traste no braço passa a âmbar e brilha à medida que se aproxima uma nota desse traste, e fica aceso enquanto ela soa ("Traste na nota" volta a pôr o número na nota). Quando a nota chega à corda, a corda brilha, um retângulo acende à volta dos trastes onde está a mão (por exemplo 2–5), como no Rocksmith, e a nota fica pousada na corda enquanto soa.</p>') +
-      T('<p>A afinação está escrita na pestana do headstock. Acordes têm moldura e nome; uma corda solta é uma barra ao longo da zona da mão (a faixa azul), que a câmara segue. As técnicas têm os símbolos do Rocksmith: ▼ hammer-on e ▲ pull-off na nota; por cima, laço = palm mute, anel com ponto = harmónico, olho = harmónico pinch, V largo = tapping, bloco com entalhe = slap, com bico = pop, chevrons ˄ = bend (um = meio tom, dois = um tom, três = mais); moldura dupla = acento; rasto ondulado = vibrato, em zigue-zague = tremolo picking; X = nota abafada.</p>') +
+      T('<p>A afinação está escrita na pestana do headstock. Acordes têm moldura e nome; uma corda solta é uma barra ao longo da zona da mão (a faixa azul), que a câmara segue. As técnicas têm os símbolos do Rocksmith: ▼ hammer-on e ▲ pull-off na nota; por cima, laço = palm mute, anel com ponto = harmónico, olho = harmónico pinch, V largo = tapping, bloco com entalhe = slap, com bico = pop, chevrons ˄ verde-água = bend (um = meio tom, dois = um tom, três = mais), com o rasto verde-água a subir com o bend, e na corda a nota sobe à medida que é dobrada, até à moldura tracejada da altura que o bend alcança; moldura dupla = acento; rasto ondulado = vibrato, em zigue-zague = tremolo picking; X = nota abafada.</p>') +
       T('<p><strong>Câmara:</strong> arrasta a pista para a rodar — para os lados até 120° de cada lado, e de rente à pista (0°) até vista de cima (90°); depois de clicares na pista, a roda do rato aproxima ou afasta (antes disso a roda desloca a página; Esc ou um clique fora largam a pista), e um duplo clique (ou "Repor câmara") volta à vista inicial. Os mesmos três eixos estão em "Câmara", com controlos deslizantes, e a vista fica guardada para o próximo projeto.</p>') +
       T('<p>Segue a gravação e as correções de sincronização <strong>ainda por aplicar</strong>, tal como a partitura por baixo — serve para confirmar a sincronização a ver as notas chegar. Precisa de WebGL (aceleração gráfica) no browser.</p>')
   },
@@ -9947,6 +9947,15 @@ function hw3dShowCamera(cam) {
 }
 try { hw3dShowCamera(JSON.parse(localStorage.getItem('rf-hw3d-cam') || '{}') || {}); } catch { /* defaults */ }
 function hw3dNow() { return { t: playheadDisplay(audioTime()), playing: audioIsPlaying() }; }
+// A bend's curve in the display clock, as seconds after the note's own displayed attack. A note
+// whose bend was edited and not rebuilt has no curve of its own (or one of another bend): the
+// highway then draws a plain bend, rising to its peak at the note's end.
+function hw3dBendCurve(n, t, at) {
+  if (!(n.bend_semitones > 0)) return [];
+  const curve = Array.isArray(n.bend_curve) ? n.bend_curve : [];
+  if (!curve.length || Math.round(Math.max(...curve.map(p => p[1]))) !== n.bend_semitones) return [];
+  return curve.map(([dt, step]) => [Math.max(0, at(n.time + dt) - t), step]);
+}
 function hw3dRefresh(a, notes) {
   if (!hw3dOn || !window.Highway3D || !window.Highway3D.ready || !a) return;
   const warp = buildTimeWarp(syncAnchors);
@@ -9957,7 +9966,8 @@ function hw3dRefresh(a, notes) {
       return {
         t, sustain: n.sustain > 0 ? Math.max(0, at(n.time + n.sustain) - t) : 0,
         string: n.string, fret: n.fret, techniques: n.techniques || [],
-        bend: n.bend_semitones || 0, slideTo: n.slide_to ?? -1, chordName: n.chord_name || '',
+        bend: n.bend_semitones || 0, bendCurve: hw3dBendCurve(n, t, at),
+        slideTo: n.slide_to ?? -1, chordName: n.chord_name || '',
       };
     }),
     bars: (a.bars || []).map(b => ({ t: at(b.time), measure: b.measure })),

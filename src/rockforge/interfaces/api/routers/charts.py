@@ -3,6 +3,7 @@ arrangement's notes, bars, beats, sections, tuning and pending-edit state."""
 
 from __future__ import annotations
 
+import math
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
@@ -178,19 +179,30 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
                 bend_semitones = 0
             if bend_semitones:
                 techs.append("bend")
+            time = float(el.get("time", "0"))
+            bend_curve: list[list[float]] = []
+            for b in el.iter("bendValue"):
+                try:
+                    bt, step = float(b.get("time", "0")), float(b.get("step", "0"))
+                except ValueError:
+                    continue
+                if math.isfinite(bt) and math.isfinite(step):
+                    bend_curve.append([round(max(0.0, bt - time), 4), step])
+            bend_curve.sort(key=lambda p: p[0])
             if el.get("slideTo", "-1") != "-1":
                 techs.append("slide")
             slide_to = int(el.get("slideTo", "-1"))
             if slide_to < 0:
                 slide_to = int(el.get("slideUnpitchTo", "-1"))
             return ArrangementNoteOut(
-                time=float(el.get("time", "0")),
+                time=time,
                 string=int(el.get("string", "0")),
                 fret=int(el.get("fret", "0")),
                 sustain=float(el.get("sustain", "0")),
                 chord=chord,
                 techniques=techs,
                 bend_semitones=bend_semitones,
+                bend_curve=bend_curve if bend_semitones else [],
                 slide_to=slide_to,
                 link_next=el.get("linkNext") == "1",
             )

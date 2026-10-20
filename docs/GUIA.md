@@ -239,7 +239,10 @@ queres recuperar. Ficam pendentes como antes; Desfazer volta à versão constru�
   e o clique não move o cursor. Ao lado escolhes **Nome da nota (A)** ou **Nome e oitava (A2)** e
   se mostra todas as notas, só as iguais à escolhida ou só as naturais (sem #). **Pista 3D** mostra as notas a descer como no
   Rocksmith (segue também as correções ainda por aplicar); quando uma nota ou acorde chega às
-  cordas, um retângulo acende à volta dos trastes onde está a mão (2–5, por exemplo). Na pista 3D, arrasta para rodar a
+  cordas, um retângulo acende à volta dos trastes onde está a mão (2–5, por exemplo). Um bend é
+  verde-água: o rasto da nota sobe com o bend e, na corda, a nota sobe à medida que é dobrada até à
+  moldura tracejada da altura que o bend alcança (um tom = um espaço de corda) e desce quando o bend
+  solta. Na pista 3D, arrasta para rodar a
   câmara (até 120° para cada lado, de rente à pista até vista de cima), depois de clicares na
   pista a roda do rato aproxima ou afasta (antes disso desloca a página; Esc ou um clique fora
   largam a pista) e um duplo clique repõe; **Câmara** tem os mesmos eixos em controlos deslizantes.
