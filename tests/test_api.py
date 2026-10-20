@@ -1301,6 +1301,35 @@ def _gp_job(client: TestClient, tmp_path) -> dict:
     ).json()
 
 
+def test_a_project_whose_form_leaves_out_import_mutes_keeps_its_mutes(
+    client: TestClient, tmp_path
+) -> None:
+    """The batch page sends no import_mutes, and newer FastAPI reads an absent
+    bool form field as False whatever its default: those projects lost their
+    palm mutes. Absent is the default (yes); anything but yes/no is refused."""
+    import rockforge.interfaces.api.app as app_module
+
+    def mutes(job_id: str) -> object:
+        with app_module._session_factory() as session:
+            return (session.get(app_module.Job, job_id).params or {}).get("import_mute_techniques")
+
+    assert mutes(_gp_job(client, tmp_path)["id"]) is True
+    data = _make_gp5_bytes(tmp_path)
+    for sent, expected in (("false", False), ("true", True), ("maybe", None)):
+        token = client.post(
+            "/gp/inspect", files={"file": ("song.gp5", data, "application/octet-stream")}
+        ).json()["gp_token"]
+        r = client.post(
+            "/jobs/gp",
+            data={"gp_token": token, "lead_track": "0", "import_mutes": sent},
+            files={"audio": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
+        )
+        if expected is None:
+            assert r.status_code == 422
+        else:
+            assert mutes(r.json()["id"]) is expected
+
+
 def test_rebuild_stores_tones_and_changes(client: TestClient, tmp_path) -> None:
     job = _gp_job(client, tmp_path)
     tone = {

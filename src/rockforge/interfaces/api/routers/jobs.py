@@ -83,6 +83,21 @@ def _parse_estimated_bars(raw: str) -> dict[str, list[int]]:
     return out
 
 
+_FORM_TRUE = frozenset({"true", "1", "on", "yes"})
+_FORM_FALSE = frozenset({"false", "0", "off", "no"})
+
+
+def _form_flag(raw: str, name: str) -> bool:
+    """A yes/no form field that defaults to yes, sent as text (see import_mutes)."""
+    value = raw.strip().lower()
+    if value in _FORM_TRUE:
+        return True
+    if value in _FORM_FALSE:
+        return False
+    raise HTTPException(422, i18n.tr(f"{name} tem de ser true ou false",
+                                     f"{name} must be true or false"))
+
+
 @router.post("/jobs/gp", response_model=JobOut, status_code=202)
 def create_gp_job(
     gp_token: str = Form(...),
@@ -109,7 +124,10 @@ def create_gp_job(
     tempo_scale: float = Form(1.0),
     tone_base: str = Form(""),
     tone_names: str = Form(""),  # comma-separated, max 4
-    import_mutes: bool = Form(True),
+    # A string, not a bool: newer FastAPI reads an ABSENT bool form field as
+    # False whatever its default (an unticked HTML checkbox), and the batch
+    # page never sends this one — its projects lost their palm mutes.
+    import_mutes: str = Form("true"),
     lrc: UploadFile | None = File(None),
     # Synced lyrics the wizard found on LRCLIB (/lyrics-lookup) and the user
     # kept — the same LRC text an uploaded file carries; an upload still wins.
@@ -255,7 +273,7 @@ def create_gp_job(
             "tone_base": tone_base.strip() or None,
             "tone_names": tones,
             "lrc_text": lrc_text,
-            "import_mute_techniques": import_mutes,
+            "import_mute_techniques": _form_flag(import_mutes, "import_mutes"),
             "recording_from_gp": use_embedded_audio,
         }
         if parsed_estimated_bars:
@@ -320,7 +338,9 @@ def create_gp_job(
 def reload_gp(
     job_id: str,
     gp: UploadFile = File(...),
-    use_embedded_audio: bool = Form(True),
+    # A string for the same reason as /jobs/gp's import_mutes: absent must mean
+    # the default (use the file's audio), and a bool field reads absent as False.
+    use_embedded_audio: str = Form("true"),
 ) -> JobOut:
     """Replace the Guitar Pro file of an existing GP job and rebuild, keeping
     every override the job already carries (tuning, sync anchors, tempo, tones,
@@ -332,6 +352,7 @@ def reload_gp(
     its own audio and ``use_embedded_audio`` (the default) says to use it, as
     the wizard does: that copy is the one the file's sync points describe. A
     file with audio also stands in for a recording that no longer exists."""
+    use_audio = _form_flag(use_embedded_audio, "use_embedded_audio")
     suffix = Path(gp.filename or "").suffix.lower()
     if suffix in api.GP_REJECTED_SUFFIXES:
         raise HTTPException(
@@ -390,7 +411,7 @@ def reload_gp(
         )
 
         recording_gone = not Path(src_recording).exists()
-        if embedded_audio(gp_dest) is not None and (use_embedded_audio or recording_gone):
+        if embedded_audio(gp_dest) is not None and (use_audio or recording_gone):
             upload_dir = api.settings.work_dir / "uploads"
             try:
                 src_recording = str(extract_embedded_audio(gp_dest, upload_dir / str(uuid.uuid4())))
