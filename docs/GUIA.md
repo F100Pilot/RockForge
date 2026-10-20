@@ -232,7 +232,12 @@ queres recuperar. Ficam pendentes como antes; Desfazer volta à versão constru�
 - **A partitura:** o eixo é o tempo da gravação. Clicar no fundo move o cursor. Os compassos
   têm número; um compasso a âmbar tem o andamento alterado pelas tuas correções.
 - **pré-visualizar** toca só as notas da pista, sem a gravação.
-- **Braço** mostra o braço da guitarra; **Pista 3D** mostra as notas a descer como no
+- **Braço** mostra o braço da guitarra. Com **Todas as notas** ligado, o braço mostra o nome de
+  cada nota da afinação da pista; clica numa nota e ela fica realçada, com contorno tracejado onde
+  está **o mesmo som** (por exemplo A2 na 6.ª corda traste 5 e na 5.ª solta) e contorno branco onde
+  está **a mesma nota noutra oitava**; por baixo aparece a lista dos sítios. Clicar de novo larga-a,
+  e o clique não move o cursor. Ao lado escolhes **Nome da nota (A)** ou **Nome e oitava (A2)** e
+  se mostra todas as notas, só as iguais à escolhida ou só as naturais (sem #). **Pista 3D** mostra as notas a descer como no
   Rocksmith (segue também as correções ainda por aplicar); quando uma nota ou acorde chega às
   cordas, um retângulo acende à volta dos trastes onde está a mão (2–5, por exemplo). Na pista 3D, arrasta para rodar a
   câmara (até 120° para cada lado, de rente à pista até vista de cima), depois de clicares na

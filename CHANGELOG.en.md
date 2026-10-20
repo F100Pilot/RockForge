@@ -8,6 +8,7 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ### New
 
+- **Fretboard — All notes:** a new switch beside "Fretboard" names every note of the track's tuning. Click a note to see where else the same sound is, and the same note in another octave. You can show the name with or without the octave, and only the notes matching the picked one or only naturals.
 - **Tones:** you can now change when a tone comes in. Drag the change's orange mark on the score, type the seconds in the "Tones of each track" list, or put the cursor in place and press "= cursor".
 
 ### Fixes

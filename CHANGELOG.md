@@ -8,6 +8,7 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ### Novidades
 
+- **Braço — Todas as notas:** um novo interruptor ao lado de "Braço" mostra o nome de todas as notas da afinação da pista. Clica numa nota para ver onde mais está o mesmo som e a mesma nota noutra oitava. Podes mostrar o nome com ou sem a oitava, e só as notas iguais à escolhida ou só as naturais.
 - **Tons:** já podes mudar o tempo em que um tom entra. Arrasta a marca laranja da mudança na partitura, escreve os segundos na lista "Tons de cada pista", ou põe o cursor no sítio e carrega em "= cursor".
 
 ### Correções

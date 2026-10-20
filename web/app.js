@@ -9729,11 +9729,105 @@ async function synthesizeArrangement(kind) {
 // showArr; a small overlay group is refreshed each frame with the active notes.
 let fretboardOn = true;
 const FB = { frets: 24, fw: 26, sh: 20, x0: 46, y0: 14 };
+// "Todas as notas": every note of the chart's tuning named on the neck, and a
+// click on one shows where else the same pitch is (the same sound) and the
+// same note in another octave. Remembered per browser, like the legend.
+let fbAllOn = false, fbNameMode = 'name', fbScope = 'all';
+try {
+  fbAllOn = localStorage.getItem('rf-fb-all') === '1';
+  fbNameMode = localStorage.getItem('rf-fb-names') === 'oct' ? 'oct' : 'name';
+  fbScope = ['same', 'natural'].includes(localStorage.getItem('rf-fb-scope')) ? localStorage.getItem('rf-fb-scope') : 'all';
+} catch { /* no storage */ }
+let fbPick = null;  // {s, f}: the note clicked on the neck (never moves the cursor)
 function fretXY(string, fret) {
   const top = stringCount(arrangements[currentArr]) - 1;  // the highest string on top
   const y = FB.y0 + (top - string) * FB.sh;
-  const x = fret <= 0 ? FB.x0 - 6 : FB.x0 + (fret - 0.5) * FB.fw;  // open note at the nut
+  const x = fret <= 0 ? FB.x0 - (fbAllOn ? 16 : 6) : FB.x0 + (fret - 0.5) * FB.fw;  // open note at the nut
   return { x, y };
+}
+function lightColor(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  const mix = c => Math.round(c + (255 - c) * 0.45);
+  return `rgb(${mix(n >> 16)},${mix((n >> 8) & 255)},${mix(n & 255)})`;
+}
+function fbWhere(nStr, str, fret) {
+  const n = nStr - str;  // guitarists count from the highest string
+  return fret === 0 ? T('{n}.ª corda solta', { n }) : T('{n}.ª corda, traste {f}', { n, f: fret });
+}
+// Every (string, fret) of the neck with the pitch it sounds — a capo makes the
+// open string sound at it and leaves the frets under it unplayable.
+function fbCells(a) {
+  const nStr = stringCount(a), capo = (a && a.capo) || 0, out = [];
+  for (let i = 0; i < nStr; i++) {
+    for (let f = 0; f <= FB.frets; f++) {
+      if (f > 0 && f <= capo) continue;
+      out.push({ s: i, f, midi: noteMidi(a, i, f) });
+    }
+  }
+  return out;
+}
+function fbAllNotesSvg(a) {
+  const nStr = stringCount(a), cells = fbCells(a);
+  const pick = fbPick && cells.find(c => c.s === fbPick.s && c.f === fbPick.f);
+  const pm = pick ? pick.midi : null;
+  const w = fbNameMode === 'oct' ? 30 : 24, h = 16;
+  let s = '<g id="fretAll">';
+  for (const c of cells) {
+    const pc = ((c.midi % 12) + 12) % 12, name = NOTE_NAMES[pc], oct = Math.floor(c.midi / 12) - 1;
+    const isPick = pick === c, same = pm !== null && c.midi === pm, octave = pm !== null && !same && pc === ((pm % 12) + 12) % 12;
+    if (fbScope === 'same' && pm !== null && !same && !octave) continue;
+    if (fbScope === 'natural' && name.length > 1 && !same && !octave) continue;
+    const col = STRING_COLORS[c.s];
+    let fill = col, fillOp = 0.16, stroke = col, strokeOp = 0.38, sw = 1, dash = '', fg = lightColor(col), op = pm !== null ? 0.5 : 1;
+    if (isPick || same) { fillOp = 1; stroke = '#fff'; strokeOp = 1; sw = 2; fg = '#14151a'; op = 1; if (!isPick) dash = ' stroke-dasharray="3 2"'; }
+    else if (octave) { fillOp = 0.3; stroke = '#e9edf5'; strokeOp = 1; sw = 2; fg = '#fff'; op = 1; }
+    const { x, y } = fretXY(c.s, c.f);
+    const label = fbNameMode === 'oct' ? name + oct : name;
+    s += `<g class="fb-cell" data-s="${c.s}" data-f="${c.f}" opacity="${op}"><title>${name}${oct} · ${esc(fbWhere(nStr, c.s, c.f))}</title>`
+      + (isPick ? `<rect x="${x - w / 2 - 3}" y="${y - h / 2 - 3}" width="${w + 6}" height="${h + 6}" rx="${h / 2 + 3}" fill="${col}" opacity="0.35"/>` : '')
+      + `<rect x="${x - w / 2}" y="${y - h / 2}" width="${w}" height="${h}" rx="${h / 2}" fill="${fill}" fill-opacity="${fillOp}" stroke="${stroke}" stroke-opacity="${strokeOp}" stroke-width="${sw}"${dash}/>`
+      + `<text x="${x}" y="${y + 3.5}" fill="${fg}" font-size="${fbNameMode === 'oct' ? 9.5 : 10.5}" font-weight="700" text-anchor="middle">${label}</text></g>`;
+  }
+  return s + '</g>';
+}
+// The strip under the neck: what the clicked note is, where else it sounds,
+// and what each mark means.
+function renderFbInfo(a) {
+  const box = document.getElementById('fbInfo');
+  if (!box) return;
+  box.hidden = !(fretboardOn && fbAllOn);
+  if (box.hidden) return;
+  const nStr = stringCount(a), cells = fbCells(a);
+  const pick = fbPick && cells.find(c => c.s === fbPick.s && c.f === fbPick.f);
+  let what;
+  if (pick) {
+    const pm = pick.midi, pc = ((pm % 12) + 12) % 12;
+    const same = cells.filter(c => c.midi === pm).map(c => fbWhere(nStr, c.s, c.f));
+    const octs = cells.filter(c => c.midi !== pm && ((c.midi % 12) + 12) % 12 === pc).length;
+    const hz = (440 * Math.pow(2, (pm - 69) / 12)).toFixed(1);
+    what = `<div><strong>${NOTE_NAMES[pc]}${Math.floor(pm / 12) - 1}</strong> <span class="fb-dim">${hz} Hz</span></div>`
+      + `<div>${esc(same.length === 1 ? T('O mesmo som só aqui: {list}', { list: same[0] }) : T('O mesmo som em {n} sítios: {list}', { n: same.length, list: same.join(' · ') }))}</div>`
+      + `<div class="fb-dim">${esc(octs === 1 ? T('A mesma nota noutra oitava: 1 sítio') : T('A mesma nota noutra oitava: {n} sítios', { n: octs }))}</div>`;
+  } else {
+    what = `<div class="fb-dim">${esc(T('Clica numa nota para ver onde mais ela está no braço.'))}</div>`;
+  }
+  box.innerHTML = `<div class="fb-what">${what}</div><div class="fb-key">`
+    + `<span><i class="sel"></i>${esc(T('Escolhida'))}</span>`
+    + `<span><i class="same"></i>${esc(T('O mesmo som'))}</span>`
+    + `<span><i class="oct"></i>${esc(T('A mesma nota, outra oitava'))}</span>`
+    + `<span><i class="other"></i>${esc(T('Outras'))}</span></div>`;
+}
+function syncFbControls() {
+  const chk = document.getElementById('fbAllNotes');
+  if (chk) chk.checked = fbAllOn;
+  const lbl = document.getElementById('fbAllNotesLabel');
+  if (lbl) lbl.hidden = !fretboardOn;
+  for (const [id, v] of [['fbNameMode', fbNameMode], ['fbScope', fbScope]]) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    el.value = v;
+    el.hidden = !(fretboardOn && fbAllOn);
+  }
 }
 let _lastFretHTML = null;  // skip redundant #fretOverlay innerHTML churn (see updateFretboard)
 function drawFretboard() {
@@ -9741,9 +9835,14 @@ function drawFretboard() {
   if (!svg) return;
   const wrap = document.getElementById('fretboardWrap');
   if (wrap) wrap.style.display = fretboardOn ? '' : 'none';
+  syncFbControls();
   if (!fretboardOn) { svg.innerHTML = ''; return; }
   const a = arrangements[currentArr];
   const nStr = stringCount(a);
+  if (fbPick && fbPick.s >= nStr) fbPick = null;
+  // Note names need room: a wider fret and string spacing while they are shown.
+  FB.fw = fbAllOn ? 36 : 26;
+  FB.sh = fbAllOn ? 24 : 20;
   const neckH = (nStr - 1) * FB.sh, top = FB.y0, bottom = FB.y0 + neckH;
   const W = FB.x0 + FB.frets * FB.fw + 14, H = bottom + 26;
   svg.setAttribute('width', W); svg.setAttribute('height', H);
@@ -9761,11 +9860,14 @@ function drawFretboard() {
   for (let i = 0; i < nStr; i++) {
     const y = FB.y0 + (nStr - 1 - i) * FB.sh;
     s += `<line x1="${FB.x0}" y1="${y}" x2="${FB.x0 + FB.frets * FB.fw}" y2="${y}" stroke="#9aa1ae" stroke-width="${1 + (nStr - 1 - i) * 0.35 + (isBassArr(a) ? 0.8 : 0)}"/>`;
-    s += `<text x="${FB.x0 - 16}" y="${y + 4}" fill="${STRING_COLORS[i]}" font-size="12" font-weight="700" text-anchor="middle">${stringLabel(i, offs)}</text>`;
+    // With every note named, the open string's own name is its label.
+    if (!fbAllOn) s += `<text x="${FB.x0 - 16}" y="${y + 4}" fill="${STRING_COLORS[i]}" font-size="12" font-weight="700" text-anchor="middle">${stringLabel(i, offs)}</text>`;
   }
+  if (fbAllOn) s += fbAllNotesSvg(a);
   s += `<g id="fretOverlay"></g>`;
   svg.innerHTML = s;
   _lastFretHTML = null;  // overlay was just recreated empty — force the next fill
+  renderFbInfo(a);
 }
 function updateFretboard(vtDisp, warp) {
   if (!fretboardOn) return;
@@ -9789,10 +9891,36 @@ function updateFretboard(vtDisp, warp) {
   // only re-parse the overlay's DOM when the markup actually differs.
   if (s !== _lastFretHTML) { ov.innerHTML = s; _lastFretHTML = s; }
 }
-document.getElementById('showFretboard')?.addEventListener('change', e => {
-  fretboardOn = e.target.checked;
+function redrawFretboard() {
   drawFretboard();
   if (fretboardOn) updateFretboard(playheadDisplay(audioTime()));
+}
+document.getElementById('showFretboard')?.addEventListener('change', e => {
+  fretboardOn = e.target.checked;
+  redrawFretboard();
+});
+document.getElementById('fbAllNotes')?.addEventListener('change', e => {
+  fbAllOn = e.target.checked;
+  try { localStorage.setItem('rf-fb-all', fbAllOn ? '1' : '0'); } catch { /* no storage */ }
+  redrawFretboard();
+});
+document.getElementById('fbNameMode')?.addEventListener('change', e => {
+  fbNameMode = e.target.value === 'oct' ? 'oct' : 'name';
+  try { localStorage.setItem('rf-fb-names', fbNameMode); } catch { /* no storage */ }
+  redrawFretboard();
+});
+document.getElementById('fbScope')?.addEventListener('change', e => {
+  fbScope = ['same', 'natural'].includes(e.target.value) ? e.target.value : 'all';
+  try { localStorage.setItem('rf-fb-scope', fbScope); } catch { /* no storage */ }
+  redrawFretboard();
+});
+// A click on a named note picks it (again: lets it go); it never seeks.
+document.getElementById('fretboard')?.addEventListener('click', e => {
+  const cell = e.target.closest && e.target.closest('.fb-cell');
+  if (!cell) return;
+  const s = +cell.dataset.s, f = +cell.dataset.f;
+  fbPick = fbPick && fbPick.s === s && fbPick.f === f ? null : { s, f };
+  redrawFretboard();
 });
 
 // --- Pista 3D (web/highway3d.js, three.js loaded on first use) ---------------------------------

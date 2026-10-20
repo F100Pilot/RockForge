@@ -233,7 +233,13 @@ They stay pending as before; Undo goes back to the built version.
 - **The score:** the axis is the recording's time. Clicking the background moves the cursor.
   Bars are numbered; an amber bar has its tempo changed by your corrections.
 - **preview** plays only the track's notes, without the recording.
-- **Fretboard** shows the guitar neck; **3D highway** shows the notes coming down as in Rocksmith (it
+- **Fretboard** shows the guitar neck. With **All notes** on, the fretboard names every note of
+  the track's tuning; click a note and it is highlighted, with a dashed outline where **the same
+  sound** is (A2 on string 6 fret 5 and string 5 open, for example) and a white outline where
+  **the same note in another octave** is; the list of places shows underneath. Clicking it again
+  lets it go, and the click does not move the cursor. Beside it pick **Note name (A)** or **Name and
+  octave (A2)**, and whether to show all notes, only those matching the picked one or only naturals
+  (no #). **3D highway** shows the notes coming down as in Rocksmith (it
   follows pending corrections too); when a note or chord reaches the strings, a rectangle lights
   up around the frets the hand is in (2–5, for example). On the 3D highway, drag to turn the camera (up to 120° either
   way, from level with the highway to a view from above), once you click the highway the mouse wheel

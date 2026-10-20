@@ -2676,6 +2676,30 @@ registered (`I18N_LANGS`), named by `I18N_NAMES`.
   missing translation breaks nothing, which is exactly why it has to fail here:
   nobody would notice.
 
+### Every note of the tuning on the fretboard ("Todas as notas", `fbAllNotesSvg`)
+
+"Quero uma opção para ligar um modo no fretboard, que mostra todas as notas na
+fretboard, para aquela afinação. Assim é mais fácil de identificar notas
+equivalentes" (2026-10-20, from a sketch the user approved). A "Todas as notas"
+switch beside "Braço" (`#fbAllNotes`, `rf-fb-all`) names every (string, fret)
+of the chart on screen, from its own tuning (`fbCells`: `noteMidi`, so a bass,
+the low-bass +12 fix and a capo — the open string at the capo, the frets under
+it left out — come out right), in the string's colour. The neck widens while
+it is on (`FB.fw` 26 → 36, `FB.sh` 20 → 24; `fretXY` reads them, so the
+sounding-note overlay follows) and the open-string pills replace the tuning
+labels. A click on a pill (`.fb-cell`, delegated on `#fretboard`; never seeks)
+picks it (`fbPick`, again = let go): the same MIDI pitch elsewhere gets a
+dashed white outline, the same pitch class in another octave a white one, the
+rest dims; `#fbInfo` under the neck says the note, its frequency, where else
+it sounds (`fbWhere`: "6.ª corda, traste 7") and how many octaves, with a
+legend. `#fbNameMode` (name / name + octave, `rf-fb-names`) and `#fbScope`
+(all / only those matching the pick / only naturals, `rf-fb-scope`) show only
+while it is on. The overlay of sounding notes is drawn on top, as before.
+Browser-only; verified with Playwright on an invented Combined + Bass project
+(PT 1440 / EN 760 px): 150 pills on the guitar and 100 on the bass, B2 picked
+→ "6.ª corda, traste 7 · 5.ª corda, traste 2" and 11 octave places, the cursor
+unmoved, both selects, the settings remembered after a reload, no page errors.
+
 ### The 3D note highway ("Pista 3D", `web/highway3d.js`)
 
 "grafismo 3D, com three.js, para o braço da guitarra … o mais idêntico

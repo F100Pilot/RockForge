@@ -804,6 +804,19 @@ button.pv-loop-btn[aria-pressed="true"] { background:#2d2350; color:#e2d6ff; bor
 .hw3d-cam-hint { margin:0; color:#8d97ad; font-size:11px; line-height:1.35; }
 .hw3d-msg { position:absolute; inset:0; display:grid; place-items:center; margin:0; padding:16px; text-align:center; color:#8d97ad; }
 #fretboardWrap { overflow-x:auto; background:#121318; border:1px solid #262831; border-radius:14px; text-align:center; }
+#fretboard .fb-cell { cursor:pointer; }
+#fretboard .fb-cell:hover rect { filter:brightness(1.3); }
+.fb-info { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.5rem 1.5rem; text-align:left; border-top:1px solid #262831; margin:0 .9rem; padding:.6rem 0 .7rem; font-size:.85rem; color:#c3c9d6; }
+.fb-info .fb-what { flex:1 1 26rem; min-width:0; display:flex; flex-direction:column; gap:.15rem; }
+.fb-info .fb-what strong { color:#e6e9ef; font-size:1rem; }
+.fb-info .fb-dim { color:#8a93a6; }
+.fb-info .fb-key { display:flex; flex-wrap:wrap; gap:.4rem 1rem; font-size:.78rem; }
+.fb-info .fb-key span { display:inline-flex; align-items:center; gap:.35rem; }
+.fb-info .fb-key i { display:inline-block; width:22px; height:13px; border-radius:7px; box-sizing:border-box; background:#3f9bdc; }
+.fb-info .fb-key i.sel { border:2px solid #fff; }
+.fb-info .fb-key i.same { border:2px dashed #fff; }
+.fb-info .fb-key i.oct { background:rgba(63,155,220,.3); border:2px solid #e9edf5; }
+.fb-info .fb-key i.other { background:rgba(63,155,220,.16); border:1px solid rgba(63,155,220,.38); opacity:.55; }
 .pv-status { display:flex; align-items:center; gap:.5rem .9rem; flex-wrap:wrap; font-size:.85rem; color:var(--muted); }
 .pv-status > button.secondary { display:inline-flex; align-items:center; gap:.35rem; }
 .pv-hint { padding:.65rem .9rem; background:#16171d; border:1px solid #262831; border-left:3px solid var(--accent);
@@ -1195,11 +1208,15 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
           <!-- Fretboard: lights up the (string, fret) of each note as it plays -->
           <div id="fretboardWrap">
             <svg id="fretboard" height="150" style="display:inline-block"></svg>
+            <div id="fbInfo" class="fb-info" hidden></div>
           </div>
 
           <div class="pv-status">
             <button type="button" id="previewArr" class="secondary"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg>pré-visualizar</button>
             <label class="check"><input type="checkbox" id="showFretboard" checked> Braço</label>
+            <label class="check" id="fbAllNotesLabel" title="Mostra no braço o nome de todas as notas desta afinação. Clica numa para ver onde mais está o mesmo som e a mesma nota noutra oitava"><input type="checkbox" id="fbAllNotes"> Todas as notas</label>
+            <select id="fbNameMode" aria-label="Nomes das notas no braço" hidden><option value="name">Nome da nota (A)</option><option value="oct">Nome e oitava (A2)</option></select>
+            <select id="fbScope" aria-label="Notas mostradas no braço" hidden><option value="all">Todas as notas</option><option value="same">Só as iguais à escolhida</option><option value="natural">Só as naturais (sem #)</option></select>
             <label class="check" title="As notas a descer numa pista 3D, como no Rocksmith"><input type="checkbox" id="show3d"> Pista 3D</label>
             <label class="check" title="O que quer dizer cada marca da partitura"><input type="checkbox" id="showLegend"> Legenda</label>
             <label class="check" title="Barras dos ataques (ou do volume) da gravação e do som das notas, por cima da partitura: onde não coincidem, está fora de tempo"><input type="checkbox" id="showLevels"> Barras de áudio</label>
