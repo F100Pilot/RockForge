@@ -785,7 +785,7 @@ Tone change times are stored in the chart's clock and used by the build verbatim
 
 **Root cause:** toneSetsForRebuild sends the stored chart times; gp_pipeline uses tone_changes without the per-chart warp.
 
-**Fixes:** [FIX-0338](../FIX_LOG.md#fix-0338) (unreleased)
+**Fixes:** [FIX-0338](../FIX_LOG.md#fix-0338) (0.11.1-beta.1)
 
 **Verified:** Playwright, invented GP5 + real rebuilds: a +1 s pending correction moved the first note 2.0 → 3.0 s and the tone change 6.0 → 7.0 s (XML 6.980); per-track, the Bass with no correction kept 6.0 s (by the developer (Playwright))
 

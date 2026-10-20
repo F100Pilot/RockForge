@@ -6,6 +6,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+## [0.11.1 beta 1] — 2026-10-20
+
 ### New
 
 - **Fretboard — All notes:** a new switch beside "Fretboard" names every note of the track's tuning. Click a note to see where else the same sound is, and the same note in another octave. You can show the name with or without the octave, and only the notes matching the picked one or only naturals.

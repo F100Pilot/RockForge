@@ -477,6 +477,26 @@
       "approved_by": "the maintainer (asked for the release)",
       "upgrade": "Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.",
       "exceptions": []
+    },
+    {
+      "version": "0.11.1-beta.1",
+      "status": "Beta",
+      "created": "2026-10-20",
+      "published": "pending",
+      "commit": "pending",
+      "build": "GitHub Actions release workflow",
+      "artifacts": [],
+      "goal": "Fretboard with every note of the tuning, moving tone changes; sections, tone changes and long song names fixed",
+      "features": [
+        "Fretboard — All notes",
+        "Tones"
+      ],
+      "improvements": [],
+      "breaking": [],
+      "tests": "CI (ruff, mypy, pytest, ESLint, Docker build) on the release commit, tools/release_check, and the frozen .exe smoke test of the release workflow",
+      "approved_by": "the maintainer (asked for the release)",
+      "upgrade": "Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.",
+      "exceptions": []
     }
   ]
 }

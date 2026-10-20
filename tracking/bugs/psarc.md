@@ -2722,7 +2722,7 @@ song_key_from_title keeps the first 30 letters of artist+title, so two live vers
 
 **Root cause:** A plain 30-character cut, and one fallback key for every title with no ASCII letter.
 
-**Fixes:** [FIX-0337](../FIX_LOG.md#fix-0337) (unreleased)
+**Fixes:** [FIX-0337](../FIX_LOG.md#fix-0337) (0.11.1-beta.1)
 
 **Verified:** pytest: the two live versions get different 30-character keys, two Cyrillic titles differ, a name that fits keeps its key; the new test fails on the old code (by the developer (automated tests))
 

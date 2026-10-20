@@ -6,6 +6,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+## [0.11.1 beta 1] — 2026-10-20
+
 ### Novidades
 
 - **Braço — Todas as notas:** um novo interruptor ao lado de "Braço" mostra o nome de todas as notas da afinação da pista. Clica numa nota para ver onde mais está o mesmo som e a mesma nota noutra oitava. Podes mostrar o nome com ou sem a oitava, e só as notas iguais à escolhida ou só as naturais.

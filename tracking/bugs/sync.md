@@ -1786,7 +1786,7 @@ Section markers (section_overrides) are stored in the chart's clock and sent as 
 
 **Root cause:** section_overrides are sent in the stored chart clock; gp_pipeline uses them without the per-chart warp, and stored overrides were never re-sent after a later correction.
 
-**Fixes:** [FIX-0339](../FIX_LOG.md#fix-0339) (unreleased)
+**Fixes:** [FIX-0339](../FIX_LOG.md#fix-0339) (0.11.1-beta.1)
 
 **Verified:** Playwright, invented GP5 + real rebuilds: a +1 s pending correction moved the first note 2.0 → 3.0 s and the edited section 10 → 11 s; a second +1 s with the sections untouched moved it to 12 s; "+ Adicionar no cursor" drawn exactly on the cursor; untouched GP sections still sent as null (by the developer (Playwright))
 

@@ -4,6 +4,36 @@
 
 Every version, newest first. What a version fixed and the bugs it still carried come from the bug and fix registers. Process: [docs/RELEASE_PROCESS.md](../docs/RELEASE_PROCESS.md).
 
+## 0.11.1-beta.1
+
+| | |
+|---|---|
+| Status | Beta |
+| Created | 2026-10-20 |
+| Published | _pending_ |
+| Commit | _pending_ |
+| Build | GitHub Actions release workflow |
+| Artifacts | — |
+| Tests | CI (ruff, mypy, pytest, ESLint, Docker build) on the release commit, tools/release_check, and the frozen .exe smoke test of the release workflow |
+| Approved by | the maintainer (asked for the release) |
+
+**Goal:** Fretboard with every note of the tuning, moving tone changes; sections, tone changes and long song names fixed
+
+**New:**
+
+- Fretboard — All notes
+- Tones
+
+**Bugs fixed:** 
+
+- [BUG-0337](bugs/psarc.md#bug-0337) Two songs whose names share the first 30 letters get the same song key
+- [BUG-0338](bugs/tones.md#bug-0338) A tone change does not follow a sync correction made in the same rebuild
+- [BUG-0339](bugs/sync.md#bug-0339) A section marker does not follow a sync correction made in the same rebuild
+
+**Known bugs it carried:** —
+
+**Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
+
 ## 0.11.0-beta.4
 
 | | |

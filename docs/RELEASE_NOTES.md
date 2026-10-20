@@ -1,65 +1,23 @@
+### New
+
+- **Fretboard — All notes:** a new switch beside "Fretboard" names every note of the track's tuning. Click a note to see where else the same sound is, and the same note in another octave. You can show the name with or without the octave, and only the notes matching the picked one or only naturals.
+- **Tones:** you can now change when a tone comes in. Drag the change's orange mark on the score, type the seconds in the "Tones of each track" list, or put the cursor in place and press "= cursor".
+
 ### Bugs fixed
 
-- **Projects and files:**
-  - A track named "Lead/Rhythm" no longer goes into both arrangements (the build failed).
-  - A .gp file locked in Guitar Pro is refused with a message instead of an internal error.
-  - A refused new project no longer leaves its recording behind on disk.
-  - A project can no longer be deleted while a detection or separation runs on it.
-- **Imported score:**
-  - A slide in at fret 1 no longer turns an earlier note into a slide lasting seconds.
-  - Trills keep their fingering and their final slide.
-  - The capo no longer pushes slide targets past fret 24.
-  - A GP7 lyric line on a bar that is never played no longer appears at the start.
-- **Export to Guitar Pro:**
-  - Very fast notes on the same string no longer break the file.
-  - Rounding the BPM no longer builds up drift, and the tempo of bars without notes is no longer lost.
-  - A tempo correction wins over a tempo left on another track.
-- **Lyrics:**
-  - UltraStar syllables of one word are joined.
-  - An LRC line with several times is sung at each of them.
-- **DLC Builder:** a half-step bend and a fully muted chord are now written in the XML.
-- **Versions:** when dropping the previous version, the separated instruments go only to a version that uses the same recording, and sibling versions still find them.
-- **Downloads:** two bundle downloads at once no longer break it.
-- **Tones:** a tone with invalid values is refused straight away, instead of failing the build.
-- **Windows:** Japanese or Cyrillic tags or paths no longer make the build fail.
-- **.exe:**
-  - Without WebView2, it shuts down again when the browser tab is closed.
-  - Installing the components no longer hangs forever on a stalled download.
-- **Editor:**
-  - The note selection and ↑/↓ no longer carry over to the other track.
-  - Opening another project quickly no longer shows the previous one's score or recording.
-  - The 3D highway closed while loading no longer starts.
+- **Sections:** sections you edited now follow a sync correction made before the same rebuild. Before, the notes moved and the section stayed at the old time. "+ Add at cursor" puts the section exactly where the cursor is, even with a correction pending.
+- **Tones:** a tone change now follows a sync correction made before the same rebuild. Before, the notes moved and the switch stayed at the old time.
+- **Rocksmith:** two songs whose names start with the same 30 letters (two live versions, say) no longer replace each other in game, and neither do titles with no Latin letters (Cyrillic, Japanese…). Note: these songs get a new identifier when rebuilt, and the game starts their progress over. Songs with short names do not change.
 
 ---
 
+### Novidades
+
+- **Braço — Todas as notas:** um novo interruptor ao lado de "Braço" mostra o nome de todas as notas da afinação da pista. Clica numa nota para ver onde mais está o mesmo som e a mesma nota noutra oitava. Podes mostrar o nome com ou sem a oitava, e só as notas iguais à escolhida ou só as naturais.
+- **Tons:** já podes mudar o tempo em que um tom entra. Arrasta a marca laranja da mudança na partitura, escreve os segundos na lista "Tons de cada pista", ou põe o cursor no sítio e carrega em "= cursor".
+
 ### Bugs corrigidos
 
-- **Projetos e ficheiros:**
-  - Uma pista chamada "Lead/Rhythm" já não vai para os dois arranjos (a construção falhava).
-  - Um ficheiro .gp bloqueado no Guitar Pro é recusado com uma mensagem, em vez de um erro interno.
-  - Um projeto novo recusado já não deixa a gravação esquecida no disco.
-  - Não se apaga um projeto enquanto corre uma deteção ou separação nele.
-- **Partitura importada:**
-  - Um slide de entrada no traste 1 já não transforma uma nota anterior num slide de segundos.
-  - Os trilos guardam a dedilhação e o slide final.
-  - O capo já não leva alvos de slide para lá do traste 24.
-  - Uma linha de letra GP7 num compasso que nunca toca já não aparece no início.
-- **Exportar para Guitar Pro:**
-  - Notas muito rápidas na mesma corda já não estragam o ficheiro.
-  - O arredondamento do BPM já não acumula desvio, e o andamento de compassos sem notas já não se perde.
-  - Uma correção de andamento ganha a um andamento deixado noutra pista.
-- **Letras:**
-  - As sílabas UltraStar da mesma palavra ficam ligadas.
-  - Uma linha LRC com vários tempos é cantada em cada um.
-- **DLC Builder:** o bend de meio tom e o acorde todo abafado passam a ser escritos no XML.
-- **Versões:** ao apagar a versão anterior, os instrumentos separados só passam para uma versão que usa a mesma gravação, e as versões irmãs continuam a encontrá-los.
-- **Transferências:** duas transferências do pacote ao mesmo tempo já não o estragam.
-- **Tons:** um tom com valores inválidos é recusado logo, em vez de fazer falhar a construção.
-- **Windows:** etiquetas ou caminhos em japonês ou cirílico já não fazem falhar a construção.
-- **.exe:**
-  - Sem WebView2, volta a desligar-se quando se fecha o separador do browser.
-  - A instalação dos componentes já não fica parada para sempre num download que encrava.
-- **Editor:**
-  - A seleção de notas e o ↑/↓ já não passam para a outra pista.
-  - Abrir outro projeto depressa já não mostra a partitura ou a gravação do anterior.
-  - A pista 3D fechada enquanto carrega já não arranca.
+- **Secções:** as secções que editaste passam a acompanhar uma correção de sincronização feita antes da mesma reconstrução. Antes, as notas mudavam de sítio e a secção ficava no tempo antigo. "+ Adicionar no cursor" põe a secção exatamente onde o cursor está, mesmo com uma correção pendente.
+- **Tons:** uma mudança de tom passa a acompanhar uma correção de sincronização feita antes da mesma reconstrução. Antes, as notas mudavam de sítio e a troca ficava no tempo antigo.
+- **Rocksmith:** duas músicas cujos nomes começam pelas mesmas 30 letras (por exemplo, duas versões ao vivo) já não se substituem uma à outra no jogo, e o mesmo para títulos sem letras latinas (cirílico, japonês…). Atenção: estas músicas mudam de identificador ao serem reconstruídas e o jogo começa o progresso delas do zero. As músicas de nome curto não mudam.

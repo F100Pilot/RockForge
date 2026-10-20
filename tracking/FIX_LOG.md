@@ -342,9 +342,9 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0334](#fix-0334) | BUG-0334 | 0.11.0-beta.4 | not run | pending |
 | [FIX-0335](#fix-0335) | BUG-0335 | 0.11.0-beta.4 | not run | manual |
 | [FIX-0336](#fix-0336) | BUG-0336 | 0.11.0-beta.4 | not run | manual |
-| [FIX-0337](#fix-0337) | BUG-0337 | unreleased | passed | automated |
-| [FIX-0338](#fix-0338) | BUG-0338 | unreleased | not run | manual |
-| [FIX-0339](#fix-0339) | BUG-0339 | unreleased | passed | manual |
+| [FIX-0337](#fix-0337) | BUG-0337 | 0.11.1-beta.1 | passed | automated |
+| [FIX-0338](#fix-0338) | BUG-0338 | 0.11.1-beta.1 | not run | manual |
+| [FIX-0339](#fix-0339) | BUG-0339 | 0.11.1-beta.1 | passed | manual |
 
 ## FIX-0001
 
@@ -7414,7 +7414,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-10-19 |
 | By | Claude (AI coding assistant), on the maintainer's request |
-| Version | unreleased |
+| Version | 0.11.1-beta.1 |
 | Commits | 17012e7d9dcc30ed7ecc567b4eed6f37f61c3965 |
 | Components | src/rockforge/infrastructure/packaging/psarc/manifest.py |
 | Tests | tests/test_psarc_manifest.py::test_songs_whose_names_share_their_first_letters_get_different_keys; tests/test_psarc_manifest.py::test_a_name_that_fits_keeps_the_key_it_always_had |
@@ -7435,7 +7435,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-10-19 |
 | By | Claude (AI coding assistant), on the maintainer's request |
-| Version | unreleased |
+| Version | 0.11.1-beta.1 |
 | Commits | a9ba28fe2441935f538cac72ee25efc10a92ae84 |
 | Components | web/app.js |
 | Tests | — |
@@ -7456,7 +7456,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-10-19 |
 | By | Claude (AI coding assistant), on the maintainer's request |
-| Version | unreleased |
+| Version | 0.11.1-beta.1 |
 | Commits | f99ff718ddc653b98a6f09042a0fbc3a1aba8149 |
 | Components | web/app.js; src/rockforge/interfaces/api/routers/charts.py; src/rockforge/interfaces/api/schemas.py |
 | Tests | tests/test_api.py::test_arrangements_excludes_the_noguitar_sentinel_from_sections |

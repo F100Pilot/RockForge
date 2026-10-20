@@ -8425,7 +8425,7 @@
       "commits": [
         "17012e7d9dcc30ed7ecc567b4eed6f37f61c3965"
       ],
-      "version": "unreleased",
+      "version": "0.11.1-beta.1",
       "tests": [
         "tests/test_psarc_manifest.py::test_songs_whose_names_share_their_first_letters_get_different_keys",
         "tests/test_psarc_manifest.py::test_a_name_that_fits_keeps_the_key_it_always_had"
@@ -8450,7 +8450,7 @@
       "commits": [
         "a9ba28fe2441935f538cac72ee25efc10a92ae84"
       ],
-      "version": "unreleased",
+      "version": "0.11.1-beta.1",
       "tests": [],
       "manual_checks": [
         "Playwright + real rebuilds: +1 s correction moved the change 6.0 → 7.0 s with its notes; a chart with no correction kept 6.0 s"
@@ -8476,7 +8476,7 @@
       "commits": [
         "f99ff718ddc653b98a6f09042a0fbc3a1aba8149"
       ],
-      "version": "unreleased",
+      "version": "0.11.1-beta.1",
       "tests": [
         "tests/test_api.py::test_arrangements_excludes_the_noguitar_sentinel_from_sections"
       ],
