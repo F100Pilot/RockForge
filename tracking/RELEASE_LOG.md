@@ -31,7 +31,9 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0339](bugs/sync.md#bug-0339) A section marker does not follow a sync correction made in the same rebuild
 - [BUG-0340](bugs/app.md#bug-0340) With a newer FastAPI an absent default-yes form field reads as no (batch projects lose palm mutes; reload ignores the file's audio)
 
-**Known bugs it carried:** —
+**Known bugs it carried:** 
+
+- [BUG-0341](bugs/viewer.md#bug-0341) Fretboard "All notes" with "only those matching the picked one" shows every note when no note is picked (Low, now Verified)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 

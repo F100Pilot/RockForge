@@ -8512,6 +8512,30 @@
       "test_result": "passed",
       "regression_risk": "Low: the same values are accepted as before; only an absent field changes back to its documented default.",
       "validation": "automated"
+    },
+    {
+      "id": "FIX-0341",
+      "bugs": [
+        "BUG-0341"
+      ],
+      "date": "2026-10-20",
+      "author": "Claude (AI coding assistant), on the maintainer's request",
+      "root_cause": "fbAllNotesSvg applied the 'same' filter only when a note was picked (pm !== null), so with none it skipped the filter.",
+      "solution": "In the 'same' scope a cell is drawn only when it matches the pick, and nothing is drawn without one (the tuning labels stay, with a hint); a left-out cell remains a transparent click target so its place still picks it.",
+      "components": [
+        "web/app.js"
+      ],
+      "commits": [
+        "535e4c7e23e5ee87f66af36c160cc65d94aa9703"
+      ],
+      "version": "unreleased",
+      "tests": [],
+      "manual_checks": [
+        "Playwright on a live server: no pick → nothing drawn; a score click picks the note and draws its equivalents; a hidden neck place picks it"
+      ],
+      "test_result": "not run",
+      "regression_risk": "Low: only the 'same' scope's drawing with no pick changes.",
+      "validation": "manual"
     }
   ]
 }

@@ -346,6 +346,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0338](#fix-0338) | BUG-0338 | 0.11.1-beta.1 | not run | manual |
 | [FIX-0339](#fix-0339) | BUG-0339 | 0.11.1-beta.1 | passed | manual |
 | [FIX-0340](#fix-0340) | BUG-0340 | 0.11.1-beta.1 | passed | automated |
+| [FIX-0341](#fix-0341) | BUG-0341 | unreleased | not run | manual |
 
 ## FIX-0001
 
@@ -7486,3 +7487,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | passed |
 | Validation | automated |
 | Regression risk | Low: the same values are accepted as before; only an absent field changes back to its documented default. |
+
+## FIX-0341
+
+**Bugs:** [BUG-0341](bugs/viewer.md#bug-0341)
+
+**Root cause:** fbAllNotesSvg applied the 'same' filter only when a note was picked (pm !== null), so with none it skipped the filter.
+
+**Solution:** In the 'same' scope a cell is drawn only when it matches the pick, and nothing is drawn without one (the tuning labels stay, with a hint); a left-out cell remains a transparent click target so its place still picks it.
+
+| | |
+|---|---|
+| Date | 2026-10-20 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | unreleased |
+| Commits | 535e4c7e23e5ee87f66af36c160cc65d94aa9703 |
+| Components | web/app.js |
+| Tests | — |
+| Manual checks | Playwright on a live server: no pick → nothing drawn; a score click picks the note and draws its equivalents; a hidden neck place picks it |
+| Test result | not run |
+| Validation | manual |
+| Regression risk | Low: only the 'same' scope's drawing with no pick changes. |

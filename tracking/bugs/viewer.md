@@ -1394,3 +1394,47 @@ close() during the first load was undone when load() returned.
 - 2026-10-18 — Open: reported
 - 2026-10-18 — Fixed: commit e0e939b8ce
 - 2026-10-18 — Verified: checked in the browser
+
+## BUG-0341
+
+**Fretboard "All notes" with "only those matching the picked one" shows every note when no note is picked**
+
+| | |
+|---|---|
+| Detected | 2026-10-20 |
+| Reported by | the maintainer (screenshot) |
+| Found in | 0.11.1-beta.1 |
+| Build / commit | _pending_ |
+| Severity | Low |
+| Priority | P3 |
+| Status | Verified |
+
+With the fretboard's All notes on and the scope set to only those matching the picked one, the whole neck stayed named while no note was picked on the fretboard.
+
+**Steps to reproduce:** 
+
+1. Open a project, tick Braço and Todas as notas
+2. Pick "Só as iguais à escolhida" without picking a note
+
+**Expected:** Only the equivalents of the chosen note; nothing until a note is chosen.
+
+**Observed:** Every note of the tuning drawn on the neck.
+
+**Root cause:** fbAllNotesSvg applied the 'same' filter only when a note was picked (pm !== null), so with none it skipped the filter.
+
+**Fixes:** [FIX-0341](../FIX_LOG.md#fix-0341) (unreleased)
+
+**Verified:** Live server, invented GP5 project: with the scope and no pick, 0 pills drawn and the tuning labels shown with the hint; a note clicked on the score picked it and drew its 12 equivalents; a hidden place on the neck still picks; PT 1440 / EN 760 px, no page errors (by the developer (Playwright))
+
+**Resolved:** 2026-10-20 · **Closed:** _pending_
+
+**Evidence:**
+
+- Playwright run of 2026-10-20 on a local server (scratchpad script pw_fb.py)
+
+**History:**
+
+- 2026-10-20 — Open: reported
+- 2026-10-20 — In Progress: from the maintainer's screenshot
+- 2026-10-20 — Fixed: commit 535e4c7e23
+- 2026-10-20 — Verified: Playwright, PT 1440 / EN 760 px

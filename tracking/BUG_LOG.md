@@ -6,7 +6,7 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 
 | Fixed | Verified | Closed |
 |---|---|---|
-| 100 | 40 | 200 |
+| 100 | 41 | 200 |
 
 | ID | Title | Module | Severity | Priority | Status | Found in | Fixed in |
 |---|---|---|---|---|---|---|---|
@@ -350,3 +350,4 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0338](bugs/tones.md#bug-0338) | A tone change does not follow a sync correction made in the same rebuild | tones | Medium | P3 | Verified | 0.11.0-beta.4 | 0.11.1-beta.1 |
 | [BUG-0339](bugs/sync.md#bug-0339) | A section marker does not follow a sync correction made in the same rebuild | sync | Medium | P3 | Verified | 0.11.0-beta.4 | 0.11.1-beta.1 |
 | [BUG-0340](bugs/app.md#bug-0340) | With a newer FastAPI an absent default-yes form field reads as no (batch projects lose palm mutes; reload ignores the file's audio) | app | Medium | P2 | Verified | 0.11.0-beta.4 | 0.11.1-beta.1 |
+| [BUG-0341](bugs/viewer.md#bug-0341) | Fretboard "All notes" with "only those matching the picked one" shows every note when no note is picked | viewer | Low | P3 | Verified | 0.11.1-beta.1 | — |

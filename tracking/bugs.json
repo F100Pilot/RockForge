@@ -16901,6 +16901,58 @@
           "note": "tests on FastAPI 0.155 and 0.142"
         }
       ]
+    },
+    {
+      "id": "BUG-0341",
+      "title": "Fretboard \"All notes\" with \"only those matching the picked one\" shows every note when no note is picked",
+      "detected": "2026-10-20",
+      "reported_by": "the maintainer (screenshot)",
+      "found_in_version": "0.11.1-beta.1",
+      "found_in_build": "pending",
+      "module": "viewer",
+      "description": "With the fretboard's All notes on and the scope set to only those matching the picked one, the whole neck stayed named while no note was picked on the fretboard.",
+      "steps": [
+        "Open a project, tick Braço and Todas as notas",
+        "Pick \"Só as iguais à escolhida\" without picking a note"
+      ],
+      "expected": "Only the equivalents of the chosen note; nothing until a note is chosen.",
+      "observed": "Every note of the tuning drawn on the neck.",
+      "severity": "Low",
+      "priority": "P3",
+      "status": "Verified",
+      "root_cause": "fbAllNotesSvg applied the 'same' filter only when a note was picked (pm !== null), so with none it skipped the filter.",
+      "fixes": [
+        "FIX-0341"
+      ],
+      "verified_by": "the developer (Playwright)",
+      "verification": "Live server, invented GP5 project: with the scope and no pick, 0 pills drawn and the tuning labels shown with the hint; a note clicked on the score picked it and drew its 12 equivalents; a hidden place on the neck still picks; PT 1440 / EN 760 px, no page errors",
+      "evidence": [
+        "Playwright run of 2026-10-20 on a local server (scratchpad script pw_fb.py)"
+      ],
+      "resolved": "2026-10-20",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-20",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "In Progress",
+          "note": "from the maintainer's screenshot"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Fixed",
+          "note": "commit 535e4c7e23"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Verified",
+          "note": "Playwright, PT 1440 / EN 760 px"
+        }
+      ]
     }
   ]
 }
