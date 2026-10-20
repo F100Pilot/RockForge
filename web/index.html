@@ -1274,11 +1274,11 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                   <button class="info-btn" data-info="sync-offset">ⓘ</button></div>
                 <div class="pv-card-desc">O segundo em que se ouve a 1ª nota <b>desta pista</b>.</div>
                 <div class="pv-row">
-                  <input type="number" id="syncOffset" value="0" step="0.01" min="0" aria-label="Segundo da primeira nota">
+                  <input type="number" id="syncOffset" value="0" step="0.001" min="0" aria-label="Segundo da primeira nota">
                   <span class="meta">s</span>
                   <button type="button" id="offsetFromCursor" class="secondary">= cursor</button>
                 </div>
-                <input type="range" id="syncOffsetRange" min="0" max="20" step="0.01" value="0" aria-label="Início da música">
+                <input type="range" id="syncOffsetRange" min="0" max="20" step="0.001" value="0" aria-label="Início da música">
                 <button type="button" id="detectFirstNote" class="secondary pv-wide"><svg class="ic" aria-hidden="true"><use href="#i-target"/></svg>Detetar 1ª nota</button>
                 <span id="firstNoteInfo" class="meta">clica em "Detetar 1ª nota", depois na onda onde a 1ª nota soa e por fim nessa nota</span>
               </div>
@@ -1397,7 +1397,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
               <div class="pv-card">
                 <div class="pv-card-head">Silêncio inicial</div>
                 <div class="pv-row">
-                  <input type="number" id="leadInS" value="0" step="0.1" min="0" aria-label="Silêncio inicial em segundos">
+                  <input type="number" id="leadInS" value="0" step="0.001" min="0" aria-label="Silêncio inicial em segundos">
                   <span class="meta">s — empurra a música e as notas para a frente</span>
                 </div>
               </div>
@@ -1444,7 +1444,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                 <button type="button" id="ilFirstToCursor" class="secondary pv-wide"><svg class="ic" aria-hidden="true"><use href="#i-crosshair"/></svg>1ª palavra = cursor</button>
                 <div class="pv-row">
                   <button type="button" id="ilShiftBack" class="secondary" title="Toda mais cedo">−</button>
-                  <input type="number" id="ilShift" value="0.1" min="0.01" step="0.05" aria-label="Deslocar (s)">
+                  <input type="number" id="ilShift" value="0.1" min="0.001" step="0.001" aria-label="Deslocar (s)">
                   <button type="button" id="ilShiftFwd" class="secondary" title="Toda mais tarde">+</button>
                   <span class="meta">s</span>
                 </div>
@@ -1464,7 +1464,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                   <button type="button" id="ilNext" class="secondary" title="Palavra seguinte" aria-label="Palavra seguinte">▶</button>
                 </div>
                 <div class="pv-row">
-                  <input type="number" id="ilTime" step="0.01" min="0" aria-label="Tempo da palavra (s)">
+                  <input type="number" id="ilTime" step="0.001" min="0" aria-label="Tempo da palavra (s)">
                   <span class="meta">s</span>
                   <label class="meta"><input type="checkbox" id="ilBreak"> fim de linha</label>
                 </div>
@@ -1607,7 +1607,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
               </div>
               <div class="ly-sync-row">
                 <button type="button" id="lyricsShiftBack" class="secondary tn-btn ly-step" title="Mais cedo" aria-label="Mais cedo">−</button>
-                <input type="number" id="lyricsShift" class="ly-num" value="0.5" min="0.01" step="0.1" aria-label="Deslocar (s)">
+                <input type="number" id="lyricsShift" class="ly-num" value="0.5" min="0.001" step="0.001" aria-label="Deslocar (s)">
                 <span class="tn-hint">s</span>
                 <button type="button" id="lyricsShiftFwd" class="secondary tn-btn ly-step" title="Mais tarde" aria-label="Mais tarde">+</button>
               </div>
@@ -2350,7 +2350,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
   <div class="ba-title" id="nePopupTitle">Nota</div>
   <div class="ba-row">Corda: <select id="neString" style="width:auto"></select>
     Traste: <input type="number" id="neFret" min="0" max="24" value="0" style="width:3.6rem">
-    Sustain (s): <input type="number" id="neSustain" min="0" step="0.05" value="0.25" style="width:4rem"></div>
+    Sustain (s): <input type="number" id="neSustain" min="0" step="0.001" value="0.25" style="width:4rem"></div>
   <div class="ba-row" style="flex-wrap:wrap;margin-top:.3rem">
     <label class="check"><input type="checkbox" id="neHammerOn"> Hammer-on</label>
     <label class="check"><input type="checkbox" id="nePullOff"> Pull-off</label>

@@ -1521,6 +1521,7 @@
  "O mesmo som em {n} sítios: {list}": "The same sound in {n} places: {list}",
  "A mesma nota noutra oitava: 1 sítio": "The same note in another octave: 1 place",
  "A mesma nota noutra oitava: {n} sítios": "The same note in another octave: {n} places",
+ "Escolhe uma nota: clica numa nota da partitura ou num sítio do braço, e só aparecem as que lhe são equivalentes.": "Pick a note: click a note on the score or a place on the neck, and only its equivalents appear.",
  "Clica numa nota para ver onde mais ela está no braço.": "Click a note to see where else it is on the fretboard.",
  "Escolhida": "Picked",
  "O mesmo som": "The same sound",

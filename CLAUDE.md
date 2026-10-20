@@ -1845,6 +1845,12 @@ handlers redrew the score but never called `renderAnchorsList`/
 after a plain mouse drag (it only refreshed after `'tap'`/`'movefrom'`/
 `'newbeat'` clicks) — both handlers now refresh it too.
 
+**Every time a user types is to the millisecond** ("Quero que os ajustes
+alcancem até aos ms", 2026-10-20): the Início field and slider, the correction
+rows, sections, tone changes, lyric times/lengths, the lyric nudges and
+"Silêncio inicial" are `step="0.001"` and shown with three decimals (they were
+two, or one). Nothing rounded them further; the XML writes milliseconds.
+
 **Zoom keeps its place.** `setZoom` used to rescale `tabPx` and redraw without
 touching `#tabwrap`'s `scrollLeft`, so the same pixel offset silently mapped to
 a different time after zooming — the view jumped away from whatever passage
@@ -2695,6 +2701,16 @@ it sounds (`fbWhere`: "6.ª corda, traste 7") and how many octaves, with a
 legend. `#fbNameMode` (name / name + octave, `rf-fb-names`) and `#fbScope`
 (all / only those matching the pick / only naturals, `rf-fb-scope`) show only
 while it is on. The overlay of sounding notes is drawn on top, as before.
+**"Only those matching" draws nothing until a note is picked** (BUG-0341: with
+no pick it drew every note), and a note a scope leaves out is still a
+transparent `.fb-cell`, so its place on the neck picks it. **A note clicked on
+the score with no mode selected** goes to the fretboard (`focusNoteOnFretboard`:
+the cursor to its drawn attack + 1 ms, and `fbPick` = that string and fret); in
+a mode the cursor is a target ("= cursor", "Mover seguintes"…), so it stays.
+Verified with Playwright (PT 1440 / EN 760 px): nothing drawn and the tuning
+labels kept before a pick, a click on a note moved the cursor 0 → 2.668 s (the
+note at 2.667 s) and drew its 12 equivalents, a click on an empty place of the
+neck picked it, no page errors.
 Browser-only; verified with Playwright on an invented Combined + Bass project
 (PT 1440 / EN 760 px): 150 pills on the guitar and 100 on the bass, B2 picked
 → "6.ª corda, traste 7 · 5.ª corda, traste 2" and 11 octave places, the cursor

@@ -3570,7 +3570,7 @@ function updateSyncOffsetDisplay() {
   kindEl.textContent = `(${arrLabel(currentKind()) || ''})`;
   const chartT = currentArrFirstNoteTime();
   const v = chartT == null ? 0 : buildTimeWarp(syncAnchors)(previewScale(chartT)) - viewOrigin;
-  document.getElementById('syncOffset').value = v.toFixed(2);
+  document.getElementById('syncOffset').value = v.toFixed(3);
   document.getElementById('syncOffsetRange').value = Math.max(0, v);
 }
 
@@ -4931,8 +4931,8 @@ function renderAnchorsList() {
     const warn = crosses
       ? ` <span style="color:#e6483c" title="${T('Esta correção manda um ponto MAIS À FRENTE da partitura para um instante ANTERIOR ao da correção acima — impossível de aplicar. Corrige o valor ou remove uma delas.')}">${T('⚠ cruza a anterior')}</span>`
       : '';
-    return `<div class="anchor-row"${crosses ? ' style="border-left:3px solid #e6483c;padding-left:.4rem"' : ''}>${T('Correção {i}:', { i: i + 1 })} ${o.toFixed(2)}s →
-     <input type="number" step="0.01" value="${n.toFixed(2)}" data-i="${i}" class="anchor-edit" style="width:6rem">s
+    return `<div class="anchor-row"${crosses ? ' style="border-left:3px solid #e6483c;padding-left:.4rem"' : ''}>${T('Correção {i}:', { i: i + 1 })} ${o.toFixed(3)}s →
+     <input type="number" step="0.001" value="${n.toFixed(3)}" data-i="${i}" class="anchor-edit" style="width:6rem">s
      <button type="button" data-i="${i}" class="anchor-remove">${T('remover')}</button>${warn}</div>`;
   }).join('') + `<div class="anchor-row">
      <button type="button" id="clearAnchors" class="secondary">${T('Limpar correções pendentes')}</button></div>`;
@@ -5570,7 +5570,7 @@ function renderToneChangesListNow(redraw) {
       const name = (jobTones.find(t => t.key === c.name) || {}).name || c.name;
       const shown = Math.max(0, toneChangeDisplay(c.time) - viewOrigin);
       return `<div class="tn-change"><span class="tn-change-time">${fmtClockTenths(shown)}</span>
-        <input type="number" step="0.01" min="0" value="${shown.toFixed(2)}" class="tn-change-input" data-i="${i}"
+        <input type="number" step="0.001" min="0" value="${shown.toFixed(3)}" class="tn-change-input" data-i="${i}"
           aria-label="${T('Tempo (s)')}" title="${T('Segundos da gravação em que este tom começa a tocar')}">
         ${icon('forward')}<span class="tn-change-tone">${esc(name)}</span>
         <button type="button" class="secondary tone-change-cursor" data-i="${i}" title="${T('Põe esta mudança onde está o cursor')}">${T('= cursor')}</button>
@@ -5660,7 +5660,7 @@ function renderSectionsList() {
     el.innerHTML = `<span class="meta">${T('Sem secções. Usa "+ Adicionar no cursor" ou o modo "Secção" (clica numa nota).')}</span>`;
   } else {
     el.innerHTML = songSections.map((s, i) => `<div class="anchor-row">
-      <input type="number" step="0.01" value="${s.time.toFixed(2)}" data-section-time="${i}" style="width:6rem">s
+      <input type="number" step="0.001" value="${s.time.toFixed(3)}" data-section-time="${i}" style="width:6rem">s
       <input type="text" value="${esc(s.name)}" data-section-name="${i}" style="width:10rem">
       <button type="button" class="section-rm" data-i="${i}">${T('remover')}</button></div>`).join('');
     el.querySelectorAll('[data-section-time]').forEach(inp => inp.addEventListener('change', () => {
@@ -6390,10 +6390,10 @@ function renderLyricsRows() {
   const tb = document.getElementById('lyricsRows');
   tb.innerHTML = lyricsEvents.map((e, i) => `
     <tr data-i="${i}"${e.lineBreak ? ' class="ly-line-end"' : ''}>
-      <td><input type="number" step="0.01" min="0" value="${e.time.toFixed(2)}" class="ly-time" aria-label="${T('Tempo (s)')}"><span class="ly-clock">${fmtClockTenths(e.time)}</span></td>
+      <td><input type="number" step="0.001" min="0" value="${e.time.toFixed(3)}" class="ly-time" aria-label="${T('Tempo (s)')}"><span class="ly-clock">${fmtClockTenths(e.time)}</span></td>
       <td><input type="text" value="${esc(e.lyric)}" class="ly-text" aria-label="${T('Palavra')}"></td>
       <td><input type="checkbox" class="ly-break" ${e.lineBreak ? 'checked' : ''} aria-label="${T('Fim de linha')}"></td>
-      <td><input type="number" step="0.01" min="0.1" value="${e.length.toFixed(2)}" class="ly-length" aria-label="${T('Duração (s)')}"></td>
+      <td><input type="number" step="0.001" min="0.1" value="${e.length.toFixed(3)}" class="ly-length" aria-label="${T('Duração (s)')}"></td>
       <td><button type="button" class="icon ly-remove" title="${T('Remover')}" aria-label="${T('Remover')}">${icon('x')}</button></td>
     </tr>`).join('');
   tb.querySelectorAll('tr').forEach(tr => {
@@ -6857,7 +6857,7 @@ function renderInspLyrics() {
     if (document.activeElement !== el) el.value = v;  // never under the user's typing
   };
   set('ilWord', e.lyric);
-  set('ilTime', e.time.toFixed(2));
+  set('ilTime', e.time.toFixed(3));
   document.getElementById('ilBreak').checked = !!e.lineBreak;
   const order = lyricsByTime();
   const i = order.indexOf(e);
@@ -9000,6 +9000,9 @@ function updateSelectionInfo() {
       // Outside "Arrastar" (neutral / excerpt) a plain click on a note just
       // selects it (and sets the Shift-range pivot) — no anchor drag.
       selectedTimes.clear(); selectedTimes.add(t); selectionAnchor = t;
+      // With no mode, the cursor also goes to the note and the fretboard picks
+      // it ("Todas as notas"); in a mode the cursor is a target, so it stays.
+      if (!syncMode) focusNoteOnFretboard(t, e.target.closest('.note-single'));
       updateSelectionInfo(); showArr(currentArr);
       return;
     }
@@ -9775,13 +9778,19 @@ function fbAllNotesSvg(a) {
   for (const c of cells) {
     const pc = ((c.midi % 12) + 12) % 12, name = NOTE_NAMES[pc], oct = Math.floor(c.midi / 12) - 1;
     const isPick = pick === c, same = pm !== null && c.midi === pm, octave = pm !== null && !same && pc === ((pm % 12) + 12) % 12;
-    if (fbScope === 'same' && pm !== null && !same && !octave) continue;
-    if (fbScope === 'natural' && name.length > 1 && !same && !octave) continue;
+    const { x, y } = fretXY(c.s, c.f);
+    // A note the scope leaves out is not drawn, but its place still picks it.
+    // "Only those matching" shows nothing until a note is picked.
+    if ((fbScope === 'same' && (pm === null || (!same && !octave)))
+        || (fbScope === 'natural' && name.length > 1 && !same && !octave)) {
+      s += `<g class="fb-cell" data-s="${c.s}" data-f="${c.f}"><title>${name}${oct} · ${esc(fbWhere(nStr, c.s, c.f))}</title>`
+        + `<rect x="${x - w / 2}" y="${y - h / 2}" width="${w}" height="${h}" fill="transparent"/></g>`;
+      continue;
+    }
     const col = STRING_COLORS[c.s];
     let fill = col, fillOp = 0.16, stroke = col, strokeOp = 0.38, sw = 1, dash = '', fg = lightColor(col), op = pm !== null ? 0.5 : 1;
     if (isPick || same) { fillOp = 1; stroke = '#fff'; strokeOp = 1; sw = 2; fg = '#14151a'; op = 1; if (!isPick) dash = ' stroke-dasharray="3 2"'; }
     else if (octave) { fillOp = 0.3; stroke = '#e9edf5'; strokeOp = 1; sw = 2; fg = '#fff'; op = 1; }
-    const { x, y } = fretXY(c.s, c.f);
     const label = fbNameMode === 'oct' ? name + oct : name;
     s += `<g class="fb-cell" data-s="${c.s}" data-f="${c.f}" opacity="${op}"><title>${name}${oct} · ${esc(fbWhere(nStr, c.s, c.f))}</title>`
       + (isPick ? `<rect x="${x - w / 2 - 3}" y="${y - h / 2 - 3}" width="${w + 6}" height="${h + 6}" rx="${h / 2 + 3}" fill="${col}" opacity="0.35"/>` : '')
@@ -9789,6 +9798,18 @@ function fbAllNotesSvg(a) {
       + `<text x="${x}" y="${y + 3.5}" fill="${fg}" font-size="${fbNameMode === 'oct' ? 9.5 : 10.5}" font-weight="700" text-anchor="middle">${label}</text></g>`;
   }
   return s + '</g>';
+}
+// A note clicked on the score: the cursor to its attack (as drawn, a hair in, so
+// the fretboard lights it) and, when it is one string of the group, that note
+// becomes the fretboard's pick.
+function focusNoteOnFretboard(t, single) {
+  const disp = buildTimeWarp(syncAnchors)(previewScale(t));
+  audioSeek(Math.max(0, disp - playheadDisplay(0) + 0.001));
+  const note = single && visibleNoteAt(t, parseInt(single.dataset.string, 10));
+  if (note && note.fret >= 0 && note.fret <= FB.frets) {
+    fbPick = { s: note.string, f: note.fret };
+    if (fretboardOn) drawFretboard();
+  }
 }
 // The strip under the neck: what the clicked note is, where else it sounds,
 // and what each mark means.
@@ -9808,6 +9829,8 @@ function renderFbInfo(a) {
     what = `<div><strong>${NOTE_NAMES[pc]}${Math.floor(pm / 12) - 1}</strong> <span class="fb-dim">${hz} Hz</span></div>`
       + `<div>${esc(same.length === 1 ? T('O mesmo som só aqui: {list}', { list: same[0] }) : T('O mesmo som em {n} sítios: {list}', { n: same.length, list: same.join(' · ') }))}</div>`
       + `<div class="fb-dim">${esc(octs === 1 ? T('A mesma nota noutra oitava: 1 sítio') : T('A mesma nota noutra oitava: {n} sítios', { n: octs }))}</div>`;
+  } else if (fbScope === 'same') {
+    what = `<div class="fb-dim">${esc(T('Escolhe uma nota: clica numa nota da partitura ou num sítio do braço, e só aparecem as que lhe são equivalentes.'))}</div>`;
   } else {
     what = `<div class="fb-dim">${esc(T('Clica numa nota para ver onde mais ela está no braço.'))}</div>`;
   }
@@ -9861,7 +9884,7 @@ function drawFretboard() {
     const y = FB.y0 + (nStr - 1 - i) * FB.sh;
     s += `<line x1="${FB.x0}" y1="${y}" x2="${FB.x0 + FB.frets * FB.fw}" y2="${y}" stroke="#9aa1ae" stroke-width="${1 + (nStr - 1 - i) * 0.35 + (isBassArr(a) ? 0.8 : 0)}"/>`;
     // With every note named, the open string's own name is its label.
-    if (!fbAllOn) s += `<text x="${FB.x0 - 16}" y="${y + 4}" fill="${STRING_COLORS[i]}" font-size="12" font-weight="700" text-anchor="middle">${stringLabel(i, offs)}</text>`;
+    if (!fbAllOn || (fbScope === 'same' && !fbPick)) s += `<text x="${FB.x0 - 16}" y="${y + 4}" fill="${STRING_COLORS[i]}" font-size="12" font-weight="700" text-anchor="middle">${stringLabel(i, offs)}</text>`;
   }
   if (fbAllOn) s += fbAllNotesSvg(a);
   s += `<g id="fretOverlay"></g>`;
@@ -10660,7 +10683,7 @@ function setOffsetLive(v) {
   // the built MIN_LEAD - offset_s, so the music ran ahead of the notes, and
   // "Aplicar e reconstruir" sent offset_s 0, losing the file's sync.
   offsetLive = Math.max(MIN_OFFSET, v || 0);
-  document.getElementById('syncOffset').value = offsetLive.toFixed(2);
+  document.getElementById('syncOffset').value = offsetLive.toFixed(3);
   document.getElementById('syncOffsetRange').value = Math.max(0, offsetLive);
   syncResetPointer();
   if (arrangements.length) showArr(currentArr);
@@ -10700,7 +10723,7 @@ function initSync(j) {
   currentPlayheadT = 0;
   if (isGp) {
     setOffsetLive(j.offset_s || 0);
-    document.getElementById('leadInS').value = leadInBuilt.toFixed(1);
+    document.getElementById('leadInS').value = leadInBuilt.toFixed(3);
   }
   updatePlayBtn();
   updateTransportUI();

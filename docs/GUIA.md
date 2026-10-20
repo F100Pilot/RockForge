@@ -237,7 +237,9 @@ queres recuperar. Ficam pendentes como antes; Desfazer volta à versão constru�
   está **o mesmo som** (por exemplo A2 na 6.ª corda traste 5 e na 5.ª solta) e contorno branco onde
   está **a mesma nota noutra oitava**; por baixo aparece a lista dos sítios. Clicar de novo larga-a,
   e o clique não move o cursor. Ao lado escolhes **Nome da nota (A)** ou **Nome e oitava (A2)** e
-  se mostra todas as notas, só as iguais à escolhida ou só as naturais (sem #). **Pista 3D** mostra as notas a descer como no
+  se mostra todas as notas, só as iguais à escolhida ou só as naturais (sem #); em "só as iguais",
+  nada aparece até escolheres uma nota. Sem nenhum modo escolhido, clicar numa nota da partitura
+  leva o cursor a essa nota e escolhe-a no braço. **Pista 3D** mostra as notas a descer como no
   Rocksmith (segue também as correções ainda por aplicar); quando uma nota ou acorde chega às
   cordas, um retângulo acende à volta dos trastes onde está a mão (2–5, por exemplo). Um bend é
   verde-água: o rasto da nota sobe com o bend e, na corda, a nota sobe à medida que é dobrada até à

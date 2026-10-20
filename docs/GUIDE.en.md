@@ -239,7 +239,9 @@ They stay pending as before; Undo goes back to the built version.
   **the same note in another octave** is; the list of places shows underneath. Clicking it again
   lets it go, and the click does not move the cursor. Beside it pick **Note name (A)** or **Name and
   octave (A2)**, and whether to show all notes, only those matching the picked one or only naturals
-  (no #). **3D highway** shows the notes coming down as in Rocksmith (it
+  (no #); with "only those matching", nothing shows until a note is picked. With no mode
+  selected, clicking a note on the score takes the cursor to it and picks it on the fretboard.
+  **3D highway** shows the notes coming down as in Rocksmith (it
   follows pending corrections too); when a note or chord reaches the strings, a rectangle lights
   up around the frets the hand is in (2–5, for example). A bend is teal: the note's trail rises with
   the bend and, on the string, the note rises as it is bent, up to the dashed frame at the height

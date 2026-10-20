@@ -8,7 +8,13 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ### New
 
+- **Score:** with no mode selected, clicking a note takes the cursor to it, and the fretboard shows and picks it ("All notes").
+- **Sync:** the song start, the corrections, sections, tone changes, lyrics and intro silence now adjust to the millisecond (three decimals).
 - **3D highway — bends:** a bend now shows in teal. The note's trail rises following the bend (up, held, released, pre-bend) and, when the note reaches the strings, it rises on the string as it is bent, up to a dashed frame at the height the bend has to reach — a whole step rises one string gap.
+
+### Fixes
+
+- **Fretboard — "Only those matching the picked one":** with no note picked, it showed every note on the neck. Now only the equivalents of the picked note show (picked on the neck or clicked on the score), and nothing until you pick one.
 
 ## [0.11.1 beta 1] — 2026-10-20
 
