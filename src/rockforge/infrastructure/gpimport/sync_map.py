@@ -74,7 +74,14 @@ def bar_time_points(
     skipped = 0
     for tick, when in zip(bar_start_ticks, bar_times, strict=False):
         when = float(when)
-        if not math.isfinite(when) or (points and when <= points[-1][1]):
+        # A time before the recording's first second (Songsterr count-in marks
+        # can start at t<0) cannot anchor anything: skip it, but still consume
+        # its bar — dropping it would shift every later bar onto the wrong time.
+        if (
+            not math.isfinite(when)
+            or when < 0
+            or (points and when <= points[-1][1])
+        ):
             skipped += 1
             continue
         points.append((int(tick), when))
