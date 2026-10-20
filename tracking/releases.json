@@ -461,7 +461,7 @@
     },
     {
       "version": "0.11.0-beta.4",
-      "status": "Beta",
+      "status": "Superseded",
       "created": "2026-10-18",
       "published": "2026-10-19",
       "commit": "b3720eaf73a765e0ab340a6b19749f30e67f8089",
@@ -482,10 +482,12 @@
       "version": "0.11.1-beta.1",
       "status": "Beta",
       "created": "2026-10-20",
-      "published": "pending",
+      "published": "2026-10-20",
       "commit": "pending",
       "build": "GitHub Actions release workflow",
-      "artifacts": [],
+      "artifacts": [
+        "https://github.com/F100Pilot/RockForge/releases/tag/v0.11.1-beta.1"
+      ],
       "goal": "Fretboard with every note of the tuning, moving tone changes; sections, tone changes and long song names fixed",
       "features": [
         "Fretboard — All notes",
