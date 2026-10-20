@@ -16953,6 +16953,110 @@
           "note": "Playwright, PT 1440 / EN 760 px"
         }
       ]
+    },
+    {
+      "id": "BUG-0342",
+      "title": "Earlier jobs break when the work dir moves: bundle, recording, GP file and stems stored as absolute paths",
+      "detected": "2026-10-20",
+      "reported_by": "GitHub issue #6 (mongrelx)",
+      "found_in_version": "0.11.0-beta.4",
+      "found_in_build": "pending",
+      "module": "app",
+      "description": "The database keeps Job.source, bundle_dir, psarc_path, params gp_path and stems as absolute paths. After moving the work dir to another disk, every job created before the move fails: GET /jobs/{id}/bundle 500, detect-beat-sync 409. Jobs created after the move work.",
+      "steps": [
+        "Create a project",
+        "Move the whole work dir and point ROCKFORGE_WORK_DIR at the new place",
+        "Restart and download the project's bundle"
+      ],
+      "expected": "The project finds its files in the moved folder.",
+      "observed": "500 on the bundle, 409 on anything needing the recording (as reported; reproduced in a test with paths under a missing old root).",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Verified",
+      "root_cause": "Paths are stored absolute and read as stored; nothing re-points them after a move.",
+      "fixes": [
+        "FIX-0342"
+      ],
+      "verified_by": "the developer (pytest)",
+      "verification": "test_jobs_follow_their_files_when_the_work_dir_moves drives a real startup with a job whose paths point into a missing old root (fails with the startup call removed); test_work_paths.py covers the tail rules (mutation-checked)",
+      "evidence": [
+        "pytest 2026-10-20: full suite passes"
+      ],
+      "resolved": "2026-10-20",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-20",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "In Progress",
+          "note": "from the GitHub issue"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Fixed",
+          "note": "commit 8dc5d4bb50"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Verified",
+          "note": "pytest"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0343",
+      "title": "A chart whose GP track has no notes fails with a bare 'arrangement has no notes' that names neither the chart nor the track",
+      "detected": "2026-10-20",
+      "reported_by": "GitHub issue #7 (mongrelx)",
+      "found_in_version": "0.11.0-beta.4",
+      "found_in_build": "pending",
+      "module": "import",
+      "description": "When the GP track picked for an arrangement holds no notes, the build fails with 'invalid arrangement: arrangement has no notes' from Arrangement.validate, so a script driving the API cannot tell which of its tracks was empty. The issue attributed it to import_mutes; stripping mutes keeps every note (verified), so that part was another cause.",
+      "steps": [
+        "Create a GP job whose lead_track is a track with no notes (a vocal or empty track)"
+      ],
+      "expected": "An error naming the chart, its GP track and what to do.",
+      "observed": "'invalid arrangement: arrangement has no notes'.",
+      "severity": "Low",
+      "priority": "P3",
+      "status": "Verified",
+      "root_cause": "No check before building; the domain validation's message has no track context.",
+      "fixes": [
+        "FIX-0343"
+      ],
+      "verified_by": "the developer (pytest)",
+      "verification": "test_a_chart_whose_track_has_no_notes_is_named_with_its_track (fails without the check)",
+      "evidence": [
+        "pytest 2026-10-20: full suite passes"
+      ],
+      "resolved": "2026-10-20",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-20",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "In Progress",
+          "note": "from the GitHub issue"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Fixed",
+          "note": "commit 8dc5d4bb50"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Verified",
+          "note": "pytest"
+        }
+      ]
     }
   ]
 }

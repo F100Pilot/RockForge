@@ -347,6 +347,8 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0339](#fix-0339) | BUG-0339 | 0.11.1-beta.1 | passed | manual |
 | [FIX-0340](#fix-0340) | BUG-0340 | 0.11.1-beta.1 | passed | automated |
 | [FIX-0341](#fix-0341) | BUG-0341 | unreleased | not run | manual |
+| [FIX-0342](#fix-0342) | BUG-0342 | unreleased | passed | automated |
+| [FIX-0343](#fix-0343) | BUG-0343 | unreleased | passed | automated |
 
 ## FIX-0001
 
@@ -7508,3 +7510,45 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | not run |
 | Validation | manual |
 | Regression risk | Low: only the 'same' scope's drawing with no pick changes. |
+
+## FIX-0342
+
+**Bugs:** [BUG-0342](bugs/app.md#bug-0342)
+
+**Root cause:** Paths are stored absolute and read as stored; nothing re-points them after a move.
+
+**Solution:** A startup pass looks for every stored path that no longer exists under the current work dir by its tail (at least two parts, the longest first) and stores the new path only when the file is there.
+
+| | |
+|---|---|
+| Date | 2026-10-20 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | unreleased |
+| Commits | 8dc5d4bb50c2e311cd2e261e5093be5e8a37d38e |
+| Components | src/rockforge/infrastructure/work_paths.py; src/rockforge/interfaces/api/app.py |
+| Tests | tests/test_api.py::test_jobs_follow_their_files_when_the_work_dir_moves; tests/test_work_paths.py |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: only paths that do not exist are touched, and only to a file that does. |
+
+## FIX-0343
+
+**Bugs:** [BUG-0343](bugs/import.md#bug-0343)
+
+**Root cause:** No check before building; the domain validation's message has no track context.
+
+**Solution:** _refuse_empty_charts raises an IngestionError naming each empty chart and its GP track (with its name), and says to pick another track or merge one in.
+
+| | |
+|---|---|
+| Date | 2026-10-20 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | unreleased |
+| Commits | 8dc5d4bb50c2e311cd2e261e5093be5e8a37d38e |
+| Components | src/rockforge/application/gp_pipeline.py |
+| Tests | tests/test_merge_tracks.py::test_a_chart_whose_track_has_no_notes_is_named_with_its_track |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: a build that failed already fails with a clearer message. |

@@ -2341,3 +2341,46 @@ A score.gpif that is not text (locked in Guitar Pro) raised UnicodeDecodeError, 
 - 2026-10-18 — Open: reported
 - 2026-10-18 — Fixed: commit 9fff3a3837
 - 2026-10-18 — Verified: its test passes and fails on the old code
+
+## BUG-0343
+
+**A chart whose GP track has no notes fails with a bare 'arrangement has no notes' that names neither the chart nor the track**
+
+| | |
+|---|---|
+| Detected | 2026-10-20 |
+| Reported by | GitHub issue #7 (mongrelx) |
+| Found in | 0.11.0-beta.4 |
+| Build / commit | _pending_ |
+| Severity | Low |
+| Priority | P3 |
+| Status | Verified |
+
+When the GP track picked for an arrangement holds no notes, the build fails with 'invalid arrangement: arrangement has no notes' from Arrangement.validate, so a script driving the API cannot tell which of its tracks was empty. The issue attributed it to import_mutes; stripping mutes keeps every note (verified), so that part was another cause.
+
+**Steps to reproduce:** 
+
+1. Create a GP job whose lead_track is a track with no notes (a vocal or empty track)
+
+**Expected:** An error naming the chart, its GP track and what to do.
+
+**Observed:** 'invalid arrangement: arrangement has no notes'.
+
+**Root cause:** No check before building; the domain validation's message has no track context.
+
+**Fixes:** [FIX-0343](../FIX_LOG.md#fix-0343) (unreleased)
+
+**Verified:** test_a_chart_whose_track_has_no_notes_is_named_with_its_track (fails without the check) (by the developer (pytest))
+
+**Resolved:** 2026-10-20 · **Closed:** _pending_
+
+**Evidence:**
+
+- pytest 2026-10-20: full suite passes
+
+**History:**
+
+- 2026-10-20 — Open: reported
+- 2026-10-20 — In Progress: from the GitHub issue
+- 2026-10-20 — Fixed: commit 8dc5d4bb50
+- 2026-10-20 — Verified: pytest

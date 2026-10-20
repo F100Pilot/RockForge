@@ -2257,3 +2257,48 @@ FastAPI 0.155 (allowed by fastapi>=0.110, and what CI and a fresh install get) r
 - 2026-10-20 — In Progress: found while confirming the 0.11.1-beta.1 publication
 - 2026-10-20 — Fixed: commit 55c918ef58
 - 2026-10-20 — Verified: tests on FastAPI 0.155 and 0.142
+
+## BUG-0342
+
+**Earlier jobs break when the work dir moves: bundle, recording, GP file and stems stored as absolute paths**
+
+| | |
+|---|---|
+| Detected | 2026-10-20 |
+| Reported by | GitHub issue #6 (mongrelx) |
+| Found in | 0.11.0-beta.4 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Verified |
+
+The database keeps Job.source, bundle_dir, psarc_path, params gp_path and stems as absolute paths. After moving the work dir to another disk, every job created before the move fails: GET /jobs/{id}/bundle 500, detect-beat-sync 409. Jobs created after the move work.
+
+**Steps to reproduce:** 
+
+1. Create a project
+2. Move the whole work dir and point ROCKFORGE_WORK_DIR at the new place
+3. Restart and download the project's bundle
+
+**Expected:** The project finds its files in the moved folder.
+
+**Observed:** 500 on the bundle, 409 on anything needing the recording (as reported; reproduced in a test with paths under a missing old root).
+
+**Root cause:** Paths are stored absolute and read as stored; nothing re-points them after a move.
+
+**Fixes:** [FIX-0342](../FIX_LOG.md#fix-0342) (unreleased)
+
+**Verified:** test_jobs_follow_their_files_when_the_work_dir_moves drives a real startup with a job whose paths point into a missing old root (fails with the startup call removed); test_work_paths.py covers the tail rules (mutation-checked) (by the developer (pytest))
+
+**Resolved:** 2026-10-20 · **Closed:** _pending_
+
+**Evidence:**
+
+- pytest 2026-10-20: full suite passes
+
+**History:**
+
+- 2026-10-20 — Open: reported
+- 2026-10-20 — In Progress: from the GitHub issue
+- 2026-10-20 — Fixed: commit 8dc5d4bb50
+- 2026-10-20 — Verified: pytest

@@ -6,7 +6,7 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 
 | Fixed | Verified | Closed |
 |---|---|---|
-| 100 | 41 | 200 |
+| 100 | 43 | 200 |
 
 | ID | Title | Module | Severity | Priority | Status | Found in | Fixed in |
 |---|---|---|---|---|---|---|---|
@@ -351,3 +351,5 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0339](bugs/sync.md#bug-0339) | A section marker does not follow a sync correction made in the same rebuild | sync | Medium | P3 | Verified | 0.11.0-beta.4 | 0.11.1-beta.1 |
 | [BUG-0340](bugs/app.md#bug-0340) | With a newer FastAPI an absent default-yes form field reads as no (batch projects lose palm mutes; reload ignores the file's audio) | app | Medium | P2 | Verified | 0.11.0-beta.4 | 0.11.1-beta.1 |
 | [BUG-0341](bugs/viewer.md#bug-0341) | Fretboard "All notes" with "only those matching the picked one" shows every note when no note is picked | viewer | Low | P3 | Verified | 0.11.1-beta.1 | — |
+| [BUG-0342](bugs/app.md#bug-0342) | Earlier jobs break when the work dir moves: bundle, recording, GP file and stems stored as absolute paths | app | Medium | P2 | Verified | 0.11.0-beta.4 | — |
+| [BUG-0343](bugs/import.md#bug-0343) | A chart whose GP track has no notes fails with a bare 'arrangement has no notes' that names neither the chart nor the track | import | Low | P3 | Verified | 0.11.0-beta.4 | — |
