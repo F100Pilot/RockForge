@@ -345,6 +345,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0337](#fix-0337) | BUG-0337 | 0.11.1-beta.1 | passed | automated |
 | [FIX-0338](#fix-0338) | BUG-0338 | 0.11.1-beta.1 | not run | manual |
 | [FIX-0339](#fix-0339) | BUG-0339 | 0.11.1-beta.1 | passed | manual |
+| [FIX-0340](#fix-0340) | BUG-0340 | 0.11.1-beta.1 | passed | automated |
 
 ## FIX-0001
 
@@ -7464,3 +7465,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | passed |
 | Validation | manual |
 | Regression risk | Low: only the section times sent at a rebuild change, and only for sections the editor owns; the suite (pytest, ruff, mypy, ESLint) is green. |
+
+## FIX-0340
+
+**Bugs:** [BUG-0340](bugs/app.md#bug-0340)
+
+**Root cause:** Two default-yes form fields declared as bool = Form(True); newer FastAPI no longer applies the default when the field is absent.
+
+**Solution:** import_mutes (/jobs/gp) and use_embedded_audio (/reload-gp) are text fields read by _form_flag: absent = yes, true/false/1/0/on/off/yes/no, anything else a 422.
+
+| | |
+|---|---|
+| Date | 2026-10-20 |
+| By | Claude (AI coding assistant), on the maintainer's request |
+| Version | 0.11.1-beta.1 |
+| Commits | 55c918ef58582fb659d1a9f55564a06624b12b25 |
+| Components | src/rockforge/interfaces/api/routers/jobs.py |
+| Tests | tests/test_api.py::test_a_project_whose_form_leaves_out_import_mutes_keeps_its_mutes; tests/test_api.py::test_reloading_a_gp_file_that_carries_audio_uses_that_audio; tests/test_api.py::test_what_was_measured_on_the_old_recording_is_dropped_with_it |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: the same values are accepted as before; only an absent field changes back to its documented default. |

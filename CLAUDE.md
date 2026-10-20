@@ -5950,6 +5950,17 @@ Lots 2 and 3 (BUG-0309…0337), the rules they leave:
   `test_songs_whose_names_share_their_first_letters_get_different_keys` and
   `test_a_name_that_fits_keeps_the_key_it_always_had`.
 
+**A form field that defaults to yes is TEXT, never `bool = Form(True)`**
+(BUG-0340): FastAPI 0.155 — what `fastapi>=0.110` installs today — reads a bool
+form field that is not sent as False whatever its default (an unticked HTML
+checkbox), so the batch page's projects (no `import_mutes`) lost their palm
+mutes and `/reload-gp` stopped defaulting to the file's audio. They are
+`str = Form("true")` read by `jobs._form_flag` (absent = yes; true/false/1/0/
+on/off/yes/no; anything else a 422). A default-NO bool field is unaffected.
+Guarded by `test_a_project_whose_form_leaves_out_import_mutes_keeps_its_mutes`
+(fails with the bool field back) and the two reload tests; CI had been red on
+it since 2026-10-19 without anyone noticing — check CI after every push.
+
 ## Async detection tasks (the `detect_lyrics` / `detect_tones` pattern)
 
 Both lyric and tone detection are slow (minutes) Celery tasks that follow one

@@ -2211,3 +2211,49 @@ A hard kill skips the task's except, so the status stayed "separating" and the U
 
 - 2026-10-18 — Open: reported
 - 2026-10-18 — Fixed: commit 76c44a8bcd
+
+## BUG-0340
+
+**With a newer FastAPI an absent default-yes form field reads as no (batch projects lose palm mutes; reload ignores the file's audio)**
+
+| | |
+|---|---|
+| Detected | 2026-10-20 |
+| Reported by | Claude, from the CI failure of the 0.11.1-beta.1 bump |
+| Found in | 0.11.0-beta.4 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Verified |
+
+FastAPI 0.155 (allowed by fastapi>=0.110, and what CI and a fresh install get) reads a bool form field that is not sent as False whatever its default, like an unticked HTML checkbox. /jobs/gp's import_mutes (default yes) is not sent by the batch page, and /reload-gp's use_embedded_audio (default yes) is not sent by API clients that rely on the default. Depends on the FastAPI installed; not seen with 0.142.
+
+**Steps to reproduce:** 
+
+1. Install FastAPI 0.155
+2. Create a project from "Lote (álbum)" (no import_mutes field)
+3. Look at params["import_mute_techniques"]
+
+**Expected:** True (the default): palm mutes and dead notes imported.
+
+**Observed:** False: the batch project's palm mutes and dead notes stripped. CI: test_reloading_a_gp_file_that_carries_audio_uses_that_audio and test_what_was_measured_on_the_old_recording_is_dropped_with_it failed on every commit since 8be374d (2026-10-19, CI run 39325729185), the first run on the newer FastAPI.
+
+**Root cause:** Two default-yes form fields declared as bool = Form(True); newer FastAPI no longer applies the default when the field is absent.
+
+**Fixes:** [FIX-0340](../FIX_LOG.md#fix-0340) (0.11.1-beta.1)
+
+**Verified:** tests/test_api.py on FastAPI 0.155: the two reload tests and the new test_a_project_whose_form_leaves_out_import_mutes_keeps_its_mutes pass (the new one fails with the bool field back); the full suite passes on 0.155 and test_api.py on 0.142 (by the developer (pytest))
+
+**Resolved:** 2026-10-20 · **Closed:** _pending_
+
+**Evidence:**
+
+- CI run 39466239314 (1e76a9b): 2 failed, 1217 passed — the two reload-gp tests
+- Reproduced locally with fastapi 0.155.0 / starlette 1.9.0: a minimal endpoint with flag: bool = Form(True) returns False when the field is not sent
+
+**History:**
+
+- 2026-10-20 — Open: reported
+- 2026-10-20 — In Progress: found while confirming the 0.11.1-beta.1 publication
+- 2026-10-20 — Fixed: commit 55c918ef58
+- 2026-10-20 — Verified: tests on FastAPI 0.155 and 0.142

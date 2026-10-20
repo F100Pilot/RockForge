@@ -15,6 +15,7 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ### Fixes
 
+- **Batch (album):** projects created in a batch bring the score's palm mutes and dead notes again. With the newest versions of one of the app's libraries they were silently dropped.
 - **Sections:** sections you edited now follow a sync correction made before the same rebuild, like tone changes. Before, the notes moved and the section stayed at the old time. "+ Add at cursor" puts the section exactly where the cursor is, even with a correction pending.
 - **Tones:** a tone change now follows a sync correction made before the same rebuild. Before, the notes moved and the switch stayed at the old time.
 - **Rocksmith:** two songs whose names start with the same 30 letters (two live versions, say) no longer replace each other in game, and neither do titles with no Latin letters (Cyrillic, Japanese…). Note: these songs get a new identifier when rebuilt, and the game starts their progress over. Songs with short names do not change.

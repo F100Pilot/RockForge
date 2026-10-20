@@ -8486,6 +8486,32 @@
       "test_result": "passed",
       "regression_risk": "Low: only the section times sent at a rebuild change, and only for sections the editor owns; the suite (pytest, ruff, mypy, ESLint) is green.",
       "validation": "manual"
+    },
+    {
+      "id": "FIX-0340",
+      "bugs": [
+        "BUG-0340"
+      ],
+      "date": "2026-10-20",
+      "author": "Claude (AI coding assistant), on the maintainer's request",
+      "root_cause": "Two default-yes form fields declared as bool = Form(True); newer FastAPI no longer applies the default when the field is absent.",
+      "solution": "import_mutes (/jobs/gp) and use_embedded_audio (/reload-gp) are text fields read by _form_flag: absent = yes, true/false/1/0/on/off/yes/no, anything else a 422.",
+      "components": [
+        "src/rockforge/interfaces/api/routers/jobs.py"
+      ],
+      "commits": [
+        "55c918ef58582fb659d1a9f55564a06624b12b25"
+      ],
+      "version": "0.11.1-beta.1",
+      "tests": [
+        "tests/test_api.py::test_a_project_whose_form_leaves_out_import_mutes_keeps_its_mutes",
+        "tests/test_api.py::test_reloading_a_gp_file_that_carries_audio_uses_that_audio",
+        "tests/test_api.py::test_what_was_measured_on_the_old_recording_is_dropped_with_it"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low: the same values are accepted as before; only an absent field changes back to its documented default.",
+      "validation": "automated"
     }
   ]
 }
