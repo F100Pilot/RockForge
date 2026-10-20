@@ -16,7 +16,7 @@ Synchronisation tools on the score. Index: [BUG_LOG.md](../BUG_LOG.md).
 | Build / commit | b60201dc7a224c55b6ee534930013fcbd50699c0 |
 | Severity | High |
 | Priority | P2 |
-| Status | Fixed |
+| Status | Closed |
 
 offset_s padded the audio by N seconds and shifted the score by N, preserving any gap between the recording's own intro and the score's note 0, so the chart and audio were off by exactly that gap.
 
@@ -30,9 +30,9 @@ offset_s padded the audio by N seconds and shifted the score by N, preserving an
 
 **Fixes:** [FIX-0005](../FIX_LOG.md#fix-0005) (0.10.0-beta.1)
 
-**Verified:** _pending_ (by _pending_)
+**Verified:** With the first note 5 s into the recording the score sits at 5 s and the recording is neither trimmed nor padded; below the minimum lead-in only the difference is padded (lyrics shift by the pad alone) (by the developer (pytest))
 
-**Resolved:** 2026-06-13 · **Closed:** _pending_
+**Resolved:** 2026-06-13 · **Closed:** 2026-10-20
 
 **Note:** Recorded retrospectively; severity and priority assigned from the documented impact: Every GP chart could be out of sync with no clean fix.
 
@@ -43,11 +43,15 @@ offset_s padded the audio by N seconds and shifted the score by N, preserving an
 - commit 215917c389 Rework GP sync offset: add silent lead-in to audio, shift score+lyrics forward
 - commit 95d2d20cc1 Fix GP sync: align score to recording, don't pad audio equally
 - found_in_version: fix 8f8130396a (2026-06-12) precedes the first public version (cb00653 'First public release is 0.10.0 beta 1', 2026-10-14); found_in_build is the fix's parent b60201dc7a, where the code the fix changes is present
+- pytest 2026-10-20: passes; full suite passes
+- Mutation: handing offset_s to the normalizer (trimming the recording, the old behaviour) fails the new test
 
 **History:**
 
 - _pending_ — Open: recorded on 2026-10-17 from the project history (CHANGELOG/CLAUDE.md/git)
 - 2026-06-13 — Fixed: commit 8f8130396a, 215917c389, 95d2d20cc1
+- 2026-10-20 — Verified: regression check re-run (pytest/Playwright)
+- 2026-10-20 — Closed: released in 0.10.0-beta.1
 
 ## BUG-0011
 
@@ -378,7 +382,7 @@ A correction mapping a chart interval to a wider one scaled every warped sustain
 | Build / commit | 07cf50ee50c56aeb64798e9c48b7ad7a1bb230d7 |
 | Severity | High |
 | Priority | P2 |
-| Status | Fixed |
+| Status | Closed |
 
 movefrom, tap and reTempoFromHere used the WARPED position as each anchor's origin; with a pending anchor (e.g. Step 1's 'Início') the piecewise map was corrupted and the clicked note landed elsewhere (38.5 instead of 40).
 
@@ -395,9 +399,9 @@ movefrom, tap and reTempoFromHere used the WARPED position as each anchor's orig
 
 **Fixes:** [FIX-0102](../FIX_LOG.md#fix-0102) (0.10.0-beta.1)
 
-**Verified:** _pending_ (by _pending_)
+**Verified:** With an anchor already pending, the clicked note lands on the cursor and the notes before it stay (by the developer (Playwright))
 
-**Resolved:** 2026-07-11 · **Closed:** _pending_
+**Resolved:** 2026-07-11 · **Closed:** 2026-10-20
 
 **Note:** Recorded retrospectively; severity and priority assigned from the documented impact: Core sync gestures misplaced notes.
 
@@ -408,11 +412,14 @@ movefrom, tap and reTempoFromHere used the WARPED position as each anchor's orig
 - commit d45d10a5ad Fix "Mover seguintes"/tap/re-tempo moving notes the wrong way
 - found_in_version: the fix commit is an ancestor of cb00653 (the first public release, 0.10.0 beta 1, 2026-10-14), so the faulty code only existed in development builds before 0.10.0-beta.1
 - found_in_build: 07cf50ee50 is the parent of the first fix commit d45d10a5ad and still carries the code the fix changes
+- Playwright 2026-10-20: cursor 8.233, clicked note 8.233, earlier notes +0.0
 
 **History:**
 
 - _pending_ — Open: recorded on 2026-10-17 from the project history (CHANGELOG/CLAUDE.md/git)
 - 2026-07-11 — Fixed: commit d45d10a5ad
+- 2026-10-20 — Verified: regression check re-run (pytest/Playwright)
+- 2026-10-20 — Closed: released in 0.10.0-beta.1
 
 ## BUG-0103
 

@@ -102,7 +102,7 @@ pyannote.audio 3.3.2 uses torchaudio.AudioMetaData, removed in 2.5+; the Attribu
 | Build / commit | b9a7e229d149c94678917c11abf67eaa3282444d |
 | Severity | High |
 | Priority | P2 |
-| Status | Fixed |
+| Status | Closed |
 
 faster-whisper/ctranslate2 deadlocked during CUDA init inside the Celery child, so detection hung at ~8% (import phase) for 40+ minutes on GPU machines.
 
@@ -118,9 +118,9 @@ faster-whisper/ctranslate2 deadlocked during CUDA init inside the Celery child, 
 
 **Fixes:** [FIX-0025](../FIX_LOG.md#fix-0025) (0.10.0-beta.1)
 
-**Verified:** _pending_ (by _pending_)
+**Verified:** No module but the subprocess runner imports whisperx/faster_whisper/ctranslate2, and the availability check runs in a subprocess. The CUDA deadlock itself cannot be reproduced here (no GPU, no WhisperX) (by the developer (pytest))
 
-**Resolved:** 2026-06-18 · **Closed:** _pending_
+**Resolved:** 2026-06-18 · **Closed:** 2026-10-20
 
 **Note:** Recorded retrospectively; severity and priority assigned from the documented impact: Lyric detection unavailable on GPU machines.
 
@@ -130,11 +130,15 @@ faster-whisper/ctranslate2 deadlocked during CUDA init inside the Celery child, 
 - commit 10b04691f9 Fix lyrics detection hang: run WhisperX in subprocess, not Celery worker
 - found_in_version: the fix commit is an ancestor of cb00653 (the first public release, 0.10.0 beta 1, 2026-10-14), so the faulty code only existed in development builds before 0.10.0-beta.1
 - found_in_build: b9a7e229d1 is the parent of the first fix commit 10b04691f9 and still carries the code the fix changes
+- pytest 2026-10-20: passes; full suite passes
+- Mutation: an `import whisperx` in whisperx_adapter fails the guard
 
 **History:**
 
 - _pending_ — Open: recorded on 2026-10-17 from the project history (CHANGELOG/CLAUDE.md/git)
 - 2026-06-18 — Fixed: commit 10b04691f9
+- 2026-10-20 — Verified: regression check re-run (pytest/Playwright)
+- 2026-10-20 — Closed: released in 0.10.0-beta.1
 
 ## BUG-0026
 
@@ -148,7 +152,7 @@ faster-whisper/ctranslate2 deadlocked during CUDA init inside the Celery child, 
 | Build / commit | 10b04691f99a5c7acdbf2c38ab020fafaeb374a9 |
 | Severity | High |
 | Priority | P2 |
-| Status | Fixed |
+| Status | Closed |
 
 The worker_ready warm-up ran torch.cuda.is_available() concurrently with the first task's, and two simultaneous cuInit() calls deadlocked the NVIDIA driver on Windows — a hang at 'loading ML models'.
 
@@ -165,9 +169,9 @@ The worker_ready warm-up ran torch.cuda.is_available() concurrently with the fir
 
 **Fixes:** [FIX-0026](../FIX_LOG.md#fix-0026) (0.10.0-beta.1)
 
-**Verified:** _pending_ (by _pending_)
+**Verified:** No RockForge handler hangs off the worker's start signals. The Windows deadlock itself cannot be reproduced here (by the developer (pytest))
 
-**Resolved:** 2026-06-18 · **Closed:** _pending_
+**Resolved:** 2026-06-18 · **Closed:** 2026-10-20
 
 **Note:** Recorded retrospectively; severity and priority assigned from the documented impact: Detection hung with no workaround but restarting.
 
@@ -177,11 +181,15 @@ The worker_ready warm-up ran torch.cuda.is_available() concurrently with the fir
 - commit 6ad497b51f Remove CUDA warm-up probe — concurrent cuInit() deadlocks on Windows
 - found_in_version: the fix commit is an ancestor of cb00653 (the first public release, 0.10.0 beta 1, 2026-10-14), so the faulty code only existed in development builds before 0.10.0-beta.1
 - found_in_build: 10b04691f9 is the parent of the first fix commit 6ad497b51f and still carries the code the fix changes
+- pytest 2026-10-20: passes; full suite passes
+- Mutation: re-adding the worker_ready warm-up handler fails the test
 
 **History:**
 
 - _pending_ — Open: recorded on 2026-10-17 from the project history (CHANGELOG/CLAUDE.md/git)
 - 2026-06-18 — Fixed: commit 6ad497b51f
+- 2026-10-20 — Verified: regression check re-run (pytest/Playwright)
+- 2026-10-20 — Closed: released in 0.10.0-beta.1
 
 ## BUG-0029
 

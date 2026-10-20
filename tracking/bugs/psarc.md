@@ -907,7 +907,7 @@ The native PSARC crashed at the entry of the first octave riff (79.1 s); one-fin
 | Build / commit | 070503350ac35c0c477ba11347fdb5ce85b74bb8 |
 | Severity | High |
 | Priority | P2 |
-| Status | Fixed |
+| Status | Closed |
 
 ChordNotes per-string masks carried the SINGLE note-kind bit (0x800000), drawing a corrupt vertical bar.
 
@@ -921,9 +921,9 @@ ChordNotes per-string masks carried the SINGLE note-kind bit (0x800000), drawing
 
 **Fixes:** [FIX-0078](../FIX_LOG.md#fix-0078) (0.10.0-beta.1)
 
-**Verified:** _pending_ (by _pending_)
+**Verified:** ChordNotes masks carry technique bits only, never the SINGLE note-kind bit (by the developer (pytest))
 
-**Resolved:** 2026-07-08 · **Closed:** _pending_
+**Resolved:** 2026-07-08 · **Closed:** 2026-10-20
 
 **Note:** Recorded retrospectively; severity and priority assigned from the documented impact: Visible corruption.
 
@@ -931,11 +931,15 @@ ChordNotes per-string masks carried the SINGLE note-kind bit (0x800000), drawing
 
 - commit ea09b649a2 Native PSARC SNG: chordnotes carry technique bits only, deduped (fix bad render)
 - found_in_version: fix ea09b649a2 (2026-07-08) precedes the first public version (cb00653 'First public release is 0.10.0 beta 1', 2026-10-14); found_in_build is the fix's parent 070503350a, where the code the fix changes is present
+- pytest 2026-10-20: passes; full suite passes
+- Mutation: dropping `& ~NOTE_MASK_SINGLE` fails the test
 
 **History:**
 
 - _pending_ — Open: recorded on 2026-10-17 from the project history (CHANGELOG/CLAUDE.md/git)
 - 2026-07-08 — Fixed: commit ea09b649a2
+- 2026-10-20 — Verified: regression check re-run (pytest/Playwright)
+- 2026-10-20 — Closed: released in 0.10.0-beta.1
 
 ## BUG-0079
 
@@ -2235,7 +2239,7 @@ Found by the fuzz test: a last chord whose sustain ends exactly at the next note
 | Build / commit | cb00653bedba4cd2f9070ceb2acb8e925c883319 |
 | Severity | High |
 | Priority | P2 |
-| Status | Fixed |
+| Status | Closed |
 
 The Docker image installed only [postgres]/[ml,postgres], without the [psarc] extra, so the worker produced the bundle but never the .psarc.
 
@@ -2252,9 +2256,9 @@ The Docker image installed only [postgres]/[ml,postgres], without the [psarc] ex
 
 **Fixes:** [FIX-0250](../FIX_LOG.md#fix-0250) (0.10.0-beta.2)
 
-**Verified:** _pending_ (by _pending_)
+**Verified:** Every image stage installs the [psarc] extra. The image was not built here (by the developer (pytest))
 
-**Resolved:** 2026-10-14 · **Closed:** _pending_
+**Resolved:** 2026-10-14 · **Closed:** 2026-10-20
 
 **Note:** Recorded retrospectively; severity and priority assigned from the documented impact: The game-ready output was missing in Docker deployments; other installs unaffected.
 
@@ -2264,11 +2268,15 @@ The Docker image installed only [postgres]/[ml,postgres], without the [psarc] ex
 - commit 994c9307ac: "Docker installs [psarc] (the worker made no .psarc), .dockerignore."
 - found_in_build: cb00653 docker/Dockerfile lines 13/19 install .[postgres] and .[ml,postgres]
 - found_in_version pending: faulty code present at cb00653 (beta 1); detection date not documented
+- pytest 2026-10-20: passes; full suite passes
+- Mutation: dropping psarc from the worker stage fails the test
 
 **History:**
 
 - _pending_ — Open: recorded on 2026-10-17 from the project history (CHANGELOG/CLAUDE.md/git)
 - 2026-10-14 — Fixed: commit 994c9307ac
+- 2026-10-20 — Verified: regression check re-run (pytest/Playwright)
+- 2026-10-20 — Closed: released in 0.10.0-beta.2
 
 ## BUG-0257
 

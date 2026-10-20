@@ -16,7 +16,7 @@ API, settings, projects, the web UI shell. Index: [BUG_LOG.md](../BUG_LOG.md).
 | Build / commit | 89aa1f729d2d1656e8b0e95bf11ff9084bc81f4a |
 | Severity | High |
 | Priority | P2 |
-| Status | Fixed |
+| Status | Closed |
 
 whisperx>=3.4 pulls numpy>=2.1, conflicting with the ML stack's numpy<2, so installing both extras sent pip's resolver into endless backtracking (ResolutionTooDeep).
 
@@ -30,9 +30,9 @@ whisperx>=3.4 pulls numpy>=2.1, conflicting with the ML stack's numpy<2, so inst
 
 **Fixes:** [FIX-0015](../FIX_LOG.md#fix-0015) (0.10.0-beta.1)
 
-**Verified:** _pending_ (by _pending_)
+**Verified:** pyproject keeps whisperx below 3.4 and numpy below 2; the real install of both extras resolved in the release workflow (by the developer (pytest))
 
-**Resolved:** 2026-06-15 · **Closed:** _pending_
+**Resolved:** 2026-06-15 · **Closed:** 2026-10-20
 
 **Note:** Recorded retrospectively; severity and priority assigned from the documented impact: Lyric detection could not be installed beside the ML stack.
 
@@ -41,11 +41,15 @@ whisperx>=3.4 pulls numpy>=2.1, conflicting with the ML stack's numpy<2, so inst
 - CLAUDE.md § Hard constraints (these have bitten us — keep them) — '`whisperx` is pinned `<3.4`'
 - commit fc6e175c97 Pin whisperx <3.4 to fix pip resolver explosion with [ml,lyrics]
 - found_in_version: the fix commit fc6e175c97 is an ancestor of cb00653 (the first public release, 0.10.0-beta.1), so the faulty code existed only before 0.10.0-beta.1; found_in_build is the fix commit's parent 89aa1f729d
+- pytest 2026-10-20: passes; full suite passes
+- Release run 39469596308 log: 'components installed: {... ml: True, lyrics: True ...}'
 
 **History:**
 
 - _pending_ — Open: recorded on 2026-10-17 from the project history (CHANGELOG/CLAUDE.md/git)
 - 2026-06-15 — Fixed: commit fc6e175c97
+- 2026-10-20 — Verified: regression check re-run (pytest/Playwright)
+- 2026-10-20 — Closed: released in 0.10.0-beta.1
 
 ## BUG-0016
 
@@ -187,7 +191,7 @@ pip resolved scipy 1.9.1, which has no cp311 Windows wheel, forcing a meson buil
 | Build / commit | 9ce029cd51a61de7608135807511593db12eb2b5 |
 | Severity | High |
 | Priority | P2 |
-| Status | Fixed |
+| Status | Closed |
 
 Job.params is a plain JSON column with no mutation tracking; reassigning the same dict object was a silent no-op, so every progress update after the first commit was lost and the UI froze on the first log line ('stuck at 8%') while the task actually ran.
 
@@ -201,9 +205,9 @@ Job.params is a plain JSON column with no mutation tracking; reassigning the sam
 
 **Fixes:** [FIX-0027](../FIX_LOG.md#fix-0027) (0.10.0-beta.1)
 
-**Verified:** _pending_ (by _pending_)
+**Verified:** Every progress write after the first commit reaches the database (by the developer (pytest))
 
-**Resolved:** 2026-06-18 · **Closed:** _pending_
+**Resolved:** 2026-06-18 · **Closed:** 2026-10-20
 
 **Note:** Recorded retrospectively; severity and priority assigned from the documented impact: Lyric and tone detection looked hung and their results were not persisted.
 
@@ -214,11 +218,15 @@ Job.params is a plain JSON column with no mutation tracking; reassigning the sam
 - commit 069c7c305b fix(lyrics): copy job.params before mutating in detect_lyrics
 - commit 26e9886aac Fix silent commit no-ops: SQLAlchemy JSON column needs a new dict object
 - found_in_version: the fix commit 069c7c305b is an ancestor of cb00653 (the first public release, 0.10.0-beta.1), so the faulty code existed only before 0.10.0-beta.1; found_in_build is the fix commit's parent 9ce029cd51
+- pytest 2026-10-20: passes; full suite passes
+- Mutation: the params writer reusing the same dict object fails these and six other task tests
 
 **History:**
 
 - _pending_ — Open: recorded on 2026-10-17 from the project history (CHANGELOG/CLAUDE.md/git)
 - 2026-06-18 — Fixed: commit 069c7c305b, 26e9886aac
+- 2026-10-20 — Verified: regression check re-run (pytest/Playwright)
+- 2026-10-20 — Closed: released in 0.10.0-beta.1
 
 ## BUG-0040
 
@@ -1353,7 +1361,7 @@ For a GP job every save of 'Editar info' forked a rebuild, since the arrangement
 | Build / commit | 6e2a1ebf2a956ada2f99897e48216902b99592cc |
 | Severity | High |
 | Priority | P2 |
-| Status | Fixed |
+| Status | Closed |
 
 start.bat runs with delayed expansion, so cmd ate the '!' of '!=' in the Python version check and Python got a syntax error: the check failed on every version, 3.11 included.
 
@@ -1369,9 +1377,9 @@ start.bat runs with delayed expansion, so cmd ate the '!' of '!=' in the Python 
 
 **Fixes:** [FIX-0235](../FIX_LOG.md#fix-0235) (0.10.0-beta.1)
 
-**Verified:** _pending_ (by _pending_)
+**Verified:** start.bat has no bare '!' outside REM lines under delayed expansion. Not run in cmd from here (by the developer (pytest))
 
-**Resolved:** 2026-10-02 · **Closed:** _pending_
+**Resolved:** 2026-10-02 · **Closed:** 2026-10-20
 
 **Note:** Recorded retrospectively; severity and priority assigned from the documented impact: The source install could not start.
 
@@ -1380,11 +1388,15 @@ start.bat runs with delayed expansion, so cmd ate the '!' of '!=' in the Python 
 - CLAUDE.md § Running locally (Windows, native, no Docker) — 'The file runs with delayed expansion: no `!` in a command line.'
 - commit 61d60c02f1 start.bat: fix the Python 3.11 check, which refused 3.11 itself
 - found_in_version: the fix commit 61d60c02f1 is an ancestor of cb00653 (the first public release, 0.10.0-beta.1), so the faulty code existed only before 0.10.0-beta.1; found_in_build is the fix commit's parent 6e2a1ebf2a
+- pytest 2026-10-20: passes; full suite passes
+- Mutation: writing the version check with != fails the test
 
 **History:**
 
 - _pending_ — Open: recorded on 2026-10-17 from the project history (CHANGELOG/CLAUDE.md/git)
 - 2026-10-02 — Fixed: commit 61d60c02f1
+- 2026-10-20 — Verified: regression check re-run (pytest/Playwright)
+- 2026-10-20 — Closed: released in 0.10.0-beta.1
 
 ## BUG-0236
 

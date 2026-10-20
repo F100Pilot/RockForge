@@ -97,11 +97,14 @@
         "bd5c107ecadb4ceaec0c1f5131891b8e82f458c7"
       ],
       "version": "0.10.0-beta.1",
-      "tests": [],
+      "tests": [
+        "tests/test_rsxml_writer.py::test_arrangement_properties_has_all_dlc_builder_attributes",
+        "tests/test_rsxml_writer.py::test_the_xml_carries_every_element_dlc_builders_reader_expects"
+      ],
       "manual_checks": [],
-      "test_result": "not run",
+      "test_result": "passed",
       "regression_risk": "Low: additive XML elements checked by later schema tests.",
-      "validation": "pending"
+      "validation": "automated"
     },
     {
       "id": "FIX-0005",
@@ -125,11 +128,14 @@
         "95d2d20cc1708be3beaf6ac6b9539e9b47b49abb"
       ],
       "version": "0.10.0-beta.1",
-      "tests": [],
+      "tests": [
+        "tests/test_gp_pipeline.py::test_a_late_first_note_is_met_in_the_recording_not_padded",
+        "tests/test_gp_pipeline.py::test_gp_pipeline_full_bundle"
+      ],
       "manual_checks": [],
-      "test_result": "not run",
+      "test_result": "passed",
       "regression_risk": "Medium: core timing rule; later sections build on it.",
-      "validation": "pending"
+      "validation": "automated"
     },
     {
       "id": "FIX-0006",
@@ -172,11 +178,14 @@
         "95d2d20cc1708be3beaf6ac6b9539e9b47b49abb"
       ],
       "version": "0.10.0-beta.1",
-      "tests": [],
+      "tests": [
+        "tests/test_gp_pipeline.py::test_gp_pipeline_full_bundle",
+        "tests/test_gp_pipeline.py::test_gp_pipeline_zero_offset_warns"
+      ],
       "manual_checks": [],
-      "test_result": "not run",
+      "test_result": "passed",
       "regression_risk": "Low: a constant minimum lead-in.",
-      "validation": "pending"
+      "validation": "automated"
     },
     {
       "id": "FIX-0008",
@@ -362,11 +371,15 @@
         "fc6e175c97b16ce52490a390245d30deff4fdc88"
       ],
       "version": "0.10.0-beta.1",
-      "tests": [],
-      "manual_checks": [],
-      "test_result": "not run",
+      "tests": [
+        "tests/test_dependency_pins.py::test_whisperx_stays_below_the_release_that_needs_numpy_2"
+      ],
+      "manual_checks": [
+        "Release run 39469596308 (0.11.1-beta.1, 2026-10-20, Windows): the components install resolved [ml] and [lyrics] together — whisperx 3.3.1, numpy 1.26.4 — and reported ml and lyrics installed"
+      ],
+      "test_result": "passed",
       "regression_risk": "Bumping whisperx without re-checking the numpy ranges brings the resolver failure back.",
-      "validation": "pending"
+      "validation": "automated"
     },
     {
       "id": "FIX-0016",
@@ -526,10 +539,12 @@
       ],
       "version": "0.10.0-beta.1",
       "tests": [],
-      "manual_checks": [],
+      "manual_checks": [
+        "Playwright 2026-10-20 on an invented project: playback runs on an AudioBufferSourceNode; paused seeks to 1.0, 5.5 and 8.123 s read back exactly; 1 s of playback advanced the clock by 1 s. No VBR MP3 was played here."
+      ],
       "test_result": "not run",
       "regression_risk": "Reverting to <audio> seeking reintroduces it.",
-      "validation": "pending"
+      "validation": "manual"
     },
     {
       "id": "FIX-0023",
@@ -592,11 +607,14 @@
         "10b04691f99a5c7acdbf2c38ab020fafaeb374a9"
       ],
       "version": "0.10.0-beta.1",
-      "tests": [],
+      "tests": [
+        "tests/test_celery_tasks.py::test_detect_lyrics_reports_unavailable_when_whisperx_is_not_installed",
+        "tests/test_celery_tasks.py::test_whisperx_is_imported_only_inside_its_runner"
+      ],
       "manual_checks": [],
-      "test_result": "not run",
+      "test_result": "passed",
       "regression_risk": "Subprocess must not inherit stdin; timeouts must cover model downloads.",
-      "validation": "pending"
+      "validation": "automated"
     },
     {
       "id": "FIX-0026",
@@ -614,11 +632,13 @@
         "6ad497b51f4fedabb85fef428ae41db7d3640639"
       ],
       "version": "0.10.0-beta.1",
-      "tests": [],
+      "tests": [
+        "tests/test_celery_tasks.py::test_the_worker_starts_no_cuda_warm_up"
+      ],
       "manual_checks": [],
-      "test_result": "not run",
+      "test_result": "passed",
       "regression_risk": "First job is slower.",
-      "validation": "pending"
+      "validation": "automated"
     },
     {
       "id": "FIX-0027",
@@ -637,11 +657,15 @@
         "26e9886aac48f0cf809c0c16ca903349de1641dd"
       ],
       "version": "0.10.0-beta.1",
-      "tests": [],
+      "tests": [
+        "tests/test_celery_tasks.py::test_detect_lyrics_reports_unavailable_when_whisperx_is_not_installed",
+        "tests/test_celery_tasks.py::test_detect_tones_failure_sets_unavailable_not_job_status",
+        "tests/test_celery_tasks.py::test_detect_tones_success_populates_ranked_candidates"
+      ],
       "manual_checks": [],
-      "test_result": "not run",
+      "test_result": "passed",
       "regression_risk": "Any new incremental write to Job.params that reuses the dict object silently loses the write.",
-      "validation": "pending"
+      "validation": "automated"
     },
     {
       "id": "FIX-0028",
@@ -1867,11 +1891,13 @@
         "ea09b649a29b252a75b5827458db260f0227d125"
       ],
       "version": "0.10.0-beta.1",
-      "tests": [],
+      "tests": [
+        "tests/test_psarc_sng.py::test_sustained_chord_gets_chord_notes_with_per_string_sustain"
+      ],
       "manual_checks": [],
-      "test_result": "not run",
+      "test_result": "passed",
       "regression_risk": "Low.",
-      "validation": "pending"
+      "validation": "automated"
     },
     {
       "id": "FIX-0079",
@@ -2470,10 +2496,12 @@
       ],
       "version": "0.10.0-beta.1",
       "tests": [],
-      "manual_checks": [],
+      "manual_checks": [
+        "Playwright 2026-10-20 on an invented project: with a pending 'Início' anchor, 'Mover seguintes' on the 5th note put it exactly on the cursor (7.833 -> 8.233 s); the four notes before moved 0, the rest +0.4 s"
+      ],
       "test_result": "not run",
       "regression_risk": "All anchor-writing modes must share the convention.",
-      "validation": "pending"
+      "validation": "manual"
     },
     {
       "id": "FIX-0103",
@@ -5867,11 +5895,13 @@
         "61d60c02f16a34d7e36b36a86638b17f019e91aa"
       ],
       "version": "0.10.0-beta.1",
-      "tests": [],
+      "tests": [
+        "tests/test_start_bat.py::test_no_bare_exclamation_mark_in_a_delayed_expansion_script"
+      ],
       "manual_checks": [],
-      "test_result": "not run",
+      "test_result": "passed",
       "regression_risk": "Any new '!' in start.bat breaks the same way.",
-      "validation": "pending"
+      "validation": "automated"
     },
     {
       "id": "FIX-0236",
@@ -6257,11 +6287,13 @@
         "994c9307ac28f772bfba217069ce4eac67c13e13"
       ],
       "version": "0.10.0-beta.2",
-      "tests": [],
+      "tests": [
+        "tests/test_dockerfile.py::test_every_image_stage_installs_the_psarc_extra"
+      ],
       "manual_checks": [],
-      "test_result": "not run",
+      "test_result": "passed",
       "regression_risk": "Low: image build only.",
-      "validation": "pending"
+      "validation": "automated"
     },
     {
       "id": "FIX-0251",
@@ -6671,11 +6703,13 @@
         "ed590867400a23cee971b91f8c0b3c9a19050db7"
       ],
       "version": "0.10.0-beta.5",
-      "tests": [],
+      "tests": [
+        "tests/test_release_version.py::test_a_tag_with_or_without_the_leading_v_starts_the_release"
+      ],
       "manual_checks": [],
-      "test_result": "not run",
+      "test_result": "passed",
       "regression_risk": "Low: workflow trigger only.",
-      "validation": "pending"
+      "validation": "automated"
     },
     {
       "id": "FIX-0268",
@@ -6937,9 +6971,9 @@
         "tests/test_beat_align.py::test_the_runner_aligns_a_real_recording_as_a_script"
       ],
       "manual_checks": [],
-      "test_result": "not run",
+      "test_result": "passed",
       "regression_risk": "Low: the frozen bundle was unaffected.",
-      "validation": "pending"
+      "validation": "automated"
     },
     {
       "id": "FIX-0278",

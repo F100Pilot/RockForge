@@ -77,6 +77,25 @@ def test_structure_matches_song2014_documented_elements(tmp_path: Path) -> None:
     assert notes is not None and len(notes) == 3
 
 
+# BUG-0004: elements DLC Builder's Song2014 reader (Rocksmith2014.NET) expects;
+# an arrangement missing any of them did not import.
+DLC_BUILDER_REQUIRED_ELEMENTS = [
+    "part", "songNameSort", "capo", "artistName", "artistNameSort", "albumName",
+    "albumNameSort", "albumArt", "crowdSpeed", "lastConversionDateTime",
+    "arrangementProperties", "newLinkedDiffs", "linkedDiffs", "phraseProperties",
+    "fretHandMuteTemplates", "tones", "events", "transcriptionTrack",
+]  # albumYear and tonebase are written only when there is a value
+
+
+def test_the_xml_carries_every_element_dlc_builders_reader_expects(tmp_path: Path) -> None:
+    out = write_arrangement_xml(make_arrangement(), tmp_path / "lead.xml")
+    root = ET.parse(out).getroot()
+    for el in DLC_BUILDER_REQUIRED_ELEMENTS:
+        assert root.find(el) is not None, f"missing element {el}"
+    for el in ["notes", "chords", "anchors", "handShapes"]:
+        assert root.find(f"transcriptionTrack/{el}") is not None, f"transcriptionTrack lacks {el}"
+
+
 def test_note_attributes(tmp_path: Path) -> None:
     out = write_arrangement_xml(make_arrangement(), tmp_path / "lead.xml")
     notes = ET.parse(out).getroot().findall("levels/level/notes/note")

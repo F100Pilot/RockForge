@@ -106,7 +106,7 @@ DLC Builder's ArrangementProperties.ReadXml dereferences all 32 attributes witho
 | Build / commit | 8d253521201a0c80a4580359c9e19d6933e04367 |
 | Severity | High |
 | Priority | P2 |
-| Status | Fixed |
+| Status | Closed |
 
 The arrangement XML omitted required Song2014 elements (part, sort names, albumArt, crowdSpeed, linkedDiffs, phraseProperties, events, transcriptionTrack…) and used a wrong arrangementProperties attribute set, so it did not match what Rocksmith2014.NET/DLC Builder read.
 
@@ -120,9 +120,9 @@ The arrangement XML omitted required Song2014 elements (part, sort names, albumA
 
 **Fixes:** [FIX-0004](../FIX_LOG.md#fix-0004) (0.10.0-beta.1)
 
-**Verified:** _pending_ (by _pending_)
+**Verified:** A written XML carries every element the fix added and the 32 arrangementProperties attributes DLC Builder's reader dereferences (by the developer (pytest))
 
-**Resolved:** 2026-06-12 · **Closed:** _pending_
+**Resolved:** 2026-06-12 · **Closed:** 2026-10-20
 
 **Note:** Recorded retrospectively; severity and priority assigned from the documented impact: DLC Builder import depends on the XML structure; no workaround inside RockForge.
 
@@ -130,11 +130,15 @@ The arrangement XML omitted required Song2014 elements (part, sort names, albumA
 
 - commit bd5c107eca Fix Song2014 XML schema to match Rocksmith2014.NET / DLC Builder expectations
 - found_in_version: fix bd5c107eca (2026-06-12) precedes the first public version (cb00653 'First public release is 0.10.0 beta 1', 2026-10-14); found_in_build is the fix's parent 8d25352120, where the code the fix changes is present
+- pytest 2026-10-20: passes; full suite passes
+- Mutation: dropping <events> from the writer fails the element test
 
 **History:**
 
 - _pending_ — Open: recorded on 2026-10-17 from the project history (CHANGELOG/CLAUDE.md/git)
 - 2026-06-12 — Fixed: commit bd5c107eca
+- 2026-10-20 — Verified: regression check re-run (pytest/Playwright)
+- 2026-10-20 — Closed: released in 0.10.0-beta.1
 
 ## BUG-0006
 
@@ -192,7 +196,7 @@ DLC Builder/EOF use <offset> to detect a lead-in; leaving it 0 while <startBeat>
 | Build / commit | 14f973fece9f45d81e14f907e1e16d563c474d77 |
 | Severity | High |
 | Priority | P2 |
-| Status | Fixed |
+| Status | Closed |
 
 With offset 0 the chart started at time 0 and DLC Builder's PhraseGenerator failed with 'no room for an empty phrase before the arrangement content starts'.
 
@@ -206,9 +210,9 @@ With offset 0 the chart started at time 0 and DLC Builder's PhraseGenerator fail
 
 **Fixes:** [FIX-0007](../FIX_LOG.md#fix-0007) (0.10.0-beta.1)
 
-**Verified:** _pending_ (by _pending_)
+**Verified:** The first note is at least MIN_LEAD_S (2 s) in and the pad is reported (by the developer (pytest))
 
-**Resolved:** 2026-06-13 · **Closed:** _pending_
+**Resolved:** 2026-06-13 · **Closed:** 2026-10-20
 
 **Note:** Recorded retrospectively; severity and priority assigned from the documented impact: Import failed for songs starting at 0 s; workaround was a manual offset.
 
@@ -216,11 +220,15 @@ With offset 0 the chart started at time 0 and DLC Builder's PhraseGenerator fail
 
 - commit 95d2d20cc1 Fix GP sync: align score to recording, don't pad audio equally
 - found_in_version: fix 95d2d20cc1 (2026-06-13) precedes the first public version (cb00653 'First public release is 0.10.0 beta 1', 2026-10-14); found_in_build is the fix's parent 14f973fece, where the code the fix changes is present
+- pytest 2026-10-20: passes; full suite passes
+- Mutation: MIN_LEAD_S = 0 fails both tests
 
 **History:**
 
 - _pending_ — Open: recorded on 2026-10-17 from the project history (CHANGELOG/CLAUDE.md/git)
 - 2026-06-13 — Fixed: commit 95d2d20cc1
+- 2026-10-20 — Verified: regression check re-run (pytest/Playwright)
+- 2026-10-20 — Closed: released in 0.10.0-beta.1
 
 ## BUG-0028
 

@@ -375,7 +375,7 @@ The recording went through a single-pass loudnorm (a gain that moves with the mu
 | Build / commit | cb00653bedba4cd2f9070ceb2acb8e925c883319 |
 | Severity | High |
 | Priority | P2 |
-| Status | Fixed |
+| Status | Closed |
 
 Run as a script, _librosa_runner.py has its own folder as sys.path[0], which holds RockForge's packaging package; it shadowed the pip packaging librosa imports, so every runner command failed from a source install with an external ML Python.
 
@@ -392,9 +392,9 @@ Run as a script, _librosa_runner.py has its own folder as sys.path[0], which hol
 
 **Fixes:** [FIX-0277](../FIX_LOG.md#fix-0277) (0.10.0-beta.7)
 
-**Verified:** _pending_ (by _pending_)
+**Verified:** The runner, run as a script with librosa installed, aligns a synthesized recording (run in an isolated venv with librosa 0.11; CI has no librosa and skips it) (by the developer (pytest))
 
-**Resolved:** 2026-10-15 · **Closed:** _pending_
+**Resolved:** 2026-10-15 · **Closed:** 2026-10-20
 
 **Note:** Recorded retrospectively; severity and priority assigned from the documented impact: Every librosa measurement unavailable in that configuration.
 
@@ -403,11 +403,16 @@ Run as a script, _librosa_runner.py has its own folder as sys.path[0], which hol
 - CLAUDE.md § Automatic sync with a variable tempo — EXPERIMENTAL (2026-10-15): "Found on the way: run as a script, the runner's own folder is sys.path[0] ..."
 - commit cfe40199df: "The librosa runner, run as a script, had its own folder first on sys.path, whose packaging package shadowed the one librosa imports; it now drops it."
 - not in the changelog; found_in_version pending: faulty code present at cb00653 (no sys.path handling in _librosa_runner.py)
+- pytest 2026-10-20 (venv with librosa 0.11.0, numpy 1.26.4): passes
+- Mutation: removing the sys.path fix reproduces 'No module named packaging.version'
+- Release run 39469596308: librosa in the components' Python detected 120.19 BPM
 
 **History:**
 
 - _pending_ — Open: recorded on 2026-10-17 from the project history (CHANGELOG/CLAUDE.md/git)
 - 2026-10-15 — Fixed: commit cfe40199df
+- 2026-10-20 — Verified: regression check re-run (pytest/Playwright)
+- 2026-10-20 — Closed: released in 0.10.0-beta.7
 
 ## BUG-0286
 

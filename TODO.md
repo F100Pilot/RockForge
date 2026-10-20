@@ -52,7 +52,7 @@ e cada correção um `FIX-xxxx`. Esta lista fica para os pedidos de funcionalida
   (`infrastructure/tone_plan.py`, `/tone-plan/prompt`, `/tone-plan/preview`). Falta a opção B
   (pedir à IA diretamente) — fica para quando a A estiver consolidada, a pedido do utilizador.
 
-- [ ] **Faixa de ataques marcados à mão, para encaixar as notas**
+- [x] **Faixa de ataques marcados à mão, para encaixar as notas** (feito 2026-10-20, ver CLAUDE.md "Attacks marked by ear": (a), (b), (c) e (d) feitos; o desfazer dos toques é o do cartão, não o Ctrl+Z, porque os toques não são uma edição pendente — ficam guardados logo)
   (Liam, 2026-10-17: "have a small attack track you can record by pressing
   spacebar or something then when you're editing notes you can snap to that …
   I've been running my tab through chat gpt and it's got a few bits wrong, me
@@ -297,8 +297,10 @@ documentados nas mensagens de commit, caso valha a pena ressuscitar alguma.
 - [x] Mensagens do `start.bat` em português e inglês.
 - [x] Histórico verificado: sem segredos, e-mails pessoais, áudio ou ficheiros
   de músicas.
-- [ ] Ativar no GitHub: repositório público, *Private vulnerability reporting*
-  (Settings → Code security), e as *Issues*.
+- [x] Ativar no GitHub: repositório público, *Private vulnerability reporting*
+  (Settings → Code security), e as *Issues*. (Público e com Issues, visto pela
+  API do GitHub em 2026-10-20; o *Private vulnerability reporting* ligado pelo
+  mantenedor.)
 
 ## Anúncio (textos para a CustomsForge e o Reddit)
 
@@ -306,9 +308,10 @@ Os dois fóruns são em inglês, por isso os textos também. Antes de publicar:
 
 - [x] Release `v0.10.0-beta.2` publicada (pre-release) com o instalador, o zip
   portátil e o `SHA256SUMS.txt`, construídos e testados pelo `release.yml`.
-- [ ] Apagar a Release e a tag `v0.10.0-beta.1` (ficou sem ficheiros), tornar o
+- [x] Apagar a Release e a tag `v0.10.0-beta.1` (ficou sem ficheiros), tornar o
   repositório público e ligar o *Private vulnerability reporting*
-  (Settings → Security).
+  (Settings → Security). (2026-10-20: a Release e a tag já não existem, o
+  repositório é público, o *Private vulnerability reporting* está ligado.)
 - [ ] Instalar a Release num PC teu (o instalador, sem Python) e criar um CDLC
   com o Wwise até ao jogo — o teste automático cobre a app, não o Wwise nem o
   jogo.
@@ -454,7 +457,12 @@ Feedback and bug reports very welcome!
 
 ## Ideias futuras (não implementadas)
 
-- [ ] **Pré-visualizar o *note highway* em 3D (three.js)**: desenhar a
+- [x] **A Pista 3D existe** (2026-10-15, ver CLAUDE.md "The 3D note highway"):
+  three.js vendorizado, notas, acordes, sustains, slides, bends, a moldura da
+  mão. Lê o XML construído (`/arrangements`), não o `.sng`, e mostra o arranjo
+  completo — o que fica por fazer da ideia abaixo é a leitura do binário e o
+  slider de nível de DD.
+- [ ] **Pré-visualizar o `.sng` construído na Pista 3D** — o resto da ideia original: desenhar a
   autoestrada de notas do Rocksmith no browser, **a partir do `.sng` já
   construído** (`crypto.unpack_sng` + `read_sng`, que já existem) e não do
   `Arrangement` do domínio — assim mostra o que está mesmo no binário. Com um

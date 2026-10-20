@@ -59,7 +59,7 @@ CI installed only [dev], without cryptography, so test_psarc_packer.py and test_
 | Build / commit | bebcf2b5d6e7d074829b4c01106ada00a7fcdb97 |
 | Severity | High |
 | Priority | P2 |
-| Status | Fixed |
+| Status | Closed |
 
 The release workflow only listened for tags "v*"; the beta 3 release was created on GitHub's page as "0.10.0-beta.3", so the workflow never ran and the release had no downloads.
 
@@ -75,9 +75,9 @@ The release workflow only listened for tags "v*"; the beta 3 release was created
 
 **Fixes:** [FIX-0267](../FIX_LOG.md#fix-0267) (0.10.0-beta.5)
 
-**Verified:** _pending_ (by _pending_)
+**Verified:** release.yml listens to tags with and without the leading v and compares the version with the v stripped. A v-less tag run on GitHub was not observed (by the developer (pytest))
 
-**Resolved:** 2026-10-15 · **Closed:** _pending_
+**Resolved:** 2026-10-15 · **Closed:** 2026-10-20
 
 **Note:** Recorded retrospectively; severity and priority assigned from the documented impact: A published release without its downloads; fixed by a manual run.
 
@@ -88,8 +88,12 @@ The release workflow only listened for tags "v*"; the beta 3 release was created
 - detected 2026-10-15: beta 3 (bebcf2b) and the fix are both dated 2026-10-15
 - found_in_version: the fault showed in the publication of beta 3 itself; its workflow at bebcf2b has the v* filter
 - not in the changelog
+- pytest 2026-10-20: passes; full suite passes
+- Mutation: tags ['v*'] alone fails the test
 
 **History:**
 
 - 2026-10-15 — Open: recorded on 2026-10-17 from the project history (CHANGELOG/CLAUDE.md/git)
 - 2026-10-15 — Fixed: commit 3e1fac60aa, ed59086740
+- 2026-10-20 — Verified: regression check re-run (pytest/Playwright)
+- 2026-10-20 — Closed: released in 0.10.0-beta.5

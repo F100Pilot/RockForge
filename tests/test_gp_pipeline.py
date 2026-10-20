@@ -495,6 +495,38 @@ def test_bar_1_before_the_recording_keeps_its_place(two_track_gp5: Path, tmp_pat
     assert pads == [pytest.approx(4.1)]  # the recording starts 2.1 s after bar 1
 
 
+def test_a_late_first_note_is_met_in_the_recording_not_padded(
+    two_track_gp5: Path, tmp_path: Path
+) -> None:
+    """BUG-0005: offset_s is where the first note is heard IN the recording.
+    Past the minimum lead-in the audio gets no silence and is not trimmed —
+    the score moves there instead; applying the offset to both (the old bug)
+    left them apart by the recording's own intro."""
+    calls: list[tuple[float, float]] = []
+
+    class RecordingNormalizer(FakeNormalizer):
+        def normalize(
+            self, audio: Path, workdir: Path, offset_s: float = 0.0, pad_start_s: float = 0.0
+        ) -> Path:
+            calls.append((offset_s, pad_start_s))
+            return audio
+
+    use_case = make_use_case()
+    use_case.normalizer = RecordingNormalizer()
+    spec = GpJobSpec(
+        gp_path=two_track_gp5, audio_source="x.wav", lead_track=0, offset_s=5.0,
+        lrc_text="[00:01.00]hello\n",
+    )
+    result = use_case.run(spec, SongMetadata(title="T", artist="A"), tmp_path / "w")
+    xml = next(p for p in result.packaging.xml_paths if "vocals" not in p.name)
+    first = ET.parse(xml).getroot().find("levels/level/notes/note")
+    assert first is not None and float(first.get("time", "0")) == pytest.approx(5.0)
+    assert calls == [(0.0, pytest.approx(0.0))]  # the recording untouched
+    vocals = next(p for p in result.packaging.xml_paths if p.name == "arrangement_vocals.xml")
+    first_word = ET.parse(vocals).getroot().findall("vocal")[0]
+    assert float(first_word.get("time", "0")) == pytest.approx(1.0)
+
+
 def test_an_offset_below_a_minute_before_the_recording_is_refused(
     two_track_gp5: Path, tmp_path: Path
 ) -> None:

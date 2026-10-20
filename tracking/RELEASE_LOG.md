@@ -696,7 +696,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 
 **Known bugs it carried:** 
 
-- [BUG-0267](bugs/release.md#bug-0267) Release workflow ignored a tag without the leading v; the beta 3 release had no files (High, now Fixed)
+- [BUG-0267](bugs/release.md#bug-0267) Release workflow ignored a tag without the leading v; the beta 3 release had no files (High, now Closed)
 
 **Update / rollback:** _pending_
 
@@ -726,7 +726,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 
 **Known bugs it carried:** 
 
-- [BUG-0267](bugs/release.md#bug-0267) Release workflow ignored a tag without the leading v; the beta 3 release had no files (High, now Fixed)
+- [BUG-0267](bugs/release.md#bug-0267) Release workflow ignored a tag without the leading v; the beta 3 release had no files (High, now Closed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 

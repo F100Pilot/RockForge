@@ -125,3 +125,17 @@ def test_what_may_come_next(cur: str, new: str) -> None:
 )
 def test_what_may_not(cur: str, new: str) -> None:
     assert versioning.allowed_next(cur, new) is not None
+
+
+def test_a_tag_with_or_without_the_leading_v_starts_the_release() -> None:
+    """BUG-0267: the workflow listened to 'v*' only, so a release tagged
+    '0.10.0b3' never built and was published with no files."""
+    import fnmatch
+
+    wf = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    m = re.search(r"^\s*tags:\s*(.*)$", wf, re.M)
+    assert m, "release.yml listens to no tags"
+    patterns = re.findall(r"[\"']([^\"']+)[\"']", m.group(1))
+    for tag in ("v0.11.1-beta.1", "0.11.1-beta.1"):
+        assert any(fnmatch.fnmatchcase(tag, p) for p in patterns), tag
+    assert "TrimStart('v')" in wf  # compared with installer.iss without the v

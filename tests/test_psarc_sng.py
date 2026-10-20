@@ -315,6 +315,9 @@ def test_sustained_chord_gets_chord_notes_with_per_string_sustain() -> None:
     assert model.chord_notes[0].note_mask[0] & NOTE_MASK_SUSTAIN
     assert model.chord_notes[0].note_mask[1] & NOTE_MASK_SUSTAIN
     assert model.chord_notes[0].note_mask[2] == 0
+    # BUG-0078: technique bits only — the SINGLE note-kind bit inside a
+    # ChordNotes entry drew a corrupt full-height bar at a palm-muted chord run.
+    assert not any(m & NOTE_MASK_SINGLE for m in model.chord_notes[0].note_mask)
     chord_note = model.arrangements[-1].notes[0]
     assert chord_note.chord_notes_id == 0
     assert chord_note.mask & NOTE_MASK_CHORDNOTES

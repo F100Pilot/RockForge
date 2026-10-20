@@ -515,3 +515,40 @@ def test_each_tracks_own_tones_reach_the_build(db, tmp_path, monkeypatch) -> Non
         tone_base="clean", tone_names=["solo"], tone_changes=[ToneChange(1.5, "solo")],
     )}
     assert spec.tones_for(ArrangementKind.RHYTHM).tone_base == "crunch"
+
+
+def test_whisperx_is_imported_only_inside_its_runner() -> None:
+    """BUG-0025: importing WhisperX (faster-whisper / ctranslate2) inside the
+    Celery worker deadlocks on CUDA init (faster-whisper #907, celery #3402),
+    so only `_whisperx_runner.py` — run as a subprocess — may import it."""
+    import ast
+
+    root = Path(ca.__file__).resolve().parents[2]
+    heavy = {"whisperx", "faster_whisper", "ctranslate2"}
+    offenders = []
+    for path in root.rglob("*.py"):
+        if path.name == "_whisperx_runner.py":
+            continue
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            names = (
+                [a.name for a in node.names] if isinstance(node, ast.Import)
+                else [node.module or ""] if isinstance(node, ast.ImportFrom) else []
+            )
+            if any(n.split(".")[0] in heavy for n in names):
+                offenders.append(f"{path.relative_to(root)}:{node.lineno}")
+    assert offenders == []
+
+
+def test_the_worker_starts_no_cuda_warm_up() -> None:
+    """BUG-0026: a warm-up probe on worker start (a thread calling
+    torch.cuda.is_available()) raced the first task's cuInit() and deadlocked
+    on Windows. No RockForge handler may hang off the worker's start signals."""
+    import weakref
+
+    from celery import signals
+
+    for sig in (signals.worker_ready, signals.worker_init,
+                signals.worker_process_init, signals.celeryd_init):
+        fns = [r[1]() if isinstance(r[1], weakref.ReferenceType) else r[1] for r in sig.receivers]
+        mods = [getattr(fn, "__module__", "") or "" for fn in fns]
+        assert not [m for m in mods if m.startswith("rockforge")], sig.name

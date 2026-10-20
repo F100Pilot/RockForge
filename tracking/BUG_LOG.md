@@ -6,17 +6,17 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 
 | Fixed | Verified | Closed |
 |---|---|---|
-| 100 | 44 | 200 |
+| 86 | 44 | 214 |
 
 | ID | Title | Module | Severity | Priority | Status | Found in | Fixed in |
 |---|---|---|---|---|---|---|---|
 | [BUG-0001](bugs/dlc-builder.md#bug-0001) | In-game song ended seconds in: only one phrase iteration was written | dlc-builder | Critical | P1 | Closed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0002](bugs/audio.md#bug-0002) | Silent in-game audio: the .wem had no seek table | audio | Critical | P1 | Closed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0003](bugs/dlc-builder.md#bug-0003) | DLC Builder import crashed (NullReferenceException) on missing arrangementProperties | dlc-builder | High | P2 | Closed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
-| [BUG-0004](bugs/dlc-builder.md#bug-0004) | Song2014 XML lacked elements DLC Builder's schema expects | dlc-builder | High | P2 | Fixed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
-| [BUG-0005](bugs/sync.md#bug-0005) | GP sync offset kept the recording's own intro gap, so chart and audio drifted apart | sync | High | P2 | Fixed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
+| [BUG-0004](bugs/dlc-builder.md#bug-0004) | Song2014 XML lacked elements DLC Builder's schema expects | dlc-builder | High | P2 | Closed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
+| [BUG-0005](bugs/sync.md#bug-0005) | GP sync offset kept the recording's own intro gap, so chart and audio drifted apart | sync | High | P2 | Closed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0006](bugs/dlc-builder.md#bug-0006) | In-game chart re-zeroed despite the lead-in (offset left at 0) | dlc-builder | High | P2 | Closed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
-| [BUG-0007](bugs/dlc-builder.md#bug-0007) | DLC Builder import crashed at offset 0: no room for the count-in phrase | dlc-builder | High | P2 | Fixed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
+| [BUG-0007](bugs/dlc-builder.md#bug-0007) | DLC Builder import crashed at offset 0: no room for the count-in phrase | dlc-builder | High | P2 | Closed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0008](bugs/import.md#bug-0008) | Minimum lead-in warning shown on every GP build | import | Low | P4 | Fixed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0009](bugs/viewer.md#bug-0009) | Note viewer string colours wrong and reversed | viewer | Low | P4 | Fixed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0010](bugs/game.md#bug-0010) | Palm-muted chords rendered as a corrupt highway sprite | game | High | P2 | Closed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
@@ -24,19 +24,19 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0012](bugs/game.md#bug-0012) | Plain notes drew a spurious technique glyph (zero-valued attributes) | game | Medium | P3 | Closed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0013](bugs/sync.md#bug-0013) | Pending drag anchors did not round-trip through a rebuild with a pending tempo/offset | sync | Medium | P3 | Fixed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0014](bugs/viewer.md#bug-0014) | Note tick desynced after seeking backward | viewer | Low | P4 | Fixed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
-| [BUG-0015](bugs/app.md#bug-0015) | pip could not install [ml,lyrics] together: ResolutionTooDeep | app | High | P2 | Fixed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
+| [BUG-0015](bugs/app.md#bug-0015) | pip could not install [ml,lyrics] together: ResolutionTooDeep | app | High | P2 | Closed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0016](bugs/app.md#bug-0016) | start.bat left the broker down silently when Redis was missing | app | Medium | P3 | Fixed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0017](bugs/lyrics.md#bug-0017) | LRC/UltraStar lyrics supplied at creation never shown in the editor | lyrics | Medium | P3 | Closed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0018](bugs/app.md#bug-0018) | Cover art dropped on rebuild | app | Medium | P3 | Closed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0019](bugs/app.md#bug-0019) | [ml] install failed on Windows building scipy from source | app | Medium | P3 | Fixed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0020](bugs/lyrics.md#bug-0020) | WhisperX silently unavailable: torchaudio 2.5 removed AudioMetaData | lyrics | Medium | P3 | Fixed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0021](bugs/audio.md#bug-0021) | Jobs stuck at the normalize/lyrics stage: ffmpeg inherited the console's stdin | audio | High | P2 | Closed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
-| [BUG-0022](bugs/viewer.md#bug-0022) | Tab viewer playback drifted mid-song (aligned at start, off after seeking) | viewer | High | P2 | Fixed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
+| [BUG-0022](bugs/viewer.md#bug-0022) | Tab viewer playback drifted mid-song (aligned at start, off after seeking) | viewer | High | P2 | Closed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0023](bugs/viewer.md#bug-0023) | Recording playback stopped and waveform flickered while a job was open | viewer | Medium | P3 | Fixed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0024](bugs/tones.md#bug-0024) | '+ Criar / editar tons' did nothing (tone builder had no JavaScript) | tones | Medium | P3 | Fixed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
-| [BUG-0025](bugs/lyrics.md#bug-0025) | Lyric detection hung for 40+ minutes at the WhisperX import (Celery CUDA deadlock) | lyrics | High | P2 | Fixed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
-| [BUG-0026](bugs/lyrics.md#bug-0026) | A CUDA warm-up thread deadlocked the first detection on Windows | lyrics | High | P2 | Fixed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
-| [BUG-0027](bugs/app.md#bug-0027) | Detection progress lost after the first commit: Job.params reassigned as the same dict | app | High | P2 | Fixed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
+| [BUG-0025](bugs/lyrics.md#bug-0025) | Lyric detection hung for 40+ minutes at the WhisperX import (Celery CUDA deadlock) | lyrics | High | P2 | Closed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
+| [BUG-0026](bugs/lyrics.md#bug-0026) | A CUDA warm-up thread deadlocked the first detection on Windows | lyrics | High | P2 | Closed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
+| [BUG-0027](bugs/app.md#bug-0027) | Detection progress lost after the first commit: Job.params reassigned as the same dict | app | High | P2 | Closed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0028](bugs/dlc-builder.md#bug-0028) | DLC Builder build failed for want of a .phrase-levels file | dlc-builder | High | P2 | Closed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0029](bugs/lyrics.md#bug-0029) | Lyric detection progress looked frozen at 8-10% with no feedback | lyrics | Low | P4 | Fixed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0030](bugs/sync.md#bug-0030) | Pending BPM edit lost on arrangement tab switch | sync | Medium | P3 | Fixed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
@@ -87,7 +87,7 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0075](bugs/psarc.md#bug-0075) | DD always started from level 0: SongDifficulty and mastery fields were zero | psarc | Medium | P3 | Closed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0076](bugs/psarc.md#bug-0076) | Fret-hand anchor sat below the chord being played | psarc | Low | P4 | Closed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0077](bugs/psarc.md#bug-0077) | Crash at the first 5-7 octave riff in 'Free' (native PSARC) | psarc | Critical | P1 | Fixed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
-| [BUG-0078](bugs/psarc.md#bug-0078) | Corrupt full-height vertical bar at palm-muted chord runs (single-note bit in ChordNotes) | psarc | High | P2 | Fixed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
+| [BUG-0078](bugs/psarc.md#bug-0078) | Corrupt full-height vertical bar at palm-muted chord runs (single-note bit in ChordNotes) | psarc | High | P2 | Closed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0079](bugs/psarc.md#bug-0079) | Crash entering the next DD phrase: PhraseIterationLinks written as 0 | psarc | Critical | P1 | Closed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0080](bugs/psarc.md#bug-0080) | First phrase swallowed the silent intro and no END phrase (GP sections) | psarc | Low | P4 | Closed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0081](bugs/psarc.md#bug-0081) | Crash on DD phrase entry: full-chart anchors on every level | psarc | Critical | P1 | Closed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
@@ -111,7 +111,7 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0099](bugs/audio.md#bug-0099) | Songs sounded quiet in game next to official DLC (-16 LUFS target) | audio | Medium | P3 | Closed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0100](bugs/sync.md#bug-0100) | Conflicting sync anchors crashed the build with a cryptic TempoMap error | sync | Medium | P3 | Closed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0101](bugs/sync.md#bug-0101) | A local sync stretch re-inflated sustains into fused 'tall pillars' | sync | Medium | P3 | Closed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
-| [BUG-0102](bugs/sync.md#bug-0102) | "Mover seguintes", tap and re-tempo moved notes the wrong way once an anchor existed | sync | High | P2 | Fixed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
+| [BUG-0102](bugs/sync.md#bug-0102) | "Mover seguintes", tap and re-tempo moved notes the wrong way once an anchor existed | sync | High | P2 | Closed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0103](bugs/sync.md#bug-0103) | "Mover seguintes" also moved the notes before the click | sync | Medium | P2 | Fixed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0104](bugs/sync.md#bug-0104) | Dragging a note to the playback cursor was unreliable | sync | Medium | P3 | Fixed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0105](bugs/viewer.md#bug-0105) | Zooming lost the place in the song | viewer | Low | P3 | Fixed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
@@ -244,7 +244,7 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0232](bugs/tones.md#bug-0232) | Driven tone presets left a hiss at the end of notes | tones | Medium | P3 | Closed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0233](bugs/tones.md#bug-0233) | Orange crunch preset noisy on Daughtry 'September' | tones | Medium | P3 | Closed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0234](bugs/tones.md#bug-0234) | Crunch preset too quiet and still too distorted; Overdrive slightly quiet | tones | Low | P4 | Closed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
-| [BUG-0235](bugs/app.md#bug-0235) | start.bat refused Python 3.11 itself: delayed expansion ate the '!' | app | High | P2 | Fixed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
+| [BUG-0235](bugs/app.md#bug-0235) | start.bat refused Python 3.11 itself: delayed expansion ate the '!' | app | High | P2 | Closed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0236](bugs/app.md#bug-0236) | start.bat used Python 3.13 when 3.11 was installed without the py launcher | app | Low | P4 | Fixed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0237](bugs/app.md#bug-0237) | start.bat stopped with an error when Redis could not be installed | app | Medium | P3 | Fixed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0238](bugs/app.md#bug-0238) | CDLC patch check always said 'por confirmar', even on the machine with the game | app | Low | P4 | Closed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
@@ -259,7 +259,7 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0247](bugs/security.md#bug-0247) | Server answered any Host name, so a DNS-rebound web page could reach the local API | security | Critical | P1 | Closed | pending | 0.10.0-beta.2 |
 | [BUG-0248](bugs/security.md#bug-0248) | A request with Origin: null was not treated as cross-origin | security | Critical | P1 | Closed | pending | 0.10.0-beta.2 |
 | [BUG-0249](bugs/security.md#bug-0249) | Responses lacked nosniff and anti-framing headers | security | Medium | P2 | Closed | pending | 0.10.0-beta.2 |
-| [BUG-0250](bugs/psarc.md#bug-0250) | Docker image made no .psarc (the [psarc] extra was not installed) | psarc | High | P2 | Fixed | pending | 0.10.0-beta.2 |
+| [BUG-0250](bugs/psarc.md#bug-0250) | Docker image made no .psarc (the [psarc] extra was not installed) | psarc | High | P2 | Closed | pending | 0.10.0-beta.2 |
 | [BUG-0251](bugs/import.md#bug-0251) | GP8 embedded audio in .opus/.webm/.aac/.mp4/.wma was detected, then refused by the build | import | Medium | P3 | Closed | pending | 0.10.0-beta.2 |
 | [BUG-0252](bugs/sync.md#bug-0252) | A double click on "Apply and rebuild" created two versions | sync | Medium | P3 | Closed | pending | 0.10.0-beta.2 |
 | [BUG-0253](bugs/app.md#bug-0253) | A late answer reopened a closed project; detection pollers drew into the next project | app | Medium | P3 | Closed | pending | 0.10.0-beta.2 |
@@ -276,7 +276,7 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0264](bugs/app.md#bug-0264) | Stale or wrong UI labels ('Estado do PSARC', English alternate-lead label) | app | Low | P4 | Fixed | before 0.10.0-beta.1 | 0.10.0-beta.1 |
 | [BUG-0265](bugs/exe.md#bug-0265) | In the .exe, a project without tones of its own made no .psarc | exe | Critical | P1 | Closed | pending | 0.10.0-beta.2 |
 | [BUG-0266](bugs/app.md#bug-0266) | start.bat's git pull stalled on Windows with repeated "Unlink of file ... failed" prompts | app | Medium | P3 | Fixed | pending | 0.10.0-beta.2 |
-| [BUG-0267](bugs/release.md#bug-0267) | Release workflow ignored a tag without the leading v; the beta 3 release had no files | release | High | P2 | Fixed | 0.10.0-beta.3 | 0.10.0-beta.5 |
+| [BUG-0267](bugs/release.md#bug-0267) | Release workflow ignored a tag without the leading v; the beta 3 release had no files | release | High | P2 | Closed | 0.10.0-beta.3 | 0.10.0-beta.5 |
 | [BUG-0268](bugs/exe.md#bug-0268) | In the .exe, the "Download" buttons did nothing | exe | Critical | P1 | Closed | pending | 0.10.0-beta.5 |
 | [BUG-0269](bugs/import.md#bug-0269) | The Guitar Pro file's capo was ignored | import | High | P2 | Closed | pending | 0.10.0-beta.5 |
 | [BUG-0270](bugs/psarc.md#bug-0270) | A difficulty level holding only open strings had no anchor in the .psarc | psarc | High | P2 | Closed | pending | 0.10.0-beta.5 |
@@ -286,7 +286,7 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0274](bugs/exe.md#bug-0274) | Black console windows flashed in the .exe whenever a child program ran | exe | Low | P4 | Closed | pending | 0.10.0-beta.7 |
 | [BUG-0275](bugs/psarc.md#bug-0275) | Wwise installed but reported as "ROCKFORGE_WWISE_ROOT is not set" | psarc | High | P2 | Closed | pending | 0.10.0-beta.7 |
 | [BUG-0276](bugs/sync.md#bug-0276) | A sync mode was selected on entry, so the first click on a note re-timed the song | sync | Medium | P3 | Fixed | pending | 0.10.0-beta.7 |
-| [BUG-0277](bugs/audio.md#bug-0277) | librosa runner failed with an external ML Python: its packaging folder shadowed pip's | audio | High | P2 | Fixed | pending | 0.10.0-beta.7 |
+| [BUG-0277](bugs/audio.md#bug-0277) | librosa runner failed with an external ML Python: its packaging folder shadowed pip's | audio | High | P2 | Closed | pending | 0.10.0-beta.7 |
 | [BUG-0278](bugs/import.md#bug-0278) | After a D.C./D.S. the 1st-time ending was played again before the 2nd | import | Medium | P3 | Closed | 0.10.0-beta.6 | 0.10.0-beta.7 |
 | [BUG-0279](bugs/game.md#bug-0279) | Every short note carried a sustain tail on the highway | game | Medium | P2 | Closed | 0.10.0-beta.6 | 0.10.0-beta.7 |
 | [BUG-0280](bugs/import.md#bug-0280) | PDF import: a grace number drawn over the next note's digits joined into other frets | import | Medium | P3 | Fixed | pending | 0.10.0-beta.7 |

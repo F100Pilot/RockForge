@@ -101,7 +101,7 @@ After seeking backward in the tab viewer, the per-note tick no longer fired in s
 | Build / commit | 20c9bfbf4903a2d58e58fadaa676fab52b3acac1 |
 | Severity | High |
 | Priority | P2 |
-| Status | Fixed |
+| Status | Closed |
 
 The viewer played through an HTML <audio> element, whose seek estimates a byte offset; for VBR/seek-table-less sources it drifted further into the song, so a chart aligned from the start looked off after a seek into the middle.
 
@@ -118,9 +118,9 @@ The viewer played through an HTML <audio> element, whose seek estimates a byte o
 
 **Fixes:** [FIX-0022](../FIX_LOG.md#fix-0022) (0.10.0-beta.1)
 
-**Verified:** _pending_ (by _pending_)
+**Verified:** Playback goes through the Web Audio buffer source with sample-exact seeks, not the <audio> element (by the developer (Playwright))
 
-**Resolved:** 2026-06-17 · **Closed:** _pending_
+**Resolved:** 2026-06-17 · **Closed:** 2026-10-20
 
 **Note:** Recorded retrospectively; severity and priority assigned from the documented impact: Sync checking mid-song was unreliable.
 
@@ -131,11 +131,14 @@ The viewer played through an HTML <audio> element, whose seek estimates a byte o
 - commit dd4177d36f Fix mid-song sync drift: play via Web Audio, not the <audio> element
 - found_in_version: the fix commit is an ancestor of cb00653 (the first public release, 0.10.0 beta 1, 2026-10-14), so the faulty code only existed in development builds before 0.10.0-beta.1
 - found_in_build: 20c9bfbf49 is the parent of the first fix commit dd4177d36f and still carries the code the fix changes
+- Playwright 2026-10-20: source AudioBufferSourceNode; seek 8.123 -> audioTime 8.123
 
 **History:**
 
 - _pending_ — Open: recorded on 2026-10-17 from the project history (CHANGELOG/CLAUDE.md/git)
 - 2026-06-17 — Fixed: commit dd4177d36f
+- 2026-10-20 — Verified: regression check re-run (pytest/Playwright)
+- 2026-10-20 — Closed: released in 0.10.0-beta.1
 
 ## BUG-0023
 

@@ -9,10 +9,10 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0001](#fix-0001) | BUG-0001 | 0.10.0-beta.1 | passed | automated |
 | [FIX-0002](#fix-0002) | BUG-0002 | 0.10.0-beta.1 | passed | automated |
 | [FIX-0003](#fix-0003) | BUG-0003 | 0.10.0-beta.1 | passed | automated |
-| [FIX-0004](#fix-0004) | BUG-0004 | 0.10.0-beta.1 | not run | pending |
-| [FIX-0005](#fix-0005) | BUG-0005 | 0.10.0-beta.1 | not run | pending |
+| [FIX-0004](#fix-0004) | BUG-0004 | 0.10.0-beta.1 | passed | automated |
+| [FIX-0005](#fix-0005) | BUG-0005 | 0.10.0-beta.1 | passed | automated |
 | [FIX-0006](#fix-0006) | BUG-0006 | 0.10.0-beta.1 | passed | automated |
-| [FIX-0007](#fix-0007) | BUG-0007 | 0.10.0-beta.1 | not run | pending |
+| [FIX-0007](#fix-0007) | BUG-0007 | 0.10.0-beta.1 | passed | automated |
 | [FIX-0008](#fix-0008) | BUG-0008 | 0.10.0-beta.1 | not run | pending |
 | [FIX-0009](#fix-0009) | BUG-0009 | 0.10.0-beta.1 | not run | pending |
 | [FIX-0010](#fix-0010) | BUG-0010 | 0.10.0-beta.1 | passed | automated |
@@ -20,19 +20,19 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0012](#fix-0012) | BUG-0012 | 0.10.0-beta.1 | passed | automated |
 | [FIX-0013](#fix-0013) | BUG-0013 | 0.10.0-beta.1 | not run | pending |
 | [FIX-0014](#fix-0014) | BUG-0014 | 0.10.0-beta.1 | not run | pending |
-| [FIX-0015](#fix-0015) | BUG-0015 | 0.10.0-beta.1 | not run | pending |
+| [FIX-0015](#fix-0015) | BUG-0015 | 0.10.0-beta.1 | passed | automated |
 | [FIX-0016](#fix-0016) | BUG-0016 | 0.10.0-beta.1 | not run | pending |
 | [FIX-0017](#fix-0017) | BUG-0017 | 0.10.0-beta.1 | passed | automated |
 | [FIX-0018](#fix-0018) | BUG-0018 | 0.10.0-beta.1 | passed | automated |
 | [FIX-0019](#fix-0019) | BUG-0019 | 0.10.0-beta.1 | not run | pending |
 | [FIX-0020](#fix-0020) | BUG-0020 | 0.10.0-beta.1 | not run | pending |
 | [FIX-0021](#fix-0021) | BUG-0021 | 0.10.0-beta.1 | passed | automated |
-| [FIX-0022](#fix-0022) | BUG-0022 | 0.10.0-beta.1 | not run | pending |
+| [FIX-0022](#fix-0022) | BUG-0022 | 0.10.0-beta.1 | not run | manual |
 | [FIX-0023](#fix-0023) | BUG-0023 | 0.10.0-beta.1 | not run | pending |
 | [FIX-0024](#fix-0024) | BUG-0024 | 0.10.0-beta.1 | not run | pending |
-| [FIX-0025](#fix-0025) | BUG-0025 | 0.10.0-beta.1 | not run | pending |
-| [FIX-0026](#fix-0026) | BUG-0026 | 0.10.0-beta.1 | not run | pending |
-| [FIX-0027](#fix-0027) | BUG-0027 | 0.10.0-beta.1 | not run | pending |
+| [FIX-0025](#fix-0025) | BUG-0025 | 0.10.0-beta.1 | passed | automated |
+| [FIX-0026](#fix-0026) | BUG-0026 | 0.10.0-beta.1 | passed | automated |
+| [FIX-0027](#fix-0027) | BUG-0027 | 0.10.0-beta.1 | passed | automated |
 | [FIX-0028](#fix-0028) | BUG-0028 | 0.10.0-beta.1 | passed | automated |
 | [FIX-0029](#fix-0029) | BUG-0029 | 0.10.0-beta.1 | not run | pending |
 | [FIX-0030](#fix-0030) | BUG-0030 | 0.10.0-beta.1 | not run | pending |
@@ -83,7 +83,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0075](#fix-0075) | BUG-0075 | 0.10.0-beta.1 | passed | automated |
 | [FIX-0076](#fix-0076) | BUG-0076 | 0.10.0-beta.1 | passed | automated |
 | [FIX-0077](#fix-0077) | BUG-0077 | 0.10.0-beta.1 | not run | pending |
-| [FIX-0078](#fix-0078) | BUG-0078 | 0.10.0-beta.1 | not run | pending |
+| [FIX-0078](#fix-0078) | BUG-0078 | 0.10.0-beta.1 | passed | automated |
 | [FIX-0079](#fix-0079) | BUG-0079 | 0.10.0-beta.1 | passed | automated |
 | [FIX-0080](#fix-0080) | BUG-0080 | 0.10.0-beta.1 | passed | automated |
 | [FIX-0081](#fix-0081) | BUG-0081 | 0.10.0-beta.1 | passed | automated |
@@ -107,7 +107,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0099](#fix-0099) | BUG-0099 | 0.10.0-beta.1 | passed | automated |
 | [FIX-0100](#fix-0100) | BUG-0100 | 0.10.0-beta.1 | passed | automated |
 | [FIX-0101](#fix-0101) | BUG-0101 | 0.10.0-beta.1 | passed | automated |
-| [FIX-0102](#fix-0102) | BUG-0102 | 0.10.0-beta.1 | not run | pending |
+| [FIX-0102](#fix-0102) | BUG-0102 | 0.10.0-beta.1 | not run | manual |
 | [FIX-0103](#fix-0103) | BUG-0103 | 0.10.0-beta.1 | not run | pending |
 | [FIX-0104](#fix-0104) | BUG-0104 | 0.10.0-beta.1 | not run | pending |
 | [FIX-0105](#fix-0105) | BUG-0105 | 0.10.0-beta.1 | not run | pending |
@@ -240,7 +240,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0232](#fix-0232) | BUG-0232 | 0.10.0-beta.1 | passed | automated |
 | [FIX-0233](#fix-0233) | BUG-0233 | 0.10.0-beta.1 | passed | automated |
 | [FIX-0234](#fix-0234) | BUG-0234 | 0.10.0-beta.1 | passed | automated |
-| [FIX-0235](#fix-0235) | BUG-0235 | 0.10.0-beta.1 | not run | pending |
+| [FIX-0235](#fix-0235) | BUG-0235 | 0.10.0-beta.1 | passed | automated |
 | [FIX-0236](#fix-0236) | BUG-0236 | 0.10.0-beta.1 | not run | pending |
 | [FIX-0237](#fix-0237) | BUG-0237 | 0.10.0-beta.1 | not run | pending |
 | [FIX-0238](#fix-0238) | BUG-0238 | 0.10.0-beta.1 | passed | automated |
@@ -255,7 +255,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0247](#fix-0247) | BUG-0247 | 0.10.0-beta.2 | passed | automated |
 | [FIX-0248](#fix-0248) | BUG-0248 | 0.10.0-beta.2 | passed | automated |
 | [FIX-0249](#fix-0249) | BUG-0249 | 0.10.0-beta.2 | passed | automated |
-| [FIX-0250](#fix-0250) | BUG-0250 | 0.10.0-beta.2 | not run | pending |
+| [FIX-0250](#fix-0250) | BUG-0250 | 0.10.0-beta.2 | passed | automated |
 | [FIX-0251](#fix-0251) | BUG-0251 | 0.10.0-beta.2 | passed | automated |
 | [FIX-0252](#fix-0252) | BUG-0252 | 0.10.0-beta.2 | not run | manual |
 | [FIX-0253](#fix-0253) | BUG-0253 | 0.10.0-beta.2 | not run | manual |
@@ -272,7 +272,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0264](#fix-0264) | BUG-0264 | 0.10.0-beta.1 | not run | pending |
 | [FIX-0265](#fix-0265) | BUG-0265 | 0.10.0-beta.2 | passed | automated |
 | [FIX-0266](#fix-0266) | BUG-0266 | 0.10.0-beta.2 | not run | pending |
-| [FIX-0267](#fix-0267) | BUG-0267 | 0.10.0-beta.5 | not run | pending |
+| [FIX-0267](#fix-0267) | BUG-0267 | 0.10.0-beta.5 | passed | automated |
 | [FIX-0268](#fix-0268) | BUG-0268 | 0.10.0-beta.5 | passed | automated |
 | [FIX-0269](#fix-0269) | BUG-0269 | 0.10.0-beta.5 | passed | automated |
 | [FIX-0270](#fix-0270) | BUG-0270 | 0.10.0-beta.5 | passed | automated |
@@ -282,7 +282,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0274](#fix-0274) | BUG-0274 | 0.10.0-beta.7 | passed | automated |
 | [FIX-0275](#fix-0275) | BUG-0275 | 0.10.0-beta.7 | passed | automated |
 | [FIX-0276](#fix-0276) | BUG-0276 | 0.10.0-beta.7 | not run | pending |
-| [FIX-0277](#fix-0277) | BUG-0277 | 0.10.0-beta.7 | not run | pending |
+| [FIX-0277](#fix-0277) | BUG-0277 | 0.10.0-beta.7 | passed | automated |
 | [FIX-0278](#fix-0278) | BUG-0278 | 0.10.0-beta.7 | passed | automated |
 | [FIX-0279](#fix-0279) | BUG-0279 | 0.10.0-beta.7 | passed | automated |
 | [FIX-0280](#fix-0280) | BUG-0280 | 0.10.0-beta.7 | not run | pending |
@@ -429,10 +429,10 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Version | 0.10.0-beta.1 |
 | Commits | bd5c107ecadb4ceaec0c1f5131891b8e82f458c7 |
 | Components | src/rockforge/infrastructure/rsxml/writer.py |
-| Tests | — |
+| Tests | tests/test_rsxml_writer.py::test_arrangement_properties_has_all_dlc_builder_attributes; tests/test_rsxml_writer.py::test_the_xml_carries_every_element_dlc_builders_reader_expects |
 | Manual checks | — |
-| Test result | not run |
-| Validation | _pending_ |
+| Test result | passed |
+| Validation | automated |
 | Regression risk | Low: additive XML elements checked by later schema tests. |
 
 ## FIX-0005
@@ -450,10 +450,10 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Version | 0.10.0-beta.1 |
 | Commits | 8f8130396a919689f854650eca770344cb2ed5ef; 215917c389b0e3e4581e5b113e4a7ff37c929749; 95d2d20cc1708be3beaf6ac6b9539e9b47b49abb |
 | Components | src/rockforge/application/gp_pipeline.py; src/rockforge/infrastructure/rsxml/vocals.py; web/index.html; src/rockforge/application/ports.py; src/rockforge/infrastructure/normalize/ffmpeg.py |
-| Tests | — |
+| Tests | tests/test_gp_pipeline.py::test_a_late_first_note_is_met_in_the_recording_not_padded; tests/test_gp_pipeline.py::test_gp_pipeline_full_bundle |
 | Manual checks | — |
-| Test result | not run |
-| Validation | _pending_ |
+| Test result | passed |
+| Validation | automated |
 | Regression risk | Medium: core timing rule; later sections build on it. |
 
 ## FIX-0006
@@ -492,10 +492,10 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Version | 0.10.0-beta.1 |
 | Commits | 95d2d20cc1708be3beaf6ac6b9539e9b47b49abb |
 | Components | src/rockforge/application/gp_pipeline.py; web/index.html |
-| Tests | — |
+| Tests | tests/test_gp_pipeline.py::test_gp_pipeline_full_bundle; tests/test_gp_pipeline.py::test_gp_pipeline_zero_offset_warns |
 | Manual checks | — |
-| Test result | not run |
-| Validation | _pending_ |
+| Test result | passed |
+| Validation | automated |
 | Regression risk | Low: a constant minimum lead-in. |
 
 ## FIX-0008
@@ -660,10 +660,10 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Version | 0.10.0-beta.1 |
 | Commits | fc6e175c97b16ce52490a390245d30deff4fdc88 |
 | Components | pyproject.toml |
-| Tests | — |
-| Manual checks | — |
-| Test result | not run |
-| Validation | _pending_ |
+| Tests | tests/test_dependency_pins.py::test_whisperx_stays_below_the_release_that_needs_numpy_2 |
+| Manual checks | Release run 39469596308 (0.11.1-beta.1, 2026-10-20, Windows): the components install resolved [ml] and [lyrics] together — whisperx 3.3.1, numpy 1.26.4 — and reported ml and lyrics installed |
+| Test result | passed |
+| Validation | automated |
 | Regression risk | Bumping whisperx without re-checking the numpy ranges brings the resolver failure back. |
 
 ## FIX-0016
@@ -808,9 +808,9 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Commits | dd4177d36f3c73fbaa460904da13ac739fa604e3 |
 | Components | web/index.html |
 | Tests | — |
-| Manual checks | — |
+| Manual checks | Playwright 2026-10-20 on an invented project: playback runs on an AudioBufferSourceNode; paused seeks to 1.0, 5.5 and 8.123 s read back exactly; 1 s of playback advanced the clock by 1 s. No VBR MP3 was played here. |
 | Test result | not run |
-| Validation | _pending_ |
+| Validation | manual |
 | Regression risk | Reverting to <audio> seeking reintroduces it. |
 
 ## FIX-0023
@@ -870,10 +870,10 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Version | 0.10.0-beta.1 |
 | Commits | 10b04691f99a5c7acdbf2c38ab020fafaeb374a9 |
 | Components | src/rockforge/infrastructure/lyrics/_whisperx_runner.py; src/rockforge/interfaces/worker/celery_app.py |
-| Tests | — |
+| Tests | tests/test_celery_tasks.py::test_detect_lyrics_reports_unavailable_when_whisperx_is_not_installed; tests/test_celery_tasks.py::test_whisperx_is_imported_only_inside_its_runner |
 | Manual checks | — |
-| Test result | not run |
-| Validation | _pending_ |
+| Test result | passed |
+| Validation | automated |
 | Regression risk | Subprocess must not inherit stdin; timeouts must cover model downloads. |
 
 ## FIX-0026
@@ -891,10 +891,10 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Version | 0.10.0-beta.1 |
 | Commits | 6ad497b51f4fedabb85fef428ae41db7d3640639 |
 | Components | src/rockforge/interfaces/worker/celery_app.py |
-| Tests | — |
+| Tests | tests/test_celery_tasks.py::test_the_worker_starts_no_cuda_warm_up |
 | Manual checks | — |
-| Test result | not run |
-| Validation | _pending_ |
+| Test result | passed |
+| Validation | automated |
 | Regression risk | First job is slower. |
 
 ## FIX-0027
@@ -912,10 +912,10 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Version | 0.10.0-beta.1 |
 | Commits | 069c7c305b3da47ff5d362ae94568adae40c4bc9; 26e9886aac48f0cf809c0c16ca903349de1641dd |
 | Components | src/rockforge/interfaces/worker/celery_app.py |
-| Tests | — |
+| Tests | tests/test_celery_tasks.py::test_detect_lyrics_reports_unavailable_when_whisperx_is_not_installed; tests/test_celery_tasks.py::test_detect_tones_failure_sets_unavailable_not_job_status; tests/test_celery_tasks.py::test_detect_tones_success_populates_ranked_candidates |
 | Manual checks | — |
-| Test result | not run |
-| Validation | _pending_ |
+| Test result | passed |
+| Validation | automated |
 | Regression risk | Any new incremental write to Job.params that reuses the dict object silently loses the write. |
 
 ## FIX-0028
@@ -1983,10 +1983,10 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Version | 0.10.0-beta.1 |
 | Commits | ea09b649a29b252a75b5827458db260f0227d125 |
 | Components | src/rockforge/infrastructure/packaging/psarc/sng.py |
-| Tests | — |
+| Tests | tests/test_psarc_sng.py::test_sustained_chord_gets_chord_notes_with_per_string_sustain |
 | Manual checks | — |
-| Test result | not run |
-| Validation | _pending_ |
+| Test result | passed |
+| Validation | automated |
 | Regression risk | Low. |
 
 ## FIX-0079
@@ -2488,9 +2488,9 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Commits | d45d10a5ad473bd517e55ad7aff2a31881d04605 |
 | Components | web/index.html |
 | Tests | — |
-| Manual checks | — |
+| Manual checks | Playwright 2026-10-20 on an invented project: with a pending 'Início' anchor, 'Mover seguintes' on the 5th note put it exactly on the cursor (7.833 -> 8.233 s); the four notes before moved 0, the rest +0.4 s |
 | Test result | not run |
-| Validation | _pending_ |
+| Validation | manual |
 | Regression risk | All anchor-writing modes must share the convention. |
 
 ## FIX-0103
@@ -5280,10 +5280,10 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Version | 0.10.0-beta.1 |
 | Commits | 61d60c02f16a34d7e36b36a86638b17f019e91aa |
 | Components | start.bat |
-| Tests | — |
+| Tests | tests/test_start_bat.py::test_no_bare_exclamation_mark_in_a_delayed_expansion_script |
 | Manual checks | — |
-| Test result | not run |
-| Validation | _pending_ |
+| Test result | passed |
+| Validation | automated |
 | Regression risk | Any new '!' in start.bat breaks the same way. |
 
 ## FIX-0236
@@ -5595,10 +5595,10 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Version | 0.10.0-beta.2 |
 | Commits | 994c9307ac28f772bfba217069ce4eac67c13e13 |
 | Components | docker/Dockerfile; .dockerignore |
-| Tests | — |
+| Tests | tests/test_dockerfile.py::test_every_image_stage_installs_the_psarc_extra |
 | Manual checks | — |
-| Test result | not run |
-| Validation | _pending_ |
+| Test result | passed |
+| Validation | automated |
 | Regression risk | Low: image build only. |
 
 ## FIX-0251
@@ -5952,10 +5952,10 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Version | 0.10.0-beta.5 |
 | Commits | 3e1fac60aa62be684db704de451e178a52833108; ed590867400a23cee971b91f8c0b3c9a19050db7 |
 | Components | .github/workflows/release.yml |
-| Tests | — |
+| Tests | tests/test_release_version.py::test_a_tag_with_or_without_the_leading_v_starts_the_release |
 | Manual checks | — |
-| Test result | not run |
-| Validation | _pending_ |
+| Test result | passed |
+| Validation | automated |
 | Regression risk | Low: workflow trigger only. |
 
 ## FIX-0268
@@ -6164,8 +6164,8 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Components | src/rockforge/infrastructure/_librosa_runner.py |
 | Tests | tests/test_beat_align.py::test_the_runner_aligns_a_real_recording_as_a_script |
 | Manual checks | — |
-| Test result | not run |
-| Validation | _pending_ |
+| Test result | passed |
+| Validation | automated |
 | Regression risk | Low: the frozen bundle was unaffected. |
 
 ## FIX-0278

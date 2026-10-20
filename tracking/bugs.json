@@ -171,19 +171,21 @@
       "observed": "XML missing schema-required elements and attributes",
       "severity": "High",
       "priority": "P2",
-      "status": "Fixed",
+      "status": "Closed",
       "root_cause": "Writer emitted a partial Song2014 structure that did not follow Rocksmith2014.NET's schema.",
       "fixes": [
         "FIX-0004"
       ],
-      "verified_by": "pending",
-      "verification": "pending",
+      "verified_by": "the developer (pytest)",
+      "verification": "A written XML carries every element the fix added and the 32 arrangementProperties attributes DLC Builder's reader dereferences",
       "evidence": [
         "commit bd5c107eca Fix Song2014 XML schema to match Rocksmith2014.NET / DLC Builder expectations",
-        "found_in_version: fix bd5c107eca (2026-06-12) precedes the first public version (cb00653 'First public release is 0.10.0 beta 1', 2026-10-14); found_in_build is the fix's parent 8d25352120, where the code the fix changes is present"
+        "found_in_version: fix bd5c107eca (2026-06-12) precedes the first public version (cb00653 'First public release is 0.10.0 beta 1', 2026-10-14); found_in_build is the fix's parent 8d25352120, where the code the fix changes is present",
+        "pytest 2026-10-20: passes; full suite passes",
+        "Mutation: dropping <events> from the writer fails the element test"
       ],
       "resolved": "2026-06-12",
-      "closed": "pending",
+      "closed": "2026-10-20",
       "history": [
         {
           "date": "pending",
@@ -194,6 +196,16 @@
           "date": "2026-06-12",
           "status": "Fixed",
           "note": "commit bd5c107eca"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Verified",
+          "note": "regression check re-run (pytest/Playwright)"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Closed",
+          "note": "released in 0.10.0-beta.1"
         }
       ],
       "note": "Recorded retrospectively; severity and priority assigned from the documented impact: DLC Builder import depends on the XML structure; no workaround inside RockForge."
@@ -212,22 +224,24 @@
       "observed": "Chart and audio offset by the recording's intro length",
       "severity": "High",
       "priority": "P2",
-      "status": "Fixed",
+      "status": "Closed",
       "root_cause": "The offset was applied to both audio and score instead of aligning the score to the recording.",
       "fixes": [
         "FIX-0005"
       ],
-      "verified_by": "pending",
-      "verification": "pending",
+      "verified_by": "the developer (pytest)",
+      "verification": "With the first note 5 s into the recording the score sits at 5 s and the recording is neither trimmed nor padded; below the minimum lead-in only the difference is padded (lyrics shift by the pad alone)",
       "evidence": [
         "commit 8f81303 and 215917c were earlier attempts (trim, then pad both) replaced by 95d2d20",
         "commit 8f8130396a Fix GP audio sync: trim audio lead-in instead of shifting score times",
         "commit 215917c389 Rework GP sync offset: add silent lead-in to audio, shift score+lyrics forward",
         "commit 95d2d20cc1 Fix GP sync: align score to recording, don't pad audio equally",
-        "found_in_version: fix 8f8130396a (2026-06-12) precedes the first public version (cb00653 'First public release is 0.10.0 beta 1', 2026-10-14); found_in_build is the fix's parent b60201dc7a, where the code the fix changes is present"
+        "found_in_version: fix 8f8130396a (2026-06-12) precedes the first public version (cb00653 'First public release is 0.10.0 beta 1', 2026-10-14); found_in_build is the fix's parent b60201dc7a, where the code the fix changes is present",
+        "pytest 2026-10-20: passes; full suite passes",
+        "Mutation: handing offset_s to the normalizer (trimming the recording, the old behaviour) fails the new test"
       ],
       "resolved": "2026-06-13",
-      "closed": "pending",
+      "closed": "2026-10-20",
       "history": [
         {
           "date": "pending",
@@ -238,6 +252,16 @@
           "date": "2026-06-13",
           "status": "Fixed",
           "note": "commit 8f8130396a, 215917c389, 95d2d20cc1"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Verified",
+          "note": "regression check re-run (pytest/Playwright)"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Closed",
+          "note": "released in 0.10.0-beta.1"
         }
       ],
       "note": "Recorded retrospectively; severity and priority assigned from the documented impact: Every GP chart could be out of sync with no clean fix."
@@ -307,19 +331,21 @@
       "observed": "DLC Builder import error at offset 0",
       "severity": "High",
       "priority": "P2",
-      "status": "Fixed",
+      "status": "Closed",
       "root_cause": "No minimum lead-in before the first note.",
       "fixes": [
         "FIX-0007"
       ],
-      "verified_by": "pending",
-      "verification": "pending",
+      "verified_by": "the developer (pytest)",
+      "verification": "The first note is at least MIN_LEAD_S (2 s) in and the pad is reported",
       "evidence": [
         "commit 95d2d20cc1 Fix GP sync: align score to recording, don't pad audio equally",
-        "found_in_version: fix 95d2d20cc1 (2026-06-13) precedes the first public version (cb00653 'First public release is 0.10.0 beta 1', 2026-10-14); found_in_build is the fix's parent 14f973fece, where the code the fix changes is present"
+        "found_in_version: fix 95d2d20cc1 (2026-06-13) precedes the first public version (cb00653 'First public release is 0.10.0 beta 1', 2026-10-14); found_in_build is the fix's parent 14f973fece, where the code the fix changes is present",
+        "pytest 2026-10-20: passes; full suite passes",
+        "Mutation: MIN_LEAD_S = 0 fails both tests"
       ],
       "resolved": "2026-06-13",
-      "closed": "pending",
+      "closed": "2026-10-20",
       "history": [
         {
           "date": "pending",
@@ -330,6 +356,16 @@
           "date": "2026-06-13",
           "status": "Fixed",
           "note": "commit 95d2d20cc1"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Verified",
+          "note": "regression check re-run (pytest/Playwright)"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Closed",
+          "note": "released in 0.10.0-beta.1"
         }
       ],
       "note": "Recorded retrospectively; severity and priority assigned from the documented impact: Import failed for songs starting at 0 s; workaround was a manual offset."
@@ -673,20 +709,22 @@
       "observed": "pip backtracked endlessly and failed with ResolutionTooDeep.",
       "severity": "High",
       "priority": "P2",
-      "status": "Fixed",
+      "status": "Closed",
       "root_cause": "whisperx>=3.4 requires pyannote-audio>=4.0 / numpy>=2.1, which conflicts with the numpy<2 pin of the other stack.",
       "fixes": [
         "FIX-0015"
       ],
-      "verified_by": "pending",
-      "verification": "pending",
+      "verified_by": "the developer (pytest)",
+      "verification": "pyproject keeps whisperx below 3.4 and numpy below 2; the real install of both extras resolved in the release workflow",
       "evidence": [
         "CLAUDE.md § Hard constraints (these have bitten us — keep them) — '`whisperx` is pinned `<3.4`'",
         "commit fc6e175c97 Pin whisperx <3.4 to fix pip resolver explosion with [ml,lyrics]",
-        "found_in_version: the fix commit fc6e175c97 is an ancestor of cb00653 (the first public release, 0.10.0-beta.1), so the faulty code existed only before 0.10.0-beta.1; found_in_build is the fix commit's parent 89aa1f729d"
+        "found_in_version: the fix commit fc6e175c97 is an ancestor of cb00653 (the first public release, 0.10.0-beta.1), so the faulty code existed only before 0.10.0-beta.1; found_in_build is the fix commit's parent 89aa1f729d",
+        "pytest 2026-10-20: passes; full suite passes",
+        "Release run 39469596308 log: 'components installed: {... ml: True, lyrics: True ...}'"
       ],
       "resolved": "2026-06-15",
-      "closed": "pending",
+      "closed": "2026-10-20",
       "history": [
         {
           "date": "pending",
@@ -697,6 +735,16 @@
           "date": "2026-06-15",
           "status": "Fixed",
           "note": "commit fc6e175c97"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Verified",
+          "note": "regression check re-run (pytest/Playwright)"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Closed",
+          "note": "released in 0.10.0-beta.1"
         }
       ],
       "note": "Recorded retrospectively; severity and priority assigned from the documented impact: Lyric detection could not be installed beside the ML stack."
@@ -995,22 +1043,23 @@
       "observed": "Audio played from a different position than reported.",
       "severity": "High",
       "priority": "P2",
-      "status": "Fixed",
+      "status": "Closed",
       "root_cause": "<audio> currentTime/seek imprecision on VBR sources.",
       "fixes": [
         "FIX-0022"
       ],
-      "verified_by": "pending",
-      "verification": "pending",
+      "verified_by": "the developer (Playwright)",
+      "verification": "Playback goes through the Web Audio buffer source with sample-exact seeks, not the <audio> element",
       "evidence": [
         "CLAUDE.md § Note editor (Playback in the tab viewer goes through the Web Audio API)",
         "CLAUDE.md: 'the \"aligned from the start, off in the middle\" symptom'",
         "commit dd4177d36f Fix mid-song sync drift: play via Web Audio, not the <audio> element",
         "found_in_version: the fix commit is an ancestor of cb00653 (the first public release, 0.10.0 beta 1, 2026-10-14), so the faulty code only existed in development builds before 0.10.0-beta.1",
-        "found_in_build: 20c9bfbf49 is the parent of the first fix commit dd4177d36f and still carries the code the fix changes"
+        "found_in_build: 20c9bfbf49 is the parent of the first fix commit dd4177d36f and still carries the code the fix changes",
+        "Playwright 2026-10-20: source AudioBufferSourceNode; seek 8.123 -> audioTime 8.123"
       ],
       "resolved": "2026-06-17",
-      "closed": "pending",
+      "closed": "2026-10-20",
       "history": [
         {
           "date": "pending",
@@ -1021,6 +1070,16 @@
           "date": "2026-06-17",
           "status": "Fixed",
           "note": "commit dd4177d36f"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Verified",
+          "note": "regression check re-run (pytest/Playwright)"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Closed",
+          "note": "released in 0.10.0-beta.1"
         }
       ],
       "note": "Recorded retrospectively; severity and priority assigned from the documented impact: Sync checking mid-song was unreliable."
@@ -1123,21 +1182,23 @@
       "observed": "Stuck at the import phase indefinitely.",
       "severity": "High",
       "priority": "P2",
-      "status": "Fixed",
+      "status": "Closed",
       "root_cause": "A known ctranslate2 CUDA-init deadlock in Celery child processes (faster-whisper #907, celery #3402).",
       "fixes": [
         "FIX-0025"
       ],
-      "verified_by": "pending",
-      "verification": "pending",
+      "verified_by": "the developer (pytest)",
+      "verification": "No module but the subprocess runner imports whisperx/faster_whisper/ctranslate2, and the availability check runs in a subprocess. The CUDA deadlock itself cannot be reproduced here (no GPU, no WhisperX)",
       "evidence": [
         "CLAUDE.md § Automatic lyric detection + in-app editor (Subprocess isolation)",
         "commit 10b04691f9 Fix lyrics detection hang: run WhisperX in subprocess, not Celery worker",
         "found_in_version: the fix commit is an ancestor of cb00653 (the first public release, 0.10.0 beta 1, 2026-10-14), so the faulty code only existed in development builds before 0.10.0-beta.1",
-        "found_in_build: b9a7e229d1 is the parent of the first fix commit 10b04691f9 and still carries the code the fix changes"
+        "found_in_build: b9a7e229d1 is the parent of the first fix commit 10b04691f9 and still carries the code the fix changes",
+        "pytest 2026-10-20: passes; full suite passes",
+        "Mutation: an `import whisperx` in whisperx_adapter fails the guard"
       ],
       "resolved": "2026-06-18",
-      "closed": "pending",
+      "closed": "2026-10-20",
       "history": [
         {
           "date": "pending",
@@ -1148,6 +1209,16 @@
           "date": "2026-06-18",
           "status": "Fixed",
           "note": "commit 10b04691f9"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Verified",
+          "note": "regression check re-run (pytest/Playwright)"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Closed",
+          "note": "released in 0.10.0-beta.1"
         }
       ],
       "note": "Recorded retrospectively; severity and priority assigned from the documented impact: Lyric detection unavailable on GPU machines."
@@ -1169,21 +1240,23 @@
       "observed": "Hang before 'importing torch'.",
       "severity": "High",
       "priority": "P2",
-      "status": "Fixed",
+      "status": "Closed",
       "root_cause": "Concurrent cuInit() from the warm-up thread and the task.",
       "fixes": [
         "FIX-0026"
       ],
-      "verified_by": "pending",
-      "verification": "pending",
+      "verified_by": "the developer (pytest)",
+      "verification": "No RockForge handler hangs off the worker's start signals. The Windows deadlock itself cannot be reproduced here",
       "evidence": [
         "CLAUDE.md § Automatic lyric detection + in-app editor (Subprocess isolation: 'The CUDA warm-up probe was removed entirely')",
         "commit 6ad497b51f Remove CUDA warm-up probe — concurrent cuInit() deadlocks on Windows",
         "found_in_version: the fix commit is an ancestor of cb00653 (the first public release, 0.10.0 beta 1, 2026-10-14), so the faulty code only existed in development builds before 0.10.0-beta.1",
-        "found_in_build: 10b04691f9 is the parent of the first fix commit 6ad497b51f and still carries the code the fix changes"
+        "found_in_build: 10b04691f9 is the parent of the first fix commit 6ad497b51f and still carries the code the fix changes",
+        "pytest 2026-10-20: passes; full suite passes",
+        "Mutation: re-adding the worker_ready warm-up handler fails the test"
       ],
       "resolved": "2026-06-18",
-      "closed": "pending",
+      "closed": "2026-10-20",
       "history": [
         {
           "date": "pending",
@@ -1194,6 +1267,16 @@
           "date": "2026-06-18",
           "status": "Fixed",
           "note": "commit 6ad497b51f"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Verified",
+          "note": "regression check re-run (pytest/Playwright)"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Closed",
+          "note": "released in 0.10.0-beta.1"
         }
       ],
       "note": "Recorded retrospectively; severity and priority assigned from the documented impact: Detection hung with no workaround but restarting."
@@ -1212,22 +1295,24 @@
       "observed": "The UI stayed on its first stage ('detecting' / 'loading ML models') while the task ran or finished invisibly.",
       "severity": "High",
       "priority": "P2",
-      "status": "Fixed",
+      "status": "Closed",
       "root_cause": "SQLAlchemy compares the JSON column by identity; job.params aliased and reassigned to the same object issues no UPDATE.",
       "fixes": [
         "FIX-0027"
       ],
-      "verified_by": "pending",
-      "verification": "pending",
+      "verified_by": "the developer (pytest)",
+      "verification": "Every progress write after the first commit reaches the database",
       "evidence": [
         "CLAUDE.md § Hard constraints (these have bitten us — keep them) — '`Job.params` (JSON column) needs a NEW dict object on every write.'",
         "CLAUDE.md § Async detection tasks — 'Each step commits via `_commit_params()`'",
         "commit 069c7c305b fix(lyrics): copy job.params before mutating in detect_lyrics",
         "commit 26e9886aac Fix silent commit no-ops: SQLAlchemy JSON column needs a new dict object",
-        "found_in_version: the fix commit 069c7c305b is an ancestor of cb00653 (the first public release, 0.10.0-beta.1), so the faulty code existed only before 0.10.0-beta.1; found_in_build is the fix commit's parent 9ce029cd51"
+        "found_in_version: the fix commit 069c7c305b is an ancestor of cb00653 (the first public release, 0.10.0-beta.1), so the faulty code existed only before 0.10.0-beta.1; found_in_build is the fix commit's parent 9ce029cd51",
+        "pytest 2026-10-20: passes; full suite passes",
+        "Mutation: the params writer reusing the same dict object fails these and six other task tests"
       ],
       "resolved": "2026-06-18",
-      "closed": "pending",
+      "closed": "2026-10-20",
       "history": [
         {
           "date": "pending",
@@ -1238,6 +1323,16 @@
           "date": "2026-06-18",
           "status": "Fixed",
           "note": "commit 069c7c305b, 26e9886aac"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Verified",
+          "note": "regression check re-run (pytest/Playwright)"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Closed",
+          "note": "released in 0.10.0-beta.1"
         }
       ],
       "note": "Recorded retrospectively; severity and priority assigned from the documented impact: Lyric and tone detection looked hung and their results were not persisted."
@@ -3665,19 +3760,21 @@
       "observed": "Vertical bar artifact",
       "severity": "High",
       "priority": "P2",
-      "status": "Fixed",
+      "status": "Closed",
       "root_cause": "_note_mask reused verbatim for chord strings.",
       "fixes": [
         "FIX-0078"
       ],
-      "verified_by": "pending",
-      "verification": "pending",
+      "verified_by": "the developer (pytest)",
+      "verification": "ChordNotes masks carry technique bits only, never the SINGLE note-kind bit",
       "evidence": [
         "commit ea09b649a2 Native PSARC SNG: chordnotes carry technique bits only, deduped (fix bad render)",
-        "found_in_version: fix ea09b649a2 (2026-07-08) precedes the first public version (cb00653 'First public release is 0.10.0 beta 1', 2026-10-14); found_in_build is the fix's parent 070503350a, where the code the fix changes is present"
+        "found_in_version: fix ea09b649a2 (2026-07-08) precedes the first public version (cb00653 'First public release is 0.10.0 beta 1', 2026-10-14); found_in_build is the fix's parent 070503350a, where the code the fix changes is present",
+        "pytest 2026-10-20: passes; full suite passes",
+        "Mutation: dropping `& ~NOTE_MASK_SINGLE` fails the test"
       ],
       "resolved": "2026-07-08",
-      "closed": "pending",
+      "closed": "2026-10-20",
       "history": [
         {
           "date": "pending",
@@ -3688,6 +3785,16 @@
           "date": "2026-07-08",
           "status": "Fixed",
           "note": "commit ea09b649a2"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Verified",
+          "note": "regression check re-run (pytest/Playwright)"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Closed",
+          "note": "released in 0.10.0-beta.1"
         }
       ],
       "note": "Recorded retrospectively; severity and priority assigned from the documented impact: Visible corruption."
@@ -4866,22 +4973,23 @@
       "observed": "Notes moved away from the cursor instead of onto it.",
       "severity": "High",
       "priority": "P2",
-      "status": "Fixed",
+      "status": "Closed",
       "root_cause": "Anchor origins were warp(previewScale(t)) instead of the unwarped previewScale(t).",
       "fixes": [
         "FIX-0102"
       ],
-      "verified_by": "pending",
-      "verification": "pending",
+      "verified_by": "the developer (Playwright)",
+      "verification": "With an anchor already pending, the clicked note lands on the cursor and the notes before it stay",
       "evidence": [
         "CLAUDE.md § Per-arrangement sync (All anchor-writing modes use the UNwarped origin)",
         "CLAUDE.md: 'the \"notes moved away from the cursor instead of onto it\" bug'",
         "commit d45d10a5ad Fix \"Mover seguintes\"/tap/re-tempo moving notes the wrong way",
         "found_in_version: the fix commit is an ancestor of cb00653 (the first public release, 0.10.0 beta 1, 2026-10-14), so the faulty code only existed in development builds before 0.10.0-beta.1",
-        "found_in_build: 07cf50ee50 is the parent of the first fix commit d45d10a5ad and still carries the code the fix changes"
+        "found_in_build: 07cf50ee50 is the parent of the first fix commit d45d10a5ad and still carries the code the fix changes",
+        "Playwright 2026-10-20: cursor 8.233, clicked note 8.233, earlier notes +0.0"
       ],
       "resolved": "2026-07-11",
-      "closed": "pending",
+      "closed": "2026-10-20",
       "history": [
         {
           "date": "pending",
@@ -4892,6 +5000,16 @@
           "date": "2026-07-11",
           "status": "Fixed",
           "note": "commit d45d10a5ad"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Verified",
+          "note": "regression check re-run (pytest/Playwright)"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Closed",
+          "note": "released in 0.10.0-beta.1"
         }
       ],
       "note": "Recorded retrospectively; severity and priority assigned from the documented impact: Core sync gestures misplaced notes."
@@ -11663,20 +11781,22 @@
       "observed": "The check refused 3.11.",
       "severity": "High",
       "priority": "P2",
-      "status": "Fixed",
+      "status": "Closed",
       "root_cause": "A '!' in a command line under delayed expansion.",
       "fixes": [
         "FIX-0235"
       ],
-      "verified_by": "pending",
-      "verification": "pending",
+      "verified_by": "the developer (pytest)",
+      "verification": "start.bat has no bare '!' outside REM lines under delayed expansion. Not run in cmd from here",
       "evidence": [
         "CLAUDE.md § Running locally (Windows, native, no Docker) — 'The file runs with delayed expansion: no `!` in a command line.'",
         "commit 61d60c02f1 start.bat: fix the Python 3.11 check, which refused 3.11 itself",
-        "found_in_version: the fix commit 61d60c02f1 is an ancestor of cb00653 (the first public release, 0.10.0-beta.1), so the faulty code existed only before 0.10.0-beta.1; found_in_build is the fix commit's parent 6e2a1ebf2a"
+        "found_in_version: the fix commit 61d60c02f1 is an ancestor of cb00653 (the first public release, 0.10.0-beta.1), so the faulty code existed only before 0.10.0-beta.1; found_in_build is the fix commit's parent 6e2a1ebf2a",
+        "pytest 2026-10-20: passes; full suite passes",
+        "Mutation: writing the version check with != fails the test"
       ],
       "resolved": "2026-10-02",
-      "closed": "pending",
+      "closed": "2026-10-20",
       "history": [
         {
           "date": "pending",
@@ -11687,6 +11807,16 @@
           "date": "2026-10-02",
           "status": "Fixed",
           "note": "commit 61d60c02f1"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Verified",
+          "note": "regression check re-run (pytest/Playwright)"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Closed",
+          "note": "released in 0.10.0-beta.1"
         }
       ],
       "note": "Recorded retrospectively; severity and priority assigned from the documented impact: The source install could not start."
@@ -12405,21 +12535,23 @@
       "observed": "The worker made no .psarc.",
       "severity": "High",
       "priority": "P2",
-      "status": "Fixed",
+      "status": "Closed",
       "root_cause": "docker/Dockerfile ran pip install \".[postgres]\" / \".[ml,postgres]\" without psarc.",
       "fixes": [
         "FIX-0250"
       ],
-      "verified_by": "pending",
-      "verification": "pending",
+      "verified_by": "the developer (pytest)",
+      "verification": "Every image stage installs the [psarc] extra. The image was not built here",
       "evidence": [
         "CHANGELOG.en.md 0.10.0 beta 2 — Security: \"Docker: the image now makes the .psarc (the [psarc] extra was missing).\"",
         "commit 994c9307ac: \"Docker installs [psarc] (the worker made no .psarc), .dockerignore.\"",
         "found_in_build: cb00653 docker/Dockerfile lines 13/19 install .[postgres] and .[ml,postgres]",
-        "found_in_version pending: faulty code present at cb00653 (beta 1); detection date not documented"
+        "found_in_version pending: faulty code present at cb00653 (beta 1); detection date not documented",
+        "pytest 2026-10-20: passes; full suite passes",
+        "Mutation: dropping psarc from the worker stage fails the test"
       ],
       "resolved": "2026-10-14",
-      "closed": "pending",
+      "closed": "2026-10-20",
       "history": [
         {
           "date": "pending",
@@ -12430,6 +12562,16 @@
           "date": "2026-10-14",
           "status": "Fixed",
           "note": "commit 994c9307ac"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Verified",
+          "note": "regression check re-run (pytest/Playwright)"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Closed",
+          "note": "released in 0.10.0-beta.2"
         }
       ],
       "note": "Recorded retrospectively; severity and priority assigned from the documented impact: The game-ready output was missing in Docker deployments; other installs unaffected."
@@ -13241,22 +13383,24 @@
       "observed": "The workflow never ran; the release has no files.",
       "severity": "High",
       "priority": "P2",
-      "status": "Fixed",
+      "status": "Closed",
       "root_cause": ".github/workflows/release.yml triggered on 'v*' only.",
       "fixes": [
         "FIX-0267"
       ],
-      "verified_by": "pending",
-      "verification": "pending",
+      "verified_by": "the developer (pytest)",
+      "verification": "release.yml listens to tags with and without the leading v and compares the version with the v stripped. A v-less tag run on GitHub was not observed",
       "evidence": [
         "commit 3e1fac60aa Release workflow: a tag without the leading v builds too",
         "commit ed59086740 Release workflow: run by hand, it can attach the files to an existing release (\"the beta 3 one\")",
         "detected 2026-10-15: beta 3 (bebcf2b) and the fix are both dated 2026-10-15",
         "found_in_version: the fault showed in the publication of beta 3 itself; its workflow at bebcf2b has the v* filter",
-        "not in the changelog"
+        "not in the changelog",
+        "pytest 2026-10-20: passes; full suite passes",
+        "Mutation: tags ['v*'] alone fails the test"
       ],
       "resolved": "2026-10-15",
-      "closed": "pending",
+      "closed": "2026-10-20",
       "history": [
         {
           "date": "2026-10-15",
@@ -13267,6 +13411,16 @@
           "date": "2026-10-15",
           "status": "Fixed",
           "note": "commit 3e1fac60aa, ed59086740"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Verified",
+          "note": "regression check re-run (pytest/Playwright)"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Closed",
+          "note": "released in 0.10.0-beta.5"
         }
       ],
       "note": "Recorded retrospectively; severity and priority assigned from the documented impact: A published release without its downloads; fixed by a manual run."
@@ -13785,20 +13939,23 @@
       "observed": "The runner command failed.",
       "severity": "High",
       "priority": "P2",
-      "status": "Fixed",
+      "status": "Closed",
       "root_cause": "sys.path[0] = infrastructure/, whose packaging/ package shadowed pip's packaging.",
       "fixes": [
         "FIX-0277"
       ],
-      "verified_by": "pending",
-      "verification": "pending",
+      "verified_by": "the developer (pytest)",
+      "verification": "The runner, run as a script with librosa installed, aligns a synthesized recording (run in an isolated venv with librosa 0.11; CI has no librosa and skips it)",
       "evidence": [
         "CLAUDE.md § Automatic sync with a variable tempo — EXPERIMENTAL (2026-10-15): \"Found on the way: run as a script, the runner's own folder is sys.path[0] ...\"",
         "commit cfe40199df: \"The librosa runner, run as a script, had its own folder first on sys.path, whose packaging package shadowed the one librosa imports; it now drops it.\"",
-        "not in the changelog; found_in_version pending: faulty code present at cb00653 (no sys.path handling in _librosa_runner.py)"
+        "not in the changelog; found_in_version pending: faulty code present at cb00653 (no sys.path handling in _librosa_runner.py)",
+        "pytest 2026-10-20 (venv with librosa 0.11.0, numpy 1.26.4): passes",
+        "Mutation: removing the sys.path fix reproduces 'No module named packaging.version'",
+        "Release run 39469596308: librosa in the components' Python detected 120.19 BPM"
       ],
       "resolved": "2026-10-15",
-      "closed": "pending",
+      "closed": "2026-10-20",
       "history": [
         {
           "date": "pending",
@@ -13809,6 +13966,16 @@
           "date": "2026-10-15",
           "status": "Fixed",
           "note": "commit cfe40199df"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Verified",
+          "note": "regression check re-run (pytest/Playwright)"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Closed",
+          "note": "released in 0.10.0-beta.7"
         }
       ],
       "note": "Recorded retrospectively; severity and priority assigned from the documented impact: Every librosa measurement unavailable in that configuration."
