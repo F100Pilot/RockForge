@@ -14,6 +14,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ### Correções
 
+- **Pasta de trabalho mudada de sítio:** depois de mover a pasta de dados do RockForge (para outro disco ou outro computador), os projetos antigos deixavam de encontrar o bundle, a gravação, o ficheiro GP e os stems. No arranque, o RockForge passa a procurá-los na pasta nova.
+- **Arranjo sem notas:** quando a pista GP escolhida para um arranjo não tem notas (uma pista de voz, de bateria ou vazia), o erro diz agora qual arranjo e qual pista, e o que fazer, em vez de só "arrangement has no notes".
 - **Braço — "Só as iguais à escolhida":** sem nenhuma nota escolhida, mostrava todas as notas do braço. Agora só aparecem as equivalentes à nota escolhida (no braço ou clicada na partitura), e nada até escolheres uma.
 
 ## [0.11.1 beta 1] — 2026-10-20

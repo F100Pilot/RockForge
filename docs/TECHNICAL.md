@@ -340,7 +340,7 @@ All configuration is through the environment (create a `.env` at the root — se
 | `ROCKFORGE_DEMUCS_DEVICE` | `auto` | `auto` (NVIDIA GPU if available, otherwise CPU), `cuda` or `cpu` — device for all ML |
 | `ROCKFORGE_WHISPERX_DEVICE` | (follows `demucs_device`) | overrides the device for lyric detection only |
 | `ROCKFORGE_WHISPER_MODEL` | `small` | WhisperX model for lyrics: `tiny`/`base`/`small`/`medium`/`large-v3` (bigger = more accurate and slower; on CPU drop to `base`/`tiny`) |
-| `ROCKFORGE_WORK_DIR` | `~/Downloads/RockForge` | where generated bundles are written |
+| `ROCKFORGE_WORK_DIR` | `~/Downloads/RockForge` | where generated bundles are written; to move it, move the whole folder and point this at the new place — on the next start every project finds its files there |
 | `WWISEROOT` | (from the Audiokinetic Launcher) | Wwise location for generating the `.wem` |
 
 ### The standalone executable (no Python install)

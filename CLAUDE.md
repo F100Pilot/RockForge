@@ -607,7 +607,15 @@ rounds, note edits and `resolve_links`, so everything after sees one chart. A
 track in another tuning or capo (the same fret would be another pitch), or one
 that will not parse for that chart (a guitar into the Bass), is NOT merged and
 says so in the warnings. A lone Lead is built as Combined, so `"Lead"` also
-reaches the Combined slot when no Combo track was set. Plumbing like the track
+reaches the Combined slot when no Combo track was set. **A chart left with no notes is named** (`_refuse_empty_charts`, after the
+note edits, before building; GitHub issue #7): "Lead (GP track 1 "Vocals")
+… Pick another track for that arrangement, or merge one in" instead of the bare
+"arrangement has no notes" `Arrangement.validate` raised later. Measured on the
+way: stripping mutes (`import_mute_techniques` false) never empties a chart —
+`_strip_mute_techniques` keeps every note as a plain one — so the issue's
+"mutes stripped → no notes" had another cause; the message does not blame mutes.
+Guarded by `test_a_chart_whose_track_has_no_notes_is_named_with_its_track`
+(fails without the check). Plumbing like the track
 slots: `/jobs/gp` form `merge_tracks` (JSON), `RebuildIn.merge_tracks` (null =
 untouched, `{}` = none), both through `api._clean_merge_tracks` (known charts,
 indexes 0-63, 422 otherwise); `params["merge_tracks"]` (portable in `.rfproj`,
@@ -5770,6 +5778,26 @@ never raises: failed housekeeping must not stop the API from starting. Guarded b
 `test_orphaned_gp_uploads_are_swept_but_referenced_ones_are_kept` and
 `test_the_orphan_sweep_actually_runs_on_startup` (which drives a real startup,
 because a sweep nothing calls is worthless).
+
+### The work dir can move (`work_paths.rebase`, `_rebase_moved_paths`)
+
+The database keeps every file as an ABSOLUTE path (`Job.source`, `bundle_dir`,
+`psarc_path`, `params["gp_path"]`, `params["stems"]`), so after the work dir
+moved — another disk, a restored backup — every earlier job pointed at the old
+place: the bundle 500ed, the recording 409ed (GitHub issue #6, a user who moved
+the store to a USB drive). A startup pass (`_rebase_moved_paths`, in the
+lifespan before the backfills) looks for each path that no longer exists under
+the CURRENT work dir by its tail — the longest tail of at least two parts
+(`_MIN_TAIL`: "<job id>/bundle", "gp/<file>"; a bare file name never lands on
+an unrelated file at the root) — and stores the new path only when the file is
+there. A path that exists, or that matches nothing, is left alone; a Windows
+path read on another system is split as Windows (`PureWindowsPath`). New paths
+are still written absolute: the pass makes a move self-healing on the next
+start without changing what is stored or how it is read. Never raises.
+Guarded by `test_work_paths.py` (the tail, the minimum tail, Windows, the most
+specific place — mutation-checked) and
+`test_jobs_follow_their_files_when_the_work_dir_moves` (a real startup; fails
+with the call removed).
 
 ### The database schema is frozen; drift fails loudly at startup
 

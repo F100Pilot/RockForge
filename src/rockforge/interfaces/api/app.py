@@ -176,6 +176,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     # to collect them (the file is stored before the job exists).
     _sweep_orphan_gp_uploads()
     _sweep_orphan_youtube_audio()
+    _rebase_moved_paths()
     _backfill_gp_synced()
     _backfill_preset_tones()
     _send_install_count()
@@ -812,6 +813,52 @@ def _sweep_orphan_gp_uploads() -> int:
     if removed:
         logger.info("removed %d orphaned GP upload(s) from %s", removed, gp_dir)
     return removed
+
+
+def _rebase_moved_paths() -> int:
+    """Point every job's files at where they are now, after the work dir moved
+    (issue #6: the database keeps absolute paths, so an earlier job's bundle,
+    recording, GP file and stems all pointed at the old place). Only paths that
+    no longer exist are touched, and only to a file that is there
+    (``work_paths.rebase``); returns how many jobs changed; never raises —
+    housekeeping must not block startup."""
+    from sqlalchemy import select
+
+    from rockforge.infrastructure.work_paths import rebase
+
+    work = Path(settings.work_dir)
+    changed = 0
+    try:
+        with _session_factory() as session:
+            for job in session.execute(select(Job)).scalars():
+                touched = False
+                for attr in ("source", "bundle_dir", "psarc_path"):
+                    value = getattr(job, attr)
+                    new = rebase(value, work) if isinstance(value, str) else None
+                    if new:
+                        setattr(job, attr, new)
+                        touched = True
+                params = dict(job.params or {})
+                gp = params.get("gp_path")
+                new = rebase(gp, work) if isinstance(gp, str) else None
+                if new:
+                    params["gp_path"] = new
+                stems = params.get("stems")
+                if isinstance(stems, dict):
+                    moved = {k: rebase(v, work) if isinstance(v, str) else None
+                             for k, v in stems.items()}
+                    if any(moved.values()):
+                        params["stems"] = {k: moved[k] or v for k, v in stems.items()}
+                if params != (job.params or {}):
+                    job.params = params
+                    touched = True
+                changed += touched
+            session.commit()
+        if changed:
+            logger.info("pointed %d job(s) at their files under the current work dir", changed)
+    except Exception:  # noqa: BLE001 — housekeeping must never block startup
+        logger.warning("moved-path rebase failed", exc_info=True)
+    return changed
 
 
 def _backfill_gp_synced() -> int:

@@ -14,6 +14,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ### Fixes
 
+- **Work folder moved:** after moving RockForge's data folder (to another disk or computer), earlier projects could no longer find their bundle, recording, GP file and stems. On start, RockForge now looks for them in the new folder.
+- **Arrangement with no notes:** when the GP track picked for an arrangement has no notes (a vocal, drum or empty track), the error now says which arrangement and which track, and what to do, instead of just "arrangement has no notes".
 - **Fretboard — "Only those matching the picked one":** with no note picked, it showed every note on the neck. Now only the equivalents of the picked note show (picked on the neck or clicked on the score), and nothing until you pick one.
 
 ## [0.11.1 beta 1] — 2026-10-20

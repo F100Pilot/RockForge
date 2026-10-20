@@ -2782,6 +2782,57 @@ def test_projects_synced_in_guitar_pro_before_the_flag_existed_are_marked_on_sta
     assert sources == ["None", "gp"]
 
 
+def test_jobs_follow_their_files_when_the_work_dir_moves(tmp_path, monkeypatch) -> None:
+    """Issue #6: the database keeps absolute paths, so after the work dir moved
+    every earlier job pointed at the old place (bundle 500, recording 409). A
+    real startup points them at where the files are now; a path that still
+    exists, and one found nowhere, stay as they are."""
+    monkeypatch.setenv("ROCKFORGE_DATABASE_URL", f"sqlite:///{tmp_path}/t.db")
+    monkeypatch.setenv("ROCKFORGE_WORK_DIR", str(tmp_path / "new"))
+    import rockforge.config as config
+    importlib.reload(config)
+    import rockforge.interfaces.api.app as app_module
+    importlib.reload(app_module)
+
+    work = app_module.settings.work_dir
+    old = "/media/old-disk/RockForge"
+    (work / "j1" / "bundle").mkdir(parents=True)
+    (work / "j1" / "bundle" / "arrangement_lead.xml").write_text("<song/>")
+    for rel in ("uploads/rec.wav", "gp/song.gp5", "j1/demucs_stems/guitar.wav", "j1/Song_p.psarc"):
+        (work / rel).parent.mkdir(parents=True, exist_ok=True)
+        (work / rel).write_bytes(b"x")
+    kept = tmp_path / "outside.wav"
+    kept.write_bytes(b"x")
+    with TestClient(app_module.app):
+        pass  # create the schema
+    with app_module._session_factory() as session:
+        session.add(app_module.Job(
+            id="j1", source=f"{old}/uploads/rec.wav", source_type="gp", title="T", artist="A",
+            bundle_dir=f"{old}/j1/bundle", psarc_path=f"{old}/j1/Song_p.psarc",
+            params={"gp_path": f"{old}/gp/song.gp5",
+                    "stems": {"guitar": f"{old}/j1/demucs_stems/guitar.wav",
+                              "bass": f"{old}/j1/demucs_stems/bass.wav"}},
+        ))
+        session.add(app_module.Job(
+            id="j2", source=str(kept), source_type="gp", title="T", artist="A",
+            params={"gp_path": f"{old}/gp/gone.gp5"},
+        ))
+        session.commit()
+    with TestClient(app_module.app):  # a real startup runs the rebase
+        pass
+    with app_module._session_factory() as session:
+        j1 = session.get(app_module.Job, "j1")
+        j2 = session.get(app_module.Job, "j2")
+        assert j1.source == str(work / "uploads" / "rec.wav")
+        assert j1.bundle_dir == str(work / "j1" / "bundle")
+        assert j1.psarc_path == str(work / "j1" / "Song_p.psarc")
+        assert j1.params["gp_path"] == str(work / "gp" / "song.gp5")
+        assert j1.params["stems"] == {"guitar": str(work / "j1" / "demucs_stems" / "guitar.wav"),
+                                      "bass": f"{old}/j1/demucs_stems/bass.wav"}
+        assert j2.source == str(kept)
+        assert j2.params["gp_path"] == f"{old}/gp/gone.gp5"
+
+
 def test_non_finite_floats_are_rejected_at_the_boundary(
     client: TestClient, tmp_path
 ) -> None:

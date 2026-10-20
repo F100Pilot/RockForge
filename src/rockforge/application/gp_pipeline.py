@@ -523,6 +523,34 @@ def _check_anchor_order(anchors: list[tuple[float, float]]) -> None:
             )
 
 
+def _refuse_empty_charts(
+    gp_path: Path, tracks: list[tuple[ArrangementKind, int]],
+    parsed: dict[ArrangementKind, ParsedGpTrack],
+) -> None:
+    """A chart with no notes left cannot be built: say which one and which GP
+    track it came from, instead of the bare "arrangement has no notes" the
+    arrangement's own validation raises later (issue #7 — a script driving the
+    API could not tell which of its tracks was the empty one)."""
+    empty = [(kind, idx) for kind, idx in tracks if kind in parsed and not parsed[kind].notes]
+    if not empty:
+        return
+    try:
+        names = {t.index: t.name for t in inspect_gp(gp_path).tracks}
+    except Exception:  # noqa: BLE001 — the name is a courtesy, the error is the point
+        names = {}
+    charts = "; ".join(
+        f"{kind.value} (GP track {idx + 1}"
+        + (f' "{names[idx]}"' if names.get(idx) else "")
+        + ")"
+        for kind, idx in empty
+    )
+    raise IngestionError(
+        f"no notes to chart for {charts}: the GP track has no notes (a vocal, percussion "
+        "or empty track?). Pick another track for that arrangement, or merge one in "
+        "(merge_tracks)."
+    )
+
+
 def _strip_mute_techniques(p: ParsedGpTrack) -> ParsedGpTrack:
     """Return a copy of the track with palm mute / slap / pop / tap removed."""
     notes = [
@@ -800,6 +828,7 @@ class GenerateFromGpUseCase:
         # whose pair was separated, re-fretted or re-timed is cleared, and a
         # surviving one ends exactly where its next note starts.
         parsed = {kind: replace(p, notes=resolve_links(p.notes)) for kind, p in parsed.items()}
+        _refuse_empty_charts(spec.gp_path, tracks, parsed)
 
         stage("build_arrangements")
         # The chart the GP lyrics fall back to (when the file names no vocal

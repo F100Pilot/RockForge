@@ -258,3 +258,26 @@ def test_a_track_named_lead_and_rhythm_is_picked_once(tmp_path: Path) -> None:
     path = tmp_path / "one.gp5"
     gp.write(song, str(path))
     assert auto_pick_tracks(path) == (0, None)
+
+
+def test_a_chart_whose_track_has_no_notes_is_named_with_its_track(tmp_path: Path) -> None:
+    """Issue #7: a chart left with no notes said only "arrangement has no notes",
+    so a script driving the API could not tell which of its tracks was empty —
+    the error names the chart, the GP track and what to do."""
+    song = gp.Song()
+    song.title, song.artist, song.tempo = "Empty", "Band", 120
+    lead = song.tracks[0]
+    lead.name = "Vocals"
+    v = lead.measures[0].voices[0]
+    _beat(v, 1, [])
+    v.beats[-1].status = gp.BeatStatus.rest
+    rhythm = gp.Track(song)
+    rhythm.name, rhythm.number = "Guitar", 2
+    song.tracks.append(rhythm)
+    _beat(rhythm.measures[0].voices[0], 1, [(6, 3)])
+    path = tmp_path / "empty.gp5"
+    gp.write(song, str(path))
+
+    with pytest.raises(Exception, match=r'Lead \(GP track 1 "Vocals"\).*Pick another track'):
+        _run(path, tmp_path, lead_track=0, rhythm_track=1)
+    assert _run(path, tmp_path, rhythm_track=1).warnings is not None  # the other track alone builds

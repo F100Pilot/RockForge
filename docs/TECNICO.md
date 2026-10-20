@@ -354,7 +354,7 @@ As principais:
 | `ROCKFORGE_DEMUCS_DEVICE` | `auto` | `auto` (GPU NVIDIA se disponível, senão CPU), `cuda` ou `cpu` — device para todo o ML |
 | `ROCKFORGE_WHISPERX_DEVICE` | (segue `demucs_device`) | sobrepõe o device só da deteção de letra |
 | `ROCKFORGE_WHISPER_MODEL` | `small` | modelo WhisperX da letra: `tiny`/`base`/`small`/`medium`/`large-v3` (maior = mais preciso e mais lento; em CPU baixa para `base`/`tiny`) |
-| `ROCKFORGE_WORK_DIR` | `~/Downloads/RockForge` | onde os bundles gerados são escritos |
+| `ROCKFORGE_WORK_DIR` | `~/Downloads/RockForge` | onde os bundles gerados são escritos; para a mudar, move a pasta inteira e aponta isto para o sítio novo — no arranque seguinte cada projeto encontra lá os seus ficheiros |
 | `WWISEROOT` | (do Audiokinetic Launcher) | localização do Wwise para gerar o `.wem` |
 
 ### Via executável standalone (sem instalar Python)
