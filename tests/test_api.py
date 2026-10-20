@@ -1909,6 +1909,7 @@ def test_what_was_measured_on_the_old_recording_is_dropped_with_it(
         "stems": {"guitar": str(tmp_path / "guitar.wav")}, "stems_status": "ready",
         "stems_log": ["done"], "detected_tones": {"timeline": []},
         "tone_detection_status": "ready", "tone_detection_log": ["done"],
+        "marked_attacks": {"Lead": [1.0, 1.5]},  # taps made against the old recording
     }
     with app_module._session_factory() as session:
         row = session.get(app_module.Job, job["id"])
@@ -4276,6 +4277,54 @@ def test_the_main_chart_for_sync_is_remembered(client: TestClient, tmp_path) -> 
     assert fork["sync_main"] == "Lead"  # a rebuild keeps it
     assert client.patch(f"/jobs/{job['id']}/sync-main", json={}).json()["sync_main"] is None
     assert client.patch("/jobs/nope/sync-main", json={}).status_code == 404
+
+
+def test_attacks_marked_by_ear_are_stored_per_chart_and_reach_the_viewer(
+    client: TestClient, tmp_path
+) -> None:
+    """"Marcar a ouvir" → Ataques: one chart's taps (seconds of the recording)
+    are stored as given, sorted, to the millisecond, a double tap kept once;
+    they come back on that chart only, a fork inherits them, an empty list
+    removes them, and nonsense is refused."""
+    import rockforge.config as config
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.domain.arrangement import Arrangement, ArrangementKind, SongMetadata
+    from rockforge.domain.music import Beat, TabNote, TempoMap, Tuning
+    from rockforge.infrastructure.db.models import JobStatus
+    from rockforge.infrastructure.rsxml.writer import write_arrangement_xml
+
+    job = _create_job(client)
+    bundle = config.settings.work_dir / job["id"] / "bundle"
+    beats = tuple(Beat(time=0.5 * i, measure=(i // 4 + 1) if i % 4 == 0 else -1) for i in range(8))
+    for kind, name in ((ArrangementKind.LEAD, "lead"), (ArrangementKind.RHYTHM, "rhythm")):
+        write_arrangement_xml(Arrangement(
+            kind=kind, metadata=SongMetadata(title="Taps", artist="T", song_length=4.0),
+            tuning=Tuning(), notes=[TabNote(string=2, fret=5, time=1.0, sustain=0.0)],
+            tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+        ), bundle / f"arrangement_{name}.xml")
+    with app_module._session_factory() as session:
+        db_job = session.get(app_module.Job, job["id"])
+        db_job.status = JobStatus.COMPLETED
+        db_job.bundle_dir = str(bundle)
+        session.commit()
+
+    url = f"/jobs/{job['id']}/marked-attacks"
+    r = client.put(url, json={"arrangement": "Lead", "times": [2.0004, 1.25, 2.0, 0.5]})
+    assert r.status_code == 200 and r.json()["times"] == [0.5, 1.25, 2.0]
+    arrs = client.get(f"/jobs/{job['id']}/arrangements").json()
+    by_kind = {a["kind"]: a["marked_attacks"] for a in arrs}
+    assert by_kind == {"Lead": [0.5, 1.25, 2.0], "Rhythm": []}
+    fork = client.post(f"/jobs/{job['id']}/rebuild", json={}).json()
+    with app_module._session_factory() as session:
+        stored = session.get(app_module.Job, fork["id"]).params["marked_attacks"]
+    assert stored == {"Lead": [0.5, 1.25, 2.0]}
+    assert client.put(url, json={"arrangement": "Bass", "times": [1.0]}).status_code == 422
+    assert client.put(url, json={"arrangement": "Lead", "times": [-1.0]}).status_code == 422
+    assert client.put(url, content='{"arrangement": "Lead", "times": [NaN]}',
+                      headers={"Content-Type": "application/json"}).status_code == 422
+    assert client.put(url, json={"arrangement": "Lead", "times": []}).json()["times"] == []
+    with app_module._session_factory() as session:
+        assert "marked_attacks" not in session.get(app_module.Job, job["id"]).params
 
 
 def test_the_tones_of_the_songs_in_the_dlc_folder_are_listed_and_handed_out(

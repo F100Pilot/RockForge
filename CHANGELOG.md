@@ -11,6 +11,7 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 - **Partitura:** sem nenhum modo escolhido, clicar numa nota leva o cursor a essa nota, e o braço mostra-a e escolhe-a ("Todas as notas").
 - **Sincronização:** o início da música, as correções, as secções, as mudanças de tom, a letra e o silêncio inicial passam a ajustar-se ao milissegundo (três casas decimais).
 - **Pista 3D — bends:** um bend passa a ver-se em verde-água. O rasto da nota sobe seguindo o bend (subir, segurar, soltar, pré-bend) e, quando a nota chega às cordas, sobe na corda à medida que é dobrada, até uma moldura tracejada na altura que o bend tem de alcançar — um tom sobe um espaço de corda.
+- **Marcar a ouvir — cada ataque:** um novo modo, "Toco em cada ataque", marca com a tecla B cada palhetada que ouves, sem mexer na partitura. Os toques ficam a verde por cima da pauta e guardados com o projeto, por pista; a partitura mostra as notas sem toque e os toques sem nota, com "Diferença anterior/seguinte". Para corrigir, "Ataques marcados" em "Encaixar em" leva as notas que arrastas ou acrescentas para os toques, e "Encaixar as notas selecionadas nos toques" leva cada nota ou acorde ao toque mais perto. Pedido de Liam.
 
 ### Correções
 

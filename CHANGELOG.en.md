@@ -11,6 +11,7 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 - **Score:** with no mode selected, clicking a note takes the cursor to it, and the fretboard shows and picks it ("All notes").
 - **Sync:** the song start, the corrections, sections, tone changes, lyrics and intro silence now adjust to the millisecond (three decimals).
 - **3D highway — bends:** a bend now shows in teal. The note's trail rises following the bend (up, held, released, pre-bend) and, when the note reaches the strings, it rises on the string as it is bent, up to a dashed frame at the height the bend has to reach — a whole step rises one string gap.
+- **Mark by ear — every attack:** a new mode, "I tap on every attack", marks every strum you hear with the B key, without moving the score. The taps sit in green over the staff and are saved with the project, per track; the score shows the notes with no tap and the taps with no note, with "Previous/Next difference". To fix them, "Marked attacks" in "Snap to" takes the notes you drag or add to the taps, and "Snap the selected notes to the taps" moves each note or chord to the nearest tap. Requested by Liam.
 
 ### Fixes
 

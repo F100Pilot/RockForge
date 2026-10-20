@@ -343,6 +343,9 @@ class ArrangementOut(BaseModel):
     # Bars (as ``bars`` numbers them) whose rhythm PDF-to-GP5 estimated from the
     # note spacing when it converted this track: the ones to check first.
     estimated_bars: list[int] = []
+    # Attacks marked by ear ("Marcar a ouvir" → Ataques), seconds of the
+    # recording: the rhythm the notes can be snapped to.
+    marked_attacks: list[float] = []
     arpeggios: list[ArpeggioOut] = []
 
 
@@ -912,6 +915,24 @@ class SyncConfirmedIn(BaseModel):
 
 class SyncMainIn(BaseModel):
     arrangement: str | None = None  # None = no main chart
+
+
+MAX_MARKED_ATTACKS = 20_000
+
+
+class MarkedAttacksIn(BaseModel):
+    """One chart's attacks marked by ear (seconds of the recording), all of
+    them: the list replaces the chart's own."""
+
+    arrangement: str = Field(min_length=1, max_length=32)
+    times: list[Annotated[Finite, Field(ge=0)]] = Field(
+        default_factory=list, max_length=MAX_MARKED_ATTACKS
+    )
+
+
+class MarkedAttacksOut(BaseModel):
+    arrangement: str
+    times: list[float]
 
 
 class PsarcProblemOut(BaseModel):

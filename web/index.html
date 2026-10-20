@@ -474,6 +474,8 @@
   #tapSyncCard.tap-armed { border-color:var(--accent); }
   .tap-hit { width:100%; min-height:3.4rem; font-size:1.1rem; font-weight:700; margin:.4rem 0; }
   .tap-hit:active { transform:scale(.98); }
+  .marked-box { border-top:1px solid var(--line); margin-top:.6rem; padding-top:.5rem; display:flex; flex-direction:column; gap:.4rem; }
+  .marked-head { margin:0; }
   .exp-card { border-style:dashed; }
   .exp-badge { display:inline-block; margin-left:.4rem; padding:.05rem .45rem; border-radius:999px; font-size:.72rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:#1a1208; background:var(--warn); vertical-align:middle; }
   #autoSyncCheckList { display:flex; flex-wrap:wrap; gap:.35rem; }
@@ -1176,6 +1178,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
             <option value="4">¼ tempo (semicolcheia)</option>
             <option value="3">Tercina (⅓ tempo)</option>
             <option value="cursor">Cursor de reprodução</option>
+            <option value="marked">Ataques marcados</option>
           </select>
             </div>
           </div>
@@ -1308,15 +1311,17 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                 <div class="pv-card-head">Marcar a ouvir <span class="meta">(tab sem sincronização)</span>
                   <button class="info-btn" data-info="tap-sync">ⓘ</button></div>
                 <div class="pv-card-desc">Dá play e carrega na tecla <b>B</b> no primeiro tempo de cada compasso: as notas encaixam nos teus toques enquanto tocas.</div>
-                <div class="pv-row">
+                <div class="pv-row" id="tapFromRow">
                   <span>A partir do compasso</span>
                   <select id="tapFromBar" style="width:auto" aria-label="A partir do compasso"></select>
                 </div>
                 <select id="tapMode" aria-label="Onde tocas">
                   <option value="bars">Toco em cada compasso</option>
                   <option value="beats">Toco em cada tempo (mais preciso)</option>
+                  <option value="attacks">Toco em cada ataque (cada palhetada)</option>
                 </select>
-                <label class="check"><input type="checkbox" id="tapSmooth" checked> Suavizar os toques</label>
+                <div class="meta" id="tapAttacksHint" hidden>Marca o ritmo que ouves, do cursor em diante: os toques não mexem na partitura, ficam por cima dela para comparares e encaixares as notas.</div>
+                <label class="check" id="tapSmoothLbl"><input type="checkbox" id="tapSmooth" checked> Suavizar os toques</label>
                 <button type="button" id="tapStart" class="pv-wide"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg>Começar a marcar</button>
                 <div id="tapArmed" hidden>
                   <button type="button" id="tapHit" class="tap-hit">Toque (B)</button>
@@ -1326,6 +1331,21 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                   </div>
                 </div>
                 <span id="tapStatus" class="meta" aria-live="polite"></span>
+                <div id="markedBox" class="marked-box" hidden>
+                  <div class="pv-card-head marked-head">Ataques marcados <button class="info-btn" data-info="marked-attacks">ⓘ</button></div>
+                  <label class="check"><input type="checkbox" id="markedShow" checked> Mostrar na partitura</label>
+                  <span id="markedStatus" class="meta" aria-live="polite"></span>
+                  <div class="lg-mini" id="markedLegend" hidden></div>
+                  <div class="pv-row" id="markedNav" hidden>
+                    <button type="button" id="markedPrev" class="secondary">◀ Diferença anterior</button>
+                    <button type="button" id="markedNext" class="secondary">Diferença seguinte ▶</button>
+                  </div>
+                  <button type="button" id="markedSnapSel" class="secondary pv-wide">Encaixar as notas selecionadas nos toques</button>
+                  <div class="pv-row">
+                    <button type="button" id="markedUndo" class="secondary" disabled>Desfazer</button>
+                    <button type="button" id="markedClear" class="secondary">Apagar os toques desta pista</button>
+                  </div>
+                </div>
               </div>
               <div class="pv-card exp-card" id="autoSyncCard">
                 <div class="pv-card-head">Sincronizar automaticamente <span class="exp-badge">Experimental</span>

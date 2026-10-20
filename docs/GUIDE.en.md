@@ -362,6 +362,27 @@ To mark calmly, slow the playback down with the speed selector next to play. **S
 taps** removes the shake of the hand. The taps stay as corrections in step 3 (one Ctrl+Z undoes
 them all) until **Apply and rebuild**; then fine-tune the rest with **Fix from here**.
 
+### The tab's rhythm does not match what you hear — marking every attack
+
+When the problem is not the tempo but the notes themselves (an extra strum, a rhythm written
+wrong), mark what you hear in the same card, without moving the score:
+
+1. in **Mark by ear**, pick **I tap on every attack (every strum)**, put the cursor a little
+   before the passage and press **Start marking**;
+2. hit **B** on every strum you hear (Backspace takes the last tap back, Esc finishes). The taps
+   sit over the staff, in green, and are saved with the project, one list per track;
+3. in the **Marked attacks** box: a green tick is a tap that matches a note; a tall tick with a
+   dashed line is a tap with no note; a green square is a note with no tap near it. **Previous /
+   Next difference** takes the cursor to each one, and the status line says how many ms on
+   average the notes sit before or after the taps;
+4. to fix them, pick **Marked attacks** in **Snap to**: the notes you drag or add in **Edit
+   notes** go to the taps. Or select notes (with **From the cursor to the end**, say) and press
+   **Snap the selected notes to the taps** — each note or chord goes to the nearest tap, within
+   250 ms. This changes the notes, not the tempo, and stays pending until **Apply and rebuild**.
+
+Marking a passage again replaces only the taps between where you started and your last tap.
+**Undo** steps back and **Delete this track's taps** removes them all.
+
 ### A tempo that varies — Sync automatically (experimental)
 
 The **Sync automatically** card, marked **Experimental**, does what marking by ear does, on its
@@ -699,7 +720,7 @@ the app itself.
 | + / − | zoom |
 | Ctrl + mouse wheel | zoom where the mouse is |
 | 1 … 9 · 0 | pick the mode in the order of the Mode ▾ menu (the number shows beside each; 0 is the tenth; the same number again turns the mode off) |
-| B · Backspace · Esc | in “Mark by ear”: mark the bar (or beat) · take the last tap back · finish |
+| B · Backspace · Esc | in “Mark by ear”: mark the bar (the beat, or the attack) · take the last tap back · finish |
 | Shift+click · Ctrl+click | select a range · add or remove a note |
 | Shift+End | select every note from the cursor to the end |
 | Delete | delete the selection |

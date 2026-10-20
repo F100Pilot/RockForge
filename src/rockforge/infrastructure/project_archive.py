@@ -65,7 +65,7 @@ PORTABLE_KEYS = frozenset({
     "tones", "tone_base", "tone_names", "tone_changes", "arrangement_tones", "tone_swaps",
     "detected_tones",
     "lrc_text", "lyrics_events", "lyrics_follow_chart", "gp_has_lyrics", "vocal_melody",
-    "section_overrides", "note_overrides", "hand_positions",
+    "section_overrides", "note_overrides", "hand_positions", "marked_attacks",
 })
 # Keys the importer sets itself (files of this machine), statuses kept only
 # when they describe a finished result, and what belongs to one machine or one

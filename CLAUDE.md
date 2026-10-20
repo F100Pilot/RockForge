@@ -1438,6 +1438,46 @@ all six anchors back and redo restored them, the rebuild's bars sit on the
 taps, `/psarc-check` clean; beats mode too; PT/EN, no page errors. **Not used
 by a real user on real music from here.**
 
+### Attacks marked by ear ("Toco em cada ataque", `marked_attacks`)
+
+Liam's request (2026-10-20): mark every strum by ear, compare it with the
+notes and snap notes to it. A third choice in "Marcar a ouvir"'s `#tapMode`
+(`attacks`): "Começar a marcar" plays from the cursor, **B** taps, Backspace
+takes the last back, Esc ends (the same `tapState`/keys as the bar taps, with
+`mode: 'attacks'`). A tap is **seconds of the recording file**
+(`audioTime() - tapLatency() - leadInBuilt`), so no sync correction moves it,
+and it creates NO anchor: the list is the chart's, stored on the server at
+once (`PUT /jobs/{id}/marked-attacks` `{arrangement, times}` → sorted, to the
+millisecond, doubles < 1 ms dropped, an unbuilt chart a 422, an empty list
+removes it; `params["marked_attacks"][kind]`, `ArrangementOut.marked_attacks`,
+portable in `.rfproj`, inherited by a fork, dropped by `/reload-gp` with the
+old recording's measurements). A run replaces the taps between where it began
+and its last tap (`applyMarkedRun`); a run ended by a tab switch, an undo or a
+version load is saved first (`finishMarkedRun`). It is NOT a pending edit —
+the build never reads it — so it has its own undo (`markedUndo`, the card's
+"Desfazer", this session only). Drawn by `markedSvg` (green, y 26-37, just
+above the staff, under the detected attacks' band): matched within
+`MARKED_MATCH_S` (80 ms — a hand is less exact than a detector), only notes
+inside the tapped span compared; a tap with no note = tall tick + dashed line,
+a note with no tap = hollow square; the card (`#markedBox`, `renderMarkedBox`)
+gives the counts, the notes' mean offset from the taps, ◀/▶ to each
+difference and its legend (also in "Legenda"). Correcting: `#snapDiv` →
+"Ataques marcados" (`snapDiv = 'marked'`): `snapGridTimes`/`noteEditGrid` use
+`markedChartTimes()` (each tap → `toneChangeChartTime(recordingDisplay(s))`,
+where it shows through the pending tempo/anchors), so drags, double-click
+inserts and tails land on taps; "Encaixar as notas selecionadas nos toques"
+(`snapSelectedToMarked`) moves each selected note group to the nearest untaken
+tap within `MARKED_SNAP_S` (250 ms) as note overrides (all out, then all in;
+a clash with an unselected note refuses everything). Guarded by
+`test_attacks_marked_by_ear_are_stored_per_chart_and_reach_the_viewer` and the
+`marked_attacks` line in
+`test_what_was_measured_on_the_old_recording_is_dropped_with_it`; with
+Playwright on the invented "Curvas" project (PT 1440 / EN 760 px): 6 B + one
+Backspace saved 5 taps on the server, undo emptied it, taps planted 40 ms after
+each note read "7 de 8 … 40 ms antes", the snap grid gave the 8 taps, snapping
+the selection moved 7 groups (one too far, said) and the mean offset vanished,
+Ctrl+Z restored it, no page errors. Not used by Liam yet.
+
 ### From the cursor to the end, one tempo, and moving a block (a user's sync workflow)
 
 "the main thing, for me, is getting the BPM setting correct, marking the first

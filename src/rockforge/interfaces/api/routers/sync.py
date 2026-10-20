@@ -17,6 +17,8 @@ from rockforge.interfaces.api import app as api
 from rockforge.interfaces.api.schemas import (
     MAX_CENT_OFFSET,
     JobOut,
+    MarkedAttacksIn,
+    MarkedAttacksOut,
     RebuildIn,
     SyncConfirmedIn,
     SyncMainIn,
@@ -463,6 +465,37 @@ def set_sync_confirmed(job_id: str, payload: SyncConfirmedIn) -> JobOut:
         job.params = params
         session.commit()
         return api._to_out(job)
+
+
+@router.put("/jobs/{job_id}/marked-attacks", response_model=MarkedAttacksOut)
+def set_marked_attacks(job_id: str, payload: MarkedAttacksIn) -> MarkedAttacksOut:
+    """Store one chart's attacks marked by ear ("Marcar a ouvir" → Ataques):
+    seconds of the recording, sorted, to the millisecond, a double tap (under
+    1 ms apart) kept once. Nothing is rebuilt — they change no note; they live
+    in `params`, so a fork inherits them. An empty list removes the chart's."""
+    times: list[float] = []
+    for t in sorted(round(float(t), 3) for t in payload.times):
+        if not times or t - times[-1] >= 0.001:
+            times.append(t)
+    with api._session_factory() as session:
+        job = api._job_or_404(session, job_id)
+        built = api._built_kinds(job.bundle_dir)
+        if built and payload.arrangement not in built:
+            raise HTTPException(422, f"no built arrangement named {payload.arrangement!r}")
+        params = dict(job.params or {})
+        raw = params.get("marked_attacks")
+        marked: dict[str, object] = dict(raw) if isinstance(raw, dict) else {}
+        if times:
+            marked[payload.arrangement] = times
+        else:
+            marked.pop(payload.arrangement, None)
+        if marked:
+            params["marked_attacks"] = marked
+        else:
+            params.pop("marked_attacks", None)
+        job.params = params
+        session.commit()
+    return MarkedAttacksOut(arrangement=payload.arrangement, times=times)
 
 
 @router.patch("/jobs/{job_id}/sync-main", response_model=JobOut)

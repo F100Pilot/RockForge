@@ -1543,6 +1543,10 @@ const INFO = {
     title: T('Marcar a ouvir'),
     body: T('<p>Para uma tab que nunca foi sincronizada — escrita à mão num só andamento, por exemplo no Songsterr — o mais fiável é <b>marcar tu</b> quando começa cada compasso, como as pessoas fazem no Songsterr para os vídeos.</p><p>Escolhe o compasso de onde partir (o 1 começa do início da gravação; os outros, do cursor — põe-no um pouco antes) e se tocas <b>em cada compasso</b> (no primeiro tempo) ou <b>em cada tempo</b> (mais toques, mais preciso). Carrega em "Começar a marcar", ouve e carrega em <b>B</b> (ou no botão grande) a tempo. Cada toque leva esse compasso para o instante em que tocaste, e a partitura acompanha enquanto tocas. <b>Backspace</b> tira o último toque; <b>Esc</b> termina. Podes parar a meio: o que vem depois do último toque mantém o seu andamento e só se desloca com ele.</p><p>Dica: abranda a reprodução no seletor de velocidade junto ao play (90%, 75%…) para marcar com calma — os toques ficam no tempo real da gravação. "Suavizar os toques" tira o tremor da mão (alinha cada toque com os vizinhos) sem apagar as mudanças de andamento.</p><p>Tudo fica como correções pendentes (aparecem no Passo 3 e desfazem-se com Ctrl+Z, de uma vez) até "Aplicar e reconstruir". Depois afina o que faltar com "Corrigir daqui" ou arrastando notas.</p>')
   },
+  'marked-attacks': {
+    title: T('Ataques marcados'),
+    body: T('<p>Em "Marcar a ouvir", escolhe <b>"Toco em cada ataque"</b>, põe o cursor um pouco antes da passagem e carrega em "Começar a marcar": a cada palhetada que ouves, carrega em <b>B</b>. Os toques <b>não mexem na partitura</b> — ficam por cima dela, a verde, para veres onde o ritmo da tab não bate com o que se ouve. Abranda a reprodução (90%, 75%…) para marcar com calma; os toques ficam no tempo real da gravação.</p><p><b>Traço verde</b>: um toque que bate com uma nota. <b>Traço alto com linha tracejada</b>: tocaste e a partitura não tem nota ali. <b>Quadrado</b>: uma nota sem toque perto (até 80 ms). "Diferença anterior/seguinte" leva o cursor a cada uma.</p><p>Para corrigir: escolhe <b>"Ataques marcados"</b> em "Encaixar em" e as notas que arrastas ou acrescentas em "Editar notas" vão para os teus toques; ou seleciona notas e carrega em <b>"Encaixar as notas selecionadas nos toques"</b> — cada nota ou acorde vai para o toque mais perto (até 250 ms). Isto muda as notas, não o andamento, e fica pendente até "Aplicar e reconstruir".</p><p>Os toques ficam guardados com o projeto, uma lista por pista. Marcar outra vez uma passagem substitui só os toques entre onde começaste e o último toque. "Desfazer" volta atrás nas mudanças desta sessão.</p>')
+  },
   'auto-sync': {
     title: T('Sincronização automática'),
     body: T('<p>Deteta o andamento e o início da gravação (como o CDLC.AI) e propõe um ajuste. Os valores ficam em pré-visualização — confirma na partitura e clica em "Aplicar e reconstruir".<br><b>Dica importante:</b> se já tiveres corrido <b>"Separar instrumentos"</b>, a deteção do andamento passa a ser feita na <b>bateria isolada</b> — muito mais fiável em música rápida e densa (na mistura completa, o detetor de batidas engana-se no nível métrico). Separa primeiro para um resultado bem melhor.<br>Requer o extra <code>ml</code> (librosa). Refina depois com os modos manuais.</p>')
@@ -2460,6 +2464,7 @@ async function selectJob(id, { poll = false, force = false } = {}) {
 function staleFor(id) { return !selectedJob || selectedJob.id !== id; }
 
 async function loadArrangements(id) {
+  if (tapState && tapState.mode === 'attacks') finishMarkedRun();  // saved on the version it was marked on
   tapState = null;
   renderTapUi();
   stopPendingHistory();
@@ -2489,6 +2494,13 @@ async function loadArrangements(id) {
     if (a.hand_positions_edited) fhpByKind[a.kind] = (a.hand_positions || []).map(h => ({ time: h.time, fret: h.fret, width: h.width }));
   }
   fhpBuilt = JSON.stringify(fhpByKind);
+  markedByKind = {};
+  markedSaved = {};
+  markedUndo = [];
+  for (const a of arrangements) {
+    if (a.marked_attacks && a.marked_attacks.length) markedByKind[a.kind] = a.marked_attacks.slice();
+    markedSaved[a.kind] = JSON.stringify(a.marked_attacks || []);
+  }
   closeFhpPopup();
   noteClipboard = [];  // avoid pasting a previous song's notes into this one
   resetAttacks();  // they were measured on another project's recording
@@ -2704,6 +2716,7 @@ function scoreLegendHtml() {
     + legendGroup(T('Pauta'), staff)
     + legendGroup(T('Sincronização'), sync)
     + legendGroup(T('Ataques da gravação (com "Mostrar na partitura")'), attacksLegendItems())
+    + legendGroup(T('Ataques marcados por ti ("Marcar a ouvir" → cada ataque)'), markedLegendItems())
     + legendGroup(T('Posição da mão (faixa por baixo da pauta)'), hand)
     + legendGroup(T('Barras de áudio (por cima da pauta)'), levels)
     + legendGroup(T('Pistas'), tabs)
@@ -3100,6 +3113,7 @@ function showArr(i) {
     s += `<text x="${x1 + 3}" y="${H - 12}" fill="#ffd479" font-size="12" font-style="italic">${esc(ap.name ? T('arpejo {nome}', { nome: ap.name }) : T('arpejo'))}<title>${esc(T('Arpejo: notas soltas deixadas a soar sobre a forma de um acorde — o jogo mostra a forma por cima delas.'))}</title></text>`;
   }
   if (attacksVisible()) s += attacksSvg(groups, warp, W, SB);
+  if (markedVisible()) s += markedSvg(groups, warp, W, SB);
   s += fhpLaneSvg(a, fhps, warp, W, SB + 40);
   // Sync anchors (drift corrections). Drawn in a distinct teal — NOT the
   // playhead's orange — with a numbered pin below the staff, so they read as
@@ -3142,6 +3156,7 @@ function showArr(i) {
   fillTapBars();
   fillAutoSyncBars();
   renderAttacksCard();
+  renderMarkedBox();
   renderEstimatedBars();
   updateNoteEditsInfo();
   updateDeleteNotesUi();
@@ -3234,6 +3249,10 @@ const NOTE_EDIT_MIN_DIV = 4, NOTE_EDIT_FREE_DIV = 48;
 function noteEditGrid(bypass) {
   const a = arrangements[currentArr];
   if (!a) return [];
+  if (!bypass && snapToBeats && snapDiv === 'marked') {
+    const marks = markedChartTimes();
+    if (marks.length) return marks;  // the rhythm heard; with none marked, the sixteenths below
+  }
   const free = bypass || !snapToBeats || snapDiv === 'cursor';
   const div = free ? NOTE_EDIT_FREE_DIV
     : Math.max(NOTE_EDIT_MIN_DIV, snapDiv === 'bars' ? 1 : (Number(snapDiv) || 1));
@@ -4037,8 +4056,10 @@ function startTapSync() {
     toast(T('A gravação ainda não carregou.'), 'err');
     return;
   }
+  const pick = document.getElementById('tapMode').value;
+  if (pick === 'attacks') { startMarkedRun(a); return; }
   const fromM = parseInt(document.getElementById('tapFromBar').value, 10) || 1;
-  const mode = document.getElementById('tapMode').value === 'beats' ? 'beats' : 'bars';
+  const mode = pick === 'beats' ? 'beats' : 'bars';
   const grid = tapGrid(a, fromM, mode);
   if (!grid.length) { toast(T('Esta pista não tem compassos para marcar.'), 'err'); return; }
   tapState = { grid, taps: [], base: syncAnchors.map(x => x.slice()), kind: a.kind, mode, fromM };
@@ -4051,6 +4072,7 @@ function startTapSync() {
 function tapNow() {
   if (!tapState) return;
   if (!audioIsPlaying()) { toast(T('Dá play para marcar a ouvir.'), 'err'); return; }
+  if (tapState.mode === 'attacks') { markedTap(); return; }
   const d = playheadDisplay(Math.max(0, audioTime() - tapLatency()));
   const prev = tapState.taps[tapState.taps.length - 1];
   if (prev != null && d <= prev + 0.05) return;  // a double press
@@ -4062,11 +4084,12 @@ function tapNow() {
 function undoTap() {
   if (!tapState || !tapState.taps.length) return;
   tapState.taps.pop();
-  applyTaps();
+  if (tapState.mode === 'attacks') applyMarkedRun(); else applyTaps();
 }
 
 function stopTapSync() {
   if (!tapState) return;
+  if (tapState.mode === 'attacks') { finishMarkedRun(); return; }
   const n = tapState.taps.length;
   tapState = null;
   renderTapUi();
@@ -4082,8 +4105,16 @@ function renderTapUi() {
   document.getElementById('tapStart').hidden = on;
   document.getElementById('tapArmed').hidden = !on;
   for (const id of ['tapFromBar', 'tapMode']) document.getElementById(id).disabled = on;
+  const attacks = on ? tapState.mode === 'attacks' : document.getElementById('tapMode').value === 'attacks';
+  document.getElementById('tapFromRow').hidden = attacks;
+  document.getElementById('tapSmoothLbl').hidden = attacks;
+  document.getElementById('tapAttacksHint').hidden = !attacks;
   const st = document.getElementById('tapStatus');
   if (!on) { st.textContent = ''; return; }
+  if (attacks) {
+    st.textContent = T('{n} ataque(s) marcados nesta passagem. B marca, Backspace tira o último, Esc termina.', { n: tapState.taps.length });
+    return;
+  }
   const a = arrangements[currentArr];
   const i = tapState.taps.length;
   const bar = (t) => {
@@ -4118,7 +4149,8 @@ function fillTapBars() {
   document.getElementById('tapHit')?.addEventListener('pointerdown', e => { e.preventDefault(); tapNow(); });
   document.getElementById('tapUndo')?.addEventListener('click', undoTap);
   document.getElementById('tapStop')?.addEventListener('click', stopTapSync);
-  document.getElementById('tapSmooth')?.addEventListener('change', () => { if (tapState) applyTaps(); });
+  document.getElementById('tapSmooth')?.addEventListener('change', () => { if (tapState && tapState.mode !== 'attacks') applyTaps(); });
+  document.getElementById('tapMode')?.addEventListener('change', renderTapUi);
   // Capture phase, ahead of the page's own keys: while marking, Backspace
   // takes the last tap back (not "delete the selected notes") and Esc ends.
   document.addEventListener('keydown', e => {
@@ -4436,6 +4468,297 @@ document.getElementById('attacksShow')?.addEventListener('change', () => showArr
 document.getElementById('attacksSource')?.addEventListener('change', () => { attackSourceTouched = true; });
 document.getElementById('attacksPrev')?.addEventListener('click', () => goToAttackDiff(-1));
 document.getElementById('attacksNext')?.addEventListener('click', () => goToAttackDiff(1));
+
+// ── Attacks marked by ear ("Marcar a ouvir" → "Toco em cada ataque") ────────
+// Liam's request: tap every strum while listening, and the chart's notes can
+// then be compared with — and snapped to — the rhythm actually heard, without
+// the timeline moving. The taps are seconds of the RECORDING (what the playhead
+// plays, minus the output latency and the build's "Silêncio inicial"), so no
+// sync correction can move them; they are stored per chart on the server
+// (PUT /jobs/{id}/marked-attacks), not as a pending edit — the build never
+// uses them. A new run replaces the taps between where it started and its last
+// tap, so a passage is re-marked without touching the rest.
+const MARKED_MATCH_S = 0.08;   // a note and a tap this close are one strike (a hand is less exact than a detector)
+const MARKED_SNAP_S = 0.25;    // "Encaixar": the farthest a note group goes to reach a tap
+const MARKED_UNDO_MAX = 20;
+let markedByKind = {};         // chart kind → [seconds of the recording], sorted
+let markedSaved = {};          // chart kind → JSON of what the server holds
+let markedUndo = [];           // [{kind, times}] — what each change replaced
+let markedStats = null;        // {taps, notes, matched, lonely, extra, meanMs}
+let markedDiffs = [];          // display times of the differences, for ◀ ▶
+
+function markedFor(kind) { return markedByKind[kind] || []; }
+
+function markedVisible() {
+  const a = arrangements[currentArr];
+  return !!(a && markedFor(a.kind).length && document.getElementById('markedShow')?.checked !== false);
+}
+
+function pushMarkedUndo(kind) {
+  markedUndo.push({ kind, times: markedFor(kind).slice() });
+  if (markedUndo.length > MARKED_UNDO_MAX) markedUndo.shift();
+}
+
+function setMarked(kind, times) {
+  if (times.length) markedByKind[kind] = times; else delete markedByKind[kind];
+}
+
+async function saveMarked(job, kind) {
+  const times = markedFor(kind);
+  const key = JSON.stringify(times);
+  if ((markedSaved[kind] || '[]') === key) return;
+  try {
+    const res = await getJSON(`/jobs/${job}/marked-attacks`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ arrangement: kind, times }),
+    });
+    if (staleFor(job)) return;
+    markedSaved[kind] = JSON.stringify(res.times);
+  } catch (e) {
+    toast(T('Não foi possível guardar os ataques marcados: {msg}', { msg: e.message }), 'err');
+  }
+}
+
+function startMarkedRun(a) {
+  if (!selectedJob) return;
+  const from = Math.max(0, audioTime() - leadInBuilt);
+  pushMarkedUndo(a.kind);
+  tapState = { mode: 'attacks', kind: a.kind, job: selectedJob.id, taps: [], from, base: markedFor(a.kind).slice(), grid: [] };
+  if (!audioIsPlaying()) audioPlay();
+  renderTapUi();
+  renderMarkedBox();
+}
+
+function markedTap() {
+  const rec = Math.max(0, audioTime() - tapLatency() - leadInBuilt);
+  const prev = tapState.taps[tapState.taps.length - 1];
+  if (prev != null && rec <= prev + 0.04) return;  // a double press
+  tapState.taps.push(rec);
+  applyMarkedRun();
+}
+
+// The chart's list with this run in it: the run's span re-marked, the rest kept.
+function applyMarkedRun() {
+  const st = tapState;
+  const taps = st.taps;
+  const end = taps.length ? taps[taps.length - 1] : -1;
+  const kept = st.base.filter(t => t < st.from - 0.01 || t > end + 0.03);
+  setMarked(st.kind, [...kept, ...taps].sort((x, y) => x - y));
+  if (arrangements[currentArr] && arrangements[currentArr].kind === st.kind) showArr(currentArr);
+  renderTapUi();
+}
+
+function finishMarkedRun() {
+  const st = tapState;
+  tapState = null;
+  renderTapUi();
+  if (!st.taps.length) markedUndo.pop();  // nothing changed
+  else {
+    saveMarked(st.job, st.kind);
+    toast(T('{n} ataque(s) marcados — guardados com o projeto.', { n: st.taps.length }), 'ok');
+  }
+  if (arrangements[currentArr]) showArr(currentArr);
+  renderMarkedBox();
+}
+
+function undoMarked() {
+  const last = markedUndo.pop();
+  if (!last || !selectedJob || tapState) return;
+  setMarked(last.kind, last.times);
+  saveMarked(selectedJob.id, last.kind);
+  showArr(currentArr);
+  renderMarkedBox();
+}
+
+async function clearMarked() {
+  const a = arrangements[currentArr];
+  if (!a || !selectedJob || tapState || !markedFor(a.kind).length) return;
+  if (!await confirmModal(T('Apagar os {n} ataques marcados desta pista? Podes desfazer logo a seguir.', { n: markedFor(a.kind).length }))) return;
+  pushMarkedUndo(a.kind);
+  setMarked(a.kind, []);
+  saveMarked(selectedJob.id, a.kind);
+  showArr(currentArr);
+  renderMarkedBox();
+}
+
+// The comparison and its drawing, in the lane just above the staff (the
+// detected attacks keep the band above it): green ticks, a tall one with a
+// dashed line where nothing was played, a hollow square on a note the hand
+// did not mark. Only notes inside the span the taps cover are compared.
+function markedSvg(groups, warp, W, SB) {
+  const a = arrangements[currentArr];
+  const taps = markedFor(a.kind).map(recordingDisplay);
+  const times = groups.map(g => warp(previewScale(g.time))).sort((x, y) => x - y);
+  const lo = taps[0] - MARKED_MATCH_S, hi = taps[taps.length - 1] + MARKED_MATCH_S;
+  const used = new Array(taps.length).fill(false);
+  const lonely = [];
+  let notes = 0, matched = 0, sum = 0, j = 0;
+  for (const t of times) {
+    if (t < lo || t > hi) continue;
+    notes++;
+    while (j < taps.length && taps[j] < t - MARKED_MATCH_S) j++;
+    let best = -1;
+    for (let k = j; k < taps.length && taps[k] <= t + MARKED_MATCH_S; k++) {
+      if (!used[k] && (best < 0 || Math.abs(taps[k] - t) < Math.abs(taps[best] - t))) best = k;
+    }
+    if (best >= 0) { used[best] = true; matched++; sum += t - taps[best]; } else lonely.push(t);
+  }
+  const extra = [];
+  let svg = '';
+  const okTxt = T('Ataque que marcaste'), loneTxt = T('Ataque que marcaste sem nota na partitura');
+  taps.forEach((t, k) => {
+    if (!used[k]) extra.push(t);
+    const x = timeToX(t);
+    if (x < 24 || x > W - 4) return;
+    if (used[k])
+      svg += `<line class="marked-tick" x1="${x}" y1="30" x2="${x}" y2="37" stroke="#4cd97b" stroke-width="2"><title>${esc(okTxt)}</title></line>`;
+    else
+      svg += `<line x1="${x}" y1="37" x2="${x}" y2="${SB}" stroke="#4cd97b" stroke-width="1" stroke-dasharray="3,4" opacity=".5"/>`
+        + `<line class="marked-tick" x1="${x}" y1="26" x2="${x}" y2="37" stroke="#4cd97b" stroke-width="3"><title>${esc(loneTxt)}</title></line>`;
+  });
+  const noTap = T('Nota sem ataque marcado perto');
+  for (const t of lonely) {
+    const x = timeToX(t);
+    if (x < 24 || x > W - 4) continue;
+    svg += `<line x1="${x}" y1="37" x2="${x}" y2="${SB}" stroke="#4cd97b" stroke-width="1" stroke-dasharray="1,4" opacity=".6"/>`
+      + `<rect x="${x - 4}" y="${29}" width="8" height="8" fill="none" stroke="#4cd97b" stroke-width="2"><title>${esc(noTap)}</title></rect>`;
+  }
+  markedStats = { taps: taps.length, notes, matched, lonely: lonely.length, extra: extra.length, meanMs: matched ? 1000 * sum / matched : 0 };
+  markedDiffs = [...lonely, ...extra].sort((x, y) => x - y);
+  return svg;
+}
+
+function markedLegendItems() {
+  const note = legendNote(30, 27, 5, LG_BLUE);
+  return [
+    legendItem(`<line x1="30" y1="6" x2="30" y2="13" stroke="#4cd97b" stroke-width="3"/>${note}`,
+      T('Ataque que marcaste e que bate com uma nota')),
+    legendItem(`<line x1="30" y1="13" x2="30" y2="36" stroke="#4cd97b" stroke-width="1.5" stroke-dasharray="3,4" opacity=".6"/><line x1="30" y1="0" x2="30" y2="13" stroke="#4cd97b" stroke-width="3.5"/>`,
+      T('Ataque que marcaste sem nota na partitura: falta uma nota, ou está noutro sítio?')),
+    legendItem(`<line x1="30" y1="13" x2="30" y2="36" stroke="#4cd97b" stroke-width="1.5" stroke-dasharray="1,4" opacity=".7"/><rect x="25" y="3" width="10" height="10" fill="none" stroke="#4cd97b" stroke-width="2.5"/>${note}`,
+      T('Quadrado verde: nota sem ataque marcado perto — nota a mais, ou fora de tempo?')),
+  ];
+}
+
+function renderMarkedBox() {
+  const box = document.getElementById('markedBox');
+  if (!box) return;
+  const a = arrangements[currentArr];
+  const n = a ? markedFor(a.kind).length : 0;
+  box.hidden = !n;
+  document.getElementById('markedUndo').disabled = !markedUndo.length || !!tapState;
+  if (!n) return;
+  const shown = markedVisible();
+  document.getElementById('markedNav').hidden = !(shown && markedDiffs.length);
+  const lg = document.getElementById('markedLegend');
+  if (shown && !lg.innerHTML) lg.innerHTML = markedLegendItems().join('');
+  lg.hidden = !shown;
+  for (const id of ['markedClear', 'markedSnapSel']) document.getElementById(id).disabled = !!tapState;
+  const st = shown && markedStats ? markedStats : null;
+  let txt = T('{n} ataques marcados nesta pista.', { n });
+  if (st) {
+    txt += ' ' + T('Notas com um toque perto: {ok} de {total} · notas sem toque: {lonely} · toques sem nota: {extra}.', {
+      ok: st.matched, total: st.notes, lonely: st.lonely, extra: st.extra,
+    });
+    if (st.matched >= 4 && Math.abs(st.meanMs) >= 5)
+      txt += ' ' + (st.meanMs > 0
+        ? T('Em média as notas estão {ms} ms depois dos toques.', { ms: Math.round(st.meanMs) })
+        : T('Em média as notas estão {ms} ms antes dos toques.', { ms: Math.round(-st.meanMs) }));
+  }
+  document.getElementById('markedStatus').textContent = txt;
+}
+
+function goToMarkedDiff(dir) {
+  const now = playheadDisplay(audioTime());
+  const t = dir > 0 ? markedDiffs.find(d => d > now + 0.02) : markedDiffs.findLast(d => d < now - 0.02);
+  if (t == null) { toast(T('Sem diferenças nesse sentido.')); return; }
+  audioSeek(Math.max(0, t - viewOrigin));
+  const wrap = document.getElementById('tabwrap');
+  wrap.scrollLeft = Math.max(0, timeToX(t) - wrap.clientWidth / 2);
+}
+
+// The taps as chart times (the clock the notes and the snap grid are in),
+// through the chart's pending tempo/anchors — where they show on the score.
+function markedChartTimes() {
+  const a = arrangements[currentArr];
+  if (!a) return [];
+  return markedFor(a.kind).map(s => toneChangeChartTime(recordingDisplay(s)));
+}
+
+// "Encaixar as notas selecionadas nos toques": each selected note group (a
+// note, a chord) goes to the nearest tap not yet taken, within MARKED_SNAP_S;
+// the same note edits as moving it in "Editar notas" (the timeline does not
+// move). A clash with a note left behind refuses it all.
+function snapSelectedToMarked() {
+  const a = arrangements[currentArr];
+  if (!a || tapState) return;
+  const taps = markedFor(a.kind).map(recordingDisplay);
+  if (!taps.length) return;
+  const sel = selectedChordNotes().sort((x, y) => x.time - y.time);
+  if (!sel.length) { toast(T('Seleciona primeiro as notas a encaixar (clique, Ctrl/Shift+clique ou "Do cursor até ao fim").'), 'err'); return; }
+  const groups = [];
+  for (const n of sel) {
+    const g = groups[groups.length - 1];
+    if (g && Math.abs(n.time - g.time) < 0.03) g.notes.push(n); else groups.push({ time: n.time, notes: [n] });
+  }
+  const warp = buildTimeWarp(syncAnchors);
+  const used = new Set();
+  const moves = [];
+  let far = 0, already = 0;
+  for (const g of groups) {
+    const d = warp(previewScale(g.time));
+    let best = -1;
+    taps.forEach((t, k) => {
+      if (!used.has(k) && Math.abs(t - d) <= MARKED_SNAP_S && (best < 0 || Math.abs(t - d) < Math.abs(taps[best] - d))) best = k;
+    });
+    if (best < 0) { far++; continue; }
+    used.add(best);
+    const target = toneChangeChartTime(taps[best]);
+    if (Math.abs(target - g.time) < 0.002) { already++; continue; }
+    moves.push({ g, dt: target - g.time });
+  }
+  if (!moves.length) {
+    toast(already ? T('As notas selecionadas já estão nos toques.') : T('Nenhuma nota selecionada tem um toque a menos de {ms} ms.', { ms: MARKED_SNAP_S * 1000 }), already ? 'ok' : 'err');
+    return;
+  }
+  const merged = mergeNoteOverrides(a.notes, noteOverridesByKind[currentKind()] || []);
+  const isMoving = m => moves.some(({ g }) => g.notes.some(n => n.string === m.string && Math.abs(n.time - m.time) < 0.001));
+  const placed = moves.flatMap(({ g, dt }) => g.notes.map(n => ({ n, time: n.time + dt })));
+  const beats = a.beats || [];
+  if (placed.some(c => c.time < 0 || (beats.length && c.time > beats[beats.length - 1]))) {
+    toast(T('As notas sairiam da música — a partitura só vai até ao último compasso.'), 'err');
+    return;
+  }
+  if (merged.some(m => !isMoving(m) && placed.some(c => c.n.string === m.string && Math.abs(c.time - m.time) < 0.03))) {
+    toast(T('Já há uma nota nessa corda nesse tempo.'), 'err');
+    return;
+  }
+  // Every note out first, then every one in: a group may land where another
+  // selected group sat.
+  placed.forEach(c => deleteNoteAt(c.n.time, c.n.string));
+  placed.forEach(c => upsertNoteOverride(noteAsOverride(c.n, c.time, c.n.string, c.n.fret)));
+  const shift = new Map(moves.map(({ g, dt }) => [g.time, dt]));
+  const times = [...selectedTimes].map(t => {
+    for (const [gt, dt] of shift) if (Math.abs(t - gt) < 0.03) return t + dt;
+    return t;
+  });
+  selectedTimes.clear();
+  times.forEach(t => selectedTimes.add(t));
+  neLast = null;
+  updateSelectionInfo();
+  showArr(currentArr);
+  updatePendingChangesInfo();
+  let msg = T('{n} nota(s)/acorde(s) encaixados nos toques — pendentes até "Aplicar e reconstruir".', { n: moves.length });
+  if (far) msg += ' ' + T('{n} sem toque a menos de {ms} ms ficaram onde estavam.', { n: far, ms: MARKED_SNAP_S * 1000 });
+  toast(msg, 'ok');
+}
+
+document.getElementById('markedShow')?.addEventListener('change', () => showArr(currentArr));
+document.getElementById('markedPrev')?.addEventListener('click', () => goToMarkedDiff(-1));
+document.getElementById('markedNext')?.addEventListener('click', () => goToMarkedDiff(1));
+document.getElementById('markedUndo')?.addEventListener('click', undoMarked);
+document.getElementById('markedClear')?.addEventListener('click', clearMarked);
+document.getElementById('markedSnapSel')?.addEventListener('click', snapSelectedToMarked);
 
 function barTempoMessage(fromM, toM, bpm, delta) {
   const which = fromM === toM ? T('Compasso {n}', { n: fromM }) : T('Compassos {from}–{to}', { from: fromM, to: toM });
@@ -8215,6 +8538,7 @@ function pendingSnapshot() {
 }
 
 function restorePending(snap) {
+  if (tapState && tapState.mode === 'attacks') finishMarkedRun();  // kept: the marked attacks are not a pending edit
   tapState = null;  // an undo while marking ends the marking
   renderTapUi();
   restoringPending = true;
@@ -8548,6 +8872,7 @@ function snapGridTimes() {
   const a = arrangements[currentArr];
   if (!a || snapDiv === 'cursor') return [];  // 'cursor' snaps live in snapDisplay, no grid
   if (snapDiv === 'bars') return (a.bars || []).map(b => b.time);
+  if (snapDiv === 'marked') return markedChartTimes();
   return beatGridTimes(a, Number(snapDiv));
 }
 // The chart's beats, each subdivided into `div` (interpolated between the real
@@ -9409,7 +9734,7 @@ document.getElementById('snapBeats')?.addEventListener('change', e => {
 });
 document.getElementById('snapDiv')?.addEventListener('change', e => {
   const v = e.target.value;
-  snapDiv = v === 'bars' || v === 'cursor' ? v : Number(v);
+  snapDiv = v === 'bars' || v === 'cursor' || v === 'marked' ? v : Number(v);
   if (arrangements.length) showArr(currentArr);  // redraw the grid at the new resolution
 });
 

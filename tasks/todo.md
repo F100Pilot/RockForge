@@ -1,3 +1,19 @@
+# Faixa de ataques marcados à mão (Liam, 2026-10-20)
+
+Pedido: marcar a palhetada certa a ouvir (tecla) e encaixar as notas nesses toques ao editar.
+Os toques dizem QUANDO, não que notas; ficam no relógio da gravação, por pista, com o projeto.
+
+- [x] Backend: `params["marked_attacks"]` {pista: [segundos da gravação]}; `PUT /jobs/{id}/marked-attacks`
+      (validado: finitos, ≥ 0, ordenados, ≤ 20 000); `ArrangementOut.marked_attacks`; chave portátil
+      no `.rfproj`; largada no `/reload-gp` quando a gravação muda; testes.
+- [x] "Marcar a ouvir": modo "Ataques" (mesma captura: B, latência, Backspace, Esc), sem âncoras;
+      remarcar uma passagem substitui os toques dessa passagem; guardado no servidor.
+- [x] Partitura: toques a verde por baixo da banda dos ataques medidos; nota sem toque e toque sem
+      nota marcados (dentro da zona marcada); "Diferença anterior/seguinte" no cartão.
+- [x] "Encaixar em: Ataques marcados" no `#snapDiv` (inserir, arrastar notas, cauda, arrastar de
+      sincronização); "Encaixar as notas selecionadas nos toques" (cada acorde ao toque mais perto).
+- [x] Desfazer (toques: botão do cartão; encaixe das notas: Ctrl+Z/Y), legenda, ⓘ, i18n PT/EN, guias, changelog, CLAUDE.md; Playwright PT/EN.
+
 # Exportar e importar o projeto (2026-10-18)
 
 Pedido: "implementes o exportar e importar o projeto". Um ficheiro `.rfproj` (ZIP) com tudo o

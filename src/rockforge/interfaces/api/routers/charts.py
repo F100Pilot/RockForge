@@ -148,6 +148,15 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
         bars = estimated.get(str(track)) if track is not None else None
         return [b for b in bars if isinstance(b, int)] if isinstance(bars, list) else []
 
+    raw_marked = job_params.get("marked_attacks")
+    marked = raw_marked if isinstance(raw_marked, dict) else {}
+
+    def marked_for(kind: str) -> list[float]:
+        times = marked.get(kind)
+        if not isinstance(times, list):
+            return []
+        return [float(t) for t in times if isinstance(t, (int, float))]
+
     synced_kinds = api._synced_arrangements(job_params, job.bundle_dir)
     out: list[ArrangementOut] = []
     for xml_path in sorted(Path(job.bundle_dir).glob("arrangement_*.xml")):
@@ -285,6 +294,7 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
                 sections_edited=sections_edited,
                 sync_confirmed=kind in synced_kinds,
                 estimated_bars=estimated_bars_for(kind),
+                marked_attacks=marked_for(kind),
                 arpeggios=arpeggios,
             )
         )

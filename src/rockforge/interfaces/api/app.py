@@ -486,7 +486,8 @@ def _check_imported_params(params: dict[str, object]) -> None:
         if params.get(key) is not None and not isinstance(params[key], list):
             raise bad(key, "uma lista")
     for key in ("arrangement_sync", "estimated_bars", "tuning_overrides", "arrangement_tones",
-                "tone_swaps", "detected_tones", "note_overrides", "hand_positions"):
+                "tone_swaps", "detected_tones", "note_overrides", "hand_positions",
+                "marked_attacks"):
         if params.get(key) is not None and not isinstance(params[key], dict):
             raise bad(key, "um objeto")
     if "sync_anchor_stages" in params and not anchors_ok(params["sync_anchor_stages"]):

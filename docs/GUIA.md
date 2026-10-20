@@ -362,6 +362,28 @@ Para marcar com calma, abranda a reprodução no seletor de velocidade ao lado d
 Ctrl+Z desfá-los todos) até **Aplicar e reconstruir**; depois afina o resto com **Corrigir
 daqui**.
 
+### O ritmo da tab não bate com o que ouves — marcar cada ataque
+
+Quando o problema não é o andamento mas as próprias notas (uma palhetada a mais, um ritmo mal
+escrito), marca o que ouves no mesmo cartão, sem mexer na partitura:
+
+1. em **Marcar a ouvir**, escolhe **Toco em cada ataque (cada palhetada)**, põe o cursor um
+   pouco antes da passagem e carrega em **Começar a marcar**;
+2. carrega em **B** em cada palhetada que ouves (Backspace tira o último toque, Esc termina).
+   Os toques ficam por cima da pauta, a verde, e guardados com o projeto, uma lista por pista;
+3. no quadro **Ataques marcados**: um traço verde é um toque que bate com uma nota; um traço
+   alto com linha tracejada é um toque sem nota; um quadrado verde é uma nota sem toque perto.
+   **Diferença anterior / seguinte** leva o cursor a cada uma, e a linha de estado diz em média
+   quantos ms as notas estão antes ou depois dos toques;
+4. para corrigir, escolhe **Ataques marcados** em **Encaixar em**: as notas que arrastas ou
+   acrescentas em **Editar notas** vão para os toques. Ou seleciona notas (por exemplo **Do
+   cursor até ao fim**) e carrega em **Encaixar as notas selecionadas nos toques** — cada nota
+   ou acorde vai para o toque mais perto, até 250 ms. Isto muda as notas, não o andamento, e
+   fica pendente até **Aplicar e reconstruir**.
+
+Marcar outra vez uma passagem substitui só os toques entre onde começaste e o último toque.
+**Desfazer** volta atrás e **Apagar os toques desta pista** tira-os todos.
+
 ### Andamento que varia — Sincronizar automaticamente (experimental)
 
 O cartão **Sincronizar automaticamente**, marcado **Experimental**, faz o mesmo que marcar a
@@ -699,7 +721,7 @@ lista na própria aplicação.
 | + / − | zoom |
 | Ctrl + roda do rato | zoom onde está o rato |
 | 1 … 9 · 0 | escolhe o modo pela ordem do menu Modo ▾ (o número aparece ao lado de cada um; o 0 é o décimo; o mesmo número outra vez tira o modo) |
-| B · Backspace · Esc | em «Marcar a ouvir»: marca o compasso (ou o tempo) · tira o último toque · termina |
+| B · Backspace · Esc | em «Marcar a ouvir»: marca o compasso (o tempo, ou o ataque) · tira o último toque · termina |
 | Shift+clique · Ctrl+clique | seleciona um intervalo · junta ou tira uma nota |
 | Shift+End | seleciona todas as notas do cursor até ao fim |
 | Delete | apaga a seleção |
