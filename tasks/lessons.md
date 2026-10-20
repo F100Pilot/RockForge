@@ -144,3 +144,12 @@ não for uma alteração importante para corrigir alguma coisa, prefiro juntar
 mais alterações e depois fazer bump." Rule: bump only for an important fix;
 everything else goes under "Por lançar"/"Unreleased" and ships with the next
 version.
+
+## Never rebase over a merge of someone else's PR (2026-10-20)
+After merging PR #5 locally (`git merge --no-ff`), the usual
+`git fetch && git rebase origin/main` before pushing LINEARISED the merge and
+replayed the contributor's commits with new hashes — GitHub would not have seen
+the PR as merged, and the fix record's commit ids no longer existed. Restored
+from the reflog. Rule: when history holds a merge, push without rebasing if
+`origin/main` is already an ancestor (`git merge-base --is-ancestor origin/main
+HEAD`), otherwise `git rebase --rebase-merges` or merge `origin/main`.
