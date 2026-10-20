@@ -1306,7 +1306,7 @@ def test_a_gp_job_stores_the_bar_times_it_was_created_with(client: TestClient, t
 
 # "[-1, 2]" left out on purpose: negative times are now ACCEPTED — Songsterr
 # markers can begin before the video's first second (a count-in at t<0), and
-# bar_time_points skips those anchors without shifting the bar alignment.
+# bar_time_points keeps them as ordinary points (bar 1 then starts before the audio).
 @pytest.mark.parametrize(
     "bad", ["not json", '{"a": 1}', '[1, "x"]', "[1, NaN]", "[true, 2]"]
 )

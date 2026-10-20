@@ -15,6 +15,7 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 ### Fixes
 
 - **Work folder moved:** after moving RockForge's data folder (to another disk or computer), earlier projects could no longer find their bundle, recording, GP file and stems. On start, RockForge now looks for them in the new folder.
+- **Songsterr:** a video whose marks start before the video begins (a count-in marked at negative times) was refused when creating the project. It is now accepted, and every bar sits on its own mark. Contributed by mongrelx (#5).
 - **Arrangement with no notes:** when the GP track picked for an arrangement has no notes (a vocal, drum or empty track), the error now says which arrangement and which track, and what to do, instead of just "arrangement has no notes".
 - **Fretboard — "Only those matching the picked one":** with no note picked, it showed every note on the neck. Now only the equivalents of the picked note show (picked on the neck or clicked on the score), and nothing until you pick one.
 

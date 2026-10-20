@@ -45,9 +45,9 @@ def _parse_bar_times(raw: str) -> list[float]:
     if len(values) > _MAX_BAR_TIMES:
         raise HTTPException(422, f"bar_times has more than {_MAX_BAR_TIMES} entries")
     floats = [float(v) for v in values]
-    # Negative times are allowed through here: Songsterr markers can begin before
-    # the video's first second (a count-in marked at t<0). bar_time_points skips
-    # them like any other unusable anchor, keeping the bar alignment intact.
+    # Negative times are allowed: Songsterr markers can begin before the video's
+    # first second (a count-in marked at t<0); bar_time_points keeps them, and
+    # offset_s (down to MIN_OFFSET_S) carries bar 1's negative start.
     if not all(math.isfinite(v) for v in floats):
         raise HTTPException(422, "bar_times must be finite seconds")
     return floats

@@ -256,7 +256,17 @@ re-inverting the dependency.
    step 3 lets the user pick a video, pre-fills "Início da música" with bar 1's
    instant in that video, and sends the points back as `/jobs/gp`'s
    `bar_times` (a JSON list, validated in `_parse_bar_times` because multipart
-   bypasses the models: finite, non-negative, ≤ 10 000). They live in
+   bypasses the models: finite, ≤ 10 000 entries). **Negative times are
+   points like any other** (GitHub PR #5, mongrelx: a count-in marked before
+   the video starts, e.g. bars 1-8 at -15.12 … -0.12 s): the timeline is
+   relative to bar 1 and the wizard's start is bar 1's own negative mark,
+   which `offset_s` takes (down to `MIN_OFFSET_S`) as for a GP8 file whose
+   bar 1 precedes its audio. The PR first SKIPPED them; measured on an invented
+   GP5 whose count-in was marked 650 ms slower than the rest, that put the
+   whole song 650 ms early (bar 1 became an extrapolation of the later marks
+   while `offset_s` stayed the real mark), so they are kept. Guarded by
+   `test_bar_times_negative.py` (the end-to-end placement fails with the skip
+   back). They live in
    `params["bar_times"]`, so rebuild/reload forks inherit them, and reach
    `GpJobSpec.bar_times` → `parse_gp_track(..., bar_times)` in BOTH parsers.
    The re-timing is the SAME machinery as GP8's sync points, now shared in

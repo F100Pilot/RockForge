@@ -68,20 +68,20 @@ def bar_time_points(
     the shorter list (a GP that is not the tab the times were marked on shows
     up as a length mismatch, which the caller reports). A time that is not
     finite or does not move forward is skipped and counted: it would fold the
-    timeline back on itself.
+    timeline back on itself. A negative time (a count-in marked before the
+    video starts) is an ordinary point.
     """
     points: list[tuple[int, float]] = []
     skipped = 0
     for tick, when in zip(bar_start_ticks, bar_times, strict=False):
         when = float(when)
         # A time before the recording's first second (Songsterr count-in marks
-        # can start at t<0) cannot anchor anything: skip it, but still consume
-        # its bar — dropping it would shift every later bar onto the wrong time.
-        if (
-            not math.isfinite(when)
-            or when < 0
-            or (points and when <= points[-1][1])
-        ):
+        # can start at t<0) is kept: the timeline is relative to bar 1, and
+        # offset_s takes bar 1's own (negative) time, as for a GP8 file whose
+        # bar 1 comes before its audio. Skipping it made bar 1 an extrapolation
+        # of the later marks while offset_s stayed the real mark, shifting the
+        # whole song by their difference.
+        if not math.isfinite(when) or (points and when <= points[-1][1]):
             skipped += 1
             continue
         points.append((int(tick), when))
