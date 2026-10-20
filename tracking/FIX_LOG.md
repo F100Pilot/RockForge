@@ -349,6 +349,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0341](#fix-0341) | BUG-0341 | unreleased | not run | manual |
 | [FIX-0342](#fix-0342) | BUG-0342 | unreleased | passed | automated |
 | [FIX-0343](#fix-0343) | BUG-0343 | unreleased | passed | automated |
+| [FIX-0344](#fix-0344) | BUG-0344 | unreleased | passed | automated |
 
 ## FIX-0001
 
@@ -7552,3 +7553,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | passed |
 | Validation | automated |
 | Regression risk | Low: a build that failed already fails with a clearer message. |
+
+## FIX-0344
+
+**Bugs:** [BUG-0344](bugs/sync.md#bug-0344)
+
+**Root cause:** _parse_bar_times refused negative values, although offset_s and the bar-1-relative timeline already handle a bar 1 before the audio.
+
+**Solution:** /jobs/gp accepts any finite bar_times (PR #5); bar_time_points keeps a negative time as an ordinary point (the follow-up: the PR skipped them, which shifted the whole song when the count-in marks differed from the later tempo).
+
+| | |
+|---|---|
+| Date | 2026-10-20 |
+| By | mongrelx (PR #5), with a follow-up by Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 109ff8dd69f95885a836c13ef2492359d8563a39; 18af36b2e02f1ccfbd4a3e187b724c2c72eb6e67 |
+| Components | src/rockforge/interfaces/api/routers/jobs.py; src/rockforge/infrastructure/gpimport/sync_map.py |
+| Tests | tests/test_bar_times_negative.py; tests/test_api.py::test_bad_bar_times_are_rejected_before_anything_is_stored |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: only negative times that used to be refused are now taken. |

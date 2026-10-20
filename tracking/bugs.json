@@ -17057,6 +17057,59 @@
           "note": "pytest"
         }
       ]
+    },
+    {
+      "id": "BUG-0344",
+      "title": "Creating a job from Songsterr fails with 422 when the video's bar marks start before the video (negative times)",
+      "detected": "2026-10-20",
+      "reported_by": "GitHub PR #5 (mongrelx)",
+      "found_in_version": "0.11.0-beta.4",
+      "found_in_build": "pending",
+      "module": "sync",
+      "description": "Songsterr's community marks can put the first bars at negative times (a count-in marked before the video's first second, e.g. bars 1-8 at -15.12 ... -0.12 s). /jobs/gp refused any negative bar_times with 422 'bar_times must be finite, non-negative seconds', so the project could not be created from that video.",
+      "steps": [
+        "Pick a Songsterr video whose first marks are negative",
+        "Create the project with its bar_times"
+      ],
+      "expected": "The project is created and every bar sits on its mark.",
+      "observed": "422 bar_times must be finite, non-negative seconds.",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Verified",
+      "root_cause": "_parse_bar_times refused negative values, although offset_s and the bar-1-relative timeline already handle a bar 1 before the audio.",
+      "fixes": [
+        "FIX-0344"
+      ],
+      "verified_by": "the developer (pytest)",
+      "verification": "tests/test_bar_times_negative.py: an invented GP5 with a count-in marked before the video lands every bar on its mark (fails with the PR's skip of negative points); the API accepts negative bar_times",
+      "evidence": [
+        "pytest 2026-10-20: full suite passes",
+        "Measured: skipping negative marks put the song 650 ms early on the invented GP5; keeping them, 0 ms on every bar"
+      ],
+      "resolved": "2026-10-20",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-20",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "In Progress",
+          "note": "PR #5 reviewed"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Fixed",
+          "note": "commits 109ff8d (PR #5) and 18af36b2e0"
+        },
+        {
+          "date": "2026-10-20",
+          "status": "Verified",
+          "note": "pytest"
+        }
+      ]
     }
   ]
 }

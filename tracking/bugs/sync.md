@@ -1802,3 +1802,48 @@ Section markers (section_overrides) are stored in the chart's clock and sent as 
 - 2026-10-19 — In Progress: the maintainer asked for the fix
 - 2026-10-19 — Fixed: commit f99ff718dd
 - 2026-10-19 — Verified: checked in the browser with real rebuilds
+
+## BUG-0344
+
+**Creating a job from Songsterr fails with 422 when the video's bar marks start before the video (negative times)**
+
+| | |
+|---|---|
+| Detected | 2026-10-20 |
+| Reported by | GitHub PR #5 (mongrelx) |
+| Found in | 0.11.0-beta.4 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Verified |
+
+Songsterr's community marks can put the first bars at negative times (a count-in marked before the video's first second, e.g. bars 1-8 at -15.12 ... -0.12 s). /jobs/gp refused any negative bar_times with 422 'bar_times must be finite, non-negative seconds', so the project could not be created from that video.
+
+**Steps to reproduce:** 
+
+1. Pick a Songsterr video whose first marks are negative
+2. Create the project with its bar_times
+
+**Expected:** The project is created and every bar sits on its mark.
+
+**Observed:** 422 bar_times must be finite, non-negative seconds.
+
+**Root cause:** _parse_bar_times refused negative values, although offset_s and the bar-1-relative timeline already handle a bar 1 before the audio.
+
+**Fixes:** [FIX-0344](../FIX_LOG.md#fix-0344) (unreleased)
+
+**Verified:** tests/test_bar_times_negative.py: an invented GP5 with a count-in marked before the video lands every bar on its mark (fails with the PR's skip of negative points); the API accepts negative bar_times (by the developer (pytest))
+
+**Resolved:** 2026-10-20 · **Closed:** _pending_
+
+**Evidence:**
+
+- pytest 2026-10-20: full suite passes
+- Measured: skipping negative marks put the song 650 ms early on the invented GP5; keeping them, 0 ms on every bar
+
+**History:**
+
+- 2026-10-20 — Open: reported
+- 2026-10-20 — In Progress: PR #5 reviewed
+- 2026-10-20 — Fixed: commits 109ff8d (PR #5) and 18af36b2e0
+- 2026-10-20 — Verified: pytest

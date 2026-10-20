@@ -8586,6 +8586,33 @@
       "test_result": "passed",
       "regression_risk": "Low: a build that failed already fails with a clearer message.",
       "validation": "automated"
+    },
+    {
+      "id": "FIX-0344",
+      "bugs": [
+        "BUG-0344"
+      ],
+      "date": "2026-10-20",
+      "author": "mongrelx (PR #5), with a follow-up by Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "_parse_bar_times refused negative values, although offset_s and the bar-1-relative timeline already handle a bar 1 before the audio.",
+      "solution": "/jobs/gp accepts any finite bar_times (PR #5); bar_time_points keeps a negative time as an ordinary point (the follow-up: the PR skipped them, which shifted the whole song when the count-in marks differed from the later tempo).",
+      "components": [
+        "src/rockforge/interfaces/api/routers/jobs.py",
+        "src/rockforge/infrastructure/gpimport/sync_map.py"
+      ],
+      "commits": [
+        "109ff8dd69f95885a836c13ef2492359d8563a39",
+        "18af36b2e02f1ccfbd4a3e187b724c2c72eb6e67"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_bar_times_negative.py",
+        "tests/test_api.py::test_bad_bar_times_are_rejected_before_anything_is_stored"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low: only negative times that used to be refused are now taken.",
+      "validation": "automated"
     }
   ]
 }
