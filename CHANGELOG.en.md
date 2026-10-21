@@ -6,6 +6,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+## [0.11.1 beta 3] — 2026-10-21
+
 ### Fixes
 
 - **Score, fretboard and 3D highway running ahead:** during playback the cursor and the lit notes were ahead of what you hear, by the computer's sound output delay (tens of milliseconds with wired speakers or headphones, a few hundred over Bluetooth). A chart in time looked like its notes were early, and syncing it by eye left it late in game. What you see now follows what you hear; pausing stops where you were listening.

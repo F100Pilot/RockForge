@@ -4,6 +4,34 @@
 
 Every version, newest first. What a version fixed and the bugs it still carried come from the bug and fix registers. Process: [docs/RELEASE_PROCESS.md](../docs/RELEASE_PROCESS.md).
 
+## 0.11.1-beta.3
+
+| | |
+|---|---|
+| Status | Beta |
+| Created | 2026-10-21 |
+| Published | _pending_ |
+| Commit | _pending_ |
+| Build | GitHub Actions release workflow |
+| Artifacts | — |
+| Tests | CI (ruff, mypy, pytest, ESLint, Docker build) on the release commit, tools/release_check, and the frozen .exe smoke test of the release workflow |
+| Approved by | the maintainer (asked for the release) |
+
+**Goal:** Viewer drawn where the sound is heard; fretboard click; Songsterr wizard fixes
+
+**Bugs fixed:** 
+
+- [BUG-0346](bugs/sync.md#bug-0346) After a Songsterr import, another file picked in step 1 keeps the tab's times, the video's audio and its start
+- [BUG-0347](bugs/sync.md#bug-0347) A failed Songsterr video fetch during the import says there are no videos and hides the retry
+- [BUG-0348](bugs/sync.md#bug-0348) A Songsterr video's audio downloaded by the button becomes the recording after the tab's tempo was chosen
+- [BUG-0349](bugs/sync.md#bug-0349) A Songsterr tempo change at a position of 1 or more is placed at the bar's start without a word
+- [BUG-0350](bugs/viewer.md#bug-0350) Clicking a note on the score lights the previous note on the fretboard too
+- [BUG-0351](bugs/viewer.md#bug-0351) The cursor and lit notes run ahead of the sound during playback, by the output latency
+
+**Known bugs it carried:** —
+
+**Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
+
 ## 0.11.1-beta.2
 
 | | |
@@ -41,6 +69,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0348](bugs/sync.md#bug-0348) A Songsterr video's audio downloaded by the button becomes the recording after the tab's tempo was chosen (Low, now Verified)
 - [BUG-0349](bugs/sync.md#bug-0349) A Songsterr tempo change at a position of 1 or more is placed at the bar's start without a word (Low, now Verified)
 - [BUG-0350](bugs/viewer.md#bug-0350) Clicking a note on the score lights the previous note on the fretboard too (Low, now Verified)
+- [BUG-0351](bugs/viewer.md#bug-0351) The cursor and lit notes run ahead of the sound during playback, by the output latency (Medium, now Verified)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 

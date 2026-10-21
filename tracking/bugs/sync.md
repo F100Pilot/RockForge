@@ -1929,7 +1929,7 @@ Re-inspecting in step 1 (a GP upload or a PDF) cleared songsterrImported but not
 
 **Root cause:** Only openNewJobModal reset the Songsterr state; the two other step-1 paths did not.
 
-**Fixes:** [FIX-0346](../FIX_LOG.md#fix-0346) (unreleased)
+**Fixes:** [FIX-0346](../FIX_LOG.md#fix-0346) (0.11.1-beta.3)
 
 **Verified:** Playwright: after an import with the tab's tempo, inspecting another GP5 hid the card, wizardBarTimes() null, the Songsterr block back (by the developer (Playwright))
 
@@ -1972,7 +1972,7 @@ When /songsterr failed during the import, setSongsterrSyncMode forced the tab's 
 
 **Root cause:** A failed request and an empty video list were the same state (songsterrSong null).
 
-**Fixes:** [FIX-0346](../FIX_LOG.md#fix-0346) (unreleased)
+**Fixes:** [FIX-0346](../FIX_LOG.md#fix-0346) (0.11.1-beta.3)
 
 **Verified:** Playwright: a 502 shows the failed note with the block and its error visible; a successful retry restores the remembered video choice (by the developer (Playwright))
 
@@ -2015,7 +2015,7 @@ downloadYtAudio dropped a late result only for the automatic download; a downloa
 
 **Root cause:** The late-result guard looked at opts.auto only; no in-flight marker.
 
-**Fixes:** [FIX-0346](../FIX_LOG.md#fix-0346) (unreleased)
+**Fixes:** [FIX-0346](../FIX_LOG.md#fix-0346) (0.11.1-beta.3)
 
 **Verified:** Playwright: a delayed download finished after switching left no recording; back and forth made one request (by the developer (Playwright))
 
@@ -2057,7 +2057,7 @@ _bar_fraction read any position outside (0, 1) as the bar's start; the code befo
 
 **Root cause:** Values >= 1 were folded into 0 without a count.
 
-**Fixes:** [FIX-0347](../FIX_LOG.md#fix-0347) (unreleased)
+**Fixes:** [FIX-0347](../FIX_LOG.md#fix-0347) (0.11.1-beta.3)
 
 **Verified:** tests/test_songsterr_gp.py::test_a_tempo_change_at_a_position_that_cannot_be_read_is_said (mutation-checked) (by the developer (pytest))
 

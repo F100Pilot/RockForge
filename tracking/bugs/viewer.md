@@ -1470,7 +1470,7 @@ With the fretboard on, clicking a note (no mode selected) moves the cursor to it
 
 **Root cause:** updateFretboard lit each note for max(sustain, 0.16 s) whatever came next, and its 30 ms lead-in could reach back past the previous attack.
 
-**Fixes:** [FIX-0348](../FIX_LOG.md#fix-0348) (unreleased)
+**Fixes:** [FIX-0348](../FIX_LOG.md#fix-0348) (0.11.1-beta.3)
 
 **Verified:** Playwright on an invented riff of sixteenths at 120 BPM (notes 125 ms apart), PT 1440 / EN 760 px (by the developer (Playwright))
 
@@ -1484,4 +1484,48 @@ With the fretboard on, clicking a note (no mode selected) moves the cursor to it
 
 - 2026-10-21 — Open: reported with a screenshot
 - 2026-10-21 — Fixed: commit a6a7f3d714
+- 2026-10-21 — Verified: Playwright 2026-10-21
+
+## BUG-0351
+
+**The cursor and lit notes run ahead of the sound during playback, by the output latency**
+
+| | |
+|---|---|
+| Detected | 2026-10-21 |
+| Reported by | the maintainer (notes arrive a few milliseconds early on a Songsterr video's times) |
+| Found in | 0.11.1-beta.2 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Verified |
+
+A chart whose bars the build places exactly on a Songsterr video's times looked early in the viewer: what is drawn followed the audio engine's clock, not the sound heard. Syncing by eye would then move a correct chart late in game; with Bluetooth the gap is a few hundred milliseconds.
+
+**Steps to reproduce:** 
+
+1. Open a project whose chart is in time with its recording
+2. Play it and watch the notes reach the cursor
+
+**Expected:** Each note reaches the cursor when it is heard.
+
+**Observed:** Notes reach the cursor a little before they are heard.
+
+**Root cause:** During playback the viewer drew the playhead, lit fretboard notes, live BPM, time label and 3D highway on audioCtx.currentTime, which runs ahead of what reaches the speakers by outputLatency + baseLatency; only the taps compensated.
+
+**Fixes:** [FIX-0349](../FIX_LOG.md#fix-0349) (0.11.1-beta.3)
+
+**Verified:** Playwright with an output latency of 210 ms injected into the AudioContext, PT 1440 / EN 760 px (by the developer (Playwright))
+
+**Resolved:** 2026-10-21 · **Closed:** _pending_
+
+**Evidence:**
+
+- 2026-10-21: audio clock 11.01 s, cursor, fretboard and highway at 10.80 s; pause stopped at 10.80 s; no page errors
+- 2026-10-21: the user's 237 Songsterr bar times built and drawn to the millisecond with Início 0.110
+
+**History:**
+
+- 2026-10-21 — Open: reported in conversation
+- 2026-10-21 — Fixed: commit c4e7bba3a4
 - 2026-10-21 — Verified: Playwright 2026-10-21

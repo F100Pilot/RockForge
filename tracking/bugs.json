@@ -17567,6 +17567,54 @@
           "note": "Playwright 2026-10-21"
         }
       ]
+    },
+    {
+      "id": "BUG-0351",
+      "title": "The cursor and lit notes run ahead of the sound during playback, by the output latency",
+      "detected": "2026-10-21",
+      "reported_by": "the maintainer (notes arrive a few milliseconds early on a Songsterr video's times)",
+      "found_in_version": "0.11.1-beta.2",
+      "found_in_build": "pending",
+      "module": "viewer",
+      "description": "A chart whose bars the build places exactly on a Songsterr video's times looked early in the viewer: what is drawn followed the audio engine's clock, not the sound heard. Syncing by eye would then move a correct chart late in game; with Bluetooth the gap is a few hundred milliseconds.",
+      "steps": [
+        "Open a project whose chart is in time with its recording",
+        "Play it and watch the notes reach the cursor"
+      ],
+      "expected": "Each note reaches the cursor when it is heard.",
+      "observed": "Notes reach the cursor a little before they are heard.",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Verified",
+      "root_cause": "During playback the viewer drew the playhead, lit fretboard notes, live BPM, time label and 3D highway on audioCtx.currentTime, which runs ahead of what reaches the speakers by outputLatency + baseLatency; only the taps compensated.",
+      "fixes": [
+        "FIX-0349"
+      ],
+      "verified_by": "the developer (Playwright)",
+      "verification": "Playwright with an output latency of 210 ms injected into the AudioContext, PT 1440 / EN 760 px",
+      "evidence": [
+        "2026-10-21: audio clock 11.01 s, cursor, fretboard and highway at 10.80 s; pause stopped at 10.80 s; no page errors",
+        "2026-10-21: the user's 237 Songsterr bar times built and drawn to the millisecond with Início 0.110"
+      ],
+      "resolved": "2026-10-21",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-21",
+          "status": "Open",
+          "note": "reported in conversation"
+        },
+        {
+          "date": "2026-10-21",
+          "status": "Fixed",
+          "note": "commit c4e7bba3a4"
+        },
+        {
+          "date": "2026-10-21",
+          "status": "Verified",
+          "note": "Playwright 2026-10-21"
+        }
+      ]
     }
   ]
 }

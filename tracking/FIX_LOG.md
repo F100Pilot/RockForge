@@ -351,9 +351,10 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0343](#fix-0343) | BUG-0343 | 0.11.1-beta.2 | passed | automated |
 | [FIX-0344](#fix-0344) | BUG-0344 | 0.11.1-beta.2 | passed | automated |
 | [FIX-0345](#fix-0345) | BUG-0345 | 0.11.1-beta.2 | passed | automated |
-| [FIX-0346](#fix-0346) | BUG-0346, BUG-0347, BUG-0348 | unreleased | not run | manual |
-| [FIX-0347](#fix-0347) | BUG-0349 | unreleased | passed | automated |
-| [FIX-0348](#fix-0348) | BUG-0350 | unreleased | not run | manual |
+| [FIX-0346](#fix-0346) | BUG-0346, BUG-0347, BUG-0348 | 0.11.1-beta.3 | not run | manual |
+| [FIX-0347](#fix-0347) | BUG-0349 | 0.11.1-beta.3 | passed | automated |
+| [FIX-0348](#fix-0348) | BUG-0350 | 0.11.1-beta.3 | not run | manual |
+| [FIX-0349](#fix-0349) | BUG-0351 | 0.11.1-beta.3 | not run | manual |
 
 ## FIX-0001
 
@@ -7612,7 +7613,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-10-21 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.11.1-beta.3 |
 | Commits | 75df41f89c62e724bb7b1a2a04d7f86f1122db6b |
 | Components | web/app.js; web/index.html; web/i18n-en.js |
 | Tests | — |
@@ -7633,7 +7634,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-10-21 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.11.1-beta.3 |
 | Commits | 75df41f89c62e724bb7b1a2a04d7f86f1122db6b |
 | Components | src/rockforge/infrastructure/gpimport/songsterr_gp.py; tests/test_songsterr_gp.py |
 | Tests | tests/test_songsterr_gp.py::test_a_tempo_change_at_a_position_that_cannot_be_read_is_said |
@@ -7654,7 +7655,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-10-21 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.11.1-beta.3 |
 | Commits | a6a7f3d714cc0e86cfd8add2ee00d8e808096740 |
 | Components | web/app.js |
 | Tests | — |
@@ -7662,3 +7663,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | not run |
 | Validation | manual |
 | Regression risk | Low: only how long the fretboard overlay keeps a short note lit. |
+
+## FIX-0349
+
+**Bugs:** [BUG-0351](bugs/viewer.md#bug-0351)
+
+**Root cause:** During playback the viewer drew the playhead, lit fretboard notes, live BPM, time label and 3D highway on audioCtx.currentTime, which runs ahead of what reaches the speakers by outputLatency + baseLatency; only the taps compensated.
+
+**Solution:** heardTime() = audioTime() minus the output latency while playing; the playhead, scroll, cursor tools, fretboard, live BPM, time label, 'Início = cursor', 3D highway and pause read it. The note ticks stay on the engine clock.
+
+| | |
+|---|---|
+| Date | 2026-10-21 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | 0.11.1-beta.3 |
+| Commits | c4e7bba3a4a83fd65f6717b6972881c95842f6c6 |
+| Components | web/app.js |
+| Tests | — |
+| Manual checks | Playwright: 210 ms latency injected, cursor/fretboard/highway 0.21 s behind the engine clock, pause at the heard position, PT/EN |
+| Test result | not run |
+| Validation | manual |
+| Regression risk | Low: what is drawn while playing moves back by the reported latency; nothing written to a build changes. |

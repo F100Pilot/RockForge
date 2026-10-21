@@ -8703,7 +8703,7 @@
       "commits": [
         "75df41f89c62e724bb7b1a2a04d7f86f1122db6b"
       ],
-      "version": "unreleased",
+      "version": "0.11.1-beta.3",
       "tests": [],
       "manual_checks": [
         "Playwright on a live server, Songsterr and YouTube faked: the three paths, no page errors"
@@ -8728,7 +8728,7 @@
       "commits": [
         "75df41f89c62e724bb7b1a2a04d7f86f1122db6b"
       ],
-      "version": "unreleased",
+      "version": "0.11.1-beta.3",
       "tests": [
         "tests/test_songsterr_gp.py::test_a_tempo_change_at_a_position_that_cannot_be_read_is_said"
       ],
@@ -8752,13 +8752,37 @@
       "commits": [
         "a6a7f3d714cc0e86cfd8add2ee00d8e808096740"
       ],
-      "version": "unreleased",
+      "version": "0.11.1-beta.3",
       "tests": [],
       "manual_checks": [
         "Playwright: clicking notes of an invented riff of sixteenths lights one note each (two before the fix), PT/EN"
       ],
       "test_result": "not run",
       "regression_risk": "Low: only how long the fretboard overlay keeps a short note lit.",
+      "validation": "manual"
+    },
+    {
+      "id": "FIX-0349",
+      "bugs": [
+        "BUG-0351"
+      ],
+      "date": "2026-10-21",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "During playback the viewer drew the playhead, lit fretboard notes, live BPM, time label and 3D highway on audioCtx.currentTime, which runs ahead of what reaches the speakers by outputLatency + baseLatency; only the taps compensated.",
+      "solution": "heardTime() = audioTime() minus the output latency while playing; the playhead, scroll, cursor tools, fretboard, live BPM, time label, 'Início = cursor', 3D highway and pause read it. The note ticks stay on the engine clock.",
+      "components": [
+        "web/app.js"
+      ],
+      "commits": [
+        "c4e7bba3a4a83fd65f6717b6972881c95842f6c6"
+      ],
+      "version": "0.11.1-beta.3",
+      "tests": [],
+      "manual_checks": [
+        "Playwright: 210 ms latency injected, cursor/fretboard/highway 0.21 s behind the engine clock, pause at the heard position, PT/EN"
+      ],
+      "test_result": "not run",
+      "regression_risk": "Low: what is drawn while playing moves back by the reported latency; nothing written to a build changes.",
       "validation": "manual"
     }
   ]

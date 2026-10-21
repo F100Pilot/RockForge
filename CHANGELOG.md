@@ -6,6 +6,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+## [0.11.1 beta 3] — 2026-10-21
+
 ### Correções
 
 - **Partitura, braço e pista 3D a tocar adiantados:** durante a reprodução, o cursor e as notas acesas iam à frente do que se ouve, pelo atraso da saída de som do computador (dezenas de milissegundos com colunas ou auscultadores com fio, algumas centenas com Bluetooth). Uma pista certa parecia ter as notas adiantadas, e acertá-la a olho deixava-a atrasada no jogo. Agora o que se vê acompanha o que se ouve; a pausa para onde se estava a ouvir.
