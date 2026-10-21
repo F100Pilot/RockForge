@@ -2368,7 +2368,7 @@ When the GP track picked for an arrangement holds no notes, the build fails with
 
 **Root cause:** No check before building; the domain validation's message has no track context.
 
-**Fixes:** [FIX-0343](../FIX_LOG.md#fix-0343) (unreleased)
+**Fixes:** [FIX-0343](../FIX_LOG.md#fix-0343) (0.11.1-beta.2)
 
 **Verified:** test_a_chart_whose_track_has_no_notes_is_named_with_its_track (fails without the check) (by the developer (pytest))
 

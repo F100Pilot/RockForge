@@ -1425,7 +1425,7 @@ With the fretboard's All notes on and the scope set to only those matching the p
 
 **Root cause:** fbAllNotesSvg applied the 'same' filter only when a note was picked (pm !== null), so with none it skipped the filter.
 
-**Fixes:** [FIX-0341](../FIX_LOG.md#fix-0341) (unreleased)
+**Fixes:** [FIX-0341](../FIX_LOG.md#fix-0341) (0.11.1-beta.2)
 
 **Verified:** Live server, invented GP5 project: with the scope and no pick, 0 pills drawn and the tuning labels shown with the hint; a note clicked on the score picked it and drew its 12 equivalents; a hidden place on the neck still picks; PT 1440 / EN 760 px, no page errors (by the developer (Playwright))
 

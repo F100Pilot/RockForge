@@ -2298,7 +2298,7 @@ The database keeps Job.source, bundle_dir, psarc_path, params gp_path and stems 
 
 **Root cause:** Paths are stored absolute and read as stored; nothing re-points them after a move.
 
-**Fixes:** [FIX-0342](../FIX_LOG.md#fix-0342) (unreleased)
+**Fixes:** [FIX-0342](../FIX_LOG.md#fix-0342) (0.11.1-beta.2)
 
 **Verified:** test_jobs_follow_their_files_when_the_work_dir_moves drives a real startup with a job whose paths point into a missing old root (fails with the startup call removed); test_work_paths.py covers the tail rules (mutation-checked) (by the developer (pytest))
 

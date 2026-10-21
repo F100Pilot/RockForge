@@ -4,6 +4,40 @@
 
 Every version, newest first. What a version fixed and the bugs it still carried come from the bug and fix registers. Process: [docs/RELEASE_PROCESS.md](../docs/RELEASE_PROCESS.md).
 
+## 0.11.1-beta.2
+
+| | |
+|---|---|
+| Status | Beta |
+| Created | 2026-10-21 |
+| Published | _pending_ |
+| Commit | _pending_ |
+| Build | GitHub Actions release workflow |
+| Artifacts | — |
+| Tests | CI (ruff, mypy, pytest, ESLint, Docker build) on the release commit, tools/release_check, and the frozen .exe smoke test of the release workflow |
+| Approved by | the maintainer (asked for the release) |
+
+**Goal:** Songsterr tabs follow the tab's own tempo (sync with Songsterr's recording); fretboard and 3D bends; attacks marked by ear
+
+**New:**
+
+- Score
+- Sync
+- 3D highway — bends
+- Mark by ear — every attack
+
+**Bugs fixed:** 
+
+- [BUG-0341](bugs/viewer.md#bug-0341) Fretboard "All notes" with "only those matching the picked one" shows every note when no note is picked
+- [BUG-0342](bugs/app.md#bug-0342) Earlier jobs break when the work dir moves: bundle, recording, GP file and stems stored as absolute paths
+- [BUG-0343](bugs/import.md#bug-0343) A chart whose GP track has no notes fails with a bare 'arrangement has no notes' that names neither the chart nor the track
+- [BUG-0344](bugs/sync.md#bug-0344) Creating a job from Songsterr fails with 422 when the video's bar marks start before the video (negative times)
+- [BUG-0345](bugs/sync.md#bug-0345) A tab imported from Songsterr drifts away from Songsterr's own recording: the tempo's decimals and mid-bar changes are lost
+
+**Known bugs it carried:** —
+
+**Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
+
 ## 0.11.1-beta.1
 
 | | |
@@ -37,6 +71,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0342](bugs/app.md#bug-0342) Earlier jobs break when the work dir moves: bundle, recording, GP file and stems stored as absolute paths (Medium, now Verified)
 - [BUG-0343](bugs/import.md#bug-0343) A chart whose GP track has no notes fails with a bare 'arrangement has no notes' that names neither the chart nor the track (Low, now Verified)
 - [BUG-0344](bugs/sync.md#bug-0344) Creating a job from Songsterr fails with 422 when the video's bar marks start before the video (negative times) (Medium, now Verified)
+- [BUG-0345](bugs/sync.md#bug-0345) A tab imported from Songsterr drifts away from Songsterr's own recording: the tempo's decimals and mid-bar changes are lost (High, now Verified)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 

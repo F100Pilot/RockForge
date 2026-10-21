@@ -6,6 +6,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+## [0.11.1 beta 2] — 2026-10-21
+
 ### New
 
 - **Score:** with no mode selected, clicking a note takes the cursor to it, and the fretboard shows and picks it ("All notes").

@@ -499,6 +499,28 @@
       "approved_by": "the maintainer (asked for the release)",
       "upgrade": "Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.",
       "exceptions": []
+    },
+    {
+      "version": "0.11.1-beta.2",
+      "status": "Beta",
+      "created": "2026-10-21",
+      "published": "pending",
+      "commit": "pending",
+      "build": "GitHub Actions release workflow",
+      "artifacts": [],
+      "goal": "Songsterr tabs follow the tab's own tempo (sync with Songsterr's recording); fretboard and 3D bends; attacks marked by ear",
+      "features": [
+        "Score",
+        "Sync",
+        "3D highway — bends",
+        "Mark by ear — every attack"
+      ],
+      "improvements": [],
+      "breaking": [],
+      "tests": "CI (ruff, mypy, pytest, ESLint, Docker build) on the release commit, tools/release_check, and the frozen .exe smoke test of the release workflow",
+      "approved_by": "the maintainer (asked for the release)",
+      "upgrade": "Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.",
+      "exceptions": []
     }
   ]
 }

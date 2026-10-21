@@ -6,6 +6,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+## [0.11.1 beta 2] — 2026-10-21
+
 ### Novidades
 
 - **Partitura:** sem nenhum modo escolhido, clicar numa nota leva o cursor a essa nota, e o braço mostra-a e escolhe-a ("Todas as notas").

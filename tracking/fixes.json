@@ -8562,7 +8562,7 @@
       "commits": [
         "535e4c7e23e5ee87f66af36c160cc65d94aa9703"
       ],
-      "version": "unreleased",
+      "version": "0.11.1-beta.2",
       "tests": [],
       "manual_checks": [
         "Playwright on a live server: no pick → nothing drawn; a score click picks the note and draws its equivalents; a hidden neck place picks it"
@@ -8587,7 +8587,7 @@
       "commits": [
         "8dc5d4bb50c2e311cd2e261e5093be5e8a37d38e"
       ],
-      "version": "unreleased",
+      "version": "0.11.1-beta.2",
       "tests": [
         "tests/test_api.py::test_jobs_follow_their_files_when_the_work_dir_moves",
         "tests/test_work_paths.py"
@@ -8612,7 +8612,7 @@
       "commits": [
         "8dc5d4bb50c2e311cd2e261e5093be5e8a37d38e"
       ],
-      "version": "unreleased",
+      "version": "0.11.1-beta.2",
       "tests": [
         "tests/test_merge_tracks.py::test_a_chart_whose_track_has_no_notes_is_named_with_its_track"
       ],
@@ -8638,7 +8638,7 @@
         "109ff8dd69f95885a836c13ef2492359d8563a39",
         "18af36b2e02f1ccfbd4a3e187b724c2c72eb6e67"
       ],
-      "version": "unreleased",
+      "version": "0.11.1-beta.2",
       "tests": [
         "tests/test_bar_times_negative.py",
         "tests/test_api.py::test_bad_bar_times_are_rejected_before_anything_is_stored"
@@ -8646,6 +8646,42 @@
       "manual_checks": [],
       "test_result": "passed",
       "regression_risk": "Low: only negative times that used to be refused are now taken.",
+      "validation": "automated"
+    },
+    {
+      "id": "FIX-0345",
+      "bugs": [
+        "BUG-0345"
+      ],
+      "date": "2026-10-21",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "_int() truncated the BPM and the tempo map only reached the build through GP5, which holds a whole BPM at a bar's start; nothing told the user which recording a video's times fit.",
+      "solution": "The GP5 tempo is rounded and the tab's exact tempo map is returned as bar times (tab_bar_times), sent by the wizard as bar_times (source songsterr-tab:) when the user plays the tab with Songsterr's recording; step 3 asks which recording will be used, says what each option fits, remembers the choice and warns when an own file meets a video's times; sync_source songsterr_tab.",
+      "components": [
+        "src/rockforge/infrastructure/gpimport/songsterr_gp.py",
+        "src/rockforge/interfaces/api/routers/imports.py",
+        "src/rockforge/interfaces/api/app.py",
+        "src/rockforge/interfaces/api/schemas.py",
+        "web/app.js",
+        "web/index.html",
+        "web/i18n-en.js"
+      ],
+      "commits": [
+        "6a0300ce412db52a33565836029656fb155e507c"
+      ],
+      "version": "0.11.1-beta.2",
+      "tests": [
+        "tests/test_songsterr_gp.py::test_the_tabs_tempo_map_gives_each_bar_its_exact_start",
+        "tests/test_songsterr_gp.py::test_a_tab_that_follows_a_recording_keeps_its_tempo_to_the_decimal",
+        "tests/test_songsterr_gp.py::test_a_tab_at_one_whole_tempo_says_so",
+        "tests/test_api.py::test_a_chart_says_why_it_counts_as_in_sync",
+        "tests/test_api.py::test_a_songsterr_tab_becomes_a_gp_file_the_wizard_can_use"
+      ],
+      "manual_checks": [
+        "Playwright on a live server, Songsterr faked (PT 1440 / EN 760 px)"
+      ],
+      "test_result": "passed",
+      "regression_risk": "Medium: a Songsterr import now offers a choice in step 3; the video flow stays the default and is unchanged when chosen.",
       "validation": "automated"
     }
   ]

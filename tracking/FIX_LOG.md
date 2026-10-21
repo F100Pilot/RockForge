@@ -346,10 +346,11 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0338](#fix-0338) | BUG-0338 | 0.11.1-beta.1 | not run | manual |
 | [FIX-0339](#fix-0339) | BUG-0339 | 0.11.1-beta.1 | passed | manual |
 | [FIX-0340](#fix-0340) | BUG-0340 | 0.11.1-beta.1 | passed | automated |
-| [FIX-0341](#fix-0341) | BUG-0341 | unreleased | not run | manual |
-| [FIX-0342](#fix-0342) | BUG-0342 | unreleased | passed | automated |
-| [FIX-0343](#fix-0343) | BUG-0343 | unreleased | passed | automated |
-| [FIX-0344](#fix-0344) | BUG-0344 | unreleased | passed | automated |
+| [FIX-0341](#fix-0341) | BUG-0341 | 0.11.1-beta.2 | not run | manual |
+| [FIX-0342](#fix-0342) | BUG-0342 | 0.11.1-beta.2 | passed | automated |
+| [FIX-0343](#fix-0343) | BUG-0343 | 0.11.1-beta.2 | passed | automated |
+| [FIX-0344](#fix-0344) | BUG-0344 | 0.11.1-beta.2 | passed | automated |
+| [FIX-0345](#fix-0345) | BUG-0345 | 0.11.1-beta.2 | passed | automated |
 
 ## FIX-0001
 
@@ -7503,7 +7504,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-10-20 |
 | By | Claude (AI coding assistant), on the maintainer's request |
-| Version | unreleased |
+| Version | 0.11.1-beta.2 |
 | Commits | 535e4c7e23e5ee87f66af36c160cc65d94aa9703 |
 | Components | web/app.js |
 | Tests | — |
@@ -7524,7 +7525,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-10-20 |
 | By | Claude (AI coding assistant), on the maintainer's request |
-| Version | unreleased |
+| Version | 0.11.1-beta.2 |
 | Commits | 8dc5d4bb50c2e311cd2e261e5093be5e8a37d38e |
 | Components | src/rockforge/infrastructure/work_paths.py; src/rockforge/interfaces/api/app.py |
 | Tests | tests/test_api.py::test_jobs_follow_their_files_when_the_work_dir_moves; tests/test_work_paths.py |
@@ -7545,7 +7546,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-10-20 |
 | By | Claude (AI coding assistant), on the maintainer's request |
-| Version | unreleased |
+| Version | 0.11.1-beta.2 |
 | Commits | 8dc5d4bb50c2e311cd2e261e5093be5e8a37d38e |
 | Components | src/rockforge/application/gp_pipeline.py |
 | Tests | tests/test_merge_tracks.py::test_a_chart_whose_track_has_no_notes_is_named_with_its_track |
@@ -7566,7 +7567,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-10-20 |
 | By | mongrelx (PR #5), with a follow-up by Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.11.1-beta.2 |
 | Commits | 109ff8dd69f95885a836c13ef2492359d8563a39; 18af36b2e02f1ccfbd4a3e187b724c2c72eb6e67 |
 | Components | src/rockforge/interfaces/api/routers/jobs.py; src/rockforge/infrastructure/gpimport/sync_map.py |
 | Tests | tests/test_bar_times_negative.py; tests/test_api.py::test_bad_bar_times_are_rejected_before_anything_is_stored |
@@ -7574,3 +7575,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | passed |
 | Validation | automated |
 | Regression risk | Low: only negative times that used to be refused are now taken. |
+
+## FIX-0345
+
+**Bugs:** [BUG-0345](bugs/sync.md#bug-0345)
+
+**Root cause:** _int() truncated the BPM and the tempo map only reached the build through GP5, which holds a whole BPM at a bar's start; nothing told the user which recording a video's times fit.
+
+**Solution:** The GP5 tempo is rounded and the tab's exact tempo map is returned as bar times (tab_bar_times), sent by the wizard as bar_times (source songsterr-tab:) when the user plays the tab with Songsterr's recording; step 3 asks which recording will be used, says what each option fits, remembers the choice and warns when an own file meets a video's times; sync_source songsterr_tab.
+
+| | |
+|---|---|
+| Date | 2026-10-21 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | 0.11.1-beta.2 |
+| Commits | 6a0300ce412db52a33565836029656fb155e507c |
+| Components | src/rockforge/infrastructure/gpimport/songsterr_gp.py; src/rockforge/interfaces/api/routers/imports.py; src/rockforge/interfaces/api/app.py; src/rockforge/interfaces/api/schemas.py; web/app.js; web/index.html; web/i18n-en.js |
+| Tests | tests/test_songsterr_gp.py::test_the_tabs_tempo_map_gives_each_bar_its_exact_start; tests/test_songsterr_gp.py::test_a_tab_that_follows_a_recording_keeps_its_tempo_to_the_decimal; tests/test_songsterr_gp.py::test_a_tab_at_one_whole_tempo_says_so; tests/test_api.py::test_a_chart_says_why_it_counts_as_in_sync; tests/test_api.py::test_a_songsterr_tab_becomes_a_gp_file_the_wizard_can_use |
+| Manual checks | Playwright on a live server, Songsterr faked (PT 1440 / EN 760 px) |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Medium: a Songsterr import now offers a choice in step 3; the video flow stays the default and is unchanged when chosen. |

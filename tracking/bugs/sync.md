@@ -1837,7 +1837,7 @@ Songsterr's community marks can put the first bars at negative times (a count-in
 
 **Root cause:** _parse_bar_times refused negative values, although offset_s and the bar-1-relative timeline already handle a bar 1 before the audio.
 
-**Fixes:** [FIX-0344](../FIX_LOG.md#fix-0344) (unreleased)
+**Fixes:** [FIX-0344](../FIX_LOG.md#fix-0344) (0.11.1-beta.2)
 
 **Verified:** tests/test_bar_times_negative.py: an invented GP5 with a count-in marked before the video lands every bar on its mark (fails with the PR's skip of negative points); the API accepts negative bar_times (by the developer (pytest))
 
@@ -1854,3 +1854,49 @@ Songsterr's community marks can put the first bars at negative times (a count-in
 - 2026-10-20 — In Progress: PR #5 reviewed
 - 2026-10-20 — Fixed: commits 109ff8d (PR #5) and 18af36b2e0
 - 2026-10-20 — Verified: pytest
+
+## BUG-0345
+
+**A tab imported from Songsterr drifts away from Songsterr's own recording: the tempo's decimals and mid-bar changes are lost**
+
+| | |
+|---|---|
+| Detected | 2026-10-21 |
+| Reported by | the maintainer (plays Songsterr's MP3 with the tab) |
+| Found in | 0.11.1-beta.1 |
+| Build / commit | _pending_ |
+| Severity | High |
+| Priority | P1 |
+| Status | Verified |
+
+write_songsterr_gp5 read each tempo with int(), cutting 117.85 BPM to 117, and moved a mid-bar tempo change to its bar's start; GP5 cannot hold either. A tab whose tempo follows a recording (one Songsterr's AI made from it) therefore started right and drifted bar by bar against the MP3 Songsterr plays it with, while on Songsterr it stays in sync. The wizard also applied a YouTube video's bar times by default, which fit that video's audio only, not Songsterr's MP3, without saying so.
+
+**Steps to reproduce:** 
+
+1. Import a Songsterr tab whose tempo map has decimals or changes
+2. Use Songsterr's MP3 as the recording and build
+
+**Expected:** Every bar starts where Songsterr's player starts it.
+
+**Observed:** The chart drifts from the recording as the song goes on.
+
+**Root cause:** _int() truncated the BPM and the tempo map only reached the build through GP5, which holds a whole BPM at a bar's start; nothing told the user which recording a video's times fit.
+
+**Fixes:** [FIX-0345](../FIX_LOG.md#fix-0345) (0.11.1-beta.2)
+
+**Verified:** tests/test_songsterr_gp.py: exact bar starts from decimals, a mid-bar change and a metre change, and a chart re-timed onto them (rounding and the mid-bar rule mutation-checked); Playwright on a live server with Songsterr faked: the choice, the own-file warning, a real build whose bars sit on the tab's times to the millisecond (by the developer (pytest, Playwright))
+
+**Resolved:** 2026-10-21 · **Closed:** _pending_
+
+**Evidence:**
+
+- pytest 2026-10-21: full suite passes
+- Playwright 2026-10-21 (PT 1440 / EN 760 px): bars 2.0/4.036/6.073/8.109/10.278/12.579 s = the tab's times + the 2 s lead-in; no page errors
+- Not tried with a real Songsterr MP3 (Songsterr is blocked from the sandbox)
+
+**History:**
+
+- 2026-10-21 — Open: reported
+- 2026-10-21 — In Progress: diagnosed against teaqu/guitar-pro-youtube-sync, which writes GP7 with the decimals
+- 2026-10-21 — Fixed: commit 6a0300ce41
+- 2026-10-21 — Verified: pytest + Playwright
