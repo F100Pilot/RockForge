@@ -132,8 +132,16 @@ e cada correção um `FIX-xxxx`. Esta lista fica para os pedidos de funcionalida
   encontradas (passo 4 do assistente e página Capa). Download só dos servidores
   de imagens desses serviços. Confirmado a funcionar pelo utilizador com os
   serviços reais (2026-09-26); o sandbox continua sem acesso — TESTING.md §7d-sexies.
+- [x] **Tab do Songsterr com o andamento da própria tab.** Para tocar com a
+  gravação do Songsterr (ou outra que siga a tab): o passo 3 pergunta "Com que
+  gravação vais tocar esta tab?" e, escolhida a do Songsterr, cada compasso
+  começa onde o leitor do Songsterr o começa (andamento com decimais e
+  mudanças a meio do compasso, que o GP5 sozinho não guarda). Corrigidos
+  também os três caminhos que a revisão independente encontrou (BUG-0346…0349).
+  Por validar com uma tab e um MP3 reais do Songsterr (bloqueado no sandbox).
 - [x] **Sincronização pelos tempos do Songsterr.** O princípio do
-  guitar-pro-youtube-sync: tempos por compasso marcados por pessoas, lidos da
+  guitar-pro-youtube-sync: tempos por compasso de cada vídeo (marcados por
+  pessoas ou, numa tab feita pela IA do Songsterr, gerados), lidos da
   API (não documentada) do Songsterr e aplicados como os sync points do GP8. Só
   os tempos — o MP3 é do utilizador. Por validar contra a API real (bloqueada
   no sandbox): TESTING.md §7d-quinquies.
@@ -251,6 +259,10 @@ documentados nas mensagens de commit, caso valha a pena ressuscitar alguma.
   contra PSARC do DLC Builder — ver `CLAUDE.md`).
 - **Baixo nunca tocado no jogo**: o arranjo Bass segue a codificação do DLC
   Builder e passa a verificação do PSARC, mas falta confirmá-lo no Rocksmith.
+- **Repetições nas tabs do Songsterr por confirmar.** A importação (como a
+  ferramenta de referência) não lê repetições das partes do Songsterr; se uma
+  tab as tiver, os compassos depois da repetição podem ficar fora do sítio.
+  Ainda não visto numa tab real.
 - **GP6 (`.gpx`) não suportado** (container binário proprietário). GP3/GP4/GP5 e
   GP7/GP8 (`.gp`) são suportados.
 - **Capa de álbum: resolvido.** O PSARC nativo converte a capa real para **DDS
