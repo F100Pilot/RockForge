@@ -2820,7 +2820,12 @@ legend. `#fbNameMode` (name / name + octave, `rf-fb-names`) and `#fbScope`
 while it is on. The overlay of sounding notes is drawn on top, as before.
 **"Only those matching" draws nothing until a note is picked** (BUG-0341: with
 no pick it drew every note), and a note a scope leaves out is still a
-transparent `.fb-cell`, so its place on the neck picks it. **A note clicked on
+transparent `.fb-cell`, so its place on the neck picks it. **The sounding-note overlay**
+(`updateFretboard`) lights a note for its sustain, or a brief 0.16 s glow that
+stops at the next attack, and its 30 ms lead-in never reaches back past the
+previous attack — the glow used to run on, so clicking a note 125 ms after
+another lit both (BUG-0350; verified with Playwright on an invented riff of
+sixteenths: two notes lit per click before, one after, PT/EN). **A note clicked on
 the score with no mode selected** goes to the fretboard (`focusNoteOnFretboard`:
 the cursor to its drawn attack + 1 ms, and `fbPick` = that string and fret); in
 a mode the cursor is a target ("= cursor", "Mover seguintes"…), so it stays.

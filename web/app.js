@@ -10373,13 +10373,21 @@ function updateFretboard(vtDisp, warp) {
   const notes = soundingNotes(arrangements[currentArr]);
   warp = warp || buildTimeWarp(syncAnchors);  // reuse the frame's warp when given
   const ratio = tempoScaleLive / builtScale;
+  const nStr = stringCount(arrangements[currentArr]);
+  const lit = notes.filter(n => n.string >= 0 && n.string < nStr && n.fret >= 0 && n.fret <= FB.frets)
+    .map(n => ({ n, on: warp(previewScale(n.time)) }));
+  // Every attack, so a note's short glow stops at the next attack and its lead-in
+  // never reaches back past the previous one: a tailless note used to stay lit
+  // 0.16 s, so clicking the note right after it lit both.
+  const ons = [...new Set(lit.map(o => o.on))].sort((x, y) => x - y);
+  const at = new Map(ons.map((t, i) => [t, i]));
   let s = '';
-  for (const n of notes) {
-    if (n.string < 0 || n.string >= stringCount(arrangements[currentArr]) || n.fret < 0
-        || n.fret > FB.frets) continue;
-    const on = warp(previewScale(n.time));
-    const dur = Math.max((n.sustain || 0) * ratio, 0.16);  // light for the note's duration
-    if (vtDisp < on - 0.03 || vtDisp > on + dur) continue;
+  for (const { n, on } of lit) {
+    const k = at.get(on);
+    const prev = k > 0 ? ons[k - 1] : -Infinity, next = k < ons.length - 1 ? ons[k + 1] : Infinity;
+    const sus = (n.sustain || 0) * ratio;
+    const dur = Math.max(sus, Math.min(0.16, next - on));  // the note's duration, else a brief glow
+    if (vtDisp < Math.max(on - 0.03, (prev + on) / 2) || vtDisp > on + dur) continue;
     const { x, y } = fretXY(n.string, n.fret);
     s += `<circle cx="${x}" cy="${y}" r="9" fill="${STRING_COLORS[n.string]}" stroke="#fff" stroke-width="1.5"/>`;
     s += `<text x="${x}" y="${y + 4}" fill="#14151a" font-size="11" font-weight="700" text-anchor="middle">${n.fret}</text>`;

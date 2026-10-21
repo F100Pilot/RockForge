@@ -8,6 +8,7 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ### Fixes
 
+- **Fretboard:** clicking a note on the score lights only that note on the neck. Before, the previous note stayed lit too when the two were less than 0.16 s apart (a short note stayed lit for that minimum, even after the next one began).
 - **Songsterr tabs — step 3:** after importing a Songsterr tab, picking another file in step 1 (your own GP or a PDF) no longer carries that tab's times, the video's or its audio along. If fetching the videos from Songsterr fails, the wizard says it failed (instead of saying there are no videos) and lets you try again with "Find videos". A download of the video's audio that finishes after you chose the tab's tempo no longer becomes the recording. A tempo change at a position in the bar RockForge cannot read is now reported.
 
 ## [0.11.1 beta 2] — 2026-10-21
