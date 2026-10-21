@@ -502,7 +502,7 @@
     },
     {
       "version": "0.11.1-beta.2",
-      "status": "Beta",
+      "status": "Superseded",
       "created": "2026-10-21",
       "published": "2026-10-21",
       "commit": "pending",
@@ -528,10 +528,12 @@
       "version": "0.11.1-beta.3",
       "status": "Beta",
       "created": "2026-10-21",
-      "published": "pending",
+      "published": "2026-10-21",
       "commit": "pending",
       "build": "GitHub Actions release workflow",
-      "artifacts": [],
+      "artifacts": [
+        "https://github.com/F100Pilot/RockForge/releases/tag/v0.11.1-beta.3"
+      ],
       "goal": "Viewer drawn where the sound is heard; fretboard click; Songsterr wizard fixes",
       "features": [],
       "improvements": [],
