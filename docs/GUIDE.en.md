@@ -185,6 +185,10 @@ bass is charted as a guitar.
 - **Album, year and cover → Search online**: lists results from iTunes and MusicBrainz; pick
   the right one (or "No cover"). Fan remixes and AI-made songs are rarely there. You can also
   pick an image from your computer (JPEG or PNG), just below.
+  **Or from somewhere else:** **Search Google Images** opens the search in your browser; when you
+  find the cover, copy the image address and paste it into **Image link** → **Use**, or copy the
+  image itself and paste it on the page (Ctrl+V). Only images from public sites are accepted;
+  WebP, GIF and other formats are turned into PNG.
 - **Synced lyrics → Search lyrics online** (LRCLIB): pick lyrics with timings, or none. If the
   GP file already has lyrics, nothing is picked for you. You can also upload an **LRC** or
   **UltraStar TXT** file (it always wins).
@@ -629,7 +633,9 @@ follow), **Only this = cursor**, ◀ ▶, −/+.
 ## 10. Cover and song information
 
 - **Cover:** drop a JPG/PNG image, or **Search cover online** and pick a result (it can fill in
-  album and year too). It goes into the PSARC on the next rebuild.
+  album and year too). If it is not there, **Or from somewhere else**: **Search Google Images**,
+  then paste the **Image link** (→ **Use**) or the image itself (Ctrl+V). It goes into the PSARC
+  on the next rebuild.
 - **Edit info** (top bar): title, artist, album, year; and the Guitar Pro tracks, the track merged
   into an arrangement and the tunings.
   Changing only text does not rebuild straight away (it goes into the PSARC on the next

@@ -979,6 +979,11 @@ class CoverFromUrlIn(BaseModel):
     url: str = Field(max_length=2000)
 
 
+class CoverLinkIn(BaseModel):
+    # Long enough for a data: address carrying a 10 MB image in base64.
+    url: str = Field(max_length=14_000_100)
+
+
 class RequirementOut(BaseModel):
     """One external dependency and what its absence actually costs."""
 

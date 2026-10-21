@@ -3488,6 +3488,45 @@ deselects the cards and picking a card clears the file. Guarded by
 `test_a_cover_from_the_computer_is_in_place_before_the_first_build`; the
 wizard with Playwright (PT/EN: file ↔ card, the created job carries it).
 
+**Or from anywhere else** ("descarregar a capa sem ser nos sites que já estão
+implementados … procurar no google imagens, e se não encontrar, permitir que
+eu coloque o link para a imagem", 2026-10-21). An "Ou de outro sítio" block
+in step 4 and on the Capa page (`wireCoverElsewhere('wz'|'capa')`):
+**"Procurar no Google Imagens"** opens `google.com/search?tbm=isch` with the
+band + album (or title) in the browser (`coverSearchUrl`, `window.open` — in
+the `.exe` pywebview hands it to the system browser; nothing is asked of
+Google from RockForge, and there is no keyless image API to ask); the image
+found comes back as its **link** ("Link da imagem" → `POST /cover/fetch-link`)
+or as the image itself **pasted** with Ctrl+V (a document `paste` listener,
+only while step 4 or the Capa page is on screen, image files only). Every
+route ends in the ordinary cover file — the wizard's `#wzCoverFile` (set
+through a `DataTransfer`, so the card/file rules above apply) or the Capa
+page's upload (`uploadProjectCover`) — so nothing downstream changed.
+`infrastructure/image_fetch.py` is the SSRF-sensitive half, since the link
+comes from the client: `http`/`https` on their default ports, no credentials,
+EVERY address the name resolves to `is_global` (an IPv4-mapped IPv6 checked as
+IPv4), checked in `fetch_link` before anything opens and again on every hop,
+the connection made to the checked address (`_PinnedHTTP`/`_PinnedHTTPS`,
+SNI and Host kept) so a name re-resolving inside the network cannot be used,
+≤ `MAX_REDIRECTS`, 10 MB read (declared and actual), the file trusted by its
+bytes — JPEG/PNG as is, anything else Pillow opens turned into PNG under
+`MAX_PIXELS`, an HTML page named as such. A Google `imgres` link is unwrapped
+(`unwrap`) and a `data:` address decoded with no network (what "copy image
+address" gives for a Google thumbnail; a pasted image that is not JPEG/PNG
+goes the same way). 422 refused / 415 not an image / 502 unreachable, nothing
+stored by the endpoint. Direct connections ignore an HTTP proxy (honest limit,
+not seen on a machine that needs one). Guarded by `test_image_fetch.py` (a
+local server reached by invented names: the pinned address, redirects to a
+private address refused, a loop, a 404, the cap, ten refused addresses with no
+connection opened, a name with one private address, imgres, data:, WebP/GIF/
+BMP → PNG, a page — the public-address and pinning rules mutation-checked) and
+`test_an_image_link_from_any_site_comes_back_as_a_cover_the_page_can_upload`;
+with Playwright (PT 1440 / EN 760 px): the Google URL, a 192.168.x link
+refused in words, a WebP data link becoming `capa.png` in the wizard, a pasted
+PNG in the wizard and on the Capa page, the Capa link stored as the cover, no
+horizontal scroll, no page errors. Never run against Google or a real site from
+here (the sandbox has no network to them).
+
 UI: wizard step 4 runs the search once on arrival (`maybeAutoAlbumSearch`),
 preselects the best guess filling Álbum/Ano **only if empty**, a card click
 fills them outright, "Sem capa" opts out, and a card whose thumbnail fails to

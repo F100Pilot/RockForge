@@ -132,6 +132,10 @@ e cada correção um `FIX-xxxx`. Esta lista fica para os pedidos de funcionalida
   encontradas (passo 4 do assistente e página Capa). Download só dos servidores
   de imagens desses serviços. Confirmado a funcionar pelo utilizador com os
   serviços reais (2026-09-26); o sandbox continua sem acesso — TESTING.md §7d-sexies.
+- [x] **Capa de qualquer sítio.** "Ou de outro sítio" no passo 4 e na página Capa:
+  pesquisa no Google Imagens (abre no browser), link de uma imagem de qualquer site
+  público (o servidor descarrega-a com as proteções de um link vindo de fora) ou a
+  imagem colada com Ctrl+V. Por experimentar com sites reais (sem rede daqui).
 - [x] **Tab do Songsterr com o andamento da própria tab.** Para tocar com a
   gravação do Songsterr (ou outra que siga a tab): o passo 3 pergunta "Com que
   gravação vais tocar esta tab?" e, escolhida a do Songsterr, cada compasso

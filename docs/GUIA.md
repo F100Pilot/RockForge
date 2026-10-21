@@ -186,6 +186,10 @@ soar a altura real. Um baixo de 6 cordas faz-se como guitarra.
 - **Álbum, ano e capa → Procurar online**: lista resultados do iTunes e do MusicBrainz;
   escolhe o certo (ou "Sem capa"). Fan remixes e versões feitas por IA raramente lá estão.
   Também podes escolher uma imagem do teu computador (JPEG ou PNG), logo por baixo.
+  **Ou de outro sítio:** **Procurar no Google Imagens** abre a pesquisa no browser; quando
+  encontrares a capa, copia o endereço da imagem e cola-o em **Link da imagem** → **Usar**, ou
+  copia a própria imagem e cola-a na página (Ctrl+V). Só são aceites imagens de sites públicos;
+  WebP, GIF e outros formatos são convertidos para PNG.
 - **Letra sincronizada → Procurar letra online** (LRCLIB): escolhe uma letra com tempos, ou
   nenhuma. Se o ficheiro GP já trouxer letra, nada é escolhido sozinho. Também podes carregar um
   ficheiro **LRC** ou **UltraStar TXT** (tem sempre prioridade).
@@ -631,7 +635,9 @@ acompanham), **Só esta = cursor**, ◀ ▶, −/+.
 ## 10. Capa e informação da música
 
 - **Capa:** arrasta uma imagem JPG/PNG, ou **Procurar capa online** e escolhe um resultado
-  (pode também preencher o álbum e o ano). Vai para o PSARC na próxima reconstrução.
+  (pode também preencher o álbum e o ano). Se não estiver lá, **Ou de outro sítio**:
+  **Procurar no Google Imagens**, e depois cola o **Link da imagem** (→ **Usar**) ou a própria
+  imagem (Ctrl+V). Vai para o PSARC na próxima reconstrução.
 - **Editar info** (barra de cima): título, artista, álbum, ano; e as pistas, a pista juntada a um
   arranjo e as afinações do Guitar Pro. Mudar só o texto não reconstrói logo (entra no PSARC na próxima reconstrução);
   mudar pistas ou afinação reconstrói.

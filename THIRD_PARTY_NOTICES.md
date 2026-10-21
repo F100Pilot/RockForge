@@ -143,6 +143,7 @@ to the user who makes the request.
 | LRCLIB (lrclib.net) | Synced lyrics | Open, no key |
 | iTunes Search API | Album, year, cover | Apple's terms |
 | MusicBrainz + Cover Art Archive | Album, year, cover | MusicBrainz data CC0; cover images belong to their rights holders |
+| Google Images, and any site whose image link the user pastes | A cover not in those catalogues | The search opens in the user's browser; RockForge downloads only the one image link pasted, from a public address; images belong to their rights holders |
 | GitHub (api.github.com) | Whether a newer RockForge is out | Once an hour at most, nothing about the user sent; off in Settings |
 | RockForge's install counter (Supabase, `supabase/functions/install-ping`) | How many installs use each version | Off until the user says yes; a random id, the version, the kind of install and the OS family, no IP kept; turning it off deletes what was sent |
 | NuGet, PyPI, download.pytorch.org, GitHub releases | The `.exe`'s extra components | Only when the user installs them |

@@ -910,6 +910,8 @@ button.set-pill.active { border-color:var(--accent); color:var(--accent); backgr
    to choose from; the chosen one is outlined in the accent colour. */
 .album-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(8.5rem, 1fr)); gap:.7rem; margin-top:.6rem; }
 .album-grid:empty { display:none; }
+.cover-elsewhere { margin-top:1rem; display:flex; flex-direction:column; gap:.45rem; }
+.cover-elsewhere-label { font-size:.85rem; color:var(--muted, #9aa1ae); }
 button.album-card { display:flex; flex-direction:column; gap:.35rem; padding:.45rem; border:2px solid #262831;
   border-radius:12px; background:#16171d; color:var(--text); text-align:left; font-weight:400; }
 button.album-card:hover { border-color:#3a3d48; filter:none; }
@@ -1689,6 +1691,15 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                 <span id="capaSearchInfo" class="meta"></span>
               </div>
               <div id="capaResults" class="album-grid"></div>
+          <div class="cover-elsewhere">
+            <label class="cover-elsewhere-label">Ou de outro sítio</label>
+            <div class="pv-row" style="flex-wrap:wrap">
+              <button type="button" class="secondary" id="capaCoverGoogle"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg> Procurar no Google Imagens</button>
+              <input type="url" id="capaCoverLink" placeholder="Link da imagem (https://…)" style="flex:1;min-width:14rem">
+              <button type="button" class="secondary" id="capaCoverLinkBtn">Usar</button>
+            </div>
+            <div class="meta" id="capaCoverLinkInfo">Encontraste a imagem noutro site? Copia o endereço da imagem e cola-o aqui, ou copia a própria imagem e cola-a nesta página (Ctrl+V).</div>
+          </div>
             </div>
           </div>
         </div>
@@ -2146,6 +2157,15 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
           <div class="field"><label>Ou uma imagem do teu computador (JPEG ou PNG)</label>
             <div class="file-drop"><div class="file-drop-icon"><svg class="ic" aria-hidden="true"><use href="#i-image"/></svg></div><span class="file-drop-text">Arrasta ou clica (opcional)</span><span class="file-drop-btn">Procurar</span>
             <input type="file" name="cover" id="wzCoverFile" accept="image/png,image/jpeg"></div></div>
+          <div class="cover-elsewhere">
+            <label class="cover-elsewhere-label">Ou de outro sítio</label>
+            <div class="pv-row" style="flex-wrap:wrap">
+              <button type="button" class="secondary" id="wzCoverGoogle"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg> Procurar no Google Imagens</button>
+              <input type="url" id="wzCoverLink" placeholder="Link da imagem (https://…)" style="flex:1;min-width:14rem">
+              <button type="button" class="secondary" id="wzCoverLinkBtn">Usar</button>
+            </div>
+            <div class="meta" id="wzCoverLinkInfo">Encontraste a imagem noutro site? Copia o endereço da imagem e cola-o aqui, ou copia a própria imagem e cola-a nesta página (Ctrl+V).</div>
+          </div>
         </div>
         <div class="pv-card pv-card-lg">
           <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-mic"/></svg>Letra sincronizada <button class="info-btn" data-info="wz-lyrics">ⓘ</button></div>

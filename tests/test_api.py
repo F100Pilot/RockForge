@@ -3619,6 +3619,35 @@ def test_album_lookup_returns_the_candidates_to_choose_from(
         "kind": "album"}
 
 
+def test_an_image_link_from_any_site_comes_back_as_a_cover_the_page_can_upload(
+    client: TestClient, monkeypatch
+) -> None:
+    import base64
+
+    from rockforge.infrastructure import image_fetch
+
+    jpeg = b"\xff\xd8\xff\xe0" + b"\0" * 32
+    r = client.post("/cover/fetch-link",
+                    json={"url": "data:image/jpeg;base64," + base64.b64encode(jpeg).decode()})
+    assert r.status_code == 200 and r.headers["content-type"] == "image/jpeg"
+    assert r.content == jpeg
+    # Inside the user's network: refused before anything is opened.
+    monkeypatch.setattr(image_fetch, "_download", lambda _u: pytest.fail("opened"))
+    r = client.post("/cover/fetch-link", json={"url": "http://127.0.0.1/admin.png"})
+    assert r.status_code == 422 and "rede" in r.json()["detail"]
+    # A page, not an image (cdn.example.org stands for a public site).
+    monkeypatch.setattr(image_fetch, "_resolve", lambda *_a: ["93.184.216.34"])
+    monkeypatch.setattr(image_fetch, "_download", lambda _u: b"<!DOCTYPE html><html></html>")
+    r = client.post("/cover/fetch-link", json={"url": "https://cdn.example.org/view/1"})
+    assert r.status_code == 415
+    # The site cannot be reached.
+    def down(_u):
+        raise image_fetch.ImageFetchError("não consegui descarregar a imagem (timeout)")
+    monkeypatch.setattr(image_fetch, "_download", down)
+    r = client.post("/cover/fetch-link", json={"url": "https://cdn.example.org/a.jpg"})
+    assert r.status_code == 502 and "timeout" in r.json()["detail"]
+
+
 def test_album_lookup_needs_both_names_and_reports_the_services_being_down(
     client: TestClient, monkeypatch
 ) -> None:

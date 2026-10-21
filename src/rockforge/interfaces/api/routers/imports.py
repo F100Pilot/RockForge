@@ -8,12 +8,14 @@ import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi.responses import Response
 
 from rockforge import i18n
 from rockforge.interfaces.api import app as api
 from rockforge.interfaces.api.schemas import (
     AlbumCandidateOut,
     AlbumLookupOut,
+    CoverLinkIn,
     GpInspectOut,
     GpTrackOut,
     SongsterrImportIn,
@@ -324,3 +326,31 @@ def album_lookup(title: str = "", artist: str = "") -> AlbumLookupOut:
         searched_artist=primary_artist(artist),
         failures=failures,
     )
+
+
+@router.post("/cover/fetch-link")
+def fetch_cover_link(payload: CoverLinkIn) -> Response:
+    """The image at an address the user pasted (any public site, a Google
+    Images link, a ``data:`` address), as a JPEG or PNG the browser then hands
+    to the ordinary cover upload — the wizard's or the Capa page's. Nothing is
+    stored here. 422 for an address that is not allowed (checked before
+    anything is opened), 415 for a page or a file that is not an image, 502
+    when the site cannot be reached. See ``infrastructure/image_fetch.py``.
+    """
+    from rockforge.infrastructure.image_fetch import (
+        ImageFetchError,
+        ImageLinkRefused,
+        NotAnImage,
+        fetch_link,
+    )
+
+    try:
+        data, suffix = fetch_link(payload.url)
+    except ImageLinkRefused as exc:
+        raise HTTPException(422, str(exc)) from exc
+    except NotAnImage as exc:
+        raise HTTPException(415, str(exc)) from exc
+    except ImageFetchError as exc:
+        raise HTTPException(502, str(exc)) from exc
+    media = "image/png" if suffix == ".png" else "image/jpeg"
+    return Response(content=data, media_type=media, headers={"Cache-Control": "no-store"})

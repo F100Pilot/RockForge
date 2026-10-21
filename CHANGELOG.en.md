@@ -6,6 +6,10 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### New
+
+- **Cover from anywhere:** in the wizard's step 4 and on the Cover page, **Or from somewhere else** opens a Google Images search with the band and the album (or the title) and takes the link of the image you find there, from any public site, or the image itself pasted with Ctrl+V. WebP, GIF and other formats are turned into PNG. Only images from public sites are downloaded: a link into your network or your computer is refused.
+
 ## [0.11.1 beta 3] — 2026-10-21
 
 ### Fixes

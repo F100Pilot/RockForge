@@ -8195,18 +8195,125 @@ function loadCoverArt(j) {
   }
 }
 
-document.getElementById('coverArtFile').addEventListener('change', async ev => {
-  if (!selectedJob) return;
-  const file = ev.target.files[0];
-  if (!file) return;
+async function uploadProjectCover(file) {
+  if (!selectedJob || !file) return false;
   const fd = new FormData();
   fd.append('file', file);
   const b = await fetchOrToast(`/jobs/${selectedJob.id}/cover`, { method: 'POST', body: fd });
-  if (!b) return;
+  if (!b) return false;
   selectedJob.cover_art = b.cover_art;
   loadCoverArt(selectedJob);
   toast(T('Capa carregada — "Aplicar e reconstruir" para a incluir no bundle.'), 'ok');
-  ev.target.value = '';
+  return true;
+}
+document.getElementById('coverArtFile').addEventListener('change', async ev => {
+  if (await uploadProjectCover(ev.target.files[0])) ev.target.value = '';
+});
+
+// ── A cover from anywhere else: Google Images, a pasted link, a pasted image ──
+// The search opens in the browser (nothing is asked of Google from here); the
+// image the user finds comes back as its address or the image itself. An
+// address goes through /cover/fetch-link (public sites only, checked by the
+// server) and every route ends in the ordinary cover file: the wizard's input
+// or the Capa page's upload, so nothing downstream knows the difference.
+function coverSearchUrl(artist, name) {
+  const q = [artist, name, 'album cover'].map(s => (s || '').trim()).filter(Boolean).join(' ');
+  return `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(q)}`;
+}
+async function fetchCoverLink(url) {
+  const r = await fetch('/cover/fetch-link', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }),
+  });
+  if (!r.ok) {
+    let detail = '';
+    try { detail = (await r.json()).detail; } catch { /* not JSON */ }
+    throw new Error(detail || T('não consegui descarregar a imagem'));
+  }
+  const blob = await r.blob();
+  const ext = blob.type === 'image/png' ? 'png' : 'jpg';
+  return new File([blob], `capa.${ext}`, { type: blob.type });
+}
+// A pasted or dropped image the cover upload takes as it is (JPEG/PNG), or
+// one the server first turns into a PNG.
+async function coverFileFrom(file) {
+  if (file.type === 'image/png' || file.type === 'image/jpeg') return file;
+  const dataUrl = await new Promise((ok, fail) => {
+    const rd = new FileReader();
+    rd.onload = () => ok(rd.result);
+    rd.onerror = () => fail(rd.error);
+    rd.readAsDataURL(file);
+  });
+  return fetchCoverLink(dataUrl);
+}
+function setWizardCoverFile(file) {
+  const inp = document.getElementById('wzCoverFile');
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  inp.files = dt.files;
+  inp.dispatchEvent(new Event('change'));
+}
+async function useCoverFile(where, file) {
+  const info = document.getElementById(where === 'wz' ? 'wzCoverLinkInfo' : 'capaCoverLinkInfo');
+  if (where === 'wz') {
+    setWizardCoverFile(file);
+    info.textContent = T('Imagem pronta — vai ser a capa do projeto.');
+  } else if (await uploadProjectCover(file)) {
+    info.textContent = T('Capa carregada — "Aplicar e reconstruir" para a incluir no bundle.');
+  }
+}
+function wireCoverElsewhere(where, names) {
+  document.getElementById(`${where}CoverGoogle`).addEventListener('click', () => {
+    const { artist, name } = names();
+    if (!artist && !name) { toast(T('Escreve o título e a banda primeiro.')); return; }
+    window.open(coverSearchUrl(artist, name), '_blank', 'noopener');
+  });
+  const field = document.getElementById(`${where}CoverLink`);
+  const btn = document.getElementById(`${where}CoverLinkBtn`);
+  const info = document.getElementById(`${where}CoverLinkInfo`);
+  const go = async () => {
+    const url = field.value.trim();
+    if (!url) { toast(T('Cola o link da imagem.')); return; }
+    btn.disabled = true;
+    info.textContent = T('a descarregar a imagem…');
+    try {
+      await useCoverFile(where, await fetchCoverLink(url));
+      field.value = '';
+    } catch (err) {
+      info.textContent = err.message;
+    } finally {
+      btn.disabled = false;
+    }
+  };
+  btn.addEventListener('click', go);
+  field.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); go(); } });
+}
+wireCoverElsewhere('wz', () => {
+  const form = document.getElementById('gpJobForm');
+  const v = n => form.querySelector(`input[name=${n}]`).value.trim();
+  return { artist: v('artist'), name: v('album') || v('title') };
+});
+wireCoverElsewhere('capa', () => ({
+  artist: (selectedJob && selectedJob.artist) || '',
+  name: (selectedJob && (selectedJob.album || selectedJob.title)) || '',
+}));
+// An image pasted (Ctrl+V) while the wizard's step 4 or the Capa page is on
+// screen becomes the cover; text pastes are left alone.
+document.addEventListener('paste', async e => {
+  const file = [...(e.clipboardData?.files || [])].find(f => f.type.startsWith('image/'));
+  if (!file) return;
+  const wzOpen = !document.getElementById('newJobOverlay').hidden && wizardStep === 4;
+  const capaOpen = !document.getElementById('detailOverlay').hidden
+    && !document.getElementById('sectionCapa').hidden;
+  const where = wzOpen ? 'wz' : capaOpen ? 'capa' : null;
+  if (!where) return;
+  e.preventDefault();
+  const info = document.getElementById(`${where}CoverLinkInfo`);
+  try {
+    await useCoverFile(where, await coverFileFrom(file));
+    if (where === 'wz') info.textContent = T('Imagem colada — vai ser a capa do projeto.');
+  } catch (err) {
+    info.textContent = err.message;
+  }
 });
 
 // ── Album, year and cover lookup (wizard step 4 + the Capa page) ──────────────

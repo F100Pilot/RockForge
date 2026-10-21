@@ -86,9 +86,11 @@ serviço aplicam-se a quem faz o pedido.
   permitem descarregar fora das funcionalidades do próprio YouTube. Serve só
   para obter, para uso pessoal, o áudio do vídeo a que os tempos do Songsterr
   pertencem.
-- **LRCLIB, iTunes, MusicBrainz / Cover Art Archive.**
+- **LRCLIB, iTunes, MusicBrainz / Cover Art Archive, Google Imagens e qualquer
+  site cujo link de imagem coles.**
   - As letras continuam a ser obras protegidas.
-  - As capas pertencem aos detentores dos respetivos direitos.
+  - As capas pertencem aos detentores dos respetivos direitos, encontres-as onde
+    as encontrares.
   - Servem para o teu projeto, não para redistribuir.
 
 ### Sem garantia
@@ -176,9 +178,10 @@ whoever makes the request.
 - **YouTube** (through yt-dlp, an optional extra). YouTube's terms do not allow
   downloading outside YouTube's own features. It is there only to get, for
   personal use, the audio of the video the Songsterr times belong to.
-- **LRCLIB, iTunes, MusicBrainz / Cover Art Archive.**
+- **LRCLIB, iTunes, MusicBrainz / Cover Art Archive, Google Images and any site
+  whose image link you paste.**
   - Lyrics are still protected works.
-  - Covers belong to their rights holders.
+  - Covers belong to their rights holders, wherever you find them.
   - They are for your project, not for redistribution.
 
 ### No warranty
