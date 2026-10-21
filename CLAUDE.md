@@ -373,6 +373,21 @@ re-inverting the dependency.
    file → warning → "Usar o andamento da tab" → a real build whose bars sit on
    the tab's times to the millisecond, the choice remembered with no download,
    no page errors. Not tried with a real Songsterr MP3 from here.
+   **An independent review (a subagent, 2026-10-21) found three wizard paths**,
+   fixed: a new file in step 1 after an import kept the tab's state
+   (`forgetSongsterrForNewFile`: the tab map, the video points, a Songsterr
+   video's audio and the start it set — the video-points leak predated the
+   choice); a failed `/songsterr` during the import read as "no videos" and
+   hid the retry (`songsterrVideosFailed`: `#songsterrVideoFailed`, the block
+   stays open, a successful "Procurar vídeos" re-applies the remembered
+   choice); a download for a Songsterr video ending after "tab" was chosen
+   became the recording (`forVideoTimes`, auto or by the button), and
+   switching back started a second download (`ytDownloading`). A `position`
+   ≥ 1 is counted and warned (`tempo_position_unknown`). Browser-only paths,
+   verified with Playwright (each of the three, no page errors); the backend
+   rule by `test_a_tempo_change_at_a_position_that_cannot_be_read_is_said`
+   (mutation-checked). Still open, not seen: whether Songsterr's parts carry
+   repeats the GP5 (and the reference tool) drop.
 
    Never run against the real Songsterr from here (blocked) — TESTING.md
    §7d-quinquies. Guarded by `test_songsterr_gp.py` (a note-for-note round trip

@@ -112,11 +112,18 @@ let songsterrTab = null;
 let songsterrSyncMode = 'video';
 // The start a video's times put in "Início", so switching away resets only that.
 let songsterrVideoStart = null;
+// The import could not fetch Songsterr's videos (a failed request, not "none"):
+// the video block stays in sight with its error and its "Procurar vídeos".
+let songsterrVideosFailed = false;
+// The video id whose audio is being downloaded, so a second download of it is
+// not started while the first runs.
+let ytDownloading = null;
 const SONGSTERR_FEATURES = {
   alternative: T('vídeo alternativo'), backing: 'backing track', solo: 'solo', playthrough: 'playthrough',
 };
 function resetSongsterr() {
   songsterrSong = null; songsterrPoints = null; songsterrTab = null;
+  songsterrVideoStart = null; songsterrVideosFailed = false;
   document.getElementById('songsterrChoice').hidden = true;
   document.getElementById('songsterrBlock').hidden = false;
   document.getElementById('songsterrAudioWarn').hidden = true;
@@ -124,6 +131,20 @@ function resetSongsterr() {
   document.getElementById('songsterrLink').value = '';
   document.getElementById('songsterrVideo').hidden = true;
   document.getElementById('songsterrInfo').textContent = '';
+}
+// Step 1 took another file (a GP upload or a PDF) after a Songsterr import:
+// that tab's times — its tempo map, a video's points, the video's audio and
+// the start they set — belong to the tab, not to this file.
+function forgetSongsterrForNewFile() {
+  const vids = songsterrSong && songsterrSong.videos ? songsterrSong.videos : [];
+  if (ytAudio && vids.some(v => v.video_id === ytAudio.videoId)) {
+    ytAudio = null;
+    document.getElementById('ytAudioInfo').textContent = '';
+  }
+  const offset = document.querySelector('#gpJobForm input[name=offset_s]');
+  if (songsterrVideoStart !== null && offset.value === songsterrVideoStart) offset.value = '0';
+  resetSongsterr();
+  applyEmbeddedAudioChoice();
 }
 function resetYtAudio() {
   ytAudio = null;
@@ -189,7 +210,13 @@ function applySongsterrVideo() {
     T('Se o teu MP3 foi cortado no início, ajusta-o.');
 }
 document.getElementById('songsterrVideo').addEventListener('change', applySongsterrVideo);
-document.getElementById('songsterrFetch').addEventListener('click', () => fetchSongsterrVideos());
+document.getElementById('songsterrFetch').addEventListener('click', async () => {
+  const found = await fetchSongsterrVideos();
+  if (found && songsterrTab) {
+    songsterrVideosFailed = false;
+    setSongsterrSyncMode(readSongsterrSyncPref());
+  }
+});
 async function fetchSongsterrVideos() {
   const link = document.getElementById('songsterrLink').value.trim();
   const info = document.getElementById('songsterrInfo');
@@ -248,9 +275,11 @@ function setSongsterrSyncMode(mode, { remember = false } = {}) {
     r.checked = r.value === mode;
     r.disabled = r.value === 'video' && !songsterrHasVideos();
   });
-  document.getElementById('songsterrVideoNone').hidden = songsterrHasVideos();
-  // The video's times and the video picker belong to the other choice.
-  document.getElementById('songsterrBlock').hidden = mode === 'tab';
+  document.getElementById('songsterrVideoNone').hidden = songsterrHasVideos() || songsterrVideosFailed;
+  document.getElementById('songsterrVideoFailed').hidden = !songsterrVideosFailed;
+  // The video's times and the video picker belong to the other choice — unless
+  // fetching them failed: then the block holds the error and the retry.
+  document.getElementById('songsterrBlock').hidden = mode === 'tab' && !songsterrVideosFailed;
   const offset = document.querySelector('#gpJobForm input[name=offset_s]');
   if (mode === 'tab') {
     // A video's audio and its bar-1 instant do not fit another recording.
@@ -262,7 +291,8 @@ function setSongsterrSyncMode(mode, { remember = false } = {}) {
     applyEmbeddedAudioChoice();
   } else if (changed || !ytAudio) {
     applySongsterrVideo();
-    if (songsterrChosenVideo() && !ytAudio) downloadYtAudio({ auto: true });
+    const v = songsterrChosenVideo();
+    if (v && !ytAudio && ytDownloading !== v.video_id) downloadYtAudio({ auto: true });
   }
   refreshSongsterrAudioWarn();
 }
@@ -309,6 +339,10 @@ async function downloadYtAudio(opts = {}) {
   const btn = document.getElementById('ytAudioBtn');
   const browser = document.getElementById('ytCookies').value;
   btn.disabled = true;
+  ytDownloading = videoId;
+  // Started for a Songsterr video's times (by itself or by the button)?
+  const forVideoTimes = !!opts.auto || !!(songsterrTab && songsterrSyncMode === 'video'
+    && songsterrHasVideos() && songsterrSong.videos.some(v => v.video_id === videoId));
   info.textContent = T('A descarregar o áudio de {url}… (pode demorar um minuto)', { url });
   try {
     const b = await getJSON('/youtube/audio', {
@@ -317,7 +351,7 @@ async function downloadYtAudio(opts = {}) {
     });
     // Started for the video's times, finished after the user chose the tab's
     // tempo instead: that audio is not the recording they will use.
-    if (opts.auto && songsterrTab && songsterrSyncMode === 'tab') {
+    if (forVideoTimes && songsterrTab && songsterrSyncMode === 'tab') {
       info.textContent = '';
       return;
     }
@@ -335,6 +369,7 @@ async function downloadYtAudio(opts = {}) {
     // pick another browser, log in); only the always-true fallback is added.
     info.textContent = T('Não consegui descarregar: {m}. Também podes carregar um MP3 do vídeo.', { m: err.message });
   } finally {
+    if (ytDownloading === videoId) ytDownloading = null;
     btn.disabled = false;
     applyEmbeddedAudioChoice();
   }
@@ -11896,6 +11931,7 @@ document.getElementById('gpInspectForm').addEventListener('submit', async e => {
   }
   const b = await fetchOrToast('/gp/inspect', { method: 'POST', body: new FormData(e.target) });
   if (!b) return;
+  if (songsterrImported) forgetSongsterrForNewFile();
   songsterrImported = false;
   applyInspectResult(b);
 });
@@ -12191,7 +12227,9 @@ async function importSongsterrTab() {
   const found = await fetchSongsterrVideos();
   if (songsterrTab) {
     // The user's last choice; the video's audio is fetched only for that one,
-    // so the whole song comes from one link.
+    // so the whole song comes from one link. A failed fetch is not "no
+    // videos": the block stays open with the error and the retry button.
+    songsterrVideosFailed = !found;
     songsterrSyncMode = '';
     setSongsterrSyncMode(readSongsterrSyncPref());
   } else if (found) downloadYtAudio();
@@ -12215,6 +12253,7 @@ async function importPdfTab(files) {
     next.disabled = false;
   }
   info.textContent = T('Convertido.');
+  if (songsterrImported) forgetSongsterrForNewFile();
   songsterrImported = false;
   applyInspectResult(b);
 }

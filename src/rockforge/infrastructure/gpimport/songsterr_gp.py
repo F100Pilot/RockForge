@@ -83,6 +83,9 @@ class SongsterrGpReport:
     skipped_tracks: list[str] = field(default_factory=list)
     grace_dropped: int = 0
     tempo_moved: int = 0
+    #: Tempo changes whose ``position`` is no fraction of a bar (≥ 1: a unit
+    #: never seen), read as the bar's start and counted, never silently.
+    tempo_position_unknown: int = 0
     #: Distinct tempos the tab's map holds, and whether any has decimals.
     tempo_count: int = 1
     tempo_decimal: bool = False
@@ -161,15 +164,20 @@ def _bpm(value: Any, default: float) -> float:
     return max(10.0, min(400.0, out)) if math.isfinite(out) else default
 
 
-def _bar_fraction(value: Any) -> float:
-    """Where in its bar a tempo change falls, 0 = the downbeat. Only a value
-    strictly between 0 and 1 is a place inside the bar; anything else is read
-    as the bar's start (no other unit has been seen)."""
+def _bar_fraction(value: Any) -> tuple[float, bool]:
+    """Where in its bar a tempo change falls, 0 = the downbeat, and whether the
+    value could not be read as that. Only a value strictly between 0 and 1 is a
+    place inside the bar; 1 or more is a unit never seen (beats? ticks?), read
+    as the bar's start but reported, since a mid-bar change may be lost."""
     try:
         out = float(value)
     except (TypeError, ValueError):
-        return 0.0
-    return out if 0.0 < out < 1.0 else 0.0
+        return 0.0, False
+    if not math.isfinite(out):
+        return 0.0, True
+    if 0.0 < out < 1.0:
+        return out, False
+    return 0.0, out >= 1.0
 
 
 def tab_bar_times(
@@ -332,10 +340,12 @@ def write_songsterr_gp5(
     tempo_at: dict[int, int] = {}
     for t in raw[1:]:
         measure = max(0, _int(t.get("measure"), 0))
-        frac = _bar_fraction(t.get("position"))
+        frac, unknown = _bar_fraction(t.get("position"))
         bpm = _bpm(t.get("bpm"), start_bpm)
         if frac:
             report.tempo_moved += 1
+        if unknown:
+            report.tempo_position_unknown += 1
         changes.append((measure, frac, bpm))
         tempo_at[measure] = round(bpm)
     bpms = {start_bpm, *(b for _m, _f, b in changes)}
@@ -422,6 +432,15 @@ def write_songsterr_gp5(
             f"{report.tempo_moved} mid-bar tempo change(s) moved to the start "
             "of their bar in the GP file (the tab's tempo, in step 3, keeps "
             "each bar's exact time)",
+        ))
+    if report.tempo_position_unknown:
+        report.warnings.append(tr(
+            f"{report.tempo_position_unknown} mudança(s) de andamento numa posição do "
+            "compasso que não sei ler — postas no início do compasso; se o Songsterr "
+            "as tem a meio, esses compassos podem ficar desfasados",
+            f"{report.tempo_position_unknown} tempo change(s) at a position in the bar "
+            "I cannot read — placed at the bar's start; if Songsterr has them mid-bar, "
+            "those bars may be off",
         ))
     dst.parent.mkdir(parents=True, exist_ok=True)
     with open(dst, "wb") as fh:

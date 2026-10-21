@@ -241,3 +241,17 @@ def test_a_tab_at_one_whole_tempo_says_so(tmp_path: Path) -> None:
     _dst, report = _write(tmp_path, [part])
     assert (report.tempo_count, report.tempo_decimal) == (1, False)
     assert report.bar_times == pytest.approx([0.0, 2.4, 4.8])
+
+
+def test_a_tempo_change_at_a_position_that_cannot_be_read_is_said(tmp_path: Path) -> None:
+    """A ``position`` of 1 or more is no fraction of the bar (a unit never seen):
+    it is read as the bar's start, but counted and said, never silently."""
+    part = _lead()
+    part["automations"] = {"tempo": [
+        {"measure": 0, "position": 0, "bpm": 120},
+        {"measure": 1, "position": 480, "bpm": 60},
+    ]}
+    _dst, report = _write(tmp_path, [part])
+    assert report.tempo_position_unknown == 1 and report.tempo_moved == 0
+    assert report.bar_times == pytest.approx([0.0, 2.0, 6.0])  # bar 2 at 60 from its start
+    assert any("não sei ler" in w or "cannot read" in w for w in report.warnings)
