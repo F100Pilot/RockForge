@@ -153,3 +153,12 @@ the PR as merged, and the fix record's commit ids no longer existed. Restored
 from the reflog. Rule: when history holds a merge, push without rebasing if
 `origin/main` is already an ancestor (`git merge-base --is-ancestor origin/main
 HEAD`), otherwise `git rebase --rebase-merges` or merge `origin/main`.
+
+## Never publish without being asked (2026-10-21)
+A lyric fix the user had not yet confirmed was released as 0.11.1 beta 4 on my
+own judgement ("an important fix"); it did not fix their song, and every
+release costs them GitHub Actions minutes. The user: "Não faças logo
+publicação, porque gasta créditos no github. Só quando eu pedir. Posso sempre
+testar no main." Rule: never bump the version (bumping IS publishing) unless
+the user asks for a release; every change goes to `main` under
+"Por lançar"/"Unreleased" with its fix records unassigned.

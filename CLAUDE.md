@@ -6533,17 +6533,14 @@ job create the release WITH its tag on that commit (`gh release create
 --target <sha>`; a tag made with GITHUB_TOKEN starts no second run). A commit
 that does not change the version finds the tag and does nothing;
 `concurrency: release` queues a second CI run on the same unreleased version
-until the first has made the tag. **So bumping the version IS publishing — and
-deciding WHEN to bump is Claude's job** (the user's rule, 2026-10-17, refined
-2026-10-18: "Não faças sempre bump. Se não for uma alteração importante para
-corrigir alguma coisa, prefiro juntar mais alterações e depois fazer bump."):
-bump right away only for an important FIX (a bug that breaks or misleads the
-user — a crash, a wrong build, a feature that does nothing); anything else (a
-new feature, an improvement, a small fix, docs) goes to `main` under the
-changelogs' "Por lançar"/"Unreleased" with its fix records unassigned, and is
-released together with later changes — when an important fix ships, or when
-the user asks. Each reply says whether it bumped and why, or that the change
-waits for the next version. The number follows docs/VERSIONING.md
+until the first has made the tag. **So bumping the version IS publishing — and it
+is the user's call**: the earlier rules (2026-10-17 "bump when it matters",
+2026-10-18 "only for an important fix") are replaced —
+**since 2026-10-21 Claude never bumps on its own** ("Não faças logo
+publicação, porque gasta créditos no github. Só quando eu pedir. Posso sempre
+testar no main." — an earlier rule let an important fix ship at once): every
+change goes to `main` under the changelogs' "Por lançar"/"Unreleased" with its
+fix records unassigned, and a version is made only when the user asks. The number follows docs/VERSIONING.md
 (next beta/RC/PATCH/MINOR/MAJOR, the stage's criteria), written with
 `tools/bump_version.py`. A pushed tag `v*` or a manual
 run still work as before. The `decide` script was run locally for each event
@@ -6590,10 +6587,10 @@ no `.psarc` came out.
   `web/i18n-<code>.js`, server text via `tr(pt, en, …)`. Use the
   `rockforge-i18n` skill (`.claude/skills/rockforge-i18n/SKILL.md`);
   `tests/test_i18n.py` enforces it.
-- **Bump only for an important fix; otherwise gather changes** (the user's
-  rule, see "Publishing a release"): a non-urgent change goes under
-  "Por lançar"/"Unreleased" and waits for the next version; say in the reply
-  which it was.
+- **Never bump (= publish) unless the user asks for a release** (the user's
+  rule, 2026-10-21 — it replaces "bump for an important fix": every release
+  costs GitHub Actions minutes, and they test on `main`): every change goes
+  under "Por lançar"/"Unreleased" with its fix records unassigned.
 - **Every bug goes in the register, every fix gets a `FIX-` record** (the
   section below). Never mark a bug Verified/Closed without the evidence, never
   write a test result that was not seen.
