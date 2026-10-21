@@ -8736,6 +8736,30 @@
       "test_result": "passed",
       "regression_risk": "Low: a warning more.",
       "validation": "automated"
+    },
+    {
+      "id": "FIX-0348",
+      "bugs": [
+        "BUG-0350"
+      ],
+      "date": "2026-10-21",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "updateFretboard lit each note for max(sustain, 0.16 s) whatever came next, and its 30 ms lead-in could reach back past the previous attack.",
+      "solution": "The brief glow of a note without a long enough sustain stops at the next attack, and the lead-in starts no earlier than halfway from the previous attack.",
+      "components": [
+        "web/app.js"
+      ],
+      "commits": [
+        "a6a7f3d714cc0e86cfd8add2ee00d8e808096740"
+      ],
+      "version": "unreleased",
+      "tests": [],
+      "manual_checks": [
+        "Playwright: clicking notes of an invented riff of sixteenths lights one note each (two before the fix), PT/EN"
+      ],
+      "test_result": "not run",
+      "regression_risk": "Low: only how long the fretboard overlay keeps a short note lit.",
+      "validation": "manual"
     }
   ]
 }

@@ -1441,3 +1441,47 @@ With the fretboard's All notes on and the scope set to only those matching the p
 - 2026-10-20 — In Progress: from the maintainer's screenshot
 - 2026-10-20 — Fixed: commit 535e4c7e23
 - 2026-10-20 — Verified: Playwright, PT 1440 / EN 760 px
+
+## BUG-0350
+
+**Clicking a note on the score lights the previous note on the fretboard too**
+
+| | |
+|---|---|
+| Detected | 2026-10-21 |
+| Reported by | the maintainer (screenshot) |
+| Found in | 0.11.1-beta.2 |
+| Build / commit | _pending_ |
+| Severity | Low |
+| Priority | P3 |
+| Status | Verified |
+
+With the fretboard on, clicking a note (no mode selected) moves the cursor to its attack; the overlay of sounding notes kept every note lit at least 0.16 s after its attack, so a short note just before the clicked one was lit with it.
+
+**Steps to reproduce:** 
+
+1. Open a chart whose notes are less than 0.16 s apart
+2. Turn on Braço
+3. Click a note on the score
+
+**Expected:** Only the clicked note is lit on the neck.
+
+**Observed:** The clicked note and the one before it are lit.
+
+**Root cause:** updateFretboard lit each note for max(sustain, 0.16 s) whatever came next, and its 30 ms lead-in could reach back past the previous attack.
+
+**Fixes:** [FIX-0348](../FIX_LOG.md#fix-0348) (unreleased)
+
+**Verified:** Playwright on an invented riff of sixteenths at 120 BPM (notes 125 ms apart), PT 1440 / EN 760 px (by the developer (Playwright))
+
+**Resolved:** 2026-10-21 · **Closed:** _pending_
+
+**Evidence:**
+
+- 2026-10-21: five clicks lit two notes each with the old code, one each with the fix; no page errors
+
+**History:**
+
+- 2026-10-21 — Open: reported with a screenshot
+- 2026-10-21 — Fixed: commit a6a7f3d714
+- 2026-10-21 — Verified: Playwright 2026-10-21

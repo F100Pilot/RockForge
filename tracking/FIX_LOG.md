@@ -353,6 +353,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0345](#fix-0345) | BUG-0345 | 0.11.1-beta.2 | passed | automated |
 | [FIX-0346](#fix-0346) | BUG-0346, BUG-0347, BUG-0348 | unreleased | not run | manual |
 | [FIX-0347](#fix-0347) | BUG-0349 | unreleased | passed | automated |
+| [FIX-0348](#fix-0348) | BUG-0350 | unreleased | not run | manual |
 
 ## FIX-0001
 
@@ -7640,3 +7641,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | passed |
 | Validation | automated |
 | Regression risk | Low: a warning more. |
+
+## FIX-0348
+
+**Bugs:** [BUG-0350](bugs/viewer.md#bug-0350)
+
+**Root cause:** updateFretboard lit each note for max(sustain, 0.16 s) whatever came next, and its 30 ms lead-in could reach back past the previous attack.
+
+**Solution:** The brief glow of a note without a long enough sustain stops at the next attack, and the lead-in starts no earlier than halfway from the previous attack.
+
+| | |
+|---|---|
+| Date | 2026-10-21 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | a6a7f3d714cc0e86cfd8add2ee00d8e808096740 |
+| Components | web/app.js |
+| Tests | — |
+| Manual checks | Playwright: clicking notes of an invented riff of sixteenths lights one note each (two before the fix), PT/EN |
+| Test result | not run |
+| Validation | manual |
+| Regression risk | Low: only how long the fretboard overlay keeps a short note lit. |

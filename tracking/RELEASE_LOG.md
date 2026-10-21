@@ -40,6 +40,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0347](bugs/sync.md#bug-0347) A failed Songsterr video fetch during the import says there are no videos and hides the retry (Medium, now Verified)
 - [BUG-0348](bugs/sync.md#bug-0348) A Songsterr video's audio downloaded by the button becomes the recording after the tab's tempo was chosen (Low, now Verified)
 - [BUG-0349](bugs/sync.md#bug-0349) A Songsterr tempo change at a position of 1 or more is placed at the bar's start without a word (Low, now Verified)
+- [BUG-0350](bugs/viewer.md#bug-0350) Clicking a note on the score lights the previous note on the fretboard too (Low, now Verified)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 

@@ -6,7 +6,7 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 
 | Fixed | Verified | Closed |
 |---|---|---|
-| 86 | 49 | 214 |
+| 86 | 50 | 214 |
 
 | ID | Title | Module | Severity | Priority | Status | Found in | Fixed in |
 |---|---|---|---|---|---|---|---|
@@ -359,3 +359,4 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0347](bugs/sync.md#bug-0347) | A failed Songsterr video fetch during the import says there are no videos and hides the retry | sync | Medium | P2 | Verified | 0.11.1-beta.2 | — |
 | [BUG-0348](bugs/sync.md#bug-0348) | A Songsterr video's audio downloaded by the button becomes the recording after the tab's tempo was chosen | sync | Low | P3 | Verified | 0.11.1-beta.2 | — |
 | [BUG-0349](bugs/sync.md#bug-0349) | A Songsterr tempo change at a position of 1 or more is placed at the bar's start without a word | sync | Low | P3 | Verified | 0.11.1-beta.2 | — |
+| [BUG-0350](bugs/viewer.md#bug-0350) | Clicking a note on the score lights the previous note on the fretboard too | viewer | Low | P3 | Verified | 0.11.1-beta.2 | — |
