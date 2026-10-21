@@ -355,6 +355,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0347](#fix-0347) | BUG-0349 | 0.11.1-beta.3 | passed | automated |
 | [FIX-0348](#fix-0348) | BUG-0350 | 0.11.1-beta.3 | not run | manual |
 | [FIX-0349](#fix-0349) | BUG-0351 | 0.11.1-beta.3 | not run | manual |
+| [FIX-0350](#fix-0350) | BUG-0352 | 0.11.1-beta.4 | passed | automated |
 
 ## FIX-0001
 
@@ -7684,3 +7685,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | not run |
 | Validation | manual |
 | Regression risk | Low: what is drawn while playing moves back by the reported latency; nothing written to a build changes. |
+
+## FIX-0350
+
+**Bugs:** [BUG-0352](bugs/lyrics.md#bug-0352)
+
+**Root cause:** songsterr_gp dropped graceNote beats; parser._lyric_notes only counted beats with notes in the measure (GP5 grace effects ignored) and gpif_parser._lyric_notes skipped GraceNotes beats.
+
+**Solution:** Songsterr grace beats are written as GP5 grace effects on the next note on their string (dropped and counted only when there is none); both parsers give each grace its own lyric onset where the chart plays it (before the beat ending on it, or on the beat delaying the note).
+
+| | |
+|---|---|
+| Date | 2026-10-21 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | 0.11.1-beta.4 |
+| Commits | ae9cd83ae8db46a9ad480c3ec9b8b0c186ce97b2 |
+| Components | src/rockforge/infrastructure/gpimport/songsterr_gp.py; src/rockforge/infrastructure/gpimport/parser.py; src/rockforge/infrastructure/gpimport/gpif_parser.py |
+| Tests | tests/test_songsterr_gp.py::test_a_grace_note_in_the_vocal_line_takes_its_own_syllable; tests/test_gpif_import.py::test_gp7_a_grace_beat_in_the_vocal_line_takes_a_syllable |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: Songsterr imports now carry grace notes on guitar charts too (one short note before its main note, as the GP5 importer already reads them); lyric timing changes only where a vocal line has grace notes. |

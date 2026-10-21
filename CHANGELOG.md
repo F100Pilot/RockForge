@@ -6,6 +6,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+## [0.11.1 beta 4] — 2026-10-21
+
 ### Novidades
 
 - **Duas pistas** (Partitura, por baixo da pauta): mostra outra pista por baixo da partitura, no mesmo eixo do tempo. Seleciona notas numa delas — uma a uma ou com uma caixa — e passa-as (ou copia-as) para a outra, exatamente onde estavam, mesmo que as duas pistas tenham correções de sincronização diferentes. Com afinações diferentes, o traste muda para o som ficar o mesmo. Fica pendente até "Aplicar e reconstruir" e Ctrl+Z desfaz.

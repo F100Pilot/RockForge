@@ -1073,3 +1073,47 @@ A syllable with no space before it continues the word in UltraStar; it was writt
 - 2026-10-18 — Open: reported
 - 2026-10-18 — Fixed: commit 0b354c27fe
 - 2026-10-18 — Verified: its test passes and fails on the old code
+
+## BUG-0352
+
+**Lyrics of a Songsterr tab land later and later: a grace note in the vocal line gets no syllable**
+
+| | |
+|---|---|
+| Detected | 2026-10-21 |
+| Reported by | the maintainer (Songsterr song: the lyric always late, words off their notes) |
+| Found in | 0.11.1-beta.3 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Verified |
+
+Guitar Pro and Songsterr give every beat of the lyrics' track that is not a rest a syllable, grace beats included. The Songsterr import dropped grace notes and both parsers skipped grace beats when timing the lyrics, so every syllable after a grace landed one note late, and the lag grew with each grace. Whether the reporter's song has grace notes in its vocal line is not known.
+
+**Steps to reproduce:** 
+
+1. Import from Songsterr a tab whose vocal line has a grace note, with lyrics
+2. Build it and look at where each word sits
+
+**Expected:** Each syllable on its own note, the grace note's included.
+
+**Observed:** From the grace note on, every syllable sits on the next note: the lyric runs late.
+
+**Root cause:** songsterr_gp dropped graceNote beats; parser._lyric_notes only counted beats with notes in the measure (GP5 grace effects ignored) and gpif_parser._lyric_notes skipped GraceNotes beats.
+
+**Fixes:** [FIX-0350](../FIX_LOG.md#fix-0350) (0.11.1-beta.4)
+
+**Verified:** test_a_grace_note_in_the_vocal_line_takes_its_own_syllable and test_gp7_a_grace_beat_in_the_vocal_line_takes_a_syllable, each failing with its parser's change reverted (by the developer (pytest))
+
+**Resolved:** 2026-10-21 · **Closed:** _pending_
+
+**Evidence:**
+
+- 2026-10-21: a Songsterr vocal part 'one two three four five' with a grace before beat 2 — syllables at 0, 0.375, 0.5, 1.0, 1.5 s (old: the grace had none and 'two' sat on beat 2)
+- 2026-10-21: full pytest suite green
+
+**History:**
+
+- 2026-10-21 — Open: reported in conversation
+- 2026-10-21 — Fixed: commit ae9cd83ae8
+- 2026-10-21 — Verified: pytest 2026-10-21

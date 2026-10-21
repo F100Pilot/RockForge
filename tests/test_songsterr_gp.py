@@ -265,13 +265,16 @@ def test_a_grace_note_in_the_vocal_line_takes_its_own_syllable(tmp_path: Path) -
     it landed one note late ("a letra fica sempre atrasada")."""
     from rockforge.infrastructure.rsxml.vocals import distribute_syllables
 
-    vocals = {"name": "Voz", "tuning": [64], "measures": [{"signature": [4, 4], "voices": [{"beats": [
+    beats = [
         {"type": 4, "notes": [{"string": 0, "fret": 2}]},
         {"type": 16, "graceNote": "beforeBeat", "notes": [{"string": 0, "fret": 4}]},
         {"type": 4, "notes": [{"string": 0, "fret": 5}]},
         {"type": 4, "notes": [{"string": 0, "fret": 4}]},
         {"type": 4, "notes": [{"string": 0, "fret": 2}]},
-    ]}]}], "newLyrics": [{"text": "one two three four five", "offset": 0}]}
+    ]
+    vocals = {"name": "Voz", "tuning": [64],
+              "measures": [{"signature": [4, 4], "voices": [{"beats": beats}]}],
+              "newLyrics": [{"text": "one two three four five", "offset": 0}]}
     dst, report = _write(tmp_path, [_lead(), vocals])
     parsed = parse_gp_track(dst, 0)
     assert report.graces == 2  # the lead's and the vocal line's

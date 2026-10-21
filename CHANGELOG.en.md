@@ -6,6 +6,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+## [0.11.1 beta 4] — 2026-10-21
+
 ### New
 
 - **Two tracks** (Score, under the staff): shows another track under the score, on the same time axis. Select notes on either — one by one or with a box — and pass (or copy) them to the other, exactly where they were, even when the two tracks carry different sync corrections. With different tunings the fret changes so the sound stays the same. It stays pending until "Apply and rebuild" and Ctrl+Z undoes it.

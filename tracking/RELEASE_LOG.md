@@ -4,6 +4,35 @@
 
 Every version, newest first. What a version fixed and the bugs it still carried come from the bug and fix registers. Process: [docs/RELEASE_PROCESS.md](../docs/RELEASE_PROCESS.md).
 
+## 0.11.1-beta.4
+
+| | |
+|---|---|
+| Status | Beta |
+| Created | 2026-10-21 |
+| Published | _pending_ |
+| Commit | _pending_ |
+| Build | GitHub Actions release workflow |
+| Artifacts | — |
+| Tests | CI (ruff, mypy, pytest, ESLint, Docker build) on the release commit, tools/release_check, and the frozen .exe smoke test of the release workflow |
+| Approved by | the maintainer (asked for the release) |
+
+**Goal:** Songsterr lyrics no longer drift after a grace note; align to the attacks, two tracks, cover from anywhere
+
+**New:**
+
+- Two tracks
+- Align to the attacks
+- Cover from anywhere
+
+**Bugs fixed:** 
+
+- [BUG-0352](bugs/lyrics.md#bug-0352) Lyrics of a Songsterr tab land later and later: a grace note in the vocal line gets no syllable
+
+**Known bugs it carried:** —
+
+**Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
+
 ## 0.11.1-beta.3
 
 | | |
@@ -28,7 +57,9 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0350](bugs/viewer.md#bug-0350) Clicking a note on the score lights the previous note on the fretboard too
 - [BUG-0351](bugs/viewer.md#bug-0351) The cursor and lit notes run ahead of the sound during playback, by the output latency
 
-**Known bugs it carried:** —
+**Known bugs it carried:** 
+
+- [BUG-0352](bugs/lyrics.md#bug-0352) Lyrics of a Songsterr tab land later and later: a grace note in the vocal line gets no syllable (Medium, now Verified)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 

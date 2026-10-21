@@ -8784,6 +8784,33 @@
       "test_result": "not run",
       "regression_risk": "Low: what is drawn while playing moves back by the reported latency; nothing written to a build changes.",
       "validation": "manual"
+    },
+    {
+      "id": "FIX-0350",
+      "bugs": [
+        "BUG-0352"
+      ],
+      "date": "2026-10-21",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "songsterr_gp dropped graceNote beats; parser._lyric_notes only counted beats with notes in the measure (GP5 grace effects ignored) and gpif_parser._lyric_notes skipped GraceNotes beats.",
+      "solution": "Songsterr grace beats are written as GP5 grace effects on the next note on their string (dropped and counted only when there is none); both parsers give each grace its own lyric onset where the chart plays it (before the beat ending on it, or on the beat delaying the note).",
+      "components": [
+        "src/rockforge/infrastructure/gpimport/songsterr_gp.py",
+        "src/rockforge/infrastructure/gpimport/parser.py",
+        "src/rockforge/infrastructure/gpimport/gpif_parser.py"
+      ],
+      "commits": [
+        "ae9cd83ae8db46a9ad480c3ec9b8b0c186ce97b2"
+      ],
+      "version": "0.11.1-beta.4",
+      "tests": [
+        "tests/test_songsterr_gp.py::test_a_grace_note_in_the_vocal_line_takes_its_own_syllable",
+        "tests/test_gpif_import.py::test_gp7_a_grace_beat_in_the_vocal_line_takes_a_syllable"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low: Songsterr imports now carry grace notes on guitar charts too (one short note before its main note, as the GP5 importer already reads them); lyric timing changes only where a vocal line has grace notes.",
+      "validation": "automated"
     }
   ]
 }

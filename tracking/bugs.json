@@ -17615,6 +17615,54 @@
           "note": "Playwright 2026-10-21"
         }
       ]
+    },
+    {
+      "id": "BUG-0352",
+      "title": "Lyrics of a Songsterr tab land later and later: a grace note in the vocal line gets no syllable",
+      "detected": "2026-10-21",
+      "reported_by": "the maintainer (Songsterr song: the lyric always late, words off their notes)",
+      "found_in_version": "0.11.1-beta.3",
+      "found_in_build": "pending",
+      "module": "lyrics",
+      "description": "Guitar Pro and Songsterr give every beat of the lyrics' track that is not a rest a syllable, grace beats included. The Songsterr import dropped grace notes and both parsers skipped grace beats when timing the lyrics, so every syllable after a grace landed one note late, and the lag grew with each grace. Whether the reporter's song has grace notes in its vocal line is not known.",
+      "steps": [
+        "Import from Songsterr a tab whose vocal line has a grace note, with lyrics",
+        "Build it and look at where each word sits"
+      ],
+      "expected": "Each syllable on its own note, the grace note's included.",
+      "observed": "From the grace note on, every syllable sits on the next note: the lyric runs late.",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Verified",
+      "root_cause": "songsterr_gp dropped graceNote beats; parser._lyric_notes only counted beats with notes in the measure (GP5 grace effects ignored) and gpif_parser._lyric_notes skipped GraceNotes beats.",
+      "fixes": [
+        "FIX-0350"
+      ],
+      "verified_by": "the developer (pytest)",
+      "verification": "test_a_grace_note_in_the_vocal_line_takes_its_own_syllable and test_gp7_a_grace_beat_in_the_vocal_line_takes_a_syllable, each failing with its parser's change reverted",
+      "evidence": [
+        "2026-10-21: a Songsterr vocal part 'one two three four five' with a grace before beat 2 — syllables at 0, 0.375, 0.5, 1.0, 1.5 s (old: the grace had none and 'two' sat on beat 2)",
+        "2026-10-21: full pytest suite green"
+      ],
+      "resolved": "2026-10-21",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-21",
+          "status": "Open",
+          "note": "reported in conversation"
+        },
+        {
+          "date": "2026-10-21",
+          "status": "Fixed",
+          "note": "commit ae9cd83ae8"
+        },
+        {
+          "date": "2026-10-21",
+          "status": "Verified",
+          "note": "pytest 2026-10-21"
+        }
+      ]
     }
   ]
 }
