@@ -25,9 +25,17 @@ What a part carries, and how it maps:
   ``tone`` 50 = half tone), ``vibrato``, ``ghost``, ``staccato``,
   ``accentuated`` (1 normal, 2 heavy); ``dead``/``palmMute``/``harmonic`` are
   read when present.
-- tempo: the first track's ``automations.tempo[]`` ``{measure, bpm}``; the
-  first one is the song tempo, later ones a mix-table change on that measure's
-  first beat, exactly how GP5 stores it (see ``gpexport/tempo_writer``).
+- tempo: the first track's ``automations.tempo[]`` ``{measure, position,
+  bpm}`` (a quarter-note BPM, which may carry decimals; ``position`` read as
+  the fraction of the bar, as ``teaqu/guitar-pro-youtube-sync`` hands it to
+  GPIF's ``<Position>``); the first one is the song tempo, later ones a
+  mix-table change on that measure's first beat, exactly how GP5 stores it
+  (see ``gpexport/tempo_writer``). GP5 holds a WHOLE BPM at a bar's start, so
+  the file alone cannot follow a tab whose tempo map tracks a recording (a
+  tab Songsterr's AI made from it: 117.85 BPM, a change mid-bar). The exact
+  map is therefore also returned as ``report.bar_times`` — where every bar
+  starts, in seconds from bar 1 — which the wizard can send as ``bar_times``,
+  the machinery that re-times the chart bar by bar (``sync_map``).
 
 - lyrics: a part's ``newLyrics[]`` ``{text, offset}`` — the sung text (words
   by spaces, syllables by hyphens; extra spaces skip notes) and the 0-based
@@ -39,13 +47,15 @@ What a part carries, and how it maps:
 Honest limits, all counted in the report rather than hidden: grace notes are
 dropped (in GP5 they are an ornament on the NEXT note, not a beat, and writing
 them as beats would push the rhythm late); a mid-measure tempo change is moved
-to its measure's start; lyrics on a part that could not be written (no strings)
-fall back to the first track's notes; text GP5 cannot store (it is cp1252)
+to its measure's start in the GP5 (``bar_times`` keep its timing); lyrics on
+a part that could not be written (no strings) fall back to the first track's
+notes; text GP5 cannot store (it is cp1252)
 becomes "?".
 """
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -73,6 +83,12 @@ class SongsterrGpReport:
     skipped_tracks: list[str] = field(default_factory=list)
     grace_dropped: int = 0
     tempo_moved: int = 0
+    #: Distinct tempos the tab's map holds, and whether any has decimals.
+    tempo_count: int = 1
+    tempo_decimal: bool = False
+    #: Where each bar starts, in seconds from bar 1, from the tab's own tempo
+    #: map at full precision (see the module docstring).
+    bar_times: list[float] = field(default_factory=list)
     lyric_lines: int = 0
     warnings: list[str] = field(default_factory=list)
 
@@ -134,6 +150,50 @@ def _int(value: Any, default: int) -> int:
         return int(value)
     except (TypeError, ValueError):
         return default
+
+
+def _bpm(value: Any, default: float) -> float:
+    """A tempo as Songsterr wrote it, decimals kept, bounded like GP5's."""
+    try:
+        out = float(value)
+    except (TypeError, ValueError):
+        return default
+    return max(10.0, min(400.0, out)) if math.isfinite(out) else default
+
+
+def _bar_fraction(value: Any) -> float:
+    """Where in its bar a tempo change falls, 0 = the downbeat. Only a value
+    strictly between 0 and 1 is a place inside the bar; anything else is read
+    as the bar's start (no other unit has been seen)."""
+    try:
+        out = float(value)
+    except (TypeError, ValueError):
+        return 0.0
+    return out if 0.0 < out < 1.0 else 0.0
+
+
+def tab_bar_times(
+    quarters: list[float], tempos: list[tuple[int, float, float]], start_bpm: float
+) -> list[float]:
+    """Where each bar starts, in seconds from bar 1, from the tab's tempo map.
+
+    ``quarters[m]`` is bar m's length in quarter notes; ``tempos`` are
+    ``(bar, fraction of the bar, quarter-note BPM)`` in order, applied from
+    that point on. Pure, so the arithmetic is tested without Songsterr.
+    """
+    events: dict[int, list[tuple[float, float]]] = {}
+    for bar, frac, bpm in tempos:
+        events.setdefault(bar, []).append((frac, bpm))
+    out: list[float] = []
+    now, bpm = 0.0, start_bpm
+    for m, q in enumerate(quarters):
+        out.append(now)
+        at = 0.0
+        for frac, new_bpm in sorted(events.get(m, []), key=lambda e: e[0]):
+            now += q * (frac - at) * 60.0 / bpm
+            at, bpm = frac, new_bpm
+        now += q * (1.0 - at) * 60.0 / bpm
+    return out
 
 
 def _duration(beat: dict[str, Any], guitarpro: Any) -> Any:
@@ -264,19 +324,29 @@ def write_songsterr_gp5(
     song = guitarpro.Song()
     song.title, song.artist = _gp5_text(title), _gp5_text(artist)
     first = kept[0][1]
-    tempos = [t for t in (first.get("automations") or {}).get("tempo") or [] if isinstance(t, dict)]
-    song.tempo = max(10, min(400, _int(tempos[0].get("bpm"), 120) if tempos else 120))
+    raw = [t for t in (first.get("automations") or {}).get("tempo") or [] if isinstance(t, dict)]
+    start_bpm = _bpm(raw[0].get("bpm"), 120.0) if raw else 120.0
+    # Rounded, not cut: int() made 117.85 BPM 117, a drift that grows bar by bar.
+    song.tempo = round(start_bpm)
+    changes: list[tuple[int, float, float]] = []
     tempo_at: dict[int, int] = {}
-    for t in tempos[1:]:
-        measure = _int(t.get("measure"), 0)
-        if _int(t.get("position"), 0):
+    for t in raw[1:]:
+        measure = max(0, _int(t.get("measure"), 0))
+        frac = _bar_fraction(t.get("position"))
+        bpm = _bpm(t.get("bpm"), start_bpm)
+        if frac:
             report.tempo_moved += 1
-        tempo_at[measure] = max(10, min(400, _int(t.get("bpm"), song.tempo)))
+        changes.append((measure, frac, bpm))
+        tempo_at[measure] = round(bpm)
+    bpms = {start_bpm, *(b for _m, _f, b in changes)}
+    report.tempo_count = len(bpms)
+    report.tempo_decimal = any(abs(b - round(b)) > 1e-6 for b in bpms)
 
     n_measures = max(len(p["measures"]) for _n, p in kept)
     report.measures = n_measures
     song.measureHeaders = []
     start, sig = QUARTER_TICKS, (4, 4)
+    quarters: list[float] = []
     for m in range(n_measures):
         src = first["measures"][m] if m < len(first["measures"]) else {}
         raw_sig = src.get("signature")
@@ -297,6 +367,8 @@ def write_songsterr_gp5(
             header.marker = guitarpro.Marker(title=_gp5_text(str(marker["text"]).strip()))
         song.measureHeaders.append(header)
         start += sig[0] * QUARTER_TICKS * 4 // sig[1]
+        quarters.append(sig[0] * 4 / sig[1])
+    report.bar_times = tab_bar_times(quarters, changes, start_bpm)
 
     song.tracks = []
     for t_idx, (name, part) in enumerate(kept):
@@ -345,9 +417,11 @@ def write_songsterr_gp5(
     if report.tempo_moved:
         report.warnings.append(tr(
             f"{report.tempo_moved} mudança(s) de andamento a meio do compasso "
-            "passadas para o início dele",
+            "passadas para o início dele no ficheiro GP (o andamento da tab, no "
+            "passo 3, mantém o tempo exato de cada compasso)",
             f"{report.tempo_moved} mid-bar tempo change(s) moved to the start "
-            "of their bar",
+            "of their bar in the GP file (the tab's tempo, in step 3, keeps "
+            "each bar's exact time)",
         ))
     dst.parent.mkdir(parents=True, exist_ok=True)
     with open(dst, "wb") as fh:

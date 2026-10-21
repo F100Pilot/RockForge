@@ -95,6 +95,7 @@ function applyEmbeddedAudioChoice() {
   document.getElementById('ytBlock').hidden = usingEmbeddedAudio();
   // `required` would block the submit on a field the user never needs to fill.
   document.querySelector('#gpJobForm input[name=audio]').required = !provided;
+  refreshSongsterrAudioWarn();
 }
 // The chosen YouTube video's audio, fetched by /youtube/audio: {token, videoId, name, size}.
 let ytAudio = null;
@@ -104,11 +105,21 @@ document.getElementById('useEmbeddedAudio').addEventListener('change', applyEmbe
 // Only the times travel; the recording is the user's own.
 let songsterrSong = null;
 let songsterrPoints = null;
+// A tab imported from Songsterr: its own tempo map as bar times
+// ({times, count, decimal, song, revision}), and which timing step 3 uses —
+// 'tab' (that map, for the MP3 Songsterr plays) or 'video' (a video's times).
+let songsterrTab = null;
+let songsterrSyncMode = 'video';
+// The start a video's times put in "Início", so switching away resets only that.
+let songsterrVideoStart = null;
 const SONGSTERR_FEATURES = {
   alternative: T('vídeo alternativo'), backing: 'backing track', solo: 'solo', playthrough: 'playthrough',
 };
 function resetSongsterr() {
-  songsterrSong = null; songsterrPoints = null;
+  songsterrSong = null; songsterrPoints = null; songsterrTab = null;
+  document.getElementById('songsterrChoice').hidden = true;
+  document.getElementById('songsterrBlock').hidden = false;
+  document.getElementById('songsterrAudioWarn').hidden = true;
   document.getElementById('songsterrBlock').open = false;  // an extra: closed unless wanted
   document.getElementById('songsterrLink').value = '';
   document.getElementById('songsterrVideo').hidden = true;
@@ -164,11 +175,13 @@ function applySongsterrVideo() {
     document.getElementById('ytAudioInfo').textContent = '';
     applyEmbeddedAudioChoice();
   }
-  if (!v) { info.textContent = T('Tempos do Songsterr não usados.'); return; }
+  if (!v) { info.textContent = T('Tempos do Songsterr não usados.'); refreshSongsterrAudioWarn(); return; }
   const start = v.points[0];
   // Bar 1's instant in THAT video — right as the start when the MP3 is the
   // whole video; a trimmed copy starts earlier, and the user adjusts.
   document.querySelector('#gpJobForm input[name=offset_s]').value = start.toFixed(3);
+  songsterrVideoStart = start.toFixed(3);
+  refreshSongsterrAudioWarn();
   info.innerHTML = `${icon('check')} ` + T('{n} compassos com tempo marcado.', { n: v.points.length }) + ' ' +
     T('Os tempos são do vídeo {link} — a gravação tem de ser o áudio desse vídeo (descarrega-o em "Não tens o áudio?", acima, ou carrega um MP3 convertido dele; o áudio do próprio Songsterr é outro e não bate).',
       { link: `<a href="${esc(v.url)}" target="_blank" rel="noopener">${esc(v.url)}</a>` }) + ' ' +
@@ -200,7 +213,92 @@ async function fetchSongsterrVideos() {
   return true;
 }
 
-async function downloadYtAudio() {
+// Step 3's choice for a tab imported from Songsterr: whose timing the chart
+// follows. Each fits ONE kind of recording, which the card says, so the user
+// knows what they are choosing (the tab's tempo was cut to whole BPM in the
+// GP5, and a video's times never fit the MP3 Songsterr plays).
+function songsterrHasVideos() {
+  return !!(songsterrSong && songsterrSong.videos && songsterrSong.videos.length);
+}
+function setSongsterrTab(b) {
+  songsterrTab = b.songsterr_bar_times && b.songsterr_bar_times.length ? {
+    times: b.songsterr_bar_times, count: b.songsterr_tempo_count || 1,
+    decimal: !!b.songsterr_tempo_decimal, song: b.songsterr_song, revision: b.songsterr_revision,
+    bpm: b.tempo,
+  } : null;
+  const info = document.getElementById('songsterrTabInfo');
+  if (!songsterrTab) { info.textContent = ''; return; }
+  info.textContent = songsterrTab.count > 1 || songsterrTab.decimal
+    ? T('Esta tab tem {n} andamentos diferentes{dec} — sinal de que foi feita a seguir uma gravação.',
+      { n: songsterrTab.count, dec: songsterrTab.decimal ? T(', com casas decimais') : '' })
+    : T('Esta tab tem um só andamento ({bpm} BPM): bate com uma gravação tocada a tempo fixo; numa gravação que varie, acerta-se depois na partitura.',
+      { bpm: songsterrTab.bpm });
+}
+function readSongsterrSyncPref() {
+  try { return localStorage.getItem('rf-songsterr-sync') === 'tab' ? 'tab' : 'video'; } catch { return 'video'; }
+}
+function setSongsterrSyncMode(mode, { remember = false } = {}) {
+  if (!songsterrTab) return;
+  if (mode === 'video' && !songsterrHasVideos()) mode = 'tab';
+  const changed = mode !== songsterrSyncMode;
+  songsterrSyncMode = mode;
+  if (remember) { try { localStorage.setItem('rf-songsterr-sync', mode); } catch { /* storage blocked */ } }
+  document.getElementById('songsterrChoice').hidden = false;
+  document.querySelectorAll('#songsterrChoice input[name=songsterr_sync]').forEach(r => {
+    r.checked = r.value === mode;
+    r.disabled = r.value === 'video' && !songsterrHasVideos();
+  });
+  document.getElementById('songsterrVideoNone').hidden = songsterrHasVideos();
+  // The video's times and the video picker belong to the other choice.
+  document.getElementById('songsterrBlock').hidden = mode === 'tab';
+  const offset = document.querySelector('#gpJobForm input[name=offset_s]');
+  if (mode === 'tab') {
+    // A video's audio and its bar-1 instant do not fit another recording.
+    const fromVideo = ytAudio && songsterrHasVideos() && songsterrSong.videos.some(v => v.video_id === ytAudio.videoId);
+    if (fromVideo) { ytAudio = null; document.getElementById('ytAudioInfo').textContent = ''; }
+    if (songsterrVideoStart !== null && offset.value === songsterrVideoStart) offset.value = '0';
+    songsterrVideoStart = null;
+    document.getElementById('ytBlock').open = false;
+    applyEmbeddedAudioChoice();
+  } else if (changed || !ytAudio) {
+    applySongsterrVideo();
+    if (songsterrChosenVideo() && !ytAudio) downloadYtAudio({ auto: true });
+  }
+  refreshSongsterrAudioWarn();
+}
+document.querySelectorAll('#songsterrChoice input[name=songsterr_sync]').forEach(r =>
+  r.addEventListener('change', () => { if (r.checked) setSongsterrSyncMode(r.value, { remember: true }); }));
+document.getElementById('songsterrUseTab').addEventListener('click', () => setSongsterrSyncMode('tab', { remember: true }));
+// A file of the user's own while a video's times are in use: they fit that
+// video's audio only, so say so before the project is built on them.
+function refreshSongsterrAudioWarn() {
+  const box = document.getElementById('songsterrAudioWarn');
+  const file = document.querySelector('#gpJobForm input[name=audio]').files[0];
+  const v = songsterrChosenVideo();
+  const usingVideoTimes = v && !(songsterrTab && songsterrSyncMode === 'tab');
+  box.hidden = !(file && usingVideoTimes && !ytAudio && !usingEmbeddedAudio());
+  if (box.hidden) return;
+  document.getElementById('songsterrAudioWarnText').innerHTML =
+    T('Escolheste um ficheiro teu ({name}), mas estão em uso os tempos do vídeo {link}. Só batem se esse ficheiro for o áudio desse vídeo.',
+      { name: esc(file.name), link: `<a href="${esc(v.url)}" target="_blank" rel="noopener">${esc(v.url)}</a>` }) + ' ' +
+    (songsterrTab
+      ? T('Se é o MP3 do Songsterr, usa o andamento da tab.')
+      : T('Se é outra gravação, escolhe «não usar os tempos do Songsterr» abaixo e acerta a sincronização na partitura.'));
+  document.getElementById('songsterrUseTab').hidden = !songsterrTab;
+}
+document.querySelector('#gpJobForm input[name=audio]').addEventListener('change', refreshSongsterrAudioWarn);
+// The bar times /jobs/gp gets, and where they came from (JobOut.sync_source).
+function wizardBarTimes() {
+  if (songsterrTab && songsterrSyncMode === 'tab') {
+    return { times: songsterrTab.times, source: `songsterr-tab:${songsterrTab.song}:${songsterrTab.revision}` };
+  }
+  if (songsterrPoints) {
+    return { times: songsterrPoints, source: `songsterr:${songsterrSong.song_id}:${songsterrSong.revision_id}` };
+  }
+  return null;
+}
+
+async function downloadYtAudio(opts = {}) {
   const info = document.getElementById('ytAudioInfo');
   const videoId = youtubeVideoId(document.getElementById('ytLink').value);
   if (!videoId) {
@@ -217,6 +315,12 @@ async function downloadYtAudio() {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ video_id: videoId, cookies_browser: browser || null }),
     });
+    // Started for the video's times, finished after the user chose the tab's
+    // tempo instead: that audio is not the recording they will use.
+    if (opts.auto && songsterrTab && songsterrSyncMode === 'tab') {
+      info.textContent = '';
+      return;
+    }
     ytAudio = { token: b.audio_token, videoId, name: b.name, size: b.size_bytes };
     const sv = songsterrChosenVideo();
     info.innerHTML = `${icon('check')} ` +
@@ -1190,7 +1294,8 @@ async function setSyncConfirmed(confirmed, arrangement = null) {
 const SYNC_SOURCE_TEXT = {
   confirmed: T('Marcada por ti como sincronizada.'),
   gp: T('O ficheiro traz os pontos de sincronização do Guitar Pro 8, por isso as notas devem seguir o áudio com que foi sincronizado. Ouve e, quando baterem, marca cada pista.'),
-  songsterr: T('Temporizada pelos tempos de cada compasso do Songsterr. Ouve e, quando as notas baterem, marca cada pista.'),
+  songsterr: T('Temporizada pelos tempos de cada compasso de um vídeo do YouTube no Songsterr: batem com o áudio desse vídeo, não com outra gravação. Ouve e, quando as notas baterem, marca cada pista.'),
+  songsterr_tab: T('Temporizada pelo andamento da tab do Songsterr, compasso a compasso e com as casas decimais: bate com uma gravação que siga a tab, como o MP3 do Songsterr, se o Início estiver no compasso 1. Ouve e, quando as notas baterem, marca cada pista.'),
   adjusted: T('Fizeste correções de início/andamento. Quando as notas baterem com a gravação, marca-a como sincronizada.'),
 };
 function isSynced(j) { return !!j && j.sync_source === 'confirmed'; }
@@ -1206,7 +1311,7 @@ function renderSyncState(j) {
   if (!gp) return;
   const label = esc(arrLabel(a.kind));
   const marked = arrangements.filter(x => x.sync_confirmed).length;
-  const whole = ['gp', 'songsterr'].includes(j.sync_source) ? `<br>${esc(SYNC_SOURCE_TEXT[j.sync_source])}` : '';
+  const whole = ['gp', 'songsterr', 'songsterr_tab'].includes(j.sync_source) ? `<br>${esc(SYNC_SOURCE_TEXT[j.sync_source])}` : '';
   const count = arrangements.length > 1
     ? `<br>${T('{n} de {m} pistas marcadas.', { n: marked, m: arrangements.length })}` : '';
   document.getElementById('syncStateText').innerHTML = (a.sync_confirmed
@@ -1408,9 +1513,11 @@ function renderCompleteness(j) {
     if (j.sync_source === 'confirmed')
       rows.push({ state: 'ok', ico: 'check', title: T('Sincronização confirmada'), act: 'syncundo', actLabel: T('Desfazer'),
         note: T('Marcaste que as notas batem com a gravação.') });
-    else if (j.sync_source === 'gp' || j.sync_source === 'songsterr')
+    else if (['gp', 'songsterr', 'songsterr_tab'].includes(j.sync_source))
       rows.push({ state: 'warn', ico: 'timer', short: T('confirmar a sincronização'),
-        title: j.sync_source === 'gp' ? T('Temporizada no Guitar Pro — confirma') : T('Temporizada pelo Songsterr — confirma'),
+        title: j.sync_source === 'gp' ? T('Temporizada no Guitar Pro — confirma')
+          : j.sync_source === 'songsterr_tab' ? T('Temporizada pela tab do Songsterr — confirma')
+            : T('Temporizada pelo Songsterr — confirma'),
         act: 'syncok', actLabel: T('Está sincronizada'), act2: 'sync', act2Label: T('Abrir partitura'),
         note: SYNC_SOURCE_TEXT[j.sync_source] });
     else if (j.sync_edited)
@@ -1642,6 +1749,13 @@ const INFO = {
     body: T('<p>Em vez de um ficheiro Guitar Pro, escolhe o <strong>PDF</strong> da tablatura (uma tab em texto, ou exportada do Guitar Pro, MuseScore ou TuxGuitar) ou uma <strong>imagem</strong> dela (PNG, JPEG ou WebP). O RockForge converte-a num ficheiro Guitar Pro 5 com o conversor do <strong>PDF-to-GP5</strong>, e o assistente continua como com um ficheiro Guitar Pro.</p>') +
       T('<p>Várias pistas: escolhe vários ficheiros de uma vez, <strong>um por pista</strong>, pela ordem das pistas (até 7).</p>') +
       T('<p>Limites: a leitura de imagens (OCR) é experimental — lê os números, as linhas das cordas, as barras de compasso e as técnicas escritas (H/P, P.M., let ring, harmónicos), os slides, o vibrato, as ligaduras e os bends; numa tab sem notação rítmica o ritmo é estimado pelo espaçamento. Confere sempre as notas na partitura depois de criar o projeto. Precisa do conversor instalado (⚙️ Definições → Software externo).</p>')
+  },
+  'songsterr-sync': {
+    title: T('Sincronizar uma tab do Songsterr'),
+    body: T('<p>O RockForge escreve a tab num ficheiro Guitar Pro. Um ficheiro assim guarda o andamento em BPM inteiros e só no início de cada compasso, por isso não consegue seguir sozinho uma tab cujo andamento acompanha uma gravação (117,85 BPM, uma mudança a meio do compasso). O tempo de cada compasso vem então de uma de duas fontes, e cada uma só bate com a sua gravação:</p>') +
+      T('<p><strong>O andamento da tab</strong> — o que o leitor do Songsterr segue, com as casas decimais e as mudanças a meio do compasso. Bate com uma gravação que siga a tab: o MP3 que o Songsterr toca, ou a gravação de que a IA do Songsterr fez a tab. O RockForge não sabe onde começa o compasso 1 nessa gravação: põe-no em "Início" (ou usa «Detetar 1ª nota» na partitura). Uma tab escrita à mão, a um só andamento, só bate com uma gravação tocada a tempo fixo.</p>') +
+      T('<p><strong>Os tempos de um vídeo do YouTube</strong> — o instante de cada compasso que o Songsterr guarda para um vídeo (marcado por pessoas ou gerado pelo Songsterr), com o áudio desse vídeo descarregado aqui. Batem compasso a compasso só com o áudio desse vídeo; outra gravação, mesmo da mesma música, tem outra introdução e outros tempos.</p>') +
+      T('<p>Em ambos os casos o resto acerta-se na partitura, e no fim marcas cada pista como sincronizada. A escolha fica lembrada para a próxima tab.</p>')
   },
   'youtube-audio': {
     title: T('Áudio do vídeo do YouTube'),
@@ -12070,11 +12184,17 @@ async function importSongsterrTab() {
     ? T('Importada, com avisos: {warnings}.', { warnings: b.import_warnings.join('; ') }) : T('Tab importada.');
   songsterrImported = true;
   applyInspectResult(b);
+  setSongsterrTab(b);
   // Step 3: the same song's per-measure times, ready to pick a video.
   document.getElementById('songsterrLink').value = link;
   document.getElementById('songsterrBlock').open = true;
-  // …and the chosen video's audio, so the whole song comes from one link.
-  if (await fetchSongsterrVideos()) downloadYtAudio();
+  const found = await fetchSongsterrVideos();
+  if (songsterrTab) {
+    // The user's last choice; the video's audio is fetched only for that one,
+    // so the whole song comes from one link.
+    songsterrSyncMode = '';
+    setSongsterrSyncMode(readSongsterrSyncPref());
+  } else if (found) downloadYtAudio();
 }
 document.getElementById('songsterrImportBtn').addEventListener('click', importSongsterrTab);
 
@@ -12129,9 +12249,11 @@ document.getElementById('gpJobForm').addEventListener('submit', async e => {
     f.set('use_embedded_audio', 'false');
     if (ytAudio) { f.set('audio_token', ytAudio.token); f.delete('audio'); }
   }
-  if (songsterrPoints) {
-    f.set('bar_times', JSON.stringify(songsterrPoints));
-    f.set('bar_times_source', `songsterr:${songsterrSong.song_id}:${songsterrSong.revision_id}`);
+  f.delete('songsterr_sync');
+  const barTimes = wizardBarTimes();
+  if (barTimes) {
+    f.set('bar_times', JSON.stringify(barTimes.times));
+    f.set('bar_times_source', barTimes.source);
   }
   // Unchecked checkboxes are not sent; set the value explicitly so "off" sticks.
   f.set('import_mutes', e.target.querySelector('input[name=import_mutes]').checked);

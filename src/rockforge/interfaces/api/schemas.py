@@ -92,8 +92,9 @@ class JobOut(BaseModel):
     sync_main: str | None = None
     # Why the chart counts as in sync, for the badge on the project card and the
     # score: "confirmed" (the user said so), "gp" (synced in Guitar Pro 8 — the
-    # file carries its own sync points), "songsterr" (human-marked bar times),
-    # "adjusted" (corrected here, not yet confirmed) or None.
+    # file carries its own sync points), "songsterr" (the bar times of a
+    # Songsterr YouTube video), "songsterr_tab" (the bar times of a Songsterr
+    # tab's own tempo map), "adjusted" (corrected here, not yet confirmed) or None.
     sync_source: str | None = None
     # The charts the user marked as in sync, one by one (their tabs turn green).
     synced_arrangements: list[str] = []
@@ -766,6 +767,16 @@ class GpInspectOut(BaseModel):
     # conversion could not carry over.
     songsterr_song: str | None = None
     import_warnings: list[str] = []
+    # The tab's OWN tempo map at full precision (decimals, mid-bar changes,
+    # which GP5 cannot hold): where each bar starts, in seconds from bar 1. The
+    # wizard sends it as bar_times when the recording follows the tab (the
+    # MP3 Songsterr plays, a tab its AI made from that audio) instead of the
+    # times of a YouTube video. With how many tempos, and whether any has
+    # decimals, so the wizard can say what the choice changes.
+    songsterr_revision: str | None = None
+    songsterr_bar_times: list[float] = []
+    songsterr_tempo_count: int = 0
+    songsterr_tempo_decimal: bool = False
     # Set when the file was converted from a PDF or a picture of the tab
     # (/pdf/import, PDF-to-GP5's converter): the names of those files.
     pdf_files: list[str] = []

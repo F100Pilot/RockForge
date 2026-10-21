@@ -15,6 +15,7 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ### Correções
 
+- **Tabs do Songsterr — sincronização:** uma tab importada do Songsterr perdia as casas decimais do andamento (117,85 BPM ficava 117) e as mudanças de andamento a meio do compasso, por isso começava certa e ia-se afastando da gravação. Agora as notas seguem o andamento da própria tab, compasso a compasso, como no leitor do Songsterr. No passo 3 escolhes com que gravação vais tocar — o MP3 do Songsterr (ou outra que siga a tab) ou o áudio de um vídeo do YouTube — e cada opção diz com que gravação bate; se carregares um ficheiro teu com os tempos de um vídeo, aparece um aviso.
 - **Pasta de trabalho mudada de sítio:** depois de mover a pasta de dados do RockForge (para outro disco ou outro computador), os projetos antigos deixavam de encontrar o bundle, a gravação, o ficheiro GP e os stems. No arranque, o RockForge passa a procurá-los na pasta nova.
 - **Songsterr:** um vídeo cujas marcações começam antes do início do vídeo (uma contagem marcada em tempos negativos) era recusado ao criar o projeto. Agora é aceite, e cada compasso fica na sua marcação. Contribuição de mongrelx (#5).
 - **Arranjo sem notas:** quando a pista GP escolhida para um arranjo não tem notas (uma pista de voz, de bateria ou vazia), o erro diz agora qual arranjo e qual pista, e o que fazer, em vez de só "arrangement has no notes".

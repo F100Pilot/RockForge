@@ -195,6 +195,10 @@ def songsterr_import(payload: SongsterrImportIn) -> GpInspectOut:
         )
     out.songsterr_song = str(tab.song_id)
     out.import_warnings = warnings
+    out.songsterr_revision = str(tab.revision_id)
+    out.songsterr_bar_times = [round(t, 6) for t in report.bar_times]
+    out.songsterr_tempo_count = report.tempo_count
+    out.songsterr_tempo_decimal = report.tempo_decimal
     return out
 
 

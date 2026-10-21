@@ -1101,6 +1101,10 @@ def test_a_songsterr_tab_becomes_a_gp_file_the_wizard_can_use(
     assert [t["name"] for t in body["tracks"]] == ["Lead"]
     assert body["songsterr_song"] == "42"
     assert body["import_warnings"][0] == "não consegui descarregar: Voz"
+    # The tab's own tempo map, for the wizard's "Songsterr recording" choice.
+    assert body["songsterr_revision"] == "7"
+    assert body["songsterr_bar_times"] == [0.0]
+    assert (body["songsterr_tempo_count"], body["songsterr_tempo_decimal"]) == (1, False)
     assert (app_module.settings.work_dir / "gp" / body["gp_token"]).is_file()
 
     assert client.post("/songsterr/import", json={"song": "not a link"}).status_code == 422
@@ -1716,6 +1720,12 @@ def test_a_chart_says_why_it_counts_as_in_sync() -> None:
     assert _sync_source({"gp_synced": True}) == "gp"
     assert _sync_edited({"gp_synced": True}) is True  # the checklist stops asking
     assert _sync_source({"bar_times": [0.0, 2.0], "gp_synced": True}) == "songsterr"
+    # The times of a video fit that video's audio; the tab's own tempo map fits
+    # a recording that follows the tab (the MP3 Songsterr plays).
+    assert _sync_source(
+        {"bar_times": [0.0, 2.0], "bar_times_source": "songsterr:42:7"}) == "songsterr"
+    assert _sync_source(
+        {"bar_times": [0.0, 2.0], "bar_times_source": "songsterr-tab:42:7"}) == "songsterr_tab"
     assert _sync_source({"gp_synced": True, "sync_confirmed": True}) == "confirmed"
 
 

@@ -80,6 +80,12 @@
   .stage.done { background:#1f3a22; color:#a9e0ae; border-color:#2e5532; }
   .stage.now { background:var(--warn); color:#221a04; border-color:var(--warn); font-weight:700; }
 
+  .sync-choice { display:flex; gap:.6rem; align-items:flex-start; padding:.6rem .7rem; margin:.35rem 0; border:1px solid var(--line); border-radius:8px; cursor:pointer; }
+  .sync-choice:has(input:checked) { border-color:var(--accent); background:var(--accent-soft); }
+  .sync-choice:has(input:disabled) { opacity:.55; cursor:default; }
+  .sync-choice input { margin-top:.25rem; flex:none; }
+  .sync-choice > span { display:flex; flex-direction:column; gap:.25rem; }
+  #songsterrAudioWarn button { display:block; margin-top:.4rem; }
   .warnbox { background:#332a14; border-left:3px solid var(--warn); padding:.5rem .75rem; margin:.4rem 0; font-size:.85rem; border-radius:0 6px 6px 0; }
   .errbox { background:#3a1a1a; border-left:3px solid var(--err); padding:.5rem .75rem; margin:.4rem 0; font-size:.85rem; border-radius:0 6px 6px 0; }
   /* "Estado do PSARC" completeness checklist */
@@ -2041,6 +2047,21 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
           <h1 class="pv-page-title">Gravação</h1>
           <p class="set-desc">Um valor aproximado chega — a <b>sincronização fina</b> (início por pista, andamento, arrastar notas) faz-se depois, na partitura.</p>
         </div>
+        <div class="pv-card pv-card-lg" id="songsterrChoice" hidden>
+          <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-timer"/></svg>Com que gravação vais tocar esta tab? <button class="info-btn" type="button" data-info="songsterr-sync">ⓘ</button></div>
+          <p class="meta" style="margin:0 0 .5rem">A tab veio do Songsterr. O que escolhes aqui decide de onde vem o tempo de cada compasso — e só bate com a gravação certa.</p>
+          <label class="sync-choice"><input type="radio" name="songsterr_sync" value="tab">
+            <span><b>A gravação do Songsterr (o MP3 dele) ou outra que siga a tab</b>
+              <span class="meta">Usa o andamento da própria tab, compasso a compasso e com as casas decimais — o que o leitor do Songsterr segue.
+                <b>Bate</b> com uma gravação que siga a tab: o áudio do Songsterr, ou a gravação de que a IA do Songsterr fez a tab.
+                Tens de pôr o <b>Início</b> (abaixo) onde soa o compasso 1. Com outra gravação só bate se o andamento for o mesmo.</span>
+              <span class="meta" id="songsterrTabInfo"></span></span></label>
+          <label class="sync-choice"><input type="radio" name="songsterr_sync" value="video">
+            <span><b>O áudio de um vídeo do YouTube</b>
+              <span class="meta">Usa o tempo de cada compasso que o Songsterr tem para um vídeo (marcado por pessoas ou gerado pelo Songsterr) e descarrega aqui o áudio desse vídeo.
+                <b>Bate</b> compasso a compasso só com o áudio desse vídeo — com outra gravação, incluindo o MP3 do Songsterr, não bate.</span>
+              <span class="meta" id="songsterrVideoNone" hidden>O Songsterr não tem tempos de nenhum vídeo para esta tab.</span></span></label>
+        </div>
         <div class="pv-card pv-card-lg">
           <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-headphones"/></svg>Gravação (áudio da música)</div>
           <div class="field" id="gpEmbeddedAudioRow" hidden>
@@ -2051,6 +2072,8 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
           <div class="field" id="gpAudioUploadField">
             <div class="file-drop"><div class="file-drop-icon"><svg class="ic" aria-hidden="true"><use href="#i-headphones"/></svg></div><span class="file-drop-text">Arrasta ou clica para escolher</span><span class="file-drop-btn">Procurar</span>
             <input type="file" name="audio" accept=".mp3,.flac,.wav,.ogg,.m4a,.aiff,.aif,.opus,.webm,.aac,.mp4,.wma" required></div></div>
+          <div class="warnbox" id="songsterrAudioWarn" hidden><span id="songsterrAudioWarnText"></span>
+            <button type="button" class="secondary" id="songsterrUseTab" hidden>Usar o andamento da tab</button></div>
           <details class="field" id="ytBlock">
             <summary style="cursor:pointer"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg> <b>Não tens o áudio?</b> — descarregá-lo de um vídeo do YouTube</summary>
             <p class="meta" style="margin:.4rem 0 .35rem">Cola o link do vídeo com a música: o áudio passa a ser a gravação do
@@ -2081,9 +2104,9 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
         <details class="pv-card pv-card-lg" id="songsterrBlock">
           <summary style="cursor:pointer"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg> <b>Extra</b> — sincronizar pelos tempos do Songsterr (opcional)</summary>
           <p class="meta" style="margin:.4rem 0 .35rem">O Songsterr guarda o instante de <b>cada compasso</b> num vídeo do
-            YouTube, marcado por pessoas. Cola o link da música: o RockForge vai buscar só esses tempos. A gravação tem de ser
+            YouTube (marcado por pessoas ou gerado pelo Songsterr). Cola o link da música: o RockForge vai buscar só esses tempos. A gravação tem de ser
             <b>o áudio desse mesmo vídeo do YouTube</b> (depois de escolheres o vídeo, o link passa para "Não tens o áudio?",
-            acima, e podes descarregá-lo) — o áudio que o próprio Songsterr disponibiliza é outro e não bate com estes tempos.
+            acima, e podes descarregá-lo) — com outra gravação, incluindo o MP3 do próprio Songsterr, estes tempos não batem.
             O ficheiro GP tem de ser o tab do Songsterr, para o compasso N ser o mesmo nos dois.</p>
           <div class="syncctrls">
             <input type="text" id="songsterrLink" placeholder="https://www.songsterr.com/a/wsa/…-tab-s23063" style="flex:1;min-width:14rem">

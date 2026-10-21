@@ -237,9 +237,10 @@ re-inverting the dependency.
    Playwright on a GP8 whose audio is a YouTube link (link filled, download
    run, upload hidden).
 
-   **Songsterr's per-measure timestamps (`bar_times`) — human-marked sync,
-   fetched rather than estimated.** Songsterr stores, per song, the instant
-   every measure starts in one or more YouTube videos, marked by people; that
+   **Songsterr's per-measure timestamps (`bar_times`) — fetched rather than
+   estimated.** Songsterr stores, per song, the instant every measure starts
+   in one or more YouTube videos (marked by people, or — for a tab Songsterr's
+   AI made, the user's correction 2026-10-21 — presumably generated); that
    is the whole reason a `teaqu/guitar-pro-youtube-sync` file lines up
    "perfectly", and the opposite of the automatic estimators that were removed
    (see below). `infrastructure/songsterr.py` fetches ONLY those times
@@ -248,7 +249,8 @@ re-inverting the dependency.
    client** (see the 403 note below), ordering the videos the way that
    tool picks them. The recording has to be **that same YouTube video's audio**
    — Songsterr's own audio is a different recording and does NOT match the
-   times — so the wizard can fetch it (`youtube_audio`, below) or take an MP3
+   times (the user plays it in sync with the tab on Songsterr, so it is the
+   tab's own tempo map that fits it: see "the tab's OWN tempo map" below) — so the wizard can fetch it (`youtube_audio`, below) or take an MP3
    the user converted from it. `GET /songsterr?song=` returns the
    videos with their points (the wizard offers it as a closed, optional
    "➕ Extra" in step 3, so the default flow is untouched) (422 for a link we cannot read, **502** when the
@@ -312,7 +314,8 @@ re-inverting the dependency.
    measure, as `tempo_writer` does). Honest losses, all counted in the report
    and shown in the wizard: drums skipped, **grace notes dropped** (a GP5 grace
    is an ornament on the NEXT note — written as beats they would push the
-   rhythm late), a mid-bar tempo change moved to its bar's start, text GP5
+   rhythm late), a mid-bar tempo change moved to its bar's start in the GP5
+   (the tab's tempo map, below, keeps it at the bar lines), text GP5
    cannot store (it is cp1252 — a Cyrillic title used to abort the whole
    write) turned into "?" by `_gp5_text`. **Lyrics come along**: a part's
    `newLyrics[]` `{text, offset}` (0-based bar) becomes the GP5 song lyrics
@@ -330,6 +333,47 @@ re-inverting the dependency.
    SAME song are one pick away — tab and times from one source is exactly what
    makes "measure N is measure N" hold — and then fetches the default video's
    audio too, so one link gives tab, times AND recording.
+
+   **The tab's OWN tempo map is the other timing, for the MP3 Songsterr plays**
+   ("Tenho usado sempre a gravação presente no songsterr (mp3)", 2026-10-21 —
+   the tab drifted in RockForge while it played in sync on Songsterr). A tab
+   whose tempo follows a recording (one Songsterr's AI made from it) carries
+   decimals and mid-bar changes; GP5 holds a whole BPM at a bar's start, and
+   `_int()` even CUT 117.85 to 117, so the chart drifted bar by bar.
+   `write_songsterr_gp5` now rounds the GP5 tempo and returns the exact map as
+   `report.bar_times` (`tab_bar_times`, pure: per bar, quarters from the
+   signature, `{measure, position, bpm}` with `position` read as the fraction
+   of the bar — what the reference tool hands GPIF's `<Position>`; any value
+   outside (0, 1) is the bar's start, no other unit having been seen), plus
+   `tempo_count`/`tempo_decimal`. `/songsterr/import` answers them
+   (`songsterr_bar_times`, `songsterr_revision`, `songsterr_tempo_count`,
+   `songsterr_tempo_decimal`), and step 3 shows **"Com que gravação vais tocar
+   esta tab?"** (`#songsterrChoice`, ⓘ `songsterr-sync`), each option saying
+   which recording it fits: **the Songsterr recording or another that follows
+   the tab** (`songsterrSyncMode = 'tab'`: those times go as `bar_times` with
+   `bar_times_source` `songsterr-tab:<song>:<rev>` — the same `sync_map`
+   machinery, so every bar starts where the player starts it; the user's own
+   file and "Início" at bar 1; the video block hidden, a video's auto-download
+   dropped, the video's start taken out of "Início") or **a YouTube video's
+   audio** (the old flow). The choice is remembered (`localStorage`
+   `rf-songsterr-sync`, default the video); with no videos only the tab. A file
+   of the user's own while a video's times are in use shows
+   `#songsterrAudioWarn` with "Usar o andamento da tab"
+   (`refreshSongsterrAudioWarn`, also for a plain GP with the Extra's times).
+   `JobOut.sync_source` is then `songsterr_tab` (`_sync_source`,
+   `SONGSTERR_TAB_SOURCE`), worded on the sync card and the checklist. Inside
+   a bar the GP5's own proportions are mapped linearly, so a mid-bar change is
+   exact at the bar lines only. Where bar 1 sits in Songsterr's MP3 is not
+   known here — the user sets "Início". Guarded by
+   `test_the_tabs_tempo_map_gives_each_bar_its_exact_start`,
+   `test_a_tab_that_follows_a_recording_keeps_its_tempo_to_the_decimal`
+   (rounding and the mid-bar rule mutation-checked) and the `songsterr_tab`
+   line of `test_a_chart_says_why_it_counts_as_in_sync`; with Playwright on a
+   live server (Songsterr faked, PT 1440 / EN 760 px): video by default, own
+   file → warning → "Usar o andamento da tab" → a real build whose bars sit on
+   the tab's times to the millisecond, the choice remembered with no download,
+   no page errors. Not tried with a real Songsterr MP3 from here.
+
    Never run against the real Songsterr from here (blocked) — TESTING.md
    §7d-quinquies. Guarded by `test_songsterr_gp.py` (a note-for-note round trip
    through `parse_gp_track`: ties, triplets, dead notes, hammer target, bend,

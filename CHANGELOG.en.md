@@ -15,6 +15,7 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ### Fixes
 
+- **Songsterr tabs — sync:** a tab imported from Songsterr lost its tempo's decimals (117.85 BPM became 117) and its mid-bar tempo changes, so it started right and drifted away from the recording. The notes now follow the tab's own tempo, bar by bar, as in Songsterr's player. In step 3 you choose which recording you will play — Songsterr's MP3 (or another that follows the tab) or a YouTube video's audio — and each choice says which recording it fits; uploading a file of your own with a video's times shows a warning.
 - **Work folder moved:** after moving RockForge's data folder (to another disk or computer), earlier projects could no longer find their bundle, recording, GP file and stems. On start, RockForge now looks for them in the new folder.
 - **Songsterr:** a video whose marks start before the video begins (a count-in marked at negative times) was refused when creating the project. It is now accepted, and every bar sits on its own mark. Contributed by mongrelx (#5).
 - **Arrangement with no notes:** when the GP track picked for an arrangement has no notes (a vocal, drum or empty track), the error now says which arrangement and which track, and what to do, instead of just "arrangement has no notes".

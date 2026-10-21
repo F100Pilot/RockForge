@@ -194,3 +194,50 @@ def test_text_gp5_cannot_store_does_not_abort_the_import(tmp_path: Path) -> None
     dst = tmp_path / "tab.gp5"
     write_songsterr_gp5(parts, dst, title="Группа крови", artist="Кино")
     assert parse_gp_track(dst, 0).lyrics[0].text == "???? ok"
+
+
+def test_the_tabs_tempo_map_gives_each_bar_its_exact_start() -> None:
+    """Decimals, a mid-bar change and a change of metre, as the player plays them."""
+    from rockforge.infrastructure.gpimport.songsterr_gp import tab_bar_times
+
+    # 4/4 at 120 = 2 s a bar; at 117.85 a bar lasts 4 * 60 / 117.85 s.
+    assert tab_bar_times([4.0, 4.0, 4.0], [], 120.0) == [0.0, 2.0, 4.0]
+    bar = 240 / 117.85
+    times = tab_bar_times([4.0, 4.0, 4.0], [(1, 0.0, 117.85)], 120.0)
+    assert times[:2] == [0.0, 2.0] and times[2] == pytest.approx(2.0 + bar)
+    # Halfway through bar 2 the tempo halves: 1 s + 2 s, so bar 3 starts at 5 s.
+    assert tab_bar_times([4.0, 4.0, 4.0], [(1, 0.5, 60.0)], 120.0) == [0.0, 2.0, 5.0]
+    # 3/4 is three quarters: 1.5 s at 120.
+    assert tab_bar_times([3.0, 4.0], [], 120.0) == [0.0, 1.5]
+
+
+def test_a_tab_that_follows_a_recording_keeps_its_tempo_to_the_decimal(tmp_path: Path) -> None:
+    """GP5 holds a whole BPM at a bar's start, so the tab's own map travels as
+    bar times; the GP5's tempo is rounded (int() made 117.85 BPM 117, a drift
+    that grew bar by bar) and a mid-bar change is counted."""
+    part = _lead()
+    part["automations"] = {"tempo": [
+        {"measure": 0, "position": 0, "bpm": 117.85},
+        {"measure": 1, "position": 0.5, "bpm": 90.4},
+    ]}
+    dst, report = _write(tmp_path, [part])
+    assert inspect_gp(dst).tempo == 118
+    assert report.tempo_count == 2 and report.tempo_decimal and report.tempo_moved == 1
+    q = 240 / 117.85
+    assert report.bar_times == pytest.approx([0.0, q, q + q / 2 + 120 / 90.4])
+    assert any("meio do compasso" in w or "mid-bar" in w for w in report.warnings)
+
+    # Those times re-time the chart: bar 3's note lands where the player plays it.
+    exact = parse_gp_track(dst, 0, bar_times=report.bar_times).notes
+    assert exact[-1].time == pytest.approx(report.bar_times[2], abs=1e-6)
+    # Without them the GP5's whole BPMs put it elsewhere.
+    plain = parse_gp_track(dst, 0).notes
+    assert abs(plain[-1].time - report.bar_times[2]) > 0.05
+
+
+def test_a_tab_at_one_whole_tempo_says_so(tmp_path: Path) -> None:
+    part = _lead()
+    part["automations"] = {"tempo": [{"measure": 0, "position": 0, "bpm": 100}]}
+    _dst, report = _write(tmp_path, [part])
+    assert (report.tempo_count, report.tempo_decimal) == (1, False)
+    assert report.bar_times == pytest.approx([0.0, 2.4, 4.8])

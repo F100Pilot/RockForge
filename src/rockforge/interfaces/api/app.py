@@ -558,12 +558,21 @@ def _sync_edited(params: dict[str, Any]) -> bool:
     return False
 
 
+# bar_times_source of bar times taken from a Songsterr tab's own tempo map.
+SONGSTERR_TAB_SOURCE = "songsterr-tab:"
+
+
 def _sync_source(params: dict[str, Any]) -> str | None:
     """Why the chart counts as in sync (see JobOut.sync_source); the user's own
     confirmation first, then what timed it, then corrections made here."""
     if params.get("sync_confirmed"):
         return "confirmed"
     if params.get("bar_times"):
+        # The tab's own tempo map (the wizard's "Songsterr recording" choice)
+        # or the times marked for a YouTube video: different recordings fit.
+        source = params.get("bar_times_source")
+        if isinstance(source, str) and source.startswith(SONGSTERR_TAB_SOURCE):
+            return "songsterr_tab"
         return "songsterr"
     if params.get("gp_synced"):
         return "gp"

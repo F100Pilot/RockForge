@@ -159,12 +159,26 @@ soar a altura real. Um baixo de 6 cordas faz-se como guitarra.
 - **Início da música na gravação (s)**: o segundo em que se ouve a 1ª nota. Um valor aproximado
   chega — afina-se depois na partitura. Num GP8 sincronizado e no Songsterr vem preenchido.
 - **Silêncio inicial (s)**: segundos de silêncio extra antes da música no jogo. 0 = nenhum.
+- **Com que gravação vais tocar esta tab?** (só depois de importar do Songsterr no passo 1):
+  decide de onde vem o tempo de cada compasso, e cada opção só bate com a sua gravação.
+  - **A gravação do Songsterr (o MP3 dele) ou outra que siga a tab**: as notas seguem o
+    andamento da própria tab, compasso a compasso e com as casas decimais, como no leitor do
+    Songsterr. É a escolha para o MP3 do Songsterr e para as tabs que a IA do Songsterr fez a
+    partir da gravação. Carrega o teu ficheiro e põe o **Início** onde soa o compasso 1. Uma tab
+    escrita à mão num só andamento só bate com uma gravação tocada a tempo fixo — o cartão diz
+    quantos andamentos a tab tem.
+  - **O áudio de um vídeo do YouTube**: os tempos que o Songsterr tem para um vídeo, com o
+    áudio desse vídeo descarregado aqui. Batem compasso a compasso só com esse áudio.
+
+  Se carregares um ficheiro teu com os tempos de um vídeo escolhidos, aparece um aviso com
+  **Usar o andamento da tab**. A escolha fica lembrada para a próxima tab.
 - **Extra — sincronizar pelos tempos do Songsterr** (opcional): o Songsterr guarda o instante
-  de cada compasso em vídeos do YouTube, marcado por pessoas. **Procurar vídeos**, escolhe um,
-  e as notas seguem esse vídeo compasso a compasso. Duas condições: a gravação tem de ser o
-  áudio **desse** vídeo (o link passa para "Não tens o áudio?" para o descarregares) e o
-  ficheiro tem de ser a tab do Songsterr. Depois de importar do Songsterr no passo 1, isto
-  vem feito: vídeo escolhido e áudio descarregado.
+  de cada compasso em vídeos do YouTube (marcado por pessoas ou gerado pelo Songsterr).
+  **Procurar vídeos**, escolhe um, e as notas seguem esse vídeo compasso a compasso. Duas
+  condições: a gravação tem de ser o áudio **desse** vídeo (o link passa para "Não tens o
+  áudio?" para o descarregares) e o ficheiro tem de ser a tab do Songsterr. Depois de importar
+  do Songsterr no passo 1 com a opção do vídeo, isto vem feito: vídeo escolhido e áudio
+  descarregado.
 
 ### Passo 4 — Detalhes
 
