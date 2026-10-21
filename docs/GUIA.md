@@ -495,6 +495,25 @@ clique no fundo = limpa a seleção. O modo **Excerto** seleciona com uma caixa.
 cursor até ao fim** (**Shift+End**) seleciona todas as notas desta pista do cursor ao fim. No modo
 **Arrastar**, arrastar uma nota selecionada move a seleção toda; o resto da pista fica onde está.
 
+### Duas pistas: passar notas de uma para a outra
+
+Liga **Duas pistas** (por baixo da partitura, com duas ou mais pistas) e aparece outra pista por
+baixo da partitura, no mesmo eixo do tempo; escolhe-a em **Pista de baixo**. Serve, por exemplo,
+quando uma tab dividiu por duas pistas o que é um só guitarrista.
+
+- **Na pista de baixo:** clique numa nota, **Ctrl+clique** junta ou tira, **Shift+clique** escolhe
+  tudo entre duas notas, e arrastar num sítio vazio desenha uma caixa (só as notas dentro dela,
+  cordas incluídas).
+- **Na partitura de cima:** a seleção de sempre; com **Duas pistas** ligado, arrastar num sítio
+  vazio também desenha uma caixa (aí escolhe pelo tempo, com os acordes inteiros).
+- **↓ Passar para baixo** / **↑ Passar para cima** tiram as notas de uma pista e põem-nas na outra
+  exatamente onde estavam desenhadas, na mesma corda. Com **Copiar em vez de passar** ficam nas
+  duas. Se as afinações forem diferentes, o traste muda para o som ficar o mesmo (entre guitarra e
+  baixo fica o mesmo traste). Notas numa corda que a outra pista não tem, fora do braço ou fora da
+  música dela ficam de fora, e é dito; se já houver outra nota nesse sítio, nada é passado.
+
+Fica pendente nas duas pistas até **Aplicar e reconstruir**; Ctrl+Z desfaz.
+
 ### Editar notas (modo ✏️ Editar notas)
 
 - Clica numa nota: muda corda, traste, sustain, técnicas (hammer-on, pull-off, harmónico, palm

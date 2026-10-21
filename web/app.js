@@ -1677,6 +1677,10 @@ const INFO = {
     title: T('Sincronizar automaticamente (experimental)'),
     body: T('<p><b>Experimental — pode errar.</b> Para uma tab que não bate certo com a gravação porque o andamento da gravação varia: a gravação é analisada, e cada tempo da partitura é levado para onde as notas desse tempo soam — mantendo os tempos todos, pela ordem, e deixando o andamento mudar devagar. Como a partitura diz quantos tempos há, não pode ler a música ao dobro ou a metade.</p><p><b>Antes:</b> acerta o início do compasso de onde partes (Passo 1, ou "= cursor"), com uns décimos de segundo de folga, e o andamento aproximado. <b>Depois:</b> ouve. Os compassos onde as notas não bateram com o que se ouve ficam de fora (seguem os vizinhos) e aparecem em "Verifica de ouvido", com os primeiros a seguir a uma pausa — sem som, nada segura o andamento, e aí o alinhamento pode escorregar um tempo inteiro.</p><p>Tudo fica como correções pendentes (Passo 3), desfaz-se de uma vez com Ctrl+Z e só vai para o PSARC com "Aplicar e reconstruir". Precisa da análise de áudio (o extra [ml], ou os componentes extra no .exe). Testado em gravações sintéticas, ainda não em músicas reais — diz-nos como correu.</p>')
   },
+  'pair': {
+    title: T('Duas pistas'),
+    body: T('<p>Mostra outra pista <b>por baixo da partitura</b>, no mesmo eixo do tempo (anda e faz zoom com ela), com as correções de sincronização e as edições de notas que tiver pendentes. Serve para passar notas de uma pista para a outra — por exemplo, quando uma tab dividiu por duas pistas o que é um só guitarrista.</p><p><b>Selecionar:</b> na pista de baixo, clica numa nota, Ctrl+clique junta ou tira, Shift+clique escolhe tudo entre duas notas, e arrastar num sítio vazio desenha uma caixa (só as notas dentro dela, cordas incluídas). Na partitura de cima, a seleção de sempre (clique, Ctrl/Shift+clique), e com "Duas pistas" ligado arrastar num sítio vazio também desenha uma caixa — aí escolhe-se pelo tempo, com os acordes inteiros.</p><p><b>Passar:</b> "↓ Passar para baixo" e "↑ Passar para cima" tiram as notas de uma pista e põem-nas na outra <b>exatamente onde estavam desenhadas</b>, na mesma corda; com "Copiar em vez de passar" ficam nas duas. Se as duas pistas tiverem afinações diferentes, o traste muda para o som ficar o mesmo (à oitava mais próxima — entre guitarra e baixo fica o mesmo traste). Ficam de fora, e é dito, as notas numa corda que a outra pista não tem, fora do braço ou fora da música dela; se já houver outra nota nesse sítio, nada é passado.</p><p>São edições de notas pendentes nas duas pistas: desfazem-se de uma vez com Ctrl+Z e só vão para o PSARC com "Aplicar e reconstruir".</p>')
+  },
   'attacks': {
     title: T('Ataques da gravação'),
     body: T('<p>Para uma tab cujo <b>ritmo</b> não bate com a gravação (comum nas tabs feitas à pressa): a gravação é analisada e cada <b>ataque</b> — o instante em que algo é tocado — fica marcado por cima da pauta. Os traços azuis são ataques com uma nota da pauta perto; a <b>laranja</b>, as diferenças: um círculo é uma nota sem ataque perto na gravação, um traço é um ataque forte sem nota na pauta. "Diferença anterior/seguinte" leva o cursor a cada uma, para ouvires e corrigires no editor de notas.</p><p>Não usa a amplitude do som, que quase não desce numa guitarra distorcida, mas o <b>fluxo espectral</b> (energia nova em cada 10 ms), que apanha cada palhetada. Em <b>Medir em</b> escolhes onde: num instrumento já separado (Áudio ▾ → Separar instrumentos) — por omissão a guitarra, e o baixo na pista Bass — ou na mistura, onde a bateria e a voz também dão ataques (sem nada separado, pede confirmação antes). A comparação segue a sincronização que está no ecrã, por isso sincroniza primeiro.</p><p>Limites: diz <b>quando</b> se toca, nunca que notas nem para que lado é a palhetada; o stem tem todas as guitarras juntas, por isso com dois guitarristas aparecem os ataques dos dois; a tolerância é de 60 ms. Não muda nada na partitura. Precisa da análise de áudio (o extra [ml], ou os componentes extra no .exe).</p>')
@@ -2883,6 +2887,12 @@ let levelsAudio = null;     // a source decoded only for the bars: {key, peaks}
 let levelsLoading = '';
 let levelStems = [];        // the separated instruments the attack bars can show (the drums too)
 let levelStemsFor = null;   // the project levelStems was read for (null while it loads)
+// "Duas pistas" (see renderPair)
+let pairOn = false;
+try { pairOn = localStorage.getItem('rf-pair') === '1'; } catch { /* no storage */ }
+let pairKind = null;        // the chart drawn under the score
+let pairSel = new Set();    // its selected notes, as pairKey(time, string)
+let pairAnchor = null;      // the Shift+click pivot (chart time)
 let levelsStemsAsked = new Set();  // projects already asked whether to separate for the bars
 let levelsWantStems = null; // the project whose separation the bars asked for
 let levelsOnset = null;     // the attack strength of one source: {key, values, hop}
@@ -3296,6 +3306,7 @@ function showArr(i) {
   }
   svg.innerHTML = s;
   renderLevels(a, W, px, barWarp);
+  renderPair(W);
   invalidateLyricWords();  // the nodes the playhead frame highlights were just replaced
   syncResetPointer();
   renderAnchorsList();
@@ -3642,16 +3653,17 @@ let noteDeleteUndo = null;
 // Removes one note of the CURRENT arrangement: a built note gets a deleted
 // override (keyed on its own exact time, as the backend matches); a note that
 // exists only as a pending insertion simply loses that insertion.
-function deleteNoteAt(time, string) {
-  const built = findBuiltNoteAt(time, string);
+function deleteNoteAt(time, string) { deleteNoteOf(currentArr, time, string); }
+function deleteNoteOf(idx, time, string) {
+  const k = arrangements[idx] && arrangements[idx].kind;
+  const built = findBuiltNoteAt(time, string, idx);
   if (built) {
-    upsertNoteOverride({
+    upsertNoteOverrideOf(k, {
       time: built.time, string, fret: 0, sustain: 0,
       techniques: [], bend_semitones: 0, slide_to_fret: null, deleted: true,
     });
     return;
   }
-  const k = currentKind();
   const list = noteOverridesByKind[k] || [];
   const i = list.findIndex(o => o.string === string && Math.abs(o.time - time) < 0.03);
   if (i >= 0) list.splice(i, 1);
@@ -5220,8 +5232,8 @@ async function clearNoteEdits(everyArrangement) {
 document.getElementById('clearNoteEdits').addEventListener('click', () => clearNoteEdits(false));
 document.getElementById('clearNoteEditsAll').addEventListener('click', () => clearNoteEdits(true));
 
-function findBuiltNoteAt(chartTime, string) {
-  const a = arrangements[currentArr];
+function findBuiltNoteAt(chartTime, string, idx = currentArr) {
+  const a = arrangements[idx];
   if (!a) return null;
   return a.notes.find(n => n.string === string && Math.abs(n.time - chartTime) < 0.03) || null;
 }
@@ -5266,8 +5278,8 @@ function closeNoteEditPopup() { document.getElementById('noteEditPopup').hidden 
 
 // Upsert (or push) a pending override for the CURRENT arrangement, keyed by
 // (time, string) — matches _apply_note_overrides' merge key on the backend.
-function upsertNoteOverride(ov) {
-  const k = currentKind();
+function upsertNoteOverride(ov) { upsertNoteOverrideOf(currentKind(), ov); }
+function upsertNoteOverrideOf(k, ov) {
   if (!k) return;
   if (!noteOverridesByKind[k]) noteOverridesByKind[k] = [];
   const list = noteOverridesByKind[k];
@@ -9683,6 +9695,14 @@ function updateSelectionInfo() {
       svg.setPointerCapture(e.pointerId);
       return;
     }
+    // "Duas pistas": a drag on empty staff draws a box here too (with no mode),
+    // so notes can be picked to pass to the other chart; a click still seeks.
+    if (!grp && !syncMode && pairShown() && !e.target.closest('.lyric-word, .fhp-bar, .tone-mark')) {
+      const rect = svg.getBoundingClientRect();
+      editBox = { x0: e.clientX, startX: e.clientX - rect.left, add: e.ctrlKey || e.metaKey };
+      svg.setPointerCapture(e.pointerId);
+      return;
+    }
     if (!grp) {
       // Click on empty staff/waveform → clear any selection and move the audio
       // (and playhead) there. The x-axis is recording time: rt = (x - 30) / tabPx.
@@ -12077,9 +12097,300 @@ function hideAlign() {
 }
 
 function moveLevelsPlayhead(x) {
-  const ph = document.getElementById('levelsPlayhead');
-  if (ph) { ph.setAttribute('x1', x); ph.setAttribute('x2', x); }
+  for (const id of ['levelsPlayhead', 'pairPlayhead']) {
+    const ph = document.getElementById(id);
+    if (ph) { ph.setAttribute('x1', x); ph.setAttribute('x2', x); }
+  }
 }
+
+// ── "Duas pistas": another chart under the score, notes passed between them ──
+// "mostrar duas pistas uma em cima e outra em baixo e poder selecionar as notas
+// (individuais ou em box), e passá-las para a outra pista, exatamente na mesma
+// posição". The chart on screen is the score itself; the one below is drawn on
+// the same time axis (it scrolls and zooms with it) with its own pending sync
+// and note edits, and its own per-note selection. Passing notes is ordinary
+// pending note edits on both charts — a delete on one, an insert on the other —
+// at the time where the SOURCE chart shows them now, taken back through the
+// destination chart's own pending map, so a note lands exactly where it was
+// drawn even when the two charts carry different corrections. One undo step.
+const PAIR_ROW = 26, PAIR_TOP = 30, PAIR_R = 10;
+function pairKey(t, s) { return `${t}|${s}`; }
+function pairShown() { return pairOn && arrangements.length > 1 && isGpJob(); }
+function pairIdx() {
+  if (!pairShown()) return -1;
+  let i = arrangements.findIndex(a => a.kind === pairKind);
+  if (i < 0 || i === currentArr) i = arrangements.findIndex((_, k) => k !== currentArr);
+  return i;
+}
+function chartNotesOf(idx) {
+  const a = arrangements[idx];
+  const ov = noteOverridesByKind[a.kind] || [];
+  return ov.length ? mergeNoteOverrides(a.notes, ov) : a.notes;
+}
+
+function renderPair(W) {
+  const svg = document.getElementById('pairSvg');
+  const bar = document.getElementById('pairBar');
+  const lbl = document.getElementById('showPairLabel');
+  if (lbl) lbl.hidden = !(arrangements.length > 1 && isGpJob());
+  const idx = pairIdx();
+  if (!svg || idx < 0) {
+    if (svg) { svg.toggleAttribute('hidden', true); svg.innerHTML = ''; }
+    if (bar) bar.hidden = true;
+    return;
+  }
+  const b = arrangements[idx];
+  if (b.kind !== pairKind) { pairKind = b.kind; pairSel = new Set(); pairAnchor = null; }
+  const n = stringCount(b), SB = PAIR_TOP + (n - 1) * PAIR_ROW, H = SB + 22;
+  svg.setAttribute('width', W);
+  svg.setAttribute('height', H);
+  svg.toggleAttribute('hidden', false);
+  const disp = t => chartDisplayTime(idx, t);
+  let s = `<rect x="0" y="0" width="${W}" height="${H}" fill="#101116"/>`
+    + `<line x1="0" y1="0.5" x2="${W}" y2="0.5" stroke="#3a3c45"/>`;
+  for (let str = 0; str < n; str++) {
+    const y = SB - str * PAIR_ROW;
+    s += `<line x1="30" y1="${y}" x2="${W - 10}" y2="${y}" stroke="#30323a"/>`
+      + `<text x="6" y="${y + 4}" fill="${STRING_COLORS[str]}" font-size="11" font-weight="700">${stringLabel(str, b.tuning_offsets)}</text>`;
+  }
+  for (const bb of b.bars || []) {
+    const x = timeToX(disp(bb.time));
+    if (x < 24 || x > W - 4) continue;
+    s += `<line x1="${x}" y1="${PAIR_TOP - 8}" x2="${x}" y2="${SB}" stroke="#5a6a8a" opacity=".5"/>`
+      + `<text x="${x + 3}" y="${PAIR_TOP - 10}" fill="#7d8aa5" font-size="10" font-weight="700">${bb.measure}</text>`;
+  }
+  const notes = chartNotesOf(idx);
+  const byTime = new Map();
+  for (const m of notes) {
+    const k = Math.round(m.time * 1000);
+    if (!byTime.has(k)) byTime.set(k, []);
+    byTime.get(k).push(m);
+  }
+  for (const grp of byTime.values()) {
+    if (grp.length < 2) continue;
+    const x = timeToX(disp(grp[0].time));
+    const ys = grp.map(m => SB - m.string * PAIR_ROW);
+    s += `<line x1="${x}" y1="${Math.min(...ys)}" x2="${x}" y2="${Math.max(...ys)}" stroke="#7a808d" stroke-width="2"/>`;
+  }
+  for (const m of notes) {
+    if (m.string >= n) continue;
+    const x = timeToX(disp(m.time)), y = SB - m.string * PAIR_ROW;
+    if (x < 20 || x > W) continue;
+    const sel = pairSel.has(pairKey(m.time, m.string));
+    const w = Math.max(0, (disp(m.time + (m.sustain || 0)) - disp(m.time)) * tabPx);
+    s += `<g class="pair-note${sel ? ' selected' : ''}" data-t="${m.time}" data-s="${m.string}">`;
+    if (w > PAIR_R) s += `<rect x="${x}" y="${y - 3}" width="${w}" height="6" rx="3" fill="${STRING_COLORS[m.string]}" opacity=".35"/>`;
+    s += `<circle cx="${x}" cy="${y}" r="${PAIR_R}" fill="${STRING_COLORS[m.string]}" stroke="${sel ? '#fff' : '#101116'}" stroke-width="${sel ? 3 : 1.5}"/>`
+      + `<text x="${x}" y="${y + 4}" fill="#101116" font-size="11" font-weight="800" text-anchor="middle">${m.fret}</text></g>`;
+  }
+  s += `<text x="34" y="13" fill="#c9ced8" font-size="11" font-weight="700">▼ ${esc(arrLabel(b.kind))} · ${esc(T('pista de baixo'))}</text>`;
+  const phX = 30 + currentPlayheadT * tabPx;
+  s += `<line id="pairPlayhead" x1="${phX}" y1="0" x2="${phX}" y2="${H}" stroke="#ff7a45" stroke-width="2" opacity=".9"/>`;
+  svg.innerHTML = s;
+  updatePairBar();
+}
+
+function updatePairBar() {
+  const bar = document.getElementById('pairBar');
+  const idx = pairIdx();
+  if (!bar) return;
+  bar.hidden = idx < 0;
+  if (idx < 0) return;
+  const sel = document.getElementById('pairChart');
+  const opts = arrangements.map((a, k) => ({ a, k })).filter(o => o.k !== currentArr);
+  const want = opts.map(o => `${o.a.kind}`).join('|');
+  if (sel.dataset.opts !== want) {
+    sel.innerHTML = opts.map(o => `<option value="${esc(o.a.kind)}">${esc(arrLabel(o.a.kind))}</option>`).join('');
+    sel.dataset.opts = want;
+  }
+  sel.value = arrangements[idx].kind;
+  const up = selectedTimes.size ? selectedChordNotes().length : 0;
+  document.getElementById('pairInfo').textContent = T('Selecionadas: {up} em cima ({a}) · {down} em baixo ({b})', {
+    up, down: pairSel.size, a: arrLabel(currentKind()), b: arrLabel(arrangements[idx].kind),
+  });
+  document.getElementById('pairDown').disabled = !up;
+  document.getElementById('pairUp').disabled = !pairSel.size;
+}
+
+// The notes `notes` of chart `from` go to chart `to` where `from` shows them
+// now. The same string; the same sound when the two are tuned alike, else the
+// fret that keeps the note (to the nearest octave — a bass and a guitar keep
+// the same fret). Refused one by one: a string the other chart does not have,
+// a fret off the neck, a time outside its beat grid. A different note already
+// in that place refuses everything; the same note there is simply kept.
+function planPairTransfer(from, to, notes) {
+  const A = arrangements[from], B = arrangements[to];
+  const toDisp = x => chartDisplayTime(to, x);
+  const beats = B.beats || [];
+  const end = beats.length ? beats[beats.length - 1] : Infinity;
+  const there = chartNotesOf(to);
+  const out = [], skipped = { string: 0, fret: 0, time: 0 };
+  let same = 0;
+  for (const m of notes) {
+    if (m.string >= stringCount(B)) { skipped.string++; continue; }
+    let d = noteMidi(A, m.string, m.fret) - noteMidi(B, m.string, m.fret);
+    d = (((d % 12) + 18) % 12) - 6;
+    const fret = m.fret + d;
+    if (fret < 0 || fret > 24 || (B.capo && fret > 0 && fret < B.capo)) { skipped.fret++; continue; }
+    const D = chartDisplayTime(from, m.time);
+    const t = Math.round(invertIncreasing(toDisp, D) * 1e6) / 1e6;
+    if (t < 0 || t > end) { skipped.time++; continue; }
+    const tEnd = invertIncreasing(toDisp, chartDisplayTime(from, m.time + (m.sustain || 0)));
+    const ov = noteAsOverride(m, t, m.string, fret);
+    ov.sustain = Math.max(0, Math.round((tEnd - t) * 1e6) / 1e6);
+    if (ov.slide_to_fret != null) ov.slide_to_fret = Math.max(0, Math.min(24, ov.slide_to_fret + d));
+    const hit = there.find(x => x.string === m.string && Math.abs(x.time - t) < 0.03);
+    if (hit && hit.fret === fret) { same++; out.push({ m, ov, keep: true }); continue; }
+    if (hit) return { clash: true };
+    out.push({ m, ov, keep: false });
+  }
+  return { moves: out, skipped, same };
+}
+
+function passPairNotes(down) {
+  const idx = pairIdx();
+  if (idx < 0) return;
+  const copy = document.getElementById('pairCopy').checked;
+  const from = down ? currentArr : idx, to = down ? idx : currentArr;
+  const notes = down ? selectedChordNotes()
+    : chartNotesOf(idx).filter(m => pairSel.has(pairKey(m.time, m.string)));
+  if (!notes.length) return;
+  const plan = planPairTransfer(from, to, notes);
+  if (plan.clash) {
+    toast(T('Já há outra nota nessa corda nesse tempo na pista de destino — nada foi passado.'), 'err');
+    return;
+  }
+  if (!plan.moves.length) {
+    toast(T('Nenhuma nota pôde ser passada: {why}', { why: pairSkipText(plan.skipped) }), 'err');
+    return;
+  }
+  const toKind = arrangements[to].kind;
+  for (const mv of plan.moves) {
+    if (!copy) deleteNoteOf(from, mv.m.time, mv.m.string);
+    if (!mv.keep) upsertNoteOverrideOf(toKind, mv.ov);
+  }
+  // The selection follows the notes to where they went.
+  if (down) {
+    if (!copy) { selectedTimes.clear(); selectionAnchor = null; }
+    pairSel = new Set(plan.moves.map(mv => pairKey(mv.ov.time, mv.ov.string)));
+  } else {
+    if (!copy) pairSel = new Set();
+    selectedTimes.clear();
+    for (const mv of plan.moves) selectedTimes.add(mv.ov.time);
+  }
+  pairAnchor = null;
+  updateSelectionInfo();
+  showArr(currentArr);
+  updatePendingChangesInfo();
+  const added = plan.moves.length - plan.same;
+  let msg = copy && !added
+    ? T('Essas notas já estão iguais em {name} — nada a copiar.', { name: arrLabel(toKind) })
+    : (copy
+      ? T('{n} nota(s) copiada(s) para {name}.', { n: added, name: arrLabel(toKind) })
+      : T('{n} nota(s) passada(s) para {name}.', { n: plan.moves.length, name: arrLabel(toKind) }))
+      + ' ' + T('Fica pendente até "Aplicar e reconstruir" (Ctrl+Z desfaz).');
+  if (plan.same && added) msg += ' ' + T('{n} já lá estavam iguais.', { n: plan.same });
+  const left = plan.skipped.string + plan.skipped.fret + plan.skipped.time;
+  if (left) msg += ' ' + T('{n} ficaram de fora: {why}', { n: left, why: pairSkipText(plan.skipped) });
+  toast(msg, left ? 'err' : 'ok');
+}
+function pairSkipText(sk) {
+  const parts = [];
+  if (sk.string) parts.push(T('{n} numa corda que a outra pista não tem', { n: sk.string }));
+  if (sk.fret) parts.push(T('{n} fora do braço com a afinação da outra pista', { n: sk.fret }));
+  if (sk.time) parts.push(T('{n} fora da música da outra pista', { n: sk.time }));
+  return parts.join(', ') + '.';
+}
+
+function setPair(on) {
+  pairOn = on;
+  try { localStorage.setItem('rf-pair', on ? '1' : '0'); } catch { /* no storage */ }
+  const chk = document.getElementById('showPair');
+  if (chk) chk.checked = on;
+  if (!on) { pairSel = new Set(); pairAnchor = null; }
+  if (arrangements.length) showArr(currentArr);
+}
+
+(function wirePair() {
+  const svg = document.getElementById('pairSvg');
+  if (!svg) return;
+  document.getElementById('showPair').checked = pairOn;
+  document.getElementById('showPair').addEventListener('change', e => setPair(e.target.checked));
+  document.getElementById('pairChart').addEventListener('change', e => {
+    pairKind = e.target.value; pairSel = new Set(); pairAnchor = null;
+    showArr(currentArr);
+  });
+  document.getElementById('pairDown').addEventListener('click', () => passPairNotes(true));
+  document.getElementById('pairUp').addEventListener('click', () => passPairNotes(false));
+  document.getElementById('pairClear').addEventListener('click', () => {
+    pairSel = new Set(); pairAnchor = null;
+    if (selectedTimes.size) { selectedTimes.clear(); selectionAnchor = null; updateSelectionInfo(); }
+    showArr(currentArr);
+  });
+  let box = null;
+  const local = e => { const r = svg.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+  svg.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const g = e.target.closest('.pair-note');
+    if (g) {
+      const t = parseFloat(g.dataset.t), str = parseInt(g.dataset.s, 10), k = pairKey(t, str);
+      if (e.shiftKey && pairAnchor != null) {
+        const lo = Math.min(pairAnchor, t) - 1e-6, hi = Math.max(pairAnchor, t) + 1e-6;
+        if (!(e.ctrlKey || e.metaKey)) pairSel = new Set();
+        for (const m of chartNotesOf(pairIdx())) if (m.time >= lo && m.time <= hi) pairSel.add(pairKey(m.time, m.string));
+      } else if (e.ctrlKey || e.metaKey) {
+        if (pairSel.has(k)) pairSel.delete(k); else pairSel.add(k);
+        pairAnchor = t;
+      } else {
+        pairSel = new Set([k]); pairAnchor = t;
+      }
+      showArr(currentArr);
+      return;
+    }
+    const [x, y] = local(e);
+    box = { x0: x, y0: y, add: e.ctrlKey || e.metaKey, moved: false, clientX: e.clientX };
+    svg.setPointerCapture(e.pointerId);
+  });
+  svg.addEventListener('pointermove', e => {
+    if (!box) return;
+    const [x, y] = local(e);
+    if (!box.moved && Math.hypot(x - box.x0, y - box.y0) <= 4) return;
+    box.moved = true;
+    let r = document.getElementById('pairBox');
+    if (!r) {
+      r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      r.id = 'pairBox';
+      svg.appendChild(r);
+    }
+    r.setAttribute('x', Math.min(box.x0, x)); r.setAttribute('y', Math.min(box.y0, y));
+    r.setAttribute('width', Math.abs(x - box.x0)); r.setAttribute('height', Math.abs(y - box.y0));
+  });
+  const end = e => {
+    if (!box) return;
+    const b = box;
+    box = null;
+    document.getElementById('pairBox')?.remove();
+    if (!b.moved) {  // a plain click on empty staff: clear and move the cursor
+      pairSel = new Set(); pairAnchor = null;
+      audioSeek(Math.max(0, (b.x0 - 30) / tabPx));
+      showArr(currentArr);
+      return;
+    }
+    const [x, y] = local(e);
+    const x1 = Math.min(b.x0, x), x2 = Math.max(b.x0, x), y1 = Math.min(b.y0, y), y2 = Math.max(b.y0, y);
+    if (!b.add) pairSel = new Set();
+    for (const g of svg.querySelectorAll('.pair-note')) {
+      const c = g.querySelector('circle');
+      const cx = parseFloat(c.getAttribute('cx')), cy = parseFloat(c.getAttribute('cy'));
+      if (cx >= x1 - PAIR_R && cx <= x2 + PAIR_R && cy >= y1 - PAIR_R && cy <= y2 + PAIR_R)
+        pairSel.add(pairKey(parseFloat(g.dataset.t), parseInt(g.dataset.s, 10)));
+    }
+    showArr(currentArr);
+  };
+  svg.addEventListener('pointerup', end);
+  svg.addEventListener('pointercancel', () => { box = null; document.getElementById('pairBox')?.remove(); });
+})();
 
 // Build the waveform path data. The x-axis is recording time (0s at the left),
 // so audio sample at display time s is just wavePeaks[s] — notes (placed by

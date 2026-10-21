@@ -1221,6 +1221,44 @@ and an empty beat grid refused) and `test_export_arrangement_gp_*` in
 `test_api.py`. Same **unverified-by-design** caveat as above: round-tripped
 through our own importer, never opened in Guitar Pro itself.
 
+### Two charts at once ("Duas pistas", `renderPair`)
+
+"mostrar duas pistas uma em cima e outra em baixo e poder selecionar as notas
+(individuais ou em box), e passá-las para a outra pista, exatamente na mesma
+posição" (2026-10-21). A "Duas pistas" switch (`#showPair`, `rf-pair`, only with
+≥ 2 charts) draws `#pairSvg` inside `#tabwrap` UNDER `#tabsvg` (it scrolls and
+zooms with the score; called from the end of `showArr`): the chart picked in
+`#pairChart` (`pairKind`, never the one on screen — `pairIdx` falls back to the
+first other), its pending note edits merged (`chartNotesOf`), every note and bar
+at `chartDisplayTime(idx, t)` — its OWN pending tempo/anchors — plus a playhead
+moved with the bars' (`moveLevelsPlayhead`). Its selection is per note
+(`pairSel`, `pairKey(time, string)`): click, Ctrl+click toggles, Shift+click a
+time range from `pairAnchor`, a drag on empty staff a box in time AND strings, a
+click on empty staff clears and seeks. On the score above the usual group
+selection, and with the view on, a drag on empty staff with no mode draws a box
+too (the "Editar notas" `editBox` path). `#pairBar`: "↓ Passar para baixo" /
+"↑ Passar para cima", "Copiar em vez de passar". `planPairTransfer` (pure on the
+charts): each note goes where the SOURCE chart shows it now, taken back through
+the destination's own map (`invertIncreasing`), its sustain through the same two
+maps, the same string; the fret keeps the sound to the nearest octave when the
+tunings/capo differ (guitar ↔ bass: the same fret); a note on a string the
+destination does not have, off the neck (or under its capo) or outside its beat
+grid is left out and counted; a different note already in that slot refuses all,
+the same note is just kept. Applied as ordinary note overrides on both charts —
+`upsertNoteOverrideOf(kind, …)` / `deleteNoteOf(idx, …)`, the current-chart
+helpers now wrap them — so undo/redo, drafts and "Aplicar e reconstruir" carry
+it as one step; the selection follows the notes. Browser-only; verified with
+Playwright on the invented "Mão Que Sobe" (Lead + Rhythm with different committed
+sync, PT 1440 / EN 760 px): a top box of 7 notes passed down landed at the same
+display time to the digit with their strings/frets, passed back up, one lower
+note copied up, a second copy refused as already there, a one-string box, the
+Rhythm at a pending ×1.1 still landing where drawn, every step undone with
+Ctrl+Z, and a real rebuild with 8 notes passed: Lead 64 → 56, Rhythm 64 → 72,
+all 8 at the same display time, `/psarc-check` clean, no page errors. Honest
+limits: the lower staff has no auto-scroll while drawing a box (Shift+click
+picks a long range), and a note that sounds over another track's notes is not
+checked for being playable.
+
 ### Deleting notes ("Apagar", Delete, Ctrl+Z)
 
 "cria uma forma de apagar notas": the only way was "Editar notas" → click one

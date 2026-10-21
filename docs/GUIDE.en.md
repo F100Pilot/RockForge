@@ -493,6 +493,26 @@ cursor to the end** (**Shift+End**) selects every note of this track from the cu
 **Drag** mode, dragging a selected note moves the whole selection; the rest of the track stays
 where it is.
 
+### Two tracks: passing notes from one to the other
+
+Turn on **Two tracks** (under the score, with two or more tracks) and another track appears under
+the score, on the same time axis; pick it in **Lower track**. It is for, say, a tab that split
+between two tracks what is one guitarist.
+
+- **On the lower track:** click a note, **Ctrl+click** adds or removes, **Shift+click** picks
+  everything between two notes, and dragging on an empty place draws a box (only the notes inside
+  it, strings included).
+- **On the score above:** the usual selection; with **Two tracks** on, dragging on an empty place
+  draws a box too (there it picks by time, with whole chords).
+- **↓ Pass down** / **↑ Pass up** take the notes off one track and put them on the other exactly
+  where they were drawn, on the same string. With **Copy instead of passing** they stay on both.
+  If the tunings differ, the fret changes so the sound stays the same (between a guitar and a bass
+  the fret stays the same). Notes on a string the other track does not have, off the neck or
+  outside its song are left out, and said; if another note is already in that place, nothing is
+  passed.
+
+It stays pending on both tracks until **Apply and rebuild**; Ctrl+Z undoes it.
+
 ### Editing notes (✏️ Edit notes mode)
 
 - Click a note: change string, fret, sustain, techniques (hammer-on, pull-off, harmonic, palm

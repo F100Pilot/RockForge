@@ -112,6 +112,12 @@
   .syncctrls { display:flex; gap:.8rem; align-items:center; flex-wrap:wrap; font-size:.85rem; color:var(--muted); }
   #playhead { pointer-events:none; }
   #levelsSvg { display:block; cursor:pointer; }
+  #pairSvg { display:block; user-select:none; touch-action:none; }
+  #pairSvg .pair-note { cursor:pointer; }
+  #pairBox { fill:rgba(94,200,242,.15); stroke:#5ec8f2; stroke-dasharray:4,3; }
+  .pair-bar { display:flex; flex-wrap:wrap; align-items:center; gap:.45rem; margin:.35rem 0 .2rem; font-size:.9rem; }
+  .pair-bar select { width:auto; }
+  .pair-bar button { height:2rem; padding:0 .7rem; }
   #tabwrap { position:relative; }
   #alignLine { position:absolute; top:0; bottom:0; width:0; border-left:1px dashed rgba(255,255,255,.55); pointer-events:none; }
   .levels-source { max-width:15rem; }
@@ -1215,7 +1221,17 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
             <span>Ritmo estimado pelo espaçamento (confere estes compassos primeiro):</span>
             <span id="barEstimatedList"></span>
           </div>
-          <div id="tabwrap"><svg id="levelsSvg" hidden></svg><svg id="tabsvg" height="280"></svg><div id="alignLine" hidden></div></div>
+          <div id="tabwrap"><svg id="levelsSvg" hidden></svg><svg id="tabsvg" height="280"></svg><svg id="pairSvg" hidden></svg><div id="alignLine" hidden></div></div>
+          <div id="pairBar" class="pair-bar" hidden>
+            <span>Pista de baixo</span>
+            <select id="pairChart" aria-label="Pista de baixo"></select>
+            <span id="pairInfo" class="meta"></span>
+            <button type="button" id="pairDown" class="secondary" title="Passa as notas selecionadas na partitura de cima para a pista de baixo, no mesmo sítio">↓ Passar para baixo</button>
+            <button type="button" id="pairUp" class="secondary" title="Passa as notas selecionadas na pista de baixo para a partitura de cima, no mesmo sítio">↑ Passar para cima</button>
+            <label class="check" title="As notas ficam também na pista de onde vêm"><input type="checkbox" id="pairCopy"> Copiar em vez de passar</label>
+            <button type="button" id="pairClear" class="secondary">Limpar seleção</button>
+            <button class="info-btn" data-info="pair">ⓘ</button>
+          </div>
           <!-- Fretboard: lights up the (string, fret) of each note as it plays -->
           <div id="fretboardWrap">
             <svg id="fretboard" height="150" style="display:inline-block"></svg>
@@ -1233,6 +1249,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
             <label class="check" title="Barras dos ataques (ou do volume) da gravação e do som das notas, por cima da partitura: onde não coincidem, está fora de tempo"><input type="checkbox" id="showLevels"> Barras de áudio</label>
             <select id="levelsKind" aria-label="Tipo de barras" title="Ataques: a força de cada batida, um pico estreito por palhetada, mesmo numa guitarra distorcida. Volume: o nível do som" hidden><option value="onset">Ataques</option><option value="volume">Volume</option></select>
             <select id="levelsSource" class="levels-source" aria-label="Áudio das barras" hidden></select>
+            <label class="check" id="showPairLabel" hidden title="Mostra outra pista por baixo da partitura, para passares notas de uma para a outra no mesmo sítio"><input type="checkbox" id="showPair"> Duas pistas</label>
             <div class="pv-group pv-zoom">
               <button type="button" id="zoomOut" class="secondary" aria-label="Menos zoom">−</button>
               <span id="zoomLevel" class="meta"></span>

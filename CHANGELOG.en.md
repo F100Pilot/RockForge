@@ -8,6 +8,7 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ### New
 
+- **Two tracks** (Score, under the staff): shows another track under the score, on the same time axis. Select notes on either — one by one or with a box — and pass (or copy) them to the other, exactly where they were, even when the two tracks carry different sync corrections. With different tunings the fret changes so the sound stays the same. It stays pending until "Apply and rebuild" and Ctrl+Z undoes it.
 - **Align to the attacks** (Score → Sync → Song start): compares the notes with the recording's attacks and moves the whole track by the difference — for a track that is early or late by the same amount throughout, as happens with the times of some Songsterr videos. It refuses to guess when the rhythm is so regular that two fits are possible, and warns when the difference grows along the song (then it is the tempo). It stays pending until "Apply and rebuild".
 - **Cover from anywhere:** in the wizard's step 4 and on the Cover page, **Or from somewhere else** opens a Google Images search with the band and the album (or the title) and takes the link of the image you find there, from any public site, or the image itself pasted with Ctrl+V. WebP, GIF and other formats are turned into PNG. Only images from public sites are downloaded: a link into your network or your computer is refused.
 
