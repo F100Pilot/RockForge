@@ -480,7 +480,7 @@
     },
     {
       "version": "0.11.1-beta.1",
-      "status": "Beta",
+      "status": "Superseded",
       "created": "2026-10-20",
       "published": "2026-10-20",
       "commit": "pending",
@@ -504,10 +504,12 @@
       "version": "0.11.1-beta.2",
       "status": "Beta",
       "created": "2026-10-21",
-      "published": "pending",
+      "published": "2026-10-21",
       "commit": "pending",
       "build": "GitHub Actions release workflow",
-      "artifacts": [],
+      "artifacts": [
+        "https://github.com/F100Pilot/RockForge/releases/tag/v0.11.1-beta.2"
+      ],
       "goal": "Songsterr tabs follow the tab's own tempo (sync with Songsterr's recording); fretboard and 3D bends; attacks marked by ear",
       "features": [
         "Score",
