@@ -755,6 +755,31 @@ def test_gp7_lyrics_are_timed_on_the_notes_of_their_own_track(tmp_path: Path) ->
     ]
 
 
+def test_gp7_a_grace_beat_in_the_vocal_line_takes_a_syllable(tmp_path: Path) -> None:
+    """A grace beat is not a rest, so Guitar Pro (alphaTab's applyLyrics) hands
+    it a syllable; skipping it put every later syllable one note late."""
+    gpif = GPIF_VOCALS.replace(
+        '<Voice id="1"><Beats>4 5 6 7</Beats></Voice>',
+        '<Voice id="1"><Beats>4 5 9 6 7</Beats></Voice>',
+    ).replace(
+        '<Beat id="6"><Rhythm ref="1"/><Notes>1</Notes></Beat>',
+        '<Beat id="9"><GraceNotes>BeforeBeat</GraceNotes><Rhythm ref="3"/><Notes>1</Notes></Beat>\n'
+        '    <Beat id="6"><Rhythm ref="1"/><Notes>1</Notes></Beat>',
+    ).replace(
+        '</Rhythms>', '<Rhythm id="3"><NoteValue>16th</NoteValue></Rhythm></Rhythms>',
+    )
+    path = tmp_path / "grace.gp"
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("VERSION", "7.0")
+        z.writestr("Content/score.gpif", gpif)
+    parsed = parse_gp_track(path, 0)
+    assert parsed.lyric_notes is not None
+    # The grace: a sixteenth (0.125 s at 120) ending on the eighth at 0.5.
+    assert [(n.time, n.end) for n in parsed.lyric_notes] == [
+        (0.0, 0.25), (0.375, 0.5), (0.5, 0.75), (0.75, 2.25),
+    ]
+
+
 def test_gp7_grid_closes_the_last_bar_so_a_late_eighth_fits(tmp_path: Path) -> None:
     gpif = GPIF_VOCALS.replace(
         '<Voice id="0"><Beats>0 1 2 3</Beats></Voice>',

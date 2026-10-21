@@ -875,20 +875,50 @@ def _lyric_notes(
         if voice is None:
             continue
         tick = bar_start_ticks[mb_index]
+        graces: list[tuple[ET.Element, int, bool]] = []
         for bid in _text(voice.find("Beats")).split():
             beat = beats.get(bid)
-            if beat is None or _text(beat.find("GraceNotes")):  # graces take no time
+            if beat is None:
                 continue
             length = _rhythm_ticks(rhythms.get(_ref(beat.find("Rhythm"))))
+            grace = _text(beat.find("GraceNotes"))
+            if grace:
+                # Grace beats take no time of the bar, but they are sung: each
+                # takes a syllable (alphaTab's applyLyrics: any beat that is not
+                # a rest), placed as the chart loop places them.
+                if _text(beat.find("Notes")).split():
+                    graces.append((beat, length, grace == "OnBeat"))
+                continue
+
+            def pitch_of(b: ET.Element) -> int | None:
+                ps = [p for nid in _text(b.find("Notes")).split()
+                      if (p := _note_midi(notes_map.get(nid), tuning)) is not None]
+                return max(ps) if ps else None
+
+            main = tick
+            if graces:
+                g_tick = tick - sum(d for _, d, on in graces if not on)
+                for g_beat, g_dur, on in graces:
+                    if on:
+                        continue
+                    out.append(LyricNote(time=t(g_tick), end=t(g_tick + g_dur),
+                                         midi=pitch_of(g_beat), rest_before=rest))
+                    rest = False
+                    g_tick += g_dur
+                for g_beat, g_dur, on in graces:
+                    if not on:
+                        continue
+                    g_dur = min(g_dur, tick + length - main)
+                    out.append(LyricNote(time=t(main), end=t(main + g_dur),
+                                         midi=pitch_of(g_beat), rest_before=rest))
+                    rest = False
+                    main += g_dur
+                graces = []
             note_ids = _text(beat.find("Notes")).split()
             if note_ids:
-                pitches = [
-                    p for nid in note_ids
-                    if (p := _note_midi(notes_map.get(nid), tuning)) is not None
-                ]
                 out.append(LyricNote(
-                    time=t(tick), end=t(tick + length),
-                    midi=max(pitches) if pitches else None, rest_before=rest,
+                    time=t(main), end=t(tick + length),
+                    midi=pitch_of(beat), rest_before=rest,
                 ))
                 rest = False
             else:

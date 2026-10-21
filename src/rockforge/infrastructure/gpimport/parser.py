@@ -719,8 +719,26 @@ def _lyric_notes(song: Any, t: Callable[[int], float]) -> tuple[LyricNote, ...] 
                 pitches = [
                     tuning[n.string] + n.value for n in beat.notes if n.string in tuning
                 ]
+                main = tick
+                grace = next((n for n in beat.notes if n.effect.grace is not None), None)
+                if grace is not None:
+                    # A grace note is sung too: it takes a syllable of its own
+                    # (alphaTab's applyLyrics: any beat that is not a rest),
+                    # before the beat, or on it, delaying the beat's note.
+                    g = grace.effect.grace
+                    g_ticks = min(g.durationTime, length) if g.isOnBeat else g.durationTime
+                    g_start = tick if g.isOnBeat else max(measure.start, tick - g_ticks)
+                    g_end = tick + g_ticks if g.isOnBeat else tick
+                    if g.isOnBeat:
+                        main = g_end
+                    out.append(LyricNote(
+                        time=t(g_start), end=t(g_end),
+                        midi=tuning[grace.string] + int(g.fret) if grace.string in tuning else None,
+                        rest_before=rest,
+                    ))
+                    rest = False
                 out.append(LyricNote(
-                    time=t(tick), end=t(tick + length),
+                    time=t(main), end=t(tick + length),
                     midi=max(pitches) if pitches else None, rest_before=rest,
                 ))
                 rest = False

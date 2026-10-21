@@ -12,6 +12,10 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 - **Acertar pelos ataques** (Partitura → Sincronização → Início da música): compara as notas com os ataques da gravação e move a pista inteira pela diferença — para uma pista toda adiantada ou atrasada a mesma quantidade, como acontece com os tempos de alguns vídeos do Songsterr. Recusa adivinhar quando o ritmo é tão regular que há dois encaixes possíveis, e avisa quando a diferença cresce ao longo da música (aí é o andamento). Fica pendente até "Aplicar e reconstruir".
 - **Capa de qualquer sítio:** no passo 4 do assistente e na página Capa, **Ou de outro sítio** abre uma pesquisa no Google Imagens com a banda e o álbum (ou o título) e aceita o link da imagem que lá encontrares, de qualquer site público, ou a própria imagem colada com Ctrl+V. WebP, GIF e outros formatos são convertidos para PNG. Só são descarregadas imagens de sites públicos: um link para dentro da tua rede ou do teu computador é recusado.
 
+### Correções
+
+- **Letra das tabs do Songsterr atrasada:** uma nota de ornamento (grace) na linha vocal não recebia sílaba, e cada sílaba a seguir caía uma nota mais tarde, cada vez mais atrasada ao longo da música. Agora uma nota de ornamento recebe a sua sílaba, como no Songsterr e no Guitar Pro (também em ficheiros GP7/GP8). As notas de ornamento das tabs do Songsterr passam a vir no ficheiro, em vez de serem descartadas. Um projeto já criado guarda o ficheiro antigo: importa a tab outra vez, num projeto novo.
+
 ## [0.11.1 beta 3] — 2026-10-21
 
 ### Correções

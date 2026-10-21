@@ -312,9 +312,11 @@ re-inverting the dependency.
    under-/over-filled Songsterr bar cannot push the next one; tempo = the first
    track's `automations.tempo` (song tempo + a mix-table change per later
    measure, as `tempo_writer` does). Honest losses, all counted in the report
-   and shown in the wizard: drums skipped, **grace notes dropped** (a GP5 grace
-   is an ornament on the NEXT note — written as beats they would push the
-   rhythm late), a mid-bar tempo change moved to its bar's start in the GP5
+   and shown in the wizard: drums skipped, a grace note with no note on its
+   string right after it dropped (the others become GP5 grace EFFECTS on the
+   note they lead into, `_attach_graces` — a GP5 grace is an ornament on the
+   NEXT note, so it takes none of the bar's time; until 2026-10-21 every grace
+   was dropped), a mid-bar tempo change moved to its bar's start in the GP5
    (the tab's tempo map, below, keeps it at the bar lines), text GP5
    cannot store (it is cp1252 — a Cyrillic title used to abort the whole
    write) turned into "?" by `_gp5_text`. **Lyrics come along**: a part's
@@ -2442,6 +2444,23 @@ hyphen before a space (`Mo- ney`) still joins. Guarded by
 `test_comments_and_a_hyphen_before_a_space_are_read_like_guitar_pro` (all
 mutation-checked), and a real in-process build of a Songsterr-shaped tab
 whose words land on the vocal eighths.
+
+**A grace note in the vocal line takes a syllable** ("a letra … fica sempre
+atrasada, e as palavras não coincidem", on a Songsterr import, 2026-10-21).
+Guitar Pro hands a syllable to every beat of the lyrics' track that is not a
+rest — a grace beat too (alphaTab's `applyLyrics`; `teaqu/guitar-pro-youtube-sync`
+does the same with Songsterr's `graceNote` beats). The Songsterr import dropped
+grace notes and both parsers skipped them in `lyric_notes`, so every syllable
+after a grace landed one note late, piling up line after line. Now the import
+writes them as GP5 grace effects, and `lyric_notes` gives each grace its own
+onset where the chart plays it (before the beat, back to back ending on it; on
+the beat, delaying the beat's note) in both parsers. Guarded by
+`test_a_grace_note_in_the_vocal_line_takes_its_own_syllable` (GP5, through a
+Songsterr part) and `test_gp7_a_grace_beat_in_the_vocal_line_takes_a_syllable`
+(both mutation-checked). Whether the user's song had grace notes in its vocal
+line is not known from here (its import warnings would have said "N nota(s) de
+ornamento (grace) não incluídas") — it is the one difference from the
+reference found by reading it.
 
 **The vocal line also gives each syllable its length and the lyric its
 phrases.** "O GP5 também tinha uma track de Voz, mas unicamente com a letra —

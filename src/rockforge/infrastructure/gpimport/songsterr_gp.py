@@ -44,13 +44,14 @@ What a part carries, and how it maps:
   of the part it was written for — normally the vocal line — exactly as
   Guitar Pro would. GP5 holds five lines; more are dropped and counted.
 
-Honest limits, all counted in the report rather than hidden: grace notes are
-dropped (in GP5 they are an ornament on the NEXT note, not a beat, and writing
-them as beats would push the rhythm late); a mid-measure tempo change is moved
-to its measure's start in the GP5 (``bar_times`` keep its timing); lyrics on
-a part that could not be written (no strings) fall back to the first track's
-notes; text GP5 cannot store (it is cp1252)
-becomes "?".
+Grace notes become GP5 grace effects on the note they lead into (in GP5 a
+grace is an ornament of the NEXT note, not a beat — writing them as beats would
+push the rhythm late); one with no note on its string after it is dropped and
+counted. Honest limits, all counted in the report rather than hidden: a
+mid-measure tempo change is moved to its measure's start in the GP5
+(``bar_times`` keep its timing); lyrics on a part that could not be written
+(no strings) fall back to the first track's notes; text GP5 cannot store (it
+is cp1252) becomes "?".
 """
 
 from __future__ import annotations
@@ -82,6 +83,7 @@ class SongsterrGpReport:
     notes: int = 0
     skipped_tracks: list[str] = field(default_factory=list)
     grace_dropped: int = 0
+    graces: int = 0
     tempo_moved: int = 0
     #: Tempo changes whose ``position`` is no fraction of a bar (≥ 1: a unit
     #: never seen), read as the bar's start and counted, never silently.
@@ -233,11 +235,12 @@ def _fill_voice(
     guitarpro: Any,
 ) -> None:
     """One Songsterr voice's beats into a GP5 voice."""
+    graces: list[dict[str, Any]] = []  # grace beats waiting for the note they lead into
     for b in beats:
         if not isinstance(b, dict):
             continue
         if b.get("graceNote"):
-            report.grace_dropped += 1
+            graces.append(b)
             continue
         beat = guitarpro.Beat(gp_voice)
         beat.duration = _duration(b, guitarpro)
@@ -258,7 +261,49 @@ def _fill_voice(
             beat.notes.append(gp_note)
             report.notes += 1
         beat.status = guitarpro.BeatStatus.normal if beat.notes else guitarpro.BeatStatus.rest
+        if graces:
+            _attach_graces(beat, graces, report, guitarpro)
+            graces = []
         gp_voice.beats.append(beat)
+    report.grace_dropped += sum(_grace_count(g) for g in graces)  # nothing after them in the bar
+
+
+def _grace_count(b: dict[str, Any]) -> int:
+    return max(1, sum(1 for n in b.get("notes") or [] if isinstance(n, dict) and not n.get("rest")))
+
+
+def _attach_graces(
+    beat: Any, graces: list[dict[str, Any]], report: SongsterrGpReport, guitarpro: Any
+) -> None:
+    """Songsterr's grace beats as GP5 grace effects on the note they lead into.
+
+    A Songsterr grace note is a beat of its own; in GP5 it is an effect of the
+    NEXT note on the same string (one per note), so it takes none of the bar's
+    time and the rhythm stays as written. It also takes a syllable of the
+    lyrics, as in Songsterr and Guitar Pro (``parser._lyric_notes``) — dropping
+    it put every following syllable one note late. A grace with no note on its
+    string in the next beat, or a second one on the same note, has nowhere to
+    go and is counted as dropped."""
+    taken: set[int] = set()
+    for g in graces:
+        value = _int(g.get("type"), 32)
+        duration = value if value in (8, 16, 32, 64) else 32
+        for n in g.get("notes") or []:
+            if not isinstance(n, dict) or n.get("rest"):
+                continue
+            string = _int(n.get("string"), -1) + 1
+            target = next((x for x in beat.notes if x.string == string), None)
+            if target is None or string in taken:
+                report.grace_dropped += 1
+                continue
+            taken.add(string)
+            grace = guitarpro.GraceEffect()
+            grace.fret = max(0, _int(n.get("fret"), 0))
+            grace.duration = duration
+            grace.isOnBeat = g.get("graceNote") == "onBeat"
+            grace.isDead = bool(n.get("dead"))
+            target.effect.grace = grace
+            report.graces += 1
 
 
 def _apply_note(gp_note: Any, note: dict[str, Any], guitarpro: Any, let_ring: bool) -> None:

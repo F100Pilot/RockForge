@@ -61,13 +61,15 @@ def test_the_tab_reads_back_note_for_note(tmp_path: Path) -> None:
     assert [(round(n.time, 3), n.string, n.fret) for n in notes] == [
         (0.0, 0, 3), (0.5, 0, 5), (1.0, 5, 7),
         (2.0, 4, 1),            # the tied triplet is ONE note held over two
-        (2.333, 3, 2), (2.5, 2, 2),
+        (2.333, 3, 2),
+        (2.375, 2, 1),          # the grace note: a sixteenth before the note it leads into
+        (2.5, 2, 2),
         (4.0, 1, 0),            # bar 3 at 60 BPM starts after 2 bars at 120
     ]
     # Held over two triplet eighths: still 2/3 of a beat, so charted with no tail.
     assert notes[3].sustain == 0.0
     assert round(notes[-1].sustain, 3) == 4.0  # a whole note at 60 BPM
-    assert report.notes == 8 and report.grace_dropped == 1
+    assert report.notes == 8 and report.graces == 1 and report.grace_dropped == 0
 
 
 def test_techniques_survive_the_trip(tmp_path: Path) -> None:
@@ -77,8 +79,8 @@ def test_techniques_survive_the_trip(tmp_path: Path) -> None:
     assert Technique.HAMMER_ON in techs[1]            # hp marks the TARGET note
     assert Technique.BEND in techs[2] and notes[2].bend_semitones == 2.0  # a full tone
     assert Technique.FRET_MUTE in techs[4]            # dead note
-    assert {Technique.PALM_MUTE, Technique.VIBRATO} <= techs[5]
-    assert Technique.SLIDE in techs[6]
+    assert {Technique.PALM_MUTE, Technique.VIBRATO} <= techs[6]  # techs[5]: the grace note
+    assert Technique.SLIDE in techs[7]
 
 
 def test_tuning_sections_tempo_and_metadata(tmp_path: Path) -> None:
@@ -255,3 +257,28 @@ def test_a_tempo_change_at_a_position_that_cannot_be_read_is_said(tmp_path: Path
     assert report.tempo_position_unknown == 1 and report.tempo_moved == 0
     assert report.bar_times == pytest.approx([0.0, 2.0, 6.0])  # bar 2 at 60 from its start
     assert any("não sei ler" in w or "cannot read" in w for w in report.warnings)
+
+
+def test_a_grace_note_in_the_vocal_line_takes_its_own_syllable(tmp_path: Path) -> None:
+    """Songsterr (and Guitar Pro) hand a syllable to every beat of the lyrics'
+    track that is not a rest — a grace note too. Dropped, every syllable after
+    it landed one note late ("a letra fica sempre atrasada")."""
+    from rockforge.infrastructure.rsxml.vocals import distribute_syllables
+
+    vocals = {"name": "Voz", "tuning": [64], "measures": [{"signature": [4, 4], "voices": [{"beats": [
+        {"type": 4, "notes": [{"string": 0, "fret": 2}]},
+        {"type": 16, "graceNote": "beforeBeat", "notes": [{"string": 0, "fret": 4}]},
+        {"type": 4, "notes": [{"string": 0, "fret": 5}]},
+        {"type": 4, "notes": [{"string": 0, "fret": 4}]},
+        {"type": 4, "notes": [{"string": 0, "fret": 2}]},
+    ]}]}], "newLyrics": [{"text": "one two three four five", "offset": 0}]}
+    dst, report = _write(tmp_path, [_lead(), vocals])
+    parsed = parse_gp_track(dst, 0)
+    assert report.graces == 2  # the lead's and the vocal line's
+    onsets = [round(n.time, 3) for n in parsed.lyric_notes]
+    assert onsets == [0.0, 0.375, 0.5, 1.0, 1.5]  # 120 BPM: the grace a sixteenth before beat 2
+    events = distribute_syllables(
+        [(line.time, line.text) for line in parsed.lyrics],
+        [n.time for n in parsed.lyric_notes], ends=[n.end for n in parsed.lyric_notes])
+    assert [(round(e.time, 3), e.lyric.rstrip("+")) for e in events] == [
+        (0.0, "one"), (0.375, "two"), (0.5, "three"), (1.0, "four"), (1.5, "five")]
