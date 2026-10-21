@@ -346,12 +346,19 @@ The steps one by one, one track at a time (at the top of the **Sync** inspector)
 
 ### Step 1 — Song start
 
-The second the 1st note **of this track** is heard. Three ways:
+The second the 1st note **of this track** is heard. Four ways:
 
 - type the value (or use the slider);
 - put the cursor where the note sounds and press **= cursor**;
 - **Detect 1st note**: press the button, then click the waveform where the 1st note sounds,
-  and finally that note.
+  and finally that note;
+- **Align to the attacks**: measures the recording's attacks (like the **Recording attacks**),
+  looks for the shift, up to 0.3 s, that puts the most notes on an attack, and moves the whole
+  track by it. It is for a track that is early or late by the same amount throughout — for
+  example, with the times of a Songsterr video. If the rhythm is so regular that two fits work
+  equally well, it leaves it alone; if the difference grows along the song, it warns you,
+  because then it is the tempo that needs correcting. It only moves the track that is open:
+  pick it as **Main track** for the others to follow.
 
 ### Step 2 — Tempo
 

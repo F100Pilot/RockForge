@@ -1659,7 +1659,7 @@ const INFO = {
   },
   'sync-offset': {
     title: T('Sincronização — início e tique'),
-    body: T('<p>Dá play à gravação: o cursor percorre as notas e ouves um <strong>tique</strong> em cada nota. Ajusta o slider "Início da música" até os tiques baterem certo com a gravação.<br><strong>Este valor é por pista</strong> — muda de separador (Lead/Rhythm/Combined) e o campo passa a mostrar e corrigir o início dessa pista, sem mexer nas outras. Útil quando o Lead e o Rhythm foram tabulados com um pickup/compasso de entrada diferente. A afinação continua partilhada por todos.<br>"Início = cursor" trava o valor na posição do leitor; "Detetar 1ª nota" é o mesmo fluxo guiado de 3 cliques. A correção fica pendente e grava com o botão normal "Aplicar e reconstruir".</p>')
+    body: T('<p>Dá play à gravação: o cursor percorre as notas e ouves um <strong>tique</strong> em cada nota. Ajusta o slider "Início da música" até os tiques baterem certo com a gravação.<br><strong>Este valor é por pista</strong> — muda de separador (Lead/Rhythm/Combined) e o campo passa a mostrar e corrigir o início dessa pista, sem mexer nas outras. Útil quando o Lead e o Rhythm foram tabulados com um pickup/compasso de entrada diferente. A afinação continua partilhada por todos.<br>"Início = cursor" trava o valor na posição do leitor; "Detetar 1ª nota" é o mesmo fluxo guiado de 3 cliques. "Acertar pelos ataques" mede os ataques da gravação (como "Ataques da gravação"), procura o deslocamento até 0,3 s que põe mais notas em cima de um ataque e move a pista inteira por ele — para quando a pista está toda adiantada ou atrasada a mesma quantidade (por exemplo, os tempos de um vídeo do Songsterr). Se o ritmo for tão regular que dois encaixes servem igualmente, não mexe; e avisa quando a diferença cresce ao longo da música, que é um acerto de andamento. A correção fica pendente e grava com o botão normal "Aplicar e reconstruir".</p>')
   },
   'bar-sync': {
     title: T('Sincronizar por compasso'),
@@ -4612,6 +4612,120 @@ function goToAttackDiff(dir) {
   const wrap = document.getElementById('tabwrap');
   wrap.scrollLeft = Math.max(0, timeToX(t) - wrap.clientWidth / 2);
 }
+
+// ── "Acertar pelos ataques": the start set from the recording's attacks ─────
+// A chart whose bars come from someone else's timestamps (Songsterr's marks for
+// a video) can sit a constant few tens of ms off the audio. Every note is
+// compared with the attacks around it and the chart is moved, as a whole, by
+// the shift that puts the most notes on an attack — a cross-correlation, not
+// nearest-neighbour pairing: with eighths 158 ms apart and the chart 100 ms
+// early, each note's NEAREST attack is the next note's. A rhythm so regular
+// that two shifts fit as well is refused rather than guessed.
+const ATTACK_LAG_S = 0.015;      // the picked attack sits ~15 ms after the strike (measured, see CLAUDE.md)
+const ATTACK_OFFSET_MAX_S = 0.3; // farthest shift looked for
+const ATTACK_OFFSET_TOL_S = 0.025;
+// notes: recording seconds of the note groups (sorted); attacks: [[s, strength]] (sorted).
+// → {offset, matched, notes, drift} | {error: 'few'|'ambiguous', …}
+function attackOffset(notes, attacks) {
+  const MAX = ATTACK_OFFSET_MAX_S, TOL = ATTACK_OFFSET_TOL_S;
+  const at = attacks.map(a => a[0]);
+  const near = notes.map(t => {
+    let lo = 0, hi = at.length;
+    while (lo < hi) { const m = (lo + hi) >> 1; if (at[m] < t - MAX - TOL) lo = m + 1; else hi = m; }
+    const d = [];
+    for (let k = lo; k < at.length && at[k] <= t + MAX + TOL; k++) d.push(at[k] - t);
+    return d;
+  });
+  const score = c => near.reduce((n, d) => n + (d.some(x => Math.abs(x - c) <= TOL) ? 1 : 0), 0);
+  const cands = [];
+  for (let c = -MAX; c <= MAX + 1e-9; c += 0.002) cands.push([c, score(c)]);
+  let best = cands[0];
+  for (const x of cands) if (x[1] > best[1] || (x[1] === best[1] && Math.abs(x[0]) < Math.abs(best[0]))) best = x;
+  const matchedAt = c => notes.map((t, i) => {
+    let b = null;
+    for (const x of near[i]) if (Math.abs(x - c) <= TOL && (b == null || Math.abs(x - c) < Math.abs(b - c))) b = x;
+    return b;
+  });
+  const pairs = matchedAt(best[0]);
+  const ds = pairs.filter(x => x != null);
+  if (ds.length < 12 || ds.length < 0.3 * notes.length) return { error: 'few', matched: ds.length, notes: notes.length };
+  const rival = cands.filter(x => Math.abs(x[0] - best[0]) > 2 * TOL).reduce((m, x) => Math.max(m, x[1]), 0);
+  if (rival >= 0.92 * best[1]) return { error: 'ambiguous', matched: ds.length, notes: notes.length };
+  const median = v => { const s = [...v].sort((x, y) => x - y); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+  const third = Math.floor(ds.length / 3);
+  const drift = third >= 6 ? median(ds.slice(-third)) - median(ds.slice(0, third)) : 0;
+  return { offset: median(ds) - ATTACK_LAG_S, matched: ds.length, notes: notes.length, drift };
+}
+
+async function alignStartToAttacks() {
+  const a = arrangements[currentArr];
+  const info = document.getElementById('attackAlignInfo');
+  if (!a || !isGpJob() || attacksBusy) return;
+  const job = selectedJob.id;
+  if (!(recAttacks && recAttacks.job === job)) {
+    // Measured where "Ataques da gravação" would; the mix is fine here — its
+    // drum hits sit on the beats as well.
+    const source = defaultAttackSource();
+    attacksBusy = true;
+    renderAttacksCard();
+    info.textContent = T('A analisar a gravação… (pode demorar um minuto)');
+    try {
+      const res = await getJSON(`/jobs/${job}/detect-attacks?source=${encodeURIComponent(source)}`, { method: 'POST' });
+      if (!selectedJob || selectedJob.id !== job) return;
+      recAttacks = { job, ...res };
+      document.getElementById('attacksShow').checked = true;
+    } catch (e) {
+      info.textContent = T('Não foi possível analisar: {msg}', { msg: e.message });
+      return;
+    } finally {
+      attacksBusy = false;
+      renderAttacksCard();
+    }
+  }
+  const chartT = currentArrFirstNoteTime();
+  if (chartT == null || arrangements[currentArr] !== a) return;
+  const warp = buildTimeWarp(syncAnchors);
+  const off = recordingDisplay(0);
+  const groups = [];
+  for (const n of [...soundingNotes(a)].sort((x, y) => x.time - y.time))
+    if (!groups.length || n.time - groups[groups.length - 1] > 0.03) groups.push(n.time);
+  const notes = groups.map(t => warp(previewScale(t)) - off)
+    .filter(t => t >= 0 && t <= recAttacks.duration).sort((x, y) => x - y);
+  const r = attackOffset(notes, recAttacks.attacks);
+  if (r.error === 'few') {
+    info.textContent = T('Só {m} de {n} notas têm um ataque perto, a qualquer distância até 0,3 s — não chega para acertar. Acerta primeiro o início de ouvido (ou "Detetar 1ª nota") e tenta outra vez.', { m: r.matched, n: r.notes });
+    showArr(currentArr);
+    return;
+  }
+  if (r.error === 'ambiguous') {
+    info.textContent = T('O ritmo é tão regular que há mais do que um encaixe possível com os ataques — não arrisquei. Acerta o início de ouvido até ficar perto e tenta outra vez.');
+    showArr(currentArr);
+    return;
+  }
+  const ms = Math.round(r.offset * 1000);
+  let msg;
+  if (Math.abs(r.offset) < 0.005) {
+    msg = T('Já está acertado: as notas batem com os ataques ({m} de {n} notas).', { m: r.matched, n: r.notes });
+  } else {
+    const origT = previewScale(chartT);
+    shiftTrackStart(origT, warp(origT) + r.offset);
+    renderAnchorsList();
+    updatePendingChangesInfo();
+    msg = (r.offset > 0
+      ? T('A pista avançou {ms} ms: as notas estavam antes dos ataques.', { ms: Math.abs(ms) })
+      : T('A pista recuou {ms} ms: as notas estavam depois dos ataques.', { ms: Math.abs(ms) }))
+      + ' ' + T('{m} de {n} notas batem com um ataque. Fica pendente até "Aplicar e reconstruir" (Ctrl+Z desfaz).', { m: r.matched, n: r.notes });
+    if (arrangements.length > 1 && syncMain !== a.kind)
+      msg += ' ' + T('As outras pistas não mudaram: escolhe esta como "Pista principal" para elas acompanharem, ou repete em cada uma.');
+  }
+  if (Math.abs(r.drift) > 0.03)
+    msg += ' ' + T('Atenção: no fim da música as notas estão {ms} ms mais {dir} do que no princípio — o andamento também precisa de acerto (Andamento, ou "Marcar a ouvir").', {
+      ms: Math.round(Math.abs(r.drift) * 1000), dir: r.drift > 0 ? T('adiantadas') : T('atrasadas'),
+    });
+  info.textContent = msg;
+  showArr(currentArr);
+}
+document.getElementById('attackAlign')?.addEventListener('click', alignStartToAttacks);
 
 document.getElementById('attacksRun')?.addEventListener('click', runAttacks);
 document.getElementById('attacksShow')?.addEventListener('change', () => showArr(currentArr));

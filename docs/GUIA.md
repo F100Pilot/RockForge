@@ -347,11 +347,18 @@ Os passos seguintes, um a um, numa pista de cada vez (em cima, no inspetor **Sin
 
 ### Passo 1 — Início da música
 
-O segundo em que se ouve a 1ª nota **desta pista**. Três maneiras:
+O segundo em que se ouve a 1ª nota **desta pista**. Quatro maneiras:
 
 - escrever o valor (ou usar o deslizador);
 - pôr o cursor onde a nota soa e carregar em **= cursor**;
-- **Detetar 1ª nota**: clica no botão, depois na onda onde a 1ª nota soa, e por fim nessa nota.
+- **Detetar 1ª nota**: clica no botão, depois na onda onde a 1ª nota soa, e por fim nessa nota;
+- **Acertar pelos ataques**: mede os ataques da gravação (como os **Ataques da gravação**),
+  procura o deslocamento, até 0,3 s, que põe mais notas em cima de um ataque, e move a pista
+  inteira por ele. Serve para uma pista toda adiantada ou atrasada a mesma quantidade — por
+  exemplo, com os tempos de um vídeo do Songsterr. Se o ritmo for tão regular que dois encaixes
+  servem igualmente, não mexe; se a diferença crescer ao longo da música, avisa, porque aí é o
+  andamento que precisa de acerto. Só move a pista que está aberta: escolhe-a como **Pista
+  principal** para as outras acompanharem.
 
 ### Passo 2 — Andamento
 

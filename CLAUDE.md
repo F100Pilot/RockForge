@@ -971,6 +971,31 @@ the missing note (4.0 s) and the extra strike (6.715 s) flagged and reached by
 the buttons, hidden when unticked, PT/EN, no page errors. **Never run on a
 real song from here.**
 
+**"Acertar pelos ataques" — the start from the attacks** (`attackOffset`,
+`alignStartToAttacks`; a button in "Início da música", 2026-10-21, after a
+Songsterr AI video whose marks sat ~100 ms ahead of its audio: the bars land
+exactly on Songsterr's times, so the offset was theirs). It uses the card's
+`recAttacks` (fetching them for `defaultAttackSource()` without the mix question
+when there are none — the drums sit on the beats too), takes the chart's note
+groups as drawn (pending edits and sync, `recordingDisplay`), and finds the
+shift in ±`ATTACK_OFFSET_MAX_S` (0.3 s, 2 ms steps) that puts the most notes
+within `ATTACK_OFFSET_TOL_S` (25 ms) of an attack — a cross-correlation, NOT
+nearest-neighbour pairing: with eighths 158 ms apart and the chart 100 ms early,
+each note's nearest attack is the NEXT note's. The answer is the median of the
+matched differences minus `ATTACK_LAG_S` (15 ms, the picked attack's measured
+lag above), applied with `shiftTrackStart` (the whole chart moves, a pending
+edit, one undo step); the chart on screen only, so the hint points at "Pista
+principal". Refused: fewer than 12 matched notes or 30 % (`few`), or another
+shift more than 50 ms away scoring ≥ 92 % (`ambiguous` — a rhythm regular
+enough that two fits serve); warned: the last third's median differing from the
+first third's by more than 30 ms (a tempo matter). Browser-only: checked with
+Node on invented songs (100 ms early, 80 ms late, in sync, 60 ms of drift
+warned, pure eighths refused, too few attacks refused) and with Playwright on
+"Deriva" with attacks faked 115 ms after each note (PT 1440 / EN 760 px): the
+277 notes moved by exactly 0.0997 s, the field 1.000 → 1.100, a second press
+"Já está acertado", Ctrl+Z back to the last digit, no page errors. Not tried on
+the user's song from here.
+
 ### Audio and note bars over the score ("Barras de áudio", `renderLevels`)
 
 "Para ajudar a sincronizar as músicas, pretendo que faças um gráfico de barras
