@@ -1900,3 +1900,175 @@ write_songsterr_gp5 read each tempo with int(), cutting 117.85 BPM to 117, and m
 - 2026-10-21 — In Progress: diagnosed against teaqu/guitar-pro-youtube-sync, which writes GP7 with the decimals
 - 2026-10-21 — Fixed: commit 6a0300ce41
 - 2026-10-21 — Verified: pytest + Playwright
+
+## BUG-0346
+
+**After a Songsterr import, another file picked in step 1 keeps the tab's times, the video's audio and its start**
+
+| | |
+|---|---|
+| Detected | 2026-10-21 |
+| Reported by | an independent review by a subagent, on the maintainer's request |
+| Found in | 0.11.1-beta.2 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Verified |
+
+Re-inspecting in step 1 (a GP upload or a PDF) cleared songsterrImported but not songsterrTab/songsterrPoints, the Songsterr video's downloaded audio nor the start it pre-filled, so /jobs/gp re-timed an unrelated file with that tab's tempo map or video points (sync_source songsterr_tab) and the stale choice card stayed in step 3.
+
+**Steps to reproduce:** 
+
+1. Import a Songsterr tab
+2. Go back to step 1 and inspect another GP file
+3. Create the project
+
+**Expected:** The new file is built with no Songsterr times.
+
+**Observed:** The new file is re-timed bar by bar with the old tab's times.
+
+**Root cause:** Only openNewJobModal reset the Songsterr state; the two other step-1 paths did not.
+
+**Fixes:** [FIX-0346](../FIX_LOG.md#fix-0346) (unreleased)
+
+**Verified:** Playwright: after an import with the tab's tempo, inspecting another GP5 hid the card, wizardBarTimes() null, the Songsterr block back (by the developer (Playwright))
+
+**Resolved:** 2026-10-21 · **Closed:** _pending_
+
+**Evidence:**
+
+- Playwright 2026-10-21 on a live server, Songsterr and YouTube faked: card hidden, no bar times sent, offset 0
+- pytest 2026-10-21: full suite passes
+
+**History:**
+
+- 2026-10-21 — Open: found by the review of 6a0300c
+- 2026-10-21 — Fixed: commit 75df41f89c
+- 2026-10-21 — Verified: Playwright 2026-10-21 on a live server, Songsterr and YouTube faked
+
+## BUG-0347
+
+**A failed Songsterr video fetch during the import says there are no videos and hides the retry**
+
+| | |
+|---|---|
+| Detected | 2026-10-21 |
+| Reported by | an independent review by a subagent, on the maintainer's request |
+| Found in | 0.11.1-beta.2 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Verified |
+
+When /songsterr failed during the import, setSongsterrSyncMode forced the tab's tempo, disabled the video option, showed 'O Songsterr não tem tempos de nenhum vídeo' and hid the block holding the error and 'Procurar vídeos', so the video flow could not be recovered without restarting the wizard.
+
+**Steps to reproduce:** 
+
+1. Import a Songsterr tab while /songsterr answers 502
+
+**Expected:** The wizard says the fetch failed and lets the user retry.
+
+**Observed:** A false 'no videos' note and no retry.
+
+**Root cause:** A failed request and an empty video list were the same state (songsterrSong null).
+
+**Fixes:** [FIX-0346](../FIX_LOG.md#fix-0346) (unreleased)
+
+**Verified:** Playwright: a 502 shows the failed note with the block and its error visible; a successful retry restores the remembered video choice (by the developer (Playwright))
+
+**Resolved:** 2026-10-21 · **Closed:** _pending_
+
+**Evidence:**
+
+- Playwright 2026-10-21 on a live server, Songsterr and YouTube faked: failed note shown, 'no videos' hidden, retry → video mode with its audio
+
+**History:**
+
+- 2026-10-21 — Open: found by the review of 6a0300c
+- 2026-10-21 — Fixed: commit 75df41f89c
+- 2026-10-21 — Verified: Playwright 2026-10-21 on a live server, Songsterr and YouTube faked
+
+## BUG-0348
+
+**A Songsterr video's audio downloaded by the button becomes the recording after the tab's tempo was chosen**
+
+| | |
+|---|---|
+| Detected | 2026-10-21 |
+| Reported by | an independent review by a subagent, on the maintainer's request |
+| Found in | 0.11.1-beta.2 |
+| Build / commit | _pending_ |
+| Severity | Low |
+| Priority | P3 |
+| Status | Verified |
+
+downloadYtAudio dropped a late result only for the automatic download; a download started with the button in video mode and finished after switching to the tab's tempo was used as the recording with the tab's times. Switching tab → video while an automatic download ran started a second one.
+
+**Steps to reproduce:** 
+
+1. Video mode, press 'Descarregar o áudio'
+2. Choose the tab's tempo before it finishes
+
+**Expected:** The video's audio is not used with the tab's times.
+
+**Observed:** The video's audio becomes the recording.
+
+**Root cause:** The late-result guard looked at opts.auto only; no in-flight marker.
+
+**Fixes:** [FIX-0346](../FIX_LOG.md#fix-0346) (unreleased)
+
+**Verified:** Playwright: a delayed download finished after switching left no recording; back and forth made one request (by the developer (Playwright))
+
+**Resolved:** 2026-10-21 · **Closed:** _pending_
+
+**Evidence:**
+
+- Playwright 2026-10-21 on a live server, Songsterr and YouTube faked: ytAudio null after the late download; one /youtube/audio call for the back and forth
+
+**History:**
+
+- 2026-10-21 — Open: found by the review of 6a0300c
+- 2026-10-21 — Fixed: commit 75df41f89c
+- 2026-10-21 — Verified: Playwright 2026-10-21 on a live server, Songsterr and YouTube faked
+
+## BUG-0349
+
+**A Songsterr tempo change at a position of 1 or more is placed at the bar's start without a word**
+
+| | |
+|---|---|
+| Detected | 2026-10-21 |
+| Reported by | an independent review by a subagent, on the maintainer's request |
+| Found in | 0.11.1-beta.2 |
+| Build / commit | _pending_ |
+| Severity | Low |
+| Priority | P3 |
+| Status | Verified |
+
+_bar_fraction read any position outside (0, 1) as the bar's start; the code before counted any non-zero position as a moved change and warned. If Songsterr sends positions in another unit, mid-bar tempo changes vanish silently.
+
+**Steps to reproduce:** 
+
+1. Import a tab whose tempo automation has position 480
+
+**Expected:** The change is counted and reported.
+
+**Observed:** Nothing is reported.
+
+**Root cause:** Values >= 1 were folded into 0 without a count.
+
+**Fixes:** [FIX-0347](../FIX_LOG.md#fix-0347) (unreleased)
+
+**Verified:** tests/test_songsterr_gp.py::test_a_tempo_change_at_a_position_that_cannot_be_read_is_said (mutation-checked) (by the developer (pytest))
+
+**Resolved:** 2026-10-21 · **Closed:** _pending_
+
+**Evidence:**
+
+- pytest 2026-10-21: the test fails without the count and passes with it
+
+**History:**
+
+- 2026-10-21 — Open: found by the review of 6a0300c
+- 2026-10-21 — Fixed: commit 75df41f89c
+- 2026-10-21 — Verified: pytest 2026-10-21

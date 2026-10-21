@@ -351,6 +351,8 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0343](#fix-0343) | BUG-0343 | 0.11.1-beta.2 | passed | automated |
 | [FIX-0344](#fix-0344) | BUG-0344 | 0.11.1-beta.2 | passed | automated |
 | [FIX-0345](#fix-0345) | BUG-0345 | 0.11.1-beta.2 | passed | automated |
+| [FIX-0346](#fix-0346) | BUG-0346, BUG-0347, BUG-0348 | unreleased | not run | manual |
+| [FIX-0347](#fix-0347) | BUG-0349 | unreleased | passed | automated |
 
 ## FIX-0001
 
@@ -7596,3 +7598,45 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | passed |
 | Validation | automated |
 | Regression risk | Medium: a Songsterr import now offers a choice in step 3; the video flow stays the default and is unchanged when chosen. |
+
+## FIX-0346
+
+**Bugs:** [BUG-0346](bugs/sync.md#bug-0346), [BUG-0347](bugs/sync.md#bug-0347), [BUG-0348](bugs/sync.md#bug-0348)
+
+**Root cause:** The step-3 Songsterr state had one reset path, a failed fetch looked like an empty list, and the late-download guard covered the automatic download only.
+
+**Solution:** forgetSongsterrForNewFile on the GP and PDF inspect paths; songsterrVideosFailed with its own note, the block kept open and the choice re-applied after a successful retry; forVideoTimes drops a Songsterr video download that ends after the tab was chosen, and ytDownloading prevents a second one.
+
+| | |
+|---|---|
+| Date | 2026-10-21 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 75df41f89c62e724bb7b1a2a04d7f86f1122db6b |
+| Components | web/app.js; web/index.html; web/i18n-en.js |
+| Tests | — |
+| Manual checks | Playwright on a live server, Songsterr and YouTube faked: the three paths, no page errors |
+| Test result | not run |
+| Validation | manual |
+| Regression risk | Low: only the Songsterr wizard paths change. |
+
+## FIX-0347
+
+**Bugs:** [BUG-0349](bugs/sync.md#bug-0349)
+
+**Root cause:** Values >= 1 were folded into 0 without a count.
+
+**Solution:** _bar_fraction reports an unreadable position; write_songsterr_gp5 counts it (tempo_position_unknown) and warns in both languages.
+
+| | |
+|---|---|
+| Date | 2026-10-21 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 75df41f89c62e724bb7b1a2a04d7f86f1122db6b |
+| Components | src/rockforge/infrastructure/gpimport/songsterr_gp.py; tests/test_songsterr_gp.py |
+| Tests | tests/test_songsterr_gp.py::test_a_tempo_change_at_a_position_that_cannot_be_read_is_said |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: a warning more. |

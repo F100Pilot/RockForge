@@ -8683,6 +8683,59 @@
       "test_result": "passed",
       "regression_risk": "Medium: a Songsterr import now offers a choice in step 3; the video flow stays the default and is unchanged when chosen.",
       "validation": "automated"
+    },
+    {
+      "id": "FIX-0346",
+      "bugs": [
+        "BUG-0346",
+        "BUG-0347",
+        "BUG-0348"
+      ],
+      "date": "2026-10-21",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "The step-3 Songsterr state had one reset path, a failed fetch looked like an empty list, and the late-download guard covered the automatic download only.",
+      "solution": "forgetSongsterrForNewFile on the GP and PDF inspect paths; songsterrVideosFailed with its own note, the block kept open and the choice re-applied after a successful retry; forVideoTimes drops a Songsterr video download that ends after the tab was chosen, and ytDownloading prevents a second one.",
+      "components": [
+        "web/app.js",
+        "web/index.html",
+        "web/i18n-en.js"
+      ],
+      "commits": [
+        "75df41f89c62e724bb7b1a2a04d7f86f1122db6b"
+      ],
+      "version": "unreleased",
+      "tests": [],
+      "manual_checks": [
+        "Playwright on a live server, Songsterr and YouTube faked: the three paths, no page errors"
+      ],
+      "test_result": "not run",
+      "regression_risk": "Low: only the Songsterr wizard paths change.",
+      "validation": "manual"
+    },
+    {
+      "id": "FIX-0347",
+      "bugs": [
+        "BUG-0349"
+      ],
+      "date": "2026-10-21",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "Values >= 1 were folded into 0 without a count.",
+      "solution": "_bar_fraction reports an unreadable position; write_songsterr_gp5 counts it (tempo_position_unknown) and warns in both languages.",
+      "components": [
+        "src/rockforge/infrastructure/gpimport/songsterr_gp.py",
+        "tests/test_songsterr_gp.py"
+      ],
+      "commits": [
+        "75df41f89c62e724bb7b1a2a04d7f86f1122db6b"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_songsterr_gp.py::test_a_tempo_change_at_a_position_that_cannot_be_read_is_said"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low: a warning more.",
+      "validation": "automated"
     }
   ]
 }

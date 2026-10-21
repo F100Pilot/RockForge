@@ -17331,6 +17331,194 @@
           "note": "pytest + Playwright"
         }
       ]
+    },
+    {
+      "id": "BUG-0346",
+      "title": "After a Songsterr import, another file picked in step 1 keeps the tab's times, the video's audio and its start",
+      "detected": "2026-10-21",
+      "reported_by": "an independent review by a subagent, on the maintainer's request",
+      "found_in_version": "0.11.1-beta.2",
+      "found_in_build": "pending",
+      "module": "sync",
+      "description": "Re-inspecting in step 1 (a GP upload or a PDF) cleared songsterrImported but not songsterrTab/songsterrPoints, the Songsterr video's downloaded audio nor the start it pre-filled, so /jobs/gp re-timed an unrelated file with that tab's tempo map or video points (sync_source songsterr_tab) and the stale choice card stayed in step 3.",
+      "steps": [
+        "Import a Songsterr tab",
+        "Go back to step 1 and inspect another GP file",
+        "Create the project"
+      ],
+      "expected": "The new file is built with no Songsterr times.",
+      "observed": "The new file is re-timed bar by bar with the old tab's times.",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Verified",
+      "root_cause": "Only openNewJobModal reset the Songsterr state; the two other step-1 paths did not.",
+      "fixes": [
+        "FIX-0346"
+      ],
+      "verified_by": "the developer (Playwright)",
+      "verification": "Playwright: after an import with the tab's tempo, inspecting another GP5 hid the card, wizardBarTimes() null, the Songsterr block back",
+      "evidence": [
+        "Playwright 2026-10-21 on a live server, Songsterr and YouTube faked: card hidden, no bar times sent, offset 0",
+        "pytest 2026-10-21: full suite passes"
+      ],
+      "resolved": "2026-10-21",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-21",
+          "status": "Open",
+          "note": "found by the review of 6a0300c"
+        },
+        {
+          "date": "2026-10-21",
+          "status": "Fixed",
+          "note": "commit 75df41f89c"
+        },
+        {
+          "date": "2026-10-21",
+          "status": "Verified",
+          "note": "Playwright 2026-10-21 on a live server, Songsterr and YouTube faked"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0347",
+      "title": "A failed Songsterr video fetch during the import says there are no videos and hides the retry",
+      "detected": "2026-10-21",
+      "reported_by": "an independent review by a subagent, on the maintainer's request",
+      "found_in_version": "0.11.1-beta.2",
+      "found_in_build": "pending",
+      "module": "sync",
+      "description": "When /songsterr failed during the import, setSongsterrSyncMode forced the tab's tempo, disabled the video option, showed 'O Songsterr não tem tempos de nenhum vídeo' and hid the block holding the error and 'Procurar vídeos', so the video flow could not be recovered without restarting the wizard.",
+      "steps": [
+        "Import a Songsterr tab while /songsterr answers 502"
+      ],
+      "expected": "The wizard says the fetch failed and lets the user retry.",
+      "observed": "A false 'no videos' note and no retry.",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Verified",
+      "root_cause": "A failed request and an empty video list were the same state (songsterrSong null).",
+      "fixes": [
+        "FIX-0346"
+      ],
+      "verified_by": "the developer (Playwright)",
+      "verification": "Playwright: a 502 shows the failed note with the block and its error visible; a successful retry restores the remembered video choice",
+      "evidence": [
+        "Playwright 2026-10-21 on a live server, Songsterr and YouTube faked: failed note shown, 'no videos' hidden, retry → video mode with its audio"
+      ],
+      "resolved": "2026-10-21",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-21",
+          "status": "Open",
+          "note": "found by the review of 6a0300c"
+        },
+        {
+          "date": "2026-10-21",
+          "status": "Fixed",
+          "note": "commit 75df41f89c"
+        },
+        {
+          "date": "2026-10-21",
+          "status": "Verified",
+          "note": "Playwright 2026-10-21 on a live server, Songsterr and YouTube faked"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0348",
+      "title": "A Songsterr video's audio downloaded by the button becomes the recording after the tab's tempo was chosen",
+      "detected": "2026-10-21",
+      "reported_by": "an independent review by a subagent, on the maintainer's request",
+      "found_in_version": "0.11.1-beta.2",
+      "found_in_build": "pending",
+      "module": "sync",
+      "description": "downloadYtAudio dropped a late result only for the automatic download; a download started with the button in video mode and finished after switching to the tab's tempo was used as the recording with the tab's times. Switching tab → video while an automatic download ran started a second one.",
+      "steps": [
+        "Video mode, press 'Descarregar o áudio'",
+        "Choose the tab's tempo before it finishes"
+      ],
+      "expected": "The video's audio is not used with the tab's times.",
+      "observed": "The video's audio becomes the recording.",
+      "severity": "Low",
+      "priority": "P3",
+      "status": "Verified",
+      "root_cause": "The late-result guard looked at opts.auto only; no in-flight marker.",
+      "fixes": [
+        "FIX-0346"
+      ],
+      "verified_by": "the developer (Playwright)",
+      "verification": "Playwright: a delayed download finished after switching left no recording; back and forth made one request",
+      "evidence": [
+        "Playwright 2026-10-21 on a live server, Songsterr and YouTube faked: ytAudio null after the late download; one /youtube/audio call for the back and forth"
+      ],
+      "resolved": "2026-10-21",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-21",
+          "status": "Open",
+          "note": "found by the review of 6a0300c"
+        },
+        {
+          "date": "2026-10-21",
+          "status": "Fixed",
+          "note": "commit 75df41f89c"
+        },
+        {
+          "date": "2026-10-21",
+          "status": "Verified",
+          "note": "Playwright 2026-10-21 on a live server, Songsterr and YouTube faked"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0349",
+      "title": "A Songsterr tempo change at a position of 1 or more is placed at the bar's start without a word",
+      "detected": "2026-10-21",
+      "reported_by": "an independent review by a subagent, on the maintainer's request",
+      "found_in_version": "0.11.1-beta.2",
+      "found_in_build": "pending",
+      "module": "sync",
+      "description": "_bar_fraction read any position outside (0, 1) as the bar's start; the code before counted any non-zero position as a moved change and warned. If Songsterr sends positions in another unit, mid-bar tempo changes vanish silently.",
+      "steps": [
+        "Import a tab whose tempo automation has position 480"
+      ],
+      "expected": "The change is counted and reported.",
+      "observed": "Nothing is reported.",
+      "severity": "Low",
+      "priority": "P3",
+      "status": "Verified",
+      "root_cause": "Values >= 1 were folded into 0 without a count.",
+      "fixes": [
+        "FIX-0347"
+      ],
+      "verified_by": "the developer (pytest)",
+      "verification": "tests/test_songsterr_gp.py::test_a_tempo_change_at_a_position_that_cannot_be_read_is_said (mutation-checked)",
+      "evidence": [
+        "pytest 2026-10-21: the test fails without the count and passes with it"
+      ],
+      "resolved": "2026-10-21",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-21",
+          "status": "Open",
+          "note": "found by the review of 6a0300c"
+        },
+        {
+          "date": "2026-10-21",
+          "status": "Fixed",
+          "note": "commit 75df41f89c"
+        },
+        {
+          "date": "2026-10-21",
+          "status": "Verified",
+          "note": "pytest 2026-10-21"
+        }
+      ]
     }
   ]
 }

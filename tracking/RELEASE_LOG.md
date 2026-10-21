@@ -34,7 +34,12 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0344](bugs/sync.md#bug-0344) Creating a job from Songsterr fails with 422 when the video's bar marks start before the video (negative times)
 - [BUG-0345](bugs/sync.md#bug-0345) A tab imported from Songsterr drifts away from Songsterr's own recording: the tempo's decimals and mid-bar changes are lost
 
-**Known bugs it carried:** —
+**Known bugs it carried:** 
+
+- [BUG-0346](bugs/sync.md#bug-0346) After a Songsterr import, another file picked in step 1 keeps the tab's times, the video's audio and its start (Medium, now Verified)
+- [BUG-0347](bugs/sync.md#bug-0347) A failed Songsterr video fetch during the import says there are no videos and hides the retry (Medium, now Verified)
+- [BUG-0348](bugs/sync.md#bug-0348) A Songsterr video's audio downloaded by the button becomes the recording after the tab's tempo was chosen (Low, now Verified)
+- [BUG-0349](bugs/sync.md#bug-0349) A Songsterr tempo change at a position of 1 or more is placed at the bar's start without a word (Low, now Verified)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 

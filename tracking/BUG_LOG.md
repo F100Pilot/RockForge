@@ -6,7 +6,7 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 
 | Fixed | Verified | Closed |
 |---|---|---|
-| 86 | 45 | 214 |
+| 86 | 49 | 214 |
 
 | ID | Title | Module | Severity | Priority | Status | Found in | Fixed in |
 |---|---|---|---|---|---|---|---|
@@ -355,3 +355,7 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0343](bugs/import.md#bug-0343) | A chart whose GP track has no notes fails with a bare 'arrangement has no notes' that names neither the chart nor the track | import | Low | P3 | Verified | 0.11.0-beta.4 | 0.11.1-beta.2 |
 | [BUG-0344](bugs/sync.md#bug-0344) | Creating a job from Songsterr fails with 422 when the video's bar marks start before the video (negative times) | sync | Medium | P2 | Verified | 0.11.0-beta.4 | 0.11.1-beta.2 |
 | [BUG-0345](bugs/sync.md#bug-0345) | A tab imported from Songsterr drifts away from Songsterr's own recording: the tempo's decimals and mid-bar changes are lost | sync | High | P1 | Verified | 0.11.1-beta.1 | 0.11.1-beta.2 |
+| [BUG-0346](bugs/sync.md#bug-0346) | After a Songsterr import, another file picked in step 1 keeps the tab's times, the video's audio and its start | sync | Medium | P2 | Verified | 0.11.1-beta.2 | — |
+| [BUG-0347](bugs/sync.md#bug-0347) | A failed Songsterr video fetch during the import says there are no videos and hides the retry | sync | Medium | P2 | Verified | 0.11.1-beta.2 | — |
+| [BUG-0348](bugs/sync.md#bug-0348) | A Songsterr video's audio downloaded by the button becomes the recording after the tab's tempo was chosen | sync | Low | P3 | Verified | 0.11.1-beta.2 | — |
+| [BUG-0349](bugs/sync.md#bug-0349) | A Songsterr tempo change at a position of 1 or more is placed at the bar's start without a word | sync | Low | P3 | Verified | 0.11.1-beta.2 | — |
