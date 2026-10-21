@@ -8,6 +8,7 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ### Fixes
 
+- **Score, fretboard and 3D highway running ahead:** during playback the cursor and the lit notes were ahead of what you hear, by the computer's sound output delay (tens of milliseconds with wired speakers or headphones, a few hundred over Bluetooth). A chart in time looked like its notes were early, and syncing it by eye left it late in game. What you see now follows what you hear; pausing stops where you were listening.
 - **Fretboard:** clicking a note on the score lights only that note on the neck. Before, the previous note stayed lit too when the two were less than 0.16 s apart (a short note stayed lit for that minimum, even after the next one began).
 - **Songsterr tabs — step 3:** after importing a Songsterr tab, picking another file in step 1 (your own GP or a PDF) no longer carries that tab's times, the video's or its audio along. If fetching the videos from Songsterr fails, the wizard says it failed (instead of saying there are no videos) and lets you try again with "Find videos". A download of the video's audio that finishes after you chose the tab's tempo no longer becomes the recording. A tempo change at a position in the bar RockForge cannot read is now reported.
 

@@ -3311,8 +3311,8 @@ function showArr(i) {
   updateDeleteNotesUi();
   updateFhpUi();
   drawFretboard();  // redraw the neck (tuning labels) + refresh the active notes
-  updateFretboard(playheadDisplay(audioTime()));
-  updateLiveBpm(playheadDisplay(audioTime()));
+  updateFretboard(playheadDisplay(heardTime()));
+  updateLiveBpm(playheadDisplay(heardTime()));
 }
 window.showArr = showArr;
 
@@ -4174,7 +4174,8 @@ function tapGrid(a, fromM, mode) {
 }
 
 // What the output latency hides: the sound at audioTime() reaches the ears
-// that much later, so a tap in time with it lands that much late.
+// that much later, so a tap in time with it lands that much late (and the
+// cursor drawn on audioTime() would run that much ahead — see heardTime).
 function tapLatency() {
   if (!playBuffer || !audioCtx) return 0;
   return ((audioCtx.outputLatency || 0) + (audioCtx.baseLatency || 0)) * playbackRate;
@@ -10398,7 +10399,7 @@ function updateFretboard(vtDisp, warp) {
 }
 function redrawFretboard() {
   drawFretboard();
-  if (fretboardOn) updateFretboard(playheadDisplay(audioTime()));
+  if (fretboardOn) updateFretboard(playheadDisplay(heardTime()));
 }
 document.getElementById('showFretboard')?.addEventListener('change', e => {
   fretboardOn = e.target.checked;
@@ -10431,7 +10432,7 @@ document.getElementById('fretboard')?.addEventListener('click', e => {
 // --- Pista 3D (web/highway3d.js, three.js loaded on first use) ---------------------------------
 // Same clock as the score: each note at warp(previewScale(t)) — so pending
 // tempo/anchor edits move it here too, live — and the playhead at
-// playheadDisplay(audioTime()). The highway draws; it knows nothing about sync.
+// playheadDisplay(heardTime()). The highway draws; it knows nothing about sync.
 let hw3dOn = false;
 try { hw3dOn = localStorage.getItem('rf-hw3d') === '1'; } catch { /* storage blocked: off */ }
 let hw3dLastSong = null;
@@ -10451,7 +10452,7 @@ function hw3dShowCamera(cam) {
   try { localStorage.setItem('rf-hw3d-cam', JSON.stringify(hw3dCamera())); } catch { /* not remembered */ }
 }
 try { hw3dShowCamera(JSON.parse(localStorage.getItem('rf-hw3d-cam') || '{}') || {}); } catch { /* defaults */ }
-function hw3dNow() { return { t: playheadDisplay(audioTime()), playing: audioIsPlaying() }; }
+function hw3dNow() { return { t: playheadDisplay(heardTime()), playing: audioIsPlaying() }; }
 // A bend's curve in the display clock, as seconds after the note's own displayed attack. A note
 // whose bend was edited and not rebuilt has no curve of its own (or one of another bend): the
 // highway then draws a plain bend, rising to its peak at the note's end.
@@ -10726,6 +10727,15 @@ function audioTime() {
   return au ? au.currentTime : 0;
 }
 
+// Where the listener IS while playing: the sound the engine is rendering now
+// reaches the speakers after the output latency, so the cursor, the lit notes
+// and the 3D highway drawn on audioTime() ran that much ahead of what was heard
+// (BUG-0351). The ticks stay on audioTime(): they go through the same output.
+function heardTime() {
+  const t = audioTime();
+  return playBuffer && playing ? Math.max(playStartOffset, t - tapLatency()) : t;
+}
+
 function audioIsPlaying() {
   if (playBuffer) return playing;
   const au = document.getElementById('syncAudio');
@@ -10817,7 +10827,7 @@ function audioPlay() {
 function audioPause() {
   if (playBuffer) {
     if (!playing) return;
-    pausedAt = audioTime();   // capture position before fading/stopping the source
+    pausedAt = heardTime();   // stop where it was heard, before fading/stopping the source
     stopMusicSource();
     playing = false;
   } else {
@@ -11007,7 +11017,7 @@ function updatePlayBtn() {
 
 function updateTransportUI() {
   const bar = document.getElementById('seekBar'), lbl = document.getElementById('timeLabel');
-  const dur = audioDuration(), t = audioTime();
+  const dur = audioDuration(), t = heardTime();
   if (bar) {
     bar.max = dur || 0;
     if (!seekDragging) bar.value = Math.min(t, dur || t);
@@ -11079,7 +11089,8 @@ function syncFrame() {
   if (loopOn && audioIsPlaying() && loopB != null && audioTime() >= loopB) keepInsideLoop();
   // Playhead tracks the audio (and thus the waveform). It stays in audio
   // coordinates; tempo preview moves the notes over it, not the other way.
-  const vtDisp = playheadDisplay(audioTime());  // bundle time (for tick compare)
+  const vtDisp = playheadDisplay(heardTime());  // bundle time, as heard (cursor, lit notes)
+  const vtAudio = playheadDisplay(audioTime());  // as rendered: a tick sounds through the same output
   currentPlayheadT = vtDisp - viewOrigin;  // recording-time offset; used by showArr + tap-sync
   const x = timeToX(vtDisp);  // recording-time x — cursor sits at 0 when audio is at 0
   // Keep the view aligned with the music while playing — the waveform/notes
@@ -11107,7 +11118,7 @@ function syncFrame() {
   // noise. Past the cap the notes are skipped (tickIdx still advances) so the
   // tick stays in sync instead of machine-gunning the backlog.
   let sounded = 0;
-  while (tickIdx < notes.length && warp(previewScale(notes[tickIdx].time)) <= vtDisp) {
+  while (tickIdx < notes.length && warp(previewScale(notes[tickIdx].time)) <= vtAudio) {
     if (tickOn && sounded < MAX_TICKS_PER_FRAME) {
       const note = notes[tickIdx];
       if (note.string >= 0 && note.string < stringCount(arrNow) && note.fret >= 0) {
@@ -11338,7 +11349,7 @@ function setTrackStart(v) {
 
   fromCursor.addEventListener('click', () => {
     if (!isGpJob()) return;
-    const t = audioTime();
+    const t = heardTime();
     setTrackStart(t);
     info.textContent = T('Início desta pista fixado na posição do cursor: {s}s.', { s: t.toFixed(2) });
     toast(T('Início = posição do cursor'), 'ok');

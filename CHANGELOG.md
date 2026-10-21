@@ -8,6 +8,7 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ### Correções
 
+- **Partitura, braço e pista 3D a tocar adiantados:** durante a reprodução, o cursor e as notas acesas iam à frente do que se ouve, pelo atraso da saída de som do computador (dezenas de milissegundos com colunas ou auscultadores com fio, algumas centenas com Bluetooth). Uma pista certa parecia ter as notas adiantadas, e acertá-la a olho deixava-a atrasada no jogo. Agora o que se vê acompanha o que se ouve; a pausa para onde se estava a ouvir.
 - **Braço da guitarra:** clicar numa nota da partitura acende só essa nota no braço. Antes, a nota anterior também ficava acesa quando as duas estavam a menos de 0,16 s uma da outra (uma nota curta ficava acesa esse tempo mínimo, mesmo depois de a seguinte começar).
 - **Tabs do Songsterr — passo 3:** depois de importar uma tab do Songsterr, escolher outro ficheiro no passo 1 (um GP teu ou um PDF) já não leva consigo os tempos dessa tab, do vídeo nem o áudio dele. Se ir buscar os vídeos ao Songsterr falhar, o assistente diz que falhou (em vez de dizer que não há vídeos) e deixa tentar de novo em «Procurar vídeos». Uma transferência do áudio do vídeo que acabe depois de escolheres o andamento da tab já não passa a ser a gravação. Uma mudança de andamento numa posição do compasso que o RockForge não sabe ler passa a ser avisada.
 

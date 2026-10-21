@@ -2308,6 +2308,24 @@ timeline. The `<audio>` element survives only as a decode-failure fallback
 (`playBuffer === null`), where seeking is codec-imprecise again. Don't revert
 playback to the `<audio>` element's `currentTime`/seek.
 
+**What is drawn follows what is HEARD (`heardTime`, BUG-0351).** The sample
+the engine renders at `audioCtx.currentTime` reaches the speakers after
+`outputLatency + baseLatency` (tens of ms wired, a few hundred over
+Bluetooth), so a cursor drawn on `audioTime()` ran that much ahead of the
+sound and the notes looked early against a chart that was in time ("as notas
+chegam milissegundos antes", on a Songsterr video's times the build places to
+the millisecond) — and syncing by eye would have moved them late in game.
+`heardTime()` = `audioTime()` minus that latency (× playback rate, never
+before where the source started) while playing: the playhead, the scroll,
+`currentPlayheadT` ("= cursor" tools), the lit fretboard notes, the live BPM,
+the time label, "Início = cursor", the 3D highway's clock and the pause
+position read it. The note ticks stay on `audioTime()` (`vtAudio` in
+`syncFrame`): they are scheduled through the same output, so they already
+sound with the music; the taps keep subtracting `tapLatency()` themselves.
+Browser-only; verified with Playwright with a latency of 210 ms injected:
+audio 11.01 s, cursor/fretboard/highway at 10.80 s, pause at 10.80 s, PT/EN,
+no page errors.
+
 ### Lyrics formats (`infrastructure/rsxml/vocals.py`)
 
 `parse_lyrics` auto-detects **LRC** (`[mm:ss.xx]` lines) vs **UltraStar/USDX
@@ -2915,7 +2933,7 @@ real GPU from here.
 **It knows nothing about sync — it reads the score's own clock.** `hw3dRefresh`
 (called from `showArr`, so on every pending edit) hands it each note at
 `warp(previewScale(t))` — the score's merged notes, pending note edits
-included — and `getNow()` answers `playheadDisplay(audioTime())`; so pending
+included — and `getNow()` answers `playheadDisplay(heardTime())`; so pending
 tempo/anchor corrections move the highway live, exactly as the score
 (verified: a +10 % tempo moved note 100 from 41.096 s to 45.006 s, where the
 score draws it). The whole song is JSON-compared before a `setSong`, since
