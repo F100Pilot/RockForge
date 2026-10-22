@@ -17706,6 +17706,54 @@
           "note": "commit ac46f8b0f2"
         }
       ]
+    },
+    {
+      "id": "BUG-0354",
+      "title": "The song start field cannot be typed into: each key applies the value and the field rewrites itself",
+      "detected": "2026-10-22",
+      "reported_by": "the maintainer (\"é muito difícil alterar o valor numérico do tempo de início da primeira nota\")",
+      "found_in_version": "0.11.1-beta.4",
+      "found_in_build": "pending",
+      "module": "viewer",
+      "description": "The Início field in Partitura → Sincronização applied the value on every input event; the redraw that followed rewrote the field with three decimals a frame later, so typing a number turned into a different one under the cursor.",
+      "steps": [
+        "Open a built GP project, Partitura → Sincronização",
+        "Click the Início field and type 2,5"
+      ],
+      "expected": "The typed value stays until it is confirmed, and the first note moves there.",
+      "observed": "The field changed as each key was typed (\"2\" became \"2.000\"), so the value could not be written.",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Verified",
+      "root_cause": "web/app.js wired #syncOffset on 'input' to setTrackStart, and updateSyncOffsetDisplay (from showArr) wrote toFixed(3) into the field even while it had the focus; type=number also refused a comma.",
+      "fixes": [
+        "FIX-0352"
+      ],
+      "verified_by": "the developer (Playwright)",
+      "verification": "manual: Playwright on a local server, PT 1440 px and EN 760 px",
+      "evidence": [
+        "2026-10-22: '2,5' typed stays '2,5' until Enter, then the first note sits at 2.5 s; '0:03.1' → 3.1 s; ↑ 3.11, Shift+↑ 3.21, Alt+↓ 3.209; 'abc' toasts and restores; Esc restores; blur commits 4.25; Ctrl+Z back; no page errors",
+        "2026-10-22: full pytest suite green, ESLint clean"
+      ],
+      "resolved": "2026-10-22",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-22",
+          "status": "Open",
+          "note": "reported in conversation"
+        },
+        {
+          "date": "2026-10-22",
+          "status": "Fixed",
+          "note": "commit 7fbce26826"
+        },
+        {
+          "date": "2026-10-22",
+          "status": "Verified",
+          "note": "Playwright 2026-10-22"
+        }
+      ]
     }
   ]
 }

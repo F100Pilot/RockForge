@@ -1529,3 +1529,47 @@ A chart whose bars the build places exactly on a Songsterr video's times looked 
 - 2026-10-21 — Open: reported in conversation
 - 2026-10-21 — Fixed: commit c4e7bba3a4
 - 2026-10-21 — Verified: Playwright 2026-10-21
+
+## BUG-0354
+
+**The song start field cannot be typed into: each key applies the value and the field rewrites itself**
+
+| | |
+|---|---|
+| Detected | 2026-10-22 |
+| Reported by | the maintainer ("é muito difícil alterar o valor numérico do tempo de início da primeira nota") |
+| Found in | 0.11.1-beta.4 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Verified |
+
+The Início field in Partitura → Sincronização applied the value on every input event; the redraw that followed rewrote the field with three decimals a frame later, so typing a number turned into a different one under the cursor.
+
+**Steps to reproduce:** 
+
+1. Open a built GP project, Partitura → Sincronização
+2. Click the Início field and type 2,5
+
+**Expected:** The typed value stays until it is confirmed, and the first note moves there.
+
+**Observed:** The field changed as each key was typed ("2" became "2.000"), so the value could not be written.
+
+**Root cause:** web/app.js wired #syncOffset on 'input' to setTrackStart, and updateSyncOffsetDisplay (from showArr) wrote toFixed(3) into the field even while it had the focus; type=number also refused a comma.
+
+**Fixes:** [FIX-0352](../FIX_LOG.md#fix-0352) (unreleased)
+
+**Verified:** manual: Playwright on a local server, PT 1440 px and EN 760 px (by the developer (Playwright))
+
+**Resolved:** 2026-10-22 · **Closed:** _pending_
+
+**Evidence:**
+
+- 2026-10-22: '2,5' typed stays '2,5' until Enter, then the first note sits at 2.5 s; '0:03.1' → 3.1 s; ↑ 3.11, Shift+↑ 3.21, Alt+↓ 3.209; 'abc' toasts and restores; Esc restores; blur commits 4.25; Ctrl+Z back; no page errors
+- 2026-10-22: full pytest suite green, ESLint clean
+
+**History:**
+
+- 2026-10-22 — Open: reported in conversation
+- 2026-10-22 — Fixed: commit 7fbce26826
+- 2026-10-22 — Verified: Playwright 2026-10-22

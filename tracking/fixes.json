@@ -8836,6 +8836,32 @@
       "test_result": "passed",
       "regression_risk": "Low: changes only which track a Songsterr tab's lyrics are timed on, and only when a vocal part exists that the text did not come in.",
       "validation": "automated"
+    },
+    {
+      "id": "FIX-0352",
+      "bugs": [
+        "BUG-0354"
+      ],
+      "date": "2026-10-22",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "web/app.js wired #syncOffset on 'input' to setTrackStart, and updateSyncOffsetDisplay (from showArr) wrote toFixed(3) into the field even while it had the focus; type=number also refused a comma.",
+      "solution": "The field is a text input committed on Enter or blur (wireOffsetField); parseSeconds reads a comma or a dot and m:ss; arrow keys step 0.01/0.1/0.001 s; Esc restores; an invalid value toasts and restores; writeOffsetField never rewrites the field while it has the focus.",
+      "components": [
+        "web/app.js",
+        "web/index.html",
+        "web/i18n-en.js"
+      ],
+      "commits": [
+        "7fbce26826ab9243ce8d704b9a9579627693145f"
+      ],
+      "version": "unreleased",
+      "tests": [],
+      "manual_checks": [
+        "Playwright on a local server (PT 1440 px / EN 760 px): typing, m:ss, arrows, Esc, invalid value, blur, Ctrl+Z, no page errors"
+      ],
+      "test_result": "not run",
+      "regression_risk": "Low: only the Início field's input handling changed; the slider, '= cursor' and the guided detection still go through setTrackStart.",
+      "validation": "manual"
     }
   ]
 }

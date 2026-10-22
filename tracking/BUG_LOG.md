@@ -6,7 +6,7 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 
 | Fixed | Verified | Closed |
 |---|---|---|
-| 87 | 52 | 214 |
+| 87 | 53 | 214 |
 
 | ID | Title | Module | Severity | Priority | Status | Found in | Fixed in |
 |---|---|---|---|---|---|---|---|
@@ -363,3 +363,4 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0351](bugs/viewer.md#bug-0351) | The cursor and lit notes run ahead of the sound during playback, by the output latency | viewer | Medium | P2 | Verified | 0.11.1-beta.2 | 0.11.1-beta.3 |
 | [BUG-0352](bugs/lyrics.md#bug-0352) | Lyrics of a Songsterr tab land later and later: a grace note in the vocal line gets no syllable | lyrics | Medium | P2 | Verified | 0.11.1-beta.3 | 0.11.1-beta.4 |
 | [BUG-0353](bugs/lyrics.md#bug-0353) | Lyrics of a Songsterr tab follow the guitar's notes when the text comes in the guitar's part | lyrics | Medium | P2 | Fixed | 0.11.1-beta.4 | — |
+| [BUG-0354](bugs/viewer.md#bug-0354) | The song start field cannot be typed into: each key applies the value and the field rewrites itself | viewer | Medium | P2 | Verified | 0.11.1-beta.4 | — |

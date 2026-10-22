@@ -357,6 +357,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0349](#fix-0349) | BUG-0351 | 0.11.1-beta.3 | not run | manual |
 | [FIX-0350](#fix-0350) | BUG-0352 | 0.11.1-beta.4 | passed | automated |
 | [FIX-0351](#fix-0351) | BUG-0353 | unreleased | passed | automated |
+| [FIX-0352](#fix-0352) | BUG-0354 | unreleased | not run | manual |
 
 ## FIX-0001
 
@@ -7728,3 +7729,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | passed |
 | Validation | automated |
 | Regression risk | Low: changes only which track a Songsterr tab's lyrics are timed on, and only when a vocal part exists that the text did not come in. |
+
+## FIX-0352
+
+**Bugs:** [BUG-0354](bugs/viewer.md#bug-0354)
+
+**Root cause:** web/app.js wired #syncOffset on 'input' to setTrackStart, and updateSyncOffsetDisplay (from showArr) wrote toFixed(3) into the field even while it had the focus; type=number also refused a comma.
+
+**Solution:** The field is a text input committed on Enter or blur (wireOffsetField); parseSeconds reads a comma or a dot and m:ss; arrow keys step 0.01/0.1/0.001 s; Esc restores; an invalid value toasts and restores; writeOffsetField never rewrites the field while it has the focus.
+
+| | |
+|---|---|
+| Date | 2026-10-22 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 7fbce26826ab9243ce8d704b9a9579627693145f |
+| Components | web/app.js; web/index.html; web/i18n-en.js |
+| Tests | — |
+| Manual checks | Playwright on a local server (PT 1440 px / EN 760 px): typing, m:ss, arrows, Esc, invalid value, blur, Ctrl+Z, no page errors |
+| Test result | not run |
+| Validation | manual |
+| Regression risk | Low: only the Início field's input handling changed; the slider, '= cursor' and the guided detection still go through setTrackStart. |
