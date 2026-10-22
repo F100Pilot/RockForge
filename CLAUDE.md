@@ -2481,6 +2481,24 @@ line is not known from here (its import warnings would have said "N nota(s) de
 ornamento (grace) não incluídas") — it is the one difference from the
 reference found by reading it.
 
+**A tied note in the vocal line takes NO syllable** (BUG-0355, 2026-10-22, the
+user's own Songsterr project "Just an ordinary man": its one 1993-character
+lyric line splits into 509 syllable slots, its vocal line has 581 beats with
+notes, 72 of them only tie destinations — 509 untied notes, exactly one per
+syllable). Both parsers counted the tied beats, so every tie moved each later
+syllable one note off; with no line break to start again from, the words ended
+33 s away from their notes, and "Voz (sintetizada)" drifted with them. A beat
+whose notes are all ties now extends the previous lyric note's `end` instead
+(`parser._lyric_notes`: `NoteType.tie`; `gpif_parser._lyric_notes`:
+`_tie_destination`). This departs from the alphaTab reading the grace note fix
+cited (applyLyrics skips only rests); the user's tab is the evidence, and
+Songsterr's own score matches it. Guarded by
+`test_a_tied_note_in_the_vocal_line_takes_no_syllable` and
+`test_gp7_a_tied_beat_in_the_vocal_line_takes_no_syllable` (both
+mutation-checked); on the user's file all 489 syllables sit on a vocal attack.
+A project built before keeps its stored rows: "Voltar à letra da pauta" +
+rebuild reads the file again.
+
 **The vocal line also gives each syllable its length and the lyric its
 phrases.** "O GP5 também tinha uma track de Voz, mas unicamente com a letra —
 como podes aproveitá-la?": the syllables already rode its notes, but the rest

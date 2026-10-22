@@ -279,6 +279,34 @@ def test_a_tempo_change_at_a_position_that_cannot_be_read_is_said(tmp_path: Path
     assert any("não sei ler" in w or "cannot read" in w for w in report.warnings)
 
 
+def test_a_tied_note_in_the_vocal_line_takes_no_syllable(tmp_path: Path) -> None:
+    """A tied note is held, not sung again: Songsterr gives it no syllable (the
+    user's tab has 509 syllables for 509 untied notes and 72 tied ones). Each
+    tie handed a syllable put every later word a note further off, by tens of
+    seconds at the end of a song whose lyric is one long line."""
+    from rockforge.infrastructure.rsxml.vocals import distribute_syllables
+
+    beats = [
+        {"type": 4, "notes": [{"string": 0, "fret": 2}]},
+        {"type": 4, "notes": [{"string": 0, "fret": 2, "tie": True}]},
+        {"type": 4, "notes": [{"string": 0, "fret": 5}]},
+        {"type": 4, "notes": [{"string": 0, "fret": 4}]},
+    ]
+    vocals = {"name": "Voz", "tuning": [64],
+              "measures": [{"signature": [4, 4], "voices": [{"beats": beats}]}],
+              "newLyrics": [{"text": "one two three", "offset": 0}]}
+    dst, _ = _write(tmp_path, [_lead(), vocals])
+    parsed = parse_gp_track(dst, 0)
+    notes = parsed.lyric_notes
+    assert [(round(n.time, 3), round(n.end, 3)) for n in notes] == [
+        (0.0, 1.0), (1.0, 1.5), (1.5, 2.0)]  # 120 BPM: the first note held over two beats
+    events = distribute_syllables(
+        [(line.time, line.text) for line in parsed.lyrics],
+        [n.time for n in notes], ends=[n.end for n in notes])
+    assert [(round(e.time, 3), e.lyric.rstrip("+")) for e in events] == [
+        (0.0, "one"), (1.0, "two"), (1.5, "three")]
+
+
 def test_a_grace_note_in_the_vocal_line_takes_its_own_syllable(tmp_path: Path) -> None:
     """Songsterr (and Guitar Pro) hand a syllable to every beat of the lyrics'
     track that is not a rest — a grace note too. Dropped, every syllable after

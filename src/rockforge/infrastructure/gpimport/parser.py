@@ -694,14 +694,15 @@ def parse_gp_track(
 
 
 def _lyric_notes(song: Any, t: Callable[[int], float]) -> tuple[LyricNote, ...] | None:
-    """Every note-bearing beat in the first voice of the lyrics' track.
+    """Every note-bearing, untied beat in the first voice of the lyrics' track.
 
     GP3-5 store the lyrics once per song with the (1-based) track they are
     sung on — ``trackChoice``, 0 meaning none — and Guitar Pro hands one
     syllable to each beat of that track that is not a rest (alphaTab's
     ``Track.applyLyrics`` does the same). Ticks are song-wide, so the charted
     track's own clock ``t`` times them. The pitch is the beat's highest note
-    (string tuning + fret) — a vocal line is one note at a time."""
+    (string tuning + fret) — a vocal line is one note at a time. A beat whose
+    notes are all tied holds the previous note and takes no syllable."""
     index = int(getattr(song.lyrics, "trackChoice", 0) or 0) - 1
     if not 0 <= index < len(song.tracks):
         return None
@@ -715,6 +716,15 @@ def _lyric_notes(song: Any, t: Callable[[int], float]) -> tuple[LyricNote, ...] 
         tick = measure.start
         for beat in measure.voices[0].beats:
             length = beat.duration.time
+            if beat.notes and out and all(
+                getattr(n.type, "name", "") == "tie" for n in beat.notes
+            ):
+                # A tied beat holds the note before it: it is not sung again,
+                # so it takes no syllable (the Songsterr tab that showed it has
+                # exactly one syllable per untied note) — the held note lasts.
+                out[-1] = replace(out[-1], end=t(tick + length))
+                tick += length
+                continue
             if beat.notes:
                 pitches = [
                     tuning[n.string] + n.value for n in beat.notes if n.string in tuning

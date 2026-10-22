@@ -8,6 +8,7 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ### Correções
 
+- **Letra cada vez mais desfasada (tabs do Songsterr e ficheiros GP):** uma nota ligada (prolongada) da linha da voz recebia uma sílaba, e cada ligadura empurrava todas as palavras seguintes uma nota. Numa letra escrita como uma só linha, sem pontos onde recomeçar, as palavras acabavam dezenas de segundos fora do sítio, e a "Voz (sintetizada)" com elas. Agora uma nota ligada não recebe sílaba, como no Songsterr. Num projeto já criado: página Letra → **Voltar à letra da pauta** e depois **Aplicar e reconstruir**.
 - **Início da música (Partitura → Sincronização):** o valor pode ser escrito diretamente. Antes, cada tecla aplicava o número e o campo reescrevia-se logo, por isso era quase impossível escrever um valor. Agora escreves o segundo (com vírgula ou ponto, ou em minutos, 1:02.5) e carregas Enter. ↑/↓ acertam 0,01 s (Shift 0,1 s, Alt 0,001 s) e Esc desiste.
 - **Letra das tabs do Songsterr presa às notas da guitarra:** o Songsterr mostra a letra por cima de todas as pistas, por isso o texto pode vir na pista da guitarra. Quando vinha, as sílabas seguiam as notas da guitarra em vez das da voz e ficavam à espera sempre que a guitarra parava, o que atrasava a letra. Agora seguem a pista de voz sempre que a tab tem uma, e o aviso da importação diz quando isto acontece. Um projeto já criado guarda o ficheiro antigo: importa a tab outra vez, num projeto novo.
 

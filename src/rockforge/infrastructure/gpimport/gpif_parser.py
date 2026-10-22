@@ -848,6 +848,11 @@ def parse_gpif_track(
     )
 
 
+def _tie_destination(note: ET.Element | None) -> bool:
+    tie = note.find("Tie") if note is not None else None
+    return tie is not None and tie.get("destination") == "true"
+
+
 def _lyric_notes(
     slot: int,
     tuning: tuple[int, ...],
@@ -862,7 +867,9 @@ def _lyric_notes(
 ) -> tuple[LyricNote, ...] | None:
     """Every note-bearing beat in the first voice of the lyrics' track — the
     attacks Guitar Pro hands the syllables to, one each (a beat with no
-    ``<Notes>`` is a rest). Same walk as the chart loop, on another track."""
+    ``<Notes>`` is a rest, one whose notes are all tie destinations holds the
+    note before and takes none). Same walk as the chart loop, on another track."""
+
     out: list[LyricNote] = []
     rest = False
     for mb_index, mb in enumerate(master_bars):
@@ -915,6 +922,11 @@ def _lyric_notes(
                     main += g_dur
                 graces = []
             note_ids = _text(beat.find("Notes")).split()
+            if note_ids and out and all(_tie_destination(notes_map.get(n)) for n in note_ids):
+                # Held from the note before: not sung again, no syllable.
+                out[-1] = dataclasses.replace(out[-1], end=t(tick + length))
+                tick += length
+                continue
             if note_ids:
                 out.append(LyricNote(
                     time=t(main), end=t(tick + length),

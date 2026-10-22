@@ -780,6 +780,28 @@ def test_gp7_a_grace_beat_in_the_vocal_line_takes_a_syllable(tmp_path: Path) -> 
     ]
 
 
+def test_gp7_a_tied_beat_in_the_vocal_line_takes_no_syllable(tmp_path: Path) -> None:
+    """A beat whose notes are all tie destinations holds the note before: it
+    takes no syllable, and the held note lasts through it."""
+    gpif = GPIF_VOCALS.replace(
+        '<Beat id="7"><Rhythm ref="2"/><Notes>1</Notes></Beat>',
+        '<Beat id="7"><Rhythm ref="2"/><Notes>2</Notes></Beat>',
+    ).replace(
+        "  </Notes>",
+        '    <Note id="2"><Tie origin="false" destination="true"/><Properties>\n'
+        '      <Property name="String"><String>5</String></Property>\n'
+        '      <Property name="Fret"><Fret>5</Fret></Property>\n'
+        "    </Properties></Note>\n  </Notes>",
+    )
+    path = tmp_path / "tie.gp"
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("VERSION", "7.0")
+        z.writestr("Content/score.gpif", gpif)
+    parsed = parse_gp_track(path, 0)
+    assert parsed.lyric_notes is not None
+    assert [(n.time, n.end) for n in parsed.lyric_notes] == [(0.0, 0.25), (0.5, 2.25)]
+
+
 def test_gp7_grid_closes_the_last_bar_so_a_late_eighth_fits(tmp_path: Path) -> None:
     gpif = GPIF_VOCALS.replace(
         '<Voice id="0"><Beats>0 1 2 3</Beats></Voice>',
