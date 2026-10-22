@@ -4237,6 +4237,16 @@ six-string chord sounded only three strings: it now counts attacks (notes
 within `CHORD_TICK_S`, 30 ms, are one). Browser-only; verified with Playwright
 at 4× throttling on an invented project of held chords: worst frame 50 → 19 ms
 with 6 voices instead of 3, no page errors.
+**Ticks are scheduled ahead, at their exact instant** (the user still felt some
+lag): started "now" when a frame noticed the note had passed, every tick
+sounded up to a frame late (measured median 19 ms, max 32 ms at 4×). `syncFrame`
+now schedules notes up to `TICK_AHEAD_S` (0.12 s, × rate) ahead at
+`ctx.currentTime + (at - vtAudio) / playbackRate` (`playNote(..., when)`); the
+backlog cap applies only to OVERDUE notes; `scheduledTicks` not yet started are
+stopped by `cancelScheduledTicks` on pause, `stopPlayback` and every
+`syncResetPointer` (seek, redraw), which then schedules them again. Measured:
+0 ms late (12 ms on the very first note after Play at 4×); a pause or a seek
+leaves no tick behind. The `<audio>` fallback keeps "now".
 
 **On-score tone identification.** The active tone is shown on the tab viewer: an
 amber 🎸 label per tone change (plus the base tone at the start,

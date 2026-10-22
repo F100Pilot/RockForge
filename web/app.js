@@ -10403,6 +10403,7 @@ function voiceNote(ctx, dest, hz, t0, dur, peak, char) {  // dest kept for signa
   // tone) is a dry note tick straight out — no cabinet, no distortion.
   lvl.connect(char ? getCabinet(ctx).input : ctx.destination);
   src.start(t0); src.stop(t0 + dur + 0.05);
+  return src;
 }
 
 // Per-note "tick": a short plucked-string tone AT THE NOTE'S REAL PITCH, shaped
@@ -10410,10 +10411,24 @@ function voiceNote(ctx, dest, hz, t0, dur, peak, char) {  // dest kept for signa
 // the Notas slider (0-200%).
 // `sustain` is the note's held time as drawn (seconds); a held note sounds
 // for that long instead of as a pick.
-function playNote(midi, chartTime, sustain = 0) {
-  if (!audioCtx || midi == null) return;
-  voiceNote(audioCtx, audioCtx.destination, midiToHz(midi), audioCtx.currentTime,
+// `when` (audio-context time) schedules it ahead; without it, it sounds now.
+function playNote(midi, chartTime, sustain = 0, when = null) {
+  if (!audioCtx || midi == null) return null;
+  return voiceNote(audioCtx, audioCtx.destination, midiToHz(midi), when ?? audioCtx.currentTime,
     noteSoundLength(sustain), Math.max(0.0001, tickGain * 0.6), toneCharForNote(chartTime));
+}
+
+// The ticks are scheduled a little AHEAD, each at the exact instant of the
+// recording it belongs to. Started "now" when a frame noticed the note had
+// passed, every tick sounded up to a frame late (more when a frame was late),
+// so chords trailed the music. Scheduled ones not yet started are cancelled
+// on pause, seek and any reset of the tick pointer (they are scheduled again).
+const TICK_AHEAD_S = 0.12;
+let scheduledTicks = [];  // [source, audio-context start time]
+function cancelScheduledTicks() {
+  const now = audioCtx ? audioCtx.currentTime : 0;
+  for (const [src, at] of scheduledTicks) if (at > now) { try { src.stop(); } catch { /* already stopped */ } }
+  scheduledTicks = [];
 }
 
 // What a note of the chart sounds as in the tick: its MIDI pitch and how long
@@ -11165,6 +11180,7 @@ function audioPause() {
     if (!playing) return;
     pausedAt = heardTime();   // stop where it was heard, before fading/stopping the source
     stopMusicSource();
+    cancelScheduledTicks();
     playing = false;
   } else {
     const au = document.getElementById('syncAudio');
@@ -11306,6 +11322,7 @@ document.getElementById('loopClear').addEventListener('click', () => clearLoop()
 // Hard stop used on job switch / detail close — no UI resume implied.
 function stopPlayback() {
   stopMusicSource();
+  cancelScheduledTicks();
   playing = false;
   const au = document.getElementById('syncAudio');
   if (au) { try { au.pause(); } catch {} }
@@ -11415,6 +11432,7 @@ function syncResetPointer() {
   const vt = playheadDisplay(audioTime());
   const notes = soundingNotes(arrangements[currentArr]);
   const warp = buildTimeWarp(syncAnchors);
+  cancelScheduledTicks();
   tickIdx = notes.findIndex(n => warp(previewScale(n.time)) >= vt);
   if (tickIdx < 0) tickIdx = notes.length;
   // A seek (or the cursor placed before Play) starts making the notes there.
@@ -11457,15 +11475,24 @@ function syncFrame() {
   // tick stays in sync instead of machine-gunning the backlog.
   // The cap counts ATTACKS, not notes: the strings of one chord are one tick
   // (counting notes, a six-string chord sounded only its first three strings).
+  // It only limits notes already OVERDUE; a note still ahead gets its own
+  // instant, so it is always scheduled.
+  const ahead = playBuffer && playing ? TICK_AHEAD_S * playbackRate : 0;
+  const ctxNow = audioCtx ? audioCtx.currentTime : 0;
+  if (scheduledTicks.length) scheduledTicks = scheduledTicks.filter(([, at]) => at > ctxNow);
   let sounded = 0, groupAt = null;
-  while (tickIdx < notes.length && warp(previewScale(notes[tickIdx].time)) <= vtAudio) {
+  while (tickIdx < notes.length && warp(previewScale(notes[tickIdx].time)) <= vtAudio + ahead) {
     const note = notes[tickIdx];
+    const at = warp(previewScale(note.time));
+    const overdue = at <= vtAudio;
     const inGroup = groupAt != null && Math.abs(note.time - groupAt) <= CHORD_TICK_S;
-    if (tickOn && (inGroup || sounded < MAX_TICKS_PER_FRAME)) {
+    if (tickOn && (!overdue || inGroup || sounded < MAX_TICKS_PER_FRAME)) {
       const snd = tickSound(arrNow, note, warp);
       if (snd) {
-        playNote(snd.midi, note.time, snd.held);
-        if (!inGroup) { sounded++; groupAt = note.time; }
+        const when = overdue ? null : ctxNow + (at - vtAudio) / playbackRate;
+        const src = playNote(snd.midi, note.time, snd.held, when);
+        if (src && when != null) scheduledTicks.push([src, when]);
+        if (overdue && !inGroup) { sounded++; groupAt = note.time; }
       }
     }
     tickIdx++;
