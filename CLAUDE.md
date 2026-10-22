@@ -2045,6 +2045,11 @@ restores; `writeOffsetField` never rewrites it while focused. Browser-only;
 verified with Playwright (PT 1440 / EN 760 px): "2,5" typed stays "2,5" until
 Enter, then the first note sits at 2.5 s; m:ss, the arrows, Esc, an invalid
 value, blur and Ctrl+Z, no page errors.
+**−/+ beside it** (`#syncOffsetDown`/`#syncOffsetUp`, BUG-0357: the number
+field's own spinner was the fine adjustment, lost with `type="text"`): 1 ms a
+click (Shift 10 ms, Alt 100 ms), repeating while held; the field is
+`flex:1 1 4.5rem` (max 6.5rem) so "= cursor" stays inside the card. Verified
+with Playwright (PT 1440/1000, EN 760 px).
 
 **Every time a user types is to the millisecond** ("Quero que os ajustes
 alcancem até aos ms", 2026-10-20): the Início field and slider, the correction

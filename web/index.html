@@ -769,6 +769,8 @@ button.pv-primary:hover { background:var(--accent); filter:brightness(1.08); }
 .pv-card .syncctrls { gap:.5rem; }
 .pv-row { display:flex; align-items:center; gap:.5rem; }
 .pv-row input[type=number] { width:6.5rem; font-size:1rem; }
+.pv-row #syncOffset { flex:1 1 4.5rem; width:auto; min-width:3.5rem; max-width:6.5rem; font-size:1rem; }
+#offsetFromCursor { white-space:nowrap; }
 .pv-card input[type=range] { width:100%; }
 button.pv-wide { display:flex; align-items:center; justify-content:center; gap:.45rem; width:100%; }
 .pv-more > summary { cursor:pointer; list-style:none; display:flex; align-items:center; justify-content:space-between;
@@ -1302,7 +1304,9 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                   <button class="info-btn" data-info="sync-offset">ⓘ</button></div>
                 <div class="pv-card-desc">O segundo em que se ouve a 1ª nota <b>desta pista</b>.</div>
                 <div class="pv-row">
+                  <button type="button" id="syncOffsetDown" class="secondary" title="1 ms mais cedo (Shift: 10 ms · Alt: 100 ms). Mantém carregado para repetir." aria-label="1 ms mais cedo">−</button>
                   <input type="text" id="syncOffset" value="0.000" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Segundo da primeira nota" title="Escreve o segundo (ex.: 1,25 ou 1:02.5) e carrega Enter. ↑/↓ ±0,01 s · Shift ±0,1 s · Alt ±0,001 s">
+                  <button type="button" id="syncOffsetUp" class="secondary" title="1 ms mais tarde (Shift: 10 ms · Alt: 100 ms). Mantém carregado para repetir." aria-label="1 ms mais tarde">+</button>
                   <span class="meta">s</span>
                   <button type="button" id="offsetFromCursor" class="secondary">= cursor</button>
                 </div>

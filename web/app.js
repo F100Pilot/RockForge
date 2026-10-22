@@ -12571,6 +12571,30 @@ function waveformSvg(W, H, px) {
     }
   });
   el.addEventListener('blur', () => updateSyncOffsetDisplay());
+  // −/+ beside it: the fine adjustment the number field's own arrows gave
+  // before it became a text field. 1 ms a click (Shift 10 ms, Alt 100 ms);
+  // held down, it repeats.
+  const nudge = (sign, e) => {
+    const step = e.altKey ? 0.1 : e.shiftKey ? 0.01 : 0.001;
+    const base = parseSeconds(el.value);
+    el.value = String((Number.isFinite(base) ? base : 0) + sign * step);
+    commit();
+  };
+  for (const [id, sign] of [['syncOffsetDown', -1], ['syncOffsetUp', 1]]) {
+    const btn = document.getElementById(id);
+    let delay = null, rep = null;
+    const stop = () => { clearTimeout(delay); clearInterval(rep); delay = rep = null; };
+    btn.addEventListener('pointerdown', e => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      stop();
+      nudge(sign, e);
+      const mods = { altKey: e.altKey, shiftKey: e.shiftKey };
+      delay = setTimeout(() => { rep = setInterval(() => nudge(sign, mods), 60); }, 400);
+    });
+    for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) btn.addEventListener(ev, stop);
+    btn.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); nudge(sign, e); } });
+  }
 })();
 document.getElementById('syncOffsetRange').addEventListener('input', e => setTrackStart(parseFloat(e.target.value) || 0));
 

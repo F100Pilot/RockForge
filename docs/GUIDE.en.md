@@ -349,7 +349,8 @@ The steps one by one, one track at a time (at the top of the **Sync** inspector)
 The second the 1st note **of this track** is heard. Four ways:
 
 - type the value and press Enter — with a dot or a comma (1.25), or in minutes (1:02.5);
-  ↑/↓ nudge it 0.01 s (Shift 0.1 s, Alt 0.001 s), Esc gives up; or use the slider;
+  ↑/↓ nudge it 0.01 s (Shift 0.1 s, Alt 0.001 s), Esc gives up; the **−**/**+** buttons beside
+  it nudge 1 ms a click (Shift 10 ms, Alt 100 ms; hold to repeat); or use the slider;
 - put the cursor where the note sounds and press **= cursor**;
 - **Detect 1st note**: press the button, then click the waveform where the 1st note sounds,
   and finally that note;

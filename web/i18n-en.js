@@ -1627,6 +1627,10 @@
  "{n} fora do braço com a afinação da outra pista": "{n} off the neck in the other track's tuning",
  "{n} fora da música da outra pista": "{n} outside the other track's song",
  "Essas notas já estão iguais em {name} — nada a copiar.": "Those notes are already the same on {name} — nothing to copy.",
+ "1 ms mais cedo (Shift: 10 ms · Alt: 100 ms). Mantém carregado para repetir.": "1 ms earlier (Shift: 10 ms · Alt: 100 ms). Hold to repeat.",
+ "1 ms mais tarde (Shift: 10 ms · Alt: 100 ms). Mantém carregado para repetir.": "1 ms later (Shift: 10 ms · Alt: 100 ms). Hold to repeat.",
+ "1 ms mais cedo": "1 ms earlier",
+ "1 ms mais tarde": "1 ms later",
  "Escreve o segundo (ex.: 1,25 ou 1:02.5) e carrega Enter. ↑/↓ ±0,01 s · Shift ±0,1 s · Alt ±0,001 s": "Type the second (e.g. 1.25 or 1:02.5) and press Enter. ↑/↓ ±0.01 s · Shift ±0.1 s · Alt ±0.001 s",
  "Valor inválido: escreve os segundos, por exemplo 1,25.": "Invalid value: type the seconds, for example 1.25."
 };

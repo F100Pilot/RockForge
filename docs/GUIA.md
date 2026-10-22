@@ -350,7 +350,8 @@ Os passos seguintes, um a um, numa pista de cada vez (em cima, no inspetor **Sin
 O segundo em que se ouve a 1ª nota **desta pista**. Quatro maneiras:
 
 - escrever o valor e carregar Enter — com vírgula ou ponto (1,25), ou em minutos (1:02.5);
-  ↑/↓ acertam 0,01 s (Shift 0,1 s, Alt 0,001 s), Esc desiste; ou usar o deslizador;
+  ↑/↓ acertam 0,01 s (Shift 0,1 s, Alt 0,001 s), Esc desiste; os botões **−**/**+** ao lado
+  acertam 1 ms por clique (Shift 10 ms, Alt 100 ms; mantém carregado para repetir); ou usar o deslizador;
 - pôr o cursor onde a nota soa e carregar em **= cursor**;
 - **Detetar 1ª nota**: clica no botão, depois na onda onde a 1ª nota soa, e por fim nessa nota;
 - **Acertar pelos ataques**: mede os ataques da gravação (como os **Ataques da gravação**),
