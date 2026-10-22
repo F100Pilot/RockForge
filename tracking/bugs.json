@@ -17663,6 +17663,49 @@
           "note": "pytest 2026-10-21"
         }
       ]
+    },
+    {
+      "id": "BUG-0353",
+      "title": "Lyrics of a Songsterr tab follow the guitar's notes when the text comes in the guitar's part",
+      "detected": "2026-10-22",
+      "reported_by": "the maintainer (Songsterr song: the lyric still late after BUG-0352; a screenshot of Songsterr showing the words under an empty guitar staff)",
+      "found_in_version": "0.11.1-beta.4",
+      "found_in_build": "pending",
+      "module": "lyrics",
+      "description": "Songsterr shows the lyrics over every track, so the text can come in a part that does not sing it. The import bound the syllables to the first part with text; when that was a guitar, every syllable waited for a guitar note and ran late through the guitar's rests. Whether the reporter's tab carries the text in its guitar part is not known.",
+      "steps": [
+        "Import from Songsterr a tab whose guitar part carries the lyrics and whose vocal part sings them",
+        "Build it and look at where each word sits"
+      ],
+      "expected": "Each syllable on its note of the vocal line.",
+      "observed": "The syllables sit on the guitar's notes and wait out its rests: the lyric runs late.",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Fixed",
+      "root_cause": "songsterr_gp._lyrics took the first part with newLyrics as the part whose notes time the syllables, whatever instrument it was.",
+      "fixes": [
+        "FIX-0351"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [
+        "2026-10-22: test_lyrics_that_come_in_a_guitar_part_follow_the_vocal_line (text in both parts, only in the guitar's, a vocal part known only by its GM program) passes, and fails with the vocal preference removed",
+        "2026-10-22: full pytest suite green"
+      ],
+      "resolved": "2026-10-22",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-22",
+          "status": "Open",
+          "note": "reported in conversation with a Songsterr screenshot"
+        },
+        {
+          "date": "2026-10-22",
+          "status": "Fixed",
+          "note": "commit ac46f8b0f2"
+        }
+      ]
     }
   ]
 }

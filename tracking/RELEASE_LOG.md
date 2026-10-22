@@ -29,7 +29,9 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 
 - [BUG-0352](bugs/lyrics.md#bug-0352) Lyrics of a Songsterr tab land later and later: a grace note in the vocal line gets no syllable
 
-**Known bugs it carried:** —
+**Known bugs it carried:** 
+
+- [BUG-0353](bugs/lyrics.md#bug-0353) Lyrics of a Songsterr tab follow the guitar's notes when the text comes in the guitar's part (Medium, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 

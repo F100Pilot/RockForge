@@ -8811,6 +8811,31 @@
       "test_result": "passed",
       "regression_risk": "Low: Songsterr imports now carry grace notes on guitar charts too (one short note before its main note, as the GP5 importer already reads them); lyric timing changes only where a vocal line has grace notes.",
       "validation": "automated"
+    },
+    {
+      "id": "FIX-0351",
+      "bugs": [
+        "BUG-0353"
+      ],
+      "date": "2026-10-22",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "songsterr_gp._lyrics took the first part with newLyrics as the part whose notes time the syllables, whatever instrument it was.",
+      "solution": "The lyrics are bound to a vocal part (GM voice program 52/53/54/85 or a voice-like name) when the tab has one, its own text first; the import warns when the text came in another part. fetch_tab also carries the track's instrumentId into the part.",
+      "components": [
+        "src/rockforge/infrastructure/gpimport/songsterr_gp.py",
+        "src/rockforge/infrastructure/songsterr.py"
+      ],
+      "commits": [
+        "ac46f8b0f279c0efc55580234066bf691a932b31"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_songsterr_gp.py::test_lyrics_that_come_in_a_guitar_part_follow_the_vocal_line"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low: changes only which track a Songsterr tab's lyrics are timed on, and only when a vocal part exists that the text did not come in.",
+      "validation": "automated"
     }
   ]
 }

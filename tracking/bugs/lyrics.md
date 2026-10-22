@@ -1117,3 +1117,46 @@ Guitar Pro and Songsterr give every beat of the lyrics' track that is not a rest
 - 2026-10-21 — Open: reported in conversation
 - 2026-10-21 — Fixed: commit ae9cd83ae8
 - 2026-10-21 — Verified: pytest 2026-10-21
+
+## BUG-0353
+
+**Lyrics of a Songsterr tab follow the guitar's notes when the text comes in the guitar's part**
+
+| | |
+|---|---|
+| Detected | 2026-10-22 |
+| Reported by | the maintainer (Songsterr song: the lyric still late after BUG-0352; a screenshot of Songsterr showing the words under an empty guitar staff) |
+| Found in | 0.11.1-beta.4 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Fixed |
+
+Songsterr shows the lyrics over every track, so the text can come in a part that does not sing it. The import bound the syllables to the first part with text; when that was a guitar, every syllable waited for a guitar note and ran late through the guitar's rests. Whether the reporter's tab carries the text in its guitar part is not known.
+
+**Steps to reproduce:** 
+
+1. Import from Songsterr a tab whose guitar part carries the lyrics and whose vocal part sings them
+2. Build it and look at where each word sits
+
+**Expected:** Each syllable on its note of the vocal line.
+
+**Observed:** The syllables sit on the guitar's notes and wait out its rests: the lyric runs late.
+
+**Root cause:** songsterr_gp._lyrics took the first part with newLyrics as the part whose notes time the syllables, whatever instrument it was.
+
+**Fixes:** [FIX-0351](../FIX_LOG.md#fix-0351) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-10-22 · **Closed:** _pending_
+
+**Evidence:**
+
+- 2026-10-22: test_lyrics_that_come_in_a_guitar_part_follow_the_vocal_line (text in both parts, only in the guitar's, a vocal part known only by its GM program) passes, and fails with the vocal preference removed
+- 2026-10-22: full pytest suite green
+
+**History:**
+
+- 2026-10-22 — Open: reported in conversation with a Songsterr screenshot
+- 2026-10-22 — Fixed: commit ac46f8b0f2
