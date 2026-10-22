@@ -6,6 +6,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+## [0.11.1 beta 5] — 2026-10-22
+
 ### Fixes
 
 - **Chords lagging when they play on the Score:** each note's sound was made the moment it played, on the page's own thread, and a sustained chord stalled the score for tens of milliseconds — the chord came out late and the cursor jumped. The notes of the next few seconds are now made ahead, in the background, and each is scheduled at the exact instant of the recording — before, it sounded when the screen noticed the note had passed, 19 ms late on average. And a six-string chord only sounded its first three strings: now all of them sound.

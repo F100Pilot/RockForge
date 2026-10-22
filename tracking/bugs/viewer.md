@@ -1557,7 +1557,7 @@ The Início field in Partitura → Sincronização applied the value on every in
 
 **Root cause:** web/app.js wired #syncOffset on 'input' to setTrackStart, and updateSyncOffsetDisplay (from showArr) wrote toFixed(3) into the field even while it had the focus; type=number also refused a comma.
 
-**Fixes:** [FIX-0352](../FIX_LOG.md#fix-0352) (unreleased)
+**Fixes:** [FIX-0352](../FIX_LOG.md#fix-0352) (0.11.1-beta.5)
 
 **Verified:** manual: Playwright on a local server, PT 1440 px and EN 760 px (by the developer (Playwright))
 
@@ -1601,7 +1601,7 @@ Playing a project with the note tick on, each chord started late and the score s
 
 **Root cause:** web/app.js computed each tick's Karplus-Strong buffer on the main thread inside syncFrame when the note sounded (a held chord = several buffers of seconds each, cache missing on every new length), and MAX_TICKS_PER_FRAME (3) counted notes, so the rest of a chord's strings were skipped. Also: syncFrame started each tick at audioCtx.currentTime when a frame noticed the note had passed, so every tick was quantised to the frame and sounded up to a frame late (median 19 ms).
 
-**Fixes:** [FIX-0354](../FIX_LOG.md#fix-0354) (unreleased), [FIX-0356](../FIX_LOG.md#fix-0356) (unreleased)
+**Fixes:** [FIX-0354](../FIX_LOG.md#fix-0354) (0.11.1-beta.5), [FIX-0356](../FIX_LOG.md#fix-0356) (0.11.1-beta.5)
 
 **Verified:** manual: Playwright on a local server with 4x CPU throttling (by the developer (Playwright))
 
@@ -1649,7 +1649,7 @@ After the Início field became typeable, the spinner arrows that nudged it by 1 
 
 **Root cause:** FIX-0352 made #syncOffset a text field (so a value could be typed), which drops the number field's spinner — the only 1 ms nudge by mouse.
 
-**Fixes:** [FIX-0355](../FIX_LOG.md#fix-0355) (unreleased)
+**Fixes:** [FIX-0355](../FIX_LOG.md#fix-0355) (0.11.1-beta.5)
 
 **Verified:** manual: Playwright on a local server, PT 1440/1000 px and EN 760 px (by the developer (Playwright))
 

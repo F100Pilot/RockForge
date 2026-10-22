@@ -1145,7 +1145,7 @@ Songsterr shows the lyrics over every track, so the text can come in a part that
 
 **Root cause:** songsterr_gp._lyrics took the first part with newLyrics as the part whose notes time the syllables, whatever instrument it was.
 
-**Fixes:** [FIX-0351](../FIX_LOG.md#fix-0351) (unreleased)
+**Fixes:** [FIX-0351](../FIX_LOG.md#fix-0351) (0.11.1-beta.5)
 
 **Verified:** _pending_ (by _pending_)
 
@@ -1188,7 +1188,7 @@ Both parsers gave every beat of the lyrics' track that has notes a syllable, tie
 
 **Root cause:** parser._lyric_notes and gpif_parser._lyric_notes appended a lyric note for every beat with notes, including beats whose notes are all tie destinations.
 
-**Fixes:** [FIX-0353](../FIX_LOG.md#fix-0353) (unreleased)
+**Fixes:** [FIX-0353](../FIX_LOG.md#fix-0353) (0.11.1-beta.5)
 
 **Verified:** test_a_tied_note_in_the_vocal_line_takes_no_syllable and test_gp7_a_tied_beat_in_the_vocal_line_takes_no_syllable, each failing with its parser's change reverted (by the developer (pytest))
 

@@ -8828,7 +8828,7 @@
       "commits": [
         "ac46f8b0f279c0efc55580234066bf691a932b31"
       ],
-      "version": "unreleased",
+      "version": "0.11.1-beta.5",
       "tests": [
         "tests/test_songsterr_gp.py::test_lyrics_that_come_in_a_guitar_part_follow_the_vocal_line"
       ],
@@ -8854,7 +8854,7 @@
       "commits": [
         "7fbce26826ab9243ce8d704b9a9579627693145f"
       ],
-      "version": "unreleased",
+      "version": "0.11.1-beta.5",
       "tests": [],
       "manual_checks": [
         "Playwright on a local server (PT 1440 px / EN 760 px): typing, m:ss, arrows, Esc, invalid value, blur, Ctrl+Z, no page errors"
@@ -8879,7 +8879,7 @@
       "commits": [
         "c869d4c570618fa1d7dcc5d513236e8a22132f80"
       ],
-      "version": "unreleased",
+      "version": "0.11.1-beta.5",
       "tests": [
         "tests/test_songsterr_gp.py::test_a_tied_note_in_the_vocal_line_takes_no_syllable",
         "tests/test_gpif_import.py::test_gp7_a_tied_beat_in_the_vocal_line_takes_no_syllable"
@@ -8907,7 +8907,7 @@
       "commits": [
         "dbddd87656bf9820909072a5a253242e3b963f22"
       ],
-      "version": "unreleased",
+      "version": "0.11.1-beta.5",
       "tests": [],
       "manual_checks": [
         "Playwright on a local server at 4x CPU throttling: frame times and voices per chord before/after, no page errors"
@@ -8933,7 +8933,7 @@
       "commits": [
         "0ebb2710d8387b5282301ce225a2dd41c4b4a018"
       ],
-      "version": "unreleased",
+      "version": "0.11.1-beta.5",
       "tests": [],
       "manual_checks": [
         "Playwright on a local server (PT 1440/1000 px, EN 760 px): clicks, modifiers, hold-to-repeat, typing, layout, no page errors"
@@ -8957,7 +8957,7 @@
       "commits": [
         "f4734f3d8771a2a483ab7e2f77a805a93e9ed546"
       ],
-      "version": "unreleased",
+      "version": "0.11.1-beta.5",
       "tests": [],
       "manual_checks": [
         "Playwright on a local server: tick lateness before/after at 1x and 4x CPU throttling; pause/seek leave nothing scheduled; no page errors"

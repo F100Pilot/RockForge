@@ -6,6 +6,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+## [0.11.1 beta 5] — 2026-10-22
+
 ### Correções
 
 - **Acordes com atraso a tocar na Partitura:** o som de cada nota era feito no momento em que tocava, no próprio fio da página, e num acorde sustentado isso parava a pauta dezenas de milissegundos — o acorde saía atrasado e o cursor dava um salto. Agora as notas dos segundos seguintes são preparadas antes, em segundo plano, e cada uma é agendada para o instante exato da gravação — antes saía quando o ecrã reparava que a nota tinha passado, em média 19 ms depois. E um acorde de seis cordas só soava as três primeiras: agora soam todas.

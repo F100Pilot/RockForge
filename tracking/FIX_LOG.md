@@ -356,12 +356,12 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0348](#fix-0348) | BUG-0350 | 0.11.1-beta.3 | not run | manual |
 | [FIX-0349](#fix-0349) | BUG-0351 | 0.11.1-beta.3 | not run | manual |
 | [FIX-0350](#fix-0350) | BUG-0352 | 0.11.1-beta.4 | passed | automated |
-| [FIX-0351](#fix-0351) | BUG-0353 | unreleased | passed | automated |
-| [FIX-0352](#fix-0352) | BUG-0354 | unreleased | not run | manual |
-| [FIX-0353](#fix-0353) | BUG-0355 | unreleased | passed | automated |
-| [FIX-0354](#fix-0354) | BUG-0356 | unreleased | not run | manual |
-| [FIX-0355](#fix-0355) | BUG-0357 | unreleased | not run | manual |
-| [FIX-0356](#fix-0356) | BUG-0356 | unreleased | not run | manual |
+| [FIX-0351](#fix-0351) | BUG-0353 | 0.11.1-beta.5 | passed | automated |
+| [FIX-0352](#fix-0352) | BUG-0354 | 0.11.1-beta.5 | not run | manual |
+| [FIX-0353](#fix-0353) | BUG-0355 | 0.11.1-beta.5 | passed | automated |
+| [FIX-0354](#fix-0354) | BUG-0356 | 0.11.1-beta.5 | not run | manual |
+| [FIX-0355](#fix-0355) | BUG-0357 | 0.11.1-beta.5 | not run | manual |
+| [FIX-0356](#fix-0356) | BUG-0356 | 0.11.1-beta.5 | not run | manual |
 
 ## FIX-0001
 
@@ -7725,7 +7725,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-10-22 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.11.1-beta.5 |
 | Commits | ac46f8b0f279c0efc55580234066bf691a932b31 |
 | Components | src/rockforge/infrastructure/gpimport/songsterr_gp.py; src/rockforge/infrastructure/songsterr.py |
 | Tests | tests/test_songsterr_gp.py::test_lyrics_that_come_in_a_guitar_part_follow_the_vocal_line |
@@ -7746,7 +7746,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-10-22 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.11.1-beta.5 |
 | Commits | 7fbce26826ab9243ce8d704b9a9579627693145f |
 | Components | web/app.js; web/index.html; web/i18n-en.js |
 | Tests | — |
@@ -7767,7 +7767,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-10-22 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.11.1-beta.5 |
 | Commits | c869d4c570618fa1d7dcc5d513236e8a22132f80 |
 | Components | src/rockforge/infrastructure/gpimport/parser.py; src/rockforge/infrastructure/gpimport/gpif_parser.py |
 | Tests | tests/test_songsterr_gp.py::test_a_tied_note_in_the_vocal_line_takes_no_syllable; tests/test_gpif_import.py::test_gp7_a_tied_beat_in_the_vocal_line_takes_no_syllable |
@@ -7788,7 +7788,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-10-22 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.11.1-beta.5 |
 | Commits | dbddd87656bf9820909072a5a253242e3b963f22 |
 | Components | web/app.js; eslint.config.js |
 | Tests | — |
@@ -7809,7 +7809,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-10-22 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.11.1-beta.5 |
 | Commits | 0ebb2710d8387b5282301ce225a2dd41c4b4a018 |
 | Components | web/app.js; web/index.html; web/i18n-en.js |
 | Tests | — |
@@ -7830,7 +7830,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-10-22 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.11.1-beta.5 |
 | Commits | f4734f3d8771a2a483ab7e2f77a805a93e9ed546 |
 | Components | web/app.js |
 | Tests | — |
