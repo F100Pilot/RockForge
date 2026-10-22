@@ -1160,3 +1160,47 @@ Songsterr shows the lyrics over every track, so the text can come in a part that
 
 - 2026-10-22 — Open: reported in conversation with a Songsterr screenshot
 - 2026-10-22 — Fixed: commit ac46f8b0f2
+
+## BUG-0355
+
+**Lyrics drift further off along the song: a tied note in the vocal line takes a syllable**
+
+| | |
+|---|---|
+| Detected | 2026-10-22 |
+| Reported by | the maintainer (Songsterr project "Just an ordinary man": the lyric late, the synthesized voice drifting too; .rfproj sent) |
+| Found in | 0.11.1-beta.4 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Verified |
+
+Both parsers gave every beat of the lyrics' track that has notes a syllable, tied beats included. Each tie moved every later syllable one note off; a lyric written as one line never starts again from a bar, so the offset kept growing (33 s at the end of the user's song).
+
+**Steps to reproduce:** 
+
+1. Import a Songsterr tab whose vocal line has tied notes and whose lyric is one line
+2. Build it and compare each word with its vocal note
+
+**Expected:** Each syllable on its own untied vocal note.
+
+**Observed:** From the first tie on, the words sit on the wrong notes, further off with every tie.
+
+**Root cause:** parser._lyric_notes and gpif_parser._lyric_notes appended a lyric note for every beat with notes, including beats whose notes are all tie destinations.
+
+**Fixes:** [FIX-0353](../FIX_LOG.md#fix-0353) (unreleased)
+
+**Verified:** test_a_tied_note_in_the_vocal_line_takes_no_syllable and test_gp7_a_tied_beat_in_the_vocal_line_takes_no_syllable, each failing with its parser's change reverted (by the developer (pytest))
+
+**Resolved:** 2026-10-22 · **Closed:** _pending_
+
+**Evidence:**
+
+- 2026-10-22: the user's file: 509 syllable slots, 581 vocal beats with notes, 72 of them only ties — after the fix 509 lyric notes and all 489 syllable events on a vocal attack (before: the last word 33 s away)
+- 2026-10-22: full pytest suite green
+
+**History:**
+
+- 2026-10-22 — Open: reported in conversation with the project file
+- 2026-10-22 — Fixed: commit c869d4c570
+- 2026-10-22 — Verified: pytest 2026-10-22

@@ -358,6 +358,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0350](#fix-0350) | BUG-0352 | 0.11.1-beta.4 | passed | automated |
 | [FIX-0351](#fix-0351) | BUG-0353 | unreleased | passed | automated |
 | [FIX-0352](#fix-0352) | BUG-0354 | unreleased | not run | manual |
+| [FIX-0353](#fix-0353) | BUG-0355 | unreleased | passed | automated |
 
 ## FIX-0001
 
@@ -7750,3 +7751,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | not run |
 | Validation | manual |
 | Regression risk | Low: only the Início field's input handling changed; the slider, '= cursor' and the guided detection still go through setTrackStart. |
+
+## FIX-0353
+
+**Bugs:** [BUG-0355](bugs/lyrics.md#bug-0355)
+
+**Root cause:** parser._lyric_notes and gpif_parser._lyric_notes appended a lyric note for every beat with notes, including beats whose notes are all tie destinations.
+
+**Solution:** A beat whose notes are all ties (GP5 NoteType.tie, GPIF Tie destination="true") extends the previous lyric note's end instead of taking a syllable, in both parsers.
+
+| | |
+|---|---|
+| Date | 2026-10-22 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | c869d4c570618fa1d7dcc5d513236e8a22132f80 |
+| Components | src/rockforge/infrastructure/gpimport/parser.py; src/rockforge/infrastructure/gpimport/gpif_parser.py |
+| Tests | tests/test_songsterr_gp.py::test_a_tied_note_in_the_vocal_line_takes_no_syllable; tests/test_gpif_import.py::test_gp7_a_tied_beat_in_the_vocal_line_takes_no_syllable |
+| Manual checks | the user's .rfproj parsed: 509 lyric notes for 509 syllable slots, every syllable on a vocal attack |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low-medium: a GP file authored to give tied notes a syllable would now place them one note earlier; the evidence (the user's tab, Songsterr's score) says ties take none. |

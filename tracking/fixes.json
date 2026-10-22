@@ -8862,6 +8862,34 @@
       "test_result": "not run",
       "regression_risk": "Low: only the Início field's input handling changed; the slider, '= cursor' and the guided detection still go through setTrackStart.",
       "validation": "manual"
+    },
+    {
+      "id": "FIX-0353",
+      "bugs": [
+        "BUG-0355"
+      ],
+      "date": "2026-10-22",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "parser._lyric_notes and gpif_parser._lyric_notes appended a lyric note for every beat with notes, including beats whose notes are all tie destinations.",
+      "solution": "A beat whose notes are all ties (GP5 NoteType.tie, GPIF Tie destination=\"true\") extends the previous lyric note's end instead of taking a syllable, in both parsers.",
+      "components": [
+        "src/rockforge/infrastructure/gpimport/parser.py",
+        "src/rockforge/infrastructure/gpimport/gpif_parser.py"
+      ],
+      "commits": [
+        "c869d4c570618fa1d7dcc5d513236e8a22132f80"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_songsterr_gp.py::test_a_tied_note_in_the_vocal_line_takes_no_syllable",
+        "tests/test_gpif_import.py::test_gp7_a_tied_beat_in_the_vocal_line_takes_no_syllable"
+      ],
+      "manual_checks": [
+        "the user's .rfproj parsed: 509 lyric notes for 509 syllable slots, every syllable on a vocal attack"
+      ],
+      "test_result": "passed",
+      "regression_risk": "Low-medium: a GP file authored to give tied notes a syllable would now place them one note earlier; the evidence (the user's tab, Songsterr's score) says ties take none.",
+      "validation": "automated"
     }
   ]
 }

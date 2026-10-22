@@ -17754,6 +17754,54 @@
           "note": "Playwright 2026-10-22"
         }
       ]
+    },
+    {
+      "id": "BUG-0355",
+      "title": "Lyrics drift further off along the song: a tied note in the vocal line takes a syllable",
+      "detected": "2026-10-22",
+      "reported_by": "the maintainer (Songsterr project \"Just an ordinary man\": the lyric late, the synthesized voice drifting too; .rfproj sent)",
+      "found_in_version": "0.11.1-beta.4",
+      "found_in_build": "pending",
+      "module": "lyrics",
+      "description": "Both parsers gave every beat of the lyrics' track that has notes a syllable, tied beats included. Each tie moved every later syllable one note off; a lyric written as one line never starts again from a bar, so the offset kept growing (33 s at the end of the user's song).",
+      "steps": [
+        "Import a Songsterr tab whose vocal line has tied notes and whose lyric is one line",
+        "Build it and compare each word with its vocal note"
+      ],
+      "expected": "Each syllable on its own untied vocal note.",
+      "observed": "From the first tie on, the words sit on the wrong notes, further off with every tie.",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Verified",
+      "root_cause": "parser._lyric_notes and gpif_parser._lyric_notes appended a lyric note for every beat with notes, including beats whose notes are all tie destinations.",
+      "fixes": [
+        "FIX-0353"
+      ],
+      "verified_by": "the developer (pytest)",
+      "verification": "test_a_tied_note_in_the_vocal_line_takes_no_syllable and test_gp7_a_tied_beat_in_the_vocal_line_takes_no_syllable, each failing with its parser's change reverted",
+      "evidence": [
+        "2026-10-22: the user's file: 509 syllable slots, 581 vocal beats with notes, 72 of them only ties — after the fix 509 lyric notes and all 489 syllable events on a vocal attack (before: the last word 33 s away)",
+        "2026-10-22: full pytest suite green"
+      ],
+      "resolved": "2026-10-22",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-22",
+          "status": "Open",
+          "note": "reported in conversation with the project file"
+        },
+        {
+          "date": "2026-10-22",
+          "status": "Fixed",
+          "note": "commit c869d4c570"
+        },
+        {
+          "date": "2026-10-22",
+          "status": "Verified",
+          "note": "pytest 2026-10-22"
+        }
+      ]
     }
   ]
 }
