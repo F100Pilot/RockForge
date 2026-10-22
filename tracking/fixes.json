@@ -8890,6 +8890,31 @@
       "test_result": "passed",
       "regression_risk": "Low-medium: a GP file authored to give tied notes a syllable would now place them one note earlier; the evidence (the user's tab, Songsterr's score) says ties take none.",
       "validation": "automated"
+    },
+    {
+      "id": "FIX-0354",
+      "bugs": [
+        "BUG-0356"
+      ],
+      "date": "2026-10-22",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "web/app.js computed each tick's Karplus-Strong buffer on the main thread inside syncFrame when the note sounded (a held chord = several buffers of seconds each, cache missing on every new length), and MAX_TICKS_PER_FRAME (3) counted notes, so the rest of a chord's strings were skipped.",
+      "solution": "prewarmTicks hands the next 3 s of notes to a Blob worker running karplusSamples (the same DSP function as the on-the-spot fallback); the cache evicts least-recently-used; the per-frame cap counts attacks (notes within 30 ms are one).",
+      "components": [
+        "web/app.js",
+        "eslint.config.js"
+      ],
+      "commits": [
+        "dbddd87656bf9820909072a5a253242e3b963f22"
+      ],
+      "version": "unreleased",
+      "tests": [],
+      "manual_checks": [
+        "Playwright on a local server at 4x CPU throttling: frame times and voices per chord before/after, no page errors"
+      ],
+      "test_result": "not run",
+      "regression_risk": "Low: the tick's sound is the same function; a worker that cannot start leaves the old on-the-spot path. A backlog after a stall may now sound up to three whole chords at once.",
+      "validation": "manual"
     }
   ]
 }

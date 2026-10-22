@@ -17802,6 +17802,54 @@
           "note": "pytest 2026-10-22"
         }
       ]
+    },
+    {
+      "id": "BUG-0356",
+      "title": "Chords lag when they play on the score, and a six-string chord sounds only three strings",
+      "detected": "2026-10-22",
+      "reported_by": "the maintainer (\"quando toca acordes, existe lag\", RTX 2060 / i5-10300H laptop)",
+      "found_in_version": "0.11.1-beta.4",
+      "found_in_build": "pending",
+      "module": "viewer",
+      "description": "Playing a project with the note tick on, each chord started late and the score stuttered; only the first three strings of a chord were heard.",
+      "steps": [
+        "Open a built GP project with sustained chords, Partitura",
+        "Tick the note sound and press Play"
+      ],
+      "expected": "Each chord sounds on time with all its strings and the score scrolls smoothly.",
+      "observed": "Frames stalled up to ~50 ms on a chord (4x CPU throttling) and each chord played three voices.",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Verified",
+      "root_cause": "web/app.js computed each tick's Karplus-Strong buffer on the main thread inside syncFrame when the note sounded (a held chord = several buffers of seconds each, cache missing on every new length), and MAX_TICKS_PER_FRAME (3) counted notes, so the rest of a chord's strings were skipped.",
+      "fixes": [
+        "FIX-0354"
+      ],
+      "verified_by": "the developer (Playwright)",
+      "verification": "manual: Playwright on a local server with 4x CPU throttling",
+      "evidence": [
+        "2026-10-22: invented project of held E/A/G chords, 15 s of playback at 4x throttling: worst frame 50.7 ms with 3 voices per chord before, 18.6 ms with 6 (5 for A) after; no page errors",
+        "2026-10-22: full pytest suite green, ESLint clean"
+      ],
+      "resolved": "2026-10-22",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-22",
+          "status": "Open",
+          "note": "reported in conversation"
+        },
+        {
+          "date": "2026-10-22",
+          "status": "Fixed",
+          "note": "commit dbddd87656"
+        },
+        {
+          "date": "2026-10-22",
+          "status": "Verified",
+          "note": "Playwright 2026-10-22"
+        }
+      ]
     }
   ]
 }

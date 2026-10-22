@@ -359,6 +359,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0351](#fix-0351) | BUG-0353 | unreleased | passed | automated |
 | [FIX-0352](#fix-0352) | BUG-0354 | unreleased | not run | manual |
 | [FIX-0353](#fix-0353) | BUG-0355 | unreleased | passed | automated |
+| [FIX-0354](#fix-0354) | BUG-0356 | unreleased | not run | manual |
 
 ## FIX-0001
 
@@ -7772,3 +7773,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | passed |
 | Validation | automated |
 | Regression risk | Low-medium: a GP file authored to give tied notes a syllable would now place them one note earlier; the evidence (the user's tab, Songsterr's score) says ties take none. |
+
+## FIX-0354
+
+**Bugs:** [BUG-0356](bugs/viewer.md#bug-0356)
+
+**Root cause:** web/app.js computed each tick's Karplus-Strong buffer on the main thread inside syncFrame when the note sounded (a held chord = several buffers of seconds each, cache missing on every new length), and MAX_TICKS_PER_FRAME (3) counted notes, so the rest of a chord's strings were skipped.
+
+**Solution:** prewarmTicks hands the next 3 s of notes to a Blob worker running karplusSamples (the same DSP function as the on-the-spot fallback); the cache evicts least-recently-used; the per-frame cap counts attacks (notes within 30 ms are one).
+
+| | |
+|---|---|
+| Date | 2026-10-22 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | dbddd87656bf9820909072a5a253242e3b963f22 |
+| Components | web/app.js; eslint.config.js |
+| Tests | — |
+| Manual checks | Playwright on a local server at 4x CPU throttling: frame times and voices per chord before/after, no page errors |
+| Test result | not run |
+| Validation | manual |
+| Regression risk | Low: the tick's sound is the same function; a worker that cannot start leaves the old on-the-spot path. A backlog after a stall may now sound up to three whole chords at once. |

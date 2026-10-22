@@ -6,7 +6,7 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 
 | Fixed | Verified | Closed |
 |---|---|---|
-| 87 | 54 | 214 |
+| 87 | 55 | 214 |
 
 | ID | Title | Module | Severity | Priority | Status | Found in | Fixed in |
 |---|---|---|---|---|---|---|---|
@@ -365,3 +365,4 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0353](bugs/lyrics.md#bug-0353) | Lyrics of a Songsterr tab follow the guitar's notes when the text comes in the guitar's part | lyrics | Medium | P2 | Fixed | 0.11.1-beta.4 | — |
 | [BUG-0354](bugs/viewer.md#bug-0354) | The song start field cannot be typed into: each key applies the value and the field rewrites itself | viewer | Medium | P2 | Verified | 0.11.1-beta.4 | — |
 | [BUG-0355](bugs/lyrics.md#bug-0355) | Lyrics drift further off along the song: a tied note in the vocal line takes a syllable | lyrics | Medium | P2 | Verified | 0.11.1-beta.4 | — |
+| [BUG-0356](bugs/viewer.md#bug-0356) | Chords lag when they play on the score, and a six-string chord sounds only three strings | viewer | Medium | P2 | Verified | 0.11.1-beta.4 | — |

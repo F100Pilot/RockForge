@@ -34,6 +34,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0353](bugs/lyrics.md#bug-0353) Lyrics of a Songsterr tab follow the guitar's notes when the text comes in the guitar's part (Medium, now Fixed)
 - [BUG-0354](bugs/viewer.md#bug-0354) The song start field cannot be typed into: each key applies the value and the field rewrites itself (Medium, now Verified)
 - [BUG-0355](bugs/lyrics.md#bug-0355) Lyrics drift further off along the song: a tied note in the vocal line takes a syllable (Medium, now Verified)
+- [BUG-0356](bugs/viewer.md#bug-0356) Chords lag when they play on the score, and a six-string chord sounds only three strings (Medium, now Verified)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 

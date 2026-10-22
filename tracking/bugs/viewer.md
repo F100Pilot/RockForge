@@ -1573,3 +1573,47 @@ The Início field in Partitura → Sincronização applied the value on every in
 - 2026-10-22 — Open: reported in conversation
 - 2026-10-22 — Fixed: commit 7fbce26826
 - 2026-10-22 — Verified: Playwright 2026-10-22
+
+## BUG-0356
+
+**Chords lag when they play on the score, and a six-string chord sounds only three strings**
+
+| | |
+|---|---|
+| Detected | 2026-10-22 |
+| Reported by | the maintainer ("quando toca acordes, existe lag", RTX 2060 / i5-10300H laptop) |
+| Found in | 0.11.1-beta.4 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Verified |
+
+Playing a project with the note tick on, each chord started late and the score stuttered; only the first three strings of a chord were heard.
+
+**Steps to reproduce:** 
+
+1. Open a built GP project with sustained chords, Partitura
+2. Tick the note sound and press Play
+
+**Expected:** Each chord sounds on time with all its strings and the score scrolls smoothly.
+
+**Observed:** Frames stalled up to ~50 ms on a chord (4x CPU throttling) and each chord played three voices.
+
+**Root cause:** web/app.js computed each tick's Karplus-Strong buffer on the main thread inside syncFrame when the note sounded (a held chord = several buffers of seconds each, cache missing on every new length), and MAX_TICKS_PER_FRAME (3) counted notes, so the rest of a chord's strings were skipped.
+
+**Fixes:** [FIX-0354](../FIX_LOG.md#fix-0354) (unreleased)
+
+**Verified:** manual: Playwright on a local server with 4x CPU throttling (by the developer (Playwright))
+
+**Resolved:** 2026-10-22 · **Closed:** _pending_
+
+**Evidence:**
+
+- 2026-10-22: invented project of held E/A/G chords, 15 s of playback at 4x throttling: worst frame 50.7 ms with 3 voices per chord before, 18.6 ms with 6 (5 for A) after; no page errors
+- 2026-10-22: full pytest suite green, ESLint clean
+
+**History:**
+
+- 2026-10-22 — Open: reported in conversation
+- 2026-10-22 — Fixed: commit dbddd87656
+- 2026-10-22 — Verified: Playwright 2026-10-22
