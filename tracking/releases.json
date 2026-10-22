@@ -545,7 +545,7 @@
     },
     {
       "version": "0.11.1-beta.4",
-      "status": "Beta",
+      "status": "Superseded",
       "created": "2026-10-21",
       "published": "2026-10-21",
       "commit": "pending",
@@ -570,10 +570,12 @@
       "version": "0.11.1-beta.5",
       "status": "Beta",
       "created": "2026-10-22",
-      "published": "pending",
+      "published": "2026-10-22",
       "commit": "pending",
       "build": "GitHub Actions release workflow",
-      "artifacts": [],
+      "artifacts": [
+        "https://github.com/F100Pilot/RockForge/releases/tag/v0.11.1-beta.5"
+      ],
       "goal": "Fixes: chord playback lag, lyric syllables on tied and vocal-line notes, typed song start with fine -/+",
       "features": [],
       "improvements": [],
