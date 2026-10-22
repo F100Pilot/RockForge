@@ -1988,9 +1988,11 @@ let playbackRate = 1.0;      // playback speed (<1 slows down; lowers pitch on t
 // stop (fade out) removes it; on a seek the outgoing fade-out and the incoming
 // fade-in briefly overlap into a click-free crossfade.
 const AUDIO_FADE_S = 0.006;
-// Most note ticks one animation frame may sound (see the drain loop in
+// Most attacks one animation frame may sound (see the drain loop in
 // syncFrame): a stalled frame must not fire its whole backlog at one instant.
 const MAX_TICKS_PER_FRAME = 3;
+// Notes this close together are one attack (a chord) for that cap.
+const CHORD_TICK_S = 0.03;
 let seekDragging = false, seekWasPlaying = false;
 const WAVE_HZ = 100;
 // No mode on entry: a click on the score then just selects or seeks, and a mode
@@ -10274,33 +10276,86 @@ function karplusDamping(hz, dur) {
   return Math.min(0.9995, Math.max(0.99, Math.pow(0.25, 1 / (Math.max(20, hz) * dur))));
 }
 
-function karplusBuffer(ctx, hz, dur, damping) {
-  const sr = ctx.sampleRate;
-  const ck = `${sr}:${hz.toFixed(1)}:${dur.toFixed(3)}:${damping}`;
-  const hit = _karplusCache.get(ck);
-  if (hit) return hit;
-  const N = Math.max(2, Math.round(sr / Math.max(20, hz)));
-  const total = Math.max(1, Math.floor(dur * sr));
-  const buf = ctx.createBuffer(1, total, sr);
-  const out = buf.getChannelData(0);
+// The samples of one plucked note, written into `out` (N = the delay line's
+// length). It names nothing outside itself: the worker below runs this same
+// function (its source is handed over as text), so a buffer made there and one
+// made here cannot sound different.
+function karplusSamples(out, N, damping, sr) {
+  const total = out.length;
   const ring = new Float32Array(N);
   let prev = 0;
   for (let i = 0; i < N; i++) { const w = Math.random() * 2 - 1; ring[i] = prev = prev * 0.5 + w * 0.5; }  // softened pick
-  let pos = 0;
-  for (let i = 0; i < total; i++) {
+  for (let i = 0, pos = 0; i < total; i++) {
+    const nx = pos + 1 === N ? 0 : pos + 1;
     const cur = ring[pos];
     out[i] = cur;
-    ring[pos] = (cur + ring[(pos + 1) % N]) * 0.5 * damping;
-    pos = (pos + 1) % N;
+    ring[pos] = (cur + ring[nx]) * 0.5 * damping;
+    pos = nx;
   }
   const atk = Math.min(total, Math.floor(sr * 0.002)), rel = Math.min(total, Math.floor(sr * 0.008));
   for (let i = 0; i < atk; i++) out[i] *= i / atk;
   for (let i = 0; i < rel; i++) out[total - 1 - i] *= i / rel;
-  // Bounded by count and by memory (held notes make longer buffers).
-  if (_karplusCache.size > 256 || _karplusCacheSamples > 20e6) { _karplusCache.clear(); _karplusCacheSamples = 0; }
+}
+function karplusKey(sr, hz, dur, damping) { return `${sr}:${hz.toFixed(1)}:${dur.toFixed(3)}:${damping}`; }
+function karplusDelay(sr, hz) { return Math.max(2, Math.round(sr / Math.max(20, hz))); }
+// Bounded by count and by memory (held notes make longer buffers); the buffers
+// used longest ago go first, so a long song does not throw away the ones it is
+// about to use again.
+function cacheKarplus(ck, buf) {
+  for (const [k, b] of _karplusCache) {
+    if (_karplusCache.size < 256 && _karplusCacheSamples + buf.length <= 20e6) break;
+    _karplusCache.delete(k); _karplusCacheSamples -= b.length;
+  }
   _karplusCache.set(ck, buf);
-  _karplusCacheSamples += total;
+  _karplusCacheSamples += buf.length;
+}
+
+function karplusBuffer(ctx, hz, dur, damping) {
+  const sr = ctx.sampleRate;
+  const ck = karplusKey(sr, hz, dur, damping);
+  const hit = _karplusCache.get(ck);
+  if (hit) { _karplusCache.delete(ck); _karplusCache.set(ck, hit); return hit; }
+  const buf = ctx.createBuffer(1, Math.max(1, Math.floor(dur * sr)), sr);
+  karplusSamples(buf.getChannelData(0), karplusDelay(sr, hz), damping, sr);
+  cacheKarplus(ck, buf);
   return buf;
+}
+
+// The notes about to sound are made AHEAD, in a worker. Made at the moment a
+// note sounds, on the page's own thread, a held chord cost tens of ms (six
+// strings of a few seconds each): the chord started late and the score
+// stuttered. A note not ready in time is still made on the spot, as before.
+let _ksWorker;  // undefined: not started yet; null: unavailable
+const _ksPending = new Set();
+function karplusWorker() {
+  if (_ksWorker !== undefined) return _ksWorker;
+  try {
+    const src = `${karplusSamples}
+onmessage = e => {
+  const d = e.data, out = new Float32Array(d.total);
+  karplusSamples(out, d.N, d.damping, d.sr);
+  postMessage({ key: d.key, sr: d.sr, out }, [out.buffer]);
+};`;
+    _ksWorker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+    _ksWorker.onmessage = e => {
+      const { key, sr, out } = e.data;
+      _ksPending.delete(key);
+      if (!audioCtx || audioCtx.sampleRate !== sr || _karplusCache.has(key)) return;
+      const buf = audioCtx.createBuffer(1, out.length, sr);
+      buf.copyToChannel(out, 0);
+      cacheKarplus(key, buf);
+    };
+    _ksWorker.onerror = () => { _ksWorker = null; _ksPending.clear(); };
+  } catch { _ksWorker = null; }
+  return _ksWorker;
+}
+function prewarmKarplus(ctx, hz, dur, damping) {
+  const w = karplusWorker();
+  if (!w) return;
+  const sr = ctx.sampleRate, key = karplusKey(sr, hz, dur, damping);
+  if (_karplusCache.has(key) || _ksPending.has(key)) return;
+  _ksPending.add(key);
+  w.postMessage({ key, sr, damping, N: karplusDelay(sr, hz), total: Math.max(1, Math.floor(dur * sr)) });
 }
 
 // One shared guitar cabinet per audio context, as an EQ chain: a low-mid body
@@ -10359,6 +10414,29 @@ function playNote(midi, chartTime, sustain = 0) {
   if (!audioCtx || midi == null) return;
   voiceNote(audioCtx, audioCtx.destination, midiToHz(midi), audioCtx.currentTime,
     noteSoundLength(sustain), Math.max(0.0001, tickGain * 0.6), toneCharForNote(chartTime));
+}
+
+// What a note of the chart sounds as in the tick: its MIDI pitch and how long
+// it is held as drawn (null for a note the tick does not play).
+function tickSound(a, note, warp) {
+  if (!(note.string >= 0 && note.string < stringCount(a) && note.fret >= 0)) return null;
+  const at = warp(previewScale(note.time));
+  const held = note.sustain > 0 ? warp(previewScale(note.time + note.sustain)) - at : 0;
+  return { midi: noteMidi(a, note.string, note.fret), held };
+}
+// Hand the worker the notes of the next few seconds, so each is ready when it
+// sounds. A cached or requested note costs nothing, so a frame only walks a
+// handful of notes.
+const PREWARM_AHEAD_S = 3;
+function prewarmTicks(a, notes, warp, now) {
+  if (!audioCtx || !karplusWorker()) return;
+  for (let i = tickIdx, n = 0; i < notes.length && n < 64; i++, n++) {
+    if (warp(previewScale(notes[i].time)) > now + PREWARM_AHEAD_S) break;
+    const snd = tickSound(a, notes[i], warp);
+    if (!snd) continue;
+    const hz = midiToHz(snd.midi), dur = noteSoundLength(snd.held);
+    prewarmKarplus(audioCtx, hz, dur, karplusDamping(hz, dur));
+  }
 }
 
 // Render one arrangement's notes to a clean AudioBuffer (offline), placing each
@@ -11339,6 +11417,8 @@ function syncResetPointer() {
   const warp = buildTimeWarp(syncAnchors);
   tickIdx = notes.findIndex(n => warp(previewScale(n.time)) >= vt);
   if (tickIdx < 0) tickIdx = notes.length;
+  // A seek (or the cursor placed before Play) starts making the notes there.
+  if (document.getElementById('syncTick')?.checked) prewarmTicks(arrangements[currentArr], notes, warp, vt);
 }
 
 function syncFrame() {
@@ -11375,19 +11455,22 @@ function syncFrame() {
   // instant — a dozen summed voices clip the output as an audible burst of
   // noise. Past the cap the notes are skipped (tickIdx still advances) so the
   // tick stays in sync instead of machine-gunning the backlog.
-  let sounded = 0;
+  // The cap counts ATTACKS, not notes: the strings of one chord are one tick
+  // (counting notes, a six-string chord sounded only its first three strings).
+  let sounded = 0, groupAt = null;
   while (tickIdx < notes.length && warp(previewScale(notes[tickIdx].time)) <= vtAudio) {
-    if (tickOn && sounded < MAX_TICKS_PER_FRAME) {
-      const note = notes[tickIdx];
-      if (note.string >= 0 && note.string < stringCount(arrNow) && note.fret >= 0) {
-        const at = warp(previewScale(note.time));
-        const held = note.sustain > 0 ? warp(previewScale(note.time + note.sustain)) - at : 0;
-        playNote(noteMidi(arrNow, note.string, note.fret), note.time, held);
-        sounded++;
+    const note = notes[tickIdx];
+    const inGroup = groupAt != null && Math.abs(note.time - groupAt) <= CHORD_TICK_S;
+    if (tickOn && (inGroup || sounded < MAX_TICKS_PER_FRAME)) {
+      const snd = tickSound(arrNow, note, warp);
+      if (snd) {
+        playNote(snd.midi, note.time, snd.held);
+        if (!inGroup) { sounded++; groupAt = note.time; }
       }
     }
     tickIdx++;
   }
+  if (tickOn) prewarmTicks(arrNow, notes, warp, vtAudio);
   updateFretboard(vtDisp, warp);  // light up the notes sounding right now on the neck
   updateLiveBpm(vtDisp, warp);    // real-time BPM of the current measure
   // Highlight the lyric word under the playhead without redrawing the full SVG.

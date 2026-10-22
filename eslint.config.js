@@ -22,6 +22,7 @@ module.exports = [
         sessionStorage: "readonly",
         FormData: "readonly",
         Blob: "readonly",
+        Worker: "readonly",
         File: "readonly",
         FileReader: "readonly",
         DataTransfer: "readonly",

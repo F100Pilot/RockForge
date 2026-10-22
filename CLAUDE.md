@@ -4217,6 +4217,22 @@ held ones ringing to the end at three pitches) and with Playwright on a built
 invented GP5 (a 2.35 s note still sounds at 1 s and 2 s in the synthesized
 source; the tick receives its 2.35 s), no page errors.
 
+**Chords are made ahead, and all their strings sound** (BUG-0356, 2026-10-22,
+"quando toca acordes, existe lag", an RTX 2060 / i5-10300H laptop). Each tick's
+Karplus buffer was computed on the main thread when the note sounded; a
+held chord is six buffers of seconds each (measured: ~50 ms of stall at 4×
+CPU throttling for three strings), so the chord started late and the score
+stuttered. `prewarmTicks` (from `syncFrame` and `syncResetPointer`) hands the
+next `PREWARM_AHEAD_S` (3 s) of notes to a worker (`karplusWorker`, a Blob
+worker running `karplusSamples` — the ONE DSP function, its source handed over
+as text, so worker and fallback cannot sound different); a note not ready is
+still made on the spot. The cache evicts the least recently used buffer
+instead of clearing at its limit. And `MAX_TICKS_PER_FRAME` counted NOTES, so a
+six-string chord sounded only three strings: it now counts attacks (notes
+within `CHORD_TICK_S`, 30 ms, are one). Browser-only; verified with Playwright
+at 4× throttling on an invented project of held chords: worst frame 50 → 19 ms
+with 6 voices instead of 3, no page errors.
+
 **On-score tone identification.** The active tone is shown on the tab viewer: an
 amber 🎸 label per tone change (plus the base tone at the start,
 `activeToneKeyAtDisplay`) and a live `#liveTone` label next to the BPM
