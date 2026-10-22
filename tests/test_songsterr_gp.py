@@ -178,6 +178,26 @@ def test_songsterr_lyrics_are_written_on_the_part_that_sings_them(tmp_path: Path
     )
 
 
+def test_lyrics_that_come_in_a_guitar_part_follow_the_vocal_line(tmp_path: Path) -> None:
+    """Songsterr shows the words over every track, so they can come in the
+    guitar's part too — or only there. The syllables must still ride the vocal
+    line: on the guitar's notes they wait out every bar the guitar rests."""
+    vocal_times = (2.0, 2.25, 2.5, 2.75, 3.0, 3.25, 3.5, 3.75, 4.0, 5.5)
+    both = _guitar_and_vocals()
+    both[0]["newLyrics"] = list(both[1]["newLyrics"])  # the same text in both parts
+    only_guitar = _guitar_and_vocals(newLyrics=[])
+    only_guitar[0]["newLyrics"] = list(_guitar_and_vocals()[1]["newLyrics"])
+    by_id = _guitar_and_vocals(name="Track 2", instrument="?", instrumentId=53, newLyrics=[])
+    by_id[0]["newLyrics"] = list(_guitar_and_vocals()[1]["newLyrics"])
+    for case, parts in (("both", both), ("only guitar", only_guitar), ("by id", by_id)):
+        dst, report = _write(tmp_path, parts)
+        parsed = parse_gp_track(dst, 0)
+        assert parsed.lyric_notes is not None, case
+        assert tuple(n.time for n in parsed.lyric_notes) == vocal_times, case
+        said = any("pista de voz" in w for w in report.warnings)
+        assert said == (case != "both"), case
+
+
 def test_lyrics_on_a_part_that_could_not_be_written_fall_back_and_say_so(
     tmp_path: Path,
 ) -> None:

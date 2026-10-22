@@ -305,7 +305,7 @@ def fetch_tab(
             continue
         part.setdefault("name", name)
         if isinstance(info, dict):
-            for key in ("instrument", "tuning", "strings"):
+            for key in ("instrument", "instrumentId", "tuning", "strings"):
                 if key in info:
                     part.setdefault(key, info[key])
         parts.append(part)

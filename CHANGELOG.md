@@ -6,6 +6,10 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Correções
+
+- **Letra das tabs do Songsterr presa às notas da guitarra:** o Songsterr mostra a letra por cima de todas as pistas, por isso o texto pode vir na pista da guitarra. Quando vinha, as sílabas seguiam as notas da guitarra em vez das da voz e ficavam à espera sempre que a guitarra parava, o que atrasava a letra. Agora seguem a pista de voz sempre que a tab tem uma, e o aviso da importação diz quando isto acontece. Um projeto já criado guarda o ficheiro antigo: importa a tab outra vez, num projeto novo.
+
 ## [0.11.1 beta 4] — 2026-10-21
 
 ### Novidades

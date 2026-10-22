@@ -39,10 +39,13 @@ What a part carries, and how it maps:
 
 - lyrics: a part's ``newLyrics[]`` ``{text, offset}`` — the sung text (words
   by spaces, syllables by hyphens; extra spaces skip notes) and the 0-based
-  measure it starts on. Written as the GP5 song lyrics, bound to THAT part's
-  track (``trackChoice``), so the importer hands each syllable to the next note
-  of the part it was written for — normally the vocal line — exactly as
-  Guitar Pro would. GP5 holds five lines; more are dropped and counted.
+  measure it starts on. Written as the GP5 song lyrics, bound to the track
+  that SINGS them (``trackChoice``), so the importer hands each syllable to the
+  next note of the vocal line, exactly as Guitar Pro would. Songsterr shows the
+  lyrics over every track (a guitar resting through the verse still has the
+  words under it), so the text may come in a part that does not sing it: a
+  vocal part (``is_vocal``) is preferred, else the part the text came in. GP5
+  holds five lines; more are dropped and counted.
 
 Grace notes become GP5 grace effects on the note they lead into (in GP5 a
 grace is an ornament of the NEXT note, not a beat — writing them as beats would
@@ -57,6 +60,7 @@ is cp1252) becomes "?".
 from __future__ import annotations
 
 import math
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -111,39 +115,76 @@ def _lyrics(
     report: SongsterrGpReport,
     guitarpro: Any,
 ) -> Any | None:
-    """The first part's ``newLyrics`` as GP5 song lyrics, bound to its track."""
-    for part in parts:
-        lines = [
-            ln for ln in part.get("newLyrics") or []
-            if isinstance(ln, dict) and str(ln.get("text") or "").strip()
-        ]
-        if not lines:
-            continue
-        lyrics = guitarpro.Lyrics()
-        index = next((i for i, (_n, p) in enumerate(kept) if p is part), None)
-        if index is None:
-            index = 0
-            name = str(part.get("name") or part.get("instrument") or "?")
+    """The tab's ``newLyrics`` as GP5 song lyrics, bound to the part that sings them.
+
+    Songsterr shows the lyrics over every track, timed by the vocal line — a
+    guitar part resting while the verse is sung still carries the words — so
+    the text can come in a part that does not sing it. The syllables are bound
+    to a vocal part when the tab has one (its own lyrics first), else to the
+    part the text came in."""
+    with_text = [
+        p for p in parts
+        if any(isinstance(ln, dict) and str(ln.get("text") or "").strip()
+               for ln in p.get("newLyrics") or [])
+    ]
+    if not with_text:
+        return None
+    vocal_kept = [i for i, (_n, p) in enumerate(kept) if is_vocal(p)]
+    source = next((p for p in with_text if is_vocal(p)), with_text[0])
+    lines = [
+        ln for ln in source.get("newLyrics") or []
+        if isinstance(ln, dict) and str(ln.get("text") or "").strip()
+    ]
+    lyrics = guitarpro.Lyrics()
+    index = next((i for i, (_n, p) in enumerate(kept) if p is source), None)
+    if (index is None or index not in vocal_kept) and vocal_kept:
+        sung = vocal_kept[0]
+        if index is not None:
             report.warnings.append(tr(
-                f"a letra está numa pista que não foi incluída ({name}): as sílabas "
-                "seguem as notas da primeira pista",
-                f"the lyrics are on a track that was not included ({name}): the "
-                "syllables follow the notes of the first track",
+                f"a letra vinha na pista {kept[index][0]}; as sílabas seguem as notas "
+                f"da pista de voz {kept[sung][0]}",
+                f"the lyrics came in the {kept[index][0]} track; the syllables follow "
+                f"the notes of the vocal track {kept[sung][0]}",
             ))
-        lyrics.trackChoice = index + 1  # GP5 counts tracks from 1; 0 = none
-        for slot, line in zip(lyrics.lines, lines, strict=False):
-            slot.startingMeasure = max(0, _int(line.get("offset"), 0)) + 1
-            slot.lyrics = _gp5_text(str(line["text"]))
-        report.lyric_lines = min(len(lines), guitarpro.Lyrics.maxLineCount)
-        if len(lines) > guitarpro.Lyrics.maxLineCount:
-            cap = guitarpro.Lyrics.maxLineCount
-            extra = len(lines) - cap
-            report.warnings.append(tr(
-                f"{extra} linha(s) de letra a mais não incluídas (o GP5 guarda {cap})",
-                f"{extra} extra lyric line(s) not included (GP5 holds {cap})",
-            ))
-        return lyrics
-    return None
+        index = sung
+    if index is None:
+        index = 0
+        name = str(source.get("name") or source.get("instrument") or "?")
+        report.warnings.append(tr(
+            f"a letra está numa pista que não foi incluída ({name}): as sílabas "
+            "seguem as notas da primeira pista",
+            f"the lyrics are on a track that was not included ({name}): the "
+            "syllables follow the notes of the first track",
+        ))
+    lyrics.trackChoice = index + 1  # GP5 counts tracks from 1; 0 = none
+    for slot, line in zip(lyrics.lines, lines, strict=False):
+        slot.startingMeasure = max(0, _int(line.get("offset"), 0)) + 1
+        slot.lyrics = _gp5_text(str(line["text"]))
+    report.lyric_lines = min(len(lines), guitarpro.Lyrics.maxLineCount)
+    if len(lines) > guitarpro.Lyrics.maxLineCount:
+        cap = guitarpro.Lyrics.maxLineCount
+        extra = len(lines) - cap
+        report.warnings.append(tr(
+            f"{extra} linha(s) de letra a mais não incluídas (o GP5 guarda {cap})",
+            f"{extra} extra lyric line(s) not included (GP5 holds {cap})",
+        ))
+    return lyrics
+
+
+# General MIDI voices (0-based programs): Choir Aahs, Voice Oohs, Synth Voice,
+# Lead 6 (voice).
+_VOCAL_PROGRAMS = frozenset({52, 53, 54, 85})
+_VOCAL_WORDS = re.compile(
+    r"voice|vocal|vox|\bvoz|singer|sing\b|choir|\bcoro\b|canto|aahs|oohs", re.IGNORECASE
+)
+
+
+def is_vocal(part: dict[str, Any]) -> bool:
+    """A part that carries the sung line: a voice instrument, or named like one."""
+    program = part.get("instrumentId")
+    if isinstance(program, int) and not isinstance(program, bool) and program in _VOCAL_PROGRAMS:
+        return True
+    return bool(_VOCAL_WORDS.search(f"{part.get('name') or ''} {part.get('instrument') or ''}"))
 
 
 def is_percussion(part: dict[str, Any]) -> bool:

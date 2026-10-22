@@ -323,7 +323,15 @@ re-inverting the dependency.
    `newLyrics[]` `{text, offset}` (0-based bar) becomes the GP5 song lyrics
    bound to THAT part's track (`trackChoice`, 1-based) — normally the vocal
    line, which is written as a track of its own (a 1-string one is fine) — so
-   the importer times each syllable on that line's notes, below; five lines
+   the importer times each syllable on that line's notes, below. Songsterr shows
+   the words over EVERY track (a guitar resting through a verse still has them
+   under it), so the text may come in a part that does not sing it: the lyrics
+   are bound to a vocal part (`is_vocal`: GM voice program 52/53/54/85 or a
+   name like voice/vocal/vox/voz/choir) when the tab has one, said in the
+   warnings when the text came in another part — bound to the guitar, every
+   syllable waited out the guitar's rests (BUG-0353, guarded by
+   `test_lyrics_that_come_in_a_guitar_part_follow_the_vocal_line`,
+   mutation-checked; whether the user's tab had it this way was not seen); five lines
    at most (GP5's limit, the rest counted); lyrics on a part that could not be
    written fall back to track 1 with a warning. The wizard then sees
    `has_lyrics` and does not preselect an LRCLIB text over them. Guarded by
