@@ -8941,6 +8941,30 @@
       "test_result": "not run",
       "regression_risk": "Low: two new buttons; the field's typing path is unchanged.",
       "validation": "manual"
+    },
+    {
+      "id": "FIX-0356",
+      "bugs": [
+        "BUG-0356"
+      ],
+      "date": "2026-10-22",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "syncFrame started each tick at audioCtx.currentTime when a frame noticed the note had passed, so every tick was quantised to the frame and sounded up to a frame late (median 19 ms).",
+      "solution": "Ticks up to 0.12 s ahead are scheduled at their exact audio-context time (playNote's `when`); the backlog cap applies only to overdue notes; scheduled ticks not yet started are cancelled on pause, stopPlayback and every syncResetPointer.",
+      "components": [
+        "web/app.js"
+      ],
+      "commits": [
+        "f4734f3d8771a2a483ab7e2f77a805a93e9ed546"
+      ],
+      "version": "unreleased",
+      "tests": [],
+      "manual_checks": [
+        "Playwright on a local server: tick lateness before/after at 1x and 4x CPU throttling; pause/seek leave nothing scheduled; no page errors"
+      ],
+      "test_result": "not run",
+      "regression_risk": "Low-Medium: a redraw during playback cancels and reschedules the next 0.12 s of ticks; the <audio> fallback is unchanged.",
+      "validation": "manual"
     }
   ]
 }

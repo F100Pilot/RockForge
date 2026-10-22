@@ -361,6 +361,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0353](#fix-0353) | BUG-0355 | unreleased | passed | automated |
 | [FIX-0354](#fix-0354) | BUG-0356 | unreleased | not run | manual |
 | [FIX-0355](#fix-0355) | BUG-0357 | unreleased | not run | manual |
+| [FIX-0356](#fix-0356) | BUG-0356 | unreleased | not run | manual |
 
 ## FIX-0001
 
@@ -7816,3 +7817,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | not run |
 | Validation | manual |
 | Regression risk | Low: two new buttons; the field's typing path is unchanged. |
+
+## FIX-0356
+
+**Bugs:** [BUG-0356](bugs/viewer.md#bug-0356)
+
+**Root cause:** syncFrame started each tick at audioCtx.currentTime when a frame noticed the note had passed, so every tick was quantised to the frame and sounded up to a frame late (median 19 ms).
+
+**Solution:** Ticks up to 0.12 s ahead are scheduled at their exact audio-context time (playNote's `when`); the backlog cap applies only to overdue notes; scheduled ticks not yet started are cancelled on pause, stopPlayback and every syncResetPointer.
+
+| | |
+|---|---|
+| Date | 2026-10-22 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | f4734f3d8771a2a483ab7e2f77a805a93e9ed546 |
+| Components | web/app.js |
+| Tests | — |
+| Manual checks | Playwright on a local server: tick lateness before/after at 1x and 4x CPU throttling; pause/seek leave nothing scheduled; no page errors |
+| Test result | not run |
+| Validation | manual |
+| Regression risk | Low-Medium: a redraw during playback cancels and reschedules the next 0.12 s of ticks; the <audio> fallback is unchanged. |

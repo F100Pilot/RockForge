@@ -1599,9 +1599,9 @@ Playing a project with the note tick on, each chord started late and the score s
 
 **Observed:** Frames stalled up to ~50 ms on a chord (4x CPU throttling) and each chord played three voices.
 
-**Root cause:** web/app.js computed each tick's Karplus-Strong buffer on the main thread inside syncFrame when the note sounded (a held chord = several buffers of seconds each, cache missing on every new length), and MAX_TICKS_PER_FRAME (3) counted notes, so the rest of a chord's strings were skipped.
+**Root cause:** web/app.js computed each tick's Karplus-Strong buffer on the main thread inside syncFrame when the note sounded (a held chord = several buffers of seconds each, cache missing on every new length), and MAX_TICKS_PER_FRAME (3) counted notes, so the rest of a chord's strings were skipped. Also: syncFrame started each tick at audioCtx.currentTime when a frame noticed the note had passed, so every tick was quantised to the frame and sounded up to a frame late (median 19 ms).
 
-**Fixes:** [FIX-0354](../FIX_LOG.md#fix-0354) (unreleased)
+**Fixes:** [FIX-0354](../FIX_LOG.md#fix-0354) (unreleased), [FIX-0356](../FIX_LOG.md#fix-0356) (unreleased)
 
 **Verified:** manual: Playwright on a local server with 4x CPU throttling (by the developer (Playwright))
 
@@ -1611,11 +1611,15 @@ Playing a project with the note tick on, each chord started late and the score s
 
 - 2026-10-22: invented project of held E/A/G chords, 15 s of playback at 4x throttling: worst frame 50.7 ms with 3 voices per chord before, 18.6 ms with 6 (5 for A) after; no page errors
 - 2026-10-22: full pytest suite green, ESLint clean
+- 2026-10-22 (second round, after the maintainer still felt some lag): tick start vs the note's exact audio-context instant, 12 s of playback: before median 18.9 ms / max 20.2 ms (4x throttling: max 32.3 ms), after 0 ms (4x: 0 ms median, 11.6 ms on the first note after Play); a pause and a seek leave no scheduled tick behind; no page errors
 
 **History:**
 
 - 2026-10-22 — Open: reported in conversation
 - 2026-10-22 — Fixed: commit dbddd87656
+- 2026-10-22 — Verified: Playwright 2026-10-22
+- 2026-10-22 — Reopened: the maintainer: chords better but still some lag
+- 2026-10-22 — Fixed: commit f4734f3d87
 - 2026-10-22 — Verified: Playwright 2026-10-22
 
 ## BUG-0357
