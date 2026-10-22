@@ -2035,6 +2035,17 @@ handlers redrew the score but never called `renderAnchorsList`/
 after a plain mouse drag (it only refreshed after `'tap'`/`'movefrom'`/
 `'newbeat'` clicks) — both handlers now refresh it too.
 
+**The "Início" field is typed, not live** (BUG-0354, 2026-10-22: "é muito difícil alterar o valor
+numérico do tempo de início da primeira nota"): it applied on every `input` and
+`showArr` rewrote it with `toFixed(3)` a frame later, so a number could not be
+typed. It is a text field (`inputmode="decimal"`) committed on Enter/blur
+(`wireOffsetField`): `parseSeconds` takes a comma or a dot and m:ss; ↑/↓ step
+0.01 s (Shift 0.1, Alt 0.001); Esc restores; an invalid value toasts and
+restores; `writeOffsetField` never rewrites it while focused. Browser-only;
+verified with Playwright (PT 1440 / EN 760 px): "2,5" typed stays "2,5" until
+Enter, then the first note sits at 2.5 s; m:ss, the arrows, Esc, an invalid
+value, blur and Ctrl+Z, no page errors.
+
 **Every time a user types is to the millisecond** ("Quero que os ajustes
 alcancem até aos ms", 2026-10-20): the Início field and slider, the correction
 rows, sections, tone changes, lyric times/lengths, the lyric nudges and

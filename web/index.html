@@ -1302,7 +1302,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                   <button class="info-btn" data-info="sync-offset">ⓘ</button></div>
                 <div class="pv-card-desc">O segundo em que se ouve a 1ª nota <b>desta pista</b>.</div>
                 <div class="pv-row">
-                  <input type="number" id="syncOffset" value="0" step="0.001" min="0" aria-label="Segundo da primeira nota">
+                  <input type="text" id="syncOffset" value="0.000" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Segundo da primeira nota" title="Escreve o segundo (ex.: 1,25 ou 1:02.5) e carrega Enter. ↑/↓ ±0,01 s · Shift ±0,1 s · Alt ±0,001 s">
                   <span class="meta">s</span>
                   <button type="button" id="offsetFromCursor" class="secondary">= cursor</button>
                 </div>

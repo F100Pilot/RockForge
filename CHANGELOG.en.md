@@ -8,6 +8,7 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ### Fixes
 
+- **Song start (Score → Sync):** the value can be typed directly. Before, every key applied the number and the field rewrote itself at once, so a value was almost impossible to type. Now you type the second (with a dot or a comma, or in minutes, 1:02.5) and press Enter. ↑/↓ nudge it 0.01 s (Shift 0.1 s, Alt 0.001 s) and Esc gives up.
 - **Songsterr lyrics tied to the guitar's notes:** Songsterr shows the lyrics over every track, so the text can come in the guitar's track. When it did, the syllables followed the guitar's notes instead of the vocal line's and waited whenever the guitar stopped, which made the lyric late. They now follow the vocal track whenever the tab has one, and the import warning says when this happens. An existing project keeps its old file: import the tab again, into a new project.
 
 ## [0.11.1 beta 4] — 2026-10-21

@@ -3750,8 +3750,25 @@ function updateSyncOffsetDisplay() {
   kindEl.textContent = `(${arrLabel(currentKind()) || ''})`;
   const chartT = currentArrFirstNoteTime();
   const v = chartT == null ? 0 : buildTimeWarp(syncAnchors)(previewScale(chartT)) - viewOrigin;
-  document.getElementById('syncOffset').value = v.toFixed(3);
+  writeOffsetField(v);
   document.getElementById('syncOffsetRange').value = Math.max(0, v);
+}
+
+// The "Início" field is typed into: never rewrite it under the user's cursor
+// (it used to apply and re-format on every key, so a number could not be typed).
+function writeOffsetField(v, force = false) {
+  const el = document.getElementById('syncOffset');
+  if (!el || (!force && document.activeElement === el)) return;
+  el.value = v.toFixed(3);
+}
+
+// Seconds as a person types them: "1.25", "1,25", "-0,5", "1:02.5" (m:ss).
+function parseSeconds(text) {
+  const s = String(text || '').trim().replace(/\s+/g, '').replace(/,/g, '.');
+  if (!s) return NaN;
+  const m = /^(-?)(\d+):(\d{1,2}(?:\.\d*)?)$/.exec(s);
+  if (m) return (m[1] ? -1 : 1) * (parseInt(m[2], 10) * 60 + parseFloat(m[3]));
+  return /^-?(\d+\.?\d*|\.\d+)$/.test(s) ? parseFloat(s) : NaN;
 }
 
 // ---- Sync by bar number (for a track whose real content only starts several
@@ -11417,7 +11434,7 @@ function setOffsetLive(v) {
   // the built MIN_LEAD - offset_s, so the music ran ahead of the notes, and
   // "Aplicar e reconstruir" sent offset_s 0, losing the file's sync.
   offsetLive = Math.max(MIN_OFFSET, v || 0);
-  document.getElementById('syncOffset').value = offsetLive.toFixed(3);
+  writeOffsetField(offsetLive);
   document.getElementById('syncOffsetRange').value = Math.max(0, offsetLive);
   syncResetPointer();
   if (arrangements.length) showArr(currentArr);
@@ -12443,7 +12460,35 @@ function waveformSvg(W, H, px) {
 }
 
 
-document.getElementById('syncOffset').addEventListener('input', e => setTrackStart(parseFloat(e.target.value) || 0));
+(function wireOffsetField() {
+  const el = document.getElementById('syncOffset');
+  const shown = () => parseSeconds(el.dataset.shown);
+  const commit = () => {
+    const v = parseSeconds(el.value);
+    if (!Number.isFinite(v)) {
+      toast(T('Valor inválido: escreve os segundos, por exemplo 1,25.'));
+      el.value = el.dataset.shown || '0.000';
+      return;
+    }
+    const start = Math.max(0, v);
+    setTrackStart(start);
+    el.value = el.dataset.shown = start.toFixed(3);
+  };
+  el.addEventListener('focus', () => { el.dataset.shown = el.value; el.select(); });
+  el.addEventListener('change', commit);
+  el.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); commit(); el.select(); }
+    else if (e.key === 'Escape') { e.preventDefault(); el.value = el.dataset.shown || el.value; el.blur(); }
+    else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      const step = e.altKey ? 0.001 : e.shiftKey ? 0.1 : 0.01;
+      const base = Number.isFinite(parseSeconds(el.value)) ? parseSeconds(el.value) : shown();
+      el.value = String((Number.isFinite(base) ? base : 0) + (e.key === 'ArrowUp' ? step : -step));
+      commit();
+    }
+  });
+  el.addEventListener('blur', () => updateSyncOffsetDisplay());
+})();
 document.getElementById('syncOffsetRange').addEventListener('input', e => setTrackStart(parseFloat(e.target.value) || 0));
 
 // Seek bar: pause while scrubbing (so syncFrame doesn't fight the drag), preview
