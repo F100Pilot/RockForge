@@ -360,6 +360,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0352](#fix-0352) | BUG-0354 | unreleased | not run | manual |
 | [FIX-0353](#fix-0353) | BUG-0355 | unreleased | passed | automated |
 | [FIX-0354](#fix-0354) | BUG-0356 | unreleased | not run | manual |
+| [FIX-0355](#fix-0355) | BUG-0357 | unreleased | not run | manual |
 
 ## FIX-0001
 
@@ -7794,3 +7795,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | not run |
 | Validation | manual |
 | Regression risk | Low: the tick's sound is the same function; a worker that cannot start leaves the old on-the-spot path. A backlog after a stall may now sound up to three whole chords at once. |
+
+## FIX-0355
+
+**Bugs:** [BUG-0357](bugs/viewer.md#bug-0357)
+
+**Root cause:** FIX-0352 made #syncOffset a text field (so a value could be typed), which drops the number field's spinner — the only 1 ms nudge by mouse.
+
+**Solution:** Buttons #syncOffsetDown/#syncOffsetUp beside the field: 1 ms a click (Shift 10 ms, Alt 100 ms), repeating while held, through the same commit as typing; the field shrinks so '= cursor' fits.
+
+| | |
+|---|---|
+| Date | 2026-10-22 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 0ebb2710d8387b5282301ce225a2dd41c4b4a018 |
+| Components | web/app.js; web/index.html; web/i18n-en.js |
+| Tests | — |
+| Manual checks | Playwright on a local server (PT 1440/1000 px, EN 760 px): clicks, modifiers, hold-to-repeat, typing, layout, no page errors |
+| Test result | not run |
+| Validation | manual |
+| Regression risk | Low: two new buttons; the field's typing path is unchanged. |

@@ -8915,6 +8915,32 @@
       "test_result": "not run",
       "regression_risk": "Low: the tick's sound is the same function; a worker that cannot start leaves the old on-the-spot path. A backlog after a stall may now sound up to three whole chords at once.",
       "validation": "manual"
+    },
+    {
+      "id": "FIX-0355",
+      "bugs": [
+        "BUG-0357"
+      ],
+      "date": "2026-10-22",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "FIX-0352 made #syncOffset a text field (so a value could be typed), which drops the number field's spinner — the only 1 ms nudge by mouse.",
+      "solution": "Buttons #syncOffsetDown/#syncOffsetUp beside the field: 1 ms a click (Shift 10 ms, Alt 100 ms), repeating while held, through the same commit as typing; the field shrinks so '= cursor' fits.",
+      "components": [
+        "web/app.js",
+        "web/index.html",
+        "web/i18n-en.js"
+      ],
+      "commits": [
+        "0ebb2710d8387b5282301ce225a2dd41c4b4a018"
+      ],
+      "version": "unreleased",
+      "tests": [],
+      "manual_checks": [
+        "Playwright on a local server (PT 1440/1000 px, EN 760 px): clicks, modifiers, hold-to-repeat, typing, layout, no page errors"
+      ],
+      "test_result": "not run",
+      "regression_risk": "Low: two new buttons; the field's typing path is unchanged.",
+      "validation": "manual"
     }
   ]
 }

@@ -1617,3 +1617,46 @@ Playing a project with the note tick on, each chord started late and the score s
 - 2026-10-22 — Open: reported in conversation
 - 2026-10-22 — Fixed: commit dbddd87656
 - 2026-10-22 — Verified: Playwright 2026-10-22
+
+## BUG-0357
+
+**The song start field lost its fine -/+ adjustment**
+
+| | |
+|---|---|
+| Detected | 2026-10-22 |
+| Reported by | the maintainer ("desapareceu o ajuste fino com +/-") |
+| Found in | unreleased |
+| Build / commit | _pending_ |
+| Severity | Low |
+| Priority | P2 |
+| Status | Verified |
+
+After the Início field became typeable, the spinner arrows that nudged it by 1 ms were gone; only the keyboard arrows were left, which nobody sees.
+
+**Steps to reproduce:** 
+
+1. Open a built GP project, Partitura → Sincronização
+2. Look for the up/down arrows of the Início field
+
+**Expected:** A visible way to nudge the start by a millisecond.
+
+**Observed:** No -/+ control beside the field.
+
+**Root cause:** FIX-0352 made #syncOffset a text field (so a value could be typed), which drops the number field's spinner — the only 1 ms nudge by mouse.
+
+**Fixes:** [FIX-0355](../FIX_LOG.md#fix-0355) (unreleased)
+
+**Verified:** manual: Playwright on a local server, PT 1440/1000 px and EN 760 px (by the developer (Playwright))
+
+**Resolved:** 2026-10-22 · **Closed:** _pending_
+
+**Evidence:**
+
+- 2026-10-22: + → 0.001 s (first note at 0.001 s), Shift+ → 0.011, Alt− → 0 (clamped), held 1 s repeats and stops on release, typing 2,5 still works, '= cursor' inside the card at every width, no page errors
+
+**History:**
+
+- 2026-10-22 — Open: reported in conversation
+- 2026-10-22 — Fixed: commit 0ebb2710d8
+- 2026-10-22 — Verified: Playwright 2026-10-22
