@@ -15167,7 +15167,7 @@
       "observed": "generate_soundbank raised UnicodeEncodeError for 'SigurRósCanção'.",
       "severity": "High",
       "priority": "P1",
-      "status": "Verified",
+      "status": "Closed",
       "root_cause": "song_key_from_title kept every str.isalnum() character, including non-ASCII letters.",
       "fixes": [
         "FIX-0300"
@@ -15175,10 +15175,11 @@
       "verified_by": "pytest (the test fails on the old code)",
       "verification": "tests/test_psarc_manifest.py::test_a_song_key_is_ascii_even_for_an_accented_title passed, and fails with the fix reverted",
       "evidence": [
-        "code review of the whole codebase (six reviewers), confirmed by reading the code"
+        "code review of the whole codebase (six reviewers), confirmed by reading the code",
+        "2026-10-23: the reporter confirmed on GitHub issue #4 that an artist with an accent (Sokołowski) now builds the .psarc (\"works perfectly fine\"); issue closed"
       ],
       "resolved": "2026-10-18",
-      "closed": "pending",
+      "closed": "2026-10-23",
       "history": [
         {
           "date": "2026-10-18",
@@ -15194,6 +15195,11 @@
           "date": "2026-10-18",
           "status": "Verified",
           "note": "its test passes and fails on the old code"
+        },
+        {
+          "date": "2026-10-23",
+          "status": "Closed",
+          "note": "confirmed by the reporter on GitHub issue #4"
         }
       ]
     },

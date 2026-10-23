@@ -6,7 +6,7 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 
 | Fixed | Verified | Closed |
 |---|---|---|
-| 87 | 56 | 214 |
+| 87 | 55 | 215 |
 
 | ID | Title | Module | Severity | Priority | Status | Found in | Fixed in |
 |---|---|---|---|---|---|---|---|
@@ -309,7 +309,7 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0297](bugs/editor.md#bug-0297) | Moving notes in the score changed the tempo and other notes, and a chord could not be moved | editor | Medium | P2 | Fixed | 0.11.0-beta.2 | 0.11.0-beta.3 |
 | [BUG-0298](bugs/app.md#bug-0298) | A background task undid what the user changed while it ran | app | High | P1 | Verified | 0.11.0-beta.2 | 0.11.0-beta.3 |
 | [BUG-0299](bugs/exe.md#bug-0299) | Lyric detection always failed in the .exe | exe | High | P1 | Verified | 0.11.0-beta.2 | 0.11.0-beta.3 |
-| [BUG-0300](bugs/psarc.md#bug-0300) | A title or artist with an accent left the project without a .psarc | psarc | High | P1 | Verified | 0.11.0-beta.2 | 0.11.0-beta.3 |
+| [BUG-0300](bugs/psarc.md#bug-0300) | A title or artist with an accent left the project without a .psarc | psarc | High | P1 | Closed | 0.11.0-beta.2 | 0.11.0-beta.3 |
 | [BUG-0301](bugs/sync.md#bug-0301) | The "Cursor" snap option snapped every drag to the song's last beat | sync | Medium | P2 | Fixed | 0.11.0-beta.2 | 0.11.0-beta.3 |
 | [BUG-0302](bugs/editor.md#bug-0302) | Editing a note lost its slide and the fields the editor does not show | editor | High | P1 | Verified | 0.11.0-beta.2 | 0.11.0-beta.3 |
 | [BUG-0303](bugs/sync.md#bug-0303) | A sync tool used beside a lone "Song start" folded the chart and failed the rebuild | sync | High | P1 | Verified | 0.11.0-beta.2 | 0.11.0-beta.3 |

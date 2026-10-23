@@ -2588,7 +2588,7 @@ NativePsarcPacker swallowed a failed convert into a log while gp_pipeline warned
 | Build / commit | f64c45e8e176c44bd87c7c7866f741330b443011 |
 | Severity | High |
 | Priority | P1 |
-| Status | Verified |
+| Status | Closed |
 
 The song key kept non-ASCII letters (Canção, Beyoncé); with Wwise installed the SoundBank's ASCII STID chunk raised UnicodeEncodeError and the build produced only the bundle.
 
@@ -2607,17 +2607,19 @@ The song key kept non-ASCII letters (Canção, Beyoncé); with Wwise installed t
 
 **Verified:** tests/test_psarc_manifest.py::test_a_song_key_is_ascii_even_for_an_accented_title passed, and fails with the fix reverted (by pytest (the test fails on the old code))
 
-**Resolved:** 2026-10-18 · **Closed:** _pending_
+**Resolved:** 2026-10-18 · **Closed:** 2026-10-23
 
 **Evidence:**
 
 - code review of the whole codebase (six reviewers), confirmed by reading the code
+- 2026-10-23: the reporter confirmed on GitHub issue #4 that an artist with an accent (Sokołowski) now builds the .psarc ("works perfectly fine"); issue closed
 
 **History:**
 
 - 2026-10-18 — Open: reported
 - 2026-10-18 — Fixed: commit f907982d0f
 - 2026-10-18 — Verified: its test passes and fails on the old code
+- 2026-10-23 — Closed: confirmed by the reporter on GitHub issue #4
 
 ## BUG-0305
 

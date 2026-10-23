@@ -326,7 +326,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0297](bugs/editor.md#bug-0297) Moving notes in the score changed the tempo and other notes, and a chord could not be moved (Medium, now Fixed)
 - [BUG-0298](bugs/app.md#bug-0298) A background task undid what the user changed while it ran (High, now Verified)
 - [BUG-0299](bugs/exe.md#bug-0299) Lyric detection always failed in the .exe (High, now Verified)
-- [BUG-0300](bugs/psarc.md#bug-0300) A title or artist with an accent left the project without a .psarc (High, now Verified)
+- [BUG-0300](bugs/psarc.md#bug-0300) A title or artist with an accent left the project without a .psarc (High, now Closed)
 - [BUG-0301](bugs/sync.md#bug-0301) The "Cursor" snap option snapped every drag to the song's last beat (Medium, now Fixed)
 - [BUG-0302](bugs/editor.md#bug-0302) Editing a note lost its slide and the fields the editor does not show (High, now Verified)
 - [BUG-0303](bugs/sync.md#bug-0303) A sync tool used beside a lone "Song start" folded the chart and failed the rebuild (High, now Verified)
