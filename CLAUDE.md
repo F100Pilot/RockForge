@@ -2990,8 +2990,16 @@ corda"). A "Pista 3D" checkbox beside "Braço" opens a panel above the score
 project by `loadArrangements`, closed by `closeDetail`) with the notes coming
 down a Rocksmith-style highway: string colours with low E red and on top, a
 six-in-line headstock whose **nut carries the tuning** (one name per string, in
-its colour, from `tuning_offsets`), rounded-rectangle gems with the fret on the
-face and a drop line to the highway, a glow on the string + flash + sparks when
+its colour, from `tuning_offsets`), notes drawn as an OUTLINE only (a ring, an
+additive halo and a faint fill — `outlineGeometries`/`outlineMats`, the
+Rocksmith look the user approved in a sketch, 2026-10-23) with the fret on the
+face and a drop line to the highway, **arriving tilted 60° and turning
+clockwise at a constant rate over the last 3 s to level at the strike**
+(`NOTE_ROLL_DEG`/`NOTE_ROLL_S`, `noteRoll`; the outline, face and marks sit in
+a `head` subgroup that `rollNote` turns, the stem and trail stay put; a chord
+turns rigidly around its frame's centre, `chordBox`; `stats().rolls` reports
+each angle — checked paused with Playwright: 4.0°/10.0°/2.4° at 0.2/0.5/0.12 s
+from the strike, as the formula says), a glow on the string + flash + sparks when
 a note arrives, and **the note stays on the string, number and all** — a short
 one `HOLD_MIN` (0.32 s), a sustained one for as long as it sounds, then it
 fades. Chords get a frame and the name `/arrangements` already derives; an open

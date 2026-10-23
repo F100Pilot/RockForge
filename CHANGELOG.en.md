@@ -6,6 +6,10 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### New
+
+- **3D highway notes as in Rocksmith:** the notes are transparent, only an outline in the string's colour (and the fret number), and they arrive tilted 60°: over the last 3 seconds they turn slowly clockwise until they lie level at the instant they reach the string. A chord turns whole, with its frame.
+
 ## [0.11.1 beta 5] — 2026-10-22
 
 ### Fixes

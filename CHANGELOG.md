@@ -6,6 +6,10 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Novidades
+
+- **Notas da pista 3D como no Rocksmith:** as notas são transparentes, só com o contorno da cor da corda (e o número do traste), e chegam inclinadas 60°: nos últimos 3 segundos rodam devagar, no sentido dos ponteiros do relógio, até ficarem na horizontal no instante em que tocam a corda. Um acorde roda inteiro, com a sua moldura.
+
 ## [0.11.1 beta 5] — 2026-10-22
 
 ### Correções

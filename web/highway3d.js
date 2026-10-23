@@ -31,6 +31,13 @@
   const NECK_FAR = -0.7;
   const NUT_W = 0.55;
   const HOLD_MIN = 0.32; // a struck note stays on the string at least this long
+  // A note comes tilted NOTE_ROLL_DEG (its right side up) and, over its last NOTE_ROLL_S before
+  // the strings, turns clockwise at a constant rate to lie level as it strikes (the approved
+  // sketch: 60°, 3 s, constant). A chord turns as one piece, around its frame's centre.
+  const NOTE_ROLL_DEG = 60;
+  const NOTE_ROLL_S = 3;
+  const noteRoll = (remaining) => remaining <= 0 ? 0
+    : (NOTE_ROLL_DEG * Math.PI / 180) * Math.min(1, remaining / NOTE_ROLL_S);
   const FADE = 0.25;
   const CHORD_EPS = 0.005;
   const ANCHOR_AHEAD = 1.6; // the hand window covers the notes this far ahead
@@ -164,12 +171,31 @@
     s.lineTo(x, y + r); s.quadraticCurveTo(x, y, x + r, y);
     return s;
   }
-  function gemGeometry(w, h) {
-    const g = new THREE.ExtrudeGeometry(roundedRect(w, h, Math.min(0.11, h / 2 - 0.01)), {
-      depth: 0.12, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.045, bevelSegments: 4, curveSegments: 8,
-    });
-    g.translate(0, 0, -0.06);
-    return g;
+  // A note is see-through: a glowing outline in the string's colour around a faint fill
+  // (Rocksmith's look), not a solid gem.
+  function outlineGeometries(w, h) {
+    const r = Math.min(0.12, h / 2 - 0.01), t = 0.055;
+    const ring = roundedRect(w, h, r);
+    ring.holes.push(roundedRect(w - 2 * t, h - 2 * t, Math.max(0.02, r - t)));
+    const halo = roundedRect(w + 0.14, h + 0.14, r + 0.07);
+    halo.holes.push(roundedRect(w - 0.02, h - 0.02, r));
+    return {
+      ring: new THREE.ShapeGeometry(ring, 8),
+      halo: new THREE.ShapeGeometry(halo, 8),
+      fill: new THREE.ShapeGeometry(roundedRect(w - t, h - t, Math.max(0.02, r - t / 2)), 8),
+    };
+  }
+  function addOutline(group, shapes, mats) {
+    const fill = new THREE.Mesh(shapes.fill, mats.fill); fill.position.z = -0.01;
+    const halo = new THREE.Mesh(shapes.halo, mats.halo); halo.position.z = -0.005;
+    group.add(fill, halo, new THREE.Mesh(shapes.ring, mats.ring));
+  }
+  function outlineMats(color, clip, lit = false) {
+    return {
+      ring: new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 1, depthWrite: false, clippingPlanes: clip }),
+      halo: new THREE.MeshBasicMaterial({ color, transparent: true, opacity: lit ? 0.55 : 0.3, blending: THREE.AdditiveBlending, depthWrite: false, clippingPlanes: clip }),
+      fill: new THREE.MeshBasicMaterial({ color, transparent: true, opacity: lit ? 0.3 : 0.12, depthWrite: false, clippingPlanes: clip }),
+    };
   }
 
   function resources() {
@@ -178,12 +204,11 @@
     const cache = (fn) => { const m = new Map(); return (k) => { if (!m.has(k)) m.set(k, fn(k)); return m.get(k); }; };
     res = {
       clip,
-      gem: gemGeometry(0.72, 0.3),
-      openBar: cache((w) => gemGeometry(w, 0.16)),
+      noteOutline: outlineGeometries(0.82, 0.4),
+      openOutline: cache((w) => outlineGeometries(w, 0.26)),
+      outlineMats: STRING_COLORS.map((c) => outlineMats(c, clip)),
+      mutedOutlineMats: outlineMats(0x8a90a0, clip),
       square: new THREE.PlaneGeometry(1, 1),
-      gemMats: STRING_COLORS.map((c) => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.28, roughness: 0.3, metalness: 0.15, clippingPlanes: clip })),
-      mutedMat: new THREE.MeshStandardMaterial({ color: 0x5b6070, emissive: 0x202430, roughness: 0.5, clippingPlanes: clip }),
-      rimMat: new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.22, depthWrite: false, clippingPlanes: clip }),
       stemMats: STRING_COLORS.map((c) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.5, depthWrite: false, clippingPlanes: clip })),
       bendTrailMat: new THREE.MeshStandardMaterial({ color: TEAL, emissive: TEAL, emissiveIntensity: 0.75, transparent: true, opacity: 0.7, depthWrite: false, side: THREE.DoubleSide, clippingPlanes: clip }),
       // The frame a bent note rises into on the string: the height its bend reaches.
@@ -582,7 +607,11 @@
     for (let i = 0; i < notes.length;) {
       let j = i + 1;
       while (j < notes.length && notes[j].t - notes[i].t < CHORD_EPS) j += 1;
-      if (j - i >= 2) chords.push({ t: notes[i].t, members: notes.slice(i, j), name: notes.slice(i, j).map((n) => n.chordName).find(Boolean) || "" });
+      if (j - i >= 2) {
+        const chord = { t: notes[i].t, members: notes.slice(i, j), name: notes.slice(i, j).map((n) => n.chordName).find(Boolean) || "" };
+        for (const n of chord.members) n.chord = chord;
+        chords.push(chord);
+      }
       i = j;
     }
     const lines = [
@@ -702,21 +731,22 @@
   function makeNote(n) {
     const r = resources();
     const group = new THREE.Group();
+    // The note itself (outline, face, marks) turns as it comes; its drop line and trail do not.
+    const head = new THREE.Group();
+    group.add(head);
+    group.userData.head = head;
     const s = n.string;
     const muted = n.techniques.includes("mute");
+    const mats = muted ? r.mutedOutlineMats : r.outlineMats[s];
     let x = fretX(n.fret), width = 1;
     if (n.fret === 0) {
       // Open string: a bar across the hand's window, as Rocksmith draws it.
       const a = anchorAt(n.t) || { first: stage.anchorFirst, width: stage.anchorWidth };
       width = a.width;
       x = a.first - 1 + a.width / 2;
-      group.add(new THREE.Mesh(r.openBar(Math.round((a.width - 0.25) * 4) / 4), muted ? r.mutedMat : r.gemMats[s]));
+      addOutline(head, r.openOutline(Math.round((a.width - 0.15) * 4) / 4), mats);
     } else {
-      group.add(new THREE.Mesh(r.gem, muted ? r.mutedMat : r.gemMats[s]));
-      const rim = new THREE.Mesh(r.square, r.rimMat);
-      rim.scale.set(0.62, 0.05, 1);
-      rim.position.set(0, 0.1, 0.13);
-      group.add(rim);
+      addOutline(head, r.noteOutline, mats);
       // Drop line to the highway, under the fret it is played on.
       const h = stringY(s) - 0.15;
       const stem = new THREE.Mesh(r.square, r.stemMats[s]);
@@ -724,8 +754,8 @@
       stem.position.set(0, -0.15 - h / 2, -0.02);
       group.add(stem);
     }
-    addFace(group, n, width);
-    addMarks(group, n);
+    addFace(head, n, width);
+    addMarks(head, n);
     let trail = null;
     // A short note with vibrato, tremolo picking or a bend still gets a trail, to show it; a
     // bend's runs as long as its curve.
@@ -741,11 +771,11 @@
       group.add(trail);
     }
     stage.lane.add(group);
-    return { group, trail, trailLength, x, width, note: n };
+    return { group, head, trail, trailLength, x, width, note: n };
   }
 
-  function makeChordFrame(c) {
-    const r = resources();
+  // The box around a chord's notes: its frame, and the centre the chord turns around.
+  function chordBox(c) {
     const frets = c.members.map((n) => n.fret).filter((f) => f > 0);
     const ys = c.members.map((n) => stringY(n.string));
     let left = frets.length ? Math.min(...frets) - 1 - 0.08 : Infinity;
@@ -755,6 +785,11 @@
       left = Math.min(left, a.first - 1 - 0.08); right = Math.max(right, a.first - 1 + a.width + 0.08);
     }
     const top = Math.max(...ys) + 0.3, bottom = Math.min(...ys) - 0.3;
+    return { left, right, top, bottom, cx: (left + right) / 2, cy: (top + bottom) / 2 };
+  }
+  function makeChordFrame(c) {
+    const r = resources();
+    const { left, right, top, bottom, cx, cy } = c.box || (c.box = chordBox(c));
     const outer = roundedRect(right - left, top - bottom, 0.12);
     outer.holes.push(roundedRect(right - left - 0.09, top - bottom - 0.09, 0.08));
     const geometry = new THREE.ShapeGeometry(outer, 8);
@@ -767,7 +802,7 @@
       label.position.set(0, (top - bottom) / 2 + 0.36, 0);
       group.add(label);
     }
-    group.position.set((left + right) / 2, (top + bottom) / 2, 0);
+    group.position.set(cx, cy, 0);
     stage.lane.add(group);
     return { group, trail: null };
   }
@@ -806,13 +841,10 @@
     const n = obj.note;
     const group = new THREE.Group();
     const color = n.techniques.includes("mute") ? 0x8a90a0 : STRING_COLORS[n.string];
-    const gemMat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.9, roughness: 0.3, metalness: 0.15, transparent: true });
-    const materials = [gemMat];
-    if (n.fret === 0) {
-      group.add(new THREE.Mesh(r.openBar(Math.round((obj.width - 0.25) * 4) / 4), gemMat));
-    } else {
-      group.add(new THREE.Mesh(r.gem, gemMat));
-    }
+    // Lit on the string: the same outline, brighter, with its own materials so it can fade.
+    const mats = outlineMats(color, null, true);
+    const materials = [mats.ring, mats.halo, mats.fill];
+    addOutline(group, n.fret === 0 ? r.openOutline(Math.round((obj.width - 0.15) * 4) / 4) : r.noteOutline, mats);
     addFace(group, n, obj.width, materials);
     group.position.set(obj.x, stringY(n.string), 0.02);
     stage.scene.add(group);
@@ -934,8 +966,10 @@
       const pop = 1 + 0.18 * Math.max(0, 1 - e.age / 0.12);
       e.held.group.scale.set(pop, pop, pop);
       const fade = e.age <= e.keep ? 1 : Math.max(0, 1 - (e.age - e.keep) / FADE);
-      for (const m of e.held.materials) m.opacity = fade;
-      e.held.materials[0].emissiveIntensity = holding ? 0.7 + 0.3 * pulse : 0.9 * fade;
+      for (const m of e.held.materials) {
+        if (m.userData.base === undefined) m.userData.base = m.opacity;
+        m.opacity = m.userData.base * fade * (holding ? 0.8 + 0.2 * pulse : 1);
+      }
       const b = e.held.bend;
       if (b) {
         // The note rises on the string as it is bent, in the song's own clock (a pause holds it).
@@ -1001,6 +1035,20 @@
     }
   }
 
+  // Turn a note's head by `angle`: around its own centre, or, in a chord, around the chord's
+  // centre, so the chord turns as one piece with its frame.
+  function rollNote(obj, angle) {
+    const head = obj.head;
+    if (!head) return;
+    head.rotation.z = angle;
+    const chord = obj.note.chord;
+    const box = chord && (chord.box || (song && (chord.box = chordBox(chord))));
+    if (!box || !angle) { head.position.set(0, 0, 0); return; }
+    const dx = obj.x - box.cx, dy = stringY(obj.note.string) - box.cy;
+    const c = Math.cos(angle), s = Math.sin(angle);
+    head.position.set(dx * c - dy * s - dx, dx * s + dy * c - dy, 0);
+  }
+
   // --- Frame --------------------------------------------------------------------------------------
   function frame(ms) {
     raf = requestAnimationFrame(frame);
@@ -1026,6 +1074,7 @@
         let obj = song.live.get(key);
         if (!obj) { obj = makeNote(n); song.live.set(key, obj); }
         obj.group.position.set(obj.x, stringY(n.string), -(n.t - now) * SPEED);
+        rollNote(obj, noteRoll(n.t - now));
         if (obj.trail) obj.trail.scale.z = obj.trailLength;
         if (!jumped && playing && lastNow < n.t && n.t <= now && now - n.t < 0.25) hit(obj);
       }
@@ -1036,6 +1085,7 @@
         let obj = song.live.get(key);
         if (!obj) { obj = makeChordFrame(chords[i]); song.live.set(key, obj); }
         obj.group.position.z = -(chords[i].t - now) * SPEED;
+        obj.group.rotation.z = noteRoll(chords[i].t - now);
       }
       for (const [key, obj] of song.live) {
         if (!wanted.has(key)) { stage.lane.remove(obj.group); song.live.delete(key); }
@@ -1104,6 +1154,7 @@
         notes: song.notes.length, lines: song.lines.length, liveNotes: song.live.size, liveLines: song.liveLines.size,
         window: { glow: stage.window.glow, first: stage.window.first, width: stage.window.width },
         bends: stage.effects.filter((e) => e.held.bend).map((e) => ({ string: e.string, rise: e.held.bend.dy / BEND_Y })),
+        rolls: [...song.live.values()].filter((o) => o.head).map((o) => ({ t: o.note.t, string: o.note.string, deg: o.head.rotation.z * 180 / Math.PI })),
       } : null;
     },
     // notes: [{t, sustain, string, fret, techniques, bend, bendCurve, slideTo, chordName}] in the
@@ -1121,7 +1172,7 @@
       if (!stage) return;
       const show = (obj) => {
         obj.traverse((o) => { if (o.userData.number) o.visible = options.numbers; });
-        layoutFace(obj);
+        layoutFace(obj.userData.head || obj);
       };
       stage.lane.children.forEach(show);
       for (const e of stage.effects) show(e.held.group);

@@ -258,7 +258,7 @@ They stay pending as before; Undo goes back to the built version.
   octave (A2)**, and whether to show all notes, only those matching the picked one or only naturals
   (no #); with "only those matching", nothing shows until a note is picked. With no mode
   selected, clicking a note on the score takes the cursor to it and picks it on the fretboard.
-  **3D highway** shows the notes coming down as in Rocksmith (it
+  **3D highway** shows the notes coming down as in Rocksmith — outlined only, tilted, turning level as they reach the string (it
   follows pending corrections too); when a note or chord reaches the strings, a rectangle lights
   up around the frets the hand is in (2–5, for example). A bend is teal: the note's trail rises with
   the bend and, on the string, the note rises as it is bent, up to the dashed frame at the height

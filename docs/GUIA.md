@@ -258,7 +258,7 @@ queres recuperar. Ficam pendentes como antes; Desfazer volta à versão constru�
   se mostra todas as notas, só as iguais à escolhida ou só as naturais (sem #); em "só as iguais",
   nada aparece até escolheres uma nota. Sem nenhum modo escolhido, clicar numa nota da partitura
   leva o cursor a essa nota e escolhe-a no braço. **Pista 3D** mostra as notas a descer como no
-  Rocksmith (segue também as correções ainda por aplicar); quando uma nota ou acorde chega às
+  Rocksmith — só com o contorno, inclinadas, a rodar até ficarem direitas quando tocam a corda (segue também as correções ainda por aplicar); quando uma nota ou acorde chega às
   cordas, um retângulo acende à volta dos trastes onde está a mão (2–5, por exemplo). Um bend é
   verde-água: o rasto da nota sobe com o bend e, na corda, a nota sobe à medida que é dobrada até à
   moldura tracejada da altura que o bend alcança (um tom = um espaço de corda) e desce quando o bend
