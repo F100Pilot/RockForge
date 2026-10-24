@@ -1664,3 +1664,46 @@ After the Início field became typeable, the spinner arrows that nudged it by 1 
 - 2026-10-22 — Open: reported in conversation
 - 2026-10-22 — Fixed: commit 0ebb2710d8
 - 2026-10-22 — Verified: Playwright 2026-10-22
+
+## BUG-0358
+
+**The Score's Audio panel opened past the left edge of a narrow window**
+
+| | |
+|---|---|
+| Detected | 2026-10-24 |
+| Reported by | the developer, while checking the metronome at 760 px |
+| Found in | 0.11.1-beta.5 |
+| Build / commit | _pending_ |
+| Severity | Low |
+| Priority | P2 |
+| Status | Verified |
+
+At 760 px the Áudio ▾ panel, anchored to its trigger's right edge, opened past the left edge of the score column, so its left-hand controls were cut off and could not be clicked.
+
+**Steps to reproduce:** 
+
+1. Open a built GP project at 760 px wide
+2. Partitura → Áudio ▾
+
+**Expected:** The whole panel inside the window.
+
+**Observed:** The panel starts at -91 px; Playwright cannot click the Tique por nota checkbox (outside the viewport).
+
+**Root cause:** wireDropdown only placed menus vertically (flip up, cap the height); .dd-menu.right is anchored with right:0 and nothing kept it inside the scrolling column horizontally.
+
+**Fixes:** [FIX-0357](../FIX_LOG.md#fix-0357) (unreleased)
+
+**Verified:** manual: Playwright on a local server, EN 760 px and PT 1000/1440 px (by the developer (Playwright))
+
+**Resolved:** 2026-10-24 · **Closed:** _pending_
+
+**Evidence:**
+
+- 2026-10-24: before -91 px (the same on the previous commit); after, the Áudio and Modo menus inside the window at 760/1000/1440 px and the panel's checkboxes clickable, no page errors
+
+**History:**
+
+- 2026-10-24 — Open: found while checking the metronome
+- 2026-10-24 — Fixed: commit 7f277b2d84
+- 2026-10-24 — Verified: Playwright 2026-10-24

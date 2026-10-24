@@ -362,6 +362,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0354](#fix-0354) | BUG-0356 | 0.11.1-beta.5 | not run | manual |
 | [FIX-0355](#fix-0355) | BUG-0357 | 0.11.1-beta.5 | not run | manual |
 | [FIX-0356](#fix-0356) | BUG-0356 | 0.11.1-beta.5 | not run | manual |
+| [FIX-0357](#fix-0357) | BUG-0358 | unreleased | not run | manual |
 
 ## FIX-0001
 
@@ -7838,3 +7839,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | not run |
 | Validation | manual |
 | Regression risk | Low-Medium: a redraw during playback cancels and reschedules the next 0.12 s of ticks; the <audio> fallback is unchanged. |
+
+## FIX-0357
+
+**Bugs:** [BUG-0358](bugs/viewer.md#bug-0358)
+
+**Root cause:** wireDropdown placed a menu vertically only; a right-anchored panel could start outside its scrolling column on a narrow screen.
+
+**Solution:** After opening, wireDropdown measures the menu and slides it (translateX) back inside its scrolling column and the window, 8 px from either edge.
+
+| | |
+|---|---|
+| Date | 2026-10-24 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 7f277b2d8462efb3ff5fa4f50888470e1eea8efb |
+| Components | web/app.js |
+| Tests | — |
+| Manual checks | Playwright on a local server: Áudio and Modo menus at 760/1000/1440 px inside the window, the panel's checkboxes clickable, no page errors |
+| Test result | not run |
+| Validation | manual |
+| Regression risk | Low: only a menu that would overflow is moved. |

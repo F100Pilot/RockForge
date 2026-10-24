@@ -17920,6 +17920,53 @@
           "note": "Playwright 2026-10-22"
         }
       ]
+    },
+    {
+      "id": "BUG-0358",
+      "title": "The Score's Audio panel opened past the left edge of a narrow window",
+      "detected": "2026-10-24",
+      "reported_by": "the developer, while checking the metronome at 760 px",
+      "found_in_version": "0.11.1-beta.5",
+      "found_in_build": "pending",
+      "module": "viewer",
+      "description": "At 760 px the Áudio ▾ panel, anchored to its trigger's right edge, opened past the left edge of the score column, so its left-hand controls were cut off and could not be clicked.",
+      "steps": [
+        "Open a built GP project at 760 px wide",
+        "Partitura → Áudio ▾"
+      ],
+      "expected": "The whole panel inside the window.",
+      "observed": "The panel starts at -91 px; Playwright cannot click the Tique por nota checkbox (outside the viewport).",
+      "severity": "Low",
+      "priority": "P2",
+      "status": "Verified",
+      "root_cause": "wireDropdown only placed menus vertically (flip up, cap the height); .dd-menu.right is anchored with right:0 and nothing kept it inside the scrolling column horizontally.",
+      "fixes": [
+        "FIX-0357"
+      ],
+      "verified_by": "the developer (Playwright)",
+      "verification": "manual: Playwright on a local server, EN 760 px and PT 1000/1440 px",
+      "evidence": [
+        "2026-10-24: before -91 px (the same on the previous commit); after, the Áudio and Modo menus inside the window at 760/1000/1440 px and the panel's checkboxes clickable, no page errors"
+      ],
+      "resolved": "2026-10-24",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-10-24",
+          "status": "Open",
+          "note": "found while checking the metronome"
+        },
+        {
+          "date": "2026-10-24",
+          "status": "Fixed",
+          "note": "commit 7f277b2d84"
+        },
+        {
+          "date": "2026-10-24",
+          "status": "Verified",
+          "note": "Playwright 2026-10-24"
+        }
+      ]
     }
   ]
 }

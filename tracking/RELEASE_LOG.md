@@ -27,7 +27,9 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0356](bugs/viewer.md#bug-0356) Chords lag when they play on the score, and a six-string chord sounds only three strings
 - [BUG-0357](bugs/viewer.md#bug-0357) The song start field lost its fine -/+ adjustment
 
-**Known bugs it carried:** —
+**Known bugs it carried:** 
+
+- [BUG-0358](bugs/viewer.md#bug-0358) The Score's Audio panel opened past the left edge of a narrow window (Low, now Verified)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 

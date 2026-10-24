@@ -8965,6 +8965,30 @@
       "test_result": "not run",
       "regression_risk": "Low-Medium: a redraw during playback cancels and reschedules the next 0.12 s of ticks; the <audio> fallback is unchanged.",
       "validation": "manual"
+    },
+    {
+      "id": "FIX-0357",
+      "bugs": [
+        "BUG-0358"
+      ],
+      "date": "2026-10-24",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "wireDropdown placed a menu vertically only; a right-anchored panel could start outside its scrolling column on a narrow screen.",
+      "solution": "After opening, wireDropdown measures the menu and slides it (translateX) back inside its scrolling column and the window, 8 px from either edge.",
+      "components": [
+        "web/app.js"
+      ],
+      "commits": [
+        "7f277b2d8462efb3ff5fa4f50888470e1eea8efb"
+      ],
+      "version": "unreleased",
+      "tests": [],
+      "manual_checks": [
+        "Playwright on a local server: Áudio and Modo menus at 760/1000/1440 px inside the window, the panel's checkboxes clickable, no page errors"
+      ],
+      "test_result": "not run",
+      "regression_risk": "Low: only a menu that would overflow is moved.",
+      "validation": "manual"
     }
   ]
 }
