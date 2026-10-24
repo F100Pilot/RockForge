@@ -9,6 +9,7 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 ### Novidades
 
 - **Metrónomo na Partitura:** no painel **Áudio ▾**, ao lado dos volumes da música e das notas, **Clique em cada tempo** liga um clique em cada tempo da partitura, como está desenhada — com as correções ainda por aplicar — e o 1.º tempo de cada compasso mais agudo; **Metrónomo** acerta o volume do clique. Ouve-se logo se a grelha de compassos bate com a música. A escolha e o volume ficam guardados neste browser.
+- **Faixa do metrónomo nas Barras de áudio:** com o metrónomo ligado, as **Barras de áudio** ganham, entre os ataques da gravação e as notas, uma faixa com um traço por tempo — verde quando um ataque da faixa de cima (a bateria separada, por exemplo) cai nesse tempo, laranja quando o ataque mais perto está fora, cinzento sem ataque perto. A faixa diz quantos tempos batem com um ataque e se a grelha está adiantada ou atrasada em relação ao som (a mediana, em ms), e a linha de alinhamento, com o rato por cima, diz também a distância do tempo mais perto ao seu ataque.
 - **Notas da pista 3D como no Rocksmith:** as notas são transparentes, só com o contorno da cor da corda (e o número do traste), e chegam inclinadas 60°: nos últimos 3 segundos rodam devagar, no sentido dos ponteiros do relógio, até ficarem na horizontal no instante em que tocam a corda. Um acorde roda inteiro, com a sua moldura.
 
 ### Correções

@@ -4273,6 +4273,22 @@ edge, opened past the column's left edge, cut off. Browser-only; verified with P
 beat, the accent exactly on the downbeats, the switch and volume remembered after a reload,
 the Áudio and Modo menus inside the window at 760/1000/1440 px, no page errors. Not heard on
 the user's machine.
+**The metronome lane** ("um identificador de coincidência … um gráfico de metrónomo que se
+pudesse comparar com o ataque da bateria", the same day): with the metronome on, the audio
+bars draw a third lane (`metroLane`, `METRO_LANE_H` 30 px, between the audio and notes lanes)
+with one mark per beat as drawn, taller on a downbeat, coloured by `metroMatches`: the nearest
+clear attack of the AUDIO LANE's own values (`attackNear`, the peak search `levelsAlignAt`
+already used, now a function of its own and unchanged) within min(`ALIGN_SEARCH_S`, 0.45 of the
+gap to the neighbouring beat) — never the next beat's — with `ATTACK_LAG_S` taken off as
+"Acertar pelos ataques" does; green within `ALIGN_OK_MS`, orange further, grey with none. The
+lane's label counts the green beats and gives the median beat − strike ("grelha N ms depois/
+antes do som"), and the hover text adds the nearest beat's own reading. It compares with
+whatever the audio lane shows — choose the separated drums there. Browser-only; verified with
+Playwright on `/onset-levels` answers planted at a known distance from each beat (PT 1440 / EN
+760 px): attacks 30 ms before each beat → "grelha 30 ms depois do som", orange; on the beat →
+48 of 65 green, "no tempo"; 40 ms after → "50 ms antes"; every 4th beat left without one →
+grey; switching the metronome off removes the lane; no page errors. The readings carry the
+bars' 10 ms resolution. Not tried on a real separated drum track from here.
 
 **On-score tone identification.** The active tone is shown on the tab viewer: an
 amber 🎸 label per tone change (plus the base tone at the start,

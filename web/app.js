@@ -2861,6 +2861,8 @@ function scoreLegendHtml() {
       T('Barras azuis (verdes para um instrumento separado): os ataques da gravação, cada batida um pico estreito (ou, em "Volume", o nível)')),
     legendItem(`<rect x="0" y="4" width="60" height="30" fill="#16181e"/><path d="M12 32h3v-22h-3zM18 32h3v-15h-3zM24 32h3v-10h-3zM36 32h3v-22h-3zM42 32h3v-15h-3zM48 32h3v-10h-3z" fill="${LEVELS_NOTES_COLOR}"/>`,
       T('Barras âmbar: o som das notas da pista, onde estão desenhadas. Os picos das duas faixas devem cair juntos')),
+    legendItem(`<rect x="0" y="8" width="60" height="22" fill="#16181e"/><path d="M8 28h3v-18h-3z" fill="${METRO_COLOR.hit}"/><path d="M22 28h2v-10h-2zM36 28h2v-10h-2z" fill="${METRO_COLOR.hit}"/><path d="M50 28h2v-10h-2z" fill="${METRO_COLOR.off}"/>`,
+      T('Faixa do metrónomo (com o metrónomo ligado): um traço por tempo, mais alto no 1.º de cada compasso; verde = há um ataque da faixa de cima nesse tempo, laranja = o ataque mais perto está fora, cinzento = nenhum ataque perto')),
   ];
   const tabs = [
     legendItem(`<rect x="2" y="7" width="56" height="22" rx="5" fill="#2f9e62"/><text x="30" y="22" fill="#07170d" font-size="11" font-weight="700" text-anchor="middle">✓ LEAD</text>`,
@@ -2880,6 +2882,10 @@ function scoreLegendHtml() {
 // "Barras de áudio" (see renderLevels)
 const LEVELS_LANE_H = 46, LEVELS_PAD = 5, LEVELS_DB = 36;  // dB shown below the loudest peak
 const LEVELS_AUDIO_COLOR = { '': '#4c9ed9', stem: '#3fb27f' }, LEVELS_NOTES_COLOR = '#e0a54a';
+// The metronome lane, under the audio lane while the metronome is on: one mark per beat of the
+// chart as drawn, coloured by whether a clear attack of the audio lane falls on it.
+const METRO_LANE_H = 30;
+const METRO_COLOR = { hit: '#5fd38d', off: '#ffb454', none: '#6b7080' };
 let levelsOn = false;
 try { levelsOn = localStorage.getItem('rf-levels') === '1'; } catch { /* no storage */ }
 let levelsSource = '';      // '' = what is playing, 'mix', or 'stem:<name>'
@@ -10186,6 +10192,7 @@ let metroGain = 1.0;
   on?.addEventListener('change', () => {
     try { localStorage.setItem('rf-metro', on.checked ? '1' : '0'); } catch { /* storage blocked */ }
     if (audioIsPlaying()) syncResetPointer();
+    if (levelsOn && arrangements.length) showArr(currentArr);  // its lane in the audio bars
   });
 })();
 document.getElementById('playbackSpeed')?.addEventListener('change', e => {
@@ -12141,12 +12148,14 @@ function renderLevels(a, W, px, warp) {
   // an <svg> has no .hidden property: the attribute is what [hidden] styles
   svg.toggleAttribute('hidden', !levelsOn || !a);
   if (!levelsOn || !a) { svg.innerHTML = ''; return; }
-  const H = LEVELS_PAD * 3 + LEVELS_LANE_H * 2;
+  const metroOnNow = !!document.getElementById('syncMetro')?.checked;
+  const top1 = LEVELS_PAD, topM = LEVELS_PAD * 2 + LEVELS_LANE_H;
+  const top2 = metroOnNow ? topM + METRO_LANE_H + LEVELS_PAD : topM;
+  const H = top2 + LEVELS_LANE_H + LEVELS_PAD;
   svg.setAttribute('width', W);
   svg.setAttribute('height', H);
   const onset = levelsOnsetData();
   const src = onset ? null : levelsPeaks();
-  const top1 = LEVELS_PAD, top2 = LEVELS_PAD * 2 + LEVELS_LANE_H;
   let audioPath = '', audioBin = null;
   if (onset && onset.values) {
     const per0 = 1 / (WAVE_HZ * onset.hop), shift0 = onset.offset * WAVE_HZ, vals = onset.values;
@@ -12198,12 +12207,14 @@ function renderLevels(a, W, px, warp) {
     : src ? (src.peaks ? T('Volume · {source}', { source: src.label }) : T('Volume · {source} (a ler…)', { source: src.label })) : T('Áudio · sem gravação');
   const laneColor = onset ? onset.color : src ? src.color : LEVELS_AUDIO_COLOR[''];
   const phX = timeToX(currentPlayheadT + viewOrigin);
+  const metro = metroOnNow ? metroMatches(a, warp, audioBin) : null;
   levelsHover = {
-    audioBin, onset: !!onset, top1, top2, H,
+    audioBin, onset: !!onset, top1, top2, H, beats: metro ? metro.beats : null,
     notes: [...new Set(notes.filter(n => n.string >= 0 && n.fret >= 0)
       .map(n => Math.round(warp(previewScale(n.time)) * 1000)))].sort((x, y) => x - y).map(ms => ms / 1000),
   };
   svg.innerHTML = levelsLane(top1, audioPath, laneColor, audioLabel)
+    + (metro ? metroLane(topM, W, metro) : '')
     + levelsLane(top2, notesPath, LEVELS_NOTES_COLOR, T('Notas · {track}', { track: arrLabel(a.kind) }))
     + `<line id="levelsPlayhead" x1="${phX}" y1="0" x2="${phX}" y2="${H}" stroke="#ff7a45" stroke-width="2" opacity=".9"/>`
     + `<g id="levelsHover" visibility="hidden" pointer-events="none">
@@ -12228,32 +12239,84 @@ function levelsAlignAt(t) {
   if (!h) return null;
   let note = null;
   for (const n of h.notes) if (Math.abs(n - t) <= ALIGN_SEARCH_S && (note === null || Math.abs(n - t) < Math.abs(note - t))) note = n;
+  const attack = h.audioBin ? attackNear(h.audioBin, note ?? t, ALIGN_SEARCH_S) : null;
+  let beat = null;
+  for (const b of h.beats || []) if (Math.abs(b.t - t) <= ALIGN_SEARCH_S && (beat === null || Math.abs(b.t - t) < Math.abs(beat.t - t))) beat = b;
+  return { note, attack, beat };
+}
+// Around `center` (display time): of the clear attack peaks of the audio lane (local maxima
+// at least half the strongest within `radius`), the one NEAREST the center — in a fast riff
+// the strongest peak in the window is often the next note's. Null when there is none.
+function attackNear(audioBin, center, radius) {
+  const c = center - viewOrigin;
+  // A peak must also rise clear of the 50 ms before it, so the ripple of a
+  // ringing note on the Volume view is not taken for a strike.
+  const PRE = 5, b0 = Math.max(PRE, Math.floor((c - radius) * WAVE_HZ));
+  const b1 = Math.ceil((c + radius) * WAVE_HZ);
+  if (b1 < b0) return null;
+  const v = [];
+  for (let b = b0 - PRE; b <= b1 + 1; b++) v.push(audioBin(b));
+  const top = Math.max(...v.slice(PRE));
   let attack = null;
-  if (h.audioBin) {
-    // Around the note when there is one: of the clear attack peaks there (local
-    // maxima at least half the strongest), the one NEAREST the note — in a fast
-    // riff the strongest peak in the window is often the next note's.
-    const c = (note ?? t) - viewOrigin;
-    // A peak must also rise clear of the 50 ms before it, so the ripple of a
-    // ringing note on the Volume view is not taken for a strike.
-    const PRE = 5, b0 = Math.max(PRE, Math.floor((c - ALIGN_SEARCH_S) * WAVE_HZ));
-    const b1 = Math.ceil((c + ALIGN_SEARCH_S) * WAVE_HZ);
-    const v = [];
-    for (let b = b0 - PRE; b <= b1 + 1; b++) v.push(h.audioBin(b));
-    const top = Math.max(...v.slice(PRE));
-    if (top >= 0.2) {
-      let bestD = Infinity;
-      for (let i = PRE; i < v.length - 1; i++) {
-        if (v[i] < top * 0.5 || v[i] < v[i - 1] || v[i] < v[i + 1]) continue;
-        if (v[i] - Math.min(...v.slice(i - PRE, i)) < top * 0.3) continue;
-        const at = (b0 - PRE + i + 0.5) / WAVE_HZ + viewOrigin, d = Math.abs(at - (note ?? t));
-        if (d < bestD) { bestD = d; attack = at; }
-      }
+  if (top >= 0.2) {
+    let bestD = Infinity;
+    for (let i = PRE; i < v.length - 1; i++) {
+      if (v[i] < top * 0.5 || v[i] < v[i - 1] || v[i] < v[i + 1]) continue;
+      if (v[i] - Math.min(...v.slice(i - PRE, i)) < top * 0.3) continue;
+      const at = (b0 - PRE + i + 0.5) / WAVE_HZ + viewOrigin, d = Math.abs(at - center);
+      if (d < bestD) { bestD = d; attack = at; }
     }
   }
-  return { note, attack };
+  return attack;
+}
+
+// Each beat of the chart as drawn against the audio lane: the nearest clear attack within
+// a little under half a beat (never the next beat's), the picked attack's measured lag
+// (ATTACK_LAG_S, as "Acertar pelos ataques" uses it) taken off. `d` = beat − strike in ms
+// (positive: the beat comes after the sound), null with no attack near.
+function metroMatches(a, warp, audioBin) {
+  const beats = (a.beats || []).map(t => ({ t: warp(previewScale(t)), down: isDownbeat(a, t), d: null }));
+  for (let i = 0; i < beats.length; i++) {
+    const gap = Math.min(i > 0 ? beats[i].t - beats[i - 1].t : Infinity, i + 1 < beats.length ? beats[i + 1].t - beats[i].t : Infinity);
+    const radius = Math.min(ALIGN_SEARCH_S, Number.isFinite(gap) ? gap * 0.45 : ALIGN_SEARCH_S);
+    const at = audioBin ? attackNear(audioBin, beats[i].t, radius) : null;
+    if (at !== null) beats[i].d = Math.round((beats[i].t - (at - ATTACK_LAG_S)) * 1000);
+  }
+  const found = beats.filter(b => b.d !== null).map(b => b.d).sort((x, y) => x - y);
+  const hit = found.filter(d => Math.abs(d) <= ALIGN_OK_MS).length;
+  const median = found.length ? found[Math.floor(found.length / 2)] : null;
+  return { beats, hit, found: found.length, median };
+}
+function metroLane(top, W, m) {
+  const paths = { hit: '', off: '', none: '' }, base = top + METRO_LANE_H - 3, room = METRO_LANE_H - 8;
+  for (const b of m.beats) {
+    const x = timeToX(b.t);
+    if (x < 30 || x > W) continue;
+    const kind = b.d === null ? 'none' : Math.abs(b.d) <= ALIGN_OK_MS ? 'hit' : 'off';
+    const h = Math.round(b.down ? room : room * 0.55), w = b.down ? 3 : 2;
+    paths[kind] += `M${(x - w / 2).toFixed(1)} ${base}h${w}v${-h}h${-w}z`;
+  }
+  let label = T('Metrónomo · {hit} de {total} tempos batem com um ataque', { hit: m.hit, total: m.beats.length });
+  if (m.found >= 4 && m.median !== null) {
+    label += ' · ' + (Math.abs(m.median) <= ALIGN_OK_MS ? T('grelha no tempo ({ms} ms)', { ms: (m.median > 0 ? '+' : '') + m.median })
+      : m.median > 0 ? T('grelha {ms} ms depois do som', { ms: m.median }) : T('grelha {ms} ms antes do som', { ms: -m.median }));
+  }
+  const lw = label.length * 6.5 + 22;
+  return `<rect x="30" y="${top}" width="100%" height="${METRO_LANE_H}" fill="#16181e"/>`
+    + Object.entries(paths).map(([k, d]) => d ? `<path d="${d}" fill="${METRO_COLOR[k]}" opacity=".9"/>` : '').join('')
+    + `<rect x="34" y="${top + 2}" width="${lw.toFixed(0)}" height="15" rx="4" fill="#14151a" opacity=".8"/>`
+    + `<text x="42" y="${top + 13}" fill="#c4c6cd" font-size="11" font-weight="600">${esc(label)}</text>`;
 }
 function alignText(r) {
+  const own = noteAlignText(r);
+  if (!r.beat) return own;
+  const d = r.beat.d;
+  const beat = d === null ? T('tempo sem ataque perto')
+    : Math.abs(d) <= ALIGN_OK_MS ? T('tempo com o ataque ({ms} ms)', { ms: (d > 0 ? '+' : '') + d })
+    : d > 0 ? T('tempo {ms} ms depois do ataque', { ms: d }) : T('tempo {ms} ms antes do ataque', { ms: -d });
+  return `${own} · ${beat}`;
+}
+function noteAlignText(r) {
   if (r.note === null) return T('Sem nota perto');
   if (r.attack === null) return T('Sem ataque forte perto desta nota');
   const ms = Math.round((r.note - r.attack) * 1000);
