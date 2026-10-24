@@ -33,13 +33,13 @@
   const HOLD_MIN = 0.32; // a struck note stays on the string at least this long
   // A note comes tilted NOTE_ROLL_DEG (its right side up) and, over its last NOTE_ROLL_S before
   // the strings, turns clockwise at a constant rate to lie level as it strikes (30°, 3 s,
-  // constant). A chord turns as one piece, around its frame's centre. An open string (the bar
-  // across the hand's frets) always lies level, and so does a chord with one.
+  // constant). Only single notes turn: a chord (its notes and frame) and an open string (the bar
+  // across the hand's frets) always lie level.
   const NOTE_ROLL_DEG = 30;
   const NOTE_ROLL_S = 3;
   const SLIDE_BLEND = 0.25; // share of a slide's trail each curved end takes…
   const SLIDE_BLEND_MAX = 0.6; // …at most this long on the highway (a small curve)
-  const comesLevel = (n) => n.fret === 0 || (n.chord && n.chord.members.some((m) => m.fret === 0));
+  const comesLevel = (n) => n.fret === 0 || Boolean(n.chord);
   const noteRoll = (remaining) => remaining <= 0 ? 0
     : (NOTE_ROLL_DEG * Math.PI / 180) * Math.min(1, remaining / NOTE_ROLL_S);
   const FADE = 0.25;
@@ -1083,18 +1083,11 @@
     }
   }
 
-  // Turn a note's head by `angle`: around its own centre, or, in a chord, around the chord's
-  // centre, so the chord turns as one piece with its frame.
+  // Turn a single note's head by `angle`, around its own centre.
   function rollNote(obj, angle) {
     const head = obj.head;
     if (!head) return;
     head.rotation.z = angle;
-    const chord = obj.note.chord;
-    const box = chord && (chord.box || (song && (chord.box = chordBox(chord))));
-    if (!box || !angle) { head.position.set(0, 0, 0); return; }
-    const dx = obj.x - box.cx, dy = stringY(obj.note.string) - box.cy;
-    const c = Math.cos(angle), s = Math.sin(angle);
-    head.position.set(dx * c - dy * s - dx, dx * s + dy * c - dy, 0);
   }
 
   // --- Frame --------------------------------------------------------------------------------------
@@ -1133,7 +1126,6 @@
         let obj = song.live.get(key);
         if (!obj) { obj = makeChordFrame(chords[i]); song.live.set(key, obj); }
         obj.group.position.z = -(chords[i].t - now) * SPEED;
-        obj.group.rotation.z = chords[i].members.some((m) => m.fret === 0) ? 0 : noteRoll(chords[i].t - now);
       }
       for (const [key, obj] of song.live) {
         if (!wanted.has(key)) { stage.lane.remove(obj.group); song.live.delete(key); }
