@@ -10101,6 +10101,14 @@ function wireDropdown(triggerId, menuId) {
     const up = menu.scrollHeight > below && above > below;
     menu.classList.toggle('dd-up', up);
     menu.style.maxHeight = `${Math.max(160, up ? above : below)}px`;
+    // On a narrow screen a menu anchored to its trigger's right edge opened past the
+    // left edge of its scrolling column (the Áudio panel at 760 px), cut off and out of
+    // reach: slide it back inside that column and the window.
+    menu.style.transform = '';
+    const m = menu.getBoundingClientRect();
+    const minX = Math.max(0, box.left) + 8, maxX = Math.min(window.innerWidth, box.right) - 8;
+    const dx = m.left < minX ? minX - m.left : (m.right > maxX ? Math.max(minX - m.left, maxX - m.right) : 0);
+    if (dx) menu.style.transform = `translateX(${Math.round(dx)}px)`;
     (menu.querySelector('.active-mode') || items()[0])?.focus();
   };
   trigger.addEventListener('click', () => (menu.hidden ? open() : close(false)));
@@ -10161,6 +10169,25 @@ document.getElementById('tickVolume')?.addEventListener('input', e => {
 document.getElementById('musicVolume')?.addEventListener('input', e => {
   if (playGain) playGain.gain.value = parseFloat(e.target.value);
 });
+
+// The metronome's switch and volume, remembered in this browser.
+let metroGain = 1.0;
+(() => {
+  const vol = document.getElementById('metroVolume'), on = document.getElementById('syncMetro');
+  try {
+    const v = parseFloat(localStorage.getItem('rf-metro-vol'));
+    if (vol && Number.isFinite(v)) { vol.value = String(v); metroGain = v; }
+    if (on) on.checked = localStorage.getItem('rf-metro') === '1';
+  } catch { /* storage blocked */ }
+  vol?.addEventListener('input', e => {
+    metroGain = parseFloat(e.target.value);
+    try { localStorage.setItem('rf-metro-vol', String(metroGain)); } catch { /* storage blocked */ }
+  });
+  on?.addEventListener('change', () => {
+    try { localStorage.setItem('rf-metro', on.checked ? '1' : '0'); } catch { /* storage blocked */ }
+    if (audioIsPlaying()) syncResetPointer();
+  });
+})();
 document.getElementById('playbackSpeed')?.addEventListener('change', e => {
   const now = audioTime();          // capture position under the OLD rate first
   playbackRate = parseFloat(e.target.value);
@@ -10429,6 +10456,34 @@ function cancelScheduledTicks() {
   const now = audioCtx ? audioCtx.currentTime : 0;
   for (const [src, at] of scheduledTicks) if (at > now) { try { src.stop(); } catch { /* already stopped */ } }
   scheduledTicks = [];
+}
+
+// The metronome: a click on every beat of the chart AS DRAWN — its pending tempo and
+// corrections included, through the same warp as the notes — the first beat of each bar
+// higher. Against the recording it says whether the chart's beat grid sits on the song's
+// beat. Scheduled ahead like the ticks (and cancelled with them); a click found more than
+// METRO_LATE_S late (a stalled frame) is skipped rather than sounded off the beat.
+const METRO_LATE_S = 0.03;
+let metroIdx = 0;
+const downbeatCache = new WeakMap();
+function isDownbeat(a, t) {
+  let set = downbeatCache.get(a);
+  if (!set) { set = new Set((a.bars || []).map(b => Math.round(b.time * 1000))); downbeatCache.set(a, set); }
+  return set.has(Math.round(t * 1000));
+}
+function playClick(accent, when = null) {
+  if (!audioCtx || !(metroGain > 0)) return null;
+  const t0 = when ?? audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  osc.type = 'triangle';
+  osc.frequency.value = accent ? 1760 : 1320;
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(0.45 * metroGain * (accent ? 1 : 0.7), t0 + 0.002);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.06);
+  osc.connect(g).connect(audioCtx.destination);
+  osc.start(t0); osc.stop(t0 + 0.07);
+  return osc;
 }
 
 // What a note of the chart sounds as in the tick: its MIDI pitch and how long
@@ -11435,6 +11490,9 @@ function syncResetPointer() {
   cancelScheduledTicks();
   tickIdx = notes.findIndex(n => warp(previewScale(n.time)) >= vt);
   if (tickIdx < 0) tickIdx = notes.length;
+  const beats = arrangements[currentArr]?.beats || [];
+  metroIdx = beats.findIndex(t => warp(previewScale(t)) >= vt);
+  if (metroIdx < 0) metroIdx = beats.length;
   // A seek (or the cursor placed before Play) starts making the notes there.
   if (document.getElementById('syncTick')?.checked) prewarmTicks(arrangements[currentArr], notes, warp, vt);
 }
@@ -11498,6 +11556,19 @@ function syncFrame() {
     tickIdx++;
   }
   if (tickOn) prewarmTicks(arrNow, notes, warp, vtAudio);
+  if (document.getElementById('syncMetro')?.checked) {
+    const beats = arrNow.beats || [];
+    while (metroIdx < beats.length) {
+      const at = warp(previewScale(beats[metroIdx]));
+      if (at > vtAudio + ahead) break;
+      if (at > vtAudio - METRO_LATE_S) {
+        const when = at > vtAudio ? ctxNow + (at - vtAudio) / playbackRate : null;
+        const src = playClick(isDownbeat(arrNow, beats[metroIdx]), when);
+        if (src && when != null) scheduledTicks.push([src, when]);
+      }
+      metroIdx++;
+    }
+  }
   updateFretboard(vtDisp, warp);  // light up the notes sounding right now on the neck
   updateLiveBpm(vtDisp, warp);    // real-time BPM of the current measure
   // Highlight the lyric word under the playhead without redrawing the full SVG.

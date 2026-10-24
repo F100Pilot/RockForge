@@ -1120,6 +1120,8 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                   <label class="pv-field">Música <input type="range" id="musicVolume" min="0" max="1" step="0.05" value="1"></label>
                   <label class="pv-field">Notas <input type="range" id="tickVolume" min="0" max="2" step="0.05" value="1"></label>
                   <label class="check"><input type="checkbox" id="syncTick" checked> Tique por nota</label>
+                  <label class="pv-field">Metrónomo <input type="range" id="metroVolume" min="0" max="2" step="0.05" value="1"></label>
+                  <label class="check" title="Um clique em cada tempo da partitura, como está desenhada (com as correções por aplicar); o 1.º tempo de cada compasso mais agudo. Ouve-se se a grelha de compassos bate com a música"><input type="checkbox" id="syncMetro"> Clique em cada tempo</label>
                   <div class="dd-cap">Fonte de áudio <button class="info-btn" data-info="stems">ⓘ</button></div>
                   <select id="audioSource" aria-label="Fonte de áudio">
                     <option value="">Mistura completa</option>

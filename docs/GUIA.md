@@ -235,6 +235,9 @@ queres recuperar. Ficam pendentes como antes; Desfazer volta à versão constru�
     parado, o cursor anda livremente. O trecho aparece a roxo na partitura; o **×** tira-o.
     Bom para ouvir um passo devagar (com a velocidade) até a sincronização bater;
   - volumes da música e das notas, **Tique por nota**;
+  - **Metrónomo** (o volume do clique) e **Clique em cada tempo**: um clique em cada tempo da
+    partitura, como está desenhada (com as correções ainda por aplicar), o 1.º tempo de cada
+    compasso mais agudo — ouve-se se a grelha de compassos bate com a música;
   - **Fonte de áudio**: a mistura completa; **«pista» (sintetizada)**, as notas dessa pista
     tocadas sozinhas e limpas, boas para conferir a sincronização de cada pista;
     **Voz (sintetizada)**, a melodia em que a letra do GP é cantada; e, depois de

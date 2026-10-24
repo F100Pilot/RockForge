@@ -8,7 +8,12 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ### New
 
+- **Metronome on the Score:** in the **Audio ▾** panel, beside the music and note volumes, **Click on every beat** turns on a click on every beat of the score as drawn — with the corrections still to apply — the 1st beat of each bar higher; **Metronome** sets the click's volume. You hear at once whether the bar grid matches the music. The choice and the volume are remembered in this browser.
 - **3D highway notes as in Rocksmith:** the notes are transparent, only an outline in the string's colour (and the fret number), and they arrive tilted 60°: over the last 3 seconds they turn slowly clockwise until they lie level at the instant they reach the string. A chord turns whole, with its frame.
+
+### Fixes
+
+- **Audio panel cut off on a narrow screen:** in a narrow window (760 px) the Score's **Audio ▾** panel opened past the left edge and its left-hand controls were out of reach. Menus now always stay inside their column and the window.
 
 ## [0.11.1 beta 5] — 2026-10-22
 

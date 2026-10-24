@@ -8,7 +8,12 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ### Novidades
 
+- **Metrónomo na Partitura:** no painel **Áudio ▾**, ao lado dos volumes da música e das notas, **Clique em cada tempo** liga um clique em cada tempo da partitura, como está desenhada — com as correções ainda por aplicar — e o 1.º tempo de cada compasso mais agudo; **Metrónomo** acerta o volume do clique. Ouve-se logo se a grelha de compassos bate com a música. A escolha e o volume ficam guardados neste browser.
 - **Notas da pista 3D como no Rocksmith:** as notas são transparentes, só com o contorno da cor da corda (e o número do traste), e chegam inclinadas 60°: nos últimos 3 segundos rodam devagar, no sentido dos ponteiros do relógio, até ficarem na horizontal no instante em que tocam a corda. Um acorde roda inteiro, com a sua moldura.
+
+### Correções
+
+- **Painel Áudio cortado num ecrã estreito:** numa janela estreita (760 px), o painel **Áudio ▾** da Partitura abria a sair pela esquerda e os controlos do lado esquerdo ficavam fora de alcance. Agora os menus ficam sempre dentro da coluna e da janela.
 
 ## [0.11.1 beta 5] — 2026-10-22
 

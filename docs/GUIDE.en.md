@@ -235,6 +235,9 @@ They stay pending as before; Undo goes back to the built version.
     purple on the score; **×** removes it. Good for hearing a bit slowly (with the speed) until
     the sync is right;
   - music and note volumes, **Tick per note**;
+  - **Metronome** (the click's volume) and **Click on every beat**: a click on every beat of the
+    score as drawn (with the corrections still to apply), the 1st beat of each bar higher — you
+    hear whether the bar grid matches the music;
   - **Audio source**: the full mix; **«track» (synthesized)**, that track's notes played alone
     and clean, good for checking each track's sync; **Vocals (synthesized)**, the melody the GP
     lyrics are sung on; and, after **Separate instruments** (Demucs, takes minutes), the

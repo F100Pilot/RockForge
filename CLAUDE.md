@@ -4256,6 +4256,24 @@ stopped by `cancelScheduledTicks` on pause, `stopPlayback` and every
 0 ms late (12 ms on the very first note after Play at 4×); a pause or a seek
 leaves no tick behind. The `<audio>` fallback keeps "now".
 
+**A metronome on the chart's own beats** ("Quero que incorpores um metrónomo. Pode ajudar a
+alinhar as notas", 2026-10-24). In the transport's "Áudio ▾" panel, beside the music and note
+volumes: `#metroVolume` ("Metrónomo", 0-200 %, `metroGain`) and `#syncMetro` ("Clique em cada
+tempo", off by default), both remembered (`localStorage` `rf-metro`, `rf-metro-vol`). While
+playing, `syncFrame` clicks every `ArrangementOut.beats` time through the SAME
+`warp(previewScale(t))` as the notes — so the clicks follow pending tempo/anchor edits and say
+whether the chart's grid sits on the recording's beat — scheduled ahead exactly like the ticks
+(`playClick(accent, when)`, a 60 ms triangle at 1760 Hz on a downbeat — `isDownbeat`, a bar of
+`a.bars` — else 1320 Hz; pushed into `scheduledTicks`, so pause/seek/redraw cancel them;
+`metroIdx` reset in `syncResetPointer`); a click found more than `METRO_LATE_S` (30 ms) late is
+skipped, never sounded off the beat. **`wireDropdown` keeps a menu inside its scrolling column
+and the window** (a `translateX`): at 760 px the Áudio panel, anchored to its trigger's right
+edge, opened past the column's left edge, cut off. Browser-only; verified with Playwright
+(PT 1440 / EN 760 px): with a pending +0.3 s correction, 7-8 clicks each 0 ms from the drawn
+beat, the accent exactly on the downbeats, the switch and volume remembered after a reload,
+the Áudio and Modo menus inside the window at 760/1000/1440 px, no page errors. Not heard on
+the user's machine.
+
 **On-score tone identification.** The active tone is shown on the tab viewer: an
 amber 🎸 label per tone change (plus the base tone at the start,
 `activeToneKeyAtDisplay`) and a live `#liveTone` label next to the BPM
