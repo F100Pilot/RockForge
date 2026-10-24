@@ -79,7 +79,7 @@ Rocksmith, a nota não tem número: o número do traste no braço passa de branc
 máximo no ataque, e fica aceso enquanto ela soa, sem mudar de sítio nem de tamanho
 ("Traste na nota" volta a pôr o número na nota). As técnicas têm os símbolos do
 Rocksmith: ▼ hammer-on e ▲ pull-off na face da nota (também quando ela fica na
-corda); por cima, laço (palm mute), anel com ponto (harmónico), olho (pinch), V largo
+corda); uma cruz translúcida dentro da nota (palm mute); por cima, anel com ponto (harmónico), olho (pinch), V largo
 (tapping), bloco com entalhe / com bico (slap / pop) e chevrons ˄ para a força do
 bend; moldura dupla a brilhar (acento); rasto ondulado (vibrato) e em zigue-zague
 (tremolo picking). Segue a gravação e as correções de sincronização ainda por

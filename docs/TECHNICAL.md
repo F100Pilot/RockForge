@@ -80,7 +80,7 @@ note has no number: the neck's fret number turns from white to amber, with a hal
 that fret comes (2 s before), fully when it strikes, and stays lit while it sounds, without moving
 or changing size ("Fret on the note" puts the number back on the note). Techniques have
 Rocksmith's symbols: ▼ hammer-on and ▲ pull-off on the note's face (also while it rests on the
-string); above it, a bow tie (palm mute), a ring with a dot (harmonic), an eye (pinch), a wide V
+string); a translucent cross inside the note (palm mute); above it, a ring with a dot (harmonic), an eye (pinch), a wide V
 (tapping), a block with a notch / with a peak (slap / pop) and ˄ chevrons for the bend's
 strength; a glowing double frame (accent); a wavy trail (vibrato) and a zigzag one (tremolo
 picking). It follows the recording and the not-yet-applied sync corrections, just like the

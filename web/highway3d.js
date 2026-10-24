@@ -32,10 +32,14 @@
   const NUT_W = 0.55;
   const HOLD_MIN = 0.32; // a struck note stays on the string at least this long
   // A note comes tilted NOTE_ROLL_DEG (its right side up) and, over its last NOTE_ROLL_S before
-  // the strings, turns clockwise at a constant rate to lie level as it strikes (the approved
-  // sketch: 60°, 3 s, constant). A chord turns as one piece, around its frame's centre.
-  const NOTE_ROLL_DEG = 60;
+  // the strings, turns clockwise at a constant rate to lie level as it strikes (30°, 3 s,
+  // constant). A chord turns as one piece, around its frame's centre. An open string (the bar
+  // across the hand's frets) always lies level, and so does a chord with one.
+  const NOTE_ROLL_DEG = 30;
   const NOTE_ROLL_S = 3;
+  const SLIDE_BLEND = 0.25; // share of a slide's trail each curved end takes…
+  const SLIDE_BLEND_MAX = 0.6; // …at most this long on the highway (a small curve)
+  const comesLevel = (n) => n.fret === 0 || (n.chord && n.chord.members.some((m) => m.fret === 0));
   const noteRoll = (remaining) => remaining <= 0 ? 0
     : (NOTE_ROLL_DEG * Math.PI / 180) * Math.min(1, remaining / NOTE_ROLL_S);
   const FADE = 0.25;
@@ -55,10 +59,6 @@
   const ICONS = {
     hammerOn: (ctx) => { ctx.moveTo(24, 34); ctx.lineTo(104, 34); ctx.lineTo(64, 100); ctx.closePath(); },
     pullOff: (ctx) => { ctx.moveTo(24, 96); ctx.lineTo(104, 96); ctx.lineTo(64, 30); ctx.closePath(); },
-    palmMute: (ctx) => {
-      ctx.moveTo(18, 34); ctx.lineTo(64, 64); ctx.lineTo(18, 94); ctx.closePath();
-      ctx.moveTo(110, 34); ctx.lineTo(64, 64); ctx.lineTo(110, 94); ctx.closePath();
-    },
     harmonic: (ctx) => { ring(ctx, 42); ring(ctx, 30); ring(ctx, 12); },
     pinchHarmonic: (ctx) => {
       ctx.moveTo(10, 64); ctx.quadraticCurveTo(64, 6, 118, 64); ctx.quadraticCurveTo(64, 122, 10, 64); ctx.closePath();
@@ -79,7 +79,7 @@
     }
   };
   // Symbols above the note, in this order (side by side when there are several).
-  const ABOVE = ["tap", "harmonic", "pinchHarmonic", "palmMute", "slap", "pluck"];
+  const ABOVE = ["tap", "harmonic", "pinchHarmonic", "slap", "pluck"]; // palm mute: a cross in the note
   const LEGATO = ["hammerOn", "pullOff"];
   const FRET_RAMP = 2; // seconds before its note in which a fret number of the neck lights up
   const AMBER = 0xffb43a;
@@ -190,6 +190,34 @@
     const halo = new THREE.Mesh(shapes.halo, mats.halo); halo.position.z = -0.005;
     group.add(fill, halo, new THREE.Mesh(shapes.ring, mats.ring));
   }
+  // Palm mute: a translucent cross from corner to corner inside the note's outline, in the string's
+  // colour. Two bars, each clipped to the inner rectangle.
+  function crossGeometry(key) {
+    const [width, height] = key.split(":").map(Number);
+    const a = width / 2 - 0.05; // inside the ring
+    const b = height / 2 - 0.05;
+    const slope = b / a;
+    const dx = (0.03 * Math.hypot(1, slope)) / slope; // half a bar 0.06 wide, measured along x
+    const bar = (sign) => {
+      const shape = new THREE.Shape();
+      shape.moveTo(-a, -sign * b);
+      shape.lineTo(-a + dx, -sign * b);
+      shape.lineTo(a, sign * (b - dx * slope));
+      shape.lineTo(a, sign * b);
+      shape.lineTo(a - dx, sign * b);
+      shape.lineTo(-a, -sign * (b - dx * slope));
+      shape.closePath();
+      return shape;
+    };
+    return new THREE.ShapeGeometry([bar(1), bar(-1)]);
+  }
+  function addPalmMute(group, n, width, material) {
+    if (!n.techniques.includes("palmMute") || n.techniques.includes("mute")) return;
+    const size = n.fret === 0 ? `${(Math.round((width - 0.15) * 4) / 4).toFixed(2)}:0.26` : "0.82:0.4";
+    const cross = new THREE.Mesh(resources().cross(size), material);
+    cross.position.z = 0.002;
+    group.add(cross);
+  }
   function outlineMats(color, clip, lit = false) {
     return {
       ring: new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 1, depthWrite: false, clippingPlanes: clip }),
@@ -208,6 +236,8 @@
       openOutline: cache((w) => outlineGeometries(w, 0.26)),
       outlineMats: STRING_COLORS.map((c) => outlineMats(c, clip)),
       mutedOutlineMats: outlineMats(0x8a90a0, clip),
+      cross: cache(crossGeometry),
+      crossMats: STRING_COLORS.map((c) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.45, depthWrite: false, clippingPlanes: clip })),
       square: new THREE.PlaneGeometry(1, 1),
       stemMats: STRING_COLORS.map((c) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.5, depthWrite: false, clippingPlanes: clip })),
       bendTrailMat: new THREE.MeshStandardMaterial({ color: TEAL, emissive: TEAL, emissiveIntensity: 0.75, transparent: true, opacity: 0.7, depthWrite: false, side: THREE.DoubleSide, clippingPlanes: clip }),
@@ -700,6 +730,18 @@
     }
   }
 
+  // How far along its slide a trail is at `u` (0…1 of its `length` on the highway): straight in the
+  // middle, with a small curve at each end (the trail leaves its note, and meets the note it slides
+  // to, running along the highway), so it flows into them instead of meeting them at a corner.
+  // The curves take SLIDE_BLEND of the length each, at most SLIDE_BLEND_MAX highway units.
+  function slideShare(u, length) {
+    const b = Math.min(SLIDE_BLEND, SLIDE_BLEND_MAX / Math.max(length, 1e-6));
+    const m = 1 / (1 - b); // the slope of the straight middle
+    if (u < b) return (m * u * u) / (2 * b);
+    if (u > 1 - b) return 1 - (m * (1 - u) * (1 - u)) / (2 * b);
+    return m * (u - b / 2);
+  }
+
   // A sustain trail lying on the string's plane, one unit long (scaled to the sustain): flat, wavy
   // with vibrato, a zigzag with tremolo picking; a slide runs it to the fret it ends on; a bend
   // lifts it along the bend's curve over its `span` seconds.
@@ -710,13 +752,14 @@
     const hw = tremolo || vibrato ? 0.08 : 0.12;
     let steps = tremolo ? Math.max(2, Math.round(length / 0.3)) : vibrato ? Math.max(2, Math.round(length / 0.06)) : 1;
     if (bent) steps = Math.max(steps, 32);
+    if (dx) steps = Math.max(steps, 24); // a slide: room for its curved ends
     const positions = [], index = [];
     for (let k = 0; k <= steps; k += 1) {
       const u = k / steps;
       let side = 0;
       if (tremolo && k > 0) side = k % 2 ? 0.16 : -0.16;
       if (vibrato) side = 0.12 * Math.sin(u * length * 4);
-      const x = dx * u + side;
+      const x = dx * slideShare(u, length) + side;
       const y = bent ? BEND_Y * bendAt(n.bendCurve, u * span) : 0;
       positions.push(x - hw, y, -u, x + hw, y, -u);
       if (k) index.push(2 * k - 2, 2 * k, 2 * k - 1, 2 * k - 1, 2 * k, 2 * k + 1);
@@ -745,8 +788,10 @@
       width = a.width;
       x = a.first - 1 + a.width / 2;
       addOutline(head, r.openOutline(Math.round((a.width - 0.15) * 4) / 4), mats);
+      addPalmMute(head, n, a.width, r.crossMats[s]);
     } else {
       addOutline(head, r.noteOutline, mats);
+      addPalmMute(head, n, 1, r.crossMats[s]);
       // Drop line to the highway, under the fret it is played on.
       const h = stringY(s) - 0.15;
       const stem = new THREE.Mesh(r.square, r.stemMats[s]);
@@ -845,6 +890,9 @@
     const mats = outlineMats(color, null, true);
     const materials = [mats.ring, mats.halo, mats.fill];
     addOutline(group, n.fret === 0 ? r.openOutline(Math.round((obj.width - 0.15) * 4) / 4) : r.noteOutline, mats);
+    const crossMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.55, depthWrite: false });
+    addPalmMute(group, n, obj.width, crossMat);
+    materials.push(crossMat);
     addFace(group, n, obj.width, materials);
     group.position.set(obj.x, stringY(n.string), 0.02);
     stage.scene.add(group);
@@ -1074,7 +1122,7 @@
         let obj = song.live.get(key);
         if (!obj) { obj = makeNote(n); song.live.set(key, obj); }
         obj.group.position.set(obj.x, stringY(n.string), -(n.t - now) * SPEED);
-        rollNote(obj, noteRoll(n.t - now));
+        rollNote(obj, comesLevel(n) ? 0 : noteRoll(n.t - now));
         if (obj.trail) obj.trail.scale.z = obj.trailLength;
         if (!jumped && playing && lastNow < n.t && n.t <= now && now - n.t < 0.25) hit(obj);
       }
@@ -1085,7 +1133,7 @@
         let obj = song.live.get(key);
         if (!obj) { obj = makeChordFrame(chords[i]); song.live.set(key, obj); }
         obj.group.position.z = -(chords[i].t - now) * SPEED;
-        obj.group.rotation.z = noteRoll(chords[i].t - now);
+        obj.group.rotation.z = chords[i].members.some((m) => m.fret === 0) ? 0 : noteRoll(chords[i].t - now);
       }
       for (const [key, obj] of song.live) {
         if (!wanted.has(key)) { stage.lane.remove(obj.group); song.live.delete(key); }
