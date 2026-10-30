@@ -3089,6 +3089,64 @@ with Playwright on the user's Ocean Eyes build (toggle, playback glow, held
 note, chords, headstock, numbers/camera, live tempo follow, close/reopen, no page
 errors) — under software WebGL, so real-GPU frame rate is not measured here.
 
+### Playing along with the guitar ("Tocar", `web/practice-core.js`) — EXPERIMENTAL
+
+"Tal como no rocksmith, pretendo ter a possibilidade de ligar a guitar, tocar e ter o feedback
+do programa, em relação ao acerto" → "Real Tone Cable, começa pelas notas soltas" (2026-10-30).
+A "Tocar" switch beside "Pista 3D" (`#showPractice`, `rf-practice`) opens `#practiceWrap` above
+the score: the input picker (the Real Tone Cable names itself "Rocksmith Guitar Adapter" and is
+preselected), "Ligar a guitarra" (`practiceConnect`: `getUserMedia` with echo cancellation,
+noise suppression and auto gain OFF, mono, on the playback's own `audioCtx`), a level meter and
+the note heard (a tuner), "Ouvir a guitarra" (a gain to the speakers, 0 by default), the latency
+(ms, typed or calibrated, `rf-practice-latency`), the totals and "Limpar resultados". Never
+connects by itself; closing the project lets the input go (`closeDetail`).
+
+**Three files, one implementation of the rules.** `practice-core.js` is pure (no DOM, no Web
+Audio): `createTracker` — YIN (threshold 0.15, parabolic interpolation) on a copy low-passed by two
+RBJ biquads and decimated to ~11-12 kHz, a reading every 5 ms stamped at the window's middle,
+looking no lower than 0.85 × the chart's lowest open string (`practiceMinHz`, so a bass reaches
+B0) — and attacks (a 20 ms energy envelope over twice its quietest point 25-50 ms before, 60 ms
+apart); `practiceTargets` (single notes only: notes within 30 ms of another are a chord and left
+out, mute/harmonic/pinchHarmonic too, all counted; each window stops halfway to its neighbours;
+a note on the pitch of the one before within 0.6 s needs an attack of its own unless it is a
+hammer-on/pull-off/tap); `judgeTarget` (hit = 3 readings within 60 cents — an octave either way
+folded, a bend anywhere from the fret to its peak — from 120 ms before to 150 ms after; the time
+is the attack before it, else the pitch's start minus the tracker's `pitchLagS`; wrong = another
+steady pitch, never the previous note's still ringing; else missed); `practiceStats`;
+`calibrate` (median of attack − click). It runs in the worklet, on the page and under Node
+(`npm test` → `tests/web/practice-core.test.js`, in CI's web job). `practice-worklet.js` adds the
+tracker after `addModule('/practice-core.js')` (modules of one worklet share a scope) and posts
+`[ctxTime, midi, rms, attackTime]` in batches. **Two clock rules found the hard way:** an input
+with nothing connected has NO channels and the browser may still call `process()` — the tracker
+is fed silence so its sample count stays the block count (skipping them put every reading 240 ms
+early); and after a `range` message (a chart with another lowest string) the tracker starts again
+from 0, so stamps count from `this.base`.
+
+**In the score's clock.** A reading stamped T was played at T − latency, which is
+`playStartOffset + (T − latency − playStartCtx) · playbackRate` of the buffer and
+`playheadDisplay` of that — so the targets (`practiceTargets()` = `soundingNotes` at
+`warp(previewScale(t))`, rebuilt on every `showArr`) move with pending tempo/anchors/note edits,
+and a slowed playback is judged in song time. A jump (seek, loop return) drops the readings and
+lets those notes be judged again (`practiceResetPointer`, from `syncResetPointer`). Only the
+decoded-buffer transport (not the `<audio>` fallback). Marks (`practiceMarkSvg`, `#practiceMarks`,
+appended as each note is judged and redrawn by `showArr`): green ring in time (≤ 50 ms), yellow
+with the ms, red with the note heard, dashed red missed; in the legend (`practiceLegendItems`).
+Results are per chart (`kind|time:string`) and cleared with another project. **Calibration**
+(`practiceCalibrate`) plays 8 clicks 0.7 s apart on the context and takes the attacks heard after
+each. Before it, the latency is `outputLatency + baseLatency` + the track's `getSettings().latency`.
+A secure page is required (localhost or https) — said, not failed silently.
+
+Guarded by `tests/web/practice-core.test.js` (every guitar pitch E2 → fret 22 of the top string
+to 0.15 semitone, a bass to B0, silence/noise, one attack per pick, a fast sixteenth riff with
+repeats over hum within 15 ms, wrong/missed/ringing, repeated notes, hammer-on, chords and mutes
+left out, bends and octaves, calibration, the totals, speed) and
+`test_the_practice_mode_scripts_are_served`; with Playwright (fake audio capture, a synthesised
+performance into the worklet, PT 1440 / EN 760 px): 48 targets, a note a tone off red "C#3", a note
+left out dashed, one 80 ms late yellow "+76" (+58 at 0.75×, i.e. 60 ms of song time), the rest
+green within 6 ms; calibration of a "player" 90 ms behind the clicks read 87-88 ms; reopened with
+nothing connected, no page errors. **Never played with a real guitar from here** — TESTING.md
+§7c-novies. Chords are the next step.
+
 ### The score's legend ("Legenda", `scoreLegendHtml`)
 
 "coloca legenda nestas opções todas e na deteção das batidas (bola laranja,

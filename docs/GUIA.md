@@ -275,6 +275,19 @@ queres recuperar. Ficam pendentes como antes; Desfazer volta à versão constru�
   **− / + / Repor**: zoom. **Legenda** mostra, debaixo da pauta, o que quer dizer cada marca
   (anéis, caudas, linhas, as bolas laranja dos ataques, a faixa da posição da mão…), desenhada
   como aparece; o ⓘ ao lado mostra o mesmo.
+- **Tocar** (experimental) abre, por cima da partitura, o painel **Tocar com a guitarra**: liga
+  a guitarra ao computador (o **Real Tone Cable** do Rocksmith ou uma placa de som), escolhe-a na
+  lista e carrega em **Ligar a guitarra** — o browser pede autorização para usar a entrada de
+  áudio. O medidor e a nota ao lado mostram o que chega (serve de afinador). Com a reprodução
+  parada, **Calibrar o atraso** toca 8 cliques: toca uma corda solta em cada um, e o atraso entre
+  as colunas e a entrada fica medido e guardado (podes acertá-lo à mão, em ms). Depois toca a
+  pista com a música: cada nota solta é avaliada quando passa — anel **verde** certa e a tempo,
+  **amarelo** certa mas cedo ou tarde (com os ms), **vermelho** a nota errada (com a que se
+  ouviu), **vermelho tracejado** falhada — e o painel conta as certas, as seguidas e se tocas em
+  média cedo ou tarde. Conta o que está desenhado (com as correções e edições por aplicar), também
+  com a música mais lenta. Os acordes, as notas abafadas e os harmónicos ainda não são avaliados.
+  **Ouvir a guitarra** manda o som da guitarra para as colunas (sem efeitos, com algum atraso).
+  Nada sai do teu computador.
 - **Barras de áudio** põe duas faixas de barras por cima da partitura, no mesmo eixo do tempo:
   em cima a gravação, em baixo o som das notas da pista onde estão desenhadas (com as
   correções ainda por aplicar). Onde os picos das duas faixas não caem juntos, a partitura está

@@ -93,6 +93,21 @@ def test_the_page_carries_the_rockforge_icon(client: TestClient) -> None:
     assert "<svg" in r.text
 
 
+def test_the_practice_mode_scripts_are_served(client: TestClient) -> None:
+    """Partitura → "Tocar": practice-core.js is a page script (the judge) and is
+    also added to the audio worklet before practice-worklet.js, which app.js
+    loads by URL — both must be served as JavaScript, the core cache-busted."""
+    page = client.get("/").text
+    assert '<script src="/practice-core.js?v=' in page
+    assert page.index("/practice-core.js") < page.index("/app.js")
+    scripts = (("practice-core.js", "createTracker"), ("practice-worklet.js", "registerProcessor"))
+    for name, marker in scripts:
+        r = client.get(f"/{name}")
+        assert r.status_code == 200, name
+        assert "javascript" in r.headers["content-type"]
+        assert marker in r.text
+
+
 def test_the_3d_highway_and_its_three_js_are_served(client: TestClient) -> None:
     """Partitura → "Pista 3D": highway3d.js loads the vendored three.js on first
     use, so both have to be served (and cache-busted like app.js)."""

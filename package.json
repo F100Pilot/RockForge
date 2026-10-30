@@ -1,9 +1,10 @@
 {
   "name": "rockforge-web",
   "private": true,
-  "description": "Lint tooling for web/app.js (the RockForge web UI's client-side script). No build step — the browser loads web/app.js directly.",
+  "description": "Lint and tests for web/app.js (the RockForge web UI's client-side script). No build step — the browser loads web/app.js directly.",
   "scripts": {
-    "lint": "eslint web/app.js web/highway3d.js web/i18n.js web/i18n-en.js"
+    "lint": "eslint web/app.js web/highway3d.js web/i18n.js web/i18n-en.js web/practice-core.js web/practice-worklet.js",
+    "test": "node --test \"tests/web/*.test.js\""
   },
   "devDependencies": {
     "eslint": "10.1.0"

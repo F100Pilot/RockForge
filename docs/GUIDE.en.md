@@ -275,6 +275,19 @@ They stay pending as before; Undo goes back to the built version.
   a double-click resets; **Camera** has the same axes as sliders. **− / + / Reset**: zoom.
   **Legend** shows, under the score, what each mark means (rings, tails, lines, the orange circles
   of the attacks, the hand-position lane…), drawn as it appears; the ⓘ beside it shows the same.
+- **Play** (experimental) opens, above the score, the **Play with the guitar** panel: connect
+  the guitar to the computer (Rocksmith's **Real Tone Cable** or a sound card), pick it in the
+  list and press **Connect the guitar** — the browser asks to use the audio input. The meter and
+  the note beside it show what comes in (it works as a tuner). With the playback stopped,
+  **Calibrate the delay** plays 8 clicks: pick an open string on each one, and the delay between
+  the speakers and the input is measured and remembered (you can set it by hand, in ms). Then play
+  the chart along with the music: each single note is judged as it passes — a **green** ring right
+  and in time, **yellow** right but early or late (with the ms), **red** the wrong note (with the
+  one heard), **dashed red** missed — and the panel counts the right ones, the streak and whether
+  you play early or late on average. What counts is what is drawn (pending corrections and edits
+  included), also with the music slowed down. Chords, muted notes and harmonics are not judged
+  yet. **Hear the guitar** sends the guitar's sound to the speakers (no effects, some delay).
+  Nothing leaves your computer.
 - **Audio bars** puts two lanes of bars above the score, on the same time axis: on top the
   recording, below the sound of the track's notes where they are drawn (pending corrections
   included). Where the peaks of the two lanes do not fall together, the score is out of time.

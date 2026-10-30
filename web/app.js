@@ -1681,6 +1681,10 @@ const INFO = {
     title: T('Duas pistas'),
     body: T('<p>Mostra outra pista <b>por baixo da partitura</b>, no mesmo eixo do tempo (anda e faz zoom com ela), com as correções de sincronização e as edições de notas que tiver pendentes. Serve para passar notas de uma pista para a outra — por exemplo, quando uma tab dividiu por duas pistas o que é um só guitarrista.</p><p><b>Selecionar:</b> na pista de baixo, clica numa nota, Ctrl+clique junta ou tira, Shift+clique escolhe tudo entre duas notas, e arrastar num sítio vazio desenha uma caixa (só as notas dentro dela, cordas incluídas). Na partitura de cima, a seleção de sempre (clique, Ctrl/Shift+clique), e com "Duas pistas" ligado arrastar num sítio vazio também desenha uma caixa — aí escolhe-se pelo tempo, com os acordes inteiros.</p><p><b>Passar:</b> "↓ Passar para baixo" e "↑ Passar para cima" tiram as notas de uma pista e põem-nas na outra <b>exatamente onde estavam desenhadas</b>, na mesma corda; com "Copiar em vez de passar" ficam nas duas. Se as duas pistas tiverem afinações diferentes, o traste muda para o som ficar o mesmo (à oitava mais próxima — entre guitarra e baixo fica o mesmo traste). Ficam de fora, e é dito, as notas numa corda que a outra pista não tem, fora do braço ou fora da música dela; se já houver outra nota nesse sítio, nada é passado.</p><p>São edições de notas pendentes nas duas pistas: desfazem-se de uma vez com Ctrl+Z e só vão para o PSARC com "Aplicar e reconstruir".</p>')
   },
+  'practice': {
+    title: T('Tocar com a guitarra (experimental)'),
+    body: T('<p>Liga a guitarra ao computador — o <b>Real Tone Cable</b> do Rocksmith, ou uma placa de som — escolhe-a na lista e carrega em <b>"Ligar a guitarra"</b> (o browser pede autorização para usar a entrada de áudio). Depois toca a pista com a música: cada nota solta é avaliada quando a reprodução passa por ela — <b>verde</b> certa e a tempo, <b>amarelo</b> certa mas cedo ou tarde (com os milissegundos), <b>vermelho</b> a nota errada (com a que se ouviu), <b>vermelho tracejado</b> falhada.</p><p><b>Calibrar o atraso:</b> entre a música sair das colunas e o som da guitarra chegar à página passa algum tempo. Com a reprodução parada, carrega em "Calibrar o atraso" e toca uma corda solta em cada um dos 8 cliques; o atraso medido fica guardado neste browser (e podes acertá-lo à mão, em ms). Sem calibrar, as notas tendem a aparecer como tarde.</p><p><b>O que conta:</b> a nota certa (até 60 cêntimos de desafinação, ou uma oitava acima ou abaixo), de 120 ms antes a 150 ms depois do sítio dela. Uma nota igual à anterior precisa de ser tocada outra vez (um ataque); um hammer-on, pull-off ou tapping não. Um bend conta em qualquer ponto entre o traste e o alvo.</p><p><b>Ainda não:</b> os <b>acordes</b> (e as notas abafadas e os harmónicos) ficam de fora e são contados à parte. Conta o que está desenhado — correções de sincronização e edições de notas pendentes incluídas — e podes abrandar a música. "Ouvir a guitarra" manda o som da guitarra para as colunas, sem efeitos e com algum atraso. Nada sai do teu computador.</p>')
+  },
   'attacks': {
     title: T('Ataques da gravação'),
     body: T('<p>Para uma tab cujo <b>ritmo</b> não bate com a gravação (comum nas tabs feitas à pressa): a gravação é analisada e cada <b>ataque</b> — o instante em que algo é tocado — fica marcado por cima da pauta. Os traços azuis são ataques com uma nota da pauta perto; a <b>laranja</b>, as diferenças: um círculo é uma nota sem ataque perto na gravação, um traço é um ataque forte sem nota na pauta. "Diferença anterior/seguinte" leva o cursor a cada uma, para ouvires e corrigires no editor de notas.</p><p>Não usa a amplitude do som, que quase não desce numa guitarra distorcida, mas o <b>fluxo espectral</b> (energia nova em cada 10 ms), que apanha cada palhetada. Em <b>Medir em</b> escolhes onde: num instrumento já separado (Áudio ▾ → Separar instrumentos) — por omissão a guitarra, e o baixo na pista Bass — ou na mistura, onde a bateria e a voz também dão ataques (sem nada separado, pede confirmação antes). A comparação segue a sincronização que está no ecrã, por isso sincroniza primeiro.</p><p>Limites: diz <b>quando</b> se toca, nunca que notas nem para que lado é a palhetada; o stem tem todas as guitarras juntas, por isso com dois guitarristas aparecem os ataques dos dois; a tolerância é de 60 ms. Não muda nada na partitura. Precisa da análise de áudio (o extra [ml], ou os componentes extra no .exe).</p>')
@@ -2181,6 +2185,8 @@ function closeDetail() {
   clearLoop(false);
   window.Highway3D?.close();  // nothing to draw once the project is closed
   hw3dLastSong = null;
+  practiceDisconnect();  // the guitar input is let go with the project
+  practiceResults = new Map();
   selectedJob = null;
   arrangementsLoadedFor = null;
   openJobId = null;
@@ -2623,6 +2629,7 @@ async function loadArrangements(id) {
   tapState = null;
   renderTapUi();
   stopPendingHistory();
+  if (arrangementsLoadedFor !== id) practiceResults = new Map();  // another project's notes
   clearLoop(false);  // a loop belongs to the recording it was set on  // the previous version's steps do not apply to this one
   const fetched = await getJSON(`/jobs/${id}/arrangements`);
   if (staleFor(id)) return;
@@ -2795,6 +2802,17 @@ function legendNote(x, y, fret, color, chord = false) {
     + `<text x="${x}" y="${y + 5}" fill="#14151a" font-size="14" font-weight="700" text-anchor="middle">${fret}</text>`;
 }
 const LG_BLUE = '#3f9bdc';
+function practiceLegendItems() {
+  const ring = (stroke, w, dash = '') => `<circle cx="30" cy="22" r="17" fill="none" stroke="${stroke}" stroke-width="${w}"${dash}/>`;
+  return [
+    legendItem(legendNote(30, 22, 5, LG_BLUE) + ring('#3fdc8a', 3), T('Tocada certa e a tempo')),
+    legendItem(legendNote(30, 22, 5, LG_BLUE) + ring('#ffd479', 3) + '<text x="52" y="10" fill="#ffd479" font-size="11" font-weight="700" text-anchor="middle">+76</text>',
+      T('Certa, mas cedo (−) ou tarde (+), em ms')),
+    legendItem(legendNote(30, 22, 5, LG_BLUE) + ring('#ff5a5f', 3) + '<text x="52" y="10" fill="#ff5a5f" font-size="11" font-weight="700" text-anchor="middle">C#3</text>',
+      T('Nota errada (e a que se ouviu)')),
+    legendItem(legendNote(30, 22, 5, LG_BLUE) + ring('#ff5a5f', 2.5, ' stroke-dasharray="4,3"'), T('Falhada: não se ouviu')),
+  ];
+}
 function legendGroup(title, items) {
   return `<div class="lg-group"><div class="lg-title">${title}</div><div class="lg-items">${items.join('')}</div></div>`;
 }
@@ -2874,6 +2892,7 @@ function scoreLegendHtml() {
     + legendGroup(T('Sincronização'), sync)
     + legendGroup(T('Ataques da gravação (com "Mostrar na partitura")'), attacksLegendItems())
     + legendGroup(T('Ataques marcados por ti ("Marcar a ouvir" → cada ataque)'), markedLegendItems())
+    + legendGroup(T('Tocar com a guitarra ("Tocar")'), practiceLegendItems())
     + legendGroup(T('Posição da mão (faixa por baixo da pauta)'), hand)
     + legendGroup(T('Barras de áudio (por cima da pauta)'), levels)
     + legendGroup(T('Pistas'), tabs)
@@ -3165,6 +3184,7 @@ function showArr(i) {
   const pendingNoteOv = noteOverridesByKind[a.kind] || [];
   const notes = pendingNoteOv.length ? mergeNoteOverrides(a.notes, pendingNoteOv) : a.notes;
   noteSoundChanged(a, notes, pendingNoteOv);
+  practiceInvalidate();  // the practice targets are these notes, where they are drawn
   hw3dRefresh(a, notes);  // the 3D highway shows the same notes, on the same clock
   const pendingKeys = new Set(pendingNoteOv.map(o => `${o.time.toFixed(6)}:${o.string}`));
   // group simultaneous notes (chords) so they get a connecting bracket
@@ -3304,6 +3324,7 @@ function showArr(i) {
   s += `<defs><marker id="anchorArrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
           <path d="M0,0 L6,3 L0,6 z" fill="${ANCHOR}"/></marker></defs>`;
   s += loopBandSvg(H);
+  s += practiceSvg(ROW);  // practice mode: each single note played right, wrong or missed
   const phX = 30 + currentPlayheadT * tabPx;
   s += `<line id="playhead" x1="${phX}" y1="0" x2="${phX}" y2="${H}" stroke="#ff7a45" stroke-width="2" opacity=".9"/>`;
   // "Detect first note" marker: the recording point where the 1st note sounds.
@@ -10925,6 +10946,373 @@ async function setHw3d(on) {
   }
 }
 document.getElementById('show3d').addEventListener('change', e => setHw3d(e.target.checked));
+
+// ---- Practice mode ("Tocar"): play along with the guitar plugged in --------
+// The guitar comes in through the browser (a Real Tone Cable or a sound card),
+// practice-worklet.js reads its pitch and attacks on the audio thread, and
+// each single note of the chart is judged right, wrong or missed when the
+// playback passes it (practice-core.js holds the rules, tested under Node).
+// Everything is in the score's clock: a reading stamped T in the AudioContext
+// was played at T − latency, and that instant of the playback is
+// playStartOffset + (T − latency − playStartCtx) · rate seconds of the buffer —
+// so the pending tempo/sync edits move the targets exactly as they move the
+// notes on screen. Chords are not judged yet.
+const PRACTICE_KEEP_S = 4;            // readings kept for the judge
+const PRACTICE_JUDGE_DELAY_S = 0.06;  // a note is judged this long after its window closes
+const PRACTICE_GOOD_S = 0.05;         // in time: green; more: yellow, with the ms
+const PRACTICE_CLICKS = 8, PRACTICE_CLICK_GAP_S = 0.7;
+let practiceOn = false;
+let practice = null;      // {stream, src, node, monitor, pitchLag, frames}
+let practiceTargetsCache = null;
+let practiceIdx = 0;
+let practiceResults = new Map();   // note key → {result, dt, heard}
+let practiceCalib = null;          // {clicks, onsets, until}
+let practiceLatency = (() => {
+  try { const v = parseFloat(localStorage.getItem('rf-practice-latency')); return Number.isFinite(v) ? v : null; } catch { return null; }
+})();
+
+function practiceDefaultLatency() {
+  const out = audioCtx ? (audioCtx.outputLatency || 0) + (audioCtx.baseLatency || 0) : 0;
+  const track = practice && practice.stream.getAudioTracks()[0];
+  const inp = track && track.getSettings ? track.getSettings().latency : null;
+  return out + (Number.isFinite(inp) ? inp : 0.01);
+}
+function practiceLatencyNow() { return practiceLatency ?? practiceDefaultLatency(); }
+
+// The lowest pitch the chart's tuning can sound, a little lower: the tracker
+// looks no lower than that (a lower floor costs more work and invites octave slips).
+function practiceMinHz(a) {
+  if (!a) return 55;
+  let low = Infinity;
+  for (let s = 0; s < stringCount(a); s++) low = Math.min(low, openMidi(a, s));
+  const hz = 440 * 2 ** ((low - 69) / 12);
+  return Math.max(26, hz * 0.85);
+}
+
+function practiceTargets() {
+  const a = arrangements[currentArr];
+  if (!a) return { targets: [], chords: 0, skipped: 0 };
+  if (practiceTargetsCache && practiceTargetsCache.a === a) return practiceTargetsCache;
+  const warp = buildTimeWarp(syncAnchors);
+  const cents = (a.cent_offset || 0) + (isBassArr(a) && (a.cent_offset || 0) <= -1100 ? 1200 : 0);
+  const notes = soundingNotes(a).map(n => ({ ...n, key: `${a.kind}|${n.time.toFixed(4)}:${n.string}`, time: warp(previewScale(n.time)) }));
+  practiceTargetsCache = { a, ...PracticeCore.practiceTargets(notes, n => noteMidi(a, n.string, n.fret) + cents / 100) };
+  return practiceTargetsCache;
+}
+// showArr calls this: the notes, their timing or the chart may have changed.
+function practiceInvalidate() {
+  practiceTargetsCache = null;
+  practiceChartChanged();
+  if (practiceOn) renderPracticeStats();
+}
+
+// After a seek, a loop's return or a redraw. A jump in time drops the readings
+// (they belong to another passage — on a loop, to the same notes' last pass)
+// and lets the notes there be judged again; a redraw in place keeps both.
+function practiceResetPointer(vt) {
+  if (!practiceOn || !practice) return;
+  const fr = practice.frames;
+  if (fr.length && Math.abs(fr[fr.length - 1].t - vt) > 0.3) {
+    practice.frames = [];
+    practice.used = new Set();
+    practice.judged = new Set();
+  }
+  const { targets } = practiceTargets();
+  practiceIdx = targets.findIndex(t => t.time - t.early >= vt - 0.5);
+  if (practiceIdx < 0) practiceIdx = targets.length;
+}
+
+// A reading's AudioContext time → display time of the score, or null when the
+// playback is not running (or the reading was played before it started).
+function practiceDisplayAt(ctxT) {
+  if (!playing || !playBuffer || !audioCtx) return null;
+  const played = ctxT - practiceLatencyNow();
+  if (played < playStartCtx - 0.02) return null;
+  return playheadDisplay(playStartOffset + (played - playStartCtx) * playbackRate);
+}
+
+function practiceOnFrames(batch) {
+  if (!practice) return;
+  let last = null;
+  for (const [ctxT, midi, rms, onT] of batch) {
+    last = { midi, rms };
+    if (practiceCalib && onT != null) practiceCalib.onsets.push(onT);
+    const t = practiceDisplayAt(ctxT);
+    if (t == null) continue;
+    const onsetT = onT != null ? practiceDisplayAt(onT) : null;
+    practice.frames.push({ t, midi, onset: onsetT != null, onsetT });
+  }
+  if (last) practiceShowLevel(last.midi, last.rms);
+  const fr = practice.frames;
+  if (!fr.length) return;
+  const now = fr[fr.length - 1].t;
+  while (fr.length && fr[0].t < now - PRACTICE_KEEP_S) fr.shift();
+  const { targets } = practiceTargets();
+  let judged = false;
+  while (practiceIdx < targets.length && targets[practiceIdx].time + targets[practiceIdx].late + PRACTICE_JUDGE_DELAY_S < now) {
+    const tg = targets[practiceIdx++];
+    if (practice.judged.has(tg.key)) continue;
+    if (tg.time < fr[0].t) continue;  // played before the readings began (connected mid-song)
+    practice.judged.add(tg.key);
+    const r = PracticeCore.judgeTarget(tg, fr, practice.used, practice.pitchLag);
+    practiceResults.set(tg.key, r);
+    practiceDrawMark(tg, r);
+    judged = true;
+  }
+  if (judged) renderPracticeStats();
+}
+
+function practiceShowLevel(midi, rms) {
+  const db = rms > 0 ? 20 * Math.log10(rms) : -100;
+  const lvl = document.getElementById('practiceLevel');
+  if (lvl) lvl.style.width = `${Math.max(0, Math.min(100, (db + 60) * 100 / 60))}%`;
+  const tun = document.getElementById('practiceTuner');
+  if (!tun) return;
+  if (!Number.isFinite(midi) || db < -50) { tun.textContent = '—'; tun.className = 'practice-tuner'; return; }
+  const c = Math.round((midi - Math.round(midi)) * 100);
+  tun.textContent = `${PracticeCore.midiName(midi)} ${c > 0 ? '+' : ''}${c}¢`;
+  tun.className = 'practice-tuner' + (Math.abs(c) <= 10 ? ' ok' : '');
+}
+
+// One mark on the score, for a note judged. Drawn into #practiceMarks at once
+// (no redraw); showArr draws them all again from practiceResults.
+function practiceMarkSvg(t, string, r, ROW) {
+  const x = timeToX(t), y = STAFF_SB - string * ROW, R = NOTE_R + 4;
+  if (r.result === 'hit') {
+    const good = Math.abs(r.dt) <= PRACTICE_GOOD_S, ms = Math.round(r.dt * 1000);
+    const tip = good ? T('Certa, a tempo ({ms} ms)', { ms }) : ms < 0 ? T('Certa, {ms} ms cedo', { ms: -ms }) : T('Certa, {ms} ms tarde', { ms });
+    let s = `<circle cx="${x}" cy="${y}" r="${R}" fill="none" stroke="${good ? '#3fdc8a' : '#ffd479'}" stroke-width="3"><title>${esc(tip)}</title></circle>`;
+    if (!good) s += `<text x="${x}" y="${y - R - 3}" fill="#ffd479" font-size="11" font-weight="700" text-anchor="middle">${ms > 0 ? '+' : ''}${ms}</text>`;
+    return s;
+  }
+  if (r.result === 'wrong') {
+    const heard = PracticeCore.midiName(r.heard);
+    return `<circle cx="${x}" cy="${y}" r="${R}" fill="none" stroke="#ff5a5f" stroke-width="3"><title>${esc(T('Nota errada: ouvi {nota}', { nota: heard }))}</title></circle>`
+      + `<text x="${x}" y="${y - R - 3}" fill="#ff5a5f" font-size="11" font-weight="700" text-anchor="middle">${esc(heard)}</text>`;
+  }
+  const tip = r.reason === 'no_attack' ? T('Falhada: a nota já estava a soar, faltou tocá-la outra vez') : T('Falhada: não ouvi esta nota');
+  return `<circle cx="${x}" cy="${y}" r="${R}" fill="none" stroke="#ff5a5f" stroke-width="2.5" stroke-dasharray="4,3"><title>${esc(tip)}</title></circle>`;
+}
+function practiceDrawMark(tg, r) {
+  const g = document.getElementById('practiceMarks');
+  if (g) g.insertAdjacentHTML('beforeend', practiceMarkSvg(tg.time, tg.string, r, staffRow(arrangements[currentArr])));
+}
+function practiceSvg(ROW) {
+  if (!practiceOn) return '';
+  let s = '<g id="practiceMarks">';
+  if (practiceResults.size) {
+    for (const tg of practiceTargets().targets) {
+      const r = practiceResults.get(tg.key);
+      if (r) s += practiceMarkSvg(tg.time, tg.string, r, ROW);
+    }
+  }
+  return s + '</g>';
+}
+
+function renderPracticeStats() {
+  const el = document.getElementById('practiceStats');
+  if (!el) return;
+  const { targets, chords, skipped } = practiceTargets();
+  const st = PracticeCore.practiceStats(targets.filter(t => practiceResults.has(t.key)).map(t => practiceResults.get(t.key)));
+  const parts = [];
+  if (st.judged) {
+    parts.push(T('Certas: {n} de {total} ({pct}%)', { n: st.hits, total: st.judged, pct: st.percent }));
+    if (st.wrong) parts.push(T('erradas: {n}', { n: st.wrong }));
+    if (st.miss) parts.push(T('falhadas: {n}', { n: st.miss }));
+    parts.push(T('seguidas: {n} (melhor {best})', { n: st.streak, best: st.best }));
+    if (st.meanDt != null) {
+      const ms = Math.round(st.meanDt * 1000);
+      parts.push(Math.abs(ms) <= 10 ? T('em média a tempo') : ms < 0 ? T('em média {ms} ms cedo', { ms: -ms }) : T('em média {ms} ms tarde', { ms }));
+    }
+  } else parts.push(T('{n} notas soltas para tocar nesta pista.', { n: targets.length }));
+  if (chords) parts.push(T('{n} notas de acordes não avaliadas', { n: chords }));
+  if (skipped) parts.push(T('{n} notas abafadas ou harmónicos não avaliados', { n: skipped }));
+  el.textContent = parts.join(' · ');
+}
+
+function renderPracticeLatency() {
+  const f = document.getElementById('practiceLatency');
+  if (f && document.activeElement !== f) f.value = Math.round(practiceLatencyNow() * 1000);
+  const info = document.getElementById('practiceLatencyInfo');
+  if (info) info.textContent = practiceLatency == null ? T('Atraso estimado (ainda não calibrado):') : T('Atraso calibrado:');
+}
+
+function practiceMsg(text) {
+  const m = document.getElementById('practiceMsg');
+  if (!m) return;
+  m.textContent = text || '';
+  m.hidden = !text;
+}
+
+async function practiceListInputs() {
+  const sel = document.getElementById('practiceInput');
+  if (!sel || !navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+  const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'audioinput');
+  const cur = sel.value || (() => { try { return localStorage.getItem('rf-practice-input') || ''; } catch { return ''; } })();
+  sel.innerHTML = '';
+  devs.forEach((d, i) => {
+    const o = document.createElement('option');
+    o.value = d.deviceId;
+    o.textContent = d.label || T('Entrada {n}', { n: i + 1 });
+    sel.appendChild(o);
+  });
+  // The Real Tone Cable names itself "Rocksmith Guitar Adapter": picked first when nothing was chosen.
+  const rtc = devs.find(d => /rocksmith|guitar/i.test(d.label));  // i18n-skip
+  if (devs.some(d => d.deviceId === cur)) sel.value = cur;
+  else if (rtc) sel.value = rtc.deviceId;
+}
+
+async function practiceConnect() {
+  if (practice) { practiceDisconnect(); return; }
+  if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    practiceMsg(T('O browser só deixa ouvir a guitarra numa página segura: abre o RockForge em http://localhost:8000 (ou com https).'));
+    return;
+  }
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') await audioCtx.resume();
+  const sel = document.getElementById('practiceInput');
+  const deviceId = sel && sel.value;
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: {
+      ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
+      echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1,
+    } });
+  } catch (err) {
+    practiceMsg(err && err.name === 'NotAllowedError'
+      ? T('Sem autorização para usar a entrada de áudio. Autoriza o microfone para esta página nas definições do browser.')
+      : T('Não consegui abrir a entrada de áudio: {msg}', { msg: (err && err.message) || err }));
+    return;
+  }
+  try {
+    if (!audioCtx.__practiceModules) {
+      await audioCtx.audioWorklet.addModule('/practice-core.js');
+      await audioCtx.audioWorklet.addModule('/practice-worklet.js');
+      audioCtx.__practiceModules = true;
+    }
+    const a = arrangements[currentArr];
+    const node = new AudioWorkletNode(audioCtx, 'rockforge-practice', {
+      numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1],
+      processorOptions: { minHz: practiceMinHz(a) },
+    });
+    const src = audioCtx.createMediaStreamSource(stream);
+    const monitor = audioCtx.createGain();
+    monitor.gain.value = document.getElementById('practiceMonitor').checked ? 1 : 0;
+    src.connect(node);
+    node.connect(audioCtx.destination);  // it outputs silence; connected so it keeps running
+    src.connect(monitor).connect(audioCtx.destination);
+    practice = { stream, src, node, monitor, pitchLag: 0.015, frames: [], used: new Set(), judged: new Set(), minHz: practiceMinHz(a) };
+    node.port.onmessage = e => {
+      const m = e.data || {};
+      if (m.type === 'ready') { if (practice) practice.pitchLag = m.pitchLag; }
+      else if (m.type === 'frames') practiceOnFrames(m.frames);
+    };
+  } catch (err) {
+    stream.getTracks().forEach(t => t.stop());
+    practiceMsg(T('Não consegui abrir a entrada de áudio: {msg}', { msg: (err && err.message) || err }));
+    return;
+  }
+  try { if (deviceId) localStorage.setItem('rf-practice-input', deviceId); } catch { /* not remembered */ }
+  await practiceListInputs();  // the names only show once the browser was allowed in
+  practiceMsg('');
+  practiceResetPointer(playheadDisplay(audioTime()));
+  renderPracticeUi();
+}
+
+function practiceDisconnect() {
+  if (!practice) return;
+  try { practice.src.disconnect(); practice.node.disconnect(); practice.monitor.disconnect(); } catch { /* already gone */ }
+  practice.node.port.onmessage = null;
+  practice.stream.getTracks().forEach(t => t.stop());
+  practice = null;
+  practiceCalib = null;
+  practiceShowLevel(NaN, 0);
+  renderPracticeUi();
+}
+
+// A different chart may sit lower (a bass): the tracker is told how low to look.
+function practiceChartChanged() {
+  if (!practice) return;
+  const hz = practiceMinHz(arrangements[currentArr]);
+  if (Math.abs(hz - practice.minHz) > 1) { practice.minHz = hz; practice.node.port.postMessage({ type: 'range', minHz: hz }); }
+}
+
+function renderPracticeUi() {
+  const btn = document.getElementById('practiceMic');
+  if (btn) btn.textContent = practice ? T('Desligar a guitarra') : T('Ligar a guitarra');
+  const cal = document.getElementById('practiceCalib');
+  if (cal) { cal.disabled = !practice || !!practiceCalib; cal.textContent = practiceCalib ? T('A calibrar…') : T('Calibrar o atraso'); }
+  renderPracticeLatency();
+  renderPracticeStats();
+}
+
+// The round trip from the speakers to the guitar input: clicks are played and
+// the player picks a string on each one; the median of attack − click is the
+// latency every reading is moved back by.
+async function practiceCalibrate() {
+  if (!practice || practiceCalib) return;
+  if (audioIsPlaying()) audioPause();
+  if (audioCtx.state === 'suspended') await audioCtx.resume();
+  const start = audioCtx.currentTime + 1.2;
+  const clicks = Array.from({ length: PRACTICE_CLICKS }, (_, i) => start + i * PRACTICE_CLICK_GAP_S);
+  for (const c of clicks) {
+    const osc = audioCtx.createOscillator(), g = audioCtx.createGain();
+    osc.type = 'triangle'; osc.frequency.value = 1500;
+    g.gain.setValueAtTime(0.0001, c);
+    g.gain.exponentialRampToValueAtTime(0.5, c + 0.002);
+    g.gain.exponentialRampToValueAtTime(0.0001, c + 0.06);
+    osc.connect(g).connect(audioCtx.destination);
+    osc.start(c); osc.stop(c + 0.07);
+  }
+  practiceCalib = { clicks, onsets: [] };
+  practiceMsg(T('Toca uma corda solta em cada clique ({n} cliques), sem abafar entre eles.', { n: PRACTICE_CLICKS }));
+  renderPracticeUi();
+  const end = clicks[clicks.length - 1] + 0.6;
+  await new Promise(res => setTimeout(res, (end - audioCtx.currentTime) * 1000));
+  const r = PracticeCore.calibrate(clicks, practiceCalib ? practiceCalib.onsets : []);
+  practiceCalib = null;
+  if (!r) practiceMsg(T('Não ouvi ataques suficientes: toca uma corda em cada clique e tenta outra vez.'));
+  else {
+    practiceLatency = r.latency;
+    try { localStorage.setItem('rf-practice-latency', String(r.latency)); } catch { /* not remembered */ }
+    practiceMsg(r.spread > 0.04
+      ? T('Atraso medido: {ms} ms (os ataques variaram {spread} ms — repete para confirmar).', { ms: Math.round(r.latency * 1000), spread: Math.round(r.spread * 1000) })
+      : T('Atraso medido: {ms} ms.', { ms: Math.round(r.latency * 1000) }));
+  }
+  renderPracticeUi();
+}
+
+function setPractice(on) {
+  practiceOn = on;
+  try { localStorage.setItem('rf-practice', on ? '1' : '0'); } catch { /* not remembered */ }
+  document.getElementById('showPractice').checked = on;
+  document.getElementById('practiceWrap').hidden = !on;
+  if (!on) practiceDisconnect();
+  else { practiceListInputs().catch(() => {}); renderPracticeUi(); }
+  if (arrangements.length) showArr(currentArr);
+}
+document.getElementById('showPractice').addEventListener('change', e => setPractice(e.target.checked));
+document.getElementById('practiceMic').addEventListener('click', () => { practiceConnect(); });
+document.getElementById('practiceCalib').addEventListener('click', () => { practiceCalibrate(); });
+document.getElementById('practiceClear').addEventListener('click', () => {
+  practiceResults = new Map();
+  if (arrangements.length) showArr(currentArr);
+  renderPracticeStats();
+});
+document.getElementById('practiceMonitor').addEventListener('change', e => {
+  if (practice) practice.monitor.gain.value = e.target.checked ? 1 : 0;
+});
+document.getElementById('practiceInput').addEventListener('change', () => {
+  if (practice) { practiceDisconnect(); practiceConnect(); }
+});
+document.getElementById('practiceLatency').addEventListener('change', e => {
+  const v = parseFloat(e.target.value);
+  if (!Number.isFinite(v) || v < 0 || v > 1000) { renderPracticeLatency(); return; }
+  practiceLatency = v / 1000;
+  try { localStorage.setItem('rf-practice-latency', String(practiceLatency)); } catch { /* not remembered */ }
+  renderPracticeLatency();
+});
+try { if (localStorage.getItem('rf-practice') === '1') setPractice(true); } catch { /* not remembered */ }
 document.getElementById('showLegend').addEventListener('change', e => setLegend(e.target.checked));
 setLegend(legendOn);
 document.getElementById('showLevels').addEventListener('change', e => {
@@ -11502,6 +11890,7 @@ function syncResetPointer() {
   if (metroIdx < 0) metroIdx = beats.length;
   // A seek (or the cursor placed before Play) starts making the notes there.
   if (document.getElementById('syncTick')?.checked) prewarmTicks(arrangements[currentArr], notes, warp, vt);
+  practiceResetPointer(vt);
 }
 
 function syncFrame() {

@@ -60,6 +60,8 @@ jobs:
         run: npm ci
       - name: Lint web/app.js
         run: npm run lint
+      - name: Practice mode's tracker and judge (node --test)
+        run: npm test
 
   docker:
     runs-on: ubuntu-latest

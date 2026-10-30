@@ -115,6 +115,18 @@
   #pairSvg { display:block; user-select:none; touch-action:none; }
   #pairSvg .pair-note { cursor:pointer; }
   #pairBox { fill:rgba(94,200,242,.15); stroke:#5ec8f2; stroke-dasharray:4,3; }
+  .practice { border:1px solid #262831; border-radius:12px; padding:.5rem .7rem; margin:.35rem 0 .5rem; background:#12141b; font-size:.9rem; }
+  .practice-row { display:flex; flex-wrap:wrap; align-items:center; gap:.45rem .7rem; }
+  .practice-row + .practice-row { margin-top:.4rem; }
+  .practice-row select { width:auto; max-width:16rem; }
+  .practice-row button { height:2rem; padding:0 .7rem; }
+  .practice-meter { display:inline-block; width:90px; height:8px; border-radius:4px; background:#262831; overflow:hidden; }
+  .practice-meter span { display:block; height:100%; width:0; background:#3fdc8a; transition:width .05s linear; }
+  .practice-tuner { font-family:var(--mono, monospace); min-width:5.5rem; color:#9aa0ad; }
+  .practice-tuner.ok { color:#3fdc8a; }
+  .practice-lat input { width:4.5rem; }
+  .practice-stats { color:#c9cdd6; }
+  .practice-msg { margin:.4rem 0 0; color:#ffd479; }
   .pair-bar { display:flex; flex-wrap:wrap; align-items:center; gap:.45rem; margin:.35rem 0 .2rem; font-size:.9rem; }
   .pair-bar select { width:auto; }
   .pair-bar button { height:2rem; padding:0 .7rem; }
@@ -1220,6 +1232,26 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
             </div>
             <p id="hw3dMsg" class="hw3d-msg" hidden></p>
           </div>
+          <!-- Practice mode: play along with the guitar plugged in (practice-core.js, practice-worklet.js) -->
+          <div id="practiceWrap" class="practice" hidden>
+            <div class="practice-row">
+              <strong>Tocar com a guitarra</strong> <span class="exp-badge">Experimental</span>
+              <select id="practiceInput" aria-label="Entrada de áudio da guitarra"></select>
+              <button type="button" id="practiceMic">Ligar a guitarra</button>
+              <span class="practice-meter" title="Nível da entrada"><span id="practiceLevel"></span></span>
+              <span id="practiceTuner" class="practice-tuner" title="A nota que se ouve na entrada">—</span>
+              <label class="check" title="Manda o som da guitarra para as colunas (com um pequeno atraso)"><input type="checkbox" id="practiceMonitor"> Ouvir a guitarra</label>
+              <button class="info-btn" type="button" data-info="practice">ⓘ</button>
+            </div>
+            <div class="practice-row">
+              <span id="practiceLatencyInfo" class="meta"></span>
+              <label class="practice-lat"><input type="number" id="practiceLatency" min="0" max="1000" step="1" aria-label="Atraso em milissegundos"> ms</label>
+              <button type="button" id="practiceCalib" class="secondary">Calibrar o atraso</button>
+              <span id="practiceStats" class="practice-stats"></span>
+              <button type="button" id="practiceClear" class="secondary">Limpar resultados</button>
+            </div>
+            <p id="practiceMsg" class="practice-msg" hidden></p>
+          </div>
           <!-- Bars whose rhythm PDF-to-GP5 estimated from the note spacing (renderEstimatedBars) -->
           <div class="est-bars" id="barEstimatedRow" style="display:none">
             <span>Ritmo estimado pelo espaçamento (confere estes compassos primeiro):</span>
@@ -1249,6 +1281,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
             <select id="fbNameMode" aria-label="Nomes das notas no braço" hidden><option value="name">Nome da nota (A)</option><option value="oct">Nome e oitava (A2)</option></select>
             <select id="fbScope" aria-label="Notas mostradas no braço" hidden><option value="all">Todas as notas</option><option value="same">Só as iguais à escolhida</option><option value="natural">Só as naturais (sem #)</option></select>
             <label class="check" title="As notas a descer numa pista 3D, como no Rocksmith"><input type="checkbox" id="show3d"> Pista 3D</label>
+            <label class="check" title="Liga a guitarra (Real Tone Cable ou placa de som), toca com a música e vê cada nota certa, errada ou falhada"><input type="checkbox" id="showPractice"> Tocar</label>
             <label class="check" title="O que quer dizer cada marca da partitura"><input type="checkbox" id="showLegend"> Legenda</label>
             <label class="check" title="Barras dos ataques (ou do volume) da gravação e do som das notas, por cima da partitura: onde não coincidem, está fora de tempo"><input type="checkbox" id="showLevels"> Barras de áudio</label>
             <select id="levelsKind" aria-label="Tipo de barras" title="Ataques: a força de cada batida, um pico estreito por palhetada, mesmo numa guitarra distorcida. Volume: o nível do som" hidden><option value="onset">Ataques</option><option value="volume">Volume</option></select>
@@ -2481,6 +2514,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
 <script src="/i18n-dicts.js"></script>
 <script src="/i18n.js"></script>
 <script src="/highway3d.js"></script>
+<script src="/practice-core.js"></script>
 <script src="/app.js"></script>
 </body>
 </html>

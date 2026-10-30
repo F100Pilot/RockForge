@@ -765,6 +765,27 @@ automatically.
    projeto volta a abrir a pista; desmarcar esconde-a e fica lembrado.
 5. Num PC real, confirmar que corre fluido (aqui só com WebGL por software).
 
+### 7c-novies. Tocar com a guitarra (browser-only; precisa da guitarra ligada)
+
+CI covers the tracker and the judge (`npm test`, `tests/web/practice-core.test.js`,
+on synthesised plucks) and that the scripts are served; the rest was checked with
+Playwright and Chromium's fake audio capture, with a synthesised performance fed
+straight into the worklet. What only a real guitar can say:
+
+1. Partitura: marca **Tocar**. Escolhe o **Real Tone Cable** (aparece como
+   "Rocksmith Guitar Adapter") e **Ligar a guitarra**; o browser pede o microfone.
+   O medidor mexe e a nota ao lado lê cada corda solta (E2 A2 D3 G3 B3 E4) a poucos
+   cêntimos.
+2. Com a reprodução parada, **Calibrar o atraso**: tocar uma corda em cada um dos 8
+   cliques. O atraso medido (tipicamente 30-150 ms) fica no campo; repetir dá um
+   valor parecido (±10 ms).
+3. Tocar uma pista de notas soltas com a música: notas bem tocadas a verde, a
+   maioria dentro de ±30 ms; uma nota errada a vermelho com o nome da que se tocou;
+   uma nota saltada a tracejado. Uma nota repetida só conta se for palhetada de novo.
+4. O mesmo a 75 % da velocidade e com um loop A–B: as marcas refazem-se em cada passagem.
+5. Um baixo (pista Bass): as cordas graves (E1/B0) lêem-se; diz se há saltos de oitava.
+6. "Ouvir a guitarra": ouve-se, com algum atraso; sem ele, nada da guitarra sai nas colunas.
+
 ### 7c-octies. Português / English (browser-only, sem rede)
 
 `tests/test_i18n.py` only proves every text HAS an English entry; that the

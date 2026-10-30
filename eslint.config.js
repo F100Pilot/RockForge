@@ -5,7 +5,7 @@
 // to inline event-handler attributes and to each other in load order.
 module.exports = [
   {
-    files: ["web/app.js", "web/highway3d.js", "web/i18n.js", "web/i18n-en.js"],
+    files: ["web/app.js", "web/highway3d.js", "web/i18n.js", "web/i18n-en.js", "web/practice-core.js", "web/practice-worklet.js"],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "script",
@@ -34,6 +34,11 @@ module.exports = [
         AudioContext: "readonly",
         OfflineAudioContext: "readonly",
         AudioBuffer: "readonly",
+        AudioWorkletNode: "readonly",
+        module: "readonly",
+        globalThis: "readonly",
+        // web/practice-core.js, loaded before app.js
+        PracticeCore: "readonly",
         requestAnimationFrame: "readonly",
         cancelAnimationFrame: "readonly",
         setInterval: "readonly",
@@ -77,6 +82,11 @@ module.exports = [
       "use-isnan": "error",
       "valid-typeof": "error",
     },
+  },
+  {
+    // The practice core defines PracticeCore; the worklet reads it in its own scope.
+    files: ["web/practice-core.js"],
+    rules: { "no-redeclare": ["error", { builtinGlobals: false }] },
   },
   {
     // The files that DEFINE the i18n globals the others read.
