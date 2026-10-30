@@ -147,7 +147,10 @@ def test_the_bend_on_the_tie_is_bent_and_released_on_time(chart) -> None:  # noq
 
     sng_held = next(n for n in sng.arrangements[-1].notes if n.time == pytest.approx(3.0))
     assert sng_held.mask & NOTE_MASK_BEND and sng_held.bend == pytest.approx(1.0)
-    assert [(round(b.time, 3), b.step) for b in sng_held.bend_data] == pytest.approx(curve)
+    sng_curve = [(round(b.time, 3), b.step) for b in sng_held.bend_data]
+    assert len(sng_curve) == len(curve)
+    for (t, step), (xt, xstep) in zip(sng_curve, curve, strict=True):  # no approx() of pairs
+        assert t == pytest.approx(xt) and step == pytest.approx(xstep)
     sng_pulled = next(n for n in sng.arrangements[-1].notes if n.time == pytest.approx(3.625))
     assert sng_pulled.mask & NOTE_MASK_PULLOFF
 
