@@ -285,8 +285,12 @@ They stay pending as before; Undo goes back to the built version.
   and in time, **yellow** right but early or late (with the ms), **red** the wrong note (with the
   one heard), **dashed red** missed — and the panel counts the right ones, the streak and whether
   you play early or late on average. What counts is what is drawn (pending corrections and edits
-  included), also with the music slowed down. Chords, muted notes and harmonics are not judged
-  yet. **Hear the guitar** sends the guitar's sound to the speakers (no effects, some delay).
+  included), also with the music slowed down. On a **chord**, a frame around it says whether it
+  was in time (green or yellow) or wrong (red), and only the strings with a problem get a mark:
+  red the one on another fret (with the fret heard), dashed the one not heard. In a chord of four
+  strings or more, missing one still counts as right; a wrong fret does not. A string that doubles
+  another an octave lower cannot be told apart from it. Muted notes and harmonics are not judged.
+  **Hear the guitar** sends the guitar's sound to the speakers (no effects, some delay).
   Nothing leaves your computer.
 - **Audio bars** puts two lanes of bars above the score, on the same time axis: on top the
   recording, below the sound of the track's notes where they are drawn (pending corrections

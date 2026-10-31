@@ -784,6 +784,10 @@ straight into the worklet. What only a real guitar can say:
    uma nota saltada a tracejado. Uma nota repetida só conta se for palhetada de novo.
 4. O mesmo a 75 % da velocidade e com um loop A–B: as marcas refazem-se em cada passagem.
 5. Um baixo (pista Bass): as cordas graves (E1/B0) lêem-se; diz se há saltos de oitava.
+5a. Acordes (power chords, abertos, com pestana): bem tocados, moldura verde; uma corda num
+    traste errado, moldura vermelha e o traste ouvido; uma corda abafada sem querer, tracejado
+    nessa corda. Um chug de colcheias: cada acorde precisa de ser palhetado (diz se algum ficou
+    por contar). Com distorção (pelo próprio pedal, antes do cabo) diz se ainda funciona.
 6. "Ouvir a guitarra": ouve-se, com algum atraso; sem ele, nada da guitarra sai nas colunas.
 
 ### 7c-octies. Português / English (browser-only, sem rede)

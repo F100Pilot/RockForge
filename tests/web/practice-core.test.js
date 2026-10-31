@@ -134,16 +134,27 @@ test('a hammer-on needs no attack of its own', () => {
   assert.equal(targets[1].needsOnset, false);
 });
 
-test('chords and muted or harmonic notes are left out and counted', () => {
+test('notes struck together are one chord target; muted and harmonic notes are left out and counted', () => {
   const chart = [
     { key: 1, time: 0.5, string: 0, fret: 3, techniques: [] }, { key: 2, time: 0.51, string: 1, fret: 5, techniques: [] },
-    { key: 3, time: 1.0, string: 0, fret: 0, techniques: ['mute'] },
-    { key: 4, time: 1.5, string: 2, fret: 12, techniques: ['harmonic'] },
-    { key: 5, time: 2.0, string: 2, fret: 2, techniques: ['palmMute'] },
+    { key: 3, time: 0.51, string: 2, fret: 5, techniques: ['mute'] },
+    { key: 4, time: 1.0, string: 0, fret: 0, techniques: ['mute'] }, { key: 5, time: 1.0, string: 1, fret: 0, techniques: ['mute'] },
+    { key: 6, time: 1.5, string: 2, fret: 12, techniques: ['harmonic'] },
+    { key: 7, time: 2.0, string: 2, fret: 2, techniques: ['palmMute'] },
   ];
   const r = P.practiceTargets(chart, n => 40 + n.fret);
-  assert.equal(r.chords, 2); assert.equal(r.skipped, 2);
-  assert.deepEqual(r.targets.map(t => t.key), [5]);
+  assert.equal(r.skipped, 4);
+  assert.deepEqual(r.targets.map(t => t.chord ? t.notes.map(n => n.key) : t.key), [[1, 2], 7]);
+});
+
+test('a single note on a pitch the chord before still rings needs its own attack', () => {
+  const chart = [
+    { key: 'a', time: 0.5, string: 0, fret: 0, techniques: [] }, { key: 'b', time: 0.5, string: 1, fret: 2, techniques: [] },
+    { key: 'c', time: 0.8, string: 1, fret: 2, techniques: [] },
+  ];
+  const { targets } = P.practiceTargets(chart, n => [40, 45][n.string] + n.fret);
+  assert.equal(targets[0].chord, true);
+  assert.equal(targets[1].needsOnset, true);
 });
 
 test('a bend counts anywhere between the fret and its peak, an octave off counts', () => {
@@ -191,4 +202,106 @@ test('the tracker keeps up: ten seconds of a guitar take well under a second', (
   run(sig);
   const ms = Number(process.hrtime.bigint() - t0) / 1e6;
   assert.ok(ms < 2500, `took ${ms} ms`);  // about 0.7 s here: under a tenth of a core in real time
+});
+
+// ---- chords ----------------------------------------------------------------
+
+// A strummed string: a pickup's uneven harmonics (the fundamental weak on the
+// low strings), each slightly sharp as on a real string, the string a few cents
+// out of tune, a pick burst — seeded, so every run is the same.
+function rand(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 2 ** 32); }
+function strumString(out, at, midi, dur, amp, seed) {
+  const r = rand(seed), f = hz(midi) * 2 ** ((r() - 0.5) * 0.12 / 12);
+  const amps = Array.from({ length: 12 }, (_, k) => (k === 0 ? (midi < 52 ? 0.35 : 0.8) : 1 / (k + 1)) * (0.5 + r()));
+  const ph = amps.map(() => r() * 6.28);
+  const s0 = Math.round(at * SR), len = Math.round(dur * SR);
+  for (let i = 0; i < len && s0 + i < out.length; i++) {
+    const t = i / SR;
+    let v = 0;
+    for (let k = 1; k <= 12; k++) {
+      const fk = f * k * (1 + 0.0002 * k * k);
+      if (fk > 6000) break;
+      v += amps[k - 1] * Math.exp(-t * (1 + 0.6 * k)) * Math.sin(2 * Math.PI * fk * t + ph[k - 1]);
+    }
+    if (i < SR * 0.004) v += 0.5 * (r() * 2 - 1);
+    out[s0 + i] += amp * 0.25 * v * Math.min(1, i / 24);
+  }
+}
+const STD = [40, 45, 50, 55, 59, 64];
+const SHAPES = {
+  E5: [0, 2, 2, null, null, null], A5: [null, 0, 2, 2, null, null], G5: [3, 5, 5, null, null, null],
+  E: [0, 2, 2, 1, 0, 0], A: [null, 0, 2, 2, 2, 0], Am: [null, 0, 2, 2, 1, 0], C: [null, 3, 2, 0, 1, 0],
+  G: [3, 2, 0, 0, 0, 3], D: [null, null, 0, 2, 3, 2], Em: [0, 2, 2, 0, 0, 0], F: [1, 3, 3, 2, 1, 1], B7: [null, 2, 1, 2, 0, 2],
+};
+// Strums `played` (frets per string, null = not played) at each time and judges
+// the chart `expected` at the same times. Answers the chord results.
+function strumAndJudge(played, expected, times, seed = 1) {
+  const sig = new Float32Array(Math.ceil((times[times.length - 1] + 1) * SR));
+  times.forEach((t0, j) => (Array.isArray(played[0]) ? played[j] : played).forEach((fr, s) => {
+    if (fr != null) strumString(sig, t0 + s * 0.008, STD[s] + fr, 0.6, 0.4 + 0.5 * rand(seed + s + j * 7)(), seed * 100 + s + j * 13);
+  }));
+  const tr = P.createTracker(SR);
+  const raw = [];
+  for (let i = 0; i < sig.length; i += 128) raw.push(...tr.process(sig.subarray(i, i + 128)));
+  const frames = raw.map(f => ({ ...f, t: f.t / SR, onsetT: f.onsetT == null ? null : f.onsetT / SR }));
+  const spectra = raw.filter(f => f.spec).map(f => ({ t: f.specT / SR, mag: f.spec }));
+  const chart = [];
+  times.forEach((t0, j) => expected.forEach((f, s) => { if (f != null) chart.push({ key: `${j}:${s}`, time: t0, string: s, fret: f, techniques: [] }); }));
+  const { targets } = P.practiceTargets(chart, n => STD[n.string] + n.fret);
+  const used = new Set();
+  return targets.map(t => P.judgeChord(t, frames, spectra, tr.specDf, used));
+}
+const statusOf = (r, s) => r.notes.find(n => n.key.endsWith(`:${s}`));
+
+test('every common chord strummed right is a hit, every string heard, in time', () => {
+  let seed = 1;
+  for (const [name, shape] of Object.entries(SHAPES)) {
+    const [r] = strumAndJudge(shape, shape, [0.3], seed++);
+    assert.equal(r.result, 'hit', `${name}: ${JSON.stringify(r.notes)}`);
+    assert.ok(r.notes.every(n => n.status === 'ok'), name);
+    assert.ok(Math.abs(r.dt) < 0.03, `${name} dt ${r.dt}`);
+  }
+});
+
+test('a string a fret off makes the chord wrong and says which fret was heard', () => {
+  const [g5] = strumAndJudge([4, 5, 5, null, null, null], SHAPES.G5, [0.3], 7);
+  assert.equal(g5.result, 'wrong');
+  assert.equal(statusOf(g5, 0).status, 'wrong'); assert.equal(statusOf(g5, 0).heard, 44);
+  const [c] = strumAndJudge([null, 3, 2, 2, 1, 0], SHAPES.C, [0.3], 8);
+  assert.equal(c.result, 'wrong');
+  assert.equal(statusOf(c, 3).status, 'wrong'); assert.equal(statusOf(c, 3).heard, 57);
+});
+
+test('A minor played for A major is a wrong chord: the C# string heard as C', () => {
+  const [r] = strumAndJudge(SHAPES.Am, SHAPES.A, [0.3], 9);
+  assert.equal(r.result, 'wrong');
+  assert.equal(statusOf(r, 4).status, 'wrong'); assert.equal(statusOf(r, 4).heard, 60);
+  assert.equal(statusOf(r, 1).status, 'ok');
+});
+
+test('a string not played is missing: forgiven once in four strings, not in a power chord', () => {
+  const [d] = strumAndJudge([null, null, 0, 2, 3, null], SHAPES.D, [0.3], 10);
+  assert.equal(statusOf(d, 5).status, 'missing');
+  assert.equal(d.result, 'hit');
+  const [a5] = strumAndJudge([null, 0, null, 2, null, null], SHAPES.A5, [0.3], 11);
+  assert.equal(statusOf(a5, 2).status, 'missing');
+  assert.equal(a5.result, 'wrong');
+});
+
+test('a string an octave above another cannot be told apart and counts as heard', () => {
+  const [r] = strumAndJudge([null, 3, 2, 0, 1, null], SHAPES.C, [0.3], 12);
+  const top = statusOf(r, 5);
+  assert.equal(top.status, 'ok'); assert.equal(top.octave, true);
+});
+
+test('a chord nobody strums is missed; a chug needs a strum on every chord', () => {
+  const sig = [null, null, null, null, null, null];
+  const [none] = strumAndJudge(sig, SHAPES.E5, [0.3], 13);
+  assert.equal(none.result, 'miss');
+  assert.ok(none.notes.every(n => n.status === 'missing'));
+  const chug = strumAndJudge(SHAPES.E5, SHAPES.E5, [0.3, 0.8, 1.3, 1.8], 14);
+  assert.deepEqual(chug.map(r => r.result), ['hit', 'hit', 'hit', 'hit']);
+  // Struck once and held: only the first counts.
+  const held = strumAndJudge([SHAPES.E5, sig, sig, sig], SHAPES.E5, [0.3, 0.8, 1.3, 1.8], 15);
+  assert.deepEqual(held.map(r => r.result), ['hit', 'miss', 'miss', 'miss']);
 });

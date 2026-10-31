@@ -285,7 +285,11 @@ queres recuperar. Ficam pendentes como antes; Desfazer volta à versão constru�
   **amarelo** certa mas cedo ou tarde (com os ms), **vermelho** a nota errada (com a que se
   ouviu), **vermelho tracejado** falhada — e o painel conta as certas, as seguidas e se tocas em
   média cedo ou tarde. Conta o que está desenhado (com as correções e edições por aplicar), também
-  com a música mais lenta. Os acordes, as notas abafadas e os harmónicos ainda não são avaliados.
+  com a música mais lenta. Num **acorde**, uma moldura à volta diz se foi a tempo (verde ou
+  amarela) ou errado (vermelha), e só as cordas com problema levam marca: a vermelho a que estava
+  noutro traste (com o traste que se ouviu), a tracejado a que não se ouviu. Num acorde de quatro
+  cordas ou mais, falhar uma ainda conta como certo; um traste errado não. Uma corda que repete
+  outra uma oitava abaixo não se distingue dela. As notas abafadas e os harmónicos não são avaliados.
   **Ouvir a guitarra** manda o som da guitarra para as colunas (sem efeitos, com algum atraso).
   Nada sai do teu computador.
 - **Barras de áudio** põe duas faixas de barras por cima da partitura, no mesmo eixo do tempo:

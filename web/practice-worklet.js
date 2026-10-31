@@ -11,6 +11,7 @@ class PracticeProcessor extends AudioWorkletProcessor {
     this.seen = 0;       // input samples processed
     this.base = 0;       // this.seen when the tracker started (its sample 0)
     this.batch = [];
+    this.specs = [];     // [ctxTime of the window's middle, magnitudes] for the chords
     this.port.postMessage({ type: 'ready', pitchLag: this.tracker.pitchLagS });
     this.port.onmessage = e => {
       if (e.data && e.data.type === 'range') {
@@ -33,9 +34,15 @@ class PracticeProcessor extends AudioWorkletProcessor {
       this.batch.push([
         t0 + f.t / sampleRate, f.midi, f.rms, f.onset ? t0 + f.onsetT / sampleRate : null,
       ]);
+      if (f.spec) this.specs.push([t0 + f.specT / sampleRate, f.spec]);
     }
     this.seen += n;
-    if (this.batch.length >= 4) { this.port.postMessage({ type: 'frames', frames: this.batch, now: currentTime }); this.batch = []; }
+    if (this.batch.length >= 4) {
+      const spectra = this.specs;
+      this.port.postMessage({ type: 'frames', frames: this.batch, spectra, df: this.tracker.specDf, now: currentTime },
+        spectra.map(sp => sp[1].buffer));
+      this.batch = []; this.specs = [];
+    }
     return true;
   }
 }

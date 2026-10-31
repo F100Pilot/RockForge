@@ -3106,8 +3106,8 @@ Audio): `createTracker` — YIN (threshold 0.15, parabolic interpolation) on a c
 RBJ biquads and decimated to ~11-12 kHz, a reading every 5 ms stamped at the window's middle,
 looking no lower than 0.85 × the chart's lowest open string (`practiceMinHz`, so a bass reaches
 B0) — and attacks (a 20 ms energy envelope over twice its quietest point 25-50 ms before, 60 ms
-apart); `practiceTargets` (single notes only: notes within 30 ms of another are a chord and left
-out, mute/harmonic/pinchHarmonic too, all counted; each window stops halfway to its neighbours;
+apart); `practiceTargets` (notes within 30 ms of each other are one chord target — see Chords
+below; mute/harmonic/pinchHarmonic left out and counted; each window stops halfway to its neighbours;
 a note on the pitch of the one before within 0.6 s needs an attack of its own unless it is a
 hammer-on/pull-off/tap); `judgeTarget` (hit = 3 readings within 60 cents — an octave either way
 folded, a bend anywhere from the fret to its peak — from 120 ms before to 150 ms after; the time
@@ -3145,7 +3145,38 @@ performance into the worklet, PT 1440 / EN 760 px): 48 targets, a note a tone of
 left out dashed, one 80 ms late yellow "+76" (+58 at 0.75×, i.e. 60 ms of song time), the rest
 green within 6 ms; calibration of a "player" 90 ms behind the clicks read 87-88 ms; reopened with
 nothing connected, no page errors. **Never played with a real guitar from here** — TESTING.md
-§7c-novies. Chords are the next step.
+§7c-novies.
+
+**Chords** ("Avança para os acordes" → option A of a sketch the user approved: "A, avança com a
+moldura no acorde", 2026-10-31). YIN reads one pitch, so a chord is judged from the SPECTRUM: the
+tracker also hands out, every 30 ms (`SPEC_EVERY` hops), the magnitudes of the last 2048
+decimated samples (~170 ms, Hann, bins to 3 kHz, `specDf` ≈ 5.9 Hz) — `reading.spec`/`specT`,
+posted by the worklet as `spectra` (transferred) and kept beside the readings
+(`practice.spectra`, mapped to display time like them). `practiceTargets` makes the notes within
+`CHORD_S` one target (`chord: true, notes`), muted/harmonic strings dropped (a chord left with one
+note is that note). `judgeChord`: the unused attack nearest the chord in its window (no attack =
+`miss`, every string missing), then the spectra whose window starts after the strike and, where
+there is time, ends before the next target, averaged; `chordNotesHeard` fits every expected note
+AND its neighbours ±1/±2 semitones as harmonic combs (`noteAtom`: 1/h, ±25 cents wide, unit
+norm) by non-negative least squares (Lee & Seung multiplicative updates, 400 iterations): a note
+under 0.18 of the chord's strongest is missing; a neighbour ≥ 0.3 and above it is the fret that
+was played (`heard`). A string an octave (or two) above another note of the chord is drowned in
+that note's harmonics: when it reads missing and the lower one is there it counts as heard
+(`octave: true`) — so a missing doubled string is not caught, said in the ⓘ. A wrong fret makes
+the chord wrong; a chord of ≥ 4 strings may miss one in four. A single note on a pitch the chord
+before still rings needs its own attack. Judged `PRACTICE_CHORD_DELAY_S` (0.32 s) after its window
+so the spectra exist. Drawn (`practiceChordSvg`) as a frame around the chord — green/yellow + ms,
+red when wrong, dashed red when missed — with a mark only on a string with a problem (red square +
+"N?" fret heard, dashed square not heard); in the legend. Measured on synthesised strums (pickup-
+uneven harmonics, sharp partials, a few cents out of tune, 8 ms strum): 192/192 correct chords
+judged right half a second apart, 184/192 a quarter second apart (the misses: a re-strum too
+quiet to read as an attack), 211/228 strings a fret off caught (the misses mostly the low E/A
+string of a full chord). Guarded by the chord tests in `tests/web/practice-core.test.js` (twelve
+shapes right, a fret off with the fret heard, Am for A, a string missing forgiven/not, the octave
+rule, an unstrummed chord, a chug and a held chord — the octave and wrong-fret rules
+mutation-checked); with Playwright on an invented chord chart (PT 1440 / EN 760 px): 20 chords,
+the planted fret error, missing string, unstrummed chord and 72 ms-late chord all read as planted,
+the rest green within 4 ms, no page errors. Not tried with a real (or distorted) guitar.
 
 ### The score's legend ("Legenda", `scoreLegendHtml`)
 

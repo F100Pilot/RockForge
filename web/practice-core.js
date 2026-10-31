@@ -9,6 +9,10 @@
 // a guitar's fundamental is at most ~1.3 kHz (fret 24 of the top string), so
 // ~11-12 kHz of sample rate is plenty and it costs a sixteenth of the work.
 // An attack is a jump of the short-term energy over the level just before it.
+// A chord is judged from the spectrum: every 30 ms the tracker also hands out
+// the magnitude spectrum of the last ~170 ms, and the notes the chord should
+// have are fitted to it, with their neighbours a semitone or two away, by
+// non-negative least squares — each note a comb of its harmonics.
 (function (root) {
   'use strict';
 
@@ -18,6 +22,36 @@
   const ONSET_GATE = 1e-5;      // mean square under which nothing counts (about -50 dBFS)
   const ONSET_REFRACTORY_S = 0.06;
   const SILENCE = 2e-6;         // mean square of a window too quiet to have a pitch
+  const SPEC_N = 2048;          // spectrum window, decimated samples (~170 ms)
+  const SPEC_EVERY = 6;         // a spectrum every 6 hops (30 ms)
+  const SPEC_MAX_HZ = 3000;     // the bins handed out: fundamentals and their first harmonics
+
+  // Magnitudes of the real input `x` (length a power of two), bins 0..n-1.
+  function fftMag(x, n) {
+    const N = x.length, re = Float64Array.from(x), im = new Float64Array(N);
+    for (let i = 1, j = 0; i < N; i++) {
+      let bit = N >> 1;
+      for (; j & bit; bit >>= 1) j ^= bit;
+      j ^= bit;
+      if (i < j) { const t = re[i]; re[i] = re[j]; re[j] = t; }
+    }
+    for (let len = 2; len <= N; len <<= 1) {
+      const ang = -2 * Math.PI / len, wr = Math.cos(ang), wi = Math.sin(ang);
+      for (let i = 0; i < N; i += len) {
+        let cr = 1, ci = 0;
+        for (let k = 0; k < len / 2; k++) {
+          const a = i + k, b = a + len / 2;
+          const tr = re[b] * cr - im[b] * ci, ti = re[b] * ci + im[b] * cr;
+          re[b] = re[a] - tr; im[b] = im[a] - ti;
+          re[a] += tr; im[a] += ti;
+          const nr = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = nr;
+        }
+      }
+    }
+    const out = new Float32Array(n);
+    for (let k = 0; k < n; k++) out[k] = Math.hypot(re[k], im[k]);
+    return out;
+  }
 
   // One RBJ low-pass biquad (Audio EQ Cookbook), Q = 1/sqrt(2).
   function lowpass(fc, sr) {
@@ -55,6 +89,10 @@
     let filled = 0, head = 0, phase = 0, sinceHop = 0, count = 0;  // count: decimated samples seen
     const energies = [];
     let hopEnergy = 0, lastOnset = -Infinity;
+    const sRing = new Float32Array(SPEC_N), sBuf = new Float32Array(SPEC_N);
+    const hann = Float32Array.from({ length: SPEC_N }, (_, i) => 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (SPEC_N - 1)));
+    const specBins = Math.min(SPEC_N / 2, Math.floor(SPEC_MAX_HZ * SPEC_N / dsr) + 1);
+    let sHead = 0, hops = 0;
 
     function yin() {
       for (let j = 0; j < N; j++) buf[j] = ring[(head + j) % N];
@@ -101,6 +139,7 @@
         phase = 0;
         ring[head] = y; head = (head + 1) % N;
         if (filled < N) filled++;
+        sRing[sHead] = y; sHead = (sHead + 1) % SPEC_N;
         count++;
         hopEnergy += y * y;
         if (++sinceHop < hop) continue;
@@ -128,18 +167,27 @@
             if ((tOn - lastOnset) / sampleRate > ONSET_REFRACTORY_S) { onset = true; lastOnset = tOn; }
           }
         }
-        if (filled < N) { out.push({ t: endSample, midi: NaN, clarity: 0, rms: Math.sqrt(e), onset, onsetT: onset ? lastOnset : null }); continue; }
-        const r = yin();
-        out.push({
-          t: endSample - (N / 2) * dec, midi: r.midi, clarity: r.clarity, rms: r.rms,
-          onset, onsetT: onset ? lastOnset : null,
-        });
+        let reading;
+        if (filled < N) reading = { t: endSample, midi: NaN, clarity: 0, rms: Math.sqrt(e), onset, onsetT: onset ? lastOnset : null };
+        else {
+          const r = yin();
+          reading = {
+            t: endSample - (N / 2) * dec, midi: r.midi, clarity: r.clarity, rms: r.rms,
+            onset, onsetT: onset ? lastOnset : null,
+          };
+        }
+        if (++hops % SPEC_EVERY === 0 && count >= SPEC_N && opts.spectrum !== false) {
+          for (let j = 0; j < SPEC_N; j++) sBuf[j] = sRing[(sHead + j) % SPEC_N] * hann[j];
+          reading.spec = fftMag(sBuf, specBins);
+          reading.specT = endSample - (SPEC_N / 2) * dec;  // the middle of its window
+        }
+        out.push(reading);
       }
       return out;
     }
     // A new pitch reads steady once most of the window holds it: about this long
     // after it was played (measured on note changes: 12-17 ms for a guitar).
-    return { process, sampleRate, pitchLagS: 0.4 * N / dsr };
+    return { process, sampleRate, pitchLagS: 0.4 * N / dsr, specDf: dsr / SPEC_N };
   }
 
   // ---- judging ---------------------------------------------------------
@@ -149,28 +197,42 @@
   const CENTS_OK = 60;         // pitch error still the right note (a little out of tune, a pick's sharp attack)
   const STABLE_FRAMES = 3;     // consecutive readings on the note (15 ms)
   const SAME_NOTE_GAP_S = 0.6; // the previous note on the same pitch rings this long: then an attack is needed
-  const CHORD_S = 0.03;        // notes this close are a chord (not judged yet)
+  const CHORD_S = 0.03;        // notes this close are a chord
   const SKIP = new Set(['mute', 'harmonic', 'pinchHarmonic']);  // their pitch is not the fret's
 
-  // The notes to judge, from the chart as drawn: `notes` = [{time, string,
-  // fret, techniques, bend_semitones, link_next}] with `time` already in display
-  // time, `midiOf(note)` = its sounding MIDI pitch (cents included).
-  // Chords and muted/harmonic notes are left out and counted.
+  // The notes to judge, from the chart as drawn: `notes` = [{key, time, string,
+  // fret, techniques, bend_semitones}] with `time` already in display time,
+  // `midiOf(note)` = its sounding MIDI pitch (cents included). Notes within
+  // CHORD_S of each other are one chord target ({chord: true, notes}); muted
+  // and harmonic notes are left out (their pitch is not the fret's) and counted.
   function practiceTargets(notes, midiOf) {
     const sorted = notes.slice().sort((a, b) => a.time - b.time);
+    const groups = [];
+    for (const n of sorted) {
+      const g = groups[groups.length - 1];
+      if (g && n.time - g[0].time <= CHORD_S) g.push(n); else groups.push([n]);
+    }
     const out = [];
-    let chords = 0, skipped = 0;
-    for (let i = 0; i < sorted.length; i++) {
-      const n = sorted[i];
-      const prevNear = i > 0 && n.time - sorted[i - 1].time <= CHORD_S;
-      const nextNear = i + 1 < sorted.length && sorted[i + 1].time - n.time <= CHORD_S;
-      if (prevNear || nextNear) { chords++; continue; }
-      const tech = n.techniques || [];
-      if (tech.some(t => SKIP.has(t))) { skipped++; continue; }
-      const midi = midiOf(n);
-      if (!Number.isFinite(midi)) { skipped++; continue; }
+    let skipped = 0;
+    for (const g of groups) {
+      const playable = [];
+      for (const n of g) {
+        const tech = n.techniques || [];
+        const midi = midiOf(n);
+        if (tech.some(t => SKIP.has(t)) || !Number.isFinite(midi)) { skipped++; continue; }
+        playable.push({ n, tech, midi });
+      }
+      if (!playable.length) continue;
+      if (g.length > 1 && playable.length > 1) {
+        out.push({
+          chord: true, key: playable[0].n.key, time: g[0].time,
+          notes: playable.map(({ n, midi }) => ({ key: n.key, string: n.string, fret: n.fret, midi })),
+        });
+        continue;
+      }
+      const { n, tech, midi } = playable[0];
       out.push({
-        key: n.key, time: n.time, string: n.string, fret: n.fret, midi,
+        key: n.key, time: g[0].time, string: n.string, fret: n.fret, midi,
         bend: Math.max(0, n.bend_semitones || 0),
         legato: tech.includes('hammerOn') || tech.includes('pullOff') || tech.includes('tap'),
       });
@@ -180,11 +242,149 @@
       // The window stops halfway to the neighbours, so one sound never counts for two notes.
       t.early = p ? Math.min(EARLY_S, (t.time - p.time) / 2) : EARLY_S;
       t.late = i + 1 < out.length ? Math.min(LATE_S, (out[i + 1].time - t.time) / 2) : LATE_S;
-      // The same pitch still ringing from the previous note would count: ask for a new attack.
-      t.prevMidi = p ? p.midi : null;
-      t.needsOnset = !!p && !t.legato && Math.abs(p.midi - t.midi) < 0.5 && t.time - p.time < SAME_NOTE_GAP_S + p.late;
+      t.next = i + 1 < out.length ? out[i + 1].time : null;
+      if (t.chord) continue;
+      // The same pitch still ringing from the previous note (or chord) would count: ask for a new attack.
+      const prevPitches = p ? (p.chord ? p.notes.map(x => x.midi) : [p.midi]) : [];
+      t.prevMidi = p && !p.chord ? p.midi : null;
+      t.needsOnset = !!p && !t.legato && prevPitches.some(m => Math.abs(m - t.midi) < 0.5)
+        && t.time - p.time < SAME_NOTE_GAP_S + p.late;
     }
-    return { targets: out, chords, skipped };
+    return { targets: out, skipped };
+  }
+
+  // ---- chords -----------------------------------------------------------
+
+  const CHORD_HARMONICS = 10;
+  const CHORD_PRESENT = 0.18;   // a note's weight against the chord's strongest one: below it, not heard
+  const CHORD_WRONG = 0.3;      // a neighbour this strong (and stronger than the note) is what was played
+  const CHORD_SPEC_FROM = 0.09; // spectra whose window starts after the attack transient
+  const CHORD_SPEC_TO = 0.24;
+
+  // The main lobe of a Hann window's spectrum, `x` bins from its centre.
+  function hannLobe(x) {
+    if (x >= 2) return 0;
+    if (Math.abs(x - 1) < 1e-6) return 0.5;
+    const sinc = x < 1e-6 ? 1 : Math.sin(Math.PI * x) / (Math.PI * x);
+    return Math.abs(sinc / (1 - x * x));
+  }
+
+  // A note as a comb of harmonics over bins lo..hi of a spectrum with bins `df`
+  // Hz apart: each harmonic 1/h, a little wide (±25 cents: a guitar is never
+  // exactly in tune, and its harmonics run sharp), unit length.
+  function noteAtom(midi, df, lo, hi) {
+    const f0 = 440 * 2 ** ((midi - 69) / 12);
+    const a = new Float64Array(hi - lo);
+    for (let h = 1; h <= CHORD_HARMONICS; h++) {
+      const c = h * f0 / df;
+      if (c >= hi + 2) break;
+      const spread = 0.0145 * h * f0 / df;
+      for (let k = Math.max(lo, Math.floor(c - spread - 2)); k <= Math.min(hi - 1, Math.ceil(c + spread + 2)); k++) {
+        const x = Math.max(0, Math.abs(k - c) - spread);
+        a[k - lo] += hannLobe(x) / h;
+      }
+    }
+    let norm = 0;
+    for (const v of a) norm += v * v;
+    norm = Math.sqrt(norm) || 1;
+    for (let i = 0; i < a.length; i++) a[i] /= norm;
+    return a;
+  }
+
+  // Which of the chord's notes sound in `spec` (magnitudes, bins `df` Hz apart).
+  // Each expected note and its neighbours one and two semitones away are fitted
+  // together (Lee & Seung's multiplicative update for non-negative least
+  // squares), so a string on the wrong fret shows as its neighbour winning.
+  // An octave of a note is not a candidate: a note an octave off is not told
+  // apart. Answers, per expected MIDI note, {weight, heard} (heard = the
+  // neighbour that won, or null).
+  function chordNotesHeard(spec, df, expected) {
+    const exp = expected.map(Math.round);
+    const cand = [...new Set(exp.flatMap(m => [m - 2, m - 1, m, m + 1, m + 2]))].sort((a, b) => a - b);
+    const lowHz = 440 * 2 ** ((cand[0] - 69) / 12);
+    const lo = Math.max(1, Math.floor(lowHz * 0.9 / df) - 2), hi = spec.length;
+    const atoms = cand.map(m => noteAtom(m, df, lo, hi));
+    const A = atoms.length, L = hi - lo;
+    const atx = new Float64Array(A), ata = Array.from({ length: A }, () => new Float64Array(A));
+    for (let i = 0; i < A; i++) {
+      for (let k = 0; k < L; k++) atx[i] += atoms[i][k] * spec[lo + k];
+      for (let j = i; j < A; j++) {
+        let v = 0;
+        for (let k = 0; k < L; k++) v += atoms[i][k] * atoms[j][k];
+        ata[i][j] = ata[j][i] = v;
+      }
+    }
+    const w = new Float64Array(A).fill(1);
+    for (let it = 0; it < 400; it++) {
+      for (let i = 0; i < A; i++) {
+        let den = 1e-12;
+        for (let j = 0; j < A; j++) den += ata[i][j] * w[j];
+        w[i] *= Math.max(0, atx[i]) / den;
+      }
+    }
+    const weight = new Map(cand.map((m, i) => [m, w[i]]));
+    const expSet = new Set(exp);
+    const top = Math.max(1e-12, ...exp.map(m => weight.get(m)));
+    return exp.map(m => {
+      const own = weight.get(m) / top;
+      let heard = null, best = 0;
+      for (const d of [-2, -1, 1, 2]) {
+        const n = m + d;
+        if (expSet.has(n)) continue;
+        const v = weight.get(n) / top;
+        if (v > best) { best = v; heard = n; }
+      }
+      if (heard != null && best >= CHORD_WRONG && best > own) return { weight: own, heard };
+      return { weight: own, heard: null };
+    });
+  }
+
+  // Judge a chord target: an attack in its window, then the spectra just after
+  // it. `spectra` = [{t, mag}] in display time (t = the middle of each window),
+  // `df` their bin spacing. A wrong fret makes it wrong; a chord of four
+  // strings or more may miss one in four and still count. Answers {result, dt, notes: [{key, status: 'ok' |
+  // 'missing' | 'wrong', heard}]}.
+  function judgeChord(target, frames, spectra, df, used) {
+    const from = target.time - target.early, to = target.time + target.late;
+    let on = null;
+    for (const f of frames) {
+      if (!f.onset || f.onsetT == null || used.has(f.onsetT)) continue;
+      if (f.onsetT < from - 0.03 || f.onsetT > to) continue;
+      if (on == null || Math.abs(f.onsetT - target.time) < Math.abs(on - target.time)) on = f.onsetT;
+    }
+    if (on == null) return { result: 'miss', dt: null, notes: target.notes.map(n => ({ key: n.key, status: 'missing', heard: null })) };
+    used.add(on);
+    // Windows that start after the strike and, where there is time, end before the next note.
+    const halfWin = 0.085;
+    const until = target.next != null ? Math.max(on + CHORD_SPEC_FROM, target.next - halfWin + 0.02) : Infinity;
+    let use = spectra.filter(sp => sp.t >= on + CHORD_SPEC_FROM && sp.t <= Math.min(on + CHORD_SPEC_TO, until));
+    if (!use.length) {
+      const after = spectra.filter(sp => sp.t >= on + 0.05);
+      if (after.length) use = [after[0]];
+    }
+    if (!use.length) return { result: 'hit', dt: on - target.time, notes: target.notes.map(n => ({ key: n.key, status: 'ok', heard: null })), unchecked: true };
+    const mag = new Float64Array(use[0].mag.length);
+    for (const sp of use) for (let k = 0; k < mag.length; k++) mag[k] += sp.mag[k] / use.length;
+    const heard = chordNotesHeard(mag, df, target.notes.map(n => n.midi));
+    const notes = target.notes.map((n, i) => {
+      const h = heard[i];
+      if (h.heard != null) return { key: n.key, status: 'wrong', heard: h.heard };
+      return { key: n.key, status: h.weight >= CHORD_PRESENT ? 'ok' : 'missing', heard: null };
+    });
+    // A string that doubles another an octave (or two) lower is drowned in that
+    // note's harmonics: not told apart, it counts as heard when the lower one is.
+    notes.forEach((n, i) => {
+      if (n.status !== 'missing') return;
+      const m = Math.round(target.notes[i].midi);
+      if (notes.some((o, j) => o.status === 'ok' && [12, 24, 36].includes(m - Math.round(target.notes[j].midi)))) {
+        n.status = 'ok'; n.octave = true;
+      }
+    });
+    // A wrong fret is a wrong chord; a string not heard is forgiven once in four.
+    const wrong = notes.filter(n => n.status === 'wrong').length;
+    const missing = notes.filter(n => n.status === 'missing').length;
+    const allowed = target.notes.length >= 4 ? Math.floor(target.notes.length / 4) : 0;
+    return { result: !wrong && missing <= allowed ? 'hit' : 'wrong', dt: on - target.time, notes };
   }
 
   // Cents from the target, folding a whole octave (YIN's usual slip on a low
@@ -293,7 +493,7 @@
   }
 
   const api = {
-    createTracker, practiceTargets, judgeTarget, pitchError, practiceStats, calibrate, midiName,
+    createTracker, practiceTargets, judgeTarget, judgeChord, chordNotesHeard, pitchError, practiceStats, calibrate, midiName,
     EARLY_S, LATE_S, CENTS_OK,
   };
   root.PracticeCore = api;

@@ -1683,7 +1683,7 @@ const INFO = {
   },
   'practice': {
     title: T('Tocar com a guitarra (experimental)'),
-    body: T('<p>Liga a guitarra ao computador — o <b>Real Tone Cable</b> do Rocksmith, ou uma placa de som — escolhe-a na lista e carrega em <b>"Ligar a guitarra"</b> (o browser pede autorização para usar a entrada de áudio). Depois toca a pista com a música: cada nota solta é avaliada quando a reprodução passa por ela — <b>verde</b> certa e a tempo, <b>amarelo</b> certa mas cedo ou tarde (com os milissegundos), <b>vermelho</b> a nota errada (com a que se ouviu), <b>vermelho tracejado</b> falhada.</p><p><b>Calibrar o atraso:</b> entre a música sair das colunas e o som da guitarra chegar à página passa algum tempo. Com a reprodução parada, carrega em "Calibrar o atraso" e toca uma corda solta em cada um dos 8 cliques; o atraso medido fica guardado neste browser (e podes acertá-lo à mão, em ms). Sem calibrar, as notas tendem a aparecer como tarde.</p><p><b>O que conta:</b> a nota certa (até 60 cêntimos de desafinação, ou uma oitava acima ou abaixo), de 120 ms antes a 150 ms depois do sítio dela. Uma nota igual à anterior precisa de ser tocada outra vez (um ataque); um hammer-on, pull-off ou tapping não. Um bend conta em qualquer ponto entre o traste e o alvo.</p><p><b>Ainda não:</b> os <b>acordes</b> (e as notas abafadas e os harmónicos) ficam de fora e são contados à parte. Conta o que está desenhado — correções de sincronização e edições de notas pendentes incluídas — e podes abrandar a música. "Ouvir a guitarra" manda o som da guitarra para as colunas, sem efeitos e com algum atraso. Nada sai do teu computador.</p>')
+    body: T('<p>Liga a guitarra ao computador — o <b>Real Tone Cable</b> do Rocksmith, ou uma placa de som — escolhe-a na lista e carrega em <b>"Ligar a guitarra"</b> (o browser pede autorização para usar a entrada de áudio). Depois toca a pista com a música: cada nota é avaliada quando a reprodução passa por ela — <b>verde</b> certa e a tempo, <b>amarelo</b> certa mas cedo ou tarde (com os milissegundos), <b>vermelho</b> a nota errada (com a que se ouviu), <b>vermelho tracejado</b> falhada.</p><p><b>Acordes:</b> uma moldura à volta do acorde diz se foi a tempo (verde ou amarelo) ou errado (vermelho); só as cordas com problema levam marca — a vermelho a que estava noutro traste (com o traste que se ouviu), a tracejado a que não se ouviu. Num acorde de quatro cordas ou mais, falhar uma ainda conta como certo; um traste errado não. Uma corda que repete outra uma oitava abaixo não se distingue dela e conta como ouvida. Cada acorde precisa de ser palhetado.</p><p><b>Calibrar o atraso:</b> entre a música sair das colunas e o som da guitarra chegar à página passa algum tempo. Com a reprodução parada, carrega em "Calibrar o atraso" e toca uma corda solta em cada um dos 8 cliques; o atraso medido fica guardado neste browser (e podes acertá-lo à mão, em ms). Sem calibrar, as notas tendem a aparecer como tarde.</p><p><b>O que conta numa nota:</b> a nota certa (até 60 cêntimos de desafinação, ou uma oitava acima ou abaixo), de 120 ms antes a 150 ms depois do sítio dela. Uma nota igual à anterior precisa de ser tocada outra vez (um ataque); um hammer-on, pull-off ou tapping não. Um bend conta em qualquer ponto entre o traste e o alvo. As notas abafadas e os harmónicos ficam de fora e são contados à parte.</p><p>Conta o que está desenhado — correções de sincronização e edições de notas pendentes incluídas — e podes abrandar a música. "Ouvir a guitarra" manda o som da guitarra para as colunas, sem efeitos e com algum atraso. Nada sai do teu computador.</p>')
   },
   'attacks': {
     title: T('Ataques da gravação'),
@@ -2803,6 +2803,8 @@ function legendNote(x, y, fret, color, chord = false) {
 }
 const LG_BLUE = '#3f9bdc';
 function practiceLegendItems() {
+  const chordSw = (stroke, dash = '') => `<rect x="24" y="4" width="12" height="12" rx="3" fill="${LG_BLUE}"/><rect x="24" y="20" width="12" height="12" rx="3" fill="#ffd23f"/>`
+    + `<rect x="18" y="1" width="24" height="34" rx="6" fill="none" stroke="${stroke}" stroke-width="2.5"${dash}/>`;
   const ring = (stroke, w, dash = '') => `<circle cx="30" cy="22" r="17" fill="none" stroke="${stroke}" stroke-width="${w}"${dash}/>`;
   return [
     legendItem(legendNote(30, 22, 5, LG_BLUE) + ring('#3fdc8a', 3), T('Tocada certa e a tempo')),
@@ -2811,6 +2813,12 @@ function practiceLegendItems() {
     legendItem(legendNote(30, 22, 5, LG_BLUE) + ring('#ff5a5f', 3) + '<text x="52" y="10" fill="#ff5a5f" font-size="11" font-weight="700" text-anchor="middle">C#3</text>',
       T('Nota errada (e a que se ouviu)')),
     legendItem(legendNote(30, 22, 5, LG_BLUE) + ring('#ff5a5f', 2.5, ' stroke-dasharray="4,3"'), T('Falhada: não se ouviu')),
+    legendItem(chordSw('#3fdc8a'), T('Acorde certo e a tempo (amarelo: cedo ou tarde)')),
+    legendItem(chordSw('#ff5a5f') + '<rect x="21" y="18" width="18" height="18" rx="4" fill="none" stroke="#ff5a5f" stroke-width="2.5"/><text x="44" y="31" fill="#ff5a5f" font-size="10" font-weight="700">4?</text>',
+      T('Acorde errado: a corda marcada estava noutro traste')),
+    legendItem(chordSw('#3fdc8a') + '<rect x="21" y="18" width="18" height="18" rx="4" fill="none" stroke="#ff5a5f" stroke-width="2" stroke-dasharray="3,2"/>',
+      T('Uma corda do acorde não se ouviu')),
+    legendItem(chordSw('#ff5a5f', ' stroke-dasharray="5,4"'), T('Acorde falhado: não se ouviu o ataque')),
   ];
 }
 function legendGroup(title, items) {
@@ -10956,9 +10964,11 @@ document.getElementById('show3d').addEventListener('change', e => setHw3d(e.targ
 // was played at T − latency, and that instant of the playback is
 // playStartOffset + (T − latency − playStartCtx) · rate seconds of the buffer —
 // so the pending tempo/sync edits move the targets exactly as they move the
-// notes on screen. Chords are not judged yet.
+// notes on screen. A chord is judged from the spectra after its attack:
+// which of its strings sound (practice-core.js judgeChord).
 const PRACTICE_KEEP_S = 4;            // readings kept for the judge
 const PRACTICE_JUDGE_DELAY_S = 0.06;  // a note is judged this long after its window closes
+const PRACTICE_CHORD_DELAY_S = 0.32;  // a chord waits for the spectra after its attack
 const PRACTICE_GOOD_S = 0.05;         // in time: green; more: yellow, with the ms
 const PRACTICE_CLICKS = 8, PRACTICE_CLICK_GAP_S = 0.7;
 let practiceOn = false;
@@ -10991,7 +11001,7 @@ function practiceMinHz(a) {
 
 function practiceTargets() {
   const a = arrangements[currentArr];
-  if (!a) return { targets: [], chords: 0, skipped: 0 };
+  if (!a) return { targets: [], skipped: 0 };
   if (practiceTargetsCache && practiceTargetsCache.a === a) return practiceTargetsCache;
   const warp = buildTimeWarp(syncAnchors);
   const cents = (a.cent_offset || 0) + (isBassArr(a) && (a.cent_offset || 0) <= -1100 ? 1200 : 0);
@@ -11014,6 +11024,7 @@ function practiceResetPointer(vt) {
   const fr = practice.frames;
   if (fr.length && Math.abs(fr[fr.length - 1].t - vt) > 0.3) {
     practice.frames = [];
+    practice.spectra = [];
     practice.used = new Set();
     practice.judged = new Set();
   }
@@ -11031,8 +11042,13 @@ function practiceDisplayAt(ctxT) {
   return playheadDisplay(playStartOffset + (played - playStartCtx) * playbackRate);
 }
 
-function practiceOnFrames(batch) {
+function practiceOnFrames(batch, spectra, df) {
   if (!practice) return;
+  if (df) practice.df = df;
+  for (const [ctxT, mag] of spectra || []) {
+    const t = practiceDisplayAt(ctxT);
+    if (t != null) practice.spectra.push({ t, mag });
+  }
   let last = null;
   for (const [ctxT, midi, rms, onT] of batch) {
     last = { midi, rms };
@@ -11047,14 +11063,19 @@ function practiceOnFrames(batch) {
   if (!fr.length) return;
   const now = fr[fr.length - 1].t;
   while (fr.length && fr[0].t < now - PRACTICE_KEEP_S) fr.shift();
+  const sp = practice.spectra;
+  while (sp.length && sp[0].t < now - PRACTICE_KEEP_S) sp.shift();
   const { targets } = practiceTargets();
   let judged = false;
-  while (practiceIdx < targets.length && targets[practiceIdx].time + targets[practiceIdx].late + PRACTICE_JUDGE_DELAY_S < now) {
+  const ready = tg => tg.time + tg.late + (tg.chord ? PRACTICE_CHORD_DELAY_S : PRACTICE_JUDGE_DELAY_S) < now;
+  while (practiceIdx < targets.length && ready(targets[practiceIdx])) {
     const tg = targets[practiceIdx++];
     if (practice.judged.has(tg.key)) continue;
     if (tg.time < fr[0].t) continue;  // played before the readings began (connected mid-song)
     practice.judged.add(tg.key);
-    const r = PracticeCore.judgeTarget(tg, fr, practice.used, practice.pitchLag);
+    const r = tg.chord
+      ? PracticeCore.judgeChord(tg, fr, sp, practice.df, practice.used)
+      : PracticeCore.judgeTarget(tg, fr, practice.used, practice.pitchLag);
     practiceResults.set(tg.key, r);
     practiceDrawMark(tg, r);
     judged = true;
@@ -11074,10 +11095,13 @@ function practiceShowLevel(midi, rms) {
   tun.className = 'practice-tuner' + (Math.abs(c) <= 10 ? ' ok' : '');
 }
 
-// One mark on the score, for a note judged. Drawn into #practiceMarks at once
-// (no redraw); showArr draws them all again from practiceResults.
-function practiceMarkSvg(t, string, r, ROW) {
-  const x = timeToX(t), y = STAFF_SB - string * ROW, R = NOTE_R + 4;
+// The marks on the score, for a note or chord judged. Drawn into #practiceMarks
+// at once (no redraw); showArr draws them all again from practiceResults.
+// A chord gets a frame (its timing, or red when wrong); only its strings with
+// a problem get a mark of their own.
+function practiceMarkSvg(tg, r, ROW) {
+  if (tg.chord) return practiceChordSvg(tg, r, ROW);
+  const x = timeToX(tg.time), y = STAFF_SB - tg.string * ROW, R = NOTE_R + 4;
   if (r.result === 'hit') {
     const good = Math.abs(r.dt) <= PRACTICE_GOOD_S, ms = Math.round(r.dt * 1000);
     const tip = good ? T('Certa, a tempo ({ms} ms)', { ms }) : ms < 0 ? T('Certa, {ms} ms cedo', { ms: -ms }) : T('Certa, {ms} ms tarde', { ms });
@@ -11093,9 +11117,37 @@ function practiceMarkSvg(t, string, r, ROW) {
   const tip = r.reason === 'no_attack' ? T('Falhada: a nota já estava a soar, faltou tocá-la outra vez') : T('Falhada: não ouvi esta nota');
   return `<circle cx="${x}" cy="${y}" r="${R}" fill="none" stroke="#ff5a5f" stroke-width="2.5" stroke-dasharray="4,3"><title>${esc(tip)}</title></circle>`;
 }
+function practiceChordSvg(tg, r, ROW) {
+  const x = timeToX(tg.time), ys = tg.notes.map(n => STAFF_SB - n.string * ROW);
+  const top = Math.min(...ys) - NOTE_R - 8, bot = Math.max(...ys) + NOTE_R + 8, hw = NOTE_R + 9;
+  let color = '#ff5a5f', tip, label = '';
+  if (r.result === 'hit') {
+    const ms = Math.round(r.dt * 1000), good = Math.abs(r.dt) <= PRACTICE_GOOD_S;
+    color = good ? '#3fdc8a' : '#ffd479';
+    tip = good ? T('Acorde certo, a tempo ({ms} ms)', { ms }) : ms < 0 ? T('Acorde certo, {ms} ms cedo', { ms: -ms }) : T('Acorde certo, {ms} ms tarde', { ms });
+    if (!good) label = `${ms > 0 ? '+' : ''}${ms}`;
+  } else tip = r.result === 'wrong' ? T('Acorde errado') : T('Acorde falhado: não ouvi o ataque');
+  let s = `<rect x="${x - hw}" y="${top}" width="${2 * hw}" height="${bot - top}" rx="9" fill="none" stroke="${color}" stroke-width="${r.result === 'miss' ? 2.5 : 3}"${r.result === 'miss' ? ' stroke-dasharray="5,4"' : ''}><title>${esc(tip)}</title></rect>`;
+  if (label) s += `<text x="${x}" y="${top - 5}" fill="${color}" font-size="11" font-weight="700" text-anchor="middle">${label}</text>`;
+  if (r.result === 'miss') return s;
+  const R = NOTE_R + 3;
+  r.notes.forEach((n, i) => {
+    if (n.status === 'ok') return;
+    const tn = tg.notes[i], y = ys[i];
+    if (n.status === 'wrong') {
+      const fret = tn.fret + (n.heard - Math.round(tn.midi));
+      const what = fret >= 0 ? String(fret) : PracticeCore.midiName(n.heard);
+      s += `<rect x="${x - R}" y="${y - R}" width="${2 * R}" height="${2 * R}" rx="6" fill="none" stroke="#ff5a5f" stroke-width="3"><title>${esc(T('Traste errado: ouvi o {traste} ({nota})', { traste: what, nota: PracticeCore.midiName(n.heard) }))}</title></rect>`
+        + `<text x="${x - R - 3}" y="${y + 4}" fill="#ff5a5f" font-size="11" font-weight="700" text-anchor="end" paint-order="stroke" stroke="#0f1116" stroke-width="3">${esc(what)}?</text>`;
+    } else {
+      s += `<rect x="${x - R}" y="${y - R}" width="${2 * R}" height="${2 * R}" rx="6" fill="none" stroke="#ff5a5f" stroke-width="2.5" stroke-dasharray="4,3"><title>${esc(T('Esta corda não se ouviu'))}</title></rect>`;
+    }
+  });
+  return s;
+}
 function practiceDrawMark(tg, r) {
   const g = document.getElementById('practiceMarks');
-  if (g) g.insertAdjacentHTML('beforeend', practiceMarkSvg(tg.time, tg.string, r, staffRow(arrangements[currentArr])));
+  if (g) g.insertAdjacentHTML('beforeend', practiceMarkSvg(tg, r, staffRow(arrangements[currentArr])));
 }
 function practiceSvg(ROW) {
   if (!practiceOn) return '';
@@ -11103,7 +11155,7 @@ function practiceSvg(ROW) {
   if (practiceResults.size) {
     for (const tg of practiceTargets().targets) {
       const r = practiceResults.get(tg.key);
-      if (r) s += practiceMarkSvg(tg.time, tg.string, r, ROW);
+      if (r) s += practiceMarkSvg(tg, r, ROW);
     }
   }
   return s + '</g>';
@@ -11112,7 +11164,7 @@ function practiceSvg(ROW) {
 function renderPracticeStats() {
   const el = document.getElementById('practiceStats');
   if (!el) return;
-  const { targets, chords, skipped } = practiceTargets();
+  const { targets, skipped } = practiceTargets();
   const st = PracticeCore.practiceStats(targets.filter(t => practiceResults.has(t.key)).map(t => practiceResults.get(t.key)));
   const parts = [];
   if (st.judged) {
@@ -11124,8 +11176,10 @@ function renderPracticeStats() {
       const ms = Math.round(st.meanDt * 1000);
       parts.push(Math.abs(ms) <= 10 ? T('em média a tempo') : ms < 0 ? T('em média {ms} ms cedo', { ms: -ms }) : T('em média {ms} ms tarde', { ms }));
     }
-  } else parts.push(T('{n} notas soltas para tocar nesta pista.', { n: targets.length }));
-  if (chords) parts.push(T('{n} notas de acordes não avaliadas', { n: chords }));
+  } else {
+    const chords = targets.filter(t => t.chord).length;
+    parts.push(T('{n} notas e {c} acordes para tocar nesta pista.', { n: targets.length - chords, c: chords }));
+  }
   if (skipped) parts.push(T('{n} notas abafadas ou harmónicos não avaliados', { n: skipped }));
   el.textContent = parts.join(' · ');
 }
@@ -11201,11 +11255,14 @@ async function practiceConnect() {
     src.connect(node);
     node.connect(audioCtx.destination);  // it outputs silence; connected so it keeps running
     src.connect(monitor).connect(audioCtx.destination);
-    practice = { stream, src, node, monitor, pitchLag: 0.015, frames: [], used: new Set(), judged: new Set(), minHz: practiceMinHz(a) };
+    practice = {
+      stream, src, node, monitor, pitchLag: 0.015, frames: [], spectra: [], df: 0,
+      used: new Set(), judged: new Set(), minHz: practiceMinHz(a),
+    };
     node.port.onmessage = e => {
       const m = e.data || {};
       if (m.type === 'ready') { if (practice) practice.pitchLag = m.pitchLag; }
-      else if (m.type === 'frames') practiceOnFrames(m.frames);
+      else if (m.type === 'frames') practiceOnFrames(m.frames, m.spectra, m.df);
     };
   } catch (err) {
     stream.getTracks().forEach(t => t.stop());
