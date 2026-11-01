@@ -367,4 +367,4 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0355](bugs/lyrics.md#bug-0355) | Lyrics drift further off along the song: a tied note in the vocal line takes a syllable | lyrics | Medium | P2 | Verified | 0.11.1-beta.4 | 0.11.1-beta.5 |
 | [BUG-0356](bugs/viewer.md#bug-0356) | Chords lag when they play on the score, and a six-string chord sounds only three strings | viewer | Medium | P2 | Verified | 0.11.1-beta.4 | 0.11.1-beta.5 |
 | [BUG-0357](bugs/viewer.md#bug-0357) | The song start field lost its fine -/+ adjustment | viewer | Low | P2 | Verified | unreleased | 0.11.1-beta.5 |
-| [BUG-0358](bugs/viewer.md#bug-0358) | The Score's Audio panel opened past the left edge of a narrow window | viewer | Low | P2 | Verified | 0.11.1-beta.5 | — |
+| [BUG-0358](bugs/viewer.md#bug-0358) | The Score's Audio panel opened past the left edge of a narrow window | viewer | Low | P2 | Verified | 0.11.1-beta.5 | 0.12.0-beta.1 |

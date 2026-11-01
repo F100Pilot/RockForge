@@ -6,6 +6,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+## [0.12.0 beta 1] — 2026-11-01
+
 ### New
 
 - **Play with the guitar (experimental):** on the Score, **Play** opens a panel to connect the guitar — Rocksmith's Real Tone Cable or a sound card — and play the chart along with the music, as in Rocksmith: each single note is marked on the score as it passes (green right and in time, yellow right but early or late with the milliseconds, red the wrong note with the one heard, dashed missed), and the panel counts the right ones, the streak and whether you play early or late on average. **Calibrate the delay** measures, with 8 clicks, the delay between the speakers and the guitar input. It also shows the note coming in (a tuner) and can send the guitar's sound to the speakers. **Chords** count too: a frame around the chord says whether it was in time or wrong, and marks the string that was on another fret (with the fret heard) or was not heard. What counts is what is drawn, also with the music slowed down. Everything runs in the browser; nothing leaves the computer.
@@ -17,7 +19,6 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 - **Palm mute on the 3D highway:** instead of the bow tie above the note, a translucent cross in
   the string's colour, from corner to corner inside the note (also while it rests on the string and
   on an open string's bar).
-
 - **Bass at A220:** in **Edit info**, beside the bass tuning, **Bass tuning reference** chooses **A220 (low tuning)**, **A440 (standard)** or **Automatic**. At A220 the bass is written an octave up with the reference at 220 Hz — the same sound, which the game detects better in a low tuning — and the game's tuner asks for A220. Until now this only happened by itself below −4 semitones (which **Automatic** still does); now it also works for, say, Drop C or D Standard. At **A440** a tuning below −4 stays as it is, with a warning that the game may not detect the lowest notes.
 
 ### Fixes

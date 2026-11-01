@@ -6,6 +6,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+## [0.12.0 beta 1] — 2026-11-01
+
 ### Novidades
 
 - **Tocar com a guitarra (experimental):** na Partitura, **Tocar** abre um painel para ligar a guitarra — o Real Tone Cable do Rocksmith ou uma placa de som — e tocar a pista com a música, como no Rocksmith: cada nota solta fica marcada na partitura quando passa (verde certa e a tempo, amarelo certa mas cedo ou tarde com os milissegundos, vermelho a nota errada com a que se ouviu, tracejado falhada), e o painel conta as certas, as seguidas e se tocas em média cedo ou tarde. **Calibrar o atraso** mede, com 8 cliques, o atraso entre as colunas e a entrada da guitarra. Mostra também a nota que chega (serve de afinador) e pode mandar o som da guitarra para as colunas. Os **acordes** também contam: uma moldura à volta do acorde diz se foi a tempo ou errado, e marca a corda que estava noutro traste (com o traste que se ouviu) ou que não se ouviu. Conta o que está desenhado, também com a música mais lenta. Tudo corre no browser; nada sai do computador.
@@ -16,7 +18,6 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
   curva pequena, em vez de uma esquina.
 - **Palm mute na pista 3D:** em vez do laço por cima da nota, uma cruz translúcida da cor da corda,
   de canto a canto dentro da nota (também quando a nota fica na corda e na barra de uma corda solta).
-
 - **Baixo em A220:** em **Editar info**, ao lado da afinação do baixo, **Referência de afinação do baixo** escolhe **A220 (afinação grave)**, **A440 (padrão)** ou **Automático**. Em A220 o baixo fica escrito uma oitava acima, com a referência a 220 Hz — o mesmo som, que o jogo deteta melhor numa afinação grave — e o afinador do jogo pede A220. Até aqui só acontecia sozinho abaixo de −4 meios-tons (o que continua a fazer em **Automático**); agora serve também, por exemplo, para Drop C ou D Standard. Em **A440** uma afinação abaixo de −4 fica como está, com um aviso de que o jogo pode não detetar as notas mais graves.
 
 ### Correções

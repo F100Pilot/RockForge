@@ -8981,7 +8981,7 @@
       "commits": [
         "7f277b2d8462efb3ff5fa4f50888470e1eea8efb"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.1",
       "tests": [],
       "manual_checks": [
         "Playwright on a local server: Áudio and Modo menus at 760/1000/1440 px inside the window, the panel's checkboxes clickable, no page errors"

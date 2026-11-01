@@ -1692,7 +1692,7 @@ At 760 px the Áudio ▾ panel, anchored to its trigger's right edge, opened pas
 
 **Root cause:** wireDropdown only placed menus vertically (flip up, cap the height); .dd-menu.right is anchored with right:0 and nothing kept it inside the scrolling column horizontally.
 
-**Fixes:** [FIX-0357](../FIX_LOG.md#fix-0357) (unreleased)
+**Fixes:** [FIX-0357](../FIX_LOG.md#fix-0357) (0.12.0-beta.1)
 
 **Verified:** manual: Playwright on a local server, EN 760 px and PT 1000/1440 px (by the developer (Playwright))
 

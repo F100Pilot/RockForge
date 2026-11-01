@@ -362,7 +362,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0354](#fix-0354) | BUG-0356 | 0.11.1-beta.5 | not run | manual |
 | [FIX-0355](#fix-0355) | BUG-0357 | 0.11.1-beta.5 | not run | manual |
 | [FIX-0356](#fix-0356) | BUG-0356 | 0.11.1-beta.5 | not run | manual |
-| [FIX-0357](#fix-0357) | BUG-0358 | unreleased | not run | manual |
+| [FIX-0357](#fix-0357) | BUG-0358 | 0.12.0-beta.1 | not run | manual |
 
 ## FIX-0001
 
@@ -7852,7 +7852,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-10-24 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.1 |
 | Commits | 7f277b2d8462efb3ff5fa4f50888470e1eea8efb |
 | Components | web/app.js |
 | Tests | — |

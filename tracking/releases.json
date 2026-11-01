@@ -584,6 +584,31 @@
       "approved_by": "the maintainer (asked for the release)",
       "upgrade": "Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.",
       "exceptions": []
+    },
+    {
+      "version": "0.12.0-beta.1",
+      "status": "Beta",
+      "created": "2026-11-01",
+      "published": "pending",
+      "commit": "pending",
+      "build": "GitHub Actions release workflow",
+      "artifacts": [],
+      "goal": "Play along with the guitar (single notes and chords), the metronome and its lane, Rocksmith-style 3D notes, the bass at A220",
+      "features": [
+        "Play with the guitar (experimental)",
+        "Metronome on the Score",
+        "Metronome lane in the Audio bars",
+        "3D highway notes as in Rocksmith",
+        "Curved slides on the 3D highway",
+        "Palm mute on the 3D highway",
+        "Bass at A220"
+      ],
+      "improvements": [],
+      "breaking": [],
+      "tests": "CI (ruff, mypy, pytest, ESLint, Docker build) on the release commit, tools/release_check, and the frozen .exe smoke test of the release workflow",
+      "approved_by": "the maintainer (asked for the release)",
+      "upgrade": "Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.",
+      "exceptions": []
     }
   ]
 }

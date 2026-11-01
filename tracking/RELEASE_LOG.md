@@ -4,6 +4,39 @@
 
 Every version, newest first. What a version fixed and the bugs it still carried come from the bug and fix registers. Process: [docs/RELEASE_PROCESS.md](../docs/RELEASE_PROCESS.md).
 
+## 0.12.0-beta.1
+
+| | |
+|---|---|
+| Status | Beta |
+| Created | 2026-11-01 |
+| Published | _pending_ |
+| Commit | _pending_ |
+| Build | GitHub Actions release workflow |
+| Artifacts | — |
+| Tests | CI (ruff, mypy, pytest, ESLint, Docker build) on the release commit, tools/release_check, and the frozen .exe smoke test of the release workflow |
+| Approved by | the maintainer (asked for the release) |
+
+**Goal:** Play along with the guitar (single notes and chords), the metronome and its lane, Rocksmith-style 3D notes, the bass at A220
+
+**New:**
+
+- Play with the guitar (experimental)
+- Metronome on the Score
+- Metronome lane in the Audio bars
+- 3D highway notes as in Rocksmith
+- Curved slides on the 3D highway
+- Palm mute on the 3D highway
+- Bass at A220
+
+**Bugs fixed:** 
+
+- [BUG-0358](bugs/viewer.md#bug-0358) The Score's Audio panel opened past the left edge of a narrow window
+
+**Known bugs it carried:** —
+
+**Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
+
 ## 0.11.1-beta.5
 
 | | |
