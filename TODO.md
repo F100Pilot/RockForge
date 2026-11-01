@@ -13,6 +13,17 @@ tudo de uma vez e um novo bump de versão.
 `docs/VERSIONING.md`): cada bug relatado ganha um `BUG-xxxx` com `python -m tools.tracking new-bug`
 e cada correção um `FIX-xxxx`. Esta lista fica para os pedidos de funcionalidades.
 
+- [ ] **Cópia (mirror) do repositório no Codeberg** (comentário de um utilizador, 2026-11-01:
+  "you should put this on Codeberg, you know how Ubisoft is"). O receio: um pedido de remoção
+  (DMCA) da Ubisoft ao GitHub, que costuma tirar o repositório do ar primeiro e ouvir depois.
+  Proposta: o GitHub continua a ser a casa principal (a publicação automática das versões
+  constrói e testa o instalador do Windows no GitHub Actions; o Codeberg não tem máquinas
+  Windows) e o Codeberg (codeberg.org, associação sem fins lucrativos em Berlim, Forgejo) fica
+  com uma cópia atualizada sozinha — código e histórico a salvo se o GitHub o tirar do ar.
+  O Codeberg não é imune (lei alemã/europeia); o RockForge não traz conteúdo da Ubisoft
+  (`LEGAL.md`). Falta: o mantenedor criar a conta no Codeberg e um token; depois, configurar
+  o espelho (push mirror a partir do GitHub, ou "pull mirror" do lado do Codeberg) e dizer
+  no README onde fica a cópia.
 - [x] **Pista 3D com mais mobilidade** (2026-10-16: "em todos os eixos até um
   máximo de 1220 graus horizontalmente e verticalmente de 0 a 90 graus" — lido
   como 120° para cada lado): arrastar roda, roda do rato afasta, duplo clique
