@@ -118,6 +118,47 @@ def test_a_song_builds_its_guitar_and_its_bass_from_their_own_tracks(
     assert any("220 Hz" in w for w in result.warnings)
 
 
+def _bass_tuning(result: object) -> tuple[list[str | None], float]:
+    bass_xml = next(p for p in result.packaging.xml_paths  # type: ignore[attr-defined]
+                    if p.name == "arrangement_bass.xml")
+    root = ET.parse(bass_xml).getroot()
+    tuning = root.find("tuning")
+    assert tuning is not None
+    return ([tuning.get(f"string{i}") for i in range(6)],
+            float(root.findtext("centOffset") or 0))
+
+
+def test_the_bass_can_be_written_at_a220_in_a_tuning_the_auto_rule_leaves_alone(
+    guitar_and_bass: Path, tmp_path: Path
+) -> None:
+    # Drop D (-2 on the low string) is above the -4 limit: A440 by default, and
+    # an octave up at 220 Hz when the user picks A220 (a forum request).
+    drop_d = {"Bass": (26, 33, 38, 43)}
+    meta = SongMetadata(title="Low", artist="Band")
+    auto = _use_case().run(
+        GpJobSpec(gp_path=guitar_and_bass, audio_source="x.wav", lead_track=0, bass_track=1,
+                  tuning_overrides=drop_d), meta, tmp_path / "a")
+    assert _bass_tuning(auto) == (["-2", "0", "0", "0", "0", "0"], 0.0)
+    a220 = _use_case().run(
+        GpJobSpec(gp_path=guitar_and_bass, audio_source="x.wav", lead_track=0, bass_track=1,
+                  tuning_overrides=drop_d, bass_reference="a220", cent_offset=-10.0),
+        meta, tmp_path / "b")
+    assert _bass_tuning(a220) == (["10", "12", "12", "12", "12", "12"], -1210.0)
+    assert any("A220" in w for w in a220.warnings)
+
+
+def test_the_bass_can_stay_at_a440_below_the_limit_and_says_what_that_costs(
+    guitar_and_bass: Path, tmp_path: Path
+) -> None:
+    result = _use_case().run(
+        GpJobSpec(gp_path=guitar_and_bass, audio_source="x.wav", lead_track=0, bass_track=1,
+                  bass_reference="a440"),
+        SongMetadata(title="Low", artist="Band"), tmp_path / "w")
+    assert _bass_tuning(result) == (["-5"] * 6, 0.0)
+    assert any("A440" in w and "may not detect" in w for w in result.warnings)
+    assert not any("220 Hz" in w for w in result.warnings)
+
+
 def test_a_bass_track_is_picked_when_the_user_picks_nothing(
     guitar_and_bass: Path, tmp_path: Path
 ) -> None:

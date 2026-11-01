@@ -163,6 +163,9 @@ class RebuildIn(BaseModel):
     # ("Lead"/"Rhythm"/…) → the six MIDI pitches (low to high). When set (even to
     # {}), replaces params["tuning_overrides"]; None leaves it untouched.
     tuning_overrides: dict[str, list[MidiPitch]] | None = None
+    # GP: the Bass chart's reference pitch — "auto" (A220 only below -4
+    # semitones), "a220" or "a440" (GpJobSpec.bass_reference). None leaves it.
+    bass_reference: Literal["auto", "a220", "a440"] | None = None
     # Edited per-word lyrics from the in-app lyrics editor. When set (even to an
     # empty list), replaces params["lyrics_events"] and clears lyrics_status so
     # the next build uses the edited lyrics. None leaves existing lyrics alone.

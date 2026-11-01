@@ -12,6 +12,7 @@ from typing import cast
 
 from fastapi import APIRouter, HTTPException
 
+from rockforge.domain.music import BASS_REFERENCES
 from rockforge.infrastructure.db.models import Job
 from rockforge.interfaces.api import app as api
 from rockforge.interfaces.api.schemas import (
@@ -32,7 +33,7 @@ router = APIRouter()
 # Keys that only make sense for a Guitar Pro job (dropped when importing into a
 # non-GP job, mirroring rebuild's per-field 422s).
 _SYNC_STATE_GP_ONLY: frozenset[str] = frozenset({
-    "tuning_overrides",
+    "tuning_overrides", "bass_reference",
     "lead_track", "rhythm_track", "combo_track", "alt_lead_track", "alt_rhythm_track",
     "bass_track", "merge_tracks",
 })
@@ -56,6 +57,9 @@ def _sanitize_sync_state(incoming: dict[str, object]) -> dict[str, object]:
         raise HTTPException(422, f"cent_offset must be a number between -{bound} and {bound}")
     if "merge_tracks" in out:
         out["merge_tracks"] = api._clean_merge_tracks(out["merge_tracks"])
+    ref = out.get("bass_reference")
+    if ref is not None and ref not in BASS_REFERENCES:
+        raise HTTPException(422, f"bass_reference must be one of {', '.join(BASS_REFERENCES)}")
     to = out.get("tuning_overrides")
     if to is not None:
         if not isinstance(to, dict):
@@ -167,6 +171,13 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
                 if len(midi) != n:
                     raise HTTPException(422, f"tuning for {kind} must have {n} MIDI pitches")
             params["tuning_overrides"] = {k: list(v) for k, v in payload.tuning_overrides.items()}
+        if payload.bass_reference is not None:
+            if original.source_type != "gp":
+                raise HTTPException(422, "the bass reference only applies to Guitar Pro jobs")
+            if payload.bass_reference == "auto":
+                params.pop("bass_reference", None)
+            else:
+                params["bass_reference"] = payload.bass_reference
 
         def _arr_entry(kind: str) -> dict[str, object]:
             # Per-arrangement tempo/drift overrides live under params["arrangement_sync"].

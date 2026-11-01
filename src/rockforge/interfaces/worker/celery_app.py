@@ -305,7 +305,7 @@ def generate_cdlc(job_id: str) -> None:
                 from rockforge.domain.arrangement import ArrangementKind, Section, ToneChange
                 from rockforge.domain.arrangement import SongMetadata as Meta
                 from rockforge.domain.hand import HandPosition
-                from rockforge.domain.music import Technique
+                from rockforge.domain.music import BASS_REFERENCES, Technique
                 from rockforge.infrastructure.packaging.gear.gear_catalogue import (
                     tones_from_dicts,
                 )
@@ -335,6 +335,10 @@ def generate_cdlc(job_id: str) -> None:
                     cent_offset=(
                         float(cast(float, params["cent_offset"]))
                         if isinstance(params.get("cent_offset"), (int, float)) else None
+                    ),
+                    bass_reference=(
+                        str(params["bass_reference"])
+                        if params.get("bass_reference") in BASS_REFERENCES else "auto"
                     ),
                     offset_s=float(params.get("offset_s", 0.0)),
                     lead_in_s=float(params.get("lead_in_s", 0.0)),

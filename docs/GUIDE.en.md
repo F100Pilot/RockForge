@@ -145,7 +145,10 @@ those). Rocksmith's bass has four strings, so a 5-string bass is folded onto the
 lose the fewest notes — B E A D when the part never plays the high G — and the warnings name the
 strings used and count any note left out. A tuning lower than 4 semitones below standard (B
 standard, say) is written an octave up with the reference at 220 Hz, as DLC Builder does, so the
-game detects the notes; RockForge's score and playback still sound the real pitch. A 6-string
+game detects the notes; RockForge's score and playback still sound the real pitch. To write the
+bass that way in another tuning (Drop C, D standard…), or never, choose in **Edit info** →
+**Bass tuning reference**: **A220 (low tuning)**, **A440 (standard)** or **Automatic** (A220 only
+below −4 semitones). At A220, tune the bass in the game with the reference at 220 Hz. A 6-string
 bass is charted as a guitar.
 
 ### Step 3 — Recording

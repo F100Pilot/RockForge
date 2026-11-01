@@ -490,6 +490,8 @@ def _check_imported_params(params: dict[str, object]) -> None:
                 "marked_attacks"):
         if params.get(key) is not None and not isinstance(params[key], dict):
             raise bad(key, "um objeto")
+    if params.get("bass_reference") not in (None, "auto", "a220", "a440"):
+        raise bad("bass_reference", "auto, a220 ou a440")
     if "sync_anchor_stages" in params and not anchors_ok(params["sync_anchor_stages"]):
         raise bad("sync_anchor_stages", "rondas de pares [tempo, tempo]")
     per_chart = params.get("arrangement_sync")
@@ -1008,7 +1010,7 @@ def _sweep_orphan_youtube_audio() -> int:
 _SYNC_STATE_KEYS: tuple[str, ...] = (
     "offset_s", "lead_in_s", "tempo_scale",
     "sync_anchor_stages", "arrangement_sync",
-    "cent_offset", "tuning_overrides",
+    "cent_offset", "tuning_overrides", "bass_reference",
     "lyrics_events",
     "lead_track", "rhythm_track", "combo_track", "alt_lead_track", "alt_rhythm_track",
     "bass_track", "merge_tracks",

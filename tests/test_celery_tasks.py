@@ -552,3 +552,25 @@ def test_the_worker_starts_no_cuda_warm_up() -> None:
         fns = [r[1]() if isinstance(r[1], weakref.ReferenceType) else r[1] for r in sig.receivers]
         mods = [getattr(fn, "__module__", "") or "" for fn in fns]
         assert not [m for m in mods if m.startswith("rockforge")], sig.name
+
+
+def test_the_bass_reference_chosen_in_the_project_reaches_the_build(
+    db, tmp_path, monkeypatch
+) -> None:
+    """A220/A440 for the Bass (Editar info) is stored in params and read into
+    the build's spec; anything else is the automatic rule."""
+    seen: list[str] = []
+
+    class _Capture:
+        def run(self, spec, *args, **kwargs):
+            seen.append(spec.bass_reference)
+            raise RuntimeError("stop after the spec")
+
+    monkeypatch.setattr(ca, "_build_gp_use_case", lambda: _Capture())
+    gp_path = _make_gp5(tmp_path)
+    for stored in ("a220", "a440", "nonsense", None):
+        params = {"gp_path": str(gp_path), "lead_track": 0}
+        if stored is not None:
+            params["bass_reference"] = stored
+        ca.generate_cdlc(_job(db, params=params))
+    assert seen == ["a220", "a440", "auto", "auto"]

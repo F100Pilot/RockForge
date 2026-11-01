@@ -146,7 +146,10 @@ cordas que perdem menos notas — B E A D quando a parte nunca toca o Sol agudo 
 que cordas ficaram e quantas notas ficaram de fora. Uma afinação mais de 4 meios-tons abaixo da
 standard (B standard, por exemplo) é escrita uma oitava acima com a referência a 220 Hz, como faz
 o DLC Builder, para o jogo detetar as notas; a partitura e a reprodução do RockForge continuam a
-soar a altura real. Um baixo de 6 cordas faz-se como guitarra.
+soar a altura real. Para escrever o baixo assim noutra afinação (Drop C, D standard…), ou para
+nunca o fazer, escolhe em **Editar info** → **Referência de afinação do baixo**: **A220 (afinação
+grave)**, **A440 (padrão)** ou **Automático** (A220 só abaixo de −4 meios-tons). Em A220, afina o
+baixo no jogo com a referência a 220 Hz. Um baixo de 6 cordas faz-se como guitarra.
 
 ### Passo 3 — Gravação
 

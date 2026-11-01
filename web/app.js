@@ -2300,14 +2300,24 @@ async function openMetaEdit() {
       const ovOff = ov && ov.map((m, i) => m - std[i]);
       const cur = ovOff ? _presetFromOffsets(ovOff.length === 4 ? [...ovOff, ovOff[3], ovOff[3]] : ovOff) :
                           _presetFromOffsets(a.tuning_offsets);
-      return `<div class="field" style="flex:1 1 11rem"><label>${T('Afinação {arr}', { arr: esc(arrLabel(a.kind)) })}</label>
+      const field = `<div class="field" style="flex:1 1 11rem"><label>${T('Afinação {arr}', { arr: esc(arrLabel(a.kind)) })}</label>
         <select data-kind="${esc(a.kind)}" style="width:100%">${presetOpts}</select></div>`
         .replace(`value="${cur}"`, `value="${cur}" selected`);
+      return isBassArr(a) ? field + bassReferenceField(tr.bass_reference) : field;
     }).join('');
     gp.style.display = '';
     metaSaved = metaValues();  // the loaded track map + tunings are the baseline
     updateMetaDirty();
   } catch { /* leave the GP section hidden on any error */ }
+}
+// The Bass chart's reference pitch: A220 writes it an octave up at 220 Hz so the
+// game registers a low-tuned bass (GpJobSpec.bass_reference).
+function bassReferenceField(current) {
+  const opts = [['auto', T('Automático (A220 abaixo de −4 meios-tons)')],
+                ['a220', T('A220 (afinação grave)')], ['a440', T('A440 (padrão)')]];
+  return `<div class="field" style="flex:1 1 11rem"><label>${T('Referência de afinação do baixo')}</label>
+    <select id="metaBassRef" style="width:100%" title="${esc(T('Em A220 o baixo fica escrito uma oitava acima, com a referência a 220 Hz: o mesmo som, que o jogo deteta melhor numa afinação grave. No jogo, o afinador pede A220.'))}">${
+      opts.map(([v, l]) => `<option value="${v}"${v === (current || 'auto') ? ' selected' : ''}>${l}</option>`).join('')}</select></div>`;
 }
 // Reached from onclick="openMetaEdit()" inside the job-row template strings,
 // which ESLint cannot trace — inline handlers resolve through global scope, so
@@ -2329,6 +2339,8 @@ function metaValues() {
     for (const sel of document.querySelectorAll('#metaMerge select[data-merge]')) gp['m:' + sel.dataset.merge] = sel.value;
     gp['m:bars'] = mergeStateKey(document.getElementById('metaMerge'));
     for (const sel of document.querySelectorAll('#metaTunings select[data-kind]')) gp['u:' + sel.dataset.kind] = sel.value;
+    const ref = document.getElementById('metaBassRef');
+    if (ref) gp['r:bass'] = ref.value;
   }
   return { info, gp };
 }
@@ -2390,7 +2402,8 @@ document.getElementById('metaSave').onclick = async () => {
     }
     const rr = await fetch(`/jobs/${selectedJob.id}/rebuild`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tracks, tuning_overrides, merge_tracks }),
+      body: JSON.stringify({ tracks, tuning_overrides, merge_tracks,
+        bass_reference: document.getElementById('metaBassRef')?.value || null }),
     });
     if (!rr.ok) { const e = await rr.json(); alert(e.detail || T('Erro ao reconstruir.')); return; }
     const nj = await rr.json();

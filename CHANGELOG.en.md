@@ -18,6 +18,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
   the string's colour, from corner to corner inside the note (also while it rests on the string and
   on an open string's bar).
 
+- **Bass at A220:** in **Edit info**, beside the bass tuning, **Bass tuning reference** chooses **A220 (low tuning)**, **A440 (standard)** or **Automatic**. At A220 the bass is written an octave up with the reference at 220 Hz — the same sound, which the game detects better in a low tuning — and the game's tuner asks for A220. Until now this only happened by itself below −4 semitones (which **Automatic** still does); now it also works for, say, Drop C or D Standard. At **A440** a tuning below −4 stays as it is, with a warning that the game may not detect the lowest notes.
+
 ### Fixes
 
 - **Audio panel cut off on a narrow screen:** in a narrow window (760 px) the Score's **Audio ▾** panel opened past the left edge and its left-hand controls were out of reach. Menus now always stay inside their column and the window.

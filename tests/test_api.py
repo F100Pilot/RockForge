@@ -359,6 +359,36 @@ def test_a_cent_offset_past_half_a_semitone_is_refused(client: TestClient) -> No
     ).status_code == 202
 
 
+def test_the_bass_reference_is_stored_read_back_and_reset(
+    client: TestClient, tmp_path
+) -> None:
+    """A220/A440 for the Bass, chosen in "Editar info" (a forum request: bass
+    players in a low tuning use A220 so the game registers their notes)."""
+    body = client.post(
+        "/gp/inspect", files={"file": ("song.gp5", _make_gp5_bytes(tmp_path),
+                                       "application/octet-stream")}
+    ).json()
+    job = client.post(
+        "/jobs/gp", data={"gp_token": body["gp_token"], "lead_track": "0"},
+        files={"audio": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
+    ).json()
+    assert client.get(f"/jobs/{job['id']}/gp-tracks").json()["bass_reference"] == "auto"
+    a220 = client.post(f"/jobs/{job['id']}/rebuild", json={"bass_reference": "a220"}).json()
+    assert client.get(f"/jobs/{a220['id']}/gp-tracks").json()["bass_reference"] == "a220"
+    # Another rebuild that does not mention it keeps it; "auto" removes it.
+    kept = client.post(f"/jobs/{a220['id']}/rebuild", json={"offset_s": 1.0}).json()
+    assert client.get(f"/jobs/{kept['id']}/gp-tracks").json()["bass_reference"] == "a220"
+    auto = client.post(f"/jobs/{kept['id']}/rebuild", json={"bass_reference": "auto"}).json()
+    assert client.get(f"/jobs/{auto['id']}/gp-tracks").json()["bass_reference"] == "auto"
+    assert client.post(
+        f"/jobs/{job['id']}/rebuild", json={"bass_reference": "a330"}
+    ).status_code == 422
+    upload = _create_job(client)  # not a GP job
+    assert client.post(
+        f"/jobs/{upload['id']}/rebuild", json={"bass_reference": "a220"}
+    ).status_code == 422
+
+
 def test_gp_tracks_endpoint_rejects_non_gp_job(client: TestClient) -> None:
     original = _create_job(client)  # an upload job, not GP
     assert client.get(f"/jobs/{original['id']}/gp-tracks").status_code == 422

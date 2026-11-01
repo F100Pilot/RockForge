@@ -402,6 +402,11 @@ class GpJobSpec:
     # without this every chart said 0; the game's tuner then asked for A440 on a
     # recording that is not there. None keeps what the parser read.
     cent_offset: float | None = None
+    # The Bass chart's reference pitch (``BASS_REFERENCES``): "auto" writes it
+    # an octave up at 220 Hz only below BASS_LOW_TUNING_LIMIT (DLC Builder's
+    # rule); "a220" always does — what bass players in a low tuning use so the
+    # game registers their notes; "a440" never does.
+    bass_reference: str = "auto"
     # In-app section-editor overrides (bundle-clock times, like tone_changes —
     # no per-arrangement warp applied). When set (even to an empty list),
     # REPLACES the GP-parsed section markers for EVERY arrangement; None keeps
@@ -864,7 +869,19 @@ class GenerateFromGpUseCase:
                     Tuning.for_bass(override, cents) if override is not None and len(override) == 4
                     else replace(parsed_tuning, cent_offset=cents)
                 )
-                if tuning.needs_low_tuning_fix():
+                low = tuning.needs_low_tuning_fix()
+                if spec.bass_reference == "a220" and not tuning.low_tuning_fixed:
+                    warnings.append(
+                        f"{kind.value}: written an octave up at 220 Hz (A220), as chosen — "
+                        "tune the bass's reference to A220 in the game"
+                    )
+                    tuning = tuning.with_low_tuning_fix()
+                elif spec.bass_reference == "a440" and low:
+                    warnings.append(
+                        f"{kind.value}: tuning below {BASS_LOW_TUNING_LIMIT} semitones kept at "
+                        "A440, as chosen — the game may not detect its lowest notes"
+                    )
+                elif spec.bass_reference == "auto" and low:
                     # DLC Builder's I41: the game does not detect a bass's notes
                     # in a tuning this low unless written an octave up at 220 Hz.
                     warnings.append(

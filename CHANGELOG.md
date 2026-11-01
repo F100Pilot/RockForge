@@ -17,6 +17,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 - **Palm mute na pista 3D:** em vez do laço por cima da nota, uma cruz translúcida da cor da corda,
   de canto a canto dentro da nota (também quando a nota fica na corda e na barra de uma corda solta).
 
+- **Baixo em A220:** em **Editar info**, ao lado da afinação do baixo, **Referência de afinação do baixo** escolhe **A220 (afinação grave)**, **A440 (padrão)** ou **Automático**. Em A220 o baixo fica escrito uma oitava acima, com a referência a 220 Hz — o mesmo som, que o jogo deteta melhor numa afinação grave — e o afinador do jogo pede A220. Até aqui só acontecia sozinho abaixo de −4 meios-tons (o que continua a fazer em **Automático**); agora serve também, por exemplo, para Drop C ou D Standard. Em **A440** uma afinação abaixo de −4 fica como está, com um aviso de que o jogo pode não detetar as notas mais graves.
+
 ### Correções
 
 - **Painel Áudio cortado num ecrã estreito:** numa janela estreita (760 px), o painel **Áudio ▾** da Partitura abria a sair pela esquerda e os controlos do lado esquerdo ficavam fora de alcance. Agora os menus ficam sempre dentro da coluna e da janela.

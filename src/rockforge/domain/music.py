@@ -20,6 +20,9 @@ BASS_STRINGS = 4
 # pitch halved to 220 Hz (DLCBuilder.Domain Utils.checkBassTuning, issue I41).
 BASS_LOW_TUNING_LIMIT = -4
 LOW_TUNING_FIX_CENTS = -1200.0
+# The Bass chart's reference pitch, chosen per song: "auto" applies the fix
+# above only below BASS_LOW_TUNING_LIMIT, "a220" always, "a440" never.
+BASS_REFERENCES = ("auto", "a220", "a440")
 MAX_FRET = 24
 
 

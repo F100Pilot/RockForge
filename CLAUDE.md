@@ -628,6 +628,21 @@ Combo/alternates, encoded the way Rocksmith2014.NET/DLC Builder encode a bass
   +12 and the reference at 220 Hz (CentOffset -1200), so the game detects the
   notes; `gp_pipeline._tuning_for` does it and says so in the warnings, and the
   viewer (`openMidi`) and the GP5 export undo it to sound the real pitch.
+  **The reference is the user's choice** (a forum request, 2026-10-31: "for
+  bass with low tuning, people usually use A220 instead of A440"):
+  `GpJobSpec.bass_reference` / `params["bass_reference"]` / `RebuildIn.bass_reference`
+  (`BASS_REFERENCES`: "auto" = the rule above and the default, absent in
+  params; "a220" = always written +12 at 220 Hz, e.g. Drop C or D standard;
+  "a440" = never, with a warning below -4). Chosen in "Editar info" beside the
+  Bass tuning (`bassReferenceField`, `#metaBassRef`), answered by `/gp-tracks`,
+  a sync-state key and portable in `.rfproj`. The viewer and the GP5 export
+  already undo any fixed tuning (cent offset ≤ -1100). Guarded by
+  `test_the_bass_can_be_written_at_a220_in_a_tuning_the_auto_rule_leaves_alone`,
+  `test_the_bass_can_stay_at_a440_below_the_limit_and_says_what_that_costs`,
+  `test_the_bass_reference_is_stored_read_back_and_reset` and
+  `test_the_bass_reference_chosen_in_the_project_reaches_the_build`; with
+  Playwright and a real build (Drop D bass → A220: strings 10/12…, CentOffset
+  -1200, `/psarc-check` clean, PT 1440 / EN 760 px). Not tried in game here.
 - **Import** (`gpimport/strings.py`, both parsers, `bass=` on
   `parse_gp_track`): a guitar chart needs 6 strings and a 4/5-string track is
   refused there with "pick it as the Bass track"; a Bass chart needs 4 or 5
