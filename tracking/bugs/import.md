@@ -2384,3 +2384,37 @@ When the GP track picked for an arrangement holds no notes, the build fails with
 - 2026-10-20 — In Progress: from the GitHub issue
 - 2026-10-20 — Fixed: commit 8dc5d4bb50
 - 2026-10-20 — Verified: pytest
+
+## BUG-0366
+
+**A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar**
+
+| | |
+|---|---|
+| Detected | 2026-11-02 |
+| Reported by | DrekAnon (GitHub issue #19) |
+| Found in | 0.10.0-beta.1 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Open |
+
+A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar
+
+**Steps to reproduce:** _pending_
+
+**Expected:** _pending_
+
+**Observed:** _pending_
+
+**Root cause:** _pending_
+
+**Fixes:** —
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** _pending_ · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-02 — Open: reported

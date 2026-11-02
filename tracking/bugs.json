@@ -18283,6 +18283,36 @@
           "note": "commit 91f412def9"
         }
       ]
+    },
+    {
+      "id": "BUG-0366",
+      "title": "A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar",
+      "detected": "2026-11-02",
+      "reported_by": "DrekAnon (GitHub issue #19)",
+      "found_in_version": "0.10.0-beta.1",
+      "found_in_build": "pending",
+      "module": "import",
+      "description": "A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar",
+      "steps": "pending",
+      "expected": "pending",
+      "observed": "pending",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Open",
+      "root_cause": "pending",
+      "fixes": [],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "pending",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-02",
+          "status": "Open",
+          "note": "reported"
+        }
+      ]
     }
   ]
 }

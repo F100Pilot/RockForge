@@ -4,9 +4,9 @@
 
 Every bug found in RockForge, with a permanent id; the full record of each is on its module's page in [bugs/](bugs). Rules and states: [docs/VERSIONING.md](../docs/VERSIONING.md#bugs). Fixes: [FIX_LOG.md](FIX_LOG.md). Releases: [RELEASE_LOG.md](RELEASE_LOG.md).
 
-| Fixed | Verified | Closed |
-|---|---|---|
-| 89 | 61 | 215 |
+| Open | Fixed | Verified | Closed |
+|---|---|---|---|
+| 1 | 89 | 61 | 215 |
 
 | ID | Title | Module | Severity | Priority | Status | Found in | Fixed in |
 |---|---|---|---|---|---|---|---|
@@ -375,3 +375,4 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0363](bugs/viewer.md#bug-0363) | Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 | viewer | High | P1 | Verified | 0.10.0-beta.10 | 0.12.0-beta.2 |
 | [BUG-0364](bugs/lyrics.md#bug-0364) | An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line | lyrics | Medium | P2 | Verified | 0.10.0-beta.1 | 0.12.0-beta.2 |
 | [BUG-0365](bugs/game.md#bug-0365) | The game skipped the recording's intro when the chart's bar 1 starts long after the recording does | game | High | P2 | Fixed | 0.10.0-beta.1 | — |
+| [BUG-0366](bugs/import.md#bug-0366) | A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar | import | Medium | P2 | Open | 0.10.0-beta.1 | — |
