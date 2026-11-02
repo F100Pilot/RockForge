@@ -549,6 +549,13 @@ It stays pending on both tracks until **Apply and rebuild**; Ctrl+Z undoes it.
 
 - Click a note: change string, fret, sustain, techniques (hammer-on, pull-off, harmonic, palm
   mute, vibrato, tapping, slap, pop, accent), bend and slide; **Save** or **Remove note**.
+- **Slides:** in **Slide to** type the fret it lands on and choose **Slide to the fret** or
+  **Unpitched slide (out)** (a slide out that does not land on a definite note). **Lasts (s)** is
+  how long it takes to slide: shorter than the sustain, the note reaches the fret and rings there
+  until the end of the sustain (a slide note linked to a held note, as in Rocksmith); empty, it
+  slides over the whole sustain. **Link to the next note** makes the note carry on into the next
+  one on the same string without a new pick. On the score the slide is a line to the end of the
+  sustain (dashed when unpitched), and you hear it slide.
 - **Drag** a note to change its time (it snaps to the grid) or its string (it keeps its fret,
   so its pitch changes).
 - To move **a chord or several notes**: drag a box on an empty spot of the staff around them (or

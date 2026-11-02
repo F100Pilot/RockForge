@@ -592,3 +592,27 @@ def test_the_song_end_reaches_the_build(db, tmp_path, monkeypatch) -> None:
             params["song_end_s"] = stored
         ca.generate_cdlc(_job(db, params=params))
     assert seen == [95.5, None, None, None]
+
+
+def test_a_note_edits_link_and_unpitched_slide_reach_the_build(db, tmp_path, monkeypatch) -> None:
+    """Issue #12: the editor's link and unpitched slide are read from params;
+    a stored edit without them (from before) keeps the note's own (None)."""
+    seen: list = []
+
+    class _Capture:
+        def run(self, spec, *args, **kwargs):
+            seen.extend(spec.note_overrides["Lead"])
+            raise RuntimeError("stop after the spec")
+
+    monkeypatch.setattr(ca, "_build_gp_use_case", lambda: _Capture())
+    gp_path = _make_gp5(tmp_path)
+    ca.generate_cdlc(_job(db, params={
+        "gp_path": str(gp_path), "lead_track": 0,
+        "note_overrides": {"Lead": [
+            {"time": 1.0, "string": 2, "fret": 5, "slide_to_fret": 7, "link_next": True},
+            {"time": 2.0, "string": 2, "fret": 5, "slide_unpitch_to": 1},
+            {"time": 3.0, "string": 2, "fret": 5},
+        ]},
+    }))
+    assert [(o.link_next, o.slide_unpitch_to) for o in seen] == [
+        (True, None), (None, 1), (None, None)]

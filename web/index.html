@@ -2495,6 +2495,14 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
   </div>
   <div class="ba-row" style="margin-top:.3rem">Bend (semitons): <input type="number" id="neBend" min="0" max="4" step="0.5" value="0" style="width:3.6rem">
     Slide para: <input type="number" id="neSlideTo" min="0" max="24" style="width:3.6rem" placeholder="—"></div>
+  <div class="ba-row" style="margin-top:.3rem;flex-wrap:wrap">
+    <select id="neSlideKind" style="width:auto" aria-label="Tipo de slide">
+      <option value="pitched">Slide até ao traste</option>
+      <option value="unpitched">Slide sem altura (para fora)</option>
+    </select>
+    <span title="Quanto tempo demora a deslizar. Mais curto do que o sustain: a nota chega ao traste e fica a soar lá (uma nota ligada).">Dura (s): <input type="number" id="neSlideLen" min="0" step="0.001" style="width:4rem" placeholder="tudo"></span></div>
+  <div class="ba-row" style="margin-top:.3rem">
+    <label class="check" title="Sem palhetar: a nota continua na seguinte da mesma corda (que tem de estar no traste onde esta acaba)."><input type="checkbox" id="neLinkNext"> Ligar à nota seguinte</label></div>
   <div class="ba-row" style="margin-top:.4rem;justify-content:space-between">
     <button type="button" id="neDelete" class="secondary" style="color:#e88">Remover nota</button>
     <span>

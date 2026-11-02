@@ -304,6 +304,46 @@ def test_an_edit_keeps_the_note_fields_the_editor_does_not_show() -> None:
             moved.pick_direction) == (9, (), -1, False, 2)
 
 
+def test_the_note_editor_can_link_a_slide_to_the_note_it_lands_on() -> None:
+    """Issue #12: "slide then hold" is a short slide linked to a held note on
+    its landing fret (Rocksmith's linkNext). The editor sends the link on the
+    slide and inserts the held note; the link must survive resolve_links. A
+    link the editor leaves unset keeps what the note had; an unpitched slide
+    is set, kept and cleared (-1) the same way."""
+    from rockforge.domain.music import resolve_links
+
+    note = TabNote(string=2, fret=5, time=1.0, sustain=1.0)
+    edited = _apply_note_overrides([note], [
+        NoteOverride(time=1.0, string=2, fret=5, sustain=0.25,
+                     techniques=("slide",), slide_to_fret=7, link_next=True),
+        NoteOverride(time=1.25, string=2, fret=7, sustain=0.75),
+    ])
+    slide, held = resolve_links(edited)
+    assert (slide.slide_to_fret, slide.link_next, slide.sustain) == (7, True, 0.25)
+    assert (held.time, held.fret, held.sustain) == (1.25, 7, 0.75)
+
+    linked = TabNote(string=2, fret=5, time=1.0, sustain=0.25, link_next=True)
+    (kept,) = _apply_note_overrides([linked], [
+        NoteOverride(time=1.0, string=2, fret=5, sustain=0.25)])
+    assert kept.link_next
+    (unlinked,) = _apply_note_overrides([linked], [
+        NoteOverride(time=1.0, string=2, fret=5, sustain=0.25, link_next=False)])
+    assert not unlinked.link_next
+
+    (out,) = _apply_note_overrides([note], [
+        NoteOverride(time=1.0, string=2, fret=5, sustain=0.5, slide_unpitch_to=1)])
+    assert out.slide_unpitch_to == 1
+    (still,) = _apply_note_overrides([out], [
+        NoteOverride(time=1.0, string=2, fret=5, sustain=0.6)])
+    assert still.slide_unpitch_to == 1
+    (cleared,) = _apply_note_overrides([out], [
+        NoteOverride(time=1.0, string=2, fret=5, sustain=0.6, slide_unpitch_to=-1)])
+    assert cleared.slide_unpitch_to is None
+    (inserted,) = _apply_note_overrides([], [
+        NoteOverride(time=2.0, string=0, fret=3, sustain=0.4, slide_unpitch_to=0)])
+    assert (inserted.slide_unpitch_to, inserted.link_next) == (0, False)
+
+
 def test_note_overrides_empty_or_absent_kind_leaves_notes_untouched(
     two_track_gp5: Path, tmp_path: Path
 ) -> None:

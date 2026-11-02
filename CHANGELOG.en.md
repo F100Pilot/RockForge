@@ -8,6 +8,7 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ### New
 
+- **Slides in the note editor, seen and heard:** in a note's pop-up (**Edit notes** mode), **Slide to** now offers **Slide to the fret** or **Unpitched slide (out)**, and **Lasts (s)** sets how long it takes to slide — shorter than the sustain, the note reaches the fret and rings there to the end (a slide note linked to a held note, as in Rocksmith). **Link to the next note** makes a note carry on into the next one on the same string without a new pick. On the score a slide is a line to the end of the sustain with the fret it lands on (dashed when unpitched), and the preview's notes and the synthesized source glide to the pitch they land on.
 - **More tunings, and a custom one:** in **Edit info**, each track's tuning now offers C# Standard, B Standard, Drop A#, Drop A, Double Drop D, DADGAD, Open D, Open G, Open E, Open C and Open A, and **Custom…**, which shows one note per string so you can set any tuning. When you import a PDF, step 2 of the wizard says which tuning was read for each track — a tab that does not print it is read as standard.
 - **Song end:** on the Score → Sync → More options, **Song end** chooses the second of the recording where the game ends the song (**= cursor** marks it at the cursor). Empty, the song runs to the end of the recording. It never ends before the last note.
 

@@ -177,6 +177,13 @@ class NoteOverride:
     bend_semitones: float = 0.0
     slide_to_fret: int | None = None
     deleted: bool = False
+    # Run on into the next note on the string without a new pick (Rocksmith's
+    # linkNext — a slide that then holds its landing note). None = keep what
+    # the note had (when its fret and slide are unchanged).
+    link_next: bool | None = None
+    # An unpitched slide (a slide in/out with no landing note): the fret it
+    # heads to; -1 = none, None = keep what the note had.
+    slide_unpitch_to: int | None = None
 
 
 # How far an edit's time may sit from the note it targets. The editor only
@@ -219,7 +226,10 @@ def _apply_note_overrides(
             merged.append(TabNote(
                 string=ov.string, fret=ov.fret, time=ov.time, sustain=ov.sustain,
                 techniques=ov.techniques, bend_semitones=ov.bend_semitones,
-                slide_to_fret=ov.slide_to_fret,
+                slide_to_fret=ov.slide_to_fret, link_next=bool(ov.link_next),
+                slide_unpitch_to=(ov.slide_unpitch_to
+                                  if ov.slide_unpitch_to is not None and ov.slide_unpitch_to >= 0
+                                  else None),
             ))
             continue
         # An edit patches the note it hits — replace(), never a fresh TabNote,
@@ -234,8 +244,11 @@ def _apply_note_overrides(
             # what described the old pitch or bend no longer does
             bend_points=old.bend_points if ov.bend_semitones == old.bend_semitones else (),
             left_hand=old.left_hand if ov.fret == old.fret else -1,
-            link_next=old.link_next and ov.fret == old.fret
-            and ov.slide_to_fret == old.slide_to_fret,
+            link_next=(ov.link_next if ov.link_next is not None
+                       else old.link_next and ov.fret == old.fret
+                       and ov.slide_to_fret == old.slide_to_fret),
+            slide_unpitch_to=(old.slide_unpitch_to if ov.slide_unpitch_to is None
+                              else ov.slide_unpitch_to if ov.slide_unpitch_to >= 0 else None),
         )
     return sorted(merged, key=lambda n: (n.time, n.string))
 

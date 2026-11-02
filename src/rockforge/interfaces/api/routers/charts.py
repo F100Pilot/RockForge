@@ -202,7 +202,8 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
             if el.get("slideTo", "-1") != "-1":
                 techs.append("slide")
             slide_to = int(el.get("slideTo", "-1"))
-            if slide_to < 0:
+            unpitched = slide_to < 0 and int(el.get("slideUnpitchTo", "-1")) >= 0
+            if unpitched:
                 slide_to = int(el.get("slideUnpitchTo", "-1"))
             return ArrangementNoteOut(
                 time=time,
@@ -214,6 +215,7 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
                 bend_semitones=bend_semitones,
                 bend_curve=bend_curve if bend_semitones else [],
                 slide_to=slide_to,
+                slide_unpitched=unpitched,
                 link_next=el.get("linkNext") == "1",
             )
 

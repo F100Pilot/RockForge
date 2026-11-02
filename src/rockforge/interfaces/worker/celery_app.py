@@ -404,6 +404,14 @@ def generate_cdlc(job_id: str) -> None:
                                     else None
                                 ),
                                 deleted=bool(n.get("deleted", False)),
+                                link_next=(
+                                    bool(n["link_next"])
+                                    if n.get("link_next") is not None else None
+                                ),
+                                slide_unpitch_to=(
+                                    int(n["slide_unpitch_to"])
+                                    if n.get("slide_unpitch_to") is not None else None
+                                ),
                             )
                             for n in note_list
                         ]

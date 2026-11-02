@@ -581,7 +581,8 @@ def test_arrangements_derives_chord_name(client: TestClient) -> None:
     # the next unrelated rebuild.
     assert data[0]["note_overrides"] == [
         {"time": 0.5, "string": 1, "fret": 9, "sustain": 0.0, "techniques": [],
-         "bend_semitones": 0.0, "slide_to_fret": None, "deleted": False}
+         "bend_semitones": 0.0, "slide_to_fret": None, "deleted": False,
+         "link_next": None, "slide_unpitch_to": None}
     ], data[0]["note_overrides"]
     chord_notes = [n for n in data[0]["notes"] if n["chord"]]
     assert chord_notes, "expected the simultaneous notes to be emitted as a chord"
@@ -1502,6 +1503,39 @@ def test_rebuild_stores_note_overrides_keyed_by_arrangement(client: TestClient, 
             },
         ]
     }
+
+
+def test_a_note_edit_can_link_a_slide_and_make_it_unpitched(
+    client: TestClient, tmp_path
+) -> None:
+    """Issue #12: the note editor's link and unpitched slide are stored with the
+    edit (only when given — absent means "keep what the note had"), read back by
+    the worker, and an unpitched slide outside the neck is refused."""
+    import rockforge.interfaces.api.app as app_module
+
+    job = _gp_job(client, tmp_path)
+    rebuilt = client.post(
+        f"/jobs/{job['id']}/rebuild",
+        json={"note_overrides": {"Lead": [
+            {"time": 2.0, "string": 3, "fret": 5, "sustain": 0.25,
+             "slide_to_fret": 7, "link_next": True},
+            {"time": 4.0, "string": 1, "fret": 5, "slide_unpitch_to": 1},
+            {"time": 5.0, "string": 1, "fret": 5, "slide_unpitch_to": -1},
+        ]}},
+    ).json()
+    with app_module._session_factory() as session:
+        stored = dict(session.get(app_module.Job, rebuilt["id"]).params or {})["note_overrides"]
+    lead = stored["Lead"]
+    assert (lead[0]["link_next"], "slide_unpitch_to" in lead[0]) == (True, False)
+    assert (lead[1]["slide_unpitch_to"], "link_next" in lead[1]) == (1, False)
+    assert lead[2]["slide_unpitch_to"] == -1
+
+    bad = client.post(
+        f"/jobs/{job['id']}/rebuild",
+        json={"note_overrides": {"Lead": [
+            {"time": 2.0, "string": 3, "fret": 5, "slide_unpitch_to": 25}]}},
+    )
+    assert bad.status_code == 422
 
 
 def test_rebuild_note_overrides_reject_out_of_range_string_or_fret(

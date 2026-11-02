@@ -245,6 +245,9 @@ class NoteOverrideIn(BaseModel):
     bend_semitones: Finite = 0.0
     slide_to_fret: int | None = Field(default=None, ge=0, le=24)
     deleted: bool = False
+    # None = keep what the note had (see gp_pipeline.NoteOverride)
+    link_next: bool | None = None
+    slide_unpitch_to: int | None = Field(default=None, ge=-1, le=24)
 
 
 class HandPositionIn(BaseModel):
@@ -289,6 +292,8 @@ class ArrangementNoteOut(BaseModel):
     # The fret a slide ends on (pitched, else unpitched slide-out), -1 if none —
     # the 3D highway draws the trail running to it.
     slide_to: int = -1
+    # True when that slide is unpitched (a slide in/out, Rocksmith slideUnpitchTo)
+    slide_unpitched: bool = False
     # The note runs on into the next note on its string without a new pick
     # (Rocksmith's linkNext: a legato slide, a note held on).
     link_next: bool = False

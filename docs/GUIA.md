@@ -550,6 +550,13 @@ Fica pendente nas duas pistas até **Aplicar e reconstruir**; Ctrl+Z desfaz.
 
 - Clica numa nota: muda corda, traste, sustain, técnicas (hammer-on, pull-off, harmónico, palm
   mute, vibrato, tapping, slap, pop, acento), bend e slide; **Guardar** ou **Remover nota**.
+- **Slides:** em **Slide para** escreve o traste de chegada e escolhe **Slide até ao traste** ou
+  **Slide sem altura (para fora)** (um slide de saída, que não chega a uma nota certa). **Dura (s)**
+  é quanto tempo demora a deslizar: mais curto do que o sustain, a nota chega ao traste e fica a
+  soar lá até ao fim do sustain (fica uma nota de slide ligada a uma nota mantida, como no
+  Rocksmith); vazio, desliza durante o sustain todo. **Ligar à nota seguinte** faz a nota continuar
+  na seguinte da mesma corda sem palhetar. Na pauta, o slide é uma linha até ao fim do sustain
+  (tracejada sem altura), e ouve-se a deslizar.
 - **Arrasta** uma nota para a mudar de tempo (encaixa na grelha) ou de corda (fica com o mesmo
   traste, logo muda de altura).
 - Para mover **um acorde ou várias notas**: arrasta uma caixa num espaço vazio da pauta à volta

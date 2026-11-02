@@ -2336,6 +2336,31 @@ the edited chart is rendered again 500 ms after its overrides change
 (the old code ticked all 9), the synth buffer silent there; a tail dragged to
 the 16th grid, clamped 50 ms before the next note, back to 0, undone.
 
+**Slides in the note editor, drawn and heard** (GitHub issue #12: "change the speed
+duration and sustain of the slide … in the score view it just registers as the
+initial note with no slide sound"). In Rocksmith a slide lasts its whole sustain;
+"slide, then hold" is a short slide note LINKED (linkNext) to a held note on the
+landing fret. The popup now has `#neSlideKind` (to the fret / unpitched out),
+`#neSlideLen` ("Dura (s)", empty = the whole sustain) and `#neLinkNext`: a length
+shorter than the sustain saves the note with that sustain and `link_next` and
+inserts the held note at time + length on the landing fret with the rest (both
+ordinary note overrides, one undo step). `NoteOverride`/`NoteOverrideIn` gained
+`link_next` and `slide_unpitch_to`, both PATCH semantics (None = keep what the
+note had; `slide_unpitch_to` -1 clears) and stored only when given;
+`resolve_links` still runs after the edits, so a link the game would refuse is
+cleared. `/arrangements` answers `slide_unpitched`. The score draws a slide as a
+line to the end of the tail with the landing fret (dashed when unpitched), and
+`voiceNote(..., glide)` ramps the buffer's `playbackRate` to the landing pitch
+(`slideGlide`: over the whole note, an unpitched slide over its last half) in the
+tick and the synthesized source. Guarded by
+`test_the_note_editor_can_link_a_slide_to_the_note_it_lands_on`,
+`test_a_note_edit_can_link_a_slide_and_make_it_unpitched` and
+`test_a_note_edits_link_and_unpitched_slide_reach_the_build`; with Playwright and
+a real rebuild of an invented project (PT 1440 / EN 760 px): a 0.6 s note slid
+7→9 in 0.2 s built as `slideTo="9" linkNext="1"` + a held fret 9 for 0.4 s, an
+unpitched slide out as `slideUnpitchTo`, `/psarc-check` clean, no page errors.
+The glide itself was not listened to from here; not seen in game.
+
 **Moving a chord or a passage, and why "Arrastar" is not for that** (Liam,
 2026-10-18: "when you're moving notes around it can mess up the bpm and other
 notes … you cant drag a note past another note … you have to keep clicking back

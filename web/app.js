@@ -3335,6 +3335,15 @@ function showArr(i) {
         s += `<path d="${sustainWave(x, y, Math.max(susW, 24))}" fill="none" stroke="${color}" stroke-width="2.5" opacity=".8"/>`;
       else if (susW > 0)
         s += `<rect x="${x}" y="${y-3}" width="${susW}" height="6" fill="${color}" opacity=".4" rx="3"/>`;
+      if (n.slide_to != null && n.slide_to >= 0 && n.slide_to !== n.fret) {
+        // A slide: a line along the tail to the fret it lands on — rising for a
+        // higher fret — with that fret at the end; dashed when unpitched (a
+        // slide out with no landing note). GitHub issue #12.
+        const xe = x + Math.max(susW, 26), up = n.slide_to > n.fret ? -1 : 1;
+        s += `<line x1="${x + R}" y1="${y + up * 3}" x2="${xe}" y2="${y - up * 7}" stroke="${color}" stroke-width="2.2"${n.slide_unpitched ? ' stroke-dasharray="4,3"' : ''}><title>${esc(n.slide_unpitched ? T('Slide sem altura') : T('Slide para o traste {f}', { f: n.slide_to }))}</title></line>`;
+        if (!n.slide_unpitched)
+          s += `<text x="${xe + 2}" y="${y - up * 7 + 4}" fill="${color}" font-size="11" font-weight="700">${n.slide_to}</text>`;
+      }
       if (n.link_next) {  // runs on into the next note on the string: a tie-like arc over the held time
         const xe = x + Math.max(susW, 18);
         s += `<path d="M${x + R * 0.6},${y - R + 2} Q${(x + xe) / 2},${y - R - 12} ${xe},${y - R + 2}" fill="none" stroke="${color}" stroke-width="2"><title>${esc(T('Ligada à nota seguinte (sem nova palhetada)'))}</title></path>`;
@@ -3470,11 +3479,15 @@ function mergeNoteOverrides(baseNotes, overrides) {
   for (const ov of overrides) {
     const key = `${ov.time.toFixed(6)}:${ov.string}`;
     if (ov.deleted) { byKey.delete(key); continue; }
+    const was = byKey.get(key);
+    const unpitchTo = ov.slide_unpitch_to ?? (was && was.slide_unpitched ? was.slide_to : -1);
     byKey.set(key, {
       time: ov.time, string: ov.string, fret: ov.fret, sustain: ov.sustain,
       chord: false, chord_name: null,
       techniques: ov.techniques.slice(), bend_semitones: ov.bend_semitones || 0,
-      slide_to: ov.slide_to_fret ?? -1,
+      slide_to: ov.slide_to_fret ?? (unpitchTo >= 0 ? unpitchTo : -1),
+      slide_unpitched: ov.slide_to_fret == null && unpitchTo >= 0,
+      link_next: ov.link_next ?? (!!was && !!was.link_next && was.fret === ov.fret),
     });
   }
   const merged = [...byKey.values()].sort((a, b) => a.time - b.time || a.string - b.string);
@@ -5389,8 +5402,14 @@ function openNoteEditPopup(chartTime, string, clientX, clientY) {
   const techs = base ? (base.techniques || []) : [];
   for (const [id, val] of TECH_CHECK_IDS) document.getElementById(id).checked = techs.includes(val);
   document.getElementById('neBend').value = base ? (base.bend_semitones || 0) : 0;
-  const slideTo = base ? (base.slide_to_fret ?? (base.slide_to >= 0 ? base.slide_to : null)) : null;
-  document.getElementById('neSlideTo').value = slideTo == null ? '' : slideTo;
+  const unpitched = base ? (base.slide_unpitch_to != null ? base.slide_unpitch_to >= 0
+    : !!base.slide_unpitched) : false;
+  const slideTo = base ? (unpitched ? (base.slide_unpitch_to ?? base.slide_to)
+    : (base.slide_to_fret ?? (base.slide_to >= 0 ? base.slide_to : null))) : null;
+  document.getElementById('neSlideTo').value = slideTo == null || slideTo < 0 ? '' : slideTo;
+  document.getElementById('neSlideKind').value = unpitched ? 'unpitched' : 'pitched';
+  document.getElementById('neSlideLen').value = '';
+  document.getElementById('neLinkNext').checked = !!(base && base.link_next);
   document.getElementById('neDelete').style.display = base ? '' : 'none';
 
   const pop = document.getElementById('noteEditPopup');
@@ -5610,7 +5629,15 @@ document.addEventListener('keydown', e => {
     const techniques = TECH_CHECK_IDS.filter(([id]) => document.getElementById(id).checked).map(([, v]) => v);
     const bend_semitones = Math.max(0, parseFloat(document.getElementById('neBend').value) || 0);
     const slideRaw = document.getElementById('neSlideTo').value.trim();
-    const slide_to_fret = slideRaw === '' ? null : parseInt(slideRaw, 10);
+    const slideTarget = slideRaw === '' ? null : parseInt(slideRaw, 10);
+    if (slideTarget != null && (isNaN(slideTarget) || slideTarget < 0 || slideTarget > 24)) {
+      toast(T('traste inválido (0-24)'), 'err'); return;
+    }
+    const unpitched = document.getElementById('neSlideKind').value === 'unpitched';
+    const slide_to_fret = unpitched ? null : slideTarget;
+    const slide_unpitch_to = unpitched && slideTarget != null ? slideTarget : -1;
+    let link_next = document.getElementById('neLinkNext').checked;
+    if (slideTarget != null && !techniques.includes('slide')) techniques.push('slide');
     // Changing the string moves the note: delete the old (time, oldString)
     // slot and upsert the new one, so the merge key stays consistent.
     if (string !== neContext.string) {
@@ -5619,10 +5646,22 @@ document.addEventListener('keydown', e => {
         techniques: [], bend_semitones: 0, slide_to_fret: null, deleted: true,
       });
     }
+    // "Dura": a slide shorter than the note slides, then HOLDS its landing
+    // fret — a linked note at the landing fret for the rest (GitHub issue #12;
+    // in Rocksmith a slide lasts its whole sustain).
+    const slideLen = parseFloat(document.getElementById('neSlideLen').value);
+    let held = null;
+    if (slide_to_fret != null && slideLen > 0 && slideLen < sustain - 0.02) {
+      held = { time: +(neContext.time + slideLen).toFixed(3), string, fret: slide_to_fret,
+               sustain: +(sustain - slideLen).toFixed(3), techniques: [], bend_semitones: 0,
+               slide_to_fret: null, deleted: false, link_next: link_next, slide_unpitch_to: -1 };
+      link_next = true;
+    }
     upsertNoteOverride({
-      time: neContext.time, string, fret, sustain, techniques,
-      bend_semitones, slide_to_fret, deleted: false,
+      time: neContext.time, string, fret, sustain: held ? +slideLen.toFixed(3) : sustain, techniques,
+      bend_semitones, slide_to_fret, deleted: false, link_next, slide_unpitch_to,
     });
+    if (held) upsertNoteOverride(held);
     neLast = { time: neContext.time, string };
     closeNoteEditPopup();
     showArr(currentArr);
@@ -10555,11 +10594,19 @@ function getCabinet(ctx) {
 // cabinet — so it sounds like a guitar playing that note. Without a tone it's a
 // clean plucked string; with one, a waveshaper (drive) + brightness filter
 // approximate the tone's character before the cabinet.
-function voiceNote(ctx, dest, hz, t0, dur, peak, char) {  // dest kept for signature; routed via cabinet
+function voiceNote(ctx, dest, hz, t0, dur, peak, char, glide = null) {  // dest kept for signature; routed via cabinet
   const src = ctx.createBufferSource();
   // A short note keeps the plucky 0.99 decay (attack emphasised); a held one
   // decays slowly enough to ring for its whole length (karplusDamping).
   src.buffer = karplusBuffer(ctx, hz, dur, karplusDamping(hz, dur));
+  // A slide glides to where it lands: the string's pitch moves by `semis`
+  // from `from` (a fraction of the note) to its end — the whole note for a
+  // pitched slide, the end for a slide out with no target pitch.
+  if (glide && glide.semis) {
+    const start = t0 + dur * (glide.from || 0);
+    src.playbackRate.setValueAtTime(1, start);
+    src.playbackRate.linearRampToValueAtTime(Math.pow(2, glide.semis / 12), t0 + dur);
+  }
   const mk = char && char.drive > 0.03 ? 1 + char.drive * 0.8 : 1;  // makeup: distortion compresses
   const lvl = ctx.createGain(); lvl.gain.value = Math.max(0.0001, peak * mk) * 0.9;
   if (char && char.drive > 0.03) {
@@ -10584,10 +10631,19 @@ function voiceNote(ctx, dest, hz, t0, dur, peak, char) {  // dest kept for signa
 // `sustain` is the note's held time as drawn (seconds); a held note sounds
 // for that long instead of as a pick.
 // `when` (audio-context time) schedules it ahead; without it, it sounds now.
-function playNote(midi, chartTime, sustain = 0, when = null) {
+function playNote(midi, chartTime, sustain = 0, when = null, glide = null) {
   if (!audioCtx || midi == null) return null;
   return voiceNote(audioCtx, audioCtx.destination, midiToHz(midi), when ?? audioCtx.currentTime,
-    noteSoundLength(sustain), Math.max(0.0001, tickGain * 0.6), toneCharForNote(chartTime));
+    noteSoundLength(sustain), Math.max(0.0001, tickGain * 0.6), toneCharForNote(chartTime), glide);
+}
+
+// How a sliding note's pitch moves (voiceNote's `glide`), or null: to the
+// landing fret over the whole note, or — a slide out with no target pitch —
+// over its last half.
+function slideGlide(a, n) {
+  if (!(n.slide_to >= 0) || n.slide_to === n.fret) return null;
+  const semis = noteMidi(a, n.string, n.slide_to) - noteMidi(a, n.string, n.fret);
+  return { semis, from: n.slide_unpitched ? 0.5 : 0 };
 }
 
 // The ticks are scheduled a little AHEAD, each at the exact instant of the
@@ -10637,7 +10693,7 @@ function tickSound(a, note, warp) {
   if (!(note.string >= 0 && note.string < stringCount(a) && note.fret >= 0)) return null;
   const at = warp(previewScale(note.time));
   const held = note.sustain > 0 ? warp(previewScale(note.time + note.sustain)) - at : 0;
-  return { midi: noteMidi(a, note.string, note.fret), held };
+  return { midi: noteMidi(a, note.string, note.fret), held, glide: slideGlide(a, note) };
 }
 // Hand the worker the notes of the next few seconds, so each is ready when it
 // sounds. A cached or requested note costs nothing, so a frame only walks a
@@ -10738,7 +10794,7 @@ async function synthesizeArrangement(kind) {
     const tRec = at(n.time);
     if (tRec < 0) continue;
     const len = noteSoundLength(n.sustain > 0 ? at(n.time + n.sustain) - tRec : 0);
-    events.push({ t: tRec, chartT: n.time, midi: noteMidi(a, n.string, n.fret), len });
+    events.push({ t: tRec, chartT: n.time, midi: noteMidi(a, n.string, n.fret), len, glide: slideGlide(a, n) });
     if (tRec + len > maxT) maxT = tRec + len;
   }
   if (!events.length) return null;
@@ -10749,7 +10805,7 @@ async function synthesizeArrangement(kind) {
   // marked on the score (per-note) when '__follow__' is selected.
   for (const ev of events)
     voiceNote(octx, octx.destination, midiToHz(ev.midi), ev.t, ev.len, 0.5,
-      toneCharForNote(ev.chartT, kind));
+      toneCharForNote(ev.chartT, kind), ev.glide);
   return await octx.startRendering();
 }
 
@@ -12110,7 +12166,7 @@ function syncFrame() {
       const snd = tickSound(arrNow, note, warp);
       if (snd) {
         const when = overdue ? null : ctxNow + (at - vtAudio) / playbackRate;
-        const src = playNote(snd.midi, note.time, snd.held, when);
+        const src = playNote(snd.midi, note.time, snd.held, when, snd.glide);
         if (src && when != null) scheduledTicks.push([src, when]);
         if (overdue && !inGroup) { sounded++; groupAt = note.time; }
       }
