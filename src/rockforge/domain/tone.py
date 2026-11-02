@@ -48,6 +48,14 @@ class Gear:
     post_pedals: tuple[Pedal | None, ...] = (None, None, None, None)
 
 
+BASS_GEAR_PREFIX = "Bass_"
+
+
+def is_bass_tone(tone: Tone) -> bool:
+    """A tone built on a bass amp (the catalogue's ``Bass_Amp_…`` keys)."""
+    return tone.gear.amp.key.startswith(BASS_GEAR_PREFIX)
+
+
 @dataclass(frozen=True)
 class Tone:
     """A complete, named tone the user can assign and switch to.

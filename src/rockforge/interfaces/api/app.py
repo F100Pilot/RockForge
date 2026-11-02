@@ -463,6 +463,7 @@ def _check_imported_params(params: dict[str, object]) -> None:
             for stage in stages)
 
     bounds = {"offset_s": (MIN_OFFSET_S, None), "lead_in_s": (0.0, None),
+              "song_end_s": (0.0, None),
               "tempo_scale": (1e-6, None), "cent_offset": (-50.0, 50.0)}
     for key, (low, high) in bounds.items():
         if key in params:
@@ -628,6 +629,10 @@ def _to_out(job: Job) -> JobOut:
         source_type=job.source_type,
         offset_s=offset_s,
         lead_in_s=lead_in_s,
+        song_end_s=(
+            _param_number(params.get("song_end_s"), 0.0) or None
+            if "song_end_s" in params else None
+        ),
         tempo_scale=tempo_scale,
         import_mutes=bool((job.params or {}).get("import_mute_techniques", True)),
         dynamic_difficulty=bool((job.params or {}).get("dynamic_difficulty", True)),
@@ -1008,7 +1013,7 @@ def _sweep_orphan_youtube_audio() -> int:
 # so those edits survive re-creating a job (a fresh upload or a re-exported GP)
 # instead of being redone from scratch.
 _SYNC_STATE_KEYS: tuple[str, ...] = (
-    "offset_s", "lead_in_s", "tempo_scale",
+    "offset_s", "lead_in_s", "song_end_s", "tempo_scale",
     "sync_anchor_stages", "arrangement_sync",
     "cent_offset", "tuning_overrides", "bass_reference",
     "lyrics_events",

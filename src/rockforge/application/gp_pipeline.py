@@ -21,6 +21,7 @@ shortfall as silence so there is always room — see MIN_LEAD_S.
 from __future__ import annotations
 
 import math
+import wave
 from bisect import bisect_right
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
@@ -52,7 +53,7 @@ from rockforge.domain.music import (
     apply_sustain_gap,
     resolve_links,
 )
-from rockforge.domain.tone import Tone
+from rockforge.domain.tone import Tone, is_bass_tone
 from rockforge.infrastructure.gpimport.parser import (
     GpSection,
     ParsedGpTrack,
@@ -340,6 +341,11 @@ class GpJobSpec:
     # automatic MIN_LEAD_S lead-in — user-controlled "intro silence" that pushes
     # the whole bundle (audio + notes + lyrics) later together. 0 = none.
     lead_in_s: float = 0.0
+    # Where the song ends, in seconds of the recording file ("Fim da música").
+    # None = the recording's end. The game stops at the song's length, which
+    # used to be the last note + 1 s — a chart that rests through the outro cut
+    # the rest of the recording (GitHub issue #10). Never before the last note.
+    song_end_s: float | None = None
     # Multiplicative stretch (>1) / compression (<1) of the whole musical
     # timeline, applied at parse time around the song's start — corrects a
     # constant GP-vs-recording tempo mismatch (the linear part of sync drift)
@@ -489,6 +495,50 @@ def _build_time_warp(anchors: list[tuple[float, float]]) -> Callable[[float], fl
         return y0 + (y1 - y0) * (t - x0) / (x1 - x0)
 
     return warp
+
+
+# The song never ends before the last note has rung this long.
+SONG_TAIL_S = 1.0
+
+
+def _audio_length(path: Path) -> float | None:
+    """Seconds of the normalized recording (a WAV, already padded to the bundle
+    clock), or None when it cannot be read — the song then ends after its last
+    note, as it always did."""
+    try:
+        with wave.open(str(path), "rb") as w:
+            rate = w.getframerate()
+            return w.getnframes() / rate if rate > 0 else None
+    except (OSError, EOFError, wave.Error):
+        return None
+
+
+def _song_length(
+    content_end: float,
+    audio_end: float | None,
+    song_end_s: float | None,
+    pad_start_s: float,
+    warnings: list[str],
+) -> float:
+    """Where the game stops the song, in the bundle clock: the recording's end
+    (or the user's own end point), never before the last note's tail."""
+    floor = content_end + SONG_TAIL_S
+    if song_end_s is None:
+        return max(floor, audio_end) if audio_end is not None else floor
+    end = song_end_s + pad_start_s
+    if audio_end is not None and end > audio_end:
+        warnings.append(
+            f"the song end ({song_end_s:.3f}s) is after the recording ends — "
+            "it ends with the recording"
+        )
+        end = audio_end
+    if end < floor:
+        warnings.append(
+            f"the song end ({song_end_s:.3f}s) is before the last note — "
+            f"it ends {SONG_TAIL_S:g}s after the last note instead"
+        )
+        end = floor
+    return end
 
 
 def _check_anchor_order(anchors: list[tuple[float, float]]) -> None:
@@ -842,12 +892,11 @@ class GenerateFromGpUseCase:
         first = next(
             (p for k, p in parsed.items() if not k.is_bass), next(iter(parsed.values()))
         )
-        song_length = (
-            max(
-                max((n.time + n.sustain for n in p.notes), default=0.0)
-                for p in parsed.values()
-            )
-            + 1.0
+        content_end = max(
+            max((n.time + n.sustain for n in p.notes), default=0.0) for p in parsed.values()
+        )
+        song_length = _song_length(
+            content_end, _audio_length(normalized), spec.song_end_s, pad_start_s, warnings
         )
         metadata = SongMetadata(
             title=metadata.title,
@@ -918,6 +967,29 @@ class GenerateFromGpUseCase:
             # Same as above: the number is assigned per name downstream.
             return [Section(name=s.name, start_time=s.start_time) for s in p.sections]
 
+        def _tone_setup(kind: ArrangementKind) -> tuple[ArrangementTones, list[Tone]]:
+            setup = spec.tones_for(kind)
+            if not kind.is_bass or kind.value in spec.arrangement_tones or not spec.tones:
+                return setup, list(spec.tones)
+            # A Bass with no tones of its own takes only the song's BASS tones:
+            # the song's set is the guitar's (the tone detection, the presets)
+            # and a guitar amp on the bass chart is not what the player wants
+            # (GitHub issue #9). With none, it gets the default bass tone.
+            bass = [t for t in spec.tones if is_bass_tone(t)]
+            if len(bass) < len(spec.tones):
+                warnings.append(
+                    f"{kind.value}: the song's guitar tones are left to the guitar charts — "
+                    + ("the bass uses the song's bass tones" if bass
+                       else "the bass uses the default bass tone")
+                )
+            keys = {t.key for t in bass}
+            return ArrangementTones(
+                tone_base=setup.tone_base if setup.tone_base in keys else None,
+                tone_names=[n for n in setup.tone_names if n in keys],
+                tone_changes=[c for c in setup.tone_changes if c.name in keys],
+            ), bass
+
+        tone_setups = {kind: _tone_setup(kind) for kind in parsed}
         arrangements = [
             Arrangement(
                 kind=kind,
@@ -928,10 +1000,10 @@ class GenerateFromGpUseCase:
                 capo=p.capo,
                 sections=_sections_for(p),
                 stage_confidence=dict(confidence),
-                tone_base=spec.tones_for(kind).tone_base,
-                tone_names=list(spec.tones_for(kind).tone_names),
-                tone_changes=list(spec.tones_for(kind).tone_changes),
-                tones=list(spec.tones),
+                tone_base=tone_setups[kind][0].tone_base,
+                tone_names=list(tone_setups[kind][0].tone_names),
+                tone_changes=list(tone_setups[kind][0].tone_changes),
+                tones=tone_setups[kind][1],
                 hand_positions=sorted(spec.hand_positions.get(kind.value) or []),
             )
             for kind, p in parsed.items()

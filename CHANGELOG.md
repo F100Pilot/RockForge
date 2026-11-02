@@ -6,6 +6,16 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Novidades
+
+- **Fim da música:** na Partitura → Sincronização → Mais opções, **Fim da música** escolhe o segundo da gravação em que o jogo acaba a música (**= cursor** marca-o onde está o cursor). Vazio, a música vai até ao fim da gravação. Nunca acaba antes da última nota.
+
+### Correções
+
+- **A música acabava 1 segundo depois da última nota:** no jogo, a música parava 1 segundo depois da última nota da pista, mesmo que a gravação continuasse (um final só com outras guitarras, um fade, um solo de bateria). Agora vai até ao fim da gravação, ou até ao **Fim da música** que escolheres. Para um projeto já criado, basta reconstruir.
+- **"Usar" um tom detetado depois de outro podia impedir a reconstrução:** cada "usar" punha todos os tons do projeto na lista de tons trocáveis, e com cinco ou mais o "Aplicar e reconstruir" era recusado ("Rocksmith supports at most 4 switchable tones"). Agora o tom escolhido toma o lugar do que substitui.
+- **O baixo ficava com os tons de guitarra:** um arranjo de baixo sem tons próprios usava os tons do projeto — os detetados, que são de guitarra —, ou seja, um amplificador de guitarra no baixo. Agora o baixo só usa os tons de baixo do projeto, ou o tom de baixo standard, e a página dos Tons diz-te que os tons detetados não vão para o baixo. Os tons que escolheres para a pista de baixo continuam a ser dela.
+
 ## [0.12.0 beta 1] — 2026-11-01
 
 ### Novidades

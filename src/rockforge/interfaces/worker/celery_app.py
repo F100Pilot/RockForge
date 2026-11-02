@@ -342,6 +342,12 @@ def generate_cdlc(job_id: str) -> None:
                     ),
                     offset_s=float(params.get("offset_s", 0.0)),
                     lead_in_s=float(params.get("lead_in_s", 0.0)),
+                    song_end_s=(
+                        float(cast(float, params["song_end_s"]))
+                        if isinstance(params.get("song_end_s"), (int, float))
+                        and not isinstance(params.get("song_end_s"), bool)
+                        and float(params["song_end_s"]) > 0 else None
+                    ),
                     tempo_scale=float(params.get("tempo_scale", 1.0)),
                     lrc_text=params.get("lrc_text"),
                     tone_base=params.get("tone_base"),

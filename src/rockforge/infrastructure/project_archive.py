@@ -54,7 +54,7 @@ COVER_SUFFIXES = frozenset({".jpg", ".jpeg", ".png"})
 # (HANDLED_KEYS) or dropped — tests/test_project_archive.py fails when the code
 # starts writing a key that is in neither list.
 PORTABLE_KEYS = frozenset({
-    "offset_s", "lead_in_s", "tempo_scale", "cent_offset",
+    "offset_s", "lead_in_s", "song_end_s", "tempo_scale", "cent_offset",
     "sync_anchor_stages", "arrangement_sync", "sync_main",
     "sync_confirmed", "synced_arrangements", "gp_synced",
     "bar_times", "bar_times_source", "estimated_bars",

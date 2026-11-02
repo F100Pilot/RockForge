@@ -6,6 +6,16 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### New
+
+- **Song end:** on the Score → Sync → More options, **Song end** chooses the second of the recording where the game ends the song (**= cursor** marks it at the cursor). Empty, the song runs to the end of the recording. It never ends before the last note.
+
+### Fixes
+
+- **The song ended 1 second after the last note:** in the game, the song stopped 1 second after the chart's last note even when the recording carried on (an ending of other guitars only, a fade, a drum outro). It now runs to the end of the recording, or to the **Song end** you choose. For an existing project, just rebuild.
+- **"Use" on one detected tone after another could stop the rebuild:** every "use" put all the project's tones in the list of switchable tones, and with five or more "Apply and rebuild" was refused ("Rocksmith supports at most 4 switchable tones"). The chosen tone now takes the place of the one it replaces.
+- **The bass took the guitar tones:** a bass arrangement with no tones of its own used the project's tones — the detected ones, which are guitar tones — so a guitar amp on the bass. The bass now only uses the project's bass tones, or the standard bass tone, and the Tones page tells you that the detected tones do not go to the bass. Tones you choose for the bass track stay its own.
+
 ## [0.12.0 beta 1] — 2026-11-01
 
 ### New

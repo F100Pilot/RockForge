@@ -4783,3 +4783,27 @@ def test_an_imported_project_cannot_point_the_server_at_a_path(
         assert gone not in params
     assert r.json()["cover_art"] is False
     assert client.get(f"/jobs/{r.json()['id']}/stem/guitar").status_code == 404
+
+
+def test_the_song_end_is_stored_read_back_and_reset(client: TestClient, tmp_path) -> None:
+    """"Fim da música" (GitHub issue #10): seconds of the recording, kept with
+    the project; 0 or less goes back to the recording's end."""
+    body = client.post(
+        "/gp/inspect", files={"file": ("song.gp5", _make_gp5_bytes(tmp_path),
+                                       "application/octet-stream")}
+    ).json()
+    job = client.post(
+        "/jobs/gp", data={"gp_token": body["gp_token"], "lead_track": "0"},
+        files={"audio": ("song.wav", b"RIFF0000WAVE", "audio/wav")},
+    ).json()
+    assert job["song_end_s"] is None
+    ended = client.post(f"/jobs/{job['id']}/rebuild", json={"song_end_s": 95.5}).json()
+    assert ended["song_end_s"] == pytest.approx(95.5)
+    kept = client.post(f"/jobs/{ended['id']}/rebuild", json={"offset_s": 1.0}).json()
+    assert kept["song_end_s"] == pytest.approx(95.5)
+    back = client.post(f"/jobs/{kept['id']}/rebuild", json={"song_end_s": 0}).json()
+    assert back["song_end_s"] is None
+    upload = _create_job(client)  # not a GP job
+    assert client.post(
+        f"/jobs/{upload['id']}/rebuild", json={"song_end_s": 10}
+    ).status_code == 422

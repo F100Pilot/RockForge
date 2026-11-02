@@ -1488,6 +1488,15 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                 </div>
               </div>
               <div class="pv-card">
+                <div class="pv-card-head">Fim da música</div>
+                <div class="pv-row">
+                  <input type="number" id="songEndS" step="0.001" min="0" placeholder="fim da gravação" aria-label="Fim da música em segundos da gravação">
+                  <button type="button" id="songEndCursor" class="secondary">= cursor</button>
+                  <button type="button" id="songEndClear" class="secondary">Fim da gravação</button>
+                </div>
+                <span class="meta">s da gravação em que o jogo acaba a música. Vazio = até ao fim da gravação. Nunca antes da última nota.</span>
+              </div>
+              <div class="pv-card">
                 <div class="pv-card-head">Ficheiro Guitar Pro</div>
                 <button type="button" id="reloadGpBtn" class="secondary pv-wide"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg>Recarregar ficheiro GP</button>
                 <input type="file" id="reloadGpInput" accept=".gp,.gp3,.gp4,.gp5" style="display:none">

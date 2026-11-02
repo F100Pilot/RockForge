@@ -75,7 +75,7 @@ def _sanitize_sync_state(incoming: dict[str, object]) -> dict[str, object]:
     api._reject_non_finite(
         **{
             k: float(v)
-            for k in ("offset_s", "lead_in_s", "tempo_scale", "cent_offset")
+            for k in ("offset_s", "lead_in_s", "tempo_scale", "cent_offset", "song_end_s")
             if isinstance(v := out.get(k), (int, float))
         }
     )
@@ -132,6 +132,13 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
             if payload.lead_in_s < 0.0:
                 raise HTTPException(422, "lead_in_s must be >= 0")
             params["lead_in_s"] = payload.lead_in_s
+        if payload.song_end_s is not None:
+            if original.source_type != "gp":
+                raise HTTPException(422, "the song end only applies to Guitar Pro jobs")
+            if payload.song_end_s > 0:
+                params["song_end_s"] = payload.song_end_s
+            else:
+                params.pop("song_end_s", None)
         if payload.arrangement is not None and original.source_type != "gp":
             raise HTTPException(422, "arrangement scoping only applies to Guitar Pro jobs")
 

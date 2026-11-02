@@ -574,3 +574,21 @@ def test_the_bass_reference_chosen_in_the_project_reaches_the_build(
             params["bass_reference"] = stored
         ca.generate_cdlc(_job(db, params=params))
     assert seen == ["a220", "a440", "auto", "auto"]
+
+
+def test_the_song_end_reaches_the_build(db, tmp_path, monkeypatch) -> None:
+    seen: list[float | None] = []
+
+    class _Capture:
+        def run(self, spec, *args, **kwargs):
+            seen.append(spec.song_end_s)
+            raise RuntimeError("stop after the spec")
+
+    monkeypatch.setattr(ca, "_build_gp_use_case", lambda: _Capture())
+    gp_path = _make_gp5(tmp_path)
+    for stored in (95.5, 0, "x", None):
+        params = {"gp_path": str(gp_path), "lead_track": 0}
+        if stored is not None:
+            params["song_end_s"] = stored
+        ca.generate_cdlc(_job(db, params=params))
+    assert seen == [95.5, None, None, None]

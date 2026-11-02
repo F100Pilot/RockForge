@@ -657,6 +657,11 @@ Combo/alternates, encoded the way Rocksmith2014.NET/DLC Builder encode a bass
   slots. Auto-pick takes a track named "bass", else the only 4/5-string track.
   The lone-Lead→Combined rule ignores the Bass (a guitar + a bass is still
   COMBO + BASS). Per-chart tuning overrides for "Bass" are 4 MIDI pitches.
+- **Tones**: a Bass with no set of its own (`arrangement_tones["Bass"]`) takes
+  only the song's BASS tones (`domain.tone.is_bass_tone`: a `Bass_` amp), else
+  DLC Builder's default bass tone, said in the warnings (`_tone_setup` in
+  `gp_pipeline`; GitHub issue #9: the detection's guitar tones had put a guitar
+  amp on the bass). Guarded by `test_the_bass_never_takes_the_songs_guitar_tones`.
 - **What skips it**: tone suggestions (the analysis is of the guitar stem),
   showlights (from the richest non-bass chart), and the chart GP lyrics are
   timed on when the file names no vocal track. With no tone of its own it gets
@@ -788,6 +793,26 @@ old timeline. Guarded by
 `test_a_gp_file_with_audio_stands_in_for_a_recording_that_is_gone` (each
 branch mutation-checked); with Playwright and a real build on the user's
 Ocean Eyes file (upload + start 5 s → reload → its 6.2 MB MP3, start 0 s).
+
+### Where the song ends (`song_end_s`, "Fim da música")
+
+The game stops a song at its `song_length` (XML `songLength`, manifest
+`SongLength`, SNG metadata, `.rs2dlc` `AudioFileLength`). It used to be the
+last note's end + 1 s whatever the recording, so a chart that rests through the
+outro cut the rest of the song (GitHub issue #10). Now `_song_length` (in
+`gp_pipeline`) takes the recording's end — the normalized WAV's length
+(`_audio_length`, stdlib `wave`, already in the bundle clock) — or the user's
+`GpJobSpec.song_end_s` (seconds of the recording FILE, + `pad_start_s`),
+never before the last note + `SONG_TAIL_S` (1 s) and never past the recording,
+each clamp said in the warnings; an unreadable recording (the tests' fake
+normalizers) keeps the old last-note rule. Plumbing: `params["song_end_s"]`
+(absent = the recording's end), `RebuildIn.song_end_s` (null untouched, ≤ 0
+clears), `JobOut.song_end_s`, a sync-state key, portable in `.rfproj`. UI: the
+"Fim da música" card under "Silêncio inicial" (`#songEndS`, "= cursor" =
+playhead − `leadInBuilt`, the lyrics' clock; "Fim da gravação" empties it),
+part of `pendingSnapshot` and "Pendente". Guarded by `test_song_end.py`,
+`test_the_song_end_is_stored_read_back_and_reset` and
+`test_the_song_end_reaches_the_build`. Not tried in game from here.
 
 ### Intro silence (`lead_in_s`)
 

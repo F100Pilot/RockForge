@@ -68,6 +68,7 @@ class JobOut(BaseModel):
     source_type: str
     offset_s: float
     lead_in_s: float = 0.0
+    song_end_s: float | None = None
     tempo_scale: float
     import_mutes: bool
     dynamic_difficulty: bool = True
@@ -130,6 +131,9 @@ class RebuildIn(BaseModel):
     cent_offset: CentOffset | None = None
     offset_s: Finite | None = None  # GP sync: second in the recording where the song starts
     lead_in_s: Finite | None = None  # GP: extra intro silence prepended (pushes the song later)
+    # GP: where the song ends, in seconds of the recording ("Fim da música");
+    # 0 or less = back to the recording's end. None leaves it untouched.
+    song_end_s: Finite | None = None
     tempo_scale: Finite | None = None  # GP sync: stretch/compress the whole chart timeline
     # Manual drift-correction points: (chart_time_s, corrected_time_s) pairs, in the
     # chart's already-shifted timeline (as shown in the tab viewer).

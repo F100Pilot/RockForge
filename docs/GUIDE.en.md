@@ -506,6 +506,10 @@ it, by ear.
 ### More options
 
 - **Intro silence**: pushes music and notes later.
+- **Song end**: the second of the recording where the game ends the song. Empty, the song runs
+  to the end of the recording even if the chart stops earlier (an ending of other guitars only,
+  a fade); **= cursor** marks where the cursor is, **End of the recording** goes back to normal.
+  It never ends before the last note.
 - **Reload GP file**: after fixing a note in Guitar Pro and exporting again. Keeps sync, tones,
   lyrics and tuning. If the new file carries audio, that becomes the recording.
 - **Save the adjustments → Export / Import**: saves start, tempo, corrections, tuning and

@@ -5655,6 +5655,8 @@ async function applyAllNow() {
         cent_offset: centOffsetLive,
         offset_s: offsetLive,
         lead_in_s: Math.max(0, parseFloat(document.getElementById('leadInS').value) || 0),
+        // 0 = to the recording's end (the default, also what an empty field means)
+        song_end_s: isGpJob() ? Math.max(0, parseFloat(document.getElementById('songEndS').value) || 0) : null,
         arrangement: currentKind(),
         tempo_scale: tempoScaleLive,
         sync_anchors: syncAnchors.length ? syncAnchors : null,
@@ -7698,7 +7700,16 @@ function renderToneDetectionResult(d) {
       `</div>`;
   }
   const el = document.getElementById('toneDetectionResult');
+  // The detection reads the separated GUITAR and proposes guitar tones; a Bass
+  // chart never takes them (it keeps its own bass tones or the standard one).
+  const kinds = arrangements.map(a => a.kind);
+  const bassNote = kinds.includes('Bass')
+    ? `<div class="meta" style="margin-top:.3rem">${kinds.every(k => k === 'Bass')
+      ? T('A deteção lê a guitarra da gravação e propõe tons de guitarra. Este projeto só tem baixo: o baixo usa o tom de baixo standard ou os tons de baixo que criares.')
+      : T('Os tons detetados são de guitarra: o arranjo de baixo não os usa — fica com o tom de baixo standard ou com os tons de baixo que criares.')}</div>`
+    : '';
   el.innerHTML =
+    bassNote +
     `<div style="margin-top:.3rem"><strong>${T('Categoria detetada:')}</strong> ${esc(catLabel)}</div>` +
     profileHtml +
     `<div class="anchor-row" style="margin-top:.4rem">` +
@@ -7725,10 +7736,16 @@ function applyOneTone(role, key) {
   const tone = _findCandidate(role, key);
   if (!tone) { toast(T('Tom não encontrado.')); return; }
   const prefix = role === 'lead' ? 'RFLead_' : 'RFRhythm_';
+  const replaced = jobTones.filter(t => t.key.startsWith(prefix)).map(t => t.key);
   jobTones = jobTones.filter(t => !t.key.startsWith(prefix));
   jobTones.push(tone);
-  if (role === 'lead') toneBase = tone.key;
-  toneNames = jobTones.map(t => t.key);
+  if (role === 'lead' || replaced.includes(toneBase)) toneBase = tone.key;
+  // The new tone takes the replaced one's place among the (at most four)
+  // switchable tones. It used to list EVERY project tone, and with five or
+  // more the rebuild was refused (GitHub issue #9).
+  toneNames = toneNames.filter(k => !replaced.includes(k));
+  if (!toneNames.includes(tone.key)) toneNames.push(tone.key);
+  if (toneNames.length > 4) toneNames = [toneBase, ...toneNames.filter(k => k !== toneBase)].slice(0, 4);
   renderTonePanel();
   toast(T('Tom "{name}" aplicado — "Aplicar e reconstruir" para gravar.', { name: tone.name || tone.key }), 'ok');
 }
@@ -8934,6 +8951,10 @@ function updatePendingChangesInfo() {
   if (Math.abs(offsetLive - builtOffset) > 0.01) parts.push(T('offset'));
   if (Math.abs(tempoScaleLive - builtScale) > 0.001) parts.push(T('andamento'));
   if (Math.abs(centOffsetLive - centOffsetBuilt) > 0.05) parts.push(T('desvio da afinação'));
+  if (selectedJob && isGpJob()) {
+    const end = parseFloat(document.getElementById('songEndS').value) || 0;
+    if (Math.abs(end - (selectedJob.song_end_s || 0)) > 0.0005) parts.push(T('fim da música'));
+  }
   if (syncAnchors.length) parts.push(T('{n} ponto(s) de correção', { n: syncAnchors.length }));
   if (JSON.stringify(noteOverridesByKind) !== noteOverridesBuilt) parts.push(T('edições de notas'));
   if (JSON.stringify(fhpByKind) !== fhpBuilt) parts.push(T('posições da mão'));
@@ -8974,6 +8995,7 @@ function pendingSnapshot() {
     offset: offsetLive,
     cents: centOffsetLive,
     leadIn: document.getElementById('leadInS').value,
+    songEnd: document.getElementById('songEndS').value,
     mutes: document.getElementById('muteChk').checked,
     dd: document.getElementById('ddChk').checked,
     tempo, anchors,
@@ -8996,6 +9018,7 @@ function restorePending(snap) {
     offsetLive = snap.offset;
     setCentOffsetLive(snap.cents);
     document.getElementById('leadInS').value = snap.leadIn;
+    document.getElementById('songEndS').value = snap.songEnd || '';
     document.getElementById('muteChk').checked = snap.mutes;
     document.getElementById('ddChk').checked = snap.dd;
     tempoScaleByKind = { ...snap.tempo };
@@ -9156,8 +9179,20 @@ function updateUndoButtons() {
 }
 document.getElementById('undoBtn').addEventListener('click', undoPending);
 document.getElementById('redoBtn').addEventListener('click', redoPending);
-for (const id of ['leadInS', 'muteChk', 'ddChk'])
-  document.getElementById(id).addEventListener('change', notePendingChange);
+for (const id of ['leadInS', 'songEndS', 'muteChk', 'ddChk'])
+  document.getElementById(id).addEventListener('change', () => { updatePendingChangesInfo(); notePendingChange(); });
+// "Fim da música": seconds of the recording file, the clock the lyrics use
+// (the playhead minus the built intro silence). Empty = the recording's end.
+document.getElementById('songEndCursor').addEventListener('click', () => {
+  document.getElementById('songEndS').value = Math.max(0, currentPlayheadT - leadInBuilt).toFixed(3);
+  updatePendingChangesInfo();
+  notePendingChange();
+});
+document.getElementById('songEndClear').addEventListener('click', () => {
+  document.getElementById('songEndS').value = '';
+  updatePendingChangesInfo();
+  notePendingChange();
+});
 // Ctrl+Z / Ctrl+Shift+Z (or Ctrl+Y) on every page of an open project. Inside a
 // text field they stay the field's own undo; a dialog on top keeps them too.
 document.addEventListener('keydown', e => {
@@ -12122,6 +12157,7 @@ function initSync(j) {
   if (isGp) {
     setOffsetLive(j.offset_s || 0);
     document.getElementById('leadInS').value = leadInBuilt.toFixed(3);
+    document.getElementById('songEndS').value = j.song_end_s ? Number(j.song_end_s).toFixed(3) : '';
   }
   updatePlayBtn();
   updateTransportUI();

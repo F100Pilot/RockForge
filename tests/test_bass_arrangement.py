@@ -263,3 +263,36 @@ def test_a_level_of_only_open_strings_still_has_an_anchor() -> None:
     assert any(all(n.fret == 0 for n in lv.notes) and lv.notes for lv in model.arrangements)
     assert all(lv.anchors for lv in model.arrangements if lv.notes)
     assert check_sng(model, bass=True) == []
+
+
+def test_the_bass_never_takes_the_songs_guitar_tones(guitar_and_bass: Path, tmp_path: Path) -> None:
+    """GitHub issue #9: the tone detection proposes guitar tones, and a Bass
+    with no tones of its own took them (a guitar amp on the bass chart). It
+    now takes only the song's bass tones — the default bass tone when there
+    are none — while a set chosen for the Bass itself is kept."""
+    from rockforge.application.gp_pipeline import ArrangementTones
+    from rockforge.infrastructure.packaging.gear.gear_catalogue import tones_from_dicts
+    from rockforge.infrastructure.packaging.gear.tone_presets import suggest_tones
+
+    guitar = suggest_tones("high_gain")
+    tones = tones_from_dicts([guitar["lead"], guitar["rhythm"]])
+    meta = SongMetadata(title="Low", artist="Band")
+
+    def tonebase(result: object, name: str) -> str | None:
+        xml = next(p for p in result.packaging.xml_paths  # type: ignore[attr-defined]
+                   if p.name == name)
+        return ET.parse(xml).getroot().findtext("tonebase")
+
+    song_set = GpJobSpec(gp_path=guitar_and_bass, audio_source="x.wav", lead_track=0,
+                         bass_track=1, tones=tones, tone_base=guitar["lead"]["key"],
+                         tone_names=[guitar["lead"]["key"], guitar["rhythm"]["key"]])
+    result = _use_case().run(song_set, meta, tmp_path / "a")
+    assert tonebase(result, "arrangement_combined.xml") == guitar["lead"]["key"]
+    assert tonebase(result, "arrangement_bass.xml") is None  # → the default bass tone
+    assert any("guitar tones are left to the guitar charts" in w for w in result.warnings)
+
+    own = GpJobSpec(gp_path=guitar_and_bass, audio_source="x.wav", lead_track=0,
+                    bass_track=1, tones=tones, tone_base=guitar["lead"]["key"],
+                    arrangement_tones={"Bass": ArrangementTones(tone_base=guitar["rhythm"]["key"])})
+    result = _use_case().run(own, meta, tmp_path / "b")
+    assert tonebase(result, "arrangement_bass.xml") == guitar["rhythm"]["key"]

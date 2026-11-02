@@ -508,6 +508,10 @@ já bater certo, mas só tu o confirmas, a ouvir.
 ### Mais opções
 
 - **Silêncio inicial**: empurra música e notas para a frente.
+- **Fim da música**: o segundo da gravação em que o jogo acaba a música. Vazio, a música vai até
+  ao fim da gravação, mesmo que a pista acabe antes (um final só de outras guitarras, um fade);
+  **= cursor** marca o ponto onde está o cursor, **Fim da gravação** volta ao normal. Nunca acaba
+  antes da última nota.
 - **Recarregar ficheiro GP**: depois de corrigires uma nota no Guitar Pro e exportares de novo.
   Mantém sincronização, tons, letra e afinação. Se o ficheiro novo trouxer áudio, passa a ser
   essa a gravação.
