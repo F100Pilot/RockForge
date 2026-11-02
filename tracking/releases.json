@@ -637,7 +637,7 @@
     },
     {
       "version": "0.12.0-beta.3",
-      "status": "Beta",
+      "status": "Superseded",
       "created": "2026-11-02",
       "published": "2026-11-02",
       "commit": "22b24292f3ddd4816c0059eccff16577b6f1ca8e",
@@ -661,10 +661,12 @@
       "version": "0.12.0-beta.4",
       "status": "Beta",
       "created": "2026-11-02",
-      "published": "pending",
-      "commit": "pending",
+      "published": "2026-11-02",
+      "commit": "454fe9330ae5da33ca8eedcb5607dbac9eb98ba9",
       "build": "GitHub Actions release workflow",
-      "artifacts": [],
+      "artifacts": [
+        "https://github.com/F100Pilot/RockForge/releases/tag/v0.12.0-beta.4"
+      ],
       "goal": "Song AppID chosen in Settings, Cherub Rock by default (issue #20)",
       "features": [
         "Song AppID, your choice"
