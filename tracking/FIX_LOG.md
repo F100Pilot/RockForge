@@ -373,6 +373,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0365](#fix-0365) | BUG-0366 | unreleased | passed | automated |
 | [FIX-0366](#fix-0366) | BUG-0367 | unreleased | passed | automated |
 | [FIX-0367](#fix-0367) | BUG-0368 | unreleased | passed | automated |
+| [FIX-0368](#fix-0368) | BUG-0369 | unreleased | passed | automated |
 
 ## FIX-0001
 
@@ -8080,3 +8081,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | passed |
 | Validation | automated |
 | Regression risk | Low: new data next to the guitar result, read in its own try; the guitar flow is unchanged except for the refusal on the Bass set. |
+
+## FIX-0368
+
+**Bugs:** [BUG-0369](bugs/import.md#bug-0369)
+
+**Root cause:** _duration read only type/dots/tuplet; Songsterr's beat also carries duration [num, den] (the played length, dots and tuplets included) and may mark a dot as dotted: true, so a rest whose dot came that way was written undotted and the bar's later beats moved early (bar starts are set by hand, so the next bar was right).
+
+**Solution:** _duration takes dotted: true as a dot and, when type/dots/tuplet do not add up to duration, writes the note value that lasts duration (plain, dotted or a tuplet), counted in report.durations_from_length.
+
+| | |
+|---|---|
+| Date | 2026-11-02 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 9350fec0b5725442461f2df6a2b8df53b1d6400c |
+| Components | src/rockforge/infrastructure/gpimport/songsterr_gp.py |
+| Tests | tests/test_songsterr_gp.py::test_a_beat_lasts_the_duration_songsterr_plays_whatever_its_flags_say |
+| Manual checks | The user's Songsterr .gp export of the song rebuilt as Songsterr-shaped parts (with dots) converts with 0 note differences on track 1; Two parts recorded from the live API (Wonderwall, in joelgoh1/Guitarista's fixtures) convert with durations_from_length 0 |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: only a beat whose flags disagree with its duration changes. |

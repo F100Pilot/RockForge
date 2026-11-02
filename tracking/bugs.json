@@ -18401,6 +18401,46 @@
           "note": "commit 8340afd106"
         }
       ]
+    },
+    {
+      "id": "BUG-0369",
+      "title": "A tab imported from Songsterr played some notes after dotted rests too early",
+      "detected": "2026-11-02",
+      "reported_by": "DrekAnon (GitHub issue #18)",
+      "found_in_version": "0.12.0-beta.2",
+      "found_in_build": "pending",
+      "module": "import",
+      "description": "Importing a tab from a Songsterr link placed some notes early: in Bloodbath 'Outnumbering the Day' bar 53 (chord, two dotted-quarter rests, palm-muted chord) the last chord played at 5/8 of the bar instead of 7/8. Songsterr's own .gp export of the same tab, used instead, was right.",
+      "steps": [
+        "New project → Songsterr link https://www.songsterr.com/a/wsa/bloodbath-outnumbering-the-day-tab-s32098t1",
+        "Look at bar 53 on the score"
+      ],
+      "expected": "The palm-muted chord just before bar 54, as Songsterr shows it.",
+      "observed": "It sits in the middle of bar 53.",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Fixed",
+      "root_cause": "_duration read only type/dots/tuplet; Songsterr's beat also carries duration [num, den] (the played length, dots and tuplets included) and may mark a dot as dotted: true, so a rest whose dot came that way was written undotted and the bar's later beats moved early (bar starts are set by hand, so the next bar was right).",
+      "fixes": [
+        "FIX-0368"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-02",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-02",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-02",
+          "status": "Fixed",
+          "note": "commit 9350fec0b5"
+        }
+      ]
     }
   ]
 }

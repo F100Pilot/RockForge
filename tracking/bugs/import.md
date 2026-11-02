@@ -2421,3 +2421,41 @@ A PDF whose long opening silence is printed as one empty bar with 'x19' above it
 
 - 2026-11-02 — Open: reported
 - 2026-11-02 — Fixed: commit a95195a774
+
+## BUG-0369
+
+**A tab imported from Songsterr played some notes after dotted rests too early**
+
+| | |
+|---|---|
+| Detected | 2026-11-02 |
+| Reported by | DrekAnon (GitHub issue #18) |
+| Found in | 0.12.0-beta.2 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Fixed |
+
+Importing a tab from a Songsterr link placed some notes early: in Bloodbath 'Outnumbering the Day' bar 53 (chord, two dotted-quarter rests, palm-muted chord) the last chord played at 5/8 of the bar instead of 7/8. Songsterr's own .gp export of the same tab, used instead, was right.
+
+**Steps to reproduce:** 
+
+1. New project → Songsterr link https://www.songsterr.com/a/wsa/bloodbath-outnumbering-the-day-tab-s32098t1
+2. Look at bar 53 on the score
+
+**Expected:** The palm-muted chord just before bar 54, as Songsterr shows it.
+
+**Observed:** It sits in the middle of bar 53.
+
+**Root cause:** _duration read only type/dots/tuplet; Songsterr's beat also carries duration [num, den] (the played length, dots and tuplets included) and may mark a dot as dotted: true, so a rest whose dot came that way was written undotted and the bar's later beats moved early (bar starts are set by hand, so the next bar was right).
+
+**Fixes:** [FIX-0368](../FIX_LOG.md#fix-0368) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-02 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-02 — Open: reported
+- 2026-11-02 — Fixed: commit 9350fec0b5
