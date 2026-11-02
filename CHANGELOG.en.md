@@ -8,6 +8,7 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ### Fixes
 
+- **The tones' "Read the folder" stopped with "Access is denied":** one file or folder without read permission inside the dlc folder stopped the whole scan, and since files are read in name order the list only showed the artists up to there (A to T, say). Now what cannot be read is left out, counted, and the scan reads on to the end.
 - **A multi-bar rest with "x19" in a PDF:** when importing a PDF (exported from an editor, with text), an empty bar with "x19" over it now counts as 19 bars of rest; it used to count as one, and the rest of the song came that many bars early. In a scanned PDF (a picture) it is not read yet. The fix is in the PDF-to-GP5 converter RockForge uses.
 - **The game skipped the intro when bar 1 starts late:** if the score's first bar only starts long after the recording does (a PDF whose multi-bar rest — "x19" — was not read, or a file that starts at the first note), the game started the song at that bar and the seconds before it were left out. Now, when bar 1 starts more than 8 s in, the beat grid carries on back to the start of the recording, and the song plays from the beginning. Bar numbers do not change. For an existing project, just rebuild.
 

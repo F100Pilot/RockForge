@@ -4646,7 +4646,13 @@ library.
 block and the wanted entries' blocks by seeking (an official `songs.psarc` is
 hundreds of MB); it sizes the block table from the TOC length, as retail
 archives require. It equals `unpack` on everything (tested). The archives are
-only ever opened for reading. The result is cached in
+only ever opened for reading. **A folder or file it cannot open is skipped, never fatal**
+(GitHub issue #15, "PermissionError: [WinError 5] Access is denied" and the artists
+stopping at T: files are read in name order, and one refusal ended the scan): `_psarcs`
+walks with `os.walk(onerror=…)` and keeps the refused folders as `blocked_folders`, a file
+whose `stat` fails is stored as `{"error": …}` (the ordinary unreadable count), and the
+status line says both. Guarded by
+`test_a_folder_or_file_without_permission_is_skipped_not_fatal` (mutation-checked). The result is cached in
 `work_dir/tone_collection.json` by relative path + size + mtime (written every
 25 files too, so a cut-short scan keeps its work): a rescan opens only new or
 changed files, drops the ones that are gone, and a different folder starts from

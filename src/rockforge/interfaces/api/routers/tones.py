@@ -426,6 +426,7 @@ def get_tone_collection(
         "scanned_at": data.get("scanned_at"),
         "files": len(files),
         "unreadable": sum(1 for f in files.values() if isinstance(f, dict) and f.get("error")),
+        "blocked_folders": len(data.get("blocked_folders") or []),
         "tones_total": sum(len((f or {}).get("tones") or []) for f in files.values()),
         "matched": len(matched),
         "artists": tone_collection.artists(data),

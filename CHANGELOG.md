@@ -8,6 +8,7 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ### Correções
 
+- **"Ler a pasta" dos tons parava com "Access is denied":** um ficheiro ou uma pasta sem permissão de leitura dentro da pasta dlc parava a leitura toda, e como os ficheiros são lidos por ordem de nome, a lista só mostrava os artistas até ali (de A a T, por exemplo). Agora o que não se consegue ler fica de fora, é contado, e a leitura continua até ao fim.
 - **Pausa de vários compassos com "x19" num PDF:** ao importar um PDF (exportado de um editor, com texto), um compasso vazio com "x19" por cima conta agora como 19 compassos de pausa; antes contava como um, e o resto da música ficava esses compassos mais cedo. Num PDF digitalizado (imagem) ainda não é lido. A correção é do conversor PDF-to-GP5, que o RockForge usa.
 - **O jogo saltava a introdução quando o compasso 1 começa tarde:** se o primeiro compasso da partitura só começa muito depois do início da gravação (um PDF cuja pausa de vários compassos — "x19" — não foi lida, ou um ficheiro que começa na primeira nota), o jogo começava a música nesse compasso e os segundos antes dele ficavam de fora. Agora, quando o compasso 1 começa mais de 8 s depois do início, a grelha de tempos continua para trás até ao início da gravação, e a música toca desde o princípio. Os números dos compassos não mudam. Para um projeto já criado, basta reconstruir.
 

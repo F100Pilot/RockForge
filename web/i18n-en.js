@@ -1070,6 +1070,7 @@
  "Sair sem guardar as alterações à informação da música?": "Leave without saving the changes to the song info?",
  "Tons das tuas músicas": "Tones from your songs",
  "{files} ficheiros lidos, {tones} tons · {when}": "{files} files read, {tones} tones · {when}",
+ "{n} pastas sem permissão de leitura ficaram de fora": "{n} folders without read permission were left out",
  "{n} tons encontrados — a mostrar {shown}; escreve mais para afinar.": "{n} tones found — showing {shown}; type more to narrow it down.",
  "Indica a pasta dlc do Rocksmith e carrega em \"Ler a pasta\".": "Give the Rocksmith dlc folder and press \"Read the folder\".",
  "A ler {done} de {total} ficheiros… {name}": "Reading {done} of {total} files… {name}",

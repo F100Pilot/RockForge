@@ -6634,7 +6634,10 @@ function renderToneCollStatus(data) {
     const when = new Date(data.scanned_at * 1000).toLocaleString();
     el.textContent = (data.unreadable
       ? T('{files} ficheiros lidos ({bad} sem leitura possível), {tones} tons · {when}', { files: data.files, bad: data.unreadable, tones: data.tones_total, when })
-      : T('{files} ficheiros lidos, {tones} tons · {when}', { files: data.files, tones: data.tones_total, when }));
+      : T('{files} ficheiros lidos, {tones} tons · {when}', { files: data.files, tones: data.tones_total, when }))
+      + (data.blocked_folders
+        ? ' · ' + T('{n} pastas sem permissão de leitura ficaram de fora', { n: data.blocked_folders })
+        : '');
   } else {
     el.textContent = data.suggested_folder || data.folder
       ? T('Carrega em "Ler a pasta" para listar os tons das tuas músicas.')

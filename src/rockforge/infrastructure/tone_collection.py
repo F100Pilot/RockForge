@@ -195,10 +195,24 @@ def read_psarc_tones(path: Path) -> dict[str, Any]:
     return {"tones": list(by_key.values()), "skipped": skipped}
 
 
-def _psarcs(folder: Path) -> list[Path]:
+def _psarcs(folder: Path, blocked: list[str] | None = None) -> list[Path]:
     """Every ``.psarc`` under ``folder``, minus a Mac copy (``_m``) of a song
-    whose PC copy (``_p``) is beside it — the same song, the same tones."""
-    found = sorted(p for p in folder.rglob("*") if p.is_file() and p.suffix.lower() == ".psarc")
+    whose PC copy (``_p``) is beside it — the same song, the same tones.
+
+    A folder that cannot be opened (Windows: "Access is denied") is skipped and
+    named in ``blocked``: it used to stop the whole scan (GitHub issue #15), and
+    since files are read in name order the collection then held only the
+    artists before it."""
+    found: list[Path] = []
+
+    def refused(exc: OSError) -> None:
+        if blocked is not None:
+            blocked.append(str(exc.filename or exc))
+
+    for root, dirs, names in os.walk(folder, onerror=refused):
+        dirs.sort()
+        found.extend(Path(root) / n for n in names if n.lower().endswith(".psarc"))
+    found.sort()
     names = {p.name.lower() for p in found}
     return [
         p for p in found
@@ -225,13 +239,18 @@ def scan(folder: Path, progress: Callable[[int, int, str], None] | None = None) 
     cache = load()
     previous = cache.get("files") if cache.get("folder") == str(folder) else None
     previous = previous if isinstance(previous, dict) else {}
-    paths = _psarcs(folder)
+    blocked: list[str] = []
+    paths = _psarcs(folder, blocked)
     files: dict[str, Any] = {}
     for i, path in enumerate(paths, start=1):
         rel = path.relative_to(folder).as_posix()
         if progress:
             progress(i - 1, len(paths), rel)
-        st = path.stat()
+        try:
+            st = path.stat()
+        except OSError as exc:  # no permission, or gone: count it, read the rest
+            files[rel] = {"error": f"{type(exc).__name__}: {exc}"}
+            continue
         old = previous.get(rel)
         if isinstance(old, dict) and old.get("size") == st.st_size \
                 and old.get("mtime") == st.st_mtime:
@@ -240,7 +259,8 @@ def scan(folder: Path, progress: Callable[[int, int, str], None] | None = None) 
             files[rel] = {"size": st.st_size, "mtime": st.st_mtime, **read_psarc_tones(path)}
         if i % _SAVE_EVERY == 0:  # a scan cut short keeps what it read
             _write({"folder": str(folder), "files": {**previous, **files}})
-    data = {"folder": str(folder), "scanned_at": time.time(), "files": files}
+    data = {"folder": str(folder), "scanned_at": time.time(), "files": files,
+            "blocked_folders": blocked}
     _write(data)
     if progress:
         progress(len(paths), len(paths), "")

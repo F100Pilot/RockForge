@@ -186,3 +186,38 @@ def test_steams_default_dlc_folder_is_suggested_when_it_exists(tmp_path: Path, m
     dlc = tmp_path / ".steam" / "steam" / "steamapps" / "common" / "Rocksmith2014" / "dlc"
     dlc.mkdir(parents=True)
     assert tc.suggested_folder() == dlc
+
+
+def test_a_folder_or_file_without_permission_is_skipped_not_fatal(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """GitHub issue #15: "The scan failed: PermissionError: [WinError 5] Access is
+    denied", and the artists stopped at T — files are read in name order, and one
+    that could not be opened ended the scan there. Now it is counted and the scan
+    reads on."""
+    monkeypatch.setattr(tc.config.settings, "work_dir", tmp_path / "work")
+    dlc = tmp_path / "dlc"
+    (dlc / "locked").mkdir(parents=True)
+    _song_psarc(dlc / "a_p.psarc", "Alpha", artist="ABBA")
+    _song_psarc(dlc / "t_p.psarc", "Tango", artist="Toto")
+    _song_psarc(dlc / "z_p.psarc", "Zulu", artist="ZZ Top")
+    real_walk, real_stat = os.walk, Path.stat
+
+    def walk(top, onerror=None, **kw):  # the "locked" folder refuses to be listed
+        for root, dirs, files in real_walk(top, onerror=onerror, **kw):
+            if "locked" in dirs:
+                dirs.remove("locked")
+                onerror(PermissionError(13, "Access is denied", str(Path(root) / "locked")))
+            yield root, dirs, files
+
+    def stat(self, *a, **kw):  # and t_p.psarc cannot be opened
+        if self.name == "t_p.psarc":
+            raise PermissionError(13, "Access is denied", str(self))
+        return real_stat(self, *a, **kw)
+
+    monkeypatch.setattr(tc.os, "walk", walk)
+    monkeypatch.setattr(Path, "stat", stat)
+    data = tc.scan(dlc)
+    assert data["blocked_folders"] == [str(dlc / "locked")]
+    assert "error" in data["files"]["t_p.psarc"]
+    assert [a["name"] for a in tc.artists()] == ["ABBA", "ZZ Top"]  # Z after the refusal
