@@ -213,10 +213,10 @@ def _psarcs(folder: Path, blocked: list[str] | None = None) -> list[Path]:
         dirs.sort()
         found.extend(Path(root) / n for n in names if n.lower().endswith(".psarc"))
     found.sort()
-    names = {p.name.lower() for p in found}
+    psarc_names = {p.name.lower() for p in found}
     return [
         p for p in found
-        if not (p.stem.lower().endswith("_m") and f"{p.stem[:-2]}_p.psarc".lower() in names)
+        if not (p.stem.lower().endswith("_m") and f"{p.stem[:-2]}_p.psarc".lower() in psarc_names)
     ]
 
 
