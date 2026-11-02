@@ -887,7 +887,7 @@ def detect_tones(job_id: str) -> None:
 
                     bass_profile, _ = analyze_guitar_timeline(bass_stem)
                     bass_candidates = rank_bass(bass_profile.gain_level)
-                    detected = dict(params["detected_tones"])
+                    detected = dict(cast("dict[str, Any]", params["detected_tones"]))
                     detected["bass"] = bass_candidates[0]
                     detected["bass_candidates"] = bass_candidates
                     detected["bass_gain"] = bass_profile.gain_level
