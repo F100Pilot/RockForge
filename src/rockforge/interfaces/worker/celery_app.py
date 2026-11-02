@@ -876,6 +876,28 @@ def detect_tones(job_id: str) -> None:
                     for w in windows
                 ],
             }
+            # The same Demucs pass wrote the bass beside the guitar: measured
+            # the same way, it ranks the bass presets (GitHub issue #16 — the
+            # detection only ever proposed guitar tones). Its own try: a bass
+            # that cannot be read leaves the guitar's result standing.
+            bass_stem = guitar_stem.with_name("bass.wav")
+            if bass_stem.exists():
+                try:
+                    from rockforge.infrastructure.packaging.gear.tone_presets import rank_bass
+
+                    bass_profile, _ = analyze_guitar_timeline(bass_stem)
+                    bass_candidates = rank_bass(bass_profile.gain_level)
+                    detected = dict(params["detected_tones"])
+                    detected["bass"] = bass_candidates[0]
+                    detected["bass_candidates"] = bass_candidates
+                    detected["bass_gain"] = bass_profile.gain_level
+                    params["detected_tones"] = detected
+                    _log_tone_stage(
+                        params, f"bass: gain={bass_profile.gain_level:.2f} → "
+                        f"{bass_candidates[0]['key']}"
+                    )
+                except Exception as exc:  # noqa: BLE001 — the guitar's result stands
+                    _log_tone_stage(params, f"bass not analysed: {type(exc).__name__}: {exc}")
             params["tone_detection_status"] = "ready"
             heard = sum(1 for w in windows if w.active)
             _log_tone_stage(

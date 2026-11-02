@@ -6,6 +6,10 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### New
+
+- **Bass tones in the tone detection:** with a bass arrangement, **Detect tone** also reads the separated bass (Demucs already separates it along with the guitar) and proposes bass tones — clean, growl, overdrive and distortion, with the game's bass gear — ordered by how close they are to the recorded bass. "use" puts the chosen tone on the bass arrangement only. And a guitar tone can no longer go on the bass: with the bass's tones on screen, "use" on a guitar tone is refused and says why.
+
 ### Fixes
 
 - **The tones' "Read the folder" stopped with "Access is denied":** one file or folder without read permission inside the dlc folder stopped the whole scan, and since files are read in name order the list only showed the artists up to there (A to T, say). Now what cannot be read is left out, counted, and the scan reads on to the end.

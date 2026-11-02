@@ -662,6 +662,24 @@ Combo/alternates, encoded the way Rocksmith2014.NET/DLC Builder encode a bass
   DLC Builder's default bass tone, said in the warnings (`_tone_setup` in
   `gp_pipeline`; GitHub issue #9: the detection's guitar tones had put a guitar
   amp on the bass). Guarded by `test_the_bass_never_takes_the_songs_guitar_tones`.
+  **Detected bass tones** (GitHub issue #16): `detect_tones` also measures the
+  `bass.wav` the same htdemucs_6s pass wrote beside the guitar stem
+  (`analyze_guitar_timeline`, its own try — a failure leaves the guitar's
+  result) and stores `detected_tones["bass_candidates"]` = `rank_bass(gain)`:
+  four bass presets (`RFBass_Clean/Growl/Overdrive/Distortion`, real `Bass_`
+  gear, volume -12 like `default_bass.json`) ranked by GAIN alone — the
+  analyzer's brightness/low end are calibrated on the guitar.
+  `/detected-tones` answers them; the Tons page lists them under "Baixo — tons
+  semelhantes" when the song has a Bass chart, and "usar" (`applyBassTone`)
+  gives the Bass chart its own set via `applyToneSuggestion`, never the song's.
+  With the Bass set on screen (`toneSetKind === 'Bass'`) a guitar "usar" or
+  "Aplicar melhores" is refused with a toast (`refuseGuitarToneOnBass`).
+  Guarded by `test_detect_tones_ranks_bass_tones_from_the_separated_bass`,
+  `test_bass_presets_are_bass_gear_ranked_by_the_bass_gain` and
+  `test_detected_tones_hand_out_the_bass_candidates`; the page with Playwright
+  (PT 1440 / EN 760 px: four bass rows, "usar" → Bass set only, a guitar tone
+  refused, no page errors). Demucs cannot run here: never measured on a real
+  separated bass.
 - **What skips it**: tone suggestions (the analysis is of the guitar stem),
   showlights (from the richest non-bass chart), and the chart GP lyrics are
   timed on when the file names no vocal track. With no tone of its own it gets

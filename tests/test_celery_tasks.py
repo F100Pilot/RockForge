@@ -332,6 +332,78 @@ def test_detect_tones_success_populates_ranked_candidates(db, monkeypatch) -> No
     assert any("done" in line for line in job.params["tone_detection_log"])
 
 
+class _BassWritingSeparator(_FakeStemSeparator):
+    """htdemucs_6s writes every source in one pass: the bass lies beside the guitar."""
+
+    def separate_guitar(self, audio: Path, workdir: Path) -> Path:
+        workdir.mkdir(parents=True, exist_ok=True)
+        (workdir / "bass.wav").write_bytes(b"")
+        return workdir / "guitar.wav"
+
+
+def test_detect_tones_ranks_bass_tones_from_the_separated_bass(db, monkeypatch) -> None:
+    """GitHub issue #16: the detection only ever proposed guitar tones, so a
+    bass chart could only be given a guitar amp. The bass Demucs already wrote
+    is measured too, and only bass gear is proposed for it."""
+    from rockforge.domain.tone import is_bass_tone
+    from rockforge.infrastructure.normalize.ffmpeg import FfmpegNormalizer
+    from rockforge.infrastructure.packaging.gear.gear_catalogue import tone_from_dict
+    from rockforge.infrastructure.tone_analysis import analyzer as analyzer_mod
+
+    monkeypatch.setattr(ca, "_make_demucs", lambda device: _BassWritingSeparator())
+    monkeypatch.setattr(
+        FfmpegNormalizer, "normalize",
+        lambda self, audio, workdir, offset_s=0.0, pad_start_s=0.0: workdir / "normalized.wav",
+    )
+
+    def analyse(stem):
+        gain = 0.85 if stem.name == "bass.wav" else 0.35
+        return (
+            analyzer_mod.ToneProfile(
+                gain_level=gain, brightness=0.5, low_end=0.4, dynamic_range=0.3,
+            ),
+            [],
+        )
+
+    monkeypatch.setattr(analyzer_mod, "analyze_guitar_timeline", analyse)
+    job_id = _job(db)
+
+    ca.detect_tones(job_id)
+
+    detected = _reload(db, job_id).params["detected_tones"]
+    assert detected["category"] == "crunch"          # the guitar's own reading stands
+    candidates = detected["bass_candidates"]
+    assert candidates and all(is_bass_tone(tone_from_dict(c)) for c in candidates)
+    assert detected["bass"]["key"] == "RFBass_Distortion"  # the closest to gain 0.85
+    assert detected["bass_gain"] == 0.85
+
+
+def test_detect_tones_without_a_bass_stem_proposes_no_bass_tones(db, monkeypatch) -> None:
+    from rockforge.infrastructure.normalize.ffmpeg import FfmpegNormalizer
+    from rockforge.infrastructure.tone_analysis import analyzer as analyzer_mod
+
+    monkeypatch.setattr(ca, "_make_demucs", lambda device: _FakeStemSeparator())
+    monkeypatch.setattr(
+        FfmpegNormalizer, "normalize",
+        lambda self, audio, workdir, offset_s=0.0, pad_start_s=0.0: workdir / "normalized.wav",
+    )
+    monkeypatch.setattr(
+        analyzer_mod, "analyze_guitar_timeline",
+        lambda stem: (
+            analyzer_mod.ToneProfile(
+                gain_level=0.35, brightness=0.5, low_end=0.4, dynamic_range=0.3,
+            ),
+            [],
+        ),
+    )
+    job_id = _job(db)
+
+    ca.detect_tones(job_id)
+
+    detected = _reload(db, job_id).params["detected_tones"]
+    assert "bass_candidates" not in detected
+
+
 def test_detect_tones_failure_sets_unavailable_not_job_status(db, monkeypatch) -> None:
     """Progress lives in params, never JobStatus, so a failed detection never
     hides an otherwise-completed job (see CLAUDE.md's async-detection pattern)."""

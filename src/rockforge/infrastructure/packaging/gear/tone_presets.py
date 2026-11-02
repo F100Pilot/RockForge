@@ -456,6 +456,119 @@ _RHYTHM_LIBRARY: list[tuple[dict[str, Any], tuple[float, float, float]]] = [
     (RHYTHM_METAL, (0.92, 0.50, 0.75)),
 ]
 
+# ---------------------------------------------------------------------------
+# Bass presets (GitHub issue #16: the detection proposed only guitar tones, and
+# a guitar amp ended up on the bass). The game's own bass gear: amps, cabinets
+# and pedals whose keys start with "Bass_". The clean one is DLC Builder's
+# default bass tone (default_bass.json); the others are this project's picks,
+# not anyone's recipe. Volume -12 = DLC Builder's own bass default.
+# ---------------------------------------------------------------------------
+
+def _bass_comp(amount: float) -> dict[str, Any]:
+    return {"key": "Bass_Pedal_MBComp", "knobs": {
+        "Bass_Pedal_MBComp_Compress": amount, "Bass_Pedal_MBComp_Rate": 40,
+        "Bass_Pedal_MBComp_Filter": 450,
+    }}
+
+
+BASS_CLEAN: dict[str, Any] = {
+    "key": "RFBass_Clean",
+    "name": "Bass – Limpo (DI + compressor)",
+    "volume": -12.0,
+    "descriptors": [TONE_DESCRIPTORS["Bass"], TONE_DESCRIPTORS["Clean"]],
+    "amp": {"key": "Bass_Amp_EdenWT550", "knobs": {
+        "Bass_Amp_EdenWT550_Gain": 14, "Bass_Amp_EdenWT550_Bass": 2,
+        "Bass_Amp_EdenWT550_Lo": -4, "Bass_Amp_EdenWT550_LoFreq": 300,
+        "Bass_Amp_EdenWT550_Mid": 4, "Bass_Amp_EdenWT550_MidFreq": 1200,
+        "Bass_Amp_EdenWT550_Hi": -2, "Bass_Amp_EdenWT550_HiFreq": 2.6,
+        "Bass_Amp_EdenWT550_Treble": 8, "Bass_Amp_EdenWT550_Enhance": 49,
+    }},
+    "cabinet": {"key": "Bass_Cab_EdenD610XST_Condenser_Edge"},
+    "pre": [{"key": "Bass_Pedal_EdenWTDI", "knobs": {
+        "Bass_Pedal_EdenWTDI_Gain": 18, "Bass_Pedal_EdenWTDI_Bass": 3,
+        "Bass_Pedal_EdenWTDI_Mid": 4, "Bass_Pedal_EdenWTDI_Treble": 3,
+        "Bass_Pedal_EdenWTDI_Enhance": 1, "Bass_Pedal_EdenWTDI_LoShift": 1,
+        "Bass_Pedal_EdenWTDI_MidShift": 0, "Bass_Pedal_EdenWTDI_Compression": 0,
+    }}],
+    "post": [{"key": "Bass_Pedal_MBComp", "knobs": {
+        "Bass_Pedal_MBComp_Compress": 28, "Bass_Pedal_MBComp_Rate": 97,
+        "Bass_Pedal_MBComp_Filter": 450,
+    }}],
+    "racks": [{"key": "Rack_StudioCompressor", "knobs": {
+        "Rack_StudioCompressor_Attack": 30, "Rack_StudioCompressor_Threshold": -12.5,
+        "Rack_StudioCompressor_Release": 90, "Rack_StudioCompressor_Ratio": 3,
+    }}],
+}
+
+BASS_GROWL: dict[str, Any] = {
+    "key": "RFBass_Growl",
+    "name": "Bass – Rosnado (Orange)",
+    "volume": -12.0,
+    "descriptors": [TONE_DESCRIPTORS["Bass"], TONE_DESCRIPTORS["Crunch"]],
+    "amp": {"key": "Bass_Amp_OrangeAD200B", "knobs": {
+        "Bass_Amp_OrangeAD200B_Gain": 45, "Bass_Amp_OrangeAD200B_Bass": 70,
+        "Bass_Amp_OrangeAD200B_Mid": 60, "Bass_Amp_OrangeAD200B_Treble": 45,
+    }},
+    "cabinet": {"key": "Bass_Cab_OrangeOBC810_57_Cone"},
+    "pre": [_bass_comp(35)],
+}
+
+BASS_OVERDRIVE: dict[str, Any] = {
+    "key": "RFBass_Overdrive",
+    "name": "Bass – Overdrive (rock)",
+    "volume": -12.0,
+    "descriptors": [TONE_DESCRIPTORS["Bass"], TONE_DESCRIPTORS["Overdrive"]],
+    "amp": {"key": "Bass_Amp_OrangeAD200B", "knobs": {
+        "Bass_Amp_OrangeAD200B_Gain": 55, "Bass_Amp_OrangeAD200B_Bass": 70,
+        "Bass_Amp_OrangeAD200B_Mid": 62, "Bass_Amp_OrangeAD200B_Treble": 50,
+    }},
+    "cabinet": {"key": "Bass_Cab_OrangeOBC810_57_Cone"},
+    "pre": [_bass_comp(35), {"key": "Bass_Pedal_BassOverdrive", "knobs": {
+        "Bass_Pedal_BassOverdrive_Gain": 50, "Bass_Pedal_BassOverdrive_Tone": 45,
+        "Bass_Pedal_BassOverdrive_Blend": 55, "Bass_Pedal_BassOverdrive_Filter": 75,
+    }}],
+}
+
+BASS_DISTORTION: dict[str, Any] = {
+    "key": "RFBass_Distortion",
+    "name": "Bass – Distorção (metal)",
+    "volume": -12.0,
+    "descriptors": [TONE_DESCRIPTORS["Bass"], TONE_DESCRIPTORS["Distortion"]],
+    "amp": {"key": "Bass_Amp_BT975B", "knobs": {
+        "Bass_Amp_BT975B_Gain": 60, "Bass_Amp_BT975B_LoShift": 1,
+        "Bass_Amp_BT975B_Bass": 5, "Bass_Amp_BT975B_Mid": 4,
+        "Bass_Amp_BT975B_HiShift": 1, "Bass_Amp_BT975B_Treble": 4,
+    }},
+    "cabinet": {"key": "Bass_Cab_AT810BC_57_Cone"},
+    "pre": [_bass_comp(40), {"key": "Bass_Pedal_BassDistortion", "knobs": {
+        "Bass_Pedal_BassDistortion_Gain": 60, "Bass_Pedal_BassDistortion_Tone": 35,
+        "Bass_Pedal_BassDistortion_Filter": 50,
+    }}],
+}
+
+# By gain alone: the analyzer's brightness and low end are calibrated on the
+# guitar, so on a bass stem they say nothing a preset could be matched on.
+_BASS_LIBRARY: list[tuple[dict[str, Any], float]] = [
+    (BASS_CLEAN, 0.10),
+    (BASS_GROWL, 0.40),
+    (BASS_OVERDRIVE, 0.62),
+    (BASS_DISTORTION, 0.85),
+]
+
+
+def rank_bass(gain_level: float) -> list[dict[str, Any]]:
+    """The bass presets closest first to the gain measured on the separated
+    bass, each with a 0-100 ``match``. A heuristic: the character of the sound,
+    never the real amp."""
+    scored = sorted(
+        ((abs(gain_level - g), tone) for tone, g in _BASS_LIBRARY), key=lambda s: s[0]
+    )
+    return [
+        {**_named(tone), "match": round(100.0 * (1.0 - min(1.0, dist)))}
+        for dist, tone in scored
+    ]
+
+
 # Gain dominates the perceived match (a clean amp never sounds like a metal
 # amp however you EQ it), brightness/low-end are the secondary refinements.
 _W_GAIN, _W_BRIGHT, _W_LOW = 2.2, 1.0, 0.9
@@ -474,6 +587,9 @@ _NAMES_EN = {
     "Rhythm – Plexi (rock clássico)": "Rhythm – Plexi (classic rock)",
     "Rhythm – Crunch encorpado": "Rhythm – Full-bodied crunch",
     "Rhythm – Metal (djent/apertado)": "Rhythm – Metal (djent/tight)",
+    "Bass – Limpo (DI + compressor)": "Bass – Clean (DI + compressor)",
+    "Bass – Rosnado (Orange)": "Bass – Growl (Orange)",
+    "Bass – Distorção (metal)": "Bass – Distortion (metal)",
 }
 
 

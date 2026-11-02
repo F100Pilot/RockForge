@@ -3334,6 +3334,7 @@ def test_detected_tones_returns_none_status_by_default(client: TestClient) -> No
     assert body["category"] == ""
     assert body["lead"] == {}
     assert body["rhythm"] == {}
+    assert body["bass_candidates"] == []
 
 
 def test_cover_art_upload_and_download(client: TestClient) -> None:
@@ -3977,6 +3978,18 @@ def test_tone_suggestions_need_a_build_and_the_tone_over_time(
     r = client.get(f"/jobs/{old['id']}/tone-suggestions")
     assert r.status_code == 409 and "Detetar tom" in r.json()["detail"]
     assert client.get(f"/jobs/{old['id']}/detected-tones").json()["has_timeline"] is False
+
+
+def test_detected_tones_hand_out_the_bass_candidates(client: TestClient, tmp_path) -> None:
+    """GitHub issue #16: the bass presets measured on the separated bass reach
+    the Tons page, where they go to the Bass chart only."""
+    from rockforge.infrastructure.packaging.gear.tone_presets import rank_bass
+
+    job = _built_two_track_job(client, tmp_path, detected={
+        "status": "ready", "bass_candidates": rank_bass(0.4),
+    })
+    body = client.get(f"/jobs/{job['id']}/detected-tones").json()
+    assert [c["key"] for c in body["bass_candidates"]][0] == "RFBass_Growl"
 
 
 def test_tone_suggestions_propose_a_tone_per_part_of_each_track(

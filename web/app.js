@@ -7788,7 +7788,8 @@ function _candidateList(role, candidates) {
       `<span class="tone-cand-match" title="${T('Semelhança estimada com o gravado')}">${m}%</span>` +
       `<button type="button" class="secondary tone-cand-use" data-role="${esc(role)}" data-key="${esc(c.key)}">${T('usar')}</button></div>`;
   }).join('');
-  const title = role === 'lead' ? T('Lead — tons semelhantes') : T('Rhythm — tons semelhantes');
+  const title = role === 'lead' ? T('Lead — tons semelhantes')
+    : role === 'bass' ? T('Baixo — tons semelhantes') : T('Rhythm — tons semelhantes');
   return `<div class="tone-cand-group"><div class="meta" style="margin:.4rem 0 .2rem">${esc(title)} ` +
     `<span class="meta">${T('(ordenados por semelhança)')}</span></div>${rows}</div>`;
 }
@@ -7810,7 +7811,10 @@ function renderToneDetectionResult(d) {
   // The detection reads the separated GUITAR and proposes guitar tones; a Bass
   // chart never takes them (it keeps its own bass tones or the standard one).
   const kinds = arrangements.map(a => a.kind);
-  const bassNote = kinds.includes('Bass')
+  const bassList = kinds.includes('Bass') ? _candidateList('bass', d.bass_candidates) : '';
+  const bassNote = bassList
+    ? `<div class="meta" style="margin-top:.3rem">${T('O baixo separado também foi lido: os tons de baixo abaixo vão só para o arranjo de baixo; os de guitarra nunca vão para o baixo.')}</div>`
+    : kinds.includes('Bass')
     ? `<div class="meta" style="margin-top:.3rem">${kinds.every(k => k === 'Bass')
       ? T('A deteção lê a guitarra da gravação e propõe tons de guitarra. Este projeto só tem baixo: o baixo usa o tom de baixo standard ou os tons de baixo que criares.')
       : T('Os tons detetados são de guitarra: o arranjo de baixo não os usa — fica com o tom de baixo standard ou com os tons de baixo que criares.')}</div>`
@@ -7823,7 +7827,8 @@ function renderToneDetectionResult(d) {
     `<button type="button" id="applyDetectedTones" class="secondary">${T('Aplicar melhores (Lead + Rhythm)')}</button></div>` +
     `<div class="meta" style="margin-top:.3rem">${T('Não encontraste o tom certo? Experimenta os semelhantes abaixo — cada um dá a sua % de semelhança com o gravado.')}</div>` +
     _candidateList('lead', d.lead_candidates) +
-    _candidateList('rhythm', d.rhythm_candidates);
+    _candidateList('rhythm', d.rhythm_candidates) +
+    bassList;
   document.getElementById('applyDetectedTones').addEventListener('click', () => applyDetectedTones(d));
   el.querySelectorAll('.tone-cand-use').forEach(btn => {
     btn.addEventListener('click', () => applyOneTone(btn.dataset.role, btn.dataset.key));
@@ -7832,7 +7837,8 @@ function renderToneDetectionResult(d) {
 
 // Look up a candidate tone dict by role + key in the last detection payload.
 function _findCandidate(role, key) {
-  const list = (role === 'lead' ? _lastToneDetection.lead_candidates : _lastToneDetection.rhythm_candidates) || [];
+  const list = (role === 'lead' ? _lastToneDetection.lead_candidates
+    : role === 'bass' ? _lastToneDetection.bass_candidates : _lastToneDetection.rhythm_candidates) || [];
   return list.find(c => c.key === key) || null;
 }
 
@@ -7842,6 +7848,8 @@ function applyOneTone(role, key) {
   if (!_lastToneDetection) return;
   const tone = _findCandidate(role, key);
   if (!tone) { toast(T('Tom não encontrado.')); return; }
+  if (role === 'bass') { applyBassTone(tone); return; }
+  if (refuseGuitarToneOnBass()) return;
   const prefix = role === 'lead' ? 'RFLead_' : 'RFRhythm_';
   const replaced = jobTones.filter(t => t.key.startsWith(prefix)).map(t => t.key);
   jobTones = jobTones.filter(t => !t.key.startsWith(prefix));
@@ -7857,8 +7865,23 @@ function applyOneTone(role, key) {
   toast(T('Tom "{name}" aplicado — "Aplicar e reconstruir" para gravar.', { name: tone.name || tone.key }), 'ok');
 }
 
+// The tones on screen are the Bass's own set (per-track tones, the Bass tab):
+// a guitar tone there would put a guitar amp on the bass (GitHub issue #16).
+function refuseGuitarToneOnBass() {
+  if (toneSetKind !== 'Bass') return false;
+  toast(T('Estás a editar os tons do baixo: um tom de guitarra não vai para o baixo. Usa um dos tons de baixo, ou muda para outra pista.'), 'warn');
+  return true;
+}
+
+// A bass preset goes to the Bass chart only (its own set), never to the guitars.
+function applyBassTone(tone) {
+  jobTones = jobTones.filter(t => !t.key.startsWith('RFBass_') || t.key === tone.key);
+  applyToneSuggestion([{ kind: 'Bass', tones: [tone], base: tone.key, names: [tone.key], changes: [] }]);
+}
+
 function applyDetectedTones(detected) {
   if (!detected.lead || !detected.rhythm) { toast(T('Sem tons detetados.')); return; }
+  if (refuseGuitarToneOnBass()) return;
   const lead = detected.lead;
   const rhythm = detected.rhythm;
   // Merge into current tones, replacing any existing RF-detected ones.

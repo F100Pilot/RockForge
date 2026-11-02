@@ -67,6 +67,7 @@ def get_detected_tones(job_id: str) -> DetectTonesOut:
             rhythm=dict(detected.get("rhythm", {})),
             lead_candidates=list(detected.get("lead_candidates", [])),
             rhythm_candidates=list(detected.get("rhythm_candidates", [])),
+            bass_candidates=list(detected.get("bass_candidates", [])),
             profile=dict(detected.get("profile", {})),
             log=[str(line) for line in log],
             has_timeline=bool(detected.get("timeline")),

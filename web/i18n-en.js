@@ -1730,5 +1730,8 @@
  "Acorde falhado: não ouvi o ataque": "Missed chord: no strum heard",
  "Traste errado: ouvi o {traste} ({nota})": "Wrong fret: heard {traste} ({nota})",
  "Esta corda não se ouviu": "This string was not heard",
- "{n} notas e {c} acordes para tocar nesta pista.": "{n} notes and {c} chords to play on this chart."
+ "{n} notas e {c} acordes para tocar nesta pista.": "{n} notes and {c} chords to play on this chart.",
+  "Baixo — tons semelhantes": "Bass — similar tones",
+  "O baixo separado também foi lido: os tons de baixo abaixo vão só para o arranjo de baixo; os de guitarra nunca vão para o baixo.": "The separated bass was read too: the bass tones below go to the bass arrangement only; the guitar tones never go to the bass.",
+  "Estás a editar os tons do baixo: um tom de guitarra não vai para o baixo. Usa um dos tons de baixo, ou muda para outra pista.": "You are editing the bass's tones: a guitar tone does not go on the bass. Use one of the bass tones, or switch to another track."
 };
