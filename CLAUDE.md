@@ -4844,6 +4844,22 @@ build that contains them, nor played in game.
   right index) and the "C" arpeggio template + Fingerprints2, and the score
   drew both (Playwright, PT/EN, no page errors).
 
+**Two notes on ONE string are never a chord** (GitHub issue #11, BrunoSch22's
+files). `_group_chords` (sng_build AND writer, kept identical) grouped every
+note within `CHORD_EPSILON_S` (30 ms) of a group's first: a legato slide 14→12
+and its landing note 29 ms later on the same string became one "chord" whose
+template kept only the second fret, carrying PARENT + SLIDE with
+`chord_notes_id = -1`, and Rocksmith crashed on play (0xC0000005, ECX = -1). It
+looked tied to a tempo change at a /8 bar only because that tempo decided
+whether the gap was under 30 ms. Now a note never joins a group holding its
+string (the pair is a linked Parent/Child of single notes, the user's playing
+control), a chord with no ChordNotes never carries PARENT/SLIDE (DLC Builder's
+`createMaskForChord`), and `check_sng` flags `chord_link_without_chord_notes`
+— it finds the fault in both of the user's PSARCs. Guarded by
+`test_two_notes_on_one_string_are_never_a_chord` (fails on the old grouping);
+the user's two GP files rebuild with no chord and a clean check. Not played in
+game from here.
+
 **Repeated chords are marked HIGH DENSITY (condensed rendering).** A fast
 repeated identical chord — an 8th-note power-chord chug, say — must carry
 `NOTE_MASK_HIGHDENSITY` on every hit AFTER the first, so the game draws it

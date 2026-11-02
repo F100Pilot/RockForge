@@ -52,7 +52,9 @@ def _group_chords(notes: list[TabNote]) -> list[list[TabNote]]:
     ordered = sorted(notes, key=lambda n: (n.time, n.string))
     groups: list[list[TabNote]] = []
     for n in ordered:
-        if groups and n.time - groups[-1][0].time <= CHORD_EPSILON_S:
+        # never two notes of one string in a chord (sng_build._group_chords)
+        if (groups and n.time - groups[-1][0].time <= CHORD_EPSILON_S
+                and all(m.string != n.string for m in groups[-1])):
             groups[-1].append(n)
         else:
             groups.append([n])

@@ -31,6 +31,7 @@ from rockforge.infrastructure.packaging.psarc.sng import (
     NOTE_MASK_ARPEGGIO,
     NOTE_MASK_CHILD,
     NOTE_MASK_PARENT,
+    NOTE_MASK_SLIDE,
     SngArrangementLevel,
     SngFingerprint,
     SngModel,
@@ -179,6 +180,10 @@ def _check_level(lv: SngArrangementLevel, model: SngModel, bounds: list[float]) 
             # DLC Builder always carries an open string's OPEN bit in the chord's
             # notes; without them the game paints the chord solid.
             add("open_chord_without_chord_notes", t, model.chord_templates[n.chord_id].name)
+        linked = n.mask & (NOTE_MASK_PARENT | NOTE_MASK_SLIDE)
+        if n.chord_id >= 0 and n.chord_notes_id < 0 and linked:
+            # what crashed the game in GitHub issue #11
+            add("chord_link_without_chord_notes", t)
         # -1 = unused, 1 = the note is tapped/slapped/popped (sng_build), never 0
         if any(v not in (-1, 1) for v in (n.tap, n.slap, n.pluck)):
             add("note_unused_byte", t)
@@ -410,6 +415,9 @@ def describe(code: str) -> str:
         "open_chord_without_chord_notes": (
             "acorde com cordas soltas sem notas de acorde (o jogo pinta-o de cima a baixo)",
             "a chord with open strings and no chord notes (the game paints it top to bottom)"),
+        "chord_link_without_chord_notes": (
+            "acorde com ligação ou slide mas sem notas de acorde (o jogo fecha ao tocá-lo)",
+            "a chord with a link or slide but no chord notes (the game crashes when it plays)"),
         "note_unused_byte": ("nota com tap/slap/pluck que não é -1 nem 1",
                              "a note with tap/slap/pluck other than -1 or 1"),
         "note_without_anchor": ("nota sem âncora", "a note with no anchor"),

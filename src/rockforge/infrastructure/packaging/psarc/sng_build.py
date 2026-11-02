@@ -133,7 +133,12 @@ def _group_chords(
     ordered = sorted(notes, key=lambda n: (n.time, n.string))
     groups: list[list[TabNote]] = []
     for n in ordered:
-        if groups and n.time - groups[-1][0].time <= _CHORD_EPSILON_S:
+        # Two notes on ONE string are never a chord, however close (a fast
+        # slide into its landing note, GitHub issue #11): merged, the second
+        # overwrote the first in the template and left a link and a slide the
+        # game dereferenced through a chord with no chord notes — a crash.
+        if (groups and n.time - groups[-1][0].time <= _CHORD_EPSILON_S
+                and all(m.string != n.string for m in groups[-1])):
             groups[-1].append(n)
         else:
             groups.append([n])
@@ -1182,6 +1187,11 @@ def _build_sng_notes(
             mask |= NOTE_MASK_SUSTAIN
         if any(n.link_next for n in g):  # XmlToSngNote: chord.IsLinkNext -> Parent
             mask |= NOTE_MASK_PARENT
+        if cn_id < 0:
+            # A link and a slide are read per string, from the chord's notes;
+            # with none, there is nothing to hand them on from (DLC Builder's
+            # createMaskForChord never sets them on such a chord).
+            mask &= ~(NOTE_MASK_PARENT | NOTE_MASK_SLIDE)
         # A repeated identical chord renders condensed; without this the full
         # chord boxes of a fast chug stack into a corrupt highway sprite.
         if hd_flags[gi]:

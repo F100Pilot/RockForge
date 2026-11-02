@@ -212,3 +212,44 @@ def test_a_file_rockforge_did_not_put_there_is_never_deleted(tmp_path: Path) -> 
     assert other.exists() and result.removed is None
     assert hand_copied.exists()
     assert result.duplicates == (hand_copied,)  # said, so the song is not listed twice
+
+
+def test_two_notes_on_one_string_are_never_a_chord(tmp_path: Path) -> None:
+    """GitHub issue #11: a legato slide 14 → 12 and its landing note 29 ms later,
+    on the same string, were grouped as one 'chord' (within 30 ms). The second
+    note overwrote the first in the template, and the chord carried a link and
+    a slide with no chord notes to read them from — the game crashed on play.
+    They are now a linked pair of single notes, and the checker flags the old
+    shape."""
+    from rockforge.domain.music import Technique, resolve_links
+    from rockforge.infrastructure.packaging.psarc.sng import (
+        NOTE_MASK_CHILD,
+        NOTE_MASK_PARENT,
+        NOTE_MASK_SLIDE,
+    )
+    from rockforge.infrastructure.packaging.psarc.sng_build import _group_chords
+    from rockforge.infrastructure.rsxml.writer import render_arrangement
+
+    slide = TabNote(0, 14, 10.0, 0.029, techniques=frozenset({Technique.SLIDE}),
+                    slide_to_fret=12, link_next=True)
+    landing = TabNote(0, 12, 10.029, 0.5)
+    chart = _chart()
+    notes = resolve_links([n for n in chart.notes if not 9.0 < n.time < 11.0] + [slide, landing])
+    arr = replace(chart, notes=sorted(notes, key=lambda n: (n.time, n.string)))
+    assert all(len({n.string for n in g}) == len(g) for g in _group_chords(arr.notes))
+    model = from_arrangement(arr)
+    top = model.arrangements[-1]
+    pair = [n for n in top.notes if 9.99 < n.time < 10.04]
+    assert [n.chord_id for n in pair] == [-1, -1]
+    assert pair[0].mask & NOTE_MASK_PARENT and pair[0].mask & NOTE_MASK_SLIDE
+    assert pair[1].mask & NOTE_MASK_CHILD
+    assert check_sng(model) == []
+    root = render_arrangement(arr)
+    assert not [c for c in root.iter("chord") if 9.99 < float(c.get("time", "0")) < 10.04]
+    assert len([n for n in root.iter("note") if 9.99 < float(n.get("time", "0")) < 10.04]) == 2
+
+    # The old shape — a chord with Parent/Slide and no chord notes — is named.
+    chord_at = next(i for i, n in enumerate(top.notes) if n.chord_id >= 0)
+    top.notes[chord_at] = replace(top.notes[chord_at], chord_notes_id=-1,
+                                  mask=top.notes[chord_at].mask | NOTE_MASK_PARENT)
+    assert "chord_link_without_chord_notes" in _codes(model)
