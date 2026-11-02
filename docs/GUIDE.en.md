@@ -623,6 +623,11 @@ the knobs (drag, type the value, or double-click for the default). **Volume: hig
 - **Tones from your songs**: reads Rocksmith's `dlc` folder and lists the tones of all your
   songs (official and CDLC), searchable by artist and words. **Use in this project** copies a
   tone.
+- **Listen (approximation)** (▶): on a project tone, in the editor, in the library and in the
+  tones from your songs, plays a short phrase (a guitar riff, or a bass line for a bass tone)
+  with the tone's character — clean, crunch or distortion, dark or bright — so you can tell
+  tones apart in a long list. **It is not the real sound**: RockForge does not simulate amps; a
+  tone's true sound is only heard in the game (or in DLC Builder).
 
 ### Which tone each track plays
 
@@ -645,6 +650,8 @@ This is what goes into the game, after **Apply and rebuild**.
 - **Detect tone** separates the guitar (Demucs, minutes) and classifies the sound's character
   (clean, crunch, distorted), proposing presets from the game's catalogue ranked by likeness.
   It does not identify the real amp.
+  With a bass arrangement it also reads the separated bass and proposes bass tones, which go to
+  the bass only; a guitar tone never goes on the bass.
 - **Suggestions per section** proposes a tone for each part of each track (clean, rhythm,
   lead), from the recording and from what the track plays. A suggestion **changes nothing**
   until you press **Apply to this track** or **Apply to all tracks**. On each row you can

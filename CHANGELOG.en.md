@@ -9,6 +9,7 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 ### New
 
 - **Bass tones in the tone detection:** with a bass arrangement, **Detect tone** also reads the separated bass (Demucs already separates it along with the guitar) and proposes bass tones — clean, growl, overdrive and distortion, with the game's bass gear — ordered by how close they are to the recorded bass. "use" puts the chosen tone on the bass arrangement only. And a guitar tone can no longer go on the bass: with the bass's tones on screen, "use" on a guitar tone is refused and says why.
+- **Listen to a tone (approximation):** the project's tones, the tone editor, the library and the tones from your songs have a ▶ **Listen (approximation)** button that plays a short phrase — a guitar riff, or a bass line for a bass tone — with the tone's character: clean, crunch or distortion, dark or bright. It helps tell tones apart in a long list. **It is not the tone's real sound**: RockForge does not simulate amps; the true sound only exists in the game (or in DLC Builder).
 
 ### Fixes
 

@@ -625,6 +625,11 @@ maior = mais alto** (0,1–36). **Guardar tom**.
 - **Tons das tuas músicas**: lê a pasta `dlc` do Rocksmith e lista os tons de todas as tuas
   músicas (oficiais e CDLC), com pesquisa por artista e por palavras. **Usar neste projeto**
   copia um tom.
+- **Ouvir (aproximação)** (▶): num tom do projeto, no editor, na biblioteca e nos tons das tuas
+  músicas, toca uma frase curta (um riff de guitarra, ou uma linha de baixo para um tom de baixo)
+  com o carácter do tom — limpo, crunch ou distorção, escuro ou brilhante —, para os distinguires
+  numa lista grande. **Não é o som real**: o RockForge não simula amplificadores; o som
+  verdadeiro do tom só se ouve no jogo (ou no DLC Builder).
 
 ### Que tom toca cada pista
 
@@ -647,6 +652,8 @@ Em **Tons de cada pista**:
 - **Detetar tom** separa a guitarra (Demucs, minutos) e classifica o carácter do som (limpo,
   crunch, distorcido), propondo presets do catálogo do jogo ordenados pela semelhança. Não
   identifica o amplificador real.
+  Com um arranjo de baixo, lê também o baixo separado e propõe tons de baixo, que vão só para o
+  baixo; um tom de guitarra nunca vai para o baixo.
 - **Sugestões por secção** propõe um tom para cada parte de cada pista (limpo, rhythm, lead),
   pela gravação e pelo que a pista toca. Uma sugestão **não muda nada** até carregares em
   **Aplicar a esta pista** ou **Aplicar a todas as pistas**. Em cada linha podes trocar o tom

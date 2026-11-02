@@ -205,6 +205,7 @@
   .tn-dot { flex:0 0 .9rem; width:.9rem; height:.9rem; border-radius:50%; }
   .tn-tone-gear { font-size:.95rem; color:#a9acb6; }
   .tn-tags { display:flex; gap:.5rem; flex-wrap:wrap; }
+  .tn-listen { align-self:flex-start; }
   .tn-tag { font-size:.9rem; padding:.3rem .75rem; border-radius:999px; background:#262831; color:#d6d8de; }
   .tn-standard { display:flex; flex-direction:column; gap:.6rem; font-size:1rem; color:#c4c6cd; }
   .tn-standard .pv-chip { align-self:flex-start; font-size:.95rem; height:2.2rem; }
@@ -2375,6 +2376,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
           <div class="meta" style="margin-bottom:.3rem">Biblioteca <button class="info-btn" data-info="tone-library">ⓘ</button></div>
           <select id="toneLibSelect" style="width:100%"><option value="">—</option></select>
           <div class="anchor-row" style="margin-top:.35rem;gap:.35rem">
+            <button type="button" id="toneLibListen" class="secondary" title="Ouvir uma aproximação deste tom — não é o som real do jogo" aria-label="Ouvir uma aproximação deste tom — não é o som real do jogo"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg></button>
             <button type="button" id="toneLibLoad" class="secondary"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg> Carregar</button>
             <button type="button" id="toneLibDelete" class="secondary" title="Remover da biblioteca" aria-label="Remover da biblioteca"><svg class="ic" aria-hidden="true"><use href="#i-trash"/></svg></button>
           </div>
@@ -2411,6 +2413,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
           </div>
           <div class="modal-actions">
             <button type="button" id="teDelete" class="danger" style="margin-right:auto">Remover tom</button>
+            <button type="button" id="teListen" class="secondary" title="Uma aproximação do carácter deste tom (limpo, crunch, distorção, escuro ou brilhante) — não é o som real do amplificador, que só existe no jogo ou no DLC Builder."><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg> Ouvir (aproximação)</button>
             <button type="button" id="teSaveLibrary" class="secondary"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg> Biblioteca</button>
             <button type="button" id="teSave">Guardar tom</button>
           </div>

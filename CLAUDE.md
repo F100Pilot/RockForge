@@ -4494,6 +4494,28 @@ Playwright on `/onset-levels` answers planted at a known distance from each beat
 grey; switching the metronome off removes the lane; no page errors. The readings carry the
 bars' 10 ms resolution. Not tried on a real separated drum track from here.
 
+**"Ouvir (aproximação)" on a tone** (GitHub issue #17: "with so many tones
+listing them all by name … a preview button"). `previewTone(tone)` plays a short
+phrase — a guitar riff (`TONE_PREVIEW_GUITAR`, power chords strummed
+`STRUM_S` apart + a lick) or, for a tone whose amp is `Bass_…`
+(`isBassToneDict`), a bass line (`TONE_PREVIEW_BASS`, from E1) — through the
+same `voiceNote` as the score's ticks with `toneCharacter(tone)`, so it says
+what the tick says: drive and brightness, never the amp. A new press stops the
+previous one (`stopTonePreview`). Buttons: every `toneCardHtml` card (a
+`.tn-listen` with `data-listen-id` → `listenTones`, one delegated listener — the
+cards are also drawn for a pasted tone plan, whose tones are not in
+`jobTones`), the tone editor (`#teListen`, the gear on screen unsaved —
+`toneEditorGear`, which "Guardar tom" now builds its tone from too), the library
+(`#toneLibListen`) and each tone-collection card (fetched once,
+`collectionToneCache`). Every label/title and the ⓘ say it is an approximation
+and that a tone's real sound only exists in the game or DLC Builder. Recording
+the user's own instrument through the tone (the issue's other idea) would need
+amp simulation RockForge does not have — not built. Browser-only; verified with
+Playwright (PT 1440 / EN 760 px): a guitar tone's card played 15 notes from
+82 Hz at its drive, a bass tone's 7 from 41 Hz, the second press stopped the
+first, the editor's button and "Guardar tom" after the refactor, no page errors.
+Not listened to from here.
+
 **On-score tone identification.** The active tone is shown on the tab viewer: an
 amber 🎸 label per tone change (plus the base tone at the start,
 `activeToneKeyAtDisplay`) and a live `#liveTone` label next to the BPM

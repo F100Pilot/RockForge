@@ -1819,6 +1819,7 @@ const INFO = {
 <p><strong>Atribuir:</strong> escolhe o <strong>Tom base</strong> (o que toca no início) e marca até <strong>4</strong> tons "extra" que poderás trocar ao longo da música.</p>
 <p><strong>Trocar a meio:</strong> com o modo "Mudança de tom" ativo, clica numa nota na partitura para colocar lá uma troca para um dos tons extra. Para mudar o tempo em que entra, arrasta a marca laranja na partitura, ou escreve o tempo (ou carrega em "= cursor") na lista "Tons de cada pista".</p>
 <p><strong>Por pista:</strong> no jogo os tons são <strong>por arranjo</strong>. Com "Mesmos tons em todas as pistas" marcado, todas usam o mesmo conjunto; desmarcado, cada pista (a que está aberta na partitura) tem o seu tom base, extras e trocas — o Lead pode ir para um tom de solo enquanto o Rhythm fica no crunch. Os tons criados são partilhados.</p>
+<p><strong>Ouvir (aproximação):</strong> o botão ▶ num tom toca uma frase curta com o carácter dele — limpo, crunch ou distorção, escuro ou brilhante — para os distinguires numa lista grande. <strong>Não é o som real</strong>: o RockForge não simula amplificadores; o som verdadeiro do tom só existe no jogo (ou no DLC Builder), que o gera a partir do equipamento escolhido.</p>
 <p>Só se aplicam a projetos de Guitar Pro. Sem tons definidos, o DLC Builder marca "tone missing" e resolves com a biblioteca dele.</p>`)
   },
   'tone-plan': {
@@ -6197,8 +6198,69 @@ function toneCardHtml(t) {
     <div class="tn-tone-name"><span class="tn-dot" style="background:${kind.color}"></span>${esc(t.name || t.key)}</div>
     ${gear ? `<div class="tn-tone-gear">${esc(gear)}</div>` : ''}
     <div class="tn-tags"><span class="tn-tag">${kind.label}</span>${vol != null ? `<span class="tn-tag">${T('Volume {v}', { v: vol })}</span>` : ''}</div>
+    ${listenButtonHtml(t)}
   </div>`;
 }
+
+// ── "Ouvir" a tone — an APPROXIMATION, never the game's sound ──
+// RockForge does not model amps: the real sound of a tone exists only in the
+// game (or DLC Builder), which renders it from the gear keys. What plays here
+// is the score's own preview voice (a plucked string, voiceNote) shaped by the
+// tone's character — drive and brightness read from its descriptors, amp knobs
+// and pedals (toneCharacter) — through the shared cabinet EQ: enough to tell a
+// clean tone from a crunch or a high-gain one, or a dark one from a bright one,
+// among many tones listed by name (GitHub issue #17). A bass tone plays a bass
+// line, a guitar tone a short riff.
+const TONE_PREVIEW_GUITAR = [  // [start s, MIDI notes, length s]
+  [0.00, [40, 47, 52], 0.55], [0.60, [40, 47, 52], 0.22], [0.90, [43, 50, 55], 0.6],
+  [1.55, [64], 0.2], [1.75, [67], 0.2], [1.95, [69], 0.7], [2.75, [45, 52, 57], 1.3],
+];
+const TONE_PREVIEW_BASS = [
+  [0.00, [28], 0.35], [0.40, [28], 0.35], [0.80, [31], 0.35], [1.20, [33], 0.6],
+  [1.90, [40], 0.3], [2.25, [38], 0.3], [2.60, [33], 1.2],
+];
+const STRUM_S = 0.012;
+let tonePreviewSrcs = [];
+const listenTones = new Map();  // data-listen-id → the tone a card shows
+let listenSeq = 0;
+
+function listenButtonHtml(tone) {
+  const id = `l${++listenSeq}`;
+  listenTones.set(id, tone);
+  return `<button type="button" class="secondary tn-listen" data-listen-id="${id}" title="${esc(T('Uma aproximação do carácter deste tom (limpo, crunch, distorção, escuro ou brilhante) — não é o som real do amplificador, que só existe no jogo ou no DLC Builder.'))}">${icon('play')}${T('Ouvir (aproximação)')}</button>`;
+}
+
+function isBassToneDict(tone) {
+  return !!(tone && tone.amp && /^Bass_/.test(tone.amp.key || ''));
+}
+
+function stopTonePreview() {
+  for (const src of tonePreviewSrcs) { try { src.stop(); } catch { /* already stopped */ } }
+  tonePreviewSrcs = [];
+}
+
+function previewTone(tone) {
+  if (!tone) return;
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  stopTonePreview();
+  const ch = toneCharacter(tone) || { drive: 0, bright: 0.5 };
+  const phrase = isBassToneDict(tone) ? TONE_PREVIEW_BASS : TONE_PREVIEW_GUITAR;
+  const t0 = audioCtx.currentTime + 0.05;
+  for (const [at, notes, len] of phrase) {
+    const peak = notes.length > 1 ? 0.32 : 0.5;
+    notes.forEach((m, i) => {
+      tonePreviewSrcs.push(voiceNote(audioCtx, audioCtx.destination, midiToHz(m),
+        t0 + at + i * STRUM_S, len, peak, ch));
+    });
+  }
+}
+
+document.addEventListener('click', e => {
+  const btn = e.target.closest && e.target.closest('.tn-listen');
+  if (!btn) return;
+  previewTone(listenTones.get(btn.dataset.listenId));
+});
 
 // A bundle-clock time as the recording's m:ss.t, the clock the score shows.
 function fmtClockTenths(s) {
@@ -6534,6 +6596,11 @@ function populateToneLibSelect() {
     toneLibrary.map(t => `<option value="${esc(t.key)}">${esc(t.name || t.key)}</option>`).join('');
   if (toneLibrary.some(t => t.key === prev)) sel.value = prev;
 }
+document.getElementById('toneLibListen').addEventListener('click', () => {
+  const src = toneLibrary.find(t => t.key === document.getElementById('toneLibSelect').value);
+  if (!src) { toast(T('Escolhe um tom da biblioteca.')); return; }
+  previewTone(src);
+});
 document.getElementById('toneLibLoad').addEventListener('click', () => {
   const key = document.getElementById('toneLibSelect').value;
   const src = toneLibrary.find(t => t.key === key);
@@ -6710,9 +6777,27 @@ function renderToneCollList(data) {
     lib.setAttribute('aria-label', T('Guardar na biblioteca'));
     lib.innerHTML = icon('star');
     lib.addEventListener('click', () => takeCollectionTone(e.id, 'library'));
-    card.append(body, use, lib);
+    const hear = document.createElement('button');
+    hear.type = 'button';
+    hear.className = 'secondary';
+    hear.title = T('Ouvir uma aproximação deste tom — não é o som real do jogo');
+    hear.setAttribute('aria-label', hear.title);
+    hear.innerHTML = icon('play');
+    hear.addEventListener('click', () => listenCollectionTone(e.id));
+    card.append(body, hear, use, lib);
     list.append(card);
   }
+}
+const collectionToneCache = new Map();
+async function listenCollectionTone(id) {
+  let tone = collectionToneCache.get(id);
+  if (!tone) {
+    try {
+      tone = (await getJSON(`/tone-collection/tone?id=${encodeURIComponent(id)}`)).tone;
+    } catch (e) { toast(e.message); return; }
+    collectionToneCache.set(id, tone);
+  }
+  previewTone(tone);
 }
 async function takeCollectionTone(id, where, row) {
   let tone;
@@ -7101,13 +7186,9 @@ function slugify(s) {
     .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'tom';
 }
 
-document.getElementById('teSave').addEventListener('click', () => {
-  const name = document.getElementById('teName').value.trim();
-  if (!name) { toast(T('Dá um nome ao tom.')); return; }
-  const ampKey = document.getElementById('teAmp').value;
-  const cabKey = document.getElementById('teCab').value;
-  if (!ampKey || !cabKey) { toast(T('Escolhe amplificador e cabine.')); return; }
-
+// The gear the editor shows, as a tone (no key): what "Guardar tom" stores
+// and what "Ouvir" plays, unsaved changes included.
+function toneEditorGear() {
   const descriptors = document.getElementById('teDescriptors').value
     .split(',').map(s => s.trim()).filter(Boolean)
     .map(descriptorNameToCode).filter(Boolean);
@@ -7120,6 +7201,27 @@ document.getElementById('teSave').addEventListener('click', () => {
     const pedal = { key: gearSel.value, knobs: readKnobs(row.querySelector('.te-eff-knobs')) };
     (cat === 'rack' ? racks : cat === 'post' ? post : pre).push(pedal);
   });
+  return {
+    volume: -Math.min(36, Math.max(0.1, parseFloat(document.getElementById('teVolume').value) || 18)),
+    descriptors,
+    amp: { key: document.getElementById('teAmp').value, knobs: readKnobs(document.getElementById('teAmpKnobs')) },
+    cabinet: { key: document.getElementById('teCab').value, knobs: {} },
+    pre, post, racks,
+  };
+}
+
+document.getElementById('teListen').addEventListener('click', () => {
+  const gear = toneEditorGear();
+  if (!gear.amp.key) { toast(T('Escolhe amplificador e cabine.')); return; }
+  previewTone(gear);
+});
+
+document.getElementById('teSave').addEventListener('click', () => {
+  const name = document.getElementById('teName').value.trim();
+  if (!name) { toast(T('Dá um nome ao tom.')); return; }
+  const ampKey = document.getElementById('teAmp').value;
+  const cabKey = document.getElementById('teCab').value;
+  if (!ampKey || !cabKey) { toast(T('Escolhe amplificador e cabine.')); return; }
 
   let key = editingToneKey;
   if (!key) {
@@ -7127,14 +7229,7 @@ document.getElementById('teSave').addEventListener('click', () => {
     let n = 1, base = key;
     while (jobTones.some(t => t.key === key)) key = `${base}_${++n}`;
   }
-  const tone = {
-    key, name,
-    volume: -Math.min(36, Math.max(0.1, parseFloat(document.getElementById('teVolume').value) || 18)),
-    descriptors,
-    amp: { key: ampKey, knobs: readKnobs(document.getElementById('teAmpKnobs')) },
-    cabinet: { key: cabKey, knobs: {} },
-    pre, post, racks,
-  };
+  const tone = { key, name, ...toneEditorGear() };
   const i = jobTones.findIndex(t => t.key === key);
   if (i >= 0) jobTones[i] = tone; else jobTones.push(tone);
   editingToneKey = key;
