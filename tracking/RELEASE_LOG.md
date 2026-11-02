@@ -39,7 +39,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0360](bugs/tones.md#bug-0360) Using a detected tone one by one listed every project tone as switchable, so a rebuild with 5 or more was refused (Medium, now Fixed)
 - [BUG-0361](bugs/tones.md#bug-0361) A Bass chart with no tones of its own took the song's guitar tones (a guitar amp on the bass) (Medium, now Verified)
 - [BUG-0362](bugs/psarc.md#bug-0362) Two notes on one string within 30 ms became a chord with a dangling link and slide, and Rocksmith crashed on play (High, now Verified)
-- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Open)
+- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -70,7 +70,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 
 - [BUG-0358](bugs/viewer.md#bug-0358) The Score's Audio panel opened past the left edge of a narrow window (Low, now Verified)
 - [BUG-0362](bugs/psarc.md#bug-0362) Two notes on one string within 30 ms became a chord with a dangling link and slide, and Rocksmith crashed on play (High, now Verified)
-- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Open)
+- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -106,7 +106,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0355](bugs/lyrics.md#bug-0355) Lyrics drift further off along the song: a tied note in the vocal line takes a syllable (Medium, now Verified)
 - [BUG-0356](bugs/viewer.md#bug-0356) Chords lag when they play on the score, and a six-string chord sounds only three strings (Medium, now Verified)
 - [BUG-0362](bugs/psarc.md#bug-0362) Two notes on one string within 30 ms became a chord with a dangling link and slide, and Rocksmith crashed on play (High, now Verified)
-- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Open)
+- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -138,7 +138,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 
 - [BUG-0352](bugs/lyrics.md#bug-0352) Lyrics of a Songsterr tab land later and later: a grace note in the vocal line gets no syllable (Medium, now Verified)
 - [BUG-0362](bugs/psarc.md#bug-0362) Two notes on one string within 30 ms became a chord with a dangling link and slide, and Rocksmith crashed on play (High, now Verified)
-- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Open)
+- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -181,7 +181,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0350](bugs/viewer.md#bug-0350) Clicking a note on the score lights the previous note on the fretboard too (Low, now Verified)
 - [BUG-0351](bugs/viewer.md#bug-0351) The cursor and lit notes run ahead of the sound during playback, by the output latency (Medium, now Verified)
 - [BUG-0362](bugs/psarc.md#bug-0362) Two notes on one string within 30 ms became a chord with a dangling link and slide, and Rocksmith crashed on play (High, now Verified)
-- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Open)
+- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -219,7 +219,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0343](bugs/import.md#bug-0343) A chart whose GP track has no notes fails with a bare 'arrangement has no notes' that names neither the chart nor the track (Low, now Verified)
 - [BUG-0344](bugs/sync.md#bug-0344) Creating a job from Songsterr fails with 422 when the video's bar marks start before the video (negative times) (Medium, now Verified)
 - [BUG-0345](bugs/sync.md#bug-0345) A tab imported from Songsterr drifts away from Songsterr's own recording: the tempo's decimals and mid-bar changes are lost (High, now Verified)
-- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Open)
+- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -278,7 +278,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0342](bugs/app.md#bug-0342) Earlier jobs break when the work dir moves: bundle, recording, GP file and stems stored as absolute paths (Medium, now Verified)
 - [BUG-0343](bugs/import.md#bug-0343) A chart whose GP track has no notes fails with a bare 'arrangement has no notes' that names neither the chart nor the track (Low, now Verified)
 - [BUG-0344](bugs/sync.md#bug-0344) Creating a job from Songsterr fails with 422 when the video's bar marks start before the video (negative times) (Medium, now Verified)
-- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Open)
+- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -347,7 +347,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0335](bugs/editor.md#bug-0335) The merge bar grid piled up listeners each time Editar info opened (Low, now Verified)
 - [BUG-0336](bugs/viewer.md#bug-0336) The 3D highway could start drawing after being closed while loading (Low, now Verified)
 - [BUG-0337](bugs/psarc.md#bug-0337) Two songs whose names share the first 30 letters get the same song key (Low, now Verified)
-- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Open)
+- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -416,7 +416,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0335](bugs/editor.md#bug-0335) The merge bar grid piled up listeners each time Editar info opened (Low, now Verified)
 - [BUG-0336](bugs/viewer.md#bug-0336) The 3D highway could start drawing after being closed while loading (Low, now Verified)
 - [BUG-0337](bugs/psarc.md#bug-0337) Two songs whose names share the first 30 letters get the same song key (Low, now Verified)
-- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Open)
+- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -448,7 +448,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 
 **Known bugs it carried:** 
 
-- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Open)
+- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -475,7 +475,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 
 **Known bugs it carried:** 
 
-- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Open)
+- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -507,7 +507,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 
 **Known bugs it carried:** 
 
-- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Open)
+- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -535,7 +535,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 **Known bugs it carried:** 
 
 - [BUG-0295](bugs/sync.md#bug-0295) Dragging a selection stretched the notes before it when another correction was pending (Medium, now Closed)
-- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Open)
+- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -562,7 +562,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 
 **Known bugs it carried:** 
 
-- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Open)
+- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -600,7 +600,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 
 **Known bugs it carried:** 
 
-- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Open)
+- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -631,7 +631,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 
 **Known bugs it carried:** 
 
-- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Open)
+- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -658,7 +658,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 
 **Known bugs it carried:** 
 
-- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Open)
+- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -693,7 +693,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 **Known bugs it carried:** 
 
 - [BUG-0288](bugs/game.md#bug-0288) Open-string chords without sustain were painted solid top to bottom in game (High, now Closed)
-- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Open)
+- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 

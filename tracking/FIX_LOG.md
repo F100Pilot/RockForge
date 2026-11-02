@@ -367,6 +367,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0359](#fix-0359) | BUG-0360 | unreleased | not run | manual |
 | [FIX-0360](#fix-0360) | BUG-0361 | unreleased | passed | automated |
 | [FIX-0361](#fix-0361) | BUG-0362 | unreleased | passed | automated |
+| [FIX-0362](#fix-0362) | BUG-0363 | unreleased | not run | manual |
 
 ## FIX-0001
 
@@ -7948,3 +7949,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | passed |
 | Validation | automated |
 | Regression risk | Low: only notes of one string within 30 ms are affected; they are now single notes. |
+
+## FIX-0362
+
+**Bugs:** [BUG-0363](bugs/viewer.md#bug-0363)
+
+**Root cause:** loadArrangements seeded centOffsetLive from the first chart's XML CentOffset, which for a bass at A220 is -1200 (the low-tuning fix), and applyAllNow always sends cent_offset.
+
+**Solution:** recordingCents(a) adds the 1200 back for a bass at cent offset <= -1100; the field, its 'built' value and the practice mode use it.
+
+| | |
+|---|---|
+| Date | 2026-11-02 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | d63e64dfa5c4e08d59fe3fee4f989987e9dccc25 |
+| Components | web/app.js |
+| Tests | — |
+| Manual checks | Playwright on a live server (EN 760 / PT 1440 px): an invented Drop D bass rebuilt at A220 showed -1200 and its rebuild was a 422; with the fix the field reads 0.0, the rebuild is accepted and builds at -1200, and -20 typed builds -1220; no page errors |
+| Test result | not run |
+| Validation | manual |
+| Regression risk | Low: only changes the value the viewer seeds and sends for a bass at A220. |

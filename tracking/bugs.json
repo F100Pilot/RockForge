@@ -18158,25 +18158,42 @@
       "found_in_version": "0.10.0-beta.10",
       "found_in_build": "pending",
       "module": "viewer",
-      "description": "Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200",
-      "steps": "pending",
-      "expected": "pending",
-      "observed": "pending",
+      "description": "Applying detected tones (or any edit) and pressing Apply and rebuild on a project whose first chart is a bass written at A220 was refused with a 422: cent_offset -1200 must be >= -50.",
+      "steps": [
+        "A bass-only project with the bass at A220 (Edit info, or a tuning below -4 semitones in Auto)",
+        "Open the score, press Apply and rebuild"
+      ],
+      "expected": "The project rebuilds, keeping A220.",
+      "observed": "422 [{\"type\":\"greater_than_equal\",\"loc\":[\"body\",\"cent_offset\"],\"input\":-1200,\"ctx\":{\"ge\":-50}}] (the reporter's screenshot); reproduced on an invented Drop D bass at A220.",
       "severity": "High",
       "priority": "P1",
-      "status": "Open",
-      "root_cause": "pending",
-      "fixes": [],
-      "verified_by": "pending",
-      "verification": "pending",
-      "evidence": [],
-      "resolved": "pending",
+      "status": "Verified",
+      "root_cause": "loadArrangements seeded centOffsetLive from the first chart's XML CentOffset, which for a bass at A220 is -1200 (the low-tuning fix), and applyAllNow always sends cent_offset.",
+      "fixes": [
+        "FIX-0362"
+      ],
+      "verified_by": "the developer (Playwright on a live server)",
+      "verification": "manual: the reporter's error reproduced on an invented bass-only A220 project and gone with the fix; real rebuilds keep A220; not tried by the reporter yet",
+      "evidence": [
+        "2026-11-02: 422 before, 202 and a build at CentOffset -1200 after; -20 builds -1220"
+      ],
+      "resolved": "2026-11-02",
       "closed": "pending",
       "history": [
         {
           "date": "2026-11-02",
           "status": "Open",
           "note": "reported"
+        },
+        {
+          "date": "2026-11-02",
+          "status": "Fixed",
+          "note": "commit d63e64dfa5"
+        },
+        {
+          "date": "2026-11-02",
+          "status": "Verified",
+          "note": "Playwright with real rebuilds of a bass-only A220 project"
         }
       ]
     }

@@ -1720,24 +1720,33 @@ At 760 px the Áudio ▾ panel, anchored to its trigger's right edge, opened pas
 | Build / commit | _pending_ |
 | Severity | High |
 | Priority | P1 |
-| Status | Open |
+| Status | Verified |
 
-Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200
+Applying detected tones (or any edit) and pressing Apply and rebuild on a project whose first chart is a bass written at A220 was refused with a 422: cent_offset -1200 must be >= -50.
 
-**Steps to reproduce:** _pending_
+**Steps to reproduce:** 
 
-**Expected:** _pending_
+1. A bass-only project with the bass at A220 (Edit info, or a tuning below -4 semitones in Auto)
+2. Open the score, press Apply and rebuild
 
-**Observed:** _pending_
+**Expected:** The project rebuilds, keeping A220.
 
-**Root cause:** _pending_
+**Observed:** 422 [{"type":"greater_than_equal","loc":["body","cent_offset"],"input":-1200,"ctx":{"ge":-50}}] (the reporter's screenshot); reproduced on an invented Drop D bass at A220.
 
-**Fixes:** —
+**Root cause:** loadArrangements seeded centOffsetLive from the first chart's XML CentOffset, which for a bass at A220 is -1200 (the low-tuning fix), and applyAllNow always sends cent_offset.
 
-**Verified:** _pending_ (by _pending_)
+**Fixes:** [FIX-0362](../FIX_LOG.md#fix-0362) (unreleased)
 
-**Resolved:** _pending_ · **Closed:** _pending_
+**Verified:** manual: the reporter's error reproduced on an invented bass-only A220 project and gone with the fix; real rebuilds keep A220; not tried by the reporter yet (by the developer (Playwright on a live server))
+
+**Resolved:** 2026-11-02 · **Closed:** _pending_
+
+**Evidence:**
+
+- 2026-11-02: 422 before, 202 and a build at CentOffset -1200 after; -20 builds -1220
 
 **History:**
 
 - 2026-11-02 — Open: reported
+- 2026-11-02 — Fixed: commit d63e64dfa5
+- 2026-11-02 — Verified: Playwright with real rebuilds of a bass-only A220 project
