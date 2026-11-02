@@ -369,12 +369,12 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0361](#fix-0361) | BUG-0362 | 0.12.0-beta.2 | passed | automated |
 | [FIX-0362](#fix-0362) | BUG-0363 | 0.12.0-beta.2 | not run | manual |
 | [FIX-0363](#fix-0363) | BUG-0364 | 0.12.0-beta.2 | passed | automated |
-| [FIX-0364](#fix-0364) | BUG-0365 | unreleased | passed | automated |
-| [FIX-0365](#fix-0365) | BUG-0366 | unreleased | passed | automated |
-| [FIX-0366](#fix-0366) | BUG-0367 | unreleased | passed | automated |
-| [FIX-0367](#fix-0367) | BUG-0368 | unreleased | passed | automated |
-| [FIX-0368](#fix-0368) | BUG-0369 | unreleased | passed | automated |
-| [FIX-0369](#fix-0369) | BUG-0370 | unreleased | passed | automated |
+| [FIX-0364](#fix-0364) | BUG-0365 | 0.12.0-beta.3 | passed | automated |
+| [FIX-0365](#fix-0365) | BUG-0366 | 0.12.0-beta.3 | passed | automated |
+| [FIX-0366](#fix-0366) | BUG-0367 | 0.12.0-beta.3 | passed | automated |
+| [FIX-0367](#fix-0367) | BUG-0368 | 0.12.0-beta.3 | passed | automated |
+| [FIX-0368](#fix-0368) | BUG-0369 | 0.12.0-beta.3 | passed | automated |
+| [FIX-0369](#fix-0369) | BUG-0370 | 0.12.0-beta.3 | passed | automated |
 
 ## FIX-0001
 
@@ -8011,7 +8011,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-02 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.3 |
 | Commits | 91f412def9ba2af2064890bb77dab49666799bd4 |
 | Components | src/rockforge/domain/music.py; src/rockforge/application/gp_pipeline.py |
 | Tests | tests/test_grid_lead.py |
@@ -8032,7 +8032,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-02 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.3 |
 | Commits | a95195a774cc1576c23ec7219dbc966aabe95af2 |
 | Components | pyproject.toml; PDF-to-GP5: app/extract/bar_signs.py, app/extract/engraved_tab.py, app/rhythm.py, app/converter.py |
 | Tests | PDF-to-GP5 tests/test_extract.py::test_an_empty_bar_with_a_count_over_it_is_that_many_bars_of_rest |
@@ -8053,7 +8053,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-02 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.3 |
 | Commits | f33821321e9dc40fdcb92a737df866a86626deb7 |
 | Components | src/rockforge/infrastructure/tone_collection.py; src/rockforge/interfaces/api/routers/tones.py; web/app.js |
 | Tests | tests/test_tone_collection.py::test_a_folder_or_file_without_permission_is_skipped_not_fatal |
@@ -8074,7 +8074,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-02 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.3 |
 | Commits | 8340afd10603d2e8633bff7e3ac5c85afe5fbdb0 |
 | Components | src/rockforge/infrastructure/packaging/gear/tone_presets.py; src/rockforge/interfaces/worker/celery_app.py; src/rockforge/interfaces/api/schemas.py; src/rockforge/interfaces/api/routers/tones.py; web/app.js |
 | Tests | tests/test_celery_tasks.py::test_detect_tones_ranks_bass_tones_from_the_separated_bass; tests/test_celery_tasks.py::test_detect_tones_without_a_bass_stem_proposes_no_bass_tones; tests/test_tone_detection.py::test_bass_presets_are_bass_gear_ranked_by_the_bass_gain; tests/test_api.py::test_detected_tones_hand_out_the_bass_candidates |
@@ -8095,7 +8095,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-02 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.3 |
 | Commits | 9350fec0b5725442461f2df6a2b8df53b1d6400c |
 | Components | src/rockforge/infrastructure/gpimport/songsterr_gp.py |
 | Tests | tests/test_songsterr_gp.py::test_a_beat_lasts_the_duration_songsterr_plays_whatever_its_flags_say |
@@ -8116,7 +8116,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-02 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.3 |
 | Commits | 135714a8277e6eb6320e91d0fc182c6d34abad36 |
 | Components | src/rockforge/infrastructure/gpimport/songsterr_gp.py |
 | Tests | tests/test_songsterr_gp.py::test_a_section_the_tab_repeats_is_played_as_often_as_it_says; tests/test_songsterr_gp.py::test_a_bar_that_says_it_plays_once_is_no_repeat |

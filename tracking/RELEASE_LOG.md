@@ -4,6 +4,39 @@
 
 Every version, newest first. What a version fixed and the bugs it still carried come from the bug and fix registers. Process: [docs/RELEASE_PROCESS.md](../docs/RELEASE_PROCESS.md).
 
+## 0.12.0-beta.3
+
+| | |
+|---|---|
+| Status | Beta |
+| Created | 2026-11-02 |
+| Published | _pending_ |
+| Commit | _pending_ |
+| Build | GitHub Actions release workflow |
+| Artifacts | — |
+| Tests | CI (ruff, mypy, pytest, ESLint, Docker build) on the release commit, tools/release_check, and the frozen .exe smoke test of the release workflow |
+| Approved by | the maintainer (asked for the release) |
+
+**Goal:** Songsterr repeats and durations, bass tone detection, tone preview, dlc scan permissions, PDF x19 rests, intro grid
+
+**New:**
+
+- Bass tones in the tone detection
+- Listen to a tone (approximation)
+
+**Bugs fixed:** 
+
+- [BUG-0365](bugs/game.md#bug-0365) The game skipped the recording's intro when the chart's bar 1 starts long after the recording does
+- [BUG-0366](bugs/import.md#bug-0366) A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar
+- [BUG-0367](bugs/tones.md#bug-0367) The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it
+- [BUG-0368](bugs/tones.md#bug-0368) The tone detection proposed guitar tones only, so a bass chart could be given a guitar amp from it
+- [BUG-0369](bugs/import.md#bug-0369) A tab imported from Songsterr played some notes after dotted rests too early
+- [BUG-0370](bugs/import.md#bug-0370) A Songsterr tab with repeats is imported with each repeated section played once, so the chart ends early
+
+**Known bugs it carried:** —
+
+**Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
+
 ## 0.12.0-beta.2
 
 | | |

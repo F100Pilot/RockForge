@@ -911,7 +911,7 @@ Reading the dlc folder for the tone collection stopped with 'PermissionError: [W
 
 **Root cause:** _psarcs used Path.rglob + is_file and scan called stat() unguarded; a refused entry raised out of the whole scan.
 
-**Fixes:** [FIX-0366](../FIX_LOG.md#fix-0366) (unreleased)
+**Fixes:** [FIX-0366](../FIX_LOG.md#fix-0366) (0.12.0-beta.3)
 
 **Verified:** _pending_ (by _pending_)
 
@@ -949,7 +949,7 @@ With a bass arrangement, 'Detect tone' listed Lead and Rhythm guitar tones only;
 
 **Root cause:** detect_tones analysed the guitar stem only and ranked the guitar libraries; the 'use' buttons wrote into whichever tone set was on screen, the Bass's included.
 
-**Fixes:** [FIX-0367](../FIX_LOG.md#fix-0367) (unreleased)
+**Fixes:** [FIX-0367](../FIX_LOG.md#fix-0367) (0.12.0-beta.3)
 
 **Verified:** _pending_ (by _pending_)
 

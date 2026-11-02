@@ -6,6 +6,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+## [0.12.0 beta 3] — 2026-11-02
+
 ### Novidades
 
 - **Tons de baixo na deteção de tons:** com um arranjo de baixo, o **Detetar tom** lê também o baixo separado (o Demucs já o separa ao mesmo tempo que a guitarra) e propõe tons de baixo — limpo, com corpo, overdrive e distorção, com equipamento de baixo do jogo — ordenados pela semelhança com o baixo gravado. "usar" põe o tom escolhido só no arranjo de baixo. E um tom de guitarra deixou de poder ir para o baixo: com os tons do baixo no ecrã, "usar" num tom de guitarra é recusado e diz porquê.

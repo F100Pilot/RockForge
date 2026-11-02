@@ -374,9 +374,9 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0362](bugs/psarc.md#bug-0362) | Two notes on one string within 30 ms became a chord with a dangling link and slide, and Rocksmith crashed on play | psarc | High | P1 | Verified | 0.11.1-beta.2 | 0.12.0-beta.2 |
 | [BUG-0363](bugs/viewer.md#bug-0363) | Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 | viewer | High | P1 | Verified | 0.10.0-beta.10 | 0.12.0-beta.2 |
 | [BUG-0364](bugs/lyrics.md#bug-0364) | An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line | lyrics | Medium | P2 | Verified | 0.10.0-beta.1 | 0.12.0-beta.2 |
-| [BUG-0365](bugs/game.md#bug-0365) | The game skipped the recording's intro when the chart's bar 1 starts long after the recording does | game | High | P2 | Fixed | 0.10.0-beta.1 | — |
-| [BUG-0366](bugs/import.md#bug-0366) | A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar | import | Medium | P2 | Fixed | 0.10.0-beta.1 | — |
-| [BUG-0367](bugs/tones.md#bug-0367) | The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it | tones | Medium | P2 | Fixed | 0.10.0-beta.2 | — |
-| [BUG-0368](bugs/tones.md#bug-0368) | The tone detection proposed guitar tones only, so a bass chart could be given a guitar amp from it | tones | Medium | P2 | Fixed | 0.12.0-beta.2 | — |
-| [BUG-0369](bugs/import.md#bug-0369) | A tab imported from Songsterr played some notes after dotted rests too early | import | Medium | P2 | Fixed | 0.12.0-beta.2 | — |
-| [BUG-0370](bugs/import.md#bug-0370) | A Songsterr tab with repeats is imported with each repeated section played once, so the chart ends early | import | High | P2 | Fixed | 0.12.0-beta.2 | — |
+| [BUG-0365](bugs/game.md#bug-0365) | The game skipped the recording's intro when the chart's bar 1 starts long after the recording does | game | High | P2 | Fixed | 0.10.0-beta.1 | 0.12.0-beta.3 |
+| [BUG-0366](bugs/import.md#bug-0366) | A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar | import | Medium | P2 | Fixed | 0.10.0-beta.1 | 0.12.0-beta.3 |
+| [BUG-0367](bugs/tones.md#bug-0367) | The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it | tones | Medium | P2 | Fixed | 0.10.0-beta.2 | 0.12.0-beta.3 |
+| [BUG-0368](bugs/tones.md#bug-0368) | The tone detection proposed guitar tones only, so a bass chart could be given a guitar amp from it | tones | Medium | P2 | Fixed | 0.12.0-beta.2 | 0.12.0-beta.3 |
+| [BUG-0369](bugs/import.md#bug-0369) | A tab imported from Songsterr played some notes after dotted rests too early | import | Medium | P2 | Fixed | 0.12.0-beta.2 | 0.12.0-beta.3 |
+| [BUG-0370](bugs/import.md#bug-0370) | A Songsterr tab with repeats is imported with each repeated section played once, so the chart ends early | import | High | P2 | Fixed | 0.12.0-beta.2 | 0.12.0-beta.3 |

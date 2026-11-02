@@ -6,6 +6,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+## [0.12.0 beta 3] — 2026-11-02
+
 ### New
 
 - **Bass tones in the tone detection:** with a bass arrangement, **Detect tone** also reads the separated bass (Demucs already separates it along with the guitar) and proposes bass tones — clean, growl, overdrive and distortion, with the game's bass gear — ordered by how close they are to the recorded bass. "use" puts the chosen tone on the bass arrangement only. And a guitar tone can no longer go on the bass: with the bass's tones on screen, "use" on a guitar tone is refused and says why.

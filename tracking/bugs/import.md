@@ -2411,7 +2411,7 @@ A PDF whose long opening silence is printed as one empty bar with 'x19' above it
 
 **Root cause:** PDF-to-GP5 read multi-bar rests only from printed bar numbers or a big number over a raster bar; a count 'xN' over an empty bar was read only as a repeat count, beside a repeat sign.
 
-**Fixes:** [FIX-0365](../FIX_LOG.md#fix-0365) (unreleased)
+**Fixes:** [FIX-0365](../FIX_LOG.md#fix-0365) (0.12.0-beta.3)
 
 **Verified:** _pending_ (by _pending_)
 
@@ -2449,7 +2449,7 @@ Importing a tab from a Songsterr link placed some notes early: in Bloodbath 'Out
 
 **Root cause:** _duration read only type/dots/tuplet; Songsterr's beat also carries duration [num, den] (the played length, dots and tuplets included) and may mark a dot as dotted: true, so a rest whose dot came that way was written undotted and the bar's later beats moved early (bar starts are set by hand, so the next bar was right).
 
-**Fixes:** [FIX-0368](../FIX_LOG.md#fix-0368) (unreleased)
+**Fixes:** [FIX-0368](../FIX_LOG.md#fix-0368) (0.12.0-beta.3)
 
 **Verified:** _pending_ (by _pending_)
 
@@ -2487,7 +2487,7 @@ A song imported from a Songsterr link (https://www.songsterr.com/a/wsa/static-in
 
 **Root cause:** write_songsterr_gp5 ignored the measure keys repeatStart and repeat (N plays in all), so the GP5 had no repeats and the importer had nothing to unroll; the tab's bar times were per written bar too.
 
-**Fixes:** [FIX-0369](../FIX_LOG.md#fix-0369) (unreleased)
+**Fixes:** [FIX-0369](../FIX_LOG.md#fix-0369) (0.12.0-beta.3)
 
 **Verified:** _pending_ (by _pending_)
 

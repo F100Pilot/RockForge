@@ -262,7 +262,7 @@ A chart whose bar 1 starts long after the recording starts (here about 20 s: a P
 
 **Root cause:** The beat grid started at bar 1 and the game starts the song at the first beat (reading of the report; not reproduced in game).
 
-**Fixes:** [FIX-0364](../FIX_LOG.md#fix-0364) (unreleased)
+**Fixes:** [FIX-0364](../FIX_LOG.md#fix-0364) (0.12.0-beta.3)
 
 **Verified:** _pending_ (by _pending_)
 
