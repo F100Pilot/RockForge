@@ -466,6 +466,38 @@ def drop_short_sustains(
     return result
 
 
+# A chart whose bar 1 comes long after the recording starts (a tab whose
+# opening rests were never written — a PDF's "x19" multi-bar rest the
+# converter did not read, a GP file that starts at the first note) had its
+# beat grid begin at that bar: the game starts the song at the first beat, so
+# the whole intro was skipped (GitHub issue #19: "missing the first 20
+# seconds"). Past this gap the grid is carried back to the recording's start.
+GRID_LEAD_GAP_S = 8.0
+
+
+def extend_grid_back(tempo_map: TempoMap, gap_s: float = GRID_LEAD_GAP_S) -> TempoMap:
+    """The grid carried back from its first beat towards time 0, at that
+    beat's own spacing, when it starts more than ``gap_s`` in.
+
+    The beats added are plain beats (measure -1), not numbered bars: bar 1
+    stays bar 1, so every bar number the user sees and every feature keyed by
+    bar (sync by bar, Songsterr bar times, estimated bars, merges) is
+    unchanged. A grid that starts early enough is returned as it was."""
+    beats = tempo_map.beats
+    if len(beats) < 2 or beats[0].time <= gap_s:
+        return tempo_map
+    step = beats[1].time - beats[0].time
+    if step <= 0:
+        return tempo_map
+    count = int(beats[0].time / step + 1e-9)
+    added = tuple(
+        Beat(time=round(beats[0].time - k * step, 6), measure=-1)
+        for k in range(count, 0, -1)
+    )
+    added = tuple(b for b in added if b.time >= 0.0)
+    return replace(tempo_map, beats=added + beats)
+
+
 def apply_sustain_gap(
     notes: Sequence[TabNote], gap: float = SUSTAIN_GAP_S
 ) -> list[TabNote]:

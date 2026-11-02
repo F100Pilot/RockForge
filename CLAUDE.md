@@ -814,6 +814,25 @@ part of `pendingSnapshot` and "Pendente". Guarded by `test_song_end.py`,
 `test_the_song_end_is_stored_read_back_and_reset` and
 `test_the_song_end_reaches_the_build`. Not tried in game from here.
 
+### When bar 1 starts long after the recording (`extend_grid_back`)
+
+The game starts a song at its first beat (XML `startBeat`, manifest
+`SongOffset`, SNG `StartTime` all read `beats[0]`), and the grid began at bar 1.
+A chart whose bar 1 comes late — a PDF whose "x19" multi-bar rest PDF-to-GP5
+did not read, a GP file that starts at the first note — therefore skipped the
+whole intro in game (GitHub issue #19: "missing the first 20 seconds"). Past
+`GRID_LEAD_GAP_S` (8 s) `domain.music.extend_grid_back` carries the grid back
+towards 0 at the first beat's spacing, applied to each chart right before it
+is built (`grids` in `gp_pipeline`), said in the warnings. The added beats are
+plain (measure -1), so bar 1 stays bar 1 and nothing keyed by bar number moves
+(the viewer's bars, sync by bar, bar times, merges, estimated bars); the GP5
+export still starts at bar 1. A grid starting early enough is untouched, so
+songs already played in game build the same. Guarded by `test_grid_lead.py`
+(fails with the call removed); a real build with the start at 20 s: first beat
+0.2 s, bar 1 and the first note at 20 s, `/psarc-check` clean. **Not seen in
+game from here** — that the game starts at the first beat is the reading of the
+user's report, not a test.
+
 ### Intro silence (`lead_in_s`)
 
 `GpJobSpec.lead_in_s` (default 0) is user-defined extra silence prepended at the

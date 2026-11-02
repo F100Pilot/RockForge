@@ -51,6 +51,7 @@ from rockforge.domain.music import (
     TempoMap,
     Tuning,
     apply_sustain_gap,
+    extend_grid_back,
     resolve_links,
 )
 from rockforge.domain.tone import Tone, is_bass_tone
@@ -1003,12 +1004,20 @@ class GenerateFromGpUseCase:
             ), bass
 
         tone_setups = {kind: _tone_setup(kind) for kind in parsed}
+        grids = {kind: extend_grid_back(p.tempo_map) for kind, p in parsed.items()}
+        for kind, p in parsed.items():
+            if grids[kind] is not p.tempo_map and p.tempo_map.beats:
+                warnings.append(
+                    f"{kind.value}: bar 1 starts {p.tempo_map.beats[0].time:.1f}s into the "
+                    "recording — beats were added before it so the game plays the intro "
+                    "instead of starting there"
+                )
         arrangements = [
             Arrangement(
                 kind=kind,
                 metadata=metadata,
                 tuning=_tuning_for(kind, p.tuning),
-                tempo_map=p.tempo_map,
+                tempo_map=grids[kind],
                 notes=p.notes,
                 capo=p.capo,
                 sections=_sections_for(p),

@@ -6,6 +6,10 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### Fixes
+
+- **The game skipped the intro when bar 1 starts late:** if the score's first bar only starts long after the recording does (a PDF whose multi-bar rest — "x19" — was not read, or a file that starts at the first note), the game started the song at that bar and the seconds before it were left out. Now, when bar 1 starts more than 8 s in, the beat grid carries on back to the start of the recording, and the song plays from the beginning. Bar numbers do not change. For an existing project, just rebuild.
+
 ## [0.12.0 beta 2] — 2026-11-02
 
 ### New

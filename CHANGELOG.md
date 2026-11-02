@@ -6,6 +6,10 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Correções
+
+- **O jogo saltava a introdução quando o compasso 1 começa tarde:** se o primeiro compasso da partitura só começa muito depois do início da gravação (um PDF cuja pausa de vários compassos — "x19" — não foi lida, ou um ficheiro que começa na primeira nota), o jogo começava a música nesse compasso e os segundos antes dele ficavam de fora. Agora, quando o compasso 1 começa mais de 8 s depois do início, a grelha de tempos continua para trás até ao início da gravação, e a música toca desde o princípio. Os números dos compassos não mudam. Para um projeto já criado, basta reconstruir.
+
 ## [0.12.0 beta 2] — 2026-11-02
 
 ### Novidades
