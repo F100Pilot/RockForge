@@ -6,7 +6,7 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 
 | Fixed | Verified | Closed |
 |---|---|---|
-| 88 | 58 | 215 |
+| 88 | 59 | 215 |
 
 | ID | Title | Module | Severity | Priority | Status | Found in | Fixed in |
 |---|---|---|---|---|---|---|---|
@@ -371,3 +371,4 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0359](bugs/game.md#bug-0359) | The game stopped the song 1 s after the last note, cutting the rest of the recording | game | Medium | P2 | Verified | 0.12.0-beta.1 | — |
 | [BUG-0360](bugs/tones.md#bug-0360) | Using a detected tone one by one listed every project tone as switchable, so a rebuild with 5 or more was refused | tones | Medium | P2 | Fixed | 0.12.0-beta.1 | — |
 | [BUG-0361](bugs/tones.md#bug-0361) | A Bass chart with no tones of its own took the song's guitar tones (a guitar amp on the bass) | tones | Medium | P2 | Verified | 0.12.0-beta.1 | — |
+| [BUG-0362](bugs/psarc.md#bug-0362) | Two notes on one string within 30 ms became a chord with a dangling link and slide, and Rocksmith crashed on play | psarc | High | P1 | Verified | 0.11.1-beta.2 | — |

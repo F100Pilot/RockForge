@@ -366,6 +366,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0358](#fix-0358) | BUG-0359 | unreleased | passed | automated |
 | [FIX-0359](#fix-0359) | BUG-0360 | unreleased | not run | manual |
 | [FIX-0360](#fix-0360) | BUG-0361 | unreleased | passed | automated |
+| [FIX-0361](#fix-0361) | BUG-0362 | unreleased | passed | automated |
 
 ## FIX-0001
 
@@ -7926,3 +7927,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | passed |
 | Validation | automated |
 | Regression risk | Low: a bass that deliberately used a guitar amp must now be given its own set. |
+
+## FIX-0361
+
+**Bugs:** [BUG-0362](bugs/psarc.md#bug-0362)
+
+**Root cause:** _group_chords (sng_build and the XML writer) joined any note within 30 ms of a group's first note, even on a string the group already held.
+
+**Solution:** A note never joins a group that holds its string (the pair becomes a linked Parent/Child of single notes); a chord with no ChordNotes never carries PARENT/SLIDE (DLC Builder's createMaskForChord); check_sng flags chord_link_without_chord_notes.
+
+| | |
+|---|---|
+| Date | 2026-11-02 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 3a841ca55ebaa4371b3dbe7bebd895c52f7e19c9 |
+| Components | src/rockforge/infrastructure/packaging/psarc/sng_build.py; src/rockforge/infrastructure/rsxml/writer.py; src/rockforge/infrastructure/packaging/psarc/verify.py |
+| Tests | tests/test_psarc_verify.py::test_two_notes_on_one_string_are_never_a_chord |
+| Manual checks | The reporter's two GP files rebuilt with the fix: no chord, check_sng clean; verify_psarc on the reporter's two shipped PSARCs reports chord_link_without_chord_notes at 56.332 s |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: only notes of one string within 30 ms are affected; they are now single notes. |

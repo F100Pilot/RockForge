@@ -18102,6 +18102,53 @@
           "note": "regression test passed 2026-11-02"
         }
       ]
+    },
+    {
+      "id": "BUG-0362",
+      "title": "Two notes on one string within 30 ms became a chord with a dangling link and slide, and Rocksmith crashed on play",
+      "detected": "2026-11-02",
+      "reported_by": "BrunoSch22 (GitHub issue #11)",
+      "found_in_version": "0.11.1-beta.2",
+      "found_in_build": "pending",
+      "module": "psarc",
+      "description": "A legato slide 14->12 and its landing note 29.05 ms later on the same string were grouped as one chord (CHORD_EPSILON_S 30 ms). The template kept only the second fret, the chord carried PARENT and SLIDE with chord_notes_id -1, no note was CHILD, and Rocksmith crashed (0xC0000005, ECX=0xFFFFFFFF) when the song started. Reported as tied to a tempo change at a /8 bar: that tempo only decided whether the gap fell under 30 ms.",
+      "steps": [
+        "The reporter's 11-8-BAR-FAILS.gp (or 5-8): 4/4 at 172, 11/8 at 144.375, 4/4 at 166.8, with GP8 sync points",
+        "Build in RockForge, play in Rocksmith"
+      ],
+      "expected": "The song plays (as the DLC Builder build of the same bundle does).",
+      "observed": "Crash on play; the PSARC has a chord at 56.332 s with mask CHORD|DOUBLESTOP|PARENT|SLIDE|STRUM|SUSTAIN and chord_notes_id -1 in every DD level.",
+      "severity": "High",
+      "priority": "P1",
+      "status": "Verified",
+      "root_cause": "_group_chords (sng_build and the XML writer) joined any note within 30 ms of a group's first note, even on a string the group already held.",
+      "fixes": [
+        "FIX-0361"
+      ],
+      "verified_by": "the developer (pytest + the reporter files)",
+      "verification": "test: regression test passed; the reporter's GP files rebuild clean; not played in game",
+      "evidence": [
+        "2026-11-02: the reporter's PSARCs flagged by the new check; rebuilt from their GP files with no chord"
+      ],
+      "resolved": "2026-11-02",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-02",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-02",
+          "status": "Fixed",
+          "note": "commit 3a841ca55e"
+        },
+        {
+          "date": "2026-11-02",
+          "status": "Verified",
+          "note": "regression test + the reporter's files 2026-11-02"
+        }
+      ]
     }
   ]
 }

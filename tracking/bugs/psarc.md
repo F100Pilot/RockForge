@@ -2752,3 +2752,46 @@ song_key_from_title keeps the first 30 letters of artist+title, so two live vers
 - 2026-10-19 — In Progress: the maintainer chose to fix it, accepting the progress reset of long-titled songs
 - 2026-10-19 — Fixed: commit 17012e7d9d
 - 2026-10-19 — Verified: tests passed
+
+## BUG-0362
+
+**Two notes on one string within 30 ms became a chord with a dangling link and slide, and Rocksmith crashed on play**
+
+| | |
+|---|---|
+| Detected | 2026-11-02 |
+| Reported by | BrunoSch22 (GitHub issue #11) |
+| Found in | 0.11.1-beta.2 |
+| Build / commit | _pending_ |
+| Severity | High |
+| Priority | P1 |
+| Status | Verified |
+
+A legato slide 14->12 and its landing note 29.05 ms later on the same string were grouped as one chord (CHORD_EPSILON_S 30 ms). The template kept only the second fret, the chord carried PARENT and SLIDE with chord_notes_id -1, no note was CHILD, and Rocksmith crashed (0xC0000005, ECX=0xFFFFFFFF) when the song started. Reported as tied to a tempo change at a /8 bar: that tempo only decided whether the gap fell under 30 ms.
+
+**Steps to reproduce:** 
+
+1. The reporter's 11-8-BAR-FAILS.gp (or 5-8): 4/4 at 172, 11/8 at 144.375, 4/4 at 166.8, with GP8 sync points
+2. Build in RockForge, play in Rocksmith
+
+**Expected:** The song plays (as the DLC Builder build of the same bundle does).
+
+**Observed:** Crash on play; the PSARC has a chord at 56.332 s with mask CHORD|DOUBLESTOP|PARENT|SLIDE|STRUM|SUSTAIN and chord_notes_id -1 in every DD level.
+
+**Root cause:** _group_chords (sng_build and the XML writer) joined any note within 30 ms of a group's first note, even on a string the group already held.
+
+**Fixes:** [FIX-0361](../FIX_LOG.md#fix-0361) (unreleased)
+
+**Verified:** test: regression test passed; the reporter's GP files rebuild clean; not played in game (by the developer (pytest + the reporter files))
+
+**Resolved:** 2026-11-02 · **Closed:** _pending_
+
+**Evidence:**
+
+- 2026-11-02: the reporter's PSARCs flagged by the new check; rebuilt from their GP files with no chord
+
+**History:**
+
+- 2026-11-02 — Open: reported
+- 2026-11-02 — Fixed: commit 3a841ca55e
+- 2026-11-02 — Verified: regression test + the reporter's files 2026-11-02
