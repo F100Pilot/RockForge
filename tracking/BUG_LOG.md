@@ -4,9 +4,9 @@
 
 Every bug found in RockForge, with a permanent id; the full record of each is on its module's page in [bugs/](bugs). Rules and states: [docs/VERSIONING.md](../docs/VERSIONING.md#bugs). Fixes: [FIX_LOG.md](FIX_LOG.md). Releases: [RELEASE_LOG.md](RELEASE_LOG.md).
 
-| Open | Fixed | Verified | Closed |
-|---|---|---|---|
-| 1 | 93 | 61 | 215 |
+| Fixed | Verified | Closed |
+|---|---|---|
+| 94 | 61 | 215 |
 
 | ID | Title | Module | Severity | Priority | Status | Found in | Fixed in |
 |---|---|---|---|---|---|---|---|
@@ -379,4 +379,4 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0367](bugs/tones.md#bug-0367) | The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it | tones | Medium | P2 | Fixed | 0.10.0-beta.2 | — |
 | [BUG-0368](bugs/tones.md#bug-0368) | The tone detection proposed guitar tones only, so a bass chart could be given a guitar amp from it | tones | Medium | P2 | Fixed | 0.12.0-beta.2 | — |
 | [BUG-0369](bugs/import.md#bug-0369) | A tab imported from Songsterr played some notes after dotted rests too early | import | Medium | P2 | Fixed | 0.12.0-beta.2 | — |
-| [BUG-0370](bugs/import.md#bug-0370) | A Songsterr tab with repeats is imported with each repeated section played once, so the chart ends early | import | High | P2 | Open | 0.12.0-beta.2 | — |
+| [BUG-0370](bugs/import.md#bug-0370) | A Songsterr tab with repeats is imported with each repeated section played once, so the chart ends early | import | High | P2 | Fixed | 0.12.0-beta.2 | — |

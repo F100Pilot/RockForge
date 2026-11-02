@@ -18450,25 +18450,34 @@
       "found_in_version": "0.12.0-beta.2",
       "found_in_build": "pending",
       "module": "import",
-      "description": "A Songsterr tab with repeats is imported with each repeated section played once, so the chart ends early",
-      "steps": "pending",
-      "expected": "pending",
-      "observed": "pending",
+      "description": "A song imported from a Songsterr link (https://www.songsterr.com/a/wsa/static-in-screams-bloom-in-the-gray-tab-s7759529) did not build to the end: some bars were missing and the chart stopped before the recording.",
+      "steps": [
+        "New project → the Songsterr link of a tab whose sections repeat",
+        "Build and look at the last bars against the recording"
+      ],
+      "expected": "Every bar as played, repeats included, up to the end of the song.",
+      "observed": "Repeated sections play once; the chart has fewer bars than the recording and ends early.",
       "severity": "High",
       "priority": "P2",
-      "status": "Open",
-      "root_cause": "pending",
-      "fixes": [],
+      "status": "Fixed",
+      "root_cause": "write_songsterr_gp5 ignored the measure keys repeatStart and repeat (N plays in all), so the GP5 had no repeats and the importer had nothing to unroll; the tab's bar times were per written bar too.",
+      "fixes": [
+        "FIX-0369"
+      ],
       "verified_by": "pending",
       "verification": "pending",
       "evidence": [],
-      "resolved": "pending",
+      "resolved": "2026-11-02",
       "closed": "pending",
       "history": [
         {
           "date": "2026-11-02",
           "status": "Open",
           "note": "reported"
+        },
+        {
+          "date": "2026-11-02",
+          "status": "Fixed"
         }
       ]
     }

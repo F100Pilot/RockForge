@@ -9288,6 +9288,31 @@
       "test_result": "passed",
       "regression_risk": "Low: only a beat whose flags disagree with its duration changes.",
       "validation": "automated"
+    },
+    {
+      "id": "FIX-0369",
+      "bugs": [
+        "BUG-0370"
+      ],
+      "date": "2026-11-02",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "write_songsterr_gp5 ignored the measure keys repeatStart and repeat (N plays in all), so the GP5 had no repeats and the importer had nothing to unroll; the tab's bar times were per written bar too.",
+      "solution": "repeatStart becomes header.isRepeatOpen and repeat N (N >= 2) header.repeatClose = N - 1, which parser._as_played unrolls; tab_bar_times walks playback_order so the tab's times are per played bar; report.repeats/played_measures and a warning say written vs played and that alternate endings are not read.",
+      "components": [
+        "src/rockforge/infrastructure/gpimport/songsterr_gp.py"
+      ],
+      "commits": [
+        "135714a8277e6eb6320e91d0fc182c6d34abad36"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_songsterr_gp.py::test_a_section_the_tab_repeats_is_played_as_often_as_it_says",
+        "tests/test_songsterr_gp.py::test_a_bar_that_says_it_plays_once_is_no_repeat"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Medium: a tab with repeats now has more played bars; alternate endings, whose Songsterr keys are unknown, would play the same bars on every pass.",
+      "validation": "automated"
     }
   ]
 }

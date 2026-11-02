@@ -374,6 +374,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0366](#fix-0366) | BUG-0367 | unreleased | passed | automated |
 | [FIX-0367](#fix-0367) | BUG-0368 | unreleased | passed | automated |
 | [FIX-0368](#fix-0368) | BUG-0369 | unreleased | passed | automated |
+| [FIX-0369](#fix-0369) | BUG-0370 | unreleased | passed | automated |
 
 ## FIX-0001
 
@@ -8102,3 +8103,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | passed |
 | Validation | automated |
 | Regression risk | Low: only a beat whose flags disagree with its duration changes. |
+
+## FIX-0369
+
+**Bugs:** [BUG-0370](bugs/import.md#bug-0370)
+
+**Root cause:** write_songsterr_gp5 ignored the measure keys repeatStart and repeat (N plays in all), so the GP5 had no repeats and the importer had nothing to unroll; the tab's bar times were per written bar too.
+
+**Solution:** repeatStart becomes header.isRepeatOpen and repeat N (N >= 2) header.repeatClose = N - 1, which parser._as_played unrolls; tab_bar_times walks playback_order so the tab's times are per played bar; report.repeats/played_measures and a warning say written vs played and that alternate endings are not read.
+
+| | |
+|---|---|
+| Date | 2026-11-02 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 135714a8277e6eb6320e91d0fc182c6d34abad36 |
+| Components | src/rockforge/infrastructure/gpimport/songsterr_gp.py |
+| Tests | tests/test_songsterr_gp.py::test_a_section_the_tab_repeats_is_played_as_often_as_it_says; tests/test_songsterr_gp.py::test_a_bar_that_says_it_plays_once_is_no_repeat |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Medium: a tab with repeats now has more played bars; alternate endings, whose Songsterr keys are unknown, would play the same bars on every pass. |

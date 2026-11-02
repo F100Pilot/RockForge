@@ -41,7 +41,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0367](bugs/tones.md#bug-0367) The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it (Medium, now Fixed)
 - [BUG-0368](bugs/tones.md#bug-0368) The tone detection proposed guitar tones only, so a bass chart could be given a guitar amp from it (Medium, now Fixed)
 - [BUG-0369](bugs/import.md#bug-0369) A tab imported from Songsterr played some notes after dotted rests too early (Medium, now Fixed)
-- [BUG-0370](bugs/import.md#bug-0370) A Songsterr tab with repeats is imported with each repeated section played once, so the chart ends early (High, now Open)
+- [BUG-0370](bugs/import.md#bug-0370) A Songsterr tab with repeats is imported with each repeated section played once, so the chart ends early (High, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
