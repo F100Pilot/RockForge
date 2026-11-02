@@ -18205,25 +18205,42 @@
       "found_in_version": "0.10.0-beta.1",
       "found_in_build": "pending",
       "module": "lyrics",
-      "description": "An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line",
-      "steps": "pending",
-      "expected": "pending",
-      "observed": "pending",
+      "description": "An LRC carrying a time before each word (enhanced/A2 LRC: [00:41.81]<00:41.81>She's <00:42.30>got ...) was read as a plain line LRC: the lyric rows showed '<00:41.81>She's' and the words were spread evenly over the line, so emphasised words ran on and the lyrics moved on too early.",
+      "steps": [
+        "Create a project with an LRC whose words carry <mm:ss.xx> stamps",
+        "Open the Lyrics page / the score's lyric lane"
+      ],
+      "expected": "Each word at its own time, with no stamps in the text.",
+      "observed": "Words read '<00:41.81>She's', timed by even division of the line (the reporter's screenshots).",
       "severity": "Medium",
       "priority": "P2",
-      "status": "Open",
-      "root_cause": "pending",
-      "fixes": [],
-      "verified_by": "pending",
-      "verification": "pending",
-      "evidence": [],
-      "resolved": "pending",
+      "status": "Verified",
+      "root_cause": "parse_lyrics only knew line-level LRC ([mm:ss.xx]) and UltraStar; expand_to_words split the line text on spaces, stamps included.",
+      "fixes": [
+        "FIX-0363"
+      ],
+      "verified_by": "the developer (pytest + a real build)",
+      "verification": "test: regression test passed (fails with the dispatch removed); a real build from an uploaded word-timed LRC; not tried by the reporter yet",
+      "evidence": [
+        "2026-11-02: vocals XML with each word at its own stamp"
+      ],
+      "resolved": "2026-11-02",
       "closed": "pending",
       "history": [
         {
           "date": "2026-11-02",
           "status": "Open",
           "note": "reported"
+        },
+        {
+          "date": "2026-11-02",
+          "status": "Fixed",
+          "note": "commit 3dfb71fe53"
+        },
+        {
+          "date": "2026-11-02",
+          "status": "Verified",
+          "note": "pytest + a real build"
         }
       ]
     }

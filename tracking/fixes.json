@@ -9121,6 +9121,33 @@
       "test_result": "not run",
       "regression_risk": "Low: only changes the value the viewer seeds and sends for a bass at A220.",
       "validation": "manual"
+    },
+    {
+      "id": "FIX-0363",
+      "bugs": [
+        "BUG-0364"
+      ],
+      "date": "2026-11-02",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "parse_lyrics only knew line-level LRC ([mm:ss.xx]) and UltraStar; expand_to_words split the line text on spaces, stamps included.",
+      "solution": "parse_word_timed_lrc: a file with <mm:ss.xx> on an LRC line keeps each word's stamp, length to the next word / the line's closing stamp / the next line; '-' for a syllable split by a stamp, '+' on the last word; plain lines in the same file spread as before.",
+      "components": [
+        "src/rockforge/infrastructure/rsxml/vocals.py"
+      ],
+      "commits": [
+        "3dfb71fe53d3f538d05c5b83d5e22a9b3bf12bb7"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_vocals.py::test_an_lrc_with_a_time_on_every_word_keeps_each_words_time",
+        "tests/test_vocals.py::test_a_plain_lrc_is_still_spread_over_its_lines"
+      ],
+      "manual_checks": [
+        "A real build on a live server from the wizard's LRC upload (invented song, word-timed LRC): /lyrics and the vocals XML carry each word at its own time (+ the lead-in), no stamps in the text"
+      ],
+      "test_result": "passed",
+      "regression_risk": "Low: only files with <mm:ss.xx> on an LRC line take the new path.",
+      "validation": "automated"
     }
   ]
 }

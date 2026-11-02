@@ -1217,24 +1217,33 @@ Both parsers gave every beat of the lyrics' track that has notes a syllable, tie
 | Build / commit | _pending_ |
 | Severity | Medium |
 | Priority | P2 |
-| Status | Open |
+| Status | Verified |
 
-An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line
+An LRC carrying a time before each word (enhanced/A2 LRC: [00:41.81]<00:41.81>She's <00:42.30>got ...) was read as a plain line LRC: the lyric rows showed '<00:41.81>She's' and the words were spread evenly over the line, so emphasised words ran on and the lyrics moved on too early.
 
-**Steps to reproduce:** _pending_
+**Steps to reproduce:** 
 
-**Expected:** _pending_
+1. Create a project with an LRC whose words carry <mm:ss.xx> stamps
+2. Open the Lyrics page / the score's lyric lane
 
-**Observed:** _pending_
+**Expected:** Each word at its own time, with no stamps in the text.
 
-**Root cause:** _pending_
+**Observed:** Words read '<00:41.81>She's', timed by even division of the line (the reporter's screenshots).
 
-**Fixes:** —
+**Root cause:** parse_lyrics only knew line-level LRC ([mm:ss.xx]) and UltraStar; expand_to_words split the line text on spaces, stamps included.
 
-**Verified:** _pending_ (by _pending_)
+**Fixes:** [FIX-0363](../FIX_LOG.md#fix-0363) (unreleased)
 
-**Resolved:** _pending_ · **Closed:** _pending_
+**Verified:** test: regression test passed (fails with the dispatch removed); a real build from an uploaded word-timed LRC; not tried by the reporter yet (by the developer (pytest + a real build))
+
+**Resolved:** 2026-11-02 · **Closed:** _pending_
+
+**Evidence:**
+
+- 2026-11-02: vocals XML with each word at its own stamp
 
 **History:**
 
 - 2026-11-02 — Open: reported
+- 2026-11-02 — Fixed: commit 3dfb71fe53
+- 2026-11-02 — Verified: pytest + a real build
