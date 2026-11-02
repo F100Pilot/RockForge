@@ -614,7 +614,7 @@
     },
     {
       "version": "0.12.0-beta.2",
-      "status": "Beta",
+      "status": "Superseded",
       "created": "2026-11-02",
       "published": "2026-11-02",
       "commit": "b09a5ca1c3ee876cc62da39b726eef4f34fc70ee",
@@ -639,10 +639,12 @@
       "version": "0.12.0-beta.3",
       "status": "Beta",
       "created": "2026-11-02",
-      "published": "pending",
-      "commit": "pending",
+      "published": "2026-11-02",
+      "commit": "22b24292f3ddd4816c0059eccff16577b6f1ca8e",
       "build": "GitHub Actions release workflow",
-      "artifacts": [],
+      "artifacts": [
+        "https://github.com/F100Pilot/RockForge/releases/tag/v0.12.0-beta.3"
+      ],
       "goal": "Songsterr repeats and durations, bass tone detection, tone preview, dlc scan permissions, PDF x19 rests, intro grid",
       "features": [
         "Bass tones in the tone detection",
