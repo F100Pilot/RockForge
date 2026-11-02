@@ -9175,6 +9175,33 @@
       "test_result": "passed",
       "regression_risk": "Low: only charts whose first beat is more than 8 s in change; their bar numbers stay.",
       "validation": "automated"
+    },
+    {
+      "id": "FIX-0365",
+      "bugs": [
+        "BUG-0366"
+      ],
+      "date": "2026-11-02",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "PDF-to-GP5 read multi-bar rests only from printed bar numbers or a big number over a raster bar; a count 'xN' over an empty bar was read only as a repeat count, beside a repeat sign.",
+      "solution": "PDF-to-GP5 ffec0da: rest_counts reads 'xN' over an empty bar not ending in a repeat as N bars of rest (and bar numbering after it); RockForge's [pdf] extra pinned to that commit. Scanned PDFs (pictures) are not covered.",
+      "components": [
+        "pyproject.toml",
+        "PDF-to-GP5: app/extract/bar_signs.py, app/extract/engraved_tab.py, app/rhythm.py, app/converter.py"
+      ],
+      "commits": [
+        "a95195a774cc1576c23ec7219dbc966aabe95af2"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "PDF-to-GP5 tests/test_extract.py::test_an_empty_bar_with_a_count_over_it_is_that_many_bars_of_rest"
+      ],
+      "manual_checks": [
+        "An invented vector PDF (an empty bar with 'x19', then two bars of a riff) imported through RockForge's pdf_import with the new pin: 21 bars, the first note on bar 20"
+      ],
+      "test_result": "passed",
+      "regression_risk": "Low: only an empty bar with a count over it and no repeat sign at its end changes.",
+      "validation": "automated"
     }
   ]
 }

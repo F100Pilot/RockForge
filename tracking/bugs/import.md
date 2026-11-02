@@ -2397,24 +2397,27 @@ When the GP track picked for an arrangement holds no notes, the build fails with
 | Build / commit | _pending_ |
 | Severity | Medium |
 | Priority | P2 |
-| Status | Open |
+| Status | Fixed |
 
-A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar
+A PDF whose long opening silence is printed as one empty bar with 'x19' above it was converted with that bar as one bar, so every bar after it came 18 bars early and bar 1 of the GP5 was the first note.
 
-**Steps to reproduce:** _pending_
+**Steps to reproduce:** 
 
-**Expected:** _pending_
+1. Import a PDF (a vector tab exported from an editor) with an empty bar and 'x19' printed over it
 
-**Observed:** _pending_
+**Expected:** 19 bars of rest before the music.
 
-**Root cause:** _pending_
+**Observed:** One bar of rest (the reporter: 'the .gp5 that RockForge makes doesn't OCR the rests properly').
 
-**Fixes:** —
+**Root cause:** PDF-to-GP5 read multi-bar rests only from printed bar numbers or a big number over a raster bar; a count 'xN' over an empty bar was read only as a repeat count, beside a repeat sign.
+
+**Fixes:** [FIX-0365](../FIX_LOG.md#fix-0365) (unreleased)
 
 **Verified:** _pending_ (by _pending_)
 
-**Resolved:** _pending_ · **Closed:** _pending_
+**Resolved:** 2026-11-02 · **Closed:** _pending_
 
 **History:**
 
 - 2026-11-02 — Open: reported
+- 2026-11-02 — Fixed: commit a95195a774

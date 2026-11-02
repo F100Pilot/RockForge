@@ -18292,25 +18292,34 @@
       "found_in_version": "0.10.0-beta.1",
       "found_in_build": "pending",
       "module": "import",
-      "description": "A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar",
-      "steps": "pending",
-      "expected": "pending",
-      "observed": "pending",
+      "description": "A PDF whose long opening silence is printed as one empty bar with 'x19' above it was converted with that bar as one bar, so every bar after it came 18 bars early and bar 1 of the GP5 was the first note.",
+      "steps": [
+        "Import a PDF (a vector tab exported from an editor) with an empty bar and 'x19' printed over it"
+      ],
+      "expected": "19 bars of rest before the music.",
+      "observed": "One bar of rest (the reporter: 'the .gp5 that RockForge makes doesn't OCR the rests properly').",
       "severity": "Medium",
       "priority": "P2",
-      "status": "Open",
-      "root_cause": "pending",
-      "fixes": [],
+      "status": "Fixed",
+      "root_cause": "PDF-to-GP5 read multi-bar rests only from printed bar numbers or a big number over a raster bar; a count 'xN' over an empty bar was read only as a repeat count, beside a repeat sign.",
+      "fixes": [
+        "FIX-0365"
+      ],
       "verified_by": "pending",
       "verification": "pending",
       "evidence": [],
-      "resolved": "pending",
+      "resolved": "2026-11-02",
       "closed": "pending",
       "history": [
         {
           "date": "2026-11-02",
           "status": "Open",
           "note": "reported"
+        },
+        {
+          "date": "2026-11-02",
+          "status": "Fixed",
+          "note": "commit a95195a774"
         }
       ]
     }
