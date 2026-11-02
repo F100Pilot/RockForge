@@ -6,7 +6,7 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 
 | Fixed | Verified | Closed |
 |---|---|---|
-| 88 | 61 | 215 |
+| 89 | 61 | 215 |
 
 | ID | Title | Module | Severity | Priority | Status | Found in | Fixed in |
 |---|---|---|---|---|---|---|---|
@@ -374,3 +374,4 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0362](bugs/psarc.md#bug-0362) | Two notes on one string within 30 ms became a chord with a dangling link and slide, and Rocksmith crashed on play | psarc | High | P1 | Verified | 0.11.1-beta.2 | 0.12.0-beta.2 |
 | [BUG-0363](bugs/viewer.md#bug-0363) | Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 | viewer | High | P1 | Verified | 0.10.0-beta.10 | 0.12.0-beta.2 |
 | [BUG-0364](bugs/lyrics.md#bug-0364) | An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line | lyrics | Medium | P2 | Verified | 0.10.0-beta.1 | 0.12.0-beta.2 |
+| [BUG-0365](bugs/game.md#bug-0365) | The game skipped the recording's intro when the chart's bar 1 starts long after the recording does | game | High | P2 | Fixed | 0.10.0-beta.1 | — |

@@ -9148,6 +9148,33 @@
       "test_result": "passed",
       "regression_risk": "Low: only files with <mm:ss.xx> on an LRC line take the new path.",
       "validation": "automated"
+    },
+    {
+      "id": "FIX-0364",
+      "bugs": [
+        "BUG-0365"
+      ],
+      "date": "2026-11-02",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "The beat grid started at bar 1 and the game starts the song at the first beat (reading of the report; not reproduced in game).",
+      "solution": "extend_grid_back carries the grid back towards time 0 at the first beat's spacing when bar 1 starts more than 8 s in, with plain beats (measure -1) so bar numbers do not change; said in the warnings.",
+      "components": [
+        "src/rockforge/domain/music.py",
+        "src/rockforge/application/gp_pipeline.py"
+      ],
+      "commits": [
+        "91f412def9ba2af2064890bb77dab49666799bd4"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_grid_lead.py"
+      ],
+      "manual_checks": [
+        "A real build on a live server, an invented GP5 with 'Início' 20 s: first beat 0.2 s, bar 1 and the first note at 20 s, /psarc-check clean"
+      ],
+      "test_result": "passed",
+      "regression_risk": "Low: only charts whose first beat is more than 8 s in change; their bar numbers stay.",
+      "validation": "automated"
     }
   ]
 }

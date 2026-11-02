@@ -234,3 +234,41 @@ The song's length (XML songLength, manifest SongLength, SNG metadata) was the ch
 - 2026-11-02 — Open: reported
 - 2026-11-02 — Fixed: commit 38e0303d1f
 - 2026-11-02 — Verified: regression test passed 2026-11-02
+
+## BUG-0365
+
+**The game skipped the recording's intro when the chart's bar 1 starts long after the recording does**
+
+| | |
+|---|---|
+| Detected | 2026-11-02 |
+| Reported by | DrekAnon (GitHub issue #19) |
+| Found in | 0.10.0-beta.1 |
+| Build / commit | _pending_ |
+| Severity | High |
+| Priority | P2 |
+| Status | Fixed |
+
+A chart whose bar 1 starts long after the recording starts (here about 20 s: a PDF whose 'x19' multi-bar rest the converter did not read) began its beat grid at bar 1. The XML startBeat, manifest SongOffset and SNG StartTime all read the first beat, and in game the song started there: the intro was skipped although the audio has it and the sync was right.
+
+**Steps to reproduce:** 
+
+1. Create a project whose bar 1 sits about 20 s into the recording ('Início' 20 s)
+2. Build and play in game
+
+**Expected:** The song plays from the start of the recording.
+
+**Observed:** The reporter: '.psarc missing first 20 seconds of the song', teleported forward into the song despite the audio existing and correct sync.
+
+**Root cause:** The beat grid started at bar 1 and the game starts the song at the first beat (reading of the report; not reproduced in game).
+
+**Fixes:** [FIX-0364](../FIX_LOG.md#fix-0364) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-02 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-02 — Open: reported
+- 2026-11-02 — Fixed: commit 91f412def9

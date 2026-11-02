@@ -369,6 +369,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0361](#fix-0361) | BUG-0362 | 0.12.0-beta.2 | passed | automated |
 | [FIX-0362](#fix-0362) | BUG-0363 | 0.12.0-beta.2 | not run | manual |
 | [FIX-0363](#fix-0363) | BUG-0364 | 0.12.0-beta.2 | passed | automated |
+| [FIX-0364](#fix-0364) | BUG-0365 | unreleased | passed | automated |
 
 ## FIX-0001
 
@@ -7992,3 +7993,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | passed |
 | Validation | automated |
 | Regression risk | Low: only files with <mm:ss.xx> on an LRC line take the new path. |
+
+## FIX-0364
+
+**Bugs:** [BUG-0365](bugs/game.md#bug-0365)
+
+**Root cause:** The beat grid started at bar 1 and the game starts the song at the first beat (reading of the report; not reproduced in game).
+
+**Solution:** extend_grid_back carries the grid back towards time 0 at the first beat's spacing when bar 1 starts more than 8 s in, with plain beats (measure -1) so bar numbers do not change; said in the warnings.
+
+| | |
+|---|---|
+| Date | 2026-11-02 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 91f412def9ba2af2064890bb77dab49666799bd4 |
+| Components | src/rockforge/domain/music.py; src/rockforge/application/gp_pipeline.py |
+| Tests | tests/test_grid_lead.py |
+| Manual checks | A real build on a live server, an invented GP5 with 'Início' 20 s: first beat 0.2 s, bar 1 and the first note at 20 s, /psarc-check clean |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: only charts whose first beat is more than 8 s in change; their bar numbers stay. |

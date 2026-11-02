@@ -18243,6 +18243,46 @@
           "note": "pytest + a real build"
         }
       ]
+    },
+    {
+      "id": "BUG-0365",
+      "title": "The game skipped the recording's intro when the chart's bar 1 starts long after the recording does",
+      "detected": "2026-11-02",
+      "reported_by": "DrekAnon (GitHub issue #19)",
+      "found_in_version": "0.10.0-beta.1",
+      "found_in_build": "pending",
+      "module": "game",
+      "description": "A chart whose bar 1 starts long after the recording starts (here about 20 s: a PDF whose 'x19' multi-bar rest the converter did not read) began its beat grid at bar 1. The XML startBeat, manifest SongOffset and SNG StartTime all read the first beat, and in game the song started there: the intro was skipped although the audio has it and the sync was right.",
+      "steps": [
+        "Create a project whose bar 1 sits about 20 s into the recording ('Início' 20 s)",
+        "Build and play in game"
+      ],
+      "expected": "The song plays from the start of the recording.",
+      "observed": "The reporter: '.psarc missing first 20 seconds of the song', teleported forward into the song despite the audio existing and correct sync.",
+      "severity": "High",
+      "priority": "P2",
+      "status": "Fixed",
+      "root_cause": "The beat grid started at bar 1 and the game starts the song at the first beat (reading of the report; not reproduced in game).",
+      "fixes": [
+        "FIX-0364"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-02",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-02",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-02",
+          "status": "Fixed",
+          "note": "commit 91f412def9"
+        }
+      ]
     }
   ]
 }
