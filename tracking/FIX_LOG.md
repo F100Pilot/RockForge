@@ -371,6 +371,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0363](#fix-0363) | BUG-0364 | 0.12.0-beta.2 | passed | automated |
 | [FIX-0364](#fix-0364) | BUG-0365 | unreleased | passed | automated |
 | [FIX-0365](#fix-0365) | BUG-0366 | unreleased | passed | automated |
+| [FIX-0366](#fix-0366) | BUG-0367 | unreleased | passed | automated |
 
 ## FIX-0001
 
@@ -8036,3 +8037,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | passed |
 | Validation | automated |
 | Regression risk | Low: only an empty bar with a count over it and no repeat sign at its end changes. |
+
+## FIX-0366
+
+**Bugs:** [BUG-0367](bugs/tones.md#bug-0367)
+
+**Root cause:** _psarcs used Path.rglob + is_file and scan called stat() unguarded; a refused entry raised out of the whole scan.
+
+**Solution:** _psarcs walks with os.walk(onerror) and records refused folders as blocked_folders; a file whose stat fails is stored as an error entry (counted as unreadable); the status line says both.
+
+| | |
+|---|---|
+| Date | 2026-11-02 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | f33821321e9dc40fdcb92a737df866a86626deb7 |
+| Components | src/rockforge/infrastructure/tone_collection.py; src/rockforge/interfaces/api/routers/tones.py; web/app.js |
+| Tests | tests/test_tone_collection.py::test_a_folder_or_file_without_permission_is_skipped_not_fatal |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: only what could not be read is treated differently. |

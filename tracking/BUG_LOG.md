@@ -6,7 +6,7 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 
 | Fixed | Verified | Closed |
 |---|---|---|
-| 90 | 61 | 215 |
+| 91 | 61 | 215 |
 
 | ID | Title | Module | Severity | Priority | Status | Found in | Fixed in |
 |---|---|---|---|---|---|---|---|
@@ -376,3 +376,4 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0364](bugs/lyrics.md#bug-0364) | An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line | lyrics | Medium | P2 | Verified | 0.10.0-beta.1 | 0.12.0-beta.2 |
 | [BUG-0365](bugs/game.md#bug-0365) | The game skipped the recording's intro when the chart's bar 1 starts long after the recording does | game | High | P2 | Fixed | 0.10.0-beta.1 | — |
 | [BUG-0366](bugs/import.md#bug-0366) | A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar | import | Medium | P2 | Fixed | 0.10.0-beta.1 | — |
+| [BUG-0367](bugs/tones.md#bug-0367) | The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it | tones | Medium | P2 | Fixed | 0.10.0-beta.2 | — |

@@ -884,3 +884,40 @@ A Bass arrangement with no tone set of its own took the song-level tones; after 
 - 2026-11-02 — Open: reported
 - 2026-11-02 — Fixed: commit 38e0303d1f
 - 2026-11-02 — Verified: regression test passed 2026-11-02
+
+## BUG-0367
+
+**The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it**
+
+| | |
+|---|---|
+| Detected | 2026-11-02 |
+| Reported by | DrekAnon (GitHub issue #15) |
+| Found in | 0.10.0-beta.2 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Fixed |
+
+Reading the dlc folder for the tone collection stopped with 'PermissionError: [WinError 5] Access is denied' at the first folder or file it could not open; the files are read in name order, so the collection kept only the artists before it (A to T in the report).
+
+**Steps to reproduce:** 
+
+1. Tone builder → Tones of your songs → Read the folder, on a dlc folder holding something without read permission
+
+**Expected:** Every readable song listed; what could not be read counted.
+
+**Observed:** 'The scan failed: PermissionError: [WinError 5] Access is denied'; artists only from A to T.
+
+**Root cause:** _psarcs used Path.rglob + is_file and scan called stat() unguarded; a refused entry raised out of the whole scan.
+
+**Fixes:** [FIX-0366](../FIX_LOG.md#fix-0366) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-02 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-02 — Open: reported
+- 2026-11-02 — Fixed: commit f33821321e

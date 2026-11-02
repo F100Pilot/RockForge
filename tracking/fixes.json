@@ -9202,6 +9202,32 @@
       "test_result": "passed",
       "regression_risk": "Low: only an empty bar with a count over it and no repeat sign at its end changes.",
       "validation": "automated"
+    },
+    {
+      "id": "FIX-0366",
+      "bugs": [
+        "BUG-0367"
+      ],
+      "date": "2026-11-02",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "_psarcs used Path.rglob + is_file and scan called stat() unguarded; a refused entry raised out of the whole scan.",
+      "solution": "_psarcs walks with os.walk(onerror) and records refused folders as blocked_folders; a file whose stat fails is stored as an error entry (counted as unreadable); the status line says both.",
+      "components": [
+        "src/rockforge/infrastructure/tone_collection.py",
+        "src/rockforge/interfaces/api/routers/tones.py",
+        "web/app.js"
+      ],
+      "commits": [
+        "f33821321e9dc40fdcb92a737df866a86626deb7"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_tone_collection.py::test_a_folder_or_file_without_permission_is_skipped_not_fatal"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low: only what could not be read is treated differently.",
+      "validation": "automated"
     }
   ]
 }

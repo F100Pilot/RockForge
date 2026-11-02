@@ -38,6 +38,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 
 - [BUG-0365](bugs/game.md#bug-0365) The game skipped the recording's intro when the chart's bar 1 starts long after the recording does (High, now Fixed)
 - [BUG-0366](bugs/import.md#bug-0366) A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar (Medium, now Fixed)
+- [BUG-0367](bugs/tones.md#bug-0367) The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it (Medium, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -80,6 +81,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Verified)
 - [BUG-0365](bugs/game.md#bug-0365) The game skipped the recording's intro when the chart's bar 1 starts long after the recording does (High, now Fixed)
 - [BUG-0366](bugs/import.md#bug-0366) A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar (Medium, now Fixed)
+- [BUG-0367](bugs/tones.md#bug-0367) The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it (Medium, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -114,6 +116,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Verified)
 - [BUG-0365](bugs/game.md#bug-0365) The game skipped the recording's intro when the chart's bar 1 starts long after the recording does (High, now Fixed)
 - [BUG-0366](bugs/import.md#bug-0366) A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar (Medium, now Fixed)
+- [BUG-0367](bugs/tones.md#bug-0367) The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it (Medium, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -153,6 +156,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Verified)
 - [BUG-0365](bugs/game.md#bug-0365) The game skipped the recording's intro when the chart's bar 1 starts long after the recording does (High, now Fixed)
 - [BUG-0366](bugs/import.md#bug-0366) A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar (Medium, now Fixed)
+- [BUG-0367](bugs/tones.md#bug-0367) The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it (Medium, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -188,6 +192,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Verified)
 - [BUG-0365](bugs/game.md#bug-0365) The game skipped the recording's intro when the chart's bar 1 starts long after the recording does (High, now Fixed)
 - [BUG-0366](bugs/import.md#bug-0366) A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar (Medium, now Fixed)
+- [BUG-0367](bugs/tones.md#bug-0367) The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it (Medium, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -234,6 +239,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Verified)
 - [BUG-0365](bugs/game.md#bug-0365) The game skipped the recording's intro when the chart's bar 1 starts long after the recording does (High, now Fixed)
 - [BUG-0366](bugs/import.md#bug-0366) A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar (Medium, now Fixed)
+- [BUG-0367](bugs/tones.md#bug-0367) The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it (Medium, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -275,6 +281,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Verified)
 - [BUG-0365](bugs/game.md#bug-0365) The game skipped the recording's intro when the chart's bar 1 starts long after the recording does (High, now Fixed)
 - [BUG-0366](bugs/import.md#bug-0366) A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar (Medium, now Fixed)
+- [BUG-0367](bugs/tones.md#bug-0367) The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it (Medium, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -337,6 +344,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Verified)
 - [BUG-0365](bugs/game.md#bug-0365) The game skipped the recording's intro when the chart's bar 1 starts long after the recording does (High, now Fixed)
 - [BUG-0366](bugs/import.md#bug-0366) A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar (Medium, now Fixed)
+- [BUG-0367](bugs/tones.md#bug-0367) The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it (Medium, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -409,6 +417,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Verified)
 - [BUG-0365](bugs/game.md#bug-0365) The game skipped the recording's intro when the chart's bar 1 starts long after the recording does (High, now Fixed)
 - [BUG-0366](bugs/import.md#bug-0366) A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar (Medium, now Fixed)
+- [BUG-0367](bugs/tones.md#bug-0367) The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it (Medium, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -481,6 +490,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Verified)
 - [BUG-0365](bugs/game.md#bug-0365) The game skipped the recording's intro when the chart's bar 1 starts long after the recording does (High, now Fixed)
 - [BUG-0366](bugs/import.md#bug-0366) A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar (Medium, now Fixed)
+- [BUG-0367](bugs/tones.md#bug-0367) The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it (Medium, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -516,6 +526,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Verified)
 - [BUG-0365](bugs/game.md#bug-0365) The game skipped the recording's intro when the chart's bar 1 starts long after the recording does (High, now Fixed)
 - [BUG-0366](bugs/import.md#bug-0366) A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar (Medium, now Fixed)
+- [BUG-0367](bugs/tones.md#bug-0367) The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it (Medium, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -546,6 +557,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Verified)
 - [BUG-0365](bugs/game.md#bug-0365) The game skipped the recording's intro when the chart's bar 1 starts long after the recording does (High, now Fixed)
 - [BUG-0366](bugs/import.md#bug-0366) A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar (Medium, now Fixed)
+- [BUG-0367](bugs/tones.md#bug-0367) The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it (Medium, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -581,6 +593,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Verified)
 - [BUG-0365](bugs/game.md#bug-0365) The game skipped the recording's intro when the chart's bar 1 starts long after the recording does (High, now Fixed)
 - [BUG-0366](bugs/import.md#bug-0366) A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar (Medium, now Fixed)
+- [BUG-0367](bugs/tones.md#bug-0367) The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it (Medium, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -612,6 +625,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Verified)
 - [BUG-0365](bugs/game.md#bug-0365) The game skipped the recording's intro when the chart's bar 1 starts long after the recording does (High, now Fixed)
 - [BUG-0366](bugs/import.md#bug-0366) A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar (Medium, now Fixed)
+- [BUG-0367](bugs/tones.md#bug-0367) The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it (Medium, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -642,6 +656,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Verified)
 - [BUG-0365](bugs/game.md#bug-0365) The game skipped the recording's intro when the chart's bar 1 starts long after the recording does (High, now Fixed)
 - [BUG-0366](bugs/import.md#bug-0366) A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar (Medium, now Fixed)
+- [BUG-0367](bugs/tones.md#bug-0367) The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it (Medium, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -683,6 +698,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Verified)
 - [BUG-0365](bugs/game.md#bug-0365) The game skipped the recording's intro when the chart's bar 1 starts long after the recording does (High, now Fixed)
 - [BUG-0366](bugs/import.md#bug-0366) A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar (Medium, now Fixed)
+- [BUG-0367](bugs/tones.md#bug-0367) The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it (Medium, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -717,6 +733,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Verified)
 - [BUG-0365](bugs/game.md#bug-0365) The game skipped the recording's intro when the chart's bar 1 starts long after the recording does (High, now Fixed)
 - [BUG-0366](bugs/import.md#bug-0366) A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar (Medium, now Fixed)
+- [BUG-0367](bugs/tones.md#bug-0367) The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it (Medium, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -747,6 +764,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Verified)
 - [BUG-0365](bugs/game.md#bug-0365) The game skipped the recording's intro when the chart's bar 1 starts long after the recording does (High, now Fixed)
 - [BUG-0366](bugs/import.md#bug-0366) A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar (Medium, now Fixed)
+- [BUG-0367](bugs/tones.md#bug-0367) The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it (Medium, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -785,6 +803,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Verified)
 - [BUG-0365](bugs/game.md#bug-0365) The game skipped the recording's intro when the chart's bar 1 starts long after the recording does (High, now Fixed)
 - [BUG-0366](bugs/import.md#bug-0366) A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar (Medium, now Fixed)
+- [BUG-0367](bugs/tones.md#bug-0367) The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it (Medium, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -819,6 +838,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Verified)
 - [BUG-0365](bugs/game.md#bug-0365) The game skipped the recording's intro when the chart's bar 1 starts long after the recording does (High, now Fixed)
 - [BUG-0366](bugs/import.md#bug-0366) A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar (Medium, now Fixed)
+- [BUG-0367](bugs/tones.md#bug-0367) The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it (Medium, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -854,6 +874,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Verified)
 - [BUG-0365](bugs/game.md#bug-0365) The game skipped the recording's intro when the chart's bar 1 starts long after the recording does (High, now Fixed)
 - [BUG-0366](bugs/import.md#bug-0366) A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar (Medium, now Fixed)
+- [BUG-0367](bugs/tones.md#bug-0367) The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it (Medium, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -897,6 +918,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Verified)
 - [BUG-0365](bugs/game.md#bug-0365) The game skipped the recording's intro when the chart's bar 1 starts long after the recording does (High, now Fixed)
 - [BUG-0366](bugs/import.md#bug-0366) A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar (Medium, now Fixed)
+- [BUG-0367](bugs/tones.md#bug-0367) The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it (Medium, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -932,6 +954,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Verified)
 - [BUG-0365](bugs/game.md#bug-0365) The game skipped the recording's intro when the chart's bar 1 starts long after the recording does (High, now Fixed)
 - [BUG-0366](bugs/import.md#bug-0366) A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar (Medium, now Fixed)
+- [BUG-0367](bugs/tones.md#bug-0367) The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it (Medium, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -980,6 +1003,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Verified)
 - [BUG-0365](bugs/game.md#bug-0365) The game skipped the recording's intro when the chart's bar 1 starts long after the recording does (High, now Fixed)
 - [BUG-0366](bugs/import.md#bug-0366) A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar (Medium, now Fixed)
+- [BUG-0367](bugs/tones.md#bug-0367) The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it (Medium, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -1008,6 +1032,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Verified)
 - [BUG-0365](bugs/game.md#bug-0365) The game skipped the recording's intro when the chart's bar 1 starts long after the recording does (High, now Fixed)
 - [BUG-0366](bugs/import.md#bug-0366) A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar (Medium, now Fixed)
+- [BUG-0367](bugs/tones.md#bug-0367) The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it (Medium, now Fixed)
 
 **Update / rollback:** _pending_
 
@@ -1041,6 +1066,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Verified)
 - [BUG-0365](bugs/game.md#bug-0365) The game skipped the recording's intro when the chart's bar 1 starts long after the recording does (High, now Fixed)
 - [BUG-0366](bugs/import.md#bug-0366) A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar (Medium, now Fixed)
+- [BUG-0367](bugs/tones.md#bug-0367) The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it (Medium, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -1104,6 +1130,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Verified)
 - [BUG-0365](bugs/game.md#bug-0365) The game skipped the recording's intro when the chart's bar 1 starts long after the recording does (High, now Fixed)
 - [BUG-0366](bugs/import.md#bug-0366) A PDF's multi-bar rest written as one empty bar with 'x19' over it was read as one bar (Medium, now Fixed)
+- [BUG-0367](bugs/tones.md#bug-0367) The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it (Medium, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 

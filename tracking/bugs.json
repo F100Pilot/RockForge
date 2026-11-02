@@ -18322,6 +18322,45 @@
           "note": "commit a95195a774"
         }
       ]
+    },
+    {
+      "id": "BUG-0367",
+      "title": "The tone collection scan stopped at the first folder or file it could not open (PermissionError), leaving the list at the artists before it",
+      "detected": "2026-11-02",
+      "reported_by": "DrekAnon (GitHub issue #15)",
+      "found_in_version": "0.10.0-beta.2",
+      "found_in_build": "pending",
+      "module": "tones",
+      "description": "Reading the dlc folder for the tone collection stopped with 'PermissionError: [WinError 5] Access is denied' at the first folder or file it could not open; the files are read in name order, so the collection kept only the artists before it (A to T in the report).",
+      "steps": [
+        "Tone builder → Tones of your songs → Read the folder, on a dlc folder holding something without read permission"
+      ],
+      "expected": "Every readable song listed; what could not be read counted.",
+      "observed": "'The scan failed: PermissionError: [WinError 5] Access is denied'; artists only from A to T.",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Fixed",
+      "root_cause": "_psarcs used Path.rglob + is_file and scan called stat() unguarded; a refused entry raised out of the whole scan.",
+      "fixes": [
+        "FIX-0366"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-02",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-02",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-02",
+          "status": "Fixed",
+          "note": "commit f33821321e"
+        }
+      ]
     }
   ]
 }
