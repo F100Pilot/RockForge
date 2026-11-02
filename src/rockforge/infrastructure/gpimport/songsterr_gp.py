@@ -16,7 +16,12 @@ What a part carries, and how it maps:
   string 0 is the high e, which is GP5's string 1), ``instrument``; no tuning
   or a drum instrument = percussion, skipped (RockForge charts guitars).
 - measure: ``signature`` ``[n, d]`` (carries forward until changed),
-  ``marker.text`` (a section), ``voices[].beats[]``.
+  ``marker.text`` (a section), ``repeatStart`` (opens a repeat), ``repeat``
+  ``N`` (closes one, the section playing N times in all), ``voices[].beats[]``.
+  The repeat keys were read in ``joelgoh1/Guitarista``'s Songsterr schema
+  (nothing copied); the importer unrolls them like any GP5 repeat. How
+  Songsterr marks alternate endings (1st/2nd time) has not been seen, so none
+  are read.
 - beat: ``type`` (1, 2, 4 … 64 = whole … 64th), ``dots`` or ``dotted``,
   ``tuplet`` (3, 5, 6, 7, 9), ``duration`` ``[num, den]`` — the length played,
   in whole notes, dots and tuplets included; it wins when the flags say
@@ -70,6 +75,7 @@ from typing import Any
 
 from rockforge.domain.errors import IngestionError
 from rockforge.i18n import tr
+from rockforge.infrastructure.gpimport.playback import BarFlow, playback_order
 
 QUARTER_TICKS = 960  # PyGuitarPro's Duration.quarterTime; bar 1 starts here
 _DURATIONS = {1, 2, 4, 8, 16, 32, 64}
@@ -102,8 +108,13 @@ class SongsterrGpReport:
     tempo_count: int = 1
     tempo_decimal: bool = False
     #: Where each bar starts, in seconds from bar 1, from the tab's own tempo
-    #: map at full precision (see the module docstring).
+    #: map at full precision (see the module docstring) — one per bar AS
+    #: PLAYED, repeats unrolled, like Songsterr's per-measure video times.
     bar_times: list[float] = field(default_factory=list)
+    #: Repeats the tab marks (``repeat`` closes), and the bars heard once they
+    #: are unrolled (``measures`` counts the written ones).
+    repeats: int = 0
+    played_measures: int = 0
     lyric_lines: int = 0
     warnings: list[str] = field(default_factory=list)
 
@@ -230,20 +241,26 @@ def _bar_fraction(value: Any) -> tuple[float, bool]:
 
 
 def tab_bar_times(
-    quarters: list[float], tempos: list[tuple[int, float, float]], start_bpm: float
+    quarters: list[float],
+    tempos: list[tuple[int, float, float]],
+    start_bpm: float,
+    order: list[int] | None = None,
 ) -> list[float]:
     """Where each bar starts, in seconds from bar 1, from the tab's tempo map.
 
-    ``quarters[m]`` is bar m's length in quarter notes; ``tempos`` are
-    ``(bar, fraction of the bar, quarter-note BPM)`` in order, applied from
-    that point on. Pure, so the arithmetic is tested without Songsterr.
+    ``quarters[m]`` is written bar m's length in quarter notes; ``tempos`` are
+    ``(written bar, fraction of the bar, quarter-note BPM)`` in order, applied
+    from that point on — on every pass of that bar. ``order`` is the written bar
+    heard at each played position (repeats unrolled); None = as written. Pure,
+    so the arithmetic is tested without Songsterr.
     """
     events: dict[int, list[tuple[float, float]]] = {}
     for bar, frac, bpm in tempos:
         events.setdefault(bar, []).append((frac, bpm))
     out: list[float] = []
     now, bpm = 0.0, start_bpm
-    for m, q in enumerate(quarters):
+    for m in range(len(quarters)) if order is None else order:
+        q = quarters[m]
         out.append(now)
         at = 0.0
         for frac, new_bpm in sorted(events.get(m, []), key=lambda e: e[0]):
@@ -509,13 +526,25 @@ def write_songsterr_gp5(
         header.timeSignature = guitarpro.TimeSignature()
         header.timeSignature.numerator = sig[0]
         header.timeSignature.denominator = guitarpro.Duration(value=sig[1])
+        if src.get("repeatStart") is True:
+            header.isRepeatOpen = True
+        plays = src.get("repeat")
+        if isinstance(plays, int) and not isinstance(plays, bool) and plays >= 2:
+            header.repeatClose = plays - 1  # PyGuitarPro: repeats, i.e. plays - 1
+            report.repeats += 1
         marker = src.get("marker")
         if isinstance(marker, dict) and str(marker.get("text") or "").strip():
             header.marker = guitarpro.Marker(title=_gp5_text(str(marker["text"]).strip()))
         song.measureHeaders.append(header)
         start += sig[0] * QUARTER_TICKS * 4 // sig[1]
         quarters.append(sig[0] * 4 / sig[1])
-    report.bar_times = tab_bar_times(quarters, changes, start_bpm)
+    order = playback_order([
+        BarFlow(repeat_start=bool(h.isRepeatOpen),
+                repeat_count=h.repeatClose + 1 if h.repeatClose >= 0 else 0)
+        for h in song.measureHeaders
+    ])
+    report.played_measures = len(order)
+    report.bar_times = tab_bar_times(quarters, changes, start_bpm, order)
 
     song.tracks = []
     for t_idx, (name, part) in enumerate(kept):
@@ -556,6 +585,15 @@ def write_songsterr_gp5(
             tr("pistas não incluídas: ", "tracks not included: ")
             + ", ".join(report.skipped_tracks)
         )
+    if report.repeats:
+        report.warnings.append(tr(
+            f"a tab repete {report.repeats} secção(ões): {n_measures} compassos escritos, "
+            f"{report.played_measures} tocados — se tiver finais alternativos (1.ª/2.ª "
+            "vez), confirma esses compassos, porque não sei lê-los do Songsterr",
+            f"the tab repeats {report.repeats} section(s): {n_measures} bars written, "
+            f"{report.played_measures} played — if it has alternate endings (1st/2nd "
+            "time), check those bars: I cannot read them from Songsterr",
+        ))
     if report.grace_dropped:
         report.warnings.append(tr(
             f"{report.grace_dropped} nota(s) de ornamento (grace) não incluídas",

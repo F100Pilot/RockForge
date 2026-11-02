@@ -408,8 +408,23 @@ re-inverting the dependency.
    ≥ 1 is counted and warned (`tempo_position_unknown`). Browser-only paths,
    verified with Playwright (each of the three, no page errors); the backend
    rule by `test_a_tempo_change_at_a_position_that_cannot_be_read_is_said`
-   (mutation-checked). Still open, not seen: whether Songsterr's parts carry
-   repeats the GP5 (and the reference tool) drop.
+   (mutation-checked). **Songsterr's repeats are written into the GP5**
+   (2026-11-02, "não consegue criar até ao fim, corta alguns compassos" on a
+   Songsterr link): a part's measure carries `repeatStart: true` (opens) and
+   `repeat: N` (closes, N plays in all — the keys read in `joelgoh1/Guitarista`'s
+   Songsterr schema, nothing copied; the reference tool drops them), and both
+   were ignored, so a repeated section played once and the chart ran out of
+   bars before the recording. Now `header.isRepeatOpen`/`repeatClose = N - 1`
+   (N ≥ 2; N = 1 is no repeat), the importer unrolls them like any GP5, and
+   `report.bar_times` (`tab_bar_times(..., order)`) is per PLAYED bar —
+   `playback_order` over the headers, a tempo automation applied on every pass
+   of its written bar — so it matches Songsterr's per-played-bar video times.
+   `report.repeats`/`played_measures` and a warning say written vs played; how
+   Songsterr marks alternate endings was not seen, so none are read (said in
+   the warning). Guarded by
+   `test_a_section_the_tab_repeats_is_played_as_often_as_it_says` and
+   `test_a_bar_that_says_it_plays_once_is_no_repeat`. The user's tab itself was
+   not seen (songsterr.com is blocked here).
 
    Never run against the real Songsterr from here (blocked) — TESTING.md
    §7d-quinquies. Guarded by `test_songsterr_gp.py` (a note-for-note round trip

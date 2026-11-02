@@ -2459,3 +2459,37 @@ Importing a tab from a Songsterr link placed some notes early: in Bloodbath 'Out
 
 - 2026-11-02 — Open: reported
 - 2026-11-02 — Fixed: commit 9350fec0b5
+
+## BUG-0370
+
+**A Songsterr tab with repeats is imported with each repeated section played once, so the chart ends early**
+
+| | |
+|---|---|
+| Detected | 2026-11-02 |
+| Reported by | the maintainer |
+| Found in | 0.12.0-beta.2 |
+| Build / commit | _pending_ |
+| Severity | High |
+| Priority | P2 |
+| Status | Open |
+
+A Songsterr tab with repeats is imported with each repeated section played once, so the chart ends early
+
+**Steps to reproduce:** _pending_
+
+**Expected:** _pending_
+
+**Observed:** _pending_
+
+**Root cause:** _pending_
+
+**Fixes:** —
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** _pending_ · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-02 — Open: reported

@@ -368,3 +368,39 @@ def test_a_beat_lasts_the_duration_songsterr_plays_whatever_its_flags_say(tmp_pa
     # 120 BPM: a quarter is 0.5 s, a bar 2 s.
     assert onsets == [0.0, 1.75, 2.0, 2.167, 2.333, 2.5]
     assert report.durations_from_length == 4  # the undotted rest and the three triplets
+
+
+def test_a_section_the_tab_repeats_is_played_as_often_as_it_says(tmp_path: Path) -> None:
+    """A song that "ends early": Songsterr marks a repeat on the bar that opens
+    it (``repeatStart``) and the bar that closes it (``repeat`` N = plays in
+    all). Dropped, a repeated chorus played once and the chart ran out of bars
+    before the recording did. Written A |: B C :|x3 D — heard A B C B C B C D,
+    and the tab's own bar times follow the bars as heard."""
+    def bar(fret: int, **extra: object) -> dict:
+        return {"voices": [{"beats": [{"type": 1, "duration": [1, 1],
+                                       "notes": [{"string": 0, "fret": fret}]}]}], **extra}
+    part = {
+        "name": "Guitar", "instrument": "Distortion Guitar", "strings": 6, "tuning": STANDARD,
+        "automations": {"tempo": [{"measure": 0, "position": 0, "bpm": 120},
+                                  {"measure": 2, "position": 0, "bpm": 60}]},
+        "measures": [{"signature": [4, 4], **bar(1)}, bar(2, repeatStart=True),
+                     bar(3, repeat=3), bar(4)],
+    }
+    dst, report = _write(tmp_path, [part])
+    track = parse_gp_track(dst, 0)
+    assert [n.fret for n in sorted(track.notes, key=lambda n: n.time)] == [1, 2, 3, 2, 3, 2, 3, 4]
+    assert (report.measures, report.played_measures, report.repeats) == (4, 8, 1)
+    # 120 BPM: 2 s a bar; from bar C on 60 BPM (4 s), kept through B's next pass.
+    assert report.bar_times == [0.0, 2.0, 4.0, 8.0, 12.0, 16.0, 20.0, 24.0]
+    assert any("8" in w and "4" in w for w in report.warnings)
+
+
+def test_a_bar_that_says_it_plays_once_is_no_repeat(tmp_path: Path) -> None:
+    part = {
+        "name": "Guitar", "instrument": "Distortion Guitar", "strings": 6, "tuning": STANDARD,
+        "measures": [{"signature": [4, 4], "voices": [{"beats": [
+            {"type": 1, "duration": [1, 1], "notes": [{"string": 0, "fret": 5}]}]}],
+            "repeat": 1}],
+    }
+    _dst, report = _write(tmp_path, [part])
+    assert (report.repeats, report.played_measures) == (0, 1)

@@ -18441,6 +18441,36 @@
           "note": "commit 9350fec0b5"
         }
       ]
+    },
+    {
+      "id": "BUG-0370",
+      "title": "A Songsterr tab with repeats is imported with each repeated section played once, so the chart ends early",
+      "detected": "2026-11-02",
+      "reported_by": "the maintainer",
+      "found_in_version": "0.12.0-beta.2",
+      "found_in_build": "pending",
+      "module": "import",
+      "description": "A Songsterr tab with repeats is imported with each repeated section played once, so the chart ends early",
+      "steps": "pending",
+      "expected": "pending",
+      "observed": "pending",
+      "severity": "High",
+      "priority": "P2",
+      "status": "Open",
+      "root_cause": "pending",
+      "fixes": [],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "pending",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-02",
+          "status": "Open",
+          "note": "reported"
+        }
+      ]
     }
   ]
 }
