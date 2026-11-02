@@ -8,6 +8,7 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ### Novidades
 
+- **Mais afinações, e uma personalizada:** em **Editar info**, a afinação de cada pista tem agora C# Standard, B Standard, Drop A#, Drop A, Double Drop D, DADGAD, Open D, Open G, Open E, Open C e Open A, e **Personalizada…**, que mostra uma nota para cada corda para escolheres qualquer afinação. Quando importas um PDF, o passo 2 do assistente diz que afinação foi lida em cada pista — uma tab que não a imprime fica em standard.
 - **Fim da música:** na Partitura → Sincronização → Mais opções, **Fim da música** escolhe o segundo da gravação em que o jogo acaba a música (**= cursor** marca-o onde está o cursor). Vazio, a música vai até ao fim da gravação. Nunca acaba antes da última nota.
 
 ### Correções

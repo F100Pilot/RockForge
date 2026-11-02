@@ -699,6 +699,10 @@ acompanham), **Só esta = cursor**, ◀ ▶, −/+.
 - **Editar info** (barra de cima): título, artista, álbum, ano; e as pistas, a pista juntada a um
   arranjo e as afinações do Guitar Pro. Mudar só o texto não reconstrói logo (entra no PSARC na próxima reconstrução);
   mudar pistas ou afinação reconstrói.
+  A afinação de cada pista tem as afinações mais usadas (das Standard ao Drop A, Open D/G/E/C/A,
+  DADGAD) e **Personalizada…**, que mostra uma nota para cada corda (corda 6 = a mais grave) para
+  escolheres qualquer afinação. Uma tab importada de um PDF que não diga a afinação fica em
+  standard; o passo 2 do assistente diz que afinação foi lida.
 
 ## 11. Exportar, verificar e instalar no jogo
 

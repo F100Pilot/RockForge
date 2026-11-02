@@ -2217,7 +2217,21 @@ const TUNING_PRESETS = {
   'Drop C': [-4, -2, -2, -2, -2, -2],
   'C Standard': [-4, -4, -4, -4, -4, -4],
   'Drop B': [-5, -3, -3, -3, -3, -3],
+  'C# Standard': [-3, -3, -3, -3, -3, -3],
+  'B Standard': [-5, -5, -5, -5, -5, -5],
+  'Drop A#': [-6, -4, -4, -4, -4, -4],
+  'Drop A': [-7, -5, -5, -5, -5, -5],
+  'Double Drop D': [-2, 0, 0, 0, 0, -2],
+  'DADGAD': [-2, 0, 0, 0, -2, -2],
+  'Open D': [-2, 0, 0, -1, -2, -2],
+  'Open G': [-2, -2, 0, 0, 0, -2],
+  'Open E': [0, 2, 2, 1, 0, 0],
+  'Open C': [-4, -2, -2, 0, 1, 0],
+  'Open A': [0, 0, 2, 2, 2, 0],
 };
+// Each string's choices in "Personalizada": an octave down to a fifth up.
+const TUNING_CUSTOM_RANGE = [-12, 7];
+const CUSTOM_TUNING = '__custom__';
 // Standard tuning (low E to high e) as MIDI: an open string's pitch is this
 // + the arrangement's tuning offset; a note's adds its fret.
 const STD_TUNING_MIDI = [40, 45, 50, 55, 59, 64];
@@ -2240,11 +2254,32 @@ function openMidi(a, str) {
 function noteMidi(a, str, fret) { return openMidi(a, str) + (fret || (a && a.capo) || 0); }
 // The staff keeps its height; a bass's four lines are spread over it.
 function staffRow(a) { return isBassArr(a) ? STAFF_ROW * 5 / 3 : STAFF_ROW; }
-function _presetFromOffsets(off) {
+function _presetFromOffsets(off, n = 6) {
   for (const [name, o] of Object.entries(TUNING_PRESETS)) {
-    if (o && o.every((v, i) => v === off[i])) return name;
+    if (o && o.slice(0, n).every((v, i) => v === off[i])) return name;
   }
-  return 'Manter';
+  return CUSTOM_TUNING;
+}
+// "Personalizada": one note per string (low to high), each an offset from the
+// standard string (GitHub issue #13: the presets did not cover every tuning).
+function customTuningRow(kind, std, offsets) {
+  const [lo, hi] = TUNING_CUSTOM_RANGE;
+  const cells = std.map((base, s) => {
+    let opts = '';
+    for (let off = hi; off >= lo; off--) {
+      const m = base + off;
+      opts += `<option value="${off}"${off === (offsets[s] || 0) ? ' selected' : ''}>${NOTE_NAMES[m % 12]}${Math.floor(m / 12) - 1}</option>`;
+    }
+    // numbered as guitarists do: string 1 is the highest
+    return `<label class="meta" style="display:flex;flex-direction:column;gap:.15rem">${T('Corda {n}', { n: std.length - s })}
+      <select data-custom-str="${s}" style="width:auto">${opts}</select></label>`;
+  }).join('');
+  return `<div class="tuning-custom" data-kind="${esc(kind)}" style="flex:1 1 100%;display:flex;flex-wrap:wrap;gap:.4rem;align-items:flex-end">${cells}
+    <span class="meta" style="flex:1 1 100%">${T('Da corda mais grave para a mais aguda.')}</span></div>`;
+}
+function customOffsets(kind) {
+  const row = document.querySelector(`#metaTunings .tuning-custom[data-kind="${kind}"]`);
+  return row ? [...row.querySelectorAll('select[data-custom-str]')].map(s => parseInt(s.value, 10)) : null;
 }
 
 async function openMetaEdit() {
@@ -2292,19 +2327,42 @@ async function openMetaEdit() {
       slotTrack: slot => document.querySelector(`#metaTracks select[data-slot="${slot}"]`).value,
     });
     const presetOpts = Object.keys(TUNING_PRESETS)
-      .map(n => `<option value="${n}">${n === 'Manter' ? T('Manter') : n}</option>`).join('');
+      .map(n => `<option value="${n}">${n === 'Manter' ? T('Manter') : n}</option>`).join('') +
+      `<option value="${CUSTOM_TUNING}">${T('Personalizada…')}</option>`;
     document.getElementById('metaTunings').innerHTML = arrs.map(a => {
       const ov = (tr.tuning_overrides || {})[a.kind];
       const std = isBassArr(a) ? BASS_TUNING_MIDI : STD_TUNING_MIDI;
-      // A bass override is its four strings; the two it does not have follow string 3.
-      const ovOff = ov && ov.map((m, i) => m - std[i]);
-      const cur = ovOff ? _presetFromOffsets(ovOff.length === 4 ? [...ovOff, ovOff[3], ovOff[3]] : ovOff) :
-                          _presetFromOffsets(a.tuning_offsets);
+      const n = stringCount(a);
+      // A bass override is its four strings; a bass the build wrote an octave
+      // up at 220 Hz reads 12 lower (its real strings).
+      const built = (a.tuning_offsets || [0, 0, 0, 0, 0, 0]).slice(0, n)
+        .map(v => v - (isBassArr(a) && (a.cent_offset || 0) <= -1100 ? 12 : 0));
+      const offs = ov ? ov.slice(0, n).map((m, i) => m - std[i]) : built;
+      const cur = _presetFromOffsets(offs, n);
       const field = `<div class="field" style="flex:1 1 11rem"><label>${T('Afinação {arr}', { arr: esc(arrLabel(a.kind)) })}</label>
         <select data-kind="${esc(a.kind)}" style="width:100%">${presetOpts}</select></div>`
         .replace(`value="${cur}"`, `value="${cur}" selected`);
-      return isBassArr(a) ? field + bassReferenceField(tr.bass_reference) : field;
+      const custom = customTuningRow(a.kind, std.slice(0, n), offs);
+      return field + (isBassArr(a) ? bassReferenceField(tr.bass_reference) : '') + custom;
     }).join('');
+    const showCustom = () => {
+      for (const sel of document.querySelectorAll('#metaTunings select[data-kind]')) {
+        const row = document.querySelector(`#metaTunings .tuning-custom[data-kind="${sel.dataset.kind}"]`);
+        if (row) row.hidden = sel.value !== CUSTOM_TUNING;
+      }
+    };
+    document.getElementById('metaTunings').onchange = e => {
+      // a preset picked fills the custom row with its notes, so switching to
+      // "Personalizada" starts from it
+      const sel = e.target.closest('select[data-kind]');
+      const off = sel && TUNING_PRESETS[sel.value];
+      if (off) {
+        const row = document.querySelector(`#metaTunings .tuning-custom[data-kind="${sel.dataset.kind}"]`);
+        row?.querySelectorAll('select[data-custom-str]').forEach((s, i) => { s.value = String(off[i]); });
+      }
+      showCustom();
+    };
+    showCustom();
     gp.style.display = '';
     metaSaved = metaValues();  // the loaded track map + tunings are the baseline
     updateMetaDirty();
@@ -2338,7 +2396,10 @@ function metaValues() {
     for (const sel of document.querySelectorAll('#metaTracks select[data-slot]')) gp['t:' + sel.dataset.slot] = sel.value;
     for (const sel of document.querySelectorAll('#metaMerge select[data-merge]')) gp['m:' + sel.dataset.merge] = sel.value;
     gp['m:bars'] = mergeStateKey(document.getElementById('metaMerge'));
-    for (const sel of document.querySelectorAll('#metaTunings select[data-kind]')) gp['u:' + sel.dataset.kind] = sel.value;
+    for (const sel of document.querySelectorAll('#metaTunings select[data-kind]')) {
+      gp['u:' + sel.dataset.kind] = sel.value === CUSTOM_TUNING
+        ? `${CUSTOM_TUNING}:${customOffsets(sel.dataset.kind).join(',')}` : sel.value;
+    }
     const ref = document.getElementById('metaBassRef');
     if (ref) gp['r:bass'] = ref.value;
   }
@@ -2395,7 +2456,7 @@ document.getElementById('metaSave').onclick = async () => {
       tracks[sel.dataset.slot] = sel.value === '' ? null : parseInt(sel.value, 10);
     const tuning_overrides = {};
     for (const sel of document.querySelectorAll('#metaTunings select[data-kind]')) {
-      const off = TUNING_PRESETS[sel.value];
+      const off = sel.value === CUSTOM_TUNING ? customOffsets(sel.dataset.kind) : TUNING_PRESETS[sel.value];
       if (off) tuning_overrides[sel.dataset.kind] = sel.dataset.kind === 'Bass'
         ? off.slice(0, 4).map((v, i) => BASS_TUNING_MIDI[i] + v)
         : off.map((v, i) => STD_TUNING_MIDI[i] + v);
@@ -13507,6 +13568,15 @@ function applyInspectResult(b) {
   }
   if (b.import_warnings && b.import_warnings.length) {
     noteParts.push(T('Avisos da conversão: {warnings}', { warnings: b.import_warnings.join('; ') }));
+  }
+  if (b.pdf_files && b.pdf_files.length) {
+    // A tab that does not print its tuning is read as standard (GitHub issue #13).
+    const tunings = (b.tracks || []).filter(t => !t.is_percussion && t.tuning_midi && t.tuning_midi.length)
+      .map(t => `${t.name}: ${t.tuning_midi.map(m => NOTE_NAMES[m % 12]).join(' ')}`);
+    if (tunings.length) {
+      noteParts.push(T('Afinação lida: {tunings}. Se não for a da música, muda-a em Editar info depois de criar o projeto (há afinações abertas e uma personalizada).',
+        { tunings: tunings.join(' · ') }));
+    }
   }
   note.textContent = noteParts.join(' ');
   note.hidden = !noteParts.length;

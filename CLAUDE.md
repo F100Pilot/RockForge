@@ -6340,6 +6340,15 @@ bypasses the models. Real drop/down tunings are unaffected — the guard is
 against nonsense, and `test_tuning_rejects_an_impossible_pitch_at_construction`
 pins a Drop C# and a Drop B as still-valid alongside the rejections.
 
+**Editar info's tuning picker** (`TUNING_PRESETS` in `web/app.js`, GitHub issue
+#13): the common tunings plus "Personalizada…" (`CUSTOM_TUNING`,
+`customTuningRow`: one select per string, an octave down to a fifth up from
+standard, numbered as guitarists do — 6 the lowest), sent as the ordinary
+`tuning_overrides` MIDI; a bass built at A220 reads its real strings (−12). A
+PDF import's step 2 note names the tuning read per track (PDF-to-GP5 assumes
+standard when the tab prints none). Browser-only; verified with Playwright
+(Open G → custom → top string C#4 → a rebuild whose XML reads −2 −2 0 0 0 −3).
+
 **The recording's cent offset is one job-level value that reaches every chart**
 (`GpJobSpec.cent_offset`, `params["cent_offset"]`, `RebuildIn.cent_offset` —
 `None` = untouched, `CentOffset` bounds it to ±50: past that it is the next

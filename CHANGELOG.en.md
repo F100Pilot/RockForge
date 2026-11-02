@@ -8,6 +8,7 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ### New
 
+- **More tunings, and a custom one:** in **Edit info**, each track's tuning now offers C# Standard, B Standard, Drop A#, Drop A, Double Drop D, DADGAD, Open D, Open G, Open E, Open C and Open A, and **Custom…**, which shows one note per string so you can set any tuning. When you import a PDF, step 2 of the wizard says which tuning was read for each track — a tab that does not print it is read as standard.
 - **Song end:** on the Score → Sync → More options, **Song end** chooses the second of the recording where the game ends the song (**= cursor** marks it at the cursor). Empty, the song runs to the end of the recording. It never ends before the last note.
 
 ### Fixes

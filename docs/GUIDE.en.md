@@ -699,6 +699,10 @@ follow), **Only this = cursor**, ◀ ▶, −/+.
   into an arrangement and the tunings.
   Changing only text does not rebuild straight away (it goes into the PSARC on the next
   rebuild); changing tracks or tuning does.
+  Each track's tuning offers the common ones (Standard down to Drop A, Open D/G/E/C/A, DADGAD)
+  and **Custom…**, which shows one note per string (string 6 = the lowest) so you can set any
+  tuning. A tab imported from a PDF that does not state its tuning is read as standard; step 2
+  of the wizard says which tuning was read.
 
 ## 11. Export, check and install in the game
 
