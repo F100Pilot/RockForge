@@ -1707,3 +1707,37 @@ At 760 px the Áudio ▾ panel, anchored to its trigger's right edge, opened pas
 - 2026-10-24 — Open: found while checking the metronome
 - 2026-10-24 — Fixed: commit 7f277b2d84
 - 2026-10-24 — Verified: Playwright 2026-10-24
+
+## BUG-0363
+
+**Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200**
+
+| | |
+|---|---|
+| Detected | 2026-11-02 |
+| Reported by | DrekAnon (GitHub issue #9) |
+| Found in | 0.10.0-beta.10 |
+| Build / commit | _pending_ |
+| Severity | High |
+| Priority | P1 |
+| Status | Open |
+
+Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200
+
+**Steps to reproduce:** _pending_
+
+**Expected:** _pending_
+
+**Observed:** _pending_
+
+**Root cause:** _pending_
+
+**Fixes:** —
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** _pending_ · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-02 — Open: reported

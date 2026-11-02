@@ -6390,6 +6390,14 @@ info", per chart) and the field is "Desvio da afinação (cents)" in Exportar's
 `test_a_cent_offset_past_half_a_semitone_is_refused`; with Playwright, -31.8
 typed → rebuild → the XML and the `.psarc` manifest carry `CentOffset` -31.8.
 How the game's tuner treats a large offset was not seen from here.
+**The viewer seeds the field with the RECORDING's deviation** (`recordingCents`):
+a bass built at A220 carries `CentOffset` -1200 in its XML (the fix writes the
+strings +12), and seeding the field with that sent `cent_offset: -1200` on
+every rebuild of a project whose first chart is that bass — a 422 (GitHub
+issue #9, BUG-0363). `recordingCents` adds the 1200 back (cent offset ≤ -1100
+on a bass), as the practice mode already did. Browser-only; with Playwright and
+real rebuilds: a Drop D bass at A220 rebuilds (was 422), stays at -1200, and a
+-20 typed builds -1220.
 
 ### API input validation: every client float is `Finite`
 

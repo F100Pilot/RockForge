@@ -2749,14 +2749,18 @@ async function loadArrangements(id) {
   if (!arrangements.length) return;
   setReviewReady(true);
   const a0 = arrangements[0];
-  centOffsetLive = a0.cent_offset;
+  // The recording's own deviation, not the chart's: a bass written an octave up
+  // at A220 (the low-tuning fix) carries CentOffset -1200 in its XML, and sending
+  // that back as the recording's offset was refused (GitHub issue #9).
+  const cents0 = recordingCents(a0);
+  centOffsetLive = cents0;
   songSections = (a0.sections || []).map(s => ({ time: s.time, name: s.name }));
   sectionsTouched = false;
   sectionsEdited = !!a0.sections_edited;
   document.getElementById('tuningInfo').innerHTML =
-    `<p class="meta">${T('offsets: [{offsets}] · desvio: <span id="centOffsetVal">{cents}</span> cents · BPM médio: {bpm}', { offsets: a0.tuning_offsets.join(', '), cents: a0.cent_offset.toFixed(1), bpm: a0.average_bpm.toFixed(1) })}</p>`;
-  centOffsetBuilt = a0.cent_offset;
-  document.getElementById('centOffsetInput').value = a0.cent_offset.toFixed(1);
+    `<p class="meta">${T('offsets: [{offsets}] · desvio: <span id="centOffsetVal">{cents}</span> cents · BPM médio: {bpm}', { offsets: a0.tuning_offsets.join(', '), cents: cents0.toFixed(1), bpm: a0.average_bpm.toFixed(1) })}</p>`;
+  centOffsetBuilt = cents0;
+  document.getElementById('centOffsetInput').value = cents0.toFixed(1);
   document.getElementById('detectTuningInfo').textContent = '';
   document.getElementById('arrTabs').innerHTML = arrangements.map((a, i) =>
     `<button type="button" class="${i ? '' : 'active'}" onclick="showArr(${i})"></button>`).join('');
@@ -11164,12 +11168,20 @@ function practiceMinHz(a) {
   return Math.max(26, hz * 0.85);
 }
 
+// How far the recording sits from A440, in cents, as a chart carries it: a bass
+// built at A220 (every string +12, CentOffset -1200) is the same pitch, so the
+// -1200 is the chart's writing, not the recording's.
+function recordingCents(a) {
+  const c = a.cent_offset || 0;
+  return c + (isBassArr(a) && c <= -1100 ? 1200 : 0);
+}
+
 function practiceTargets() {
   const a = arrangements[currentArr];
   if (!a) return { targets: [], skipped: 0 };
   if (practiceTargetsCache && practiceTargetsCache.a === a) return practiceTargetsCache;
   const warp = buildTimeWarp(syncAnchors);
-  const cents = (a.cent_offset || 0) + (isBassArr(a) && (a.cent_offset || 0) <= -1100 ? 1200 : 0);
+  const cents = recordingCents(a);
   const notes = soundingNotes(a).map(n => ({ ...n, key: `${a.kind}|${n.time.toFixed(4)}:${n.string}`, time: warp(previewScale(n.time)) }));
   practiceTargetsCache = { a, ...PracticeCore.practiceTargets(notes, n => noteMidi(a, n.string, n.fret) + cents / 100) };
   return practiceTargetsCache;

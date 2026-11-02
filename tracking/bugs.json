@@ -18149,6 +18149,36 @@
           "note": "regression test + the reporter's files 2026-11-02"
         }
       ]
+    },
+    {
+      "id": "BUG-0363",
+      "title": "Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200",
+      "detected": "2026-11-02",
+      "reported_by": "DrekAnon (GitHub issue #9)",
+      "found_in_version": "0.10.0-beta.10",
+      "found_in_build": "pending",
+      "module": "viewer",
+      "description": "Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200",
+      "steps": "pending",
+      "expected": "pending",
+      "observed": "pending",
+      "severity": "High",
+      "priority": "P1",
+      "status": "Open",
+      "root_cause": "pending",
+      "fixes": [],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "pending",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-02",
+          "status": "Open",
+          "note": "reported"
+        }
+      ]
     }
   ]
 }
