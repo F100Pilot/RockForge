@@ -112,7 +112,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0359](bugs/game.md#bug-0359) The game stopped the song 1 s after the last note, cutting the rest of the recording (Medium, now Verified)
 - [BUG-0360](bugs/tones.md#bug-0360) Using a detected tone one by one listed every project tone as switchable, so a rebuild with 5 or more was refused (Medium, now Fixed)
 - [BUG-0361](bugs/tones.md#bug-0361) A Bass chart with no tones of its own took the song's guitar tones (a guitar amp on the bass) (Medium, now Verified)
-- [BUG-0362](bugs/psarc.md#bug-0362) Two notes on one string within 30 ms became a chord with a dangling link and slide, and Rocksmith crashed on play (High, now Verified)
+- [BUG-0362](bugs/psarc.md#bug-0362) Two notes on one string within 30 ms became a chord with a dangling link and slide, and Rocksmith crashed on play (High, now Closed)
 - [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
 - [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Verified)
 - [BUG-0365](bugs/game.md#bug-0365) The game skipped the recording's intro when the chart's bar 1 starts long after the recording does (High, now Fixed)
@@ -147,7 +147,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 **Known bugs it carried:** 
 
 - [BUG-0358](bugs/viewer.md#bug-0358) The Score's Audio panel opened past the left edge of a narrow window (Low, now Verified)
-- [BUG-0362](bugs/psarc.md#bug-0362) Two notes on one string within 30 ms became a chord with a dangling link and slide, and Rocksmith crashed on play (High, now Verified)
+- [BUG-0362](bugs/psarc.md#bug-0362) Two notes on one string within 30 ms became a chord with a dangling link and slide, and Rocksmith crashed on play (High, now Closed)
 - [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
 - [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Verified)
 - [BUG-0365](bugs/game.md#bug-0365) The game skipped the recording's intro when the chart's bar 1 starts long after the recording does (High, now Fixed)
@@ -187,7 +187,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0354](bugs/viewer.md#bug-0354) The song start field cannot be typed into: each key applies the value and the field rewrites itself (Medium, now Verified)
 - [BUG-0355](bugs/lyrics.md#bug-0355) Lyrics drift further off along the song: a tied note in the vocal line takes a syllable (Medium, now Verified)
 - [BUG-0356](bugs/viewer.md#bug-0356) Chords lag when they play on the score, and a six-string chord sounds only three strings (Medium, now Verified)
-- [BUG-0362](bugs/psarc.md#bug-0362) Two notes on one string within 30 ms became a chord with a dangling link and slide, and Rocksmith crashed on play (High, now Verified)
+- [BUG-0362](bugs/psarc.md#bug-0362) Two notes on one string within 30 ms became a chord with a dangling link and slide, and Rocksmith crashed on play (High, now Closed)
 - [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
 - [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Verified)
 - [BUG-0365](bugs/game.md#bug-0365) The game skipped the recording's intro when the chart's bar 1 starts long after the recording does (High, now Fixed)
@@ -223,7 +223,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 **Known bugs it carried:** 
 
 - [BUG-0352](bugs/lyrics.md#bug-0352) Lyrics of a Songsterr tab land later and later: a grace note in the vocal line gets no syllable (Medium, now Verified)
-- [BUG-0362](bugs/psarc.md#bug-0362) Two notes on one string within 30 ms became a chord with a dangling link and slide, and Rocksmith crashed on play (High, now Verified)
+- [BUG-0362](bugs/psarc.md#bug-0362) Two notes on one string within 30 ms became a chord with a dangling link and slide, and Rocksmith crashed on play (High, now Closed)
 - [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
 - [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Verified)
 - [BUG-0365](bugs/game.md#bug-0365) The game skipped the recording's intro when the chart's bar 1 starts long after the recording does (High, now Fixed)
@@ -270,7 +270,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0349](bugs/sync.md#bug-0349) A Songsterr tempo change at a position of 1 or more is placed at the bar's start without a word (Low, now Verified)
 - [BUG-0350](bugs/viewer.md#bug-0350) Clicking a note on the score lights the previous note on the fretboard too (Low, now Verified)
 - [BUG-0351](bugs/viewer.md#bug-0351) The cursor and lit notes run ahead of the sound during playback, by the output latency (Medium, now Verified)
-- [BUG-0362](bugs/psarc.md#bug-0362) Two notes on one string within 30 ms became a chord with a dangling link and slide, and Rocksmith crashed on play (High, now Verified)
+- [BUG-0362](bugs/psarc.md#bug-0362) Two notes on one string within 30 ms became a chord with a dangling link and slide, and Rocksmith crashed on play (High, now Closed)
 - [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
 - [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Verified)
 - [BUG-0365](bugs/game.md#bug-0365) The game skipped the recording's intro when the chart's bar 1 starts long after the recording does (High, now Fixed)

@@ -2765,7 +2765,7 @@ song_key_from_title keeps the first 30 letters of artist+title, so two live vers
 | Build / commit | _pending_ |
 | Severity | High |
 | Priority | P1 |
-| Status | Verified |
+| Status | Closed |
 
 A legato slide 14->12 and its landing note 29.05 ms later on the same string were grouped as one chord (CHORD_EPSILON_S 30 ms). The template kept only the second fret, the chord carried PARENT and SLIDE with chord_notes_id -1, no note was CHILD, and Rocksmith crashed (0xC0000005, ECX=0xFFFFFFFF) when the song started. Reported as tied to a tempo change at a /8 bar: that tempo only decided whether the gap fell under 30 ms.
 
@@ -2784,7 +2784,7 @@ A legato slide 14->12 and its landing note 29.05 ms later on the same string wer
 
 **Verified:** test: regression test passed; the reporter's GP files rebuild clean; not played in game (by the developer (pytest + the reporter files))
 
-**Resolved:** 2026-11-02 · **Closed:** _pending_
+**Resolved:** 2026-11-02 · **Closed:** 2026-11-02
 
 **Evidence:**
 
@@ -2795,3 +2795,4 @@ A legato slide 14->12 and its landing note 29.05 ms later on the same string wer
 - 2026-11-02 — Open: reported
 - 2026-11-02 — Fixed: commit 3a841ca55e
 - 2026-11-02 — Verified: regression test + the reporter's files 2026-11-02
+- 2026-11-02 — Closed: confirmed in game by the reporter on GitHub issue #11, 2026-11-02 (0.12.0 beta 2)

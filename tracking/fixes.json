@@ -9092,7 +9092,8 @@
         "tests/test_psarc_verify.py::test_two_notes_on_one_string_are_never_a_chord"
       ],
       "manual_checks": [
-        "The reporter's two GP files rebuilt with the fix: no chord, check_sng clean; verify_psarc on the reporter's two shipped PSARCs reports chord_link_without_chord_notes at 56.332 s"
+        "The reporter's two GP files rebuilt with the fix: no chord, check_sng clean; verify_psarc on the reporter's two shipped PSARCs reports chord_link_without_chord_notes at 56.332 s",
+        "The reporter (BrunoSch22) rebuilt the project with 0.12.0 beta 2 and confirmed on GitHub issue #11 (2026-11-02) that the song loads and plays in Rocksmith"
       ],
       "test_result": "passed",
       "regression_risk": "Low: only notes of one string within 30 ms are affected; they are now single notes.",

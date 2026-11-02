@@ -7952,7 +7952,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Commits | 3a841ca55ebaa4371b3dbe7bebd895c52f7e19c9 |
 | Components | src/rockforge/infrastructure/packaging/psarc/sng_build.py; src/rockforge/infrastructure/rsxml/writer.py; src/rockforge/infrastructure/packaging/psarc/verify.py |
 | Tests | tests/test_psarc_verify.py::test_two_notes_on_one_string_are_never_a_chord |
-| Manual checks | The reporter's two GP files rebuilt with the fix: no chord, check_sng clean; verify_psarc on the reporter's two shipped PSARCs reports chord_link_without_chord_notes at 56.332 s |
+| Manual checks | The reporter's two GP files rebuilt with the fix: no chord, check_sng clean; verify_psarc on the reporter's two shipped PSARCs reports chord_link_without_chord_notes at 56.332 s; The reporter (BrunoSch22) rebuilt the project with 0.12.0 beta 2 and confirmed on GitHub issue #11 (2026-11-02) that the song loads and plays in Rocksmith |
 | Test result | passed |
 | Validation | automated |
 | Regression risk | Low: only notes of one string within 30 ms are affected; they are now single notes. |

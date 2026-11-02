@@ -18120,7 +18120,7 @@
       "observed": "Crash on play; the PSARC has a chord at 56.332 s with mask CHORD|DOUBLESTOP|PARENT|SLIDE|STRUM|SUSTAIN and chord_notes_id -1 in every DD level.",
       "severity": "High",
       "priority": "P1",
-      "status": "Verified",
+      "status": "Closed",
       "root_cause": "_group_chords (sng_build and the XML writer) joined any note within 30 ms of a group's first note, even on a string the group already held.",
       "fixes": [
         "FIX-0361"
@@ -18131,7 +18131,7 @@
         "2026-11-02: the reporter's PSARCs flagged by the new check; rebuilt from their GP files with no chord"
       ],
       "resolved": "2026-11-02",
-      "closed": "pending",
+      "closed": "2026-11-02",
       "history": [
         {
           "date": "2026-11-02",
@@ -18147,6 +18147,11 @@
           "date": "2026-11-02",
           "status": "Verified",
           "note": "regression test + the reporter's files 2026-11-02"
+        },
+        {
+          "date": "2026-11-02",
+          "status": "Closed",
+          "note": "confirmed in game by the reporter on GitHub issue #11, 2026-11-02 (0.12.0 beta 2)"
         }
       ]
     },
