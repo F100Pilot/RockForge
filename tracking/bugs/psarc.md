@@ -2780,7 +2780,7 @@ A legato slide 14->12 and its landing note 29.05 ms later on the same string wer
 
 **Root cause:** _group_chords (sng_build and the XML writer) joined any note within 30 ms of a group's first note, even on a string the group already held.
 
-**Fixes:** [FIX-0361](../FIX_LOG.md#fix-0361) (unreleased)
+**Fixes:** [FIX-0361](../FIX_LOG.md#fix-0361) (0.12.0-beta.2)
 
 **Verified:** test: regression test passed; the reporter's GP files rebuild clean; not played in game (by the developer (pytest + the reporter files))
 

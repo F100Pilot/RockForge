@@ -6,6 +6,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+## [0.12.0 beta 2] — 2026-11-02
+
 ### Novidades
 
 - **Slides no editor de notas, à vista e a ouvir:** na pop-up de uma nota (modo **Editar notas**), **Slide para** tem agora **Slide até ao traste** ou **Slide sem altura (para fora)**, e **Dura (s)** escolhe quanto tempo demora a deslizar — mais curto do que o sustain, a nota chega ao traste e fica a soar lá até ao fim (uma nota de slide ligada a uma nota mantida, como no Rocksmith). **Ligar à nota seguinte** faz uma nota continuar na seguinte da mesma corda sem palhetar. Na partitura, o slide é uma linha até ao fim do sustain com o traste de chegada (tracejada quando é sem altura), e as notas da pré-visualização e a fonte sintetizada deslizam até à altura de chegada.

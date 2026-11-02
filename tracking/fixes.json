@@ -9009,7 +9009,7 @@
       "commits": [
         "38e0303d1fbbfa38e64beff42b127011ab9828ba"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.2",
       "tests": [
         "tests/test_song_end.py",
         "tests/test_api.py::test_the_song_end_is_stored_read_back_and_reset",
@@ -9035,7 +9035,7 @@
       "commits": [
         "38e0303d1fbbfa38e64beff42b127011ab9828ba"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.2",
       "tests": [],
       "manual_checks": [
         "Code reading + a direct /rebuild with five tone_names returning 422; the new list can no longer exceed four"
@@ -9061,7 +9061,7 @@
       "commits": [
         "38e0303d1fbbfa38e64beff42b127011ab9828ba"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.2",
       "tests": [
         "tests/test_bass_arrangement.py::test_the_bass_never_takes_the_songs_guitar_tones"
       ],
@@ -9087,7 +9087,7 @@
       "commits": [
         "3a841ca55ebaa4371b3dbe7bebd895c52f7e19c9"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.2",
       "tests": [
         "tests/test_psarc_verify.py::test_two_notes_on_one_string_are_never_a_chord"
       ],
@@ -9113,7 +9113,7 @@
       "commits": [
         "d63e64dfa5c4e08d59fe3fee4f989987e9dccc25"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.2",
       "tests": [],
       "manual_checks": [
         "Playwright on a live server (EN 760 / PT 1440 px): an invented Drop D bass rebuilt at A220 showed -1200 and its rebuild was a 422; with the fix the field reads 0.0, the rebuild is accepted and builds at -1200, and -20 typed builds -1220; no page errors"
@@ -9137,7 +9137,7 @@
       "commits": [
         "3dfb71fe53d3f538d05c5b83d5e22a9b3bf12bb7"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.2",
       "tests": [
         "tests/test_vocals.py::test_an_lrc_with_a_time_on_every_word_keeps_each_words_time",
         "tests/test_vocals.py::test_a_plain_lrc_is_still_spread_over_its_lines"

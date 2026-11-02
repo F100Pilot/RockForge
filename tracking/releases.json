@@ -611,6 +611,27 @@
       "approved_by": "the maintainer (asked for the release)",
       "upgrade": "Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.",
       "exceptions": []
+    },
+    {
+      "version": "0.12.0-beta.2",
+      "status": "Beta",
+      "created": "2026-11-02",
+      "published": "pending",
+      "commit": "pending",
+      "build": "GitHub Actions release workflow",
+      "artifacts": [],
+      "goal": "Slides in the note editor, more tunings, song end; fixes for a crash, A220 bass rebuilds, word-timed LRC, tones on the bass",
+      "features": [
+        "Slides in the note editor, seen and heard",
+        "More tunings, and a custom one",
+        "Song end"
+      ],
+      "improvements": [],
+      "breaking": [],
+      "tests": "CI (ruff, mypy, pytest, ESLint, Docker build) on the release commit, tools/release_check, and the frozen .exe smoke test of the release workflow",
+      "approved_by": "the maintainer (asked for the release)",
+      "upgrade": "Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.",
+      "exceptions": []
     }
   ]
 }

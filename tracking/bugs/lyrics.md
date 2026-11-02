@@ -1232,7 +1232,7 @@ An LRC carrying a time before each word (enhanced/A2 LRC: [00:41.81]<00:41.81>Sh
 
 **Root cause:** parse_lyrics only knew line-level LRC ([mm:ss.xx]) and UltraStar; expand_to_words split the line text on spaces, stamps included.
 
-**Fixes:** [FIX-0363](../FIX_LOG.md#fix-0363) (unreleased)
+**Fixes:** [FIX-0363](../FIX_LOG.md#fix-0363) (0.12.0-beta.2)
 
 **Verified:** test: regression test passed (fails with the dispatch removed); a real build from an uploaded word-timed LRC; not tried by the reporter yet (by the developer (pytest + a real build))
 

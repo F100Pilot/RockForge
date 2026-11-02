@@ -219,7 +219,7 @@ The song's length (XML songLength, manifest SongLength, SNG metadata) was the ch
 
 **Root cause:** gp_pipeline computed song_length = max(last note end) + 1.0 and never looked at the recording's length.
 
-**Fixes:** [FIX-0358](../FIX_LOG.md#fix-0358) (unreleased)
+**Fixes:** [FIX-0358](../FIX_LOG.md#fix-0358) (0.12.0-beta.2)
 
 **Verified:** test: regression tests passed 2026-11-02 (by the developer (pytest))
 

@@ -4,6 +4,40 @@
 
 Every version, newest first. What a version fixed and the bugs it still carried come from the bug and fix registers. Process: [docs/RELEASE_PROCESS.md](../docs/RELEASE_PROCESS.md).
 
+## 0.12.0-beta.2
+
+| | |
+|---|---|
+| Status | Beta |
+| Created | 2026-11-02 |
+| Published | _pending_ |
+| Commit | _pending_ |
+| Build | GitHub Actions release workflow |
+| Artifacts | — |
+| Tests | CI (ruff, mypy, pytest, ESLint, Docker build) on the release commit, tools/release_check, and the frozen .exe smoke test of the release workflow |
+| Approved by | the maintainer (asked for the release) |
+
+**Goal:** Slides in the note editor, more tunings, song end; fixes for a crash, A220 bass rebuilds, word-timed LRC, tones on the bass
+
+**New:**
+
+- Slides in the note editor, seen and heard
+- More tunings, and a custom one
+- Song end
+
+**Bugs fixed:** 
+
+- [BUG-0359](bugs/game.md#bug-0359) The game stopped the song 1 s after the last note, cutting the rest of the recording
+- [BUG-0360](bugs/tones.md#bug-0360) Using a detected tone one by one listed every project tone as switchable, so a rebuild with 5 or more was refused
+- [BUG-0361](bugs/tones.md#bug-0361) A Bass chart with no tones of its own took the song's guitar tones (a guitar amp on the bass)
+- [BUG-0362](bugs/psarc.md#bug-0362) Two notes on one string within 30 ms became a chord with a dangling link and slide, and Rocksmith crashed on play
+- [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200
+- [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line
+
+**Known bugs it carried:** —
+
+**Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
+
 ## 0.12.0-beta.1
 
 | | |

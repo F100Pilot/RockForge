@@ -831,7 +831,7 @@ In the Tones page, 'use' on a detected tone set the switchable tone list to ever
 
 **Root cause:** applyOneTone in web/app.js assigned toneNames = jobTones.map(t => t.key).
 
-**Fixes:** [FIX-0359](../FIX_LOG.md#fix-0359) (unreleased)
+**Fixes:** [FIX-0359](../FIX_LOG.md#fix-0359) (0.12.0-beta.2)
 
 **Verified:** _pending_ (by _pending_)
 
@@ -869,7 +869,7 @@ A Bass arrangement with no tone set of its own took the song-level tones; after 
 
 **Root cause:** GpJobSpec.tones_for falls back to the song's set for every chart, and every chart received all the project's gear.
 
-**Fixes:** [FIX-0360](../FIX_LOG.md#fix-0360) (unreleased)
+**Fixes:** [FIX-0360](../FIX_LOG.md#fix-0360) (0.12.0-beta.2)
 
 **Verified:** test: regression tests passed 2026-11-02 (by the developer (pytest))
 

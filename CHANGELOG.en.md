@@ -6,6 +6,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+## [0.12.0 beta 2] — 2026-11-02
+
 ### New
 
 - **Slides in the note editor, seen and heard:** in a note's pop-up (**Edit notes** mode), **Slide to** now offers **Slide to the fret** or **Unpitched slide (out)**, and **Lasts (s)** sets how long it takes to slide — shorter than the sustain, the note reaches the fret and rings there to the end (a slide note linked to a held note, as in Rocksmith). **Link to the next note** makes a note carry on into the next one on the same string without a new pick. On the score a slide is a line to the end of the sustain with the fret it lands on (dashed when unpitched), and the preview's notes and the synthesized source glide to the pitch they land on.

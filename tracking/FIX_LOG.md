@@ -363,12 +363,12 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0355](#fix-0355) | BUG-0357 | 0.11.1-beta.5 | not run | manual |
 | [FIX-0356](#fix-0356) | BUG-0356 | 0.11.1-beta.5 | not run | manual |
 | [FIX-0357](#fix-0357) | BUG-0358 | 0.12.0-beta.1 | not run | manual |
-| [FIX-0358](#fix-0358) | BUG-0359 | unreleased | passed | automated |
-| [FIX-0359](#fix-0359) | BUG-0360 | unreleased | not run | manual |
-| [FIX-0360](#fix-0360) | BUG-0361 | unreleased | passed | automated |
-| [FIX-0361](#fix-0361) | BUG-0362 | unreleased | passed | automated |
-| [FIX-0362](#fix-0362) | BUG-0363 | unreleased | not run | manual |
-| [FIX-0363](#fix-0363) | BUG-0364 | unreleased | passed | automated |
+| [FIX-0358](#fix-0358) | BUG-0359 | 0.12.0-beta.2 | passed | automated |
+| [FIX-0359](#fix-0359) | BUG-0360 | 0.12.0-beta.2 | not run | manual |
+| [FIX-0360](#fix-0360) | BUG-0361 | 0.12.0-beta.2 | passed | automated |
+| [FIX-0361](#fix-0361) | BUG-0362 | 0.12.0-beta.2 | passed | automated |
+| [FIX-0362](#fix-0362) | BUG-0363 | 0.12.0-beta.2 | not run | manual |
+| [FIX-0363](#fix-0363) | BUG-0364 | 0.12.0-beta.2 | passed | automated |
 
 ## FIX-0001
 
@@ -7879,7 +7879,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-02 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.2 |
 | Commits | 38e0303d1fbbfa38e64beff42b127011ab9828ba |
 | Components | src/rockforge/application/gp_pipeline.py; src/rockforge/interfaces/api; src/rockforge/interfaces/worker/celery_app.py; web/app.js; web/index.html |
 | Tests | tests/test_song_end.py; tests/test_api.py::test_the_song_end_is_stored_read_back_and_reset; tests/test_celery_tasks.py::test_the_song_end_reaches_the_build |
@@ -7900,7 +7900,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-02 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.2 |
 | Commits | 38e0303d1fbbfa38e64beff42b127011ab9828ba |
 | Components | web/app.js |
 | Tests | — |
@@ -7921,7 +7921,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-02 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.2 |
 | Commits | 38e0303d1fbbfa38e64beff42b127011ab9828ba |
 | Components | src/rockforge/application/gp_pipeline.py; src/rockforge/domain/tone.py; web/app.js |
 | Tests | tests/test_bass_arrangement.py::test_the_bass_never_takes_the_songs_guitar_tones |
@@ -7942,7 +7942,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-02 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.2 |
 | Commits | 3a841ca55ebaa4371b3dbe7bebd895c52f7e19c9 |
 | Components | src/rockforge/infrastructure/packaging/psarc/sng_build.py; src/rockforge/infrastructure/rsxml/writer.py; src/rockforge/infrastructure/packaging/psarc/verify.py |
 | Tests | tests/test_psarc_verify.py::test_two_notes_on_one_string_are_never_a_chord |
@@ -7963,7 +7963,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-02 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.2 |
 | Commits | d63e64dfa5c4e08d59fe3fee4f989987e9dccc25 |
 | Components | web/app.js |
 | Tests | — |
@@ -7984,7 +7984,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-02 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.2 |
 | Commits | 3dfb71fe53d3f538d05c5b83d5e22a9b3bf12bb7 |
 | Components | src/rockforge/infrastructure/rsxml/vocals.py |
 | Tests | tests/test_vocals.py::test_an_lrc_with_a_time_on_every_word_keeps_each_words_time; tests/test_vocals.py::test_a_plain_lrc_is_still_spread_over_its_lines |

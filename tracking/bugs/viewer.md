@@ -1735,7 +1735,7 @@ Applying detected tones (or any edit) and pressing Apply and rebuild on a projec
 
 **Root cause:** loadArrangements seeded centOffsetLive from the first chart's XML CentOffset, which for a bass at A220 is -1200 (the low-tuning fix), and applyAllNow always sends cent_offset.
 
-**Fixes:** [FIX-0362](../FIX_LOG.md#fix-0362) (unreleased)
+**Fixes:** [FIX-0362](../FIX_LOG.md#fix-0362) (0.12.0-beta.2)
 
 **Verified:** manual: the reporter's error reproduced on an invented bass-only A220 project and gone with the fix; real rebuilds keep A220; not tried by the reporter yet (by the developer (Playwright on a live server))
 
