@@ -17,8 +17,10 @@ What a part carries, and how it maps:
   or a drum instrument = percussion, skipped (RockForge charts guitars).
 - measure: ``signature`` ``[n, d]`` (carries forward until changed),
   ``marker.text`` (a section), ``voices[].beats[]``.
-- beat: ``type`` (1, 2, 4 … 64 = whole … 64th), ``dots``, ``tuplet`` (3, 5,
-  6, 7, 9), ``rest``, ``letRing``, ``graceNote``, ``notes[]``.
+- beat: ``type`` (1, 2, 4 … 64 = whole … 64th), ``dots`` or ``dotted``,
+  ``tuplet`` (3, 5, 6, 7, 9), ``duration`` ``[num, den]`` — the length played,
+  in whole notes, dots and tuplets included; it wins when the flags say
+  otherwise — ``rest``, ``letRing``, ``graceNote``, ``notes[]``.
 - note: ``fret``, ``string``, ``tie`` (a held continuation), ``hp`` (this note
   is the TARGET of a hammer-on/pull-off — GP5 marks the ORIGIN, the previous
   note on the string), ``slide``, ``bend.points[]`` (``position`` 0..60,
@@ -62,6 +64,7 @@ from __future__ import annotations
 import math
 import re
 from dataclasses import dataclass, field
+from fractions import Fraction
 from pathlib import Path
 from typing import Any
 
@@ -88,6 +91,9 @@ class SongsterrGpReport:
     skipped_tracks: list[str] = field(default_factory=list)
     grace_dropped: int = 0
     graces: int = 0
+    #: Beats whose ``type``/``dots``/``tuplet`` did not add up to their
+    #: ``duration`` — the length Songsterr plays — and were written at it.
+    durations_from_length: int = 0
     tempo_moved: int = 0
     #: Tempo changes whose ``position`` is no fraction of a bar (≥ 1: a unit
     #: never seen), read as the bar's start and counted, never silently.
@@ -247,14 +253,59 @@ def tab_bar_times(
     return out
 
 
-def _duration(beat: dict[str, Any], guitarpro: Any) -> Any:
+def _length(value: int, dotted: bool, enters: int, times: int) -> Fraction:
+    """A note value's length in whole notes (GP5: one dot, a tuplet ``enters``
+    in the time of ``times``)."""
+    return Fraction(1, value) * (Fraction(3, 2) if dotted else 1) * Fraction(times, enters)
+
+
+def _played_length(beat: dict[str, Any]) -> Fraction | None:
+    """Songsterr's ``duration`` ``[num, den]``: how long the beat plays, in
+    whole notes, dots and tuplets included (``[3, 16]`` a dotted eighth,
+    ``[1, 12]`` an eighth of a triplet). None when absent or unusable."""
+    d = beat.get("duration")
+    if not (isinstance(d, list) and len(d) == 2):
+        return None
+    num, den = _int(d[0], 0), _int(d[1], 0)
+    return Fraction(num, den) if num > 0 and den > 0 else None
+
+
+def _shape_of(length: Fraction) -> tuple[int, bool, int, int] | None:
+    """The GP5 note value that lasts ``length``: plain, dotted or a tuplet."""
+    for value in sorted(_DURATIONS):
+        for dotted in (False, True):
+            if _length(value, dotted, 1, 1) == length:
+                return value, dotted, 1, 1
+    for value in sorted(_DURATIONS):
+        for enters, times in _TUPLETS.values():
+            if _length(value, False, enters, times) == length:
+                return value, False, enters, times
+    return None
+
+
+def _duration(
+    beat: dict[str, Any], guitarpro: Any, report: SongsterrGpReport | None = None
+) -> Any:
     value = _int(beat.get("type"), 4)
     if value not in _DURATIONS:
         value = 4
+    # Songsterr flags a dot as ``dots`` (a count) or ``dotted`` (true).
+    dotted = _int(beat.get("dots"), 0) >= 1 or beat.get("dotted") is True
     enters, times = _TUPLETS.get(_int(beat.get("tuplet"), 0), (1, 1))
+    # ``duration`` is the length the player plays; when the flags say less
+    # (a dotted rest marked only in ``duration``) it is the one that holds —
+    # GitHub issue #18: two such rests read as quarters put the chord after
+    # them an eighth early twice over.
+    played = _played_length(beat)
+    if played is not None and played != _length(value, dotted, enters, times):
+        shape = _shape_of(played)
+        if shape is not None:
+            value, dotted, enters, times = shape
+            if report is not None:
+                report.durations_from_length += 1
     return guitarpro.Duration(
         value=value,
-        isDotted=_int(beat.get("dots"), 0) >= 1,
+        isDotted=dotted,
         tuplet=guitarpro.Tuplet(enters=enters, times=times),
     )
 
@@ -284,7 +335,7 @@ def _fill_voice(
             graces.append(b)
             continue
         beat = guitarpro.Beat(gp_voice)
-        beat.duration = _duration(b, guitarpro)
+        beat.duration = _duration(b, guitarpro, report)
         notes = [] if b.get("rest") else [
             n for n in b.get("notes") or [] if isinstance(n, dict) and not n.get("rest")
         ]

@@ -333,3 +333,38 @@ def test_a_grace_note_in_the_vocal_line_takes_its_own_syllable(tmp_path: Path) -
         [n.time for n in parsed.lyric_notes], ends=[n.end for n in parsed.lyric_notes])
     assert [(round(e.time, 3), e.lyric.rstrip("+")) for e in events] == [
         (0.0, "one"), (0.375, "two"), (0.5, "three"), (1.0, "four"), (1.5, "five")]
+
+
+def test_a_beat_lasts_the_duration_songsterr_plays_whatever_its_flags_say(tmp_path: Path) -> None:
+    """GitHub issue #18 (Bloodbath, "Outnumbering the Day", bar 53): a chord,
+    two dotted-quarter rests, a palm-muted chord at seven eighths of the bar.
+    Songsterr's ``duration`` ``[num, den]`` is the length it plays — dots and
+    tuplets included, as recorded from the live API — while ``dots`` may be
+    missing or come as ``dotted``; reading only ``dots`` made both rests
+    quarters and played the last chord an eighth early twice over."""
+    chord = [{"string": 5, "fret": 0}, {"string": 4, "fret": 2}, {"string": 3, "fret": 2}]
+    part = {
+        "name": "Guitar", "instrument": "Distortion Guitar", "strings": 6, "tuning": STANDARD,
+        "automations": {"tempo": [{"measure": 0, "position": 0, "bpm": 120}]},
+        "measures": [
+            {"signature": [4, 4], "voices": [{"beats": [
+                {"type": 8, "duration": [1, 8], "notes": chord},
+                {"type": 4, "duration": [3, 8], "rest": True},
+                {"type": 4, "duration": [3, 8], "dotted": True, "rest": True},
+                {"type": 8, "duration": [1, 8], "notes": chord},
+            ]}]},
+            {"voices": [{"beats": [  # a triplet known only from its duration
+                {"type": 8, "duration": [1, 12], "notes": [{"string": 0, "fret": 1}]},
+                {"type": 8, "duration": [1, 12], "notes": [{"string": 0, "fret": 2}]},
+                {"type": 8, "duration": [1, 12], "notes": [{"string": 0, "fret": 3}]},
+                {"type": 4, "duration": [1, 4], "notes": [{"string": 0, "fret": 4}]},
+                {"type": 2, "duration": [1, 2], "rest": True},
+            ]}]},
+        ],
+    }
+    dst, report = _write(tmp_path, [part])
+    track = parse_gp_track(dst, 0)
+    onsets = sorted({round(n.time - track.notes[0].time, 3) for n in track.notes})
+    # 120 BPM: a quarter is 0.5 s, a bar 2 s.
+    assert onsets == [0.0, 1.75, 2.0, 2.167, 2.333, 2.5]
+    assert report.durations_from_length == 4  # the undotted rest and the three triplets

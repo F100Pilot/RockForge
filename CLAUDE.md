@@ -309,7 +309,19 @@ re-inverting the dependency.
    that string); bend `position` 0..60 → 0..12 and `tone` 50 = one semitone →
    value 2 (what `parser.py` reads as `value / 2` semitones); every
    `MeasureHeader.start` is set by hand from the time signatures, so an
-   under-/over-filled Songsterr bar cannot push the next one; tempo = the first
+   under-/over-filled Songsterr bar cannot push the next one; **a beat lasts
+   its `duration` `[num, den]`** (whole notes, dots and tuplets included — the
+   shape the live API answers, read in `joelgoh1/Guitarista`'s recorded
+   fixtures, nothing copied) when `type`/`dots`/`tuplet` add up to something
+   else, and `dotted: true` counts as a dot (`_duration`,
+   `report.durations_from_length`): GitHub issue #18 (Bloodbath, bar 53 —
+   chord, two dotted-quarter rests, a palm-muted chord at 7/8) played that
+   chord at 5/8, the rests read as quarters, while Songsterr's own `.gp`
+   export was right. Guarded by
+   `test_a_beat_lasts_the_duration_songsterr_plays_whatever_its_flags_say`
+   (both halves mutation-checked); the recorded Wonderwall parts change
+   nothing. The user's actual JSON was not seen (songsterr.com is blocked
+   here); tempo = the first
    track's `automations.tempo` (song tempo + a mix-table change per later
    measure, as `tempo_writer` does). Honest losses, all counted in the report
    and shown in the wizard: drums skipped, a grace note with no note on its
