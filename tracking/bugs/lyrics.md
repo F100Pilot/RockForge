@@ -1204,3 +1204,37 @@ Both parsers gave every beat of the lyrics' track that has notes a syllable, tie
 - 2026-10-22 — Open: reported in conversation with the project file
 - 2026-10-22 — Fixed: commit c869d4c570
 - 2026-10-22 — Verified: pytest 2026-10-22
+
+## BUG-0364
+
+**An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line**
+
+| | |
+|---|---|
+| Detected | 2026-11-02 |
+| Reported by | DrekAnon (GitHub issue #14) |
+| Found in | 0.10.0-beta.1 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Open |
+
+An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line
+
+**Steps to reproduce:** _pending_
+
+**Expected:** _pending_
+
+**Observed:** _pending_
+
+**Root cause:** _pending_
+
+**Fixes:** —
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** _pending_ · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-02 — Open: reported

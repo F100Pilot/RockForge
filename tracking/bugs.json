@@ -18196,6 +18196,36 @@
           "note": "Playwright with real rebuilds of a bass-only A220 project"
         }
       ]
+    },
+    {
+      "id": "BUG-0364",
+      "title": "An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line",
+      "detected": "2026-11-02",
+      "reported_by": "DrekAnon (GitHub issue #14)",
+      "found_in_version": "0.10.0-beta.1",
+      "found_in_build": "pending",
+      "module": "lyrics",
+      "description": "An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line",
+      "steps": "pending",
+      "expected": "pending",
+      "observed": "pending",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Open",
+      "root_cause": "pending",
+      "fixes": [],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "pending",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-02",
+          "status": "Open",
+          "note": "reported"
+        }
+      ]
     }
   ]
 }

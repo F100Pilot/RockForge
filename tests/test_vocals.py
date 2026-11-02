@@ -335,3 +335,35 @@ def test_an_lrc_line_with_several_times_is_sung_at_each_of_them() -> None:
 def test_ultrastar_syllables_of_one_word_are_joined_and_words_are_not() -> None:
     txt = "#BPM:120\n#GAP:0\n: 0 2 60 Hel\n: 2 2 60 lo \n: 4 2 60 big\n: 6 2 60  world\nE\n"
     assert [e.lyric for e in parse_ultrastar_txt(txt)] == ["Hel-", "lo", "big", "world"]
+
+
+def test_an_lrc_with_a_time_on_every_word_keeps_each_words_time() -> None:
+    """GitHub issue #14: an "enhanced" LRC carries <mm:ss.xx> before each word
+    (and often one after the last, where the line ends). Each word starts at
+    its own time and lasts until the next — it used to show as "<00:41.81>She's",
+    spread evenly over the line. A stamp right after a syllable splits a word
+    ("-"), words under one stamp share it, a plain line in the same file is
+    spread as before, and a line sung twice keeps its word spacing."""
+    text = (
+        "[00:41.81]<00:41.81>She's <00:42.30>got <00:43.05>it<00:43.60>\n"
+        "[00:44.00]<00:44.00>Wel<00:44.50>come <00:45.00>to the <00:46.00>jun<00:46.40>gle\n"
+        "[00:50.00]plain line here\n"
+        "[00:55.00][01:30.00]<00:55.00>Hey <00:55.50>you<00:56.00>\n"
+    )
+    got = [(round(e.time, 3), round(e.length, 3), e.lyric) for e in parse_lyrics(text)]
+    assert got == [
+        (41.81, 0.49, "She's"), (42.3, 0.75, "got"), (43.05, 0.55, "it+"),
+        (44.0, 0.5, "Wel-"), (44.5, 0.5, "come"), (45.0, 0.5, "to"), (45.5, 0.5, "the"),
+        (46.0, 0.4, "jun-"), (46.4, 3.6, "gle+"),
+        (50.0, 1.333, "plain"), (51.333, 1.333, "line"), (52.667, 1.333, "here+"),
+        (55.0, 0.5, "Hey"), (55.5, 0.5, "you+"),
+        (90.0, 0.5, "Hey"), (90.5, 0.5, "you+"),
+    ]
+    assert not any("<" in e.lyric for e in parse_lyrics(text))
+    shifted = parse_lyrics(text, offset_s=2.0)
+    assert round(shifted[0].time, 3) == 43.81
+
+
+def test_a_plain_lrc_is_still_spread_over_its_lines() -> None:
+    events = parse_lyrics("[00:10.00]one two\n[00:12.00]three\n")
+    assert [(e.time, e.lyric) for e in events] == [(10.0, "one"), (11.0, "two+"), (12.0, "three+")]

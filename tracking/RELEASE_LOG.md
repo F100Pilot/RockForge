@@ -40,6 +40,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0361](bugs/tones.md#bug-0361) A Bass chart with no tones of its own took the song's guitar tones (a guitar amp on the bass) (Medium, now Verified)
 - [BUG-0362](bugs/psarc.md#bug-0362) Two notes on one string within 30 ms became a chord with a dangling link and slide, and Rocksmith crashed on play (High, now Verified)
 - [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
+- [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Open)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -71,6 +72,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0358](bugs/viewer.md#bug-0358) The Score's Audio panel opened past the left edge of a narrow window (Low, now Verified)
 - [BUG-0362](bugs/psarc.md#bug-0362) Two notes on one string within 30 ms became a chord with a dangling link and slide, and Rocksmith crashed on play (High, now Verified)
 - [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
+- [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Open)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -107,6 +109,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0356](bugs/viewer.md#bug-0356) Chords lag when they play on the score, and a six-string chord sounds only three strings (Medium, now Verified)
 - [BUG-0362](bugs/psarc.md#bug-0362) Two notes on one string within 30 ms became a chord with a dangling link and slide, and Rocksmith crashed on play (High, now Verified)
 - [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
+- [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Open)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -139,6 +142,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0352](bugs/lyrics.md#bug-0352) Lyrics of a Songsterr tab land later and later: a grace note in the vocal line gets no syllable (Medium, now Verified)
 - [BUG-0362](bugs/psarc.md#bug-0362) Two notes on one string within 30 ms became a chord with a dangling link and slide, and Rocksmith crashed on play (High, now Verified)
 - [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
+- [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Open)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -182,6 +186,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0351](bugs/viewer.md#bug-0351) The cursor and lit notes run ahead of the sound during playback, by the output latency (Medium, now Verified)
 - [BUG-0362](bugs/psarc.md#bug-0362) Two notes on one string within 30 ms became a chord with a dangling link and slide, and Rocksmith crashed on play (High, now Verified)
 - [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
+- [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Open)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -220,6 +225,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0344](bugs/sync.md#bug-0344) Creating a job from Songsterr fails with 422 when the video's bar marks start before the video (negative times) (Medium, now Verified)
 - [BUG-0345](bugs/sync.md#bug-0345) A tab imported from Songsterr drifts away from Songsterr's own recording: the tempo's decimals and mid-bar changes are lost (High, now Verified)
 - [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
+- [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Open)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -279,6 +285,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0343](bugs/import.md#bug-0343) A chart whose GP track has no notes fails with a bare 'arrangement has no notes' that names neither the chart nor the track (Low, now Verified)
 - [BUG-0344](bugs/sync.md#bug-0344) Creating a job from Songsterr fails with 422 when the video's bar marks start before the video (negative times) (Medium, now Verified)
 - [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
+- [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Open)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -348,6 +355,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0336](bugs/viewer.md#bug-0336) The 3D highway could start drawing after being closed while loading (Low, now Verified)
 - [BUG-0337](bugs/psarc.md#bug-0337) Two songs whose names share the first 30 letters get the same song key (Low, now Verified)
 - [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
+- [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Open)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -417,6 +425,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0336](bugs/viewer.md#bug-0336) The 3D highway could start drawing after being closed while loading (Low, now Verified)
 - [BUG-0337](bugs/psarc.md#bug-0337) Two songs whose names share the first 30 letters get the same song key (Low, now Verified)
 - [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
+- [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Open)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -449,6 +458,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 **Known bugs it carried:** 
 
 - [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
+- [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Open)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -476,6 +486,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 **Known bugs it carried:** 
 
 - [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
+- [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Open)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -508,6 +519,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 **Known bugs it carried:** 
 
 - [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
+- [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Open)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -536,6 +548,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 
 - [BUG-0295](bugs/sync.md#bug-0295) Dragging a selection stretched the notes before it when another correction was pending (Medium, now Closed)
 - [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
+- [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Open)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -563,6 +576,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 **Known bugs it carried:** 
 
 - [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
+- [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Open)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -601,6 +615,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 **Known bugs it carried:** 
 
 - [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
+- [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Open)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -632,6 +647,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 **Known bugs it carried:** 
 
 - [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
+- [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Open)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -659,6 +675,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 **Known bugs it carried:** 
 
 - [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
+- [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Open)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -694,6 +711,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 
 - [BUG-0288](bugs/game.md#bug-0288) Open-string chords without sustain were painted solid top to bottom in game (High, now Closed)
 - [BUG-0363](bugs/viewer.md#bug-0363) Every rebuild of a project whose first chart is a bass at A220 was refused: cent_offset -1200 (High, now Verified)
+- [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Open)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -725,6 +743,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 **Known bugs it carried:** 
 
 - [BUG-0285](bugs/sync.md#bug-0285) Recording attacks (and the auto-sync) sat late by the intro silence (Medium, now Closed)
+- [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Open)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -757,6 +776,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 **Known bugs it carried:** 
 
 - [BUG-0284](bugs/viewer.md#bug-0284) Sustained notes played as a short pick in the editor's preview (Low, now Closed)
+- [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Open)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -797,6 +817,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 
 - [BUG-0283](bugs/exe.md#bug-0283) The .exe never used the GPU for the ML stages (Medium, now Closed)
 - [BUG-0284](bugs/viewer.md#bug-0284) Sustained notes played as a short pick in the editor's preview (Low, now Closed)
+- [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Open)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -829,6 +850,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 
 - [BUG-0278](bugs/import.md#bug-0278) After a D.C./D.S. the 1st-time ending was played again before the 2nd (Medium, now Closed)
 - [BUG-0279](bugs/game.md#bug-0279) Every short note carried a sustain tail on the highway (Medium, now Closed)
+- [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Open)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -874,6 +896,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 **Known bugs it carried:** 
 
 - [BUG-0273](bugs/exe.md#bug-0273) In the .exe, installed extra components were unused when the ML Python setting was empty (High, now Closed)
+- [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Open)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -899,6 +922,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 **Known bugs it carried:** 
 
 - [BUG-0267](bugs/release.md#bug-0267) Release workflow ignored a tag without the leading v; the beta 3 release had no files (High, now Closed)
+- [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Open)
 
 **Update / rollback:** _pending_
 
@@ -929,6 +953,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 **Known bugs it carried:** 
 
 - [BUG-0267](bugs/release.md#bug-0267) Release workflow ignored a tag without the leading v; the beta 3 release had no files (High, now Closed)
+- [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Open)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -987,7 +1012,9 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0265](bugs/exe.md#bug-0265) In the .exe, a project without tones of its own made no .psarc
 - [BUG-0266](bugs/app.md#bug-0266) start.bat's git pull stalled on Windows with repeated "Unlink of file ... failed" prompts
 
-**Known bugs it carried:** —
+**Known bugs it carried:** 
+
+- [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Open)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -1278,7 +1305,9 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0263](bugs/viewer.md#bug-0263) Áudio panel did not close with Escape when focus was outside it
 - [BUG-0264](bugs/app.md#bug-0264) Stale or wrong UI labels ('Estado do PSARC', English alternate-lead label)
 
-**Known bugs it carried:** —
+**Known bugs it carried:** 
+
+- [BUG-0364](bugs/lyrics.md#bug-0364) An LRC with a time on every word showed '<mm:ss.xx>Word' and spread the words evenly over the line (Medium, now Open)
 
 **Update / rollback:** Source install only (no downloads yet): start.bat pulls the newest code by itself; git checkout of an earlier commit to go back.
 

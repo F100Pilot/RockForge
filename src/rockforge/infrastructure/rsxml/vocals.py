@@ -68,6 +68,112 @@ def parse_lrc(text: str, offset_s: float = 0.0) -> list[VocalEvent]:
     return events
 
 
+# Enhanced LRC ("A2" / word-timed LRC): a time in angle brackets before each
+# word — "[00:41.81]<00:41.81>She's <00:42.30>got <00:43.05>it<00:43.60>" —
+# and often one more after the last word, where the line ends. A stamp written
+# right after a syllable with no space ("<..>Wel<..>come") splits one word.
+_WORD_STAMP = re.compile(r"<(\d+):(\d+(?:\.\d+)?)>")
+
+
+def _stamp(minutes: str, seconds: str) -> float:
+    return int(minutes) * 60 + float(seconds)
+
+
+def parse_word_timed_lrc(text: str, offset_s: float = 0.0) -> list[VocalEvent]:
+    """Parse an LRC whose words carry their own times (GitHub issue #14).
+
+    Each word starts at its own <mm:ss.xx>; it lasts until the next word of the
+    line, or until the line's closing stamp, or until the next line (capped at
+    MAX_LENGTH_S); the last word of a line ends with "+", a syllable the next
+    stamp splits from the rest of its word with "-" (Rocksmith's markers). A
+    line with no word stamps is spread evenly, as in a plain LRC. A line sung
+    several times ("[01:00.00][02:00.00]<01:00.20>la…") is repeated with its
+    word times moved by the same amount as its line time."""
+    # each line: (start, [(time, lyric)], end or None)
+    lines: list[tuple[float, list[tuple[float, str]], float | None]] = []
+    for raw in text.splitlines():
+        rest = raw.strip()
+        times: list[float] = []
+        while (m := _LRC_LINE.match(rest)) is not None:
+            times.append(_stamp(m.group(1), m.group(2)))
+            rest = m.group(3).strip()
+        if not times or not rest:
+            continue
+        parts = _WORD_STAMP.split(rest)
+        words: list[tuple[float, str]] = []
+        end: float | None = None
+        if len(parts) == 1:  # no word stamps on this line
+            words = [(times[0], w) for w in rest.split()]
+            spread = True
+        else:
+            spread = False
+            pre = parts[0].strip()
+            if pre:
+                words.extend((times[0], w) for w in pre.split())
+            joined = False  # the previous segment ended mid-word
+            for i in range(1, len(parts), 3):
+                t = _stamp(parts[i], parts[i + 1])
+                seg = parts[i + 2]
+                tokens = seg.split()
+                if not tokens:
+                    end = t
+                    joined = False
+                    continue
+                end = None
+                if joined and words and not seg[0].isspace():
+                    words[-1] = (words[-1][0], words[-1][1] + "-")
+                for tok in tokens:
+                    words.append((t, tok))
+                joined = not seg[-1].isspace()
+        if not words:
+            continue
+        for line_t in times:
+            shift = line_t - times[0]
+            lines.append((line_t + offset_s,
+                          [(t + shift + offset_s, w) for t, w in words],
+                          None if end is None else end + shift + offset_s))
+            if spread:
+                lines[-1] = (lines[-1][0], lines[-1][1], -1.0)  # marker: spread evenly
+    lines.sort(key=lambda ln: ln[0])
+
+    events: list[VocalEvent] = []
+    for li, (start, words, end) in enumerate(lines):
+        nxt = lines[li + 1][0] if li + 1 < len(lines) else None
+        if end == -1.0:  # untimed words: the line's span split evenly
+            span = (min(MAX_LENGTH_S, max(0.1, nxt - start)) if nxt is not None
+                    else DEFAULT_LAST_LENGTH_S)
+            step = span / len(words)
+            words = [(start + k * step, w) for k, (_, w) in enumerate(words)]
+            end = start + span
+        # several words under one stamp share the time to the next stamp
+        timed: list[tuple[float, str]] = []
+        k = 0
+        while k < len(words):
+            j = k
+            while j < len(words) and words[j][0] == words[k][0]:
+                j += 1
+            group_end = words[j][0] if j < len(words) else end if end is not None else nxt
+            n = j - k
+            if n > 1 and group_end is not None and group_end > words[k][0]:
+                step = (group_end - words[k][0]) / n
+                timed.extend((words[k][0] + m * step, words[k + m][1]) for m in range(n))
+            else:
+                timed.extend(words[k:j])
+            k = j
+        for wi, (t, w) in enumerate(timed):
+            if wi + 1 < len(timed):
+                stop: float | None = timed[wi + 1][0]
+            else:
+                stop = end if end is not None else nxt
+            length = (DEFAULT_LAST_LENGTH_S if stop is None
+                      else min(MAX_LENGTH_S, max(0.05, stop - t)))
+            lyric = w
+            if wi == len(timed) - 1:
+                lyric = lyric.rstrip("-") + "+"
+            events.append(VocalEvent(time=t, length=length, lyric=lyric))
+    return events
+
+
 def expand_to_words(events: list[VocalEvent]) -> list[VocalEvent]:
     """Split line-level events into one VocalEvent per word.
 
@@ -401,11 +507,15 @@ def parse_ultrastar_txt(text: str, offset_s: float = 0.0) -> list[VocalEvent]:
 def parse_lyrics(text: str, offset_s: float = 0.0) -> list[VocalEvent]:
     """Parse a lyrics file, auto-detecting UltraStar TXT vs LRC.
 
-    UltraStar files are already per-syllable; LRC files are line-level and get
-    expanded to one event per word via `expand_to_words`.
+    UltraStar files are already per-syllable; an LRC whose words carry their own
+    <mm:ss.xx> keeps those times (`parse_word_timed_lrc`); a plain LRC is
+    line-level and gets expanded to one event per word via `expand_to_words`.
     """
     if any(_USTAR_HEADER.match(line.strip()) for line in text.splitlines()):
         return parse_ultrastar_txt(text, offset_s)
+    if any(_LRC_LINE.match(line.strip()) and _WORD_STAMP.search(line)
+           for line in text.splitlines()):
+        return parse_word_timed_lrc(text, offset_s)
     return expand_to_words(parse_lrc(text, offset_s))
 
 

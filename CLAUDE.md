@@ -2489,6 +2489,19 @@ per-syllable: `expand_to_words` splits line-level events (LRC) into one
 `<vocal>` per word and appends `+` to the last word of each line — that
 trailing `+` is what makes the in-game lyric display break to a new line.
 UltraStar input is already per-syllable and is NOT re-expanded.
+**Word-timed ("enhanced") LRC keeps each word's time** (`parse_word_timed_lrc`,
+GitHub issue #14): `[00:41.81]<00:41.81>She's <00:42.30>got <00:43.05>it<00:43.60>`
+used to go through `expand_to_words`, which showed "<00:41.81>She's" and
+spread the words evenly. `parse_lyrics` sends any file with a `<mm:ss.xx>` on
+an LRC line there: a word lasts to the next word's stamp, else the line's
+closing stamp, else the next line (≤ `MAX_LENGTH_S`); several words under one
+stamp share it; a stamp right after a syllable with no space splits a word
+("Wel-" "come", Rocksmith's join marker); the last word gets "+"; a line with
+no word stamps is spread as before; a line sung several times keeps its word
+spacing at each time. Guarded by
+`test_an_lrc_with_a_time_on_every_word_keeps_each_words_time` (fails with the
+dispatch removed); a real build from the wizard's LRC upload put each word at
+its own time in the vocals XML.
 
 **GP-embedded lyrics surface in the editor.** GP-embedded lyrics used to be
 written straight to the vocals XML at build time and never shown in the UI, so
