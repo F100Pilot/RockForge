@@ -33,7 +33,11 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 
 - [BUG-0358](bugs/viewer.md#bug-0358) The Score's Audio panel opened past the left edge of a narrow window
 
-**Known bugs it carried:** —
+**Known bugs it carried:** 
+
+- [BUG-0359](bugs/game.md#bug-0359) The game stopped the song 1 s after the last note, cutting the rest of the recording (Medium, now Verified)
+- [BUG-0360](bugs/tones.md#bug-0360) Using a detected tone one by one listed every project tone as switchable, so a rebuild with 5 or more was refused (Medium, now Fixed)
+- [BUG-0361](bugs/tones.md#bug-0361) A Bass chart with no tones of its own took the song's guitar tones (a guitar amp on the bass) (Medium, now Verified)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 

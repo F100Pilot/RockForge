@@ -191,3 +191,46 @@ A chord with an open string and no sustain or technique (a drop-tuned 0-0-0 powe
 - 2026-10-17 — Fixed: commit ec8df7fc2d
 - 2026-10-17 — Verified: automated
 - 2026-10-17 — Closed: released in 0.10.0-beta.11
+
+## BUG-0359
+
+**The game stopped the song 1 s after the last note, cutting the rest of the recording**
+
+| | |
+|---|---|
+| Detected | 2026-11-02 |
+| Reported by | DrekAnon (GitHub issue #10) |
+| Found in | 0.12.0-beta.1 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Verified |
+
+The song's length (XML songLength, manifest SongLength, SNG metadata) was the chart's last note + 1 s whatever the recording, so in game a chart that rests through the outro cut the rest of the song.
+
+**Steps to reproduce:** 
+
+1. Build a GP project whose recording goes on after the chart's last note (an outro, a fade)
+2. Play it in Rocksmith
+
+**Expected:** The song plays to the end of the recording (or a chosen end).
+
+**Observed:** The song stops 1 s after the last note (reporter: about a minute early).
+
+**Root cause:** gp_pipeline computed song_length = max(last note end) + 1.0 and never looked at the recording's length.
+
+**Fixes:** [FIX-0358](../FIX_LOG.md#fix-0358) (unreleased)
+
+**Verified:** test: regression tests passed 2026-11-02 (by the developer (pytest))
+
+**Resolved:** 2026-11-02 · **Closed:** _pending_
+
+**Evidence:**
+
+- 2026-11-02: tests/test_song_end.py and test_the_bass_never_takes_the_songs_guitar_tones pass; full suite green
+
+**History:**
+
+- 2026-11-02 — Open: reported
+- 2026-11-02 — Fixed: commit 38e0303d1f
+- 2026-11-02 — Verified: regression test passed 2026-11-02

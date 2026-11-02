@@ -802,3 +802,85 @@ Tone change times are stored in the chart's clock and used by the build verbatim
 - 2026-10-19 — In Progress: the maintainer asked for the fix
 - 2026-10-19 — Fixed: commit a9ba28fe24
 - 2026-10-19 — Verified: checked in the browser with real rebuilds
+
+## BUG-0360
+
+**Using a detected tone one by one listed every project tone as switchable, so a rebuild with 5 or more was refused**
+
+| | |
+|---|---|
+| Detected | 2026-11-02 |
+| Reported by | DrekAnon (GitHub issue #9) |
+| Found in | 0.12.0-beta.1 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Fixed |
+
+In the Tones page, 'use' on a detected tone set the switchable tone list to every tone of the project; with five or more tones the rebuild was refused.
+
+**Steps to reproduce:** 
+
+1. Have four or more tones in a project
+2. Tones → Detect tone → 'use' on a suggestion
+3. Apply and rebuild
+
+**Expected:** The chosen tone takes the place of the one it replaces; the rebuild goes through.
+
+**Observed:** 422 'Rocksmith supports at most 4 switchable tones' (reproduced by a direct rebuild with five names).
+
+**Root cause:** applyOneTone in web/app.js assigned toneNames = jobTones.map(t => t.key).
+
+**Fixes:** [FIX-0359](../FIX_LOG.md#fix-0359) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-02 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-02 — Open: reported
+- 2026-11-02 — Fixed: commit 38e0303d1f
+
+## BUG-0361
+
+**A Bass chart with no tones of its own took the song's guitar tones (a guitar amp on the bass)**
+
+| | |
+|---|---|
+| Detected | 2026-11-02 |
+| Reported by | DrekAnon (GitHub issue #9) |
+| Found in | 0.12.0-beta.1 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Verified |
+
+A Bass arrangement with no tone set of its own took the song-level tones; after 'Apply best' those are the detected guitar tones, so the bass chart shipped with a guitar amp as its base tone.
+
+**Steps to reproduce:** 
+
+1. A GP project with a Bass chart (alone or beside a guitar)
+2. Tones → Detect tone → Apply best → Apply and rebuild
+
+**Expected:** The bass keeps a bass tone (its own, the project's bass tones or the standard one).
+
+**Observed:** The Bass chart's tonebase is the guitar Lead preset.
+
+**Root cause:** GpJobSpec.tones_for falls back to the song's set for every chart, and every chart received all the project's gear.
+
+**Fixes:** [FIX-0360](../FIX_LOG.md#fix-0360) (unreleased)
+
+**Verified:** test: regression tests passed 2026-11-02 (by the developer (pytest))
+
+**Resolved:** 2026-11-02 · **Closed:** _pending_
+
+**Evidence:**
+
+- 2026-11-02: tests/test_song_end.py and test_the_bass_never_takes_the_songs_guitar_tones pass; full suite green
+
+**History:**
+
+- 2026-11-02 — Open: reported
+- 2026-11-02 — Fixed: commit 38e0303d1f
+- 2026-11-02 — Verified: regression test passed 2026-11-02

@@ -363,6 +363,9 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0355](#fix-0355) | BUG-0357 | 0.11.1-beta.5 | not run | manual |
 | [FIX-0356](#fix-0356) | BUG-0356 | 0.11.1-beta.5 | not run | manual |
 | [FIX-0357](#fix-0357) | BUG-0358 | 0.12.0-beta.1 | not run | manual |
+| [FIX-0358](#fix-0358) | BUG-0359 | unreleased | passed | automated |
+| [FIX-0359](#fix-0359) | BUG-0360 | unreleased | not run | manual |
+| [FIX-0360](#fix-0360) | BUG-0361 | unreleased | passed | automated |
 
 ## FIX-0001
 
@@ -7860,3 +7863,66 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | not run |
 | Validation | manual |
 | Regression risk | Low: only a menu that would overflow is moved. |
+
+## FIX-0358
+
+**Bugs:** [BUG-0359](bugs/game.md#bug-0359)
+
+**Root cause:** gp_pipeline computed song_length = max(last note end) + 1.0 and never looked at the recording's length.
+
+**Solution:** _song_length takes the normalized WAV's length (the recording's end in the bundle clock) or the user's song_end_s ('Fim da música', recording seconds), never before the last note + 1 s and never past the recording, each clamp warned. Plumbed through params/RebuildIn/JobOut/sync state/.rfproj and a card under 'Silêncio inicial'.
+
+| | |
+|---|---|
+| Date | 2026-11-02 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 38e0303d1fbbfa38e64beff42b127011ab9828ba |
+| Components | src/rockforge/application/gp_pipeline.py; src/rockforge/interfaces/api; src/rockforge/interfaces/worker/celery_app.py; web/app.js; web/index.html |
+| Tests | tests/test_song_end.py; tests/test_api.py::test_the_song_end_is_stored_read_back_and_reset; tests/test_celery_tasks.py::test_the_song_end_reaches_the_build |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Medium: every rebuilt song now lasts to its recording's end; a recording with a long silent tail plays it until the user sets an end. |
+
+## FIX-0359
+
+**Bugs:** [BUG-0360](bugs/tones.md#bug-0360)
+
+**Root cause:** applyOneTone in web/app.js assigned toneNames = jobTones.map(t => t.key).
+
+**Solution:** applyOneTone replaces the swapped-out key in toneNames, adds the new one and caps the list at four with the base first.
+
+| | |
+|---|---|
+| Date | 2026-11-02 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 38e0303d1fbbfa38e64beff42b127011ab9828ba |
+| Components | web/app.js |
+| Tests | — |
+| Manual checks | Code reading + a direct /rebuild with five tone_names returning 422; the new list can no longer exceed four |
+| Test result | not run |
+| Validation | manual |
+| Regression risk | Low: only the 'use' button's list. |
+
+## FIX-0360
+
+**Bugs:** [BUG-0361](bugs/tones.md#bug-0361)
+
+**Root cause:** GpJobSpec.tones_for falls back to the song's set for every chart, and every chart received all the project's gear.
+
+**Solution:** A Bass without its own set takes only the project's bass tones (a Bass_ amp, domain.tone.is_bass_tone), else none (the default bass tone), said in the warnings; the Tones page says the detected tones do not go to the bass.
+
+| | |
+|---|---|
+| Date | 2026-11-02 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 38e0303d1fbbfa38e64beff42b127011ab9828ba |
+| Components | src/rockforge/application/gp_pipeline.py; src/rockforge/domain/tone.py; web/app.js |
+| Tests | tests/test_bass_arrangement.py::test_the_bass_never_takes_the_songs_guitar_tones |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: a bass that deliberately used a guitar amp must now be given its own set. |

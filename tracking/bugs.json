@@ -17967,6 +17967,141 @@
           "note": "Playwright 2026-10-24"
         }
       ]
+    },
+    {
+      "id": "BUG-0359",
+      "title": "The game stopped the song 1 s after the last note, cutting the rest of the recording",
+      "detected": "2026-11-02",
+      "reported_by": "DrekAnon (GitHub issue #10)",
+      "found_in_version": "0.12.0-beta.1",
+      "found_in_build": "pending",
+      "module": "game",
+      "description": "The song's length (XML songLength, manifest SongLength, SNG metadata) was the chart's last note + 1 s whatever the recording, so in game a chart that rests through the outro cut the rest of the song.",
+      "steps": [
+        "Build a GP project whose recording goes on after the chart's last note (an outro, a fade)",
+        "Play it in Rocksmith"
+      ],
+      "expected": "The song plays to the end of the recording (or a chosen end).",
+      "observed": "The song stops 1 s after the last note (reporter: about a minute early).",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Verified",
+      "root_cause": "gp_pipeline computed song_length = max(last note end) + 1.0 and never looked at the recording's length.",
+      "fixes": [
+        "FIX-0358"
+      ],
+      "verified_by": "the developer (pytest)",
+      "verification": "test: regression tests passed 2026-11-02",
+      "evidence": [
+        "2026-11-02: tests/test_song_end.py and test_the_bass_never_takes_the_songs_guitar_tones pass; full suite green"
+      ],
+      "resolved": "2026-11-02",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-02",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-02",
+          "status": "Fixed",
+          "note": "commit 38e0303d1f"
+        },
+        {
+          "date": "2026-11-02",
+          "status": "Verified",
+          "note": "regression test passed 2026-11-02"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0360",
+      "title": "Using a detected tone one by one listed every project tone as switchable, so a rebuild with 5 or more was refused",
+      "detected": "2026-11-02",
+      "reported_by": "DrekAnon (GitHub issue #9)",
+      "found_in_version": "0.12.0-beta.1",
+      "found_in_build": "pending",
+      "module": "tones",
+      "description": "In the Tones page, 'use' on a detected tone set the switchable tone list to every tone of the project; with five or more tones the rebuild was refused.",
+      "steps": [
+        "Have four or more tones in a project",
+        "Tones → Detect tone → 'use' on a suggestion",
+        "Apply and rebuild"
+      ],
+      "expected": "The chosen tone takes the place of the one it replaces; the rebuild goes through.",
+      "observed": "422 'Rocksmith supports at most 4 switchable tones' (reproduced by a direct rebuild with five names).",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Fixed",
+      "root_cause": "applyOneTone in web/app.js assigned toneNames = jobTones.map(t => t.key).",
+      "fixes": [
+        "FIX-0359"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-02",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-02",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-02",
+          "status": "Fixed",
+          "note": "commit 38e0303d1f"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0361",
+      "title": "A Bass chart with no tones of its own took the song's guitar tones (a guitar amp on the bass)",
+      "detected": "2026-11-02",
+      "reported_by": "DrekAnon (GitHub issue #9)",
+      "found_in_version": "0.12.0-beta.1",
+      "found_in_build": "pending",
+      "module": "tones",
+      "description": "A Bass arrangement with no tone set of its own took the song-level tones; after 'Apply best' those are the detected guitar tones, so the bass chart shipped with a guitar amp as its base tone.",
+      "steps": [
+        "A GP project with a Bass chart (alone or beside a guitar)",
+        "Tones → Detect tone → Apply best → Apply and rebuild"
+      ],
+      "expected": "The bass keeps a bass tone (its own, the project's bass tones or the standard one).",
+      "observed": "The Bass chart's tonebase is the guitar Lead preset.",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Verified",
+      "root_cause": "GpJobSpec.tones_for falls back to the song's set for every chart, and every chart received all the project's gear.",
+      "fixes": [
+        "FIX-0360"
+      ],
+      "verified_by": "the developer (pytest)",
+      "verification": "test: regression tests passed 2026-11-02",
+      "evidence": [
+        "2026-11-02: tests/test_song_end.py and test_the_bass_never_takes_the_songs_guitar_tones pass; full suite green"
+      ],
+      "resolved": "2026-11-02",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-02",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-02",
+          "status": "Fixed",
+          "note": "commit 38e0303d1f"
+        },
+        {
+          "date": "2026-11-02",
+          "status": "Verified",
+          "note": "regression test passed 2026-11-02"
+        }
+      ]
     }
   ]
 }
