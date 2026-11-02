@@ -921,3 +921,41 @@ Reading the dlc folder for the tone collection stopped with 'PermissionError: [W
 
 - 2026-11-02 — Open: reported
 - 2026-11-02 — Fixed: commit f33821321e
+
+## BUG-0368
+
+**The tone detection proposed guitar tones only, so a bass chart could be given a guitar amp from it**
+
+| | |
+|---|---|
+| Detected | 2026-11-02 |
+| Reported by | DrekAnon (GitHub issue #16) |
+| Found in | 0.12.0-beta.2 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Fixed |
+
+With a bass arrangement, 'Detect tone' listed Lead and Rhythm guitar tones only; nothing was proposed for the bass, and 'use' on a guitar tone while the bass's own tones were on screen put a guitar amp on the bass.
+
+**Steps to reproduce:** 
+
+1. A project with a Bass chart → Tones → Detect tone
+2. Untick 'Same tones on every track', pick the Bass tab, press 'use' on a detected tone
+
+**Expected:** Bass tones proposed for the bass; a guitar tone never applied to the bass.
+
+**Observed:** Only Lead/Rhythm guitar candidates; the guitar tone went on the bass.
+
+**Root cause:** detect_tones analysed the guitar stem only and ranked the guitar libraries; the 'use' buttons wrote into whichever tone set was on screen, the Bass's included.
+
+**Fixes:** [FIX-0367](../FIX_LOG.md#fix-0367) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-02 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-02 — Open: reported
+- 2026-11-02 — Fixed: commit 8340afd106

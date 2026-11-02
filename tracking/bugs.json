@@ -18361,6 +18361,46 @@
           "note": "commit f33821321e"
         }
       ]
+    },
+    {
+      "id": "BUG-0368",
+      "title": "The tone detection proposed guitar tones only, so a bass chart could be given a guitar amp from it",
+      "detected": "2026-11-02",
+      "reported_by": "DrekAnon (GitHub issue #16)",
+      "found_in_version": "0.12.0-beta.2",
+      "found_in_build": "pending",
+      "module": "tones",
+      "description": "With a bass arrangement, 'Detect tone' listed Lead and Rhythm guitar tones only; nothing was proposed for the bass, and 'use' on a guitar tone while the bass's own tones were on screen put a guitar amp on the bass.",
+      "steps": [
+        "A project with a Bass chart → Tones → Detect tone",
+        "Untick 'Same tones on every track', pick the Bass tab, press 'use' on a detected tone"
+      ],
+      "expected": "Bass tones proposed for the bass; a guitar tone never applied to the bass.",
+      "observed": "Only Lead/Rhythm guitar candidates; the guitar tone went on the bass.",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Fixed",
+      "root_cause": "detect_tones analysed the guitar stem only and ranked the guitar libraries; the 'use' buttons wrote into whichever tone set was on screen, the Bass's included.",
+      "fixes": [
+        "FIX-0367"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-02",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-02",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-02",
+          "status": "Fixed",
+          "note": "commit 8340afd106"
+        }
+      ]
     }
   ]
 }

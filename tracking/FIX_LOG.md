@@ -372,6 +372,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0364](#fix-0364) | BUG-0365 | unreleased | passed | automated |
 | [FIX-0365](#fix-0365) | BUG-0366 | unreleased | passed | automated |
 | [FIX-0366](#fix-0366) | BUG-0367 | unreleased | passed | automated |
+| [FIX-0367](#fix-0367) | BUG-0368 | unreleased | passed | automated |
 
 ## FIX-0001
 
@@ -8058,3 +8059,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | passed |
 | Validation | automated |
 | Regression risk | Low: only what could not be read is treated differently. |
+
+## FIX-0367
+
+**Bugs:** [BUG-0368](bugs/tones.md#bug-0368)
+
+**Root cause:** detect_tones analysed the guitar stem only and ranked the guitar libraries; the 'use' buttons wrote into whichever tone set was on screen, the Bass's included.
+
+**Solution:** detect_tones also measures the bass.wav the same Demucs pass writes and stores bass_candidates = rank_bass(gain) (four presets with real Bass_ gear); /detected-tones answers them; the Tons page lists them for a song with a Bass chart and 'use' gives the Bass chart its own set; a guitar tone on the Bass set is refused with a toast.
+
+| | |
+|---|---|
+| Date | 2026-11-02 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 8340afd10603d2e8633bff7e3ac5c85afe5fbdb0 |
+| Components | src/rockforge/infrastructure/packaging/gear/tone_presets.py; src/rockforge/interfaces/worker/celery_app.py; src/rockforge/interfaces/api/schemas.py; src/rockforge/interfaces/api/routers/tones.py; web/app.js |
+| Tests | tests/test_celery_tasks.py::test_detect_tones_ranks_bass_tones_from_the_separated_bass; tests/test_celery_tasks.py::test_detect_tones_without_a_bass_stem_proposes_no_bass_tones; tests/test_tone_detection.py::test_bass_presets_are_bass_gear_ranked_by_the_bass_gain; tests/test_api.py::test_detected_tones_hand_out_the_bass_candidates |
+| Manual checks | Playwright on a live server (PT 1440 / EN 760 px, detection faked): four bass rows, 'use' set the Bass chart's own set only, a guitar 'use' on the Bass set refused with the message, no page errors |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: new data next to the guitar result, read in its own try; the guitar flow is unchanged except for the refusal on the Bass set. |
