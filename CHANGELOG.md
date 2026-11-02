@@ -6,6 +6,10 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Novidades
+
+- **AppID das músicas, à tua escolha:** o Rocksmith só mostra uma música se tiveres o DLC cujo AppID ela leva. Os `.psarc` levavam sempre o de «Drops of Jupiter» (Train), que já não se vende; agora levam por omissão o de «Cherub Rock» (Smashing Pumpkins, 248750), o habitual nas CDLC, e em **Definições → Geral → AppID das músicas** escolhes outro: **Ler a pasta dlc** lista os AppID das músicas da tua pasta `dlc`, os teus DLC primeiro, ou escreves o número. Vale para os `.psarc` construídos a partir daí: reconstrói os projetos que já tens. Se as tuas músicas deixarem de aparecer no jogo depois de atualizar, escolhe ali «Drops of Jupiter» (492989) ou outro DLC teu.
+
 ## [0.12.0 beta 3] — 2026-11-02
 
 ### Novidades

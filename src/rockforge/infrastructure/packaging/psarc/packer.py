@@ -88,8 +88,11 @@ logger = logging.getLogger(__name__)
 
 
 class NativePsarcPacker:
-    def __init__(self, wem_converter: WwiseWemConverter | None = None) -> None:
+    def __init__(
+        self, wem_converter: WwiseWemConverter | None = None, app_id: str = manifest.APP_ID,
+    ) -> None:
         self._wem_converter = wem_converter
+        self._app_id = app_id
 
     def package(
         self,
@@ -253,6 +256,7 @@ class NativePsarcPacker:
             has_album_art=True,
             dynamic_difficulty=dynamic_difficulty,
             models=sng_models,
+            app_id=self._app_id,
         )
 
         # Game-enumeration assets — without these the song never lists.

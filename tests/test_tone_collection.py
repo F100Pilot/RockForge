@@ -221,3 +221,62 @@ def test_a_folder_or_file_without_permission_is_skipped_not_fatal(
     assert data["blocked_folders"] == [str(dlc / "locked")]
     assert "error" in data["files"]["t_p.psarc"]
     assert [a["name"] for a in tc.artists()] == ["ABBA", "ZZ Top"]  # Z after the refusal
+
+
+def _appid_psarc(path: Path, song: str, artist: str, appid: str | None, cdlc: bool) -> Path:
+    files = {"manifests/songs_dlc_x/x_lead.json": _manifest("Lead", [], song, artist)}
+    if appid is not None:
+        files["appid.appid"] = appid.encode()
+    if cdlc:  # every CDLC tool writes one; the game's own DLC does not
+        files["toolkit.version"] = b"Toolkit version: 2.9.2.1-5df928a5"
+    path.write_bytes(pack_entries(files))
+    return path
+
+
+def test_the_appids_of_the_dlc_folder_are_listed_the_players_own_dlc_first(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    """GitHub issue #20: every .psarc carries the appid of the DLC the game
+    checks ownership of. An archive no CDLC tool made is a DLC of the player's,
+    named by its own song; CDLC are grouped by the appid they reuse."""
+    monkeypatch.setattr(tc.config.settings, "work_dir", tmp_path / "work")
+    dlc = tmp_path / "dlc"
+    dlc.mkdir()
+    _appid_psarc(dlc / "zep_p.psarc", "Kashmir", "Led Zeppelin", "222140", cdlc=False)
+    _appid_psarc(dlc / "a_p.psarc", "Song A", "Band A", "248750", cdlc=True)
+    _appid_psarc(dlc / "b_p.psarc", "Song B", "Band B", "248750", cdlc=True)
+    _appid_psarc(dlc / "c_p.psarc", "Song C", "Band C", "555555", cdlc=True)
+    _appid_psarc(dlc / "d_p.psarc", "Song D", "Band D", None, cdlc=True)  # carries none
+
+    record = tc.read_psarc_tones(dlc / "zep_p.psarc")
+    assert (record["appid"], record["official"], record["song"]) == ("222140", True, "Kashmir")
+    tc.scan(dlc)
+    assert tc.app_ids() == [
+        {"app_id": "222140", "song": "Kashmir", "artist": "Led Zeppelin", "official": True,
+         "cdlc": 0, "example": ""},
+        # a well-known appid is named for its DLC, not for a CDLC that reuses it
+        {"app_id": "248750", "song": "Cherub Rock", "artist": "Smashing Pumpkins",
+         "official": False, "cdlc": 2, "example": "Song A — Band A"},
+        {"app_id": "555555", "song": "", "artist": "", "official": False, "cdlc": 1,
+         "example": "Song C — Band C"},
+    ]
+
+
+def test_a_scan_from_before_the_appid_was_read_reads_each_file_again_once(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    monkeypatch.setattr(tc.config.settings, "work_dir", tmp_path / "work")
+    dlc = tmp_path / "dlc"
+    dlc.mkdir()
+    path = _appid_psarc(dlc / "a_p.psarc", "Song A", "Band A", "248750", cdlc=True)
+    st = path.stat()
+    old = {"size": st.st_size, "mtime": st.st_mtime, "tones": [], "skipped": 0}
+    tc._write({"folder": str(dlc), "files": {"a_p.psarc": old}})
+    read: list[str] = []
+    real = tc.read_psarc_tones
+    monkeypatch.setattr(tc, "read_psarc_tones", lambda p: read.append(p.name) or real(p))
+    tc.scan(dlc)
+    assert read == ["a_p.psarc"]
+    assert [i["app_id"] for i in tc.app_ids()] == ["248750"]
+    tc.scan(dlc)
+    assert read == ["a_p.psarc"]  # now cached with its appid

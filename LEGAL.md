@@ -53,9 +53,9 @@ Servem apenas a interoperabilidade: escrever ficheiros que o jogo saiba ler.
   responsabilidade é tua.
 - **O jogo.** Para o Rocksmith 2014 carregar CDLC é preciso:
   - um patch da comunidade (CDLC Enabler);
-  - possuir o DLC oficial cujo AppID o ficheiro indica. Por defeito é Train,
-    "Drops of Jupiter"; pode ser trocado por outro DLC que possuas, por exemplo
-    Smashing Pumpkins, "Cherub Rock".
+  - possuir o DLC oficial cujo AppID o ficheiro indica. Por defeito é Smashing
+    Pumpkins, "Cherub Rock"; pode ser trocado por outro DLC que possuas em
+    Definições → Geral → AppID das músicas.
 
   Os termos de utilização do jogo aplicam-se a ti.
 - **Wwise.** Cada utilizador instala-o pelo Audiokinetic Launcher e aceita a
@@ -148,9 +148,9 @@ It serves interoperability only: writing files the game can read.
   the responsibility is yours.
 - **The game.** For Rocksmith 2014 to load CDLC you need:
   - a community patch (CDLC Enabler);
-  - to own the official DLC whose AppID the file names. The default is Train,
-    "Drops of Jupiter"; it can be swapped for one you own, e.g. Smashing
-    Pumpkins, "Cherub Rock".
+  - to own the official DLC whose AppID the file names. The default is Smashing
+    Pumpkins, "Cherub Rock"; it can be swapped for one you own in Settings →
+    General → Song AppID.
 
   The game's terms apply to you.
 - **Wwise.** Each user installs it through the Audiokinetic Launcher and

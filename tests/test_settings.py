@@ -219,3 +219,48 @@ def test_ml_python_readiness_is_reported_per_extra(
     assert info["python_ok"] is True
     assert info["ml_ok"] is True      # stems, tone, "Corrigir daqui"
     assert info["lyrics_ok"] is False  # but no automatic lyrics
+
+
+def test_the_appid_of_new_psarcs_is_chosen_and_falls_back_to_cherub_rock(
+    client: TestClient,
+) -> None:
+    """GitHub issue #20: every .psarc carried Train's "Drops of Jupiter" appid,
+    no longer sold — a player without it could not use RockForge's builds."""
+    import rockforge.runtime_settings as rs
+
+    body = client.get("/settings").json()
+    assert (body["app_id"], body["app_id_default"]) == ("248750", "248750")
+    assert rs.app_id() == "248750"
+    assert client.post("/settings", json={"app_id": " 222140 "}).status_code == 200
+    assert client.get("/settings").json()["app_id"] == "222140"
+    assert rs.app_id() == "222140"
+    for bad in ("12a", "-5", "12345678901"):
+        r = client.post("/settings", json={"app_id": bad})
+        assert r.status_code == 422, bad
+    assert rs.app_id() == "222140"
+    assert client.post("/settings", json={"app_id": ""}).status_code == 200
+    assert rs.app_id() == "248750"
+
+
+def test_the_worker_builds_the_psarc_with_the_chosen_appid(client: TestClient) -> None:
+    import rockforge.interfaces.worker.celery_app as worker
+    import rockforge.runtime_settings as rs
+
+    rs.save({**rs.load(), "app_id": "222140"})
+    packer = worker._build_packager()
+    assert getattr(packer, "_app_id", None) == "222140"
+
+
+def test_the_appids_of_the_dlc_folder_are_offered(client: TestClient) -> None:
+    from rockforge.infrastructure import tone_collection as tc
+
+    body = client.get("/app-ids").json()
+    assert (body["items"], body["current"], body["default"]) == ([], "248750", "248750")
+    tc._write({"folder": "D:/dlc", "files": {
+        "a_p.psarc": {"appid": "222140", "official": True, "song": "Kashmir",
+                      "artist": "Led Zeppelin", "tones": []},
+    }})
+    items = client.get("/app-ids").json()["items"]
+    assert [(i["app_id"], i["official"], i["song"]) for i in items] == [
+        ("222140", True, "Kashmir"),
+    ]

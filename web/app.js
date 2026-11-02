@@ -699,6 +699,7 @@ function settingsPayload() {
     rocksmith_dir: document.getElementById('sRocksmithDir').value.trim(),
     wwise_root: document.getElementById('sWwiseRoot').value.trim(),
     check_updates: document.getElementById('sCheckUpdates').checked,
+    app_id: document.getElementById('sAppId').value.trim(),
   };
 }
 let settingsSaved = null;
@@ -791,6 +792,9 @@ function fillSettings(s) {
     ? T('encontrada: {path}', { path: s.wwise_root_detected })
     : 'C:\\Program Files (x86)\\Audiokinetic\\Wwise2023.1.x';
   document.getElementById('sCheckUpdates').checked = s.check_updates !== false;
+  appIdDefault = s.app_id_default || appIdDefault;
+  document.getElementById('sAppId').value = s.app_id || '';
+  renderAppIdPick();
   toggleBanquetConfig();
   renderBanquetValidation(s.banquet || {});
   settingsSaved = settingsPayload();
@@ -861,6 +865,95 @@ async function loadSystemCheck() {
   }
 }
 
+// The appid every new .psarc carries (GitHub issue #20). The picker lists the
+// appids the songs of the player's dlc folder carry (the tone collection's scan
+// reads them), a DLC of their own first — the game accepts those — and "Outro
+// número…" for one they know. The number field is what "Guardar" sends.
+let appIdDefault = '248750';
+let appIdItems = [];
+const APP_ID_OTHER = '__other__';
+function appIdLabel(i) {
+  const name = i.song ? `${i.song}${i.artist ? ' — ' + i.artist : ''}` : T('AppID {id}', { id: i.app_id });
+  const id = i.song ? ` (${i.app_id})` : '';
+  if (i.official) return `${name}${id} · ${T('DLC teu')}`;
+  const used = i.cdlc === 1 ? T('usado por 1 CDLC') : T('usado por {n} CDLC', { n: i.cdlc });
+  const eg = !i.song && i.example ? ` · ${T('ex.: {song}', { song: i.example })}` : '';
+  return `${name}${id} · ${used}${eg}`;
+}
+function renderAppIdPick() {
+  const sel = document.getElementById('sAppIdPick');
+  const input = document.getElementById('sAppId');
+  const current = input.value.trim() || appIdDefault;
+  sel.textContent = '';
+  const add = (value, label) => {
+    const o = document.createElement('option');
+    o.value = value; o.textContent = label; sel.appendChild(o);
+  };
+  add(appIdDefault, `Cherub Rock — Smashing Pumpkins (${appIdDefault}) · ${T('por omissão')}`);
+  for (const i of appIdItems) if (i.app_id !== appIdDefault) add(i.app_id, appIdLabel(i));
+  add(APP_ID_OTHER, T('Outro número…'));
+  const known = [...sel.options].some(o => o.value === current);
+  sel.value = known ? current : APP_ID_OTHER;
+  document.getElementById('sAppIdOtherRow').hidden = known;
+}
+document.getElementById('sAppIdPick').addEventListener('change', e => {
+  const other = e.target.value === APP_ID_OTHER;
+  document.getElementById('sAppIdOtherRow').hidden = !other;
+  const input = document.getElementById('sAppId');
+  if (other) input.focus();
+  else input.value = e.target.value === appIdDefault ? '' : e.target.value;
+  updateSettingsDirty();
+});
+function appIdInfoText(d) {
+  const off = appIdItems.filter(i => i.official).length;
+  if (!d.folder) return T('A pasta dlc ainda não foi lida.');
+  return T('{n} AppID encontrados na pasta dlc ({off} de DLC teus).', { n: appIdItems.length, off });
+}
+async function loadAppIds() {
+  try {
+    const d = await getJSON('/app-ids');
+    appIdItems = d.items || [];
+    if (d.default) appIdDefault = d.default;
+    renderAppIdPick();
+    document.getElementById('sAppIdInfo').textContent = appIdInfoText(d);
+  } catch { /* the field still takes a number */ }
+}
+document.getElementById('sAppIdScan').addEventListener('click', async () => {
+  const btn = document.getElementById('sAppIdScan');
+  const info = document.getElementById('sAppIdInfo');
+  let folder = null;
+  try {
+    const c = await getJSON('/tone-collection?limit=1');
+    folder = c.folder || c.suggested_folder;
+  } catch { /* asked below */ }
+  if (!folder) {
+    info.textContent = T('Não sei onde está a pasta dlc: indica a pasta do Rocksmith 2014 acima e guarda, ou lê-a em Tons → Tons das tuas músicas.');
+    return;
+  }
+  const started = await fetchOrToast('/tone-collection/scan', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ folder }),
+  });
+  if (!started) return;
+  btn.disabled = true;
+  try {
+    for (;;) {
+      await new Promise(r => setTimeout(r, 1200));
+      const c = await getJSON('/tone-collection?limit=1');
+      const st = c.status || {};
+      if (st.state !== 'scanning') {
+        if (st.state === 'error') toast(st.error || T('erro'), 'err');
+        break;
+      }
+      info.textContent = T('A ler a pasta dlc: {done} de {total}…', { done: st.done || 0, total: st.total || '?' });
+    }
+  } catch { /* the list below says what there is */ }
+  btn.disabled = false;
+  const keep = document.getElementById('sAppId').value;
+  await loadAppIds();
+  document.getElementById('sAppId').value = keep;
+  renderAppIdPick();
+});
+
 async function openSettings(pageWanted) {
   document.getElementById('settingsInfo').textContent = '';
   try {
@@ -872,6 +965,7 @@ async function openSettings(pageWanted) {
   document.getElementById('settingsOverlay').hidden = false;
   loadSystemCheck();
   pollComponents();
+  loadAppIds();
 }
 
 // ── Extra components: the .exe installs its own Python 3.11 with the ML,
@@ -1277,6 +1371,7 @@ const COMPLETE_ACTIONS = {
   syncundo: () => setSyncConfirmed(false),
   lyrics: () => { showSection('letras'); },
   software: () => openSettings('software'),
+  appid: () => openSettings('geral'),
 };
 
 // Each chart is named as Rocksmith names it in game ("LEAD 1", "LEAD 2",
@@ -1571,7 +1666,8 @@ function renderCompleteness(j) {
       note: T('Sem letra — o arranjo de vocais não é obrigatório.') });
 
   rows.push({ state: 'info', ico: 'key', title: T('AppID / propriedade'),
-    note: T('O .psarc usa o AppID de uma DLC específica; o jogador tem de a possuir para a música aparecer na lista. Causa nº1 de "não aparece no jogo".') });
+    note: T('O .psarc usa o AppID de uma DLC (por omissão «Cherub Rock», 248750); o jogador tem de a possuir para a música aparecer na lista. Causa nº1 de "não aparece no jogo". Escolhe outra em Definições → Geral → AppID das músicas.'),
+    act: 'appid', actLabel: T('Escolher o AppID') });
 
   const alerts = rows.filter(r => r.state === 'warn' || r.state === 'err');
   let html = `<div class="complete-card"><h4>${T('Antes de usar')}</h4>`;

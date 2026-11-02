@@ -1908,6 +1908,16 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
             <input type="text" id="sRocksmithDir"></label>
           <div class="pv-card-desc">É lá que o patch de CDLC (<code>D3DX9_42.dll</code>) é procurado, e a coleção de tons sugere a sua pasta <code>dlc</code>. Vazio = procurar nas bibliotecas do Steam. No Steam: botão direito no jogo → Gerir → Procurar ficheiros locais, e copia o caminho da barra de endereço.</div>
         </div>
+        <div class="pv-card pv-card-lg">
+          <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-key"/></svg>AppID das músicas</div>
+          <div class="pv-card-desc">O Rocksmith só mostra uma música se tiveres o DLC cujo AppID ela leva. Por omissão é o de «Cherub Rock» (Smashing Pumpkins, 248750), o habitual nas CDLC. Se não o tiveres, escolhe uma música tua da pasta <code>dlc</code>, ou escreve o número. Vale para os .psarc construídos a partir de agora: reconstrói os projetos que já tens.</div>
+          <label class="set-field"><span>O DLC cujo AppID os .psarc levam</span>
+            <select id="sAppIdPick"></select></label>
+          <label class="set-field" id="sAppIdOtherRow" hidden><span>Número do AppID (só algarismos)</span>
+            <input type="text" id="sAppId" inputmode="numeric" autocomplete="off"></label>
+          <div class="about-actions"><button type="button" id="sAppIdScan" class="pv-btn"><svg class="ic" aria-hidden="true"><use href="#i-refresh"/></svg>Ler a pasta dlc</button>
+            <span id="sAppIdInfo" class="meta"></span></div>
+        </div>
       </section>
 
       <!-- Software externo. It explains most "isto não funciona": RockForge

@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
 from rockforge import i18n
+from rockforge.infrastructure.packaging.psarc.manifest import APP_ID, valid_app_id
 from rockforge.interfaces.api import app as api
 from rockforge.interfaces.api.schemas import (
     ComponentsOut,
@@ -51,6 +52,8 @@ def _settings_out() -> SettingsOut:
         check_updates=runtime_settings.check_updates(),
         wwise_root=str(runtime_settings.load().get("wwise_root") or ""),
         wwise_root_detected=str(runtime_settings.wwise_root() or ""),
+        app_id=runtime_settings.app_id(),
+        app_id_default=APP_ID,
     )
 
 
@@ -96,8 +99,36 @@ def update_settings(body: SettingsIn) -> SettingsOut:
         updates["loudness_target"] = float(body.loudness_target)
     if body.check_updates is not None:
         updates["check_updates"] = bool(body.check_updates)
+    if body.app_id is not None:
+        app_id = body.app_id.strip()
+        if app_id and not valid_app_id(app_id):
+            raise HTTPException(422, i18n.tr(
+                "O AppID é um número do Steam (só algarismos, até 10).",
+                "The AppID is a Steam number (digits only, up to 10).",
+            ))
+        updates["app_id"] = app_id
     runtime_settings.save(updates)
     return _settings_out()
+
+
+@router.get("/app-ids")
+def get_app_ids() -> dict[str, Any]:
+    """The appids the songs of the player's dlc folder carry, as the last scan of
+    that folder (the tone collection's, ``POST /tone-collection/scan``) read
+    them — to pick the one every new .psarc carries (GitHub issue #20). A DLC of
+    the player's (an archive no CDLC tool made) is one the game accepts."""
+    from rockforge import runtime_settings
+    from rockforge.infrastructure import tone_collection
+
+    data = tone_collection.load()
+    return {
+        "folder": data.get("folder"),
+        "scanned_at": data.get("scanned_at"),
+        "status": tone_collection.status(),
+        "current": runtime_settings.app_id(),
+        "default": APP_ID,
+        "items": tone_collection.app_ids(data),
+    }
 
 
 @router.post("/gpu-reset", response_model=SettingsOut)

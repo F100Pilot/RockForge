@@ -5555,9 +5555,31 @@ emitted so the native PSARC matches the retail layout file-for-file:
 - filename `*_p.psarc` (the `_p` platform tag — `packer.py`);
 - `appid.appid` at the root (`manifest.APP_ID`) — the Steam id of a DLC the game
   checks ownership of. Rocksmith only lists a CDLC whose appid the player
-  **owns**, so CDLC reuses an owned DLC's appid. RockForge ships Train "Drops of
-  Jupiter" (`492989`); swap it for one the target player owns (e.g. the free base
-  song Smashing Pumpkins "Cherub Rock", `248750`) if the song doesn't appear;
+  **owns**, so CDLC reuses an owned DLC's appid. **It is the player's choice**
+  (GitHub issue #20, 2026-11-02): `runtime_settings.app_id()` (Definições →
+  Geral → "AppID das músicas", `SettingsIn.app_id`, digits only, "" = back to
+  the default) reaches `NativePsarcPacker(app_id=…)` → `build_manifest_files(
+  app_id=…)`; the default `manifest.APP_ID` is now Smashing Pumpkins "Cherub
+  Rock" (`248750`, the CDLC community's usual one) — it was Train "Drops of
+  Jupiter" (`492989`), no longer sold. The picker lists the appids of the
+  player's own dlc folder: the tone collection's scan now also reads each
+  archive's `appid.appid`, whether it has a `toolkit.version` (every CDLC tool
+  writes one, the game's own DLC does not → `official`, "DLC teu" — very
+  likely owned, not verified) and its first song/artist; a record cached before
+  that is read again once. `tone_collection.app_ids` groups them by appid (a DLC
+  of the player's names it, else `KNOWN_APP_IDS`, else an example CDLC), own DLC
+  first; `GET /app-ids`; "Ler a pasta dlc" runs the ordinary
+  `/tone-collection/scan`; the checklist's "AppID / propriedade" row opens it.
+  It applies to `.psarc` files built afterwards (a rebuild). Guarded by
+  `test_the_appid_is_the_one_the_player_chose`,
+  `test_the_appid_of_new_psarcs_is_chosen_and_falls_back_to_cherub_rock`,
+  `test_the_worker_builds_the_psarc_with_the_chosen_appid`,
+  `test_the_appids_of_the_dlc_folder_are_listed_the_players_own_dlc_first` and
+  `test_a_scan_from_before_the_appid_was_read_reads_each_file_again_once`;
+  with Playwright (PT 1440 / EN 760 px): "Ler a pasta dlc" on invented
+  archives → own DLC / CDLC options, chosen and saved, "Outro número…" with a
+  bad number refused, back to the default, no page errors. **Not seen in game
+  from here** — whether a given player owns Cherub Rock is theirs to know;
 - `gamexblocks/nsongs/<key>.xblock` — an `entitySet` with one `RSEnumerable_Song`
   entity per arrangement (this is what makes the engine enumerate the song);
 - `flatmodels/rs/rsenumerable_{root,song}.flat` — the (song-independent) model

@@ -729,7 +729,8 @@ Uma lista do que falta ou pode correr mal, cada linha com um botão para o resol
   esconder a música. Não substitui tocar a música;
 - **Tons**, **Capa**, **Sincronização** (marca cada pista na Partitura, ou carrega aqui em
   **Marcar como sincronizada** para a música toda), **Letra**;
-- **AppID / propriedade**: o PSARC usa o AppID de uma DLC que o jogador tem de possuir.
+- **AppID / propriedade**: o PSARC usa o AppID de uma DLC que o jogador tem de possuir (escolhe-o
+  em **Escolher o AppID**).
 
 Nada é bloqueado: podes descarregar na mesma.
 
@@ -791,7 +792,9 @@ info** de cada projeto.
   envia, uma vez por versão, um número ao acaso, a versão, o tipo de instalação e o sistema, e
   ao desligar apaga o que foi enviado);
   **Pasta do Wwise** (vazio = procurar onde o Audiokinetic Launcher o instala); pasta do
-  Rocksmith 2014.
+  Rocksmith 2014; **AppID das músicas** (o DLC cujo AppID os `.psarc` levam — o jogo só mostra a
+  música se tiveres esse DLC; por omissão «Cherub Rock», 248750; **Ler a pasta dlc** lista os
+  AppID das tuas músicas, os teus DLC primeiro; vale para os `.psarc` construídos a seguir).
 - **Software**: no `.exe`, o cartão **Componentes extra** (o que está instalado, **Instalar
   componentes extra** / **Reinstalar**, o registo da instalação); depois, o que está instalado, o
   que falta e como o obter.
@@ -835,7 +838,7 @@ lista na própria aplicação.
 | Problema | O que ver |
 |---|---|
 | Algo correu mal e queres relatar | Definições → Geral → Sobre o RockForge → **Copiar informação para relatório**, e cola-a no relatório (**Relatar um erro**). Um erro inesperado mostra um id: junta-o, que é o mesmo do registo técnico (`logs/rockforge.log` na pasta de trabalho). |
-| A música **não aparece** no jogo | O patch de CDLC (`D3DX9_42.dll`) está na pasta do jogo? (Definições → Software.) O AppID usado é de uma DLC que tens? O PSARC está em `dlc` (ou `dlc\RockForge`)? |
+| A música **não aparece** no jogo | O patch de CDLC (`D3DX9_42.dll`) está na pasta do jogo? (Definições → Software.) O AppID usado é de uma DLC que tens? (Definições → Geral → AppID das músicas.) O PSARC está em `dlc` (ou `dlc\RockForge`)? |
 | Só sai o bundle, **sem PSARC jogável** | Falta o Wwise (2019/2021/2022/2023) — Definições → Software. |
 | Diz que **falta o Wwise**, mas está instalado | Definições → Software diz o que encontrou: um 2024/2025 (instala também o **2023.1**, podem ficar os dois), um Wwise sem a parte **Authoring** (no Launcher, Modify → Authoring), ou nada (indica a pasta em Definições → Geral → Pasta do Wwise). Em Exportar → "Antes de usar", **PSARC sem som** mostra o erro do Wwise quando o encontrou mas a conversão falhou. |
 | As notas fogem da música | Secção 6, [A forma mais eficaz](#a-forma-mais-eficaz): início, BPM, "Marcar a ouvir" numa tab nunca sincronizada, depois "Corrigir daqui". Num ficheiro que não é exatamente a gravação (outra versão, compassos a mais), a correção tem de ser no próprio ficheiro. |

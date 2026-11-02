@@ -158,13 +158,21 @@ def read_psarc_tones(path: Path) -> dict[str, Any]:
     from rockforge.infrastructure.packaging.psarc.container import read_entries
 
     try:
-        manifests = read_entries(
-            path, lambda name: name.startswith("manifests/") and name.endswith(".json")
+        entries_read = read_entries(
+            path, lambda name: (name.startswith("manifests/") and name.endswith(".json"))
+            or name in ("appid.appid", "toolkit.version"),
         )
     except ImportError:
         raise
     except Exception as exc:  # noqa: BLE001 — one bad archive must not stop the scan
         return {"error": f"{type(exc).__name__}: {exc}"}
+    # The appid the archive carries, and whether a tool made it: every CDLC tool
+    # (the toolkit, DLC Builder, RockForge) writes a toolkit.version, the game's
+    # own DLC does not — so an archive without one is (very likely) a DLC the
+    # player has, whose appid the game will accept (GitHub issue #20).
+    appid = entries_read.get("appid.appid", b"").decode("utf-8", "replace").strip()
+    song: dict[str, str] = {}
+    manifests = {k: v for k, v in entries_read.items() if k.startswith("manifests/")}
     by_key: dict[str, dict[str, Any]] = {}
     skipped = 0
     for raw in manifests.values():
@@ -177,6 +185,9 @@ def read_psarc_tones(path: Path) -> dict[str, Any]:
             attrs = entry.get("Attributes") if isinstance(entry, dict) else None
             if not isinstance(attrs, dict):
                 continue
+            if not song and attrs.get("SongName"):
+                song = {"song": str(attrs.get("SongName") or ""),
+                        "artist": str(attrs.get("ArtistName") or "")}
             arrangement = str(attrs.get("ArrangementName") or "")
             for dto in attrs.get("Tones") or []:
                 tone = tone_from_dto(dto)
@@ -192,7 +203,9 @@ def read_psarc_tones(path: Path) -> dict[str, Any]:
                 })
                 if arrangement and arrangement not in row["arrangements"]:
                     row["arrangements"].append(arrangement)
-    return {"tones": list(by_key.values()), "skipped": skipped}
+    return {"tones": list(by_key.values()), "skipped": skipped,
+            "appid": appid if appid.isdigit() else "",
+            "official": "toolkit.version" not in entries_read, **song}
 
 
 def _psarcs(folder: Path, blocked: list[str] | None = None) -> list[Path]:
@@ -252,8 +265,9 @@ def scan(folder: Path, progress: Callable[[int, int, str], None] | None = None) 
             files[rel] = {"error": f"{type(exc).__name__}: {exc}"}
             continue
         old = previous.get(rel)
+        # A record from before the appid was read is read again, once.
         if isinstance(old, dict) and old.get("size") == st.st_size \
-                and old.get("mtime") == st.st_mtime:
+                and old.get("mtime") == st.st_mtime and ("appid" in old or "error" in old):
             files[rel] = old
         else:
             files[rel] = {"size": st.st_size, "mtime": st.st_mtime, **read_psarc_tones(path)}
@@ -372,3 +386,47 @@ def search(
         return _fold(" ".join(parts))
 
     return [r for r in found if all(w in haystack(r) for w in words)]
+
+
+# Names for the appids everybody talks about, for when no DLC of the player's
+# names them (a CDLC carries its own song's name, not the DLC's).
+KNOWN_APP_IDS = {
+    "248750": ("Cherub Rock", "Smashing Pumpkins"),
+    "492989": ("Drops of Jupiter (Tell Me)", "Train"),
+}
+
+
+def app_ids(data: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    """Every appid the archives of the last scan carry, once each (GitHub issue
+    #20): the song that names it — a DLC of the player's when one has it, else a
+    well-known one, else a CDLC that uses it — whether a DLC of the player's
+    carries it (``official``: the game will accept it), and how many CDLC use
+    it. The player's own DLC first, by artist and song; then the rest, the most
+    used first."""
+    data = load() if data is None else data
+    found: dict[str, dict[str, Any]] = {}
+    for rec in (data.get("files") or {}).values():
+        if not isinstance(rec, dict) or not str(rec.get("appid") or "").isdigit():
+            continue
+        appid = str(rec["appid"])
+        item = found.setdefault(appid, {
+            "app_id": appid, "song": "", "artist": "", "official": False, "cdlc": 0,
+            "example": "",
+        })
+        if rec.get("official"):
+            if not item["official"]:
+                item.update(song=str(rec.get("song") or ""), artist=str(rec.get("artist") or ""))
+            item["official"] = True
+        else:
+            item["cdlc"] += 1
+            if not item["example"] and rec.get("song"):
+                item["example"] = f"{rec['song']} — {rec.get('artist') or ''}".rstrip(" —")
+    for item in found.values():
+        if not item["official"]:
+            known = KNOWN_APP_IDS.get(item["app_id"])
+            item["song"], item["artist"] = known if known else ("", "")
+    return sorted(found.values(), key=lambda i: (
+        not i["official"], -i["cdlc"] if not i["official"] else 0,
+        _fold(i["artist"]), _fold(i["song"]), i["app_id"],
+    ))
+

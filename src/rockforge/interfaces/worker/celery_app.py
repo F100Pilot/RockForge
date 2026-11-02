@@ -53,7 +53,7 @@ def _build_packager():  # noqa: ANN202 - heavy imports deferred to worker runtim
     if settings.psarc_mode == "native":
         from rockforge.infrastructure.packaging.psarc.packer import NativePsarcPacker
 
-        return NativePsarcPacker(wem_converter=wem_converter)
+        return NativePsarcPacker(wem_converter=wem_converter, app_id=runtime_settings.app_id())
 
     from rockforge.infrastructure.packaging.dlcbuilder import DlcBuilderPackager
 

@@ -6,6 +6,10 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### New
+
+- **Song AppID, your choice:** Rocksmith only lists a song if you own the DLC whose AppID it carries. The `.psarc` files always carried that of “Drops of Jupiter” (Train), which is no longer sold; they now carry by default that of “Cherub Rock” (Smashing Pumpkins, 248750), the usual one for CDLC, and in **Settings → General → Song AppID** you pick another: **Read the dlc folder** lists the AppIDs of the songs in your `dlc` folder, your own DLC first, or you type the number. It applies to the `.psarc` files built from then on: rebuild the projects you already have. If your songs stop showing up in the game after updating, pick “Drops of Jupiter” (492989) or another DLC of yours there.
+
 ## [0.12.0 beta 3] — 2026-11-02
 
 ### New

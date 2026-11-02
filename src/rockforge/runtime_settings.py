@@ -22,6 +22,7 @@ _KEYS = (
     "stem_separator", "banquet_repo", "banquet_ckpt", "banquet_queries",
     "loudness_target", "whisperx_compute_type", "ml_python", "ui_language",
     "rocksmith_dlc_dir", "rocksmith_dir", "check_updates", "components_declined", "wwise_root",
+    "app_id",
 )
 
 # The loudness (LUFS) the audio is normalized to AND the target the Wwise bus
@@ -78,6 +79,16 @@ def check_updates() -> bool:
     """Whether the app may ask GitHub at most once an hour for a newer version (on by
     default; Definições → Geral turns it off)."""
     return load().get("check_updates") is not False
+
+
+def app_id() -> str:
+    """The Steam appid every new ``.psarc`` carries (``appid.appid``): the
+    player's choice in Definições, else Cherub Rock's. The game lists a song only
+    when the player owns the DLC with that appid (GitHub issue #20)."""
+    from rockforge.infrastructure.packaging.psarc.manifest import APP_ID, valid_app_id
+
+    val = load().get("app_id")
+    return val if isinstance(val, str) and valid_app_id(val) else APP_ID
 
 
 def stem_separator() -> str:

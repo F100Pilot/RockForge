@@ -664,6 +664,10 @@ class SettingsOut(BaseModel):
     # found where the Audiokinetic Launcher installs it: `wwise_root_detected`).
     wwise_root: str = ""
     wwise_root_detected: str = ""
+    # The Steam appid every new .psarc carries (GitHub issue #20): the user's
+    # choice, and the default it falls back to (Cherub Rock).
+    app_id: str = ""
+    app_id_default: str = ""
 
 
 class SettingsIn(BaseModel):
@@ -682,6 +686,8 @@ class SettingsIn(BaseModel):
     check_updates: bool | None = None
     # "" clears it (back to the environment / the Launcher's folder).
     wwise_root: str | None = None
+    # "" clears it (back to Cherub Rock's appid); otherwise digits only.
+    app_id: str | None = None
 
 
 class InstallCountOut(BaseModel):

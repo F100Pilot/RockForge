@@ -97,12 +97,19 @@ TOOLKIT_VERSION = (
 # The Steam appid CDLC is tagged with so Rocksmith 2014 accepts it. The toolkit
 # writes this into an `appid.appid` file at the PSARC root; without it the game
 # does not surface the song. Rocksmith only lists a song whose appid the player
-# actually OWNS, so CDLC conventionally reuses the appid of a DLC everyone has.
-# Here we use Train - "Drops of Jupiter" (492989); if a given player doesn't own
-# that DLC the song won't appear — swap this for one they own (e.g. the free
-# base song Smashing Pumpkins - "Cherub Rock", 248750). See RocksmithToolkitLib
-# SongAppId.xml for the full appid table.
-APP_ID = "492989"
+# actually OWNS, so CDLC conventionally reuses the appid of a DLC everyone has:
+# Smashing Pumpkins - "Cherub Rock" (248750), the CDLC community's standard
+# (GitHub issue #20 — RockForge used Train "Drops of Jupiter", 492989, which is
+# no longer sold). The player picks another in Definições
+# (``runtime_settings.app_id``), e.g. from the songs in their own dlc folder
+# (``tone_collection.app_ids``). See RocksmithToolkitLib SongAppId.xml.
+APP_ID = "248750"
+APP_ID_DROPS_OF_JUPITER = "492989"
+
+
+def valid_app_id(value: object) -> bool:
+    """A Steam appid as ``appid.appid`` holds it: digits only, at most 10."""
+    return isinstance(value, str) and value.isdigit() and 0 < len(value) <= 10
 
 # Kept in sync with the SNG metadata field of the same name (see sng.py).
 LAST_CONVERSION = "01-01-00 00:00"
@@ -715,6 +722,7 @@ def build_manifest_files(
     has_album_art: bool = False,
     dynamic_difficulty: bool = True,
     models: Sequence[SngModel | None] | None = None,
+    app_id: str = APP_ID,
 ) -> dict[str, bytes]:
     """Build all ``manifests/`` files (+ ``toolkit.version`` and ``appid.appid``).
 
@@ -760,5 +768,7 @@ def build_manifest_files(
         hsan, indent=2
     ).encode("utf-8")
     files["toolkit.version"] = TOOLKIT_VERSION.encode("utf-8")
-    files["appid.appid"] = APP_ID.encode("utf-8")
+    if not valid_app_id(app_id):
+        raise ValueError(f"not a Steam appid: {app_id!r}")
+    files["appid.appid"] = app_id.encode("utf-8")
     return files

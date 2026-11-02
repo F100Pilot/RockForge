@@ -216,9 +216,9 @@ def test_build_manifest_files_packs_and_round_trips() -> None:
     # makes the game drop the song from the list (even with a correct appid).
     version_line = files["toolkit.version"].decode("utf-8").splitlines()[0]
     assert version_line.startswith("Toolkit version: 2.9.2.1")
-    # Train "Drops of Jupiter" appid, written to the root `appid.appid` file —
-    # the game won't list CDLC without it.
-    assert files["appid.appid"] == b"492989"
+    # Smashing Pumpkins "Cherub Rock" appid by default, written to the root
+    # `appid.appid` file — the game won't list CDLC without it (issue #20).
+    assert files["appid.appid"] == b"248750"
     assert "manifests/songs_dlc_mysong/songs_dlc_mysong.hsan" in files
     assert "manifests/songs_dlc_mysong/mysong_lead.json" in files
     assert "manifests/songs_dlc_mysong/mysong_rhythm.json" in files
@@ -587,3 +587,13 @@ def test_a_name_that_fits_keeps_the_key_it_always_had() -> None:
     assert song_key_from_title("AC/DC", "T.N.T.") == "ACDCTNT"
     exactly_30 = "A" * 10 + "B" * 20
     assert song_key_from_title("A" * 10, "B" * 20) == exactly_30
+
+
+def test_the_appid_is_the_one_the_player_chose() -> None:
+    """GitHub issue #20: the game lists a song only when the player owns the
+    DLC whose appid it carries, so the appid is a choice, never a fixed one."""
+    arrangements = [(_arrangement(ArrangementKind.LEAD), "Lead")]
+    assert build_manifest_files(arrangements, "MySong", app_id="222140")["appid.appid"] == b"222140"
+    for bad in ("", "12a", "-1", "12345678901"):
+        with pytest.raises(ValueError):
+            build_manifest_files(arrangements, "MySong", app_id=bad)

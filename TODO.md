@@ -712,7 +712,7 @@ Feedback and bug reports very welcome!
     aparecia na lista do Rocksmith porque faltavam três coisas, agora
     corrigidas: o ficheiro tem de terminar em **`_p.psarc`** (etiqueta de
     plataforma PC — `packer.py`), o PSARC tem de conter um ficheiro **`appid`**
-    na raiz (`manifest.APP_ID`, hoje `492989` — Train "Drops of Jupiter"; o
+    na raiz (`manifest.APP_ID`, hoje `248750` — Smashing Pumpkins "Cherub Rock", escolhido em Definições desde o #20; o
     jogo só lista um CDLC cujo appid o jogador **possui**, por isso reutiliza-se
     o de um DLC que se tem) e os manifestos precisam de **`InsertRoot`**
     (`Static.Songs.Entries`). Guardado por `test_psarc_manifest`.

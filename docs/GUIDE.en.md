@@ -729,7 +729,8 @@ A list of what is missing or may go wrong, each row with a button to fix it:
   or hide the song before. It does not replace playing the song;
 - **Tones**, **Cover**, **Sync** (mark each track on the Score page, or press **Mark as synced**
   here for the whole song), **Lyrics**;
-- **AppID / ownership**: the PSARC uses the AppID of a DLC the player must own.
+- **AppID / ownership**: the PSARC uses the AppID of a DLC the player must own (pick it with
+  **Choose the AppID**).
 
 Nothing is blocked: you can download anyway.
 
@@ -790,7 +791,10 @@ are shared. Lead/Rhythm tracks are picked by name; check them afterwards in each
   what changed); **New versions** (ask GitHub at most once an hour, on by default); **Count this install**
   (off until you say yes — the home page asks once; once per version it sends a random number,
   the version, the kind of install and the system, and turning it off deletes what was sent);
-  **Wwise folder** (empty = found where the Audiokinetic Launcher installs it); Rocksmith 2014 folder.
+  **Wwise folder** (empty = found where the Audiokinetic Launcher installs it); Rocksmith 2014 folder;
+  **Song AppID** (the DLC whose AppID the `.psarc` files carry — the game only lists the song if you
+  own that DLC; by default “Cherub Rock”, 248750; **Read the dlc folder** lists the AppIDs of your
+  songs, your own DLC first; it applies to the `.psarc` files built afterwards).
 - **Software**: in the `.exe`, the **Extra components** card (what is installed, **Install extra
   components** / **Reinstall**, the install log); then what is installed, what is missing and how
   to get it.
@@ -834,7 +838,7 @@ the app itself.
 | Problem | What to check |
 |---|---|
 | Something went wrong and you want to report it | Settings → General → About RockForge → **Copy information for a report**, and paste it into the report (**Report a problem**). An unexpected error shows an id: include it, it is the same as in the technical log (`logs/rockforge.log` in the work folder). |
-| The song **does not show** in the game | Is the CDLC patch (`D3DX9_42.dll`) in the game folder? (Settings → Software.) Is the AppID used that of a DLC you own? Is the PSARC in `dlc` (or `dlc\RockForge`)? |
+| The song **does not show** in the game | Is the CDLC patch (`D3DX9_42.dll`) in the game folder? (Settings → Software.) Is the AppID used that of a DLC you own? (Settings → General → Song AppID.) Is the PSARC in `dlc` (or `dlc\RockForge`)? |
 | Only the bundle comes out, **no playable PSARC** | Wwise (2019/2021/2022/2023) is missing — Settings → Software. |
 | It says **Wwise is missing**, but it is installed | Settings → Software says what it found: a 2024/2025 (install **2023.1** too, both can stay), a Wwise without its **Authoring** part (in the Launcher, Modify → Authoring), or nothing (set the folder in Settings → General → Wwise folder). In Export → "Before you use it", **PSARC without sound** shows Wwise's error when it was found but the conversion failed. |
 | The notes drift from the music | Section 6, [The most effective way](#the-most-effective-way): start, BPM, "Mark by ear" on a tab never synced, then "Fix from here". If the file is not exactly the recording (another version, extra bars), the fix belongs in the file itself. |
