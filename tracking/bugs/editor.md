@@ -424,3 +424,37 @@ Each render added change and pointer listeners to the persistent card.
 - 2026-10-18 — Open: reported
 - 2026-10-18 — Fixed: commit e0e939b8ce
 - 2026-10-18 — Verified: checked in the browser
+
+## BUG-0372
+
+**A bend set in the note editor was not drawn, not heard and built as no bend**
+
+| | |
+|---|---|
+| Detected | 2026-11-03 |
+| Reported by | DrekAnon (GitHub issue #21) |
+| Found in | 0.12.0-beta.4 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Open |
+
+A bend set in the note editor was not drawn, not heard and built as no bend
+
+**Steps to reproduce:** _pending_
+
+**Expected:** _pending_
+
+**Observed:** _pending_
+
+**Root cause:** _pending_
+
+**Fixes:** —
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** _pending_ · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-03 — Open: reported

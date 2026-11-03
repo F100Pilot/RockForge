@@ -361,9 +361,10 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
             params["section_overrides"] = [s.model_dump() for s in payload.section_overrides]
         if payload.note_overrides is not None:
             params["note_overrides"] = {
-                # link_next / slide_unpitch_to only when given: None means
+                # link_next / slide_unpitch_to / bend_points only when given: None means
                 # "keep what the note had", the same as leaving them out
-                kind: [n.model_dump(exclude={k for k in ("link_next", "slide_unpitch_to")
+                kind: [n.model_dump(exclude={k for k in ("link_next", "slide_unpitch_to",
+                                                         "bend_points")
                                              if getattr(n, k) is None})
                        for n in notes]
                 for kind, notes in payload.note_overrides.items()

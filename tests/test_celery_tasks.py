@@ -691,7 +691,14 @@ def test_a_note_edits_link_and_unpitched_slide_reach_the_build(db, tmp_path, mon
             {"time": 1.0, "string": 2, "fret": 5, "slide_to_fret": 7, "link_next": True},
             {"time": 2.0, "string": 2, "fret": 5, "slide_unpitch_to": 1},
             {"time": 3.0, "string": 2, "fret": 5},
+            {"time": 4.0, "string": 2, "fret": 5, "bend_semitones": 2,
+             "bend_points": [[0, 0], [0.5, 2], [1, 0]]},
         ]},
     }))
     assert [(o.link_next, o.slide_unpitch_to) for o in seen] == [
-        (True, None), (None, 1), (None, None)]
+        (True, None), (None, 1), (None, None), (None, None)]
+    # GitHub issue #21: the bend's shape too; none stored = keep the note's own
+    from rockforge.domain.music import BendPoint
+
+    assert [o.bend_points for o in seen] == [None, None, None, (
+        BendPoint(0.0, 0.0), BendPoint(0.5, 2.0), BendPoint(1.0, 0.0))]

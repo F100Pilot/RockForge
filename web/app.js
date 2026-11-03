@@ -2963,6 +2963,22 @@ function bendArrow(x, y, r, label) {
   return out;
 }
 
+// The bend's shape along the tail (GitHub issue #21): a teal line that rises
+// as the string is bent and comes back down when it is released, read from
+// the note's curve — when it starts to rise, how long it is held up.
+function bendCurveSvg(x, y, susW, n) {
+  const peak = n.bend_semitones || 0;
+  if (!(peak > 0)) return '';
+  const d = bendDur(n.sustain);
+  let curve = (Array.isArray(n.bend_curve) && n.bend_curve.length ? n.bend_curve : [[d, peak]])
+    .map(([t, st]) => [Math.min(1, Math.max(0, t / d)), st]);
+  if (curve[0][0] > 0) curve = [[0, 0], ...curve];
+  if (curve[curve.length - 1][0] < 1) curve.push([1, curve[curve.length - 1][1]]);
+  const H = 11, top = y - 7;
+  const pts = curve.map(([f, st]) => `${(x + f * susW).toFixed(1)},${(top - (st / Math.max(peak, 1)) * H).toFixed(1)}`);
+  return `<polyline points="${pts.join(' ')}" fill="none" stroke="#3ddcc4" stroke-width="2" stroke-linejoin="round"><title>${esc(T('Forma do bend'))}</title></polyline>`;
+}
+
 // ---- The score's legend: every mark the score draws, drawn the same way ----
 // Each swatch is a small SVG in the score's own units (viewBox 60×36), so it
 // looks like what it explains. Shown by the "Legenda" switch under the score
@@ -3024,6 +3040,7 @@ function scoreLegendHtml() {
     legendItem(`<path d="${sustainWave(12, 18, 44)}" fill="none" stroke="${LG_BLUE}" stroke-width="2.5" opacity=".8"/>${legendNote(12, 18, 5, LG_BLUE)}`, T('Cauda ondulada: vibrato')),
     legendItem(`<path d="M20,7 Q36,-6 52,7" fill="none" stroke="${LG_BLUE}" stroke-width="2"/>${legendNote(12, 22, 5, LG_BLUE)}`, T('Arco: ligada à nota seguinte, sem nova palhetada')),
     legendItem(`${legendNote(24, 26, 7, c[3])}${bendArrow(24, 26, 13, '½')}`, T('Seta: bend, com quanto sobe (½ = meio tom, full = um tom)')),
+    legendItem(`<polyline points="6,26 18,26 28,12 42,12 54,26" fill="none" stroke="#3ddcc4" stroke-width="2.5" stroke-linejoin="round"/>`, T('Linha verde-azulada sobre a cauda: a forma do bend — quando sobe, quanto tempo fica no alto, quando volta')),
     legendItem(`${legendNote(30, 18, 5, LG_BLUE)}<circle cx="30" cy="18" r="16" fill="none" stroke="#3ddcc4" stroke-width="1.5" stroke-dasharray="2,2"/>`, T('Anel tracejado verde-água: nota editada, ainda por aplicar ("Aplicar e reconstruir")')),
     legendItem(`${legendNote(30, 18, 9, LG_BLUE)}<circle cx="30" cy="18" r="17" fill="none" stroke="#e6483c" stroke-width="2"/>`, T('Anel vermelho: fora da posição da mão que escolheste')),
     legendItem(`${legendNote(20, 18, 5, LG_BLUE)}<rect x="32" y="11" width="6" height="14" rx="2" fill="${LG_BLUE}" stroke="#fff" stroke-width="1.2"/>`, T('Pega (só em "Editar notas"): arrasta-a para mudar a duração da nota')),
@@ -3425,7 +3442,7 @@ function showArr(i) {
       const color = STRING_COLORS[n.string];
       const tech = n.techniques.length > 0;
       const vibrato = n.techniques.includes('vibrato');
-      const bend = n.techniques.includes('bend');
+      const bend = n.techniques.includes('bend') || n.bend_semitones > 0;
       const susW = n.sustain > 0.05 ? n.sustain*px*(tempoScaleLive/builtScale) : 0;
       // A note with a pending (unbuilt) note-editor edit gets a dashed cyan
       // ring so it reads as "not yet rebuilt", same spirit as the amber
@@ -3466,6 +3483,7 @@ function showArr(i) {
       const handleX = Math.min(x + Math.max(susW, R + 2), nextN ? timeToX(warp(previewScale(nextN.time))) - R - 4 : Infinity);
       if (handleX >= x + R) s += `<rect class="sus-handle" x="${handleX - 3}" y="${y - 7}" width="6" height="14" rx="2" fill="${color}" stroke="#fff" stroke-width="1.2"><title>${esc(T('Arrasta para mudar a duração (sustain)'))}</title></rect>`;
       if (bend) s += bendArrow(x, y, R, bendLabel(n.bend_semitones));  // rising arrow + amount
+      if (bend && susW > 14) s += bendCurveSvg(x, y, susW, n);
       if (tech) {
         // bend/vibrato are drawn at the note itself, not as glyphs above it
         const gt = n.techniques.filter(t => t !== 'vibrato' && t !== 'bend');
@@ -3586,6 +3604,7 @@ function mergeNoteOverrides(baseNotes, overrides) {
       time: ov.time, string: ov.string, fret: ov.fret, sustain: ov.sustain,
       chord: false, chord_name: null,
       techniques: ov.techniques.slice(), bend_semitones: ov.bend_semitones || 0,
+      bend_curve: overrideBendCurve(ov, was),
       slide_to: ov.slide_to_fret ?? (unpitchTo >= 0 ? unpitchTo : -1),
       slide_unpitched: ov.slide_to_fret == null && unpitchTo >= 0,
       link_next: ov.link_next ?? (!!was && !!was.link_next && was.fret === ov.fret),
@@ -3839,6 +3858,7 @@ function copySelectedNotes() {
   noteClipboard = picked.map(n => ({
     dTime: n.time - minTime, string: n.string, fret: n.fret, sustain: n.sustain,
     techniques: (n.techniques || []).slice(), bend_semitones: n.bend_semitones || 0,
+    bend_points: noteBendPoints(n),
     slide_to: n.slide_to >= 0 ? n.slide_to : null,
   }));
   updateClipboardInfo();
@@ -3856,6 +3876,7 @@ function pasteNotesAtCursor() {
     upsertNoteOverride({
       time: anchor + c.dTime, string: c.string, fret: c.fret, sustain: c.sustain,
       techniques: c.techniques.slice(), bend_semitones: c.bend_semitones,
+      bend_points: c.bend_points ?? null,
       slide_to_fret: c.slide_to ?? null, deleted: false,
     });
   }
@@ -5419,6 +5440,97 @@ function closeBarAlignPopup() { document.getElementById('barAlignPopup').hidden 
 // techniques directly on the score, without going back to Guitar Pro. ----
 // TECH_CHECK_IDS maps each checkbox to its Technique value string (the same
 // strings ArrangementNoteOut already uses for n.techniques).
+// ---- The bend's shape in the note editor (GitHub issue #21) ----
+// The build keeps a bend as points along the note — [position 0-1 of its
+// length, half-steps] — and /arrangements answers them as [seconds after the
+// attack, half-steps] (bend_curve). The popup speaks in seconds after the
+// attack: when the bend starts to rise, when it is up, when it comes back.
+// "rise" is the plain bend (up across the whole note, Rocksmith's usual one).
+function bendDur(sustain) { return sustain > 0.03 ? sustain : 0.1; }  // the writer's own floor
+function bendFractions(curve, sustain) {
+  const d = bendDur(sustain);
+  return (curve || []).map(([t, st]) => [Math.min(1, Math.max(0, t / d)), st]);
+}
+// The shape of a curve (fractions) and its four instants as fractions: rise
+// from p[0] to p[1], come back from p[2] to p[3]. A curve the popup cannot
+// say (a step to another amount, several rises) is 'file' — kept as it is.
+function bendShapeOf(pts, peak) {
+  const plain = { shape: 'rise', p: [0, 1, 1, 1] };
+  if (!pts || pts.length < 2) return plain;
+  const near = (x, y) => Math.abs(x - y) < 0.01;
+  if (pts.some(([, st]) => !near(st, 0) && !near(st, peak))) return { shape: 'file', p: plain.p };
+  const up = pts.map(([, st]) => !near(st, 0));
+  const runs = up.filter((u, i) => i === 0 || u !== up[i - 1]).length;
+  const firstUp = up.indexOf(true), lastUp = up.lastIndexOf(true);
+  if (firstUp < 0) return { shape: 'file', p: plain.p };
+  if (up[0]) {
+    if (runs === 1) return { shape: 'pre', p: plain.p };
+    if (runs === 2) return { shape: 'prerelease', p: [0, 0, pts[lastUp][0], pts[lastUp + 1][0]] };
+    return { shape: 'file', p: plain.p };
+  }
+  const p1 = pts[firstUp - 1][0], p2 = pts[firstUp][0];
+  if (runs === 2) return near(p1, 0) && near(p2, 1) ? plain : { shape: 'hold', p: [p1, p2, 1, 1] };
+  if (runs === 3) return { shape: 'release', p: [p1, p2, pts[lastUp][0], pts[lastUp + 1][0]] };
+  return { shape: 'file', p: plain.p };
+}
+// The points of a shape (fractions), or null for 'file' (keep the note's own).
+function bendPointsFor(shape, peak, [p1, p2, p3, p4]) {
+  const raw = {
+    rise: [],
+    hold: [[0, 0], [p1, 0], [p2, peak], [1, peak]],
+    release: [[0, 0], [p1, 0], [p2, peak], [p3, peak], [p4, 0], [1, 0]],
+    pre: [[0, peak], [1, peak]],
+    prerelease: [[0, peak], [p3, peak], [p4, 0], [1, 0]],
+  }[shape];
+  if (!raw) return null;
+  const out = [];
+  for (const [x, st] of raw) {
+    const pt = [+x.toFixed(4), st];
+    const last = out[out.length - 1];
+    if (!last || last[0] !== pt[0] || last[1] !== pt[1]) out.push(pt);
+  }
+  return out;
+}
+// A note's curve as fractions, for an edit that copies or moves it: its own
+// pending points, else the built curve; [] = a plain bend, null = none to keep.
+function noteBendPoints(n) {
+  if (!(n.bend_semitones > 0)) return [];
+  if (Array.isArray(n.bend_points)) return n.bend_points.map(p => p.slice());
+  if (Array.isArray(n.bend_curve) && n.bend_curve.length > 1) return bendFractions(n.bend_curve, n.sustain);
+  return [];
+}
+// The curve a pending edit's note shows and sounds, in the /arrangements
+// shape (seconds after the attack): its points, else the built note's own
+// while the amount is unchanged, else a plain bend peaking at the end.
+function overrideBendCurve(ov, was) {
+  const peak = ov.bend_semitones || 0;
+  if (!(peak > 0)) return [];
+  const d = bendDur(ov.sustain);
+  if (Array.isArray(ov.bend_points) && ov.bend_points.length)
+    return ov.bend_points.map(([x, st]) => [+(x * d).toFixed(4), st]);
+  if (ov.bend_points == null && was && was.bend_semitones === peak && Array.isArray(was.bend_curve)
+      && was.bend_curve.length) return was.bend_curve;
+  return [[+d.toFixed(4), peak]];
+}
+// The popup's bend row: the shape picker shows with a bend, and each shape
+// its own instants.
+function refreshBendShapeRow() {
+  const bend = parseFloat(document.getElementById('neBend').value) || 0;
+  const row = document.getElementById('neBendShapeRow');
+  row.hidden = !(bend > 0);
+  const shape = document.getElementById('neBendShape').value;
+  document.getElementById('neBendRiseTimes').hidden = !['hold', 'release'].includes(shape);
+  document.getElementById('neBendReleaseTimes').hidden = !['release', 'prerelease'].includes(shape);
+  document.querySelector('#neBendShape option[value="file"]').hidden = !(neContext && neContext.fileCurve);
+}
+// Fill the four instants (seconds after the attack) from fractions of the note.
+function setBendTimes(p, sustain) {
+  const d = bendDur(sustain);
+  ['neBendT1', 'neBendT2', 'neBendT3', 'neBendT4'].forEach((id, i) => {
+    document.getElementById(id).value = +(p[i] * d).toFixed(3);
+  });
+}
+
 const TECH_CHECK_IDS = [
   ['neHammerOn', 'hammerOn'], ['nePullOff', 'pullOff'], ['neHarmonic', 'harmonic'],
   ['nePalmMute', 'palmMute'], ['neVibrato', 'vibrato'], ['neTap', 'tap'],
@@ -5503,6 +5615,18 @@ function openNoteEditPopup(chartTime, string, clientX, clientY) {
   const techs = base ? (base.techniques || []) : [];
   for (const [id, val] of TECH_CHECK_IDS) document.getElementById(id).checked = techs.includes(val);
   document.getElementById('neBend').value = base ? (base.bend_semitones || 0) : 0;
+  // The bend's shape: the pending edit's own points, else the built note's
+  // curve (GitHub issue #21).
+  const peak = base ? (base.bend_semitones || 0) : 0;
+  const sus = base ? (base.sustain || 0) : 0.25;
+  const curveFr = !(peak > 0) ? [] : pending && Array.isArray(pending.bend_points) ? pending.bend_points
+    : existing && existing.bend_semitones === peak ? bendFractions(existing.bend_curve, existing.sustain) : [];
+  const shaped = bendShapeOf(curveFr, peak);
+  neContext.fileCurve = shaped.shape === 'file' ? { points: curveFr, peak } : null;
+  document.getElementById('neBendShape').value = shaped.shape;
+  setBendTimes(shaped.shape === 'rise' || shaped.shape === 'pre' || shaped.shape === 'file'
+    ? [0, 0.4, 0.6, 0.9] : shaped.p, sus);
+  refreshBendShapeRow();
   const unpitched = base ? (base.slide_unpitch_to != null ? base.slide_unpitch_to >= 0
     : !!base.slide_unpitched) : false;
   const slideTo = base ? (unpitched ? (base.slide_unpitch_to ?? base.slide_to)
@@ -5545,7 +5669,8 @@ function visibleNoteAt(t, string) {
 function noteAsOverride(n, time, string, fret) {
   return {
     time, string, fret, sustain: n.sustain || 0, techniques: (n.techniques || []).slice(),
-    bend_semitones: n.bend_semitones || 0, slide_to_fret: n.slide_to >= 0 ? n.slide_to : null,
+    bend_semitones: n.bend_semitones || 0, bend_points: noteBendPoints(n),
+    slide_to_fret: n.slide_to >= 0 ? n.slide_to : null,
     deleted: false,
   };
 }
@@ -5721,6 +5846,8 @@ document.addEventListener('keydown', e => {
   const pop = document.getElementById('noteEditPopup');
   if (!pop) return;
   document.getElementById('neCancel').addEventListener('click', closeNoteEditPopup);
+  document.getElementById('neBend').addEventListener('input', refreshBendShapeRow);
+  document.getElementById('neBendShape').addEventListener('change', refreshBendShapeRow);
   document.getElementById('neSave').addEventListener('click', () => {
     if (!neContext) return;
     const string = parseInt(document.getElementById('neString').value, 10);
@@ -5729,6 +5856,39 @@ document.addEventListener('keydown', e => {
     const sustain = Math.max(0, parseFloat(document.getElementById('neSustain').value) || 0);
     const techniques = TECH_CHECK_IDS.filter(([id]) => document.getElementById(id).checked).map(([, v]) => v);
     const bend_semitones = Math.max(0, parseFloat(document.getElementById('neBend').value) || 0);
+    // The bend marks the note a bend (the writer writes none otherwise —
+    // GitHub issue #21), and its shape becomes the note's curve.
+    const bi = techniques.indexOf('bend');
+    if (bend_semitones > 0 && bi < 0) techniques.push('bend');
+    if (!(bend_semitones > 0) && bi >= 0) techniques.splice(bi, 1);
+    let bend_points = [];
+    if (bend_semitones > 0) {
+      const shape = document.getElementById('neBendShape').value;
+      if (shape === 'file') {
+        const fc = neContext.fileCurve;
+        bend_points = !fc ? [] : fc.peak === bend_semitones ? null
+          : fc.points.map(([x, st]) => [x, +(st * bend_semitones / fc.peak).toFixed(3)]);
+      } else if (shape !== 'rise') {
+        if (shape !== 'pre' && !(sustain > 0.03)) {
+          toast(T('Um bend com forma precisa de uma nota que dure (sustain).'), 'err'); return;
+        }
+        const ts = ['neBendT1', 'neBendT2', 'neBendT3', 'neBendT4']
+          .map(id => parseFloat(document.getElementById(id).value));
+        const uses = { hold: [0, 1], release: [0, 1, 2, 3], prerelease: [2, 3], pre: [] }[shape];
+        const p = [0, 1, 1, 1];
+        let last = 0;
+        for (const i of uses) {
+          const t = ts[i];
+          if (!(t >= last - 1e-9) || t > sustain + 1e-9) {
+            toast(T('Os tempos do bend vão por ordem, de 0 até à duração da nota ({s} s).', { s: +sustain.toFixed(3) }), 'err');
+            return;
+          }
+          p[i] = sustain > 0 ? t / sustain : 0;
+          last = t;
+        }
+        bend_points = bendPointsFor(shape, bend_semitones, p);
+      }
+    }
     const slideRaw = document.getElementById('neSlideTo').value.trim();
     const slideTarget = slideRaw === '' ? null : parseInt(slideRaw, 10);
     if (slideTarget != null && (isNaN(slideTarget) || slideTarget < 0 || slideTarget > 24)) {
@@ -5760,7 +5920,7 @@ document.addEventListener('keydown', e => {
     }
     upsertNoteOverride({
       time: neContext.time, string, fret, sustain: held ? +slideLen.toFixed(3) : sustain, techniques,
-      bend_semitones, slide_to_fret, deleted: false, link_next, slide_unpitch_to,
+      bend_semitones, bend_points, slide_to_fret, deleted: false, link_next, slide_unpitch_to,
     });
     if (held) upsertNoteOverride(held);
     neLast = { time: neContext.time, string };
@@ -10834,6 +10994,12 @@ function voiceNote(ctx, dest, hz, t0, dur, peak, char, glide = null) {  // dest 
     const start = t0 + dur * (glide.from || 0);
     src.playbackRate.setValueAtTime(1, start);
     src.playbackRate.linearRampToValueAtTime(Math.pow(2, glide.semis / 12), t0 + dur);
+  } else if (glide && glide.curve) {
+    // A bend follows its curve: [fraction of the note, half-steps] (issue #21).
+    const rate = st => Math.pow(2, st / 12);
+    const c = glide.curve;
+    src.playbackRate.setValueAtTime(c[0][0] <= 0 ? rate(c[0][1]) : 1, t0);
+    for (const [f, st] of c) src.playbackRate.linearRampToValueAtTime(rate(st), t0 + dur * f);
   }
   const mk = char && char.drive > 0.03 ? 1 + char.drive * 0.8 : 1;  // makeup: distortion compresses
   const lvl = ctx.createGain(); lvl.gain.value = Math.max(0.0001, peak * mk) * 0.9;
@@ -10868,6 +11034,17 @@ function playNote(midi, chartTime, sustain = 0, when = null, glide = null) {
 // How a sliding note's pitch moves (voiceNote's `glide`), or null: to the
 // landing fret over the whole note, or — a slide out with no target pitch —
 // over its last half.
+// What a note's pitch does while it sounds: a slide's glide, else its bend's
+// curve (GitHub issue #21: a bend used to sound as a plain note).
+function noteGlide(a, n) { return slideGlide(a, n) || bendGlide(n); }
+function bendGlide(n) {
+  const peak = n.bend_semitones || 0;
+  if (!(peak > 0)) return null;
+  const d = bendDur(n.sustain);
+  const curve = (Array.isArray(n.bend_curve) && n.bend_curve.length ? n.bend_curve : [[d, peak]])
+    .map(([t, st]) => [Math.min(1, Math.max(0, t / d)), st]);
+  return { curve };
+}
 function slideGlide(a, n) {
   if (!(n.slide_to >= 0) || n.slide_to === n.fret) return null;
   const semis = noteMidi(a, n.string, n.slide_to) - noteMidi(a, n.string, n.fret);
@@ -10921,7 +11098,7 @@ function tickSound(a, note, warp) {
   if (!(note.string >= 0 && note.string < stringCount(a) && note.fret >= 0)) return null;
   const at = warp(previewScale(note.time));
   const held = note.sustain > 0 ? warp(previewScale(note.time + note.sustain)) - at : 0;
-  return { midi: noteMidi(a, note.string, note.fret), held, glide: slideGlide(a, note) };
+  return { midi: noteMidi(a, note.string, note.fret), held, glide: noteGlide(a, note) };
 }
 // Hand the worker the notes of the next few seconds, so each is ready when it
 // sounds. A cached or requested note costs nothing, so a frame only walks a
@@ -11022,7 +11199,7 @@ async function synthesizeArrangement(kind) {
     const tRec = at(n.time);
     if (tRec < 0) continue;
     const len = noteSoundLength(n.sustain > 0 ? at(n.time + n.sustain) - tRec : 0);
-    events.push({ t: tRec, chartT: n.time, midi: noteMidi(a, n.string, n.fret), len, glide: slideGlide(a, n) });
+    events.push({ t: tRec, chartT: n.time, midi: noteMidi(a, n.string, n.fret), len, glide: noteGlide(a, n) });
     if (tRec + len > maxT) maxT = tRec + len;
   }
   if (!events.length) return null;

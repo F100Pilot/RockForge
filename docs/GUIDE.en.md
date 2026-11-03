@@ -556,6 +556,14 @@ It stays pending on both tracks until **Apply and rebuild**; Ctrl+Z undoes it.
   slides over the whole sustain. **Link to the next note** makes the note carry on into the next
   one on the same string without a new pick. On the score the slide is a line to the end of the
   sustain (dashed when unpitched), and you hear it slide.
+- **Bends:** in **Bend (semitones)** type how far it rises (1 = a half step, 2 = a whole step) and
+  pick the shape: **Rises across the note** (the usual bend), **Rises and holds**, **Rises, holds
+  and releases**, **Pre-bend (already bent)** or **Pre-bend and release**. The times are seconds
+  after the note's attack: **Rises from … to …** is when it starts to rise and when it is fully up,
+  **Releases from … to …** is when it starts to come back and when it is unbent again. So a note
+  that rings a little before it rises, holds up and comes back is **Rises, holds and releases**
+  with a first time above 0. A shape needs a note with sustain. On the score the arrow says how far
+  it rises and a teal line over the tail shows the shape; you hear it rise and fall.
 - **Drag** a note to change its time (it snaps to the grid) or its string (it keeps its fret,
   so its pitch changes).
 - To move **a chord or several notes**: drag a box on an empty spot of the staff around them (or

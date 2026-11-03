@@ -2508,6 +2508,18 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
   </div>
   <div class="ba-row" style="margin-top:.3rem">Bend (semitons): <input type="number" id="neBend" min="0" max="4" step="0.5" value="0" style="width:3.6rem">
     Slide para: <input type="number" id="neSlideTo" min="0" max="24" style="width:3.6rem" placeholder="—"></div>
+  <div class="ba-row" id="neBendShapeRow" style="margin-top:.3rem;flex-wrap:wrap" hidden>
+    <select id="neBendShape" style="width:auto" aria-label="Forma do bend">
+      <option value="rise">Sobe ao longo da nota</option>
+      <option value="hold">Sobe e fica</option>
+      <option value="release">Sobe, fica e volta</option>
+      <option value="pre">Pré-bend (já dobrada)</option>
+      <option value="prerelease">Pré-bend e volta</option>
+      <option value="file">A curva que a nota tem</option>
+    </select>
+    <span id="neBendRiseTimes" title="Segundos depois do ataque da nota: quando começa a subir e quando chega ao alto.">Sobe de <input type="number" id="neBendT1" min="0" step="0.01" style="width:3.8rem"> a <input type="number" id="neBendT2" min="0" step="0.01" style="width:3.8rem"> s</span>
+    <span id="neBendReleaseTimes" title="Segundos depois do ataque da nota: quando começa a voltar e quando volta à nota sem bend.">Volta de <input type="number" id="neBendT3" min="0" step="0.01" style="width:3.8rem"> a <input type="number" id="neBendT4" min="0" step="0.01" style="width:3.8rem"> s</span>
+  </div>
   <div class="ba-row" style="margin-top:.3rem;flex-wrap:wrap">
     <select id="neSlideKind" style="width:auto" aria-label="Tipo de slide">
       <option value="pitched">Slide até ao traste</option>

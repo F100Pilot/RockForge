@@ -46,6 +46,7 @@ from rockforge.domain.errors import IngestionError
 from rockforge.domain.hand import HandPosition, notes_outside
 from rockforge.domain.music import (
     BASS_LOW_TUNING_LIMIT,
+    BendPoint,
     TabNote,
     Technique,
     TempoMap,
@@ -185,6 +186,11 @@ class NoteOverride:
     # An unpitched slide (a slide in/out with no landing note): the fret it
     # heads to; -1 = none, None = keep what the note had.
     slide_unpitch_to: int | None = None
+    # The bend's shape (GitHub issue #21): points along the note, position a
+    # fraction of its length, step in half-steps — rise, hold, release,
+    # pre-bend. None = keep the note's own curve while its bend is unchanged;
+    # () = a plain bend that rises across the note.
+    bend_points: tuple[BendPoint, ...] | None = None
 
 
 # How far an edit's time may sit from the note it targets. The editor only
@@ -194,6 +200,17 @@ class NoteOverride:
 # half of them: a deleted note stayed in the song and an edited one gained a
 # twin beside it. Two notes on one string are never this close.
 NOTE_OVERRIDE_MATCH_S = 0.005
+
+
+def _with_bend(ov: NoteOverride) -> frozenset[Technique]:
+    """An edit's techniques with BEND exactly when it bends (GitHub issue #21):
+    the note editor sends the amount, and the writer only writes a bend — its
+    ``bend`` attribute and ``<bendValues>`` — for a note marked BEND, so an
+    amount alone was built as no bend at all."""
+    techniques = frozenset(ov.techniques)
+    if ov.bend_semitones > 0:
+        return techniques | {Technique.BEND}
+    return techniques - {Technique.BEND}
 
 
 def _apply_note_overrides(
@@ -226,7 +243,8 @@ def _apply_note_overrides(
         if hit is None:
             merged.append(TabNote(
                 string=ov.string, fret=ov.fret, time=ov.time, sustain=ov.sustain,
-                techniques=ov.techniques, bend_semitones=ov.bend_semitones,
+                techniques=_with_bend(ov), bend_semitones=ov.bend_semitones,
+                bend_points=ov.bend_points or () if ov.bend_semitones > 0 else (),
                 slide_to_fret=ov.slide_to_fret, link_next=bool(ov.link_next),
                 slide_unpitch_to=(ov.slide_unpitch_to
                                   if ov.slide_unpitch_to is not None and ov.slide_unpitch_to >= 0
@@ -240,10 +258,14 @@ def _apply_note_overrides(
         old = merged[hit]
         merged[hit] = replace(
             old, string=ov.string, fret=ov.fret, sustain=ov.sustain,
-            techniques=ov.techniques, bend_semitones=ov.bend_semitones,
+            techniques=_with_bend(ov), bend_semitones=ov.bend_semitones,
             slide_to_fret=ov.slide_to_fret,
             # what described the old pitch or bend no longer does
-            bend_points=old.bend_points if ov.bend_semitones == old.bend_semitones else (),
+            bend_points=(
+                () if ov.bend_semitones <= 0
+                else ov.bend_points if ov.bend_points is not None
+                else old.bend_points if ov.bend_semitones == old.bend_semitones else ()
+            ),
             left_hand=old.left_hand if ov.fret == old.fret else -1,
             link_next=(ov.link_next if ov.link_next is not None
                        else old.link_next and ov.fret == old.fret

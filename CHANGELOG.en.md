@@ -6,7 +6,13 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### New
+
+- **The bend's shape in the note editor:** besides how far it rises, you choose whether it rises across the note, rises and holds, rises, holds and releases, or is a pre-bend (which may release), and the seconds when it starts to rise, is fully up and comes back. On the score a teal line over the tail shows the shape, and the preview makes the bend sound. (GitHub #21)
+
 ### Fixes
+
+- **A bend set in the note editor did not stay in the song:** the amount was saved but the note was not marked as a bend, so it did not show on the score and the rebuild wrote it without a bend. It is now marked, shown and heard — and bends that come from the Guitar Pro file are heard in the preview too. (GitHub #21)
 
 - **Bass tones always distorted:** "Detect tone" offered the bass tones that were almost always distorted, even for a clean bass, because the measure it used (made for the guitar) gave a clean bass and a distorted one practically the same value. The four bass tones now come from clean to distorted, with no percentage and each with **Listen (approximation)**: they are not measured on the recording, listen to them and choose. (GitHub #16)
 

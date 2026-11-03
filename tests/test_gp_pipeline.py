@@ -304,6 +304,46 @@ def test_an_edit_keeps_the_note_fields_the_editor_does_not_show() -> None:
             moved.pick_direction) == (9, (), -1, False, 2)
 
 
+def test_a_bend_set_in_the_note_editor_is_a_bend_with_the_shape_given() -> None:
+    """GitHub issue #21: the note editor sends the bend's amount, and the
+    writer only writes a bend for a note marked BEND — so an edit that set the
+    amount alone built no bend at all (no arrow on the score, ``bend="0"`` and
+    no curve in the XML). The amount now marks the note BEND (and none clears
+    it), and the shape the editor gives — hold, release, pre-bend — is the
+    note's curve; a shape left unset keeps the note's own while the amount is
+    unchanged."""
+    from rockforge.domain.music import BendPoint
+
+    note = TabNote(string=2, fret=7, time=1.0, sustain=1.0)
+    (bent,) = _apply_note_overrides([note], [
+        NoteOverride(time=1.0, string=2, fret=7, sustain=1.0, bend_semitones=2.0)])
+    assert Technique.BEND in bent.techniques and bent.bend_points == ()
+
+    shape = (BendPoint(0.0, 0.0), BendPoint(0.25, 0.0), BendPoint(0.5, 2.0),
+             BendPoint(0.75, 2.0), BendPoint(1.0, 0.0))
+    (shaped,) = _apply_note_overrides([note], [
+        NoteOverride(time=1.0, string=2, fret=7, sustain=1.0, bend_semitones=2.0,
+                     bend_points=shape)])
+    assert shaped.bend_points == shape and Technique.BEND in shaped.techniques
+    (kept,) = _apply_note_overrides([shaped], [
+        NoteOverride(time=1.0, string=2, fret=7, sustain=1.0, bend_semitones=2.0,
+                     techniques=frozenset({Technique.BEND}))])
+    assert kept.bend_points == shape
+    (plain,) = _apply_note_overrides([shaped], [
+        NoteOverride(time=1.0, string=2, fret=7, sustain=1.0, bend_semitones=2.0,
+                     bend_points=())])
+    assert plain.bend_points == ()
+    (unbent,) = _apply_note_overrides([shaped], [
+        NoteOverride(time=1.0, string=2, fret=7, sustain=1.0,
+                     techniques=frozenset({Technique.BEND}), bend_points=shape)])
+    assert Technique.BEND not in unbent.techniques and unbent.bend_points == ()
+    (inserted,) = _apply_note_overrides([], [
+        NoteOverride(time=3.0, string=1, fret=9, sustain=0.8, bend_semitones=1.0,
+                     bend_points=(BendPoint(0.0, 1.0), BendPoint(1.0, 1.0)))])
+    assert Technique.BEND in inserted.techniques
+    assert inserted.bend_points == (BendPoint(0.0, 1.0), BendPoint(1.0, 1.0))
+
+
 def test_the_note_editor_can_link_a_slide_to_the_note_it_lands_on() -> None:
     """Issue #12: "slide then hold" is a short slide linked to a held note on
     its landing fret (Rocksmith's linkNext). The editor sends the link on the

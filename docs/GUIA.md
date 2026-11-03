@@ -557,6 +557,14 @@ Fica pendente nas duas pistas até **Aplicar e reconstruir**; Ctrl+Z desfaz.
   Rocksmith); vazio, desliza durante o sustain todo. **Ligar à nota seguinte** faz a nota continuar
   na seguinte da mesma corda sem palhetar. Na pauta, o slide é uma linha até ao fim do sustain
   (tracejada sem altura), e ouve-se a deslizar.
+- **Bends:** em **Bend (semitons)** escreve quanto sobe (1 = meio tom, 2 = um tom) e escolhe a
+  forma: **Sobe ao longo da nota** (o bend habitual), **Sobe e fica**, **Sobe, fica e volta**,
+  **Pré-bend (já dobrada)** ou **Pré-bend e volta**. Os tempos são segundos depois do ataque da
+  nota: **Sobe de … a …** é quando começa a subir e quando chega ao alto, **Volta de … a …** é
+  quando começa a voltar e quando está de novo sem bend. Assim, uma nota que soa um pouco antes de
+  subir, fica no alto e volta é **Sobe, fica e volta** com um primeiro tempo maior que 0. Uma forma
+  precisa de uma nota com sustain. Na pauta, a seta diz quanto sobe e uma linha verde-água sobre a
+  cauda mostra a forma; ouve-se a subir e a descer.
 - **Arrasta** uma nota para a mudar de tempo (encaixa na grelha) ou de corda (fica com o mesmo
   traste, logo muda de altura).
 - Para mover **um acorde ou várias notas**: arrasta uma caixa num espaço vazio da pauta à volta

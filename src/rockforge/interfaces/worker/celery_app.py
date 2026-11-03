@@ -305,7 +305,7 @@ def generate_cdlc(job_id: str) -> None:
                 from rockforge.domain.arrangement import ArrangementKind, Section, ToneChange
                 from rockforge.domain.arrangement import SongMetadata as Meta
                 from rockforge.domain.hand import HandPosition
-                from rockforge.domain.music import BASS_REFERENCES, Technique
+                from rockforge.domain.music import BASS_REFERENCES, BendPoint, Technique
                 from rockforge.infrastructure.packaging.gear.gear_catalogue import (
                     tones_from_dicts,
                 )
@@ -411,6 +411,11 @@ def generate_cdlc(job_id: str) -> None:
                                 slide_unpitch_to=(
                                     int(n["slide_unpitch_to"])
                                     if n.get("slide_unpitch_to") is not None else None
+                                ),
+                                bend_points=(
+                                    tuple(BendPoint(float(p[0]), float(p[1]))
+                                          for p in n["bend_points"])
+                                    if n.get("bend_points") is not None else None
                                 ),
                             )
                             for n in note_list

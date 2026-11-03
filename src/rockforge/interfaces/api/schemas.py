@@ -248,6 +248,18 @@ class NoteOverrideIn(BaseModel):
     # None = keep what the note had (see gp_pipeline.NoteOverride)
     link_next: bool | None = None
     slide_unpitch_to: int | None = Field(default=None, ge=-1, le=24)
+    # The bend's shape: [position 0-1 of the note, half-steps]; None = keep
+    # the note's own curve, [] = a plain bend (GitHub issue #21).
+    bend_points: list[tuple[Finite, Finite]] | None = Field(default=None, max_length=16)
+
+    @model_validator(mode="after")
+    def _bend_points_along_the_note(self) -> NoteOverrideIn:
+        pts = self.bend_points or []
+        if any(not (0.0 <= p <= 1.0) or not (0.0 <= st <= 4.0) for p, st in pts):
+            raise ValueError("a bend point lies between 0 and 1 of the note, 0 to 4 half-steps")
+        if any(b[0] < a[0] for a, b in zip(pts, pts[1:], strict=False)):
+            raise ValueError("bend points go along the note in order")
+        return self
 
 
 class HandPositionIn(BaseModel):

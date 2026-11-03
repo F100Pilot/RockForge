@@ -2430,6 +2430,41 @@ a real rebuild of an invented project (PT 1440 / EN 760 px): a 0.6 s note slid
 unpitched slide out as `slideUnpitchTo`, `/psarc-check` clean, no page errors.
 The glide itself was not listened to from here; not seen in game.
 
+**Bends in the note editor: marked, drawn, heard and shaped** (GitHub issue #21:
+"Setting a bend on a note leaves it without the visual indicator … sounds like
+a normal note … no way to set the length a bend is held for, or when it
+starts"). The popup sent `bend_semitones` but never the BEND technique, and the
+writer writes a bend (`bend` attribute, `<bendValues>`) only for a note marked
+BEND, so an edited bend was built as none — no arrow, `bend="0"`, gone from the
+viewer after the rebuild (the native SNG's mask keys off the amount, so it kept
+it). Now `gp_pipeline._with_bend` marks BEND exactly when the edit bends (the
+popup does too), and `NoteOverride.bend_points` (`NoteOverrideIn.bend_points`:
+[position 0-1, half-steps], ≤ 16, in order, 0-4; stored only when given, like
+`link_next`) is the note's curve: None = keep its own while the amount is
+unchanged, `()` = a plain bend. The popup's `#neBendShape` (`refreshBendShapeRow`)
+offers rise / rise and hold / rise, hold and release / pre-bend / pre-bend and
+release, with the instants in SECONDS after the attack (`#neBendT1-4` →
+fractions of the sustain, `bendPointsFor`); it reads a note's curve back
+(`bendShapeOf` over the pending points or the built `bend_curve`), and a curve
+it cannot say (a step to another amount) is "A curva que a nota tem", kept or
+scaled to a new amount. Pending notes carry their curve (`overrideBendCurve` in
+`mergeNoteOverrides`), copies and moves keep it (`noteBendPoints` in
+`noteAsOverride` and the clipboard), the score draws it as a teal line over the
+tail (`bendCurveSvg`, beside the arrow, now shown for any note with an amount)
+and the tick/synthesized source glide along it (`bendGlide` via `noteGlide`,
+`voiceNote`'s `glide.curve` ramps `playbackRate`) — also for bends from the GP
+file, which never sounded before. Guarded by
+`test_a_bend_set_in_the_note_editor_is_a_bend_with_the_shape_given` (the BEND
+rule and the given shape mutation-checked),
+`test_a_note_edits_bend_shape_is_stored_only_when_given_and_checked` and the
+bend line of `test_a_note_edits_link_and_unpitched_slide_reach_the_build`; with
+Playwright on an invented GP5 built for real (PT 1440 / EN 760 px): bend 2,
+"rises, holds and releases" 0.1/0.2/0.3/0.4 s → the teal line and "full", the
+glide ramps 1 → 1.1225 → 1, a real rebuild writing six `<bendValue>`s at those
+times with `/psarc-check` clean, the popup reopening on that shape and times,
+a pre-bend and release, a shape on a note with no sustain refused, no page
+errors. Not heard on a real machine or seen in game from here.
+
 **Moving a chord or a passage, and why "Arrastar" is not for that** (Liam,
 2026-10-18: "when you're moving notes around it can mess up the bpm and other
 notes … you cant drag a note past another note … you have to keep clicking back

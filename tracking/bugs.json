@@ -18524,6 +18524,36 @@
           "status": "Fixed"
         }
       ]
+    },
+    {
+      "id": "BUG-0372",
+      "title": "A bend set in the note editor was not drawn, not heard and built as no bend",
+      "detected": "2026-11-03",
+      "reported_by": "DrekAnon (GitHub issue #21)",
+      "found_in_version": "0.12.0-beta.4",
+      "found_in_build": "pending",
+      "module": "editor",
+      "description": "A bend set in the note editor was not drawn, not heard and built as no bend",
+      "steps": "pending",
+      "expected": "pending",
+      "observed": "pending",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Open",
+      "root_cause": "pending",
+      "fixes": [],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "pending",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-03",
+          "status": "Open",
+          "note": "reported"
+        }
+      ]
     }
   ]
 }

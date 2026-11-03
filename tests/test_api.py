@@ -582,7 +582,7 @@ def test_arrangements_derives_chord_name(client: TestClient) -> None:
     assert data[0]["note_overrides"] == [
         {"time": 0.5, "string": 1, "fret": 9, "sustain": 0.0, "techniques": [],
          "bend_semitones": 0.0, "slide_to_fret": None, "deleted": False,
-         "link_next": None, "slide_unpitch_to": None}
+         "link_next": None, "slide_unpitch_to": None, "bend_points": None}
     ], data[0]["note_overrides"]
     chord_notes = [n for n in data[0]["notes"] if n["chord"]]
     assert chord_notes, "expected the simultaneous notes to be emitted as a chord"
@@ -1536,6 +1536,39 @@ def test_a_note_edit_can_link_a_slide_and_make_it_unpitched(
             {"time": 2.0, "string": 3, "fret": 5, "slide_unpitch_to": 25}]}},
     )
     assert bad.status_code == 422
+
+
+def test_a_note_edits_bend_shape_is_stored_only_when_given_and_checked(
+    client: TestClient, tmp_path
+) -> None:
+    """GitHub issue #21: the note editor's bend shape rides the edit — stored
+    only when given (absent = keep the note's own curve) — and a point off the
+    note, past four half-steps or out of order is refused."""
+    import rockforge.interfaces.api.app as app_module
+
+    job = _gp_job(client, tmp_path)
+    shape = [[0.0, 0.0], [0.3, 0.0], [0.6, 2.0], [1.0, 2.0]]
+    rebuilt = client.post(
+        f"/jobs/{job['id']}/rebuild",
+        json={"note_overrides": {"Lead": [
+            {"time": 2.0, "string": 3, "fret": 7, "sustain": 1.0, "bend_semitones": 2,
+             "bend_points": shape},
+            {"time": 4.0, "string": 1, "fret": 5, "sustain": 0.5, "bend_semitones": 1},
+        ]}},
+    ).json()
+    with app_module._session_factory() as session:
+        stored = dict(session.get(app_module.Job, rebuilt["id"]).params or {})["note_overrides"]
+    lead = stored["Lead"]
+    assert lead[0]["bend_points"] == shape and "bend_points" not in lead[1]
+
+    for bad_shape in ([[1.2, 2.0]], [[0.5, 5.0]], [[0.6, 2.0], [0.3, 0.0]]):
+        bad = client.post(
+            f"/jobs/{job['id']}/rebuild",
+            json={"note_overrides": {"Lead": [
+                {"time": 2.0, "string": 3, "fret": 7, "sustain": 1.0,
+                 "bend_semitones": 2, "bend_points": bad_shape}]}},
+        )
+        assert bad.status_code == 422, bad_shape
 
 
 def test_rebuild_note_overrides_reject_out_of_range_string_or_fret(

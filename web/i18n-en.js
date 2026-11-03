@@ -1755,5 +1755,20 @@
  "Não sei onde está a pasta dlc: indica a pasta do Rocksmith 2014 acima e guarda, ou lê-a em Tons → Tons das tuas músicas.": "I do not know where the dlc folder is: give the Rocksmith 2014 folder above and save, or read it in Tones → Tones from your songs.",
  "A ler a pasta dlc: {done} de {total}…": "Reading the dlc folder: {done} of {total}…",
  "O .psarc usa o AppID de uma DLC (por omissão «Cherub Rock», 248750); o jogador tem de a possuir para a música aparecer na lista. Causa nº1 de \"não aparece no jogo\". Escolhe outra em Definições → Geral → AppID das músicas.": "The .psarc uses the AppID of one DLC (by default “Cherub Rock”, 248750); the player must own it for the song to appear in the list. The number-one cause of \"it does not show up in game\". Pick another in Settings → General → Song AppID.",
- "Escolher o AppID": "Choose the AppID"
+ "Escolher o AppID": "Choose the AppID",
+  "Forma do bend": "Bend shape",
+  "Sobe ao longo da nota": "Rises across the note",
+  "Sobe e fica": "Rises and holds",
+  "Sobe, fica e volta": "Rises, holds and releases",
+  "Pré-bend (já dobrada)": "Pre-bend (already bent)",
+  "Pré-bend e volta": "Pre-bend and release",
+  "A curva que a nota tem": "The note's own curve",
+  "Segundos depois do ataque da nota: quando começa a subir e quando chega ao alto.": "Seconds after the note's attack: when it starts to rise and when it is fully up.",
+  "Sobe de": "Rises from",
+  "a": "to",
+  "Segundos depois do ataque da nota: quando começa a voltar e quando volta à nota sem bend.": "Seconds after the note's attack: when it starts to come back and when it is back to the unbent note.",
+  "Volta de": "Releases from",
+  "Linha verde-azulada sobre a cauda: a forma do bend — quando sobe, quanto tempo fica no alto, quando volta": "Teal line over the tail: the bend's shape — when it rises, how long it stays up, when it comes back",
+  "Um bend com forma precisa de uma nota que dure (sustain).": "A shaped bend needs a note that lasts (sustain).",
+  "Os tempos do bend vão por ordem, de 0 até à duração da nota ({s} s).": "The bend's times go in order, from 0 to the note's length ({s} s)."
 };
