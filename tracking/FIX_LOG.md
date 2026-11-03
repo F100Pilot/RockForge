@@ -377,6 +377,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0369](#fix-0369) | BUG-0370 | 0.12.0-beta.3 | passed | automated |
 | [FIX-0370](#fix-0370) | BUG-0371 | unreleased | passed | automated |
 | [FIX-0371](#fix-0371) | BUG-0372 | unreleased | passed | automated |
+| [FIX-0372](#fix-0372) | BUG-0373 | unreleased | passed | pending |
 
 ## FIX-0001
 
@@ -8168,3 +8169,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | passed |
 | Validation | automated |
 | Regression risk | Low: a note edit without a bend amount behaves as before; an edit with one now carries BEND, which is what the writer needed. |
+
+## FIX-0372
+
+**Bugs:** [BUG-0373](bugs/import.md#bug-0373)
+
+**Root cause:** Most likely reading (not reproduced — songsterr.com is blocked from the sandbox and the screenshot could not be opened): a page in front of Songsterr's API refuses the automated client (requests' default python-requests User-Agent) while a browser gets through; the message was the plain-status one, which is only produced for a 403 whose body is NOT Songsterr's JSON refusal.
+
+**Solution:** songsterr._http_get_json asks first as before (requests' default headers); a 403 whose body is not a JSON object is asked once more with a browser's headers (BROWSER_HEADERS), and once that worked the session asks that way first (_browser_first). Songsterr's JSON refusal is never asked twice. Refused both ways, the message says the answer came from a protection page and points at the .gp exported from Songsterr.
+
+| | |
+|---|---|
+| Date | 2026-11-03 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 21fe655 |
+| Components | import |
+| Tests | tests/test_songsterr.py::test_a_403_page_in_front_of_the_api_is_asked_again_as_a_browser; tests/test_songsterr.py::test_songsterrs_own_refusal_is_not_asked_again; tests/test_songsterr.py::test_a_403_page_that_refuses_the_browser_too_says_so; tests/test_songsterr.py::test_a_refusal_or_an_unreadable_answer_is_a_clear_error |
+| Manual checks | — |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low: a request that is answered today is sent exactly as before; only a non-JSON 403 costs a second request (also on a CloudFront distribution that does not hold a part). Whether a browser's headers get past what the user hit is not known until the user tries it. |

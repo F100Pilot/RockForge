@@ -18564,6 +18564,56 @@
           "status": "Fixed"
         }
       ]
+    },
+    {
+      "id": "BUG-0373",
+      "title": "Songsterr refused every tab with a 403 that its browser did not get",
+      "detected": "2026-11-03",
+      "reported_by": "DrekAnon (GitHub #22)",
+      "found_in_version": "0.12.0-beta.4",
+      "found_in_build": "pending",
+      "module": "import",
+      "description": "Importing any Songsterr tab (or looking up its videos) failed with \"Songsterr answered 403 to https://www.songsterr.com/api/meta/…\", while the same address showed valid JSON in the user's browser; it happened with every tab and after restarting.",
+      "steps": [
+        "Novo projeto → paste a Songsterr link (any published tab)",
+        "Import"
+      ],
+      "expected": "The tab imported (or Songsterr's own reason for refusing it shown).",
+      "observed": "\"Songsterr answered 403 to <url>\" for every tab (v0.12.0-beta.4); the address opens in a browser.",
+      "severity": "High",
+      "priority": "P2",
+      "status": "Fixed",
+      "root_cause": "Most likely reading (not reproduced — songsterr.com is blocked from the sandbox and the screenshot could not be opened): a page in front of Songsterr's API refuses the automated client (requests' default python-requests User-Agent) while a browser gets through; the message was the plain-status one, which is only produced for a 403 whose body is NOT Songsterr's JSON refusal.",
+      "fixes": [
+        "FIX-0372"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-03",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-03",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-03",
+          "status": "Triaged",
+          "note": "GitHub #22; FIX-0372 (21fe655)"
+        },
+        {
+          "date": "2026-11-03",
+          "status": "In Progress",
+          "note": "GitHub #22; FIX-0372 (21fe655)"
+        },
+        {
+          "date": "2026-11-03",
+          "status": "Fixed",
+          "note": "GitHub #22; FIX-0372 (21fe655)"
+        }
+      ]
     }
   ]
 }

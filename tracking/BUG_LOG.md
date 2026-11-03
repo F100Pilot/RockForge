@@ -6,7 +6,7 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 
 | Fixed | Verified | Closed |
 |---|---|---|
-| 96 | 60 | 216 |
+| 97 | 60 | 216 |
 
 | ID | Title | Module | Severity | Priority | Status | Found in | Fixed in |
 |---|---|---|---|---|---|---|---|
@@ -382,3 +382,4 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0370](bugs/import.md#bug-0370) | A Songsterr tab with repeats is imported with each repeated section played once, so the chart ends early | import | High | P2 | Fixed | 0.12.0-beta.2 | 0.12.0-beta.3 |
 | [BUG-0371](bugs/tones.md#bug-0371) | The bass tones the tone detection proposed were always distortion-oriented, a clean bass included | tones | Low | P3 | Fixed | 0.12.0-beta.3 | — |
 | [BUG-0372](bugs/editor.md#bug-0372) | A bend set in the note editor was not drawn, not heard and built as no bend | editor | Medium | P2 | Fixed | 0.12.0-beta.4 | — |
+| [BUG-0373](bugs/import.md#bug-0373) | Songsterr refused every tab with a 403 that its browser did not get | import | High | P2 | Fixed | 0.12.0-beta.4 | — |

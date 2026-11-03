@@ -2497,3 +2497,43 @@ A song imported from a Songsterr link (https://www.songsterr.com/a/wsa/static-in
 
 - 2026-11-02 — Open: reported
 - 2026-11-02 — Fixed
+
+## BUG-0373
+
+**Songsterr refused every tab with a 403 that its browser did not get**
+
+| | |
+|---|---|
+| Detected | 2026-11-03 |
+| Reported by | DrekAnon (GitHub #22) |
+| Found in | 0.12.0-beta.4 |
+| Build / commit | _pending_ |
+| Severity | High |
+| Priority | P2 |
+| Status | Fixed |
+
+Importing any Songsterr tab (or looking up its videos) failed with "Songsterr answered 403 to https://www.songsterr.com/api/meta/…", while the same address showed valid JSON in the user's browser; it happened with every tab and after restarting.
+
+**Steps to reproduce:** 
+
+1. Novo projeto → paste a Songsterr link (any published tab)
+2. Import
+
+**Expected:** The tab imported (or Songsterr's own reason for refusing it shown).
+
+**Observed:** "Songsterr answered 403 to <url>" for every tab (v0.12.0-beta.4); the address opens in a browser.
+
+**Root cause:** Most likely reading (not reproduced — songsterr.com is blocked from the sandbox and the screenshot could not be opened): a page in front of Songsterr's API refuses the automated client (requests' default python-requests User-Agent) while a browser gets through; the message was the plain-status one, which is only produced for a 403 whose body is NOT Songsterr's JSON refusal.
+
+**Fixes:** [FIX-0372](../FIX_LOG.md#fix-0372) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-03 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-03 — Open: reported
+- 2026-11-03 — Triaged: GitHub #22; FIX-0372 (21fe655)
+- 2026-11-03 — In Progress: GitHub #22; FIX-0372 (21fe655)
+- 2026-11-03 — Fixed: GitHub #22; FIX-0372 (21fe655)

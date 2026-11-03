@@ -9369,6 +9369,33 @@
       "test_result": "passed",
       "regression_risk": "Low: a note edit without a bend amount behaves as before; an edit with one now carries BEND, which is what the writer needed.",
       "validation": "automated"
+    },
+    {
+      "id": "FIX-0372",
+      "bugs": [
+        "BUG-0373"
+      ],
+      "date": "2026-11-03",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "Most likely reading (not reproduced — songsterr.com is blocked from the sandbox and the screenshot could not be opened): a page in front of Songsterr's API refuses the automated client (requests' default python-requests User-Agent) while a browser gets through; the message was the plain-status one, which is only produced for a 403 whose body is NOT Songsterr's JSON refusal.",
+      "solution": "songsterr._http_get_json asks first as before (requests' default headers); a 403 whose body is not a JSON object is asked once more with a browser's headers (BROWSER_HEADERS), and once that worked the session asks that way first (_browser_first). Songsterr's JSON refusal is never asked twice. Refused both ways, the message says the answer came from a protection page and points at the .gp exported from Songsterr.",
+      "components": [
+        "import"
+      ],
+      "commits": [
+        "21fe655"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_songsterr.py::test_a_403_page_in_front_of_the_api_is_asked_again_as_a_browser",
+        "tests/test_songsterr.py::test_songsterrs_own_refusal_is_not_asked_again",
+        "tests/test_songsterr.py::test_a_403_page_that_refuses_the_browser_too_says_so",
+        "tests/test_songsterr.py::test_a_refusal_or_an_unreadable_answer_is_a_clear_error"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low: a request that is answered today is sent exactly as before; only a non-JSON 403 costs a second request (also on a CloudFront distribution that does not hold a part). Whether a browser's headers get past what the user hit is not known until the user tries it.",
+      "validation": "pending"
     }
   ]
 }

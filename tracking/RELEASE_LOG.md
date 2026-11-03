@@ -29,6 +29,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 
 - [BUG-0371](bugs/tones.md#bug-0371) The bass tones the tone detection proposed were always distortion-oriented, a clean bass included (Low, now Fixed)
 - [BUG-0372](bugs/editor.md#bug-0372) A bend set in the note editor was not drawn, not heard and built as no bend (Medium, now Fixed)
+- [BUG-0373](bugs/import.md#bug-0373) Songsterr refused every tab with a 403 that its browser did not get (High, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
