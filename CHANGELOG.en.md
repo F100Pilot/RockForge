@@ -6,6 +6,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+## [0.12.0 beta 5] — 2026-11-03
+
 ### New
 
 - **The bend's shape in the note editor:** besides how far it rises, you choose whether it rises across the note, rises and holds, rises, holds and releases, or is a pre-bend (which may release), and the seconds when it starts to rise, is fully up and comes back. On the score a teal line over the tail shows the shape, and the preview makes the bend sound. (GitHub #21)

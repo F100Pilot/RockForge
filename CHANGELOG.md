@@ -6,6 +6,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+## [0.12.0 beta 5] — 2026-11-03
+
 ### Novidades
 
 - **A forma do bend no editor de notas:** além de quanto sobe, escolhes se sobe ao longo da nota, sobe e fica, sobe, fica e volta, ou é um pré-bend (que pode voltar), e os segundos em que começa a subir, chega ao alto e volta. Na partitura, uma linha verde-água sobre a cauda mostra a forma, e a pré-escuta faz o bend soar. (GitHub #21)

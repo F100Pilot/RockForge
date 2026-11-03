@@ -453,7 +453,7 @@ A bend set in the note editor popup (Bend (semitones)) was not drawn on the scor
 
 **Root cause:** The popup sent bend_semitones but never the BEND technique, and the XML writer and the score's arrow key off BEND; the preview's voice glided for slides only; NoteOverride had no field for a bend curve.
 
-**Fixes:** [FIX-0371](../FIX_LOG.md#fix-0371) (unreleased)
+**Fixes:** [FIX-0371](../FIX_LOG.md#fix-0371) (0.12.0-beta.5)
 
 **Verified:** _pending_ (by _pending_)
 

@@ -2525,7 +2525,7 @@ Importing any Songsterr tab (or looking up its videos) failed with "Songsterr an
 
 **Root cause:** Most likely reading (not reproduced — songsterr.com is blocked from the sandbox and the screenshot could not be opened): a page in front of Songsterr's API refuses the automated client (requests' default python-requests User-Agent) while a browser gets through; the message was the plain-status one, which is only produced for a 403 whose body is NOT Songsterr's JSON refusal.
 
-**Fixes:** [FIX-0372](../FIX_LOG.md#fix-0372) (unreleased)
+**Fixes:** [FIX-0372](../FIX_LOG.md#fix-0372) (0.12.0-beta.5)
 
 **Verified:** _pending_ (by _pending_)
 

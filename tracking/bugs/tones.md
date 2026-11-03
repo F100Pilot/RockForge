@@ -987,7 +987,7 @@ With a bass in the recording, 'Detect tone' ranked the four bass presets by the 
 
 **Root cause:** The guitar analyzer's gain (crest of the RMS envelope, spectral contrast, flatness, ZCR — calibrated on guitar) reads every bass alike: measured on synthesized bass lines (clean, compressed, growl, overdrive, distortion; eighths, quarters, a mixed riff), 0.43-0.54 for all, between the Growl (0.40) and Overdrive (0.62) fingerprints.
 
-**Fixes:** [FIX-0370](../FIX_LOG.md#fix-0370) (unreleased)
+**Fixes:** [FIX-0370](../FIX_LOG.md#fix-0370) (0.12.0-beta.5)
 
 **Verified:** _pending_ (by _pending_)
 

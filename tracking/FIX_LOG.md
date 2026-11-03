@@ -375,9 +375,9 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0367](#fix-0367) | BUG-0368 | 0.12.0-beta.3 | passed | automated |
 | [FIX-0368](#fix-0368) | BUG-0369 | 0.12.0-beta.3 | passed | automated |
 | [FIX-0369](#fix-0369) | BUG-0370 | 0.12.0-beta.3 | passed | automated |
-| [FIX-0370](#fix-0370) | BUG-0371 | unreleased | passed | automated |
-| [FIX-0371](#fix-0371) | BUG-0372 | unreleased | passed | automated |
-| [FIX-0372](#fix-0372) | BUG-0373 | unreleased | passed | pending |
+| [FIX-0370](#fix-0370) | BUG-0371 | 0.12.0-beta.5 | passed | automated |
+| [FIX-0371](#fix-0371) | BUG-0372 | 0.12.0-beta.5 | passed | automated |
+| [FIX-0372](#fix-0372) | BUG-0373 | 0.12.0-beta.5 | passed | pending |
 
 ## FIX-0001
 
@@ -8140,7 +8140,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-03 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.5 |
 | Commits | e3568e3 |
 | Components | tones |
 | Tests | tests/test_celery_tasks.py::test_detect_tones_offers_bass_tones_when_demucs_separated_a_bass; tests/test_tone_detection.py::test_bass_presets_are_bass_gear_offered_from_clean_to_distorted; tests/test_api.py::test_detected_tones_hand_out_the_bass_tones_from_clean_to_distorted |
@@ -8161,7 +8161,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-03 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.5 |
 | Commits | 31f5c0b |
 | Components | editor; viewer |
 | Tests | tests/test_gp_pipeline.py::test_a_bend_set_in_the_note_editor_is_a_bend_with_the_shape_given; tests/test_api.py::test_a_note_edits_bend_shape_is_stored_only_when_given_and_checked; tests/test_celery_tasks.py::test_a_note_edits_link_and_unpitched_slide_reach_the_build |
@@ -8182,7 +8182,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-03 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.5 |
 | Commits | 21fe655 |
 | Components | import |
 | Tests | tests/test_songsterr.py::test_a_403_page_in_front_of_the_api_is_asked_again_as_a_browser; tests/test_songsterr.py::test_songsterrs_own_refusal_is_not_asked_again; tests/test_songsterr.py::test_a_403_page_that_refuses_the_browser_too_says_so; tests/test_songsterr.py::test_a_refusal_or_an_unreadable_answer_is_a_clear_error |

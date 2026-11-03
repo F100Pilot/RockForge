@@ -380,6 +380,6 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0368](bugs/tones.md#bug-0368) | The tone detection proposed guitar tones only, so a bass chart could be given a guitar amp from it | tones | Medium | P2 | Fixed | 0.12.0-beta.2 | 0.12.0-beta.3 |
 | [BUG-0369](bugs/import.md#bug-0369) | A tab imported from Songsterr played some notes after dotted rests too early | import | Medium | P2 | Fixed | 0.12.0-beta.2 | 0.12.0-beta.3 |
 | [BUG-0370](bugs/import.md#bug-0370) | A Songsterr tab with repeats is imported with each repeated section played once, so the chart ends early | import | High | P2 | Fixed | 0.12.0-beta.2 | 0.12.0-beta.3 |
-| [BUG-0371](bugs/tones.md#bug-0371) | The bass tones the tone detection proposed were always distortion-oriented, a clean bass included | tones | Low | P3 | Fixed | 0.12.0-beta.3 | — |
-| [BUG-0372](bugs/editor.md#bug-0372) | A bend set in the note editor was not drawn, not heard and built as no bend | editor | Medium | P2 | Fixed | 0.12.0-beta.4 | — |
-| [BUG-0373](bugs/import.md#bug-0373) | Songsterr refused every tab with a 403 that its browser did not get | import | High | P2 | Fixed | 0.12.0-beta.4 | — |
+| [BUG-0371](bugs/tones.md#bug-0371) | The bass tones the tone detection proposed were always distortion-oriented, a clean bass included | tones | Low | P3 | Fixed | 0.12.0-beta.3 | 0.12.0-beta.5 |
+| [BUG-0372](bugs/editor.md#bug-0372) | A bend set in the note editor was not drawn, not heard and built as no bend | editor | Medium | P2 | Fixed | 0.12.0-beta.4 | 0.12.0-beta.5 |
+| [BUG-0373](bugs/import.md#bug-0373) | Songsterr refused every tab with a 403 that its browser did not get | import | High | P2 | Fixed | 0.12.0-beta.4 | 0.12.0-beta.5 |
