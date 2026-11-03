@@ -8131,11 +8131,10 @@ function _profileBar(label, value) {
     `<span class="tone-prof-val">${pct}%</span></div>`;
 }
 
-function _candidateList(role, candidates) {
+function _candidateList(role, candidates, bassCharacter) {
   if (!candidates || !candidates.length) return '';
-  // The bass tones are NOT measured on the recording (GitHub issue #16: the
-  // reading did not tell a clean bass from a distorted one), so they come from
-  // clean to distorted with no %, each to be listened to.
+  // The bass tones carry no % (GitHub issue #16): the separated bass is only
+  // read as clean or distorted, which says which end the list starts from.
   const bass = role === 'bass';
   const rows = candidates.map(c => {
     const m = Math.round(Number(c.match) || 0);
@@ -8146,8 +8145,12 @@ function _candidateList(role, candidates) {
   }).join('');
   const title = role === 'lead' ? T('Lead — tons semelhantes')
     : bass ? T('Baixo — tons de baixo') : T('Rhythm — tons semelhantes');
-  const order = bass ? T('(do limpo ao distorcido — não medidos na gravação: ouve e escolhe)')
-    : T('(ordenados por semelhança)');
+  const order = !bass ? T('(ordenados por semelhança)')
+    : bassCharacter === 'distorted'
+    ? T('(o baixo separado soa muito distorcido: do distorcido ao limpo — ouve e escolhe)')
+    : bassCharacter === 'light'
+    ? T('(o baixo separado não soa muito distorcido: do limpo ao distorcido — ouve e escolhe)')
+    : T('(do limpo ao distorcido — ouve e escolhe)');
   return `<div class="tone-cand-group"><div class="meta" style="margin:.4rem 0 .2rem">${esc(title)} ` +
     `<span class="meta">${order}</span></div>${rows}</div>`;
 }
@@ -8169,7 +8172,7 @@ function renderToneDetectionResult(d) {
   // The detection reads the separated GUITAR and proposes guitar tones; a Bass
   // chart never takes them (it keeps its own bass tones or the standard one).
   const kinds = arrangements.map(a => a.kind);
-  const bassList = kinds.includes('Bass') ? _candidateList('bass', d.bass_candidates) : '';
+  const bassList = kinds.includes('Bass') ? _candidateList('bass', d.bass_candidates, d.bass_character) : '';
   const bassNote = bassList
     ? `<div class="meta" style="margin-top:.3rem">${T('A gravação tem baixo: os tons de baixo abaixo vão só para o arranjo de baixo; os de guitarra nunca vão para o baixo.')}</div>`
     : kinds.includes('Bass')

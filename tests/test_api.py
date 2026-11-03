@@ -4029,10 +4029,26 @@ def test_detected_tones_hand_out_the_bass_tones_from_clean_to_distorted(
         "status": "ready", "bass_candidates": ranked_before,
     })
     body = client.get(f"/jobs/{job['id']}/detected-tones").json()
-    assert [c["key"] for c in body["bass_candidates"]] == [
-        "RFBass_Clean", "RFBass_Growl", "RFBass_Overdrive", "RFBass_Distortion",
-    ]
+    plain = ["RFBass_Clean", "RFBass_Growl", "RFBass_Overdrive", "RFBass_Distortion"]
+    assert [c["key"] for c in body["bass_candidates"]] == plain
     assert all("match" not in c for c in body["bass_candidates"])
+    assert body["bass_character"] == ""
+
+
+def test_a_heavily_distorted_bass_hands_out_its_tones_from_distorted_to_clean(
+    client: TestClient, tmp_path
+) -> None:
+    """GitHub issue #16: the bass's own reading, stored with the detection,
+    turns the order round when it says heavily distorted."""
+    job = _built_two_track_job(client, tmp_path, detected={
+        "status": "ready", "bass_candidates": [{"key": "RFBass_Clean"}],
+        "bass_reading": {"flatness": 0.16, "character": "distorted"},
+    })
+    body = client.get(f"/jobs/{job['id']}/detected-tones").json()
+    assert [c["key"] for c in body["bass_candidates"]] == [
+        "RFBass_Distortion", "RFBass_Overdrive", "RFBass_Growl", "RFBass_Clean",
+    ]
+    assert body["bass_character"] == "distorted"
 
 
 def test_tone_suggestions_propose_a_tone_per_part_of_each_track(

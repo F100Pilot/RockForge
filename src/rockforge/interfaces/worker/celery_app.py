@@ -883,18 +883,34 @@ def detect_tones(job_id: str) -> None:
             }
             # The same Demucs pass wrote the bass beside the guitar, so the song
             # has a bass to give its own tones (GitHub issue #16 — the detection
-            # only ever proposed guitar tones). They are offered from clean to
-            # distorted, NOT ranked by the recording: the guitar's gain reading
-            # did not tell a clean bass from a distorted one (bass_presets).
-            if guitar_stem.with_name("bass.wav").exists():
-                from rockforge.infrastructure.packaging.gear.tone_presets import bass_presets
+            # only ever proposed guitar tones). The bass is read with its own
+            # measure (the guitar's gain did not tell a clean bass from a
+            # distorted one), and only says which end to start from.
+            bass_stem = guitar_stem.with_name("bass.wav")
+            if bass_stem.exists():
+                from rockforge.infrastructure.packaging.gear.tone_presets import (
+                    bass_character,
+                    bass_presets,
+                )
+                from rockforge.infrastructure.tone_analysis.analyzer import analyze_bass
 
+                try:
+                    flatness = analyze_bass(bass_stem)
+                except Exception as exc:  # the guitar's result stands without it
+                    flatness = None
+                    _log_tone_stage(params, f"bass: could not be read ({exc})")
+                character = bass_character(flatness)
                 detected = dict(cast("dict[str, Any]", params["detected_tones"]))
-                detected["bass_candidates"] = bass_presets()
+                detected["bass_candidates"] = bass_presets(character)
+                detected["bass_reading"] = {"flatness": flatness, "character": character}
                 params["detected_tones"] = detected
+                reading = "not read" if flatness is None else f"flatness={flatness:.4f}"
                 _log_tone_stage(
-                    params, "bass: four bass tones offered, from clean to distorted "
-                    "(not measured on the recording — listen and choose)"
+                    params, f"bass: {reading} — "
+                    + {"light": "not heavily distorted, tones from clean to distorted",
+                       "distorted": "heavily distorted, tones from distorted to clean"}.get(
+                        character or "", "tones from clean to distorted"
+                    )
                 )
             params["tone_detection_status"] = "ready"
             heard = sum(1 for w in windows if w.active)

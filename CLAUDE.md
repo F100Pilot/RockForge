@@ -689,29 +689,42 @@ Combo/alternates, encoded the way Rocksmith2014.NET/DLC Builder encode a bass
   DLC Builder's default bass tone, said in the warnings (`_tone_setup` in
   `gp_pipeline`; GitHub issue #9: the detection's guitar tones had put a guitar
   amp on the bass). Guarded by `test_the_bass_never_takes_the_songs_guitar_tones`.
-  **Bass tones offered, NOT detected** (GitHub issue #16): when the
-  htdemucs_6s pass wrote a `bass.wav` beside the guitar stem, `detect_tones`
-  stores `detected_tones["bass_candidates"]` = `bass_presets()`: four bass
-  presets (`RFBass_Clean/Growl/Overdrive/Distortion`, real `Bass_` gear,
-  volume -12 like `default_bass.json`) from clean to distorted, with no match.
-  They were first ranked by the guitar analyzer's gain read on the bass stem,
-  and the reporter saw only distortion-oriented tones: measured on synthesized
-  bass lines (clean, compressed, growl, overdrive, distortion; three rhythms),
-  that gain read 0.43-0.54 for EVERY one. The best bass cue found (spectral
-  flatness 300 Hz-4 kHz on the HPSS harmonic part) ordered the styles on a
-  clean signal, but 3 % finger/fret noise made a clean bass read as heavy
-  distortion, so nothing is measured until real separated basses (asked of the
-  reporter) can calibrate one. `/detected-tones` always answers
-  `bass_presets()` when bass candidates were stored, so a detection from
-  before is reordered too. The Tons page lists them under "Baixo — tons de
-  baixo" with "Ouvir (aproximação)" on each, when the song has a Bass chart,
-  and "usar" (`applyBassTone`) gives the Bass chart its own set via
+  **Bass tones offered, read only as "heavily distorted or not"** (GitHub
+  issue #16): when the htdemucs_6s pass wrote a `bass.wav` beside the guitar
+  stem, `detect_tones` stores `detected_tones["bass_candidates"]` =
+  `bass_presets(character)`: four bass presets
+  (`RFBass_Clean/Growl/Overdrive/Distortion`, real `Bass_` gear, volume -12
+  like `default_bass.json`), with no match. They were first ranked by the
+  guitar analyzer's gain read on the bass stem, which read 0.43-0.54 for EVERY
+  bass (synthesized, and later the reporter's four real Demucs stems too).
+  The bass's own reading (`_librosa_runner.bass_flatness`, command `bass`, via
+  `analyzer.analyze_bass`): spectral flatness 300 Hz-4 kHz of the HPSS
+  harmonic part, median over 3 s windows of the loud frames. On the
+  reporter's four real stems (2026-11-03): clean 0.0004/0.0036 (no window over
+  0.0064), distorted 0.054/0.164 (none under 0.0456), independent of
+  brightness. A soft clipper on a synthesized bass reads only 0.002-0.007 and
+  hard clipping 0.04, so it is NOT a clean/overdrive measure:
+  `bass_character` answers "distorted" at ≥ `BASS_DISTORTED_MIN` (0.03),
+  "light" below (clean or a light drive), None unread; "distorted" turns the
+  order round (distorted → clean), anything else keeps clean → distorted.
+  Stored as `detected_tones["bass_reading"]` `{flatness, character}` (a failed
+  read logs and keeps the plain order; the guitar result stands);
+  `/detected-tones` answers `bass_presets(...)` from it and `bass_character`
+  ("" before). The four files stay out of the repo (the reporter's audio,
+  used only to calibrate). The Tons page lists them under "Baixo — tons de
+  baixo" with "Ouvir (aproximação)" on each and a line saying which reading
+  set the order, when the song has a Bass chart, and "usar"
+  (`applyBassTone`) gives the Bass chart its own set via
   `applyToneSuggestion`, never the song's. With the Bass set on screen
   (`toneSetKind === 'Bass'`) a guitar "usar" or "Aplicar melhores" is refused
   with a toast (`refuseGuitarToneOnBass`). Guarded by
   `test_detect_tones_offers_bass_tones_when_demucs_separated_a_bass`,
-  `test_bass_presets_are_bass_gear_offered_from_clean_to_distorted` and
-  `test_detected_tones_hand_out_the_bass_tones_from_clean_to_distorted`.
+  `test_the_separated_bass_reads_heavily_distorted_or_not_and_sets_the_order`
+  (the order and the threshold mutation-checked),
+  `test_only_a_heavily_distorted_bass_reads_distorted` (librosa, skipped in
+  CI; removing the HPSS is NOT caught by it),
+  `test_detected_tones_hand_out_the_bass_tones_from_clean_to_distorted` and
+  `test_a_heavily_distorted_bass_hands_out_its_tones_from_distorted_to_clean`.
 - **What skips it**: tone suggestions (the analysis is of the guitar stem),
   showlights (from the richest non-bass chart), and the chart GP lyrics are
   timed on when the file names no vocal track. With no tone of its own it gets

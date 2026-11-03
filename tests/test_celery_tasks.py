@@ -344,10 +344,10 @@ class _BassWritingSeparator(_FakeStemSeparator):
 def test_detect_tones_offers_bass_tones_when_demucs_separated_a_bass(db, monkeypatch) -> None:
     """GitHub issue #16: the detection only ever proposed guitar tones, so a
     bass chart could only be given a guitar amp. With the bass Demucs wrote,
-    the four bass presets are offered from clean to distorted — not ranked by
-    the recording, whose gain reading did not tell a clean bass from a
-    distorted one — and the separated bass is not run through the guitar
-    analysis."""
+    the four bass presets are offered — from distorted to clean when the bass's
+    own reading says heavily distorted — the separated bass is not run through
+    the guitar analysis, and a bass that cannot be read leaves the guitar's
+    result standing with the plain order."""
     from rockforge.domain.tone import is_bass_tone
     from rockforge.infrastructure.normalize.ffmpeg import FfmpegNormalizer
     from rockforge.infrastructure.packaging.gear.gear_catalogue import tone_from_dict
@@ -370,6 +370,12 @@ def test_detect_tones_offers_bass_tones_when_demucs_separated_a_bass(db, monkeyp
         )
 
     monkeypatch.setattr(analyzer_mod, "analyze_guitar_timeline", analyse)
+    bass_read: list[str] = []
+
+    def read_bass(stem):
+        bass_read.append(stem.name)
+        return 0.09                                   # a fuzz bass's reading
+    monkeypatch.setattr(analyzer_mod, "analyze_bass", read_bass)
     job_id = _job(db)
 
     ca.detect_tones(job_id)
@@ -378,11 +384,19 @@ def test_detect_tones_offers_bass_tones_when_demucs_separated_a_bass(db, monkeyp
     assert detected["category"] == "crunch"          # the guitar's own reading stands
     candidates = detected["bass_candidates"]
     assert all(is_bass_tone(tone_from_dict(c)) for c in candidates)
-    assert [c["key"] for c in candidates] == [
-        "RFBass_Clean", "RFBass_Growl", "RFBass_Overdrive", "RFBass_Distortion",
-    ]
-    assert "bass.wav" not in analysed
-    assert "bass_gain" not in detected
+    plain = ["RFBass_Clean", "RFBass_Growl", "RFBass_Overdrive", "RFBass_Distortion"]
+    assert [c["key"] for c in candidates] == plain[::-1]
+    assert detected["bass_reading"] == {"flatness": 0.09, "character": "distorted"}
+    assert bass_read == ["bass.wav"] and "bass.wav" not in analysed
+
+    def unreadable(stem):
+        raise RuntimeError("no librosa")
+    monkeypatch.setattr(analyzer_mod, "analyze_bass", unreadable)
+    ca.detect_tones(job_id)
+    detected = _reload(db, job_id).params["detected_tones"]
+    assert _reload(db, job_id).params["tone_detection_status"] == "ready"
+    assert [c["key"] for c in detected["bass_candidates"]] == plain
+    assert detected["bass_reading"] == {"flatness": None, "character": None}
 
 
 def test_detect_tones_without_a_bass_stem_proposes_no_bass_tones(db, monkeypatch) -> None:

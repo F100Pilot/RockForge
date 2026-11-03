@@ -6,6 +6,10 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Novidades
+
+- **O baixo separado é medido na deteção de tons:** com a ajuda de quatro baixos reais enviados por um utilizador, o «Detetar tom» passou a ouvir o baixo separado. Quando soa muito distorcido, os tons de baixo aparecem do distorcido ao limpo; senão, do limpo ao distorcido, como até aqui. Só distingue um baixo muito distorcido do resto (um overdrive ligeiro lê-se como limpo), por isso continua sem percentagem: ouve e escolhe. (GitHub #16)
+
 ## [0.12.0 beta 5] — 2026-11-03
 
 ### Novidades

@@ -11,7 +11,7 @@ from pydantic import ValidationError
 
 from rockforge import i18n
 from rockforge.infrastructure.db.models import JobStatus
-from rockforge.infrastructure.packaging.gear.tone_presets import bass_presets
+from rockforge.infrastructure.packaging.gear.tone_presets import bass_character, bass_presets
 from rockforge.interfaces.api import app as api
 from rockforge.interfaces.api.schemas import (
     DetectTonesOut,
@@ -61,6 +61,11 @@ def get_detected_tones(job_id: str) -> DetectTonesOut:
         status = str(params.get("tone_detection_status", "none"))
         log = cast("list[str]", params.get("tone_detection_log") or [])
         detected = cast("dict[str, Any]", params.get("detected_tones") or {})
+        reading = detected.get("bass_reading")
+        flatness = reading.get("flatness") if isinstance(reading, dict) else None
+        bass_char = bass_character(
+            float(flatness) if isinstance(flatness, (int, float)) else None
+        )
         return DetectTonesOut(
             status=status,
             category=str(detected.get("category", "")),
@@ -68,10 +73,12 @@ def get_detected_tones(job_id: str) -> DetectTonesOut:
             rhythm=dict(detected.get("rhythm", {})),
             lead_candidates=list(detected.get("lead_candidates", [])),
             rhythm_candidates=list(detected.get("rhythm_candidates", [])),
-            # Always the presets as they are now, from clean to distorted: a
-            # detection from before #16 stored them ranked by a gain that did
-            # not read a bass (tone_presets.bass_presets).
-            bass_candidates=bass_presets() if detected.get("bass_candidates") else [],
+            # Always the presets as they are now, in the order the stored bass
+            # reading gives (a detection from before has none: clean first).
+            bass_candidates=(
+                bass_presets(bass_char) if detected.get("bass_candidates") else []
+            ),
+            bass_character=bass_char or "",
             profile=dict(detected.get("profile", {})),
             log=[str(line) for line in log],
             has_timeline=bool(detected.get("timeline")),

@@ -1,5 +1,7 @@
 """Tests for the tone detection feature (spectral analysis + preset mapping)."""
 
+import pytest
+
 from rockforge.infrastructure.packaging.gear.gear_catalogue import tone_from_dict
 from rockforge.infrastructure.packaging.gear.tone_presets import rank_tones, suggest_tones
 from rockforge.infrastructure.tone_analysis.analyzer import ToneProfile, profile_from_features
@@ -309,7 +311,7 @@ def test_driven_presets_cut_the_hiss_band_before_the_amp_and_stack_no_drive() ->
 def test_bass_presets_are_bass_gear_offered_from_clean_to_distorted() -> None:
     """GitHub issue #16: a bass chart was offered guitar tones only. The bass
     presets are real bass gear, every knob a real knob, at DLC Builder's own
-    bass volume, and are ranked by the gain measured on the separated bass."""
+    bass volume, offered from clean to distorted with no match %."""
     from rockforge.domain.tone import is_bass_tone
     from rockforge.infrastructure.packaging.gear import tone_presets as tp
     from rockforge.infrastructure.packaging.gear.gear_catalogue import knob_defaults
@@ -329,3 +331,68 @@ def test_bass_presets_are_bass_gear_offered_from_clean_to_distorted() -> None:
         "RFBass_Clean", "RFBass_Growl", "RFBass_Overdrive", "RFBass_Distortion",
     ]
     assert all("match" not in c for c in offered)
+
+
+def test_the_separated_bass_reads_heavily_distorted_or_not_and_sets_the_order() -> None:
+    """GitHub issue #16, calibrated on the four real Demucs bass stems the
+    reporter sent: clean 0.0004/0.0036, distorted 0.054/0.164. Only "heavily
+    distorted or not" is read; a heavily distorted bass turns the order round."""
+    from rockforge.infrastructure.packaging.gear import tone_presets as tp
+
+    for light in (0.0004, 0.0036, 0.0064, 0.02):    # the clean files and below the line
+        assert tp.bass_character(light) == "light"
+    for distorted in (0.0456, 0.054, 0.164, 0.248):  # the distorted files' range
+        assert tp.bass_character(distorted) == "distorted"
+    for unread in (None, -1.0):
+        assert tp.bass_character(unread) is None
+    plain = ["RFBass_Clean", "RFBass_Growl", "RFBass_Overdrive", "RFBass_Distortion"]
+    assert [c["key"] for c in tp.bass_presets("light")] == plain
+    assert [c["key"] for c in tp.bass_presets(None)] == plain
+    assert [c["key"] for c in tp.bass_presets("distorted")] == plain[::-1]
+    assert all("match" not in c for c in tp.bass_presets("distorted"))
+
+
+def _bass_line(np, sr: int):  # noqa: ANN202 — numpy is only imported when librosa is
+    """Eighths on E1 A1 D2 B1, each ringing into the next, with a bass string's
+    slight inharmonicity, a click of finger noise on each pluck and a faint
+    noise floor under it all."""
+    rng = np.random.default_rng(16)
+    step, ring = int(sr * 0.5), int(sr * 1.2)
+    notes = [41.2, 55.0, 73.4, 61.7] * 6
+    y = np.zeros(step * len(notes) + ring)
+    t = np.arange(ring) / sr
+    for i, f0 in enumerate(notes):
+        note = sum(
+            np.sin(2 * np.pi * f0 * h * np.sqrt(1 + 0.0004 * h * h) * t) / h**1.5
+            for h in range(1, 12)
+        ) * np.exp(-t * 2.5)
+        note += rng.normal(0, 0.15, ring) * np.exp(-t * 400)
+        y[i * step:i * step + ring] += note
+    y /= np.max(np.abs(y))
+    return y + rng.normal(0, 0.002, len(y))
+
+
+def test_only_a_heavily_distorted_bass_reads_distorted(tmp_path) -> None:
+    """The runner's bass reading on synthesized basses (librosa only — CI skips
+    it). A clean line reads light and a hard-clipped one distorted — and a
+    light drive (a soft clipper) reads light too, which is why the reading
+    never claims a bass is clean."""
+    np = pytest.importorskip("numpy")
+    sf = pytest.importorskip("soundfile")
+    pytest.importorskip("librosa")
+    from rockforge.infrastructure import _librosa_runner as runner
+    from rockforge.infrastructure.packaging.gear import tone_presets as tp
+
+    sr = 22050
+    clean = _bass_line(np, sr)
+    played = {
+        "clean": clean,
+        "light drive": np.tanh(6 * clean),
+        "hard clip": np.clip(30 * clean, -1, 1),
+    }
+    read = {}
+    for name, y in played.items():
+        path = tmp_path / f"{name}.wav"
+        sf.write(path, 0.8 * y / np.max(np.abs(y)), sr)
+        read[name] = tp.bass_character(runner.bass_flatness(str(path))["flatness"])
+    assert read == {"clean": "light", "light drive": "light", "hard clip": "distorted"}

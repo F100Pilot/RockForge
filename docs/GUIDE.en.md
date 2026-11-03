@@ -658,9 +658,11 @@ This is what goes into the game, after **Apply and rebuild**.
 - **Detect tone** separates the guitar (Demucs, minutes) and classifies the sound's character
   (clean, crunch, distorted), proposing presets from the game's catalogue ranked by likeness.
   It does not identify the real amp.
-  With a bass arrangement and a bass in the recording, it also shows four bass tones, from clean
-  to distorted, each with **Listen (approximation)**. They are not measured on the recording:
-  listen to them and choose. They go to the bass only; a guitar tone never goes on the bass.
+  With a bass arrangement and a bass in the recording, it also shows four bass tones, each with
+  **Listen (approximation)**: from clean to distorted, or from distorted to clean when the
+  separated bass sounds heavily distorted. That is the only thing measured on the bass — it does
+  not tell a clean bass from a light overdrive — so listen to them and choose. They go to the
+  bass only; a guitar tone never goes on the bass.
 - **Suggestions per section** proposes a tone for each part of each track (clean, rhythm,
   lead), from the recording and from what the track plays. A suggestion **changes nothing**
   until you press **Apply to this track** or **Apply to all tracks**. On each row you can

@@ -84,6 +84,17 @@ def analyze_guitar_timeline(audio: Path) -> tuple[ToneProfile, list[WindowProfil
     return profile_from_features(**features), window_profiles(features, windows)
 
 
+def analyze_bass(audio: Path) -> float | None:
+    """The separated bass's flatness reading (``_librosa_runner.bass_flatness``),
+    or None when the bass never plays loud enough to read."""
+    if ml_python.librosa_here():
+        report: dict[str, object] = dict(_librosa_runner.bass_flatness(str(audio)))
+    else:
+        report = ml_python.run_librosa("bass", audio)
+    value = float(report.get("flatness", -1.0))  # type: ignore[arg-type]
+    return value if value >= 0 else None
+
+
 def window_profiles(
     song_features: dict[str, float], windows: list[dict[str, float]]
 ) -> list[WindowProfile]:

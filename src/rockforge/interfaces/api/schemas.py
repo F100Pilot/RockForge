@@ -518,8 +518,11 @@ class DetectTonesOut(BaseModel):
     # user can browse several "similar tones" rather than only the top guess.
     lead_candidates: list[dict[str, Any]] = []
     rhythm_candidates: list[dict[str, Any]] = []
-    # The bass presets ranked on the separated bass, when the pass wrote one.
+    # The bass presets, when the pass wrote a bass: from clean to distorted, or
+    # the other way when the separated bass reads distorted.
     bass_candidates: list[dict[str, Any]] = []
+    # "distorted" (heavily) | "light" (clean or a light drive) | "" (not read).
+    bass_character: str = ""
     profile: dict[str, Any] = {}  # detected spectral profile (gain/brightness/…)
     log: list[str] = []
     # The detection measured the tone over time too, so /tone-suggestions can

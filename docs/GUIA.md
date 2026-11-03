@@ -660,9 +660,11 @@ Em **Tons de cada pista**:
 - **Detetar tom** separa a guitarra (Demucs, minutos) e classifica o carácter do som (limpo,
   crunch, distorcido), propondo presets do catálogo do jogo ordenados pela semelhança. Não
   identifica o amplificador real.
-  Com um arranjo de baixo e um baixo na gravação, mostra também quatro tons de baixo, do limpo
-  ao distorcido, cada um com **Ouvir (aproximação)**. Não são medidos na gravação: ouve-os e
-  escolhe. Vão só para o baixo; um tom de guitarra nunca vai para o baixo.
+  Com um arranjo de baixo e um baixo na gravação, mostra também quatro tons de baixo, cada um
+  com **Ouvir (aproximação)**: do limpo ao distorcido, ou do distorcido ao limpo quando o baixo
+  separado soa muito distorcido. É a única coisa que se mede no baixo — não distingue um baixo
+  limpo de um overdrive ligeiro —, por isso ouve-os e escolhe. Vão só para o baixo; um tom de
+  guitarra nunca vai para o baixo.
 - **Sugestões por secção** propõe um tom para cada parte de cada pista (limpo, rhythm, lead),
   pela gravação e pelo que a pista toca. Uma sugestão **não muda nada** até carregares em
   **Aplicar a esta pista** ou **Aplicar a todas as pistas**. Em cada linha podes trocar o tom

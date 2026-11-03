@@ -184,6 +184,56 @@ ALIGN_GAP_BEATS = 4          # beats without a note before one that is flagged t
 ALIGN_BEAT_WEIGHT = 0.35     # an attack on a beat with no note of the chart still counts a little
 
 
+# The bass's character (GitHub issue #16). The guitar's gain reading said
+# nothing about a bass (0.43-0.54 for every one, clean or distorted, on
+# synthesized basses AND on four real Demucs bass stems). What does separate
+# them is how FILLED IN the spectrum is between 300 Hz and 4 kHz once the
+# percussive part (pick and fret noise) is taken out: a clean bass is a few
+# harmonics with nothing between them, distortion fills the gaps. Measured on
+# those four real stems, in 3 s windows of the loud frames: clean 0.0002-0.0064,
+# distorted 0.0456-0.248 — a gap of seven times, and independent of how bright
+# the bass is (a bright clean bass had MORE level in that band than a heavy
+# distorted one). A LIGHT drive does not fill it like that (a soft clipper on a
+# synthesized bass read 0.002-0.007), so this says "heavily distorted" or not,
+# never clean vs overdrive. The value handed back is the median over the windows.
+BASS_BAND_HZ = (300.0, 4000.0)
+BASS_WINDOW_S = 3.0
+
+
+def bass_flatness(audio: str) -> dict[str, float]:
+    """``{"flatness": median over 3 s windows, "windows": how many}`` of a
+    separated bass; ``flatness`` -1 when no window had the bass playing."""
+    import librosa
+    import numpy as np
+
+    sr = 22050
+    y, _ = librosa.load(audio, sr=sr, mono=True)
+    peak = float(np.max(np.abs(y))) if len(y) else 0.0
+    if peak <= 0:
+        return {"flatness": -1.0, "windows": 0}
+    y = y / peak
+    hop = 512
+    S = np.abs(librosa.stft(y, n_fft=2048, hop_length=hop))
+    freqs = librosa.fft_frequencies(sr=sr, n_fft=2048)
+    harmonic, _ = librosa.decompose.hpss(S)
+    band = (freqs >= BASS_BAND_HZ[0]) & (freqs <= BASS_BAND_HZ[1])
+    flat = librosa.feature.spectral_flatness(S=harmonic[band])[0]
+    rms = librosa.feature.rms(S=S, frame_length=2048)[0]
+    n = min(len(flat), len(rms))
+    flat, rms = flat[:n], rms[:n]
+    loud = rms >= 0.3 * float(np.max(rms)) if n else rms > 0
+    width = max(1, int(BASS_WINDOW_S * sr / hop))
+    values = []
+    for start in range(0, max(1, n - width + 1), max(1, width // 2)):
+        mask = loud[start:start + width]
+        if not len(mask) or float(np.mean(mask)) < 0.3:
+            continue
+        values.append(float(np.median(flat[start:start + width][mask])))
+    if not values:
+        return {"flatness": -1.0, "windows": 0}
+    return {"flatness": float(np.median(values)), "windows": float(len(values))}
+
+
 def _normalized(env: list[float]) -> list[float]:
     """The envelope scaled by its 95th percentile (one loud hit cannot flatten
     the rest), capped, then widened by one frame each side so an attack a frame
@@ -457,7 +507,8 @@ def main(argv: list[str] | None = None) -> int:
     cannot corrupt the answer."""
     parser = argparse.ArgumentParser(description="librosa measurements for RockForge")
     parser.add_argument(
-        "command", choices=("tempo", "tuning", "tone", "beatalign", "attacks", "levels")
+        "command",
+        choices=("tempo", "tuning", "tone", "beatalign", "attacks", "levels", "bass"),
     )
     parser.add_argument("--audio", required=True)
     parser.add_argument("--start", type=float, default=0.0)
@@ -478,6 +529,8 @@ def main(argv: list[str] | None = None) -> int:
         result = onset_levels(args.audio, separated=bool(args.separated))
     elif args.command == "tuning":
         result = {"cents": tuning_cents(args.audio)}
+    elif args.command == "bass":
+        result = dict(bass_flatness(args.audio))
     else:
         result = tone_report(args.audio)
     print(json.dumps(result))

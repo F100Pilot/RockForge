@@ -546,26 +546,42 @@ BASS_DISTORTION: dict[str, Any] = {
     }}],
 }
 
-# From clean to distorted, and NOT ranked by the recording (GitHub issue #16).
-# They were ranked by the gain the guitar analyzer read on the separated bass,
-# and that reading says nothing about a bass: measured on synthesized bass
-# lines (clean, compressed, growl, overdrive, distortion; eighths, quarters, a
-# mixed riff), every one read 0.43-0.54, so a clean bass was always handed a
-# growl or an overdrive first. The best bass-specific cue found (spectral
-# flatness 300 Hz-4 kHz, percussive part removed) ordered the four styles on a
-# clean signal, but 3 % of finger/fret noise made a clean bass read as heavy
-# distortion — not a measure to trust on a real Demucs stem. Until it can be
-# calibrated on real separated basses, the four are offered in this order for
-# the player to listen to and choose.
+# From clean to distorted (GitHub issue #16). They were first ranked by the gain
+# the guitar analyzer read on the separated bass, and that reading says nothing
+# about a bass: every bass read 0.43-0.54, synthesized or real, clean or
+# distorted. What does tell them apart is the bass's own reading
+# (``_librosa_runner.bass_flatness``: how filled in the spectrum is between
+# 300 Hz and 4 kHz once pick and fret noise are taken out). Calibrated on four
+# real Demucs bass stems the reporter sent (two clean, two distorted): clean
+# 0.0004 and 0.0036 (no 3 s window above 0.0064), distorted 0.054 and 0.164
+# (none below 0.0456). But a LIGHT drive does not fill the spectrum the way
+# those two did: synthesized basses driven through a soft clipper read
+# 0.002-0.007, as low as a clean bass, and only hard clipping reached 0.04. So
+# the reading answers one question — is this bass heavily distorted? — at
+# BASS_DISTORTED_MIN, between the two groups; below it the bass is "light"
+# (clean, or a light drive, which it cannot tell apart) and the order stays
+# from clean to distorted. Four files from one player is a small sample, so the
+# presets keep no percentage — the order is the whole claim.
 BASS_PRESETS: tuple[dict[str, Any], ...] = (
     BASS_CLEAN, BASS_GROWL, BASS_OVERDRIVE, BASS_DISTORTION,
 )
+BASS_DISTORTED_MIN = 0.03
 
 
-def bass_presets() -> list[dict[str, Any]]:
-    """The bass presets from clean to distorted, named in the user's language.
-    No ``match``: they are not measured against the recording."""
-    return [_named(tone) for tone in BASS_PRESETS]
+def bass_character(flatness: float | None) -> str | None:
+    """"distorted" (heavily), "light" (clean or a light drive) or None (no
+    reading). Pure."""
+    if flatness is None or flatness < 0:
+        return None
+    return "distorted" if flatness >= BASS_DISTORTED_MIN else "light"
+
+
+def bass_presets(character: str | None = None) -> list[dict[str, Any]]:
+    """The bass presets named in the user's language: from clean to distorted,
+    or from distorted to clean when the separated bass sounds distorted. No
+    ``match``: the reading says which end, not how close a preset is."""
+    order = reversed(BASS_PRESETS) if character == "distorted" else iter(BASS_PRESETS)
+    return [_named(tone) for tone in order]
 
 
 # Gain dominates the perceived match (a clean amp never sounds like a metal
