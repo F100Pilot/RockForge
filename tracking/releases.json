@@ -659,7 +659,7 @@
     },
     {
       "version": "0.12.0-beta.4",
-      "status": "Beta",
+      "status": "Superseded",
       "created": "2026-11-02",
       "published": "2026-11-02",
       "commit": "454fe9330ae5da33ca8eedcb5607dbac9eb98ba9",
@@ -682,10 +682,12 @@
       "version": "0.12.0-beta.5",
       "status": "Beta",
       "created": "2026-11-03",
-      "published": "pending",
+      "published": "2026-11-03",
       "commit": "pending",
       "build": "GitHub Actions release workflow",
-      "artifacts": [],
+      "artifacts": [
+        "https://github.com/F100Pilot/RockForge/releases/tag/v0.12.0-beta.5"
+      ],
       "goal": "Bend shapes in the note editor; bass tones offered clean to distorted; Songsterr 403 asked again as a browser (#16, #21, #22)",
       "features": [
         "The bend's shape in the note editor"
