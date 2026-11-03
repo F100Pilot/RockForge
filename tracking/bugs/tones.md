@@ -972,24 +972,28 @@ With a bass arrangement, 'Detect tone' listed Lead and Rhythm guitar tones only;
 | Build / commit | _pending_ |
 | Severity | Low |
 | Priority | P3 |
-| Status | Open |
+| Status | Fixed |
 
-The bass tones the tone detection proposed were always distortion-oriented, a clean bass included
+With a bass in the recording, 'Detect tone' ranked the four bass presets by the gain the guitar analyzer read on the separated bass; the reporter only ever saw distortion-oriented bass tones first, a clean bass included.
 
-**Steps to reproduce:** _pending_
+**Steps to reproduce:** 
 
-**Expected:** _pending_
+1. A project with a Bass chart and a clean bass in the recording → Tones → Detect tone
+2. Look at the order of 'Bass — similar tones'
 
-**Observed:** _pending_
+**Expected:** A clean bass not handed a growl/overdrive first; the bass tones not presented as measured when the measure cannot tell them apart.
 
-**Root cause:** _pending_
+**Observed:** A growl or overdrive tone first, with a match %, whatever the bass sounded like.
 
-**Fixes:** —
+**Root cause:** The guitar analyzer's gain (crest of the RMS envelope, spectral contrast, flatness, ZCR — calibrated on guitar) reads every bass alike: measured on synthesized bass lines (clean, compressed, growl, overdrive, distortion; eighths, quarters, a mixed riff), 0.43-0.54 for all, between the Growl (0.40) and Overdrive (0.62) fingerprints.
+
+**Fixes:** [FIX-0370](../FIX_LOG.md#fix-0370) (unreleased)
 
 **Verified:** _pending_ (by _pending_)
 
-**Resolved:** _pending_ · **Closed:** _pending_
+**Resolved:** 2026-11-03 · **Closed:** _pending_
 
 **History:**
 
 - 2026-11-03 — Open: reported
+- 2026-11-03 — Fixed

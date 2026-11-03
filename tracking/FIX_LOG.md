@@ -375,6 +375,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0367](#fix-0367) | BUG-0368 | 0.12.0-beta.3 | passed | automated |
 | [FIX-0368](#fix-0368) | BUG-0369 | 0.12.0-beta.3 | passed | automated |
 | [FIX-0369](#fix-0369) | BUG-0370 | 0.12.0-beta.3 | passed | automated |
+| [FIX-0370](#fix-0370) | BUG-0371 | unreleased | passed | automated |
 
 ## FIX-0001
 
@@ -8124,3 +8125,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | passed |
 | Validation | automated |
 | Regression risk | Medium: a tab with repeats now has more played bars; alternate endings, whose Songsterr keys are unknown, would play the same bars on every pass. |
+
+## FIX-0370
+
+**Bugs:** [BUG-0371](bugs/tones.md#bug-0371)
+
+**Root cause:** The guitar analyzer's gain (crest of the RMS envelope, spectral contrast, flatness, ZCR — calibrated on guitar) reads every bass alike: measured on synthesized bass lines (clean, compressed, growl, overdrive, distortion; eighths, quarters, a mixed riff), 0.43-0.54 for all, between the Growl (0.40) and Overdrive (0.62) fingerprints.
+
+**Solution:** The four bass presets are offered from clean to distorted with no match (tone_presets.bass_presets); the separated bass is no longer run through the guitar analysis; /detected-tones reorders a detection stored before; the Tons page shows 'Listen (approximation)' on each bass tone and says they are not measured. A bass-specific cue (spectral flatness 300 Hz-4 kHz on the HPSS harmonic part) was measured and not adopted: 3 % finger/fret noise made a clean bass read as heavy distortion.
+
+| | |
+|---|---|
+| Date | 2026-11-03 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | e3568e3 |
+| Components | tones |
+| Tests | tests/test_celery_tasks.py::test_detect_tones_offers_bass_tones_when_demucs_separated_a_bass; tests/test_tone_detection.py::test_bass_presets_are_bass_gear_offered_from_clean_to_distorted; tests/test_api.py::test_detected_tones_hand_out_the_bass_tones_from_clean_to_distorted |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: the bass list loses its ordering by the recording, which did not discriminate; nothing else reads it. |

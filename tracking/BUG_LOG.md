@@ -4,9 +4,9 @@
 
 Every bug found in RockForge, with a permanent id; the full record of each is on its module's page in [bugs/](bugs). Rules and states: [docs/VERSIONING.md](../docs/VERSIONING.md#bugs). Fixes: [FIX_LOG.md](FIX_LOG.md). Releases: [RELEASE_LOG.md](RELEASE_LOG.md).
 
-| Open | Fixed | Verified | Closed |
-|---|---|---|---|
-| 1 | 94 | 60 | 216 |
+| Fixed | Verified | Closed |
+|---|---|---|
+| 95 | 60 | 216 |
 
 | ID | Title | Module | Severity | Priority | Status | Found in | Fixed in |
 |---|---|---|---|---|---|---|---|
@@ -380,4 +380,4 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0368](bugs/tones.md#bug-0368) | The tone detection proposed guitar tones only, so a bass chart could be given a guitar amp from it | tones | Medium | P2 | Fixed | 0.12.0-beta.2 | 0.12.0-beta.3 |
 | [BUG-0369](bugs/import.md#bug-0369) | A tab imported from Songsterr played some notes after dotted rests too early | import | Medium | P2 | Fixed | 0.12.0-beta.2 | 0.12.0-beta.3 |
 | [BUG-0370](bugs/import.md#bug-0370) | A Songsterr tab with repeats is imported with each repeated section played once, so the chart ends early | import | High | P2 | Fixed | 0.12.0-beta.2 | 0.12.0-beta.3 |
-| [BUG-0371](bugs/tones.md#bug-0371) | The bass tones the tone detection proposed were always distortion-oriented, a clean bass included | tones | Low | P3 | Open | 0.12.0-beta.3 | — |
+| [BUG-0371](bugs/tones.md#bug-0371) | The bass tones the tone detection proposed were always distortion-oriented, a clean bass included | tones | Low | P3 | Fixed | 0.12.0-beta.3 | — |

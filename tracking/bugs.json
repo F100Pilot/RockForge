@@ -18494,25 +18494,34 @@
       "found_in_version": "0.12.0-beta.3",
       "found_in_build": "pending",
       "module": "tones",
-      "description": "The bass tones the tone detection proposed were always distortion-oriented, a clean bass included",
-      "steps": "pending",
-      "expected": "pending",
-      "observed": "pending",
+      "description": "With a bass in the recording, 'Detect tone' ranked the four bass presets by the gain the guitar analyzer read on the separated bass; the reporter only ever saw distortion-oriented bass tones first, a clean bass included.",
+      "steps": [
+        "A project with a Bass chart and a clean bass in the recording → Tones → Detect tone",
+        "Look at the order of 'Bass — similar tones'"
+      ],
+      "expected": "A clean bass not handed a growl/overdrive first; the bass tones not presented as measured when the measure cannot tell them apart.",
+      "observed": "A growl or overdrive tone first, with a match %, whatever the bass sounded like.",
       "severity": "Low",
       "priority": "P3",
-      "status": "Open",
-      "root_cause": "pending",
-      "fixes": [],
+      "status": "Fixed",
+      "root_cause": "The guitar analyzer's gain (crest of the RMS envelope, spectral contrast, flatness, ZCR — calibrated on guitar) reads every bass alike: measured on synthesized bass lines (clean, compressed, growl, overdrive, distortion; eighths, quarters, a mixed riff), 0.43-0.54 for all, between the Growl (0.40) and Overdrive (0.62) fingerprints.",
+      "fixes": [
+        "FIX-0370"
+      ],
       "verified_by": "pending",
       "verification": "pending",
       "evidence": [],
-      "resolved": "pending",
+      "resolved": "2026-11-03",
       "closed": "pending",
       "history": [
         {
           "date": "2026-11-03",
           "status": "Open",
           "note": "reported"
+        },
+        {
+          "date": "2026-11-03",
+          "status": "Fixed"
         }
       ]
     }
