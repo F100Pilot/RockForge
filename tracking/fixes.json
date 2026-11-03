@@ -9340,6 +9340,35 @@
       "test_result": "passed",
       "regression_risk": "Low: the bass list loses its ordering by the recording, which did not discriminate; nothing else reads it.",
       "validation": "automated"
+    },
+    {
+      "id": "FIX-0371",
+      "bugs": [
+        "BUG-0372"
+      ],
+      "date": "2026-11-03",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "The popup sent bend_semitones but never the BEND technique, and the XML writer and the score's arrow key off BEND; the preview's voice glided for slides only; NoteOverride had no field for a bend curve.",
+      "solution": "gp_pipeline._with_bend marks BEND exactly when an edit bends (the popup too); NoteOverride/NoteOverrideIn.bend_points carry the shape (rise, hold, release, pre-bend; validated, stored only when given) and become the note's curve; the popup offers the shape with its instants in seconds after the attack and reads a curve back; pending notes, copies and moves keep their curve; the score draws it as a teal line over the tail; the tick and the synthesized source follow the curve (bendGlide), for GP-file bends too.",
+      "components": [
+        "editor",
+        "viewer"
+      ],
+      "commits": [
+        "31f5c0b"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_gp_pipeline.py::test_a_bend_set_in_the_note_editor_is_a_bend_with_the_shape_given",
+        "tests/test_api.py::test_a_note_edits_bend_shape_is_stored_only_when_given_and_checked",
+        "tests/test_celery_tasks.py::test_a_note_edits_link_and_unpitched_slide_reach_the_build"
+      ],
+      "manual_checks": [
+        "Playwright on an invented GP5 built for real (PT 1440 / EN 760 px): bend 2 'rises, holds and releases' 0.1/0.2/0.3/0.4 s drawn as the teal line, glide 1 → 1.1225 → 1, a real rebuild with six bendValues at those times and a clean /psarc-check, the popup reopening on that shape, a pre-bend and release, no page errors"
+      ],
+      "test_result": "passed",
+      "regression_risk": "Low: a note edit without a bend amount behaves as before; an edit with one now carries BEND, which is what the writer needed.",
+      "validation": "automated"
     }
   ]
 }

@@ -376,6 +376,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0368](#fix-0368) | BUG-0369 | 0.12.0-beta.3 | passed | automated |
 | [FIX-0369](#fix-0369) | BUG-0370 | 0.12.0-beta.3 | passed | automated |
 | [FIX-0370](#fix-0370) | BUG-0371 | unreleased | passed | automated |
+| [FIX-0371](#fix-0371) | BUG-0372 | unreleased | passed | automated |
 
 ## FIX-0001
 
@@ -8146,3 +8147,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | passed |
 | Validation | automated |
 | Regression risk | Low: the bass list loses its ordering by the recording, which did not discriminate; nothing else reads it. |
+
+## FIX-0371
+
+**Bugs:** [BUG-0372](bugs/editor.md#bug-0372)
+
+**Root cause:** The popup sent bend_semitones but never the BEND technique, and the XML writer and the score's arrow key off BEND; the preview's voice glided for slides only; NoteOverride had no field for a bend curve.
+
+**Solution:** gp_pipeline._with_bend marks BEND exactly when an edit bends (the popup too); NoteOverride/NoteOverrideIn.bend_points carry the shape (rise, hold, release, pre-bend; validated, stored only when given) and become the note's curve; the popup offers the shape with its instants in seconds after the attack and reads a curve back; pending notes, copies and moves keep their curve; the score draws it as a teal line over the tail; the tick and the synthesized source follow the curve (bendGlide), for GP-file bends too.
+
+| | |
+|---|---|
+| Date | 2026-11-03 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 31f5c0b |
+| Components | editor; viewer |
+| Tests | tests/test_gp_pipeline.py::test_a_bend_set_in_the_note_editor_is_a_bend_with_the_shape_given; tests/test_api.py::test_a_note_edits_bend_shape_is_stored_only_when_given_and_checked; tests/test_celery_tasks.py::test_a_note_edits_link_and_unpitched_slide_reach_the_build |
+| Manual checks | Playwright on an invented GP5 built for real (PT 1440 / EN 760 px): bend 2 'rises, holds and releases' 0.1/0.2/0.3/0.4 s drawn as the teal line, glide 1 → 1.1225 → 1, a real rebuild with six bendValues at those times and a clean /psarc-check, the popup reopening on that shape, a pre-bend and release, no page errors |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: a note edit without a bend amount behaves as before; an edit with one now carries BEND, which is what the writer needed. |

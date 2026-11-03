@@ -437,24 +437,29 @@ Each render added change and pointer listeners to the persistent card.
 | Build / commit | _pending_ |
 | Severity | Medium |
 | Priority | P2 |
-| Status | Open |
+| Status | Fixed |
 
-A bend set in the note editor was not drawn, not heard and built as no bend
+A bend set in the note editor popup (Bend (semitones)) was not drawn on the score, did not sound in the preview, and the rebuild wrote the note without a bend; the editor also had no way to say when a bend starts, how long it holds or whether it releases.
 
-**Steps to reproduce:** _pending_
+**Steps to reproduce:** 
 
-**Expected:** _pending_
+1. A built GP project → Edit notes → click a note
+2. Set Bend (semitones) to 2, Save
+3. Look at the score, play the preview, Apply and rebuild
 
-**Observed:** _pending_
+**Expected:** The note shown and heard as a bend, and built with its bend (bend attribute and bendValues).
 
-**Root cause:** _pending_
+**Observed:** No bend arrow, a plain note in the preview, bend="0" and no bendValues in the XML (the viewer then lost it too).
 
-**Fixes:** —
+**Root cause:** The popup sent bend_semitones but never the BEND technique, and the XML writer and the score's arrow key off BEND; the preview's voice glided for slides only; NoteOverride had no field for a bend curve.
+
+**Fixes:** [FIX-0371](../FIX_LOG.md#fix-0371) (unreleased)
 
 **Verified:** _pending_ (by _pending_)
 
-**Resolved:** _pending_ · **Closed:** _pending_
+**Resolved:** 2026-11-03 · **Closed:** _pending_
 
 **History:**
 
 - 2026-11-03 — Open: reported
+- 2026-11-03 — Fixed

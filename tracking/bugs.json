@@ -18533,25 +18533,35 @@
       "found_in_version": "0.12.0-beta.4",
       "found_in_build": "pending",
       "module": "editor",
-      "description": "A bend set in the note editor was not drawn, not heard and built as no bend",
-      "steps": "pending",
-      "expected": "pending",
-      "observed": "pending",
+      "description": "A bend set in the note editor popup (Bend (semitones)) was not drawn on the score, did not sound in the preview, and the rebuild wrote the note without a bend; the editor also had no way to say when a bend starts, how long it holds or whether it releases.",
+      "steps": [
+        "A built GP project → Edit notes → click a note",
+        "Set Bend (semitones) to 2, Save",
+        "Look at the score, play the preview, Apply and rebuild"
+      ],
+      "expected": "The note shown and heard as a bend, and built with its bend (bend attribute and bendValues).",
+      "observed": "No bend arrow, a plain note in the preview, bend=\"0\" and no bendValues in the XML (the viewer then lost it too).",
       "severity": "Medium",
       "priority": "P2",
-      "status": "Open",
-      "root_cause": "pending",
-      "fixes": [],
+      "status": "Fixed",
+      "root_cause": "The popup sent bend_semitones but never the BEND technique, and the XML writer and the score's arrow key off BEND; the preview's voice glided for slides only; NoteOverride had no field for a bend curve.",
+      "fixes": [
+        "FIX-0371"
+      ],
       "verified_by": "pending",
       "verification": "pending",
       "evidence": [],
-      "resolved": "pending",
+      "resolved": "2026-11-03",
       "closed": "pending",
       "history": [
         {
           "date": "2026-11-03",
           "status": "Open",
           "note": "reported"
+        },
+        {
+          "date": "2026-11-03",
+          "status": "Fixed"
         }
       ]
     }
