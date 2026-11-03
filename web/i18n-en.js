@@ -1772,5 +1772,16 @@
   "Volta de": "Releases from",
   "Linha verde-azulada sobre a cauda: a forma do bend — quando sobe, quanto tempo fica no alto, quando volta": "Teal line over the tail: the bend's shape — when it rises, how long it stays up, when it comes back",
   "Um bend com forma precisa de uma nota que dure (sustain).": "A shaped bend needs a note that lasts (sustain).",
-  "Os tempos do bend vão por ordem, de 0 até à duração da nota ({s} s).": "The bend's times go in order, from 0 to the note's length ({s} s)."
+  "Os tempos do bend vão por ordem, de 0 até à duração da nota ({s} s).": "The bend's times go in order, from 0 to the note's length ({s} s).",
+  "Receber os ficheiros": "Receiving the files",
+  "Preparar o áudio": "Preparing the audio",
+  "Ler a partitura": "Reading the score",
+  "Construir os arranjos": "Building the arrangements",
+  "Criar o PSARC e o bundle": "Making the PSARC and the bundle",
+  "Construção concluída": "Build finished",
+  "Falhou em: {stage}": "Failed at: {stage}",
+  "A construção falhou": "The build failed",
+  "{n} de {n} passos": "{n} of {n} steps",
+  "Passo {i} de {n}": "Step {i} of {n}",
+  "Progresso da construção": "Build progress"
 };

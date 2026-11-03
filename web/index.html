@@ -75,10 +75,45 @@
   tbody tr:hover { background:#23252e; }
   tbody tr.sel { background:var(--accent-soft); }
 
-  .stages { display:flex; gap:.3rem; flex-wrap:wrap; margin:.75rem 0; }
-  .stage { padding:.2rem .65rem; border-radius:999px; background:#2a2c35; font-size:.74rem; color:#999; border:1px solid var(--line); }
-  .stage.done { background:#1f3a22; color:#a9e0ae; border-color:#2e5532; }
-  .stage.now { background:var(--warn); color:#221a04; border-color:var(--warn); font-weight:700; }
+  /* The build's progress (Exportar page): a header, one bar, the steps. */
+  .stages { margin:.75rem 0 1rem; padding:1rem 1.1rem 1.1rem; background:var(--panel); border:1px solid var(--line); border-radius:12px; }
+  .bp-head { display:flex; align-items:baseline; justify-content:space-between; gap:.8rem; flex-wrap:wrap; }
+  .bp-title { font-weight:700; font-size:1rem; display:flex; align-items:center; gap:.45rem; }
+  .bp-title .ic { width:1.1rem; height:1.1rem; }
+  .stages.is-run .bp-title .ic { color:var(--accent); }
+  .stages.is-done .bp-title .ic { color:var(--ok); }
+  .stages.is-fail .bp-title .ic { color:var(--err); }
+  .stages.is-wait .bp-title .ic { color:var(--muted); }
+  .bp-sub { color:var(--muted); font-size:.85rem; font-variant-numeric:tabular-nums; }
+  .bp-track { position:relative; height:8px; margin:.75rem 0 1rem; border-radius:999px; background:#2a2c35; overflow:hidden; }
+  .bp-fill { position:absolute; inset:0 auto 0 0; border-radius:999px; background:linear-gradient(90deg, #ff9a6a, var(--accent)); transition:width .6s ease; }
+  .stages.is-run .bp-fill::after { content:""; position:absolute; inset:0; background:linear-gradient(90deg, transparent, #ffffff55, transparent); background-size:40% 100%; background-repeat:no-repeat; animation:bp-shine 1.6s linear infinite; }
+  .stages.is-done .bp-fill { background:var(--ok); }
+  .stages.is-fail .bp-fill { background:var(--err); }
+  .stages.is-wait .bp-fill { background:#4a4d59; }
+  @keyframes bp-shine { from { background-position:-40% 0; } to { background-position:140% 0; } }
+  .bp-steps { display:grid; grid-template-columns:repeat(var(--n), 1fr); list-style:none; margin:0; padding:0; }
+  .bp-step { position:relative; display:flex; flex-direction:column; align-items:center; gap:.4rem; text-align:center; min-width:0; }
+  .bp-step::before { content:""; position:absolute; top:.85rem; left:-50%; right:50%; height:2px; background:var(--line); z-index:0; }
+  .bp-step:first-child::before { display:none; }
+  .bp-step.done::before, .bp-step.now::before, .bp-step.fail::before { background:var(--ok); }
+  .bp-dot { position:relative; z-index:1; width:1.75rem; height:1.75rem; border-radius:50%; display:grid; place-items:center; font-size:.78rem; font-weight:700; background:var(--panel-2); color:var(--muted); border:2px solid var(--line); box-sizing:border-box; }
+  .bp-dot .ic { width:.95rem; height:.95rem; }
+  .bp-step.done .bp-dot { background:var(--ok); border-color:var(--ok); color:#0f2413; }
+  .bp-step.now .bp-dot { border-color:var(--accent); color:var(--accent); box-shadow:0 0 0 4px var(--accent-soft); }
+  .bp-step.now .bp-dot::after { content:""; position:absolute; inset:-2px; border-radius:50%; border:2px solid transparent; border-top-color:var(--accent); animation:bp-spin 1s linear infinite; }
+  .bp-step.fail .bp-dot { background:var(--err); border-color:var(--err); color:#2a0d0d; }
+  @keyframes bp-spin { to { transform:rotate(360deg); } }
+  .bp-label { font-size:.78rem; color:var(--muted); line-height:1.25; overflow-wrap:anywhere; }
+  .bp-step.done .bp-label { color:var(--text); }
+  .bp-step.now .bp-label { color:var(--accent); font-weight:700; }
+  .bp-step.fail .bp-label { color:var(--err); font-weight:700; }
+  /* Narrow: the numbered dots only — the title already names the step. */
+  @media (max-width: 720px) { .bp-label { display:none; } }
+  @media (prefers-reduced-motion: reduce) {
+    .stages.is-run .bp-fill::after, .bp-step.now .bp-dot::after { animation:none; }
+    .bp-fill { transition:none; }
+  }
 
   .sync-choice { display:flex; gap:.6rem; align-items:flex-start; padding:.6rem .7rem; margin:.35rem 0; border:1px solid var(--line); border-radius:8px; cursor:pointer; }
   .sync-choice:has(input:checked) { border-color:var(--accent); background:var(--accent-soft); }

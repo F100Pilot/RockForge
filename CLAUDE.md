@@ -3423,7 +3423,16 @@ tones, sections and the exports — which is what made it confusing.
     height only on this page — without it, every other page opened below a
     screen-tall empty `#review` and looked blank.
   - **Exportar** sits OUTSIDE `#review`: it is also what a building or failed
-    job shows (`setReviewReady(false)` disables the other pages and hides
+    job shows — its top is the build's progress card (`renderBuildProgress`
+    into `#stagesBar`, 2026-11-03, "cria uma barra de progresso mais
+    moderna"): the step in words (`stageLabel`, also used by the top bar's
+    status chip), "Passo i de n" and a percentage ((done + ½ for the running
+    one) / n), one bar (shimmering while running, green done, red failed,
+    `prefers-reduced-motion` stills it) and the numbered steps joined by a
+    line (✓ done, a turning ring on the current, ✕ where it failed); under
+    720 px only the dots. Browser-only; verified with Playwright (the four
+    states, PT 1440 / EN 760 / PT 390 px, no horizontal scroll, no page
+    errors) (`setReviewReady(false)` disables the other pages and hides
     "Aplicar e reconstruir"/pending, which need a built chart — as when they
     lived inside `#review`). A job's first ready view opens Partitura
     (`sectionShownFor`), so a rebuild shows its progress and comes back to the

@@ -2688,6 +2688,56 @@ let sectionShownFor = null;  // the job whose first "ready" view opened Partitur
 // reopen it, take over selectedJob or re-arm its own poll.
 let openJobId = null;
 
+// The build's stages, as the worker names them, in the user's words.
+function stageLabel(stage) {
+  return {
+    ingest: T('Receber os ficheiros'),
+    normalize: T('Preparar o áudio'),
+    parse_gp: T('Ler a partitura'),
+    build_arrangements: T('Construir os arranjos'),
+    lyrics: T('Letra'),
+    package: T('Criar o PSARC e o bundle'),
+  }[stage] || stage;
+}
+
+// The progress card on the Exportar page: what is happening, one bar, and the
+// steps — done ones ticked, the running one turning, the one it failed on red.
+function renderBuildProgress(j) {
+  const bar = document.getElementById('stagesBar');
+  const stages = j.stages || [];
+  const n = stages.length;
+  const idx = stages.indexOf(j.stage);
+  const done = j.status === 'completed';
+  const failed = j.status === 'failed';
+  const running = j.status === 'running';
+  const state = done ? 'done' : failed ? 'fail' : running ? 'run' : 'wait';
+  const doneCount = done ? n : Math.max(0, idx);
+  const pct = n ? (done ? 100 : Math.round(100 * (doneCount + (running && idx >= 0 ? 0.5 : 0)) / n)) : 0;
+  const current = idx >= 0 ? stageLabel(stages[idx]) : '';
+  const title = done ? T('Construção concluída')
+    : failed ? (current ? T('Falhou em: {stage}', { stage: current }) : T('A construção falhou'))
+    : running ? (current || T('A construir…'))
+    : T('Na fila…');
+  const ico = done ? 'check' : failed ? 'x' : 'clock';
+  const sub = done ? T('{n} de {n} passos', { n })
+    : running && idx >= 0 ? T('Passo {i} de {n}', { i: idx + 1, n })
+    : '';
+  bar.className = `stages is-${state}`;
+  bar.innerHTML =
+    `<div class="bp-head"><div class="bp-title">${icon(ico)}<span>${esc(title)}</span></div>` +
+    `<div class="bp-sub">${esc(sub)}${sub ? ' · ' : ''}${pct}%</div></div>` +
+    `<div class="bp-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="${esc(T('Progresso da construção'))}">` +
+    `<div class="bp-fill" style="width:${pct}%"></div></div>` +
+    `<ol class="bp-steps" style="--n:${n}">` + stages.map((s, i) => {
+      const cls = done || i < idx ? 'done'
+        : i === idx && running ? 'now'
+        : i === idx && failed ? 'fail' : '';
+      const mark = cls === 'done' ? icon('check') : cls === 'fail' ? icon('x') : String(i + 1);
+      return `<li class="bp-step ${cls}"${cls === 'now' ? ' aria-current="step"' : ''}>` +
+        `<span class="bp-dot">${mark}</span><span class="bp-label">${esc(stageLabel(s))}</span></li>`;
+    }).join('') + '</ol>';
+}
+
 async function selectJob(id, { poll = false, force = false } = {}) {
   if (!poll) openJobId = id;
   else if (openJobId !== id) return;
@@ -2709,14 +2759,7 @@ async function selectJob(id, { poll = false, force = false } = {}) {
   document.getElementById('detailOverlay').hidden = false;
   renderDetailHead(j);
 
-  const bar = document.getElementById('stagesBar');
-  const idx = j.stages.indexOf(j.stage);
-  bar.innerHTML = j.stages.map((s, i) => {
-    let cls = 'stage';
-    if (j.status === 'completed' || (idx >= 0 && i < idx)) cls += ' done';
-    else if (i === idx && j.status === 'running') cls += ' now';
-    return `<span class="${cls}">${s}</span>`;
-  }).join('');
+  renderBuildProgress(j);
 
   // An error stays in plain sight; the pipeline's technical warnings fold
   // into one line, so they no longer push everything else down the page.
@@ -2733,7 +2776,8 @@ async function selectJob(id, { poll = false, force = false } = {}) {
     renderCompleteness(j);
     if (j.status === 'failed') setStatusChip('err', T('Falhou'), 'x');
     else if (j.status === 'completed') setStatusChip('warn', T('Concluído sem ficheiros'), 'alert');
-    else setStatusChip('run', j.status === 'pending' ? T('Na fila…') : `${T('A construir…')}${j.stage ? ` ${j.stage}` : ''}`, 'clock');
+    else setStatusChip('run', j.status === 'pending' ? T('Na fila…')
+      : `${T('A construir…')}${j.stage ? ` ${stageLabel(j.stage)}` : ''}`, 'clock');
   }
 
   const dl = document.getElementById('downloads');
