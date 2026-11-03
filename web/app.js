@@ -7973,16 +7973,23 @@ function _profileBar(label, value) {
 
 function _candidateList(role, candidates) {
   if (!candidates || !candidates.length) return '';
+  // The bass tones are NOT measured on the recording (GitHub issue #16: the
+  // reading did not tell a clean bass from a distorted one), so they come from
+  // clean to distorted with no %, each to be listened to.
+  const bass = role === 'bass';
   const rows = candidates.map(c => {
     const m = Math.round(Number(c.match) || 0);
     return `<div class="tone-cand"><span class="tone-cand-name">${esc(c.name || c.key)}</span>` +
-      `<span class="tone-cand-match" title="${T('Semelhança estimada com o gravado')}">${m}%</span>` +
+      (bass ? listenButtonHtml(c)
+        : `<span class="tone-cand-match" title="${T('Semelhança estimada com o gravado')}">${m}%</span>`) +
       `<button type="button" class="secondary tone-cand-use" data-role="${esc(role)}" data-key="${esc(c.key)}">${T('usar')}</button></div>`;
   }).join('');
   const title = role === 'lead' ? T('Lead — tons semelhantes')
-    : role === 'bass' ? T('Baixo — tons semelhantes') : T('Rhythm — tons semelhantes');
+    : bass ? T('Baixo — tons de baixo') : T('Rhythm — tons semelhantes');
+  const order = bass ? T('(do limpo ao distorcido — não medidos na gravação: ouve e escolhe)')
+    : T('(ordenados por semelhança)');
   return `<div class="tone-cand-group"><div class="meta" style="margin:.4rem 0 .2rem">${esc(title)} ` +
-    `<span class="meta">${T('(ordenados por semelhança)')}</span></div>${rows}</div>`;
+    `<span class="meta">${order}</span></div>${rows}</div>`;
 }
 
 function renderToneDetectionResult(d) {
@@ -8004,7 +8011,7 @@ function renderToneDetectionResult(d) {
   const kinds = arrangements.map(a => a.kind);
   const bassList = kinds.includes('Bass') ? _candidateList('bass', d.bass_candidates) : '';
   const bassNote = bassList
-    ? `<div class="meta" style="margin-top:.3rem">${T('O baixo separado também foi lido: os tons de baixo abaixo vão só para o arranjo de baixo; os de guitarra nunca vão para o baixo.')}</div>`
+    ? `<div class="meta" style="margin-top:.3rem">${T('A gravação tem baixo: os tons de baixo abaixo vão só para o arranjo de baixo; os de guitarra nunca vão para o baixo.')}</div>`
     : kinds.includes('Bass')
     ? `<div class="meta" style="margin-top:.3rem">${kinds.every(k => k === 'Bass')
       ? T('A deteção lê a guitarra da gravação e propõe tons de guitarra. Este projeto só tem baixo: o baixo usa o tom de baixo standard ou os tons de baixo que criares.')

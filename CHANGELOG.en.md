@@ -6,6 +6,10 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### Fixes
+
+- **Bass tones always distorted:** "Detect tone" offered the bass tones that were almost always distorted, even for a clean bass, because the measure it used (made for the guitar) gave a clean bass and a distorted one practically the same value. The four bass tones now come from clean to distorted, with no percentage and each with **Listen (approximation)**: they are not measured on the recording, listen to them and choose. (GitHub #16)
+
 ## [0.12.0 beta 4] — 2026-11-02
 
 ### New

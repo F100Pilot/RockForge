@@ -689,24 +689,29 @@ Combo/alternates, encoded the way Rocksmith2014.NET/DLC Builder encode a bass
   DLC Builder's default bass tone, said in the warnings (`_tone_setup` in
   `gp_pipeline`; GitHub issue #9: the detection's guitar tones had put a guitar
   amp on the bass). Guarded by `test_the_bass_never_takes_the_songs_guitar_tones`.
-  **Detected bass tones** (GitHub issue #16): `detect_tones` also measures the
-  `bass.wav` the same htdemucs_6s pass wrote beside the guitar stem
-  (`analyze_guitar_timeline`, its own try — a failure leaves the guitar's
-  result) and stores `detected_tones["bass_candidates"]` = `rank_bass(gain)`:
-  four bass presets (`RFBass_Clean/Growl/Overdrive/Distortion`, real `Bass_`
-  gear, volume -12 like `default_bass.json`) ranked by GAIN alone — the
-  analyzer's brightness/low end are calibrated on the guitar.
-  `/detected-tones` answers them; the Tons page lists them under "Baixo — tons
-  semelhantes" when the song has a Bass chart, and "usar" (`applyBassTone`)
-  gives the Bass chart its own set via `applyToneSuggestion`, never the song's.
-  With the Bass set on screen (`toneSetKind === 'Bass'`) a guitar "usar" or
-  "Aplicar melhores" is refused with a toast (`refuseGuitarToneOnBass`).
-  Guarded by `test_detect_tones_ranks_bass_tones_from_the_separated_bass`,
-  `test_bass_presets_are_bass_gear_ranked_by_the_bass_gain` and
-  `test_detected_tones_hand_out_the_bass_candidates`; the page with Playwright
-  (PT 1440 / EN 760 px: four bass rows, "usar" → Bass set only, a guitar tone
-  refused, no page errors). Demucs cannot run here: never measured on a real
-  separated bass.
+  **Bass tones offered, NOT detected** (GitHub issue #16): when the
+  htdemucs_6s pass wrote a `bass.wav` beside the guitar stem, `detect_tones`
+  stores `detected_tones["bass_candidates"]` = `bass_presets()`: four bass
+  presets (`RFBass_Clean/Growl/Overdrive/Distortion`, real `Bass_` gear,
+  volume -12 like `default_bass.json`) from clean to distorted, with no match.
+  They were first ranked by the guitar analyzer's gain read on the bass stem,
+  and the reporter saw only distortion-oriented tones: measured on synthesized
+  bass lines (clean, compressed, growl, overdrive, distortion; three rhythms),
+  that gain read 0.43-0.54 for EVERY one. The best bass cue found (spectral
+  flatness 300 Hz-4 kHz on the HPSS harmonic part) ordered the styles on a
+  clean signal, but 3 % finger/fret noise made a clean bass read as heavy
+  distortion, so nothing is measured until real separated basses (asked of the
+  reporter) can calibrate one. `/detected-tones` always answers
+  `bass_presets()` when bass candidates were stored, so a detection from
+  before is reordered too. The Tons page lists them under "Baixo — tons de
+  baixo" with "Ouvir (aproximação)" on each, when the song has a Bass chart,
+  and "usar" (`applyBassTone`) gives the Bass chart its own set via
+  `applyToneSuggestion`, never the song's. With the Bass set on screen
+  (`toneSetKind === 'Bass'`) a guitar "usar" or "Aplicar melhores" is refused
+  with a toast (`refuseGuitarToneOnBass`). Guarded by
+  `test_detect_tones_offers_bass_tones_when_demucs_separated_a_bass`,
+  `test_bass_presets_are_bass_gear_offered_from_clean_to_distorted` and
+  `test_detected_tones_hand_out_the_bass_tones_from_clean_to_distorted`.
 - **What skips it**: tone suggestions (the analysis is of the guitar stem),
   showlights (from the richest non-bass chart), and the chart GP lyrics are
   timed on when the file names no vocal track. With no tone of its own it gets

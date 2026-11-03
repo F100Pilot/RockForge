@@ -546,27 +546,26 @@ BASS_DISTORTION: dict[str, Any] = {
     }}],
 }
 
-# By gain alone: the analyzer's brightness and low end are calibrated on the
-# guitar, so on a bass stem they say nothing a preset could be matched on.
-_BASS_LIBRARY: list[tuple[dict[str, Any], float]] = [
-    (BASS_CLEAN, 0.10),
-    (BASS_GROWL, 0.40),
-    (BASS_OVERDRIVE, 0.62),
-    (BASS_DISTORTION, 0.85),
-]
+# From clean to distorted, and NOT ranked by the recording (GitHub issue #16).
+# They were ranked by the gain the guitar analyzer read on the separated bass,
+# and that reading says nothing about a bass: measured on synthesized bass
+# lines (clean, compressed, growl, overdrive, distortion; eighths, quarters, a
+# mixed riff), every one read 0.43-0.54, so a clean bass was always handed a
+# growl or an overdrive first. The best bass-specific cue found (spectral
+# flatness 300 Hz-4 kHz, percussive part removed) ordered the four styles on a
+# clean signal, but 3 % of finger/fret noise made a clean bass read as heavy
+# distortion — not a measure to trust on a real Demucs stem. Until it can be
+# calibrated on real separated basses, the four are offered in this order for
+# the player to listen to and choose.
+BASS_PRESETS: tuple[dict[str, Any], ...] = (
+    BASS_CLEAN, BASS_GROWL, BASS_OVERDRIVE, BASS_DISTORTION,
+)
 
 
-def rank_bass(gain_level: float) -> list[dict[str, Any]]:
-    """The bass presets closest first to the gain measured on the separated
-    bass, each with a 0-100 ``match``. A heuristic: the character of the sound,
-    never the real amp."""
-    scored = sorted(
-        ((abs(gain_level - g), tone) for tone, g in _BASS_LIBRARY), key=lambda s: s[0]
-    )
-    return [
-        {**_named(tone), "match": round(100.0 * (1.0 - min(1.0, dist)))}
-        for dist, tone in scored
-    ]
+def bass_presets() -> list[dict[str, Any]]:
+    """The bass presets from clean to distorted, named in the user's language.
+    No ``match``: they are not measured against the recording."""
+    return [_named(tone) for tone in BASS_PRESETS]
 
 
 # Gain dominates the perceived match (a clean amp never sounds like a metal

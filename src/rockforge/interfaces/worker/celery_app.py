@@ -876,28 +876,21 @@ def detect_tones(job_id: str) -> None:
                     for w in windows
                 ],
             }
-            # The same Demucs pass wrote the bass beside the guitar: measured
-            # the same way, it ranks the bass presets (GitHub issue #16 — the
-            # detection only ever proposed guitar tones). Its own try: a bass
-            # that cannot be read leaves the guitar's result standing.
-            bass_stem = guitar_stem.with_name("bass.wav")
-            if bass_stem.exists():
-                try:
-                    from rockforge.infrastructure.packaging.gear.tone_presets import rank_bass
+            # The same Demucs pass wrote the bass beside the guitar, so the song
+            # has a bass to give its own tones (GitHub issue #16 — the detection
+            # only ever proposed guitar tones). They are offered from clean to
+            # distorted, NOT ranked by the recording: the guitar's gain reading
+            # did not tell a clean bass from a distorted one (bass_presets).
+            if guitar_stem.with_name("bass.wav").exists():
+                from rockforge.infrastructure.packaging.gear.tone_presets import bass_presets
 
-                    bass_profile, _ = analyze_guitar_timeline(bass_stem)
-                    bass_candidates = rank_bass(bass_profile.gain_level)
-                    detected = dict(cast("dict[str, Any]", params["detected_tones"]))
-                    detected["bass"] = bass_candidates[0]
-                    detected["bass_candidates"] = bass_candidates
-                    detected["bass_gain"] = bass_profile.gain_level
-                    params["detected_tones"] = detected
-                    _log_tone_stage(
-                        params, f"bass: gain={bass_profile.gain_level:.2f} → "
-                        f"{bass_candidates[0]['key']}"
-                    )
-                except Exception as exc:  # noqa: BLE001 — the guitar's result stands
-                    _log_tone_stage(params, f"bass not analysed: {type(exc).__name__}: {exc}")
+                detected = dict(cast("dict[str, Any]", params["detected_tones"]))
+                detected["bass_candidates"] = bass_presets()
+                params["detected_tones"] = detected
+                _log_tone_stage(
+                    params, "bass: four bass tones offered, from clean to distorted "
+                    "(not measured on the recording — listen and choose)"
+                )
             params["tone_detection_status"] = "ready"
             heard = sum(1 for w in windows if w.active)
             _log_tone_stage(

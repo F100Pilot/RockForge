@@ -18485,6 +18485,36 @@
           "status": "Fixed"
         }
       ]
+    },
+    {
+      "id": "BUG-0371",
+      "title": "The bass tones the tone detection proposed were always distortion-oriented, a clean bass included",
+      "detected": "2026-11-03",
+      "reported_by": "DrekAnon (GitHub issue #16)",
+      "found_in_version": "0.12.0-beta.3",
+      "found_in_build": "pending",
+      "module": "tones",
+      "description": "The bass tones the tone detection proposed were always distortion-oriented, a clean bass included",
+      "steps": "pending",
+      "expected": "pending",
+      "observed": "pending",
+      "severity": "Low",
+      "priority": "P3",
+      "status": "Open",
+      "root_cause": "pending",
+      "fixes": [],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "pending",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-03",
+          "status": "Open",
+          "note": "reported"
+        }
+      ]
     }
   ]
 }

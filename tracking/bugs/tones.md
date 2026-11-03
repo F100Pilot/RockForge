@@ -959,3 +959,37 @@ With a bass arrangement, 'Detect tone' listed Lead and Rhythm guitar tones only;
 
 - 2026-11-02 — Open: reported
 - 2026-11-02 — Fixed: commit 8340afd106
+
+## BUG-0371
+
+**The bass tones the tone detection proposed were always distortion-oriented, a clean bass included**
+
+| | |
+|---|---|
+| Detected | 2026-11-03 |
+| Reported by | DrekAnon (GitHub issue #16) |
+| Found in | 0.12.0-beta.3 |
+| Build / commit | _pending_ |
+| Severity | Low |
+| Priority | P3 |
+| Status | Open |
+
+The bass tones the tone detection proposed were always distortion-oriented, a clean bass included
+
+**Steps to reproduce:** _pending_
+
+**Expected:** _pending_
+
+**Observed:** _pending_
+
+**Root cause:** _pending_
+
+**Fixes:** —
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** _pending_ · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-03 — Open: reported

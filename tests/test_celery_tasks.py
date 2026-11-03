@@ -341,10 +341,13 @@ class _BassWritingSeparator(_FakeStemSeparator):
         return workdir / "guitar.wav"
 
 
-def test_detect_tones_ranks_bass_tones_from_the_separated_bass(db, monkeypatch) -> None:
+def test_detect_tones_offers_bass_tones_when_demucs_separated_a_bass(db, monkeypatch) -> None:
     """GitHub issue #16: the detection only ever proposed guitar tones, so a
-    bass chart could only be given a guitar amp. The bass Demucs already wrote
-    is measured too, and only bass gear is proposed for it."""
+    bass chart could only be given a guitar amp. With the bass Demucs wrote,
+    the four bass presets are offered from clean to distorted — not ranked by
+    the recording, whose gain reading did not tell a clean bass from a
+    distorted one — and the separated bass is not run through the guitar
+    analysis."""
     from rockforge.domain.tone import is_bass_tone
     from rockforge.infrastructure.normalize.ffmpeg import FfmpegNormalizer
     from rockforge.infrastructure.packaging.gear.gear_catalogue import tone_from_dict
@@ -355,12 +358,13 @@ def test_detect_tones_ranks_bass_tones_from_the_separated_bass(db, monkeypatch) 
         FfmpegNormalizer, "normalize",
         lambda self, audio, workdir, offset_s=0.0, pad_start_s=0.0: workdir / "normalized.wav",
     )
+    analysed: list[str] = []
 
     def analyse(stem):
-        gain = 0.85 if stem.name == "bass.wav" else 0.35
+        analysed.append(stem.name)
         return (
             analyzer_mod.ToneProfile(
-                gain_level=gain, brightness=0.5, low_end=0.4, dynamic_range=0.3,
+                gain_level=0.35, brightness=0.5, low_end=0.4, dynamic_range=0.3,
             ),
             [],
         )
@@ -373,9 +377,12 @@ def test_detect_tones_ranks_bass_tones_from_the_separated_bass(db, monkeypatch) 
     detected = _reload(db, job_id).params["detected_tones"]
     assert detected["category"] == "crunch"          # the guitar's own reading stands
     candidates = detected["bass_candidates"]
-    assert candidates and all(is_bass_tone(tone_from_dict(c)) for c in candidates)
-    assert detected["bass"]["key"] == "RFBass_Distortion"  # the closest to gain 0.85
-    assert detected["bass_gain"] == 0.85
+    assert all(is_bass_tone(tone_from_dict(c)) for c in candidates)
+    assert [c["key"] for c in candidates] == [
+        "RFBass_Clean", "RFBass_Growl", "RFBass_Overdrive", "RFBass_Distortion",
+    ]
+    assert "bass.wav" not in analysed
+    assert "bass_gain" not in detected
 
 
 def test_detect_tones_without_a_bass_stem_proposes_no_bass_tones(db, monkeypatch) -> None:

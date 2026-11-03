@@ -25,7 +25,9 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 
 **Bugs fixed:** —
 
-**Known bugs it carried:** —
+**Known bugs it carried:** 
+
+- [BUG-0371](bugs/tones.md#bug-0371) The bass tones the tone detection proposed were always distortion-oriented, a clean bass included (Low, now Open)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -58,7 +60,9 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0369](bugs/import.md#bug-0369) A tab imported from Songsterr played some notes after dotted rests too early
 - [BUG-0370](bugs/import.md#bug-0370) A Songsterr tab with repeats is imported with each repeated section played once, so the chart ends early
 
-**Known bugs it carried:** —
+**Known bugs it carried:** 
+
+- [BUG-0371](bugs/tones.md#bug-0371) The bass tones the tone detection proposed were always distortion-oriented, a clean bass included (Low, now Open)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 

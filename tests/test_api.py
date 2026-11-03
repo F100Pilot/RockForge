@@ -3980,16 +3980,26 @@ def test_tone_suggestions_need_a_build_and_the_tone_over_time(
     assert client.get(f"/jobs/{old['id']}/detected-tones").json()["has_timeline"] is False
 
 
-def test_detected_tones_hand_out_the_bass_candidates(client: TestClient, tmp_path) -> None:
-    """GitHub issue #16: the bass presets measured on the separated bass reach
-    the Tons page, where they go to the Bass chart only."""
-    from rockforge.infrastructure.packaging.gear.tone_presets import rank_bass
-
+def test_detected_tones_hand_out_the_bass_tones_from_clean_to_distorted(
+    client: TestClient, tmp_path
+) -> None:
+    """GitHub issue #16: the bass presets reach the Tons page, where they go to
+    the Bass chart only, always from clean to distorted and with no match % —
+    a detection from before stored them ranked by a gain that did not read a
+    bass (a growl first, whatever the bass sounded like)."""
+    ranked_before = [
+        {"key": k, "match": m} for k, m in
+        (("RFBass_Growl", 100), ("RFBass_Overdrive", 78), ("RFBass_Clean", 70),
+         ("RFBass_Distortion", 55))
+    ]
     job = _built_two_track_job(client, tmp_path, detected={
-        "status": "ready", "bass_candidates": rank_bass(0.4),
+        "status": "ready", "bass_candidates": ranked_before,
     })
     body = client.get(f"/jobs/{job['id']}/detected-tones").json()
-    assert [c["key"] for c in body["bass_candidates"]][0] == "RFBass_Growl"
+    assert [c["key"] for c in body["bass_candidates"]] == [
+        "RFBass_Clean", "RFBass_Growl", "RFBass_Overdrive", "RFBass_Distortion",
+    ]
+    assert all("match" not in c for c in body["bass_candidates"])
 
 
 def test_tone_suggestions_propose_a_tone_per_part_of_each_track(

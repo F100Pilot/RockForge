@@ -306,7 +306,7 @@ def test_driven_presets_cut_the_hiss_band_before_the_amp_and_stack_no_drive() ->
             assert "Amp_MarshallPlexi_Loudness2" in tone["amp"]["knobs"], tone["key"]
 
 
-def test_bass_presets_are_bass_gear_ranked_by_the_bass_gain() -> None:
+def test_bass_presets_are_bass_gear_offered_from_clean_to_distorted() -> None:
     """GitHub issue #16: a bass chart was offered guitar tones only. The bass
     presets are real bass gear, every knob a real knob, at DLC Builder's own
     bass volume, and are ranked by the gain measured on the separated bass."""
@@ -314,7 +314,7 @@ def test_bass_presets_are_bass_gear_ranked_by_the_bass_gain() -> None:
     from rockforge.infrastructure.packaging.gear import tone_presets as tp
     from rockforge.infrastructure.packaging.gear.gear_catalogue import knob_defaults
 
-    for tone, _gain in tp._BASS_LIBRARY:
+    for tone in tp.BASS_PRESETS:
         built = tone_from_dict(tone)
         assert built is not None and is_bass_tone(built), tone["key"]
         assert tone["volume"] == -12.0  # default_bass.json
@@ -324,9 +324,8 @@ def test_bass_presets_are_bass_gear_ranked_by_the_bass_gain() -> None:
                 assert set(item.get("knobs") or {}) <= set(knob_defaults(item["key"])), (
                     tone["key"], item["key"],
                 )
-    assert tp.rank_bass(0.05)[0]["key"] == "RFBass_Clean"
-    assert tp.rank_bass(0.45)[0]["key"] == "RFBass_Growl"
-    assert tp.rank_bass(0.95)[0]["key"] == "RFBass_Distortion"
-    ranked = tp.rank_bass(0.6)
-    assert [c["match"] for c in ranked] == sorted((c["match"] for c in ranked), reverse=True)
-    assert len(ranked) == len(tp._BASS_LIBRARY)
+    offered = tp.bass_presets()
+    assert [c["key"] for c in offered] == [
+        "RFBass_Clean", "RFBass_Growl", "RFBass_Overdrive", "RFBass_Distortion",
+    ]
+    assert all("match" not in c for c in offered)

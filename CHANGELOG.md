@@ -6,6 +6,10 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Correções
+
+- **Tons de baixo sempre distorcidos:** «Detetar tom» propunha para o baixo tons quase sempre com distorção, mesmo para um baixo limpo, porque a medida usada (feita para a guitarra) dava praticamente o mesmo valor a um baixo limpo e a um distorcido. Os quatro tons de baixo aparecem agora do limpo ao distorcido, sem percentagem e cada um com **Ouvir (aproximação)**: não são medidos na gravação, ouve-os e escolhe. (GitHub #16)
+
 ## [0.12.0 beta 4] — 2026-11-02
 
 ### Novidades
