@@ -14,6 +14,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 - **A bend set in the note editor did not stay in the song:** the amount was saved but the note was not marked as a bend, so it did not show on the score and the rebuild wrote it without a bend. It is now marked, shown and heard — and bends that come from the Guitar Pro file are heard in the preview too. (GitHub #21)
 
+- **Songsterr refused every tab with a 403:** the same address opened in the browser, but RockForge's request was refused by a page in front of the API. When that happens, RockForge now asks again the way a browser asks; if it is still refused, the message says the answer came from a protection page and not from Songsterr, and suggests the `.gp` file exported from Songsterr. Not yet tried against the real Songsterr. (GitHub #22)
+
 - **Bass tones always distorted:** "Detect tone" offered the bass tones that were almost always distorted, even for a clean bass, because the measure it used (made for the guitar) gave a clean bass and a distorted one practically the same value. The four bass tones now come from clean to distorted, with no percentage and each with **Listen (approximation)**: they are not measured on the recording, listen to them and choose. (GitHub #16)
 
 ## [0.12.0 beta 4] — 2026-11-02

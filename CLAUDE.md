@@ -4007,6 +4007,26 @@ the plain status. The status is still carried, so a 403 from a part CDN
 still means "try the next distribution". Guarded by
 `test_a_refusal_or_an_unreadable_answer_is_a_clear_error`.
 
+**A 403 that is NOT Songsterr's JSON is asked again as a browser** (GitHub
+issue #22, 2026-11-03: every tab refused with "Songsterr answered 403 to …"
+while the same `/api/meta` address showed its JSON in the user's browser — so
+a page in front of the API, refusing the automated client). `_http_get_json`
+still asks first with requests' default headers (the reference tool's
+client); a 403 whose body is not a JSON object (`_blocked`) is asked once
+more with `BROWSER_HEADERS` (a browser's User-Agent, `Accept`,
+`Accept-Language`), and once that worked `_browser_first` makes the rest of
+the session ask that way first. Songsterr's own JSON refusal
+(`ERR_UNPUBLISHED`) is never asked twice. Refused both ways, the message says
+the answer came from a protection page, not the API, and points at the `.gp`
+exported from Songsterr. A CloudFront 403 for a part not on that distribution
+costs one extra request per distribution. **Not verified against Songsterr
+from here** (blocked) — whether a browser's headers get through what the
+user hit is the user's test. Guarded by
+`test_a_403_page_in_front_of_the_api_is_asked_again_as_a_browser`,
+`test_songsterrs_own_refusal_is_not_asked_again` and
+`test_a_403_page_that_refuses_the_browser_too_says_so` (the retry, the
+browser-first memory and the JSON rule each mutation-checked).
+
 ### Automatic tone detection (`/jobs/{id}/detect-tones`)
 
 `POST /jobs/{id}/detect-tones` (GP jobs) runs Demucs

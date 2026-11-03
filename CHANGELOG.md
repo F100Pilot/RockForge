@@ -14,6 +14,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 - **Um bend posto no editor de notas não ficava na música:** guardava-se a quantidade mas a nota não era marcada como bend, por isso não aparecia na partitura e a reconstrução escrevia-a sem bend. Agora fica marcada, aparece e ouve-se — e os bends que vêm do ficheiro Guitar Pro também se ouvem na pré-escuta. (GitHub #21)
 
+- **O Songsterr recusava todas as tabs com um 403:** o mesmo endereço abria no browser, mas o pedido do RockForge era recusado por uma página à frente da API. Quando isso acontece, o RockForge pede outra vez como um browser pede; se mesmo assim for recusado, a mensagem diz que a resposta veio de uma página de proteção e não do Songsterr, e sugere o ficheiro `.gp` exportado do Songsterr. Ainda não foi experimentado contra o Songsterr real. (GitHub #22)
+
 - **Tons de baixo sempre distorcidos:** «Detetar tom» propunha para o baixo tons quase sempre com distorção, mesmo para um baixo limpo, porque a medida usada (feita para a guitarra) dava praticamente o mesmo valor a um baixo limpo e a um distorcido. Os quatro tons de baixo aparecem agora do limpo ao distorcido, sem percentagem e cada um com **Ouvir (aproximação)**: não são medidos na gravação, ouve-os e escolhe. (GitHub #16)
 
 ## [0.12.0 beta 4] — 2026-11-02

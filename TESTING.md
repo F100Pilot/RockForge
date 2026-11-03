@@ -1022,6 +1022,10 @@ against a fake. On a real machine:
    see that tab — use a published one of the same song). Any other refusal
    shows Songsterr's `reason` text. Confirm by comparing with
    `requests.get('https://www.songsterr.com/api/meta/84').status_code` (200).
+   "a resposta não veio da API … página de proteção" means the plain request
+   AND the retry with a browser's headers (GitHub #22) got a non-JSON 403:
+   compare `requests.get(url).text[:300]` with
+   `requests.get(url, headers=songsterr.BROWSER_HEADERS).status_code`.
 
 ### 7d-septies. PDF / picture of the tab → project (the `[pdf]` extra)
 
