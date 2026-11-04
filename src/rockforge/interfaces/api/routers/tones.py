@@ -182,7 +182,7 @@ def get_tone_suggestions(job_id: str) -> ToneSuggestionsOut:
 def _recording_pad(params: dict[str, Any]) -> float:
     """How much later than in the recording file the build puts everything —
     the build's own lead-in pad (``gp_pipeline``)."""
-    from rockforge.application.gp_pipeline import MIN_LEAD_S
+    from rockforge.application.gp_pipeline import recording_pad
 
     def _num(key: str) -> float:
         v = params.get(key, 0.0)
@@ -191,7 +191,7 @@ def _recording_pad(params: dict[str, Any]) -> float:
         except ValueError:
             return 0.0
 
-    return max(0.0, MIN_LEAD_S - _num("offset_s")) + max(0.0, _num("lead_in_s"))
+    return recording_pad(_num("offset_s"), _num("lead_in_s"))
 
 
 def _tone_plan_context(job_id: str) -> Any:

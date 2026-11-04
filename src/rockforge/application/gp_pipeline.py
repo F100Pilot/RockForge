@@ -103,6 +103,16 @@ MIN_LEAD_S = 2.0
 MIN_OFFSET_S = -60.0
 
 
+def recording_pad(offset_s: float, lead_in_s: float) -> float:
+    """The silence the build puts before the recording: the shortfall of the
+    recording's start (``offset_s``) up to MIN_LEAD_S, plus the user's own
+    "Silêncio inicial". Bar 1 then sits at ``offset_s`` + this in the bundle
+    (``max(offset_s, MIN_LEAD_S) + lead_in_s``). The one place the API reads it
+    from too (the tone suggestions' clock, the anchor re-expression), so the
+    two can never disagree with the build."""
+    return max(0.0, MIN_LEAD_S - offset_s) + max(0.0, lead_in_s)
+
+
 # Metrical ratios a beat tracker confuses the true pulse with — not just the
 # octave (½/2) but also the triplet / compound-meter grid (⅓, ⅔, 3/2, 3). A
 # GP file whose recording is the SAME song has a true tempo ratio near 1, so a
@@ -867,7 +877,7 @@ class GenerateFromGpUseCase:
         # the shortfall up to MIN_LEAD_S so the count-in phrase always has room.
         # The score shifts by the full content time; the audio (and thus an LRC
         # synced to it) shifts only by what silence we actually prepend.
-        pad_start_s = max(0.0, MIN_LEAD_S - spec.offset_s) + max(0.0, spec.lead_in_s)
+        pad_start_s = recording_pad(spec.offset_s, spec.lead_in_s)
         score_shift = spec.offset_s + pad_start_s  # max(offset_s, MIN_LEAD_S) + lead_in_s
 
         stage("ingest")

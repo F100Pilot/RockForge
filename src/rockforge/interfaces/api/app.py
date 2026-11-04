@@ -576,11 +576,11 @@ def _score_shift(params: dict[str, object]) -> float:
     + lead_in_s`` — the same formula as ``gp_pipeline``'s ``score_shift`` (and
     ``scoreShift`` in web/app.js). The anchor re-expression must use the build's
     value exactly, or a tempo change shifts every note by the difference."""
-    from rockforge.application.gp_pipeline import MIN_LEAD_S
+    from rockforge.application.gp_pipeline import recording_pad
 
     offset = float(cast(float, params.get("offset_s", 0.0) or 0.0))
     lead_in = float(cast(float, params.get("lead_in_s", 0.0) or 0.0))
-    return max(offset, MIN_LEAD_S) + max(0.0, lead_in)
+    return offset + recording_pad(offset, lead_in)
 
 
 def _sync_edited(params: dict[str, Any]) -> bool:
