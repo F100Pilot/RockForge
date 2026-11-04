@@ -23,7 +23,7 @@ from __future__ import annotations
 import math
 import wave
 from bisect import bisect_right
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
@@ -85,6 +85,10 @@ class PipelineResult:
     # Whether the GP file carries lyrics at all (used or not), so the editor can
     # offer to go back to them after its own rows replaced them.
     gp_has_lyrics: bool = False
+    # (old, new) when the Lead track's chart was built under the other of its
+    # two names (Lead beside a Rhythm, Combined alone): the worker moves the
+    # job's per-chart edits to the new name, as the build just did.
+    chart_rename: tuple[str, str] | None = None
 
 # Minimum lead-in before the first note. DLC Builder's PhraseGenerator inserts a
 # count-in phrase before the arrangement content and fails ("no room for an empty
@@ -577,6 +581,61 @@ def _song_length(
     return end
 
 
+# What is kept per chart, keyed by the chart's built name (GpJobSpec fields;
+# the job's params use the same names, plus "marked_attacks").
+PER_CHART_FIELDS = (
+    "note_overrides", "hand_positions", "arrangement_sync", "arrangement_tones",
+    "tuning_overrides", "merge_tracks",
+)
+
+
+def lead_chart_rename(
+    built: set[ArrangementKind], combo_track: int | None,
+) -> tuple[str, str] | None:
+    """``(old, new)`` when the Lead track's chart has a name other than the one
+    its edits may be kept under: it is built as Lead beside a Rhythm and as
+    Combined alone (the lone-Lead rule), so adding or removing the Rhythm
+    renames it. None when nothing can have been renamed."""
+    lead, combined = ArrangementKind.LEAD.value, ArrangementKind.COMBINED.value
+    if ArrangementKind.LEAD in built and ArrangementKind.COMBINED not in built:
+        return combined, lead
+    if (ArrangementKind.COMBINED in built and ArrangementKind.LEAD not in built
+            and combo_track is None):
+        return lead, combined
+    return None
+
+
+def carry_chart_edits(
+    fields: Mapping[str, object], old: str, new: str,
+) -> dict[str, dict[str, object]]:
+    """The per-chart dicts of ``fields`` whose entry under ``old`` moves to
+    ``new`` (only those, and only where ``new`` has none of its own)."""
+    out: dict[str, dict[str, object]] = {}
+    for name, data in fields.items():
+        if isinstance(data, Mapping) and old in data and new not in data:
+            out[name] = {**{k: v for k, v in data.items() if k != old}, new: data[old]}
+    return out
+
+
+def _follow_the_lead_chart(
+    spec: GpJobSpec, rename: tuple[str, str] | None, warnings: list[str],
+) -> GpJobSpec:
+    """Every edit kept under the chart's old name (notes, sync, FHPs, tones,
+    tuning, merge) stopped applying when the Rhythm was added or removed,
+    without a word (BUG-0376): carry them over to its new name."""
+    if rename is None:
+        return spec
+    old, new = rename
+    changes = carry_chart_edits({n: getattr(spec, n) for n in PER_CHART_FIELDS}, old, new)
+    if not changes:
+        return spec
+    warnings.append(
+        f"{new}: the edits kept for this track as {old} ({', '.join(changes)}) were "
+        f"carried over — the chart is now built as {new}"
+    )
+    return replace(spec, **changes)  # type: ignore[arg-type]
+
+
 def _check_anchor_order(anchors: list[tuple[float, float]]) -> None:
     """Reject a round of sync anchors whose corrected times contradict their
     chart-time order (e.g. a later note anchored to an earlier recording instant
@@ -855,6 +914,8 @@ class GenerateFromGpUseCase:
         chosen = [idx for _, idx in tracks]
         if len(chosen) != len(set(chosen)):
             raise IngestionError("each arrangement must use a different GP track")
+        rename = lead_chart_rename({kind for kind, _ in tracks}, spec.combo_track)
+        spec = _follow_the_lead_chart(spec, rename, warnings)
 
         # Each arrangement is parsed and drift-corrected independently with its
         # own tempo_scale / sync_anchor_stages, so corrections never leak
@@ -1165,4 +1226,5 @@ class GenerateFromGpUseCase:
             gp_lyrics=gp_lyrics,
             vocal_melody=vocal_melody,
             gp_has_lyrics=bool(first.lyrics),
+            chart_rename=rename,
         )

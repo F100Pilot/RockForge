@@ -477,6 +477,20 @@ def generate_cdlc(job_id: str) -> None:
                 else:
                     params.pop("vocal_melody", None)
                 params["gp_has_lyrics"] = result.gp_has_lyrics
+                # The chart was built under its other name (a Rhythm added or
+                # removed): its edits follow it, or the viewer — which reads
+                # them by the built name — would show none and the next
+                # rebuild would send them away (BUG-0376).
+                if result.chart_rename is not None:
+                    from rockforge.application.gp_pipeline import (
+                        PER_CHART_FIELDS,
+                        carry_chart_edits,
+                    )
+
+                    params.update(carry_chart_edits(
+                        {k: params.get(k) for k in (*PER_CHART_FIELDS, "marked_attacks")},
+                        *result.chart_rename,
+                    ))
                 # Whether the .psarc has sound, and why not: a silent .psarc
                 # must not read as playable, nor a failed conversion as "no Wwise".
                 params["psarc_has_audio"] = result.packaging.wem_path is not None

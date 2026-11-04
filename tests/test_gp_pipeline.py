@@ -261,6 +261,42 @@ def test_note_overrides_add_edit_and_delete_are_per_arrangement(
     assert len(ET.parse(rhythm_xml).getroot().findall("levels/level/chords/chord")) == 1
 
 
+def test_edits_follow_the_lead_track_when_a_rhythm_is_added_or_removed(
+    two_track_gp5: Path, tmp_path: Path
+) -> None:
+    """Alone, the Lead track is built as Combined; beside a Rhythm, as Lead.
+    Edits kept under the old name stopped applying without a word (BUG-0376)."""
+    from rockforge.application.gp_pipeline import carry_chart_edits, lead_chart_rename
+
+    lone = make_use_case().run(
+        GpJobSpec(gp_path=two_track_gp5, audio_source="x.wav", lead_track=0),
+        SongMetadata(title="Two", artist="Tracks"), tmp_path / "lone",
+    )
+    combined_xml = next(p for p in lone.packaging.xml_paths if "combined" in p.name)
+    t, string, _, _ = _lead_notes(combined_xml)[0]
+    edit = {"Combined": [NoteOverride(time=t, string=string, fret=12, sustain=0.0)]}
+
+    result = make_use_case().run(
+        GpJobSpec(gp_path=two_track_gp5, audio_source="x.wav", lead_track=0,
+                  rhythm_track=1, note_overrides=edit),
+        SongMetadata(title="Two", artist="Tracks"), tmp_path / "w",
+    )
+    lead_xml = next(p for p in result.packaging.xml_paths if p.name == "arrangement_lead.xml")
+    assert any(f == 12 for tt, s, f, _ in _lead_notes(lead_xml) if tt == t and s == string)
+    assert result.chart_rename == ("Combined", "Lead")
+    assert any("carried over" in w for w in result.warnings)
+
+    # The worker moves the job's params the same way; a chart's own entry wins.
+    assert carry_chart_edits(
+        {"note_overrides": {"Combined": [1]}, "hand_positions": {"Lead": [2], "Combined": [3]}},
+        "Combined", "Lead",
+    ) == {"note_overrides": {"Lead": [1]}}
+    from rockforge.domain.arrangement import ArrangementKind as K
+    assert lead_chart_rename({K.COMBINED}, None) == ("Lead", "Combined")
+    assert lead_chart_rename({K.COMBINED}, 2) is None  # a Combo track of its own
+    assert lead_chart_rename({K.LEAD, K.COMBINED}, 2) is None
+
+
 def test_note_overrides_find_notes_whose_time_the_xml_rounded() -> None:
     """The editor only sees millisecond times (the XML writer rounds them), so
     an edit must still find a note whose real time has more decimals — or a

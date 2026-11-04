@@ -127,6 +127,29 @@ def test_generate_cdlc_gp_job_completes(db, tmp_path, monkeypatch) -> None:
     assert job.error is None
 
 
+def test_the_jobs_edits_follow_the_chart_to_its_new_name(db, tmp_path, monkeypatch) -> None:
+    """A lone Lead track is built as Combined: what the job keeps for it under
+    "Lead" moves there, or the viewer (which reads it by the built name) shows
+    nothing and the next rebuild sends it away (BUG-0376)."""
+    from rockforge.application.gp_pipeline import GenerateFromGpUseCase
+
+    gp_path = _make_gp5(tmp_path)
+    monkeypatch.setattr(
+        ca, "_build_gp_use_case",
+        lambda: GenerateFromGpUseCase(
+            ingestor=_FakeIngestor(), normalizer=_FakeNormalizer(), packager=_FakePackager()
+        ),
+    )
+    job_id = _job(db, params={"gp_path": str(gp_path), "lead_track": 0,
+                              "marked_attacks": {"Lead": [1.0]},
+                              "arrangement_sync": {"Lead": {"tempo_scale": 1.0,
+                                                            "sync_anchor_stages": []}}})
+    ca.generate_cdlc(job_id)
+    params = _reload(db, job_id).params
+    assert params["marked_attacks"] == {"Combined": [1.0]}
+    assert set(params["arrangement_sync"]) == {"Combined"}
+
+
 def test_a_psarc_built_without_sound_says_so_and_why(db, tmp_path, monkeypatch) -> None:
     """A .psarc with no .wem plays silence: the job records it, and a Wwise that
     was found but failed to convert keeps its own error — before, both read as
