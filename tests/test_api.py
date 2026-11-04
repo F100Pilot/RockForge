@@ -4417,9 +4417,11 @@ def test_work_the_app_was_doing_when_it_stopped_is_marked_on_the_next_start(
         with app_module._session_factory() as session:
             for j in session.query(app_module.Job).all():
                 session.delete(j)
-            session.add(app_module.Job(id="built", source_type="gp", source="x", title="t", artist="a",
+            session.add(app_module.Job(id="built", source_type="gp", source="x",
+                                       title="t", artist="a",
                                        status=JobStatus.RUNNING, params={}))
-            session.add(app_module.Job(id="sep", source_type="gp", source="x", title="t", artist="a",
+            session.add(app_module.Job(id="sep", source_type="gp", source="x",
+                                       title="t", artist="a",
                                        status=JobStatus.COMPLETED,
                                        params={"stems_status": "separating",
                                                "tone_detection_status": "ready"}))
