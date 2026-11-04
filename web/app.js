@@ -1,5 +1,24 @@
 // A stroke icon from the sprite at the top of index.html. A declaration, not a
 // const: some tables near the top of this file build their markup at load.
+// Whether the keyboard belongs to a field (a text box, a select, an editable
+// element): the page's own shortcuts then stay out of the way.
+// A shown popup next to the click (below and to the right), kept inside the
+// window: to the click's left when it would run off the right edge.
+function placePopup(pop, clientX, clientY) {
+  const w = pop.offsetWidth, h = pop.offsetHeight;
+  let x = clientX + 10, y = clientY + 10;
+  if (x + w > window.innerWidth - 8) x = clientX - w - 10;
+  if (y + h > window.innerHeight - 8) y = window.innerHeight - h - 8;
+  pop.style.left = Math.max(8, x) + 'px';
+  pop.style.top = Math.max(8, y) + 'px';
+}
+
+function typingInField() {
+  const el = document.activeElement;
+  const tag = el && el.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || !!(el && el.isContentEditable);
+}
+
 function icon(name, cls = '') {
   return `<svg class="ic${cls ? ' ' + cls : ''}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
 }
@@ -2015,9 +2034,7 @@ function showShortcuts() {
 document.getElementById('shortcutsBtn').addEventListener('click', showShortcuts);
 document.addEventListener('keydown', e => {
   if (e.key !== '?' || e.ctrlKey || e.metaKey || e.altKey) return;
-  const el = document.activeElement;
-  const tag = el && el.tagName;
-  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (el && el.isContentEditable)) return;
+  if (typingInField()) return;
   if (!selectedJob || document.getElementById('detailOverlay').hidden) return;
   if (document.querySelector('.modal-overlay:not([hidden]), .settings-view:not([hidden])')) return;
   e.preventDefault();
@@ -3811,12 +3828,7 @@ function openFhpPopup(t, clientX, clientY, k = null) {
   fhpRangeText();
   const pop = document.getElementById('fhpPopup');
   pop.hidden = false;
-  const w = pop.offsetWidth, h = pop.offsetHeight;
-  let x = clientX + 10, y = clientY + 10;
-  if (x + w > window.innerWidth - 8) x = clientX - w - 10;
-  if (y + h > window.innerHeight - 8) y = window.innerHeight - h - 8;
-  pop.style.left = Math.max(8, x) + 'px';
-  pop.style.top = Math.max(8, y) + 'px';
+  placePopup(pop, clientX, clientY);
   document.getElementById('fhpFret').focus();
 }
 function fhpRangeText() {
@@ -5435,13 +5447,7 @@ function openBarAlignPopup(chartT, clientX, clientY) {
   document.getElementById('baRefArr').innerHTML =
     others.map(o => `<option value="${o.i}">${esc(o.x.kind)}</option>`).join('');
   pop.hidden = false;
-  // Position near the click, clamped to the viewport.
-  const w = pop.offsetWidth, h = pop.offsetHeight;
-  let x = clientX + 10, y = clientY + 10;
-  if (x + w > window.innerWidth - 8) x = clientX - w - 10;
-  if (y + h > window.innerHeight - 8) y = window.innerHeight - h - 8;
-  pop.style.left = Math.max(8, x) + 'px';
-  pop.style.top = Math.max(8, y) + 'px';
+  placePopup(pop, clientX, clientY);
 }
 function closeBarAlignPopup() { document.getElementById('barAlignPopup').hidden = true; }
 
@@ -5690,12 +5696,7 @@ function openNoteEditPopup(chartTime, string, clientX, clientY) {
 
   const pop = document.getElementById('noteEditPopup');
   pop.hidden = false;
-  const w = pop.offsetWidth, h = pop.offsetHeight;
-  let x = clientX + 10, y = clientY + 10;
-  if (x + w > window.innerWidth - 8) x = clientX - w - 10;
-  if (y + h > window.innerHeight - 8) y = window.innerHeight - h - 8;
-  pop.style.left = Math.max(8, x) + 'px';
-  pop.style.top = Math.max(8, y) + 'px';
+  placePopup(pop, clientX, clientY);
 }
 function closeNoteEditPopup() { document.getElementById('noteEditPopup').hidden = true; neContext = null; }
 
@@ -5883,9 +5884,7 @@ function stepNoteFret(d) {
 document.addEventListener('keydown', e => {
   if (syncMode !== 'editnotes' || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
   if (e.altKey || e.metaKey || e.shiftKey) return;
-  const el = document.activeElement;
-  const tag = el && el.tagName;
-  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (el && el.isContentEditable)) return;
+  if (typingInField()) return;
   if (!document.getElementById('noteEditPopup').hidden) return;
   if (!onScorePage()) return;
   const step = (e.ctrlKey ? 12 : 1) * (e.key === 'ArrowUp' ? 1 : -1);
@@ -9739,9 +9738,7 @@ document.addEventListener('keydown', e => {
   if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
   const key = e.key.toLowerCase();
   if (key !== 'z' && key !== 'y') return;
-  const el = document.activeElement;
-  const tag = el && el.tagName;
-  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (el && el.isContentEditable)) return;
+  if (typingInField()) return;
   if (!selectedJob || document.getElementById('detailOverlay').hidden) return;
   if (document.querySelector('.modal-overlay:not([hidden]), .settings-view:not([hidden])')) return;
   e.preventDefault();
@@ -11431,28 +11428,50 @@ function drawFretboard() {
   _lastFretHTML = null;  // overlay was just recreated empty — force the next fill
   renderFbInfo(a);
 }
+// What the neck lights depends on the notes and the pending sync only, not on
+// the playhead: worked out once per change (every note through the warp, the
+// attacks sorted) instead of on every frame, then each frame looks only at the
+// notes around the playhead.
+let fretLitCache = null;
+function fretLitPlan(notes, warp, nStr) {
+  const ratio = tempoScaleLive / builtScale;
+  const key = [isGpJob(), tempoScaleLive, builtScale, scoreShift, offsetLive, leadInBuilt, nStr, FB.frets,
+    JSON.stringify(syncAnchors)].join('|');
+  if (fretLitCache && fretLitCache.notes === notes && fretLitCache.key === key) return fretLitCache;
+  const lit = notes.filter(n => n.string >= 0 && n.string < nStr && n.fret >= 0 && n.fret <= FB.frets)
+    .map(n => ({ n, on: warp(previewScale(n.time)) }))
+    .sort((a, b) => a.on - b.on);
+  // Every attack, so a note's short glow stops at the next attack and its lead-in
+  // never reaches back past the previous one: a tailless note used to stay lit
+  // 0.16 s, so clicking the note right after it lit both.
+  const ons = [...new Set(lit.map(o => o.on))];
+  const at = new Map(ons.map((t, i) => [t, i]));
+  let longest = 0.16;
+  for (const o of lit) {
+    const k = at.get(o.on);
+    const prev = k > 0 ? ons[k - 1] : -Infinity, next = k < ons.length - 1 ? ons[k + 1] : Infinity;
+    o.from = Math.max(o.on - 0.03, (prev + o.on) / 2);
+    o.to = o.on + Math.max((o.n.sustain || 0) * ratio, Math.min(0.16, next - o.on));
+    longest = Math.max(longest, o.to - o.on);
+  }
+  fretLitCache = { notes, key, lit, longest };
+  return fretLitCache;
+}
 function updateFretboard(vtDisp, warp) {
   if (!fretboardOn) return;
   const ov = document.getElementById('fretOverlay');
   if (!ov) return;
-  const notes = soundingNotes(arrangements[currentArr]);
-  warp = warp || buildTimeWarp(syncAnchors);  // reuse the frame's warp when given
-  const ratio = tempoScaleLive / builtScale;
   const nStr = stringCount(arrangements[currentArr]);
-  const lit = notes.filter(n => n.string >= 0 && n.string < nStr && n.fret >= 0 && n.fret <= FB.frets)
-    .map(n => ({ n, on: warp(previewScale(n.time)) }));
-  // Every attack, so a note's short glow stops at the next attack and its lead-in
-  // never reaches back past the previous one: a tailless note used to stay lit
-  // 0.16 s, so clicking the note right after it lit both.
-  const ons = [...new Set(lit.map(o => o.on))].sort((x, y) => x - y);
-  const at = new Map(ons.map((t, i) => [t, i]));
+  const plan = fretLitPlan(soundingNotes(arrangements[currentArr]),
+    warp || buildTimeWarp(syncAnchors), nStr);  // reuse the frame's warp when given
+  const { lit } = plan;
+  // The first note that can still be lit: nothing starting earlier lasts longer.
+  let lo = 0, hi = lit.length;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (lit[mid].on < vtDisp - plan.longest) lo = mid + 1; else hi = mid; }
   let s = '';
-  for (const { n, on } of lit) {
-    const k = at.get(on);
-    const prev = k > 0 ? ons[k - 1] : -Infinity, next = k < ons.length - 1 ? ons[k + 1] : Infinity;
-    const sus = (n.sustain || 0) * ratio;
-    const dur = Math.max(sus, Math.min(0.16, next - on));  // the note's duration, else a brief glow
-    if (vtDisp < Math.max(on - 0.03, (prev + on) / 2) || vtDisp > on + dur) continue;
+  for (let i = lo; i < lit.length && lit[i].on - 0.03 <= vtDisp; i++) {
+    const { n, from, to } = lit[i];
+    if (vtDisp < from || vtDisp > to) continue;
     const { x, y } = fretXY(n.string, n.fret);
     s += `<circle cx="${x}" cy="${y}" r="9" fill="${STRING_COLORS[n.string]}" stroke="#fff" stroke-width="1.5"/>`;
     s += `<text x="${x}" y="${y + 4}" fill="#14151a" font-size="11" font-weight="700" text-anchor="middle">${n.fret}</text>`;
@@ -12085,17 +12104,20 @@ function activeToneKeyAtDisplay(vtDisp, warp) {
 
 // The live "tom atual" label: which created tone plays at the playhead. Shown
 // only when the song actually has tones assigned (a base or a change).
+// Runs on every frame of playback, so the label is only written when it says
+// something else (rewriting the same markup 60 times a second re-parsed it).
 function updateLiveTone(vtDisp, warp) {
   const el = document.getElementById('liveTone');
   if (!el) return;
+  let html = '';
   if (!jobTones.length) {
-    el.innerHTML = `${icon('wave')}${esc(T('Tom standard: {tone}', { tone: standardToneFor(currentKind()) }))}`;
-    return;
+    html = `${icon('wave')}${esc(T('Tom standard: {tone}', { tone: standardToneFor(currentKind()) }))}`;
+  } else if (toneBase || toneChanges.length) {
+    const key = activeToneKeyAtDisplay(vtDisp, warp);
+    const name = key ? ((jobTones.find(t => t.key === key) || {}).name || key) : null;
+    html = name ? `${icon('wave')}${esc(name)}` : '';
   }
-  if (!(toneBase || toneChanges.length)) { el.textContent = ''; return; }
-  const key = activeToneKeyAtDisplay(vtDisp, warp);
-  const name = key ? ((jobTones.find(t => t.key === key) || {}).name || key) : null;
-  el.innerHTML = name ? `${icon('wave')}${esc(name)}` : '';
+  if (el.dataset.html !== html) { el.innerHTML = html; el.dataset.html = html; }
 }
 
 // ---- Stand-alone arrangement preview (synthesized from the chart, no
@@ -12338,9 +12360,7 @@ function audioToggle() {
 // the start, +/- zoom. Seeks go through audioSeek in recording-time, so they
 // move the playhead visually even while paused.
 document.addEventListener('keydown', e => {
-  const el = document.activeElement;
-  const tag = el && el.tagName;
-  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (el && el.isContentEditable)) return;
+  if (typingInField()) return;
   if (!selectedJob) return;
   const panel = document.getElementById('syncPanel');
   if (!panel || panel.style.display === 'none') return;
@@ -12350,7 +12370,8 @@ document.addEventListener('keydown', e => {
   if (!onScorePage()) return;
   if (e.code === 'Space' || e.key === ' ') {
     e.preventDefault();               // stop the page from scrolling on space
-    if (tag === 'BUTTON') el.blur();  // don't let a focused button also fire on space
+    const el = document.activeElement;
+    if (el && el.tagName === 'BUTTON') el.blur();  // don't let a focused button also fire on space
     audioToggle();
   } else if (e.key === 'ArrowRight') {
     e.preventDefault(); audioSeek(currentPlayheadT + (e.shiftKey ? 5 : 1));
