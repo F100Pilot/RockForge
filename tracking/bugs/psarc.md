@@ -2875,3 +2875,42 @@ The main Wwise conversion is best-effort, the preview one was not: a PackagingEr
 - 2026-11-04 — Triaged: code review 2026-11-04; FIX-0380 (1edd833)
 - 2026-11-04 — In Progress: code review 2026-11-04; FIX-0380 (1edd833)
 - 2026-11-04 — Fixed: code review 2026-11-04; FIX-0380 (1edd833)
+
+## BUG-0401
+
+**The manifest and the XML advertised different chord techniques**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | code review (Claude, on the maintainer's request), 2026-11-04 |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | Low |
+| Priority | P3 |
+| Status | Fixed |
+
+The manifest grouped chords by time rounded to 0.1 ms (a strummed power chord was not one) and the XML set powerChords and openChords for any chord; the writer and the SNG builder each had a copy of the 30 ms grouping.
+
+**Steps to reproduce:** 
+
+1. build a chart of strummed power chords, or of fretted triads
+
+**Expected:** The same, correct flags in both.
+
+**Observed:** Missing power chords in the manifest; power and open chords claimed in the XML.
+
+**Root cause:** Three groupings and two rule sets.
+
+**Fixes:** [FIX-0400](../FIX_LOG.md#fix-0400) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-04 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-04 — Triaged: code review 2026-11-04; FIX-0400 (2538bbc)
+- 2026-11-04 — In Progress: code review 2026-11-04; FIX-0400 (2538bbc)
+- 2026-11-04 — Fixed: code review 2026-11-04; FIX-0400 (2538bbc)

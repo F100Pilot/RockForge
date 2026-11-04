@@ -2112,3 +2112,42 @@ A lone Lead track is built as Combined and beside a Rhythm as Lead; every per-ch
 - 2026-11-04 — Triaged: code review 2026-11-04; FIX-0375 (3a3fefa)
 - 2026-11-04 — In Progress: code review 2026-11-04; FIX-0375 (3a3fefa)
 - 2026-11-04 — Fixed: code review 2026-11-04; FIX-0375 (3a3fefa)
+
+## BUG-0400
+
+**Two sync points on one instant of the score divided by zero**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | code review (Claude, on the maintainer's request), 2026-11-04 |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | Low |
+| Priority | P4 |
+| Status | Fixed |
+
+audio_clock mapped each span between neighbouring points; two points at the same score time made that span divide by zero and the clock read the second point.
+
+**Steps to reproduce:** 
+
+1. sync points on a bar of no length
+
+**Expected:** The first point says where that instant is.
+
+**Observed:** Division by zero, or the wrong instant.
+
+**Root cause:** No check that score times increase.
+
+**Fixes:** [FIX-0399](../FIX_LOG.md#fix-0399) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-04 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-04 — Triaged: code review 2026-11-04; FIX-0399 (7453c7a)
+- 2026-11-04 — In Progress: code review 2026-11-04; FIX-0399 (7453c7a)
+- 2026-11-04 — Fixed: code review 2026-11-04; FIX-0399 (7453c7a)

@@ -454,3 +454,121 @@ The forget request was sent once; offline or a server error, it was never tried 
 - 2026-11-04 — Triaged: code review 2026-11-04; FIX-0383 (c5589e5)
 - 2026-11-04 — In Progress: code review 2026-11-04; FIX-0383 (c5589e5)
 - 2026-11-04 — Fixed: code review 2026-11-04; FIX-0383 (c5589e5)
+
+## BUG-0386
+
+**A crafted PSARC in the dlc folder could inflate one block to tens of MB**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | code review (Claude, on the maintainer's request), 2026-11-04 |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Fixed |
+
+read_entries inflated each zlib block whole: a 58 KB block made 60 MB (141 MB peak); a TOC shorter than its header read the whole file; an entry declaring more than the file holds ended in an IndexError.
+
+**Steps to reproduce:** 
+
+1. put a crafted .psarc in the dlc folder
+2. scan the tone collection
+
+**Expected:** Each block inflates to one block at most; a bad archive is unreadable, not a crash.
+
+**Observed:** 141 MB for one block.
+
+**Root cause:** zlib.decompress with no output limit, and nothing the header declares checked against the file.
+
+**Fixes:** [FIX-0385](../FIX_LOG.md#fix-0385) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-04 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-04 — Triaged: code review 2026-11-04; FIX-0385 (fffffc8)
+- 2026-11-04 — In Progress: code review 2026-11-04; FIX-0385 (fffffc8)
+- 2026-11-04 — Fixed: code review 2026-11-04; FIX-0385 (fffffc8)
+
+## BUG-0387
+
+**A pasted tone plan built of unclosed braces kept the request busy for minutes**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | code review (Claude, on the maintainer's request), 2026-11-04 |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | Low |
+| Priority | P3 |
+| Status | Fixed |
+
+extract_plan scanned every opening brace to its close (200 000 unclosed braces: about a quarter of an hour), and the loose section-label pattern backtracked on long digit runs.
+
+**Steps to reproduce:** 
+
+1. paste a text of 200 000 '{' into "Importar tons de um texto"
+
+**Expected:** Answered at once.
+
+**Observed:** Minutes of work.
+
+**Root cause:** One full scan per brace; a regex with nested optional parts on an unbounded label.
+
+**Fixes:** [FIX-0386](../FIX_LOG.md#fix-0386) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-04 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-04 — Triaged: code review 2026-11-04; FIX-0386 (6f59240)
+- 2026-11-04 — In Progress: code review 2026-11-04; FIX-0386 (6f59240)
+- 2026-11-04 — Fixed: code review 2026-11-04; FIX-0386 (6f59240)
+
+## BUG-0388
+
+**Any string was taken as a chart name and stored, and the GP export built a path from it**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | code review (Claude, on the maintainer's request), 2026-11-04 |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | Low |
+| Priority | P3 |
+| Status | Fixed |
+
+Every field keyed by chart (rebuild arrangement, other_sync, note edits, FHPs, tunings, per-track tones, sync-confirmed, sync-main) took any string into params; /export-arrangement-gp put it into a file name.
+
+**Steps to reproduce:** 
+
+1. POST /rebuild with note_overrides keyed '../../x'
+
+**Expected:** 422.
+
+**Observed:** Stored.
+
+**Root cause:** The keys were typed str.
+
+**Fixes:** [FIX-0387](../FIX_LOG.md#fix-0387) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-04 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-04 — Triaged: code review 2026-11-04; FIX-0387 (e3d4775)
+- 2026-11-04 — In Progress: code review 2026-11-04; FIX-0387 (e3d4775)
+- 2026-11-04 — Fixed: code review 2026-11-04; FIX-0387 (e3d4775)

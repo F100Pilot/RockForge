@@ -30,6 +30,28 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 - **Turning the install counter off really deletes the data:** the request to delete what was sent was made only once; with no network, it was never repeated. It is now repeated at every start until the server answers.
 
+- **A GP file with impossible numbers is refused with a message:** a `.gp` (GP7/8) with a 0/4, 4/0 or 1,000,000/4 bar, or a tempo of 0, gave an unexplained error — and the last one kept loading forever. A GP5 with a bar of no beats failed the build with a division by zero. The wizard now says what is wrong straight away.
+
+- **An odd `.psarc` in the `dlc` folder no longer uses too much memory:** reading your songs' tones, one block of an archive could decompress to tens of MB (a file made on purpose reached 141 MB in a single block). Each block now stays the size of a block, and an inconsistent archive is reported as unreadable.
+
+- **Pasting a huge text into "Import tones from a text" answers at once:** a text full of unclosed braces could keep the request working for minutes. The search for the tone block now has a limit and answers immediately.
+
+- **A Songsterr track of more than seven strings is left out and said:** a GP5 holds up to seven strings, and the rest disappeared without a warning. The track now shows among the tracks not included, with its number of strings. A bar like 200/4 no longer gives an error.
+
+- **Track names and tone values are checked:** a track name the app never makes (from a hand-made request) was stored in the project, and a tone knob set to NaN reached the game's manifest, which then was no longer valid JSON. Both are now refused.
+
+- **With Redis stopped, the project says what is going on:** with no task queue, creating or rebuilding a project gave an error and the project stayed "pending" for ever. It is now marked as failed, asking you to check that Redis and the worker are running; a detection is "unavailable" with that line in its log.
+
+- **Several unexplained errors became messages:** a malformed cover link (`http://[::1`), a huge year in "Edit info", an enormous number in a sync file, a `.psarc` or bundle deleted from disk by hand, an answer from LRCLIB or iTunes cut off mid-way, a stored GP file that can no longer be read, and a `.rfproj` project whose tone detection or vocal line had the wrong shape all gave a 500 error. Each is now refused with a message.
+
+- **A section called "noguitar" no longer disappears:** the closing marker the app adds has that name, and every section with that name was removed when reading the score back, so a section of yours with that name was lost on the next rebuild. Now only the last one goes.
+
+- **A short note's bend keeps its curve:** a bent note with no sustain lost its curve (up and back down, for example) when it was read back into the editor.
+
+- **A sung grace note at the start of a bar gets its own syllable:** in a GP5, a grace note before a bar's first beat lasted nothing in the vocal line and its syllable sounded with the next note. It now starts in the bar before, like the note on the score.
+
+- **The game and DLC Builder see the same chord techniques:** the manifest did not recognise a power chord strummed fast (strings 10 ms apart), and the XML said there were power chords and open chords in any track with chords. Both now use the same rule.
+
 ## [0.12.0 beta 6] — 2026-11-04
 
 ### New

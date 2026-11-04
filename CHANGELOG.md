@@ -30,6 +30,28 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 - **Desligar o contador de instalações apaga mesmo os dados:** o pedido para apagar o que foi enviado só era feito uma vez; sem rede, nunca mais era repetido. Agora é repetido em cada arranque até o servidor responder.
 
+- **Um ficheiro GP com números impossíveis é recusado com uma mensagem:** um `.gp` (GP7/8) com um compasso de 0/4, 4/0 ou 1 000 000/4, ou um andamento de 0, dava um erro sem explicação — e o último ficava a carregar para sempre. Um GP5 com um compasso sem tempos falhava a construção com uma divisão por zero. Agora o assistente diz logo qual é o problema.
+
+- **Um `.psarc` estranho na pasta `dlc` já não gasta memória a mais:** ao ler os tons das tuas músicas, um bloco do arquivo podia descomprimir-se em dezenas de MB (um ficheiro feito de propósito chegava a 141 MB num só bloco). Cada bloco fica agora no tamanho de um bloco, e um arquivo incoerente é dado como ilegível.
+
+- **Colar um texto enorme em «Importar tons de um texto» responde logo:** um texto cheio de chavetas abertas podia deixar o pedido a trabalhar durante minutos. Agora a procura do bloco de tons tem um limite e responde de imediato.
+
+- **Uma pista com mais de sete cordas vinda do Songsterr é deixada de fora e dita:** o GP5 guarda até sete cordas, e as restantes desapareciam sem aviso. Agora a pista aparece nas pistas não incluídas, com o número de cordas. Um compasso como 200/4 já não dá erro.
+
+- **Os nomes das pistas e os valores dos tons são verificados:** um nome de pista que a aplicação não cria (vindo de um pedido feito à mão) era guardado no projeto, e um botão de um tom com valor NaN ia parar ao manifesto do jogo, que deixava de ser JSON válido. Ambos são agora recusados.
+
+- **Com o Redis parado, o projeto diz o que se passa:** sem fila de tarefas, criar ou reconstruir um projeto dava erro e o projeto ficava «pendente» para sempre. Agora fica marcado como falhado, com a indicação para confirmar que o Redis e o worker estão a correr; uma deteção fica «indisponível» com essa linha no registo.
+
+- **Vários erros sem explicação passaram a mensagens:** um link de capa malformado (`http://[::1`), um ano gigante em «Editar info», um número enorme num ficheiro de sincronização, um `.psarc` ou um bundle apagados à mão do disco, uma resposta cortada a meio do LRCLIB ou do iTunes, um ficheiro GP guardado que já não se consegue ler, e um projeto `.rfproj` com a deteção de tons ou a linha de voz num formato errado davam erro 500. Agora cada um é recusado com uma mensagem.
+
+- **Uma secção chamada «noguitar» já não desaparece:** o marcador final que a aplicação acrescenta tem esse nome, e todas as secções com esse nome eram tiradas ao ler a partitura, por isso uma secção tua com esse nome perdia-se na reconstrução seguinte. Agora só sai a última.
+
+- **O bend de uma nota curta mantém a sua curva:** uma nota com bend e sem duração perdia a curva (subir e voltar, por exemplo) ao ser lida de volta para o editor.
+
+- **Uma nota de ornamento cantada no início de um compasso já tem a sua sílaba:** num GP5, a nota de ornamento antes do primeiro tempo de um compasso ficava com duração zero na linha de voz e a sílaba soava com a nota seguinte. Agora começa no compasso anterior, como a nota da pauta.
+
+- **O jogo e o DLC Builder veem as mesmas técnicas de acordes:** o manifesto não reconhecia um power chord tocado em arpejo rápido (cordas a 10 ms umas das outras), e o XML dizia que havia power chords e acordes abertos em qualquer pista com acordes. Agora os dois usam a mesma regra.
+
 ## [0.12.0 beta 6] — 2026-11-04
 
 ### Novidades

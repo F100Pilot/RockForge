@@ -43,6 +43,23 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0382](bugs/audio.md#bug-0382) A Wwise 2025 under a folder named with 2019-2023 counted as supported (Medium, now Fixed)
 - [BUG-0383](bugs/tones.md#bug-0383) One odd CDLC manifest ended the whole tone-collection scan (Medium, now Fixed)
 - [BUG-0384](bugs/security.md#bug-0384) Turning the install counter off could leave the data on the server for good (Medium, now Fixed)
+- [BUG-0385](bugs/import.md#bug-0385) Impossible time signature or tempo in a GP7 file crashed or hung the import (Medium, now Fixed)
+- [BUG-0386](bugs/security.md#bug-0386) A crafted PSARC in the dlc folder could inflate one block to tens of MB (Medium, now Fixed)
+- [BUG-0387](bugs/security.md#bug-0387) A pasted tone plan built of unclosed braces kept the request busy for minutes (Low, now Fixed)
+- [BUG-0388](bugs/security.md#bug-0388) Any string was taken as a chart name and stored, and the GP export built a path from it (Low, now Fixed)
+- [BUG-0389](bugs/tones.md#bug-0389) A tone knob of NaN or infinity was stored and written into the manifest (Low, now Fixed)
+- [BUG-0390](bugs/import.md#bug-0390) A Songsterr part of more than seven strings lost strings without a word (Medium, now Fixed)
+- [BUG-0391](bugs/app.md#bug-0391) An image link that cannot be split was a 500 (Low, now Fixed)
+- [BUG-0392](bugs/app.md#bug-0392) A year too big for the database, a huge number in a sync file, or a deleted build was a 500 (Low, now Fixed)
+- [BUG-0393](bugs/app.md#bug-0393) With Redis down a project stayed pending forever (Medium, now Fixed)
+- [BUG-0394](bugs/app.md#bug-0394) A project file's tone detection or vocal line in a wrong shape broke their pages (Low, now Fixed)
+- [BUG-0395](bugs/app.md#bug-0395) An online answer cut off mid-way was a 500 (Low, now Fixed)
+- [BUG-0396](bugs/app.md#bug-0396) A stored GP file that no longer reads was a 500 in Editar info and Corrigir daqui (Low, now Fixed)
+- [BUG-0397](bugs/import.md#bug-0397) A GP5 bar with no beats failed the build with ZeroDivisionError (Low, now Fixed)
+- [BUG-0398](bugs/lyrics.md#bug-0398) A sung grace note before a downbeat lasted nothing in a GP5 vocal line (Low, now Fixed)
+- [BUG-0399](bugs/editor.md#bug-0399) A short bent note lost its curve, and a section named noguitar vanished, on read-back (Medium, now Fixed)
+- [BUG-0400](bugs/sync.md#bug-0400) Two sync points on one instant of the score divided by zero (Low, now Fixed)
+- [BUG-0401](bugs/psarc.md#bug-0401) The manifest and the XML advertised different chord techniques (Low, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 

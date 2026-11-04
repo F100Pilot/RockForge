@@ -389,6 +389,23 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0381](#fix-0381) | BUG-0382 | unreleased | passed | pending |
 | [FIX-0382](#fix-0382) | BUG-0383 | unreleased | passed | pending |
 | [FIX-0383](#fix-0383) | BUG-0384 | unreleased | passed | pending |
+| [FIX-0384](#fix-0384) | BUG-0385 | unreleased | passed | pending |
+| [FIX-0385](#fix-0385) | BUG-0386 | unreleased | passed | pending |
+| [FIX-0386](#fix-0386) | BUG-0387 | unreleased | passed | pending |
+| [FIX-0387](#fix-0387) | BUG-0388 | unreleased | passed | pending |
+| [FIX-0388](#fix-0388) | BUG-0389 | unreleased | passed | pending |
+| [FIX-0389](#fix-0389) | BUG-0390 | unreleased | passed | pending |
+| [FIX-0390](#fix-0390) | BUG-0391 | unreleased | passed | pending |
+| [FIX-0391](#fix-0391) | BUG-0392 | unreleased | passed | pending |
+| [FIX-0392](#fix-0392) | BUG-0393 | unreleased | passed | pending |
+| [FIX-0393](#fix-0393) | BUG-0394 | unreleased | passed | pending |
+| [FIX-0394](#fix-0394) | BUG-0395 | unreleased | passed | pending |
+| [FIX-0395](#fix-0395) | BUG-0396 | unreleased | passed | pending |
+| [FIX-0396](#fix-0396) | BUG-0397 | unreleased | passed | pending |
+| [FIX-0397](#fix-0397) | BUG-0398 | unreleased | passed | pending |
+| [FIX-0398](#fix-0398) | BUG-0399 | unreleased | passed | pending |
+| [FIX-0399](#fix-0399) | BUG-0400 | unreleased | passed | pending |
+| [FIX-0400](#fix-0400) | BUG-0401 | unreleased | passed | pending |
 
 ## FIX-0001
 
@@ -8432,3 +8449,360 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | passed |
 | Validation | _pending_ |
 | Regression risk | Low. |
+
+## FIX-0384
+
+**Bugs:** [BUG-0385](bugs/import.md#bug-0385)
+
+**Root cause:** _time_signature and _tempo_bpm took any number; other malformed numbers raised ValueError/ZeroDivisionError the callers did not catch.
+
+**Solution:** Signatures checked (numerator 1-128, note-value denominators) and tempos (finite, > 0) where read; inspect checks every bar; any other malformed number reads as an IngestionError.
+
+| | |
+|---|---|
+| Date | 2026-11-04 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 1cc4c09 |
+| Components | import |
+| Tests | tests/test_gpif_import.py::test_a_gp7_file_with_impossible_numbers_is_refused_in_words |
+| Manual checks | — |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low. |
+
+## FIX-0385
+
+**Bugs:** [BUG-0386](bugs/security.md#bug-0386)
+
+**Root cause:** zlib.decompress with no output limit, and nothing the header declares checked against the file.
+
+**Solution:** decompressobj with max_length = the block, an incomplete stream still read as a raw block; TOC length, block size and entry lengths checked against the file.
+
+| | |
+|---|---|
+| Date | 2026-11-04 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | fffffc8 |
+| Components | security |
+| Tests | tests/test_tone_collection.py::test_an_archive_from_the_dlc_folder_cannot_make_us_inflate_or_read_past_it |
+| Manual checks | — |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low. |
+
+## FIX-0386
+
+**Bugs:** [BUG-0387](bugs/security.md#bug-0387)
+
+**Root cause:** One full scan per brace; a regex with nested optional parts on an unbounded label.
+
+**Solution:** The scans share a budget of four times the text; a label over 80 characters is not read loosely.
+
+| | |
+|---|---|
+| Date | 2026-11-04 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 6f59240 |
+| Components | security |
+| Tests | tests/test_tone_plan.py::test_a_pasted_text_built_to_be_slow_is_answered_at_once |
+| Manual checks | — |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low: a real answer's block is found in the first scan. |
+
+## FIX-0387
+
+**Bugs:** [BUG-0388](bugs/security.md#bug-0388)
+
+**Root cause:** The keys were typed str.
+
+**Solution:** ChartName, the six ArrangementKind values, on every such field; anything else is a 422.
+
+| | |
+|---|---|
+| Date | 2026-11-04 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | e3d4775 |
+| Components | security |
+| Tests | tests/test_api.py::test_a_chart_name_the_build_never_makes_is_refused |
+| Manual checks | — |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low: the viewer sends only built chart names. |
+
+## FIX-0388
+
+**Bugs:** [BUG-0389](bugs/tones.md#bug-0389)
+
+**Root cause:** _pedal_from_dict converted knobs with float() and nothing more.
+
+**Solution:** The catalogue refuses a non-finite knob where it is read.
+
+| | |
+|---|---|
+| Date | 2026-11-04 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | ceebaef |
+| Components | tones |
+| Tests | tests/test_api.py::test_a_tone_knob_that_is_not_a_number_is_refused |
+| Manual checks | — |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low. |
+
+## FIX-0389
+
+**Bugs:** [BUG-0390](bugs/import.md#bug-0390)
+
+**Root cause:** Nothing checked what a GP5 can hold.
+
+**Solution:** A part of more than seven strings is skipped and named; such a signature is read like any impossible one; a failing write is an IngestionError.
+
+| | |
+|---|---|
+| Date | 2026-11-04 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | fefb276 |
+| Components | import |
+| Tests | tests/test_songsterr_gp.py::test_a_part_a_gp5_cannot_hold_is_left_out_and_said |
+| Manual checks | — |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low. |
+
+## FIX-0390
+
+**Bugs:** [BUG-0391](bugs/app.md#bug-0391)
+
+**Root cause:** Neither exception was caught.
+
+**Solution:** Refused like any bad link; the cover-service check answers no.
+
+| | |
+|---|---|
+| Date | 2026-11-04 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 3844942 |
+| Components | app |
+| Tests | tests/test_image_fetch.py::test_a_link_that_cannot_even_be_split_is_refused_not_a_crash |
+| Manual checks | — |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low. |
+
+## FIX-0391
+
+**Bugs:** [BUG-0392](bugs/app.md#bug-0392)
+
+**Root cause:** No bound on the year; float() of a huge int; no existence check before FileResponse.
+
+**Solution:** Year 0-9999; such an int reads as infinite; the downloads answer 409 asking for a rebuild.
+
+| | |
+|---|---|
+| Date | 2026-11-04 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | dda21e1 |
+| Components | app |
+| Tests | tests/test_api.py::test_numbers_too_big_for_the_database_and_files_gone_from_disk_are_said |
+| Manual checks | — |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low. |
+
+## FIX-0392
+
+**Bugs:** [BUG-0393](bugs/app.md#bug-0393)
+
+**Root cause:** The enqueue failure was not caught.
+
+**Solution:** The four dispatchers share _send: a refusal marks the build FAILED or the detection unavailable with a log line, and answers 503.
+
+| | |
+|---|---|
+| Date | 2026-11-04 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | bbd837a |
+| Components | app |
+| Tests | tests/test_api.py::test_a_queue_that_does_not_answer_marks_the_job_and_says_so |
+| Manual checks | — |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low. |
+
+## FIX-0393
+
+**Bugs:** [BUG-0394](bugs/app.md#bug-0394)
+
+**Root cause:** _check_imported_params did not look inside them.
+
+**Solution:** The import checks the shapes those reads take; /vocal-line skips a row that is not an object.
+
+| | |
+|---|---|
+| Date | 2026-11-04 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 1c41103; b4a04d0 |
+| Components | app |
+| Tests | tests/test_api.py::test_a_projects_measurements_in_a_shape_nothing_reads_are_refused |
+| Manual checks | — |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low. |
+
+## FIX-0394
+
+**Bugs:** [BUG-0395](bugs/app.md#bug-0395)
+
+**Root cause:** get_json caught URLError/TimeoutError/OSError only.
+
+**Solution:** http.client.HTTPException is a network failure too.
+
+| | |
+|---|---|
+| Date | 2026-11-04 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 1c03816 |
+| Components | app |
+| Tests | tests/test_https.py::test_an_answer_cut_off_mid_way_is_a_network_failure_not_a_crash |
+| Manual checks | — |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low. |
+
+## FIX-0395
+
+**Bugs:** [BUG-0396](bugs/app.md#bug-0396)
+
+**Root cause:** IngestionError not caught there.
+
+**Solution:** Both answer 422.
+
+| | |
+|---|---|
+| Date | 2026-11-04 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 8c7cce3 |
+| Components | app |
+| Tests | tests/test_api.py::test_a_stored_gp_file_that_no_longer_reads_is_a_422 |
+| Manual checks | — |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low. |
+
+## FIX-0396
+
+**Bugs:** [BUG-0397](bugs/import.md#bug-0397)
+
+**Root cause:** Nothing checked the numerator.
+
+**Solution:** Inspect and parse refuse it naming the bar.
+
+| | |
+|---|---|
+| Date | 2026-11-04 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 61b0215 |
+| Components | import |
+| Tests | tests/test_gp_import.py::test_a_bar_of_no_beats_is_refused_in_words |
+| Manual checks | — |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low. |
+
+## FIX-0397
+
+**Bugs:** [BUG-0398](bugs/lyrics.md#bug-0398)
+
+**Root cause:** Clamped to measure.start instead of the song's start.
+
+**Solution:** Clamped where the chart's own grace note is.
+
+| | |
+|---|---|
+| Date | 2026-11-04 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 981753a |
+| Components | lyrics |
+| Tests | tests/test_gp_import.py::test_a_sung_grace_note_on_a_bar_line_starts_in_the_bar_before |
+| Manual checks | — |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low. |
+
+## FIX-0398
+
+**Bugs:** [BUG-0399](bugs/editor.md#bug-0399)
+
+**Root cause:** Two readers' rules did not match the writer's.
+
+**Solution:** The reader uses the writer's span; one helper drops only the last 'noguitar' (reader, /arrangements, /tone-suggestions).
+
+| | |
+|---|---|
+| Date | 2026-11-04 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 18b74fe |
+| Components | editor |
+| Tests | tests/test_rsxml_writer.py::test_a_short_bent_note_and_a_users_noguitar_section_read_back |
+| Manual checks | — |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low. |
+
+## FIX-0399
+
+**Bugs:** [BUG-0400](bugs/sync.md#bug-0400)
+
+**Root cause:** No check that score times increase.
+
+**Solution:** Later points on an instant already placed are skipped.
+
+| | |
+|---|---|
+| Date | 2026-11-04 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 7453c7a |
+| Components | sync |
+| Tests | tests/test_sync_map.py::test_two_points_on_one_instant_of_the_score_do_not_divide_by_zero |
+| Manual checks | — |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low. |
+
+## FIX-0400
+
+**Bugs:** [BUG-0401](bugs/psarc.md#bug-0401)
+
+**Root cause:** Three groupings and two rule sets.
+
+**Solution:** domain.chords.group_chords and technique_flags, used by the writer, the SNG and the manifest.
+
+| | |
+|---|---|
+| Date | 2026-11-04 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 2538bbc |
+| Components | psarc |
+| Tests | tests/test_psarc_manifest.py::test_the_xml_and_the_manifest_advertise_the_same_techniques |
+| Manual checks | — |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low: the SNG's grouping is the same code it had. |

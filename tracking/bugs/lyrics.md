@@ -1287,3 +1287,42 @@ editorLines, which regroups the editor's words into the lines sent to WhisperX f
 - 2026-11-04 — Triaged: code review 2026-11-04; FIX-0377 (3504af7)
 - 2026-11-04 — In Progress: code review 2026-11-04; FIX-0377 (3504af7)
 - 2026-11-04 — Fixed: code review 2026-11-04; FIX-0377 (3504af7)
+
+## BUG-0398
+
+**A sung grace note before a downbeat lasted nothing in a GP5 vocal line**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | code review (Claude, on the maintainer's request), 2026-11-04 |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | Low |
+| Priority | P3 |
+| Status | Fixed |
+
+The chart's grace note before a beat takes the end of the previous note's time across the bar line; the vocal line's was clamped to the bar line, so its syllable sounded with the downbeat's.
+
+**Steps to reproduce:** 
+
+1. a GP5 vocal line with a grace note before bar 2's downbeat
+
+**Expected:** The syllable starts in bar 1 with the chart's grace note.
+
+**Observed:** Zero length at the bar line.
+
+**Root cause:** Clamped to measure.start instead of the song's start.
+
+**Fixes:** [FIX-0397](../FIX_LOG.md#fix-0397) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-04 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-04 — Triaged: code review 2026-11-04; FIX-0397 (981753a)
+- 2026-11-04 — In Progress: code review 2026-11-04; FIX-0397 (981753a)
+- 2026-11-04 — Fixed: code review 2026-11-04; FIX-0397 (981753a)

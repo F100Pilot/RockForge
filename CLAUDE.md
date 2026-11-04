@@ -6834,6 +6834,43 @@ code). The rules the first lot leaves:
 - **The score's keys belong to the Partitura page** (`onScorePage()` in
   `web/app.js`): a new global shortcut for the score uses it.
 
+## The code review of 2026-11-04, lot 2 (BUG-0385…0401)
+
+Untrusted input that could crash, hang or poison a project; the rules:
+- **A file's numbers are checked where they are read.** GP7: a time signature
+  is numerator 1-`MAX_NUMERATOR` (128) over a note value (`DENOMINATORS`), a
+  tempo finite and > 0, and any other malformed number in score.gpif reads as
+  an IngestionError (`_reads_as_ingestion_error` on `inspect_gpif`,
+  `parse_gpif_track`, `sync_start_s`). GP5: a numerator below 1 is refused
+  (`_check_time_signatures`). Both refuse at inspect, so the wizard says so.
+- **Reading a PSARC never trusts its header** (`container.read_entries`): a
+  block inflates to one block at most (`decompressobj` with `max_length`; an
+  incomplete stream is a raw block), the TOC length, block size
+  (`MAX_BLOCK_SIZE`) and entry lengths (`MAX_ZLIB_RATIO`) are checked against
+  the file, anything inconsistent is a `ValueError`.
+- **A pasted text's work is bounded** (`tone_plan.SCAN_BUDGET`, `MAX_LABEL`).
+- **A chart name is `schemas.ChartName`** (the six ArrangementKind values) on
+  every field keyed by chart; a test holds the two equal.
+- **A tone knob must be finite** (`gear_catalogue._pedal_from_dict` raises).
+- **What a GP5 cannot hold is left out and said** (`GP5_MAX_STRINGS`,
+  `GP5_MAX_NUMERATOR` in the Songsterr import); a failing write is an
+  IngestionError.
+- **The dispatchers go through `api._send`**: a queue that refuses the task
+  marks the build FAILED or the detection unavailable and answers 503.
+- **Every reader of a stored file catches the importer's refusal** (422), the
+  downloads check the file is on disk (409), urlsplit/IDNA failures of a link
+  are refusals, `http.client.HTTPException` is a network failure, a year is
+  0-`MAX_YEAR`, an integer past any float is infinite.
+- **Imported params are checked inside** `detected_tones`/`vocal_melody`
+  (`_detected_tones_ok`): the shapes their readers take.
+- **The XML reader mirrors the writer**: a bend curve over the writer's span
+  (`sustain` or 0.1 s), and only the LAST "noguitar" is the closer
+  (`reader.section_elements`, used by /arrangements and /tone-suggestions).
+- **One chord grouping**: `domain.chords.group_chords` and `technique_flags`
+  for the XML writer, the SNG and the manifest (the XML's ArrangementProperties
+  are now the manifest's).
+- `sync_map.audio_clock` skips a point on a score instant already placed.
+
 ## Async detection tasks (the `detect_lyrics` / `detect_tones` pattern)
 
 Both lyric and tone detection are slow (minutes) Celery tasks that follow one

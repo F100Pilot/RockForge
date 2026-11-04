@@ -9667,6 +9667,415 @@
       "test_result": "passed",
       "regression_risk": "Low.",
       "validation": "pending"
+    },
+    {
+      "id": "FIX-0384",
+      "bugs": [
+        "BUG-0385"
+      ],
+      "date": "2026-11-04",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "_time_signature and _tempo_bpm took any number; other malformed numbers raised ValueError/ZeroDivisionError the callers did not catch.",
+      "solution": "Signatures checked (numerator 1-128, note-value denominators) and tempos (finite, > 0) where read; inspect checks every bar; any other malformed number reads as an IngestionError.",
+      "components": [
+        "import"
+      ],
+      "commits": [
+        "1cc4c09"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_gpif_import.py::test_a_gp7_file_with_impossible_numbers_is_refused_in_words"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low.",
+      "validation": "pending"
+    },
+    {
+      "id": "FIX-0385",
+      "bugs": [
+        "BUG-0386"
+      ],
+      "date": "2026-11-04",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "zlib.decompress with no output limit, and nothing the header declares checked against the file.",
+      "solution": "decompressobj with max_length = the block, an incomplete stream still read as a raw block; TOC length, block size and entry lengths checked against the file.",
+      "components": [
+        "security"
+      ],
+      "commits": [
+        "fffffc8"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_tone_collection.py::test_an_archive_from_the_dlc_folder_cannot_make_us_inflate_or_read_past_it"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low.",
+      "validation": "pending"
+    },
+    {
+      "id": "FIX-0386",
+      "bugs": [
+        "BUG-0387"
+      ],
+      "date": "2026-11-04",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "One full scan per brace; a regex with nested optional parts on an unbounded label.",
+      "solution": "The scans share a budget of four times the text; a label over 80 characters is not read loosely.",
+      "components": [
+        "security"
+      ],
+      "commits": [
+        "6f59240"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_tone_plan.py::test_a_pasted_text_built_to_be_slow_is_answered_at_once"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low: a real answer's block is found in the first scan.",
+      "validation": "pending"
+    },
+    {
+      "id": "FIX-0387",
+      "bugs": [
+        "BUG-0388"
+      ],
+      "date": "2026-11-04",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "The keys were typed str.",
+      "solution": "ChartName, the six ArrangementKind values, on every such field; anything else is a 422.",
+      "components": [
+        "security"
+      ],
+      "commits": [
+        "e3d4775"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_api.py::test_a_chart_name_the_build_never_makes_is_refused"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low: the viewer sends only built chart names.",
+      "validation": "pending"
+    },
+    {
+      "id": "FIX-0388",
+      "bugs": [
+        "BUG-0389"
+      ],
+      "date": "2026-11-04",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "_pedal_from_dict converted knobs with float() and nothing more.",
+      "solution": "The catalogue refuses a non-finite knob where it is read.",
+      "components": [
+        "tones"
+      ],
+      "commits": [
+        "ceebaef"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_api.py::test_a_tone_knob_that_is_not_a_number_is_refused"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low.",
+      "validation": "pending"
+    },
+    {
+      "id": "FIX-0389",
+      "bugs": [
+        "BUG-0390"
+      ],
+      "date": "2026-11-04",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "Nothing checked what a GP5 can hold.",
+      "solution": "A part of more than seven strings is skipped and named; such a signature is read like any impossible one; a failing write is an IngestionError.",
+      "components": [
+        "import"
+      ],
+      "commits": [
+        "fefb276"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_songsterr_gp.py::test_a_part_a_gp5_cannot_hold_is_left_out_and_said"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low.",
+      "validation": "pending"
+    },
+    {
+      "id": "FIX-0390",
+      "bugs": [
+        "BUG-0391"
+      ],
+      "date": "2026-11-04",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "Neither exception was caught.",
+      "solution": "Refused like any bad link; the cover-service check answers no.",
+      "components": [
+        "app"
+      ],
+      "commits": [
+        "3844942"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_image_fetch.py::test_a_link_that_cannot_even_be_split_is_refused_not_a_crash"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low.",
+      "validation": "pending"
+    },
+    {
+      "id": "FIX-0391",
+      "bugs": [
+        "BUG-0392"
+      ],
+      "date": "2026-11-04",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "No bound on the year; float() of a huge int; no existence check before FileResponse.",
+      "solution": "Year 0-9999; such an int reads as infinite; the downloads answer 409 asking for a rebuild.",
+      "components": [
+        "app"
+      ],
+      "commits": [
+        "dda21e1"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_api.py::test_numbers_too_big_for_the_database_and_files_gone_from_disk_are_said"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low.",
+      "validation": "pending"
+    },
+    {
+      "id": "FIX-0392",
+      "bugs": [
+        "BUG-0393"
+      ],
+      "date": "2026-11-04",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "The enqueue failure was not caught.",
+      "solution": "The four dispatchers share _send: a refusal marks the build FAILED or the detection unavailable with a log line, and answers 503.",
+      "components": [
+        "app"
+      ],
+      "commits": [
+        "bbd837a"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_api.py::test_a_queue_that_does_not_answer_marks_the_job_and_says_so"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low.",
+      "validation": "pending"
+    },
+    {
+      "id": "FIX-0393",
+      "bugs": [
+        "BUG-0394"
+      ],
+      "date": "2026-11-04",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "_check_imported_params did not look inside them.",
+      "solution": "The import checks the shapes those reads take; /vocal-line skips a row that is not an object.",
+      "components": [
+        "app"
+      ],
+      "commits": [
+        "1c41103",
+        "b4a04d0"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_api.py::test_a_projects_measurements_in_a_shape_nothing_reads_are_refused"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low.",
+      "validation": "pending"
+    },
+    {
+      "id": "FIX-0394",
+      "bugs": [
+        "BUG-0395"
+      ],
+      "date": "2026-11-04",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "get_json caught URLError/TimeoutError/OSError only.",
+      "solution": "http.client.HTTPException is a network failure too.",
+      "components": [
+        "app"
+      ],
+      "commits": [
+        "1c03816"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_https.py::test_an_answer_cut_off_mid_way_is_a_network_failure_not_a_crash"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low.",
+      "validation": "pending"
+    },
+    {
+      "id": "FIX-0395",
+      "bugs": [
+        "BUG-0396"
+      ],
+      "date": "2026-11-04",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "IngestionError not caught there.",
+      "solution": "Both answer 422.",
+      "components": [
+        "app"
+      ],
+      "commits": [
+        "8c7cce3"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_api.py::test_a_stored_gp_file_that_no_longer_reads_is_a_422"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low.",
+      "validation": "pending"
+    },
+    {
+      "id": "FIX-0396",
+      "bugs": [
+        "BUG-0397"
+      ],
+      "date": "2026-11-04",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "Nothing checked the numerator.",
+      "solution": "Inspect and parse refuse it naming the bar.",
+      "components": [
+        "import"
+      ],
+      "commits": [
+        "61b0215"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_gp_import.py::test_a_bar_of_no_beats_is_refused_in_words"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low.",
+      "validation": "pending"
+    },
+    {
+      "id": "FIX-0397",
+      "bugs": [
+        "BUG-0398"
+      ],
+      "date": "2026-11-04",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "Clamped to measure.start instead of the song's start.",
+      "solution": "Clamped where the chart's own grace note is.",
+      "components": [
+        "lyrics"
+      ],
+      "commits": [
+        "981753a"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_gp_import.py::test_a_sung_grace_note_on_a_bar_line_starts_in_the_bar_before"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low.",
+      "validation": "pending"
+    },
+    {
+      "id": "FIX-0398",
+      "bugs": [
+        "BUG-0399"
+      ],
+      "date": "2026-11-04",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "Two readers' rules did not match the writer's.",
+      "solution": "The reader uses the writer's span; one helper drops only the last 'noguitar' (reader, /arrangements, /tone-suggestions).",
+      "components": [
+        "editor"
+      ],
+      "commits": [
+        "18b74fe"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_rsxml_writer.py::test_a_short_bent_note_and_a_users_noguitar_section_read_back"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low.",
+      "validation": "pending"
+    },
+    {
+      "id": "FIX-0399",
+      "bugs": [
+        "BUG-0400"
+      ],
+      "date": "2026-11-04",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "No check that score times increase.",
+      "solution": "Later points on an instant already placed are skipped.",
+      "components": [
+        "sync"
+      ],
+      "commits": [
+        "7453c7a"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_sync_map.py::test_two_points_on_one_instant_of_the_score_do_not_divide_by_zero"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low.",
+      "validation": "pending"
+    },
+    {
+      "id": "FIX-0400",
+      "bugs": [
+        "BUG-0401"
+      ],
+      "date": "2026-11-04",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "Three groupings and two rule sets.",
+      "solution": "domain.chords.group_chords and technique_flags, used by the writer, the SNG and the manifest.",
+      "components": [
+        "psarc"
+      ],
+      "commits": [
+        "2538bbc"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_psarc_manifest.py::test_the_xml_and_the_manifest_advertise_the_same_techniques"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low: the SNG's grouping is the same code it had.",
+      "validation": "pending"
     }
   ]
 }

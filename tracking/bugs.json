@@ -19166,6 +19166,844 @@
           "note": "code review 2026-11-04; FIX-0383 (c5589e5)"
         }
       ]
+    },
+    {
+      "id": "BUG-0385",
+      "title": "Impossible time signature or tempo in a GP7 file crashed or hung the import",
+      "detected": "2026-11-04",
+      "reported_by": "code review (Claude, on the maintainer's request), 2026-11-04",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "import",
+      "description": "A numerator of 0, a denominator of 0 or 3, or a tempo of 0/NaN/\"abc\" in score.gpif crashed the import with a 500; a numerator in the millions laid out beats forever.",
+      "steps": [
+        "import a .gp whose score.gpif has <Time>100000000/4</Time>"
+      ],
+      "expected": "The file is refused with a message.",
+      "observed": "The request never finished (or a 500).",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Fixed",
+      "root_cause": "_time_signature and _tempo_bpm took any number; other malformed numbers raised ValueError/ZeroDivisionError the callers did not catch.",
+      "fixes": [
+        "FIX-0384"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-04",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Triaged",
+          "note": "code review 2026-11-04; FIX-0384 (1cc4c09)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "In Progress",
+          "note": "code review 2026-11-04; FIX-0384 (1cc4c09)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Fixed",
+          "note": "code review 2026-11-04; FIX-0384 (1cc4c09)"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0386",
+      "title": "A crafted PSARC in the dlc folder could inflate one block to tens of MB",
+      "detected": "2026-11-04",
+      "reported_by": "code review (Claude, on the maintainer's request), 2026-11-04",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "security",
+      "description": "read_entries inflated each zlib block whole: a 58 KB block made 60 MB (141 MB peak); a TOC shorter than its header read the whole file; an entry declaring more than the file holds ended in an IndexError.",
+      "steps": [
+        "put a crafted .psarc in the dlc folder",
+        "scan the tone collection"
+      ],
+      "expected": "Each block inflates to one block at most; a bad archive is unreadable, not a crash.",
+      "observed": "141 MB for one block.",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Fixed",
+      "root_cause": "zlib.decompress with no output limit, and nothing the header declares checked against the file.",
+      "fixes": [
+        "FIX-0385"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-04",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Triaged",
+          "note": "code review 2026-11-04; FIX-0385 (fffffc8)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "In Progress",
+          "note": "code review 2026-11-04; FIX-0385 (fffffc8)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Fixed",
+          "note": "code review 2026-11-04; FIX-0385 (fffffc8)"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0387",
+      "title": "A pasted tone plan built of unclosed braces kept the request busy for minutes",
+      "detected": "2026-11-04",
+      "reported_by": "code review (Claude, on the maintainer's request), 2026-11-04",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "security",
+      "description": "extract_plan scanned every opening brace to its close (200 000 unclosed braces: about a quarter of an hour), and the loose section-label pattern backtracked on long digit runs.",
+      "steps": [
+        "paste a text of 200 000 '{' into \"Importar tons de um texto\""
+      ],
+      "expected": "Answered at once.",
+      "observed": "Minutes of work.",
+      "severity": "Low",
+      "priority": "P3",
+      "status": "Fixed",
+      "root_cause": "One full scan per brace; a regex with nested optional parts on an unbounded label.",
+      "fixes": [
+        "FIX-0386"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-04",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Triaged",
+          "note": "code review 2026-11-04; FIX-0386 (6f59240)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "In Progress",
+          "note": "code review 2026-11-04; FIX-0386 (6f59240)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Fixed",
+          "note": "code review 2026-11-04; FIX-0386 (6f59240)"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0388",
+      "title": "Any string was taken as a chart name and stored, and the GP export built a path from it",
+      "detected": "2026-11-04",
+      "reported_by": "code review (Claude, on the maintainer's request), 2026-11-04",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "security",
+      "description": "Every field keyed by chart (rebuild arrangement, other_sync, note edits, FHPs, tunings, per-track tones, sync-confirmed, sync-main) took any string into params; /export-arrangement-gp put it into a file name.",
+      "steps": [
+        "POST /rebuild with note_overrides keyed '../../x'"
+      ],
+      "expected": "422.",
+      "observed": "Stored.",
+      "severity": "Low",
+      "priority": "P3",
+      "status": "Fixed",
+      "root_cause": "The keys were typed str.",
+      "fixes": [
+        "FIX-0387"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-04",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Triaged",
+          "note": "code review 2026-11-04; FIX-0387 (e3d4775)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "In Progress",
+          "note": "code review 2026-11-04; FIX-0387 (e3d4775)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Fixed",
+          "note": "code review 2026-11-04; FIX-0387 (e3d4775)"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0389",
+      "title": "A tone knob of NaN or infinity was stored and written into the manifest",
+      "detected": "2026-11-04",
+      "reported_by": "code review (Claude, on the maintainer's request), 2026-11-04",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "tones",
+      "description": "Only a tone's volume was checked, so a NaN knob in a rebuild, the library or a tone swap was stored and the build wrote NaN into the manifest, which is not JSON.",
+      "steps": [
+        "send a tone with a knob of NaN"
+      ],
+      "expected": "422.",
+      "observed": "202 and a manifest with NaN.",
+      "severity": "Low",
+      "priority": "P3",
+      "status": "Fixed",
+      "root_cause": "_pedal_from_dict converted knobs with float() and nothing more.",
+      "fixes": [
+        "FIX-0388"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-04",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Triaged",
+          "note": "code review 2026-11-04; FIX-0388 (ceebaef)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "In Progress",
+          "note": "code review 2026-11-04; FIX-0388 (ceebaef)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Fixed",
+          "note": "code review 2026-11-04; FIX-0388 (ceebaef)"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0390",
+      "title": "A Songsterr part of more than seven strings lost strings without a word",
+      "detected": "2026-11-04",
+      "reported_by": "code review (Claude, on the maintainer's request), 2026-11-04",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "import",
+      "description": "PyGuitarPro writes the first seven strings of a part and drops the rest; a signature numerator past one signed byte (200/4) failed the write with a GPException, a 500.",
+      "steps": [
+        "import a Songsterr tab with an 8-string part"
+      ],
+      "expected": "The part is left out and named.",
+      "observed": "Its lowest strings silently gone.",
+      "severity": "Medium",
+      "priority": "P3",
+      "status": "Fixed",
+      "root_cause": "Nothing checked what a GP5 can hold.",
+      "fixes": [
+        "FIX-0389"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-04",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Triaged",
+          "note": "code review 2026-11-04; FIX-0389 (fefb276)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "In Progress",
+          "note": "code review 2026-11-04; FIX-0389 (fefb276)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Fixed",
+          "note": "code review 2026-11-04; FIX-0389 (fefb276)"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0391",
+      "title": "An image link that cannot be split was a 500",
+      "detected": "2026-11-04",
+      "reported_by": "code review (Claude, on the maintainer's request), 2026-11-04",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "app",
+      "description": "urlsplit raises on an unclosed IPv6 bracket and getaddrinfo UnicodeError on a name IDNA cannot encode; both reached the cover link, the Google unwrap and the cover check as a 500.",
+      "steps": [
+        "paste http://[::1/a.png as a cover link"
+      ],
+      "expected": "Refused in words.",
+      "observed": "500.",
+      "severity": "Low",
+      "priority": "P4",
+      "status": "Fixed",
+      "root_cause": "Neither exception was caught.",
+      "fixes": [
+        "FIX-0390"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-04",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Triaged",
+          "note": "code review 2026-11-04; FIX-0390 (3844942)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "In Progress",
+          "note": "code review 2026-11-04; FIX-0390 (3844942)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Fixed",
+          "note": "code review 2026-11-04; FIX-0390 (3844942)"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0392",
+      "title": "A year too big for the database, a huge number in a sync file, or a deleted build was a 500",
+      "detected": "2026-11-04",
+      "reported_by": "code review (Claude, on the maintainer's request), 2026-11-04",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "app",
+      "description": "A year past 64 bits failed the commit; an integer past any float failed /import-sync's check with an OverflowError; a build whose files were deleted by hand failed inside the file response.",
+      "steps": [
+        "Editar info with year 10^30",
+        "download the PSARC after deleting it by hand"
+      ],
+      "expected": "422 / 409 in words.",
+      "observed": "500.",
+      "severity": "Low",
+      "priority": "P3",
+      "status": "Fixed",
+      "root_cause": "No bound on the year; float() of a huge int; no existence check before FileResponse.",
+      "fixes": [
+        "FIX-0391"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-04",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Triaged",
+          "note": "code review 2026-11-04; FIX-0391 (dda21e1)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "In Progress",
+          "note": "code review 2026-11-04; FIX-0391 (dda21e1)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Fixed",
+          "note": "code review 2026-11-04; FIX-0391 (dda21e1)"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0393",
+      "title": "With Redis down a project stayed pending forever",
+      "detected": "2026-11-04",
+      "reported_by": "code review (Claude, on the maintainer's request), 2026-11-04",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "app",
+      "description": "Under Celery, .delay() raised after the job was committed waiting for it: a 500, and a build PENDING (a detection 'detecting') forever, which nothing recovers in that mode.",
+      "steps": [
+        "stop Redis",
+        "create or rebuild a project"
+      ],
+      "expected": "The job is marked and the user told what to start.",
+      "observed": "500 and a project stuck at its first stage.",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Fixed",
+      "root_cause": "The enqueue failure was not caught.",
+      "fixes": [
+        "FIX-0392"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-04",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Triaged",
+          "note": "code review 2026-11-04; FIX-0392 (bbd837a)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "In Progress",
+          "note": "code review 2026-11-04; FIX-0392 (bbd837a)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Fixed",
+          "note": "code review 2026-11-04; FIX-0392 (bbd837a)"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0394",
+      "title": "A project file's tone detection or vocal line in a wrong shape broke their pages",
+      "detected": "2026-11-04",
+      "reported_by": "code review (Claude, on the maintainer's request), 2026-11-04",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "app",
+      "description": "detected_tones and vocal_melody were only checked to be an object and a list; a wrong shape inside was stored and every read of /detected-tones, /tone-suggestions or /vocal-line was a 500.",
+      "steps": [
+        "import a .rfproj whose detected_tones.lead is a list"
+      ],
+      "expected": "Refused at import.",
+      "observed": "Stored, then 500s.",
+      "severity": "Low",
+      "priority": "P3",
+      "status": "Fixed",
+      "root_cause": "_check_imported_params did not look inside them.",
+      "fixes": [
+        "FIX-0393"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-04",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Triaged",
+          "note": "code review 2026-11-04; FIX-0393 (1c41103)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "In Progress",
+          "note": "code review 2026-11-04; FIX-0393 (1c41103)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Fixed",
+          "note": "code review 2026-11-04; FIX-0393 (1c41103)"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0395",
+      "title": "An online answer cut off mid-way was a 500",
+      "detected": "2026-11-04",
+      "reported_by": "code review (Claude, on the maintainer's request), 2026-11-04",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "app",
+      "description": "IncompleteRead is an http.client.HTTPException, not an OSError, so a connection dropped while LRCLIB, iTunes or MusicBrainz answered was not caught.",
+      "steps": [
+        "lose the connection while a lyric search answers"
+      ],
+      "expected": "The usual network message.",
+      "observed": "500.",
+      "severity": "Low",
+      "priority": "P4",
+      "status": "Fixed",
+      "root_cause": "get_json caught URLError/TimeoutError/OSError only.",
+      "fixes": [
+        "FIX-0394"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-04",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Triaged",
+          "note": "code review 2026-11-04; FIX-0394 (1c03816)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "In Progress",
+          "note": "code review 2026-11-04; FIX-0394 (1c03816)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Fixed",
+          "note": "code review 2026-11-04; FIX-0394 (1c03816)"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0396",
+      "title": "A stored GP file that no longer reads was a 500 in Editar info and Corrigir daqui",
+      "detected": "2026-11-04",
+      "reported_by": "code review (Claude, on the maintainer's request), 2026-11-04",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "app",
+      "description": "/gp-tracks and /detect-tempo read the stored file without catching the importer's refusal (a damaged file, or one a stricter parser now refuses).",
+      "steps": [
+        "damage a project's stored GP file",
+        "open Editar info"
+      ],
+      "expected": "422 with the importer's message.",
+      "observed": "500.",
+      "severity": "Low",
+      "priority": "P3",
+      "status": "Fixed",
+      "root_cause": "IngestionError not caught there.",
+      "fixes": [
+        "FIX-0395"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-04",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Triaged",
+          "note": "code review 2026-11-04; FIX-0395 (8c7cce3)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "In Progress",
+          "note": "code review 2026-11-04; FIX-0395 (8c7cce3)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Fixed",
+          "note": "code review 2026-11-04; FIX-0395 (8c7cce3)"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0397",
+      "title": "A GP5 bar with no beats failed the build with ZeroDivisionError",
+      "detected": "2026-11-04",
+      "reported_by": "code review (Claude, on the maintainer's request), 2026-11-04",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "import",
+      "description": "The numerator is a signed byte; 0 laid out no beats and divided the bar by zero.",
+      "steps": [
+        "import a GP5 whose bar 1 is 0/4"
+      ],
+      "expected": "Refused naming the bar.",
+      "observed": "Build failed with ZeroDivisionError.",
+      "severity": "Low",
+      "priority": "P3",
+      "status": "Fixed",
+      "root_cause": "Nothing checked the numerator.",
+      "fixes": [
+        "FIX-0396"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-04",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Triaged",
+          "note": "code review 2026-11-04; FIX-0396 (61b0215)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "In Progress",
+          "note": "code review 2026-11-04; FIX-0396 (61b0215)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Fixed",
+          "note": "code review 2026-11-04; FIX-0396 (61b0215)"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0398",
+      "title": "A sung grace note before a downbeat lasted nothing in a GP5 vocal line",
+      "detected": "2026-11-04",
+      "reported_by": "code review (Claude, on the maintainer's request), 2026-11-04",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "lyrics",
+      "description": "The chart's grace note before a beat takes the end of the previous note's time across the bar line; the vocal line's was clamped to the bar line, so its syllable sounded with the downbeat's.",
+      "steps": [
+        "a GP5 vocal line with a grace note before bar 2's downbeat"
+      ],
+      "expected": "The syllable starts in bar 1 with the chart's grace note.",
+      "observed": "Zero length at the bar line.",
+      "severity": "Low",
+      "priority": "P3",
+      "status": "Fixed",
+      "root_cause": "Clamped to measure.start instead of the song's start.",
+      "fixes": [
+        "FIX-0397"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-04",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Triaged",
+          "note": "code review 2026-11-04; FIX-0397 (981753a)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "In Progress",
+          "note": "code review 2026-11-04; FIX-0397 (981753a)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Fixed",
+          "note": "code review 2026-11-04; FIX-0397 (981753a)"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0399",
+      "title": "A short bent note lost its curve, and a section named noguitar vanished, on read-back",
+      "detected": "2026-11-04",
+      "reported_by": "code review (Claude, on the maintainer's request), 2026-11-04",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "editor",
+      "description": "The XML reader divided <bendValues> times by the sustain while the writer lays a no-sustain note's curve over 0.1 s; and every 'noguitar' section was dropped as the writer's closer, so a section the user named so was lost on the next rebuild.",
+      "steps": [
+        "name a section 'noguitar' in the section editor",
+        "rebuild twice"
+      ],
+      "expected": "Both survive.",
+      "observed": "The curve and the section gone.",
+      "severity": "Medium",
+      "priority": "P3",
+      "status": "Fixed",
+      "root_cause": "Two readers' rules did not match the writer's.",
+      "fixes": [
+        "FIX-0398"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-04",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Triaged",
+          "note": "code review 2026-11-04; FIX-0398 (18b74fe)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "In Progress",
+          "note": "code review 2026-11-04; FIX-0398 (18b74fe)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Fixed",
+          "note": "code review 2026-11-04; FIX-0398 (18b74fe)"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0400",
+      "title": "Two sync points on one instant of the score divided by zero",
+      "detected": "2026-11-04",
+      "reported_by": "code review (Claude, on the maintainer's request), 2026-11-04",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "sync",
+      "description": "audio_clock mapped each span between neighbouring points; two points at the same score time made that span divide by zero and the clock read the second point.",
+      "steps": [
+        "sync points on a bar of no length"
+      ],
+      "expected": "The first point says where that instant is.",
+      "observed": "Division by zero, or the wrong instant.",
+      "severity": "Low",
+      "priority": "P4",
+      "status": "Fixed",
+      "root_cause": "No check that score times increase.",
+      "fixes": [
+        "FIX-0399"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-04",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Triaged",
+          "note": "code review 2026-11-04; FIX-0399 (7453c7a)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "In Progress",
+          "note": "code review 2026-11-04; FIX-0399 (7453c7a)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Fixed",
+          "note": "code review 2026-11-04; FIX-0399 (7453c7a)"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0401",
+      "title": "The manifest and the XML advertised different chord techniques",
+      "detected": "2026-11-04",
+      "reported_by": "code review (Claude, on the maintainer's request), 2026-11-04",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "psarc",
+      "description": "The manifest grouped chords by time rounded to 0.1 ms (a strummed power chord was not one) and the XML set powerChords and openChords for any chord; the writer and the SNG builder each had a copy of the 30 ms grouping.",
+      "steps": [
+        "build a chart of strummed power chords, or of fretted triads"
+      ],
+      "expected": "The same, correct flags in both.",
+      "observed": "Missing power chords in the manifest; power and open chords claimed in the XML.",
+      "severity": "Low",
+      "priority": "P3",
+      "status": "Fixed",
+      "root_cause": "Three groupings and two rule sets.",
+      "fixes": [
+        "FIX-0400"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-04",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Triaged",
+          "note": "code review 2026-11-04; FIX-0400 (2538bbc)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "In Progress",
+          "note": "code review 2026-11-04; FIX-0400 (2538bbc)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Fixed",
+          "note": "code review 2026-11-04; FIX-0400 (2538bbc)"
+        }
+      ]
     }
   ]
 }

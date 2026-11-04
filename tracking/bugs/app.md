@@ -2355,3 +2355,240 @@ A rebuild, GP reload or sync import forked while a stem separation, tone detecti
 - 2026-11-04 — Triaged: code review 2026-11-04; FIX-0373 (b272048, 96bc5a3)
 - 2026-11-04 — In Progress: code review 2026-11-04; FIX-0373 (b272048, 96bc5a3)
 - 2026-11-04 — Fixed: code review 2026-11-04; FIX-0373 (b272048, 96bc5a3)
+
+## BUG-0391
+
+**An image link that cannot be split was a 500**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | code review (Claude, on the maintainer's request), 2026-11-04 |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | Low |
+| Priority | P4 |
+| Status | Fixed |
+
+urlsplit raises on an unclosed IPv6 bracket and getaddrinfo UnicodeError on a name IDNA cannot encode; both reached the cover link, the Google unwrap and the cover check as a 500.
+
+**Steps to reproduce:** 
+
+1. paste http://[::1/a.png as a cover link
+
+**Expected:** Refused in words.
+
+**Observed:** 500.
+
+**Root cause:** Neither exception was caught.
+
+**Fixes:** [FIX-0390](../FIX_LOG.md#fix-0390) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-04 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-04 — Triaged: code review 2026-11-04; FIX-0390 (3844942)
+- 2026-11-04 — In Progress: code review 2026-11-04; FIX-0390 (3844942)
+- 2026-11-04 — Fixed: code review 2026-11-04; FIX-0390 (3844942)
+
+## BUG-0392
+
+**A year too big for the database, a huge number in a sync file, or a deleted build was a 500**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | code review (Claude, on the maintainer's request), 2026-11-04 |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | Low |
+| Priority | P3 |
+| Status | Fixed |
+
+A year past 64 bits failed the commit; an integer past any float failed /import-sync's check with an OverflowError; a build whose files were deleted by hand failed inside the file response.
+
+**Steps to reproduce:** 
+
+1. Editar info with year 10^30
+2. download the PSARC after deleting it by hand
+
+**Expected:** 422 / 409 in words.
+
+**Observed:** 500.
+
+**Root cause:** No bound on the year; float() of a huge int; no existence check before FileResponse.
+
+**Fixes:** [FIX-0391](../FIX_LOG.md#fix-0391) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-04 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-04 — Triaged: code review 2026-11-04; FIX-0391 (dda21e1)
+- 2026-11-04 — In Progress: code review 2026-11-04; FIX-0391 (dda21e1)
+- 2026-11-04 — Fixed: code review 2026-11-04; FIX-0391 (dda21e1)
+
+## BUG-0393
+
+**With Redis down a project stayed pending forever**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | code review (Claude, on the maintainer's request), 2026-11-04 |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Fixed |
+
+Under Celery, .delay() raised after the job was committed waiting for it: a 500, and a build PENDING (a detection 'detecting') forever, which nothing recovers in that mode.
+
+**Steps to reproduce:** 
+
+1. stop Redis
+2. create or rebuild a project
+
+**Expected:** The job is marked and the user told what to start.
+
+**Observed:** 500 and a project stuck at its first stage.
+
+**Root cause:** The enqueue failure was not caught.
+
+**Fixes:** [FIX-0392](../FIX_LOG.md#fix-0392) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-04 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-04 — Triaged: code review 2026-11-04; FIX-0392 (bbd837a)
+- 2026-11-04 — In Progress: code review 2026-11-04; FIX-0392 (bbd837a)
+- 2026-11-04 — Fixed: code review 2026-11-04; FIX-0392 (bbd837a)
+
+## BUG-0394
+
+**A project file's tone detection or vocal line in a wrong shape broke their pages**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | code review (Claude, on the maintainer's request), 2026-11-04 |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | Low |
+| Priority | P3 |
+| Status | Fixed |
+
+detected_tones and vocal_melody were only checked to be an object and a list; a wrong shape inside was stored and every read of /detected-tones, /tone-suggestions or /vocal-line was a 500.
+
+**Steps to reproduce:** 
+
+1. import a .rfproj whose detected_tones.lead is a list
+
+**Expected:** Refused at import.
+
+**Observed:** Stored, then 500s.
+
+**Root cause:** _check_imported_params did not look inside them.
+
+**Fixes:** [FIX-0393](../FIX_LOG.md#fix-0393) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-04 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-04 — Triaged: code review 2026-11-04; FIX-0393 (1c41103)
+- 2026-11-04 — In Progress: code review 2026-11-04; FIX-0393 (1c41103)
+- 2026-11-04 — Fixed: code review 2026-11-04; FIX-0393 (1c41103)
+
+## BUG-0395
+
+**An online answer cut off mid-way was a 500**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | code review (Claude, on the maintainer's request), 2026-11-04 |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | Low |
+| Priority | P4 |
+| Status | Fixed |
+
+IncompleteRead is an http.client.HTTPException, not an OSError, so a connection dropped while LRCLIB, iTunes or MusicBrainz answered was not caught.
+
+**Steps to reproduce:** 
+
+1. lose the connection while a lyric search answers
+
+**Expected:** The usual network message.
+
+**Observed:** 500.
+
+**Root cause:** get_json caught URLError/TimeoutError/OSError only.
+
+**Fixes:** [FIX-0394](../FIX_LOG.md#fix-0394) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-04 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-04 — Triaged: code review 2026-11-04; FIX-0394 (1c03816)
+- 2026-11-04 — In Progress: code review 2026-11-04; FIX-0394 (1c03816)
+- 2026-11-04 — Fixed: code review 2026-11-04; FIX-0394 (1c03816)
+
+## BUG-0396
+
+**A stored GP file that no longer reads was a 500 in Editar info and Corrigir daqui**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | code review (Claude, on the maintainer's request), 2026-11-04 |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | Low |
+| Priority | P3 |
+| Status | Fixed |
+
+/gp-tracks and /detect-tempo read the stored file without catching the importer's refusal (a damaged file, or one a stricter parser now refuses).
+
+**Steps to reproduce:** 
+
+1. damage a project's stored GP file
+2. open Editar info
+
+**Expected:** 422 with the importer's message.
+
+**Observed:** 500.
+
+**Root cause:** IngestionError not caught there.
+
+**Fixes:** [FIX-0395](../FIX_LOG.md#fix-0395) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-04 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-04 — Triaged: code review 2026-11-04; FIX-0395 (8c7cce3)
+- 2026-11-04 — In Progress: code review 2026-11-04; FIX-0395 (8c7cce3)
+- 2026-11-04 — Fixed: code review 2026-11-04; FIX-0395 (8c7cce3)

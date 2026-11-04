@@ -1078,3 +1078,42 @@ A null knob value, a number where the descriptors go or Entries as a list raised
 - 2026-11-04 — Triaged: code review 2026-11-04; FIX-0382 (995f7ba)
 - 2026-11-04 — In Progress: code review 2026-11-04; FIX-0382 (995f7ba)
 - 2026-11-04 — Fixed: code review 2026-11-04; FIX-0382 (995f7ba)
+
+## BUG-0389
+
+**A tone knob of NaN or infinity was stored and written into the manifest**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | code review (Claude, on the maintainer's request), 2026-11-04 |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | Low |
+| Priority | P3 |
+| Status | Fixed |
+
+Only a tone's volume was checked, so a NaN knob in a rebuild, the library or a tone swap was stored and the build wrote NaN into the manifest, which is not JSON.
+
+**Steps to reproduce:** 
+
+1. send a tone with a knob of NaN
+
+**Expected:** 422.
+
+**Observed:** 202 and a manifest with NaN.
+
+**Root cause:** _pedal_from_dict converted knobs with float() and nothing more.
+
+**Fixes:** [FIX-0388](../FIX_LOG.md#fix-0388) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-04 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-04 — Triaged: code review 2026-11-04; FIX-0388 (ceebaef)
+- 2026-11-04 — In Progress: code review 2026-11-04; FIX-0388 (ceebaef)
+- 2026-11-04 — Fixed: code review 2026-11-04; FIX-0388 (ceebaef)

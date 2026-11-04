@@ -463,3 +463,43 @@ A bend set in the note editor popup (Bend (semitones)) was not drawn on the scor
 
 - 2026-11-03 — Open: reported
 - 2026-11-03 — Fixed
+
+## BUG-0399
+
+**A short bent note lost its curve, and a section named noguitar vanished, on read-back**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | code review (Claude, on the maintainer's request), 2026-11-04 |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P3 |
+| Status | Fixed |
+
+The XML reader divided <bendValues> times by the sustain while the writer lays a no-sustain note's curve over 0.1 s; and every 'noguitar' section was dropped as the writer's closer, so a section the user named so was lost on the next rebuild.
+
+**Steps to reproduce:** 
+
+1. name a section 'noguitar' in the section editor
+2. rebuild twice
+
+**Expected:** Both survive.
+
+**Observed:** The curve and the section gone.
+
+**Root cause:** Two readers' rules did not match the writer's.
+
+**Fixes:** [FIX-0398](../FIX_LOG.md#fix-0398) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-04 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-04 — Triaged: code review 2026-11-04; FIX-0398 (18b74fe)
+- 2026-11-04 — In Progress: code review 2026-11-04; FIX-0398 (18b74fe)
+- 2026-11-04 — Fixed: code review 2026-11-04; FIX-0398 (18b74fe)

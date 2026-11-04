@@ -2537,3 +2537,120 @@ Importing any Songsterr tab (or looking up its videos) failed with "Songsterr an
 - 2026-11-03 — Triaged: GitHub #22; FIX-0372 (21fe655)
 - 2026-11-03 — In Progress: GitHub #22; FIX-0372 (21fe655)
 - 2026-11-03 — Fixed: GitHub #22; FIX-0372 (21fe655)
+
+## BUG-0385
+
+**Impossible time signature or tempo in a GP7 file crashed or hung the import**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | code review (Claude, on the maintainer's request), 2026-11-04 |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Fixed |
+
+A numerator of 0, a denominator of 0 or 3, or a tempo of 0/NaN/"abc" in score.gpif crashed the import with a 500; a numerator in the millions laid out beats forever.
+
+**Steps to reproduce:** 
+
+1. import a .gp whose score.gpif has <Time>100000000/4</Time>
+
+**Expected:** The file is refused with a message.
+
+**Observed:** The request never finished (or a 500).
+
+**Root cause:** _time_signature and _tempo_bpm took any number; other malformed numbers raised ValueError/ZeroDivisionError the callers did not catch.
+
+**Fixes:** [FIX-0384](../FIX_LOG.md#fix-0384) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-04 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-04 — Triaged: code review 2026-11-04; FIX-0384 (1cc4c09)
+- 2026-11-04 — In Progress: code review 2026-11-04; FIX-0384 (1cc4c09)
+- 2026-11-04 — Fixed: code review 2026-11-04; FIX-0384 (1cc4c09)
+
+## BUG-0390
+
+**A Songsterr part of more than seven strings lost strings without a word**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | code review (Claude, on the maintainer's request), 2026-11-04 |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P3 |
+| Status | Fixed |
+
+PyGuitarPro writes the first seven strings of a part and drops the rest; a signature numerator past one signed byte (200/4) failed the write with a GPException, a 500.
+
+**Steps to reproduce:** 
+
+1. import a Songsterr tab with an 8-string part
+
+**Expected:** The part is left out and named.
+
+**Observed:** Its lowest strings silently gone.
+
+**Root cause:** Nothing checked what a GP5 can hold.
+
+**Fixes:** [FIX-0389](../FIX_LOG.md#fix-0389) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-04 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-04 — Triaged: code review 2026-11-04; FIX-0389 (fefb276)
+- 2026-11-04 — In Progress: code review 2026-11-04; FIX-0389 (fefb276)
+- 2026-11-04 — Fixed: code review 2026-11-04; FIX-0389 (fefb276)
+
+## BUG-0397
+
+**A GP5 bar with no beats failed the build with ZeroDivisionError**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | code review (Claude, on the maintainer's request), 2026-11-04 |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | Low |
+| Priority | P3 |
+| Status | Fixed |
+
+The numerator is a signed byte; 0 laid out no beats and divided the bar by zero.
+
+**Steps to reproduce:** 
+
+1. import a GP5 whose bar 1 is 0/4
+
+**Expected:** Refused naming the bar.
+
+**Observed:** Build failed with ZeroDivisionError.
+
+**Root cause:** Nothing checked the numerator.
+
+**Fixes:** [FIX-0396](../FIX_LOG.md#fix-0396) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-04 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-04 — Triaged: code review 2026-11-04; FIX-0396 (61b0215)
+- 2026-11-04 — In Progress: code review 2026-11-04; FIX-0396 (61b0215)
+- 2026-11-04 — Fixed: code review 2026-11-04; FIX-0396 (61b0215)

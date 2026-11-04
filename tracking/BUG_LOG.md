@@ -6,7 +6,7 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 
 | Fixed | Verified | Closed |
 |---|---|---|
-| 108 | 60 | 216 |
+| 125 | 60 | 216 |
 
 | ID | Title | Module | Severity | Priority | Status | Found in | Fixed in |
 |---|---|---|---|---|---|---|---|
@@ -394,3 +394,20 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0382](bugs/audio.md#bug-0382) | A Wwise 2025 under a folder named with 2019-2023 counted as supported | audio | Medium | P3 | Fixed | 0.12.0-beta.6 | — |
 | [BUG-0383](bugs/tones.md#bug-0383) | One odd CDLC manifest ended the whole tone-collection scan | tones | Medium | P3 | Fixed | 0.12.0-beta.6 | — |
 | [BUG-0384](bugs/security.md#bug-0384) | Turning the install counter off could leave the data on the server for good | security | Medium | P3 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0385](bugs/import.md#bug-0385) | Impossible time signature or tempo in a GP7 file crashed or hung the import | import | Medium | P2 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0386](bugs/security.md#bug-0386) | A crafted PSARC in the dlc folder could inflate one block to tens of MB | security | Medium | P2 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0387](bugs/security.md#bug-0387) | A pasted tone plan built of unclosed braces kept the request busy for minutes | security | Low | P3 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0388](bugs/security.md#bug-0388) | Any string was taken as a chart name and stored, and the GP export built a path from it | security | Low | P3 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0389](bugs/tones.md#bug-0389) | A tone knob of NaN or infinity was stored and written into the manifest | tones | Low | P3 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0390](bugs/import.md#bug-0390) | A Songsterr part of more than seven strings lost strings without a word | import | Medium | P3 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0391](bugs/app.md#bug-0391) | An image link that cannot be split was a 500 | app | Low | P4 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0392](bugs/app.md#bug-0392) | A year too big for the database, a huge number in a sync file, or a deleted build was a 500 | app | Low | P3 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0393](bugs/app.md#bug-0393) | With Redis down a project stayed pending forever | app | Medium | P2 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0394](bugs/app.md#bug-0394) | A project file's tone detection or vocal line in a wrong shape broke their pages | app | Low | P3 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0395](bugs/app.md#bug-0395) | An online answer cut off mid-way was a 500 | app | Low | P4 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0396](bugs/app.md#bug-0396) | A stored GP file that no longer reads was a 500 in Editar info and Corrigir daqui | app | Low | P3 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0397](bugs/import.md#bug-0397) | A GP5 bar with no beats failed the build with ZeroDivisionError | import | Low | P3 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0398](bugs/lyrics.md#bug-0398) | A sung grace note before a downbeat lasted nothing in a GP5 vocal line | lyrics | Low | P3 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0399](bugs/editor.md#bug-0399) | A short bent note lost its curve, and a section named noguitar vanished, on read-back | editor | Medium | P3 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0400](bugs/sync.md#bug-0400) | Two sync points on one instant of the score divided by zero | sync | Low | P4 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0401](bugs/psarc.md#bug-0401) | The manifest and the XML advertised different chord techniques | psarc | Low | P3 | Fixed | 0.12.0-beta.6 | — |
