@@ -248,8 +248,14 @@ class WwiseWemConverter:
     def version(self) -> str | None:
         """The supported major version the folder names, else None — the
         template is chosen by it, so a 2024/2025 has nothing to convert with."""
-        match = re.search(r"20(?:19|21|22|23)", str(self._root))
-        return match.group(0) if match else None
+        # The nearest folder that names a year decides — read over the whole
+        # path, "D:\\Games2022\\…\\Wwise2025.1" counted as a 2022 and paired
+        # a 2022 template with a 2025 console (BUG-0382).
+        for part in reversed(self._root.parts):
+            match = re.search(r"20\d\d", part)
+            if match:
+                return match.group(0) if match.group(0) in _SUPPORTED_VERSIONS else None
+        return None
 
     def _detect_version(self) -> str:
         version = self.version()

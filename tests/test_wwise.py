@@ -230,3 +230,17 @@ def test_the_launchers_wwiseroot_on_another_version_does_not_hide_a_2023(
     monkeypatch.setattr(runtime_settings, "load", lambda: {"wwise_root": str(newest)})
     monkeypatch.setattr(wwise, "detect_wwise_root", lambda bases=None: real([base]))
     assert runtime_settings.wwise_root(Settings(wwise_root=None)) == newest
+
+
+def test_the_wwise_version_is_the_install_folders_not_a_parents() -> None:
+    """Read over the whole path, a 2025 under "D:\\Games2022" counted as 2022 and
+    the build paired a 2022 template with a 2025 console (BUG-0382)."""
+    from rockforge.infrastructure.packaging.wwise import WwiseWemConverter
+
+    def version(path: str) -> str | None:
+        return WwiseWemConverter(Path(path)).version()
+
+    assert version("D:/Games2022/Audiokinetic/Wwise2025.1.3.9039") is None
+    assert version("D:/Games2025/Audiokinetic/Wwise 2023.1.4.8496") == "2023"
+    assert version("/opt/wwise/2021.1") == "2021"
+    assert version("/opt/wwise/current") is None
