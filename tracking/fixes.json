@@ -10076,6 +10076,127 @@
       "test_result": "passed",
       "regression_risk": "Low: the SNG's grouping is the same code it had.",
       "validation": "pending"
+    },
+    {
+      "id": "FIX-0401",
+      "bugs": [
+        "BUG-0402"
+      ],
+      "date": "2026-11-04",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "The gate was a dependency, not middleware.",
+      "solution": "The three checks run in the middleware before call_next, from the headers alone.",
+      "components": [
+        "security"
+      ],
+      "commits": [
+        "98b0092"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_api.py::test_an_upload_without_credentials_is_refused_before_its_body_is_read"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low: same checks, same answers.",
+      "validation": "pending"
+    },
+    {
+      "id": "FIX-0402",
+      "bugs": [
+        "BUG-0403"
+      ],
+      "date": "2026-11-04",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "_read_upload_capped had one limit for every upload.",
+      "solution": "A limit parameter; the LRC is capped at 4 bytes per character of the lyric limit (800 KB).",
+      "components": [
+        "security"
+      ],
+      "commits": [
+        "0f5d749",
+        "e294888"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_api.py::test_an_uploaded_lrc_is_capped_at_what_a_lyric_can_be"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low.",
+      "validation": "pending"
+    },
+    {
+      "id": "FIX-0403",
+      "bugs": [
+        "BUG-0404"
+      ],
+      "date": "2026-11-04",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "song.owned kept every geometry until disposeSong.",
+      "solution": "Each live object owns its geometries and disposes them when it leaves the view (dropLive).",
+      "components": [
+        "viewer"
+      ],
+      "commits": [
+        "e4749b0"
+      ],
+      "version": "unreleased",
+      "tests": [],
+      "manual_checks": [
+        "Playwright on an invented riff built for real (PT 1440 / EN 760 px), 2026-11-04: six 3.6 s passes of an A-B loop kept 48 geometries (the previous code: 52 → 74), no page errors"
+      ],
+      "test_result": "not run",
+      "regression_risk": "Low.",
+      "validation": "pending"
+    },
+    {
+      "id": "FIX-0404",
+      "bugs": [
+        "BUG-0405"
+      ],
+      "date": "2026-11-04",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "Nothing was cached between frames.",
+      "solution": "fretLitPlan is kept until the notes or the pending sync change and each frame binary-searches the playhead; the tone label is written when it changes.",
+      "components": [
+        "viewer"
+      ],
+      "commits": [
+        "719557f"
+      ],
+      "version": "unreleased",
+      "tests": [],
+      "manual_checks": [
+        "Playwright on an invented riff built for real (PT 1440 / EN 760 px), 2026-11-04: at 447 instants with a pending +7 % tempo the neck lit exactly what the previous algorithm lit; 200 calls to the tone label wrote it 0 times; no page errors"
+      ],
+      "test_result": "not run",
+      "regression_risk": "Low: the same notes light.",
+      "validation": "pending"
+    },
+    {
+      "id": "FIX-0405",
+      "bugs": [
+        "BUG-0406"
+      ],
+      "date": "2026-11-04",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "Two formatters (fmtMinSec, fmtClock).",
+      "solution": "fmtMinSec removed; every m:ss is fmtClock's.",
+      "components": [
+        "viewer"
+      ],
+      "commits": [
+        "a249ef0"
+      ],
+      "version": "unreleased",
+      "tests": [],
+      "manual_checks": [
+        "ESLint and node --check; the two call sites read through fmtClock"
+      ],
+      "test_result": "not run",
+      "regression_risk": "Low.",
+      "validation": "pending"
     }
   ]
 }

@@ -572,3 +572,82 @@ Every field keyed by chart (rebuild arrangement, other_sync, note edits, FHPs, t
 - 2026-11-04 — Triaged: code review 2026-11-04; FIX-0387 (e3d4775)
 - 2026-11-04 — In Progress: code review 2026-11-04; FIX-0387 (e3d4775)
 - 2026-11-04 — Fixed: code review 2026-11-04; FIX-0387 (e3d4775)
+
+## BUG-0402
+
+**With the API token set, an upload without credentials was read in full before the 401**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | code review (Claude, on the maintainer's request), 2026-11-04 |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | Low |
+| Priority | P3 |
+| Status | Fixed |
+
+The host, credentials and origin checks were FastAPI dependencies, which run after the request is parsed: an unauthenticated upload (500 MB a file) was spooled to disk before it was refused (docker-compose).
+
+**Steps to reproduce:** 
+
+1. set ROCKFORGE_API_TOKEN
+2. POST a large multipart upload with no credentials
+
+**Expected:** Refused from the headers, nothing read.
+
+**Observed:** The whole body read first.
+
+**Root cause:** The gate was a dependency, not middleware.
+
+**Fixes:** [FIX-0401](../FIX_LOG.md#fix-0401) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-04 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-04 — Triaged: code review 2026-11-04; FIX-0401 (98b0092)
+- 2026-11-04 — In Progress: code review 2026-11-04; FIX-0401 (98b0092)
+- 2026-11-04 — Fixed: code review 2026-11-04; FIX-0401 (98b0092)
+
+## BUG-0403
+
+**An uploaded LRC file was read up to 500 MB into memory and the database**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | code review (Claude, on the maintainer's request), 2026-11-04 |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | Low |
+| Priority | P4 |
+| Status | Fixed |
+
+The wizard's LRC upload had the 500 MB limit of any upload, not the 200 000-character limit of the lyric text field, and was stored in the job's params.
+
+**Steps to reproduce:** 
+
+1. upload a very large .lrc in the wizard
+
+**Expected:** 413.
+
+**Observed:** Read and stored.
+
+**Root cause:** _read_upload_capped had one limit for every upload.
+
+**Fixes:** [FIX-0402](../FIX_LOG.md#fix-0402) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-04 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-04 — Triaged: code review 2026-11-04; FIX-0402 (0f5d749)
+- 2026-11-04 — In Progress: code review 2026-11-04; FIX-0402 (0f5d749)
+- 2026-11-04 — Fixed: code review 2026-11-04; FIX-0402 (0f5d749)

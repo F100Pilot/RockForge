@@ -20004,6 +20004,253 @@
           "note": "code review 2026-11-04; FIX-0400 (2538bbc)"
         }
       ]
+    },
+    {
+      "id": "BUG-0402",
+      "title": "With the API token set, an upload without credentials was read in full before the 401",
+      "detected": "2026-11-04",
+      "reported_by": "code review (Claude, on the maintainer's request), 2026-11-04",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "security",
+      "description": "The host, credentials and origin checks were FastAPI dependencies, which run after the request is parsed: an unauthenticated upload (500 MB a file) was spooled to disk before it was refused (docker-compose).",
+      "steps": [
+        "set ROCKFORGE_API_TOKEN",
+        "POST a large multipart upload with no credentials"
+      ],
+      "expected": "Refused from the headers, nothing read.",
+      "observed": "The whole body read first.",
+      "severity": "Low",
+      "priority": "P3",
+      "status": "Fixed",
+      "root_cause": "The gate was a dependency, not middleware.",
+      "fixes": [
+        "FIX-0401"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-04",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Triaged",
+          "note": "code review 2026-11-04; FIX-0401 (98b0092)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "In Progress",
+          "note": "code review 2026-11-04; FIX-0401 (98b0092)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Fixed",
+          "note": "code review 2026-11-04; FIX-0401 (98b0092)"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0403",
+      "title": "An uploaded LRC file was read up to 500 MB into memory and the database",
+      "detected": "2026-11-04",
+      "reported_by": "code review (Claude, on the maintainer's request), 2026-11-04",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "security",
+      "description": "The wizard's LRC upload had the 500 MB limit of any upload, not the 200 000-character limit of the lyric text field, and was stored in the job's params.",
+      "steps": [
+        "upload a very large .lrc in the wizard"
+      ],
+      "expected": "413.",
+      "observed": "Read and stored.",
+      "severity": "Low",
+      "priority": "P4",
+      "status": "Fixed",
+      "root_cause": "_read_upload_capped had one limit for every upload.",
+      "fixes": [
+        "FIX-0402"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-04",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Triaged",
+          "note": "code review 2026-11-04; FIX-0402 (0f5d749)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "In Progress",
+          "note": "code review 2026-11-04; FIX-0402 (0f5d749)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Fixed",
+          "note": "code review 2026-11-04; FIX-0402 (0f5d749)"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0404",
+      "title": "The 3D highway's GPU memory grew on every pass of an A-B loop",
+      "detected": "2026-11-04",
+      "reported_by": "code review (Claude, on the maintainer's request), 2026-11-04",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "viewer",
+      "description": "The trail and chord-frame geometries made for each note entering the view were disposed only when the song changed, so a loop made them again on every pass.",
+      "steps": [
+        "open the 3D highway",
+        "loop a passage A-B for a while"
+      ],
+      "expected": "The geometry count stays put.",
+      "observed": "52 → 74 geometries over six passes.",
+      "severity": "Low",
+      "priority": "P3",
+      "status": "Fixed",
+      "root_cause": "song.owned kept every geometry until disposeSong.",
+      "fixes": [
+        "FIX-0403"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-04",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Triaged",
+          "note": "code review 2026-11-04; FIX-0403 (e4749b0)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "In Progress",
+          "note": "code review 2026-11-04; FIX-0403 (e4749b0)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Fixed",
+          "note": "code review 2026-11-04; FIX-0403 (e4749b0)"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0405",
+      "title": "The neck redid every note of the song on every frame of playback",
+      "detected": "2026-11-04",
+      "reported_by": "code review (Claude, on the maintainer's request), 2026-11-04",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "viewer",
+      "description": "updateFretboard mapped every note through the warp and sorted the attacks 60 times a second, and the live tone label was rewritten every frame.",
+      "steps": [
+        "play a long song with the neck shown"
+      ],
+      "expected": "Work only when the notes or the sync change.",
+      "observed": "A full pass over the song per frame.",
+      "severity": "Low",
+      "priority": "P4",
+      "status": "Fixed",
+      "root_cause": "Nothing was cached between frames.",
+      "fixes": [
+        "FIX-0404"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-04",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Triaged",
+          "note": "code review 2026-11-04; FIX-0404 (719557f)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "In Progress",
+          "note": "code review 2026-11-04; FIX-0404 (719557f)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Fixed",
+          "note": "code review 2026-11-04; FIX-0404 (719557f)"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0406",
+      "title": "A recording's length read 3:17 in one place and 3:16 in another",
+      "detected": "2026-11-04",
+      "reported_by": "code review (Claude, on the maintainer's request), 2026-11-04",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "viewer",
+      "description": "The lyric lookup's cards rounded the recording's length while the transport and the tone suggestions cut it to the second.",
+      "steps": [
+        "open the lyric lookup and the transport for a 196.9 s recording"
+      ],
+      "expected": "One reading.",
+      "observed": "3:17 and 3:16.",
+      "severity": "Low",
+      "priority": "P4",
+      "status": "Fixed",
+      "root_cause": "Two formatters (fmtMinSec, fmtClock).",
+      "fixes": [
+        "FIX-0405"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-04",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Triaged",
+          "note": "code review 2026-11-04; FIX-0405 (a249ef0)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "In Progress",
+          "note": "code review 2026-11-04; FIX-0405 (a249ef0)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Fixed",
+          "note": "code review 2026-11-04; FIX-0405 (a249ef0)"
+        }
+      ]
     }
   ]
 }

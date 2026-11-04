@@ -52,6 +52,16 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 - **O jogo e o DLC Builder veem as mesmas técnicas de acordes:** o manifesto não reconhecia um power chord tocado em arpejo rápido (cordas a 10 ms umas das outras), e o XML dizia que havia power chords e acordes abertos em qualquer pista com acordes. Agora os dois usam a mesma regra.
 
+- **Com palavra-passe (Docker), um envio sem credenciais é recusado antes de ser recebido:** um ficheiro enviado sem a palavra-passe era gravado por inteiro em disco antes de receber a recusa. Agora a recusa sai logo, sem ler o ficheiro.
+
+- **Um ficheiro LRC enorme é recusado:** o LRC enviado no assistente aceitava até 500 MB, que iam para a memória e para a base de dados. Agora o limite é o de uma letra (800 KB).
+
+- **A pista 3D já não gasta cada vez mais memória num loop A–B:** as formas das notas eram feitas de novo em cada passagem e só eram libertadas ao mudar de música. Agora cada nota liberta as suas quando sai de vista.
+
+- **O braço e o tom em uso pesam menos durante a reprodução:** o braço percorria todas as notas da música a cada imagem, e o rótulo do tom em uso era reescrito 60 vezes por segundo. Agora só se refazem quando algo muda.
+
+- **A duração da gravação lê-se da mesma forma em todo o lado:** 196,9 s aparecia como 3:17 nos resultados da letra online e como 3:16 debaixo da partitura.
+
 ## [0.12.0 beta 6] — 2026-11-04
 
 ### Novidades

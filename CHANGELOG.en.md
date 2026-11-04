@@ -52,6 +52,16 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 - **The game and DLC Builder see the same chord techniques:** the manifest did not recognise a power chord strummed fast (strings 10 ms apart), and the XML said there were power chords and open chords in any track with chords. Both now use the same rule.
 
+- **With a password (Docker), an upload without credentials is refused before it is received:** a file sent without the password was written to disk in full before it was refused. The refusal now comes at once, without reading the file.
+
+- **A huge LRC file is refused:** the LRC sent in the wizard accepted up to 500 MB, which went into memory and the database. The limit is now a lyric's (800 KB).
+
+- **The 3D highway no longer uses more and more memory in an A–B loop:** the notes' shapes were made again on every pass and only freed when the song changed. Each note now frees its own when it leaves the view.
+
+- **The neck and the current tone cost less during playback:** the neck went through every note of the song on every frame, and the current tone label was rewritten 60 times a second. They are now only redone when something changes.
+
+- **The recording's length reads the same everywhere:** 196.9 s showed as 3:17 in the online lyric results and as 3:16 under the score.
+
 ## [0.12.0 beta 6] — 2026-11-04
 
 ### New

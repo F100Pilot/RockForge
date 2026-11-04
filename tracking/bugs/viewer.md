@@ -1791,3 +1791,121 @@ The transport handler checked only that a project was open: Backspace deleted th
 - 2026-11-04 — Triaged: code review 2026-11-04; FIX-0378 (90c2c8e)
 - 2026-11-04 — In Progress: code review 2026-11-04; FIX-0378 (90c2c8e)
 - 2026-11-04 — Fixed: code review 2026-11-04; FIX-0378 (90c2c8e)
+
+## BUG-0404
+
+**The 3D highway's GPU memory grew on every pass of an A-B loop**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | code review (Claude, on the maintainer's request), 2026-11-04 |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | Low |
+| Priority | P3 |
+| Status | Fixed |
+
+The trail and chord-frame geometries made for each note entering the view were disposed only when the song changed, so a loop made them again on every pass.
+
+**Steps to reproduce:** 
+
+1. open the 3D highway
+2. loop a passage A-B for a while
+
+**Expected:** The geometry count stays put.
+
+**Observed:** 52 → 74 geometries over six passes.
+
+**Root cause:** song.owned kept every geometry until disposeSong.
+
+**Fixes:** [FIX-0403](../FIX_LOG.md#fix-0403) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-04 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-04 — Triaged: code review 2026-11-04; FIX-0403 (e4749b0)
+- 2026-11-04 — In Progress: code review 2026-11-04; FIX-0403 (e4749b0)
+- 2026-11-04 — Fixed: code review 2026-11-04; FIX-0403 (e4749b0)
+
+## BUG-0405
+
+**The neck redid every note of the song on every frame of playback**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | code review (Claude, on the maintainer's request), 2026-11-04 |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | Low |
+| Priority | P4 |
+| Status | Fixed |
+
+updateFretboard mapped every note through the warp and sorted the attacks 60 times a second, and the live tone label was rewritten every frame.
+
+**Steps to reproduce:** 
+
+1. play a long song with the neck shown
+
+**Expected:** Work only when the notes or the sync change.
+
+**Observed:** A full pass over the song per frame.
+
+**Root cause:** Nothing was cached between frames.
+
+**Fixes:** [FIX-0404](../FIX_LOG.md#fix-0404) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-04 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-04 — Triaged: code review 2026-11-04; FIX-0404 (719557f)
+- 2026-11-04 — In Progress: code review 2026-11-04; FIX-0404 (719557f)
+- 2026-11-04 — Fixed: code review 2026-11-04; FIX-0404 (719557f)
+
+## BUG-0406
+
+**A recording's length read 3:17 in one place and 3:16 in another**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | code review (Claude, on the maintainer's request), 2026-11-04 |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | Low |
+| Priority | P4 |
+| Status | Fixed |
+
+The lyric lookup's cards rounded the recording's length while the transport and the tone suggestions cut it to the second.
+
+**Steps to reproduce:** 
+
+1. open the lyric lookup and the transport for a 196.9 s recording
+
+**Expected:** One reading.
+
+**Observed:** 3:17 and 3:16.
+
+**Root cause:** Two formatters (fmtMinSec, fmtClock).
+
+**Fixes:** [FIX-0405](../FIX_LOG.md#fix-0405) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-04 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-04 — Triaged: code review 2026-11-04; FIX-0405 (a249ef0)
+- 2026-11-04 — In Progress: code review 2026-11-04; FIX-0405 (a249ef0)
+- 2026-11-04 — Fixed: code review 2026-11-04; FIX-0405 (a249ef0)

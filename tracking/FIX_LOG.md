@@ -406,6 +406,11 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0398](#fix-0398) | BUG-0399 | unreleased | passed | pending |
 | [FIX-0399](#fix-0399) | BUG-0400 | unreleased | passed | pending |
 | [FIX-0400](#fix-0400) | BUG-0401 | unreleased | passed | pending |
+| [FIX-0401](#fix-0401) | BUG-0402 | unreleased | passed | pending |
+| [FIX-0402](#fix-0402) | BUG-0403 | unreleased | passed | pending |
+| [FIX-0403](#fix-0403) | BUG-0404 | unreleased | not run | pending |
+| [FIX-0404](#fix-0404) | BUG-0405 | unreleased | not run | pending |
+| [FIX-0405](#fix-0405) | BUG-0406 | unreleased | not run | pending |
 
 ## FIX-0001
 
@@ -8806,3 +8811,108 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | passed |
 | Validation | _pending_ |
 | Regression risk | Low: the SNG's grouping is the same code it had. |
+
+## FIX-0401
+
+**Bugs:** [BUG-0402](bugs/security.md#bug-0402)
+
+**Root cause:** The gate was a dependency, not middleware.
+
+**Solution:** The three checks run in the middleware before call_next, from the headers alone.
+
+| | |
+|---|---|
+| Date | 2026-11-04 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 98b0092 |
+| Components | security |
+| Tests | tests/test_api.py::test_an_upload_without_credentials_is_refused_before_its_body_is_read |
+| Manual checks | — |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low: same checks, same answers. |
+
+## FIX-0402
+
+**Bugs:** [BUG-0403](bugs/security.md#bug-0403)
+
+**Root cause:** _read_upload_capped had one limit for every upload.
+
+**Solution:** A limit parameter; the LRC is capped at 4 bytes per character of the lyric limit (800 KB).
+
+| | |
+|---|---|
+| Date | 2026-11-04 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 0f5d749; e294888 |
+| Components | security |
+| Tests | tests/test_api.py::test_an_uploaded_lrc_is_capped_at_what_a_lyric_can_be |
+| Manual checks | — |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low. |
+
+## FIX-0403
+
+**Bugs:** [BUG-0404](bugs/viewer.md#bug-0404)
+
+**Root cause:** song.owned kept every geometry until disposeSong.
+
+**Solution:** Each live object owns its geometries and disposes them when it leaves the view (dropLive).
+
+| | |
+|---|---|
+| Date | 2026-11-04 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | e4749b0 |
+| Components | viewer |
+| Tests | — |
+| Manual checks | Playwright on an invented riff built for real (PT 1440 / EN 760 px), 2026-11-04: six 3.6 s passes of an A-B loop kept 48 geometries (the previous code: 52 → 74), no page errors |
+| Test result | not run |
+| Validation | _pending_ |
+| Regression risk | Low. |
+
+## FIX-0404
+
+**Bugs:** [BUG-0405](bugs/viewer.md#bug-0405)
+
+**Root cause:** Nothing was cached between frames.
+
+**Solution:** fretLitPlan is kept until the notes or the pending sync change and each frame binary-searches the playhead; the tone label is written when it changes.
+
+| | |
+|---|---|
+| Date | 2026-11-04 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 719557f |
+| Components | viewer |
+| Tests | — |
+| Manual checks | Playwright on an invented riff built for real (PT 1440 / EN 760 px), 2026-11-04: at 447 instants with a pending +7 % tempo the neck lit exactly what the previous algorithm lit; 200 calls to the tone label wrote it 0 times; no page errors |
+| Test result | not run |
+| Validation | _pending_ |
+| Regression risk | Low: the same notes light. |
+
+## FIX-0405
+
+**Bugs:** [BUG-0406](bugs/viewer.md#bug-0406)
+
+**Root cause:** Two formatters (fmtMinSec, fmtClock).
+
+**Solution:** fmtMinSec removed; every m:ss is fmtClock's.
+
+| | |
+|---|---|
+| Date | 2026-11-04 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | a249ef0 |
+| Components | viewer |
+| Tests | — |
+| Manual checks | ESLint and node --check; the two call sites read through fmtClock |
+| Test result | not run |
+| Validation | _pending_ |
+| Regression risk | Low. |

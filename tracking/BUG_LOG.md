@@ -6,7 +6,7 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 
 | Fixed | Verified | Closed |
 |---|---|---|
-| 125 | 60 | 216 |
+| 130 | 60 | 216 |
 
 | ID | Title | Module | Severity | Priority | Status | Found in | Fixed in |
 |---|---|---|---|---|---|---|---|
@@ -411,3 +411,8 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0399](bugs/editor.md#bug-0399) | A short bent note lost its curve, and a section named noguitar vanished, on read-back | editor | Medium | P3 | Fixed | 0.12.0-beta.6 | — |
 | [BUG-0400](bugs/sync.md#bug-0400) | Two sync points on one instant of the score divided by zero | sync | Low | P4 | Fixed | 0.12.0-beta.6 | — |
 | [BUG-0401](bugs/psarc.md#bug-0401) | The manifest and the XML advertised different chord techniques | psarc | Low | P3 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0402](bugs/security.md#bug-0402) | With the API token set, an upload without credentials was read in full before the 401 | security | Low | P3 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0403](bugs/security.md#bug-0403) | An uploaded LRC file was read up to 500 MB into memory and the database | security | Low | P4 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0404](bugs/viewer.md#bug-0404) | The 3D highway's GPU memory grew on every pass of an A-B loop | viewer | Low | P3 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0405](bugs/viewer.md#bug-0405) | The neck redid every note of the song on every frame of playback | viewer | Low | P4 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0406](bugs/viewer.md#bug-0406) | A recording's length read 3:17 in one place and 3:16 in another | viewer | Low | P4 | Fixed | 0.12.0-beta.6 | — |

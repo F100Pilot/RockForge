@@ -6870,6 +6870,23 @@ Untrusted input that could crash, hang or poison a project; the rules:
   are now the manifest's).
 - `sync_map.audio_clock` skips a point on a score instant already placed.
 
+## The code review of 2026-11-04, lot 3 (BUG-0402…0406)
+
+- **The host, credentials and origin checks run in the middleware**
+  (`_refusal_before_body`, inside `_security_headers`, before `call_next`):
+  as FastAPI dependencies they ran after the body was parsed, so an
+  unauthenticated upload was spooled to disk first. Only `_ui_language` stays
+  a dependency. Guarded by a raw-ASGI test that the body is never received.
+- `_read_upload_capped(src, limit)`: the LRC upload is `MAX_LRC_BYTES`.
+- The 3D highway's live objects own their geometries (`owned`, `dropLive`).
+- The neck's lit notes are a plan kept until the notes or the pending sync
+  change (`fretLitPlan`); `updateLiveTone` writes only on a change. Per-frame
+  code must not walk the whole song.
+- One m:ss (`fmtClock`), one "typing in a field?" (`typingInField`), one popup
+  placement (`placePopup`), one lead-in formula (`gp_pipeline.recording_pad`).
+- Removed as unused: `tone_features`, `APP_ID_DROPS_OF_JUPITER`, the
+  normalizer's `offset_s` trim.
+
 ## Async detection tasks (the `detect_lyrics` / `detect_tones` pattern)
 
 Both lyric and tone detection are slow (minutes) Celery tasks that follow one

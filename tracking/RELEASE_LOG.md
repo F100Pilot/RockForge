@@ -60,6 +60,11 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0399](bugs/editor.md#bug-0399) A short bent note lost its curve, and a section named noguitar vanished, on read-back (Medium, now Fixed)
 - [BUG-0400](bugs/sync.md#bug-0400) Two sync points on one instant of the score divided by zero (Low, now Fixed)
 - [BUG-0401](bugs/psarc.md#bug-0401) The manifest and the XML advertised different chord techniques (Low, now Fixed)
+- [BUG-0402](bugs/security.md#bug-0402) With the API token set, an upload without credentials was read in full before the 401 (Low, now Fixed)
+- [BUG-0403](bugs/security.md#bug-0403) An uploaded LRC file was read up to 500 MB into memory and the database (Low, now Fixed)
+- [BUG-0404](bugs/viewer.md#bug-0404) The 3D highway's GPU memory grew on every pass of an A-B loop (Low, now Fixed)
+- [BUG-0405](bugs/viewer.md#bug-0405) The neck redid every note of the song on every frame of playback (Low, now Fixed)
+- [BUG-0406](bugs/viewer.md#bug-0406) A recording's length read 3:17 in one place and 3:16 in another (Low, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
