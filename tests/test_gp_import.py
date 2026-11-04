@@ -480,3 +480,19 @@ def test_grace_notes_are_short_notes_of_their_own(
     assert notes[5].time == pytest.approx(grace_at)
     assert notes[7].time == pytest.approx(main_at)
     assert Technique.HAMMER_ON in notes[7].techniques
+
+
+def test_a_bar_of_no_beats_is_refused_in_words(tmp_path: Path) -> None:
+    """The file stores the numerator in a signed byte; 0 laid out no beats and
+    divided the bar by zero, a build that failed with ZeroDivisionError."""
+    song = gp.Song()
+    song.tempo = 120
+    measure = song.tracks[0].measures[0]
+    measure.header.timeSignature.numerator = 0
+    _add_beat(measure.voices[0], 4, [(3, 7)])
+    path = tmp_path / "no_beats.gp5"
+    gp.write(song, str(path))
+    with pytest.raises(IngestionError, match="time signature 0/4"):
+        inspect_gp(path)
+    with pytest.raises(IngestionError, match="time signature 0/4"):
+        parse_gp_track(path, 0)

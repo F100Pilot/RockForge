@@ -252,12 +252,25 @@ def _track_info(index: int, track: Any) -> GpTrackInfo:
     )
 
 
+def _check_time_signatures(song: Any) -> None:
+    """A numerator below 1 (the file stores a signed byte) lays out no beats and
+    divides each bar by zero: a build that failed with ZeroDivisionError."""
+    for header in song.measureHeaders:
+        num = header.timeSignature.numerator
+        if num < 1:
+            raise IngestionError(
+                f"bar {header.number} has an impossible time signature "
+                f"{num}/{header.timeSignature.denominator.value}"
+            )
+
+
 def inspect_gp(path: Path) -> GpSongInfo:
     from rockforge.infrastructure.gpimport.gpif_parser import _is_gpif, inspect_gpif
 
     if _is_gpif(path):
         return inspect_gpif(path)
     song = _load(path)
+    _check_time_signatures(song)  # refused in the wizard, not at the end of a build
     return GpSongInfo(
         title=song.title or "",
         artist=song.artist or "",
@@ -433,6 +446,7 @@ def parse_gp_track(
     if _is_gpif(path):
         return parse_gpif_track(path, track_index, offset_s, tempo_scale, bar_times, bass=bass)
     written = _load(path)
+    _check_time_signatures(written)
     jump_convention = jump_skips_repeats(_bar_flows(written))
     song = _as_played(written)
     if not 0 <= track_index < len(song.tracks):
