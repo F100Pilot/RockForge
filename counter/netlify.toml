@@ -4,7 +4,9 @@
 [build]
   publish = "public"
   command = "npm install --no-audit --no-fund"
-  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- ."
+  # Skip the build unless counter/ changed; always build the first deploy and
+  # a manual retry (no previous commit, or the same one).
+  ignore = 'if [ -z "$CACHED_COMMIT_REF" ] || [ "$CACHED_COMMIT_REF" = "$COMMIT_REF" ]; then exit 1; fi; git diff --quiet "$CACHED_COMMIT_REF" "$COMMIT_REF" -- .'
 
 [functions]
   directory = "netlify/functions"
