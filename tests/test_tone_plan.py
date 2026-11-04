@@ -284,3 +284,16 @@ def test_the_request_names_the_song_its_sections_and_the_games_gear() -> None:
         assert "«Deriva» de Banda Inventada" in build_prompt(_ctx())
     finally:
         i18n.reset(token)
+
+
+def test_a_pasted_text_built_to_be_slow_is_answered_at_once() -> None:
+    import time
+
+    started = time.monotonic()
+    with pytest.raises(TonePlanError):
+        extract_plan("{" * 150_000)          # each brace scanned to the end: minutes
+    changes = [{"track": "all", "at": "start", "tone": "Clean"},
+               {"track": "LEAD", "at": "1" * 20_000 + "x", "tone": "Clean"}]
+    res = read_plan(_plan([CLEAN], changes), _ctx())  # the label's pattern backtracked
+    assert time.monotonic() - started < 3
+    assert _track(res, "Lead").tone_changes == []

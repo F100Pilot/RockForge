@@ -31,6 +31,10 @@ from rockforge.i18n import tr
 from rockforge.infrastructure.packaging.gear import gear_catalogue
 
 MAX_TEXT = 200_000
+# Characters ``extract_plan`` may look at in all while it looks for the block.
+SCAN_BUDGET = 4 * MAX_TEXT
+# A section label is a few words; a longer one is never read loosely.
+MAX_LABEL = 80
 MAX_TONES = 4             # Rocksmith switches between Tone_A..D
 MAX_SLOTS = 4             # pre pedals / post pedals / racks
 MAX_PLAN_TONES = 24
@@ -134,10 +138,11 @@ def _clean_json(text: str) -> str:
     return "".join(out)
 
 
-def _balanced(text: str, start: int) -> str | None:
-    """The {...} starting at ``start``, braces inside strings ignored."""
+def _balanced(text: str, start: int, stop: int | None = None) -> str | None:
+    """The {...} starting at ``start``, braces inside strings ignored; None when
+    it does not close before ``stop``."""
     depth, in_str, esc = 0, False, False
-    for i in range(start, len(text)):
+    for i in range(start, len(text) if stop is None else min(len(text), stop)):
         c = text[i]
         if in_str:
             if esc:
@@ -166,9 +171,18 @@ def extract_plan(text: str) -> dict[str, Any]:
     text = text.translate(_QUOTES)
     candidates = [m.group(1) for m in re.finditer(r"```[a-zA-Z0-9_-]*\s*\n?(.*?)```", text, re.S)]
     candidates.append(text)
+    # Each opening brace is scanned to its close, so a text of unclosed braces
+    # would cost its length squared (200 000 of them: a quarter of an hour). An
+    # answer's block is found in the first scan or two; past the budget the
+    # text is simply not a plan.
+    budget = SCAN_BUDGET
     for cand in candidates:
         for m in re.finditer(r"\{", cand):
-            block = _balanced(cand, m.start())
+            if budget <= 0:
+                break
+            stop = m.start() + budget
+            block = _balanced(cand, m.start(), stop)
+            budget -= len(block) if block else min(len(cand), stop) - m.start()
             if block is None:
                 continue
             try:
@@ -676,7 +690,8 @@ def _section_time(label: str, chart: ChartContext) -> tuple[float | None, str | 
                            f"«{label} #2» para outra)",
                            f"“{label}” occurs {len(same)} times — used the first (write "
                            f"“{label} #2” for another)")
-    m = re.match(r"^(.*?)\s*(?:#|\(|n\.?o?\s*)?(\d+)\)?$", want)
+    # The loose pattern backtracks on long digit runs (20 000 digits: 3 s).
+    m = re.match(r"^(.*?)\s*(?:#|\(|n\.?o?\s*)?(\d+)\)?$", want) if len(want) <= MAX_LABEL else None
     if m and m.group(1):
         base, k = m.group(1).strip(), int(m.group(2))
         times = [t for name, t in chart.sections if _norm(name) == base]
