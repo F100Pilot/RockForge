@@ -13,20 +13,20 @@ and the real NoteMask constants. Vocals are emitted as a *separate*
 
 Honest limits that remain (CLAUDE.md):
 - The ``.wem`` still requires a local Wwise install (Audiokinetic EULA); when
-  unavailable, the normalized WAV is packed instead, under a path the retail
-  game will not load — callers should treat a PSARC without a real ``.wem`` as
-  not yet game-ready, same as DLC Builder without Wwise.
-- Single difficulty level only: RockForge has no dynamic-difficulty model, so
-  the song is fully playable but without the progressive note-density ramp a
-  DDC-processed CDLC has. This is a feature gap, not a malformed file.
+  unavailable, or when the conversion fails, the PSARC carries no audio at all
+  and ``PackagingResult.wem_error`` says why — callers treat it as not yet
+  game-ready, same as DLC Builder without Wwise.
+- Dynamic Difficulty is a density ramp (``sng_build``): the levels pick notes
+  by beat strength, which ramps and persists in game, but is not phrased the
+  way a real DDC pass is.
 - Requires the ``[psarc]`` extra (``cryptography``) for TOC/SNG encryption;
   raises :class:`PackagingError` with a clear message if missing.
 - ``cover_art`` (if provided) is copied into the bundle AND converted to the
   in-game album-art DDS textures (64/128/256) in the native ``.psarc`` via
   ``gamedata.album_art_dds`` (needs Pillow; falls back to a neutral placeholder).
 - The binary layout is ported from open-source format docs (Rocksmith2014.NET,
-  toolkit) and round-trip-tested, but has NOT been byte-validated against a
-  retail/DLC Builder SNG — there is no reference file in CI to diff against.
+  toolkit) and round-trip-tested; it was byte-diffed against DLC Builder builds
+  of the user's own songs (CLAUDE.md), but there is no reference file in CI.
 
 The bundle still carries the DLC Builder-importable ``rockforge_project.json``
 (via :func:`build_project_metadata`), so the ``GET /jobs/{id}/bundle`` zip

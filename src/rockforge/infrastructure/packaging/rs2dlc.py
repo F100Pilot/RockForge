@@ -168,8 +168,9 @@ def _write_phrase_levels(project: dict[str, object], out_dir: Path) -> Path:
 
     DLC Builder reads this during build (``PhraseLevelComparer.compareToExisting``)
     to decide whether arrangement IDs need regeneration.  Without it, DLC Builder
-    may fail with a FileNotFoundException when building the project.  RockForge
-    has no dynamic difficulty, so every phrase has maxDifficulty 0.
+    may fail with a FileNotFoundException when building the project.  The XML
+    RockForge writes carries one level (DLC Builder generates the others; the
+    native SNG has its own ramp), so every phrase has maxDifficulty 0.
     """
     levels: dict[str, dict[str, int]] = {}
     arr_list = cast("list[dict[str, object]]", project.get("Arrangements", []))

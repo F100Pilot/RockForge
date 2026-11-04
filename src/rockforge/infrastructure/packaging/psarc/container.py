@@ -13,13 +13,13 @@ Layout:
   encryption).
 - TOC: one 30-byte entry per file, plus one extra entry (index 0) for the
   "name block" — a newline-separated list of archive paths, used to recover
-  filenames on unpack. Entry layout: 16-byte MD5 (unused/zero for the name
-  block), 4-byte index of the entry's first compressed block, 5-byte
-  unpacked length, 5-byte offset of the entry's data within the block
-  section.
-- Block-length table: one entry per compressed block (2 bytes, big-endian).
-  A value of 0 means the block is stored uncompressed, at its natural size
-  (``block_size``, except for a final partial block).
+  filenames on unpack. Entry layout: 16-byte MD5 of the archive path (the
+  name block has a fixed retail constant instead), 4-byte index of the
+  entry's first compressed block, 5-byte unpacked length, 5-byte offset of the
+  entry's data, ABSOLUTE from the start of the file.
+- Block-length table: one entry per block (2 bytes, big-endian), the size the
+  block is stored at. A value of 0 means a FULL ``block_size`` block stored
+  raw (65536 wraps the field to 0); a partial raw block stores its real size.
 - Block section: the concatenated (optionally compressed) blocks for the
   name block followed by each file, in order.
 """
