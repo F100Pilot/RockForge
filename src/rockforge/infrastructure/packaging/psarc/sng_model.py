@@ -127,8 +127,6 @@ _NAME_LEN = 32
 _LYRIC_LEN = 48
 
 
-_CHORD_EPSILON_S = 0.03
-
 
 # Dynamic Difficulty ceiling: the most difficulty levels a single phrase can
 # ramp its notes in over (0..CAP). A phrase's ceiling scales with the note count

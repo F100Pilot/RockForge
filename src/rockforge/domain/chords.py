@@ -303,3 +303,72 @@ def arpeggio_spans(
         run, frets = ([i], {n.string: n.fret}) if n is not None else ([], {})
     close()
     return spans
+
+
+# Notes starting within 30 ms of a group's first note form one chord — the XML
+# writer, the native SNG and the manifest's technique flags all group this way.
+CHORD_EPSILON_S = 0.03
+
+
+def group_chords(notes: Sequence[TabNote]) -> list[list[TabNote]]:
+    """Group simultaneous notes; singletons stay single notes, groups are chords.
+
+    Two notes on ONE string are never a chord, however close (a fast slide
+    into its landing note, GitHub issue #11): merged, the second overwrote the
+    first in the template and left a link and a slide the game dereferenced
+    through a chord with no chord notes — a crash."""
+    ordered = sorted(notes, key=lambda n: (n.time, n.string))
+    groups: list[list[TabNote]] = []
+    for n in ordered:
+        if (groups and n.time - groups[-1][0].time <= CHORD_EPSILON_S
+                and all(m.string != n.string for m in groups[-1])):
+            groups[-1].append(n)
+        else:
+            groups.append([n])
+    return groups
+
+
+def technique_flags(notes: Sequence[TabNote], *, bass: bool) -> dict[str, int]:
+    """Which techniques a chart uses — its ArrangementProperties, the same in the
+    XML (which DLC Builder copies) and in the native manifest.
+
+    A power chord is a two-note fifth (root and fifth on the next string, two
+    frets up), a double stop any other two-note shape, an open chord one with
+    an open string; a bass's chords are double stops. Chords are the groups
+    every other part of the build makes (:func:`group_chords`). A technique the
+    domain cannot express (barre chords, finger-picking, …) is left to 0.
+    """
+    has = {t for n in notes for t in n.techniques}
+    power = double = openc = 0
+    for grp in group_chords(notes):
+        if len(grp) < 2:
+            continue
+        if bass:
+            double = 1
+            continue
+        frets = sorted((g.string, g.fret) for g in grp)
+        if any(f == 0 for _, f in frets):
+            openc = 1
+        if len(grp) == 2:
+            (s0, f0), (s1, f1) = frets
+            if s1 == s0 + 1 and f1 - f0 == 2 and f0 > 0:
+                power = 1
+            else:
+                double = 1
+    return {
+        "powerChords": power, "doubleStops": double, "openChords": openc,
+        "palmMutes": int(Technique.PALM_MUTE in has),
+        "fretHandMutes": int(Technique.FRET_MUTE in has),
+        "harmonics": int(Technique.HARMONIC in has),
+        "pinchHarmonics": int(Technique.PINCH_HARMONIC in has),
+        "hopo": int(bool(has & {Technique.HAMMER_ON, Technique.PULL_OFF})),
+        "tremolo": int(Technique.TREMOLO in has),
+        "slides": int(Technique.SLIDE in has or any(n.slide_to_fret is not None for n in notes)),
+        "unpitchedSlides": int(any(n.slide_unpitch_to is not None for n in notes)),
+        "bends": int(Technique.BEND in has or any(n.bend_semitones for n in notes)),
+        "tapping": int(Technique.TAP in has),
+        "vibrato": int(Technique.VIBRATO in has),
+        "slapPop": int(bool(has & {Technique.SLAP, Technique.POP})),
+        "sustain": int(any(n.sustain > 0 for n in notes)),
+        "pickDirection": int(any(n.pick_direction for n in notes)),
+    }

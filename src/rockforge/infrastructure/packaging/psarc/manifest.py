@@ -27,7 +27,7 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 from rockforge.domain.arrangement import Arrangement, ArrangementKind, song_partitions
-from rockforge.domain.music import TabNote, Technique
+from rockforge.domain.chords import technique_flags
 from rockforge.infrastructure.packaging.gear.default_tones import default_tone
 from rockforge.infrastructure.packaging.tone_dto import unique_tone_dtos
 
@@ -225,49 +225,10 @@ def _technique_flags(arrangement: Arrangement) -> dict[str, int]:
     vibrato/hopo/openChords/doubleStops/fretHandMutes from the notes. They are
     the arrangement's advertised technique content — what the song-list and the
     game's technique tracking read — so reporting none on a chart full of palm
-    mutes and power chords is a false claim, not a missing nicety. Derived here
-    from the domain notes; a technique the domain cannot express stays 0.
+    mutes and power chords is a false claim, not a missing nicety. One rule for
+    the XML and the manifest: ``domain.chords.technique_flags``.
     """
-    notes = arrangement.notes
-    has = {t for n in notes for t in n.techniques}
-    # A chord = simultaneous notes; a power chord is a 2-note fifth (root + 5th
-    # on the adjacent string, 2 frets up), a double stop any other 2-note shape.
-    by_time: dict[float, list[TabNote]] = {}
-    for n in notes:
-        by_time.setdefault(round(n.time, 4), []).append(n)
-    power = double = openc = 0
-    for grp in by_time.values():
-        if len(grp) < 2:
-            continue
-        if arrangement.kind.is_bass:  # a bass's chords are double stops
-            double = 1
-            continue
-        frets = sorted((g.string, g.fret) for g in grp)
-        if any(f == 0 for _, f in frets):
-            openc = 1
-        if len(grp) == 2:
-            (s0, f0), (s1, f1) = frets
-            if s1 == s0 + 1 and f1 - f0 == 2 and f0 > 0:
-                power = 1
-            else:
-                double = 1
-    return {
-        "powerChords": power, "doubleStops": double, "openChords": openc,
-        "palmMutes": int(Technique.PALM_MUTE in has),
-        "fretHandMutes": int(Technique.FRET_MUTE in has),
-        "harmonics": int(Technique.HARMONIC in has),
-        "pinchHarmonics": int(Technique.PINCH_HARMONIC in has),
-        "hopo": int(bool(has & {Technique.HAMMER_ON, Technique.PULL_OFF})),
-        "tremolo": int(Technique.TREMOLO in has),
-        "slides": int(any(n.slide_to_fret is not None for n in notes)),
-        "unpitchedSlides": int(any(n.slide_unpitch_to is not None for n in notes)),
-        "bends": int(Technique.BEND in has or any(n.bend_semitones for n in notes)),
-        "tapping": int(Technique.TAP in has),
-        "vibrato": int(Technique.VIBRATO in has),
-        "slapPop": int(bool(has & {Technique.SLAP, Technique.POP})),
-        "sustain": int(any(n.sustain > 0 for n in notes)),
-        "pickDirection": int(any(n.pick_direction for n in notes)),
-    }
+    return technique_flags(arrangement.notes, bass=arrangement.kind.is_bass)
 
 
 def _arrangement_properties(arrangement: Arrangement) -> dict[str, int]:

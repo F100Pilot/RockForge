@@ -597,3 +597,35 @@ def test_the_appid_is_the_one_the_player_chose() -> None:
     for bad in ("", "12a", "-1", "12345678901"):
         with pytest.raises(ValueError):
             build_manifest_files(arrangements, "MySong", app_id=bad)
+
+
+def test_the_xml_and_the_manifest_advertise_the_same_techniques(tmp_path) -> None:
+    """The manifest found chords by notes at the same time to 0.1 ms, so a
+    strummed power chord (strings 10 ms apart) was not one; the XML set
+    powerChords and openChords for ANY chord, so a chart of fretted triads
+    claimed both. One rule now, the chords the rest of the build makes."""
+    import xml.etree.ElementTree as ET
+
+    from rockforge.infrastructure.rsxml.writer import write_arrangement_xml
+
+    def props(notes: list[TabNote]) -> tuple[dict[str, int], dict[str, str]]:
+        arr = _arrangement(ArrangementKind.LEAD)
+        arr.tempo_map = TempoMap(
+            beats=tuple(Beat(time=0.5 * i, measure=-1 if i % 4 else i // 4 + 1)
+                        for i in range(16)),
+            average_bpm=120.0,
+        )
+        arr.notes = notes
+        (entry,) = build_arrangement_manifest(arr, "MySong", "Lead")["Entries"].values()
+        xml = ET.parse(write_arrangement_xml(arr, tmp_path / "a.xml")).getroot()
+        return entry["Attributes"]["ArrangementProperties"], xml.find("arrangementProperties").attrib
+
+    strummed_power = [TabNote(string=0, fret=5, time=1.0, sustain=0.2),
+                      TabNote(string=1, fret=7, time=1.01, sustain=0.2)]
+    manifest_props, xml_props = props(strummed_power)
+    assert manifest_props["powerChords"] == 1 and xml_props["powerChords"] == "1"
+    triads = [TabNote(string=s, fret=f, time=t, sustain=0.2)
+              for t in (1.0, 2.0) for s, f in ((3, 5), (4, 5), (5, 5))]
+    manifest_props, xml_props = props(triads)
+    for key in ("powerChords", "openChords", "doubleStops"):
+        assert manifest_props[key] == 0 and xml_props[key] == "0", key

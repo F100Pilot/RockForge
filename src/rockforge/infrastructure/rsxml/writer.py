@@ -14,11 +14,15 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from rockforge.domain.arrangement import Arrangement, ArrangementKind, Section, number_sections
-from rockforge.domain.chords import arpeggio_spans, chord_display, hand_shape_spans
+from rockforge.domain.chords import (
+    arpeggio_spans,
+    chord_display,
+    group_chords,
+    hand_shape_spans,
+    technique_flags,
+)
 from rockforge.domain.hand import HandPosition, auto_windows, position_pin
 from rockforge.domain.music import TabNote, Technique, high_density_flags, is_plain_rise
-
-CHORD_EPSILON_S = 0.03  # notes starting within 30 ms form a chord (matches fret mapper)
 
 
 def _fmt(x: float) -> str:
@@ -47,18 +51,7 @@ def _safe_tone_time(t: float, note_times: list[float]) -> float:
     return round(max(0.0, safe), 3)
 
 
-def _group_chords(notes: list[TabNote]) -> list[list[TabNote]]:
-    """Group simultaneous notes; singletons stay single notes, groups become chords."""
-    ordered = sorted(notes, key=lambda n: (n.time, n.string))
-    groups: list[list[TabNote]] = []
-    for n in ordered:
-        # never two notes of one string in a chord (sng_build._group_chords)
-        if (groups and n.time - groups[-1][0].time <= CHORD_EPSILON_S
-                and all(m.string != n.string for m in groups[-1])):
-            groups[-1].append(n)
-        else:
-            groups.append([n])
-    return groups
+_group_chords = group_chords  # the one rule the SNG and the manifest group by
 
 
 def _build_anchors(
@@ -222,16 +215,13 @@ def render_arrangement(arr: Arrangement, album_art_urn: str | None = None) -> ET
     # arrangementProperties: the DLC Builder parser (Rocksmith2014.XML
     # ArrangementProperties.ReadXml) dereferences every attribute below without
     # a null check — ALL of them must be present or import fails with an NRE.
-    techniques = {t for n in arr.notes for t in n.techniques}
-    groups_preview = _group_chords(arr.notes)
-    has_chords = any(len(g) > 1 for g in groups_preview)
-    has_double_stops = any(len(g) == 2 for g in groups_preview)
+    # The chart's techniques — the same flags as the native manifest's (DLC
+    # Builder copies these). powerChords/openChords used to be set by ANY
+    # chord, so a chart of plain triads claimed power chords and open ones.
+    flags = technique_flags(arr.notes, bass=arr.kind.is_bass)
     is_rhythm = arr.kind.base_kind is ArrangementKind.RHYTHM
     is_bass = arr.kind.is_bass
     is_alt = arr.kind.is_alternate
-    # A bass's chords are double stops, not the guitar chord types these flags
-    # name (DLC Builder copies them from the XML; EOF leaves them off on a bass).
-    guitar_chords = has_chords and not is_bass
     props = ET.SubElement(song, "arrangementProperties")
     for attr, value in (
         ("represent", "0" if is_alt else "1"),
@@ -239,30 +229,29 @@ def render_arrangement(arr: Arrangement, album_art_urn: str | None = None) -> ET
         ("standardTuning", "1" if all(o == 0 for o in offsets) else "0"),
         ("nonStandardChords", "0"),
         ("barreChords", "0"),
-        ("powerChords", "1" if guitar_chords else "0"),
+        ("powerChords", str(flags["powerChords"])),
         ("dropDPower", "0"),
-        ("openChords", "1" if guitar_chords else "0"),
+        ("openChords", str(flags["openChords"])),
         ("fingerPicking", "0"),
-        ("pickDirection", "1" if any(n.pick_direction for n in arr.notes) else "0"),
-        ("doubleStops", "1" if has_double_stops else "0"),
-        ("palmMutes", "1" if Technique.PALM_MUTE in techniques else "0"),
-        ("harmonics", "1" if Technique.HARMONIC in techniques else "0"),
-        ("pinchHarmonics", "1" if Technique.PINCH_HARMONIC in techniques else "0"),
-        ("hopo", "1" if {Technique.HAMMER_ON, Technique.PULL_OFF} & techniques else "0"),
-        ("tremolo", "1" if Technique.TREMOLO in techniques else "0"),
-        ("slides", "1" if Technique.SLIDE in techniques else "0"),
-        ("unpitchedSlides", "1" if any(n.slide_unpitch_to is not None for n in arr.notes)
-         else "0"),
-        ("bends", "1" if Technique.BEND in techniques else "0"),
-        ("tapping", "1" if Technique.TAP in techniques else "0"),
-        ("vibrato", "1" if Technique.VIBRATO in techniques else "0"),
-        ("fretHandMutes", "1" if Technique.FRET_MUTE in techniques else "0"),
-        ("slapPop", "1" if {Technique.SLAP, Technique.POP} & techniques else "0"),
+        ("pickDirection", str(flags["pickDirection"])),
+        ("doubleStops", str(flags["doubleStops"])),
+        ("palmMutes", str(flags["palmMutes"])),
+        ("harmonics", str(flags["harmonics"])),
+        ("pinchHarmonics", str(flags["pinchHarmonics"])),
+        ("hopo", str(flags["hopo"])),
+        ("tremolo", str(flags["tremolo"])),
+        ("slides", str(flags["slides"])),
+        ("unpitchedSlides", str(flags["unpitchedSlides"])),
+        ("bends", str(flags["bends"])),
+        ("tapping", str(flags["tapping"])),
+        ("vibrato", str(flags["vibrato"])),
+        ("fretHandMutes", str(flags["fretHandMutes"])),
+        ("slapPop", str(flags["slapPop"])),
         ("twoFingerPicking", "0"),
         ("fifthsAndOctaves", "0"),
         ("syncopation", "0"),
         ("bassPick", "0"),
-        ("sustain", "1" if any(n.sustain > 0 for n in arr.notes) else "0"),
+        ("sustain", str(flags["sustain"])),
         ("pathLead", "0" if is_rhythm or is_bass else "1"),
         ("pathRhythm", "1" if is_rhythm else "0"),
         ("pathBass", "1" if is_bass else "0"),

@@ -10,7 +10,7 @@ from dataclasses import replace
 
 from rockforge.application.ports import VocalEvent
 from rockforge.domain.arrangement import Arrangement, Section, number_sections
-from rockforge.domain.chords import arpeggio_spans, chord_display, hand_shape_spans
+from rockforge.domain.chords import arpeggio_spans, chord_display, group_chords, hand_shape_spans
 from rockforge.domain.hand import HandPosition, auto_windows, fixed_windows, position_pin
 from rockforge.domain.music import (
     HIGH_DENSITY_MAX_GAP_S,
@@ -19,7 +19,6 @@ from rockforge.domain.music import (
     is_plain_rise,
 )
 from rockforge.infrastructure.packaging.psarc.sng_model import (
-    _CHORD_EPSILON_S,
     _DD_LEVEL_CAP,
     _DD_MIN_LEVELS,
     _MEASURES_PER_PHRASE,
@@ -131,23 +130,7 @@ def _build_events(
     return ordered
 
 
-def _group_chords(
-    notes: Sequence[TabNote],
-) -> list[list[TabNote]]:
-    """Group simultaneous notes; mirrors ``writer.py._group_chords``."""
-    ordered = sorted(notes, key=lambda n: (n.time, n.string))
-    groups: list[list[TabNote]] = []
-    for n in ordered:
-        # Two notes on ONE string are never a chord, however close (a fast
-        # slide into its landing note, GitHub issue #11): merged, the second
-        # overwrote the first in the template and left a link and a slide the
-        # game dereferenced through a chord with no chord notes — a crash.
-        if (groups and n.time - groups[-1][0].time <= _CHORD_EPSILON_S
-                and all(m.string != n.string for m in groups[-1])):
-            groups[-1].append(n)
-        else:
-            groups.append([n])
-    return groups
+_group_chords = group_chords  # one rule with the XML writer and the manifest
 
 
 def _chord_template_key(group: list[TabNote]) -> tuple[int, ...]:
