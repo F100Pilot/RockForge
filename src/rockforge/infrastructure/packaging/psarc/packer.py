@@ -330,10 +330,16 @@ class NativePsarcPacker:
             start_s, length_s = _preview_window(song_length)
             clip = _extract_preview_clip(audio, out_dir / "preview.wav", start_s, length_s)
             if clip is not None and self._wem_converter is not None:
-                preview_wem = self._wem_converter.convert(clip, out_dir / "wwise_preview")
-                preview_wem_bytes = preview_wem.read_bytes()
-                # Match the volume to the clip that's actually shipped.
-                preview_volume = calculate_volume(clip)
+                # Best-effort like the main conversion: a preview that will not
+                # convert falls back to the full stream set up above, instead of
+                # costing the whole .psarc (BUG-0381).
+                try:
+                    preview_wem = self._wem_converter.convert(clip, out_dir / "wwise_preview")
+                    preview_wem_bytes = preview_wem.read_bytes()
+                    # Match the volume to the clip that's actually shipped.
+                    preview_volume = calculate_volume(clip)
+                except (PackagingError, OSError) as exc:
+                    logger.warning("preview clip not converted, using the full stream: %s", exc)
             preview_bnk, preview_id = soundbank.generate_soundbank(
                 f"{song_key}_preview", preview_wem_bytes, volume=preview_volume, preview=True
             )

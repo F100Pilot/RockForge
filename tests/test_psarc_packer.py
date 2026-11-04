@@ -174,6 +174,38 @@ def test_bundle_survives_wwise_failure(tmp_path: Path) -> None:
     assert (tmp_path / "bundle" / "rockforge_project.json").exists()
 
 
+def test_a_preview_that_will_not_convert_still_gives_a_psarc(tmp_path: Path, monkeypatch) -> None:
+    """The main .wem converted, the preview clip did not: the .psarc used to be
+    lost with it, though the full stream was there to fall back on (BUG-0381)."""
+    from rockforge.domain.errors import PackagingError
+    from rockforge.infrastructure.packaging.psarc import packer as packer_module
+
+    class _MainOnly:
+        def available(self) -> bool:
+            return True
+
+        def convert(self, wav: Path, workdir: Path) -> Path:
+            if "preview" in workdir.name:
+                raise PackagingError("preview refused")
+            workdir.mkdir(parents=True, exist_ok=True)
+            out = workdir / "song.wem"
+            out.write_bytes(b"RIFF" + b"\0" * 60)
+            return out
+
+    clip = tmp_path / "clip.wav"
+    clip.write_bytes(b"RIFF....WAVEfmt ")
+    monkeypatch.setattr(packer_module, "_extract_preview_clip", lambda *_a, **_k: clip)
+    monkeypatch.setattr(packer_module, "calculate_volume", lambda *_a, **_k: 0.0)
+    audio = tmp_path / "audio.wav"
+    audio.write_bytes(b"RIFF....WAVEfmt ")
+    result = NativePsarcPacker(wem_converter=_MainOnly()).package(
+        [_arrangement(ArrangementKind.COMBINED)], audio, tmp_path / "bundle"
+    )
+    assert result.psarc_path is not None and result.psarc_path.exists()
+    names = container.unpack(result.psarc_path.read_bytes())
+    assert any(n.endswith("_preview.bnk") for n in names)
+
+
 def test_package_produces_valid_psarc(tmp_path: Path) -> None:
     audio = tmp_path / "audio.wav"
     audio.write_bytes(b"RIFF....WAVEfmt ")
