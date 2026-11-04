@@ -991,3 +991,31 @@ def test_a_locked_gp_file_is_refused_in_words_not_a_crash(tmp_path: Path) -> Non
 def test_a_lyric_line_on_a_bar_never_played_is_not_put_at_the_start(tmp_path: Path) -> None:
     gpif = GPIF.replace("<Offset>0</Offset>", "<Offset>7</Offset>")
     assert parse_gp_track(_gp_with(tmp_path, gpif), 0).lyrics == []
+
+
+_BAD_TEMPO = (
+    "<Automation><Type>Tempo</Type><Linear>false</Linear><Bar>0</Bar>"
+    "<Position>0</Position><Visible>true</Visible><Value>{} 2</Value></Automation>"
+)
+
+
+@pytest.mark.parametrize(
+    ("automations", "bars"),
+    [
+        ("", "0/4"),
+        ("", "4/0"),
+        ("", "4/3"),
+        ("", "100000000/4"),  # laid out a beat at a time: never finished
+        (_BAD_TEMPO.format("0"), "4/4"),
+        (_BAD_TEMPO.format("nan"), "4/4"),
+        (_BAD_TEMPO.format("abc"), "4/4"),
+    ],
+)
+def test_a_gp7_file_with_impossible_numbers_is_refused_in_words(
+    tmp_path: Path, automations: str, bars: str
+) -> None:
+    path = _gp_with(tmp_path, _tempo_gpif(automations, bars))
+    with pytest.raises(IngestionError):
+        inspect_gp(path)
+    with pytest.raises(IngestionError):
+        parse_gp_track(path, 0)

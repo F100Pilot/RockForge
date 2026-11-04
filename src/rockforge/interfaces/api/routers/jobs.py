@@ -424,7 +424,10 @@ def reload_gp(
             if not params.get("recording_from_gp"):
                 # Another recording's start does not fit this one; where bar 1
                 # sits in the file's own audio is what the wizard would offer.
-                start = sync_start_s(gp_dest)
+                try:
+                    start = sync_start_s(gp_dest)
+                except IngestionError:
+                    start = None  # a hint, never a reason to refuse a file that parsed
                 if start is not None:
                     params["offset_s"] = round(start, 3)
             params["recording_from_gp"] = True

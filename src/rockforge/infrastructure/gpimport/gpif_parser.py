@@ -20,12 +20,14 @@ the same set the GP5 path emits. Melody/rhythm timing is exact from the file.
 from __future__ import annotations
 
 import dataclasses
+import functools
 import itertools
 import math
 import xml.etree.ElementTree as ET
 import zipfile
 from collections.abc import Callable, Sequence
 from pathlib import Path
+from typing import TypeVar
 
 from rockforge.domain.alphatab import alphatab_bend
 from rockforge.domain.errors import IngestionError
@@ -73,6 +75,8 @@ from rockforge.infrastructure.gpimport.sync_map import (
     relative_to_bar_one,
 )
 from rockforge.infrastructure.ingestion.sources import ALLOWED_SUFFIXES
+
+_R = TypeVar("_R")
 
 # NoteValue name -> ticks (quarter = 960).
 _NOTE_VALUE_TICKS = {
@@ -204,20 +208,51 @@ def _master_bar_durations(master_bars: list[ET.Element]) -> list[int]:
     return durations
 
 
+# What a time signature can be: Guitar Pro writes numerators up to 32 and
+# note-value denominators. Anything else would divide by zero, split a bar into
+# fractional ticks, or (a numerator in the millions) lay out beats forever.
+MAX_NUMERATOR = 128
+DENOMINATORS = frozenset({1, 2, 4, 8, 16, 32, 64})
+
+
 def _time_signature(master_bar: ET.Element) -> tuple[int, int]:
     sig = _text(master_bar.find("Time"), "4/4")
     try:
         num_s, den_s = sig.split("/")
-        return int(num_s), int(den_s)
+        num, den = int(num_s), int(den_s)
     except (ValueError, AttributeError):
         return 4, 4
+    if not 1 <= num <= MAX_NUMERATOR or den not in DENOMINATORS:
+        raise IngestionError(f"GP7 file has an impossible time signature {num}/{den}")
+    return num, den
 
 
+def _reads_as_ingestion_error(func: Callable[..., _R]) -> Callable[..., _R]:
+    """A malformed number deep in score.gpif (a tempo of "abc", a bar of 0
+    ticks) is a file we cannot read, not a crash: say so as an IngestionError,
+    which every caller already turns into a refusal in words."""
+
+    @functools.wraps(func)
+    def wrapper(*args: object, **kwargs: object) -> _R:
+        try:
+            return func(*args, **kwargs)
+        except IngestionError:
+            raise
+        except (ValueError, ZeroDivisionError, OverflowError, TypeError, IndexError) as exc:
+            raise IngestionError(f"could not read GP7 file: {exc}") from exc
+
+    return wrapper
+
+
+@_reads_as_ingestion_error
 def inspect_gpif(path: Path) -> GpSongInfo:
     root = _load_gpif(path)
     score = root.find("Score")
     tracks_el = root.find("Tracks")
     tracks = list(tracks_el) if tracks_el is not None else []
+    # Every bar's signature is checked here, so a file that cannot be built is
+    # refused in the wizard rather than at the end of a build.
+    _master_bar_durations(list(root.find("MasterBars") or []))
 
     track_infos: list[GpTrackInfo] = []
     has_lyrics = False
@@ -266,6 +301,8 @@ _TEMPO_REFERENCES = (1.0, 0.5, 1.0, 1.5, 2.0, 3.0)
 def _tempo_bpm(value: list[str]) -> float:
     """Quarter-note BPM from a GPIF <Value> token list."""
     bpm = float(value[0])
+    if not math.isfinite(bpm) or bpm <= 0:
+        raise IngestionError(f"GP7 file has an impossible tempo {value[0]}")
     ref = 1
     if len(value) > 1:
         try:
@@ -435,6 +472,7 @@ def _float(text: str) -> float:
     return value if math.isfinite(value) else 0.0
 
 
+@_reads_as_ingestion_error
 def sync_start_s(path: Path) -> float | None:
     """Where bar 1 falls in the audio Guitar Pro 8 was synced to, or None.
 
@@ -631,6 +669,7 @@ def extract_embedded_audio(path: Path, dest: Path) -> Path:
     return out
 
 
+@_reads_as_ingestion_error
 def parse_gpif_track(
     path: Path,
     track_index: int,
