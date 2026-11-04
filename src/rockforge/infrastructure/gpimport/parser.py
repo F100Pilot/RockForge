@@ -751,7 +751,9 @@ def _lyric_notes(song: Any, t: Callable[[int], float]) -> tuple[LyricNote, ...] 
                     # before the beat, or on it, delaying the beat's note.
                     g = grace.effect.grace
                     g_ticks = min(g.durationTime, length) if g.isOnBeat else g.durationTime
-                    g_start = tick if g.isOnBeat else max(measure.start, tick - g_ticks)
+                    # Before the beat it takes the end of the note before it, across
+                    # the bar line too — where the chart's own grace note sits.
+                    g_start = tick if g.isOnBeat else max(QUARTER_TICKS, tick - g_ticks)
                     g_end = tick + g_ticks if g.isOnBeat else tick
                     if g.isOnBeat:
                         main = g_end

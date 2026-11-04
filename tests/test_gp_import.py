@@ -496,3 +496,35 @@ def test_a_bar_of_no_beats_is_refused_in_words(tmp_path: Path) -> None:
         inspect_gp(path)
     with pytest.raises(IngestionError, match="time signature 0/4"):
         parse_gp_track(path, 0)
+
+
+def test_a_sung_grace_note_on_a_bar_line_starts_in_the_bar_before(tmp_path: Path) -> None:
+    """The chart's grace note before a downbeat takes the end of the previous
+    bar; the vocal line's was clamped to the bar line, so its syllable lasted
+    nothing and sounded with the downbeat's."""
+    song = gp.Song()
+    song.tempo = 120  # a quarter = 0.5 s
+    track = song.tracks[0]
+    m1 = track.measures[0]
+    for _ in range(4):
+        _add_beat(m1.voices[0], 4, [(1, 5)])
+    header2 = gp.MeasureHeader()
+    header2.number, header2.start = 2, m1.start + m1.length
+    song.measureHeaders.append(header2)
+    m2 = gp.Measure(track, header2)
+    track.measures.append(m2)
+    grace = gp.GraceEffect()
+    grace.fret, grace.duration, grace.isOnBeat = 3, 16, False  # a 32nd before the beat
+    _add_beat(m2.voices[0], 1, [(1, 7)], grace=grace)
+    song.lyrics.trackChoice = 1
+    song.lyrics.lines[0].lyrics = "one two three four grace five"
+    path = tmp_path / "grace.gp5"
+    gp.write(song, str(path))
+    parsed = parse_gp_track(path, 0)
+    sung = parsed.lyric_notes
+    assert sung is not None and len(sung) == 6
+    bar_two = 2.0
+    grace_note = sung[4]
+    assert grace_note.time < bar_two and grace_note.end == pytest.approx(bar_two)
+    charted = [n for n in parsed.notes if n.fret == 3]
+    assert charted and charted[0].time == pytest.approx(grace_note.time)
