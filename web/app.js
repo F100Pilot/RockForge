@@ -1316,6 +1316,13 @@ document.getElementById('settingsSave').addEventListener('click', async () => {
 // Exportar lives outside #review: it is also what shows while a job builds,
 // when the other pages have nothing to show and their rail buttons are off.
 const PROJECT_PAGES = ['partitura', 'tons', 'letras', 'capa', 'exportar'];
+// The score's own keys (transport, modes, note edits) belong to the Partitura
+// page of an open project, with no dialog or full-screen page over it.
+function onScorePage() {
+  if (!selectedJob || document.getElementById('detailOverlay').hidden) return false;
+  if (document.getElementById('detail').dataset.page !== 'partitura') return false;
+  return !document.querySelector('.modal-overlay:not([hidden]), .settings-view:not([hidden])');
+}
 function showSection(name) {
   for (const s of PROJECT_PAGES) {
     const el = document.getElementById('section' + s.charAt(0).toUpperCase() + s.slice(1));
@@ -5880,8 +5887,7 @@ document.addEventListener('keydown', e => {
   const tag = el && el.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (el && el.isContentEditable)) return;
   if (!document.getElementById('noteEditPopup').hidden) return;
-  if (document.getElementById('detailOverlay').hidden) return;
-  if (document.querySelector('.modal-overlay:not([hidden]), .settings-view:not([hidden])')) return;
+  if (!onScorePage()) return;
   const step = (e.ctrlKey ? 12 : 1) * (e.key === 'ArrowUp' ? 1 : -1);
   if (stepNoteFret(step)) e.preventDefault();
 });
@@ -12343,6 +12349,10 @@ document.addEventListener('keydown', e => {
   if (!selectedJob) return;
   const panel = document.getElementById('syncPanel');
   if (!panel || panel.style.display === 'none') return;
+  // The Partitura page only, with nothing on top of it: Backspace deleted the
+  // selected notes, Ctrl+C/V took the page's own copy and Space toggled the
+  // music from the Tons page, Definições or a dialog (BUG-0379).
+  if (!onScorePage()) return;
   if (e.code === 'Space' || e.key === ' ') {
     e.preventDefault();               // stop the page from scrolling on space
     if (tag === 'BUTTON') el.blur();  // don't let a focused button also fire on space
