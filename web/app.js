@@ -7825,11 +7825,6 @@ let lyricsCandidates = [];
 let lyricsBeforeAlign = null;  // the editor's rows while an alignment runs
 const redrawScore = () => { if (arrangements.length) showArr(currentArr); };
 
-// Rounded to the second BEFORE splitting, or 119.6 s reads "1:60".
-const fmtMinSec = s => {
-  const whole = Math.round(s);
-  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`;
-};
 
 // An LRC time tag, [mm:ss.xx], rounded to the hundredth before splitting so
 // 59.997 s is [01:00.00], not [00:60.00].
@@ -7878,11 +7873,11 @@ function lyricsCardBody(c, recordingS) {
   badge.textContent = c.instrumental ? T('instrumental') : c.synced ? T('sincronizada') : T('só texto');
   let len = '';
   if (c.duration) {
-    len = fmtMinSec(c.duration);
+    len = fmtClock(c.duration);
     if (recordingS) {
       const gap = recordingS - c.duration;
       len += Math.abs(gap) < 2 ? T(' (igual à tua gravação)')
-        : T(' (a tua gravação: {len}, {gap} s)', { len: fmtMinSec(recordingS), gap: `${gap > 0 ? '+' : '−'}${Math.round(Math.abs(gap))}` });
+        : T(' (a tua gravação: {len}, {gap} s)', { len: fmtClock(recordingS), gap: `${gap > 0 ? '+' : '−'}${Math.round(Math.abs(gap))}` });
     }
   }
   meta.append(badge, [c.album, len].filter(Boolean).join(' · '));
@@ -12503,6 +12498,9 @@ function seekPreview(t) {
   updateLiveBpm(vt);
 }
 
+// m:ss, whole seconds cut (a player's clock). The ONE way a length reads: the
+// LRCLIB cards rounded, so a 196.9 s recording read 3:17 there and 3:16 under
+// the score.
 function fmtClock(s) {
   if (!isFinite(s) || s < 0) s = 0;
   const m = Math.floor(s / 60), sec = Math.floor(s % 60);
