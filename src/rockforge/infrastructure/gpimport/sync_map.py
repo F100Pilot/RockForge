@@ -28,9 +28,17 @@ def audio_clock(
     """
     if not points:
         return None
-    score = [float(to_seconds(tick)) for tick, _ in points]
-    audio = [a for _, a in points]
-    if len(points) == 1:
+    score: list[float] = []
+    audio: list[float] = []
+    for tick, at in points:
+        s = float(to_seconds(tick))
+        # Two points on one instant of the score (a bar of no length) would
+        # divide its span by zero: the first one says where that instant is.
+        if score and s <= score[-1]:
+            continue
+        score.append(s)
+        audio.append(at)
+    if len(score) == 1:
         return lambda tick: audio[0] + float(to_seconds(tick)) - score[0]
 
     def convert(tick: int) -> float:
