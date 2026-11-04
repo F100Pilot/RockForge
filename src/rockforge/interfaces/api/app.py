@@ -177,6 +177,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     _sweep_orphan_gp_uploads()
     _sweep_orphan_youtube_audio()
     _rebase_moved_paths()
+    _recover_interrupted_work()
     _backfill_gp_synced()
     _backfill_preset_tones()
     _send_install_count()
@@ -875,6 +876,90 @@ def _rebase_moved_paths() -> int:
             logger.info("pointed %d job(s) at their files under the current work dir", changed)
     except Exception:  # noqa: BLE001 — housekeeping must never block startup
         logger.warning("moved-path rebase failed", exc_info=True)
+    return changed
+
+
+# A detection's progress lives in params, never in JobStatus: its status key
+# and the log it appends to. A status outside DETECTION_DONE means a task is (or
+# was) working on it — delete refuses then, and the UI polls.
+DETECTION_STATUSES = {
+    "stems_status": "stems_log",
+    "lyrics_status": "lyrics_log",
+    "tone_detection_status": "tone_detection_log",
+}
+DETECTION_DONE = frozenset({"", "none", "ready", "empty", "unavailable"})
+
+
+def _detection_in_flight(params: Mapping[str, Any], key: str) -> bool:
+    return str(params.get(key) or "") not in DETECTION_DONE
+
+
+def _detection_running(params: Mapping[str, Any] | None) -> bool:
+    return any(_detection_in_flight(params or {}, k) for k in DETECTION_STATUSES)
+
+
+def _forked_params(params: Mapping[str, Any] | None) -> dict[str, Any]:
+    """A fork's params: the original's, minus any detection still in flight.
+    The task finishes on the ORIGINAL job, so the fork would carry a
+    "separating"/"detecting" nothing ever moves on — polled forever, and
+    refused for deletion as "a detection is running" (BUG-0374)."""
+    out = dict(params or {})
+    for status, log_key in DETECTION_STATUSES.items():
+        if _detection_in_flight(out, status):
+            out.pop(status, None)
+            out.pop(log_key, None)
+            if status == "lyrics_status":
+                out.pop("lyrics_align", None)
+    return out
+
+
+def _recover_interrupted_work() -> int:
+    """In-process mode only: the queue lived in this process, so a build or a
+    detection the app was running when it last stopped (a crash, a power cut,
+    "Sair mesmo assim") will never move again. Mark them: the build FAILED with
+    a sentence saying why, the detection ``unavailable`` with a line in its log
+    — so the project can be rebuilt, re-run or deleted. Under Celery the worker
+    is another process that may still be on it, so nothing is touched. Returns
+    how many jobs it changed; never raises."""
+    if settings.worker_mode != "inprocess":
+        return 0
+    from sqlalchemy import select
+
+    from rockforge.infrastructure.db.models import JobStatus
+
+    changed = 0
+    try:
+        with _session_factory() as session:
+            for job in session.execute(select(Job)).scalars():
+                touched = False
+                if job.status in (JobStatus.PENDING, JobStatus.RUNNING):
+                    job.status = JobStatus.FAILED
+                    job.error = i18n.tr(
+                        "a construção foi interrompida porque a aplicação fechou a meio "
+                        "— reconstrói o projeto",
+                        "the build was interrupted because the app closed while it ran "
+                        "— rebuild the project",
+                    )
+                    touched = True
+                params = dict(job.params or {})  # a NEW dict, or the write is lost
+                for status, log_key in DETECTION_STATUSES.items():
+                    if _detection_in_flight(params, status):
+                        params[status] = "unavailable"
+                        logged = params.get(log_key)
+                        previous = list(logged) if isinstance(logged, list) else []
+                        params[log_key] = [*previous, i18n.tr(
+                            "interrompida: a aplicação fechou a meio — corre outra vez",
+                            "interrupted: the app closed while it ran — run it again",
+                        )][-50:]
+                        if status == "lyrics_status":
+                            params.pop("lyrics_align", None)
+                        touched = True
+                if touched:
+                    job.params = params
+                    changed += 1
+            session.commit()
+    except Exception:  # noqa: BLE001 — housekeeping must never block startup
+        logger.warning("recovering interrupted work failed", exc_info=True)
     return changed
 
 

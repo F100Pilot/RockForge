@@ -4369,6 +4369,76 @@ def test_a_project_is_not_deleted_while_a_detection_runs_on_it(
     assert client.delete(f"/jobs/{job['id']}?force=true").status_code == 204
 
 
+def test_a_version_rebuilt_while_a_detection_runs_does_not_inherit_it(
+    client: TestClient, tmp_path
+) -> None:
+    """The detection finishes on the job it started on, so a fork that copied its
+    "separating" polled forever and could never be deleted (BUG-0374)."""
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.infrastructure.db.models import JobStatus
+
+    job = _gp_job(client, tmp_path)
+    with app_module._session_factory() as session:
+        row = session.get(app_module.Job, job["id"])
+        row.status = JobStatus.COMPLETED
+        row.params = {**row.params, "stems_status": "separating", "stems_log": ["a"],
+                      "lyrics_status": "aligning", "lyrics_align": {"lines": []},
+                      "tone_detection_status": "ready", "detected_tones": {"x": 1}}
+        session.commit()
+    fork = client.post(f"/jobs/{job['id']}/rebuild", json={"offset_s": 1.0}).json()
+    with app_module._session_factory() as session:
+        params = session.get(app_module.Job, fork["id"]).params
+    assert "stems_status" not in params and "stems_log" not in params
+    assert "lyrics_status" not in params and "lyrics_align" not in params
+    # A detection that FINISHED is the project's result and travels with it.
+    assert params["tone_detection_status"] == "ready" and params["detected_tones"] == {"x": 1}
+    with app_module._session_factory() as session:
+        session.get(app_module.Job, fork["id"]).status = JobStatus.COMPLETED
+        session.commit()
+    assert client.delete(f"/jobs/{fork['id']}").status_code == 204
+
+
+def test_work_the_app_was_doing_when_it_stopped_is_marked_on_the_next_start(
+    tmp_path, monkeypatch
+) -> None:
+    """In-process mode: the queue died with the app, so nothing would ever move
+    a RUNNING build or a "separating" detection again (BUG-0374)."""
+    monkeypatch.setenv("ROCKFORGE_DATABASE_URL", f"sqlite:///{tmp_path}/t.db")
+    monkeypatch.setenv("ROCKFORGE_WORK_DIR", str(tmp_path / "work"))
+    import rockforge.config as config
+
+    for mode, expect_changed in (("celery", False), ("inprocess", True)):
+        monkeypatch.setenv("ROCKFORGE_WORKER_MODE", mode)
+        importlib.reload(config)
+        import rockforge.interfaces.api.app as app_module
+        importlib.reload(app_module)
+        from rockforge.infrastructure.db.models import JobStatus
+
+        with app_module._session_factory() as session:
+            for j in session.query(app_module.Job).all():
+                session.delete(j)
+            session.add(app_module.Job(id="built", source_type="gp", source="x", title="t", artist="a",
+                                       status=JobStatus.RUNNING, params={}))
+            session.add(app_module.Job(id="sep", source_type="gp", source="x", title="t", artist="a",
+                                       status=JobStatus.COMPLETED,
+                                       params={"stems_status": "separating",
+                                               "tone_detection_status": "ready"}))
+            session.commit()
+        with TestClient(app_module.app):  # the lifespan runs the recovery
+            pass
+        with app_module._session_factory() as session:
+            built = session.get(app_module.Job, "built")
+            sep = session.get(app_module.Job, "sep")
+            if expect_changed:
+                assert built.status is JobStatus.FAILED and built.error
+                assert sep.params["stems_status"] == "unavailable"
+                assert sep.params["stems_log"]
+                assert sep.params["tone_detection_status"] == "ready"
+            else:  # Celery's worker is another process that may still be on it
+                assert built.status is JobStatus.RUNNING
+                assert sep.params["stems_status"] == "separating"
+
+
 def test_a_refused_new_project_leaves_no_recording_behind(client: TestClient, tmp_path) -> None:
     """The recording was copied before the other checks; every later refusal
     left it in uploads/ for good. And "²" passed isdigit() but not int()."""

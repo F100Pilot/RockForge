@@ -373,7 +373,7 @@ def reload_gp(
         original = api._job_or_404(session, job_id)
         if original.source_type != "gp":
             raise HTTPException(422, "reload-gp only applies to Guitar Pro jobs")
-        params: dict[str, object] = dict(original.params or {})
+        params: dict[str, object] = api._forked_params(original.params)
         src_recording = original.source
         meta = (original.title, original.artist, original.album, original.year)
 
@@ -504,13 +504,8 @@ def delete_job(job_id: str, force: bool = False) -> Response:
 # A detection runs with the job COMPLETED (its progress lives in params), so
 # RUNNING alone let a project be deleted mid-separation: rmtree under Demucs,
 # whose output then recreated gigabytes of WAVs that nothing would collect.
-_DETECTION_STATUSES = ("stems_status", "lyrics_status", "tone_detection_status")
-_DETECTION_DONE = frozenset({"", "none", "ready", "empty", "unavailable"})
-
-
 def _detection_running(job: Job) -> bool:
-    params = job.params or {}
-    return any(str(params.get(k) or "") not in _DETECTION_DONE for k in _DETECTION_STATUSES)
+    return api._detection_running(job.params)
 
 
 def _delete_job_files_and_row(session: Any, job: Job) -> None:

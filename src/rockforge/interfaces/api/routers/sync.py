@@ -110,7 +110,7 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
             raise HTTPException(409, "original upload no longer exists on the work volume")
         from rockforge.application.gp_pipeline import MIN_OFFSET_S
 
-        params: dict[str, object] = dict(original.params or {})
+        params: dict[str, object] = api._forked_params(original.params)
         # Snapshot the PRE-EDIT timeline parameters before anything below mutates
         # them (dict() is shallow, so nested entries are shared). They are needed
         # to conjugate already-committed anchor stages — see _remap_committed_anchors.
@@ -430,7 +430,7 @@ def import_sync_state(job_id: str, payload: SyncStateIn) -> JobOut:
         if original.source_type != "gp":
             for k in _SYNC_STATE_GP_ONLY:  # track/tuning-override keys need a GP file
                 clean.pop(k, None)
-        params: dict[str, object] = dict(original.params or {})
+        params: dict[str, object] = api._forked_params(original.params)
         params.update(clean)
         if "lyrics_events" in clean:
             # Let the next build use the imported lyrics (see rebuild_job).
