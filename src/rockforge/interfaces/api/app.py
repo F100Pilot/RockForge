@@ -24,7 +24,7 @@ import signal
 import sys
 import time
 import uuid
-from collections.abc import AsyncIterator, Mapping
+from collections.abc import AsyncIterator, Callable, Mapping
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
@@ -514,6 +514,39 @@ def _check_imported_params(params: dict[str, object]) -> None:
         _clean_merge_tracks(params["merge_tracks"])
     if params.get("tones") is not None:
         _check_tones(params["tones"])
+    melody = params.get("vocal_melody")
+    if melody is not None and not all(
+        isinstance(n, dict) and number(n.get("time")) and number(n.get("length"))
+        and (n.get("midi") is None or (isinstance(n["midi"], int) and not isinstance(
+            n["midi"], bool) and 0 <= n["midi"] <= 127))
+        for n in melody  # type: ignore[union-attr]  # a list: checked above
+    ):
+        raise bad("vocal_melody", "notas {time, length, midi}")
+    detected = params.get("detected_tones")
+    if isinstance(detected, dict) and not _detected_tones_ok(detected, number):
+        raise bad("detected_tones", "o resultado de «Detetar tom»")
+
+
+def _detected_tones_ok(detected: dict[str, object], number: Callable[[object], bool]) -> bool:
+    """The shape /detected-tones and /tone-suggestions read back: a wrong one in
+    a project file was stored and then 500ed on every read of either."""
+    def dicts(v: object) -> bool:
+        return isinstance(v, list) and all(isinstance(x, dict) for x in v)
+
+    profile = detected.get("profile", {})
+    timeline = detected.get("timeline", [])
+    reading = detected.get("bass_reading", {})
+    return (
+        all(isinstance(detected.get(k, {}), dict) for k in ("lead", "rhythm"))
+        and all(dicts(detected.get(k, [])) for k in
+                ("lead_candidates", "rhythm_candidates", "bass_candidates"))
+        and isinstance(detected.get("category", ""), str)
+        and isinstance(profile, dict) and all(number(v) for v in profile.values())
+        and isinstance(timeline, list) and all(
+            isinstance(r, list) and len(r) >= 5 and all(number(x) for x in r[:5])
+            for r in timeline)
+        and isinstance(reading, dict)
+    )
 
 
 def _reject_non_finite(**values: float) -> None:

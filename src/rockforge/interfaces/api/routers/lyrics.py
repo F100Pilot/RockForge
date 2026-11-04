@@ -184,6 +184,6 @@ def get_vocal_line(job_id: str) -> VocalLineOut:
                     time=float(r["time"]), length=float(r["length"]),
                     midi=int(midi) if midi is not None else None,
                 ))
-            except (KeyError, TypeError, ValueError):
+            except (KeyError, TypeError, ValueError, AttributeError):
                 continue  # a malformed row is skipped, never a 500
         return VocalLineOut(notes=notes, gp_has_lyrics=bool(params.get("gp_has_lyrics")))

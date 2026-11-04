@@ -5113,3 +5113,44 @@ def test_a_queue_that_does_not_answer_marks_the_job_and_says_so(
         params = session.get(app_module.Job, job["id"]).params
     assert params["lyrics_status"] == "unavailable"
     assert "Redis" in params["lyrics_log"][-1]
+
+
+def test_a_projects_measurements_in_a_shape_nothing_reads_are_refused(
+    client: TestClient, tmp_path
+) -> None:
+    """A .rfproj's detected_tones or vocal_melody were checked only to be an
+    object/list, so a wrong shape inside was stored and every later read of
+    /detected-tones, /tone-suggestions or /vocal-line was a 500."""
+    import io
+    import json
+    import zipfile
+
+    def project(params: dict) -> bytes:
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as zf:
+            zf.writestr("project.json", json.dumps({
+                "format": "rockforge-project", "version": 1,
+                "job": {"title": "Deriva", "artist": "Banda Inventada", "source_type": "gp"},
+                "params": params,
+            }))
+            zf.writestr("files/recording.wav", b"RIFF0000WAVE")
+            zf.writestr("files/score.gp5", _make_gp5_bytes(tmp_path))
+        return buf.getvalue()
+
+    def imported(params: dict) -> int:
+        return client.post("/projects/import", files={
+            "file": ("p.rfproj", project(params), "application/zip")}).status_code
+
+    good = {"category": "crunch", "lead": {}, "rhythm": {}, "lead_candidates": [{"key": "x"}],
+            "profile": {"gain_level": 0.5}, "timeline": [[0.0, 0.5, 0.5, 0.5, 1]]}
+    assert imported({"detected_tones": good,
+                     "vocal_melody": [{"time": 1.0, "length": 0.5, "midi": 60}]}) == 202
+    for params in (
+        {"detected_tones": {**good, "lead": ["not", "an", "object"]}},
+        {"detected_tones": {**good, "lead_candidates": ["x"]}},
+        {"detected_tones": {**good, "timeline": [["a", 1, 1, 1, 1]]}},
+        {"detected_tones": {**good, "profile": {"gain_level": "loud"}}},
+        {"vocal_melody": ["a note"]},
+        {"vocal_melody": [{"time": 1.0, "length": 0.5, "midi": 900}]},
+    ):
+        assert imported(params) == 422, params
