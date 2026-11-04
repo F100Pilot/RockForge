@@ -6415,9 +6415,10 @@ ordinary pings (so their first-seen time is the replay's — nothing reads it);
 the old Supabase project (`fvyqytrtmctsdepyrnlm`) is
 only paused, with its data, and installs still on an older version keep posting
 to its address and fail silently (retried at each start) until they update.
-Source in the repo: `counter/` — `netlify.toml` (the Netlify project is linked to
-this repo with base directory `counter`; `ignore` skips a deploy unless
-`counter/` changed) and `netlify/functions/install-ping.mts` (path
+Source in the repo: the root `netlify.toml` (the Netlify project is linked to
+this repo; the file sets base directory `counter`, so nothing else is
+published, and `ignore` skips a deploy unless `counter/` or the file changed)
+and `counter/netlify/functions/install-ping.mts` (path
 `/install-ping`, GET/POST only). It validates the body itself — the app has no
 key: a v4 UUID, a SemVer version, the four kinds/OSes, ≤ 1 KB. Storage is
 Netlify Blobs, store `install-versions` in `eu-central-1` (strong
