@@ -102,7 +102,9 @@ def payload() -> dict[str, Any]:
 
 
 def send_if_due(*, sender: Sender | None = None) -> bool:
-    """Send this version once, if the user agreed. True when it was sent now."""
+    """Send this version once, if the user agreed. True when it was sent now.
+    The network call is made outside the lock, so the user's own answer is
+    never kept waiting on it."""
     target = url()
     with _lock:
         state = _load()
@@ -110,15 +112,49 @@ def send_if_due(*, sender: Sender | None = None) -> bool:
             return False
         if state.get("sent_version") == __version__:
             return False
-        try:
-            (sender or _post)(target, payload())
-        except Exception as exc:  # noqa: BLE001 — offline / server gone: next start
-            logger.info("install counter: not sent (%s)", type(exc).__name__)
-            return False
+        body = payload()
+    try:
+        (sender or _post)(target, body)
+    except Exception as exc:  # noqa: BLE001 — offline / server gone: next start
+        logger.info("install counter: not sent (%s)", type(exc).__name__)
+        return False
+    with _lock:
         state = _load()
-        if state.get("consent") is True:  # not turned off while it was sending
-            _save({**state, "sent_version": __version__})
-        return True
+        if state.get("consent") is True and state.get("install_id") == body["install_id"]:
+            _save({**state, "sent_version": __version__})  # not turned off meanwhile
+    return True
+
+
+def _owed(state: dict[str, Any]) -> list[str]:
+    owed = state.get("pending_forget")
+    return [str(i) for i in owed if i] if isinstance(owed, list) else []
+
+
+def forget_pending(*, sender: Sender | None = None) -> int:
+    """Ask the server to delete what each install id the user turned off sent.
+    An id stays owed until the server answered — offline, or a server error,
+    is retried on the next start: turning the counter off promises the
+    deletion (BUG-0384, it used to be tried once). Returns how many were done."""
+    target = url()
+    with _lock:
+        owed = _owed(_load())
+    if not target or not owed:
+        return 0
+    done: list[str] = []
+    for install_id in owed:
+        try:
+            (sender or _post)(target, {"action": "forget", "install_id": install_id})
+        except Exception as exc:  # noqa: BLE001
+            logger.info("install counter: forget not sent (%s)", type(exc).__name__)
+            continue
+        done.append(install_id)
+    if done:
+        with _lock:
+            state = _load()
+            left = [i for i in _owed(state) if i not in done]
+            rest = {k: v for k, v in state.items() if k != "pending_forget"}
+            _save({**rest, **({"pending_forget": left} if left else {})})
+    return len(done)
 
 
 def set_enabled(enabled: bool, *, sender: Sender | None = None,
@@ -128,20 +164,22 @@ def set_enabled(enabled: bool, *, sender: Sender | None = None,
     with _lock:
         state = _load()
         old_id = str(state.get("install_id") or "")
+        owed = _owed(state)
         if enabled:
-            _save({"consent": True, "install_id": old_id or str(uuid.uuid4()),
-                   "sent_version": state.get("sent_version") if old_id else None})
+            new: dict[str, Any] = {
+                "consent": True, "install_id": old_id or str(uuid.uuid4()),
+                "sent_version": state.get("sent_version") if old_id else None,
+            }
         else:
-            _save({"consent": False})
+            if old_id and old_id not in owed:
+                owed.append(old_id)
+            new = {"consent": False}
+        _save({**new, **({"pending_forget": owed} if owed else {})})
 
     def work() -> None:
+        forget_pending(sender=sender)
         if enabled:
             send_if_due(sender=sender)
-        elif old_id and url():
-            try:
-                (sender or _post)(url(), {"action": "forget", "install_id": old_id})
-            except Exception as exc:  # noqa: BLE001
-                logger.info("install counter: forget not sent (%s)", type(exc).__name__)
 
     if background:
         threading.Thread(target=work, name="install-counter", daemon=True).start()
@@ -151,6 +189,14 @@ def set_enabled(enabled: bool, *, sender: Sender | None = None,
 
 
 def send_in_background() -> None:
-    """At startup: send this version if the user agreed and it was not sent."""
-    if _load().get("consent") is True and url():
-        threading.Thread(target=send_if_due, name="install-counter", daemon=True).start()
+    """At startup: delete what is still owed a deletion, and send this version
+    if the user agreed and it was not sent."""
+    state = _load()
+    if not url() or (state.get("consent") is not True and not _owed(state)):
+        return
+
+    def work() -> None:
+        forget_pending()
+        send_if_due()
+
+    threading.Thread(target=work, name="install-counter", daemon=True).start()

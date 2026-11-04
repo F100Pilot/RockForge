@@ -129,3 +129,24 @@ def test_the_api_asks_nothing_until_answered_and_records_the_answer(
         assert c.put("/install-count", json={"enabled": "talvez"}).status_code == 422
         assert answers == [False]
     assert calls == [True]  # the startup send was asked for (it decides itself)
+
+
+def test_a_forget_that_could_not_be_sent_is_sent_on_the_next_start(counter) -> None:
+    """Turning the counter off promises the server deletes what was sent. A
+    forget that failed (offline, a server error) was never tried again, and the
+    id was already gone from the state (BUG-0384)."""
+    ic, sent, sender = counter
+    ic.set_enabled(True, sender=sender, background=False)
+    the_id = sent[0][1]["install_id"]
+
+    def offline(*_a: Any) -> None:
+        raise OSError("no network")
+
+    ic.set_enabled(False, sender=offline, background=False)
+    assert ic.status()["enabled"] is False
+    assert ic._load()["pending_forget"] == [the_id]
+
+    assert ic.forget_pending(sender=sender) == 1  # the next start
+    assert sent[-1][1] == {"action": "forget", "install_id": the_id}
+    assert "pending_forget" not in ic._load()
+    assert ic.forget_pending(sender=sender) == 0  # nothing owed any more
