@@ -6433,7 +6433,11 @@ Honest limits: anyone can post a made-up id (it is a counter, not an audit);
 only installs that said yes are counted. Changing the function: edit the file
 and push (only a change under `counter/` deploys). Exercised locally against
 `@netlify/blobs`' own test server: the 57 rows replayed give exactly the old
-totals (27 installs), record 204, a repeat one entry, a bad id 400, a bad kind 400, > 1 KB 413, PUT 405, forget → back to 27. Guarded by
+totals (27 installs), record 204, a repeat one entry, a bad id 400, a bad kind 400, > 1 KB 413, PUT 405, forget → back to 27. Live, on 2026-11-04 (sent
+from a Postgres `pg_net`, since the agent's sandbox cannot reach Netlify): the
+57 rows replayed all 204 and `GET` answered exactly the old totals; a test id
+recorded 204 and forgotten 204, a bad id 400, totals back to 27; the repo's
+other files are not served (404). Guarded by
 `test_install_counter.py` (nothing before a yes, only the four fields, once per
 version, a new version again with the same id, a failed send retried, no =
 forget + a new id next time, no URL = off, the API); with Playwright against a
