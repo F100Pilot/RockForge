@@ -1066,25 +1066,41 @@ class GenerateFromGpUseCase:
 
         def _tone_setup(kind: ArrangementKind) -> tuple[ArrangementTones, list[Tone]]:
             setup = spec.tones_for(kind)
-            if not kind.is_bass or kind.value in spec.arrangement_tones or not spec.tones:
-                return setup, list(spec.tones)
-            # A Bass with no tones of its own takes only the song's BASS tones:
-            # the song's set is the guitar's (the tone detection, the presets)
-            # and a guitar amp on the bass chart is not what the player wants
-            # (GitHub issue #9). With none, it gets the default bass tone.
-            bass = [t for t in spec.tones if is_bass_tone(t)]
-            if len(bass) < len(spec.tones):
+            tones = list(spec.tones)
+            if not tones:
+                return setup, tones
+            # The song's set holds the guitar's tones and the bass's alike (the
+            # detection offers both). A chart takes only its own instrument's
+            # (GitHub issue #9: a guitar amp on the bass; BUG-0377: a bass amp
+            # as the guitar's base once only a bass preset had been "used").
+            fits = [t for t in tones if is_bass_tone(t) == kind.is_bass]
+            if kind.value in spec.arrangement_tones:
+                # Its own set may name any tone; with no base named the game
+                # takes the first, so the chart's own instrument goes first.
+                if setup.tone_base is None:
+                    fit_ids = {id(t) for t in fits}
+                    tones = fits + [t for t in tones if id(t) not in fit_ids]
+                return setup, tones
+            if len(fits) == len(tones):
+                return setup, tones
+            if kind.is_bass:
                 warnings.append(
                     f"{kind.value}: the song's guitar tones are left to the guitar charts — "
-                    + ("the bass uses the song's bass tones" if bass
+                    + ("the bass uses the song's bass tones" if fits
                        else "the bass uses the default bass tone")
                 )
-            keys = {t.key for t in bass}
+            else:
+                warnings.append(
+                    f"{kind.value}: the song's bass tones are left to the bass chart — "
+                    + ("this chart uses the song's guitar tones" if fits
+                       else "this chart uses the default guitar tone")
+                )
+            keys = {t.key for t in fits}
             return ArrangementTones(
                 tone_base=setup.tone_base if setup.tone_base in keys else None,
                 tone_names=[n for n in setup.tone_names if n in keys],
                 tone_changes=[c for c in setup.tone_changes if c.name in keys],
-            ), bass
+            ), fits
 
         tone_setups = {kind: _tone_setup(kind) for kind in parsed}
         grids = {kind: extend_grid_back(p.tempo_map) for kind, p in parsed.items()}

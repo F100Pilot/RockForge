@@ -296,3 +296,40 @@ def test_the_bass_never_takes_the_songs_guitar_tones(guitar_and_bass: Path, tmp_
                     arrangement_tones={"Bass": ArrangementTones(tone_base=guitar["rhythm"]["key"])})
     result = _use_case().run(own, meta, tmp_path / "b")
     assert tonebase(result, "arrangement_bass.xml") == guitar["rhythm"]["key"]
+
+
+def test_a_guitar_chart_never_takes_the_songs_bass_tones(
+    guitar_and_bass: Path, tmp_path: Path
+) -> None:
+    """The mirror of issue #9 (BUG-0377): with only a bass preset "used", the
+    song's tone list was that bass tone, and the guitar chart — no base named —
+    shipped with it as its tone. Its own set keeps every tone, its own first."""
+    from rockforge.application.gp_pipeline import ArrangementTones
+    from rockforge.infrastructure.packaging.gear.gear_catalogue import tones_from_dicts
+    from rockforge.infrastructure.packaging.gear.tone_presets import bass_presets, suggest_tones
+
+    bass = tones_from_dicts([bass_presets()[0]])
+    guitar = tones_from_dicts([suggest_tones("crunch")["lead"]])
+    seen: dict[str, list[str]] = {}
+
+    class _Capture(DlcBuilderPackager):
+        def package(self, arrangements, *args, **kwargs):  # noqa: ANN001, ANN002, ANN003
+            seen.update({a.kind.value: [t.key for t in a.tones] for a in arrangements})
+            return super().package(arrangements, *args, **kwargs)
+
+    use_case = GenerateFromGpUseCase(ingestor=_Ingest(), normalizer=_Normalize(),
+                                     packager=_Capture())
+    meta = SongMetadata(title="Low", artist="Band")
+    result = use_case.run(GpJobSpec(gp_path=guitar_and_bass, audio_source="x.wav",
+                                    lead_track=0, bass_track=1, tones=bass),
+                          meta, tmp_path / "a")
+    assert seen["Combined"] == []  # → DLC Builder's default guitar tone
+    assert seen["Bass"] == [bass[0].key]
+    assert any("bass tones are left to the bass chart" in w for w in result.warnings)
+
+    use_case.run(GpJobSpec(gp_path=guitar_and_bass, audio_source="x.wav", lead_track=0,
+                           bass_track=1, tones=[*bass, *guitar],
+                           arrangement_tones={"Combined": ArrangementTones(
+                               tone_names=[bass[0].key, guitar[0].key])}),
+                 meta, tmp_path / "b")
+    assert seen["Combined"] == [guitar[0].key, bass[0].key]
