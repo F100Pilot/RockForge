@@ -404,3 +404,18 @@ def test_a_bar_that_says_it_plays_once_is_no_repeat(tmp_path: Path) -> None:
     }
     _dst, report = _write(tmp_path, [part])
     assert (report.repeats, report.played_measures) == (0, 1)
+
+
+def test_a_part_a_gp5_cannot_hold_is_left_out_and_said(tmp_path: Path) -> None:
+    """PyGuitarPro wrote the first seven strings of an 8-string part and dropped
+    the rest without a word; a numerator past one byte ended in a 500."""
+    eight = {**_lead(), "name": "Eight", "tuning": [64, 59, 55, 50, 45, 40, 35, 30]}
+    dst, report = _write(tmp_path, [_lead(), eight])
+    assert [t.name for t in inspect_gp(dst).tracks] == ["Lead"]
+    assert any("Eight (8" in s for s in report.skipped_tracks)
+    with pytest.raises(IngestionError, match="Eight"):
+        _write(tmp_path, [eight])
+    wide = _lead()
+    wide["measures"][0]["signature"] = [200, 4]
+    dst, _report = _write(tmp_path, [wide])
+    assert inspect_gp(dst).tracks[0].name == "Lead"

@@ -68,6 +68,7 @@ from __future__ import annotations
 
 import math
 import re
+import struct
 from dataclasses import dataclass, field
 from fractions import Fraction
 from pathlib import Path
@@ -456,6 +457,11 @@ def _apply_note(gp_note: Any, note: dict[str, Any], guitarpro: Any, let_ring: bo
             )
 
 
+# What a GP5 can hold: seven strings, and a numerator in one signed byte.
+GP5_MAX_STRINGS = 7
+GP5_MAX_NUMERATOR = 127
+
+
 def write_songsterr_gp5(
     parts: list[dict[str, Any]], dst: Path, *, title: str = "", artist: str = ""
 ) -> SongsterrGpReport:
@@ -475,13 +481,21 @@ def write_songsterr_gp5(
             report.skipped_tracks.append(tr(f"{name} (percussão)", f"{name} (percussion)"))
         elif not isinstance(part.get("measures"), list) or not part["measures"]:
             report.skipped_tracks.append(tr(f"{name} (sem compassos)", f"{name} (no bars)"))
+        elif not isinstance(part.get("tuning"), list) or len(part["tuning"]) > GP5_MAX_STRINGS:
+            # PyGuitarPro writes the first seven and silently drops the rest.
+            count = len(part["tuning"]) if isinstance(part.get("tuning"), list) else 0
+            report.skipped_tracks.append(tr(
+                f"{name} ({count} cordas — um GP5 guarda até {GP5_MAX_STRINGS})",
+                f"{name} ({count} strings — a GP5 holds at most {GP5_MAX_STRINGS})",
+            ))
         else:
             kept.append((name, part))
     if not kept:
+        left_out = "; ".join(report.skipped_tracks)
         raise IngestionError(tr(
             "esta tab do Songsterr não tem nenhuma pista com cordas",
             "this Songsterr tab has no stringed track",
-        ))
+        ) + (f" ({left_out})" if left_out else ""))
 
     song = guitarpro.Song()
     song.title, song.artist = _gp5_text(title), _gp5_text(artist)
@@ -516,7 +530,7 @@ def write_songsterr_gp5(
         raw_sig = src.get("signature")
         if isinstance(raw_sig, list) and len(raw_sig) == 2:
             num, den = _int(raw_sig[0], 4), _int(raw_sig[1], 4)
-            if num > 0 and den in _DURATIONS:
+            if 0 < num <= GP5_MAX_NUMERATOR and den in _DURATIONS:
                 sig = (num, den)
         header = guitarpro.MeasureHeader()
         header.number = m + 1
@@ -618,6 +632,11 @@ def write_songsterr_gp5(
             "those bars may be off",
         ))
     dst.parent.mkdir(parents=True, exist_ok=True)
-    with open(dst, "wb") as fh:
-        guitarpro.write(song, fh, version=(5, 1, 0))
+    try:
+        with open(dst, "wb") as fh:
+            guitarpro.write(song, fh, version=(5, 1, 0))
+    except (guitarpro.GPException, struct.error, ValueError, OverflowError) as exc:
+        dst.unlink(missing_ok=True)
+        raise IngestionError(tr(f"não consegui escrever esta tab como GP5: {exc}",
+                                f"could not write this tab as a GP5: {exc}")) from exc
     return report
