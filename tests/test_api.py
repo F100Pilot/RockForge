@@ -5072,3 +5072,44 @@ def test_numbers_too_big_for_the_database_and_files_gone_from_disk_are_said(
         session.commit()
     assert client.get(f"/jobs/{job['id']}/bundle").status_code == 409
     assert client.get(f"/jobs/{job['id']}/psarc").status_code == 409
+
+
+def test_a_queue_that_does_not_answer_marks_the_job_and_says_so(
+    client: TestClient, tmp_path, monkeypatch
+) -> None:
+    """Under Celery a stopped Redis made .delay() raise after the job was
+    committed waiting for it: a 500, and a build PENDING (a detection
+    "detecting") forever, which in that mode nothing ever recovers."""
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.interfaces.worker import celery_app
+
+    def refuse(*_a: object) -> None:
+        raise ConnectionError("Error 111 connecting to localhost:6379")
+
+    monkeypatch.setattr(app_module.settings, "worker_mode", "celery")
+    monkeypatch.setattr(celery_app.generate_cdlc, "delay", refuse)
+    monkeypatch.setattr(celery_app.detect_lyrics, "delay", refuse)
+    # The fixture stubs the dispatchers out; put the real ones back.
+    monkeypatch.setattr(app_module, "_enqueue",
+                        lambda job: app_module._send(job, None, "enqueue_generate",
+                                                     "generate_cdlc"))
+    monkeypatch.setattr(app_module, "_enqueue_detect",
+                        lambda job: app_module._send(job, "lyrics_status", "enqueue_detect",
+                                                     "detect_lyrics"))
+    token = client.post("/gp/inspect", files={
+        "file": ("song.gp5", _make_gp5_bytes(tmp_path), "application/octet-stream")
+    }).json()["gp_token"]
+    r = client.post("/jobs/gp", data={"gp_token": token, "lead_track": "0"},
+                    files={"audio": ("song.wav", b"RIFF0000WAVE", "audio/wav")})
+    assert r.status_code == 503  # created, then the queue refused its build
+    job = client.get("/jobs").json()[0]
+    assert "Redis" in client.get(f"/jobs/{job['id']}").json()["error"]
+    assert client.get(f"/jobs/{job['id']}").json()["status"] == "failed"
+    r = client.post(f"/jobs/{job['id']}/rebuild", json={"offset_s": 1.0})
+    assert r.status_code == 503 and "Redis" in r.json()["detail"]
+    r = client.post(f"/jobs/{job['id']}/detect-lyrics")
+    assert r.status_code == 503
+    with app_module._session_factory() as session:
+        params = session.get(app_module.Job, job["id"]).params
+    assert params["lyrics_status"] == "unavailable"
+    assert "Redis" in params["lyrics_log"][-1]

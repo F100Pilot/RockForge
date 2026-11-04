@@ -668,48 +668,79 @@ def _in_game(job_id: str, params: Mapping[str, object]) -> str | None:
     return "this" if params.get("installed_from") == job_id else "older"
 
 
+def _queue_unreachable(job_id: str, status_key: str | None, exc: Exception) -> HTTPException:
+    """The queue refused the task (under Celery: Redis down or unreachable).
+    The job was already committed waiting for it, so a build stays PENDING and a
+    detection "detecting" forever, with nothing to move them — mark them the way
+    an interrupted run is marked, and answer 503 saying what to start."""
+    logger.error("could not queue %s for job %s: %s", status_key or "the build", job_id, exc)
+    try:
+        from rockforge.infrastructure.db.models import JobStatus
+
+        with _session_factory() as session:
+            job = session.get(Job, job_id)
+            if job is not None:
+                if status_key is None:
+                    job.status = JobStatus.FAILED
+                    job.error = i18n.tr(
+                        "não consegui pôr a construção na fila de tarefas — o Redis e o "
+                        "worker estão a correr? Depois reconstrói o projeto",
+                        "could not queue the build — are Redis and the worker running? "
+                        "Then rebuild the project",
+                    )
+                else:
+                    params = dict(job.params or {})  # a NEW dict, or the write is lost
+                    params[status_key] = "unavailable"
+                    log_key = DETECTION_STATUSES[status_key]
+                    logged = params.get(log_key)
+                    previous = list(logged) if isinstance(logged, list) else []
+                    params[log_key] = [*previous, i18n.tr(
+                        "não consegui pôr na fila de tarefas — o Redis e o worker estão a "
+                        "correr? Corre outra vez",
+                        "could not queue it — are Redis and the worker running? Run it again",
+                    )][-50:]
+                    if status_key == "lyrics_status":
+                        params.pop("lyrics_align", None)
+                    job.params = params
+                session.commit()
+    except Exception:  # noqa: BLE001 — the 503 below still has to reach the user
+        logger.exception("could not mark job %s after the queue refused it", job_id)
+    return HTTPException(503, i18n.tr(
+        "a fila de tarefas não responde — confirma que o Redis e o worker estão a correr",
+        "the task queue does not answer — check that Redis and the worker are running",
+    ))
+
+
+def _send(job: Job, status_key: str | None, inprocess: str, task: str) -> None:
+    """Hand the job to the in-process pool or to Celery; a refusal is a 503 with
+    the job marked (``_queue_unreachable``), never a 500 over a stuck row."""
+    try:
+        if settings.worker_mode == "inprocess":
+            from rockforge.interfaces.worker import inprocess as pool
+
+            getattr(pool, inprocess)(job.id)
+        else:
+            from rockforge.interfaces.worker import celery_app
+
+            getattr(celery_app, task).delay(job.id)
+    except Exception as exc:
+        raise _queue_unreachable(job.id, status_key, exc) from exc
+
+
 def _enqueue(job: Job) -> None:
-    if settings.worker_mode == "inprocess":
-        from rockforge.interfaces.worker.inprocess import enqueue_generate
-
-        enqueue_generate(job.id)
-    else:
-        from rockforge.interfaces.worker.celery_app import generate_cdlc
-
-        generate_cdlc.delay(job.id)
+    _send(job, None, "enqueue_generate", "generate_cdlc")
 
 
 def _enqueue_detect(job: Job) -> None:
-    if settings.worker_mode == "inprocess":
-        from rockforge.interfaces.worker.inprocess import enqueue_detect
-
-        enqueue_detect(job.id)
-    else:
-        from rockforge.interfaces.worker.celery_app import detect_lyrics
-
-        detect_lyrics.delay(job.id)
+    _send(job, "lyrics_status", "enqueue_detect", "detect_lyrics")
 
 
 def _enqueue_detect_tones(job: Job) -> None:
-    if settings.worker_mode == "inprocess":
-        from rockforge.interfaces.worker.inprocess import enqueue_detect_tones
-
-        enqueue_detect_tones(job.id)
-    else:
-        from rockforge.interfaces.worker.celery_app import detect_tones
-
-        detect_tones.delay(job.id)
+    _send(job, "tone_detection_status", "enqueue_detect_tones", "detect_tones")
 
 
 def _enqueue_separate_stems(job: Job) -> None:
-    if settings.worker_mode == "inprocess":
-        from rockforge.interfaces.worker.inprocess import enqueue_separate_stems
-
-        enqueue_separate_stems(job.id)
-    else:
-        from rockforge.interfaces.worker.celery_app import separate_stems
-
-        separate_stems.delay(job.id)
+    _send(job, "stems_status", "enqueue_separate_stems", "separate_stems")
 
 
 GP_SUFFIXES = {".gp3", ".gp4", ".gp5", ".gp"}  # .gp = GP7/GP8 (native GPIF parser)
