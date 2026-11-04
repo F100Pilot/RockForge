@@ -36,6 +36,10 @@ MAGIC = b"PSAR"
 VERSION = (1, 4)
 COMPRESSION = b"zlib"
 HEADER_SIZE = 32
+# Retail archives use 64 KiB blocks; anything past 1 MiB is not a PSARC we read.
+MAX_BLOCK_SIZE = 1 << 20
+# The most zlib can inflate one byte to (deflate's own limit is about 1032:1).
+MAX_ZLIB_RATIO = 1032
 TOC_ENTRY_SIZE = 30
 BLOCK_SIZE = 65536
 # The name-block entry (index 0) has no archive path. Both a real DLC Builder
@@ -226,7 +230,13 @@ def read_entries(path: Path, wanted: Callable[[str], bool]) -> dict[str, bytes]:
     for nothing.
 
     Unlike :func:`unpack` the block table's length comes from the TOC length, so
-    a retail archive whose last entry ends on a block boundary reads the same."""
+    a retail archive whose last entry ends on a block boundary reads the same.
+
+    The archives come from the player's folder, i.e. from anywhere, so nothing
+    the header declares is trusted: a block never inflates past its own size,
+    an entry never past what zlib could make of the file, and a short or
+    inconsistent TOC is a ``ValueError`` like any other unreadable archive."""
+    file_size = path.stat().st_size
     with path.open("rb") as fh:
         header = fh.read(HEADER_SIZE)
         if len(header) < HEADER_SIZE or header[:4] != MAGIC:
@@ -238,8 +248,15 @@ def read_entries(path: Path, wanted: Callable[[str], bool]) -> dict[str, bytes]:
         )
         if toc_entry_size != TOC_ENTRY_SIZE:
             raise ValueError(f"unsupported TOC entry size {toc_entry_size}")
+        if not 0 < block_size <= MAX_BLOCK_SIZE:
+            raise ValueError(f"unsupported block size {block_size}")
+        table = num_entries * TOC_ENTRY_SIZE
+        if toc_length < HEADER_SIZE + table or toc_length > file_size:
+            raise ValueError(f"inconsistent TOC length {toc_length}")
         (archive_flags,) = struct.unpack_from(">I", header, 28)
         toc_bytes = fh.read(toc_length - HEADER_SIZE)
+        if len(toc_bytes) < toc_length - HEADER_SIZE:
+            raise ValueError("truncated TOC")
         if archive_flags & 4:
             from rockforge.infrastructure.packaging.psarc.crypto import decrypt_psarc_toc
 
@@ -253,24 +270,37 @@ def read_entries(path: Path, wanted: Callable[[str], bool]) -> dict[str, bytes]:
                 _from_uint40(toc_bytes[pos + 20 : pos + 25]),
                 _from_uint40(toc_bytes[pos + 25 : pos + 30]),
             ))
-        table = num_entries * TOC_ENTRY_SIZE
         num_blocks = (toc_length - HEADER_SIZE - table) // 2
         zlengths = struct.unpack_from(f">{num_blocks}H", toc_bytes, table)
 
         def entry(zindex: int, length: int, offset: int) -> bytes:
+            if length > file_size * MAX_ZLIB_RATIO + block_size:
+                raise ValueError(f"entry declares {length} bytes, more than the file can hold")
             out = bytearray()
             fh.seek(offset)
             while len(out) < length:
+                if zindex >= len(zlengths):
+                    raise ValueError("entry runs past the block table")
                 zlength = zlengths[zindex]
                 raw_size = min(block_size, length - len(out))
                 segment = fh.read(zlength or raw_size)
+                if not segment:
+                    raise ValueError("entry runs past the end of the file")
                 if zlength == 0:
                     out += segment
                 else:
+                    # A block holds at most one block of data: never more. One
+                    # that is not a whole zlib stream was stored raw (compression
+                    # did not shrink it), as zlib.decompress used to tell us.
+                    inflate = zlib.decompressobj()
                     try:
-                        out += zlib.decompress(segment)
+                        chunk = inflate.decompress(segment, raw_size)
                     except zlib.error:
-                        out += segment
+                        chunk = segment
+                    else:
+                        if not inflate.eof and len(chunk) < raw_size:
+                            chunk = segment
+                    out += chunk
                 zindex += 1
             return bytes(out[:length])
 

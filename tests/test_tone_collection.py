@@ -308,3 +308,49 @@ def test_an_odd_manifest_skips_its_tone_never_the_scan(tmp_path: Path, monkeypat
     assert keys == {"Odd_Null", "Odd_Desc"}
     assert "error" not in data["files"]["b_p.psarc"]
     assert {a["name"] for a in tc.artists()} == {"Odd Band", "Bravo"}
+
+
+def _crafted_psarc(name: bytes, block: bytes, length: int, toc_length: int | None = None) -> bytes:
+    """A two-entry PSARC written by hand: the name block, then one entry of
+    ``length`` bytes stored as the single ``block`` (zlib or raw)."""
+    import struct
+
+    from rockforge.infrastructure.packaging.psarc import container as c
+
+    toc = c.HEADER_SIZE + 2 * c.TOC_ENTRY_SIZE + 2 * 2
+    rows = b""
+    offset = toc
+    for zindex, size, data in ((0, len(name), name), (1, length, block)):
+        rows += b"\0" * 16 + struct.pack(">I", zindex) + c._uint40(size) + c._uint40(offset)
+        offset += len(data)
+    header = c.MAGIC + struct.pack(">HH", 1, 4) + c.COMPRESSION + struct.pack(
+        ">IIIII", toc if toc_length is None else toc_length, c.TOC_ENTRY_SIZE, 2, c.BLOCK_SIZE, 0
+    )
+    return header + rows + struct.pack(">HH", len(name), len(block)) + name + block
+
+
+def test_an_archive_from_the_dlc_folder_cannot_make_us_inflate_or_read_past_it(
+    tmp_path: Path,
+) -> None:
+    import tracemalloc
+    import zlib
+
+    # One block of zlib (58 KB) that inflates to 60 MB.
+    bomb = zlib.compress(b"\0" * 60_000_000, 9)
+    path = tmp_path / "bomb.psarc"
+    path.write_bytes(_crafted_psarc(b"manifests/x.json", bomb, 65_536))
+    tracemalloc.start()
+    entries = read_entries(path, lambda n: True)
+    peak = tracemalloc.get_traced_memory()[1]
+    tracemalloc.stop()
+    assert len(entries["manifests/x.json"]) == 65_536
+    assert peak < 8_000_000
+
+    # An entry that declares more than the file holds, or a TOC shorter than its
+    # own header: refused as an unreadable archive, never another error.
+    path.write_bytes(_crafted_psarc(b"manifests/x.json", b"{}", 10_000_000))
+    with pytest.raises(ValueError):
+        read_entries(path, lambda n: True)
+    path.write_bytes(_crafted_psarc(b"manifests/x.json", b"{}", 2, toc_length=8))
+    with pytest.raises(ValueError):
+        read_entries(path, lambda n: True)
