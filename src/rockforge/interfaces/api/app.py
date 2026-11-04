@@ -515,11 +515,11 @@ def _check_imported_params(params: dict[str, object]) -> None:
     if params.get("tones") is not None:
         _check_tones(params["tones"])
     melody = params.get("vocal_melody")
-    if melody is not None and not all(
+    if isinstance(melody, list) and not all(
         isinstance(n, dict) and number(n.get("time")) and number(n.get("length"))
         and (n.get("midi") is None or (isinstance(n["midi"], int) and not isinstance(
             n["midi"], bool) and 0 <= n["midi"] <= 127))
-        for n in melody  # type: ignore[union-attr]  # a list: checked above
+        for n in melody
     ):
         raise bad("vocal_melody", "notas {time, length, midi}")
     detected = params.get("detected_tones")
