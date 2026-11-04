@@ -420,3 +420,27 @@ def test_a_half_step_bend_and_a_muted_chord_say_so_in_the_xml() -> None:
     assert note is not None and note.get("bend") == "0.5"
     chord = song.find("levels/level/chords/chord")
     assert chord is not None and chord.get("fretHandMute") == "1"
+
+
+def test_a_short_bent_note_and_a_users_noguitar_section_read_back(tmp_path: Path) -> None:
+    """The reader divided the <bendValues> times by the sustain, while the writer
+    lays a curve of a note with no sustain over 0.1 s: the curve of a short note
+    was thrown away. And every "noguitar" section was dropped as the writer's
+    closer, so a section the user named so vanished from the editor."""
+    from rockforge.domain.arrangement import Section
+    from rockforge.infrastructure.rsxml.reader import read_arrangement_xml
+
+    arr = make_arrangement()
+    release = (BendPoint(0.0, 0.0), BendPoint(0.5, 1.0), BendPoint(1.0, 0.0))
+    arr.notes = [
+        TabNote(string=2, fret=7, time=2.0, sustain=0.0,
+                techniques=frozenset({Technique.BEND}), bend_semitones=1.0,
+                bend_points=release),
+    ]
+    arr.sections = [Section(name="intro", start_time=1.0, number=1),
+                    Section(name="noguitar", start_time=5.0, number=1)]
+    back = read_arrangement_xml(write_arrangement_xml(arr, tmp_path / "lead.xml"))
+    assert [(round(p.position, 3), p.step) for p in back.notes[0].bend_points] == [
+        (0.0, 0.0), (0.5, 1.0), (1.0, 0.0)
+    ]
+    assert [s.name for s in back.sections] == ["intro", "noguitar"]

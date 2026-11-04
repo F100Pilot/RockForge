@@ -12,6 +12,7 @@ from pydantic import ValidationError
 from rockforge.domain.chords import name_chord
 from rockforge.domain.music import BASS_STANDARD_MIDI, STANDARD_E_MIDI
 from rockforge.infrastructure.db.models import Job, JobStatus
+from rockforge.infrastructure.rsxml.reader import section_elements
 from rockforge.interfaces.api import app as api
 from rockforge.interfaces.api.schemas import (
     ArpeggioOut,
@@ -263,8 +264,7 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
                 name=el.get("name", "?"),
                 number=int(el.get("number", "1")),
             )
-            for el in root.findall("sections/section")
-            if el.get("name") != "noguitar"
+            for el in section_elements(root)
         ]
         # Arpeggios: the hand shapes over an "-arp" chord template.
         templates = root.findall("chordTemplates/chordTemplate")

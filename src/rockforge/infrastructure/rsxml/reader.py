@@ -47,6 +47,17 @@ _TECHNIQUE_ATTRS: dict[str, Technique] = {
 }
 
 
+
+def section_elements(root: ET.Element) -> list[ET.Element]:
+    """The XML's sections less the trailing "noguitar" the writer always appends
+    to mark where the phrase timeline ends — a structural closer, not a real
+    section. Only that LAST one: a section the user named "noguitar" is theirs,
+    and dropping every one lost it from the editor on the next rebuild."""
+    rows = root.findall("sections/section")
+    if rows and rows[-1].get("name") == "noguitar":
+        rows = rows[:-1]
+    return rows
+
 def _flag(el: ET.Element, name: str) -> bool:
     return el.get(name, "0") not in ("0", "", "false")
 
@@ -77,9 +88,13 @@ def _note_from_el(el: ET.Element) -> TabNote:
         for b in el.iter("bendValue")
     ]
     bend_points: tuple[BendPoint, ...] = ()
-    if curve and sustain > 0:
+    if curve:
+        # The span the writer laid the curve over (``writer._bend_curve``): a note
+        # of no sustain still bends over 0.1 s, so dividing by its sustain threw
+        # the curve away, or stretched it past the note's end.
+        dur = sustain if sustain > 0.03 else 0.1
         points = [
-            BendPoint(min(1.0, max(0.0, (t - time) / sustain)), step) for t, step in curve
+            BendPoint(min(1.0, max(0.0, (t - time) / dur)), step) for t, step in curve
         ]
         bend = max(bend, max(p.step for p in points))
         if is_composite_bend(points):
@@ -137,10 +152,7 @@ def read_arrangement_xml(path: Path, kind: ArrangementKind | None = None) -> Arr
             start_time=float(el.get("startTime", "0") or 0),
             number=_int(el, "number", 1),
         )
-        for el in root.findall("sections/section")
-        # The writer always appends a synthetic trailing "noguitar" to mark where
-        # the phrase timeline ends — a structural closer, not a real section.
-        if el.get("name") != "noguitar"
+        for el in section_elements(root)
     ]
 
     if kind is None:

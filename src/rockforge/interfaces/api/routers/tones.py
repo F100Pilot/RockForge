@@ -12,6 +12,7 @@ from pydantic import ValidationError
 from rockforge import i18n
 from rockforge.infrastructure.db.models import JobStatus
 from rockforge.infrastructure.packaging.gear.tone_presets import bass_character, bass_presets
+from rockforge.infrastructure.rsxml.reader import section_elements
 from rockforge.interfaces.api import app as api
 from rockforge.interfaces.api.schemas import (
     DetectTonesOut,
@@ -223,7 +224,7 @@ def _tone_plan_context(job_id: str) -> Any:
         if bars and ebeats and int(ebeats[-1].get("measure", "-1")) > 0:
             bars.pop()  # the closing bar line, not a bar (see /arrangements)
         sections = [(el.get("name", "?"), float(el.get("startTime", "0")))
-                    for el in root.findall("sections/section") if el.get("name") != "noguitar"]
+                    for el in section_elements(root)]
         times = [float(el.get("time", "0")) for el in root.findall("levels/level/notes/note")]
         times += [float(el.get("time", "0")) for el in root.findall("levels/level/chords/chord")]
         end = float(ebeats[-1].get("time", "0")) if ebeats else max(times, default=0.0)
