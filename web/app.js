@@ -7846,7 +7846,11 @@ function editorLines() {
     const w = e.lyric.trim();
     if (!w) continue;
     if (!cur) cur = { time: e.time, text: '' };
-    cur.text += w.endsWith('-') ? w.slice(0, -1) : (cur.text && !cur.joinNext ? ` ${w}` : w);
+    // A trailing '-' joins THIS syllable to the next one; the space before a
+    // syllable depends on whether the one before it joined (BUG-0378: a word
+    // split in syllables was glued to the word before it).
+    const piece = w.endsWith('-') ? w.slice(0, -1) : w;
+    cur.text += cur.text && !cur.joinNext ? ` ${piece}` : piece;
     cur.joinNext = w.endsWith('-');
     if (e.lineBreak) { lines.push({ time: cur.time, text: cur.text }); cur = null; }
   }
