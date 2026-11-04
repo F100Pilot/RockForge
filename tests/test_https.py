@@ -114,3 +114,25 @@ def test_the_cover_download_verifies_with_the_shared_context(
         album_lookup._open_url("https://is1-ssl.mzstatic.com/a.jpg")
     https = [h for h in handlers if isinstance(h, urllib.request.HTTPSHandler)]
     assert https and https[0]._context is _https.ssl_context()
+
+
+def test_an_answer_cut_off_mid_way_is_a_network_failure_not_a_crash(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """IncompleteRead is an http.client.HTTPException, not an OSError: a
+    connection dropped mid-answer reached the API as a 500."""
+    import http.client
+
+    class Cut:
+        def __enter__(self) -> Cut:
+            return self
+
+        def __exit__(self, *_a: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            raise http.client.IncompleteRead(b'{"half', 100)
+
+    monkeypatch.setattr(urllib.request, "urlopen", lambda *_a, **_k: Cut())
+    with pytest.raises(lyrics_lookup.LyricsLookupError, match="LRCLIB"):
+        lyrics_lookup._http_get_json("https://example.invalid/x")

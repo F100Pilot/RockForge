@@ -23,6 +23,7 @@ install) it is the system default, as before.
 
 from __future__ import annotations
 
+import http.client
 import json
 import ssl
 import urllib.error
@@ -90,7 +91,8 @@ def get_json(
             return json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         raise error(tr(f"o {pt} respondeu {exc.code}", f"{en} answered {exc.code}")) from exc
-    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+    except (urllib.error.URLError, TimeoutError, OSError, http.client.HTTPException) as exc:
+        # http.client.HTTPException: IncompleteRead, a connection cut mid-answer
         raise error(network_error_message(exc, tr(pt, en))) from exc
     except ValueError as exc:
         raise error(tr(f"resposta ilegível do {pt}", f"unreadable answer from {en}")) from exc
