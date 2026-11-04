@@ -831,12 +831,13 @@ MAX_LYRICS_LRC_CHARS = 200_000
 MAX_LRC_BYTES = 4 * MAX_LYRICS_LRC_CHARS
 
 
-def _read_upload_capped(src: UploadFile, limit: int = _MAX_UPLOAD_BYTES) -> bytes:
+def _read_upload_capped(src: UploadFile, limit: int | None = None) -> bytes:
     """Read ``src`` fully into memory, capped — for small text uploads (LRC)
     that are parsed in-process rather than written to disk. Reads the
     underlying file synchronously (like ``_copy_upload_capped``) rather than
     ``await``ing ``UploadFile.read`` so callers can be plain ``def`` routes,
     which FastAPI/Starlette run in a thread pool instead of on the event loop."""
+    limit = _MAX_UPLOAD_BYTES if limit is None else limit  # read when called: tests patch it
     chunks: list[bytes] = []
     total = 0
     while True:
