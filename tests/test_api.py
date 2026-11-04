@@ -5213,3 +5213,24 @@ def test_a_stored_gp_file_that_no_longer_reads_is_a_422(client: TestClient, tmp_
     assert client.get(f"/jobs/{job['id']}/gp-tracks").status_code == 422
     r = client.post(f"/jobs/{job['id']}/detect-tempo", json={"from_s": 1.0})
     assert r.status_code == 422
+
+
+def test_an_uploaded_lrc_is_capped_at_what_a_lyric_can_be(client: TestClient, tmp_path) -> None:
+    """An LRC was read up to the 500 MB of any upload, all of it into memory
+    and then into the job's params in the database."""
+    import rockforge.interfaces.api.app as app_module
+
+    token = client.post("/gp/inspect", files={
+        "file": ("song.gp5", _make_gp5_bytes(tmp_path), "application/octet-stream")
+    }).json()["gp_token"]
+    line = b"[00:01.00] la\n"
+    big = line * (app_module.MAX_LRC_BYTES // len(line) + 1)
+    r = client.post("/jobs/gp", data={"gp_token": token, "lead_track": "0"},
+                    files={"audio": ("song.wav", b"RIFF0000WAVE", "audio/wav"),
+                           "lrc": ("song.lrc", big, "text/plain")})
+    assert r.status_code == 413
+    assert client.get("/jobs").json() == []
+    r = client.post("/jobs/gp", data={"gp_token": token, "lead_track": "0"},
+                    files={"audio": ("song.wav", b"RIFF0000WAVE", "audio/wav"),
+                           "lrc": ("song.lrc", line * 100, "text/plain")})
+    assert r.status_code == 202

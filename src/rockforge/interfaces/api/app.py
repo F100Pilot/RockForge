@@ -826,9 +826,12 @@ def _copy_upload_capped(src: UploadFile, dest: Path) -> None:
 
 # A whole song's LRC is a few KB; this only stops a runaway form field.
 MAX_LYRICS_LRC_CHARS = 200_000
+# An uploaded LRC is that text as UTF-8 (at most 4 bytes a character): it used
+# to be read up to the 500 MB of any upload, all into memory and the database.
+MAX_LRC_BYTES = 4 * MAX_LYRICS_LRC_CHARS
 
 
-def _read_upload_capped(src: UploadFile) -> bytes:
+def _read_upload_capped(src: UploadFile, limit: int = _MAX_UPLOAD_BYTES) -> bytes:
     """Read ``src`` fully into memory, capped — for small text uploads (LRC)
     that are parsed in-process rather than written to disk. Reads the
     underlying file synchronously (like ``_copy_upload_capped``) rather than
@@ -841,10 +844,10 @@ def _read_upload_capped(src: UploadFile) -> bytes:
         if not chunk:
             break
         total += len(chunk)
-        if total > _MAX_UPLOAD_BYTES:
-            raise HTTPException(
-                413, f"file too large (max {_MAX_UPLOAD_BYTES // (1024 * 1024)} MB)"
-            )
+        if total > limit:
+            size = (f"{limit // (1024 * 1024)} MB" if limit >= 1024 * 1024
+                    else f"{limit // 1024} KB")
+            raise HTTPException(413, f"file too large (max {size})")
         chunks.append(chunk)
     return b"".join(chunks)
 

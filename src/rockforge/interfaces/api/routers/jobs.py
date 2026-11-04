@@ -221,7 +221,8 @@ def create_gp_job(
 
         lrc_text: str | None = None
         if lrc is not None and lrc.filename:
-            lrc_text = api._read_upload_capped(lrc).decode("utf-8", errors="replace")
+            lrc_text = api._read_upload_capped(lrc, api.MAX_LRC_BYTES).decode(
+                "utf-8", errors="replace")
         elif lyrics_lrc.strip():
             from rockforge.infrastructure.rsxml.vocals import parse_lyrics
 
