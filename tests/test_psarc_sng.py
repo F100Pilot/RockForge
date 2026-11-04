@@ -271,6 +271,34 @@ def test_repeated_chords_marked_high_density_but_not_the_first() -> None:
     assert not (chords[4].mask & NOTE_MASK_HIGHDENSITY)
 
 
+def test_every_level_shows_the_first_chord_of_a_run_in_full() -> None:
+    """HIGH DENSITY was worked out once on the full chart: at a thinned DD level
+    whose run-opening chord was dropped every chord was condensed, and the
+    player never saw the chord's box (BUG-0380). Each level now has its own."""
+    beats = tuple(Beat(time=0.25 * i, measure=(i // 8) + 1 if i % 8 == 0 else -1)
+                  for i in range(72))
+    notes = [TabNote(string=s, fret=5 if s == 0 else 7, time=0.25 + 0.25 * k, sustain=0.0)
+             for k in range(32) for s in (0, 1)]  # an eighth-note 5/7 chug, off the beat
+    arr = Arrangement(
+        kind=ArrangementKind.RHYTHM,
+        metadata=SongMetadata(title="Song", artist="A", song_length=18.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+        notes=notes,
+        sections=[Section(name="riff", start_time=0.0)],
+    )
+    levels = from_arrangement(arr).arrangements
+    assert len(levels) > 2
+    for level in levels:
+        chords = sorted((n for n in level.notes if n.chord_id >= 0), key=lambda n: n.time)
+        if not chords:
+            continue
+        assert not chords[0].mask & NOTE_MASK_HIGHDENSITY
+        for prev, cur in zip(chords, chords[1:], strict=False):
+            close = cur.time - prev.time <= 0.35
+            assert bool(cur.mask & NOTE_MASK_HIGHDENSITY) == close
+
+
 def test_double_stop_gets_mask() -> None:
     arr = Arrangement(
         kind=ArrangementKind.LEAD,

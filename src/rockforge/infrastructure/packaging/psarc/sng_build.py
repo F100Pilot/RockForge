@@ -12,7 +12,12 @@ from rockforge.application.ports import VocalEvent
 from rockforge.domain.arrangement import Arrangement, Section, number_sections
 from rockforge.domain.chords import arpeggio_spans, chord_display, hand_shape_spans
 from rockforge.domain.hand import HandPosition, auto_windows, fixed_windows, position_pin
-from rockforge.domain.music import TabNote, Technique, high_density_flags, is_plain_rise
+from rockforge.domain.music import (
+    HIGH_DENSITY_MAX_GAP_S,
+    TabNote,
+    Technique,
+    is_plain_rise,
+)
 from rockforge.infrastructure.packaging.psarc.sng_model import (
     _CHORD_EPSILON_S,
     _DD_LEVEL_CAP,
@@ -605,6 +610,28 @@ def _link_pairs(
     return pairs
 
 
+def _level_high_density(notes: list[SngNote]) -> list[SngNote]:
+    """HIGH DENSITY, from THIS level's own chords: a repeated identical chord
+    within ``HIGH_DENSITY_MAX_GAP_S`` of the one before renders condensed — the
+    full boxes of a fast chug stack into a corrupt highway sprite — and the
+    first of a run keeps its box so its shape is shown (``high_density_flags``,
+    the XML's rule). Worked out once on the full chart, a thinned level whose
+    run-opening chord was dropped showed only condensed markers, never the
+    chord (BUG-0380). Same template = same frets on the same strings."""
+    out = list(notes)
+    prev: SngNote | None = None
+    for i, n in enumerate(out):
+        if not n.mask & NOTE_MASK_CHORD:
+            continue
+        hd = (prev is not None and n.chord_id == prev.chord_id
+              and n.time - prev.time <= HIGH_DENSITY_MAX_GAP_S)
+        mask = (n.mask | NOTE_MASK_HIGHDENSITY) if hd else (n.mask & ~NOTE_MASK_HIGHDENSITY)
+        if mask != n.mask:
+            out[i] = replace(n, mask=mask)
+        prev = n
+    return out
+
+
 def _build_level(
     difficulty: int,
     notes: list[SngNote],
@@ -628,7 +655,7 @@ def _build_level(
     draws the chord's fingers from. Their first/last note times follow DLC
     Builder's ``convertHandshape`` (XmlToSng.fs).
     """
-    linked = list(notes)
+    linked = _level_high_density(list(notes))
     # `linked` is time-sorted (guaranteed by the sng_notes.sort() upstream in
     # from_arrangement), so each phrase iteration's note range is a contiguous
     # slice locatable by binary search — O(phrases * log notes) — instead of
@@ -1167,8 +1194,7 @@ def _build_sng_notes(
             bend_data=_bend_points(sn),
         ))
 
-    # Chord notes
-    hd_flags = high_density_flags(chord_groups)
+    # Chord notes (HIGH DENSITY is set per level, in _build_level)
     for gi, g in enumerate(chord_groups):
         key = _chord_template_key(g)
         chord_id = template_ids[key]
@@ -1192,10 +1218,6 @@ def _build_sng_notes(
             # with none, there is nothing to hand them on from (DLC Builder's
             # createMaskForChord never sets them on such a chord).
             mask &= ~(NOTE_MASK_PARENT | NOTE_MASK_SLIDE)
-        # A repeated identical chord renders condensed; without this the full
-        # chord boxes of a fast chug stack into a corrupt highway sprite.
-        if hd_flags[gi]:
-            mask |= NOTE_MASK_HIGHDENSITY
         mask |= NOTE_MASK_STRUM
         a_fret, a_width = _find_anchor(g[0].time)
         pi_id = _find_phrase_iteration(phrase_iterations, g[0].time, pi_starts)
