@@ -618,7 +618,8 @@ def test_the_xml_and_the_manifest_advertise_the_same_techniques(tmp_path) -> Non
         arr.notes = notes
         (entry,) = build_arrangement_manifest(arr, "MySong", "Lead")["Entries"].values()
         xml = ET.parse(write_arrangement_xml(arr, tmp_path / "a.xml")).getroot()
-        return entry["Attributes"]["ArrangementProperties"], xml.find("arrangementProperties").attrib
+        xml_props = xml.find("arrangementProperties").attrib
+        return entry["Attributes"]["ArrangementProperties"], xml_props
 
     strummed_power = [TabNote(string=0, fret=5, time=1.0, sustain=0.2),
                       TabNote(string=1, fret=7, time=1.01, sustain=0.2)]
