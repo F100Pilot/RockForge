@@ -126,6 +126,10 @@ def enqueue_separate_stems(job_id: str) -> None:
 
 
 def shutdown() -> None:
-    """Stop accepting new tasks. Wired to the API's lifespan teardown so the
-    pool is closed explicitly rather than left to interpreter teardown."""
-    _pool.shutdown(wait=False)
+    """Stop accepting new tasks and drop the ones still queued. Wired to the
+    API's lifespan teardown so the pool is closed explicitly rather than left
+    to interpreter teardown — which JOINS the worker after running every queued
+    task, so "Sair mesmo assim" left the .exe running unseen until the queue
+    drained (BUG-0375). A queued job is marked as interrupted on the next start
+    (``app._recover_interrupted_work``)."""
+    _pool.shutdown(wait=False, cancel_futures=True)

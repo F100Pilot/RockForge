@@ -355,6 +355,27 @@ def run_windowed(host: str, port_: int) -> bool:
     return True
 
 
+def exit_now_if_work_is_left(exit_: Callable[[int], None] = os._exit) -> bool:
+    """After the window closed: when the user chose to quit with work still
+    running, end the process now. Interpreter exit joins the worker thread, so
+    returning from ``main`` kept the .exe alive, with no window, until the
+    running task finished — and a RockForge opened meanwhile was a second
+    process on the same database (BUG-0375). The task is marked interrupted on
+    the next start. A child it started (a Demucs or WhisperX process) is not
+    stopped by this and runs out on its own; its result is not used."""
+    if not work_in_flight():
+        return False
+    import logging
+
+    for stream in (sys.stdout, sys.stderr):
+        with contextlib.suppress(Exception):
+            if stream is not None:
+                stream.flush()
+    logging.shutdown()
+    exit_(0)
+    return True
+
+
 def run_in_browser(host: str, port_: int) -> None:
     """The original behaviour: serve in the foreground, open the default
     browser, and let `ROCKFORGE_IDLE_SHUTDOWN_S` handle the tab closing."""
@@ -397,6 +418,7 @@ def main() -> None:
     add_components_to_path()
     port_ = port()
     if windowed and run_windowed(HOST, port_):
+        exit_now_if_work_is_left()
         return
     if windowed:
         restore_browser_idle_shutdown()

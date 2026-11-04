@@ -22,7 +22,7 @@ class _SyncPool:
     def submit(self, fn, *args):  # noqa: ANN001, ANN202
         fn(*args)
 
-    def shutdown(self, wait: bool = False) -> None:
+    def shutdown(self, wait: bool = False, cancel_futures: bool = False) -> None:
         self.shutdown_calls.append(wait)
 
 
@@ -155,3 +155,28 @@ def test_a_job_that_already_failed_keeps_its_own_error(
 
     with factory() as session:
         assert session.get(Job, "job-1").error == "IngestionError: x"
+
+
+def test_closing_drops_the_queued_tasks_instead_of_running_them_unseen() -> None:
+    """Interpreter exit joins the worker after running every queued task, so a
+    "quit anyway" kept the .exe alive with no window until the queue drained
+    (BUG-0375). The task that is running is left to finish; the queued one never
+    starts."""
+    import importlib
+    import threading
+
+    fresh = importlib.reload(inprocess)
+    started = threading.Event()
+    release = threading.Event()
+    ran: list[str] = []
+    try:
+        fresh._submit(lambda job: (started.set(), release.wait(5), ran.append(job)), "running")
+        fresh._submit(lambda job: ran.append(job), "queued")
+        assert started.wait(5)
+        fresh.shutdown()
+        release.set()
+        fresh._pool.shutdown(wait=True)
+        assert ran == ["running"]
+    finally:
+        release.set()
+        importlib.reload(inprocess)

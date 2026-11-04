@@ -454,3 +454,17 @@ def test_when_the_window_fails_the_browser_gets_its_tab_close_watchdog_back(
     launcher.configure_environment(windowed=True)
     launcher.restore_browser_idle_shutdown()
     assert os.environ["ROCKFORGE_IDLE_SHUTDOWN_S"] == "0"
+
+
+def test_quitting_with_work_left_ends_the_process_instead_of_lingering(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Returning from main() with a task running kept the .exe alive, unseen,
+    until it finished (BUG-0375)."""
+    exits: list[int] = []
+    monkeypatch.setattr(launcher, "work_in_flight", lambda: True)
+    assert launcher.exit_now_if_work_is_left(exits.append) is True
+    assert exits == [0]
+    monkeypatch.setattr(launcher, "work_in_flight", lambda: False)
+    assert launcher.exit_now_if_work_is_left(exits.append) is False
+    assert exits == [0]
