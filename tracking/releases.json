@@ -680,7 +680,7 @@
     },
     {
       "version": "0.12.0-beta.5",
-      "status": "Beta",
+      "status": "Superseded",
       "created": "2026-11-03",
       "published": "2026-11-03",
       "commit": "35d1091b26547fbcd0dc3de74ee2dad0573f9962",
@@ -703,10 +703,12 @@
       "version": "0.12.0-beta.6",
       "status": "Beta",
       "created": "2026-11-04",
-      "published": "pending",
-      "commit": "pending",
+      "published": "2026-11-04",
+      "commit": "4ff6202b053adda146097da1e4eaebd2d5699bad",
       "build": "GitHub Actions release workflow",
-      "artifacts": [],
+      "artifacts": [
+        "https://github.com/F100Pilot/RockForge/releases/tag/v0.12.0-beta.6"
+      ],
       "goal": "Build progress card; separated bass read as heavily distorted or not (#16); install counter on Netlify",
       "features": [
         "A new progress bar while building",

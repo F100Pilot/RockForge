@@ -10,10 +10,10 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 |---|---|
 | Status | Beta |
 | Created | 2026-11-04 |
-| Published | _pending_ |
-| Commit | _pending_ |
+| Published | 2026-11-04 |
+| Commit | 4ff6202b053adda146097da1e4eaebd2d5699bad |
 | Build | GitHub Actions release workflow |
-| Artifacts | — |
+| Artifacts | https://github.com/F100Pilot/RockForge/releases/tag/v0.12.0-beta.6 |
 | Tests | CI (ruff, mypy, pytest, ESLint, Docker build) on the release commit, tools/release_check, and the frozen .exe smoke test of the release workflow |
 | Approved by | the maintainer (asked for the release) |
 
@@ -38,7 +38,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 
 | | |
 |---|---|
-| Status | Beta |
+| Status | Superseded |
 | Created | 2026-11-03 |
 | Published | 2026-11-03 |
 | Commit | 35d1091b26547fbcd0dc3de74ee2dad0573f9962 |
