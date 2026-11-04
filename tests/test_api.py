@@ -148,6 +148,49 @@ def test_api_token_gates_every_route_when_set(tmp_path, monkeypatch) -> None:
         assert right.status_code == 200
 
 
+def test_an_upload_without_credentials_is_refused_before_its_body_is_read(
+    tmp_path, monkeypatch
+) -> None:
+    """The gate ran as a FastAPI dependency, i.e. after the request had been
+    parsed: an unauthenticated upload (500 MB a file) was spooled to disk in
+    full before the 401. Driven as raw ASGI to see what the app reads."""
+    import asyncio
+
+    monkeypatch.setenv("ROCKFORGE_DATABASE_URL", f"sqlite:///{tmp_path}/test.db")
+    monkeypatch.setenv("ROCKFORGE_WORK_DIR", str(tmp_path / "work"))
+    monkeypatch.setenv("ROCKFORGE_API_TOKEN", "s3cr3t")
+    import rockforge.config as config
+    importlib.reload(config)
+    import rockforge.interfaces.api.app as app_module
+    importlib.reload(app_module)
+
+    read: list[int] = []
+    sent: list[dict] = []
+
+    async def receive() -> dict:
+        read.append(1)
+        return {"type": "http.request", "body": b"x" * 65536, "more_body": len(read) < 1000}
+
+    async def send(message: dict) -> None:
+        sent.append(message)
+
+    for host in (b"testserver", b"evil.example"):
+        read.clear()
+        sent.clear()
+        scope = {
+            "type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1",
+            "method": "POST", "scheme": "http", "path": "/gp/inspect", "raw_path": b"/gp/inspect",
+            "query_string": b"", "root_path": "", "client": ("127.0.0.1", 1),
+            "server": ("testserver", 80),
+            "headers": [(b"host", host),
+                        (b"content-type", b"multipart/form-data; boundary=x")],
+        }
+        asyncio.run(app_module.app(scope, receive, send))
+        status = next(m["status"] for m in sent if m["type"] == "http.response.start")
+        assert status == (401 if host == b"testserver" else 400)
+        assert read == []  # not one chunk of the body
+
+
 def test_gear_image_serves_local_file_or_404(client: TestClient) -> None:
     """The tone editor's gear image is served from work_dir/gear_images/<key>;
     404 when absent, and the key is sanitised against path traversal."""

@@ -300,11 +300,25 @@ app = FastAPI(
     ),
     version=__version__,
     lifespan=_lifespan,
-    dependencies=[
-        Depends(_verify_host), Depends(_verify_api_auth), Depends(_verify_same_origin),
-        Depends(_ui_language),
-    ],
+    # The host, credentials and origin checks run in the middleware below,
+    # BEFORE the body is read: as dependencies they ran after FastAPI had parsed
+    # the request, so an unauthenticated upload was spooled to disk in full
+    # (500 MB, then 1000 more) before the 401.
+    dependencies=[Depends(_ui_language)],
 )
+
+
+async def _refusal_before_body(request: Request) -> JSONResponse | None:
+    """The answer to a request that fails the host, credentials or origin
+    check, decided from its headers alone; None lets it through."""
+    try:
+        _verify_host(request)
+        _verify_api_auth(await _basic_auth(request) if settings.api_token else None)
+        _verify_same_origin(request)
+    except HTTPException as exc:
+        return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail},
+                            headers=exc.headers)
+    return None
 
 
 # Sent on every response. nosniff: an uploaded file served back (a cover, a
@@ -326,7 +340,7 @@ async def _security_headers(request: Request, call_next: Any) -> Any:
     request.state.request_id = rid  # the error handler runs outside this middleware
     token = app_logging.request_id.set(rid)
     try:
-        response = await call_next(request)
+        response = await _refusal_before_body(request) or await call_next(request)
     finally:
         app_logging.request_id.reset(token)
     for name, value in _SECURITY_HEADERS.items():
