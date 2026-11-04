@@ -620,10 +620,17 @@
 
   function disposeSong() {
     if (!song) return;
-    for (const obj of song.live.values()) stage.lane.remove(obj.group);
+    for (const obj of song.live.values()) dropLive(obj);
     for (const obj of song.liveLines.values()) stage.lane.remove(obj);
-    for (const g of song.owned) g.dispose();
     song = null;
+  }
+
+  // A note or chord frame leaving the view takes the geometry made for it
+  // (a trail, a frame): it used to be kept until the song changed, so an A–B
+  // loop re-made it on every pass and the GPU memory grew loop after loop.
+  function dropLive(obj) {
+    stage.lane.remove(obj.group);
+    for (const g of obj.owned) g.dispose();
   }
 
   function buildSong(data) {
@@ -651,7 +658,7 @@
     ].filter((l) => Number.isFinite(l.t)).sort((a, b) => a.t - b.t);
     const maxSustain = notes.reduce((m, n) => Math.max(m, n.sustain || 0), 0);
     const fhps = (data.fhps || []).filter((h) => Number.isFinite(h.t)).slice().sort((a, b) => a.t - b.t);
-    song = { notes, chords, lines, fhps, live: new Map(), liveLines: new Map(), owned: [], back: Math.min(8, maxSustain) + 0.8 };
+    song = { notes, chords, lines, fhps, live: new Map(), liveLines: new Map(), back: Math.min(8, maxSustain) + 0.8 };
     setTuning(data.tuning || [0, 0, 0, 0, 0, 0], count);
     lastNow = null;
   }
@@ -773,6 +780,7 @@
 
   function makeNote(n) {
     const r = resources();
+    const owned = [];  // geometry made for this note alone, disposed with it
     const group = new THREE.Group();
     // The note itself (outline, face, marks) turns as it comes; its drop line and trail do not.
     const head = new THREE.Group();
@@ -811,12 +819,12 @@
     if (trailLength > 0.05 * SPEED) {
       const dx = n.slideTo >= 0 && n.fret > 0 ? fretX(n.slideTo) - x : 0;
       const g = trailGeometry(n, trailLength, dx, span);
-      song.owned.push(g);
+      owned.push(g);
       trail = new THREE.Mesh(g, bent ? r.bendTrailMat : r.trailMats[s]);
       group.add(trail);
     }
     stage.lane.add(group);
-    return { group, head, trail, trailLength, x, width, note: n };
+    return { group, head, trail, trailLength, x, width, note: n, owned };
   }
 
   // The box around a chord's notes: its frame, and the centre the chord turns around.
@@ -838,7 +846,6 @@
     const outer = roundedRect(right - left, top - bottom, 0.12);
     outer.holes.push(roundedRect(right - left - 0.09, top - bottom - 0.09, 0.08));
     const geometry = new THREE.ShapeGeometry(outer, 8);
-    song.owned.push(geometry);
     const group = new THREE.Group();
     group.add(new THREE.Mesh(geometry, r.frameMat));
     if (c.name) {
@@ -849,7 +856,7 @@
     }
     group.position.set(cx, cy, 0);
     stage.lane.add(group);
-    return { group, trail: null };
+    return { group, trail: null, owned: [geometry] };
   }
 
   function makeLine(l) {
@@ -1128,7 +1135,7 @@
         obj.group.position.z = -(chords[i].t - now) * SPEED;
       }
       for (const [key, obj] of song.live) {
-        if (!wanted.has(key)) { stage.lane.remove(obj.group); song.live.delete(key); }
+        if (!wanted.has(key)) { dropLive(obj); song.live.delete(key); }
       }
       const lines = song.lines, wantedLines = new Set();
       for (let i = lowerBound(lines, now - 0.2, (l) => l.t); i < lines.length && lines[i].t <= to; i += 1) {
@@ -1192,6 +1199,7 @@
     stats() {
       return song ? {
         notes: song.notes.length, lines: song.lines.length, liveNotes: song.live.size, liveLines: song.liveLines.size,
+        geometries: stage.renderer.info.memory.geometries,
         window: { glow: stage.window.glow, first: stage.window.first, width: stage.window.width },
         bends: stage.effects.filter((e) => e.held.bend).map((e) => ({ string: e.string, rise: e.held.bend.dy / BEND_Y })),
         rolls: [...song.live.values()].filter((o) => o.head).map((o) => ({ t: o.note.t, string: o.note.string, deg: o.head.rotation.z * 180 / Math.PI })),
