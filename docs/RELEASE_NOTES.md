@@ -1,25 +1,21 @@
 ### New
 
-- **The bend's shape in the note editor:** besides how far it rises, you choose whether it rises across the note, rises and holds, rises, holds and releases, or is a pre-bend (which may release), and the seconds when it starts to rise, is fully up and comes back. On the score a teal line over the tail shows the shape, and the preview makes the bend sound. (GitHub #21)
+- **A new progress bar while building:** in "Status and export", the steps are no longer chips with technical names (`parse_gp`, `build_arrangements`…). You now see the current step in words, "Step 2 of 6" and the percentage, a bar that fills (green at the end, red if it fails) and the six steps joined by a line: ✓ on the ones done, a turning ring on the current one, ✕ on the step it failed at. The status at the top of the project names the step in words too.
 
-### Fixes
+- **The separated bass is measured in tone detection:** with the help of four real basses a user sent, "Detect tone" now listens to the separated bass. When it sounds heavily distorted, the bass tones come from distorted to clean; otherwise from clean to distorted, as before. It only tells a heavily distorted bass from the rest (a light overdrive reads as clean), so there is still no percentage: listen and choose. (GitHub #16)
 
-- **A bend set in the note editor did not stay in the song:** the amount was saved but the note was not marked as a bend, so it did not show on the score and the rebuild wrote it without a bend. It is now marked, shown and heard — and bends that come from the Guitar Pro file are heard in the preview too. (GitHub #21)
+### Changed
 
-- **Songsterr refused every tab with a 403:** the same address opened in the browser, but RockForge's request was refused by a page in front of the API. When that happens, RockForge now asks again the way a browser asks; if it is still refused, the message says the answer came from a protection page and not from Songsterr, and suggests the `.gp` file exported from Songsterr. Not yet tried against the real Songsterr. (GitHub #22)
-
-- **Bass tones always distorted:** "Detect tone" offered the bass tones that were almost always distorted, even for a clean bass, because the measure it used (made for the guitar) gave a clean bass and a distorted one practically the same value. The four bass tones now come from clean to distorted, with no percentage and each with **Listen (approximation)**: they are not measured on the recording, listen to them and choose. (GitHub #16)
+- **The install counter moved to another server:** if you said yes, the install is now counted on a server of the project at Netlify instead of Supabase. It is still only a random number, the version, the kind of install and the system, with no IP address, and turning it off still deletes what was sent. The counts so far were copied over.
 
 ---
 
 ### Novidades
 
-- **A forma do bend no editor de notas:** além de quanto sobe, escolhes se sobe ao longo da nota, sobe e fica, sobe, fica e volta, ou é um pré-bend (que pode voltar), e os segundos em que começa a subir, chega ao alto e volta. Na partitura, uma linha verde-água sobre a cauda mostra a forma, e a pré-escuta faz o bend soar. (GitHub #21)
+- **Uma barra de progresso nova na construção:** em «Estado e exportar», os passos deixaram de ser pastilhas com nomes técnicos (`parse_gp`, `build_arrangements`…). Agora vês o passo em curso por extenso, «Passo 2 de 6» e a percentagem, uma barra que avança (verde no fim, vermelha se falhar) e os seis passos ligados por uma linha: ✓ nos feitos, um anel a rodar no atual, ✕ no passo onde falhou. O estado no topo do projeto também diz o passo por extenso.
 
-### Correções
+- **O baixo separado é medido na deteção de tons:** com a ajuda de quatro baixos reais enviados por um utilizador, o «Detetar tom» passou a ouvir o baixo separado. Quando soa muito distorcido, os tons de baixo aparecem do distorcido ao limpo; senão, do limpo ao distorcido, como até aqui. Só distingue um baixo muito distorcido do resto (um overdrive ligeiro lê-se como limpo), por isso continua sem percentagem: ouve e escolhe. (GitHub #16)
 
-- **Um bend posto no editor de notas não ficava na música:** guardava-se a quantidade mas a nota não era marcada como bend, por isso não aparecia na partitura e a reconstrução escrevia-a sem bend. Agora fica marcada, aparece e ouve-se — e os bends que vêm do ficheiro Guitar Pro também se ouvem na pré-escuta. (GitHub #21)
+### Alterado
 
-- **O Songsterr recusava todas as tabs com um 403:** o mesmo endereço abria no browser, mas o pedido do RockForge era recusado por uma página à frente da API. Quando isso acontece, o RockForge pede outra vez como um browser pede; se mesmo assim for recusado, a mensagem diz que a resposta veio de uma página de proteção e não do Songsterr, e sugere o ficheiro `.gp` exportado do Songsterr. Ainda não foi experimentado contra o Songsterr real. (GitHub #22)
-
-- **Tons de baixo sempre distorcidos:** «Detetar tom» propunha para o baixo tons quase sempre com distorção, mesmo para um baixo limpo, porque a medida usada (feita para a guitarra) dava praticamente o mesmo valor a um baixo limpo e a um distorcido. Os quatro tons de baixo aparecem agora do limpo ao distorcido, sem percentagem e cada um com **Ouvir (aproximação)**: não são medidos na gravação, ouve-os e escolhe. (GitHub #16)
+- **O contador de instalações mudou de servidor:** quem disse que sim passa a ser contado num servidor do projeto no Netlify, em vez do Supabase. Continua a ser só um número ao acaso, a versão, o tipo de instalação e o sistema, sem endereço IP, e desligá-lo continua a apagar o que foi enviado. As contagens que já existiam foram copiadas.

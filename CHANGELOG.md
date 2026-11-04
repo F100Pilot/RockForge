@@ -6,6 +6,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+## [0.12.0 beta 6] — 2026-11-04
+
 ### Novidades
 
 - **Uma barra de progresso nova na construção:** em «Estado e exportar», os passos deixaram de ser pastilhas com nomes técnicos (`parse_gp`, `build_arrangements`…). Agora vês o passo em curso por extenso, «Passo 2 de 6» e a percentagem, uma barra que avança (verde no fim, vermelha se falhar) e os seis passos ligados por uma linha: ✓ nos feitos, um anel a rodar no atual, ✕ no passo onde falhou. O estado no topo do projeto também diz o passo por extenso.

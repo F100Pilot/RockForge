@@ -6,6 +6,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+## [0.12.0 beta 6] — 2026-11-04
+
 ### New
 
 - **A new progress bar while building:** in "Status and export", the steps are no longer chips with technical names (`parse_gp`, `build_arrangements`…). You now see the current step in words, "Step 2 of 6" and the percentage, a bar that fills (green at the end, red if it fails) and the six steps joined by a line: ✓ on the ones done, a turning ring on the current one, ✕ on the step it failed at. The status at the top of the project names the step in words too.
