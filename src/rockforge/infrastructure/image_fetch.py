@@ -58,8 +58,11 @@ class NotAnImage(ImageFetchError):
 
 def unwrap(url: str) -> str:
     """The image a Google Images result link points at; anything else as is."""
-    parts = urllib.parse.urlsplit(url.strip())
-    host = (parts.hostname or "").lower()
+    try:
+        parts = urllib.parse.urlsplit(url.strip())
+        host = (parts.hostname or "").lower()
+    except ValueError:  # "http://[::1": refused as a link by _check
+        return url.strip()
     if host.startswith(("google.", "www.google.")) or ".google." in host:
         query = urllib.parse.parse_qs(parts.query)
         for key in ("imgurl", "url", "q"):
@@ -83,7 +86,10 @@ def _resolve(host: str, port: int) -> list[str]:
 
 def _check(url: str) -> tuple[str, str, int, str]:
     """Scheme, host, port and request target of an allowed address."""
-    parts = urllib.parse.urlsplit(url)
+    try:
+        parts = urllib.parse.urlsplit(url)
+    except ValueError as exc:  # an unclosed "[" of an IPv6 address
+        raise ImageLinkRefused(tr("o link não é válido", "the link is not valid")) from exc
     scheme = parts.scheme.lower()
     if scheme not in DEFAULT_PORTS:
         raise ImageLinkRefused(tr(
@@ -114,7 +120,7 @@ def _check(url: str) -> tuple[str, str, int, str]:
 def _public_ip(host: str, port: int) -> str:
     try:
         ips = _resolve(host, port)
-    except OSError as exc:
+    except (OSError, UnicodeError) as exc:  # UnicodeError: a name IDNA cannot encode
         raise ImageFetchError(tr(
             f"não encontrei o site {host}", f"could not find the site {host}",
         )) from exc

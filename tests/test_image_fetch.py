@@ -172,3 +172,17 @@ def test_a_page_is_not_taken_for_an_image(monkeypatch) -> None:
         fetch_link("https://cdn.example.org/view", download=lambda _u: page)
     with pytest.raises(NotAnImage):
         fetch_link("https://cdn.example.org/x", download=lambda _u: b"\x00\x01garbage" * 10)
+
+
+def test_a_link_that_cannot_even_be_split_is_refused_not_a_crash(monkeypatch) -> None:
+    """urlsplit raises on an unclosed IPv6 bracket and IDNA on an over-long
+    name: both reached the API as a 500."""
+    from rockforge.infrastructure.album_lookup import cover_url_allowed
+
+    monkeypatch.setattr(image_fetch, "_connection", lambda *_a: pytest.fail("opened"))
+    for url in ("http://[::1/a.png", "https://www.google.com/imgres?imgurl=http://[::1"):
+        with pytest.raises(ImageLinkRefused):
+            fetch_link(url)
+    with pytest.raises(ImageFetchError):
+        fetch_link("http://" + "a" * 300 + ".example/a.png")  # a label IDNA cannot encode
+    assert cover_url_allowed("https://[::1/cover.jpg") is False

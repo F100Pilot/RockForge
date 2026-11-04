@@ -257,8 +257,11 @@ def search_albums(
 
 def cover_url_allowed(url: str) -> bool:
     """Whether a cover may be downloaded from (or redirected to) this URL."""
-    parts = urllib.parse.urlsplit(url)
-    host = (parts.hostname or "").lower()
+    try:
+        parts = urllib.parse.urlsplit(url)
+        host = (parts.hostname or "").lower()
+    except ValueError:  # "https://[::1": not an address of the cover services
+        return False
     return parts.scheme == "https" and (
         host in _COVER_HOSTS or any(host.endswith(s) for s in _COVER_HOST_SUFFIXES)
     )
