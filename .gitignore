@@ -23,3 +23,6 @@ logs/
 # installer to Output/.
 ffmpeg/
 Output/
+
+# Netlify CLI link state (counter/).
+.netlify/

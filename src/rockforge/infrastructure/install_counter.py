@@ -11,7 +11,7 @@ and what is sent is:
 - the RockForge version, how it was installed (exe / git / source) and the
   operating-system family (windows / macos / linux / other).
 
-The server (``supabase/functions/install-ping``) keeps exactly that, no IP.
+The server (``counter/netlify/functions/install-ping.mts``) keeps exactly that, no IP.
 Turning it off asks the server to delete what this install sent. Every
 failure — offline, the server gone — is silent and retried on the next start:
 a counter must never be something the user notices.

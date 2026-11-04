@@ -1,0 +1,12 @@
+{
+  "name": "rockforge-counter",
+  "private": true,
+  "type": "module",
+  "description": "RockForge's opt-in install counter (Netlify Function + Netlify Blobs).",
+  "dependencies": {
+    "@netlify/blobs": "11.1.7"
+  },
+  "devDependencies": {
+    "@netlify/functions": "6.1.0"
+  }
+}

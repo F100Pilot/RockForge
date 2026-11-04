@@ -6406,23 +6406,36 @@ answered; PUT 404s when the counter is off). `config.install_counter_url`
 (`ROCKFORGE_INSTALL_COUNTER_URL`, empty = off and never asked; `tests/conftest.py`
 empties it, so no test can reach the network).
 
-**The server** is its own free Supabase project "rockforge-counter"
-(`fvyqytrtmctsdepyrnlm`, eu-central-1, org "Dream Teams") — not the user's other
-projects. Source in the repo: `supabase/migrations/20261018000000_install_counter.sql`
-(table `install_versions`, PK `(install_id, version)`, CHECKs on every field,
-RLS on with NO policies and `anon`/`authenticated` revoked, so the Data API
-reads nothing; `install_counts()` executable by `service_role` only) and
-`supabase/functions/install-ping/index.ts` (deployed with `verify_jwt` off —
-the app has no key — so it validates the body itself: a v4 UUID, a SemVer
-version, the four kinds/OSes, ≤ 1 KB; service-role upsert, `ignoreDuplicates`).
-`GET` on the function answers the totals `{installs, by_version, by_kind,
-by_os}` — that is how the maintainer reads them (or SQL in the dashboard). No IP
-is stored (Supabase's own request logs are the platform's, kept a few days).
+**The server** is its own free Netlify project "rockforge-counter"
+(<https://rockforge-counter.netlify.app/install-ping>) — moved there from a free
+Supabase project on 2026-11-04 ("Consegues passar o rockforge counter para outra
+database?"): Supabase's free plan allows two active projects and pauses an idle
+one, and the user's other app needed the slot. The 57 rows were copied with
+their first-seen times; the old Supabase project (`fvyqytrtmctsdepyrnlm`) is
+only paused, with its data, and installs still on an older version keep posting
+to its address and fail silently (retried at each start) until they update.
+Source in the repo: `counter/` — `netlify.toml` (the Netlify project is linked to
+this repo with base directory `counter`; `ignore` skips a deploy unless
+`counter/` changed) and `netlify/functions/install-ping.mts` (path
+`/install-ping`, GET/POST only). It validates the body itself — the app has no
+key: a v4 UUID, a SemVer version, the four kinds/OSes, ≤ 1 KB. Storage is
+Netlify Blobs, store `install-versions` in `eu-central-1` (strong
+consistency), ONE entry per (install, version) with every field in the key —
+`<install_id>/<version>/<kind>/<os>`, value = first-seen time — so the totals
+are one listing, a repeat of the same version adds nothing (a prefix check),
+forget deletes the `<install_id>/` prefix, and no entry is ever
+read-modified-written. `GET` answers the totals `{installs, by_version,
+by_kind, by_os}`, the same shape as the old SQL `install_counts()` — that is how
+the maintainer reads them. `POST {action: "import", rows}` exists only while the
+`IMPORT_TOKEN` env var is set on the Netlify project (Bearer token, ≥ 32
+chars; 404 otherwise) — it was used once for the migration and the variable
+removed. No IP is stored (Netlify's own request logs are the platform's).
 Honest limits: anyone can post a made-up id (it is a counter, not an audit);
 only installs that said yes are counted. Changing the function: edit the file
-and redeploy it with the same settings. Exercised for real from the project's
-own database (pg_net, which is left installed — it would not drop): record 204,
-a bad id 400, a repeat one row, totals, forget → 0 rows. Guarded by
+and push (only a change under `counter/` deploys). Exercised locally against
+`@netlify/blobs`' own test server: the 57 rows imported give exactly the old
+totals (27 installs), import without the token 404, record 204, a repeat one
+entry, a bad id 400, a bad kind 400, > 1 KB 413, PUT 405, forget → back to 27. Guarded by
 `test_install_counter.py` (nothing before a yes, only the four fields, once per
 version, a new version again with the same id, a failed send retried, no =
 forget + a new id next time, no URL = off, the API); with Playwright against a

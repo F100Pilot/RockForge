@@ -12,6 +12,10 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 - **The separated bass is measured in tone detection:** with the help of four real basses a user sent, "Detect tone" now listens to the separated bass. When it sounds heavily distorted, the bass tones come from distorted to clean; otherwise from clean to distorted, as before. It only tells a heavily distorted bass from the rest (a light overdrive reads as clean), so there is still no percentage: listen and choose. (GitHub #16)
 
+### Changed
+
+- **The install counter moved to another server:** if you said yes, the install is now counted on a server of the project at Netlify instead of Supabase. It is still only a random number, the version, the kind of install and the system, with no IP address, and turning it off still deletes what was sent. The counts so far were copied over.
+
 ## [0.12.0 beta 5] — 2026-11-03
 
 ### New

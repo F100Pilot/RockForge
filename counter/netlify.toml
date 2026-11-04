@@ -1,0 +1,10 @@
+# RockForge's install counter — its own Netlify project ("rockforge-counter").
+# Linked to this repo with base directory `counter`; only changes under
+# counter/ trigger a deploy.
+[build]
+  publish = "public"
+  command = "npm install --no-audit --no-fund"
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- ."
+
+[functions]
+  directory = "netlify/functions"
