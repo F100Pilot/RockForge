@@ -19,7 +19,7 @@ from starlette.background import BackgroundTask
 from rockforge import i18n
 from rockforge.infrastructure.db.models import Job, JobStatus
 from rockforge.interfaces.api import app as api
-from rockforge.interfaces.api.schemas import JobOut, MetadataIn, ProjectInfoOut
+from rockforge.interfaces.api.schemas import MAX_YEAR, JobOut, MetadataIn, ProjectInfoOut
 
 router = APIRouter()
 
@@ -204,6 +204,9 @@ def create_gp_job(
         final_artist = artist.strip() or info.artist or tags.artist
         final_album = album.strip() or info.album or tags.album or ""
         final_year: int | None = int(year) if year.strip().isdecimal() else tags.year
+        if final_year is not None and not 0 <= final_year <= MAX_YEAR:
+            raise HTTPException(422, i18n.tr(f"o ano tem de estar entre 0 e {MAX_YEAR}",
+                                             f"the year must be between 0 and {MAX_YEAR}"))
         missing = [n for n, v in (("title", final_title), ("artist", final_artist)) if not v]
         if missing:
             raise HTTPException(

@@ -28,6 +28,13 @@ from rockforge.interfaces.api.schemas import (
 router = APIRouter()
 
 
+# The row still names a build whose files were deleted or moved by hand: a 500
+# from deep inside the file response said nothing about it.
+def _gone() -> str:
+    return i18n.tr("os ficheiros desta versão já não estão no disco — reconstrói o projeto",
+                   "this version's files are no longer on disk — rebuild the project")
+
+
 @router.get("/jobs/{job_id}/source-audio")
 def get_source_audio(job_id: str) -> FileResponse:
     """The recording, served for the in-app viewer (playback + waveform).
@@ -59,6 +66,8 @@ def download_bundle(job_id: str) -> FileResponse:
         job = session.get(Job, job_id)
         if job is None or job.status is not JobStatus.COMPLETED or not job.bundle_dir:
             raise HTTPException(404, "bundle not available")
+        if not Path(job.bundle_dir).is_dir():
+            raise HTTPException(409, _gone())
         # Each download its own zip, removed once sent: rewriting one shared
         # <bundle>.zip on every GET truncated it under a download still
         # streaming it (a double click, a browser retry) — a corrupt bundle.
@@ -78,6 +87,8 @@ def download_psarc(job_id: str) -> FileResponse:
                 "PSARC not available — Wwise-dependent packing is delegated to DLC Builder; "
                 "download the bundle instead",
             )
+        if not Path(job.psarc_path).is_file():
+            raise HTTPException(409, _gone())
         return FileResponse(job.psarc_path, filename=Path(job.psarc_path).name)
 
 

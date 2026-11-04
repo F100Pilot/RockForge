@@ -5035,3 +5035,40 @@ def test_a_tone_knob_that_is_not_a_number_is_refused(client: TestClient, tmp_pat
         assert send("PATCH", f"{url}/tone-swaps", {"swaps": swaps}) == 422
     tone["amp"]["knobs"]["Amp_MarshallPlexi_Bass"] = 60
     assert client.post(f"{url}/rebuild", json={"tones": [tone]}).status_code == 202
+
+
+def test_numbers_too_big_for_the_database_and_files_gone_from_disk_are_said(
+    client: TestClient, tmp_path
+) -> None:
+    """A year past 64 bits failed the commit, an integer past any float failed
+    /import-sync's check, and a build whose files were deleted by hand failed
+    deep inside the file response: each was a 500 that said nothing."""
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.infrastructure.db.models import JobStatus
+
+    job = _create_job(client)
+    huge = 10 ** 30
+    r = client.patch(f"/jobs/{job['id']}/metadata",
+                     json={"title": "T", "artist": "A", "year": huge})
+    assert r.status_code == 422
+    past_float = 10 ** 400
+    assert client.post(f"/jobs/{job['id']}/import-sync",
+                       json={"sync": {"offset_s": past_float}}).status_code == 422
+    gp_job = _gp_job(client, tmp_path)
+    anchors = {"sync": {"sync_anchor_stages": [[[1, past_float]]]}}
+    assert client.post(f"/jobs/{gp_job['id']}/import-sync", json=anchors).status_code == 422
+    token = client.post("/gp/inspect", files={
+        "file": ("song.gp5", _make_gp5_bytes(tmp_path), "application/octet-stream")
+    }).json()["gp_token"]
+    r = client.post("/jobs/gp", data={"gp_token": token, "lead_track": "0", "year": str(huge)},
+                    files={"audio": ("song.wav", b"RIFF0000WAVE", "audio/wav")})
+    assert r.status_code == 422
+
+    with app_module._session_factory() as session:
+        db_job = session.get(app_module.Job, job["id"])
+        db_job.status = JobStatus.COMPLETED
+        db_job.bundle_dir = str(tmp_path / "gone-bundle")
+        db_job.psarc_path = str(tmp_path / "gone.psarc")
+        session.commit()
+    assert client.get(f"/jobs/{job['id']}/bundle").status_code == 409
+    assert client.get(f"/jobs/{job['id']}/psarc").status_code == 409

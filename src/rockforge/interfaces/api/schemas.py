@@ -764,13 +764,18 @@ class LyricsOut(BaseModel):
     follow_chart: bool = False
 
 
+MAX_YEAR = 9999
+
+
 class MetadataIn(BaseModel):
     """Editable song identity for an existing job (title/artist/album/year)."""
 
     title: str
     artist: str
     album: str = ""
-    year: int | None = None
+    # Bounded: the database column is a 64-bit integer, so a larger number was
+    # a 500 on the commit.
+    year: int | None = Field(None, ge=0, le=MAX_YEAR)
 
 
 class GpTrackOut(BaseModel):

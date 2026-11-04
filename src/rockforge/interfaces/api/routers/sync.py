@@ -74,9 +74,9 @@ def _sanitize_sync_state(incoming: dict[str, object]) -> dict[str, object]:
     # or a NaN drift anchor straight into the job's params.
     api._reject_non_finite(
         **{
-            k: float(v)
+            k: next(_iter_floats(v))
             for k in ("offset_s", "lead_in_s", "tempo_scale", "cent_offset", "song_end_s")
-            if isinstance(v := out.get(k), (int, float))
+            if isinstance(v := out.get(k), (int, float)) and not isinstance(v, bool)
         }
     )
     for key in ("sync_anchor_stages", "arrangement_sync"):
@@ -92,7 +92,10 @@ def _iter_floats(value: object) -> Iterator[float]:
     if isinstance(value, bool):
         return
     if isinstance(value, (int, float)):
-        yield float(value)
+        try:
+            yield float(value)
+        except OverflowError:  # an int past any float: as unusable as infinity
+            yield math.inf
     elif isinstance(value, dict):
         for v in value.values():
             yield from _iter_floats(v)
