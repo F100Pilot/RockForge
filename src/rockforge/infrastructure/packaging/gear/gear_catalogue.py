@@ -17,6 +17,7 @@ knob key from its display name (e.g. the JCM800 "Presence" knob is
 from __future__ import annotations
 
 import json
+import math
 from functools import lru_cache
 from importlib import resources
 from typing import Any
@@ -155,7 +156,11 @@ def _pedal_from_dict(raw: dict[str, Any] | None) -> Pedal | None:
     knobs = knob_defaults(key)
     for kk, kv in (raw.get("knobs") or {}).items():
         if kk in knobs:
-            knobs[kk] = float(kv)
+            value = float(kv)
+            if not math.isfinite(value):
+                # A NaN knob reached the manifest as NaN, which is not JSON.
+                raise ValueError(f"knob {kk} is not a number")
+            knobs[kk] = value
     # DLC Builder carries a Category only on effects (Pedals/Racks); amps and
     # cabinets identify fully by their Key, so their Category is left unset to
     # match a real captured tone (default_lead.json).

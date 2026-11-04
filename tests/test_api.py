@@ -5011,3 +5011,27 @@ def test_a_chart_name_the_build_never_makes_is_refused(client: TestClient, tmp_p
     r = client.post(f"/jobs/{job['id']}/export-arrangement-gp",
                     params={"arrangement": "../../etc/passwd"})
     assert r.status_code == 422
+
+
+def test_a_tone_knob_that_is_not_a_number_is_refused(client: TestClient, tmp_path) -> None:
+    """Only a tone's volume was checked: a NaN or infinite knob was stored, and
+    the build wrote NaN into the manifest, which is not JSON."""
+    import json as _json
+
+    def send(method: str, path: str, body: object) -> int:
+        # JSON carries NaN/Infinity; the client library refuses to write them.
+        return client.request(method, path, content=_json.dumps(body),
+                              headers={"content-type": "application/json"}).status_code
+
+    job = _gp_job(client, tmp_path)
+    url = f"/jobs/{job['id']}"
+    for value in (float("nan"), float("inf")):
+        tone = {"key": "Mine", "name": "Mine", "volume": -18,
+                "amp": {"key": "Amp_MarshallPlexi", "knobs": {"Amp_MarshallPlexi_Bass": value}},
+                "cabinet": {"key": "Cab_Marshall1960a_57_Cone"}}
+        assert send("POST", f"{url}/rebuild", {"tones": [tone]}) == 422
+        assert send("POST", "/tone-library", tone) == 422
+        swaps = {"Suggested": {"tone": tone, "source": "library"}}
+        assert send("PATCH", f"{url}/tone-swaps", {"swaps": swaps}) == 422
+    tone["amp"]["knobs"]["Amp_MarshallPlexi_Bass"] = 60
+    assert client.post(f"{url}/rebuild", json={"tones": [tone]}).status_code == 202
