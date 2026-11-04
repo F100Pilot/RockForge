@@ -12,6 +12,7 @@ from rockforge.infrastructure.db.models import Job, JobStatus
 from rockforge.interfaces.api import app as api
 from rockforge.interfaces.api.schemas import (
     AppliedCorrectionOut,
+    ChartName,
     ExportArrangementGpOut,
     ExportGpIn,
     ExportGpOut,
@@ -80,7 +81,7 @@ def export_gp(job_id: str, payload: ExportGpIn) -> ExportGpOut:
 
 
 @router.post("/jobs/{job_id}/export-arrangement-gp", response_model=ExportArrangementGpOut)
-def export_arrangement_gp(job_id: str, arrangement: str) -> ExportArrangementGpOut:
+def export_arrangement_gp(job_id: str, arrangement: ChartName) -> ExportArrangementGpOut:
     """Generate a NEW Guitar Pro file from one built arrangement.
 
     The companion to ``/export-gp``, which patches tempo into a copy of the

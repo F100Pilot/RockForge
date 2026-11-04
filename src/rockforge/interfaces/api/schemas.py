@@ -122,6 +122,12 @@ class OtherSyncIn(BaseModel):
     sync_anchors: list[tuple[Finite, Finite]] = []
 
 
+# A chart's name, as ArrangementKind spells it (test_api_routers holds the two
+# equal). Every field keyed by chart takes only these: a name the build never
+# makes was stored and, for the GP export, became part of a file path.
+ChartName = Literal["Lead", "Rhythm", "Combined", "Alternate Lead", "Alternate Rhythm", "Bass"]
+
+
 class RebuildIn(BaseModel):
     """Human-review overrides for a rebuild (sync, tuning, tones, lyrics, note edits)."""
 
@@ -140,7 +146,7 @@ class RebuildIn(BaseModel):
     sync_anchors: list[tuple[Finite, Finite]] | None = None
     # When set (ArrangementKind value, e.g. "Lead"/"Rhythm"/"Combined"), tempo_scale
     # and sync_anchors are scoped to that arrangement alone instead of all of them.
-    arrangement: str | None = None
+    arrangement: ChartName | None = None
     # When True (with arrangement set), tempo_scale and sync_anchors are applied
     # to every arrangement that has notes, not just the specified one.
     apply_to_all: bool = False
@@ -148,7 +154,7 @@ class RebuildIn(BaseModel):
     # arrangement). Before it only the chart on screen was sent, so another
     # tab's pending corrections — and what the "Pista principal" carries onto
     # the others — were lost. Ignored with apply_to_all.
-    other_sync: dict[str, OtherSyncIn] | None = None
+    other_sync: dict[ChartName, OtherSyncIn] | None = None
     # GP: when False, palm mute / slap / pop / tap are stripped (plain notes).
     import_mutes: bool | None = None
     # When False, the native PSARC's SNG is a single full-chart level (no DD).
@@ -166,7 +172,7 @@ class RebuildIn(BaseModel):
     # GP: per-arrangement tuning override, keyed by ArrangementKind value
     # ("Lead"/"Rhythm"/…) → the six MIDI pitches (low to high). When set (even to
     # {}), replaces params["tuning_overrides"]; None leaves it untouched.
-    tuning_overrides: dict[str, list[MidiPitch]] | None = None
+    tuning_overrides: dict[ChartName, list[MidiPitch]] | None = None
     # GP: the Bass chart's reference pitch — "auto" (A220 only below -4
     # semitones), "a220" or "a440" (GpJobSpec.bass_reference). None leaves it.
     bass_reference: Literal["auto", "a220", "a440"] | None = None
@@ -190,7 +196,7 @@ class RebuildIn(BaseModel):
     # themselves stay song-level in ``tones``). When set, REPLACES
     # params["arrangement_tones"] — {} brings every track back to the song-level
     # tone_base/tone_names/tone_changes above; None leaves it untouched.
-    arrangement_tones: dict[str, ArrangementTonesIn] | None = None
+    arrangement_tones: dict[ChartName, ArrangementTonesIn] | None = None
     # In-app section-editor overrides (bundle-clock times, placed on the tab
     # viewer, same convention as tone_changes). When set (even to an empty
     # list), replaces the GP-parsed sections for every arrangement; None
@@ -201,11 +207,11 @@ class RebuildIn(BaseModel):
     # entry upserts a note at (time, string), or removes it when
     # ``deleted``. When set (even to {}), REPLACES params["note_overrides"]
     # wholesale; None leaves it untouched.
-    note_overrides: dict[str, list[NoteOverrideIn]] | None = None
+    note_overrides: dict[ChartName, list[NoteOverrideIn]] | None = None
     # The FHP editor's fret-hand positions, keyed by ArrangementKind.value: a
     # chart's list is ALL its FHPs, a chart absent gets the automatic ones.
     # When set (even to {}), REPLACES params["hand_positions"]; None leaves it.
-    hand_positions: dict[str, list[HandPositionIn]] | None = None
+    hand_positions: dict[ChartName, list[HandPositionIn]] | None = None
 
 
 class ArrangementTonesIn(BaseModel):
@@ -956,11 +962,11 @@ class SyncConfirmedIn(BaseModel):
     confirmed: bool
     # One chart ("Lead", "Alternate Rhythm"…): each track is synchronised on its
     # own. None = the whole song (the checklist's button), i.e. every chart.
-    arrangement: str | None = None
+    arrangement: ChartName | None = None
 
 
 class SyncMainIn(BaseModel):
-    arrangement: str | None = None  # None = no main chart
+    arrangement: ChartName | None = None  # None = no main chart
 
 
 MAX_MARKED_ATTACKS = 20_000

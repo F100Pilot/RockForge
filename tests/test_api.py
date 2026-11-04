@@ -4985,3 +4985,29 @@ def test_the_song_end_is_stored_read_back_and_reset(client: TestClient, tmp_path
     assert client.post(
         f"/jobs/{upload['id']}/rebuild", json={"song_end_s": 10}
     ).status_code == 422
+
+
+def test_a_chart_name_the_build_never_makes_is_refused(client: TestClient, tmp_path) -> None:
+    """Every field keyed by chart took any string: it was stored in the job's
+    params and, for the GP export, became part of a file path."""
+    import typing
+
+    from rockforge.domain.arrangement import ArrangementKind
+    from rockforge.interfaces.api.schemas import ChartName
+
+    assert set(typing.get_args(ChartName)) == {k.value for k in ArrangementKind}
+    job = _gp_job(client, tmp_path)
+    for body in (
+        {"note_overrides": {"../../x": []}},
+        {"hand_positions": {"Solo": []}},
+        {"tuning_overrides": {"lead": [40, 45, 50, 55, 59, 64]}},
+        {"arrangement_tones": {"Keys": {}}},
+        {"other_sync": {"Voz": {}}},
+        {"arrangement": "../x", "tempo_scale": 1.0},
+    ):
+        assert client.post(f"/jobs/{job['id']}/rebuild", json=body).status_code == 422, body
+    assert client.post(f"/jobs/{job['id']}/rebuild",
+                       json={"note_overrides": {"Lead": []}}).status_code == 202
+    r = client.post(f"/jobs/{job['id']}/export-arrangement-gp",
+                    params={"arrangement": "../../etc/passwd"})
+    assert r.status_code == 422
