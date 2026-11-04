@@ -119,15 +119,6 @@ def _summarize(frames: dict[str, Any], mask: Any) -> dict[str, float]:
     }
 
 
-def tone_features(audio: str) -> dict[str, float]:
-    """The spectral features a guitar tone is classified from (whole song).
-
-    Only the MEASUREMENT lives here; mapping these to a ``ToneProfile`` is pure
-    and stays in ``tone_analysis/analyzer.py`` where CI can test it without an
-    ML stack.
-    """
-    return tone_report(audio)["features"]  # type: ignore[return-value]
-
 
 def tone_report(audio: str) -> dict[str, object]:
     """The whole-song features AND the same features window by window, from one

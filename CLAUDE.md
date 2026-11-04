@@ -4110,8 +4110,7 @@ cannot say that a song has a clean intro, a crunchy verse and a hotter solo,
 nor that over the SAME sound the Lead solos while the Rhythm chugs.
 
 **Measured over time, in the same read.** `_librosa_runner.tone_report` returns
-the whole-song features (what `tone_features` always returned — it is now
-`tone_report(...)["features"]`, one implementation) plus the same seven
+the whole-song features (`tone_report(...)["features"]`) plus the same seven
 features per **4 s window, 1 s hop**, each flagged `active` when the guitar is
 playing in at least 40 % of its frames. `analyzer.window_profiles` (pure) turns
 them into `WindowProfile`s — and must NOT run a window through the song
@@ -6191,7 +6190,7 @@ only the `.exe`, which CI can neither build nor run.
 
 **The librosa measurements have ONE implementation, reachable two ways.**
 `infrastructure/_librosa_runner.py` holds `tempo_from`/`tuning_cents`/
-`tone_features` and a `main()` that prints one line of JSON; it imports
+`tone_report` and a `main()` that prints one line of JSON; it imports
 **nothing from `rockforge`** (same rule as the other two runners — that is what
 lets an interpreter which has librosa but has never heard of RockForge run it).
 `librosa_adapter` and `tone_analysis/analyzer` call those functions **directly**

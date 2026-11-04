@@ -116,16 +116,7 @@ _NOTE_FIXED_FMT = "<IIIfBBBBiiiihhhhh" "bbbbbbbhff"
 _BEAT_SIZE = struct.calcsize(_BEAT_FMT)
 
 
-_PHRASE_SIZE = struct.calcsize(_PHRASE_FMT)
-
-
 _PHRASE_ITER_SIZE = struct.calcsize(_PHRASE_ITER_FMT)
-
-
-_CHORD_TEMPLATE_SIZE = struct.calcsize(_CHORD_TEMPLATE_FMT)
-
-
-_SECTION_SIZE = struct.calcsize(_SECTION_FMT)
 
 
 _ANCHOR_SIZE = struct.calcsize(_ANCHOR_FMT)
@@ -135,9 +126,6 @@ _ANCHOR_EXT_SIZE = struct.calcsize(_ANCHOR_EXT_FMT)
 
 
 _FINGERPRINT_SIZE = struct.calcsize(_FINGERPRINT_FMT)
-
-
-_VOCAL_SIZE = struct.calcsize(_VOCAL_FMT)
 
 
 _NOTE_FIXED_SIZE = struct.calcsize(_NOTE_FIXED_FMT)

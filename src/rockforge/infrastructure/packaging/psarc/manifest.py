@@ -104,7 +104,6 @@ TOOLKIT_VERSION = (
 # (``runtime_settings.app_id``), e.g. from the songs in their own dlc folder
 # (``tone_collection.app_ids``). See RocksmithToolkitLib SongAppId.xml.
 APP_ID = "248750"
-APP_ID_DROPS_OF_JUPITER = "492989"
 
 
 def valid_app_id(value: object) -> bool:

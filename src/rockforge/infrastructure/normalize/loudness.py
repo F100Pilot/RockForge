@@ -72,16 +72,13 @@ def parse_ebur128_true_peak(stderr: str) -> float | None:
     return float("-inf") if matches[-1] == "-inf" else float(matches[-1])
 
 
-def measure_levels(
-    audio: Path, ffmpeg: str = "ffmpeg", start_s: float = 0.0
-) -> tuple[float | None, float | None]:
-    """``(integrated loudness LUFS, true peak dBFS)`` of ``audio`` from ``start_s``
-    in one ffmpeg pass; ``(None, None)`` when it cannot be measured."""
+def measure_levels(audio: Path, ffmpeg: str = "ffmpeg") -> tuple[float | None, float | None]:
+    """``(integrated loudness LUFS, true peak dBFS)`` of ``audio`` in one ffmpeg
+    pass; ``(None, None)`` when it cannot be measured."""
     try:
         proc = subprocess.run(
             [
                 ffmpeg, "-nostdin",
-                *(["-ss", str(start_s)] if start_s > 0 else []),
                 "-i", str(audio), "-af", "ebur128=peak=true", "-f", "null", "-",
             ],
             capture_output=True,

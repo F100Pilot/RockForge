@@ -17,9 +17,7 @@ FFMPEG_TIMEOUT_S = 600
 class FfmpegNormalizer:
     """Implements rockforge.application.ports.AudioNormalizer."""
 
-    def normalize(
-        self, audio: Path, workdir: Path, offset_s: float = 0.0, pad_start_s: float = 0.0
-    ) -> Path:
+    def normalize(self, audio: Path, workdir: Path, pad_start_s: float = 0.0) -> Path:
         out = workdir / "normalized.wav"
         filters = []
         if pad_start_s > 0:
@@ -34,7 +32,7 @@ class FfmpegNormalizer:
         # is brought under it instead of being clipped.
         from rockforge import runtime_settings
 
-        loudness, true_peak = measure_levels(audio, start_s=offset_s)
+        loudness, true_peak = measure_levels(audio)
         gain = recording_gain_db(loudness, true_peak, runtime_settings.loudness_target())
         if abs(gain) >= 0.05:
             filters.append(f"volume={gain:.2f}dB")
@@ -43,7 +41,6 @@ class FfmpegNormalizer:
             # start.bat worker), ffmpeg inherits the console's stdin and goes
             # interactive, blocking forever — the "stuck at normalizing" hang.
             "ffmpeg", "-nostdin", "-y",
-            *(["-ss", str(offset_s)] if offset_s > 0 else []),
             "-i", str(audio),
             *(["-af", ",".join(filters)] if filters else []),
             "-ar", "44100", "-ac", "2",
