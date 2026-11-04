@@ -5154,3 +5154,19 @@ def test_a_projects_measurements_in_a_shape_nothing_reads_are_refused(
         {"vocal_melody": [{"time": 1.0, "length": 0.5, "midi": 900}]},
     ):
         assert imported(params) == 422, params
+
+
+def test_a_stored_gp_file_that_no_longer_reads_is_a_422(client: TestClient, tmp_path) -> None:
+    """/gp-tracks and /detect-tempo read the stored file without catching the
+    importer's refusal: a file a stricter parser now refuses (or one damaged on
+    disk) was a 500 on "Editar info" and on every "Corrigir daqui"."""
+    import rockforge.interfaces.api.app as app_module
+
+    job = _gp_job(client, tmp_path)
+    with app_module._session_factory() as session:
+        db_job = session.get(app_module.Job, job["id"])
+        Path(db_job.params["gp_path"]).write_bytes(b"not a guitar pro file at all")
+        Path(db_job.source).write_bytes(b"RIFF0000WAVE")
+    assert client.get(f"/jobs/{job['id']}/gp-tracks").status_code == 422
+    r = client.post(f"/jobs/{job['id']}/detect-tempo", json={"from_s": 1.0})
+    assert r.status_code == 422

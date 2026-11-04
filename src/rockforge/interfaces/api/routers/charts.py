@@ -40,7 +40,12 @@ def get_gp_tracks(job_id: str) -> dict[str, object]:
     gp_path = Path(str(params.get("gp_path", "")))
     if not gp_path.exists():
         raise HTTPException(409, "the Guitar Pro file is no longer on the work volume")
-    info = inspect_gp(gp_path)
+    from rockforge.domain.errors import IngestionError
+
+    try:
+        info = inspect_gp(gp_path)
+    except IngestionError as exc:  # stored before the parser grew stricter
+        raise HTTPException(422, str(exc)) from exc
     return {
         "tracks": [
             {"index": t.index, "name": t.name, "string_count": t.string_count,

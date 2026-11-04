@@ -41,10 +41,14 @@ def detect_tempo(job_id: str, payload: DetectTempoIn) -> DetectTempoOut:
         raise HTTPException(409, "source audio no longer exists on the work volume")
 
     from rockforge.application.gp_pipeline import suggest_tempo_scale
+    from rockforge.domain.errors import IngestionError
     from rockforge.infrastructure.gpimport.parser import inspect_gp
     from rockforge.infrastructure.rhythm.librosa_adapter import detect_tempo_from
 
-    gp_bpm = float(inspect_gp(gp_path).tempo)
+    try:
+        gp_bpm = float(inspect_gp(gp_path).tempo)
+    except IngestionError as exc:  # stored before the parser grew stricter
+        raise HTTPException(422, str(exc)) from exc
     # The factor is applied by the viewer as a RELATIVE stretch of the tail of the
     # already-displayed timeline, so it must be measured against the tempo that
     # timeline currently plays at — not against the GP header tempo. Using the
