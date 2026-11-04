@@ -21,6 +21,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import math
 import os
 import re
 import threading
@@ -112,7 +113,17 @@ def _gear(raw: Any) -> dict[str, Any] | None:
     knobs = raw.get("KnobValues")
     if not isinstance(knobs, dict):
         knobs = {}
-    return {"key": str(key), "knobs": {str(k): float(v) for k, v in knobs.items()}}
+    # A knob with no readable, finite value is left at the catalogue default —
+    # a null in one CDLC's manifest used to end the whole scan (BUG-0383).
+    read: dict[str, float] = {}
+    for k, v in knobs.items():
+        try:
+            value = float(v)
+        except (TypeError, ValueError):
+            continue
+        if math.isfinite(value):
+            read[str(k)] = value
+    return {"key": str(key), "knobs": read}
 
 
 def tone_from_dto(dto: Any) -> dict[str, Any] | None:
@@ -133,11 +144,14 @@ def tone_from_dto(dto: Any) -> dict[str, Any] | None:
         volume = float(dto.get("Volume"))  # type: ignore[arg-type]
     except (TypeError, ValueError):
         volume = -18.0
+    if not math.isfinite(volume):
+        volume = -18.0
+    descriptors = dto.get("ToneDescriptors")
     tone: dict[str, Any] = {
         "key": key,
         "name": str(dto.get("Name") or key),
         "volume": volume,
-        "descriptors": [str(d) for d in dto.get("ToneDescriptors") or []],
+        "descriptors": [str(d) for d in descriptors] if isinstance(descriptors, list) else [],
         "amp": _gear(gear.get("Amp")),
         "cabinet": _gear(gear.get("Cabinet")),
     }
@@ -181,7 +195,9 @@ def read_psarc_tones(path: Path) -> dict[str, Any]:
         except (UnicodeDecodeError, ValueError):
             continue
         entries = doc.get("Entries") if isinstance(doc, dict) else None
-        for entry in (entries or {}).values():
+        if not isinstance(entries, dict):
+            continue
+        for entry in entries.values():
             attrs = entry.get("Attributes") if isinstance(entry, dict) else None
             if not isinstance(attrs, dict):
                 continue
@@ -189,7 +205,8 @@ def read_psarc_tones(path: Path) -> dict[str, Any]:
                 song = {"song": str(attrs.get("SongName") or ""),
                         "artist": str(attrs.get("ArtistName") or "")}
             arrangement = str(attrs.get("ArrangementName") or "")
-            for dto in attrs.get("Tones") or []:
+            tones = attrs.get("Tones")
+            for dto in tones if isinstance(tones, list) else []:
                 tone = tone_from_dto(dto)
                 if tone is None:
                     skipped += 1
@@ -270,7 +287,13 @@ def scan(folder: Path, progress: Callable[[int, int, str], None] | None = None) 
                 and old.get("mtime") == st.st_mtime and ("appid" in old or "error" in old):
             files[rel] = old
         else:
-            files[rel] = {"size": st.st_size, "mtime": st.st_mtime, **read_psarc_tones(path)}
+            try:
+                read = read_psarc_tones(path)
+            except ImportError:
+                raise
+            except Exception as exc:  # noqa: BLE001 — one odd archive must not end the scan
+                read = {"error": f"{type(exc).__name__}: {exc}"}
+            files[rel] = {"size": st.st_size, "mtime": st.st_mtime, **read}
         if i % _SAVE_EVERY == 0:  # a scan cut short keeps what it read
             _write({"folder": str(folder), "files": {**previous, **files}})
     data = {"folder": str(folder), "scanned_at": time.time(), "files": files,

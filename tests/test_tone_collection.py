@@ -280,3 +280,31 @@ def test_a_scan_from_before_the_appid_was_read_reads_each_file_again_once(
     assert [i["app_id"] for i in tc.app_ids()] == ["248750"]
     tc.scan(dlc)
     assert read == ["a_p.psarc"]  # now cached with its appid
+
+
+def test_an_odd_manifest_skips_its_tone_never_the_scan(tmp_path: Path, monkeypatch) -> None:
+    """A null knob, a number where the descriptors go or Entries as a list — one
+    such CDLC ended the whole scan, the same failure as GitHub issue #15 for a
+    folder it could not open (BUG-0383). The odd tone is skipped or read without
+    the odd field; every other song is still listed."""
+    monkeypatch.setattr(tc.config.settings, "work_dir", tmp_path / "work")
+    dlc = tmp_path / "dlc"
+    dlc.mkdir()
+    null_knob = _tone("Odd_Null", "Null")
+    null_knob["GearList"]["Amp"]["KnobValues"] = {"Amp_MarshallPlexi_Bass": None}
+    odd = {
+        "manifests/a/a_lead.json": _manifest("Lead", [null_knob], "Odd One", "Odd Band"),
+        "manifests/a/a_bass.json": json.dumps(
+            {"Entries": [{"Attributes": {"Tones": [1]}}]}).encode(),
+        "manifests/a/a_rhythm.json": _manifest(
+            "Rhythm", [{**_tone("Odd_Desc", "Desc"), "ToneDescriptors": 7}, "x", None],
+            "Odd One", "Odd Band"),
+    }
+    (dlc / "a_p.psarc").write_bytes(pack_entries(odd))
+    _song_psarc(dlc / "b_p.psarc", "Beta", artist="Bravo")
+
+    data = tc.scan(dlc)
+    keys = {t["tone"]["key"] for t in data["files"]["a_p.psarc"]["tones"]}
+    assert keys == {"Odd_Null", "Odd_Desc"}
+    assert "error" not in data["files"]["b_p.psarc"]
+    assert {a["name"] for a in tc.artists()} == {"Odd Band", "Bravo"}
