@@ -251,6 +251,8 @@ class WwiseWemConverter:
         # The nearest folder that names a year decides — read over the whole
         # path, "D:\\Games2022\\…\\Wwise2025.1" counted as a 2022 and paired
         # a 2022 template with a 2025 console (BUG-0382).
+        if self._root is None:
+            return None
         for part in reversed(self._root.parts):
             match = re.search(r"20\d\d", part)
             if match:
