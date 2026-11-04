@@ -6,7 +6,7 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 
 | Fixed | Verified | Closed |
 |---|---|---|
-| 97 | 60 | 216 |
+| 108 | 60 | 216 |
 
 | ID | Title | Module | Severity | Priority | Status | Found in | Fixed in |
 |---|---|---|---|---|---|---|---|
@@ -383,3 +383,14 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0371](bugs/tones.md#bug-0371) | The bass tones the tone detection proposed were always distortion-oriented, a clean bass included | tones | Low | P3 | Fixed | 0.12.0-beta.3 | 0.12.0-beta.5 |
 | [BUG-0372](bugs/editor.md#bug-0372) | A bend set in the note editor was not drawn, not heard and built as no bend | editor | Medium | P2 | Fixed | 0.12.0-beta.4 | 0.12.0-beta.5 |
 | [BUG-0373](bugs/import.md#bug-0373) | Songsterr refused every tab with a 403 that its browser did not get | import | High | P2 | Fixed | 0.12.0-beta.4 | 0.12.0-beta.5 |
+| [BUG-0374](bugs/app.md#bug-0374) | A version rebuilt during a detection inherited its running status and could never be deleted | app | High | P2 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0375](bugs/exe.md#bug-0375) | "Sair mesmo assim" left the .exe running unseen until its queue drained | exe | High | P2 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0376](bugs/sync.md#bug-0376) | Edits of the Lead track stopped applying when a Rhythm track was added or removed | sync | High | P2 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0377](bugs/tones.md#bug-0377) | Guitar charts took the song's bass tones (a bass amp as their tone) | tones | Medium | P3 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0378](bugs/lyrics.md#bug-0378) | "Sincronizar com a gravação" glued a word split in syllables to the word before it | lyrics | Medium | P3 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0379](bugs/viewer.md#bug-0379) | The score's keys acted from other pages: Backspace deleted notes nobody could see | viewer | High | P2 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0380](bugs/psarc.md#bug-0380) | HIGH DENSITY was worked out once on the full chart and reused at every DD level | psarc | Medium | P3 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0381](bugs/psarc.md#bug-0381) | A preview clip that would not convert cost the whole .psarc | psarc | Medium | P3 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0382](bugs/audio.md#bug-0382) | A Wwise 2025 under a folder named with 2019-2023 counted as supported | audio | Medium | P3 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0383](bugs/tones.md#bug-0383) | One odd CDLC manifest ended the whole tone-collection scan | tones | Medium | P3 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0384](bugs/security.md#bug-0384) | Turning the install counter off could leave the data on the server for good | security | Medium | P3 | Fixed | 0.12.0-beta.6 | — |

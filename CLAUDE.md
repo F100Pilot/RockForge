@@ -6797,6 +6797,43 @@ Guarded by `test_a_project_whose_form_leaves_out_import_mutes_keeps_its_mutes`
 (fails with the bool field back) and the two reload tests; CI had been red on
 it since 2026-10-19 without anyone noticing — check CI after every push.
 
+## The code review of 2026-11-04, lot 1 (BUG-0374…0384)
+
+A second whole-codebase review (six reviewers, each finding checked in the
+code). The rules the first lot leaves:
+- **A fork never inherits a detection in flight** (`api._forked_params`, at the
+  rebuild, reload-gp and import-sync forks): the task finishes on the ORIGINAL
+  job, so the fork's "separating" never moved and DELETE 409ed forever. **In
+  in-process mode the next start marks interrupted work**
+  (`_recover_interrupted_work`, lifespan): a PENDING/RUNNING build FAILED with a
+  sentence, an in-flight detection `unavailable` with a log line. Never under
+  Celery (its worker is another process that may still be on it).
+  `api.DETECTION_STATUSES`/`_detection_running` are the one list.
+- **"Sair mesmo assim" ends the process**: `inprocess.shutdown` cancels queued
+  futures and `start_standalone.exit_now_if_work_is_left` calls `os._exit` when
+  the window closed with work left — interpreter exit joins the worker after
+  running the whole queue. A child the task started runs out on its own.
+- **The Lead track's chart has two names** (Lead beside a Rhythm, Combined
+  alone): `gp_pipeline.lead_chart_rename` + `carry_chart_edits` move per-chart
+  edits (`PER_CHART_FIELDS` + `marked_attacks`) to the new name when that chart
+  is not built and has none of its own; the worker re-keys the job's params from
+  `PipelineResult.chart_rename`. A new per-chart params key goes in that list.
+- **Each chart takes only its own instrument's tones** when it has no set of its
+  own (`_tone_setup`, both directions of issue #9); with its own set and no base,
+  its own instrument's tones come first (the manifest takes the first).
+- **HIGH DENSITY is per DD level** (`sng_build._level_high_density`, from the
+  level's own chords): computed once on the full chart, a thinned level lost
+  the box of every run's first chord.
+- **The preview `.wem` is best-effort** like the main one (`packer`).
+- **The Wwise version is the nearest folder naming a year**, never a parent's.
+- **The tone collection never ends on one archive**: a knob with no finite value
+  is skipped, odd manifest shapes read as absent, and `scan` records anything
+  else an archive throws as that file's error.
+- **The install counter's forget is owed until answered** (`pending_forget`,
+  retried at every start); network calls are made outside its lock.
+- **The score's keys belong to the Partitura page** (`onScorePage()` in
+  `web/app.js`): a new global shortcut for the score uses it.
+
 ## Async detection tasks (the `detect_lyrics` / `detect_tones` pattern)
 
 Both lyric and tone detection are slow (minutes) Celery tasks that follow one

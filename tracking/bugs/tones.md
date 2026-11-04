@@ -997,3 +997,84 @@ With a bass in the recording, 'Detect tone' ranked the four bass presets by the 
 
 - 2026-11-03 — Open: reported
 - 2026-11-03 — Fixed
+
+## BUG-0377
+
+**Guitar charts took the song's bass tones (a bass amp as their tone)**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | code review (Claude, on the maintainer's request), 2026-11-04 |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P3 |
+| Status | Fixed |
+
+With only a bass preset "used" from the tone detection, the song's tone list was that bass tone; a guitar chart with no base named shipped with it (the manifest takes the first tone). A Bass with its own set and no base could likewise start on a guitar tone.
+
+**Steps to reproduce:** 
+
+1. Detetar tom
+2. "usar" on a bass preset only
+3. rebuild
+
+**Expected:** The guitar charts keep a guitar tone (DLC Builder's default when there is none).
+
+**Observed:** Lead/Combined carry the Bass_ amp tone.
+
+**Root cause:** _tone_setup filtered the song's tones only for the Bass chart (GitHub issue #9), never for the guitar charts.
+
+**Fixes:** [FIX-0376](../FIX_LOG.md#fix-0376) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-04 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-04 — Triaged: code review 2026-11-04; FIX-0376 (f56b44e)
+- 2026-11-04 — In Progress: code review 2026-11-04; FIX-0376 (f56b44e)
+- 2026-11-04 — Fixed: code review 2026-11-04; FIX-0376 (f56b44e)
+
+## BUG-0383
+
+**One odd CDLC manifest ended the whole tone-collection scan**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | code review (Claude, on the maintainer's request), 2026-11-04 |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P3 |
+| Status | Fixed |
+
+A null knob value, a number where the descriptors go or Entries as a list raised out of read_psarc_tones (outside its try), so the whole scan ended in "error" — the failure GitHub issue #15 fixed for folders.
+
+**Steps to reproduce:** 
+
+1. a dlc folder with one CDLC whose manifest has a null knob
+2. Tons das tuas músicas → scan
+
+**Expected:** That tone read or skipped, every other song listed.
+
+**Observed:** The scan ends in error (reproduced).
+
+**Root cause:** float(v) on knob values and list/dict assumptions outside the per-archive try; scan() had no try around read_psarc_tones.
+
+**Fixes:** [FIX-0382](../FIX_LOG.md#fix-0382) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-04 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-04 — Triaged: code review 2026-11-04; FIX-0382 (995f7ba)
+- 2026-11-04 — In Progress: code review 2026-11-04; FIX-0382 (995f7ba)
+- 2026-11-04 — Fixed: code review 2026-11-04; FIX-0382 (995f7ba)

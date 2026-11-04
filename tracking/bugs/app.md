@@ -2314,3 +2314,44 @@ The database keeps Job.source, bundle_dir, psarc_path, params gp_path and stems 
 - 2026-10-20 — In Progress: from the GitHub issue
 - 2026-10-20 — Fixed: commit 8dc5d4bb50
 - 2026-10-20 — Verified: pytest
+
+## BUG-0374
+
+**A version rebuilt during a detection inherited its running status and could never be deleted**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | code review (Claude, on the maintainer's request), 2026-11-04 |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | High |
+| Priority | P2 |
+| Status | Fixed |
+
+A rebuild, GP reload or sync import forked while a stem separation, tone detection or lyric detection ran copied its in-flight status; the task finished on the original job, so the fork polled forever and DELETE answered 409. In-process mode also left a build RUNNING and a detection in flight forever after a crash or a close mid-work.
+
+**Steps to reproduce:** 
+
+1. Separar instrumentos
+2. while it runs: Aplicar e reconstruir
+3. delete the new version
+
+**Expected:** The new version is usable and can be deleted; work cut short by a closed app says so.
+
+**Observed:** "está a correr uma deteção ou separação neste projeto" on every delete; the stems card polled forever.
+
+**Root cause:** The fork copied params whole, including the non-final detection statuses, and nothing reset statuses on startup in in-process mode, where the queue lived in memory.
+
+**Fixes:** [FIX-0373](../FIX_LOG.md#fix-0373) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-04 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-04 — Triaged: code review 2026-11-04; FIX-0373 (b272048, 96bc5a3)
+- 2026-11-04 — In Progress: code review 2026-11-04; FIX-0373 (b272048, 96bc5a3)
+- 2026-11-04 — Fixed: code review 2026-11-04; FIX-0373 (b272048, 96bc5a3)

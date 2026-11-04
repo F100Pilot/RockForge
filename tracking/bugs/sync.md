@@ -2072,3 +2072,43 @@ _bar_fraction read any position outside (0, 1) as the bar's start; the code befo
 - 2026-10-21 — Open: found by the review of 6a0300c
 - 2026-10-21 — Fixed: commit 75df41f89c
 - 2026-10-21 — Verified: pytest 2026-10-21
+
+## BUG-0376
+
+**Edits of the Lead track stopped applying when a Rhythm track was added or removed**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | code review (Claude, on the maintainer's request), 2026-11-04 |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | High |
+| Priority | P2 |
+| Status | Fixed |
+
+A lone Lead track is built as Combined and beside a Rhythm as Lead; every per-chart edit (note edits, sync, FHPs, tones, tuning, merge, marked attacks) is keyed by the built name, so changing the track map renamed the chart and its edits were ignored without a warning.
+
+**Steps to reproduce:** 
+
+1. a project with one guitar track (Combined): edit notes and sync
+2. Editar info: add a Rhythm track, save
+
+**Expected:** The edits stay on the Lead track's chart.
+
+**Observed:** The Lead chart is built with none of them; the viewer shows none, and the next rebuild sends them away.
+
+**Root cause:** Per-chart data keyed by the built kind with no carry-over when the lone-Lead rule flips; only merge_tracks had a fallback.
+
+**Fixes:** [FIX-0375](../FIX_LOG.md#fix-0375) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-04 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-04 — Triaged: code review 2026-11-04; FIX-0375 (3a3fefa)
+- 2026-11-04 — In Progress: code review 2026-11-04; FIX-0375 (3a3fefa)
+- 2026-11-04 — Fixed: code review 2026-11-04; FIX-0375 (3a3fefa)

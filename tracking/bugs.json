@@ -18614,6 +18614,558 @@
           "note": "GitHub #22; FIX-0372 (21fe655)"
         }
       ]
+    },
+    {
+      "id": "BUG-0374",
+      "title": "A version rebuilt during a detection inherited its running status and could never be deleted",
+      "detected": "2026-11-04",
+      "reported_by": "code review (Claude, on the maintainer's request), 2026-11-04",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "app",
+      "description": "A rebuild, GP reload or sync import forked while a stem separation, tone detection or lyric detection ran copied its in-flight status; the task finished on the original job, so the fork polled forever and DELETE answered 409. In-process mode also left a build RUNNING and a detection in flight forever after a crash or a close mid-work.",
+      "steps": [
+        "Separar instrumentos",
+        "while it runs: Aplicar e reconstruir",
+        "delete the new version"
+      ],
+      "expected": "The new version is usable and can be deleted; work cut short by a closed app says so.",
+      "observed": "\"está a correr uma deteção ou separação neste projeto\" on every delete; the stems card polled forever.",
+      "severity": "High",
+      "priority": "P2",
+      "status": "Fixed",
+      "root_cause": "The fork copied params whole, including the non-final detection statuses, and nothing reset statuses on startup in in-process mode, where the queue lived in memory.",
+      "fixes": [
+        "FIX-0373"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-04",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Triaged",
+          "note": "code review 2026-11-04; FIX-0373 (b272048, 96bc5a3)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "In Progress",
+          "note": "code review 2026-11-04; FIX-0373 (b272048, 96bc5a3)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Fixed",
+          "note": "code review 2026-11-04; FIX-0373 (b272048, 96bc5a3)"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0375",
+      "title": "\"Sair mesmo assim\" left the .exe running unseen until its queue drained",
+      "detected": "2026-11-04",
+      "reported_by": "code review (Claude, on the maintainer's request), 2026-11-04",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "exe",
+      "description": "Closing the window with work in flight and confirming returned from main(), but interpreter exit joins the worker thread after running every queued task, so the .exe went on with no window; a RockForge opened meanwhile was a second process on the same database.",
+      "steps": [
+        "start a separation in the .exe",
+        "close the window",
+        "Sair mesmo assim"
+      ],
+      "expected": "The app quits.",
+      "observed": "The process stays alive until the running and every queued task finish (reproduced with concurrent.futures).",
+      "severity": "High",
+      "priority": "P2",
+      "status": "Fixed",
+      "root_cause": "inprocess.shutdown used shutdown(wait=False) without cancel_futures, and nothing ended the process when work was left.",
+      "fixes": [
+        "FIX-0374"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-04",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Triaged",
+          "note": "code review 2026-11-04; FIX-0374 (beac5e5)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "In Progress",
+          "note": "code review 2026-11-04; FIX-0374 (beac5e5)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Fixed",
+          "note": "code review 2026-11-04; FIX-0374 (beac5e5)"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0376",
+      "title": "Edits of the Lead track stopped applying when a Rhythm track was added or removed",
+      "detected": "2026-11-04",
+      "reported_by": "code review (Claude, on the maintainer's request), 2026-11-04",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "sync",
+      "description": "A lone Lead track is built as Combined and beside a Rhythm as Lead; every per-chart edit (note edits, sync, FHPs, tones, tuning, merge, marked attacks) is keyed by the built name, so changing the track map renamed the chart and its edits were ignored without a warning.",
+      "steps": [
+        "a project with one guitar track (Combined): edit notes and sync",
+        "Editar info: add a Rhythm track, save"
+      ],
+      "expected": "The edits stay on the Lead track's chart.",
+      "observed": "The Lead chart is built with none of them; the viewer shows none, and the next rebuild sends them away.",
+      "severity": "High",
+      "priority": "P2",
+      "status": "Fixed",
+      "root_cause": "Per-chart data keyed by the built kind with no carry-over when the lone-Lead rule flips; only merge_tracks had a fallback.",
+      "fixes": [
+        "FIX-0375"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-04",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Triaged",
+          "note": "code review 2026-11-04; FIX-0375 (3a3fefa)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "In Progress",
+          "note": "code review 2026-11-04; FIX-0375 (3a3fefa)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Fixed",
+          "note": "code review 2026-11-04; FIX-0375 (3a3fefa)"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0377",
+      "title": "Guitar charts took the song's bass tones (a bass amp as their tone)",
+      "detected": "2026-11-04",
+      "reported_by": "code review (Claude, on the maintainer's request), 2026-11-04",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "tones",
+      "description": "With only a bass preset \"used\" from the tone detection, the song's tone list was that bass tone; a guitar chart with no base named shipped with it (the manifest takes the first tone). A Bass with its own set and no base could likewise start on a guitar tone.",
+      "steps": [
+        "Detetar tom",
+        "\"usar\" on a bass preset only",
+        "rebuild"
+      ],
+      "expected": "The guitar charts keep a guitar tone (DLC Builder's default when there is none).",
+      "observed": "Lead/Combined carry the Bass_ amp tone.",
+      "severity": "Medium",
+      "priority": "P3",
+      "status": "Fixed",
+      "root_cause": "_tone_setup filtered the song's tones only for the Bass chart (GitHub issue #9), never for the guitar charts.",
+      "fixes": [
+        "FIX-0376"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-04",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Triaged",
+          "note": "code review 2026-11-04; FIX-0376 (f56b44e)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "In Progress",
+          "note": "code review 2026-11-04; FIX-0376 (f56b44e)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Fixed",
+          "note": "code review 2026-11-04; FIX-0376 (f56b44e)"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0378",
+      "title": "\"Sincronizar com a gravação\" glued a word split in syllables to the word before it",
+      "detected": "2026-11-04",
+      "reported_by": "code review (Claude, on the maintainer's request), 2026-11-04",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "lyrics",
+      "description": "editorLines, which regroups the editor's words into the lines sent to WhisperX for alignment, never put a space before a syllable ending in '-': \"she loo- king a- way\" became \"shelookingaway\".",
+      "steps": [
+        "lyrics with multi-syllable words",
+        "Sincronizar com a gravação"
+      ],
+      "expected": "\"she looking away\".",
+      "observed": "\"shelookingaway\" (Node check).",
+      "severity": "Medium",
+      "priority": "P3",
+      "status": "Fixed",
+      "root_cause": "The leading space was skipped whenever THIS syllable ended in '-', instead of when the PREVIOUS one did.",
+      "fixes": [
+        "FIX-0377"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-04",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Triaged",
+          "note": "code review 2026-11-04; FIX-0377 (3504af7)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "In Progress",
+          "note": "code review 2026-11-04; FIX-0377 (3504af7)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Fixed",
+          "note": "code review 2026-11-04; FIX-0377 (3504af7)"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0379",
+      "title": "The score's keys acted from other pages: Backspace deleted notes nobody could see",
+      "detected": "2026-11-04",
+      "reported_by": "code review (Claude, on the maintainer's request), 2026-11-04",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "viewer",
+      "description": "The transport handler checked only that a project was open: Backspace deleted the selected notes from the Tons page, Definições or a dialog; Ctrl+C/V took the page's own copy; Space toggled the music inside a confirm dialog; digits switched sync modes.",
+      "steps": [
+        "select a note on the score",
+        "go to Tons",
+        "click empty space, Backspace"
+      ],
+      "expected": "Nothing happens outside the Partitura page.",
+      "observed": "The note is deleted (a pending edit).",
+      "severity": "High",
+      "priority": "P2",
+      "status": "Fixed",
+      "root_cause": "The handler lacked the page/modal guard the other global keydown handlers have.",
+      "fixes": [
+        "FIX-0378"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-04",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Triaged",
+          "note": "code review 2026-11-04; FIX-0378 (90c2c8e)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "In Progress",
+          "note": "code review 2026-11-04; FIX-0378 (90c2c8e)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Fixed",
+          "note": "code review 2026-11-04; FIX-0378 (90c2c8e)"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0380",
+      "title": "HIGH DENSITY was worked out once on the full chart and reused at every DD level",
+      "detected": "2026-11-04",
+      "reported_by": "code review (Claude, on the maintainer's request), 2026-11-04",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "psarc",
+      "description": "At a thinned Dynamic Difficulty level whose run-opening chord was dropped, every chord of a chug kept HIGH DENSITY, so the level showed only condensed strum markers and never the chord's box.",
+      "steps": [
+        "a Rhythm chart with a fast chug of one shape, DD on",
+        "read the SNG levels"
+      ],
+      "expected": "The first chord of a run shows its box at every level.",
+      "observed": "Levels 0-2 held 2/4/6 chords, all high density (reproduced).",
+      "severity": "Medium",
+      "priority": "P3",
+      "status": "Fixed",
+      "root_cause": "_build_sng_notes computed high_density_flags on the full chart; _build_level rebuilt anchors, shapes and links per level but not this flag.",
+      "fixes": [
+        "FIX-0379"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-04",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Triaged",
+          "note": "code review 2026-11-04; FIX-0379 (bb28399)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "In Progress",
+          "note": "code review 2026-11-04; FIX-0379 (bb28399)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Fixed",
+          "note": "code review 2026-11-04; FIX-0379 (bb28399)"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0381",
+      "title": "A preview clip that would not convert cost the whole .psarc",
+      "detected": "2026-11-04",
+      "reported_by": "code review (Claude, on the maintainer's request), 2026-11-04",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "psarc",
+      "description": "The main Wwise conversion is best-effort, the preview one was not: a PackagingError there surfaced as psarc_error although the full stream was set up as its fallback.",
+      "steps": [
+        "Wwise converts the song but refuses the preview clip"
+      ],
+      "expected": "The .psarc is built, its preview from the full stream.",
+      "observed": "No .psarc.",
+      "severity": "Medium",
+      "priority": "P3",
+      "status": "Fixed",
+      "root_cause": "The preview convert() call was not caught.",
+      "fixes": [
+        "FIX-0380"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-04",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Triaged",
+          "note": "code review 2026-11-04; FIX-0380 (1edd833)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "In Progress",
+          "note": "code review 2026-11-04; FIX-0380 (1edd833)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Fixed",
+          "note": "code review 2026-11-04; FIX-0380 (1edd833)"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0382",
+      "title": "A Wwise 2025 under a folder named with 2019-2023 counted as supported",
+      "detected": "2026-11-04",
+      "reported_by": "code review (Claude, on the maintainer's request), 2026-11-04",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "audio",
+      "description": "WwiseWemConverter.version() searched the whole path, so D:\\Games2022\\Audiokinetic\\Wwise2025.1 read as 2022: it passed as usable (WWISEROOT taken, diagnostics found) and the build paired the 2022 template with a 2025 console.",
+      "steps": [
+        "Wwise 2025 installed under a folder whose name holds 2019/2021-2023"
+      ],
+      "expected": "Read as 2025 (unsupported), named as such.",
+      "observed": "Read as 2022.",
+      "severity": "Medium",
+      "priority": "P3",
+      "status": "Fixed",
+      "root_cause": "re.search over str(root) instead of the install folder's own name.",
+      "fixes": [
+        "FIX-0381"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-04",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Triaged",
+          "note": "code review 2026-11-04; FIX-0381 (fd8f9fa, 8586866)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "In Progress",
+          "note": "code review 2026-11-04; FIX-0381 (fd8f9fa, 8586866)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Fixed",
+          "note": "code review 2026-11-04; FIX-0381 (fd8f9fa, 8586866)"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0383",
+      "title": "One odd CDLC manifest ended the whole tone-collection scan",
+      "detected": "2026-11-04",
+      "reported_by": "code review (Claude, on the maintainer's request), 2026-11-04",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "tones",
+      "description": "A null knob value, a number where the descriptors go or Entries as a list raised out of read_psarc_tones (outside its try), so the whole scan ended in \"error\" — the failure GitHub issue #15 fixed for folders.",
+      "steps": [
+        "a dlc folder with one CDLC whose manifest has a null knob",
+        "Tons das tuas músicas → scan"
+      ],
+      "expected": "That tone read or skipped, every other song listed.",
+      "observed": "The scan ends in error (reproduced).",
+      "severity": "Medium",
+      "priority": "P3",
+      "status": "Fixed",
+      "root_cause": "float(v) on knob values and list/dict assumptions outside the per-archive try; scan() had no try around read_psarc_tones.",
+      "fixes": [
+        "FIX-0382"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-04",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Triaged",
+          "note": "code review 2026-11-04; FIX-0382 (995f7ba)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "In Progress",
+          "note": "code review 2026-11-04; FIX-0382 (995f7ba)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Fixed",
+          "note": "code review 2026-11-04; FIX-0382 (995f7ba)"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0384",
+      "title": "Turning the install counter off could leave the data on the server for good",
+      "detected": "2026-11-04",
+      "reported_by": "code review (Claude, on the maintainer's request), 2026-11-04",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "security",
+      "description": "The forget request was sent once; offline or a server error, it was never tried again and the install id was already gone from the state, though LEGAL.md says turning it off deletes what was sent. The send also held the lock during the network call.",
+      "steps": [
+        "say yes to the counter",
+        "turn it off while offline"
+      ],
+      "expected": "The deletion is retried until the server answers.",
+      "observed": "Never retried.",
+      "severity": "Medium",
+      "priority": "P3",
+      "status": "Fixed",
+      "root_cause": "set_enabled(False) saved {consent: False} before the forget and kept no record of the id owed one.",
+      "fixes": [
+        "FIX-0383"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-04",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Triaged",
+          "note": "code review 2026-11-04; FIX-0383 (c5589e5)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "In Progress",
+          "note": "code review 2026-11-04; FIX-0383 (c5589e5)"
+        },
+        {
+          "date": "2026-11-04",
+          "status": "Fixed",
+          "note": "code review 2026-11-04; FIX-0383 (c5589e5)"
+        }
+      ]
     }
   ]
 }

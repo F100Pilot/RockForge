@@ -1750,3 +1750,44 @@ Applying detected tones (or any edit) and pressing Apply and rebuild on a projec
 - 2026-11-02 — Open: reported
 - 2026-11-02 — Fixed: commit d63e64dfa5
 - 2026-11-02 — Verified: Playwright with real rebuilds of a bass-only A220 project
+
+## BUG-0379
+
+**The score's keys acted from other pages: Backspace deleted notes nobody could see**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | code review (Claude, on the maintainer's request), 2026-11-04 |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | High |
+| Priority | P2 |
+| Status | Fixed |
+
+The transport handler checked only that a project was open: Backspace deleted the selected notes from the Tons page, Definições or a dialog; Ctrl+C/V took the page's own copy; Space toggled the music inside a confirm dialog; digits switched sync modes.
+
+**Steps to reproduce:** 
+
+1. select a note on the score
+2. go to Tons
+3. click empty space, Backspace
+
+**Expected:** Nothing happens outside the Partitura page.
+
+**Observed:** The note is deleted (a pending edit).
+
+**Root cause:** The handler lacked the page/modal guard the other global keydown handlers have.
+
+**Fixes:** [FIX-0378](../FIX_LOG.md#fix-0378) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-04 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-04 — Triaged: code review 2026-11-04; FIX-0378 (90c2c8e)
+- 2026-11-04 — In Progress: code review 2026-11-04; FIX-0378 (90c2c8e)
+- 2026-11-04 — Fixed: code review 2026-11-04; FIX-0378 (90c2c8e)

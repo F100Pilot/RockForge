@@ -1247,3 +1247,43 @@ An LRC carrying a time before each word (enhanced/A2 LRC: [00:41.81]<00:41.81>Sh
 - 2026-11-02 — Open: reported
 - 2026-11-02 — Fixed: commit 3dfb71fe53
 - 2026-11-02 — Verified: pytest + a real build
+
+## BUG-0378
+
+**"Sincronizar com a gravação" glued a word split in syllables to the word before it**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | code review (Claude, on the maintainer's request), 2026-11-04 |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P3 |
+| Status | Fixed |
+
+editorLines, which regroups the editor's words into the lines sent to WhisperX for alignment, never put a space before a syllable ending in '-': "she loo- king a- way" became "shelookingaway".
+
+**Steps to reproduce:** 
+
+1. lyrics with multi-syllable words
+2. Sincronizar com a gravação
+
+**Expected:** "she looking away".
+
+**Observed:** "shelookingaway" (Node check).
+
+**Root cause:** The leading space was skipped whenever THIS syllable ended in '-', instead of when the PREVIOUS one did.
+
+**Fixes:** [FIX-0377](../FIX_LOG.md#fix-0377) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-04 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-04 — Triaged: code review 2026-11-04; FIX-0377 (3504af7)
+- 2026-11-04 — In Progress: code review 2026-11-04; FIX-0377 (3504af7)
+- 2026-11-04 — Fixed: code review 2026-11-04; FIX-0377 (3504af7)

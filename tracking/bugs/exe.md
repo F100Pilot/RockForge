@@ -567,3 +567,44 @@ The window path set the idle watchdog off before the window failed; the browser 
 - 2026-10-18 — Open: reported
 - 2026-10-18 — Fixed: commit 76c44a8bcd
 - 2026-10-18 — Verified: its test passes and fails on the old code
+
+## BUG-0375
+
+**"Sair mesmo assim" left the .exe running unseen until its queue drained**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | code review (Claude, on the maintainer's request), 2026-11-04 |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | High |
+| Priority | P2 |
+| Status | Fixed |
+
+Closing the window with work in flight and confirming returned from main(), but interpreter exit joins the worker thread after running every queued task, so the .exe went on with no window; a RockForge opened meanwhile was a second process on the same database.
+
+**Steps to reproduce:** 
+
+1. start a separation in the .exe
+2. close the window
+3. Sair mesmo assim
+
+**Expected:** The app quits.
+
+**Observed:** The process stays alive until the running and every queued task finish (reproduced with concurrent.futures).
+
+**Root cause:** inprocess.shutdown used shutdown(wait=False) without cancel_futures, and nothing ended the process when work was left.
+
+**Fixes:** [FIX-0374](../FIX_LOG.md#fix-0374) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-04 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-04 — Triaged: code review 2026-11-04; FIX-0374 (beac5e5)
+- 2026-11-04 — In Progress: code review 2026-11-04; FIX-0374 (beac5e5)
+- 2026-11-04 — Fixed: code review 2026-11-04; FIX-0374 (beac5e5)

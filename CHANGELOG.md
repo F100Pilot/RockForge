@@ -6,6 +6,30 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Correções
+
+- **Uma versão reconstruída durante uma deteção já se pode apagar:** se reconstruísses o projeto enquanto separava instrumentos ou detetava tons ou letra, a versão nova ficava presa em «a correr» e apagá-la dava sempre erro. Agora começa sem esse estado. E, na aplicação (`.exe`), uma construção ou deteção que ficou a meio porque a aplicação fechou passa a dizer isso mesmo quando voltas a abrir, em vez de ficar à espera para sempre.
+
+- **Fechar a aplicação com trabalho a meio fecha mesmo:** depois de responderes «Sair mesmo assim?», o `.exe` continuava a correr sem janela até acabar o trabalho que tinha em fila, e abri-lo outra vez nesse tempo punha dois RockForge na mesma base de dados.
+
+- **As edições da pista Lead já não se perdem ao juntar ou tirar a pista Rhythm:** sozinha, a pista Lead é construída como Combined; com uma Rhythm, como Lead. Ao mudar isso em «Editar info», as notas editadas, a sincronização, as posições da mão, os tons e a afinação dessa pista deixavam de se aplicar, sem aviso. Agora passam para o nome novo.
+
+- **As pistas de guitarra já não ficam com um tom de baixo:** se só tivesses usado um tom de baixo da deteção de tons, as pistas de guitarra levavam-no como tom. Agora cada pista só usa os tons do seu instrumento.
+
+- **«Sincronizar com a gravação» já não cola as palavras:** uma palavra dividida em sílabas colava-se à anterior («she loo- king» passava a «shelooking») no texto que vai ser alinhado com a gravação.
+
+- **As teclas da partitura só funcionam na Partitura:** com notas selecionadas, o Backspace apagava-as mesmo estando nos Tons, nas Definições ou num diálogo; Ctrl+C/V não deixavam copiar texto dessas páginas e o Espaço tocava a música dentro de um diálogo.
+
+- **Os acordes repetidos aparecem bem em todos os níveis de dificuldade:** num riff com o mesmo acorde repetido, os níveis mais fáceis podiam mostrar só os traços condensados, sem nunca desenhar o acorde. Agora o primeiro acorde de cada série aparece inteiro em todos os níveis.
+
+- **Uma falha na pré-escuta já não deita fora o `.psarc`:** se o Wwise convertesse a música mas não o excerto da pré-escuta, ficavas sem `.psarc`. Agora a pré-escuta usa a música inteira e o `.psarc` é criado.
+
+- **Um Wwise 2025 já não passa por suportado:** a versão do Wwise era lida do caminho inteiro, por isso um Wwise 2025 dentro de uma pasta como `Jogos2022` contava como 2022. Agora conta o nome da pasta do próprio Wwise.
+
+- **Um CDLC estranho já não para a recolha de tons:** um manifesto com um valor em falta (um botão sem valor, por exemplo) num só ficheiro da pasta `dlc` fazia falhar a leitura inteira em «Tons das tuas músicas». Agora esse valor fica por omissão e as outras músicas são lidas.
+
+- **Desligar o contador de instalações apaga mesmo os dados:** o pedido para apagar o que foi enviado só era feito uma vez; sem rede, nunca mais era repetido. Agora é repetido em cada arranque até o servidor responder.
+
 ## [0.12.0 beta 6] — 2026-11-04
 
 ### Novidades

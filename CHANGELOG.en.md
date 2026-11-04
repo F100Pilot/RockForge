@@ -6,6 +6,30 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### Fixes
+
+- **A version rebuilt during a detection can be deleted again:** if you rebuilt the project while it was separating instruments or detecting tones or lyrics, the new version stayed stuck as "running" and deleting it always failed. It now starts without that status. And in the app (`.exe`), a build or detection left halfway because the app closed now says so when you open it again, instead of waiting forever.
+
+- **Closing the app with work in progress really closes it:** after you answered "Quit anyway?", the `.exe` kept running with no window until its queued work finished, and opening it again meanwhile put two RockForges on the same database.
+
+- **The Lead track's edits are no longer lost when you add or remove the Rhythm track:** on its own, the Lead track is built as Combined; with a Rhythm, as Lead. Changing that in "Edit info" made that track's edited notes, sync, hand positions, tones and tuning stop applying, without a warning. They now move to the new name.
+
+- **Guitar tracks no longer get a bass tone:** if you had only used a bass tone from tone detection, the guitar tracks took it as their tone. Each track now uses only its own instrument's tones.
+
+- **"Sync with the recording" no longer glues words together:** a word split into syllables was glued to the one before it ("she loo- king" became "shelooking") in the text aligned with the recording.
+
+- **The score's keys work on the Score page only:** with notes selected, Backspace deleted them even on the Tones page, in Settings or in a dialog; Ctrl+C/V would not copy text on those pages and Space played the music inside a dialog.
+
+- **Repeated chords show correctly at every difficulty level:** in a riff repeating one chord, the easier levels could show only the condensed strum marks and never draw the chord. The first chord of each run is now shown in full at every level.
+
+- **A failed preview no longer throws the `.psarc` away:** if Wwise converted the song but not the preview clip, you got no `.psarc`. The preview now uses the whole song and the `.psarc` is built.
+
+- **A Wwise 2025 no longer passes as supported:** the Wwise version was read from the whole path, so a Wwise 2025 inside a folder such as `Games2022` counted as 2022. The name of Wwise's own folder now decides.
+
+- **An odd CDLC no longer stops the tone collection:** a manifest with a missing value (a knob with no value, for example) in a single file of the `dlc` folder made the whole reading in "Tones from your songs" fail. That value now takes its default and the other songs are read.
+
+- **Turning the install counter off really deletes the data:** the request to delete what was sent was made only once; with no network, it was never repeated. It is now repeated at every start until the server answers.
+
 ## [0.12.0 beta 6] — 2026-11-04
 
 ### New

@@ -378,6 +378,17 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0370](#fix-0370) | BUG-0371 | 0.12.0-beta.5 | passed | automated |
 | [FIX-0371](#fix-0371) | BUG-0372 | 0.12.0-beta.5 | passed | automated |
 | [FIX-0372](#fix-0372) | BUG-0373 | 0.12.0-beta.5 | passed | pending |
+| [FIX-0373](#fix-0373) | BUG-0374 | unreleased | passed | pending |
+| [FIX-0374](#fix-0374) | BUG-0375 | unreleased | passed | pending |
+| [FIX-0375](#fix-0375) | BUG-0376 | unreleased | passed | pending |
+| [FIX-0376](#fix-0376) | BUG-0377 | unreleased | passed | pending |
+| [FIX-0377](#fix-0377) | BUG-0378 | unreleased | not run | pending |
+| [FIX-0378](#fix-0378) | BUG-0379 | unreleased | not run | pending |
+| [FIX-0379](#fix-0379) | BUG-0380 | unreleased | passed | pending |
+| [FIX-0380](#fix-0380) | BUG-0381 | unreleased | passed | pending |
+| [FIX-0381](#fix-0381) | BUG-0382 | unreleased | passed | pending |
+| [FIX-0382](#fix-0382) | BUG-0383 | unreleased | passed | pending |
+| [FIX-0383](#fix-0383) | BUG-0384 | unreleased | passed | pending |
 
 ## FIX-0001
 
@@ -8190,3 +8201,234 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | passed |
 | Validation | _pending_ |
 | Regression risk | Low: a request that is answered today is sent exactly as before; only a non-JSON 403 costs a second request (also on a CloudFront distribution that does not hold a part). Whether a browser's headers get past what the user hit is not known until the user tries it. |
+
+## FIX-0373
+
+**Bugs:** [BUG-0374](bugs/app.md#bug-0374)
+
+**Root cause:** The fork copied params whole, including the non-final detection statuses, and nothing reset statuses on startup in in-process mode, where the queue lived in memory.
+
+**Solution:** api._forked_params drops every detection status still in flight (and its log, and a pending lyrics_align) at the three fork sites; app._recover_interrupted_work, in the lifespan and only in in-process mode, marks a PENDING/RUNNING build FAILED with a sentence and an in-flight detection unavailable with a log line.
+
+| | |
+|---|---|
+| Date | 2026-11-04 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | b272048; 96bc5a3 |
+| Components | app |
+| Tests | tests/test_api.py::test_a_version_rebuilt_while_a_detection_runs_does_not_inherit_it; tests/test_api.py::test_work_the_app_was_doing_when_it_stopped_is_marked_on_the_next_start |
+| Manual checks | — |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low: a fork made while a detection runs no longer carries its log; under Celery nothing is changed at startup. |
+
+## FIX-0374
+
+**Bugs:** [BUG-0375](bugs/exe.md#bug-0375)
+
+**Root cause:** inprocess.shutdown used shutdown(wait=False) without cancel_futures, and nothing ended the process when work was left.
+
+**Solution:** shutdown(wait=False, cancel_futures=True) drops queued tasks; start_standalone.exit_now_if_work_is_left ends the process (os._exit after flushing) when the window closed with work left; that work is marked interrupted on the next start (BUG-0374's recovery).
+
+| | |
+|---|---|
+| Date | 2026-11-04 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | beac5e5 |
+| Components | exe |
+| Tests | tests/test_inprocess.py::test_closing_drops_the_queued_tasks_instead_of_running_them_unseen; tests/test_standalone_launcher.py::test_quitting_with_work_left_ends_the_process_instead_of_lingering |
+| Manual checks | — |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Medium: a child process the running task started (Demucs, WhisperX) is not stopped and runs out on its own; its result is not used. Not run in the frozen .exe from here. |
+
+## FIX-0375
+
+**Bugs:** [BUG-0376](bugs/sync.md#bug-0376)
+
+**Root cause:** Per-chart data keyed by the built kind with no carry-over when the lone-Lead rule flips; only merge_tracks had a fallback.
+
+**Solution:** gp_pipeline.lead_chart_rename + carry_chart_edits move an entry under the other name to the chart's new name when that chart is not built and has none of its own, with a warning; PipelineResult.chart_rename lets the worker move the job's params (and marked_attacks) the same way.
+
+| | |
+|---|---|
+| Date | 2026-11-04 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 3a3fefa |
+| Components | sync |
+| Tests | tests/test_gp_pipeline.py::test_edits_follow_the_lead_track_when_a_rhythm_is_added_or_removed; tests/test_celery_tasks.py::test_the_jobs_edits_follow_the_chart_to_its_new_name |
+| Manual checks | — |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low: only the Lead<->Combined pair is carried, and never over an entry of the chart's own. |
+
+## FIX-0376
+
+**Bugs:** [BUG-0377](bugs/tones.md#bug-0377)
+
+**Root cause:** _tone_setup filtered the song's tones only for the Bass chart (GitHub issue #9), never for the guitar charts.
+
+**Solution:** A chart with no set of its own takes only its own instrument's tones (is_bass_tone), saying so; one with its own set but no base has its own instrument's tones first.
+
+| | |
+|---|---|
+| Date | 2026-11-04 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | f56b44e |
+| Components | tones |
+| Tests | tests/test_bass_arrangement.py::test_a_guitar_chart_never_takes_the_songs_bass_tones; tests/test_bass_arrangement.py::test_the_bass_never_takes_the_songs_guitar_tones |
+| Manual checks | — |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low. |
+
+## FIX-0377
+
+**Bugs:** [BUG-0378](bugs/lyrics.md#bug-0378)
+
+**Root cause:** The leading space was skipped whenever THIS syllable ended in '-', instead of when the PREVIOUS one did.
+
+**Solution:** The space before a syllable depends on whether the one before it joined.
+
+| | |
+|---|---|
+| Date | 2026-11-04 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 3504af7 |
+| Components | lyrics |
+| Tests | — |
+| Manual checks | Node: editorLines on [she, loo-, king, a-, way+, Wel-, come+] gives "she looking away" / "Welcome" (before: "shelookingaway") |
+| Test result | not run |
+| Validation | _pending_ |
+| Regression risk | Low. |
+
+## FIX-0378
+
+**Bugs:** [BUG-0379](bugs/viewer.md#bug-0379)
+
+**Root cause:** The handler lacked the page/modal guard the other global keydown handlers have.
+
+**Solution:** onScorePage() (Partitura page, no modal or full-screen page on top) guards the transport handler and the fret arrows.
+
+| | |
+|---|---|
+| Date | 2026-11-04 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 90c2c8e |
+| Components | viewer |
+| Tests | — |
+| Manual checks | Playwright on a live server, an invented 4-bar GP5 built for real (PT 1440 / EN 760 px): Backspace on Tons and in Definições left the note edits empty, on Partitura deleted the note; with the guard stubbed out the Tons page deleted it; no page errors |
+| Test result | not run |
+| Validation | _pending_ |
+| Regression risk | Low. |
+
+## FIX-0379
+
+**Bugs:** [BUG-0380](bugs/psarc.md#bug-0380)
+
+**Root cause:** _build_sng_notes computed high_density_flags on the full chart; _build_level rebuilt anchors, shapes and links per level but not this flag.
+
+**Solution:** _level_high_density recomputes it in _build_level from the level's own chords (same template within 0.35 s); the full-chart computation was removed, so the top level is unchanged.
+
+| | |
+|---|---|
+| Date | 2026-11-04 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | bb28399 |
+| Components | psarc |
+| Tests | tests/test_psarc_sng.py::test_every_level_shows_the_first_chord_of_a_run_in_full; tests/test_psarc_sng.py::test_repeated_chords_marked_high_density_but_not_the_first |
+| Manual checks | — |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low: not seen in game from here. |
+
+## FIX-0380
+
+**Bugs:** [BUG-0381](bugs/psarc.md#bug-0381)
+
+**Root cause:** The preview convert() call was not caught.
+
+**Solution:** Caught (PackagingError/OSError), logged, the full stream used as the preview.
+
+| | |
+|---|---|
+| Date | 2026-11-04 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 1edd833 |
+| Components | psarc |
+| Tests | tests/test_psarc_packer.py::test_a_preview_that_will_not_convert_still_gives_a_psarc |
+| Manual checks | — |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low. |
+
+## FIX-0381
+
+**Bugs:** [BUG-0382](bugs/audio.md#bug-0382)
+
+**Root cause:** re.search over str(root) instead of the install folder's own name.
+
+**Solution:** The nearest folder that names a year decides; a converter with no folder has no version.
+
+| | |
+|---|---|
+| Date | 2026-11-04 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | fd8f9fa; 8586866 |
+| Components | audio |
+| Tests | tests/test_wwise.py::test_the_wwise_version_is_the_install_folders_not_a_parents |
+| Manual checks | — |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low. |
+
+## FIX-0382
+
+**Bugs:** [BUG-0383](bugs/tones.md#bug-0383)
+
+**Root cause:** float(v) on knob values and list/dict assumptions outside the per-archive try; scan() had no try around read_psarc_tones.
+
+**Solution:** A knob with no finite value is left at the catalogue default, odd fields read as absent, and anything an archive still throws is recorded as that file's error.
+
+| | |
+|---|---|
+| Date | 2026-11-04 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 995f7ba |
+| Components | tones |
+| Tests | tests/test_tone_collection.py::test_an_odd_manifest_skips_its_tone_never_the_scan |
+| Manual checks | — |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low. |
+
+## FIX-0383
+
+**Bugs:** [BUG-0384](bugs/security.md#bug-0384)
+
+**Root cause:** set_enabled(False) saved {consent: False} before the forget and kept no record of the id owed one.
+
+**Solution:** The id stays in pending_forget until a 2xx answer, retried at every start (send_in_background) and on the next answer; network calls are made outside the lock.
+
+| | |
+|---|---|
+| Date | 2026-11-04 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | c5589e5 |
+| Components | security |
+| Tests | tests/test_install_counter.py::test_a_forget_that_could_not_be_sent_is_sent_on_the_next_start |
+| Manual checks | — |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low. |

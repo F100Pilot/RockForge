@@ -414,3 +414,43 @@ No response carried X-Content-Type-Options: nosniff or frame-ancestors/X-Frame-O
 - 2026-10-14 — Fixed: commit 994c9307ac
 - 2026-10-14 — Verified: automated
 - 2026-10-15 — Closed: released in 0.10.0-beta.2
+
+## BUG-0384
+
+**Turning the install counter off could leave the data on the server for good**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | code review (Claude, on the maintainer's request), 2026-11-04 |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P3 |
+| Status | Fixed |
+
+The forget request was sent once; offline or a server error, it was never tried again and the install id was already gone from the state, though LEGAL.md says turning it off deletes what was sent. The send also held the lock during the network call.
+
+**Steps to reproduce:** 
+
+1. say yes to the counter
+2. turn it off while offline
+
+**Expected:** The deletion is retried until the server answers.
+
+**Observed:** Never retried.
+
+**Root cause:** set_enabled(False) saved {consent: False} before the forget and kept no record of the id owed one.
+
+**Fixes:** [FIX-0383](../FIX_LOG.md#fix-0383) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-04 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-04 — Triaged: code review 2026-11-04; FIX-0383 (c5589e5)
+- 2026-11-04 — In Progress: code review 2026-11-04; FIX-0383 (c5589e5)
+- 2026-11-04 — Fixed: code review 2026-11-04; FIX-0383 (c5589e5)

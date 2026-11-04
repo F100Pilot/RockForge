@@ -9396,6 +9396,277 @@
       "test_result": "passed",
       "regression_risk": "Low: a request that is answered today is sent exactly as before; only a non-JSON 403 costs a second request (also on a CloudFront distribution that does not hold a part). Whether a browser's headers get past what the user hit is not known until the user tries it.",
       "validation": "pending"
+    },
+    {
+      "id": "FIX-0373",
+      "bugs": [
+        "BUG-0374"
+      ],
+      "date": "2026-11-04",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "The fork copied params whole, including the non-final detection statuses, and nothing reset statuses on startup in in-process mode, where the queue lived in memory.",
+      "solution": "api._forked_params drops every detection status still in flight (and its log, and a pending lyrics_align) at the three fork sites; app._recover_interrupted_work, in the lifespan and only in in-process mode, marks a PENDING/RUNNING build FAILED with a sentence and an in-flight detection unavailable with a log line.",
+      "components": [
+        "app"
+      ],
+      "commits": [
+        "b272048",
+        "96bc5a3"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_api.py::test_a_version_rebuilt_while_a_detection_runs_does_not_inherit_it",
+        "tests/test_api.py::test_work_the_app_was_doing_when_it_stopped_is_marked_on_the_next_start"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low: a fork made while a detection runs no longer carries its log; under Celery nothing is changed at startup.",
+      "validation": "pending"
+    },
+    {
+      "id": "FIX-0374",
+      "bugs": [
+        "BUG-0375"
+      ],
+      "date": "2026-11-04",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "inprocess.shutdown used shutdown(wait=False) without cancel_futures, and nothing ended the process when work was left.",
+      "solution": "shutdown(wait=False, cancel_futures=True) drops queued tasks; start_standalone.exit_now_if_work_is_left ends the process (os._exit after flushing) when the window closed with work left; that work is marked interrupted on the next start (BUG-0374's recovery).",
+      "components": [
+        "exe"
+      ],
+      "commits": [
+        "beac5e5"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_inprocess.py::test_closing_drops_the_queued_tasks_instead_of_running_them_unseen",
+        "tests/test_standalone_launcher.py::test_quitting_with_work_left_ends_the_process_instead_of_lingering"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Medium: a child process the running task started (Demucs, WhisperX) is not stopped and runs out on its own; its result is not used. Not run in the frozen .exe from here.",
+      "validation": "pending"
+    },
+    {
+      "id": "FIX-0375",
+      "bugs": [
+        "BUG-0376"
+      ],
+      "date": "2026-11-04",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "Per-chart data keyed by the built kind with no carry-over when the lone-Lead rule flips; only merge_tracks had a fallback.",
+      "solution": "gp_pipeline.lead_chart_rename + carry_chart_edits move an entry under the other name to the chart's new name when that chart is not built and has none of its own, with a warning; PipelineResult.chart_rename lets the worker move the job's params (and marked_attacks) the same way.",
+      "components": [
+        "sync"
+      ],
+      "commits": [
+        "3a3fefa"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_gp_pipeline.py::test_edits_follow_the_lead_track_when_a_rhythm_is_added_or_removed",
+        "tests/test_celery_tasks.py::test_the_jobs_edits_follow_the_chart_to_its_new_name"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low: only the Lead<->Combined pair is carried, and never over an entry of the chart's own.",
+      "validation": "pending"
+    },
+    {
+      "id": "FIX-0376",
+      "bugs": [
+        "BUG-0377"
+      ],
+      "date": "2026-11-04",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "_tone_setup filtered the song's tones only for the Bass chart (GitHub issue #9), never for the guitar charts.",
+      "solution": "A chart with no set of its own takes only its own instrument's tones (is_bass_tone), saying so; one with its own set but no base has its own instrument's tones first.",
+      "components": [
+        "tones"
+      ],
+      "commits": [
+        "f56b44e"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_bass_arrangement.py::test_a_guitar_chart_never_takes_the_songs_bass_tones",
+        "tests/test_bass_arrangement.py::test_the_bass_never_takes_the_songs_guitar_tones"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low.",
+      "validation": "pending"
+    },
+    {
+      "id": "FIX-0377",
+      "bugs": [
+        "BUG-0378"
+      ],
+      "date": "2026-11-04",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "The leading space was skipped whenever THIS syllable ended in '-', instead of when the PREVIOUS one did.",
+      "solution": "The space before a syllable depends on whether the one before it joined.",
+      "components": [
+        "lyrics"
+      ],
+      "commits": [
+        "3504af7"
+      ],
+      "version": "unreleased",
+      "tests": [],
+      "manual_checks": [
+        "Node: editorLines on [she, loo-, king, a-, way+, Wel-, come+] gives \"she looking away\" / \"Welcome\" (before: \"shelookingaway\")"
+      ],
+      "test_result": "not run",
+      "regression_risk": "Low.",
+      "validation": "pending"
+    },
+    {
+      "id": "FIX-0378",
+      "bugs": [
+        "BUG-0379"
+      ],
+      "date": "2026-11-04",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "The handler lacked the page/modal guard the other global keydown handlers have.",
+      "solution": "onScorePage() (Partitura page, no modal or full-screen page on top) guards the transport handler and the fret arrows.",
+      "components": [
+        "viewer"
+      ],
+      "commits": [
+        "90c2c8e"
+      ],
+      "version": "unreleased",
+      "tests": [],
+      "manual_checks": [
+        "Playwright on a live server, an invented 4-bar GP5 built for real (PT 1440 / EN 760 px): Backspace on Tons and in Definições left the note edits empty, on Partitura deleted the note; with the guard stubbed out the Tons page deleted it; no page errors"
+      ],
+      "test_result": "not run",
+      "regression_risk": "Low.",
+      "validation": "pending"
+    },
+    {
+      "id": "FIX-0379",
+      "bugs": [
+        "BUG-0380"
+      ],
+      "date": "2026-11-04",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "_build_sng_notes computed high_density_flags on the full chart; _build_level rebuilt anchors, shapes and links per level but not this flag.",
+      "solution": "_level_high_density recomputes it in _build_level from the level's own chords (same template within 0.35 s); the full-chart computation was removed, so the top level is unchanged.",
+      "components": [
+        "psarc"
+      ],
+      "commits": [
+        "bb28399"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_psarc_sng.py::test_every_level_shows_the_first_chord_of_a_run_in_full",
+        "tests/test_psarc_sng.py::test_repeated_chords_marked_high_density_but_not_the_first"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low: not seen in game from here.",
+      "validation": "pending"
+    },
+    {
+      "id": "FIX-0380",
+      "bugs": [
+        "BUG-0381"
+      ],
+      "date": "2026-11-04",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "The preview convert() call was not caught.",
+      "solution": "Caught (PackagingError/OSError), logged, the full stream used as the preview.",
+      "components": [
+        "psarc"
+      ],
+      "commits": [
+        "1edd833"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_psarc_packer.py::test_a_preview_that_will_not_convert_still_gives_a_psarc"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low.",
+      "validation": "pending"
+    },
+    {
+      "id": "FIX-0381",
+      "bugs": [
+        "BUG-0382"
+      ],
+      "date": "2026-11-04",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "re.search over str(root) instead of the install folder's own name.",
+      "solution": "The nearest folder that names a year decides; a converter with no folder has no version.",
+      "components": [
+        "audio"
+      ],
+      "commits": [
+        "fd8f9fa",
+        "8586866"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_wwise.py::test_the_wwise_version_is_the_install_folders_not_a_parents"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low.",
+      "validation": "pending"
+    },
+    {
+      "id": "FIX-0382",
+      "bugs": [
+        "BUG-0383"
+      ],
+      "date": "2026-11-04",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "float(v) on knob values and list/dict assumptions outside the per-archive try; scan() had no try around read_psarc_tones.",
+      "solution": "A knob with no finite value is left at the catalogue default, odd fields read as absent, and anything an archive still throws is recorded as that file's error.",
+      "components": [
+        "tones"
+      ],
+      "commits": [
+        "995f7ba"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_tone_collection.py::test_an_odd_manifest_skips_its_tone_never_the_scan"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low.",
+      "validation": "pending"
+    },
+    {
+      "id": "FIX-0383",
+      "bugs": [
+        "BUG-0384"
+      ],
+      "date": "2026-11-04",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "set_enabled(False) saved {consent: False} before the forget and kept no record of the id owed one.",
+      "solution": "The id stays in pending_forget until a 2xx answer, retried at every start (send_in_background) and on the next answer; network calls are made outside the lock.",
+      "components": [
+        "security"
+      ],
+      "commits": [
+        "c5589e5"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_install_counter.py::test_a_forget_that_could_not_be_sent_is_sent_on_the_next_start"
+      ],
+      "manual_checks": [],
+      "test_result": "passed",
+      "regression_risk": "Low.",
+      "validation": "pending"
     }
   ]
 }

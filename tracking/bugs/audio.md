@@ -502,3 +502,42 @@ text=True decodes with the locale codec (cp1252 on Windows); ffmpeg writes UTF-8
 - 2026-10-18 — Open: reported
 - 2026-10-18 — Fixed: commit 76c44a8bcd
 - 2026-10-18 — Verified: its test passes and fails on the old code
+
+## BUG-0382
+
+**A Wwise 2025 under a folder named with 2019-2023 counted as supported**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | code review (Claude, on the maintainer's request), 2026-11-04 |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P3 |
+| Status | Fixed |
+
+WwiseWemConverter.version() searched the whole path, so D:\Games2022\Audiokinetic\Wwise2025.1 read as 2022: it passed as usable (WWISEROOT taken, diagnostics found) and the build paired the 2022 template with a 2025 console.
+
+**Steps to reproduce:** 
+
+1. Wwise 2025 installed under a folder whose name holds 2019/2021-2023
+
+**Expected:** Read as 2025 (unsupported), named as such.
+
+**Observed:** Read as 2022.
+
+**Root cause:** re.search over str(root) instead of the install folder's own name.
+
+**Fixes:** [FIX-0381](../FIX_LOG.md#fix-0381) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-04 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-04 — Triaged: code review 2026-11-04; FIX-0381 (fd8f9fa, 8586866)
+- 2026-11-04 — In Progress: code review 2026-11-04; FIX-0381 (fd8f9fa, 8586866)
+- 2026-11-04 — Fixed: code review 2026-11-04; FIX-0381 (fd8f9fa, 8586866)

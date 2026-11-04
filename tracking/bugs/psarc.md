@@ -2796,3 +2796,82 @@ A legato slide 14->12 and its landing note 29.05 ms later on the same string wer
 - 2026-11-02 — Fixed: commit 3a841ca55e
 - 2026-11-02 — Verified: regression test + the reporter's files 2026-11-02
 - 2026-11-02 — Closed: confirmed in game by the reporter on GitHub issue #11, 2026-11-02 (0.12.0 beta 2)
+
+## BUG-0380
+
+**HIGH DENSITY was worked out once on the full chart and reused at every DD level**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | code review (Claude, on the maintainer's request), 2026-11-04 |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P3 |
+| Status | Fixed |
+
+At a thinned Dynamic Difficulty level whose run-opening chord was dropped, every chord of a chug kept HIGH DENSITY, so the level showed only condensed strum markers and never the chord's box.
+
+**Steps to reproduce:** 
+
+1. a Rhythm chart with a fast chug of one shape, DD on
+2. read the SNG levels
+
+**Expected:** The first chord of a run shows its box at every level.
+
+**Observed:** Levels 0-2 held 2/4/6 chords, all high density (reproduced).
+
+**Root cause:** _build_sng_notes computed high_density_flags on the full chart; _build_level rebuilt anchors, shapes and links per level but not this flag.
+
+**Fixes:** [FIX-0379](../FIX_LOG.md#fix-0379) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-04 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-04 — Triaged: code review 2026-11-04; FIX-0379 (bb28399)
+- 2026-11-04 — In Progress: code review 2026-11-04; FIX-0379 (bb28399)
+- 2026-11-04 — Fixed: code review 2026-11-04; FIX-0379 (bb28399)
+
+## BUG-0381
+
+**A preview clip that would not convert cost the whole .psarc**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | code review (Claude, on the maintainer's request), 2026-11-04 |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P3 |
+| Status | Fixed |
+
+The main Wwise conversion is best-effort, the preview one was not: a PackagingError there surfaced as psarc_error although the full stream was set up as its fallback.
+
+**Steps to reproduce:** 
+
+1. Wwise converts the song but refuses the preview clip
+
+**Expected:** The .psarc is built, its preview from the full stream.
+
+**Observed:** No .psarc.
+
+**Root cause:** The preview convert() call was not caught.
+
+**Fixes:** [FIX-0380](../FIX_LOG.md#fix-0380) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-04 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-04 — Triaged: code review 2026-11-04; FIX-0380 (1edd833)
+- 2026-11-04 — In Progress: code review 2026-11-04; FIX-0380 (1edd833)
+- 2026-11-04 — Fixed: code review 2026-11-04; FIX-0380 (1edd833)
