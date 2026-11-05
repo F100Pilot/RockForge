@@ -8,6 +8,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ### Correções
 
+- **Os palm mutes de um tab do Songsterr já entram:** o Songsterr pode marcar o palm mute no tempo (beat) e não em cada nota, e o RockForge só o procurava na nota. Esses palm mutes perdiam-se na partitura e no `.psarc`. Agora valem para todas as notas do tempo. Também passam a entrar o tapping, o tremolo picking, o sentido da palhetada (para baixo / para cima) e os harmónicos escritos de outra forma. (GitHub #23)
+
 - **Uma versão reconstruída durante uma deteção já se pode apagar:** se reconstruísses o projeto enquanto separava instrumentos ou detetava tons ou letra, a versão nova ficava presa em «a correr» e apagá-la dava sempre erro. Agora começa sem esse estado. E, na aplicação (`.exe`), uma construção ou deteção que ficou a meio porque a aplicação fechou passa a dizer isso mesmo quando voltas a abrir, em vez de ficar à espera para sempre.
 
 - **Fechar a aplicação com trabalho a meio fecha mesmo:** depois de responderes «Sair mesmo assim?», o `.exe` continuava a correr sem janela até acabar o trabalho que tinha em fila, e abri-lo outra vez nesse tempo punha dois RockForge na mesma base de dados.

@@ -83,6 +83,30 @@ def test_techniques_survive_the_trip(tmp_path: Path) -> None:
     assert Technique.SLIDE in techs[7]
 
 
+def test_what_songsterr_marks_on_the_beat_reaches_every_note_of_it(tmp_path: Path) -> None:
+    # GitHub issue #23: Songsterr can mark the palm mute on the BEAT (the key
+    # joelgoh1/Guitarista's schema reads there), which we read only on the
+    # note, so a palm-muted chug came in with no palm mute at all.
+    part = {"name": "G", "tuning": STANDARD, "measures": [{"voices": [{"beats": [
+        {"type": 4, "palmMute": True, "downStroke": True,
+         "notes": [{"string": 5, "fret": 0}, {"string": 4, "fret": 2}]},
+        {"type": 4, "upStroke": True, "notes": [{"string": 5, "fret": 3}]},
+        {"type": 4, "notes": [{"string": 0, "fret": 12, "tapping": True}]},
+        {"type": 4, "notes": [{"string": 0, "fret": 5}]},
+        {"type": 4, "notes": [{"string": 0, "fret": 5, "tremolo": True},
+                              {"string": 2, "fret": 7, "harmonic": {"type": "natural"}}]},
+    ]}]}]}
+    dst, _ = _write(tmp_path, [part])
+    notes = parse_gp_track(dst, 0).notes
+    techs = [n.techniques for n in notes]
+    assert Technique.PALM_MUTE in techs[0] and Technique.PALM_MUTE in techs[1]
+    assert Technique.PALM_MUTE not in techs[2]
+    assert [n.pick_direction for n in notes[:3]] == [1, 1, 2]   # 1 down, 2 up
+    assert Technique.TAP in techs[3] and Technique.TAP not in techs[4]
+    last = {n.fret: n.techniques for n in notes[5:]}
+    assert Technique.TREMOLO in last[5] and Technique.HARMONIC in last[7]
+
+
 def test_tuning_sections_tempo_and_metadata(tmp_path: Path) -> None:
     dst, _ = _write(tmp_path, [_lead()])
     info = inspect_gp(dst)

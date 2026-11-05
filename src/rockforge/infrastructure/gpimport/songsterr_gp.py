@@ -25,13 +25,17 @@ What a part carries, and how it maps:
 - beat: ``type`` (1, 2, 4 … 64 = whole … 64th), ``dots`` or ``dotted``,
   ``tuplet`` (3, 5, 6, 7, 9), ``duration`` ``[num, den]`` — the length played,
   in whole notes, dots and tuplets included; it wins when the flags say
-  otherwise — ``rest``, ``letRing``, ``graceNote``, ``notes[]``.
+  otherwise — ``rest``, ``letRing``, ``palmMute`` (every note of the beat —
+  GitHub issue #23: read only on the note, the palm mutes Songsterr marks on
+  the beat were lost), ``upStroke``/``downStroke``, ``graceNote``, ``notes[]``.
 - note: ``fret``, ``string``, ``tie`` (a held continuation), ``hp`` (this note
   is the TARGET of a hammer-on/pull-off — GP5 marks the ORIGIN, the previous
   note on the string), ``slide``, ``bend.points[]`` (``position`` 0..60,
   ``tone`` 50 = half tone), ``vibrato``, ``ghost``, ``staccato``,
-  ``accentuated`` (1 normal, 2 heavy); ``dead``/``palmMute``/``harmonic`` are
-  read when present.
+  ``accentuated`` (1 normal, 2 heavy), ``tapping`` (the beat's tapping, GP5
+  holding it on the beat); ``dead``/``palmMute``/``harmonic`` are read when
+  present. The beat-level keys and ``tapping`` were read in
+  ``joelgoh1/Guitarista``'s Songsterr schema (nothing copied).
 - tempo: the first track's ``automations.tempo[]`` ``{measure, position,
   bpm}`` (a quarter-note BPM, which may carry decimals; ``position`` read as
   the fraction of the bar, as ``teaqu/guitar-pro-youtube-sync`` hands it to
@@ -364,13 +368,15 @@ def _fill_voice(
             gp_note = guitarpro.Note(beat)
             gp_note.string = string + 1
             gp_note.value = max(0, _int(n.get("fret"), 0))
-            _apply_note(gp_note, n, guitarpro, bool(b.get("letRing")))
+            _apply_note(gp_note, n, guitarpro, bool(b.get("letRing")),
+                        bool(b.get("palmMute")))
             if n.get("hp") and string in last_on_string:
                 last_on_string[string].effect.hammer = True
             last_on_string[string] = gp_note
             beat.notes.append(gp_note)
             report.notes += 1
         beat.status = guitarpro.BeatStatus.normal if beat.notes else guitarpro.BeatStatus.rest
+        _apply_beat(beat, b, notes, guitarpro)
         if graces:
             _attach_graces(beat, graces, report, guitarpro)
             graces = []
@@ -416,7 +422,25 @@ def _attach_graces(
             report.graces += 1
 
 
-def _apply_note(gp_note: Any, note: dict[str, Any], guitarpro: Any, let_ring: bool) -> None:
+def _apply_beat(
+    beat: Any, b: dict[str, Any], notes: list[dict[str, Any]], guitarpro: Any
+) -> None:
+    """What Songsterr marks on the beat (or, for tapping, on its notes) and GP5
+    keeps on the beat: tapping and the pick stroke."""
+    if not beat.notes:
+        return
+    if any(n.get("tapping") for n in notes):
+        beat.effect.slapEffect = guitarpro.SlapEffect.tapping
+    if b.get("downStroke"):
+        beat.effect.pickStroke = guitarpro.BeatStrokeDirection.down
+    elif b.get("upStroke"):
+        beat.effect.pickStroke = guitarpro.BeatStrokeDirection.up
+
+
+def _apply_note(
+    gp_note: Any, note: dict[str, Any], guitarpro: Any, let_ring: bool,
+    palm_mute: bool = False,
+) -> None:
     eff = gp_note.effect
     if note.get("tie"):
         gp_note.type = guitarpro.NoteType.tie
@@ -425,7 +449,7 @@ def _apply_note(gp_note: Any, note: dict[str, Any], guitarpro: Any, let_ring: bo
     eff.vibrato = bool(note.get("vibrato"))
     eff.ghostNote = bool(note.get("ghost"))
     eff.staccato = bool(note.get("staccato"))
-    eff.palmMute = bool(note.get("palmMute"))
+    eff.palmMute = palm_mute or bool(note.get("palmMute"))
     eff.letRing = let_ring or bool(note.get("letRing"))
     accent = _int(note.get("accentuated"), 0)
     eff.accentuatedNote = accent == 1
@@ -433,7 +457,16 @@ def _apply_note(gp_note: Any, note: dict[str, Any], guitarpro: Any, let_ring: bo
     slide = _SLIDES.get(str(note.get("slide") or ""))
     if slide:
         eff.slides = [getattr(guitarpro.SlideType, slide)]
-    harmonic = str(note.get("harmonic") or "").lower()
+    harmonic_key = note.get("harmonic")
+    if isinstance(harmonic_key, dict):  # {"type": "natural"}, as Guitarista's tests write it
+        harmonic_key = harmonic_key.get("type")
+    harmonic = str(harmonic_key or "").lower()
+    if note.get("tremolo"):
+        # Only that the note is tremolo-picked reaches the chart; the speed's
+        # spelling in Songsterr was not seen, so GP5's sixteenths stand in.
+        eff.tremoloPicking = guitarpro.TremoloPickingEffect(
+            duration=guitarpro.Duration(value=16)
+        )
     if harmonic == "natural":
         eff.harmonic = guitarpro.NaturalHarmonic()
     elif harmonic in {"pinch", "artificial"}:

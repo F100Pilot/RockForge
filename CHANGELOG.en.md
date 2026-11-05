@@ -8,6 +8,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ### Fixes
 
+- **Palm mutes from a Songsterr tab come in:** Songsterr can mark a palm mute on the beat rather than on each note, and RockForge only looked for it on the note, so those palm mutes were lost from the score and the `.psarc`. They now apply to every note of the beat. Tapping, tremolo picking, the pick direction (down / up) and harmonics written another way come in too. (GitHub #23)
+
 - **A version rebuilt during a detection can be deleted again:** if you rebuilt the project while it was separating instruments or detecting tones or lyrics, the new version stayed stuck as "running" and deleting it always failed. It now starts without that status. And in the app (`.exe`), a build or detection left halfway because the app closed now says so when you open it again, instead of waiting forever.
 
 - **Closing the app with work in progress really closes it:** after you answered "Quit anyway?", the `.exe` kept running with no window until its queued work finished, and opening it again meanwhile put two RockForges on the same database.

@@ -306,7 +306,7 @@ re-inverting the dependency.
    export all apply. Mapping details that matter: Songsterr lists tuning and
    numbers strings from the HIGHEST (its string 0 = GP5 string 1); `hp` marks
    the TARGET of a hammer/pull while GP5 marks the ORIGIN (the previous note on
-   that string); bend `position` 0..60 → 0..12 and `tone` 50 = one semitone →
+   that string); `palmMute` is read on the BEAT too (every note of it), and so are `upStroke`/`downStroke` (the GP5 pick stroke), the note's `tapping` (the GP5 beat's tapping), `tremolo` (any truthy value, written as sixteenths) and a `harmonic` given as `{type}` — keys read in `joelgoh1/Guitarista`'s Songsterr schema; reading `palmMute` only on the note lost every palm mute marked on the beat (GitHub issue #23, guarded by `test_what_songsterr_marks_on_the_beat_reaches_every_note_of_it`, each piece mutation-checked; no recorded Songsterr answer carrying them has been seen); bend `position` 0..60 → 0..12 and `tone` 50 = one semitone →
    value 2 (what `parser.py` reads as `value / 2` semitones); every
    `MeasureHeader.start` is set by hand from the time signatures, so an
    under-/over-filled Songsterr bar cannot push the next one; **a beat lasts
