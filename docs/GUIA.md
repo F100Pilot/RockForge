@@ -628,6 +628,10 @@ Rhythm: Orange AD50), e a aplicação diz "Tons standard".
 roda os botões (arrasta, escreve o valor, ou duplo-clique para o valor de origem). **Volume:
 maior = mais alto** (0,1–36). **Guardar tom**.
 
+Para só subir ou baixar um tom não precisas do editor: cada cartão em **Tons do projeto** tem
+**Volume no jogo** (o mesmo valor, 0,1–36, maior = mais alto). Conta na próxima **Aplicar e
+reconstruir**.
+
 - **Biblioteca**: guarda um tom (★) para o usares noutros projetos; **Carregar** copia-o para
   este.
 - **Tons das tuas músicas**: lê a pasta `dlc` do Rocksmith e lista os tons de todas as tuas
@@ -812,8 +816,9 @@ info** de cada projeto.
 - **Python ML**: os componentes extra preenchem-no sozinhos; só serve para usar um Python 3.11
   teu que já tenha `rockforge[ml,lyrics]`.
 - **Stems**: o motor de separação (Demucs; Banquet em testes).
-- **Volume**: o volume alvo da música no jogo (LUFS). −12 por defeito; −10/−9 se ficar baixo ao
-  lado do DLC oficial; −16 é o mais limpo.
+- **Volume**: o volume alvo da gravação (a música) no jogo (LUFS), para todos os projetos. −12 por
+  defeito; −10/−9 se ficar baixo ao lado do DLC oficial; −16 é o mais limpo. Não muda o volume dos
+  tons (esse é de cada tom, na página Tons) e só conta nos projetos que reconstruíres depois.
 - **GPU**: se a GPU deu um erro, o RockForge passa para a CPU; **Reativar GPU** depois de
   corrigires os drivers.
 

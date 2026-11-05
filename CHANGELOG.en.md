@@ -6,6 +6,10 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### New
+
+- **Each tone has its own volume on the Tones page:** the cards under "Project tones" now have "Volume in game" (higher = louder), without opening the tone editor. In Settings, the target loudness now says it is the recording's, not the tones', and that it only counts for projects you rebuild after saving. (GitHub #24)
+
 ### Fixes
 
 - **Palm mutes from a Songsterr tab come in:** Songsterr can mark a palm mute on the beat rather than on each note, and RockForge only looked for it on the note, so those palm mutes were lost from the score and the `.psarc`. They now apply to every note of the beat. Tapping, tremolo picking, the pick direction (down / up) and harmonics written another way come in too. (GitHub #23)

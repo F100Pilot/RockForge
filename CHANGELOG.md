@@ -6,6 +6,10 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Novidades
+
+- **Cada tom tem o seu volume na página Tons:** os cartões em «Tons do projeto» têm agora «Volume no jogo» (maior = mais alto), sem ser preciso abrir o editor de tons. Nas Definições, o volume alvo diz que é o da gravação, não o dos tons, e que só conta nos projetos que reconstruíres depois de guardar. (GitHub #24)
+
 ### Correções
 
 - **Os palm mutes de um tab do Songsterr já entram:** o Songsterr pode marcar o palm mute no tempo (beat) e não em cada nota, e o RockForge só o procurava na nota. Esses palm mutes perdiam-se na partitura e no `.psarc`. Agora valem para todas as notas do tempo. Também passam a entrar o tapping, o tremolo picking, o sentido da palhetada (para baixo / para cima) e os harmónicos escritos de outra forma. (GitHub #23)

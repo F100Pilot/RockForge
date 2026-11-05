@@ -241,6 +241,10 @@
   .tn-tone-gear { font-size:.95rem; color:#a9acb6; }
   .tn-tags { display:flex; gap:.5rem; flex-wrap:wrap; }
   .tn-listen { align-self:flex-start; }
+  .tn-vol { display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; font-size:.95rem; color:#a9acb6; }
+  .tn-vol-range { flex:1 1 8rem; min-width:6rem; accent-color:var(--accent); }
+  .tn-vol-num { width:4.6rem; }
+  .tn-vol-hint { font-size:.85rem; }
   .tn-tag { font-size:.9rem; padding:.3rem .75rem; border-radius:999px; background:#262831; color:#d6d8de; }
   .tn-standard { display:flex; flex-direction:column; gap:.6rem; font-size:1rem; color:#c4c6cd; }
   .tn-standard .pv-chip { align-self:flex-start; font-size:.95rem; height:2.2rem; }
@@ -2027,7 +2031,8 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
       <section class="pv-page set-page" data-settings-page="volume" hidden>
         <div>
           <h1 class="pv-page-title">Volume / sonoridade</h1>
-          <p class="set-desc">O volume da música no jogo. Aplica-se ao reconstruir.</p>
+          <p class="set-desc">O volume da gravação (a música) no jogo, em todos os projetos. Não muda o volume dos tons da guitarra ou do baixo: esse é de cada tom, na página Tons do projeto.</p>
+          <p class="set-desc">Só conta nos projetos que reconstruíres depois de guardar: abre o projeto e carrega em «Aplicar e reconstruir».</p>
         </div>
         <div class="pv-card pv-card-lg">
           <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-volume"/></svg>Volume alvo (LUFS)</div>

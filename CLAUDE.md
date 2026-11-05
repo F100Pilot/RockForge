@@ -4374,6 +4374,20 @@ Guarded by `test_presets_are_as_loud_as_the_games_own_tones`,
 heard in game from here; the scale is the reference's, the exact loudness the
 user's ears.
 
+**The volume is on every project tone's card too** (GitHub issue #24: "some
+tones are incredibly quiet … we should get volume sliders"): "Tons do projeto"
+cards carry "Volume no jogo" (`toneVolumeRowHtml`, a slider + number on the
+editor's own 0.1-36 scale, higher = louder, stored negated; `setToneVolume`
+replaces the `jobTones` entry with a new object and updates the card IN PLACE
+— a redraw would take the focus off the slider under the arrow keys), an
+ordinary tone edit (undo/redo, drafts, "Aplicar e reconstruir"). Definições →
+Volume now says the target loudness is the RECORDING's, not the tones', and
+counts only for projects rebuilt afterwards. Browser-only; verified with
+Playwright (PT 1440 / EN 760 px): typed 27.5, four arrows → 27.9, 99 clamped
+to 36, Ctrl+Z / redo, a real rebuild writing `"Volume": "-30.000"` in the
+manifest, no page errors. A per-song loudness target (the issue's other idea)
+was not built.
+
 **Every preset with drive opens with a noise gate** (2026-10-01: "os tons
 standard acho que estão com um volume bom, os detetados ainda ficam com um
 pouco de ruído no final"). Gain amplifies whatever the player's guitar feeds

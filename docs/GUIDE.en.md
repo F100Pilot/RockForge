@@ -627,6 +627,10 @@ Marshall Plexi; Rhythm: Orange AD50), and the app says "Standard tones".
 the knobs (drag, type the value, or double-click for the default). **Volume: higher = louder**
 (0.1–36). **Save tone**.
 
+To turn one tone up or down you don't need the editor: every card under **Project tones** has
+**Volume in game** (the same value, 0.1–36, higher = louder). It counts from the next **Apply
+and rebuild**.
+
 - **Library**: save a tone (★) to use in other projects; **Load** copies it into this one.
 - **Tones from your songs**: reads Rocksmith's `dlc` folder and lists the tones of all your
   songs (official and CDLC), searchable by artist and words. **Use in this project** copies a
@@ -812,8 +816,10 @@ are shared. Lead/Rhythm tracks are picked by name; check them afterwards in each
 - **ML Python**: set by the extra components by itself; only for using a Python 3.11 of your
   own that already has `rockforge[ml,lyrics]`.
 - **Stems**: the separation engine (Demucs; Banquet in testing).
-- **Volume**: the song's target loudness in game (LUFS). −12 by default; −10/−9 if it sounds
-  quiet beside official DLC; −16 is the cleanest.
+- **Volume**: the target loudness of the recording (the song) in game (LUFS), for every
+  project. −12 by default; −10/−9 if it sounds quiet beside official DLC; −16 is the cleanest.
+  It does not change the tones' volume (each tone has its own, on the Tones page) and only counts
+  for projects you rebuild afterwards.
 - **GPU**: if the GPU crashed, RockForge moves to the CPU; **Re-enable GPU** once you have fixed
   the drivers.
 

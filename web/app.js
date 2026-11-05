@@ -6488,7 +6488,51 @@ function standardTonesText() {
 // One card per project tone: its name, the gear it is built from and its
 // character (the same drive estimate the preview voice uses), and its volume
 // the way the tone editor shows it (higher = louder).
-function toneCardHtml(t) {
+// The tone's in-game level on its card (GitHub issue #24: a quiet tone had to be
+// opened in the editor to be turned up). The same scale as the editor's Volume
+// field and DLC Builder's: 0.1..36, higher = louder, stored negated.
+const TONE_VOL_MIN = 0.1, TONE_VOL_MAX = 36;
+
+function toneVolumeRowHtml(t) {
+  const v = t.volume != null ? Math.round(-t.volume * 10) / 10 : 18;
+  return `<div class="tn-vol" data-vol-key="${esc(t.key)}">
+    <span class="tn-vol-label">${T('Volume no jogo')}</span>
+    <input type="range" class="tn-vol-range" min="${TONE_VOL_MIN}" max="${TONE_VOL_MAX}" step="0.1" value="${v}" aria-label="${esc(T('Volume no jogo'))}">
+    <input type="number" class="tn-vol-num" min="${TONE_VOL_MIN}" max="${TONE_VOL_MAX}" step="0.1" value="${v}" aria-label="${esc(T('Volume no jogo'))}">
+    <span class="tn-vol-hint">${T('mais alto = mais forte')}</span>
+  </div>`;
+}
+
+function setToneVolume(row, value) {
+  const key = row.dataset.volKey;
+  const i = jobTones.findIndex(t => t.key === key);
+  if (i < 0) return;
+  let v = Math.min(TONE_VOL_MAX, Math.max(TONE_VOL_MIN, parseFloat(value)));
+  if (!Number.isFinite(v)) v = -jobTones[i].volume;
+  v = Math.round(v * 10) / 10;
+  // A new object: undo snapshots and the stashed per-track sets hold the old one.
+  jobTones[i] = { ...jobTones[i], volume: -v };
+  // Updated in place, not redrawn: a redraw would take the focus off the slider
+  // under the arrow keys.
+  for (const el of row.querySelectorAll('.tn-vol-range, .tn-vol-num')) el.value = v;
+  const tag = row.closest('.tn-tone')?.querySelector('.tn-vol-tag');
+  if (tag) tag.textContent = T('Volume {v}', { v });
+  notePendingChange();
+}
+
+document.getElementById('toneChips').addEventListener('input', e => {
+  const range = e.target.closest('.tn-vol-range');
+  if (!range) return;
+  const num = range.parentElement.querySelector('.tn-vol-num');
+  if (num) num.value = range.value;
+});
+document.getElementById('toneChips').addEventListener('change', e => {
+  const input = e.target.closest('.tn-vol-range, .tn-vol-num');
+  if (!input) return;
+  setToneVolume(input.closest('.tn-vol'), input.value);
+});
+
+function toneCardHtml(t, opts = {}) {
   const cat = gearCatalogue || {};
   const gearName = (list, g) => g && g.key ? ((gearByKey(list, g.key) || {}).name || g.key) : '';
   const effects = [...(t.pre || []), ...(t.post || []), ...(t.racks || [])].filter(g => g && g.key)
@@ -6502,7 +6546,8 @@ function toneCardHtml(t) {
   return `<div class="tn-tone">
     <div class="tn-tone-name"><span class="tn-dot" style="background:${kind.color}"></span>${esc(t.name || t.key)}</div>
     ${gear ? `<div class="tn-tone-gear">${esc(gear)}</div>` : ''}
-    <div class="tn-tags"><span class="tn-tag">${kind.label}</span>${vol != null ? `<span class="tn-tag">${T('Volume {v}', { v: vol })}</span>` : ''}</div>
+    <div class="tn-tags"><span class="tn-tag">${kind.label}</span>${vol != null ? `<span class="tn-tag tn-vol-tag">${T('Volume {v}', { v: vol })}</span>` : ''}</div>
+    ${opts.volume ? toneVolumeRowHtml(t) : ''}
     ${listenButtonHtml(t)}
   </div>`;
 }
@@ -6588,7 +6633,7 @@ function renderTonePanel() {
 
   const chips = document.getElementById('toneChips');
   chips.innerHTML = jobTones.length
-    ? jobTones.map(toneCardHtml).join('')
+    ? jobTones.map(t => toneCardHtml(t, { volume: true })).join('')
     : `<div class="tn-standard"><span class="pv-chip unk">${icon('wave')}${T('Tons standard')}</span>
        <span>${T('Sem tons teus, cada pista usa o tom por defeito do DLC Builder — {list}. Cria os teus em "+ Criar / editar tons".',
     { list: standardTonesText() })}</span></div>`;
