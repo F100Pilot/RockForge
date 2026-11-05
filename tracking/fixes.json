@@ -10223,6 +10223,33 @@
       "test_result": "passed",
       "regression_risk": "Low: only keys that were ignored are read; a tab without them is unchanged.",
       "validation": "pending"
+    },
+    {
+      "id": "FIX-0407",
+      "bugs": [
+        "BUG-0408"
+      ],
+      "date": "2026-11-05",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "write_songsterr_gp5 read automations.tempo from the first CHARTED part; each Songsterr part carries a tempo map of its own and the drums (where it often lives) are not charted.",
+      "solution": "_tempo_part takes the tempo map of the part with the most bars, the first in Songsterr's order on a tie, a drum part included (the rule of the reporter's exporter, whose .gp plays in time); a warning names it when it differs from the first charted part's.",
+      "components": [
+        "import"
+      ],
+      "commits": [
+        "a525366"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_songsterr_gp.py::test_the_song_plays_at_the_tempo_of_the_longest_part_not_the_first_charted_one"
+      ],
+      "manual_checks": [
+        "the reporter's two files compared bar by bar: same notes, different tempo maps (137 changes against 7)",
+        "mutation-checked: with the first charted part, without the length rule and with the last part on a tie the test fails"
+      ],
+      "test_result": "passed",
+      "regression_risk": "Low: a tab whose parts share one map is unchanged; one where they differ now follows the longest part, which Songsterr's own player was not seen to do.",
+      "validation": "pending"
     }
   ]
 }

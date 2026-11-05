@@ -412,6 +412,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0404](#fix-0404) | BUG-0405 | unreleased | not run | pending |
 | [FIX-0405](#fix-0405) | BUG-0406 | unreleased | not run | pending |
 | [FIX-0406](#fix-0406) | BUG-0407 | unreleased | passed | pending |
+| [FIX-0407](#fix-0407) | BUG-0408 | unreleased | passed | pending |
 
 ## FIX-0001
 
@@ -8938,3 +8939,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | passed |
 | Validation | _pending_ |
 | Regression risk | Low: only keys that were ignored are read; a tab without them is unchanged. |
+
+## FIX-0407
+
+**Bugs:** [BUG-0408](bugs/import.md#bug-0408)
+
+**Root cause:** write_songsterr_gp5 read automations.tempo from the first CHARTED part; each Songsterr part carries a tempo map of its own and the drums (where it often lives) are not charted.
+
+**Solution:** _tempo_part takes the tempo map of the part with the most bars, the first in Songsterr's order on a tie, a drum part included (the rule of the reporter's exporter, whose .gp plays in time); a warning names it when it differs from the first charted part's.
+
+| | |
+|---|---|
+| Date | 2026-11-05 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | a525366 |
+| Components | import |
+| Tests | tests/test_songsterr_gp.py::test_the_song_plays_at_the_tempo_of_the_longest_part_not_the_first_charted_one |
+| Manual checks | the reporter's two files compared bar by bar: same notes, different tempo maps (137 changes against 7); mutation-checked: with the first charted part, without the length rule and with the last part on a tie the test fails |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low: a tab whose parts share one map is unchanged; one where they differ now follows the longest part, which Songsterr's own player was not seen to do. |

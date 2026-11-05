@@ -20301,6 +20301,56 @@
           "note": "GitHub issue #23; FIX-0406 (7253f5f)"
         }
       ]
+    },
+    {
+      "id": "BUG-0408",
+      "title": "A Songsterr tab took the tempo map of its first charted part",
+      "detected": "2026-11-04",
+      "reported_by": "DrekAnon (GitHub issue #26)",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "import",
+      "description": "Imported from a Songsterr link with Songsterr's timing, AngelMaker's Leech put bar 7 early, while the .gp exported from the same tab played in time. The GP5 RockForge wrote held 137 tempo changes (the bass part's map: 163 BPM in bar 6, 119 in bar 7); the exporter's .gp held 7 (140 BPM to bar 33).",
+      "steps": [
+        "import a Songsterr tab whose parts carry different tempo maps (the first charted one changing tempo every bar)",
+        "use the tab's own timing and look at where bar 7 starts"
+      ],
+      "expected": "The bars where the tab's player and its .gp export place them.",
+      "observed": "Bar 6 lasted 1.47 s instead of 1.71 s; bar 7 started 0.18 s early.",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Fixed",
+      "root_cause": "write_songsterr_gp5 read automations.tempo from the first CHARTED part; each Songsterr part carries a tempo map of its own and the drums (where it often lives) are not charted.",
+      "fixes": [
+        "FIX-0407"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-05",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-05",
+          "status": "Triaged",
+          "note": "GitHub issue #26; the reporter's two files compared"
+        },
+        {
+          "date": "2026-11-05",
+          "status": "In Progress",
+          "note": "GitHub issue #26; FIX-0407 (a525366)"
+        },
+        {
+          "date": "2026-11-05",
+          "status": "Fixed",
+          "note": "GitHub issue #26; FIX-0407 (a525366)"
+        }
+      ]
     }
   ]
 }

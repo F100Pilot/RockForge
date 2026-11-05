@@ -2694,3 +2694,43 @@ A Songsterr import read palmMute only on each note; Songsterr can mark it on the
 - 2026-11-05 — Triaged: GitHub issue #23; FIX-0406 (7253f5f)
 - 2026-11-05 — In Progress: GitHub issue #23; FIX-0406 (7253f5f)
 - 2026-11-05 — Fixed: GitHub issue #23; FIX-0406 (7253f5f)
+
+## BUG-0408
+
+**A Songsterr tab took the tempo map of its first charted part**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | DrekAnon (GitHub issue #26) |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Fixed |
+
+Imported from a Songsterr link with Songsterr's timing, AngelMaker's Leech put bar 7 early, while the .gp exported from the same tab played in time. The GP5 RockForge wrote held 137 tempo changes (the bass part's map: 163 BPM in bar 6, 119 in bar 7); the exporter's .gp held 7 (140 BPM to bar 33).
+
+**Steps to reproduce:** 
+
+1. import a Songsterr tab whose parts carry different tempo maps (the first charted one changing tempo every bar)
+2. use the tab's own timing and look at where bar 7 starts
+
+**Expected:** The bars where the tab's player and its .gp export place them.
+
+**Observed:** Bar 6 lasted 1.47 s instead of 1.71 s; bar 7 started 0.18 s early.
+
+**Root cause:** write_songsterr_gp5 read automations.tempo from the first CHARTED part; each Songsterr part carries a tempo map of its own and the drums (where it often lives) are not charted.
+
+**Fixes:** [FIX-0407](../FIX_LOG.md#fix-0407) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-05 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-05 — Triaged: GitHub issue #26; the reporter's two files compared
+- 2026-11-05 — In Progress: GitHub issue #26; FIX-0407 (a525366)
+- 2026-11-05 — Fixed: GitHub issue #26; FIX-0407 (a525366)
