@@ -10197,6 +10197,32 @@
       "test_result": "not run",
       "regression_risk": "Low.",
       "validation": "pending"
+    },
+    {
+      "id": "FIX-0406",
+      "bugs": [
+        "BUG-0407"
+      ],
+      "date": "2026-11-05",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "songsterr_gp._apply_note read note.palmMute only; tapping, tremolo and upStroke/downStroke were never read, and a harmonic was read only as a string.",
+      "solution": "The beat's palmMute reaches every note of the beat; upStroke/downStroke become the GP5 pick stroke, a note's tapping the beat's tapping, tremolo a tremolo-picking effect, and a harmonic {type} is read by its type.",
+      "components": [
+        "import"
+      ],
+      "commits": [
+        "7253f5f"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_songsterr_gp.py::test_what_songsterr_marks_on_the_beat_reaches_every_note_of_it"
+      ],
+      "manual_checks": [
+        "mutation-checked: without the fix, without the tapping line, without the up-stroke line and without the {type} read the test fails"
+      ],
+      "test_result": "passed",
+      "regression_risk": "Low: only keys that were ignored are read; a tab without them is unchanged.",
+      "validation": "pending"
     }
   ]
 }

@@ -2654,3 +2654,43 @@ The numerator is a signed byte; 0 laid out no beats and divided the bar by zero.
 - 2026-11-04 — Triaged: code review 2026-11-04; FIX-0396 (61b0215)
 - 2026-11-04 — In Progress: code review 2026-11-04; FIX-0396 (61b0215)
 - 2026-11-04 — Fixed: code review 2026-11-04; FIX-0396 (61b0215)
+
+## BUG-0407
+
+**Palm mutes from a Songsterr tab were lost**
+
+| | |
+|---|---|
+| Detected | 2026-11-04 |
+| Reported by | DrekAnon (GitHub issue #23) |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Fixed |
+
+A Songsterr import read palmMute only on each note; Songsterr can mark it on the beat (the key joelgoh1/Guitarista's schema reads there), so those palm mutes never reached the score or the .psarc. The beat's pick stroke, the note's tapping and tremolo and a harmonic given as {type} were not read either.
+
+**Steps to reproduce:** 
+
+1. import a Songsterr tab whose palm mutes are marked on the beats
+2. look for P.M. on the score
+
+**Expected:** P.M. on every palm-muted note, in the score and the .psarc.
+
+**Observed:** No palm mute at all.
+
+**Root cause:** songsterr_gp._apply_note read note.palmMute only; tapping, tremolo and upStroke/downStroke were never read, and a harmonic was read only as a string.
+
+**Fixes:** [FIX-0406](../FIX_LOG.md#fix-0406) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-05 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-04 — Open: reported
+- 2026-11-05 — Triaged: GitHub issue #23; FIX-0406 (7253f5f)
+- 2026-11-05 — In Progress: GitHub issue #23; FIX-0406 (7253f5f)
+- 2026-11-05 — Fixed: GitHub issue #23; FIX-0406 (7253f5f)

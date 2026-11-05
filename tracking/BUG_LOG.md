@@ -6,7 +6,7 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 
 | Fixed | Verified | Closed |
 |---|---|---|
-| 130 | 60 | 216 |
+| 131 | 60 | 216 |
 
 | ID | Title | Module | Severity | Priority | Status | Found in | Fixed in |
 |---|---|---|---|---|---|---|---|
@@ -416,3 +416,4 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0404](bugs/viewer.md#bug-0404) | The 3D highway's GPU memory grew on every pass of an A-B loop | viewer | Low | P3 | Fixed | 0.12.0-beta.6 | — |
 | [BUG-0405](bugs/viewer.md#bug-0405) | The neck redid every note of the song on every frame of playback | viewer | Low | P4 | Fixed | 0.12.0-beta.6 | — |
 | [BUG-0406](bugs/viewer.md#bug-0406) | A recording's length read 3:17 in one place and 3:16 in another | viewer | Low | P4 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0407](bugs/import.md#bug-0407) | Palm mutes from a Songsterr tab were lost | import | Medium | P2 | Fixed | 0.12.0-beta.6 | — |

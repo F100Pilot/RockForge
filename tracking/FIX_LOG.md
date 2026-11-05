@@ -411,6 +411,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0403](#fix-0403) | BUG-0404 | unreleased | not run | pending |
 | [FIX-0404](#fix-0404) | BUG-0405 | unreleased | not run | pending |
 | [FIX-0405](#fix-0405) | BUG-0406 | unreleased | not run | pending |
+| [FIX-0406](#fix-0406) | BUG-0407 | unreleased | passed | pending |
 
 ## FIX-0001
 
@@ -8916,3 +8917,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | not run |
 | Validation | _pending_ |
 | Regression risk | Low. |
+
+## FIX-0406
+
+**Bugs:** [BUG-0407](bugs/import.md#bug-0407)
+
+**Root cause:** songsterr_gp._apply_note read note.palmMute only; tapping, tremolo and upStroke/downStroke were never read, and a harmonic was read only as a string.
+
+**Solution:** The beat's palmMute reaches every note of the beat; upStroke/downStroke become the GP5 pick stroke, a note's tapping the beat's tapping, tremolo a tremolo-picking effect, and a harmonic {type} is read by its type.
+
+| | |
+|---|---|
+| Date | 2026-11-05 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 7253f5f |
+| Components | import |
+| Tests | tests/test_songsterr_gp.py::test_what_songsterr_marks_on_the_beat_reaches_every_note_of_it |
+| Manual checks | mutation-checked: without the fix, without the tapping line, without the up-stroke line and without the {type} read the test fails |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low: only keys that were ignored are read; a tab without them is unchanged. |

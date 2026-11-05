@@ -20251,6 +20251,56 @@
           "note": "code review 2026-11-04; FIX-0405 (a249ef0)"
         }
       ]
+    },
+    {
+      "id": "BUG-0407",
+      "title": "Palm mutes from a Songsterr tab were lost",
+      "detected": "2026-11-04",
+      "reported_by": "DrekAnon (GitHub issue #23)",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "import",
+      "description": "A Songsterr import read palmMute only on each note; Songsterr can mark it on the beat (the key joelgoh1/Guitarista's schema reads there), so those palm mutes never reached the score or the .psarc. The beat's pick stroke, the note's tapping and tremolo and a harmonic given as {type} were not read either.",
+      "steps": [
+        "import a Songsterr tab whose palm mutes are marked on the beats",
+        "look for P.M. on the score"
+      ],
+      "expected": "P.M. on every palm-muted note, in the score and the .psarc.",
+      "observed": "No palm mute at all.",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Fixed",
+      "root_cause": "songsterr_gp._apply_note read note.palmMute only; tapping, tremolo and upStroke/downStroke were never read, and a harmonic was read only as a string.",
+      "fixes": [
+        "FIX-0406"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-05",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-04",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-05",
+          "status": "Triaged",
+          "note": "GitHub issue #23; FIX-0406 (7253f5f)"
+        },
+        {
+          "date": "2026-11-05",
+          "status": "In Progress",
+          "note": "GitHub issue #23; FIX-0406 (7253f5f)"
+        },
+        {
+          "date": "2026-11-05",
+          "status": "Fixed",
+          "note": "GitHub issue #23; FIX-0406 (7253f5f)"
+        }
+      ]
     }
   ]
 }
