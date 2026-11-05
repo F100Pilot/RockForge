@@ -36,7 +36,8 @@ What a part carries, and how it maps:
   holding it on the beat); ``dead``/``palmMute``/``harmonic`` are read when
   present. The beat-level keys and ``tapping`` were read in
   ``joelgoh1/Guitarista``'s Songsterr schema (nothing copied).
-- tempo: the first track's ``automations.tempo[]`` ``{measure, position,
+- tempo: ``automations.tempo[]`` of the part with the most bars (the first
+  on a tie, a drum part included — ``_tempo_part``) ``{measure, position,
   bpm}`` (a quarter-note BPM, which may carry decimals; ``position`` read as
   the fraction of the bar, as ``teaqu/guitar-pro-youtube-sync`` hands it to
   GPIF's ``<Position>``); the first one is the song tempo, later ones a
@@ -243,6 +244,37 @@ def _bar_fraction(value: Any) -> tuple[float, bool]:
     if 0.0 < out < 1.0:
         return out, False
     return 0.0, out >= 1.0
+
+
+def _tempo_points(part: dict[str, Any]) -> list[dict[str, Any]]:
+    return [t for t in (part.get("automations") or {}).get("tempo") or [] if isinstance(t, dict)]
+
+
+def _tempo_part(
+    parts: list[dict[str, Any]], kept: list[tuple[str, dict[str, Any]]]
+) -> tuple[str, dict[str, Any]]:
+    """The part whose tempo map the song plays at.
+
+    Each Songsterr part carries a tempo map of its own, and they can differ
+    (GitHub issue #26: a bass part changing tempo almost every bar — 163 BPM in
+    bar 6, 119 in bar 7 — where the other parts hold 140 BPM). Read the way the
+    reporter's Songsterr exporter reads it, whose files play in time: the part
+    with the most bars, the first in Songsterr's order on a tie, a drum part
+    included — a drum part is not charted, but it is often the one that carries
+    the song's tempo. Only a part that has a tempo map counts; with none, the
+    first charted part (which then sets the default)."""
+    best: tuple[str, dict[str, Any]] | None = None
+    for i, part in enumerate(parts):
+        if not _tempo_points(part):
+            continue
+        bars = len(part["measures"]) if isinstance(part.get("measures"), list) else 0
+        if best is None or bars > (
+            len(best[1]["measures"]) if isinstance(best[1].get("measures"), list) else 0
+        ):
+            name = str(part.get("name") or part.get("instrument")
+                       or tr(f"Pista {i + 1}", f"Track {i + 1}"))
+            best = (name, part)
+    return best if best is not None else kept[0]
 
 
 def tab_bar_times(
@@ -533,7 +565,15 @@ def write_songsterr_gp5(
     song = guitarpro.Song()
     song.title, song.artist = _gp5_text(title), _gp5_text(artist)
     first = kept[0][1]
-    raw = [t for t in (first.get("automations") or {}).get("tempo") or [] if isinstance(t, dict)]
+    tempo_name, tempo_part = _tempo_part(parts, kept)
+    raw = _tempo_points(tempo_part)
+    if tempo_part is not first and raw != _tempo_points(first):
+        report.warnings.append(tr(
+            f"as partes da tab têm andamentos diferentes; usei o da parte {tempo_name}, "
+            "a mais longa (a primeira, num empate), como o leitor da tab",
+            f"the tab's parts carry different tempo maps; the one of the {tempo_name} "
+            "part was used, the longest (the first, on a tie), as the tab's player does",
+        ))
     start_bpm = _bpm(raw[0].get("bpm"), 120.0) if raw else 120.0
     # Rounded, not cut: int() made 117.85 BPM 117, a drift that grows bar by bar.
     song.tempo = round(start_bpm)

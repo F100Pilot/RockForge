@@ -12,6 +12,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ### Fixes
 
+- **A Songsterr tab no longer comes in at another part's tempo:** each part of a Songsterr tab carries its own tempo, and RockForge used the first imported track's. In a tab whose bass changes tempo almost every bar, the notes of bar 7 came earlier than in the `.gp` of the same tab. It now uses the tempo of the longest part (the first, on a tie), even if that is the drums, and says which one it used when the parts disagree. (GitHub #26)
+
 - **Palm mutes from a Songsterr tab come in:** Songsterr can mark a palm mute on the beat rather than on each note, and RockForge only looked for it on the note, so those palm mutes were lost from the score and the `.psarc`. They now apply to every note of the beat. Tapping, tremolo picking, the pick direction (down / up) and harmonics written another way come in too. (GitHub #23)
 
 - **A version rebuilt during a detection can be deleted again:** if you rebuilt the project while it was separating instruments or detecting tones or lyrics, the new version stayed stuck as "running" and deleting it always failed. It now starts without that status. And in the app (`.exe`), a build or detection left halfway because the app closed now says so when you open it again, instead of waiting forever.

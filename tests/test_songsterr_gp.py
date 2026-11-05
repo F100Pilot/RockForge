@@ -257,6 +257,54 @@ def test_the_tabs_tempo_map_gives_each_bar_its_exact_start() -> None:
     assert tab_bar_times([3.0, 4.0], [], 120.0) == [0.0, 1.5]
 
 
+def test_the_song_plays_at_the_tempo_of_the_longest_part_not_the_first_charted_one(
+    tmp_path: Path,
+) -> None:
+    """GitHub issue #26: each Songsterr part carries its own tempo map. The bass
+    of that tab changed tempo almost every bar (163 BPM in bar 6, 119 in bar 7)
+    while the drums held 140; reading the first CHARTED part (drums are not
+    charted) put bar 7 0.18 s early. The map is the longest part's, the first on
+    a tie — a drum part included."""
+    def bars(n: int, voice: dict) -> list[dict]:
+        return [{"signature": [4, 4], "voices": [voice]} for _ in range(n)]
+
+    eighths = {"beats": [{"type": 8, "notes": [{"string": 3, "fret": 0}]} for _ in range(8)]}
+    bass = {
+        "name": "Bass", "instrument": "Electric Bass (finger)", "tuning": [38, 33, 28, 21],
+        "automations": {"tempo": [{"measure": 0, "position": 0, "bpm": 140},
+                                  {"measure": 1, "position": 0, "bpm": 163},
+                                  {"measure": 2, "position": 0, "bpm": 119}]},
+        "measures": bars(3, eighths),
+    }
+    drums = {
+        "name": "Drums", "instrument": "Drums",
+        "automations": {"tempo": [{"measure": 0, "position": 0, "bpm": 140}]},
+        "measures": bars(3, {"beats": [{"type": 1, "rest": True}]}),
+    }
+    dst, report = _write(tmp_path, [drums, bass])
+    bar = 240 / 140
+    assert report.bar_times == pytest.approx([0.0, bar, 2 * bar])
+    assert inspect_gp(dst).tempo == 140
+    downbeats = [b.time for b in parse_gp_track(dst, 0, bass=True).tempo_map.beats if b.measure > 0]
+    assert downbeats[:3] == pytest.approx([0.0, bar, 2 * bar], abs=1e-3)
+
+    def says_which(r: object) -> bool:
+        return any("parte Drums" in w or "Drums part" in w for w in r.warnings)  # type: ignore[attr-defined]
+
+    assert says_which(report)
+
+    # Every part on one map: nothing to say.
+    drums["automations"] = bass["automations"]
+    _dst, same = _write(tmp_path, [drums, bass])
+    assert not says_which(same)
+
+    # A longer part wins wherever it is; on a tie the first in Songsterr's order.
+    drums["automations"] = {"tempo": [{"measure": 0, "position": 0, "bpm": 140}]}
+    bass["measures"] = bars(4, eighths)
+    _dst, longer = _write(tmp_path, [drums, bass])
+    assert longer.bar_times[2] != pytest.approx(2 * bar)
+
+
 def test_a_tab_that_follows_a_recording_keeps_its_tempo_to_the_decimal(tmp_path: Path) -> None:
     """GP5 holds a whole BPM at a bar's start, so the tab's own map travels as
     bar times; the GP5's tempo is rounded (int() made 117.85 BPM 117, a drift

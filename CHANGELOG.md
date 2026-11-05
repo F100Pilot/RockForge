@@ -12,6 +12,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ### Correções
 
+- **Um tab do Songsterr já não sai com o andamento de outra parte:** cada parte de um tab do Songsterr traz o seu próprio andamento, e o RockForge usava o da primeira pista que importava. Num tab cujo baixo muda de andamento quase em cada compasso, as notas do compasso 7 apareciam mais cedo do que no `.gp` do mesmo tab. Agora usa o andamento da parte mais longa (a primeira, num empate), mesmo que seja a bateria, e diz qual usou quando as partes não concordam. (GitHub #26)
+
 - **Os palm mutes de um tab do Songsterr já entram:** o Songsterr pode marcar o palm mute no tempo (beat) e não em cada nota, e o RockForge só o procurava na nota. Esses palm mutes perdiam-se na partitura e no `.psarc`. Agora valem para todas as notas do tempo. Também passam a entrar o tapping, o tremolo picking, o sentido da palhetada (para baixo / para cima) e os harmónicos escritos de outra forma. (GitHub #23)
 
 - **Uma versão reconstruída durante uma deteção já se pode apagar:** se reconstruísses o projeto enquanto separava instrumentos ou detetava tons ou letra, a versão nova ficava presa em «a correr» e apagá-la dava sempre erro. Agora começa sem esse estado. E, na aplicação (`.exe`), uma construção ou deteção que ficou a meio porque a aplicação fechou passa a dizer isso mesmo quando voltas a abrir, em vez de ficar à espera para sempre.

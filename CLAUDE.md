@@ -321,9 +321,17 @@ re-inverting the dependency.
    `test_a_beat_lasts_the_duration_songsterr_plays_whatever_its_flags_say`
    (both halves mutation-checked); the recorded Wonderwall parts change
    nothing. The user's actual JSON was not seen (songsterr.com is blocked
-   here); tempo = the first
-   track's `automations.tempo` (song tempo + a mix-table change per later
-   measure, as `tempo_writer` does). Honest losses, all counted in the report
+   here); tempo = `automations.tempo` (song tempo + a mix-table change per
+   later measure, as `tempo_writer` does) of the part with the MOST bars, the
+   first in Songsterr's order on a tie, a drum part included (`_tempo_part`,
+   the rule of the reporter's own Songsterr exporter, whose `.gp` plays in
+   time): each part carries a map of its own, and GitHub issue #26's bass
+   changed tempo almost every bar (163 BPM in bar 6, 119 in bar 7) where the
+   drums held 140, so reading the first CHARTED part put bar 7 0.18 s early;
+   a warning names the part when its map differs from the first charted
+   one's. Which map Songsterr's own player uses was not seen. Guarded by
+   `test_the_song_plays_at_the_tempo_of_the_longest_part_not_the_first_charted_one`
+   (longest, first-on-a-tie and the part itself mutation-checked). Honest losses, all counted in the report
    and shown in the wizard: drums skipped, a grace note with no note on its
    string right after it dropped (the others become GP5 grace EFFECTS on the
    note they lead into, `_attach_graces` — a GP5 grace is an ornament on the
