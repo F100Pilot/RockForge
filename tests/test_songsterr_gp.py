@@ -491,3 +491,32 @@ def test_a_part_a_gp5_cannot_hold_is_left_out_and_said(tmp_path: Path) -> None:
     wide["measures"][0]["signature"] = [200, 4]
     dst, _report = _write(tmp_path, [wide])
     assert inspect_gp(dst).tracks[0].name == "Lead"
+
+
+def test_a_songsterr_capo_reaches_the_chart_with_the_frets_counted_from_the_nut(
+    tmp_path: Path,
+) -> None:
+    # Songsterr counts a note's fret from the capo, as Guitar Pro does (a
+    # top-level ``capo`` per part, joelgoh1/Guitarista's schema): the import
+    # used to drop it, so a capo-2 tab played two semitones low.
+    capo2 = {"name": "Acoustic", "tuning": STANDARD, "capo": 2, "measures": [{"voices": [
+        {"beats": [{"type": 2, "notes": [{"string": 5, "fret": 0}]},
+                   {"type": 2, "notes": [{"string": 4, "fret": 3}]}]}]}]}
+    plain = {**capo2, "name": "Electric", "capo": 0}
+    dst, report = _write(tmp_path, [capo2, plain])
+    with_capo = parse_gp_track(dst, 0)
+    assert with_capo.capo == 2
+    assert [(n.string, n.fret) for n in with_capo.notes] == [(0, 0), (1, 5)]
+    without = parse_gp_track(dst, 1)
+    assert without.capo == 0 and [n.fret for n in without.notes] == [0, 3]
+    assert not report.warnings
+
+
+@pytest.mark.parametrize("bad", [-1, 30, "x", float("inf")])
+def test_a_capo_that_is_not_a_fret_is_read_as_none_and_said(tmp_path: Path, bad: object) -> None:
+    part = {"name": "G", "tuning": STANDARD, "capo": bad, "measures": [{"voices": [
+        {"beats": [{"type": 1, "notes": [{"string": 4, "fret": 3}]}]}]}]}
+    dst, report = _write(tmp_path, [part])
+    parsed = parse_gp_track(dst, 0)
+    assert parsed.capo == 0 and parsed.notes[0].fret == 3
+    assert any("capo" in w for w in report.warnings)

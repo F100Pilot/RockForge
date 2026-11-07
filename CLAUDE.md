@@ -609,7 +609,12 @@ re-inverting the dependency.
    **A capo is read and the frets are counted from the nut** (`strings.apply_capo`,
    both parsers; "It doesn't understand the capo", r/rocksmith 2026-10-15). Guitar
    Pro counts a note's fret from the capo (alphaTab: a string's pitch includes
-   `staff.capo`; GP3-5 `Track.offset`, GPIF Staff `CapoFret`); Rocksmith counts
+   `staff.capo`; GP3-5 `Track.offset`, GPIF Staff `CapoFret`; a Songsterr part's
+   top-level `capo` counts the same way — joelgoh1/Guitarista's schema — and
+   `songsterr_gp._capo` writes it as the GP5 track's, a value that is not a fret
+   read as none and said, guarded by
+   `test_a_songsterr_capo_reaches_the_chart_with_the_frets_counted_from_the_nut`,
+   mutation-checked; no recorded Songsterr answer with a capo was seen); Rocksmith counts
    from the nut, plays an open string at the capo (Rocksmith2014.NET
    `Midi.toMidiNote`) and carries the capo fret (`Arrangement.capo` → XML `<capo>`,
    SNG `CapoFret`, manifest). So every fretted note moves up by the capo, open

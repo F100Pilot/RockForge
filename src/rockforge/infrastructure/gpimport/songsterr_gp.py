@@ -13,7 +13,9 @@ code is not copied from it.
 What a part carries, and how it maps:
 
 - track: ``strings``, ``tuning`` (MIDI, HIGHEST string first — Songsterr's
-  string 0 is the high e, which is GP5's string 1), ``instrument``; no tuning
+  string 0 is the high e, which is GP5's string 1), ``instrument``, ``capo``
+  (frets counted from it, as in Guitar Pro — written as the GP5 track's capo,
+  read in ``joelgoh1/Guitarista``'s Songsterr schema); no tuning
   or a drum instrument = percussion, skipped (RockForge charts guitars).
 - measure: ``signature`` ``[n, d]`` (carries forward until changed),
   ``marker.text`` (a section), ``repeatStart`` (opens a repeat), ``repeat``
@@ -80,6 +82,7 @@ from pathlib import Path
 from typing import Any
 
 from rockforge.domain.errors import IngestionError
+from rockforge.domain.music import MAX_FRET
 from rockforge.i18n import tr
 from rockforge.infrastructure.gpimport.playback import BarFlow, playback_order
 
@@ -219,6 +222,28 @@ def _int(value: Any, default: int) -> int:
         return int(value)
     except (TypeError, ValueError):
         return default
+
+
+def _capo(part: dict[str, Any], name: str, report: SongsterrGpReport) -> int:
+    """The part's capo fret (0 = none). Songsterr counts a note's fret from the
+    capo, as Guitar Pro does (``joelgoh1/Guitarista``'s schema: a top-level
+    ``capo`` per part, a note sounding at tuning + capo + fret), so it becomes
+    the GP5 track's capo and the importer moves the frets to the nut."""
+    raw = part.get("capo")
+    if raw is None or raw is False:
+        return 0
+    try:
+        capo = int(raw)
+    except (TypeError, ValueError, OverflowError):
+        capo = -1
+    if 0 <= capo <= MAX_FRET:
+        return capo
+    report.warnings.append(tr(
+        f"{name}: o capo indicado pelo Songsterr ({raw!r}) não é um traste válido — "
+        "lido sem capo.",
+        f"{name}: the capo Songsterr gives ({raw!r}) is not a valid fret — read with no capo.",
+    ))
+    return 0
 
 
 def _bpm(value: Any, default: float) -> float:
@@ -640,6 +665,7 @@ def write_songsterr_gp5(
         track.strings = [
             guitarpro.GuitarString(number=i + 1, value=v) for i, v in enumerate(tuning)
         ]
+        track.offset = _capo(part, name, report)  # PyGuitarPro: Track.offset = capo
         ch = t_idx if t_idx < 9 else t_idx + 1  # MIDI channel 10 is percussion
         track.channel = guitarpro.MidiChannel(channel=ch % 16, effectChannel=ch % 16)
         track.measures = []
