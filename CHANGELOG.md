@@ -12,6 +12,7 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ### Correções
 
+- **PDFs e imagens de tabs:** um algarismo que não é ASCII ("²", "①") no PDF ou lido por OCR já não interrompe a importação, e uma imagem PNG em tons de cinzento de 16 bits já não é lida quase toda a branco.
 - **Um tab do Songsterr já não sai com o andamento de outra parte:** cada parte de um tab do Songsterr traz o seu próprio andamento, e o RockForge usava o da primeira pista que importava. Num tab cujo baixo muda de andamento quase em cada compasso, as notas do compasso 7 apareciam mais cedo do que no `.gp` do mesmo tab. Agora usa o andamento da parte mais longa (a primeira, num empate), mesmo que seja a bateria, e diz qual usou quando as partes não concordam. (GitHub #26)
 
 - **Os palm mutes de um tab do Songsterr já entram:** o Songsterr pode marcar o palm mute no tempo (beat) e não em cada nota, e o RockForge só o procurava na nota. Esses palm mutes perdiam-se na partitura e no `.psarc`. Agora valem para todas as notas do tempo. Também passam a entrar o tapping, o tremolo picking, o sentido da palhetada (para baixo / para cima) e os harmónicos escritos de outra forma. (GitHub #23)
