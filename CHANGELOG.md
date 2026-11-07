@@ -12,6 +12,7 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ### Correções
 
+- **Pista 3D:** deixa de desenhar quando a página ou o painel não está à vista, e a nota que está exatamente na posição em pausa (num clique num compasso, por exemplo) volta a brilhar ao carregar em Tocar.
 - **PDFs e imagens de tabs:** um algarismo que não é ASCII ("²", "①") no PDF ou lido por OCR já não interrompe a importação, e uma imagem PNG em tons de cinzento de 16 bits já não é lida quase toda a branco.
 - **Um tab do Songsterr já não sai com o andamento de outra parte:** cada parte de um tab do Songsterr traz o seu próprio andamento, e o RockForge usava o da primeira pista que importava. Num tab cujo baixo muda de andamento quase em cada compasso, as notas do compasso 7 apareciam mais cedo do que no `.gp` do mesmo tab. Agora usa o andamento da parte mais longa (a primeira, num empate), mesmo que seja a bateria, e diz qual usou quando as partes não concordam. (GitHub #26)
 

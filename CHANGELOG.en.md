@@ -12,6 +12,7 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ### Fixes
 
+- **3D highway:** it no longer draws while its page or panel is not shown, and the note right at the paused position (after a click on a bar, for example) lights up again when Play is pressed.
 - **Tab PDFs and pictures:** a digit that is not ASCII ("²", "①") in the PDF or read by OCR no longer stops the import, and a 16-bit greyscale PNG picture is no longer read almost all white.
 - **A Songsterr tab no longer comes in at another part's tempo:** each part of a Songsterr tab carries its own tempo, and RockForge used the first imported track's. In a tab whose bass changes tempo almost every bar, the notes of bar 7 came earlier than in the `.gp` of the same tab. It now uses the tempo of the longest part (the first, on a tie), even if that is the drums, and says which one it used when the parts disagree. (GitHub #26)
 

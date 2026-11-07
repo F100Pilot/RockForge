@@ -107,6 +107,7 @@
   let onCamera = null; // told when the camera is turned on the canvas
   let raf = 0;
   let lastNow = null;
+  let wasPlaying = false; // the last frame's: a note at the paused position strikes on Play
   let lastFrame = 0;
 
   function load() {
@@ -1100,6 +1101,7 @@
   // --- Frame --------------------------------------------------------------------------------------
   function frame(ms) {
     raf = requestAnimationFrame(frame);
+    if (!stage.host.getClientRects().length) return; // its page or panel is not shown: nothing to draw
     const dt = lastFrame ? Math.min((ms - lastFrame) / 1000, 0.1) : 0;
     lastFrame = ms;
     let now = 0, playing = false;
@@ -1124,7 +1126,8 @@
         obj.group.position.set(obj.x, stringY(n.string), -(n.t - now) * SPEED);
         rollNote(obj, comesLevel(n) ? 0 : noteRoll(n.t - now));
         if (obj.trail) obj.trail.scale.z = obj.trailLength;
-        if (!jumped && playing && lastNow < n.t && n.t <= now && now - n.t < 0.25) hit(obj);
+        const since = wasPlaying ? lastNow < n.t : lastNow <= n.t; // paused right on it: it strikes now
+        if (!jumped && playing && since && n.t <= now && now - n.t < 0.25) hit(obj);
       }
       const chords = song.chords;
       for (let i = lowerBound(chords, now - 0.3, (c) => c.t); i < chords.length && chords[i].t <= to; i += 1) {
@@ -1158,6 +1161,7 @@
       stage.edges[1].position.x = stage.anchor.position.x + stage.anchor.scale.x / 2;
       stage.cameraX += (targetX - 0.4 - stage.cameraX) * (jumped ? 1 : Math.min(1, dt * 2.5));
       lastNow = now;
+      wasPlaying = playing;
     }
     // Short of 90: straight down, "up" would be undefined and the view would spin.
     const yaw = (options.yaw * Math.PI) / 180, pitch = (Math.min(options.pitch, 89.9) * Math.PI) / 180;
