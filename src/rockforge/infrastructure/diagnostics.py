@@ -13,7 +13,7 @@ So this module answers one question — *what is installed, and what does each
 absence cost me?* — in one place, honestly:
 
 - **Nothing heavy is imported.** `importlib.util.find_spec` locates a package
-  without importing it (the same trick `whisperx_adapter.available()` uses),
+  without importing it,
   which matters because the API process must never pay for torch (see
   CLAUDE.md's layering rules). The price is that we can report whether PyTorch
   is *installed*, never whether its CUDA build works — that is only knowable by

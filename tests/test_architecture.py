@@ -9,7 +9,7 @@ gp_pipeline.py is allowed two narrow, explicitly-accepted exceptions: the GP
 parser (infrastructure/gpimport/parser.py) and the lyric-format parsing
 functions (infrastructure/rsxml/vocals.py) are core, deterministic, exact-
 format logic with a single implementation each — not a swappable ML stage
-like Packager/LyricTranscriber/AudioNormalizer, which already go through a
+like Packager/AudioNormalizer, which already go through a
 Protocol in ports.py. Anything beyond that allowlist is a regression of the
 MAJ-7 audit fix (VocalEvent/PackagingResult used to be defined inside
 infrastructure/, forcing ports.py to import them back from there).

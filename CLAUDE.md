@@ -61,7 +61,7 @@ rule: `infrastructure/gpimport/parser.py` (`inspect_gp`/`parse_gp_track`) and
 the lyric-format functions in `infrastructure/rsxml/vocals.py`
 (`parse_lyrics`/`distribute_syllables`/`enforce_max_line_words`) are core,
 deterministic, single-implementation format parsers — not a swappable ML
-stage like `Packager`/`LyricTranscriber`/`AudioNormalizer` — so putting them
+stage like `Packager`/`AudioNormalizer` — so putting them
 behind a `Protocol` would be indirection with no second implementation to
 justify it. `tests/test_architecture.py` guards both: `ports.py` must import
 zero `infrastructure/` modules, and any OTHER `application/` file's
@@ -2766,7 +2766,7 @@ never hides a completed bundle or disables `/arrangements`. Results land in
 **Line breaks.** WhisperX segments are whole sentences, so putting the `+` line
 break only at segment ends made long segments scroll in-game as one wall of
 text. `segments_to_vocal_events` splits each segment into short display lines
-(`_break_into_lines`): a `+` on a sung pause (word gap > `LINE_BREAK_GAP_S`) or
+(`_whisperx_runner.break_into_lines`): a `+` on a sung pause (word gap > `LINE_BREAK_GAP_S`) or
 every `LINE_MAX_WORDS` words. This is detection-only — LRC/UltraStar/GP-embedded
 lyrics keep their authored line structure.
 
@@ -2989,7 +2989,7 @@ mix is visible before it is used.
   lines, untimed — as `/detect-lyrics`'s `align_lines`. The SAME async task
   then **aligns known words instead of transcribing**: `params["lyrics_align"]`
   → `--align-json` on `_whisperx_runner.py` (`_whisperx_command`) →
-  `WhisperXLyricTranscriber.align`: `alignment_segments` windows each timed line
+  `_whisperx_runner.align`: `alignment_segments` windows each timed line
   from `ALIGN_MARGIN_S` before it to that margin past the next one (so a line a
   little off still finds its words), or ONE whole-recording segment for
   untimed text (less reliable — the confirm dialog says so), then
@@ -5993,8 +5993,7 @@ checked from this process", which is a different and more useful answer than
   after a CUDA crash IS knowable, and is `False`.
 
 **Nothing heavy is imported.** Detection uses `importlib.util.find_spec`, which
-locates a package without importing it — the same trick
-`whisperx_adapter.available()` already uses. `find_spec` RAISES on a
+locates a package without importing it. `find_spec` RAISES on a
 half-removed package rather than returning `None`, so `_has` catches that: a
 diagnostics page that 500s is worse than one that says "missing", and a broken
 install is exactly when the user opens it. The ffmpeg probe runs `-version`

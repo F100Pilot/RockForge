@@ -48,18 +48,6 @@ class AudioNormalizer(Protocol):
         ...
 
 
-class LyricTranscriber(Protocol):
-    def transcribe(self, vocals_stem: Path) -> list[VocalEvent]:
-        """Word-level lyric events transcribed from an isolated vocals stem.
-
-        Timestamps come from forced alignment against the audio itself, so
-        they share the recording's clock (same timeline as the notes XML).
-        Returns [] when the stem is (near-)silent or no word passes the
-        confidence filter — callers must treat that as "no vocals", not error.
-        """
-        ...
-
-
 class Packager(Protocol):
     def package(
         self,
