@@ -14,6 +14,9 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 - **O capo de um tab do Songsterr já entra:** o Songsterr conta os trastes a partir do capo, como o Guitar Pro, mas a importação ignorava-o, e um tab com capo 2 tocava dois meios-tons abaixo. Agora o capo passa para o ficheiro Guitar Pro que o RockForge escreve e os trastes ficam contados a partir da pestana, como no resto do programa. Um capo que não seja um traste válido é ignorado e o aviso diz isso.
 
+- **Pista 3D:** deixa de desenhar quando a página ou o painel não está à vista, e a nota que está exatamente na posição em pausa (num clique num compasso, por exemplo) volta a brilhar ao carregar em Tocar.
+- **PDFs e imagens de tabs:** um algarismo que não é ASCII ("²", "①") no PDF ou lido por OCR já não interrompe a importação, e uma imagem PNG em tons de cinzento de 16 bits já não é lida quase toda a branco.
+
 - **Um tab do Songsterr já não sai com o andamento de outra parte:** cada parte de um tab do Songsterr traz o seu próprio andamento, e o RockForge usava o da primeira pista que importava. Num tab cujo baixo muda de andamento quase em cada compasso, as notas do compasso 7 apareciam mais cedo do que no `.gp` do mesmo tab. Agora usa o andamento da parte mais longa (a primeira, num empate), mesmo que seja a bateria, e diz qual usou quando as partes não concordam. (GitHub #26)
 
 - **Os palm mutes de um tab do Songsterr já entram:** o Songsterr pode marcar o palm mute no tempo (beat) e não em cada nota, e o RockForge só o procurava na nota. Esses palm mutes perdiam-se na partitura e no `.psarc`. Agora valem para todas as notas do tempo. Também passam a entrar o tapping, o tremolo picking, o sentido da palhetada (para baixo / para cima) e os harmónicos escritos de outra forma. (GitHub #23)
