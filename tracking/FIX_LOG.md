@@ -413,6 +413,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0405](#fix-0405) | BUG-0406 | unreleased | not run | pending |
 | [FIX-0406](#fix-0406) | BUG-0407 | unreleased | passed | pending |
 | [FIX-0407](#fix-0407) | BUG-0408 | unreleased | passed | pending |
+| [FIX-0408](#fix-0408) | BUG-0409 | unreleased | passed | pending |
 
 ## FIX-0001
 
@@ -8960,3 +8961,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | passed |
 | Validation | _pending_ |
 | Regression risk | Low: a tab whose parts share one map is unchanged; one where they differ now follows the longest part, which Songsterr's own player was not seen to do. |
+
+## FIX-0408
+
+**Bugs:** [BUG-0409](bugs/import.md#bug-0409)
+
+**Root cause:** write_songsterr_gp5 never read a part's capo, so the GP5 track had none while its frets were counted from it.
+
+**Solution:** songsterr_gp._capo reads the part's capo (0-24) and writes it as the GP5 track's (Track.offset), which the importer already moves to the nut (strings.apply_capo); a value that is not a fret is read as none and said in the warnings.
+
+| | |
+|---|---|
+| Date | 2026-11-07 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | d27380a |
+| Components | import |
+| Tests | tests/test_songsterr_gp.py::test_a_songsterr_capo_reaches_the_chart_with_the_frets_counted_from_the_nut; tests/test_songsterr_gp.py::test_a_capo_that_is_not_a_fret_is_read_as_none_and_said |
+| Manual checks | mutation-checked: without writing Track.offset the capo test fails |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low: a part without a capo (or capo 0) is written exactly as before; never tried against a real Songsterr answer with a capo. |

@@ -2734,3 +2734,43 @@ Imported from a Songsterr link with Songsterr's timing, AngelMaker's Leech put b
 - 2026-11-05 — Triaged: GitHub issue #26; the reporter's two files compared
 - 2026-11-05 — In Progress: GitHub issue #26; FIX-0407 (a525366)
 - 2026-11-05 — Fixed: GitHub issue #26; FIX-0407 (a525366)
+
+## BUG-0409
+
+**A Songsterr tab's capo was ignored**
+
+| | |
+|---|---|
+| Detected | 2026-11-07 |
+| Reported by | maintainer (question whether RockForge reads a capo) |
+| Found in | 0.12.0-beta.6 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Fixed |
+
+Songsterr counts a note's fret from the capo (a top-level capo per part, joelgoh1/Guitarista's schema), as Guitar Pro does. The Songsterr import never read it, so the GP5 it wrote had no capo and every fretted note of a tab with a capo was charted that many semitones low.
+
+**Steps to reproduce:** 
+
+1. import a Songsterr tab whose part has a capo
+2. look at the chart's frets and capo
+
+**Expected:** The capo on the chart and the frets counted from the nut, as for a Guitar Pro file with a capo.
+
+**Observed:** No capo; the frets as written, counted from the nut (found by reading the code; no real tab seen).
+
+**Root cause:** write_songsterr_gp5 never read a part's capo, so the GP5 track had none while its frets were counted from it.
+
+**Fixes:** [FIX-0408](../FIX_LOG.md#fix-0408) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-07 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-07 — Open: found answering whether the capo is read
+- 2026-11-07 — Triaged: Songsterr's capo semantics read in joelgoh1/Guitarista (pitch = tuning + capo + fret)
+- 2026-11-07 — In Progress: FIX-0408 (d27380a)
+- 2026-11-07 — Fixed: FIX-0408 (d27380a)

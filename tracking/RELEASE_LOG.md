@@ -67,6 +67,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0406](bugs/viewer.md#bug-0406) A recording's length read 3:17 in one place and 3:16 in another (Low, now Fixed)
 - [BUG-0407](bugs/import.md#bug-0407) Palm mutes from a Songsterr tab were lost (Medium, now Fixed)
 - [BUG-0408](bugs/import.md#bug-0408) A Songsterr tab took the tempo map of its first charted part (Medium, now Fixed)
+- [BUG-0409](bugs/import.md#bug-0409) A Songsterr tab's capo was ignored (Medium, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 

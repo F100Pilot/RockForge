@@ -6,7 +6,7 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 
 | Fixed | Verified | Closed |
 |---|---|---|
-| 132 | 60 | 216 |
+| 133 | 60 | 216 |
 
 | ID | Title | Module | Severity | Priority | Status | Found in | Fixed in |
 |---|---|---|---|---|---|---|---|
@@ -418,3 +418,4 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0406](bugs/viewer.md#bug-0406) | A recording's length read 3:17 in one place and 3:16 in another | viewer | Low | P4 | Fixed | 0.12.0-beta.6 | — |
 | [BUG-0407](bugs/import.md#bug-0407) | Palm mutes from a Songsterr tab were lost | import | Medium | P2 | Fixed | 0.12.0-beta.6 | — |
 | [BUG-0408](bugs/import.md#bug-0408) | A Songsterr tab took the tempo map of its first charted part | import | Medium | P2 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0409](bugs/import.md#bug-0409) | A Songsterr tab's capo was ignored | import | Medium | P2 | Fixed | 0.12.0-beta.6 | — |

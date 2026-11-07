@@ -20351,6 +20351,56 @@
           "note": "GitHub issue #26; FIX-0407 (a525366)"
         }
       ]
+    },
+    {
+      "id": "BUG-0409",
+      "title": "A Songsterr tab's capo was ignored",
+      "detected": "2026-11-07",
+      "reported_by": "maintainer (question whether RockForge reads a capo)",
+      "found_in_version": "0.12.0-beta.6",
+      "found_in_build": "pending",
+      "module": "import",
+      "description": "Songsterr counts a note's fret from the capo (a top-level capo per part, joelgoh1/Guitarista's schema), as Guitar Pro does. The Songsterr import never read it, so the GP5 it wrote had no capo and every fretted note of a tab with a capo was charted that many semitones low.",
+      "steps": [
+        "import a Songsterr tab whose part has a capo",
+        "look at the chart's frets and capo"
+      ],
+      "expected": "The capo on the chart and the frets counted from the nut, as for a Guitar Pro file with a capo.",
+      "observed": "No capo; the frets as written, counted from the nut (found by reading the code; no real tab seen).",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Fixed",
+      "root_cause": "write_songsterr_gp5 never read a part's capo, so the GP5 track had none while its frets were counted from it.",
+      "fixes": [
+        "FIX-0408"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-07",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-07",
+          "status": "Open",
+          "note": "found answering whether the capo is read"
+        },
+        {
+          "date": "2026-11-07",
+          "status": "Triaged",
+          "note": "Songsterr's capo semantics read in joelgoh1/Guitarista (pitch = tuning + capo + fret)"
+        },
+        {
+          "date": "2026-11-07",
+          "status": "In Progress",
+          "note": "FIX-0408 (d27380a)"
+        },
+        {
+          "date": "2026-11-07",
+          "status": "Fixed",
+          "note": "FIX-0408 (d27380a)"
+        }
+      ]
     }
   ]
 }
