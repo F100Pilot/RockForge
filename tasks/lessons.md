@@ -173,3 +173,7 @@ back right after posting (`gh api repos/<o>/<r>/issues/comments/<id>`) and, if
 a footer was added, PATCH the body back to the exact text — then read it again
 to confirm. Never tell the user a comment has no attribution without having
 read it back.
+
+## Replies on GitHub are written as the maintainer would (2026-11-08)
+
+- A comment on an issue said it could not open the attachments; the user deleted it because it plainly was not theirs. Replies on GitHub go out under the user's account: write them short, plain and human, never mention being an AI, being blocked or lacking access, and never explain more than the reporter needs (what was wrong, that it is fixed, when to try).

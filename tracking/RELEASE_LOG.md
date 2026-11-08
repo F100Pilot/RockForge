@@ -27,7 +27,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 
 **Known bugs it carried:** 
 
-- [BUG-0410](bugs/import.md#bug-0410) A Songsterr tab played at the bass's tempo because the other parts did not download (High, now In Progress)
+- [BUG-0410](bugs/import.md#bug-0410) A Songsterr tab played at the bass's tempo because the other parts did not download (High, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 

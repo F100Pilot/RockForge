@@ -20419,13 +20419,15 @@
       "observed": "The bass's tempo map on the score (from the reporter's screenshot); the GP file Songsterr exports plays in time.",
       "severity": "High",
       "priority": "P2",
-      "status": "In Progress",
+      "status": "Fixed",
       "root_cause": "fetch_tab asked for a part by the track's index on the CloudFront family the image suffix pointed at, never by the meta's partId and never on the other family, so parts stored elsewhere were reported missing.",
-      "fixes": [],
+      "fixes": [
+        "FIX-0409"
+      ],
       "verified_by": "pending",
       "verification": "pending",
       "evidence": [],
-      "resolved": "pending",
+      "resolved": "2026-11-08",
       "closed": "pending",
       "history": [
         {
@@ -20442,6 +20444,11 @@
           "date": "2026-11-08",
           "status": "In Progress",
           "note": "fetch by partId on both families; alternate endings read"
+        },
+        {
+          "date": "2026-11-08",
+          "status": "Fixed",
+          "note": "FIX-0409 (fb7e13e)"
         }
       ]
     }

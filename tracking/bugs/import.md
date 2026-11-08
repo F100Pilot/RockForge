@@ -2787,7 +2787,7 @@ Songsterr counts a note's fret from the capo (a top-level capo per part, joelgoh
 | Build / commit | _pending_ |
 | Severity | High |
 | Priority | P2 |
-| Status | In Progress |
+| Status | Fixed |
 
 A Songsterr tab's tempo map is read from its longest part. When only the bass part downloaded, the bass (whose map changes almost every bar) became the longest part and the whole song took its tempo, drifting from the recording. Parts were fetched by the track's place on one distribution family only, while Songsterr stores them by partId and a part may sit on the other family.
 
@@ -2802,14 +2802,15 @@ A Songsterr tab's tempo map is read from its longest part. When only the bass pa
 
 **Root cause:** fetch_tab asked for a part by the track's index on the CloudFront family the image suffix pointed at, never by the meta's partId and never on the other family, so parts stored elsewhere were reported missing.
 
-**Fixes:** —
+**Fixes:** [FIX-0409](../FIX_LOG.md#fix-0409) (unreleased)
 
 **Verified:** _pending_ (by _pending_)
 
-**Resolved:** _pending_ · **Closed:** _pending_
+**Resolved:** 2026-11-08 · **Closed:** _pending_
 
 **History:**
 
 - 2026-11-08 — Open: reported
 - 2026-11-08 — Triaged: the reporter's screenshot shows the bass's tempo map; their exporter fetches parts by partId on both CDN families
 - 2026-11-08 — In Progress: fetch by partId on both families; alternate endings read
+- 2026-11-08 — Fixed: FIX-0409 (fb7e13e)

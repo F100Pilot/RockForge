@@ -414,6 +414,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0406](#fix-0406) | BUG-0407 | 0.12.0-beta.7 | passed | pending |
 | [FIX-0407](#fix-0407) | BUG-0408 | 0.12.0-beta.7 | passed | pending |
 | [FIX-0408](#fix-0408) | BUG-0409 | 0.12.0-beta.7 | passed | pending |
+| [FIX-0409](#fix-0409) | BUG-0410 | unreleased | passed | pending |
 
 ## FIX-0001
 
@@ -8982,3 +8983,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | passed |
 | Validation | _pending_ |
 | Regression risk | Low: a part without a capo (or capo 0) is written exactly as before; never tried against a real Songsterr answer with a capo. |
+
+## FIX-0409
+
+**Bugs:** [BUG-0410](bugs/import.md#bug-0410)
+
+**Root cause:** fetch_tab asked for a part by the track's index on the CloudFront family the image suffix pointed at, never by the meta's partId and never on the other family, so parts stored elsewhere were reported missing and the bass alone set the tempo map.
+
+**Solution:** songsterr._part_id fetches by the meta track's partId when it gives one (else the track's place) and part_urls tries both distribution families, the one the -stage suffix points at first; songsterr_gp reads repeatCount beside repeat and a measure's alternateEnding as the GP5 repeatAlternative, so each volta plays on its pass.
+
+| | |
+|---|---|
+| Date | 2026-11-08 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | fb7e13e |
+| Components | import |
+| Tests | tests/test_songsterr.py::test_a_part_is_fetched_by_its_part_id_on_both_distributions; tests/test_songsterr_gp.py::test_a_repeat_with_alternate_endings_plays_each_ending_on_its_pass |
+| Manual checks | mutation-checked: fetching by index, or one family only, leaves the lead missing; each of four mutations of the alternate-ending reading fails its test |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low: a part found where it was found before is fetched the same way first; never run against the real Songsterr from here. |
