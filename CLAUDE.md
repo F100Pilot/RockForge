@@ -1634,6 +1634,32 @@ daqui) taken, "Mostrar" flashes the card, Avançado shows all 10 modes and the c
 an advanced mode dropped back in Simples, the choice kept after a reload, step 4
 ticked after marking, no page errors.
 
+### The example project and its tutorial (`example_song.py`, `/projects/example`)
+
+The same feedback's "even though there's a user guide and a video": a tutorial
+needs a song whose tab and recording disagree in KNOWN ways, and no real song can
+ship. `infrastructure/example_song.py` makes both, deterministic: a GP5 riff
+(16 bars of 4/4 at `TAB_BPM` 100, one track, written with PyGuitarPro) and a
+recording synthesized with the stdlib (a plucked string per note, a kick on every
+beat, a hi-hat on every eighth — something for "Acertar pelos ataques" and the ear)
+that starts at `RECORDING_START_S` (2 s), plays at `RECORDING_BPM` (94) and from
+`CHANGE_BAR` (9) at `RECORDING_BPM_LATER` (100) — `recording_time(quarter)` is
+the one formula both the synthesis and the tests use. **Those constants ARE the
+tutorial's answers** (docs/GUIA.md / GUIDE.en.md "Tutorial: sincronizar o projeto
+de exemplo"): change one, change both guides. `POST /projects/example` writes them
+into `gp/` and `uploads/` and queues an ordinary GP project (title in the UI's
+language, artist "RockForge"); the home page's **Projeto de exemplo**
+(`#exampleProjectBtn`) calls it and opens the project, and the sync guide card
+links to the tutorial in the guide of the UI's language (`#syncTutorialLink`).
+Guarded by `test_example_song.py` (the tab's notes and tempo, every attack where
+`recording_time` puts it on both sides of bar 9, the same bytes every time) and
+`test_the_example_project_is_made_here_and_built`; with Playwright on a live
+server (PT 1440 / EN 760 px): the button creates and opens it, and the tutorial's
+values typed in Simples — Início 2, BPM 94, Mais opções → Sincronizar por compasso
+9 → ♩ 100 até 16 — put all 112 notes on the recording to the millisecond, a real
+rebuild 0.5 ms (the XML's rounding), `/psarc-check` clean, no page errors. "Corrigir
+daqui" at bar 9 needs librosa, which this sandbox lacks: not tried here.
+
 ### The recommended workflow: "Corrigir daqui" (`newbeat` mode, `/detect-tempo`)
 
 This is the RECOMMENDED sync mode (it used to be selected on entry; since

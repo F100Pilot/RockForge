@@ -8,6 +8,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ### New
 
+- **Example project and tutorial:** on the home page, **Example project** creates an invented song whose recording starts late, is slower than the tab and speeds up at bar 9. The Guide now has a tutorial that syncs it step by step, with the right values to check each step against, and the "How to sync" card links to it.
+
 - **A PSARC without one instrument:** in Export → Build options, **Recording** now has "Without: Bass" (or guitar, vocals…), so you play that instrument over the rest of the song. RockForge puts the other separated instruments together and uses that mix as the audio; the song gains "(no bass)" in its title and sits in game beside the full version. It needs "Separate instruments" first. Separation is never perfect: a trace of the instrument taken out may still be heard.
 
 - **Simpler syncing:** the Sync inspector now has **Simple** and **Advanced**. Simple (the usual one) keeps only the tools most songs need, with a four-step **How to sync** guide: start, tempo, fix where it drifts, apply and confirm. Each step takes you to the right card. The rest (main track, automatic sync, the recording's attacks, the Mark, Excerpt, Move following and Align bar modes) is under Advanced, and switching loses no correction.

@@ -330,6 +330,28 @@ steps in the order you use them (start, tempo, fix where it drifts, apply and co
 automatic sync, the recording's attacks and the Mark, Excerpt, Move following and Align bar
 modes. The choice is remembered in the browser. Switching between them deletes no correction.
 
+### Tutorial: syncing the example project
+
+On the home page, **Example project** creates "Sync example": an invented song (a guitar riff,
+16 bars at 100 BPM) and a recording made by RockForge that, on purpose, does **not** match the
+tab in three places. Open it and, with Sync on **Simple**:
+
+1. **Song start.** Press play: in the recording the riff only starts at 2 seconds, in the score
+   right at the start. Pause on the first note you hear and press **= cursor** (or type **2** in
+   the field and Enter). The first note now lines up.
+2. **Tempo.** Keep listening: the score's notes get further and further ahead — the recording is
+   slower than the tab. Type **94** in the BPM. Up to bar 8 everything lines up.
+3. **Fix where it drifts.** At bar 9 the recording speeds up and the notes fall behind. Pick
+   **Fix from here** and click the first note of bar 9: it measures the tempo from there on (it
+   needs the audio analysis — in the `.exe`, the extra components). Without it: **More options →
+   Sync by bar**, bar **9**, ♩ = **100**, up to **16**, **Apply**.
+4. **Apply and confirm.** **Apply and rebuild**, listen again from start to end and **Mark this
+   track as synced**.
+
+The answers: start 2 s, 94 BPM, 100 BPM from bar 9 — with them all 112 notes sit on the
+recording. To try again, create another example; to get rid of it, delete the project on the
+home page.
+
 ### The most effective way
 
 What takes the least work and goes wrong the least, in this order:

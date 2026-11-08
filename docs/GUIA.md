@@ -332,6 +332,28 @@ sincronização automática, os ataques da gravação e os modos Marcar, Excerto
 Alinhar compasso. A escolha fica guardada no browser. Mudar de um para o outro não apaga nenhuma
 correção.
 
+### Tutorial: sincronizar o projeto de exemplo
+
+Na página inicial, **Projeto de exemplo** cria «Exemplo de sincronização»: uma música inventada
+(um riff de guitarra, 16 compassos a 100 BPM) e uma gravação feita pelo RockForge que, de
+propósito, **não** bate com a tab em três sítios. Abre-o e, com a Sincronização em **Simples**:
+
+1. **Início da música.** Dá play: na gravação o riff só começa aos 2 segundos, e na partitura
+   logo no início. Pausa na primeira nota que ouves e carrega em **= cursor** (ou escreve **2**
+   no campo e Enter). A primeira nota passa a bater.
+2. **Andamento.** Continua a ouvir: as notas da partitura vão ficando adiantadas, cada vez mais —
+   a gravação é mais lenta do que a tab. Escreve **94** no BPM. Até ao compasso 8 tudo bate.
+3. **Corrigir onde foge.** No compasso 9 a gravação acelera e as notas ficam atrasadas. Escolhe
+   **Corrigir daqui** e clica na primeira nota do compasso 9: mede o andamento dali em diante
+   (precisa da análise de áudio — no `.exe`, dos componentes extra). Sem ela: **Mais opções →
+   Sincronizar por compasso**, compasso **9**, ♩ = **100**, até ao **16**, **Aplicar**.
+4. **Aplicar e confirmar.** **Aplicar e reconstruir**, ouve outra vez do princípio ao fim e
+   **Marcar esta pista como sincronizada**.
+
+As respostas: início 2 s, 94 BPM, 100 BPM a partir do compasso 9 — com elas as 112 notas ficam
+em cima da gravação. Para voltar a tentar, cria outro exemplo; para o tirar, apaga o projeto na
+página inicial.
+
 ### A forma mais eficaz
 
 O que dá menos trabalho e erra menos, por esta ordem:

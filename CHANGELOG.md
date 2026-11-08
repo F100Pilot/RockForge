@@ -8,6 +8,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ### Novidades
 
+- **Projeto de exemplo e tutorial:** na página inicial, **Projeto de exemplo** cria uma música inventada cuja gravação começa tarde, é mais lenta do que a tab e acelera no compasso 9. O Guia tem agora um tutorial que a sincroniza passo a passo, com os valores certos para confirmares cada passo, e o cartão "Como sincronizar" liga para ele.
+
 - **Um PSARC sem um instrumento:** em Exportar → Opções da construção, **Gravação** passa a ter "Sem: Baixo" (ou guitarra, voz…), para tocares esse instrumento por cima do resto da música. O RockForge junta os outros instrumentos separados e usa essa mistura como áudio; a música ganha "(sem baixo)" no título e fica no jogo ao lado da versão completa. Precisa de "Separar instrumentos" antes. A separação nunca é perfeita: pode ouvir-se um resto do instrumento tirado.
 
 - **Sincronização mais simples:** o inspetor Sincronização tem agora **Simples** e **Avançado**. Em Simples (o habitual) ficam só as ferramentas que a maioria das músicas precisa, com um guia **Como sincronizar** em quatro passos: início, andamento, corrigir onde foge, aplicar e confirmar. Cada passo leva-te ao cartão certo. O resto (pista principal, sincronização automática, ataques da gravação, os modos Marcar, Excerto, Mover seguintes e Alinhar compasso) fica em Avançado, e nenhuma correção se perde ao mudar.

@@ -1805,5 +1805,10 @@
   "O PSARC sai como outra música no jogo, com \"({label})\" no título, ao lado da que tem todos os instrumentos. A separação nunca é perfeita: pode ouvir-se um resto do instrumento tirado.": "The PSARC comes out as another song in game, with \"({label})\" in its title, beside the one with every instrument. Separation is never perfect: a trace of the instrument taken out may still be heard.",
   "sem {stem}": "no {stem}",
   "Podes construir esta versão sem um dos instrumentos separados, para o tocares tu.": "You can build this version without one of the separated instruments, so you play it yourself.",
-  "gravação": "recording"
+  "gravação": "recording",
+  "Cria um projeto com uma música inventada para aprender a sincronizar — o tutorial do Guia segue-o passo a passo": "Creates a project with an invented song to learn syncing on — the Guide's tutorial follows it step by step",
+  "Projeto de exemplo": "Example project",
+  "Projeto de exemplo criado — a construir. O tutorial do Guia segue-o passo a passo.": "Example project created — building. The Guide's tutorial follows it step by step.",
+  "Não foi possível criar o exemplo: {error}": "Could not create the example: {error}",
+  "Tutorial com o projeto de exemplo": "Tutorial with the example project"
 };

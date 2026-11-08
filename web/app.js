@@ -1590,6 +1590,22 @@ async function importProject(file) {
   }
 }
 document.getElementById('importProjectBtn').addEventListener('click', () => document.getElementById('importProjectFile').click());
+// "Projeto de exemplo": an invented song whose recording starts late, plays
+// slower and speeds up at bar 9 — the guide's tutorial walks through it.
+document.getElementById('exampleProjectBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('exampleProjectBtn');
+  btn.disabled = true;
+  try {
+    const job = await getJSON('/projects/example', { method: 'POST' });
+    toast(T('Projeto de exemplo criado — a construir. O tutorial do Guia segue-o passo a passo.'), 'ok');
+    await refreshJobs();
+    selectJob(job.id);
+  } catch (e) {
+    toast(T('Não foi possível criar o exemplo: {error}', { error: e.message }), 'err');
+  } finally {
+    btn.disabled = false;
+  }
+});
 document.getElementById('importProjectFile').addEventListener('change', e => {
   const file = e.target.files && e.target.files[0];
   e.target.value = '';
@@ -10919,6 +10935,11 @@ document.querySelectorAll('#syncGuide [data-guide-go]').forEach(b => b.addEventL
   setTimeout(() => card.classList.remove('guide-flash'), 1500);
 }));
 document.getElementById('syncGuideFix')?.addEventListener('click', () => setSyncMode('newbeat'));
+// The tutorial in the guide of the UI's language (Portuguese, else English).
+{
+  const link = document.getElementById('syncTutorialLink');
+  if (link && LANG !== 'pt') link.href = 'https://github.com/F100Pilot/RockForge/blob/main/docs/GUIDE.en.md#tutorial-syncing-the-example-project';
+}
 document.getElementById('snapBeats')?.addEventListener('change', e => {
   snapToBeats = e.target.checked;
   if (arrangements.length) showArr(currentArr);  // show/hide the grid

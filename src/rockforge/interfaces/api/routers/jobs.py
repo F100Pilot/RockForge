@@ -740,6 +740,35 @@ def _copy_capped(src: UploadFile, dest: Path, cap: int) -> None:
         raise
 
 
+@router.post("/projects/example", response_model=JobOut, status_code=202)
+def create_example_project() -> JobOut:
+    """A project to learn syncing on: an invented riff and a synthesized
+    recording that starts late, plays slower than the tab and speeds up at bar
+    9 (``example_song``) — what the guide's tutorial walks through. Made here,
+    so it needs no download and carries nobody's song."""
+    from rockforge.infrastructure.example_song import (
+        write_example_gp5,
+        write_example_recording,
+    )
+
+    gp_dir = api.settings.work_dir / "gp"
+    uploads = api.settings.work_dir / "uploads"
+    gp_dir.mkdir(parents=True, exist_ok=True)
+    uploads.mkdir(parents=True, exist_ok=True)
+    title = i18n.tr("Exemplo de sincronização", "Sync example")
+    score = write_example_gp5(gp_dir / f"{uuid.uuid4()}.gp5", title, "RockForge")
+    recording = write_example_recording(uploads / f"{uuid.uuid4()}.wav")
+    with api._session_factory() as session:
+        job = Job(
+            source=str(recording), source_type="gp", title=title, artist="RockForge",
+            params={"gp_path": str(score), "lead_track": 0},
+        )
+        session.add(job)
+        session.commit()
+        api._enqueue(job)
+        return api._to_out(job)
+
+
 @router.post("/projects/import", response_model=JobOut, status_code=202)
 def import_project(file: UploadFile = File(...)) -> JobOut:
     """A ``.rfproj`` file becomes a new project, built again from what it

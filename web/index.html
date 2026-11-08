@@ -758,7 +758,7 @@ a.pv-coffee { color:#ffd27a; border-color:#5a4a2a; }
 a.pv-star { color:#cfd8ea; }
 a.pv-star .ic { color:#ffd27a; }
 @media (max-width: 900px) { #coffeeBtn, #starBtn { width:2.75rem; padding:0; justify-content:center; } #coffeeBtn .pv-coffee-lbl, #starBtn .pv-star-lbl { display:none; } }
-@media (max-width: 1100px) { #importProjectBtn { width:2.75rem; padding:0; justify-content:center; } #importProjectBtn .pv-import-lbl { display:none; } }
+@media (max-width: 1100px) { #importProjectBtn, #exampleProjectBtn { width:2.75rem; padding:0; justify-content:center; } #importProjectBtn .pv-import-lbl, #exampleProjectBtn .pv-import-lbl { display:none; } }
 .project-export-row .check { display:flex; margin-top:.4rem; }
 button.pv-btn .ic, a.pv-btn .ic { width:1.3rem; height:1.3rem; margin:0; }
 select.lang-select { height:2.75rem; border-radius:10px; border:1px solid #33363f; background:#1f2129;
@@ -1087,6 +1087,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
     <button type="button" id="openBatchModal" class="pv-btn" title="Vários ficheiros Guitar Pro + gravações de uma vez — um álbum inteiro"><svg class="ic" aria-hidden="true"><use href="#i-package"/></svg>Lote (álbum)</button>
     <button type="button" id="importProjectBtn" class="pv-btn" title="Abre um projeto exportado do RockForge (.rfproj) — de outro computador ou de uma cópia" aria-label="Importar projeto"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg><span class="pv-import-lbl">Importar projeto</span></button>
     <input type="file" id="importProjectFile" accept=".rfproj,.zip" hidden>
+    <button type="button" id="exampleProjectBtn" class="pv-btn" title="Cria um projeto com uma música inventada para aprender a sincronizar — o tutorial do Guia segue-o passo a passo" aria-label="Projeto de exemplo"><svg class="ic" aria-hidden="true"><use href="#i-music"/></svg><span class="pv-import-lbl">Projeto de exemplo</span></button>
     <button type="button" class="pv-btn pv-primary" data-new="gp"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>Novo projeto</button>
     <select id="langSelectTop" class="lang-select" data-lang-select="short" translate="no" title="Idioma · Language" aria-label="Idioma · Language">
       <option value="pt">PT</option>
@@ -1383,6 +1384,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                 <div class="pv-card-head">Como sincronizar
                   <button class="info-btn" data-info="sync-guide">ⓘ</button></div>
                 <div id="syncGuideHint" class="pv-card-desc" hidden></div>
+                <a id="syncTutorialLink" class="link-btn" target="_blank" rel="noopener" href="https://github.com/F100Pilot/RockForge/blob/main/docs/GUIA.md#tutorial-sincronizar-o-projeto-de-exemplo">Tutorial com o projeto de exemplo</a>
                 <ol class="sync-guide-steps">
                   <li><span class="sync-step-num">1</span><div><b>Início da música</b><span class="meta">Dá play, pausa onde soa a 1ª nota e carrega em <b>= cursor</b>. Ou experimenta <b>Acertar pelos ataques</b>.</span>
                     <button type="button" class="link-btn" data-guide-go="syncStartCard">Mostrar</button></div></li>

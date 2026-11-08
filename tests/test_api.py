@@ -5264,3 +5264,18 @@ def test_a_version_without_one_separated_instrument_is_stored_and_kept_apart_in_
     assert kept["backing_without"] == "bass"
     back = client.post(f"/jobs/{kept['id']}/rebuild", json={"backing_without": ""}).json()
     assert back["backing_without"] is None
+
+
+def test_the_example_project_is_made_here_and_built(client: TestClient) -> None:
+    """"Projeto de exemplo": a tab and a recording made by the server (no
+    download, nobody's song), queued like any project."""
+    import rockforge.interfaces.api.app as app_module
+
+    r = client.post("/projects/example")
+    assert r.status_code == 202
+    job = r.json()
+    assert job["artist"] == "RockForge" and job["source_type"] == "gp"
+    with app_module._session_factory() as session:
+        row = session.get(app_module.Job, job["id"])
+        assert Path(row.source).is_file() and Path(row.source).suffix == ".wav"
+        assert Path(row.params["gp_path"]).is_file() and row.params["lead_track"] == 0
