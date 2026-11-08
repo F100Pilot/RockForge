@@ -442,7 +442,7 @@ The forget request was sent once; offline or a server error, it was never tried 
 
 **Root cause:** set_enabled(False) saved {consent: False} before the forget and kept no record of the id owed one.
 
-**Fixes:** [FIX-0383](../FIX_LOG.md#fix-0383) (unreleased)
+**Fixes:** [FIX-0383](../FIX_LOG.md#fix-0383) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 
@@ -482,7 +482,7 @@ read_entries inflated each zlib block whole: a 58 KB block made 60 MB (141 MB pe
 
 **Root cause:** zlib.decompress with no output limit, and nothing the header declares checked against the file.
 
-**Fixes:** [FIX-0385](../FIX_LOG.md#fix-0385) (unreleased)
+**Fixes:** [FIX-0385](../FIX_LOG.md#fix-0385) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 
@@ -521,7 +521,7 @@ extract_plan scanned every opening brace to its close (200 000 unclosed braces: 
 
 **Root cause:** One full scan per brace; a regex with nested optional parts on an unbounded label.
 
-**Fixes:** [FIX-0386](../FIX_LOG.md#fix-0386) (unreleased)
+**Fixes:** [FIX-0386](../FIX_LOG.md#fix-0386) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 
@@ -560,7 +560,7 @@ Every field keyed by chart (rebuild arrangement, other_sync, note edits, FHPs, t
 
 **Root cause:** The keys were typed str.
 
-**Fixes:** [FIX-0387](../FIX_LOG.md#fix-0387) (unreleased)
+**Fixes:** [FIX-0387](../FIX_LOG.md#fix-0387) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 
@@ -600,7 +600,7 @@ The host, credentials and origin checks were FastAPI dependencies, which run aft
 
 **Root cause:** The gate was a dependency, not middleware.
 
-**Fixes:** [FIX-0401](../FIX_LOG.md#fix-0401) (unreleased)
+**Fixes:** [FIX-0401](../FIX_LOG.md#fix-0401) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 
@@ -639,7 +639,7 @@ The wizard's LRC upload had the 500 MB limit of any upload, not the 200 000-char
 
 **Root cause:** _read_upload_capped had one limit for every upload.
 
-**Fixes:** [FIX-0402](../FIX_LOG.md#fix-0402) (unreleased)
+**Fixes:** [FIX-0402](../FIX_LOG.md#fix-0402) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 

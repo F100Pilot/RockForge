@@ -1026,7 +1026,7 @@ With only a bass preset "used" from the tone detection, the song's tone list was
 
 **Root cause:** _tone_setup filtered the song's tones only for the Bass chart (GitHub issue #9), never for the guitar charts.
 
-**Fixes:** [FIX-0376](../FIX_LOG.md#fix-0376) (unreleased)
+**Fixes:** [FIX-0376](../FIX_LOG.md#fix-0376) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 
@@ -1066,7 +1066,7 @@ A null knob value, a number where the descriptors go or Entries as a list raised
 
 **Root cause:** float(v) on knob values and list/dict assumptions outside the per-archive try; scan() had no try around read_psarc_tones.
 
-**Fixes:** [FIX-0382](../FIX_LOG.md#fix-0382) (unreleased)
+**Fixes:** [FIX-0382](../FIX_LOG.md#fix-0382) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 
@@ -1105,7 +1105,7 @@ Only a tone's volume was checked, so a NaN knob in a rebuild, the library or a t
 
 **Root cause:** _pedal_from_dict converted knobs with float() and nothing more.
 
-**Fixes:** [FIX-0388](../FIX_LOG.md#fix-0388) (unreleased)
+**Fixes:** [FIX-0388](../FIX_LOG.md#fix-0388) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 

@@ -2343,7 +2343,7 @@ A rebuild, GP reload or sync import forked while a stem separation, tone detecti
 
 **Root cause:** The fork copied params whole, including the non-final detection statuses, and nothing reset statuses on startup in in-process mode, where the queue lived in memory.
 
-**Fixes:** [FIX-0373](../FIX_LOG.md#fix-0373) (unreleased)
+**Fixes:** [FIX-0373](../FIX_LOG.md#fix-0373) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 
@@ -2382,7 +2382,7 @@ urlsplit raises on an unclosed IPv6 bracket and getaddrinfo UnicodeError on a na
 
 **Root cause:** Neither exception was caught.
 
-**Fixes:** [FIX-0390](../FIX_LOG.md#fix-0390) (unreleased)
+**Fixes:** [FIX-0390](../FIX_LOG.md#fix-0390) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 
@@ -2422,7 +2422,7 @@ A year past 64 bits failed the commit; an integer past any float failed /import-
 
 **Root cause:** No bound on the year; float() of a huge int; no existence check before FileResponse.
 
-**Fixes:** [FIX-0391](../FIX_LOG.md#fix-0391) (unreleased)
+**Fixes:** [FIX-0391](../FIX_LOG.md#fix-0391) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 
@@ -2462,7 +2462,7 @@ Under Celery, .delay() raised after the job was committed waiting for it: a 500,
 
 **Root cause:** The enqueue failure was not caught.
 
-**Fixes:** [FIX-0392](../FIX_LOG.md#fix-0392) (unreleased)
+**Fixes:** [FIX-0392](../FIX_LOG.md#fix-0392) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 
@@ -2501,7 +2501,7 @@ detected_tones and vocal_melody were only checked to be an object and a list; a 
 
 **Root cause:** _check_imported_params did not look inside them.
 
-**Fixes:** [FIX-0393](../FIX_LOG.md#fix-0393) (unreleased)
+**Fixes:** [FIX-0393](../FIX_LOG.md#fix-0393) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 
@@ -2540,7 +2540,7 @@ IncompleteRead is an http.client.HTTPException, not an OSError, so a connection 
 
 **Root cause:** get_json caught URLError/TimeoutError/OSError only.
 
-**Fixes:** [FIX-0394](../FIX_LOG.md#fix-0394) (unreleased)
+**Fixes:** [FIX-0394](../FIX_LOG.md#fix-0394) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 
@@ -2580,7 +2580,7 @@ IncompleteRead is an http.client.HTTPException, not an OSError, so a connection 
 
 **Root cause:** IngestionError not caught there.
 
-**Fixes:** [FIX-0395](../FIX_LOG.md#fix-0395) (unreleased)
+**Fixes:** [FIX-0395](../FIX_LOG.md#fix-0395) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 

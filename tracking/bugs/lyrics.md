@@ -1275,7 +1275,7 @@ editorLines, which regroups the editor's words into the lines sent to WhisperX f
 
 **Root cause:** The leading space was skipped whenever THIS syllable ended in '-', instead of when the PREVIOUS one did.
 
-**Fixes:** [FIX-0377](../FIX_LOG.md#fix-0377) (unreleased)
+**Fixes:** [FIX-0377](../FIX_LOG.md#fix-0377) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 
@@ -1314,7 +1314,7 @@ The chart's grace note before a beat takes the end of the previous note's time a
 
 **Root cause:** Clamped to measure.start instead of the song's start.
 
-**Fixes:** [FIX-0397](../FIX_LOG.md#fix-0397) (unreleased)
+**Fixes:** [FIX-0397](../FIX_LOG.md#fix-0397) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 

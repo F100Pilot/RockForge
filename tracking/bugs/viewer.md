@@ -1779,7 +1779,7 @@ The transport handler checked only that a project was open: Backspace deleted th
 
 **Root cause:** The handler lacked the page/modal guard the other global keydown handlers have.
 
-**Fixes:** [FIX-0378](../FIX_LOG.md#fix-0378) (unreleased)
+**Fixes:** [FIX-0378](../FIX_LOG.md#fix-0378) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 
@@ -1819,7 +1819,7 @@ The trail and chord-frame geometries made for each note entering the view were d
 
 **Root cause:** song.owned kept every geometry until disposeSong.
 
-**Fixes:** [FIX-0403](../FIX_LOG.md#fix-0403) (unreleased)
+**Fixes:** [FIX-0403](../FIX_LOG.md#fix-0403) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 
@@ -1858,7 +1858,7 @@ updateFretboard mapped every note through the warp and sorted the attacks 60 tim
 
 **Root cause:** Nothing was cached between frames.
 
-**Fixes:** [FIX-0404](../FIX_LOG.md#fix-0404) (unreleased)
+**Fixes:** [FIX-0404](../FIX_LOG.md#fix-0404) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 
@@ -1897,7 +1897,7 @@ The lyric lookup's cards rounded the recording's length while the transport and 
 
 **Root cause:** Two formatters (fmtMinSec, fmtClock).
 
-**Fixes:** [FIX-0405](../FIX_LOG.md#fix-0405) (unreleased)
+**Fixes:** [FIX-0405](../FIX_LOG.md#fix-0405) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 

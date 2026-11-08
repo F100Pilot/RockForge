@@ -6,6 +6,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+## [0.12.0 beta 7] — 2026-11-08
+
 ### Novidades
 
 - **Projeto de exemplo e tutorial:** na página inicial, **Projeto de exemplo** cria uma música inventada cuja gravação começa tarde, é mais lenta do que a tab e acelera no compasso 9. O Guia tem agora um tutorial que a sincroniza passo a passo, com os valores certos para confirmares cada passo, e o cartão "Como sincronizar" liga para ele.

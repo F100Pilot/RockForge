@@ -378,42 +378,42 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0370](#fix-0370) | BUG-0371 | 0.12.0-beta.5 | passed | automated |
 | [FIX-0371](#fix-0371) | BUG-0372 | 0.12.0-beta.5 | passed | automated |
 | [FIX-0372](#fix-0372) | BUG-0373 | 0.12.0-beta.5 | passed | pending |
-| [FIX-0373](#fix-0373) | BUG-0374 | unreleased | passed | pending |
-| [FIX-0374](#fix-0374) | BUG-0375 | unreleased | passed | pending |
-| [FIX-0375](#fix-0375) | BUG-0376 | unreleased | passed | pending |
-| [FIX-0376](#fix-0376) | BUG-0377 | unreleased | passed | pending |
-| [FIX-0377](#fix-0377) | BUG-0378 | unreleased | not run | pending |
-| [FIX-0378](#fix-0378) | BUG-0379 | unreleased | not run | pending |
-| [FIX-0379](#fix-0379) | BUG-0380 | unreleased | passed | pending |
-| [FIX-0380](#fix-0380) | BUG-0381 | unreleased | passed | pending |
-| [FIX-0381](#fix-0381) | BUG-0382 | unreleased | passed | pending |
-| [FIX-0382](#fix-0382) | BUG-0383 | unreleased | passed | pending |
-| [FIX-0383](#fix-0383) | BUG-0384 | unreleased | passed | pending |
-| [FIX-0384](#fix-0384) | BUG-0385 | unreleased | passed | pending |
-| [FIX-0385](#fix-0385) | BUG-0386 | unreleased | passed | pending |
-| [FIX-0386](#fix-0386) | BUG-0387 | unreleased | passed | pending |
-| [FIX-0387](#fix-0387) | BUG-0388 | unreleased | passed | pending |
-| [FIX-0388](#fix-0388) | BUG-0389 | unreleased | passed | pending |
-| [FIX-0389](#fix-0389) | BUG-0390 | unreleased | passed | pending |
-| [FIX-0390](#fix-0390) | BUG-0391 | unreleased | passed | pending |
-| [FIX-0391](#fix-0391) | BUG-0392 | unreleased | passed | pending |
-| [FIX-0392](#fix-0392) | BUG-0393 | unreleased | passed | pending |
-| [FIX-0393](#fix-0393) | BUG-0394 | unreleased | passed | pending |
-| [FIX-0394](#fix-0394) | BUG-0395 | unreleased | passed | pending |
-| [FIX-0395](#fix-0395) | BUG-0396 | unreleased | passed | pending |
-| [FIX-0396](#fix-0396) | BUG-0397 | unreleased | passed | pending |
-| [FIX-0397](#fix-0397) | BUG-0398 | unreleased | passed | pending |
-| [FIX-0398](#fix-0398) | BUG-0399 | unreleased | passed | pending |
-| [FIX-0399](#fix-0399) | BUG-0400 | unreleased | passed | pending |
-| [FIX-0400](#fix-0400) | BUG-0401 | unreleased | passed | pending |
-| [FIX-0401](#fix-0401) | BUG-0402 | unreleased | passed | pending |
-| [FIX-0402](#fix-0402) | BUG-0403 | unreleased | passed | pending |
-| [FIX-0403](#fix-0403) | BUG-0404 | unreleased | not run | pending |
-| [FIX-0404](#fix-0404) | BUG-0405 | unreleased | not run | pending |
-| [FIX-0405](#fix-0405) | BUG-0406 | unreleased | not run | pending |
-| [FIX-0406](#fix-0406) | BUG-0407 | unreleased | passed | pending |
-| [FIX-0407](#fix-0407) | BUG-0408 | unreleased | passed | pending |
-| [FIX-0408](#fix-0408) | BUG-0409 | unreleased | passed | pending |
+| [FIX-0373](#fix-0373) | BUG-0374 | 0.12.0-beta.7 | passed | pending |
+| [FIX-0374](#fix-0374) | BUG-0375 | 0.12.0-beta.7 | passed | pending |
+| [FIX-0375](#fix-0375) | BUG-0376 | 0.12.0-beta.7 | passed | pending |
+| [FIX-0376](#fix-0376) | BUG-0377 | 0.12.0-beta.7 | passed | pending |
+| [FIX-0377](#fix-0377) | BUG-0378 | 0.12.0-beta.7 | not run | pending |
+| [FIX-0378](#fix-0378) | BUG-0379 | 0.12.0-beta.7 | not run | pending |
+| [FIX-0379](#fix-0379) | BUG-0380 | 0.12.0-beta.7 | passed | pending |
+| [FIX-0380](#fix-0380) | BUG-0381 | 0.12.0-beta.7 | passed | pending |
+| [FIX-0381](#fix-0381) | BUG-0382 | 0.12.0-beta.7 | passed | pending |
+| [FIX-0382](#fix-0382) | BUG-0383 | 0.12.0-beta.7 | passed | pending |
+| [FIX-0383](#fix-0383) | BUG-0384 | 0.12.0-beta.7 | passed | pending |
+| [FIX-0384](#fix-0384) | BUG-0385 | 0.12.0-beta.7 | passed | pending |
+| [FIX-0385](#fix-0385) | BUG-0386 | 0.12.0-beta.7 | passed | pending |
+| [FIX-0386](#fix-0386) | BUG-0387 | 0.12.0-beta.7 | passed | pending |
+| [FIX-0387](#fix-0387) | BUG-0388 | 0.12.0-beta.7 | passed | pending |
+| [FIX-0388](#fix-0388) | BUG-0389 | 0.12.0-beta.7 | passed | pending |
+| [FIX-0389](#fix-0389) | BUG-0390 | 0.12.0-beta.7 | passed | pending |
+| [FIX-0390](#fix-0390) | BUG-0391 | 0.12.0-beta.7 | passed | pending |
+| [FIX-0391](#fix-0391) | BUG-0392 | 0.12.0-beta.7 | passed | pending |
+| [FIX-0392](#fix-0392) | BUG-0393 | 0.12.0-beta.7 | passed | pending |
+| [FIX-0393](#fix-0393) | BUG-0394 | 0.12.0-beta.7 | passed | pending |
+| [FIX-0394](#fix-0394) | BUG-0395 | 0.12.0-beta.7 | passed | pending |
+| [FIX-0395](#fix-0395) | BUG-0396 | 0.12.0-beta.7 | passed | pending |
+| [FIX-0396](#fix-0396) | BUG-0397 | 0.12.0-beta.7 | passed | pending |
+| [FIX-0397](#fix-0397) | BUG-0398 | 0.12.0-beta.7 | passed | pending |
+| [FIX-0398](#fix-0398) | BUG-0399 | 0.12.0-beta.7 | passed | pending |
+| [FIX-0399](#fix-0399) | BUG-0400 | 0.12.0-beta.7 | passed | pending |
+| [FIX-0400](#fix-0400) | BUG-0401 | 0.12.0-beta.7 | passed | pending |
+| [FIX-0401](#fix-0401) | BUG-0402 | 0.12.0-beta.7 | passed | pending |
+| [FIX-0402](#fix-0402) | BUG-0403 | 0.12.0-beta.7 | passed | pending |
+| [FIX-0403](#fix-0403) | BUG-0404 | 0.12.0-beta.7 | not run | pending |
+| [FIX-0404](#fix-0404) | BUG-0405 | 0.12.0-beta.7 | not run | pending |
+| [FIX-0405](#fix-0405) | BUG-0406 | 0.12.0-beta.7 | not run | pending |
+| [FIX-0406](#fix-0406) | BUG-0407 | 0.12.0-beta.7 | passed | pending |
+| [FIX-0407](#fix-0407) | BUG-0408 | 0.12.0-beta.7 | passed | pending |
+| [FIX-0408](#fix-0408) | BUG-0409 | 0.12.0-beta.7 | passed | pending |
 
 ## FIX-0001
 
@@ -8239,7 +8239,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-04 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | b272048; 96bc5a3 |
 | Components | app |
 | Tests | tests/test_api.py::test_a_version_rebuilt_while_a_detection_runs_does_not_inherit_it; tests/test_api.py::test_work_the_app_was_doing_when_it_stopped_is_marked_on_the_next_start |
@@ -8260,7 +8260,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-04 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | beac5e5 |
 | Components | exe |
 | Tests | tests/test_inprocess.py::test_closing_drops_the_queued_tasks_instead_of_running_them_unseen; tests/test_standalone_launcher.py::test_quitting_with_work_left_ends_the_process_instead_of_lingering |
@@ -8281,7 +8281,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-04 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | 3a3fefa |
 | Components | sync |
 | Tests | tests/test_gp_pipeline.py::test_edits_follow_the_lead_track_when_a_rhythm_is_added_or_removed; tests/test_celery_tasks.py::test_the_jobs_edits_follow_the_chart_to_its_new_name |
@@ -8302,7 +8302,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-04 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | f56b44e |
 | Components | tones |
 | Tests | tests/test_bass_arrangement.py::test_a_guitar_chart_never_takes_the_songs_bass_tones; tests/test_bass_arrangement.py::test_the_bass_never_takes_the_songs_guitar_tones |
@@ -8323,7 +8323,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-04 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | 3504af7 |
 | Components | lyrics |
 | Tests | — |
@@ -8344,7 +8344,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-04 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | 90c2c8e |
 | Components | viewer |
 | Tests | — |
@@ -8365,7 +8365,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-04 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | bb28399 |
 | Components | psarc |
 | Tests | tests/test_psarc_sng.py::test_every_level_shows_the_first_chord_of_a_run_in_full; tests/test_psarc_sng.py::test_repeated_chords_marked_high_density_but_not_the_first |
@@ -8386,7 +8386,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-04 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | 1edd833 |
 | Components | psarc |
 | Tests | tests/test_psarc_packer.py::test_a_preview_that_will_not_convert_still_gives_a_psarc |
@@ -8407,7 +8407,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-04 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | fd8f9fa; 8586866 |
 | Components | audio |
 | Tests | tests/test_wwise.py::test_the_wwise_version_is_the_install_folders_not_a_parents |
@@ -8428,7 +8428,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-04 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | 995f7ba |
 | Components | tones |
 | Tests | tests/test_tone_collection.py::test_an_odd_manifest_skips_its_tone_never_the_scan |
@@ -8449,7 +8449,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-04 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | c5589e5 |
 | Components | security |
 | Tests | tests/test_install_counter.py::test_a_forget_that_could_not_be_sent_is_sent_on_the_next_start |
@@ -8470,7 +8470,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-04 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | 1cc4c09 |
 | Components | import |
 | Tests | tests/test_gpif_import.py::test_a_gp7_file_with_impossible_numbers_is_refused_in_words |
@@ -8491,7 +8491,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-04 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | fffffc8 |
 | Components | security |
 | Tests | tests/test_tone_collection.py::test_an_archive_from_the_dlc_folder_cannot_make_us_inflate_or_read_past_it |
@@ -8512,7 +8512,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-04 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | 6f59240 |
 | Components | security |
 | Tests | tests/test_tone_plan.py::test_a_pasted_text_built_to_be_slow_is_answered_at_once |
@@ -8533,7 +8533,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-04 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | e3d4775 |
 | Components | security |
 | Tests | tests/test_api.py::test_a_chart_name_the_build_never_makes_is_refused |
@@ -8554,7 +8554,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-04 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | ceebaef |
 | Components | tones |
 | Tests | tests/test_api.py::test_a_tone_knob_that_is_not_a_number_is_refused |
@@ -8575,7 +8575,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-04 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | fefb276 |
 | Components | import |
 | Tests | tests/test_songsterr_gp.py::test_a_part_a_gp5_cannot_hold_is_left_out_and_said |
@@ -8596,7 +8596,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-04 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | 3844942 |
 | Components | app |
 | Tests | tests/test_image_fetch.py::test_a_link_that_cannot_even_be_split_is_refused_not_a_crash |
@@ -8617,7 +8617,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-04 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | dda21e1 |
 | Components | app |
 | Tests | tests/test_api.py::test_numbers_too_big_for_the_database_and_files_gone_from_disk_are_said |
@@ -8638,7 +8638,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-04 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | bbd837a |
 | Components | app |
 | Tests | tests/test_api.py::test_a_queue_that_does_not_answer_marks_the_job_and_says_so |
@@ -8659,7 +8659,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-04 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | 1c41103; b4a04d0 |
 | Components | app |
 | Tests | tests/test_api.py::test_a_projects_measurements_in_a_shape_nothing_reads_are_refused |
@@ -8680,7 +8680,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-04 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | 1c03816 |
 | Components | app |
 | Tests | tests/test_https.py::test_an_answer_cut_off_mid_way_is_a_network_failure_not_a_crash |
@@ -8701,7 +8701,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-04 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | 8c7cce3 |
 | Components | app |
 | Tests | tests/test_api.py::test_a_stored_gp_file_that_no_longer_reads_is_a_422 |
@@ -8722,7 +8722,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-04 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | 61b0215 |
 | Components | import |
 | Tests | tests/test_gp_import.py::test_a_bar_of_no_beats_is_refused_in_words |
@@ -8743,7 +8743,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-04 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | 981753a |
 | Components | lyrics |
 | Tests | tests/test_gp_import.py::test_a_sung_grace_note_on_a_bar_line_starts_in_the_bar_before |
@@ -8764,7 +8764,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-04 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | 18b74fe |
 | Components | editor |
 | Tests | tests/test_rsxml_writer.py::test_a_short_bent_note_and_a_users_noguitar_section_read_back |
@@ -8785,7 +8785,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-04 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | 7453c7a |
 | Components | sync |
 | Tests | tests/test_sync_map.py::test_two_points_on_one_instant_of_the_score_do_not_divide_by_zero |
@@ -8806,7 +8806,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-04 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | 2538bbc |
 | Components | psarc |
 | Tests | tests/test_psarc_manifest.py::test_the_xml_and_the_manifest_advertise_the_same_techniques |
@@ -8827,7 +8827,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-04 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | 98b0092 |
 | Components | security |
 | Tests | tests/test_api.py::test_an_upload_without_credentials_is_refused_before_its_body_is_read |
@@ -8848,7 +8848,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-04 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | 0f5d749; e294888 |
 | Components | security |
 | Tests | tests/test_api.py::test_an_uploaded_lrc_is_capped_at_what_a_lyric_can_be |
@@ -8869,7 +8869,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-04 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | e4749b0 |
 | Components | viewer |
 | Tests | — |
@@ -8890,7 +8890,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-04 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | 719557f |
 | Components | viewer |
 | Tests | — |
@@ -8911,7 +8911,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-04 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | a249ef0 |
 | Components | viewer |
 | Tests | — |
@@ -8932,7 +8932,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-05 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | 7253f5f |
 | Components | import |
 | Tests | tests/test_songsterr_gp.py::test_what_songsterr_marks_on_the_beat_reaches_every_note_of_it |
@@ -8953,7 +8953,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-05 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | a525366 |
 | Components | import |
 | Tests | tests/test_songsterr_gp.py::test_the_song_plays_at_the_tempo_of_the_longest_part_not_the_first_charted_one |
@@ -8974,7 +8974,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-07 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.7 |
 | Commits | d27380a |
 | Components | import |
 | Tests | tests/test_songsterr_gp.py::test_a_songsterr_capo_reaches_the_chart_with_the_frets_counted_from_the_nut; tests/test_songsterr_gp.py::test_a_capo_that_is_not_a_fret_is_read_as_none_and_said |

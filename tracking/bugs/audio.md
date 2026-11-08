@@ -529,7 +529,7 @@ WwiseWemConverter.version() searched the whole path, so D:\Games2022\Audiokineti
 
 **Root cause:** re.search over str(root) instead of the install folder's own name.
 
-**Fixes:** [FIX-0381](../FIX_LOG.md#fix-0381) (unreleased)
+**Fixes:** [FIX-0381](../FIX_LOG.md#fix-0381) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 

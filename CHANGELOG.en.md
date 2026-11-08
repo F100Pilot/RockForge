@@ -6,6 +6,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+## [0.12.0 beta 7] — 2026-11-08
+
 ### New
 
 - **Example project and tutorial:** on the home page, **Example project** creates an invented song whose recording starts late, is slower than the tab and speeds up at bar 9. The Guide now has a tutorial that syncs it step by step, with the right values to check each step against, and the "How to sync" card links to it.

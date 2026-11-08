@@ -9413,7 +9413,7 @@
         "b272048",
         "96bc5a3"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [
         "tests/test_api.py::test_a_version_rebuilt_while_a_detection_runs_does_not_inherit_it",
         "tests/test_api.py::test_work_the_app_was_doing_when_it_stopped_is_marked_on_the_next_start"
@@ -9438,7 +9438,7 @@
       "commits": [
         "beac5e5"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [
         "tests/test_inprocess.py::test_closing_drops_the_queued_tasks_instead_of_running_them_unseen",
         "tests/test_standalone_launcher.py::test_quitting_with_work_left_ends_the_process_instead_of_lingering"
@@ -9463,7 +9463,7 @@
       "commits": [
         "3a3fefa"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [
         "tests/test_gp_pipeline.py::test_edits_follow_the_lead_track_when_a_rhythm_is_added_or_removed",
         "tests/test_celery_tasks.py::test_the_jobs_edits_follow_the_chart_to_its_new_name"
@@ -9488,7 +9488,7 @@
       "commits": [
         "f56b44e"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [
         "tests/test_bass_arrangement.py::test_a_guitar_chart_never_takes_the_songs_bass_tones",
         "tests/test_bass_arrangement.py::test_the_bass_never_takes_the_songs_guitar_tones"
@@ -9513,7 +9513,7 @@
       "commits": [
         "3504af7"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [],
       "manual_checks": [
         "Node: editorLines on [she, loo-, king, a-, way+, Wel-, come+] gives \"she looking away\" / \"Welcome\" (before: \"shelookingaway\")"
@@ -9537,7 +9537,7 @@
       "commits": [
         "90c2c8e"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [],
       "manual_checks": [
         "Playwright on a live server, an invented 4-bar GP5 built for real (PT 1440 / EN 760 px): Backspace on Tons and in Definições left the note edits empty, on Partitura deleted the note; with the guard stubbed out the Tons page deleted it; no page errors"
@@ -9561,7 +9561,7 @@
       "commits": [
         "bb28399"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [
         "tests/test_psarc_sng.py::test_every_level_shows_the_first_chord_of_a_run_in_full",
         "tests/test_psarc_sng.py::test_repeated_chords_marked_high_density_but_not_the_first"
@@ -9586,7 +9586,7 @@
       "commits": [
         "1edd833"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [
         "tests/test_psarc_packer.py::test_a_preview_that_will_not_convert_still_gives_a_psarc"
       ],
@@ -9611,7 +9611,7 @@
         "fd8f9fa",
         "8586866"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [
         "tests/test_wwise.py::test_the_wwise_version_is_the_install_folders_not_a_parents"
       ],
@@ -9635,7 +9635,7 @@
       "commits": [
         "995f7ba"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [
         "tests/test_tone_collection.py::test_an_odd_manifest_skips_its_tone_never_the_scan"
       ],
@@ -9659,7 +9659,7 @@
       "commits": [
         "c5589e5"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [
         "tests/test_install_counter.py::test_a_forget_that_could_not_be_sent_is_sent_on_the_next_start"
       ],
@@ -9683,7 +9683,7 @@
       "commits": [
         "1cc4c09"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [
         "tests/test_gpif_import.py::test_a_gp7_file_with_impossible_numbers_is_refused_in_words"
       ],
@@ -9707,7 +9707,7 @@
       "commits": [
         "fffffc8"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [
         "tests/test_tone_collection.py::test_an_archive_from_the_dlc_folder_cannot_make_us_inflate_or_read_past_it"
       ],
@@ -9731,7 +9731,7 @@
       "commits": [
         "6f59240"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [
         "tests/test_tone_plan.py::test_a_pasted_text_built_to_be_slow_is_answered_at_once"
       ],
@@ -9755,7 +9755,7 @@
       "commits": [
         "e3d4775"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [
         "tests/test_api.py::test_a_chart_name_the_build_never_makes_is_refused"
       ],
@@ -9779,7 +9779,7 @@
       "commits": [
         "ceebaef"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [
         "tests/test_api.py::test_a_tone_knob_that_is_not_a_number_is_refused"
       ],
@@ -9803,7 +9803,7 @@
       "commits": [
         "fefb276"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [
         "tests/test_songsterr_gp.py::test_a_part_a_gp5_cannot_hold_is_left_out_and_said"
       ],
@@ -9827,7 +9827,7 @@
       "commits": [
         "3844942"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [
         "tests/test_image_fetch.py::test_a_link_that_cannot_even_be_split_is_refused_not_a_crash"
       ],
@@ -9851,7 +9851,7 @@
       "commits": [
         "dda21e1"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [
         "tests/test_api.py::test_numbers_too_big_for_the_database_and_files_gone_from_disk_are_said"
       ],
@@ -9875,7 +9875,7 @@
       "commits": [
         "bbd837a"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [
         "tests/test_api.py::test_a_queue_that_does_not_answer_marks_the_job_and_says_so"
       ],
@@ -9900,7 +9900,7 @@
         "1c41103",
         "b4a04d0"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [
         "tests/test_api.py::test_a_projects_measurements_in_a_shape_nothing_reads_are_refused"
       ],
@@ -9924,7 +9924,7 @@
       "commits": [
         "1c03816"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [
         "tests/test_https.py::test_an_answer_cut_off_mid_way_is_a_network_failure_not_a_crash"
       ],
@@ -9948,7 +9948,7 @@
       "commits": [
         "8c7cce3"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [
         "tests/test_api.py::test_a_stored_gp_file_that_no_longer_reads_is_a_422"
       ],
@@ -9972,7 +9972,7 @@
       "commits": [
         "61b0215"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [
         "tests/test_gp_import.py::test_a_bar_of_no_beats_is_refused_in_words"
       ],
@@ -9996,7 +9996,7 @@
       "commits": [
         "981753a"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [
         "tests/test_gp_import.py::test_a_sung_grace_note_on_a_bar_line_starts_in_the_bar_before"
       ],
@@ -10020,7 +10020,7 @@
       "commits": [
         "18b74fe"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [
         "tests/test_rsxml_writer.py::test_a_short_bent_note_and_a_users_noguitar_section_read_back"
       ],
@@ -10044,7 +10044,7 @@
       "commits": [
         "7453c7a"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [
         "tests/test_sync_map.py::test_two_points_on_one_instant_of_the_score_do_not_divide_by_zero"
       ],
@@ -10068,7 +10068,7 @@
       "commits": [
         "2538bbc"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [
         "tests/test_psarc_manifest.py::test_the_xml_and_the_manifest_advertise_the_same_techniques"
       ],
@@ -10092,7 +10092,7 @@
       "commits": [
         "98b0092"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [
         "tests/test_api.py::test_an_upload_without_credentials_is_refused_before_its_body_is_read"
       ],
@@ -10117,7 +10117,7 @@
         "0f5d749",
         "e294888"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [
         "tests/test_api.py::test_an_uploaded_lrc_is_capped_at_what_a_lyric_can_be"
       ],
@@ -10141,7 +10141,7 @@
       "commits": [
         "e4749b0"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [],
       "manual_checks": [
         "Playwright on an invented riff built for real (PT 1440 / EN 760 px), 2026-11-04: six 3.6 s passes of an A-B loop kept 48 geometries (the previous code: 52 → 74), no page errors"
@@ -10165,7 +10165,7 @@
       "commits": [
         "719557f"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [],
       "manual_checks": [
         "Playwright on an invented riff built for real (PT 1440 / EN 760 px), 2026-11-04: at 447 instants with a pending +7 % tempo the neck lit exactly what the previous algorithm lit; 200 calls to the tone label wrote it 0 times; no page errors"
@@ -10189,7 +10189,7 @@
       "commits": [
         "a249ef0"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [],
       "manual_checks": [
         "ESLint and node --check; the two call sites read through fmtClock"
@@ -10213,7 +10213,7 @@
       "commits": [
         "7253f5f"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [
         "tests/test_songsterr_gp.py::test_what_songsterr_marks_on_the_beat_reaches_every_note_of_it"
       ],
@@ -10239,7 +10239,7 @@
       "commits": [
         "a525366"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [
         "tests/test_songsterr_gp.py::test_the_song_plays_at_the_tempo_of_the_longest_part_not_the_first_charted_one"
       ],
@@ -10266,7 +10266,7 @@
       "commits": [
         "d27380a"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.7",
       "tests": [
         "tests/test_songsterr_gp.py::test_a_songsterr_capo_reaches_the_chart_with_the_frets_counted_from_the_nut",
         "tests/test_songsterr_gp.py::test_a_capo_that_is_not_a_fret_is_read_as_none_and_said"

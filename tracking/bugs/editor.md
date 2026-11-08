@@ -491,7 +491,7 @@ The XML reader divided <bendValues> times by the sustain while the writer lays a
 
 **Root cause:** Two readers' rules did not match the writer's.
 
-**Fixes:** [FIX-0398](../FIX_LOG.md#fix-0398) (unreleased)
+**Fixes:** [FIX-0398](../FIX_LOG.md#fix-0398) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 

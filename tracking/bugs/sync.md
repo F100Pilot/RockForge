@@ -2100,7 +2100,7 @@ A lone Lead track is built as Combined and beside a Rhythm as Lead; every per-ch
 
 **Root cause:** Per-chart data keyed by the built kind with no carry-over when the lone-Lead rule flips; only merge_tracks had a fallback.
 
-**Fixes:** [FIX-0375](../FIX_LOG.md#fix-0375) (unreleased)
+**Fixes:** [FIX-0375](../FIX_LOG.md#fix-0375) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 
@@ -2139,7 +2139,7 @@ audio_clock mapped each span between neighbouring points; two points at the same
 
 **Root cause:** No check that score times increase.
 
-**Fixes:** [FIX-0399](../FIX_LOG.md#fix-0399) (unreleased)
+**Fixes:** [FIX-0399](../FIX_LOG.md#fix-0399) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 

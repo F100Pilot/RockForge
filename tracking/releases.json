@@ -722,6 +722,28 @@
       "approved_by": "the maintainer (asked for the release)",
       "upgrade": "Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.",
       "exceptions": []
+    },
+    {
+      "version": "0.12.0-beta.7",
+      "status": "Beta",
+      "created": "2026-11-08",
+      "published": "pending",
+      "commit": "pending",
+      "build": "GitHub Actions release workflow",
+      "artifacts": [],
+      "goal": "Simpler syncing (Simple/Advanced and a guide), a PSARC without one instrument, an example project with a tutorial, and the Songsterr fixes (capo, tempo, palm mutes)",
+      "features": [
+        "Example project and tutorial",
+        "A PSARC without one instrument",
+        "Simpler syncing",
+        "Each tone has its own volume on the Tones page"
+      ],
+      "improvements": [],
+      "breaking": [],
+      "tests": "CI (ruff, mypy, pytest, ESLint, Docker build) on the release commit, tools/release_check, and the frozen .exe smoke test of the release workflow",
+      "approved_by": "the maintainer (asked for the release)",
+      "upgrade": "Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.",
+      "exceptions": []
     }
   ]
 }

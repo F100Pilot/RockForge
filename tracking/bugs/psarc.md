@@ -2824,7 +2824,7 @@ At a thinned Dynamic Difficulty level whose run-opening chord was dropped, every
 
 **Root cause:** _build_sng_notes computed high_density_flags on the full chart; _build_level rebuilt anchors, shapes and links per level but not this flag.
 
-**Fixes:** [FIX-0379](../FIX_LOG.md#fix-0379) (unreleased)
+**Fixes:** [FIX-0379](../FIX_LOG.md#fix-0379) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 
@@ -2863,7 +2863,7 @@ The main Wwise conversion is best-effort, the preview one was not: a PackagingEr
 
 **Root cause:** The preview convert() call was not caught.
 
-**Fixes:** [FIX-0380](../FIX_LOG.md#fix-0380) (unreleased)
+**Fixes:** [FIX-0380](../FIX_LOG.md#fix-0380) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 
@@ -2902,7 +2902,7 @@ The manifest grouped chords by time rounded to 0.1 ms (a strummed power chord wa
 
 **Root cause:** Three groupings and two rule sets.
 
-**Fixes:** [FIX-0400](../FIX_LOG.md#fix-0400) (unreleased)
+**Fixes:** [FIX-0400](../FIX_LOG.md#fix-0400) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 

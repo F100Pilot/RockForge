@@ -596,7 +596,7 @@ Closing the window with work in flight and confirming returned from main(), but 
 
 **Root cause:** inprocess.shutdown used shutdown(wait=False) without cancel_futures, and nothing ended the process when work was left.
 
-**Fixes:** [FIX-0374](../FIX_LOG.md#fix-0374) (unreleased)
+**Fixes:** [FIX-0374](../FIX_LOG.md#fix-0374) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 

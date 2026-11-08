@@ -4,6 +4,71 @@
 
 Every version, newest first. What a version fixed and the bugs it still carried come from the bug and fix registers. Process: [docs/RELEASE_PROCESS.md](../docs/RELEASE_PROCESS.md).
 
+## 0.12.0-beta.7
+
+| | |
+|---|---|
+| Status | Beta |
+| Created | 2026-11-08 |
+| Published | _pending_ |
+| Commit | _pending_ |
+| Build | GitHub Actions release workflow |
+| Artifacts | — |
+| Tests | CI (ruff, mypy, pytest, ESLint, Docker build) on the release commit, tools/release_check, and the frozen .exe smoke test of the release workflow |
+| Approved by | the maintainer (asked for the release) |
+
+**Goal:** Simpler syncing (Simple/Advanced and a guide), a PSARC without one instrument, an example project with a tutorial, and the Songsterr fixes (capo, tempo, palm mutes)
+
+**New:**
+
+- Example project and tutorial
+- A PSARC without one instrument
+- Simpler syncing
+- Each tone has its own volume on the Tones page
+
+**Bugs fixed:** 
+
+- [BUG-0374](bugs/app.md#bug-0374) A version rebuilt during a detection inherited its running status and could never be deleted
+- [BUG-0375](bugs/exe.md#bug-0375) "Sair mesmo assim" left the .exe running unseen until its queue drained
+- [BUG-0376](bugs/sync.md#bug-0376) Edits of the Lead track stopped applying when a Rhythm track was added or removed
+- [BUG-0377](bugs/tones.md#bug-0377) Guitar charts took the song's bass tones (a bass amp as their tone)
+- [BUG-0378](bugs/lyrics.md#bug-0378) "Sincronizar com a gravação" glued a word split in syllables to the word before it
+- [BUG-0379](bugs/viewer.md#bug-0379) The score's keys acted from other pages: Backspace deleted notes nobody could see
+- [BUG-0380](bugs/psarc.md#bug-0380) HIGH DENSITY was worked out once on the full chart and reused at every DD level
+- [BUG-0381](bugs/psarc.md#bug-0381) A preview clip that would not convert cost the whole .psarc
+- [BUG-0382](bugs/audio.md#bug-0382) A Wwise 2025 under a folder named with 2019-2023 counted as supported
+- [BUG-0383](bugs/tones.md#bug-0383) One odd CDLC manifest ended the whole tone-collection scan
+- [BUG-0384](bugs/security.md#bug-0384) Turning the install counter off could leave the data on the server for good
+- [BUG-0385](bugs/import.md#bug-0385) Impossible time signature or tempo in a GP7 file crashed or hung the import
+- [BUG-0386](bugs/security.md#bug-0386) A crafted PSARC in the dlc folder could inflate one block to tens of MB
+- [BUG-0387](bugs/security.md#bug-0387) A pasted tone plan built of unclosed braces kept the request busy for minutes
+- [BUG-0388](bugs/security.md#bug-0388) Any string was taken as a chart name and stored, and the GP export built a path from it
+- [BUG-0389](bugs/tones.md#bug-0389) A tone knob of NaN or infinity was stored and written into the manifest
+- [BUG-0390](bugs/import.md#bug-0390) A Songsterr part of more than seven strings lost strings without a word
+- [BUG-0391](bugs/app.md#bug-0391) An image link that cannot be split was a 500
+- [BUG-0392](bugs/app.md#bug-0392) A year too big for the database, a huge number in a sync file, or a deleted build was a 500
+- [BUG-0393](bugs/app.md#bug-0393) With Redis down a project stayed pending forever
+- [BUG-0394](bugs/app.md#bug-0394) A project file's tone detection or vocal line in a wrong shape broke their pages
+- [BUG-0395](bugs/app.md#bug-0395) An online answer cut off mid-way was a 500
+- [BUG-0396](bugs/app.md#bug-0396) A stored GP file that no longer reads was a 500 in Editar info and Corrigir daqui
+- [BUG-0397](bugs/import.md#bug-0397) A GP5 bar with no beats failed the build with ZeroDivisionError
+- [BUG-0398](bugs/lyrics.md#bug-0398) A sung grace note before a downbeat lasted nothing in a GP5 vocal line
+- [BUG-0399](bugs/editor.md#bug-0399) A short bent note lost its curve, and a section named noguitar vanished, on read-back
+- [BUG-0400](bugs/sync.md#bug-0400) Two sync points on one instant of the score divided by zero
+- [BUG-0401](bugs/psarc.md#bug-0401) The manifest and the XML advertised different chord techniques
+- [BUG-0402](bugs/security.md#bug-0402) With the API token set, an upload without credentials was read in full before the 401
+- [BUG-0403](bugs/security.md#bug-0403) An uploaded LRC file was read up to 500 MB into memory and the database
+- [BUG-0404](bugs/viewer.md#bug-0404) The 3D highway's GPU memory grew on every pass of an A-B loop
+- [BUG-0405](bugs/viewer.md#bug-0405) The neck redid every note of the song on every frame of playback
+- [BUG-0406](bugs/viewer.md#bug-0406) A recording's length read 3:17 in one place and 3:16 in another
+- [BUG-0407](bugs/import.md#bug-0407) Palm mutes from a Songsterr tab were lost
+- [BUG-0408](bugs/import.md#bug-0408) A Songsterr tab took the tempo map of its first charted part
+- [BUG-0409](bugs/import.md#bug-0409) A Songsterr tab's capo was ignored
+
+**Known bugs it carried:** —
+
+**Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
+
 ## 0.12.0-beta.6
 
 | | |

@@ -2564,7 +2564,7 @@ A numerator of 0, a denominator of 0 or 3, or a tempo of 0/NaN/"abc" in score.gp
 
 **Root cause:** _time_signature and _tempo_bpm took any number; other malformed numbers raised ValueError/ZeroDivisionError the callers did not catch.
 
-**Fixes:** [FIX-0384](../FIX_LOG.md#fix-0384) (unreleased)
+**Fixes:** [FIX-0384](../FIX_LOG.md#fix-0384) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 
@@ -2603,7 +2603,7 @@ PyGuitarPro writes the first seven strings of a part and drops the rest; a signa
 
 **Root cause:** Nothing checked what a GP5 can hold.
 
-**Fixes:** [FIX-0389](../FIX_LOG.md#fix-0389) (unreleased)
+**Fixes:** [FIX-0389](../FIX_LOG.md#fix-0389) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 
@@ -2642,7 +2642,7 @@ The numerator is a signed byte; 0 laid out no beats and divided the bar by zero.
 
 **Root cause:** Nothing checked the numerator.
 
-**Fixes:** [FIX-0396](../FIX_LOG.md#fix-0396) (unreleased)
+**Fixes:** [FIX-0396](../FIX_LOG.md#fix-0396) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 
@@ -2682,7 +2682,7 @@ A Songsterr import read palmMute only on each note; Songsterr can mark it on the
 
 **Root cause:** songsterr_gp._apply_note read note.palmMute only; tapping, tremolo and upStroke/downStroke were never read, and a harmonic was read only as a string.
 
-**Fixes:** [FIX-0406](../FIX_LOG.md#fix-0406) (unreleased)
+**Fixes:** [FIX-0406](../FIX_LOG.md#fix-0406) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 
@@ -2722,7 +2722,7 @@ Imported from a Songsterr link with Songsterr's timing, AngelMaker's Leech put b
 
 **Root cause:** write_songsterr_gp5 read automations.tempo from the first CHARTED part; each Songsterr part carries a tempo map of its own and the drums (where it often lives) are not charted.
 
-**Fixes:** [FIX-0407](../FIX_LOG.md#fix-0407) (unreleased)
+**Fixes:** [FIX-0407](../FIX_LOG.md#fix-0407) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 
@@ -2762,7 +2762,7 @@ Songsterr counts a note's fret from the capo (a top-level capo per part, joelgoh
 
 **Root cause:** write_songsterr_gp5 never read a part's capo, so the GP5 track had none while its frets were counted from it.
 
-**Fixes:** [FIX-0408](../FIX_LOG.md#fix-0408) (unreleased)
+**Fixes:** [FIX-0408](../FIX_LOG.md#fix-0408) (0.12.0-beta.7)
 
 **Verified:** _pending_ (by _pending_)
 

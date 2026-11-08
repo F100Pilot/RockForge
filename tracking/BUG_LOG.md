@@ -383,39 +383,39 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0371](bugs/tones.md#bug-0371) | The bass tones the tone detection proposed were always distortion-oriented, a clean bass included | tones | Low | P3 | Fixed | 0.12.0-beta.3 | 0.12.0-beta.5 |
 | [BUG-0372](bugs/editor.md#bug-0372) | A bend set in the note editor was not drawn, not heard and built as no bend | editor | Medium | P2 | Fixed | 0.12.0-beta.4 | 0.12.0-beta.5 |
 | [BUG-0373](bugs/import.md#bug-0373) | Songsterr refused every tab with a 403 that its browser did not get | import | High | P2 | Fixed | 0.12.0-beta.4 | 0.12.0-beta.5 |
-| [BUG-0374](bugs/app.md#bug-0374) | A version rebuilt during a detection inherited its running status and could never be deleted | app | High | P2 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0375](bugs/exe.md#bug-0375) | "Sair mesmo assim" left the .exe running unseen until its queue drained | exe | High | P2 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0376](bugs/sync.md#bug-0376) | Edits of the Lead track stopped applying when a Rhythm track was added or removed | sync | High | P2 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0377](bugs/tones.md#bug-0377) | Guitar charts took the song's bass tones (a bass amp as their tone) | tones | Medium | P3 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0378](bugs/lyrics.md#bug-0378) | "Sincronizar com a gravação" glued a word split in syllables to the word before it | lyrics | Medium | P3 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0379](bugs/viewer.md#bug-0379) | The score's keys acted from other pages: Backspace deleted notes nobody could see | viewer | High | P2 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0380](bugs/psarc.md#bug-0380) | HIGH DENSITY was worked out once on the full chart and reused at every DD level | psarc | Medium | P3 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0381](bugs/psarc.md#bug-0381) | A preview clip that would not convert cost the whole .psarc | psarc | Medium | P3 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0382](bugs/audio.md#bug-0382) | A Wwise 2025 under a folder named with 2019-2023 counted as supported | audio | Medium | P3 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0383](bugs/tones.md#bug-0383) | One odd CDLC manifest ended the whole tone-collection scan | tones | Medium | P3 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0384](bugs/security.md#bug-0384) | Turning the install counter off could leave the data on the server for good | security | Medium | P3 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0385](bugs/import.md#bug-0385) | Impossible time signature or tempo in a GP7 file crashed or hung the import | import | Medium | P2 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0386](bugs/security.md#bug-0386) | A crafted PSARC in the dlc folder could inflate one block to tens of MB | security | Medium | P2 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0387](bugs/security.md#bug-0387) | A pasted tone plan built of unclosed braces kept the request busy for minutes | security | Low | P3 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0388](bugs/security.md#bug-0388) | Any string was taken as a chart name and stored, and the GP export built a path from it | security | Low | P3 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0389](bugs/tones.md#bug-0389) | A tone knob of NaN or infinity was stored and written into the manifest | tones | Low | P3 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0390](bugs/import.md#bug-0390) | A Songsterr part of more than seven strings lost strings without a word | import | Medium | P3 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0391](bugs/app.md#bug-0391) | An image link that cannot be split was a 500 | app | Low | P4 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0392](bugs/app.md#bug-0392) | A year too big for the database, a huge number in a sync file, or a deleted build was a 500 | app | Low | P3 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0393](bugs/app.md#bug-0393) | With Redis down a project stayed pending forever | app | Medium | P2 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0394](bugs/app.md#bug-0394) | A project file's tone detection or vocal line in a wrong shape broke their pages | app | Low | P3 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0395](bugs/app.md#bug-0395) | An online answer cut off mid-way was a 500 | app | Low | P4 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0396](bugs/app.md#bug-0396) | A stored GP file that no longer reads was a 500 in Editar info and Corrigir daqui | app | Low | P3 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0397](bugs/import.md#bug-0397) | A GP5 bar with no beats failed the build with ZeroDivisionError | import | Low | P3 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0398](bugs/lyrics.md#bug-0398) | A sung grace note before a downbeat lasted nothing in a GP5 vocal line | lyrics | Low | P3 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0399](bugs/editor.md#bug-0399) | A short bent note lost its curve, and a section named noguitar vanished, on read-back | editor | Medium | P3 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0400](bugs/sync.md#bug-0400) | Two sync points on one instant of the score divided by zero | sync | Low | P4 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0401](bugs/psarc.md#bug-0401) | The manifest and the XML advertised different chord techniques | psarc | Low | P3 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0402](bugs/security.md#bug-0402) | With the API token set, an upload without credentials was read in full before the 401 | security | Low | P3 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0403](bugs/security.md#bug-0403) | An uploaded LRC file was read up to 500 MB into memory and the database | security | Low | P4 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0404](bugs/viewer.md#bug-0404) | The 3D highway's GPU memory grew on every pass of an A-B loop | viewer | Low | P3 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0405](bugs/viewer.md#bug-0405) | The neck redid every note of the song on every frame of playback | viewer | Low | P4 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0406](bugs/viewer.md#bug-0406) | A recording's length read 3:17 in one place and 3:16 in another | viewer | Low | P4 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0407](bugs/import.md#bug-0407) | Palm mutes from a Songsterr tab were lost | import | Medium | P2 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0408](bugs/import.md#bug-0408) | A Songsterr tab took the tempo map of its first charted part | import | Medium | P2 | Fixed | 0.12.0-beta.6 | — |
-| [BUG-0409](bugs/import.md#bug-0409) | A Songsterr tab's capo was ignored | import | Medium | P2 | Fixed | 0.12.0-beta.6 | — |
+| [BUG-0374](bugs/app.md#bug-0374) | A version rebuilt during a detection inherited its running status and could never be deleted | app | High | P2 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0375](bugs/exe.md#bug-0375) | "Sair mesmo assim" left the .exe running unseen until its queue drained | exe | High | P2 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0376](bugs/sync.md#bug-0376) | Edits of the Lead track stopped applying when a Rhythm track was added or removed | sync | High | P2 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0377](bugs/tones.md#bug-0377) | Guitar charts took the song's bass tones (a bass amp as their tone) | tones | Medium | P3 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0378](bugs/lyrics.md#bug-0378) | "Sincronizar com a gravação" glued a word split in syllables to the word before it | lyrics | Medium | P3 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0379](bugs/viewer.md#bug-0379) | The score's keys acted from other pages: Backspace deleted notes nobody could see | viewer | High | P2 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0380](bugs/psarc.md#bug-0380) | HIGH DENSITY was worked out once on the full chart and reused at every DD level | psarc | Medium | P3 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0381](bugs/psarc.md#bug-0381) | A preview clip that would not convert cost the whole .psarc | psarc | Medium | P3 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0382](bugs/audio.md#bug-0382) | A Wwise 2025 under a folder named with 2019-2023 counted as supported | audio | Medium | P3 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0383](bugs/tones.md#bug-0383) | One odd CDLC manifest ended the whole tone-collection scan | tones | Medium | P3 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0384](bugs/security.md#bug-0384) | Turning the install counter off could leave the data on the server for good | security | Medium | P3 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0385](bugs/import.md#bug-0385) | Impossible time signature or tempo in a GP7 file crashed or hung the import | import | Medium | P2 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0386](bugs/security.md#bug-0386) | A crafted PSARC in the dlc folder could inflate one block to tens of MB | security | Medium | P2 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0387](bugs/security.md#bug-0387) | A pasted tone plan built of unclosed braces kept the request busy for minutes | security | Low | P3 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0388](bugs/security.md#bug-0388) | Any string was taken as a chart name and stored, and the GP export built a path from it | security | Low | P3 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0389](bugs/tones.md#bug-0389) | A tone knob of NaN or infinity was stored and written into the manifest | tones | Low | P3 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0390](bugs/import.md#bug-0390) | A Songsterr part of more than seven strings lost strings without a word | import | Medium | P3 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0391](bugs/app.md#bug-0391) | An image link that cannot be split was a 500 | app | Low | P4 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0392](bugs/app.md#bug-0392) | A year too big for the database, a huge number in a sync file, or a deleted build was a 500 | app | Low | P3 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0393](bugs/app.md#bug-0393) | With Redis down a project stayed pending forever | app | Medium | P2 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0394](bugs/app.md#bug-0394) | A project file's tone detection or vocal line in a wrong shape broke their pages | app | Low | P3 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0395](bugs/app.md#bug-0395) | An online answer cut off mid-way was a 500 | app | Low | P4 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0396](bugs/app.md#bug-0396) | A stored GP file that no longer reads was a 500 in Editar info and Corrigir daqui | app | Low | P3 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0397](bugs/import.md#bug-0397) | A GP5 bar with no beats failed the build with ZeroDivisionError | import | Low | P3 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0398](bugs/lyrics.md#bug-0398) | A sung grace note before a downbeat lasted nothing in a GP5 vocal line | lyrics | Low | P3 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0399](bugs/editor.md#bug-0399) | A short bent note lost its curve, and a section named noguitar vanished, on read-back | editor | Medium | P3 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0400](bugs/sync.md#bug-0400) | Two sync points on one instant of the score divided by zero | sync | Low | P4 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0401](bugs/psarc.md#bug-0401) | The manifest and the XML advertised different chord techniques | psarc | Low | P3 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0402](bugs/security.md#bug-0402) | With the API token set, an upload without credentials was read in full before the 401 | security | Low | P3 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0403](bugs/security.md#bug-0403) | An uploaded LRC file was read up to 500 MB into memory and the database | security | Low | P4 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0404](bugs/viewer.md#bug-0404) | The 3D highway's GPU memory grew on every pass of an A-B loop | viewer | Low | P3 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0405](bugs/viewer.md#bug-0405) | The neck redid every note of the song on every frame of playback | viewer | Low | P4 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0406](bugs/viewer.md#bug-0406) | A recording's length read 3:17 in one place and 3:16 in another | viewer | Low | P4 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0407](bugs/import.md#bug-0407) | Palm mutes from a Songsterr tab were lost | import | Medium | P2 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0408](bugs/import.md#bug-0408) | A Songsterr tab took the tempo map of its first charted part | import | Medium | P2 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
+| [BUG-0409](bugs/import.md#bug-0409) | A Songsterr tab's capo was ignored | import | Medium | P2 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
