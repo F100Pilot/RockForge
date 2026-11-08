@@ -294,6 +294,29 @@ def test_the_tab_parts_are_fetched_trying_each_distribution_in_turn() -> None:
     assert lead_urls[0] == "https://dqsljvtekg760.cloudfront.net/9/55/abc123/0.json"
 
 
+def test_a_part_is_fetched_by_its_part_id_on_both_distributions() -> None:
+    """GitHub issue #26: only the bass came in, so the song took the bass's tempo
+    map. The reporter's exporter fetches each part by the meta's ``partId`` and
+    tries both distributions; a part on the stage one under a plain image, and a
+    part stored under another number than its place, now come in too."""
+    from rockforge.infrastructure.songsterr import fetch_tab, part_urls
+
+    main = part_urls(9, 55, "abc123", 0)
+    assert main[0] == "https://dqsljvtekg760.cloudfront.net/9/55/abc123/0.json"
+    assert main[-1] == "https://d3d3l6a6rcgkaf.cloudfront.net/9/55/abc123/0.json"
+    assert part_urls(9, 55, "abc-stage", 0)[0] == \
+        "https://d3d3l6a6rcgkaf.cloudfront.net/9/55/abc-stage/0.json"
+    meta = {**_META, "tracks": [{**_META["tracks"][0], "partId": 3},
+                                {**_META["tracks"][1], "partId": 0}]}
+    tab = fetch_tab("9", get_json=_tab_fetcher({
+        "https://www.songsterr.com/api/meta/9": meta,
+        part_urls(9, 55, "abc123", 3)[-1]: {"measures": [{}], "id": "lead"},
+        part_urls(9, 55, "abc123", 0)[0]: {"measures": [{}], "id": "drums"},
+    }))
+    assert [(p["name"], p["id"]) for p in tab.parts] == [("Lead", "lead"), ("Drums", "drums")]
+    assert tab.missing == ()
+
+
 def test_an_older_revision_without_an_image_uses_the_legacy_addresses() -> None:
     from rockforge.infrastructure.songsterr import part_urls
 

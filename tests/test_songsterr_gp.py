@@ -467,6 +467,28 @@ def test_a_section_the_tab_repeats_is_played_as_often_as_it_says(tmp_path: Path)
     assert any("8" in w and "4" in w for w in report.warnings)
 
 
+def test_a_repeat_with_alternate_endings_plays_each_ending_on_its_pass(tmp_path: Path) -> None:
+    """``repeatCount`` and ``alternateEnding`` (a bitmask of passes), the keys the
+    GitHub issue #26 reporter's exporter reads: written A |: B C(1st) :| D(2nd) E
+    is heard A B C B D E, and the tab's bar times follow it."""
+    def bar(fret: int, **extra: object) -> dict:
+        return {"voices": [{"beats": [{"type": 1, "duration": [1, 1],
+                                       "notes": [{"string": 0, "fret": fret}]}]}], **extra}
+    part = {
+        "name": "Guitar", "instrument": "Distortion Guitar", "strings": 6, "tuning": STANDARD,
+        "automations": {"tempo": [{"measure": 0, "position": 0, "bpm": 120}]},
+        "measures": [{"signature": [4, 4], **bar(1)}, bar(2, repeatStart=True),
+                     bar(3, alternateEnding=1, repeatCount=2), bar(4, alternateEnding=2),
+                     bar(5)],
+    }
+    dst, report = _write(tmp_path, [part])
+    track = parse_gp_track(dst, 0)
+    assert [n.fret for n in sorted(track.notes, key=lambda n: n.time)] == [1, 2, 3, 2, 4, 5]
+    assert (report.measures, report.played_measures, report.repeats,
+            report.alternate_endings) == (5, 6, 1, 2)
+    assert report.bar_times == [0.0, 2.0, 4.0, 6.0, 8.0, 10.0]
+
+
 def test_a_bar_that_says_it_plays_once_is_no_repeat(tmp_path: Path) -> None:
     part = {
         "name": "Guitar", "instrument": "Distortion Guitar", "strings": 6, "tuning": STANDARD,

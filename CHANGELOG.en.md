@@ -6,6 +6,10 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### Fixes
+
+- **A Songsterr tab no longer plays at the bass's tempo:** sometimes only the bass part downloaded, and the whole song took its tempo, which on Songsterr changes almost every bar, so the rest drifted from the recording. Each part is now asked for by the number Songsterr stores it under, in both places it can be, so they all arrive. Repeats with different endings (1st and 2nd time) are read too: each ending plays on its own pass. (GitHub #26)
+
 ## [0.12.0 beta 8] — 2026-11-08
 
 ### New

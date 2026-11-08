@@ -6,6 +6,10 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Correções
+
+- **Um tab do Songsterr já não fica no andamento do baixo:** às vezes só a pista do baixo chegava a descarregar e a música inteira ficava com o andamento dele, que no Songsterr muda quase a cada compasso; o resto da música desacertava da gravação. Agora cada pista é pedida pelo número com que o Songsterr a guarda, e nos dois sítios onde pode estar, por isso chegam todas. As repetições com finais diferentes (1.ª e 2.ª vez) também passam a ser lidas: cada final toca na sua passagem. (GitHub #26)
+
 ## [0.12.0 beta 8] — 2026-11-08
 
 ### Novidades

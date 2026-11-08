@@ -2774,3 +2774,42 @@ Songsterr counts a note's fret from the capo (a top-level capo per part, joelgoh
 - 2026-11-07 — Triaged: Songsterr's capo semantics read in joelgoh1/Guitarista (pitch = tuning + capo + fret)
 - 2026-11-07 — In Progress: FIX-0408 (d27380a)
 - 2026-11-07 — Fixed: FIX-0408 (d27380a)
+
+## BUG-0410
+
+**A Songsterr tab played at the bass's tempo because the other parts did not download**
+
+| | |
+|---|---|
+| Detected | 2026-11-08 |
+| Reported by | DrekAnon (GitHub issue #26) |
+| Found in | 0.12.0-beta.8 |
+| Build / commit | _pending_ |
+| Severity | High |
+| Priority | P2 |
+| Status | In Progress |
+
+A Songsterr tab's tempo map is read from its longest part. When only the bass part downloaded, the bass (whose map changes almost every bar) became the longest part and the whole song took its tempo, drifting from the recording. Parts were fetched by the track's place on one distribution family only, while Songsterr stores them by partId and a part may sit on the other family.
+
+**Steps to reproduce:** 
+
+1. import the Songsterr tab of GitHub issue #26
+2. look at the per-bar tempo labels (bar 6 163, bar 7 119) and listen against the recording
+
+**Expected:** Every part downloaded and the song at the longest part's tempo (the drums' steady 140), as the reporter's own exporter gives it.
+
+**Observed:** The bass's tempo map on the score (from the reporter's screenshot); the GP file Songsterr exports plays in time.
+
+**Root cause:** fetch_tab asked for a part by the track's index on the CloudFront family the image suffix pointed at, never by the meta's partId and never on the other family, so parts stored elsewhere were reported missing.
+
+**Fixes:** —
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** _pending_ · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-08 — Open: reported
+- 2026-11-08 — Triaged: the reporter's screenshot shows the bass's tempo map; their exporter fetches parts by partId on both CDN families
+- 2026-11-08 — In Progress: fetch by partId on both families; alternate endings read

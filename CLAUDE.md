@@ -331,7 +331,24 @@ re-inverting the dependency.
    a warning names the part when its map differs from the first charted
    one's. Which map Songsterr's own player uses was not seen. Guarded by
    `test_the_song_plays_at_the_tempo_of_the_longest_part_not_the_first_charted_one`
-   (longest, first-on-a-tie and the part itself mutation-checked). Honest losses, all counted in the report
+   (longest, first-on-a-tie and the part itself mutation-checked). **Every part
+   has to ARRIVE for that to hold** (issue #26 again, the reporter's screenshot
+   and exporter, 2026-11-08: bar 6 ♩163 / bar 7 ♩119 on the score is the BASS's
+   map — the other parts had not downloaded, so the longest part was the bass):
+   a part is fetched by the meta track's `partId` when it gives one
+   (`_part_id`, else the track's place — the exporter fetches by it), and
+   `part_urls` tries BOTH distribution families for an `image`, the one its
+   `-stage` suffix points at first. Guarded by
+   `test_a_part_is_fetched_by_its_part_id_on_both_distributions`
+   (mutation-checked). **Alternate endings** are read too: a measure's
+   `alternateEnding` (a bitmask of passes, bit 0 = the 1st — the exporter's key,
+   with `repeatCount` beside `repeat`) is the GP5 `repeatAlternative`, which
+   `playback_order` already plays, so each volta sounds on its own pass and
+   `report.alternate_endings` counts them. Guarded by
+   `test_a_repeat_with_alternate_endings_plays_each_ending_on_its_pass`
+   (four mutations). The exporter reads a mid-bar tempo `position` as
+   `position / type`; ours stays a fraction of the bar (no tab seen where they
+   differ). Honest losses, all counted in the report
    and shown in the wizard: drums skipped, a grace note with no note on its
    string right after it dropped (the others become GP5 grace EFFECTS on the
    note they lead into, `_attach_graces` — a GP5 grace is an ornament on the
@@ -427,9 +444,8 @@ re-inverting the dependency.
    `report.bar_times` (`tab_bar_times(..., order)`) is per PLAYED bar —
    `playback_order` over the headers, a tempo automation applied on every pass
    of its written bar — so it matches Songsterr's per-played-bar video times.
-   `report.repeats`/`played_measures` and a warning say written vs played; how
-   Songsterr marks alternate endings was not seen, so none are read (said in
-   the warning). Guarded by
+   `report.repeats`/`played_measures` and a warning say written vs played
+   (alternate endings: see the tempo-map paragraph above). Guarded by
    `test_a_section_the_tab_repeats_is_played_as_often_as_it_says` and
    `test_a_bar_that_says_it_plays_once_is_no_repeat`. The user's tab itself was
    not seen (songsterr.com is blocked here).

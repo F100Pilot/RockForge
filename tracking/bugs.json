@@ -20401,6 +20401,49 @@
           "note": "FIX-0408 (d27380a)"
         }
       ]
+    },
+    {
+      "id": "BUG-0410",
+      "title": "A Songsterr tab played at the bass's tempo because the other parts did not download",
+      "detected": "2026-11-08",
+      "reported_by": "DrekAnon (GitHub issue #26)",
+      "found_in_version": "0.12.0-beta.8",
+      "found_in_build": "pending",
+      "module": "import",
+      "description": "A Songsterr tab's tempo map is read from its longest part. When only the bass part downloaded, the bass (whose map changes almost every bar) became the longest part and the whole song took its tempo, drifting from the recording. Parts were fetched by the track's place on one distribution family only, while Songsterr stores them by partId and a part may sit on the other family.",
+      "steps": [
+        "import the Songsterr tab of GitHub issue #26",
+        "look at the per-bar tempo labels (bar 6 163, bar 7 119) and listen against the recording"
+      ],
+      "expected": "Every part downloaded and the song at the longest part's tempo (the drums' steady 140), as the reporter's own exporter gives it.",
+      "observed": "The bass's tempo map on the score (from the reporter's screenshot); the GP file Songsterr exports plays in time.",
+      "severity": "High",
+      "priority": "P2",
+      "status": "In Progress",
+      "root_cause": "fetch_tab asked for a part by the track's index on the CloudFront family the image suffix pointed at, never by the meta's partId and never on the other family, so parts stored elsewhere were reported missing.",
+      "fixes": [],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "pending",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-08",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-08",
+          "status": "Triaged",
+          "note": "the reporter's screenshot shows the bass's tempo map; their exporter fetches parts by partId on both CDN families"
+        },
+        {
+          "date": "2026-11-08",
+          "status": "In Progress",
+          "note": "fetch by partId on both families; alternate endings read"
+        }
+      ]
     }
   ]
 }

@@ -318,12 +318,25 @@ class SongsterrTab:
 
 
 def part_urls(song_id: int, revision_id: int, image: str | None, index: int) -> list[str]:
-    """Every address a track's part may be at, in the order to try them."""
+    """Every address a track's part may be at, in the order to try them.
+
+    With an ``image`` both distributions are tried, the one its suffix points at
+    first: a part is not always where the suffix says (GitHub issue #26 — the
+    reporter's exporter, which tries both, got every part where only the bass
+    came here, so the song took the bass's tempo map)."""
     if image:
-        cdns = _PART_CDNS_STAGE if image.endswith("-stage") else _PART_CDNS
+        stage = image.endswith("-stage")
+        cdns = (_PART_CDNS_STAGE + _PART_CDNS) if stage else (_PART_CDNS + _PART_CDNS_STAGE)
         return [f"https://{c}.cloudfront.net/{song_id}/{revision_id}/{image}/{index}.json"
                 for c in cdns]
     return [f"https://{c}.cloudfront.net/part/{revision_id}/{index}" for c in _PART_CDNS_LEGACY]
+
+
+def _part_id(info: Any, index: int) -> int:
+    """The number a track's part is stored under: the meta's ``partId`` when it
+    gives one (the reporter's exporter fetches by it), else the track's place."""
+    pid = info.get("partId") if isinstance(info, dict) else None
+    return pid if isinstance(pid, int) and not isinstance(pid, bool) and pid >= 0 else index
 
 
 def fetch_tab(
@@ -348,7 +361,7 @@ def fetch_tab(
         name = str(info.get("name") or info.get("instrument") or fallback) \
             if isinstance(info, dict) else fallback
         part: dict[str, Any] | None = None
-        for url in part_urls(song_id, revision_id, image, index):
+        for url in part_urls(song_id, revision_id, image, _part_id(info, index)):
             try:
                 got = get_json(url)
             except SongsterrError as exc:

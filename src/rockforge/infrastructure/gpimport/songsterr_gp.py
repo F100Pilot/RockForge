@@ -18,12 +18,13 @@ What a part carries, and how it maps:
   read in ``joelgoh1/Guitarista``'s Songsterr schema); no tuning
   or a drum instrument = percussion, skipped (RockForge charts guitars).
 - measure: ``signature`` ``[n, d]`` (carries forward until changed),
-  ``marker.text`` (a section), ``repeatStart`` (opens a repeat), ``repeat``
-  ``N`` (closes one, the section playing N times in all), ``voices[].beats[]``.
-  The repeat keys were read in ``joelgoh1/Guitarista``'s Songsterr schema
-  (nothing copied); the importer unrolls them like any GP5 repeat. How
-  Songsterr marks alternate endings (1st/2nd time) has not been seen, so none
-  are read.
+  ``marker.text`` (a section), ``repeatStart`` (opens a repeat), ``repeat`` or
+  ``repeatCount`` ``N`` (closes one, the section playing N times in all),
+  ``alternateEnding`` (the passes a bar is played on, a bitmask: bit 0 = 1st
+  time), ``voices[].beats[]``. ``repeat`` was read in ``joelgoh1/Guitarista``'s
+  Songsterr schema, ``repeatCount``/``alternateEnding`` in the GitHub issue #26
+  reporter's exporter, which hands them to alphaTab as they are (nothing
+  copied); the importer unrolls them like any GP5 repeat.
 - beat: ``type`` (1, 2, 4 … 64 = whole … 64th), ``dots`` or ``dotted``,
   ``tuplet`` (3, 5, 6, 7, 9), ``duration`` ``[num, den]`` — the length played,
   in whole notes, dots and tuplets included; it wins when the flags say
@@ -123,6 +124,8 @@ class SongsterrGpReport:
     #: Repeats the tab marks (``repeat`` closes), and the bars heard once they
     #: are unrolled (``measures`` counts the written ones).
     repeats: int = 0
+    #: Bars marked as an alternate ending (1st/2nd time).
+    alternate_endings: int = 0
     played_measures: int = 0
     lyric_lines: int = 0
     warnings: list[str] = field(default_factory=list)
@@ -640,10 +643,14 @@ def write_songsterr_gp5(
         header.timeSignature.denominator = guitarpro.Duration(value=sig[1])
         if src.get("repeatStart") is True:
             header.isRepeatOpen = True
-        plays = src.get("repeat")
+        plays = src.get("repeat", src.get("repeatCount"))
         if isinstance(plays, int) and not isinstance(plays, bool) and plays >= 2:
             header.repeatClose = plays - 1  # PyGuitarPro: repeats, i.e. plays - 1
             report.repeats += 1
+        ending = src.get("alternateEnding")
+        if isinstance(ending, int) and not isinstance(ending, bool) and 0 < ending < 256:
+            header.repeatAlternative = ending  # GP5 and alphaTab: the same bitmask
+            report.alternate_endings += 1
         marker = src.get("marker")
         if isinstance(marker, dict) and str(marker.get("text") or "").strip():
             header.marker = guitarpro.Marker(title=_gp5_text(str(marker["text"]).strip()))
@@ -652,7 +659,8 @@ def write_songsterr_gp5(
         quarters.append(sig[0] * 4 / sig[1])
     order = playback_order([
         BarFlow(repeat_start=bool(h.isRepeatOpen),
-                repeat_count=h.repeatClose + 1 if h.repeatClose >= 0 else 0)
+                repeat_count=h.repeatClose + 1 if h.repeatClose >= 0 else 0,
+                alternate_endings=int(h.repeatAlternative or 0))
         for h in song.measureHeaders
     ])
     report.played_measures = len(order)
@@ -701,11 +709,9 @@ def write_songsterr_gp5(
     if report.repeats:
         report.warnings.append(tr(
             f"a tab repete {report.repeats} secção(ões): {n_measures} compassos escritos, "
-            f"{report.played_measures} tocados — se tiver finais alternativos (1.ª/2.ª "
-            "vez), confirma esses compassos, porque não sei lê-los do Songsterr",
+            f"{report.played_measures} tocados",
             f"the tab repeats {report.repeats} section(s): {n_measures} bars written, "
-            f"{report.played_measures} played — if it has alternate endings (1st/2nd "
-            "time), check those bars: I cannot read them from Songsterr",
+            f"{report.played_measures} played",
         ))
     if report.grace_dropped:
         report.warnings.append(tr(
