@@ -3346,6 +3346,37 @@ with Playwright on the user's Ocean Eyes build (toggle, playback glow, held
 note, chords, headstock, numbers/camera, live tempo follow, close/reopen, no page
 errors) — under software WebGL, so real-GPU frame rate is not measured here.
 
+### The built .sng on the 3D highway ("O que vai para o jogo", `psarc/preview.py`)
+
+The TODO's "preview the built .sng" (sent from the checklist, 2026-11-08). The score
+and the highway draw the chart from the built XML; the game reads the SNG, and every
+native-SNG bug that cost sessions was its geometry (levels, anchors, high density),
+seen only by playing. `GET /jobs/{id}/sng-preview?arrangement=<Kind>&level=` reads the
+`.psarc` on disk (`preview.read_charts`: only the `.sng` entries, `crypto.unpack_sng` +
+`read_sng`; the asset suffix lead/rhythm/combo/bass/lead2/rhythm2 → ArrangementKind,
+the vocals left out) and `level_preview` answers what a player at that level sees: each
+phrase iteration at `min(level, its phrase's ceiling)` — a phrase leaves the levels
+above its ceiling (finding B) and the game plays it at its ceiling, so the SNG's own
+top level alone holds only the phrases whose ceiling is the song's, and the hardest
+level here is the whole chart. Notes and anchors are those the SNG tags with the
+iteration; chords split into their template's strings (per-string mask, bends and
+slides from ChordNotes), `high_density` from the mask, bars from the beats' downbeat
+bit, capo 255 = none. -1 / omitted = the hardest. 409 without a .psarc, 404 for a
+chart it does not carry, 422 unreadable. Viewer: `#hw3dSource` in the highway's bar
+("Partitura (com o pendente)" / "O que vai para o jogo (.sng)", `rf-hw3d-source`) and
+`#hw3dLevel` (`hw3dShowSng`, cached per version/chart/level, forgotten on a new
+version by `hw3dForgetSng`): the built times are the display clock with nothing
+pending, so no warp — the pending edits are not in the .sng. Honest limit, in the ⓘ:
+our reading of the binary, so it would not have caught `VOCAL_NOTE = 254` or the
+partial-block `zlength`; it shortens the loop for geometry bugs, never replaces playing.
+Guarded by `test_sng_preview.py` (each level from the SNG, the hardest = every note of
+the chart where the raw top level is not — fails with the raw level back — chords
+split, high density, slide, anchors, bars; the charts by kind, vocals out) and
+`test_the_built_sng_is_shown_level_by_level_on_the_highway`; with Playwright under
+software WebGL on the example project (PT 1440 / EN 760 px): 112 notes from the score,
+112 at level 22 ("2 de 5 frases chegam a este nível"), 4 at level 0, back to the score,
+no horizontal scroll, no page errors. Not looked at against a real song's DD from here.
+
 ### Playing along with the guitar ("Tocar", `web/practice-core.js`) — EXPERIMENTAL
 
 "Tal como no rocksmith, pretendo ter a possibilidade de ligar a guitar, tocar e ter o feedback

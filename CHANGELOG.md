@@ -6,6 +6,10 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Novidades
+
+- **Ver na Pista 3D o que vai para o jogo:** na barra da Pista 3D, **O que vai para o jogo (.sng)** mostra a pista como ficou no `.psarc` construído, em vez da partitura, com um **Nível** de dificuldade: cada frase nesse nível, ou no seu máximo quando não chega lá, como o jogo a mostra a quem toca nesse nível, com as âncoras da mão e as frases do ficheiro. Serve para ver as notas e os níveis sem abrir o jogo; mostra a última construção e não substitui tocar a música no jogo.
+
 ## [0.12.0 beta 7] — 2026-11-08
 
 ### Novidades

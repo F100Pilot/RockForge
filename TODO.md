@@ -489,7 +489,9 @@ Feedback and bug reports very welcome!
   mão. Lê o XML construído (`/arrangements`), não o `.sng`, e mostra o arranjo
   completo — o que fica por fazer da ideia abaixo é a leitura do binário e o
   slider de nível de DD.
-- [ ] **Pré-visualizar o `.sng` construído na Pista 3D** — o resto da ideia original: desenhar a
+- [x] **Pré-visualizar o `.sng` construído na Pista 3D** (2026-11-08: "O que vai para o jogo
+  (.sng)" na barra da Pista 3D, com o nível de dificuldade; ver CLAUDE.md "The built .sng on the
+  3D highway") — o resto da ideia original: desenhar a
   autoestrada de notas do Rocksmith no browser, **a partir do `.sng` já
   construído** (`crypto.unpack_sng` + `read_sng`, que já existem) e não do
   `Arrangement` do domínio — assim mostra o que está mesmo no binário. Com um

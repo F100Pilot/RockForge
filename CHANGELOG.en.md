@@ -6,6 +6,10 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### New
+
+- **See on the 3D highway what goes to the game:** in the 3D highway's bar, **What goes to the game (.sng)** shows the highway as it ended up in the built `.psarc` instead of the score, at a difficulty **Level**: each phrase at that level, or at its own top when it does not reach it, as the game shows it to someone playing at that level, with the file's hand anchors and phrases. It lets you see the notes and levels without opening the game; it shows the last build and does not replace playing the song in the game.
+
 ## [0.12.0 beta 7] — 2026-11-08
 
 ### New

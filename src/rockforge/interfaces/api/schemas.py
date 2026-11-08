@@ -1015,6 +1015,57 @@ class PsarcCheckOut(BaseModel):
     problems: list[PsarcProblemOut]
 
 
+class SngNoteOut(BaseModel):
+    time: float
+    sustain: float
+    string: int
+    fret: int
+    techniques: list[str]
+    bend: int = 0
+    bend_curve: list[list[float]] = []
+    slide_to: int = -1
+    chord_name: str = ""
+    chord: bool = False
+    high_density: bool = False
+
+
+class SngAnchorOut(BaseModel):
+    time: float
+    end: float
+    fret: int
+    width: int
+    phrase_iteration: int
+
+
+class SngPhraseOut(BaseModel):
+    start: float
+    end: float
+    name: str
+    max_difficulty: int
+
+
+class SngBarOut(BaseModel):
+    time: float
+    measure: int
+
+
+class SngPreviewOut(BaseModel):
+    """One difficulty level of a chart as the built .sng holds it (bundle clock)."""
+    arrangement: str
+    charts: list[str]  # every chart the .psarc carries, by ArrangementKind value
+    level: int
+    levels: int
+    max_difficulty: int
+    phrases_at_level: int
+    notes: list[SngNoteOut]
+    anchors: list[SngAnchorOut]
+    phrases: list[SngPhraseOut]
+    bars: list[SngBarOut]
+    beats: list[float]
+    tuning: list[int]
+    capo: int
+
+
 class GameDlcOut(BaseModel):
     dlc_dir: str | None
     folder: str  # the sub-folder RockForge installs into

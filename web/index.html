@@ -1271,6 +1271,11 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
           <div id="hw3dWrap" class="hw3d" hidden>
             <div class="hw3d-bar">
               <label class="check"><input type="checkbox" id="hw3dNumbers"> Traste na nota</label>
+              <select id="hw3dSource" aria-label="O que a pista mostra" title="O que a pista mostra">
+                <option value="score">Partitura (com o pendente)</option>
+                <option value="sng">O que vai para o jogo (.sng)</option>
+              </select>
+              <label class="hw3d-tilt" id="hw3dLevelRow" hidden>Nível <input type="range" id="hw3dLevel" min="0" max="0" step="1" value="0"> <span id="hw3dLevelInfo"></span></label>
               <details class="hw3d-cam">
                 <summary>Câmara</summary>
                 <div class="hw3d-cam-body">

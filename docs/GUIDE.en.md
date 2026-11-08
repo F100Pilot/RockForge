@@ -275,7 +275,11 @@ They stay pending as before; Undo goes back to the built version.
   the 3D highway, drag to turn the camera (up to 120° either
   way, from level with the highway to a view from above), once you click the highway the mouse wheel
   moves closer or further (before that it scrolls the page; Esc or a click elsewhere lets go) and
-  a double-click resets; **Camera** has the same axes as sliders. **− / + / Reset**: zoom.
+  a double-click resets; **Camera** has the same axes as sliders. In the highway's bar, **What goes
+  to the game (.sng)** swaps the score for what ended up in the built `.psarc`, at a difficulty
+  **Level**: each phrase at that level, or at its own top when it does not reach it, with the
+  `.sng`'s hand anchors and phrases. It shows the last build (pending edits only get there after
+  **Apply and rebuild**) and does not replace playing the song in the game. **− / + / Reset**: zoom.
   **Legend** shows, under the score, what each mark means (rings, tails, lines, the orange circles
   of the attacks, the hand-position lane…), drawn as it appears; the ⓘ beside it shows the same.
 - **Play** (experimental) opens, above the score, the **Play with the guitar** panel: connect

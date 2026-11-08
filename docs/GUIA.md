@@ -275,6 +275,10 @@ queres recuperar. Ficam pendentes como antes; Desfazer volta à versão constru�
   câmara (até 120° para cada lado, de rente à pista até vista de cima), depois de clicares na
   pista a roda do rato aproxima ou afasta (antes disso desloca a página; Esc ou um clique fora
   largam a pista) e um duplo clique repõe; **Câmara** tem os mesmos eixos em controlos deslizantes.
+  Na barra da pista, **O que vai para o jogo (.sng)** troca a partitura pelo que ficou no `.psarc`
+  construído, com um **Nível** de dificuldade: cada frase nesse nível, ou no seu máximo quando não
+  chega lá, com as âncoras da mão e as frases do `.sng`. Mostra a última construção (o pendente só
+  entra depois de **Aplicar e reconstruir**) e não substitui tocar a música no jogo.
   **− / + / Repor**: zoom. **Legenda** mostra, debaixo da pauta, o que quer dizer cada marca
   (anéis, caudas, linhas, as bolas laranja dos ataques, a faixa da posição da mão…), desenhada
   como aparece; o ⓘ ao lado mostra o mesmo.

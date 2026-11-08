@@ -1885,7 +1885,8 @@ const INFO = {
     body: T('<p>As notas da pista escolhida a descer para as cordas, como no Rocksmith: cada corda na sua cor (Mi grave vermelho em cima) e uma linha até ao traste onde se toca. Como no Rocksmith, a nota não tem número: o número do traste no braço passa a âmbar e brilha à medida que se aproxima uma nota desse traste, e fica aceso enquanto ela soa ("Traste na nota" volta a pôr o número na nota). Quando a nota chega à corda, a corda brilha, um retângulo acende à volta dos trastes onde está a mão (por exemplo 2–5), como no Rocksmith, e a nota fica pousada na corda enquanto soa.</p>') +
       T('<p>A afinação está escrita na pestana do headstock. Acordes têm moldura e nome; uma corda solta é uma barra ao longo da zona da mão (a faixa azul), que a câmara segue. As técnicas têm os símbolos do Rocksmith: ▼ hammer-on e ▲ pull-off na nota; cruz translúcida dentro da nota = palm mute; por cima, anel com ponto = harmónico, olho = harmónico pinch, V largo = tapping, bloco com entalhe = slap, com bico = pop, chevrons ˄ verde-água = bend (um = meio tom, dois = um tom, três = mais), com o rasto verde-água a subir com o bend, e na corda a nota sobe à medida que é dobrada, até à moldura tracejada da altura que o bend alcança; moldura dupla = acento; rasto ondulado = vibrato, em zigue-zague = tremolo picking; X = nota abafada.</p>') +
       T('<p><strong>Câmara:</strong> arrasta a pista para a rodar — para os lados até 120° de cada lado, e de rente à pista (0°) até vista de cima (90°); depois de clicares na pista, a roda do rato aproxima ou afasta (antes disso a roda desloca a página; Esc ou um clique fora largam a pista), e um duplo clique (ou "Repor câmara") volta à vista inicial. Os mesmos três eixos estão em "Câmara", com controlos deslizantes, e a vista fica guardada para o próximo projeto.</p>') +
-      T('<p>Segue a gravação e as correções de sincronização <strong>ainda por aplicar</strong>, tal como a partitura por baixo — serve para confirmar a sincronização a ver as notas chegar. Precisa de WebGL (aceleração gráfica) no browser.</p>')
+      T('<p>Segue a gravação e as correções de sincronização <strong>ainda por aplicar</strong>, tal como a partitura por baixo — serve para confirmar a sincronização a ver as notas chegar. Precisa de WebGL (aceleração gráfica) no browser.</p>') +
+      T('<p><strong>O que vai para o jogo (.sng):</strong> em vez da partitura, mostra a pista como ficou no .psarc construído — o ficheiro que o jogo lê — com o nível de dificuldade escolhido: cada frase no nível escolhido, ou no seu máximo quando não chega lá, como o jogo a mostra a quem toca nesse nível. As âncoras da mão e as frases são as do .sng. Mostra a última construção: as correções pendentes só lá entram depois de "Aplicar e reconstruir". É a nossa leitura do ficheiro: serve para ver as notas, as âncoras e os níveis sem abrir o jogo, mas não substitui tocar a música no jogo.</p>')
   },
   'tab-viewer': {
     title: T('Partitura — legenda'),
@@ -2911,6 +2912,7 @@ async function loadArrangements(id) {
   const fetched = await getJSON(`/jobs/${id}/arrangements`);
   if (staleFor(id)) return;
   arrangements = fetched;
+  hw3dForgetSng();
   syncAnchorsByKind = {};  // fresh pending corrections per arrangement
   tempoScaleByKind = {};
   resetLyricFollow();
@@ -11719,8 +11721,87 @@ function hw3dBendCurve(n, t, at) {
   if (!curve.length || Math.round(Math.max(...curve.map(p => p[1]))) !== n.bend_semitones) return [];
   return curve.map(([dt, step]) => [Math.max(0, at(n.time + dt) - t), step]);
 }
+// "O que vai para o jogo": the chart as the built .sng holds it (/sng-preview), one difficulty
+// level at a time, each phrase at min(level, its own ceiling) — what a player set to that level
+// sees. Built times are the display clock with nothing pending, so no warp: pending edits are
+// not in the .sng until "Aplicar e reconstruir".
+let hw3dSource = 'score';
+try { if (localStorage.getItem('rf-hw3d-source') === 'sng') hw3dSource = 'sng'; } catch { /* score */ }
+let hw3dSngLevel = null;           // null = the hardest
+const hw3dSngCache = new Map();    // `${job}|${kind}|${level}` → the endpoint's answer, or {error}
+let hw3dSngWanted = '';
+function hw3dSngInfo(text) { document.getElementById('hw3dLevelInfo').textContent = text; }
+async function hw3dShowSng(a) {
+  if (!selectedJob) return;
+  const job = selectedJob.id, kind = a.kind;
+  const key = `${job}|${kind}|${hw3dSngLevel ?? 'top'}`;
+  hw3dSngWanted = key;
+  let data = hw3dSngCache.get(key);
+  if (!data) {
+    hw3dSngInfo(T('A ler o .sng…'));
+    try {
+      const q = new URLSearchParams({ arrangement: kind });
+      if (hw3dSngLevel !== null) q.set('level', String(hw3dSngLevel));
+      data = await getJSON(`/jobs/${job}/sng-preview?${q}`);
+    } catch (err) {
+      data = { error: (err && err.message) || String(err) };
+    }
+    hw3dSngCache.set(key, data);
+  }
+  if (hw3dSngWanted !== key || hw3dSource !== 'sng' || !window.Highway3D || !window.Highway3D.ready) return;
+  const range = document.getElementById('hw3dLevel');
+  if (data.error) {
+    range.max = '0'; range.value = '0'; range.disabled = true;
+    hw3dSngInfo(T('Sem .sng: {msg}', { msg: data.error }));
+    window.Highway3D.setSong({ notes: [], bars: [], beats: [], sections: [], fhps: [], tuning: a.tuning_offsets || [0, 0, 0, 0, 0, 0], strings: stringCount(a) });
+    hw3dLastSong = null;
+    return;
+  }
+  range.disabled = false;
+  range.max = String(data.levels - 1);
+  range.value = String(data.level);
+  hw3dSngInfo(T('{d} de {max} · {k} de {n} frases chegam a este nível', {
+    d: data.level, max: data.levels - 1, k: data.phrases_at_level, n: data.phrases.length,
+  }));
+  const song = {
+    notes: data.notes.map(n => ({
+      t: n.time, sustain: n.sustain, string: n.string, fret: n.fret, techniques: n.techniques,
+      bend: n.bend, bendCurve: n.bend_curve, slideTo: n.slide_to, chordName: n.chord_name,
+    })),
+    bars: data.bars.map(b => ({ t: b.time, measure: b.measure })),
+    beats: data.beats,
+    sections: data.phrases.map(ph => ({ t: ph.start, name: ph.name })),
+    fhps: data.anchors.map(h => ({ t: h.time, fret: h.fret, width: h.width })),
+    tuning: data.tuning.length >= 6 ? data.tuning.slice(0, 6) : (a.tuning_offsets || [0, 0, 0, 0, 0, 0]),
+    strings: stringCount(a),
+  };
+  const songKey = 'sng|' + key;
+  if (songKey === hw3dLastSong) return;
+  hw3dLastSong = songKey;
+  window.Highway3D.setSong(song);
+}
+function setHw3dSource(source) {
+  hw3dSource = source === 'sng' ? 'sng' : 'score';
+  try { localStorage.setItem('rf-hw3d-source', hw3dSource); } catch { /* not remembered */ }
+  document.getElementById('hw3dSource').value = hw3dSource;
+  document.getElementById('hw3dLevelRow').hidden = hw3dSource !== 'sng';
+  hw3dLastSong = null;
+  if (arrangements.length) showArr(currentArr);
+}
+document.getElementById('hw3dSource').value = hw3dSource;
+document.getElementById('hw3dLevelRow').hidden = hw3dSource !== 'sng';
+document.getElementById('hw3dSource').addEventListener('change', e => setHw3dSource(e.target.value));
+document.getElementById('hw3dLevel').addEventListener('input', e => {
+  hw3dSngLevel = Number(e.target.value);
+  const a = arrangements[currentArr];
+  if (a && hw3dSource === 'sng') hw3dShowSng(a);
+});
+// A new version (a rebuild) has another .sng: forget what was read for the last one.
+function hw3dForgetSng() { hw3dSngCache.clear(); hw3dSngLevel = null; }
+
 function hw3dRefresh(a, notes) {
   if (!hw3dOn || !window.Highway3D || !window.Highway3D.ready || !a) return;
+  if (hw3dSource === 'sng') { hw3dShowSng(a); return; }
   const warp = buildTimeWarp(syncAnchors);
   const at = t => warp(previewScale(t));
   const data = {

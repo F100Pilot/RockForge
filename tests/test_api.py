@@ -4732,6 +4732,22 @@ def test_the_built_psarc_is_checked_before_it_goes_to_the_game(
     assert client.get(f"/jobs/{no_psarc}/psarc-check").status_code == 409
 
 
+def test_the_built_sng_is_shown_level_by_level_on_the_highway(client: TestClient, tmp_path) -> None:
+    job_id, _psarc = _job_with_psarc(client, tmp_path)
+    url = f"/jobs/{job_id}/sng-preview"
+    r = client.get(url, params={"arrangement": "Lead"})
+    assert r.status_code == 200, r.text
+    top = r.json()
+    assert top["charts"] == ["Lead"] and top["level"] == top["levels"] - 1
+    assert top["notes"] and top["anchors"] and top["phrases"] and top["bars"]
+    low = client.get(url, params={"arrangement": "Lead", "level": 0}).json()
+    assert low["level"] == 0 and len(low["notes"]) <= len(top["notes"])
+    assert client.get(url, params={"arrangement": "Bass"}).status_code == 404
+    no_psarc = _bundle_with(client, ["LEAD"])
+    r = client.get(f"/jobs/{no_psarc}/sng-preview", params={"arrangement": "Lead"})
+    assert r.status_code == 409
+
+
 def test_install_copies_the_psarc_into_the_games_dlc_folder(client: TestClient, tmp_path) -> None:
     import rockforge.runtime_settings as runtime_settings
 

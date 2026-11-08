@@ -1810,5 +1810,13 @@
   "Projeto de exemplo": "Example project",
   "Projeto de exemplo criado — a construir. O tutorial do Guia segue-o passo a passo.": "Example project created — building. The Guide's tutorial follows it step by step.",
   "Não foi possível criar o exemplo: {error}": "Could not create the example: {error}",
-  "Tutorial com o projeto de exemplo": "Tutorial with the example project"
+  "Tutorial com o projeto de exemplo": "Tutorial with the example project",
+ "Partitura (com o pendente)": "Score (with pending edits)",
+ "O que vai para o jogo (.sng)": "What goes to the game (.sng)",
+ "O que a pista mostra": "What the highway shows",
+ "Nível": "Level",
+ "A ler o .sng…": "Reading the .sng…",
+ "Sem .sng: {msg}": "No .sng: {msg}",
+ "{d} de {max} · {k} de {n} frases chegam a este nível": "{d} of {max} · {k} of {n} phrases reach this level",
+ "<p><strong>O que vai para o jogo (.sng):</strong> em vez da partitura, mostra a pista como ficou no .psarc construído — o ficheiro que o jogo lê — com o nível de dificuldade escolhido: cada frase no nível escolhido, ou no seu máximo quando não chega lá, como o jogo a mostra a quem toca nesse nível. As âncoras da mão e as frases são as do .sng. Mostra a última construção: as correções pendentes só lá entram depois de \"Aplicar e reconstruir\". É a nossa leitura do ficheiro: serve para ver as notas, as âncoras e os níveis sem abrir o jogo, mas não substitui tocar a música no jogo.</p>": "<p><strong>What goes to the game (.sng):</strong> instead of the score, shows the highway as it ended up in the built .psarc — the file the game reads — at the difficulty level you choose: each phrase at that level, or at its own top when it does not reach it, as the game shows it to someone playing at that level. The hand anchors and the phrases are the .sng's. It shows the last build: pending corrections only get there after \"Apply and rebuild\". It is our reading of the file: it lets you see the notes, anchors and levels without opening the game, but it does not replace playing the song in the game.</p>"
 };

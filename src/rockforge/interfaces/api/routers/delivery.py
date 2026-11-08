@@ -23,6 +23,7 @@ from rockforge.interfaces.api.schemas import (
     JobOut,
     PsarcCheckOut,
     PsarcProblemOut,
+    SngPreviewOut,
 )
 
 router = APIRouter()
@@ -116,6 +117,34 @@ def check_psarc(job_id: str) -> PsarcCheckOut:
             level=p.level, time=None if p.time is None else round(p.time, 3), detail=p.detail,
         )
     return PsarcCheckOut(ok=report.ok, charts=report.charts, problems=list(groups.values()))
+
+
+@router.get("/jobs/{job_id}/sng-preview", response_model=SngPreviewOut)
+def sng_preview(job_id: str, arrangement: str, level: int = -1) -> SngPreviewOut:
+    """One difficulty level of a chart as the built .sng holds it — what the game
+    will read, not the score (``psarc/preview.py``). ``level`` -1 = the hardest.
+    Read on request from the .psarc on disk, like the check."""
+    from rockforge.infrastructure.packaging.psarc import preview
+
+    with api._session_factory() as session:
+        job = api._job_or_404(session, job_id)
+        psarc = job.psarc_path
+    if not psarc or not Path(psarc).is_file():
+        raise HTTPException(409, i18n.tr("este projeto não tem PSARC", "this project has no PSARC"))
+    try:
+        charts = preview.read_charts(Path(psarc))
+    except Exception as exc:  # noqa: BLE001 — an unreadable archive is the answer
+        raise HTTPException(422, i18n.tr("não consegui ler o PSARC: {e}",
+                                         "could not read the PSARC: {e}").format(e=exc)) from exc
+    model = charts.get(arrangement)
+    if model is None:
+        raise HTTPException(404, i18n.tr("o PSARC não tem o arranjo {a}",
+                                         "the PSARC has no {a} chart").format(a=arrangement))
+    try:
+        data = preview.level_preview(model, level if level >= 0 else len(model.arrangements) - 1)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    return SngPreviewOut(arrangement=arrangement, charts=sorted(charts), **data)
 
 
 @router.get("/game-dlc", response_model=GameDlcOut)
