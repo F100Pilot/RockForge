@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import copy
+import re
 from datetime import UTC, datetime
 from functools import cache
 from pathlib import Path
@@ -316,10 +317,37 @@ def generate_cdlc(job_id: str) -> None:
                         [(float(a[0]), float(a[1])) for a in stage] for stage in (raw or [])
                     ]
 
+                # The recording without one instrument (a backing track): the
+                # other stems of its separation, mixed, are the song's audio, and
+                # the song says so in its title — so in game it is a song of its
+                # own, beside the one with every instrument.
+                audio_source, title = job.source, job.title
+                without = params.get("backing_without")
+                if isinstance(without, str) and without:
+                    from rockforge.infrastructure.separation.backing import (
+                        backing_parts,
+                        mix_backing,
+                        without_label,
+                    )
+
+                    stems = params.get("stems")
+                    raw = stems.get(without) if isinstance(stems, dict) else None
+                    if not (re.fullmatch(r"[a-z_]+", without) and isinstance(raw, str)
+                            and Path(raw).is_file()):
+                        raise ValueError(tr(
+                            f"o instrumento \"{without}\" já não está separado — corre "
+                            "outra vez \"Separar instrumentos\" ou volta à gravação completa",
+                            f"the \"{without}\" instrument is no longer separated — run "
+                            "\"Separate instruments\" again or go back to the full recording",
+                        ))
+                    audio_source = str(mix_backing(
+                        backing_parts(Path(raw)), Path(workdir) / f"backing_without_{without}.wav",
+                    ))
+                    title = f"{job.title or ''} ({without_label(without)})".strip()
                 gp_use_case: GenerateFromGpUseCase = _build_gp_use_case()
                 spec = GpJobSpec(
                     gp_path=Path(params["gp_path"]),
-                    audio_source=job.source,
+                    audio_source=audio_source,
                     lead_track=params.get("lead_track"),
                     rhythm_track=params.get("rhythm_track"),
                     combo_track=params.get("combo_track"),
@@ -444,7 +472,7 @@ def generate_cdlc(job_id: str) -> None:
                 result = gp_use_case.run(
                     spec=spec,
                     metadata=Meta(
-                        title=job.title, artist=job.artist, album=job.album, year=job.year
+                        title=title, artist=job.artist, album=job.album, year=job.year
                     ),
                     workdir=Path(workdir),
                     on_stage=on_stage,

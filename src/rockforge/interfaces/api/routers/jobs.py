@@ -438,7 +438,8 @@ def reload_gp(
             # What was measured on the old recording does not describe this one: its
             # separated guitar would put the attacks and the stem sources elsewhere.
             for key in ("stems", "stems_status", "stems_log", "detected_tones",
-                        "tone_detection_status", "tone_detection_log", "marked_attacks"):
+                        "tone_detection_status", "tone_detection_log", "marked_attacks",
+                        "backing_without"):
                 params.pop(key, None)
         elif recording_gone:
             gp_dest.unlink(missing_ok=True)

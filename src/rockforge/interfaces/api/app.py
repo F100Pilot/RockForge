@@ -490,7 +490,7 @@ def _check_imported_params(params: dict[str, object]) -> None:
         v = params.get(key)
         if v is not None and (not isinstance(v, int) or isinstance(v, bool) or not 0 <= v < 64):
             raise bad(key, "o número de uma pista")
-    for key in ("sync_main", "bar_times_source", "tone_base", "lrc_text"):
+    for key in ("sync_main", "bar_times_source", "tone_base", "lrc_text", "backing_without"):
         if params.get(key) is not None and not isinstance(params[key], str):
             raise bad(key, "texto")
     for key in ("sync_confirmed", "gp_synced", "import_mute_techniques", "recording_from_gp",
@@ -684,6 +684,11 @@ def _to_out(job: Job) -> JobOut:
         tempo_scale=tempo_scale,
         import_mutes=bool((job.params or {}).get("import_mute_techniques", True)),
         dynamic_difficulty=bool((job.params or {}).get("dynamic_difficulty", True)),
+        backing_without=(
+            str(params["backing_without"])
+            if isinstance(params.get("backing_without"), str) and params["backing_without"]
+            else None
+        ),
         error=job.error,
         lyrics_status=str((job.params or {}).get("lyrics_status", "none")),
         tone_detection_status=str(

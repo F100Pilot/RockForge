@@ -802,6 +802,14 @@ e afinação**.
 Importar palm mute / slap / tap, e **Dificuldade dinâmica** (desliga para uma única dificuldade com
 todas as notas, se o DD der problemas numa música).
 
+**Gravação** — **sem um instrumento**: constrói a versão com a gravação sem, por exemplo, o
+baixo, para o tocares tu por cima da música. Precisa de **Separar instrumentos** (no menu
+**Áudio ▾** da Partitura, ou o botão que aparece aqui). O RockForge junta os outros instrumentos
+da mesma separação (a bateria incluída) e usa essa mistura como áudio. O título ganha "(sem
+baixo)", por isso no jogo é outra música, ao lado da que tem todos os instrumentos, e instalá-la
+não apaga a outra. A separação nunca é perfeita: pode ouvir-se um resto do instrumento tirado.
+**Completa** volta à gravação inteira. Aplica-se em **Aplicar e reconstruir**.
+
 ## 12. Um álbum de uma vez (Lote)
 
 **Lote (álbum)** cria vários projetos de uma vez: escolhe vários ficheiros GP e as gravações.

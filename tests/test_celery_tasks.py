@@ -739,3 +739,64 @@ def test_a_note_edits_link_and_unpitched_slide_reach_the_build(db, tmp_path, mon
 
     assert [o.bend_points for o in seen] == [None, None, None, (
         BendPoint(0.0, 0.0), BendPoint(0.5, 2.0), BendPoint(1.0, 0.0))]
+
+
+def test_a_version_without_one_instrument_is_built_from_the_others(
+    db, tmp_path, monkeypatch
+) -> None:
+    """A backing track: the other stems of the bass's separation are the song's
+    audio, and its title says what it leaves out, so it is a song of its own in
+    game; a bass that is no longer separated fails the build in words."""
+    from rockforge.application.gp_pipeline import GenerateFromGpUseCase
+    from rockforge.infrastructure.separation import backing
+
+    sep = tmp_path / "htdemucs_6s" / "song"
+    sep.mkdir(parents=True)
+    for name in ("bass", "drums", "guitar"):
+        (sep / f"{name}.wav").write_bytes(b"RIFF")
+    mixed: list[list[str]] = []
+
+    def fake_mix(parts, out, ffmpeg="ffmpeg"):
+        mixed.append([p.name for p in parts])
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(b"RIFF")
+        return out
+
+    monkeypatch.setattr(backing, "mix_backing", fake_mix)
+    fetched: list[str] = []
+    titles: list[str] = []
+
+    class Ingestor(_FakeIngestor):
+        def fetch(self, source, workdir):
+            fetched.append(str(source))
+            return super().fetch(source, workdir)
+
+    class Packager(_FakePackager):
+        def package(self, arrangements, *args, **kwargs):
+            titles.append(arrangements[0].metadata.title)
+            return super().package(arrangements, *args, **kwargs)
+
+    monkeypatch.setattr(
+        ca, "_build_gp_use_case",
+        lambda: GenerateFromGpUseCase(
+            ingestor=Ingestor(), normalizer=_FakeNormalizer(), packager=Packager()
+        ),
+    )
+    gp_path = _make_gp5(tmp_path)
+    job_id = _job(db, params={"gp_path": str(gp_path), "lead_track": 0,
+                              "stems": {"bass": str(sep / "bass.wav")},
+                              "backing_without": "bass"})
+    ca.generate_cdlc(job_id)
+    job = _reload(db, job_id)
+    assert job.status == JobStatus.COMPLETED, job.error
+    assert mixed == [["drums.wav", "guitar.wav"]]
+    assert fetched and fetched[0].endswith("backing_without_bass.wav")
+    assert titles == [f"Song ({backing.without_label('bass')})"]
+
+    (sep / "bass.wav").unlink()
+    gone = _job(db, params={"gp_path": str(gp_path), "lead_track": 0,
+                            "stems": {"bass": str(sep / "bass.wav")},
+                            "backing_without": "bass"})
+    ca.generate_cdlc(gone)
+    job = _reload(db, gone)
+    assert job.status == JobStatus.FAILED and "bass" in (job.error or "")

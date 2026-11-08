@@ -1804,6 +1804,10 @@ const INFO = {
 <p><b>Andamento (BPM do compasso):</b> escreve o BPM que o compasso deve ter (vem preenchido com o atual) e, se quiseres, até que compasso aplicar — todos passam a esse BPM. O que vem depois <b>não muda de andamento</b>: só se desloca pela diferença, por isso cada compasso seguinte continua com o seu. O compasso fica marcado a âmbar na partitura, e "Guitar Pro com os andamentos corrigidos" (Exportar) grava-o no ficheiro.</p>
 <p>Como as outras ferramentas de sincronização, cria uma correção pendente por pista — grava com "Aplicar e reconstruir".</p>`)
   },
+  'backing': {
+    title: T('Gravação sem um instrumento'),
+    body: T('<p>Constrói esta versão com a gravação <b>sem um dos instrumentos</b> — por exemplo sem o baixo, para o tocares tu por cima da música. O RockForge junta os outros instrumentos da mesma separação (a bateria incluída) e usa essa mistura como áudio do PSARC.</p><p>Precisa de "Separar instrumentos" (no menu Áudio ▾ da Partitura, ou o botão aqui). O título da música ganha "(sem baixo)", por isso no jogo é outra música, ao lado da que tem todos os instrumentos; instalá-la não apaga a outra.</p><p>A separação nunca é perfeita: pode ouvir-se um resto do instrumento tirado, e os outros podem soar um pouco diferentes. Aplica-se em "Aplicar e reconstruir"; "Completa" volta à gravação inteira.</p>')
+  },
   'sync-guide': {
     title: T('Como sincronizar'),
     body: T('<p>Em <b>Simples</b> ficam só as ferramentas que a maioria das músicas precisa, pela ordem em que se usam: o início, o andamento, corrigir onde a partitura foge e, por fim, marcar a pista como sincronizada. "Mostrar" leva-te ao cartão de cada passo.</p><p>Em <b>Avançado</b> aparece o resto: a pista principal, o slider do início e "Detetar 1ª nota", a sincronização automática, os ataques da gravação e os modos Marcar, Excerto, Mover seguintes e Alinhar compasso. Nada se perde ao mudar: as correções que já fizeste continuam lá.</p><p>Cada pista sincroniza-se à parte. Tudo fica pendente até "Aplicar e reconstruir".</p>')
@@ -2844,6 +2848,7 @@ async function selectJob(id, { poll = false, force = false } = {}) {
 
   document.getElementById('muteChk').checked = j.import_mutes !== false;
   document.getElementById('ddChk').checked = j.dynamic_difficulty !== false;
+  renderBackingRow();
   if (j.status === 'completed' && j.bundle_available) {
     // Load arrangements (heavy: decodes the full recording, resets the audio
     // <src>) only ONCE per job. Re-running it on every status poll would reset
@@ -6093,6 +6098,9 @@ async function applyAllNow() {
         other_sync: applyToAll ? null : otherPendingSync(),
         import_mutes: document.getElementById('muteChk').checked,
         dynamic_difficulty: document.getElementById('ddChk').checked,
+        // Sent only when changed: null keeps it, "" is the whole recording again.
+        backing_without: isGpJob() && document.getElementById('backingSel').value !== (selectedJob.backing_without || '')
+          ? document.getElementById('backingSel').value : null,
         // null keeps the stored rows; [] drops them, so the build reads the GP
         // file's own lyrics again ("Voltar à letra da pauta").
         lyrics_events: lyricsEvents.length ? serializeLyrics() : (lyricsBackToScore ? [] : null),
@@ -8891,7 +8899,51 @@ function populateAudioSources() {
   sel.value = values.includes(prev) ? prev : '';
   audioSourceName = sel.value;
   populateLevelsSources();
+  renderBackingRow();
 }
+
+// "Gravação: sem um instrumento" (r/rocksmith, 2026-11-08: "a bass backing track
+// without original bass stem to play bass"): build this version from the other
+// stems of a separation. A pending build option like DD — it rides "Aplicar e
+// reconstruir" as backing_without ("" = the whole recording again).
+let backingFor = null;  // the job the select was filled for (keeps an unsent pick)
+function renderBackingRow() {
+  const row = document.getElementById('backingRow');
+  const sel = document.getElementById('backingSel');
+  if (!row || !sel) return;
+  const j = selectedJob;
+  row.hidden = !(j && j.source_type === 'gp');
+  if (row.hidden) { document.getElementById('backingInfo').textContent = ''; return; }
+  const built = j.backing_without || '';
+  const keep = backingFor === j.id ? sel.value : built;
+  backingFor = j.id;
+  const names = [...availableStems];
+  if (built && !names.includes(built)) names.push(built);
+  sel.innerHTML = `<option value="">${esc(T('Completa, com todos os instrumentos'))}</option>`
+    + names.map(n => `<option value="${esc(n)}">${esc(T('Sem: {stem}', { stem: STEM_LABELS[n] || n }))}</option>`).join('');
+  sel.value = keep === '' || names.includes(keep) ? keep : '';
+  renderBackingInfo();
+}
+function renderBackingInfo() {
+  const sel = document.getElementById('backingSel');
+  const info = document.getElementById('backingInfo');
+  if (!sel || !info) return;
+  const none = !availableStems.length && !sel.value;
+  document.getElementById('backingSeparate').hidden = !none || stemsBusy;
+  if (none) {
+    info.textContent = T('Para tirar um instrumento (o baixo, por exemplo, para o tocares tu), separa primeiro os instrumentos.');
+  } else if (sel.value) {
+    const label = (STEM_LABELS[sel.value] || sel.value).toLowerCase();
+    info.textContent = T('O PSARC sai como outra música no jogo, com "({label})" no título, ao lado da que tem todos os instrumentos. A separação nunca é perfeita: pode ouvir-se um resto do instrumento tirado.', { label: T('sem {stem}', { stem: label }) });
+  } else {
+    info.textContent = T('Podes construir esta versão sem um dos instrumentos separados, para o tocares tu.');
+  }
+}
+document.getElementById('backingSel')?.addEventListener('change', renderBackingInfo);
+document.getElementById('backingSeparate')?.addEventListener('click', () => {
+  document.getElementById('backingSeparate').hidden = true;
+  separateStems();
+});
 
 let stemsBusy = false;  // a separation of the open project is running
 async function separateStems() {
@@ -9556,6 +9608,9 @@ function updatePendingChangesInfo() {
     const end = parseFloat(document.getElementById('songEndS').value) || 0;
     if (Math.abs(end - (selectedJob.song_end_s || 0)) > 0.0005) parts.push(T('fim da música'));
   }
+  if (selectedJob && isGpJob() && document.getElementById('backingSel').value !== (selectedJob.backing_without || '')) {
+    parts.push(T('gravação'));
+  }
   if (syncAnchors.length) parts.push(T('{n} ponto(s) de correção', { n: syncAnchors.length }));
   if (JSON.stringify(noteOverridesByKind) !== noteOverridesBuilt) parts.push(T('edições de notas'));
   if (JSON.stringify(fhpByKind) !== fhpBuilt) parts.push(T('posições da mão'));
@@ -9599,6 +9654,7 @@ function pendingSnapshot() {
     songEnd: document.getElementById('songEndS').value,
     mutes: document.getElementById('muteChk').checked,
     dd: document.getElementById('ddChk').checked,
+    backing: document.getElementById('backingSel').value,
     tempo, anchors,
     notes: JSON.parse(JSON.stringify(noteOverridesByKind)),
     fhp: JSON.parse(JSON.stringify(fhpByKind)),
@@ -9622,6 +9678,9 @@ function restorePending(snap) {
     document.getElementById('songEndS').value = snap.songEnd || '';
     document.getElementById('muteChk').checked = snap.mutes;
     document.getElementById('ddChk').checked = snap.dd;
+    const bsel = document.getElementById('backingSel');
+    if (bsel && [...bsel.options].some(o => o.value === (snap.backing || ''))) bsel.value = snap.backing || '';
+    renderBackingInfo();
     tempoScaleByKind = { ...snap.tempo };
     syncAnchorsByKind = {};
     for (const [kind, list] of Object.entries(snap.anchors)) syncAnchorsByKind[kind] = list.map(pt => pt.slice());
@@ -9780,7 +9839,7 @@ function updateUndoButtons() {
 }
 document.getElementById('undoBtn').addEventListener('click', undoPending);
 document.getElementById('redoBtn').addEventListener('click', redoPending);
-for (const id of ['leadInS', 'songEndS', 'muteChk', 'ddChk'])
+for (const id of ['leadInS', 'songEndS', 'muteChk', 'ddChk', 'backingSel'])
   document.getElementById(id).addEventListener('change', () => { updatePendingChangesInfo(); notePendingChange(); });
 // "Fim da música": seconds of the recording file, the clock the lyrics use
 // (the playhead minus the built intro silence). Empty = the recording's end.

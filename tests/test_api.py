@@ -5234,3 +5234,33 @@ def test_an_uploaded_lrc_is_capped_at_what_a_lyric_can_be(client: TestClient, tm
                     files={"audio": ("song.wav", b"RIFF0000WAVE", "audio/wav"),
                            "lrc": ("song.lrc", line * 100, "text/plain")})
     assert r.status_code == 202
+
+
+def test_a_version_without_one_separated_instrument_is_stored_and_kept_apart_in_game(
+    client: TestClient, tmp_path
+) -> None:
+    """A backing track (r/rocksmith, 2026-11-08): only an instrument "Separar
+    instrumentos" stored can be left out, "" brings the whole recording back,
+    and the game's copy of the other version is not this one's."""
+    import rockforge.interfaces.api.app as app_module
+
+    job = _gp_job(client, tmp_path)
+    assert job["backing_without"] is None
+    assert client.post(f"/jobs/{job['id']}/rebuild",
+                       json={"backing_without": "bass"}).status_code == 422
+    bass = tmp_path / "bass.wav"
+    bass.write_bytes(b"RIFF")
+    with app_module._session_factory() as session:
+        row = session.get(app_module.Job, job["id"])
+        row.params = {**dict(row.params or {}), "stems": {"bass": str(bass)},
+                      "installed_psarc": "x_p.psarc", "installed_from": job["id"]}
+        session.commit()
+    without = client.post(f"/jobs/{job['id']}/rebuild", json={"backing_without": "bass"}).json()
+    assert without["backing_without"] == "bass"
+    with app_module._session_factory() as session:
+        params = session.get(app_module.Job, without["id"]).params
+    assert "installed_psarc" not in params and "installed_from" not in params
+    kept = client.post(f"/jobs/{without['id']}/rebuild", json={"offset_s": 1.0}).json()
+    assert kept["backing_without"] == "bass"
+    back = client.post(f"/jobs/{kept['id']}/rebuild", json={"backing_without": ""}).json()
+    assert back["backing_without"] is None

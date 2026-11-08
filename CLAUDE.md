@@ -4802,6 +4802,44 @@ over the env `Settings`, empty string clears it back to the env default. `GET
 change takes effect on the next `separate_stems` run with no restart. Guarded by
 `test_settings.py`.
 
+### A version without one instrument (`backing_without`, `separation/backing.py`)
+
+"The option to generate a .psarc without one of the stems would be HIGHLY
+appreciated. Like a bass backing track without original bass stem to play bass"
+(r/rocksmith, 2026-11-08). The stems of one Demucs pass sit in ONE folder and add
+up to the recording, so the recording without the bass is the sum of the bass's
+siblings there (`backing_parts`, the drums included — "Separar instrumentos" only
+keeps them out of the player's list) — `mix_backing`: ffmpeg `amix` with
+`normalize=0` (a plain sum; amix otherwise divides by the number of inputs) into a
+32-bit float WAV, which cannot clip; the normalizer then gains it like any
+recording. The stems were separated untrimmed, so the clock, offset and every sync
+correction stay valid. Plumbing: `RebuildIn.backing_without` (a name of
+`params["stems"]` with its file present — only what "Separar instrumentos" stored —
+"" back to the whole recording, null untouched; `sync._set_backing_without`),
+`params["backing_without"]` (portable in `.rfproj`, a string in
+`_check_imported_params`, dropped by `/reload-gp` with the stems),
+`JobOut.backing_without`. The worker mixes into
+`<job>/backing_without_<stem>.wav`, builds from it, and the song's title gains
+"(sem baixo)" (`without_label`, the worker's language) — another key, so in game it
+is a song of its own beside the full one; changing it drops
+`installed_psarc`/`installed_from` so "Instalar no jogo" does not delete the other
+version's copy. A stem gone by then fails the build in words. UI: Exportar → Opções
+da construção → **Gravação** (`#backingSel`, `renderBackingRow` from
+`populateAudioSources` and the job load; options = `availableStems`; with none,
+`#backingSeparate` runs `separateStems`), a pending edit (`pendingSnapshot.backing`,
+"Pendente: gravação"), ⓘ `backing`. Honest limit, said in the info line and the ⓘ:
+separation is never perfect — a trace of the instrument may remain. Guarded by
+`test_backing.py` (the siblings of one separation; the real ffmpeg sum — the
+`normalize=0` mutation-checked), `test_a_version_without_one_instrument_is_built_from_the_others`
+(the mix is the build's audio, the title, a stem gone fails) and
+`test_a_version_without_one_separated_instrument_is_stored_and_kept_apart_in_game`
+(the installed copy forgotten, mutation-checked); with Playwright and a real
+rebuild of an invented two-track project with synthesized stems (PT 1440 / EN 760
+px): the options, the info line, "Pendente: gravação", Ctrl+Z, a rebuild titled
+"Ensaio (sem baixo)" whose audio has the 98 Hz bass 23 dB under the others and a
+clean `/psarc-check`, the Separar button when nothing is separated, no page errors.
+Never on a real Demucs separation from here.
+
 ### Tone library (`tone_library.py` + `/tone-library`)
 
 A tone dialled in one project's tone editor can be saved to a **cross-project

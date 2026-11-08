@@ -801,6 +801,15 @@ and tuning**.
 Import palm mute / slap / tap, and **Dynamic difficulty** (untick for a single difficulty with
 every note, if DD misbehaves on a song).
 
+**Recording** — **without one instrument**: builds the version with the recording without, for
+example, the bass, so you play it yourself over the song. It needs **Separate instruments** (in
+the Score's **Audio ▾** menu, or the button that shows up here). RockForge puts the other
+instruments of the same separation together (the drums included) and uses that mix as the audio.
+The title gains "(no bass)", so in game it is another song, beside the one with every
+instrument, and installing it does not delete the other. Separation is never perfect: a trace of
+the instrument taken out may still be heard. **Full** brings the whole recording back. It applies
+on **Apply and rebuild**.
+
 ## 12. A whole album at once (Batch)
 
 **Batch (album)** creates several projects at once: pick several GP files and the recordings.

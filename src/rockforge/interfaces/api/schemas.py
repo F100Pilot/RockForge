@@ -72,6 +72,9 @@ class JobOut(BaseModel):
     tempo_scale: float
     import_mutes: bool
     dynamic_difficulty: bool = True
+    # The separated instrument this version's recording leaves out (a backing
+    # track: "bass" → the song "… (no bass)"), or None for the whole recording.
+    backing_without: str | None = None
     error: str | None
     lyrics_status: str = "none"
     tone_detection_status: str = "none"
@@ -159,6 +162,10 @@ class RebuildIn(BaseModel):
     import_mutes: bool | None = None
     # When False, the native PSARC's SNG is a single full-chart level (no DD).
     dynamic_difficulty: bool | None = None
+    # GP: build the song from the recording WITHOUT this separated instrument
+    # ("Separar instrumentos" must have run): a name of params["stems"], or ""
+    # for the whole recording again. None leaves it unchanged.
+    backing_without: str | None = None
     # GP: re-assign which GP track feeds which arrangement, post-creation. Keys are
     # "lead"/"rhythm"/"combo"/"alt_lead"/"alt_rhythm"; a value is the track index,
     # or null to clear that slot. When set (even to {}), it REPLACES the whole

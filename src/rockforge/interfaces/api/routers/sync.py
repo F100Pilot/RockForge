@@ -13,6 +13,7 @@ from typing import cast
 from fastapi import APIRouter, HTTPException
 
 from rockforge.domain.music import BASS_REFERENCES
+from rockforge.i18n import tr
 from rockforge.infrastructure.db.models import Job
 from rockforge.interfaces.api import app as api
 from rockforge.interfaces.api.schemas import (
@@ -102,6 +103,33 @@ def _iter_floats(value: object) -> Iterator[float]:
     elif isinstance(value, (list, tuple)):
         for v in value:
             yield from _iter_floats(v)
+
+
+def _set_backing_without(params: dict[str, object], stem: str, source_type: str) -> None:
+    """The recording without one separated instrument (a backing track), or the
+    whole recording again for "". Only an instrument "Separar instrumentos"
+    stored can be left out — the build mixes the others of that separation. A
+    version with another recording is another song in game, so the copy of it
+    the game holds is not this one's: forget it, or "Instalar no jogo" would
+    delete the song with every instrument when it installs this one."""
+    if source_type != "gp":
+        raise HTTPException(422, "a backing track only applies to Guitar Pro jobs")
+    before = params.get("backing_without") or ""
+    if stem:
+        stems = params.get("stems")
+        raw = stems.get(stem) if isinstance(stems, dict) else None
+        if not (isinstance(raw, str) and Path(raw).is_file()):
+            raise HTTPException(422, tr(
+                f"o instrumento \"{stem}\" não está separado — corre primeiro "
+                "\"Separar instrumentos\"",
+                f"the \"{stem}\" instrument is not separated — run \"Separate instruments\" first",
+            ))
+        params["backing_without"] = stem
+    else:
+        params.pop("backing_without", None)
+    if (params.get("backing_without") or "") != before:
+        params.pop("installed_psarc", None)
+        params.pop("installed_from", None)
 
 
 @router.post("/jobs/{job_id}/rebuild", response_model=JobOut, status_code=202)
@@ -328,6 +356,8 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
             params["import_mute_techniques"] = payload.import_mutes
         if payload.dynamic_difficulty is not None:
             params["dynamic_difficulty"] = payload.dynamic_difficulty
+        if payload.backing_without is not None:
+            _set_backing_without(params, payload.backing_without, original.source_type)
         if payload.lyrics_events is not None:
             params["lyrics_events"] = [e.model_dump() for e in payload.lyrics_events]
             params.pop("lyrics_status", None)

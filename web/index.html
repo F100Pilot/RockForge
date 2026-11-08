@@ -1895,6 +1895,13 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
             <label class="check"><input type="checkbox" id="muteChk" form="rebuildForm" checked> Palm mute / slap / tap</label>
             <label class="check" title="Desliga a dificuldade dinâmica no PSARC nativo — uma única dificuldade com todas as notas. Útil se o DD estiver a dar problemas."><input type="checkbox" id="ddChk" form="rebuildForm" checked> Dificuldade dinâmica</label>
           </div>
+          <div class="pv-row" id="backingRow" hidden>
+            <label for="backingSel">Gravação:</label>
+            <select id="backingSel" form="rebuildForm" style="width:auto"></select>
+            <button type="button" id="backingSeparate" class="secondary" hidden><svg class="ic" aria-hidden="true"><use href="#i-layers"/></svg>Separar instrumentos</button>
+            <button class="info-btn" data-info="backing">ⓘ</button>
+          </div>
+          <span id="backingInfo" class="meta"></span>
           <p id="noteCountsInfo" class="meta"></p>
         </section>
       </div>

@@ -60,6 +60,7 @@ PORTABLE_KEYS = frozenset({
     "bar_times", "bar_times_source", "estimated_bars",
     "lead_track", "rhythm_track", "combo_track", "alt_lead_track", "alt_rhythm_track",
     "bass_track", "merge_tracks", "tuning_overrides", "bass_reference",
+    "backing_without",
     "import_mute_techniques",
     "dynamic_difficulty",
     "recording_from_gp",
