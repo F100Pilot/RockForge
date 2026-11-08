@@ -701,7 +701,7 @@
     },
     {
       "version": "0.12.0-beta.6",
-      "status": "Beta",
+      "status": "Superseded",
       "created": "2026-11-04",
       "published": "2026-11-04",
       "commit": "4ff6202b053adda146097da1e4eaebd2d5699bad",
@@ -727,10 +727,12 @@
       "version": "0.12.0-beta.7",
       "status": "Beta",
       "created": "2026-11-08",
-      "published": "pending",
+      "published": "2026-11-08",
       "commit": "pending",
       "build": "GitHub Actions release workflow",
-      "artifacts": [],
+      "artifacts": [
+        "https://github.com/F100Pilot/RockForge/releases/tag/v0.12.0-beta.7"
+      ],
       "goal": "Simpler syncing (Simple/Advanced and a guide), a PSARC without one instrument, an example project with a tutorial, and the Songsterr fixes (capo, tempo, palm mutes)",
       "features": [
         "Example project and tutorial",
