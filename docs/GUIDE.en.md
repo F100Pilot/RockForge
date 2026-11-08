@@ -318,6 +318,18 @@ They stay pending as before; Undo goes back to the built version.
 
 ## 6. Syncing the notes to the recording
 
+### Simple or Advanced
+
+At the top of the **Sync** inspector you choose **Simple** or **Advanced**. **Simple** (the
+usual one) shows only what most songs need, with the **How to sync** guide on top: the four
+steps in the order you use them (start, tempo, fix where it drifts, apply and confirm). Each
+**Show** takes you to that step's card, and **Pick Fix from here** turns that mode on. The
+**Mode ▾** menu keeps Drag, Fix from here and the score modes.
+
+**Advanced** shows the rest: the main track, the start slider and **Detect 1st note**,
+automatic sync, the recording's attacks and the Mark, Excerpt, Move following and Align bar
+modes. The choice is remembered in the browser. Switching between them deletes no correction.
+
 ### The most effective way
 
 What takes the least work and goes wrong the least, in this order:
@@ -326,8 +338,8 @@ What takes the least work and goes wrong the least, in this order:
    inside (leave "Use the audio inside the GP file" ticked), or the Songsterr tab with a video's
    timings and the audio of **that** video (step 3 of New project). It comes bar by bar: often
    you only need to listen and mark it as synced.
-2. **Set the start** (step 1) — with **Detect 1st note**, or the cursor on the 1st note and
-   **= cursor**. If the score drifts away evenly over the song, set the **BPM** (step 2).
+2. **Set the start** (step 1) — with the cursor on the 1st note and **= cursor** (or, in
+   Advanced, **Detect 1st note**). If the score drifts away evenly over the song, set the **BPM** (step 2).
 3. **A tab that was never synced** (one tempo throughout): **Mark by ear**, on every bar, with
    playback slowed down (90% or 75%) and **Smooth the taps** on. It is the most reliable method
    for these tabs: you are the one saying where each bar starts.

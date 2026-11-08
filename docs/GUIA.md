@@ -318,6 +318,20 @@ queres recuperar. Ficam pendentes como antes; Desfazer volta à versão constru�
 
 ## 6. Sincronizar as notas com a gravação
 
+### Simples ou Avançado
+
+No topo do inspetor **Sincronização** escolhes **Simples** ou **Avançado**. **Simples** (o
+habitual) mostra só o que a maioria das músicas precisa, com o guia **Como sincronizar** por
+cima: os quatro passos pela ordem em que se usam (início, andamento, corrigir onde foge,
+aplicar e confirmar). Cada **Mostrar** leva-te ao cartão desse passo, e **Escolher Corrigir
+daqui** liga esse modo. No menu **Modo ▾** ficam Arrastar, Corrigir daqui e os modos da
+partitura.
+
+**Avançado** mostra o resto: a pista principal, o slider do início e **Detetar 1ª nota**, a
+sincronização automática, os ataques da gravação e os modos Marcar, Excerto, Mover seguintes e
+Alinhar compasso. A escolha fica guardada no browser. Mudar de um para o outro não apaga nenhuma
+correção.
+
 ### A forma mais eficaz
 
 O que dá menos trabalho e erra menos, por esta ordem:
@@ -326,8 +340,8 @@ O que dá menos trabalho e erra menos, por esta ordem:
    lá dentro (deixa marcado "Usar o áudio que vem dentro do ficheiro GP"), ou a tab do Songsterr
    com os tempos de um vídeo e o áudio **desse** vídeo (no passo 3 do Novo projeto). Já vem
    compasso a compasso: muitas vezes basta ouvir e marcar como sincronizada.
-2. **Acerta o início** (passo 1) — com **Detetar 1ª nota** ou o cursor em cima da 1ª nota e
-   **= cursor**. Se a partitura se afasta por igual ao longo da música, acerta o **BPM**
+2. **Acerta o início** (passo 1) — com o cursor em cima da 1ª nota e **= cursor** (ou, em
+   Avançado, **Detetar 1ª nota**). Se a partitura se afasta por igual ao longo da música, acerta o **BPM**
    (passo 2).
 3. **Tab que nunca foi sincronizada** (um só andamento): **Marcar a ouvir**, em cada compasso,
    com a reprodução abrandada (90% ou 75%) e **Suavizar os toques** ligado. É o método mais

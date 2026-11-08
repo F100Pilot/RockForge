@@ -1611,6 +1611,29 @@ every arrangement's; both send the smaller dict on the next rebuild, which
 genuinely removes them. `updateNoteEditsInfo` shows the per-arrangement count
 and disables both buttons when there is nothing to clear.
 
+### Simples / Avançado and the sync guide (`setSyncLevel`, `#syncGuide`)
+
+"Too many options and whistles on the tempo correction page. Even though there's a
+user guide and a video it still not easy to operate" (r/rocksmith, 2026-11-08). The
+Sincronização inspector opens with `#syncLevelSeg`: **Simples** (the default,
+`localStorage` `rf-sync-level`) or **Avançado**. Simples puts `body.sync-simple`, and
+the CSS hides everything marked `data-sync-adv` — the main chart card, the start's
+slider and "Detetar 1ª nota", the tempo slider, the auto-sync and attacks cards, and
+the Marcar/Excerto/Mover seguintes/Alinhar compasso modes (`modeOffered`: their
+digits do nothing, a picked one is dropped by `setSyncLevel`). Nothing is removed and
+no pending edit changes. On top sits `#syncGuide` ("Como sincronizar", Simples only):
+the four steps in order — Início (`#syncStartCard`), Andamento (`#syncTempoCard`),
+Corrigir onde foge ("Escolher Corrigir daqui" = `setSyncMode('newbeat')`, or "Marcar
+a ouvir"), Aplicar e confirmar (`#syncStateCard`, ticked by `renderSyncGuide` when the
+chart on screen is marked) — each "Mostrar" scrolling to and flashing its card, and a
+hint when the file already brings its timing (`sync_source` gp/songsterr). **A new
+sync tool is Avançado unless the usual order needs it**: mark it `data-sync-adv`.
+Browser-only; verified with Playwright on an invented two-track project (PT 1440 / EN
+760 px): Simples shows the guide and 6 modes, digit 2 (Marcar) ignored and 5 (Corrigir
+daqui) taken, "Mostrar" flashes the card, Avançado shows all 10 modes and the cards,
+an advanced mode dropped back in Simples, the choice kept after a reload, step 4
+ticked after marking, no page errors.
+
 ### The recommended workflow: "Corrigir daqui" (`newbeat` mode, `/detect-tempo`)
 
 This is the RECOMMENDED sync mode (it used to be selected on entry; since

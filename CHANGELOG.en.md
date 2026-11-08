@@ -8,6 +8,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ### New
 
+- **Simpler syncing:** the Sync inspector now has **Simple** and **Advanced**. Simple (the usual one) keeps only the tools most songs need, with a four-step **How to sync** guide: start, tempo, fix where it drifts, apply and confirm. Each step takes you to the right card. The rest (main track, automatic sync, the recording's attacks, the Mark, Excerpt, Move following and Align bar modes) is under Advanced, and switching loses no correction.
+
 - **Each tone has its own volume on the Tones page:** the cards under "Project tones" now have "Volume in game" (higher = louder), without opening the tone editor. In Settings, the target loudness now says it is the recording's, not the tones', and that it only counts for projects you rebuild after saving. (GitHub #24)
 
 ### Fixes

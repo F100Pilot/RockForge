@@ -8,6 +8,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ### Novidades
 
+- **Sincronização mais simples:** o inspetor Sincronização tem agora **Simples** e **Avançado**. Em Simples (o habitual) ficam só as ferramentas que a maioria das músicas precisa, com um guia **Como sincronizar** em quatro passos: início, andamento, corrigir onde foge, aplicar e confirmar. Cada passo leva-te ao cartão certo. O resto (pista principal, sincronização automática, ataques da gravação, os modos Marcar, Excerto, Mover seguintes e Alinhar compasso) fica em Avançado, e nenhuma correção se perde ao mudar.
+
 - **Cada tom tem o seu volume na página Tons:** os cartões em «Tons do projeto» têm agora «Volume no jogo» (maior = mais alto), sem ser preciso abrir o editor de tons. Nas Definições, o volume alvo diz que é o da gravação, não o dos tons, e que só conta nos projetos que reconstruíres depois de guardar. (GitHub #24)
 
 ### Correções

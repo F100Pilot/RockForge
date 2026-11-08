@@ -1457,8 +1457,21 @@ const SYNC_SOURCE_TEXT = {
 function isSynced(j) { return !!j && j.sync_source === 'confirmed'; }
 // Each track is synchronised on its own, so the card speaks for the chart on
 // screen: mark it (its tab turns green), and see how many are done.
+// The Simples guide: a hint when the file already brings its timing, and step 4
+// ticked once the chart on screen is marked in sync.
+function renderSyncGuide(j) {
+  const a = arrangements[currentArr];
+  const hint = document.getElementById('syncGuideHint');
+  if (hint) {
+    const timed = !!j && ['gp', 'songsterr', 'songsterr_tab'].includes(j.sync_source);
+    hint.hidden = !timed;
+    if (timed) hint.textContent = T('Esta tab já traz os seus tempos. Começa por ouvir: se as notas baterem com a gravação, salta para o passo 4.');
+  }
+  document.getElementById('syncGuideDone')?.classList.toggle('done', arrSynced(a));
+}
 function renderSyncState(j) {
   renderSyncMain(j);
+  renderSyncGuide(j);
   const card = document.getElementById('syncStateCard');
   if (!card) return;
   const a = arrangements[currentArr];
@@ -1790,6 +1803,10 @@ const INFO = {
 <p><b>Sincronizar com outra pista:</b> como o número do compasso é o mesmo em todas as pistas do ficheiro Guitar Pro (vêm da mesma partitura), se já tiveres o Lead bem sincronizado podes alinhar o compasso 7 do Rhythm diretamente com o compasso 7 do Lead — sem teres de ouvir/procurar à mão.</p>
 <p><b>Andamento (BPM do compasso):</b> escreve o BPM que o compasso deve ter (vem preenchido com o atual) e, se quiseres, até que compasso aplicar — todos passam a esse BPM. O que vem depois <b>não muda de andamento</b>: só se desloca pela diferença, por isso cada compasso seguinte continua com o seu. O compasso fica marcado a âmbar na partitura, e "Guitar Pro com os andamentos corrigidos" (Exportar) grava-o no ficheiro.</p>
 <p>Como as outras ferramentas de sincronização, cria uma correção pendente por pista — grava com "Aplicar e reconstruir".</p>`)
+  },
+  'sync-guide': {
+    title: T('Como sincronizar'),
+    body: T('<p>Em <b>Simples</b> ficam só as ferramentas que a maioria das músicas precisa, pela ordem em que se usam: o início, o andamento, corrigir onde a partitura foge e, por fim, marcar a pista como sincronizada. "Mostrar" leva-te ao cartão de cada passo.</p><p>Em <b>Avançado</b> aparece o resto: a pista principal, o slider do início e "Detetar 1ª nota", a sincronização automática, os ataques da gravação e os modos Marcar, Excerto, Mover seguintes e Alinhar compasso. Nada se perde ao mudar: as correções que já fizeste continuam lá.</p><p>Cada pista sincroniza-se à parte. Tudo fica pendente até "Aplicar e reconstruir".</p>')
   },
   'sync-tempo': {
     title: T('Sincronização — andamento'),
@@ -10811,6 +10828,38 @@ SYNC_MODE_BUTTONS.forEach(([id, mode]) => {
   });
 });
 setSyncMode(syncMode);  // show the help line for the initial mode
+
+// "Simples" / "Avançado" in Sincronização ("too many options and whistles on the
+// tempo correction page", r/rocksmith): Simples keeps what the usual order needs —
+// start, tempo, "Corrigir daqui", confirm — with a guide on top; everything marked
+// data-sync-adv (the CSS hides it) waits under Avançado. Remembered per browser.
+let syncSimple = true;
+try { syncSimple = localStorage.getItem('rf-sync-level') !== 'advanced'; } catch { /* no storage */ }
+const modeOffered = id => !(syncSimple && document.getElementById(id)?.hasAttribute('data-sync-adv'));
+function setSyncLevel(simple) {
+  syncSimple = simple;
+  document.body.classList.toggle('sync-simple', simple);
+  document.querySelectorAll('#syncLevelSeg [data-sync-level]').forEach(b => {
+    const on = (b.dataset.syncLevel === 'simple') === simple;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-pressed', String(on));
+  });
+  try { localStorage.setItem('rf-sync-level', simple ? 'simple' : 'advanced'); } catch { /* no storage */ }
+  // A mode Simples does not offer cannot stay picked out of sight.
+  const active = SYNC_MODE_BUTTONS.find(([, m]) => m === syncMode);
+  if (active && !modeOffered(active[0])) setSyncMode(null);
+}
+document.querySelectorAll('#syncLevelSeg [data-sync-level]').forEach(b =>
+  b.addEventListener('click', () => setSyncLevel(b.dataset.syncLevel === 'simple')));
+setSyncLevel(syncSimple);
+document.querySelectorAll('#syncGuide [data-guide-go]').forEach(b => b.addEventListener('click', () => {
+  const card = document.getElementById(b.dataset.guideGo);
+  if (!card || card.hidden) return;
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  card.classList.add('guide-flash');
+  setTimeout(() => card.classList.remove('guide-flash'), 1500);
+}));
+document.getElementById('syncGuideFix')?.addEventListener('click', () => setSyncMode('newbeat'));
 document.getElementById('snapBeats')?.addEventListener('change', e => {
   snapToBeats = e.target.checked;
   if (arrangements.length) showArr(currentArr);  // show/hide the grid
@@ -12427,7 +12476,7 @@ document.addEventListener('keydown', e => {
   } else if (e.key >= '0' && e.key <= '9' && !e.ctrlKey && !e.metaKey && !e.altKey && isGpJob()) {
     const entry = SYNC_MODE_BUTTONS[e.key === '0' ? 9 : Number(e.key) - 1];
     const btn = entry && document.getElementById(entry[0]);
-    if (btn && !btn.disabled && !btn.hidden) {
+    if (btn && !btn.disabled && !btn.hidden && modeOffered(entry[0])) {
       e.preventDefault();
       setSyncMode(syncMode === entry[1] ? null : entry[1]);
     }
