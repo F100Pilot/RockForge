@@ -177,3 +177,5 @@ read it back.
 ## Replies on GitHub are written as the maintainer would (2026-11-08)
 
 - A comment on an issue said it could not open the attachments; the user deleted it because it plainly was not theirs. Replies on GitHub go out under the user's account: write them short, plain and human, never mention being an AI, being blocked or lacking access, and never explain more than the reporter needs (what was wrong, that it is fixed, when to try).
+
+Update (2026-11-08): editing the comment does not remove the footer any more. On issue #26 it came back on every write, with the MCP tool and with `gh api -X PATCH` alike. Do not loop on it. Post the comment, read it back, and if the footer is there, tell the user straight away which comments need it deleted by hand.
