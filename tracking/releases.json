@@ -728,7 +728,7 @@
       "status": "Beta",
       "created": "2026-11-08",
       "published": "2026-11-08",
-      "commit": "pending",
+      "commit": "ba4953e19a17cb20d8ca06ccb3adafaa08a3b842",
       "build": "GitHub Actions release workflow",
       "artifacts": [
         "https://github.com/F100Pilot/RockForge/releases/tag/v0.12.0-beta.7"
