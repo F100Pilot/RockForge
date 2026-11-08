@@ -21,29 +21,48 @@ song in the game with one click.
 ## Features
 
 - **Reads Guitar Pro 3, 4, 5 and 7/8 (`.gp`)** exactly: notes, frets, techniques (bends, slides,
-  hammer-ons/pull-offs, palm mute, harmonics, vibrato, ties), tempo changes, sections and lyrics.
-  Repeats, voltas and D.S./D.C. jumps are played in order.
+  hammer-ons/pull-offs, palm mute, harmonics, vibrato, ties), capo, tempo changes, sections and
+  lyrics. Repeats, voltas and D.S./D.C. jumps are played in order.
 - **No Guitar Pro file?** Import the tab from a **Songsterr** link (with the per-bar video timings
-  people marked there), or convert a **PDF or picture** of the tab with
+  people marked there, or the tab's own tempo map), or convert a **PDF or picture** of the tab with
   [PDF-to-GP5](https://github.com/F100Pilot/PDF-to-GP5).
 - **The recording**: your audio file, the audio inside a Guitar Pro 8 file, or the audio of a
   YouTube video.
 - **Both outputs, always**: a native, playable **`.psarc`** and a **DLC Builder** project (`.rs2dlc`
   + Song2014 XML + audio + cover), so you can finish or adjust the song in DLC Builder.
-- **Lead, Rhythm, Combo and alternate arrangements**, each synced on its own and named as the game
-  names them.
-- **Sync you check by ear**: song start, a BPM stretch, "Fix from here" (pin a note, measure the
-  tempo from there on), drag notes or whole passages, align a bar. Guitar Pro 8 sync points are used
-  directly.
-- **Edit on the score**: frets, techniques, insert or delete notes, copy and paste, sections.
-- **Tones** with the game's amps, cabinets and pedals; tone changes during the song; a tone
-  suggested for each part; the tones of the songs you already own, read from your `dlc` folder.
+- **Lead, Rhythm, Combo, Bass and alternate arrangements**, each synced on its own and named as the
+  game names them. A 4- or 5-string bass track becomes the Bass chart (low tunings at A220 if you
+  want). Two Guitar Pro tracks can be **merged into one chart**, in the bars you choose.
+- **Sync you check by ear**: a *Simple* mode with a four-step guide and an **example project** to
+  learn on; song start, a BPM stretch, "Fix from here" (pin a note, measure the tempo from there
+  on), tap the bars while the song plays, drag notes or whole passages, align a bar, set a bar's
+  tempo. To see where tab and recording differ: the recording's attacks and level bars over the
+  score, a metronome on the chart's beats, and an experimental automatic sync. Guitar Pro 8 sync
+  points and Songsterr's bar times are used directly.
+- **Edit on the score**: frets, techniques, bend and slide shapes, insert, delete or drag notes,
+  copy and paste, move notes between two charts shown one above the other, sections, fret-hand
+  positions (FHPs). Undo and redo everything; unsaved edits are kept if the page closes.
+- **Listen and look**: A–B loop and slower playback; the full mix, a separated instrument (Demucs)
+  or each chart synthesized on its own; a fretboard that can show every note of the tuning; a
+  **3D note highway** in the style of Rocksmith.
+- **Play along (experimental)**: plug in the guitar (Real Tone Cable) and see each note and chord
+  marked in time, late, wrong or missed.
+- **Tones** with the game's amps, cabinets and pedals; tone changes during the song, per track; a
+  tone suggested for each part; an approximate preview; a tone library; tones pasted as text from
+  an AI assistant; the tones of the songs you already own, read from your `dlc` folder.
 - **Lyrics** from the Guitar Pro file, LRCLIB or the recording (WhisperX), synced to the voice and
-  editable word by word.
-- **Dynamic difficulty**, chord fingering and hand shapes in the native `.psarc`.
-- **Check the `.psarc`** against the faults that made the game crash before, and **install it** in
-  the game's `dlc` folder.
-- **3D note highway** in the style of Rocksmith, to check the sync while the song plays.
+  editable word by word, also beside the score.
+- **Cover, album and year** looked up online (iTunes, MusicBrainz), from any image link or pasted.
+- **A version without one instrument**: a backing track without the separated bass (or guitar,
+  vocals…), to play that part yourself.
+- **Dynamic difficulty**, chord fingering, hand shapes, linked notes and arpeggios in the native
+  `.psarc`.
+- **Check the `.psarc`** against the faults that made the game crash before, **install it** in the
+  game's `dlc` folder with one click, and choose the AppID it uses.
+- **Back to Guitar Pro**: write the corrected tempos into a copy of your file, or export the edited
+  chart as a new GP5. Reload an edited Guitar Pro file without redoing the sync.
+- **Projects**: save a whole project in one file (`.rfproj`) to move or share it, create an album
+  at once (batch), go back to the previous version after a rebuild.
 - **Portuguese and English** interface. Runs on your computer; nothing is uploaded.
 
 | | |

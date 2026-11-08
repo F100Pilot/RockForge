@@ -21,29 +21,55 @@ tons e letra, e instala a música no jogo com um clique.
 ## O que faz
 
 - **Lê Guitar Pro 3, 4, 5 e 7/8 (`.gp`)** com exatidão: notas, trastes, técnicas (bends, slides,
-  hammer-ons/pull-offs, palm mute, harmónicos, vibrato, ligaduras), mudanças de andamento, secções
-  e letra. As repetições, voltas e saltos D.S./D.C. são tocados pela ordem.
+  hammer-ons/pull-offs, palm mute, harmónicos, vibrato, ligaduras), capo, mudanças de andamento,
+  secções e letra. As repetições, voltas e saltos D.S./D.C. são tocados pela ordem.
 - **Sem ficheiro Guitar Pro?** Importa a tab de um link do **Songsterr** (com os tempos de cada
-  compasso no vídeo, marcados por pessoas), ou converte um **PDF ou imagem** da tab com o
-  [PDF-to-GP5](https://github.com/F100Pilot/PDF-to-GP5).
+  compasso no vídeo, marcados por pessoas, ou o próprio andamento da tab), ou converte um **PDF ou
+  imagem** da tab com o [PDF-to-GP5](https://github.com/F100Pilot/PDF-to-GP5).
 - **A gravação**: o teu ficheiro de áudio, o áudio que vem dentro de um ficheiro Guitar Pro 8, ou o
   áudio de um vídeo do YouTube.
 - **As duas saídas, sempre**: um **`.psarc`** nativo e jogável e um projeto do **DLC Builder**
   (`.rs2dlc` + XML Song2014 + áudio + capa), para poderes acabar ou ajustar a música no DLC Builder.
-- **Arranjos Lead, Rhythm, Combo e alternativos**, cada um sincronizado à parte e com o nome que o
-  jogo lhe dá.
-- **Sincronização que confirmas de ouvido**: início da música, ajuste do BPM, "Corrigir daqui"
-  (fixa uma nota e mede o andamento daí em diante), arrastar notas ou trechos inteiros, alinhar um
-  compasso. Os pontos de sincronização do Guitar Pro 8 são usados diretamente.
-- **Editar na partitura**: trastes, técnicas, inserir ou apagar notas, copiar e colar, secções.
-- **Tons** com os amplificadores, colunas e pedais do jogo; mudanças de tom ao longo da música; um
-  tom sugerido para cada parte; os tons das músicas que já tens, lidos da tua pasta `dlc`.
+- **Arranjos Lead, Rhythm, Combo, Bass e alternativos**, cada um sincronizado à parte e com o nome
+  que o jogo lhe dá. Uma pista de baixo de 4 ou 5 cordas torna-se o arranjo Bass (afinações graves
+  em A220, se quiseres). Duas pistas do Guitar Pro podem **juntar-se num só arranjo**, nos
+  compassos que escolheres.
+- **Sincronização que confirmas de ouvido**: um modo *Simples* com um guia de quatro passos e um
+  **projeto de exemplo** para aprender; início da música, ajuste do BPM, "Corrigir daqui" (fixa uma
+  nota e mede o andamento daí em diante), marcar os compassos a tocar enquanto a música passa,
+  arrastar notas ou trechos inteiros, alinhar um compasso, mudar o andamento de um compasso. Para
+  ver onde a tab e a gravação diferem: os ataques e as barras de áudio da gravação sobre a
+  partitura, um metrónomo nos tempos do arranjo e uma sincronização automática experimental. Os
+  pontos de sincronização do Guitar Pro 8 e os tempos dos compassos do Songsterr são usados
+  diretamente.
+- **Editar na partitura**: trastes, técnicas, forma dos bends e slides, inserir, apagar ou arrastar
+  notas, copiar e colar, passar notas entre dois arranjos mostrados um por cima do outro, secções,
+  posições da mão (FHP). Desfazer e refazer tudo; as edições por aplicar ficam guardadas se a
+  página fechar.
+- **Ouvir e ver**: repetição A–B e reprodução mais lenta; a mistura completa, um instrumento
+  separado (Demucs) ou cada arranjo sintetizado à parte; um braço que pode mostrar todas as notas da
+  afinação; uma **pista 3D** ao estilo do Rocksmith.
+- **Tocar com a guitarra (experimental)**: liga a guitarra (Real Tone Cable) e vê cada nota e
+  acorde marcado como certo, atrasado, errado ou falhado.
+- **Tons** com os amplificadores, colunas e pedais do jogo; mudanças de tom ao longo da música, por
+  pista; um tom sugerido para cada parte; uma audição aproximada; uma biblioteca de tons; tons
+  colados como texto de um assistente de IA; os tons das músicas que já tens, lidos da tua pasta
+  `dlc`.
 - **Letra** do ficheiro Guitar Pro, do LRCLIB ou da gravação (WhisperX), sincronizada com a voz e
-  editável palavra a palavra.
-- **Dificuldade dinâmica**, dedilhação dos acordes e formas de mão no `.psarc` nativo.
-- **Verificar o `.psarc`** contra as falhas que já fizeram o jogo fechar, e **instalá-lo** na pasta
-  `dlc` do jogo.
-- **Pista 3D** ao estilo do Rocksmith, para confirmar a sincronização enquanto a música toca.
+  editável palavra a palavra, também ao lado da partitura.
+- **Capa, álbum e ano** procurados online (iTunes, MusicBrainz), de um link de qualquer imagem ou
+  colados.
+- **Uma versão sem um instrumento**: uma faixa de acompanhamento sem o baixo separado (ou a
+  guitarra, a voz…), para tocares tu essa parte.
+- **Dificuldade dinâmica**, dedilhação dos acordes, formas de mão, notas ligadas e arpejos no
+  `.psarc` nativo.
+- **Verificar o `.psarc`** contra as falhas que já fizeram o jogo fechar, **instalá-lo** na pasta
+  `dlc` do jogo com um clique, e escolher o AppID que usa.
+- **De volta ao Guitar Pro**: escreve os andamentos corrigidos numa cópia do teu ficheiro, ou
+  exporta o arranjo editado como um GP5 novo. Recarrega um ficheiro Guitar Pro editado sem refazer
+  a sincronização.
+- **Projetos**: guarda um projeto inteiro num ficheiro (`.rfproj`) para o mudar de computador ou
+  partilhar, cria um álbum de uma vez (lote), volta à versão anterior depois de reconstruir.
 - Interface em **português e inglês**. Corre no teu computador; nada é enviado para fora.
 
 | | |
